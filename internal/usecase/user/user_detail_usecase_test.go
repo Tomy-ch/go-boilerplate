@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
+	"go-boilerplate/internal/domain/purchase"
 	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
@@ -23,6 +24,7 @@ import (
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/user/event"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -47,7 +49,7 @@ func newDenyAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
 // newTestAuthn は、テスト用の認証主体（Authn）を返します。
 func newTestAuthn(t *testing.T) *authbd.Authn {
 	t.Helper()
-	authn, err := authbd.New(uuid.NewTestFromSalt(t, "caller").String(), authbd.IssuerMock, nil, nil)
+	authn, err := authbd.New(uuidtestkit.NewTestFromSalt(t, "caller").String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 	return authn
 }
@@ -88,8 +90,8 @@ func Test_usecase_GetUser(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 
 	pft, err := prefecture.New(prefID, "Tokyo", 13)
 	require.NoError(t, err)
@@ -183,8 +185,8 @@ func Test_usecase_UpdateUser(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 	prefName := "Tokyo"
 
 	pft, err := prefecture.New(prefID, prefName, 13)
@@ -301,8 +303,8 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 
 	pft, err := prefecture.New(prefID, "Osaka", 27)
 	require.NoError(t, err)
@@ -452,8 +454,8 @@ func Test_usecase_DeleteUser(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 	authn, err := authbd.New(id.String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 
@@ -463,10 +465,11 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		return a
 	}
 
-	// noInProgressPurchase は、進行中の購入を持たないユーザーを表す購入 Repository モックを返します。
+	// noInProgressPurchase は、終端に達した購入しか持たないユーザーを表す購入 Repository モックを返します。
 	noInProgressPurchase := func(ctrl *gomock.Controller) *mock_purchase.MockRepository {
 		r := mock_purchase.NewMockRepository(ctrl)
-		r.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, nil)
+		r.EXPECT().FindStatusesByUserID(gomock.Any(), id).
+			Return([]purchase.Status{purchase.StatusCompleted}, nil)
 		return r
 	}
 
@@ -527,7 +530,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
 			gomock.InOrder(
 				userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil),
-				purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, nil),
+				purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).Return(nil, nil),
 			)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
@@ -568,7 +571,8 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			// 退会を拒否するため論理削除もイベント発行も行わない。
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
-			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(true, nil)
+			purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).
+				Return([]purchase.Status{purchase.StatusUnprocessed}, nil)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
@@ -590,7 +594,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
-			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, expectedErr)
+			purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).Return(nil, expectedErr)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),

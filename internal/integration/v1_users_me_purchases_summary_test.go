@@ -13,6 +13,7 @@ import (
 	summaryuc "go-boilerplate/internal/usecase/purchase/summary"
 	mock_summaryuc "go-boilerplate/internal/usecase/purchase/summary/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -40,14 +41,14 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 				TotalCount:  3,
 				TotalAmount: 450,
 				StatusBreakdown: []summaryuc.StatusCountView{
-					{StatusID: uuid.NewTestFromSalt(t, "int_sm_unprocessed"), StatusName: "未処理", Count: 2, TotalAmount: 300},
-					{StatusID: uuid.NewTestFromSalt(t, "int_sm_canceled"), StatusName: "キャンセル", Count: 1, TotalAmount: 150},
+					{StatusID: uuidtestkit.NewTestFromSalt(t, "int_sm_unprocessed"), StatusName: "未処理", Count: 2, TotalAmount: 300},
+					{StatusID: uuidtestkit.NewTestFromSalt(t, "int_sm_canceled"), StatusName: "キャンセル", Count: 1, TotalAmount: 150},
 				},
 			}, nil)
 
 			usersmepurchases.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_sm_user"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_user"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, purchaseSummaryPath, nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			AssertJSONResponseType[gen.PurchaseAggregateResponse](t, actual)
@@ -60,7 +61,7 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			userID := uuid.NewTestFromSalt(t, "int_sm_owner")
+			userID := uuidtestkit.NewTestFromSalt(t, "int_sm_owner")
 			var capturedUserID uuid.UUID
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
 			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -92,7 +93,7 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 
 			usersmepurchases.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_sm_empty"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_empty"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, purchaseSummaryPath, nil, headers)
 			AssertJSONResponseType[gen.PurchaseAggregateResponse](t, actual)
 		})
@@ -133,7 +134,7 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 
 			usersmepurchases.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_sm_err"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_err"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, purchaseSummaryPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})

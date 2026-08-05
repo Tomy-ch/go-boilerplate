@@ -14,6 +14,7 @@ import (
 	dashboarduc "go-boilerplate/internal/usecase/dashboard"
 	mock_dashboarduc "go-boilerplate/internal/usecase/dashboard/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
@@ -43,8 +44,8 @@ func summaryViewFixture(t *testing.T) dashboarduc.SummaryView {
 		SalesAmount: 450000,
 		SalesCount:  12,
 		PurchaseStatusCounts: []dashboarduc.StatusCountView{
-			{StatusID: uuid.NewTestFromSalt(t, "hd_unprocessed"), StatusName: "未処理", Count: 2},
-			{StatusID: uuid.NewTestFromSalt(t, "hd_completed"), StatusName: "完了", Count: 10},
+			{StatusID: uuidtestkit.NewTestFromSalt(t, "hd_unprocessed"), StatusName: "未処理", Count: 2},
+			{StatusID: uuidtestkit.NewTestFromSalt(t, "hd_completed"), StatusName: "完了", Count: 10},
 		},
 		TotalProductCount:     120,
 		PublishedProductCount: 98,
@@ -79,7 +80,7 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 			uc := mock_dashboarduc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			userID := uuid.NewTestFromSalt(t, "hd_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_user")
 			view := summaryViewFixture(t)
 			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, authn *auth.Authn, _ dashboarduc.GetSummaryParams) (dashboarduc.SummaryView, error) {
@@ -122,7 +123,7 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 				})
 
 			_, err := s.GetDashboardSummary(
-				authnContext(t, uuid.NewTestFromSalt(t, "hd_params")),
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hd_params")),
 				gen.GetDashboardSummaryRequestObject{
 					Params: gen.GetDashboardSummaryParams{Period: &period, From: &from, To: &to},
 				},
@@ -148,7 +149,7 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.GetDashboardSummary(context.Background(), gen.GetDashboardSummaryRequestObject{})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("ユースケースがエラーを返した場合はそのまま伝播する", func(t *testing.T) {
@@ -162,7 +163,7 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 				Return(dashboarduc.SummaryView{}, apperror.ErrPermissionDenied)
 
 			_, err := s.GetDashboardSummary(
-				authnContext(t, uuid.NewTestFromSalt(t, "hd_user_err")),
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hd_user_err")),
 				gen.GetDashboardSummaryRequestObject{},
 			)
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)

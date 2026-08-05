@@ -14,11 +14,13 @@ import (
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	checkoutuc "go-boilerplate/internal/usecase/checkout"
+	mock_checkoutuc "go-boilerplate/internal/usecase/checkout/mock"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
-	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -29,16 +31,16 @@ import (
 func purchaseViewFixture(t *testing.T) purchaseuc.PurchaseView {
 	t.Helper()
 	return purchaseuc.PurchaseView{
-		ID:             uuid.NewTestFromSalt(t, "int_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "int_id"),
 		Code:           "int-code",
-		UserID:         uuid.NewTestFromSalt(t, "int_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "int_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "int_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "int_status"),
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "int_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "int_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
@@ -48,7 +50,7 @@ func purchaseRequestBody(t *testing.T) *gen.PostPurchasesJSONRequestBody {
 	t.Helper()
 	return &gen.PostPurchasesJSONRequestBody{
 		Details: []gen.PurchaseDetailInput{
-			{ProductId: uuid.NewTestFromSalt(t, "int_prod").ToPrimitive(), Quantity: 2},
+			{ProductId: uuidtestkit.NewTestFromSalt(t, "int_prod").ToPrimitive(), Quantity: 2},
 		},
 	}
 }
@@ -73,10 +75,10 @@ func TestV1Purchases_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseViewFixture(t), nil)
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(checkoutuc.PurchaseView{Purchase: purchaseViewFixture(t)}, nil)
 
-			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
 
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/purchases", purchaseRequestBody(t), headers)
@@ -95,8 +97,8 @@ func TestV1Purchases_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseViewFixture(t), nil)
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(checkoutuc.PurchaseView{Purchase: purchaseViewFixture(t)}, nil)
 
 			store := mock_idempotency.NewMockStore(ctrl)
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
@@ -106,7 +108,7 @@ func TestV1Purchases_Integration(t *testing.T) {
 				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
 			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 
-			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{Txm: txm, Store: store, Clock: clk})
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{Txm: txm, Store: store, Clock: clk})
 
 			headers := availablePurchaseUser(t, e)
 			headers.Set("Idempotency-Key", "integration-key-1")
@@ -125,17 +127,19 @@ func TestV1Purchases_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			view := purchaseViewFixture(t)
-			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{
-				Currency: "JPY",
-				Amount:   26475,
-				Rate:     decimaltestkit.MustParse(t, "150.5"),
-				RateDate: "2026-07-21",
+			view := checkoutuc.PurchaseView{
+				Purchase: purchaseViewFixture(t),
+				ReferenceAmount: &checkoutuc.ReferenceAmountView{
+					Currency: "JPY",
+					Amount:   26475,
+					Rate:     decimaltestkit.MustParse(t, "150.5"),
+					RateDate: "2026-07-21",
+				},
 			}
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(view, nil)
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(view, nil)
 
-			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
 
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/purchases?displayCurrency=JPY", purchaseRequestBody(t), headers)
@@ -155,10 +159,10 @@ func TestV1Purchases_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			// degrade: usecase が ReferenceAmount=nil のビューを返す
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseViewFixture(t), nil)
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(checkoutuc.PurchaseView{Purchase: purchaseViewFixture(t)}, nil)
 
-			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
 
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/purchases?displayCurrency=JPY", purchaseRequestBody(t), headers)
@@ -181,10 +185,11 @@ func TestV1Purchases_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseuc.PurchaseView{}, domainpurchase.ErrInsufficientStock)
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+				Return(checkoutuc.PurchaseView{}, domainpurchase.ErrInsufficientStock)
 
-			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
 
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/purchases", purchaseRequestBody(t), headers)
@@ -199,10 +204,11 @@ func TestV1Purchases_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseuc.PurchaseView{}, domainpurchase.ErrEmptyDetails)
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+				Return(checkoutuc.PurchaseView{}, domainpurchase.ErrEmptyDetails)
 
-			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
 
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(
@@ -220,12 +226,13 @@ func TestV1Purchases_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseuc.PurchaseView{}, domainpurchase.ErrDuplicateProductID)
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+				Return(checkoutuc.PurchaseView{}, domainpurchase.ErrDuplicateProductID)
 
-			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
 
-			dupID := uuid.NewTestFromSalt(t, "dup_prod").ToPrimitive()
+			dupID := uuidtestkit.NewTestFromSalt(t, "dup_prod").ToPrimitive()
 			body := &gen.PostPurchasesJSONRequestBody{Details: []gen.PurchaseDetailInput{
 				{ProductId: dupID, Quantity: 1},
 				{ProductId: dupID, Quantity: 2},

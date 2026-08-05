@@ -10,6 +10,7 @@ import (
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ func newAuthn(t *testing.T, subjectID uuid.UUID) *authbd.Authn {
 func newRole(t *testing.T, code user.RoleCode, name string) *user.Role {
 	t.Helper()
 
-	role, err := user.NewRole(uuid.NewTestFromSalt(t, name), name, int(code))
+	role, err := user.NewRole(uuidtestkit.NewTestFromSalt(t, name), name, int(code))
 	require.NoError(t, err)
 
 	return role
@@ -59,8 +60,8 @@ func Test_authorizer_Authorize(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			subjectID := uuid.NewTestFromSalt(t, "admin_subject")
-			ownerID := uuid.NewTestFromSalt(t, "other_owner")
+			subjectID := uuidtestkit.NewTestFromSalt(t, "admin_subject")
+			ownerID := uuidtestkit.NewTestFromSalt(t, "other_owner")
 
 			roleRepo := mock_user.NewMockRoleRepository(ctrl)
 			roleRepo.EXPECT().FindRolesByUserID(gomock.Any(), subjectID).
@@ -80,7 +81,7 @@ func Test_authorizer_Authorize(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			subjectID := uuid.NewTestFromSalt(t, "owner_subject")
+			subjectID := uuidtestkit.NewTestFromSalt(t, "owner_subject")
 
 			roleRepo := mock_user.NewMockRoleRepository(ctrl)
 			roleRepo.EXPECT().FindRolesByUserID(gomock.Any(), subjectID).
@@ -104,8 +105,8 @@ func Test_authorizer_Authorize(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			subjectID := uuid.NewTestFromSalt(t, "general_subject")
-			ownerID := uuid.NewTestFromSalt(t, "other_owner")
+			subjectID := uuidtestkit.NewTestFromSalt(t, "general_subject")
+			ownerID := uuidtestkit.NewTestFromSalt(t, "other_owner")
 
 			roleRepo := mock_user.NewMockRoleRepository(ctrl)
 			roleRepo.EXPECT().FindRolesByUserID(gomock.Any(), subjectID).
@@ -161,7 +162,7 @@ func Test_authorizer_Authorize(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			subjectID := uuid.NewTestFromSalt(t, "no_resource_subject")
+			subjectID := uuidtestkit.NewTestFromSalt(t, "no_resource_subject")
 
 			roleRepo := mock_user.NewMockRoleRepository(ctrl)
 			roleRepo.EXPECT().FindRolesByUserID(gomock.Any(), subjectID).
@@ -181,7 +182,7 @@ func Test_authorizer_Authorize(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			subjectID := uuid.NewTestFromSalt(t, "no_owner_subject")
+			subjectID := uuidtestkit.NewTestFromSalt(t, "no_owner_subject")
 
 			roleRepo := mock_user.NewMockRoleRepository(ctrl)
 			roleRepo.EXPECT().FindRolesByUserID(gomock.Any(), subjectID).
@@ -202,7 +203,7 @@ func Test_authorizer_Authorize(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			subjectID := uuid.NewTestFromSalt(t, "err_subject")
+			subjectID := uuidtestkit.NewTestFromSalt(t, "err_subject")
 			expectedErr := xerrors.Wrap(apperror.ErrInternal, "db failed")
 
 			roleRepo := mock_user.NewMockRoleRepository(ctrl)

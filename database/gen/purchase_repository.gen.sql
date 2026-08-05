@@ -1,18 +1,4 @@
 
--- === source: database/dml/repository/purchase/exists_in_progress_purchase_by_user_id.sql ===
--- name: ExistsInProgressPurchaseByUserID :one
--- 指定ユーザーに進行中の購入が 1 件でも存在するかを返す。進行中は終端ステータス（引数）の否定で
--- 判定するため、ステータスが増えた場合は既定で進行中側に倒れる。ステータスは購入ステータスマスタとの
--- 結合で解決する（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
--- 終端コードは seed UUID を焼き込まずドメイン定数から引数で受け取る。
-SELECT EXISTS(
-    SELECT 1
-    FROM purchases AS p
-    INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-    WHERE p.user_id = sqlc.arg('user_id')
-        AND NOT (ps.code = ANY(@terminal_status_codes::SMALLINT []))
-);
-
 -- === source: database/dml/repository/purchase/lock_purchase_by_id.sql ===
 -- name: LockPurchaseByID :one
 -- ID から購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。支払いの状態遷移の
@@ -68,6 +54,18 @@ SELECT sqlc.embed(d)
 FROM purchase_details AS d
 WHERE d.purchase_id = @purchase_id_param
 ORDER BY d.id;
+
+-- === source: database/dml/repository/purchase/select_purchase_status_codes_by_user_id.sql ===
+-- name: SelectPurchaseStatusCodesByUserID :many
+-- 指定ユーザーの購入が取っているステータス code を重複なく返す。
+-- 進行中かどうかの判定はドメイン（Status.IsTerminal の否定）が行うため、ここでは業務条件で絞り込まない。
+-- 重複を除くため行数はステータスの種類数で頭打ちになり、購入件数には比例しない。
+-- ステータスは購入ステータスマスタとの結合で解決する（購入集約に属する固定参照マスタへの一意な
+-- 等結合であり、単一集約の read）。
+SELECT DISTINCT ps.code
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE p.user_id = sqlc.arg('user_id');
 
 -- === source: database/dml/repository/purchase/select_purchases_feed.sql ===
 -- name: ListPurchasesFeedFirst :many

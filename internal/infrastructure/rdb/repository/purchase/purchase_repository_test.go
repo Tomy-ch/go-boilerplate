@@ -2,19 +2,16 @@ package purchase
 
 import (
 	"context"
-	"math"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/kernel/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
-	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +25,7 @@ const (
 	seedUserID         = "550e8400-e29b-41d4-a716-446655440000"
 	seedUnprocessedSID = "a66c996c-86b2-41d8-9bdd-9b685fb7c47d"
 	seedPaidSID        = "4b8f0e2a-1c3d-4a5e-8b7f-2d9c0e1a3b4c"
-	// unknownStatusCode は、購入ステータスマスタに存在しない code です（seed は 1〜9）。
+	// unknownStatusCode は、購入ステータスマスタにもドメインにも存在しない code です（seed は 1〜9）。
 	unknownStatusCode = 99
 )
 
@@ -67,35 +64,6 @@ func insertPurchaseWithDetail(ctx context.Context, t *testing.T, db driver.DBTX,
 	)
 	require.NoError(t, err)
 	return purchaseID, productID
-}
-
-// reconstructWithStatusCode は、指定ステータスコードで再構築した最小構成の購入エンティティを返します。
-// timestamps は全て未発生とし、コードと日時の整合検証に触れずステータスコードだけを狙って与えます。
-func reconstructWithStatusCode(t *testing.T, salt string, statusCode int) *domainpurchase.Purchase {
-	t.Helper()
-
-	unitPrice, err := money.NewPrice(decimaltestkit.MustParse(t, "800"))
-	require.NoError(t, err)
-	detail := domainpurchase.NewPurchaseDetail(
-		uuid.NewTestFromSalt(t, salt+"_detail_id"),
-		uuid.NewTestFromSalt(t, salt+"_product_id"),
-		1,
-		unitPrice,
-	)
-
-	entity, err := domainpurchase.Reconstruct(
-		uuid.NewTestFromSalt(t, salt+"_id"),
-		"code-"+salt,
-		uuid.NewTestFromSalt(t, salt+"_user_id"),
-		uuid.NewTestFromSalt(t, salt+"_status_id"),
-		statusCode,
-		800, 0, 0, 800,
-		[]domainpurchase.PurchaseDetail{detail},
-		time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC),
-		nil, nil, nil, nil,
-	)
-	require.NoError(t, err)
-	return entity
 }
 
 func Test_repository_FindByID(t *testing.T) {
@@ -325,7 +293,7 @@ func Test_repository_LockByID(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, purchaseID, got.ID())
 				assert.Equal(t, mustParse(t, seedUserID), got.UserID())
-				assert.Equal(t, domainpurchase.StatusCodeUnprocessed, got.StatusCode())
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got.StatusCode())
 				assert.Nil(t, got.PaidAt())
 				require.Len(t, got.Details(), 1)
 				assert.Equal(t, productID, got.Details()[0].ProductID())
@@ -342,7 +310,7 @@ func Test_repository_LockByID(t *testing.T) {
 
 				got, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodePaid, got.StatusCode())
+				assert.Equal(t, domainpurchase.StatusPaid.Code(), got.StatusCode())
 				require.NotNil(t, got.PaidAt())
 				assert.Equal(t, paidAt.UTC(), got.PaidAt().UTC())
 			})
@@ -386,13 +354,14 @@ func Test_repository_UpdatePaid(t *testing.T) {
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Pay(now))
+				_, err = locked.Pay(now)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, locked))
 
 				// 再読込で status_id が支払い済み（code=7）へ解決され、paid_at がセットされる。
 				reread, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodePaid, reread.StatusCode())
+				assert.Equal(t, domainpurchase.StatusPaid.Code(), reread.StatusCode())
 				require.NotNil(t, reread.PaidAt())
 				assert.Equal(t, now.UTC(), reread.PaidAt().UTC())
 
@@ -406,13 +375,6 @@ func Test_repository_UpdatePaid(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-
-		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity := reconstructWithStatusCode(t, "update_paid_overflow", math.MaxInt16+1)
-			require.ErrorIs(t, repo.UpdatePaid(context.Background(), entity), safecast.ErrOverflow)
-		})
 	})
 }
 
@@ -438,18 +400,20 @@ func Test_repository_UpdateShipped(t *testing.T) {
 
 				paid, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, paid.Pay(paidAt))
+				_, err = paid.Pay(paidAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, paid))
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Ship(shippedAt))
+				_, err = locked.Ship(shippedAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateShipped(ctx, locked))
 
 				// 再読込で status_id が発送済み（code=8）へ解決され、shipped_at がセットされる。
 				reread, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodeShipped, reread.StatusCode())
+				assert.Equal(t, domainpurchase.StatusShipped.Code(), reread.StatusCode())
 				require.NotNil(t, reread.ShippedAt())
 				assert.Equal(t, shippedAt.UTC(), reread.ShippedAt().UTC())
 
@@ -469,12 +433,14 @@ func Test_repository_UpdateShipped(t *testing.T) {
 
 				paid, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, paid.Pay(paidAt))
+				_, err = paid.Pay(paidAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, paid))
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Ship(shippedAt))
+				_, err = locked.Ship(shippedAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateShipped(ctx, locked))
 
 				detail, err := repo.FindDetailByID(ctx, purchaseID)
@@ -489,7 +455,7 @@ func Test_repository_UpdateShipped(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("マスタに無いステータスコードの場合はpgエラーをapperrorへ正規化する", func(t *testing.T) {
+		t.Run("マスタに無いステータスコードはドメインが再構築を拒否し永続化まで届かない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -499,26 +465,22 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
 
-				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
-				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
-				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
-				broken, err := domainpurchase.Reconstruct(
-					locked.ID(), locked.Code(), locked.UserID(), locked.StatusID(),
-					unknownStatusCode,
-					locked.SubtotalAmount(), locked.TaxAmount(), locked.ShippingFee(), locked.TotalAmount(),
-					locked.Details(), locked.OrderedAt(), nil, nil, &shippedAt, nil,
-				)
-				require.NoError(t, err)
-
-				require.ErrorIs(t, repo.UpdateShipped(ctx, broken), apperror.ErrInvalidArgument)
+				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
+				// status_id のサブクエリが NULL になる経路は Status VO の導入で到達不能になった。
+				_, err = domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
+					Code:           locked.Code(),
+					UserID:         locked.UserID(),
+					StatusID:       locked.StatusID(),
+					StatusCode:     unknownStatusCode,
+					SubtotalAmount: locked.SubtotalAmount(),
+					TaxAmount:      locked.TaxAmount(),
+					ShippingFee:    locked.ShippingFee(),
+					TotalAmount:    locked.TotalAmount(),
+					Details:        locked.Details(),
+					OrderedAt:      locked.OrderedAt(),
+				})
+				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
-		})
-
-		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity := reconstructWithStatusCode(t, "update_shipped_overflow", math.MaxInt16+1)
-			require.ErrorIs(t, repo.UpdateShipped(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
 }
@@ -540,12 +502,14 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 		paid, err := repo.LockByID(ctx, purchaseID)
 		require.NoError(t, err)
-		require.NoError(t, paid.Pay(paidAt))
+		_, err = paid.Pay(paidAt)
+		require.NoError(t, err)
 		require.NoError(t, repo.UpdatePaid(ctx, paid))
 
 		toShip, err := repo.LockByID(ctx, purchaseID)
 		require.NoError(t, err)
-		require.NoError(t, toShip.Ship(shippedAt))
+		_, err = toShip.Ship(shippedAt)
+		require.NoError(t, err)
 		require.NoError(t, repo.UpdateShipped(ctx, toShip))
 	}
 
@@ -562,13 +526,14 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Deliver(deliveredAt))
+				_, err = locked.Deliver(deliveredAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateDelivered(ctx, locked))
 
 				// 再読込で status_id が配達済み（code=9）へ解決され、delivered_at がセットされる。
 				reread, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				assert.Equal(t, domainpurchase.StatusCodeDelivered, reread.StatusCode())
+				assert.Equal(t, domainpurchase.StatusDelivered.Code(), reread.StatusCode())
 				require.NotNil(t, reread.DeliveredAt())
 				assert.Equal(t, deliveredAt.UTC(), reread.DeliveredAt().UTC())
 
@@ -589,7 +554,8 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
-				require.NoError(t, locked.Deliver(deliveredAt))
+				_, err = locked.Deliver(deliveredAt)
+				require.NoError(t, err)
 				require.NoError(t, repo.UpdateDelivered(ctx, locked))
 
 				detail, err := repo.FindDetailByID(ctx, purchaseID)
@@ -604,7 +570,7 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("マスタに無いステータスコードの場合はpgエラーをapperrorへ正規化する", func(t *testing.T) {
+		t.Run("マスタに無いステータスコードはドメインが再構築を拒否し永続化まで届かない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -614,36 +580,30 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				locked, err := repo.LockByID(ctx, purchaseID)
 				require.NoError(t, err)
 
-				// status_id は code のサブクエリで解決するため、マスタに無い code では NULL となり
-				// NOT NULL 制約違反（SQLSTATE 23502）になる。生の pg エラーが素通りせず
-				// pgerror.NormalizeError で apperror へ正規化されることを検証する。
-				// deliveredAt は nil で渡す（配達済み status と deliveredAt は双条件のため、
-				// マスタに無い status と deliveredAt は同居できない）。
-				broken, err := domainpurchase.Reconstruct(
-					locked.ID(), locked.Code(), locked.UserID(), locked.StatusID(),
-					unknownStatusCode,
-					locked.SubtotalAmount(), locked.TaxAmount(), locked.ShippingFee(), locked.TotalAmount(),
-					locked.Details(), locked.OrderedAt(), &paidAt, nil, &shippedAt, nil,
-				)
-				require.NoError(t, err)
-
-				require.ErrorIs(t, repo.UpdateDelivered(ctx, broken), apperror.ErrInvalidArgument)
+				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
+				// status_id のサブクエリが NULL になる経路は Status VO の導入で到達不能になった。
+				_, err = domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
+					Code:           locked.Code(),
+					UserID:         locked.UserID(),
+					StatusID:       locked.StatusID(),
+					StatusCode:     unknownStatusCode,
+					SubtotalAmount: locked.SubtotalAmount(),
+					TaxAmount:      locked.TaxAmount(),
+					ShippingFee:    locked.ShippingFee(),
+					TotalAmount:    locked.TotalAmount(),
+					Details:        locked.Details(),
+					OrderedAt:      locked.OrderedAt(),
+				})
+				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
 			})
-		})
-
-		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity := reconstructWithStatusCode(t, "update_delivered_overflow", math.MaxInt16+1)
-			require.ErrorIs(t, repo.UpdateDelivered(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
 }
 
-func Test_repository_ExistsInProgressByUserID(t *testing.T) {
+func Test_repository_FindStatusesByUserID(t *testing.T) {
 	t.Parallel()
 
-	// 購入ステータスマスタ（seed 済み）。進行中は終端（完了 / キャンセル / 配達済み）の否定で判定する。
+	// 購入ステータスマスタ（seed 済み）。
 	const (
 		seedCompletedSID = "1904bf76-7d37-4288-bc15-359d2512ac91"
 		seedCanceledSID  = "e9d72547-adfe-48d9-9037-bd1f55d4158b"
@@ -661,7 +621,7 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("未処理の購入を持つユーザーはtrueを返す", func(t *testing.T) {
+		t.Run("購入が取っているステータスを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -669,29 +629,19 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				userID := "fa000000-0000-4000-8000-000000000001"
 				insertFeedUser(ctx, t, drv, userID)
 				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000001", userID, seedUnprocessedSID, 100, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000002", userID, seedShippedSID, 200, orderedAt)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
-				assert.True(t, exists)
+				assert.ElementsMatch(
+					t,
+					[]domainpurchase.Status{domainpurchase.StatusUnprocessed, domainpurchase.StatusShipped},
+					statuses,
+				)
 			})
 		})
 
-		t.Run("発送済みの購入しか持たないユーザーもtrueを返す", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				userID := "fa000000-0000-4000-8000-000000000002"
-				insertFeedUser(ctx, t, drv, userID)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000002", userID, seedShippedSID, 100, orderedAt)
-
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
-				require.NoError(t, err)
-				assert.True(t, exists)
-			})
-		})
-
-		t.Run("終端ステータスの購入しか持たないユーザーはfalseを返す", func(t *testing.T) {
+		t.Run("同じステータスの購入が複数あっても1件へ畳む", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -699,16 +649,20 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				userID := "fa000000-0000-4000-8000-000000000003"
 				insertFeedUser(ctx, t, drv, userID)
 				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000003", userID, seedCompletedSID, 100, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000004", userID, seedCanceledSID, 200, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000005", userID, seedDeliveredSID, 300, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000004", userID, seedCompletedSID, 200, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000005", userID, seedCanceledSID, 300, orderedAt)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
-				assert.False(t, exists)
+				assert.ElementsMatch(
+					t,
+					[]domainpurchase.Status{domainpurchase.StatusCompleted, domainpurchase.StatusCanceled},
+					statuses,
+				)
 			})
 		})
 
-		t.Run("購入を1件も持たないユーザーはfalseを返す", func(t *testing.T) {
+		t.Run("購入を1件も持たないユーザーは空を返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -716,13 +670,13 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				userID := "fa000000-0000-4000-8000-000000000004"
 				insertFeedUser(ctx, t, drv, userID)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
-				assert.False(t, exists)
+				assert.Empty(t, statuses)
 			})
 		})
 
-		t.Run("他ユーザーの進行中購入は判定に含めない", func(t *testing.T) {
+		t.Run("他ユーザーの購入のステータスは含めない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -731,12 +685,12 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				other := "fa000000-0000-4000-8000-000000000006"
 				insertFeedUser(ctx, t, drv, subject)
 				insertFeedUser(ctx, t, drv, other)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000006", subject, seedCompletedSID, 100, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000006", subject, seedDeliveredSID, 100, orderedAt)
 				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000007", other, seedUnprocessedSID, 200, orderedAt)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, subject))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, subject))
 				require.NoError(t, err)
-				assert.False(t, exists)
+				assert.Equal(t, []domainpurchase.Status{domainpurchase.StatusDelivered}, statuses)
 			})
 		})
 	})
@@ -750,8 +704,8 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, seedUserID))
-			assert.False(t, exists)
+			statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, seedUserID))
+			assert.Nil(t, statuses)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
@@ -766,10 +720,11 @@ func Test_toPurchaseDetails(t *testing.T) {
 		t.Run("明細行を購入明細の値オブジェクトへ写像する", func(t *testing.T) {
 			t.Parallel()
 
+			detailID := mustParse(t, "e2000000-0000-4000-8000-0000000000d1")
 			productID := mustParse(t, "e2000000-0000-4000-8000-000000000001")
 			rows := []*gen.ListPurchaseDetailsByPurchaseIDRow{
 				{PurchaseDetails: gen.PurchaseDetails{
-					ID:        mustParse(t, "e2000000-0000-4000-8000-0000000000d1"),
+					ID:        detailID,
 					ProductID: productID,
 					Quantity:  2,
 					UnitPrice: decimaltestkit.MustParse(t, "800"),
@@ -779,6 +734,8 @@ func Test_toPurchaseDetails(t *testing.T) {
 			details, err := toPurchaseDetails(rows)
 			require.NoError(t, err)
 			require.Len(t, details, 1)
+			// 明細 ID と商品 ID は同じ uuid.UUID なので、取り違えを検出できるよう両方を固定する。
+			assert.Equal(t, detailID, details[0].ID())
 			assert.Equal(t, productID, details[0].ProductID())
 			assert.Equal(t, 2, details[0].Quantity())
 			assert.Equal(t, "800", details[0].UnitPrice().String())
@@ -848,55 +805,6 @@ func Test_toFeedItem(t *testing.T) {
 				StatusName:  "未処理",
 				OrderedAt:   orderedAt,
 			}, item)
-		})
-	})
-}
-
-func Test_mustToInt16(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("購入ステータスコードを同値のint16へ変換する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, int16(7), mustToInt16(7))
-		})
-
-		t.Run("int16の下限と上限の値をそのまま変換する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, int16(math.MinInt16), mustToInt16(math.MinInt16))
-			assert.Equal(t, int16(math.MaxInt16), mustToInt16(math.MaxInt16))
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("int16の上限を超える場合、オーバーフローエラーでpanicする", func(t *testing.T) {
-			t.Parallel()
-
-			defer func() {
-				err, ok := recover().(error)
-				require.True(t, ok)
-				require.ErrorIs(t, err, safecast.ErrOverflow)
-			}()
-
-			mustToInt16(math.MaxInt16 + 1)
-		})
-
-		t.Run("int16の下限を下回る場合、オーバーフローエラーでpanicする", func(t *testing.T) {
-			t.Parallel()
-
-			defer func() {
-				err, ok := recover().(error)
-				require.True(t, ok)
-				require.ErrorIs(t, err, safecast.ErrOverflow)
-			}()
-
-			mustToInt16(math.MinInt16 - 1)
 		})
 	})
 }

@@ -16,7 +16,7 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -30,13 +30,13 @@ func TestV1Products_Integration(t *testing.T) {
 	sampleView := func(t *testing.T) productuc.ProductView {
 		t.Helper()
 		return productuc.ProductView{
-			ID:          uuid.NewTestFromSalt(t, "integration_product"),
+			ID:          uuidtestkit.NewTestFromSalt(t, "integration_product"),
 			Name:        "商品",
 			Description: ptr.To("説明"),
 			Price:       decimaltestkit.MustParse(t, "19.99"),
 			Quantity:    100,
-			StatusID:    uuid.NewTestFromSalt(t, "integration_status"),
-			CategoryID:  uuid.NewTestFromSalt(t, "integration_category"),
+			StatusID:    uuidtestkit.NewTestFromSalt(t, "integration_status"),
+			CategoryID:  uuidtestkit.NewTestFromSalt(t, "integration_category"),
 			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
 			ImagePath:   ptr.To("products/integration_product.png"),
 		}
@@ -49,15 +49,15 @@ func TestV1Products_Integration(t *testing.T) {
 			Description: ptr.To("<p>リッチテキスト説明</p>"),
 			Price:       "19.99",
 			Quantity:    100,
-			CategoryId:  uuid.NewTestFromSalt(t, "integration_category").ToPrimitive(),
-			StatusId:    uuid.NewTestFromSalt(t, "integration_status").ToPrimitive(),
+			CategoryId:  uuidtestkit.NewTestFromSalt(t, "integration_category").ToPrimitive(),
+			StatusId:    uuidtestkit.NewTestFromSalt(t, "integration_status").ToPrimitive(),
 			ImagePath:   ptr.To("products/integration_product.png"),
 		}
 	}
 
 	availableAdmin := func(t *testing.T, e *echo.Echo) http.Header {
 		t.Helper()
-		return MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "integration_admin"))
+		return MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "integration_admin"))
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -139,7 +139,7 @@ func TestV1Products_Integration(t *testing.T) {
 
 			productshandler.BindHandler(e, tf, mockUC)
 
-			after := paging.EncodeCursor("2026-01-01T00:00:00Z", uuid.NewTestFromSalt(t, "integration_after").String())
+			after := paging.EncodeCursor("2026-01-01T00:00:00Z", uuidtestkit.NewTestFromSalt(t, "integration_after").String())
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products?after="+after, nil, nil)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 		})
@@ -151,8 +151,8 @@ func TestV1Products_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			categoryID := uuid.NewTestFromSalt(t, "integration_filter_category")
-			statusID := uuid.NewTestFromSalt(t, "integration_filter_status")
+			categoryID := uuidtestkit.NewTestFromSalt(t, "integration_filter_category")
+			statusID := uuidtestkit.NewTestFromSalt(t, "integration_filter_status")
 
 			var captured productuc.ListProductsParams
 			mockUC := mock_product.NewMockUsecase(ctrl)

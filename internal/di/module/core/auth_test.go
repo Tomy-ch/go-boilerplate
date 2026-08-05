@@ -13,7 +13,6 @@ import (
 	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
-	mock_observability "go-boilerplate/internal/observability/mock"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -55,20 +54,22 @@ func authnDeps(t *testing.T) fx.Option {
 		fx.Provide(func() httpclient.Client {
 			return mock_httpclient.NewMockClient(gomock.NewController(t))
 		}),
+		// TracerFactory は JWKS / discovery 取得の span に必要。テストでは計測しない。
+		fx.Provide(func() observability.TracerFactory {
+			return observability.NewNoopTracerFactory(t)
+		}),
 	)
 }
 
-// resolverDeps は、useridentity.New が要求する RDB とトレーサの依存を返します。
+// resolverDeps は、useridentity.New が要求する RDB 依存を返します。
 // グラフ検証はコンストラクタを実行しないため、モックに期待呼び出しを設定する必要はありません。
+// TracerFactory は authenticator 側も要求するため authnDeps が供給します（重複提供は fx がエラーにします）。
 func resolverDeps(t *testing.T) fx.Option {
 	t.Helper()
 
 	return fx.Options(
 		fx.Provide(func() driver.DatabaseDriver {
 			return mock_driver.NewMockDatabaseDriver(gomock.NewController(t))
-		}),
-		fx.Provide(func() observability.TracerFactory {
-			return mock_observability.NewMockTracerFactory(gomock.NewController(t))
 		}),
 	)
 }

@@ -19,7 +19,7 @@ recovery (so panics are traced), authentication must precede handlers, and so on
 order is: uri-pre (1), requestID (1), observability (2), recovery (3), cors (4), security
 (5), openapi (6), forcejson (7), httpredmetrics (8), logging (9), cookie (10).
 
-The project uses [ADR-0032](0032-uber-fx-di.md) (Uber fx) for dependency injection. Each
+The project uses [ADR-0035](0035-uber-fx-di.md) (Uber fx) for dependency injection. Each
 middleware lives in its own `*_di.go` file under `internal/di/server/extension/`, meaning
 there is no single location where the call sequence is written down. If each `*_di.go` called
 `e.Use(...)` directly, the effective chain order would be an emergent consequence of Go module

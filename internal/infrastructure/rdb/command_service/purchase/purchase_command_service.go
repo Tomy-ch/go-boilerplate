@@ -5,7 +5,7 @@ package purchase
 import (
 	"context"
 
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
@@ -33,30 +33,10 @@ func New(
 	}
 }
 
-// LockProducts は、指定商品を ID 昇順に悲観ロック（FOR UPDATE）し、価格・在庫を返します。
-func (c *commandService) LockProducts(ctx context.Context, productIDs []uuid.UUID) ([]purchase.LockedProduct, error) {
-	ctx, endSpan := c.tracer.Start(ctx)
-	defer endSpan()
-
-	db := gen.New(driver.New(ctx, c.db))
-	rows, err := db.LockProductsForUpdate(ctx, productIDs)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	locked := make([]purchase.LockedProduct, len(rows))
-	for i, row := range rows {
-		price, perr := money.NewPrice(row.Price)
-		if perr != nil {
-			return nil, pgerror.NormalizeReconstructError(perr)
-		}
-		locked[i] = purchase.NewLockedProduct(row.ID, price, int(row.Quantity))
-	}
-	return locked, nil
-}
-
 // CreatePurchase は、在庫減算・purchases INSERT・purchase_details INSERT を渡された tx 内で原子的に実行します。
 // 在庫減算は防御的に売り越しを弾き、更新 0 行の場合は ErrInsufficientStock（409）を返します。
+// この防御は domain の売り越し判定を言い換えた fail-closed の二重防御であり、独立した規則ではありません
+// （ADR-0027 § Derivation）。返すエラーも domain の sentinel をそのまま用います。
 func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
@@ -139,27 +119,30 @@ func (c *commandService) LockPurchase(ctx context.Context, id uuid.UUID) (*purch
 		if perr != nil {
 			return nil, pgerror.NormalizeReconstructError(perr)
 		}
-		details[i] = purchase.NewPurchaseDetail(d.ID, d.ProductID, int(d.Quantity), unitPrice)
+		details[i] = purchase.NewPurchaseDetail(d.ID, purchase.PurchaseDetailAttributes{
+			ProductID: d.ProductID,
+			Quantity:  int(d.Quantity),
+			UnitPrice: unitPrice,
+		})
 	}
 
 	p := row.Purchases
-	entity, err := purchase.Reconstruct(
-		p.ID,
-		p.Code,
-		p.UserID,
-		p.StatusID,
-		int(row.StatusCode),
-		int(p.SubtotalAmount),
-		int(p.TaxAmount),
-		int(p.ShippingFee),
-		int(p.TotalAmount),
-		details,
-		p.OrderedAt,
-		p.PaidAt,
-		p.CanceledAt,
-		p.ShippedAt,
-		p.DeliveredAt,
-	)
+	entity, err := purchase.Reconstruct(p.ID, purchase.Attributes{
+		Code:           p.Code,
+		UserID:         p.UserID,
+		StatusID:       p.StatusID,
+		StatusCode:     int(row.StatusCode),
+		SubtotalAmount: int(p.SubtotalAmount),
+		TaxAmount:      int(p.TaxAmount),
+		ShippingFee:    int(p.ShippingFee),
+		TotalAmount:    int(p.TotalAmount),
+		Details:        details,
+		OrderedAt:      p.OrderedAt,
+		PaidAt:         p.PaidAt,
+		CanceledAt:     p.CanceledAt,
+		ShippedAt:      p.ShippedAt,
+		DeliveredAt:    p.DeliveredAt,
+	})
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}

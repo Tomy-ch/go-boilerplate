@@ -32,6 +32,14 @@ using `INSERT ... ON CONFLICT (id) DO NOTHING` for idempotency.
 `make migrate-up` is the only command required to bring a new environment to a fully
 functional state; no separate data step is needed.
 
+A row that references master data resolves the master row's identifier **in SQL, by the master's
+stable business key**, at insert time (a sub-`SELECT` on its `code` column) — never by carrying
+the master row's UUID as a constant in application code. The migration is then the single place
+that identifier is decided; a copy in application code would be a second place, and two places
+drift silently the first time only one of them moves. What application code holds instead is the
+business key itself, which is part of the domain vocabulary and stays meaningful regardless of
+which UUID the migration happened to assign.
+
 **Transactional seed data** lives in `database/seed/` and is applied only via `make
 db-seed` (or `./server db-seed`). This command is explicitly excluded from production use.
 See [`database/seed/README.md`](../../database/seed/README.md) for the full policy.
@@ -46,6 +54,8 @@ See [`database/seed/README.md`](../../database/seed/README.md) for the full poli
   migration is applied more than once (e.g., during testing).
 - The boundary between production-required data and development-only data is explicit and
   enforced by separate commands.
+- A master row's identifier exists in exactly one place — the migration that inserts it — so
+  application code cannot pin a UUID that a re-seeded or corrected master no longer carries.
 
 ### Negative Consequences
 

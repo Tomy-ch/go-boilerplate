@@ -31,14 +31,14 @@ observability (`internal/observability`), configuration (`internal/config`) — 
 **not** belong in `pkg/` even though they are used across layers. They encode this
 system's choices (error semantics, frameworks such as zap / otel) and therefore live
 under `internal/` as cross-cutting concerns. The domain layer may depend on
-`internal/apperror` as the one permitted such kernel.
+`internal/apperror` as the one permitted exception among these.
 
 ### Constraints
 
 - Must not contain business logic
 - Must not depend on `internal/` packages
 - Must not depend on infrastructure or framework-specific packages
-- Must not depend on other `pkg/` packages — the sole permitted exception is `pkg/xerrors` (enforced by depguard `independent_pkg` in `.golangci-full.yaml`)
+- Must not depend on other `pkg/` packages. Two exceptions are permitted, both enforced by depguard `independent_pkg` in `.golangci-full.yaml`: `pkg/xerrors` may be imported by any package, and a `testkit` sub-package may import its own parent (the rule's file pattern excludes `**/pkg/**/testkit/**.go`)
 - Each package must have a single responsibility
 
 ### Doc comments must stay context-independent too
@@ -61,17 +61,18 @@ clamping of out-of-range inputs, and units all belong in the doc comment.
 |---|---|---|
 |`backoff`|Exponential backoff duration (pure, clock/randomness-free)|None|
 |`datetime`|Date/time parsing|Standard library `time`|
-|`decimal`|Exact-decimal value object (money / rate)|`github.com/shopspring/decimal`|
+|`decimal`|Exact-decimal type (money / rate)|`github.com/shopspring/decimal`|
 |`envutil`|Environment variable override (test helper)|Standard library `os`|
 |`exec`|External command execution (interface + mock)|Standard library `os/exec`|
 |`fnmeta`|Function / package name extraction|None|
 |`fs`|Filesystem operations (interface + mock)|Standard library `os`|
+|`httpheader`|Classification of HTTP header names (credential-carrying or not)|None|
 |`patch`|Three-state values for partial-update (PATCH) input|None|
 |`ptr`|Pointer operations|None|
 |`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|
 |`safecast`|Type conversion with overflow detection|None|
 |`stringkit`|String length validation|None|
-|`uuid`|UUID value object|`github.com/google/uuid`|
+|`uuid`|UUID type|`github.com/google/uuid`|
 |`xerrors`|Errors with stack traces|`github.com/cockroachdb/errors`|
 
 ## Package Details
@@ -105,7 +106,7 @@ All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for par
 
 ### decimal
 
-An exact-decimal value object wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/kernel/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/lexicon/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
 
 |Symbol|Description|
 |---|---|
@@ -116,7 +117,9 @@ An exact-decimal value object wrapping `github.com/shopspring/decimal`, hiding t
 |`Cmp` / `Equal` / `Sign` / `IsZero` / `IsNegative`|Comparison and inspection|
 |`MarshalJSON` / `UnmarshalJSON`|JSON string wire representation (accepts JSON number on decode)|
 |`Scan` / `Value`|`NUMERIC` database boundary (`sql.Scanner` / `driver.Valuer`)|
-|`MustParse` (test only)|Panic-on-error parse for tests|
+
+Test helpers live in the separate package `pkg/decimal/testkit` (`MustParse`), so `testing` is never
+linked into a production binary.
 
 ### envutil
 
@@ -196,7 +199,7 @@ Provides safe type conversion with overflow detection.
 |`UintToInt`|Safe conversion from `uint` to `int`|
 |`IntToInt32`|Safe conversion from `int` to `int32`|
 |`IntToInt16`|Safe conversion from `int` to `int16`|
-|`IntPtrToInt32Ptr`|Safe conversion from `*int` to `*int32` (nil passes through)|
+|`IntPtrToInt32Ptr`|Safe conversion from `*int` to `*int32` (`nil` means nothing to convert and returns `nil`)|
 
 Returns `ErrOverflow` when an overflow occurs.
 
@@ -219,7 +222,10 @@ Each function has a corresponding `ErrorMsg` function for generating validation 
 
 ### uuid
 
-A UUID value object wrapping `github.com/google/uuid`.
+A UUID type wrapping `github.com/google/uuid`.
+
+Test helpers live in the separate package `pkg/uuid/testkit` (`NewTestFromSalt`), so `testing` is never
+linked into a production binary.
 
 Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valuer`).
 

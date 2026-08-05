@@ -16,6 +16,7 @@ import (
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -33,24 +34,24 @@ func TestV1PurchasesShip_Integration(t *testing.T) {
 	// EnvTest の Authorizer は allowall 固定のため、非 admin との差は usecase の戻り値で表現します。
 	availableShipAdmin := func(t *testing.T, e *echo.Echo) http.Header {
 		t.Helper()
-		return MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "ship_int_admin"))
+		return MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "ship_int_admin"))
 	}
 
 	shipViewFixture := func(t *testing.T) purchaseuc.ShipPurchaseView {
 		t.Helper()
 		shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 		return purchaseuc.ShipPurchaseView{
-			ID:             uuid.NewTestFromSalt(t, "ship_int_id"),
+			ID:             uuidtestkit.NewTestFromSalt(t, "ship_int_id"),
 			Code:           "ship-int-code",
-			UserID:         uuid.NewTestFromSalt(t, "ship_int_user"),
-			StatusID:       uuid.NewTestFromSalt(t, "ship_int_status"),
+			UserID:         uuidtestkit.NewTestFromSalt(t, "ship_int_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "ship_int_status"),
 			StatusName:     "発送済み",
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
 			TotalAmount:    176500,
 			Details: []purchaseuc.PurchaseDetailView{
-				{ProductID: uuid.NewTestFromSalt(t, "ship_int_product"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+				{ProductID: uuidtestkit.NewTestFromSalt(t, "ship_int_product"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 			},
 			OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			ShippedAt: &shippedAt,
@@ -104,7 +105,7 @@ func TestV1PurchasesShip_Integration(t *testing.T) {
 			require.NotNil(t, capturedAuthn)
 			resolved, err := capturedAuthn.UserID()
 			require.NoError(t, err)
-			assert.Equal(t, uuid.NewTestFromSalt(t, "ship_int_admin"), resolved)
+			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "ship_int_admin"), resolved)
 			assert.Equal(t, "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60", capturedID.String())
 		})
 	})

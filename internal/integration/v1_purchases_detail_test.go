@@ -16,6 +16,7 @@ import (
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -32,10 +33,10 @@ func TestV1PurchasesDetail_Integration(t *testing.T) {
 		t.Helper()
 		paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 		return purchaseuc.PurchaseGetDetailView{
-			ID:             uuid.NewTestFromSalt(t, "detail_int_id"),
+			ID:             uuidtestkit.NewTestFromSalt(t, "detail_int_id"),
 			Code:           "detail-int-code",
-			UserID:         uuid.NewTestFromSalt(t, "detail_int_user"),
-			StatusID:       uuid.NewTestFromSalt(t, "detail_int_status"),
+			UserID:         uuidtestkit.NewTestFromSalt(t, "detail_int_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "detail_int_status"),
 			StatusName:     "支払い済み",
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
@@ -43,7 +44,7 @@ func TestV1PurchasesDetail_Integration(t *testing.T) {
 			TotalAmount:    176500,
 			Details: []purchaseuc.PurchaseDetailItemView{
 				{
-					ProductID:   uuid.NewTestFromSalt(t, "detail_int_product"),
+					ProductID:   uuidtestkit.NewTestFromSalt(t, "detail_int_product"),
 					ProductName: "ワイヤレスイヤホン",
 					Quantity:    2,
 					UnitPrice:   decimaltestkit.MustParse(t, "800"),

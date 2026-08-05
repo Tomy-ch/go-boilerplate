@@ -7,7 +7,6 @@ package detail
 import (
 	"context"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/detail/gen"
@@ -18,9 +17,6 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 )
-
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -40,9 +36,9 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	id := conv.UUID(request.UserId)
@@ -60,9 +56,9 @@ func (s *server) GetUsersMe(ctx context.Context, _ gen.GetUsersMeRequestObject) 
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 	id, err := authn.UserID()
 	if err != nil {
@@ -82,9 +78,9 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	id := conv.UUID(request.UserId)
@@ -114,9 +110,9 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	id := conv.UUID(request.UserId)
@@ -146,9 +142,9 @@ func (s *server) DeleteUsersDetail(ctx context.Context, request gen.DeleteUsersD
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	id := conv.UUID(request.UserId)

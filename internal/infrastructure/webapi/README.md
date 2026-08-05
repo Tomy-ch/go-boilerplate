@@ -30,6 +30,15 @@ Each leaf under `webapi/` implements a semantic gateway interface defined in `in
 - Errors are returned as `apperror` sentinels already mapped by the substrate; JSON decode / domain-shape validation failures are wrapped as `apperror.ErrUnavailable`
 - The endpoint base URL is resolved at construction and injected via DI (a `NewEndpoint` per leaf); each leaf opens a span via `observability.LayerTracer` (`tf.Infra()`)
 
+> **Departure from Evans.** Structurally this is an Anticorruption Layer: a port stated in our own
+> vocabulary, translation at the boundary, nothing of the vendor reaching inward. The stated motive is
+> not Evans's, though. Everything above argues from dependency inversion, substitutability, and
+> transport hiding — Evans argues from semantics, from keeping the upstream *model* out. The practical
+> difference is what the layer reliably protects. Types and vendor vocabulary: yes, by construction.
+> Concepts: not decided here. Nothing above says which side wins when an external service's notion of
+> a thing genuinely disagrees with ours. Until it does, resolve such a conflict toward this model's
+> vocabulary and record the choice where the leaf translates.
+
 ## Test Strategy
 
 Gateways here are built on the `httpclient` substrate, not on a database, so the infrastructure layer's

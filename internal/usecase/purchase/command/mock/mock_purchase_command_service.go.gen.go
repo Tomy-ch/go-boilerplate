@@ -70,21 +70,6 @@ func (mr *MockCommandServiceMockRecorder) CreatePurchase(ctx, p any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePurchase", reflect.TypeOf((*MockCommandService)(nil).CreatePurchase), ctx, p)
 }
 
-// LockProducts mocks base method.
-func (m *MockCommandService) LockProducts(ctx context.Context, productIDs []uuid.UUID) ([]purchase.LockedProduct, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LockProducts", ctx, productIDs)
-	ret0, _ := ret[0].([]purchase.LockedProduct)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// LockProducts indicates an expected call of LockProducts.
-func (mr *MockCommandServiceMockRecorder) LockProducts(ctx, productIDs any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockProducts", reflect.TypeOf((*MockCommandService)(nil).LockProducts), ctx, productIDs)
-}
-
 // LockPurchase mocks base method.
 func (m *MockCommandService) LockPurchase(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()

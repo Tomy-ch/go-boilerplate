@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
@@ -43,7 +43,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-get"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-get"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
@@ -62,7 +62,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(user.UserView{FirstName: "First", Email: "put@example.com"}, nil)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-put"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-put"))
 
 			body := &detailgen.PutUsersDetailJSONRequestBody{
 				FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
@@ -88,7 +88,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(user.UserView{FirstName: "Patched", Email: "patch@example.com"}, nil)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-patch"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-patch"))
 
 			body := &detailgen.PatchUsersDetailJSONRequestBody{
 				FirstName: new("Patched"),
@@ -106,7 +106,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			uid := uuid.NewTestFromSalt(t, "me-delete")
+			uid := uuidtestkit.NewTestFromSalt(t, "me-delete")
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
@@ -133,7 +133,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(user.UserView{}, apperror.ErrNotFound)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-get-404"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-get-404"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusNotFound)
@@ -151,7 +151,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(user.UserView{}, apperror.ErrInternal)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-get-500"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-get-500"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
@@ -174,7 +174,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(user.UserView{}, validationErr)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-put-422"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-put-422"))
 
 			body := &detailgen.PutUsersDetailJSONRequestBody{
 				FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
@@ -207,7 +207,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(user.UserView{}, validationErr)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-patch-422"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-patch-422"))
 
 			body := &detailgen.PatchUsersDetailJSONRequestBody{
 				FirstName: new(""),
@@ -231,7 +231,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(apperror.ErrConflict)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-delete-409"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-delete-409"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusConflict)
@@ -249,7 +249,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(apperror.ErrPermissionDenied)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-delete-403"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-delete-403"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusForbidden)
@@ -267,7 +267,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(apperror.ErrNotFound)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-delete-404"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-delete-404"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusNotFound)
@@ -291,7 +291,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Return(user.UserView{}, metaErr)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-get-nodetails"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-get-nodetails"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
 			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)

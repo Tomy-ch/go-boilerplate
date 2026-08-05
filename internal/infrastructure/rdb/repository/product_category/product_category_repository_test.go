@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,7 +52,7 @@ func Test_repository_FindAll(t *testing.T) {
 			require.NoError(t, err)
 
 			txm.WithinTx(func(ctx context.Context) {
-				expectedElectronics, err := category.New(electronicsID, "電子機器", 1, 1)
+				expectedElectronics, err := category.New(electronicsID, category.Attributes{Name: "電子機器", Code: 1, SortKey: 1})
 				require.NoError(t, err)
 
 				actual, err := repo.FindAll(ctx)
@@ -194,7 +195,7 @@ func Test_repository_FindByID(t *testing.T) {
 		t.Run("存在しないIDはNotFoundを返す", func(t *testing.T) {
 			t.Parallel()
 
-			missingID := uuid.NewTestFromSalt(t, "category_missing")
+			missingID := uuidtestkit.NewTestFromSalt(t, "category_missing")
 
 			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.FindByID(ctx, missingID)

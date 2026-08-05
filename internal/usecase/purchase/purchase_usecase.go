@@ -1,7 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package purchase は、購入の作成ユースケースを提供します。単価は価格スケール（ドル decimal）、
-// 決済額は決済スケール（整数セント）で扱います（ADR-0101 / ADR-0102）。
+// 決済額は決済スケール（整数セント）で扱います（ADR-0033）。
 package purchase
 
 import (
@@ -9,14 +9,15 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/domain/service/membership"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
-	"go-boilerplate/internal/usecase/exchangerate"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
@@ -28,14 +29,8 @@ import (
 )
 
 const (
-	// baseCurrency は、購入金額の基軸通貨です。金額は本通貨のセント整数で保持します。
-	baseCurrency = "USD"
 	// aggregateType は、outbox の集約種別です。
 	aggregateType = "purchase"
-	// centsPerBaseUnit は、基軸通貨（USD）1 単位あたりのセント数です。参考換算の入力金額へ換算します。
-	centsPerBaseUnit = 100
-	// minorUnitDigits は、基軸通貨（USD）の最小単位の小数桁数です（セント = 小数 2 桁）。
-	minorUnitDigits = 2
 )
 
 // DetailParam は、購入明細の入力（商品 ID と数量）です。
@@ -50,8 +45,6 @@ type CreatePurchaseParams struct {
 	UserID uuid.UUID
 	// Details は、購入明細の配列です。
 	Details []DetailParam
-	// DisplayCurrency は、参考換算額の表示通貨です。nil の場合は参考換算額を返しません。
-	DisplayCurrency *string
 }
 
 // PurchaseDetailView は、購入明細のユースケース出力 DTO です。UnitPrice は価格スケール（ドル decimal）です。
@@ -61,27 +54,18 @@ type PurchaseDetailView struct {
 	UnitPrice decimal.Decimal
 }
 
-// ReferenceAmountView は、参考換算額のユースケース出力 DTO です（非永続）。
-type ReferenceAmountView struct {
-	Currency string
-	Amount   int64
-	Rate     decimal.Decimal
-	RateDate string
-}
-
 // PurchaseView は、購入 1 件分のユースケース出力 DTO です。金額はすべて USD セント単位の整数です。
 type PurchaseView struct {
-	ID              uuid.UUID
-	Code            string
-	UserID          uuid.UUID
-	StatusID        uuid.UUID
-	SubtotalAmount  int
-	TaxAmount       int
-	ShippingFee     int
-	TotalAmount     int
-	Details         []PurchaseDetailView
-	OrderedAt       time.Time
-	ReferenceAmount *ReferenceAmountView
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusID       uuid.UUID
+	SubtotalAmount int
+	TaxAmount      int
+	ShippingFee    int
+	TotalAmount    int
+	Details        []PurchaseDetailView
+	OrderedAt      time.Time
 }
 
 // CancelPurchaseParams は、購入キャンセルの入力パラメータです。
@@ -199,16 +183,16 @@ type Usecase interface {
 
 // usecase は、Usecase の実装です。
 type usecase struct {
-	tracer     observability.LayerTracer
-	txm        tx.Manager
-	cmd        command.CommandService
-	repo       purchase.Repository
-	userLock   user.LockRepository
-	detailQS   query.PurchaseDetailQueryService
-	emit       outbox.EmitUsecase
-	xr         exchangerate.Usecase
-	clock      clock.Clock
-	authorizer authz.Authorizer
+	tracer      observability.LayerTracer
+	txm         tx.Manager
+	cmd         command.CommandService
+	repo        purchase.Repository
+	productRepo product.Repository
+	userLock    user.LockRepository
+	detailQS    query.PurchaseDetailQueryService
+	emit        outbox.EmitUsecase
+	clock       clock.Clock
+	authorizer  authz.Authorizer
 }
 
 // purchaseDraft は、購入作成のトランザクションへ持ち込む採番済みの入力です。
@@ -224,25 +208,25 @@ func New(
 	txm tx.Manager,
 	cmd command.CommandService,
 	repo purchase.Repository,
+	productRepo product.Repository,
 	userLock user.LockRepository,
 	detailQS query.PurchaseDetailQueryService,
 	emit outbox.EmitUsecase,
-	xr exchangerate.Usecase,
 	clock clock.Clock,
 	authorizer authz.Authorizer,
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
-		tracer:     tf.Usecase(),
-		txm:        txm,
-		cmd:        cmd,
-		repo:       repo,
-		userLock:   userLock,
-		detailQS:   detailQS,
-		emit:       emit,
-		xr:         xr,
-		clock:      clock,
-		authorizer: authorizer,
+		tracer:      tf.Usecase(),
+		txm:         txm,
+		cmd:         cmd,
+		repo:        repo,
+		productRepo: productRepo,
+		userLock:    userLock,
+		detailQS:    detailQS,
+		emit:        emit,
+		clock:       clock,
+		authorizer:  authorizer,
 	}
 }
 
@@ -292,9 +276,14 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return uerr
 		}
 
-		locked, lerr := u.cmd.LockProducts(ctx, draft.productIDs)
+		// 在庫ロックは商品集約の読み取りなので、購入の書き込みポートではなく商品 Repository を通す。
+		products, lerr := u.productRepo.LockByIDs(ctx, draft.productIDs)
 		if lerr != nil {
 			return lerr
+		}
+		locked := make([]purchase.LockedProduct, len(products))
+		for i, p := range products {
+			locked[i] = purchase.NewLockedProduct(p.ID(), p.Price(), p.Quantity())
 		}
 
 		entity, nerr := purchase.New(draft.purchaseID, draft.code, params.UserID, draft.inputs, locked)
@@ -330,12 +319,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		return PurchaseView{}, txErr
 	}
 
-	view := toPurchaseView(created)
-	// 参考換算額は tx 外（レスポンス組み立て時）に算出し、取得失敗時は null で degrade する。
-	if params.DisplayCurrency != nil {
-		view.ReferenceAmount = u.referenceAmount(ctx, created.TotalAmount(), *params.DisplayCurrency)
-	}
-	return view, nil
+	return toPurchaseView(created), nil
 }
 
 func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error) {
@@ -358,7 +342,8 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
 
-		if cerr := locked.Cancel(now); cerr != nil {
+		domainEvent, cerr := locked.Cancel(now)
+		if cerr != nil {
 			return cerr
 		}
 
@@ -370,10 +355,14 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   params.PurchaseID.String(),
-			EventType:     event.TypeCanceled,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -414,7 +403,8 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
 
-		if perr := locked.Pay(now); perr != nil {
+		domainEvent, perr := locked.Pay(now)
+		if perr != nil {
 			return perr
 		}
 
@@ -426,10 +416,14 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   params.PurchaseID.String(),
-			EventType:     event.TypePaid,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -478,7 +472,8 @@ func (u *usecase) ShipPurchase(
 			return lerr
 		}
 
-		if serr := locked.Ship(now); serr != nil {
+		domainEvent, serr := locked.Ship(now)
+		if serr != nil {
 			return serr
 		}
 
@@ -490,10 +485,14 @@ func (u *usecase) ShipPurchase(
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   purchaseID.String(),
-			EventType:     event.TypeShipped,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -542,7 +541,8 @@ func (u *usecase) DeliverPurchase(
 			return lerr
 		}
 
-		if derr := locked.Deliver(now); derr != nil {
+		domainEvent, derr := locked.Deliver(now)
+		if derr != nil {
 			return derr
 		}
 
@@ -554,10 +554,14 @@ func (u *usecase) DeliverPurchase(
 		if berr != nil {
 			return berr
 		}
+		eventType, terr := event.WireType(domainEvent.Type())
+		if terr != nil {
+			return terr
+		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
 			AggregateID:   purchaseID.String(),
-			EventType:     event.TypeDelivered,
+			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
@@ -577,43 +581,22 @@ func (u *usecase) DeliverPurchase(
 	return toDeliverPurchaseView(detail), nil
 }
 
-// ensurePurchaserActive は、購入者が在籍していることを共有ロック付きで確認します。
-// 退会（排他ロック）と直列化されるため、確認を通った購入者は tx の終了まで退会できません。
+// ensurePurchaserActive は、購入者を共有ロック付きで読み出し、購入してよい状態かの判定を
+// ドメインサービスへ委ねます。退会（排他ロック）と直列化されるため、確認を通った購入者は
+// tx の終了まで退会できません。
 // 退会が確定済みの主体は認証の時点で弾かれるため、ここが拒否に転じるのは受付から成立までの間に
 // 退会が確定した場合に限られます。その衝突は主体の状態と操作の衝突として ErrConflict を返します
 // （退会が進行中購入を ErrConflict で拒む鏡像。購入対象の不存在ではないため NotFound へは畳みません）。
 // それ以外のエラーは、障害を退会済みと区別できなくしないためそのまま返します。
 func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) error {
-	err := u.userLock.LockActiveShareByID(ctx, userID)
-	if err == nil {
-		return nil
+	purchaser, err := u.userLock.LockShareByID(ctx, userID)
+	if err != nil {
+		if xerrors.Is(err, apperror.ErrNotFound) {
+			return membership.ErrPurchaserWithdrawn
+		}
+		return err
 	}
-	if xerrors.Is(err, apperror.ErrNotFound) {
-		return xerrors.Wrap(apperror.ErrConflict, "purchaser is withdrawn")
-	}
-	return err
-}
-
-// referenceAmount は、合計金額（USD セント）の表示通貨での参考換算額を算出します。
-// 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
-func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
-	// 決済スケール（整数セント）の合計を価格スケール（ドル decimal）へ戻して換算入力にする。
-	amount := decimal.FromInt(int64(totalCents)).DivRound(decimal.FromInt(centsPerBaseUnit), minorUnitDigits)
-	res, err := u.xr.Convert(ctx, exchangerate.ConvertInput{
-		Base:            baseCurrency,
-		Quote:           displayCurrency,
-		Amount:          amount,
-		DisplayCurrency: &displayCurrency,
-	})
-	if err != nil || res.Reference == nil {
-		return nil
-	}
-	return &ReferenceAmountView{
-		Currency: res.Reference.Currency,
-		Amount:   res.Reference.Amount,
-		Rate:     res.Reference.Rate,
-		RateDate: res.Reference.RateDate,
-	}
+	return membership.EnsurePurchasable(purchaser)
 }
 
 // toPurchaseView は、購入集約を出力 DTO へ変換します。

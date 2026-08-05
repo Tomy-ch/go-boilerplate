@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -116,7 +117,7 @@ func Test_roleRepository_FindRolesByUserID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				// 既知ロール外の code を持つ行を割り当て、行→エンティティ再構築の失敗経路を誘発する。
-				insertInvalidRole(ctx, t, driver.New(ctx, testDB), generalUserID, uuid.NewTestFromSalt(t, "invalid_role"))
+				insertInvalidRole(ctx, t, driver.New(ctx, testDB), generalUserID, uuidtestkit.NewTestFromSalt(t, "invalid_role"))
 
 				actual, err := repo.FindRolesByUserID(ctx, generalUserID)
 				require.Nil(t, actual)

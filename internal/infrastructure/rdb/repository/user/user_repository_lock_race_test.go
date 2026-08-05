@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -15,6 +14,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
@@ -24,8 +24,12 @@ import (
 // 高負荷でこの時間内に問い合わせが届かない場合も「まだ完了していない」側に倒れるため、負荷は偽陽性を生みません。
 const raceBlockedGracePeriod = 300 * time.Millisecond
 
-// errRollbackRaceTx は、購入役の tx を成否に関わらずロールバックさせるための番兵です。
-var errRollbackRaceTx = xerrors.New("rollback race tx")
+var (
+	// errRollbackRaceTx は、購入役の tx を成否に関わらずロールバックさせるための番兵です。
+	errRollbackRaceTx = xerrors.New("rollback race tx")
+	// errPurchaserWithdrawn は、購入役が読み出した購入者が退会済みだったことを表す番兵です。
+	errPurchaserWithdrawn = xerrors.New("purchaser withdrawn")
+)
 
 // Test_lockSerializesWithdrawalAgainstPurchase は、#766 の競合順序を実 DB の 2 トランザクションで再現し、
 // 退会（排他ロック）が確定した時点で購入の在籍ガード（共有ロック）が拒否へ転じることを検証します。
@@ -55,7 +59,7 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 
 	ctx := context.Background()
 	now := time.Now().UTC()
-	targetID := uuid.NewTestFromSalt(t, "race-withdrawal-user")
+	targetID := uuidtestkit.NewTestFromSalt(t, "race-withdrawal-user")
 	prefectureID, err := uuid.Parse("a03aaec4-3bd6-4bfb-8e47-2fbfa026d344")
 	require.NoError(t, err)
 
@@ -91,8 +95,13 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 		defer close(guardDone)
 		<-withdrawalLocked
 		guardResult <- newTxManager().Do(ctx, func(txCtx context.Context) error {
-			if guardErr := lockRepo.LockActiveShareByID(txCtx, targetID); guardErr != nil {
+			purchaser, guardErr := lockRepo.LockShareByID(txCtx, targetID)
+			if guardErr != nil {
 				return xerrors.Join(errRollbackRaceTx, guardErr)
+			}
+			// 共有ロックを取れた時点の状態が退会済みであることが、直列化の成立を示す。
+			if !purchaser.IsActive() {
+				return xerrors.Join(errRollbackRaceTx, errPurchaserWithdrawn)
 			}
 			return errRollbackRaceTx
 		})
@@ -120,6 +129,6 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 	}))
 
 	<-guardDone
-	// 退会が確定した以上、待たされていた購入は在籍を確認できず拒否される。
-	require.ErrorIs(t, <-guardResult, apperror.ErrNotFound)
+	// 退会が確定した以上、待たされていた購入が読み出す購入者は退会済みになっている。
+	require.ErrorIs(t, <-guardResult, errPurchaserWithdrawn)
 }

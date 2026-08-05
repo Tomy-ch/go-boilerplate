@@ -165,7 +165,7 @@ func Test_store_ClaimPending(t *testing.T) {
 	})
 }
 
-// Test_store_ClaimPending_concurrentSkipLocked は、ADR-0047 の核である多インスタンス排他
+// Test_store_ClaimPending_concurrentSkipLocked は、ADR-0051 の核である多インスタンス排他
 // （FOR UPDATE SKIP LOCKED により別々の並行 tx が同一 pending 行を二重 claim しない）を、
 // 2 コネクション（= 2 tx）を並行させて DB レベルで検証します。
 //

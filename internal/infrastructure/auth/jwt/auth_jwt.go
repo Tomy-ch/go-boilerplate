@@ -15,6 +15,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/httpclient"
+	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/pkg/xerrors"
@@ -82,6 +83,9 @@ type JWKSParams struct {
 	AllowInsecureURL bool
 	// UnknownKidCooldown は未知 kid での JWKS 再取得の最小間隔です（0 以下は既定 jwksRefreshCooldown）。
 	UnknownKidCooldown time.Duration
+	// TracerFactory は JWKS / discovery の取得に application-level span を張るための factory です。
+	// nil の場合は span を張りません。
+	TracerFactory observability.TracerFactory
 }
 
 // KeyResolver は、kid に対応する署名検証用公開鍵を解決します。
@@ -145,7 +149,7 @@ func NewJWKS(params JWKSParams, client httpclient.Client) (authbd.Authenticator,
 		return nil, err
 	}
 
-	resolver := newJWKSResolver(client, urlFn, params.CacheTTL, params.AllowedAlgs, params.UnknownKidCooldown, params.Clock)
+	resolver := newJWKSResolver(client, urlFn, params.CacheTTL, params.AllowedAlgs, params.UnknownKidCooldown, params.Clock, params.TracerFactory)
 	return NewWithKeyResolver(params.Params, resolver)
 }
 
@@ -166,7 +170,7 @@ func buildJWKSURLProvider(params JWKSParams, client httpclient.Client) (func(con
 	}
 
 	// issuer 由来の discovery URL のスキームも構築時に検証し、設定ミスを起動時 fail-fast にする。
-	discovery := newDiscoveryResolver(client, params.Issuer, params.DiscoveryTTL, params.Clock, params.AllowInsecureURL)
+	discovery := newDiscoveryResolver(client, params.Issuer, params.DiscoveryTTL, params.Clock, params.AllowInsecureURL, params.TracerFactory)
 	if err := requireSecureURL(discovery.discoveryURL, params.AllowInsecureURL); err != nil {
 		return nil, xerrors.Join(ErrJWTAuthenticatorInvalidParams, err)
 	}

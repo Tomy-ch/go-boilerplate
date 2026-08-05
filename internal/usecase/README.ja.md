@@ -302,6 +302,33 @@ flowchart TB
 
 など別レイヤーで扱います。
 
+### インフラをドメインで検証する
+
+**実行するのはインフラ、定義するのはドメイン。両者を突き合わせる場所が Usecase です。** これは
+双方向に成り立ち、同じ規則を 2 回言っているにすぎません。
+
+- **書き込み** — インフラが書き込みを実行し、その後 Usecase が対象集約を Repository 経由で読み直し、
+  集約自身に検証させます（[ADR-0027](../../docs/ja/adr/0027-lightweight-cqrs.ja.md)）。
+- **読み取り** — インフラが絞り込みを実行し、その後 Usecase が返ったエンティティを、基準を定義する
+  ドメインの述語で確かめます。インフラは基準を**実行**するのであって**著作**しません
+  （[`internal/domain/README.md`](../domain/README.ja.md) の Query and Aggregate 節を参照）。
+  述語を満たさない行は、両者が乖離したことを意味します。
+
+乖離は握り潰さずエラーとして表に出します。黙って落とすと、欠陥が観測可能になったまさにその瞬間に
+それを隠すことになり、読み取りは自ら掲げた定義と一致しない結果を返し続けます。
+
+**この検証の限界を決めるのは、結果の形ではなく基準の形です。** 返ってくる行について何かを述べる基準は
+検証できます——結果にドメインの述語を当てれば、ずれはそこに現れる。行を取り除く基準は検証できません。
+取り除かれた行は結果に存在せず、不在は観測できないからです。確かめるにはフィルタ無しでもう一度引く
+ことになり、それはその読み取りが避けるために最適化された作業そのものです。
+
+したがって射影であることが免除の理由にはなりません。QueryService が基準の対象そのものを返すなら、
+集約を再構築しなくても、述語が必要とするフィールドを載せて確かめます。定義はドメインに留まり、
+インフラは実行するだけ、という形が保たれます。エンティティに対する述語とは別に、値に対する述語も
+ドメインへ置き、両方の経路が 1 つの定義を共有するようにします——クエリ層に 2 つ目の写しを育てない
+ためです。「レビューだけが支える」は、除外とその上の集計——**取り除く側の基準**——のためにとっておき、
+それはクエリを書く場所に明記します。何が落とされたかを読者が見られるのはそこだけだからです。
+
 ## このプロジェクトでの役割
 
 ```mermaid
@@ -505,10 +532,40 @@ detail を参照）。
 `pkg/xerrors.Wrap(apperror.ErrXXX, "context")` を使う。スタックトレースを保持しつつ
 `xerrors.Is` でセンチネル判定が可能になる。
 
+### GC / バッチ掃除
+
+行やオブジェクトをバッチで掃除する Usecase は、決まった形に従う。
+
+- 既定のバッチサイズは公開定数（`Default<Feature>BatchSize`）として公開し、呼び出し側から見えて上書きも
+  できるようにする。0 以下の引数はエラーではなく「既定値を使う」と解釈する。フラグ無しで起動される
+  ジョブは異常ではなく通常だからである。
+- 1 バッチずつループし、返ってきた件数が要求したサイズを下回ったら終了する。
+- **エラーを返す場合でも件数は返す。** 完了したバッチは既にコミット済みでロールバックできないため、
+  失敗時に 0 を報告する `Result` は嘘になる。呼び出し側はそこまで通った分をログに出す（上記「出力 DTO
+  の命名」の `Result` 側を参照）。
+
+### 出力 DTO の命名
+
+Usecase の戻り値 DTO は、そのメソッドが何を返すかによって 2 つのサフィックスを使い分ける。
+
+- **`<概念>View`** — 呼び出し側向けに組み立てた状態の射影であって、集約そのものではない。射影が単一
+  フィールドしか持たない場合でもサフィックスは落とさない。落とすと外向きの射影とドメイン型を一目で
+  区別できなくなる。
+- **`<概念>Result`** — 何かを変更した操作の結末。処理した件数、スキップした件数、バッチが停止するまでに
+  通した件数など。「何であるか」ではなく「何が起きたか」を報告する。
+
+この区別を保つのは、両者で失敗時の意味論が違うためである。`View` は返るか返らないかのどちらかだが、
+`Result` は**メソッドがエラーも返す場合にこそ意味を持つ** — 途中で失敗したバッチも、停止するまでに
+コミットした分を報告しなければならない。
+
 ### ページング
 
 - NewPageFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
 - ページ番号が許容最大を超えたら `apperror.ErrInvalidArgument` を返す（offset は int32 変換時にクランプ）。
+- keyset（カーソル）ページングは `tools/paging.Cursor` を土台にし、フィーチャごとに
+  `encode<Feature>Cursor` / `decode<Feature>Cursor` のコーデック対を実装する。カーソルは呼び出し側に
+  とって不透明で、順序キーの組を符号化したものである。形式不正やキー数不一致は
+  `apperror.ErrInvalidArgument` として返す。
 
 ## 呼び出せる層 / 呼び出せない層
 
@@ -520,8 +577,21 @@ detail を参照）。
 
 ### 呼び出せない層
 
-- 他のUsecaseからの呼び出しは基本禁止（循環・肥大化を避ける。必要なら“アプリサービス（`Orchestrator`）”を別モジュールとして明示）。
+- 他の**業務** Usecase を直接呼ばない（後述）。
 - UsecaseからInfra/Controller/HTTP/OpenAPI/SQL"実装"は呼ばない。
+
+#### なぜ業務 Usecase 同士を繋がないのか
+
+禁じているのは呼ばれること自体ではなく、**連鎖**である。A が B を呼べる規則の下では、やがて C が A を
+呼び、D が C を呼ぶ。どこまでが 1 つの業務操作なのかを誰も言えなくなり、トランザクション境界も
+追跡できなくなる。
+
+したがって A の業務と B の業務を組み合わせる必要があるときは、A から B を呼ばない。両者を**合成**する
+Usecase D を導入する。D は両者の上位に立って業務操作を繋ぐため、形が連鎖ではなく合成になる。
+
+**技術 Usecase はこの規則の対象外である。** それ自体は業務操作ではないが、どの業務操作からも同じ形で
+必要になるもの——outbox への emit など——は、この規則が防ごうとしている連鎖を作りようがないため、
+直接呼んでよい。
 
 Usecaseは **Infrastructureに依存してはいけません。**
 
@@ -750,7 +820,7 @@ import (
 )
 
 
-// 下位の層とやり取りするためのDTO
+// 入力と出力が共有する可変属性一式。
 type UserMutableFields struct {
     FirstName      string
     LastName       string
@@ -763,7 +833,15 @@ type UserMutableFields struct {
     Building       *string
 }
 
+// 入力 DTO。
 type CreateUserParamsDTO struct {
+    UserID uuid.UUID
+
+    UserMutableFields
+}
+
+// 出力 DTO。`View` サフィックスが、呼び出し側へ返す射影であることを示す。
+type UserView struct {
     UserID uuid.UUID
 
     UserMutableFields
@@ -783,9 +861,9 @@ type usecase struct {
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
     // ListUsersByKeyword は、ユーザー一覧を取得します。
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page *paging.Page) ([]UserView, error)
     // CreateUser は、ユーザーを作成します。
-    CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+    CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error)
     // CountUsers は、ユーザーの総件数を返します。
     CountUsers(ctx context.Context, active *bool) (int64, error)
 }
@@ -809,7 +887,7 @@ func New(
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]UserView, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
@@ -865,12 +943,12 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
     }
 
     // ctxは、後続でobservability.RunWithSpanを使わない場合は不要
-    _, dtos, err := observability.RunWithSpan(
-        ctx, u.tracer, "usecase", "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+    _, views, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "buildViews", func(ctx context.Context) ([]UserView, error) {
             // 結果をDTOに詰め替え
-            dtos := make([]UserMutableFields, len(us))
+            views := make([]UserView, len(us))
             for i, u := range us {
-                dtos[i] = UserMutableFields{
+                views[i] = UserView{
                     FirstName:  u.FirstName(),
                     LastName:   u.LastName(),
                     Email:      u.Email(),
@@ -882,17 +960,17 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
                 }
                 // 都道府県名をマップから取得してセット
                 if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
-                    dtos[i].PrefectureName = p.Name()
+                    views[i].PrefectureName = p.Name()
                 }
             }
-            return dtos, nil
+            return views, nil
         })
 
-    return dtos, err
+    return views, err
 }
 
 // CreateUser は、ユーザーを作成するユースケースです。
-func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error) {
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
@@ -937,10 +1015,10 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
         return nil
     })
     if err != nil {
-      return MutableFields{}, err
+      return UserView{}, err
     }
 
-    return MutableFields{
+    return UserView{
       FirstName:      userEntity.FirstName(),
       LastName:       userEntity.LastName(),
       Email:          userEntity.Email(),

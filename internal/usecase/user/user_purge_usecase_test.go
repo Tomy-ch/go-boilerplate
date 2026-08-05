@@ -12,6 +12,7 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -56,9 +57,9 @@ func Test_purgeUsecase_PurgeDeleted(t *testing.T) {
 	cutoff := now.Add(-retention)
 
 	// ID の昇順が keyset の前進順になるよう、明示的に順序付けた候補 ID を用意する。
-	id1 := uuid.NewTestFromSalt(t, "purge_user_1")
-	id2 := uuid.NewTestFromSalt(t, "purge_user_2")
-	id3 := uuid.NewTestFromSalt(t, "purge_user_3")
+	id1 := uuidtestkit.NewTestFromSalt(t, "purge_user_1")
+	id2 := uuidtestkit.NewTestFromSalt(t, "purge_user_2")
+	id3 := uuidtestkit.NewTestFromSalt(t, "purge_user_3")
 
 	newUsecase := func(t *testing.T, ctrl *gomock.Controller, currentTime time.Time) (*purgeUsecase, *mock_user.MockRepository, *mock_purchase.MockRepository) {
 		t.Helper()
@@ -340,8 +341,8 @@ func Test_purgeUsecase_purgeBatch(t *testing.T) {
 	t.Parallel()
 
 	cutoff := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id1 := uuid.NewTestFromSalt(t, "purge_batch_user_1")
-	id2 := uuid.NewTestFromSalt(t, "purge_batch_user_2")
+	id1 := uuidtestkit.NewTestFromSalt(t, "purge_batch_user_1")
+	id2 := uuidtestkit.NewTestFromSalt(t, "purge_batch_user_2")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -438,9 +439,9 @@ func Test_purgeUsecase_purgeBatch(t *testing.T) {
 func Test_excludeIDs(t *testing.T) {
 	t.Parallel()
 
-	id1 := uuid.NewTestFromSalt(t, "exclude_id_1")
-	id2 := uuid.NewTestFromSalt(t, "exclude_id_2")
-	id3 := uuid.NewTestFromSalt(t, "exclude_id_3")
+	id1 := uuidtestkit.NewTestFromSalt(t, "exclude_id_1")
+	id2 := uuidtestkit.NewTestFromSalt(t, "exclude_id_2")
+	id3 := uuidtestkit.NewTestFromSalt(t, "exclude_id_3")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()

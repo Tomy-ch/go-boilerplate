@@ -5,6 +5,7 @@ package query
 
 import (
 	"context"
+	"time"
 
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
@@ -36,8 +37,11 @@ type RankingQueryParams struct {
 
 // RankingResult は、ランキング 1 商品分の集計結果です。
 type RankingResult struct {
-	ProductID    uuid.UUID
-	Name         string
-	Price        decimal.Decimal
+	ProductID uuid.UUID
+	Name      string
+	Price     decimal.Decimal
+	// PublishedAt は、公開日時です。集計は公開中の商品に絞られており、返却行が本当にその条件を
+	// 満たすかを呼び出し側がドメインの定義で確かめるために保持します。出力 DTO へは写しません。
+	PublishedAt  *time.Time
 	SoldQuantity int64
 }

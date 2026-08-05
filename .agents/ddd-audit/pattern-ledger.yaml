@@ -25,15 +25,77 @@
 #                                      exclusion is declared. Awaiting a human decision:
 #                                      adopt, or record a deliberate exclusion ADR.
 #                      rejected    — deliberately not adopted, with a declared reason
-#   verdict            the last audit's three-valued result: 差異なし | 差異あり | 逸脱宣言あり
+#   verdict            the last audit's three-valued result:
+#                      差異なし | 差異あり | 逸脱宣言あり(スコープ外).
+#                      Read it paired with `status`; alone it under-determines the entry.
+#                      差異あり in particular covers two situations a reader must not
+#                      conflate: an interpretation exists but diverges from Evans, versus
+#                      no interpretation exists at all. The first is a position somebody
+#                      took, the second is a blank nobody has filled — different evidence,
+#                      different next move. `status` is what separates them.
 #   gap                one line naming the difference from Evans; empty when 差異なし.
 #                      Kept so the next run starts from what was already established
 #                      instead of re-deriving it.
-#   interpreted_by     layer-2 sources; kind: adr (id) | readme (path + section) | doc (path + section)
+#   interpreted_by     layer-2 sources; kind: adr (id + slug) | readme (path + section) | doc (path + section)
+#   slug               required on every `kind: adr` entry — the ADR filename's kebab title with the
+#                      number stripped (`id: "0032"` / `slug: uuidv7-identifiers`).
+#                      docs/adr/README.md declares that kebab title the stable identifier: a new ADR
+#                      may be inserted at its thematic position by shifting every later number +1,
+#                      and a consolidation pass renumbers the whole set. A number alone therefore
+#                      cannot survive a renumbering. It fails in two ways, and only the first is
+#                      loud: the number goes dead, or — worse — it still resolves, now to an
+#                      unrelated decision, and nothing about the entry looks broken.
+#                      A mismatch between `id` and `slug` is the only mechanical signal that a
+#                      citation has drifted; without the slug the silent case is undetectable.
+#                      Repair by trusting the slug and re-deriving the number from the filename.
 #   deviation_declared true when a layer-2 source explicitly states "Evans says X, we do Y because Z"
 #   deviation_note     required when status is rejected, or when deviation_declared is true
 #   enforced_by        layer-3 deterministic enforcement; empty means "no machine enforcement"
 #   last_audited       ISO date of the last audit that set this entry, or null
+#   last_audited_commit
+#                      the commit whose tree the audit actually read. A date cannot answer
+#                      "is this entry still current?" once more than one commit lands in a
+#                      day — every corpus change and the audit itself carry the same date.
+#                      This field is the only thing that makes drift computable.
+#
+# Reading `status` × `verdict` — the five pairs that occur, and what each one asks for:
+#
+#   interpreted   × 差異なし                 layer 2 interprets the pattern and the
+#                                            interpretation matches Evans. Nothing open.
+#   interpreted   × 逸脱宣言あり(スコープ外)  interpreted, diverges, and the divergence is
+#                                            declared with its reason. Settled by a
+#                                            decision on record; nothing open.
+#   rejected      × 逸脱宣言あり(スコープ外)  deliberately not adopted, reason declared.
+#                                            Settled the same way.
+#   interpreted   × 差異あり                 an interpretation exists but diverges from
+#                                            Evans, and the divergence is NOT declared.
+#                                            Open: either declare it or close it — which
+#                                            one is a human's call, not the audit's.
+#   uninterpreted × 差異あり                 no interpretation exists. Nothing to declare
+#                                            and nothing to close; the pattern is simply
+#                                            unaddressed, and therefore unwatched.
+#
+#   The last two share a verdict and are not the same finding. Reporting them under one
+#   heading hides the blanks behind the deliberate divergences, which is the failure this
+#   pairing exists to prevent — so the audit report groups them separately.
+#
+#   Pairs outside this list do not occur: `unexamined` / `examining` carry no verdict yet,
+#   and rejecting a pattern is itself a divergence, so `rejected` × 差異なし contradicts
+#   itself.
+#
+# Drift since the last audit (run per pattern, or once with the widest set):
+#
+#   git diff --name-only <last_audited_commit>..HEAD -- \
+#     'docs/adr/*.md' docs/architecture.md docs/rules.md 'docs/design/**/*.md' \
+#     'internal/**/README.md' 'pkg/**/README.md' 'openapi/*.md'
+#
+# A non-empty result means the corpus moved under the recorded verdicts. Map each changed
+# file back to the patterns whose `interpreted_by` cites it — those are the ones to re-run
+# (`/ddd-audit`, quick scope). A pattern with `interpreted_by: []` is never selected by file
+# overlap, so re-run those whenever anything moves: nobody is watching them by construction.
+#
+# Merging a base branch counts. A merge can rewrite a cited section without the feature
+# branch touching it, and the verdict then describes a corpus that no longer exists.
 #
 # Statuses are set by `/ddd-audit`. Editing them by hand desynchronises the ledger from
 # the corpus; run the skill instead.
@@ -45,17 +107,35 @@ schema_version: 1
 # is stale.
 #
 # Nested READMEs are included deliberately. The first full audit found that the strongest
-# evidence for two strategic patterns lived below the top-level README of a layer —
-# Anticorruption Layer in `internal/infrastructure/webapi/README.md`, Published Language in
-# `openapi/boundary-ownership.md` — so a top-level-only glob set silently understates
-# coverage for exactly the patterns hardest to spot.
+# evidence for a strategic pattern lived below the top-level README of a layer —
+# Anticorruption Layer in `internal/infrastructure/webapi/README.md` — so a top-level-only
+# glob set silently understates coverage for exactly the patterns hardest to spot.
+#
+# `docs/design/**` is here for the same reason: the only declaration this repository has
+# about Published Language sits in `docs/design/outbox.md`, and while that glob was missing
+# the ledger recorded the pattern as declared without any sweep being able to rediscover why.
 corpus:
   - docs/adr/*.md
   - docs/architecture.md
   - docs/rules.md
+  - docs/design/**/*.md
   - internal/**/README.md
   - pkg/**/README.md
   - openapi/*.md
+
+# Known blind spot — `docs/spec/**` is deliberately NOT in the corpus, and must not be added.
+# Per-feature specs carry sample business content, and keeping business content out of the
+# architectural audit is exactly what the ADR work behind this ledger set out to achieve; a
+# `docs/spec/**` glob would drag twelve features' worth of demo vocabulary into every sweep.
+#
+# The cost is `ubiquitous-language`. Its gap names `docs/spec/<feature>/domain.md` as the only
+# document that could host the Ubiquitous Language, and the audit cannot read it — so that verdict
+# rests on the ABSENCE of a cross-cutting home, never on a reading of one. The pattern cannot be
+# audited from the corpus alone until such a home exists.
+#
+# Issue #941 tracks creating it (a cross-cutting business-vocabulary spec, not per-feature). When
+# it lands, add THAT document's specific path to the list above — the one file, never the
+# `docs/spec/**` glob, which would reintroduce the business content this exclusion exists to keep out.
 
 patterns:
   - id: ubiquitous-language
@@ -68,12 +148,23 @@ patterns:
       層ごとの語彙規約（domain / application / HTTP / 技術）は整備されているが、それは
       「機構語彙が上位層の契約に漏れるのを防ぐ」規約であり、Evans の「エキスパートと開発者が
       単一の言語を共有し、言語の変化がモデルの変化を駆動する」という中核は不在。ドメイン
-      エキスパートは「妥当な値の決定者」としてのみ登場し、言語の共同所有者としては現れない。
+      エキスパートは「妥当な値の決定者」としてのみ登場し、言語の共同所有者としては現れない
+      （ADR-0014 / ADR-0015 の「妥当性の権威はドメインエキスパート」がその唯一の登場）。
+      Ubiquitous Language の語自体はコーパスに 1 度も現れない（唯一の hit は ADR-0077 の
+      「ubiquitous and zero-dependency」で同音異義）。
+      差異は前回より広がった。docs/rules.md は業務知識の置き場を docs/spec/** と明示的に指定し、
+      業務語彙は feature 単位のサイロへさらに移った（現在 12 feature ディレクトリ、うち domain.md は
+      7 本）。それらを束ねる文書は無く（横断 spec も glossary も index も不在）、UL の正本たりうる
+      文書は docs/spec/<feature>/domain.md だけという状態が固定化している（#941）。
+      加えて docs/spec/** は本台帳の corpus 外であり、この判定は「正本の不在」に依拠していて
+      「正本を読んだ結果」ではない（corpus ブロックのコメント参照）。この横断語彙の不在は
+      value object の二重定義（#910）・kernel の三重定義（#912）として既に 2 度実害化した。
     interpreted_by: []
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: layered-architecture
     name: Layered Architecture
@@ -85,10 +176,13 @@ patterns:
     interpreted_by:
       - kind: adr
         id: "0002"
+        slug: onion-architecture
       - kind: adr
         id: "0003"
+        slug: interface-based-decoupling
       - kind: adr
         id: "0005"
+        slug: driving-adapters-not-split-axis
       - kind: doc
         path: docs/architecture.md
         section: "Layer Responsibilities"
@@ -101,21 +195,32 @@ patterns:
     deviation_declared: false
     deviation_note: ""
     enforced_by:
+      # 層境界は 1 本の規則ではなく層ごとの deny リスト 5 本で守られている。
+      # 単一の `layer-dependency` 規則は存在しない（.golangci-full.yaml の depguard.rules を参照）。
       - kind: depguard
-        rule: layer-dependency
-    last_audited: "2026-07-30"
+        rule: maintain_a_sound_domain
+      - kind: depguard
+        rule: maintain_a_sound_domain_service
+      - kind: depguard
+        rule: maintain_a_sound_usecase
+      - kind: depguard
+        rule: maintain_a_sound_controller
+      - kind: depguard
+        rule: maintain_a_sound_infrastructure
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: entity
     name: Entity
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
-    gap: >-
-      扱い方（不変条件・getter・DB カラムと 1:1 でない）は厚く規定されるが、Entity を Entity たらしめる
-      基準——ライフサイクルを貫く同一性——がコーパス内に一度も記述されておらず、新しい型を Entity と
-      Value Object のどちらにするかを決める判断材料が存在しない。同一性による等価判定も未規定。
+    verdict: 差異なし
+    gap: ""
     interpreted_by:
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Entity or Value Object"
       - kind: readme
         path: internal/domain/README.md
         section: "Do not set outside constructor / Not every DB column is an entity field / Invariants"
@@ -123,30 +228,38 @@ patterns:
         path: docs/rules.md
         section: "Allowed in Domain"
       - kind: adr
-        id: "0031"
+        id: "0032"
+        slug: uuidv7-identifiers
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: value-object
     name: Value Object
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      VO 性の判定軸が Evans の「同一性を持たないこと」ではなく「不変条件を持つに値するか」に
-      置き換わっている。無同一性・値等価・丸ごと置換の不変性・WHOLE VALUE のいずれもコーパスに
-      現れない。さらに `pkg/` の汎用ラッパ（ビジネス意味を持たないと明言）にも value object の語が
-      当てられ、語義が二重化している。
+      無同一性・値等価・丸ごと置換の不変性は Entity or Value Object 節で明記され、`pkg/` 側の
+      語義二重化も解消済み（あちらは業務意味を持たないため型と呼び分ける）。残る差異は VO の適用範囲で、
+      Evans は意味を持つ属性を広く VO 化するのに対し、本リポジトリは強制するに値する不変条件を持つ
+      ものだけを包む。これは逸脱として宣言済み（同節「How far Value Objects go here」）。
+      WHOLE VALUE への言及は無い。
     interpreted_by:
-      - kind: adr
-        id: "0104"
-      - kind: adr
-        id: "0101"
       - kind: readme
-        path: internal/domain/kernel/README.md
+        path: internal/domain/README.md
+        section: "Entity or Value Object"
+      - kind: adr
+        id: "0034"
+        slug: domain-lexicon
+      - kind: adr
+        id: "0033"
+        slug: two-scale-quantity-model
+      - kind: readme
+        path: internal/domain/lexicon/README.md
         section: "Admission bar"
       - kind: readme
         path: internal/domain/README.md
@@ -154,12 +267,18 @@ patterns:
       - kind: doc
         path: docs/rules.md
         section: "Function Signature Rules"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans は意味を持つ属性を広く Value Object としてモデル化するが、本リポジトリは強制するに値する
+      不変条件を持つ属性だけを包み、それ以外は基本型のままにする。全属性の VO 化は型数と境界ごとの
+      変換ノイズを増やす一方、検証付きコンストラクタを持つ命名済みフィールドに対する上乗せの防御が
+      小さく、この規模では費用が便益を上回るため。同型隣接引数の取り違えには属性構造体への束ねで対処する。
+      宣言は internal/domain/README.md の How far Value Objects go here 節。
     enforced_by:
       - kind: depguard
         rule: maintain_a_sound_domain
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: domain-service
     name: Service (Domain Service)
@@ -168,58 +287,81 @@ patterns:
     status: interpreted
     verdict: 差異あり
     gap: >-
-      使用条件が「集約跨ぎ」だけに狭められ、Evans の基準（Entity/VO の自然な責務か）とステートレス性が
-      不在。Domain Service と Usecase が同一責務の置き場として選択基準なしに並列列挙されている。
-      加えて配置規定（集約パッケージ配下の service.go）と唯一の用途（集約跨ぎ）が、他集約 import を
-      禁じる depguard 規則の下で構造的に両立しない。
+      ステートレス性と Evans の基準（Entity/VO の自然な責務として収まらない操作か）が明記され、
+      Domain Service と Usecase の選択基準も「導出か写像か」として定義された。並列列挙による矛盾は解消。
+      配置は集約パッケージ配下ではなく internal/domain/service/<name>/ と規定し直したため、他集約 import を
+      禁じる depguard 規則との構造的矛盾も解消（実体は初出の占有者と同時に作る方針）。冒頭
+      Role in this project 節が旧配置のまま残っていた食い違いも解消済み。
+      残る差異は適用範囲で、Evans の Domain Service の基準は「Entity/VO の自然な責務に収まらない操作か」
+      であって集約跨ぎではない（集約跨ぎを定義要件とするのは Vernon 以降の後発の整理）。本リポジトリは
+      用途を集約跨ぎに限定しており、単一集約内で Entity/VO に収まらない操作の置き場を与えていない。
+      この限定は宣言されていない。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
-        section: "Multi-aggregate rules / Callable layers"
+        section: "Multi-aggregate rules / Domain Service or Usecase / Where a cross-aggregate Domain Service lives / Callable layers"
       - kind: doc
         path: docs/rules.md
         section: "Allowed in Domain"
     deviation_declared: false
     deviation_note: ""
-    enforced_by: []
-    last_audited: "2026-07-30"
+    enforced_by:
+      # 配置を internal/domain/service/<name>/ と規定した際に、そのパスだけ集約間 import を許し
+      # 他の domain deny を全て繰り返す専用規則が入った。gap 本文が述べる規則はこれ。
+      - kind: depguard
+        rule: maintain_a_sound_domain_service
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: application-service
     name: Application Layer Service
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
-    gap: >-
-      Usecase README は Evans の「業務ルールを持たず調整のみ」をほぼ逐語で採用しているが、
-      domain README が集約跨ぎ「ルール」の置き場に Usecase を並置しており、同一コーパス内で矛盾する。
-      Evans が最重要とする Domain Service / Application Service の切り分け基準も不在。
+    verdict: 差異なし
+    gap: ""
     interpreted_by:
       - kind: readme
         path: internal/usecase/README.md
         section: "Application Service Design Policy"
+      - kind: readme
+        path: internal/usecase/README.md
+        section: "Application Policy"
+      - kind: readme
+        path: internal/usecase/README.md
+        section: "Why business Usecases are not wired to each other"
+      - kind: readme
+        path: internal/usecase/README.md
+        section: "Verifying infrastructure against the domain"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Multi-aggregate rules / Domain Service or Usecase"
       - kind: doc
         path: docs/architecture.md
         section: "Layer Responsibilities / Usecase"
       - kind: adr
         id: "0002"
+        slug: onion-architecture
       - kind: adr
-        id: "0084"
+        id: "0089"
+        slug: lean-a-spec-scaffold
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: module
     name: Module (Package)
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       パッケージ命名・凝集の規則はあるが、枠組みが機械的・リンタ的で、「分割線と名前はドメインへの
       洞察を語る」という Evans の中核（Module はモデルの一部）が不在。モジュール構造がモデルと共に
       進化するという要請も欠け、既存の連結パッケージは明示的に据え置かれている。
+      この差異は internal/domain/README.md の Naming / structure 節で宣言済み。
     interpreted_by:
       - kind: doc
         path: docs/rules.md
@@ -228,158 +370,349 @@ patterns:
         path: internal/domain/README.md
         section: "Aggregate Design"
       - kind: readme
+        path: internal/domain/README.md
+        section: "Naming / structure"
+      - kind: readme
         path: pkg/README.md
         section: "Constraints"
       - kind: adr
-        id: "0104"
-    deviation_declared: false
-    deviation_note: ""
+        id: "0034"
+        slug: domain-lexicon
+    deviation_declared: true
+    deviation_note: >-
+      Evans にとって Module はモデルの一部で、分割線と名前がドメインへの洞察を担い構造もモデルと共に
+      進化する。本リポジトリの規則は機械的で、何と呼ぶかは言うが分割が何を明かすべきかは言わない。
+      テンプレートには洞察を持つべき実ドメインが無く、引かれている線はアーキテクチャが含意するもの
+      であるため。モデルを表現する線は fork 先に属する。宣言は internal/domain/README.md の
+      Naming / structure 節。
     enforced_by:
       - kind: depguard
         rule: independent_pkg
-    last_audited: "2026-07-30"
+      # 分割線を機械的に守るもう 1 本。domain/service/<name>/ という区画の存在自体が
+      # depguard 規則で成立しているため、Module の enforcement はこの 2 本で読む。
+      - kind: depguard
+        rule: maintain_a_sound_domain_service
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: aggregate
     name: Aggregate
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       中核（唯一のルート・ルート経由の変更・ルート単位の Repository・境界内不変条件）は原義どおり。
-      差異は集約間参照を ID のみに限定している点で、Evans は他集約ルートへの直接参照を許している。
-      方向としては境界を強める側だが、Evans の代替案を名指して退けた宣言は無い。
+      差異は 2 つあり、どちらも宣言済みになった。
+      1 つ目は参照で、可変集約への参照を ID のみに限定する点が Cross-aggregate reference 節の
+      Departure from Evans ブロックで宣言され、参照マスタ例外の境界（参照専用 Repository を持つだけでは
+      根拠にならず、独立集約は identity のみ）も同節に明記されている。
+      2 つ目はトランザクション境界。Aggregate Boundary 節は「1 Aggregate = 1 Transaction Boundary」を
+      「既定であって絶対ではない」と限定したうえで、境界を跨ぐ 2 経路（陳腐化してはならないガード＝
+      ADR-0029 分岐 2、原子性を要する複数集約書き込み＝同分岐 3）へ導線を張り、この 2 つに限ると
+      明示している。ADR-0029 は Vernon の定式化を経た Evans の主張を名指しし、原義・本リポジトリの
+      選択・理由の三要素を書いた宣言節を持つ。
+      残る論点は宣言の外にある。この分類は要件に相対で、要件が変われば同じ操作が分岐を移る
+      （ADR-0029 自身が記録の規律としてそう述べている）。
+      なお Do not set outside constructor 節に「集約は子を含め 1 回の呼び出しで構築し、子をまたぐ
+      不変条件はルートでのみ判定する」という記述が加わり、ルートが境界内不変条件を保証する唯一の点で
+      あるという中核解釈が生成・再構成の局面へ拡張された。新規の差異ではなく、既存判定の裏付け。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
-        section: "Aggregate Design"
+        section: "Aggregate Design / Aggregate Boundary / Cross-aggregate reference / Reference master aggregates"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Do not set outside constructor"
       - kind: doc
         path: docs/rules.md
         section: "Repository / QueryService Rules"
       - kind: adr
         id: "0027"
+        slug: lightweight-cqrs
       - kind: adr
         id: "0029"
+        slug: commandservice-atomicity-criterion
       - kind: adr
-        id: "0104"
-    deviation_declared: false
-    deviation_note: ""
+        id: "0031"
+        slug: ordered-pessimistic-row-locks
+    deviation_declared: true
+    deviation_note: >-
+      差異は 2 つ。(1) Evans は他集約ルートへの直接参照を許すが、本リポジトリは可変集約への参照を
+      identity のみに限定する。直接参照はグラフを読んでそれ越しに変更するのを容易にし、2 つの
+      トランザクション境界を事故的に 1 つへ潰すため。参照マスタだけは提示に必要な属性を伴ってよいが、
+      変更を通す振る舞いを持たない。宣言は internal/domain/README.md の Cross-aggregate reference 節。
+      (2) 集約が即時整合の単位であるという Evans の主張（「1 Aggregate = 1 Transaction Boundary」は
+      Vernon による定式化）に対し、本リポジトリは 2 つの状況に限ってこれを越える。陳腐化してはならない
+      ガードと、原子性を要する複数集約書き込みである。Evans の議論は変更についてのものであり、
+      前者で他集約は観測されるだけで変更されずルートが権威を保つため。後者でも、1 トランザクションが
+      触れる集約のうち書き込まれるのは一部で、残りは観測されるだけという形を保つ。宣言は
+      docs/adr/0029-commandservice-atomicity-criterion.md の Departure 節と
+      internal/domain/README.md の Aggregate Boundary 節。
     enforced_by:
       - kind: depguard
         rule: maintain_a_sound_domain
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: factory
     name: Factory
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      パターン名は散文に一度も現れないが、New() による原子的生成と全不変条件強制、検証を迂回する
-      生成口の禁止として実質的に解釈済み。差異は再構成時の扱いで、Evans が「既存データの不変条件違反は
-      拒否だけでは済まず修復戦略が要り得る」と注意した論点に対し、本リポジトリは常に hard-fail する。
-      集約全体の生成・独立した Factory オブジェクトへの言及も無い。
+      パターン名がコーパスに現れるようになり、New() / Reconstruct() を Factory と位置づける解釈、
+      集約全体（子を含む）を 1 回の呼び出しで組み立て切ること、独立 Factory 型を起こす条件、
+      再構成側の Factory を Repository が務めることが The constructor is the Factory 節で明文化された。
+      前回の未解消 2 点（集約全体の生成 / 独立した Factory オブジェクトへの言及）はこれで解消。
+      残る差異は再構成時の扱いのみで、Evans が「既存データの不変条件違反は拒否だけでは済まず
+      修復戦略が要り得る」と注意した論点に対し、本リポジトリは常に hard-fail する。これは
+      Do not set outside constructor 節の Departure from Evans ブロックで宣言済み。
+      独立 Factory 型を起こす条件として挙げられているのは「生成をまたいで固定される設定」1 つで、
+      Evans が挙げる他の 2 条件には明示的に触れていない。取りこぼしではなく、性質が異なる。
+      具体クラスの選択は主語が無い。ドメインに多相な型が存在せず（interface は Repository 系のみ、
+      生成関数はすべて具象型を返す）、実装の選び分けは DI が別パターンとして担う
+      （ADR-0035 / 0036 / 0037）。変種を型でなく値で表す方針そのものは The constructor is the Factory 節
+      および How far Value Objects go here 節で宣言済み。
+      「クライアントが持つべきでないインフラ知識の隠蔽」は、単独では起動条件にならない。組み立てが
+      1 回の呼び出しなら隠すべき手順が存在せず、隠蔽が意味を持つのは組み立てに構造がある——協力者が
+      複数ある、順序に制約がある、設定を保持する、具象型を選ぶ——ときに限られる。つまりこれは他の条件が
+      揃ったときに得られる帰結であって、それ自体が Factory 型を要求する理由ではない。Evans が 3 つを
+      並列に挙げたのは、当時の生成が常に構造を伴っていたためと読める。
+      本モデルでは生成が値の純関数なので条件が分離し、隠蔽だけが残っても指すものが無い。なお効果を伴う
+      生成知識（採番・行の読み出し・ロック取得）は、ドメインが I/O を持てない以上、隠蔽先をドメイン側に
+      作ること自体ができない。純粋な知識（コード体系など）を包むかどうかは VO の採用基準に従う。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
         section: "Do not set outside constructor / Why validate here when OpenAPI already validates the request?"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "The constructor is the Factory"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "How far Value Objects go here"
       - kind: doc
         path: docs/rules.md
         section: "DTO / Type Boundary Rules"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans は再構築時の不変条件違反に対し修復戦略が要り得ると注意するが、本リポジトリは常に
+      hard-fail する。Reconstruct は New と同じ不変条件を課す。保存された違反は見つけられるべき欠陥で
+      あり、黙って修復するとそれが観測可能になった瞬間に隠すことになるため。代償として、その行は
+      修正されるまで当該集約の読み取りを止める。宣言は internal/domain/README.md の
+      Do not set outside constructor 節。
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cd254c46a1c239d89aa9fea9d65a7d7133958f06"
 
   - id: repository
     name: Repository
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       Aggregate Root 限定・ドメイン語彙の契約・トランザクション制御はクライアント側、と原義とよく一致する。
-      差異は CommandService という「集約の書き込みが Repository seam を通らない経路」が存在する点で、
-      ADR-0027 の Alternatives は読み取り側の代替4件のみを検討し、書き込み側の代替は俎上に無い。
-      読み取り側の絞り込み（QueryService 分離）は Fat Repository を名指しで退けており宣言が成立している。
+      CommandService という「集約の書き込みが Repository seam を通らない経路」の存在は、ADR-0027 の
+      Alternatives「Route every write through the aggregate Repository (abolish CommandService)」で
+      Evans の形（load-aggregate-mutate-save 一本化）を名指しし、ロックを取らない相対更新の並行性を理由に
+      却下、Eligibility / Derivation で範囲を絞って宣言済み。読み取り側の絞り込み（QueryService 分離）も
+      Fat Repository を名指しで退けている。
+      ドメイン層が宣言する永続化契約は Repository ただ 1 つ。CommandService IF は usecase 層の
+      command サブパッケージにのみ宣言され、internal/domain/ 配下に同種の宣言は無い
+      （サンプル撤去後は宣言が 0 本になる）。所有をワークフロー軸で決める（CommandService は
+      トランザクションの道具であり、所有者はトランザクションを開く側である）ため usecase 層に置かれ、
+      「ドメイン層に第二の永続化契約が並ぶ」という差異は無い。残る差異は seam の存在そのもので、
+      これは上記のとおり ADR-0027 の Alternatives で宣言済み。
     interpreted_by:
       - kind: adr
         id: "0027"
+        slug: lightweight-cqrs
       - kind: adr
         id: "0003"
+        slug: interface-based-decoupling
       - kind: adr
         id: "0029"
+        slug: commandservice-atomicity-criterion
       - kind: doc
         path: docs/rules.md
         section: "Repository / QueryService Rules / Transaction Rules"
       - kind: readme
         path: internal/domain/README.md
-        section: "Dependency inversion for Infrastructure layer / Doc comments stay in domain vocabulary"
-    deviation_declared: false
-    deviation_note: ""
+        section: "Dependency inversion for Infrastructure layer / Doc comments stay in domain vocabulary / The constructor is the Factory"
+      - kind: readme
+        path: internal/infrastructure/rdb/README.md
+        section: "command_service"
+    deviation_declared: true
+    deviation_note: >-
+      Evans は集約への変更を「集約をロードし、変更し、保存する」という Repository 経由の単一経路に
+      一本化するが、本リポジトリは集約の読み込み-保存で表現できない書き込み（相対更新・集合演算・
+      ロックを取らずに原子性を得る操作）に限り CommandService を許す。相対更新はロックを取らずに済み、
+      集約経由へ寄せると現状無い競合とデッドロック面を持ち込むため。適格基準と導出規則で
+      一般的な逃げ道化を防いでいる。宣言は docs/adr/0027-lightweight-cqrs.md の Alternatives Considered
+      節「Route every write through the aggregate Repository (abolish CommandService)」、
+      適格基準の背景は ADR-0029。
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: specification
     name: Specification
     part: 3
     scope: core
-    status: uninterpreted
-    verdict: 差異あり
+    status: interpreted
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      コーパス内に該当記述が皆無（`specification` の語は全て OpenAPI 仕様書・scaffold 仕様書の同音異義）。
-      Selection 用途は domain README が「Search specifications はドメインの責務ではない」として
-      QueryService / ReadModel へ明示的に送っており、Evans の「基準はドメインに残し実装だけ最適化する」
-      とは逆の解。他の DDD パターンは名指しされている中で Specification だけが一貫して欠けている。
-    interpreted_by: []
-    deviation_declared: false
-    deviation_note: ""
+      パターン名はコーパスに現れない（`specification` の語は全て OpenAPI 仕様書・scaffold 仕様書の
+      同音異義）が、selection の中核——基準はドメインの語彙で持ち、実行と射影だけを QueryService /
+      ReadModel へ最適化する——は domain README の Query and Aggregate 節で解釈済み。読み取り経路が
+      集約を迂回してよいこと、全件を FindByID で再構築し直さないことも Evans の想定どおり。
+      規約は宣言されていたが守られていなかった。業務語彙を持つ絞り込み条件の定義が SQL の WHERE 句に
+      しか存在せず（1 つの基準が複数のクエリで別々に著作され、その一部は QueryService 経路）、
+      ドメインが持っていたのは判定に使う値だけだった。集約に述語を置いて定義の持ち主とし、
+      SQL をその実行形と位置づけ、Usecase が返却行を述語で検証する形に是正済み。
+      規約を迂回させていた「WHERE を通った行では自明に真だからドメイン側の述語は冗長」という論法への
+      反証と、基準か機構かの判別も同節に明記した。
+      3 用途のうち validation は解釈済みへ変わった。usecase README の Verifying infrastructure against
+      the domain 節が双方向の突き合わせを規定し（書き込みは Repository 経由で再読込して集約に再検証させ、
+      読み取りは返却エンティティをドメイン述語で検査し、外れた行はドリフトとしてエラーにする。黙って
+      落とすことは禁じる）、ADR-0031 の決定 5 がロック取得後の集約に対してドメイン述語で条件成立を
+      判定させる——集約横断ならその述語は Domain Service に置き、ロック用 Repository メソッドは bool でなく
+      集約を返す——と定めている。後者は「変更時点でオブジェクトが基準を満たすか判定する」という
+      Evans の validation 用途そのもの。集約側の述語も実在し、SQL 側にはそれが実行形である旨の注記が
+      付いている。
+      QueryService 経由の読み取りが一律にレビュー依存だった残差は解消した。同節は「射影かどうか」ではなく
+      「基準が加算的か減算的か」で線を引き直し、返ってくる行についての基準は射影でも述語が要求する
+      フィールドを載せて検証することを義務づけ、レビュー依存を除外系の基準に限定したうえで、その限定に
+      「取り除かれた行は結果に存在せず不在は観測できない」という論理的根拠を与えている。集計を返す
+      QueryService でも、対象が返却行に現れる基準は値に対する述語へ寄せ、Usecase が突き合わせる形にした。
+      減算的な基準——集計から特定の状態の行を除外するもの——の著作もドメインへ戻した。集約に述語を置いて
+      定義の持ち主とし、判定は source of truth の状態だけを見る。SQL が絞る列との等価は再構築時の
+      不変条件が強制し、DB 行からの組み立ては Reconstruct が唯一の入口、書き込みも両者を同一 UPDATE で
+      更新するため、片方だけが動く経路が無い。該当するクエリには述語の実行形である旨と、減算的につき
+      呼び出し側では照合できずテストが退行を固定する旨を注記した（usecase README が課す要件）。
+      残る差異は 2 点で、どちらも宣言済み。building to order（基準からオブジェクトを組み立てる）用途への
+      言及が無いこと、述語オブジェクトとしての合成（isSatisfiedBy + AND/OR/NOT）を採らないこと。
+      Query and Aggregate 節末尾の Departure from Evans ブロックが、この 2 つは「基準を具象化しない」という
+      同じ根を共有するため揃って欠けるのだと説明し、代償（1 つの基準が複数のクエリへ分散著作される）と、
+      具象化を再検討する条件（API 面が列挙しない絞り込みを呼び出し側が組み立てる / 規則がテナント・契約で
+      変わりデータとして運ばれる / クライアントが必要は述べられても何を作るかは述べられない）を明記している。
+    interpreted_by:
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Query and Aggregate"
+      - kind: readme
+        path: internal/usecase/README.md
+        section: "Verifying infrastructure against the domain"
+      - kind: doc
+        path: docs/rules.md
+        section: "Domain Layer Constraints"
+      - kind: adr
+        id: "0031"
+        slug: ordered-pessimistic-row-locks
+    deviation_declared: true
+    deviation_note: >-
+      Evans は基準を isSatisfiedBy と AND / OR / NOT を持つ第一級のオブジェクトとして具象化し、
+      validation・selection・building to order の 3 用途に用いる。本リポジトリは基準を具象化せず、
+      値の所有者に張り付いた名前付きの述語として、評価される場所で直接評価する。この 1 つの選択が
+      3 用途を分ける。validation と selection は基準に名前と単一の定義があれば足りるので述語で成立するが、
+      composition と building to order はどちらも基準を他へ渡すこと——翻訳する Repository か、満たす
+      Factory か——を前提とするため、具象化なしには到達できない。2 つが揃って欠けているのは根が同じだから。
+      理由は 3 つ。基準をその場で評価する限り Go の && と || が結合子として働き、合成が欠けるのは
+      基準が移動しなければならなかった場所だけであること。変更を守る述語は bool でなく型付きエラーを返し、
+      その identity から応答ステータスが導かれるため（ADR-0042）、合成された isSatisfiedBy はそれを潰すこと。
+      クエリを静的 SQL に保つことで実スキーマに対する型検査が効き続けること。代償として複合的な基準は
+      クエリごとに書き直される。
+      宣言は internal/domain/README.md の Query and Aggregate 節末尾、Departure from Evans ブロック。
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cd254c46a1c239d89aa9fea9d65a7d7133958f06"
 
   - id: domain-event
     name: Domain Event
     part: 3
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      「集約を小さく保ったまま越境した帰結を結果整合で達成する」という構造的役割は outbox event として
-      実質的に解釈済み。差異はモデル化の側で、イベントがドメインオブジェクトとして存在するか（型・不変性・
-      過去形のユビキタス言語名）、誰が「起きたこと」を宣言するか、event_type / payload の語彙が誰のものか、
-      のいずれも未規定。domain README は構成要素として domain events を挙げるが同ファイル内で二度と現れない。
+      構造的役割（集約を小さく保ったまま越境した帰結を結果整合で達成する）は outbox event として解釈済み。
+      モデル化の側も解決している。イベントはドメインの型として存在し、過去形の名前・不変性・発生時刻を持ち、
+      遷移メソッドが成功時にだけ返すため「状態は変わったがイベントが出ていない」がコンパイル時に書けない。
+      event_type / payload の語彙の所有も分離済み（名前はドメイン、版と wire 表現は詰め替え層）。
+      残る差異は pending events を採らない点で、これは宣言済み。
+      前回の監査が立てた「同期ロックと結果整合のどちらを選ぶかの基準が無い」という差異は解消した。
+      ADR-0029 の判定手順が 3 分岐（分解＝既定 / 陳腐化してはならないガード / 原子性を要する書き込み）に
+      拡張され、分岐ごとに名前の付いた占有者が実在する。基準が読み取りの陳腐化と書き込みの原子性という
+      2 つの独立した問いに分解され、
+      なぜ既存の基準がガードに届かなかったかも同節に書かれている。
       なお Domain Event は Evans 2003 本体のパターン言語には無く、2015 年の DDD Reference が出典。
     interpreted_by:
-      - kind: adr
-        id: "0045"
-      - kind: adr
-        id: "0029"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Domain events"
+      - kind: readme
+        path: internal/usecase/outbox/README.md
+        section: "emit — EmitUsecase"
       - kind: readme
         path: internal/usecase/boundary/README.md
         section: "publisher"
-    deviation_declared: false
-    deviation_note: ""
+      - kind: adr
+        id: "0045"
+        slug: broker-agnostic-worker-scaffold
+      - kind: adr
+        id: "0029"
+        slug: commandservice-atomicity-criterion
+      - kind: adr
+        id: "0031"
+        slug: ordered-pessimistic-row-locks
+    deviation_declared: true
+    deviation_note: >-
+      Evans（DDD Reference）は集約が事象を宣言することを求めるが、実装形として一般的な pending events
+      （集約が内部にイベントを溜め、保存後に drain する）は採用しない。遷移メソッドが成功時にだけ Event を
+      返す形にすれば、状態変更とイベント発生が同一の不変条件になるという同じ保証がコンパイラで得られ、
+      集約に管理すべき可変状態を増やさずに済むため。宣言は internal/domain/README.md の Domain events 節。
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: bounded-context
     name: Bounded Context
     part: 4
     scope: strategic
-    status: uninterpreted
-    verdict: 差異あり
+    status: rejected
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      コーパス内で `bounded context` はただ 1 箇所、Go パッケージの入れ子命名規約として現れるのみで、
-      Evans のモデル境界（用語が単一で曖昧さのない意味を持つ範囲）の意味ではない。本テンプレートが単一
-      コンテキストなのか複数なのかを述べた記述も無い。にもかかわらず Shared Kernel という「コンテキストの
-      存在を前提とする関係パターン」の語彙だけが先に借用されており、fork 先が戦略的設計を導入する際に
-      語彙衝突を起こす経路が開いている。
-    interpreted_by: []
-    deviation_declared: false
-    deviation_note: ""
+      複数コンテキストへの明示的分割という意味では採用していない。ADR-0034 の Alternatives
+      （internal/domain/kernel 節）が Evans の Bounded Context / Context Map を名指しし、
+      「Shared Kernel は 2 つの Bounded Context の共同所有物で複数コンテキストの存在を前提とするが、
+      本リポジトリは単一モデルである」と明示している。ADR-0004（modular monolith, microservices は
+      non-goal）が単一モデルである理由の裏付け。旧 internal/domain/kernel が Bounded Context 不在のまま
+      Shared Kernel の語を先取りしていた問題は lexicon への改名で解消済み。残る軽微な語彙の緩さとして、
+      docs/rules.md の Context nesting 節は bounded context をパッケージ命名規約の語として流用している。
+    interpreted_by:
+      - kind: adr
+        id: "0034"
+        slug: domain-lexicon
+      - kind: adr
+        id: "0004"
+        slug: modular-monolith
+      - kind: readme
+        path: internal/domain/lexicon/README.md
+        section: "kernel を使わない旨の冒頭注記"
+    deviation_declared: true
+    deviation_note: >-
+      Evans の Bounded Context は、システムを複数の明示的なモデル境界に分割し、境界ごとに
+      Ubiquitous Language を一貫させ、境界間の関係を Context Map で扱うことを求める。本リポジトリは
+      単一モデル・単一デプロイのモジュラーモノリスであり（ADR-0004: マイクロサービスは non-goal）、
+      複数の Bounded Context への明示的分割を行っていない。共有が必要な箇所は集約間の共有
+      （internal/domain/lexicon）として扱い、Shared Kernel の語は実際に複数コンテキストを導入する者の
+      ために予約している。宣言は ADR-0034 の Alternatives Considered 節、および
+      internal/domain/lexicon/README.md 冒頭の注記。
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: context-map
     name: Context Map
@@ -388,56 +721,67 @@ patterns:
     status: uninterpreted
     verdict: 差異あり
     gap: >-
-      該当記述が皆無。境界をまたぐ接触点（外部 IdP / 為替レート / オブジェクトストレージ / outbox 送信先 /
-      SQS）は個別には文書化されているが、どのモデルとどのモデルがどの関係タイプで接しているかを一枚に
-      集約した記述が無い。Context Map の「辺のラベル」にあたる Shared Kernel だけが上位概念を欠いたまま
-      採用されている。
+      Context Map という語は ADR-0034 と internal/domain/lexicon/README.md に一度だけ現れるが、
+      Shared Kernel を不採用とする根拠として上位概念に触れているだけで、Context Map 自体の解釈ではない。
+      境界をまたぐ接触点（外部 IdP / 為替レート / オブジェクトストレージ / outbox 送信先 / SQS）は
+      個別には文書化されているが、それらを Evans の関係パターン語彙（Customer-Supplier / Conformist /
+      Open Host Service 等）で特徴づけて一枚に集約した記述は無い。辺のラベルにあたるもののうち
+      Shared Kernel は不採用が宣言され、Anticorruption Layer は構造的に採用されている。
     interpreted_by: []
     deviation_declared: false
     deviation_note: ""
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: shared-kernel
     name: Shared Kernel
     part: 4
     scope: strategic
-    status: interpreted
-    verdict: 差異あり
+    status: rejected
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      ADR-0104 が DDD Shared Kernel を明示的に名指して採用し、「小さく保つ」「変更は共同所有の判断」は
-      原義を保持している。差異は共有の単位で、Evans の Bounded Context 間ではなく単一モデル内の集約間に
-      適用している（前提となる複数コンテキストがコーパス上に存在しない）。共有対象に DB 設計の部分集合が
-      含まれない点も原義と異なる。Alternatives は配置場所の3案のみで、単位の読み替えは宣言されていない。
+      本パターンは採用していない。前提となる複数 Bounded Context がこのモデルに存在しないため、
+      Context Map の関係パターンである Shared Kernel は成立しない。従来 internal/domain/kernel が
+      DDD Shared Kernel を名乗っていたが、internal/domain/lexicon へ改名して主張を撤回し、`kernel` の語は
+      実際に複数コンテキストを導入する者のために予約した。原義が担っていた規律（小さく保つ・変更は
+      共同所有の判断）は語に依存しない形で lexicon 側に保持している。
     interpreted_by:
       - kind: adr
-        id: "0104"
+        id: "0034"
+        slug: domain-lexicon
       - kind: doc
         path: docs/rules.md
-        section: "Domain shared kernel"
+        section: "Domain lexicon"
       - kind: readme
-        path: internal/domain/kernel/README.md
+        path: internal/domain/lexicon/README.md
         section: "Admission bar"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans の Shared Kernel は 2 つの Bounded Context が共同所有するモデルの部分集合を指し、
+      複数コンテキストの存在を前提とする。本リポジトリは単一モデルで、共有は集約間に起きる。
+      前提が成り立たないため語を採用せず internal/domain/lexicon と呼ぶ。ADR-0034 の
+      Alternatives に「internal/domain/kernel, naming the DDD Shared Kernel」として却下理由を記載。
     enforced_by:
       - kind: depguard
         rule: maintain_a_sound_domain
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: anticorruption-layer
     name: Anticorruption Layer
     part: 4
     scope: strategic
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       構造的シグネチャ（外部サービスに自層の語彙で port を立て、境界で変換し内側に漏らさない）は
       boundary / infrastructure に明確に存在する。差異は動機で、コーパスが掲げる理由は一貫して DIP・
       置換可能性・transport 隠蔽であり、Evans の「上流のモデルによる意味論の侵入を防ぐ」は現れない。
-      結果として守られるのは技術型とベンダー語彙であって概念ではなく、外部の概念体系が自ドメインと
-      食い違うときにどちらへ寄せるかの規範が無い。Translator 相当の変換ロジックの置き場も未定義
-      （infrastructure は業務ロジック禁止、domain は純粋性要求で、どちらにも書けない）。
+      これは Design Policy 節で宣言済み。概念が食い違ったときの寄せ先についても既定の解決規範
+      （自モデルの語彙を優先し、判断を leaf の変換箇所に記録する）が同節にあり、規範が無いわけではない。
+      ただし実際の概念対立事例で検証されたことはなく、Translator 相当の変換ロジック自体の置き場は
+      依然未定義（infrastructure は業務ロジック禁止、domain は純粋性要求で、どちらにも書けない）。
     interpreted_by:
       - kind: readme
         path: internal/usecase/boundary/README.md
@@ -447,44 +791,66 @@ patterns:
         section: "Error Handling"
       - kind: readme
         path: internal/infrastructure/webapi/README.md
-        section: "Role"
+        section: "Design Policy"
       - kind: adr
         id: "0001"
+        slug: avoid-lock-in
       - kind: adr
-        id: "0039"
+        id: "0042"
+        slug: apperror-protocol-agnostic-errors
       - kind: adr
-        id: "0098"
-    deviation_declared: false
-    deviation_note: ""
+        id: "0101"
+        slug: no-generic-cache-abstraction
+    deviation_declared: true
+    deviation_note: >-
+      構造的シグネチャは Anticorruption Layer だが、掲げる動機が Evans と異なる。本リポジトリは
+      依存性逆転・置換可能性・transport 隠蔽から論じ、Evans は上流モデルの意味論の侵入を防ぐことから
+      論じる。結果として確実に守られるのは技術型とベンダー語彙であり、外部の概念が自ドメインと
+      食い違うときにどちらへ寄せるかは未決である。当面はこのモデルの語彙へ寄せ、判断を leaf の変換箇所に
+      記録する運用とする。宣言は internal/infrastructure/webapi/README.md の Design Policy 節。
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: published-language
     name: Published Language
     part: 4
     scope: strategic
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       同期 HTTP 面は OpenAPI が公開言語の役割をほぼ完全に果たしている（別リポジトリの利用者が公開側
       ツールチェーン無しで消費できる解決済み契約を成果物としてコミットし、drift gate で鮮度を保証）。
-      差異は非対称性で、非同期面（outbox → 外部 receiver）には公開言語が無い。ADR-0048 が定めるのは
+      差異は非対称性で、非同期面（outbox → 外部 receiver）には公開言語が無い。ADR-0052 が定めるのは
       Idempotency-Key という転送規約のみで、公開されるイベント payload のスキーマと事象語彙を定義・
-      公開した記述はコーパスに無い。この非対称がどこにも記録されていない。
+      公開した記述はコーパスに無い。この非対称は docs/design/outbox.md 第 4 節で宣言済み。
     interpreted_by:
+      - kind: doc
+        path: docs/design/outbox.md
+        section: "4. What an integrator implements"
       - kind: adr
         id: "0009"
+        slug: openapi-first
       - kind: adr
         id: "0012"
+        slug: retain-generated-openapi
       - kind: adr
         id: "0015"
+        slug: boundary-value-ownership
       - kind: doc
         path: docs/rules.md
         section: "DTO / Type Boundary Rules"
       - kind: readme
         path: internal/controller/README.md
         section: "Role in Onion Architecture"
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      同期 HTTP 面は OpenAPI が公開言語として機能する一方、非同期面（outbox → 外部 receiver）には
+      公開言語が無い。ADR-0052 が定めるのは Idempotency-Key という転送規約であって言語ではなく、
+      イベント payload のスキーマも event_type の語彙も定義・公開されていない。テンプレートは自分が
+      所有しないイベントの言語を公開できないため、この非対称は payload と event_type を integrator に
+      委ねている限りにおいて意図的である。未提供なのは、integrator が定義した後の公開の型。
+      宣言は docs/design/outbox.md の第 4 節。
     enforced_by: []
-    last_audited: "2026-07-30"
+    last_audited: "2026-08-05"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"

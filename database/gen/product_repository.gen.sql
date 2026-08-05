@@ -1,7 +1,8 @@
 
 -- === source: database/dml/repository/product/count_product.sql ===
 -- name: CountProducts :one
--- 登録済みの商品総数と、そのうち公開済み（published_at 設定済み）の商品数を返します。
+-- 登録済みの商品総数と、そのうち公開済みの商品数を返します。
+-- 「公開中」を定義するのは Product.IsPublished で、FILTER 句はその実行形です。片方だけ変更しないこと。
 SELECT
     COUNT(*)::BIGINT AS total_count,
     (COUNT(*) FILTER (WHERE published_at IS NOT NULL))::BIGINT AS published_count
@@ -49,6 +50,7 @@ WHERE image_path = ANY(sqlc.arg('image_paths')::TEXT []);
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 -- stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
+-- 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -94,11 +96,13 @@ WHERE p.id = sqlc.arg('product_id_param')
 FOR UPDATE OF p;
 
 -- === source: database/dml/repository/product/select_products.sql ===
--- name: ListPublishedProductsDesc :many
+-- name: ListPublishedProductsDescFirst :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より過去へ絞り込みます。
+-- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -113,20 +117,17 @@ WHERE p.published_at IS NOT NULL
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
-    )
-    AND (
-        NOT sqlc.arg('has_after')::BOOLEAN
-        OR p.published_at < sqlc.narg('after_published_at')
-        OR (p.published_at = sqlc.narg('after_published_at') AND p.id < sqlc.narg('after_id'))
     )
 ORDER BY p.published_at DESC, p.id DESC
 LIMIT sqlc.arg('limit_param');
 
--- name: ListPublishedProductsAsc :many
--- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+-- name: ListPublishedProductsDescAfter :many
+-- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より未来へ絞り込みます。
+-- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -143,19 +144,90 @@ WHERE p.published_at IS NOT NULL
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
     )
     AND (
-        NOT sqlc.arg('has_after')::BOOLEAN
-        OR p.published_at > sqlc.narg('after_published_at')
-        OR (p.published_at = sqlc.narg('after_published_at') AND p.id > sqlc.narg('after_id'))
+        p.published_at < sqlc.arg('after_published_at')
+        OR (p.published_at = sqlc.arg('after_published_at') AND p.id < sqlc.arg('after_id'))
+    )
+ORDER BY p.published_at DESC, p.id DESC
+LIMIT sqlc.arg('limit_param');
+
+-- name: ListPublishedProductsAscFirst :many
+-- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+-- status_name / category_name は商品の付随表示値。
+-- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+-- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 先頭ページを返します。カーソル以降は対の After クエリが担います。
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    sqlc.embed(p)
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.published_at IS NOT NULL
+    AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+    AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (
+        sqlc.narg('keyword')::TEXT IS NULL
+        OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
+        OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
     )
 ORDER BY p.published_at ASC, p.id ASC
 LIMIT sqlc.arg('limit_param');
+
+-- name: ListPublishedProductsAscAfter :many
+-- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+-- status_name / category_name は商品の付随表示値。
+-- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+-- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    sqlc.embed(p)
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.published_at IS NOT NULL
+    AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+    AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (
+        sqlc.narg('keyword')::TEXT IS NULL
+        OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
+        OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
+    )
+    AND (
+        p.published_at > sqlc.arg('after_published_at')
+        OR (p.published_at = sqlc.arg('after_published_at') AND p.id > sqlc.arg('after_id'))
+    )
+ORDER BY p.published_at ASC, p.id ASC
+LIMIT sqlc.arg('limit_param');
+
+-- === source: database/dml/repository/product/select_products_by_ids_for_update.sql ===
+-- name: ListProductsByIDsForUpdate :many
+-- ID の集合から公開状態を問わない商品群を、更新のために悲観ロック（FOR UPDATE）して取得します。
+-- ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0031）。
+-- 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
+-- ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
+-- status_name / category_name は商品の付随表示値。
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    sqlc.embed(p)
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.id = ANY(@product_ids_param::UUID [])
+ORDER BY p.id
+FOR UPDATE OF p;
 
 -- === source: database/dml/repository/product/select_published_product_by_id.sql ===
 -- name: GetPublishedProductByID :one
 -- ID から公開中の単一商品を取得します。
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- 公開範囲の定義は一覧取得（ListPublishedProducts*）と同一述語（published_at 非 NULL）で、
+-- 「公開中」を定義するのは Product.IsPublished で、以下の条件はその実行形です。片方だけ変更しないこと。
 -- 非公開・未存在はいずれも該当行なし（0 行）で返ります。
 SELECT
     ps.name AS status_name,

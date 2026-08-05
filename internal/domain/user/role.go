@@ -15,7 +15,8 @@ const (
 	RoleCodeGeneral RoleCode = 2
 )
 
-// RoleCode は、ロールを識別するコード値です（roles.code に対応）。
+// RoleCode は、ロールを識別するコード値です。永続化されている値であり、既知のコード以外は
+// NewRole が ErrInvalidRoleCode で弾きます。
 type RoleCode int
 
 // Roles は、Role エンティティのスライス型です。

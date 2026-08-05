@@ -89,22 +89,38 @@ three responsibilities:
 
 ### Command Service (command/write path)
 
-- Interface defined in the **usecase layer** (`internal/usecase/<aggregate>/command/`). The
-  write model is a usecase concern, not a domain invariant, so it belongs in the usecase
-  layer rather than the domain.
+- Interface defined in the **usecase layer** (`internal/usecase/<workflow>/command/`). Ownership of a
+  cross-aggregate write port is decided on the **workflow** axis, not the aggregate axis. Trying to
+  pick an owning aggregate does not generalize: one real write (a coupon redemption, say) can enforce
+  the invariants of user, product and purchase at once, so "the aggregate whose invariant it enforces"
+  is a relation, not a function. A transaction, by contrast, always has exactly one initiator, and
+  [`docs/rules.md`](../rules.md) already gives the usecase layer ownership of transaction boundaries.
+  `internal/usecase/purchase/command/` names a workflow, not an aggregate, so "why purchase and not
+  product?" does not arise.
+- Domain Service and CommandService therefore diverge deliberately: a Domain Service is a *rule* and
+  owns no transaction; a CommandService is a *transaction tool* and is owned by whoever opens the
+  transaction. That every condition a CommandService enforces is derived from a domain invariant is
+  guaranteed by the Derivation rule below, not by where the file sits.
+- A CommandService method **receives the decided aggregate** — `CreateX(ctx, *x.X)` — symmetric to
+  how a Repository returns one, rather than a decomposed parameter bag. Passing the aggregate keeps
+  the decided write unit intact; a parameter bag scatters the write intent across a signature and
+  breaks that symmetry. This is not a DTO-boundary violation: infrastructure legitimately handles
+  domain entities, since repositories already map rows to and from them, and the DTO-boundary rule
+  targets what the *controller* is exposed to, not what infrastructure receives.
 - After executing a write operation, the Usecase calls back through the Repository for the
   affected aggregate to validate correctness, preserving domain integrity.
 - The Usecase return value is a DTO, not a domain entity.
 - Implementation lives in `internal/infrastructure/rdb/command_service/<aggregate>/`.
 
-> **Implementation status**: The CommandService Go implementation is currently a reserved
-> placeholder — the `command_service` sub-module is declared in `persistenceModule`
-> (`internal/di/module/persistence.go`) but contains no concrete providers yet. This section
-> documents the intended design.
+> **Implementation status**: the `command_service` sub-module in `persistenceModule`
+> (`internal/di/module/persistence.go`) holds exactly one provider, and it belongs to the sample
+> purchase feature. Removing the samples empties the sub-module and leaves this section describing
+> an intended design with no occupant — which is the state a fork starts from. The occupant is kept
+> because the eligibility bar below is only legible against a concrete case that meets it.
 
 Repository, QueryService, and CommandService are all registered in `persistenceModule` in
 `internal/di/module/persistence.go` and injected via Uber Fx (see
-[ADR-0032](0032-uber-fx-di.md)). This is not full CQRS: there is no separate read store,
+[ADR-0035](0035-uber-fx-di.md)). This is not full CQRS: there is no separate read store,
 event sourcing, or eventually-consistent projection pipeline.
 
 See [`docs/rules.md`](../rules.md) § "Repository / QueryService Rules" for the
@@ -118,8 +134,9 @@ day-to-day boundary enforcement rules.
   methods, preserving domain purity per [ADR-0002](0002-onion-architecture.md).
 - QueryService can freely optimize queries (joins, pagination, full-text search) without
   touching domain logic or exposing domain entities to the read path.
-- The usecase layer owns the Service interfaces: the read/write models are usecase concerns,
-  so their interfaces belong in the usecase layer rather than the domain.
+- Both Service interfaces are owned on the same axis — the workflow that opens the transaction and
+  shapes the read model — so they live together in the usecase layer, and the domain layer keeps
+  exactly one persistence contract: the Repository.
 - CommandService can freely optimize flexible updates, deletes, and other write operations
   without touching domain logic. Routing back through the Repository at the end prevents
   domain integrity from being compromised.
@@ -132,8 +149,11 @@ day-to-day boundary enforcement rules.
 - Three persistence abstractions (Repository, QueryService, and CommandService) require
   developers to decide which to use for a given operation. The boundary is documented in
   `docs/rules.md` but requires understanding.
-- Service interfaces in the usecase layer are further from the domain, which can make intent
-  less obvious when reading domain code in isolation.
+- Both Service interfaces sit in the usecase layer, further from the domain, which can make intent
+  less obvious when reading domain code in isolation. In particular, reading a domain package alone
+  does not reveal that a write path exists which does not pass through its Repository; the
+  eligibility bar and the Derivation rule below are what keep that path from becoming a general
+  escape hatch.
 - The "no complex reads in Repository" boundary must be maintained by review; there is no
   compiler enforcement for the distinction.
 
@@ -176,6 +196,40 @@ trade-off — it fundamentally compromises the onion architecture established in
 Have usecases call Repository methods directly for complex reads, applying in-memory joins.
 Avoids a new abstraction but transfers N+1 query and performance concerns to the application
 layer. Rejected for performance and correctness reasons.
+
+### Route every write through the aggregate Repository (abolish CommandService)
+
+Express all writes as "load the aggregate, mutate it, save it", so the Repository is the only
+persistence seam and every write passes through the aggregate that owns the invariant. This is the
+shape Evans describes, and it would remove the asymmetry of having a read seam and a write seam with
+different owners.
+
+Rejected because some writes cannot be expressed that way without changing their concurrency
+properties. Restoring stock on cancellation is a relative update that takes no lock on the product
+row at all; expressing it as "load the product, add back, save" would require introducing a lock the
+cancel path does not currently take, adding contention and a deadlock surface that does not exist
+today. The same holds for any set-based or counter-style write. The seam exists for that class of
+write and for nothing else — the eligibility rule below is what keeps it from becoming a general
+escape hatch.
+
+### Decompose the aggregate into a parameter bag on the CommandService signature
+
+Pass the decided values as individual parameters instead of the aggregate, on the reading that
+infrastructure should not receive a domain entity. Rejected: it scatters the write intent across a
+signature that grows with every field, and it breaks the Repository-symmetry that gives the write
+seam its shape. The premise is also wrong — the DTO-boundary rule exists to keep domain entities out
+of *controller* responses, not out of infrastructure, which already maps rows to and from entities.
+
+**Eligibility.** A write belongs on CommandService only when it cannot be expressed as loading an
+aggregate and saving it: relative updates, set-based operations, and operations that obtain atomicity
+without taking a lock. Anything that can be read-modify-saved goes on the Repository. Without this
+line the seam degrades into "where I put SQL I want to write directly".
+
+**Derivation.** Any condition CommandService enforces must be *derived from* a domain invariant, never
+authored independently. The stock guard in the decrement statement restates the domain's
+insufficient-stock rule as a fail-closed second net ([ADR-0031](0031-ordered-pessimistic-row-locks.md));
+it is downstream of that rule, so a change to the domain rule obliges a change here, and never the
+reverse. Two independently written copies of one rule diverge silently the first time only one moves.
 
 ## Notes
 

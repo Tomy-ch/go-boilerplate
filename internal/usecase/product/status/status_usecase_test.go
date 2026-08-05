@@ -54,9 +54,9 @@ func Test_usecase_ListStatuses(t *testing.T) {
 			require.NoError(t, err)
 
 			// sortKey 昇順（検討中 sortKey=1, 在庫あり sortKey=5）でリポジトリが返す想定。
-			reviewing, err := domainstatus.New(reviewingID, "検討中", 8, 1)
+			reviewing, err := domainstatus.New(reviewingID, domainstatus.Attributes{Name: "検討中", Code: 8, SortKey: 1})
 			require.NoError(t, err)
-			inStock, err := domainstatus.New(inStockID, "在庫あり", 1, 5)
+			inStock, err := domainstatus.New(inStockID, domainstatus.Attributes{Name: "在庫あり", Code: 1, SortKey: 5})
 			require.NoError(t, err)
 
 			repo := mock_status.NewMockRepository(ctrl)

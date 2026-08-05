@@ -8,7 +8,10 @@
 
 ## Role in this project
 
-- Place **Entity / ValueObject / DomainService / Repository (IF)** under `internal/domain/<aggregate>/`.
+- Place **Entity / ValueObject / Repository (IF)** under `internal/domain/<aggregate>/`. A
+  **Domain Service** does *not* belong here: it spans aggregates, so it cannot live inside one of
+  them — see
+  [Where a cross-aggregate Domain Service lives](#where-a-cross-aggregate-domain-service-lives).
 
 Example: `internal/domain/user/`
 
@@ -17,14 +20,12 @@ flowchart TB
     Root["Aggregate: user"]
     A["user_domain.go (Aggregate Root)"]
     B["value.go (ValueObject)"]
-    C["service.go (Domain Service)"]
     D["user_repository.go (Repository IF)"]
     E["error.go (Domain Error)"]
     F["constant.go (Validation Const)"]
 
     Root --> A
     Root --> B
-    Root --> C
     Root --> D
     Root --> E
     Root --> F
@@ -53,11 +54,16 @@ Examples:
 - Error → `pkg/xerrors`
 
 - A domain package must **not** import another aggregate (enforced by depguard: `internal/domain/`
-  is denied). Business-semantic value objects shared across aggregates — e.g. `money.Price`, which
-  cannot live in `pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
-  [`internal/domain/kernel`](kernel/README.md), which every domain package may import. Admission to
-  the kernel is deliberately narrow (see its README); it is not a `shared` / `common` junk drawer.
-  Rationale: [ADR-0104](../../docs/adr/0104-domain-shared-kernel.md).
+  is denied). Business-semantic value objects used by more than one aggregate, which cannot live in
+  `pkg/` because `pkg/` forbids business logic, live in the **domain lexicon**
+  [`internal/domain/lexicon`](lexicon/README.md), which every domain package may import. Placement is
+  resolved `pkg/` first, and admission is deliberately narrow — the name states the question asked at
+  the door: is this a word of the business? See its README.
+  Rationale: [ADR-0034](../../docs/adr/0034-domain-lexicon.md).
+
+  The other path that may import an aggregate is `internal/domain/service/**`, where a rule spanning
+  aggregates lives; it has its own depguard rule that repeats every other domain deny. See
+  [Where a cross-aggregate Domain Service lives](#where-a-cross-aggregate-domain-service-lives).
 
 ## Domain boundaries
 
@@ -94,6 +100,85 @@ Allowed examples:
 - `FindByActive`
 - `CountByXXX`
 
+## Entity or Value Object
+
+Before deciding how to implement a domain type, decide **what it is**. The two kinds are separated by
+one question, and it is not "does it deserve invariants" — every domain type deserves those.
+
+**An Entity has an identity that outlives its attributes.** Change every field of a user and it is
+still the same user; that continuity is what an identity is for. Two entities are the same when their
+identities match, whatever their attributes say.
+
+**A Value Object has no identity.** It is the value it holds, so two of them are the same exactly when
+their contents are equal. Nothing about it persists across a change, because changing it produces a
+different value rather than the same thing in a new state. Replace it whole; never mutate it in place.
+
+Deciding for a new type:
+
+1. Ask whether the thing needs to be traceable as *the same one* over time — through updates,
+   through persistence, through being handed around. If yes, it is an Entity and it needs an identity
+   field that never changes.
+2. If it does not, it is a Value Object. Give it equality by content and make it immutable.
+3. If the answer depends on the context — an address is an Entity to a delivery service and a Value
+   Object to a customer record — the answer is the one that holds *in this model*, not in general.
+
+### How far Value Objects go here
+
+Evans models an attribute as a Value Object wherever the attribute carries meaning of its own. **This
+repository does not go that far**: an attribute is wrapped only when it has an invariant worth
+enforcing (a non-negative price, a bounded string), and stays a primitive otherwise.
+
+This is a deliberate departure. Wrapping every attribute buys type-level protection against
+mixing up two same-typed fields, but it multiplies the type count and the conversion noise at every
+boundary, and the protection it adds over a well-named field with a validated constructor is small.
+The cost outruns the benefit at this size. Where the swap risk is real — same-typed adjacent
+parameters — the remedy this repository uses is bundling into an attribute struct instead; see the
+struct-bundling section below.
+
+**When a value carries business meaning, give the domain the question, not the type.** Callers rarely
+want the value; they want to know whether something is in a state — published, low on stock, still
+active, able to move to the next status. Put that predicate on whatever owns the value and let the
+representation stay inside. The caller then reads in the language of the model, and the value is free
+to change shape without touching anything that asks about it.
+
+These are two separate tests, and a value can pass either, both, or neither. Wrapping asks whether the
+value has an invariant to enforce at construction; a predicate asks whether anything decides on it. A
+status passes both — it rejects codes it does not know, and it owns the questions others ask — so it is
+a type. An opaque identifier passes neither, and stays a primitive with nothing attached. The common
+mistake is to read "this value carries meaning" as a reason to wrap it: meaning is carried by the
+question, and a wrapper with no invariant and no caller is a name and a conversion.
+
+**`pkg/` does not contain Value Objects in this sense.** Types there wrap a vendor library or a
+primitive without carrying business meaning, which is exactly what disqualifies them from this layer;
+see [`pkg/README.md`](../../pkg/README.md).
+
+## Domain events
+
+A transition that the outside world needs to hear about **returns the fact it produced**:
+
+```go
+func (e *Entity) Cancel(now time.Time) (Event, error)
+```
+
+The aggregate that underwent the change is the only thing that knows it happened, so the aggregate
+is what declares it. Returning the event from the transition means the compiler ties the two
+together: a caller cannot obtain the event without the transition having succeeded, and cannot
+succeed at the transition without being handed the event. "State changed but no event was emitted"
+and "an event was emitted but nothing changed" stop being writable.
+
+An event is a **fact**, so it is past-tense, immutable, and carries the time it occurred — the same
+instant the transition recorded, not a second reading of the clock.
+
+**The name is domain vocabulary; the wire format is not.** What the event is called (`canceled`,
+`shipped`) belongs here. The versioned type string, the JSON field names, and the payload shape are
+a transport contract owned by the layer that publishes it — this layer holds no serialization. A
+mapping in that layer turns a domain event into its published form, which is also where a version
+rises when the payload changes shape while the fact stays the same.
+
+Collecting events on the aggregate to be drained after save (pending events) is **not** used here.
+Returning them from the transition gets the same guarantee without giving the aggregate mutable
+state to manage.
+
 ## Implementation notes
 
 ### Naming / structure
@@ -108,6 +193,13 @@ type Users []*User
 - Repository interface name should be `Repository`
 - Package name should be the domain name
 - Constructor name should be `New`
+
+> **Departure from Evans.** For Evans a Module is part of the model: the dividing lines and the names
+> are meant to carry an insight about the domain, and the structure is expected to evolve as the model
+> does. The rules above are mechanical beside that — they say what to call things, not what a division
+> should reveal. The gap is structural rather than an oversight. A template has no real domain to have
+> an insight about, so the lines drawn here are the ones the architecture implies; the ones that would
+> express a model belong to whoever forks it.
 
 ### Bundle attributes into a struct when positional arguments can be swapped
 
@@ -145,6 +237,62 @@ requires belongs on the Repository's row-to-entity conversion as well as on the 
 - Invariants are guaranteed in `New(...)`
 - setters are prohibited
 - state changes occur through **behavior methods**
+
+`Reconstruct(...)` runs the same invariants as `New(...)`. There is no relaxed path for data that is
+already stored.
+
+**An aggregate is constructed whole, children included.** One call produces the root and the parts it
+owns, and that call is where the invariants are checked — including the ones no part can judge alone,
+such as uniqueness across siblings or a total that has to agree with the lines it sums. A child's own
+constructor assembles a part; it is not the gate. Giving it one would split a single rule across two
+places and leave the cross-child half with nowhere to live. `Reconstruct(...)` is bound by this too:
+the children arrive already assembled from storage, so the root is the only point at which the set
+can still be rejected.
+
+> **Departure from Evans.** Evans warns that reconstituting an object from storage is not the same
+> problem as creating one: the data already exists, so a violated invariant may call for a repair
+> strategy rather than a flat refusal. This model always fails hard — a row that breaks an invariant
+> surfaces as an error at load time. A stored violation is a defect to be found, and repairing it
+> silently would hide that defect at the exact moment it becomes observable. The cost is accepted:
+> such a row blocks reads of that aggregate until it is corrected.
+
+### The constructor is the Factory
+
+`New(...)` and `Reconstruct(...)` are this model's Factory, and there is no separate Factory type.
+A Factory exists to take the knowledge of how to assemble a valid whole away from the client and give
+it to something that owns it; a constructor in the aggregate's own package does that already. The
+client supplies values, the constructor decides what counts as valid, and a half-built instance is
+never observable. Reconstitution's Factory is the Repository — it reads the row and hands it to
+`Reconstruct(...)`, which is why no outer layer assembles an aggregate field by field.
+
+**A Factory type appears when construction acquires configuration** — something fixed across
+creations, such as a numbering scheme or a rule that varies by tenant. The type holds that
+configuration and its method takes the per-creation data. Data that changes every call is an argument,
+not a field; when nothing is left to hold, the type has no reason to exist and `New(...)` is already
+the whole pattern.
+
+**Construction takes values, never injected collaborators.** Do not give the domain a generator or a
+policy interface to build with. A generator makes the domain perform an effect, so the same inputs
+stop producing the same aggregate. A policy interface is worse: it moves the very rule the constructor
+exists to state back outside the domain and leaves only its name behind — the criterion is then
+authored where it cannot be seen (see § Query and Aggregate for the same failure in a query path).
+Outer layers run the effects — identifiers, clocks — and pass in the results, exactly as behavior
+methods already take `now`. If a choice must be configurable, pass the choice as a domain value and
+keep the branching in the domain.
+
+**Variation is data by default; types are the exception.** The other reason to reach for a Factory is
+to choose which concrete type to build, and that presumes a model with several. Business domains do
+carry real variety, so the question is where to put it, not whether it exists. Put it in a value the
+domain interprets — a status code, a period kind — and keep one type whose behavior switches on that
+value. Move the distinction into separate types only when the variants differ in their **fields and
+invariants**, not merely in behavior: the signal is a single struct accumulating fields that are
+meaningless for half of its instances, each guarded by a check that some other field is set.
+
+Moving early costs twice here. Reconstitution then has to pick the type from a discriminator column,
+which drags that choice — and the schema it reads — into the domain, the one place that is supposed to
+know nothing about storage. And the static exhaustiveness checks that cover a switch over values do
+not cover a switch over implementations, so the compiler stops telling you where to go when a variant
+is added. Keeping variation as data keeps both properties.
 
 ### Access via getter
 
@@ -332,7 +480,7 @@ flowchart LR
 
 Keep Aggregate **small**
 
-Principle:
+Principle (the default, not an absolute — see the two departures below):
 
 ```mermaid
 flowchart TB
@@ -344,6 +492,36 @@ Avoid:
 - large aggregates
 - direct DB structure mapping
 - tightly coupled models
+
+**Two named situations depart from the principle**, and only these two. Both put rows belonging to
+more than one aggregate inside a single transaction, and each has to be justified against its own
+criterion before it is used — the criterion, and the default that precedes both, are the three
+branches of [ADR-0029](../../docs/adr/0029-commandservice-atomicity-criterion.md) § Decision
+procedure:
+
+- **A guard that must not go stale** (branch 2). An operation reads another aggregate to decide
+  whether it is permitted, and a concurrent write could invalidate that condition between the check
+  and the commit. The guard row is locked before the condition is evaluated, and held to the commit
+  ([ADR-0031](../../docs/adr/0031-ordered-pessimistic-row-locks.md)). The other aggregate is
+  observed, never mutated, and the operation stays a regular usecase.
+- **A multi-aggregate write that must be atomic** (branch 3). The requirements say an intermediate
+  state must never be observable, so the writes run in one transaction through a CommandService
+  ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+
+Everything else decomposes: a single-aggregate write plus an eventually consistent cascade, which is
+the branch this principle describes without exception.
+
+> **Departure from Evans.** Evans makes the aggregate the boundary of *immediate* consistency — one
+> transaction changes one aggregate, and anything beyond it is reconciled afterwards. This model
+> widens that boundary in the two situations above, and the widening is real: creating a purchase
+> holds rows from three aggregates in one transaction — the purchaser (locked to guard membership),
+> the products (locked to reserve stock), and the purchase being written. That is accepted because
+> Evans's argument is about *change*, and the three roles are not alike. Only the purchase and the
+> product are written, and their writes must be atomic or overselling becomes observable; the user is
+> read and held, never mutated, so its root keeps sole authority over its own state. What the
+> principle protects — no mutating several aggregates through one loaded graph until nobody can say
+> which invariant belongs to which root — still holds. What it would otherwise permit by default, and
+> what this model refuses, is deciding a cross-aggregate question from a read that nothing holds.
 
 ### Cross-aggregate reference
 
@@ -363,34 +541,191 @@ Order {
 }
 ```
 
+**This rule governs the seam between one aggregate and another — nothing else.** What decides which
+side of that seam a type sits on is whether it has an access path of its own: a type reachable only
+through its parent is a sub-entity of that aggregate, while a type that is queried, listed, or
+maintained on its own is a separate aggregate however its package is nested.
+
+A sub-entity is inseparable from its parent, so this rule does not reach it: it holds its own
+attributes directly. Whether it exposes its own identity is a design decision, not a consequence of
+this rule — exposing it is usually right, because a caller sometimes needs the identity and because
+the alternative invites a back-reference to the parent, which becomes indistinguishable from the
+sub-entity's own fields. **Never give a sub-entity a back-reference to its parent.**
+
+**Exception — reference master.** A reference master may be held as its identity plus whatever
+attributes are needed to present it, rather than as a bare identity. Those attributes are a
+denormalized copy carried for presentation: the value exposes none of the other aggregate's behavior
+and is never read to reach a decision. A mutable aggregate stays identity-only.
+
+> **Departure from Evans.** Evans permits an aggregate to hold a direct reference to another
+> aggregate's root, trusting that root to guard its own invariants. This model does not: a mutable
+> aggregate is reachable by identity only. A direct reference makes it too easy to load a graph and
+> mutate through it, collapsing two transaction boundaries into one by accident; refusing it costs a
+> lookup and buys a boundary the compiler can see. The reference-master exception above is the single
+> place a non-identity value crosses, and it carries no behavior to mutate through.
+
+### Reference master aggregates
+
+A reference master is a lighter archetype than a mutable aggregate: no state-transition method, no
+optimistic-lock version, no audit timestamps, no logical deletion, and a Repository that exposes
+lookups only, with no write operation. Do not add those to make one resemble the others — **their
+absence is the contract that says the application does not write this data.**
+
+Reference masters exist for two distinct reasons; do not conflate them.
+
+- **A copy of a distinction that exists outside the application** — a standard, a statute. Its value
+  set is not decided by the business, so it does not grow or shrink with a business decision.
+- **A vocabulary the business defines** — a classification, a status. The business itself decides the
+  value set, so a change to it *is* a business decision. These are often placed as a dimension
+  subordinate to the aggregate that references them.
+
+**A lookups-only Repository does not by itself make a reference master.** The test is whether the
+data is part of the owning aggregate's semantic set — no independent transactional lifecycle, and
+reached through a mandatory, uniquely-determined foreign key. A table that is standing lookup data
+but is queried and listed on its own terms is an *independent aggregate*: it stays identity-only, and
+its attributes are resolved by a usecase-layer batch fetch rather than carried across the seam.
+`internal/domain/prefecture` is the case to compare against — externally given and never written by
+the application, yet an independent aggregate, not a reference master. See
+[`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules for the read-path
+consequences of the same distinction.
+
 ### Multi-aggregate rules
 
-Rules across multiple aggregates belong to:
-
-- Domain Service
-- Usecase
-
-Example:
+A rule that spans aggregates belongs to a **Domain Service** — not to Usecase.
 
 ```text
-User cancellation → Subscription stop
+Withdrawal ← in-progress purchase
 ```
+
+#### Domain Service or Usecase
+
+The line is **derivation**.
+
+- **Domain Service** derives something: it computes a business-meaningful value from more than one
+  entity. What quantity can actually be allocated, given stock and reservations. It is stateless, and
+  it exists only because the operation is not the natural responsibility of any one entity or value
+  object — if it fits on one of them, put it there instead.
+- **Usecase** coordinates and maps. It orders the calls, owns the transaction, and turns domain
+  models into DTOs.
+
+**Reading more than one entity is not derivation.** Loading two entities and placing them side by
+side in a DTO is mapping, and it stays in Usecase. Routing that through a Domain Service would drag
+every two-entity read into the domain layer for nothing.
+
+When a value is derived and then shipped outward, the two split: the derivation is the Domain
+Service's, the copying into the DTO is the Usecase's.
+
+The test, when it is unclear: **if that calculation changed, would the reason be a business decision
+or a presentation decision?** A business decision means it is a domain rule and belongs to a Domain
+Service.
+
+#### Where a cross-aggregate Domain Service lives
+
+Under `internal/domain/service/<name>/` — outside any aggregate package, because a service that spans
+aggregates cannot live inside one of them (a domain package must not import another aggregate).
+
+**That placement only means something because the path has its own depguard rule.** An aggregate
+package may not import another aggregate; a package under `internal/domain/service/**` may. Everything
+else the domain layer forbids is repeated verbatim in that rule — no framework, no infrastructure, no
+usecase or controller, no file system, process, or environment access — so the exception widens
+exactly one edge and nothing else. Without it, moving a rule out of an aggregate would not let it
+reach the second aggregate, and the placement rule above would be unfollowable.
+
+The name is business vocabulary — what the rule is about, never `common` / `shared` / `util`, which
+name nothing and therefore refuse nothing.
+
+**Admission is narrow, and the depguard exception is not an invitation.** A package belongs here only
+when all three hold:
+
+1. The rule spans aggregates — it cannot be decided from one aggregate's state alone.
+2. It is the natural responsibility of neither aggregate. If it fits on one of them, it goes there.
+3. It is stateless, and it derives (see *Domain Service or Usecase* above). Reading two aggregates to
+   place them side by side is mapping, and mapping stays in Usecase.
+
+A service here holds no I/O: no Repository, no `context.Context`. It receives state the Usecase has
+already loaded and returns a domain error. Acquiring that state, ordering the calls, and owning the
+transaction remain the Usecase's job.
+
+**The occupant today is [`service/membership`](service/membership).** It carries one invariant seen
+from both sides — a user and their in-progress purchases must not be separated. `EnsurePurchasable`
+refuses a purchase by a user who is no longer active; `EnsureWithdrawable` refuses a withdrawal while
+any of that user's purchases is still in progress. Neither aggregate can host it: the user aggregate
+knows nothing about purchases, and the purchase aggregate knows nothing about membership.
 
 ### Query and Aggregate
 
-Aggregate is a **Write Model**
+Aggregate is a **Write Model**. The *execution* of aggregation, reporting, complex search, and
+`GROUP BY` belongs to QueryService / ReadModel, and so does the projection those return.
 
-Do not handle:
+**What moves out is the implementation, never the criterion.** "Which products count as low on
+stock", "which users count as inactive" — the rule that decides membership is domain vocabulary and
+stays in the domain layer, expressed as domain constants and domain predicates. When that rule lives
+only in a `WHERE` clause, the domain has lost a business rule to infrastructure, and nothing in this
+layer can tell you what the rule is any more.
 
-- aggregation
-- reporting
-- complex search
-- GROUP BY
+The distinction matters most where selection is concerned. Naively handing a criterion to a
+Repository means fetching everything and filtering in memory, which is not viable; so the criterion
+is translated into SQL, an index, or a search engine, and the projection comes back as a DTO the
+domain never sees. That translation is expected and correct. What must not travel with it is the
+authorship of the criterion.
 
-These belong to:
+**"The `WHERE` already guarantees it, so a domain predicate would be redundant" is not an argument.**
+Every row a filter returns does satisfy that filter — and that is circular. What the row satisfies is
+the condition the query happens to state; whether that condition *is* the business rule is the very
+thing left unchecked. The redundancy is real at the level of *execution* and imaginary at the level
+of *authorship*, and the argument trades one for the other. The costs are concrete: the meaning of
+the term can no longer be answered by reading this layer, a second caller has to restate the
+condition with nothing linking the two, and the rule can only be exercised through the database, so
+a change in meaning breaks no unit test.
 
-- QueryService
-- ReadModel
+**Not every condition is a criterion.** A condition is one when someone who knows the business would
+recognise it as a statement about the business — when the term it decides has a name they use.
+Identity lookup, pagination, ordering, and foreign-key joins decide nothing about the business and
+this rule does not reach them. Nor does a Repository method whose signature already says the whole
+condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while `FindAllLowStock` does
+not. The check is one question — can the meaning of the term be answered by reading the domain
+package alone? If not, its authorship has left.
+
+The same discipline is already imposed on the write side, where a CommandService may only enforce
+conditions derived from domain invariants ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+There is no reason for the read side to be the exception.
+
+Read paths are free to skip the aggregate entirely — a search index is a projection of the system of
+record, and reconstructing every hit through `FindByID` to re-derive it is not a realistic design.
+The domain's claim on a read path is the vocabulary of the question, not the shape of the answer.
+
+> **Departure from Evans.** Evans gives a criterion its own object — a specification with
+> `isSatisfiedBy` and combinators (`AND` / `OR` / `NOT`) — so a criterion can be carried around as a
+> value. **This model does not reify criteria.** A criterion is a named predicate attached to whatever
+> owns the value, evaluated where it sits rather than handed to someone else.
+>
+> Evans puts a specification to three uses, and that one choice splits them. Validation and selection
+> need only that the criterion have a name and a single definition, which a predicate gives.
+> Composition and building to order both presuppose passing the criterion to something else — a
+> repository that will translate it, or a factory that will satisfy it — and neither is reachable
+> without reification. They are missing together because they share a root, not for two separate
+> reasons.
+>
+> What that gives up is concrete. A composite criterion is restated per query instead of assembled
+> once — "published" is stated by four separate queries — and the authorship rule above is what keeps
+> those restatements answerable from the domain. A creation request names its values instead of
+> describing what it needs.
+>
+> What it keeps is also concrete. Go's own `&&` and `||` compose predicates wherever a criterion is
+> evaluated in place, at no cost, so composition is absent only where it would have had to travel.
+> Predicates that gate a change return a typed error rather than a bool, and the identity of that
+> error is what the response status is derived from
+> ([ADR-0042](../../docs/adr/0042-apperror-protocol-agnostic-errors.md)); a composed `isSatisfiedBy`
+> collapses that to "not satisfied", and recovering which part failed rebuilds the error return.
+> Queries stay static SQL, generated and type-checked against the real schema — a criterion-to-SQL
+> translator would end that.
+>
+> Reification earns its place when a criterion has to move: when callers assemble filters the API
+> surface does not enumerate, when a rule varies by tenant or contract and has to be carried as data,
+> or when a client can state what it needs but not what to build — the case where the criterion
+> carries less information than the values would, and something else supplies the rest. None of those
+> holds here yet, and adopting one use without that trigger would buy the indirection without the
+> reason.
 
 ## Dependency inversion for Infrastructure layer
 
@@ -453,7 +788,7 @@ names, and SQL fragments belong to the Infrastructure doc comment that already s
 detail, and [`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
 implementation for the rule this mirrors.
 
-Two consequences are specific to Domain:
+Three consequences are specific to Domain:
 
 - **A numeric bound whose reason is the storage width is expressed as a Go integer width**, not as a
   SQL type name — `1..32767` is documented as the positive range of a signed 16-bit integer. That
@@ -461,6 +796,9 @@ Two consequences are specific to Domain:
   on the constant so the exported constructor's doc stays a pure contract.
 - **A reference master is named by its domain name** (the product-status master), never by its table
   (`product_statuses`).
+- **A single-fetch method states its not-found behavior** — `FindByID` documents that it returns
+  NotFound when the target is absent. The caller branches on that, so it is part of the guarantee,
+  not an implementation detail.
 
 ## Callable layers
 

@@ -171,6 +171,25 @@ Important rules
 - Do not return `sqlc` types directly to upper layers
 - Use Domain constructors
 - Repository converts Row / Model into Domain entities and returns them
+- When the conversion goes beyond a direct constructor call, or is reused by more than one method,
+  extract it as an unexported helper named `rowToXxx` (single) / `rowsToXxx` (slice). Fixing the name
+  keeps conversion readable apart from the fetch helpers around it.
+
+## Keyset pagination
+
+Express keyset pagination as **two fixed sqlc queries per ordering** — one for the first page, with
+no cursor predicate, and one for "after the cursor", taking the ordering-key tuple — rather than one
+query carrying an optional predicate. Branch on the presence of the cursor in Go and call the
+matching query. Folding both into one query makes a single statement whose plan depends on its
+input.
+
+## Rebuilding an aggregate that owns a subordinate collection
+
+An aggregate whose root owns a collection of subordinate entities is rebuilt from **two fixed
+queries** — one for the root row, one for the subordinate rows — joined in Go, not from a single
+JOIN. The query count stays fixed however many subordinate rows there are, so there is no N+1, and
+the root row is not repeated once per subordinate row. Share the subordinate query across every
+entry point that rebuilds that aggregate.
 
 ## Domain constructor error
 

@@ -15,6 +15,7 @@ import (
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -32,17 +33,17 @@ func TestV1PurchasesCancel_Integration(t *testing.T) {
 		t.Helper()
 		canceledAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 		return purchaseuc.CancelPurchaseView{
-			ID:             uuid.NewTestFromSalt(t, "cancel_int_id"),
+			ID:             uuidtestkit.NewTestFromSalt(t, "cancel_int_id"),
 			Code:           "cancel-int-code",
-			UserID:         uuid.NewTestFromSalt(t, "cancel_int_user"),
-			StatusID:       uuid.NewTestFromSalt(t, "cancel_int_status"),
+			UserID:         uuidtestkit.NewTestFromSalt(t, "cancel_int_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "cancel_int_status"),
 			StatusName:     "キャンセル",
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
 			ShippingFee:    500,
 			TotalAmount:    176500,
 			Details: []purchaseuc.PurchaseDetailView{
-				{ProductID: uuid.NewTestFromSalt(t, "cancel_int_product"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+				{ProductID: uuidtestkit.NewTestFromSalt(t, "cancel_int_product"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 			},
 			OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			CanceledAt: &canceledAt,

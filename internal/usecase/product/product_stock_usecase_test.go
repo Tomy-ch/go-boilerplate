@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -152,7 +152,7 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			actual, err := u.UpdateProductStock(context.Background(), nil,
-				uuid.NewTestFromSalt(t, "stock_unauthenticated"), UpdateProductStockParams{Delta: 1})
+				uuidtestkit.NewTestFromSalt(t, "stock_unauthenticated"), UpdateProductStockParams{Delta: 1})
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 			assert.Equal(t, ProductView{}, actual)
 		})
@@ -167,7 +167,7 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).Times(0)
 
 			actual, err := u.UpdateProductStock(context.Background(), &auth.Authn{},
-				uuid.NewTestFromSalt(t, "stock_forbidden"), UpdateProductStockParams{Delta: 1})
+				uuidtestkit.NewTestFromSalt(t, "stock_forbidden"), UpdateProductStockParams{Delta: 1})
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 			assert.Equal(t, ProductView{}, actual)
 		})
@@ -175,7 +175,7 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 		t.Run("対象商品が存在しない場合、ErrNotFound(404)を返し更新を実行しない", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "stock_not_found")
+			id := uuidtestkit.NewTestFromSalt(t, "stock_not_found")
 			u, deps := newStockTestUsecase(t)
 			deps.authorizer.EXPECT().
 				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductStockUpdate, gomock.Any()).

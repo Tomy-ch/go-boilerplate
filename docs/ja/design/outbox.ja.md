@@ -2,7 +2,7 @@
 
 [Outbox Store README（日本語）](../../../internal/usecase/boundary/outbox/README.ja.md) | English: [outbox.md](../../design/outbox.md)
 
-本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0045](../adr/0045-transactional-outbox.ja.md) 以降）、relay の重複窓を本テンプレートで意図的にハードニングしない決定（および本番コピー向けの多層再設計の推奨）は [ADR-0097](../adr/0097-outbox-relay-hardening-delegated.ja.md) を参照。
+本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0049](../adr/0049-transactional-outbox.ja.md) 以降）、relay の重複窓を本テンプレートで意図的にハードニングしない決定（および本番コピー向けの多層再設計の推奨）は [ADR-0102](../adr/0102-outbox-relay-hardening-delegated.ja.md) を参照。
 
 ---
 
@@ -212,6 +212,15 @@ sequenceDiagram
 ## 4. integrator が書く箇所（サブシステムが提供しない部分）
 
 サブシステムは **機構一式** を同梱します: emit/relay/gc/replay の各 usecase、RDB `Store`、HTTP `Publisher`、relay `Engine`、GC job、DI 結線、`outbox-relay` / `replay` / `job outbox-gc` の各入口。既定ではイベントは流れません — integrator が両端（生産する呼び出しと消費するエンドポイント）を結線し、プロセスを運用します。
+
+> **Evans からの逸脱 — この面に公開言語が無い。** 同期 HTTP 面には存在する。OpenAPI は、別リポジトリの
+> 利用者がこのリポジトリのツールチェーン無しで読める解決済み契約としてコミットされ、drift gate が
+> 鮮度を保証している。非同期面には無い。[ADR-0052](../../adr/0052-message-id-idempotency-propagation.md)
+> が定めているのは*転送*規約（`Idempotency-Key`）であって言語ではない。イベント payload のスキーマも
+> `event_type` の語彙も、ここでは定義も公開もされていないため、受信側は両方をこのリポジトリのソースを
+> 読んで知ることになる。この非対称は、下記②が payload と `event_type` を integrator に委ねている限りに
+> おいては意図的である。テンプレートは自分が所有していないイベントの言語を公開できない。**まだ提供
+> できていない**のは、integrator がそれらのイベントを定義した後、その公開がどういう形を取るべきかの型である。
 
 ```mermaid
 flowchart LR

@@ -310,11 +310,25 @@ func (r *repository) FindDeletedBefore(ctx context.Context, cutoff time.Time, af
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, r.db))
-	ids, err := db.ListPurgeCandidateUserIDs(ctx, &gen.ListPurgeCandidateUserIDsParams{
-		Cutoff:     &cutoff,
-		AfterID:    afterID,
-		LimitParam: limit,
-	})
+
+	// keyset は「先頭ページ用」「カーソル以降用」の 2 本の固定クエリへ分ける。1 本へ畳んで
+	// オプショナル述語にすると、実行計画が入力に依存する単一のステートメントになる。
+	var (
+		ids []uuid.UUID
+		err error
+	)
+	if afterID == nil {
+		ids, err = db.ListPurgeCandidateUserIDsFirst(ctx, &gen.ListPurgeCandidateUserIDsFirstParams{
+			Cutoff:     &cutoff,
+			LimitParam: limit,
+		})
+	} else {
+		ids, err = db.ListPurgeCandidateUserIDsAfter(ctx, &gen.ListPurgeCandidateUserIDsAfterParams{
+			Cutoff:     &cutoff,
+			AfterID:    *afterID,
+			LimitParam: limit,
+		})
+	}
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}

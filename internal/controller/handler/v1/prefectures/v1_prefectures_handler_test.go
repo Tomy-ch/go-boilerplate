@@ -12,6 +12,7 @@ import (
 	prefectureuc "go-boilerplate/internal/usecase/prefecture"
 	mock_prefecture "go-boilerplate/internal/usecase/prefecture/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -113,7 +114,7 @@ func Test_toPrefectureResponse(t *testing.T) {
 		t.Run("都道府県DTOの全項目をレスポンスへ写像する", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "prefecture_conv")
+			id := uuidtestkit.NewTestFromSalt(t, "prefecture_conv")
 			actual := toPrefectureResponse(prefectureuc.PrefectureDTO{ID: id, Code: 13, Name: "東京都"})
 
 			assert.Equal(t, id.ToPrimitive(), actual.Id)

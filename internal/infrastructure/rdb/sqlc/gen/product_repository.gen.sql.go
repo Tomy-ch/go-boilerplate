@@ -26,7 +26,8 @@ type CountProductsRow struct {
 }
 
 // === source: database/dml/repository/product/count_product.sql ===
-// 登録済みの商品総数と、そのうち公開済み（published_at 設定済み）の商品数を返します。
+// 登録済みの商品総数と、そのうち公開済みの商品数を返します。
+// 「公開中」を定義するのは Product.IsPublished で、FILTER 句はその実行形です。片方だけ変更しないこと。
 //
 //	SELECT
 //	    COUNT(*)::BIGINT AS total_count,
@@ -254,7 +255,7 @@ type GetPublishedProductByIDRow struct {
 // ID から公開中の単一商品を取得します。
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// 公開範囲の定義は一覧取得（ListPublishedProducts*）と同一述語（published_at 非 NULL）で、
+// 「公開中」を定義するのは Product.IsPublished で、以下の条件はその実行形です。片方だけ変更しないこと。
 // 非公開・未存在はいずれも該当行なし（0 行）で返ります。
 //
 //	SELECT
@@ -348,6 +349,7 @@ type ListLowStockProductsRow struct {
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
+// 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -396,7 +398,7 @@ func (q *Queries) ListLowStockProducts(ctx context.Context, limitParam int32) ([
 	return items, nil
 }
 
-const listPublishedProductsAsc = `-- name: ListPublishedProductsAsc :many
+const listProductsByIDsForUpdate = `-- name: ListProductsByIDsForUpdate :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -404,43 +406,23 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE p.published_at IS NOT NULL
-    AND ($1::UUID IS NULL OR p.category_id = $1)
-    AND ($2::UUID IS NULL OR p.status_id = $2)
-    AND (
-        $3::TEXT IS NULL
-        OR p.name ILIKE '%' || $3 || '%'
-        OR p.description ILIKE '%' || $3 || '%'
-    )
-    AND (
-        NOT $4::BOOLEAN
-        OR p.published_at > $5
-        OR (p.published_at = $5 AND p.id > $6)
-    )
-ORDER BY p.published_at ASC, p.id ASC
-LIMIT $7
+WHERE p.id = ANY($1::UUID [])
+ORDER BY p.id
+FOR UPDATE OF p
 `
 
-type ListPublishedProductsAscParams struct {
-	CategoryID       *uuid.UUID
-	StatusID         *uuid.UUID
-	Keyword          *string
-	HasAfter         bool
-	AfterPublishedAt *time.Time
-	AfterID          *uuid.UUID
-	LimitParam       int32
-}
-
-type ListPublishedProductsAscRow struct {
+type ListProductsByIDsForUpdateRow struct {
 	StatusName   string
 	CategoryName string
 	Products     Products
 }
 
-// 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+// === source: database/dml/repository/product/select_products_by_ids_for_update.sql ===
+// ID の集合から公開状態を問わない商品群を、更新のために悲観ロック（FOR UPDATE）して取得します。
+// ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0031）。
+// 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
+// ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
 // status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より未来へ絞り込みます。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -449,38 +431,18 @@ type ListPublishedProductsAscRow struct {
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
-//	WHERE p.published_at IS NOT NULL
-//	    AND ($1::UUID IS NULL OR p.category_id = $1)
-//	    AND ($2::UUID IS NULL OR p.status_id = $2)
-//	    AND (
-//	        $3::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $3 || '%'
-//	        OR p.description ILIKE '%' || $3 || '%'
-//	    )
-//	    AND (
-//	        NOT $4::BOOLEAN
-//	        OR p.published_at > $5
-//	        OR (p.published_at = $5 AND p.id > $6)
-//	    )
-//	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $7
-func (q *Queries) ListPublishedProductsAsc(ctx context.Context, arg *ListPublishedProductsAscParams) ([]*ListPublishedProductsAscRow, error) {
-	rows, err := q.db.Query(ctx, listPublishedProductsAsc,
-		arg.CategoryID,
-		arg.StatusID,
-		arg.Keyword,
-		arg.HasAfter,
-		arg.AfterPublishedAt,
-		arg.AfterID,
-		arg.LimitParam,
-	)
+//	WHERE p.id = ANY($1::UUID [])
+//	ORDER BY p.id
+//	FOR UPDATE OF p
+func (q *Queries) ListProductsByIDsForUpdate(ctx context.Context, productIdsParam []uuid.UUID) ([]*ListProductsByIDsForUpdateRow, error) {
+	rows, err := q.db.Query(ctx, listProductsByIDsForUpdate, productIdsParam)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ListPublishedProductsAscRow
+	var items []*ListProductsByIDsForUpdateRow
 	for rows.Next() {
-		var i ListPublishedProductsAscRow
+		var i ListProductsByIDsForUpdateRow
 		if err := rows.Scan(
 			&i.StatusName,
 			&i.CategoryName,
@@ -508,7 +470,7 @@ func (q *Queries) ListPublishedProductsAsc(ctx context.Context, arg *ListPublish
 	return items, nil
 }
 
-const listPublishedProductsDesc = `-- name: ListPublishedProductsDesc :many
+const listPublishedProductsAscAfter = `-- name: ListPublishedProductsAscAfter :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -525,35 +487,34 @@ WHERE p.published_at IS NOT NULL
         OR p.description ILIKE '%' || $3 || '%'
     )
     AND (
-        NOT $4::BOOLEAN
-        OR p.published_at < $5
-        OR (p.published_at = $5 AND p.id < $6)
+        p.published_at > $4
+        OR (p.published_at = $4 AND p.id > $5)
     )
-ORDER BY p.published_at DESC, p.id DESC
-LIMIT $7
+ORDER BY p.published_at ASC, p.id ASC
+LIMIT $6
 `
 
-type ListPublishedProductsDescParams struct {
+type ListPublishedProductsAscAfterParams struct {
 	CategoryID       *uuid.UUID
 	StatusID         *uuid.UUID
 	Keyword          *string
-	HasAfter         bool
 	AfterPublishedAt *time.Time
-	AfterID          *uuid.UUID
+	AfterID          uuid.UUID
 	LimitParam       int32
 }
 
-type ListPublishedProductsDescRow struct {
+type ListPublishedProductsAscAfterRow struct {
 	StatusName   string
 	CategoryName string
 	Products     Products
 }
 
-// === source: database/dml/repository/product/select_products.sql ===
-// 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+// 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// category_id / status_id / keyword は指定時のみ絞り込み、has_after=true の場合は keyset 境界(after_*)より過去へ絞り込みます。
+// category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -571,18 +532,16 @@ type ListPublishedProductsDescRow struct {
 //	        OR p.description ILIKE '%' || $3 || '%'
 //	    )
 //	    AND (
-//	        NOT $4::BOOLEAN
-//	        OR p.published_at < $5
-//	        OR (p.published_at = $5 AND p.id < $6)
+//	        p.published_at > $4
+//	        OR (p.published_at = $4 AND p.id > $5)
 //	    )
-//	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $7
-func (q *Queries) ListPublishedProductsDesc(ctx context.Context, arg *ListPublishedProductsDescParams) ([]*ListPublishedProductsDescRow, error) {
-	rows, err := q.db.Query(ctx, listPublishedProductsDesc,
+//	ORDER BY p.published_at ASC, p.id ASC
+//	LIMIT $6
+func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPublishedProductsAscAfterParams) ([]*ListPublishedProductsAscAfterRow, error) {
+	rows, err := q.db.Query(ctx, listPublishedProductsAscAfter,
 		arg.CategoryID,
 		arg.StatusID,
 		arg.Keyword,
-		arg.HasAfter,
 		arg.AfterPublishedAt,
 		arg.AfterID,
 		arg.LimitParam,
@@ -591,9 +550,316 @@ func (q *Queries) ListPublishedProductsDesc(ctx context.Context, arg *ListPublis
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ListPublishedProductsDescRow
+	var items []*ListPublishedProductsAscAfterRow
 	for rows.Next() {
-		var i ListPublishedProductsDescRow
+		var i ListPublishedProductsAscAfterRow
+		if err := rows.Scan(
+			&i.StatusName,
+			&i.CategoryName,
+			&i.Products.ID,
+			&i.Products.Name,
+			&i.Products.Description,
+			&i.Products.Price,
+			&i.Products.Quantity,
+			&i.Products.StockWarningThreshold,
+			&i.Products.StatusID,
+			&i.Products.CategoryID,
+			&i.Products.PublishedAt,
+			&i.Products.ImagePath,
+			&i.Products.LockVersion,
+			&i.Products.CreatedAt,
+			&i.Products.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedProductsAscFirst = `-- name: ListPublishedProductsAscFirst :many
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.published_at IS NOT NULL
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::TEXT IS NULL
+        OR p.name ILIKE '%' || $3 || '%'
+        OR p.description ILIKE '%' || $3 || '%'
+    )
+ORDER BY p.published_at ASC, p.id ASC
+LIMIT $4
+`
+
+type ListPublishedProductsAscFirstParams struct {
+	CategoryID *uuid.UUID
+	StatusID   *uuid.UUID
+	Keyword    *string
+	LimitParam int32
+}
+
+type ListPublishedProductsAscFirstRow struct {
+	StatusName   string
+	CategoryName string
+	Products     Products
+}
+
+// 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+// category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 先頭ページを返します。カーソル以降は対の After クエリが担います。
+//
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
+//	WHERE p.published_at IS NOT NULL
+//	    AND ($1::UUID IS NULL OR p.category_id = $1)
+//	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND (
+//	        $3::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $3 || '%'
+//	        OR p.description ILIKE '%' || $3 || '%'
+//	    )
+//	ORDER BY p.published_at ASC, p.id ASC
+//	LIMIT $4
+func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPublishedProductsAscFirstParams) ([]*ListPublishedProductsAscFirstRow, error) {
+	rows, err := q.db.Query(ctx, listPublishedProductsAscFirst,
+		arg.CategoryID,
+		arg.StatusID,
+		arg.Keyword,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPublishedProductsAscFirstRow
+	for rows.Next() {
+		var i ListPublishedProductsAscFirstRow
+		if err := rows.Scan(
+			&i.StatusName,
+			&i.CategoryName,
+			&i.Products.ID,
+			&i.Products.Name,
+			&i.Products.Description,
+			&i.Products.Price,
+			&i.Products.Quantity,
+			&i.Products.StockWarningThreshold,
+			&i.Products.StatusID,
+			&i.Products.CategoryID,
+			&i.Products.PublishedAt,
+			&i.Products.ImagePath,
+			&i.Products.LockVersion,
+			&i.Products.CreatedAt,
+			&i.Products.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedProductsDescAfter = `-- name: ListPublishedProductsDescAfter :many
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.published_at IS NOT NULL
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::TEXT IS NULL
+        OR p.name ILIKE '%' || $3 || '%'
+        OR p.description ILIKE '%' || $3 || '%'
+    )
+    AND (
+        p.published_at < $4
+        OR (p.published_at = $4 AND p.id < $5)
+    )
+ORDER BY p.published_at DESC, p.id DESC
+LIMIT $6
+`
+
+type ListPublishedProductsDescAfterParams struct {
+	CategoryID       *uuid.UUID
+	StatusID         *uuid.UUID
+	Keyword          *string
+	AfterPublishedAt *time.Time
+	AfterID          uuid.UUID
+	LimitParam       int32
+}
+
+type ListPublishedProductsDescAfterRow struct {
+	StatusName   string
+	CategoryName string
+	Products     Products
+}
+
+// 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+// category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+//
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
+//	WHERE p.published_at IS NOT NULL
+//	    AND ($1::UUID IS NULL OR p.category_id = $1)
+//	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND (
+//	        $3::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $3 || '%'
+//	        OR p.description ILIKE '%' || $3 || '%'
+//	    )
+//	    AND (
+//	        p.published_at < $4
+//	        OR (p.published_at = $4 AND p.id < $5)
+//	    )
+//	ORDER BY p.published_at DESC, p.id DESC
+//	LIMIT $6
+func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListPublishedProductsDescAfterParams) ([]*ListPublishedProductsDescAfterRow, error) {
+	rows, err := q.db.Query(ctx, listPublishedProductsDescAfter,
+		arg.CategoryID,
+		arg.StatusID,
+		arg.Keyword,
+		arg.AfterPublishedAt,
+		arg.AfterID,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPublishedProductsDescAfterRow
+	for rows.Next() {
+		var i ListPublishedProductsDescAfterRow
+		if err := rows.Scan(
+			&i.StatusName,
+			&i.CategoryName,
+			&i.Products.ID,
+			&i.Products.Name,
+			&i.Products.Description,
+			&i.Products.Price,
+			&i.Products.Quantity,
+			&i.Products.StockWarningThreshold,
+			&i.Products.StatusID,
+			&i.Products.CategoryID,
+			&i.Products.PublishedAt,
+			&i.Products.ImagePath,
+			&i.Products.LockVersion,
+			&i.Products.CreatedAt,
+			&i.Products.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedProductsDescFirst = `-- name: ListPublishedProductsDescFirst :many
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.published_at IS NOT NULL
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::TEXT IS NULL
+        OR p.name ILIKE '%' || $3 || '%'
+        OR p.description ILIKE '%' || $3 || '%'
+    )
+ORDER BY p.published_at DESC, p.id DESC
+LIMIT $4
+`
+
+type ListPublishedProductsDescFirstParams struct {
+	CategoryID *uuid.UUID
+	StatusID   *uuid.UUID
+	Keyword    *string
+	LimitParam int32
+}
+
+type ListPublishedProductsDescFirstRow struct {
+	StatusName   string
+	CategoryName string
+	Products     Products
+}
+
+// === source: database/dml/repository/product/select_products.sql ===
+// 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+// status_name / category_name は商品の付随表示値。
+// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+// category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 先頭ページを返します。カーソル以降は対の After クエリが担います。
+//
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
+//	WHERE p.published_at IS NOT NULL
+//	    AND ($1::UUID IS NULL OR p.category_id = $1)
+//	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND (
+//	        $3::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $3 || '%'
+//	        OR p.description ILIKE '%' || $3 || '%'
+//	    )
+//	ORDER BY p.published_at DESC, p.id DESC
+//	LIMIT $4
+func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListPublishedProductsDescFirstParams) ([]*ListPublishedProductsDescFirstRow, error) {
+	rows, err := q.db.Query(ctx, listPublishedProductsDescFirst,
+		arg.CategoryID,
+		arg.StatusID,
+		arg.Keyword,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPublishedProductsDescFirstRow
+	for rows.Next() {
+		var i ListPublishedProductsDescFirstRow
 		if err := rows.Scan(
 			&i.StatusName,
 			&i.CategoryName,

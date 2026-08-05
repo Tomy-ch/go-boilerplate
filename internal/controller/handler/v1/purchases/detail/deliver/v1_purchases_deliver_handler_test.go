@@ -17,6 +17,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -42,17 +43,17 @@ func deliverViewFixture(t *testing.T) purchaseuc.DeliverPurchaseView {
 	t.Helper()
 	delivered := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
 	return purchaseuc.DeliverPurchaseView{
-		ID:             uuid.NewTestFromSalt(t, "hd_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "hd_id"),
 		Code:           "hd-code",
-		UserID:         uuid.NewTestFromSalt(t, "hd_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "hd_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "hd_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "hd_status"),
 		StatusName:     "配達済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "hd_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "hd_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		DeliveredAt: &delivered,
@@ -87,8 +88,8 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			userID := uuid.NewTestFromSalt(t, "hd_admin")
-			purchaseID := uuid.NewTestFromSalt(t, "hd_purchase")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_admin")
+			purchaseID := uuidtestkit.NewTestFromSalt(t, "hd_purchase")
 			view := deliverViewFixture(t)
 			uc.EXPECT().DeliverPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID) (purchaseuc.DeliverPurchaseView, error) {
@@ -135,7 +136,7 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 				})
 
 			_, err = s.PatchPurchasesDeliver(ctx, gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_unresolved").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_unresolved").ToPrimitive(),
 			})
 			require.NoError(t, err)
 
@@ -157,9 +158,9 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesDeliver(context.Background(), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
 			})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("非adminの認可エラーをそのまま伝播する", func(t *testing.T) {
@@ -172,9 +173,9 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			uc.EXPECT().DeliverPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(purchaseuc.DeliverPurchaseView{}, apperror.ErrPermissionDenied)
 
-			userID := uuid.NewTestFromSalt(t, "hd_user_forbidden")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_forbidden")
 			_, err := s.PatchPurchasesDeliver(authnContext(t, userID), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_purchase_forbidden").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_forbidden").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
@@ -189,9 +190,9 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			uc.EXPECT().DeliverPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(purchaseuc.DeliverPurchaseView{}, apperror.ErrConflict)
 
-			userID := uuid.NewTestFromSalt(t, "hd_user_err")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_err")
 			_, err := s.PatchPurchasesDeliver(authnContext(t, userID), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_purchase_err").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_err").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
@@ -207,9 +208,9 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			view.Details[0].Quantity = math.MaxInt32 + 1
 			uc.EXPECT().DeliverPurchase(gomock.Any(), gomock.Any(), gomock.Any()).Return(view, nil)
 
-			userID := uuid.NewTestFromSalt(t, "hd_user_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_overflow")
 			_, err := s.PatchPurchasesDeliver(authnContext(t, userID), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})

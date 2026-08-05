@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/stringkit"
 	"go-boilerplate/pkg/uuid"
@@ -222,3 +222,26 @@ func (p *Product) ImagePath() *string { return ptr.Copy(p.imagePath) }
 
 // Version は、楽観ロックのバージョンを返します。
 func (p *Product) Version() int { return p.version }
+
+// IsPublished は、商品が公開中かどうかを返します。公開中とは公開日時が設定されていることを指します。
+//
+// 「公開中」の定義は [IsPublished] が持ちます。読み取り経路の絞り込みは SQL が実行しますが、それは
+// この定義の実行形であって定義ではありません。
+func (p *Product) IsPublished() bool { return IsPublished(p.publishedAt) }
+
+// IsPublished は、公開日時から商品が公開中かどうかを判定します。
+//
+// 「公開中」の定義はここ 1 箇所にあります。集約を再構築しない読み取り——集計や射影を返す経路——にも
+// 同じ定義を当てられるよう、エンティティのメソッドとは別に値に対する形でも公開します。
+func IsPublished(publishedAt *time.Time) bool { return publishedAt != nil }
+
+// IsLowStock は、商品の在庫が補充を要する水準まで減っているかどうかを返します。
+// 在庫警告閾値が未設定の商品は警告対象を持たないため、常に false です。
+//
+// 「在庫僅少」の定義はこのメソッドが持ちます。IsPublished と同じく、SQL の絞り込みは実行形です。
+func (p *Product) IsLowStock() bool {
+	if p.stockWarningThreshold == nil {
+		return false
+	}
+	return p.quantity <= *p.stockWarningThreshold
+}

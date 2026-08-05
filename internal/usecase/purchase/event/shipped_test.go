@@ -7,7 +7,7 @@ import (
 
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/usecase/purchase/event"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,17 +20,29 @@ func TestBuildShipped(t *testing.T) {
 	paid := func(t *testing.T, salt string) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
-			domainpurchase.NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, salt+"_d"), uuid.NewTestFromSalt(t, salt+"_product"), 2, mustPrice(t, "800"),
-			),
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, salt+"_d"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, salt+"_product"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
 		}
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
-		entity, err := domainpurchase.Reconstruct(
-			uuid.NewTestFromSalt(t, salt+"_id"), salt+"-code",
-			uuid.NewTestFromSalt(t, salt+"_user"), uuid.NewTestFromSalt(t, salt+"_status"),
-			domainpurchase.StatusCodePaid, 160000, 16000, 500, 176500, details,
-			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), &paidAt, nil, nil, nil,
-		)
+		entity, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt+"_id"), domainpurchase.Attributes{
+			Code:           salt + "-code",
+			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, salt+"_status"),
+			StatusCode:     domainpurchase.StatusPaid.Code(),
+			SubtotalAmount: 160000,
+			TaxAmount:      16000,
+			ShippingFee:    500,
+			TotalAmount:    176500,
+			Details:        details,
+			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			PaidAt:         &paidAt,
+			CanceledAt:     nil,
+			ShippedAt:      nil,
+			DeliveredAt:    nil,
+		})
 		require.NoError(t, err)
 		return entity
 	}
@@ -43,7 +55,8 @@ func TestBuildShipped(t *testing.T) {
 
 			entity := paid(t, "bs")
 			now := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
-			require.NoError(t, entity.Ship(now))
+			_, err := entity.Ship(now)
+			require.NoError(t, err)
 
 			payload, perr := event.BuildShipped(entity)
 			require.NoError(t, perr)
@@ -59,7 +72,7 @@ func TestBuildShipped(t *testing.T) {
 			assert.Equal(t, entity.ID().String(), decoded.PurchaseID)
 			assert.Equal(t, "bs-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
-			assert.Equal(t, domainpurchase.StatusCodeShipped, decoded.StatusCode)
+			assert.Equal(t, domainpurchase.StatusShipped.Code(), decoded.StatusCode)
 			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.ShippedAt)
 		})
 

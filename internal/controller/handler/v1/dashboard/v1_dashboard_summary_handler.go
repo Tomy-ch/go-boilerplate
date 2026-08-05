@@ -8,18 +8,13 @@ import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/dashboard/gen"
 	"go-boilerplate/internal/observability"
 	dashboarduc "go-boilerplate/internal/usecase/dashboard"
-	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
 )
-
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -41,9 +36,9 @@ func (s *server) GetDashboardSummary(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	view, err := s.uc.GetDashboardSummary(ctx, &authn, dashboarduc.GetSummaryParams{

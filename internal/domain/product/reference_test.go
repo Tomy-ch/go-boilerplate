@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 func TestNewStatusRef(t *testing.T) {
 	t.Parallel()
 
-	id := uuid.NewTestFromSalt(t, "status_ref_id")
+	id := uuidtestkit.NewTestFromSalt(t, "status_ref_id")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -56,7 +57,7 @@ func TestNewStatusRef(t *testing.T) {
 func TestNewCategoryRef(t *testing.T) {
 	t.Parallel()
 
-	id := uuid.NewTestFromSalt(t, "category_ref_id")
+	id := uuidtestkit.NewTestFromSalt(t, "category_ref_id")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -105,7 +106,7 @@ func TestCategoryRef_ID(t *testing.T) {
 		t.Run("構築時のカテゴリ ID を返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "category_ref_id")
+			id := uuidtestkit.NewTestFromSalt(t, "category_ref_id")
 			ref, err := NewCategoryRef(id, "電子機器")
 			require.NoError(t, err)
 
@@ -123,7 +124,7 @@ func TestCategoryRef_Name(t *testing.T) {
 		t.Run("構築時のカテゴリ名称を返す", func(t *testing.T) {
 			t.Parallel()
 
-			ref, err := NewCategoryRef(uuid.NewTestFromSalt(t, "category_ref_id"), "電子機器")
+			ref, err := NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "category_ref_id"), "電子機器")
 			require.NoError(t, err)
 
 			assert.Equal(t, "電子機器", ref.Name())
@@ -140,7 +141,7 @@ func TestStatusRef_ID(t *testing.T) {
 		t.Run("構築時のステータス ID を返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "status_ref_id")
+			id := uuidtestkit.NewTestFromSalt(t, "status_ref_id")
 			ref, err := NewStatusRef(id, "在庫あり")
 			require.NoError(t, err)
 
@@ -158,7 +159,7 @@ func TestStatusRef_Name(t *testing.T) {
 		t.Run("構築時のステータス名称を返す", func(t *testing.T) {
 			t.Parallel()
 
-			ref, err := NewStatusRef(uuid.NewTestFromSalt(t, "status_ref_id"), "在庫あり")
+			ref, err := NewStatusRef(uuidtestkit.NewTestFromSalt(t, "status_ref_id"), "在庫あり")
 			require.NoError(t, err)
 
 			assert.Equal(t, "在庫あり", ref.Name())

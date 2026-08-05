@@ -13,6 +13,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/httpclient"
+	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -53,6 +54,7 @@ var (
 // 取得は httpclient に委ね、取得した JWK Set を TTL でキャッシュします。期限切れ・未知 kid のときに再取得します（遅延取得）。
 type jwksResolver struct {
 	client      httpclient.Client
+	tracer      observability.LayerTracer
 	urlFn       func(context.Context) (string, error)
 	cacheTTL    time.Duration
 	cooldown    time.Duration
@@ -104,7 +106,11 @@ func newJWKSResolver(
 	allowedAlgs []string,
 	cooldown time.Duration,
 	clk clock.Clock,
+	tf observability.TracerFactory,
 ) *jwksResolver {
+	if tf == nil {
+		tf = observability.NewDisabledTracerFactory()
+	}
 	if cacheTTL <= 0 {
 		cacheTTL = defaultJWKSCacheTTL
 	}
@@ -116,6 +122,7 @@ func newJWKSResolver(
 	}
 	return &jwksResolver{
 		client:      client,
+		tracer:      tf.Infra(),
 		urlFn:       urlFn,
 		cacheTTL:    cacheTTL,
 		cooldown:    cooldown,
@@ -249,6 +256,9 @@ func sameKeySet(a, b map[string]crypto.PublicKey) bool {
 // fetch は、httpclient substrate 経由で JWKS を取得し、kid→公開鍵のマップへ変換します。
 // タイムアウト・キャンセルは ctx と substrate の profile が担います。
 func (r *jwksResolver) fetch(ctx context.Context) (map[string]crypto.PublicKey, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
 	url, err := r.urlFn(ctx)
 	if err != nil {
 		return nil, err

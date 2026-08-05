@@ -14,7 +14,7 @@ import (
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -32,15 +32,15 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 		t.Helper()
 		newItem := func(salt string, quantity, threshold int) productuc.ProductView {
 			return productuc.ProductView{
-				ID:                    uuid.NewTestFromSalt(t, salt),
+				ID:                    uuidtestkit.NewTestFromSalt(t, salt),
 				Name:                  "商品-" + salt,
 				Description:           ptr.To("説明-" + salt),
 				Price:                 decimaltestkit.MustParse(t, "19.99"),
 				Quantity:              quantity,
 				StockWarningThreshold: ptr.To(threshold),
-				StatusID:              uuid.NewTestFromSalt(t, salt+"_status"),
+				StatusID:              uuidtestkit.NewTestFromSalt(t, salt+"_status"),
 				StatusName:            "在庫わずか",
-				CategoryID:            uuid.NewTestFromSalt(t, salt+"_category"),
+				CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 				CategoryName:          "電子機器",
 				PublishedAt:           nil,
 				ImagePath:             nil,
@@ -70,7 +70,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 
 			productslowstockhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_lowstock_admin"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_admin"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productsLowStockPath, nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			AssertJSONResponseType[gen.ProductLowStockResponse](t, actual)
@@ -95,7 +95,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 
 			productslowstockhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_lowstock_limit"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_limit"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productsLowStockPath+"?limit=5", nil, headers)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 			assert.Equal(t, 5, captured.Limit)
@@ -114,7 +114,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 			productslowstockhandler.BindHandler(e, tf, uc)
 			useOpenAPIValidation(t, e)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_lowstock_valid"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_valid"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productsLowStockPath+"?limit=100", nil, headers)
 			AssertJSONResponseType[gen.ProductLowStockResponse](t, actual)
 		})
@@ -132,7 +132,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 
 			productslowstockhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_lowstock_empty"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_empty"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productsLowStockPath, nil, headers)
 			// 対象が空でも products は null ではなく [] でシリアライズされる（AssertJSONResponseType が検査）。
 			AssertJSONResponseType[gen.ProductLowStockResponse](t, actual)
@@ -173,7 +173,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 
 			productslowstockhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_lowstock_forbidden"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_forbidden"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productsLowStockPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusForbidden)
 		})
@@ -206,7 +206,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 
 			productslowstockhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_lowstock_err"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_err"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productsLowStockPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
@@ -228,7 +228,7 @@ func assertLowStockLimitRejected(t *testing.T, path string) {
 	productslowstockhandler.BindHandler(e, tf, uc)
 	useOpenAPIValidation(t, e)
 
-	headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_lowstock_badlimit"))
+	headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_badlimit"))
 	actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
 	AssertErrorResponse(t, actual, http.StatusBadRequest)
 }

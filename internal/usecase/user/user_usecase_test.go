@@ -21,6 +21,7 @@ import (
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,9 +69,9 @@ func Test_usecase_ListUsers(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 
-	userDomain, err := user.New(uuid.NewTestFromSalt(t, "user_domain"), user.Attributes{
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
 		Profile: user.Profile{
 			FirstName:    "first_name",
 			LastName:     "last_name",
@@ -232,9 +233,9 @@ func Test_usecase_CreateUser(t *testing.T) {
 	mockTxManager := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 
-	userDomain, err := user.New(uuid.NewTestFromSalt(t, "user_domain"), user.Attributes{
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
 		Profile: user.Profile{
 			FirstName:    "first_name",
 			LastName:     "last_name",
@@ -472,8 +473,8 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
-	userDomain, err := user.New(uuid.NewTestFromSalt(t, "user_domain"), user.Attributes{
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
 		Profile: user.Profile{
 			FirstName:    "first_name",
 			LastName:     "last_name",
@@ -630,13 +631,13 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
 	require.NoError(t, err)
 
 	// newFeedUser は、作成日時違いのフィードユーザーを生成するヘルパーです。
 	newFeedUser := func(salt string, createdAt time.Time) *user.User {
-		u, uErr := user.New(uuid.NewTestFromSalt(t, salt), user.Attributes{
+		u, uErr := user.New(uuidtestkit.NewTestFromSalt(t, salt), user.Attributes{
 			Profile: user.Profile{
 				FirstName:    "first_name",
 				LastName:     "last_name",
@@ -772,7 +773,7 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 		t.Run("カーソルのcreated_atがRFC3339Nanoでない場合、ErrInvalidArgumentが返る", func(t *testing.T) {
 			t.Parallel()
 
-			encoded := paging.EncodeCursor("not-a-time", uuid.NewTestFromSalt(t, "any").String())
+			encoded := paging.EncodeCursor("not-a-time", uuidtestkit.NewTestFromSalt(t, "any").String())
 			first := 20
 			cursor, cErr := paging.NewCursor(&encoded, &first)
 			require.NoError(t, cErr)
@@ -842,7 +843,7 @@ func Test_usecase_authorizeUserAccess(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	id := uuid.NewTestFromSalt(t, "authorize_user_access")
+	id := uuidtestkit.NewTestFromSalt(t, "authorize_user_access")
 
 	authn, err := authbd.New("subject", "mock", nil, nil)
 	require.NoError(t, err)
@@ -898,7 +899,7 @@ func Test_usecase_resolvePatchPrefecture(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	prefectureID := uuid.NewTestFromSalt(t, "resolve_patch_prefecture")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "resolve_patch_prefecture")
 
 	pftDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
 	require.NoError(t, err)
@@ -976,9 +977,9 @@ func Test_usecase_toUserViews(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "to_user_views_prefecture")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "to_user_views_prefecture")
 
-	userDomain, err := user.New(uuid.NewTestFromSalt(t, "to_user_views_user"), user.Attributes{
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_views_user"), user.Attributes{
 		Profile: user.Profile{
 			FirstName:    "first_name",
 			LastName:     "last_name",
@@ -1090,13 +1091,13 @@ func Test_toUserView(t *testing.T) {
 		t.Run("エンティティの属性と引数の都道府県名からDTOを構築する", func(t *testing.T) {
 			t.Parallel()
 
-			u, err := user.New(uuid.NewTestFromSalt(t, "to_user_view_user"), user.Attributes{
+			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_view_user"), user.Attributes{
 				Profile: user.Profile{
 					FirstName:    "first_name",
 					LastName:     "last_name",
 					Email:        "user@example.com",
 					Phone:        "phone_number",
-					PrefectureID: uuid.NewTestFromSalt(t, "to_user_view_prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
 					City:         "city_name",
 					Street:       "town_address",
 					Building:     &building,
@@ -1126,13 +1127,13 @@ func Test_toUserView(t *testing.T) {
 			t.Parallel()
 
 			deletedAt := now.Add(24 * time.Hour)
-			u, err := user.New(uuid.NewTestFromSalt(t, "to_user_view_deleted"), user.Attributes{
+			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_view_deleted"), user.Attributes{
 				Profile: user.Profile{
 					FirstName:    "first_name",
 					LastName:     "last_name",
 					Email:        "deleted@example.com",
 					Phone:        "phone_number",
-					PrefectureID: uuid.NewTestFromSalt(t, "to_user_view_prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
 					City:         "city_name",
 					Street:       "town_address",
 					PostalCode:   "150-0001",

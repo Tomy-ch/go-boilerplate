@@ -18,6 +18,7 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ import (
 // mustCategory は、テスト用に有効な商品カテゴリエンティティ（電子機器）を構築します。
 func mustCategory(t *testing.T, id uuid.UUID) *category.Category {
 	t.Helper()
-	c, err := category.New(id, "電子機器", 1, 1)
+	c, err := category.New(id, category.Attributes{Name: "電子機器", Code: 1, SortKey: 1})
 	require.NoError(t, err)
 	return c
 }
@@ -35,7 +36,7 @@ func mustCategory(t *testing.T, id uuid.UUID) *category.Category {
 // mustStatus は、テスト用に有効な商品ステータスエンティティ（在庫あり）を構築します。
 func mustStatus(t *testing.T, id uuid.UUID) *status.Status {
 	t.Helper()
-	s, err := status.New(id, "在庫あり", 1, 1)
+	s, err := status.New(id, status.Attributes{Name: "在庫あり", Code: 1, SortKey: 1})
 	require.NoError(t, err)
 	return s
 }
@@ -50,8 +51,8 @@ func Test_usecase_CreateProduct(t *testing.T) {
 
 	validParams := func(t *testing.T) (CreateProductParams, uuid.UUID, uuid.UUID) {
 		t.Helper()
-		statusID := uuid.NewTestFromSalt(t, "create_status")
-		categoryID := uuid.NewTestFromSalt(t, "create_category")
+		statusID := uuidtestkit.NewTestFromSalt(t, "create_status")
+		categoryID := uuidtestkit.NewTestFromSalt(t, "create_category")
 		publishedAt := time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)
 		return CreateProductParams{
 			Name:                  "ワイヤレスイヤホン",
@@ -294,8 +295,11 @@ func Test_usecase_CreateProduct(t *testing.T) {
 func Test_usecase_resolveRefs(t *testing.T) {
 	t.Parallel()
 
-	statusID := func(t *testing.T) uuid.UUID { t.Helper(); return uuid.NewTestFromSalt(t, "resolve_refs_status") }
-	categoryID := func(t *testing.T) uuid.UUID { t.Helper(); return uuid.NewTestFromSalt(t, "resolve_refs_category") }
+	statusID := func(t *testing.T) uuid.UUID { t.Helper(); return uuidtestkit.NewTestFromSalt(t, "resolve_refs_status") }
+	categoryID := func(t *testing.T) uuid.UUID {
+		t.Helper()
+		return uuidtestkit.NewTestFromSalt(t, "resolve_refs_category")
+	}
 
 	newRepos := func(t *testing.T) (*mock_status.MockRepository, *mock_category.MockRepository) {
 		t.Helper()

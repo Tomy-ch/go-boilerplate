@@ -293,6 +293,37 @@ These belong to:
 - Reporting
 - Data pipelines
 
+### Verifying infrastructure against the domain
+
+**Infrastructure executes; the domain defines. The usecase is where the two are checked against each
+other.** This holds in both directions and is the same rule stated twice.
+
+- **Write** — infrastructure performs the write, then the usecase re-reads the affected aggregate
+  through its Repository so the aggregate re-validates the result
+  ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+- **Read** — infrastructure applies the filter, then the usecase checks the returned entities
+  against the domain predicate that defines the criterion. Infrastructure *executes* a criterion; it
+  does not *author* one (see [`internal/domain/README.md`](../domain/README.md) § Query and
+  Aggregate). A row that fails the predicate means the two have drifted.
+
+Surface a drift as an error rather than filtering it away. Dropping the row silently hides the defect
+at the exact moment it becomes observable, and the read then reports a result that no longer matches
+the definition it claims to apply.
+
+**What limits this check is not the shape of the result but the shape of the criterion.** A criterion
+that says something about the rows that come back can be verified: run the domain predicate over the
+result and the drift shows up. A criterion that removes rows cannot, because the rows it removed are
+not in the result — absence is not observable, and establishing it would mean running the query again
+without the filter, which is the work the read was optimised to avoid.
+
+So a projection is not automatically exempt. When a QueryService returns rows the criterion is about,
+carry the fields the predicate needs and check them, even though no aggregate is reconstructed; the
+definition then still lives in the domain, and infrastructure only executes it. Give the domain a
+predicate over the value, alongside the one on the entity, so both paths share one definition rather
+than growing a second copy in the query layer. Reserve "held by review alone" for criteria that
+subtract — exclusions and the aggregates computed over them — and say so where the query is written,
+since that is the only place a reader can see what was left out.
+
 ## Role in this repository
 
 - Place Command / Query services under `internal/usecase/<feature>/` (e.g., `user/`).
@@ -402,10 +433,40 @@ When wrapping an `apperror.ErrXXX` sentinel, use `pkg/xerrors.Wrap(apperror.ErrX
 (not the standard `fmt.Errorf("%w", ...)`) so the stack trace is preserved while `xerrors.Is`
 still matches the sentinel.
 
+### GC / batch sweeps
+
+A Usecase that sweeps rows or objects in batches follows a fixed shape.
+
+- Expose the default batch size as an exported constant (`Default<Feature>BatchSize`) so the caller
+  can see and override it, and treat a non-positive argument as "use the default" rather than an
+  error — a job invoked with no flag is the normal case, not a mistake.
+- Loop one batch at a time and stop when a batch comes back smaller than the requested size.
+- **Return the counts even when returning an error.** The batches that completed are already
+  committed and cannot be rolled back, so a `Result` that reports zero on failure is a lie. The
+  caller logs what got through; see the `Result` half of Output DTO naming above.
+
+### Output DTO naming
+
+A Usecase's return DTO takes one of two suffixes, chosen by what the method returns.
+
+- **`<Concept>View`** — a projection of state built for the caller, not the aggregate itself. Keep the
+  suffix even when the projection carries a single field, so a reader can tell an outbound projection
+  from a domain type at a glance.
+- **`<Concept>Result`** — the outcome of an operation that changed something: counts processed, counts
+  skipped, what a batch got through before it stopped. It reports what happened, not what is.
+
+The distinction is worth keeping because the two have different failure semantics. A `View` is either
+returned or not. A `Result` is meaningful **even when the method also returns an error** — a batch
+that failed partway still has to report the work it committed before it stopped.
+
 ### Pagination
 
 - Use `NewPageFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
 - If the page number exceeds the allowed maximum, return `apperror.ErrInvalidArgument` (the offset is clamped on int32 conversion).
+- For keyset (cursor) pagination, build on `tools/paging.Cursor` and give each feature a paired
+  `encode<Feature>Cursor` / `decode<Feature>Cursor` codec. The cursor is opaque to the caller: it
+  encodes the ordering-key tuple, and a malformed value or a wrong key count is returned as
+  `apperror.ErrInvalidArgument`.
 
 ## Callable / Non-callable Layers
 
@@ -417,8 +478,22 @@ still matches the sentinel.
 
 ### Forbidden dependencies
 
-- Calling another Usecase directly (avoid cycles and bloating).
+- Calling another **business** Usecase directly (see below).
 - Accessing Infra / Controller / HTTP / OpenAPI / SQL implementations.
+
+#### Why business Usecases are not wired to each other
+
+What is forbidden is not being called — it is the **chain**. Under a rule where A may call B, C
+eventually calls A and D calls C. Nobody can then say where one business operation begins and ends,
+and the transaction boundary stops being traceable.
+
+So when A's business has to be combined with B's, do not call B from A. Introduce a Usecase D that
+**composes** the two. D sits above both and joins their business operations, which keeps the shape a
+composition instead of a chain.
+
+**A technical Usecase is outside this rule.** An operation that is not a business operation itself
+but is needed in the same form by any of them — emitting to the outbox, for instance — cannot form
+the chain this rule exists to prevent, so it may be called directly.
 
 Usecase **must not depend on Infrastructure**.
 
@@ -637,7 +712,7 @@ import (
     // Import packages required for the implementation
 )
 
-// DTO used for communication with lower layers
+// The mutable attribute set shared by the input and the output below.
 type UserMutableFields struct {
     FirstName      string
     LastName       string
@@ -650,7 +725,15 @@ type UserMutableFields struct {
     Building       *string
 }
 
+// Input DTO.
 type CreateUserParamsDTO struct {
+    UserID uuid.UUID
+
+    UserMutableFields
+}
+
+// Output DTO. The `View` suffix marks it as the projection returned to the caller.
+type UserView struct {
     UserID uuid.UUID
 
     UserMutableFields
@@ -669,10 +752,10 @@ type usecase struct {
 // Usecase defines the use cases related to users.
 type Usecase interface {
     // ListUsersByKeyword retrieves a list of users.
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page *paging.Page) ([]UserView, error)
 
     // CreateUser creates a user.
-    CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+    CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error)
 
     // CountUsers returns the total number of users.
     CountUsers(ctx context.Context, active *bool) (int64, error)
@@ -697,7 +780,7 @@ func New(
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]UserView, error) {
     // Start and end the span
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
@@ -750,13 +833,13 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
         return nil, err
     }
 
-    _, dtos, err := observability.RunWithSpan(
-        ctx, u.tracer, "usecase", "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+    _, views, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "buildViews", func(ctx context.Context) ([]UserView, error) {
 
-            // Convert results into DTOs
-            dtos := make([]UserMutableFields, len(us))
+            // Convert results into output DTOs
+            views := make([]UserView, len(us))
             for i, u := range us {
-                dtos[i] = UserMutableFields{
+                views[i] = UserView{
                     FirstName:  u.FirstName(),
                     LastName:   u.LastName(),
                     Email:      u.Email(),
@@ -769,18 +852,18 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
 
                 // Attach prefecture name retrieved from the map
                 if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
-                    dtos[i].PrefectureName = p.Name()
+                    views[i].PrefectureName = p.Name()
                 }
             }
 
-            return dtos, nil
+            return views, nil
         })
 
-    return dtos, err
+    return views, err
 }
 
 // CreateUser is the use case that creates a user.
-func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error) {
 
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
@@ -832,10 +915,10 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
     })
 
     if err != nil {
-        return MutableFields{}, err
+        return UserView{}, err
     }
 
-    return MutableFields{
+    return UserView{
         FirstName:      userEntity.FirstName(),
         LastName:       userEntity.LastName(),
         Email:          userEntity.Email(),

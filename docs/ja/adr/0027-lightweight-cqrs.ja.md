@@ -48,14 +48,15 @@ accepted
 
 ### Command Service（コマンド / 書き込みパス）
 
-- インターフェースは**ユースケースレイヤー**で定義する（`internal/usecase/<aggregate>/command/`）。書き込みモデルはドメインの Invariant ではなくユースケースの関心事であるため、ドメインではなくユースケースに属する。
+- インターフェースは**ユースケースレイヤー**で定義する（`internal/usecase/<workflow>/command/`）。集約横断の書き込みポートの所有は、集約軸ではなく**ワークフロー軸**で決める。所有する集約を選ぼうとしても一般化しない：現実の書き込み（例えばクーポンの消込）は user・product・purchase の Invariant を同時に強制し得るため、「その Invariant を強制する集約」は関数ではなく関係にしかならない。対してトランザクションには常にちょうど 1 つの起点があり、[`docs/rules.md`](../rules.ja.md) は既にトランザクション境界の所有をユースケースレイヤーに与えている。`internal/usecase/purchase/command/` が名指すのはワークフローであって集約ではないため、「なぜ product ではなく purchase なのか」という問い自体が生じない。
+- したがって Domain Service と CommandService は意図的に分岐する：Domain Service は*規則*でありトランザクションを所有しない。CommandService は*トランザクションの道具*であり、トランザクションを開く側が所有する。CommandService が強制する条件がドメインの Invariant から導出されていることは、後述の導出規則が担保するのであって、ファイルの置き場所が担保するのではない。
 - 書き込み処理を実行後は Usecase 側で、変更した Command の所属するドメインを Repository 経由で呼び出して値の検証を実施することでドメインの健全性を保つ。
 - Usecase の返り値はドメインエンティティではなく DTO を返す。
 - 実装は `internal/infrastructure/rdb/command_service/<aggregate>/` に置く。
 
-> **実装状況**: CommandService の Go 実装は現在予約済みプレースホルダーである。`command_service` サブモジュールは `persistenceModule`（`internal/di/module/persistence.go`）に宣言済みだが、具体的なプロバイダーはまだ存在しない。本セクションは意図した設計を文書化したものである。
+> **実装状況**: `persistenceModule`（`internal/di/module/persistence.go`）の `command_service` サブモジュールが持つプロバイダーはちょうど 1 つで、それはサンプルの購入機能に属する。サンプルを削除するとサブモジュールは空になり、本セクションは占有者のいない意図した設計の記述に戻る——fork 先が出発する状態がそれである。占有者を残しているのは、後述の適格基準が、それを満たす具体例と突き合わせて初めて読めるものだからである。
 
-Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0032](0032-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
+Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0035](0035-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
 
 日々の境界適用ルールは[`docs/rules.md`](../rules.ja.md)の§ "Repository / QueryService Rules"参照。
 
@@ -65,7 +66,7 @@ Repository・QueryService・CommandService はいずれも `internal/di/module/p
 
 - Repositoryが集約に集中したまま保たれる。ドメインインターフェースにビュー固有のメソッドが蓄積せず、[ADR-0002](0002-onion-architecture.ja.md)に従ってドメインの純粋性が保たれる。
 - QueryServiceはドメインロジックに触れることなく、また読み込みパスにドメインエンティティを露出させることなく、クエリ（ジョイン・ページネーション・全文検索）を自由に最適化できる。
-- ユースケースレイヤーが各種 Service インターフェースを所有する：読み込み/書き込みモデルはユースケースの関心事であるため、そのインターフェースはドメインではなくユースケースに属する。
+- 2 つの Service インターフェースは同じ軸——トランザクションを開き読み込みモデルの形を決めるワークフロー——で所有され、ともにユースケースレイヤーに置かれる。ドメインレイヤーが持つ永続化契約は Repository ただ 1 つに保たれる。
 - CommandService はドメインロジックに触れることなく、柔軟な更新や削除などの処理を自由に最適化できる。最後にドメインを経由することでドメインとしての健全性の毀損を回避できる。
 - 3 つの抽象がすべてインターフェース背後に置かれ DI 経由でインジェクトされ、[ADR-0001](0001-avoid-lock-in.ja.md)に従って交換可能に保たれる。
 - 新しいインフラ依存はなく、3 つのパスすべてが同一の PostgreSQL インスタンスで動作する。
@@ -73,7 +74,7 @@ Repository・QueryService・CommandService はいずれも `internal/di/module/p
 ### ネガティブな影響
 
 - 3 つの永続化抽象（Repository と QueryService、CommandService）があるため、開発者は特定の読み込みに対してどちらを使うかを決める必要がある。境界は `docs/rules.md` に文書化されているが理解を要する。
-- ユースケースレイヤーの各種 Service インターフェースはドメインからより遠く、ドメインコードを単独で読む際に意図が分かりにくくなることがある。
+- 2 つの Service インターフェースはユースケースレイヤーにありドメインからより遠いため、ドメインコードを単独で読む際に意図が分かりにくくなることがある。とくに、その集約の Repository を通らない書き込み経路が存在することは、ドメインパッケージを読むだけでは分からない。後述の適格基準と導出規則が、その経路が汎用の逃げ道になることを防ぐ役割を負う。
 - 「Repositoryに複雑な読み込みを置かない」境界はレビューで維持する必要があり、この区別にコンパイラによる強制はない。
 
 ## 検討した代替案

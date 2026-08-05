@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
@@ -56,23 +56,22 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 	}
 
 	p := row.Purchases
-	entity, err := purchase.Reconstruct(
-		p.ID,
-		p.Code,
-		p.UserID,
-		p.StatusID,
-		int(row.StatusCode),
-		int(p.SubtotalAmount),
-		int(p.TaxAmount),
-		int(p.ShippingFee),
-		int(p.TotalAmount),
-		details,
-		p.OrderedAt,
-		p.PaidAt,
-		p.CanceledAt,
-		p.ShippedAt,
-		p.DeliveredAt,
-	)
+	entity, err := purchase.Reconstruct(p.ID, purchase.Attributes{
+		Code:           p.Code,
+		UserID:         p.UserID,
+		StatusID:       p.StatusID,
+		StatusCode:     int(row.StatusCode),
+		SubtotalAmount: int(p.SubtotalAmount),
+		TaxAmount:      int(p.TaxAmount),
+		ShippingFee:    int(p.ShippingFee),
+		TotalAmount:    int(p.TotalAmount),
+		Details:        details,
+		OrderedAt:      p.OrderedAt,
+		PaidAt:         p.PaidAt,
+		CanceledAt:     p.CanceledAt,
+		ShippedAt:      p.ShippedAt,
+		DeliveredAt:    p.DeliveredAt,
+	})
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
@@ -103,23 +102,22 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 	}
 
 	p := row.Purchases
-	entity, err := purchase.Reconstruct(
-		p.ID,
-		p.Code,
-		p.UserID,
-		p.StatusID,
-		int(row.StatusCode),
-		int(p.SubtotalAmount),
-		int(p.TaxAmount),
-		int(p.ShippingFee),
-		int(p.TotalAmount),
-		details,
-		p.OrderedAt,
-		p.PaidAt,
-		p.CanceledAt,
-		p.ShippedAt,
-		p.DeliveredAt,
-	)
+	entity, err := purchase.Reconstruct(p.ID, purchase.Attributes{
+		Code:           p.Code,
+		UserID:         p.UserID,
+		StatusID:       p.StatusID,
+		StatusCode:     int(row.StatusCode),
+		SubtotalAmount: int(p.SubtotalAmount),
+		TaxAmount:      int(p.TaxAmount),
+		ShippingFee:    int(p.ShippingFee),
+		TotalAmount:    int(p.TotalAmount),
+		Details:        details,
+		OrderedAt:      p.OrderedAt,
+		PaidAt:         p.PaidAt,
+		CanceledAt:     p.CanceledAt,
+		ShippedAt:      p.ShippedAt,
+		DeliveredAt:    p.DeliveredAt,
+	})
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
@@ -238,16 +236,6 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 	}, nil
 }
 
-// mustToInt16 は、ドメイン定数由来の int を sqlc の int16（purchase_statuses.code の SMALLINT 列）へ変換します。
-// 呼び出し側がコンパイル時に確定した定数だけを渡すことを前提とし、範囲外は前提の破壊として panic します。
-func mustToInt16(v int) int16 {
-	code, err := safecast.IntToInt16(v)
-	if err != nil {
-		panic(err)
-	}
-	return code
-}
-
 // toPurchaseDetails は、明細行を購入明細の値オブジェクトへ変換します。単価は価格スケール（ドル decimal）です。
 func toPurchaseDetails(detailRows []*gen.ListPurchaseDetailsByPurchaseIDRow) ([]purchase.PurchaseDetail, error) {
 	details := make([]purchase.PurchaseDetail, len(detailRows))
@@ -257,7 +245,11 @@ func toPurchaseDetails(detailRows []*gen.ListPurchaseDetailsByPurchaseIDRow) ([]
 		if perr != nil {
 			return nil, pgerror.NormalizeReconstructError(perr)
 		}
-		details[i] = purchase.NewPurchaseDetail(d.ID, d.ProductID, int(d.Quantity), unitPrice)
+		details[i] = purchase.NewPurchaseDetail(d.ID, purchase.PurchaseDetailAttributes{
+			ProductID: d.ProductID,
+			Quantity:  int(d.Quantity),
+			UnitPrice: unitPrice,
+		})
 	}
 	return details, nil
 }
@@ -302,27 +294,27 @@ func (r *repository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, par
 	return items, nil
 }
 
-// ExistsInProgressByUserID は、指定ユーザーに進行中の購入が存在するかを 1 クエリで判定します。
-// 進行中はドメインが定める終端ステータスの否定で表し、コードは purchase_statuses との結合で解決します。
-func (r *repository) ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error) {
+// FindStatusesByUserID は、指定ユーザーの購入が取っているステータスを重複なく取得します。
+// 進行中かどうかでは絞り込まず、code は purchase_statuses との結合で解決してドメインの値へ復元します。
+func (r *repository) FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]purchase.Status, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	terminalCodes := purchase.TerminalStatusCodes()
-	codes := make([]int16, len(terminalCodes))
-	for i, c := range terminalCodes {
-		codes[i] = mustToInt16(c)
+	db := gen.New(driver.New(ctx, r.db))
+	codes, err := db.SelectPurchaseStatusCodesByUserID(ctx, userID)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
 	}
 
-	db := gen.New(driver.New(ctx, r.db))
-	exists, err := db.ExistsInProgressPurchaseByUserID(ctx, &gen.ExistsInProgressPurchaseByUserIDParams{
-		UserID:              userID,
-		TerminalStatusCodes: codes,
-	})
-	if err != nil {
-		return false, pgerror.NormalizeError(err)
+	statuses := make([]purchase.Status, len(codes))
+	for i, code := range codes {
+		status, serr := purchase.NewStatus(int(code))
+		if serr != nil {
+			return nil, serr
+		}
+		statuses[i] = status
 	}
-	return exists, nil
+	return statuses, nil
 }
 
 // FindUserIDsWithPurchases は、purchases に 1 件以上の行を持つ user_id を重複排除して返します。

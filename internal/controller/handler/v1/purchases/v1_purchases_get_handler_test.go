@@ -15,6 +15,7 @@ import (
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func newTestSummaryView(t *testing.T) purchaseuc.PurchaseSummaryView {
 	return purchaseuc.PurchaseSummaryView{
 		Code:        "h-code",
 		TotalAmount: 176500,
-		StatusID:    uuid.NewTestFromSalt(t, "h_status"),
+		StatusID:    uuidtestkit.NewTestFromSalt(t, "h_status"),
 		StatusName:  "完了",
 		OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
@@ -45,7 +46,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			userID := uuid.NewTestFromSalt(t, "get_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
 			view := newTestSummaryView(t)
 			nextCursor := "next-opaque-cursor"
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -78,7 +79,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			userID := uuid.NewTestFromSalt(t, "get_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil)
 
@@ -141,7 +142,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			bad := "!!!"
-			resp, err := s.GetPurchases(authnContext(t, uuid.NewTestFromSalt(t, "get_user")), gen.GetPurchasesRequestObject{
+			resp, err := s.GetPurchases(authnContext(t, uuidtestkit.NewTestFromSalt(t, "get_user")), gen.GetPurchasesRequestObject{
 				Params: gen.GetPurchasesParams{After: &bad},
 			})
 			assert.Nil(t, resp)
@@ -155,7 +156,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			userID := uuid.NewTestFromSalt(t, "get_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetPurchases(authnContext(t, userID), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})

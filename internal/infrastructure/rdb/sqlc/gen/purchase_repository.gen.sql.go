@@ -12,41 +12,6 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
-const existsInProgressPurchaseByUserID = `-- name: ExistsInProgressPurchaseByUserID :one
-SELECT EXISTS(
-    SELECT 1
-    FROM purchases AS p
-    INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-    WHERE p.user_id = $1
-        AND NOT (ps.code = ANY($2::SMALLINT []))
-)
-`
-
-type ExistsInProgressPurchaseByUserIDParams struct {
-	UserID              uuid.UUID
-	TerminalStatusCodes []int16
-}
-
-// === source: database/dml/repository/purchase/exists_in_progress_purchase_by_user_id.sql ===
-// 指定ユーザーに進行中の購入が 1 件でも存在するかを返す。進行中は終端ステータス（引数）の否定で
-// 判定するため、ステータスが増えた場合は既定で進行中側に倒れる。ステータスは購入ステータスマスタとの
-// 結合で解決する（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
-// 終端コードは seed UUID を焼き込まずドメイン定数から引数で受け取る。
-//
-//	SELECT EXISTS(
-//	    SELECT 1
-//	    FROM purchases AS p
-//	    INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-//	    WHERE p.user_id = $1
-//	        AND NOT (ps.code = ANY($2::SMALLINT []))
-//	)
-func (q *Queries) ExistsInProgressPurchaseByUserID(ctx context.Context, arg *ExistsInProgressPurchaseByUserIDParams) (bool, error) {
-	row := q.db.QueryRow(ctx, existsInProgressPurchaseByUserID, arg.UserID, arg.TerminalStatusCodes)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const getPurchaseByID = `-- name: GetPurchaseByID :one
 SELECT
     ps.code AS status_code,
@@ -465,6 +430,44 @@ func (q *Queries) LockPurchaseByID(ctx context.Context, id uuid.UUID) (*LockPurc
 		&i.Purchases.UpdatedAt,
 	)
 	return &i, err
+}
+
+const selectPurchaseStatusCodesByUserID = `-- name: SelectPurchaseStatusCodesByUserID :many
+SELECT DISTINCT ps.code
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE p.user_id = $1
+`
+
+// === source: database/dml/repository/purchase/select_purchase_status_codes_by_user_id.sql ===
+// 指定ユーザーの購入が取っているステータス code を重複なく返す。
+// 進行中かどうかの判定はドメイン（Status.IsTerminal の否定）が行うため、ここでは業務条件で絞り込まない。
+// 重複を除くため行数はステータスの種類数で頭打ちになり、購入件数には比例しない。
+// ステータスは購入ステータスマスタとの結合で解決する（購入集約に属する固定参照マスタへの一意な
+// 等結合であり、単一集約の read）。
+//
+//	SELECT DISTINCT ps.code
+//	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE p.user_id = $1
+func (q *Queries) SelectPurchaseStatusCodesByUserID(ctx context.Context, userID uuid.UUID) ([]int16, error) {
+	rows, err := q.db.Query(ctx, selectPurchaseStatusCodesByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int16
+	for rows.Next() {
+		var code int16
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		items = append(items, code)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updatePurchaseDelivered = `-- name: UpdatePurchaseDelivered :exec

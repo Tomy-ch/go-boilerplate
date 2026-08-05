@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +45,7 @@ func Test_repository_FindByID(t *testing.T) {
 		t.Run("存在しないIDの場合_NotFoundが返る", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				missing := uuid.NewTestFromSalt(t, "missing-user")
+				missing := uuidtestkit.NewTestFromSalt(t, "missing-user")
 				_, err := repo.FindByID(ctx, missing)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
@@ -143,7 +144,7 @@ func Test_repository_Update(t *testing.T) {
 				now := time.Now()
 
 				// DB に存在しない ID のエンティティ
-				u, err := user.New(uuid.NewTestFromSalt(t, "missing-update"), user.Attributes{
+				u, err := user.New(uuidtestkit.NewTestFromSalt(t, "missing-update"), user.Attributes{
 					Profile: user.Profile{
 						FirstName:    "X",
 						LastName:     "Y",

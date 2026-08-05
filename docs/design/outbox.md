@@ -2,7 +2,7 @@
 
 [Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](../ja/design/outbox.ja.md)
 
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0045](../adr/0045-transactional-outbox.md) onward); for the deliberate decision NOT to harden the relay's duplicate windows in this template (and the recommended multi-layer redesign for production copies) see [ADR-0097](../adr/0097-outbox-relay-hardening-delegated.md).
+This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0049](../adr/0049-transactional-outbox.md) onward); for the deliberate decision NOT to harden the relay's duplicate windows in this template (and the recommended multi-layer redesign for production copies) see [ADR-0102](../adr/0102-outbox-relay-hardening-delegated.md).
 
 ---
 
@@ -214,6 +214,16 @@ sequenceDiagram
 ## 4. What an integrator implements (the parts the subsystem does not provide)
 
 The subsystem ships the **full machinery**: emit/relay/gc/replay usecases, the RDB `Store`, the HTTP `Publisher`, the relay `Engine`, the GC job, DI wiring, and the `outbox-relay` / `replay` / `job outbox-gc` entry points. No event flows by default — the integrator wires the two open ends (the producing call and the consuming endpoint) and operates the processes.
+
+> **Departure from Evans — no Published Language on this side.** The synchronous HTTP surface has one:
+> OpenAPI is committed as a resolved contract that a consumer in another repository can read without
+> this repository's toolchain, and a drift gate keeps it honest. The asynchronous surface has none.
+> [ADR-0052](../adr/0052-message-id-idempotency-propagation.md) fixes a *transport* convention
+> (`Idempotency-Key`), not a language: nothing here defines or publishes the schema of the event
+> payloads or the vocabulary of `event_type`, so a receiver learns both by reading this repository's
+> source. The asymmetry is deliberate to the extent that item ② below hands payload and `event_type`
+> to the integrator — a template cannot publish a language for events it does not own. What is *not*
+> yet provided is the shape that publication should take once the integrator defines those events.
 
 ```mermaid
 flowchart LR

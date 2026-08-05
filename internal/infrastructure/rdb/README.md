@@ -203,16 +203,28 @@ See details below.
 ## command_service
 
 `command_service` implements a **CommandService** — the write-side counterpart of QueryService
-(interface in the Usecase layer, implementation here). It is reserved for multi-aggregate writes
+(interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
 that require single-transaction atomicity (see [ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md)
 / [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)); the first implementation
-is `command_service/purchase` (stock lock + decrement + purchase / detail INSERT — see
-[ADR-0100](../../../docs/adr/0100-purchase-stock-lock-and-amount-contract.md)).
+is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
+[ADR-0031](../../../docs/adr/0031-ordered-pessimistic-row-locks.md)).
 
 A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
 the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events
 (that is a Usecase responsibility, `system_cqrs` category). Its methods take the decided Domain
 aggregate and normalize every sqlc error with `pgerror.NormalizeError`.
+
+**What may live here.** Only a write that cannot be expressed as loading an aggregate and saving it:
+a relative update, a set-based operation, or one that obtains atomicity without taking a lock.
+Anything that can be read-modify-saved belongs on the Repository. Without that line this package
+becomes "where I put SQL I want to write directly".
+
+**Conditions are derived, never authored.** A guard enforced in SQL here must restate a domain
+invariant that already exists — the stock guard in the decrement statement restates the domain's
+insufficient-stock rule, and returns that same domain sentinel. It is downstream: a change to the
+domain rule obliges a change here, never the reverse. Two independently written copies of one rule
+diverge silently the first time only one of them moves. See
+[ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md) § Derivation.
 
 ## testkit
 

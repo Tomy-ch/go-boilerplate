@@ -7,7 +7,7 @@
 
 ## Overview
 
-商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の ID 参照（ステータス ID・カテゴリ ID）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負は VO が担保。2 スケールモデルは ADR-0101）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
+商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の ID 参照（ステータス ID・カテゴリ ID）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負は VO が担保。2 スケールモデルは ADR-0033）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
 
 一覧取得は「公開済み（`publishedAt` 非 NULL）の商品を `(publishedAt, id)` の keyset ページネーションで返す」read-only な集約読み取りであり、すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0027 / `docs/rules.md` の Repository 境界に準拠）。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
 
@@ -103,9 +103,9 @@ fields:
 ## Value Objects
 
 ```yaml
-# price は money.Price VO（internal/domain/kernel/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
+# price は money.Price VO（internal/domain/lexicon/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
 # 内包し、決済スケール（最小単位整数）への変換 policy（ToMinorUnit）を所有する。器の正確な十進量は
-# pkg/decimal.Decimal（ADR-0102）。分類は ID 参照のまま VO を持たない。
+# pkg/decimal.Decimal（ADR-0033）。分類は ID 参照のまま VO を持たない。
 ```
 
 ## Repository Methods
@@ -154,7 +154,17 @@ fields:
     更新のために、ID から公開状態を問わない単一商品を悲観ロック（SELECT ... FOR UPDATE）して取得する。
     未存在は NotFound を返す。同一商品を対象とする他の書き込み（購入の在庫減算・在庫の増減）は、
     先行トランザクションの commit まで待たされるため、取得〜更新の read-modify-write が直列化される
-    （ADR-0100: 購入と在庫補充は同じ行を同じロック規律で扱う）。
+    （ADR-0031: 購入と在庫補充は同じ行を同じロック規律で扱う）。
+    結合する固定参照マスタ（ステータス / カテゴリ）はロック対象に含めない。
+
+- name: LockByIDs
+  signature: LockByIDs(ctx context.Context, ids []uuid.UUID) (Products, error)
+  behavior: |
+    更新のために、ID の集合から公開状態を問わない商品群を悲観ロック（SELECT ... FOR UPDATE）して
+    ID 昇順で取得する。順序を id 昇順に固定するのは、複数商品を同時にロックする処理同士が
+    デッドロックしないためである（ADR-0031: ロック順序を単一の全域順序に固定する規律）。
+    不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得る（不存在の検証は
+    呼び出し側の責務であり、ここでは NotFound を返さない）。
     結合する固定参照マスタ（ステータス / カテゴリ）はロック対象に含めない。
 
 - name: Create

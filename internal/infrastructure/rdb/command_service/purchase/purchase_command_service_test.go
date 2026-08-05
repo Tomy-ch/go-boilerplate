@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
@@ -16,6 +16,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,83 +57,6 @@ func insertTestProduct(ctx context.Context, t *testing.T, db driver.DBTX, id uui
 	require.NoError(t, err)
 }
 
-func Test_commandService_LockProducts(t *testing.T) {
-	t.Parallel()
-
-	testDB := testkit.NewTestDB(t)
-	lt := observability.NewMockInfraLayerTracer(t)
-	txm := testkit.NewTestTransactionRunner(t)
-	svc := &commandService{tracer: lt, db: testDB}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("指定商品をロックし価格と在庫を返す", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				pid := mustParse(t, "c1000000-0000-4000-8000-000000000001")
-				insertTestProduct(ctx, t, drv, pid, 80000, 20)
-
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
-				require.Len(t, locked, 1)
-				assert.Equal(t, pid, locked[0].ID())
-				assert.Equal(t, "80000", locked[0].Price().String())
-				assert.Equal(t, 20, locked[0].Quantity())
-			})
-		})
-
-		t.Run("サブセント単価をNUMERIC精度を保ったままロックする", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				pid := mustParse(t, "c1000000-0000-4000-8000-0000000000aa")
-				// price=19.995（サブセント）を NUMERIC 列へ直接挿入し、価格スケールの往復を検証する。
-				_, err := drv.Exec(ctx,
-					"INSERT INTO products "+
-						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
-						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,NOW())",
-					pid, "subcent-"+pid.String(), nil, "19.995", 20, nil, seedStatusInStock, seedCategory,
-				)
-				require.NoError(t, err)
-
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
-				require.Len(t, locked, 1)
-				assert.Equal(t, "19.995", locked[0].Price().String())
-			})
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("負値の価格は再構築不能としてErrInternalへ正規化する", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				pid := mustParse(t, "c1000000-0000-4000-8000-0000000000bb")
-				// NUMERIC 列は負値を格納できるが、money.Price は非負不変条件を持つ。
-				// 格納行からの Price 再構築失敗が ErrInternal へ正規化されることを検証する。
-				_, err := drv.Exec(ctx,
-					"INSERT INTO products "+
-						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
-						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,NOW())",
-					pid, "neg-"+pid.String(), nil, "-1", 20, nil, seedStatusInStock, seedCategory,
-				)
-				require.NoError(t, err)
-
-				_, err = svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.ErrorIs(t, err, apperror.ErrInternal)
-			})
-		})
-	})
-}
-
 func Test_commandService_CreatePurchase(t *testing.T) {
 	t.Parallel()
 
@@ -153,8 +77,7 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				pid := mustParse(t, "c2000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
 
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 
 				entity := newPurchase(t, userID, pid, 2, locked)
 				require.NoError(t, svc.CreatePurchase(ctx, entity))
@@ -269,14 +192,7 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 			t.Parallel()
 
 			entity := reconstructPurchase(t, "create_quantity_overflow",
-				domainpurchase.StatusCodeUnprocessed, math.MaxInt32+1)
-			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
-		})
-
-		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity := reconstructPurchase(t, "create_status_overflow", math.MaxInt16+1, 1)
+				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
 			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
@@ -288,22 +204,26 @@ func reconstructPurchase(t *testing.T, salt string, statusCode, quantity int) *d
 	t.Helper()
 
 	detail := domainpurchase.NewPurchaseDetail(
-		uuid.NewTestFromSalt(t, salt+"_detail_id"),
-		uuid.NewTestFromSalt(t, salt+"_product_id"),
-		quantity,
-		mustPrice(t, "800"),
+		uuidtestkit.NewTestFromSalt(t, salt+"_detail_id"),
+		domainpurchase.PurchaseDetailAttributes{
+			ProductID: uuidtestkit.NewTestFromSalt(t, salt+"_product_id"),
+			Quantity:  quantity,
+			UnitPrice: mustPrice(t, "800"),
+		},
 	)
 
 	entity, err := domainpurchase.Reconstruct(
-		uuid.NewTestFromSalt(t, salt+"_id"),
-		"code-"+salt,
-		uuid.NewTestFromSalt(t, salt+"_user_id"),
-		uuid.NewTestFromSalt(t, salt+"_status_id"),
-		statusCode,
-		800, 0, 0, 800,
-		[]domainpurchase.PurchaseDetail{detail},
-		time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC),
-		nil, nil, nil, nil,
+		uuidtestkit.NewTestFromSalt(t, salt+"_id"),
+		domainpurchase.Attributes{
+			Code:           "code-" + salt,
+			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user_id"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, salt+"_status_id"),
+			StatusCode:     statusCode,
+			SubtotalAmount: 800,
+			TotalAmount:    800,
+			Details:        []domainpurchase.PurchaseDetail{detail},
+			OrderedAt:      time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC),
+		},
 	)
 	require.NoError(t, err)
 	return entity
@@ -347,8 +267,7 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				drv := driver.New(ctx, testDB)
 				pid := mustParse(t, "d1000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 				created := newPurchase(t, userID, pid, 2, locked)
 				require.NoError(t, svc.CreatePurchase(ctx, created))
 
@@ -356,7 +275,7 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, created.ID(), actual.ID())
 				assert.Equal(t, userID, actual.UserID())
-				assert.Equal(t, domainpurchase.StatusCodeUnprocessed, actual.StatusCode())
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), actual.StatusCode())
 				assert.Nil(t, actual.PaidAt())
 				assert.Nil(t, actual.CanceledAt())
 				require.Len(t, actual.Details(), 1)
@@ -428,8 +347,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				drv := driver.New(ctx, testDB)
 				pid := mustParse(t, "d2000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 				created := newPurchase(t, userID, pid, 2, locked)
 				require.NoError(t, svc.CreatePurchase(ctx, created)) // 在庫 20 → 18
 
@@ -439,7 +357,8 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 
 				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
 				require.NoError(t, err)
-				require.NoError(t, lockedPurchase.Cancel(now))
+				_, err = lockedPurchase.Cancel(now)
+				require.NoError(t, err)
 				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
 
 				// 在庫が明細分（2）復元される（減算の対称）。
@@ -454,7 +373,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 					"SELECT ps.code, p.canceled_at FROM purchases AS p "+
 						"INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id WHERE p.id=$1", created.ID(),
 				).Scan(&statusCode, &canceledAt))
-				assert.Equal(t, domainpurchase.StatusCodeCanceled, statusCode)
+				assert.Equal(t, domainpurchase.StatusCanceled.Code(), statusCode)
 				assert.NotNil(t, canceledAt)
 			})
 		})
@@ -468,8 +387,10 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				pid2 := mustParse(t, "d3000000-0000-4000-8000-000000000002")
 				insertTestProduct(ctx, t, drv, pid1, 80000, 20)
 				insertTestProduct(ctx, t, drv, pid2, 1500, 10)
-				locked, err := svc.LockProducts(ctx, []uuid.UUID{pid1, pid2})
-				require.NoError(t, err)
+				locked := []domainpurchase.LockedProduct{
+					domainpurchase.NewLockedProduct(pid1, mustPrice(t, "80000"), 20),
+					domainpurchase.NewLockedProduct(pid2, mustPrice(t, "1500"), 10),
+				}
 
 				id, err := uuid.New()
 				require.NoError(t, err)
@@ -488,7 +409,8 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 
 				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
 				require.NoError(t, err)
-				require.NoError(t, lockedPurchase.Cancel(now))
+				_, err = lockedPurchase.Cancel(now)
+				require.NoError(t, err)
 				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
 
 				var q1, q2 int
@@ -507,14 +429,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 			t.Parallel()
 
 			entity := reconstructPurchase(t, "cancel_quantity_overflow",
-				domainpurchase.StatusCodeUnprocessed, math.MaxInt32+1)
-			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
-		})
-
-		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity := reconstructPurchase(t, "cancel_status_overflow", math.MaxInt16+1, 1)
+				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
 			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
@@ -543,10 +458,12 @@ func TestNew(t *testing.T) {
 func detailWithQuantity(t *testing.T, quantity int) domainpurchase.PurchaseDetail {
 	t.Helper()
 	return domainpurchase.NewPurchaseDetail(
-		uuid.NewTestFromSalt(t, "detail_with_quantity_id"),
-		uuid.NewTestFromSalt(t, "detail_with_quantity_product_id"),
-		quantity,
-		mustPrice(t, "1.00"),
+		uuidtestkit.NewTestFromSalt(t, "detail_with_quantity_id"),
+		domainpurchase.PurchaseDetailAttributes{
+			ProductID: uuidtestkit.NewTestFromSalt(t, "detail_with_quantity_product_id"),
+			Quantity:  quantity,
+			UnitPrice: mustPrice(t, "1.00"),
+		},
 	)
 }
 

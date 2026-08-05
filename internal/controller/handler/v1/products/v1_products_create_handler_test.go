@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	productuc "go-boilerplate/internal/usecase/product"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,8 +27,8 @@ func newPostProductsRequest(t *testing.T) gen.PostProductsRequestObject {
 			Price:                 "19.99",
 			Quantity:              100,
 			StockWarningThreshold: ptr.To(int32(10)),
-			CategoryId:            uuid.NewTestFromSalt(t, "post_category").ToPrimitive(),
-			StatusId:              uuid.NewTestFromSalt(t, "post_status").ToPrimitive(),
+			CategoryId:            uuidtestkit.NewTestFromSalt(t, "post_category").ToPrimitive(),
+			StatusId:              uuidtestkit.NewTestFromSalt(t, "post_status").ToPrimitive(),
 			PublishedAt:           ptr.To(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)),
 			ImagePath:             ptr.To("products/earphone.png"),
 		},

@@ -20,6 +20,7 @@ import (
 	"go-boilerplate/pkg/patch"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/nullable"
@@ -40,13 +41,13 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 	sampleView := func(t *testing.T) productuc.ProductView {
 		t.Helper()
 		return productuc.ProductView{
-			ID:          uuid.NewTestFromSalt(t, "integration_product_detail"),
+			ID:          uuidtestkit.NewTestFromSalt(t, "integration_product_detail"),
 			Name:        "商品",
 			Description: ptr.To("説明"),
 			Price:       decimaltestkit.MustParse(t, "19.99"),
 			Quantity:    100,
-			StatusID:    uuid.NewTestFromSalt(t, "integration_detail_status"),
-			CategoryID:  uuid.NewTestFromSalt(t, "integration_detail_category"),
+			StatusID:    uuidtestkit.NewTestFromSalt(t, "integration_detail_status"),
+			CategoryID:  uuidtestkit.NewTestFromSalt(t, "integration_detail_category"),
 			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
 			ImagePath:   ptr.To("products/integration_detail.png"),
 		}
@@ -64,7 +65,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 
 	availableAdmin := func(t *testing.T, e *echo.Echo) http.Header {
 		t.Helper()
-		return MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "integration_detail_admin"))
+		return MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "integration_detail_admin"))
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -341,7 +342,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 
 			productsdetail.BindHandler(e, tf, mockUC)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "integration_detail_member"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "integration_detail_member"))
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{Version: 1, Name: ptr.To("更新後の商品")}
 			actual := StartServer(t, e).DoJSON(http.MethodPatch, productDetailExistingPath, body, headers)
 			AssertErrorResponse(t, actual, http.StatusForbidden)

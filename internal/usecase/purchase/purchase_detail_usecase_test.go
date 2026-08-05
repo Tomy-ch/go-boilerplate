@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/usecase/purchase/query"
 	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -46,22 +47,22 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			userID := uuid.NewTestFromSalt(t, "gd_user")
-			purchaseID := uuid.NewTestFromSalt(t, "gd_purchase")
+			userID := uuidtestkit.NewTestFromSalt(t, "gd_user")
+			purchaseID := uuidtestkit.NewTestFromSalt(t, "gd_purchase")
 			paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 
 			rm := &query.PurchaseDetailReadModel{
 				ID:             purchaseID,
 				Code:           "gd-code",
 				UserID:         userID,
-				StatusID:       uuid.NewTestFromSalt(t, "gd_status"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "gd_status"),
 				StatusName:     "支払い済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Items: []query.PurchaseDetailItem{
-					{ProductID: uuid.NewTestFromSalt(t, "gd_product"), ProductName: "商品A", Quantity: 2, UnitPrice: mustPrice(t, "800")},
+					{ProductID: uuidtestkit.NewTestFromSalt(t, "gd_product"), ProductName: "商品A", Quantity: 2, UnitPrice: mustPrice(t, "800")},
 				},
 				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				PaidAt:     &paidAt,
@@ -109,7 +110,7 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 			qs.EXPECT().FindDetailByUserAndID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			u := newUsecase(t, qs)
-			_, err := u.GetPurchaseDetail(context.Background(), nil, uuid.NewTestFromSalt(t, "gd_nil"))
+			_, err := u.GetPurchaseDetail(context.Background(), nil, uuidtestkit.NewTestFromSalt(t, "gd_nil"))
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
@@ -125,7 +126,7 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 			require.NoError(t, err)
 
 			u := newUsecase(t, qs)
-			_, err = u.GetPurchaseDetail(context.Background(), unresolved, uuid.NewTestFromSalt(t, "gd_unresolved"))
+			_, err = u.GetPurchaseDetail(context.Background(), unresolved, uuidtestkit.NewTestFromSalt(t, "gd_unresolved"))
 			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
 		})
 
@@ -133,12 +134,12 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			userID := uuid.NewTestFromSalt(t, "gd_nf_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "gd_nf_user")
 			qs := mock_query.NewMockPurchaseDetailQueryService(ctrl)
 			qs.EXPECT().FindDetailByUserAndID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
 
 			u := newUsecase(t, qs)
-			_, err := u.GetPurchaseDetail(context.Background(), newAuthn(t, userID), uuid.NewTestFromSalt(t, "gd_nf"))
+			_, err := u.GetPurchaseDetail(context.Background(), newAuthn(t, userID), uuidtestkit.NewTestFromSalt(t, "gd_nf"))
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 	})
@@ -155,17 +156,17 @@ func Test_toPurchaseGetDetailView(t *testing.T) {
 
 			paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 			rm := &query.PurchaseDetailReadModel{
-				ID:             uuid.NewTestFromSalt(t, "tv_id"),
+				ID:             uuidtestkit.NewTestFromSalt(t, "tv_id"),
 				Code:           "tv-code",
-				UserID:         uuid.NewTestFromSalt(t, "tv_user"),
-				StatusID:       uuid.NewTestFromSalt(t, "tv_status"),
+				UserID:         uuidtestkit.NewTestFromSalt(t, "tv_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "tv_status"),
 				StatusName:     "支払い済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Items: []query.PurchaseDetailItem{
-					{ProductID: uuid.NewTestFromSalt(t, "tv_prod"), ProductName: "商品A", Quantity: 2, UnitPrice: mustPrice(t, "800")},
+					{ProductID: uuidtestkit.NewTestFromSalt(t, "tv_prod"), ProductName: "商品A", Quantity: 2, UnitPrice: mustPrice(t, "800")},
 				},
 				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				PaidAt:     &paidAt,
@@ -191,17 +192,17 @@ func Test_toPurchaseGetDetailView(t *testing.T) {
 
 			canceledAt := time.Date(2026, time.July, 26, 9, 0, 0, 0, time.UTC)
 			rm := &query.PurchaseDetailReadModel{
-				ID:             uuid.NewTestFromSalt(t, "tvc_id"),
+				ID:             uuidtestkit.NewTestFromSalt(t, "tvc_id"),
 				Code:           "tvc-code",
-				UserID:         uuid.NewTestFromSalt(t, "tvc_user"),
-				StatusID:       uuid.NewTestFromSalt(t, "tvc_status"),
+				UserID:         uuidtestkit.NewTestFromSalt(t, "tvc_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "tvc_status"),
 				StatusName:     "キャンセル",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Items: []query.PurchaseDetailItem{
-					{ProductID: uuid.NewTestFromSalt(t, "tvc_prod"), ProductName: "商品C", Quantity: 1, UnitPrice: mustPrice(t, "800")},
+					{ProductID: uuidtestkit.NewTestFromSalt(t, "tvc_prod"), ProductName: "商品C", Quantity: 1, UnitPrice: mustPrice(t, "800")},
 				},
 				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				PaidAt:     nil,

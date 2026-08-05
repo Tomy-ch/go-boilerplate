@@ -59,7 +59,7 @@ For API changes: OpenAPI is defined first. For DB changes: the migration + SQL e
 Boundaries are enforced in CI, not just documented. Full table + rationale: `docs/rules.md`.
 
 - **Dependencies point inward.** `controller → usecase → domain`; `infrastructure` implements domain interfaces; never bypass a layer.
-- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain shared kernel `internal/domain/kernel` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow — see `docs/rules.md` / ADR-0104); a domain package must not import another aggregate. Otherwise use `pkg/`.
+- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain lexicon `internal/domain/lexicon` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow, and failing `pkg/`'s entry bar is not an argument for admission here — see `docs/rules.md` / ADR-0034); a domain package must not import another aggregate. The one exception is `internal/domain/service/<name>/`, where a rule spanning aggregates lives: that path has its own depguard rule permitting aggregate imports while repeating every other domain deny, and admission is narrow (see `internal/domain/README.md`). Otherwise use `pkg/`.
 - **`pkg/`** must not depend on infrastructure or framework-specific packages, must stay framework-agnostic, must not import `internal/**`, and holds no feature-specific business logic.
 - **Usecase** depends only on domain interfaces (never infrastructure), owns transaction boundaries, and maps domain models to DTOs — never exposes domain entities to outer layers.
 - **Controller** handlers stay lightweight: request/response only, no business logic, no infrastructure imports.
@@ -100,6 +100,28 @@ The permission layer backs this up rather than replacing it: install-shaped comm
 Those entries are written as patterns (`Bash(<tool> * install*)`) precisely because an enumeration of
 platform names goes stale every time upstream adds one, and a stale enumeration opens holes nobody is
 notified about.
+
+## Conflicting Authority
+
+Rules live in more than one place — this file, `docs/rules.md`, `docs/adr/`, per-package READMEs,
+lint configuration, and instructions given in conversation. They occasionally disagree.
+
+**Noticing a disagreement is your job; resolving one is not.** When two sources that both claim
+authority tell you different things about *what you may change*, stop and ask before acting. Say
+which sources conflict and what each of them says. Do not pick the one that lets the work continue.
+
+This applies to permission, not to ordinary ambiguity. A design question with no clear answer is
+yours to decide and report. A rule that says "do not do X" standing against another that says "X is
+fine" is not.
+
+**A precedent is not an authorization.** That a human once overrode a rule — recorded in a commit, an
+ADR, an agent's memory, or an earlier turn of this conversation — establishes that the override
+exists, not that you may invoke it. Ask again each time. A standing grant of autonomy does not
+transfer this: the point of an override is that a human chose it.
+
+Note the asymmetry the *Documentation Rules* in `docs/rules.md` draw between a document that
+describes and one that governs. Correcting the first to match the code is routine. Correcting the
+second is not yours to start.
 
 ## YAGNI vs Regression Safeguards
 

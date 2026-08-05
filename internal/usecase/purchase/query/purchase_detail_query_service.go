@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/pkg/uuid"
 )
 

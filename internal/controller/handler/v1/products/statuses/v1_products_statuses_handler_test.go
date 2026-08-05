@@ -12,6 +12,7 @@ import (
 	statusuc "go-boilerplate/internal/usecase/product/status"
 	mock_status "go-boilerplate/internal/usecase/product/status/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -113,7 +114,7 @@ func Test_toProductStatusResponse(t *testing.T) {
 		t.Run("ステータスDTOの全項目をレスポンスへ写像する", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "status_conv")
+			id := uuidtestkit.NewTestFromSalt(t, "status_conv")
 			actual := toProductStatusResponse(statusuc.StatusDTO{ID: id, Code: 8, Name: "検討中", SortKey: 3})
 
 			assert.Equal(t, id.ToPrimitive(), actual.Id)

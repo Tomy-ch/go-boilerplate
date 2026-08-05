@@ -12,6 +12,7 @@ import (
 	categoryuc "go-boilerplate/internal/usecase/product/category"
 	mock_category "go-boilerplate/internal/usecase/product/category/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -113,7 +114,7 @@ func Test_toProductCategoryResponse(t *testing.T) {
 		t.Run("カテゴリDTOの全項目をレスポンスへ写像する", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "category_conv")
+			id := uuidtestkit.NewTestFromSalt(t, "category_conv")
 			actual := toProductCategoryResponse(categoryuc.CategoryDTO{ID: id, Code: 2, Name: "電子機器", SortKey: 7})
 
 			assert.Equal(t, id.ToPrimitive(), actual.Id)

@@ -19,6 +19,7 @@ import (
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/nullable"
@@ -44,15 +45,15 @@ func newServer(t *testing.T) (*server, *mock_product.MockUsecase) {
 func newProductView(t *testing.T, salt string) productuc.ProductView {
 	t.Helper()
 	return productuc.ProductView{
-		ID:                    uuid.NewTestFromSalt(t, salt),
+		ID:                    uuidtestkit.NewTestFromSalt(t, salt),
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 decimaltestkit.MustParse(t, "19.99"),
 		Quantity:              100,
 		StockWarningThreshold: ptr.To(10),
-		StatusID:              uuid.NewTestFromSalt(t, salt+"_status"),
+		StatusID:              uuidtestkit.NewTestFromSalt(t, salt+"_status"),
 		StatusName:            "在庫あり",
-		CategoryID:            uuid.NewTestFromSalt(t, salt+"_category"),
+		CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 		CategoryName:          "電子機器",
 		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
 		ImagePath:             ptr.To("products/" + salt + ".png"),
@@ -175,8 +176,8 @@ func newPatchProductsDetailRequest(t *testing.T, productID uuid.UUID) gen.PatchP
 			Name:                  ptr.To("更新後の商品名"),
 			Price:                 ptr.To("29.99"),
 			Quantity:              ptr.To(int32(50)),
-			CategoryId:            ptr.To(uuid.NewTestFromSalt(t, "patch_category").ToPrimitive()),
-			StatusId:              ptr.To(uuid.NewTestFromSalt(t, "patch_status").ToPrimitive()),
+			CategoryId:            ptr.To(uuidtestkit.NewTestFromSalt(t, "patch_category").ToPrimitive()),
+			StatusId:              ptr.To(uuidtestkit.NewTestFromSalt(t, "patch_status").ToPrimitive()),
 			Description:           nullable.NewNullableWithValue("<p>更新後の説明</p>"),
 			StockWarningThreshold: nullable.NewNullableWithValue(int32(5)),
 			PublishedAt:           nullable.NewNullableWithValue(patchPublishedAt),
@@ -188,7 +189,7 @@ func newPatchProductsDetailRequest(t *testing.T, productID uuid.UUID) gen.PatchP
 func Test_server_PatchProductsDetail(t *testing.T) {
 	t.Parallel()
 
-	targetID := uuid.NewTestFromSalt(t, "patch_target")
+	targetID := uuidtestkit.NewTestFromSalt(t, "patch_target")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -213,9 +214,9 @@ func Test_server_PatchProductsDetail(t *testing.T) {
 					require.NotNil(t, p.Quantity)
 					assert.Equal(t, 50, *p.Quantity)
 					require.NotNil(t, p.CategoryID)
-					assert.Equal(t, uuid.NewTestFromSalt(t, "patch_category"), *p.CategoryID)
+					assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "patch_category"), *p.CategoryID)
 					require.NotNil(t, p.StatusID)
-					assert.Equal(t, uuid.NewTestFromSalt(t, "patch_status"), *p.StatusID)
+					assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "patch_status"), *p.StatusID)
 
 					assert.Equal(t, patch.Value("<p>更新後の説明</p>"), p.Description)
 					assert.Equal(t, patch.Value(5), p.StockWarningThreshold)
@@ -302,7 +303,7 @@ func Test_server_PatchProductsDetail(t *testing.T) {
 
 			resp, err := s.PatchProductsDetail(context.Background(), newPatchProductsDetailRequest(t, targetID))
 			assert.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
@@ -323,7 +324,7 @@ func Test_server_PatchProductsDetail(t *testing.T) {
 func Test_server_PatchProductsStock(t *testing.T) {
 	t.Parallel()
 
-	targetID := uuid.NewTestFromSalt(t, "stock_target")
+	targetID := uuidtestkit.NewTestFromSalt(t, "stock_target")
 
 	newRequest := func(delta int32) gen.PatchProductsStockRequestObject {
 		return gen.PatchProductsStockRequestObject{
@@ -389,7 +390,7 @@ func Test_server_PatchProductsStock(t *testing.T) {
 
 			resp, err := s.PatchProductsStock(context.Background(), newRequest(1))
 			assert.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 

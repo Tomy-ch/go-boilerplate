@@ -29,7 +29,9 @@ type DecrementProductStockParams struct {
 
 // === source: database/dml/command_service/purchase/decrement_product_stock.sql ===
 // 在庫を数量分減算する。防御的に quantity >= 減算数を併用し、売り越しをアトミックに弾く（更新 0 行なら在庫不足）。
-// ロック取得後に検証済みのため通常は 0 行にならないが、fail-closed の二重防御として残す（ADR-0100）。
+// ロック取得後に検証済みのため通常は 0 行にならないが、fail-closed の二重防御として残す（ADR-0031）。
+// この条件は domain の売り越し判定（purchase.New が返す ErrInsufficientStock）を言い換えたもので、
+// 独立した規則ではない。判定が変わったらこちらも追随させること（逆は無い。ADR-0027 § Derivation）。
 //
 //	UPDATE products
 //	SET
@@ -251,55 +253,6 @@ func (q *Queries) InsertPurchaseDetail(ctx context.Context, arg *InsertPurchaseD
 		arg.UnitPrice,
 	)
 	return err
-}
-
-const lockProductsForUpdate = `-- name: LockProductsForUpdate :many
-SELECT
-    p.id,
-    p.price,
-    p.quantity
-FROM products AS p
-WHERE p.id = ANY($1::UUID [])
-ORDER BY p.id
-FOR UPDATE
-`
-
-type LockProductsForUpdateRow struct {
-	ID       uuid.UUID
-	Price    decimal.Decimal
-	Quantity int32
-}
-
-// === source: database/dml/command_service/purchase/lock_products_for_update.sql ===
-// 指定商品を ID 昇順に悲観ロック（FOR UPDATE）し、価格・在庫を返す。
-// ロック順序を id 昇順に固定することで複数商品購入同士のデッドロックを構造的に避ける（ADR-0100）。
-//
-//	SELECT
-//	    p.id,
-//	    p.price,
-//	    p.quantity
-//	FROM products AS p
-//	WHERE p.id = ANY($1::UUID [])
-//	ORDER BY p.id
-//	FOR UPDATE
-func (q *Queries) LockProductsForUpdate(ctx context.Context, productIds []uuid.UUID) ([]*LockProductsForUpdateRow, error) {
-	rows, err := q.db.Query(ctx, lockProductsForUpdate, productIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []*LockProductsForUpdateRow
-	for rows.Next() {
-		var i LockProductsForUpdateRow
-		if err := rows.Scan(&i.ID, &i.Price, &i.Quantity); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const updatePurchaseCanceled = `-- name: UpdatePurchaseCanceled :exec

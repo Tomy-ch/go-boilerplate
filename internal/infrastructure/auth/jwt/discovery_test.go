@@ -29,7 +29,7 @@ func discoveryDoc(t *testing.T, issuer, jwksURI string) []byte {
 
 // newHTTPSDiscovery は、https 前提（allowInsecure=false）の discovery 解決器を生成します。
 func newHTTPSDiscovery(client httpclient.Client, clk *fakeClock) *discoveryResolver {
-	return newDiscoveryResolver(client, discoveryIssuer, time.Hour, clk, false)
+	return newDiscoveryResolver(client, discoveryIssuer, time.Hour, clk, false, nil)
 }
 
 func Test_newDiscoveryResolver(t *testing.T) {
@@ -40,14 +40,14 @@ func Test_newDiscoveryResolver(t *testing.T) {
 
 		t.Run("issuer から discovery URL を導出する", func(t *testing.T) {
 			t.Parallel()
-			d := newDiscoveryResolver(stubJWKSClient(t, nil), discoveryIssuer, time.Hour, newFakeClock(fixedNow), false)
+			d := newDiscoveryResolver(stubJWKSClient(t, nil), discoveryIssuer, time.Hour, newFakeClock(fixedNow), false, nil)
 			assert.Equal(t, discoveryIssuer+"/.well-known/openid-configuration", d.discoveryURL)
 			assert.Equal(t, time.Hour, d.ttl)
 		})
 
 		t.Run("ttl が 0 以下なら既定 discovery TTL が適用される", func(t *testing.T) {
 			t.Parallel()
-			d := newDiscoveryResolver(stubJWKSClient(t, nil), discoveryIssuer, 0, newFakeClock(fixedNow), false)
+			d := newDiscoveryResolver(stubJWKSClient(t, nil), discoveryIssuer, 0, newFakeClock(fixedNow), false, nil)
 			assert.Equal(t, defaultDiscoveryTTL, d.ttl)
 		})
 	})

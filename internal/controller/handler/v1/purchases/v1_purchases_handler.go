@@ -8,12 +8,12 @@ import (
 	"context"
 	"net/http"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/purchases/gen"
 	idempotencymw "go-boilerplate/internal/controller/httpstack/idempotency"
 	"go-boilerplate/internal/observability"
+	checkoutuc "go-boilerplate/internal/usecase/checkout"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -23,21 +23,26 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
-
 type server struct {
-	tracer observability.LayerTracer
-	uc     purchaseuc.Usecase
-	idem   idempotency.Deps
+	tracer   observability.LayerTracer
+	uc       purchaseuc.Usecase
+	checkout checkoutuc.Usecase
+	idem     idempotency.Deps
 }
 
 // BindHandler は、購入作成のハンドラを Echo に登録します。冪等ミドルウェアを併用します。
-func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Usecase, idem idempotency.Deps) {
+func BindHandler(
+	e *echo.Echo,
+	tf observability.TracerFactory,
+	uc purchaseuc.Usecase,
+	checkout checkoutuc.Usecase,
+	idem idempotency.Deps,
+) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
-		tracer: tf.Controller(),
-		uc:     uc,
-		idem:   idem,
+		tracer:   tf.Controller(),
+		uc:       uc,
+		checkout: checkout,
+		idem:     idem,
 	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
 }
 
@@ -46,13 +51,9 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
-	}
-	userID, err := authn.UserID()
+	userID, err := ctxhelper.RequireUserID(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+		return nil, err
 	}
 
 	cursor, err := paging.NewCursor(request.Params.After, request.Params.First)
@@ -96,13 +97,9 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
-	}
-	userID, err := authn.UserID()
+	userID, err := ctxhelper.RequireUserID(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+		return nil, err
 	}
 
 	details := make([]purchaseuc.DetailParam, len(request.Body.Details))
@@ -119,8 +116,8 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 		displayCurrency = &s
 	}
 
-	view, _, err := idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx context.Context) (purchaseuc.PurchaseView, error) {
-		return s.uc.CreatePurchase(ctx, purchaseuc.CreatePurchaseParams{
+	view, _, err := idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx context.Context) (checkoutuc.PurchaseView, error) {
+		return s.checkout.CreatePurchase(ctx, checkoutuc.CreatePurchaseParams{
 			UserID:          userID,
 			Details:         details,
 			DisplayCurrency: displayCurrency,
@@ -130,7 +127,7 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 		return nil, err
 	}
 
-	res, err := toPurchaseResponse(view)
+	res, err := toPurchaseResponse(view.Purchase, view.ReferenceAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +136,7 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 
 // toPurchaseResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
 // 数量が int32 に収まらない場合はエラーを返します。
-func toPurchaseResponse(v purchaseuc.PurchaseView) (gen.PurchaseResponse, error) {
+func toPurchaseResponse(v purchaseuc.PurchaseView, ref *checkoutuc.ReferenceAmountView) (gen.PurchaseResponse, error) {
 	details := make([]gen.PurchaseDetailResponse, len(v.Details))
 	for i, d := range v.Details {
 		quantity, err := safecast.IntToInt32(d.Quantity)
@@ -164,12 +161,12 @@ func toPurchaseResponse(v purchaseuc.PurchaseView) (gen.PurchaseResponse, error)
 		TotalAmount:     int64(v.TotalAmount),
 		Details:         details,
 		OrderedAt:       v.OrderedAt,
-		ReferenceAmount: toReferenceAmount(v.ReferenceAmount),
+		ReferenceAmount: toReferenceAmount(ref),
 	}, nil
 }
 
 // toReferenceAmount は、参考換算額の DTO を HTTP レスポンスへ変換します（nil はそのまま nil）。
-func toReferenceAmount(r *purchaseuc.ReferenceAmountView) *gen.ReferenceAmount {
+func toReferenceAmount(r *checkoutuc.ReferenceAmountView) *gen.ReferenceAmount {
 	if r == nil {
 		return nil
 	}

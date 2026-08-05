@@ -6,7 +6,7 @@ import (
 
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/usecase/boundary/auth"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestMakeAvailableAuthn(t *testing.T) {
 		t.Run("subjectがUUIDとして解釈できる場合、内部UserIDも解決済みになる", func(t *testing.T) {
 			t.Parallel()
 
-			expectedID := uuid.NewTestFromSalt(t, "make_available_authn")
+			expectedID := uuidtestkit.NewTestFromSalt(t, "make_available_authn")
 			authCtx := MakeAvailableAuthn(context.Background(), t, expectedID.String())
 
 			authn, ok := ctxhelper.GetAuthn(authCtx)

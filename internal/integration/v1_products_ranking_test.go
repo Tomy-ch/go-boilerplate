@@ -14,7 +14,7 @@ import (
 	rankinguc "go-boilerplate/internal/usecase/product/ranking"
 	mock_ranking "go-boilerplate/internal/usecase/product/ranking/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v5"
@@ -43,7 +43,7 @@ func TestV1ProductsRanking_Integration(t *testing.T) {
 		return rankinguc.RankingView{
 			Rankings: []rankinguc.RankingItemView{
 				{
-					ProductID:    uuid.NewTestFromSalt(t, "integration_ranking_product"),
+					ProductID:    uuidtestkit.NewTestFromSalt(t, "integration_ranking_product"),
 					Name:         "商品",
 					Price:        decimaltestkit.MustParse(t, "19.99"),
 					SoldQuantity: 8,

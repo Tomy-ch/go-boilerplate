@@ -19,10 +19,13 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 
 ## 規約
 
-- **ファイル名**: `NNNN-kebab-title.md`、ゼロパディング 4 桁。supersession で空いた番号を別の決定へ再割り当てすることはない。
+- **ファイル名**: `NNNN-kebab-title.md`、ゼロパディング 4 桁。supersession で空いた番号を別の決定へ再割り当てすることはない。下記の統合パスで空いた番号も同様である——統合後は番号が再び連続するが、生き残った ADR が退役した ADR の旧番号を継承することはない。
 - **順序**: 番号は依存関係 / 基礎的な順序に従う（原則 → コントラクト → レイヤー → サブシステム → 横断関心事 → exclusion）、発見順ではない。この順序を保つため、新しい ADR を**テーマ上の位置へ挿入し、後続の全番号を +1 シフト**してよい（純粋なリナンバー: シフトされた各 ADR の内容は不変で、リポジトリ内の全参照は同一変更内で更新する）。シフト以前の外部からの番号参照は古くなり得るため、安定識別子はファイル名の kebab タイトルである。
 - **ステータスライフサイクル**: `proposed` → `accepted` → (`superseded` | `deprecated`)。
-- **不変**: `accepted` になったら、`Status` 行の編集と `Superseded-by` リンクの追加のみ。それ以外は書かれた通りのまま。不変性が守るのは記録された*決定内容*であり、上記の挿入リナンバーが変えるのは番号のみで記録ではない。
+- **改訂**: `accepted` な ADR は**その場で**改訂する——`date` を更新し、`status: accepted` を保ち、同じ決定であり続けるものに対して supersede する ADR を新設しない。本リポジトリはボイラープレートであり、頒布するのは現在の設計であって、そこへ至った立場の系列ではない。1 つの規則を知るために 3 本の ADR を読まされる fork 先は、自分が生きていない履歴の代金を払っている。改訂で結論が変わる場合、置き換えられた立場は却下理由とともに Alternatives Considered へ移す——捨てるのではなく、節が変わるだけである。上記の挿入リナンバーが変えるのは番号のみで記録ではない。
+- **誰が改訂してよいか**: 改訂はこのリポジトリのアーキテクトまたはテックリードの判断であり、改訂ごとに取る。`accepted` な ADR が実装と食い違っていると気づいたことは、その人に提起する理由であって改訂の許可ではない——**実装側が誤りである可能性が同じだけある**。過去の改訂は次の改訂の常時承認にはならない。
+- **新しい ADR** は、隣の決定とは独立に読まれるべき決定のために書くものであって、ある決定の改訂のために書くものではない。`superseded` は、改訂ではなく本当に置き換えられた決定のためにライフサイクルへ残す。
+- **統合の例外（承認済み。収穫ごとに一度）**: 本リポジトリはサンプル機能群を実装し、そこから知見を収穫し、最後にサンプルを削除するボイラープレートである。サンプルの実装が生む ADR は、アーキテクチャ上の決定と機能の詳細が混ざったものになり、しかも発見順に番号の末尾へ積み上がる——それはまさに上記の順序規約が防ぐために存在する状態である。したがって**統合パスはそうした ADR を統合・書き換え・退役させてよい**。アーキテクチャとしての残滓を順序付けられた集合へ戻し、機能の内容は `docs/spec/` へ移す。これは不変性に対する意図的な例外であり、範囲は限定される: 対象はサンプル開発が生んだ ADR に限り、レビューされる 1 つの変更としてまとめて行い、退役した ADR のアーキテクチャ上の内容は必ずそれを吸収した ADR に残る——捨てるのではなく置き場所を変えるだけである。統合パス以外では、同じ決定であり続ける ADR は上記の改訂規約に従ってその場で改訂する。この例外が加えるのはファイルを統合・退役させる権限であり、それは改訂が持たないものである。
 - **テンプレート**: [`template.ja.md`](template.ja.md) をコピーする。
 - **メタ**: [`0000-record-architecture-decisions.ja.md`](0000-record-architecture-decisions.ja.md) は ADR の使用とこの分類の決定を記録する。
 - **翻訳**: 各 ADR は `docs/ja/adr/` にミラーされる（`canonicalize-doc` フローを経由）。
@@ -63,78 +66,80 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0026](0026-master-data-via-migration.ja.md) | マスターデータをマイグレーション経由で投入する。トランザクショナルシードを本番から除外する | accepted |
 | [0027](0027-lightweight-cqrs.ja.md) | 軽量CQRSの採用 — 書き込みにRepository、読み込みにQueryService | accepted |
 | [0028](0028-system-cqrs-dml-category.ja.md) | CQRSの分割の外に位置する第4のDMLカテゴリとしてsystem_cqrsを導入する | accepted |
-| [0029](0029-commandservice-atomicity-criterion.ja.md) | CommandService は単一トランザクション原子性を要する書き込みに限定 — 既定は usecase + outbox | accepted |
+| [0029](0029-commandservice-atomicity-criterion.ja.md) | 集約を跨ぐ操作の判定 — 既定は usecase + outbox、ガードが陳腐化してはならないなら同期ロック、CommandService は単一トランザクション原子性のときだけ | accepted |
 | [0030](0030-transaction-retry-idempotent-callers.ja.md) | シリアライゼーション競合時はトランザクションをリトライする。呼び出し元は冪等性を保証しなければならない | accepted |
-| [0031](0031-uuidv7-identifiers.ja.md) | すべてのエンティティ主キーに UUIDv7（時刻順）識別子を使用する | accepted |
-| [0032](0032-uber-fx-di.ja.md) | 依存性注入とライフサイクル管理に Uber Fx を採用する | accepted |
-| [0033](0033-fx-neutral-di-abstraction.ja.md) | ニュートラルな DI 抽象（Registrar / Shutdowner）の背後に fx を封じ込める | accepted |
-| [0034](0034-env-gated-wiring.ja.md) | DI を通じて環境ごとに実装を切り替える（環境ゲート結線） | accepted |
-| [0035](0035-subsystem-typed-config-loaders.ja.md) | サブシステムスコープの envPrefix 型付き設定ローダー | accepted |
-| [0036](0036-config-default-vs-required-governance.ja.md) | ガバナンス: コードデフォルト（不変）対ファイル必須（可変） | accepted |
-| [0037](0037-immutable-fail-fast-config.ja.md) | 設定は不変、起動時に 1 回だけロード、フェイルファスト | accepted |
-| [0038](0038-embedded-self-contained-binary.ja.md) | go:embed で設定（.env）とマイグレーションをバンドルし、自己完結型バイナリを実現する | accepted |
-| [0039](0039-apperror-protocol-agnostic-errors.ja.md) | プロトコル非依存の集約エラー分類 (apperror) | accepted |
-| [0040](0040-error-metadata-code-message-details.ja.md) | apperror の上に載せるプロトコル中立なエラーメタ情報（code / message / details） | accepted |
-| [0041](0041-error-details-opt-in-gate.ja.md) | スキーマ分割によるエラー details の opt-in ゲート（0040 を精緻化） | accepted |
-| [0042](0042-broker-agnostic-worker-scaffold.ja.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
-| [0043](0043-out-of-scope-push-streaming-brokers.ja.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
-| [0044](0044-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0106](0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) |
-| [0045](0045-transactional-outbox.ja.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
-| [0046](0046-at-least-once-outbox-poll.ja.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
-| [0047](0047-skip-locked-outbox-relay.ja.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |
-| [0048](0048-message-id-idempotency-propagation.ja.md) | アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する | accepted |
-| [0049](0049-outbox-dead-after-max-attempts.ja.md) | MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端） | accepted |
-| [0050](0050-outbox-retention-gc.ja.md) | 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ） | accepted |
-| [0051](0051-publisher-http-profile-isolation.ja.md) | パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する | accepted |
-| [0052](0052-relay-resident-gc-oneshot.ja.md) | リレーは常駐プロセス、GC はワンショット cron ジョブ | accepted |
-| [0053](0053-single-tx-at-most-once-idempotency.ja.md) | claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する | accepted |
-| [0054](0054-idempotency-scope-required.ja.md) | クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする | accepted |
-| [0055](0055-idempotency-fixed-ttl.ja.md) | 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない | accepted |
-| [0056](0056-idempotency-response-persistence.ja.md) | 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容） | accepted |
-| [0057](0057-idempotency-gc-separate-job.ja.md) | 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する | accepted |
-| [0058](0058-idempotency-orthogonal-concerns.ja.md) | 冪等性をオプティミスティックロックおよびレート制限と直交に保つ | accepted (exclusion) |
-| [0059](0059-job-fresh-fx-app-per-run.ja.md) | ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル） | accepted |
-| [0060](0060-job-no-worker-machinery.ja.md) | ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない | accepted (exclusion) |
-| [0061](0061-job-explicit-registration.ja.md) | Job は明示的に登録する（自動検出なし） | accepted |
-| [0062](0062-config-driven-observability-gating.ja.md) | 設定駆動によるオブザーバビリティゲーティング | accepted |
-| [0063](0063-vendor-neutral-otlp-export.ja.md) | ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲） | accepted |
-| [0064](0064-official-otel-semconv.ja.md) | 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない | accepted (exclusion) |
-| [0065](0065-dual-path-metrics.ja.md) | メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ | accepted |
-| [0066](0066-lifecycle-independent-provider.ja.md) | オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner） | accepted |
-| [0067](0067-fixed-default-sampling.ja.md) | SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない | accepted (exclusion) |
-| [0068](0068-library-selection-policy.ja.md) | 単一責任のライブラリ選定ポリシー | accepted |
-| [0069](0069-bridge-instrumentation-exceptions.ja.md) | ブリッジ / 計装ライブラリを有界な SRP 例外として認める | accepted |
-| [0070](0070-containerized-pinned-toolchain.ja.md) | 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する | accepted |
-| [0071](0071-mise-ssot-drift-gate.ja.md) | mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する | accepted |
-| [0072](0072-make-single-entrypoint.ja.md) | Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する | accepted |
-| [0073](0073-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない | accepted |
-| [0074](0074-docker-compose-dev-environment.ja.md) | ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する | accepted |
-| [0075](0075-two-layer-golangci-config.ja.md) | 2 層の golangci 設定——最小デフォルトと完全な権威ゲート | accepted |
-| [0076](0076-local-hooks-mirror-ci.ja.md) | ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証） | accepted |
-| [0077](0077-coverage-hard-gate.ja.md) | 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける | accepted |
-| [0078](0078-ci-real-graph-boot-check.ja.md) | CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証） | accepted |
-| [0079](0079-generated-artifact-drift-gate.ja.md) | 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット | accepted |
-| [0080](0080-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン——報告とゲートを分離し、ハードニングされたランナー上で行う | accepted |
-| [0081](0081-sha-pinned-actions.ja.md) | GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する | accepted |
-| [0082](0082-rollback-integration-tests.ja.md) | インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する | accepted |
-| [0083](0083-multi-model-adversarial-review.ja.md) | ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する | accepted |
-| [0084](0084-lean-a-spec-scaffold.ja.md) | スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する | accepted |
-| [0085](0085-cli-humble-object-split.ja.md) | CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア） | accepted |
-| [0086](0086-single-multi-command-binary.ja.md) | すべてのロールを 1 つのマルチコマンドバイナリに集約する | accepted |
-| [0087](0087-single-runtime-image.ja.md) | コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし） | accepted |
-| [0088](0088-hardened-alpine-runtime.ja.md) | ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない | accepted (exclusion) |
-| [0089](0089-per-environment-images.ja.md) | 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定） | accepted |
-| [0090](0090-predeploy-oneshot-migration.ja.md) | マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない | accepted (exclusion) |
-| [0091](0091-release-image-supply-chain.ja.md) | リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM） | accepted |
-| [0092](0092-vendor-neutral-deploy-skeleton.ja.md) | デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はテンプレート；レジストリは固定しない） | accepted |
-| [0093](0093-docs-via-github-pages.ja.md) | docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース） | accepted |
-| [0094](0094-no-in-app-rate-limiter.ja.md) | アプリケーション内レートリミッターを提供しない | accepted (exclusion) |
-| [0095](0095-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
-| [0096](0096-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
-| [0097](0097-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
-| [0098](0098-exchange-rate-cache-gateway-decorator.ja.md) | 為替レート gateway を boundary 継ぎ目上の TTL decorator でキャッシュする | accepted |
-| [0099](0099-reference-amount-half-up-rounding.ja.md) | referenceAmount は整数演算で計算し、丸めは 1 箇所で half-up する | accepted |
-| [0106](0106-broker-sdk-isolation-verified-after-sample-removal.ja.md) | ブローカー SDK の分離は、アダプターを未配線にすることではなくサンプル削除後に検証する | accepted |
+| [0031](0031-ordered-pessimistic-row-locks.ja.md) | 競合する書き込みを、守る条件より前に取る単一順序の悲観行ロックで直列化する | accepted |
+| [0032](0032-uuidv7-identifiers.ja.md) | すべてのエンティティ主キーに UUIDv7（時刻順）識別子を使用する | accepted |
+| [0033](0033-two-scale-quantity-model.ja.md) | 量を 2 つのスケールで保持する — 精度は正確な十進、決済は最小単位の整数 | accepted |
+| [0034](0034-domain-lexicon.ja.md) | 集約横断の値オブジェクトはキュレートされたドメイン語彙集に置く | accepted |
+| [0035](0035-uber-fx-di.ja.md) | 依存性注入とライフサイクル管理に Uber Fx を採用する | accepted |
+| [0036](0036-fx-neutral-di-abstraction.ja.md) | ニュートラルな DI 抽象（Registrar / Shutdowner）の背後に fx を封じ込める | accepted |
+| [0037](0037-env-gated-wiring.ja.md) | DI を通じて環境ごとに実装を切り替える（環境ゲート結線） | accepted |
+| [0038](0038-subsystem-typed-config-loaders.ja.md) | サブシステムスコープの envPrefix 型付き設定ローダー | accepted |
+| [0039](0039-config-default-vs-required-governance.ja.md) | ガバナンス: コードデフォルト（不変）対ファイル必須（可変） | accepted |
+| [0040](0040-immutable-fail-fast-config.ja.md) | 設定は不変、起動時に 1 回だけロード、フェイルファスト | accepted |
+| [0041](0041-embedded-self-contained-binary.ja.md) | go:embed で設定（.env）とマイグレーションをバンドルし、自己完結型バイナリを実現する | accepted |
+| [0042](0042-apperror-protocol-agnostic-errors.ja.md) | プロトコル非依存の集約エラー分類 (apperror) | accepted |
+| [0043](0043-error-metadata-code-message-details.ja.md) | apperror の上に載せるプロトコル中立なエラーメタ情報（code / message / details） | accepted |
+| [0044](0044-error-details-opt-in-gate.ja.md) | スキーマ分割によるエラー details の opt-in ゲート（0043 を精緻化） | accepted |
+| [0045](0045-broker-agnostic-worker-scaffold.ja.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
+| [0046](0046-out-of-scope-push-streaming-brokers.ja.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
+| [0047](0047-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0048](0048-broker-sdk-isolation-verified-after-sample-removal.ja.md) |
+| [0048](0048-broker-sdk-isolation-verified-after-sample-removal.ja.md) | ブローカー SDK の分離は、アダプターを未配線にすることではなくサンプル削除後に検証する | accepted |
+| [0049](0049-transactional-outbox.ja.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
+| [0050](0050-at-least-once-outbox-poll.ja.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
+| [0051](0051-skip-locked-outbox-relay.ja.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |
+| [0052](0052-message-id-idempotency-propagation.ja.md) | アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する | accepted |
+| [0053](0053-outbox-dead-after-max-attempts.ja.md) | MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端） | accepted |
+| [0054](0054-outbox-retention-gc.ja.md) | 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ） | accepted |
+| [0055](0055-publisher-http-profile-isolation.ja.md) | パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する | accepted |
+| [0056](0056-relay-resident-gc-oneshot.ja.md) | リレーは常駐プロセス、GC はワンショット cron ジョブ | accepted |
+| [0057](0057-single-tx-at-most-once-idempotency.ja.md) | claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する | accepted |
+| [0058](0058-idempotency-scope-required.ja.md) | クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする | accepted |
+| [0059](0059-idempotency-fixed-ttl.ja.md) | 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない | accepted |
+| [0060](0060-idempotency-response-persistence.ja.md) | 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容） | accepted |
+| [0061](0061-idempotency-gc-separate-job.ja.md) | 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する | accepted |
+| [0062](0062-idempotency-orthogonal-concerns.ja.md) | 冪等性をオプティミスティックロックおよびレート制限と直交に保つ | accepted (exclusion) |
+| [0063](0063-job-fresh-fx-app-per-run.ja.md) | ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル） | accepted |
+| [0064](0064-job-no-worker-machinery.ja.md) | ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない | accepted (exclusion) |
+| [0065](0065-job-explicit-registration.ja.md) | Job は明示的に登録する（自動検出なし） | accepted |
+| [0066](0066-config-driven-observability-gating.ja.md) | 設定駆動によるオブザーバビリティゲーティング | accepted |
+| [0067](0067-vendor-neutral-otlp-export.ja.md) | ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲） | accepted |
+| [0068](0068-official-otel-semconv.ja.md) | 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない | accepted (exclusion) |
+| [0069](0069-dual-path-metrics.ja.md) | メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ | accepted |
+| [0070](0070-lifecycle-independent-provider.ja.md) | オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner） | accepted |
+| [0071](0071-fixed-default-sampling.ja.md) | SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない | accepted (exclusion) |
+| [0072](0072-library-selection-policy.ja.md) | 単一責任のライブラリ選定ポリシー | accepted |
+| [0073](0073-bridge-instrumentation-exceptions.ja.md) | ブリッジ / 計装ライブラリを有界な SRP 例外として認める | accepted |
+| [0074](0074-containerized-pinned-toolchain.ja.md) | 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する | accepted |
+| [0075](0075-mise-ssot-drift-gate.ja.md) | mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する | accepted |
+| [0076](0076-make-single-entrypoint.ja.md) | Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する | accepted |
+| [0077](0077-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない | accepted |
+| [0078](0078-docker-compose-dev-environment.ja.md) | ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する | accepted |
+| [0079](0079-two-layer-golangci-config.ja.md) | 2 層の golangci 設定——最小デフォルトと完全な権威ゲート | accepted |
+| [0080](0080-local-hooks-mirror-ci.ja.md) | ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証） | accepted |
+| [0081](0081-coverage-hard-gate.ja.md) | 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける | accepted |
+| [0082](0082-ci-real-graph-boot-check.ja.md) | CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証） | accepted |
+| [0083](0083-generated-artifact-drift-gate.ja.md) | 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット | accepted |
+| [0084](0084-multi-layer-security-scanning.ja.md) | 多層セキュリティスキャン——報告とゲートを分離し、ハードニングされたランナー上で行う | accepted |
+| [0085](0085-sha-pinned-actions.ja.md) | GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する | accepted |
+| [0086](0086-malicious-package-detection-via-cooldown.ja.md) | 悪意あるパッケージへの主防御は公開クールダウンとし、専用の検知ツールは採用しない | accepted |
+| [0087](0087-rollback-integration-tests.ja.md) | インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する | accepted |
+| [0088](0088-multi-model-adversarial-review.ja.md) | ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する | accepted |
+| [0089](0089-lean-a-spec-scaffold.ja.md) | スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する | accepted |
+| [0090](0090-cli-humble-object-split.ja.md) | CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア） | accepted |
+| [0091](0091-single-multi-command-binary.ja.md) | すべてのロールを 1 つのマルチコマンドバイナリに集約する | accepted |
+| [0092](0092-single-runtime-image.ja.md) | コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし） | accepted |
+| [0093](0093-hardened-alpine-runtime.ja.md) | ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない | accepted (exclusion) |
+| [0094](0094-per-environment-images.ja.md) | 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定） | accepted |
+| [0095](0095-predeploy-oneshot-migration.ja.md) | マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない | accepted (exclusion) |
+| [0096](0096-release-image-supply-chain.ja.md) | リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM） | accepted |
+| [0097](0097-vendor-neutral-deploy-skeleton.ja.md) | デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はテンプレート；レジストリは固定しない） | accepted |
+| [0098](0098-docs-via-github-pages.ja.md) | docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース） | accepted |
+| [0099](0099-no-in-app-rate-limiter.ja.md) | アプリケーション内レートリミッターを提供しない | accepted (exclusion) |
+| [0100](0100-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
+| [0101](0101-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
+| [0102](0102-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
 
 フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
 Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。

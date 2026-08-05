@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +39,7 @@ func TestV1UsersMe_Integration(t *testing.T) {
 			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-self"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-self"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, mePath, nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
@@ -57,7 +57,7 @@ func TestV1UsersMe_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// Authn を注入しない（MakeAvailableUserID を呼ばない）ため、handler が ErrUnauthenticatedUser を返す。
+			// Authn を注入しない（MakeAvailableUserID を呼ばない）ため、handler が ctxhelper.ErrUnauthenticatedUser を返す。
 			mockApp := mock_user.NewMockUsecase(ctrl)
 
 			detail.BindHandler(e, tf, mockApp)
@@ -77,7 +77,7 @@ func TestV1UsersMe_Integration(t *testing.T) {
 			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(user.UserView{}, apperror.ErrNotFound)
 
 			detail.BindHandler(e, tf, mockApp)
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-404"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "me-404"))
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, mePath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusNotFound)

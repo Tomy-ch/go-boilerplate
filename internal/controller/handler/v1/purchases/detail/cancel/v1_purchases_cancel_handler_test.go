@@ -17,6 +17,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -42,17 +43,17 @@ func cancelViewFixture(t *testing.T) purchaseuc.CancelPurchaseView {
 	t.Helper()
 	canceledAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.CancelPurchaseView{
-		ID:             uuid.NewTestFromSalt(t, "hc_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "hc_id"),
 		Code:           "hc-code",
-		UserID:         uuid.NewTestFromSalt(t, "hc_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "hc_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "hc_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "hc_status"),
 		StatusName:     "キャンセル",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "hc_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "hc_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		CanceledAt: &canceledAt,
@@ -87,8 +88,8 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			userID := uuid.NewTestFromSalt(t, "hc_user")
-			purchaseID := uuid.NewTestFromSalt(t, "hc_purchase")
+			userID := uuidtestkit.NewTestFromSalt(t, "hc_user")
+			purchaseID := uuidtestkit.NewTestFromSalt(t, "hc_purchase")
 			view := cancelViewFixture(t)
 			uc.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, params purchaseuc.CancelPurchaseParams) (purchaseuc.CancelPurchaseView, error) {
@@ -122,9 +123,9 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesCancel(context.Background(), gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hc_noauth").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_noauth").ToPrimitive(),
 			})
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("ユースケースがエラーを返した場合はそのまま伝播する", func(t *testing.T) {
@@ -137,9 +138,9 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			uc.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).
 				Return(purchaseuc.CancelPurchaseView{}, apperror.ErrNotFound)
 
-			userID := uuid.NewTestFromSalt(t, "hc_user_err")
+			userID := uuidtestkit.NewTestFromSalt(t, "hc_user_err")
 			_, err := s.PatchPurchasesCancel(authnContext(t, userID), gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hc_purchase_err").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_purchase_err").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
@@ -158,7 +159,7 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
 
 			_, err = s.PatchPurchasesCancel(ctx, gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hc_unresolved").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_unresolved").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
@@ -174,9 +175,9 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			view.Details[0].Quantity = math.MaxInt32 + 1
 			uc.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).Return(view, nil)
 
-			userID := uuid.NewTestFromSalt(t, "hc_user_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "hc_user_overflow")
 			_, err := s.PatchPurchasesCancel(authnContext(t, userID), gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hc_purchase_overflow").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_purchase_overflow").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})

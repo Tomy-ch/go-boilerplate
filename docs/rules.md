@@ -31,15 +31,38 @@ flowchart LR
 
 **The domain layer must always be the most independent layer.**
 
-### Domain shared kernel
+### Domain lexicon
 
 A domain package must **not** import another aggregate (`internal/domain/` is denied by depguard).
-Business-semantic value objects shared across aggregates — e.g. `money.Price`, which cannot live in
-`pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
-[`internal/domain/kernel`](../internal/domain/kernel/README.md), which every domain package may
-import (depguard allows `internal/domain/kernel`). Admission to the kernel is deliberately narrow
-(value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README); it is not
-a `shared` / `common` junk drawer. Rationale: [ADR-0104](adr/0104-domain-shared-kernel.md).
+Business-semantic value objects used by more than one aggregate, which cannot live in `pkg/` because
+`pkg/` forbids business logic, live in the **domain lexicon**
+[`internal/domain/lexicon`](../internal/domain/lexicon/README.md), which every domain package may
+import (depguard allows `internal/domain/lexicon`).
+
+Placement is resolved **`pkg/` first** — its bar is machine-enforced, the lexicon's is prose, and a
+prose bar cannot push a type across a boundary a linter draws. Failing `pkg/` is not an argument for
+the lexicon; a type that clears neither stays in its aggregate. Admission is deliberately narrow
+(value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README), and the
+name states the question asked at the door: is this a word of the business?
+Rationale: [ADR-0034](adr/0034-domain-lexicon.md).
+
+### Domain services
+
+The lexicon is not the only path allowed to cross inside the domain. A rule that spans aggregates is
+the responsibility of neither of them, so it lives under **`internal/domain/service/<name>/`**, and
+that path has a depguard rule of its own which permits importing aggregates. The permission is one
+edge wide: every other domain deny (framework, infrastructure, usecase, controller, file system,
+process, environment) is repeated verbatim in that rule, and a service there holds no I/O — no
+Repository, no `context.Context`. It receives state the Usecase has already loaded and returns a
+domain error.
+
+The two exceptions answer different questions and are not interchangeable. The lexicon admits a
+**value object** that several aggregates speak in; a domain service holds a **rule** that no single
+aggregate can decide. A rule that fits on one aggregate goes on that aggregate, and reading two
+aggregates merely to place them side by side is mapping, which stays in Usecase. The admission bar
+and the current occupant are in
+[`internal/domain/README.md`](../internal/domain/README.md) § Where a cross-aggregate Domain Service
+lives.
 
 ### Rationale
 
@@ -62,7 +85,7 @@ Usecase → Boundary(interface) → Infrastructure
 
 ## Generated Code Rules
 
-> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0079](adr/0079-generated-artifact-drift-gate.md).
+> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0083](adr/0083-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -157,6 +180,15 @@ The following processing must **not be performed** in the Domain layer.
 - Business rules
 - Repository interface
 
+The two lists above govern what the domain may *contain*. The domain must equally not be *missing*
+what it owns: **a condition that carries a name in the business vocabulary must exist in the domain
+as a predicate.** SQL, handlers and jobs may *execute* such a condition; none of them may *author*
+it. A condition qualifies when someone who knows the business would recognise it as a statement
+about the business — not merely because it appears in a filter. Identity lookup, pagination,
+ordering, and foreign-key joins are mechanism and are out of scope. See
+[`internal/domain/README.md`](../internal/domain/README.md) § Query and Aggregate for the
+discriminator and the reasoning.
+
 ## Context Propagation Rules
 
 - `context.Context` must always be propagated to lower layers
@@ -195,6 +227,8 @@ Forbidden:
 - Writing join / aggregation queries across *independent* Aggregates in Repository — **exempt**: a
   uniquely-determined JOIN to a context-nested reference master (a child sub-domain lookup, see below)
 - Writing domain logic in QueryService
+- Authoring a named business condition in a query — the `WHERE` clause is that condition's
+  *execution*, not its definition (see [Domain Layer Constraints](#domain-layer-constraints))
 
 Boundary clarifications (common misreads):
 
@@ -347,15 +381,15 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ## Error Handling Rules
 
-> Rationale: [ADR-0039](adr/0039-apperror-protocol-agnostic-errors.md).
+> Rationale: [ADR-0042](adr/0042-apperror-protocol-agnostic-errors.md).
 
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
 - **Never return a `xerrors.New(...)` built inside a function body.** Declare the error as a package-level sentinel (`var errXxx = xerrors.New("...")`) and attach the dynamic context with `xerrors.Wrap(errXxx, ctx)`. An error created in place is unreachable to `errors.Is`, so callers cannot branch on it and tests are forced onto message-string matching — a one-word wording change then breaks the test, and a different error passes it. Enforced mechanically by `internal/architest` (`TestNoInlineXerrorsNew`); there is no allowlist. `_test.go` is out of scope — building an ad-hoc error to inject is a legitimate use there.
 - When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
-- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0040](adr/0040-error-metadata-code-message-details.md).
-- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0041](adr/0041-error-details-opt-in-gate.md).
+- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0043](adr/0043-error-metadata-code-message-details.md).
+- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0044](adr/0044-error-details-opt-in-gate.md).
 
 ## Comment Rules
 
@@ -375,6 +409,8 @@ upstream <https://go.dev/doc/comment>).
 - **Correct outranks everything.** A doc comment that lies about or has drifted from the actual behavior is worse than no comment — the highest-priority finding.
 - **A non-obvious Why is the one addition godoc does not mandate but this repo keeps** — the reason behind a decision the code cannot convey (a load-bearing constraint / intent). OK: `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"). Include it only when genuinely non-obvious.
 - **Never invent a Why.** A Why is kept only when it is non-obvious **and** verifiable — derivable from the code, a design document, or the configuration. A rationale you cannot establish is a guess, and a plausible guess is worse than silence: a comment reads as authoritative, so a wrong Why misleads every later reader and survives longer than the code it explains. When a defensive branch or a magic value looks like it needs a reason you cannot pin down, leave the comment out and raise the gap in review instead of writing something that sounds right. Restating only the part you can verify is not a fix either — that lands back on **restatement**.
+- **A Why has a jurisdiction, and the code is not always it.** Deciding a Why is worth keeping is a separate question from deciding it belongs *here*. godoc's surface is the **API consumer's** contract, not a venue for arguing a design decision — so the rationale for a **rejected alternative**, a **threat-model analysis**, or an **architecture-wide policy** is owned by `docs/adr/` / `docs/design/**` / the package README, and the code keeps only the **operative residue**: the one or two sentences someone editing *this* declaration must not violate, plus a link to the owning document. Getting this wrong fails twice over — design prose parked in a comment is invisible from the document that owns the decision, so it drifts unnoticed, and every caller reading for the contract must first read past the argument. The deciding test is therefore **not** "is this Why non-obvious?" (it usually is, which is why volume alone never wins the argument) but: **if someone reversed this decision, which document would they be obliged to update?** Write it there and link to it. When the honest answer is "no document — the constraint exists only at this call site" (a `runtime.Caller` skip depth, a workaround for an upstream bug), the code **is** the jurisdiction and the comment stays in full.
+- **Relocating is not dumping — each destination has an entry bar, and the code is a legitimate destination.** Moving prose out of a comment only helps if it lands where that *kind* of knowledge is owned; a document that accepts everything answers nothing. Two misroutes are worth naming because both look like "design rationale" from inside a comment: **a library's or an API's specific behavior** (this driver returns X on Y, this SDK reads that env var) is not a decision among alternatives — it is a property of the thing being called, it changes when the dependency is upgraded, and its home is the comment at the call site; and **business / domain knowledge** (what a rule means, why a status transitions this way) belongs to `docs/spec/**`, which is where the behavior is specified and kept current. `docs/adr/` takes only a **choice among alternatives with lasting consequences** or a deliberate exclusion — see the *What belongs here* table in [`docs/adr/README.md`](adr/README.md), which governs. If a candidate fits none of the destinations, that is evidence the code was the right place all along; keep it there rather than forcing a home.
 - **In-function comments are outside godoc's purview.** Write one only when it is **non-obvious AND unclear without it**. The noise list above still applies; a non-obvious Why is the main legitimate case.
 - **Language scope**: godoc governs Go only, but this content standard is **language-agnostic** — it applies to non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). Non-Go is **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same bar — no How narration, no 経緯, no restatement; a non-obvious Why stays.
 - **Enforcement split**: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of doc comments on exported declarations. This **content** rule (godoc-conformant contract + non-obvious Why + no noise) is semantic and cannot be linted — it is enforced by review: `impl-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments and **flags** noise, then auto-fixes the confirmed findings.
@@ -384,6 +420,7 @@ upstream <https://go.dev/doc/comment>).
 Applies to standalone **documentation prose** — `README*` / `docs/**` / guides — as opposed to source-code comments (see *Comment Rules*). It is a **content** standard, enforced by review (the `doc-reviewer` agent), not by a linter. The transferable principles from *Comment Rules* (accuracy / substance / no rot) apply; the difference is that docs **welcome** What, Why, and How.
 
 - **Accurate** — the prose must match reality: the code, files, commands, flags, and APIs it describes. A doc that has **drifted** from the code (a removed symbol, a renamed file, a changed flag) is the **highest-priority** finding — a confidently wrong doc misleads more than a missing one. Verify claims against the actual code / files, do not trust the prose.
+- **Which side is the error depends on what the document does.** A doc that *describes* — a package README, a command reference, a guide — is corrected to match the code. A doc that *governs* — `docs/rules.md`, `docs/architecture.md`, `docs/adr/**` — is not: it states the intent the code is meant to satisfy, so a disagreement is as likely to be a defect in the code. Report the disagreement; changing a governing document to match what was built is a decision for this repository's architect or tech lead, not a drift fix.
 - **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
 - **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
 - **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
@@ -420,7 +457,7 @@ Before generating code, AI agents must refer to the following documents.
 
 ## Toolchain Execution Rules
 
-> Rationale: [ADR-0070](adr/0070-containerized-pinned-toolchain.md), [ADR-0071](adr/0071-mise-ssot-drift-gate.md).
+> Rationale: [ADR-0074](adr/0074-containerized-pinned-toolchain.md), [ADR-0075](adr/0075-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
 containerized tool-runners so they stay reproducible across machines.

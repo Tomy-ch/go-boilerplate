@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func mustPrice(t *testing.T, s string) money.Price {
 // mustStatusRef は、テスト用に有効な商品ステータス参照を構築します。
 func mustStatusRef(t *testing.T, salt, name string) StatusRef {
 	t.Helper()
-	ref, err := NewStatusRef(uuid.NewTestFromSalt(t, salt), name)
+	ref, err := NewStatusRef(uuidtestkit.NewTestFromSalt(t, salt), name)
 	require.NoError(t, err)
 	return ref
 }
@@ -34,7 +35,7 @@ func mustStatusRef(t *testing.T, salt, name string) StatusRef {
 // mustCategoryRef は、テスト用に有効な商品カテゴリ参照を構築します。
 func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 	t.Helper()
-	ref, err := NewCategoryRef(uuid.NewTestFromSalt(t, salt), name)
+	ref, err := NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt), name)
 	require.NoError(t, err)
 	return ref
 }
@@ -44,7 +45,7 @@ func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 func validProductArgs(t *testing.T) (uuid.UUID, Attributes) {
 	t.Helper()
 	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
-	return uuid.NewTestFromSalt(t, "product_id"), Attributes{
+	return uuidtestkit.NewTestFromSalt(t, "product_id"), Attributes{
 		Name:                  "ワイヤレスイヤホン",
 		Description:           ptr.To("ノイズキャンセリング対応"),
 		Price:                 mustPrice(t, "19.99"),
@@ -230,6 +231,16 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.StockWarningThreshold = ptr.To(minThreshold - 1)
+			actual, err := New(id, invalid)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidStockWarningThreshold)
+		})
+
+		t.Run("stockWarningThresholdが上限超過の場合、ErrInvalidStockWarningThresholdを返す", func(t *testing.T) {
+			t.Parallel()
+			invalid := attrs
+			invalid.StockWarningThreshold = ptr.To(maxThreshold)
+			*invalid.StockWarningThreshold++
 			actual, err := New(id, invalid)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStockWarningThreshold)
@@ -1038,6 +1049,111 @@ func TestProduct_StockWarningThreshold(t *testing.T) {
 			require.NotNil(t, p.StockWarningThreshold())
 			assert.NotEqual(t, *got, *p.StockWarningThreshold())
 			assert.Equal(t, 10, *p.StockWarningThreshold())
+		})
+	})
+}
+
+func TestProduct_IsPublished(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開日時が設定されている場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.True(t, p.IsPublished())
+		})
+
+		t.Run("公開日時が未設定の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.PublishedAt = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.False(t, p.IsPublished())
+		})
+	})
+}
+
+func TestIsPublished(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開日時が設定されている場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, IsPublished(ptr.To(time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC))))
+		})
+
+		t.Run("公開日時が未設定の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, IsPublished(nil))
+		})
+	})
+}
+
+func TestProduct_IsLowStock(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("在庫が閾値を下回る場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = ptr.To(10)
+			attrs.Quantity = 9
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.True(t, p.IsLowStock())
+		})
+
+		t.Run("在庫が閾値と等しい場合、境界を含むためtrueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = ptr.To(10)
+			attrs.Quantity = 10
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.True(t, p.IsLowStock())
+		})
+
+		t.Run("在庫が閾値を上回る場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = ptr.To(10)
+			attrs.Quantity = 11
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.False(t, p.IsLowStock())
+		})
+
+		t.Run("閾値が未設定の場合、在庫が0でも警告対象を持たないためfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = nil
+			attrs.Quantity = 0
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.False(t, p.IsLowStock())
 		})
 	})
 }
