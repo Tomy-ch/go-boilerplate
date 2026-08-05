@@ -4,6 +4,8 @@ description: >-
   Audit this repository's documented DDD interpretation against Eric Evans's original pattern language, and reconcile the layer-1 ledger at `.agents/ddd-audit/pattern-ledger.yaml` with its ADR and README corpus. Use when checking whether a DDD pattern such as Aggregate, Value Object, Repository, Factory, Specification, Bounded Context, Anticorruption Layer, Ubiquitous Language, or Domain Event has been interpreted, after changing an ADR or domain README, when the DDD ledger may be stale, or when onboarding a reviewer without Evans context. Japanese triggers apply too — 「DDD 原義と照らして」「Evans 的に正しいか」「この概念は解釈済みか」「台帳を更新して」. Audit one pattern per `ddd-origin-auditor` instance because an interpretation can be distributed across the corpus, verify every `差異あり` finding independently, and write only approved ledger entries. Emit `差異なし`, `差異あり`, or `逸脱宣言あり`; never decide whether a divergence from Evans is intentional. Do NOT use for Go architecture checks (`arch-check`), domain-type quality, README-to-code drift (`back-prop`), or feature-spec validation.
 ---
 
+Japanese reference translation: [`SKILL.ja.md`](SKILL.ja.md).
+
 # DDD Audit
 
 Audit layer 2, the repository's documented interpretation of DDD, against layer 1, Evans's
@@ -65,9 +67,15 @@ exists elsewhere. Drop refuted findings; retain confirmed or plausible findings 
 
 ## Report and approved ledger writes
 
-First return a Japanese, read-only report grouped by verdict. Include the staleness banner, each
-Evans premise, evidence, verification label where applicable, and any dropped finding. Use neutral
-wording: never say `修正してください`, `対応必須`, or `違反`.
+First return a Japanese, read-only report grouped by verdict, but split `差異あり` by the ledger's
+`status`: `[差異あり・解釈あり]` for `interpreted`, and `[差異あり・未解釈]` for `uninterpreted`.
+The former is a position that diverges from Evans while the latter is an undecided blank, so readers
+need different next actions; the ledger header's `status` × `verdict` table is authoritative and
+the report must preserve its verdict values. Use the total form `差異あり <n>（解釈あり <k> / 未解釈 <m>、うち
+CONFIRMED <c>）`. For `未解釈`, evidence must state the searched range and what was absent rather than
+inventing a `file:line` citation. Include the staleness banner, each Evans premise, evidence,
+verification label where applicable, and any dropped finding. Use neutral wording: never say
+`修正してください`, `対応必須`, or `違反`.
 
 If updates were not selected, finish after that report. Otherwise, for each changed proposal:
 
