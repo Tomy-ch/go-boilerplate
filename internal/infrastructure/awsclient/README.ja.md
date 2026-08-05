@@ -53,15 +53,22 @@ transport で動きます。
 解決はプロセスが**自身の実行基盤**に対して自分は誰かを問い合わせる行為です。分けることで、
 ガードは元々書かれた対象のトラフィックに掛かり続けます。
 
-この適用外の範囲は metadata endpoint より広く、その点は明記しておく価値があります。SDK は chain
-全体に対して 1 つの HTTP クライアントを取るため、**すべての**資格情報解決リクエストがガード無しで
-動きます — STS の web identity 交換（EKS IRSA）も SSO のトークン交換も含みます。宛先 IP の検査も、
-ガードによる proxy の無効化（`Proxy = nil`）も、それらには掛かりません。そのトラフィックの向き先を
-差し替える（`AWS_EC2_METADATA_SERVICE_ENDPOINT` / `AWS_CONTAINER_CREDENTIALS_FULL_URI` /
-`HTTPS_PROXY`）にはプロセスの環境変数への書き込み権限が要り、それを持つ主体は資格情報そのものにも
-手が届きます。したがってこれは、以前は閉じていた境界を広げたものではありません。狭めるとすれば、
-link-local を許しつつガードの残りを保つ transport を用意することになり、それは本パッケージではなく
-ガードが明言している不変条件の側の変更になります。
+この適用外の範囲は metadata endpoint より広く、その点は明記しておく価値があります。**すべての**
+資格情報解決リクエストが SDK のトランスポートで動きます — STS の web identity 交換（EKS IRSA）も
+SSO のトークン交換も含みます。宛先 IP の検査も、ガードによる proxy の無効化（`Proxy = nil`）も、
+それらには掛かりません。
+
+これは見落としではなく意図した形で、塞ぐべき穴として残しているのでもありません。このトラフィックの
+向き先を差し替える（`AWS_EC2_METADATA_SERVICE_ENDPOINT` / `AWS_CONTAINER_CREDENTIALS_FULL_URI` /
+`HTTPS_PROXY`）にはプロセスの環境変数への書き込み権限が要り、それを持つ主体は資格情報そのものを
+直接読めます。SDK 自身も、env で差し替えられる唯一の平文エンドポイントを loopback と既知の
+ECS / EKS アドレスに制限しています。そもそも chain を覆うこともできません。コンテナ資格情報の
+プロバイダは `LoadDefaultConfig` へ渡したクライアントを継承しないため、ガード付き transport は
+IMDS・STS・SSO には届いてもその経路には届きません。
+
+link-local を許す variant を退けた理由を含む判断の全文は
+[ADR-0020](../../../docs/ja/adr/0020-egress-ssrf-guard.ja.md#aws-の-credential-chain-をガードする)
+に記録しています。
 
 ## 注記
 
