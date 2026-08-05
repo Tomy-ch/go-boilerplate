@@ -402,11 +402,31 @@ When wrapping an `apperror.ErrXXX` sentinel, use `pkg/xerrors.Wrap(apperror.ErrX
 (not the standard `fmt.Errorf("%w", ...)`) so the stack trace is preserved while `xerrors.Is`
 still matches the sentinel.
 
+### GC / batch sweeps
+
+A Usecase that sweeps rows or objects in batches follows a fixed shape.
+
+- Expose the default batch size as an exported constant (`Default<Feature>BatchSize`) so the caller
+  can see and override it, and treat a non-positive argument as "use the default" rather than an
+  error — a job invoked with no flag is the normal case, not a mistake.
+- Loop one batch at a time and stop when a batch comes back smaller than the requested size.
+- **Return the counts even when returning an error.** The batches that completed are already
+  committed and cannot be rolled back, so a `Result` that reports zero on failure is a lie. The
+  caller logs what got through; see the `Result` half of Output DTO naming above.
+
 ### Output DTO naming
 
-A Usecase's return DTO is named `<Concept>View` — it is a projection built for the caller, not the
-aggregate itself. Keep the suffix even when the projection carries a single field, so a reader can
-tell an outbound projection from a domain type at a glance.
+A Usecase's return DTO takes one of two suffixes, chosen by what the method returns.
+
+- **`<Concept>View`** — a projection of state built for the caller, not the aggregate itself. Keep the
+  suffix even when the projection carries a single field, so a reader can tell an outbound projection
+  from a domain type at a glance.
+- **`<Concept>Result`** — the outcome of an operation that changed something: counts processed, counts
+  skipped, what a batch got through before it stopped. It reports what happened, not what is.
+
+The distinction is worth keeping because the two have different failure semantics. A `View` is either
+returned or not. A `Result` is meaningful **even when the method also returns an error** — a batch
+that failed partway still has to report the work it committed before it stopped.
 
 ### Pagination
 

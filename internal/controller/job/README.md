@@ -490,6 +490,17 @@ func New(
 Here, raw SDK instances are not used directly,
 and the observability layer hides the tracer generation rules (layer name, package name, function name extraction) internally.
 
+## GC / batch jobs
+
+A job that sweeps rows or objects in batches follows two conventions beyond the reference snippet.
+
+- **Flag parsing is strict.** An unknown flag, a repeated flag, and mutually exclusive flags are all
+  errors. A job runs unattended, so a typo that silently changes nothing is worse than a failure.
+- **A failed sweep still reports what it committed.** When the usecase returns an error partway
+  through, log the counts it did get through at `Warn` before propagating. Those deletions are
+  already committed and cannot be taken back, so dropping the number destroys the only record that
+  the work happened.
+
 ## Reference Snippet
 
 ```go
@@ -537,15 +548,12 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
     defer endSpan()
 
     // Implement the main logic of the job here (argument parsing)
+    // Parse in a dedicated function and reject anything unexpected: an unknown flag,
+    // a repeated flag, and two flags that contradict each other are all errors.
     // For complex jobs, it is recommended to use flag or pflag.
-    var active *bool
-    for _, a := range args {
-        switch a {
-        case "--active-only":
-            active = ptr.To(true)
-        case "--inactive-only":
-            active = ptr.To(false)
-        }
+    active, err := parseFilter(args)
+    if err != nil {
+        return err
     }
 
     // Call the usecase

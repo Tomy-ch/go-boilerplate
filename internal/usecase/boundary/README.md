@@ -47,7 +47,7 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`|
 |`idempotency`|`Store`|Idempotency-key persistence boundary (claim / replay / conflict)|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
-|`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` an object by key, return its stored `Path`)|`internal/infrastructure/objectstorage/s3/`|
+|`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` / `List` / `Delete` objects by key)|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
@@ -145,8 +145,11 @@ Substrate-agnostic object-storage boundary. Usecase depends only on this port; t
 
 |Type / Function|Description|
 |---|---|
-|`Storage`|Save an object under its key via `Put(ctx, PutObject) (Path, error)`; failures return an `apperror` sentinel (e.g. `ErrUnavailable`)|
+|`Storage`|`Put(ctx, PutObject) (Path, error)` stores an object under its key. `List(ctx, ListQuery) (ListResult, error)` enumerates one page of matching objects. `Delete(ctx, keys []string) error` removes objects in bulk — an empty slice is a no-op, absent keys are not an error, and re-running with the same keys changes nothing. Failures return an `apperror` sentinel (e.g. `ErrUnavailable`)|
 |`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `products/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
+|`ListQuery`|Input DTO (`Prefix` / `Cursor`); an empty `Prefix` enumerates everything, and `Cursor` is the opaque, adapter-defined boundary taken from a previous `ListResult.NextCursor`|
+|`ListResult`|One page of objects plus `NextCursor`; a non-empty `NextCursor` means more remain and is fed back as the next `ListQuery.Cursor`|
+|`Object`|A single enumerated object as the boundary describes it|
 |`Path`|The stored object path (key); the display URL is composed separately by the caller|
 
 ### outbox
