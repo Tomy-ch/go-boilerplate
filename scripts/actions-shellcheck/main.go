@@ -67,6 +67,9 @@ var (
 	errStepsNotSequence  = xerrors.New("runs.steps がリストとして読めません")
 	errFoldedRun         = xerrors.New("run にブロック折り畳み（>）は使えません。リテラル（|）で書いてください")
 	errShellcheckMissing = xerrors.New("shellcheck が PATH にありません（mise install shellcheck）")
+
+	errActionSymlinkDir        = xerrors.New("ディレクトリへのシンボリックリンクは走査できません。実体を置くか、リンクを外してください")
+	errActionSymlinkUnresolved = xerrors.New("解決できないシンボリックリンクがあります")
 )
 
 type step struct {
@@ -133,6 +136,10 @@ func collectSteps(fsys fs.FS) ([]string, []step, error) {
 	return files, steps, nil
 }
 
+// actionFiles は .github/actions 配下の action 定義ファイルをパス順に返す。
+//
+// WalkDir はリンク先を辿らない DirEntry で再帰要否を決めるため、シンボリックリンクを素通しにすると
+// リンク先の action がどのゲートにも掛からないまま緑で通る。リンク先を解決して扱いを決める。
 func actionFiles(fsys fs.FS) ([]string, error) {
 	var files []string
 	err := fs.WalkDir(fsys, actionsDir, func(path string, entry fs.DirEntry, err error) error {
@@ -141,6 +148,9 @@ func actionFiles(fsys fs.FS) ([]string, error) {
 				return fs.SkipAll
 			}
 			return err
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return appendSymlink(fsys, path, entry.Name(), &files)
 		}
 		if !entry.IsDir() && isActionFile(entry.Name()) {
 			files = append(files, path)
@@ -152,6 +162,25 @@ func actionFiles(fsys fs.FS) ([]string, error) {
 	}
 	sort.Strings(files)
 	return files, nil
+}
+
+// appendSymlink はシンボリックリンクの実体を見て、action 定義ファイルなら files へ加える。
+//
+// ディレクトリへのリンクは、辿ると循環し得るうえ fs.FS には実体の同一性を判定する手段が無いため
+// 受け付けない。解決できないリンクも、実体がファイルだったのかディレクトリだったのかを言えず、
+// 対象外に寄せると走査が黙って縮むため同じく受け付けない。どちらも人手で解消する。
+func appendSymlink(fsys fs.FS, path, name string, files *[]string) error {
+	info, err := fs.Stat(fsys, path)
+	if err != nil {
+		return xerrors.Wrap(errActionSymlinkUnresolved, path)
+	}
+	if info.IsDir() {
+		return xerrors.Wrap(errActionSymlinkDir, path)
+	}
+	if isActionFile(name) {
+		*files = append(*files, path)
+	}
+	return nil
 }
 
 func isActionFile(name string) bool {

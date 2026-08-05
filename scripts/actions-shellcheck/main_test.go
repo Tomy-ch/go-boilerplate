@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
@@ -326,6 +327,58 @@ func TestActionFiles(t *testing.T) {
 			files, err := actionFiles(testFS(map[string]string{"README.md": "# sample\n"}))
 			require.NoError(t, err)
 			assert.Empty(t, files)
+		})
+
+		t.Run("action 定義ファイルへのシンボリックリンクも走査対象にする", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link/action.yml"] = &fstest.MapFile{
+				Data: []byte("../real/action.yml"),
+				Mode: fs.ModeSymlink,
+			}
+			files, err := actionFiles(fsys)
+			require.NoError(t, err)
+			assert.Equal(t, []string{".github/actions/link/action.yml", ".github/actions/real/action.yml"}, files)
+		})
+
+		t.Run("action 定義以外へのシンボリックリンクは対象にしない", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link/dist.yml"] = &fstest.MapFile{
+				Data: []byte("../real/action.yml"),
+				Mode: fs.ModeSymlink,
+			}
+			files, err := actionFiles(fsys)
+			require.NoError(t, err)
+			assert.Equal(t, []string{".github/actions/real/action.yml"}, files)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ディレクトリへのシンボリックリンクは黙って対象外にせずエラーにする", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link"] = &fstest.MapFile{
+				Data: []byte("real"),
+				Mode: fs.ModeSymlink,
+			}
+			_, err := actionFiles(fsys)
+			require.Error(t, err)
+			require.ErrorIs(t, err, errActionSymlinkDir)
+		})
+
+		t.Run("解決できないシンボリックリンクは黙って対象外にせずエラーにする", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link/action.yml"] = &fstest.MapFile{
+				Data: []byte("../nowhere/action.yml"),
+				Mode: fs.ModeSymlink,
+			}
+			_, err := actionFiles(fsys)
+			require.Error(t, err)
+			require.ErrorIs(t, err, errActionSymlinkUnresolved)
 		})
 	})
 }
