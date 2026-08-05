@@ -217,6 +217,9 @@ export const SAMPLE_DOMAINS = {
       "database/migrations/000013_create_purchase_details.down.sql",
       // Go 各層
       "internal/domain/purchase",
+      // 在籍と購入の進行状態にまたがる規則を持つドメインサービス。purchase 集約を参照するため
+      // purchase と生死を共にする（残すと import 先を失う）。
+      "internal/domain/service/membership",
       "internal/usecase/purchase",
       // checkout は purchase と exchangerate を束ねる合成 Usecase なので、両者と生死を共にする
       "internal/usecase/checkout",
