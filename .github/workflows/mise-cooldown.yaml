@@ -1,0 +1,116 @@
+name: mise Cooldown
+
+# `mise.toml` pins every CLI tool this repository uses, and until now nothing checked how old a
+# pinned version was. The convention itself already existed — two entries in that file record a
+# version being held back for not clearing the window — so this workflow mechanises a rule that
+# was being applied by hand, rather than introducing one.
+#
+# The window has two tiers, taken from the backend rather than from the tool. A version resolved
+# through a GitHub release (aqua / ubi / github) gets 14 days, the same as `pin-actions` and
+# `pin-images`, because a tag can be moved onto a different commit. A version resolved through a
+# package registry (go / npm / pipx) gets 7 days, the same as `npm-cooldown-audit` and
+# `go-cooldown`, because a published version there is immutable.
+#
+# **Language runtimes are deliberately not checked.** If the go / node / python distribution
+# itself were compromised, the failure would not be one link of a supply chain but the trust
+# model of the language ecosystem, and a cooldown protects nothing against it. That is an
+# accepted risk, stated here so the gap reads as a decision rather than an oversight; runtimes
+# are governed instead by the separate policy of waiting for an LTS.
+#
+# Short names are resolved by asking `mise registry`, because mise decides which backend a name
+# resolves to and a table kept here would drift silently the next time mise changes.
+
+on:
+  pull_request:
+    paths:
+      - 'mise.toml'
+      - 'scripts/mise-cooldown/**'
+      - '.github/mise-cooldown-bypass.toml'
+      - '.github/workflows/mise-cooldown.yaml'
+  schedule:
+    - cron: '0 11 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mise-cooldown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # `mise registry` is what resolves a short name to its backend, so mise has to be present
+      # even though no tool is installed here.
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The default checkout is shallow, so the base commit is absent and `git show
+      # <base>:mise.toml` fails. Fetching the base ref explicitly is what makes the diff
+      # resolvable; without it the gate cannot tell an added pin from an existing one.
+      - name: Resolve gate base
+        id: base
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BASE_REF}" ]; then
+            echo "base=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=200 origin "${BASE_REF}"
+          echo "base=origin/${BASE_REF}" >> "$GITHUB_OUTPUT"
+
+      # The unauthenticated GitHub API allows 60 requests an hour per IP, which one run of this
+      # check does not fit into. The summary body is written by the tool, which fences every
+      # value it did not author itself: a tool key comes out of `mise.toml`, which the pull
+      # request controls, and the step summary renders Markdown.
+      - name: Check mise tool cooldown
+        shell: bash
+        env:
+          GATE_BASE: ${{ steps.base.outputs.base }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${GATE_BASE}" ]; then
+            go run ./scripts/mise-cooldown gate --base="${GATE_BASE}" --github \
+              --summary-out=mise-cooldown-summary.md \
+              && status=0 || status=$?
+          else
+            go run ./scripts/mise-cooldown audit --github \
+              --summary-out=mise-cooldown-summary.md \
+              && status=0 || status=$?
+          fi
+
+          cat mise-cooldown-summary.md >> "${GITHUB_STEP_SUMMARY}"
+          exit "${status}"
