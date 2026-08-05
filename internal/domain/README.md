@@ -552,6 +552,27 @@ is translated into SQL, an index, or a search engine, and the projection comes b
 domain never sees. That translation is expected and correct. What must not travel with it is the
 authorship of the criterion.
 
+**"The `WHERE` already guarantees it, so a domain predicate would be redundant" is not an argument.**
+Every row a filter returns does satisfy that filter — and that is circular. What the row satisfies is
+the condition the query happens to state; whether that condition *is* the business rule is the very
+thing left unchecked. The redundancy is real at the level of *execution* and imaginary at the level
+of *authorship*, and the argument trades one for the other. The costs are concrete: the meaning of
+the term can no longer be answered by reading this layer, a second caller has to restate the
+condition with nothing linking the two, and the rule can only be exercised through the database, so
+a change in meaning breaks no unit test.
+
+**Not every condition is a criterion.** A condition is one when someone who knows the business would
+recognise it as a statement about the business — when the term it decides has a name they use.
+Identity lookup, pagination, ordering, and foreign-key joins decide nothing about the business and
+this rule does not reach them. Nor does a Repository method whose signature already says the whole
+condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while `FindAllLowStock` does
+not. The check is one question — can the meaning of the term be answered by reading the domain
+package alone? If not, its authorship has left.
+
+The same discipline is already imposed on the write side, where a CommandService may only enforce
+conditions derived from domain invariants ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+There is no reason for the read side to be the exception.
+
 Read paths are free to skip the aggregate entirely — a search index is a projection of the system of
 record, and reconstructing every hit through `FindByID` to re-derive it is not a realistic design.
 The domain's claim on a read path is the vocabulary of the question, not the shape of the answer.

@@ -397,12 +397,26 @@ patterns:
       同音異義）が、selection の中核——基準はドメインの語彙で持ち、実行と射影だけを QueryService /
       ReadModel へ最適化する——は domain README の Query and Aggregate 節で解釈済み。読み取り経路が
       集約を迂回してよいこと、全件を FindByID で再構築し直さないことも Evans の想定どおり。
-      差異は validation / building to order の 2 用途への言及が無い点と、基準をドメインに保つ規約が
-      機械強制されていない点。
+      規約は宣言されていたが守られていなかった。「公開中」「在庫僅少」の定義は SQL の WHERE 句にしか
+      存在せず（前者は 4 クエリで別々に著作。うち 1 つは QueryService）、ドメインが持っていたのは
+      閾値というフィールドだけだった。Product.IsPublished / IsLowStock を定義の持ち主として置き、
+      SQL をその実行形と位置づけ、Usecase が返却行を述語で検証する形に是正済み。
+      規約を迂回させていた「WHERE を通った行では自明に真だからドメイン側の述語は冗長」という論法への
+      反証と、基準か機構かの判別も同節に明記した。
+      残る差異は 3 点。validation / building to order の 2 用途への言及が無いこと、述語オブジェクトと
+      しての合成（isSatisfiedBy + AND/OR/NOT）を採らないこと（呼び出し元が無く、合成を前提とすること
+      自体が状況依存のため意図的）、そして QueryService 経由の読み取りは射影を返すため突き合わせる
+      エンティティが無く、基準の保持がレビュー依存で機械強制されないこと。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
         section: "Query and Aggregate"
+      - kind: readme
+        path: internal/usecase/README.md
+        section: "Verifying infrastructure against the domain"
+      - kind: doc
+        path: docs/rules.md
+        section: "Domain Layer Constraints"
     deviation_declared: false
     deviation_note: ""
     enforced_by: []

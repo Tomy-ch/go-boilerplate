@@ -293,6 +293,27 @@ These belong to:
 - Reporting
 - Data pipelines
 
+### Verifying infrastructure against the domain
+
+**Infrastructure executes; the domain defines. The usecase is where the two are checked against each
+other.** This holds in both directions and is the same rule stated twice.
+
+- **Write** — infrastructure performs the write, then the usecase re-reads the affected aggregate
+  through its Repository so the aggregate re-validates the result
+  ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+- **Read** — infrastructure applies the filter, then the usecase checks the returned entities
+  against the domain predicate that defines the criterion. Infrastructure *executes* a criterion; it
+  does not *author* one (see [`internal/domain/README.md`](../domain/README.md) § Query and
+  Aggregate). A row that fails the predicate means the two have drifted.
+
+Surface a drift as an error rather than filtering it away. Dropping the row silently hides the defect
+at the exact moment it becomes observable, and the read then reports a result that no longer matches
+the definition it claims to apply.
+
+This does not reach a QueryService read, which returns a projection with no entity to check against.
+That path's criterion is held by review alone, and deliberately so: verifying it would mean
+reconstructing the aggregate the projection exists to avoid.
+
 ## Role in this repository
 
 - Place Command / Query services under `internal/usecase/<feature>/` (e.g., `user/`).
