@@ -23,9 +23,9 @@ graph TB
     db[("database<br/>PostgreSQL 18<br/>:5432 fixed")]
     obs["observability<br/>otel-lgtm<br/>Grafana :3000 / OTLP :4317,:4318"]
     gar["garage (+ garage_init)<br/>S3-compatible storage<br/>:3900 / :3902"]
-    docs["docs_viewer :7001"]
-    sql["sql_editor :7000"]
-    er["er_diagram_generator :5433"]
+    docs["docs_viewer :2001"]
+    sql["sql_editor :2000"]
+    er["er_diagram_generator :2002"]
     subgraph runners["tool-runner (profile: generate / user: root)"]
       go["go_tool_runner"]
       node["node_tool_runner"]
@@ -35,7 +35,7 @@ graph TB
 
   subgraph app["app layer - project APP_PROJECT (one per checkout)"]
     api["api_server<br/>air + dlv<br/>:8080+N / dlv :2345+N / pprof :6060+N"]
-    auth["mock_auth_server<br/>mock OIDC / JWKS<br/>:4000+N"]
+    auth["mock_auth_server<br/>mock OIDC / JWKS<br/>:2010+N"]
   end
 
   dev -->|make serve| api
@@ -62,8 +62,8 @@ worktrees can `make serve` at the same time. The variables below are defined in
   the app at the shared infra via `host.docker.internal` by overriding `DB_HOST` / `OBS_OTLP_ENDPOINT` /
   `OBJECT_STORAGE_ENDPOINT` / `AUTH_ISSUER` as runtime env — `internal/config`'s loader gives runtime env
   priority over `env/.env`.
-- Every app-layer host port is relative to the slot number `N`: API `8080+N` / mock auth `4000+N` /
-  dlv `2345+N` / pprof `6060+N` (plain `8080` / `4000` / `2345` / `6060` when no slot is held). The
+- Every app-layer host port is relative to the slot number `N`: API `8080+N` / mock auth `2010+N` /
+  dlv `2345+N` / pprof `6060+N` (plain `8080` / `2010` / `2345` / `6060` when no slot is held). The
   container-internal ports never move.
 - Observability is **shared across checkouts**: the traces / metrics / logs of every running app land in
   the single Grafana at `http://localhost:3000`.
@@ -78,17 +78,36 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | Service | Layer | Origin | Host port | Role |
 | --- | --- | --- | --- | --- |
 | `api_server` | app | build `docker/server/Dockerfile` | `${API_HOST_PORT:-8080}:8080` / dlv `${DLV_HOST_PORT:-2345}:2345` / pprof `${PPROF_HOST_PORT:-6060}:6060` (internal ports fixed) | The app itself. The dev target starts via **air** for hot reload + delve debugging |
-| `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-4000}:4000` (internal 4000) | Mock OIDC auth server (JWT test provider); the JWKS-verification counterpart of the RS side |
+| `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-2010}:4000` (internal 4000) | Mock OIDC auth server (JWT test provider); the JWKS-verification counterpart of the RS side |
 | `database` | infra | `postgres:18.4-trixie` | `5432` fixed | A **single** instance shared by all checkouts (parallelism is by DB name — see the slot ring below) |
 | `observability` | infra | `grafana/otel-lgtm` | `3000` (Grafana UI) / `4317` (OTLP gRPC) / `4318` (OTLP HTTP) / `3200` (Tempo API) | Sink for traces / metrics / logs of every checkout. profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key / website access |
-| `docs_viewer` | infra | build `docker/document/Dockerfile` | `7001:80` | Development documentation viewer |
-| `sql_editor` | infra | `sosedoff/pgweb` | `7000:8081` | Browser DB client |
-| `er_diagram_generator` | infra | `schemaspy/schemaspy` | `5433:3000` | ER diagram generation |
+| `docs_viewer` | infra | build `docker/document/Dockerfile` | `2001:80` | Development documentation viewer |
+| `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | Browser DB client |
+| `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER diagram generation |
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile` (per target) | none (run/exec) | Toolboxes for code generation / lint. **`user: root`**, profile: `generate`, repo bind-mounted at `.:/app` |
 
-> `docs_viewer` / `sql_editor` are moved to the **7000 range** to avoid colliding with the API slot band (`8080+N`).
+### Host port allocation
+
+A host port is chosen by one rule:
+
+> **If the service has a de-facto port, use it. If it has none — that is, the number would be
+> arbitrary — put it in the `2000` range as a contiguous block.**
+
+`5432` / `8080+N` / `2345+N` / `6060+N` / `4317` / `4318` / `3000` / `3200` / `3900` / `3902` /
+`9324` are the upstream defaults of PostgreSQL, Delve, Go pprof, OpenTelemetry, Grafana, Tempo,
+garage and elasticmq, so they stay where a reader already expects them. `sql_editor`,
+`docs_viewer`, `er_diagram_generator` and `mock_auth_server` have no such number — pgweb, nginx and
+schemaspy only fix their *container-internal* ports (8081 / 80 / 3000), and pgweb's 8081 falls inside
+the API slot band (`8080+N`) anyway — so they occupy `2000`, `2001`, `2002` and `2010+N`.
+
+The `2000` range was picked because nothing actually listens there on macOS or Windows. The names
+registered in it (`callbook`, `dectalk`, `troff`, `xinupageserver` …) are dead protocols with no
+implementation on any current OS, unlike `5000` and `7000`, which the macOS AirPlay receiver holds
+for real. **Do not go past `2048`: `2049` is NFS.**
+
+Adding a service: `2003`–`2009` for a fixed port, `2030+` for one that needs a per-slot range.
 
 ### Collation version mismatch after a `database` base-OS change
 
@@ -198,7 +217,7 @@ graph LR
     pg[("PostgreSQL :5432")]
     obs["observability :3000 / :4318"]
   end
-  main["main checkout<br/>project gobp-app-&lt;dir&gt;<br/>api :8080 / auth :4000<br/>DB: local / test"]
+  main["main checkout<br/>project gobp-app-&lt;dir&gt;<br/>api :8080 / auth :2010<br/>DB: local / test"]
   wt1["worktree #1 (slot 1)<br/>project gobp-wt-1<br/>api :8081 / auth :4001<br/>DB: wt1_local / wt1_test"]
   wt2["worktree #2 (slot 2)<br/>project gobp-wt-2<br/>api :8082 / auth :4002<br/>DB: wt2_local / wt2_test"]
 
@@ -211,7 +230,7 @@ graph LR
 ```
 
 - The **DB port is fixed at `5432`** (not `5432+N`). Slot `N` is separated by DB name `wt<N>_local` / `wt<N>_test`.
-- `API_HOST_PORT = 8080+N`, `MOCK_AUTH_HOST_PORT = 4000+N`, `DLV_HOST_PORT = 2345+N`, `PPROF_HOST_PORT = 6060+N`.
+- `API_HOST_PORT = 8080+N`, `MOCK_AUTH_HOST_PORT = 2010+N`, `DLV_HOST_PORT = 2345+N`, `PPROF_HOST_PORT = 6060+N`.
 - A checkout that never acquires a slot keeps the default DB names (`local` / `test`) and the default ports,
   so acquiring a slot is an **opt-in for parallel work** rather than a prerequisite.
 - **All details — leasing, bootstrap, `make slot-acquire` / `slot-free` / `slot-release`, etc. — are in the canonical [db-worktree-pool.md](db-worktree-pool.md).**

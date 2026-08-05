@@ -87,13 +87,13 @@ services:
       context: .
       dockerfile: docker/mock-auth-server/Dockerfile
     ports:
-      # mock 認証サーバーのホスト公開ポートもスロット毎に割り当てる（既定 4000、内部は常に 4000）。
-      - "${MOCK_AUTH_HOST_PORT:-4000}:4000"
+      # 独自サービスの帯（2000 番台）。ホスト公開ポートはスロット毎に割り当てる（既定 2010、内部は常に 4000）。
+      - "${MOCK_AUTH_HOST_PORT:-2010}:4000"
     environment:
       # issuer はホスト OS / ブラウザから参照する URL。JWKS 取得はコンテナ名で内部解決する
       # （Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/.well-known/jwks.json）。
       OIDC_PORT: "4000"
-      OIDC_ISSUER: "http://localhost:4000"
+      OIDC_ISSUER: "http://localhost:2010"
       OIDC_AUDIENCE: "go-boilerplate-api"
       OIDC_CLIENT_ID: "go-boilerplate-client"
       # /bypass/* ・ /admin/* を有効化（opt-out。無効化は "disabled"）。本番モードでは server が起動を拒否する。
@@ -178,8 +178,8 @@ services:
       dockerfile: docker/document/Dockerfile
       target: document_viewer
     ports:
-      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 80）。
-      - "7001:80"
+      # 独自サービスの帯（2000 番台）。採番規則は docs/maintenance/local-environment.md（内部は常に 80）。
+      - "2001:80"
     volumes:
       - ./docs:/usr/share/nginx/html:ro
     profiles:
@@ -188,8 +188,9 @@ services:
   sql_editor:
     image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
     ports:
-      # API スロットプール帯（8080+N）と衝突しないよう 7000 番台へ退避（内部は常に 8081）。
-      - "7000:8081"
+      # 独自サービスの帯（2000 番台）。pgweb 既定の 8081 は API スロット帯（8080+N）と重なるので
+      # ホスト側では採らない（内部は常に 8081）。
+      - "2000:8081"
     environment:
       DATABASE_URL: postgres://postgres:postgres-password@database:5432/local?sslmode=disable
     depends_on:
@@ -203,7 +204,8 @@ services:
     image: schemaspy/schemaspy:7.0.2@sha256:c8f98116a5cfe4b00b379eeb23b2022cdea4c9192cbccb843a75049e752479b7
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "5433:3000"
+      # 独自サービスの帯（2000 番台）。内部は常に 3000。
+      - "2002:3000"
     volumes:
       - ./docker/database/schemaspy/schemaspy.properties:/schemaspy.properties
       - ./docs/er-diagram:/output

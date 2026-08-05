@@ -64,7 +64,7 @@ serve-stop:
 tools:
 	@echo "🔄 開発ツールを起動します。"
 	@$(COMPOSE_INFRA) --profile tools up -d --build $(INFRA_NO_RECREATE)
-	@echo "✅ 開発ツールの起動が完了しました。SQL editor: http://localhost:7000 / docs: http://localhost:7001"
+	@echo "✅ 開発ツールの起動が完了しました。SQL editor: http://localhost:2000 / docs: http://localhost:2001"
 
 all:
 	@echo "🔄 全サービス(共有インフラ/開発/ツール)を一括起動します。"

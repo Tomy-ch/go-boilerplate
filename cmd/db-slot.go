@@ -17,7 +17,7 @@ const (
 	defaultPoolMaxSlots      = 12
 	defaultPoolTTLSeconds    = 1800
 	defaultPoolAPIBasePort   = 8080
-	defaultPoolMockBasePort  = 4000
+	defaultPoolMockBasePort  = 2010
 	defaultPoolDlvBasePort   = 2345
 	defaultPoolPprofBasePort = 6060
 	defaultPoolPGPort        = 5432

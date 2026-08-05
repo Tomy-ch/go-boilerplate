@@ -45,7 +45,7 @@ The criterion is the subject, not the package: a component whose contract is a *
 |`GOBP_DB_SHARED_PROJECT`|`gobp-shared`|Fixed compose project of the shared infra|
 |`GOBP_DB_POOL_MAX`|`12`|Number of slots (max parallel worktrees)|
 |`GOBP_DB_POOL_TTL`|`1800`|Heartbeat staleness grace (seconds)|
-|`GOBP_API_POOL_BASE` / `GOBP_MOCK_AUTH_POOL_BASE`|`8080` / `4000`|Base host ports of the API / mock auth server (slot N = base + N)|
+|`GOBP_API_POOL_BASE` / `GOBP_MOCK_AUTH_POOL_BASE`|`8080` / `2010`|Base host ports of the API / mock auth server (slot N = base + N)|
 |`GOBP_DLV_POOL_BASE` / `GOBP_PPROF_POOL_BASE`|`2345` / `6060`|Base host ports of the dlv debug / pprof endpoints (slot N = base + N)|
 
 ## Notes
