@@ -240,6 +240,50 @@ func Test_provideAuthenticator(t *testing.T) {
 	})
 }
 
+func Test_allowInsecureJWKSURL(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("local環境では非httpsのJWKS URLを許容する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, allowInsecureJWKSURL(config.EnvLocal))
+		})
+
+		t.Run("development環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvDevelopment))
+		})
+
+		t.Run("staging環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvStaging))
+		})
+
+		t.Run("production環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvProduction))
+		})
+
+		t.Run("CI環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvCI))
+		})
+
+		t.Run("テスト環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, allowInsecureJWKSURL(config.EnvTest))
+		})
+	})
+}
+
 func Test_provideJWKSAuthenticator(t *testing.T) {
 	t.Parallel()
 
