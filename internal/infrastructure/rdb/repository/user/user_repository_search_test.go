@@ -48,6 +48,9 @@ func Test_repository_SearchByKeyword(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
+	// シード全体の件数を期待値に持つため、コミット済みの行を足すテストと重ならないよう直列化を占有する。
+	// WithinTx を使わずコミット済みの状態をそのまま読むので、この検証は WithinTx 側の直列化に参加しない。
+	testkit.HoldSuiteSerialization(t, testDB)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	repo := &repository{tracer: lt, db: testDB}
@@ -164,6 +167,8 @@ func Test_repository_CountByKeyword(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
+	// SearchByKeyword と同じ理由で直列化を占有する（シード件数を期待値に持つ）。
+	testkit.HoldSuiteSerialization(t, testDB)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	repo := &repository{tracer: lt, db: testDB}
