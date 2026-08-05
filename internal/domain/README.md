@@ -436,16 +436,42 @@ Reference masters exist for two distinct reasons; do not conflate them.
 
 ### Multi-aggregate rules
 
-Rules across multiple aggregates belong to:
-
-- Domain Service
-- Usecase
-
-Example:
+A rule that spans aggregates belongs to a **Domain Service** — not to Usecase.
 
 ```text
 User cancellation → Subscription stop
 ```
+
+#### Domain Service or Usecase
+
+The line is **derivation**.
+
+- **Domain Service** derives something: it computes a business-meaningful value from more than one
+  entity. What quantity can actually be allocated, given stock and reservations. It is stateless, and
+  it exists only because the operation is not the natural responsibility of any one entity or value
+  object — if it fits on one of them, put it there instead.
+- **Usecase** coordinates and maps. It orders the calls, owns the transaction, and turns domain
+  models into DTOs.
+
+**Reading more than one entity is not derivation.** Loading two entities and placing them side by
+side in a DTO is mapping, and it stays in Usecase. Routing that through a Domain Service would drag
+every two-entity read into the domain layer for nothing.
+
+When a value is derived and then shipped outward, the two split: the derivation is the Domain
+Service's, the copying into the DTO is the Usecase's.
+
+The test, when it is unclear: **if that calculation changed, would the reason be a business decision
+or a presentation decision?** A business decision means it is a domain rule and belongs to a Domain
+Service.
+
+#### Where a cross-aggregate Domain Service lives
+
+Under `internal/domain/service/<name>/` — outside any aggregate package, because a service that spans
+aggregates cannot live inside one of them (a domain package must not import another aggregate).
+
+**No such package exists today, and none should be created speculatively.** The current model reaches
+across boundaries by copying what it needs into its own type rather than by importing the other
+aggregate. Create the directory, and its depguard exception, together with the first real occupant.
 
 ### Query and Aggregate
 

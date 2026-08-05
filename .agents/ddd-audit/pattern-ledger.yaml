@@ -179,14 +179,15 @@ patterns:
     status: interpreted
     verdict: 差異あり
     gap: >-
-      使用条件が「集約跨ぎ」だけに狭められ、Evans の基準（Entity/VO の自然な責務か）とステートレス性が
-      不在。Domain Service と Usecase が同一責務の置き場として選択基準なしに並列列挙されている。
-      加えて配置規定（集約パッケージ配下の service.go）と唯一の用途（集約跨ぎ）が、他集約 import を
-      禁じる depguard 規則の下で構造的に両立しない。
+      ステートレス性と Evans の基準（Entity/VO の自然な責務として収まらない操作か）が明記され、
+      Domain Service と Usecase の選択基準も「導出か写像か」として定義された。並列列挙による矛盾は解消。
+      配置は集約パッケージ配下ではなく internal/domain/service/<name>/ と規定し直したため、他集約 import を
+      禁じる depguard 規則との構造的矛盾も解消（実体は初出の占有者と同時に作る方針）。
+      Evans の Domain Service は集約跨ぎに限らないが、本リポジトリは用途を集約跨ぎに限定している。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
-        section: "Multi-aggregate rules / Callable layers"
+        section: "Multi-aggregate rules / Domain Service or Usecase / Callable layers"
       - kind: doc
         path: docs/rules.md
         section: "Allowed in Domain"
@@ -202,9 +203,10 @@ patterns:
     status: interpreted
     verdict: 差異あり
     gap: >-
-      Usecase README は Evans の「業務ルールを持たず調整のみ」をほぼ逐語で採用しているが、
-      domain README が集約跨ぎ「ルール」の置き場に Usecase を並置しており、同一コーパス内で矛盾する。
-      Evans が最重要とする Domain Service / Application Service の切り分け基準も不在。
+      Usecase README は Evans の「業務ルールを持たず調整のみ」をほぼ逐語で採用している。domain README との
+      矛盾（集約跨ぎルールの置き場に Usecase を並置）は解消し、Domain Service / Application Service の
+      切り分け基準も「導出か写像か」「変更理由が業務側か表示側か」として定義された。
+      業務 Usecase 同士を繋がない規約（連鎖の防止・合成 Usecase・技術 Usecase は対象外）も明文化済み。
     interpreted_by:
       - kind: readme
         path: internal/usecase/README.md
