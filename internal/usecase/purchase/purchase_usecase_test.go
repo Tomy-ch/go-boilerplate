@@ -113,7 +113,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 	t.Parallel()
 
 	productA := uuid.NewTestFromSalt(t, "cp_product")
-	// activeUserRepo は、購入者が在籍している（在籍ガードを通過する）ユーザー Repository モックを返します。
+	// activeUserLock は、購入者が在籍している（在籍ガードを通過する）ユーザー LockRepository モックを返します。
 	activeUserLock := func(ctrl *gomock.Controller) *mock_user.MockLockRepository {
 		r := mock_user.NewMockLockRepository(ctrl)
 		r.EXPECT().LockActiveShareByID(gomock.Any(), gomock.Any()).Return(nil)

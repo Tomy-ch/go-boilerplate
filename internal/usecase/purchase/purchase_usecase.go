@@ -211,6 +211,14 @@ type usecase struct {
 	authorizer authz.Authorizer
 }
 
+// purchaseDraft は、購入作成のトランザクションへ持ち込む採番済みの入力です。
+type purchaseDraft struct {
+	purchaseID uuid.UUID
+	code       string
+	inputs     []purchase.DetailInput
+	productIDs []uuid.UUID
+}
+
 // New は、購入ユースケースを生成します。
 func New(
 	txm tx.Manager,
@@ -236,14 +244,6 @@ func New(
 		clock:      clock,
 		authorizer: authorizer,
 	}
-}
-
-// purchaseDraft は、購入作成のトランザクションへ持ち込む採番済みの入力です。
-type purchaseDraft struct {
-	purchaseID uuid.UUID
-	code       string
-	inputs     []purchase.DetailInput
-	productIDs []uuid.UUID
 }
 
 // newPurchaseDraft は、購入・購入コード・各明細の ID を採番し、ドメイン入力と商品 ID 列を組み立てます。
