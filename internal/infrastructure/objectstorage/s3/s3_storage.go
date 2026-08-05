@@ -9,11 +9,11 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awscreds "github.com/aws/aws-sdk-go-v2/credentials"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/infrastructure/awsclient"
 	"go-boilerplate/internal/observability"
 	boundary "go-boilerplate/internal/usecase/boundary/objectstorage"
 	"go-boilerplate/pkg/xerrors"
@@ -28,14 +28,14 @@ type Config struct {
 	Region string
 	// Bucket は、オブジェクトを格納するバケット名です。
 	Bucket string
-	// AccessKeyID は、静的資格情報のアクセスキー ID です。
-	AccessKeyID string
-	// SecretAccessKey は、静的資格情報のシークレットアクセスキーです。
+	// AccessKeyID / SecretAccessKey は、明示注入する静的資格情報です。両方空なら
+	// SDK 既定の credential chain（IAM ロール等）へ委ねます。詳細は awsclient.Resolve を参照。
+	AccessKeyID     string
 	SecretAccessKey string
 	// UsePathStyle は、path-style アクセスを使うかどうかです（Garage / MinIO は true が必要）。
 	UsePathStyle bool
-	// HTTPClient は、SDK が使う HTTP クライアントです。SSRF ガード付きの実装を DI が注入します。
-	// nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。
+	// HTTPClient は、SDK が API 呼び出しに使う HTTP クライアントです。SSRF ガード付きの実装を DI が
+	// 注入します。nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。
 	HTTPClient aws.HTTPClient
 }
 
@@ -47,12 +47,18 @@ type storage struct {
 }
 
 // New は、S3 互換オブジェクトストレージ実装を生成します。
-func New(cfg Config, tf observability.TracerFactory) boundary.Storage {
-	awsCfg := aws.Config{
-		Region:      cfg.Region,
-		Credentials: awscreds.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
-		HTTPClient:  cfg.HTTPClient,
+// 資格情報を解決できない場合はエラーを返し、認証エラーが最初の操作まで隠れないようにします。
+func New(ctx context.Context, cfg Config, tf observability.TracerFactory) (boundary.Storage, error) {
+	awsCfg, err := awsclient.Resolve(ctx, awsclient.Config{
+		Region:          cfg.Region,
+		AccessKeyID:     cfg.AccessKeyID,
+		SecretAccessKey: cfg.SecretAccessKey,
+		HTTPClient:      cfg.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	client := awss3.NewFromConfig(awsCfg, func(o *awss3.Options) {
 		o.UsePathStyle = cfg.UsePathStyle
 		if cfg.Endpoint != "" {
@@ -63,7 +69,7 @@ func New(cfg Config, tf observability.TracerFactory) boundary.Storage {
 		client: client,
 		bucket: cfg.Bucket,
 		tracer: tf.Infra(),
-	}
+	}, nil
 }
 
 // Put は、obj をバケットの指定キーへ保存し、保存されたパス（キー）を返します。
