@@ -150,6 +150,7 @@ do X") are tagged `setup-review`.
 | [0104](0104-domain-shared-kernel.md) | Cross-aggregate value objects live in a curated domain shared kernel (`internal/domain/kernel`) | accepted |
 | [0105](0105-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
 | [0106](0106-broker-sdk-isolation-verified-after-sample-removal.md) | Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired | accepted |
+| [0107](0107-withdrawal-purchase-row-lock-serialization.md) | Withdrawal and purchase creation are serialized on the user row (FOR UPDATE vs FOR SHARE) | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).
