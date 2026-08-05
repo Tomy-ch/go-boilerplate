@@ -17,15 +17,18 @@ COVERAGE_THRESHOLD := 90
 # 追従する（.makefiles/database/seed.mk）ため、host 実行の go test にも同じ値を渡す。
 GO_TEST_ENV = $(LOAD_SLOT); export AUTH_ISSUER="$(AUTH_ISSUER_SH)"; $(if $(GO_TEST_LOAD_ENV),export $(GO_TEST_LOAD_ENV);,)
 
-test:
+# ホスト実行の go test は DB_NAME_TEST を見て接続先を決める（internal/config/config_testing_mock.go）。
+# 未設定なら共有 test へ落ちるため、スロット未取得の worktree では require-db-owner で止める
+# （不変条件は .makefiles/database/pool.mk）。CI 用の test-cover-ci は CI 側で DB を用意するため対象外。
+test: require-db-owner
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	$(GOBP_NICE) go test $$TGT_PKGS -race -cover -count=1 $(GO_TEST_P_FLAG)
 
-test-cached:
+test-cached: require-db-owner
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	$(GOBP_NICE) go test $$TGT_PKGS -cover $(GO_TEST_P_FLAG)
 
-gen-test-repo:
+gen-test-repo: require-db-owner
 	@echo "🔄 テストを実行し、レポートを生成します..."
 	go clean -testcache
 	rm -f docs/coverage/coverage.out
