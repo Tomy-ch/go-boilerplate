@@ -15,6 +15,7 @@ import (
 	// = "go-boilerplate/internal/infrastructure/auth/identity"
 	// sample-api:replace-end
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/clock"
@@ -44,6 +45,7 @@ type authenticatorParams struct {
 	Clock      clock.Clock
 	Logger     logging.Logger
 	HTTPClient httpclient.Client
+	TracerFtry observability.TracerFactory
 }
 
 // AuthnModule は、認証関連の依存関係（Authenticator・IdentityResolver・Auth コントローラ）を提供するfxモジュールを返します。
@@ -108,6 +110,7 @@ func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (aut
 		UnknownKidCooldown: p.AuthCfg.UnknownKidCooldown(),
 		// local は疑似 provider（http）へ接続するため非 https を許容。それ以外の環境では https を強制する。
 		AllowInsecureURL: p.AppCfg.Env() == config.EnvLocal,
+		TracerFactory:    p.TracerFtry,
 	}, p.HTTPClient)
 	if err != nil {
 		logger.Error(

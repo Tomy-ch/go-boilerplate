@@ -471,7 +471,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).
 				Return(&httpclient.Response{StatusCode: 200, Body: jwksPublicJSON(t, &key.PublicKey)}, nil).
 				Times(1)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			k1, err := r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err)
@@ -492,7 +492,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 				Return(&httpclient.Response{StatusCode: 200, Body: jwksPublicJSON(t, &key.PublicKey)}, nil).
 				Times(2)
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 
 			_, err := r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err)
@@ -514,6 +514,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 				nil,
 				0,
 				clk,
+				nil,
 			)
 
 			kA, err := r.ResolveKey(context.Background(), testKID)
@@ -538,7 +539,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			_, err := r.ResolveKey(context.Background(), testKID)
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
@@ -551,7 +552,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			client := mock_httpclient.NewMockClient(ctrl)
 			// Times(1): 2 回目は cooldown で throttle され Do を呼ばない（直近エラーを伝播）。
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			_, err1 := r.ResolveKey(context.Background(), testKID)
 			require.ErrorIs(t, err1, errBoom)
@@ -572,7 +573,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 				Return(&httpclient.Response{StatusCode: 200, Body: jwksPublicJSON(t, &key.PublicKey)}, nil).
 				Times(1).After(firstFetch)
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 
 			_, err1 := r.ResolveKey(context.Background(), testKID)
 			require.ErrorIs(t, err1, errBoom)
@@ -593,6 +594,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 				nil,
 				0,
 				newFakeClock(fixedNow),
+				nil,
 			)
 
 			_, err := r.ResolveKey(context.Background(), "absent-kid")
@@ -609,7 +611,7 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).
 				Return(&httpclient.Response{StatusCode: 200, Body: jwksWithKey(t, testKID, &key.PublicKey)}, nil).
 				Times(1)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			_, err := r.ResolveKey(context.Background(), testKID)
 			require.NoError(t, err)
@@ -631,7 +633,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			key := newRSAKey(t)
 			cc := &countingJWKSClient{bodies: [][]byte{jwksWithKey(t, testKID, &key.PublicKey)}}
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 
 			// 初回の未知 kid は 1 度だけ再取得し、不在を確定して negative へ記録する。
 			_, err := r.ResolveKey(context.Background(), "absent-kid")
@@ -656,7 +658,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 				jwksWithKey(t, "kid-2", &keyB.PublicKey),
 			}}
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 
 			// 現世代 {testKID} で kid-2 は不在確定（negative 記録）。
 			_, err := r.ResolveKey(context.Background(), "kid-2")
@@ -681,7 +683,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 				jwksWith2Keys(t, testKID, &keyA.PublicKey, "kid-2", &keyB.PublicKey),
 			}}
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 
 			// 初回取得で {testKID} をキャッシュ。
 			_, err := r.ResolveKey(context.Background(), testKID)
@@ -708,7 +710,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			key := newRSAKey(t)
 			cc := &countingJWKSClient{bodies: [][]byte{jwksWithKey(t, testKID, &key.PublicKey)}}
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 
 			// 初回取得で bogus kid の不在を確定（negative 記録）。
 			_, err := r.ResolveKey(context.Background(), "bogus")
@@ -733,7 +735,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
 			cc := &countingJWKSClient{bodies: [][]byte{jwksWithKey(t, testKID, &key.PublicKey)}}
-			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(cc, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			var wg sync.WaitGroup
 			for range 8 {
@@ -755,7 +757,7 @@ func Test_jwksResolver_negativelyCached(t *testing.T) {
 	newFetchedResolver := func(t *testing.T) (*jwksResolver, *fakeClock) {
 		t.Helper()
 		clk := newFakeClock(fixedNow)
-		r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+		r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 		r.fetchedAt = clk.Now()
 		return r, clk
 	}
@@ -784,7 +786,7 @@ func Test_jwksResolver_negativelyCached(t *testing.T) {
 		t.Run("未取得（fetchedAt がゼロ）なら false", func(t *testing.T) {
 			t.Parallel()
 
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 			r.negative = map[string]struct{}{"absent": {}}
 
 			assert.False(t, r.negativelyCached("absent"))
@@ -812,7 +814,7 @@ func Test_jwksResolver_recordAbsent(t *testing.T) {
 			t.Parallel()
 
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 			r.fetchedAt = clk.Now()
 
 			r.recordAbsent("absent")
@@ -823,7 +825,7 @@ func Test_jwksResolver_recordAbsent(t *testing.T) {
 		t.Run("未取得（fetchedAt がゼロ）なら記録しない", func(t *testing.T) {
 			t.Parallel()
 
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			r.recordAbsent("absent")
 
@@ -834,7 +836,7 @@ func Test_jwksResolver_recordAbsent(t *testing.T) {
 			t.Parallel()
 
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 			r.fetchedAt = clk.Now()
 			clk.advance(time.Hour)
 
@@ -882,25 +884,25 @@ func Test_newJWKSResolver(t *testing.T) {
 
 		t.Run("cacheTTL が正なら指定値をそのまま保持する", func(t *testing.T) {
 			t.Parallel()
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 			assert.Equal(t, time.Hour, r.cacheTTL)
 		})
 
 		t.Run("cacheTTL が 0 以下なら既定 TTL が適用される", func(t *testing.T) {
 			t.Parallel()
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), 0, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), 0, nil, 0, newFakeClock(fixedNow), nil)
 			assert.Equal(t, defaultJWKSCacheTTL, r.cacheTTL)
 		})
 
 		t.Run("cooldown が 0 以下なら既定 cooldown が適用される", func(t *testing.T) {
 			t.Parallel()
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 			assert.Equal(t, jwksRefreshCooldown, r.cooldown)
 		})
 
 		t.Run("allowedAlgs が空なら既定の許可アルゴリズムが適用される", func(t *testing.T) {
 			t.Parallel()
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 			assert.Equal(t, defaultAllowedAlgs, r.allowedAlgs)
 		})
 	})
@@ -915,7 +917,7 @@ func Test_jwksResolver_lookup(t *testing.T) {
 		t.Run("鮮度内キャッシュに kid があれば対応する鍵を返す", func(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 			r.keys = map[string]crypto.PublicKey{testKID: &key.PublicKey}
 			r.fetchedAt = fixedNow
 
@@ -928,7 +930,7 @@ func Test_jwksResolver_lookup(t *testing.T) {
 
 		t.Run("一度も取得していない（fetchedAt がゼロ値）場合は nil を返す", func(t *testing.T) {
 			t.Parallel()
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 			assert.Nil(t, r.lookup(testKID))
 		})
 
@@ -936,7 +938,7 @@ func Test_jwksResolver_lookup(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
 			clk := newFakeClock(fixedNow)
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk)
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, clk, nil)
 			r.keys = map[string]crypto.PublicKey{testKID: &key.PublicKey}
 			r.fetchedAt = fixedNow
 			clk.advance(time.Hour + time.Minute)
@@ -947,7 +949,7 @@ func Test_jwksResolver_lookup(t *testing.T) {
 		t.Run("鮮度内でも未知の kid は nil を返す", func(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
-			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(stubJWKSClient(t, nil), staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 			r.keys = map[string]crypto.PublicKey{testKID: &key.PublicKey}
 			r.fetchedAt = fixedNow
 
@@ -972,6 +974,7 @@ func Test_jwksResolver_refresh(t *testing.T) {
 				nil,
 				0,
 				newFakeClock(fixedNow),
+				nil,
 			)
 
 			fetched, err := r.refresh(context.Background())
@@ -990,7 +993,7 @@ func Test_jwksResolver_refresh(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			_, err := r.refresh(context.Background())
 			require.ErrorIs(t, err, errBoom)
@@ -1003,7 +1006,7 @@ func Test_jwksResolver_refresh(t *testing.T) {
 			client := mock_httpclient.NewMockClient(ctrl)
 			// Times(1): 2 回目は cooldown で throttle され Do を呼ばない。
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			fetched1, err1 := r.refresh(context.Background())
 			require.ErrorIs(t, err1, errBoom)
@@ -1024,7 +1027,7 @@ func Test_jwksResolver_refresh(t *testing.T) {
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).
 				Return(&httpclient.Response{StatusCode: 200, Body: jwksPublicJSON(t, &key.PublicKey)}, nil).
 				Times(1).After(firstFetch)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			fetchedCanceled, errCanceled := r.refresh(context.Background())
 			require.ErrorIs(t, errCanceled, apperror.ErrCanceled)
@@ -1051,6 +1054,7 @@ func Test_jwksResolver_fetch(t *testing.T) {
 				nil,
 				0,
 				newFakeClock(fixedNow),
+				nil,
 			)
 
 			keys, err := r.fetch(context.Background())
@@ -1067,7 +1071,7 @@ func Test_jwksResolver_fetch(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
-			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow))
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
 			keys, err := r.fetch(context.Background())
 			assert.Nil(t, keys)

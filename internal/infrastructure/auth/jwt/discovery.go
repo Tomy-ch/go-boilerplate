@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/infrastructure/httpclient"
+	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -44,6 +45,7 @@ type openidConfiguration struct {
 // 取得結果を discovery TTL でキャッシュし、issuer 厳密一致・https・同一オリジンを検証します（信頼境界外の応答として）。
 type discoveryResolver struct {
 	client        httpclient.Client
+	tracer        observability.LayerTracer
 	issuer        string
 	discoveryURL  string
 	ttl           time.Duration
@@ -60,12 +62,23 @@ type discoveryResolver struct {
 }
 
 // newDiscoveryResolver は、issuer ベースの discovery 解決器を生成します（遅延取得）。
-func newDiscoveryResolver(client httpclient.Client, issuer string, ttl time.Duration, clk clock.Clock, allowInsecure bool) *discoveryResolver {
+func newDiscoveryResolver(
+	client httpclient.Client,
+	issuer string,
+	ttl time.Duration,
+	clk clock.Clock,
+	allowInsecure bool,
+	tf observability.TracerFactory,
+) *discoveryResolver {
+	if tf == nil {
+		tf = observability.NewDisabledTracerFactory()
+	}
 	if ttl <= 0 {
 		ttl = defaultDiscoveryTTL
 	}
 	return &discoveryResolver{
 		client:        client,
+		tracer:        tf.Infra(),
 		issuer:        issuer,
 		discoveryURL:  strings.TrimRight(issuer, "/") + discoveryPath,
 		ttl:           ttl,
@@ -117,6 +130,9 @@ func (d *discoveryResolver) refresh(ctx context.Context) (string, error) {
 
 // fetch は、discovery 文書を取得し、issuer 厳密一致 / https / 同一オリジンを検証して jwks_uri を返します。
 func (d *discoveryResolver) fetch(ctx context.Context) (string, error) {
+	ctx, endSpan := d.tracer.Start(ctx)
+	defer endSpan()
+
 	if err := requireSecureURL(d.discoveryURL, d.allowInsecure); err != nil {
 		return "", err
 	}
