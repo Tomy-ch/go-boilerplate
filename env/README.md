@@ -169,6 +169,30 @@ Engine-core settings for the worker engine (broker-agnostic).
 |WORKER_NACK_BACKOFF_INITIAL|Initial per-message redelivery backoff on retryable failure|duration|1s|Code default `1s`|
 |WORKER_NACK_BACKOFF_MAX|Upper bound for per-message redelivery backoff|duration|30s|Code default `30s`|
 
+### Consumer Queue
+
+Adapter settings for the broker a worker consumes from. They sit on their own axis rather than under
+`WORKER_*` because those are defined as engine-core and broker-agnostic; `OUTBOX_QUEUE_*` is the
+publishing end of the same pair, and this is the consuming end.
+
+Every value has a code default, so only the `worker` process reads them — `serve`, `outbox-relay`,
+and `job` do not build a consumer at all. Once a worker *is* registered, the wiring rejects an
+incomplete configuration at startup rather than starting a consumer that can never receive. That is
+also why `ci` declares unreachable placeholder values: a test boots the worker's DI graph, and the
+startup check would otherwise fail there.
+
+|Variable Name|Description|Type|Example|Notes|
+|---|---|---|---|---|
+|CONSUMER_QUEUE_ENDPOINT|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
+|CONSUMER_QUEUE_REGION|Region used for SigV4 signing|string|us-east-1|Code default empty. Required once a worker is wired. **Per-environment value**: set only in local, where the broker runs in compose|
+|CONSUMER_QUEUE_URL|Queue URL to consume from|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default empty. Required once a worker is wired. Local queue names come from `docker/elasticmq/elasticmq.conf`. **Per-environment value**: set only in local, where the broker runs in compose|
+|CONSUMER_QUEUE_DLQ_URL|DLQ URL whose backlog is collected|string|`http://elasticmq:9324/000000000000/gobp-events-dlq`|Code default empty. Used only to read DLQ depth for metrics; the dead-letter path itself is the `FailureHandler` or the broker's redrive policy. Leave empty to skip DLQ depth collection|
+|CONSUMER_QUEUE_ACCESS_KEY_ID|Static credential access key ID|string|local-dummy-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used. ElasticMQ does not verify signatures locally, so any dummy works there|
+|CONSUMER_QUEUE_SECRET_ACCESS_KEY|Static credential secret access key|string|local-dummy-secret-key|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain|
+|CONSUMER_QUEUE_MAX_MESSAGES|Max messages fetched per receive|int|10|Code default `10`, which is SQS's own ceiling|
+|CONSUMER_QUEUE_WAIT_TIME_SECONDS|Long-poll wait seconds (0–20)|int|20|Code default `20`. The maximum minimises empty-poll round trips|
+|CONSUMER_QUEUE_VISIBILITY_TIMEOUT|Visibility timeout for a received message, in seconds|int|30|Code default `30`, matching the local `elasticmq.conf`. A handler that runs longer than this without `WORKER_EXTEND_INTERVAL` heartbeats gets its message redelivered|
+
 ### Outbox
 
 Settings for the transactional outbox relay.
@@ -183,8 +207,8 @@ Settings for the transactional outbox relay.
 |OUTBOX_QUEUE_ENDPOINT|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |OUTBOX_QUEUE_REGION|Region used for SigV4 signing|string|us-east-1|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |OUTBOX_QUEUE_URL|Destination queue URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. Local queue names come from `docker/elasticmq/elasticmq.conf`. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|OUTBOX_QUEUE_ACCESS_KEY_ID|Static credential access key ID|string|local-dummy-access-key|Code default empty. ElasticMQ does not verify signatures locally, so any dummy works. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|OUTBOX_QUEUE_SECRET_ACCESS_KEY|Static credential secret access key|string|local-dummy-secret-key|Code default empty. Replace with an IAM role or similar in production. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
+|OUTBOX_QUEUE_ACCESS_KEY_ID|Static credential access key ID|string|local-dummy-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used. ElasticMQ does not verify signatures locally, so any dummy works there|
+|OUTBOX_QUEUE_SECRET_ACCESS_KEY|Static credential secret access key|string|local-dummy-secret-key|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain|
 
 ### Auth (JWT)
 
@@ -210,8 +234,8 @@ S3-compatible object storage for uploaded assets (product images). The usecase d
 |OBJECT_STORAGE_ENDPOINT|S3-compatible endpoint URL; empty means SDK default resolution (AWS S3)|string|`http://garage:3900`|`required` (empty allowed). Per-environment value — `local` points at the Garage compose service; every other environment leaves it empty so the SDK resolves AWS S3|
 |OBJECT_STORAGE_REGION|Signing region|string|us-east-1|`required,notEmpty`. Per-environment value — the Garage sample region in local / ci, the AWS region of the environment from `dev` onward|
 |OBJECT_STORAGE_BUCKET|Bucket that stores objects|string|gobp-local|`required,notEmpty`. Per-environment value — one bucket per environment|
-|OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|`required,notEmpty`. Secret management required. Injected at deploy time for `dev` / `stg` / `prd`. Example is a placeholder: `local` uses a fixed Garage credential (`GK` + 24 hex) held in `env/.env`. Per-environment value — each environment has its own credential|
-|OBJECT_STORAGE_SECRET_ACCESS_KEY|Static-credential secret access key|string|gobp-local-secret-key|`required,notEmpty`. Secret management required. Injected at deploy time for `dev` / `stg` / `prd`. Example is a placeholder: `local` uses a fixed Garage credential (64 hex) held in `env/.env`, and copying it here would add a second entry to `.gitleaksignore`. Per-environment value — each environment has its own credential|
+|OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used — a role-based deployment injects nothing here. Secret management required when set explicitly. Example is a placeholder: `local` uses a fixed Garage credential (`GK` + 24 hex) held in `env/.env`|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|Static-credential secret access key|string|gobp-local-secret-key|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain. Example is a placeholder: `local` uses a fixed Garage credential (64 hex) held in `env/.env`, and copying it here would add a second entry to `.gitleaksignore`|
 |OBJECT_STORAGE_USE_PATH_STYLE|Use path-style addressing (Garage / MinIO require true; AWS S3 uses false)|bool|true|`required`. Per-environment value — `true` in local / ci where Garage requires path-style addressing, `false` from `dev` onward for AWS S3|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|Maximum accepted upload size in bytes|int|5242880|`required,notEmpty`. 5 MiB in the sample. Must stay below the global `SERVER_BODY_LIMIT_MB` (bytes, decimal) minus multipart overhead, otherwise the global body limit rejects first and this check never fires. Enforced at server startup by `config.ValidateUploadBodyLimit`|
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	domainuser "go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/usecase/user/event"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -12,6 +13,75 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestParseWithdrawn(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("BuildWithdrawn が生成した payload をそのまま復元する", func(t *testing.T) {
+			t.Parallel()
+			// producing 側と consuming 側が同じ payload 形を見ていることを、両者を突き合わせて固定する。
+			createdAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
+			entity, err := domainuser.New(uuidtestkit.NewTestFromSalt(t, "pw_id"), domainuser.Attributes{
+				Profile: domainuser.Profile{
+					FirstName:    "first_name",
+					LastName:     "last_name",
+					Email:        "pw@example.com",
+					Phone:        "090-0000-0000",
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "pw_prefecture"),
+					City:         "city_name",
+					Street:       "town_address",
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: createdAt,
+				UpdatedAt: createdAt,
+			})
+			require.NoError(t, err)
+			deletedAt := time.Date(2026, time.July, 29, 12, 0, 0, 0, time.UTC)
+			require.NoError(t, entity.MarkAsDeleted(deletedAt))
+			payload, err := event.BuildWithdrawn(entity)
+			require.NoError(t, err)
+
+			got, err := event.ParseWithdrawn(payload)
+
+			require.NoError(t, err)
+			assert.Equal(t, entity.ID().String(), got.UserID)
+			assert.Equal(t, deletedAt.Format(time.RFC3339Nano), got.DeletedAt)
+		})
+
+		t.Run("未知のフィールドは無視する", func(t *testing.T) {
+			t.Parallel()
+			// version を上げずに producing 側がフィールドを足しても消費側が止まらないことを固定する。
+			got, err := event.ParseWithdrawn([]byte(`{"userId":"u1","deletedAt":"","unknown":1}`))
+
+			require.NoError(t, err)
+			assert.Equal(t, "u1", got.UserID)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("JSON として読めない payload を弾く", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := event.ParseWithdrawn([]byte("not-json"))
+
+			require.ErrorIs(t, err, event.ErrInvalidWithdrawn)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("型が合わない payload を弾く", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := event.ParseWithdrawn([]byte(`{"userId":42}`))
+
+			require.ErrorIs(t, err, event.ErrInvalidWithdrawn)
+		})
+	})
+}
 
 func TestBuildWithdrawn(t *testing.T) {
 	t.Parallel()

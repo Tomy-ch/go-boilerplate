@@ -11,6 +11,11 @@ const (
 	// AttrReceiptHandle は、broker のメッセージ識別子（SQS の receipt handle 等）を
 	// Attributes に隔離するための予約キーです。adapter が設定し、Ack/Nack/Extend 時に読み戻します。
 	AttrReceiptHandle = ReservedKeyPrefix + "receipt_handle"
+
+	// AttrEventType は、イベント種別（version 込み）を運ぶ属性キーです。1 つのキューには複数種別が
+	// 流れるため、Handler は本文を解釈する前にこの属性で自分の処理対象かを判定します。
+	// 予約キーではなく、publish 側 adapter が載せ consume 側 adapter が素通しする伝播対象の値です。
+	AttrEventType = "event_type"
 )
 
 // Message は、broker 非依存のメッセージ封筒です。

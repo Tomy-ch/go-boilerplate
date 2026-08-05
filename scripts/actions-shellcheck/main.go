@@ -9,8 +9,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -67,6 +69,10 @@ var (
 	errStepsNotSequence  = xerrors.New("runs.steps がリストとして読めません")
 	errFoldedRun         = xerrors.New("run にブロック折り畳み（>）は使えません。リテラル（|）で書いてください")
 	errShellcheckMissing = xerrors.New("shellcheck が PATH にありません（mise install shellcheck）")
+
+	errActionSymlinkDir        = xerrors.New("ディレクトリへのシンボリックリンクは走査できません。実体を置くか、リンクを外してください")
+	errActionSymlinkUnresolved = xerrors.New("解決できないシンボリックリンクがあります")
+	errMultipleDocuments       = xerrors.New("action 定義に複数の YAML ドキュメントがあります。--- 区切りの 2 番目以降は検査されません")
 )
 
 type step struct {
@@ -133,6 +139,10 @@ func collectSteps(fsys fs.FS) ([]string, []step, error) {
 	return files, steps, nil
 }
 
+// actionFiles は .github/actions 配下の action 定義ファイルをパス順に返す。
+//
+// WalkDir はリンク先を辿らない DirEntry で再帰要否を決めるため、シンボリックリンクを素通しにすると
+// リンク先の action がどのゲートにも掛からないまま緑で通る。リンク先を解決して扱いを決める。
 func actionFiles(fsys fs.FS) ([]string, error) {
 	var files []string
 	err := fs.WalkDir(fsys, actionsDir, func(path string, entry fs.DirEntry, err error) error {
@@ -141,6 +151,9 @@ func actionFiles(fsys fs.FS) ([]string, error) {
 				return fs.SkipAll
 			}
 			return err
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return appendSymlink(fsys, path, entry.Name(), &files)
 		}
 		if !entry.IsDir() && isActionFile(entry.Name()) {
 			files = append(files, path)
@@ -154,11 +167,33 @@ func actionFiles(fsys fs.FS) ([]string, error) {
 	return files, nil
 }
 
+// appendSymlink はシンボリックリンクの実体を見て、action 定義ファイルなら files へ加える。
+//
+// ディレクトリへのリンクは、辿ると循環し得るうえ fs.FS には実体の同一性を判定する手段が無いため
+// 受け付けない。解決できないリンクも、実体がファイルだったのかディレクトリだったのかを言えず、
+// 対象外に寄せると走査が黙って縮むため同じく受け付けない。どちらも人手で解消する。
+func appendSymlink(fsys fs.FS, path, name string, files *[]string) error {
+	info, err := fs.Stat(fsys, path)
+	if err != nil {
+		return xerrors.Wrap(errActionSymlinkUnresolved, path)
+	}
+	if info.IsDir() {
+		return xerrors.Wrap(errActionSymlinkDir, path)
+	}
+	if isActionFile(name) {
+		*files = append(*files, path)
+	}
+	return nil
+}
+
 func isActionFile(name string) bool {
 	return slices.Contains(actionFileNames, name)
 }
 
 func parseAction(file string, data []byte) ([]step, error) {
+	if err := requireSingleDocument(file, data); err != nil {
+		return nil, err
+	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, xerrors.Wrap(err, "parse "+file)
@@ -175,6 +210,31 @@ func parseAction(file string, data []byte) ([]step, error) {
 		return nil, xerrors.Wrap(errStepCountMismatch, fmt.Sprintf("%s: 抽出 %d / 期待 %d", file, len(steps), want))
 	}
 	return steps, nil
+}
+
+// requireSingleDocument は action 定義ファイルが単一の YAML ドキュメントであることを確かめる。
+//
+// yaml.Unmarshal は --- で区切られた 2 番目以降のドキュメントをエラー無しで捨てるため、
+// 抽出側もデコードして数える側も揃って見落とす。件数差の突き合わせでも検知できないので、
+// ここで落とす。GitHub Actions は action 定義に複数ドキュメントを認めていない。
+func requireSingleDocument(file string, data []byte) error {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	var first any
+	if err := dec.Decode(&first); err != nil {
+		if xerrors.Is(err, io.EOF) {
+			return nil
+		}
+		return xerrors.Wrap(err, "parse "+file)
+	}
+	var second any
+	switch err := dec.Decode(&second); {
+	case err == nil:
+		return xerrors.Wrap(errMultipleDocuments, file)
+	case xerrors.Is(err, io.EOF):
+		return nil
+	default:
+		return xerrors.Wrap(err, "parse "+file)
+	}
 }
 
 // countRunSteps はデコード結果から run ステップ数を数える。件数を using の値と無関係に数えるのは、
@@ -306,7 +366,7 @@ func bodyColumnBase(data []byte, run *yaml.Node, firstLine int) int {
 	switch run.Style {
 	case yaml.LiteralStyle:
 		// ブロックスカラーの本文はインデントを剥がした形で得られるため、剥がされた幅を足し戻す。
-		return blockIndentWidth(data, firstLine)
+		return blockIndentWidth(data, firstLine, run.Value)
 	case yaml.SingleQuotedStyle, yaml.DoubleQuotedStyle:
 		// 引用符付きスカラーは範囲の先頭が開き引用符を指すため、その 1 文字分を読み飛ばす。
 		return run.Column
@@ -315,21 +375,36 @@ func bodyColumnBase(data []byte, run *yaml.Node, firstLine int) int {
 	}
 }
 
-// blockIndentWidth はブロックスカラーのインデント幅を返す。幅を決めるのは最初の非空行（YAML の規則）で、
-// 本文が空行で始まる場合にその行の幅 0 を採ると、そのステップの全指摘の列がずれる。
-func blockIndentWidth(data []byte, firstLine int) int {
+// blockIndentWidth はブロックスカラーから剥がされたインデント幅を返す。
+//
+// 幅を決めるのは最初の非空行だが、その行の空白をそのまま採ると明示インデント指示子（run: |2 など）
+// を書いた本文で列がずれる。指示子は剥がす幅を親ノード基準で固定するので、本文がそれより深く
+// 書かれていれば余りが値側へ残り、生の行の空白は剥がされた幅より広くなる。
+// 生の行の空白から値に残った空白を引けば、指示子の有無に依らず剥がされた幅そのものが出る。
+// 本文が空行で始まる場合に幅 0 を採るとそのステップの全指摘がずれるため、両側とも最初の非空行を見る。
+func blockIndentWidth(data []byte, firstLine int, value string) int {
 	lines := strings.Split(string(data), "\n")
 	if firstLine < firstBodyIndex || firstLine > len(lines) {
 		return 0
 	}
-	for _, body := range lines[firstLine-firstBodyIndex:] {
-		trimmed := strings.TrimLeft(body, " \t")
+	raw, ok := firstIndentWidth(lines[firstLine-firstBodyIndex:])
+	if !ok {
+		return 0
+	}
+	kept, _ := firstIndentWidth(strings.Split(value, "\n"))
+	return raw - kept
+}
+
+// firstIndentWidth は最初の非空行のインデント幅を返す。第2戻り値が false なら非空行が無い。
+func firstIndentWidth(lines []string) (int, bool) {
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
 		if trimmed == "" {
 			continue
 		}
-		return len(body) - len(trimmed)
+		return len(line) - len(trimmed), true
 	}
-	return 0
+	return 0, false
 }
 
 func check(ctx context.Context, steps []step) (result, error) {
@@ -411,10 +486,20 @@ func maskExpressions(script string) (string, error) {
 	}
 }
 
+// exprEnd は式の開始直後から見た閉じ位置を返す。閉じが無ければ -1。
+//
+// 式の中の ' は文字列リテラルの境界なので、その内側の }} で式を打ち切らないよう引用符を追う。
+// ただし ' が奇数個だと引用符の状態が戻らず、自分の }} を読み飛ばして後続の別の式まで
+// 巻き込む。GitHub Expressions の式は入れ子にならないため、閉じを見つける前に次の ${{ が
+// 来ることは引用符の対応が壊れている証拠であり、そこで未閉じとして扱う。
+// 巻き込んだ区間は maskExpressions が空行へ潰すので、fail-open にするとその間のシェルが
+// 検査対象から丸ごと消える。
 func exprEnd(expr string) int {
 	quoted := false
 	for i := range len(expr) {
 		switch {
+		case strings.HasPrefix(expr[i:], exprOpen):
+			return -1
 		case expr[i] == '\'':
 			quoted = !quoted
 		case !quoted && strings.HasPrefix(expr[i:], exprClose):

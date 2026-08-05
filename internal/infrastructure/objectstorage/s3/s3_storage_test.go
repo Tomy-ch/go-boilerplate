@@ -87,7 +87,7 @@ func newStorageWithOutbound(
 ) boundary.Storage {
 	t.Helper()
 
-	return s3adapter.New(s3adapter.Config{
+	got, err := s3adapter.New(t.Context(), s3adapter.Config{
 		Endpoint:        endpoint,
 		Region:          "us-east-1",
 		Bucket:          bucket,
@@ -96,6 +96,8 @@ func newStorageWithOutbound(
 		UsePathStyle:    true,
 		HTTPClient:      outbound,
 	}, observability.NewNoopTracerFactory(t))
+	require.NoError(t, err)
+	return got
 }
 
 func TestNew(t *testing.T) {

@@ -169,6 +169,28 @@ worker engine の engine-core 設定（broker 非依存）。
 |WORKER_NACK_BACKOFF_INITIAL|retryable 失敗時の per-message 再配送 backoff の初回待機|duration|1s|Code default `1s`|
 |WORKER_NACK_BACKOFF_MAX|per-message 再配送 backoff の上限|duration|30s|Code default `30s`|
 
+### Consumer Queue
+
+worker が consume する broker の adapter 設定。`WORKER_*` は engine-core かつ broker 非依存と定めて
+いるため別の軸に置く。`OUTBOX_QUEUE_*` が同じ対の publish 端で、こちらが consume 端にあたる。
+
+全項目に code default があるため、これらを読むのは `worker` プロセスだけで、`serve` / `outbox-relay` /
+`job` は consumer をそもそも組み立てない。worker を登録した時点からは、不完全な設定を起動時に弾く
+（受信が一度も成立しない consumer を起動させないため）。`ci` に疎通しないプレースホルダを置いて
+あるのはそのためで、worker の DI グラフを起動するテストが無ければ起動時検査で落ちる。
+
+|変数名|説明|型|例|備考|
+|---|---|---|---|---|
+|CONSUMER_QUEUE_ENDPOINT|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決（本番 AWS SQS）に委ねる。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|CONSUMER_QUEUE_REGION|SigV4 署名に使うリージョン|string|us-east-1|Code default は空。worker を配線した時点から必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する|
+|CONSUMER_QUEUE_URL|consume 対象キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。worker を配線した時点から必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` 由来。**Per-environment value**: ブローカーが compose で動く local でのみ設定する|
+|CONSUMER_QUEUE_DLQ_URL|滞留量を収集する DLQ の URL|string|`http://elasticmq:9324/000000000000/gobp-events-dlq`|Code default は空。Permanent メッセージの退避先であり、滞留量の収集対象でもある。空にすると app 側の退避経路を持たず、broker の redrive policy に委ねる|
+|CONSUMER_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい|
+|CONSUMER_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。アクセスキー ID とセットで設定すること — 片方だけの指定は起動時に落ちる。明示注入とも chain への委譲とも読めないため|
+|CONSUMER_QUEUE_MAX_MESSAGES|1 回の受信で取得する最大件数|int|10|Code default `10`。SQS 自身の上限|
+|CONSUMER_QUEUE_WAIT_TIME_SECONDS|long-poll の待機秒数（0〜20）|int|20|Code default `20`。上限にすると空ポーリングの往復が最も減る|
+|CONSUMER_QUEUE_VISIBILITY_TIMEOUT|受信メッセージの可視性タイムアウト秒数|int|30|Code default `30`。ローカルの `elasticmq.conf` と対。`WORKER_EXTEND_INTERVAL` のハートビート無しでこれを超える Handler は、メッセージを再配送される|
+
 ### Outbox
 
 transactional outbox relay の設定。
@@ -183,8 +205,8 @@ transactional outbox relay の設定。
 |OUTBOX_QUEUE_ENDPOINT|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |OUTBOX_QUEUE_REGION|SigV4 署名に用いるリージョン|string|us-east-1|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |OUTBOX_QUEUE_URL|publish 先キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` と対。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
-|OUTBOX_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
-|OUTBOX_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。本番は IAM ロール等へ差し替える。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい|
+|OUTBOX_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。アクセスキー ID とセットで設定すること — 片方だけの指定は起動時に落ちる。明示注入とも chain への委譲とも読めないため|
 
 ### Auth (JWT)
 
@@ -210,8 +232,8 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
 |OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`。Per-environment value — local / ci は Garage 用のサンプルリージョン、`dev` 以降は各環境の AWS リージョン|
 |OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`。Per-environment value — 環境ごとに 1 バケット|
-|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|`required,notEmpty`。シークレット管理必須。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う。Per-environment value — 資格情報は環境ごとに異なる|
-|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|`required,notEmpty`。シークレット管理必須。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入。例欄はプレースホルダ（Example is a placeholder）: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える。Per-environment value — 資格情報は環境ごとに異なる|
+|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる — ロール運用のデプロイはここへ何も注入しない。明示的に設定する場合はシークレット管理必須。例欄はプレースホルダ: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|Code default は空。アクセスキー ID とセットで設定すること — 片方だけの指定は起動時に落ちる。明示注入とも chain への委譲とも読めないため。例欄はプレースホルダ: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える|
 |OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`。Per-environment value — local / ci は Garage が path-style を要求するため `true`、`dev` 以降は AWS S3 のため `false`|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
 

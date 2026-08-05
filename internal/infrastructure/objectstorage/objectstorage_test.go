@@ -24,12 +24,14 @@ func TestNew(t *testing.T) {
 			cfg, err := config.New()
 			require.NoError(t, err)
 
-			s := objectstorage.New(
+			s, err := objectstorage.New(
+				t.Context(),
 				config.NewObjectStorageConfig(cfg),
 				observability.NewDisabledOutboundHTTPClient(true),
 				observability.NewNoopTracerFactory(t),
 			)
 
+			require.NoError(t, err)
 			assert.NotNil(t, s)
 		})
 	})

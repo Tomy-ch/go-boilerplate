@@ -29,16 +29,21 @@ regardless, via the object-storage adapter.
 ## Publishing side
 
 `NewPublisher` implements the outbox publish boundary with `SendMessage`. The message body is the
-outbox payload verbatim, so a consumer can read the dedup key without parsing the body: the outbox
-`message_id` travels as the `message_id` **message attribute**, alongside the propagated headers
+outbox payload verbatim, so a consumer can read the dedup key — and decide whether the message is
+its own at all — without parsing the body: the outbox `message_id` and the event type travel as the
+`message_id` and `event_type` **message attributes**, alongside the propagated headers
 (`traceparent` and friends). SQS's own `MessageId` is broker-assigned and changes on every
-re-publish, which is why it cannot serve as the idempotency key.
+re-publish, which is why it cannot serve as the idempotency key. `event_type` is carried because one
+queue receives every kind of event the outbox emits; a consumer that could not select its own kind
+before decoding would classify every other kind as a malformed payload and fill the DLQ with them.
 
 Sensitive headers (`Authorization` / `Proxy-Authorization` / `Cookie` / `Set-Cookie`) are dropped at
 this egress boundary, mirroring the HTTP publisher, and empty-valued headers are skipped because SQS
-rejects them with `InvalidParameterValue`.
+rejects them with `InvalidParameterValue`. A header named after either reserved attribute is dropped
+rather than allowed to overwrite it, so what a consumer selects on cannot disagree with the outbox
+row that produced the body.
 
-SQS accepts at most ten message attributes, and `message_id` occupies one of them. A message that
+SQS accepts at most ten message attributes, and the two reserved ones occupy two of them. A message that
 would exceed the limit is rejected before the send with `ErrTooManyAttributes` rather than trimmed:
 which headers survived a trim would follow Go's map iteration order, so a lost `traceparent` would
 be neither reproducible nor visible. The relay records the error on the outbox row and the message
@@ -46,11 +51,23 @@ goes dead once it runs out of attempts, which is the correct end for a payload n
 The limit is SQS's own, so it stays here — `publisher.Message` carries no attribute count.
 
 `NewClient` builds the client; swapping endpoint and credentials is enough to target ElasticMQ,
-LocalStack, or real SQS. Its `HTTPClient` is the SSRF-guarded transport the rest of the application
-uses, so an endpoint pointed at link-local — cloud metadata — is refused at dial time rather than
-fetched. Leaving it nil falls back to the SDK's own transport and loses that guard. Both are built and unit-tested here, but reach a running binary only
-through the outbox publisher's `sqs` branch, which carries a `sample-api` marker. The consuming
-side has no wiring at all.
+LocalStack, or real SQS. Credentials go through
+[`infrastructure/awsclient`](../../awsclient/README.md), so leaving `AccessKeyID` /
+`SecretAccessKey` empty hands resolution to the SDK's default chain (IAM role and friends) and a
+deployment whose credentials do not resolve fails at startup rather than on the first send. Its
+`HTTPClient` is the SSRF-guarded transport the rest of the application uses, so an endpoint pointed
+at link-local — cloud metadata — is refused at dial time rather than fetched; leaving it nil falls
+back to the SDK's own transport and loses that guard.
+
+Every route from this package into a running binary carries a `sample-api` marker. On the publishing
+side that is the outbox publisher's `sqs` branch. On the consuming side, a worker's adapters are
+always assembled in DI, because the controller layer cannot import this package.
+
+<!-- sample-api:begin -->
+`internal/di/module/withdrawalarchive.go` is that assembly point for the bundled sample worker: it
+builds `NewConsumer`, `NewDeadLetter`, and `NewQueueStatsProvider` from `CONSUMER_QUEUE_*` and hands
+them to a `worker.Worker` registered in `WorkerModule`.
+<!-- sample-api:end -->
 
 ## Port mapping
 
@@ -88,6 +105,8 @@ configuration, not application code.
 
 `Config` here is adapter-specific (`QueueURL` / `DLQURL` / `MaxMessages` / `WaitTimeSeconds` /
 `VisibilityTimeout`) and is intentionally separate from the engine-core `config.WorkerConfig`,
-which holds no broker-specific vocabulary. `DLQURL` is only used by `QueueStatsProvider` to read
-the DLQ backlog; leave it empty to skip DLQ depth collection (the engine's dead-letter path is
-`FailureHandler` / redrive, not this URL).
+which holds no broker-specific vocabulary. `DLQURL` names the queue `NewDeadLetter` sends to and the
+queue `QueueStatsProvider` reads the backlog from. Leaving it empty means both are out: wire no
+`FailureHandler` at all and let the broker's redrive policy handle poison messages. Wiring
+`NewDeadLetter` with an empty URL is the one combination to avoid — every send fails, and the engine
+does not ack a message whose dead-lettering failed, so it comes back on every redelivery.

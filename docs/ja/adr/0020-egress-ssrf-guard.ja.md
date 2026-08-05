@@ -33,6 +33,8 @@ GoのデフォルトHTTPライブラリはこれらのベクターを何もブ�
 
 すべてのアウトバウンドHTTPトランスポートは`internal/observability.HTTPClientTransport`を経由する。これはベースの`*http.Transport`を`net.Dialer`でラップし、その`ControlContext`に`guardedDialControl`を設定する。ガードは**DNS後・ダイヤル時**に実行される。URLのオリジナルホスト名ではなく、名前解決後にカーネルが渡す`address`引数内の解決済みIPアドレスを検査するため、DNSリバインディング攻撃も防ぐ。
 
+**適用範囲: egress であって資格情報の解決ではない。** ここでいう「アウトバウンドHTTP」とは、このアプリケーションが**どこか他所へ**行う呼び出し — 背景の節が列挙した、いずれも operator / user の影響下にある宛先 — を指す。AWS SDK の credential chain は対象外である。あれはプロセスが既に載っているプラットフォームに対して「自分は誰か」を問い合わせるものであり、SDK 自身のトランスポートをそのまま使う。ガードをそこへ広げることがなぜ誤りかは[AWS の credential chain をガードする](#aws-の-credential-chain-をガードする)に、その結果ガードの外に何が残るかは[`internal/infrastructure/awsclient/README.ja.md`](../../../internal/infrastructure/awsclient/README.ja.md)に記す。
+
 ガードは2段階のブロックポリシーを適用する。
 
 **常にブロック（設定によらず）:**
@@ -58,7 +60,7 @@ GoのデフォルトHTTPライブラリはこれらのベクターを何もブ�
 ### ポジティブな影響
 
 - ガードはDNS後に実行されるため、URLパース時にホスト名が無害に見えてもDNSリバインディング攻撃がブロックされる。
-- すべてのアウトバウンド呼び出しが1つのトランスポートインスタンスを共有するため、新しいゲートウェイやパブリッシャー実装がガードを誤って省略することができない。
+- すべての egress 呼び出しが1つのトランスポートインスタンスを共有するため、新しいゲートウェイやパブリッシャー実装がガードを誤って省略することができない。唯一そこへ届かないのが資格情報の解決だが、それは下に記録した決定であって、新しい実装が繰り返しうる省略ではない。
 - リンクローカル（`169.254.x.x`）およびボゴン予約済み範囲は無条件にブロックされ、いかなる設定ミスでも再有効化できない。
 - `AllowPrivateNetwork`フラグはダウンストリームごとであり内部サービスはデフォルト`true`のため、手動の許可リスト化なしに内部から内部への呼び出しが機能する。
 - リダイレクトをたどらないことで第2のSSRFクラス（内部IPへのリダイレクトチェーン）を防ぐ。
@@ -83,13 +85,25 @@ GoのデフォルトHTTPライブラリはこれらのベクターを何もブ�
 
 `http.Client`がリダイレクトをたどることを許可する（デフォルト動作）。公開HTTPエンドポイントがプライベートIPへの3xxリダイレクトを発行することで、最初のリクエストのダイヤルガードを迂回できるため却下。最後のレスポンスを返す（`http.ErrUseLastResponse`）ことで、リダイレクトをたどるかどうかの判断を呼び出し元に委ね、アプリケーション層で判断を保持する。
 
+### AWS の credential chain をガードする
+
+`config.LoadDefaultConfig` へガード付きトランスポートを渡し、credential chain もガードの対象にする。ガードはリンクローカルを無条件に拒否し、EC2 の IMDS（`169.254.169.254`）と ECS の task metadata（`169.254.170.2`）はそこにしか無いため、リンクローカルだけを許して他の判定は残す2つ目のダイヤルコントロールが要る。独立した3つの理由で却下。いずれか1つでも十分である。
+
+- **chain を覆えない。** `config.resolveHTTPCredProvider` は `endpointcreds.Options` へ `APIOptions` と `Retryer` は渡すが `HTTPClient` を渡さないため、ECS / EKS のコンテナ資格情報プロバイダは `awshttp.NewBuildableClient()` へフォールバックする。variant トランスポートは IMDS・STS・SSO には届くが、コンテナ経路には永久に届かない。新しいトランスポート型とその配線と引き換えに、部分的な境界しか買えない
+- **正当なデプロイ形態を壊す。** ガード付きトランスポートは `Proxy = nil` を設定する。proxy 経由のダイヤルは proxy の IP に着地し、宛先の検査が意味を失うためである。STS（web identity / IRSA）と SSO はパブリックな HTTPS エンドポイントなので、直結を強いると、egress を forward proxy 経由でしか許さない環境で資格情報の解決が壊れる。それは「forward proxy は無い」という状況をテンプレートへ焼き込むことにあたる
+- **守る対象が残っていない。** ガードが防ぐのは資格情報リクエストの向き先の差し替え（`AWS_EC2_METADATA_SERVICE_ENDPOINT`・`AWS_CONTAINER_CREDENTIALS_FULL_URI`・`HTTPS_PROXY`）だが、3つともプロセスの環境変数であり、それを設定できる主体は資格情報を直接読める
+
+さらに、このポスチャは**SDK が既に決めている** — 本テンプレートが従う権威そのものである。`config.resolveLocalHTTPCredProvider` は、env で差し替えられる唯一の平文エンドポイントを loopback と既知の ECS / EKS アドレスに制限する（`isAllowedHost` / `isIPAllowed`）。決着済みの標準の上に、より弱い第2の境界を重ねるのは、本リポジトリが退ける投機的な抽象にあたる。
+
+より狭い variant — 宛先 IP の検査だけ掛けて `Proxy` は触らない — も成立しない。経路に proxy が入ると検査は proxy のアドレスを見ることになり、宛先の検査であることをやめてしまう。
+
 ### ゲートウェイごとのカスタムトランスポート
 
 各ゲートウェイがガードあり/なしで独自のトランスポートを構築する。ガードを省略した新しいゲートウェイが無言でSSRFの攻撃面を開くという落とし穴が生じるため却下。`HTTPClientTransport`内の単一の正規トランスポートによりガードを構造的に迂回不可能にする。
 
 ## 補足
 
-- ガード実装: `internal/observability/http_client_transport.go`（`guardedDialControl`・`reservedNets`・`cgnatNet`・`allowPrivateNetworkFromContext`）。
+- ガード実装: `internal/observability/http_client_transport.go`（`guardedDialControl`・`reservedPrefixes`・`cgnatPrefix`・`allowPrivateNetworkFromContext`）。
 - トランスポート構築: `NewHTTPClientTransport`が`guardedDialControl`をベーストランスポートに組み込み`otelhttp`でラップする。
 - 外向きダウンストリームで`AllowPrivateNetwork = false`を設定するコンシューマー: `internal/infrastructure/publisher/http_publisher.go`（`NewDownstreamProfile`）。
 - 試行ごとに`AllowPrivateNetwork`コンテキストフラグを伝播するレジリエンス基盤: `internal/infrastructure/httpclient/client.go`（`attempt`）。

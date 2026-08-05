@@ -22,19 +22,22 @@ type queueStatsTargetsIn struct {
 func WorkerModule() fx.Option {
 	return fx.Module("worker",
 		provideWorkers(
-		// ここに worker のコンストラクタを追加します（例: <pkg>.New）。
-		// 各 worker は usecase/boundary/worker.Worker を実装し、Consumer(broker adapter) を内包します。
+			// ここに worker のコンストラクタを追加します（例: <pkg>.New）。
+			// 各 worker は usecase/boundary/worker.Worker を実装し、Consumer(broker adapter) を内包します。
+			provideWithdrawalArchiveWorker, // sample-api:line
 		),
 		provideQueueStatsTargets(
-		// ここに QueueStatsTarget のコンストラクタを追加します。
-		// SQS など QueueStatsProvider を実装する adapter を使う worker のときだけ任意登録します。
-		// コンストラクタは queuemetrics.Target を返し、sqs.NewQueueStatsProvider で Provider を組み立てます。
+			// ここに QueueStatsTarget のコンストラクタを追加します。
+			// SQS など QueueStatsProvider を実装する adapter を使う worker のときだけ任意登録します。
+			// コンストラクタは queuemetrics.Target を返し、sqs.NewQueueStatsProvider で Provider を組み立てます。
+			provideWithdrawalArchiveQueueStats, // sample-api:line
 		),
 		fx.Provide(
 			observability.NewWorkerMetrics,
 			diworker.ProvideEngine,
 			workercontroller.NewState,
 			provideQueueStatsCollector,
+			provideWithdrawalArchiveQueue, // sample-api:line
 		),
 		// 起動時に DrainTimeout < grace を検証する。違反時は app.Start が失敗する。
 		fx.Invoke(diworker.ValidateShutdownGrace),

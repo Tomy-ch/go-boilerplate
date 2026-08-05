@@ -110,6 +110,15 @@ either says the target is new, but it is a delay against automated takeover, not
 against a forged date. Detecting the re-point itself is the lockfile's job: the resolved digest
 changes, the diff is small, and a human reads it.
 
+**A `docker://` step reference belongs to the image lockfile, not the action one.** A workflow may
+run a container directly (`uses: docker://<image>[:<tag>|@<digest>]`), which is a registry
+reference rather than a GitHub repository. `pin-actions` resolves a ref to a commit SHA through
+`git ls-remote`, an operation that has no meaning for a registry, so it treats `docker://` as out
+of scope the same way it treats a local `./` reference — forcing it through would either fabricate
+a repository name or duplicate the digest resolution `docker/images-pin.toml` already owns. No
+`docker://` reference exists under `.github/**` today; pinning one means widening the image
+lockfile's scan to `.github/**`, never widening `pin-actions`.
+
 ## Dependencies
 
 ### Two principles that hold for every ecosystem

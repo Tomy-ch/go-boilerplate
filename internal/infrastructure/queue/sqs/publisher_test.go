@@ -103,7 +103,10 @@ func Test_publisher_Publish(t *testing.T) {
 			got := captureSendMessage(t, api)
 			messageID := newTestUUID(t)
 
-			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: messageID})
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: messageID,
+				EventType: "user.withdrawn.v1",
+			})
 
 			require.NoError(t, err)
 			assert.Equal(t, messageID.String(), aws.ToString((*got).MessageAttributes[AttrMessageID].StringValue))
@@ -116,13 +119,14 @@ func Test_publisher_Publish(t *testing.T) {
 			api := mock_sqs.NewMockAPI(ctrl)
 			got := captureSendMessage(t, api)
 
-			headers := make(map[string]string, maxMessageAttributes-1)
-			for i := range maxMessageAttributes - 1 {
+			headers := make(map[string]string, maxMessageAttributes-reservedAttributes)
+			for i := range maxMessageAttributes - reservedAttributes {
 				headers[fmt.Sprintf("x-h%d", i)] = "v"
 			}
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
 				Headers:   headers,
 			})
 
@@ -142,9 +146,24 @@ func Test_publisher_Publish(t *testing.T) {
 			api.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				Return(nil, xerrors.New("broker down"))
 
-			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
+			})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("イベント種別が空なら送信前にエラーにする", func(t *testing.T) {
+			t.Parallel()
+			// SQS は空値の属性を拒むため、送っても必ず失敗する。relay が同じ行を延々と再送しないよう手前で弾く。
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
+
+			require.ErrorIs(t, err, ErrMissingEventType)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
 		t.Run("MessageAttributes が上限を超えたら送信前にエラーにする", func(t *testing.T) {
@@ -153,13 +172,14 @@ func Test_publisher_Publish(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			api := mock_sqs.NewMockAPI(ctrl)
 
-			headers := make(map[string]string, maxMessageAttributes)
-			for i := range maxMessageAttributes {
+			headers := make(map[string]string, maxMessageAttributes-reservedAttributes+1)
+			for i := range maxMessageAttributes - reservedAttributes + 1 {
 				headers[fmt.Sprintf("x-h%d", i)] = "v"
 			}
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
 				Headers:   headers,
 			})
 
@@ -175,7 +195,10 @@ func Test_publisher_Publish(t *testing.T) {
 			api.EXPECT().SendMessage(gomock.Any(), gomock.Any()).
 				Return(nil, context.Canceled)
 
-			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{MessageID: newTestUUID(t)})
+			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
+				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
+			})
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
@@ -199,6 +222,18 @@ func Test_publisher_messageAttributes(t *testing.T) {
 
 			assert.Equal(t, messageID.String(), aws.ToString(got[AttrMessageID].StringValue))
 			assert.Equal(t, "String", aws.ToString(got[AttrMessageID].DataType))
+		})
+
+		t.Run("イベント種別を String 型の属性として載せる", func(t *testing.T) {
+			t.Parallel()
+
+			got := p.messageAttributes(boundary.Message{
+				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
+			})
+
+			assert.Equal(t, "user.withdrawn.v1", aws.ToString(got[AttrEventType].StringValue))
+			assert.Equal(t, "String", aws.ToString(got[AttrEventType].DataType))
 		})
 
 		t.Run("伝搬対象ヘッダを属性として載せる", func(t *testing.T) {
@@ -228,8 +263,9 @@ func Test_publisher_messageAttributes(t *testing.T) {
 				Headers:   headers,
 			})
 
-			assert.Len(t, got, 1)
+			assert.Len(t, got, reservedAttributes)
 			assert.Contains(t, got, AttrMessageID)
+			assert.Contains(t, got, AttrEventType)
 		})
 
 		t.Run("空値のヘッダは載せない", func(t *testing.T) {
@@ -254,6 +290,18 @@ func Test_publisher_messageAttributes(t *testing.T) {
 			})
 
 			assert.Equal(t, messageID.String(), aws.ToString(got[AttrMessageID].StringValue))
+		})
+
+		t.Run("ヘッダは event_type を上書きできない", func(t *testing.T) {
+			t.Parallel()
+
+			got := p.messageAttributes(boundary.Message{
+				MessageID: newTestUUID(t),
+				EventType: "user.withdrawn.v1",
+				Headers:   map[string]string{AttrEventType: "purchase.created.v1"},
+			})
+
+			assert.Equal(t, "user.withdrawn.v1", aws.ToString(got[AttrEventType].StringValue))
 		})
 	})
 }

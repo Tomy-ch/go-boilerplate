@@ -21,11 +21,7 @@ func newQueueConfig(cfg *config.OutboxConfig) (sqs.PublisherConfig, error) {
 	if cfg.QueueRegion() == "" {
 		return sqs.PublisherConfig{}, xerrors.Wrap(ErrInvalidQueue, "OUTBOX_QUEUE_REGION must not be empty")
 	}
-	// 資格情報は静的注入のみを受け付ける。空でも SDK は署名を作ってしまい、認証エラーが publish 時まで
-	// 顕在化しないため、ここで弾く。
-	if cfg.QueueAccessKeyID() == "" || cfg.QueueSecretAccessKey() == "" {
-		return sqs.PublisherConfig{}, xerrors.Wrap(
-			ErrInvalidQueue, "OUTBOX_QUEUE_ACCESS_KEY_ID and OUTBOX_QUEUE_SECRET_ACCESS_KEY must not be empty")
-	}
+	// 資格情報はここで見ない。両方空は SDK 既定の credential chain（IAM ロール等）へ委ねる正当な指定で、
+	// 解決できるかどうかは sqs.NewClient が起動時に確かめる。
 	return sqs.PublisherConfig{QueueURL: cfg.QueueURL()}, nil
 }

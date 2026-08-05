@@ -457,6 +457,45 @@ go test ./internal/integration/...
 
 ---
 
+## Step 9.5 —— イベント駆動側（任意）
+
+**目的:** usecase 層へのもう 1 つの入口を見る。ここまではすべて HTTP リクエストが駆動していたが、
+退会はドメインイベントも emit し、それを **worker** が消費する。
+
+Step 1〜9 で作ったものは何も変わらない。退会の usecase は既に `user.withdrawn.v1` を削除と**同一
+トランザクション**で outbox へ書いているため、イベントが失われることも、ロールバックした退会に
+対して emit されることもない。そこから先は次のとおり。
+
+|#|要素|ファイル|
+|---|---|---|
+|①|業務 `Handler` — 復元・分類・usecase 呼び出し|`internal/controller/worker/withdrawalarchive/withdrawal_archive_handler.go`|
+|②|`Consumer` / `FailureHandler` adapter|`internal/infrastructure/queue/sqs`（生成は DI 側。ここではない）|
+|③|`Worker` — 名前 / consumer / handler / failure handler を束ねる|`internal/controller/worker/withdrawalarchive/withdrawal_archive_worker.go`|
+|④|登録|`internal/di/module/worker.go` の `sample-api` マーカー内|
+|⑤|broker クライアント + adapter 設定|`internal/di/module/withdrawalarchive.go`|
+|⑥|env|`env/.env` の `CONSUMER_QUEUE_*`|
+
+**adapter を worker パッケージではなく DI で組み立てる理由:** controller 層は infrastructure を
+import できない（depguard が強制する）。worker は組み立て済みの `Consumer` を受け取るだけで、
+どの broker から読んでいるかを知らない。HTTP handler を repository から遠ざけているのと同じ規則。
+
+**コードを開いて確かめる価値があるのは 2 点:**
+
+- **冪等性。** 配信は at-least-once なので、この Handler は 1 回の退会に対して 2 回走ることがある。
+  再実行を検出するのではなく、*操作*を冪等にしている。オブジェクトキーはユーザー ID だけから決まり、
+  本文は payload を加工しないため、2 回目の実行は同一のバイト列を書く。冪等キーの伝搬より強い —
+  伝搬は下流がそれを尊重して初めて効く。
+- **選別。** 1 つのキューに outbox が emit する全種別が流れるため、Handler はまず `event_type` 属性を
+  確認し、それ以外は処理せず ack する。他人のイベントを失敗として扱うと、購入イベントが軒並み
+  DLQ へ送られる。
+
+**検証** —— 3 つの端末（`make serve`、`make outbox-relay`、`make worker NAME=withdrawal-archive`）を
+立ててからユーザーを退会させる。各段で何を見るかを含む完全な手順は
+[`internal/controller/worker/withdrawalarchive/README.ja.md`](../../../internal/controller/worker/withdrawalarchive/README.ja.md)
+にある。
+
+---
+
 ## Step 10 —— フル検証
 
 **目的:** 再構築した機能が正しく、整形済みで、カバレッジゲートを満たすことを証明する。
@@ -490,6 +529,7 @@ of Done の一部であり、任意の仕上げではない。
 |7|controller|`internal/controller/handler/v1/users/**`、`job/usercount/**`|operationId ごとに 1 メソッド。ハンドラーは純粋テンプレート|`go test ./…/users/...`|
 |8|DI|`internal/di/module/*.go`|レイヤーが出会う唯一の場所。マーカーブロックで削除可能に保つ|`make lint`|
 |9|integration|`internal/integration/v1_users*_test.go`|usecase をモックした HTTP 境界|`go test ./internal/integration/...`|
+|9.5|worker|`internal/controller/worker/withdrawalarchive/**`|usecase 層へのもう 1 つの入口。操作自体が冪等|`make worker NAME=withdrawal-archive`|
 |10|verify|`make fix` / `make lint` / `make test`|90% フロアは Done の一部|`make cover-gate`|
 
 ---

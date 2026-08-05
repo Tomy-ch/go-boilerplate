@@ -32,10 +32,12 @@ import (
 )
 
 const (
-	lockFile        = ".github/actions-pin.toml"
-	filePerm        = 0o644
-	minArgs         = 2 // プログラム名 + サブコマンド
-	repoSegments    = 2 // owner/repo
+	lockFile     = ".github/actions-pin.toml"
+	filePerm     = 0o644
+	minArgs      = 2 // プログラム名 + サブコマンド
+	repoSegments = 2 // owner/repo
+	// dockerScheme は uses: が取りうる 3 種の記法のうち、GitHub リポジトリを指さない唯一のもの。
+	dockerScheme    = "docker://"
 	lsRemoteCols    = 2 // <sha>\t<refname>
 	lsRemoteTimeout = 30 * time.Second
 	hoursPerDay     = 24
@@ -46,7 +48,10 @@ const (
 var (
 	// uses: [-] owner/repo[/sub]@<ref> [# <tag>]
 	// 空白は `[ \t]` に限定する（`\s` だと改行を食って行が結合する）。
-	usesRe = regexp.MustCompile(`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*)([^@\s]+)@([^\s#]+)(?:[ \t]*#[ \t]*(\S+))?[ \t]*$`)
+	// クオートは値に含めない。含めるとクオート文字が repo / tag に混入したキーで lockfile を引き、
+	// resolve がそれを GitHub のリポジトリ名として扱って必ず失敗する。厳密パターンから外れた行は
+	// detectLooseUses が拾い、クオートを外して書き直せば通る形で fail-close する。
+	usesRe = regexp.MustCompile(`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*)([^@\s'"]+)@([^\s#'"]+)(?:[ \t]*#[ \t]*(\S+))?[ \t]*$`)
 	lockRe = regexp.MustCompile(`^"([^"]+)"\s*=\s*"([0-9a-f]{40})"`)
 	// usesRe の取りこぼしを拾う緩いパターン。行頭にアンカーせず、クオートされたキー（`"uses":`）も
 	// 拾い、値は行末までまとめて捉えて呼び出し元が解釈する。直前の文字を見るのは `disuses:` のような
@@ -128,6 +133,12 @@ func main() {
 func parseUses(path, refStr, comment string) (ref, bool) {
 	if strings.HasPrefix(path, ".") {
 		return ref{}, false // ローカル参照
+	}
+	// コンテナイメージ参照。GitHub のリポジトリではないので git の ref として解決できず、
+	// owner/repo として分解すると `docker:/` のような無意味なキーになる。固定は digest を扱う
+	// pin-images の責務（docs/design/security.md）。
+	if strings.HasPrefix(path, dockerScheme) {
+		return ref{}, false
 	}
 	seg := strings.Split(path, "/")
 	if len(seg) < repoSegments {

@@ -1288,6 +1288,126 @@ func TestNewWorkerConfig(t *testing.T) {
 	})
 }
 
+func TestNewConsumerQueueConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持する consumer キュー設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.consumerQueue, NewConsumerQueueConfig(cfg))
+		})
+	})
+}
+
+func TestConsumerQueueConfig_Endpoint(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("SQS 互換エンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueEndpoint, consumerQueue.Endpoint())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_Region(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("署名に用いるリージョンを取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueRegion, consumerQueue.Region())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_URL(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("consume 対象キューの URL を取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueURL, consumerQueue.URL())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_DLQURL(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("滞留量を収集する DLQ の URL を取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueDLQURL, consumerQueue.DLQURL())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_AccessKeyID(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("アクセスキー ID を取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueAccessKeyID, consumerQueue.AccessKeyID())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_SecretAccessKey(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("シークレットアクセスキーを取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueSecretAccessKey, consumerQueue.SecretAccessKey())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_MaxMessages(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("1 回の受信で取得する最大件数を取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueMaxMessagesInt32, consumerQueue.MaxMessages())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_WaitTimeSeconds(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("long-poll の待機秒数を取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueWaitTimeSecondsInt32, consumerQueue.WaitTimeSeconds())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_VisibilityTimeout(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("可視性タイムアウト秒数を取得できる", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+			assert.Equal(t, expectedConsumerQueueVisibilityTimeoutInt32, consumerQueue.VisibilityTimeout())
+		})
+	})
+}
+
 func TestNewOutboxConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

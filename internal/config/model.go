@@ -17,6 +17,7 @@ type Config struct {
 	security      SecurityConfig
 	secureCookie  SecureCookieConfig
 	worker        WorkerConfig
+	consumerQueue ConsumerQueueConfig
 	outbox        OutboxConfig
 	auth          AuthConfig
 	objectStorage ObjectStorageConfig
@@ -129,6 +130,20 @@ type WorkerConfig struct {
 	progressStaleAfter        time.Duration
 	nackBackoffInitial        time.Duration
 	nackBackoffMax            time.Duration
+}
+
+// ConsumerQueueConfig は、worker が consume する broker（SQS 互換）の adapter 設定を保持します。
+// engine-core の WorkerConfig は broker 非依存のため、broker 語彙を持つ設定は別に保持します。
+type ConsumerQueueConfig struct {
+	endpoint          string
+	region            string
+	url               string
+	dlqURL            string
+	accessKeyID       string
+	secretAccessKey   string
+	maxMessages       int32
+	waitTimeSeconds   int32
+	visibilityTimeout int32
 }
 
 // OutboxConfig は、transactional outbox relay の設定を保持します。
@@ -443,6 +458,36 @@ func (w *WorkerConfig) NackBackoffInitial() time.Duration { return w.nackBackoff
 
 // NackBackoffMax は、per-message 再配送 backoff の上限を返します。
 func (w *WorkerConfig) NackBackoffMax() time.Duration { return w.nackBackoffMax }
+
+// NewConsumerQueueConfig は、worker が consume する broker の adapter 設定を返します。
+func NewConsumerQueueConfig(cfg *Config) *ConsumerQueueConfig { return &cfg.consumerQueue }
+
+// Endpoint は、SQS 互換エンドポイントを返します（空なら SDK 既定の解決に委ねます）。
+func (c *ConsumerQueueConfig) Endpoint() string { return c.endpoint }
+
+// Region は、SQS の署名に用いるリージョンを返します。
+func (c *ConsumerQueueConfig) Region() string { return c.region }
+
+// URL は、consume 対象キューの URL を返します。
+func (c *ConsumerQueueConfig) URL() string { return c.url }
+
+// DLQURL は、滞留量の収集対象とする DLQ の URL を返します（空なら収集しません）。
+func (c *ConsumerQueueConfig) DLQURL() string { return c.dlqURL }
+
+// AccessKeyID は、明示注入する静的資格情報のアクセスキー ID を返します（空なら chain へ委ねます）。
+func (c *ConsumerQueueConfig) AccessKeyID() string { return c.accessKeyID }
+
+// SecretAccessKey は、明示注入する静的資格情報のシークレットアクセスキーを返します（空なら chain へ委ねます）。
+func (c *ConsumerQueueConfig) SecretAccessKey() string { return c.secretAccessKey }
+
+// MaxMessages は、1 回の受信で取得する最大件数を返します。
+func (c *ConsumerQueueConfig) MaxMessages() int32 { return c.maxMessages }
+
+// WaitTimeSeconds は、long-poll の待機秒数を返します。
+func (c *ConsumerQueueConfig) WaitTimeSeconds() int32 { return c.waitTimeSeconds }
+
+// VisibilityTimeout は、受信メッセージの可視性タイムアウト秒数を返します。
+func (c *ConsumerQueueConfig) VisibilityTimeout() int32 { return c.visibilityTimeout }
 
 // NewOutboxConfig は、outbox relay の設定を返します。
 func NewOutboxConfig(cfg *Config) *OutboxConfig { return &cfg.outbox }

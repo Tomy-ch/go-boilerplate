@@ -218,7 +218,13 @@ flowchart LR
 | ③ | `Worker`（Name/Consumer/Handler/FailureHandler を返す）+ `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
 | ④ | `WorkerModule()` の `provideWorkers(...)` に コンストラクタ追加 | `internal/di/module/worker.go` | `provideJobs` と同形 |
 | ⑤ | broker クライアント・adapter `Config` の `fx.Provide` | `internal/di/...` | `sqs.Config` |
-| ⑥ | env（`WORKER_*` は既定あり・上書き任意）／broker 認証／DLQ・redrive(IaC) | `env/` ・IaC | `WorkerConfig` 既定 |
+| ⑥ | env（`WORKER_*` は既定あり・上書き任意）／broker 認証／DLQ・redrive(IaC) | `env/` ・IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` 既定 |
+
+> `CONSUMER_QUEUE_*` が指すのは *the* consumer キューではなく *a* consumer キューであり、scaffold が同梱する 1 つの worker に合わせた大きさになっている。別のキューを消費する 2 つ目の worker には、worker 名を含む独自の接頭辞（`<WORKER_NAME>_QUEUE_*`）を与えること。既存のものを兼用しない。`WORKER_*` は engine-core 設定でありプロセス単位・broker 非依存なので共有のままでよい。
+
+<!-- sample-api:begin -->
+> ①〜⑥ すべての実例が、削除可能なサンプル群の一部として同梱されている。`internal/controller/worker/withdrawalarchive` が outbox の emit する退会イベントを消費し、オブジェクトストレージへ証跡を書き出す。`make setup-remove-sample-api` はそれを削除し、`provideWorkers()` を再び空へ戻す。
+<!-- sample-api:end -->
 
 > ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、サンプルからの配線も例外ではない。したがって分離は adapter を未配線にすることではなく、`make setup-remove-sample-api` の**後**に検証する（E3'、[ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md)）。
 
@@ -234,6 +240,7 @@ flowchart LR
 | **PartitionKey** | 同一 key を直列化する正規化キー（空＝並列）。adapter が broker 値（SQS の MessageGroupId 等）を詰める。 |
 | **ReceiveCount** | 再配送回数。poison 検出（A7）に使用。 |
 | **予約キー（`_receipt_handle`）** | broker 固有の handle/lease を `Attributes` に隔離する `_` 接頭辞のキー。engine は解釈せず素通し。 |
+| **`event_type` 属性** | adapter がイベント種別を載せる `Attributes` のキー。`Handler` が本文を復元する前に、そのメッセージが自分宛かを判断できるようにする。サンプル固有ではなく seam の恒久的な語彙 — 1 つのキューに複数種別が流れるのは pull-ack モデルの性質であって同梱例の都合ではないため、seam の他の要素と同じく `make setup-remove-sample-api` の後も残る。 |
 | **engine** | 選択された worker を pull-ack で実行する driving adapter（`controller/worker.Engine`）。 |
 | **poll loop** | `Receive` を回す単一 goroutine。circuit と prefetch の二段ゲートを持つ。 |
 | **dispatch** | 受信メッセージを処理単位へ振り分ける。空 key＝並列、非空＝per-key 直列。 |
