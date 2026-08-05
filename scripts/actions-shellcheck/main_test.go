@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
@@ -157,6 +158,16 @@ func TestParseAction(t *testing.T) {
 			assert.Equal(t, 11, steps[1].colBase)
 		})
 
+		t.Run("明示インデント指示子より深い本文でも列基準は剥がされた幅になる", func(t *testing.T) {
+			t.Parallel()
+			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: |2\n          echo hi\n"
+			steps, err := parseAction("action.yaml", []byte(body))
+			require.NoError(t, err)
+			require.Len(t, steps, 1)
+			assert.Equal(t, "  echo hi\n", steps[0].script)
+			assert.Equal(t, 8, steps[0].colBase)
+		})
+
 		t.Run("ダブルクォートのスカラーの列基準は開き引用符の内側を指す", func(t *testing.T) {
 			t.Parallel()
 			body := "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: \"echo hi\"\n"
@@ -283,6 +294,15 @@ func TestParseAction(t *testing.T) {
 			require.ErrorIs(t, err, errStepCountMismatch)
 			require.ErrorContains(t, err, "抽出 0 / 期待 1")
 		})
+
+		t.Run("2 番目以降のドキュメントを黙って捨てずエラーにする", func(t *testing.T) {
+			t.Parallel()
+			body := compositeAction + "---\n" + compositeAction
+			_, err := parseAction("action.yaml", []byte(body))
+			require.Error(t, err)
+			require.ErrorIs(t, err, errMultipleDocuments)
+			require.ErrorContains(t, err, "action.yaml")
+		})
 	})
 }
 
@@ -326,6 +346,58 @@ func TestActionFiles(t *testing.T) {
 			files, err := actionFiles(testFS(map[string]string{"README.md": "# sample\n"}))
 			require.NoError(t, err)
 			assert.Empty(t, files)
+		})
+
+		t.Run("action 定義ファイルへのシンボリックリンクも走査対象にする", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link/action.yml"] = &fstest.MapFile{
+				Data: []byte("../real/action.yml"),
+				Mode: fs.ModeSymlink,
+			}
+			files, err := actionFiles(fsys)
+			require.NoError(t, err)
+			assert.Equal(t, []string{".github/actions/link/action.yml", ".github/actions/real/action.yml"}, files)
+		})
+
+		t.Run("action 定義以外へのシンボリックリンクは対象にしない", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link/dist.yml"] = &fstest.MapFile{
+				Data: []byte("../real/action.yml"),
+				Mode: fs.ModeSymlink,
+			}
+			files, err := actionFiles(fsys)
+			require.NoError(t, err)
+			assert.Equal(t, []string{".github/actions/real/action.yml"}, files)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ディレクトリへのシンボリックリンクは黙って対象外にせずエラーにする", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link"] = &fstest.MapFile{
+				Data: []byte("real"),
+				Mode: fs.ModeSymlink,
+			}
+			_, err := actionFiles(fsys)
+			require.Error(t, err)
+			require.ErrorIs(t, err, errActionSymlinkDir)
+		})
+
+		t.Run("解決できないシンボリックリンクは黙って対象外にせずエラーにする", func(t *testing.T) {
+			t.Parallel()
+			fsys := testFS(map[string]string{".github/actions/real/action.yml": compositeAction})
+			fsys[".github/actions/link/action.yml"] = &fstest.MapFile{
+				Data: []byte("../nowhere/action.yml"),
+				Mode: fs.ModeSymlink,
+			}
+			_, err := actionFiles(fsys)
+			require.Error(t, err)
+			require.ErrorIs(t, err, errActionSymlinkUnresolved)
 		})
 	})
 }
@@ -479,12 +551,17 @@ func TestBlockIndentWidth(t *testing.T) {
 
 		t.Run("空行を読み飛ばして最初の非空行のインデント幅を返す", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, 8, blockIndentWidth([]byte("run: |\n\n        echo hi\n"), 2))
+			assert.Equal(t, 8, blockIndentWidth([]byte("run: |\n\n        echo hi\n"), 2, "\necho hi\n"))
+		})
+
+		t.Run("値に残ったインデントの分を差し引く", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, 8, blockIndentWidth([]byte("run: |2\n          echo hi\n"), 2, "  echo hi\n"))
 		})
 
 		t.Run("本文が空行だけなら 0 を返す", func(t *testing.T) {
 			t.Parallel()
-			assert.Zero(t, blockIndentWidth([]byte("run: |\n\n\n"), 2))
+			assert.Zero(t, blockIndentWidth([]byte("run: |\n\n\n"), 2, "\n\n"))
 		})
 	})
 
@@ -494,8 +571,8 @@ func TestBlockIndentWidth(t *testing.T) {
 		t.Run("本文開始行が行範囲の外なら 0 を返す", func(t *testing.T) {
 			t.Parallel()
 			data := []byte("run: |\n        echo hi\n")
-			assert.Zero(t, blockIndentWidth(data, 0))
-			assert.Zero(t, blockIndentWidth(data, 99))
+			assert.Zero(t, blockIndentWidth(data, 0, "echo hi\n"))
+			assert.Zero(t, blockIndentWidth(data, 99, "echo hi\n"))
 		})
 	})
 }
@@ -645,6 +722,13 @@ func TestMaskExpressions(t *testing.T) {
 			require.Error(t, err)
 			require.ErrorIs(t, err, errUnterminatedExpr)
 		})
+
+		t.Run("式内のクォートが奇数個でも後続の式までのシェルを飲み込まない", func(t *testing.T) {
+			t.Parallel()
+			_, err := maskExpressions("echo ${{ inputs.msg == 'it's ok' }}\nrm -rf /\necho ${{ inputs.done }}\n")
+			require.Error(t, err)
+			require.ErrorIs(t, err, errUnterminatedExpr)
+		})
 	})
 }
 
@@ -671,6 +755,11 @@ func TestExprEnd(t *testing.T) {
 		t.Run("閉じが無ければ -1 を返す", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, -1, exprEnd(" a "))
+		})
+
+		t.Run("自身の閉じより先に次の式が始まれば -1 を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, -1, exprEnd(" 'a }} rm -rf / ${{ 'b }}"))
 		})
 	})
 }
