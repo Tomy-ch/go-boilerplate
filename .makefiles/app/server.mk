@@ -33,7 +33,10 @@ infra-down:
 	@$(COMPOSE_INFRA) down
 	@echo "✅ 共有インフラを停止しました（データボリュームは保持されます）。"
 
-serve:
+# app コンテナは DB_NAME_LOCAL の指すデータベースへ接続する（docker-compose.attach.yaml）。
+# 未設定なら共有 local へ落ちるため、スロット未取得の worktree では require-db-owner で止める
+# （不変条件は .makefiles/database/pool.mk）。serve-stop / infra-* はデータベース名を要さないため対象外。
+serve: require-db-owner
 	@echo "🔄 開発環境を起動します。"
 	@$(MAKE) infra-up
 	@$(COMPOSE_APP) up -d $(APP_SERVICES)
@@ -41,13 +44,13 @@ serve:
 	@go run ./cmd/ db-slot heartbeat
 	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080} (project=$(APP_PROJECT_SH))"
 
-serve-build:
+serve-build: require-db-owner
 	@echo "🧰 ビルド後、開発環境を起動します。"
 	@$(MAKE) infra-up
 	@$(COMPOSE_APP) up -d --build $(APP_SERVICES)
 	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080}"
 
-serve-build-clean:
+serve-build-clean: require-db-owner
 	@echo "🧹 クリーンビルド後、開発環境を起動します（--no-cache --pull）。"
 	@$(COMPOSE_APP) build --no-cache --pull $(APP_SERVICES)
 	@$(MAKE) infra-up

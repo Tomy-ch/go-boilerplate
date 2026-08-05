@@ -81,23 +81,23 @@ check-migration-down-gap:
 #   make db-migrate-down DB=local
 #   make db-seed DB=test
 # -------------------------------
-db-migrate-up:
+db-migrate-up: require-db-owner
 	@echo "🧱 マイグレーション: 最新版までアップグレードします... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-migrate-ci-up DB=$(DB)
 	@echo "✅ 完了：全マイグレーション適用されました。 (database=$(DB))"
 
-db-migrate-up-%:
+db-migrate-up-%: require-db-owner
 	@steps=$* && \
 	echo "🧱 マイグレーション: 現在位置から $$steps 段アップグレードします... (database=$(DB))" && \
 	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$steps DB=$(DB) && \
 	echo "✅ 完了：$$steps 段適用されました。 (database=$(DB))"
 
-db-migrate-down:
+db-migrate-down: require-db-owner
 	@echo "💥 マイグレーション: 初期状態までダウングレードします... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-migrate-ci-down DB=$(DB)
 	@echo "✅ 完了：全マイグレーションダウングレードされました。 (database=$(DB))"
 
-db-migrate-down-%:
+db-migrate-down-%: require-db-owner
 	@steps=$* && \
 	echo "💥 マイグレーション: 現在位置から $$steps 段ダウングレードします... (database=$(DB))" && \
 	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$steps DB=$(DB) && \
@@ -105,32 +105,34 @@ db-migrate-down-%:
 
 # -----LocalDBに対してのMigrateエイリアス-----
 # 例: make db-local-migrate-up, make db-local-seed
+# 対象は所有している local 系データベース（主 checkout=local / 取得済み worktree=wt<N>_local）。
+# local 直書きに戻すと、取得済み worktree からでも主 checkout のデータベースを触れてしまう。
 # -------------------------------
-db-local-migrate-up: DB=local
+db-local-migrate-up: DB=$(DB_LOCAL)
 db-local-migrate-up: db-migrate-up
 
-db-local-migrate-up-%: DB=local
+db-local-migrate-up-%: DB=$(DB_LOCAL)
 db-local-migrate-up-%: db-migrate-up-%
 
-db-local-migrate-down: DB=local
+db-local-migrate-down: DB=$(DB_LOCAL)
 db-local-migrate-down: db-migrate-down
 
-db-local-migrate-down-%: DB=local
+db-local-migrate-down-%: DB=$(DB_LOCAL)
 db-local-migrate-down-%: db-migrate-down-%
 
 # -----TestDBに対してのMigrateエイリアス-----
 # 例: make db-test-migrate-up, make db-test-seed
 # -------------------------------
-db-test-migrate-up: DB=test
+db-test-migrate-up: DB=$(DB_TEST)
 db-test-migrate-up: db-migrate-up
 
-db-test-migrate-up-%: DB=test
+db-test-migrate-up-%: DB=$(DB_TEST)
 db-test-migrate-up-%: db-migrate-up-%
 
-db-test-migrate-down: DB=test
+db-test-migrate-down: DB=$(DB_TEST)
 db-test-migrate-down: db-migrate-down
 
-db-test-migrate-down-%: DB=test
+db-test-migrate-down-%: DB=$(DB_TEST)
 db-test-migrate-down-%: db-migrate-down-%
 
 # -----CI用ターゲット-----

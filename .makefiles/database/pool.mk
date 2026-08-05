@@ -3,19 +3,51 @@
 .PHONY: slot-free ## 保持中の DB スロットだけを解放する（worktree は残す。DB は warm 保持）
 .PHONY: slot-release ## worktree を撤収する（app 停止+イメージ削除 → スロット解放 → worktree 削除）
 .PHONY: slot-status ## DB スロットプールの占有状況を表示する
+.PHONY: require-db-owner ## 自分が所有するデータベースがあることを検証する（DB を触るターゲットの前提）
 
-# スロット定義（db-slot が書き出す KEY=VALUE）。既定値は docker-compose.attach.yaml 側の
-# ${VAR:-...}（DB 名 local/test・ホスト公開ポート 8080/2010/2345/6060）と docker/compose.mk の
-# APP_PROJECT_DEFAULT が持ち、スロット取得時だけこのファイルが上書きする。未取得でも既定のまま
-# 動くため、スロット取得は並列作業のための opt-in に留まる。
+# ---- 不変条件: データベース : worktree = 1 : 0..1 --------------------------------
+# 1 つのデータベースを 2 箇所から触らせない。worktree 側はスロットを取っても取らなくてもよいが、
+# 取らなかったときの所有データベースは「既定の local / test」ではなく「無し」である。
+#
+#   主 checkout               local / test / gen_schema
+#   スロット取得済み worktree    wt<N>_local / wt<N>_test / gen_schema_wt<N>
+#   スロット未取得の worktree    無し（DB を触るターゲットは require-db-owner で失敗する）
+#
+# 未取得の worktree を既定値へフォールバックさせると、主 checkout のデータベースを 2 箇所から
+# 触ることになる。しかもフォールバックは黙って成功するため、別ブランチの migration が混ざった
+# データベースでテストが緑になる・生成物が壊れる、という気づけない壊れ方をする。所有者が居ない
+# なら既定値へ落とさず止める。
+# ------------------------------------------------------------------------------
+
+# スロット定義（db-slot が書き出す KEY=VALUE）。取得時だけ生成され、DB 名・ホスト公開ポート・
+# app 層の compose プロジェクト名を上書きする。既定値は docker-compose.attach.yaml 側の
+# ${VAR:-...}（ホスト公開ポート 8080/2010/2345/6060）と docker/compose.mk の APP_PROJECT_DEFAULT。
 # ここでの -include はホスト実行の go test へ DB 名を渡すためのもので、app 層の compose 呼び出しは
 # パース時では取りこぼすため LOAD_SLOT がレシピ内で読み直す（docker/compose.mk 参照）。
-# DB_NAME_LOCAL/TEST を読むのは slot-acquire の reinit と host 実行の go test のみで、db-init/db-migrate-up は
-# 今も DB=local/test 直書き（取得後に手で db-init すると共有 DB の local/test を触る点に注意）。
 -include .gobp-db-slot
 export DB_NAME_LOCAL
 export DB_NAME_TEST
 export SERVE_PROJECT
+
+# git-dir と git-common-dir はリンク worktree でだけ食い違う（主 checkout はどちらも .git、git 管理外や
+# ツールランナーのマウント内は両方空）。GIT_DIRS の実体は docker/compose.mk が持つ。
+IS_LINKED_WORKTREE := $(if $(filter-out $(word 2,$(GIT_DIRS)),$(word 1,$(GIT_DIRS))),1,)
+
+# 所有データベースの名前。local / test の所有者は主 checkout ただ 1 つで、未取得の worktree が
+# ここへ落ちてこないことは require-db-owner が保証する。再帰展開なので、これらを参照する
+# migrate.mk / seed.mk / gen.mk が本ファイルより前に include されていても解決順は問題にならない。
+DB_LOCAL = $(if $(DB_NAME_LOCAL),$(DB_NAME_LOCAL),local)
+DB_TEST = $(if $(DB_NAME_TEST),$(DB_NAME_TEST),test)
+
+# 所有データベースを持たない状態（リンク worktree かつスロット未取得）を検出して止める。
+# 主 checkout・ツールランナー内・CI は IS_LINKED_WORKTREE が空になるため素通りする。
+require-db-owner:
+	@test -z "$(IS_LINKED_WORKTREE)" || test -n "$(DB_NAME_LOCAL)" || { \
+		echo "❌ この worktree は DB スロットを取得していないため、所有するデータベースがありません。"; \
+		echo "   1 つのデータベースを複数の checkout から触らないよう、既定の local / test へは"; \
+		echo "   フォールバックしません。"; \
+		echo "   → make slot-acquire でスロットを取得してください（make slot-status で空きを確認）。"; \
+		exit 1; }
 
 slot-acquire:
 	@go run ./cmd/ db-slot acquire
