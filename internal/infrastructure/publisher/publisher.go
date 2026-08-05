@@ -1,6 +1,8 @@
 package publisher
 
 import (
+	"context" // sample-api:line
+
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/httpclient"
@@ -54,17 +56,17 @@ func New(
 		if err != nil {
 			return nil, err
 		}
-		return sqs.NewPublisher(
-			sqs.NewClient(sqs.ClientConfig{
-				Endpoint:        cfg.QueueEndpoint(),
-				Region:          cfg.QueueRegion(),
-				AccessKeyID:     cfg.QueueAccessKeyID(),
-				SecretAccessKey: cfg.QueueSecretAccessKey(),
-				HTTPClient:      outbound,
-			}),
-			queueCfg,
-			tf,
-		), nil
+		client, err := sqs.NewClient(context.Background(), sqs.ClientConfig{
+			Endpoint:        cfg.QueueEndpoint(),
+			Region:          cfg.QueueRegion(),
+			AccessKeyID:     cfg.QueueAccessKeyID(),
+			SecretAccessKey: cfg.QueueSecretAccessKey(),
+			HTTPClient:      outbound,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return sqs.NewPublisher(client, queueCfg, tf), nil
 	// sample-api:end
 	default:
 		// sample-api:replace-begin

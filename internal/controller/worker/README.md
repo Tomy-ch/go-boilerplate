@@ -49,6 +49,10 @@ The engine is **completed against the in-memory fake** (`internal/usecase/bounda
 
 The SQS reference adapter (`internal/infrastructure/queue/sqs`) may be wired as part of the **removable sample set**. Broker-SDK isolation is verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired — see E3' in [`docs/adr/0106`](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.md).
 
+<!-- sample-api:begin -->
+[`withdrawalarchive/`](withdrawalarchive/README.md) is the bundled sample worker — the worked example of everything `docs/design/worker.md` §4 asks an integrator to supply. It consumes the withdrawal event the outbox emits, and is removed with the rest of the sample set.
+<!-- sample-api:end -->
+
 ## Config clamping (safe defaults, not silent)
 
 `Settings.normalize()` (`settings.go`) **clamps** out-of-range engine-core values to safe defaults rather than failing startup — a resilience choice so a misconfigured worker still runs instead of crash-looping. Clamped fields: `Concurrency` / `MaxInFlight` / `BatchSize` (coerced into `Concurrency <= MaxInFlight` and `1 <= BatchSize <= MaxInFlight`), `DrainTimeout`, `CircuitHalfOpenProbe`, `CircuitOpenBackoffInitial` / `CircuitOpenBackoffMax` (so an enabled breaker never degenerates to a zero cooldown), `ProgressStaleAfter`, and `NackBackoffInitial` / `NackBackoffMax`. The `WORKER_*` env vars carry non-zero `envDefault`s, so a clamp only triggers when an operator explicitly sets `0` / a negative value. Documenting it here (and in the setup review, see [`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md)) keeps the clamping reviewable rather than silent.

@@ -27,15 +27,20 @@ object storage adapter 経由で常にリンクされます。
 ## 送出側
 
 `NewPublisher` は outbox の publish 境界を `SendMessage` で実装します。本文は outbox の payload を
-そのまま載せ、受信側が本文を解釈せずに冪等キーを取り出せるよう、outbox の `message_id` は
-`message_id` **メッセージ属性**として運びます（伝搬対象ヘッダの `traceparent` 等も同様）。
+そのまま載せ、受信側が本文を解釈せずに冪等キーを取り出せる — かつそのメッセージが自分宛かを
+判定できる — よう、outbox の `message_id` とイベント種別を `message_id` / `event_type` の
+**メッセージ属性**として運びます（伝搬対象ヘッダの `traceparent` 等も同様）。
 SQS 自身の `MessageId` は broker が採番し再 publish のたびに変わるため、冪等キーには使えません。
+`event_type` を載せるのは、1 つのキューに outbox が publish する全種別が流れるためです。受信側が
+本文を解釈する前に自分の種別を選別できないと、他の種別をすべて payload 不正として扱い DLQ を
+埋めてしまいます。
 
 機微ヘッダ（`Authorization` / `Proxy-Authorization` / `Cookie` / `Set-Cookie`）は HTTP publisher と
 同じくこの egress 境界で落とします。空値のヘッダは SQS が `InvalidParameterValue` で拒否するため
-スキップします。
+スキップします。予約属性と同名のヘッダは上書きさせずに落とすため、受信側が選別に使う値と、
+本文を生んだ outbox 行が食い違うことはありません。
 
-SQS のメッセージ属性は最大 10 件で、うち 1 件は `message_id` が占めます。超過するメッセージは
+SQS のメッセージ属性は最大 10 件で、うち 2 件は予約属性が占めます。超過するメッセージは
 切り詰めずに、送信前に `ErrTooManyAttributes` で弾きます。切り詰めるとどのヘッダが残るかが Go の
 map の反復順に従うため、`traceparent` を失っても再現せず気付けないためです。relay がエラーを
 outbox 行へ記録し、試行回数を使い切った時点で dead になります。どのキューも受け取らない
@@ -43,11 +48,22 @@ outbox 行へ記録し、試行回数を使い切った時点で dead になり�
 `publisher.Message` は属性数を持ちません。
 
 クライアントの生成は `NewClient` が担い、endpoint と資格情報の差し替えだけで ElasticMQ・LocalStack・
-本番 SQS のいずれにも向けられます。`HTTPClient` にはアプリの他の外部通信と同じ SSRF ガード付き
-transport を渡すため、link-local（クラウドメタデータ）へ向けた endpoint は取得される前に dial で
-拒否されます。nil のままにすると SDK 自身の transport に落ち、このガードを失います。いずれも本パッケージでビルドと単体テストまで行われますが、
-実行中のバイナリへ届くのは outbox publisher の `sqs` 分岐（`sample-api` マーカー付き）を経由した
-ときだけです。受信側はそもそも配線されていません。
+本番 SQS のいずれにも向けられます。資格情報は
+[`infrastructure/awsclient`](../../awsclient/README.ja.md) を通すため、`AccessKeyID` /
+`SecretAccessKey` を空にしておけば SDK 既定の chain（IAM ロール等）へ解決を委ねられ、解決できない
+設定のデプロイは初回送信時ではなく起動時に落ちます。`HTTPClient` にはアプリの他の外部通信と同じ
+SSRF ガード付き transport を渡すため、link-local（クラウドメタデータ）へ向けた endpoint は取得される
+前に dial で拒否されます。nil のままにすると SDK 自身の transport に落ち、このガードを失います。
+
+本パッケージから実行中のバイナリへ至る経路には、いずれも `sample-api` マーカーが付いています。
+送出側は outbox publisher の `sqs` 分岐です。受信側は、controller 層が本パッケージを import できない
+ため、worker の adapter が常に DI で組み立てられます。
+
+<!-- sample-api:begin -->
+同梱サンプルにとってのその組み立て箇所が `internal/di/module/withdrawalarchive.go` で、
+`CONSUMER_QUEUE_*` から `NewConsumer` / `NewDeadLetter` / `NewQueueStatsProvider` を作り、
+`WorkerModule` へ登録された `worker.Worker` へ渡します。
+<!-- sample-api:end -->
 
 ## ポート対応
 
@@ -85,6 +101,8 @@ message id を metric label に入れません。
 
 ここでの `Config` はアダプタ固有（`QueueURL` / `DLQURL` / `MaxMessages` / `WaitTimeSeconds` /
 `VisibilityTimeout`）であり、broker 固有の語彙を持たない engine-core の `config.WorkerConfig`
-とは意図的に分離されています。`DLQURL` は `QueueStatsProvider` が DLQ の滞留量を読むためだけに使い、
-空にすると DLQ depth の収集をスキップします（engine の dead-letter 経路はこの URL ではなく
-`FailureHandler` / redrive です）。
+とは意図的に分離されています。`DLQURL` は `NewDeadLetter` の送出先であり、`QueueStatsProvider` が
+滞留量を読む対象でもあります。空にするとその両方を持たない構成になり、`FailureHandler` を配線せず
+poison message は broker の redrive policy に委ねます。避けるべき組み合わせは 1 つだけで、
+URL が空のまま `NewDeadLetter` を配線することです。送出が必ず失敗し、engine は退避に失敗した
+メッセージを Ack しないため、再配送のたびに戻ってきます。

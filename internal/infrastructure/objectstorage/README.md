@@ -112,3 +112,12 @@ preferred over a suite that emulates a whole cloud. Notes per choice:
 Anything S3-compatible (MinIO, Ceph RGW, Cloudflare R2, a managed S3) needs no adapter change at
 all — only `OBJECT_STORAGE_ENDPOINT` and credentials. A non-S3 substrate needs a sibling package
 under `objectstorage/`, with nothing above this layer changing.
+
+## Credentials
+
+Credentials are resolved by [`infrastructure/awsclient`](../awsclient/README.md), which the SQS
+adapter shares. Leaving `OBJECT_STORAGE_ACCESS_KEY_ID` / `OBJECT_STORAGE_SECRET_ACCESS_KEY` empty
+hands resolution to the SDK's default chain, so a deployment on an IAM role needs no code change;
+setting both overrides the chain, which is what the local Garage credentials do. Either way the
+resolution is attempted at startup, so an unusable configuration fails there rather than on the
+first upload.

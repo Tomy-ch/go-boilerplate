@@ -49,6 +49,10 @@ engine は **in-memory fake**（`internal/usecase/boundary/worker/testkit` の `
 
 SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は**削除可能なサンプル群**の一部として配線してよい。broker SDK の分離は adapter を未配線にすることではなく、`make setup-remove-sample-api` の**後**に検証する — E3'（[`docs/adr/0106`](../../../docs/adr/0106-broker-sdk-isolation-verified-after-sample-removal.ja.md)）を参照。
 
+<!-- sample-api:begin -->
+[`withdrawalarchive/`](withdrawalarchive/README.ja.md) が同梱のサンプル worker であり、`docs/design/worker.md` §4 が integrator に求めるもの一式の実例にあたる。outbox が emit する退会イベントを消費し、サンプル一式と一緒に削除される。
+<!-- sample-api:end -->
+
 ## Config の clamp（安全な既定値であり、silent ではない）
 
 `Settings.normalize()`（`settings.go`）は、engine-core の範囲外値を起動失敗にするのではなく安全な既定値へ **clamp** する — 設定を誤った worker でも crash-loop せず動き続けるという回復性重視の選択。clamp されるフィールド：`Concurrency` / `MaxInFlight` / `BatchSize`（`Concurrency <= MaxInFlight` かつ `1 <= BatchSize <= MaxInFlight` へ矯正）、`DrainTimeout`、`CircuitHalfOpenProbe`、`CircuitOpenBackoffInitial` / `CircuitOpenBackoffMax`（有効化したブレーカが cooldown ゼロへ退化しないように）、`ProgressStaleAfter`、`NackBackoffInitial` / `NackBackoffMax`。`WORKER_*` env var は非ゼロの `envDefault` を持つため、clamp が発動するのは運用者が明示的に `0` / 負値を設定したときだけ。ここ（およびセットアップレビュー、[`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md) 参照）に記すことで、clamp を silent にせずレビュー可能に保つ。

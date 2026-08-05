@@ -107,6 +107,17 @@ func TestMockConfigForTest(t *testing.T) {
 					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
 					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
+				consumerQueue: ConsumerQueueConfig{
+					endpoint:          expectedConsumerQueueEndpoint,
+					region:            expectedConsumerQueueRegion,
+					url:               expectedConsumerQueueURL,
+					dlqURL:            expectedConsumerQueueDLQURL,
+					accessKeyID:       expectedConsumerQueueAccessKeyID,
+					secretAccessKey:   expectedConsumerQueueSecretAccessKey,
+					maxMessages:       expectedConsumerQueueMaxMessagesInt32,
+					waitTimeSeconds:   expectedConsumerQueueWaitTimeSecondsInt32,
+					visibilityTimeout: expectedConsumerQueueVisibilityTimeoutInt32,
+				},
 				outbox: OutboxConfig{
 					publisher:            expectedOutboxPublisher,
 					endpoint:             expectedOutboxEndpoint,

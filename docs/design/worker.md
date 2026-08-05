@@ -217,7 +217,13 @@ flowchart LR
 | ③ | `Worker` (returns Name/Consumer/Handler/FailureHandler) + `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
 | ④ | add the constructor to `provideWorkers(...)` in `WorkerModule()` | `internal/di/module/worker.go` | same shape as `provideJobs` |
 | ⑤ | `fx.Provide` the broker client and adapter `Config` | `internal/di/...` | `sqs.Config` |
-| ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `WorkerConfig` defaults |
+| ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` defaults |
+
+> `CONSUMER_QUEUE_*` names *a* consumer queue, not *the* consumer queue — it is sized for the one worker the scaffold ships. A second worker consuming a different queue gets its own prefix carrying the worker's name (`<WORKER_NAME>_QUEUE_*`); do not overload the existing one. `WORKER_*` stays shared, because engine-core settings are broker-agnostic and per-process.
+
+<!-- sample-api:begin -->
+> A worked example of all six ships as part of the removable sample set: `internal/controller/worker/withdrawalarchive` consumes the withdrawal event the outbox emits and archives it to object storage. `make setup-remove-sample-api` removes it and leaves `provideWorkers()` empty again.
+<!-- sample-api:end -->
 
 > A wired broker adapter links its SDK into the binary — including the sample wiring, since `serve` / `worker` / `outbox-relay` share one binary. Isolation is therefore verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired (E3', [ADR-0106](../adr/0106-broker-sdk-isolation-verified-after-sample-removal.md)).
 
@@ -233,6 +239,7 @@ flowchart LR
 | **PartitionKey** | The normalization key that serializes the same key (empty = parallel). The adapter fills it from a broker value (e.g. SQS MessageGroupId). |
 | **ReceiveCount** | Redelivery count. Used for poison detection (A7). |
 | **reserved key (`_receipt_handle`)** | A `_`-prefixed key that isolates broker-specific handle/lease in `Attributes`. The engine passes it through without interpreting it. |
+| **`event_type` attribute** | The `Attributes` key under which an adapter surfaces the event kind, so a `Handler` can decide whether a message is its own before decoding the body. Permanent seam vocabulary, not sample-specific: one queue carrying several kinds is a property of the pull-ack model, not of the bundled example, so it survives `make setup-remove-sample-api` like the rest of the seam. |
 | **engine** | The driving adapter that runs the selected worker via pull-ack (`controller/worker.Engine`). |
 | **poll loop** | The single goroutine that drives `Receive`. It has a two-stage gate (circuit and prefetch). |
 | **dispatch** | Routes received messages to processing units. Empty key = parallel, non-empty = per-key serialized. |

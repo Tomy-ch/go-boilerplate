@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -12,8 +13,11 @@ import (
 // TypeWithdrawn は、ユーザー退会の outbox イベント種別（version 込み）です。
 const TypeWithdrawn = "user.withdrawn.v1"
 
-// withdrawn は、user.withdrawn.v1 の自己完結 snapshot payload です。
-type withdrawn struct {
+// ErrInvalidWithdrawn は、user.withdrawn.v1 の payload として読めないことを示すエラーです。
+var ErrInvalidWithdrawn = xerrors.Wrap(apperror.ErrInvalidArgument, "invalid user.withdrawn payload")
+
+// Withdrawn は、user.withdrawn.v1 の自己完結 snapshot payload です。
+type Withdrawn struct {
 	UserID    string `json:"userId"`
 	DeletedAt string `json:"deletedAt"`
 }
@@ -26,7 +30,7 @@ func BuildWithdrawn(u *user.User) ([]byte, error) {
 		deletedAt = at.Format(time.RFC3339Nano)
 	}
 
-	payload, err := json.Marshal(withdrawn{
+	payload, err := json.Marshal(Withdrawn{
 		UserID:    u.ID().String(),
 		DeletedAt: deletedAt,
 	})
@@ -34,4 +38,15 @@ func BuildWithdrawn(u *user.User) ([]byte, error) {
 		return nil, xerrors.Wrap(err, "failed to encode user.withdrawn payload")
 	}
 	return payload, nil
+}
+
+// ParseWithdrawn は、user.withdrawn.v1 の payload を復元します。
+// 復元できない payload は ErrInvalidWithdrawn を返します。値の妥当性（userId が空でないか等）は
+// 消費側の関心なので、ここでは判定しません。
+func ParseWithdrawn(payload []byte) (Withdrawn, error) {
+	var w Withdrawn
+	if err := json.Unmarshal(payload, &w); err != nil {
+		return Withdrawn{}, xerrors.Wrap(ErrInvalidWithdrawn, err.Error())
+	}
+	return w, nil
 }

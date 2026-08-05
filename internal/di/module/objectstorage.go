@@ -1,6 +1,8 @@
 package module
 
 import (
+	"context"
+
 	"go-boilerplate/internal/config"
 	objectstorage "go-boilerplate/internal/infrastructure/objectstorage"
 	"go-boilerplate/internal/observability"
@@ -19,10 +21,11 @@ func objectStorageModule() fx.Option {
 }
 
 // provideObjectStorage は、オブジェクトストレージ実装を組み立てて boundary.Storage を返します。
+// 資格情報を解決できない場合はエラーを返し、app.Start を失敗させます。
 func provideObjectStorage(
 	cfg *config.ObjectStorageConfig,
 	outbound *observability.OutboundHTTPClient,
 	tf observability.TracerFactory,
-) objectstoragebd.Storage {
-	return objectstorage.New(cfg, outbound, tf)
+) (objectstoragebd.Storage, error) {
+	return objectstorage.New(context.Background(), cfg, outbound, tf)
 }
