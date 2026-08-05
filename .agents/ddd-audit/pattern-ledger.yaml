@@ -164,7 +164,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: layered-architecture
     name: Layered Architecture
@@ -208,7 +208,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_infrastructure
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: entity
     name: Entity
@@ -234,7 +234,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: value-object
     name: Value Object
@@ -278,7 +278,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: domain-service
     name: Service (Domain Service)
@@ -311,7 +311,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain_service
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: application-service
     name: Application Layer Service
@@ -331,6 +331,9 @@ patterns:
         path: internal/usecase/README.md
         section: "Why business Usecases are not wired to each other"
       - kind: readme
+        path: internal/usecase/README.md
+        section: "Verifying infrastructure against the domain"
+      - kind: readme
         path: internal/domain/README.md
         section: "Multi-aggregate rules / Domain Service or Usecase"
       - kind: doc
@@ -346,7 +349,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: module
     name: Module (Package)
@@ -390,7 +393,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain_service
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: aggregate
     name: Aggregate
@@ -411,10 +414,16 @@ patterns:
       選択・理由の三要素を書いた宣言節を持つ。
       残る論点は宣言の外にある。この分類は要件に相対で、要件が変われば同じ操作が分岐を移る
       （ADR-0029 自身が記録の規律としてそう述べている）。
+      なお Do not set outside constructor 節に「集約は子を含め 1 回の呼び出しで構築し、子をまたぐ
+      不変条件はルートでのみ判定する」という記述が加わり、ルートが境界内不変条件を保証する唯一の点で
+      あるという中核解釈が生成・再構成の局面へ拡張された。新規の差異ではなく、既存判定の裏付け。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
         section: "Aggregate Design / Aggregate Boundary / Cross-aggregate reference / Reference master aggregates"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "Do not set outside constructor"
       - kind: doc
         path: docs/rules.md
         section: "Repository / QueryService Rules"
@@ -444,25 +453,46 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: factory
     name: Factory
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      パターン名は散文に一度も現れないが、New() による原子的生成と全不変条件強制、検証を迂回する
-      生成口の禁止として実質的に解釈済み。差異は再構成時の扱いで、Evans が「既存データの不変条件違反は
-      拒否だけでは済まず修復戦略が要り得る」と注意した論点に対し、本リポジトリは常に hard-fail する。
-      これは Do not set outside constructor 節の Departure from Evans ブロックで宣言済み。
-      未解消として残るのは、集約全体（子エンティティを含む）の生成と独立した Factory オブジェクトへの
-      言及が無い点。
+      パターン名がコーパスに現れるようになり、New() / Reconstruct() を Factory と位置づける解釈、
+      集約全体（子を含む）を 1 回の呼び出しで組み立て切ること、独立 Factory 型を起こす条件、
+      再構成側の Factory を Repository が務めることが The constructor is the Factory 節で明文化された。
+      前回の未解消 2 点（集約全体の生成 / 独立した Factory オブジェクトへの言及）はこれで解消。
+      残る差異は再構成時の扱いのみで、Evans が「既存データの不変条件違反は拒否だけでは済まず
+      修復戦略が要り得る」と注意した論点に対し、本リポジトリは常に hard-fail する。これは
+      Do not set outside constructor 節の Departure from Evans ブロックで宣言済み。
+      独立 Factory 型を起こす条件として挙げられているのは「生成をまたいで固定される設定」1 つで、
+      Evans が挙げる他の 2 条件には明示的に触れていない。取りこぼしではなく、性質が異なる。
+      具体クラスの選択は主語が無い。ドメインに多相な型が存在せず（interface は Repository 系のみ、
+      生成関数はすべて具象型を返す）、実装の選び分けは DI が別パターンとして担う
+      （ADR-0035 / 0036 / 0037）。変種を型でなく値で表す方針そのものは The constructor is the Factory 節
+      および How far Value Objects go here 節で宣言済み。
+      「クライアントが持つべきでないインフラ知識の隠蔽」は、単独では起動条件にならない。組み立てが
+      1 回の呼び出しなら隠すべき手順が存在せず、隠蔽が意味を持つのは組み立てに構造がある——協力者が
+      複数ある、順序に制約がある、設定を保持する、具象型を選ぶ——ときに限られる。つまりこれは他の条件が
+      揃ったときに得られる帰結であって、それ自体が Factory 型を要求する理由ではない。Evans が 3 つを
+      並列に挙げたのは、当時の生成が常に構造を伴っていたためと読める。
+      本モデルでは生成が値の純関数なので条件が分離し、隠蔽だけが残っても指すものが無い。なお効果を伴う
+      生成知識（採番・行の読み出し・ロック取得）は、ドメインが I/O を持てない以上、隠蔽先をドメイン側に
+      作ること自体ができない。純粋な知識（コード体系など）を包むかどうかは VO の採用基準に従う。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
         section: "Do not set outside constructor / Why validate here when OpenAPI already validates the request?"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "The constructor is the Factory"
+      - kind: readme
+        path: internal/domain/README.md
+        section: "How far Value Objects go here"
       - kind: doc
         path: docs/rules.md
         section: "DTO / Type Boundary Rules"
@@ -474,8 +504,8 @@ patterns:
       修正されるまで当該集約の読み取りを止める。宣言は internal/domain/README.md の
       Do not set outside constructor 節。
     enforced_by: []
-    last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cd254c46a1c239d89aa9fea9d65a7d7133958f06"
 
   - id: repository
     name: Repository
@@ -511,7 +541,7 @@ patterns:
         section: "Repository / QueryService Rules / Transaction Rules"
       - kind: readme
         path: internal/domain/README.md
-        section: "Dependency inversion for Infrastructure layer / Doc comments stay in domain vocabulary"
+        section: "Dependency inversion for Infrastructure layer / Doc comments stay in domain vocabulary / The constructor is the Factory"
       - kind: readme
         path: internal/infrastructure/rdb/README.md
         section: "command_service"
@@ -526,14 +556,14 @@ patterns:
       適格基準の背景は ADR-0029。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: specification
     name: Specification
     part: 3
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       パターン名はコーパスに現れない（`specification` の語は全て OpenAPI 仕様書・scaffold 仕様書の
       同音異義）が、selection の中核——基準はドメインの語彙で持ち、実行と射影だけを QueryService /
@@ -553,11 +583,23 @@ patterns:
       集約を返す——と定めている。後者は「変更時点でオブジェクトが基準を満たすか判定する」という
       Evans の validation 用途そのもの。Product.IsPublished / IsLowStock 等の述語も実在し、
       sqlc 生成 SQL 側にはそれが実行形である旨の注記が付いている。
-      残る差異は 3 点。building to order（基準からオブジェクトを組み立てる）用途への言及が無いこと、
-      述語オブジェクトとしての合成（isSatisfiedBy + AND/OR/NOT）を採らないこと（呼び出し元が無く、
-      合成を前提とすること自体が状況依存のため意図的）、そして QueryService 経由の読み取りは射影を返すため
-      突き合わせるエンティティが無く、基準の保持がレビュー依存で機械強制されないこと（同節が
-      「その経路の基準はレビューだけが保持する」と明示的に除外している）。
+      QueryService 経由の読み取りが一律にレビュー依存だった残差は解消した。同節は「射影かどうか」ではなく
+      「基準が加算的か減算的か」で線を引き直し、返ってくる行についての基準は射影でも述語が要求する
+      フィールドを載せて検証することを義務づけ、レビュー依存を除外系の基準に限定したうえで、その限定に
+      「取り除かれた行は結果に存在せず不在は観測できない」という論理的根拠を与えている。ランキング集計も
+      公開判定を product.IsPublished（値に対する述語）へ寄せ、usecase が返却行を突き合わせる形になった。
+      減算的な基準——「キャンセル済み購入を売上・ランキングから除外する」——の著作もドメインへ戻った。
+      Purchase.IsCanceled を定義の持ち主として置き、判定は source of truth である status のみを見る。
+      SQL が絞る canceled_at との等価は validateStatusTimestamps が強制し、DB 行からの組み立ては
+      Reconstruct が唯一の入口、書き込みも status_id と canceled_at を同一 UPDATE で更新するため、
+      片方だけが動く経路が無い。SQL 2 箇所には述語の実行形である旨と、減算的につき呼び出し側では
+      照合できずテストが退行を固定する旨を注記した（usecase README が減算的な基準に課す要件）。
+      残る差異は 2 点で、どちらも宣言済み。building to order（基準からオブジェクトを組み立てる）用途への
+      言及が無いこと、述語オブジェクトとしての合成（isSatisfiedBy + AND/OR/NOT）を採らないこと。
+      Query and Aggregate 節末尾の Departure from Evans ブロックが、この 2 つは「基準を具象化しない」という
+      同じ根を共有するため揃って欠けるのだと説明し、代償（「公開中」が 4 クエリへ分散著作される）と、
+      具象化を再検討する条件（API 面が列挙しない絞り込みを呼び出し側が組み立てる / 規則がテナント・契約で
+      変わりデータとして運ばれる / クライアントが必要は述べられても何を作るかは述べられない）を明記している。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
@@ -571,11 +613,23 @@ patterns:
       - kind: adr
         id: "0031"
         slug: ordered-pessimistic-row-locks
-    deviation_declared: false
-    deviation_note: ""
+    deviation_declared: true
+    deviation_note: >-
+      Evans は基準を isSatisfiedBy と AND / OR / NOT を持つ第一級のオブジェクトとして具象化し、
+      validation・selection・building to order の 3 用途に用いる。本リポジトリは基準を具象化せず、
+      値の所有者に張り付いた名前付きの述語として、評価される場所で直接評価する。この 1 つの選択が
+      3 用途を分ける。validation と selection は基準に名前と単一の定義があれば足りるので述語で成立するが、
+      composition と building to order はどちらも基準を他へ渡すこと——翻訳する Repository か、満たす
+      Factory か——を前提とするため、具象化なしには到達できない。2 つが揃って欠けているのは根が同じだから。
+      理由は 3 つ。基準をその場で評価する限り Go の && と || が結合子として働き、合成が欠けるのは
+      基準が移動しなければならなかった場所だけであること。変更を守る述語は bool でなく型付きエラーを返し、
+      その identity から応答ステータスが導かれるため（ADR-0042）、合成された isSatisfiedBy はそれを潰すこと。
+      クエリを静的 SQL に保つことで実スキーマに対する型検査が効き続けること。代償として複合的な基準は
+      クエリごとに書き直される（「公開中」は 4 クエリが別々に述べている）。
+      宣言は internal/domain/README.md の Query and Aggregate 節末尾、Departure from Evans ブロック。
     enforced_by: []
-    last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited: "2026-08-06"
+    last_audited_commit: "cd254c46a1c239d89aa9fea9d65a7d7133958f06"
 
   - id: domain-event
     name: Domain Event
@@ -622,7 +676,7 @@ patterns:
       集約に管理すべき可変状態を増やさずに済むため。宣言は internal/domain/README.md の Domain events 節。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: bounded-context
     name: Bounded Context
@@ -679,7 +733,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
 
   - id: shared-kernel
     name: Shared Kernel

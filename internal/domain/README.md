@@ -135,6 +135,19 @@ The cost outruns the benefit at this size. Where the swap risk is real — same-
 parameters — the remedy this repository uses is bundling into an attribute struct instead; see the
 struct-bundling section below.
 
+**When a value carries business meaning, give the domain the question, not the type.** Callers rarely
+want the value; they want to know whether something is in a state — published, low on stock, still
+active, able to move to the next status. Put that predicate on whatever owns the value and let the
+representation stay inside. The caller then reads in the language of the model, and the value is free
+to change shape without touching anything that asks about it.
+
+These are two separate tests, and a value can pass either, both, or neither. Wrapping asks whether the
+value has an invariant to enforce at construction; a predicate asks whether anything decides on it. A
+status passes both — it rejects codes it does not know, and it owns the questions others ask — so it is
+a type. An opaque identifier passes neither, and stays a primitive with nothing attached. The common
+mistake is to read "this value carries meaning" as a reason to wrap it: meaning is carried by the
+question, and a wrapper with no invariant and no caller is a name and a conversion.
+
 **`pkg/` does not contain Value Objects in this sense.** Types there wrap a vendor library or a
 primitive without carrying business meaning, which is exactly what disqualifies them from this layer;
 see [`pkg/README.md`](../../pkg/README.md).
@@ -266,6 +279,20 @@ authored where it cannot be seen (see § Query and Aggregate for the same failur
 Outer layers run the effects — identifiers, clocks — and pass in the results, exactly as behavior
 methods already take `now`. If a choice must be configurable, pass the choice as a domain value and
 keep the branching in the domain.
+
+**Variation is data by default; types are the exception.** The other reason to reach for a Factory is
+to choose which concrete type to build, and that presumes a model with several. Business domains do
+carry real variety, so the question is where to put it, not whether it exists. Put it in a value the
+domain interprets — a status code, a period kind — and keep one type whose behavior switches on that
+value. Move the distinction into separate types only when the variants differ in their **fields and
+invariants**, not merely in behavior: the signal is a single struct accumulating fields that are
+meaningless for half of its instances, each guarded by a check that some other field is set.
+
+Moving early costs twice here. Reconstitution then has to pick the type from a discriminator column,
+which drags that choice — and the schema it reads — into the domain, the one place that is supposed to
+know nothing about storage. And the static exhaustiveness checks that cover a switch over values do
+not cover a switch over implementations, so the compiler stops telling you where to go when a variant
+is added. Keeping variation as data keeps both properties.
 
 ### Access via getter
 
@@ -666,6 +693,39 @@ There is no reason for the read side to be the exception.
 Read paths are free to skip the aggregate entirely — a search index is a projection of the system of
 record, and reconstructing every hit through `FindByID` to re-derive it is not a realistic design.
 The domain's claim on a read path is the vocabulary of the question, not the shape of the answer.
+
+> **Departure from Evans.** Evans gives a criterion its own object — a specification with
+> `isSatisfiedBy` and combinators (`AND` / `OR` / `NOT`) — so a criterion can be carried around as a
+> value. **This model does not reify criteria.** A criterion is a named predicate attached to whatever
+> owns the value, evaluated where it sits rather than handed to someone else.
+>
+> Evans puts a specification to three uses, and that one choice splits them. Validation and selection
+> need only that the criterion have a name and a single definition, which a predicate gives.
+> Composition and building to order both presuppose passing the criterion to something else — a
+> repository that will translate it, or a factory that will satisfy it — and neither is reachable
+> without reification. They are missing together because they share a root, not for two separate
+> reasons.
+>
+> What that gives up is concrete. A composite criterion is restated per query instead of assembled
+> once — "published" is stated by four separate queries — and the authorship rule above is what keeps
+> those restatements answerable from the domain. A creation request names its values instead of
+> describing what it needs.
+>
+> What it keeps is also concrete. Go's own `&&` and `||` compose predicates wherever a criterion is
+> evaluated in place, at no cost, so composition is absent only where it would have had to travel.
+> Predicates that gate a change return a typed error rather than a bool, and the identity of that
+> error is what the response status is derived from
+> ([ADR-0042](../../docs/adr/0042-apperror-protocol-agnostic-errors.md)); a composed `isSatisfiedBy`
+> collapses that to "not satisfied", and recovering which part failed rebuilds the error return.
+> Queries stay static SQL, generated and type-checked against the real schema — a criterion-to-SQL
+> translator would end that.
+>
+> Reification earns its place when a criterion has to move: when callers assemble filters the API
+> surface does not enumerate, when a rule varies by tenant or contract and has to be carried as data,
+> or when a client can state what it needs but not what to build — the case where the criterion
+> carries less information than the values would, and something else supplies the rest. None of those
+> holds here yet, and adopting one use without that trigger would buy the indirection without the
+> reason.
 
 ## Dependency inversion for Infrastructure layer
 
