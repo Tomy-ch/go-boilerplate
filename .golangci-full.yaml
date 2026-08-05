@@ -310,6 +310,9 @@ linters:
         maintain_a_sound_domain:
           files:
             - "**/internal/domain/**.go"
+            # ドメインサービス（集約横断）は下の maintain_a_sound_domain_service が受け持つ。
+            # 両ルールが同じファイルに当たると、こちらの集約間 deny が例外を打ち消してしまう。
+            - "!**/internal/domain/service/**.go"
           list-mode: lax
           allow:
             # 集約横断で共有する業務 VO の置き場。ここだけは domain 間の import を許可する。
@@ -322,6 +325,42 @@ linters:
             - pkg: go-boilerplate/internal/domain/
               desc: "domain層で他の集約を直接参照することは禁止です。集約横断で共有する業務 VO は
                 internal/domain/lexicon へ置いてください。"
+            - pkg: net/http
+              desc: "Domain層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v5
+              desc: "Domain層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: database/sql
+              desc: "Domain層でdatabase/sqlパッケージを直接使用しないでください。
+                infrastructure層にて処理して、コンストラクタに受け渡してください。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "domain層でusecase層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "domain層でcontroller層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "domain層でinfrastructure層を参照することは禁止です。"
+            - pkg: go-boilerplate/pkg/fs
+              desc: "domain層でファイルシステム I/O を行わないでください。FS アクセスは外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/exec
+              desc: "domain層で外部プロセス実行を行わないでください。プロセス実行は外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/envutil
+              desc: "環境変数の書き換えは外側の層の責務です。本層からの参照は禁止です。"
+        # ドメインサービス（internal/domain/service/<name>）だけは集約の import を許可します。
+        # 集約をまたぐ規則はどちらの集約の責務でもないため集約の外に置きますが、置き場所を変えても
+        # 相手の集約を参照できなければ規則は書けません。そのための例外です。
+        #
+        # 抜け道にしないための歯止めは 2 つです。ひとつは、ここが緩めるのは domain 間の import
+        # だけで、層をまたぐ deny（usecase / controller / infrastructure / net/http / echo /
+        # database/sql / fs / exec / envutil）は maintain_a_sound_domain と同一のまま再掲していること。
+        # もうひとつは、この置き場への入場条件（集約をまたぐ規則であり、どちらの集約の自然な責務でも
+        # なく、状態を持たない）が internal/domain/README.md に明文化されていること。単に 2 つの
+        # 集約を読みたいだけの処理は Usecase の仕事であり、ここへ移してはいけません。
+        maintain_a_sound_domain_service:
+          files:
+            - "**/internal/domain/service/**.go"
+          list-mode: lax
+          deny:
             - pkg: net/http
               desc: "Domain層でhttpパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
