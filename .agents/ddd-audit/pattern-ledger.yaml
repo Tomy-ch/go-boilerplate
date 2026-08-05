@@ -247,8 +247,10 @@ patterns:
     verdict: 差異あり
     gap: >-
       中核（唯一のルート・ルート経由の変更・ルート単位の Repository・境界内不変条件）は原義どおり。
-      差異は集約間参照を ID のみに限定している点で、Evans は他集約ルートへの直接参照を許している。
-      方向としては境界を強める側だが、Evans の代替案を名指して退けた宣言は無い。
+      差異は可変集約への参照を ID のみに限定している点で、Evans は他集約ルートへの直接参照を許している。
+      参照マスタへの参照だけは例外で、ID に加えてそれを提示するために必要な属性を伴ってよい（他集約の
+      振る舞いは公開せず、判断にも使わない）。方向としては境界を強める側だが、Evans の代替案を名指して
+      退けた宣言は無い。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
@@ -447,7 +449,7 @@ patterns:
         section: "Error Handling"
       - kind: readme
         path: internal/infrastructure/webapi/README.md
-        section: "Role"
+        section: "Architectural Position"
       - kind: adr
         id: "0001"
       - kind: adr
