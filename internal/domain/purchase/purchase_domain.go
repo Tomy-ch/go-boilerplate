@@ -97,7 +97,10 @@ func NewLockedProduct(id uuid.UUID, price money.Price, quantity int) LockedProdu
 	return LockedProduct{id: id, price: price, quantity: quantity}
 }
 
-// NewPurchaseDetail は、永続化済みの明細を再構築します（Repository の読み出しで使用）。
+// NewPurchaseDetail は、永続化済みの明細を組み立てます（Repository の読み出しで使用）。
+// 明細は購入集約に属する部品であり単独では成立しないため、不変条件は集約へ入る時点——
+// Reconstruct——で判定します。同一商品 ID の重複のように明細 1 件では判定できないものがあり、
+// 検証を明細側と集約側へ分けると 1 つの規則が 2 箇所に分かれるためです。
 func NewPurchaseDetail(id uuid.UUID, attrs PurchaseDetailAttributes) PurchaseDetail {
 	return PurchaseDetail{
 		id:        id,
@@ -105,6 +108,33 @@ func NewPurchaseDetail(id uuid.UUID, attrs PurchaseDetailAttributes) PurchaseDet
 		quantity:  attrs.Quantity,
 		unitPrice: attrs.UnitPrice,
 	}
+}
+
+// validateDetails は、購入集約が保持する明細の集合が満たすべき不変条件を検証します。
+// 明細 ID / 商品 ID が未設定、数量が最小値未満の場合はそれぞれ ErrInvalidID / ErrInvalidQuantity を、
+// 同一商品 ID が重複する場合は ErrDuplicateProductID を返します。
+// 空の集合は呼び出し元が ErrEmptyDetails で扱うため、ここでは許容します。
+func validateDetails(details []PurchaseDetail) error {
+	seen := make(map[uuid.UUID]struct{}, len(details))
+	for _, d := range details {
+		if d.id.IsNil() {
+			return xerrors.Wrap(ErrInvalidID, "detail id is required")
+		}
+		if d.productID.IsNil() {
+			return xerrors.Wrap(ErrInvalidID, "detail product id is required")
+		}
+		if d.quantity < minQuantity {
+			return xerrors.Wrap(
+				ErrInvalidQuantity, fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, d.quantity),
+			)
+		}
+		if _, dup := seen[d.productID]; dup {
+			return xerrors.Wrap(ErrDuplicateProductID, fmt.Sprintf("product %s appears more than once", d.productID))
+		}
+		seen[d.productID] = struct{}{}
+	}
+
+	return nil
 }
 
 // New は、購入明細の入力とロック済み在庫から購入集約を生成します。
@@ -201,6 +231,7 @@ func New(
 // は各イベントの発生日時（未発生は nil）です。ID / Code / UserID / StatusID が nil、StatusCode が不正、
 // 金額が負、明細が空の場合は検証エラーを返します。StatusCode と timestamps の組み合わせが状態遷移では
 // 到達し得ないもの（発送後のキャンセル、発送を伴わない配達 等）の場合も ErrInvalidStatusID を返します。
+// 明細は New と同じ不変条件（ID / 商品 ID が設定済み、数量が最小値以上、同一商品 ID が重複しない）を課します。
 func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
@@ -232,6 +263,9 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 
 	copied := make([]PurchaseDetail, len(attrs.Details))
 	copy(copied, attrs.Details)
+	if err := validateDetails(copied); err != nil {
+		return nil, err
+	}
 
 	return &Purchase{
 		id:             id,

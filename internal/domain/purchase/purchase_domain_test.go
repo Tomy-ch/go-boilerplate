@@ -434,6 +434,86 @@ func TestReconstruct(t *testing.T) {
 			require.ErrorIs(t, err, ErrEmptyDetails)
 		})
 
+		reconstructWithDetails := func(t *testing.T, details []PurchaseDetail) (*Purchase, error) {
+			t.Helper()
+			id, code, userID, statusID, _, orderedAt := valid(t)
+
+			return Reconstruct(id, Attributes{
+				Code:           code,
+				UserID:         userID,
+				StatusID:       statusID,
+				StatusCode:     StatusUnprocessed.Code(),
+				SubtotalAmount: 160000,
+				TaxAmount:      16000,
+				ShippingFee:    500,
+				TotalAmount:    176500,
+				Details:        details,
+				OrderedAt:      orderedAt,
+				PaidAt:         nil,
+				CanceledAt:     nil,
+				ShippedAt:      nil,
+				DeliveredAt:    nil,
+			})
+		}
+
+		t.Run("明細IDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := reconstructWithDetails(t, []PurchaseDetail{
+				NewPurchaseDetail(uuid.UUID{}, PurchaseDetailAttributes{
+					ProductID: uuidtestkit.NewTestFromSalt(t, "rc_bad_p"),
+					Quantity:  2,
+					UnitPrice: mustPrice(t, "800"),
+				}),
+			})
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidID)
+		})
+
+		t.Run("明細のproductIDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := reconstructWithDetails(t, []PurchaseDetail{
+				NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "rc_nilprod_d"), PurchaseDetailAttributes{
+					ProductID: uuid.UUID{},
+					Quantity:  2,
+					UnitPrice: mustPrice(t, "800"),
+				}),
+			})
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidID)
+		})
+
+		t.Run("明細の数量が最小値未満の場合、ErrInvalidQuantityを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := reconstructWithDetails(t, []PurchaseDetail{
+				NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "rc_zeroqty_d"), PurchaseDetailAttributes{
+					ProductID: uuidtestkit.NewTestFromSalt(t, "rc_zeroqty_p"),
+					Quantity:  0,
+					UnitPrice: mustPrice(t, "800"),
+				}),
+			})
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidQuantity)
+		})
+
+		t.Run("明細に同一productIDが重複する場合、ErrDuplicateProductIDを返す", func(t *testing.T) {
+			t.Parallel()
+			productID := uuidtestkit.NewTestFromSalt(t, "rc_dup_p")
+			actual, err := reconstructWithDetails(t, []PurchaseDetail{
+				NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "rc_dup_d1"), PurchaseDetailAttributes{
+					ProductID: productID,
+					Quantity:  1,
+					UnitPrice: mustPrice(t, "800"),
+				}),
+				NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "rc_dup_d2"), PurchaseDetailAttributes{
+					ProductID: productID,
+					Quantity:  2,
+					UnitPrice: mustPrice(t, "800"),
+				}),
+			})
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrDuplicateProductID)
+		})
+
 		t.Run("IDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
 			t.Parallel()
 			_, code, userID, statusID, details, orderedAt := valid(t)
