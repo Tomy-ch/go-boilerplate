@@ -572,13 +572,13 @@ func Test_client_Do_Retry(t *testing.T) {
 			srv, _ := countingServer(t, http.StatusServiceUnavailable)
 
 			type callerKey struct{}
-			var sleptCtx context.Context
+			var sleptCallerValue any
 
 			ctrl := gomock.NewController(t)
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, _ time.Duration) error {
-					sleptCtx = ctx
+					sleptCallerValue = ctx.Value(callerKey{})
 					return context.Canceled
 				}).AnyTimes()
 
@@ -597,8 +597,7 @@ func Test_client_Do_Retry(t *testing.T) {
 			// 直前の試行で 503 の Response を得ているが、sleeper がエラーを返した経路では返さない。
 			assert.Nil(t, resp)
 			// 呼び出し元 ctx から派生した ctx を渡さないと、backoff 中のキャンセルを sleeper が観測できない。
-			require.NotNil(t, sleptCtx)
-			assert.Equal(t, "caller", sleptCtx.Value(callerKey{}))
+			assert.Equal(t, "caller", sleptCallerValue)
 		})
 	})
 }

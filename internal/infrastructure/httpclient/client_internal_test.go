@@ -214,7 +214,7 @@ func Test_client_attempt(t *testing.T) {
 			require.NoError(t, err)
 			header := received.Load()
 			require.NotNil(t, header)
-			assert.NotEmpty(t, header.Get("traceparent"))
+			assert.NotEmpty(t, header.Get("Traceparent"))
 		})
 
 		t.Run("Profile が trace 伝搬を止める場合は traceparent を下流へ送らない", func(t *testing.T) {
@@ -232,7 +232,7 @@ func Test_client_attempt(t *testing.T) {
 			require.NoError(t, err)
 			header := received.Load()
 			require.NotNil(t, header)
-			assert.Empty(t, header.Get("traceparent"))
+			assert.Empty(t, header.Get("Traceparent"))
 		})
 
 		t.Run("Profile が private 網を許可する場合は loopback 宛ての接続が成立する", func(t *testing.T) {

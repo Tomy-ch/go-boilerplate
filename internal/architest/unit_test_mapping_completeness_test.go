@@ -345,12 +345,28 @@ func Test_isGeneratedGo(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("生成物のファイル名接尾辞を生成物と判定する", func(t *testing.T) {
+		t.Run("gen.go 接尾辞を生成物と判定する", func(t *testing.T) {
 			t.Parallel()
 
-			for _, name := range []string{"a.gen.go", "a.sql.go", "a_mock.go", "a.pb.go"} {
-				assert.Truef(t, isGeneratedGo(filepath.Join("internal", "p", name), plain), "%s", name)
-			}
+			assert.True(t, isGeneratedGo(filepath.Join("internal", "p", "a.gen.go"), plain))
+		})
+
+		t.Run("sql.go 接尾辞を生成物と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, isGeneratedGo(filepath.Join("internal", "p", "a.sql.go"), plain))
+		})
+
+		t.Run("_mock.go 接尾辞を生成物と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, isGeneratedGo(filepath.Join("internal", "p", "a_mock.go"), plain))
+		})
+
+		t.Run("pb.go 接尾辞を生成物と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, isGeneratedGo(filepath.Join("internal", "p", "a.pb.go"), plain))
 		})
 
 		t.Run("先頭5行以内の生成ヘッダを生成物と判定する", func(t *testing.T) {
