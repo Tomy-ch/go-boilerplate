@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issue to PR"
+  short_description: "GitHub issue を判断点ごとに止めながら PR マージまで進める"
+  default_prompt: "$impl-issue を使い、この issue を環境準備からマージまで進めて。"
