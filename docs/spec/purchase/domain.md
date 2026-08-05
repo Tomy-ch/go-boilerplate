@@ -201,13 +201,14 @@ fields:
     ID から購入詳細（読み取りモデル Detail）を明細込みで取得する。ステータス名は購入ステータスマスタとの
     JOIN で解決する（FindFeedByUserID と同じ子参照マスタ例外）。存在しない場合は NotFound。キャンセル後の
     状態名解決・レスポンスの取得元に用いる（GET 詳細 #569 でも再利用可能）。
-- name: ExistsInProgressByUserID
-  signature: ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error)
+- name: FindStatusesByUserID
+  signature: FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]Status, error)
   behavior: |
-    指定ユーザーに進行中の購入が 1 件でも存在するかを返す（退会の可否判定の取得元）。進行中は
-    TerminalStatusCodes（完了 / キャンセル / 配達済み）の否定として判定するため、ステータスが増えた場合は
-    既定で進行中側に倒れる。ステータスコードは購入ステータスマスタとの JOIN で解決する
-    （FindFeedByUserID と同じ子参照マスタ例外により単一集約の Repository read）。
+    指定ユーザーの購入が取っているステータスを重複なく返す（退会の可否判定の取得元）。進行中かどうかでは
+    絞り込まず、その判定（Status.IsTerminal の否定）は呼び出し側が行う。重複を除くため行数はステータスの
+    種類数で頭打ちになる。購入を 1 件も持たない場合は空を返し、順序は保証しない。ステータスコードは
+    購入ステータスマスタとの JOIN で解決する（FindFeedByUserID と同じ子参照マスタ例外により単一集約の
+    Repository read）。
 - name: FindUserIDsWithPurchases
   signature: FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)
   behavior: |

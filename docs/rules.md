@@ -46,6 +46,24 @@ the lexicon; a type that clears neither stays in its aggregate. Admission is del
 name states the question asked at the door: is this a word of the business?
 Rationale: [ADR-0104](adr/0104-domain-lexicon.md).
 
+### Domain services
+
+The lexicon is not the only path allowed to cross inside the domain. A rule that spans aggregates is
+the responsibility of neither of them, so it lives under **`internal/domain/service/<name>/`**, and
+that path has a depguard rule of its own which permits importing aggregates. The permission is one
+edge wide: every other domain deny (framework, infrastructure, usecase, controller, file system,
+process, environment) is repeated verbatim in that rule, and a service there holds no I/O — no
+Repository, no `context.Context`. It receives state the Usecase has already loaded and returns a
+domain error.
+
+The two exceptions answer different questions and are not interchangeable. The lexicon admits a
+**value object** that several aggregates speak in; a domain service holds a **rule** that no single
+aggregate can decide. A rule that fits on one aggregate goes on that aggregate, and reading two
+aggregates merely to place them side by side is mapping, which stays in Usecase. The admission bar
+and the current occupant are in
+[`internal/domain/README.md`](../internal/domain/README.md) § Where a cross-aggregate Domain Service
+lives.
+
 ### Rationale
 
 This rule prevents the domain model from depending on frameworks or infrastructure.

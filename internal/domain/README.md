@@ -61,6 +61,10 @@ Examples:
   the door: is this a word of the business? See its README.
   Rationale: [ADR-0104](../../docs/adr/0104-domain-lexicon.md).
 
+  The other path that may import an aggregate is `internal/domain/service/**`, where a rule spanning
+  aggregates lives; it has its own depguard rule that repeats every other domain deny. See
+  [Where a cross-aggregate Domain Service lives](#where-a-cross-aggregate-domain-service-lives).
+
 ## Domain boundaries
 
 The Domain layer is a layer that **expresses business rules and state transitions**.
@@ -501,7 +505,7 @@ consequences of the same distinction.
 A rule that spans aggregates belongs to a **Domain Service** — not to Usecase.
 
 ```text
-User cancellation → Subscription stop
+Withdrawal ← in-progress purchase
 ```
 
 #### Domain Service or Usecase
@@ -531,9 +535,33 @@ Service.
 Under `internal/domain/service/<name>/` — outside any aggregate package, because a service that spans
 aggregates cannot live inside one of them (a domain package must not import another aggregate).
 
-**No such package exists today, and none should be created speculatively.** The current model reaches
-across boundaries by copying what it needs into its own type rather than by importing the other
-aggregate. Create the directory, and its depguard exception, together with the first real occupant.
+**That placement only means something because the path has its own depguard rule.** An aggregate
+package may not import another aggregate; a package under `internal/domain/service/**` may. Everything
+else the domain layer forbids is repeated verbatim in that rule — no framework, no infrastructure, no
+usecase or controller, no file system, process, or environment access — so the exception widens
+exactly one edge and nothing else. Without it, moving a rule out of an aggregate would not let it
+reach the second aggregate, and the placement rule above would be unfollowable.
+
+The name is business vocabulary — what the rule is about, never `common` / `shared` / `util`, which
+name nothing and therefore refuse nothing.
+
+**Admission is narrow, and the depguard exception is not an invitation.** A package belongs here only
+when all three hold:
+
+1. The rule spans aggregates — it cannot be decided from one aggregate's state alone.
+2. It is the natural responsibility of neither aggregate. If it fits on one of them, it goes there.
+3. It is stateless, and it derives (see *Domain Service or Usecase* above). Reading two aggregates to
+   place them side by side is mapping, and mapping stays in Usecase.
+
+A service here holds no I/O: no Repository, no `context.Context`. It receives state the Usecase has
+already loaded and returns a domain error. Acquiring that state, ordering the calls, and owning the
+transaction remain the Usecase's job.
+
+**The occupant today is [`service/membership`](service/membership).** It carries one invariant seen
+from both sides — a user and their in-progress purchases must not be separated. `EnsurePurchasable`
+refuses a purchase by a user who is no longer active; `EnsureWithdrawable` refuses a withdrawal while
+any of that user's purchases is still in progress. Neither aggregate can host it: the user aggregate
+knows nothing about purchases, and the purchase aggregate knows nothing about membership.
 
 ### Query and Aggregate
 
