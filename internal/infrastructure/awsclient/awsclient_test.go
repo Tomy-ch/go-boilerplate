@@ -1,6 +1,7 @@
 package awsclient_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -114,6 +115,25 @@ func TestResolve(t *testing.T) {
 			_, err := awsclient.Resolve(t.Context(), awsclient.Config{Region: "us-east-1"})
 
 			require.ErrorIs(t, err, awsclient.ErrInvalidCredentials)
+		})
+
+		//nolint:paralleltest // 親が t.Setenv を使用するため並列化不可
+		t.Run("呼び出し元の締切が切れていれば解決を試みない", func(t *testing.T) {
+			isolateCredentialChain(t)
+			// 起動時の確認は独自の締切を持つが、呼び出し元の締切から切り離してはならない。
+			// 切り離すと、停止処理に入ったプロセスが解決の完了を待ち続ける。
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			_, err := awsclient.Resolve(ctx, awsclient.Config{
+				Region:          "us-east-1",
+				AccessKeyID:     "dummy-key",
+				SecretAccessKey: "dummy-secret",
+			})
+
+			require.ErrorIs(t, err, awsclient.ErrInvalidCredentials)
+			// sentinel でラップする際に原因の identity は落ちるため、打ち切りの理由は文言で確かめる。
+			require.ErrorContains(t, err, context.Canceled.Error())
 		})
 	})
 }

@@ -36,7 +36,7 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("broker adapter と業務処理を束ねた Worker を返す", func(t *testing.T) {
+		t.Run("Worker を返す", func(t *testing.T) {
 			t.Parallel()
 
 			got, _, _ := newWorkerUnderTest(t)

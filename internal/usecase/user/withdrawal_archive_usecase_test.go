@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,6 +66,29 @@ func Test_archiveUsecase_ArchiveWithdrawal(t *testing.T) {
 
 			got, err := uc.ArchiveWithdrawal(t.Context(), ArchiveWithdrawalParams{
 				UserID:  testWithdrawnUserID,
+				Payload: payload,
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, testWithdrawalArchiveKey, got)
+		})
+
+		t.Run("表記が揺れたユーザー ID でも正準形のキーへ保存する", func(t *testing.T) {
+			t.Parallel()
+			// キーは受け取った文字列ではなく parse 結果から組み立てる。生の入力をそのまま連結する形に
+			// 戻すと、同じユーザーの証跡が表記ごとに別オブジェクトへ散る。
+			uc, storage := newArchiveUsecase(t)
+			payload := []byte(`{"userId":"` + testWithdrawnUserID + `"}`)
+			storage.EXPECT().
+				Put(gomock.Any(), objectstorage.PutObject{
+					Key:         testWithdrawalArchiveKey,
+					Body:        payload,
+					ContentType: "application/json",
+				}).
+				Return(objectstorage.Path(testWithdrawalArchiveKey), nil)
+
+			got, err := uc.ArchiveWithdrawal(t.Context(), ArchiveWithdrawalParams{
+				UserID:  strings.ToUpper(testWithdrawnUserID),
 				Payload: payload,
 			})
 

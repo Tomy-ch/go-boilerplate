@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/worker/withdrawalarchive"
+	"go-boilerplate/internal/infrastructure/awsclient"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
@@ -92,6 +93,18 @@ func Test_provideWithdrawalArchiveQueue(t *testing.T) {
 			)
 
 			require.ErrorIs(t, err, ErrInvalidConsumerQueue)
+			assert.Nil(t, got.api)
+		})
+
+		t.Run("資格情報の解決に失敗したら伝播する", func(t *testing.T) {
+			t.Parallel()
+			// キューの設定が揃っていても、資格情報が解決できなければ受信は一度も成立しない。
+			cfg := config.NewConsumerQueueConfig(config.MockConfigForTest(t))
+			cfg.SetConsumerQueue(t, testConsumerQueueURL, testConsumerQueueDLQURL, "us-east-1", "dummy-key", "")
+
+			got, err := provideWithdrawalArchiveQueue(cfg, observability.NewDisabledOutboundHTTPClient(true))
+
+			require.ErrorIs(t, err, awsclient.ErrInvalidCredentials)
 			assert.Nil(t, got.api)
 		})
 	})
