@@ -1456,24 +1456,6 @@ func accessorPurchase(t *testing.T) *Purchase {
 	return accessorPurchaseWith(t, StatusPaid, &paidAt, nil)
 }
 
-func TestTerminalStatusCodes(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("完了とキャンセルと配達済みだけを終端として返し支払い済みと発送済みは含めない", func(t *testing.T) {
-			t.Parallel()
-
-			assert.ElementsMatch(
-				t,
-				[]int{StatusCompleted.Code(), StatusCanceled.Code(), StatusDelivered.Code()},
-				TerminalStatusCodes(),
-			)
-		})
-	})
-}
-
 func TestLockedProduct_ID(t *testing.T) {
 	t.Parallel()
 

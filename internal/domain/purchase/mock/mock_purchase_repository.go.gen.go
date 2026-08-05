@@ -42,21 +42,6 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
-// ExistsInProgressByUserID mocks base method.
-func (m *MockRepository) ExistsInProgressByUserID(ctx context.Context, userID uuid.UUID) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExistsInProgressByUserID", ctx, userID)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ExistsInProgressByUserID indicates an expected call of ExistsInProgressByUserID.
-func (mr *MockRepositoryMockRecorder) ExistsInProgressByUserID(ctx, userID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsInProgressByUserID", reflect.TypeOf((*MockRepository)(nil).ExistsInProgressByUserID), ctx, userID)
-}
-
 // FindByID mocks base method.
 func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()
@@ -100,6 +85,21 @@ func (m *MockRepository) FindFeedByUserID(ctx context.Context, userID uuid.UUID,
 func (mr *MockRepositoryMockRecorder) FindFeedByUserID(ctx, userID, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeedByUserID", reflect.TypeOf((*MockRepository)(nil).FindFeedByUserID), ctx, userID, params)
+}
+
+// FindStatusesByUserID mocks base method.
+func (m *MockRepository) FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]purchase.Status, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindStatusesByUserID", ctx, userID)
+	ret0, _ := ret[0].([]purchase.Status)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindStatusesByUserID indicates an expected call of FindStatusesByUserID.
+func (mr *MockRepositoryMockRecorder) FindStatusesByUserID(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindStatusesByUserID", reflect.TypeOf((*MockRepository)(nil).FindStatusesByUserID), ctx, userID)
 }
 
 // FindUserIDsWithPurchases mocks base method.

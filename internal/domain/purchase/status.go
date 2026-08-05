@@ -103,15 +103,3 @@ func (s Status) CanTransitionTo(next Status) bool {
 		return false
 	}
 }
-
-// TerminalStatusCodes は、終端ステータスの code を返します。永続化層が進行中の購入を
-// 絞り込むために用います。一覧は IsTerminal から導出するため、両者が乖離しません。
-func TerminalStatusCodes() []int {
-	codes := make([]int, 0, len(allStatuses()))
-	for _, s := range allStatuses() {
-		if s.IsTerminal() {
-			codes = append(codes, s.code)
-		}
-	}
-	return codes
-}

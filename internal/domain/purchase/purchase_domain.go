@@ -283,7 +283,7 @@ func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deli
 	if deliveredAt != nil && shippedAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "deliveredAt requires shippedAt")
 	}
-	// 配達済み status と deliveredAt は同時セットの不変条件を持つ。配達済みは終端状態（TerminalStatusCodes）で
+	// 配達済み status と deliveredAt は同時セットの不変条件を持つ。配達済みは終端状態（IsTerminal）で
 	// あり、配達後に別の status へ遷移して deliveredAt だけが残ることがないため、paidAt / shippedAt のような
 	// 一方向ではなくキャンセルと同じ双条件になる。
 	if (status == StatusDelivered) != (deliveredAt != nil) {

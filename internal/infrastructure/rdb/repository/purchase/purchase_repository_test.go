@@ -2,7 +2,6 @@ package purchase
 
 import (
 	"context"
-	"math"
 	"testing"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
-	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -605,10 +603,10 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 	})
 }
 
-func Test_repository_ExistsInProgressByUserID(t *testing.T) {
+func Test_repository_FindStatusesByUserID(t *testing.T) {
 	t.Parallel()
 
-	// 購入ステータスマスタ（seed 済み）。進行中は終端（完了 / キャンセル / 配達済み）の否定で判定する。
+	// 購入ステータスマスタ（seed 済み）。
 	const (
 		seedCompletedSID = "1904bf76-7d37-4288-bc15-359d2512ac91"
 		seedCanceledSID  = "e9d72547-adfe-48d9-9037-bd1f55d4158b"
@@ -626,7 +624,7 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("未処理の購入を持つユーザーはtrueを返す", func(t *testing.T) {
+		t.Run("購入が取っているステータスを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -634,29 +632,19 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				userID := "fa000000-0000-4000-8000-000000000001"
 				insertFeedUser(ctx, t, drv, userID)
 				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000001", userID, seedUnprocessedSID, 100, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000002", userID, seedShippedSID, 200, orderedAt)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
-				assert.True(t, exists)
+				assert.ElementsMatch(
+					t,
+					[]domainpurchase.Status{domainpurchase.StatusUnprocessed, domainpurchase.StatusShipped},
+					statuses,
+				)
 			})
 		})
 
-		t.Run("発送済みの購入しか持たないユーザーもtrueを返す", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				userID := "fa000000-0000-4000-8000-000000000002"
-				insertFeedUser(ctx, t, drv, userID)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000002", userID, seedShippedSID, 100, orderedAt)
-
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
-				require.NoError(t, err)
-				assert.True(t, exists)
-			})
-		})
-
-		t.Run("終端ステータスの購入しか持たないユーザーはfalseを返す", func(t *testing.T) {
+		t.Run("同じステータスの購入が複数あっても1件へ畳む", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -664,16 +652,20 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				userID := "fa000000-0000-4000-8000-000000000003"
 				insertFeedUser(ctx, t, drv, userID)
 				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000003", userID, seedCompletedSID, 100, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000004", userID, seedCanceledSID, 200, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000005", userID, seedDeliveredSID, 300, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000004", userID, seedCompletedSID, 200, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000005", userID, seedCanceledSID, 300, orderedAt)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
-				assert.False(t, exists)
+				assert.ElementsMatch(
+					t,
+					[]domainpurchase.Status{domainpurchase.StatusCompleted, domainpurchase.StatusCanceled},
+					statuses,
+				)
 			})
 		})
 
-		t.Run("購入を1件も持たないユーザーはfalseを返す", func(t *testing.T) {
+		t.Run("購入を1件も持たないユーザーは空を返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -681,13 +673,13 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				userID := "fa000000-0000-4000-8000-000000000004"
 				insertFeedUser(ctx, t, drv, userID)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, userID))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
-				assert.False(t, exists)
+				assert.Empty(t, statuses)
 			})
 		})
 
-		t.Run("他ユーザーの進行中購入は判定に含めない", func(t *testing.T) {
+		t.Run("他ユーザーの購入のステータスは含めない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -696,12 +688,12 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 				other := "fa000000-0000-4000-8000-000000000006"
 				insertFeedUser(ctx, t, drv, subject)
 				insertFeedUser(ctx, t, drv, other)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000006", subject, seedCompletedSID, 100, orderedAt)
+				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000006", subject, seedDeliveredSID, 100, orderedAt)
 				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000007", other, seedUnprocessedSID, 200, orderedAt)
 
-				exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, subject))
+				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, subject))
 				require.NoError(t, err)
-				assert.False(t, exists)
+				assert.Equal(t, []domainpurchase.Status{domainpurchase.StatusDelivered}, statuses)
 			})
 		})
 	})
@@ -715,8 +707,8 @@ func Test_repository_ExistsInProgressByUserID(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			exists, err := repo.ExistsInProgressByUserID(ctx, mustParse(t, seedUserID))
-			assert.False(t, exists)
+			statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, seedUserID))
+			assert.Nil(t, statuses)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
@@ -816,55 +808,6 @@ func Test_toFeedItem(t *testing.T) {
 				StatusName:  "未処理",
 				OrderedAt:   orderedAt,
 			}, item)
-		})
-	})
-}
-
-func Test_mustToInt16(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("購入ステータスコードを同値のint16へ変換する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, int16(7), mustToInt16(7))
-		})
-
-		t.Run("int16の下限と上限の値をそのまま変換する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, int16(math.MinInt16), mustToInt16(math.MinInt16))
-			assert.Equal(t, int16(math.MaxInt16), mustToInt16(math.MaxInt16))
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("int16の上限を超える場合、オーバーフローエラーでpanicする", func(t *testing.T) {
-			t.Parallel()
-
-			defer func() {
-				err, ok := recover().(error)
-				require.True(t, ok)
-				require.ErrorIs(t, err, safecast.ErrOverflow)
-			}()
-
-			mustToInt16(math.MaxInt16 + 1)
-		})
-
-		t.Run("int16の下限を下回る場合、オーバーフローエラーでpanicする", func(t *testing.T) {
-			t.Parallel()
-
-			defer func() {
-				err, ok := recover().(error)
-				require.True(t, ok)
-				require.ErrorIs(t, err, safecast.ErrOverflow)
-			}()
-
-			mustToInt16(math.MinInt16 - 1)
 		})
 	})
 }

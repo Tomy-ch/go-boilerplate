@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
+	"go-boilerplate/internal/domain/purchase"
 	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
@@ -464,10 +465,11 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		return a
 	}
 
-	// noInProgressPurchase は、進行中の購入を持たないユーザーを表す購入 Repository モックを返します。
+	// noInProgressPurchase は、終端に達した購入しか持たないユーザーを表す購入 Repository モックを返します。
 	noInProgressPurchase := func(ctrl *gomock.Controller) *mock_purchase.MockRepository {
 		r := mock_purchase.NewMockRepository(ctrl)
-		r.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, nil)
+		r.EXPECT().FindStatusesByUserID(gomock.Any(), id).
+			Return([]purchase.Status{purchase.StatusCompleted}, nil)
 		return r
 	}
 
@@ -528,7 +530,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
 			gomock.InOrder(
 				userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil),
-				purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, nil),
+				purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).Return(nil, nil),
 			)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
@@ -569,7 +571,8 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			// 退会を拒否するため論理削除もイベント発行も行わない。
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
-			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(true, nil)
+			purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).
+				Return([]purchase.Status{purchase.StatusUnprocessed}, nil)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
@@ -591,7 +594,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
-			purchaseRepo.EXPECT().ExistsInProgressByUserID(gomock.Any(), id).Return(false, expectedErr)
+			purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).Return(nil, expectedErr)
 
 			uc := &usecase{
 				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),

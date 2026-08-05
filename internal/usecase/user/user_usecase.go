@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/domain/service/membership"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
@@ -29,9 +30,6 @@ const aggregateType = "user"
 
 // 既存ユーザーが参照する prefecture を解決できない参照整合性破れ（サーバ側データ不整合）を表します。
 var errOrphanPrefecture = xerrors.Wrap(apperror.ErrInternal, "prefecture not found for user")
-
-// 進行中の購入が残っているユーザーの退会要求を表します。
-var errInProgressPurchaseExists = xerrors.Wrap(apperror.ErrConflict, "user has in-progress purchases")
 
 // UserView は、ユーザー取得結果の出力 DTO を表します。
 type UserView struct {
@@ -432,12 +430,12 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 			return err
 		}
 
-		inProgress, err := u.purchaseRepo.ExistsInProgressByUserID(ctx, id)
+		statuses, err := u.purchaseRepo.FindStatusesByUserID(ctx, id)
 		if err != nil {
 			return err
 		}
-		if inProgress {
-			return errInProgressPurchaseExists
+		if err = membership.EnsureWithdrawable(userEntity, statuses); err != nil {
+			return err
 		}
 
 		if err = userEntity.MarkAsDeleted(now); err != nil {
