@@ -22,6 +22,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// errUnpublishedInPublishedRead は、公開中として取得した読み取りに未公開の商品が混じっていた場合のエラーです。
+// 絞り込みを実行する SQL と、公開中を定義する Product.IsPublished が食い違ったことを意味します。
+var errUnpublishedInPublishedRead = xerrors.Wrap(apperror.ErrInternal, "unpublished product in published read")
+
 // ProductView は、商品 1 件分のユースケース出力 DTO です。Price はサブセント精度を保持する価格スケールの十進量です。
 // ステータス・カテゴリは商品集約の一部として ID と名称を保持します（画面側での再解決は不要です）。
 type ProductView struct {
@@ -156,6 +160,9 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	if err != nil {
 		return ProductListView{}, err
 	}
+	if err := ensurePublished(products); err != nil {
+		return ProductListView{}, err
+	}
 
 	limit := params.Cursor.Limit()
 	hasNext := len(products) > limit
@@ -189,8 +196,24 @@ func (u *usecase) GetProduct(ctx context.Context, id uuid.UUID) (ProductView, er
 	if err != nil {
 		return ProductView{}, err
 	}
+	if err := ensurePublished(product.Products{p}); err != nil {
+		return ProductView{}, err
+	}
 
 	return toProductView(p), nil
+}
+
+// ensurePublished は、Repository が公開中として返した商品が、ドメインの定義でも公開中であることを確かめます。
+//
+// 絞り込みを実行するのは SQL ですが、「公開中」を定義するのは Product.IsPublished です。両者が食い違えば、
+// 一方だけが変更されたということであり、それは黙って落としてよい行ではなく表に出すべき欠陥です。
+func ensurePublished(products product.Products) error {
+	for _, p := range products {
+		if !p.IsPublished() {
+			return xerrors.Wrap(errUnpublishedInPublishedRead, p.ID().String())
+		}
+	}
+	return nil
 }
 
 // toProductView は、商品エンティティを出力 DTO へ変換します。

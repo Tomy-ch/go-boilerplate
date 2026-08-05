@@ -26,7 +26,8 @@ type CountProductsRow struct {
 }
 
 // === source: database/dml/repository/product/count_product.sql ===
-// 登録済みの商品総数と、そのうち公開済み（published_at 設定済み）の商品数を返します。
+// 登録済みの商品総数と、そのうち公開済みの商品数を返します。
+// 「公開中」を定義するのは Product.IsPublished で、FILTER 句はその実行形です。片方だけ変更しないこと。
 //
 //	SELECT
 //	    COUNT(*)::BIGINT AS total_count,
@@ -254,7 +255,7 @@ type GetPublishedProductByIDRow struct {
 // ID から公開中の単一商品を取得します。
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// 公開範囲の定義は一覧取得（ListPublishedProducts*）と同一述語（published_at 非 NULL）で、
+// 「公開中」を定義するのは Product.IsPublished で、以下の条件はその実行形です。片方だけ変更しないこと。
 // 非公開・未存在はいずれも該当行なし（0 行）で返ります。
 //
 //	SELECT
@@ -348,6 +349,7 @@ type ListLowStockProductsRow struct {
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
+// 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -511,6 +513,7 @@ type ListPublishedProductsAscAfterRow struct {
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
@@ -614,6 +617,7 @@ type ListPublishedProductsAscFirstRow struct {
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT
@@ -717,6 +721,7 @@ type ListPublishedProductsDescAfterRow struct {
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
@@ -821,6 +826,7 @@ type ListPublishedProductsDescFirstRow struct {
 // status_name / category_name は商品の付随表示値。
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // category_id / status_id / keyword は指定時のみ絞り込みます。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT

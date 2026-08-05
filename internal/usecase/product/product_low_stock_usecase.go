@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -18,7 +19,14 @@ const (
 )
 
 // lowStockLimitPolicy は、在庫僅少商品一覧の取得件数規約です。OpenAPI の limit（既定 20 / 1〜100）と対応します。
-var lowStockLimitPolicy = paging.LimitPolicy{Default: lowStockDefaultLimit, Max: lowStockMaxLimit}
+var (
+	lowStockLimitPolicy = paging.LimitPolicy{Default: lowStockDefaultLimit, Max: lowStockMaxLimit}
+
+	// errNotLowStockInLowStockRead は、在庫僅少として取得した読み取りに該当しない商品が混じっていた場合の
+	// エラーです。絞り込みを実行する SQL と、在庫僅少を定義する Product.IsLowStock が食い違ったことを
+	// 意味します。
+	errNotLowStockInLowStockRead = xerrors.Wrap(apperror.ErrInternal, "product not low on stock in low-stock read")
+)
 
 // ListLowStockProductsParams は、在庫僅少商品一覧取得の入力パラメータです。
 type ListLowStockProductsParams struct {
@@ -52,6 +60,12 @@ func (u *usecase) ListLowStockProducts(
 	products, err := u.repo.FindAllLowStock(ctx, limit.Value32())
 	if err != nil {
 		return ProductLowStockListView{}, err
+	}
+	// 絞り込みを実行するのは SQL だが、在庫僅少を定義するのは Product.IsLowStock。両者の乖離を表に出す。
+	for _, p := range products {
+		if !p.IsLowStock() {
+			return ProductLowStockListView{}, xerrors.Wrap(errNotLowStockInLowStockRead, p.ID().String())
+		}
 	}
 
 	items := make([]ProductView, len(products))

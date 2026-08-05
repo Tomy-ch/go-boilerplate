@@ -207,5 +207,19 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Empty(t, actual.Items)
 		})
+
+		t.Run("在庫僅少でない商品が返った場合、SQLとドメイン定義の乖離としてエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			u, deps := newLowStockTestUsecase(t)
+			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			// 閾値 10 に対し在庫 11。SQL の絞り込みが Product.IsLowStock と食い違った状態を作る。
+			deps.repo.EXPECT().FindAllLowStock(gomock.Any(), gomock.Any()).
+				Return(domainproduct.Products{newLowStockProduct(t, "drifted", 11)}, nil)
+
+			actual, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{})
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			assert.Empty(t, actual.Items)
+		})
 	})
 }

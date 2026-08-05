@@ -611,3 +611,68 @@ func Test_toProductView(t *testing.T) {
 		})
 	})
 }
+
+// newUnpublishedTestProduct は、公開日時を持たない商品エンティティを構築します。
+func newUnpublishedTestProduct(t *testing.T, salt string) *domainproduct.Product {
+	t.Helper()
+	status, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, salt+"_status"), "在庫あり")
+	require.NoError(t, err)
+	category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
+	require.NoError(t, err)
+	p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+		Name:                  "商品-" + salt,
+		Description:           ptr.To("説明-" + salt),
+		Price:                 mustPrice(t, "10.00"),
+		Quantity:              5,
+		StockWarningThreshold: ptr.To(2),
+		Status:                status,
+		Category:              category,
+		PublishedAt:           nil,
+	})
+	require.NoError(t, err)
+	return p
+}
+
+func Test_ensurePublished(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("すべて公開中の場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+
+			publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			products := domainproduct.Products{
+				newTestProduct(t, "published_a", publishedAt),
+				newTestProduct(t, "published_b", publishedAt),
+			}
+
+			assert.NoError(t, ensurePublished(products))
+		})
+
+		t.Run("空の場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NoError(t, ensurePublished(domainproduct.Products{}))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未公開が混じる場合、SQLとドメイン定義の乖離としてエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			products := domainproduct.Products{
+				newTestProduct(t, "published_c", publishedAt),
+				newUnpublishedTestProduct(t, "drifted"),
+			}
+
+			err := ensurePublished(products)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			assert.Contains(t, err.Error(), uuidtestkit.NewTestFromSalt(t, "drifted").String())
+		})
+	})
+}

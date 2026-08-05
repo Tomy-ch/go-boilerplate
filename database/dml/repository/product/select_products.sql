@@ -3,6 +3,7 @@
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 -- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -27,6 +28,7 @@ LIMIT sqlc.arg('limit_param');
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 -- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -55,6 +57,7 @@ LIMIT sqlc.arg('limit_param');
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 -- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -79,6 +82,7 @@ LIMIT sqlc.arg('limit_param');
 -- status_name / category_name は商品の付随表示値。
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 -- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,

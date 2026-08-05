@@ -1017,3 +1017,88 @@ func TestProduct_StockWarningThreshold(t *testing.T) {
 		})
 	})
 }
+
+func TestProduct_IsPublished(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開日時が設定されている場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.True(t, p.IsPublished())
+		})
+
+		t.Run("公開日時が未設定の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.PublishedAt = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.False(t, p.IsPublished())
+		})
+	})
+}
+
+func TestProduct_IsLowStock(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("在庫が閾値を下回る場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = ptr.To(10)
+			attrs.Quantity = 9
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.True(t, p.IsLowStock())
+		})
+
+		t.Run("在庫が閾値と等しい場合、境界を含むためtrueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = ptr.To(10)
+			attrs.Quantity = 10
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.True(t, p.IsLowStock())
+		})
+
+		t.Run("在庫が閾値を上回る場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = ptr.To(10)
+			attrs.Quantity = 11
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.False(t, p.IsLowStock())
+		})
+
+		t.Run("閾値が未設定の場合、在庫が0でも警告対象を持たないためfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.StockWarningThreshold = nil
+			attrs.Quantity = 0
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.False(t, p.IsLowStock())
+		})
+	})
+}
