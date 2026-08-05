@@ -1,26 +1,7 @@
-define check_duplicate
-@PREFIXES=$$(ls database/migrations/*.$1.sql | xargs -n1 basename | cut -d'_' -f1); \
-DUP=$$(echo "$$PREFIXES" | sort | uniq -d); \
-if [ -n "$$DUP" ]; then \
-	echo "Duplicate migration numbers ($1): $$DUP"; \
-	exit 1; \
-fi
-endef
-
-define check_gap
-@PREFIXES=$$(ls database/migrations/*.$1.sql | xargs -n1 basename | cut -d'_' -f1); \
-SORTED=$$(echo "$$PREFIXES" | sort); \
-FIRST=$$(echo "$$SORTED" | head -n1); \
-LAST=$$(echo "$$SORTED" | tail -n1); \
-WIDTH=$$(echo "$$FIRST" | wc -c); \
-EXPECTED=$$(seq $$(echo $$FIRST | sed 's/^0*//') $$(echo $$LAST | sed 's/^0*//') | xargs -I{} printf "%0$$(($$WIDTH-1))d\n" {}); \
-if [ "$$SORTED" != "$$EXPECTED" ]; then \
-	echo "Migration version gap detected ($1)"; \
-	echo "Existing :"; echo "$$SORTED"; \
-	echo "Expected :"; echo "$$EXPECTED"; \
-	exit 1; \
-fi
-endef
+# 連番の重複・欠番の判定は scripts/migration-lint（テスト付き）が持つ。これは lefthook の
+# pre-commit ゲートで、壊れ方が「何も検査しなくなる」方向に出るため、判定をシェルに置かない。
+# 自前ツールなのでツールランナーは経由せずホストで実行する（cmd/db-slot と同じ扱い）。
+MIGRATION_LINT := go run ./scripts/migration-lint
 
 ## DBマイグレーション関連のコマンド群
 # -----Migrateターゲット-----
@@ -62,16 +43,16 @@ new-migrate-%:
 	@echo "✅ 新しいマイグレーションファイルを生成しました: database/migrations/<連番>_$*.up.sql / .down.sql"
 
 check-migration-up-version:
-	$(call check_duplicate,up)
+	@$(MIGRATION_LINT) -kind up -check duplicate
 
 check-migration-down-version:
-	$(call check_duplicate,down)
+	@$(MIGRATION_LINT) -kind down -check duplicate
 
 check-migration-up-gap:
-	$(call check_gap,up)
+	@$(MIGRATION_LINT) -kind up -check gap
 
 check-migration-down-gap:
-	$(call check_gap,down)
+	@$(MIGRATION_LINT) -kind down -check gap
 
 # -------------------------------
 # 汎用ターゲット（DB可変）

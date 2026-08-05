@@ -44,13 +44,19 @@ func Test_buildLikeTokens(t *testing.T) {
 	})
 }
 
+//nolint:tparallel // 最上位で t.Parallel() を呼べない理由は関数内のコメントを参照。
 func Test_repository_SearchByKeyword(t *testing.T) {
-	t.Parallel()
-
 	testDB := testkit.NewTestDB(t)
-	// シード全体の件数を期待値に持つため、コミット済みの行を足すテストと重ならないよう直列化を占有する。
-	// WithinTx を使わずコミット済みの状態をそのまま読むので、この検証は WithinTx 側の直列化に参加しない。
+
+	// 期待値をシードの総件数で固定しているため、コミット済みの行を足し引きする他テスト
+	// （user_repository_lock_race_test.go は検証用ユーザーを実コミットする）と重なると件数がずれる。
+	// 読み取り専用だが直列化スイートを占有して重なりを防ぐ。
+	//
+	// このテスト関数だけ t.Parallel() を呼ばないのは、直列化ロックを保持したまま並列テストとして
+	// 待たされると、並列スロットを占有したまま自分のサブテストを開始できず停止するため。
+	// 逐次フェーズで走らせれば、他の並列テストが再開する前にロックを解放して終えられる。
 	testkit.HoldSuiteSerialization(t, testDB)
+
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	repo := &repository{tracer: lt, db: testDB}
@@ -163,12 +169,19 @@ func Test_repository_SearchByKeyword(t *testing.T) {
 	})
 }
 
+//nolint:tparallel // 最上位で t.Parallel() を呼べない理由は関数内のコメントを参照。
 func Test_repository_CountByKeyword(t *testing.T) {
-	t.Parallel()
-
 	testDB := testkit.NewTestDB(t)
-	// SearchByKeyword と同じ理由で直列化を占有する（シード件数を期待値に持つ）。
+
+	// 期待値をシードの総件数で固定しているため、コミット済みの行を足し引きする他テスト
+	// （user_repository_lock_race_test.go は検証用ユーザーを実コミットする）と重なると件数がずれる。
+	// 読み取り専用だが直列化スイートを占有して重なりを防ぐ。
+	//
+	// このテスト関数だけ t.Parallel() を呼ばないのは、直列化ロックを保持したまま並列テストとして
+	// 待たされると、並列スロットを占有したまま自分のサブテストを開始できず停止するため。
+	// 逐次フェーズで走らせれば、他の並列テストが再開する前にロックを解放して終えられる。
 	testkit.HoldSuiteSerialization(t, testDB)
+
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	repo := &repository{tracer: lt, db: testDB}
