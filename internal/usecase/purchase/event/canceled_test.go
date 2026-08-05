@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/usecase/purchase/event"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -69,7 +70,12 @@ func TestBuildCanceled(t *testing.T) {
 			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.CanceledAt)
 		})
 
-		t.Run("canceledAtがnilの購入はcanceledAtが空文字列になる", func(t *testing.T) {
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセルされていない購入からはpayloadを生成せずErrInternalを返す", func(t *testing.T) {
 			t.Parallel()
 
 			details := []domainpurchase.PurchaseDetail{
@@ -98,13 +104,8 @@ func TestBuildCanceled(t *testing.T) {
 			require.NoError(t, err)
 
 			payload, perr := event.BuildCanceled(entity)
-			require.NoError(t, perr)
-
-			var decoded struct {
-				CanceledAt string `json:"canceledAt"`
-			}
-			require.NoError(t, json.Unmarshal(payload, &decoded))
-			assert.Empty(t, decoded.CanceledAt)
+			require.ErrorIs(t, perr, apperror.ErrInternal)
+			assert.Nil(t, payload)
 		})
 	})
 }
