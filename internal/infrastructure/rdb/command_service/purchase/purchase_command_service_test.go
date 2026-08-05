@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"

@@ -103,7 +103,7 @@ fields:
 ## Value Objects
 
 ```yaml
-# price は money.Price VO（internal/domain/kernel/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
+# price は money.Price VO（internal/domain/lexicon/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
 # 内包し、決済スケール（最小単位整数）への変換 policy（ToMinorUnit）を所有する。器の正確な十進量は
 # pkg/decimal.Decimal（ADR-0102）。分類は ID 参照のまま VO を持たない。
 ```

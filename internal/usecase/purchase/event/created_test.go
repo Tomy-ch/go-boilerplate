@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/usecase/purchase/event"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"

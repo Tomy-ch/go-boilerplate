@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	mock_category "go-boilerplate/internal/domain/product/category/mock"
 	mock_product "go-boilerplate/internal/domain/product/mock"

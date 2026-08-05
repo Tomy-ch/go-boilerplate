@@ -8,7 +8,7 @@ Exact-decimal type wrapping `github.com/shopspring/decimal`. Represents money, r
 
 `float64` cannot represent decimal fractions such as `0.1` or `19.99` exactly, so any money or rate carried as a float is corrupted the moment it is parsed. This package provides a base-10 exact quantity (big-integer coefficient + exponent) that every layer reaches for instead, and hides the vendor dependency behind a seam so application code never imports `shopspring/decimal` directly (the `pkg/uuid` precedent).
 
-It carries **no** business semantics — currency, non-negativity, and minor-unit choice live in the domain layer's value objects (`internal/domain/kernel/money`). This package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary.
+It carries **no** business semantics — currency, non-negativity, and minor-unit choice live in the domain layer's value objects (`internal/domain/lexicon/money`). This package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary.
 
 ## Wraps
 

@@ -4,7 +4,7 @@ package purchase
 import (
 	"context"
 
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"

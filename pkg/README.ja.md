@@ -28,7 +28,7 @@
 （`internal/observability`）、設定（`internal/config`） — は、層をまたいで使われていても
 `pkg/` には **置きません**。これらはこのシステムの選択（エラー意味論、zap / otel 等の
 フレームワーク）を内包するため、`internal/` 配下の横断的関心として置きます。domain 層が
-依存してよい唯一のこの種カーネルは `internal/apperror` です。
+これらのうち domain 層が依存してよい唯一の例外は `internal/apperror` です。
 
 ### 制約
 
@@ -102,7 +102,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 
 ### decimal
 
-`github.com/shopspring/decimal` をラップした exact-decimal 型です。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は `internal/domain/kernel/money` が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
+`github.com/shopspring/decimal` をラップした exact-decimal 型です。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は `internal/domain/lexicon/money` が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
 
 |シンボル|説明|
 |---|---|

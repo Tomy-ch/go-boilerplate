@@ -31,7 +31,7 @@ observability (`internal/observability`), configuration (`internal/config`) — 
 **not** belong in `pkg/` even though they are used across layers. They encode this
 system's choices (error semantics, frameworks such as zap / otel) and therefore live
 under `internal/` as cross-cutting concerns. The domain layer may depend on
-`internal/apperror` as the one permitted such kernel.
+`internal/apperror` as the one permitted exception among these.
 
 ### Constraints
 
@@ -106,7 +106,7 @@ All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for par
 
 ### decimal
 
-An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/kernel/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/lexicon/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
 
 |Symbol|Description|
 |---|---|

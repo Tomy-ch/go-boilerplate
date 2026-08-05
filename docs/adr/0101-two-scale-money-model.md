@@ -97,4 +97,4 @@ property of the value".
 - Migration: the pricing-scale `NUMERIC` type is defined directly in the create migrations
   `database/migrations/000010_create_products.up.sql` (`products.price`) and
   `000013_create_purchase_details.up.sql` (`purchase_details.unit_price`).
-- Domain VO: `internal/domain/kernel/money.Price`.
+- Domain VO: `internal/domain/lexicon/money.Price`.

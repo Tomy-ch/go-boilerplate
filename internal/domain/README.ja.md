@@ -52,6 +52,13 @@ flowchart TB
 - Decimal → `pkg/decimal`
 - Error → `pkg/xerrors`
 
+- domain パッケージは他の集約を import してはならない（depguard が `internal/domain/` を拒否する）。
+  複数の集約から使われる業務意味論を持つ値オブジェクトのうち、`pkg/` が業務ロジックを禁じているために
+  そちらへ置けないものは、**ドメイン語彙** [`internal/domain/lexicon`](lexicon/README.ja.md) に置く。
+  ここは全ての domain パッケージが import してよい。配置は `pkg/` を先に判定し、入場基準は意図的に
+  狭い。名前が入場時の問いを表している——これは業務の語か。その README を参照。
+  根拠: [ADR-0104](../../docs/adr/0104-domain-lexicon.md)。
+
 ## ドメインの境界
 
 Domain 層は **ビジネスルールと状態遷移を表現する層**である。

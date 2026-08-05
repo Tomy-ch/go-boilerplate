@@ -53,11 +53,12 @@ Examples:
 - Error → `pkg/xerrors`
 
 - A domain package must **not** import another aggregate (enforced by depguard: `internal/domain/`
-  is denied). Business-semantic value objects shared across aggregates — e.g. `money.Price`, which
-  cannot live in `pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
-  [`internal/domain/kernel`](kernel/README.md), which every domain package may import. Admission to
-  the kernel is deliberately narrow (see its README); it is not a `shared` / `common` junk drawer.
-  Rationale: [ADR-0104](../../docs/adr/0104-domain-shared-kernel.md).
+  is denied). Business-semantic value objects used by more than one aggregate, which cannot live in
+  `pkg/` because `pkg/` forbids business logic, live in the **domain lexicon**
+  [`internal/domain/lexicon`](lexicon/README.md), which every domain package may import. Placement is
+  resolved `pkg/` first, and admission is deliberately narrow — the name states the question asked at
+  the door: is this a word of the business? See its README.
+  Rationale: [ADR-0104](../../docs/adr/0104-domain-lexicon.md).
 
 ## Domain boundaries
 

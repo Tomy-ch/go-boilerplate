@@ -31,15 +31,20 @@ flowchart LR
 
 **The domain layer must always be the most independent layer.**
 
-### Domain shared kernel
+### Domain lexicon
 
 A domain package must **not** import another aggregate (`internal/domain/` is denied by depguard).
-Business-semantic value objects shared across aggregates — e.g. `money.Price`, which cannot live in
-`pkg/` because `pkg/` forbids business logic — live in the **shared kernel**
-[`internal/domain/kernel`](../internal/domain/kernel/README.md), which every domain package may
-import (depguard allows `internal/domain/kernel`). Admission to the kernel is deliberately narrow
-(value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README); it is not
-a `shared` / `common` junk drawer. Rationale: [ADR-0104](adr/0104-domain-shared-kernel.md).
+Business-semantic value objects used by more than one aggregate, which cannot live in `pkg/` because
+`pkg/` forbids business logic, live in the **domain lexicon**
+[`internal/domain/lexicon`](../internal/domain/lexicon/README.md), which every domain package may
+import (depguard allows `internal/domain/lexicon`).
+
+Placement is resolved **`pkg/` first** — its bar is machine-enforced, the lexicon's is prose, and a
+prose bar cannot push a type across a boundary a linter draws. Failing `pkg/` is not an argument for
+the lexicon; a type that clears neither stays in its aggregate. Admission is deliberately narrow
+(value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README), and the
+name states the question asked at the door: is this a word of the business?
+Rationale: [ADR-0104](adr/0104-domain-lexicon.md).
 
 ### Rationale
 

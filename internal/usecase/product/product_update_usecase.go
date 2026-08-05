@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"

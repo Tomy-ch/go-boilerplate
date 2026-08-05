@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"

@@ -147,7 +147,7 @@ do X") are tagged `setup-review`.
 | [0101](0101-two-scale-money-model.md) | Money is modeled in two scales — pricing (exact decimal) and settlement (integer minor unit) | accepted |
 | [0102](0102-exact-decimal-pkg-wrap.md) | Exact-decimal quantities use a `pkg/decimal` wrapper and a string wire contract | accepted |
 | [0103](0103-decimal-half-up-rounding.md) | referenceAmount and rate application round half-up at a single point, on exact decimals | accepted |
-| [0104](0104-domain-shared-kernel.md) | Cross-aggregate value objects live in a curated domain shared kernel (`internal/domain/kernel`) | accepted |
+| [0104](0104-domain-lexicon.md) | Cross-aggregate value objects live in a curated domain lexicon (`internal/domain/lexicon`) | accepted |
 | [0105](0105-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
 | [0106](0106-broker-sdk-isolation-verified-after-sample-removal.md) | Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired | accepted |
 

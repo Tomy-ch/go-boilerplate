@@ -8,7 +8,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/domain/kernel/money"
+	"go-boilerplate/internal/domain/lexicon/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
