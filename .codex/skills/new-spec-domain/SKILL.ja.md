@@ -20,7 +20,7 @@
 
 **読み込み（常時）**:
 
-- `.claude/scaffold-spec/domain-spec.md` — domain 層の canonical 節リスト
+- `.codex/scaffold-spec/domain-spec.md` — domain 層の canonical 節リスト
 - `docs/spec/<feature>/` — `domain.md` 既存確認
 - `docs/spec/glossary.md` — 業務語彙の統括 spec。集約名を突き合わせる
 
@@ -37,7 +37,7 @@
 
 ## 最初のステップ: identity 確認
 
-`AskUserQuestion` 起動直後（`new-spec` 統合から context 提供時は除く）:
+`ask the user explicitly` を起動直後（`new-spec` 統合から context 提供時は除く）に使う:
 
 1. **feature 名** — フリーテキスト、kebab-case。`^[a-z][a-z0-9-]*$` 検証
 2. **aggregate 名** — フリーテキスト、PascalCase（例: `User`, `Order`）。Go struct 名になる
@@ -46,7 +46,7 @@
 
 ## Step 1. 節定義の読み込み
 
-`.claude/scaffold-spec/domain-spec.md` から canonical 節リストを抽出。ハードコードしない — このファイルが source of truth。
+`.codex/scaffold-spec/domain-spec.md` から canonical 節リストを抽出。ハードコードしない — このファイルが source of truth。
 
 現行節リスト（実行時にミラー）:
 
@@ -68,11 +68,11 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 - Value Objects: YAML + 注「利用しない場合は節ごと削除」
 - Repository Methods: YAML プレースホルダ
 
-`.claude/scaffold-spec/domain-spec.md` の出力例を template として使用。
+`.codex/scaffold-spec/domain-spec.md` の出力例を template として使用。
 
 ## Step 3. 承認と書き込み
 
-提案パス + テンプレ冒頭 20 行を表示:
+提案パス + テンプレ冒頭 20 行を表示し、以下を尋ねる:
 
 - 「以下の内容で `docs/spec/<feature>/domain.md` を作成しますか？」
 - 選択肢: 「作成する」 / 「キャンセル」
@@ -81,24 +81,17 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 
 ## Step 3.5. 集約を用語表へ登録する
 
-**この時点で用語なのは集約名だけである。** このスキルが書くのは TODO のテンプレートであり、
-フィールド・値オブジェクト・振る舞いはまだ決まっていない。登録できるものが他に無い。1 行、
-あるいはゼロ行である。
+**この時点で用語なのは集約名だけである。** このスキルが書くのは TODO のテンプレートであり、フィールド・値オブジェクト・振る舞いはまだ決まっていない。登録できるものが他に無い。1 行、あるいはゼロ行である。
 
 `docs/spec/glossary.md` を読み、集約名を既存の行と突き合わせる。
 
-- **別の所有 feature で既出** — 同音異義である。両方の行を並べて報告し、そこで止まる。同じ語を
-  2 つの feature が所有している状態こそがこのページの捕まえる findings であり、どちらの名前が勝つかは
-  業務がこれからどう話すかについての決定である。**ここで解決しないこと。**
+- **別の所有 feature で既出** — 同音異義である。両方の行を並べて報告し、そこで止まる。同じ語を 2 つの feature が所有している状態こそがこのページの捕まえる findings であり、どちらの名前が勝つかは業務がこれからどう話すかについての決定である。**ここで解決しないこと。**
 - **同じ所有 feature で既出** — することは無い。その旨を述べる
-- **未登録** — 1 行を提案し、`AskUserQuestion` で確認する
-  （「用語表へ追加する」/「今回は追加しない」）
+- **未登録** — 1 行を提案し、その定義が草案であることを明言してから、追加するか今回は見送るかを `ask the user explicitly` で尋ねる
 
-定義文は feature 名と集約名から草案を起こし、**草案であることを明言する**。誰も編集していない定義は
-誰も合意していない定義であり、もっともらしく誤っている行より空の行のほうが価値がある。
+定義文は feature 名と aggregate 名から草案を起こす。誰も編集していない定義は誰も合意していない定義であり、もっともらしく誤っている行より空の行のほうが価値がある。
 
-feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` の内側へ、そうでなければ外側へ
-置く。マーカーの反対側に置かれた行は、サンプルと共に消えるか、サンプルより長生きするかのどちらかになる。
+feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` の内側へ、そうでなければ外側へ置く。マーカーの反対側に置かれた行は、サンプルと共に消えるか、サンプルより長生きするかのどちらかになる。
 
 ## Step 4. クロージング
 
@@ -110,10 +103,7 @@ usecase spec も必要なら new-spec-usecase または統合 new-spec を使っ
 （lean A 構成: controller / infra spec は不要、OpenAPI gen + sqlc gen から導出されます）。
 ```
 
-**`new-spec-usecase` に同じステップは無い。意図的である。** usecase spec が宣言するのは Interface・
-DTO・Workflow であり、`CreatePurchase` や `PurchaseView` のようなアプリケーション層の名前は
-用語表の基準（業務を知っている人がこれは業務の語だと認めるか）を通らない。ドメイン層が用語を導入し、
-usecase 層はそれを使う。
+**`new-spec-usecase` に同じステップは無い。意図的である。** usecase spec が宣言するのは Interface・DTO・Workflow であり、`CreatePurchase` や `PurchaseView` のようなアプリケーション層の名前は用語表の基準（業務を知っている人がこれは業務の語だと認めるか）を通らない。ドメイン層が用語を導入し、usecase 層はそれを使う。
 
 ## AI 修正スコープ
 
@@ -124,8 +114,8 @@ usecase 層はそれを使う。
 
 - ❌ 既存 `domain.md` の上書き
 - ❌ 業務内容（フィールド / メソッド）を発明
-- ❌ 節リストをハードコード（必ず `.claude/scaffold-spec/domain-spec.md` から読む）
-- ❌ identity `AskUserQuestion` をスキップ
+- ❌ 節リストをハードコード（必ず `.codex/scaffold-spec/domain-spec.md` から読む）
+- ❌ identity `ask the user explicitly` をスキップ
 - ❌ `domain.md` 以外の layer に触る
 - ❌ 用語表の同音異義を解決する / どちらの名前が勝つかを決める
 - ❌ 集約名以外を登録する（他はまだ TODO）
@@ -135,11 +125,11 @@ usecase 層はそれを使う。
 
 ## チェックリスト
 
-- [ ] feature 名 + aggregate 名を `AskUserQuestion` で確認
-- [ ] `.claude/scaffold-spec/domain-spec.md` を読んで現行節リスト取得
+- [ ] feature 名 + aggregate 名を `ask the user explicitly` で確認
+- [ ] `.codex/scaffold-spec/domain-spec.md` を読んで現行節リスト取得
 - [ ] `domain.md` 未存在（あれば中断）
 - [ ] H2 節 + YAML コードブロック + TODO でテンプレを書き出し
 - [ ] 集約名を `docs/spec/glossary.md` と突き合わせ（同音異義なら報告して停止）
-- [ ] 用語表への追記は `AskUserQuestion` の後、サンプルマーカーの正しい側へ
+- [ ] 用語表への追記は `ask the user explicitly` の後、サンプルマーカーの正しい側へ
 - [ ] 最終サマリは日本語で、残りの用語を `/glossary` へ引き継ぐ
 - [ ] `docs/spec/<feature>/domain.md` と用語表 1 行のみ書き込み
