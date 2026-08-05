@@ -35,7 +35,7 @@ The infra layer holds every service that can only run on a fixed host port, whic
 |`docker-compose.yaml`|Definitions of all services|
 |`docker-compose.attach.yaml`|app layer override, **always** overlaid (`docker compose -f docker-compose.yaml -f docker-compose.attach.yaml`)|
 
-`docker-compose.attach.yaml` publishes the `api_server` host ports as `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}`, narrows `depends_on` to `mock_auth_server` alone (the infra layer is already up), and points the app at the shared infra by overriding `DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-4000}`. `mock_auth_server`'s `OIDC_ISSUER` follows the same published port.
+`docker-compose.attach.yaml` publishes the `api_server` host ports as `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}`, narrows `depends_on` to `mock_auth_server` alone (the infra layer is already up), and points the app at the shared infra by overriding `DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}`. `mock_auth_server`'s `OIDC_ISSUER` follows the same published port.
 
 |Purpose|Reference|
 |---|---|
@@ -52,20 +52,20 @@ The following table maps services defined in docker-compose.yaml to their corres
 |Service|Layer|Dockerfile / Image|Port|Description|
 |---|---|---|---|---|
 |`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|Development API server (hot reload via air)|
-|`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-4000}`|Mock OIDC auth server (JWT test provider)|
+|`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-2010}`|Mock OIDC auth server (JWT test provider)|
 |`database`|infra|`postgres:18.4-trixie`|5432|PostgreSQL database|
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|Local observability stack (OTLP endpoint / Grafana) for o11y verification|
 |`garage`|infra|`dxflrs/garage`|3900, 3902|S3-compatible object storage (S3 API / Web API)|
 |`garage_init`|infra|`docker/garage/Dockerfile`|-|One-shot provisioning of the garage layout / bucket / access key / website access (idempotent)|
 
-The app layer host ports are the ones a DB slot shifts (`8080+N` / `4000+N` / `2345+N` / `6060+N`); the container-internal ports never move.
+The app layer host ports are the ones a DB slot shifts (`8080+N` / `2010+N` / `2345+N` / `6060+N`); the container-internal ports never move.
 
 ### Auxiliary Services (profile: `tools`, infra layer)
 
 |Service|Dockerfile / Image|Port|Description|
 |---|---|---|---|
-|`docs_viewer`|`docker/document/Dockerfile`|7001|Documentation portal (nginx)|
-|`sql_editor`|`sosedoff/pgweb`|7000|Web SQL editor|
+|`docs_viewer`|`docker/document/Dockerfile`|2001|Documentation portal (nginx)|
+|`sql_editor`|`sosedoff/pgweb`|2000|Web SQL editor|
 
 ### Tool Runners (profile: `generate`, infra layer)
 
@@ -122,7 +122,7 @@ Container for the documentation portal.
 - Base image: `nginx:1.29-otel`
 - Volume mounts the entire `docs/` directory
 - Portal app is served at `/portal/`
-- Accessing `http://localhost:7001/` redirects to `/portal/`
+- Accessing `http://localhost:2001/` redirects to `/portal/`
 
 ## garage
 
