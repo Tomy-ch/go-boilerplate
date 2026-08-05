@@ -121,9 +121,10 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make db-init` | Executes initialization for both LocalDB and TestDB. | Calls `db-init-local` and `db-init-test` sequentially. |
-| `make db-init-local` | Initializes LocalDB. | Executes `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed`. |
-| `make db-init-test` | Initializes TestDB. | Executes `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed`. |
+| `make db-init` | Executes initialization for both the owned local and test databases. | Calls `db-init-local` and `db-init-test` sequentially. |
+| `make db-init-local` | Initializes the owned local database. | Executes `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed`. |
+| `make db-init-test` | Initializes the owned test database. | Executes `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed`. |
+| `make require-db-owner` | Verifies that this checkout owns a database. | Prerequisite of every target that resolves a database name. Fails in a linked worktree that holds no DB slot, instead of falling back to the main checkout's `local` / `test` — see `docs/maintenance/db-worktree-pool.md`. |
 
 ### DB migration related
 
@@ -138,13 +139,13 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 | `make db-migrate-up-<steps> DB=<database>` | Applies the given number of migrations relative to the current position. | Example: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | Downgrades all migrations to the initial state. | None |
 | `make db-migrate-down-<steps> DB=<database>` | Rolls back the given number of migrations. | None |
-| `make db-local-migrate-up` | Applies all migrations to LocalDB. | Alias for `db-migrate-up` with `DB=local`. |
+| `make db-local-migrate-up` | Applies all migrations to the owned local database. | Alias for `db-migrate-up` with `DB=$(DB_LOCAL)` (`local`, or `wt<N>_local` while a slot is held). |
 | `make db-local-migrate-up-<steps>` | Applies the given number of migrations on LocalDB. | None |
-| `make db-local-migrate-down` | Downgrades LocalDB to initial state. | Alias for `db-migrate-down` with `DB=local`. |
+| `make db-local-migrate-down` | Downgrades the owned local database to initial state. | Alias for `db-migrate-down` with `DB=$(DB_LOCAL)`. |
 | `make db-local-migrate-down-<steps>` | Rolls back the given number of migrations on LocalDB. | None |
-| `make db-test-migrate-up` | Applies all migrations to TestDB. | Alias for `db-migrate-up` with `DB=test`. |
+| `make db-test-migrate-up` | Applies all migrations to the owned test database. | Alias for `db-migrate-up` with `DB=$(DB_TEST)` (`test`, or `wt<N>_test` while a slot is held). |
 | `make db-test-migrate-up-<steps>` | Applies the given number of migrations on TestDB. | None |
-| `make db-test-migrate-down` | Downgrades TestDB to initial state. | Alias for `db-migrate-down` with `DB=test`. |
+| `make db-test-migrate-down` | Downgrades the owned test database to initial state. | Alias for `db-migrate-down` with `DB=$(DB_TEST)`. |
 | `make db-test-migrate-down-<steps>` | Rolls back the given number of migrations on TestDB. | None |
 | `make db-migrate-ci-up DB=<database>` | Executes `cmd/main.go migrate-up` directly without Docker. | CI target |
 | `make db-migrate-ci-up-<steps> DB=<database>` | Executes `migrate-up` for the given number of steps without Docker. | CI target |
@@ -165,8 +166,8 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make db-seed DB=<database>` | Inserts seed data into the specified DB. | Executes `cmd/main.go db-seed` inside a Docker container. |
 | `make db-seed-ci DB=<database>` | Executes seed insertion directly without Docker. | CI target |
-| `make db-local-seed` | Inserts seed data into LocalDB. | Alias for `db-seed` with `DB=local`. |
-| `make db-test-seed` | Inserts seed data into TestDB. | Alias for `db-seed` with `DB=test`. |
+| `make db-local-seed` | Inserts seed data into the owned local database. | Alias for `db-seed` with `DB=$(DB_LOCAL)`. |
+| `make db-test-seed` | Inserts seed data into the owned test database. | Alias for `db-seed` with `DB=$(DB_TEST)`. |
 
 ### DB generation / helper related
 
@@ -174,7 +175,7 @@ make db-migrate-up-10 DB=local
 | --- | --- | --- |
 | `make gen-db-schema` | Generates DB schema documentation. | Used to update ER diagrams and schema outputs. |
 | `make gen-db-schema-ci` | Executes SchemaSpy container directly to generate schema docs. | CI target |
-| `make dump-schema` | Executes schema dump. | Used as preprocessing for SQLC generation and DML merge. |
+| `make dump-schema` | Executes schema dump. | Used as preprocessing for SQLC generation and DML merge. Rebuilds the owner's throwaway database (`gen_schema`, or `gen_schema_wt<N>` while a slot is held) from this branch's migrations and dumps that. |
 | `make dump-schema-ci` | Executes `cmd/main.go dump-schema` directly without Docker. | CI target |
 | `make fix-collation` | Fixes database collation. | None |
 | `make fix-collation-ci` | Executes collation fix directly without Docker. | CI target |
