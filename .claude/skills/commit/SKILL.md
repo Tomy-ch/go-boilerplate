@@ -237,12 +237,15 @@ If `git add` or `git commit` fails for any group (file-path typo, mid-operation 
 
 After all commits succeed, run the full lefthook `pre-commit` hook once with `lefthook run pre-commit --force`, then `make fix` as a final formatting pass. The `--force` flag is essential: the commits were made with `--no-verify` and the working tree is now clean, so a bare `lefthook run pre-commit` skips every command ("no matching staged files"); `--force` runs the whole hook regardless of staging. Driving the real hook (instead of a hand-enumerated command list) keeps this gate in sync with `.lefthook.yaml` — newly added `pre-commit` commands are picked up automatically — and lefthook runs them in parallel (`parallel: true`), which is much faster than a sequential re-run.
 
+The hook decides for itself how hard to run. `.makefiles/load.mk` sizes the heavy Go gates from the number of open worktrees, and in the `ci-first` band it defers them to CI rather than running them here (`make load-status` reports the current band; `repo-ops` §21 explains it). Do not fight that decision by invoking `make lint` / `make test` directly to "really" verify — with several windows open, a full local lint costs minutes of saturated host and CI re-runs it identically anyway. Report what the band did and let the push carry the rest.
+
 ### Procedure
 
+0. Run `make -s load-status` and note the resolved band. It tells you, before anything runs, whether the heavy gates will execute locally (`full` / `low`) or be deferred to CI (`ci-first`), so the summary in step 4 can say which verification actually happened.
 1. Run `lefthook run pre-commit --force`. It executes every command under `pre-commit.commands.*` against the working tree (which reflects the committed state) and exits non-zero if any command fails. If `.lefthook.yaml` is absent or `lefthook` is not installed, skip to step 3 (run only `make fix`) and note it.
 2. Read lefthook's per-command summary — it lists each command with ✔️ / ❌ and a timing.
 3. Run `make fix`. If it modifies any tracked file, surface the diff to the user — it indicates the committed state was not fully formatted, and the user must decide whether to stage and commit those fixes.
-4. Summarize the outcome to the user: lefthook's pass/fail summary (or the note that lefthook was unavailable) plus whether `make fix` produced changes.
+4. Summarize the outcome to the user: lefthook's pass/fail summary (or the note that lefthook was unavailable) plus whether `make fix` produced changes. When the band was `ci-first`, say plainly which gates were deferred and that CI is what verifies them — a summary that reads "検証が通りました" without that qualifier overstates what was checked.
 5. If `lefthook run pre-commit --force` exits non-zero (any command failed), report the failing command (from lefthook's summary) and stop. Do NOT roll back commits — the failure is informational; the user decides whether to add fix-up commits or amend. Tell the user explicitly:
 
    ```txt

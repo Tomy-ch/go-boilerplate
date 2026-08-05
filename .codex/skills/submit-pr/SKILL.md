@@ -177,6 +177,14 @@ Never use `--force` or `--force-with-lease` unless the user has explicitly reque
 
 On push failure (non-fast-forward, permission denied, network error, etc.), report the error verbatim to the user and stop. Do not attempt automatic recovery.
 
+### Let the Pre-push Hook Size Itself — Do Not Pre-empt It
+
+`pre-push` runs the heavy Go gates through `make gate-go-push`. `.makefiles/load.mk` chooses from the number of open worktrees whether those gates run at full speed, throttled, or are deferred to CI. Let the hook make that decision: `make load-status` reports the resolved band, and `repo-ops` section 21 explains the policy.
+
+Do **not** run `make lint` or `make test` manually before pushing "to make sure." With several worktrees open, that needlessly saturates the host for minutes to rediscover what CI runs identically, and the saturation itself can make unrelated gates fail. In the `ci-first` band, pushing is the verification step.
+
+If the hook fails for a reason outside this change, follow the `--no-verify` carve-out in `repo-ops` section 11. When the resolved band deferred gates to CI, state that in the Japanese report in Step 8 and treat the PR as unverified until its checks land; never describe local verification as passed when it did not run.
+
 ## Step 7. Create or Update the PR
 
 ### Create the PR
