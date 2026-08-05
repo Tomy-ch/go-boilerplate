@@ -140,11 +140,11 @@ func Test_client_attempt(t *testing.T) {
 
 	const ds Downstream = "acct"
 
-	newTestClient := func(t *testing.T) *client {
+	newClientWith := func(t *testing.T, transport *observability.HTTPClientTransport) *client {
 		t.Helper()
 		clk := clocktestkit.NewStepClock(time.Now(), 0)
 		c, ok := New(
-			observability.NewNoopHTTPClientTransport(t),
+			transport,
 			clk,
 			clk,
 			NewRegistry(map[Downstream]Profile{ds: DefaultProfile()}),
@@ -152,6 +152,30 @@ func Test_client_attempt(t *testing.T) {
 		).(*client)
 		require.True(t, ok)
 		return c
+	}
+
+	newTestClient := func(t *testing.T) *client {
+		t.Helper()
+		return newClientWith(t, observability.NewNoopHTTPClientTransport(t))
+	}
+
+	// newGuardedClient は、SSRF ガードを有効にしたままの client を返します。
+	// httptest サーバーは loopback で待ち受けるため、AllowPrivateNetwork の値がそのまま接続可否に現れます。
+	newGuardedClient := func(t *testing.T) *client {
+		t.Helper()
+		return newClientWith(t, observability.NewGuardedHTTPClientTransport(t))
+	}
+
+	// newHeaderCapturingServer は、受信したリクエストヘッダを保持する httptest サーバーを返します。
+	newHeaderCapturingServer := func(t *testing.T) (*httptest.Server, *atomic.Pointer[http.Header]) {
+		t.Helper()
+		var received atomic.Pointer[http.Header]
+		srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			header := r.Header.Clone()
+			received.Store(&header)
+		}))
+		t.Cleanup(srv.Close)
+		return srv, &received
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -174,10 +198,77 @@ func Test_client_attempt(t *testing.T) {
 			assert.Equal(t, []string{"ok"}, resp.Header["X-Kind"])
 			assert.Equal(t, []byte("body"), resp.Body)
 		})
+
+		t.Run("Profile が trace 伝搬を許可する場合は traceparent を下流へ送る", func(t *testing.T) {
+			t.Parallel()
+
+			srv, received := newHeaderCapturingServer(t)
+			ctx, endSpan := observability.NewStubSpanContext(t)
+			t.Cleanup(endSpan)
+
+			profile := DefaultProfile()
+			profile.PropagateTrace = true
+
+			_, err := newTestClient(t).attempt(ctx, NewRequest(MethodGet(), ds, srv.URL), profile)
+
+			require.NoError(t, err)
+			header := received.Load()
+			require.NotNil(t, header)
+			assert.NotEmpty(t, header.Get("traceparent"))
+		})
+
+		t.Run("Profile が trace 伝搬を止める場合は traceparent を下流へ送らない", func(t *testing.T) {
+			t.Parallel()
+
+			srv, received := newHeaderCapturingServer(t)
+			ctx, endSpan := observability.NewStubSpanContext(t)
+			t.Cleanup(endSpan)
+
+			profile := DefaultProfile()
+			profile.PropagateTrace = false
+
+			_, err := newTestClient(t).attempt(ctx, NewRequest(MethodGet(), ds, srv.URL), profile)
+
+			require.NoError(t, err)
+			header := received.Load()
+			require.NotNil(t, header)
+			assert.Empty(t, header.Get("traceparent"))
+		})
+
+		t.Run("Profile が private 網を許可する場合は loopback 宛ての接続が成立する", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+			t.Cleanup(srv.Close)
+
+			profile := DefaultProfile()
+			profile.AllowPrivateNetwork = true
+
+			resp, err := newGuardedClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, srv.URL), profile)
+
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("Profile が private 網を許可しない場合は loopback 宛ての接続を拒否する", func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+			t.Cleanup(srv.Close)
+
+			profile := DefaultProfile()
+			profile.AllowPrivateNetwork = false
+
+			resp, err := newGuardedClient(t).attempt(context.Background(), NewRequest(MethodGet(), ds, srv.URL), profile)
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, resp)
+		})
 
 		t.Run("URL が不正な場合は送信せず ErrInvalidArgument を返す", func(t *testing.T) {
 			t.Parallel()
