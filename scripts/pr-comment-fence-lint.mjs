@@ -18,6 +18,11 @@
 // バッククォートがシェルの二重引用符文脈でコマンド置換になる。複製は意図的な選択であり、そのぶん
 // 片方だけが直る事故を機械で止める。
 //
+// シェルファイルへ切り出して `source` する経路も同じく採らない。`actionlint` が読むのは
+// `.github/workflows/**`、`actions-shellcheck` が読むのは `.github/actions/**` だけなので、集約先は
+// どちらの検査対象でもなくなる。検査済みの複製を、リポジトリで唯一どの linter も読まないファイルへ
+// 置き換えることになり、複製が持ち込む唯一のリスク（片方だけが直る drift）は 2 が既に止めている。
+//
 // 3 の粒度はワークフローファイル単位で、ステップから本文ファイルへのデータフローは追わない
 // （`out=/tmp/...` の間接参照解決は脆く、既存の行ベース走査から逸脱する）。素通し呼び出しと
 // `details-summary` 付き呼び出しが同居するファイルでは過剰検出になり得るが、意図した単純化として
@@ -40,12 +45,7 @@ const STEP_BULLET = /^\s*-\s/
 const INTERPOLATED_SPAN = /`[^`\n]*(?:\$\{|\$[A-Za-z_]|%[-0-9.*]*[sb])[^`\n]*`/
 
 // 解決までフェンス検査から外すワークフロー。エントリは根拠の issue を持ち、直したら消す。
-const PASS_THROUGH_EXCLUSIONS = new Map([
-  [
-    "image-scan.yaml",
-    "#871: SBOM summary が素通し経路で、span どころか生 Markdown のまま値を埋めている（データ源が SBOM で本文が見出しをレンダリングさせる設計のため #835 と同じ解決が採れない）",
-  ],
-])
+const PASS_THROUGH_EXCLUSIONS = new Map([])
 
 function listWorkflows() {
   const dir = path.join(REPO_ROOT, WORKFLOWS_DIR)

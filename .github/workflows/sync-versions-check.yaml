@@ -82,7 +82,9 @@ jobs:
           # parties, a fabricated heading or link, posted under the bot's name.
           # That same literal rule table caps the list at roughly a dozen paths, so unlike the
           # gen-*-artifacts checks this body cannot approach the action's length cap and needs no
-          # trimming ahead of the fence.
+          # trimming ahead of the fence. The fence cannot run away either: a backtick run never
+          # spans a `/`, so the longest one a path can hold is bounded by NAME_MAX — 255 bytes —
+          # and the fence by 256.
           list=/tmp/sync-versions-files.txt
           git diff --name-only > "$list"
           fence="$(fence_for "$list")"
