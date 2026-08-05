@@ -18,14 +18,21 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
+	"log"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
+// duplicateThreshold は、同じ連番を「重複」と数え始める出現回数。
+const duplicateThreshold = 2
+
 func main() {
+	log.SetFlags(0)
+
 	kind := flag.String("kind", "up", "検査するマイグレーションの種別 (up / down)")
 	check := flag.String("check", "duplicate", "検査内容 (duplicate / gap)")
 	dir := flag.String("dir", "database/migrations", "マイグレーションディレクトリ")
@@ -33,8 +40,7 @@ func main() {
 
 	versions, err := collectVersions(*dir, *kind)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		log.Fatalf("%v", err)
 	}
 
 	var problem string
@@ -45,13 +51,11 @@ func main() {
 	case "gap":
 		problem = reportGaps(*kind, versions)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown -check: %s (duplicate / gap)\n", *check)
-		os.Exit(1)
+		log.Fatalf("unknown -check: %s (duplicate / gap)", *check)
 	}
 
 	if problem != "" {
-		fmt.Fprintln(os.Stderr, problem)
-		os.Exit(1)
+		log.Fatalf("%s", problem)
 	}
 }
 
@@ -60,7 +64,7 @@ func main() {
 func collectVersions(dir, kind string) ([]string, error) {
 	matches, err := filepath.Glob(filepath.Join(dir, "*."+kind+".sql"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan %s: %w", dir, err)
+		return nil, xerrors.Wrap(err, "failed to scan "+dir)
 	}
 
 	versions := make([]string, 0, len(matches))
@@ -70,7 +74,7 @@ func collectVersions(dir, kind string) ([]string, error) {
 
 		version, _, found := strings.Cut(base, "_")
 		if !found {
-			return nil, fmt.Errorf("migration file has no version prefix: %s", base)
+			return nil, xerrors.New("migration file has no version prefix: " + base)
 		}
 
 		versions = append(versions, version)
@@ -89,7 +93,7 @@ func reportDuplicates(kind string, versions []string) string {
 	for _, v := range versions {
 		seen[v]++
 
-		if seen[v] == 2 {
+		if seen[v] == duplicateThreshold {
 			duplicates = append(duplicates, v)
 		}
 	}
@@ -129,12 +133,12 @@ func expectedSequence(versions []string) ([]string, error) {
 
 	first, err := strconv.Atoi(versions[0])
 	if err != nil {
-		return nil, fmt.Errorf("invalid version %q: %w", versions[0], err)
+		return nil, xerrors.Wrap(err, "invalid version "+versions[0])
 	}
 
 	last, err := strconv.Atoi(versions[len(versions)-1])
 	if err != nil {
-		return nil, fmt.Errorf("invalid version %q: %w", versions[len(versions)-1], err)
+		return nil, xerrors.Wrap(err, "invalid version "+versions[len(versions)-1])
 	}
 
 	expected := make([]string, 0, last-first+1)

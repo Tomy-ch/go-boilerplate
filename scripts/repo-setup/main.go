@@ -17,11 +17,15 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -31,15 +35,30 @@ const (
 	defaultBranch = "production"
 	// releaseNoteDir は、リリースノートの置き場所。
 	releaseNoteDir = ".github/release"
+	// minArgs は、プログラム名 + サブコマンドの最小引数数。
+	minArgs = 2
+	// stepsPerTag は、タグ 1 件あたりの削除手順数（ローカル + リモート）。
+	stepsPerTag = 2
+	// commandTimeout は、git / gh 1 コマンドあたりの上限。
+	commandTimeout = 120 * time.Second
 )
 
 // managedBranches は、初期化時に用意するブランチ。
 var managedBranches = []string{"develop", "staging", defaultBranch}
 
+// step は、実行する 1 コマンド。allowFail はリモートに対象が無い場合など、
+// 失敗しても続行してよい操作に付ける。
+type step struct {
+	name      string
+	args      []string
+	allowFail bool
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: repo-setup <preflight|bootstrap|prune-release-notes>")
-		os.Exit(1)
+	log.SetFlags(0)
+
+	if len(os.Args) < minArgs {
+		log.Fatalf("❌ usage: repo-setup <preflight|bootstrap|prune-release-notes>")
 	}
 
 	var err error
@@ -52,24 +71,15 @@ func main() {
 	case "prune-release-notes":
 		err = runPruneReleaseNotes()
 	default:
-		err = fmt.Errorf("unknown subcommand: %s", os.Args[1])
+		log.Fatalf("❌ unknown subcommand (preflight / bootstrap / prune-release-notes)")
 	}
 
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		log.Fatalf("%v", err)
 	}
 }
 
 // ---- 手順の組み立て（純粋） -------------------------------------------------
-
-// step は、実行する 1 コマンド。allowFail はリモートに対象が無い場合など、
-// 失敗しても続行してよい操作に付ける。
-type step struct {
-	name      string
-	args      []string
-	allowFail bool
-}
 
 func (s step) String() string { return s.name + " " + strings.Join(s.args, " ") }
 
@@ -89,7 +99,7 @@ func parseLines(out string) []string {
 // tagDeletionSteps は、既存タグをローカルとリモートの両方から消す手順を返します。
 // リモートに存在しないタグの削除は失敗しても続行します（ローカルにだけ在るタグは正常な状態）。
 func tagDeletionSteps(tags []string) []step {
-	steps := make([]step, 0, len(tags)*2)
+	steps := make([]step, 0, len(tags)*stepsPerTag)
 
 	for _, tag := range tags {
 		steps = append(steps,
@@ -110,14 +120,14 @@ func initialTagSteps() []step {
 }
 
 // branchCreationSteps は、まだ無いブランチだけを作る手順と、既存のためスキップした名前を返します。
-func branchCreationSteps(existing []string) (steps []step, skipped []string) {
+func branchCreationSteps(existing []string) ([]step, []string) {
 	have := make(map[string]bool, len(existing))
 	for _, b := range existing {
 		have[b] = true
 	}
 
-	steps = make([]step, 0, len(managedBranches))
-	skipped = make([]string, 0)
+	steps := make([]step, 0, len(managedBranches))
+	skipped := make([]string, 0)
 
 	for _, b := range managedBranches {
 		if have[b] {
@@ -179,13 +189,13 @@ func releaseNotesToDelete(entries []string) []string {
 // ---- 実行 -------------------------------------------------------------------
 
 func runPreflight() error {
-	fmt.Println("🔧 設定を確認中...")
+	log.Printf("🔧 設定を確認中...")
 
 	if tagExists(initialTag) {
-		return fmt.Errorf("❌ タグ 【%s】 があります。初期化を停止します", initialTag)
+		return xerrors.New("❌ タグ 【" + initialTag + "】 があります。初期化を停止します")
 	}
 
-	fmt.Println("✅ 初期化を開始します")
+	log.Printf("✅ 初期化を開始します")
 
 	return nil
 }
@@ -203,7 +213,7 @@ func runBootstrap() error {
 }
 
 func resetTags() error {
-	fmt.Println("🔧 タグの初期化を開始します...")
+	log.Printf("🔧 タグの初期化を開始します...")
 
 	out, err := output("git", "tag")
 	if err != nil {
@@ -212,29 +222,29 @@ func resetTags() error {
 
 	tags := parseLines(out)
 	if len(tags) == 0 {
-		fmt.Println("🟡 削除対象のタグが存在しません。")
+		log.Printf("🟡 削除対象のタグが存在しません。")
 	} else {
 		if err := runAll(tagDeletionSteps(tags)); err != nil {
 			return err
 		}
 
-		fmt.Println("🧹 すべてのタグを削除しました。")
+		log.Printf("🧹 すべてのタグを削除しました。")
 	}
 
-	fmt.Println("✅ タグの初期化を終了します。")
-	fmt.Printf("🔧 %s のタグ打ちを開始します...\n", initialTag)
+	log.Printf("✅ タグの初期化を終了します。")
+	log.Printf("🔧 %s のタグ打ちを開始します...", initialTag)
 
 	if err := runAll(initialTagSteps()); err != nil {
 		return err
 	}
 
-	fmt.Printf("✅ %s のタグ打ちが完了しました。\n", initialTag)
+	log.Printf("✅ %s のタグ打ちが完了しました。", initialTag)
 
 	return nil
 }
 
 func createBranches() error {
-	fmt.Println("🔧 ブランチ作成を開始します...")
+	log.Printf("🔧 ブランチ作成を開始します...")
 
 	existing := make([]string, 0, len(managedBranches))
 
@@ -247,7 +257,7 @@ func createBranches() error {
 	steps, skipped := branchCreationSteps(existing)
 
 	for _, b := range skipped {
-		fmt.Printf("🟡 ブランチ 【%s】 は既に存在します。作成処理をスキップします。\n", b)
+		log.Printf("🟡 ブランチ 【%s】 は既に存在します。作成処理をスキップします。", b)
 	}
 
 	if err := runAll(steps); err != nil {
@@ -258,13 +268,13 @@ func createBranches() error {
 		return err
 	}
 
-	fmt.Println("✅ ブランチの作成を終了します。")
+	log.Printf("✅ ブランチの作成を終了します。")
 
 	return nil
 }
 
 func moveDefaultBranch() error {
-	fmt.Println("🔧 デフォルトブランチの設定を開始します...")
+	log.Printf("🔧 デフォルトブランチの設定を開始します...")
 
 	repo, err := output("gh", "repo", "view", "--json", "name,owner", "-q", `.owner.login + "/" + .name`)
 	if err != nil {
@@ -293,23 +303,23 @@ func moveDefaultBranch() error {
 		return err
 	}
 
-	fmt.Println("✅ デフォルトブランチの設定を終了します。")
+	log.Printf("✅ デフォルトブランチの設定を終了します。")
 
 	return nil
 }
 
 func runPruneReleaseNotes() error {
-	fmt.Println("🔧 リリースノートの初期化を開始します...")
+	log.Printf("🔧 リリースノートの初期化を開始します...")
 
 	entries, err := os.ReadDir(releaseNoteDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Printf("🟡 %s ディレクトリが存在しないためスキップします。\n", releaseNoteDir)
+			log.Printf("🟡 %s ディレクトリが存在しないためスキップします。", releaseNoteDir)
 
 			return nil
 		}
 
-		return fmt.Errorf("failed to read %s: %w", releaseNoteDir, err)
+		return xerrors.Wrap(err, "failed to read "+releaseNoteDir)
 	}
 
 	names := make([]string, 0, len(entries))
@@ -322,12 +332,12 @@ func runPruneReleaseNotes() error {
 
 	for _, name := range releaseNotesToDelete(names) {
 		if err := os.Remove(filepath.Join(releaseNoteDir, name)); err != nil {
-			return fmt.Errorf("failed to remove %s: %w", name, err)
+			return xerrors.Wrap(err, "failed to remove "+name)
 		}
 	}
 
-	fmt.Printf("🧹 %s.md 以外のリリースノートを削除しました。\n", initialTag)
-	fmt.Println("✅ リリースノートの初期化を終了します。")
+	log.Printf("🧹 %s.md 以外のリリースノートを削除しました。", initialTag)
+	log.Printf("✅ リリースノートの初期化を終了します。")
 
 	return nil
 }
@@ -335,20 +345,31 @@ func runPruneReleaseNotes() error {
 // ---- コマンド実行 -----------------------------------------------------------
 
 func tagExists(tag string) bool {
-	return exec.Command("git", "rev-parse", "--verify", "refs/tags/"+tag).Run() == nil //nolint:gosec // tag は本ファイル内の定数
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+
+	//nolint:gosec // tag は本ファイル内の定数
+	return exec.CommandContext(ctx, "git", "rev-parse", "--verify", "refs/tags/"+tag).Run() == nil
 }
 
 func branchExists(branch string) bool {
-	return exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch).Run() == nil //nolint:gosec // branch は managedBranches の要素
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+
+	//nolint:gosec // branch は managedBranches の要素
+	return exec.CommandContext(ctx, "git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch).Run() == nil
 }
 
 func run(s step) error {
-	cmd := exec.Command(s.name, s.args...) //nolint:gosec // 引数は本ファイル内で組み立てた固定手順
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, s.name, s.args...) //nolint:gosec // 引数は本ファイル内で組み立てた固定手順
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil && !s.allowFail {
-		return fmt.Errorf("failed: %s: %w", s, err)
+		return xerrors.Wrap(err, "failed: "+s.String())
 	}
 
 	return nil
@@ -365,9 +386,12 @@ func runAll(steps []step) error {
 }
 
 func output(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).Output() //nolint:gosec // 引数は本ファイル内の固定値
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, name, args...).Output() //nolint:gosec // 引数は本ファイル内の固定値
 	if err != nil {
-		return "", fmt.Errorf("failed: %s %s: %w", name, strings.Join(args, " "), err)
+		return "", xerrors.Wrap(err, "failed: "+name+" "+strings.Join(args, " "))
 	}
 
 	return string(out), nil

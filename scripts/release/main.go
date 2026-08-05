@@ -15,29 +15,53 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
-// newFlagSet は、サブコマンド用のフラグ集合を作ります。
-func newFlagSet(name string) *flag.FlagSet {
-	return flag.NewFlagSet(name, flag.ExitOnError)
+const (
+	// releaseNoteDir は、タグ作成時に読むリリースノートの置き場所。
+	releaseNoteDir = ".github/release"
+	// minArgs は、プログラム名 + サブコマンドの最小引数数。
+	minArgs = 2
+	// commandTimeout は、git / gh 1 コマンドあたりの上限。push や Release 作成は
+	// ネットワーク越しのため、対話が無い前提で余裕を持たせる。
+	commandTimeout = 120 * time.Second
+)
+
+var (
+	// semverPattern は、リリースタグとして扱う形式。プレリリースやビルドメタデータは対象外。
+	semverPattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
+	// errNoTag は、起点となるリリースタグが 1 つも無いことを表す。
+	errNoTag = xerrors.New("❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください")
+)
+
+// version は、リリースタグの意味的なバージョン。
+type version struct {
+	major, minor, patch int
 }
 
-// releaseNoteDir は、タグ作成時に読むリリースノートの置き場所。
-const releaseNoteDir = ".github/release"
+// step は、実行する 1 コマンド。
+type step struct {
+	name string
+	args []string
+}
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: release <tag|branch> [flags]")
-		os.Exit(1)
+	log.SetFlags(0)
+
+	if len(os.Args) < minArgs {
+		log.Fatalf("❌ usage: release <tag|branch> [flags]")
 	}
 
 	var err error
@@ -48,26 +72,18 @@ func main() {
 	case "branch":
 		err = runBranch(os.Args[2:])
 	default:
-		err = fmt.Errorf("unknown subcommand: %s (tag / branch)", os.Args[1])
+		log.Fatalf("❌ unknown subcommand (tag / branch)")
 	}
 
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		log.Fatalf("%v", err)
 	}
 }
 
 // ---- バージョン解決（純粋） -------------------------------------------------
 
-// semverPattern は、リリースタグとして扱う形式。プレリリースやビルドメタデータは対象外。
-var semverPattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
-
-type version struct {
-	major, minor, patch int
-}
-
 func (v version) String() string {
-	return fmt.Sprintf("v%d.%d.%d", v.major, v.minor, v.patch)
+	return "v" + strconv.Itoa(v.major) + "." + strconv.Itoa(v.minor) + "." + strconv.Itoa(v.patch)
 }
 
 // parseVersion は、`vX.Y.Z` 形式の文字列を version へ変換します。
@@ -125,17 +141,11 @@ func bump(v version, kind string) (version, error) {
 	case "major":
 		return version{major: v.major + 1}, nil
 	default:
-		return version{}, fmt.Errorf("unknown -bump: %s (patch / minor / major)", kind)
+		return version{}, xerrors.New("unknown -bump: " + kind + " (patch / minor / major)")
 	}
 }
 
 // ---- 手順の組み立て（純粋） -------------------------------------------------
-
-// step は、実行する 1 コマンド。
-type step struct {
-	name string
-	args []string
-}
 
 func (s step) String() string { return s.name + " " + strings.Join(s.args, " ") }
 
@@ -150,7 +160,7 @@ func syncProductionSteps() []step {
 }
 
 // tagSteps は、リリースノートを本文にタグを打ち、GitHub Release を作る手順を返します。
-func tagSteps(next string, notePath string) []step {
+func tagSteps(next, notePath string) []step {
 	return []step{
 		{name: "git", args: []string{"tag", "-a", next, "-F", notePath}},
 		{name: "git", args: []string{"push", "origin", next}},
@@ -173,11 +183,8 @@ func notePath(v string) string { return releaseNoteDir + "/" + v + ".md" }
 
 // ---- 実行 -------------------------------------------------------------------
 
-// errNoTag は、起点となるリリースタグが 1 つも無いことを表します。
-var errNoTag = errors.New("❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください")
-
-// resolveNext は、最新タグを取得して次バージョンを決めます。
-func resolveNext(bumpKind string) (current, next version, err error) {
+// resolveNext は、最新タグを取得して次バージョン（現在, 次）を決めます。
+func resolveNext(bumpKind string) (version, version, error) {
 	if err := run(step{name: "git", args: []string{"fetch", "--tags", "origin"}}); err != nil {
 		return version{}, version{}, err
 	}
@@ -192,7 +199,7 @@ func resolveNext(bumpKind string) (current, next version, err error) {
 		return version{}, version{}, errNoTag
 	}
 
-	next, err = bump(current, bumpKind)
+	next, err := bump(current, bumpKind)
 	if err != nil {
 		return version{}, version{}, err
 	}
@@ -201,11 +208,11 @@ func resolveNext(bumpKind string) (current, next version, err error) {
 }
 
 func runTag(args []string) error {
-	fs := newFlagSet("tag")
+	fs := flag.NewFlagSet("tag", flag.ExitOnError)
 	bumpKind := fs.String("bump", "", "patch / minor / major")
 
 	if err := fs.Parse(args); err != nil {
-		return err
+		return xerrors.Wrap(err, "failed to parse flags")
 	}
 
 	current, next, err := resolveNext(*bumpKind)
@@ -213,66 +220,66 @@ func runTag(args []string) error {
 		return err
 	}
 
-	fmt.Printf("🔖 タグから最新タグバージョンを取得: %s\n", current)
-	fmt.Printf("➡️ 次のリリースバージョンを作成: %s\n", next)
+	log.Printf("🔖 タグから最新タグバージョンを取得: %s", current)
+	log.Printf("➡️ 次のリリースバージョンを作成: %s", next)
 
 	// production を最新へ合わせてからリリースノートの有無を見る。順序は入れ替えないこと。
 	// タグは production HEAD に打つので、確かめるべきは「production にノートがあるか」であり、
-	// checkout 前の作業ツリー（別ブランチ）にノートがあるかではない。
-	fmt.Println("🔄 productionブランチの最新を取得中...")
+	// switch 前の作業ツリー（別ブランチ）にノートがあるかではない。
+	log.Printf("🔄 productionブランチの最新を取得中...")
 
 	if err := runAll(syncProductionSteps()); err != nil {
 		return err
 	}
 
-	fmt.Println("✅ 最新のproductionを取得完了")
+	log.Printf("✅ 最新のproductionを取得完了")
 
 	note := notePath(next.String())
 	if _, err := os.Stat(note); err != nil {
-		return fmt.Errorf("❌ %s が存在しません。タグとリリースをスキップしました", note)
+		return xerrors.New("❌ " + note + " が存在しません。タグとリリースをスキップしました")
 	}
 
 	if err := runAll(tagSteps(next.String(), note)); err != nil {
 		return err
 	}
 
-	fmt.Printf("✅ タグを打ちました %s on production HEAD\n", next)
+	log.Printf("✅ タグを打ちました %s on production HEAD", next)
 
 	return nil
 }
 
 func runBranch(args []string) error {
-	fs := newFlagSet("branch")
+	fs := flag.NewFlagSet("branch", flag.ExitOnError)
 	bumpKind := fs.String("bump", "", "patch / minor / major")
 	prefix := fs.String("prefix", "release", "ブランチ名の接頭辞 (release / hotfix)")
 	base := fs.String("base", "production", "分岐元ブランチ")
 
 	if err := fs.Parse(args); err != nil {
-		return err
+		return xerrors.Wrap(err, "failed to parse flags")
 	}
 
-	fmt.Println("🔄 最新のタグを取得中...")
+	log.Printf("🔄 最新のタグを取得中...")
 
 	current, next, err := resolveNext(*bumpKind)
 	if err != nil {
-		if errors.Is(err, errNoTag) {
-			return errors.New("❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です\n" +
+		if xerrors.Is(err, errNoTag) {
+			return xerrors.New("❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です\n" +
 				"➡️ 先に make tag-patch などで初期タグを作成してから再実行してください")
 		}
 
 		return err
 	}
 
-	fmt.Println("✅ 最新のタグを取得完了")
+	log.Printf("✅ 最新のタグを取得完了")
 
 	branch := *prefix + "/" + next.String()
 
-	fmt.Printf("🔖 タグから最新リリースバージョンを取得: 【 %s 】\n", current)
-	fmt.Printf("➡️ 次のリリースバージョンを作成: 【 %s 】\n", next)
-	fmt.Printf("🌱 ブランチを作成: %s → 【 %s 】\n", *base, branch)
+	log.Printf("🔖 タグから最新リリースバージョンを取得: 【 %s 】", current)
+	log.Printf("➡️ 次のリリースバージョンを作成: 【 %s 】", next)
+	log.Printf("🌱 ブランチを作成: %s → 【 %s 】", *base, branch)
 
 	if remoteBranchExists(branch) {
-		return fmt.Errorf("❌ ブランチ【 %s 】は既に存在します。処理を中止します", branch)
+		return xerrors.New("❌ ブランチ【 " + branch + " 】は既に存在します。処理を中止します")
 	}
 
 	status, err := output("git", "status", "--porcelain")
@@ -283,32 +290,37 @@ func runBranch(args []string) error {
 	if strings.TrimSpace(status) != "" {
 		_ = run(step{name: "git", args: []string{"status", "--short"}})
 
-		return errors.New("❌ 作業ツリーに未コミットの変更があります。変更をコミットまたは退避してから再実行してください")
+		return xerrors.New("❌ 作業ツリーに未コミットの変更があります。変更をコミットまたは退避してから再実行してください")
 	}
 
 	if err := runAll(branchSteps(*base, branch)); err != nil {
 		return err
 	}
 
-	fmt.Printf("✅ デフォルトブランチを %s に切り替えて、プッシュしました。\n", branch)
+	log.Printf("✅ デフォルトブランチを %s に切り替えて、プッシュしました。", branch)
 
 	return nil
 }
 
 // remoteBranchExists は、origin に同名ブランチが既にあるかを返します。
 func remoteBranchExists(branch string) bool {
-	err := exec.Command("git", "ls-remote", "--exit-code", "--heads", "origin", branch).Run() //nolint:gosec // branch はタグ由来のバージョン文字列
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
 
-	return err == nil
+	//nolint:gosec // branch はタグ由来のバージョン文字列
+	return exec.CommandContext(ctx, "git", "ls-remote", "--exit-code", "--heads", "origin", branch).Run() == nil
 }
 
 func run(s step) error {
-	cmd := exec.Command(s.name, s.args...) //nolint:gosec // 引数は本ファイル内で組み立てた固定手順
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, s.name, s.args...) //nolint:gosec // 引数は本ファイル内で組み立てた固定手順
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed: %s: %w", s, err)
+		return xerrors.Wrap(err, "failed: "+s.String())
 	}
 
 	return nil
@@ -325,9 +337,12 @@ func runAll(steps []step) error {
 }
 
 func output(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).Output() //nolint:gosec // 引数は本ファイル内の固定値
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, name, args...).Output() //nolint:gosec // 引数は本ファイル内の固定値
 	if err != nil {
-		return "", fmt.Errorf("failed: %s %s: %w", name, strings.Join(args, " "), err)
+		return "", xerrors.Wrap(err, "failed: "+name+" "+strings.Join(args, " "))
 	}
 
 	return string(out), nil
