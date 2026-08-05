@@ -19,6 +19,12 @@ outputs:
   title:
     description: Heading for the PR comment
     value: ${{ steps.summarize.outputs.title }}
+  status:
+    description: >-
+      Verdict for upsert-pr-comment: `success` when nothing found here blocks a promotion, so the
+      comment is only created for findings that do. A summarize step that never finished leaves
+      `gating` empty, which is not `0` and therefore reports.
+    value: "${{ steps.summarize.outputs.gating == '0' && 'success' || 'gating' }}"
 
 runs:
   using: composite

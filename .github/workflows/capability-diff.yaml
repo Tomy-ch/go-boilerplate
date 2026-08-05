@@ -169,6 +169,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- capability-diff-result -->'
+          status: "${{ steps.diff.outputs.changed == 'false' && 'success' || 'changed' }}"
           title: "${{ steps.diff.outputs.title || '## ⚠️ Capability Diff: CUT OFF (no result produced)' }}"
           body-file: capability-diff-summary.md
           details-summary: '📄 Summary'

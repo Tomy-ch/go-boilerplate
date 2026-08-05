@@ -54,6 +54,10 @@ jobs:
           set -euo pipefail
           if git diff --quiet; then
             echo "status=ok" >> "$GITHUB_OUTPUT"
+            # A clean run writes a body too, even though nothing will normally read it: it is what
+            # overwrites a drift comment an earlier push left on this pull request, and the action
+            # reads a missing body as a cut-off rather than as a clean result.
+            echo "Every file synced from mise.toml matches; no drift." > /tmp/sync-versions-drift.md
             exit 0
           fi
           echo "status=drift" >> "$GITHUB_OUTPUT"
@@ -97,14 +101,15 @@ jobs:
           exit 1
 
       - name: Comment sync-versions result on PR
-        # This workflow comments only on drift, so the condition reads the drift status rather
-        # than failure(): failure() is false when the job is cancelled, which would leave the
-        # cut-off silent. An empty status means the detection never finished, so it comments.
-        if: always() && github.event_name == 'pull_request' && steps.drift.outputs.status != 'ok'
+        # The step runs on every outcome and hands the verdict to the action instead of gating
+        # itself on drift: a skipped step cannot reach a drift comment left by an earlier push,
+        # so the pull request would keep claiming drift that this run just found resolved.
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sync-versions-drift -->'
-          title: "${{ steps.drift.outputs.status == 'drift' && '## ❌ sync-versions: drift detected' || '## ⚠️ Sync Versions Check: CUT OFF (no result produced)' }}"
+          status: "${{ steps.drift.outputs.status == 'ok' && 'success' || 'drift' }}"
+          title: "${{ steps.drift.outputs.status == 'drift' && '## ❌ sync-versions: drift detected' || steps.drift.outputs.status == 'ok' && '## ✅ sync-versions: PASS (no drift)' || '## ⚠️ Sync Versions Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/sync-versions-drift.md

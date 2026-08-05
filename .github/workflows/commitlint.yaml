@@ -97,6 +97,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- commitlint-result -->'
+          status: ${{ steps.commitlint.outputs.status }}
           title: "${{ steps.commitlint.outputs.title || '## ⚠️ Commitlint: CUT OFF (no result produced)' }}"
           body-file: /tmp/commitlint.log
           details-summary: 'commitlint log'

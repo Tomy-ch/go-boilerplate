@@ -138,6 +138,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sbom-summary-spdx -->'
+          # An inventory, not a verdict: there is no state of this body that means "nothing to
+          # say", so it is posted on every run. This job only runs for a pull request into a
+          # deploy branch, where what went into the image is the thing being reviewed.
+          status: report
           body-file: sbom-summary.md
           # Negated on purpose: `cond && '' || X` always yields X, since an empty string is falsy.
           # The heading has to sit in the truthy branch, so the cut-off case is what gets tested.
@@ -197,6 +201,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-image-scan -->'
+          # The scan writes a table rather than a count, so this step has no clean signal to be
+          # quiet on; the gate step below is what turns a finding into a red check.
+          status: report
           body-file: trivy-image-scan.txt
           title: "${{ steps.trivy.outcome == 'success' && '## Trivy Image Scan (table)' || '## ⚠️ Image Scan (Trivy): CUT OFF (no result produced)' }}"
           details-summary: 'Image Scan Results'

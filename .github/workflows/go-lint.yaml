@@ -93,6 +93,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- golangci-lint-result -->'
+          status: ${{ steps.golangci.outputs.status }}
           title: "${{ steps.golangci.outputs.title || '## ⚠️ Go Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/golangci-lint.log
           details-summary: 'golangci-lint log'

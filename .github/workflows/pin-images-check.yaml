@@ -69,6 +69,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- pin-images-result -->'
+          status: ${{ steps.pin.outputs.status }}
           title: "${{ steps.pin.outputs.title || '## ⚠️ Pin Images Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/pin-images.log
           details-summary: 'pin-images log'
