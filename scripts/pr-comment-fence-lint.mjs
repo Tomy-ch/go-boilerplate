@@ -45,12 +45,7 @@ const STEP_BULLET = /^\s*-\s/
 const INTERPOLATED_SPAN = /`[^`\n]*(?:\$\{|\$[A-Za-z_]|%[-0-9.*]*[sb])[^`\n]*`/
 
 // 解決までフェンス検査から外すワークフロー。エントリは根拠の issue を持ち、直したら消す。
-const PASS_THROUGH_EXCLUSIONS = new Map([
-  [
-    "image-scan.yaml",
-    "#871: SBOM summary が素通し経路で、span どころか生 Markdown のまま値を埋めている（データ源が SBOM で本文が見出しをレンダリングさせる設計のため #835 と同じ解決が採れない）",
-  ],
-])
+const PASS_THROUGH_EXCLUSIONS = new Map([])
 
 function listWorkflows() {
   const dir = path.join(REPO_ROOT, WORKFLOWS_DIR)

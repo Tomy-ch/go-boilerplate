@@ -90,10 +90,73 @@ jobs:
             echo "SBOM not found: $FILE" >&2
             exit 1
           fi
+          # Every value below is read out of the SBOM, and a pull request decides what goes into the
+          # image the SBOM describes, so a package name, a version or a licence string is text an
+          # author chose. This body reaches upsert-pr-comment with no `details-summary`, which
+          # leaves the fencing here, and the answer the other pass-through callers use — wrap the
+          # whole body — is not available: the headings and the bold label are meant to render, as
+          # an inventory a reviewer reads. The template is therefore literal Markdown and every
+          # value reaches it through one of the two helpers below.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          # An inline code span is a fence of length one, so a scalar is delimited by one more
+          # backtick than its own longest run, on the same terms. The space at each end is the one
+          # CommonMark strips back off, and it is what holds a value that begins or ends with a
+          # backtick inside the span instead of closing it early.
+          # A scalar is capped and its long runs elided for the same reason the lists are, and the
+          # cap is what makes the span survive at all: the action trims the body to `max-length`
+          # with no regard for Markdown, so a value long enough to push the closing delimiter past
+          # that point would leave the span open and everything inside it live.
+          scalar_limit=200
+          code_span() {
+            local value longest len delim
+            value="$(printf '%s' "$1" | tr -d '\r\n' | cut -c "1-$scalar_limit" | sed -E 's/`{10,}/[long backtick run elided]/g')"
+            if [ -z "$value" ]; then value="unknown"; fi
+            longest="$(printf '%s' "$value" | { grep -a -o '`\{1,\}' || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            delim="$(printf '%*s' "$len" '' | tr ' ' '\140')"
+            printf '%s %s %s' "$delim" "$value" "$delim"
+          }
+
+          # The two lists are fenced rather than spanned, so they need trimming before the fence is
+          # sized, exactly as the gen-*-artifacts checks do. What does not carry over is the reason
+          # their fence cannot run away: an SBOM string is bounded by nothing, so a run long enough
+          # to price the fence out of the body budget is reachable and is elided first. No module
+          # path or licence identifier holds ten backticks.
+          # Two lists at this limit plus five capped scalars stay well inside the action's 45000
+          # character default, which is what keeps the trim above from ever reaching this body.
+          list_limit=12000
+          prepare_list() {
+            local src="$1" dst="$2"
+            # head cuts on a byte boundary, so it can split a trailing multi-byte character. `-c`
+            # drops an invalid sequence mid-stream but not a truncated one at the end: iconv exits
+            # non-zero there, which under `set -euo pipefail` would fail this step over a cut that
+            # landed one byte off. It writes the converted prefix before exiting, which is the
+            # wanted result, so the failure is absorbed rather than propagated.
+            { head -c "$list_limit" "$src" | iconv -f UTF-8 -t UTF-8 -c || true; } \
+              | sed -E 's/`{10,}/[long backtick run elided]/g' > "$dst"
+            if [ "$(wc -c < "$src")" -gt "$list_limit" ]; then
+              printf '\n... (list truncated)\n' >> "$dst"
+            fi
+          }
+
           NAME=$(jq -r '.name // "unknown"' "$FILE")
           CREATED=$(jq -r '.creationInfo.created // "unknown"' "$FILE")
+          # `length` is a number whatever the SBOM holds, so this is the one value that reaches the
+          # body unescaped.
           TOTAL_PKGS=$(jq -r '.packages | length' "$FILE")
           DIGEST=$(jq -r '[.packages[] | select(.primaryPackagePurpose=="CONTAINER") | .checksums[]? | select(.algorithm=="SHA256") | .checksumValue][0] // "unknown"' "$FILE")
+          # A SHA256 digest has exactly one shape, and anything else in that field is not a digest
+          # this comment should be repeating.
+          if ! printf '%s' "$DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then DIGEST="unknown"; fi
           DISTRO=$(jq -r '[.packages[]?.externalRefs[]? | select(.referenceType=="purl") | .referenceLocator | capture("distro=(?<distro>[^&]+)").distro] | .[0] // "unknown"' "$FILE")
           GOVERSION=$(jq -r '(.packages[] | select(.name=="stdlib") | .versionInfo) // "unknown"' "$FILE")
           # Top 50 Go modules with versions
@@ -104,9 +167,9 @@ jobs:
               | {n:.name, v:(.versionInfo // "UNKNOWN")} ]
             | sort_by(.n)
             | .[0:50]
-            | map("- `" + .n + "@" + .v + "`")
+            | map("- " + .n + "@" + .v)
             | join("\n")
-          ' "$FILE" > _gomods.md
+          ' "$FILE" > _gomods_raw.md
           # Declared licenses histogram (top 25)
           jq -r '
             [ .packages[] | .licenseDeclared? | select(. != null and . != "NOASSERTION") ]
@@ -115,20 +178,29 @@ jobs:
             | map("- " + .key + ": " + (.value|tostring))
             | if length>0 then . else ["- (none)"] end
             | join("\n")
-          ' "$FILE" > _licenses.md
-          cat > sbom-summary.md << MD
-          ## SBOM Summary (SPDX)
-          **Image**: ${NAME}
-          - Created: ${CREATED}
-          - Image Digest (SHA256): \`${DIGEST}\`
-          - Distro: ${DISTRO}
-          - Total Packages: ${TOTAL_PKGS}
-          - Go Toolchain: ${GOVERSION}
-          ### Key Go Modules (top 50)
-          $(cat _gomods.md)
-          ### Declared Licenses (top 25)
-          $(cat _licenses.md)
-          MD
+          ' "$FILE" > _licenses_raw.md
+          prepare_list _gomods_raw.md _gomods.md
+          prepare_list _licenses_raw.md _licenses.md
+          gomods_fence="$(fence_for _gomods.md)"
+          licenses_fence="$(fence_for _licenses.md)"
+
+          {
+            echo "## SBOM Summary (SPDX)"
+            printf '%s\n' "**Image**: $(code_span "$NAME")"
+            printf '%s\n' "- Created: $(code_span "$CREATED")"
+            printf '%s\n' "- Image Digest (SHA256): $(code_span "$DIGEST")"
+            printf '%s\n' "- Distro: $(code_span "$DISTRO")"
+            printf '%s\n' "- Total Packages: ${TOTAL_PKGS}"
+            printf '%s\n' "- Go Toolchain: $(code_span "$GOVERSION")"
+            echo "### Key Go Modules (top 50)"
+            echo "${gomods_fence}text"
+            cat _gomods.md
+            echo "${gomods_fence}"
+            echo "### Declared Licenses (top 25)"
+            echo "${licenses_fence}text"
+            cat _licenses.md
+            echo "${licenses_fence}"
+          } > sbom-summary.md
           echo "Generated sbom-summary.md" && wc -c sbom-summary.md
 
       - name: Comment SBOM result on PR
