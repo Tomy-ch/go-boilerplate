@@ -18,7 +18,7 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/pkg/patch"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,12 +43,12 @@ type updateTestDeps struct {
 func newUpdateTarget(t *testing.T, version int) *domainproduct.Product {
 	t.Helper()
 
-	statusRef, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, "update_current_status"), "現行ステータス")
+	statusRef, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, "update_current_status"), "現行ステータス")
 	require.NoError(t, err)
-	categoryRef, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, "update_current_category"), "現行カテゴリ")
+	categoryRef, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "update_current_category"), "現行カテゴリ")
 	require.NoError(t, err)
 
-	p, err := domainproduct.Reconstruct(uuid.NewTestFromSalt(t, "update_product"), domainproduct.Attributes{
+	p, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, "update_product"), domainproduct.Attributes{
 		Name:                  "現行商品名",
 		Description:           ptr.To("現行説明"),
 		Price:                 mustPrice(t, "10.5"),
@@ -225,7 +225,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
 
-			newStatusID := uuid.NewTestFromSalt(t, "update_new_status")
+			newStatusID := uuidtestkit.NewTestFromSalt(t, "update_new_status")
 			deps.statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(mustStatus(t, newStatusID), nil)
 			deps.categoryRepo.EXPECT().
 				FindByID(gomock.Any(), entity.Category().ID()).
@@ -300,7 +300,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			u, _ := newUpdateTestUsecase(t)
 
 			actual, err := u.UpdateProduct(context.Background(), nil,
-				uuid.NewTestFromSalt(t, "update_unauthenticated"), UpdateProductParams{Version: currentVersion})
+				uuidtestkit.NewTestFromSalt(t, "update_unauthenticated"), UpdateProductParams{Version: currentVersion})
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 			assert.Equal(t, ProductView{}, actual)
 		})
@@ -315,7 +315,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).Times(0)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{},
-				uuid.NewTestFromSalt(t, "update_forbidden"), UpdateProductParams{Version: currentVersion})
+				uuidtestkit.NewTestFromSalt(t, "update_forbidden"), UpdateProductParams{Version: currentVersion})
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 			assert.Equal(t, ProductView{}, actual)
 		})
@@ -326,7 +326,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			entity := newUpdateTarget(t, currentVersion)
 			u, deps := newUpdateTestUsecase(t)
 			expectAuthorizedLoad(deps, entity)
-			newStatusID := uuid.NewTestFromSalt(t, "update_missing_status")
+			newStatusID := uuidtestkit.NewTestFromSalt(t, "update_missing_status")
 			deps.statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(nil, apperror.ErrNotFound)
 			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
@@ -346,7 +346,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).Times(0)
 
 			_, err := u.UpdateProduct(context.Background(), &auth.Authn{},
-				uuid.NewTestFromSalt(t, "update_invalid_price"), UpdateProductParams{
+				uuidtestkit.NewTestFromSalt(t, "update_invalid_price"), UpdateProductParams{
 					Version: currentVersion,
 					Price:   ptr.To("not-a-number"),
 				})
@@ -363,7 +363,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).Times(0)
 
 			_, err := u.UpdateProduct(context.Background(), &auth.Authn{},
-				uuid.NewTestFromSalt(t, "update_negative_price"), UpdateProductParams{
+				uuidtestkit.NewTestFromSalt(t, "update_negative_price"), UpdateProductParams{
 					Version: currentVersion,
 					Price:   ptr.To("-1"),
 				})
@@ -374,7 +374,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			id := uuid.NewTestFromSalt(t, "update_missing")
+			id := uuidtestkit.NewTestFromSalt(t, "update_missing")
 			deps.authorizer.EXPECT().
 				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductUpdate, gomock.Any()).
 				Return(nil)
@@ -468,7 +468,7 @@ func Test_usecase_resolveUpdatedRefs(t *testing.T) {
 			t.Parallel()
 
 			entity := newUpdateTarget(t, 1)
-			newStatusID := uuid.NewTestFromSalt(t, "resolve_updated_status")
+			newStatusID := uuidtestkit.NewTestFromSalt(t, "resolve_updated_status")
 			statusRepo, categoryRepo := newRefRepos(t)
 			statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(mustStatus(t, newStatusID), nil)
 			categoryRepo.EXPECT().
@@ -489,7 +489,7 @@ func Test_usecase_resolveUpdatedRefs(t *testing.T) {
 			t.Parallel()
 
 			entity := newUpdateTarget(t, 1)
-			newCategoryID := uuid.NewTestFromSalt(t, "resolve_updated_category")
+			newCategoryID := uuidtestkit.NewTestFromSalt(t, "resolve_updated_category")
 			statusRepo, categoryRepo := newRefRepos(t)
 			statusRepo.EXPECT().
 				FindByID(gomock.Any(), entity.Status().ID()).
@@ -514,7 +514,7 @@ func Test_usecase_resolveUpdatedRefs(t *testing.T) {
 			t.Parallel()
 
 			entity := newUpdateTarget(t, 1)
-			newStatusID := uuid.NewTestFromSalt(t, "resolve_updated_missing_status")
+			newStatusID := uuidtestkit.NewTestFromSalt(t, "resolve_updated_missing_status")
 			statusRepo, categoryRepo := newRefRepos(t)
 			statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(nil, apperror.ErrNotFound)
 

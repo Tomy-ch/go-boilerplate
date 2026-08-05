@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 func TestNewRole(t *testing.T) {
 	t.Parallel()
 
-	validID := uuid.NewTestFromSalt(t, "role")
+	validID := uuidtestkit.NewTestFromSalt(t, "role")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -111,7 +112,7 @@ func Test_RoleCode_valid(t *testing.T) {
 func TestRoles_HasAdmin(t *testing.T) {
 	t.Parallel()
 
-	validID := uuid.NewTestFromSalt(t, "role")
+	validID := uuidtestkit.NewTestFromSalt(t, "role")
 
 	adminRole, err := NewRole(validID, "管理者", int(RoleCodeAdmin))
 	require.NoError(t, err)
@@ -144,7 +145,7 @@ func TestRoles_HasAdmin(t *testing.T) {
 func TestRole_Code(t *testing.T) {
 	t.Parallel()
 
-	validID := uuid.NewTestFromSalt(t, "role")
+	validID := uuidtestkit.NewTestFromSalt(t, "role")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -178,7 +179,7 @@ func TestRole_ID(t *testing.T) {
 		t.Run("構築時の id を返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "role_id")
+			id := uuidtestkit.NewTestFromSalt(t, "role_id")
 			role, err := NewRole(id, "管理者", int(RoleCodeAdmin))
 			require.NoError(t, err)
 
@@ -190,7 +191,7 @@ func TestRole_ID(t *testing.T) {
 func TestRole_IsAdmin(t *testing.T) {
 	t.Parallel()
 
-	validID := uuid.NewTestFromSalt(t, "role")
+	validID := uuidtestkit.NewTestFromSalt(t, "role")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -224,7 +225,7 @@ func TestRole_Name(t *testing.T) {
 		t.Run("構築時のロール名を返す", func(t *testing.T) {
 			t.Parallel()
 
-			role, err := NewRole(uuid.NewTestFromSalt(t, "role_name"), "運用管理者", int(RoleCodeAdmin))
+			role, err := NewRole(uuidtestkit.NewTestFromSalt(t, "role_name"), "運用管理者", int(RoleCodeAdmin))
 			require.NoError(t, err)
 
 			assert.Equal(t, "運用管理者", role.Name())

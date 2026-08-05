@@ -7,7 +7,7 @@ import (
 	"go-boilerplate/internal/config"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,7 +65,7 @@ func Test_authorizer_Authorize(t *testing.T) {
 		return authn
 	}
 
-	ownerID := uuid.NewTestFromSalt(t, "owner")
+	ownerID := uuidtestkit.NewTestFromSalt(t, "owner")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()

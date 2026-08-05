@@ -7,6 +7,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,8 +17,8 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	id := uuid.NewTestFromSalt(t, "user")
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 	firstName := "John"
 	lastName := "Doe"
 	email := "john.doe@example.com"
@@ -642,13 +643,13 @@ func TestNew(t *testing.T) {
 func newAccessorUser(t *testing.T) *User {
 	t.Helper()
 	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	u, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+	u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 		Profile: Profile{
 			FirstName:    "John",
 			LastName:     "Doe",
 			Email:        "john.doe@example.com",
 			Phone:        "1234567890",
-			PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+			PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 			City:         "Shibuya",
 			Street:       "1-2-3",
 			Building:     new("Building A"),
@@ -798,13 +799,13 @@ func TestUser_Building(t *testing.T) {
 		t.Run("buildingがnilの場合、nilを返す", func(t *testing.T) {
 			t.Parallel()
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-			u, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+			u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 				Profile: Profile{
 					FirstName:    "John",
 					LastName:     "Doe",
 					Email:        "john.doe@example.com",
 					Phone:        "1234567890",
-					PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 					City:         "Shibuya",
 					Street:       "1-2-3",
 					PostalCode:   "150-0001",
@@ -822,13 +823,13 @@ func TestUser_Building(t *testing.T) {
 		t.Run("返り値を変更しても内部状態は不変", func(t *testing.T) {
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			building := new("Building A")
-			user, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+			user, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 				Profile: Profile{
 					FirstName:    "John",
 					LastName:     "Doe",
 					Email:        "john.doe@example.com",
 					Phone:        "1234567890",
-					PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 					City:         "Shibuya",
 					Street:       "1-2-3",
 					Building:     building,
@@ -899,13 +900,13 @@ func TestUser_DeletedAt(t *testing.T) {
 		t.Run("deletedAtがnilの場合、nilを返す", func(t *testing.T) {
 			t.Parallel()
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-			u, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+			u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 				Profile: Profile{
 					FirstName:    "John",
 					LastName:     "Doe",
 					Email:        "john.doe@example.com",
 					Phone:        "1234567890",
-					PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 					City:         "Shibuya",
 					Street:       "1-2-3",
 					PostalCode:   "150-0001",
@@ -923,13 +924,13 @@ func TestUser_DeletedAt(t *testing.T) {
 		t.Run("返り値を変更しても内部状態は不変", func(t *testing.T) {
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			deletedAt := new(baseTime.Add(time.Hour).Add(time.Minute))
-			user, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+			user, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 				Profile: Profile{
 					FirstName:    "John",
 					LastName:     "Doe",
 					Email:        "john.doe@example.com",
 					Phone:        "1234567890",
-					PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 					City:         "Shibuya",
 					Street:       "1-2-3",
 					Building:     new("Building A"),
@@ -1018,13 +1019,13 @@ func TestUser_FullName(t *testing.T) {
 func newValidUser(t *testing.T) (*User, time.Time) {
 	t.Helper()
 	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	u, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+	u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 		Profile: Profile{
 			FirstName:    "John",
 			LastName:     "Doe",
 			Email:        "john@example.com",
 			Phone:        "1234567890",
-			PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+			PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 			City:         "Shibuya",
 			Street:       "1-2-3",
 			Building:     new("Building A"),
@@ -1041,13 +1042,13 @@ func newValidUser(t *testing.T) (*User, time.Time) {
 func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time) {
 	t.Helper()
 	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	u, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+	u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 		Profile: Profile{
 			FirstName:    "John",
 			LastName:     "Doe",
 			Email:        "john@example.com",
 			Phone:        "1234567890",
-			PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+			PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 			City:         "Shibuya",
 			Street:       "1-2-3",
 			Building:     new("Building A"),
@@ -1063,7 +1064,7 @@ func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time)
 func TestUser_UpdateProfile(t *testing.T) {
 	t.Parallel()
 
-	newPrefID := uuid.NewTestFromSalt(t, "prefecture2")
+	newPrefID := uuidtestkit.NewTestFromSalt(t, "prefecture2")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -1331,7 +1332,7 @@ func Test_validateDeletedAt(t *testing.T) {
 func Test_validateProfileFields(t *testing.T) {
 	t.Parallel()
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -1477,13 +1478,13 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		t.Run("deletedAtがupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 			base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-			u, err := New(uuid.NewTestFromSalt(t, "user"), Attributes{
+			u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
 				Profile: Profile{
 					FirstName:    "John",
 					LastName:     "Doe",
 					Email:        "john@example.com",
 					Phone:        "1234567890",
-					PrefectureID: uuid.NewTestFromSalt(t, "prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
 					City:         "Shibuya",
 					Street:       "1-2-3",
 					Building:     new("Building A"),

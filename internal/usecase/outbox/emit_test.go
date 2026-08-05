@@ -11,6 +11,7 @@ import (
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			// noop tracer は有効なスパンを持たないため traceparent が注入されず、headers は nil のままになる。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg")
+			want := uuidtestkit.NewTestFromSalt(t, "msg")
 
 			store.EXPECT().
 				Insert(gomock.Any(), outboxbndry.EmitParams{
@@ -83,7 +84,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			// noop tracer は有効なスパンを持たないため traceparent の上書きが起きず、ユーザ提供値がそのまま残る。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg2")
+			want := uuidtestkit.NewTestFromSalt(t, "msg2")
 
 			store.EXPECT().
 				Insert(gomock.Any(), gomock.Any()).
@@ -110,7 +111,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			// egress 起点として、誤って混入した既知の機微ヘッダは denylist で落とし外部へ送出しない。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg_denylist")
+			want := uuidtestkit.NewTestFromSalt(t, "msg_denylist")
 
 			store.EXPECT().
 				Insert(gomock.Any(), gomock.Any()).
@@ -150,7 +151,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg3")
+			want := uuidtestkit.NewTestFromSalt(t, "msg3")
 
 			store.EXPECT().
 				Insert(gomock.Any(), gomock.Any()).
@@ -182,7 +183,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg4")
+			want := uuidtestkit.NewTestFromSalt(t, "msg4")
 
 			store.EXPECT().
 				Insert(gomock.Any(), gomock.Any()).

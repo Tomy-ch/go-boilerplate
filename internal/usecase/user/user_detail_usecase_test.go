@@ -23,6 +23,7 @@ import (
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/user/event"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -47,7 +48,7 @@ func newDenyAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
 // newTestAuthn は、テスト用の認証主体（Authn）を返します。
 func newTestAuthn(t *testing.T) *authbd.Authn {
 	t.Helper()
-	authn, err := authbd.New(uuid.NewTestFromSalt(t, "caller").String(), authbd.IssuerMock, nil, nil)
+	authn, err := authbd.New(uuidtestkit.NewTestFromSalt(t, "caller").String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 	return authn
 }
@@ -88,8 +89,8 @@ func Test_usecase_GetUser(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 
 	pft, err := prefecture.New(prefID, "Tokyo", 13)
 	require.NoError(t, err)
@@ -183,8 +184,8 @@ func Test_usecase_UpdateUser(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 	prefName := "Tokyo"
 
 	pft, err := prefecture.New(prefID, prefName, 13)
@@ -301,8 +302,8 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 
 	pft, err := prefecture.New(prefID, "Osaka", 27)
 	require.NoError(t, err)
@@ -452,8 +453,8 @@ func Test_usecase_DeleteUser(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 	authn, err := authbd.New(id.String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 

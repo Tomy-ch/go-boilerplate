@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/domain/lexicon/money"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,13 +28,13 @@ func mustPrice(t *testing.T, s string) money.Price {
 // validNewArgs は、New の有効な入力（id / code / userID / 明細入力 / ロック済み在庫）を返すテストヘルパーです。
 func validNewArgs(t *testing.T) (uuid.UUID, string, uuid.UUID, []DetailInput, []LockedProduct) {
 	t.Helper()
-	id := uuid.NewTestFromSalt(t, "purchase_id")
-	userID := uuid.NewTestFromSalt(t, "user_id")
-	productA := uuid.NewTestFromSalt(t, "product_a")
-	productB := uuid.NewTestFromSalt(t, "product_b")
+	id := uuidtestkit.NewTestFromSalt(t, "purchase_id")
+	userID := uuidtestkit.NewTestFromSalt(t, "user_id")
+	productA := uuidtestkit.NewTestFromSalt(t, "product_a")
+	productB := uuidtestkit.NewTestFromSalt(t, "product_b")
 	inputs := []DetailInput{
-		{ID: uuid.NewTestFromSalt(t, "detail_a"), ProductID: productA, Quantity: 2},
-		{ID: uuid.NewTestFromSalt(t, "detail_b"), ProductID: productB, Quantity: 1},
+		{ID: uuidtestkit.NewTestFromSalt(t, "detail_a"), ProductID: productA, Quantity: 2},
+		{ID: uuidtestkit.NewTestFromSalt(t, "detail_b"), ProductID: productB, Quantity: 1},
 	}
 	locked := []LockedProduct{
 		NewLockedProduct(productA, mustPrice(t, "800"), 20),
@@ -86,11 +87,11 @@ func TestNew(t *testing.T) {
 		t.Run("税額は切り捨てで丸められる", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "p_round")
-			userID := uuid.NewTestFromSalt(t, "u_round")
-			productID := uuid.NewTestFromSalt(t, "prod_round")
+			id := uuidtestkit.NewTestFromSalt(t, "p_round")
+			userID := uuidtestkit.NewTestFromSalt(t, "u_round")
+			productID := uuidtestkit.NewTestFromSalt(t, "prod_round")
 			// unit_price=$1.05 → subtotal=105セント → tax=105*10/100=10.5 → 切り捨て 10
-			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_round"), ProductID: productID, Quantity: 1}}
+			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_round"), ProductID: productID, Quantity: 1}}
 			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "1.05"), 5)}
 
 			actual, err := New(id, "code-round", userID, inputs, locked)
@@ -101,11 +102,11 @@ func TestNew(t *testing.T) {
 		t.Run("サブセント単価は小計算出時に決済スケール(整数セント)へ切り捨てられる", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "p_subcent")
-			userID := uuid.NewTestFromSalt(t, "u_subcent")
-			productID := uuid.NewTestFromSalt(t, "prod_subcent")
+			id := uuidtestkit.NewTestFromSalt(t, "p_subcent")
+			userID := uuidtestkit.NewTestFromSalt(t, "u_subcent")
+			productID := uuidtestkit.NewTestFromSalt(t, "prod_subcent")
 			// unit_price=$1.005（サブセント）× 3 = $3.015 → 切り捨てで 301 セント
-			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_subcent"), ProductID: productID, Quantity: 3}}
+			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_subcent"), ProductID: productID, Quantity: 3}}
 			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "1.005"), 5)}
 
 			actual, err := New(id, "code-subcent", userID, inputs, locked)
@@ -117,10 +118,10 @@ func TestNew(t *testing.T) {
 		t.Run("数量が最小値(1)の場合でも購入を生成する", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "p_min")
-			userID := uuid.NewTestFromSalt(t, "u_min")
-			productID := uuid.NewTestFromSalt(t, "prod_min")
-			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_min"), ProductID: productID, Quantity: minQuantity}}
+			id := uuidtestkit.NewTestFromSalt(t, "p_min")
+			userID := uuidtestkit.NewTestFromSalt(t, "u_min")
+			productID := uuidtestkit.NewTestFromSalt(t, "prod_min")
+			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_min"), ProductID: productID, Quantity: minQuantity}}
 			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "10"), 1)}
 
 			actual, err := New(id, "code-min", userID, inputs, locked)
@@ -231,11 +232,11 @@ func TestNew(t *testing.T) {
 
 		t.Run("単価が巨大で小計が決済スケール(int64)を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
-			id := uuid.NewTestFromSalt(t, "p_overflow")
-			userID := uuid.NewTestFromSalt(t, "u_overflow")
-			productID := uuid.NewTestFromSalt(t, "prod_overflow")
+			id := uuidtestkit.NewTestFromSalt(t, "p_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "u_overflow")
+			productID := uuidtestkit.NewTestFromSalt(t, "prod_overflow")
 			// $92233720368547758.08 × 100 = 9223372036854775808 セント（MaxInt64 超）
-			inputs := []DetailInput{{ID: uuid.NewTestFromSalt(t, "d_overflow"), ProductID: productID, Quantity: 1}}
+			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_overflow"), ProductID: productID, Quantity: 1}}
 			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "92233720368547758.08"), 5)}
 
 			actual, err := New(id, "code-overflow", userID, inputs, locked)
@@ -250,11 +251,11 @@ func TestReconstruct(t *testing.T) {
 
 	valid := func(t *testing.T) (uuid.UUID, string, uuid.UUID, uuid.UUID, []PurchaseDetail, time.Time) {
 		t.Helper()
-		id := uuid.NewTestFromSalt(t, "rc_id")
-		userID := uuid.NewTestFromSalt(t, "rc_user")
-		statusID := uuid.NewTestFromSalt(t, "rc_status")
+		id := uuidtestkit.NewTestFromSalt(t, "rc_id")
+		userID := uuidtestkit.NewTestFromSalt(t, "rc_user")
+		statusID := uuidtestkit.NewTestFromSalt(t, "rc_status")
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "rc_d1"), uuid.NewTestFromSalt(t, "rc_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "rc_d1"), uuidtestkit.NewTestFromSalt(t, "rc_p1"), 2, mustPrice(t, "800")),
 		}
 		orderedAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
 		return id, "rc-code", userID, statusID, details, orderedAt
@@ -717,11 +718,11 @@ func TestPurchase_Cancel(t *testing.T) {
 	build := func(t *testing.T, statusCode int, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "cancel_d1"), uuid.NewTestFromSalt(t, "cancel_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "cancel_d1"), uuidtestkit.NewTestFromSalt(t, "cancel_p1"), 2, mustPrice(t, "800")),
 		}
 		p, err := Reconstruct(
-			uuid.NewTestFromSalt(t, "cancel_id"), "cancel-code",
-			uuid.NewTestFromSalt(t, "cancel_user"), uuid.NewTestFromSalt(t, "cancel_status"),
+			uuidtestkit.NewTestFromSalt(t, "cancel_id"), "cancel-code",
+			uuidtestkit.NewTestFromSalt(t, "cancel_user"), uuidtestkit.NewTestFromSalt(t, "cancel_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			nil, canceledAt, shippedAt, deliveredAt,
@@ -780,11 +781,11 @@ func TestPurchase_Pay(t *testing.T) {
 	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "pay_d1"), uuid.NewTestFromSalt(t, "pay_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "pay_d1"), uuidtestkit.NewTestFromSalt(t, "pay_p1"), 2, mustPrice(t, "800")),
 		}
 		p, err := Reconstruct(
-			uuid.NewTestFromSalt(t, "pay_id"), "pay-code",
-			uuid.NewTestFromSalt(t, "pay_user"), uuid.NewTestFromSalt(t, "pay_status"),
+			uuidtestkit.NewTestFromSalt(t, "pay_id"), "pay-code",
+			uuidtestkit.NewTestFromSalt(t, "pay_user"), uuidtestkit.NewTestFromSalt(t, "pay_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			paidAt, canceledAt, shippedAt, deliveredAt,
@@ -852,7 +853,7 @@ func TestLockedProduct_Price(t *testing.T) {
 		t.Run("ロック時のサブセント価格スナップショットを返す", func(t *testing.T) {
 			t.Parallel()
 
-			l := NewLockedProduct(uuid.NewTestFromSalt(t, "lp_price"), mustPrice(t, "19.995"), 5)
+			l := NewLockedProduct(uuidtestkit.NewTestFromSalt(t, "lp_price"), mustPrice(t, "19.995"), 5)
 			assert.Equal(t, "19.995", l.Price().String())
 			assert.True(t, l.Price().Decimal().Equal(decimaltestkit.MustParse(t, "19.995")))
 		})
@@ -869,8 +870,8 @@ func TestPurchaseDetail_UnitPrice(t *testing.T) {
 			t.Parallel()
 
 			d := NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, "pd_id"),
-				uuid.NewTestFromSalt(t, "pd_product"),
+				uuidtestkit.NewTestFromSalt(t, "pd_id"),
+				uuidtestkit.NewTestFromSalt(t, "pd_product"),
 				2, mustPrice(t, "1.005"),
 			)
 			assert.Equal(t, "1.005", d.UnitPrice().String())
@@ -885,11 +886,11 @@ func TestPurchase_Ship(t *testing.T) {
 	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "ship_d1"), uuid.NewTestFromSalt(t, "ship_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "ship_d1"), uuidtestkit.NewTestFromSalt(t, "ship_p1"), 2, mustPrice(t, "800")),
 		}
 		p, err := Reconstruct(
-			uuid.NewTestFromSalt(t, "ship_id"), "ship-code",
-			uuid.NewTestFromSalt(t, "ship_user"), uuid.NewTestFromSalt(t, "ship_status"),
+			uuidtestkit.NewTestFromSalt(t, "ship_id"), "ship-code",
+			uuidtestkit.NewTestFromSalt(t, "ship_user"), uuidtestkit.NewTestFromSalt(t, "ship_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			paidAt, canceledAt, shippedAt, deliveredAt,
@@ -972,7 +973,7 @@ func TestPurchase_ShippedAt(t *testing.T) {
 	build := func(t *testing.T, shippedAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "sa_d1"), uuid.NewTestFromSalt(t, "sa_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "sa_d1"), uuidtestkit.NewTestFromSalt(t, "sa_p1"), 2, mustPrice(t, "800")),
 		}
 		statusCode := StatusCodePaid
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
@@ -980,8 +981,8 @@ func TestPurchase_ShippedAt(t *testing.T) {
 			statusCode = StatusCodeShipped
 		}
 		p, err := Reconstruct(
-			uuid.NewTestFromSalt(t, "sa_id"), "sa-code",
-			uuid.NewTestFromSalt(t, "sa_user"), uuid.NewTestFromSalt(t, "sa_status"),
+			uuidtestkit.NewTestFromSalt(t, "sa_id"), "sa-code",
+			uuidtestkit.NewTestFromSalt(t, "sa_user"), uuidtestkit.NewTestFromSalt(t, "sa_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			&paidAt, nil, shippedAt, nil,
@@ -1034,11 +1035,11 @@ func TestPurchase_Deliver(t *testing.T) {
 	build := func(t *testing.T, statusCode int, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "dlv_d1"), uuid.NewTestFromSalt(t, "dlv_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "dlv_d1"), uuidtestkit.NewTestFromSalt(t, "dlv_p1"), 2, mustPrice(t, "800")),
 		}
 		p, err := Reconstruct(
-			uuid.NewTestFromSalt(t, "dlv_id"), "dlv-code",
-			uuid.NewTestFromSalt(t, "dlv_user"), uuid.NewTestFromSalt(t, "dlv_status"),
+			uuidtestkit.NewTestFromSalt(t, "dlv_id"), "dlv-code",
+			uuidtestkit.NewTestFromSalt(t, "dlv_user"), uuidtestkit.NewTestFromSalt(t, "dlv_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			paidAt, canceledAt, shippedAt, deliveredAt,
@@ -1125,7 +1126,7 @@ func TestPurchase_DeliveredAt(t *testing.T) {
 	build := func(t *testing.T, deliveredAt *time.Time) *Purchase {
 		t.Helper()
 		details := []PurchaseDetail{
-			NewPurchaseDetail(uuid.NewTestFromSalt(t, "da_d1"), uuid.NewTestFromSalt(t, "da_p1"), 2, mustPrice(t, "800")),
+			NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "da_d1"), uuidtestkit.NewTestFromSalt(t, "da_p1"), 2, mustPrice(t, "800")),
 		}
 		statusCode := StatusCodeShipped
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
@@ -1134,8 +1135,8 @@ func TestPurchase_DeliveredAt(t *testing.T) {
 			statusCode = StatusCodeDelivered
 		}
 		p, err := Reconstruct(
-			uuid.NewTestFromSalt(t, "da_id"), "da-code",
-			uuid.NewTestFromSalt(t, "da_user"), uuid.NewTestFromSalt(t, "da_status"),
+			uuidtestkit.NewTestFromSalt(t, "da_id"), "da-code",
+			uuidtestkit.NewTestFromSalt(t, "da_user"), uuidtestkit.NewTestFromSalt(t, "da_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			&paidAt, nil, &shippedAt, deliveredAt,
@@ -1190,14 +1191,14 @@ func accessorPurchaseWith(t *testing.T, statusCode int, paidAt, canceledAt *time
 
 	details := []PurchaseDetail{
 		NewPurchaseDetail(
-			uuid.NewTestFromSalt(t, "acc_detail"),
-			uuid.NewTestFromSalt(t, "acc_product"),
+			uuidtestkit.NewTestFromSalt(t, "acc_detail"),
+			uuidtestkit.NewTestFromSalt(t, "acc_product"),
 			2, mustPrice(t, "800"),
 		),
 	}
 	p, err := Reconstruct(
-		uuid.NewTestFromSalt(t, "acc_id"), "acc-code-001",
-		uuid.NewTestFromSalt(t, "acc_user"), uuid.NewTestFromSalt(t, "acc_status"),
+		uuidtestkit.NewTestFromSalt(t, "acc_id"), "acc-code-001",
+		uuidtestkit.NewTestFromSalt(t, "acc_user"), uuidtestkit.NewTestFromSalt(t, "acc_status"),
 		statusCode, 160000, 16000, 500, 176500, details,
 		accessorOrderedAt, paidAt, canceledAt, nil, nil,
 	)
@@ -1241,7 +1242,7 @@ func TestLockedProduct_ID(t *testing.T) {
 		t.Run("ロック時の商品IDを返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "lp_id")
+			id := uuidtestkit.NewTestFromSalt(t, "lp_id")
 			l := NewLockedProduct(id, mustPrice(t, "19.99"), 5)
 
 			assert.Equal(t, id, l.ID())
@@ -1258,7 +1259,7 @@ func TestLockedProduct_Quantity(t *testing.T) {
 		t.Run("ロック時点の在庫数を返す", func(t *testing.T) {
 			t.Parallel()
 
-			l := NewLockedProduct(uuid.NewTestFromSalt(t, "lp_quantity"), mustPrice(t, "19.99"), 7)
+			l := NewLockedProduct(uuidtestkit.NewTestFromSalt(t, "lp_quantity"), mustPrice(t, "19.99"), 7)
 
 			assert.Equal(t, 7, l.Quantity())
 		})
@@ -1266,7 +1267,7 @@ func TestLockedProduct_Quantity(t *testing.T) {
 		t.Run("在庫切れの場合、0を返す", func(t *testing.T) {
 			t.Parallel()
 
-			l := NewLockedProduct(uuid.NewTestFromSalt(t, "lp_quantity_zero"), mustPrice(t, "19.99"), 0)
+			l := NewLockedProduct(uuidtestkit.NewTestFromSalt(t, "lp_quantity_zero"), mustPrice(t, "19.99"), 0)
 
 			assert.Equal(t, 0, l.Quantity())
 		})
@@ -1282,7 +1283,7 @@ func TestNewLockedProduct(t *testing.T) {
 		t.Run("入力した商品ID・単価・在庫数を保持したスナップショットを返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "new_lp_id")
+			id := uuidtestkit.NewTestFromSalt(t, "new_lp_id")
 
 			actual := NewLockedProduct(id, mustPrice(t, "1.005"), 3)
 
@@ -1302,8 +1303,8 @@ func TestNewPurchaseDetail(t *testing.T) {
 		t.Run("入力した明細ID・商品ID・数量・単価を保持した明細を返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "new_pd_id")
-			productID := uuid.NewTestFromSalt(t, "new_pd_product")
+			id := uuidtestkit.NewTestFromSalt(t, "new_pd_id")
+			productID := uuidtestkit.NewTestFromSalt(t, "new_pd_product")
 
 			actual := NewPurchaseDetail(id, productID, 4, mustPrice(t, "1.005"))
 
@@ -1324,8 +1325,8 @@ func TestPurchaseDetail_ID(t *testing.T) {
 		t.Run("商品IDではなく明細IDを返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "pd_detail_id")
-			productID := uuid.NewTestFromSalt(t, "pd_detail_product")
+			id := uuidtestkit.NewTestFromSalt(t, "pd_detail_id")
+			productID := uuidtestkit.NewTestFromSalt(t, "pd_detail_product")
 			d := NewPurchaseDetail(id, productID, 2, mustPrice(t, "800"))
 
 			assert.Equal(t, id, d.ID())
@@ -1343,8 +1344,8 @@ func TestPurchaseDetail_ProductID(t *testing.T) {
 		t.Run("明細IDではなく商品IDを返す", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "pd_product_detail")
-			productID := uuid.NewTestFromSalt(t, "pd_product_id")
+			id := uuidtestkit.NewTestFromSalt(t, "pd_product_detail")
+			productID := uuidtestkit.NewTestFromSalt(t, "pd_product_id")
 			d := NewPurchaseDetail(id, productID, 2, mustPrice(t, "800"))
 
 			assert.Equal(t, productID, d.ProductID())
@@ -1363,8 +1364,8 @@ func TestPurchaseDetail_Quantity(t *testing.T) {
 			t.Parallel()
 
 			d := NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, "pd_quantity_id"),
-				uuid.NewTestFromSalt(t, "pd_quantity_product"),
+				uuidtestkit.NewTestFromSalt(t, "pd_quantity_id"),
+				uuidtestkit.NewTestFromSalt(t, "pd_quantity_product"),
 				9, mustPrice(t, "800"),
 			)
 
@@ -1437,8 +1438,8 @@ func TestPurchase_Details(t *testing.T) {
 			details := accessorPurchase(t).Details()
 
 			require.Len(t, details, 1)
-			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_detail"), details[0].ID())
-			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_product"), details[0].ProductID())
+			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "acc_detail"), details[0].ID())
+			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "acc_product"), details[0].ProductID())
 			assert.Equal(t, 2, details[0].Quantity())
 			assert.Equal(t, "800", details[0].UnitPrice().String())
 		})
@@ -1451,13 +1452,13 @@ func TestPurchase_Details(t *testing.T) {
 			got := p.Details()
 			require.Len(t, got, 1)
 			got[0] = NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, "acc_detail_mutated"),
-				uuid.NewTestFromSalt(t, "acc_product_mutated"),
+				uuidtestkit.NewTestFromSalt(t, "acc_detail_mutated"),
+				uuidtestkit.NewTestFromSalt(t, "acc_product_mutated"),
 				99, mustPrice(t, "1"),
 			)
 
 			require.Len(t, p.Details(), 1)
-			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_detail"), p.Details()[0].ID())
+			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "acc_detail"), p.Details()[0].ID())
 			assert.Equal(t, 2, p.Details()[0].Quantity())
 		})
 	})
@@ -1472,7 +1473,7 @@ func TestPurchase_ID(t *testing.T) {
 		t.Run("再構築時の購入IDを返す", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_id"), accessorPurchase(t).ID())
+			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "acc_id"), accessorPurchase(t).ID())
 		})
 	})
 }
@@ -1586,7 +1587,7 @@ func TestPurchase_StatusID(t *testing.T) {
 		t.Run("再構築時のステータスIDを返す", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_status"), accessorPurchase(t).StatusID())
+			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "acc_status"), accessorPurchase(t).StatusID())
 		})
 
 		t.Run("Newで生成した集約の場合、ステータスIDは未解決のためゼロ値を返す", func(t *testing.T) {
@@ -1654,7 +1655,7 @@ func TestPurchase_UserID(t *testing.T) {
 
 			p := accessorPurchase(t)
 
-			assert.Equal(t, uuid.NewTestFromSalt(t, "acc_user"), p.UserID())
+			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "acc_user"), p.UserID())
 			assert.NotEqual(t, p.ID(), p.UserID())
 		})
 	})

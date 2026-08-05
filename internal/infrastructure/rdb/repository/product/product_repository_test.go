@@ -19,6 +19,7 @@ import (
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -298,7 +299,7 @@ func Test_repository_FindPublishedByID(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.FindPublishedByID(ctx, uuid.NewTestFromSalt(t, "find_published_by_id_missing"))
+				got, err := repo.FindPublishedByID(ctx, uuidtestkit.NewTestFromSalt(t, "find_published_by_id_missing"))
 				assert.Nil(t, got)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
@@ -361,9 +362,9 @@ func Test_rowToProduct(t *testing.T) {
 	t.Parallel()
 
 	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
-	id := uuid.NewTestFromSalt(t, "row_to_product_id")
-	statusID := uuid.NewTestFromSalt(t, "row_to_product_status")
-	categoryID := uuid.NewTestFromSalt(t, "row_to_product_category")
+	id := uuidtestkit.NewTestFromSalt(t, "row_to_product_id")
+	statusID := uuidtestkit.NewTestFromSalt(t, "row_to_product_status")
+	categoryID := uuidtestkit.NewTestFromSalt(t, "row_to_product_category")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -493,7 +494,7 @@ func Test_repository_Create(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuid.NewTestFromSalt(t, "create_roundtrip_id")
+				id := uuidtestkit.NewTestFromSalt(t, "create_roundtrip_id")
 				publishedAt := time.Date(2099, time.June, 1, 0, 0, 0, 0, time.UTC)
 				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
 				require.NoError(t, err)
@@ -532,7 +533,7 @@ func Test_repository_Create(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuid.NewTestFromSalt(t, "create_nil_optional_id")
+				id := uuidtestkit.NewTestFromSalt(t, "create_nil_optional_id")
 				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
 				require.NoError(t, err)
 				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
@@ -570,7 +571,7 @@ func Test_repository_Create(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "create_canceled_id")
+			id := uuidtestkit.NewTestFromSalt(t, "create_canceled_id")
 			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
 			require.NoError(t, err)
 			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
@@ -653,7 +654,7 @@ func Test_repository_FindByID(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.FindByID(ctx, uuid.NewTestFromSalt(t, "find_by_id_missing"))
+				got, err := repo.FindByID(ctx, uuidtestkit.NewTestFromSalt(t, "find_by_id_missing"))
 				assert.Nil(t, got)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
@@ -734,7 +735,7 @@ func Test_repository_Update(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuid.NewTestFromSalt(t, "update_clear_nullable_id")
+				id := uuidtestkit.NewTestFromSalt(t, "update_clear_nullable_id")
 				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
 				require.NoError(t, err)
 				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
@@ -832,7 +833,7 @@ func Test_repository_Update(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化され衝突とは区別される", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "update_canceled_id")
+			id := uuidtestkit.NewTestFromSalt(t, "update_canceled_id")
 			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
 			require.NoError(t, err)
 			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
@@ -918,7 +919,7 @@ func Test_repository_LockByID(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.LockByID(ctx, uuid.NewTestFromSalt(t, "lock_by_id_missing"))
+				got, err := repo.LockByID(ctx, uuidtestkit.NewTestFromSalt(t, "lock_by_id_missing"))
 				assert.Nil(t, got)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
@@ -1039,7 +1040,7 @@ func Test_repository_UpdateStock(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化され衝突とは区別される", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "update_stock_canceled_id")
+			id := uuidtestkit.NewTestFromSalt(t, "update_stock_canceled_id")
 			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), "在庫あり")
 			require.NoError(t, err)
 			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), "電子機器")
@@ -1188,13 +1189,13 @@ func Test_rowsToProducts(t *testing.T) {
 		t.Helper()
 		return productRow{
 			p: gen.Products{
-				ID:          uuid.NewTestFromSalt(t, salt),
+				ID:          uuidtestkit.NewTestFromSalt(t, salt),
 				Name:        "商品",
 				Description: ptr.To("説明"),
 				Price:       decimal.FromInt(1999),
 				Quantity:    100,
-				StatusID:    uuid.NewTestFromSalt(t, salt+"_status"),
-				CategoryID:  uuid.NewTestFromSalt(t, salt+"_category"),
+				StatusID:    uuidtestkit.NewTestFromSalt(t, salt+"_status"),
+				CategoryID:  uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 				LockVersion: 3,
 			},
 			statusName:   "在庫あり",

@@ -7,7 +7,7 @@ import (
 
 	domainuser "go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/usecase/user/event"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,13 +21,13 @@ func TestBuildWithdrawn(t *testing.T) {
 	// active は、未削除のユーザーを salt から生成するローカルヘルパーです。
 	active := func(t *testing.T, salt string) *domainuser.User {
 		t.Helper()
-		entity, err := domainuser.New(uuid.NewTestFromSalt(t, salt+"_id"), domainuser.Attributes{
+		entity, err := domainuser.New(uuidtestkit.NewTestFromSalt(t, salt+"_id"), domainuser.Attributes{
 			Profile: domainuser.Profile{
 				FirstName:    "first_name",
 				LastName:     "last_name",
 				Email:        salt + "@example.com",
 				Phone:        "090-0000-0000",
-				PrefectureID: uuid.NewTestFromSalt(t, salt+"_prefecture"),
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, salt+"_prefecture"),
 				City:         "city_name",
 				Street:       "town_address",
 				PostalCode:   "150-0001",

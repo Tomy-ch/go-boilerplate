@@ -18,6 +18,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
@@ -29,16 +30,16 @@ import (
 func newTestPurchaseView(t *testing.T) purchaseuc.PurchaseView {
 	t.Helper()
 	return purchaseuc.PurchaseView{
-		ID:             uuid.NewTestFromSalt(t, "h_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "h_id"),
 		Code:           "h-code",
-		UserID:         uuid.NewTestFromSalt(t, "h_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "h_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "h_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "h_status"),
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "h_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "h_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
@@ -90,8 +91,8 @@ func Test_server_PostPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			userID := uuid.NewTestFromSalt(t, "h_user")
-			productID := uuid.NewTestFromSalt(t, "h_prod")
+			userID := uuidtestkit.NewTestFromSalt(t, "h_user")
+			productID := uuidtestkit.NewTestFromSalt(t, "h_prod")
 			view := newTestPurchaseView(t)
 			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, params purchaseuc.CreatePurchaseParams) (purchaseuc.PurchaseView, error) {
@@ -129,8 +130,8 @@ func Test_server_PostPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			userID := uuid.NewTestFromSalt(t, "h_user_dc")
-			productID := uuid.NewTestFromSalt(t, "h_prod_dc")
+			userID := uuidtestkit.NewTestFromSalt(t, "h_user_dc")
+			productID := uuidtestkit.NewTestFromSalt(t, "h_prod_dc")
 			view := newTestPurchaseView(t)
 			view.ReferenceAmount = &purchaseuc.ReferenceAmountView{
 				Currency: "JPY",
@@ -206,8 +207,8 @@ func Test_server_PostPurchases(t *testing.T) {
 			wantErr := xerrors.Wrap(apperror.ErrConflict, "insufficient stock")
 			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(purchaseuc.PurchaseView{}, wantErr)
 
-			userID := uuid.NewTestFromSalt(t, "h_user_err")
-			productID := uuid.NewTestFromSalt(t, "h_prod_err")
+			userID := uuidtestkit.NewTestFromSalt(t, "h_user_err")
+			productID := uuidtestkit.NewTestFromSalt(t, "h_prod_err")
 			_, err := s.PostPurchases(authnContext(t, userID), gen.PostPurchasesRequestObject{
 				Body: &gen.PurchasesPostRequest{
 					Details: []gen.PurchaseDetailInput{{ProductId: productID.ToPrimitive(), Quantity: 2}},
@@ -227,8 +228,8 @@ func Test_server_PostPurchases(t *testing.T) {
 			view.Details[0].Quantity = math.MaxInt32 + 1
 			uc.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(view, nil)
 
-			userID := uuid.NewTestFromSalt(t, "h_user_overflow")
-			productID := uuid.NewTestFromSalt(t, "h_prod_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "h_user_overflow")
+			productID := uuidtestkit.NewTestFromSalt(t, "h_prod_overflow")
 			_, err := s.PostPurchases(authnContext(t, userID), gen.PostPurchasesRequestObject{
 				Body: &gen.PurchasesPostRequest{
 					Details: []gen.PurchaseDetailInput{{ProductId: productID.ToPrimitive(), Quantity: 2}},
@@ -333,7 +334,7 @@ func Test_toPurchaseSummaryResponse(t *testing.T) {
 		t.Run("概要DTOをステータス名込みのレスポンスへ写像する", func(t *testing.T) {
 			t.Parallel()
 
-			statusID := uuid.NewTestFromSalt(t, "summary_status")
+			statusID := uuidtestkit.NewTestFromSalt(t, "summary_status")
 			orderedAt := time.Date(2026, time.July, 24, 10, 30, 0, 0, time.UTC)
 			actual := toPurchaseSummaryResponse(purchaseuc.PurchaseSummaryView{
 				Code:        "summary-code",

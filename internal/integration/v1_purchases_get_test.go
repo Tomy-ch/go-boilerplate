@@ -16,6 +16,7 @@ import (
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 		return purchaseuc.PurchaseSummaryView{
 			Code:        "int-code",
 			TotalAmount: 176500,
-			StatusID:    uuid.NewTestFromSalt(t, "int_status"),
+			StatusID:    uuidtestkit.NewTestFromSalt(t, "int_status"),
 			StatusName:  "完了",
 			OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		}
@@ -80,7 +81,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
 
 			headers := availablePurchaseUser(t, e)
-			after := paging.EncodeCursor("2026-07-23T00:00:00Z", uuid.NewTestFromSalt(t, "int_after").String())
+			after := paging.EncodeCursor("2026-07-23T00:00:00Z", uuidtestkit.NewTestFromSalt(t, "int_after").String())
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/purchases?first=5&after="+after, nil, headers)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 

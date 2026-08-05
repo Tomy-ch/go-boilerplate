@@ -17,6 +17,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -42,17 +43,17 @@ func detailViewFixture(t *testing.T) purchaseuc.PurchaseGetDetailView {
 	t.Helper()
 	paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.PurchaseGetDetailView{
-		ID:             uuid.NewTestFromSalt(t, "hd_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "hd_id"),
 		Code:           "hd-code",
-		UserID:         uuid.NewTestFromSalt(t, "hd_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "hd_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "hd_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "hd_status"),
 		StatusName:     "支払い済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailItemView{
-			{ProductID: uuid.NewTestFromSalt(t, "hd_prod"), ProductName: "商品A", Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "hd_prod"), ProductName: "商品A", Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		PaidAt:     &paidAt,
@@ -88,8 +89,8 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			userID := uuid.NewTestFromSalt(t, "hd_user")
-			purchaseID := uuid.NewTestFromSalt(t, "hd_purchase")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_user")
+			purchaseID := uuidtestkit.NewTestFromSalt(t, "hd_purchase")
 			view := detailViewFixture(t)
 			uc.EXPECT().GetPurchaseDetail(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID) (purchaseuc.PurchaseGetDetailView, error) {
@@ -125,7 +126,7 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.GetPurchasesDetail(context.Background(), gen.GetPurchasesDetailRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, ErrUnauthenticatedUser)
 		})
@@ -140,9 +141,9 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			uc.EXPECT().GetPurchaseDetail(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(purchaseuc.PurchaseGetDetailView{}, apperror.ErrNotFound)
 
-			userID := uuid.NewTestFromSalt(t, "hd_user_err")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_err")
 			_, err := s.GetPurchasesDetail(authnContext(t, userID), gen.GetPurchasesDetailRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_purchase_err").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_err").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
@@ -158,9 +159,9 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			view.Details[0].Quantity = math.MaxInt32 + 1
 			uc.EXPECT().GetPurchaseDetail(gomock.Any(), gomock.Any(), gomock.Any()).Return(view, nil)
 
-			userID := uuid.NewTestFromSalt(t, "hd_user_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_overflow")
 			_, err := s.GetPurchasesDetail(authnContext(t, userID), gen.GetPurchasesDetailRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})

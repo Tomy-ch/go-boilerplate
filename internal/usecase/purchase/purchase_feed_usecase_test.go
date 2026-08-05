@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,10 +28,10 @@ func Test_usecase_GetPurchases(t *testing.T) {
 		return domainpurchase.FeedItem{
 			Code:        "code-" + salt,
 			TotalAmount: 176500,
-			StatusID:    uuid.NewTestFromSalt(t, salt+"_status"),
+			StatusID:    uuidtestkit.NewTestFromSalt(t, salt+"_status"),
 			StatusName:  "完了",
 			OrderedAt:   orderedAt,
-			ID:          uuid.NewTestFromSalt(t, salt),
+			ID:          uuidtestkit.NewTestFromSalt(t, salt),
 		}
 	}
 
@@ -59,7 +60,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), firstCursor(t, 2))
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2))
 			require.NoError(t, err)
 			require.Len(t, got.Items, 2)
 			// FeedItem の全フィールドが漏れなく PurchaseSummaryView へ写像されることを固定する。
@@ -85,7 +86,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), firstCursor(t, 2))
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2))
 			require.NoError(t, err)
 			require.Len(t, got.Items, 1)
 			assert.Nil(t, got.NextCursor)
@@ -103,7 +104,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), firstCursor(t, 2))
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2))
 			require.NoError(t, err)
 			require.Len(t, got.Items, 2)
 			assert.Nil(t, got.NextCursor)
@@ -118,7 +119,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domainpurchase.FeedItem{}, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), firstCursor(t, 2))
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2))
 			require.NoError(t, err)
 			assert.Empty(t, got.Items)
 			assert.Nil(t, got.NextCursor)
@@ -136,7 +137,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 				[]domainpurchase.FeedItem{feedItem(t, "a", base)}, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), &paging.Cursor{})
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), &paging.Cursor{})
 			require.NoError(t, err)
 			assert.Empty(t, got.Items)
 			assert.Nil(t, got.NextCursor)
@@ -148,8 +149,8 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
 
-			userID := uuid.NewTestFromSalt(t, "user")
-			boundaryID := uuid.NewTestFromSalt(t, "boundary")
+			userID := uuidtestkit.NewTestFromSalt(t, "user")
+			boundaryID := uuidtestkit.NewTestFromSalt(t, "boundary")
 			after := paging.EncodeCursor(base.Format(time.RFC3339Nano), boundaryID.String())
 			first := 2
 			cursor, err := paging.NewCursor(&after, &first)
@@ -189,7 +190,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), nil)
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), nil)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -208,7 +209,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			require.NoError(t, err)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), cursor)
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), cursor)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -221,7 +222,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			u := &usecase{tracer: lt, repo: repo}
-			got, err := u.GetPurchases(context.Background(), uuid.NewTestFromSalt(t, "user"), firstCursor(t, 2))
+			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2))
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -238,7 +239,7 @@ func Test_encodePurchaseCursor(t *testing.T) {
 			t.Parallel()
 
 			orderedAt := time.Date(2099, time.January, 2, 3, 4, 5, 123456789, time.UTC)
-			id := uuid.NewTestFromSalt(t, "encode_cursor_last")
+			id := uuidtestkit.NewTestFromSalt(t, "encode_cursor_last")
 
 			encoded := encodePurchaseCursor(domainpurchase.FeedItem{OrderedAt: orderedAt, ID: id})
 			assert.NotEmpty(t, encoded)
@@ -258,13 +259,13 @@ func Test_encodePurchaseCursor(t *testing.T) {
 			t.Parallel()
 
 			orderedAt := time.Date(2099, time.January, 2, 3, 4, 5, 0, time.UTC)
-			id := uuid.NewTestFromSalt(t, "encode_cursor_same_key")
+			id := uuidtestkit.NewTestFromSalt(t, "encode_cursor_same_key")
 
 			base := encodePurchaseCursor(domainpurchase.FeedItem{OrderedAt: orderedAt, ID: id})
 			other := encodePurchaseCursor(domainpurchase.FeedItem{
 				Code:        "code-other",
 				TotalAmount: 999,
-				StatusID:    uuid.NewTestFromSalt(t, "encode_cursor_other_status"),
+				StatusID:    uuidtestkit.NewTestFromSalt(t, "encode_cursor_other_status"),
 				StatusName:  "キャンセル",
 				OrderedAt:   orderedAt,
 				ID:          id,

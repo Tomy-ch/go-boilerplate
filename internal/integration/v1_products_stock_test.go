@@ -18,6 +18,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -37,15 +38,15 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 	stockedView := func(t *testing.T, quantity, version int) productuc.ProductView {
 		t.Helper()
 		return productuc.ProductView{
-			ID:                    uuid.NewTestFromSalt(t, "integration_product_stock"),
+			ID:                    uuidtestkit.NewTestFromSalt(t, "integration_product_stock"),
 			Name:                  "商品",
 			Description:           ptr.To("説明"),
 			Price:                 decimaltestkit.MustParse(t, "19.99"),
 			Quantity:              quantity,
 			StockWarningThreshold: ptr.To(10),
-			StatusID:              uuid.NewTestFromSalt(t, "integration_stock_status"),
+			StatusID:              uuidtestkit.NewTestFromSalt(t, "integration_stock_status"),
 			StatusName:            "在庫あり",
-			CategoryID:            uuid.NewTestFromSalt(t, "integration_stock_category"),
+			CategoryID:            uuidtestkit.NewTestFromSalt(t, "integration_stock_category"),
 			CategoryName:          "電子機器",
 			PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
 			ImagePath:             ptr.To("products/integration_stock.png"),
@@ -55,7 +56,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 
 	availableAdmin := func(t *testing.T, e *echo.Echo) http.Header {
 		t.Helper()
-		return MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "integration_stock_admin"))
+		return MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "integration_stock_admin"))
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -163,7 +164,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 
 			productsdetail.BindHandler(e, tf, mockUC)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "integration_stock_member"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "integration_stock_member"))
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: 10}
 			actual := StartServer(t, e).DoJSON(http.MethodPatch, productStockExistingPath, body, headers)
 			AssertErrorResponse(t, actual, http.StatusForbidden)

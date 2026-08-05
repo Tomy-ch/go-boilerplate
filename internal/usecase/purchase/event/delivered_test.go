@@ -7,7 +7,7 @@ import (
 
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/usecase/purchase/event"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,14 +21,14 @@ func TestBuildDelivered(t *testing.T) {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, salt+"_d"), uuid.NewTestFromSalt(t, salt+"_product"), 2, mustPrice(t, "800"),
+				uuidtestkit.NewTestFromSalt(t, salt+"_d"), uuidtestkit.NewTestFromSalt(t, salt+"_product"), 2, mustPrice(t, "800"),
 			),
 		}
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
 		shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 		entity, err := domainpurchase.Reconstruct(
-			uuid.NewTestFromSalt(t, salt+"_id"), salt+"-code",
-			uuid.NewTestFromSalt(t, salt+"_user"), uuid.NewTestFromSalt(t, salt+"_status"),
+			uuidtestkit.NewTestFromSalt(t, salt+"_id"), salt+"-code",
+			uuidtestkit.NewTestFromSalt(t, salt+"_user"), uuidtestkit.NewTestFromSalt(t, salt+"_status"),
 			domainpurchase.StatusCodeShipped, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), &paidAt, nil, &shippedAt, nil,
 		)

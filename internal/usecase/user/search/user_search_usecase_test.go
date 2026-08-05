@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ import (
 // newSearchTestUser は、検索テスト用のユーザーエンティティを生成するヘルパーです。
 func newSearchTestUser(t *testing.T, prefectureID uuid.UUID, createdAt time.Time) *user.User {
 	t.Helper()
-	u, err := user.New(uuid.NewTestFromSalt(t, "search_user_domain"), user.Attributes{
+	u, err := user.New(uuidtestkit.NewTestFromSalt(t, "search_user_domain"), user.Attributes{
 		Profile: user.Profile{
 			FirstName:    "Grace",
 			LastName:     "Lee",
@@ -70,7 +71,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 	keyword := "Grace Lee"
 	keywords := []string{"Grace", "Lee"}
 	active := new(true)
@@ -306,7 +307,7 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 	keyword := "Grace Lee"
 	keywords := []string{"Grace", "Lee"}
 	active := new(true)
@@ -417,7 +418,7 @@ func Test_usecase_toSearchResults(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "to_search_results_prefecture")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "to_search_results_prefecture")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -514,13 +515,13 @@ func Test_toSearchResult(t *testing.T) {
 		t.Run("エンティティの属性と引数の都道府県名から検索結果DTOを構築する", func(t *testing.T) {
 			t.Parallel()
 
-			u, err := user.New(uuid.NewTestFromSalt(t, "to_search_result_user"), user.Attributes{
+			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_search_result_user"), user.Attributes{
 				Profile: user.Profile{
 					FirstName:    "Grace",
 					LastName:     "Lee",
 					Email:        "grace.lee@example.com",
 					Phone:        "090-1234-5678",
-					PrefectureID: uuid.NewTestFromSalt(t, "to_search_result_prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
 					City:         "city_name",
 					Street:       "town_address",
 					Building:     &building,
@@ -552,13 +553,13 @@ func Test_toSearchResult(t *testing.T) {
 			t.Parallel()
 
 			deletedAt := updatedAt.Add(time.Hour)
-			u, err := user.New(uuid.NewTestFromSalt(t, "to_search_result_deleted"), user.Attributes{
+			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_search_result_deleted"), user.Attributes{
 				Profile: user.Profile{
 					FirstName:    "Grace",
 					LastName:     "Lee",
 					Email:        "deleted@example.com",
 					Phone:        "090-1234-5678",
-					PrefectureID: uuid.NewTestFromSalt(t, "to_search_result_prefecture"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
 					City:         "city_name",
 					Street:       "town_address",
 					PostalCode:   "150-0001",

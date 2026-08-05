@@ -9,7 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/publisher"
 	"go-boilerplate/internal/observability"
 	pubbndry "go-boilerplate/internal/usecase/boundary/publisher"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
-			msgID := uuid.NewTestFromSalt(t, "msg")
+			msgID := uuidtestkit.NewTestFromSalt(t, "msg")
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
@@ -81,7 +81,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
-			msgID := uuid.NewTestFromSalt(t, "msg")
+			msgID := uuidtestkit.NewTestFromSalt(t, "msg")
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
@@ -129,7 +129,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 
 			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
-					MessageID: uuid.NewTestFromSalt(t, "msg"),
+					MessageID: uuidtestkit.NewTestFromSalt(t, "msg"),
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
 				})

@@ -13,7 +13,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	dashboarduc "go-boilerplate/internal/usecase/dashboard"
 	mock_dashboarduc "go-boilerplate/internal/usecase/dashboard/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -41,8 +41,8 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 				SalesAmount: 450000,
 				SalesCount:  12,
 				PurchaseStatusCounts: []dashboarduc.StatusCountView{
-					{StatusID: uuid.NewTestFromSalt(t, "int_dash_unprocessed"), StatusName: "未処理", Count: 2},
-					{StatusID: uuid.NewTestFromSalt(t, "int_dash_completed"), StatusName: "完了", Count: 10},
+					{StatusID: uuidtestkit.NewTestFromSalt(t, "int_dash_unprocessed"), StatusName: "未処理", Count: 2},
+					{StatusID: uuidtestkit.NewTestFromSalt(t, "int_dash_completed"), StatusName: "完了", Count: 10},
 				},
 				TotalProductCount:     120,
 				PublishedProductCount: 98,
@@ -50,7 +50,7 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_dash_admin"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_admin"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, dashboardSummaryPath, nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			AssertJSONResponseType[gen.DashboardSummaryResponse](t, actual)
@@ -73,7 +73,7 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_dash_period"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_period"))
 			path := dashboardSummaryPath + "?period=range&from=2026-07-01&to=2026-07-31"
 			actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
@@ -98,7 +98,7 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_dash_empty"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_empty"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, dashboardSummaryPath, nil, headers)
 			AssertJSONResponseType[gen.DashboardSummaryResponse](t, actual)
 		})
@@ -140,7 +140,7 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_dash_forbidden"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_forbidden"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, dashboardSummaryPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusForbidden)
 		})
@@ -159,7 +159,7 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_dash_badreq"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_badreq"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, dashboardSummaryPath+"?period=range", nil, headers)
 			AssertErrorResponse(t, actual, http.StatusBadRequest)
 		})
@@ -178,7 +178,7 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
-			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "int_dash_err"))
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_err"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, dashboardSummaryPath, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})

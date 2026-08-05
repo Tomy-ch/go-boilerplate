@@ -16,7 +16,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -35,15 +35,15 @@ func newServer(t *testing.T) (*server, *mock_product.MockUsecase) {
 func newProductView(t *testing.T, salt string) productuc.ProductView {
 	t.Helper()
 	return productuc.ProductView{
-		ID:                    uuid.NewTestFromSalt(t, salt),
+		ID:                    uuidtestkit.NewTestFromSalt(t, salt),
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 decimaltestkit.MustParse(t, "19.99"),
 		Quantity:              100,
 		StockWarningThreshold: ptr.To(10),
-		StatusID:              uuid.NewTestFromSalt(t, salt+"_status"),
+		StatusID:              uuidtestkit.NewTestFromSalt(t, salt+"_status"),
 		StatusName:            "在庫あり",
-		CategoryID:            uuid.NewTestFromSalt(t, salt+"_category"),
+		CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 		CategoryName:          "電子機器",
 		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
 		ImagePath:             ptr.To("products/" + salt + ".png"),
@@ -136,7 +136,7 @@ func Test_server_GetProducts(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
 
-			after := paging.EncodeCursor("2026-01-01T00:00:00Z", uuid.NewTestFromSalt(t, "handler_after").String())
+			after := paging.EncodeCursor("2026-01-01T00:00:00Z", uuidtestkit.NewTestFromSalt(t, "handler_after").String())
 			first := 20
 			nextCursor := "next-opaque-cursor"
 
@@ -162,8 +162,8 @@ func Test_server_GetProducts(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
 
-			categoryID := uuid.NewTestFromSalt(t, "handler_filter_category")
-			statusID := uuid.NewTestFromSalt(t, "handler_filter_status")
+			categoryID := uuidtestkit.NewTestFromSalt(t, "handler_filter_category")
+			statusID := uuidtestkit.NewTestFromSalt(t, "handler_filter_status")
 			keyword := "イヤホン"
 			cid := categoryID.ToPrimitive()
 			sid := statusID.ToPrimitive()

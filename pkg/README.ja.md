@@ -217,6 +217,8 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 
 `github.com/google/uuid` をラップした UUID 型です。
 
+テストヘルパーは別パッケージ `pkg/uuid/testkit` にあります（`NewTestFromSalt`）。分離することで `testing` が本番バイナリへリンクされません。
+
 UUIDv7 を生成し、データベース連携（`sql.Scanner` / `driver.Valuer`）をサポートします。
 
 |関数 / メソッド|説明|

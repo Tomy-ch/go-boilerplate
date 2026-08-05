@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,12 +47,12 @@ func newLowStockTestUsecase(t *testing.T) (*usecase, *lowStockTestDeps) {
 func newLowStockProduct(t *testing.T, salt string, quantity int) *domainproduct.Product {
 	t.Helper()
 
-	statusRef, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, salt+"_status"), "在庫わずか")
+	statusRef, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, salt+"_status"), "在庫わずか")
 	require.NoError(t, err)
-	categoryRef, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, salt+"_category"), "電子機器")
+	categoryRef, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
 	require.NoError(t, err)
 
-	p, err := domainproduct.Reconstruct(uuid.NewTestFromSalt(t, salt), domainproduct.Attributes{
+	p, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 mustPrice(t, "10.5"),

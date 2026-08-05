@@ -14,7 +14,7 @@ import (
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	"go-boilerplate/internal/usecase/dashboard/query"
 	mock_query "go-boilerplate/internal/usecase/dashboard/query/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -103,7 +103,7 @@ func Test_usecase_GetDashboardSummary(t *testing.T) {
 		t.Run("3つの集計結果を1つのSummaryViewへ合成して返す", func(t *testing.T) {
 			t.Parallel()
 
-			statusID := uuid.NewTestFromSalt(t, "uc_dash_status")
+			statusID := uuidtestkit.NewTestFromSalt(t, "uc_dash_status")
 
 			u, d := newUsecase(t)
 			d.authorizer.EXPECT().
@@ -387,8 +387,8 @@ func Test_toStatusCountViews(t *testing.T) {
 		t.Run("集計結果の順序を保って出力DTOへ写像する", func(t *testing.T) {
 			t.Parallel()
 
-			first := uuid.NewTestFromSalt(t, "uc_dash_view_first")
-			second := uuid.NewTestFromSalt(t, "uc_dash_view_second")
+			first := uuidtestkit.NewTestFromSalt(t, "uc_dash_view_first")
+			second := uuidtestkit.NewTestFromSalt(t, "uc_dash_view_second")
 
 			got := toStatusCountViews([]query.PurchaseStatusCountResult{
 				{StatusID: first, StatusName: "未処理", Count: 3},

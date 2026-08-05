@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	mock_auth "go-boilerplate/internal/usecase/boundary/auth/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -137,7 +137,7 @@ func Test_authExtractor(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			want, _ := authbd.New("subj", "mock", nil, nil)
-			resolved, err := want.WithUserID(uuid.NewTestFromSalt(t, "resolved"))
+			resolved, err := want.WithUserID(uuidtestkit.NewTestFromSalt(t, "resolved"))
 			require.NoError(t, err)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(resolved, nil)

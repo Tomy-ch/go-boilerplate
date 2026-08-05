@@ -16,7 +16,7 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	mock_relay "go-boilerplate/internal/usecase/outbox/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -50,7 +50,7 @@ func pendingMessage(t *testing.T) outboxbndry.PendingMessage {
 	t.Helper()
 	return outboxbndry.PendingMessage{
 		ID:        1,
-		MessageID: uuid.NewTestFromSalt(t, "msg"),
+		MessageID: uuidtestkit.NewTestFromSalt(t, "msg"),
 		EventType: "e.v1",
 		Payload:   []byte(`{"v":1}`),
 	}

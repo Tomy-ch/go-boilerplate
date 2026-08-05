@@ -19,6 +19,7 @@ import (
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -50,15 +51,15 @@ func authnContext(t *testing.T, userID uuid.UUID) context.Context {
 func newProductView(t *testing.T, salt string) productuc.ProductView {
 	t.Helper()
 	return productuc.ProductView{
-		ID:                    uuid.NewTestFromSalt(t, salt),
+		ID:                    uuidtestkit.NewTestFromSalt(t, salt),
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 decimaltestkit.MustParse(t, "19.99"),
 		Quantity:              3,
 		StockWarningThreshold: ptr.To(10),
-		StatusID:              uuid.NewTestFromSalt(t, salt+"_status"),
+		StatusID:              uuidtestkit.NewTestFromSalt(t, salt+"_status"),
 		StatusName:            "在庫あり",
-		CategoryID:            uuid.NewTestFromSalt(t, salt+"_category"),
+		CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 		CategoryName:          "電子機器",
 		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
 		ImagePath:             ptr.To("products/" + salt + ".png"),
@@ -128,7 +129,7 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 				Return(productuc.ProductLowStockListView{Items: []productuc.ProductView{lower, low}}, nil)
 
 			resp, err := s.GetProductsLowStock(
-				authnContext(t, uuid.NewTestFromSalt(t, "lowstock_h_user")),
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "lowstock_h_user")),
 				gen.GetProductsLowStockRequestObject{Params: gen.GetProductsLowStockParams{Limit: ptr.To(20)}},
 			)
 			require.NoError(t, err)
@@ -151,7 +152,7 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 				Return(productuc.ProductLowStockListView{Items: []productuc.ProductView{dto}}, nil)
 
 			resp, err := s.GetProductsLowStock(
-				authnContext(t, uuid.NewTestFromSalt(t, "lowstock_h_price_user")),
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "lowstock_h_price_user")),
 				gen.GetProductsLowStockRequestObject{},
 			)
 			require.NoError(t, err)
@@ -168,7 +169,7 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)
-			userID := uuid.NewTestFromSalt(t, "lowstock_h_limit_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "lowstock_h_limit_user")
 
 			var captured productuc.ListLowStockProductsParams
 			mockUC.EXPECT().ListLowStockProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
@@ -205,7 +206,7 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 				})
 
 			_, err := s.GetProductsLowStock(
-				authnContext(t, uuid.NewTestFromSalt(t, "lowstock_h_nolimit_user")),
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "lowstock_h_nolimit_user")),
 				gen.GetProductsLowStockRequestObject{Params: gen.GetProductsLowStockParams{}},
 			)
 			require.NoError(t, err)
@@ -220,7 +221,7 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 				Return(productuc.ProductLowStockListView{}, nil)
 
 			resp, err := s.GetProductsLowStock(
-				authnContext(t, uuid.NewTestFromSalt(t, "lowstock_h_empty_user")),
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "lowstock_h_empty_user")),
 				gen.GetProductsLowStockRequestObject{},
 			)
 			require.NoError(t, err)
@@ -253,7 +254,7 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 				Return(productuc.ProductLowStockListView{}, apperror.ErrPermissionDenied)
 
 			resp, err := s.GetProductsLowStock(
-				authnContext(t, uuid.NewTestFromSalt(t, "lowstock_h_forbidden_user")),
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "lowstock_h_forbidden_user")),
 				gen.GetProductsLowStockRequestObject{},
 			)
 			assert.Nil(t, resp)

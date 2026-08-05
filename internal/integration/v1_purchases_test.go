@@ -19,6 +19,7 @@ import (
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -29,16 +30,16 @@ import (
 func purchaseViewFixture(t *testing.T) purchaseuc.PurchaseView {
 	t.Helper()
 	return purchaseuc.PurchaseView{
-		ID:             uuid.NewTestFromSalt(t, "int_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "int_id"),
 		Code:           "int-code",
-		UserID:         uuid.NewTestFromSalt(t, "int_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "int_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "int_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "int_status"),
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "int_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "int_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
@@ -48,7 +49,7 @@ func purchaseRequestBody(t *testing.T) *gen.PostPurchasesJSONRequestBody {
 	t.Helper()
 	return &gen.PostPurchasesJSONRequestBody{
 		Details: []gen.PurchaseDetailInput{
-			{ProductId: uuid.NewTestFromSalt(t, "int_prod").ToPrimitive(), Quantity: 2},
+			{ProductId: uuidtestkit.NewTestFromSalt(t, "int_prod").ToPrimitive(), Quantity: 2},
 		},
 	}
 }
@@ -225,7 +226,7 @@ func TestV1Purchases_Integration(t *testing.T) {
 
 			v1purchases.BindHandler(e, tf, uc, idempotency.Deps{})
 
-			dupID := uuid.NewTestFromSalt(t, "dup_prod").ToPrimitive()
+			dupID := uuidtestkit.NewTestFromSalt(t, "dup_prod").ToPrimitive()
 			body := &gen.PostPurchasesJSONRequestBody{Details: []gen.PurchaseDetailInput{
 				{ProductId: dupID, Quantity: 1},
 				{ProductId: dupID, Quantity: 2},

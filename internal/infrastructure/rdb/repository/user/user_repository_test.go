@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -603,8 +604,8 @@ func Test_rowToUser(t *testing.T) {
 		t.Run("ユーザー行をドメインエンティティへ変換する", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "row_to_user_id")
-			prefectureID := uuid.NewTestFromSalt(t, "row_to_user_prefecture_id")
+			id := uuidtestkit.NewTestFromSalt(t, "row_to_user_id")
+			prefectureID := uuidtestkit.NewTestFromSalt(t, "row_to_user_prefecture_id")
 			createdAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 			updatedAt := time.Date(2026, time.February, 3, 4, 5, 6, 0, time.UTC)
 			deletedAt := time.Date(2026, time.March, 4, 5, 6, 7, 0, time.UTC)

@@ -17,6 +17,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -42,17 +43,17 @@ func shipViewFixture(t *testing.T) purchaseuc.ShipPurchaseView {
 	t.Helper()
 	shipped := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.ShipPurchaseView{
-		ID:             uuid.NewTestFromSalt(t, "hs_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "hs_id"),
 		Code:           "hs-code",
-		UserID:         uuid.NewTestFromSalt(t, "hs_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "hs_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "hs_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "hs_status"),
 		StatusName:     "発送済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "hs_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "hs_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		ShippedAt: &shipped,
@@ -87,8 +88,8 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			userID := uuid.NewTestFromSalt(t, "hs_admin")
-			purchaseID := uuid.NewTestFromSalt(t, "hs_purchase")
+			userID := uuidtestkit.NewTestFromSalt(t, "hs_admin")
+			purchaseID := uuidtestkit.NewTestFromSalt(t, "hs_purchase")
 			view := shipViewFixture(t)
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID) (purchaseuc.ShipPurchaseView, error) {
@@ -135,7 +136,7 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 				})
 
 			_, err = s.PatchPurchasesShip(ctx, gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hs_unresolved").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_unresolved").ToPrimitive(),
 			})
 			require.NoError(t, err)
 
@@ -157,7 +158,7 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesShip(context.Background(), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hs_noauth").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_noauth").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, ErrUnauthenticatedUser)
 		})
@@ -172,9 +173,9 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(purchaseuc.ShipPurchaseView{}, apperror.ErrPermissionDenied)
 
-			userID := uuid.NewTestFromSalt(t, "hs_user_forbidden")
+			userID := uuidtestkit.NewTestFromSalt(t, "hs_user_forbidden")
 			_, err := s.PatchPurchasesShip(authnContext(t, userID), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hs_purchase_forbidden").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_purchase_forbidden").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
@@ -189,9 +190,9 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(purchaseuc.ShipPurchaseView{}, apperror.ErrConflict)
 
-			userID := uuid.NewTestFromSalt(t, "hs_user_err")
+			userID := uuidtestkit.NewTestFromSalt(t, "hs_user_err")
 			_, err := s.PatchPurchasesShip(authnContext(t, userID), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hs_purchase_err").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_purchase_err").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
@@ -207,9 +208,9 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			view.Details[0].Quantity = math.MaxInt32 + 1
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).Return(view, nil)
 
-			userID := uuid.NewTestFromSalt(t, "hs_user_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "hs_user_overflow")
 			_, err := s.PatchPurchasesShip(authnContext(t, userID), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hs_purchase_overflow").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_purchase_overflow").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})

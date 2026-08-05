@@ -23,7 +23,7 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,11 +40,11 @@ func mustPrice(t *testing.T, s string) money.Price {
 
 func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainproduct.Product {
 	t.Helper()
-	status, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, salt+"_status"), "在庫あり")
+	status, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, salt+"_status"), "在庫あり")
 	require.NoError(t, err)
-	category, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, salt+"_category"), "電子機器")
+	category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
 	require.NoError(t, err)
-	p, err := domainproduct.New(uuid.NewTestFromSalt(t, salt), domainproduct.Attributes{
+	p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 mustPrice(t, "10.00"),
@@ -389,11 +389,11 @@ func Test_usecase_ListProducts(t *testing.T) {
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			repo := mock_product.NewMockRepository(gomock.NewController(t))
 
-			categoryID := uuid.NewTestFromSalt(t, "filter_category")
-			statusID := uuid.NewTestFromSalt(t, "filter_status")
+			categoryID := uuidtestkit.NewTestFromSalt(t, "filter_category")
+			statusID := uuidtestkit.NewTestFromSalt(t, "filter_status")
 			keyword := "イヤホン"
 
-			afterID := uuid.NewTestFromSalt(t, "after_id")
+			afterID := uuidtestkit.NewTestFromSalt(t, "after_id")
 			afterAt := base.Add(-3 * time.Hour)
 			after := paging.EncodeCursor(afterAt.Format(time.RFC3339Nano), afterID.String())
 
@@ -525,7 +525,7 @@ func Test_usecase_GetProduct(t *testing.T) {
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			repo := mock_product.NewMockRepository(gomock.NewController(t))
 
-			id := uuid.NewTestFromSalt(t, "get_product_missing")
+			id := uuidtestkit.NewTestFromSalt(t, "get_product_missing")
 			repo.EXPECT().FindPublishedByID(gomock.Any(), id).Return(nil, apperror.ErrNotFound)
 
 			u := &usecase{tracer: lt, repo: repo}
@@ -547,11 +547,11 @@ func Test_toProductView(t *testing.T) {
 		t.Run("エンティティの属性とステータス・カテゴリの名称を展開したDTOへ変換する", func(t *testing.T) {
 			t.Parallel()
 
-			status, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, "to_view_status"), "在庫あり")
+			status, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, "to_view_status"), "在庫あり")
 			require.NoError(t, err)
-			category, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, "to_view_category"), "電子機器")
+			category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "to_view_category"), "電子機器")
 			require.NoError(t, err)
-			p, err := domainproduct.Reconstruct(uuid.NewTestFromSalt(t, "to_view"), domainproduct.Attributes{
+			p, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, "to_view"), domainproduct.Attributes{
 				Name:                  "商品-to_view",
 				Description:           ptr.To("説明-to_view"),
 				Price:                 mustPrice(t, "12.34"),
@@ -588,11 +588,11 @@ func Test_toProductView(t *testing.T) {
 		t.Run("任意項目が未設定のエンティティはDTOでもnilのまま変換する", func(t *testing.T) {
 			t.Parallel()
 
-			status, err := domainproduct.NewStatusRef(uuid.NewTestFromSalt(t, "to_view_nil_status"), "在庫なし")
+			status, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, "to_view_nil_status"), "在庫なし")
 			require.NoError(t, err)
-			category, err := domainproduct.NewCategoryRef(uuid.NewTestFromSalt(t, "to_view_nil_category"), "書籍")
+			category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "to_view_nil_category"), "書籍")
 			require.NoError(t, err)
-			p, err := domainproduct.New(uuid.NewTestFromSalt(t, "to_view_nil"), domainproduct.Attributes{
+			p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, "to_view_nil"), domainproduct.Attributes{
 				Name:     "商品-to_view_nil",
 				Price:    mustPrice(t, "0.00"),
 				Quantity: 0,

@@ -7,7 +7,7 @@ import (
 
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/usecase/purchase/event"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,13 +22,13 @@ func TestBuildCanceled(t *testing.T) {
 		t.Run("キャンセル済み購入の自己完結スナップショットJSONを生成する", func(t *testing.T) {
 			t.Parallel()
 
-			productA := uuid.NewTestFromSalt(t, "bc_product")
+			productA := uuidtestkit.NewTestFromSalt(t, "bc_product")
 			details := []domainpurchase.PurchaseDetail{
-				domainpurchase.NewPurchaseDetail(uuid.NewTestFromSalt(t, "bc_d"), productA, 2, mustPrice(t, "800")),
+				domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "bc_d"), productA, 2, mustPrice(t, "800")),
 			}
 			entity, err := domainpurchase.Reconstruct(
-				uuid.NewTestFromSalt(t, "bc_id"), "bc-code",
-				uuid.NewTestFromSalt(t, "bc_user"), uuid.NewTestFromSalt(t, "bc_status"),
+				uuidtestkit.NewTestFromSalt(t, "bc_id"), "bc-code",
+				uuidtestkit.NewTestFromSalt(t, "bc_user"), uuidtestkit.NewTestFromSalt(t, "bc_status"),
 				domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
 				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
 			)
@@ -59,15 +59,15 @@ func TestBuildCanceled(t *testing.T) {
 
 			details := []domainpurchase.PurchaseDetail{
 				domainpurchase.NewPurchaseDetail(
-					uuid.NewTestFromSalt(t, "bc_nil_d"),
-					uuid.NewTestFromSalt(t, "bc_nil_product"),
+					uuidtestkit.NewTestFromSalt(t, "bc_nil_d"),
+					uuidtestkit.NewTestFromSalt(t, "bc_nil_product"),
 					2,
 					mustPrice(t, "800"),
 				),
 			}
 			entity, err := domainpurchase.Reconstruct(
-				uuid.NewTestFromSalt(t, "bc_nil_id"), "bc-nil-code",
-				uuid.NewTestFromSalt(t, "bc_nil_user"), uuid.NewTestFromSalt(t, "bc_nil_status"),
+				uuidtestkit.NewTestFromSalt(t, "bc_nil_id"), "bc-nil-code",
+				uuidtestkit.NewTestFromSalt(t, "bc_nil_user"), uuidtestkit.NewTestFromSalt(t, "bc_nil_status"),
 				domainpurchase.StatusCodeUnprocessed, 160000, 16000, 500, 176500, details,
 				time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
 			)

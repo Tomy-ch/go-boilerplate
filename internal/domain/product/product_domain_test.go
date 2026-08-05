@@ -10,6 +10,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func mustPrice(t *testing.T, s string) money.Price {
 // mustStatusRef は、テスト用に有効な商品ステータス参照を構築します。
 func mustStatusRef(t *testing.T, salt, name string) StatusRef {
 	t.Helper()
-	ref, err := NewStatusRef(uuid.NewTestFromSalt(t, salt), name)
+	ref, err := NewStatusRef(uuidtestkit.NewTestFromSalt(t, salt), name)
 	require.NoError(t, err)
 	return ref
 }
@@ -34,7 +35,7 @@ func mustStatusRef(t *testing.T, salt, name string) StatusRef {
 // mustCategoryRef は、テスト用に有効な商品カテゴリ参照を構築します。
 func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 	t.Helper()
-	ref, err := NewCategoryRef(uuid.NewTestFromSalt(t, salt), name)
+	ref, err := NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt), name)
 	require.NoError(t, err)
 	return ref
 }
@@ -44,7 +45,7 @@ func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 func validProductArgs(t *testing.T) (uuid.UUID, Attributes) {
 	t.Helper()
 	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
-	return uuid.NewTestFromSalt(t, "product_id"), Attributes{
+	return uuidtestkit.NewTestFromSalt(t, "product_id"), Attributes{
 		Name:                  "ワイヤレスイヤホン",
 		Description:           ptr.To("ノイズキャンセリング対応"),
 		Price:                 mustPrice(t, "19.99"),

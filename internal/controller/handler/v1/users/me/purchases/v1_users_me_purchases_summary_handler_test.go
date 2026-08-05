@@ -13,6 +13,7 @@ import (
 	summaryuc "go-boilerplate/internal/usecase/purchase/summary"
 	mock_summaryuc "go-boilerplate/internal/usecase/purchase/summary/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -40,8 +41,8 @@ func summaryViewFixture(t *testing.T) summaryuc.SummaryView {
 		TotalCount:  3,
 		TotalAmount: 450,
 		StatusBreakdown: []summaryuc.StatusCountView{
-			{StatusID: uuid.NewTestFromSalt(t, "hs_unprocessed"), StatusName: "未処理", Count: 2, TotalAmount: 300},
-			{StatusID: uuid.NewTestFromSalt(t, "hs_canceled"), StatusName: "キャンセル", Count: 1, TotalAmount: 150},
+			{StatusID: uuidtestkit.NewTestFromSalt(t, "hs_unprocessed"), StatusName: "未処理", Count: 2, TotalAmount: 300},
+			{StatusID: uuidtestkit.NewTestFromSalt(t, "hs_canceled"), StatusName: "キャンセル", Count: 1, TotalAmount: 150},
 		},
 	}
 }
@@ -74,7 +75,7 @@ func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			userID := uuid.NewTestFromSalt(t, "hs_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "hs_user")
 			view := summaryViewFixture(t)
 			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, authn *auth.Authn) (summaryuc.SummaryView, error) {
@@ -122,7 +123,7 @@ func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
 			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).
 				Return(summaryuc.SummaryView{}, apperror.ErrInternal)
 
-			_, err := s.GetUsersMePurchasesSummary(authnContext(t, uuid.NewTestFromSalt(t, "hs_user_err")),
+			_, err := s.GetUsersMePurchasesSummary(authnContext(t, uuidtestkit.NewTestFromSalt(t, "hs_user_err")),
 				gen.GetUsersMePurchasesSummaryRequestObject{})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})

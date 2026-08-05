@@ -7,7 +7,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/usecase/tools/paging"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +16,7 @@ import (
 func Test_decodeFeedCursor(t *testing.T) {
 	t.Parallel()
 
-	validID := uuid.NewTestFromSalt(t, "feed_cursor_id")
+	validID := uuidtestkit.NewTestFromSalt(t, "feed_cursor_id")
 	validTime := time.Date(2025, time.January, 2, 3, 4, 5, 600000000, time.UTC)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -93,7 +93,7 @@ func Test_encodeFeedCursor(t *testing.T) {
 		t.Run("末尾行のソートキーから生成したカーソルは同じcreated_at/idへ復号できる", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "encode_feed_cursor_id")
+			id := uuidtestkit.NewTestFromSalt(t, "encode_feed_cursor_id")
 			createdAt := time.Date(2025, time.March, 4, 5, 6, 7, 800000000, time.UTC)
 			last, err := user.New(id, user.Attributes{
 				Profile: user.Profile{
@@ -101,7 +101,7 @@ func Test_encodeFeedCursor(t *testing.T) {
 					LastName:     "last_name",
 					Email:        "user@example.com",
 					Phone:        "phone_number",
-					PrefectureID: uuid.NewTestFromSalt(t, "encode_feed_cursor_pref"),
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "encode_feed_cursor_pref"),
 					City:         "city_name",
 					Street:       "town_address",
 					PostalCode:   "150-0001",

@@ -8,7 +8,7 @@ import (
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 func Test_decodeProductCursor(t *testing.T) {
 	t.Parallel()
 
-	validID := uuid.NewTestFromSalt(t, "product_cursor_id")
+	validID := uuidtestkit.NewTestFromSalt(t, "product_cursor_id")
 	validTime := time.Date(2026, time.January, 2, 3, 4, 5, 600000000, time.UTC)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -94,11 +94,11 @@ func Test_encodeProductCursor(t *testing.T) {
 		t.Run("末尾行のソートキーから生成したカーソルは同じpublished_at/idへ復号できる", func(t *testing.T) {
 			t.Parallel()
 
-			id := uuid.NewTestFromSalt(t, "encode_product_cursor_id")
+			id := uuidtestkit.NewTestFromSalt(t, "encode_product_cursor_id")
 			publishedAt := time.Date(2026, time.March, 4, 5, 6, 7, 800000000, time.UTC)
-			status, err := product.NewStatusRef(uuid.NewTestFromSalt(t, "encode_status"), "在庫あり")
+			status, err := product.NewStatusRef(uuidtestkit.NewTestFromSalt(t, "encode_status"), "在庫あり")
 			require.NoError(t, err)
-			category, err := product.NewCategoryRef(uuid.NewTestFromSalt(t, "encode_category"), "電子機器")
+			category, err := product.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "encode_category"), "電子機器")
 			require.NoError(t, err)
 			last, err := product.New(id, product.Attributes{
 				Name:                  "商品名",

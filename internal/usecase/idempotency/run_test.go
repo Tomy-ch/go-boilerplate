@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	mock_idempotencyuc "go-boilerplate/internal/usecase/idempotency/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -183,7 +184,7 @@ func TestRun(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
-			want := uuidPayload{ID: uuid.NewTestFromSalt(t, "purchase-1")}
+			want := uuidPayload{ID: uuidtestkit.NewTestFromSalt(t, "purchase-1")}
 			fp := []byte("fingerprint")
 
 			var stored []byte

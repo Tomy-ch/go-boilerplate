@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/usecase/purchase/query"
 	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -44,9 +45,9 @@ func Test_usecase_GetPurchaseSummary(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			userID := uuid.NewTestFromSalt(t, "sm_user")
-			unprocessedID := uuid.NewTestFromSalt(t, "sm_unprocessed")
-			canceledID := uuid.NewTestFromSalt(t, "sm_canceled")
+			userID := uuidtestkit.NewTestFromSalt(t, "sm_user")
+			unprocessedID := uuidtestkit.NewTestFromSalt(t, "sm_unprocessed")
+			canceledID := uuidtestkit.NewTestFromSalt(t, "sm_canceled")
 
 			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
 			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID).Return([]query.PurchaseStatusSummaryReadModel{
@@ -69,7 +70,7 @@ func Test_usecase_GetPurchaseSummary(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			userID := uuid.NewTestFromSalt(t, "sm_empty_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "sm_empty_user")
 
 			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
 			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID).Return([]query.PurchaseStatusSummaryReadModel{}, nil)
@@ -116,7 +117,7 @@ func Test_usecase_GetPurchaseSummary(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			userID := uuid.NewTestFromSalt(t, "sm_err_user")
+			userID := uuidtestkit.NewTestFromSalt(t, "sm_err_user")
 			expected := xerrors.Wrap(apperror.ErrInternal, "query service failed")
 
 			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
@@ -159,8 +160,8 @@ func Test_toSummaryView(t *testing.T) {
 		t.Run("ステータス別の件数と金額を総計へ畳み込み内訳の順序を保持する", func(t *testing.T) {
 			t.Parallel()
 
-			first := uuid.NewTestFromSalt(t, "tv_first")
-			second := uuid.NewTestFromSalt(t, "tv_second")
+			first := uuidtestkit.NewTestFromSalt(t, "tv_first")
+			second := uuidtestkit.NewTestFromSalt(t, "tv_second")
 
 			actual := toSummaryView([]query.PurchaseStatusSummaryReadModel{
 				{StatusID: first, StatusName: "未処理", Count: 1, TotalAmount: 100},

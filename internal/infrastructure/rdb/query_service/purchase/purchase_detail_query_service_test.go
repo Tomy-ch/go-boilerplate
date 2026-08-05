@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/observability"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -233,8 +234,8 @@ func Test_toPurchaseDetailItems(t *testing.T) {
 			t.Parallel()
 
 			rows := []*gen.ListPurchaseDetailItemsForUserRow{
-				{ProductID: uuid.NewTestFromSalt(t, "ti_p1"), ProductName: "商品A", Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
-				{ProductID: uuid.NewTestFromSalt(t, "ti_p2"), ProductName: "商品B", Quantity: 1, UnitPrice: decimaltestkit.MustParse(t, "1500")},
+				{ProductID: uuidtestkit.NewTestFromSalt(t, "ti_p1"), ProductName: "商品A", Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+				{ProductID: uuidtestkit.NewTestFromSalt(t, "ti_p2"), ProductName: "商品B", Quantity: 1, UnitPrice: decimaltestkit.MustParse(t, "1500")},
 			}
 
 			items, err := toPurchaseDetailItems(rows)
@@ -255,7 +256,7 @@ func Test_toPurchaseDetailItems(t *testing.T) {
 			t.Parallel()
 
 			rows := []*gen.ListPurchaseDetailItemsForUserRow{
-				{ProductID: uuid.NewTestFromSalt(t, "ti_neg"), ProductName: "商品N", Quantity: 1, UnitPrice: decimaltestkit.MustParse(t, "-1")},
+				{ProductID: uuidtestkit.NewTestFromSalt(t, "ti_neg"), ProductName: "商品N", Quantity: 1, UnitPrice: decimaltestkit.MustParse(t, "-1")},
 			}
 
 			_, err := toPurchaseDetailItems(rows)

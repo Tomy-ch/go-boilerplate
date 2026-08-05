@@ -222,6 +222,9 @@ Each function has a corresponding `ErrorMsg` function for generating validation 
 
 A UUID type wrapping `github.com/google/uuid`.
 
+Test helpers live in the separate package `pkg/uuid/testkit` (`NewTestFromSalt`), so `testing` is never
+linked into a production binary.
+
 Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valuer`).
 
 |Function / Method|Description|

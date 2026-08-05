@@ -26,6 +26,7 @@ import (
 	"go-boilerplate/internal/usecase/testkit"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -48,16 +49,16 @@ func rereadPurchase(t *testing.T) *domainpurchase.Purchase {
 	t.Helper()
 	details := []domainpurchase.PurchaseDetail{
 		domainpurchase.NewPurchaseDetail(
-			uuid.NewTestFromSalt(t, "reread_detail"),
-			uuid.NewTestFromSalt(t, "reread_product"),
+			uuidtestkit.NewTestFromSalt(t, "reread_detail"),
+			uuidtestkit.NewTestFromSalt(t, "reread_product"),
 			2, mustPrice(t, "800"),
 		),
 	}
 	p, err := domainpurchase.Reconstruct(
-		uuid.NewTestFromSalt(t, "reread_id"),
+		uuidtestkit.NewTestFromSalt(t, "reread_id"),
 		"reread-code",
-		uuid.NewTestFromSalt(t, "reread_user"),
-		uuid.NewTestFromSalt(t, "reread_status"),
+		uuidtestkit.NewTestFromSalt(t, "reread_user"),
+		uuidtestkit.NewTestFromSalt(t, "reread_status"),
 		domainpurchase.StatusCodeUnprocessed,
 		160000, 16000, 500, 176500,
 		details,
@@ -109,7 +110,7 @@ func TestNew(t *testing.T) {
 func Test_usecase_CreatePurchase(t *testing.T) {
 	t.Parallel()
 
-	productA := uuid.NewTestFromSalt(t, "cp_product")
+	productA := uuidtestkit.NewTestFromSalt(t, "cp_product")
 	// newUsecase は、指定 mock を注入した usecase を生成するローカルヘルパーです。
 	newUsecase := func(t *testing.T, cmd *mock_command.MockCommandService, repo *mock_purchase.MockRepository, emit *mock_outbox.MockEmitUsecase, xr *mock_exchangerate.MockUsecase) *usecase {
 		t.Helper()
@@ -143,7 +144,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 			u := newUsecase(t, cmd, repo, emit, xr)
 
 			view, err := u.CreatePurchase(context.Background(), CreatePurchaseParams{
-				UserID:  uuid.NewTestFromSalt(t, "cp_user"),
+				UserID:  uuidtestkit.NewTestFromSalt(t, "cp_user"),
 				Details: []DetailParam{{ProductID: productA, Quantity: 2}},
 			})
 			require.NoError(t, err)
@@ -197,7 +198,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 
 			jpy := "JPY"
 			view, err := u.CreatePurchase(context.Background(), CreatePurchaseParams{
-				UserID:          uuid.NewTestFromSalt(t, "cp_user2"),
+				UserID:          uuidtestkit.NewTestFromSalt(t, "cp_user2"),
 				Details:         []DetailParam{{ProductID: productA, Quantity: 2}},
 				DisplayCurrency: &jpy,
 			})
@@ -213,7 +214,7 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 
 		enoughStock := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 20)}
 		validParams := CreatePurchaseParams{
-			UserID:  uuid.NewTestFromSalt(t, "cp_user_err"),
+			UserID:  uuidtestkit.NewTestFromSalt(t, "cp_user_err"),
 			Details: []DetailParam{{ProductID: productA, Quantity: 2}},
 		}
 
@@ -402,22 +403,22 @@ func Test_toPurchaseView(t *testing.T) {
 func Test_usecase_CancelPurchase(t *testing.T) {
 	t.Parallel()
 
-	userID := uuid.NewTestFromSalt(t, "cancel_uc_user")
-	purchaseID := uuid.NewTestFromSalt(t, "cancel_uc_id")
+	userID := uuidtestkit.NewTestFromSalt(t, "cancel_uc_user")
+	purchaseID := uuidtestkit.NewTestFromSalt(t, "cancel_uc_id")
 
 	// lockable は、cmd.LockPurchase が返す再構築済み購入を生成するローカルヘルパーです。
 	lockable := func(t *testing.T, owner uuid.UUID, statusCode int) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, "cancel_uc_d1"),
-				uuid.NewTestFromSalt(t, "cancel_uc_p1"),
+				uuidtestkit.NewTestFromSalt(t, "cancel_uc_d1"),
+				uuidtestkit.NewTestFromSalt(t, "cancel_uc_p1"),
 				2,
 				mustPrice(t, "800"),
 			),
 		}
 		p, err := domainpurchase.Reconstruct(
-			purchaseID, "cancel-uc-code", owner, uuid.NewTestFromSalt(t, "cancel_uc_status"),
+			purchaseID, "cancel-uc-code", owner, uuidtestkit.NewTestFromSalt(t, "cancel_uc_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil,
 		)
@@ -456,7 +457,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 				ID:             purchaseID,
 				Code:           "cancel-uc-code",
 				UserID:         userID,
-				StatusID:       uuid.NewTestFromSalt(t, "cancel_uc_canceled_status"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "cancel_uc_canceled_status"),
 				StatusName:     "キャンセル",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
@@ -464,8 +465,8 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
 					domainpurchase.NewPurchaseDetail(
-						uuid.NewTestFromSalt(t, "cancel_uc_d1"),
-						uuid.NewTestFromSalt(t, "cancel_uc_p1"),
+						uuidtestkit.NewTestFromSalt(t, "cancel_uc_d1"),
+						uuidtestkit.NewTestFromSalt(t, "cancel_uc_p1"),
 						2,
 						mustPrice(t, "800"),
 					),
@@ -497,7 +498,7 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			otherOwner := uuid.NewTestFromSalt(t, "cancel_uc_other")
+			otherOwner := uuidtestkit.NewTestFromSalt(t, "cancel_uc_other")
 			cmd.EXPECT().LockPurchase(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusCodeUnprocessed), nil)
 
 			u := newUC(t, cmd, repo, emit)
@@ -591,22 +592,22 @@ func Test_usecase_CancelPurchase(t *testing.T) {
 func Test_usecase_PayPurchase(t *testing.T) {
 	t.Parallel()
 
-	userID := uuid.NewTestFromSalt(t, "pay_uc_user")
-	purchaseID := uuid.NewTestFromSalt(t, "pay_uc_id")
+	userID := uuidtestkit.NewTestFromSalt(t, "pay_uc_user")
+	purchaseID := uuidtestkit.NewTestFromSalt(t, "pay_uc_id")
 
 	// lockable は、cmd.LockPurchase が返す再構築済み購入を生成するローカルヘルパーです。
 	lockable := func(t *testing.T, owner uuid.UUID, statusCode int, paidAt *time.Time) *domainpurchase.Purchase {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, "pay_uc_d1"),
-				uuid.NewTestFromSalt(t, "pay_uc_p1"),
+				uuidtestkit.NewTestFromSalt(t, "pay_uc_d1"),
+				uuidtestkit.NewTestFromSalt(t, "pay_uc_p1"),
 				2,
 				mustPrice(t, "800"),
 			),
 		}
 		p, err := domainpurchase.Reconstruct(
-			purchaseID, "pay-uc-code", owner, uuid.NewTestFromSalt(t, "pay_uc_status"),
+			purchaseID, "pay-uc-code", owner, uuidtestkit.NewTestFromSalt(t, "pay_uc_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), paidAt, nil, nil, nil,
 		)
@@ -645,7 +646,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 				ID:             purchaseID,
 				Code:           "pay-uc-code",
 				UserID:         userID,
-				StatusID:       uuid.NewTestFromSalt(t, "pay_uc_paid_status"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "pay_uc_paid_status"),
 				StatusName:     "支払い済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
@@ -653,8 +654,8 @@ func Test_usecase_PayPurchase(t *testing.T) {
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
 					domainpurchase.NewPurchaseDetail(
-						uuid.NewTestFromSalt(t, "pay_uc_d1"),
-						uuid.NewTestFromSalt(t, "pay_uc_p1"),
+						uuidtestkit.NewTestFromSalt(t, "pay_uc_d1"),
+						uuidtestkit.NewTestFromSalt(t, "pay_uc_p1"),
 						2,
 						mustPrice(t, "800"),
 					),
@@ -686,7 +687,7 @@ func Test_usecase_PayPurchase(t *testing.T) {
 			repo := mock_purchase.NewMockRepository(ctrl)
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
-			otherOwner := uuid.NewTestFromSalt(t, "pay_uc_other")
+			otherOwner := uuidtestkit.NewTestFromSalt(t, "pay_uc_other")
 			repo.EXPECT().LockByID(gomock.Any(), purchaseID).Return(lockable(t, otherOwner, domainpurchase.StatusCodeUnprocessed, nil), nil)
 
 			u := newUC(t, cmd, repo, emit)
@@ -805,17 +806,17 @@ func Test_toCancelPurchaseView(t *testing.T) {
 
 			canceledAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 			d := &domainpurchase.Detail{
-				ID:             uuid.NewTestFromSalt(t, "tcv_id"),
+				ID:             uuidtestkit.NewTestFromSalt(t, "tcv_id"),
 				Code:           "tcv-code",
-				UserID:         uuid.NewTestFromSalt(t, "tcv_user"),
-				StatusID:       uuid.NewTestFromSalt(t, "tcv_status"),
+				UserID:         uuidtestkit.NewTestFromSalt(t, "tcv_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "tcv_status"),
 				StatusName:     "キャンセル",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuid.NewTestFromSalt(t, "tcv_d"), uuid.NewTestFromSalt(t, "tcv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tcv_d"), uuidtestkit.NewTestFromSalt(t, "tcv_p"), 2, mustPrice(t, "800")),
 				},
 				OrderedAt:  time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				CanceledAt: &canceledAt,
@@ -849,17 +850,17 @@ func Test_toPayPurchaseView(t *testing.T) {
 
 			paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 			d := &domainpurchase.Detail{
-				ID:             uuid.NewTestFromSalt(t, "tpv_id"),
+				ID:             uuidtestkit.NewTestFromSalt(t, "tpv_id"),
 				Code:           "tpv-code",
-				UserID:         uuid.NewTestFromSalt(t, "tpv_user"),
-				StatusID:       uuid.NewTestFromSalt(t, "tpv_status"),
+				UserID:         uuidtestkit.NewTestFromSalt(t, "tpv_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "tpv_status"),
 				StatusName:     "支払い済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuid.NewTestFromSalt(t, "tpv_d"), uuid.NewTestFromSalt(t, "tpv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tpv_d"), uuidtestkit.NewTestFromSalt(t, "tpv_p"), 2, mustPrice(t, "800")),
 				},
 				OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				PaidAt:    &paidAt,
@@ -884,8 +885,8 @@ func Test_toPayPurchaseView(t *testing.T) {
 func Test_usecase_ShipPurchase(t *testing.T) {
 	t.Parallel()
 
-	purchaseID := uuid.NewTestFromSalt(t, "ship_uc_id")
-	ownerID := uuid.NewTestFromSalt(t, "ship_uc_owner")
+	purchaseID := uuidtestkit.NewTestFromSalt(t, "ship_uc_id")
+	ownerID := uuidtestkit.NewTestFromSalt(t, "ship_uc_owner")
 	shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 
 	// lockable は、repo.LockByID が返す再構築済み購入を生成するローカルヘルパーです。
@@ -893,14 +894,14 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, "ship_uc_d1"),
-				uuid.NewTestFromSalt(t, "ship_uc_p1"),
+				uuidtestkit.NewTestFromSalt(t, "ship_uc_d1"),
+				uuidtestkit.NewTestFromSalt(t, "ship_uc_p1"),
 				2,
 				mustPrice(t, "800"),
 			),
 		}
 		p, err := domainpurchase.Reconstruct(
-			purchaseID, "ship-uc-code", ownerID, uuid.NewTestFromSalt(t, "ship_uc_status"),
+			purchaseID, "ship-uc-code", ownerID, uuidtestkit.NewTestFromSalt(t, "ship_uc_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), paidAt, nil, shipped, nil,
 		)
@@ -922,7 +923,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			ID:             purchaseID,
 			Code:           "ship-uc-code",
 			UserID:         ownerID,
-			StatusID:       uuid.NewTestFromSalt(t, "ship_uc_shipped_status"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "ship_uc_shipped_status"),
 			StatusName:     "発送済み",
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
@@ -930,8 +931,8 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 			TotalAmount:    176500,
 			Details: []domainpurchase.PurchaseDetail{
 				domainpurchase.NewPurchaseDetail(
-					uuid.NewTestFromSalt(t, "ship_uc_d1"),
-					uuid.NewTestFromSalt(t, "ship_uc_p1"),
+					uuidtestkit.NewTestFromSalt(t, "ship_uc_d1"),
+					uuidtestkit.NewTestFromSalt(t, "ship_uc_p1"),
 					2,
 					mustPrice(t, "800"),
 				),
@@ -990,7 +991,7 @@ func Test_usecase_ShipPurchase(t *testing.T) {
 
 			authn, err := auth.New("ship-uc-subject", "ship-uc-issuer", nil, nil)
 			require.NoError(t, err)
-			other, err := authn.WithUserID(uuid.NewTestFromSalt(t, "ship_uc_other"))
+			other, err := authn.WithUserID(uuidtestkit.NewTestFromSalt(t, "ship_uc_other"))
 			require.NoError(t, err)
 
 			authorizer.EXPECT().Authorize(gomock.Any(), other, gomock.Any(), gomock.Any()).Return(nil)
@@ -1187,17 +1188,17 @@ func Test_toShipPurchaseView(t *testing.T) {
 
 			shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 			d := &domainpurchase.Detail{
-				ID:             uuid.NewTestFromSalt(t, "tsv_id"),
+				ID:             uuidtestkit.NewTestFromSalt(t, "tsv_id"),
 				Code:           "tsv-code",
-				UserID:         uuid.NewTestFromSalt(t, "tsv_user"),
-				StatusID:       uuid.NewTestFromSalt(t, "tsv_status"),
+				UserID:         uuidtestkit.NewTestFromSalt(t, "tsv_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "tsv_status"),
 				StatusName:     "発送済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuid.NewTestFromSalt(t, "tsv_d"), uuid.NewTestFromSalt(t, "tsv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tsv_d"), uuidtestkit.NewTestFromSalt(t, "tsv_p"), 2, mustPrice(t, "800")),
 				},
 				OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				ShippedAt: &shippedAt,
@@ -1222,8 +1223,8 @@ func Test_toShipPurchaseView(t *testing.T) {
 func Test_usecase_DeliverPurchase(t *testing.T) {
 	t.Parallel()
 
-	purchaseID := uuid.NewTestFromSalt(t, "dlv_uc_id")
-	ownerID := uuid.NewTestFromSalt(t, "dlv_uc_owner")
+	purchaseID := uuidtestkit.NewTestFromSalt(t, "dlv_uc_id")
+	ownerID := uuidtestkit.NewTestFromSalt(t, "dlv_uc_owner")
 	paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
 	shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 	deliveredAt := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
@@ -1233,14 +1234,14 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 		t.Helper()
 		details := []domainpurchase.PurchaseDetail{
 			domainpurchase.NewPurchaseDetail(
-				uuid.NewTestFromSalt(t, "dlv_uc_d1"),
-				uuid.NewTestFromSalt(t, "dlv_uc_p1"),
+				uuidtestkit.NewTestFromSalt(t, "dlv_uc_d1"),
+				uuidtestkit.NewTestFromSalt(t, "dlv_uc_p1"),
 				2,
 				mustPrice(t, "800"),
 			),
 		}
 		p, err := domainpurchase.Reconstruct(
-			purchaseID, "dlv-uc-code", ownerID, uuid.NewTestFromSalt(t, "dlv_uc_status"),
+			purchaseID, "dlv-uc-code", ownerID, uuidtestkit.NewTestFromSalt(t, "dlv_uc_status"),
 			statusCode, 160000, 16000, 500, 176500, details,
 			time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC), paid, nil, shipped, delivered,
 		)
@@ -1261,7 +1262,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 			ID:             purchaseID,
 			Code:           "dlv-uc-code",
 			UserID:         ownerID,
-			StatusID:       uuid.NewTestFromSalt(t, "dlv_uc_delivered_status"),
+			StatusID:       uuidtestkit.NewTestFromSalt(t, "dlv_uc_delivered_status"),
 			StatusName:     "配達済み",
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
@@ -1269,8 +1270,8 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 			TotalAmount:    176500,
 			Details: []domainpurchase.PurchaseDetail{
 				domainpurchase.NewPurchaseDetail(
-					uuid.NewTestFromSalt(t, "dlv_uc_d1"),
-					uuid.NewTestFromSalt(t, "dlv_uc_p1"),
+					uuidtestkit.NewTestFromSalt(t, "dlv_uc_d1"),
+					uuidtestkit.NewTestFromSalt(t, "dlv_uc_p1"),
 					2,
 					mustPrice(t, "800"),
 				),
@@ -1373,7 +1374,7 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 
 			authn, err := auth.New("dlv-uc-subject", "dlv-uc-issuer", nil, nil)
 			require.NoError(t, err)
-			other, err := authn.WithUserID(uuid.NewTestFromSalt(t, "dlv_uc_other"))
+			other, err := authn.WithUserID(uuidtestkit.NewTestFromSalt(t, "dlv_uc_other"))
 			require.NoError(t, err)
 
 			authorizer.EXPECT().Authorize(gomock.Any(), other, gomock.Any(), gomock.Any()).Return(nil)
@@ -1571,17 +1572,17 @@ func Test_toDeliverPurchaseView(t *testing.T) {
 
 			deliveredAt := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
 			d := &domainpurchase.Detail{
-				ID:             uuid.NewTestFromSalt(t, "tdv_id"),
+				ID:             uuidtestkit.NewTestFromSalt(t, "tdv_id"),
 				Code:           "tdv-code",
-				UserID:         uuid.NewTestFromSalt(t, "tdv_user"),
-				StatusID:       uuid.NewTestFromSalt(t, "tdv_status"),
+				UserID:         uuidtestkit.NewTestFromSalt(t, "tdv_user"),
+				StatusID:       uuidtestkit.NewTestFromSalt(t, "tdv_status"),
 				StatusName:     "配達済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
 				ShippingFee:    500,
 				TotalAmount:    176500,
 				Details: []domainpurchase.PurchaseDetail{
-					domainpurchase.NewPurchaseDetail(uuid.NewTestFromSalt(t, "tdv_d"), uuid.NewTestFromSalt(t, "tdv_p"), 2, mustPrice(t, "800")),
+					domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "tdv_d"), uuidtestkit.NewTestFromSalt(t, "tdv_p"), 2, mustPrice(t, "800")),
 				},
 				OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 				DeliveredAt: &deliveredAt,

@@ -6,7 +6,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/usecase/tools/paging"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 func Test_decodePurchaseCursor(t *testing.T) {
 	t.Parallel()
 
-	validID := uuid.NewTestFromSalt(t, "purchase_cursor_id")
+	validID := uuidtestkit.NewTestFromSalt(t, "purchase_cursor_id")
 	validTime := time.Date(2026, time.July, 23, 3, 4, 5, 600000000, time.UTC)
 
 	t.Run("正常系", func(t *testing.T) {

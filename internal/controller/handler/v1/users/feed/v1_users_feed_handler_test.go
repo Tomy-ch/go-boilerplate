@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
@@ -107,7 +107,7 @@ func Test_server_GetUsersFeed(t *testing.T) {
 			s, mockApp := newServer(t)
 
 			// NewCursor を通過させるため、正しくエンコードされた不透明カーソルを渡す。
-			after := paging.EncodeCursor("2025-01-01T00:00:00Z", uuid.NewTestFromSalt(t, "feed_after").String())
+			after := paging.EncodeCursor("2025-01-01T00:00:00Z", uuidtestkit.NewTestFromSalt(t, "feed_after").String())
 			first := 20
 			req := gen.GetUsersFeedRequestObject{
 				Params: gen.GetUsersFeedParams{After: &after, First: &first},

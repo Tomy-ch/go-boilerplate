@@ -8,7 +8,7 @@ import (
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/usecase/purchase/event"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,12 +33,12 @@ func TestBuildCreated(t *testing.T) {
 		t.Run("購入の自己完結スナップショットJSONを生成する", func(t *testing.T) {
 			t.Parallel()
 
-			productA := uuid.NewTestFromSalt(t, "bp_product")
+			productA := uuidtestkit.NewTestFromSalt(t, "bp_product")
 			entity, err := domainpurchase.New(
-				uuid.NewTestFromSalt(t, "bp_id"),
+				uuidtestkit.NewTestFromSalt(t, "bp_id"),
 				"bp-code",
-				uuid.NewTestFromSalt(t, "bp_user"),
-				[]domainpurchase.DetailInput{{ID: uuid.NewTestFromSalt(t, "bp_d"), ProductID: productA, Quantity: 2}},
+				uuidtestkit.NewTestFromSalt(t, "bp_user"),
+				[]domainpurchase.DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "bp_d"), ProductID: productA, Quantity: 2}},
 				[]domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(productA, mustPrice(t, "800"), 20)},
 			)
 			require.NoError(t, err)

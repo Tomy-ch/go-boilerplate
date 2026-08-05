@@ -17,6 +17,7 @@ import (
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -42,17 +43,17 @@ func payViewFixture(t *testing.T) purchaseuc.PayPurchaseView {
 	t.Helper()
 	paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.PayPurchaseView{
-		ID:             uuid.NewTestFromSalt(t, "hp_id"),
+		ID:             uuidtestkit.NewTestFromSalt(t, "hp_id"),
 		Code:           "hp-code",
-		UserID:         uuid.NewTestFromSalt(t, "hp_user"),
-		StatusID:       uuid.NewTestFromSalt(t, "hp_status"),
+		UserID:         uuidtestkit.NewTestFromSalt(t, "hp_user"),
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "hp_status"),
 		StatusName:     "支払い済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
 		ShippingFee:    500,
 		TotalAmount:    176500,
 		Details: []purchaseuc.PurchaseDetailView{
-			{ProductID: uuid.NewTestFromSalt(t, "hp_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
+			{ProductID: uuidtestkit.NewTestFromSalt(t, "hp_prod"), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, "800")},
 		},
 		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		PaidAt:    &paidAt,
@@ -87,8 +88,8 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			userID := uuid.NewTestFromSalt(t, "hp_user")
-			purchaseID := uuid.NewTestFromSalt(t, "hp_purchase")
+			userID := uuidtestkit.NewTestFromSalt(t, "hp_user")
+			purchaseID := uuidtestkit.NewTestFromSalt(t, "hp_purchase")
 			view := payViewFixture(t)
 			uc.EXPECT().PayPurchase(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, params purchaseuc.PayPurchaseParams) (purchaseuc.PayPurchaseView, error) {
@@ -122,7 +123,7 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesPay(context.Background(), gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hp_noauth").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_noauth").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, ErrUnauthenticatedUser)
 		})
@@ -137,9 +138,9 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			uc.EXPECT().PayPurchase(gomock.Any(), gomock.Any()).
 				Return(purchaseuc.PayPurchaseView{}, apperror.ErrConflict)
 
-			userID := uuid.NewTestFromSalt(t, "hp_user_err")
+			userID := uuidtestkit.NewTestFromSalt(t, "hp_user_err")
 			_, err := s.PatchPurchasesPay(authnContext(t, userID), gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hp_purchase_err").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_purchase_err").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
@@ -158,7 +159,7 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
 
 			_, err = s.PatchPurchasesPay(ctx, gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hp_unresolved").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_unresolved").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
@@ -174,9 +175,9 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			view.Details[0].Quantity = math.MaxInt32 + 1
 			uc.EXPECT().PayPurchase(gomock.Any(), gomock.Any()).Return(view, nil)
 
-			userID := uuid.NewTestFromSalt(t, "hp_user_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "hp_user_overflow")
 			_, err := s.PatchPurchasesPay(authnContext(t, userID), gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuid.NewTestFromSalt(t, "hp_purchase_overflow").ToPrimitive(),
+				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_purchase_overflow").ToPrimitive(),
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
