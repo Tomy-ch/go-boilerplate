@@ -387,6 +387,13 @@ func (p *Purchase) PaidAt() *time.Time { return ptr.Copy(p.paidAt) }
 // CanceledAt は、キャンセル日時を返します。未キャンセルの場合は nil です。
 func (p *Purchase) CanceledAt() *time.Time { return ptr.Copy(p.canceledAt) }
 
+// IsCanceled は、購入がキャンセル済みかどうかを返します。
+//
+// 「キャンセル済み」の定義はこのメソッドが持ちます。判定に用いるのは source of truth である statusCode
+// だけで、canceledAt は見ません。両者は再構築時の不変条件（キャンセル状態と canceledAt の有無が一致
+// すること）で等価に縛られており、読み取り経路の SQL が canceled_at で絞るのはその等価に乗った実行形です。
+func (p *Purchase) IsCanceled() bool { return p.status == StatusCanceled }
+
 // ShippedAt は、発送日時を返します。未発送の場合は nil です。
 func (p *Purchase) ShippedAt() *time.Time { return ptr.Copy(p.shippedAt) }
 
@@ -400,8 +407,7 @@ func (p *Purchase) DeliveredAt() *time.Time { return ptr.Copy(p.deliveredAt) }
 // 遷移に成功したときだけキャンセルの事実（Event）を返します。起きたことを知っているのは遷移を起こした
 // この集約だけなので、事実の宣言も集約が行います。
 func (p *Purchase) Cancel(now time.Time) (Event, error) {
-	// canceledAt は Reconstruct の不変条件で statusCode==キャンセル と同値なので status だけで判定できる。
-	if p.status == StatusCanceled {
+	if p.IsCanceled() {
 		return Event{}, ErrAlreadyCanceled
 	}
 	// 配達済みも deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも

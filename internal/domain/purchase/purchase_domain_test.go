@@ -2158,3 +2158,26 @@ func Test_validateDetails(t *testing.T) {
 		})
 	})
 }
+
+func TestPurchase_IsCanceled(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みstatusの場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			canceledAt := time.Date(2026, time.July, 26, 7, 8, 9, 0, time.UTC)
+			p := accessorPurchaseWith(t, StatusCanceled, nil, &canceledAt)
+
+			assert.True(t, p.IsCanceled())
+		})
+
+		t.Run("キャンセル済みでないstatusの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, accessorPurchase(t).IsCanceled())
+		})
+	})
+}
