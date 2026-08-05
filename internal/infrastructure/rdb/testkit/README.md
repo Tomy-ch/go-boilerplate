@@ -67,20 +67,24 @@ flowchart TD
     A --> B
 ```
 
-### JoinSuiteSerialization
+### HoldSuiteSerialization
 
 ```go
-func JoinSuiteSerialization(ctx context.Context, db driver.DatabaseDriver) error
+func HoldSuiteSerialization(t *testing.T, db driver.DatabaseDriver)
 ```
 
-Enrolls the transaction carried by `ctx` in the suite-wide serialization, so it never runs
-concurrently with the `CASCADE TRUNCATE` another package's tests (a separate process) issue.
-`WithinTx` calls this internally, so ordinary tests never need it.
+Holds the suite-wide serialization for the calling test's whole duration, so the `CASCADE TRUNCATE`
+another package's tests (a separate process) issue cannot run while it is held. It is released in
+`t.Cleanup`.
 
-Call it directly only from a test that keeps **two transactions alive at once** — a lock-contention
-reproduction, for example — which `WithinTx` (one transaction, always rolled back) cannot express.
-Enroll only the transaction that must not overlap other packages; enrolling both sides of the
-contention would make one wait for the other and the contention under test would never occur.
+The hold lives in a dedicated transaction, and the test's own transactions do **not** join the
+serialization — joining would make them wait on the hold and they would never proceed.
+
+Ordinary tests never need this: `WithinTx` performs the same serialization internally. Reach for it
+only in a test that keeps **two transactions alive at once** — a lock-contention reproduction, for
+example — which `WithinTx` (one transaction, always rolled back) cannot express. Hold it across the
+whole test, including the rows it seeds: protecting only part of it leaves a window where a seeded
+row is truncated away before the contention under test begins.
 
 ## Transaction Execution
 

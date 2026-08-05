@@ -36,6 +36,10 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
+	// 検証用ユーザーの作成から 2 本の tx の完了までを、他パッケージの CASCADE TRUNCATE から守る。
+	// 部分的にしか守らないと、作成直後の行が消えてロック競合の手前で落ちる。
+	testkit.HoldSuiteSerialization(t, testDB)
+
 	tracer := observability.NewMockInfraLayerTracer(t)
 	repo := &repository{tracer: tracer, db: testDB}
 	lockRepo := &lockRepository{tracer: tracer, db: testDB}
@@ -96,12 +100,6 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 
 	// 退会役: ユーザー行を排他ロックしてから論理削除を確定させる。
 	require.NoError(t, newTxManager().Do(ctx, func(txCtx context.Context) error {
-		// 退会役だけがスイート全体の直列化へ参加する。購入役も参加させるとこの tx の解放待ちになり、
-		// 検証したいユーザー行のロック競合そのものが起きない。
-		if lockErr := testkit.JoinSuiteSerialization(txCtx, testDB); lockErr != nil {
-			return lockErr
-		}
-
 		withdrawing, lockErr := lockRepo.LockByID(txCtx, targetID)
 		if lockErr != nil {
 			return lockErr
