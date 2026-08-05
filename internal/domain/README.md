@@ -479,12 +479,21 @@ absence is the contract that says the application does not write this data.**
 
 Reference masters exist for two distinct reasons; do not conflate them.
 
-- **A copy of a distinction that exists outside the application** — a standard, a statute, a
-  geography. Its value set is not decided by the business, so it does not grow or shrink with a
-  business decision.
+- **A copy of a distinction that exists outside the application** — a standard, a statute. Its value
+  set is not decided by the business, so it does not grow or shrink with a business decision.
 - **A vocabulary the business defines** — a classification, a status. The business itself decides the
   value set, so a change to it *is* a business decision. These are often placed as a dimension
   subordinate to the aggregate that references them.
+
+**A lookups-only Repository does not by itself make a reference master.** The test is whether the
+data is part of the owning aggregate's semantic set — no independent transactional lifecycle, and
+reached through a mandatory, uniquely-determined foreign key. A table that is standing lookup data
+but is queried and listed on its own terms is an *independent aggregate*: it stays identity-only, and
+its attributes are resolved by a usecase-layer batch fetch rather than carried across the seam.
+`internal/domain/prefecture` is the case to compare against — externally given and never written by
+the application, yet an independent aggregate, not a reference master. See
+[`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules for the read-path
+consequences of the same distinction.
 
 ### Multi-aggregate rules
 
