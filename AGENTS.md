@@ -73,6 +73,33 @@ AI agents MUST NOT:
 - Skip the OpenAPI definition for a new API
 - Modify generated files
 - Introduce new architectural patterns without instruction
+- Install anything on their own initiative (see below)
+
+## Installing Things
+
+This covers every `install` surface, not one tool: package managers (`brew`, `npm i -g`, `pip`,
+`go install`), toolchain managers (`mise use -g`), IDE / agent integrations (`<tool> <platform>
+install`), plugins, and extensions.
+
+1. **Never install on your own initiative.** An installation changes the machine or the repository
+   for every later session and every other checkout, and it usually writes files. Agent integrations
+   in particular write project-scope instruction files (`AGENTS.md`, `.cursor/`,
+   `.github/copilot-instructions.md`, `.agents/`, `.kiro/`) — which is how an "install" quietly
+   becomes an edit to the rules you are working under.
+2. **Install only when the user asks for it.** Wanting to *use* a tool is not the same instruction as
+   wanting to *install* one; the user issues those separately. A tool being unavailable is a finding
+   to report, not a problem to solve by installing it.
+3. **Before that, check what the current setup already does.** This repository pins its toolchain in
+   `mise.toml` and ships the rest inside the Docker tool-runner images, so the capability is usually
+   already present and reachable through a `make` target — see the *Toolchain Execution Rules* in
+   `docs/rules.md` and the target registry in `.makefiles/README.md`. Reach for an install only after
+   establishing that nothing existing covers the need, and say what you checked.
+
+The permission layer backs this up rather than replacing it: install-shaped commands are routed to
+`ask` in `.claude/settings.json`, so they surface for a human decision instead of running silently.
+Those entries are written as patterns (`Bash(<tool> * install*)`) precisely because an enumeration of
+platform names goes stale every time upstream adds one, and a stale enumeration opens holes nobody is
+notified about.
 
 ## YAGNI vs Regression Safeguards
 

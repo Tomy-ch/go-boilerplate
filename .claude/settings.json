@@ -147,22 +147,16 @@
       "Edit(.makefiles/github/commitlint.mk)",
       "Write(.makefiles/github/commitlint.mk)",
       "Edit(.makefiles/github/pin.mk)",
-      "Write(.makefiles/github/pin.mk)"
+      "Write(.makefiles/github/pin.mk)",
+
+      "Bash(graphify * install*)",
+      "Bash(graphify * uninstall*)",
+      "Bash(graphify uninstall*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
       "Bash(rm -fr *)",
       "Bash(sudo *)",
-
-      "Bash(graphify claude install*)",
-      "Bash(graphify codex install*)",
-      "Bash(graphify codebuddy install*)",
-      "Bash(graphify opencode install*)",
-      "Bash(graphify aider install*)",
-      "Bash(graphify kilo install*)",
-      "Bash(graphify gemini install*)",
-      "Bash(graphify cursor install*)",
-      "Bash(graphify hook install*)",
 
       "Bash(git push --force*)",
       "Bash(git reset --hard*)",

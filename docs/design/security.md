@@ -237,8 +237,22 @@ The same tool also ships subcommands that write **project** scope: `graphify cla
 rewrites `CLAUDE.md`, `graphify codex install` rewrites `AGENTS.md`, and `graphify hook install`
 installs git hooks and a merge driver. A skill an agent can invoke therefore has a documented path
 to edit the very files that define what that agent may do, which is why those forms sit in
-`settings.json`'s `deny` list rather than in prose alone. When a bump changes what the tool writes,
-that list is part of the review.
+`settings.json` rather than in prose alone.
+
+They sit in **`ask`, not `deny`**, and as **patterns, not names**. `ask` because the goal is that no
+install happens without a human choosing it — not that installs are forbidden; a `deny` also blocks
+the legitimate case, and the user issues "use this tool" and "install this tool" as separate
+instructions (`AGENTS.md`, *Installing Things*). Patterns because the risky thing is the shape
+`<something> install`, not the platform names that happened to exist when the list was written:
+`graphify --help` grew to 20 `<platform> install` subcommands, and an enumeration written against an
+earlier release silently stops covering the new ones. A gate that decays without telling anyone is
+worse than a narrower gate that holds.
+
+**A pin bump is therefore a review of the CLI surface, not just of the version number.** The window
+and the triage above answer "is this release trustworthy"; they say nothing about "does this release
+expose new commands that write to the repo". Read the new `--help` when raising the pin, and check
+that the patterns still cover what it can write. This is the failure mode that produced the
+enumeration gap in the first place — 198 releases in 117 days, each one able to add a subcommand.
 
 ## Application runtime
 
