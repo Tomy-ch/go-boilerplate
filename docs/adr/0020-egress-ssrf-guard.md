@@ -50,6 +50,15 @@ wraps the base `*http.Transport` with a `net.Dialer` whose `ControlContext` is s
 address in the `address` argument passed by the kernel after name resolution, not the original
 hostname in the URL — which also prevents DNS rebinding attacks.
 
+**Scope: egress, not credential resolution.** "Outbound HTTP" here means a call this application
+makes *to somewhere else* — the destinations the Context enumerates, all of them operator- or
+user-influenced. It does not cover the AWS SDK's credential chain, which asks the platform the
+process already runs on who that process is. Those requests keep the SDK's own transport. See
+[Guarding the AWS credential chain](#guarding-the-aws-credential-chain) for why extending the
+guard there is the wrong move, and
+[`internal/infrastructure/awsclient/README.md`](../../internal/infrastructure/awsclient/README.md)
+for exactly what that leaves outside the guard.
+
 The guard enforces a two-tier blocking policy:
 
 **Always blocked (regardless of configuration):**
@@ -90,8 +99,10 @@ the single canonical transport used by all outbound calls (see
 
 - The guard runs post-DNS, so DNS rebinding attacks are blocked even when the hostname
   appears benign at URL-parse time.
-- All outbound calls share one transport instance, so the guard cannot be accidentally omitted
-  by a new gateway or publisher implementation.
+- Every egress call shares one transport instance, so the guard cannot be accidentally omitted
+  by a new gateway or publisher implementation. The one path that does not reach it is credential
+  resolution, and that is a decision recorded below rather than an omission a new implementation
+  can repeat.
 - Link-local (`169.254.x.x`) and bogon-reserved ranges are blocked unconditionally; no
   misconfiguration can re-enable them.
 - The `AllowPrivateNetwork` flag is per-downstream and defaults to `true` for internal
@@ -134,6 +145,39 @@ endpoint may issue a 3xx redirect to a private IP, bypassing the dial guard for 
 request. Returning the last response (`http.ErrUseLastResponse`) forces the caller to decide
 whether to follow the redirect, keeping the decision at the application layer.
 
+### Guarding the AWS credential chain
+
+Pass a guarded transport to `config.LoadDefaultConfig` so the credential chain is covered too.
+The guard denies link-local unconditionally and EC2's IMDS (`169.254.169.254`) and ECS's task
+metadata (`169.254.170.2`) live there, so this needs a second dial control that permits
+link-local while keeping every other rule. Rejected on three independent grounds, any one of
+which is sufficient:
+
+- **It cannot cover the chain.** `config.resolveHTTPCredProvider` forwards `APIOptions` and
+  `Retryer` to `endpointcreds.Options` but not `HTTPClient`, so the ECS / EKS container-credential
+  provider falls back to `awshttp.NewBuildableClient()` regardless. The variant transport would
+  reach IMDS, STS, and SSO but never the container path — buying a partial perimeter with a new
+  transport type and its wiring.
+- **It breaks a legitimate deployment shape.** The guarded transport sets `Proxy = nil`, because a
+  proxied dial lands on the proxy's IP and the destination check becomes meaningless. STS
+  (web-identity / IRSA) and SSO are public HTTPS endpoints, so forcing them direct breaks
+  credential resolution wherever egress is only permitted through a forward proxy. That is the
+  "no forward proxy" situation baked into the template.
+- **There is nothing left to defend.** What the guard would prevent is a redirected credential
+  request (`AWS_EC2_METADATA_SERVICE_ENDPOINT`, `AWS_CONTAINER_CREDENTIALS_FULL_URI`,
+  `HTTPS_PROXY`). All three are process environment variables, and whoever can set them can read
+  the credentials directly.
+
+The posture here is also **already decided by the SDK**, which is the authority this template
+defers to: `config.resolveLocalHTTPCredProvider` restricts the one env-overridable plaintext
+endpoint to loopback and the known ECS / EKS addresses (`isAllowedHost` / `isIPAllowed`). Layering
+a second, weaker perimeter over a standard that has settled the question is the kind of
+speculative abstraction this repository rejects.
+
+A narrower variant — keep the destination-IP check but leave `Proxy` alone — does not survive
+either: with a proxy in the path the check inspects the proxy's address, so it stops being a
+destination check at all.
+
 ### Per-gateway custom transport
 
 Each gateway constructs its own transport with or without a guard. Rejected because it creates
@@ -144,7 +188,7 @@ guard.
 ## Notes
 
 - Guard implementation: `internal/observability/http_client_transport.go`
-  (`guardedDialControl`, `reservedNets`, `cgnatNet`, `allowPrivateNetworkFromContext`).
+  (`guardedDialControl`, `reservedPrefixes`, `cgnatPrefix`, `allowPrivateNetworkFromContext`).
 - Transport construction: `NewHTTPClientTransport` wires `guardedDialControl` into the base
   transport and wraps it with `otelhttp`.
 - Consumer that sets `AllowPrivateNetwork = false` for an external downstream:

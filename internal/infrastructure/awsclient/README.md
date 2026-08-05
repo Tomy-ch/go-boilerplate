@@ -56,15 +56,22 @@ They are different concerns: the guard exists to constrain **egress to external 
 credential resolution is the process asking **its own platform** who it is. Splitting them keeps the
 guard on the traffic it was written for.
 
-The exemption is wider than the metadata endpoints, and worth stating plainly: the SDK takes one
-HTTP client for the whole chain, so **every** credential-resolution request runs unguarded — STS
-web-identity exchange (EKS IRSA) and SSO token exchange included. Neither the destination-IP check
-nor the guard's proxy-disabling (`Proxy = nil`) applies to them. Redirecting that traffic
+The exemption is wider than the metadata endpoints, and worth stating plainly: **every**
+credential-resolution request runs on the SDK's transport — STS web-identity exchange (EKS IRSA)
+and SSO token exchange included. Neither the destination-IP check nor the guard's proxy-disabling
+(`Proxy = nil`) applies to them.
+
+That is deliberate, not an oversight waiting to be closed. Redirecting this traffic
 (`AWS_EC2_METADATA_SERVICE_ENDPOINT`, `AWS_CONTAINER_CREDENTIALS_FULL_URI`, `HTTPS_PROXY`) takes
-write access to the process environment, and anything that can set those can reach the credentials
-themselves — so this widens no boundary that was previously closed. Narrowing it would mean a
-transport that permits link-local while keeping the rest of the guard, which is a change to the
-guard's stated invariant rather than to this package.
+write access to the process environment, and anything that can set those can read the credentials
+directly. The SDK also guards the one env-overridable plaintext endpoint itself, restricting it to
+loopback and the known ECS / EKS addresses. And the chain could not be covered even if we tried:
+the container-credential provider does not inherit the client passed to `LoadDefaultConfig`, so a
+guarded transport would reach IMDS, STS, and SSO but never that path.
+
+The full reasoning, including why a link-local-permitting variant of the guard was rejected, is
+recorded in
+[ADR-0020](../../../docs/adr/0020-egress-ssrf-guard.md#guarding-the-aws-credential-chain).
 
 ## Notes
 
