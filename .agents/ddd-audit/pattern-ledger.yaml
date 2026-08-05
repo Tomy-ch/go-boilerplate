@@ -132,7 +132,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: layered-architecture
     name: Layered Architecture
@@ -176,7 +176,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_infrastructure
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: entity
     name: Entity
@@ -202,7 +202,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: value-object
     name: Value Object
@@ -246,7 +246,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: domain-service
     name: Service (Domain Service)
@@ -279,7 +279,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain_service
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: application-service
     name: Application Layer Service
@@ -314,7 +314,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: module
     name: Module (Package)
@@ -358,29 +358,27 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain_service
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: aggregate
     name: Aggregate
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       中核（唯一のルート・ルート経由の変更・ルート単位の Repository・境界内不変条件）は原義どおり。
-      参照の差異は宣言済みで動いていない。可変集約への参照を ID のみに限定する点は Cross-aggregate
-      reference 節の Departure from Evans ブロックで宣言され、参照マスタ例外の境界（参照専用 Repository を
-      持つだけでは根拠にならず、独立集約は identity のみ）も同節に明記されている。
-      新たに立った差異はトランザクション境界の側。Aggregate Boundary 節は「1 Aggregate = 1 Transaction
-      Boundary」を単一ノードの mermaid 図として無条件に掲げるだけで、散文の限定も例外への導線も無い。
-      実際には境界を跨ぐ経路が 2 つ規定されている。ADR-0027 の CommandService（集約のロード-保存で
-      表現できない書き込みを 1 トランザクションで通す）と、ADR-0031 の順序付き悲観ロック（複数集約の行を
-      1 トランザクション内で大域順序に従ってロックし、越境した不変条件を同期的に守る）である。
-      どちらの ADR も「1 Aggregate = 1 Transaction Boundary」の語に触れず、節の側もどちらの ADR も
-      参照していない。原則と実装規約のどちらが正なのかは、節を読んでも ADR を読んでも解決しない。
-      さらに、集約境界に最も強く効くこの 2 決定のうち ADR-0029 と ADR-0031 は Evans を名指ししない
-      （コーパスで Evans に言及する ADR は 0027・0034・0088 のみで、0027 の言及も CommandService を
-      退けた代替案の中の 1 文）。原義との関係が宣言されないまま境界が緩められている。
+      差異は 2 つあり、どちらも宣言済みになった。
+      1 つ目は参照で、可変集約への参照を ID のみに限定する点が Cross-aggregate reference 節の
+      Departure from Evans ブロックで宣言され、参照マスタ例外の境界（参照専用 Repository を持つだけでは
+      根拠にならず、独立集約は identity のみ）も同節に明記されている。
+      2 つ目はトランザクション境界。Aggregate Boundary 節は「1 Aggregate = 1 Transaction Boundary」を
+      「既定であって絶対ではない」と限定したうえで、境界を跨ぐ 2 経路（陳腐化してはならないガード＝
+      ADR-0029 分岐 2、原子性を要する複数集約書き込み＝同分岐 3）へ導線を張り、この 2 つに限ると
+      明示している。ADR-0029 は Vernon の定式化を経た Evans の主張を名指しし、原義・本リポジトリの
+      選択・理由の三要素を書いた宣言節を持つ。
+      残る論点は宣言の外にある。この分類は要件に相対で、要件が変われば同じ操作が分岐を移る
+      （ADR-0029 自身が記録の規律としてそう述べている）。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
@@ -399,15 +397,22 @@ patterns:
         slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
-      Evans は他集約ルートへの直接参照を許すが、本リポジトリは可変集約への参照を identity のみに
-      限定する。直接参照はグラフを読んでそれ越しに変更するのを容易にし、2 つのトランザクション境界を
-      事故的に 1 つへ潰すため。参照マスタだけは提示に必要な属性を伴ってよいが、変更を通す振る舞いを
-      持たない。宣言は internal/domain/README.md の Cross-aggregate reference 節。
+      差異は 2 つ。(1) Evans は他集約ルートへの直接参照を許すが、本リポジトリは可変集約への参照を
+      identity のみに限定する。直接参照はグラフを読んでそれ越しに変更するのを容易にし、2 つの
+      トランザクション境界を事故的に 1 つへ潰すため。参照マスタだけは提示に必要な属性を伴ってよいが、
+      変更を通す振る舞いを持たない。宣言は internal/domain/README.md の Cross-aggregate reference 節。
+      (2) 集約が即時整合の単位であるという Evans の主張（「1 Aggregate = 1 Transaction Boundary」は
+      Vernon による定式化）に対し、本リポジトリは 2 つの状況に限ってこれを越える。陳腐化してはならない
+      ガードと、原子性を要する複数集約書き込みである。Evans の議論は変更についてのものであり、
+      前者で他集約は観測されるだけで変更されずルートが権威を保つため。購入作成は購入者・商品・購入の
+      3 集約の行を 1 トランザクションに持つが、書き込まれるのは商品と購入のみ。宣言は
+      docs/adr/0029-commandservice-atomicity-criterion.md の Departure 節と
+      internal/domain/README.md の Aggregate Boundary 節。
     enforced_by:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: factory
     name: Factory
@@ -438,7 +443,7 @@ patterns:
       Do not set outside constructor 節。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: repository
     name: Repository
@@ -489,7 +494,7 @@ patterns:
       適格基準の背景は ADR-0029。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: specification
     name: Specification
@@ -538,32 +543,26 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: domain-event
     name: Domain Event
     part: 3
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       構造的役割（集約を小さく保ったまま越境した帰結を結果整合で達成する）は outbox event として解釈済み。
-      モデル化の側も解決した。イベントはドメインの型として存在し、過去形の名前・不変性・発生時刻を持ち、
+      モデル化の側も解決している。イベントはドメインの型として存在し、過去形の名前・不変性・発生時刻を持ち、
       遷移メソッドが成功時にだけ返すため「状態は変わったがイベントが出ていない」がコンパイル時に書けない。
       event_type / payload の語彙の所有も分離済み（名前はドメイン、版と wire 表現は詰め替え層）。
-      pending events は採用せず遷移からの返却で同じ保証を得る、と宣言している。
+      残る差異は pending events を採らない点で、これは宣言済み。
+      前回の監査が立てた「同期ロックと結果整合のどちらを選ぶかの基準が無い」という差異は解消した。
+      ADR-0029 の判定手順が 3 分岐（分解＝既定 / 陳腐化してはならないガード / 原子性を要する書き込み）に
+      拡張され、分岐ごとに名前の付いた占有者がある（商品の非公開化が分岐 1、在籍ガードが分岐 2、
+      購入作成が分岐 3）。基準が読み取りの陳腐化と書き込みの原子性という 2 つの独立した問いに分解され、
+      なぜ既存の基準がガードに届かなかったかも同節に書かれている。
       なお Domain Event は Evans 2003 本体のパターン言語には無く、2015 年の DDD Reference が出典。
-      新たに立った差異は選択基準の不在。集約を跨ぐ不変条件を、同期ロック（即時整合）で守るのか
-      outbox イベント（結果整合）へ分解するのかを述べた記述がコーパスに無い。最も近い ADR-0029 の
-      基準は「複数集約への書き込みが単一トランザクションの原子性を要するか」であって、軸は
-      CommandService と usecase+outbox の別であり、不変条件の検査には及ばない。同 ADR は退会の
-      「進行中の購入があれば退会できない」を「集約は跨ぐが読み取りであり書き込み原子性は不要」として
-      通常 usecase+outbox 側へ振っているが、その読み取りと後続の書き込みの間の窓こそ ADR-0031 が
-      悲観ロックで塞ぐ対象であり、ADR-0029 はロックにも ADR-0031 にも一切触れていない。
-      Domain Event 側の文書（domain README の Domain events 節、outbox / boundary README、ADR-0045、
-      docs/design/outbox.md）も ADR-0031 を参照せず、同期的代替の存在自体に言及しない。
-      結果、越境した帰結を結果整合で達成するという Domain Event 側の経路と、同期ロックで即時に守る
-      ADR-0031 側の経路が、どちらを選ぶかの基準を持たないまま並立している。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
@@ -577,6 +576,12 @@ patterns:
       - kind: adr
         id: "0045"
         slug: broker-agnostic-worker-scaffold
+      - kind: adr
+        id: "0029"
+        slug: commandservice-atomicity-criterion
+      - kind: adr
+        id: "0031"
+        slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
       Evans（DDD Reference）は集約が事象を宣言することを求めるが、実装形として一般的な pending events
@@ -585,7 +590,7 @@ patterns:
       集約に管理すべき可変状態を増やさずに済むため。宣言は internal/domain/README.md の Domain events 節。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: bounded-context
     name: Bounded Context
@@ -622,7 +627,7 @@ patterns:
       internal/domain/lexicon/README.md 冒頭の注記。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: context-map
     name: Context Map
@@ -642,7 +647,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: shared-kernel
     name: Shared Kernel
@@ -676,7 +681,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: anticorruption-layer
     name: Anticorruption Layer
@@ -720,7 +725,7 @@ patterns:
       記録する運用とする。宣言は internal/infrastructure/webapi/README.md の Design Policy 節。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
 
   - id: published-language
     name: Published Language
@@ -763,4 +768,4 @@ patterns:
       宣言は docs/design/outbox.md の第 4 節。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "84481f410e087f6a2f212e663dda687da0f459a4"
+    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
