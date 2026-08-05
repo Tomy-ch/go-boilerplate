@@ -5,7 +5,7 @@
 .PHONY: slot-status ## DB スロットプールの占有状況を表示する
 
 # スロット定義（db-slot が書き出す KEY=VALUE）。既定値は docker-compose.attach.yaml 側の
-# ${VAR:-...}（DB 名 local/test・ホスト公開ポート 8080/4000/2345/6060）と docker/compose.mk の
+# ${VAR:-...}（DB 名 local/test・ホスト公開ポート 8080/2010/2345/6060）と docker/compose.mk の
 # APP_PROJECT_DEFAULT が持ち、スロット取得時だけこのファイルが上書きする。未取得でも既定のまま
 # 動くため、スロット取得は並列作業のための opt-in に留まる。
 # ここでの -include はホスト実行の go test へ DB 名を渡すためのもので、app 層の compose 呼び出しは
