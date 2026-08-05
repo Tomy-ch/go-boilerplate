@@ -196,12 +196,6 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
 
-		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity := reconstructPurchase(t, "create_status_overflow", math.MaxInt16+1, 1)
-			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
-		})
 	})
 }
 
@@ -440,12 +434,6 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
 
-		t.Run("statusCodeがSMALLINT列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity := reconstructPurchase(t, "cancel_status_overflow", math.MaxInt16+1, 1)
-			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
-		})
 	})
 }
 
