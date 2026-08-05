@@ -144,15 +144,18 @@ var (
 	expectedWorkerNackBackoffMax            = 30 * time.Second
 
 	// consumerQueue（worker を配線したときだけ使うため、接続情報は既定の空値）
-	expectedConsumerQueueEndpoint          = ""
-	expectedConsumerQueueRegion            = ""
-	expectedConsumerQueueURL               = ""
-	expectedConsumerQueueDLQURL            = ""
-	expectedConsumerQueueAccessKeyID       = ""
-	expectedConsumerQueueSecretAccessKey   = ""
-	expectedConsumerQueueMaxMessages       = int32(10)
-	expectedConsumerQueueWaitTimeSeconds   = int32(20)
-	expectedConsumerQueueVisibilityTimeout = int32(30)
+	expectedConsumerQueueEndpoint               = ""
+	expectedConsumerQueueRegion                 = ""
+	expectedConsumerQueueURL                    = ""
+	expectedConsumerQueueDLQURL                 = ""
+	expectedConsumerQueueAccessKeyID            = ""
+	expectedConsumerQueueSecretAccessKey        = ""
+	expectedConsumerQueueMaxMessages            = 10
+	expectedConsumerQueueMaxMessagesInt32       = int32(expectedConsumerQueueMaxMessages)
+	expectedConsumerQueueWaitTimeSeconds        = 20
+	expectedConsumerQueueWaitTimeSecondsInt32   = int32(expectedConsumerQueueWaitTimeSeconds)
+	expectedConsumerQueueVisibilityTimeout      = 30
+	expectedConsumerQueueVisibilityTimeoutInt32 = int32(expectedConsumerQueueVisibilityTimeout)
 
 	// outbox（Queue* は PUBLISHER=sqs のときだけ使うため、既定の http では空値）
 	expectedOutboxPublisher            = "http"
@@ -289,9 +292,9 @@ func MockConfigForTest(tb testing.TB) *Config {
 			dlqURL:            expectedConsumerQueueDLQURL,
 			accessKeyID:       expectedConsumerQueueAccessKeyID,
 			secretAccessKey:   expectedConsumerQueueSecretAccessKey,
-			maxMessages:       expectedConsumerQueueMaxMessages,
-			waitTimeSeconds:   expectedConsumerQueueWaitTimeSeconds,
-			visibilityTimeout: expectedConsumerQueueVisibilityTimeout,
+			maxMessages:       expectedConsumerQueueMaxMessagesInt32,
+			waitTimeSeconds:   expectedConsumerQueueWaitTimeSecondsInt32,
+			visibilityTimeout: expectedConsumerQueueVisibilityTimeoutInt32,
 		},
 		outbox: OutboxConfig{
 			publisher:            expectedOutboxPublisher,

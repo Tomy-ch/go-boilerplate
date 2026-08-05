@@ -23,8 +23,8 @@ type workerImpl struct {
 }
 
 // New は、退会証跡 worker を初期化します。
-// broker adapter（Consumer / FailureHandler）は DI が組み立てて注入します。controller 層は
-// infrastructure を import できないためで、この worker はどの broker かを知りません。
+// broker adapter（Consumer / FailureHandler）は呼び出し側が組み立てて渡すため、この worker は
+// どの broker から読んでいるかを知りません。
 // failure に nil を渡した場合、Permanent メッセージの退避は engine 既定の扱いになります。
 func New(
 	consumer workerbd.Consumer,

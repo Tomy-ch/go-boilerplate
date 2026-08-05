@@ -110,9 +110,9 @@ func TestNew(t *testing.T) {
 					dlqURL:            expectedConsumerQueueDLQURL,
 					accessKeyID:       expectedConsumerQueueAccessKeyID,
 					secretAccessKey:   expectedConsumerQueueSecretAccessKey,
-					maxMessages:       expectedConsumerQueueMaxMessages,
-					waitTimeSeconds:   expectedConsumerQueueWaitTimeSeconds,
-					visibilityTimeout: expectedConsumerQueueVisibilityTimeout,
+					maxMessages:       expectedConsumerQueueMaxMessagesInt32,
+					waitTimeSeconds:   expectedConsumerQueueWaitTimeSecondsInt32,
+					visibilityTimeout: expectedConsumerQueueVisibilityTimeoutInt32,
 				},
 				outbox: OutboxConfig{
 					publisher:            expectedOutboxPublisher,

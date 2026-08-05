@@ -56,6 +56,16 @@ They are different concerns: the guard exists to constrain **egress to external 
 credential resolution is the process asking **its own platform** who it is. Splitting them keeps the
 guard on the traffic it was written for.
 
+The exemption is wider than the metadata endpoints, and worth stating plainly: the SDK takes one
+HTTP client for the whole chain, so **every** credential-resolution request runs unguarded — STS
+web-identity exchange (EKS IRSA) and SSO token exchange included. Neither the destination-IP check
+nor the guard's proxy-disabling (`Proxy = nil`) applies to them. Redirecting that traffic
+(`AWS_EC2_METADATA_SERVICE_ENDPOINT`, `AWS_CONTAINER_CREDENTIALS_FULL_URI`, `HTTPS_PROXY`) takes
+write access to the process environment, and anything that can set those can reach the credentials
+themselves — so this widens no boundary that was previously closed. Narrowing it would mean a
+transport that permits link-local while keeping the rest of the guard, which is a change to the
+guard's stated invariant rather than to this package.
+
 ## Notes
 
 - `Region` may be left empty to let the SDK resolve it (environment, shared profile). The adapters

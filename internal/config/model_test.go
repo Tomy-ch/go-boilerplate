@@ -1379,7 +1379,7 @@ func TestConsumerQueueConfig_MaxMessages(t *testing.T) {
 		t.Run("1 回の受信で取得する最大件数を取得できる", func(t *testing.T) {
 			t.Parallel()
 			consumerQueue := MockConfigForTest(t).consumerQueue
-			assert.Equal(t, expectedConsumerQueueMaxMessages, consumerQueue.MaxMessages())
+			assert.Equal(t, expectedConsumerQueueMaxMessagesInt32, consumerQueue.MaxMessages())
 		})
 	})
 }
@@ -1391,7 +1391,7 @@ func TestConsumerQueueConfig_WaitTimeSeconds(t *testing.T) {
 		t.Run("long-poll の待機秒数を取得できる", func(t *testing.T) {
 			t.Parallel()
 			consumerQueue := MockConfigForTest(t).consumerQueue
-			assert.Equal(t, expectedConsumerQueueWaitTimeSeconds, consumerQueue.WaitTimeSeconds())
+			assert.Equal(t, expectedConsumerQueueWaitTimeSecondsInt32, consumerQueue.WaitTimeSeconds())
 		})
 	})
 }
@@ -1403,7 +1403,7 @@ func TestConsumerQueueConfig_VisibilityTimeout(t *testing.T) {
 		t.Run("可視性タイムアウト秒数を取得できる", func(t *testing.T) {
 			t.Parallel()
 			consumerQueue := MockConfigForTest(t).consumerQueue
-			assert.Equal(t, expectedConsumerQueueVisibilityTimeout, consumerQueue.VisibilityTimeout())
+			assert.Equal(t, expectedConsumerQueueVisibilityTimeoutInt32, consumerQueue.VisibilityTimeout())
 		})
 	})
 }
