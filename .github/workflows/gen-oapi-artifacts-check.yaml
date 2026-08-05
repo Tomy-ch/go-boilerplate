@@ -163,6 +163,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-oapi-artifacts-filelist -->'
+          status: "${{ steps.gen_diff.outputs.has_diff == 'false' && 'success' || 'drift' }}"
           title: "${{ steps.comment.outputs.title || '## ⚠️ Generated OpenAPI Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-oapi-comment.md
 

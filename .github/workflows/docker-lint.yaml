@@ -73,6 +73,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- dockerfile-lint-result -->'
+          status: ${{ steps.hadolint.outputs.status }}
           title: "${{ steps.hadolint.outputs.title || '## ⚠️ Dockerfile Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/hadolint.log
           details-summary: 'hadolint log'

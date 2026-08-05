@@ -221,6 +221,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-artifacts-filelist -->'
+          status: "${{ steps.gen_diff.outputs.has_diff == 'false' && 'success' || 'drift' }}"
           title: "${{ steps.comment.outputs.title || '## ⚠️ Generated Database Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-db-comment.md
       - name: Fail if diff exists

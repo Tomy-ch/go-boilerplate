@@ -132,6 +132,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trufflehog-result -->'
+          status: ${{ steps.trufflehog.outputs.status }}
           title: "${{ steps.trufflehog.outputs.title || '## ⚠️ Secret Scan (TruffleHog): CUT OFF (no result produced)' }}"
           body-file: trufflehog-summary.md
           details-summary: '📄 Summary'
