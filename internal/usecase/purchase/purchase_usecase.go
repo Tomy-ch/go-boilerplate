@@ -579,7 +579,8 @@ func (u *usecase) DeliverPurchase(
 
 // ensurePurchaserActive は、購入者が在籍していることを共有ロック付きで確認します。
 // 退会（排他ロック）と直列化されるため、確認を通った購入者は tx の終了まで退会できません。
-// 退会済み・不存在は、主体の状態と操作の衝突として ErrConflict を返します
+// 退会が確定済みの主体は認証の時点で弾かれるため、ここが拒否に転じるのは受付から成立までの間に
+// 退会が確定した場合に限られます。その衝突は主体の状態と操作の衝突として ErrConflict を返します
 // （退会が進行中購入を ErrConflict で拒む鏡像。購入対象の不存在ではないため NotFound へは畳みません）。
 // それ以外のエラーは、障害を退会済みと区別できなくしないためそのまま返します。
 func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) error {
