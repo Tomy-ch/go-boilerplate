@@ -13,6 +13,7 @@ scripts/
 ├── build-portal.mjs            # ポータルフロントエンド（src/main.jsx）を esbuild でバンドル
 ├── semver.mjs                  # セマンティックバージョニングヘルパー（patch/minor/major）
 ├── stamp-openapi-version.mjs   # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
+├── reset-mock-auth-users.mjs   # mock-auth の固定ユーザー fixture を中立な既定へリセット
 ├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
 ├── make_help.mjs                # Make ターゲットのヘルプ出力生成
 ├── mermaid-lint.mjs            # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
@@ -24,8 +25,12 @@ scripts/
 ├── actions-shellcheck/         # composite action の `run:` スクリプトを shellcheck で検査（Go）
 ├── pin-actions/                # GitHub Actions の `uses:` 参照を commit SHA へ固定（Go）
 ├── pin-images/                 # Dockerfile の `FROM` base image を digest へ固定（Go）
+├── npm-cooldown/               # package-lock.json を各 .npmrc の `min-release-age` に照らして監査（Go）
 ├── go-cooldown/                # go.mod を供給網 cooldown 窓に対して gate / 棚卸し（Go）
 ├── mise-cooldown/              # mise.toml のツール pin を cooldown 窓に対して gate / 棚卸し（Go）
+├── migration-lint/             # マイグレーション連番の重複・欠番を検査（Go）
+├── release/                    # リリースタグ / リリースブランチの作成（Go）
+├── repo-setup/                 # boilerplate を自分のリポジトリとして初期化する git / gh 手順（Go）
 └── setup/                     # プロジェクト初期設定スクリプト
     ├── replace-module.mjs
     ├── replace-app-metadata.mjs
@@ -84,6 +89,7 @@ scripts/
 |`semver.mjs`|セマンティックバージョンのバンプ（patch / minor / major）|リリースワークフロー|
 |`stamp-openapi-version.mjs`|`release/vX.Y.Z` のブランチ名から `X.Y.Z` を導出し `openapi.yaml` の `info.version` に書き込む（先頭の `version:` 行のみ・冪等・非 release ref は no-op）。契約版のみで SHA / build metadata は付けない（commit 単位の追跡は runtime の `/version` の責務）。依存ゼロの ESM で、素の runner `node` で動く。|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go 実装の sync ツール。`mise.toml` の `[tools]` table を行ベース parser で解析し（外部依存ゼロ）、`go` / `node` / `python` を `go.mod` の `go` directive と `docker/*/Dockerfile` の `FROM golang:` / `FROM node:` / `FROM python:` 行へ反映する。version 存在・ファイル存在・期待マッチ数の事前 validate を全 rule で通してからファイル単位 atomic に書き出すため、partial state にならない。|`make sync-versions`|
+|`release/`|リリースタグ（`tag`）と次のリリースブランチ（`branch`）を作る。次バージョンは `git tag` の最新セマンティックバージョンから `-bump patch\|minor\|major` で決める。手順が make のレシピではなくここに在るのは、どちらも取り消しの効かない操作（タグの push / GitHub Release の作成 / デフォルトブランチの切り替え）を含み、分岐を実地で確かめようとすると本当にリリースするしかないためである。手順の組み立てと中止条件は純粋関数へ寄せてテストで固定してある。|`make tag-patch` / `tag-minor` / `tag-major` / `branch-patch` / `branch-minor` / `branch-major` / `hotfix-patch`|
 
 その他のツールのバージョンは [`mise.toml`](../mise.toml) を SSOT として管理しています。各環境（host / docker / CI）は必要なものだけ `mise install <tool>` で個別に取得するため、sync スクリプトは不要です。
 
@@ -107,10 +113,12 @@ scripts/
 |---|---|---|
 |`pin-actions/`|`.github/workflows/**` と `.github/actions/**` の外部 GitHub Actions `uses:` を不変の commit SHA へ固定する。`resolve` は参照を走査し各 tag/branch を `git ls-remote` で SHA へ解決して lockfile `.github/actions-pin.toml`（SSOT）へ書き出す。`PIN_ACTIONS_MIN_AGE_DAYS`（既定 14）日未満の新しすぎるコミットは採用せず既存ピンを維持する supply-chain quarantine 付き。`apply` は lockfile を元に各 `uses:` を `@<sha> # <tag>` へ書き換える。`check` は書き換えずに同じ判定を行い、未固定/古い/未登録があれば非 0 で終了する（CI / hook 用）。既に固定済みの行はコメント末尾の `# <tag>` を版として再解決するため冪等。|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
 |`pin-images/`|`docker/*/Dockerfile` の全 `FROM` base image を不変の digest へ固定する。`resolve` は各 `image:tag` を集め `docker buildx imagetools inspect` で現在 digest へ解決して lockfile `docker/images-pin.toml`（SSOT）へ書き出す。image-config の `created` が `PIN_IMAGES_MIN_AGE_DAYS`（既定 14）日未満の digest は採用しない supply-chain cooldown 付き。mutable tag は履歴を問えないため step-back 先はツール自身の前回 lock で、初回（無い場合）は tag のまま残す。`apply` は lockfile を元に各 `FROM` を `image:tag@sha256:...` へ正規化し、quarantine 中の image は digest を剥がして tag のみへ戻す。`check` は書き換えずに同じ判定を行い、drift があれば非 0 で終了する（CI / hook 用）。tag は版の SSOT として `FROM` 行に残す。|`make pin-images-resolve` / `pin-images-apply` / `pin-images-check`|
+|`npm-cooldown/`|各 `package-lock.json` を、ここにハードコードした値ではなく同階層 `.npmrc` 自身の `min-release-age` に照らして監査する。npm がその cooldown を評価するのは依存**解決**時だけで、`npm ci` は解決せず lockfile を再現するだけなので、cooldown を外して作られた lockfile は CI に何の症状も出さずに通る。その死角を埋める。検出は推測ではなく証拠に近い。cooldown が有効なら npm は窓内バージョンの解決を拒否するので、lockfile へ載る経路は意図的な解除以外に無いためである。**検出があっても 0 で終了する** — バイパスはテックリードの判断であり、ハードゲートはその存在理由である場面をこそ塞ぐ。この性質はワークフローの YAML ではなくツール側が持つ。|`make npm-cooldown-audit`|
 |`go-cooldown/`|Go module proxy が返す公開時刻（`<module>/@v/<version>.info`）で `go.mod` を供給網 cooldown 窓に照らす。GOPROXY プロトコルの一部なので追加依存は不要。`gate` は base ref と比較し、その変更が追加 / 更新した **direct** の require が窓内なら失敗する。indirect は MVS が direct の要求下限より上に固定することがあり PR 側で下げられないため報告に留める。`audit` は全 require を棚卸しし、窓そのものでは失敗しない（既存依存は grandfather）。`.github/go-cooldown-bypass.toml` のエントリが期限切れ・3 ヶ月超・`go.mod` に不在のいずれかなら双方で失敗し、無効なエントリは効力も失うので失効したバイパスがモジュールを通し続けることはない。npm の `min-release-age` と違い Go は解決時に窓を強制しないため、この検査は検知器ではなく防御そのものである。|`make go-cooldown-gate BASE=<ref>` / `make go-cooldown-audit`|
 |`mise-cooldown/`|`mise.toml` が pin するツール版を供給網 cooldown 窓に照らす。窓はツールではなく backend の性質で決まる。GitHub リリース経由（aqua / ubi / github）は 14 日で、tag が別 commit へ付け替えられ得るぶん `pin-actions` / `pin-images` と揃える。パッケージレジストリ経由（go / npm / pipx）は公開が immutable なので 7 日で、`npm-cooldown` / `go-cooldown` と揃う。公開時刻はそれぞれ GitHub Releases API・Go module proxy・npm registry・PyPI から取る。`go:` backend はパッケージパスを指すため、proxy が答えるまで接頭辞を遡ってモジュールパスを見つける。短縮名の backend は対応表を持たず `mise registry` に解決させる（表を持つと mise の更新で静かにずれる）。**言語ランタイム（`core:` backend）は受容したリスクとして対象外** — go / node / python の配布自体が汚染される事態は供給網の 1 リンクではなく言語の信頼モデルの崩壊であり、冷却期間で守れるものが無い。`gate` は base ref と比較して失敗し、`audit` は全件を棚卸しして窓では失敗しない。双方とも `.github/mise-cooldown-bypass.toml` のエントリが期限切れ・3 ヶ月超・対象不在なら失敗し、無効なエントリは効力を失う。|`make mise-cooldown-gate BASE=<ref>` / `make mise-cooldown-audit`|
+|`migration-lint/`|`database/migrations` の連番について、重複（`-check duplicate`）と欠番（`-check gap`）を検査する。読むのは `<連番>_<名前>.<kind>.sql` の最初の `_` より前で、up / down は `-kind` で切り替える。lefthook の pre-commit ゲートから呼ばれる。判定がシェルのレシピではなく Go に在るのは、この検査の壊れ方が「何も検査しなくなる」方向に出るためで、そこはテストで固定できるがシェルのパイプラインでは固定できない。|`make check-migration-up-version` / `check-migration-down-version` / `check-migration-up-gap` / `check-migration-down-gap`|
 
-### 初期設定（`setup/`）
+### 初期設定（`setup/` / `repo-setup/`）
 
 ボイラープレートから新規プロジェクトを作成する際の設定スクリプトです。
 
@@ -122,6 +130,8 @@ scripts/
 |`replace-repository-reference.mjs`|README と OpenAPI の GitHub リポジトリ参照を置換|
 |`replace-codeowners.mjs`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。|
 |`remove-sample-api.mjs`|サンプルAPI(`user`/`product`/`order`)を削除。`lib/sample-api.mjs` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
+|`reset-mock-auth-users.mjs`|mock-auth の固定 User Fixture（`docker/mock-auth-server/fixtures/users.json`）を中立な既定内容へ上書きする。ファイル自体は削除しないため mock は常に起動できる。`make setup-remove-sample-api` がこれを呼び、デモの固定ユーザー（John Doe 等）を中立な既定ユーザー 1 件へ置き換える。|
+|`repo-setup/`|boilerplate を自分のリポジトリとして初期化する際の git / gh 側の手順。`preflight` は `v0.0.0` タグがあれば中止し、`bootstrap` はタグを作り直して develop / staging / production を用意しデフォルトブランチを移し、`prune-release-notes` は `v0.0.0.md` 以外のリリースノートを削除する。ラベル・ルールセット・ワークフローの有効化は全体の連鎖を持つ `setup-repository.mk` に残る。ここも Go なのは、タグの一括削除やデフォルトブランチの移動が、実物のリポジトリを壊さずには試せないためである。|
 
 すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。
 <!-- sample-api:begin -->
