@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	boundary "go-boilerplate/internal/usecase/boundary/publisher"
+	"go-boilerplate/internal/usecase/boundary/worker"
 	"go-boilerplate/pkg/httpheader"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -20,12 +21,20 @@ import (
 // 受信側はこの属性を冪等キーの材料として読みます。
 const AttrMessageID = "message_id"
 
+// AttrEventType は、イベント種別を運ぶ MessageAttribute のキーです。
+// 受信側 Handler が本文を parse する前に処理対象を選別できるよう、worker seam が定める属性名で載せます。
+const AttrEventType = worker.AttrEventType
+
 // attrTypeString は、MessageAttribute の DataType です（SQS は型名の指定を必須とします）。
 const attrTypeString = "String"
 
 // maxMessageAttributes は、SendMessage が受け付ける MessageAttributes の上限です（SQS の仕様）。
 // 超過するとメッセージ全体が InvalidParameterValue で拒否されます。
 const maxMessageAttributes = 10
+
+// reservedAttributes は、adapter 自身が占める属性の数（message_id / event_type）です。
+// 伝搬できるヘッダの数は、上限からこの分だけ減ります。
+const reservedAttributes = 2
 
 // ErrTooManyAttributes は、伝搬対象ヘッダが SQS の MessageAttributes 上限を超えたことを示すエラーです。
 var ErrTooManyAttributes = xerrors.Wrap(apperror.ErrInvalidArgument, "too many message attributes")
@@ -75,13 +84,17 @@ func (p *publisher) Publish(ctx context.Context, m boundary.Message) error {
 	return normalizeError(err)
 }
 
-// messageAttributes は、message_id と伝搬対象ヘッダを MessageAttributes へ組み立てます。
+// messageAttributes は、message_id / event_type と伝搬対象ヘッダを MessageAttributes へ組み立てます。
 // 空値のヘッダは SQS が InvalidParameterValue で拒否するため落とします。
 func (p *publisher) messageAttributes(m boundary.Message) map[string]types.MessageAttributeValue {
-	attrs := make(map[string]types.MessageAttributeValue, len(m.Headers)+1)
+	attrs := make(map[string]types.MessageAttributeValue, len(m.Headers)+reservedAttributes)
 	attrs[AttrMessageID] = types.MessageAttributeValue{
 		DataType:    aws.String(attrTypeString),
 		StringValue: aws.String(m.MessageID.String()),
+	}
+	attrs[AttrEventType] = types.MessageAttributeValue{
+		DataType:    aws.String(attrTypeString),
+		StringValue: aws.String(m.EventType),
 	}
 
 	for k, v := range m.Headers {
@@ -89,7 +102,8 @@ func (p *publisher) messageAttributes(m boundary.Message) map[string]types.Messa
 		if httpheader.IsSensitive(k) {
 			continue
 		}
-		if k == AttrMessageID || v == "" {
+		// 同名ヘッダに outbox 由来の値を上書きさせません。受信側の選別が本文と食い違うためです。
+		if k == AttrMessageID || k == AttrEventType || v == "" {
 			continue
 		}
 		attrs[k] = types.MessageAttributeValue{
