@@ -421,7 +421,7 @@ flowchart LR
 
 Keep Aggregate **small**
 
-Principle:
+Principle (the default, not an absolute — see the two departures below):
 
 ```mermaid
 flowchart TB
@@ -433,6 +433,36 @@ Avoid:
 - large aggregates
 - direct DB structure mapping
 - tightly coupled models
+
+**Two named situations depart from the principle**, and only these two. Both put rows belonging to
+more than one aggregate inside a single transaction, and each has to be justified against its own
+criterion before it is used — the criterion, and the default that precedes both, are the three
+branches of [ADR-0029](../../docs/adr/0029-commandservice-atomicity-criterion.md) § Decision
+procedure:
+
+- **A guard that must not go stale** (branch 2). An operation reads another aggregate to decide
+  whether it is permitted, and a concurrent write could invalidate that condition between the check
+  and the commit. The guard row is locked before the condition is evaluated, and held to the commit
+  ([ADR-0031](../../docs/adr/0031-ordered-pessimistic-row-locks.md)). The other aggregate is
+  observed, never mutated, and the operation stays a regular usecase.
+- **A multi-aggregate write that must be atomic** (branch 3). The requirements say an intermediate
+  state must never be observable, so the writes run in one transaction through a CommandService
+  ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+
+Everything else decomposes: a single-aggregate write plus an eventually consistent cascade, which is
+the branch this principle describes without exception.
+
+> **Departure from Evans.** Evans makes the aggregate the boundary of *immediate* consistency — one
+> transaction changes one aggregate, and anything beyond it is reconciled afterwards. This model
+> widens that boundary in the two situations above, and the widening is real: creating a purchase
+> holds rows from three aggregates in one transaction — the purchaser (locked to guard membership),
+> the products (locked to reserve stock), and the purchase being written. That is accepted because
+> Evans's argument is about *change*, and the three roles are not alike. Only the purchase and the
+> product are written, and their writes must be atomic or overselling becomes observable; the user is
+> read and held, never mutated, so its root keeps sole authority over its own state. What the
+> principle protects — no mutating several aggregates through one loaded graph until nobody can say
+> which invariant belongs to which root — still holds. What it would otherwise permit by default, and
+> what this model refuses, is deciding a cross-aggregate question from a read that nothing holds.
 
 ### Cross-aggregate reference
 
