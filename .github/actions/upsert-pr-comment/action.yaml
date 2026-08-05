@@ -152,9 +152,41 @@ runs:
           // overwrites its own red comment with the green result, in place, so the pull request
           // never keeps a failure that no longer holds — and never states a pass no one asked for.
           // A cut-off produces no status at all, which is not `success` and therefore still posts.
-          if (!existing && !cutOff && status === 'success') {
+          const quiet = !cutOff && status === 'success';
+
+          if (!existing && quiet) {
             core.info(`status=success and no existing ${marker} comment; nothing to post`);
             return;
+          }
+
+          // The one comment that is removed rather than overwritten. A cut-off notice records no
+          // verdict — only that a run ended without reaching one — so a later `success` does not
+          // supersede a finding, it answers a question that was left open, and overwriting would
+          // leave a permanent green comment on the pull request for a cancellation. That is not a
+          // rare case: `cancel-in-progress` cancels the previous run on every quick second push,
+          // and each cancelled job that pipes its output leaves a half-written body behind, so the
+          // notice is created and then frozen green. The cancellation stays in the run history
+          // either way. Recognition is by heading, because a job cut off mid-write has a body and
+          // reaches the action's own notice only when it has none; every caller's heading carries
+          // this phrase, which `make actions-cutoff-lint` is what keeps true. A refused delete
+          // falls back to the overwrite rather than leaving a stale cut-off standing on a green run.
+          const headingLine = (existing?.body || '').split('\n')[1] || '';
+          const staleCutOff = quiet
+            && headingLine.startsWith('## ')
+            && headingLine.includes('CUT OFF (no result produced)');
+
+          if (existing && staleCutOff) {
+            try {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+              });
+              core.info(`removed the stale cut-off ${marker} comment`);
+              return;
+            } catch (error) {
+              core.warning(`could not delete the stale cut-off comment (${error.message}); updating it instead`);
+            }
           }
 
           if (existing) {

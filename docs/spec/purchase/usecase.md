@@ -95,7 +95,7 @@ output:
     - PurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
   errors:
     - ErrInsufficientStock → 409（売り越し）
-    - 在籍ガードの NotFound → 409（退会済み。主体の状態と操作の衝突であり、購入対象の不存在ではないため 404 へは畳まない）
+    - 在籍ガードの NotFound → 409（受付から成立までの間に退会が確定した競合時のみ。退会確定済みの主体は useridentity.Resolver が 401 で弾くためここへ到達しない。主体の状態と操作の衝突であり購入対象の不存在ではないため 404 へは畳まない）
     - 在籍ガードのその他のエラーはそのまま伝播（障害を退会済みと区別できなくしないため 409 へ化けさせない）
     - ErrEmptyDetails / ErrDuplicateProductID / ErrInvalidQuantity / ErrProductNotFound → 422
 ```

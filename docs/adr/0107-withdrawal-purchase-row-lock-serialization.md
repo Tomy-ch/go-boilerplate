@@ -28,6 +28,14 @@ The outcome is a withdrawn user carrying an in-progress purchase. Referential in
 the `purchases.user_id → users.id` FK holds and withdrawal is a soft delete — so only the business
 invariant "a withdrawn user has no in-progress purchase" breaks.
 
+Note what is *not* at stake. `useridentity.Resolver` rejects a request whose resolved user carries a
+`deleted_at` with `ErrUserUnavailable` (401), and it runs in middleware, ahead of every handler. A
+withdrawn user therefore cannot reach any usecase with a *new* request — verified at runtime against
+`POST /v1/purchases`, `GET /v1/purchases`, `GET /v1/purchases/{id}`, `PATCH .../pay` and
+`PATCH .../cancel`, all of which answer 401. The exposure this ADR addresses is strictly the race
+window: a request whose identity was resolved while the user was still active, which then commits its
+purchase after the withdrawal commits.
+
 Two properties of the codebase decide the shape of the fix:
 
 - **Transactions run at READ COMMITTED.** `driver.NewTransactionManager` begins without `TxOptions`
@@ -63,13 +71,15 @@ Two properties of the codebase decide the shape of the fix:
    the possibility of a cycle, extending the ordering discipline [ADR-0100] established for product
    rows.
 
-4. **A purchase by a withdrawn user is `ErrConflict` (409).** It mirrors withdrawal's own refusal,
-   which is already 409 for the same class of collision between a user's lifecycle state and a
-   requested operation. 404 is reserved for hiding the existence of *another* principal's resource
-   (see `CancelPurchase`); here the subject is the caller's own state and there is nothing to hide,
-   and a 404 on `POST /v1/purchases` would read as "the thing you are purchasing does not exist".
-   403 belongs to the Authorizer's policy decisions, which this request has already passed.
-   Errors other than not-found propagate untouched, so an outage is never reported as a withdrawal.
+4. **Losing the race is `ErrConflict` (409).** This status is reachable only through the interleaving
+   above — an already-withdrawn caller is 401 at authentication and never gets here. It mirrors
+   withdrawal's own refusal, which is already 409 for the same class of collision between a user's
+   lifecycle state and a requested operation. 404 is reserved for hiding the existence of *another*
+   principal's resource (see `CancelPurchase`); here the subject is the caller's own state and there
+   is nothing to hide, and a 404 on `POST /v1/purchases` would read as "the thing you are purchasing
+   does not exist". 403 belongs to the Authorizer's policy decisions, which this request has already
+   passed. Errors other than not-found propagate untouched, so an outage is never reported as a
+   withdrawal.
 
 5. **No compensating cascade on the withdrawal side.** Because the invariant is now closed at the
    entrance, a consumer of `user.withdrawn.v1` that cancels leftover in-progress purchases would
@@ -82,7 +92,8 @@ Two properties of the codebase decide the shape of the fix:
 
 - The invariant holds under concurrency rather than probabilistically: the interleaving above is
   structurally unreachable, and the ordering is pinned by an integration test that runs two real
-  transactions against the database.
+  transactions against the database. That test is also the only practical way to exercise the 409 —
+  reproducing the window through the HTTP surface would require winning a millisecond-wide race.
 - The guard costs the same number of round trips as an unlocked existence check would — one `SELECT`
   on a primary key — so strictness here is not bought with extra queries.
 - Both directions of the same business collision now answer 409, and `POST /v1/purchases` already
@@ -103,8 +114,11 @@ Two properties of the codebase decide the shape of the fix:
 
 ### Neutral Consequences
 
-- The window remains open for operations other than purchase creation performed with a token issued
-  before withdrawal; token revocation stays rejected (see [#558]).
+- Operations other than purchase creation need no equivalent guard: `useridentity.Resolver` already
+  stops a withdrawn caller at 401 before any handler runs, and none of them can lose this race,
+  because only purchase creation both requires the purchaser to be a member and can commit
+  concurrently with the withdrawal. Token revocation stays rejected (see [#558]) and is unrelated —
+  the resolver reads the user's live state on every request rather than trusting the token.
 
 ## Alternatives Considered
 
