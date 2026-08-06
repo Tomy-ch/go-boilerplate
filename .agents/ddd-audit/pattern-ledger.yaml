@@ -284,24 +284,26 @@ patterns:
     part: 2
     scope: core
     status: interpreted
-    verdict: 差異あり
+    verdict: 差異なし
     gap: >-
       ステートレス性と Evans の基準（Entity/VO の自然な責務として収まらない操作か）が明記され、
       Domain Service と Usecase の選択基準も「導出か写像か」として定義された。並列列挙による矛盾は解消。
       配置は集約パッケージ配下ではなく internal/domain/service/<name>/ と規定し直したため、他集約 import を
-      禁じる depguard 規則との構造的矛盾も解消（実体は初出の占有者と同時に作る方針）。冒頭
-      Role in this project 節が旧配置のまま残っていた食い違いも解消済み。
-      残る差異は適用範囲で、Evans の Domain Service の基準は「Entity/VO の自然な責務に収まらない操作か」
-      であって集約跨ぎではない（集約跨ぎを定義要件とするのは Vernon 以降の後発の整理）。本リポジトリは
-      用途を集約跨ぎに限定しており、単一集約内で Entity/VO に収まらない操作の置き場を与えていない。
-      この限定は宣言されていない。
+      禁じる depguard 規則との構造的矛盾も解消。冒頭 Role in this project 節が旧配置のまま残っていた
+      食い違いも解消済み。
+      適用範囲の差異も解消した。以前は入場条件 1 が「集約に跨ること」を必須としており、Evans の基準
+      （Entity/VO の自然な責務に収まらない操作か。集約跨ぎを定義要件とするのは Vernon 以降の後発の整理）
+      より狭い限定を宣言なしに置いていた。入場条件から集約数の要件を外して 2 条件へ改め、置き場は
+      集約数に関わらず internal/domain/service/<name>/ の 1 箇所に統一した。単一集約に閉じた占有者
+      （service/dispatch。GroupForDispatch は集合についての問いでどの Purchase 1 件のメソッドにもなり得ない）
+      を実装し、規約と実体の両方で範囲が Evans の基準に一致することを示している。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
-        section: "Multi-aggregate rules / Domain Service or Usecase / Where a cross-aggregate Domain Service lives / Callable layers"
+        section: "Rules that belong to no entity / Domain Service or Usecase / One thing or a set / Where a Domain Service lives / Callable layers"
       - kind: doc
         path: docs/rules.md
-        section: "Allowed in Domain"
+        section: "Allowed in Domain / Domain services"
     deviation_declared: false
     deviation_note: ""
     enforced_by:
@@ -309,8 +311,8 @@ patterns:
       # 他の domain deny を全て繰り返す専用規則が入った。gap 本文が述べる規則はこれ。
       - kind: depguard
         rule: maintain_a_sound_domain_service
-    last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited: "2026-08-06"
+    last_audited_commit: "c3a355153c861ff4c7216df1d90bbabc74847b4e"
 
   - id: application-service
     name: Application Layer Service

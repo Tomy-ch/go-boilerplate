@@ -74,6 +74,8 @@ tags:
     description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
   - name: v1/purchases
     description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
+  - name: v1/purchases/shippable
+    description: 発送待ち購入のまとめ発送一覧（admin のみ・単一集約 Domain Service サンプル・非 admin は 403）。
   - name: v1/purchases/detail
     description: 単一購入の詳細取得（本人のみ・集約跨ぎ QueryService・明細に商品名/未存在は 404 で秘匿）。
   - name: v1/purchases/detail/cancel
@@ -1090,6 +1092,48 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/shippable:
+    get:
+      operationId: GetPurchasesShippable
+      tags:
+        - v1/purchases/shippable
+      summary: 発送待ち購入のまとめ発送一覧の取得
+      description: |
+        発送可能な購入を、まとめて発送してよい組に分けて返します。認証必須で、
+        管理者（admin）のみ実行できます。管理者でなければ 403 で拒否します。
+        発送可能とは支払いを終え、まだ発送していない状態です。
+        まとめる軸は同一の購入者で、同じ購入者宛ての購入が 1 つの組になります。購入が 1 件だけの購入者も
+        その 1 件からなる組になります。
+        組の中は注文日時の古い順（同時刻は購入 ID の昇順）、組同士はその組の最も古い購入の同じ順序で並びます。
+        limit は読み出す購入の件数で、まとめ判定はその範囲の中で行います。範囲の外にある同一購入者の購入は
+        別の便になります。ページネーションは行わず、上位 limit 件のみを対象とします。
+        発送待ちの購入がない場合はエラーではなく空配列を返します。
+        発送の実行は購入 1 件ずつ `POST /v1/purchases/{purchaseId}/ship` で行います。
+        本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ShippableLimitParam'
+      responses:
+        '200':
+          description: まとめて発送してよい組に分けた発送待ち購入の一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseShippableResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/purchases/{purchaseId}:
     get:
       operationId: GetPurchasesDetail
@@ -1540,6 +1584,19 @@ components:
       name: limit
       in: query
       description: 取得する上位件数。在庫の少ない順で上位 limit 件を返します。
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+        example: 20
+    ShippableLimitParam:
+      name: limit
+      in: query
+      description: |
+        読み出す発送待ち購入の件数。注文日時の古い順で上位 limit 件を読み、まとめ判定はその範囲の中で行います。
+        範囲の外にある同一購入者の購入は別の便になります。
       required: false
       schema:
         type: integer
@@ -2974,6 +3031,69 @@ components:
             空配列・重複はドメインで検証し 422 を返します（スキーマでは制約せず単一の検証責務に集約）。
           items:
             $ref: '#/components/schemas/PurchaseDetailInput'
+    PurchaseShippableItemResponse:
+      type: object
+      description: |
+        まとめ発送の組に含まれる購入 1 件のスキーマ。発送指示は購入 1 件ずつ行うため id を返します。
+        組に入っている時点で発送可能なので、status は返しません。明細も含みません（購入詳細 API で取得します）。
+      required:
+        - id
+        - code
+        - totalAmount
+        - orderedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 購入ID。発送指示（`POST /v1/purchases/{purchaseId}/ship`）に用います。
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: string
+          description: 購入コード（UUIDv7 文字列・一意）
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        totalAmount:
+          type: integer
+          format: int64
+          description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+          example: 176500
+        orderedAt:
+          type: string
+          format: date-time
+          description: 注文日時
+          example: '2026-07-23T00:00:00Z'
+    PurchaseDispatchGroupResponse:
+      type: object
+      description: |
+        まとめて発送してよい購入の組。同一の購入者宛てであることを軸に分けます。
+        組は算出結果であり永続化しないため、組そのものの識別子は持ちません。
+      required:
+        - userId
+        - purchases
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: 組に含まれる購入の購入者 ID。組の中では全件が同一です。
+          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        purchases:
+          type: array
+          minItems: 1
+          description: 組に含まれる購入。注文日時の古い順（同時刻は購入 ID の昇順）で並びます。
+          items:
+            $ref: '#/components/schemas/PurchaseShippableItemResponse'
+    PurchaseShippableResponse:
+      type: object
+      description: |
+        発送待ち購入のまとめ発送一覧のレスポンススキーマ。まとめて発送してよい組の配列を返します。
+        組同士はその組の最も古い購入の注文日時の順（同時刻は購入 ID の昇順）で並びます。
+      required:
+        - groups
+      properties:
+        groups:
+          type: array
+          description: まとめ発送の組の一覧。発送待ちの購入がない場合は空配列です。
+          items:
+            $ref: '#/components/schemas/PurchaseDispatchGroupResponse'
     PurchasePayResponse:
       type: object
       description: |

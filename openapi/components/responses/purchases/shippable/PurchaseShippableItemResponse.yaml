@@ -1,0 +1,29 @@
+type: object
+description: |
+  まとめ発送の組に含まれる購入 1 件のスキーマ。発送指示は購入 1 件ずつ行うため id を返します。
+  組に入っている時点で発送可能なので、status は返しません。明細も含みません（購入詳細 API で取得します）。
+required:
+  - id
+  - code
+  - totalAmount
+  - orderedAt
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 購入ID。発送指示（`POST /v1/purchases/{purchaseId}/ship`）に用います。
+    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  code:
+    type: string
+    description: 購入コード（UUIDv7 文字列・一意）
+    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  totalAmount:
+    type: integer
+    format: int64
+    description: 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+    example: 176500
+  orderedAt:
+    type: string
+    format: date-time
+    description: 注文日時
+    example: "2026-07-23T00:00:00Z"

@@ -26,6 +26,9 @@ type Repository interface {
 	// UpdateDelivered は、購入の状態遷移（→ 配達済み）を、渡された ctx のトランザクション内で実行します。
 	// 配達確認の証跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
 	UpdateDelivered(ctx context.Context, p *Purchase) error
+	// FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で明細込みに最大 limit 件
+	// 取得します。該当が無い場合は空を返します。絞り込みは Purchase.IsShippable の定義と一致させること。
+	FindShippable(ctx context.Context, limit int32) (Purchases, error)
 	// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 	// 購入ステータスマスタで解決します（購入ステータスは購入集約に属する固定参照マスタのため、
 	// 単一集約の Repository read です）。存在しない場合は NotFound を返します。

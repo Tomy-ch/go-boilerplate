@@ -1,0 +1,12 @@
+name: limit
+in: query
+description: |
+  読み出す発送待ち購入の件数。注文日時の古い順で上位 limit 件を読み、まとめ判定はその範囲の中で行います。
+  範囲の外にある同一購入者の購入は別の便になります。
+required: false
+schema:
+  type: integer
+  minimum: 1
+  maximum: 100
+  default: 20
+  example: 20

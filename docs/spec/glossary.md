@@ -62,6 +62,8 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 購入明細 | 購入 1 件に含まれる商品ごとの行。単価は買った時点の値で確定し、後の値上げに追随しない | purchase / Purchase | `purchase.PurchaseDetail` | `PurchaseDetail` |
 | 購入コード | 顧客との問い合わせでその購入を指し示すための符号 | purchase / Purchase | `purchase.Purchase.Code` | `code` |
 | キャンセル済み | 購入が取り消され、履行されないことが確定した状態 | purchase / Purchase | `purchase.Purchase.IsCanceled` | — |
+| 発送可能 | 購入が発送してよい状態。支払いを終え、まだ発送していないことを指す | purchase / Purchase | `purchase.Purchase.IsShippable` | — |
+| まとめ発送 | 発送待ちの購入のうち、1 便にまとめて発送してよい組 | purchase / Purchase | `dispatch.GroupForDispatch` | — |
 | ユーザー | このサービスで商品を購入する人 | user / User | `user.User` | `User` |
 | 在籍 | ユーザーがこのサービスの利用を続けている状態 | user / User | `user.User.IsActive` | — |
 | 都道府県 | 住所を広域で区分する単位 | prefecture / Prefecture | `prefecture.Prefecture` | `Prefecture` |
