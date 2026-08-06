@@ -194,6 +194,92 @@ func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) 
 	return nil
 }
 
+// FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で最大 limit 件、
+// 明細込みで再構築して返します。絞り込みの条件は Purchase.IsShippable の実行形です。
+//
+// 明細は購入 1 件ずつではなく取得した購入 ID をまとめて 1 クエリで引きます（件数分の往復を避けるため）。
+// status_id は seed の UUID を焼き込まず purchase_statuses.code で絞り込みます。
+func (r *repository) FindShippable(ctx context.Context, limit int32) (purchase.Purchases, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	statusCode, err := safecast.IntToInt16(purchase.StatusPaid.Code())
+	if err != nil {
+		return nil, xerrors.Wrap(err, "invalid purchase status code")
+	}
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	rows, err := db.ListShippablePurchases(ctx, &gen.ListShippablePurchasesParams{
+		StatusCode: statusCode,
+		LimitParam: limit,
+	})
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+	if len(rows) == 0 {
+		return purchase.Purchases{}, nil
+	}
+
+	ids := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		ids[i] = row.Purchases.ID
+	}
+
+	detailRows, err := db.ListPurchaseDetailsByPurchaseIDs(ctx, ids)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	detailsByPurchaseID, err := groupPurchaseDetails(detailRows)
+	if err != nil {
+		return nil, err
+	}
+
+	purchases := make(purchase.Purchases, len(rows))
+	for i, row := range rows {
+		p := row.Purchases
+		entity, rerr := purchase.Reconstruct(p.ID, purchase.Attributes{
+			Code:           p.Code,
+			UserID:         p.UserID,
+			StatusID:       p.StatusID,
+			StatusCode:     int(row.StatusCode),
+			SubtotalAmount: int(p.SubtotalAmount),
+			TaxAmount:      int(p.TaxAmount),
+			ShippingFee:    int(p.ShippingFee),
+			TotalAmount:    int(p.TotalAmount),
+			Details:        detailsByPurchaseID[p.ID],
+			OrderedAt:      p.OrderedAt,
+			PaidAt:         p.PaidAt,
+			CanceledAt:     p.CanceledAt,
+			ShippedAt:      p.ShippedAt,
+			DeliveredAt:    p.DeliveredAt,
+		})
+		if rerr != nil {
+			return nil, pgerror.NormalizeReconstructError(rerr)
+		}
+		purchases[i] = entity
+	}
+	return purchases, nil
+}
+
+// groupPurchaseDetails は、複数購入分の明細行を購入 ID ごとにまとめます。
+// 各購入内の並びは取得順（明細 ID 昇順）を保ちます。
+func groupPurchaseDetails(
+	detailRows []*gen.ListPurchaseDetailsByPurchaseIDsRow,
+) (map[uuid.UUID][]purchase.PurchaseDetail, error) {
+	grouped := make(map[uuid.UUID][]purchase.PurchaseDetail)
+	for _, dr := range detailRows {
+		d := dr.PurchaseDetails
+		detail, err := toPurchaseDetail(d)
+		if err != nil {
+			return nil, err
+		}
+		grouped[d.PurchaseID] = append(grouped[d.PurchaseID], detail)
+	}
+	return grouped, nil
+}
+
 // FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 // 購入ステータスマスタとの結合で解決します。存在しない場合は NotFound を返します。
 func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchase.Detail, error) {
@@ -236,20 +322,28 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 	}, nil
 }
 
-// toPurchaseDetails は、明細行を購入明細の値オブジェクトへ変換します。単価は価格スケール（ドル decimal）です。
+// toPurchaseDetail は、明細行 1 件を購入明細の値オブジェクトへ変換します。単価は価格スケール（ドル decimal）です。
+func toPurchaseDetail(d gen.PurchaseDetails) (purchase.PurchaseDetail, error) {
+	unitPrice, err := money.NewPrice(d.UnitPrice)
+	if err != nil {
+		return purchase.PurchaseDetail{}, pgerror.NormalizeReconstructError(err)
+	}
+	return purchase.NewPurchaseDetail(d.ID, purchase.PurchaseDetailAttributes{
+		ProductID: d.ProductID,
+		Quantity:  int(d.Quantity),
+		UnitPrice: unitPrice,
+	}), nil
+}
+
+// toPurchaseDetails は、購入 1 件分の明細行を購入明細の値オブジェクトへ変換します。
 func toPurchaseDetails(detailRows []*gen.ListPurchaseDetailsByPurchaseIDRow) ([]purchase.PurchaseDetail, error) {
 	details := make([]purchase.PurchaseDetail, len(detailRows))
 	for i, dr := range detailRows {
-		d := dr.PurchaseDetails
-		unitPrice, perr := money.NewPrice(d.UnitPrice)
-		if perr != nil {
-			return nil, pgerror.NormalizeReconstructError(perr)
+		detail, err := toPurchaseDetail(dr.PurchaseDetails)
+		if err != nil {
+			return nil, err
 		}
-		details[i] = purchase.NewPurchaseDetail(d.ID, purchase.PurchaseDetailAttributes{
-			ProductID: d.ProductID,
-			Quantity:  int(d.Quantity),
-			UnitPrice: unitPrice,
-		})
+		details[i] = detail
 	}
 	return details, nil
 }

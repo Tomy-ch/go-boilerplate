@@ -189,6 +189,52 @@ func (q *Queries) ListPurchaseDetailsByPurchaseID(ctx context.Context, purchaseI
 	return items, nil
 }
 
+const listPurchaseDetailsByPurchaseIDs = `-- name: ListPurchaseDetailsByPurchaseIDs :many
+SELECT d.id, d.purchase_id, d.product_id, d.quantity, d.unit_price, d.created_at, d.updated_at
+FROM purchase_details AS d
+WHERE d.purchase_id = ANY($1::UUID [])
+ORDER BY d.purchase_id, d.id
+`
+
+type ListPurchaseDetailsByPurchaseIDsRow struct {
+	PurchaseDetails PurchaseDetails
+}
+
+// 複数の購入 ID から明細をまとめて取得する。購入 1 件ずつの取得を件数分繰り返さないための一括版で、
+// 並びは購入 ID 昇順・同一購入内は明細 ID 昇順。purchase_ids が空の場合は 0 行。
+//
+//	SELECT d.id, d.purchase_id, d.product_id, d.quantity, d.unit_price, d.created_at, d.updated_at
+//	FROM purchase_details AS d
+//	WHERE d.purchase_id = ANY($1::UUID [])
+//	ORDER BY d.purchase_id, d.id
+func (q *Queries) ListPurchaseDetailsByPurchaseIDs(ctx context.Context, purchaseIds []uuid.UUID) ([]*ListPurchaseDetailsByPurchaseIDsRow, error) {
+	rows, err := q.db.Query(ctx, listPurchaseDetailsByPurchaseIDs, purchaseIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPurchaseDetailsByPurchaseIDsRow
+	for rows.Next() {
+		var i ListPurchaseDetailsByPurchaseIDsRow
+		if err := rows.Scan(
+			&i.PurchaseDetails.ID,
+			&i.PurchaseDetails.PurchaseID,
+			&i.PurchaseDetails.ProductID,
+			&i.PurchaseDetails.Quantity,
+			&i.PurchaseDetails.UnitPrice,
+			&i.PurchaseDetails.CreatedAt,
+			&i.PurchaseDetails.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPurchasesFeedAfter = `-- name: ListPurchasesFeedAfter :many
 SELECT
     p.id,
@@ -337,6 +383,79 @@ func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchases
 			&i.OrderedAt,
 			&i.StatusID,
 			&i.StatusName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listShippablePurchases = `-- name: ListShippablePurchases :many
+SELECT
+    ps.code AS status_code,
+    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+FROM purchases AS p
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE ps.code = $1
+ORDER BY p.ordered_at ASC, p.id ASC
+LIMIT $2
+`
+
+type ListShippablePurchasesParams struct {
+	StatusCode int16
+	LimitParam int32
+}
+
+type ListShippablePurchasesRow struct {
+	StatusCode int16
+	Purchases  Purchases
+}
+
+// === source: database/dml/repository/purchase/select_shippable_purchases.sql ===
+// 発送可能な購入を、注文日時の古い順（同時刻は ID 昇順）で最大 limit 件取得する。
+// 現在状態は購入ステータスマスタとの結合で code を解決する（status_id は SoT、code は集約が
+// 状態機械の判定に用いる業務キー）。固定参照マスタのみを結合し、集約境界をまたがない単一集約 read。
+// 「発送可能」を定義するのは Purchase.IsShippable で、以下の条件はその実行形です。片方だけ変更しないこと。
+// 支払い済みを表す code は seed UUID を焼き込まないよう呼び出し側がドメイン定数から渡す。
+//
+//	SELECT
+//	    ps.code AS status_code,
+//	    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
+//	FROM purchases AS p
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE ps.code = $1
+//	ORDER BY p.ordered_at ASC, p.id ASC
+//	LIMIT $2
+func (q *Queries) ListShippablePurchases(ctx context.Context, arg *ListShippablePurchasesParams) ([]*ListShippablePurchasesRow, error) {
+	rows, err := q.db.Query(ctx, listShippablePurchases, arg.StatusCode, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListShippablePurchasesRow
+	for rows.Next() {
+		var i ListShippablePurchasesRow
+		if err := rows.Scan(
+			&i.StatusCode,
+			&i.Purchases.ID,
+			&i.Purchases.Code,
+			&i.Purchases.UserID,
+			&i.Purchases.StatusID,
+			&i.Purchases.SubtotalAmount,
+			&i.Purchases.TaxAmount,
+			&i.Purchases.ShippingFee,
+			&i.Purchases.TotalAmount,
+			&i.Purchases.OrderedAt,
+			&i.Purchases.PaidAt,
+			&i.Purchases.CanceledAt,
+			&i.Purchases.ShippedAt,
+			&i.Purchases.DeliveredAt,
+			&i.Purchases.CreatedAt,
+			&i.Purchases.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

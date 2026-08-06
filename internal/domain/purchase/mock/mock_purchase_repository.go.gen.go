@@ -87,6 +87,21 @@ func (mr *MockRepositoryMockRecorder) FindFeedByUserID(ctx, userID, params any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeedByUserID", reflect.TypeOf((*MockRepository)(nil).FindFeedByUserID), ctx, userID, params)
 }
 
+// FindShippable mocks base method.
+func (m *MockRepository) FindShippable(ctx context.Context, limit int32) (purchase.Purchases, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindShippable", ctx, limit)
+	ret0, _ := ret[0].(purchase.Purchases)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindShippable indicates an expected call of FindShippable.
+func (mr *MockRepositoryMockRecorder) FindShippable(ctx, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShippable", reflect.TypeOf((*MockRepository)(nil).FindShippable), ctx, limit)
+}
+
 // FindStatusesByUserID mocks base method.
 func (m *MockRepository) FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]purchase.Status, error) {
 	m.ctrl.T.Helper()
