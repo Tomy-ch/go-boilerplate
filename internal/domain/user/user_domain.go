@@ -133,9 +133,6 @@ func (u *User) CreatedAt() time.Time { return u.createdAt }
 // UpdatedAt は、ユーザーの更新日時を返します。
 func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 
-// FullName は、ユーザーのフルネームを返します。
-func (u *User) FullName() string { return u.firstName + " " + u.lastName }
-
 // IsActive は、ユーザーが在籍しているか（退会していないか）を返します。
 // 「在籍している」という業務上の語が指す条件はこの述語が定義であり、永続化層の絞り込み条件が
 // 定義になることはありません。

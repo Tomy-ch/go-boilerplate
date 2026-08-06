@@ -58,3 +58,50 @@ exclusions:
       同上（0100 番台）。
     until: >-
       当該 ADR がコンパクションを通り、決定の主題と説明のための例が分離されたとき。
+
+# Identifiers that ARE business terms but whose name is also ordinary technical vocabulary. Each
+# entry names the probe forms that stay usable, so the term is narrowed rather than dropped —
+# **an identifier with a common name is the one most likely to leak, so making it invisible is the
+# worst available answer.**
+#
+# Not the same list as the Mechanism vocabulary section of `docs/spec/glossary.md`. That one says a
+# word is *not* a business term; this one says a word *is* one and cannot be found this way.
+#
+# Field reference
+#   identifier  the aggregate identifier or public name that collides.
+#   collides_with  what it is confused for. One line, concrete.
+#   usable_forms   which of the detector's probe forms still work for it:
+#                  `path` | `qualifier` | `public-name` | `backtick`.
+#                  Never empty — an entry that leaves nothing usable is a deletion in disguise,
+#                  and should be argued for as one.
+
+collisions:
+  - identifier: user
+    collides_with: >-
+      認証・認可の機構語と全面的に衝突する（user_identity / userrole / UserID / user scope）。
+      素の語で当てると認証系 README がほぼ全数偽陽性になる。
+    usable_forms: [path, qualifier]
+
+  - identifier: status
+    collides_with: >-
+      HTTP status / job status / worker status。corpus のほぼ全域に出るため、素の語も
+      public-name 形も probe として成立しない。
+    usable_forms: [path]
+
+  - identifier: code
+    collides_with: >-
+      error code / status code / source code。購入コードの公開名だが、この語での検出は
+      信号にならない。
+    usable_forms: [qualifier]
+
+  - identifier: product
+    collides_with: >-
+      `production`（部分一致）と、英語の一般名詞「製品」（例: ADR 中の "rather than on the
+      product"）。語境界を守っても後者は取れない。
+    usable_forms: [path, qualifier, public-name, backtick]
+
+  - identifier: category
+    collides_with: >-
+      DML の system CQRS category（ADR ファイル名 `*-dml-category.md` へのリンクが
+      qualifier 形に当たる）。素の語も一般名詞として頻出。
+    usable_forms: [path, public-name]
