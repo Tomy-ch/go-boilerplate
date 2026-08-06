@@ -38,8 +38,8 @@ feature ごとの spec だけでは足りず、その理由がこのページの
 | --- | --- |
 | 用語 | 業務が言うとおりの語 |
 | 定義 | ドメインエキスパートが受け入れる 1 文。実装の語彙を使わずに書く |
-| 所有 | 意味を所有する feature と集約。**ちょうど 1 つ**。2 つあるならその衝突こそが findings |
-| コードシンボル | それを担う公開識別子（`package.Type`） |
+| 所有 | 意味を所有する feature と、あれば集約。**ちょうど 1 つ**。2 つあるならその衝突こそが findings。集約を持たない投影は feature だけを書く——語を定義していないモデルに帰属させないため。集約横断の語彙（`internal/domain/lexicon`）は設計上どの feature のものでもないので `lexicon` と書き、これは衝突ではない |
+| コードシンボル | それを担う公開識別子（`package.Type` / `package.Type.Method` / `package.Func` / `package.Value`）。`query` のようにパッケージ名だけでは一意にならない場合は親を添える（`dashboard/query.SalesResult`）。**識別子だけを書く**——注記を添えると、この列を突き合わせる検査が通らなくなり、統べる主張が検査できないものになる |
 | 公開名 | 公開契約（OpenAPI schema / field）での名前。表に出ない語は空 |
 
 公開名が空なのは普通である。すべての業務語が API 境界を越えるわけではない。**コードシンボルが空なのは
@@ -67,12 +67,22 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | ユーザー | このサービスで商品を購入する人 | user / User | `user.User` | `User` |
 | 在籍 | ユーザーがこのサービスの利用を続けている状態 | user / User | `user.User.IsActive` | — |
 | 都道府県 | 住所を広域で区分する単位 | prefecture / Prefecture | `prefecture.Prefecture` | `Prefecture` |
+| メールアドレス | このサービスがそのユーザーへ連絡を届けるための宛先。1 人に 1 つ | user / User | `user.Email` | `email` |
+| 郵便番号 | 住所を配達の区域まで絞り込む符号 | user / User | `user.PostalCode` | `postalCode` |
+| 金額 | 売り買いでやり取りされる貨幣の量。商品の売値も購入明細の単価もこれで表す | lexicon | `money.Price` | — |
+| 住所候補 | 郵便番号から引ける住所のうち、その番号が指しうるもの | address | `address.Candidate` | `AddressCandidate` |
+| 売上 | ある期間に成立した購入の金額の合計 | dashboard | `dashboard/query.SalesResult` | `salesAmount` |
+| 集計期間 | 集計の対象として区切る時間の範囲 | dashboard | `dashboard/query.Period` | — |
+| 為替レート | ある通貨を別の通貨へ換算するときの比率 | exchange-rate | `exchangerate.Rate` | — |
+| 参考換算額 | 表示のために別通貨へ換算した金額。支払いに使う値ではない | exchange-rate | `exchangerate.ReferenceAmount` | `ReferenceAmount` |
+| 商品ランキング | 売れた数の多い順に商品を並べたもの | product-ranking | `ranking.RankingView` | `ProductRankingItem` |
+| ユーザー検索 | 条件に当てはまるユーザーを探し出すこと | user-search | `search.UserSearchResult` | — |
 | 未処理 | 購入が成立した直後の、まだ何も進んでいない状態 | purchase / Purchase | `purchase.StatusUnprocessed` | — |
 | 支払い済み | 購入の代金が支払われた状態 | purchase / Purchase | `purchase.StatusPaid` | — |
 | 発送済み | 購入された商品が顧客へ向けて送り出された状態 | purchase / Purchase | `purchase.StatusShipped` | — |
 | 配達済み | 購入された商品が顧客に届いた状態。ここから先へは進まない | purchase / Purchase | `purchase.StatusDelivered` | — |
 | 購入完了 | 購入が果たされた状態。以後は取り消せない | purchase / Purchase | `purchase.StatusCompleted` | — |
-| 進行中 | 購入が成立してから、まだ決着していない状態。購入完了・配達済み・キャンセル済みのいずれにも至っておらず、この先の状態がまだあり得る | purchase / Purchase | `purchase.Status.IsTerminal`（の否定） | — |
+| 進行中 | 購入が成立してから、まだ決着していない状態。購入完了・配達済み・キャンセル済みのいずれにも至っておらず、この先の状態がまだあり得る。担い手は決着済みかを問う述語で、進行中はその否定である | purchase / Purchase | `purchase.Status.IsTerminal` | — |
 | 支払い | 顧客が購入の代金を払うこと。これが起きた購入は支払い済みになる | purchase / Purchase | `purchase.Purchase.Pay` | `pay` |
 | 発送 | 購入された商品を顧客へ向けて送り出すこと。これが起きた購入は発送済みになる | purchase / Purchase | `purchase.Purchase.Ship` | `ship` |
 | 配達 | 購入された商品が顧客の手元に届くこと。これが起きた購入は配達済みになる | purchase / Purchase | `purchase.Purchase.Deliver` | `deliver` |
@@ -97,6 +107,8 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない |
 | `Event` / `EventType` | 事実の封筒。事実の**名前**は語だが、封筒は語ではない |
 | `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照 |
+| `Detail` | 購入 1 件の読み取り形。業務が呼ぶ語は書き込み側の集約が既に持っている（購入・購入明細） |
+| `DBHealth` / `Ok` / `Degraded` / `Unhealthy` | 稼働の観測点。業務ではなく運用が見るもの |
 | `New` / `New<VO>` | 構築の入口。名前は規約であって業務の語ではない。業務が同じ行為を別の名前で呼ぶなら、その語のほうが行になる |
 | `Reconstruct` | 永続化からの再構成。業務は既に起きた事実を作り直さない。復元は保存の裏返しであって行為ではない |
 | `CanTransitionTo` / `IsZero` | 状態機械の機構。**遷移そのものは業務の語だが、遷移可否の問い方は違う** |
@@ -105,8 +117,28 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | `Update` / `UpdateProfile` | 業務上の出来事ではなく属性の置換。状態も動かさず事実も残さない。付随する規則は状態の行（在籍・退会）が担う |
 | `StatusCode` / `Type` | 値の符号と種別の取り出し |
 
-ここにある名前は昇格しうる。業務が使い始めたら上の表へ移す。**この一覧は判断の記録であって、
-恒久的な除外ではない。**
+次のサフィックスは、それが付いているというだけで機構語である。個別の名前は機能が増えるたびに
+新しく現れるので、**名前だけを列挙していては抑止が永久に追いつかない。**
+
+| サフィックス | 何を述べているか |
+| --- | --- |
+| `Result` / `ReadModel` / `View` | 問い合わせの答えの形 |
+| `Input` / `Params` | 呼び出しに渡す値の束 |
+| `Summary` / `Breakdown` / `Count` / `List` / `Item` | 集計と並びの形 |
+| `Cursor` | ページングの位置 |
+| `DTO` | 層をまたぐ運搬の器 |
+
+規約から機械的に生える名前の族——不変条件違反の sentinel、境界値の定数、入力フィールドの識別子——も
+業務語ではない。**ここには書き写さない。** どの族がそれに当たるかは
+[`.claude/scaffold-spec/domain-spec.md`](../../.claude/scaffold-spec/domain-spec.md) が
+「spec に書かない自動派生」として既に宣言しており、同じ事実を 2 箇所に置けば、読み返されないほうが
+黙って腐る。生成器はあちらを読んで差し引く。
+
+`Usecase` / `Gateway` / `QueryService` / `Repository` そのものである名前も同じである。これらは
+アーキテクチャの継ぎ目を指しており、サフィックスを落とすと何も残らない——それが見分けである。
+
+ここにある名前とサフィックスは昇格しうる。業務が使い始めたら上の表へ移す。**この一覧は判断の記録で
+あって、恒久的な除外ではない。**
 
 ## 語彙を改訂するとき
 
@@ -133,7 +165,23 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 - **同義** — 2 つの語、1 つの概念。機械では検出できない。2 つの行を読んだ人が「これは同じものだ」と
   気づいたときに表面化する。**この表が生成されるだけでなく読まれることを前提にしているのはそのため**
 
-同音異義・同義は現在エントリなし。以下は**行にするかどうかが未決**の語である。
+### 同音異義（未決）
+
+**どちらの名前が勝つかも、2 つが本当に別概念かも、ここでは決めない。** 決めるのは業務がどう話すかの
+決定であり、人のものである。
+
+- **`Status`** — `product/status.Status` は商品の取扱区分を表す参照マスタの実体（`id` / `name` /
+  `code` / `sortKey` を持ち、表示順があり、書き込み API を持たない）。`purchase.Status` は購入の
+  進行段階を表す値オブジェクト（許可遷移と終端性を内蔵し、doc は「符号の大小で判定してはならない」と
+  明言）。**片方は集約、片方は値オブジェクトで、指しているものが違う。**用語表は前者にだけ
+  「商品ステータス」の行を与えており、後者は個々の状態（未処理・支払い済み…）の行だけを持つ
+- **`Period`** — `dashboard/query.Period` は区分と日付境界を持つ構造体、`ranking/query.Period` は
+  `all` / `30d` の文字列区分。どちらも集計期間だが、dashboard は区分を `PeriodKind` に分けており、
+  **2 つの feature で `Period` という語の役割が入れ替わっている**
+
+### 行にするかが未決
+
+同義は現在エントリなし。以下は**行にするかどうかが未決**の語である。
 
 - **購入の成立** — 支払い・発送・配達・キャンセルは行為の側が行を得たが、購入そのものの成立だけ
   行が無い。構築子（`purchase.New`）は担い手になれない——名前が規約であり、集約によって新規発生と
