@@ -347,14 +347,15 @@ linters:
             - pkg: go-boilerplate/pkg/envutil
               desc: "環境変数の書き換えは外側の層の責務です。本層からの参照は禁止です。"
         # ドメインサービス（internal/domain/service/<name>）だけは集約の import を許可します。
-        # 集約をまたぐ規則はどちらの集約の責務でもないため集約の外に置きますが、置き場所を変えても
-        # 相手の集約を参照できなければ規則は書けません。そのための例外です。
+        # どのエンティティ・値オブジェクトの自然な責務でもない規則は集約の外に置きますが、集約をまたぐ
+        # 規則の場合、置き場所を変えても相手の集約を参照できなければ規則は書けません。そのための例外です。
+        # 許可であって要求ではないため、単一集約に閉じたサービスも同じくここに置きます。
         #
         # 抜け道にしないための歯止めは 2 つです。ひとつは、ここが緩めるのは domain 間の import
         # だけで、層をまたぐ deny（usecase / controller / infrastructure / net/http / echo /
         # database/sql / fs / exec / envutil）は maintain_a_sound_domain と同一のまま再掲していること。
-        # もうひとつは、この置き場への入場条件（集約をまたぐ規則であり、どちらの集約の自然な責務でも
-        # なく、状態を持たない）が internal/domain/README.md に明文化されていること。単に 2 つの
+        # もうひとつは、この置き場への入場条件（どのエンティティ・値オブジェクトの自然な責務でもなく、
+        # 状態を持たない）が internal/domain/README.md に明文化されていること。単に 2 つの
         # 集約を読みたいだけの処理は Usecase の仕事であり、ここへ移してはいけません。
         maintain_a_sound_domain_service:
           files:

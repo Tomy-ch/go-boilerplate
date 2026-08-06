@@ -48,20 +48,24 @@ Rationale: [ADR-0034](adr/0034-domain-lexicon.md).
 
 ### Domain services
 
-The lexicon is not the only path allowed to cross inside the domain. A rule that spans aggregates is
-the responsibility of neither of them, so it lives under **`internal/domain/service/<name>/`**, and
-that path has a depguard rule of its own which permits importing aggregates. The permission is one
-edge wide: every other domain deny (framework, infrastructure, usecase, controller, file system,
-process, environment) is repeated verbatim in that rule, and a service there holds no I/O — no
-Repository, no `context.Context`. It receives state the Usecase has already loaded and returns a
+The lexicon is not the only path allowed to cross inside the domain. A rule that is the responsibility
+of no entity and no value object lives under **`internal/domain/service/<name>/`**, and that path has
+a depguard rule of its own which permits importing aggregates. The permission is one edge wide: every
+other domain deny (framework, infrastructure, usecase, controller, file system, process, environment)
+is repeated verbatim in that rule, and a service there holds no I/O — no Repository, no
+`context.Context`. It receives state the Usecase has already loaded, and returns a derived value or a
 domain error.
 
+**Admission turns on responsibility, never on how many aggregates the rule reaches.** Spanning
+aggregates is one way an operation comes to belong to no entity, not what makes it one: a question
+asked about a *set* of entities drawn from a single aggregate has no entity to be a method on either.
+Both kinds live at the same path, so the placement question is asked once and answered once.
+
 The two exceptions answer different questions and are not interchangeable. The lexicon admits a
-**value object** that several aggregates speak in; a domain service holds a **rule** that no single
-aggregate can decide. A rule that fits on one aggregate goes on that aggregate, and reading two
-aggregates merely to place them side by side is mapping, which stays in Usecase. The admission bar
-and the current occupant are in
-[`internal/domain/README.md`](../internal/domain/README.md) § Where a cross-aggregate Domain Service
+**value object** that several aggregates speak in; a domain service holds a **rule** that no entity
+can own. A rule that fits on one entity goes on that entity, and reading two aggregates merely to
+place them side by side is mapping, which stays in Usecase. The admission bar and the current
+occupants are in [`internal/domain/README.md`](../internal/domain/README.md) § Where a Domain Service
 lives.
 
 ### Rationale
