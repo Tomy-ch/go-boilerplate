@@ -27,10 +27,7 @@ type Repository interface {
 	// 配達確認の証跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
 	UpdateDelivered(ctx context.Context, p *Purchase) error
 	// FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で明細込みに最大 limit 件
-	// 取得します。該当が無い場合は空を返します。
-	//
-	// 発送可能を定義するのは Purchase.IsShippable で、絞り込みの SQL はその実行形です。片方だけを
-	// 変更してはならず、呼び出し側は返却行を同じ述語で検証します。
+	// 取得します。該当が無い場合は空を返します。絞り込みは Purchase.IsShippable の定義と一致させること。
 	FindShippable(ctx context.Context, limit int32) (Purchases, error)
 	// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
 	// 購入ステータスマスタで解決します（購入ステータスは購入集約に属する固定参照マスタのため、

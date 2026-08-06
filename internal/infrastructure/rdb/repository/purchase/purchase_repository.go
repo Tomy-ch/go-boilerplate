@@ -195,7 +195,7 @@ func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) 
 }
 
 // FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で最大 limit 件、
-// 明細込みで再構築して返します。絞り込みの条件は Purchase.IsShippable の実行形です。
+// 明細込みで再構築して返します。
 //
 // 明細は購入 1 件ずつではなく取得した購入 ID をまとめて 1 クエリで引きます（件数分の往復を避けるため）。
 // status_id は seed の UUID を焼き込まず purchase_statuses.code で絞り込みます。
