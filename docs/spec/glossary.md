@@ -30,6 +30,10 @@ feature ごとの spec だけでは足りず、その理由がこのページの
 `ListParams`・`FeedCursor` が述べているのはこのシステムの作りであって、業務が話していることではない。
 それらは [Mechanism vocabulary](#mechanism-vocabulary) に記録し、生成器が繰り返し提案しないようにする。
 
+**行為と、その行為が残す状態は別の語である。** 業務が「発送する」と「発送済み」を区別して話すなら
+行は 2 つ要る。片方だけを持つ表は起きたことと今の姿を 1 語に兼ねさせ、**いつ起きたのかを問えなくする。**
+どちらが公開契約に出るかも一致しない——行為が API の操作として現れ、状態は表に出ないことがある。
+
 | 列 | 何を書くか |
 | --- | --- |
 | 用語 | 業務が言うとおりの語 |
@@ -66,11 +70,16 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 発送済み | 購入された商品が顧客へ向けて送り出された状態 | purchase / Purchase | `purchase.StatusShipped` | — |
 | 配達済み | 購入された商品が顧客に届いた状態。ここから先へは進まない | purchase / Purchase | `purchase.StatusDelivered` | — |
 | 購入完了 | 購入が果たされた状態。以後は取り消せない | purchase / Purchase | `purchase.StatusCompleted` | — |
+| 進行中 | 購入が成立してから、まだ決着していない状態。購入完了・配達済み・キャンセル済みのいずれにも至っておらず、この先の状態がまだあり得る | purchase / Purchase | `purchase.Status.IsTerminal`（の否定） | — |
+| 支払い | 顧客が購入の代金を払うこと。これが起きた購入は支払い済みになる | purchase / Purchase | `purchase.Purchase.Pay` | `pay` |
+| 発送 | 購入された商品を顧客へ向けて送り出すこと。これが起きた購入は発送済みになる | purchase / Purchase | `purchase.Purchase.Ship` | `ship` |
+| 配達 | 購入された商品が顧客の手元に届くこと。これが起きた購入は配達済みになる | purchase / Purchase | `purchase.Purchase.Deliver` | `deliver` |
+| キャンセル | 購入を取り消し、履行しないと決めること。これが起きた購入はキャンセル済みになる | purchase / Purchase | `purchase.Purchase.Cancel` | `cancel` |
 | 管理者 | 一般の利用者には許されない操作を行える役割 | user / User | `user.RoleCodeAdmin` | — |
 | 退会 | ユーザーがこのサービスの利用をやめること | user / User | `user.User.MarkAsDeleted` | — |
-| 購入可能 | そのユーザーが今、購入してよい状態にあること | membership | `membership.EnsurePurchasable` | — |
-| 退会可能 | そのユーザーが今、退会してよい状態にあること | membership | `membership.EnsureWithdrawable` | — |
-| 在庫調整 | 商品の在庫数を増やす、または減らすこと | product / Product | `product.Product.AdjustStock` | — |
+| 購入可能 | 在籍しているユーザーにだけ認められる、購入を受け付けてよい状態 | membership | `membership.EnsurePurchasable` | — |
+| 退会可能 | 進行中の購入を残していないユーザーにだけ認められる、退会してよい状態 | membership | `membership.EnsureWithdrawable` | — |
+| 在庫の増減 | 購入の成立や取り消しによらず、補充または差し引きとして商品の在庫数を増減させること | product / Product | `product.Product.AdjustStock` | — |
 <!-- sample-api:end -->
 
 ## Mechanism vocabulary
@@ -86,11 +95,12 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない |
 | `Event` / `EventType` | 事実の封筒。事実の**名前**は語だが、封筒は語ではない |
 | `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照 |
-| `New` / `New<VO>` / `Reconstruct` | 構築の入口。業務が同じ行為を別の名前で呼ぶなら、その語のほうが行になる |
-| `CanTransitionTo` / `IsTerminal` / `IsZero` | 状態機械の機構。**遷移そのものは業務の語だが、遷移可否の問い方は違う** |
+| `New` / `New<VO>` | 構築の入口。名前は規約であって業務の語ではない。業務が同じ行為を別の名前で呼ぶなら、その語のほうが行になる |
+| `Reconstruct` | 永続化からの再構成。業務は既に起きた事実を作り直さない。復元は保存の裏返しであって行為ではない |
+| `CanTransitionTo` / `IsZero` | 状態機械の機構。**遷移そのものは業務の語だが、遷移可否の問い方は違う** |
 | `EnsureVersion` | 同時更新の検出。業務は版を持たない |
 | `Decimal` / `String` / `ToMinorUnit` | 金額の表現変換 |
-| `Update` / `UpdateProfile` | 属性の書き換え一般。何が変わるかを言っていない |
+| `Update` / `UpdateProfile` | 業務上の出来事ではなく属性の置換。状態も動かさず事実も残さない。付随する規則は状態の行（在籍・退会）が担う |
 | `StatusCode` / `Type` | 値の符号と種別の取り出し |
 
 ここにある名前は昇格しうる。業務が使い始めたら上の表へ移す。**この一覧は判断の記録であって、
@@ -123,9 +133,12 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 同音異義・同義は現在エントリなし。以下は**行にするかどうかが未決**の語である。
 
-- **氏名（`User.FullName`）** — 姓名を組み立てた表示用の値。業務の語か、表示の都合かが決まっていない。
-- **`Purchase.Pay` / `Ship` / `Deliver` / `Cancel`** — 行き先の状態は行になったが、**遷移という行為の側**を
-  別の語として持つかは未決。業務が「発送する」を名詞の「発送済み」と区別して話すなら 2 行要る。
+- **購入の成立** — 支払い・発送・配達・キャンセルは行為の側が行を得たが、購入そのものの成立だけ
+  行が無い。構築子（`purchase.New`）は担い手になれない——名前が規約であり、集約によって新規発生と
+  復元の両方を意味するからである（[Mechanism vocabulary](#mechanism-vocabulary) 参照）。事実の側には
+  `purchase.EventCreated` という名前が既にあり、担い手の候補はそちらである。**行を立てるかは、この
+  成立を「購入」という既存の行が兼ねてよいかの判断**であり、兼ねさせるなら 1 語が集約と出来事の
+  2 つを指すことになる。
 
 ## What this document is not
 
