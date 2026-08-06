@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -157,6 +158,26 @@ func Test_repository_FindShippable(t *testing.T) {
 			})
 		})
 
+		t.Run("注文日時が同時刻の場合、購入IDの昇順で並びlimitもその順で打ち切る", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertShippableUser(ctx, t, drv, buyer)
+				// 同時刻の 2 件。SQL のタイブレークが崩れると limit 境界で拾う 1 件が入れ替わる。
+				insertShippablePurchase(ctx, t, drv, older, buyer, statusPaidID, base,
+					"eeeeeeee-3333-4000-8000-000000000011")
+				insertShippablePurchase(ctx, t, drv, newer, buyer, statusPaidID, base,
+					"eeeeeeee-3333-4000-8000-000000000021")
+
+				got, err := repo.FindShippable(ctx, 1)
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(older), got[0].ID())
+			})
+		})
+
 		t.Run("発送可能な購入が無い場合、空を返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -170,6 +191,62 @@ func Test_repository_FindShippable(t *testing.T) {
 				require.NoError(t, err)
 
 				assert.Empty(t, got)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			got, err := repo.FindShippable(ctx, 10)
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("limitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// 負数 LIMIT は PostgreSQL の 2201W（map 未定義）となり ErrInternal へ写像される。
+				got, err := repo.FindShippable(ctx, -1)
+				require.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
+		t.Run("DB行がドメイン不変条件に違反する場合はErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertShippableUser(ctx, t, drv, buyer)
+				// 支払い済み status は paidAt を必須とする。paid_at を欠く行は Reconstruct の
+				// 不変条件に違反する破損行で、再構築の失敗が ErrInternal へ写像される。
+				_, err := drv.Exec(ctx,
+					"INSERT INTO purchases "+
+						"(id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, "+
+						"ordered_at, created_at, updated_at) "+
+						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())",
+					older, "code-"+older, buyer, statusPaidID, 1000, 100, 50, 1150, base,
+				)
+				require.NoError(t, err)
+				_, err = drv.Exec(ctx,
+					"INSERT INTO purchase_details "+
+						"(id, purchase_id, product_id, quantity, unit_price, created_at, updated_at) "+
+						"VALUES ($1,$2,$3,$4,$5,NOW(),NOW())",
+					"eeeeeeee-3333-4000-8000-000000000091", older, shippableProductIDs[0], 2, "500",
+				)
+				require.NoError(t, err)
+
+				got, err := repo.FindShippable(ctx, 10)
+				require.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 	})

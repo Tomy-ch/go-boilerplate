@@ -2229,5 +2229,11 @@ func TestPurchase_IsShippable(t *testing.T) {
 
 			assert.False(t, accessorPurchaseWith(t, StatusCanceled, nil, &canceledAt).IsShippable())
 		})
+
+		t.Run("完了の場合、終端状態のためfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, accessorPurchaseWith(t, StatusCompleted, nil, nil).IsShippable())
+		})
 	})
 }
