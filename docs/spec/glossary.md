@@ -61,6 +61,16 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | ユーザー | このサービスで商品を購入する人 | user / User | `user.User` | `User` |
 | 在籍 | ユーザーがこのサービスの利用を続けている状態 | user / User | `user.User.IsActive` | — |
 | 都道府県 | 住所を広域で区分する単位 | prefecture / Prefecture | `prefecture.Prefecture` | `Prefecture` |
+| 未処理 | 購入が成立した直後の、まだ何も進んでいない状態 | purchase / Purchase | `purchase.StatusUnprocessed` | — |
+| 支払い済み | 購入の代金が支払われた状態 | purchase / Purchase | `purchase.StatusPaid` | — |
+| 発送済み | 購入された商品が顧客へ向けて送り出された状態 | purchase / Purchase | `purchase.StatusShipped` | — |
+| 配達済み | 購入された商品が顧客に届いた状態。ここから先へは進まない | purchase / Purchase | `purchase.StatusDelivered` | — |
+| 購入完了 | 購入が果たされた状態。以後は取り消せない | purchase / Purchase | `purchase.StatusCompleted` | — |
+| 管理者 | 一般の利用者には許されない操作を行える役割 | user / User | `user.RoleCodeAdmin` | — |
+| 退会 | ユーザーがこのサービスの利用をやめること | user / User | `user.User.MarkAsDeleted` | — |
+| 購入可能 | そのユーザーが今、購入してよい状態にあること | membership | `membership.EnsurePurchasable` | — |
+| 退会可能 | そのユーザーが今、退会してよい状態にあること | membership | `membership.EnsureWithdrawable` | — |
+| 在庫調整 | 商品の在庫数を増やす、または減らすこと | product / Product | `product.Product.AdjustStock` | — |
 <!-- sample-api:end -->
 
 ## Mechanism vocabulary
@@ -76,6 +86,12 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない |
 | `Event` / `EventType` | 事実の封筒。事実の**名前**は語だが、封筒は語ではない |
 | `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照 |
+| `New` / `New<VO>` / `Reconstruct` | 構築の入口。業務が同じ行為を別の名前で呼ぶなら、その語のほうが行になる |
+| `CanTransitionTo` / `IsTerminal` / `IsZero` | 状態機械の機構。**遷移そのものは業務の語だが、遷移可否の問い方は違う** |
+| `EnsureVersion` | 同時更新の検出。業務は版を持たない |
+| `Decimal` / `String` / `ToMinorUnit` | 金額の表現変換 |
+| `Update` / `UpdateProfile` | 属性の書き換え一般。何が変わるかを言っていない |
+| `StatusCode` / `Type` | 値の符号と種別の取り出し |
 
 ここにある名前は昇格しうる。業務が使い始めたら上の表へ移す。**この一覧は判断の記録であって、
 恒久的な除外ではない。**
@@ -105,7 +121,11 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 - **同義** — 2 つの語、1 つの概念。機械では検出できない。2 つの行を読んだ人が「これは同じものだ」と
   気づいたときに表面化する。**この表が生成されるだけでなく読まれることを前提にしているのはそのため**
 
-現在エントリなし。
+同音異義・同義は現在エントリなし。以下は**行にするかどうかが未決**の語である。
+
+- **氏名（`User.FullName`）** — 姓名を組み立てた表示用の値。業務の語か、表示の都合かが決まっていない。
+- **`Purchase.Pay` / `Ship` / `Deliver` / `Cancel`** — 行き先の状態は行になったが、**遷移という行為の側**を
+  別の語として持つかは未決。業務が「発送する」を名詞の「発送済み」と区別して話すなら 2 行要る。
 
 ## What this document is not
 
