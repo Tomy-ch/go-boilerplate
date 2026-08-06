@@ -24,6 +24,7 @@ import (
 
 const productsLowStockPath = "/v1/products/low-stock"
 
+//nolint:dupl // 在庫僅少/発送待ちはどちらも admin 向け top-N 一覧で、HTTP 写像テストの構造の重複は不可避
 func TestV1ProductsLowStock_Integration(t *testing.T) {
 	t.Parallel()
 

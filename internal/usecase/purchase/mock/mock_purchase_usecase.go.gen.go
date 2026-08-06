@@ -119,6 +119,21 @@ func (mr *MockUsecaseMockRecorder) GetPurchases(ctx, userID, cursor any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPurchases", reflect.TypeOf((*MockUsecase)(nil).GetPurchases), ctx, userID, cursor)
 }
 
+// ListShippablePurchases mocks base method.
+func (m *MockUsecase) ListShippablePurchases(ctx context.Context, authn *auth.Authn, params purchase.ListShippablePurchasesParams) (purchase.PurchaseShippableListView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListShippablePurchases", ctx, authn, params)
+	ret0, _ := ret[0].(purchase.PurchaseShippableListView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListShippablePurchases indicates an expected call of ListShippablePurchases.
+func (mr *MockUsecaseMockRecorder) ListShippablePurchases(ctx, authn, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShippablePurchases", reflect.TypeOf((*MockUsecase)(nil).ListShippablePurchases), ctx, authn, params)
+}
+
 // PayPurchase mocks base method.
 func (m *MockUsecase) PayPurchase(ctx context.Context, params purchase.PayPurchaseParams) (purchase.PayPurchaseView, error) {
 	m.ctrl.T.Helper()

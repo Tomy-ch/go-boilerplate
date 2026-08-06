@@ -17,6 +17,8 @@ const (
 	ActionProductStockUpdate Action = "product:stock:update"
 	// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。
 	ActionProductListLowStock Action = "product:low-stock:list"
+	// ActionPurchaseListShippable は、発送待ち購入一覧の参照操作（admin）を表します。
+	ActionPurchaseListShippable Action = "purchase:shippable:list"
 	// ActionPurchaseShip は、購入の発送操作（admin）を表します。
 	ActionPurchaseShip Action = "purchase:ship"
 	// ActionPurchaseDeliver は、購入の配達完了操作（admin）を表します。

@@ -9,9 +9,9 @@
 ## Role in this project
 
 - Place **Entity / ValueObject / Repository (IF)** under `internal/domain/<aggregate>/`. A
-  **Domain Service** does *not* belong here: it spans aggregates, so it cannot live inside one of
-  them — see
-  [Where a cross-aggregate Domain Service lives](#where-a-cross-aggregate-domain-service-lives).
+  **Domain Service** does *not* belong here: it exists because the operation is the natural
+  responsibility of no entity and no value object, so no aggregate package owns it — see
+  [Where a Domain Service lives](#where-a-domain-service-lives).
 
 Example: `internal/domain/user/`
 
@@ -61,9 +61,10 @@ Examples:
   the door: is this a word of the business? See its README.
   Rationale: [ADR-0034](../../docs/adr/0034-domain-lexicon.md).
 
-  The other path that may import an aggregate is `internal/domain/service/**`, where a rule spanning
-  aggregates lives; it has its own depguard rule that repeats every other domain deny. See
-  [Where a cross-aggregate Domain Service lives](#where-a-cross-aggregate-domain-service-lives).
+  The other path that may import an aggregate is `internal/domain/service/**`, where every Domain
+  Service lives; it has its own depguard rule that repeats every other domain deny. The rule permits
+  the extra edge and never requires it, so a service that speaks of one aggregate lives there too. See
+  [Where a Domain Service lives](#where-a-domain-service-lives).
 
 ## Domain boundaries
 
@@ -589,12 +590,14 @@ the application, yet an independent aggregate, not a reference master. See
 [`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules for the read-path
 consequences of the same distinction.
 
-### Multi-aggregate rules
+### Rules that belong to no entity
 
-A rule that spans aggregates belongs to a **Domain Service** — not to Usecase.
+A rule that is the natural responsibility of no entity and no value object belongs to a **Domain
+Service** — not to Usecase.
 
 ```text
-Withdrawal ← in-progress purchase
+Withdrawal        ← in-progress purchase
+Dispatch grouping ← purchases awaiting shipment
 ```
 
 #### Domain Service or Usecase
@@ -619,38 +622,64 @@ The test, when it is unclear: **if that calculation changed, would the reason be
 or a presentation decision?** A business decision means it is a domain rule and belongs to a Domain
 Service.
 
-#### Where a cross-aggregate Domain Service lives
+#### One thing or a set
 
-Under `internal/domain/service/<name>/` — outside any aggregate package, because a service that spans
-aggregates cannot live inside one of them (a domain package must not import another aggregate).
+**A question about one thing is the entity's; a question about a set is the Domain Service's.**
+
+`Purchase.IsShippable` answers *is this purchase ready to ship* — decided from one purchase's own
+state, so it is a method on `Purchase`. `dispatch.GroupForDispatch` answers *which of these purchases
+may go out together* — the answer for any one of them depends on which others are in the set, so no
+single `Purchase` can host it. Both speak only of the purchase aggregate. What separates them is how
+many things the question is about, not how many aggregates it reaches.
+
+This is why the admission bar below asks about responsibility and never about aggregate count. A bar
+that required spanning aggregates would send `GroupForDispatch` back to a `Purchase` method that
+cannot be written, or into Usecase, where [`../usecase/README.md`](../usecase/README.md) forbids it —
+leaving an operation that is plainly a business rule with nowhere in the layer to go.
+
+#### Where a Domain Service lives
+
+Under `internal/domain/service/<name>/` — outside any aggregate package. **Every Domain Service lives
+here, whether it speaks of one aggregate or several.** One placement means one question to answer;
+splitting the placement by aggregate count would restore the very decision this rule exists to
+remove.
 
 **That placement only means something because the path has its own depguard rule.** An aggregate
 package may not import another aggregate; a package under `internal/domain/service/**` may. Everything
 else the domain layer forbids is repeated verbatim in that rule — no framework, no infrastructure, no
 usecase or controller, no file system, process, or environment access — so the exception widens
-exactly one edge and nothing else. Without it, moving a rule out of an aggregate would not let it
-reach the second aggregate, and the placement rule above would be unfollowable.
+exactly one edge and nothing else. Without it, a rule that does reach two aggregates could not be
+written anywhere.
+
+**The exception is available, not obligatory.** A service confined to one aggregate imports that
+aggregate and stops; nothing about the path pushes it wider, and the rule permits the extra edge
+rather than requiring it.
 
 The name is business vocabulary — what the rule is about, never `common` / `shared` / `util`, which
 name nothing and therefore refuse nothing.
 
 **Admission is narrow, and the depguard exception is not an invitation.** A package belongs here only
-when all three hold:
+when both hold:
 
-1. The rule spans aggregates — it cannot be decided from one aggregate's state alone.
-2. It is the natural responsibility of neither aggregate. If it fits on one of them, it goes there.
-3. It is stateless, and it derives (see *Domain Service or Usecase* above). Reading two aggregates to
+1. The operation is the natural responsibility of no entity and no value object. If it fits on one of
+   them, it goes there.
+2. It is stateless, and it derives (see *Domain Service or Usecase* above). Reading two aggregates to
    place them side by side is mapping, and mapping stays in Usecase.
 
 A service here holds no I/O: no Repository, no `context.Context`. It receives state the Usecase has
-already loaded and returns a domain error. Acquiring that state, ordering the calls, and owning the
-transaction remain the Usecase's job.
+already loaded, and returns a derived value or a domain error. Acquiring that state, ordering the
+calls, and owning the transaction remain the Usecase's job.
 
-**The occupant today is [`service/membership`](service/membership).** It carries one invariant seen
+**[`service/membership`](service/membership) spans two aggregates.** It carries one invariant seen
 from both sides — a user and their in-progress purchases must not be separated. `EnsurePurchasable`
 refuses a purchase by a user who is no longer active; `EnsureWithdrawable` refuses a withdrawal while
 any of that user's purchases is still in progress. Neither aggregate can host it: the user aggregate
 knows nothing about purchases, and the purchase aggregate knows nothing about membership.
+
+**[`service/dispatch`](service/dispatch) stays inside one.** `GroupForDispatch` divides purchases
+awaiting shipment into the sets that may go out together, by buyer. It imports `domain/purchase` and
+nothing else, and it is here for the reason above: the answer is about the set, so the purchase
+aggregate has no place to put it.
 
 ### Query and Aggregate
 
@@ -814,7 +843,7 @@ Called from:
 
 Domain **must not call other layers**
 
-Cross-aggregate rules:
+Rules that belong to no entity:
 
 - Domain Service
 

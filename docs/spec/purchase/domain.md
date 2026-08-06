@@ -151,6 +151,41 @@ fields:
     Ship と同じく timestamps ガードを併用しないのは、遷移元が発送済みの 1 状態に限られ statusCode の等値比較だけで判別できるため。
   invariants:
     - 配達済み status（statusCode == 9）と deliveredAt は必ず同時セット（双条件。配達済みは終端状態であり配達後に別 status へ遷移して deliveredAt だけが残ることがないため、paidAt / shippedAt のような一方向にはしない）
+
+- name: IsShippable
+  signature: IsShippable() bool
+  behavior: |
+    購入が発送可能な状態にあるかを返す（「発送可能」の定義そのもの）。発送可能＝支払い済み（statusCode == 7）だが、
+    その条件は Status.CanTransitionTo(StatusShipped) が既に持っているため、条件を書き下さずそこから導出する。
+    これにより発送可能なステータスが増減しても定義は 1 箇所のままになる。
+    発送待ちを絞り込む読み取り経路（FindShippable の SQL）はこの述語の実行形であって定義ではない。片方だけを
+    変更してはならず、Usecase は取得した行をこの述語で検証して乖離をエラーにする。
+  invariants:
+    - 業務語彙で名前を持つ条件はドメインに述語として存在する（docs/rules.md § Domain Layer Constraints）
+```
+
+## Domain Service
+
+集合についての問いはどの Purchase 1 件のメソッドにもなり得ないため、購入集約の外の
+[`internal/domain/service/dispatch`](../../../internal/domain/service/dispatch) が持つ。
+語るのは購入集約だけで、単一集約に閉じたドメインサービスである（[`internal/domain/README.md`](../../../internal/domain/README.md)
+§ Where a Domain Service lives）。
+
+```yaml
+- name: GroupForDispatch
+  signature: GroupForDispatch(purchases Purchases) []Purchases
+  behavior: |
+    発送待ちの購入を、まとめて発送してよい組に分ける（まとめ発送）。まとめる軸は **同一の購入者** のみで、
+    同じ購入者宛ての購入が 1 つの組になる。購入が 1 件だけの購入者もその 1 件からなる組になる。
+    結果は入力の並び順に依存せず一意に定まる。組の中は注文日時の古い順（同時刻は購入 ID の昇順）、
+    組同士はその組の最も古い購入の同じ順序で並ぶ。purchases が空なら空を返す。
+    受け取るのは発送可能な購入の集合であることを前提とし、発送可能性はここでは検証しない
+    （定義は Purchase.IsShippable が持ち、取得した行との突き合わせは Usecase が行う。定義を二重に書かない）。
+    純粋な導出であり拒否の判定ではないため error を返さない。状態を持たず I/O も context.Context も持たない。
+  invariants:
+    - まとめの軸は購入者のみ。同梱可能期間などの閾値条件は現時点では持たない（placeholder 定数を増やさないため。
+      実要件が立った時点でこの spec に足す）
+    - 組は算出結果であり永続化しない。したがって組そのものの識別子を持たない
 ```
 
 ## Value Objects
@@ -212,6 +247,15 @@ fields:
     種類数で頭打ちになる。購入を 1 件も持たない場合は空を返し、順序は保証しない。ステータスコードは
     購入ステータスマスタとの JOIN で解決する（FindFeedByUserID と同じ子参照マスタ例外により単一集約の
     Repository read）。
+- name: FindShippable
+  signature: FindShippable(ctx context.Context, limit int32) (Purchases, error)
+  behavior: |
+    発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で明細込みに最大 limit 件返す（まとめ発送一覧の取得元）。
+    該当が無ければ空を返す。cursor ページングは持たない top-N で、limit の既定値適用とクランプは Usecase が担う。
+    「発送可能」を定義するのは Purchase.IsShippable であり、絞り込みの WHERE はその実行形である。片方だけを
+    変更してはならず、Usecase は返却行を同じ述語で検証する。ステータスは購入ステータスマスタとの JOIN で
+    code を解決し（seed UUID を焼き込まない）、支払い済みを表す code は infra がドメイン定数から渡す。
+    明細は購入 1 件ずつではなく取得した購入 ID をまとめて 1 クエリで引く（件数分の往復を避けるため）。
 - name: FindUserIDsWithPurchases
   signature: FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)
   behavior: |
