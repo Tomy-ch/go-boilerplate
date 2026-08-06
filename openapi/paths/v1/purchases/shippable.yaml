@@ -1,0 +1,41 @@
+get:
+  operationId: GetPurchasesShippable
+  tags:
+    - v1/purchases/shippable
+  summary: 発送待ち購入のまとめ発送一覧の取得
+  description: |
+    発送可能な購入を、まとめて発送してよい組に分けて返します。認証必須で、
+    管理者（admin）のみ実行できます。管理者でなければ 403 で拒否します。
+    発送可能とは支払いを終え、まだ発送していない状態です。
+    まとめる軸は同一の購入者で、同じ購入者宛ての購入が 1 つの組になります。購入が 1 件だけの購入者も
+    その 1 件からなる組になります。
+    組の中は注文日時の古い順（同時刻は購入 ID の昇順）、組同士はその組の最も古い購入の同じ順序で並びます。
+    limit は読み出す購入の件数で、まとめ判定はその範囲の中で行います。範囲の外にある同一購入者の購入は
+    別の便になります。ページネーションは行わず、上位 limit 件のみを対象とします。
+    発送待ちの購入がない場合はエラーではなく空配列を返します。
+    発送の実行は購入 1 件ずつ `POST /v1/purchases/{purchaseId}/ship` で行います。
+    本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../components/parameters/purchase/ShippableLimitParam.yaml'
+  responses:
+    '200':
+      description: まとめて発送してよい組に分けた発送待ち購入の一覧
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/purchases/shippable/PurchaseShippableResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

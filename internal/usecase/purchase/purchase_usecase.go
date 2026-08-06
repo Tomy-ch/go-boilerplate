@@ -179,6 +179,11 @@ type Usecase interface {
 	// GetPurchaseDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。
 	// 他ユーザーの購入・不存在はいずれも存在秘匿のため NotFound（404）を返します。
 	GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
+	// ListShippablePurchases は、発送可能な購入を、まとめて発送してよい組に分けて取得します。
+	// 実行できるのは管理者のみで、管理者でない場合は 403 を返します。
+	ListShippablePurchases(
+		ctx context.Context, authn *auth.Authn, params ListShippablePurchasesParams,
+	) (PurchaseShippableListView, error)
 }
 
 // usecase は、Usecase の実装です。

@@ -1,0 +1,12 @@
+type: object
+description: |
+  発送待ち購入のまとめ発送一覧のレスポンススキーマ。まとめて発送してよい組の配列を返します。
+  組同士はその組の最も古い購入の注文日時の順（同時刻は購入 ID の昇順）で並びます。
+required:
+  - groups
+properties:
+  groups:
+    type: array
+    description: まとめ発送の組の一覧。発送待ちの購入がない場合は空配列です。
+    items:
+      $ref: './PurchaseDispatchGroupResponse.yaml'

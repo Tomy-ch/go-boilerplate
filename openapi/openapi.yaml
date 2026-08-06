@@ -73,6 +73,8 @@ tags:
     description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
   - name: v1/purchases
     description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
+  - name: v1/purchases/shippable
+    description: 発送待ち購入のまとめ発送一覧（admin のみ・単一集約 Domain Service サンプル・非 admin は 403）。
   - name: v1/purchases/detail
     description: 単一購入の詳細取得（本人のみ・集約跨ぎ QueryService・明細に商品名/未存在は 404 で秘匿）。
   - name: v1/purchases/detail/cancel
@@ -142,6 +144,8 @@ paths:
     $ref: './paths/v1/addresses.yaml'
   /v1/purchases:
     $ref: './paths/v1/purchases.yaml'
+  /v1/purchases/shippable:
+    $ref: './paths/v1/purchases/shippable.yaml'
   /v1/purchases/{purchaseId}:
     $ref: './paths/v1/purchases/purchaseId.yaml'
   /v1/purchases/{purchaseId}/cancel:
