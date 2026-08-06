@@ -23,6 +23,7 @@ import (
 
 const purchasesShippablePath = "/v1/purchases/shippable"
 
+//nolint:dupl // 在庫僅少/発送待ちはどちらも admin 向け top-N 一覧で、HTTP 写像テストの構造の重複は不可避
 func TestV1PurchasesShippable_Integration(t *testing.T) {
 	t.Parallel()
 

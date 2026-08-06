@@ -22,6 +22,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// shippableBaseTime は、テスト用の購入の注文日時の基準です。
+var shippableBaseTime = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+
 // shippableTestDeps は、ListShippablePurchases のテストで注入する依存モック一式です。
 type shippableTestDeps struct {
 	repo       *mock_purchase.MockRepository
@@ -45,9 +48,6 @@ func newShippableTestUsecase(t *testing.T) (*usecase, *shippableTestDeps) {
 
 	return u, deps
 }
-
-// shippableBaseTime は、テスト用の購入の注文日時の基準です。
-var shippableBaseTime = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 // newShippablePurchase は、発送可能（支払い済み）な購入を再構築します。
 func newShippablePurchase(
