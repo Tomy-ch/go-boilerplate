@@ -14,6 +14,10 @@ feature ごとの spec だけでは足りず、その理由がこのページの
 警戒すること——1 つの語が 2 つの意味を持つ、2 つの語が 1 つの意味を指す——は feature を跨いだときにしか
 起きない。** feature 単位の spec しか無いリポジトリが持っているのは方言の集合であって、言語ではない。
 
+**この表が上であり、コードが下である。** 語の意味は業務が決め、モデルはそれを表現できるよう作られる。
+両者が食い違ったとき、疑うのはコードの側である——ここの行を実装に合わせて書き換えるのは、
+**業務が何を話しているかをコードに決めさせる**ことであり、それはこのページが存在する理由の否定になる。
+
 このプロジェクトは既に 2 度踏んでいる。どちらも検査ではなく偶然の発見だった。`value object` が
 `internal/domain` と `pkg/` で違う意味を持っていた件と、`kernel` が 3 つの意味を持っていた件である。
 
@@ -45,18 +49,18 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 | 用語 | 定義 | 所有 | コードシンボル | 公開名 |
 | --- | --- | --- | --- | --- |
-| 商品 | 販売の対象となる品目。価格・在庫・公開状態を持つ | product / Product | `product.Product` | `Product` |
-| 商品カテゴリ | 商品を分類する区分。参照マスタ | product-category / ProductCategory | `category.Category` | `ProductCategory` |
-| 商品ステータス | 商品の取扱状態を表す区分。参照マスタ | product-status / ProductStatus | `status.Status` | `ProductStatus` |
-| 公開中 | 顧客に見えている状態。公開日時が設定されていることを指す | product / Product | `product.IsPublished` | — |
-| 在庫僅少 | 補充を要する水準まで在庫が減っている状態 | product / Product | `product.Product.IsLowStock` | — |
-| 購入 | 顧客が商品を購入した事実。明細・金額・状態を持つ | purchase / Purchase | `purchase.Purchase` | `Purchase` |
-| 購入明細 | 購入 1 件に含まれる商品ごとの行。購入時点の単価スナップショットを持つ | purchase / Purchase | `purchase.PurchaseDetail` | `PurchaseDetail` |
-| 購入コード | 購入を業務上識別する符号 | purchase / Purchase | `purchase.Purchase.Code` | `code` |
-| キャンセル済み | 購入が取り消された状態 | purchase / Purchase | `purchase.Purchase.IsCanceled` | — |
-| ユーザー | このシステムを利用する人 | user / User | `user.User` | `User` |
-| 在籍 | ユーザーが退会していない状態 | user / User | `user.User.IsActive` | — |
-| 都道府県 | 住所の広域区分。参照マスタ | prefecture / Prefecture | `prefecture.Prefecture` | `Prefecture` |
+| 商品 | 顧客が購入できる品目。売値と在庫を持ち、公開されている間だけ顧客の目に触れる | product / Product | `product.Product` | `Product` |
+| 商品カテゴリ | 顧客が商品を探すときの分類。商品はちょうど 1 つに属する | product-category / ProductCategory | `category.Category` | `ProductCategory` |
+| 商品ステータス | 商品を今どう取り扱っているかの区分 | product-status / ProductStatus | `status.Status` | `ProductStatus` |
+| 公開中 | 顧客がその商品を見つけて購入できる状態 | product / Product | `product.IsPublished` | — |
+| 在庫僅少 | 補充しなければ品切れが近い水準まで在庫が減っている状態 | product / Product | `product.Product.IsLowStock` | — |
+| 購入 | 顧客が商品を買った事実。何をいくらで買ったかが確定している | purchase / Purchase | `purchase.Purchase` | `Purchase` |
+| 購入明細 | 購入 1 件に含まれる商品ごとの行。単価は買った時点の値で確定し、後の値上げに追随しない | purchase / Purchase | `purchase.PurchaseDetail` | `PurchaseDetail` |
+| 購入コード | 顧客との問い合わせでその購入を指し示すための符号 | purchase / Purchase | `purchase.Purchase.Code` | `code` |
+| キャンセル済み | 購入が取り消され、履行されないことが確定した状態 | purchase / Purchase | `purchase.Purchase.IsCanceled` | — |
+| ユーザー | このサービスで商品を購入する人 | user / User | `user.User` | `User` |
+| 在籍 | ユーザーがこのサービスの利用を続けている状態 | user / User | `user.User.IsActive` | — |
+| 都道府県 | 住所を広域で区分する単位 | prefecture / Prefecture | `prefecture.Prefecture` | `Prefecture` |
 <!-- sample-api:end -->
 
 ## Mechanism vocabulary
@@ -75,6 +79,22 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 ここにある名前は昇格しうる。業務が使い始めたら上の表へ移す。**この一覧は判断の記録であって、
 恒久的な除外ではない。**
+
+## 語彙を改訂するとき
+
+モデルを作っていると、業務が 1 語で呼んでいたものが実は 2 つだった、と分かることがある。**そのとき
+先に直すのはこの表であって、コードではない。** 語を分け、それぞれの定義を書き、所有を決め、
+そのあとでモデルがその区別を表現するよう変わる。
+
+順序が逆になると——コードで型を 2 つに割ってから表を追認すると——**表はコードの索引に退化する。**
+索引はコードと矛盾できず、矛盾できない語彙はモデルの誤りを指摘できない。このページの価値は
+コードに反対できることの中にしかない。
+
+改訂の入口は 3 つある。いずれも人間が行う。
+
+- 実装中に見つかった区別（上記）
+- [Watch list](#watch-list) に積まれた語が決着したとき
+- [`/glossary`](../../.claude/skills/glossary/SKILL.md) が報告する新出語・orphan・同音異義
 
 ## Watch list
 
