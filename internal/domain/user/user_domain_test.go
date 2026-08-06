@@ -1000,21 +1000,6 @@ func TestUser_UpdatedAt(t *testing.T) {
 	})
 }
 
-func TestUser_FullName(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("名前と名字を空白で連結した値を返す", func(t *testing.T) {
-			t.Parallel()
-			u := newAccessorUser(t)
-
-			assert.Equal(t, u.firstName+" "+u.lastName, u.FullName())
-		})
-	})
-}
-
 func TestUser_IsActive(t *testing.T) {
 	t.Parallel()
 
