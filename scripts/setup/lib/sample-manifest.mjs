@@ -211,7 +211,7 @@ export const SAMPLE_DOMAINS = {
   },
 
   order: {
-    description: "サンプル 購入 API（POST /v1/purchases・CommandService 正例。フルスタック）",
+    description: "サンプル 購入 API（POST /v1/purchases・CommandService 正例 / GET /v1/purchases/shippable・単一集約 Domain Service 正例。フルスタック）",
     paths: [
       // DB スキーマ（既存スタブ）
       "database/migrations/000011_create_purchase_statuses.up.sql",
@@ -225,6 +225,9 @@ export const SAMPLE_DOMAINS = {
       // 在籍と購入の進行状態にまたがる規則を持つドメインサービス。purchase 集約を参照するため
       // purchase と生死を共にする（残すと import 先を失う）。
       "internal/domain/service/membership",
+      // 発送待ち購入のまとめ判定を持つドメインサービス。purchase 集約のみを参照する単一集約サービスで、
+      // やはり purchase と生死を共にする。
+      "internal/domain/service/dispatch",
       "internal/usecase/purchase",
       // checkout は purchase と exchangerate を束ねる合成 Usecase なので、両者と生死を共にする
       "internal/usecase/checkout",
@@ -239,6 +242,7 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_purchases_pay_test.go",
       "internal/integration/v1_purchases_ship_test.go",
       "internal/integration/v1_purchases_deliver_test.go",
+      "internal/integration/v1_purchases_shippable_test.go",
       "internal/integration/v1_users_me_purchases_summary_test.go",
       // DML
       "database/dml/command_service/purchase",

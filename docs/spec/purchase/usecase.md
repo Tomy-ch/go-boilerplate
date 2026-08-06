@@ -506,6 +506,54 @@ workflow:
     - 未認証は controller で 401（Authn 不在）
 ```
 
+## GET 発送待ち一覧（まとめ発送・admin）
+
+`GET /v1/purchases/shippable`。発送可能な購入を、まとめて発送してよい組に分けて返す admin 向けの読み取り経路。
+「何を発送すべきか」を admin に浮かび上がらせる一覧で、発送の実行そのものは購入 1 件ずつ
+`PATCH /v1/purchases/{purchaseId}/ship` が担う。cursor ページングを持たない top-N で、`GET /v1/products/low-stock` と同型。
+
+まとめ判定は**単一集約に閉じたドメインサービス** `domain/service/dispatch` が担う。「この購入は発送可能か」は 1 件の
+状態だけで決まるため `Purchase.IsShippable`（エンティティのメソッド）だが、「これらのうちどれとどれを 1 便にまとめて
+よいか」は集合についての問いで、どの `Purchase` 1 件のメソッドにもなり得ない
+（[`internal/domain/README.md`](../../../internal/domain/README.md) § One thing or a set）。
+
+```yaml
+input:
+  - authn: "*auth.Authn"                   # admin 認可の主体。nil は ErrUnauthenticated
+  - params: ListShippablePurchasesParams   # { Limit int }（1 未満は既定 20 / 100 超は 100 へクランプ）
+
+output:
+  struct: PurchaseShippableListView
+  fields:
+    - name: Groups
+      type: "[]DispatchGroupView"   # { UserID uuid.UUID; Purchases []ShippablePurchaseView }
+      # ShippablePurchaseView = { ID uuid.UUID; Code string; TotalAmount int(USD セント); OrderedAt time.Time }
+
+dependencies:
+  - authz.Authorizer               # ActionPurchaseListShippable / 所有者なしリソース（admin のみ）
+  - purchase.Repository            # FindShippable（発送可能の絞り込み・明細込み）
+  - domain/service/dispatch        # GroupForDispatch（まとめ判定。単一集約 Domain Service）
+  - tools/paging                   # LimitPolicy（既定 20 / 上限 100）
+
+workflow:
+  tx_required: false               # read-only
+  steps:
+    - authn が nil なら ErrUnauthenticated（401）
+    - authorizer.Authorize(ActionPurchaseListShippable, Resource{Kind "purchase", Owner nil}) で admin 認可
+    - limit を LimitPolicy で正規化し repo.FindShippable(limit) で発送可能な購入を古い順に取得
+    - 返却行を Purchase.IsShippable で検証し、該当しない行があれば ErrInternal（SQL と述語の乖離を表に出す。
+      internal/usecase/README.md § Verifying infrastructure against the domain）
+    - dispatch.GroupForDispatch(purchases) で購入者ごとの組へ分ける
+    - DispatchGroupView / ShippablePurchaseView へ写像（組の順序・組内の順序はドメインサービスの結果を保つ）
+  errors:
+    - ErrUnauthenticated → 401（Authn 不在）
+    - ErrForbidden → 403（非 admin）
+    - ErrInternal → 500（発送可能でない行が混じっていた場合＝SQL と述語の乖離）
+```
+
+`limit` は**読み出す購入の件数**であり、まとめ判定はその範囲の中で行う。範囲の外にある同一購入者の購入は別の便になる。
+組は算出結果であり永続化しないため、組そのものの識別子は返さない。
+
 ## Notes
 
 - 冪等スコープは内部 UserID（#581 の確定に追随）。middleware が Scope を設定し、本 usecase 側の固有作業はない。
