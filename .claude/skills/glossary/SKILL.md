@@ -118,8 +118,11 @@ They ask for different things, so do not merge them into one list.
   term that was never documented is invisible to it. Each orphan resolves one of three ways — it
   becomes a row, it goes to Mechanism vocabulary, or it is a naming mistake in the code.
 - **解決しない参照** — a declared code symbol that no longer resolves. Two sources, checked the same
-  way: a spec's `package` / `struct`, and **the glossary's own code-symbol column** (`package.Type`,
-  `package.Type.Method`, `package.Func`). Deterministic — settle it with `grep`, never with a
+  way: a spec's `package` / `struct`, and **the glossary's own code-symbol column**. That column
+  takes four shapes and all four must resolve — `package.Type`, `package.Type.Method`,
+  `package.Func`, and `package.Value` for a package-level constant or variable, which is how a
+  named state or role is usually carried. A checker that knows only the first three reports a
+  false defect against the rows that matter most. Deterministic — settle it with `grep`, never with a
   judgement call. The glossary side is the one that matters most and the one nobody was checking:
   the page declares that it governs the code, and **a governing claim never compared against the
   thing it governs is decoration.**
