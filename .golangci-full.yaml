@@ -310,7 +310,7 @@ linters:
         maintain_a_sound_domain:
           files:
             - "**/internal/domain/**.go"
-            # ドメインサービス（集約横断）は下の maintain_a_sound_domain_service が受け持つ。
+            # ドメインサービス（internal/domain/service/**）は下の maintain_a_sound_domain_service が受け持つ。
             # 両ルールが同じファイルに当たると、こちらの集約間 deny が例外を打ち消してしまう。
             - "!**/internal/domain/service/**.go"
           list-mode: lax
