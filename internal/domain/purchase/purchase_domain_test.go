@@ -2181,3 +2181,53 @@ func TestPurchase_IsCanceled(t *testing.T) {
 		})
 	})
 }
+
+func TestPurchase_IsShippable(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("支払い済みの場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, accessorPurchase(t).IsShippable())
+		})
+
+		t.Run("未処理の場合、支払いを終えていないためfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, accessorPurchaseWith(t, StatusUnprocessed, nil, nil).IsShippable())
+		})
+
+		t.Run("発送済みの場合、二重発送になるためfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := accessorPurchase(t)
+			_, err := p.Ship(accessorOrderedAt.Add(time.Hour))
+			require.NoError(t, err)
+
+			assert.False(t, p.IsShippable())
+		})
+
+		t.Run("配達済みの場合、終端状態のためfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := accessorPurchase(t)
+			_, err := p.Ship(accessorOrderedAt.Add(time.Hour))
+			require.NoError(t, err)
+			_, err = p.Deliver(accessorOrderedAt.Add(2 * time.Hour))
+			require.NoError(t, err)
+
+			assert.False(t, p.IsShippable())
+		})
+
+		t.Run("キャンセル済みの場合、終端状態のためfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			canceledAt := accessorOrderedAt.Add(time.Hour)
+
+			assert.False(t, accessorPurchaseWith(t, StatusCanceled, nil, &canceledAt).IsShippable())
+		})
+	})
+}

@@ -42,6 +42,9 @@ type PurchaseDetail struct {
 	unitPrice money.Price
 }
 
+// Purchases は、Purchase 集約のスライス型です。
+type Purchases []*Purchase
+
 // Purchase は、購入を表すドメイン集約です。決済額（小計・税・送料・合計）は整数セント（決済スケール）で保持します。
 // 状態機械の現在状態は statusCode（安定した業務キー）を source of truth とし、timestamps
 // （canceledAt / shippedAt / deliveredAt）は「イベントがいつ起きたか」の監査記録として併用します。
@@ -399,6 +402,13 @@ func (p *Purchase) ShippedAt() *time.Time { return ptr.Copy(p.shippedAt) }
 
 // DeliveredAt は、配達日時を返します。未配達の場合は nil です。
 func (p *Purchase) DeliveredAt() *time.Time { return ptr.Copy(p.deliveredAt) }
+
+// IsShippable は、購入が発送可能な状態にあるかどうかを返します。
+//
+// 「発送可能」の定義はこのメソッドが持ちます。可否そのものは Status.CanTransitionTo が既に持っている
+// ため、条件を書き下さずそこから導出します。発送可能なステータスが増減しても定義は 1 箇所のままです。
+// 発送待ちを絞り込む読み取り経路の SQL は、この定義に乗った実行形です。
+func (p *Purchase) IsShippable() bool { return p.status.CanTransitionTo(StatusShipped) }
 
 // Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /
 // 支払い済み）からのみ遷移でき、statusCode をキャンセル（6）へ、canceledAt を now へ同時に更新します。

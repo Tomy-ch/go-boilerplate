@@ -54,6 +54,8 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 購入明細 | 購入 1 件に含まれる商品ごとの行。購入時点の単価スナップショットを持つ | purchase / Purchase | `purchase.PurchaseDetail` | `PurchaseDetail` |
 | 購入コード | 購入を業務上識別する符号 | purchase / Purchase | `purchase.Purchase.Code` | `code` |
 | キャンセル済み | 購入が取り消された状態 | purchase / Purchase | `purchase.Purchase.IsCanceled` | — |
+| 発送可能 | 購入が発送してよい状態。支払いを終え、まだ発送していないことを指す | purchase / Purchase | `purchase.Purchase.IsShippable` | — |
+| まとめ発送 | 発送待ちの購入のうち、1 便にまとめて発送してよい組 | purchase / Purchase | `dispatch.GroupForDispatch` | — |
 | ユーザー | このシステムを利用する人 | user / User | `user.User` | `User` |
 | 在籍 | ユーザーが退会していない状態 | user / User | `user.User.IsActive` | — |
 | 都道府県 | 住所の広域区分。参照マスタ | prefecture / Prefecture | `prefecture.Prefecture` | `Prefecture` |
