@@ -38,7 +38,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			exchangeratehandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/exchange-rates?base=USD&quote=JPY&amount=100", nil, nil,
+				http.MethodGet, "/v1/exchange-rates?base=USD&quote=JPY&original=100", nil, nil,
 			)
 			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
 		})
@@ -64,7 +64,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet,
-				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&displayCurrency=JPY", nil, nil,
+				"/v1/exchange-rates?base=USD&quote=JPY&original=100&displayCurrency=JPY", nil, nil,
 			)
 			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
 		})
@@ -86,7 +86,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet,
-				"/v1/exchange-rates?base=USD&quote=JPY&amount=100&displayCurrency=JPY", nil, nil,
+				"/v1/exchange-rates?base=USD&quote=JPY&original=100&displayCurrency=JPY", nil, nil,
 			)
 			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
 		})
@@ -112,7 +112,7 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			exchangeratehandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/exchange-rates?base=USD&quote=JPY&amount=100", nil, nil,
+				http.MethodGet, "/v1/exchange-rates?base=USD&quote=JPY&original=100", nil, nil,
 			)
 			AssertErrorResponse(t, actual, http.StatusServiceUnavailable)
 		})

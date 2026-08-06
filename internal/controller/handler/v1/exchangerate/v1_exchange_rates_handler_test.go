@@ -56,7 +56,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 				Return(&exchangerateuc.ConvertResult{Converted: decimal.FromInt(15050)}, nil)
 
 			resp, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
-				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: "100"},
+				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Original: "100"},
 			})
 
 			require.NoError(t, err)
@@ -67,7 +67,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 			assert.Equal(t, gen.GetExchangeRates200JSONResponse{
 				Base:      "USD",
 				Quote:     "JPY",
-				Amount:    "100",
+				Original:  "100",
 				Converted: "15050",
 			}, actual)
 		})
@@ -94,7 +94,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 				Params: gen.GetExchangeRatesParams{
 					Base:            "USD",
 					Quote:           "JPY",
-					Amount:          "100",
+					Original:        "100",
 					DisplayCurrency: new(gen.JPY),
 				},
 			})
@@ -119,7 +119,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 
 			resp, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
 				Params: gen.GetExchangeRatesParams{
-					Base: "USD", Quote: "JPY", Amount: "100", DisplayCurrency: new(gen.JPY),
+					Base: "USD", Quote: "JPY", Original: "100", DisplayCurrency: new(gen.JPY),
 				},
 			})
 
@@ -134,13 +134,13 @@ func Test_server_GetExchangeRates(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("amountが十進として不正な場合は検証エラーを返す", func(t *testing.T) {
+		t.Run("originalが十進として不正な場合は検証エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
 			s, _ := newServer(t)
 
 			_, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
-				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: "abc"},
+				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Original: "abc"},
 			})
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
@@ -155,7 +155,7 @@ func Test_server_GetExchangeRates(t *testing.T) {
 				Return(nil, apperror.ErrUnavailable)
 
 			_, err := s.GetExchangeRates(context.Background(), gen.GetExchangeRatesRequestObject{
-				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Amount: "100"},
+				Params: gen.GetExchangeRatesParams{Base: "USD", Quote: "JPY", Original: "100"},
 			})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
