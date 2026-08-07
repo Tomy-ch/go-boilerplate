@@ -24,22 +24,34 @@ documents never contained the premise, so nothing needs repairing after the cut.
 back to this file stay in place, and each is a single self-contained line carrying a
 `boilerplate-only:line` marker, so removing one cannot disturb the text around it.
 
-## Marker convention (provisional)
+## Marker convention
 
-**The namespace `boilerplate-only` is provisional.** The removal script that will own it is being
-written separately and its final marker name may differ; renaming is one sweep over this file plus
-the files listed in [Inbound pointers](#inbound-pointers).
+`boilerplate-only` is the one namespace for everything that stops being true when this repository is
+forked, and `make setup-remove-boilerplate-identity` is the one pass that resolves it (Phase 12 of
+[setup-repository.md](setup-repository.md)).
 
 | Marker | Placement | Effect |
 | --- | --- | --- |
 | `boilerplate-only:line` | trailing comment on the line it applies to | that line is removed |
 | `boilerplate-only:begin` / `boilerplate-only:end` | own-line comments around a region | the region and both markers are removed |
+| `boilerplate-only:replace-begin` / `replace-with` / `replace-end` | own-line comments around two regions | the first region is removed and the second, written as commented-out lines, is uncommented in its place |
+
+Reach for `replace-*` when deleting the region would take a heading or a rule down with it — where
+the fork needs *something* said, not nothing. In Markdown the commented-out lines take the form
+`<!-- = ... -->`; `# = ...` renders as a second top-level heading and fails markdownlint MD025, and
+`// = ...` renders as literal text.
 
 Comment form follows the existing `sample-api` markers — `<!-- ... -->` in Markdown, `//` or `#` in
 code — so the same scanner shape works. The two namespaces are **not** interchangeable and must not
 be stripped by one pass: they fire at different moments (`boilerplate-only` when the template is set
 up, `sample-api` when the sample feature set is removed), and a fork may reasonably do one without
 the other.
+
+The removal **scans the repository** rather than working from a list of files. A list is something a
+marker can be written outside of, and the failure is silent: the pass reports success, and the
+premise reaches the fork with nothing to announce it. The only files exempt are dependency
+checkouts and generated output, declared in
+[`scripts/setup/remove-boilerplate-identity/targets.ts`](../../scripts/setup/remove-boilerplate-identity/targets.ts).
 
 ## The premise
 

@@ -222,7 +222,7 @@ Infra --> External["External Systems"]
 
 ## 設計思想
 
-<!-- boilerplate:begin -->
+<!-- boilerplate-only:begin -->
 ### なぜ存在するのか
 
 バックエンド開発では、アーキテクチャ・ライブラリ選定・ディレクトリ構成・開発ワークフローを毎回
@@ -230,7 +230,7 @@ Infra --> External["External Systems"]
 安全かつ迅速に着手できるようにします。その価値は特定ライブラリではなく、**広く使われる OSS を
 一貫した・置換可能なアーキテクチャへ統合した点**にあります。
 
-<!-- boilerplate:end -->
+<!-- boilerplate-only:end -->
 ### AI 支援開発
 
 制約（レイヤの強制・生成コードの分離・リリースベースのブランチ・OpenAPI ファースト・ドメイン純粋性）は
@@ -270,10 +270,10 @@ read-only のエンドポイントスキャナです。依存としてではな�
 基準に選定しています。メンテナは依存更新・セキュリティ修正・アーキテクチャ改善を提供する場合が
 ありますが、Issue 応答期限・バグ修正の保証・長期メンテナンスの確約は**保証しません**。
 
-<!-- boilerplate:begin -->
+<!-- boilerplate-only:begin -->
 今後のリリース予定: フロントエンド / インフラ / 可観測性の各ボイラープレート。
 
-<!-- boilerplate:end -->
+<!-- boilerplate-only:end -->
 ## ライセンス
 
 本プロジェクト自身のソースコードは **MIT License** で公開しています — [LICENSE](LICENSE) を参照してください。

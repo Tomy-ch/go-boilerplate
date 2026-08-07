@@ -12,16 +12,21 @@
 
 1 つのファイルへ集約してファイルごと削除すれば、この破綻経路は存在しない。生き残る文書はそもそも前提を含んでいないので、切除後に修復すべきものが無い。現場に残るのはこのファイルへのポインタだけであり、それぞれ `boilerplate-only:line` マーカーを持つ自己完結した 1 行なので、除去しても周囲の文を乱さない。
 
-## マーカー規約（暫定）
+## マーカー規約
 
-**名前空間 `boilerplate-only` は暫定である。** これを扱う削除スクリプトは別途作成中で、最終的なマーカー名は変わり得る。改名はこのファイルと [Inbound pointers](#inbound-pointers) に挙げたファイルを一巡すれば済む。
+`boilerplate-only` は、このリポジトリが fork された瞬間に真でなくなるものすべてを指す唯一の名前空間であり、それを解決する唯一のパスが `make setup-remove-boilerplate-identity`（[setup-repository.ja.md](setup-repository.ja.md) の Phase 12）である。
 
 | マーカー | 置き方 | 効果 |
 | --- | --- | --- |
 | `boilerplate-only:line` | 対象行の行末コメント | その 1 行を除去する |
 | `boilerplate-only:begin` / `boilerplate-only:end` | 領域を挟む独立行のコメント | 領域と両マーカーを除去する |
+| `boilerplate-only:replace-begin` / `replace-with` / `replace-end` | 2 つの領域を挟む独立行のコメント | 前半の領域を除去し、コメントアウトで書かれた後半の領域をアンコメントして置き換える |
+
+`replace-*` を使うのは、領域を消すと見出しや規則ごと落ちてしまう場所——fork 側にも*何かは*述べられている必要がある場所——である。Markdown での退避行の形式は `<!-- = ... -->` のみ。`# = ...` は 2 つ目の最上位見出しとして描画され markdownlint MD025 に落ち、`// = ...` はその文字列がそのまま描画される。
 
 コメント形式は既存の `sample-api` マーカーに倣う（Markdown は `<!-- ... -->`、コードは `//` または `#`）ので、スキャナの形も同じで済む。ただし 2 つの名前空間は**互換ではなく**、同一パスで剥がしてはならない。発火する契機が違い（`boilerplate-only` はテンプレートのセットアップ時、`sample-api` はサンプル機能群の削除時）、fork が片方だけを行うことは十分あり得る。
+
+除去は対象ファイルの一覧を持たず、**リポジトリを走査する**。一覧というものはその外側にマーカーを書けてしまい、しかもその失敗は無言である——パスは成功を報告し、前提は何も告げないまま fork へ届く。除外されるのは依存の取得物と生成物だけで、[`scripts/setup/remove-boilerplate-identity/targets.ts`](../../../scripts/setup/remove-boilerplate-identity/targets.ts) に宣言してある。
 
 ## 前提
 

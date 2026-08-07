@@ -64,7 +64,7 @@ make tools
 make db-init
 ```
 
-<!-- boilerplate:begin -->
+<!-- boilerplate-only:begin -->
 ## Phase 5: ローカライゼーションスクリプトの実行
 
 下記コマンドで、Goモジュール名を一括置換するスクリプトを実行してください。
@@ -133,7 +133,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
-<!-- boilerplate:end -->
+<!-- boilerplate-only:end -->
 ## Phase 8: envファイルの書き換え
 
 [env/](../../../env/) ディレクトリ内のファイルをプロジェクトに合わせて書き換えてください。
@@ -208,20 +208,34 @@ usecase の [Authorizer](../../../internal/usecase/boundary/authz/authorizer.go)
 
 `Authorize(ctx, *auth.Authn, Action, *Resource)` のシグネチャは既に完全な `Authn`（subject / scopes / claims）と対象 `Resource`（任意の `OwnerID` 付き）を運ぶため、RBAC と所有者（オブジェクトレベル）モデルの双方を呼び出し箇所を変えずに表現できます。
 
-## Phase 12: ボイラープレートの顔を消す
+## Phase 12: ボイラープレートである間だけ成り立つ記述を落とす
 
-このリポジトリは数箇所で自分をボイラープレートと呼んでいる（README の 2 節と、本ガイドの
-ローカライゼーション手順）。いずれもテンプレートの足場であって、あなたのプロジェクトの
-ドキュメントではない。
+このリポジトリには、fork した瞬間に真でなくなる記述が 2 種類ある。自分を*ボイラープレートと
+名乗っている*記述と、ボイラープレート*だからこそ*従っている規約——ADR のその場改訂 regime、
+統合パス、`setup-review` の仕掛け——である。いずれもテンプレートの足場であって、あなたの
+プロジェクトのドキュメントではない。
 
 ```sh
 DRY_RUN=1 make setup-remove-boilerplate-identity
 make setup-remove-boilerplate-identity
 ```
 
-マークされた記述を落とし、自身の make ターゲットの登録も外したうえで、ツール自身を撤去する。
+リポジトリを走査して `boilerplate-only` マーカーをすべて解決し、
+[boilerplate-only-conventions.ja.md](boilerplate-only-conventions.ja.md) とその正本を削除し、
+自身の make ターゲットの登録も外したうえで、ツール自身を撤去する。対象ファイルの一覧ではなく
+走査にしているのは、一覧というものはその外側にマーカーを書けてしまうからで、誰も剥がさない
+マーカーは、何も告げないままあなたのプロジェクトへ生き残る前提になる。
+
 **触らないもの**: リポジトリ名・モジュール名（Phase 5 で置換済み）と、運用中も読み返す部分
 ——後述の clamp 設定レビューと除外 ADR。これらは複数のパッケージ README から参照されている。
+
+除去のあとに残るのは各規則の一般形で、それを所有する文書
+（[docs/adr/README.ja.md](../adr/README.ja.md)、[docs/rules.md](../../rules.md)、各層の README）に
+書かれている。単純な削除ではなく fork 向けの言い換えが要る箇所は、差し替え文が隣に置いてあり、
+同じパスで入れ替わる。
+
+> `boilerplate-only` と `sample-api` のマーカーを 1 回のパスで剥がさないこと。発火する契機が
+> 違い（この Phase と Phase 15 のサンプル削除）、fork が片方だけを行うことは十分あり得る。
 
 ## Phase 13: テンプレートの意図的な除外（ADR）のレビュー
 
@@ -335,33 +349,10 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
 
 </details>
 
-## Phase 16: ボイラープレート限定の規約の削除
+## Phase 16: 自分の ADR regime を決める
 
-[boilerplate-only-conventions.ja.md](boilerplate-only-conventions.ja.md) は、本リポジトリが上流のテンプレートである間だけ成り立つ規約——ADR のその場改訂 regime、統合パス、`setup-review` の仕掛け——を集約したものです。いずれもあなたのプロジェクトには適用されず、各規則の一般形はそれを所有する文書のほうに既に書かれています。
+Phase 12 が、ボイラープレートであることに乗っていた記述もろとも、上流の ADR 規約を除去しました。残るのはあなたにしか下せない決定です。この決定は、上流がどう出荷したかではなく、あなたのプロジェクトが自分の歴史をどう記録するかについてのものだからです。
 
-サンプルAPI（Phase 15）を残す場合でも、この Phase は実施してください。2 つの削除は独立しており、発火する契機が違います。
+継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。これは [MADR](https://adr.github.io/madr/) の定める ADR の形であり、[ADR-0000](../adr/0000-record-architecture-decisions.ja.md) が決めたことです。
 
-1. ファイルと日本語ミラーを削除します。
-
-    ```sh
-    rm docs/get-started/boilerplate-only-conventions.md \
-       docs/ja/get-started/boilerplate-only-conventions.ja.md
-    ```
-
-2. `boilerplate-only:line` マーカーを持つ行をすべて除去します。いずれも削除対象ファイルへの自己完結したポインタ 1 行なので、除去しても周囲の文は壊れません。
-
-    ```sh
-    grep -rn "boilerplate-only:line" docs/
-    ```
-
-3. 領域マーカーを解決します。領域が抱えているのは上流のテンプレートについてのみ真である記述——誰が保守しているのか、何を約束しているのか、fork には持ち続ける理由のないものをなぜ残しているのか——です。`begin` / `end` は領域を落とすだけで、残るのはその周囲に既に書かれている一般形です。`replace-begin` / `replace-with` / `replace-end` は、上流版を落として隣にコメントアウトで置かれた一般形と差し替えます。
-
-    ```sh
-    grep -rnE "boilerplate-only:(begin|replace-begin)" docs/
-    ```
-
-    除去が切り口の周囲の行に何をするかは、[scripts/setup/lib/markers.ts](../../../scripts/setup/lib/markers.ts) の `stripMarkers` が定めています（マーカー名を引数に取る汎用実装）。まだ `boilerplate-only` を渡す呼び出し元が無いためこの手順は手作業ですが、手で切る前に読んでください。取りこぼしやすいのは、この関数が行っている継ぎ目の繕いのほうです。
-
-4. 自分の ADR regime を決めます。継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。その場改訂を望むなら、それはあなた自身の決定として、あなた自身の ADR に記録してください。
-
-> マーカー名前空間 `boilerplate-only` は**暫定**で、この削除は当面手作業です（これを扱う strip スクリプトは別途準備中）。`boilerplate-only` と `sample-api` のマーカーを 1 回のパスで剥がさないでください。発火する契機が違い、fork が片方だけを行うことは十分あり得ます。
+その場改訂を望むなら——生きられるのではなく出荷される設計文書にとっては正当な選択です——それはあなた自身の決定として、あなた自身の ADR に記録してください。上流がそうしていたという事実から導かないでください。
