@@ -273,7 +273,10 @@ func Test_collectSubjects(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split("package p\n\nfunc (s server) Name() string {\n\treturn s.name\n}\n", "\n")
 
-			assert.Len(t, collectSubjects(lines, "p.go"), 1)
+			subs := collectSubjects(lines, "p.go")
+
+			require.Len(t, subs, 1)
+			assert.Equal(t, "server.Name", subs[0].name)
 		})
 
 		t.Run("宣言を含まないソースからは何も収集しない", func(t *testing.T) {
@@ -299,7 +302,9 @@ func Test_indexGoFile(t *testing.T) {
 
 			indexGoFile(filepath.Join("internal", "p", "server.go"), lines, prodByDir, testsByDir)
 
-			assert.Len(t, prodByDir[filepath.Join("internal", "p")], 1)
+			prod := prodByDir[filepath.Join("internal", "p")]
+			require.Len(t, prod, 1)
+			assert.Equal(t, "newServer", prod[0].name)
 			assert.Empty(t, testsByDir)
 		})
 
