@@ -1,5 +1,5 @@
 # mise.toml が宣言するツールの供給網 cooldown を緊急に外すための lockfile（SSOT）。
-# make mise-cooldown-gate / mise-cooldown-audit と .github/workflows/mise-cooldown.yaml が読む。
+# make tool-cooldown-gate / tool-cooldown-audit と .github/workflows/tool-cooldown.yaml が読む。
 #
 # 1 行 1 エントリ。形式は以下で、3 つのキーは順序も含めてすべて必須。
 # key は mise.toml に書かれたキーそのもの（短縮名なら短縮名のまま）。
