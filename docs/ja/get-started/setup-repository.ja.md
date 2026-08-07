@@ -208,6 +208,7 @@ usecase の [Authorizer](../../../internal/usecase/boundary/authz/authorizer.go)
 
 `Authorize(ctx, *auth.Authn, Action, *Resource)` のシグネチャは既に完全な `Authn`（subject / scopes / claims）と対象 `Resource`（任意の `OwnerID` 付き）を運ぶため、RBAC と所有者（オブジェクトレベル）モデルの双方を呼び出し箇所を変えずに表現できます。
 
+<!-- boilerplate-only:begin -->
 ## Phase 12: ボイラープレートである間だけ成り立つ記述を落とす
 
 このリポジトリには、fork した瞬間に真でなくなる記述が 2 種類ある。自分を*ボイラープレートと
@@ -237,6 +238,7 @@ make setup-remove-boilerplate-identity
 > `boilerplate-only` と `sample-api` のマーカーを 1 回のパスで剥がさないこと。発火する契機が
 > 違い（この Phase と Phase 15 のサンプル削除）、fork が片方だけを行うことは十分あり得る。
 
+<!-- boilerplate-only:end -->
 ## Phase 13: テンプレートの意図的な除外（ADR）のレビュー
 
 認証・認可（Phase 11）やデプロイ（Phase 10）以外にも、このテンプレートはいくつかの**意図的な非選択**をしています。例：アプリ内レート制限器を持たない / 汎用 Cache 抽象を持たない / scheduled job の並走制御はスケジューラに委譲 / push・streaming ブローカーは worker の対象外。
@@ -351,7 +353,7 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
 
 ## Phase 16: 自分の ADR regime を決める
 
-Phase 12 が、ボイラープレートであることに乗っていた記述もろとも、上流の ADR 規約を除去しました。残るのはあなたにしか下せない決定です。この決定は、上流がどう出荷したかではなく、あなたのプロジェクトが自分の歴史をどう記録するかについてのものだからです。
+上流自身の ADR 規約は、このリポジトリがボイラープレートであることに乗っていた記述もろとも除去されました。残るのはあなたにしか下せない決定です。この決定は、上流がどう出荷したかではなく、あなたのプロジェクトが自分の歴史をどう記録するかについてのものだからです。
 
 継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。これは [MADR](https://adr.github.io/madr/) の定める ADR の形であり、[ADR-0000](../adr/0000-record-architecture-decisions.ja.md) が決めたことです。
 

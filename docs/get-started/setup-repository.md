@@ -215,6 +215,7 @@ Create authorization functionality by implementing the usecase [Authorizer](../.
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
+<!-- boilerplate-only:begin -->
 ## Phase 12: Remove what only holds while this is a boilerplate
 
 Two kinds of statement in this repository stop being true the moment you fork it: the passages
@@ -246,6 +247,7 @@ already parked beside it and is swapped in by the same pass.
 > moments — this phase versus the sample removal in Phase 15 — and a fork may reasonably do one
 > without the other.
 
+<!-- boilerplate-only:end -->
 ## Phase 13: Review the template's deliberate exclusions (ADRs)
 
 Beyond authentication / authorization (Phase 11) and deployment (Phase 10), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
@@ -363,9 +365,9 @@ filling it back in stay on the page.
 
 ## Phase 16: Decide your own ADR regime
 
-Phase 12 removed the upstream's ADR conventions along with everything else that rested on this
-being a boilerplate. What is left is a decision only you can take, because it is about how your
-project records its own history rather than how this one shipped.
+The upstream's own ADR conventions were removed along with everything else that rested on this
+repository being a boilerplate. What is left is a decision only you can take, because it is about
+how your project records its own history rather than how this one shipped.
 
 What you inherit is [docs/adr/README.md](../adr/README.md) as written: an ADR is an immutable
 record, and a decision that changes is replaced by a new `accepted` ADR while the old one is marked
