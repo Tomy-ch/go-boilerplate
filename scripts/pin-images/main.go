@@ -39,7 +39,6 @@ import (
 const (
 	lockFile        = "docker/images-pin.toml"
 	filePerm        = 0o644
-	minArgs         = 2 // プログラム名 + サブコマンド
 	inspectTimeout  = 60 * time.Second
 	hoursPerDay     = 24
 	createdTimeCols = 3 // "2006-01-02 15:04:05.000 +0000 UTC" を最初の 3 フィールドで再構成
@@ -57,10 +56,16 @@ var (
 )
 
 var (
+	// errUsage は、サブコマンドが無いか未知の場合のエラー。
+	errUsage = xerrors.New("usage: pin-images <resolve|apply|check>")
 	// errDigestUnparsable は、inspect 出力から Digest 行を解析できなかった場合のエラー。
 	errDigestUnparsable = xerrors.New("Digest 行を解析できません")
 	// errCreatedUnparsable は、inspect 出力から image config の created を解析できなかった場合のエラー。
 	errCreatedUnparsable = xerrors.New("created を解析できません")
+	// errLockInvalidLine は、lockfile に代入として解釈できない行があった場合のエラー。
+	errLockInvalidLine = xerrors.New("lockfile に解釈できない行があります")
+	// errLockDuplicateKey は、lockfile に同一キーが複数回現れた場合のエラー。
+	errLockDuplicateKey = xerrors.New("lockfile にキーの重複があります")
 )
 
 // target は走査対象のファイルと、その参照行を捕捉する正規表現（prefix/ref/suffix の 3 グループ）。
@@ -77,42 +82,67 @@ type imageRef struct {
 
 func (r imageRef) key() string { return r.image + ":" + r.tag }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
-	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: pin-images <resolve|apply|check>")
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("❌ getwd: %v", err)
-	}
-	targets, err := targetFiles(root)
-	if err != nil {
+
+	if err := run(os.Args[1:], os.Getwd); err != nil {
 		log.Fatalf("❌ %v", err)
 	}
-	switch os.Args[1] {
+}
+
+// run は、サブコマンドを解釈して固定処理へ振り分けます。
+// wd は走査の基点となるディレクトリの取得手段で、差し替えられるよう引数で受けます。
+func run(args []string, wd func() (string, error)) error {
+	if len(args) == 0 {
+		return errUsage
+	}
+
+	root, err := wd()
+	if err != nil {
+		return xerrors.Wrap(err, "getwd")
+	}
+
+	targets, err := targetFiles(root)
+	if err != nil {
+		return err
+	}
+
+	switch args[0] {
 	case "resolve":
-		fs := flag.NewFlagSet("resolve", flag.ExitOnError)
+		fs := flag.NewFlagSet("resolve", flag.ContinueOnError)
 		minAge := fs.Int("min-age-days", 0, "N 日未満の新しすぎる digest は quarantine（0 で無効）")
-		_ = fs.Parse(os.Args[2:])
+		if err := fs.Parse(args[1:]); err != nil {
+			// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+			if xerrors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+
+			return xerrors.Wrap(err, "failed to parse flags")
+		}
+
 		resolve(root, targets, *minAge)
 	case "apply":
 		applyOrCheck(root, targets, false)
 	case "check":
 		applyOrCheck(root, targets, true)
 	default:
-		log.Fatalf("❌ usage: pin-images <resolve|apply|check>")
+		return errUsage
 	}
+
+	return nil
 }
 
 func targetFiles(root string) ([]target, error) {
-	dockerfiles, err := filepath.Glob(filepath.Join(root, "docker/*/Dockerfile"))
+	dockerfiles, err := globFiles(root, "docker/*/Dockerfile")
 	if err != nil {
-		return nil, xerrors.Wrap(err, "glob docker/*/Dockerfile")
+		return nil, err
 	}
-	compose, err := filepath.Glob(filepath.Join(root, "docker-compose*.yaml"))
+	compose, err := globFiles(root, "docker-compose*.yaml")
 	if err != nil {
-		return nil, xerrors.Wrap(err, "glob docker-compose*.yaml")
+		return nil, err
 	}
 	var targets []target
 	for _, f := range dockerfiles {
@@ -123,6 +153,17 @@ func targetFiles(root string) ([]target, error) {
 	}
 	sort.Slice(targets, func(i, j int) bool { return targets[i].path < targets[j].path })
 	return targets, nil
+}
+
+// globFiles は root からの相対パターン pat に一致するパスを返す。
+// パターンが不正なら 0 件へ縮退させずエラーを返す。走査対象が静かに空になると、そこに書かれた
+// image 参照が検疫・固定・drift 検査のいずれからも外れたまま「全て固定済み」と report される。
+func globFiles(root, pat string) ([]string, error) {
+	m, err := filepath.Glob(filepath.Join(root, pat))
+	if err != nil {
+		return nil, xerrors.Wrap(err, "glob "+pat)
+	}
+	return m, nil
 }
 
 // parseRef は FROM / compose image の ref を image:tag へ分解する。第2戻り値が false なら対象外
@@ -326,13 +367,17 @@ func rewritePins(data string, re *regexp.Regexp, lock map[string]string) (string
 
 // applyOrCheck は lockfile を SSOT に FROM を digest 固定する。dryRun=true は書き換えず
 // 未固定/未登録/drift を非ゼロ終了で報告する。tag のみへ戻す正規化はしない（fail-closed）。
+//
+// 全ファイルを読み切って未登録の有無を確定させてから書き込む。1 ファイルずつ書きながら進むと、
+// 後続ファイルの未登録参照で中断したときに「exit 1 なのに作業ツリーは書き換え済み」という
+// 中途半端な状態が残る。
 func applyOrCheck(root string, targets []target, dryRun bool) {
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
 		log.Fatalf("❌ read lockfile（先に make pin-images-resolve を実行してください）: %v", err)
 	}
-	var missing, drifted []string
-	changed := 0
+	var missing, drifted, pending []string
+	rewritten := map[string]string{}
 	for _, t := range targets {
 		data, err := os.ReadFile(t.path)
 		if err != nil {
@@ -347,21 +392,33 @@ func applyOrCheck(root string, targets []target, dryRun bool) {
 			drifted = append(drifted, rel(root, t.path))
 			continue
 		}
-		if err := os.WriteFile(t.path, []byte(out), filePerm); err != nil { //nolint:gosec // 管理対象ファイル権限
-			log.Fatalf("❌ write %s: %v", t.path, err)
-		}
-		changed++
-		log.Printf("  updated %s", rel(root, t.path))
+		pending = append(pending, t.path)
+		rewritten[t.path] = out
 	}
-	report(missing, drifted, dryRun, changed)
+
+	failOnMissing(missing)
+
+	for _, path := range pending {
+		if err := os.WriteFile(path, []byte(rewritten[path]), filePerm); err != nil {
+			log.Fatalf("❌ write %s: %v", path, err)
+		}
+		log.Printf("  updated %s", rel(root, path))
+	}
+	report(drifted, dryRun, len(pending))
 }
 
-func report(missing, drifted []string, dryRun bool, changed int) {
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		log.Fatalf("❌ lockfile に未登録の base image があります（make pin-images-resolve を実行してください）: %s",
-			strings.Join(uniq(missing), ", "))
+// failOnMissing は lockfile 未登録の image があれば非ゼロ終了する。書き込みより前に呼ぶことで、
+// 未登録を検出した実行が作業ツリーを一切変更しないことを保証する。
+func failOnMissing(missing []string) {
+	if len(missing) == 0 {
+		return
 	}
+	sort.Strings(missing)
+	log.Fatalf("❌ lockfile に未登録の base image があります（make pin-images-resolve を実行してください）: %s",
+		strings.Join(uniq(missing), ", "))
+}
+
+func report(drifted []string, dryRun bool, changed int) {
 	if !dryRun {
 		log.Printf("✅ %d ファイルを固定しました", changed)
 		return
@@ -389,6 +446,9 @@ func writeLock(path string, lock map[string]string) error {
 	return os.WriteFile(path, []byte(b.String()), filePerm)
 }
 
+// readLock は lockfile を image:tag→digest として読む。空行とコメント行以外で代入として解釈
+// できない行、および既出キーの再定義はエラーにする。読み飛ばしや後勝ちの上書きは、そのエントリが
+// 「存在しない」あるいは「行順で決まる」状態を警告なく作り、lockfile が SSOT として機能しなくなる。
 func readLock(path string) (map[string]string, error) {
 	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
 	if err != nil {
@@ -397,10 +457,21 @@ func readLock(path string) (map[string]string, error) {
 	defer func() { _ = f.Close() }()
 	lock := map[string]string{}
 	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if m := lockRe.FindStringSubmatch(strings.TrimSpace(sc.Text())); m != nil {
-			lock[m[1]] = m[2]
+	for lineNo := 1; sc.Scan(); lineNo++ {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
+		m := lockRe.FindStringSubmatch(line)
+		if m == nil {
+			return nil, xerrors.Wrap(errLockInvalidLine,
+				fmt.Sprintf("%d 行目: %q（make pin-images-resolve を実行するか該当行を削除してください）", lineNo, line))
+		}
+		if _, dup := lock[m[1]]; dup {
+			return nil, xerrors.Wrap(errLockDuplicateKey,
+				fmt.Sprintf("%d 行目: %q（make pin-images-resolve を実行するか重複行を削除してください）", lineNo, m[1]))
+		}
+		lock[m[1]] = m[2]
 	}
 	return lock, sc.Err()
 }

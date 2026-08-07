@@ -1,13 +1,25 @@
 package main
 
 import (
+	"bufio"
+	"flag"
+	"io"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 // miseFixture は実際の mise.toml の形を最小で再現する。`[settings]` と `[env]` を混ぜてあるのは、
@@ -29,11 +41,152 @@ sqlc = "1.31.1"
 OTEL_LGTM_VERSION = "0.28.0"
 `
 
+// miseOneAquaTool は、GitHub リリースに紐づく backend のツールを 1 つだけ宣言した mise.toml。
+const miseOneAquaTool = `[tools]
+"aqua:owner/repo" = "1.2.3"
+`
+
+// errRoundTrip は、往復そのものが失敗したことを表すテスト用のエラー。
+var errRoundTrip = xerrors.New("round trip failed")
+
+// upstreamRedirect は、上流ホスト宛のリクエストをテストサーバへ向け替える RoundTripper。
+// 上流の URL は定数から組み立てられ差し替え口が無いため、宛先だけを経路の途中で置き換える。
+type upstreamRedirect struct {
+	scheme string
+	host   string
+}
+
+// unreachableUpstream は、上流へ到達できない状況を再現する RoundTripper。実ネットワークへ出ないことも
+// 同時に保証するため、リクエストを送らない経路の検証にも使います。
+type unreachableUpstream struct{}
+
+func (u upstreamRedirect) RoundTrip(req *http.Request) (*http.Response, error) {
+	clone := req.Clone(req.Context())
+	clone.URL.Scheme = u.scheme
+	clone.URL.Host = u.host
+	return http.DefaultTransport.RoundTrip(clone)
+}
+
+func (unreachableUpstream) RoundTrip(*http.Request) (*http.Response, error) { return nil, errRoundTrip }
+
+// offlineClient は、どのリクエストも往復に失敗する HTTP クライアントを返します。
+func offlineClient() *http.Client { return &http.Client{Transport: unreachableUpstream{}} }
+
+// fakeUpstream は、上流宛のリクエストを handler が受け取るようにした HTTP クライアントを返します。
+func fakeUpstream(t *testing.T, handler http.HandlerFunc) *http.Client {
+	t.Helper()
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+
+	base, err := url.Parse(srv.URL)
+	require.NoError(t, err)
+	return &http.Client{Transport: upstreamRedirect{scheme: base.Scheme, host: base.Host}}
+}
+
+// respondJSON は、path に一致したときだけ body を返し、それ以外は 404 を返すハンドラを組みます。
+func respondJSON(path, body string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != path {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, body)
+	}
+}
+
+// respondStatus は、常に code を返すハンドラを組みます。
+func respondStatus(code int) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(code) }
+}
+
+// requestedPath は、そのツールの公開時刻を引くために最初に叩かれたパスを返します。
+func requestedPath(t *testing.T, target tool) string {
+	t.Helper()
+	paths := make(chan string, 1)
+	client := fakeUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case paths <- r.URL.Path:
+		default:
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	_, _ = publishedAt(t.Context(), client, target)
+	select {
+	case p := <-paths:
+		return p
+	default:
+		return ""
+	}
+}
+
+// captureLog は、log の出力先を差し替えて fn が書いた内容を集めます。
+func captureLog(t *testing.T, fn func()) string {
+	t.Helper()
+	var buf strings.Builder
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	fn()
+	return buf.String()
+}
+
 func writeBypass(t *testing.T, body string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "bypass.toml")
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
 	return path
+}
+
+// releasedOn は、aqua:owner/repo@1.2.3 の公開日だけを返す上流を組みます。
+func releasedOn(t *testing.T, publishedOn string) *http.Client {
+	t.Helper()
+	return fakeUpstream(t, respondJSON(
+		"/repos/owner/repo/releases/tags/v1.2.3", `{"published_at":"`+publishedOn+`T00:00:00Z"}`))
+}
+
+// useMiseWorkTree は mise.toml だけを持つ作業ディレクトリを作り、そこへ移動します。パスを返すのは
+// バイパス lockfile や出力先を同じツリーへ置けるようにするため。
+func useMiseWorkTree(t *testing.T, content string) string {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, miseFile), []byte(content), 0o600))
+	t.Chdir(dir)
+	return dir
+}
+
+// useMiseGateRepo は base 側 mise.toml を 1 コミット持つリポジトリを作り、作業ツリーの mise.toml を
+// current へ差し替えてそこへ移動します。gate の差分は git 越しに取るため実リポジトリが要ります。
+func useMiseGateRepo(t *testing.T, base, current string) {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, miseFile), []byte(base), 0o600))
+
+	git := []string{"-C", dir, "-c", "user.email=t@example.com", "-c", "user.name=t", "-c", "commit.gpgsign=false"}
+	for _, args := range [][]string{{"init", "-q"}, {"add", miseFile}, {"commit", "-q", "-m", "init"}} {
+		//nolint:gosec // 引数は本ファイル内のリテラルと t.TempDir のパス
+		out, err := exec.CommandContext(t.Context(), "git", append(git, args...)...).CombinedOutput()
+		require.NoError(t, err, "git %v: %s", args, out)
+	}
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, miseFile), []byte(current), 0o600))
+	t.Chdir(dir)
+}
+
+// writeWorkTreeBypass は、作業ディレクトリの規定位置へバイパス lockfile を書きます。
+func writeWorkTreeBypass(t *testing.T, dir, body string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, filepath.Dir(bypassFile)), 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, bypassFile), []byte(body), 0o600))
+}
+
+// runCaptured は run を実行し、書き出されたログとエラーを返します。
+func runCaptured(t *testing.T, args []string, client *http.Client, now time.Time) (string, error) {
+	t.Helper()
+	var err error
+	out := captureLog(t, func() { err = run(args, client, now) })
+	return out, err
 }
 
 func day(s string) time.Time {
@@ -44,7 +197,7 @@ func day(s string) time.Time {
 	return d
 }
 
-func TestParseTools(t *testing.T) {
+func Test_parseTools(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -80,10 +233,21 @@ func TestParseTools(t *testing.T) {
 				assert.NotEqual(t, "min_version", tool.key)
 			}
 		})
+
+		// mise はテーブル形式の宣言も受け付ける。1 行を必ずツール宣言として読むと、その行で破綻する。
+		t.Run("tools 内でも宣言の形でない行は拾わずに読み進める", func(t *testing.T) {
+			t.Parallel()
+			got, err := parseTools([]byte("[tools]\n" +
+				`node = { version = "24.11.0" }` + "\n" +
+				`sqlc = "1.31.1"` + "\n"))
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, "sqlc@1.31.1", got[0].id())
+		})
 	})
 }
 
-func TestDiffAdded(t *testing.T) {
+func Test_diffAdded(t *testing.T) {
 	t.Parallel()
 
 	before := []tool{{key: "a", version: "1.0.0"}, {key: "b", version: "1.0.0"}}
@@ -112,7 +276,61 @@ func TestDiffAdded(t *testing.T) {
 	})
 }
 
-func TestBackendKindAndWindow(t *testing.T) {
+func Test_backendKind(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("aqua は GitHub リリース系に分類する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "github", backendKind("aqua:owner/repo"))
+		})
+
+		t.Run("ubi は GitHub リリース系に分類する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "github", backendKind("ubi:owner/repo"))
+		})
+
+		t.Run("github は GitHub リリース系に分類する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "github", backendKind("github:owner/repo"))
+		})
+
+		t.Run("go は module proxy 系に分類する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "go", backendKind("go:go.uber.org/mock/mockgen"))
+		})
+
+		t.Run("npm は npm レジストリ系に分類する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "npm", backendKind("npm:@redocly/cli"))
+		})
+
+		// pipx と uvx はどちらも PyPI を指すため、同じ種別へ寄せる。
+		t.Run("pipx は PyPI 系に分類する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "pypi", backendKind("pipx:sqlfluff"))
+		})
+
+		t.Run("uvx は PyPI 系に分類する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "pypi", backendKind("uvx:sqlfluff"))
+		})
+
+		t.Run("取得経路を持たない backend は空種別になる", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, backendKind("asdf:someone/plugin"))
+		})
+
+		t.Run("backend 名は最初のコロンまでで判定する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "npm", backendKind("npm:@scope/pkg:extra"))
+		})
+	})
+}
+
+func Test_windowFor(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -121,33 +339,33 @@ func TestBackendKindAndWindow(t *testing.T) {
 		// GitHub リリースは tag の付け替えが起こり得るぶん、pin-actions / pin-images と同じ窓を採る。
 		t.Run("GitHub リリース系の窓は 14 日", func(t *testing.T) {
 			t.Parallel()
-			for _, backend := range []string{"aqua:owner/repo", "ubi:owner/repo", "github:owner/repo"} {
-				assert.Equal(t, "github", backendKind(backend), backend)
-				assert.Equal(t, releaseWindowDays, windowFor(backend), backend)
-			}
+			assert.Equal(t, releaseWindowDays, windowFor("aqua:owner/repo"))
 		})
 
-		t.Run("パッケージレジストリ系の窓は 7 日", func(t *testing.T) {
+		t.Run("go の窓は 7 日", func(t *testing.T) {
 			t.Parallel()
-			for backend, kind := range map[string]string{
-				"go:go.uber.org/mock": "go",
-				"npm:markdownlint":    "npm",
-				"pipx:sqlfluff":       "pypi",
-				"uvx:sqlfluff":        "pypi",
-			} {
-				assert.Equal(t, kind, backendKind(backend), backend)
-				assert.Equal(t, registryWindowDays, windowFor(backend), backend)
-			}
+			assert.Equal(t, registryWindowDays, windowFor("go:go.uber.org/mock/mockgen"))
 		})
 
-		t.Run("取得経路を持たない backend は空種別になる", func(t *testing.T) {
+		t.Run("npm の窓は 7 日", func(t *testing.T) {
 			t.Parallel()
-			assert.Empty(t, backendKind("asdf:someone/plugin"))
+			assert.Equal(t, registryWindowDays, windowFor("npm:@redocly/cli"))
+		})
+
+		t.Run("PyPI の窓は 7 日", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, registryWindowDays, windowFor("pipx:sqlfluff"))
+		})
+
+		// 窓を GitHub 側へ倒すと、レジストリ系が本来より長く止まる。既定はレジストリ窓に寄せる。
+		t.Run("種別を判定できない backend はレジストリ窓を採る", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, registryWindowDays, windowFor("asdf:someone/plugin"))
 		})
 	})
 }
 
-func TestEscapeModulePath(t *testing.T) {
+func Test_escapeModulePath(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -185,7 +403,7 @@ func TestExtrasStripping(t *testing.T) {
 	})
 }
 
-func TestReadBypasses(t *testing.T) {
+func Test_readBypasses(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -239,10 +457,37 @@ func TestReadBypasses(t *testing.T) {
 			require.Error(t, err)
 			assert.ErrorIs(t, err, errBypassDuplicateKey)
 		})
+
+		// 不在と読めない状態を同じ「空」に倒すと、壊れた lockfile がバイパス無しとして素通りする。
+		t.Run("不在ではなく開けないパスはエラーにする", func(t *testing.T) {
+			t.Parallel()
+			underFile := filepath.Join(writeBypass(t, ""), "bypass.toml")
+
+			_, err := readBypasses(underFile)
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, os.ErrNotExist)
+		})
+
+		// 形は合っているが日付でない値をゼロ値の期限として通すと、その判断は誰にも気付かれない。
+		t.Run("日付として解釈できない expires はエラーにする", func(t *testing.T) {
+			t.Parallel()
+			_, err := readBypasses(writeBypass(t,
+				`"a@1" = { expires = 2026-13-45, issue = 1, reason = "r" }`+"\n"))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "expires")
+		})
+
+		t.Run("整数に収まらない issue はエラーにする", func(t *testing.T) {
+			t.Parallel()
+			_, err := readBypasses(writeBypass(t,
+				`"a@1" = { expires = 2026-11-06, issue = 99999999999999999999, reason = "r" }`+"\n"))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "issue")
+		})
 	})
 }
 
-func TestValidateBypasses(t *testing.T) {
+func Test_validateBypasses(t *testing.T) {
 	t.Parallel()
 
 	today := day("2026-08-06")
@@ -260,15 +505,22 @@ func TestValidateBypasses(t *testing.T) {
 			assert.Empty(t, invalid)
 		})
 
-		t.Run("期限当日と上限ちょうどは許す", func(t *testing.T) {
+		t.Run("期限当日は許す", func(t *testing.T) {
 			t.Parallel()
-			for _, expires := range []time.Time{today, today.AddDate(0, maxBypassMonths, 0)} {
-				violations, invalid := validateBypasses(map[string]bypass{
-					"aqua:owner/repo@1.2.3": {expires: expires, issue: 1, reason: "r", line: 1},
-				}, declared, today)
-				assert.Empty(t, violations)
-				assert.Empty(t, invalid)
-			}
+			violations, invalid := validateBypasses(map[string]bypass{
+				"aqua:owner/repo@1.2.3": {expires: today, issue: 1, reason: "r", line: 1},
+			}, declared, today)
+			assert.Empty(t, violations)
+			assert.Empty(t, invalid)
+		})
+
+		t.Run("上限ちょうどの期限は許す", func(t *testing.T) {
+			t.Parallel()
+			violations, invalid := validateBypasses(map[string]bypass{
+				"aqua:owner/repo@1.2.3": {expires: today.AddDate(0, maxBypassMonths, 0), issue: 1, reason: "r", line: 1},
+			}, declared, today)
+			assert.Empty(t, violations)
+			assert.Empty(t, invalid)
 		})
 	})
 
@@ -308,7 +560,7 @@ func TestValidateBypasses(t *testing.T) {
 	})
 }
 
-func TestClassify(t *testing.T) {
+func Test_classify(t *testing.T) {
 	t.Parallel()
 
 	f := finding{tool: tool{key: "aqua:owner/repo", version: "1.2.3", backend: "aqua:owner/repo"}, ageDays: 1, window: 14}
@@ -351,7 +603,7 @@ func TestClassify(t *testing.T) {
 	})
 }
 
-func TestSummary(t *testing.T) {
+func Test_summary(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -375,6 +627,26 @@ func TestSummary(t *testing.T) {
 			assert.Contains(t, got, "aqua:owner/repo@1.2.3")
 		})
 
+		// audit が窓内のツールを黙って落とすと、棚卸しの結果がサマリに何も残らない。
+		t.Run("ブロックしない窓内の件も参考として並べる", func(t *testing.T) {
+			t.Parallel()
+			f := finding{
+				tool:      tool{key: "npm:@redocly/cli", version: "2.31.4", backend: "npm:@redocly/cli"},
+				published: day("2026-08-04"), ageDays: 2, window: registryWindowDays,
+			}
+			got := summary("audit", []finding{f}, nil, nil, nil, nil, nil, []tool{f.tool})
+			assert.Contains(t, got, "## 参考: 窓内だがブロックしないもの (1)")
+			assert.Contains(t, got, "npm:@redocly/cli@2.31.4")
+		})
+
+		// 取得できなかったものがサマリから消えると、「見た結果 OK」と「見ていない」が読み分けられない。
+		t.Run("公開時刻を取得できなかったものを見出し付きで並べる", func(t *testing.T) {
+			t.Parallel()
+			got := summary("gate", nil, []tool{{key: "asdf:x", version: "1.0.0", backend: "asdf:x"}}, nil, nil, nil, nil, nil)
+			assert.Contains(t, got, "## 公開時刻を取得できなかったもの (1)")
+			assert.Contains(t, got, "asdf:x@1.0.0（asdf:x）")
+		})
+
 		// 値は mise.toml 由来で pull request が中身を決めるため、フェンスは値の側から長さを取る。
 		t.Run("値に含まれるバッククォート連より長いフェンスで包む", func(t *testing.T) {
 			t.Parallel()
@@ -384,7 +656,7 @@ func TestSummary(t *testing.T) {
 	})
 }
 
-func TestAppendOutput(t *testing.T) {
+func Test_appendOutput(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -398,6 +670,1051 @@ func TestAppendOutput(t *testing.T) {
 			body, err := os.ReadFile(path) //nolint:gosec // path は t.TempDir 配下
 			require.NoError(t, err)
 			assert.Equal(t, "findings=2\naudited=33\nblocking=1\n", string(body))
+		})
+
+		t.Run("既存の内容を消さずに追記する", func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join(t.TempDir(), "out")
+			require.NoError(t, os.WriteFile(path, []byte("prior=1\n"), 0o600))
+			require.NoError(t, appendOutput(path, 0, 1, 0))
+
+			body, err := os.ReadFile(path) //nolint:gosec // path は t.TempDir 配下
+			require.NoError(t, err)
+			assert.Equal(t, "prior=1\nfindings=0\naudited=1\nblocking=0\n", string(body))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 書けなかったことを黙って飲むと、後続ステップは前回の値を見て判断し続ける。
+		t.Run("存在しないディレクトリ配下へは追記できずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, appendOutput(filepath.Join(t.TempDir(), "absent", "out"), 1, 1, 0))
+		})
+	})
+}
+
+func Test_tool_id(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キーとバージョンを @ で連結する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "aqua:owner/repo@1.2.3", tool{key: "aqua:owner/repo", version: "1.2.3"}.id())
+		})
+
+		// バージョンが識別子から落ちると、diffAdded がバージョン更新を「変化なし」と見なして素通しする。
+		t.Run("バージョンだけが違うツールは別の識別子になる", func(t *testing.T) {
+			t.Parallel()
+			old := tool{key: "aqua:owner/repo", version: "1.2.3"}
+			assert.NotEqual(t, old.id(), tool{key: "aqua:owner/repo", version: "1.2.4"}.id())
+		})
+	})
+}
+
+func Test_added(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		// base を読まずに現在の宣言をそのまま返すと、gate が毎回全ツールを窓違反として落とす。
+		t.Run("base に無い宣言だけを返す", func(t *testing.T) {
+			t.Parallel()
+
+			out, err := exec.CommandContext(t.Context(), "git", "show", "HEAD:"+miseFile).Output()
+			require.NoError(t, err)
+			base, err := parseTools(out)
+			require.NoError(t, err)
+			require.NotEmpty(t, base)
+
+			got, err := added("HEAD", append(slices.Clone(base), tool{key: "aqua:fake/tool", version: "9.9.9"}))
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, "aqua:fake/tool@9.9.9", got[0].id())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// base を取れないまま空の差分を返すと、gate は何も検査せずに通ってしまう。
+		t.Run("base の ref を解決できなければエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := added("refs/heads/no-such-branch-for-cooldown-test", nil)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "base を取得できていない可能性があります")
+		})
+	})
+}
+
+func Test_addedFrom(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("base の宣言に無い組だけを返す", func(t *testing.T) {
+			t.Parallel()
+			got, err := addedFrom([]byte(miseFixture), []tool{
+				{key: "sqlc", version: "1.31.1"},
+				{key: "sqlc", version: "1.32.0"},
+			})
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, "sqlc@1.32.0", got[0].id())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 解析できなかった base を空の宣言として扱うと、gate は差分を取れないまま素通りする。
+		t.Run("base を解析できなければエラーにする", func(t *testing.T) {
+			t.Parallel()
+			unreadable := "[tools]\n" + strings.Repeat("a", bufio.MaxScanTokenSize+1) + "\n"
+
+			_, err := addedFrom([]byte(unreadable), []tool{{key: "sqlc", version: "1.31.1"}})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "base の "+miseFile)
+		})
+	})
+}
+
+func Test_miseRegistry(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 出力全体を採ると backend が空白を含み、以降の種別判定がすべて空振りする。
+		t.Run("候補が複数あっても先頭だけを backend にする", func(t *testing.T) {
+			t.Parallel()
+			got, err := miseRegistry(t.Context(), "sqlc")
+			require.NoError(t, err)
+			assert.NotContains(t, got, " ")
+			assert.Contains(t, got, ":")
+		})
+
+		t.Run("言語ランタイムは core backend として解決される", func(t *testing.T) {
+			t.Parallel()
+			got, err := miseRegistry(t.Context(), "go")
+			require.NoError(t, err)
+			assert.Equal(t, "core:go", got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("registry が知らない名前はエラーにする", func(t *testing.T) {
+			t.Parallel()
+			_, err := miseRegistry(t.Context(), "no-such-tool-for-cooldown-test")
+			require.Error(t, err)
+		})
+	})
+}
+
+func Test_firstBackend(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 出力全体を採ると backend が空白を含み、以降の種別判定がすべて空振りする。
+		t.Run("候補が複数あっても先頭だけを採る", func(t *testing.T) {
+			t.Parallel()
+			got, err := firstBackend([]byte("aqua:sqlc/sqlc ubi:sqlc/sqlc\n"), "sqlc")
+			require.NoError(t, err)
+			assert.Equal(t, "aqua:sqlc/sqlc", got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 空の backend を返すと種別が空になり、そのツールは窓を持たないまま検査を通り抜ける。
+		t.Run("候補が 1 つも無ければ取得経路なしとしてエラーにする", func(t *testing.T) {
+			t.Parallel()
+			_, err := firstBackend([]byte("  \n"), "sqlc")
+			require.ErrorIs(t, err, errUnsupportedBackend)
+		})
+	})
+}
+
+func Test_resolveBackends(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("コロンを含むキーはそのまま backend にする", func(t *testing.T) {
+			t.Parallel()
+			targets, skipped, err := resolveBackends(t.Context(), []tool{{key: "aqua:owner/repo", version: "1.2.3"}})
+			require.NoError(t, err)
+			require.Len(t, targets, 1)
+			assert.Equal(t, "aqua:owner/repo", targets[0].backend)
+			assert.Empty(t, skipped)
+		})
+
+		// 言語ランタイムの除外は明示的に受容したリスクなので、短縮名から core へ解決される経路ごと固定する。
+		t.Run("短縮名のランタイムは registry 解決を経て除外される", func(t *testing.T) {
+			t.Parallel()
+			targets, skipped, err := resolveBackends(t.Context(), []tool{{key: "go", version: "1.26.5"}})
+			require.NoError(t, err)
+			assert.Empty(t, targets)
+			require.Len(t, skipped, 1)
+			assert.Equal(t, "core:go", skipped[0].backend)
+		})
+
+		t.Run("core backend を明示したキーも除外する", func(t *testing.T) {
+			t.Parallel()
+			targets, skipped, err := resolveBackends(t.Context(), []tool{{key: "core:node", version: "24.0.0"}})
+			require.NoError(t, err)
+			assert.Empty(t, targets)
+			assert.Len(t, skipped, 1)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 解決できないキーを黙って落とすと、そのツールだけ検査されないまま gate が通る。
+		t.Run("backend を解決できないキーはエラーにする", func(t *testing.T) {
+			t.Parallel()
+			targets, _, err := resolveBackends(t.Context(), []tool{{key: "no-such-tool-for-cooldown-test", version: "1.0.0"}})
+			require.Error(t, err)
+			assert.Empty(t, targets)
+		})
+	})
+}
+
+func Test_inspect(t *testing.T) {
+	t.Parallel()
+
+	now := day("2026-08-06")
+
+	// released は、指定日に公開された aqua リリースだけを返す上流を組みます。
+	released := func(t *testing.T, repo, version, publishedOn string) *http.Client {
+		t.Helper()
+		return fakeUpstream(t, respondJSON(
+			"/repos/"+repo+"/releases/tags/v"+version, `{"published_at":"`+publishedOn+`T00:00:00Z"}`))
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 取得できなかったものを黙って落とすと、「見た結果 OK」と「見ていない」を区別できなくなる。
+		t.Run("公開時刻を取得できない backend は unresolved として返す", func(t *testing.T) {
+			t.Parallel()
+			findings, unresolved := inspect(t.Context(), offlineClient(),
+				[]tool{{key: "asdf:x", version: "1.0.0", backend: "asdf:x"}}, now)
+			assert.Empty(t, findings)
+			require.Len(t, unresolved, 1)
+			assert.Equal(t, "asdf:x@1.0.0", unresolved[0].id())
+		})
+
+		// 取得は並行で走るため、並べ直さないと同じ入力でも報告の順序が実行ごとに変わる。
+		t.Run("unresolved は識別子順に並べる", func(t *testing.T) {
+			t.Parallel()
+			_, unresolved := inspect(t.Context(), offlineClient(), []tool{
+				{key: "asdf:c", version: "1.0.0", backend: "asdf:c"},
+				{key: "asdf:a", version: "1.0.0", backend: "asdf:a"},
+				{key: "asdf:b", version: "1.0.0", backend: "asdf:b"},
+			}, now)
+
+			ids := make([]string, 0, len(unresolved))
+			for _, u := range unresolved {
+				ids = append(ids, u.id())
+			}
+			assert.Equal(t, []string{"asdf:a@1.0.0", "asdf:b@1.0.0", "asdf:c@1.0.0"}, ids)
+		})
+
+		t.Run("対象が無ければ何も返さない", func(t *testing.T) {
+			t.Parallel()
+			findings, unresolved := inspect(t.Context(), offlineClient(), nil, now)
+			assert.Empty(t, findings)
+			assert.Empty(t, unresolved)
+		})
+
+		// 窓の内側を見逃すと、このツールは何も検出しないまま常に緑になる。
+		t.Run("窓に 1 日足りない版は経過日数と窓を添えて finding にする", func(t *testing.T) {
+			t.Parallel()
+			target := tool{key: "aqua:owner/repo", version: "1.2.3", backend: "aqua:owner/repo"}
+
+			findings, unresolved := inspect(t.Context(),
+				released(t, "owner/repo", "1.2.3", "2026-07-24"), []tool{target}, now)
+			require.Len(t, findings, 1)
+			assert.Equal(t, releaseWindowDays-1, findings[0].ageDays)
+			assert.Equal(t, releaseWindowDays, findings[0].window)
+			assert.Empty(t, unresolved)
+		})
+
+		// 境界を含める向きに間違えると、窓を満たした版まで恒久的にブロックされる。
+		t.Run("窓ちょうど経過した版は finding にしない", func(t *testing.T) {
+			t.Parallel()
+			target := tool{key: "aqua:owner/repo", version: "1.2.3", backend: "aqua:owner/repo"}
+
+			findings, unresolved := inspect(t.Context(),
+				released(t, "owner/repo", "1.2.3", "2026-07-23"), []tool{target}, now)
+			assert.Empty(t, findings)
+			assert.Empty(t, unresolved)
+		})
+
+		// 取得は並行で走るため、並べ直さないと同じ入力でも報告の順序が実行ごとに変わる。
+		t.Run("findings は経過日数の短い順に並べる", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/repos/owner/fresh/releases/tags/v1.0.0":
+					_, _ = io.WriteString(w, `{"published_at":"2026-08-05T00:00:00Z"}`)
+				case "/repos/owner/older/releases/tags/v1.0.0":
+					_, _ = io.WriteString(w, `{"published_at":"2026-07-30T00:00:00Z"}`)
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			})
+
+			findings, _ := inspect(t.Context(), client, []tool{
+				{key: "aqua:owner/older", version: "1.0.0", backend: "aqua:owner/older"},
+				{key: "aqua:owner/fresh", version: "1.0.0", backend: "aqua:owner/fresh"},
+			}, now)
+			require.Len(t, findings, 2)
+			assert.Equal(t, 1, findings[0].ageDays)
+			assert.Equal(t, 7, findings[1].ageDays)
+		})
+	})
+}
+
+//nolint:paralleltest // GITHUB_TOKEN を t.Setenv で差し替えるため並列化できない
+func Test_getJSON(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("応答の JSON を復号して格納する", func(t *testing.T) {
+			client := fakeUpstream(t, respondJSON("/pkg", `{"name":"ok"}`))
+
+			var body map[string]any
+			require.NoError(t, getJSON(t.Context(), client, npmBase+"pkg", &body))
+			assert.Equal(t, "ok", body["name"])
+		})
+
+		// 未認証の GitHub API は 60 req/hour で、1 回の実行を賄えず全件 unresolved に化ける。
+		t.Run("GitHub API にはトークンを Authorization ヘッダで載せる", func(t *testing.T) {
+			t.Setenv("GITHUB_TOKEN", "test-token")
+			auth := make(chan string, 1)
+			client := fakeUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+				auth <- r.Header.Get("Authorization")
+				_, _ = io.WriteString(w, "{}")
+			})
+
+			var body map[string]any
+			require.NoError(t, getJSON(t.Context(), client, githubAPI+"owner/repo/releases/tags/v1.2.3", &body))
+			assert.Equal(t, "Bearer test-token", <-auth)
+		})
+
+		// GitHub 以外の上流へトークンを送ると、資格情報を無関係な第三者へ渡すことになる。
+		t.Run("GitHub API 以外の上流にはトークンを載せない", func(t *testing.T) {
+			t.Setenv("GITHUB_TOKEN", "test-token")
+			auth := make(chan string, 1)
+			client := fakeUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+				auth <- r.Header.Get("Authorization")
+				_, _ = io.WriteString(w, "{}")
+			})
+
+			var body map[string]any
+			require.NoError(t, getJSON(t.Context(), client, npmBase+"pkg", &body))
+			assert.Empty(t, <-auth)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("404 は errNotFound にする", func(t *testing.T) {
+			client := fakeUpstream(t, respondStatus(http.StatusNotFound))
+
+			var body map[string]any
+			require.ErrorIs(t, getJSON(t.Context(), client, npmBase+"pkg", &body), errNotFound)
+		})
+
+		t.Run("410 は errNotFound にする", func(t *testing.T) {
+			client := fakeUpstream(t, respondStatus(http.StatusGone))
+
+			var body map[string]any
+			require.ErrorIs(t, getJSON(t.Context(), client, npmBase+"pkg", &body), errNotFound)
+		})
+
+		// 存在しない版と上流の不調を同じ扱いにすると、後者を「解決済み」と読み違える。
+		t.Run("想定外のステータスは errUpstreamStatus にする", func(t *testing.T) {
+			client := fakeUpstream(t, respondStatus(http.StatusInternalServerError))
+
+			var body map[string]any
+			require.ErrorIs(t, getJSON(t.Context(), client, npmBase+"pkg", &body), errUpstreamStatus)
+		})
+
+		t.Run("URL として組み立てられない宛先はエラーにする", func(t *testing.T) {
+			var body map[string]any
+			err := getJSON(t.Context(), offlineClient(), npmBase+"pkg\x7f", &body)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "new request")
+		})
+
+		// 到達できなかったことをエラーにしないと、上流の不通が全ツール「窓明け」に化ける。
+		t.Run("上流へ到達できなければエラーにする", func(t *testing.T) {
+			var body map[string]any
+			err := getJSON(t.Context(), offlineClient(), npmBase+"pkg", &body)
+			require.ErrorIs(t, err, errRoundTrip)
+		})
+	})
+}
+
+func Test_githubReleaseAt(t *testing.T) {
+	t.Parallel()
+
+	const published = `{"published_at":"2026-08-01T00:00:00Z"}`
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("v 付きタグの published_at を返す", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/repos/owner/repo/releases/tags/v1.2.3", published))
+
+			at, err := githubReleaseAt(t.Context(), client, "owner/repo", "1.2.3")
+			require.NoError(t, err)
+			assert.Equal(t, "2026-08-01T00:00:00Z", at.Format(time.RFC3339))
+		})
+
+		// v を付けない流儀のリポジトリで諦めると、そのツールは恒久的に unresolved になる。
+		t.Run("v 付きが無ければ v なしタグへ切り替える", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/repos/owner/repo/releases/tags/1.2.3", published))
+
+			at, err := githubReleaseAt(t.Context(), client, "owner/repo", "1.2.3")
+			require.NoError(t, err)
+			assert.Equal(t, "2026-08-01T00:00:00Z", at.Format(time.RFC3339))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("どちらのタグも無ければエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondStatus(http.StatusNotFound))
+
+			_, err := githubReleaseAt(t.Context(), client, "owner/repo", "1.2.3")
+			require.ErrorIs(t, err, errNotFound)
+		})
+	})
+}
+
+func Test_goModuleAt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		// mise の go backend はパッケージパスを受けるが、proxy が知るのはモジュールパスだけ。
+		t.Run("パッケージパスから遡ってモジュールパスで解決する", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/go.uber.org/mock/@v/v0.6.0.info", `{"Time":"2026-07-20T00:00:00Z"}`))
+
+			at, err := goModuleAt(t.Context(), client, "go.uber.org/mock/mockgen", "0.6.0")
+			require.NoError(t, err)
+			assert.Equal(t, "2026-07-20T00:00:00Z", at.Format(time.RFC3339))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("どの階層でも解決できなければエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondStatus(http.StatusNotFound))
+
+			_, err := goModuleAt(t.Context(), client, "go.uber.org/mock/mockgen", "0.6.0")
+			require.ErrorIs(t, err, errNotFound)
+		})
+
+		// スラッシュが無いと遡る先が無く一度も問い合わせられない。ここで nil を返すと、呼び出し側は
+		// ゼロ値の時刻を公開から数十年経った版と読み、そのツールが窓を無条件に通過する。
+		t.Run("遡れるモジュールパスが無ければ問い合わせずにエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondStatus(http.StatusNotFound))
+
+			at, err := goModuleAt(t.Context(), client, "mockgen", "0.6.0")
+			require.ErrorIs(t, err, errNotFound)
+			assert.True(t, at.IsZero())
+		})
+	})
+}
+
+func Test_npmPackageAt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("time から該当バージョンの公開時刻を返す", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/@redocly/cli", `{"time":{"2.31.4":"2026-07-01T00:00:00Z"}}`))
+
+			at, err := npmPackageAt(t.Context(), client, "@redocly/cli", "2.31.4")
+			require.NoError(t, err)
+			assert.Equal(t, "2026-07-01T00:00:00Z", at.Format(time.RFC3339))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// ゼロ値の時刻を返すと公開から数十年経った扱いになり、窓を無条件に通過する。
+		t.Run("time に載っていないバージョンはエラーにする", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/@redocly/cli", `{"time":{"2.31.3":"2026-07-01T00:00:00Z"}}`))
+
+			_, err := npmPackageAt(t.Context(), client, "@redocly/cli", "2.31.4")
+			require.ErrorIs(t, err, errNotFound)
+		})
+	})
+}
+
+func Test_pypiPackageAt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("releases の先頭ファイルのアップロード時刻を返す", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/pypi/sqlfluff/json",
+				`{"releases":{"3.5.0":[{"upload_time_iso_8601":"2026-06-01T00:00:00Z"}]}}`))
+
+			at, err := pypiPackageAt(t.Context(), client, "sqlfluff", "3.5.0")
+			require.NoError(t, err)
+			assert.Equal(t, "2026-06-01T00:00:00Z", at.Format(time.RFC3339))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// ゼロ値の時刻を返すと公開から数十年経った扱いになり、窓を無条件に通過する。
+		t.Run("releases に無いバージョンはエラーにする", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/pypi/sqlfluff/json",
+				`{"releases":{"3.4.0":[{"upload_time_iso_8601":"2026-06-01T00:00:00Z"}]}}`))
+
+			_, err := pypiPackageAt(t.Context(), client, "sqlfluff", "3.5.0")
+			require.ErrorIs(t, err, errNotFound)
+		})
+
+		t.Run("ファイルが 1 つも無いバージョンはエラーにする", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondJSON("/pypi/sqlfluff/json", `{"releases":{"3.5.0":[]}}`))
+
+			_, err := pypiPackageAt(t.Context(), client, "sqlfluff", "3.5.0")
+			require.ErrorIs(t, err, errNotFound)
+		})
+	})
+}
+
+func Test_publishedAt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("GitHub リリース系はリリース API を引く", func(t *testing.T) {
+			t.Parallel()
+			got := requestedPath(t, tool{key: "aqua:owner/repo", version: "1.2.3", backend: "aqua:owner/repo"})
+			assert.Equal(t, "/repos/owner/repo/releases/tags/v1.2.3", got)
+		})
+
+		t.Run("go は module proxy を引く", func(t *testing.T) {
+			t.Parallel()
+			got := requestedPath(t, tool{key: "go:go.uber.org/mock/mockgen", version: "0.6.0", backend: "go:go.uber.org/mock/mockgen"})
+			assert.Equal(t, "/go.uber.org/mock/mockgen/@v/v0.6.0.info", got)
+		})
+
+		t.Run("npm は npm レジストリを引く", func(t *testing.T) {
+			t.Parallel()
+			got := requestedPath(t, tool{key: "npm:@redocly/cli", version: "2.31.4", backend: "npm:@redocly/cli"})
+			assert.Equal(t, "/@redocly/cli", got)
+		})
+
+		// PyPI は extras を知らないため、付けたまま問い合わせると存在しないパッケージになる。
+		t.Run("pipx は extras を落として PyPI を引く", func(t *testing.T) {
+			t.Parallel()
+			got := requestedPath(t, tool{key: "pipx:graphifyy[sql]", version: "0.9.25", backend: "pipx:graphifyy[sql]"})
+			assert.Equal(t, "/pypi/graphifyy/json", got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("取得経路を持たない backend はエラーにする", func(t *testing.T) {
+			t.Parallel()
+			client := fakeUpstream(t, respondStatus(http.StatusNotFound))
+
+			_, err := publishedAt(t.Context(), client, tool{key: "asdf:x", version: "1.0.0", backend: "asdf:x"})
+			require.ErrorIs(t, err, errUnsupportedBackend)
+		})
+	})
+}
+
+func Test_hasBypass(t *testing.T) {
+	t.Parallel()
+
+	target := tool{key: "aqua:owner/repo", version: "1.2.3"}
+	bypasses := map[string]bypass{"aqua:owner/repo@1.2.3": {expires: day("2026-09-06"), issue: 1, reason: "r"}}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("登録されたバイパスは有効と判定する", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, hasBypass(bypasses, map[string]struct{}{}, target))
+		})
+
+		t.Run("登録が無ければ無効と判定する", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, hasBypass(map[string]bypass{}, map[string]struct{}{}, target))
+		})
+
+		// 規約違反のバイパスが効いたままだと、期限そのものが何も担保しないことになる。
+		t.Run("無効化されたキーは登録があっても無効と判定する", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, hasBypass(bypasses, map[string]struct{}{"aqua:owner/repo@1.2.3": {}}, target))
+		})
+	})
+}
+
+func Test_sortedKeys(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		// map の反復順のままだと、同じ入力でも違反の報告順が実行ごとに変わる。
+		t.Run("キーを辞書順に並べる", func(t *testing.T) {
+			t.Parallel()
+			got := sortedKeys(map[string]bypass{"c@1": {line: 3}, "a@1": {line: 1}, "b@1": {line: 2}})
+			assert.Equal(t, []string{"a@1", "b@1", "c@1"}, got)
+		})
+
+		t.Run("空のマップでは空を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, sortedKeys(map[string]bypass{}))
+		})
+	})
+}
+
+func Test_fenceFor(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("バッククォートを含まない本体は 3 連で足りる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "```", fenceFor("- ふつうの行"))
+		})
+
+		// 本体と同じ長さのフェンスだと、本体側がフェンスを閉じて外の Markdown へ抜けられる。
+		t.Run("本体の最長連より 1 つ長い連を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "`````", fenceFor("`` と ```` と `"))
+		})
+
+		t.Run("3 連を含む本体は 4 連で包む", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "````", fenceFor("``` を含む理由"))
+		})
+	})
+}
+
+func Test_fenced(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("見出しに件数を添えて本体を text フェンスで包む", func(t *testing.T) {
+			t.Parallel()
+			var b strings.Builder
+			fenced(&b, "cooldown 未達", []string{"- a", "- b"})
+			assert.Equal(t, "## cooldown 未達 (2)\n\n```text\n- a\n- b\n```\n\n", b.String())
+		})
+
+		// 値は mise.toml 由来で pull request が中身を決めるため、フェンス長は値の側から取る。
+		t.Run("本体がフェンスを閉じられない長さで包む", func(t *testing.T) {
+			t.Parallel()
+			var b strings.Builder
+			fenced(&b, "見出し", []string{"``` を含む理由"})
+			assert.Equal(t, "## 見出し (1)\n\n````text\n``` を含む理由\n````\n\n", b.String())
+		})
+	})
+}
+
+//nolint:paralleltest // log の出力先を差し替えて検証するため並列化できない
+func Test_report(t *testing.T) {
+	blocked := finding{
+		tool:    tool{key: "aqua:owner/repo", version: "1.2.3", backend: "aqua:owner/repo"},
+		ageDays: 1, window: releaseWindowDays,
+	}
+	unfetched := []tool{{key: "asdf:x", version: "1.0.0", backend: "asdf:x"}}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("gate は窓内のツールをブロック件数に数える", func(t *testing.T) {
+			var count int
+			out := captureLog(t, func() {
+				count = report("gate", []finding{blocked}, nil, nil, nil, nil, nil, nil, false)
+			})
+			assert.Equal(t, 1, count)
+			assert.Contains(t, out, "cooldown 14 日を満たしていません")
+		})
+
+		// audit は棚卸しなので、窓内のツールが見つかっても定期実行を落とさない。
+		t.Run("audit は窓内のツールをブロック件数に数えない", func(t *testing.T) {
+			var count int
+			out := captureLog(t, func() {
+				count = report("audit", []finding{blocked}, nil, nil, nil, nil, nil, nil, false)
+			})
+			assert.Equal(t, 0, count)
+			assert.Contains(t, out, "⚠️")
+		})
+
+		// 期限切れの回収はスケジュール実行に懸かっているため、audit でも落とす必要がある。
+		t.Run("バイパス設定の違反は audit でもブロックする", func(t *testing.T) {
+			var count int
+			out := captureLog(t, func() {
+				count = report("audit", nil, nil, nil, []string{"期限が切れています"}, nil, nil, nil, false)
+			})
+			assert.Equal(t, 1, count)
+			assert.Contains(t, out, "期限が切れています")
+		})
+
+		t.Run("gate は公開時刻を取得できなかったツールもブロックする", func(t *testing.T) {
+			var count int
+			captureLog(t, func() {
+				count = report("gate", nil, unfetched, nil, nil, nil, nil, nil, false)
+			})
+			assert.Equal(t, 1, count)
+		})
+
+		t.Run("audit は公開時刻を取得できなかったツールを警告に留める", func(t *testing.T) {
+			var count int
+			out := captureLog(t, func() {
+				count = report("audit", nil, unfetched, nil, nil, nil, nil, nil, false)
+			})
+			assert.Equal(t, 0, count)
+			assert.Contains(t, out, "取得できませんでした")
+		})
+
+		t.Run("有効なバイパスはブロックせず期限と理由を示す", func(t *testing.T) {
+			var count int
+			out := captureLog(t, func() {
+				count = report("gate", []finding{blocked}, nil, nil, nil, map[string]bypass{
+					"aqua:owner/repo@1.2.3": {expires: day("2026-09-06"), issue: 931, reason: "CRITICAL への即応"},
+				}, nil, nil, false)
+			})
+			assert.Equal(t, 0, count)
+			assert.Contains(t, out, "#931 のバイパスで通します")
+		})
+
+		// アノテーションが消えると、違反は差分ビューに出ずログの奥に埋もれる。
+		t.Run("github 指定時は違反をアノテーションとして出す", func(t *testing.T) {
+			out := captureLog(t, func() {
+				_ = report("gate", []finding{blocked}, nil, nil, nil, nil, nil, nil, true)
+			})
+			assert.Contains(t, out, "::error file=mise.toml::")
+		})
+
+		// バイパス設定の違反は lockfile 側の問題なので、注釈も lockfile へ向ける。
+		t.Run("github 指定時はバイパス設定の違反を lockfile へ注釈する", func(t *testing.T) {
+			out := captureLog(t, func() {
+				_ = report("audit", nil, nil, nil, []string{"期限が切れています"}, nil, nil, nil, true)
+			})
+			assert.Contains(t, out, "::error file="+bypassFile+"::期限が切れています")
+		})
+
+		t.Run("github 指定時は取得できなかったツールもアノテーションとして出す", func(t *testing.T) {
+			out := captureLog(t, func() {
+				_ = report("gate", nil, unfetched, nil, nil, nil, nil, nil, true)
+			})
+			assert.Contains(t, out, "::error file="+miseFile+"::asdf:x@1.0.0")
+		})
+	})
+}
+
+func Test_parseArgs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("フラグを省略すれば既定値のまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			sub, opt, err := parseArgs([]string{"audit"})
+
+			require.NoError(t, err)
+			assert.Equal(t, "audit", sub)
+			assert.Equal(t, options{}, opt)
+		})
+
+		t.Run("与えられたフラグを options へ載せる", func(t *testing.T) {
+			t.Parallel()
+
+			sub, opt, err := parseArgs([]string{"gate", "--base=origin/main", "--summary-out=s.md", "--github"})
+
+			require.NoError(t, err)
+			assert.Equal(t, "gate", sub)
+			assert.Equal(t, options{base: "origin/main", summaryOut: "s.md", github: true}, opt)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("サブコマンドが無ければ使い方を示す", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := parseArgs(nil)
+
+			require.ErrorIs(t, err, errUsage)
+			assert.Contains(t, err.Error(), "usage: mise-cooldown <gate|audit>")
+		})
+
+		t.Run("未知のサブコマンドはエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := parseArgs([]string{"inspect"})
+
+			require.ErrorIs(t, err, errUsage)
+			assert.Contains(t, err.Error(), "未知のサブコマンド")
+		})
+
+		// base 無しの gate を通すと、比較対象が無いまま全ツールを窓違反として落とす。
+		t.Run("gate に base が無ければエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := parseArgs([]string{"gate"})
+
+			require.ErrorIs(t, err, errUsage)
+			assert.Contains(t, err.Error(), "--base")
+		})
+
+		// ヘルプ要求を解析失敗と同じ扱いにすると、`-h` が異常終了に化ける。
+		t.Run("ヘルプ要求は flag.ErrHelp のまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := parseArgs([]string{"audit", "-h"})
+
+			require.ErrorIs(t, err, flag.ErrHelp)
+		})
+
+		t.Run("解釈できないフラグはエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := parseArgs([]string{"audit", "--no-such-flag"})
+
+			require.Error(t, err)
+			require.NotErrorIs(t, err, flag.ErrHelp)
+			assert.Contains(t, err.Error(), "フラグを解釈できません")
+		})
+	})
+}
+
+//nolint:paralleltest // t.Chdir・captureLog・t.Setenv がプロセス共有の状態を差し替えるため並列化不可
+func Test_run(t *testing.T) {
+	now := day("2026-08-06")
+	const (
+		fresh = "2026-08-05"
+		aged  = "2020-01-01"
+	)
+
+	// 実行環境の GITHUB_OUTPUT を持ち込まないよう空にする。設定済みのランナー上で走らせると
+	// 検査とは無関係なファイルへ追記してしまう。
+	t.Setenv("GITHUB_OUTPUT", "")
+
+	//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+	t.Run("正常系", func(t *testing.T) {
+		// audit は棚卸しなので、窓内のツールが見つかっても定期実行を落とさない。
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("audit は窓内のツールを報告しつつ正常終了する", func(t *testing.T) {
+			useMiseWorkTree(t, miseOneAquaTool)
+
+			out, err := runCaptured(t, []string{"audit"}, releasedOn(t, fresh), now)
+
+			require.NoError(t, err)
+			assert.Contains(t, out, "aqua:owner/repo@1.2.3（aqua:owner/repo）は公開 1 日で cooldown 14 日")
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("gate は base に無いツールでも窓を越えていれば通す", func(t *testing.T) {
+			useMiseGateRepo(t, "[tools]\n", miseOneAquaTool)
+
+			out, err := runCaptured(t, []string{"gate", "--base=HEAD"}, releasedOn(t, aged), now)
+
+			require.NoError(t, err)
+			assert.Contains(t, out, "違反なし")
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("summary-out 指定でサマリを書き出す", func(t *testing.T) {
+			dir := useMiseWorkTree(t, miseOneAquaTool)
+			path := filepath.Join(dir, "summary.md")
+
+			_, err := runCaptured(t, []string{"audit", "--summary-out=" + path}, releasedOn(t, fresh), now)
+
+			require.NoError(t, err)
+			body, readErr := os.ReadFile(path) //nolint:gosec // テスト内の一時ファイル
+			require.NoError(t, readErr)
+			assert.Contains(t, string(body), "aqua:owner/repo@1.2.3")
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("GITHUB_OUTPUT があれば件数を追記する", func(t *testing.T) {
+			dir := useMiseWorkTree(t, miseOneAquaTool)
+			path := filepath.Join(dir, "github-output")
+			t.Setenv("GITHUB_OUTPUT", path)
+
+			_, err := runCaptured(t, []string{"audit"}, releasedOn(t, fresh), now)
+
+			require.NoError(t, err)
+			body, readErr := os.ReadFile(path) //nolint:gosec // テスト内の一時ファイル
+			require.NoError(t, readErr)
+			assert.Contains(t, string(body), "findings=1")
+			assert.Contains(t, string(body), "audited=1")
+			assert.Contains(t, string(body), "blocking=0")
+		})
+
+		// ヘルプ要求を解析失敗と同じ扱いにすると、`-h` が異常終了に化ける。
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("ヘルプ要求は失敗にしない", func(t *testing.T) {
+			_, err := runCaptured(t, []string{"audit", "-h"}, offlineClient(), now)
+
+			require.NoError(t, err)
+		})
+	})
+
+	//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+	t.Run("異常系", func(t *testing.T) {
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("gate は base に無い窓内のツールを失敗にする", func(t *testing.T) {
+			useMiseGateRepo(t, "[tools]\n", miseOneAquaTool)
+
+			out, err := runCaptured(t, []string{"gate", "--base=HEAD"}, releasedOn(t, fresh), now)
+
+			require.ErrorIs(t, err, errBlocking)
+			assert.Contains(t, out, "窓明けを待つか")
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("github 指定のときだけアノテーションを出す", func(t *testing.T) {
+			useMiseGateRepo(t, "[tools]\n", miseOneAquaTool)
+
+			out, err := runCaptured(t, []string{"gate", "--base=HEAD", "--github"}, releasedOn(t, fresh), now)
+
+			require.ErrorIs(t, err, errBlocking)
+			assert.Contains(t, out, "::error file="+miseFile+"::aqua:owner/repo@1.2.3")
+		})
+
+		// 期限切れの回収はスケジュール実行に懸かっているため、audit でも失敗させる必要がある。
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("期限切れのバイパスは audit でも失敗にする", func(t *testing.T) {
+			dir := useMiseWorkTree(t, miseOneAquaTool)
+			writeWorkTreeBypass(t, dir,
+				`"aqua:owner/repo@1.2.3" = { expires = 2000-01-01, issue = 1, reason = "済んだ緊急対応" }`+"\n")
+
+			_, err := runCaptured(t, []string{"audit"}, releasedOn(t, aged), now)
+
+			require.ErrorIs(t, err, errBlocking)
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("使い方の誤りはそのまま失敗にする", func(t *testing.T) {
+			_, err := runCaptured(t, nil, offlineClient(), now)
+
+			require.ErrorIs(t, err, errUsage)
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("mise.toml が無ければ失敗にする", func(t *testing.T) {
+			t.Chdir(t.TempDir())
+
+			_, err := runCaptured(t, []string{"audit"}, offlineClient(), now)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "read "+miseFile)
+		})
+
+		// 読み切れなかった宣言を空として扱うと、そのツールは検査されないまま通る。
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("mise.toml を読み切れなければ失敗にする", func(t *testing.T) {
+			useMiseWorkTree(t, "[tools]\n"+strings.Repeat("a", bufio.MaxScanTokenSize+1)+"\n")
+
+			_, err := runCaptured(t, []string{"audit"}, offlineClient(), now)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "token too long")
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("バイパス lockfile を解釈できなければ失敗にする", func(t *testing.T) {
+			dir := useMiseWorkTree(t, miseOneAquaTool)
+			writeWorkTreeBypass(t, dir, "これは行として解釈できない\n")
+
+			_, err := runCaptured(t, []string{"audit"}, offlineClient(), now)
+
+			require.ErrorIs(t, err, errBypassInvalidLine)
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("gate の base を解決できなければ失敗にする", func(t *testing.T) {
+			useMiseWorkTree(t, miseOneAquaTool)
+
+			_, err := runCaptured(t, []string{"gate", "--base=HEAD"}, offlineClient(), now)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "base との差分")
+		})
+
+		// 解決できないキーを黙って落とすと、そのツールだけ検査されないまま通る。
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("backend を解決できないキーがあれば失敗にする", func(t *testing.T) {
+			useMiseWorkTree(t, "[tools]\nno-such-tool-for-cooldown-test = \"1.0.0\"\n")
+
+			_, err := runCaptured(t, []string{"audit"}, offlineClient(), now)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "backend の解決")
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("サマリを書き出せなければ失敗にする", func(t *testing.T) {
+			dir := useMiseWorkTree(t, miseOneAquaTool)
+
+			_, err := runCaptured(t, []string{"audit", "--summary-out=" + dir}, releasedOn(t, aged), now)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "write summary")
+		})
+
+		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
+		t.Run("GITHUB_OUTPUT へ追記できなければ失敗にする", func(t *testing.T) {
+			dir := useMiseWorkTree(t, miseOneAquaTool)
+			t.Setenv("GITHUB_OUTPUT", dir)
+
+			_, err := runCaptured(t, []string{"audit"}, releasedOn(t, aged), now)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "write GITHUB_OUTPUT")
 		})
 	})
 }
