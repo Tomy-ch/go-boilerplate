@@ -274,6 +274,17 @@ func Test_quarantine(t *testing.T) {
 			assert.Empty(t, note)
 		})
 
+		t.Run("窓とちょうど同じ日数なら候補を採用する", func(t *testing.T) {
+			t.Parallel()
+			ageFn := func() (int, error) { return 14, nil }
+
+			use, note, err := quarantine(ageFn, key, candidate, 14, nil)
+
+			require.NoError(t, err)
+			assert.Equal(t, candidate, use)
+			assert.Empty(t, note)
+		})
+
 		t.Run("新しすぎる場合は既存ピンを維持しノートを返す", func(t *testing.T) {
 			t.Parallel()
 			ageFn := func() (int, error) { return 3, nil }
@@ -289,6 +300,18 @@ func Test_quarantine(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("窓に 1 日足りなければ既存ピンを維持する", func(t *testing.T) {
+			t.Parallel()
+			ageFn := func() (int, error) { return 13, nil }
+			existing := map[string]string{key: prev}
+
+			use, note, err := quarantine(ageFn, key, candidate, 14, existing)
+
+			require.NoError(t, err)
+			assert.Equal(t, prev, use)
+			assert.Contains(t, note, "既存ピンを維持")
+		})
 
 		t.Run("新しすぎて既存ピンも無ければ skip しノートを返す", func(t *testing.T) {
 			t.Parallel()

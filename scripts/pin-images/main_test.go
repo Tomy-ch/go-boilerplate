@@ -744,6 +744,15 @@ func Test_quarantine(t *testing.T) { //nolint:paralleltest // useDockerStub が 
 			assert.Equal(t, digestFresh, use)
 			assert.Empty(t, note)
 		})
+
+		t.Run("窓とちょうど同じ日数の digest も採用する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC().Add(-14*hoursPerDay*time.Hour-time.Hour)))
+
+			use, note, err := quarantine(context.Background(), ref, key, digestFresh, 14, existing)
+			require.NoError(t, err)
+			assert.Equal(t, digestFresh, use)
+			assert.Empty(t, note)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
@@ -754,6 +763,15 @@ func Test_quarantine(t *testing.T) { //nolint:paralleltest // useDockerStub が 
 			require.NoError(t, err)
 			assert.Equal(t, digestStale, use)
 			assert.Contains(t, note, key)
+			assert.Contains(t, note, "既存ピンを維持")
+		})
+
+		t.Run("窓に 1 日足りなければ既存ピンへ退く", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC().Add(-13*hoursPerDay*time.Hour-time.Hour)))
+
+			use, note, err := quarantine(context.Background(), ref, key, digestFresh, 14, existing)
+			require.NoError(t, err)
+			assert.Equal(t, digestStale, use)
 			assert.Contains(t, note, "既存ピンを維持")
 		})
 
