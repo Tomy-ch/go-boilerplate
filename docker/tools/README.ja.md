@@ -13,7 +13,7 @@
 |ターゲット|ベースイメージ|含まれるツール|
 |---|---|---|
 |`go_tools`|`golang:1.26.5-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.18.0-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild（+ ポータルバンドル用ライブラリ）|
+|`node_tools`|`node:24.18.0-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, pnpm, tsx, typescript, vitest, js-yaml, mermaid, linkedom|
 |`python_tools`|`python:3.14.6-slim`|sqlfluff|
 
 ## go_tools
@@ -35,7 +35,7 @@ Go 用のコード生成・lint・セキュリティ・ドキュメント生成�
 
 ## node_tools
 
-OpenAPI ドキュメント処理とポータルフロントエンドのバンドル用ツール：
+OpenAPI ドキュメント処理とポータル生成用のツール：
 
 |ツール|用途|
 |---|---|
@@ -43,9 +43,12 @@ OpenAPI ドキュメント処理とポータルフロントエンドのバンド
 |`markdownlint-cli2`|ドキュメント用の Markdown リンター（`make md-lint`）|
 |`@commitlint/cli`|コミットメッセージのリンター（`make commitlint`。`commit-msg` フックに配線）|
 |`js-yaml`|ポータルドキュメント生成スクリプト用の YAML 処理|
-|`esbuild`|ポータルフロントエンド（`docs/portal/src/main.jsx`）を `docs/portal/dist/` へバンドル（`make gen-portal-build`）|
-|`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|esbuild がバンドルするポータルフロントエンドの実行時ライブラリ（従来の CDN + ブラウザ内 Babel 構成を置き換え）。`mermaid` は `scripts/mermaid-lint.mjs` でも再利用し ` ```mermaid ` フェンスを構文検証する（`make md-lint`）。|
-|`linkedom`|`mermaid.parse` を Node で動かすためのヘッドレス DOM。Markdown 内 mermaid の構文 Lint（`scripts/mermaid-lint.mjs`）で使用|
+|`pnpm`|リポジトリ内の 2 つの Node パッケージを解決する。1 つは `scripts/`（`/app/scripts/node_modules` へ install）、もう 1 つはポータルフロントエンドを `docs/portal/` へビルドする `docs-viewer/`（`make gen-portal-build` / `make portal-test`）。両者は lockfile も `node_modules` も別。|
+|`tsx`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）をビルドなしで実行する|
+|`typescript`|その型検査（`make scripts-typecheck`）|
+|`vitest`|補助スクリプトの判定ロジックの単体テスト（`make scripts-test`）|
+|`mermaid`|`scripts/mermaid-lint.ts` が ` ```mermaid ` フェンスを本物のパーサで構文検証するために使う（`make md-lint`）|
+|`linkedom`|`mermaid.parse` を Node で動かすためのヘッドレス DOM。Markdown 内 mermaid の構文 Lint（`scripts/mermaid-lint.ts`）で使用|
 
 ## python_tools
 
@@ -84,3 +87,4 @@ make gen-query  # sqlc コード生成
 - すべてのターゲットで作業ディレクトリは `/app`
 - Go ツールはビルダーステージでインストールし、ランタイムステージにコピーしてイメージサイズを最小化（`go_tools`）
 - ツールのバージョンは `mise.toml`（バージョンの SSOT）で固定 — 更新はそこで行い、ローカルと CI のイメージを一致させること
+- このイメージが install する Node 依存を宣言するのは `scripts/`（`package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`）と `docs-viewer/` で、ビルドはそれぞれのマニフェストを本来の場所へコピーしてその場で install する。どちらのマニフェストもこのディレクトリには無いため、依存の変更は使う側のコードと並べてレビューされる

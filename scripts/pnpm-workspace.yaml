@@ -1,0 +1,64 @@
+# リポジトリ補助スクリプト（scripts/）とドキュメント系ツールの依存解決設定。
+# pnpm 10 系以降は install の挙動をこのファイルが持つ。
+#
+# このディレクトリで閉じた 1 パッケージとして宣言する。依存を使うのは scripts/ 配下の
+# TypeScript であり、node_tool_runner イメージも CI もここを install 先として指す。
+
+packages:
+  - "."
+
+# ----- 時間差防御 -----
+# 公開直後の版を解決対象から外し、悪意ある publish を lockfile へ取り込む窓を塞ぐ。
+# docs-viewer/pnpm-workspace.yaml と窓を揃える。pnpm は分で指定する（7 日 = 10080 分）。
+minimumReleaseAge: 10080
+# 冷却期間を満たす版が無ければ、窓を黙って外さず解決を失敗させる。
+minimumReleaseAgeStrict: true
+# 公開日時を返さないレジストリの依存は、経過日数を判定できないため解決を失敗させる。
+minimumReleaseAgeIgnoreMissingTime: false
+
+# 依存状態が lockfile と一致しないままスクリプトを実行しない。この検査は `pnpm run` の
+# 入口でしか働かないため、呼び出し側（.makefiles/node/vars.mk）は node_modules/.bin の実体を
+# 直接指さず pnpm 経由で起動する。
+verifyDepsBeforeRun: error
+
+# mise.toml[SSOT] と同じ Node.js 版を依存の engine 判定に使う。
+nodeVersion: 24.18.0
+# Node.js の対応範囲外を宣言する依存の導入を拒否する。
+engineStrict: true
+
+# ----- 実行制御 -----
+# 未レビューの依存ライフサイクルスクリプトを install エラーにする。
+strictDepBuilds: true
+# 依存ライフサイクルスクリプトの実行可否をパッケージ単位で明示する。いずれも build を必要と
+# しないため、供給網攻撃の主要な RCE 経路である postinstall を全て閉じる。
+allowBuilds:
+  '@scarf/scarf': false
+  esbuild: false
+
+# ----- 公開元の信頼性 -----
+# 間接依存による Git・URL などの非標準ソースを拒否する。
+blockExoticSubdeps: true
+# 過去より弱い provenance に下がった版の導入を拒否する。
+trustPolicy: no-downgrade
+# 公開から 180 日を過ぎた版は provenance 情報の不足だけでは拒否しない。
+trustPolicyIgnoreAfter: 259200
+# provenance の後退を、影響を受ける特定バージョンだけ一時的に例外化する。(パッケージ名だけの例外は禁止)
+trustPolicyExclude:
+  # 2026-08-21 以降（公開から 180 日を過ぎ trustPolicyIgnoreAfter が効くようになる）に削除する。
+  # spectral が引く v2 系の保守リリースで、npm 時代の lockfile が既に解決していた版と同一。
+  - rollup@2.80.0
+
+# ----- 依存の差し替え -----
+# npm の `overrides`（package.json）から移設したもの。npm は「この親の下位ツリー全体」を
+# 対象にしたが、pnpm は親子の直接辺しか指せない。同じ範囲を保つため、親ではなく
+# 「解決結果がこの版域に落ちたら」で書く。意図（脆弱版を踏ませない下限）は版域に現れる。
+overrides:
+  # 解析器を 1 実装へ揃える。複数版が同居すると Lint 結果が呼び出し経路で変わる。
+  js-yaml: 4.3.0
+  # spectral が引く巨大な spec 束を 1 版へ寄せ、重複展開を避ける。
+  "@asyncapi/specs": 6.11.1
+  # v1 系のみ ReDoS 修正版を下限にする。v2 以降は既に修正済みのため触らない。
+  "brace-expansion@1": 1.1.16
+  "lodash@<4.18.0": 4.18.0
+  "fast-uri@<3.1.4": ">=3.1.4 <4"
+  "dompurify@<3.4.12": ">=3.4.12 <4"

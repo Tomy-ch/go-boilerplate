@@ -12,7 +12,7 @@ docker/
 ├── tools/              # Code generation / tool runner Dockerfile
 ├── document/           # Documentation viewer Dockerfile + nginx config
 ├── garage/             # Object storage Dockerfile + config + provisioning script
-├── mock-auth-server/   # Mock OIDC auth server Dockerfile + application
+├── mock-auth-server/   # Mock OIDC auth server Dockerfile
 └── database/
     ├── sql/            # DB initialization SQL
     ├── schemaspy/      # ER diagram generation config
@@ -64,7 +64,7 @@ The app layer host ports are the ones a DB slot shifts (`8080+N` / `2010+N` / `2
 
 |Service|Dockerfile / Image|Port|Description|
 |---|---|---|---|
-|`docs_viewer`|`docker/document/Dockerfile`|2001|Documentation portal (nginx)|
+|`docs_server`|`docker/document/Dockerfile`|2001|Documentation portal (nginx)|
 |`sql_editor`|`sosedoff/pgweb`|2000|Web SQL editor|
 
 ### Tool Runners (profile: `generate`, infra layer)
@@ -156,7 +156,7 @@ product images straight from the object storage, the way a CDN fronts S3 in prod
 
 ## mock-auth-server
 
-Mock OIDC auth server (JWT test provider) container. Endpoints, flows, and fixtures: [`docker/mock-auth-server/README.md`](mock-auth-server/README.md).
+Mock OIDC auth server (JWT test provider) container. Only the Dockerfile lives here; the service implementation is a repository-root package. Endpoints, flows, and fixtures: [`mock-auth-server/README.md`](../mock-auth-server/README.md).
 
 - Base image: `node:24.18.0-alpine`, running the `.ts` sources directly via Node's native type stripping (no `tsc` build step)
 - Runs as non-root user (`node`); the internal port is always `4000`
