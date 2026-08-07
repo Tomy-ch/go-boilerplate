@@ -167,6 +167,8 @@ The source of truth lives close to the code. Start here and follow the link that
 - [env/README.md](env/README.md) — environment variables (embedded per-environment)
 - [.makefiles/README.md](.makefiles/README.md) — every `make` target
 - [docker/README.md](docker/README.md) — images, compose profiles, single-container operation
+- [scripts/README.md](scripts/README.md) — utility scripts & repository gates (codegen, docs, versioning, supply-chain pins, setup)
+- [docs-viewer/README.md](docs-viewer/README.md) — documentation portal frontend (renders the generated `docs/portal/docs.json`)
 
 ## Directory Structure
 
@@ -187,6 +189,9 @@ The source of truth lives close to the code. Start here and follow the link that
 ├── env/            # Per-environment variables (embedded into the binary)
 ├── docker/
 ├── docs/
+├── docs-viewer/    # Documentation portal frontend (build output is committed under docs/portal/)
+├── scripts/        # Utility scripts & repository gates
+├── .github/        # Workflows, composite actions, repository settings
 ├── .makefiles/     # make target registry
 └── makefile
 ```

@@ -50,7 +50,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope
 **Declining the AI-assist layer is the adopting architect's call.** This template is built to stay fully maintainable without AI tooling — the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration — so nothing above is load-bearing for building, testing, or shipping. A fork that does not want the layer should remove it deliberately rather than leave it half-configured:
 
 - skip both bootstraps; no other phase of this setup depends on them, and
-- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint.mjs`.
+- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint.ts`.
 
 Removing it later costs the same as removing it now, so adopting the recommended configuration first and deciding afterwards is a safe order.
 
@@ -239,7 +239,7 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
 
 ### Removal Procedure
 
-Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-api.mjs](../../scripts/setup/lib/sample-api.mjs), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
+Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-manifest.ts](../../scripts/setup/lib/sample-manifest.ts), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
 
 > **The DB container must be running** before you run this — the final `gen-query` step dumps the **live** schema with `pg_dump`, so a stopped DB fails with `connection refused`.
 
@@ -264,7 +264,7 @@ Notes:
 - The base master data `prefecture` (migration `000001`, etc.) is **kept**.
 - `gen-query` regenerates Go models from a `pg_dump` of the **live** DB. If you skip the DB rebuild above, the still-present `users` table is re-dumped and a stale `Users` type is regenerated into `models.gen.go` — the rebuild + re-`gen-query` is what actually drops it.
 - Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step.
-- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-api.mjs`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
+- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-manifest.ts`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
 
 ### Rules keep their examples only until you remove the sample
 

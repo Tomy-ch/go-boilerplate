@@ -23,7 +23,7 @@ graph TB
     db[("database<br/>PostgreSQL 18<br/>:5432 fixed")]
     obs["observability<br/>otel-lgtm<br/>Grafana :3000 / OTLP :4317,:4318"]
     gar["garage (+ garage_init)<br/>S3-compatible storage<br/>:3900 / :3902"]
-    docs["docs_viewer :2001"]
+    docs["docs_server :2001"]
     sql["sql_editor :2000"]
     er["er_diagram_generator :2002"]
     subgraph runners["tool-runner (profile: generate / user: root)"]
@@ -70,7 +70,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 - DB tooling (`make db-migrate-*` / `db-seed` / `db-drop-tables` / `gen-query`, i.e. the
   `docker compose run --rm *_tool_runner` and `docker compose exec database` calls) leaves the project name
   implicit; `compose.mk` defaults `COMPOSE_PROJECT_NAME` to `gobp-shared` so those containers join the infra
-  network. The auxiliary services (`docs_viewer` / `sql_editor` / `er_diagram_generator`) live in the same
+  network. The auxiliary services (`docs_server` / `sql_editor` / `er_diagram_generator`) live in the same
   project.
 
 ## Containers
@@ -83,7 +83,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `observability` | infra | `grafana/otel-lgtm` | `3000` (Grafana UI) / `4317` (OTLP gRPC) / `4318` (OTLP HTTP) / `3200` (Tempo API) | Sink for traces / metrics / logs of every checkout. profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key / website access |
-| `docs_viewer` | infra | build `docker/document/Dockerfile` | `2001:80` | Development documentation viewer |
+| `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | Serves `docs/` for local development |
 | `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | Browser DB client |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER diagram generation |
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile` (per target) | none (run/exec) | Toolboxes for code generation / lint. **`user: root`**, profile: `generate`, repo bind-mounted at `.:/app` |
@@ -98,7 +98,7 @@ A host port is chosen by one rule:
 `5432` / `8080+N` / `2345+N` / `6060+N` / `4317` / `4318` / `3000` / `3200` / `3900` / `3902` /
 `9324` are the upstream defaults of PostgreSQL, Delve, Go pprof, OpenTelemetry, Grafana, Tempo,
 garage and elasticmq, so they stay where a reader already expects them. `sql_editor`,
-`docs_viewer`, `er_diagram_generator` and `mock_auth_server` have no such number — pgweb, nginx and
+`docs_server`, `er_diagram_generator` and `mock_auth_server` have no such number — pgweb, nginx and
 schemaspy only fix their *container-internal* ports (8081 / 80 / 3000), and pgweb's 8081 falls inside
 the API slot band (`8080+N`) anyway — so they occupy `2000`, `2001`, `2002` and `2010+N`.
 

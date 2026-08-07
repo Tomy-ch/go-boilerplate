@@ -41,7 +41,7 @@ PostgreSQL データベース、オブザーバビリティスタック、ドキ
 
 | サービス | イメージ / Dockerfile | ポート | 説明 |
 | --- | --- | --- | --- |
-| `docs_viewer` | `docker/document/Dockerfile` ターゲット `document_viewer` | 2001 | `docs/` を配信する nginx。`/portal/` にポータル |
+| `docs_server` | `docker/document/Dockerfile` ターゲット `document_viewer` | 2001 | `docs/` を配信する nginx。`/portal/` にポータル |
 | `sql_editor` | `sosedoff/pgweb` | 2000 | Web SQL エディター |
 
 （軽量な **`database`** プロファイルも存在する — `database` + `sql_editor` のみ — `api_server` /

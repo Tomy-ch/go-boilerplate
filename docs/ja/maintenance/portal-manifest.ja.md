@@ -6,7 +6,7 @@
 
 ```txt
 manifest.yaml   ← 構造定義   (どこに何を、どんなラベルで)
-scripts/*.mjs   ← 構築       (それをどう組み立てるか)
+scripts/portal/*.ts ← 構築       (それをどう組み立てるか)
 ```
 
 このドキュメントは、その契約の単一リファレンスです。ドキュメントを追加・移動・改名・削除するとき、実際に編集すべき場所はほとんどの場合 `manifest.yaml` です。
@@ -17,10 +17,10 @@ scripts/*.mjs   ← 構築       (それをどう組み立てるか)
 | --- | --- |
 | `docs/portal/manifest.yaml` | ポータル構造の単一源泉 |
 | `docs/portal/index.html` + `main.jsx` + `styles.css` | React SPA ビューアー (`docs.json` を読む) |
-| `docs/portal/docs.json` | **生成物**。直接編集禁止 (`gen-docs-json.mjs` の出力) |
-| `docs/portal/guides/**` | **生成物**。直接編集禁止 (`gen-portal-docs.mjs` による README のフラットコピー) |
-| `scripts/gen-portal-docs.mjs` | manifest の各エントリ `src` を `docs/portal/guides/` 配下の `dst` へコピー |
-| `scripts/gen-docs-json.mjs` | manifest 読み込み + `docs/` 走査により `docs/portal/docs.json` を出力 |
+| `docs/portal/docs.json` | **生成物**。直接編集禁止 (`gen-docs-json.ts` の出力) |
+| `docs/portal/guides/**` | **生成物**。直接編集禁止 (`gen-portal-docs.ts` による README のフラットコピー) |
+| `scripts/portal/gen-portal-docs.ts` | manifest の各エントリ `src` を `docs/portal/guides/` 配下の `dst` へコピー |
+| `scripts/portal/gen-docs-json.ts` | manifest 読み込み + `docs/` 走査により `docs/portal/docs.json` を出力 |
 
 ## 2. manifest スキーマ
 
@@ -78,9 +78,9 @@ meta:
 
 **`dst` の命名規則**: 拡張子 (`.md` / `.ja.md`) を除いた basename が `meta.subgroups` から参照される **guide id** になります。guide id はポータル全体で一意にしてください。
 
-## 3. ファイルシステム auto-discovery (JS 構築側)
+## 3. ファイルシステム auto-discovery (TypeScript 構築側)
 
-`docs/` 直下のドキュメント (コードパッケージの `**/README.md` ではなく、`docs/` 内に直接置かれる Markdown) は `gen-docs-json.mjs` がファイルシステムを走査して検出します。発見されたセクションでも、配置と表示名は依然 `meta:` から来ます。**ファイルの列挙だけ**が JS 側です。
+`docs/` 直下のドキュメント (コードパッケージの `**/README.md` ではなく、`docs/` 内に直接置かれる Markdown) は `gen-docs-json.ts` がファイルシステムを走査して検出します。発見されたセクションでも、配置と表示名は依然 `meta:` から来ます。**ファイルの列挙だけ**が TypeScript 側です。
 
 | ファイルシステム位置 | 作られる section | 補足 |
 | --- | --- | --- |
@@ -181,7 +181,7 @@ open http://localhost:8082/portal/
 ## 7. アンチパターン
 
 - **`docs/portal/docs.json` や `docs/portal/guides/**` を直接編集しない**。全て再生成されるので消える。
-- **manifest を迂回して** `gen-docs-json.mjs` に直接セクションを書き込まない。構造に関わるものはすべて `meta:` に。
+- **manifest を迂回して** `gen-docs-json.ts` に直接セクションを書き込まない。構造に関わるものはすべて `meta:` に。
 - **サブグループの中にさらにサブグループを切らない**。あるサブグループが大きくなり過ぎたら、その親 section を分割する。
 - **2 つの manifest item に同じ `dst` を与えない**。guide id は一意である必要がある。
 
@@ -195,8 +195,8 @@ open http://localhost:8082/portal/
 | section 見出しの上書き | `manifest.yaml` → `meta.section_titles` |
 | サイドバー Reference クイックリンク | `manifest.yaml` → `meta.reference_links` |
 | `guides/` に何をコピーするか | `manifest.yaml` の flat エントリ |
-| `docs/<dir>/` / `docs/*.md` のファイル列挙 | `scripts/gen-docs-json.mjs` (FS スキャン) |
-| ファイル名 → カード見出し (`autoTitle`) | `scripts/gen-docs-json.mjs` (決定的) |
-| EN/JA の並び順 / slug 化 | `scripts/gen-docs-json.mjs` (決定的) |
+| `docs/<dir>/` / `docs/*.md` のファイル列挙 | `scripts/portal/gen-docs-json.ts` (FS スキャン) |
+| ファイル名 → カード見出し (`autoTitle`) | `scripts/portal/gen-docs-json.ts` (決定的) |
+| EN/JA の並び順 / slug 化 | `scripts/portal/gen-docs-json.ts` (決定的) |
 
 変更が表の上半分に触れるなら **manifest 側**、下半分に触れるなら **スクリプト側** で対応する。この責務分担により、manifest は一目で読み切れる規模に保ちつつ、README が増えても自動で追従するビルドを維持できる。

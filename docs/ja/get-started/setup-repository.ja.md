@@ -50,7 +50,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user ス�
 **AI 支援レイヤを採らない判断は、導入側のアーキテクトが行います。** 本テンプレートは AI ツール無しでも完全に保守できるよう作られており（レイヤ規約の正本は [docs/rules.md](../../rules.md) であってアシスタント設定ではありません）、上記はビルド・テスト・リリースのいずれにも必須ではありません。採らない fork は、中途半端に設定を残さず意図的に外してください。
 
 - bootstrap 2 本を実行しない（以降のどの Phase もこれらに依存しません）
-- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint.mjs` の `graphify-out/` 記述
+- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint.ts` の `graphify-out/` 記述
 
 後から外すコストは今外すコストと同じなので、まず推奨構成で入れて後から判断する順序でも安全です。
 
@@ -111,7 +111,7 @@ curl http://localhost:8080/ready
 
 1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
 2. [README.md](../../../README.md) は英語で書かれているので、必要に応じて [README.ja.md](../../../README.ja.md) を [README.md](../../../README.md) に置換しても構いません。
-    - ただし、[gen-docs-json.mjs](../../../scripts/gen-docs-json.mjs) やその生成元になる [manifest.yaml](../../../docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
+    - ただし、[gen-docs-json.ts](../../../scripts/portal/gen-docs-json.ts) やその生成元になる [manifest.yaml](../../../docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
     - また、portal表示のReactも EnとJp切り替えを持つので、README.mdを日本語にする場合は、portal表示のReactも書き換える必要があります。
 3. [openapi.yaml](../../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。
     - Infoセクション全体をプロジェクトに合わせて書き換えてください。
@@ -234,7 +234,7 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
 
 ### 削除手順
 
-自動コマンドを使用します。[scripts/setup/lib/sample-api.mjs](../../../scripts/setup/lib/sample-api.mjs) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
+自動コマンドを使用します。[scripts/setup/lib/sample-manifest.ts](../../../scripts/setup/lib/sample-manifest.ts) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
 
 > 実行前に **DB コンテナが起動している必要があります** — 末尾の `gen-query` は `pg_dump` で**ライブ**スキーマをダンプするため、DB 停止状態では `connection refused` で失敗します。
 
@@ -259,7 +259,7 @@ make gen-query
 - 基盤マスタデータ `prefecture`（マイグレーション `000001` など）は**残します**。
 - `gen-query` は**ライブ** DB の `pg_dump` から Go モデルを再生成します。上記の DB 再構築を省くと、残存する `users` テーブルが再ダンプされ `models.gen.go` に古い `Users` 型が再生成されます。再構築＋再 `gen-query` が実際に型を消す手順です。
 - 共有生成物（`*.gen.go` / `openapi.gen.yaml` など）は直接削除せず、再生成ステップで更新されます。
-- サンプルは3ドメイン構成です。`user` はフルスタック、`product` / `order` は現状 DB スタブ（マイグレーション＋商品 seed）のみです。`product` / `order` を本格的な API に拡張したら、`sample-api.mjs` の該当ドメインブロックに新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（または行末の `// sample-api:line`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
+- サンプルは3ドメイン構成です。`user` はフルスタック、`product` / `order` は現状 DB スタブ（マイグレーション＋商品 seed）のみです。`product` / `order` を本格的な API に拡張したら、`sample-manifest.ts` の該当ドメインブロックに新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（または行末の `// sample-api:line`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
 
 ### 規則から例が消えるので、自分の例を置き直す
 

@@ -165,6 +165,8 @@ Infra --> External["External Systems"]
 - [env/README.md](env/README.md) — 環境変数（環境別にバイナリ埋め込み）
 - [.makefiles/README.md](.makefiles/README.md) — すべての `make` ターゲット
 - [docker/README.md](docker/README.md) — イメージ・compose プロファイル・単一コンテナ運用
+- [scripts/README.md](scripts/README.md) — ユーティリティスクリプトとリポジトリのゲート（コード生成・ドキュメント・バージョニング・供給網ピン・セットアップ）
+- [docs-viewer/README.md](docs-viewer/README.md) — ドキュメントポータルのフロントエンド（生成された `docs/portal/docs.json` を描画）
 
 ## ディレクトリ構成
 
@@ -185,6 +187,9 @@ Infra --> External["External Systems"]
 ├── env/            # 環境別の環境変数（バイナリへ埋め込み）
 ├── docker/
 ├── docs/
+├── docs-viewer/    # ドキュメントポータルのフロントエンド（ビルド成果物は docs/portal/ にコミットされる）
+├── scripts/        # ユーティリティスクリプトとリポジトリのゲート
+├── .github/        # ワークフロー・複合アクション・リポジトリ設定
 ├── .makefiles/     # make ターゲットレジストリ
 └── makefile
 ```

@@ -33,11 +33,11 @@ The top-level `makefile` includes every registered `.mk` file. Adding a new targ
 means placing it in the appropriate `.mk` file; no top-level edit is required.
 
 **Self-documenting help contract:** `make help` is the default goal
-(`.DEFAULT_GOAL := help`). It is implemented by running `node scripts/make_help.mjs`,
+(`.DEFAULT_GOAL := help`). It is implemented by running `scripts/make-help.ts` through `tsx`,
 which walks every `.mk` file recursively and prints each `.PHONY` target whose line
 carries a trailing `## description` comment, grouped under the `## Category` headings
 defined in the `.mk` file. Targets missing the `## description` comment do not appear
-in the help output; `make_help.mjs` emits a warning to stderr for each such target.
+in the help output; `make-help.ts` emits a warning to stderr for each such target.
 
 Target-naming convention: dash-separated lower case (e.g. `make new-migrate-name`,
 `make gen-api`).
@@ -55,7 +55,7 @@ Two execution flavours:
 
 - `make help` provides a self-updating, always-accurate reference for every registered
   target; documentation never drifts from the actual command surface.
-- `make_help.mjs` discovers new `.mk` files automatically (recursive scan of `.makefiles/`),
+- `make-help.ts` discovers new `.mk` files automatically (recursive scan of `.makefiles/`),
   so `make help` stays accurate; making `make` *execute* a new group still requires adding an
   explicit `include` line to the top-level `makefile`.
 - CI, git hooks, and skills share one stable entrypoint. Because CI, lefthook, and the
@@ -69,7 +69,7 @@ Two execution flavours:
 
 - Contributors must follow the `.PHONY` + `## comment` convention; omitting the comment
   causes the target to disappear from `make help` silently (only a stderr warning from
-  `make_help.mjs` signals the problem).
+  `make-help.ts` signals the problem).
 - GNU Make must be available on contributor machines.
 - The `.mk` file structure requires contributors to know which group file to edit when
   adding a target.
@@ -98,6 +98,6 @@ hard-code invocations that can diverge from the developer-facing commands.
 - `.makefiles/` conventions (normal vs `-ci`, naming, group layout):
   [`.makefiles/README.md`](../../.makefiles/README.md).
 - Help generator source:
-  [`scripts/make_help.mjs`](../../scripts/make_help.mjs).
+  [`scripts/make-help.ts`](../../scripts/make-help.ts).
 - Toolchain execution rules (container vs bare-metal):
   [`docs/rules.md`](../rules.md) § "Toolchain Execution Rules".

@@ -34,7 +34,7 @@ ADR-0047 の背後にある懸念は、リンクではなく**結合**として�
 
 E3' は 4 つの条件に分解でき、いずれも機械的に検証できる。
 
-1. **core の `*.go` がブローカーアダプターを参照しない** — `scripts/setup/verify-sample-removal.mjs` の `checkNoDanglingReferences` が検査する。
+1. **core の `*.go` がブローカーアダプターを参照しない** — `scripts/setup/verify-sample-removal.ts` の `checkNoDanglingReferences` が検査する。
 2. **core のドキュメントがサンプルを参照しない** — core のドキュメントは構造（`internal/controller/worker/<name>/`）を記述し、サンプルの具体名を参照しない。
 3. **シームがサンプル追加前の形へ戻る** — `internal/usecase/boundary/worker` または `internal/usecase/boundary/publisher` へのサンプル由来の変更は、退避側にサンプル追加前の形を保持する `sample-api:replace` ブロックで囲む。
 4. **不要になった依存が `go.mod` / `vendor/` から落ちる** — 削除チェーンで `make tidy-lib` を実行する。

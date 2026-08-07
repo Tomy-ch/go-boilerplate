@@ -35,10 +35,10 @@ GitHub リポジトリ設定など多くのドメインにまたがる。統一�
 適切な `.mk` ファイルに配置するだけでよく、トップレベルの編集は不要である。
 
 **セルフドキュメンティングなヘルプ契約:** `make help` がデフォルトゴール（`.DEFAULT_GOAL := help`）である。
-これは `node scripts/make_help.mjs` を実行することで実装されており、すべての `.mk` ファイルを再帰的に走査し、
+これは `scripts/make-help.ts` を `tsx` で実行することで実装されており、すべての `.mk` ファイルを再帰的に走査し、
 `.mk` ファイルで定義された `## Category` 見出しの下にグループ化して、末尾に `## description` コメントが付いた
 `.PHONY` ターゲットを出力する。`## description` コメントが欠けているターゲットはヘルプ出力に表示されず、
-`make_help.mjs` がそのようなターゲットごとに stderr へ警告を出力する。
+`make-help.ts` がそのようなターゲットごとに stderr へ警告を出力する。
 
 ターゲット命名規則: ダッシュ区切りの小文字（例: `make new-migrate-name`、`make gen-api`）。
 
@@ -53,7 +53,7 @@ GitHub リポジトリ設定など多くのドメインにまたがる。統一�
 
 - `make help` が登録されたすべてのターゲットについて自動更新される正確なリファレンスを提供する。
   ドキュメントが実際のコマンド面からドリフトすることがない。
-- `make_help.mjs` は新しい `.mk` ファイルを自動的に検出する（`.makefiles/` の再帰走査）ため
+- `make-help.ts` は新しい `.mk` ファイルを自動的に検出する（`.makefiles/` の再帰走査）ため
   `make help` は正確さを保つ。ただし新しいグループを `make` に**実行**させるには、トップレベル
   `makefile` への明示的な `include` 行の追加が必要である。
 - CI、git フック、スキルが 1 つの安定したエントリポイントを共有する。CI・lefthook・開発者
@@ -64,7 +64,7 @@ GitHub リポジトリ設定など多くのドメインにまたがる。統一�
 ### ネガティブな影響
 
 - コントリビューターは `.PHONY` + `## comment` の規約に従わなければならない。コメントを省略すると
-  ターゲットが `make help` からサイレントに消える（`make_help.mjs` からの stderr 警告のみが問題を通知する）。
+  ターゲットが `make help` からサイレントに消える（`make-help.ts` からの stderr 警告のみが問題を通知する）。
 - コントリビューターマシンに GNU Make が必要である。
 - `.mk` ファイル構造では、ターゲットを追加するときにコントリビューターがどのグループファイルを編集すべきかを
   把握していなければならない。
@@ -92,6 +92,6 @@ CI は開発者向けコマンドから乖離し得る呼び出しをハード�
 - `.makefiles/` の規約（通常 vs `-ci`、命名、グループレイアウト）:
   [`.makefiles/README.md`](../../../.makefiles/README.ja.md)。
 - ヘルプジェネレータのソース:
-  [`scripts/make_help.mjs`](../../../scripts/make_help.mjs)。
+  [`scripts/make-help.ts`](../../../scripts/make-help.ts)。
 - ツールチェーン実行ルール（コンテナ vs ベアメタル）:
   [`docs/rules.md`](../rules.ja.md) § "Toolchain Execution Rules"。

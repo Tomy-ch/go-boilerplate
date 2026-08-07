@@ -114,7 +114,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0074](0074-containerized-pinned-toolchain.ja.md) | 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する | accepted |
 | [0075](0075-mise-ssot-drift-gate.ja.md) | mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する | accepted |
 | [0076](0076-make-single-entrypoint.ja.md) | Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する | accepted |
-| [0077](0077-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない | accepted |
+| [0077](0077-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に TypeScript または Go で配置し、シェルスクリプトは使用しない | accepted |
 | [0078](0078-docker-compose-dev-environment.ja.md) | ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する | accepted |
 | [0079](0079-two-layer-golangci-config.ja.md) | 2 層の golangci 設定——最小デフォルトと完全な権威ゲート | accepted |
 | [0080](0080-local-hooks-mirror-ci.ja.md) | ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証） | accepted |
