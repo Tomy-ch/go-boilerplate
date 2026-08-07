@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -167,6 +169,19 @@ func writeProfile(t *testing.T) string {
 	return path
 }
 
+// captureLog は、標準ロガーの出力先をバッファへ差し替え、その内容を読む関数を返します。
+// 出力先はプロセス共通のため、使うテストは並列化できません。
+func captureLog(t *testing.T) func() string {
+	t.Helper()
+
+	var buf bytes.Buffer
+
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	return buf.String
+}
+
 func Test_run(t *testing.T) {
 	t.Parallel()
 
@@ -181,12 +196,34 @@ func Test_run(t *testing.T) {
 			require.NoError(t, err)
 		})
 
+		//nolint:paralleltest // 標準ロガーの出力先を差し替えるため並列化できない
 		t.Run("警告モードは下限を割っても失敗させない", func(t *testing.T) {
-			t.Parallel()
+			logged := captureLog(t)
 
 			err := run([]string{"-profile", writeProfile(t), "-threshold", "90", "-warn"}, stubTotal(46.9))
 
 			require.NoError(t, err)
+			assert.NotContains(t, logged(), "::warning::")
+		})
+
+		//nolint:paralleltest // 標準ロガーの出力先を差し替えるため並列化できない
+		t.Run("github 指定の警告は ::warning:: アノテーションで出す", func(t *testing.T) {
+			logged := captureLog(t)
+
+			err := run([]string{"-profile", writeProfile(t), "-threshold", "90", "-warn", "-github"}, stubTotal(46.9))
+
+			require.NoError(t, err)
+			assert.Contains(t, logged(), "::warning::")
+		})
+
+		//nolint:paralleltest // 標準ロガーの出力先を差し替えるため並列化できない
+		t.Run("合格時は github 指定でもアノテーションを付けない", func(t *testing.T) {
+			logged := captureLog(t)
+
+			err := run([]string{"-profile", writeProfile(t), "-threshold", "90", "-warn", "-github"}, stubTotal(90))
+
+			require.NoError(t, err)
+			assert.NotContains(t, logged(), "::warning::")
 		})
 
 		t.Run("ヘルプ要求は失敗にしない", func(t *testing.T) {
