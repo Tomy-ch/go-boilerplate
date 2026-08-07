@@ -63,7 +63,7 @@ own; failures surface through the normalized error.
 This adapter **is** in the default DI graph, so `aws-sdk-go-v2/service/s3` and the SDK core are
 linked into the shipped binary. [`queue/sqs`](../queue/sqs/README.md) is wired only from the
 removable sample set, so `service/sqs` leaves the binary once the sample is removed
-([ADR-0048](../../../docs/adr/0048-broker-sdk-isolation-verified-after-sample-removal.md)).
+([ADR-0048](../../../docs/adr/0048-broker-sdk-isolation-measured-as-coupling.md)).
 
 The asymmetry is intentional: a worker has no broker until an integrator chooses one, whereas the
 object-storage port is exercised by the template out of the box and needs a working implementation

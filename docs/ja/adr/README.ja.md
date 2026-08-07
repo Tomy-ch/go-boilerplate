@@ -81,8 +81,8 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0044](0044-error-details-opt-in-gate.ja.md) | スキーマ分割によるエラー details の opt-in ゲート（0043 を精緻化） | accepted |
 | [0045](0045-broker-agnostic-worker-scaffold.ja.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
 | [0046](0046-out-of-scope-push-streaming-brokers.ja.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
-| [0047](0047-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0048](0048-broker-sdk-isolation-verified-after-sample-removal.ja.md) |
-| [0048](0048-broker-sdk-isolation-verified-after-sample-removal.ja.md) | ブローカー SDK の分離は、アダプターを未配線にすることではなくサンプル削除後に検証する | accepted |
+| [0047](0047-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0048](0048-broker-sdk-isolation-measured-as-coupling.ja.md) |
+| [0048](0048-broker-sdk-isolation-measured-as-coupling.ja.md) | ブローカー SDK の分離はリンクではなく結合で測る | accepted |
 | [0049](0049-transactional-outbox.ja.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
 | [0050](0050-at-least-once-outbox-poll.ja.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
 | [0051](0051-skip-locked-outbox-relay.ja.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |

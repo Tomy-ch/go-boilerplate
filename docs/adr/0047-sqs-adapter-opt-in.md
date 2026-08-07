@@ -10,7 +10,7 @@ tags: [worker, async, dependencies]
 
 ## Status
 
-superseded by [ADR-0048](0048-broker-sdk-isolation-verified-after-sample-removal.md)
+superseded by [ADR-0048](0048-broker-sdk-isolation-measured-as-coupling.md)
 
 ## Context
 

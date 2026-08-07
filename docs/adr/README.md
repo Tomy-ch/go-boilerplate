@@ -90,8 +90,8 @@ do X") are tagged `setup-review`.
 | [0044](0044-error-details-opt-in-gate.md) | Opt-in gate for error-response details via schema split (refines 0043) | accepted |
 | [0045](0045-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
 | [0046](0046-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
-| [0047](0047-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0048](0048-broker-sdk-isolation-verified-after-sample-removal.md) |
-| [0048](0048-broker-sdk-isolation-verified-after-sample-removal.md) | Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired | accepted |
+| [0047](0047-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0048](0048-broker-sdk-isolation-measured-as-coupling.md) |
+| [0048](0048-broker-sdk-isolation-measured-as-coupling.md) | Measure broker-SDK isolation as coupling, not as linkage | accepted |
 | [0049](0049-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
 | [0050](0050-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
 | [0051](0051-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
