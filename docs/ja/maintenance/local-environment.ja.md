@@ -22,7 +22,7 @@ graph TB
     db[("database<br/>PostgreSQL 18<br/>:5432 固定")]
     obs["observability<br/>otel-lgtm<br/>Grafana :3000 / OTLP :4317,:4318"]
     gar["garage (+ garage_init)<br/>S3 互換ストレージ<br/>:3900 / :3903"]
-    docs["docs_viewer :2001"]
+    docs["docs_server :2001"]
     sql["sql_editor :2000"]
     er["er_diagram_generator :2002"]
     subgraph runners["tool-runner（profile: generate / user: root）"]
@@ -68,7 +68,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 - DB ツーリング（`make db-migrate-*` / `db-seed` / `db-drop-tables` / `gen-query` 等、
   `docker compose run --rm *_tool_runner` と `docker compose exec database` の呼び出し）はプロジェクト名を
   明示しない。`compose.mk` が `COMPOSE_PROJECT_NAME` の既定を `gobp-shared` に置くため、これらは infra 層の
-  ネットワークで動く。補助サービス（`docs_viewer` / `sql_editor` / `er_diagram_generator`）も同じプロジェクトに属する。
+  ネットワークで動く。補助サービス（`docs_server` / `sql_editor` / `er_diagram_generator`）も同じプロジェクトに属する。
 
 ## コンテナ群
 
@@ -80,7 +80,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | `observability` | infra | `grafana/otel-lgtm` | `3000`（Grafana UI）/ `4317`（OTLP gRPC）/ `4318`（OTLP HTTP）/ `3200`（Tempo API） | 全 checkout の traces / metrics / logs の受け皿。profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900`（S3 API）/ `3902`（Web API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う）。Web API はオブジェクトを匿名配信する — [`docker/README.md`](../../../docker/README.md) 参照 |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキー / 公開配信の許可の冪等プロビジョニング |
-| `docs_viewer` | infra | build `docker/document/Dockerfile` | `2001:80` | 開発用ドキュメントビューア |
+| `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | 開発時に `docs/` を配信する |
 | `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | ブラウザ DB クライアント |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER 図生成 |
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile`（各 target） | なし（run/exec 実行） | コード生成・lint 等のツールボックス。**`user: root`**・profile: `generate`・リポジトリを `.:/app` にバインド |
@@ -94,7 +94,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 
 `5432` / `8080+N` / `2345+N` / `6060+N` / `4317` / `4318` / `3000` / `3200` / `3900` / `3902` /
 `9324` は PostgreSQL・Delve・Go pprof・OpenTelemetry・Grafana・Tempo・garage・elasticmq の
-上流既定なので、読者が期待する位置に置いたままにする。`sql_editor` / `docs_viewer` /
+上流既定なので、読者が期待する位置に置いたままにする。`sql_editor` / `docs_server` /
 `er_diagram_generator` / `mock_auth_server` にはその番号が無い（pgweb・nginx・schemaspy が固定して
 いるのは*コンテナ内部*の 8081 / 80 / 3000 だけで、しかも pgweb の 8081 は API スロット帯（`8080+N`）
 の内側に入る）。よって `2000` / `2001` / `2002` / `2010+N` を占める。

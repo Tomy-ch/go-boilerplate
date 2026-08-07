@@ -34,15 +34,14 @@ import (
 const (
 	lockFile     = ".github/actions-pin.toml"
 	filePerm     = 0o644
-	minArgs      = 2 // プログラム名 + サブコマンド
 	repoSegments = 2 // owner/repo
 	// dockerScheme は uses: が取りうる 3 種の記法のうち、GitHub リポジトリを指さない唯一のもの。
 	dockerScheme    = "docker://"
 	lsRemoteCols    = 2 // <sha>\t<refname>
 	lsRemoteTimeout = 30 * time.Second
 	hoursPerDay     = 24
-
-	usage = "❌ usage: pin-actions <resolve|apply|check>"
+	// githubAPIBase は経過日数の問い合わせ先となる GitHub API のルート URL。
+	githubAPIBase = "https://api.github.com"
 )
 
 var (
@@ -62,6 +61,8 @@ var (
 )
 
 var (
+	// errUsage は、サブコマンドが無いか未知の場合のエラー。
+	errUsage = xerrors.New("usage: pin-actions <resolve|apply|check>")
 	// errGitHubAPIStatus は、GitHub API が想定外の HTTP ステータスを返した場合のエラー。
 	errGitHubAPIStatus = xerrors.New("unexpected GitHub API status")
 	// errRefNotFound は、指定 ref が upstream に見つからなかった場合のエラー。
@@ -78,6 +79,8 @@ var (
 	errLockOrphanKey = xerrors.New("lockfile に参照されていないエントリがあります")
 	// errLockMissingKey は、uses: の参照が lockfile に登録されていない場合のエラー。
 	errLockMissingKey = xerrors.New("lockfile に未登録の参照があります")
+	// errPinDrift は、check で未固定・古い参照を検出した場合のエラー。
+	errPinDrift = xerrors.New("未固定/古い参照があります")
 )
 
 // ref はアクション参照 1 件。repo は owner/repo、sub はサブパス（codeql-action/init 等）、tag は固定対象の版。
@@ -101,31 +104,55 @@ type rewritePlan struct {
 
 func (r ref) key() string { return r.repo + "@" + r.tag }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
-	if len(os.Args) < minArgs {
-		log.Fatal(usage)
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("❌ getwd: %v", err)
-	}
-	files, err := targetFiles(root)
-	if err != nil {
+
+	if err := run(os.Args[1:], os.Getwd, githubAPIBase); err != nil {
 		log.Fatalf("❌ %v", err)
 	}
-	switch os.Args[1] {
+}
+
+// run は、サブコマンドを解釈して固定処理へ振り分けます。
+// wd は走査の基点となるディレクトリの取得手段、apiBase は経過日数の問い合わせ先となる
+// GitHub API のルート URL で、どちらも差し替えられるよう引数で受けます。
+func run(args []string, wd func() (string, error), apiBase string) error {
+	if len(args) == 0 {
+		return errUsage
+	}
+
+	root, err := wd()
+	if err != nil {
+		return xerrors.Wrap(err, "getwd")
+	}
+
+	files, err := targetFiles(root)
+	if err != nil {
+		return err
+	}
+
+	switch args[0] {
 	case "resolve":
-		fs := flag.NewFlagSet("resolve", flag.ExitOnError)
+		fs := flag.NewFlagSet("resolve", flag.ContinueOnError)
 		minAge := fs.Int("min-age-days", 0, "N 日未満のコミットは quarantine（0 で無効）")
-		_ = fs.Parse(os.Args[2:])
-		resolve(root, files, *minAge)
+		if err := fs.Parse(args[1:]); err != nil {
+			// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+			if xerrors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+
+			return xerrors.Wrap(err, "failed to parse flags")
+		}
+
+		return resolve(root, apiBase, files, *minAge)
 	case "apply":
-		applyOrCheck(root, files, false)
+		return applyOrCheck(root, files, false)
 	case "check":
-		applyOrCheck(root, files, true)
+		return applyOrCheck(root, files, true)
 	default:
-		log.Fatal(usage)
+		return errUsage
 	}
 }
 
@@ -164,9 +191,9 @@ func targetFiles(root string) ([]string, error) {
 	for _, pat := range []string{
 		".github/workflows/*.yml", ".github/workflows/*.yaml",
 	} {
-		m, err := filepath.Glob(filepath.Join(root, pat))
+		m, err := globFiles(root, pat)
 		if err != nil {
-			return nil, xerrors.Wrap(err, "glob "+pat)
+			return nil, err
 		}
 		files = append(files, m...)
 	}
@@ -187,6 +214,17 @@ func targetFiles(root string) ([]string, error) {
 
 	sort.Strings(files)
 	return files, nil
+}
+
+// globFiles は root からの相対パターン pat に一致するパスを返す。
+// パターンが不正なら 0 件へ縮退させずエラーを返す。走査対象が静かに空になると、そこに書かれた
+// 外部参照が検疫・固定・drift 検査のいずれからも外れたまま「固定漏れ無し」と report される。
+func globFiles(root, pat string) ([]string, error) {
+	m, err := filepath.Glob(filepath.Join(root, pat))
+	if err != nil {
+		return nil, xerrors.Wrap(err, "glob "+pat)
+	}
+	return m, nil
 }
 
 // fileRefs は data 中の uses: から固定対象の参照を返す（同一キーの重複を含む）。
@@ -261,16 +299,18 @@ func looseUsesValue(rest string) (string, bool) {
 	}
 }
 
-func resolve(root string, files []string, minAgeDays int) {
+// resolve は走査対象の参照を SHA へ解決して lockfile を書き直す。
+// apiBase は経過日数を問い合わせる GitHub API のルート URL（本番は githubAPIBase）。
+func resolve(root, apiBase string, files []string, minAgeDays int) error {
 	keys, err := collectKeys(root, files)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
 	// lockfile 不在（初回）は空マップで続行するが、それ以外の読み込み失敗は握り潰さず fail-close する
 	// （既存ピンが lock から脱落し供給網ガードの維持保証が破れるのを防ぐ。applyOrCheck と対称）。
 	existing, err := readLock(filepath.Join(root, lockFile))
 	if !isIgnorableLockErr(err) {
-		log.Fatalf("❌ read lockfile: %v", err)
+		return xerrors.Wrap(err, "read lockfile")
 	}
 
 	ctx := context.Background()
@@ -279,12 +319,12 @@ func resolve(root string, files []string, minAgeDays int) {
 	for k, r := range keys {
 		sha, err := resolveSHA(ctx, r.repo, r.tag)
 		if err != nil {
-			log.Fatalf("❌ resolve %s: %v", k, err)
+			return xerrors.Wrap(err, "resolve "+k)
 		}
-		ageFn := func() (int, error) { return refAgeDays(ctx, r.repo, r.tag, sha) }
+		ageFn := func() (int, error) { return refAgeDays(ctx, apiBase, r.repo, r.tag, sha) }
 		use, note, err := quarantine(ageFn, k, sha, minAgeDays, existing)
 		if err != nil {
-			log.Fatalf("❌ age %s: %v", k, err)
+			return xerrors.Wrap(err, "age "+k)
 		}
 		if note != "" {
 			notes = append(notes, note)
@@ -301,9 +341,11 @@ func resolve(root string, files []string, minAgeDays int) {
 	}
 
 	if err := writeLock(filepath.Join(root, lockFile), lock); err != nil {
-		log.Fatalf("❌ write lockfile: %v", err)
+		return xerrors.Wrap(err, "write lockfile")
 	}
 	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
+
+	return nil
 }
 
 func collectKeys(root string, files []string) (map[string]ref, error) {
@@ -348,13 +390,14 @@ func quarantine(ageFn func() (int, error), key, candidate string, minAgeDays int
 }
 
 // refAgeDays は解決先の経過日数を返す。tag に対応する Release の published_at と sha の commit 日時を
-// 常に両方取得し、新しい方から算出する。
-func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
+// 常に両方取得し、新しい方から算出する。apiBase は GitHub API のルート URL（本番は githubAPIBase）。
+// Release が無い（404）ときは commit 日時のみで算出し、それ以外の非 200 はエラーにする。
+func refAgeDays(ctx context.Context, apiBase, repo, tag, sha string) (int, error) {
 	var release struct {
 		//nolint:tagliatelle // GitHub API のレスポンスフィールド名(published_at)に合わせる必要があるため
 		PublishedAt time.Time `json:"published_at"`
 	}
-	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &release)
+	st, err := githubGet(ctx, apiBase+"/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &release)
 	if err != nil {
 		return 0, err
 	}
@@ -373,7 +416,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 			} `json:"committer"`
 		} `json:"commit"`
 	}
-	st, err = githubGet(ctx, "https://api.github.com/repos/"+repo+"/commits/"+url.PathEscape(sha), &commit)
+	st, err = githubGet(ctx, apiBase+"/repos/"+repo+"/commits/"+url.PathEscape(sha), &commit)
 	if err != nil {
 		return 0, err
 	}
@@ -517,44 +560,61 @@ func orphanKeys(lock map[string]string, used map[string]bool) []string {
 }
 
 // applyOrCheck は lockfile を SSOT に uses: を固定する。dryRun=true は書き換えず drift を非ゼロ終了で報告する。
-func applyOrCheck(root string, files []string, dryRun bool) {
+func applyOrCheck(root string, files []string, dryRun bool) error {
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
-		log.Fatalf("❌ read lockfile（先に resolve を実行してください）: %v", err)
+		return xerrors.Wrap(err, "read lockfile（先に resolve を実行してください）")
 	}
 	plan, err := planRewrites(root, files, lock)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
 	if err := plan.validate(lock); err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
 
-	paths := make([]string, 0, len(plan.changes))
-	for f := range plan.changes {
-		paths = append(paths, f)
-	}
-	sort.Strings(paths)
+	paths := sortedChangePaths(plan.changes)
 
 	if dryRun {
 		if len(paths) > 0 {
-			drifted := make([]string, 0, len(paths))
-			for _, f := range paths {
-				drifted = append(drifted, rel(root, f))
-			}
-			log.Fatalf("❌ 未固定/古い参照があります（make pin-actions-resolve && make pin-actions-apply してコミットしてください）: %s",
-				strings.Join(drifted, ", "))
+			return xerrors.Wrap(errPinDrift,
+				"make pin-actions-resolve && make pin-actions-apply してコミットしてください: "+
+					strings.Join(relAll(root, paths), ", "))
 		}
 		log.Printf("✅ 全アクションが lockfile 通りに固定されています")
-		return
+
+		return nil
 	}
 	for _, f := range paths {
 		if err := os.WriteFile(f, []byte(plan.changes[f]), filePerm); err != nil {
-			log.Fatalf("❌ write %s: %v", rel(root, f), err)
+			return xerrors.Wrap(err, "write "+rel(root, f))
 		}
 		log.Printf("  updated %s", rel(root, f))
 	}
 	log.Printf("✅ %d ファイルを固定しました", len(paths))
+
+	return nil
+}
+
+// sortedChangePaths は書き換えが必要なファイルの絶対パスを昇順で返す。
+// map の反復順は不定なので、そのまま使うと drift 報告と更新ログの並びが実行ごとに揺れ、
+// CI の失敗メッセージ差分がレビューで読めなくなる。
+func sortedChangePaths(changes map[string]string) []string {
+	paths := make([]string, 0, len(changes))
+	for f := range changes {
+		paths = append(paths, f)
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+// relAll は paths を root からの相対パスへ順序を保って写す。
+func relAll(root string, paths []string) []string {
+	out := make([]string, 0, len(paths))
+	for _, p := range paths {
+		out = append(out, rel(root, p))
+	}
+	return out
 }
 
 // resolveSHA は owner/repo の tag/branch を commit SHA へ解決する。annotated tag は ^{} で deref する。

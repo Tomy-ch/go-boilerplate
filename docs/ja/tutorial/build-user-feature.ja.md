@@ -76,7 +76,7 @@ git switch -c tutorial/build-user
 ## Step 0 —— ゼロへリセット
 
 リポジトリは、サンプルを構成する全ファイルを
-[`scripts/setup/lib/sample-api.mjs`](../../../scripts/setup/lib/sample-api.mjs) に宣言している。
+[`scripts/setup/remove-sample-api/sample-manifest.ts`](../../../scripts/setup/remove-sample-api/sample-manifest.ts) に宣言している。
 1 つのコマンドがそれらを削除し、共有 DI モジュールと `openapi.yaml` から `sample-api` マーカーブロックを
 取り除いたうえで、小さくなったツリーを再生成・検証する:
 
@@ -543,7 +543,7 @@ of Done の一部であり、任意の仕上げではない。
 - **ドリフトを確認する。** 複数レイヤーの変更後は、`/back-prop` と `/arch-check` が README とコードが
   まだ一致していることを確認する。
 - **2 つめの機能を追加する。** `product` と `order` は DB のみのスタブとして既に同梱されている
-  （`sample-api.mjs` マニフェスト参照）。どちらかをフルスタックへ昇格させるのが自然な次の練習である。
+  （`sample-manifest.ts` マニフェスト参照）。どちらかをフルスタックへ昇格させるのが自然な次の練習である。
 
 ## メンテナンスノート
 

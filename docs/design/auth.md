@@ -1,13 +1,13 @@
 # Authentication Subsystem Design Reference
 
-[jwt README](../../internal/infrastructure/auth/jwt/README.md) | [mock-auth-server README](../../docker/mock-auth-server/README.md) | 日本語: [auth.ja.md](../ja/design/auth.ja.md)
+[jwt README](../../internal/infrastructure/auth/jwt/README.md) | [mock-auth-server README](../../mock-auth-server/README.md) | 日本語: [auth.ja.md](../ja/design/auth.ja.md)
 
 This document consolidates the authentication subsystem's **role theory, state transitions (normal + error), implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. The subsystem has two halves that meet at one contract — a **JWKS key set** and an **access-token claim shape**:
 
 - **Resource-Server side** — the Go API *verifies* an incoming access token. It never mints one.
 - **Provider side** — `mock-auth-server`, a separate TypeScript service, *issues* tokens for local development and implements the OIDC login flow.
 
-For the verification core see the [jwt README](../../internal/infrastructure/auth/jwt/README.md); for the provider's HTTP surface and flows see the [mock-auth-server README](../../docker/mock-auth-server/README.md). This page is the cross-component narrative that ties them together.
+For the verification core see the [jwt README](../../internal/infrastructure/auth/jwt/README.md); for the provider's HTTP surface and flows see the [mock-auth-server README](../../mock-auth-server/README.md). This page is the cross-component narrative that ties them together.
 
 ---
 
@@ -185,7 +185,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 | DI wiring (env-driven authenticator selection, JWKS downstream profile) | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
 | Config (`AUTH_*`) | `internal/config/envspec.go`, `internal/config/model.go` |
 | Ops-path / metrics auth exception | `internal/controller/httpstack/oapi/skipper/`, ADR [0016](../adr/0016-metrics-endpoint-auth-exception.md) |
-| Development OIDC provider | `docker/mock-auth-server/` (`src/routes/oidc.ts`, `tokens.ts`, `pkce.ts`, `keys.ts`, `store.ts`) |
+| Development OIDC provider | `mock-auth-server/` (`src/routes/oidc.ts`, `tokens.ts`, `pkce.ts`, `keys.ts`, `store.ts`) |
 
 ---
 

@@ -486,8 +486,11 @@ Before generating code, AI agents must refer to the following documents.
 
 > Rationale: [ADR-0074](adr/0074-containerized-pinned-toolchain.md), [ADR-0075](adr/0075-mise-ssot-drift-gate.md).
 
-Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
-containerized tool-runners so they stay reproducible across machines.
+Tool versions are pinned in `mise.toml` (the single source of truth for everything mise resolves)
+and executed in the containerized tool-runners so they stay reproducible across machines. Tools
+installed from PyPI are declared in `python/*.in` and locked with per-package hashes in
+`python/*.txt` instead, because a mise pin leaves their transitive dependencies floating
+([ADR-0075](adr/0075-mise-ssot-drift-gate.md)).
 
 - Tool execution — lint / format / codegen / doc generation / commit-message lint / etc. — runs
   through the `make` targets that execute inside the tool-runners (`go_tool_runner` /

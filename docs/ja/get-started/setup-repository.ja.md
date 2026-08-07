@@ -50,7 +50,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user ス�
 **AI 支援レイヤを採らない判断は、導入側のアーキテクトが行います。** 本テンプレートは AI ツール無しでも完全に保守できるよう作られており（レイヤ規約の正本は [docs/rules.md](../../rules.md) であってアシスタント設定ではありません）、上記はビルド・テスト・リリースのいずれにも必須ではありません。採らない fork は、中途半端に設定を残さず意図的に外してください。
 
 - bootstrap 2 本を実行しない（以降のどの Phase もこれらに依存しません）
-- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint.mjs` の `graphify-out/` 記述
+- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint/index.ts` の `graphify-out/` 記述
 
 後から外すコストは今外すコストと同じなので、まず推奨構成で入れて後から判断する順序でも安全です。
 
@@ -64,6 +64,7 @@ make tools
 make db-init
 ```
 
+<!-- boilerplate:begin -->
 ## Phase 5: ローカライゼーションスクリプトの実行
 
 下記コマンドで、Goモジュール名を一括置換するスクリプトを実行してください。
@@ -93,7 +94,17 @@ make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib
+
+# 置換が当たったことを検証し、通ったら初期化ツールを撤去する。
+# 最後に実行する。上のスクリプトは一度きりのもので、ここが通るまでは何度でも当て直せる。
+make setup-verify
 ```
+
+`setup-verify` は、`replace-module` が対象と宣言した全ファイルにボイラープレート名が残っていないこと、
+および LICENSE・CODEOWNERS・README・OpenAPI が指定した値になっていることを確認する。通った場合にだけ
+`scripts/setup/replace-*` と自身を削除する。初期化済みのリポジトリへ当て直すのは誤りで、
+`replace-codeowners` は**全ルール**の所有者を単一の値へ書き換えてしまうため。`scripts/setup/lib` は、
+一度きりのツール 2 つ（これとサンプル削除）のうち後に走った方が道連れにする。
 
 ## Phase 6: ローカライゼーションの検証
 
@@ -111,7 +122,7 @@ curl http://localhost:8080/ready
 
 1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
 2. [README.md](../../../README.md) は英語で書かれているので、必要に応じて [README.ja.md](../../../README.ja.md) を [README.md](../../../README.md) に置換しても構いません。
-    - ただし、[gen-docs-json.mjs](../../../scripts/gen-docs-json.mjs) やその生成元になる [manifest.yaml](../../../docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
+    - ただし、[gen-docs-json.ts](../../../scripts/portal/gen-docs-json.ts) やその生成元になる [manifest.yaml](../../../docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
     - また、portal表示のReactも EnとJp切り替えを持つので、README.mdを日本語にする場合は、portal表示のReactも書き換える必要があります。
 3. [openapi.yaml](../../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。
     - Infoセクション全体をプロジェクトに合わせて書き換えてください。
@@ -122,6 +133,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
+<!-- boilerplate:end -->
 ## Phase 8: envファイルの書き換え
 
 [env/](../../../env/) ディレクトリ内のファイルをプロジェクトに合わせて書き換えてください。
@@ -196,7 +208,22 @@ usecase の [Authorizer](../../../internal/usecase/boundary/authz/authorizer.go)
 
 `Authorize(ctx, *auth.Authn, Action, *Resource)` のシグネチャは既に完全な `Authn`（subject / scopes / claims）と対象 `Resource`（任意の `OwnerID` 付き）を運ぶため、RBAC と所有者（オブジェクトレベル）モデルの双方を呼び出し箇所を変えずに表現できます。
 
-## Phase 12: テンプレートの意図的な除外（ADR）のレビュー
+## Phase 12: ボイラープレートの顔を消す
+
+このリポジトリは数箇所で自分をボイラープレートと呼んでいる（README の 2 節と、本ガイドの
+ローカライゼーション手順）。いずれもテンプレートの足場であって、あなたのプロジェクトの
+ドキュメントではない。
+
+```sh
+DRY_RUN=1 make setup-remove-boilerplate-identity
+make setup-remove-boilerplate-identity
+```
+
+マークされた記述を落とし、自身の make ターゲットの登録も外したうえで、ツール自身を撤去する。
+**触らないもの**: リポジトリ名・モジュール名（Phase 5 で置換済み）と、運用中も読み返す部分
+——後述の clamp 設定レビューと除外 ADR。これらは複数のパッケージ README から参照されている。
+
+## Phase 13: テンプレートの意図的な除外（ADR）のレビュー
 
 認証・認可（Phase 11）やデプロイ（Phase 10）以外にも、このテンプレートはいくつかの**意図的な非選択**をしています。例：アプリ内レート制限器を持たない / 汎用 Cache 抽象を持たない / scheduled job の並走制御はスケジューラに委譲 / push・streaming ブローカーは worker の対象外。
 
@@ -213,7 +240,7 @@ grep -rl "setup-review" docs/adr/
 
 不変（元 ADR は編集せず supersede する新 ADR を追加）モデルは、**運用開始後**に決定を見直すときに適用します。セットアップ時の一度きりの再ベースライン化には適用しません。
 
-## Phase 13: 依存ライセンス方針の決定
+## Phase 14: 依存ライセンス方針の決定
 
 依存ライセンススキャン（`make trivy-license` と [.github/workflows/trivy-fs.yaml](../../../.github/workflows/trivy-fs.yaml) の `trivy-license` ジョブ）は**恒久的に報告専用**です。全依存のライセンスをジョブサマリと PR コメントへ列挙するだけで、ビルドを落とすことはありません。
 
@@ -226,7 +253,7 @@ grep -rl "setup-review" docs/adr/
 3. [.makefiles/security/trivy.mk](../../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../../.trivyignore.yaml) へ記録する。
 4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0084](../../../docs/adr/0084-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
 
-## Phase 14: サンプルAPIの削除
+## Phase 15: サンプルAPIの削除
 
 このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
 
@@ -234,7 +261,7 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
 
 ### 削除手順
 
-自動コマンドを使用します。[scripts/setup/lib/sample-api.mjs](../../../scripts/setup/lib/sample-api.mjs) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
+自動コマンドを使用します。[scripts/setup/remove-sample-api/sample-manifest.ts](../../../scripts/setup/remove-sample-api/sample-manifest.ts) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
 
 > 実行前に **DB コンテナが起動している必要があります** — 末尾の `gen-query` は `pg_dump` で**ライブ**スキーマをダンプするため、DB 停止状態では `connection refused` で失敗します。
 
@@ -259,7 +286,7 @@ make gen-query
 - 基盤マスタデータ `prefecture`（マイグレーション `000001` など）は**残します**。
 - `gen-query` は**ライブ** DB の `pg_dump` から Go モデルを再生成します。上記の DB 再構築を省くと、残存する `users` テーブルが再ダンプされ `models.gen.go` に古い `Users` 型が再生成されます。再構築＋再 `gen-query` が実際に型を消す手順です。
 - 共有生成物（`*.gen.go` / `openapi.gen.yaml` など）は直接削除せず、再生成ステップで更新されます。
-- サンプルは3ドメイン構成です。`user` はフルスタック、`product` / `order` は現状 DB スタブ（マイグレーション＋商品 seed）のみです。`product` / `order` を本格的な API に拡張したら、`sample-api.mjs` の該当ドメインブロックに新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（または行末の `// sample-api:line`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
+- サンプルは3ドメイン構成です。`user` はフルスタック、`product` / `order` は現状 DB スタブ（マイグレーション＋商品 seed）のみです。`product` / `order` を本格的な API に拡張したら、`sample-manifest.ts` の該当ドメインブロックに新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（または行末の `// sample-api:line`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
 
 ### 規則から例が消えるので、自分の例を置き直す
 

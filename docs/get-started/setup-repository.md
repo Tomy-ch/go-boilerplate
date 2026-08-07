@@ -50,7 +50,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope
 **Declining the AI-assist layer is the adopting architect's call.** This template is built to stay fully maintainable without AI tooling — the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration — so nothing above is load-bearing for building, testing, or shipping. A fork that does not want the layer should remove it deliberately rather than leave it half-configured:
 
 - skip both bootstraps; no other phase of this setup depends on them, and
-- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint.mjs`.
+- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint/index.ts`.
 
 Removing it later costs the same as removing it now, so adopting the recommended configuration first and deciding afterwards is a safe order.
 
@@ -64,6 +64,7 @@ make tools
 make db-init
 ```
 
+<!-- boilerplate:begin -->
 ## Phase 5: Execute Localization Script
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
@@ -93,7 +94,19 @@ make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib
+
+# Verify the replacements landed, then remove the localization tooling.
+# Run this last: the scripts above are one-shot, and keeping them lets you re-run
+# any of them until this passes.
+make setup-verify
 ```
+
+`setup-verify` checks that every file `replace-module` claims to cover is free of the
+boilerplate name, and that LICENSE, CODEOWNERS, README and the OpenAPI spec carry the values you
+passed. Only once it passes does it delete `scripts/setup/replace-*` and itself — re-applying
+them to an already-localized repository is wrong, since `replace-codeowners` rewrites *every*
+rule's owner to a single value. `scripts/setup/lib` goes with whichever of the two one-shot
+tools (this one and the sample remover) runs last.
 
 ## Phase 6: Localization Verification
 
@@ -119,6 +132,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
+<!-- boilerplate:end -->
 ## Phase 8: Rewrite env Files
 
 Rewrite the files in the [env/](../../env/) directory according to your project.
@@ -201,7 +215,23 @@ Create authorization functionality by implementing the usecase [Authorizer](../.
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
-## Phase 12: Review the template's deliberate exclusions (ADRs)
+## Phase 12: Remove the boilerplate identity
+
+This repository describes itself as a boilerplate in a few places — two passages in the READMEs
+and the localization phases of this guide. They are template scaffolding, not your project's
+documentation.
+
+```sh
+DRY_RUN=1 make setup-remove-boilerplate-identity
+make setup-remove-boilerplate-identity
+```
+
+It strips the marked passages, drops its own make target from the registry, and then removes
+itself. What it does **not** touch: the repository / module name (already replaced in Phase 5),
+and the parts of this guide you keep reading — the clamped-config review and the exclusion ADRs
+below, which several package READMEs link to.
+
+## Phase 13: Review the template's deliberate exclusions (ADRs)
 
 Beyond authentication / authorization (Phase 11) and deployment (Phase 10), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
 
@@ -218,7 +248,7 @@ For your project, review each and decide:
 
 The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
-## Phase 13: Decide the dependency-license policy
+## Phase 14: Decide the dependency-license policy
 
 The dependency-license scan (`make trivy-license`, and the `trivy-license` job in [.github/workflows/trivy-fs.yaml](../../.github/workflows/trivy-fs.yaml)) is **report-only, permanently**. It enumerates every dependency's license into the job summary and a PR comment, and never fails the build.
 
@@ -231,7 +261,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
 4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0084](../adr/0084-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
-## Phase 14: Remove Sample APIs
+## Phase 15: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 
@@ -239,7 +269,7 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
 
 ### Removal Procedure
 
-Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-api.mjs](../../scripts/setup/lib/sample-api.mjs), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
+Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/remove-sample-api/sample-manifest.ts](../../scripts/setup/remove-sample-api/sample-manifest.ts), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
 
 > **The DB container must be running** before you run this — the final `gen-query` step dumps the **live** schema with `pg_dump`, so a stopped DB fails with `connection refused`.
 
@@ -264,7 +294,7 @@ Notes:
 - The base master data `prefecture` (migration `000001`, etc.) is **kept**.
 - `gen-query` regenerates Go models from a `pg_dump` of the **live** DB. If you skip the DB rebuild above, the still-present `users` table is re-dumped and a stale `Users` type is regenerated into `models.gen.go` — the rebuild + re-`gen-query` is what actually drops it.
 - Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step.
-- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-api.mjs`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
+- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-manifest.ts`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
 
 ### Rules keep their examples only until you remove the sample
 

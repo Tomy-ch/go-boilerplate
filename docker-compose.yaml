@@ -172,7 +172,7 @@ services:
 # 補助サービス
 # -------------------------------------
 
-  docs_viewer: # 開発用ドキュメントビューア
+  docs_server: # 開発用ドキュメント配信（docs/ を nginx で配る）
     build:
       context: .
       dockerfile: docker/document/Dockerfile
@@ -249,6 +249,9 @@ services:
       - .:/app
       # node_modules を匿名ボリュームで保持（バインドマウントの shadow 回避）
       - /app/scripts/node_modules
+      # docs-viewer も同様。host（darwin）が解決した vite / rolldown のバイナリは
+      # コンテナ（linux）では実行できないため、バインドマウント越しに見せない
+      - /app/docs-viewer/node_modules
     working_dir: /app
     entrypoint: ""
     profiles:

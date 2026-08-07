@@ -35,8 +35,12 @@ migrations, or as a generated artifact rebuilt from a schema someone else was mi
 that resolves a database name — `db-migrate-*` / `db-seed` / `db-drop-tables` / `db-ensure` /
 `dump-schema`, plus `make test` / `test-cached` / `gen-test-repo` (a host-run `go test` reads
 `DB_NAME_TEST`) and `make serve` / `serve-build` / `serve-build-clean` (the app container reads
-`DB_NAME_LOCAL`). It detects a linked worktree by the `git-dir` ≠ `git-common-dir` split, so the main
-checkout, CI, and the tool-runner containers pass through untouched.
+`DB_NAME_LOCAL`). The check lives in `internal/cli/dbslot`. A linked worktree is identified by the
+`git-dir` ≠ `git-common-dir` split, so the main checkout and CI pass through untouched. The cases
+where `git` cannot answer at all are not treated alike: no `git` executable (the tool-runner
+containers) and no repository both pass through, since neither can be a worktree, while a directory
+that *is* a repository whose layout `git` will not report fails instead — a worktree cannot be ruled
+out there, and falling back silently is precisely what this guard exists to prevent.
 
 The consequence to know about: in a worktree, `make test` fails until you run `make slot-acquire`.
 That is the point — before this guard it quietly ran against the shared `test` database.
@@ -206,7 +210,7 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   replacing it. The cost is that a *legitimate* definition change — a new image digest pin, an
   edited `garage.toml` — no longer takes effect on its own: run `make infra-down && make infra-up`
   at a point where every checkout can afford the interruption. The same applies to the `tools`
-  profile, so `docs_viewer` keeps serving the `docs/` of whichever checkout first created it.
+  profile, so `docs_server` keeps serving the `docs/` of whichever checkout first created it.
   A single checkout has no one to contend with, so the flag stays empty there and compose
   re-converges on a definition change as usual.
 - **Object storage is shared**: the `garage` bucket is common to every checkout (unlike a database it
@@ -227,7 +231,7 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   checkout. Per-slot queues are not pre-declared because the pool size is configurable
   (`GOBP_DB_POOL_MAX`), and a static list in the conf would silently stop covering the pool as soon as
   that value changed.
-- `sql_editor` / `docs_viewer` / `er_diagram_generator` / `mock_auth_server` sit in the `2000` range
+- `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` sit in the `2000` range
   because none of them has a de-facto port of its own. The rule, and why that range is safe, are in
   [`local-environment.md`](local-environment.md).
 - The wiring spans `docker/`, `internal/cli/dbslot`, and `.makefiles/`, so update this document

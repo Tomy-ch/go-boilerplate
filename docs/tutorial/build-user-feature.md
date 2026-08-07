@@ -76,7 +76,7 @@ git switch -c tutorial/build-user
 ## Step 0 — Reset to zero
 
 The repository declares every file that constitutes the sample in
-[`scripts/setup/lib/sample-api.mjs`](../../scripts/setup/lib/sample-api.mjs). One command
+[`scripts/setup/remove-sample-api/sample-manifest.ts`](../../scripts/setup/remove-sample-api/sample-manifest.ts). One command
 deletes them and strips the `sample-api` marker blocks out of the shared DI modules and
 `openapi.yaml`, then regenerates and verifies the now-smaller tree:
 
@@ -559,7 +559,7 @@ the Definition of Done, not an optional polish.
 - **Check for drift.** After any multi-layer change, `/back-prop` and `/arch-check` confirm
   the READMEs and code still agree.
 - **Add a second feature.** `product` and `order` already ship as DB-only stubs (see the
-  `sample-api.mjs` manifest); promoting one to a full stack is the natural next exercise.
+  `sample-manifest.ts` manifest); promoting one to a full stack is the natural next exercise.
 
 ## Maintenance note
 

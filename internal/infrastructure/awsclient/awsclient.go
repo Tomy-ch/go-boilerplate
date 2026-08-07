@@ -61,6 +61,10 @@ type Config struct {
 // chain の接続先を差し替えられる（AWS_EC2_METADATA_SERVICE_ENDPOINT / HTTPS_PROXY 等）のは
 // プロセスの環境変数を書ける主体だけで、その主体は資格情報そのものにも手が届きます。
 func Resolve(ctx context.Context, cfg Config) (aws.Config, error) {
+	if err := ctx.Err(); err != nil {
+		return aws.Config{}, xerrors.Wrap(ErrInvalidCredentials, err.Error())
+	}
+
 	opts := []func(*awsconfig.LoadOptions) error{awsconfig.WithRegion(cfg.Region)}
 
 	switch {

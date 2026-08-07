@@ -7,8 +7,8 @@
 #   - 実在の欠落はルールを緩めるのではなく spec 側を直す。
 
 # ruleset は node の解決規則でこのファイルの位置（リポジトリルート）から探されるため、
-# npm 依存を持つ docker/tools 配下を明示する。
-extends: ["./docker/tools/node_modules/@stoplight/spectral-owasp-ruleset/dist/ruleset.js"]
+# 依存を持つ scripts/ 配下を明示する。
+extends: ["./scripts/node_modules/@stoplight/spectral-owasp-ruleset/dist/ruleset.js"]
 
 rules:
   # --- レート制限系: ADR-0099 と衝突するため無効化 ---

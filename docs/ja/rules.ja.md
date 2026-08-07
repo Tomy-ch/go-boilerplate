@@ -424,8 +424,10 @@ AI エージェントは以下を守る必要があります。
 
 ## ツールチェイン実行ルール
 
-ツールのバージョンは `mise.toml`（単一の真実源）に固定され、コンテナ化された tool-runner 内で
-実行することで、マシン間の再現性を保ちます。
+ツールのバージョンは `mise.toml`（mise が解決するもの全部についての単一の真実源）に固定され、
+コンテナ化された tool-runner 内で実行することで、マシン間の再現性を保ちます。PyPI から入れる
+ツールだけは `python/*.in` で宣言し、`python/*.txt` にパッケージごとのハッシュ付きで固定します。
+mise の pin では推移依存が固定されないためです（[ADR-0075](adr/0075-mise-ssot-drift-gate.ja.md)）。
 
 - ツール実行（lint / format / codegen / doc 生成 / commit-message lint 等）は、tool-runner
   （`go_tool_runner` / `node_tool_runner` / `python_tool_runner`）内で走る `make` ターゲット経由で

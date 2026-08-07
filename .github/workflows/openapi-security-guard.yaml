@@ -17,8 +17,9 @@ on:
       - '.github/workflows/openapi-security.yaml'
       - '.spectral.yaml'
       - 'openapi/**'
-      - 'docker/tools/package.json'
-      - 'docker/tools/package-lock.json'
+      - 'scripts/package.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'scripts/pnpm-workspace.yaml'
 
 permissions:
   contents: read

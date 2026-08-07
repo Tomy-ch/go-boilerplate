@@ -1,14 +1,22 @@
 name: mise Cooldown
 
-# `mise.toml` pins every CLI tool this repository uses, and until now nothing checked how old a
-# pinned version was. The convention itself already existed — two entries in that file record a
-# version being held back for not clearing the window — so this workflow mechanises a rule that
-# was being applied by hand, rather than introducing one.
+# `mise.toml` pins every CLI tool this repository resolves through mise, and until now nothing
+# checked how old a pinned version was. The convention itself already existed — entries in that
+# file record a version being held back for not clearing the window — so this workflow mechanises
+# a rule that was being applied by hand, rather than introducing one.
+#
+# PyPI tools are declared in `python/*.in` instead, because they install from a hash-pinned
+# lockfile rather than through mise. They are checked here all the same: the upstream registry is
+# the same one, and so is the risk of grabbing a version too new for anyone to have noticed it is
+# malicious. The lockfiles themselves (transitive dependencies) are out of scope, for the same
+# reason `go-cooldown` only gates direct requirements. A declaration that has drifted from its
+# lockfile is reported as a violation, since the version cleared here would then not be the
+# version installed.
 #
 # The window has two tiers, taken from the backend rather than from the tool. A version resolved
 # through a GitHub release (aqua / ubi / github) gets 14 days, the same as `pin-actions` and
 # `pin-images`, because a tag can be moved onto a different commit. A version resolved through a
-# package registry (go / npm / pipx) gets 7 days, the same as `npm-cooldown-audit` and
+# package registry (go / npm / PyPI) gets 7 days, the same as `npm-cooldown-audit` and
 # `go-cooldown`, because a published version there is immutable.
 #
 # **Language runtimes are deliberately not checked.** If the go / node / python distribution
@@ -24,6 +32,8 @@ on:
   pull_request:
     paths:
       - 'mise.toml'
+      - 'python/*.in'
+      - 'python/*.txt'
       - 'scripts/mise-cooldown/**'
       - '.github/mise-cooldown-bypass.toml'
       - '.github/workflows/mise-cooldown.yaml'

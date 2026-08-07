@@ -19,16 +19,18 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'vendor/**'
-      - 'docker/tools/package-lock.json'
-      - 'docker/mock-auth-server/package-lock.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
       - '.github/workflows/osv-scanner.yaml'
       - 'go.mod'
       - 'go.sum'
       - 'vendor/**'
-      - 'docker/tools/package-lock.json'
-      - 'docker/mock-auth-server/package-lock.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
   schedule:
     - cron: '0 3 * * 1'
   workflow_dispatch:

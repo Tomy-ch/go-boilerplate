@@ -39,7 +39,6 @@ import (
 const (
 	lockFile        = "docker/images-pin.toml"
 	filePerm        = 0o644
-	minArgs         = 2 // プログラム名 + サブコマンド
 	inspectTimeout  = 60 * time.Second
 	hoursPerDay     = 24
 	createdTimeCols = 3 // "2006-01-02 15:04:05.000 +0000 UTC" を最初の 3 フィールドで再構成
@@ -57,10 +56,22 @@ var (
 )
 
 var (
+	// errUsage は、サブコマンドが無いか未知の場合のエラー。
+	errUsage = xerrors.New("usage: pin-images <resolve|apply|check>")
 	// errDigestUnparsable は、inspect 出力から Digest 行を解析できなかった場合のエラー。
 	errDigestUnparsable = xerrors.New("Digest 行を解析できません")
 	// errCreatedUnparsable は、inspect 出力から image config の created を解析できなかった場合のエラー。
 	errCreatedUnparsable = xerrors.New("created を解析できません")
+	// errLockInvalidLine は、lockfile に代入として解釈できない行があった場合のエラー。
+	errLockInvalidLine = xerrors.New("lockfile に解釈できない行があります")
+	// errLockDuplicateKey は、lockfile に同一キーが複数回現れた場合のエラー。
+	errLockDuplicateKey = xerrors.New("lockfile にキーの重複があります")
+	// errLockMissingImage は、参照されている image が lockfile に登録されていない場合のエラー。
+	errLockMissingImage = xerrors.New("lockfile に未登録の base image があります")
+	// errPinDrift は、check で未固定・lockfile 不一致の image 参照を検出した場合のエラー。
+	errPinDrift = xerrors.New("image 参照が未固定か lockfile と不一致です")
+	// errNoStepBack は、退行先の無い出来立て digest しか無く採用を見送った場合のエラー。
+	errNoStepBack = xerrors.New("退行先の無い出来立て image は採用できません")
 )
 
 // target は走査対象のファイルと、その参照行を捕捉する正規表現（prefix/ref/suffix の 3 グループ）。
@@ -77,42 +88,65 @@ type imageRef struct {
 
 func (r imageRef) key() string { return r.image + ":" + r.tag }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
-	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: pin-images <resolve|apply|check>")
-	}
-	root, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("❌ getwd: %v", err)
-	}
-	targets, err := targetFiles(root)
-	if err != nil {
+
+	if err := run(os.Args[1:], os.Getwd); err != nil {
 		log.Fatalf("❌ %v", err)
 	}
-	switch os.Args[1] {
+}
+
+// run は、サブコマンドを解釈して固定処理へ振り分けます。
+// wd は走査の基点となるディレクトリの取得手段で、差し替えられるよう引数で受けます。
+func run(args []string, wd func() (string, error)) error {
+	if len(args) == 0 {
+		return errUsage
+	}
+
+	root, err := wd()
+	if err != nil {
+		return xerrors.Wrap(err, "getwd")
+	}
+
+	targets, err := targetFiles(root)
+	if err != nil {
+		return err
+	}
+
+	switch args[0] {
 	case "resolve":
-		fs := flag.NewFlagSet("resolve", flag.ExitOnError)
+		fs := flag.NewFlagSet("resolve", flag.ContinueOnError)
 		minAge := fs.Int("min-age-days", 0, "N 日未満の新しすぎる digest は quarantine（0 で無効）")
-		_ = fs.Parse(os.Args[2:])
-		resolve(root, targets, *minAge)
+		if err := fs.Parse(args[1:]); err != nil {
+			// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+			if xerrors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+
+			return xerrors.Wrap(err, "failed to parse flags")
+		}
+
+		return resolve(root, targets, *minAge)
 	case "apply":
-		applyOrCheck(root, targets, false)
+		return applyOrCheck(root, targets, false)
 	case "check":
-		applyOrCheck(root, targets, true)
+		return applyOrCheck(root, targets, true)
 	default:
-		log.Fatalf("❌ usage: pin-images <resolve|apply|check>")
+		return errUsage
 	}
 }
 
 func targetFiles(root string) ([]target, error) {
-	dockerfiles, err := filepath.Glob(filepath.Join(root, "docker/*/Dockerfile"))
+	dockerfiles, err := globFiles(root, "docker/*/Dockerfile")
 	if err != nil {
-		return nil, xerrors.Wrap(err, "glob docker/*/Dockerfile")
+		return nil, err
 	}
-	compose, err := filepath.Glob(filepath.Join(root, "docker-compose*.yaml"))
+	compose, err := globFiles(root, "docker-compose*.yaml")
 	if err != nil {
-		return nil, xerrors.Wrap(err, "glob docker-compose*.yaml")
+		return nil, err
 	}
 	var targets []target
 	for _, f := range dockerfiles {
@@ -123,6 +157,17 @@ func targetFiles(root string) ([]target, error) {
 	}
 	sort.Slice(targets, func(i, j int) bool { return targets[i].path < targets[j].path })
 	return targets, nil
+}
+
+// globFiles は root からの相対パターン pat に一致するパスを返す。
+// パターンが不正なら 0 件へ縮退させずエラーを返す。走査対象が静かに空になると、そこに書かれた
+// image 参照が検疫・固定・drift 検査のいずれからも外れたまま「全て固定済み」と report される。
+func globFiles(root, pat string) ([]string, error) {
+	m, err := filepath.Glob(filepath.Join(root, pat))
+	if err != nil {
+		return nil, xerrors.Wrap(err, "glob "+pat)
+	}
+	return m, nil
 }
 
 // parseRef は FROM / compose image の ref を image:tag へ分解する。第2戻り値が false なら対象外
@@ -145,9 +190,18 @@ func lastColonSplit(s string) (string, string, bool) {
 	return s[:i], s[i+1:], true
 }
 
-func resolve(root string, targets []target, minAgeDays int) {
-	keys := collectKeys(targets)
-	existing, _ := readLock(filepath.Join(root, lockFile)) // 無ければ空
+func resolve(root string, targets []target, minAgeDays int) error {
+	keys, err := collectKeys(targets)
+	if err != nil {
+		return err
+	}
+	// lockfile 不在（初回）は空マップで続行するが、それ以外の読み込み失敗は握り潰さず fail-close する
+	// （既存ピンが lock から脱落して quarantine の退行先が消え、出来立ての未検証 digest を掴むか
+	// errNoStepBack で落ちるかの二択になるのを防ぐ。applyOrCheck と対称）。
+	existing, err := readLock(filepath.Join(root, lockFile))
+	if !isIgnorableLockErr(err) {
+		return xerrors.Wrap(err, "read lockfile")
+	}
 
 	ctx := context.Background()
 	lock := map[string]string{}
@@ -155,9 +209,12 @@ func resolve(root string, targets []target, minAgeDays int) {
 	for k, r := range keys {
 		digest, err := resolveDigest(ctx, r.key())
 		if err != nil {
-			log.Fatalf("❌ resolve %s: %v", k, err)
+			return xerrors.Wrap(err, "resolve "+k)
 		}
-		use, note := quarantine(ctx, r, k, digest, minAgeDays, existing)
+		use, note, err := quarantine(ctx, r, k, digest, minAgeDays, existing)
+		if err != nil {
+			return xerrors.Wrap(err, "age "+k)
+		}
 		if note != "" {
 			notes = append(notes, note)
 		}
@@ -174,7 +231,7 @@ func resolve(root string, targets []target, minAgeDays int) {
 	}
 
 	if err := writeLock(filepath.Join(root, lockFile), lock); err != nil {
-		log.Fatalf("❌ write lockfile: %v", err)
+		return xerrors.Wrap(err, "write lockfile")
 	}
 	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
 
@@ -182,18 +239,21 @@ func resolve(root string, targets []target, minAgeDays int) {
 	// tag のみ運用を許すと未検証 digest を掴むため、check も同状態を弾く（fail-closed）。
 	if len(skipped) > 0 {
 		sort.Strings(skipped)
-		log.Fatalf("❌ 退行先の無い出来立て image は採用できません（%d 日未満・既存ピン無し）。"+
-			"aged 後に再実行するか、緊急時のみ --min-age-days=0 で明示採用してください: %s",
-			minAgeDays, strings.Join(skipped, ", "))
+
+		return xerrors.Wrap(errNoStepBack, fmt.Sprintf(
+			"%d 日未満・既存ピン無し。aged 後に再実行するか、緊急時のみ --min-age-days=0 で明示採用してください: %s",
+			minAgeDays, strings.Join(skipped, ", ")))
 	}
+
+	return nil
 }
 
-func collectKeys(targets []target) map[string]imageRef {
+func collectKeys(targets []target) (map[string]imageRef, error) {
 	keys := map[string]imageRef{}
 	for _, t := range targets {
 		data, err := os.ReadFile(t.path)
 		if err != nil {
-			log.Fatalf("❌ read %s: %v", t.path, err)
+			return nil, xerrors.Wrap(err, "read "+t.path)
 		}
 		for _, m := range t.re.FindAllStringSubmatch(string(data), -1) {
 			if r, ok := parseRef(m[2]); ok {
@@ -201,25 +261,26 @@ func collectKeys(targets []target) map[string]imageRef {
 			}
 		}
 	}
-	return keys
+	return keys, nil
 }
 
 // quarantine は minAgeDays 未満の新しすぎる digest を採用しない。第1戻り値 "" は skip。
-func quarantine(ctx context.Context, r imageRef, key, candidate string, minAgeDays int, existing map[string]string) (string, string) {
+// 経過日数の取得に失敗した場合は err で呼び出し元へ伝播する。
+func quarantine(ctx context.Context, r imageRef, key, candidate string, minAgeDays int, existing map[string]string) (string, string, error) {
 	if minAgeDays <= 0 {
-		return candidate, ""
+		return candidate, "", nil
 	}
 	age, err := digestAgeDays(ctx, r.key())
 	if err != nil {
-		log.Fatalf("❌ age %s: %v", key, err)
+		return "", "", err
 	}
 	if age >= minAgeDays {
-		return candidate, ""
+		return candidate, "", nil
 	}
 	if prev, ok := existing[key]; ok {
-		return prev, fmt.Sprintf("%s: 現 digest が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays)
+		return prev, fmt.Sprintf("%s: 現 digest が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays), nil
 	}
-	return "", fmt.Sprintf("%s: 現 digest が %d 日 (<%d)・既存ピン無しのため tag のまま skip", key, age, minAgeDays)
+	return "", fmt.Sprintf("%s: 現 digest が %d 日 (<%d)・既存ピン無しのため tag のまま skip", key, age, minAgeDays), nil
 }
 
 // resolveDigest は image:tag の現在の index digest を registry から取得する。
@@ -326,17 +387,21 @@ func rewritePins(data string, re *regexp.Regexp, lock map[string]string) (string
 
 // applyOrCheck は lockfile を SSOT に FROM を digest 固定する。dryRun=true は書き換えず
 // 未固定/未登録/drift を非ゼロ終了で報告する。tag のみへ戻す正規化はしない（fail-closed）。
-func applyOrCheck(root string, targets []target, dryRun bool) {
+//
+// 全ファイルを読み切って未登録の有無を確定させてから書き込む。1 ファイルずつ書きながら進むと、
+// 後続ファイルの未登録参照で中断したときに「exit 1 なのに作業ツリーは書き換え済み」という
+// 中途半端な状態が残る。
+func applyOrCheck(root string, targets []target, dryRun bool) error {
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
-		log.Fatalf("❌ read lockfile（先に make pin-images-resolve を実行してください）: %v", err)
+		return xerrors.Wrap(err, "read lockfile（先に make pin-images-resolve を実行してください）")
 	}
-	var missing, drifted []string
-	changed := 0
+	var missing, drifted, pending []string
+	rewritten := map[string]string{}
 	for _, t := range targets {
 		data, err := os.ReadFile(t.path)
 		if err != nil {
-			log.Fatalf("❌ read %s: %v", t.path, err)
+			return xerrors.Wrap(err, "read "+rel(root, t.path))
 		}
 		out, miss := rewritePins(string(data), t.re, lock)
 		missing = append(missing, miss...)
@@ -347,31 +412,53 @@ func applyOrCheck(root string, targets []target, dryRun bool) {
 			drifted = append(drifted, rel(root, t.path))
 			continue
 		}
-		if err := os.WriteFile(t.path, []byte(out), filePerm); err != nil { //nolint:gosec // 管理対象ファイル権限
-			log.Fatalf("❌ write %s: %v", t.path, err)
-		}
-		changed++
-		log.Printf("  updated %s", rel(root, t.path))
+		pending = append(pending, t.path)
+		rewritten[t.path] = out
 	}
-	report(missing, drifted, dryRun, changed)
+
+	if err := validateMissing(missing); err != nil {
+		return err
+	}
+
+	for _, path := range pending {
+		if err := os.WriteFile(path, []byte(rewritten[path]), filePerm); err != nil {
+			return xerrors.Wrap(err, "write "+rel(root, path))
+		}
+		log.Printf("  updated %s", rel(root, path))
+	}
+
+	return report(drifted, dryRun, len(pending))
 }
 
-func report(missing, drifted []string, dryRun bool, changed int) {
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		log.Fatalf("❌ lockfile に未登録の base image があります（make pin-images-resolve を実行してください）: %s",
-			strings.Join(uniq(missing), ", "))
+// validateMissing は lockfile 未登録の image があればエラーを返す。書き込みより前に呼ぶことで、
+// 未登録を検出した実行が作業ツリーを一切変更しないことを保証する。
+func validateMissing(missing []string) error {
+	if len(missing) == 0 {
+		return nil
 	}
+	sort.Strings(missing)
+
+	return xerrors.Wrap(errLockMissingImage,
+		strings.Join(uniq(missing), ", ")+"（make pin-images-resolve を実行してください）")
+}
+
+// report は固定結果を報告する。dryRun では drift を検出した時点でエラーを返す。
+func report(drifted []string, dryRun bool, changed int) error {
 	if !dryRun {
 		log.Printf("✅ %d ファイルを固定しました", changed)
-		return
+
+		return nil
 	}
 	if len(drifted) > 0 {
 		sort.Strings(drifted)
-		log.Fatalf("❌ image 参照が未固定か lockfile と不一致です（make pin-images-resolve && make pin-images-apply してコミットしてください）: %s",
-			strings.Join(drifted, ", "))
+
+		return xerrors.Wrap(errPinDrift,
+			"make pin-images-resolve && make pin-images-apply してコミットしてください: "+
+				strings.Join(drifted, ", "))
 	}
 	log.Printf("✅ 全 base image が lockfile 通りに固定されています")
+
+	return nil
 }
 
 func writeLock(path string, lock map[string]string) error {
@@ -389,6 +476,16 @@ func writeLock(path string, lock map[string]string) error {
 	return os.WriteFile(path, []byte(b.String()), filePerm)
 }
 
+// isIgnorableLockErr は、lockfile 読み込みエラーのうち無視して続行してよいものを判定する。
+// nil（成功）と「ファイル不在」（初回 resolve）のみ true。それ以外（解釈できない行・キー重複・
+// 権限エラー等）は fail-close 対象。
+func isIgnorableLockErr(err error) bool {
+	return err == nil || xerrors.Is(err, os.ErrNotExist)
+}
+
+// readLock は lockfile を image:tag→digest として読む。空行とコメント行以外で代入として解釈
+// できない行、および既出キーの再定義はエラーにする。読み飛ばしや後勝ちの上書きは、そのエントリが
+// 「存在しない」あるいは「行順で決まる」状態を警告なく作り、lockfile が SSOT として機能しなくなる。
 func readLock(path string) (map[string]string, error) {
 	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
 	if err != nil {
@@ -397,10 +494,21 @@ func readLock(path string) (map[string]string, error) {
 	defer func() { _ = f.Close() }()
 	lock := map[string]string{}
 	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if m := lockRe.FindStringSubmatch(strings.TrimSpace(sc.Text())); m != nil {
-			lock[m[1]] = m[2]
+	for lineNo := 1; sc.Scan(); lineNo++ {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
+		m := lockRe.FindStringSubmatch(line)
+		if m == nil {
+			return nil, xerrors.Wrap(errLockInvalidLine,
+				fmt.Sprintf("%d 行目: %q（make pin-images-resolve を実行するか該当行を削除してください）", lineNo, line))
+		}
+		if _, dup := lock[m[1]]; dup {
+			return nil, xerrors.Wrap(errLockDuplicateKey,
+				fmt.Sprintf("%d 行目: %q（make pin-images-resolve を実行するか重複行を削除してください）", lineNo, m[1]))
+		}
+		lock[m[1]] = m[2]
 	}
 	return lock, sc.Err()
 }

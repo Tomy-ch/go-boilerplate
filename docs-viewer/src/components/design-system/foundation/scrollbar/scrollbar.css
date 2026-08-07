@@ -1,0 +1,16 @@
+/*
+ * スクロールする面すべてに共通する scrollbar の見た目。
+ *
+ * scrollbar-color と scrollbar-width は継承プロパティなので、:root で一度だけ宣言すれば
+ * ページ本体・textarea・pre・overflow を持つ任意の要素まで同じ見た目になる。component ごとに
+ * 指定すると、同じアプリの中で場所ごとに見た目が割れる。
+ *
+ * auto 以外の値を与えると overlay scrollbar が classic へ切り替わり、スクロールできる面が
+ * 触れる前から判るようになる。局所スクロール領域では、これが「別途スクロールする領域である」
+ * ことを示す唯一の手掛かりになる。対応していないブラウザでは browser 既定の scrollbar が
+ * そのまま使われ、現状から退行しない。
+ */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted-foreground) transparent;
+}

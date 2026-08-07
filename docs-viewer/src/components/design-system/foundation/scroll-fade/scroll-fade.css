@@ -1,0 +1,125 @@
+/*
+ * スクロールする領域の端をぼかし、続きがあることを示す。
+ *
+ * 既定では `scrollbar` が存在・残量・現在地を常時示すため、この演出は要らない。要るのは
+ * scrollbar を消した領域である。`AttachmentGroup` のように `scrollbar-none` を当てた横並びでは、
+ * 続きがあることを示す手掛かりが他に無い。
+ *
+ * `scroll-fade-x` と `scroll-fade-y` は同じ要素へ重ねられない。どちらも `mask-image` を使うため、
+ * 後に効いたほうだけが残る。両方向へスクロールする領域には使わない。
+ */
+
+/*
+ * 端ごとのぼかし量を 0〜1 の比で持つ。長さそのものを keyframe で動かすと、値に `var()` を
+ * 含むことになり、登録済み custom property の keyframe として解決されず animation ごと無効に
+ * なる。比なら keyframe を定数だけで書けるため、ぼかし幅は utility 側の 1 か所に残せる。
+ */
+@property --scroll-fade-inline-start-ratio {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --scroll-fade-inline-end-ratio {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --scroll-fade-block-start-ratio {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --scroll-fade-block-end-ratio {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@utility scroll-fade-x {
+  --scroll-fade-size: --spacing(6);
+
+  /*
+   * 両端をぼかした状態が土台。scroll 位置に追従できない環境ではこれだけが残り、先頭でも左端が
+   * ぼける。続きが無いのにぼけるより、続きがあるのに手掛かりが無いほうが困るため、こちらへ倒す。
+   */
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black calc(var(--scroll-fade-size) * var(--scroll-fade-inline-start-ratio)),
+    black calc(100% - var(--scroll-fade-size) * var(--scroll-fade-inline-end-ratio)),
+    transparent 100%
+  );
+
+  /*
+   * 追従できる環境では、端に着いた側のぼかしだけを外す。scrollbar が無くても「先頭に居る」
+   * 「まだ続く」が端の見た目だけで判る。
+   */
+  @supports (animation-timeline: scroll()) {
+    animation: scroll-fade-x-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+
+@utility scroll-fade-y {
+  --scroll-fade-size: --spacing(6);
+
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black calc(var(--scroll-fade-size) * var(--scroll-fade-block-start-ratio)),
+    black calc(100% - var(--scroll-fade-size) * var(--scroll-fade-block-end-ratio)),
+    transparent 100%
+  );
+
+  @supports (animation-timeline: scroll()) {
+    animation: scroll-fade-y-edges linear both;
+    animation-timeline: scroll(self block);
+  }
+}
+
+/*
+ * 端に着いた側のぼかしだけを外す。
+ *
+ * 送り始めと送り終わりの 5% で切り替え、間はどちらの端もぼかしたままにする。scroll 全体で
+ * 補間すると中央でどちらの端も半端にぼけ、続きがあることが弱まる。
+ */
+@keyframes scroll-fade-x-edges {
+  0% {
+    --scroll-fade-inline-start-ratio: 0;
+    --scroll-fade-inline-end-ratio: 1;
+  }
+  5% {
+    --scroll-fade-inline-start-ratio: 1;
+    --scroll-fade-inline-end-ratio: 1;
+  }
+  95% {
+    --scroll-fade-inline-start-ratio: 1;
+    --scroll-fade-inline-end-ratio: 1;
+  }
+  100% {
+    --scroll-fade-inline-start-ratio: 1;
+    --scroll-fade-inline-end-ratio: 0;
+  }
+}
+
+@keyframes scroll-fade-y-edges {
+  0% {
+    --scroll-fade-block-start-ratio: 0;
+    --scroll-fade-block-end-ratio: 1;
+  }
+  5% {
+    --scroll-fade-block-start-ratio: 1;
+    --scroll-fade-block-end-ratio: 1;
+  }
+  95% {
+    --scroll-fade-block-start-ratio: 1;
+    --scroll-fade-block-end-ratio: 1;
+  }
+  100% {
+    --scroll-fade-block-start-ratio: 1;
+    --scroll-fade-block-end-ratio: 0;
+  }
+}

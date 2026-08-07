@@ -16,6 +16,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/docker` : Compose project / host port definitions / Dockerfile lint (hadolint) / image digest pinning
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
+- `.makefiles/python` : PyPI tool lockfile generation
 - `.makefiles/docs` : Portal / Tool information documentation generation
 - `.makefiles/gen` : Batch execution of various generation processes
 - `.makefiles/github` : GitHub initialization / Release / Labels / Rule configuration
@@ -124,7 +125,7 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 | `make db-init` | Executes initialization for both the owned local and test databases. | Calls `db-init-local` and `db-init-test` sequentially. |
 | `make db-init-local` | Initializes the owned local database. | Executes `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed`. |
 | `make db-init-test` | Initializes the owned test database. | Executes `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed`. |
-| `make require-db-owner` | Verifies that this checkout owns a database. | Prerequisite of every target that resolves a database name. Fails in a linked worktree that holds no DB slot, instead of falling back to the main checkout's `local` / `test` — see `docs/maintenance/db-worktree-pool.md`. |
+| `make require-db-owner` | Verifies that this checkout owns a database. | Prerequisite of every target that resolves a database name. Fails in a linked worktree that holds no DB slot, instead of falling back to the main checkout's `local` / `test` — see `docs/maintenance/db-worktree-pool.md`. The decision lives in `internal/cli/dbslot`: a missing `git` executable and a directory that is no repository both pass through, while a repository whose layout `git` will not report fails. |
 
 ### DB migration related
 
@@ -243,8 +244,8 @@ This group handles linting and auto-fixing of Markdown files.
 | `make md-mermaid-lint` | Validates only the ` ```mermaid ` fences. | Invokes `make md-mermaid-lint-ci` inside the `node_tool_runner` container. |
 | `make md-skill-lint` | Validates only the skill / agent definitions under `.claude/**` and their `.codex/**` counterparts. | Invokes `make md-skill-lint-ci` inside the `node_tool_runner` container. |
 | `make md-lint-ci` | Runs `markdownlint-cli2`, then the mermaid syntax lint, then the skill-definition lint. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
-| `make md-mermaid-lint-ci` | Validates ` ```mermaid ` fences with `scripts/mermaid-lint.mjs` (real `mermaid.parse`). | CI target. markdownlint never checks diagram grammar. |
-| `make md-skill-lint-ci` | Checks `.claude/**` definitions with `scripts/skill-lint.mjs` (frontmatter / translation-pair structure / reference existence) and their `.codex/**` correspondence (skill / agent existence parity, Codex skill structure). | CI target. markdownlint never checks whether the prose matches reality, and nothing else notices a skill that landed on only one of the two environments. |
+| `make md-mermaid-lint-ci` | Validates ` ```mermaid ` fences with `scripts/mermaid-lint/index.ts` (real `mermaid.parse`). | CI target. markdownlint never checks diagram grammar. |
+| `make md-skill-lint-ci` | Checks `.claude/**` definitions with `scripts/skill-lint/index.ts` (frontmatter / translation-pair structure / reference existence) and their `.codex/**` correspondence (skill / agent existence parity, Codex skill structure). | CI target. markdownlint never checks whether the prose matches reality, and nothing else notices a skill that landed on only one of the two environments. |
 | `make md-fix-ci` | Fixes `**/*.md` directly with `markdownlint-cli2 --fix`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
 
 ## `.makefiles/security` group
@@ -293,7 +294,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `INFRA_SERVICES` | `database observability garage elasticmq` | Services that can only run on fixed ports, hence shared. |
 | `APP_SERVICES` | `api_server mock_auth_server` | Services started per checkout. |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
-| `INFRA_NO_RECREATE` | `--no-recreate` in a worktree, empty otherwise | Keeps a shared-infra container another checkout is using instead of re-creating it. Empty in a single checkout, where compose re-converges on a definition change as usual. Set it explicitly for a topology the worktree test misses, such as several independent clones. |
+| `INFRA_NO_RECREATE` | `--no-recreate` in a worktree, empty otherwise | Keeps a shared-infra container another checkout is using instead of re-creating it. Empty in a single checkout, where compose re-converges on a definition change as usual. Set it explicitly for a topology the worktree test misses, such as several independent clones. Resolved inside the recipe by `db-slot env`, not at make's parse time. |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | Compose invocation for the app layer. `docker-compose.attach.yaml` points the app services at the shared infra via `host.docker.internal`. |
 | `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `2010` | Published host ports of the API / mock auth server. |
 | `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | Published host ports of the dlv debug / pprof endpoints. |
@@ -319,13 +320,15 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gen-bundle-oapi-ci` | Generates `openapi/openapi.gen.yaml` via `redocly bundle`. | CI target |
 | `make gen-api-docs-ci` | Generates `docs/openapi/index.html` via `redocly build-docs`. | CI target |
 | `make lint-oapi-ci` | Runs `redocly lint openapi/openapi.yaml` directly. | CI target |
-| `make lint-oapi-security-ci` | Runs Spectral with the OWASP API Security ruleset. | CI target. Runs outside `node_tool_runner` because Spectral resolves its ruleset from `docker/tools/node_modules`; run `npm ci` there first. |
+| `make stamp-openapi-version` | Rewrites `info.version` from a release branch name. | Invokes `make stamp-openapi-version-ci` inside the `node_tool_runner` container. Takes `REF=release/vX.Y.Z`, falling back to `GITHUB_REF_NAME`; any other ref is a no-op. |
+| `make stamp-openapi-version-ci` | Runs `scripts/stamp-openapi-version/index.ts` directly. | CI target |
+| `make lint-oapi-security-ci` | Runs Spectral with the OWASP API Security ruleset. | CI target. Runs outside `node_tool_runner` so a spec-only check does not build the tool image; run `pnpm install --dir scripts --frozen-lockfile` first. |
 | `make gen-mock-auth-oapi` | Bundles the mock-auth-server OpenAPI and generates zod schemas. | Invokes `make gen-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
 | `make gen-mock-auth-oapi-docs` | Generates the mock-auth-server Redoc HTML from its OpenAPI. | Outputs `docs/openapi/mock-auth-server/index.html` via the `node_tool_runner` container. |
 | `make lint-mock-auth-oapi` | Validates the mock-auth-server OpenAPI definition with `redocly lint`. | Invokes `make lint-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
-| `make gen-mock-auth-oapi-ci` | Runs `npm run gen` (redocly bundle + orval) in `docker/mock-auth-server`. | CI target |
-| `make gen-mock-auth-oapi-docs-ci` | Runs `npm run gen:docs` (redocly build-docs) in `docker/mock-auth-server`. | CI target |
-| `make lint-mock-auth-oapi-ci` | Runs `npm run lint:oapi` in `docker/mock-auth-server`. | CI target |
+| `make gen-mock-auth-oapi-ci` | Runs `npm run gen` (redocly bundle + orval) in `mock-auth-server`. | CI target |
+| `make gen-mock-auth-oapi-docs-ci` | Runs `npm run gen:docs` (redocly build-docs) in `mock-auth-server`. | CI target |
+| `make lint-mock-auth-oapi-ci` | Runs `npm run lint:oapi` in `mock-auth-server`. | CI target |
 
 ## `.makefiles/load` group
 
@@ -357,7 +360,8 @@ identically, so nothing goes unverified; it moves where the verification happens
 
 Override the band explicitly with `GOBP_LOAD=full|low|ci-first` (e.g. `make lint GOBP_LOAD=low` to run
 one heavy gate by hand while the rest stays deferred). The thresholds are `GOBP_LOW_THRESHOLD` and
-`GOBP_CI_FIRST_THRESHOLD`.
+`GOBP_CI_FIRST_THRESHOLD`. Their defaults, and the band resolution itself, live in
+`scripts/load-band` and are evaluated when a gate recipe runs rather than when make parses.
 
 Why the gates are bundled rather than listed individually in `.lefthook.yaml`: lefthook runs a hook's
 commands in parallel, so a per-gate entry multiplies load by the number of gates *on top of* the number
@@ -411,16 +415,46 @@ in a loop.
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 | `make sync-versions` | Propagates the `mise.toml` go / node / python versions into `go.mod` and the Dockerfile `FROM` lines. | Referenced by the `docs/maintenance/go-upgrade.md` procedure. Runs `scripts/sync-versions`. |
 
+## `.makefiles/node` group
+
+The repository's helper scripts are TypeScript, run through `tsx` from `scripts/node_modules/.bin`.
+Their decision logic lives in `scripts/lib/**` so it can be tested without a repository to scan —
+several of these scripts are gates, and a broken gate reports a clean run rather than an error.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make scripts-test` | Runs the unit tests for `scripts/**/*.ts` with coverage and no cache. | Invokes `make scripts-test-ci` inside the `node_tool_runner` container. Fails when coverage drops below the thresholds in `scripts/vitest.config.mts`. |
+| `make scripts-test-cached` | Runs the same tests with the cache enabled and no coverage. | Invokes `make scripts-test-cached-ci` inside the `node_tool_runner` container. The `pre-push` variant. |
+| `make scripts-typecheck` | Type-checks `scripts/**/*.ts`. | Invokes `make scripts-typecheck-ci` inside the `node_tool_runner` container. |
+| `make scripts-test-ci` | Runs `pnpm --dir scripts run test` (`vitest run --coverage --no-cache`). | CI target |
+| `make scripts-test-cached-ci` | Runs `pnpm --dir scripts run test:cached` (`vitest run`). | CI target |
+| `make scripts-typecheck-ci` | Runs `pnpm --dir scripts run typecheck` (`tsc --noEmit`). | CI target |
+
+## `.makefiles/python` group
+
+The CLI tools this repository installs from PyPI are declared in `python/*.in` and locked, with a
+sha256 hash per package, in `python/*.txt` ([ADR-0075](../docs/adr/0075-mise-ssot-drift-gate.md)).
+These targets regenerate the lockfiles; nothing installs from a `.in` file directly.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make py-lock` | Recompiles every `python/*.txt` from its `python/*.in`. | Invokes `make py-lock-ci` inside the `python_tool_runner` container. Run it after changing a pin, and commit both files. |
+| `make py-lock-ci` | Runs `uv pip compile --generate-hashes --universal` per declaration, resolving against the Python version `mise.toml` declares. | CI target |
+
 ## `.makefiles/docs` group
 
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make gen-portal-docs` | Generates Portal documentation. | None |
 | `make gen-docs-json` | Generates Portal documentation link JSON. | None |
-| `make gen-portal-build` | Bundles the Portal frontend (`docs/portal/src/main.jsx`) into `bundle.js` / `bundle.css` via esbuild. | None |
+| `make gen-portal-build` | Builds the Portal frontend (`docs-viewer/`) into `docs/portal/` via Vite. | None |
+| `make portal-test` | Runs the `docs-viewer/` test suite. | None |
+| `make portal-typecheck` | Type-checks `docs-viewer/`. | None |
 | `make gen-portal-docs-ci` | Generates Portal documentation directly via Node.js script. | CI target |
 | `make gen-docs-json-ci` | Generates Portal JSON directly via Node.js script. | CI target |
-| `make gen-portal-build-ci` | Runs esbuild directly to bundle the Portal frontend. | CI target |
+| `make gen-portal-build-ci` | Runs pnpm directly to build the Portal frontend. | CI target |
+| `make portal-test-ci` | Runs pnpm directly to test the Portal frontend. | CI target |
+| `make portal-typecheck-ci` | Runs pnpm directly to type-check the Portal frontend. | CI target |
 | `make gen-godoc` | Generates static godoc HTML into `docs/godoc/`. | None |
 | `make gen-godoc-ci` | Runs godoc-static directly to generate static HTML. | CI target |
 
@@ -452,9 +486,9 @@ in a loop.
 | `make actions-node-lint-ci` | Runs the three node checks (secret / fence / cut-off) directly. | CI target. |
 | `make actions-actionlint-ci` | Runs `actionlint` directly. | CI target. |
 | `make actions-shellcheck-ci` | Runs `scripts/actions-shellcheck` directly. | CI target. |
-| `make actions-comment-secret-lint-ci` | Fails when a job using `upsert-pr-comment` is passed a secret other than `GITHUB_TOKEN` (`scripts/pr-comment-secret-lint.mjs`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
-| `make actions-comment-fence-lint-ci` | Fails when a `run:` block emits a fixed-length Markdown fence around a PR comment body, or the duplicated `fence_for` helpers diverge (`scripts/pr-comment-fence-lint.mjs`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
-| `make actions-cutoff-lint-ci` | Fails when a job carries no `timeout-minutes`, or a step calling `upsert-pr-comment` has an `if:` a cancelled job cannot reach (`scripts/actions-cutoff-lint.mjs`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
+| `make actions-comment-secret-lint-ci` | Fails when a job using `upsert-pr-comment` is passed a secret other than `GITHUB_TOKEN` (`scripts/pr-comment-secret-lint/index.ts`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
+| `make actions-comment-fence-lint-ci` | Fails when a `run:` block emits a fixed-length Markdown fence around a PR comment body, or the duplicated `fence_for` helpers diverge (`scripts/pr-comment-fence-lint/index.ts`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
+| `make actions-cutoff-lint-ci` | Fails when a job carries no `timeout-minutes`, or a step calling `upsert-pr-comment` has an `if:` a cancelled job cannot reach (`scripts/actions-cutoff-lint/index.ts`). | CI target. Why the rule exists: [`.github/workflows/README.md`](../.github/workflows/README.md). |
 | `make pin-actions-resolve` | Resolves each `uses:` tag to its commit SHA and updates the `.github/actions-pin.toml` lockfile. | Quarantines refs younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14; 0 disables). |
 | `make pin-actions-apply` | Pins `uses:` to `@<sha> # <tag>` from the lockfile. | None |
 | `make pin-actions-check` | Verifies `uses:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
@@ -501,11 +535,13 @@ This is an initial setup command when launching a new repository as a boilerplat
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make setup-replace-module OLD_MODULE=<old> NEW_MODULE=<new>` | Replaces Go module name in batch. | Updates `go.mod` and import paths using `node_tool_runner`. |
-| `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | Replaces application name and OpenAPI title in batch. | Reflected in README and OpenAPI definitions. |
-| `make setup-replace-repository-reference REPOSITORY=<org/repo>` | Replaces repository references (GitHub URLs, etc.) in batch. | Updates links in README and documentation. |
-| `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | Updates LICENSE copyright notation. | Year is optional. |
-| `make setup-replace-codeowners OWNERS='<owners>'` | Replaces the owner of every rule in `.github/CODEOWNERS` in batch. | Takes `@user` / `@org/team` / an email, space-separated for several. Comment lines are left untouched, so the header keeps its example. |
+| `make setup-replace-module OLD_MODULE=<old> NEW_MODULE=<new>` | Replaces Go module name in batch. | Updates `go.mod` and import paths using `node_tool_runner`.  <!-- setup-localize:line --> |
+| `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | Replaces application name and OpenAPI title in batch. | Reflected in README and OpenAPI definitions.  <!-- setup-localize:line --> |
+| `make setup-replace-repository-reference REPOSITORY=<org/repo>` | Replaces repository references (GitHub URLs, etc.) in batch. | Updates links in README and documentation.  <!-- setup-localize:line --> |
+| `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | Updates LICENSE copyright notation. | Year is optional.  <!-- setup-localize:line --> |
+| `make setup-replace-codeowners OWNERS='<owners>'` | Replaces the owner of every rule in `.github/CODEOWNERS` in batch. | Takes `@user` / `@org/team` / an email, space-separated for several. Comment lines are left untouched, so the header keeps its example.  <!-- setup-localize:line --> |
+| `make setup-verify` | Verifies the localization landed, then removes the localization tooling. | Runs `scripts/setup/verify-setup` in `node_tool_runner`; expects the Phase 5 values in the environment.  <!-- setup-localize:line --> |
+| `make setup-remove-boilerplate-identity` | Removes the prose that calls this repository a boilerplate. | Strips `boilerplate` marker blocks from the READMEs and the setup guide via `node_tool_runner`, then removes itself. Preview with `DRY_RUN=1`. <!-- boilerplate:line --> |
 | `make setup-remove-sample-api` | Removes the sample API (`user`/`product`/`order`) in batch. | Deletes via `node_tool_runner`, then runs `reset-mock-auth-users` → `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint`. The DB rebuild keeps dropped tables out of the generated models, and `tidy-lib` drops the direct dependencies the sample API was the only user of. **Requires the DB container (`database`) running** (`gen-query` dumps the live schema). Preview without changing anything with `DRY_RUN=1` (any non-empty value counts as preview, `0` included, so omit the variable entirely for a real run). <!-- sample-api:line --> |
 
 ### Release branch related

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +24,7 @@ func writeMigrations(t *testing.T, names ...string) string {
 	return dir
 }
 
-func TestCollectVersions(t *testing.T) {
+func Test_collectVersions(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -67,13 +69,22 @@ func TestCollectVersions(t *testing.T) {
 			dir := writeMigrations(t, "000001.up.sql")
 
 			_, err := collectVersions(dir, "up")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNoVersionPrefix)
 			assert.Contains(t, err.Error(), "no version prefix")
+		})
+
+		t.Run("走査パターンとして壊れたディレクトリ名は 0 件に寄せずエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			versions, err := collectVersions("[", "up")
+			require.ErrorIs(t, err, filepath.ErrBadPattern)
+			assert.Contains(t, err.Error(), "failed to scan [")
+			assert.Nil(t, versions)
 		})
 	})
 }
 
-func TestReportDuplicates(t *testing.T) {
+func Test_reportDuplicates(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -113,7 +124,7 @@ func TestReportDuplicates(t *testing.T) {
 	})
 }
 
-func TestReportGaps(t *testing.T) {
+func Test_reportGaps(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -159,7 +170,7 @@ func TestReportGaps(t *testing.T) {
 	})
 }
 
-func TestExpectedSequence(t *testing.T) {
+func Test_expectedSequence(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -177,6 +188,121 @@ func TestExpectedSequence(t *testing.T) {
 			got, err := expectedSequence([]string{"8", "10"})
 			require.NoError(t, err)
 			assert.Equal(t, []string{"8", "9", "10"}, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("先頭が数値でなければ欠番を捏造せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := expectedSequence([]string{"00000a", "000010"})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "00000a")
+		})
+
+		t.Run("末尾が数値でなければ欠番を捏造せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := expectedSequence([]string{"000008", "00000b"})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "00000b")
+		})
+	})
+}
+
+// captureLog は、標準ロガーの出力先をバッファへ差し替え、その内容を読む関数を返します。
+// 出力先はプロセス共通のため、使うテストは並列化できません。
+func captureLog(t *testing.T) func() string {
+	t.Helper()
+
+	var buf bytes.Buffer
+
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	return buf.String
+}
+
+func Test_run(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("重複も欠番も無ければ成功する", func(t *testing.T) {
+			t.Parallel()
+			dir := writeMigrations(t, "000001_a.up.sql", "000002_b.up.sql")
+
+			require.NoError(t, run([]string{"-dir", dir, "-check", "duplicate"}))
+			require.NoError(t, run([]string{"-dir", dir, "-check", "gap"}))
+		})
+
+		t.Run("種別の指定で検査対象のファイルを切り替える", func(t *testing.T) {
+			t.Parallel()
+			dir := writeMigrations(t, "000001_a.up.sql", "000001_b.up.sql", "000001_a.down.sql")
+
+			require.NoError(t, run([]string{"-dir", dir, "-kind", "down"}))
+		})
+
+		t.Run("マイグレーションが 1 件も無ければ成功する", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, run([]string{"-dir", t.TempDir(), "-check", "gap"}))
+		})
+
+		t.Run("ヘルプ要求は失敗にしない", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, run([]string{"-h"}))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既定では up の重複を検査する", func(t *testing.T) {
+			t.Parallel()
+			dir := writeMigrations(t, "000001_a.up.sql", "000001_b.up.sql")
+
+			require.ErrorIs(t, run([]string{"-dir", dir}), errNumberingProblem)
+		})
+
+		t.Run("欠番を検出して失敗する", func(t *testing.T) {
+			t.Parallel()
+			dir := writeMigrations(t, "000001_a.up.sql", "000003_c.up.sql")
+
+			require.ErrorIs(t, run([]string{"-dir", dir, "-check", "gap"}), errNumberingProblem)
+		})
+
+		//nolint:paralleltest // 標準ロガーの出力先を差し替えるため並列化できない
+		t.Run("何がぶつかっているかを出力してから失敗する", func(t *testing.T) {
+			dir := writeMigrations(t, "000001_a.up.sql", "000001_b.up.sql")
+			logged := captureLog(t)
+
+			require.ErrorIs(t, run([]string{"-dir", dir}), errNumberingProblem)
+			assert.Contains(t, logged(), "Duplicate migration numbers (up): 000001")
+		})
+
+		t.Run("未知の検査内容は既定の検査へ流さず失敗する", func(t *testing.T) {
+			t.Parallel()
+			dir := writeMigrations(t, "000001_a.up.sql", "000001_b.up.sql")
+
+			err := run([]string{"-dir", dir, "-check", "bogus"})
+
+			require.ErrorIs(t, err, errUnknownCheck)
+			assert.NotErrorIs(t, err, errNumberingProblem)
+		})
+
+		t.Run("連番を集められなければ 0 件に寄せず失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorIs(t, run([]string{"-dir", "["}), filepath.ErrBadPattern)
+		})
+
+		t.Run("未知のフラグはヘルプ要求と混同せず失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			require.ErrorContains(t, run([]string{"-bogus"}), "failed to parse flags")
 		})
 	})
 }

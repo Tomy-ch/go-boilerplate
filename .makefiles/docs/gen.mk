@@ -1,10 +1,14 @@
 ## ドキュメント関連のコマンド群
 .PHONY: gen-portal-docs ## Portal用のドキュメントを生成する
 .PHONY: gen-docs-json ## Portal用のドキュメントリンクのJSONを生成する
-.PHONY: gen-portal-build ## Portalフロントエンド(JSX)をesbuildでバンドルする
+.PHONY: gen-portal-build ## Portalフロントエンド(docs-viewer)をViteでビルドする
+.PHONY: portal-test ## docs-viewer のテストを実行する
+.PHONY: portal-typecheck ## docs-viewer の型検査を実行する
 .PHONY: gen-portal-docs-ci ## Portal用のドキュメントを生成する（CI用）
 .PHONY: gen-docs-json-ci ## Portal用のドキュメントリンクのJSONを生成する（CI用）
-.PHONY: gen-portal-build-ci ## Portalフロントエンドをesbuildでバンドルする（CI用）
+.PHONY: gen-portal-build-ci ## PortalフロントエンドをViteでビルドする（CI用）
+.PHONY: portal-test-ci ## docs-viewer のテストを実行する（CI用）
+.PHONY: portal-typecheck-ci ## docs-viewer の型検査を実行する（CI用）
 .PHONY: gen-godoc ## godoc の静的HTMLを docs/godoc/ に生成する
 .PHONY: gen-godoc-ci ## godoc の静的HTMLを docs/godoc/ に生成する（CI用）
 
@@ -23,18 +27,43 @@ gen-portal-docs:
 	@echo "✅ Portal用のドキュメントの生成が完了しました。"
 
 gen-portal-build:
-	@echo "🔍 Portalフロントエンドのバンドルを開始します..."
+	@echo "🔍 Portalフロントエンドのビルドを開始します..."
 	docker compose run --rm node_tool_runner make gen-portal-build-ci
-	@echo "✅ Portalフロントエンドのバンドルが完了しました。"
+	@echo "✅ Portalフロントエンドのビルドが完了しました。"
+
+portal-test:
+	@echo "🔍 docs-viewer のテストを開始します..."
+	docker compose run --rm node_tool_runner make portal-test-ci
+	@echo "✅ docs-viewer のテストが完了しました。"
+
+portal-typecheck:
+	@echo "🔍 docs-viewer の型検査を開始します..."
+	docker compose run --rm node_tool_runner make portal-typecheck-ci
+	@echo "✅ docs-viewer の型検査が完了しました。"
 
 gen-docs-json-ci:
-	node scripts/gen-docs-json.mjs
+	$(TSX) scripts/portal/gen-docs-json.ts
 
 gen-portal-docs-ci:
-	node scripts/gen-portal-docs.mjs
+	$(TSX) scripts/portal/gen-portal-docs.ts
 
+# docs-viewer は scripts/ とは別パッケージで、依存も別 lockfile で解決する。--frozen-lockfile で
+# lockfile を再現だけさせ、ビルドが依存の解決結果を書き換えないようにする。
 gen-portal-build-ci:
-	node scripts/build-portal.mjs
+	pnpm --dir docs-viewer install --frozen-lockfile
+	pnpm --dir docs-viewer build
+
+# これらの出力は PR コメント本文になり ANSI を解釈しないため、色付けを無効化する。
+# tsc の pretty は FORCE_COLOR を見ないので別途落とす。
+portal-test-ci portal-typecheck-ci: export FORCE_COLOR := 0
+
+portal-test-ci:
+	pnpm --dir docs-viewer install --frozen-lockfile
+	pnpm --dir docs-viewer test
+
+portal-typecheck-ci:
+	pnpm --dir docs-viewer install --frozen-lockfile
+	pnpm --dir docs-viewer typecheck --pretty false
 
 gen-godoc:
 	@echo "🔍 godoc の静的HTMLの生成を開始します..."

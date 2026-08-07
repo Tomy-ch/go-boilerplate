@@ -21,8 +21,9 @@ on:
       - '.github/workflows/openapi-security.yaml'
       - '.spectral.yaml'
       - 'openapi/**'
-      - 'docker/tools/package.json'
-      - 'docker/tools/package-lock.json'
+      - 'scripts/package.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'scripts/pnpm-workspace.yaml'
   push:
     branches:
       - 'release/*'
@@ -68,17 +69,17 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # The Node version is pinned in mise.toml (SSOT), same as every other
-      # Node-using workflow here.
-      - name: Install node
-        run: mise install node
+      # The Node and pnpm versions are pinned in mise.toml (SSOT), same as every
+      # other Node-using workflow here.
+      - name: Install node and pnpm
+        run: mise install node npm:pnpm
 
-      # --ignore-scripts blocks the postinstall RCE path, matching how the tool
-      # runner image installs the same manifest. The Spectral CLI and the OWASP
-      # ruleset are pinned in docker/tools/package-lock.json.
+      # pnpm-workspace.yaml declares which dependencies may run lifecycle scripts
+      # (strictDepBuilds + allowBuilds), which blocks the postinstall RCE path and
+      # matches how the tool runner image installs the same manifest. The Spectral
+      # CLI and the OWASP ruleset are pinned in scripts/pnpm-lock.yaml.
       - name: Install OpenAPI tooling
-        run: npm ci --ignore-scripts
-        working-directory: docker/tools
+        run: pnpm install --dir scripts --frozen-lockfile
 
       # spectral exits non-zero on an error-severity finding, so the status is
       # captured and the PR comment is produced either way; the final step turns

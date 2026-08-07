@@ -10,10 +10,11 @@ GOLANGCI_LINT := $(shell mise which golangci-lint 2>/dev/null || command -v gola
 # CI は 0（無効）を渡し、打ち切りをジョブの timeout-minutes に委ねる。
 GOLANGCI_LINT_TIMEOUT ?= 60m
 
-# 並列度と優先度は .makefiles/load.mk が窓（worktree）の数から決める。--concurrency は
-# 設定ファイルの concurrency を上書きするため、full では渡さず設定ファイルの値を活かす。
+# 並列度と優先度は .makefiles/load.mk が窓（worktree）の数から決める（LOAD_BAND がレシピ内で
+# 解決する）。--concurrency は設定ファイルの concurrency を上書きするため、full では空になり
+# 設定ファイルの値が活きる。
 lint:
-	@$(GOBP_NICE) $(GOLANGCI_LINT) run --config .golangci-full.yaml --timeout $(GOLANGCI_LINT_TIMEOUT) $(GOLANGCI_CONCURRENCY_FLAG)
+	@$(LOAD_BAND); $$GOBP_NICE $(GOLANGCI_LINT) run --config .golangci-full.yaml --timeout $(GOLANGCI_LINT_TIMEOUT) $$GOLANGCI_CONCURRENCY_FLAG
 
 fix:
-	@$(GOBP_NICE) $(GOLANGCI_LINT) run --fix --config .golangci-full.yaml --timeout $(GOLANGCI_LINT_TIMEOUT) $(GOLANGCI_CONCURRENCY_FLAG)
+	@$(LOAD_BAND); $$GOBP_NICE $(GOLANGCI_LINT) run --fix --config .golangci-full.yaml --timeout $(GOLANGCI_LINT_TIMEOUT) $$GOLANGCI_CONCURRENCY_FLAG

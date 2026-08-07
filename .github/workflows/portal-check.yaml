@@ -1,0 +1,106 @@
+name: Portal Check
+
+# The documentation portal's viewer (`docs-viewer/`) is the one place in this repository where a
+# regression is invisible to every other gate. Go tests never load it, `md-lint` never opens a
+# `.tsx`, and deploy-docs.yaml builds the viewer without inspecting it — so a viewer that renders
+# nothing would ship, and the only signal would be someone opening the site.
+#
+# Nothing runs these checks locally either: the lefthook hooks are scoped to `*.go`, `*.sql`,
+# `*.md`, and the workflow / OpenAPI / migration paths, none of which match this package.
+#
+# `paths`-filtered because the checks read only this package: `tsc` resolves inside it and vitest's
+# `include` never leaves `docs-viewer/src`. Nothing outside the filter can change their verdict.
+# There is no required-check guard companion, because this context is not registered as a required
+# status check — adding one without registering the context would report a check nobody waits for.
+
+on:
+  pull_request:
+    paths:
+      - 'docs-viewer/**'
+      - '.github/workflows/portal-check.yaml'
+      - '.makefiles/docs/gen.mk'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portal-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The versions are pinned in mise.toml (SSOT) — never duplicated here. This is the same
+      # pair the node_tool_runner image installs, so CI and the container run the same toolchain.
+      - name: Install node and pnpm
+        run: mise install node npm:pnpm
+
+      # The `-ci` targets run the tools directly; the non-suffixed ones would start the container,
+      # which on a runner means building the whole tool image to reach a package that needs none
+      # of it. Both targets install with `--frozen-lockfile`, so a lockfile that does not match
+      # `package.json` fails here rather than resolving something else.
+      - name: Run portal checks
+        id: portal-check
+        shell: bash
+        run: |
+          set +e
+
+          make portal-typecheck-ci portal-test-ci 2>&1 | tee /tmp/portal-check.log
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Portal Check: PASS (typecheck + test)" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Portal Check: FAIL (typecheck + test)" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      # typecheck and test must not write anything. `docs/portal/dist/` and
+      # `docs-viewer/node_modules` are gitignored, so anything reported here is a tracked path one
+      # of these steps touched — a diff that would later read as someone's edit.
+      - name: Verify the working tree is clean
+        run: git status --porcelain --untracked-files=all | tee /tmp/portal-dirty.log && test ! -s /tmp/portal-dirty.log
+
+      - name: Comment portal check result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- portal-check-result -->'
+          status: ${{ steps.portal-check.outputs.status }}
+          title: "${{ steps.portal-check.outputs.title || '## ⚠️ Portal Check: CUT OFF (no result produced)' }}"
+          body-file: /tmp/portal-check.log
+          details-summary: 'portal check log'
+
+      - name: Fail if a portal check failed
+        if: always() && steps.portal-check.outputs.status != 'success'
+        run: exit 1

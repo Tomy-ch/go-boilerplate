@@ -1,26 +1,9 @@
-// Package main は mise.toml が宣言するツールのバージョンが供給網 cooldown を満たしているかを
+// Package main はこのリポジトリが宣言するツールのバージョンが供給網 cooldown を満たしているかを
 // 検査するツール。
 //
 //	gate:  base からの差分で追加 / 更新されたツールのうち、公開から窓日数未満のものを違反として
 //	       報告し、非ゼロで終了する。
-//	audit: mise.toml 全件を棚卸しし、窓内のものを報告する。常に 0 で終了する。
-//
-// **この規約は既に人手で運用されていた。** mise.toml のコメントが「最新は v1.26.0 だが公開 2 日で
-// クールダウン 14 日に満たないため 1 つ前を採る」と記録しており、窓の値も backend ごとに決まって
-// いる。機械化されていなかっただけで、ここで新しい方針を導入するわけではない。
-//
-// **窓は backend の性質で 2 段。** GitHub リリースに紐づくもの（aqua / ubi / github）は 14 日で、
-// tag が別 commit へ付け替えられる形の侵害があり得るぶん pin-actions / pin-images と同じ窓を採る。
-// パッケージレジストリに紐づくもの（go / npm / pipx）は公開が immutable なので 7 日で、
-// npm-cooldown / go-cooldown と揃う。
-//
-// **言語ランタイム（core backend）は対象外。** go / node / python 本体が汚染される事態は、
-// 供給網の一部ではなく言語エコシステムの信頼性そのものが崩れたときであり、冷却期間で守れる
-// ものが無い。影響範囲も基盤全体に及ぶ。したがってこれは検査の穴ではなく、明示的に受容した
-// リスクである。ランタイムには LTS を待つという別軸の方針があり、そちらが担う。
-//
-// **短縮名の backend は mise registry に解決させる。** どの backend で解決されるかを決めているのは
-// mise 自身なので、対応表を持つと mise の更新で静かにずれる。
+//	audit: 宣言の全件を棚卸しし、窓内のものを報告する。常に 0 で終了する。
 //
 // **緊急のバイパスは .github/mise-cooldown-bypass.toml が受ける。** エントリは期限を必ず持ち、
 // 期限切れ・期限過長・対象不在は gate / audit のどちらでも失敗になる。期限は mise.toml が
@@ -37,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -48,10 +32,12 @@ import (
 )
 
 const (
-	minArgs = 2 // プログラム名 + サブコマンド
-
 	miseFile   = "mise.toml"
 	bypassFile = ".github/mise-cooldown-bypass.toml" //nolint:gosec // 資格情報ではなくバイパス lockfile のパス
+	// pyRequirementsGlob は PyPI ツールの直接宣言。解決結果は同名の .txt が持つ。
+	pyRequirementsGlob  = "python/*.in"
+	pyRequirementSuffix = ".in"
+	pyLockSuffix        = ".txt"
 
 	// releaseWindowDays は GitHub リリースに紐づく backend の窓。
 	releaseWindowDays = 14
@@ -76,6 +62,10 @@ const (
 )
 
 var (
+	// errUsage は、サブコマンドやフラグの与え方が誤っていることを表すエラー。
+	errUsage = xerrors.New("invalid usage")
+	// errBlocking は、gate を通せない違反が残っていることを表すエラー。
+	errBlocking = xerrors.New("blocking violations")
 	// errUnsupportedBackend は、公開時刻の取得経路を持たない backend を指すエラー。
 	errUnsupportedBackend = xerrors.New("no publish-time source for this backend")
 	// errNotFound は、上流がそのバージョンを知らない場合のエラー。
@@ -91,18 +81,38 @@ var (
 	toolLineRe = regexp.MustCompile(`^\s*(?:"([^"]+)"|([A-Za-z0-9_.\-]+))\s*=\s*"([^"]+)"\s*$`)
 	// sectionRe は TOML のセクション見出し。
 	sectionRe = regexp.MustCompile(`^\s*\[([^\]]+)\]\s*$`)
-	// extrasRe は pipx の extras 表記（`graphifyy[sql]` の `[sql]`）。
+	// extrasRe は extras 表記（`graphifyy[sql]` の `[sql]`）。
 	extrasRe = regexp.MustCompile(`\[[^\]]*\]$`)
+	// pyRequirementRe は requirements の 1 行を名前（extras 込み）と版へ割る。`==` で固定された
+	// 行だけを読む。範囲指定は宣言としては版を決めておらず、cooldown を測る対象にならない。
+	pyRequirementRe = regexp.MustCompile(
+		`^([A-Za-z0-9][A-Za-z0-9._\-]*(?:\[[^\]]*\])?)\s*==\s*([A-Za-z0-9][A-Za-z0-9.\-+!]*)`,
+	)
+	// pyNameSepRe は PyPI の名前正規化（`-` `_` `.` の連続を `-` 1 つへ寄せる / PEP 503）。
+	pyNameSepRe = regexp.MustCompile(`[-_.]+`)
 	// bypassLineRe は `"key@version" = { expires = ..., issue = ..., reason = "..." }` を読む。
 	bypassLineRe = regexp.MustCompile(
 		`^"([^"]+)"\s*=\s*\{\s*expires\s*=\s*(\d{4}-\d{2}-\d{2})\s*,\s*issue\s*=\s*(\d+)\s*,\s*reason\s*=\s*"([^"]*)"\s*\}$`)
 )
 
-// tool は mise.toml `[tools]` の 1 行。backend は解決後の値で、短縮名なら mise registry が決める。
+// tool は宣言の 1 行。backend は解決後の値で、短縮名なら mise registry が決める。
 type tool struct {
-	key     string // mise.toml に書かれたキーそのもの
+	key     string // 宣言に書かれたキーそのもの
 	version string
-	backend string // 例: aqua:owner/repo, go:module, npm:pkg, pipx:pkg, core:go
+	backend string // 例: aqua:owner/repo, go:module, npm:pkg, pypi:pkg, core:go
+	file    string // 宣言元のパス。注釈を宣言した場所へ付けるために持つ
+}
+
+// declaration は宣言ファイル 1 つ分の中身。読み取りと解析を分けて、解析だけを純粋に保つ。
+type declaration struct {
+	path    string
+	content []byte
+}
+
+// violation は宣言側の規約違反 1 件。file は注釈を付ける先で、違反の種類ごとに違う。
+type violation struct {
+	file string
+	msg  string
 }
 
 // bypass は cooldown を明示的に外す 1 エントリ。
@@ -121,81 +131,137 @@ type finding struct {
 	window    int
 }
 
+// options はサブコマンドに続けて与えられたフラグ。
+type options struct {
+	base       string
+	summaryOut string
+	github     bool
+}
+
 func (t tool) id() string { return t.key + "@" + t.version }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
-	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: mise-cooldown <gate|audit> [--base=<git-ref>] [--summary-out=<path>] [--github]")
+
+	if err := run(os.Args[1:], &http.Client{Timeout: fetchTimeout}, time.Now().UTC()); err != nil {
+		log.Fatalf("%v", err)
 	}
-	sub := os.Args[1]
-	if sub != "gate" && sub != "audit" {
-		log.Fatalf("❌ 未知のサブコマンド %q（gate | audit）", sub) //nolint:gosec // %q が引用する
+}
+
+// run は mise.toml の宣言を cooldown に照らして報告します。gate で違反が残った場合はエラーを
+// 返し、終了コードへの変換は呼び出し側に委ねます。
+// client は上流への問い合わせ手段、now は窓と期限の基準時刻で、差し替えられるよう引数で受けます。
+func run(args []string, client *http.Client, now time.Time) error {
+	sub, opt, err := parseArgs(args)
+	if err != nil {
+		// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+		if xerrors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+
+		return err
 	}
 
-	fs := flag.NewFlagSet(sub, flag.ExitOnError)
-	base := fs.String("base", "", "gate: この git ref からの差分で追加 / 更新されたツールだけを対象にする")
-	summaryOut := fs.String("summary-out", "", "Markdown サマリの出力先")
-	github := fs.Bool("github", false, "GitHub Actions のアノテーションを出力する")
-	_ = fs.Parse(os.Args[2:])
-
-	if sub == "gate" && *base == "" {
-		log.Fatalf("❌ gate には --base が要ります（比較対象が無いと差分を取れません）")
-	}
-
-	now := time.Now().UTC()
 	// 期限の比較は暦日で行う。時刻を残すと 3 ヶ月の境界が実行時刻とタイムゾーンで動く。
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
-	raw, err := os.ReadFile(miseFile)
+	paths, err := declarationPaths()
 	if err != nil {
-		log.Fatalf("❌ read %s: %v", miseFile, err)
+		return xerrors.Wrap(err, "❌ 宣言ファイルの列挙")
 	}
-	declared, err := parseTools(raw)
+	decls, err := readDeclarations(paths)
 	if err != nil {
-		log.Fatalf("❌ %s: %v", miseFile, err)
+		return xerrors.Wrap(err, "❌ 宣言ファイルの読み取り")
+	}
+	declared, err := parseDeclarations(decls)
+	if err != nil {
+		return xerrors.Wrap(err, "❌ 宣言ファイルの解析")
 	}
 
 	bypasses, err := readBypasses(bypassFile)
 	if err != nil {
-		log.Fatalf("❌ %s: %v", bypassFile, err)
+		return xerrors.Wrap(err, "❌ "+bypassFile)
 	}
 	policyViolations, invalidBypasses := validateBypasses(bypasses, declared, today)
+	policyViolations = append(policyViolations, verifyLocks(declared)...)
 
 	targets := declared
 	if sub == "gate" {
-		targets, err = added(*base, declared)
+		targets, err = added(opt.base, paths, declared)
 		if err != nil {
-			log.Fatalf("❌ %v", err)
+			return xerrors.Wrap(err, "❌ base との差分")
 		}
 	}
 
 	ctx := context.Background()
 	resolved, skipped, err := resolveBackends(ctx, targets)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return xerrors.Wrap(err, "❌ backend の解決")
 	}
 
-	findings, unresolved := inspect(ctx, resolved, now)
+	findings, unresolved := inspect(ctx, client, resolved, now)
 
-	blocking := report(sub, findings, unresolved, skipped, policyViolations, bypasses, invalidBypasses, resolved, *github)
+	blocking := report(
+		sub,
+		findings,
+		unresolved,
+		skipped,
+		policyViolations,
+		bypasses,
+		invalidBypasses,
+		resolved,
+		opt.github,
+	)
 
-	if *summaryOut != "" {
+	if opt.summaryOut != "" {
 		body := summary(sub, findings, unresolved, skipped, policyViolations, bypasses, invalidBypasses, resolved)
-		//nolint:gosec // 出力先はワークフローが渡すパスで、外部入力ではない
-		if writeErr := os.WriteFile(*summaryOut, []byte(body), summaryPerm); writeErr != nil {
-			log.Fatalf("❌ write summary: %v", writeErr)
+		if writeErr := os.WriteFile(opt.summaryOut, []byte(body), summaryPerm); writeErr != nil {
+			return xerrors.Wrap(writeErr, "❌ write summary")
 		}
 	}
 	if out := os.Getenv("GITHUB_OUTPUT"); out != "" {
 		if writeErr := appendOutput(out, len(findings), len(resolved), blocking); writeErr != nil {
-			log.Fatalf("❌ write GITHUB_OUTPUT: %v", writeErr)
+			return xerrors.Wrap(writeErr, "❌ write GITHUB_OUTPUT")
 		}
 	}
 
 	if blocking > 0 {
-		os.Exit(1)
+		return xerrors.Wrap(errBlocking, fmt.Sprintf("❌ mise-cooldown %s: %d 件の違反が残っています", sub, blocking))
 	}
+
+	return nil
+}
+
+// parseArgs はサブコマンドとフラグを解釈します。ヘルプ要求は flag.ErrHelp を含むエラーとして
+// 返し、失敗として扱うかどうかの判断は呼び出し側に委ねます。
+func parseArgs(args []string) (string, options, error) {
+	if len(args) == 0 {
+		return "", options{}, xerrors.Wrap(errUsage,
+			"❌ usage: mise-cooldown <gate|audit> [--base=<git-ref>] [--summary-out=<path>] [--github]")
+	}
+
+	sub := args[0]
+	if sub != "gate" && sub != "audit" {
+		return "", options{}, xerrors.Wrap(errUsage, fmt.Sprintf("❌ 未知のサブコマンド %q（gate | audit）", sub))
+	}
+
+	fs := flag.NewFlagSet(sub, flag.ContinueOnError)
+	base := fs.String("base", "", "gate: この git ref からの差分で追加 / 更新されたツールだけを対象にする")
+	summaryOut := fs.String("summary-out", "", "Markdown サマリの出力先")
+	github := fs.Bool("github", false, "GitHub Actions のアノテーションを出力する")
+	if err := fs.Parse(args[1:]); err != nil {
+		return "", options{}, xerrors.Wrap(err, "❌ フラグを解釈できません")
+	}
+
+	// gate は差分を取れないと何も検査しないまま通るため、比較対象の不在を先に落とす。
+	if sub == "gate" && *base == "" {
+		return "", options{}, xerrors.Wrap(errUsage, "❌ gate には --base が要ります（比較対象が無いと差分を取れません）")
+	}
+
+	return sub, options{base: *base, summaryOut: *summaryOut, github: *github}, nil
 }
 
 // parseTools は `[tools]` セクションの宣言だけを読む。`[settings]` の `pipx.uvx` や `[env]` の
@@ -230,18 +296,122 @@ func parseTools(content []byte) ([]tool, error) {
 	return tools, sc.Err()
 }
 
-// added は base 時点の mise.toml に無かった (key, version) の組を返す。
-func added(base string, current []tool) ([]tool, error) {
+// parsePyRequirements は requirements の直接宣言を読む。キーは backend を明示した `pypi:` 付きに
+// 揃える。mise の宣言と同じ形にしておくと、窓の判定もバイパスのキーも経路で分かれずに済む。
+func parsePyRequirements(content []byte) ([]tool, error) {
+	var tools []tool
+	sc := bufio.NewScanner(strings.NewReader(string(content)))
+	for sc.Scan() {
+		trimmed := strings.TrimSpace(sc.Text())
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		m := pyRequirementRe.FindStringSubmatch(trimmed)
+		if m == nil {
+			continue
+		}
+		tools = append(tools, tool{key: "pypi:" + m[1], version: m[2]})
+	}
+	return tools, sc.Err()
+}
+
+// declarationPaths は宣言ファイルを列挙する。
+func declarationPaths() ([]string, error) {
+	reqs, err := filepath.Glob(pyRequirementsGlob)
+	if err != nil {
+		return nil, xerrors.Wrap(err, pyRequirementsGlob)
+	}
+	sort.Strings(reqs)
+	return append([]string{miseFile}, reqs...), nil
+}
+
+// readDeclarations は作業ツリーの宣言ファイルを読む。
+func readDeclarations(paths []string) ([]declaration, error) {
+	decls := make([]declaration, 0, len(paths))
+	for _, path := range paths {
+		content, err := os.ReadFile(path) //nolint:gosec // path は declarationPaths が決めたもの
+		if err != nil {
+			return nil, xerrors.Wrap(err, path)
+		}
+		decls = append(decls, declaration{path: path, content: content})
+	}
+	return decls, nil
+}
+
+// parseDeclarations は宣言ファイル群をツールの一覧へ畳む。形式はパスで決まる。
+func parseDeclarations(decls []declaration) ([]tool, error) {
+	var tools []tool
+	for _, d := range decls {
+		var (
+			parsed []tool
+			err    error
+		)
+		if d.path == miseFile {
+			parsed, err = parseTools(d.content)
+		} else {
+			parsed, err = parsePyRequirements(d.content)
+		}
+		if err != nil {
+			return nil, xerrors.Wrap(err, d.path)
+		}
+		for _, t := range parsed {
+			t.file = d.path
+			tools = append(tools, t)
+		}
+	}
+	return tools, nil
+}
+
+// added は base 時点の宣言に無かった (key, version) の組を返す。
+func added(base string, paths []string, current []tool) ([]tool, error) {
+	decls, err := baseDeclarations(base, paths)
+	if err != nil {
+		return nil, err
+	}
+	return addedFrom(decls, current)
+}
+
+// baseDeclarations は base 時点の宣言ファイルを読む。宣言を増やした pull request では新しい
+// ファイルが base に無いのが正常なので、それは空として扱う。ただし mise.toml はどの base にも
+// あるはずのファイルで、無いのは base の取り違えを意味する。ref そのものを解決できない場合と
+// 併せてエラーにする。差分を取れないまま進むと gate は何も検査せずに通る。
+func baseDeclarations(base string, paths []string) ([]declaration, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, "git", "show", base+":"+miseFile).Output() //nolint:gosec // base は呼び出し側が与える git ref
-	if err != nil {
-		return nil, xerrors.Wrap(err, fmt.Sprintf("git show %s:%s（base を取得できていない可能性があります）", base, miseFile))
+	decls := make([]declaration, 0, len(paths))
+	for _, path := range paths {
+		//nolint:gosec // base は呼び出し側が与える git ref、path は declarationPaths が決めたもの
+		out, err := exec.CommandContext(ctx, "git", "show", base+":"+path).Output()
+		if err != nil {
+			if path == miseFile {
+				return nil, xerrors.Wrap(err, fmt.Sprintf("git show %s:%s（base を取得できていない可能性があります）", base, path))
+			}
+			if refErr := verifyRef(ctx, base); refErr != nil {
+				return nil, xerrors.Wrap(refErr, fmt.Sprintf("git show %s:%s（base を取得できていない可能性があります）", base, path))
+			}
+			continue
+		}
+		decls = append(decls, declaration{path: path, content: out})
 	}
-	before, err := parseTools(out)
+	return decls, nil
+}
+
+// verifyRef は base が commit として解決できるかを見る。
+func verifyRef(ctx context.Context, base string) error {
+	//nolint:gosec // base は呼び出し側が与える git ref
+	if err := exec.CommandContext(ctx, "git", "rev-parse", "--verify", "--quiet", base+"^{commit}").Run(); err != nil {
+		return xerrors.Wrap(err, "git rev-parse "+base)
+	}
+	return nil
+}
+
+// addedFrom は base 時点の宣言と現在の宣言を突き合わせる。base を読めなかった場合に空の差分を
+// 返すと、gate は何も検査しないまま通る。解析の失敗はエラーとして表に出す。
+func addedFrom(baseDecls []declaration, current []tool) ([]tool, error) {
+	before, err := parseDeclarations(baseDecls)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "base の "+miseFile)
+		return nil, xerrors.Wrap(err, "base の宣言")
 	}
 	return diffAdded(before, current), nil
 }
@@ -292,7 +462,13 @@ func miseRegistry(ctx context.Context, name string) (string, error) {
 	if err != nil {
 		return "", xerrors.Wrap(err, "mise registry "+name)
 	}
-	fields := strings.Fields(string(out))
+	return firstBackend(out, name)
+}
+
+// firstBackend は `mise registry` の出力から先頭の候補だけを採る。mise 自身が選ぶのと同じ順序で、
+// 出力全体を採ると backend が空白を含み、以降の種別判定がすべて空振りする。
+func firstBackend(registryOutput []byte, name string) (string, error) {
+	fields := strings.Fields(string(registryOutput))
 	if len(fields) == 0 {
 		return "", xerrors.Wrap(errUnsupportedBackend, name)
 	}
@@ -318,17 +494,72 @@ func backendKind(backend string) string {
 		return "go"
 	case "npm":
 		return "npm"
-	case "pipx", "uvx":
+	case "pypi", "pipx", "uvx":
 		return "pypi"
 	default:
 		return ""
 	}
 }
 
-// inspect は対象ツールの公開時刻を引き、窓内のものと取得できなかったものを返す。
-func inspect(ctx context.Context, targets []tool, now time.Time) ([]finding, []tool) {
-	client := &http.Client{Timeout: fetchTimeout}
+// verifyLocks は *.in が宣言する版を、隣の *.txt が固定しているかどうかで確かめる。ハッシュの
+// 照合そのものは install 側の --require-hashes が担うので、ここで見るのは宣言と lockfile が
+// 同じ版を指しているかだけ。食い違ったままだと、cooldown を通した版と実際に入る版が別になる。
+func verifyLocks(declared []tool) []violation {
+	var violations []violation
+	for _, t := range declared {
+		if !strings.HasSuffix(t.file, pyRequirementSuffix) {
+			continue
+		}
+		lockPath := strings.TrimSuffix(t.file, pyRequirementSuffix) + pyLockSuffix
+		content, err := os.ReadFile(lockPath) //nolint:gosec // 宣言ファイルのパスから決まる
+		if err != nil {
+			violations = append(violations, violation{file: t.file, msg: fmt.Sprintf(
+				"%s を読めません（%v）。`make py-lock` で生成してください", lockPath, err)})
+			continue
+		}
+		name := pyPackageName(t.key)
+		locked, ok := lockedVersion(content, name)
+		if !ok {
+			violations = append(violations, violation{file: t.file, msg: fmt.Sprintf(
+				"%s が宣言する %s が %s にありません。`make py-lock` で再生成してください", t.file, t.id(), lockPath)})
+			continue
+		}
+		if locked != t.version {
+			violations = append(violations, violation{file: t.file, msg: fmt.Sprintf(
+				"%s の宣言は %s ですが %s が固定しているのは %s です。`make py-lock` で再生成してください",
+				t.file, t.id(), lockPath, name+"=="+locked)})
+		}
+	}
+	return violations
+}
 
+// lockedVersion は lockfile が name に対して固定している版を返す。
+func lockedVersion(lockContent []byte, name string) (string, bool) {
+	sc := bufio.NewScanner(strings.NewReader(string(lockContent)))
+	for sc.Scan() {
+		m := pyRequirementRe.FindStringSubmatch(strings.TrimSpace(sc.Text()))
+		if m == nil {
+			continue
+		}
+		if pyPackageName(m[1]) == name {
+			return m[2], true
+		}
+	}
+	return "", false
+}
+
+// pyPackageName は宣言のキーから PyPI の正規化名を取り出す。extras は同じ配布物の付随依存を
+// 選ぶ指定でしかなく、パッケージの同一性には関わらない。
+func pyPackageName(key string) string {
+	_, name, found := strings.Cut(key, ":")
+	if !found {
+		name = key
+	}
+	return pyNameSepRe.ReplaceAllString(strings.ToLower(extrasRe.ReplaceAllString(name, "")), "-")
+}
+
+// inspect は対象ツールの公開時刻を引き、窓内のものと取得できなかったものを返す。
+func inspect(ctx context.Context, client *http.Client, targets []tool, now time.Time) ([]finding, []tool) {
 	var (
 		mu         sync.Mutex
 		findings   []finding
@@ -440,6 +671,12 @@ func goModuleAt(ctx context.Context, client *http.Client, pkg, version string) (
 		}
 		lastErr = err
 	}
+	// pkg に `/` が無いとループが 1 度も回らない。ここで nil を返すと呼び出し側はゼロ値時刻を
+	// 「公開から数十年経過」と読み、そのツールが cooldown を無条件で通過する。「問い合わせた結果
+	// 見つからない」と「一度も問い合わせていない」は、公開時刻を得られていない点で同じ扱いにする。
+	if lastErr == nil {
+		return time.Time{}, xerrors.Wrap(errNotFound, pkg+"@"+version)
+	}
 	return time.Time{}, lastErr
 }
 
@@ -533,34 +770,34 @@ func readBypasses(path string) (map[string]bypass, error) {
 // validateBypasses はバイパス自身の規約違反と、そのせいで無効になったキーを返す。期限切れを
 // 失敗にするのは、外したまま放置されたバイパスが恒久 allowlist と区別できなくなるため。上限を
 // 置くのは、期限を遠い未来へ置くだけで同じ状態を作れてしまうため。無効なバイパスは効力も失う。
-func validateBypasses(bypasses map[string]bypass, declared []tool, today time.Time) ([]string, map[string]struct{}) {
-	inMise := make(map[string]struct{}, len(declared))
+func validateBypasses(bypasses map[string]bypass, declared []tool, today time.Time) ([]violation, map[string]struct{}) {
+	inDeclarations := make(map[string]struct{}, len(declared))
 	for _, t := range declared {
-		inMise[t.id()] = struct{}{}
+		inDeclarations[t.id()] = struct{}{}
 	}
 	limit := today.AddDate(0, maxBypassMonths, 0)
 	invalid := map[string]struct{}{}
-	var violations []string
+	var violations []violation
 
 	for _, key := range sortedKeys(bypasses) {
 		b := bypasses[key]
 		switch {
 		case b.expires.Before(today):
 			invalid[key] = struct{}{}
-			violations = append(violations, fmt.Sprintf(
+			violations = append(violations, violation{file: bypassFile, msg: fmt.Sprintf(
 				"%s:%d %s の期限 %s が切れています。窓明けの版へ更新してエントリを消すか、期限を延ばす判断を #%d で記録してください",
-				bypassFile, b.line, key, b.expires.Format(time.DateOnly), b.issue))
+				bypassFile, b.line, key, b.expires.Format(time.DateOnly), b.issue)})
 		case b.expires.After(limit):
 			invalid[key] = struct{}{}
-			violations = append(violations, fmt.Sprintf(
+			violations = append(violations, violation{file: bypassFile, msg: fmt.Sprintf(
 				"%s:%d %s の期限 %s が上限（%s から %d ヶ月 = %s）を越えています。恒久 allowlist にしないための上限です",
 				bypassFile, b.line, key, b.expires.Format(time.DateOnly),
-				today.Format(time.DateOnly), maxBypassMonths, limit.Format(time.DateOnly)))
+				today.Format(time.DateOnly), maxBypassMonths, limit.Format(time.DateOnly))})
 		default:
-			if _, ok := inMise[key]; !ok {
-				violations = append(violations, fmt.Sprintf(
-					"%s:%d %s は %s に存在しません。不要になったエントリは消してください",
-					bypassFile, b.line, key, miseFile))
+			if _, ok := inDeclarations[key]; !ok {
+				violations = append(violations, violation{file: bypassFile, msg: fmt.Sprintf(
+					"%s:%d %s は %s / %s のどちらにも存在しません。不要になったエントリは消してください",
+					bypassFile, b.line, key, miseFile, pyRequirementsGlob)})
 			}
 		}
 	}
@@ -605,7 +842,7 @@ func hasBypass(bypasses map[string]bypass, invalid map[string]struct{}, t tool) 
 // 実行に懸かっているため。
 func report(
 	sub string, findings []finding, unresolved, skipped []tool,
-	policyViolations []string, bypasses map[string]bypass, invalid map[string]struct{},
+	policyViolations []violation, bypasses map[string]bypass, invalid map[string]struct{},
 	targets []tool, github bool,
 ) int {
 	//nolint:gosec // sub は gate / audit のいずれかに限定済み
@@ -614,9 +851,9 @@ func report(
 
 	blockingCount := len(policyViolations)
 	for _, v := range policyViolations {
-		log.Printf("❌ %s", v)
+		log.Printf("❌ %s", v.msg)
 		if github {
-			log.Printf("::error file=%s::%s", bypassFile, v)
+			log.Printf("::error file=%s::%s", v.file, v.msg)
 		}
 	}
 
@@ -634,7 +871,7 @@ func report(
 			"待てない根拠を %s へ期限付きで記録してください", f.tool.id(), f.tool.backend, f.ageDays, f.window, bypassFile)
 		log.Printf("❌ %s", msg)
 		if github {
-			log.Printf("::error file=%s::%s", miseFile, msg)
+			log.Printf("::error file=%s::%s", f.tool.file, msg)
 		}
 	}
 
@@ -649,7 +886,7 @@ func report(
 			blockingCount++
 			log.Printf("❌ %s", msg)
 			if github {
-				log.Printf("::error file=%s::%s", miseFile, msg)
+				log.Printf("::error file=%s::%s", t.file, msg)
 			}
 			continue
 		}
@@ -690,7 +927,7 @@ func fenced(b *strings.Builder, heading string, lines []string) {
 // summary は GITHUB_STEP_SUMMARY 用の Markdown を組む。
 func summary(
 	sub string, findings []finding, unresolved, skipped []tool,
-	policyViolations []string, bypasses map[string]bypass, invalid map[string]struct{},
+	policyViolations []violation, bypasses map[string]bypass, invalid map[string]struct{},
 	targets []tool,
 ) string {
 	var b strings.Builder
@@ -700,7 +937,11 @@ func summary(
 		len(targets), len(skipped), len(bypasses), releaseWindowDays, registryWindowDays)
 
 	if len(policyViolations) > 0 {
-		fenced(&b, "バイパス設定の違反", policyViolations)
+		lines := make([]string, 0, len(policyViolations))
+		for _, v := range policyViolations {
+			lines = append(lines, v.msg)
+		}
+		fenced(&b, "宣言側の違反", lines)
 	}
 	if len(blocked) > 0 {
 		lines := make([]string, 0, len(blocked))

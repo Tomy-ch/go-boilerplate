@@ -6,7 +6,7 @@ description: >-
 
 # Portal Manifest Sync
 
-This skill audits `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest drives `scripts/gen-portal-docs.mjs`, which copies each `src` to its `dst` under `docs/portal/guides/`.
+This skill audits `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest drives `scripts/portal/gen-portal-docs.ts`, which copies each `src` to its `dst` under `docs/portal/guides/`.
 
 ## Key Assumptions
 
@@ -42,7 +42,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 
 Use this skill when:
 
-- Files have been moved or removed and you want to clean up stale `src` entries that produce `gen-portal-docs.mjs` warnings.
+- Files have been moved or removed and you want to clean up stale `src` entries that produce `gen-portal-docs.ts` warnings.
 - You want to detect translation pair gaps (`README.md` without a `README.ja.md` sibling, or vice versa).
 - Before merging a feature branch, to verify no portal regression was introduced.
 - You want a snapshot of which on-disk READMEs are *not* currently exposed in the portal — to inform a manual curation decision, NOT to mass-add them.
@@ -65,7 +65,7 @@ Do NOT use this skill for:
   - `vendor/**`, `node_modules/**`
   - `.git/**`, `.claude/**` (skill / config files; not portal content)
   - Any path matching `.gitignore`
-- `scripts/gen-portal-docs.mjs` — to confirm the dst convention is still `docs/portal/guides/<flat-name>.md`.
+- `scripts/portal/gen-portal-docs.ts` — to confirm the dst convention is still `docs/portal/guides/<flat-name>.md`.
 
 **Writes (only with confirmation)**:
 
