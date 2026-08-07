@@ -46,11 +46,11 @@ func (w *ServerInterfaceWrapper) GetExchangeRates(ctx *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter quote: %s", err))
 	}
 
-	// ------------- Required query parameter "amount" -------------
+	// ------------- Required query parameter "original" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "amount", ctx.QueryParams(), &params.Amount, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "original", ctx.QueryParams(), &params.Original, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter amount: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter original: %s", err))
 	}
 
 	// ------------- Optional query parameter "displayCurrency" -------------

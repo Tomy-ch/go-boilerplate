@@ -3,7 +3,7 @@ description: 為替換算結果のレスポンスです。
 required:
   - base
   - quote
-  - amount
+  - original
   - converted
   - referenceAmount
 properties:
@@ -15,7 +15,7 @@ properties:
     type: string
     description: 換算先の通貨コード
     example: JPY
-  amount:
+  original:
     type: string
     pattern: '^\d+(\.\d+)?$'
     description: 換算元の金額。正確な十進量を保つため decimal 文字列で表します。

@@ -16,10 +16,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { listFilesRecursive } from "../lib/file-utils";
+import { stripMarkers } from "../lib/markers";
 import { EXCLUDED_DIRECTORIES, isReplacementTarget } from "../replace-module/module-replace";
 import {
   BOILERPLATE_MODULE,
   type ExpectedIdentity,
+  LOCALIZATION_MARKER,
+  LOCALIZATION_MARKER_FILES,
   SAMPLE_REMOVER_DIR,
   collectFailures,
   selfDestructTargets,
@@ -74,6 +77,28 @@ function expectedIdentity(): ExpectedIdentity {
   };
 }
 
+/**
+ * 初期化ツールを指す宣言（make ターゲットとその説明）を落とす。
+ *
+ * @remarks
+ * ディレクトリの削除より先に行います。make は起動時に makefile を全読込するため、実行中の
+ * レシピはこの書き換えの後も走り切ります。
+ */
+function stripDeclarations(): void {
+  for (const relativePath of LOCALIZATION_MARKER_FILES) {
+    const absolute = path.join(ROOT_DIR, relativePath);
+
+    if (!fs.existsSync(absolute)) continue;
+
+    const result = stripMarkers(fs.readFileSync(absolute, "utf8"), LOCALIZATION_MARKER);
+
+    if (result.removed === 0) continue;
+
+    fs.writeFileSync(absolute, result.content);
+    console.log(`  ${relativePath} (${result.removed} 行)`);
+  }
+}
+
 function selfDestruct(): void {
   const sampleRemoverExists = fs.existsSync(path.join(SETUP_DIR, SAMPLE_REMOVER_DIR));
 
@@ -107,6 +132,8 @@ function main(): void {
     process.exit(1);
   }
 
+  console.log("🧹 初期化ツールの宣言を除去します...");
+  stripDeclarations();
   selfDestruct();
   console.log("✅ 初期化の完了を確認し、初期化ツールも撤去しました。");
 }

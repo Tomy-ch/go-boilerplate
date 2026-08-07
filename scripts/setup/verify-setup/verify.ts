@@ -126,6 +126,25 @@ export function collectFailures(input: VerificationInput): string[] {
   ];
 }
 
+/** 初期化ツールの在否で行を切り替えるマーカー名。 */
+export const LOCALIZATION_MARKER = "setup-localize";
+
+/**
+ * 初期化ツールの撤去に合わせてマーカー行を落とすファイル。
+ *
+ * @remarks
+ * ディレクトリを消すだけでは、消えたスクリプトを呼ぶ make ターゲットとその説明が残ります。
+ * `make help` に並び続け、叩けば失敗するだけのものになるので、宣言側も同時に落とします。
+ * 生成物（`docs/portal/guides/**`）は再生成で追随するため挙げません。
+ */
+export const LOCALIZATION_MARKER_FILES: readonly string[] = [
+  ".makefiles/github/operation/setup-repository.mk",
+  ".makefiles/README.md",
+  ".makefiles/README.ja.md",
+  "scripts/README.md",
+  "scripts/README.ja.md",
+];
+
 /** `setup/` 配下の共有モジュール。使う側が全て消えたときだけ道連れにする。 */
 export const SETUP_SHARED_DIR = "lib";
 

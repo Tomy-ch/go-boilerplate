@@ -47,11 +47,11 @@ scripts/
 ├── release/                    # Cut a release tag / release branch (Go)
 ├── repo-setup/                 # git / gh steps that initialise the boilerplate as your own repository (Go)
 └── setup/                     # Initial project setup scripts (one directory per tool, as above)
-    ├── replace-module/
-    ├── replace-app-metadata/
-    ├── replace-license-copyright/
-    ├── replace-repository-reference/
-    ├── replace-codeowners/
+    ├── replace-module/ <!-- setup-localize:line -->
+    ├── replace-app-metadata/ <!-- setup-localize:line -->
+    ├── replace-license-copyright/ <!-- setup-localize:line -->
+    ├── replace-repository-reference/ <!-- setup-localize:line -->
+    ├── replace-codeowners/ <!-- setup-localize:line -->
     ├── remove-sample-api/     # Remove the sample API (user/product/order) <!-- sample-api:line -->
     ├── verify-sample-removal/ # Verify that removal was exact, then self-destruct <!-- sample-api:line -->
     └── lib/                   # Shared across the setup tools (file-utils / runtime / validators)
@@ -171,11 +171,11 @@ Scripts for configuring the boilerplate when creating a new project from this te
 
 |Script|Description|
 |---|---|
-|`replace-module/`|Replace Go module name across all `.go`, `go.mod`, etc.|
-|`replace-app-metadata/`|Replace app name/description in env files and OpenAPI spec|
-|`replace-license-copyright/`|Replace LICENSE copyright holder and year|
-|`replace-repository-reference/`|Replace GitHub repository references in READMEs and OpenAPI|
-|`replace-codeowners/`|Replace the owner of every rule in `.github/CODEOWNERS`. Comment lines keep their example owner, and a rule whose owner field is unrecognizable is reported instead of rewritten.|
+|`replace-module/`|Replace Go module name across all `.go`, `go.mod`, etc. <!-- setup-localize:line -->|
+|`replace-app-metadata/`|Replace app name/description in env files and OpenAPI spec <!-- setup-localize:line -->|
+|`replace-license-copyright/`|Replace LICENSE copyright holder and year <!-- setup-localize:line -->|
+|`replace-repository-reference/`|Replace GitHub repository references in READMEs and OpenAPI <!-- setup-localize:line -->|
+|`replace-codeowners/`|Replace the owner of every rule in `.github/CODEOWNERS`. Comment lines keep their example owner, and a rule whose owner field is unrecognizable is reported instead of rewritten. <!-- setup-localize:line -->|
 |`remove-sample-api/`|Remove the sample API (`user`/`product`/`order`): deletes paths declared in `lib/sample-manifest.ts` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint. <!-- sample-api:line -->|
 |`reset-mock-auth-users/`|Overwrite the mock-auth user fixture (`mock-auth-server/fixtures/users.json`) with a neutral default. The file itself is never deleted, so the mock still starts. `make setup-remove-sample-api` calls it to replace the demo identities (John Doe and friends) with a single neutral user.|
 |`repo-setup/`|The git / gh half of initialising this boilerplate as your own repository: `preflight` refuses to proceed when a `v0.0.0` tag is present, `bootstrap` recreates the tags, prepares `develop` / `staging` / `production` and moves the default branch, and `prune-release-notes` deletes every release note but `v0.0.0.md`. Labels, rulesets and workflow enablement stay in `setup-repository.mk`, which owns the overall chain. Here too the steps are Go because deleting tags in bulk and moving the default branch cannot be rehearsed without breaking a real repository.|

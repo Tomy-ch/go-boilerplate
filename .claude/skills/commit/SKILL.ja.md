@@ -194,7 +194,7 @@ git commit --no-verify -m "$(cat <<'EOF'
 
 <任意の本文: 何を・なぜ変えたか>
 
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude {実行中モデル} <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -204,7 +204,7 @@ EOF
 - **タイトル**: `<Prefix>: <日本語タイトル>`。50 文字以内を目安。
 - **本文**: 任意。ある場合はタイトルの後に空行を 1 つ入れ、72 文字前後で折り返す。「何を」より「なぜ」を優先。
 - **言語**: 日本語（`CLAUDE.md` の出力ルールに従う）。
-- **`Co-Authored-By` フッター**: 必須。`Claude Opus 4.8 (1M context) <noreply@anthropic.com>` を使う。
+- **`Co-Authored-By` フッター**: 必須。`Claude <model> <noreply@anthropic.com>` の形。`<model>` はコミットを実行しているモデル自身の識別子で、ハーネスが提示するものを使い（例: `Opus 5 (1M context)`）、推測しない。バージョンをこのファイルに書き込まないこと — 同じ事実が 2 箇所に置かれ、読み返されない側が黙って腐る。
 - **`Refs:` フッター（レビュー適用コミットのみ）**: コミットが `full-apply` / `impl-review` / `code-review` の指摘を適用する場合（変更がレビュー台帳に遡れる場合）、フッターに `Refs: <reviews-dir>/mod_*.md (<severity>)` 行を追加し、コミットを指摘にリンクする。通常のコミットでは省略する。
 - **HEREDOC**: 必須（タイトル + 空行 + 本文 + フッターのレイアウトを保つ）。
 - **`--no-verify`**: このコマンドが生成する全コミットで必須。これはプロジェクト全体のルールに対する、コマンド限定の明示的な例外である。理由は Step 4 に記載（lefthook は分割中に N 回ではなく、push 前に手動で 1 回実行する）。

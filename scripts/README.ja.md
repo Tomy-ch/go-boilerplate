@@ -47,11 +47,11 @@ scripts/
 ├── release/                    # リリースタグ / リリースブランチを切る（Go）
 ├── repo-setup/                 # boilerplate を自分のリポジトリとして初期化する git / gh 手順（Go）
 └── setup/                     # 初期セットアップスクリプト（上と同じくツール 1 つ 1 ディレクトリ）
-    ├── replace-module/
-    ├── replace-app-metadata/
-    ├── replace-license-copyright/
-    ├── replace-repository-reference/
-    ├── replace-codeowners/
+    ├── replace-module/ <!-- setup-localize:line -->
+    ├── replace-app-metadata/ <!-- setup-localize:line -->
+    ├── replace-license-copyright/ <!-- setup-localize:line -->
+    ├── replace-repository-reference/ <!-- setup-localize:line -->
+    ├── replace-codeowners/ <!-- setup-localize:line -->
     ├── remove-sample-api/     # サンプル API（user/product/order）を削除 <!-- sample-api:line -->
     ├── verify-sample-removal/ # 削除が過不足ないことを検証し自己削除 <!-- sample-api:line -->
     └── lib/                   # setup ツール間で共有（file-utils / runtime / validators）
@@ -147,11 +147,11 @@ scripts/
 
 |スクリプト|説明|
 |---|---|
-|`replace-module/`|Go モジュール名を全 `.go`、`go.mod` 等で置換|
-|`replace-app-metadata/`|env ファイルと OpenAPI 仕様のアプリ名・説明を置換|
-|`replace-license-copyright/`|LICENSE の著作権者名と年を置換|
-|`replace-repository-reference/`|README と OpenAPI の GitHub リポジトリ参照を置換|
-|`replace-codeowners/`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。|
+|`replace-module/`|Go モジュール名を全 `.go`、`go.mod` 等で置換 <!-- setup-localize:line -->|
+|`replace-app-metadata/`|env ファイルと OpenAPI 仕様のアプリ名・説明を置換 <!-- setup-localize:line -->|
+|`replace-license-copyright/`|LICENSE の著作権者名と年を置換 <!-- setup-localize:line -->|
+|`replace-repository-reference/`|README と OpenAPI の GitHub リポジトリ参照を置換 <!-- setup-localize:line -->|
+|`replace-codeowners/`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。 <!-- setup-localize:line -->|
 |`remove-sample-api/`|サンプルAPI(`user`/`product`/`order`)を削除。`lib/sample-manifest.ts` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
 |`reset-mock-auth-users/`|mock-auth の固定 User Fixture（`mock-auth-server/fixtures/users.json`）を中立な既定内容へ上書きする。ファイル自体は削除しないため mock は常に起動できる。`make setup-remove-sample-api` がこれを呼び、デモの固定ユーザー（John Doe 等）を中立な既定ユーザー 1 件へ置き換える。|
 |`repo-setup/`|boilerplate を自分のリポジトリとして初期化する際の git / gh 側の手順。`preflight` は `v0.0.0` タグがあれば中止し、`bootstrap` はタグを作り直して develop / staging / production を用意しデフォルトブランチを移し、`prune-release-notes` は `v0.0.0.md` 以外のリリースノートを削除する。ラベル・ルールセット・ワークフローの有効化は全体の連鎖を持つ `setup-repository.mk` に残る。ここも Go なのは、タグの一括削除やデフォルトブランチの移動が、実物のリポジトリを壊さずには試せないためである。|

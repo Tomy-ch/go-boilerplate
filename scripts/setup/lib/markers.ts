@@ -1,0 +1,124 @@
+// マーカーで囲まれた行を取り除く共通機構。除去する側（サンプル削除・初期化ツールの撤去）は
+// どちらも一度きりで自消滅するため、規則をどちらかの中へ置くと、先に消えた方と一緒に消える。
+//
+// マーカーはコメント（// / # / <!-- のいずれか）に書かれる前提。コメント記号を必須にして、
+// 文字列リテラルやドキュメント本文中の同一トークンを誤って拾わないようにする。
+// markdown（<!-- ... -->）コメント行も対象に含める。
+
+/** マーカー除去の結果。`removed` は取り除いた行数（マーカー行そのものを含む）。 */
+export type StripResult = {
+  content: string;
+  removed: number;
+};
+
+// 置換マーカーの走査状態。
+const OUTSIDE = 0;
+const ACTIVE = 1;
+const SUBSTITUTE = 2;
+
+// 差し替え行の退避コメント。先頭の空白（インデント）は保持し、`//`/`#` と `=` マーカー・直後の空白1つだけ剥がす。
+const REPLACE_CONTENT = /^(\s*)(?:\/\/|#)\s*=\s?(.*)$/;
+
+/** `<comment> <marker>:<suffix>` に当たる正規表現を組み立てる。 */
+function markerPattern(marker: string, suffix: string): RegExp {
+  return new RegExp(`(?:\\/\\/|#|<!--)\\s*${marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:${suffix}\\b`);
+}
+
+/**
+ * `<marker>:begin`〜`<marker>:end` で囲まれた行と、行末に `<marker>:line` を持つ行を除去する。
+ * さらに `<marker>:replace-begin`/`replace-with`/`replace-end` による置換にも対応する。
+ * ネストにも対応するため depth カウンターで管理する。
+ *
+ * @remarks
+ * replace マーカーは `replace-begin`〜`replace-with` の有効行（対象が在るときに生きるコード）を除去し、
+ * `replace-with`〜`replace-end` の差し替え行（`// =` / `# =` でコメント化された退避コード）を
+ * アンコメントして残す。除去後にだけ有効化したい代替コードを、単純な行/ブロック除去では
+ * 表現できない「置換」として扱うための仕組み。退避コメントは `//` 直後にスペースを置く（gocritic 準拠）。
+ *
+ * @throws 対応の取れないマーカー、または差し替え側に退避コメント以外の行がある場合。
+ */
+export function stripMarkers(content: string, marker: string): StripResult {
+  const blockBegin = markerPattern(marker, "begin");
+  const blockEnd = markerPattern(marker, "end");
+  const lineMarker = markerPattern(marker, "line");
+  const replaceBegin = markerPattern(marker, "replace-begin");
+  const replaceWith = markerPattern(marker, "replace-with");
+  const replaceEnd = markerPattern(marker, "replace-end");
+
+  const lines = content.split("\n");
+  const out: string[] = [];
+  let depth = 0;
+  let removed = 0;
+  let replaceState: number = OUTSIDE;
+
+  for (const line of lines) {
+    if (replaceBegin.test(line)) {
+      if (replaceState !== OUTSIDE) {
+        throw new Error(`${marker}:replace ブロックは入れ子にできません。`);
+      }
+      replaceState = ACTIVE;
+      removed++;
+      continue;
+    }
+    if (replaceWith.test(line)) {
+      if (replaceState !== ACTIVE) {
+        throw new Error(`${marker}:replace-with に対応する ${marker}:replace-begin がありません。`);
+      }
+      replaceState = SUBSTITUTE;
+      removed++;
+      continue;
+    }
+    if (replaceEnd.test(line)) {
+      if (replaceState === OUTSIDE) {
+        throw new Error(`${marker}:replace-end に対応する ${marker}:replace-begin がありません。`);
+      }
+      replaceState = OUTSIDE;
+      removed++;
+      continue;
+    }
+    if (replaceState === ACTIVE) {
+      // 有効側（対象が在るときのコード）は除去する。
+      removed++;
+      continue;
+    }
+    if (replaceState === SUBSTITUTE) {
+      // 差し替え側は退避コメントをアンコメントして残す。
+      const matched = REPLACE_CONTENT.exec(line);
+      if (matched === null) {
+        throw new Error(
+          `${marker}:replace-with 〜 replace-end の行は //= または #= で始めてください: ${line}`,
+        );
+      }
+      out.push(matched[1] + matched[2]);
+      continue;
+    }
+
+    if (blockBegin.test(line)) {
+      depth++;
+      removed++;
+      continue;
+    }
+    if (blockEnd.test(line)) {
+      if (depth === 0) {
+        throw new Error(`${marker}:end に対応する ${marker}:begin が見つかりません。`);
+      }
+      depth--;
+      removed++;
+      continue;
+    }
+    if (depth > 0 || lineMarker.test(line)) {
+      removed++;
+      continue;
+    }
+    out.push(line);
+  }
+
+  if (depth > 0) {
+    throw new Error(`${marker}:begin に対応する ${marker}:end が見つかりません。`);
+  }
+  if (replaceState !== OUTSIDE) {
+    throw new Error(`${marker}:replace-begin に対応する ${marker}:replace-end が見つかりません。`);
+  }
+
+  return { content: out.join("\n"), removed };
+}

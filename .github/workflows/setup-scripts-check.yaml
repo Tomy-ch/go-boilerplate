@@ -141,6 +141,28 @@ jobs:
           done
           echo "setup tooling self-destruct: OK"
 
+      # Deleting the directories is only half of it: the make targets that invoke them are
+      # declared elsewhere, and a target left behind stays in `make help` and fails when run.
+      # The declarations carry `setup-localize` markers and are stripped by the same step.
+      - name: Verify the make targets went with the tools
+        run: |
+          set -euo pipefail
+          remaining="$(pnpm --dir scripts run --silent tsx scripts/make-help \
+            | grep -c -E 'setup-replace|setup-verify' || true)"
+          if [ "$remaining" != "0" ]; then
+            echo "FAIL: $remaining localization target(s) still listed by make help"
+            exit 1
+          fi
+          echo "make targets removed: OK"
+
+      # The sample removal targets are wrapped in their own markers and must survive, otherwise
+      # a user who kept the sample can no longer remove it.
+      - name: Verify the sample removal target survived
+        run: |
+          set -euo pipefail
+          pnpm --dir scripts run --silent tsx scripts/make-help | grep -q 'setup-remove-sample-api'
+          echo "sample removal target retained: OK"
+
       # The sample remover still needs the shared modules, so they must survive here. The
       # symmetric case (remover gone first) is covered by Sample Removal Check.
       - name: Verify shared modules survive while the sample remover needs them

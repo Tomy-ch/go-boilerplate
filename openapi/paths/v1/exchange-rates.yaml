@@ -4,7 +4,7 @@ get:
     - v1/exchange-rates
   summary: 為替レートで金額を換算します。
   description: |
-    base 通貨建ての amount を quote 通貨へ換算した結果を返します。
+    base 通貨建ての original を quote 通貨へ換算した結果を返します。
     外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
   security: []
   parameters:
@@ -22,7 +22,7 @@ get:
       schema:
         type: string
         example: JPY
-    - name: amount
+    - name: original
       in: query
       required: true
       description: |

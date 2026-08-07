@@ -30,7 +30,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc exchangerateuc
 	}, nil))
 }
 
-// GetExchangeRates は、為替レートで amount を換算した結果を返します。
+// GetExchangeRates は、為替レートで original を換算した結果を返します。
 func (s *server) GetExchangeRates(
 	ctx context.Context, request gen.GetExchangeRatesRequestObject,
 ) (gen.GetExchangeRatesResponseObject, error) {
@@ -43,9 +43,9 @@ func (s *server) GetExchangeRates(
 		displayCurrency = &dc
 	}
 
-	amount, err := decimal.Parse(request.Params.Amount)
+	amount, err := decimal.Parse(request.Params.Original)
 	if err != nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "amount must be a decimal string")
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "original must be a decimal string")
 	}
 
 	result, err := s.uc.Convert(ctx, exchangerateuc.ConvertInput{
@@ -61,7 +61,7 @@ func (s *server) GetExchangeRates(
 	return gen.GetExchangeRates200JSONResponse(gen.ExchangeRateResponse{
 		Base:            request.Params.Base,
 		Quote:           request.Params.Quote,
-		Amount:          amount.String(),
+		Original:        amount.String(),
 		Converted:       result.Converted.String(),
 		ReferenceAmount: toReferenceAmount(result.Reference),
 	}), nil
