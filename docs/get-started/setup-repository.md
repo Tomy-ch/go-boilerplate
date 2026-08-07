@@ -379,8 +379,11 @@ different triggers.
     grep -rn "boilerplate-only:begin" docs/
     ```
 
-   Each region is a whole block with a blank line on either side, so the surrounding text needs no
-   repair. Delete the blank line the region leaves behind if it doubles up.
+   What a removal does to the lines around the cut is defined by `stripMarkers` in
+   [scripts/setup/lib/markers.ts](../../scripts/setup/lib/markers.ts), which is generic over the
+   marker name. No caller passes `boilerplate-only` to it yet, which is why this step is manual —
+   read it before cutting by hand, because the seam repairs it performs are the part that is easy
+   to miss.
 
 4. Decide your own ADR regime. What you inherit is [docs/adr/README.md](../adr/README.md) as
    written: an ADR is an immutable record, and a decision that changes is replaced by a new
