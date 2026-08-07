@@ -168,7 +168,7 @@ baseline が決められない場合（初回のピン、`images-pin` rule 3）�
 
 - **`.npmrc` `min-release-age` 配下の npm**: スコアが何であれ、そのバージョンはそもそも install できず、npm には版指定の免除も無い。選択肢は待つことか、role による意図的な override（その場合 `make npm-cooldown-audit` が PR 上で可視化する）である。`min-release-age` を下げる提案は決してしない。
 - **`pnpm-workspace.yaml` `minimumReleaseAge` 配下の pnpm**: 同じく install できず、しかもブロックは `--frozen-lockfile` の再生にも及ぶため、解決を実行した端末だけでなく CI と他の全チェックアウトに届く。pnpm には版指定の免除（`minimumReleaseAgeExclude`）が **あり**、だからこそ採用か待機かが実際の選択になる。スコアはその入力として報告し、判断は呼び出し元かユーザーに残す。`minimumReleaseAge` を下げる提案も `minimumReleaseAgeStrict` を切る提案も決してしない。
-- **`scripts/mise-cooldown` 配下の PyPI**: 窓を強制するのは解決器ではなくリポジトリ側のゲートで、そのゲートは**ビルドを落とす**。つまり blocked な版はこのリポジトリが持つ検査に塞がれているのであり、LOW スコアが単独でそれを解くことはない。逃げ道は `.github/mise-cooldown-bypass.toml` の期限つきエントリ（`expires` / `issue` / `reason` すべて必須・最長 3 か月）で、トリアージの判定は `reason` に載せるべき証拠であってエントリを足す許可ではない。`scripts/mise-cooldown` の窓定数を編集する提案は決してしない。
+- **`scripts/tool-cooldown` 配下の PyPI**: 窓を強制するのは解決器ではなくリポジトリ側のゲートで、そのゲートは**ビルドを落とす**。つまり blocked な版はこのリポジトリが持つ検査に塞がれているのであり、LOW スコアが単独でそれを解くことはない。逃げ道は `.github/tool-cooldown-bypass.toml` の期限つきエントリ（`expires` / `issue` / `reason` すべて必須・最長 3 か月）で、トリアージの判定は `reason` に載せるべき証拠であってエントリを足す許可ではない。`scripts/tool-cooldown` の窓定数を編集する提案は決してしない。
 - **`images-pin` rule 3**: 退行先の aged digest が存在しないため、LOW スコアでも「待つ」か「意図的な `days=0` bootstrap」かの選択は残る。
 
 ## 注記
@@ -191,6 +191,6 @@ baseline が決められない場合（初回のピン、`images-pin` rule 3）�
 - [ ] 暴露面をスコアに混ぜず別行で報告した
 - [ ] artifact を一切実行していない（`npm install` なし、`docker run` なし、ダウンロードしたバイナリの実行なし、候補の build なし）。展開先はリポジトリのツリー外
 - [ ] バンド・推奨・何も変更していない旨を含む日本語の報告を出力した
-- [ ] 該当する場合に npm `min-release-age` / pnpm `minimumReleaseAge` / PyPI `mise-cooldown` / `images-pin` rule 3 の壁を再掲した
+- [ ] 該当する場合に npm `min-release-age` / pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 の壁を再掲した
 - [ ] ファイルを一切変更せず、窓を下げず、更新を適用していない
 - [ ] `SKILL.md` を更新したら `SKILL.ja.md` を再同期した
