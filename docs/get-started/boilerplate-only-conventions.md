@@ -105,6 +105,45 @@ instruction belongs to the fork, so it lives in [setup-repository.md](setup-repo
 it is named here only because the tag is a boilerplate-side device that means nothing once setup is
 done.
 
+## Invariants verified by running the sample removal
+
+A subsystem invariant is stated in the document that owns it, as a rule about the code. Where the
+upstream *checks* that rule by running the sample removal and comparing the result, the check —
+not the rule — belongs here: a fork has no sample set to remove.
+
+### E3 — broker-SDK isolation
+
+[ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.md) states **E3** as a rule about
+naming: knowledge of a concrete broker is confined to its adapter package and to the wiring that
+selects it, and no core `*.go` and no core document names a broker adapter. That is the form a fork
+inherits. While this repository is distributed as a boilerplate, the rule is checked by running the
+sample removal, because the wiring that names an adapter is part of the removable sample set here:
+
+> After `make setup-remove-sample-api`, the repository's coupling is identical to what it was before
+> the sample was added.
+
+The check decomposes into four conditions, each mechanically verifiable:
+
+1. **No core `*.go` references a broker adapter** — `checkNoDanglingReferences` in
+   `scripts/setup/verify-sample-removal.ts`.
+2. **No core document references a sample** — core documents describe structure
+   (`internal/controller/worker/<name>/`), never a sample's name.
+3. **The seam returns to its pre-sample shape** — any sample-driven change to
+   `internal/usecase/boundary/worker` or `internal/usecase/boundary/publisher` is wrapped in a
+   `sample-api:replace` block whose escrow side holds the pre-sample form.
+4. **Removed dependencies leave `go.mod` / `vendor/`** — `make tidy-lib` runs in the removal chain.
+
+`.github/workflows/sample-removal-check.yaml` performs the full removal followed by
+`go build ./...`, `make lint`, and `make test` on every pull request, so the post-removal state is
+exercised continuously and condition 3's escrow side cannot rot.
+
+**This deviation does not transfer.** A project built from the template has no sample set to remove,
+so there is no pre-sample state to compare against and no removal chain to run. What survives is E3
+itself — a statement about which files name what — enforced by review, or by whatever check the
+project chooses to write for it. Do not infer from the upstream's removal-based verification that
+the invariant is about removal; it is about naming, and removal is only how the upstream happens to
+observe it.
+
 ## What applies after setup
 
 Once this file is gone, [`docs/adr/README.md`](../adr/README.md) is the whole convention, with no
@@ -126,5 +165,7 @@ carrying `boilerplate-only:line`.
 | --- | --- |
 | [`docs/adr/README.md`](../adr/README.md) | last bullet of *Conventions* |
 | [`docs/ja/adr/README.ja.md`](../ja/adr/README.ja.md) | 「規約」の最終項目 |
+| [`docs/adr/0048-broker-sdk-isolation-measured-as-coupling.md`](../adr/0048-broker-sdk-isolation-measured-as-coupling.md) | last bullet of *Notes* |
+| [`docs/ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md`](../ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md) | 「補足」の最終項目 |
 
 This file itself is removed by path, not by marker.

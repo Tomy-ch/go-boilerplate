@@ -57,6 +57,27 @@
 
 exclusion ADR は `setup-review` タグを持ち、リポジトリセットアップフローがそれを列挙できるようにしてある。fork はセットアップ時にそれらを直接編集し、supersede ではなく自分のベースラインを確立してよい。この指示は fork のものなので実体は [setup-repository.ja.md](setup-repository.ja.md) Phase 13 にあり、ここに挙げるのは、このタグがセットアップ完了後には何の意味も持たないボイラープレート側の仕掛けだからである。
 
+## サンプル削除によって検証される不変条件
+
+サブシステムの不変条件は、それを所有する文書にコードについての規則として書かれる。上流がその規則を「サンプル削除を走らせて結果を突き合わせる」形で**検査**しているとき、ここに属するのは検査のほうであって規則ではない。fork には削除すべきサンプル群が無いからである。
+
+### E3 — ブローカー SDK の分離
+
+[ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md) は **E3** を名指しについての規則として述べている。すなわち、具体的なブローカーの知識はそのアダプターのパッケージとそれを選ぶ配線だけに閉じ込め、core の `*.go` も core のドキュメントもブローカーアダプターを名指さない。fork が継承するのはこの形である。本リポジトリがボイラープレートとして頒布される間、この規則はサンプル削除を走らせて検査する。アダプターを名指す配線が、ここでは削除可能なサンプル群の一部だからである。
+
+> `make setup-remove-sample-api` の実行後、リポジトリの結合はサンプル追加前と同一である。
+
+検査は 4 つの条件に分解でき、いずれも機械的に検証できる。
+
+1. **core の `*.go` がブローカーアダプターを参照しない** — `scripts/setup/verify-sample-removal.ts` の `checkNoDanglingReferences` が検査する。
+2. **core のドキュメントがサンプルを参照しない** — core のドキュメントは構造（`internal/controller/worker/<name>/`）を記述し、サンプルの具体名を参照しない。
+3. **シームがサンプル追加前の形へ戻る** — `internal/usecase/boundary/worker` または `internal/usecase/boundary/publisher` へのサンプル由来の変更は、退避側にサンプル追加前の形を保持する `sample-api:replace` ブロックで囲む。
+4. **不要になった依存が `go.mod` / `vendor/` から落ちる** — 削除チェーンで `make tidy-lib` を実行する。
+
+`.github/workflows/sample-removal-check.yaml` はプルリクエストごとにフル削除に続けて `go build ./...` / `make lint` / `make test` を実行するため、削除後の状態は継続的に検証され、条件 3 の退避側も腐らない。
+
+**この逸脱は継承されない。** テンプレートから作られたプロジェクトには削除すべきサンプル群が無いので、比較すべきサンプル追加前の状態も、走らせる削除チェーンも存在しない。生き残るのは E3 そのもの——どのファイルが何を名指すかについての言明——であり、レビュー、あるいはそのプロジェクトが自ら書く検査によって強制される。上流が削除で検証していたことから、この不変条件が削除についてのものだと推論しないこと。これは名指しについてのものであり、削除は上流がたまたまそれを観測する手段にすぎない。
+
 ## セットアップ後に適用されるもの
 
 このファイルが消えた後は、[`docs/adr/README.md`](../adr/README.ja.md) がそのまま規約の全体であり、例外は付かない。ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする。それが [MADR](https://adr.github.io/madr/) の定義する ADR の形であり、[ADR-0000](../adr/0000-record-architecture-decisions.ja.md) が決定した内容である。
@@ -71,5 +92,7 @@ exclusion ADR は `setup-review` タグを持ち、リポジトリセットア�
 | --- | --- |
 | [`docs/adr/README.md`](../../adr/README.md) | *Conventions* の最終項目 |
 | [`docs/ja/adr/README.ja.md`](../adr/README.ja.md) | 「規約」の最終項目 |
+| [`docs/adr/0048-broker-sdk-isolation-measured-as-coupling.md`](../../adr/0048-broker-sdk-isolation-measured-as-coupling.md) | *Notes* の最終項目 |
+| [`docs/ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md`](../adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md) | 「補足」の最終項目 |
 
 このファイル自体はマーカーではなくパス指定で削除される。
