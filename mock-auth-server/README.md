@@ -121,6 +121,19 @@ curl -s -X POST http://localhost:4000/bypass/token \
 
 The Go API points `AUTH_ISSUER` at the host URL (`http://localhost:4000`) and `AUTH_JWKS_URL` at the internal service URL (`http://mock_auth_server:4000/.well-known/jwks.json`) — the **issuer is separated from the JWKS fetch URL** so `iss` stays browser/host-resolvable while key fetching uses the container hostname. See `env/README.md` (Auth section).
 
+## Tests
+
+| Command | Scope |
+| --- | --- |
+| `npm test` | Unit suite (`src/**/*.test.ts`), in-process against `app.fetch`. **Gated at 100 % line / branch / function coverage** |
+| `npm run test:integration` | Integration suite (`integration/**/*.test.ts`) over real HTTP, plus the entry point started as a child process |
+
+The coverage gate is `node --test`'s own `--test-coverage-*` thresholds — no extra dependency. Two paths are
+excluded from it: `src/generated/**` (orval output, not hand-written) and `src/server.ts` (the entry point,
+which binds a port on import and therefore cannot be loaded in-process). Excluding the entry is not a hole —
+`integration/server-entry.integration.test.ts` starts it as a real process and asserts both that it refuses to
+run under `NODE_ENV=production` and that it serves `/health` on a normal start.
+
 ## Environment Variables
 
 | Variable | Default | Description |

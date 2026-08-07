@@ -8,6 +8,15 @@ import { logEvent } from "../log.ts";
 
 export const adminRoutes = new Hono();
 
+// rotationFailure は rotation 操作の例外を 400 応答ボディへ写像する。RotationError は不正な操作要求
+// なので呼び出し側の誤りとして返し、それ以外は mock 自身の不具合なので握り潰さず投げ返す。
+export function rotationFailure(err: unknown): { error: string; error_description: string } {
+  if (err instanceof RotationError) {
+    return { error: "invalid_request", error_description: err.message };
+  }
+  throw err;
+}
+
 // GET /admin/users は固定 User Fixture の一覧を返す。
 adminRoutes.get("/admin/users", (c) => c.json({ users }));
 
@@ -51,10 +60,7 @@ adminRoutes.post("/admin/keys/rotate", async (c) => {
         break;
     }
   } catch (err) {
-    if (err instanceof RotationError) {
-      return c.json({ error: "invalid_request", error_description: err.message }, 400);
-    }
-    throw err;
+    return c.json(rotationFailure(err), 400);
   }
 
   const state = keyStore.state();

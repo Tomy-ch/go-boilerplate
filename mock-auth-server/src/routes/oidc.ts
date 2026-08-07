@@ -124,7 +124,11 @@ oidcRoutes.post("/oidc/token", async (c) => {
   }
 
   const accessToken = await issueAccessToken(config, record.subject, record.scope);
-  const idToken = await issueIdToken(config, record.subject, record.nonce, record.clientId);
+  // ID Token は openid スコープを要求された認可にだけ返す。openid を含まない認可は OAuth2 の
+  // 認可であって認証ではないため、要求されていない本人性の主張を渡すことになる。
+  const idToken = record.scope.split(" ").includes("openid")
+    ? await issueIdToken(config, record.subject, record.nonce, record.clientId)
+    : undefined;
   logEvent("token_issued", { client_id: record.clientId, subject: record.subject, kid: keyStore.signing().kid });
 
   return c.json({
@@ -132,7 +136,7 @@ oidcRoutes.post("/oidc/token", async (c) => {
     token_type: "Bearer",
     expires_in: ACCESS_TTL_SECONDS,
     scope: record.scope,
-    id_token: idToken,
+    ...(idToken === undefined ? {} : { id_token: idToken }),
   });
 });
 

@@ -11,7 +11,7 @@ import { keyStore, PRIMARY_KID, ROTATION_KID } from "../src/keys.ts";
 // Go 側は depguard で os 直読みを禁止されるため、ファイル共有は embed 可能な package 配下コピーで行う。
 const outDirs = [
   fileURLToPath(new URL("../fixtures/jwks/", import.meta.url)),
-  fileURLToPath(new URL("../../../internal/integration/testdata/jwks/", import.meta.url)),
+  fileURLToPath(new URL("../../internal/integration/testdata/jwks/", import.meta.url)),
 ];
 for (const dir of outDirs) {
   mkdirSync(dir, { recursive: true });

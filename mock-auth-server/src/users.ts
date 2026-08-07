@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { User } from "./types.ts";
 
 // loadUsers は指定パスの JSON を User 配列として読み込む。存在しない・破損時は空配列を返す。
-function loadUsers(path: string): User[] {
+export function loadUsers(path: string): User[] {
   try {
     return JSON.parse(readFileSync(path, "utf8")) as User[];
   } catch {
@@ -17,8 +17,14 @@ const usersPath = fileURLToPath(new URL("../fixtures/users.json", import.meta.ur
 // users は読み込み済みの固定 User 一覧。fixture が無くても mock は動作する。
 export const users = loadUsers(usersPath);
 
+// firstSubject は User 一覧の先頭 subject を返す。空（fixture 不在・破損）のときは、
+// サンプル固有名を焼き込まない中立な既定にフォールバックする。
+export function firstSubject(list: User[]): string {
+  return list[0]?.subject ?? "user-example";
+}
+
 // defaultSubject は subject 省略時のフォールバック。サンプル固有名を焼き込まないためデータ側から導出する。
-export const defaultSubject = users[0]?.subject ?? "user-example";
+export const defaultSubject = firstSubject(users);
 
 // findUser は subject に一致する User を返す（無ければ undefined）。
 export function findUser(subject: string): User | undefined {

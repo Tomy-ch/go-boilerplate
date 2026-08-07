@@ -123,6 +123,19 @@ curl -s -X POST http://localhost:4000/bypass/token \
 
 Go API は `AUTH_ISSUER` をホスト URL（`http://localhost:4000`）に、`AUTH_JWKS_URL` を内部サービス URL（`http://mock_auth_server:4000/.well-known/jwks.json`）に向ける — **issuer と JWKS 取得 URL を分離**し、`iss` はブラウザ/ホストから解決可能なまま、鍵取得はコンテナ名を使う。`env/README.md`（Auth セクション）を参照。
 
+## テスト
+
+| コマンド | 対象 |
+| --- | --- |
+| `npm test` | ユニット（`src/**/*.test.ts`）。`app.fetch` をプロセス内で叩く。**行 / 分岐 / 関数すべて 100% をゲートにしている** |
+| `npm run test:integration` | 統合（`integration/**/*.test.ts`）。実 HTTP と、エントリポイントの子プロセス起動 |
+
+カバレッジゲートは `node --test` 自身の `--test-coverage-*` しきい値で、追加の依存は無い。対象外は 2 つ:
+`src/generated/**`（orval の生成物で手書きではない）と `src/server.ts`（import した時点でポートを掴むため
+プロセス内で読み込めないエントリポイント）。エントリの除外は穴ではなく、
+`integration/server-entry.integration.test.ts` が実プロセスとして起動し、`NODE_ENV=production` で起動を拒否すること
+と、通常起動で `/health` に応答することの両方を固定している。
+
 ## 環境変数
 
 | 変数 | 既定 | 説明 |

@@ -1,6 +1,5 @@
 // keys.test.ts は鍵ストアの状態遷移・golden JWKS 一致・profile の kid を検証する。
-import { test, beforeEach } from "node:test";
-import assert from "node:assert/strict";
+import { describe, expect, it, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { decodeProtectedHeader } from "jose";
@@ -26,40 +25,44 @@ beforeEach(() => {
   keyStore.reset();
 });
 
-test("state: 初期状態は Phase1（公開 = 署名 = PRIMARY_KID）", () => {
-  assert.deepEqual(keyStore.state(), { signing_kid: PRIMARY_KID, published_kids: [PRIMARY_KID] });
+it("state: 初期状態は Phase1（公開 = 署名 = PRIMARY_KID）", () => {
+  expect(keyStore.state()).toEqual({ signing_kid: PRIMARY_KID, published_kids: [PRIMARY_KID] });
 });
 
-test("golden 一致: 各 Phase の jwks() が fixtures/jwks/phase<n>.json とバイト等価", () => {
-  assert.deepEqual(keyStore.jwks(), goldenJwks(1));
+it("golden 一致: 各 Phase の jwks() が fixtures/jwks/phase<n>.json とバイト等価", () => {
+  expect(keyStore.jwks()).toEqual(goldenJwks(1));
 
   keyStore.addKey(ROTATION_KID);
   keyStore.promote(ROTATION_KID);
-  assert.deepEqual(keyStore.jwks(), goldenJwks(2));
+  expect(keyStore.jwks()).toEqual(goldenJwks(2));
 
   keyStore.retire(PRIMARY_KID);
-  assert.deepEqual(keyStore.jwks(), goldenJwks(3));
+  expect(keyStore.jwks()).toEqual(goldenJwks(3));
 });
 
-test("promote: 昇格後に valid profile が新署名鍵 kid で署名する", async () => {
+it("promote: 昇格後に valid profile が新署名鍵 kid で署名する", async () => {
   keyStore.addKey(ROTATION_KID);
   keyStore.promote(ROTATION_KID);
   const token = await issueToken(config, "user-active", "valid");
-  assert.equal(decodeProtectedHeader(token).kid, ROTATION_KID);
+  expect(decodeProtectedHeader(token).kid).toBe(ROTATION_KID);
 });
 
-test("profile unknown-kid: JWKS に存在しない kid で署名する", async () => {
+it("profile unknown-kid: JWKS に存在しない kid で署名する", async () => {
   const token = await issueToken(config, "user-active", "unknown-kid");
   const kid = decodeProtectedHeader(token).kid;
-  assert.equal(kid, "unknown-kid");
+  expect(kid).toBe("unknown-kid");
   const published = keyStore.jwks().keys.map((k) => k.kid);
-  assert.ok(!published.includes(kid), "unknown-kid は公開集合に無い");
+  expect(!published.includes(kid)).toBeTruthy();
 });
 
-test("profile old-key: 退役鍵 kid で署名し公開集合に載らない", async () => {
+it("profile old-key: 退役鍵 kid で署名し公開集合に載らない", async () => {
   const token = await issueToken(config, "user-active", "old-key");
   const kid = decodeProtectedHeader(token).kid;
-  assert.equal(kid, RETIRED_KID);
+  expect(kid).toBe(RETIRED_KID);
   const published = keyStore.jwks().keys.map((k) => k.kid);
-  assert.ok(!published.includes(kid), "old-key(退役鍵) は公開集合に無い");
+  expect(!published.includes(kid)).toBeTruthy();
+});
+
+it("material: 未登録の kid は例外を投げる", () => {
+  expect(() => keyStore.material("no-such-kid")).toThrow(/unknown kid: no-such-kid/);
 });

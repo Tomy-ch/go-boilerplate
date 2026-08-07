@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Client } from "./types.ts";
 
 // loadClients は指定パスの JSON を Client 配列として読み込む。存在しない・破損時は空配列を返す。
-function loadClients(path: string): Client[] {
+export function loadClients(path: string): Client[] {
   try {
     return JSON.parse(readFileSync(path, "utf8")) as Client[];
   } catch {
