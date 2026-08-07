@@ -235,15 +235,15 @@ are opt-in through the Optional seams above.
   implementation per environment and **fail closed** (return an error) for any
   environment their `switch` does not name, so an unconfigured environment
   cannot start with a permissive default. Which environments are named differs
-  between the two, and the sample API moves the boundary: with the sample
-  present, `provideAuthorizer` wires the allow-all authorizer for CI / test and
-  the `user_roles` authorizer for local through production; after
-  `make setup-remove-sample-api` the `user_roles` case is removed, leaving
-  local / CI / test on allow-all and every production-like environment
-  fail-closed until a real RBAC / policy adapter is wired.
-  `core.provideAuthenticator` is gated independently: CI / test get the stub,
-  local / development get the JWKS authenticator, and staging / production are
-  fail-closed. Read the `switch` rather than assuming a shared boundary.
+  between the two, and adding or removing an authorization implementation moves
+  the boundary: `provideAuthorizer` currently wires the allow-all authorizer for
+  CI / test and the `user_roles` authorizer for local through production, and
+  dropping that implementation leaves local / CI / test on allow-all with every
+  production-like environment fail-closed until a real RBAC / policy adapter is
+  wired. `core.provideAuthenticator` is gated independently: CI / test get the
+  stub, local / development get the JWKS authenticator, and staging / production
+  are fail-closed. Read the `switch` rather than assuming a shared boundary.
+- While this repository is distributed as a boilerplate, which environments the authorization gate names is additionally moved by the sample-API removal; see [`docs/get-started/boilerplate-only-conventions.md`](../../docs/get-started/boilerplate-only-conventions.md). It does not apply to a project built from it. <!-- boilerplate-only:line -->
 
 ## Do / Don't
 
@@ -530,7 +530,7 @@ The DI layer wires — it does not compute. Tests therefore verify **that the gr
 - **Graph validity** — `fx.ValidateApp` per module. It resolves the graph without executing constructors or lifecycle hooks, so it proves wiring completeness and nothing else. A module needing no real infrastructure to start may additionally boot a minimal app and assert the component it provides, which graph validation by definition cannot. See [`module/README.md`](module/README.md).
 - **Provider / `fx.Invoke` bodies with their own logic** — precisely what graph validation does *not* reach. Call the function directly in a unit test; a body that only appears in the graph is untested.
 - **Lifecycle hooks** — capture the registered start / stop closures through a `lifecycle.Registrar` mock and drive them. See [`server/hook/README.md`](server/hook/README.md); the `job` / `worker` / `outboxrelay` hooks share that shape on top of `lifecycle.SupervisedRunner`, where the drain path (cancel → wait, bounded by grace) is the branch to pin.
-- **Environment-gated wiring** — a provider that selects an implementation per environment and refuses (returns an error) for the environments it must not serve (`provideAuthorizer`, `core.provideAuthenticator`) is exercised on **every** case of the gate, refusal included. The refusal is the safeguard, so a test that only covers the environments that resolve covers nothing that matters. Read the gate's own `switch` for its current boundary rather than assuming it — the sample-api markers move which environments land in which case.
+- **Environment-gated wiring** — a provider that selects an implementation per environment and refuses (returns an error) for the environments it must not serve (`provideAuthorizer`, `core.provideAuthenticator`) is exercised on **every** case of the gate, refusal included. The refusal is the safeguard, so a test that only covers the environments that resolve covers nothing that matters. Read the gate's own `switch` for its current boundary rather than assuming it — adding or removing an authorization implementation moves which environments land in which case.
 
 Whole-process startup against a real Echo and a real database is out of scope here — that is
 [`internal/integration`](../integration/README.md).
