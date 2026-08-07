@@ -126,7 +126,7 @@ the single canonical transport used by all outbound calls (see
 
 Permit only explicitly approved hosts or IP ranges; reject everything else. Provides a tighter
 posture. Rejected because it requires updating the allow list for every new downstream and
-makes the template harder to adopt in diverse environments. The deny-list approach (block known
+makes the guard harder to operate in diverse environments. The deny-list approach (block known
 bad ranges, allow the rest) is more operationally practical while still covering the primary
 SSRF targets.
 
@@ -162,13 +162,13 @@ which is sufficient:
   proxied dial lands on the proxy's IP and the destination check becomes meaningless. STS
   (web-identity / IRSA) and SSO are public HTTPS endpoints, so forcing them direct breaks
   credential resolution wherever egress is only permitted through a forward proxy. That is the
-  "no forward proxy" situation baked into the template.
+  "no forward proxy" situation this repository assumes.
 - **There is nothing left to defend.** What the guard would prevent is a redirected credential
   request (`AWS_EC2_METADATA_SERVICE_ENDPOINT`, `AWS_CONTAINER_CREDENTIALS_FULL_URI`,
   `HTTPS_PROXY`). All three are process environment variables, and whoever can set them can read
   the credentials directly.
 
-The posture here is also **already decided by the SDK**, which is the authority this template
+The posture here is also **already decided by the SDK**, which is the authority this repository
 defers to: `config.resolveLocalHTTPCredProvider` restricts the one env-overridable plaintext
 endpoint to loopback and the known ECS / EKS addresses (`isAllowedHost` / `isIPAllowed`). Layering
 a second, weaker perimeter over a standard that has settled the question is the kind of

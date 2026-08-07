@@ -15,7 +15,7 @@ accepted
 
 Data access needs predictable performance characteristics and explicit, auditable query
 behavior. Hiding SQL behind an ORM obscures what actually runs against the database, which
-conflicts with the template's goals of type safety, structural clarity, and long-term
+conflicts with this repository's goals of type safety, structural clarity, and long-term
 operability.
 
 ## Decision
@@ -35,7 +35,7 @@ Go code is derived from it (see [ADR-0022](0022-sqlc-type-safe-sql.md)).
 
 ### Negative Consequences
 
-- More boilerplate than an ORM's convenience methods; each access path is written as SQL.
+- More hand-written code than an ORM's convenience methods; each access path is written as SQL.
 - No automatic cross-database portability that an ORM abstraction might provide.
 
 ## Alternatives Considered
