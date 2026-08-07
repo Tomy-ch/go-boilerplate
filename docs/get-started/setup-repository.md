@@ -370,7 +370,19 @@ different triggers.
     grep -rn "boilerplate-only:line" docs/
     ```
 
-3. Decide your own ADR regime. What you inherit is [docs/adr/README.md](../adr/README.md) as
+3. Remove every region delimited by `boilerplate-only:begin` / `boilerplate-only:end`, both markers
+   included. A region holds a statement that is true only of the upstream template — who maintains
+   it, what it promises, why it keeps something a fork has no reason to keep — so what is left after
+   the cut is the general form, already written around it:
+
+    ```sh
+    grep -rn "boilerplate-only:begin" docs/
+    ```
+
+   Each region is a whole block with a blank line on either side, so the surrounding text needs no
+   repair. Delete the blank line the region leaves behind if it doubles up.
+
+4. Decide your own ADR regime. What you inherit is [docs/adr/README.md](../adr/README.md) as
    written: an ADR is an immutable record, and a decision that changes is replaced by a new
    `accepted` ADR while the old one is marked `superseded`. If you want in-place amendment instead,
    record that as a decision of your own, in your own ADR.

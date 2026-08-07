@@ -354,6 +354,14 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
     grep -rn "boilerplate-only:line" docs/
     ```
 
-3. 自分の ADR regime を決めます。継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。その場改訂を望むなら、それはあなた自身の決定として、あなた自身の ADR に記録してください。
+3. `boilerplate-only:begin` / `boilerplate-only:end` で挟まれた領域を、両マーカーごと除去します。領域が抱えているのは上流のテンプレートについてのみ真である記述——誰が保守しているのか、何を約束しているのか、fork には持ち続ける理由のないものをなぜ残しているのか——なので、切除後に残るのはその周囲に既に書かれている一般形です。
+
+    ```sh
+    grep -rn "boilerplate-only:begin" docs/
+    ```
+
+    いずれの領域も前後を空行で挟まれたブロック単位なので、周囲の文を修復する必要はありません。空行が重複したら片方を削ってください。
+
+4. 自分の ADR regime を決めます。継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。その場改訂を望むなら、それはあなた自身の決定として、あなた自身の ADR に記録してください。
 
 > マーカー名前空間 `boilerplate-only` は**暫定**で、この削除は当面手作業です（これを扱う strip スクリプトは別途準備中）。`boilerplate-only` と `sample-api` のマーカーを 1 回のパスで剥がさないでください。発火する契機が違い、fork が片方だけを行うことは十分あり得ます。
