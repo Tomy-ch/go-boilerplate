@@ -7,6 +7,7 @@ import {
   hasCutOffHeading,
   hasJobTimeout,
   reachesCancelled,
+  scanWorkflow,
   titleOf,
 } from "./actions-cutoff";
 import { splitJobs, splitSteps } from "./workflow";
@@ -161,6 +162,160 @@ describe("hasCutOffHeading", () => {
 
     it("大文字小文字の違う表記を通さない（見出しの文言を揺らさない）", () => {
       expect(hasCutOffHeading("## cut off")).toBe(false);
+    });
+  });
+});
+
+const COMMENT_STEP = "      - uses: ./.github/actions/upsert-pr-comment";
+const GOOD_IF = "        if: always()";
+const GOOD_TITLE = "          title: ${{ steps.x.outputs.title || '## ⚠️ X: CUT OFF (no result produced)' }}";
+
+function workflow(...lines: string[]): string {
+  return lines.join("\n");
+}
+
+/** 違反の出ない最小のワークフロー。個々のケースは、ここから 1 箇所だけ崩す。 */
+function healthy(...extra: string[]): string {
+  return workflow(
+    "jobs:",
+    "  a:",
+    "    timeout-minutes: 10",
+    "    steps:",
+    COMMENT_STEP,
+    GOOD_IF,
+    "        with:",
+    GOOD_TITLE,
+    ...extra,
+  );
+}
+
+describe("scanWorkflow", () => {
+  describe("正常系", () => {
+    it("timeout と if と title が揃っていれば違反にしない", () => {
+      const scan = scanWorkflow("w.yaml", healthy());
+
+      expect(scan.found).toBe(true);
+      expect(scan.findings).toEqual([]);
+    });
+
+    it("検査したジョブ数とコメントステップ数を数える", () => {
+      const scan = scanWorkflow("w.yaml", healthy());
+
+      expect(scan.checkedJobs).toBe(1);
+      expect(scan.checkedSteps).toBe(1);
+    });
+
+    it("再利用ワークフロー呼び出しのジョブは timeout の検査から外す", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow("jobs:", "  a:", "    uses: ./.github/workflows/reusable.yaml"),
+      );
+
+      expect(scan.findings).toEqual([]);
+      expect(scan.checkedJobs).toBe(0);
+    });
+
+    it("コメント投稿を呼ばないステップは if / title を要求しない", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow("jobs:", "  a:", "    timeout-minutes: 10", "    steps:", "      - run: echo ok"),
+      );
+
+      expect(scan.findings).toEqual([]);
+      expect(scan.checkedSteps).toBe(0);
+    });
+  });
+
+  describe("異常系", () => {
+    it("timeout-minutes の無いジョブをジョブ見出しの行で挙げる", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow("jobs:", "  a:", "    steps:", COMMENT_STEP, GOOD_IF, "        with:", GOOD_TITLE),
+      );
+
+      expect(scan.findings).toHaveLength(1);
+      expect(scan.findings[0]).toMatchObject({ file: "w.yaml", line: 2 });
+      expect(scan.findings[0].message).toContain("timeout-minutes");
+    });
+
+    it("if: の無いコメントステップをステップ先頭の行で挙げる", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow("jobs:", "  a:", "    timeout-minutes: 10", "    steps:", COMMENT_STEP, "        with:", GOOD_TITLE),
+      );
+
+      expect(scan.findings).toHaveLength(1);
+      expect(scan.findings[0].line).toBe(5);
+      expect(scan.findings[0].message).toContain("if: がありません");
+    });
+
+    it("打ち切りに到達しない if: を if: の行で挙げる", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow(
+          "jobs:",
+          "  a:",
+          "    timeout-minutes: 10",
+          "    steps:",
+          COMMENT_STEP,
+          "        if: failure()",
+          "        with:",
+          GOOD_TITLE,
+        ),
+      );
+
+      expect(scan.findings).toHaveLength(1);
+      expect(scan.findings[0].line).toBe(6);
+      expect(scan.findings[0].message).toContain("打ち切りに到達しません");
+    });
+
+    it("title: の無いコメントステップをステップ先頭の行で挙げる", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow("jobs:", "  a:", "    timeout-minutes: 10", "    steps:", COMMENT_STEP, GOOD_IF),
+      );
+
+      expect(scan.findings).toHaveLength(1);
+      expect(scan.findings[0].line).toBe(5);
+      expect(scan.findings[0].message).toContain("title: がありません");
+    });
+
+    it("打ち切り見出しの無い title: を title: の行で挙げる", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow(
+          "jobs:",
+          "  a:",
+          "    timeout-minutes: 10",
+          "    steps:",
+          COMMENT_STEP,
+          GOOD_IF,
+          "        with:",
+          "          title: ## 結果",
+        ),
+      );
+
+      expect(scan.findings).toHaveLength(1);
+      expect(scan.findings[0].line).toBe(8);
+      expect(scan.findings[0].message).toContain("打ち切り時の見出しがありません");
+    });
+
+    it("同じステップの if: と title: の欠落を両方とも挙げる", () => {
+      const scan = scanWorkflow(
+        "w.yaml",
+        workflow("jobs:", "  a:", "    timeout-minutes: 10", "    steps:", COMMENT_STEP),
+      );
+
+      expect(scan.findings).toHaveLength(2);
+    });
+
+    it("jobs: を読めなければ違反ゼロではなく読めなかったこととして返す", () => {
+      const scan = scanWorkflow("w.yaml", workflow("name: X", "on: push"));
+
+      expect(scan.found).toBe(false);
+      expect(scan.findings).toEqual([]);
+      expect(scan.checkedJobs).toBe(0);
+      expect(scan.checkedSteps).toBe(0);
     });
   });
 });

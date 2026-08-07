@@ -19,46 +19,24 @@
 //
 // 静的に読めるものだけを見る。`!always()` のように到達性を打ち消す式は書けてしまうが、規約が正で
 // この検査はその近似にあたる。1 件でも違反があれば非 0 で終了する。
+//
+// この入口はファイル入出力と終了コードだけを担う。走査と判定は lib/actions-cutoff.ts にある。
 
 import fs from "node:fs";
 import path from "node:path";
 
-import {
-  COMMENT_ACTION,
-  callsCommentAction,
-  callsReusableWorkflow,
-  conditionOf,
-  hasCutOffHeading,
-  hasJobTimeout,
-  reachesCancelled,
-  titleOf,
-} from "./lib/actions-cutoff";
-import { splitJobs, splitSteps } from "./lib/workflow";
+import { COMMENT_ACTION, scanWorkflow } from "./lib/actions-cutoff";
+import { type Finding, formatFindings } from "./lib/lint-report";
+import { selectWorkflowFiles } from "./lib/workflow";
 
 const REPO_ROOT = process.cwd();
 const WORKFLOWS_DIR = ".github/workflows";
-
-type Finding = {
-  file: string;
-  line: number;
-  message: string;
-};
-
-const findings: Finding[] = [];
-
-function report(file: string, line: number, message: string): void {
-  findings.push({ file, line, message });
-}
 
 function listWorkflowFiles(): string[] {
   const dir = path.join(REPO_ROOT, WORKFLOWS_DIR);
   if (!fs.existsSync(dir)) return [];
 
-  return fs
-    .readdirSync(dir)
-    .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
-    .sort()
-    .map((name) => path.join(WORKFLOWS_DIR, name));
+  return selectWorkflowFiles(fs.readdirSync(dir), WORKFLOWS_DIR);
 }
 
 const workflowFiles = listWorkflowFiles();
@@ -71,68 +49,22 @@ if (workflowFiles.length === 0) {
   process.exit(2);
 }
 
+const findings: Finding[] = [];
 let checkedJobs = 0;
 let checkedSteps = 0;
 
 for (const rel of workflowFiles) {
   const source = fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-  const { jobs, found } = splitJobs(source);
+  const scan = scanWorkflow(rel, source);
 
-  if (!found) {
+  if (!scan.found) {
     console.error(`✘ actions-cutoff-lint: ${rel} に jobs: が見つかりません`);
     process.exit(2);
   }
 
-  for (const job of jobs) {
-    if (!callsReusableWorkflow(job)) {
-      checkedJobs += 1;
-
-      if (!hasJobTimeout(job)) {
-        report(
-          rel,
-          job.number,
-          `ジョブ \`${job.id}\` に timeout-minutes がありません（GitHub 既定の 360 分まで走ります）`,
-        );
-      }
-    }
-
-    for (const step of splitSteps(job)) {
-      if (!callsCommentAction(step)) continue;
-
-      checkedSteps += 1;
-      const condition = conditionOf(step);
-
-      if (condition === null) {
-        report(
-          rel,
-          step.number,
-          `ジョブ \`${job.id}\` の ${COMMENT_ACTION} ステップに if: がありません（暗黙の success() で打ち切り時にスキップされます）`,
-        );
-      } else if (!reachesCancelled(condition.value)) {
-        report(
-          rel,
-          condition.line,
-          `ジョブ \`${job.id}\` の ${COMMENT_ACTION} ステップの if: が打ち切りに到達しません（always() / cancelled() が要ります。failure() は cancelled では false です）`,
-        );
-      }
-
-      const title = titleOf(step);
-
-      if (title === null) {
-        report(
-          rel,
-          step.number,
-          `ジョブ \`${job.id}\` の ${COMMENT_ACTION} ステップに title: がありません（本文だけ書きかけで残った打ち切りを見出しで区別できません）`,
-        );
-      } else if (!hasCutOffHeading(title.value)) {
-        report(
-          rel,
-          title.line,
-          `ジョブ \`${job.id}\` の ${COMMENT_ACTION} ステップの title: に打ち切り時の見出しがありません（\`\${{ steps.X.outputs.title || '## ⚠️ …: CUT OFF (no result produced)' }}\` の形にしてください）`,
-        );
-      }
-    }
-  }
+  findings.push(...scan.findings);
+  checkedJobs += scan.checkedJobs;
+  checkedSteps += scan.checkedSteps;
 }
 
 // 1 件も拾えないのは、規約が守られているのではなく検査が的を外している状態。パスの変更や
@@ -146,17 +78,7 @@ if (checkedSteps === 0) {
 
 if (findings.length > 0) {
   console.error(`✘ actions-cutoff-lint: ${findings.length} 件の違反\n`);
-  let current: string | null = null;
-
-  for (const finding of findings) {
-    if (finding.file !== current) {
-      if (current !== null) console.error("");
-      console.error(`  ${finding.file}`);
-      current = finding.file;
-    }
-    console.error(`    :${finding.line}  ${finding.message}`);
-  }
-
+  console.error(formatFindings(findings));
   console.error(
     `\n検査 ${workflowFiles.length} ワークフロー / ${checkedJobs} ジョブ / ${checkedSteps} コメントステップ中 ${findings.length} 件 NG`,
   );
