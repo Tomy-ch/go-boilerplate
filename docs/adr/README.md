@@ -24,7 +24,7 @@ a decision (an ADR); the *list* of them is a living reference.
 
 ## Conventions
 
-- **Filename**: `NNNN-kebab-title.md`, zero-padded 4 digits. A number is never re-assigned to a different decision — a superseded ADR keeps both its number and its file, so supersession frees no number in the first place.
+- **Filename**: `NNNN-kebab-title.md`, zero-padded 4 digits. Supersession frees no number — a superseded ADR keeps both its number and its file — so a retired decision's number is never handed to a different one. Numbers do move, but only wholesale: the insertion renumbering below shifts a whole range at once, and never recycles an individual number.
 - **Ordering**: numbers follow dependency / foundational order (principles → contract → layers → subsystems → cross-cutting → exclusions), not discovery order. To preserve this order, a new ADR may be **inserted at its thematic position by shifting all subsequent numbers +1** (a pure renumbering: every shifted ADR keeps its content, and all repository-internal references are updated in the same change). External references to ADR numbers from before such a shift may be stale — the kebab title in the filename is the stable identifier.
 - **Status lifecycle**: `proposed` → `accepted` → (`superseded` | `deprecated`).
 - **Who may change a decision record**: superseding or deprecating an `accepted` ADR is a decision for this repository's architect or tech lead, taken per change. Finding that an accepted ADR is contradicted by the implementation is a reason to raise it with them, not a licence to change it — the implementation is as likely to be the error. A previous change is not standing authorization for the next.
