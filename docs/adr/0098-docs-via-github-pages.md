@@ -15,7 +15,7 @@ accepted
 
 The repository maintains a `docs/` directory as the canonical source for architecture
 documentation, design decisions, API references, and guides (see ADR-0008). This content
-is useful to contributors and adopters when browsable in a rendered form, not just as raw
+is useful to contributors and readers when browsable in a rendered form, not just as raw
 Markdown in the repository.
 
 A hosting solution is needed that requires no additional infrastructure, aligns with the
