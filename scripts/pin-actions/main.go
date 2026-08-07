@@ -79,6 +79,8 @@ var (
 	errLockOrphanKey = xerrors.New("lockfile に参照されていないエントリがあります")
 	// errLockMissingKey は、uses: の参照が lockfile に登録されていない場合のエラー。
 	errLockMissingKey = xerrors.New("lockfile に未登録の参照があります")
+	// errPinDrift は、check で未固定・古い参照を検出した場合のエラー。
+	errPinDrift = xerrors.New("未固定/古い参照があります")
 )
 
 // ref はアクション参照 1 件。repo は owner/repo、sub はサブパス（codeql-action/init 等）、tag は固定対象の版。
@@ -144,16 +146,14 @@ func run(args []string, wd func() (string, error), apiBase string) error {
 			return xerrors.Wrap(err, "failed to parse flags")
 		}
 
-		resolve(root, apiBase, files, *minAge)
+		return resolve(root, apiBase, files, *minAge)
 	case "apply":
-		applyOrCheck(root, files, false)
+		return applyOrCheck(root, files, false)
 	case "check":
-		applyOrCheck(root, files, true)
+		return applyOrCheck(root, files, true)
 	default:
 		return errUsage
 	}
-
-	return nil
 }
 
 // parseUses は uses: 行の path / ref / コメント tag から ref を構築する。第2戻り値が false なら対象外。
@@ -301,16 +301,16 @@ func looseUsesValue(rest string) (string, bool) {
 
 // resolve は走査対象の参照を SHA へ解決して lockfile を書き直す。
 // apiBase は経過日数を問い合わせる GitHub API のルート URL（本番は githubAPIBase）。
-func resolve(root, apiBase string, files []string, minAgeDays int) {
+func resolve(root, apiBase string, files []string, minAgeDays int) error {
 	keys, err := collectKeys(root, files)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
 	// lockfile 不在（初回）は空マップで続行するが、それ以外の読み込み失敗は握り潰さず fail-close する
 	// （既存ピンが lock から脱落し供給網ガードの維持保証が破れるのを防ぐ。applyOrCheck と対称）。
 	existing, err := readLock(filepath.Join(root, lockFile))
 	if !isIgnorableLockErr(err) {
-		log.Fatalf("❌ read lockfile: %v", err)
+		return xerrors.Wrap(err, "read lockfile")
 	}
 
 	ctx := context.Background()
@@ -319,12 +319,12 @@ func resolve(root, apiBase string, files []string, minAgeDays int) {
 	for k, r := range keys {
 		sha, err := resolveSHA(ctx, r.repo, r.tag)
 		if err != nil {
-			log.Fatalf("❌ resolve %s: %v", k, err)
+			return xerrors.Wrap(err, "resolve "+k)
 		}
 		ageFn := func() (int, error) { return refAgeDays(ctx, apiBase, r.repo, r.tag, sha) }
 		use, note, err := quarantine(ageFn, k, sha, minAgeDays, existing)
 		if err != nil {
-			log.Fatalf("❌ age %s: %v", k, err)
+			return xerrors.Wrap(err, "age "+k)
 		}
 		if note != "" {
 			notes = append(notes, note)
@@ -341,9 +341,11 @@ func resolve(root, apiBase string, files []string, minAgeDays int) {
 	}
 
 	if err := writeLock(filepath.Join(root, lockFile), lock); err != nil {
-		log.Fatalf("❌ write lockfile: %v", err)
+		return xerrors.Wrap(err, "write lockfile")
 	}
 	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
+
+	return nil
 }
 
 func collectKeys(root string, files []string) (map[string]ref, error) {
@@ -558,36 +560,40 @@ func orphanKeys(lock map[string]string, used map[string]bool) []string {
 }
 
 // applyOrCheck は lockfile を SSOT に uses: を固定する。dryRun=true は書き換えず drift を非ゼロ終了で報告する。
-func applyOrCheck(root string, files []string, dryRun bool) {
+func applyOrCheck(root string, files []string, dryRun bool) error {
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
-		log.Fatalf("❌ read lockfile（先に resolve を実行してください）: %v", err)
+		return xerrors.Wrap(err, "read lockfile（先に resolve を実行してください）")
 	}
 	plan, err := planRewrites(root, files, lock)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
 	if err := plan.validate(lock); err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
 
 	paths := sortedChangePaths(plan.changes)
 
 	if dryRun {
 		if len(paths) > 0 {
-			log.Fatalf("❌ 未固定/古い参照があります（make pin-actions-resolve && make pin-actions-apply してコミットしてください）: %s",
-				strings.Join(relAll(root, paths), ", "))
+			return xerrors.Wrap(errPinDrift,
+				"make pin-actions-resolve && make pin-actions-apply してコミットしてください: "+
+					strings.Join(relAll(root, paths), ", "))
 		}
 		log.Printf("✅ 全アクションが lockfile 通りに固定されています")
-		return
+
+		return nil
 	}
 	for _, f := range paths {
 		if err := os.WriteFile(f, []byte(plan.changes[f]), filePerm); err != nil {
-			log.Fatalf("❌ write %s: %v", rel(root, f), err)
+			return xerrors.Wrap(err, "write "+rel(root, f))
 		}
 		log.Printf("  updated %s", rel(root, f))
 	}
 	log.Printf("✅ %d ファイルを固定しました", len(paths))
+
+	return nil
 }
 
 // sortedChangePaths は書き換えが必要なファイルの絶対パスを昇順で返す。

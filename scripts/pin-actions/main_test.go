@@ -1526,7 +1526,7 @@ func Test_applyOrCheck(t *testing.T) {
 			writeLockAt(t, root, lock)
 			path := writeFile(t, root, ".github/workflows/a.yml", "      - uses: actions/setup-go@v6\n")
 
-			applyOrCheck(root, []string{path}, false)
+			require.NoError(t, applyOrCheck(root, []string{path}, false))
 
 			data, err := os.ReadFile(path) //nolint:gosec // path は t.TempDir() 由来
 			require.NoError(t, err)
@@ -1539,11 +1539,65 @@ func Test_applyOrCheck(t *testing.T) {
 			writeLockAt(t, root, lock)
 			path := writeFile(t, root, ".github/workflows/a.yml", pinned)
 
-			applyOrCheck(root, []string{path}, true)
+			require.NoError(t, applyOrCheck(root, []string{path}, true))
 
 			data, err := os.ReadFile(path) //nolint:gosec // path は t.TempDir() 由来
 			require.NoError(t, err)
 			assert.Equal(t, pinned, string(data))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("check は未固定の参照を検出して失敗し、作業ツリーを書き換えない", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeLockAt(t, root, lock)
+			unpinned := "      - uses: actions/setup-go@v6\n"
+			path := writeFile(t, root, ".github/workflows/a.yml", unpinned)
+
+			err := applyOrCheck(root, []string{path}, true)
+
+			require.ErrorIs(t, err, errPinDrift)
+			require.ErrorContains(t, err, filepath.Join(".github", "workflows", "a.yml"))
+
+			data, readErr := os.ReadFile(path) //nolint:gosec // path は t.TempDir() 由来
+			require.NoError(t, readErr)
+			assert.Equal(t, unpinned, string(data))
+		})
+
+		t.Run("check は lockfile と食い違う SHA を drift として検出する", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeLockAt(t, root, lock)
+			stale := "      - uses: actions/setup-go@" + shaCheckout + " # v6\n"
+			path := writeFile(t, root, ".github/workflows/a.yml", stale)
+
+			require.ErrorIs(t, applyOrCheck(root, []string{path}, true), errPinDrift)
+		})
+
+		t.Run("lockfile を読めなければ固定を試みずに失敗する", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			path := writeFile(t, root, ".github/workflows/a.yml", "      - uses: actions/setup-go@v6\n")
+
+			require.Error(t, applyOrCheck(root, []string{path}, false))
+		})
+
+		t.Run("apply で書き込めなければ失敗する", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeLockAt(t, root, lock)
+			path := writeFile(t, root, ".github/workflows/a.yml", "      - uses: actions/setup-go@v6\n")
+			require.NoError(t, os.Chmod(path, 0o400))
+			t.Cleanup(func() { _ = os.Chmod(path, 0o600) })
+
+			if os.Geteuid() == 0 {
+				t.Skip("特権実行では読み取り専用にしても書き込みが通ってしまい、失敗を作れない")
+			}
+
+			require.Error(t, applyOrCheck(root, []string{path}, false))
 		})
 	})
 }
@@ -1559,7 +1613,7 @@ func Test_resolve(t *testing.T) {
 			root := t.TempDir()
 			writeLockAt(t, root, testLock())
 
-			resolve(root, "", nil, 0)
+			require.NoError(t, resolve(root, "", nil, 0))
 
 			got, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
@@ -1572,7 +1626,7 @@ func Test_resolve(t *testing.T) {
 			writeLockAt(t, root, map[string]string{})
 			path := writeFile(t, root, ".github/workflows/a.yml", "      - uses: ./.github/actions/setup-postgres\n")
 
-			resolve(root, "", []string{path}, 0)
+			require.NoError(t, resolve(root, "", []string{path}, 0))
 
 			got, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
@@ -1586,7 +1640,7 @@ func Test_resolve(t *testing.T) {
 			path := writeFile(t, root, ".github/workflows/a.yml", uses)
 			useGitStub(t)
 
-			resolve(root, "", []string{path}, 0)
+			require.NoError(t, resolve(root, "", []string{path}, 0))
 
 			got, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
@@ -1600,7 +1654,7 @@ func Test_resolve(t *testing.T) {
 			path := writeFile(t, root, ".github/workflows/a.yml", uses)
 			useGitStub(t)
 
-			resolve(root, githubTimesStub(t, 1, 1), []string{path}, 14)
+			require.NoError(t, resolve(root, githubTimesStub(t, 1, 1), []string{path}, 14))
 
 			got, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
@@ -1615,7 +1669,7 @@ func Test_resolve(t *testing.T) {
 			path := writeFile(t, root, ".github/workflows/a.yml", uses)
 			useGitStub(t)
 
-			resolve(root, githubTimesStub(t, 1, 1), []string{path}, 14)
+			require.NoError(t, resolve(root, githubTimesStub(t, 1, 1), []string{path}, 14))
 
 			got, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
@@ -1629,7 +1683,7 @@ func Test_resolve(t *testing.T) {
 			path := writeFile(t, root, ".github/workflows/a.yml", uses)
 			useGitStub(t)
 
-			resolve(root, githubTimesStub(t, 100, 100), []string{path}, 14)
+			require.NoError(t, resolve(root, githubTimesStub(t, 100, 100), []string{path}, 14))
 
 			got, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
