@@ -346,14 +346,14 @@ filling it back in stay on the page.
 
 </details>
 
-## Phase 15: Remove the boilerplate-only conventions
+## Phase 16: Remove the boilerplate-only conventions
 
 [boilerplate-only-conventions.md](boilerplate-only-conventions.md) collects the conventions that
 hold only while this repository is the upstream template — the in-place ADR amendment regime, the
 consolidation pass, the `setup-review` device. None of them apply to your project, and the general
 form of each rule already lives in the document that owns it.
 
-Do this even if you keep the sample APIs (Phase 14). The two removals are independent and fire on
+Do this even if you keep the sample APIs (Phase 15). The two removals are independent and fire on
 different triggers.
 
 1. Delete the file and its Japanese mirror:

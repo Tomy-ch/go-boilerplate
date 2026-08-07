@@ -5,7 +5,7 @@ English | [日本語](../ja/get-started/boilerplate-only-conventions.ja.md)
 This file collects the statements in this repository whose premise holds only while it *is* the
 upstream boilerplate — that it is a template, that its readers are forks, that its sample feature
 set exists to be harvested and then removed. **Setup deletes this file whole** (see
-[setup-repository.md](setup-repository.md) Phase 15). Nothing written here is a rule for a project
+[setup-repository.md](setup-repository.md) Phase 16). Nothing written here is a rule for a project
 built from the template.
 
 What survives setup is the general form of each rule, stated in the document that owns it:
@@ -101,7 +101,7 @@ own decision to take and to record.
 
 Exclusion ADRs carry a `setup-review` tag so the repository-setup flow can enumerate them, and a
 fork may edit them directly at setup to establish its own baseline rather than superseding them. The
-instruction belongs to the fork, so it lives in [setup-repository.md](setup-repository.md) Phase 12;
+instruction belongs to the fork, so it lives in [setup-repository.md](setup-repository.md) Phase 13;
 it is named here only because the tag is a boilerplate-side device that means nothing once setup is
 done.
 
