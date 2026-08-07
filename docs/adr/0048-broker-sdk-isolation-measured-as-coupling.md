@@ -1,12 +1,12 @@
 ---
 status: accepted
-date: 2026-08-04
+date: 2026-08-08
 deciders: [maintainers]
 supersedes: 0047
 tags: [worker, outbox, async, dependencies]
 ---
 
-# ADR-0048: Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired
+# ADR-0048: Measure broker-SDK isolation as coupling, not as linkage
 
 ## Status
 
@@ -51,31 +51,26 @@ adapter adds nothing to it — it only removes the worked example.
 
 ## Decision
 
-A broker adapter **may be wired into the default build as part of the removable sample set**, on
-either side of the queue: the consuming seam (`worker.Consumer` / `worker.FailureHandler`) and the
-outbox publish seam (`publisher.Publisher`) are governed alike. E3 is replaced by an invariant that
-measures coupling rather than linkage.
+A broker adapter **may be wired into the default build**, on either side of the queue: the consuming
+seam (`worker.Consumer` / `worker.FailureHandler`) and the outbox publish seam
+(`publisher.Publisher`) are governed alike. E3 is restated to measure coupling rather than linkage.
 
-> **E3'**: after `make setup-remove-sample-api`, the repository's coupling is identical to what it
-> was before the sample was added.
+> **E3**: knowledge of a concrete broker is confined to its adapter package and to the wiring that
+> selects it. No core `*.go` and no core document names a broker adapter; core code names only the
+> seam.
 
-E3' decomposes into four conditions, each mechanically verifiable:
+E3 is mechanically verifiable, because it is a statement about which files name what rather than
+about what the linker produced. `checkNoDanglingReferences` in
+`scripts/setup/verify-sample-removal.ts` performs the `*.go` half of the check; core documents
+describe structure (`internal/controller/worker/<name>/`) and never a concrete adapter.
 
-1. **No core `*.go` references a broker adapter** — checked by `checkNoDanglingReferences` in
-   `scripts/setup/verify-sample-removal.ts`.
-2. **No core document references a sample** — core documents describe structure
-   (`internal/controller/worker/<name>/`), never a sample's name.
-3. **The seam returns to its pre-sample shape** — any sample-driven change to
-   `internal/usecase/boundary/worker` or `internal/usecase/boundary/publisher` is wrapped in a
-   `sample-api:replace` block whose escrow side holds the pre-sample form.
-4. **Removed dependencies leave `go.mod` / `vendor/`** — `make tidy-lib` runs in the removal chain.
-
-What carries the marker is the **wiring**, not the adapter. The adapter package, the local broker
-service that stands in for the real one, and the configuration they read are core and survive the
-removal — as the object-storage adapter and its local Garage service already do. Removable is only
-the code that puts a core file in the position of referencing a broker adapter: the import, the
-discriminator branch, and the value that selects it. That is what condition 1 measures, and it is
-why the adapter is left built and unit-tested but unreachable rather than deleted.
+What carries the vendor is the **wiring**, not the adapter. The adapter package, the local broker
+service that stands in for the real one, and the configuration they read name only their own vendor
+and are reached from nowhere else — as the object-storage adapter and its local Garage service
+already are. What puts a core file in the position of referencing a broker adapter is exactly three
+things: the import, the discriminator branch, and the value that selects it. Confining the vendor to
+those is what makes replacing it a bounded change, and it is why the adapter is left built and
+unit-tested rather than deleted when it is not the one in use.
 
 **E1 and E2 are unchanged**: the engine does not import infrastructure, and the engine is green
 against the in-memory fake alone.
@@ -86,19 +81,17 @@ against the in-memory fake alone.
 
 - The subsystem gains a demonstrated end-to-end path. The adapter and the wiring template stop
   being code that has never run.
-- E3' is enforced on every pull request. `.github/workflows/sample-removal-check.yaml` already
-  performs a full removal followed by `go build ./...`, `make lint`, and `make test`, so the
-  post-removal state is exercised continuously. E3 had no automated enforcement at all — neither
-  `depguard` nor `internal/architest/**` carried a rule for it.
-- Condition 3's escrow side cannot rot: the same workflow compiles and tests it every run.
-- Condition 2 resolves a standing defect where a core design document points at another
-  subsystem's sample.
+- E3 can be enforced automatically, and is. Its linkage form could not be: neither `depguard` nor
+  `internal/architest/**` carried a rule for it, and none would have expressed it.
+- Replacing the broker is a bounded change: the import, the discriminator branch, and the value
+  that selects it, with nothing to find elsewhere.
 
 ### Negative Consequences
 
-- A fork targeting a non-AWS broker inherits five SQS packages until it runs the sample removal.
-- A sample-driven seam change exists in two forms (active and escrow) within one file, which is
-  harder to read than a single form.
+- Wiring an adapter links its SDK, so a deployment that targets a different broker carries packages
+  it does not use until the wiring is changed.
+- The seam's pre-wiring form has to be kept somewhere retrievable if the wiring is meant to be
+  reversible, which is harder to read than a single form.
 
 ### Neutral Consequences
 
@@ -107,25 +100,24 @@ against the in-memory fake alone.
 
 ## Alternatives Considered
 
-### Keep E3 as written
+### Keep E3 in its linkage form
 
 Forbids any wired example, which reduces the worker subsystem to engine plus seam plus an adapter
-nobody may use. Rejected: for a template, a demonstrated path is worth more than a marginally
-smaller binary, and the isolation E3 buys is not the isolation the underlying principle wants.
+nobody may use. Rejected: a demonstrated path is worth more than a marginally smaller binary, and
+the isolation a linkage rule buys is not the isolation the underlying principle wants.
 
 ### Split the binary
 
-Separate `main` packages for `serve` and `worker` would make linkage per-role and let E3 stand
-literally. Rejected for now: ADR-0047 already rejected build tags for this purpose, and a binary
-split is a larger structural change than the goal justifies for a template whose deployment model
-is one image with subcommands. It remains available to a fork whose shipping constraints require
-it.
+Separate `main` packages for `serve` and `worker` would make linkage per-role and let the linkage
+form stand literally. Rejected for now: ADR-0047 already rejected build tags for this purpose, and a binary
+split is a larger structural change than the goal justifies for a deployment model that is one image
+with subcommands. It remains available where shipping constraints require it.
 
 ### Demonstrate with a broker that needs no SDK
 
 A Postgres-backed pull-ack adapter would exercise the seam without linking any vendor SDK, and
 would additionally prove the seam is not SQS-shaped. Rejected: it means building and maintaining a
-second adapter for the sample's sake, while E3' already bounds the coupling the sample can
+second adapter for the example's sake, while E3 already bounds the coupling a wired example can
 introduce. The reference adapter also stays reusable because the local broker is SQS-compatible.
 
 ## Notes
@@ -135,8 +127,8 @@ introduce. The reference adapter also stays reusable because the local broker is
 - [ADR-0046](0046-out-of-scope-push-streaming-brokers.md) is unaffected: push-type and
   streaming-log brokers remain outside the worker port. Choosing a pull-ack broker as the outbox
   publish target was never in its scope.
-- E3' is stated in [`docs/design/worker.md`](../design/worker.md) and enforced by
-  `.github/workflows/sample-removal-check.yaml`.
+- E3 is stated in [`docs/design/worker.md`](../design/worker.md).
 - Reference: [`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md)
   for the adapter, [`internal/infrastructure/publisher/README.md`](../../internal/infrastructure/publisher/README.md)
   for the discriminator that selects it.
+- **Upstream verification**: while this repository is distributed as a boilerplate, E3 is checked by running the sample removal and comparing the result — recorded in [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->

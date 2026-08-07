@@ -75,9 +75,5 @@ than idempotency TTLs.
 
 - Source: [`docs/design/idempotency.md`](../design/idempotency.md) §1 ("orthogonal to optimistic
   locking (lost-update prevention) and rate limiting (edge concern)").
-- This is a **setup-review ADR**: when adopting this scaffold, confirm that the boundary
-  between idempotency, optimistic locking, and rate limiting is appropriate for the target
-  system. If the target requires combined enforcement, each mechanism must be extended
-  explicitly rather than relying on the scaffold's separated defaults.
 - Related: [ADR-0002](0002-onion-architecture.md) (layer separation — optimistic locking
   belongs in the domain/usecase layer, rate limiting at the edge).

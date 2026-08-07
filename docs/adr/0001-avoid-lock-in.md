@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-This is a long-lived **template** repository whose stated design goals include replaceable
+This repository is long-lived, and its stated design goals include replaceable
 infrastructure and long-term operability. Two forms of captivity threaten those goals:
 
 - **Vendor lock-in** — binding the application to a proprietary SaaS (a specific APM,
@@ -21,8 +21,8 @@ infrastructure and long-term operability. Two forms of captivity threaten those 
 - **Library lock-in** — a dependency that spreads a framework's types and idioms across
   layers so it can no longer be swapped without a wide blast radius.
 
-Downstream users fork this template into environments whose vendors we cannot predict, so
-captivity is a concrete, not theoretical, risk.
+Any vendor this system runs on can have its updates stop one day and quietly die, and being
+captive to it at that moment is a concrete, not theoretical, risk.
 
 ## Decision
 
@@ -54,7 +54,7 @@ OTLP-only export, and the vendor-neutral deploy skeleton (each recorded as its o
 
 - Infrastructure and providers are swappable behind stable interfaces; no SaaS captivity.
 - The dependency surface stays auditable — each library has one replaceable job.
-- Forks can retarget cloud, broker, or telemetry backends without touching domain/usecase.
+- Cloud, broker, and telemetry backends can be retargeted without touching domain/usecase.
 
 ### Negative Consequences
 
@@ -67,7 +67,7 @@ OTLP-only export, and the vendor-neutral deploy skeleton (each recorded as its o
 ### Bind directly to a chosen vendor / SaaS
 
 Rejected: fastest initially, but couples business code to one provider's API and pricing,
-defeating the template's replaceable-infrastructure goal.
+defeating the replaceable-infrastructure goal.
 
 ### No explicit principle (decide per case)
 

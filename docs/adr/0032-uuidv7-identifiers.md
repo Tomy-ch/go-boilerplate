@@ -53,7 +53,7 @@ overrides:
       pointer: true
 ```
 
-This eliminates UUID conversion boilerplate throughout the codebase: sqlc-generated code
+This eliminates per-field UUID conversion throughout the codebase: sqlc-generated code
 uses `pkg/uuid.UUID` directly, so QueryService and Repository implementations can pass
 generated row fields to domain constructors without an intermediate conversion step.
 
@@ -68,7 +68,7 @@ generated row fields to domain constructors without an intermediate conversion s
 - No central sequence generator is required; UUIDv7 generation is independent on every
   process and host.
 - The sqlc type override eliminates per-field UUID conversion across QueryService and
-  Repository, reducing boilerplate and the opportunity for conversion bugs.
+  Repository, removing a repeated conversion step and the opportunity for conversion bugs.
 - IDs are monotonically increasing within a millisecond, giving approximate insertion-order
   sortability for free.
 

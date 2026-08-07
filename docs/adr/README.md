@@ -90,8 +90,8 @@ do X") are tagged `setup-review`.
 | [0044](0044-error-details-opt-in-gate.md) | Opt-in gate for error-response details via schema split (refines 0043) | accepted |
 | [0045](0045-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
 | [0046](0046-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
-| [0047](0047-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0048](0048-broker-sdk-isolation-verified-after-sample-removal.md) |
-| [0048](0048-broker-sdk-isolation-verified-after-sample-removal.md) | Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired | accepted |
+| [0047](0047-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0048](0048-broker-sdk-isolation-measured-as-coupling.md) |
+| [0048](0048-broker-sdk-isolation-measured-as-coupling.md) | Measure broker-SDK isolation as coupling, not as linkage | accepted |
 | [0049](0049-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
 | [0050](0050-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
 | [0051](0051-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
@@ -140,7 +140,7 @@ do X") are tagged `setup-review`.
 | [0094](0094-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
 | [0095](0095-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
 | [0096](0096-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
-| [0097](0097-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a template; registry not fixed) | accepted |
+| [0097](0097-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
 | [0098](0098-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
 | [0099](0099-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
 | [0100](0100-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |

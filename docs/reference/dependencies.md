@@ -34,7 +34,7 @@ single responsibility each fulfils. Unlike an ADR, this list is *expected to dri
 | Testing | `go.uber.org/mock` | Mock generation runtime |
 | Testing | `stretchr/testify` | Assertions |
 | Messaging / worker | `aws/aws-sdk-go-v2` | AWS API client core (shared by the object-storage and queue adapters) |
-| Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS client (pull-ack worker). Wired only from the removable sample set — see [ADR-0048](../adr/0048-broker-sdk-isolation-verified-after-sample-removal.md) |
+| Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS client (pull-ack worker). Wired only from the removable sample set — see [ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.md) |
 | Metrics exposition | `prometheus/client_golang` | Prometheus-format metrics endpoint + custom collectors |
 | Metrics exposition | `prometheus/client_model` | Prometheus metric data model (shared types) |
 | Observability (otel core) | `go.opentelemetry.io/otel` (+ `trace` / `metric`) | OpenTelemetry API |
