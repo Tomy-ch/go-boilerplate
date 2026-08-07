@@ -41,6 +41,7 @@ Three facts explain almost everything below:
 | `env/.env` is dirty and you did not edit it | §8 |
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §9 |
 | `commitlint: not found`, `orval: not found`, stale tool version | §10 |
+| `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §10 |
 | A hook fails for something outside your change | §11 |
 | A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §21 |
 | Want to know why `make lint` skipped, throttled, or deferred itself to CI | §21 |
@@ -281,7 +282,7 @@ it. Green on the host is therefore **not** evidence that the containerized gate 
 first, then re-run whichever gate you intend to report.
 
 **Across worktrees this is a shared resource, and it holds one branch's settings at a time.** The
-runner images belong to the single `gobp-shared` compose project (§2), so a rebuild in one worktree
+runner images belong to the single `gobp-shared` compose project (§1), so a rebuild in one worktree
 re-points every other worktree's containerized gates at *that* branch's `scripts/pnpm-workspace.yaml`.
 Two windows whose branches disagree — one adding a `minimumReleaseAgeExclude` entry, one not — will
 take turns failing, and the direction flips with whoever rebuilt last. The failure is the same
