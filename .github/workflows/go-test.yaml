@@ -104,10 +104,10 @@ jobs:
           exit 0
 
       - name: Initialize Database Table
-        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
+        run: go run ./cmd/ migrate-up --database "$DB"
 
       - name: Seed Database
-        run: go run ./cmd/ db-seed --database ${{ env.DB }}
+        run: go run ./cmd/ db-seed --database "$DB"
 
       - name: Run Tests with Coverage
         id: cover-test
