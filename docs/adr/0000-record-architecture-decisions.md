@@ -21,9 +21,9 @@ Collating a project's technology rationale into a single growing file has two pr
   table that must track `go.mod`) forces a drifting catalog into a "rationale" document,
   where it silently goes stale.
 
-This is a **template** repository: downstream users fork it and need to understand *why*
-each choice was made, and to *supersede* individual choices with their own without editing
-a shared monolith.
+A decision record is written for a reader who was not in the room: they need to see *why*
+each choice was made, and to be able to replace one choice without editing a document that
+every other choice shares.
 
 ## Decision
 
@@ -45,7 +45,7 @@ editing its body.
 ### Positive Consequences
 
 - Decision history is preserved; supersession is auditable.
-- Forks can override one decision by adding one ADR.
+- One decision can be overridden by adding one ADR, leaving the others untouched.
 - Drifting catalogs (dependencies) live where drift is expected, not inside immutable records.
 
 ### Negative Consequences
@@ -62,7 +62,7 @@ decisions with a drifting inventory.
 
 ### One file, append-only decision log (no per-decision files)
 
-Rejected: forks cannot cleanly supersede an individual decision, and a single file grows
+Rejected: an individual decision cannot be superseded cleanly, and a single file grows
 unbounded and merge-conflicts.
 
 ## Notes
