@@ -83,8 +83,8 @@ documentation sections: `docs/portal`, `docs/openapi`, `docs/coverage`, `docs/er
 
 ### Single-language (English only)
 
-Drop Japanese translations entirely. Simpler maintenance, but reduces accessibility for
-Japanese-speaking development teams who are the primary adopters of this template.
+Drop Japanese translations entirely. Simpler maintenance, but reduces accessibility for the
+Japanese-speaking development teams who are this documentation's primary human readers.
 
 ### Auto-translation
 
