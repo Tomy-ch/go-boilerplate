@@ -147,18 +147,30 @@ jobs:
         id: comment
         if: always() && github.event_name == 'pull_request'
         shell: bash
+        # Handed over as environment rather than interpolated into the script. All four values are
+        # this job's own and hold a number or a fixed word, so none can carry shell today — but an
+        # expression is substituted into the script text before bash parses it, so what makes that
+        # safe is a property of the producer, not of this step, and it stops holding the moment one
+        # of them carries something richer. Reading them as variables removes the question.
+        env:
+          SCRIPTS_CODE: ${{ steps.scripts-test.outputs.exit_code }}
+          COVER_CODE: ${{ steps.cover-test.outputs.exit_code }}
+          GATE_CODE: ${{ steps.cover-gate.outputs.exit_code }}
+          JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
 
-          scripts_code='${{ steps.scripts-test.outputs.exit_code }}'
-          cover_code='${{ steps.cover-test.outputs.exit_code }}'
-          gate_code='${{ steps.cover-gate.outputs.exit_code }}'
+          # A step that never ran leaves its output empty, which arrives here as an unset variable
+          # rather than an empty one, so every read carries the fallback.
+          scripts_code="${SCRIPTS_CODE-}"
+          cover_code="${COVER_CODE-}"
+          gate_code="${GATE_CODE-}"
 
           # The three steps above no longer fail the job themselves and every other step that can
           # sits before this one, so `success` here means nothing else went wrong — octocov, the
           # database setup, a `mise install`. Reading it keeps the verdict from claiming a pass on
           # a job that is already red, without enumerating steps whose only report is having failed.
-          job_status='${{ job.status }}'
+          job_status="${JOB_STATUS-}"
 
           # Derived from the clean signal, so a step that never ran leaves an empty value that is
           # not `0` and therefore reports, rather than reading as a pass.
@@ -275,10 +287,15 @@ jobs:
       - name: Fail if Go tests failed
         if: always()
         shell: bash
+        # Read as environment for the same reason as the step above.
+        env:
+          SCRIPTS_CODE: ${{ steps.scripts-test.outputs.exit_code }}
+          COVER_CODE: ${{ steps.cover-test.outputs.exit_code }}
+          GATE_CODE: ${{ steps.cover-gate.outputs.exit_code }}
         run: |
-          scripts_code='${{ steps.scripts-test.outputs.exit_code }}'
-          cover_code='${{ steps.cover-test.outputs.exit_code }}'
-          gate_code='${{ steps.cover-gate.outputs.exit_code }}'
+          scripts_code="${SCRIPTS_CODE-}"
+          cover_code="${COVER_CODE-}"
+          gate_code="${GATE_CODE-}"
 
           # Empty means the run never reached its own exit: the job was cut off, or a step before
           # it failed outright.
