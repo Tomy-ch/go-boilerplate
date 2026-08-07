@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -29,41 +28,14 @@ const (
 // createdLayout は docker buildx imagetools inspect --format が出力する created の形式。
 const createdLayout = "2006-01-02 15:04:05 -0700 MST"
 
-// fatalCaseEnv は子プロセスへ渡す実行指示。log.Fatalf は os.Exit するため、非ゼロ終了する
-// 経路はテストバイナリ自身を子として再実行して観測する。root は本番と同じく作業ディレクトリから採る。
-const fatalCaseEnv = "PIN_IMAGES_TEST_FATAL_CASE"
-
 // errWD は、作業ディレクトリの取得失敗の伝播を検証するためのセンチネルです。
 var errWD = xerrors.New("getwd failed")
 
-func TestMain(m *testing.M) {
-	root, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("getwd: %v", err)
-	}
-	switch os.Getenv(fatalCaseEnv) {
-	case "":
-		os.Exit(m.Run())
-	case "fail-on-missing":
-		failOnMissing([]string{"busybox:1.36", "busybox:1.36"})
-	case "report-drifted":
-		report([]string{"docker/app/Dockerfile"}, true, 0)
-	case "check-drift":
-		applyOrCheck(root, mustTargets(root), true)
-	case "apply-missing-no-write":
-		applyOrCheck(root, mustTargets(root), false)
-	case "resolve-no-stepback":
-		resolve(root, mustTargets(root), 14)
-	}
-	os.Exit(0) // 対象が終了しなかった＝退行。親が非ゼロ終了を期待して落ちる
-}
-
-// mustTargets は子プロセス側で targetFiles を呼ぶ。
-func mustTargets(root string) []target {
+// testTargets は root 配下の走査対象を集める。
+func testTargets(t *testing.T, root string) []target {
+	t.Helper()
 	targets, err := targetFiles(root)
-	if err != nil {
-		log.Fatalf("targetFiles: %v", err)
-	}
+	require.NoError(t, err)
 	return targets
 }
 
@@ -113,24 +85,6 @@ func captureLog(t *testing.T) *strings.Builder {
 	log.SetOutput(&b)
 	t.Cleanup(func() { log.SetOutput(os.Stderr) })
 	return &b
-}
-
-// runFatal はテストバイナリ自身を子プロセスとして再実行し、終了コードと出力を返す。
-// 子は root を作業ディレクトリとして受け取る。
-func runFatal(t *testing.T, name, root, stubDir string) (int, string) {
-	t.Helper()
-	cmd := exec.CommandContext(t.Context(), os.Args[0]) //nolint:gosec // 実行するのはテストバイナリ自身
-	cmd.Dir = root
-	cmd.Env = append(os.Environ(), fatalCaseEnv+"="+name)
-	if stubDir != "" {
-		cmd.Env = append(cmd.Env, "PATH="+stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	}
-	var out strings.Builder
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	_ = cmd.Run()
-	require.NotNil(t, cmd.ProcessState)
-	return cmd.ProcessState.ExitCode(), out.String()
 }
 
 func Test_imageRef_key(t *testing.T) {
@@ -341,7 +295,8 @@ func Test_collectKeys(t *testing.T) {
 			writeFile(t, df, "FROM golang:1.26-alpine AS builder\nFROM alpine:3.24@"+digestAlpine+"\n")
 			writeFile(t, cf, "  db:\n    image: alpine:3.24\n")
 
-			keys := collectKeys([]target{{path: df, re: fromRe}, {path: cf, re: composeImageRe}})
+			keys, err := collectKeys([]target{{path: df, re: fromRe}, {path: cf, re: composeImageRe}})
+			require.NoError(t, err)
 			require.Len(t, keys, 2)
 			assert.Equal(t, imageRef{image: "alpine", tag: "3.24"}, keys["alpine:3.24"])
 			assert.Equal(t, imageRef{image: "golang", tag: "1.26-alpine"}, keys["golang:1.26-alpine"])
@@ -353,7 +308,23 @@ func Test_collectKeys(t *testing.T) {
 			df := filepath.Join(root, "docker", "app", "Dockerfile")
 			writeFile(t, df, "FROM scratch\nFROM builder AS final\n")
 
-			assert.Empty(t, collectKeys([]target{{path: df, re: fromRe}}))
+			keys, err := collectKeys([]target{{path: df, re: fromRe}})
+			require.NoError(t, err)
+			assert.Empty(t, keys)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("走査対象を読めなければ空マップへ縮退させずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			absent := filepath.Join(t.TempDir(), "absent", "Dockerfile")
+
+			keys, err := collectKeys([]target{{path: absent, re: fromRe}})
+
+			require.ErrorIs(t, err, os.ErrNotExist)
+			assert.Nil(t, keys)
 		})
 	})
 }
@@ -759,7 +730,8 @@ func Test_quarantine(t *testing.T) { //nolint:paralleltest // useDockerStub が 
 
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 		t.Run("cooldown 無効なら age を問わず現 digest を採用する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
-			use, note := quarantine(context.Background(), ref, key, digestFresh, 0, existing)
+			use, note, err := quarantine(context.Background(), ref, key, digestFresh, 0, existing)
+			require.NoError(t, err)
 			assert.Equal(t, digestFresh, use)
 			assert.Empty(t, note)
 		})
@@ -767,7 +739,8 @@ func Test_quarantine(t *testing.T) { //nolint:paralleltest // useDockerStub が 
 		t.Run("窓を越えた digest はそのまま採用する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC().Add(-30*hoursPerDay*time.Hour)))
 
-			use, note := quarantine(context.Background(), ref, key, digestFresh, 14, existing)
+			use, note, err := quarantine(context.Background(), ref, key, digestFresh, 14, existing)
+			require.NoError(t, err)
 			assert.Equal(t, digestFresh, use)
 			assert.Empty(t, note)
 		})
@@ -777,7 +750,8 @@ func Test_quarantine(t *testing.T) { //nolint:paralleltest // useDockerStub が 
 		t.Run("窓の内側で既存ピンがあれば出来立てを採らず前回 lock へ退く", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC()))
 
-			use, note := quarantine(context.Background(), ref, key, digestFresh, 14, existing)
+			use, note, err := quarantine(context.Background(), ref, key, digestFresh, 14, existing)
+			require.NoError(t, err)
 			assert.Equal(t, digestStale, use)
 			assert.Contains(t, note, key)
 			assert.Contains(t, note, "既存ピンを維持")
@@ -786,9 +760,19 @@ func Test_quarantine(t *testing.T) { //nolint:paralleltest // useDockerStub が 
 		t.Run("窓の内側で既存ピンが無ければ採用せず skip する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC()))
 
-			use, note := quarantine(context.Background(), ref, key, digestFresh, 14, map[string]string{})
+			use, note, err := quarantine(context.Background(), ref, key, digestFresh, 14, map[string]string{})
+			require.NoError(t, err)
 			assert.Empty(t, use)
 			assert.Contains(t, note, "skip")
+		})
+
+		t.Run("経過日数を取得できなければ採用も skip もせずエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			useDockerStub(t, "exit 1\n")
+
+			use, note, err := quarantine(context.Background(), ref, key, digestFresh, 14, existing)
+			require.Error(t, err)
+			assert.Empty(t, use)
+			assert.Empty(t, note)
 		})
 	})
 }
@@ -800,7 +784,7 @@ func Test_resolve(t *testing.T) { //nolint:paralleltest // useDockerStub が t.S
 			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
 			useDockerStub(t, dockerStubBody(digestAlpine, time.Now().UTC()))
 
-			resolve(root, mustTargets(root), 0)
+			require.NoError(t, resolve(root, testTargets(t, root), 0))
 
 			lock, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
@@ -813,7 +797,7 @@ func Test_resolve(t *testing.T) { //nolint:paralleltest // useDockerStub が t.S
 			writeFile(t, filepath.Join(root, lockFile), "\"alpine:3.24\" = \""+digestStale+"\"\n")
 			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC()))
 
-			resolve(root, mustTargets(root), 14)
+			require.NoError(t, resolve(root, testTargets(t, root), 14))
 
 			lock, err := readLock(filepath.Join(root, lockFile))
 			require.NoError(t, err)
@@ -822,18 +806,60 @@ func Test_resolve(t *testing.T) { //nolint:paralleltest // useDockerStub が t.S
 	})
 
 	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
-		t.Run("退行先の無い出来立て image は lockfile へ載せず非ゼロ終了する", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+		t.Run("退行先の無い出来立て image は lockfile へ載せずエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			root := t.TempDir()
 			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
-			stub := writeDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC()))
+			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC()))
 
-			code, out := runFatal(t, "resolve-no-stepback", root, stub)
-			assert.NotZero(t, code)
-			assert.Contains(t, out, "退行先の無い出来立て image")
+			err := resolve(root, testTargets(t, root), 14)
 
-			body, err := os.ReadFile(filepath.Join(root, lockFile)) //nolint:gosec // path は t.TempDir 配下
-			require.NoError(t, err)
-			assert.NotContains(t, string(body), digestFresh)
+			require.ErrorIs(t, err, errNoStepBack)
+			require.ErrorContains(t, err, "alpine:3.24")
+			assert.NotContains(t, readAll(t, filepath.Join(root, lockFile)), digestFresh)
+		})
+
+		t.Run("走査対象を読めなければエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			root := t.TempDir()
+
+			err := resolve(root, []target{{path: filepath.Join(root, "absent"), re: fromRe}}, 0)
+
+			require.ErrorIs(t, err, os.ErrNotExist)
+		})
+
+		t.Run("digest を解決できなければどのキーで失敗したか示すエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
+			useDockerStub(t, "exit 1\n")
+
+			err := resolve(root, testTargets(t, root), 0)
+
+			require.Error(t, err)
+			assert.ErrorContains(t, err, "resolve alpine:3.24")
+		})
+
+		t.Run("経過日数を取得できなければどのキーで失敗したか示すエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
+			useDockerStub(t, "case \"$*\" in\n"+
+				"  *--format*) exit 1 ;;\n"+
+				"  *) printf 'Digest: %s\\n' '"+digestAlpine+"' ;;\n"+
+				"esac\n")
+
+			err := resolve(root, testTargets(t, root), 14)
+
+			require.Error(t, err)
+			assert.ErrorContains(t, err, "age alpine:3.24")
+		})
+
+		t.Run("lockfile を書き出せなければエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker-compose.yaml"), "  db:\n    image: alpine:3.24\n")
+			useDockerStub(t, dockerStubBody(digestAlpine, time.Now().UTC()))
+
+			err := resolve(root, testTargets(t, root), 0)
+
+			require.ErrorIs(t, err, os.ErrNotExist)
+			assert.ErrorContains(t, err, "write lockfile")
 		})
 	})
 }
@@ -853,7 +879,7 @@ func Test_applyOrCheck(t *testing.T) {
 			writeFile(t, cf, "  db:\n    image: alpine:3.24\n")
 			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
 
-			applyOrCheck(root, mustTargets(root), false)
+			require.NoError(t, applyOrCheck(root, testTargets(t, root), false))
 
 			assert.Equal(t, "FROM golang:1.26-alpine@"+digestGolang+" AS builder\n", readAll(t, df))
 			assert.Equal(t, "  db:\n    image: alpine:3.24@"+digestAlpine+"\n", readAll(t, cf))
@@ -867,7 +893,7 @@ func Test_applyOrCheck(t *testing.T) {
 			writeFile(t, df, body)
 			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
 
-			applyOrCheck(root, mustTargets(root), true)
+			require.NoError(t, applyOrCheck(root, testTargets(t, root), true))
 
 			assert.Equal(t, body, readAll(t, df))
 		})
@@ -876,20 +902,21 @@ func Test_applyOrCheck(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("未固定のまま check すると書き換えずに非ゼロ終了する", func(t *testing.T) {
+		t.Run("未固定のまま check すると書き換えずにエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			df := filepath.Join(root, "docker", "app", "Dockerfile")
 			writeFile(t, df, "FROM alpine:3.24\n")
 			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
 
-			code, out := runFatal(t, "check-drift", root, "")
-			assert.NotZero(t, code)
-			assert.Contains(t, out, filepath.Join("docker", "app", "Dockerfile"))
+			err := applyOrCheck(root, testTargets(t, root), true)
+
+			require.ErrorIs(t, err, errPinDrift)
+			require.ErrorContains(t, err, filepath.Join("docker", "app", "Dockerfile"))
 			assert.Equal(t, "FROM alpine:3.24\n", readAll(t, df))
 		})
 
-		t.Run("後続ファイルに未登録があれば先行ファイルも書き換えずに非ゼロ終了する", func(t *testing.T) {
+		t.Run("後続ファイルに未登録があれば先行ファイルも書き換えずにエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			df := filepath.Join(root, "docker", "app", "Dockerfile")
@@ -898,12 +925,51 @@ func Test_applyOrCheck(t *testing.T) {
 			writeFile(t, cf, "  db:\n    image: busybox:1.36\n")
 			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
 
-			code, out := runFatal(t, "apply-missing-no-write", root, "")
+			err := applyOrCheck(root, testTargets(t, root), false)
 
-			assert.NotZero(t, code)
-			assert.Contains(t, out, "busybox:1.36")
+			require.ErrorIs(t, err, errLockMissingImage)
+			require.ErrorContains(t, err, "busybox:1.36")
 			assert.Equal(t, "FROM alpine:3.24\n", readAll(t, df))
 			assert.Equal(t, "  db:\n    image: busybox:1.36\n", readAll(t, cf))
+		})
+
+		t.Run("lockfile を読めなければ resolve を促すエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
+
+			err := applyOrCheck(root, testTargets(t, root), true)
+
+			require.ErrorIs(t, err, os.ErrNotExist)
+			assert.ErrorContains(t, err, "pin-images-resolve")
+		})
+
+		t.Run("走査対象を読めなければエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			require.NoError(t, os.MkdirAll(filepath.Join(root, "docker"), 0o750))
+			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
+
+			err := applyOrCheck(root, []target{{path: filepath.Join(root, "absent"), re: fromRe}}, false)
+
+			require.ErrorIs(t, err, os.ErrNotExist)
+		})
+
+		t.Run("固定後の書き込みに失敗すればエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			if os.Geteuid() == 0 {
+				t.Skip("特権実行では読み取り専用ファイルへも書けるため検証できない")
+			}
+			root := t.TempDir()
+			df := filepath.Join(root, "docker", "app", "Dockerfile")
+			writeFile(t, df, "FROM alpine:3.24\n")
+			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
+			require.NoError(t, os.Chmod(df, 0o400))
+
+			err := applyOrCheck(root, testTargets(t, root), false)
+
+			require.ErrorIs(t, err, os.ErrPermission)
+			assert.ErrorContains(t, err, filepath.Join("docker", "app", "Dockerfile"))
 		})
 	})
 }
@@ -913,7 +979,7 @@ func Test_report(t *testing.T) { //nolint:paralleltest // captureLog が log の
 		t.Run("apply では固定したファイル数を報告する", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
 			out := captureLog(t)
 
-			report(nil, false, 3)
+			require.NoError(t, report(nil, false, 3))
 
 			assert.Contains(t, out.String(), "3 ファイルを固定しました")
 		})
@@ -921,38 +987,44 @@ func Test_report(t *testing.T) { //nolint:paralleltest // captureLog が log の
 		t.Run("check では未固定も未登録も無いことを報告する", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
 			out := captureLog(t)
 
-			report(nil, true, 0)
+			require.NoError(t, report(nil, true, 0))
 
 			assert.Contains(t, out.String(), "全 base image が lockfile 通りに固定されています")
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
-		t.Run("check で drift を見つけたら非ゼロ終了する", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
-			code, out := runFatal(t, "report-drifted", "", "")
-			assert.NotZero(t, code)
-			assert.Contains(t, out, "docker/app/Dockerfile")
+		t.Run("check で drift を見つけたら該当ファイルを挙げてエラーを返す", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
+			err := report([]string{"docker/app/Dockerfile"}, true, 0)
+
+			require.ErrorIs(t, err, errPinDrift)
+			assert.ErrorContains(t, err, "docker/app/Dockerfile")
 		})
 	})
 }
 
-func Test_failOnMissing(t *testing.T) { //nolint:paralleltest // 子プロセス再実行が log の出力先を共有するため
-	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
-		t.Run("未登録が無ければ何も出力せず処理を続けさせる", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
-			out := captureLog(t)
+func Test_validateMissing(t *testing.T) {
+	t.Parallel()
 
-			failOnMissing(nil)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-			assert.Empty(t, out.String())
+		t.Run("未登録が無ければエラーを返さず処理を続けさせる", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateMissing(nil))
 		})
 	})
 
-	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
-		t.Run("lockfile 未登録があれば重複を畳んで非ゼロ終了する", func(t *testing.T) { //nolint:paralleltest // log の出力先を共有するため
-			code, out := runFatal(t, "fail-on-missing", "", "")
-			assert.NotZero(t, code)
-			assert.Contains(t, out, "未登録")
-			assert.Equal(t, 1, strings.Count(out, "busybox:1.36"))
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("lockfile 未登録があれば重複を畳んでエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateMissing([]string{"busybox:1.36", "busybox:1.36"})
+
+			require.ErrorIs(t, err, errLockMissingImage)
+			assert.Equal(t, 1, strings.Count(err.Error(), "busybox:1.36"))
 		})
 	})
 }
