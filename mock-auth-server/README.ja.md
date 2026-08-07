@@ -6,7 +6,8 @@
 
 ローカル開発用の**疑似 OIDC 認証サーバー**。実 IdP なしに、Go API（Resource Server）が **JWT の署名・Claim 検証と Authorization Code Flow（+ PKCE S256）**を E2E で検証できるようにする。Login UI / consent / refresh token / Role は対象外。
 
-Token 発行側と検証側が同一ライブラリ由来の誤りを共有しないよう、**Go API とは異なるランタイム（Node.js 上の TypeScript）**で実装している。`.ts` は Node 24 のネイティブ型ストリッピングで直接実行するため `tsc` ビルドは不要で、HTTP 層は [Hono](https://hono.dev/)。`typescript` は `npm run typecheck` 用の dev 依存で、`node --test` でテストを実行する。
+Token 発行側と検証側が同一ライブラリ由来の誤りを共有しないよう、**Go API とは異なるランタイム（Node.js 上の TypeScript）**で実装している。`.ts` は Node 24 のネイティブ型ストリッピングで直接実行するため `tsc` ビルドは不要で、HTTP 層は [Hono](https://hono.dev/)。`typescript` は `npm run typecheck` と 1:1 テスト対応ゲート用の dev 依存で、ユニットは `vitest`、統合は
+`node --test` で実行する。
 
 ## エンドポイント
 
@@ -130,11 +131,24 @@ Go API は `AUTH_ISSUER` をホスト URL（`http://localhost:4000`）に、`AUT
 | `npm test` | ユニット（`src/**/*.test.ts`）。`app.fetch` をプロセス内で叩く。**行 / 分岐 / 関数すべて 100% をゲートにしている** |
 | `npm run test:integration` | 統合（`integration/**/*.test.ts`）。実 HTTP と、エントリポイントの子プロセス起動 |
 
-カバレッジゲートは `node --test` 自身の `--test-coverage-*` しきい値で、追加の依存は無い。対象外は 2 つ:
+カバレッジゲートは `vitest` 自身のしきい値（`vitest.config.ts`）。統合テストだけは `node --test` のままで、
+import ではなく実プロセスを起動するため。カバレッジの対象外は 2 つ:
 `src/generated/**`（orval の生成物で手書きではない）と `src/server.ts`（import した時点でポートを掴むため
 プロセス内で読み込めないエントリポイント）。エントリの除外は穴ではなく、
 `integration/server-entry.integration.test.ts` が実プロセスとして起動し、`NODE_ENV=production` で起動を拒否すること
 と、通常起動で `/health` に応答することの両方を固定している。
+
+### 1:1 テスト対応
+
+`src/one-to-one.gate.test.ts` は、Go 側が `internal/architest` から受けているのと同じ 1:1 の規則を強制する。
+呼べる export はそれぞれ `describe("<export 名>")` を 1 つ持ち、その直下に 正常系 / 異常系 のグループが
+並び、ケースはその中に置く。検査は両方向で、describe を持たない export と、どの export にも対応しない
+describe の双方を挙げる。テストの改名も、テストの無い export の追加も、黙って通ることはない。
+判定そのものは `scripts/lib/one-to-one.ts` が持ち、`scripts/` ・ `docs-viewer` と同一のものを共有する。
+このファイルが担うのはツリーの走査と型解決だけで、除外はカバレッジゲートと同じ 2 つ。
+
+呼べない export（定数・ルートオブジェクト）に対する describe は、要求はされないが許される。
+production のシンボルに対応しない契約テストは違反ではない。
 
 ## 環境変数
 

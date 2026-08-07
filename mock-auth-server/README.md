@@ -4,7 +4,8 @@ English | [日本語](README.ja.md)
 
 A **mock OIDC auth server** for local development. It lets the Go API (Resource Server) exercise **JWT signature/claim verification and the Authorization Code Flow (+ PKCE S256)** end-to-end without a real IdP. Login UI / consent / refresh token / Roles are out of scope.
 
-It is intentionally implemented in **TypeScript on Node.js (a different runtime than the Go API)** so that the token issuer and the verifier do not share bugs originating from a single library. The `.ts` sources run directly via Node's native type stripping (Node 24) — no `tsc` build step; the HTTP layer is [Hono](https://hono.dev/). `typescript` is a dev-only dependency for `npm run typecheck`, and `node --test` runs the suite.
+It is intentionally implemented in **TypeScript on Node.js (a different runtime than the Go API)** so that the token issuer and the verifier do not share bugs originating from a single library. The `.ts` sources run directly via Node's native type stripping (Node 24) — no `tsc` build step; the HTTP layer is [Hono](https://hono.dev/). `typescript` is a dev-only dependency for `npm run typecheck` and for the 1:1 test-mapping gate; `vitest` runs
+the unit suite and `node --test` the integration one.
 
 ## Endpoints
 
@@ -128,11 +129,25 @@ The Go API points `AUTH_ISSUER` at the host URL (`http://localhost:4000`) and `A
 | `npm test` | Unit suite (`src/**/*.test.ts`), in-process against `app.fetch`. **Gated at 100 % line / branch / function coverage** |
 | `npm run test:integration` | Integration suite (`integration/**/*.test.ts`) over real HTTP, plus the entry point started as a child process |
 
-The coverage gate is `node --test`'s own `--test-coverage-*` thresholds — no extra dependency. Two paths are
-excluded from it: `src/generated/**` (orval output, not hand-written) and `src/server.ts` (the entry point,
-which binds a port on import and therefore cannot be loaded in-process). Excluding the entry is not a hole —
+The coverage gate is `vitest`'s own thresholds (`vitest.config.ts`); the integration suite still runs on
+`node --test`, because it starts a real process rather than importing one. Two paths are excluded from
+coverage: `src/generated/**` (orval output, not hand-written) and `src/server.ts` (the entry point, which
+binds a port on import and therefore cannot be loaded in-process). Excluding the entry is not a hole —
 `integration/server-entry.integration.test.ts` starts it as a real process and asserts both that it refuses to
 run under `NODE_ENV=production` and that it serves `/health` on a normal start.
+
+### 1:1 test mapping
+
+`src/one-to-one.gate.test.ts` enforces the same 1:1 rule the Go side gets from
+`internal/architest`: every callable export owns one `describe("<export name>")`, and directly inside it sit
+the `正常系` / `異常系` groups that hold the cases. It checks both directions — an export with no `describe`
+and a `describe` matching no export — so neither renaming a test nor adding an untested export passes
+silently. The check itself lives in `scripts/lib/one-to-one.ts` and is shared verbatim with `scripts/` and
+`docs-viewer`; this file only walks the tree and resolves types, and it applies the same two exclusions as
+the coverage gate.
+
+A `describe` naming a non-callable export (a constant, a route object) is allowed but not required, so a
+contract test with no production symbol behind it is not a violation.
 
 ## Environment Variables
 
