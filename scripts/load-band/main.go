@@ -46,6 +46,10 @@ const (
 	// minShare は 1 窓あたりの CPU share の下限。0 を渡すとツールによっては「無制限」と
 	// 解釈され、絞る意図が反転する。
 	minShare = 1
+
+	// minWindows は窓の数の下限。share は CPU 数を窓の数で割って求めるため、0 が入ると
+	// 0 除算になる。countWindows も同じ下限を保証するが、resolve はそれを経ずに呼べる。
+	minWindows = 1
 )
 
 var (
@@ -162,10 +166,15 @@ func resolve(requested string, windows, cpus, lowThreshold, ciFirstThreshold int
 		requested = bandAuto
 	}
 
+	// 下限は帯の判定より前に効かせる。判定に渡す数と報告する数が食い違うと、
+	// 表示された窓の数から帯を再現できなくなる。
+	windows = max(windows, minWindows)
+	cpus = max(cpus, minShare)
+
 	b := band{
 		requested:        requested,
 		windows:          windows,
-		cpus:             max(cpus, minShare),
+		cpus:             cpus,
 		lowThreshold:     lowThreshold,
 		ciFirstThreshold: ciFirstThreshold,
 	}

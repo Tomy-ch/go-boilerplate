@@ -128,6 +128,23 @@ func Test_resolve(t *testing.T) {
 			assert.Equal(t, 1, b.cpus)
 			assert.Equal(t, 1, b.share)
 		})
+
+		t.Run("窓数が 0 でも 1 として扱い share を CPU 数のまま渡す", func(t *testing.T) {
+			t.Parallel()
+
+			b := mustResolve(t, bandLow, 0, 8)
+			assert.Equal(t, 1, b.windows)
+			assert.Equal(t, 8, b.share)
+		})
+
+		t.Run("窓数が 0 のとき auto は下限の 1 窓として帯を決める", func(t *testing.T) {
+			t.Parallel()
+
+			b, err := resolve(bandAuto, 0, 8, 1, 5)
+			require.NoError(t, err)
+			assert.Equal(t, bandLow, b.resolved)
+			assert.Equal(t, 1, b.windows)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
