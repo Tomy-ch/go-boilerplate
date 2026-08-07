@@ -215,7 +215,7 @@ credentials) — a genuinely new finding is a real secret and must be removed fr
 
 ## 7. `sample-removal-check` fails in CI
 
-`scripts/setup/lib/sample-manifest.mjs` declares every path that `make setup-remove-sample-api`
+`scripts/setup/lib/sample-manifest.ts` declares every path that `make setup-remove-sample-api`
 deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample
 domain (user / product / purchase / …) without registering them leaves dangling references after
 removal, which the CI job catches by actually performing the removal and then building, linting, and
@@ -261,7 +261,7 @@ Always reproduce CI failures with the full config.
 
 ## 10. `commitlint: not found` / `orval: not found` / a stale tool version
 
-The tool-runner images are **build artifacts of `mise.toml` and `docker/tools/package*.json`**. Tools
+The tool-runner images are **build artifacts of `mise.toml` and `scripts/package.json` + `scripts/pnpm-lock.yaml`**. Tools
 are resolved inside the runners, never on the host (the same reproducibility rule as codegen — see
 `docs/rules.md`). After changing either file — or on a fresh clone whose images predate them — the
 runner is missing the tool or ships an old version.
@@ -286,7 +286,7 @@ enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are i
 
 | Hook | Glob → command (abridged) |
 | --- | --- |
-| pre-commit | `*.go` → `make gate-go` (bundles `lint` + `test-cached`); `scripts/**/*.go` → `make test-scripts-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
+| pre-commit | `*.go` → `make gate-go` (bundles `lint` + `test-cached`); `scripts/**/*.go` → `make test-scripts-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
 | pre-push | `make secret-scan`; `*.go` → `make gate-go-push` (bundles `test` + `test-scripts`); `*.go` / `openapi/**` → regenerate and `git diff --exit-code` on `*.gen.go` / mocks / `openapi.gen.yaml`; `go.mod` / `go.sum` → `go mod tidy` + diff |
 
@@ -334,12 +334,12 @@ they use in-process gofakes3.
 
 ## 15. mock-auth-server — a separate npm project with its own generated artifacts
 
-`docker/mock-auth-server/` is a standalone Node project (its own `package.json`, OpenAPI, and tests).
+`mock-auth-server/` is a standalone Node project (its own `package.json`, OpenAPI, and tests).
 Two of its outputs are drift-checked in CI:
 
 - **Golden JWKS** — `fixtures/jwks/*.json` and `internal/integration/testdata/jwks/*.json` are written
   by one generator so the provider and the Go integration tests share a single source. After touching
-  the key store or the keys, run `npm run gen:jwks` in `docker/mock-auth-server` and commit both
+  the key store or the keys, run `npm run gen:jwks` in `mock-auth-server` and commit both
   directories.
 - **OpenAPI bundle + zod schemas** — regenerate with `make gen-mock-auth-oapi` (runs in
   `node_tool_runner`, resolving `orval` from `/app/scripts/node_modules`; see §10 if it is not found).

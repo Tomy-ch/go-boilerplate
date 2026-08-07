@@ -2,7 +2,7 @@
 
 # Portal Manifest Sync
 
-このスキルは `docs/portal/manifest.yaml` をディスク上の実体（`README.md` / `README.ja.md`）と照合します。manifest は `scripts/gen-portal-docs.mjs` の入力で、各 `src` を `docs/portal/guides/` 配下の `dst` にコピーします。
+このスキルは `docs/portal/manifest.yaml` をディスク上の実体（`README.md` / `README.ja.md`）と照合します。manifest は `scripts/portal/gen-portal-docs.ts` の入力で、各 `src` を `docs/portal/guides/` 配下の `dst` にコピーします。
 
 ## 重要な前提
 
@@ -56,7 +56,7 @@ manifest 未登録のディスク README は **drift ではなく** 人間の判
 - `docs/portal/manifest.yaml`
 - `.claude/skills/readme-review/SKILL.md`（評価基準の source of truth、実行ごとに再読込）
 - リポジトリ全体の `*README*.md`。常に除外: `docs/portal/guides/**`, `vendor/**`, `node_modules/**`, `.git/**`, `.claude/**`, `.gitignore` 反映
-- `scripts/gen-portal-docs.mjs`
+- `scripts/portal/gen-portal-docs.ts`
 
 **書き込み（承認後のみ）**:
 
