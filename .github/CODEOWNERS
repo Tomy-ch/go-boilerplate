@@ -21,11 +21,19 @@
 # audit tool watching that half — the settings file itself is the control, which
 # makes review of it the only thing standing between a weakened window and a
 # lockfile nobody questions.
+#
+# The tool cooldown states the override differently again. The entries above are
+# settings and lockfiles where a weakened window has to be inferred from what the
+# file no longer refuses; `tool-cooldown-bypass.toml` is the override written out
+# in full, one dated entry per tool taken early. That makes it the easiest of these
+# to read and the easiest to add a line to, which is why the reservation matters
+# here rather than mattering less.
 **/.npmrc                             @Tomy-ch
 **/package-lock.json                  @Tomy-ch
 **/pnpm-lock.yaml                     @Tomy-ch
 **/pnpm-workspace.yaml                @Tomy-ch
 .github/actions-pin.toml              @Tomy-ch
+.github/tool-cooldown-bypass.toml     @Tomy-ch
 docker/images-pin.toml                @Tomy-ch
 
 # Go modules have no toolchain-side cooldown to bypass — nothing refuses a
