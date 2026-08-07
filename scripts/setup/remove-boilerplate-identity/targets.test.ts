@@ -10,8 +10,18 @@ import {
   BOILERPLATE_PROSE_MARKERS,
   EXCLUDED_DIRECTORIES,
   EXCLUDED_PATH_PREFIXES,
+  MARKER_LITERAL_FILES,
+  containsBoilerplateMarker,
   isScanTarget,
 } from "./targets";
+
+/** 走査対象ファイルの絶対パス。除去側と同じ経路で列挙する。 */
+function scanTargets(): string[] {
+  return listFilesRecursive(ROOT_DIR, {
+    excludedDirectories: EXCLUDED_DIRECTORIES,
+    shouldIncludeFile: (entryPath) => isScanTarget(toRelativePath(entryPath)),
+  });
+}
 
 /** 宣言したファイルの実際の中身。 */
 function read(relativePath: string): string {
@@ -20,10 +30,9 @@ function read(relativePath: string): string {
 
 describe("isScanTarget", () => {
   describe("正常系", () => {
-    it("除外接頭辞に載っていないパスを対象にする", () => {
+    it("除外に当たらないパスを対象にする", () => {
       expect(isScanTarget("docs/adr/README.md")).toBe(true);
       expect(isScanTarget("README.md")).toBe(true);
-      expect(isScanTarget(".makefiles/README.md")).toBe(true);
     });
 
     // 拡張子でも名前でも絞らない。絞り込みは「マーカーを書いたのに除去されない」を静かに作る。
@@ -67,6 +76,45 @@ describe("EXCLUDED_DIRECTORIES", () => {
     it("本文の居るディレクトリを外していない", () => {
       expect(EXCLUDED_DIRECTORIES.has("docs")).toBe(false);
       expect(EXCLUDED_DIRECTORIES.has("internal")).toBe(false);
+      expect(EXCLUDED_DIRECTORIES.has("scripts")).toBe(false);
+    });
+  });
+});
+
+describe("containsBoilerplateMarker", () => {
+  describe("正常系", () => {
+    it("コメント記号を伴うマーカーを検出する", () => {
+      expect(containsBoilerplateMarker("<!-- boilerplate-only:begin -->")).toBe(true);
+      expect(containsBoilerplateMarker("x # boilerplate-only:line")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    // コメント記号を必須にしないと、規約を説明している散文を境界と誤認する。
+    it("コメント記号の無い同名トークンを検出しない", () => {
+      expect(containsBoilerplateMarker('grep -rn "boilerplate-only:line" docs/')).toBe(false);
+    });
+
+    it("接頭辞が一致するだけの別マーカーを検出しない", () => {
+      expect(containsBoilerplateMarker("<!-- boilerplate:begin -->")).toBe(false);
+    });
+  });
+});
+
+describe("MARKER_LITERAL_FILES", () => {
+  describe("正常系", () => {
+    it("挙げた対象がすべて実在する", () => {
+      for (const target of MARKER_LITERAL_FILES) {
+        expect(fs.existsSync(path.join(ROOT_DIR, target)), target).toBe(true);
+      }
+    });
+
+    // 除去を止める宣言なので、対象がもうマーカーを持たないなら宣言のほうが古い。
+    // 放置すると「なぜ除去されないのか」が誰にも分からないファイルが増える。
+    it("挙げた対象が実際にマーカー文字列を持つ", () => {
+      for (const target of MARKER_LITERAL_FILES) {
+        expect(containsBoilerplateMarker(read(target)), target).toBe(true);
+      }
     });
   });
 });
@@ -98,23 +146,15 @@ describe("BOILERPLATE_MARKER", () => {
     // 走査は列挙を持たないため、除去が空振りしていても何も出力せず成功する。
     // 「マーカーがリポジトリに 1 つは在る」を固定できるのはここだけ。
     it("マーカーがリポジトリに実在する", () => {
-      const pattern = new RegExp(`(?:\\/\\/|#|<!--)\\s*${BOILERPLATE_MARKER}:`);
-      const files = listFilesRecursive(ROOT_DIR, {
-        excludedDirectories: EXCLUDED_DIRECTORIES,
-        shouldIncludeFile: (entryPath) => isScanTarget(toRelativePath(entryPath)),
-      });
+      const found = scanTargets().some((file) => containsBoilerplateMarker(fs.readFileSync(file, "utf8")));
 
-      expect(files.some((file) => pattern.test(fs.readFileSync(file, "utf8")))).toBe(true);
+      expect(found).toBe(true);
     });
 
     // 素の `boilerplate` へ寄せ戻すと、除去されないマーカーが静かに増える。
     it("素の boilerplate へ寄せ戻していない", () => {
       const pattern = /(?:\/\/|#|<!--)\s*boilerplate:(?:begin|end|line|replace-)/;
-      const files = listFilesRecursive(ROOT_DIR, {
-        excludedDirectories: EXCLUDED_DIRECTORIES,
-        shouldIncludeFile: (entryPath) => isScanTarget(toRelativePath(entryPath)),
-      });
-      const offenders = files
+      const offenders = scanTargets()
         .filter((file) => pattern.test(fs.readFileSync(file, "utf8")))
         .map((file) => toRelativePath(file));
 

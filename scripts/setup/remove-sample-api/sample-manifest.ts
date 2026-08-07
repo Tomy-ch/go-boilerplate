@@ -366,43 +366,60 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
 };
 
 // サンプル行が残す行と混在するため、行単位でマーカー除去する共有ファイル。
-export const MARKER_FILES: readonly string[] = [
-  "openapi/openapi.yaml",
-  "internal/di/module/core/auth.go",
-  "internal/di/module/controller.go",
-  "internal/di/module/usecase.go",
-  "internal/di/module/usecase_test.go",
-  "internal/di/module/webapi.go",
-  "internal/di/module/webapi_test.go",
-  "internal/di/module/persistence.go",
-  "internal/di/module/authz.go",
-  "internal/di/module/authz_test.go",
-  "internal/di/module/job.go",
-  "internal/di/module/worker.go",
-  "internal/infrastructure/publisher/publisher.go",
-  "internal/infrastructure/publisher/publisher_test.go",
-  "internal/domain/README.md",
-  "internal/domain/README.ja.md",
-  "internal/domain/lexicon/README.md",
-  "internal/domain/lexicon/README.ja.md",
-  "internal/infrastructure/publisher/README.md",
-  "internal/infrastructure/publisher/README.ja.md",
-  "internal/infrastructure/rdb/repository/README.md",
-  "internal/infrastructure/rdb/query_service/README.md",
-  "internal/controller/worker/README.md",
-  "internal/controller/worker/README.ja.md",
-  "internal/infrastructure/queue/sqs/README.md",
-  "internal/infrastructure/queue/sqs/README.ja.md",
-  "internal/usecase/outbox/README.md",
-  "internal/usecase/outbox/README.ja.md",
-  "docs/design/worker.md",
-  "docs/ja/design/worker.ja.md",
-  "docker-compose.yaml",
-  ".makefiles/github/operation/setup-repository.mk",
-  ".makefiles/README.md",
-  ".makefiles/README.ja.md",
-  "scripts/README.md",
-  "scripts/README.ja.md",
+/**
+ * 走査から外すディレクトリ名。依存の取得物と VCS の内部。
+ *
+ * @remarks
+ * remove-boilerplate-identity 側にも同じ宣言があります。**共通化していません**。2 つの撤去は
+ * 起爆の契機が違い（あちらはセットアップ、こちらはサンプル削除）、どちらが先に走るかも順序が
+ * 決まっていないため、共有モジュールへ寄せると先に走ったほうがもう一方の足元を持って行きうる
+ * 依存が増えます。数行なので、重複を許して各ツールが自分の分を抱えます。
+ */
+export const EXCLUDED_DIRECTORIES: ReadonlySet<string> = new Set([
+  ".git",
+  "node_modules",
+  "vendor",
+]);
+
+/** 走査から外す相対パス接頭辞。いずれも生成物で、除去しても再生成で戻る。 */
+export const EXCLUDED_PATH_PREFIXES: readonly string[] = [
+  "docs/portal/guides/",
+  "docs/coverage/",
+  "docs/db-schema/",
+  "docs/godoc/",
+  "graphify-out/",
+  "tmp/",
+];
+
+/**
+ * マーカー文字列を「データ・散文」として持つファイル。走査の対象から外す。
+ *
+ * @remarks
+ * 除去はリポジトリを走査するので、対象ファイルの一覧は要りません（一覧はその外側にマーカーを
+ * 書けてしまい、しかも取りこぼしが無言だったため廃しました）。代わりに要るのがこの逆向きの
+ * 宣言です。`sample-api` は、`boilerplate-only` と違って**マーカーの形そのものを教材・
+ * フィクスチャ・規約説明が本文に持っている**ため、素朴に走査すると、マーカーではないものを
+ * マーカーとして刈り取ってしまいます。
+ *
+ * 一覧の取りこぼしが無言だったのに対し、こちらの取りこぼしは声を出します。宣言し忘れた
+ * ファイルは内容が壊れ、`sample-removal-check.yaml` の `make test` / `md-markdownlint-ci` /
+ * `go build` が落ちます。
+ */
+export const MARKER_LITERAL_FILES: readonly string[] = [
+  // マーカー除去そのもののテスト。入力として `# sample-api:begin` を持つ。
+  "scripts/setup/lib/markers.test.ts",
+  // Go の文字列リテラルとして `// sample-api:line` を組み立て、走査器の挙動を検査している。
+  "internal/architest/bindhandler_di_parity_test.go",
+  // 教材。マーカーの書き方をコード例として示している。
+  "docs/tutorial/build-user-feature.md",
+  "docs/ja/tutorial/build-user-feature.ja.md",
+  // マーカーの書き方を説明している散文。1 行に begin と end が同居するため、
+  // 素通しすると「閉じられていない begin」として除去が中断する。
+  "docs/get-started/setup-repository.md",
+  "docs/ja/get-started/setup-repository.ja.md",
+  // マーカー規約を説明している散文。
+  ".claude/agents/drift-detector-glossary.md",
+  ".codex/agents/drift-detector-glossary.toml",
 ];
 
 // 削除後に再生成・整形・検証するための make ターゲット（順番に実行）。

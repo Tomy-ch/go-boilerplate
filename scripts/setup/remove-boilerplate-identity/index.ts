@@ -16,8 +16,7 @@ import path from "node:path";
 
 import { listFilesRecursive, toAbsolutePath, toRelativePath } from "../lib/file-utils";
 import { stripMarkers } from "../lib/markers";
-import { type SetupOptions, newSetupCommand } from "../lib/runtime";
-import { ROOT_DIR } from "../lib/runtime";
+import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
   BOILERPLATE_DELETE_FILES,
   BOILERPLATE_MARKER,

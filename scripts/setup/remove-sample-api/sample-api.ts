@@ -1,7 +1,8 @@
-// サンプルAPI削除に固有の判定。削除対象の宣言（SAMPLE_DOMAINS / MARKER_FILES / BUILD_STEPS）は
-// sample-manifest.ts、マーカー除去の機構は ../lib/markers.ts を参照。
+// サンプルAPI削除に固有の判定。削除対象の宣言（SAMPLE_DOMAINS / MARKER_LITERAL_FILES /
+// BUILD_STEPS）は sample-manifest.ts、マーカー除去の機構は ../lib/markers.ts を参照。
 
 import { type StripResult, stripMarkers } from "../lib/markers";
+import { EXCLUDED_PATH_PREFIXES, MARKER_LITERAL_FILES, SAMPLE_DOMAINS } from "./sample-manifest";
 
 /** サンプルAPI の在否で行を切り替えるマーカー名。 */
 export const SAMPLE_MARKER = "sample-api";
@@ -9,6 +10,41 @@ export const SAMPLE_MARKER = "sample-api";
 /** サンプルAPI のマーカー行を除去する。 */
 export function stripSampleMarkers(content: string): StripResult {
   return stripMarkers(content, SAMPLE_MARKER);
+}
+
+/** 削除登録されたパスの配下か。丸ごと消えるものを書き換えても意味が無い。 */
+function isRegisteredForDeletion(normalizedPath: string): boolean {
+  return Object.values(SAMPLE_DOMAINS)
+    .flatMap((domain) => domain.paths)
+    .some((registered) => normalizedPath === registered || normalizedPath.startsWith(`${registered}/`));
+}
+
+/**
+ * 走査対象か。ディレクトリ名の除外は列挙側が行うため、ここは接頭辞・削除登録・literal 宣言を見る。
+ *
+ * @remarks
+ * 削除登録されたパスを外すのは、`dryRun` と本番で結果を揃えるためです。本番では削除が先に走れば
+ * 走査から自然に消えますが、`dryRun` では何も消えないので、外さないと「本番では起きない失敗」を
+ * 予行演習だけが報告することになります。削除ツール自身のディレクトリがまさにそれで、マーカーの
+ * 形を持つフィクスチャを抱えています。
+ *
+ * remove-boilerplate-identity 側にも同型の判定があります。共通化していない理由は
+ * `sample-manifest.ts` の `EXCLUDED_DIRECTORIES` に書いたとおりで、2 つの撤去の起爆順序が
+ * 決まっていないためです。
+ */
+export function isScanTarget(relativePath: string): boolean {
+  const normalized = relativePath.split("\\").join("/");
+
+  if (MARKER_LITERAL_FILES.includes(normalized) || isRegisteredForDeletion(normalized)) {
+    return false;
+  }
+
+  return !EXCLUDED_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+}
+
+/** `<comment> sample-api:` を含むか。literal 宣言の陳腐化を検査する側が使う。 */
+export function containsSampleMarker(content: string): boolean {
+  return new RegExp(`(?:\\/\\/|#|<!--)\\s*${SAMPLE_MARKER}:`).test(content);
 }
 
 /**
