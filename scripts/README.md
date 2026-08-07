@@ -175,6 +175,52 @@ All setup scripts support `--dry-run` for preview.
 The deletion targets are declared in [`lib/sample-manifest.ts`](setup/lib/sample-manifest.ts) and the marker-stripping rules in [`lib/sample-api.ts`](setup/lib/sample-api.ts). The sample spans three domains (`user` is full-stack; `product`/`order` are DB stubs to be expanded), so expanding the sample only requires appending paths to the matching domain block and wrapping interleaved lines with the `sample-api:begin … sample-api:end` markers (or `sample-api:line`).
 <!-- sample-api:end -->
 
+## Test Strategy
+
+These tools are not a layer, so no layer README governs them; per section 11 of
+[`docs/testing-conventions.md`](../docs/testing-conventions.md) their viewpoints live here. The
+cross-cutting structure rules (`t.Parallel()`, subtest groups, assertions) still come from that
+document — only the viewpoints below are local. They hold for the Go tools and the TypeScript ones
+alike: the runner differs (`make test-scripts` vs. `make scripts-test`), the viewpoints do not.
+
+- **Test the decision, not the shell around it.** Each tool splits into a `main` that only turns an
+  error into an exit code, a `run` that parses flags and dispatches, and the pure functions that
+  decide. `run` takes its impure dependencies as arguments — the working directory, an HTTP client,
+  the current time, a coverage total, a command runner — so the dispatch itself is reachable from a
+  test. `main` is the one symbol deliberately left uncovered, which is also why no branch may live
+  in it.
+- **Pin the degenerate input, not just the violation.** Most of these tools are gates, and a gate
+  fails towards *inspecting nothing and reporting a clean run*. A malformed glob pattern, an
+  unreadable target file, a lockfile line that does not parse, and an empty scan therefore each get
+  a case asserting an error — never a silent fall-back to zero findings. This is the viewpoint that
+  keeps "found no violations" distinguishable from "looked at nothing".
+- **Assert on the sentinel, not on the message.** Every failure mode is a package-level sentinel and
+  tests reach it with `require.ErrorIs`. A substring assertion is added on top when the message
+  carries something a caller acts on — which file drifted, which key failed — but never as the only
+  check, or a reworded message quietly becomes a passing test for the wrong error.
+- **Give every window both of its sides.** Where a tool compares against a threshold — a cooldown
+  window in days, a coverage percentage — the case pair is the boundary value itself and the value
+  one step below it. A single comfortably-inside case cannot tell `>=` from `>`.
+- **Stub the external world at its own boundary.** `docker` and `npm` are replaced by a shell script
+  placed first on `PATH` so the argument list a tool composes is itself under test; the GitHub API
+  and the module registries are replaced by an `httptest` server. `t.Setenv` makes the `PATH` cases
+  incompatible with `t.Parallel()`, which is declared per case rather than worked around.
+  `actions-shellcheck` is the exception: it drives the real `shellcheck` and skips when absent, and
+  `REQUIRE_SHELLCHECK` exists so that skip cannot pass for a run.
+- **An irreversible step is verified as a plan, never performed.** `release` and `repo-setup` push
+  tags, cut GitHub Releases and move the default branch, so their steps go through a `runner` seam
+  and the tests assert the composed command sequence and the abort conditions. Exercising these for
+  real would mean actually releasing.
+- **Prove that a failed run wrote nothing.** A tool that rewrites files decides everything before it
+  writes, so an abort partway through must leave the working tree untouched. The assertion is on the
+  file contents after the error, not merely on the error.
+- **Treat the reported text as the contract where it is the only output.** A drift list, a
+  `::warning::` annotation, a quarantine note — a human or a CI annotation reads exactly that, so
+  those cases capture the standard logger and assert on what was emitted.
+- **Fixtures live under `t.TempDir()`, never in the real tree.** A test that reads the repository's
+  own workflows or lockfiles passes or fails with today's contents and has stopped being about the
+  tool.
+
 ## Notes
 
 - The Go tools' unit tests run through `make test-scripts` / `make test-scripts-cached` alone —
