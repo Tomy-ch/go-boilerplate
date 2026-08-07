@@ -15,28 +15,34 @@ async function post(path: string, body: string): Promise<[number, Record<string,
   return [res.status, (await res.json()) as Record<string, unknown>];
 }
 
-it("POST /bypass/token は JSON として壊れたボディを 400 で拒否する", async () => {
-  const [status, body] = await post("/bypass/token", "{ not json");
-  expect(status).toBe(400);
-  expect(body.error).toBe("invalid_request");
-});
+describe("bypassRoutes", () => {
+  describe("正常系", () => {
+    it("POST /bypass/token は空ボディなら既定の subject / profile で発行する", async () => {
+      const [status, body] = await post("/bypass/token", "");
+      expect(status).toBe(200);
+      expect(body.token_type).toBe("Bearer");
+      expect(typeof body.access_token).toBe("string");
+    });
 
-it("POST /bypass/token は空ボディなら既定の subject / profile で発行する", async () => {
-  const [status, body] = await post("/bypass/token", "");
-  expect(status).toBe(200);
-  expect(body.token_type).toBe("Bearer");
-  expect(typeof body.access_token).toBe("string");
-});
+    it("POST /bypass/session は subject 省略時に既定 subject の session を作る", async () => {
+      const [status, body] = await post("/bypass/session", "");
+      expect(status).toBe(200);
+      expect(body.subject).toBe(defaultSubject);
+      expect(sessionStore.get(body.session_id as string)?.subject).toBe(defaultSubject);
+    });
+  });
 
-it("POST /bypass/session は JSON として壊れたボディを 400 で拒否する", async () => {
-  const [status, body] = await post("/bypass/session", "{ not json");
-  expect(status).toBe(400);
-  expect(body.error).toBe("invalid_request");
-});
+  describe("異常系", () => {
+    it("POST /bypass/token は JSON として壊れたボディを 400 で拒否する", async () => {
+      const [status, body] = await post("/bypass/token", "{ not json");
+      expect(status).toBe(400);
+      expect(body.error).toBe("invalid_request");
+    });
 
-it("POST /bypass/session は subject 省略時に既定 subject の session を作る", async () => {
-  const [status, body] = await post("/bypass/session", "");
-  expect(status).toBe(200);
-  expect(body.subject).toBe(defaultSubject);
-  expect(sessionStore.get(body.session_id as string)?.subject).toBe(defaultSubject);
+    it("POST /bypass/session は JSON として壊れたボディを 400 で拒否する", async () => {
+      const [status, body] = await post("/bypass/session", "{ not json");
+      expect(status).toBe(400);
+      expect(body.error).toBe("invalid_request");
+    });
+  });
 });

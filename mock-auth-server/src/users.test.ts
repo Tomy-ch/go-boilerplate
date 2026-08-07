@@ -6,35 +6,58 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defaultSubject, findUser, firstSubject, loadUsers, users } from "./users.ts";
 
-// brokenFixture は指定内容を書いた一時ファイルのパスを返す。
-function brokenFixture(content: string): string {
+// fixtureFile は指定内容を書いた一時ファイルのパスを返す。
+function fixtureFile(content: string): string {
   const path = join(mkdtempSync(join(tmpdir(), "mock-auth-users-")), "users.json");
   writeFileSync(path, content, "utf8");
   return path;
 }
 
-it("loadUsers: 存在しないパスは空配列を返す", () => {
-  expect(loadUsers(join(tmpdir(), "no-such-dir", "users.json"))).toEqual([]);
+describe("loadUsers", () => {
+  describe("正常系", () => {
+    it("JSON として読めるファイルの内容をそのまま返す", () => {
+      const entries = [{ subject: "user-example", email: "example@example.com" }];
+      expect(loadUsers(fixtureFile(JSON.stringify(entries)))).toEqual(entries);
+    });
+  });
+
+  describe("異常系", () => {
+    it("存在しないパスは空配列を返す", () => {
+      expect(loadUsers(join(tmpdir(), "no-such-dir", "users.json"))).toEqual([]);
+    });
+
+    it("JSON として壊れたファイルは空配列を返す", () => {
+      expect(loadUsers(fixtureFile("{ not json"))).toEqual([]);
+    });
+  });
 });
 
-it("loadUsers: JSON として壊れたファイルは空配列を返す", () => {
-  expect(loadUsers(brokenFixture("{ not json"))).toEqual([]);
+describe("firstSubject", () => {
+  describe("正常系", () => {
+    it("先頭の subject を既定として採用する", () => {
+      expect(firstSubject(users)).toBe(users[0].subject);
+      expect(defaultSubject).toBe(users[0].subject);
+    });
+  });
+
+  describe("異常系", () => {
+    it("User が 1 人も居なければ中立な既定へフォールバックする", () => {
+      expect(firstSubject([])).toBe("user-example");
+    });
+  });
 });
 
-it("findUser: 登録済み subject の User を返す", () => {
-  const subject = users[0].subject;
-  expect(findUser(subject)?.subject).toBe(subject);
-});
+describe("findUser", () => {
+  describe("正常系", () => {
+    it("登録済み subject の User を返す", () => {
+      const subject = users[0].subject;
+      expect(findUser(subject)?.subject).toBe(subject);
+    });
+  });
 
-it("findUser: 未登録の subject は undefined を返す", () => {
-  expect(findUser("user-not-registered")).toBe(undefined);
-});
-
-it("firstSubject: 先頭の subject を既定として採用する", () => {
-  expect(firstSubject(users)).toBe(users[0].subject);
-  expect(defaultSubject).toBe(users[0].subject);
-});
-
-it("firstSubject: User が 1 人も居なければ中立な既定へフォールバックする", () => {
-  expect(firstSubject([])).toBe("user-example");
+  describe("異常系", () => {
+    it("未登録の subject は undefined を返す", () => {
+      expect(findUser("user-not-registered")).toBe(undefined);
+    });
+  });
 });
