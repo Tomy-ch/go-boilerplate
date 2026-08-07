@@ -20,9 +20,10 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 本番で利用するには、integrator が `NewConsumer` / `NewDeadLetter` を `WorkerModule` に登録した
 `worker.Worker` に配線し、outbox の publish 先として `NewPublisher` を選びます。
 
-隔離の検証: サンプル削除後の `go list -deps ./cmd/` は
-`github.com/aws/aws-sdk-go-v2/service/sqs` を列挙してはいけません。SDK コアと `service/s3` は
-object storage adapter 経由で常にリンクされます。
+隔離はリンクグラフに現れます。`github.com/aws/aws-sdk-go-v2/service/sqs` が
+`go list -deps ./cmd/` に現れるのは、このパッケージを選ぶ配線があるときだけです。SDK コアと
+`service/s3` は object storage adapter 経由で常にリンクされます。
+本リポジトリがボイラープレートとして頒布されている間、この条件はサンプル削除を実行して結果を突き合わせる形で検査されます。詳細は [`docs/get-started/boilerplate-only-conventions.md`](../../../../docs/ja/get-started/boilerplate-only-conventions.ja.md) に記録しています。 <!-- boilerplate-only:line -->
 
 ## 送出側
 
