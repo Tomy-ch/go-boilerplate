@@ -12,7 +12,7 @@ English canonical: [0047-sqs-adapter-opt-in.md](../../adr/0047-sqs-adapter-opt-i
 
 ## ステータス
 
-superseded by [ADR-0048](0048-broker-sdk-isolation-verified-after-sample-removal.ja.md)
+superseded by [ADR-0048](0048-broker-sdk-isolation-measured-as-coupling.ja.md)
 
 ## 背景
 

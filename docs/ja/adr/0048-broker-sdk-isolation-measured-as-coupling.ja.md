@@ -1,14 +1,14 @@
 ---
 status: accepted
-date: 2026-08-04
+date: 2026-08-08
 deciders: [maintainers]
 supersedes: 0047
 tags: [worker, outbox, async, dependencies]
 ---
 
-# ADR-0048: ブローカー SDK の分離は、アダプターを未配線にすることではなくサンプル削除後に検証する
+# ADR-0048: ブローカー SDK の分離はリンクではなく結合で測る
 
-English canonical: [0048-broker-sdk-isolation-verified-after-sample-removal.md](../../adr/0048-broker-sdk-isolation-verified-after-sample-removal.md)
+English canonical: [0048-broker-sdk-isolation-measured-as-coupling.md](../../adr/0048-broker-sdk-isolation-measured-as-coupling.md)
 
 ## ステータス
 
@@ -28,18 +28,13 @@ ADR-0047 の背後にある懸念は、リンクではなく**結合**として�
 
 ## 決定
 
-ブローカーアダプターは、キューのどちら側であっても、**削除可能なサンプル群の一部としてデフォルトビルドへ配線してよい**。受信側のシーム（`worker.Consumer` / `worker.FailureHandler`）と outbox の publish 側のシーム（`publisher.Publisher`）は同じ扱いとする。E3 は、リンクではなく結合を測る不変条件へ置き換える。
+ブローカーアダプターは、キューのどちら側であっても、**デフォルトビルドへ配線してよい**。受信側のシーム（`worker.Consumer` / `worker.FailureHandler`）と outbox の publish 側のシーム（`publisher.Publisher`）は同じ扱いとする。E3 は、リンクではなく結合を測る形へ述べ直す。
 
-> **E3'**: `make setup-remove-sample-api` の実行後、リポジトリの結合はサンプル追加前と同一である。
+> **E3**: 具体的なブローカーの知識は、そのアダプターのパッケージと、それを選ぶ配線だけに閉じ込める。core の `*.go` も core のドキュメントもブローカーアダプターを名指さず、core のコードが名指すのはシームだけである。
 
-E3' は 4 つの条件に分解でき、いずれも機械的に検証できる。
+E3 は機械的に検証できる。リンカが何を出力したかではなく、どのファイルが何を名指しているかについての言明だからである。`*.go` 側の検査は `scripts/setup/verify-sample-removal.ts` の `checkNoDanglingReferences` が担い、core のドキュメントは構造（`internal/controller/worker/<name>/`）を記述して具体アダプターを名指さない。
 
-1. **core の `*.go` がブローカーアダプターを参照しない** — `scripts/setup/verify-sample-removal.ts` の `checkNoDanglingReferences` が検査する。
-2. **core のドキュメントがサンプルを参照しない** — core のドキュメントは構造（`internal/controller/worker/<name>/`）を記述し、サンプルの具体名を参照しない。
-3. **シームがサンプル追加前の形へ戻る** — `internal/usecase/boundary/worker` または `internal/usecase/boundary/publisher` へのサンプル由来の変更は、退避側にサンプル追加前の形を保持する `sample-api:replace` ブロックで囲む。
-4. **不要になった依存が `go.mod` / `vendor/` から落ちる** — 削除チェーンで `make tidy-lib` を実行する。
-
-マーカーが付くのは**配線**であってアダプターではない。アダプターのパッケージ、本物の代わりに立てるローカルブローカーのサービス、およびそれらが読む設定は core であり、削除後も残る — object storage のアダプターとローカルの Garage サービスが既にそうであるように。削除できるのは、core のファイルをブローカーアダプター参照の立場に置くコード、すなわち import・判別子の分岐・それを選ぶ値だけである。条件 1 が測っているのはこれであり、アダプターを削除せずビルドと単体テストまで行ったうえで到達不能に留める理由でもある。
+ベンダーを持ち込むのは**配線**であってアダプターではない。アダプターのパッケージ、本物の代わりに立てるローカルブローカーのサービス、およびそれらが読む設定は、自分のベンダーだけを名指し、他のどこからも到達されない — object storage のアダプターとローカルの Garage サービスが既にそうであるように。core のファイルをブローカーアダプター参照の立場に置くものは、ちょうど 3 つ、import・判別子の分岐・それを選ぶ値である。ベンダーをそこへ閉じ込めることが差し替えを有界な変更にし、使っていないアダプターを削除せずビルドと単体テストまで行ったうえで残す理由でもある。
 
 **E1 / E2 は変更しない**。エンジンは infrastructure を import せず、インメモリ fake だけでグリーンになる。
 
@@ -48,14 +43,13 @@ E3' は 4 つの条件に分解でき、いずれも機械的に検証できる�
 ### ポジティブな影響
 
 - サブシステムが端から端まで実行された経路を得る。アダプターと配線テンプレートが「一度も動いたことのないコード」でなくなる。
-- E3' はプルリクエストごとに強制される。`.github/workflows/sample-removal-check.yaml` は既にフル削除に続けて `go build ./...` / `make lint` / `make test` を実行しており、削除後の状態が継続的に検証される。E3 には自動強制が一切なかった（`depguard` にも `internal/architest/**` にも該当ルールが無い）。
-- 条件 3 の退避側は腐らない。同じワークフローが毎回コンパイルしテストするためである。
-- 条件 2 により、core の設計ドキュメントが他サブシステムのサンプルを参照しているという既存の不整合が解消される。
+- E3 は自動で強制できるし、実際に強制されている。リンクの形では強制できなかった。`depguard` にも `internal/architest/**` にも該当ルールが無く、どちらでも表現できなかったためである。
+- ブローカーの差し替えが有界な変更になる。import・判別子の分岐・それを選ぶ値だけで済み、他所に探すものがない。
 
 ### ネガティブな影響
 
-- AWS 以外のブローカーを使う fork は、サンプル削除を実行するまで SQS の 5 パッケージを引き継ぐ。
-- サンプル由来のシーム変更は 1 つのファイル内に 2 つの形（有効側と退避側）で存在し、単一の形より読みにくい。
+- アダプターを配線するとその SDK がリンクされるため、別のブローカーを狙うデプロイは、配線を変えるまで使わないパッケージを抱える。
+- 配線を戻せるようにするなら、シームの配線前の形をどこかに取り出せる状態で保つ必要があり、単一の形より読みにくい。
 
 ### 中立的な影響
 
@@ -63,21 +57,22 @@ E3' は 4 つの条件に分解でき、いずれも機械的に検証できる�
 
 ## 検討した代替案
 
-### E3 を現状のまま維持する
+### E3 をリンクの形のまま維持する
 
-配線された実例を一切禁じることになり、worker サブシステムはエンジンとシーム、そして誰も使ってはならないアダプターに縮む。却下: テンプレートにとって、実演された経路はわずかに小さいバイナリより価値がある。また E3 が買う分離は、その根拠となる原則が本来求めている分離ではない。
+配線された実例を一切禁じることになり、worker サブシステムはエンジンとシーム、そして誰も使ってはならないアダプターに縮む。却下: 実演された経路はわずかに小さいバイナリより価値がある。またリンクの規則が買う分離は、その根拠となる原則が本来求めている分離ではない。
 
 ### バイナリを分割する
 
-`serve` と `worker` を別の `main` パッケージにすればリンクが役割単位になり、E3 を文字どおり維持できる。現時点では却下: ADR-0047 は同じ目的でビルドタグを既に却下しており、サブコマンドを持つ単一イメージというデプロイモデルを採るテンプレートに対して、バイナリ分割は目的に対して大きすぎる構造変更である。出荷上の制約が要求する fork には引き続き選択肢として残る。
+`serve` と `worker` を別の `main` パッケージにすればリンクが役割単位になり、リンクの形を文字どおり維持できる。現時点では却下: ADR-0047 は同じ目的でビルドタグを既に却下しており、サブコマンドを持つ単一イメージというデプロイモデルに対して、バイナリ分割は目的に対して大きすぎる構造変更である。出荷上の制約が要求する場面には引き続き選択肢として残る。
 
 ### SDK を必要としないブローカーで実演する
 
-Postgres ベースの pull-ack アダプターであれば、ベンダー SDK をリンクせずにシームを動かせるうえ、シームが SQS 専用の形ではないことも証明できる。却下: サンプルのために 2 本目のアダプターを作り保守することになる一方、E3' が既にサンプルの持ち込む結合を上限で抑えている。ローカルブローカーが SQS 互換であるため、リファレンスアダプターも再利用できる。
+Postgres ベースの pull-ack アダプターであれば、ベンダー SDK をリンクせずにシームを動かせるうえ、シームが SQS 専用の形ではないことも証明できる。却下: 実例のために 2 本目のアダプターを作り保守することになる一方、E3 が既に配線された実例の持ち込む結合を上限で抑えている。ローカルブローカーが SQS 互換であるため、リファレンスアダプターも再利用できる。
 
 ## 補足
 
 - [ADR-0047](0047-sqs-adapter-opt-in.ja.md) を supersede する。親の決定: [ADR-0045](0045-broker-agnostic-worker-scaffold.ja.md)。原則: [ADR-0001](0001-avoid-lock-in.ja.md)。
 - [ADR-0046](0046-out-of-scope-push-streaming-brokers.ja.md) は影響を受けない。push 型・ストリーミングログ型のブローカーは引き続き worker ポートの対象外である。outbox の publish 先として pull-ack ブローカーを選ぶことは、そもそも同 ADR の対象ではなかった。
-- E3' は [`docs/design/worker.md`](../design/worker.ja.md) に記載し、`.github/workflows/sample-removal-check.yaml` が強制する。
+- E3 は [`docs/design/worker.md`](../design/worker.ja.md) に記載する。
 - 参照: アダプターは [`internal/infrastructure/queue/sqs/README.md`](../../../internal/infrastructure/queue/sqs/README.ja.md)、それを選ぶ判別子は [`internal/infrastructure/publisher/README.md`](../../../internal/infrastructure/publisher/README.ja.md)。
+- **上流での検証**: 本リポジトリがボイラープレートとして頒布されている間、E3 はサンプル削除を実行して結果を突き合わせる形で検査される。詳細は [`docs/get-started/boilerplate-only-conventions.md`](../../get-started/boilerplate-only-conventions.md) に記録する。 <!-- boilerplate-only:line -->
