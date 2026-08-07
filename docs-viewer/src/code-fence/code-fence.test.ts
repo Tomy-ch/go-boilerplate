@@ -75,11 +75,6 @@ describe("readCodeFence", () => {
     it("language- の後ろが空の class は言語表記として採らない", () => {
       expect(readCodeFence(codeFence(["language-"], "x"))).toEqual({ language: null, code: "x" });
     });
-  });
-});
-
-describe("textOf を経由するノード種別", () => {
-  describe("異常系", () => {
     // sanitize 後は text だけになるが、comment のような別種が残る木を渡されても
     // 中身を落とさず、未知の種別だけを空として飛ばす。
     it("text でも element でもないノードは空として飛ばす", () => {
