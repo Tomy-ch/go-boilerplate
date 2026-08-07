@@ -26,6 +26,11 @@ export default defineConfig({
         // 判断はすべて mount/mount-portal.tsx 側にあり、そちらは検査対象に残している。
         "src/main.tsx",
       ],
+      // 母数を判定モジュールへ絞ってあるぶん、100% は「網羅せよ」ではなく「検査されない分岐を
+      // 残さない」を意味する。ここが下がるのは新しい分岐を足して踏まないまま置いた場合で、
+      // それは検査が黙る方向の変更そのものなので、率ではなく不変条件として止める。
+      // scripts / mock-auth-server と同じ判断。
+      thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },
 });

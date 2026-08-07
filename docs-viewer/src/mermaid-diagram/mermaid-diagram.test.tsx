@@ -48,6 +48,24 @@ describe("MermaidDiagram", () => {
 
       expect(await screen.findByText("graph TD; A--")).toBeInTheDocument();
     });
+    it("閉じた後に描画が済んでも差し替えない", async () => {
+      let finish: (svg: string) => void = () => undefined;
+      renderMermaidMock.mockReturnValue(
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+      );
+
+      const { unmount } = render(<MermaidDiagram code="graph TD; A-->B" />);
+
+      unmount();
+      finish("<svg data-testid=\"late\" />");
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("late")).not.toBeInTheDocument();
+      });
+    });
+
     it("閉じた後に描画が失敗しても差し替えない", async () => {
       let fail: (error: Error) => void = () => undefined;
       renderMermaidMock.mockReturnValue(

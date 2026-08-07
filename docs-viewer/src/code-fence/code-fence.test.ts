@@ -77,3 +77,20 @@ describe("readCodeFence", () => {
     });
   });
 });
+
+describe("textOf を経由するノード種別", () => {
+  describe("異常系", () => {
+    // sanitize 後は text だけになるが、comment のような別種が残る木を渡されても
+    // 中身を落とさず、未知の種別だけを空として飛ばす。
+    it("text でも element でもないノードは空として飛ばす", () => {
+      const fence = element("pre", {}, [
+        element("code", { className: ["language-go"] }, [
+          { type: "comment", value: "消える" } as never,
+          text("kept"),
+        ]),
+      ]);
+
+      expect(readCodeFence(fence)).toEqual({ language: "go", code: "kept" });
+    });
+  });
+});
