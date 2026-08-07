@@ -262,13 +262,32 @@ golangci-lint run --config .golangci-full.yaml     # equivalent, when you need e
 
 Always reproduce CI failures with the full config.
 
-## 10. `commitlint: not found` / `orval: not found` / a stale tool version
+## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / a stale tool version
 
 The tool-runner images are **build artifacts of `mise.toml` and `scripts/package.json` +
-`scripts/pnpm-lock.yaml`**. Tools
+`scripts/pnpm-lock.yaml` + `scripts/pnpm-workspace.yaml`**. Tools
 are resolved inside the runners, never on the host (the same reproducibility rule as codegen — see
-`docs/rules.md`). After changing either file — or on a fresh clone whose images predate them — the
-runner is missing the tool or ships an old version.
+`docs/rules.md`). After changing any of those files — or on a fresh clone whose images predate them —
+the runner is missing the tool, ships an old version, or refuses to run anything at all.
+
+That last symptom is the one that reads as unrelated to the edit. `scripts/pnpm-workspace.yaml` sets
+`verifyDepsBeforeRun: error`, so once its settings no longer match what the image's
+`scripts/node_modules` was installed under, every `pnpm run` inside the runner fails with
+`[ERR_PNPM_VERIFY_DEPS_BEFORE_RUN] The value of the <setting> setting has changed`. It takes down
+gates with no visible connection to the change — `make md-lint`, `make actions-lint`, `make
+lint-oapi` — while the host-side `-ci` targets stay green, because the host tree was re-installed
+when the file changed. Adding a `minimumReleaseAgeExclude` or `overrides` entry is enough to trigger
+it. Green on the host is therefore **not** evidence that the containerized gate passes: rebuild
+first, then re-run whichever gate you intend to report.
+
+**Across worktrees this is a shared resource, and it holds one branch's settings at a time.** The
+runner images belong to the single `gobp-shared` compose project (§2), so a rebuild in one worktree
+re-points every other worktree's containerized gates at *that* branch's `scripts/pnpm-workspace.yaml`.
+Two windows whose branches disagree — one adding a `minimumReleaseAgeExclude` entry, one not — will
+take turns failing, and the direction flips with whoever rebuilt last. The failure is the same
+`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in both directions, so read it as "the image matches someone
+else's branch", not as a defect in yours. Rebuild before the gates you are about to report, and
+expect the other window to need the same.
 
 ```bash
 make tool-runners-build           # rebuild go / node / python runners (cached)

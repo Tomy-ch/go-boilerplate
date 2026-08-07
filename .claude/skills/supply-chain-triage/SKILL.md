@@ -181,7 +181,7 @@ its other end and is `?` unless the ecosystem offers another comparison.
 Read only the one that applies. Each gives the commands per axis and states which axes that
 ecosystem cannot answer:
 
-- `references/npm.md` — npm packages, including transitive deps under `overrides`
+- `references/npm.md` — npm **and pnpm** packages (same registry, so the same evidence commands; only the reporting differs), including transitive deps under `overrides`
 - `references/go-modules.md` — Go modules
 - `references/github-actions.md` — `uses:` references (richest evidence: a real commit range)
 - `references/docker-images.md` — Dockerfile `FROM` / compose `image:` digests (thinnest evidence)
@@ -234,11 +234,18 @@ not make a blocked install possible:
 | HIGH / CRITICAL | 採用しない。上流への報告と、当該バージョンを避ける代替（一つ前の aged 版）を検討する |
 | INSUFFICIENT-EVIDENCE | 証拠が取れていないため窓がそのまま効く。待つ |
 
-Two walls to restate in the report whenever they apply:
+Three walls to restate in the report whenever they apply:
 
 - **npm under a `.npmrc` `min-release-age`**: the version cannot be installed at all, whatever the
-  score. The options are to wait, or for a role to override deliberately — which
-  `make npm-cooldown-audit` will then surface on the PR. Never suggest lowering `min-release-age`.
+  score, and npm offers no per-version exemption. The options are to wait, or for a role to override
+  deliberately — which `make npm-cooldown-audit` will then surface on the PR. Never suggest lowering
+  `min-release-age`.
+- **pnpm under a `pnpm-workspace.yaml` `minimumReleaseAge`**: likewise uninstallable, and the block
+  extends to `--frozen-lockfile` replay, so it reaches CI and every other checkout rather than only
+  the machine doing the resolve. pnpm *does* have a per-version exemption
+  (`minimumReleaseAgeExclude`), which makes the adopt-or-wait choice a real one — report the score
+  as the input to it and leave the decision with the caller. Never suggest lowering
+  `minimumReleaseAge` or turning off `minimumReleaseAgeStrict`.
 - **`images-pin` rule 3**: there is no aged digest to fall back to, so a LOW score still leaves the
   choice between waiting and a deliberate `days=0` bootstrap.
 
@@ -271,6 +278,6 @@ Two walls to restate in the report whenever they apply:
 - [ ] Exposure reported as a separate line, not folded into the score
 - [ ] Artifact never executed (no `npm install`, no `docker run`, no downloaded binary, no build of the candidate); extracted outside the repo tree
 - [ ] Japanese report printed with band, recommendation, and the explicit statement that nothing was changed
-- [ ] npm `min-release-age` / `images-pin` rule 3 walls restated when they apply
+- [ ] npm `min-release-age` / pnpm `minimumReleaseAge` / `images-pin` rule 3 walls restated when they apply
 - [ ] No file modified, no window lowered, no upgrade applied
 - [ ] After updating `SKILL.md`, re-sync `SKILL.ja.md`
