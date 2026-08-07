@@ -1,16 +1,21 @@
-// サンプルAPI削除の対象を宣言する manifest（データ定義）。マーカー除去ロジックは sample-api.mjs を参照。
+// サンプルAPI削除の対象を宣言する manifest（データ定義）。マーカー除去ロジックは sample-api.ts を参照。
 // 拡張時は該当ドメインの paths にパスを追記し、共有ファイルの混在行を
 // sample-api マーカーで囲めば、同じコマンドの削除対象に含まれる。
 // core 基盤の idempotency_keys（migration 000001）と outbox（migration 000002）はこのマニフェストの削除対象に含まれない。
 
-export const SAMPLE_DOMAINS = {
+/** 1 ドメイン分の削除宣言。`paths` はリポジトリルートからの相対パス。 */
+export type SampleDomain = {
+  description: string;
+  paths: readonly string[];
+};
+
+export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
   user: {
     description: "サンプル User API（フルスタック）",
     paths: [
       "internal/domain/user",
       "internal/usecase/user",
       "internal/infrastructure/rdb/repository/user",
-      "internal/infrastructure/rdb/query_service/user",
       "internal/controller/handler/v1/users",
       "internal/controller/job/usercount",
       "internal/controller/job/userpurge",
@@ -27,9 +32,7 @@ export const SAMPLE_DOMAINS = {
 
       // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go",
-      "internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go",
       "database/gen/user_repository.gen.sql",
-      "database/gen/user_query_service.gen.sql",
 
       "openapi/paths/v1/users.yaml",
       "openapi/paths/v1/users",
@@ -41,7 +44,6 @@ export const SAMPLE_DOMAINS = {
       "openapi/components/schemas/UserResponse.yaml",
 
       "database/dml/repository/user",
-      "database/dml/query_service/user",
       "database/migrations/000004_create_users.up.sql",
       "database/migrations/000004_create_users.down.sql",
       "database/migrations/000014_add_users_table_search_text_column.up.sql",
@@ -358,19 +360,20 @@ export const SAMPLE_DOMAINS = {
   sampleTooling: {
     description: "サンプル削除ツール自身（削除完了後は不要）",
     paths: [
-      "scripts/setup/remove-sample-api.mjs",
-      "scripts/setup/lib/sample-api.mjs",
-      "scripts/setup/lib/sample-manifest.mjs",
+      "scripts/setup/remove-sample-api.ts",
+      "scripts/setup/lib/sample-api.ts",
+      "scripts/setup/lib/sample-api.test.ts",
+      "scripts/setup/lib/sample-manifest.ts",
+      "scripts/setup/lib/sample-manifest.test.ts",
     ],
   },
-}
+};
 
 // サンプル行が残す行と混在するため、行単位でマーカー除去する共有ファイル。
-export const MARKER_FILES = [
+export const MARKER_FILES: readonly string[] = [
   "openapi/openapi.yaml",
   "internal/di/module/core/auth.go",
   "internal/di/module/controller.go",
-  "internal/di/module/infrastructure.go",
   "internal/di/module/usecase.go",
   "internal/di/module/usecase_test.go",
   "internal/di/module/webapi.go",
@@ -382,8 +385,14 @@ export const MARKER_FILES = [
   "internal/di/module/worker.go",
   "internal/infrastructure/publisher/publisher.go",
   "internal/infrastructure/publisher/publisher_test.go",
+  "internal/domain/README.md",
+  "internal/domain/README.ja.md",
+  "internal/domain/lexicon/README.md",
+  "internal/domain/lexicon/README.ja.md",
   "internal/infrastructure/publisher/README.md",
   "internal/infrastructure/publisher/README.ja.md",
+  "internal/infrastructure/rdb/repository/README.md",
+  "internal/infrastructure/rdb/query_service/README.md",
   "internal/controller/worker/README.md",
   "internal/controller/worker/README.ja.md",
   "internal/infrastructure/queue/sqs/README.md",
@@ -398,7 +407,7 @@ export const MARKER_FILES = [
   ".makefiles/README.ja.md",
   "scripts/README.md",
   "scripts/README.ja.md",
-]
+];
 
 // 削除後に再生成・整形・検証するための make ターゲット（順番に実行）。
-export const BUILD_STEPS = ["gen-api", "gen-query", "fix", "lint"]
+export const BUILD_STEPS: readonly string[] = ["gen-api", "gen-query", "fix", "lint"];
