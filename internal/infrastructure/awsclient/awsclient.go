@@ -61,6 +61,12 @@ type Config struct {
 // chain の接続先を差し替えられる（AWS_EC2_METADATA_SERVICE_ENDPOINT / HTTPS_PROXY 等）のは
 // プロセスの環境変数を書ける主体だけで、その主体は資格情報そのものにも手が届きます。
 func Resolve(ctx context.Context, cfg Config) (aws.Config, error) {
+	// 呼び出し元が既に打ち切っているなら解決を試みません。SDK の資格情報キャッシュは解決結果と
+	// 打ち切りを select で待つため、即座に返る静的資格情報では打ち切り側が選ばれるとは限りません。
+	if err := ctx.Err(); err != nil {
+		return aws.Config{}, xerrors.Wrap(ErrInvalidCredentials, err.Error())
+	}
+
 	opts := []func(*awsconfig.LoadOptions) error{awsconfig.WithRegion(cfg.Region)}
 
 	switch {
