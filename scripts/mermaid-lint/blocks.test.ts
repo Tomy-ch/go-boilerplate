@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractMermaidBlocks, isExcludedPath, isTargetMarkdown } from "./blocks";
+import { extractMermaidBlocks, isExcludedPath, isTargetMarkdown, shouldDescend } from "./blocks";
 
 function md(...lines: string[]): string {
   return lines.join("\n");
@@ -106,6 +106,25 @@ describe("isExcludedPath", () => {
 
     it("接頭辞が一致するだけの別ディレクトリを外さない", () => {
       expect(isExcludedPath("docs/coverage-notes/a.md")).toBe(false);
+    });
+  });
+});
+
+describe("shouldDescend", () => {
+  describe("正常系", () => {
+    it("除外に当たらないディレクトリへは降りる", () => {
+      expect(shouldDescend("controller", "internal/controller")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("除外ディレクトリ名にはどこにあっても降りない", () => {
+      expect(shouldDescend("node_modules", "scripts/node_modules")).toBe(false);
+      expect(shouldDescend(".git", ".git")).toBe(false);
+    });
+
+    it("除外パスに当たる場所へは降りない", () => {
+      expect(shouldDescend("guides", "docs/portal/guides")).toBe(false);
     });
   });
 });

@@ -10,7 +10,14 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { EXCLUDE_DIRS, extractMermaidBlocks, isExcludedPath, isTargetMarkdown } from "./blocks";
+import { extractMermaidBlocks, isTargetMarkdown, shouldDescend } from "./blocks";
+import {
+  type Failure,
+  errorMessage,
+  formatFailures,
+  isDependencyMissing,
+  summarize,
+} from "./diagnostics";
 
 // 本スクリプトが使う mermaid の最小面。mermaid の公開型は DOM 前提で重く、
 // ここで必要なのは initialize / parse の 2 つだけなので構造的に絞る。
@@ -18,17 +25,6 @@ type MermaidApi = {
   initialize: (config: Record<string, unknown>) => void;
   parse: (text: string) => Promise<unknown>;
 };
-
-type Failure = {
-  rel: string;
-  startLine: number;
-  index: number;
-  msg: string;
-};
-
-function errorMessage(e: unknown): string {
-  return (e instanceof Error && e.message ? e.message : String(e)).trim();
-}
 
 // 依存ロード（環境セットアップ）。mermaid / linkedom は node_tool_runner コンテナ内の
 // scripts/node_modules に入る前提。ここで失敗した場合は mermaid 図の文法問題ではなく
@@ -57,13 +53,8 @@ async function loadMermaid(): Promise<MermaidApi> {
     mermaid.initialize({ startOnLoad: false, securityLevel: "loose", logLevel: 5 });
     return mermaid;
   } catch (e) {
-    const detail = errorMessage(e);
-    const depMissing =
-      (e as NodeJS.ErrnoException | undefined)?.code === "ERR_MODULE_NOT_FOUND" ||
-      /cannot find (package|module)/i.test(detail);
-
     console.error("✘ mermaid-lint: セットアップエラー（mermaid 図の文法問題ではありません）");
-    if (depMissing) {
+    if (isDependencyMissing(e)) {
       console.error("    原因: mermaid / linkedom を解決できません（scripts/node_modules が未整備）。");
       console.error("    対処: この lint は node_tool_runner コンテナ内で動く前提です。");
       console.error("          - 通常は `make md-lint`（コンテナ経由）で実行する（host での直接実行は不可）。");
@@ -71,7 +62,7 @@ async function loadMermaid(): Promise<MermaidApi> {
     } else {
       console.error("    原因: 依存ロード中に想定外のエラーが発生しました。");
     }
-    console.error(`    詳細: ${detail}`);
+    console.error(`    詳細: ${errorMessage(e)}`);
     process.exit(2);
   }
 }
@@ -86,8 +77,7 @@ function collectMarkdown(repoRoot: string): string[] {
       const rel = path.relative(repoRoot, abs);
 
       if (entry.isDirectory()) {
-        if (EXCLUDE_DIRS.has(entry.name) || isExcludedPath(rel)) continue;
-        walk(abs);
+        if (shouldDescend(entry.name, rel)) walk(abs);
         continue;
       }
       if (isTargetMarkdown(rel)) out.push(rel);
@@ -103,7 +93,6 @@ async function main(): Promise<void> {
 
   const repoRoot = process.cwd();
   const files = collectMarkdown(repoRoot);
-  const suffix = (n: number) => (n > 0 ? `（読めず skip: ${n} 件）` : "");
 
   let blockCount = 0;
   let fileWithBlocks = 0;
@@ -137,18 +126,14 @@ async function main(): Promise<void> {
 
   if (failures.length > 0) {
     console.error(`✘ mermaid-lint: ${failures.length} 件の壊れた mermaid ブロック\n`);
-    for (const f of failures) {
-      console.error(`  ${f.rel}:${f.startLine}  (block #${f.index})`);
-      for (const line of f.msg.split("\n")) console.error(`    ${line}`);
-      console.error("");
-    }
-    console.error(`検証 ${blockCount} ブロック / ${fileWithBlocks} ファイル中 ${failures.length} 件 NG`);
+    console.error(formatFailures(failures));
+    console.error(
+      `検証 ${summarize(blockCount, fileWithBlocks, skipped.length)}中 ${failures.length} 件 NG`,
+    );
     process.exit(1);
   }
 
-  console.log(
-    `✓ mermaid-lint: ${blockCount} ブロック / ${fileWithBlocks} ファイル すべて OK${suffix(skipped.length)}`,
-  );
+  console.log(`✓ mermaid-lint: ${summarize(blockCount, fileWithBlocks, skipped.length)} すべて OK`);
 }
 
 main().catch((e: unknown) => {

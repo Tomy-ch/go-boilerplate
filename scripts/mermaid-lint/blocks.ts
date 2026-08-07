@@ -70,3 +70,15 @@ export function extractMermaidBlocks(content: string): MermaidBlock[] {
 
   return blocks;
 }
+
+/**
+ * 走査中に出会ったディレクトリへ降りるかを判定する。
+ *
+ * @remarks
+ * ディレクトリ名（`node_modules` 等どこにあっても外すもの）と、リポジトリルートからの相対パス
+ * （`docs/portal/guides` 等その場所だけ外すもの）の両方を見ます。片方だけだと、生成物の
+ * ディレクトリ名がありふれた名前になった時点で検査対象へ紛れ込みます。
+ */
+export function shouldDescend(dirName: string, relativePath: string): boolean {
+  return !EXCLUDE_DIRS.has(dirName) && !isExcludedPath(relativePath);
+}
