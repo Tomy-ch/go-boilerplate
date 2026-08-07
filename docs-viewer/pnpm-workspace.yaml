@@ -1,24 +1,23 @@
-# docs-viewer の依存解決設定。pnpm 10 系以降は install の挙動をこのファイルが持つ。
-#
-# このディレクトリで閉じた 1 パッケージとして宣言する。リポジトリ直下ではなく docs-viewer/ に
-# 置くのは、ビューアーが引いた依存を Go 側のツールチェーン（docker/tools は npm）へ広げないため。
+# docs-viewer の依存解決設定。
+# リポジトリ直下ではなく docs-viewer/ に置くのは、ビューアーが引いた依存を Go 側のツールチェーンへ広げないため。
 
 packages:
   - "."
 
 # ----- 時間差防御 -----
-# 公開直後の版を解決対象から外し、悪意ある publish を lockfile へ取り込む窓を塞ぐ。
-# scripts/pnpm-workspace.yaml と窓を揃える。pnpm は分で指定する（7 日 = 10080 分）。
+# 公開直後の版を解決対象から外す。scripts と窓を揃える（pnpm は分指定。7 日 = 10080 分）。
 minimumReleaseAge: 10080
-# 冷却期間を満たす版が無ければ、窓を黙って外さず解決を失敗させる。
+# 緊急のセキュリティ修正は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+minimumReleaseAgeExclude: []
+# 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
-# 公開日時を返さないレジストリの依存は、経過日数を判定できないため解決を失敗させる。
+# 公開日時を返さないレジストリの依存は解決を失敗させる。
 minimumReleaseAgeIgnoreMissingTime: false
 
 # 依存状態が lockfile と一致しないままスクリプトを実行しない。
 verifyDepsBeforeRun: error
 
-# mise.toml[SSOT] と同じ Node.js 版を依存の engine 判定に使う。
+# mise.toml[SSOT] と同じ Node.js 版を依存の engine 判定にも使う。
 nodeVersion: 24.18.0
 # Node.js の対応範囲外を宣言する依存の導入を拒否する。
 engineStrict: true
@@ -26,8 +25,7 @@ engineStrict: true
 # ----- 実行制御 -----
 # 未レビューの依存ライフサイクルスクリプトを install エラーにする。
 strictDepBuilds: true
-# 依存ライフサイクルスクリプトの実行可否をパッケージ単位で明示する。いずれも build を必要と
-# しないため、供給網攻撃の主要な RCE 経路である postinstall を全て閉じる。
+# 依存ライフサイクルスクリプトの実行可否をパッケージ単位で明示する。
 allowBuilds:
   esbuild: false
   msw: false
@@ -37,16 +35,16 @@ allowBuilds:
 blockExoticSubdeps: true
 # 過去より弱い provenance に下がった版の導入を拒否する。
 trustPolicy: no-downgrade
-# 公開から 180 日を過ぎた版は provenance 情報の不足だけでは拒否しない。
+# 公開から180日を過ぎた版は provenance 情報不足だけでは拒否しない。
 trustPolicyIgnoreAfter: 259200
+# provenance の後退は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+trustPolicyExclude: []
 
 # ----- 依存の差し替え -----
-# 「解決結果がこの版域に落ちたら」で書く。意図（踏ませたくない版域）は版域そのものに現れる。
+# pnpm は親子の直接辺しか指せないため、親ではなく「解決結果がこの版域に落ちたら」で書く。
 overrides:
-  # rolldown（vite 8.2.0 以降）が引く @napi-rs/wasm-runtime の peer が
-  # `^1.7.1 || ^2.0.0-alpha.3` で、pnpm は満たす中で高い方＝ alpha を採る。
-  # プレリリースを解決結果へ入れない理由は docs/design/security.md の
-  # 「A prerelease is outside what the window measures」が持つ。
+  # rolldown が引く @napi-rs/wasm-runtime の peer が `^1.7.1 || ^2.0.0-alpha.3` で、pnpm は高い方＝ alpha を採る。
+  # プレリリースを解決結果へ入れない理由は docs/design/security.md が持つ。
   "@emnapi/core": "^1.11.1"
   "@emnapi/runtime": "^1.11.1"
   "@emnapi/wasi-threads": "^1.2.2"
