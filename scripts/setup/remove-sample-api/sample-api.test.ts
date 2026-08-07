@@ -154,7 +154,7 @@ describe("stripSampleMarkers", () => {
         "// sample-api:replace-end",
       ].join("\n");
 
-      expect(() => stripSampleMarkers(content)).toThrow("//= または #= で始めてください");
+      expect(() => stripSampleMarkers(content)).toThrow("のいずれかで書いてください");
     });
   });
 });

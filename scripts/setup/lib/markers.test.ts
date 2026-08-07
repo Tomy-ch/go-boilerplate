@@ -61,6 +61,46 @@ describe("stripMarkers", () => {
       expect(stripMarkers(content, "m").content).toBe("  substitute()");
     });
 
+    it("HTML コメントの退避行をアンコメントして残す", () => {
+      const content = doc(
+        "<!-- m:replace-begin -->",
+        "upstream only",
+        "<!-- m:replace-with -->",
+        "<!-- = general form -->",
+        "<!-- m:replace-end -->",
+      );
+
+      expect(stripMarkers(content, "m").content).toBe("general form");
+    });
+
+    it("HTML コメントの退避行が空なら空行として残す", () => {
+      const content = doc(
+        "<!-- m:replace-begin -->",
+        "upstream only",
+        "<!-- m:replace-with -->",
+        "<!-- = first -->",
+        "<!-- = -->",
+        "<!-- = second -->",
+        "<!-- m:replace-end -->",
+      );
+
+      expect(stripMarkers(content, "m").content).toBe(doc("first", "", "second"));
+    });
+
+    it("HTML コメントの退避行でもインデントを保つ", () => {
+      const content = doc("# m:replace-begin", "# m:replace-with", "  <!-- = nested -->", "# m:replace-end");
+
+      expect(stripMarkers(content, "m").content).toBe("  nested");
+    });
+
+    // Markdown の行末 2 スペースは hard line break なので、閉じ記号を剥がす処理が
+    // `//` / `#` 側の行末まで触ると意味が変わる。枝を分けている理由がこれ。
+    it("`//` の退避行は行末の空白を保つ", () => {
+      const content = doc("# m:replace-begin", "# m:replace-with", "// = break here  ", "# m:replace-end");
+
+      expect(stripMarkers(content, "m").content).toBe("break here  ");
+    });
+
     it("消した跡で空行が隣り合わないよう畳む", () => {
       const content = doc("keep", "", "# m:begin", "drop", "# m:end", "", "keep2");
 
@@ -147,7 +187,14 @@ describe("stripMarkers", () => {
     it("退避側に退避コメント以外の行があれば拒否する", () => {
       const content = doc("# m:replace-begin", "# m:replace-with", "  raw()", "# m:replace-end");
 
-      expect(() => stripMarkers(content, "m")).toThrow(/で始めてください/);
+      expect(() => stripMarkers(content, "m")).toThrow(/いずれかで書いてください/);
+    });
+
+    // 閉じ忘れを通すと、除去後に `<!-- = ` が本文へ残る。
+    it("閉じられていない HTML コメントの退避行を拒否する", () => {
+      const content = doc("# m:replace-begin", "# m:replace-with", "<!-- = unclosed", "# m:replace-end");
+
+      expect(() => stripMarkers(content, "m")).toThrow(/いずれかで書いてください/);
     });
   });
 });
