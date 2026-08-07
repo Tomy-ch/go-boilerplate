@@ -101,8 +101,10 @@ jobs:
       - name: Fail if tidy check failed
         if: always()
         shell: bash
+        env:
+          EXIT_CODE: ${{ steps.tidy.outputs.exit_code }}
         run: |
-          code='${{ steps.tidy.outputs.exit_code }}'
+          code="${EXIT_CODE-}"
           if [ "$code" != "0" ]; then
             echo "::error::go.mod/go.sum show differences after running \`go mod tidy\`"
             exit 1

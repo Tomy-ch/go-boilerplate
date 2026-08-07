@@ -75,9 +75,11 @@ jobs:
       #       When moving to another registry, replace this registry value and the Login to registry step below.
       - name: Define registry
         id: meta_registry
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           echo "Note: Please modify this section according to your environment"
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          OWNER=$(echo "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
           echo "registry=ghcr.io/$OWNER" >> "$GITHUB_OUTPUT"
 
       - name: Generate image tags
