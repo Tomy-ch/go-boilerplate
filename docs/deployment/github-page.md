@@ -60,7 +60,7 @@ https://<username>.github.io/<repository-name>/
 Example:
 
 ```text
-https://tomy-ch.github.io/go-boilerplate/
+https://example-org.github.io/example-api/
 ```
 
 Because of this, documentation assets should be referenced with care.
