@@ -65,9 +65,9 @@ linked into the shipped binary. [`queue/sqs`](../queue/sqs/README.md) is wired o
 removable sample set, so `service/sqs` leaves the binary once the sample is removed
 ([ADR-0048](../../../docs/adr/0048-broker-sdk-isolation-measured-as-coupling.md)).
 
-The asymmetry is intentional: a worker has no broker until an integrator chooses one, whereas the
-object-storage port is exercised by the template out of the box and needs a working implementation
-to be more than a declaration. A fork that stores nothing can drop `objectStorageModule()` from
+The asymmetry is intentional: a worker has no broker until one is chosen, whereas the
+object-storage port is exercised out of the box and needs a working implementation
+to be more than a declaration. A deployment that stores nothing can drop `objectStorageModule()` from
 `InfrastructureModule()`.
 
 ## Test strategy
@@ -81,14 +81,15 @@ to be more than a declaration. A fork that stores nothing can drop `objectStorag
 
 ## S3 is one worked example, not the target
 
-The seam is substrate-agnostic, but a template that ships only an abstraction proves nothing — the
+The seam is substrate-agnostic, but an abstraction shipped with nothing behind it proves nothing — the
 port is only credible once something real is wired through it. So one substrate is implemented
 concretely, and the S3 API is that one. It is the **reference**, not the assumption: the S3 API is
 the closest thing this space has to a lingua franca, which is why the local container is Garage
 rather than AWS itself.
 
 To keep that claim honest rather than aspirational, here is the local container each major
-provider's object storage is developed against, so a fork can stand up the equivalent loop on day one.
+provider's object storage is developed against, so the equivalent loop can be stood up on day one
+after retargeting.
 
 |Provider|Service|Local container|License|Published by|
 |---|---|---|---|---|
