@@ -122,7 +122,7 @@ If architectural changes are required, update the related documentation accordin
 
 ## Philosophy of This Project
 
-This project aims to provide a **safe and maintainable starting point for backend development**.
+This project aims to make backend development **safe and maintainable**.
 
 It does not enforce a single “correct” architecture,  
 but instead provides a **structured baseline** that teams can extend and adapt as needed.

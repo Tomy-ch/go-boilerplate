@@ -22,9 +22,10 @@ To use it in production, an integrator wires `NewConsumer` / `NewDeadLetter` int
 `worker.Worker` registered in `WorkerModule`, and selects `NewPublisher` as the outbox
 publish target.
 
-Verify isolation: after a sample removal, `go list -deps ./cmd/` must not list
-`github.com/aws/aws-sdk-go-v2/service/sqs`. The SDK core and `service/s3` are linked
-regardless, via the object-storage adapter.
+Isolation is observable in the link graph: `github.com/aws/aws-sdk-go-v2/service/sqs` enters
+`go list -deps ./cmd/` only when wiring that selects this package is present. The SDK core and
+`service/s3` are linked regardless, via the object-storage adapter.
+While this repository is distributed as a boilerplate, that condition is checked by running the sample removal and comparing the result — recorded in [`docs/get-started/boilerplate-only-conventions.md`](../../../../docs/get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
 
 ## Publishing side
 

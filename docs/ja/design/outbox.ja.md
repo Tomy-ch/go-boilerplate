@@ -2,7 +2,7 @@
 
 [Outbox Store README（日本語）](../../../internal/usecase/boundary/outbox/README.ja.md) | English: [outbox.md](../../design/outbox.md)
 
-本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0049](../adr/0049-transactional-outbox.ja.md) 以降）、relay の重複窓を本テンプレートで意図的にハードニングしない決定（および本番コピー向けの多層再設計の推奨）は [ADR-0102](../adr/0102-outbox-relay-hardening-delegated.ja.md) を参照。
+本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0049](../adr/0049-transactional-outbox.ja.md) 以降）、バランス型の relay を出荷しハードニングは運用で得た事実に委ねる決定（多層ハードニングの設計図込み）は [ADR-0102](../adr/0102-outbox-relay-hardening-delegated.ja.md) を参照。
 
 ---
 
@@ -219,7 +219,7 @@ sequenceDiagram
 > が定めているのは*転送*規約（`Idempotency-Key`）であって言語ではない。イベント payload のスキーマも
 > `event_type` の語彙も、ここでは定義も公開もされていないため、受信側は両方をこのリポジトリのソースを
 > 読んで知ることになる。この非対称は、下記②が payload と `event_type` を integrator に委ねている限りに
-> おいては意図的である。テンプレートは自分が所有していないイベントの言語を公開できない。**まだ提供
+> おいては意図的である。自分が所有していないイベントの言語は、誰も公開できない。**まだ提供
 > できていない**のは、integrator がそれらのイベントを定義した後、その公開がどういう形を取るべきかの型である。
 
 ```mermaid
