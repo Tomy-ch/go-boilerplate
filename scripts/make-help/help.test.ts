@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { renderHelp } from "./help";
+import { renderHelp, isMakefileSource } from "./help";
 
 function source(content: string, path = ".makefiles/sample.mk") {
   return [{ path, content }];
@@ -81,6 +81,26 @@ describe("renderHelp", () => {
 
       expect(undocumented).toEqual([]);
       expect(lines.at(-1)).toBe(`🛠  ${"blank".padEnd(24)} `);
+    });
+  });
+});
+
+describe("isMakefileSource", () => {
+  describe("正常系", () => {
+    it("拡張子 .mk のファイルを材料として読む", () => {
+      expect(isMakefileSource("lint.mk")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("同じディレクトリの README は読まない", () => {
+      expect(isMakefileSource("README.md")).toBe(false);
+      expect(isMakefileSource("README.ja.md")).toBe(false);
+    });
+
+    it("mk を名前に含むだけのファイルは読まない", () => {
+      expect(isMakefileSource("mk.txt")).toBe(false);
+      expect(isMakefileSource("makefile")).toBe(false);
     });
   });
 });

@@ -55,3 +55,14 @@ export function renderHelp(sources: readonly MakefileSource[]): HelpOutput {
 
   return { lines, undocumented };
 }
+
+/**
+ * ヘルプの材料として読むファイルかを判定する。
+ *
+ * @remarks
+ * 拡張子だけで決めます。`.makefiles/` にはターゲット定義以外（README など）も置かれるため、
+ * ディレクトリ配下を無条件に読むと、宣言でない行から偽のターゲットを拾います。
+ */
+export function isMakefileSource(fileName: string): boolean {
+  return fileName.endsWith(".mk");
+}

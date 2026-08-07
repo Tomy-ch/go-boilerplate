@@ -8,34 +8,29 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { deriveVersion, readVersion, replaceVersion } from "./version";
+import { planStamp } from "./version";
 
-const OPENAPI_PATH = new URL("../openapi/openapi.yaml", import.meta.url);
+const OPENAPI_PATH = new URL("../../openapi/openapi.yaml", import.meta.url);
 
 function main(): void {
   const ref = process.argv[2] ?? process.env.GITHUB_REF_NAME ?? "";
-  const version = deriveVersion(ref);
+  const plan = planStamp(ref, () => readFileSync(OPENAPI_PATH, "utf8"));
 
-  if (version === null) {
-    console.log(`ref '${ref}' は release/vX.Y.Z 形式ではないため version stamp をスキップします`);
-    return;
+  switch (plan.kind) {
+    case "skip":
+      console.log(`ref '${plan.ref}' は release/vX.Y.Z 形式ではないため version stamp をスキップします`);
+      return;
+    case "missing":
+      console.error("openapi/openapi.yaml に info.version 行が見つかりません");
+      process.exit(1);
+      return;
+    case "unchanged":
+      console.log(`info.version は既に ${plan.version}（変更なし）`);
+      return;
+    case "write":
+      writeFileSync(OPENAPI_PATH, plan.content);
+      console.log(`info.version: ${plan.from} → ${plan.to}`);
   }
-
-  const content = readFileSync(OPENAPI_PATH, "utf8");
-  const current = readVersion(content);
-
-  if (current === null) {
-    console.error("openapi/openapi.yaml に info.version 行が見つかりません");
-    process.exit(1);
-  }
-
-  if (current === version) {
-    console.log(`info.version は既に ${version}（変更なし）`);
-    return;
-  }
-
-  writeFileSync(OPENAPI_PATH, replaceVersion(content, version));
-  console.log(`info.version: ${current} → ${version}`);
 }
 
 main();

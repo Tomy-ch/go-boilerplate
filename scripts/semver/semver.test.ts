@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bumpVersion, isBumpType, normalizeVersion } from "./semver";
+import { bumpVersion, isBumpType, normalizeVersion, parseArgs } from "./semver";
 
 describe("normalizeVersion", () => {
   describe("正常系", () => {
@@ -68,6 +68,39 @@ describe("bumpVersion", () => {
   describe("異常系", () => {
     it("不正なバージョンを繰り上げない", () => {
       expect(() => bumpVersion("latest", "patch")).toThrow("X.Y.Z");
+    });
+  });
+});
+
+describe("parseArgs", () => {
+  describe("正常系", () => {
+    it("版と種別を取り出す", () => {
+      expect(parseArgs(["1.2.3", "minor"])).toEqual({ ok: true, version: "1.2.3", type: "minor" });
+    });
+
+    it("余分な引数は無視する", () => {
+      expect(parseArgs(["1.2.3", "patch", "extra"])).toMatchObject({ ok: true, type: "patch" });
+    });
+  });
+
+  describe("異常系", () => {
+    it("引数が無ければ版の不足として報告する", () => {
+      expect(parseArgs([])).toEqual({ ok: false, error: "version is required" });
+    });
+
+    it("空文字の版は不足として扱う", () => {
+      expect(parseArgs(["", "patch"])).toEqual({ ok: false, error: "version is required" });
+    });
+
+    it("種別が無ければ種別の誤りとして報告する", () => {
+      expect(parseArgs(["1.2.3"])).toEqual({ ok: false, error: "type must be patch | minor | major" });
+    });
+
+    it("未知の種別は種別の誤りとして報告する", () => {
+      expect(parseArgs(["1.2.3", "huge"])).toEqual({
+        ok: false,
+        error: "type must be patch | minor | major",
+      });
     });
   });
 });

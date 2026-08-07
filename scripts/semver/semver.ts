@@ -46,3 +46,29 @@ export function bumpVersion(version: string, type: BumpType): string {
       return `v${major + 1}.0.0`;
   }
 }
+
+/** 引数の解釈結果。`error` はそのまま利用者へ見せる文言。 */
+export type ParsedArgs =
+  | { ok: true; version: string; type: BumpType }
+  | { ok: false; error: string };
+
+/**
+ * CLI 引数を解釈する。
+ *
+ * @remarks
+ * 版と種別を別々に検査し、足りない方を名指しします。まとめて「usage」とだけ返すと、
+ * どちらを直せばよいかが呼び出し側のログから読めません。
+ */
+export function parseArgs(argv: readonly string[]): ParsedArgs {
+  const [version, type] = argv;
+
+  if (version === undefined || version === "") {
+    return { ok: false, error: "version is required" };
+  }
+
+  if (type === undefined || !isBumpType(type)) {
+    return { ok: false, error: "type must be patch | minor | major" };
+  }
+
+  return { ok: true, version, type };
+}

@@ -4,23 +4,18 @@
 // 使い方:
 //   tsx scripts/semver <version> <patch|minor|major>
 
-import { bumpVersion, isBumpType } from "./semver";
+import { bumpVersion, parseArgs } from "./semver";
 
 function main(): void {
-  const [version, type] = process.argv.slice(2);
+  const parsed = parseArgs(process.argv.slice(2));
 
-  if (version === undefined || version === "") {
-    console.error("version is required");
-    process.exit(1);
-  }
-
-  if (type === undefined || !isBumpType(type)) {
-    console.error("type must be patch | minor | major");
+  if (!parsed.ok) {
+    console.error(parsed.error);
     process.exit(1);
   }
 
   try {
-    console.log(bumpVersion(version, type));
+    console.log(bumpVersion(parsed.version, parsed.type));
   } catch (e) {
     console.error(e instanceof Error ? e.message : String(e));
     process.exit(1);

@@ -4,7 +4,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { type MakefileSource, renderHelp } from "./help";
+import { type MakefileSource, isMakefileSource, renderHelp } from "./help";
 
 const MAKEFILES_DIR = ".makefiles";
 
@@ -17,7 +17,7 @@ function collectMakefiles(dir: string): string[] {
 
     if (entry.isDirectory()) {
       files.push(...collectMakefiles(entryPath));
-    } else if (entry.isFile() && entry.name.endsWith(".mk")) {
+    } else if (entry.isFile() && isMakefileSource(entry.name)) {
       files.push(entryPath);
     }
   }
