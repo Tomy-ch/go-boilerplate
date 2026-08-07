@@ -140,7 +140,7 @@ do X") are tagged `setup-review`.
 | [0094](0094-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
 | [0095](0095-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
 | [0096](0096-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
-| [0097](0097-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a template; registry not fixed) | accepted |
+| [0097](0097-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
 | [0098](0098-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
 | [0099](0099-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
 | [0100](0100-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
