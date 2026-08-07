@@ -47,8 +47,8 @@ OpenAPI ドキュメント処理とポータル生成用のツール：
 |`tsx`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）をビルドなしで実行する|
 |`typescript`|その型検査（`make scripts-typecheck`）|
 |`vitest`|補助スクリプトの判定ロジックの単体テスト（`make scripts-test`）|
-|`mermaid`|`scripts/mermaid-lint.ts` が ` ```mermaid ` フェンスを本物のパーサで構文検証するために使う（`make md-lint`）|
-|`linkedom`|`mermaid.parse` を Node で動かすためのヘッドレス DOM。Markdown 内 mermaid の構文 Lint（`scripts/mermaid-lint.ts`）で使用|
+|`mermaid`|`scripts/mermaid-lint/index.ts` が ` ```mermaid ` フェンスを本物のパーサで構文検証するために使う（`make md-lint`）|
+|`linkedom`|`mermaid.parse` を Node で動かすためのヘッドレス DOM。Markdown 内 mermaid の構文 Lint（`scripts/mermaid-lint/index.ts`）で使用|
 
 ## python_tools
 

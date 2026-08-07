@@ -4,7 +4,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { type MakefileSource, renderHelp } from "./lib/make-help";
+import { type MakefileSource, renderHelp } from "./help";
 
 const MAKEFILES_DIR = ".makefiles";
 

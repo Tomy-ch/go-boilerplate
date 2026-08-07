@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractMermaidBlocks, isExcludedPath, isTargetMarkdown } from "./mermaid-blocks";
+import { extractMermaidBlocks, isExcludedPath, isTargetMarkdown } from "./blocks";
 
 function md(...lines: string[]): string {
   return lines.join("\n");

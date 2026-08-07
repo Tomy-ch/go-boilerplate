@@ -8,7 +8,7 @@ import {
   findInterpolatedSpans,
   hasPassThroughCall,
   scanWorkflow,
-} from "./pr-comment-fence";
+} from "./fence";
 
 const USES = "        uses: ./.github/actions/upsert-pr-comment";
 

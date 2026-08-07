@@ -13,13 +13,16 @@
  */
 
 /**
- * 入口ファイル。CLI 引数の受け取り・ファイル入出力・終了コードだけを担い、判定は `lib/` と
- * `portal/` と `setup/lib/` の純粋モジュールへ切り出してある。Go 側の `cmd/<command>.go` と同じ扱い。
+ * 入口ファイル。CLI 引数の受け取り・ファイル入出力・終了コードだけを担い、判定は同じディレクトリの
+ * 判定モジュールへ切り出してある。Go 側の `cmd/<command>.go` ↔ `internal/cli/<command>/` と同じ扱い。
+ *
+ * `*&#47;index.ts` は `scripts/<tool>/index.ts` に当たる。`portal/` と `setup/` は入口の命名が
+ * 揃っていないため、それぞれの形で挙げる。
  */
-export const ENTRYPOINT_PATTERNS = ["portal/gen-*.ts", "setup/*.ts"] as const;
+export const ENTRYPOINT_PATTERNS = ["*/index.ts", "portal/gen-*.ts", "setup/*.ts"] as const;
 
 /**
- * `lib/` に居ながら判定を持たないモジュール。
+ * 判定を持たないモジュール。
  *
  * - `setup/lib/runtime.ts` — `ROOT_DIR` の解決と commander の生成だけ。
  * - `setup/lib/file-utils.ts` — `fs` の読み書きだけ。対象ファイルの選別も置換規則も

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveVersion, readVersion, replaceVersion } from "./openapi-version";
+import { deriveVersion, readVersion, replaceVersion } from "./version";
 
 const SPEC = ["openapi: 3.1.0", "info:", "  title: go-boilerplate", "  version: 1.0.0", "paths: {}"].join("\n");
 

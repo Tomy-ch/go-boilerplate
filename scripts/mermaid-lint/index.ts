@@ -10,7 +10,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { EXCLUDE_DIRS, extractMermaidBlocks, isExcludedPath, isTargetMarkdown } from "./lib/mermaid-blocks";
+import { EXCLUDE_DIRS, extractMermaidBlocks, isExcludedPath, isTargetMarkdown } from "./blocks";
 
 // 本スクリプトが使う mermaid の最小面。mermaid の公開型は DOM 前提で重く、
 // ここで必要なのは initialize / parse の 2 つだけなので構造的に絞る。

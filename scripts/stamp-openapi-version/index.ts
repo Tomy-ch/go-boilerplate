@@ -2,13 +2,13 @@
 // release/vX.Y.Z のブランチ名から OpenAPI の info.version を X.Y.Z（SemVer のみ・SHA 等は付けない）へ書き換える。
 //
 // 使い方:
-//   tsx scripts/stamp-openapi-version.ts [<ref>]
+//   tsx scripts/stamp-openapi-version [<ref>]
 //     <ref> 省略時は環境変数 GITHUB_REF_NAME を使用する。
 //   release/vX.Y.Z 以外の ref は no-op（スキップして正常終了）。
 
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { deriveVersion, readVersion, replaceVersion } from "./lib/openapi-version";
+import { deriveVersion, readVersion, replaceVersion } from "./version";
 
 const OPENAPI_PATH = new URL("../openapi/openapi.yaml", import.meta.url);
 

@@ -33,7 +33,7 @@ The top-level `makefile` includes every registered `.mk` file. Adding a new targ
 means placing it in the appropriate `.mk` file; no top-level edit is required.
 
 **Self-documenting help contract:** `make help` is the default goal
-(`.DEFAULT_GOAL := help`). It is implemented by running `scripts/make-help.ts` through `tsx`,
+(`.DEFAULT_GOAL := help`). It is implemented by running `scripts/make-help/index.ts` through `tsx`,
 which walks every `.mk` file recursively and prints each `.PHONY` target whose line
 carries a trailing `## description` comment, grouped under the `## Category` headings
 defined in the `.mk` file. Targets missing the `## description` comment do not appear
@@ -98,6 +98,6 @@ hard-code invocations that can diverge from the developer-facing commands.
 - `.makefiles/` conventions (normal vs `-ci`, naming, group layout):
   [`.makefiles/README.md`](../../.makefiles/README.md).
 - Help generator source:
-  [`scripts/make-help.ts`](../../scripts/make-help.ts).
+  [`scripts/make-help/index.ts`](../../scripts/make-help/index.ts).
 - Toolchain execution rules (container vs bare-metal):
   [`docs/rules.md`](../rules.md) § "Toolchain Execution Rules".

@@ -1,4 +1,4 @@
-import { usesActionPattern } from "./workflow";
+import { usesActionPattern } from "../lib/workflow";
 
 export const COMMENT_ACTION = "./.github/actions/upsert-pr-comment";
 

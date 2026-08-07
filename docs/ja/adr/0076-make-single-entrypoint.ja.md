@@ -35,7 +35,7 @@ GitHub リポジトリ設定など多くのドメインにまたがる。統一�
 適切な `.mk` ファイルに配置するだけでよく、トップレベルの編集は不要である。
 
 **セルフドキュメンティングなヘルプ契約:** `make help` がデフォルトゴール（`.DEFAULT_GOAL := help`）である。
-これは `scripts/make-help.ts` を `tsx` で実行することで実装されており、すべての `.mk` ファイルを再帰的に走査し、
+これは `scripts/make-help/index.ts` を `tsx` で実行することで実装されており、すべての `.mk` ファイルを再帰的に走査し、
 `.mk` ファイルで定義された `## Category` 見出しの下にグループ化して、末尾に `## description` コメントが付いた
 `.PHONY` ターゲットを出力する。`## description` コメントが欠けているターゲットはヘルプ出力に表示されず、
 `make-help.ts` がそのようなターゲットごとに stderr へ警告を出力する。
@@ -92,6 +92,6 @@ CI は開発者向けコマンドから乖離し得る呼び出しをハード�
 - `.makefiles/` の規約（通常 vs `-ci`、命名、グループレイアウト）:
   [`.makefiles/README.md`](../../../.makefiles/README.ja.md)。
 - ヘルプジェネレータのソース:
-  [`scripts/make-help.ts`](../../../scripts/make-help.ts)。
+  [`scripts/make-help/index.ts`](../../../scripts/make-help/index.ts)。
 - ツールチェーン実行ルール（コンテナ vs ベアメタル）:
   [`docs/rules.md`](../rules.ja.md) § "Toolchain Execution Rules"。

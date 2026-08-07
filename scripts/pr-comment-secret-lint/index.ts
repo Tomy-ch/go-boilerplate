@@ -20,9 +20,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { type Finding, formatFindings } from "./lib/lint-report";
-import { scanWorkflow } from "./lib/pr-comment-secret";
-import { selectWorkflowFiles } from "./lib/workflow";
+import { type Finding, formatFindings } from "../lib/lint-report";
+import { scanWorkflow } from "./secret";
+import { selectWorkflowFiles } from "../lib/workflow";
 
 const REPO_ROOT = process.cwd();
 const WORKFLOWS_DIR = ".github/workflows";

@@ -38,8 +38,8 @@ import {
   PASS_THROUGH_EXCLUSIONS,
   compareImplementations,
   scanWorkflow,
-} from "./lib/pr-comment-fence";
-import { selectWorkflowFiles } from "./lib/workflow";
+} from "./fence";
+import { selectWorkflowFiles } from "../lib/workflow";
 
 const REPO_ROOT = process.cwd();
 const WORKFLOWS_DIR = ".github/workflows";

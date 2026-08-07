@@ -23,14 +23,14 @@ pre-commit:
       glob:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
-        - "scripts/pr-comment-secret-lint.ts"
-        - "scripts/pr-comment-fence-lint.ts"
-        - "scripts/actions-cutoff-lint.ts"
+        - "scripts/pr-comment-secret-lint/index.ts"
+        - "scripts/pr-comment-fence-lint/index.ts"
+        - "scripts/actions-cutoff-lint/index.ts"
         # 判定ロジックは lib/ 側に居るため、入口だけを見ると検査の変更を取り逃がす。
         - "scripts/lib/workflow.ts"
-        - "scripts/lib/pr-comment-secret.ts"
-        - "scripts/lib/pr-comment-fence.ts"
-        - "scripts/lib/actions-cutoff.ts"
+        - "scripts/pr-comment-secret-lint/secret.ts"
+        - "scripts/pr-comment-fence-lint/fence.ts"
+        - "scripts/actions-cutoff-lint/cutoff.ts"
         - "scripts/actions-shellcheck/*.go"
       run: make actions-lint
     actions-zizmor:

@@ -36,12 +36,12 @@ md-markdownlint-ci:
 
 # Markdown 内の ```mermaid フェンスを実 mermaid パーサで構文検証する（markdownlint は図の中身を見ない）。
 md-mermaid-lint-ci:
-	$(TSX) scripts/mermaid-lint.ts
+	$(TSX) scripts/mermaid-lint
 
 # スキル / エージェント定義が参照する make ターゲット・パスの実在性、対訳ペアの構造同期、
 # および .claude/** と .codex/** の存在対応を検証する。
 md-skill-lint-ci:
-	$(TSX) scripts/skill-lint.ts
+	$(TSX) scripts/skill-lint
 
 md-fix-ci:
 	markdownlint-cli2 --fix $(MD_GLOBS)

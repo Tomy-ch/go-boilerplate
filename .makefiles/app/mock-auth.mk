@@ -7,4 +7,4 @@ reset-mock-auth-users:
 	@docker compose run --rm node_tool_runner make reset-mock-auth-users-ci
 
 reset-mock-auth-users-ci:
-	$(TSX) scripts/reset-mock-auth-users.ts
+	$(TSX) scripts/reset-mock-auth-users

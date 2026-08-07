@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 // `.claude/**` / `.codex/**` の定義を意味的に検査するための、判断を含まない部品群。
-// ファイルシステムへ触るのは呼び出し元（scripts/skill-lint.ts）の責務にする。
+// ファイルシステムへ触るのは呼び出し元（scripts/skill-lint/index.ts）の責務にする。
 
 /**
  * 片側の環境にしか存在しない skill と、その理由。

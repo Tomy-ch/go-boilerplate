@@ -78,5 +78,5 @@ include .makefiles/gen/gen.mk
 
 .PHONY: help
 help:
-	@$(TSX) scripts/make-help.ts
+	@$(TSX) scripts/make-help
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_USERS, renderFixture } from "./mock-auth-fixture";
+import { DEFAULT_USERS, renderFixture } from "./fixture";
 
 describe("DEFAULT_USERS", () => {
   describe("正常系", () => {

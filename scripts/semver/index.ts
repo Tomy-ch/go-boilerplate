@@ -2,9 +2,9 @@
 // タグ名から次のリリースバージョン候補を出力する。
 //
 // 使い方:
-//   tsx scripts/semver.ts <version> <patch|minor|major>
+//   tsx scripts/semver <version> <patch|minor|major>
 
-import { bumpVersion, isBumpType } from "./lib/semver";
+import { bumpVersion, isBumpType } from "./semver";
 
 function main(): void {
   const [version, type] = process.argv.slice(2);

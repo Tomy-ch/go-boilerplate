@@ -1,5 +1,5 @@
-import type { Finding } from "./lint-report";
-import { type WorkflowJob, type WorkflowLine, splitJobs, usesActionPattern } from "./workflow";
+import type { Finding } from "../lib/lint-report";
+import { type WorkflowJob, type WorkflowLine, splitJobs, usesActionPattern } from "../lib/workflow";
 
 /** PR コメントを投稿するローカルアクション。これを使うジョブが検査対象になる。 */
 export const COMMENT_ACTION = "./.github/actions/upsert-pr-comment";

@@ -38,7 +38,7 @@ lint-oapi-ci:
 
 # release/vX.Y.Z 以外の ref は no-op（スキップして正常終了）。
 stamp-openapi-version-ci:
-	$(TSX) scripts/stamp-openapi-version.ts $(REF)
+	$(TSX) scripts/stamp-openapi-version $(REF)
 
 # OWASP API Security ルールセットによる検証。redocly lint（規約・命名・メタデータ）とは担当が
 # 異なり、指摘は重複しない。

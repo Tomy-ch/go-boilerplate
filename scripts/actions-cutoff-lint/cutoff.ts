@@ -1,11 +1,11 @@
-import type { Finding } from "./lint-report";
+import type { Finding } from "../lib/lint-report";
 import {
   type WorkflowJob,
   type WorkflowStep,
   splitJobs,
   splitSteps,
   usesActionPattern,
-} from "./workflow";
+} from "../lib/workflow";
 
 export const COMMENT_ACTION = "./.github/actions/upsert-pr-comment";
 

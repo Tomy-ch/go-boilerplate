@@ -17,7 +17,7 @@ import {
   parseFrontmatterKeys,
   placeholderToRegExp,
   splitFrontmatter,
-} from "./skill-lint";
+} from "./checks";
 
 const ROOT_ENTRIES = new Set(["scripts", "docs", "internal", "pkg", "makefile"]);
 const never = () => false;
@@ -303,7 +303,7 @@ describe("extractMakeTargets", () => {
 describe("asRepoPath", () => {
   describe("正常系", () => {
     it("ルート直下エントリから始まるファイル参照を返す", () => {
-      expect(asRepoPath("scripts/skill-lint.ts", ROOT_ENTRIES, never)).toBe("scripts/skill-lint.ts");
+      expect(asRepoPath("scripts/skill-lint/index.ts", ROOT_ENTRIES, never)).toBe("scripts/skill-lint/index.ts");
     });
     it("先頭の ./ を落とす", () => {
       expect(asRepoPath("./docs/rules.md", ROOT_ENTRIES, never)).toBe("docs/rules.md");
@@ -354,7 +354,7 @@ describe("PLATFORM_ONLY_SKILLS", () => {
 describe("allowlistLocation", () => {
   describe("正常系", () => {
     it("allowlist を持つファイル自身を指す", () => {
-      expect(allowlistLocation(process.cwd()).endsWith("skill-lint.ts")).toBe(true);
+      expect(allowlistLocation(process.cwd()).endsWith("checks.ts")).toBe(true);
     });
   });
 });

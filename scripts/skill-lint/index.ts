@@ -32,7 +32,7 @@ import {
   parseFrontmatterKeys,
   placeholderToRegExp,
   splitFrontmatter,
-} from "./lib/skill-lint";
+} from "./checks";
 
 const REPO_ROOT = process.cwd();
 const CLAUDE_DIR = ".claude";

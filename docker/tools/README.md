@@ -47,8 +47,8 @@ Tools for OpenAPI document processing and portal generation:
 |`tsx`|Run the repository's TypeScript helper scripts (`scripts/**/*.ts`) without a build step|
 |`typescript`|Type check those scripts (`make scripts-typecheck`)|
 |`vitest`|Unit tests for the scripts' decision logic (`make scripts-test`)|
-|`mermaid`|Lets `scripts/mermaid-lint.ts` validate ` ```mermaid ` fences with the real parser (`make md-lint`)|
-|`linkedom`|Headless DOM that lets `mermaid.parse` run in Node for the Markdown mermaid syntax lint (`scripts/mermaid-lint.ts`)|
+|`mermaid`|Lets `scripts/mermaid-lint/index.ts` validate ` ```mermaid ` fences with the real parser (`make md-lint`)|
+|`linkedom`|Headless DOM that lets `mermaid.parse` run in Node for the Markdown mermaid syntax lint (`scripts/mermaid-lint/index.ts`)|
 
 ## python_tools
 

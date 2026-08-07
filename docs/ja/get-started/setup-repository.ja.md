@@ -50,7 +50,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user ス�
 **AI 支援レイヤを採らない判断は、導入側のアーキテクトが行います。** 本テンプレートは AI ツール無しでも完全に保守できるよう作られており（レイヤ規約の正本は [docs/rules.md](../../rules.md) であってアシスタント設定ではありません）、上記はビルド・テスト・リリースのいずれにも必須ではありません。採らない fork は、中途半端に設定を残さず意図的に外してください。
 
 - bootstrap 2 本を実行しない（以降のどの Phase もこれらに依存しません）
-- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint.ts` の `graphify-out/` 記述
+- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint/index.ts` の `graphify-out/` 記述
 
 後から外すコストは今外すコストと同じなので、まず推奨構成で入れて後から判断する順序でも安全です。
 

@@ -13,22 +13,27 @@ scripts/
 │   ├── gen-portal-docs.ts      # Copy docs to portal based on manifest.yaml
 │   ├── docs-json.ts            # Build the docs.json structure (pure, tested)
 │   └── portal-manifest.ts      # Read and bound-check manifest.yaml (pure, tested)
-├── lib/                        # Decision logic of the scripts below (pure, tested)
-├── semver.ts                   # Semantic versioning helper (patch/minor/major)
-├── stamp-openapi-version.ts    # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
-├── reset-mock-auth-users.ts    # Reset the mock-auth user fixture to a neutral default
+├── lib/                        # Shared across tools (pure, tested)
+│   ├── workflow.ts             # Read a workflow definition by column
+│   ├── lint-report.ts          # Finding type and the failure output format
+│   ├── one-to-one.ts           # The 1:1 test-mapping check, shared with the other packages
+│   └── untested-modules.ts     # What coverage and the 1:1 gate both exclude, and why
+├── semver/                     # Semantic versioning helper (patch/minor/major)
+├── stamp-openapi-version/      # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
+├── reset-mock-auth-users/      # Reset the mock-auth user fixture to a neutral default
+├── make-help/                  # Generate Make target help output
+├── mermaid-lint/               # Validate ```mermaid fences in Markdown with the real mermaid parser
+├── skill-lint/                 # Validate .claude/** skill / agent definitions against reality and their .codex/** counterparts
+├── pr-comment-secret-lint/     # Reject a secret in a workflow job that posts a PR comment
+├── pr-comment-fence-lint/      # Reject a fixed-length Markdown fence around a PR comment body
+├── actions-cutoff-lint/        # Require a job timeout and a PR comment that survives a cut-off
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
-├── make-help.ts                # Generate Make target help output
-├── mermaid-lint.ts             # Validate ```mermaid fences in Markdown with the real mermaid parser
-├── skill-lint.ts               # Validate .claude/** skill / agent definitions against reality and their .codex/** counterparts
-├── pr-comment-secret-lint.ts   # Reject a secret in a workflow job that posts a PR comment
-├── pr-comment-fence-lint.ts    # Reject a fixed-length Markdown fence around a PR comment body
-├── actions-cutoff-lint.ts      # Require a job timeout and a PR comment that survives a cut-off
 ├── package.json                # Node dependency and script-entry declarations for the TypeScript scripts
 ├── pnpm-lock.yaml              # Resolved dependency tree (pinned)
 ├── pnpm-workspace.yaml         # pnpm install behaviour and the supply-chain policy (CODEOWNERS-reviewed)
 ├── tsconfig.json               # Type-check settings for the TypeScript scripts
 ├── vitest.config.mts           # Test settings for the TypeScript scripts
+├── one-to-one.gate.test.ts     # 1:1 test-mapping gate for this package
 ├── genctxkey/                  # Context key code generator (Go)
 ├── actions-shellcheck/         # Check the `run:` scripts of composite actions with shellcheck (Go)
 ├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)
@@ -52,6 +57,12 @@ scripts/
     └── lib/                   # Decision modules (with tests) + filesystem/CLI adapters
 ```
 
+**Every TypeScript tool is a directory**, matching the Go tools next to it: `index.ts` is the entry
+(argument handling, file I/O, exit code) and the decision modules sit beside it with their tests. Both
+are invoked by directory — `go run ./scripts/load-band`, `tsx scripts/mermaid-lint` — so the call site
+does not reveal which language a tool is written in. What each entry may not hold, and why, is declared
+in [`lib/untested-modules.ts`](lib/untested-modules.ts).
+
 ## Script Categories
 
 ### Documentation Generation
@@ -65,16 +76,16 @@ scripts/
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`mermaid-lint.ts`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
-|`skill-lint.ts`|Check the skill / agent definitions under `.claude/**` semantically: frontmatter (`name` matches the directory / file name, `name` + `description` present), translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`), and reference existence (every `` `make <target>` `` resolves against `Makefile` / `.makefiles/**`, every repo-root-relative path in inline code exists). Also checks that each skill / agent exists in `.codex/**` too. Fills the gap that a skill definition is an agent instruction sheet whose prose nothing else checks against reality, and that a skill landing on only one of the two AI environments goes unnoticed. See [Skill Lint](#skill-lint) for scope and the ignore directive.|`make md-lint` / `make md-skill-lint`|
+|`mermaid-lint/`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
+|`skill-lint/`|Check the skill / agent definitions under `.claude/**` semantically: frontmatter (`name` matches the directory / file name, `name` + `description` present), translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`), and reference existence (every `` `make <target>` `` resolves against `Makefile` / `.makefiles/**`, every repo-root-relative path in inline code exists). Also checks that each skill / agent exists in `.codex/**` too. Fills the gap that a skill definition is an agent instruction sheet whose prose nothing else checks against reality, and that a skill landing on only one of the two AI environments goes unnoticed. See [Skill Lint](#skill-lint) for scope and the ignore directive.|`make md-lint` / `make md-skill-lint`|
 |`actions-shellcheck/`|Parse every `action.yaml` / `action.yml` under `.github/actions/**`, extract `runs.steps[].run` from the composite ones and check each script with `shellcheck` over stdin, remapping every finding back to its line in the `action.yaml`. Fills the gap that `actionlint` walks only `.github/workflows` and cannot be pointed at an action manifest (handed one directly, it parses it as a workflow and fails), so the shell inside a composite action was checked by nothing. The dialect comes from the step's `shell:` — passed to shellcheck as a shebang, which also settles the target shell without a `-s` flag; `pwsh` / `python` / `cmd` and an expression-valued `shell:` are counted as skipped instead. `${{ }}` expressions are masked to a placeholder that preserves the line count, the same approach `actionlint` takes for workflow `run:`. Per file, the number of extracted steps must equal the number a plain decode of the same YAML counts, and a mismatch exits non-zero — the two routes break independently, so a broken extractor cannot pass as a clean run; a `run:` written as a folded scalar (`>`) is rejected outright, because folding drops the line breaks a finding's position is mapped back through. Masking is also the reason this script says nothing about whether an expression was quoted — that question survives the mask only for a checker that reads the interpolation site itself, which is `make actions-zizmor`'s job.|`make actions-lint` / `make actions-shellcheck`|
-|`pr-comment-secret-lint.ts`|Split every workflow in `.github/workflows/` into jobs and fail when a job using `./.github/actions/upsert-pr-comment` references a secret other than `GITHUB_TOKEN`, workflow-wide `env:` included. Enforces a rule `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why the rule exists. Reach: direct `secrets` references inside a `${{ }}` expression, whether `secrets.NAME`, `secrets['NAME']`, or the whole context (`toJSON(secrets)`); a secret read in one job and handed on through `needs.<job>.outputs` is beyond static reach and passes.|`make actions-lint` / `make actions-comment-secret-lint`|
-|`pr-comment-fence-lint.ts`|Fail when a workflow's `run:` block emits a fixed-length Markdown fence around a PR comment body, when the duplicated `fence_for` helpers stop agreeing with each other, and when a workflow that passes a body through interpolates a value into an inline code span. Enforces rules `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why a fence must be sized from the text it wraps. Reach: literal fences in an `echo`, textual equality between the helper implementations, and a span written literally around a shell expansion — one built through a variable or assembled by `jq` is invisible here, and whether a given body is attacker-controlled is not decidable at all; both are left to the rule. The span check is file-scoped and keeps an exclusion map for a workflow whose body is not yet on a safe path: an entry names the issue tracking it, is printed on every run so a skipped file cannot pass for a checked one, and goes away when that issue is fixed.|`make actions-lint` / `make actions-comment-fence-lint`|
-|`actions-cutoff-lint.ts`|Fail when a job carries no `timeout-minutes`, and when a step calling `./.github/actions/upsert-pr-comment` has an `if:` a cancelled job cannot reach or a `title:` with no cut-off heading. Enforces rules `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for what a cut-off has to leave behind and why the three are one check. Reach: `always()` / `cancelled()` in the condition, `failure()` deliberately not counting since it is false for a cancelled job; the literal `CUT OFF` in the title expression; jobs calling a reusable workflow are skipped because the key is invalid there. Structure is read by column rather than by a YAML parser, which holds because a block scalar's body is always more indented than its key — `actionlint` runs first in the same target and guarantees the input parses at all. A condition that negates its own reachability (`!always()`) is writable and not statically caught — the rule is what holds.|`make actions-lint` / `make actions-cutoff-lint`|
+|`pr-comment-secret-lint/`|Split every workflow in `.github/workflows/` into jobs and fail when a job using `./.github/actions/upsert-pr-comment` references a secret other than `GITHUB_TOKEN`, workflow-wide `env:` included. Enforces a rule `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why the rule exists. Reach: direct `secrets` references inside a `${{ }}` expression, whether `secrets.NAME`, `secrets['NAME']`, or the whole context (`toJSON(secrets)`); a secret read in one job and handed on through `needs.<job>.outputs` is beyond static reach and passes.|`make actions-lint` / `make actions-comment-secret-lint`|
+|`pr-comment-fence-lint/`|Fail when a workflow's `run:` block emits a fixed-length Markdown fence around a PR comment body, when the duplicated `fence_for` helpers stop agreeing with each other, and when a workflow that passes a body through interpolates a value into an inline code span. Enforces rules `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why a fence must be sized from the text it wraps. Reach: literal fences in an `echo`, textual equality between the helper implementations, and a span written literally around a shell expansion — one built through a variable or assembled by `jq` is invisible here, and whether a given body is attacker-controlled is not decidable at all; both are left to the rule. The span check is file-scoped and keeps an exclusion map for a workflow whose body is not yet on a safe path: an entry names the issue tracking it, is printed on every run so a skipped file cannot pass for a checked one, and goes away when that issue is fixed.|`make actions-lint` / `make actions-comment-fence-lint`|
+|`actions-cutoff-lint/`|Fail when a job carries no `timeout-minutes`, and when a step calling `./.github/actions/upsert-pr-comment` has an `if:` a cancelled job cannot reach or a `title:` with no cut-off heading. Enforces rules `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for what a cut-off has to leave behind and why the three are one check. Reach: `always()` / `cancelled()` in the condition, `failure()` deliberately not counting since it is false for a cancelled job; the literal `CUT OFF` in the title expression; jobs calling a reusable workflow are skipped because the key is invalid there. Structure is read by column rather than by a YAML parser, which holds because a block scalar's body is always more indented than its key — `actionlint` runs first in the same target and guarantees the input parses at all. A condition that negates its own reachability (`!always()`) is writable and not statically caught — the rule is what holds.|`make actions-lint` / `make actions-cutoff-lint`|
 
 #### Skill Lint
 
-`skill-lint.ts` only asserts what can be derived mechanically from the Makefile target list, the
+`skill-lint/` only asserts what can be derived mechanically from the Makefile target list, the
 filesystem, and heading extraction — it never judges wording. Reference checks read **inline code
 spans outside fenced blocks** (a fence is an example or a sample output, so it guarantees nothing).
 
@@ -107,7 +118,7 @@ exceptions to declare, and still catches the failure that matters: a skill merge
 environment only.
 
 A skill that intentionally lives in one environment goes in the `PLATFORM_ONLY_SKILLS` map in
-`skill-lint.ts` **with a reason**. An entry with an empty reason fails, and so does one whose skill
+`skill-lint/checks.ts` **with a reason**. An entry with an empty reason fails, and so does one whose skill
 has since appeared in both environments (or in neither) — so the exception list cannot outlive the
 exception. **This is the canonical description of the mechanism; other documents link here rather
 than restating it.**
@@ -120,8 +131,8 @@ when a real case appears, not before.
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`semver.ts`|Bump semantic version (patch/minor/major)|Release workflow|
-|`stamp-openapi-version.ts`|Derive `X.Y.Z` from a `release/vX.Y.Z` branch name and write it into `openapi.yaml` `info.version` (first `version:` line only; idempotent; no-op for non-release refs). Contract version only — no SHA / build metadata (commit-level traceability is the runtime `/version`'s job). Runs through `tsx`.|`auto-generate-docs.yaml`|
+|`semver/`|Bump semantic version (patch/minor/major)|Release workflow|
+|`stamp-openapi-version/`|Derive `X.Y.Z` from a `release/vX.Y.Z` branch name and write it into `openapi.yaml` `info.version` (first `version:` line only; idempotent; no-op for non-release refs). Contract version only — no SHA / build metadata (commit-level traceability is the runtime `/version`'s job). Runs through `tsx`.|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go-based sync utility. Parses `mise.toml` `[tools]` (table-scoped, no external deps) and propagates `go` / `node` / `python` versions to `go.mod` (`go` directive) + `docker/*/Dockerfile` `FROM golang:` / `FROM node:` / `FROM python:` lines. Pre-validates all rules (version present, file exists, expected match count) and writes per file atomically, so failures never leave a partial state.|`make sync-versions`|
 |`release/`|Create a release tag (`tag`) or the next release branch (`branch`), deriving the next version from the newest semantic-version `git tag` with `-bump patch\|minor\|major`. The steps live here rather than in a Make recipe because both include operations that cannot be taken back — pushing a tag, creating a GitHub Release, moving the default branch — so exercising the branches for real would mean actually releasing. The sequencing and the abort conditions are pure functions pinned by tests.|`make tag-patch` / `tag-minor` / `tag-major` / `branch-patch` / `branch-minor` / `branch-major` / `hotfix-patch`|
 
@@ -131,7 +142,7 @@ All other tool versions are managed by [`mise.toml`](../mise.toml) as the single
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`make-help.ts`|Parse `.makefiles/*.mk` and display target descriptions|`make help`|
+|`make-help/`|Parse `.makefiles/*.mk` and display target descriptions|`make help`|
 |`load-band/`|Resolve the host load band (`full` / `low` / `ci-first`) and the per-window CPU share from the number of `git worktree`s, emitting them as `KEY=VALUE` for a recipe to `eval` (`env`) or as a human-readable summary (`status`). Resolution happens inside the recipe rather than at make's parse time, so targets that run nothing heavy pay nothing for it. The shell it replaced counted windows with `git worktree list \| grep -c . \|\| echo 1`, which emits `0` *and* `1` when git cannot answer — the comparisons then failed with `integer expression expected` and the band silently degraded to `full`.|`make load-status` / the `gate-*` targets|
 
 ### Code Generation
@@ -166,7 +177,7 @@ Scripts for configuring the boilerplate when creating a new project from this te
 |`replace-repository-reference.ts`|Replace GitHub repository references in READMEs and OpenAPI|
 |`replace-codeowners.ts`|Replace the owner of every rule in `.github/CODEOWNERS`. Comment lines keep their example owner, and a rule whose owner field is unrecognizable is reported instead of rewritten.|
 |`remove-sample-api.ts`|Remove the sample API (`user`/`product`/`order`): deletes paths declared in `lib/sample-manifest.ts` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint. <!-- sample-api:line -->|
-|`reset-mock-auth-users.ts`|Overwrite the mock-auth user fixture (`mock-auth-server/fixtures/users.json`) with a neutral default. The file itself is never deleted, so the mock still starts. `make setup-remove-sample-api` calls it to replace the demo identities (John Doe and friends) with a single neutral user.|
+|`reset-mock-auth-users/`|Overwrite the mock-auth user fixture (`mock-auth-server/fixtures/users.json`) with a neutral default. The file itself is never deleted, so the mock still starts. `make setup-remove-sample-api` calls it to replace the demo identities (John Doe and friends) with a single neutral user.|
 |`repo-setup/`|The git / gh half of initialising this boilerplate as your own repository: `preflight` refuses to proceed when a `v0.0.0` tag is present, `bootstrap` recreates the tags, prepares `develop` / `staging` / `production` and moves the default branch, and `prune-release-notes` deletes every release note but `v0.0.0.md`. Labels, rulesets and workflow enablement stay in `setup-repository.mk`, which owns the overall chain. Here too the steps are Go because deleting tags in bulk and moving the default branch cannot be rehearsed without breaking a real repository.|
 
 All setup scripts support `--dry-run` for preview.
@@ -236,8 +247,8 @@ alike: the runner differs (`make test-scripts` vs. `make scripts-test`), the vie
   `node_modules/.bin`, because `pnpm-workspace.yaml`'s `verifyDepsBeforeRun` only inspects the
   installed tree when a run goes through pnpm. The `tsx` entry returns to the repository root
   first: the scripts resolve their relative paths from there
-- Their decision logic lives in `scripts/lib/**` and `scripts/portal/*.ts`, separated from the CLI
-  entry points on purpose: five of these scripts are gates, and a gate that stops inspecting reports
+- Their decision logic lives beside each entry (`scripts/<tool>/*.ts`), in `scripts/lib/**` when it is
+  shared, and in `scripts/portal/*.ts`, separated from the CLI entry points on purpose: five of these scripts are gates, and a gate that stops inspecting reports
   a clean run rather than an error. `make scripts-test` / `make scripts-typecheck` are what keep a
   silent no-op from passing for a pass, and CI runs them in `scripts-check.yaml`
 - Setup scripts run after the sample API (and parts of this tooling) has been removed, so they must

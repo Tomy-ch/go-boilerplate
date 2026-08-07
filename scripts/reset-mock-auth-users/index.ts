@@ -12,7 +12,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { DEFAULT_USERS, renderFixture } from "./lib/mock-auth-fixture";
+import { DEFAULT_USERS, renderFixture } from "./fixture";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const target = resolve(repoRoot, "mock-auth-server/fixtures/users.json");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { renderHelp } from "./make-help";
+import { renderHelp } from "./help";
 
 function source(content: string, path = ".makefiles/sample.mk") {
   return [{ path, content }];

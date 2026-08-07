@@ -9,8 +9,8 @@ import {
   reachesCancelled,
   scanWorkflow,
   titleOf,
-} from "./actions-cutoff";
-import { splitJobs, splitSteps } from "./workflow";
+} from "./cutoff";
+import { splitJobs, splitSteps } from "../lib/workflow";
 
 function job(...lines: string[]) {
   return splitJobs(["jobs:", "  a:", ...lines].join("\n")).jobs[0];

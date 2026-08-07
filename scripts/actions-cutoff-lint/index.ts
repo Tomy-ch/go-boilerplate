@@ -25,9 +25,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { COMMENT_ACTION, scanWorkflow } from "./lib/actions-cutoff";
-import { type Finding, formatFindings } from "./lib/lint-report";
-import { selectWorkflowFiles } from "./lib/workflow";
+import { COMMENT_ACTION, scanWorkflow } from "./cutoff";
+import { type Finding, formatFindings } from "../lib/lint-report";
+import { selectWorkflowFiles } from "../lib/workflow";
 
 const REPO_ROOT = process.cwd();
 const WORKFLOWS_DIR = ".github/workflows";

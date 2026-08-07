@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { describeSecret, scanWorkflow, secretReferences, usesCommentAction } from "./pr-comment-secret";
-import { splitJobs } from "./workflow";
+import { describeSecret, scanWorkflow, secretReferences, usesCommentAction } from "./secret";
+import { splitJobs } from "../lib/workflow";
 
 function line(text: string, number = 1) {
   return { number, text };
