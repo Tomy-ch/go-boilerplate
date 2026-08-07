@@ -348,7 +348,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "outbox を SQS 互換 broker へ向ける配線。engine / seam / SQS adapter は送受信とも core、" +
       "ローカル broker も object storage の Garage と同じくローカルインフラとして残し、" +
       "core から adapter を参照する配線だけを削除対象にする" +
-      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0048 の E3' 条件1）。" +
+      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0048 が broker SDK の隔離を" +
+      "リンクではなく結合で測る、と述べているのがこれ）。" +
       "object storage と揃うのは adapter / ローカルインフラ / config を core に置く点までで、" +
       "判別子の 1 分岐として配線する構造は queue 側だけのもの（object storage に選択肢は無い）。",
     paths: [

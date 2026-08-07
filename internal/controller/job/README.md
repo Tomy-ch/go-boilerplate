@@ -383,9 +383,9 @@ func JobModule() fx.Option {
             // Add job constructors here.
             idempotencygc.New,
             outboxgc.New,
-            usercount.New, // sample (removed by setup-remove-sample-api)
-            userpurge.New, // sample (removed by setup-remove-sample-api)
-            productimagegc.New, // sample (removed by setup-remove-sample-api)
+            usercount.New,      // sample-api:line
+            userpurge.New,      // sample-api:line
+            productimagegc.New, // sample-api:line
         ),
         fx.Provide(
             dijob.ProvideRunner,

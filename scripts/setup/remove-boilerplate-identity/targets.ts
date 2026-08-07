@@ -55,15 +55,24 @@ export const EXCLUDED_PATH_PREFIXES: readonly string[] = [
  * マーカー文字列を「データ・散文」として持つファイル。走査の対象から外す。
  *
  * @remarks
- * 文書側にこの名前空間の例示はありません。マーカーの形を説明する箇所（集約先の規約表、
- * セットアップ手順の `grep`）はいずれもバッククォートや引用符の内側にあり、コメント記号を
- * 伴わないので走査には当たらないためです。挙がっているのは判定そのもののテストだけで、
- * これは入力としてマーカーの形を持たざるを得ません。
+ * 空なのは、文書側にこの名前空間の例示が無いためです。マーカーの形を説明する箇所（集約先の
+ * 規約表、セットアップ手順の `grep`）はいずれもバッククォートや引用符の内側にあり、コメント
+ * 記号を伴わないので走査には当たりません。マーカーの形を入力として持つのはこのツール自身の
+ * テストだけで、そちらは `SELF_DIR` が丸ごと外します。コメントとして例示を書いた瞬間に
+ * ここへの登録が要ります（`remove-sample-api` 側は同じ理由で教材とフィクスチャを宣言）。
  */
-export const MARKER_LITERAL_FILES: readonly string[] = [
-  // 走査・検出の判定を検査するテスト。入力として `<!-- boilerplate-only:begin -->` を持つ。
-  "scripts/setup/remove-boilerplate-identity/targets.test.ts",
-];
+export const MARKER_LITERAL_FILES: readonly string[] = [];
+
+/**
+ * このツール自身のディレクトリ。走査から外す。
+ *
+ * @remarks
+ * 撤去の最後に `selfDestruct()` が丸ごと消すので、書き換えても意味がありません。むしろ害が
+ * あります。宣言やテストはマーカーの形そのものを本文に持つため、走査すると「マーカーではない
+ * もの」を刈り取るか、対応の取れない片割れとして除去全体を止めます。`remove-sample-api` 側で
+ * 削除登録パスを外しているのと同じ理由です。
+ */
+export const SELF_DIR = "scripts/setup/remove-boilerplate-identity";
 
 /**
  * マーカーではなくパスで消えるファイル。
@@ -80,11 +89,11 @@ export const BOILERPLATE_DELETE_FILES: readonly string[] = [
 /** 撤去後に残ってはいけない語。検査が的を外していないかの確認にも使う。 */
 export const BOILERPLATE_PROSE_MARKERS: readonly string[] = ["boilerplate", "ボイラープレート"];
 
-/** 走査対象か。ディレクトリ名の除外は列挙側が行うため、ここは接頭辞と literal 宣言だけを見る。 */
+/** 走査対象か。ディレクトリ名の除外は列挙側が行うため、ここは接頭辞・自ディレクトリ・literal を見る。 */
 export function isScanTarget(relativePath: string): boolean {
   const normalized = relativePath.split("\\").join("/");
 
-  if (MARKER_LITERAL_FILES.includes(normalized)) {
+  if (MARKER_LITERAL_FILES.includes(normalized) || normalized.startsWith(`${SELF_DIR}/`)) {
     return false;
   }
 

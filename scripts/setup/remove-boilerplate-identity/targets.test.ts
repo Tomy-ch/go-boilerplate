@@ -11,6 +11,7 @@ import {
   EXCLUDED_DIRECTORIES,
   EXCLUDED_PATH_PREFIXES,
   MARKER_LITERAL_FILES,
+  SELF_DIR,
   containsBoilerplateMarker,
   isScanTarget,
 } from "./targets";
@@ -57,6 +58,13 @@ describe("isScanTarget", () => {
     it("接頭辞が途中まで一致するだけのパスは外さない", () => {
       expect(isScanTarget("docs/portal/manifest.yaml")).toBe(true);
       expect(isScanTarget("docs/coverage-policy.md")).toBe(true);
+    });
+
+    // 撤去の最後に丸ごと消えるうえ、宣言もテストもマーカーの形を本文に持つ。走査すると
+    // 対応の取れない片割れとして除去全体が止まる（実際に一度止まった）。
+    it("自分自身のディレクトリを対象から外す", () => {
+      expect(isScanTarget(`${SELF_DIR}/targets.ts`)).toBe(false);
+      expect(isScanTarget(`${SELF_DIR}/targets.test.ts`)).toBe(false);
     });
   });
 });

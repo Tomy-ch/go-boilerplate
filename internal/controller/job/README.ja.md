@@ -383,9 +383,9 @@ func JobModule() fx.Option {
             // ここにジョブのコンストラクタを追加します。
             idempotencygc.New,
             outboxgc.New,
-            usercount.New, // サンプル（setup-remove-sample-api で削除）
-            userpurge.New, // サンプル（setup-remove-sample-api で削除）
-            productimagegc.New, // サンプル（setup-remove-sample-api で削除）
+            usercount.New,      // sample-api:line
+            userpurge.New,      // sample-api:line
+            productimagegc.New, // sample-api:line
         ),
         fx.Provide(
             dijob.ProvideRunner,
