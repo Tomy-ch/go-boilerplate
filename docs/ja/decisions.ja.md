@@ -15,6 +15,6 @@ Echo、Fx、worker scaffold、ライブラリ選定ポリシー、observability 
   （欠落していた `net/http/otelhttp` / `otel/sdk/log` もそこで補完済み）。
 
 分割の理由: 単一の可変ファイルはその場編集で決定履歴を失い、不変であるべき決定と
-`go.mod` 追従の依存表が混在していました。per-file ADR にすれば、fork 利用者はモノリスを
-触らず 1 ファイル追加で個別 supersede でき、依存目録も不変記録から分離できます。
+`go.mod` 追従の依存表が混在していました。per-file ADR にすれば、モノリスを
+触らず 1 ファイル追加で個別の決定を supersede でき、依存目録も不変記録から分離できます。
 [ADR-0000](adr/0000-record-architecture-decisions.ja.md) を参照。

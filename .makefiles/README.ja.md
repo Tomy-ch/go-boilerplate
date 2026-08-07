@@ -84,7 +84,7 @@ app プロジェクトの使い捨て `api_server` コンテナ内（`make job` 
 
 pull-ack worker を起動します。`NAME` は worker 名（必須）、`ARGS` は任意です。
 
-> スキャフォールドは既定で worker を1つも登録しません（`WorkerModule()` は空の seam）。
+> 既定では worker が 1 つも登録されていません（`WorkerModule()` は空の seam）。
 > そのため実 worker を配線するまでは `unknown worker` で失敗します。worker 追加後の
 > ローカル動作確認用の起動口として置いています。
 
@@ -134,7 +134,7 @@ DB 操作全般を扱うターゲット群です。
 | `make new-migrate-<name>` | 新しいマイグレーションファイルを生成します。 | `database/migrations` 配下に連番付きの `.up.sql` / `.down.sql` を作成します。 |
 | `make check-migration-up-version` | `up` 側マイグレーションのバージョン重複をチェックします。 | `scripts/migration-lint` を実行します。連番の判定規則はシェル片ではなくそちらにテスト付きで置いています。 |
 | `make check-migration-down-version` | `down` 側マイグレーションのバージョン重複をチェックします。 | `scripts/migration-lint` を実行します。 |
-| `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。マイグレーションが 1 件も無い場合は通過するため、サンプル API の削除でゲートが壊れません。 |
+| `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。マイグレーションが 1 件も無い場合は通過するため、マイグレーション集合が空でもゲートは落ちません。 |
 | `make check-migration-down-gap` | `down` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。 |
 | `make db-migrate-up DB=<database>` | 指定した DB に対して、全マイグレーションを最新まで適用します。 | 例: `make db-migrate-up DB=local` |
 | `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
@@ -524,7 +524,7 @@ Trivy スキャン）は放置します。ループで回すものではない�
 `prune-release-notes`）が担い、ラベル・ルールセット・ワークフローの各手順は個別の `make`
 ターゲットのまま残しているため、このターゲットは両者の連鎖です。
 
-新規リポジトリを boilerplate として立ち上げる際の初期セットアップ用コマンドです。
+新規リポジトリを立ち上げる際の初期セットアップ用コマンドです。
 
 #### セットアップ補助コマンド
 

@@ -84,7 +84,7 @@ Both are long-running daemons that reside until `SIGTERM` / `Ctrl-C`. They run i
 
 Starts a pull-ack worker. `NAME` is the worker name (required); `ARGS` is optional.
 
-> The scaffold registers no worker by default (`WorkerModule()` is an empty seam), so
+> No worker is registered by default (`WorkerModule()` is an empty seam), so
 > this fails with `unknown worker` until you wire a real worker. It is kept as the
 > entry point for local verification once a worker is added.
 
@@ -134,7 +134,7 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 | `make new-migrate-<name>` | Generates a new migration file. | Creates numbered `.up.sql` / `.down.sql` under `database/migrations`. |
 | `make check-migration-up-version` | Checks duplicate versions in `up` migrations. | Runs `scripts/migration-lint`; the numbering rules live there with tests, not in a shell snippet. |
 | `make check-migration-down-version` | Checks duplicate versions in `down` migrations. | Runs `scripts/migration-lint`. |
-| `make check-migration-up-gap` | Checks sequence gaps in `up` migrations. | Runs `scripts/migration-lint`. Passes when there are no migrations at all, so removing the sample API cannot break the gate. |
+| `make check-migration-up-gap` | Checks sequence gaps in `up` migrations. | Runs `scripts/migration-lint`. Passes when there are no migrations at all, so an empty migration set does not trip the gate. |
 | `make check-migration-down-gap` | Checks sequence gaps in `down` migrations. | Runs `scripts/migration-lint`. |
 | `make db-migrate-up DB=<database>` | Applies all migrations to the specified DB up to the latest. | Example: `make db-migrate-up DB=local` |
 | `make db-migrate-up-<steps> DB=<database>` | Applies the given number of migrations relative to the current position. | Example: `make db-migrate-up-2 DB=local` |
@@ -529,7 +529,7 @@ The `git` / `gh` parts run through `scripts/repo-setup` (`preflight` / `bootstra
 `prune-release-notes`); the label, rule set, and workflow steps stay as their own `make` targets, so
 this target is the chain of the two.
 
-This is an initial setup command when launching a new repository as a boilerplate.
+This is the initial setup command when launching a new repository.
 
 #### Setup helper commands
 
