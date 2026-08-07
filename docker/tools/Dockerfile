@@ -147,13 +147,10 @@ ENTRYPOINT []
 CMD []
 
 # ------------------------------
-# Python ツールボックス：sqlfluff を mise.toml のバージョンで提供
+# Python ツールボックス：sqlfluff を python/sqlfluff.txt のバージョンで提供
 # Python ランタイムは公式 python:X.Y.Z-slim（プリビルド）を使用。
 # mise の Python ビルドは python-build によるソースコンパイルが必要で時間がかかるため、ここでは公式 base に頼る。
-# NOTE: mise の pipx バックエンドが extras 構文（`sqlfluff[jinja]`）を受け付けないため、
-#       jinja extras 無しの素の sqlfluff を入れている。
-#       jinja テンプレートを SQL ファイルで使う場合は別途見直し。
-# pipx backend の実行系は mise.toml の pipx.uvx=true により uv（mise 管理版）へ固定。
+# mise が入れるのは uv までで、sqlfluff 本体は sha256 付きの lockfile から uv が入れる。
 # ------------------------------
 FROM python:3.14.6-slim@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6 AS python_tools
 
@@ -184,8 +181,13 @@ RUN --mount=type=secret,id=github_token \
     github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
     if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
     mise install uv \
-    && mise install pipx:sqlfluff \
     && rm -rf /root/.cache
+
+# --require-hashes は lockfile の全エントリが版とハッシュで固定されていることを要求するため、
+# 記載漏れのある lockfile はここで install ごと失敗する。ハッシュ照合そのものが検査を兼ねる。
+COPY python/sqlfluff.txt python/
+RUN uv pip install --system --require-hashes --no-cache -r python/sqlfluff.txt \
+    && sqlfluff --version
 
 ENTRYPOINT []
 CMD []
