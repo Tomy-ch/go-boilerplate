@@ -281,7 +281,7 @@ func Test_bump(t *testing.T) {
 		t.Run("未知の粒度は拒否する", func(t *testing.T) {
 			t.Parallel()
 			_, err := bump(base, "hotfix")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnknownBump)
 			assert.Contains(t, err.Error(), "unknown -bump")
 		})
 	})

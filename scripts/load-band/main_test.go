@@ -137,7 +137,7 @@ func Test_resolve(t *testing.T) {
 			t.Parallel()
 
 			_, err := resolve("ci_first", 1, 8, defaultLowThreshold, defaultCIFirstThreshold)
-			require.Error(t, err)
+			require.ErrorIs(t, err, errUnknownBand)
 			assert.Contains(t, err.Error(), "GOBP_LOAD=ci_first")
 		})
 	})

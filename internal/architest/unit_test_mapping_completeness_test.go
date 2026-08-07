@@ -299,7 +299,7 @@ func Test_indexGoFile(t *testing.T) {
 
 			indexGoFile(filepath.Join("internal", "p", "server.go"), lines, prodByDir, testsByDir)
 
-			require.Len(t, prodByDir[filepath.Join("internal", "p")], 1)
+			assert.Len(t, prodByDir[filepath.Join("internal", "p")], 1)
 			assert.Empty(t, testsByDir)
 		})
 

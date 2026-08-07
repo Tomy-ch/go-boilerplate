@@ -69,7 +69,7 @@ func Test_collectVersions(t *testing.T) {
 			dir := writeMigrations(t, "000001.up.sql")
 
 			_, err := collectVersions(dir, "up")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNoVersionPrefix)
 			assert.Contains(t, err.Error(), "no version prefix")
 		})
 

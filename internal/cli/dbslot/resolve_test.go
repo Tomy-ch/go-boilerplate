@@ -156,8 +156,7 @@ func TestResolver_Resolve(t *testing.T) {
 			r, _ := newResolver(t, t.TempDir(), probeStub{dirsErr: errGitFailed, hasGitEntry: true})
 
 			_, err := r.Resolve(t.Context())
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "layout could not be read")
+			require.ErrorIs(t, err, errGitLayoutUnreadable)
 		})
 
 		t.Run("git の出力が想定外の形なら判定不能として止める", func(t *testing.T) {
@@ -166,8 +165,7 @@ func TestResolver_Resolve(t *testing.T) {
 			r, _ := newResolver(t, t.TempDir(), probeStub{dirs: ".git\n"})
 
 			_, err := r.Resolve(t.Context())
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "layout could not be read")
+			require.ErrorIs(t, err, errGitLayoutUnreadable)
 		})
 	})
 }
@@ -213,7 +211,7 @@ func TestResolver_RequireOwner(t *testing.T) {
 
 			r, out := newResolver(t, t.TempDir(), probeStub{dirs: "/repo/.git/worktrees/wt3\n/repo/.git\n"})
 
-			require.Error(t, r.RequireOwner(t.Context()))
+			require.ErrorIs(t, r.RequireOwner(t.Context()), errNoDatabaseOwner)
 			assert.Contains(t, out.String(), "所有するデータベースがありません")
 			assert.Contains(t, out.String(), "make slot-acquire")
 		})
@@ -223,9 +221,10 @@ func TestResolver_RequireOwner(t *testing.T) {
 
 			root := t.TempDir()
 			writeSlot(t, root, "SLOT=3\n")
-			r, _ := newResolver(t, root, probeStub{dirs: "/repo/.git/worktrees/wt3\n/repo/.git\n"})
+			r, out := newResolver(t, root, probeStub{dirs: "/repo/.git/worktrees/wt3\n/repo/.git\n"})
 
-			require.Error(t, r.RequireOwner(t.Context()))
+			require.ErrorIs(t, r.RequireOwner(t.Context()), errNoDatabaseOwner)
+			assert.Contains(t, out.String(), "make slot-acquire")
 		})
 
 		t.Run("リポジトリなのに git が失敗したら素通りさせず止める", func(t *testing.T) {
@@ -233,7 +232,7 @@ func TestResolver_RequireOwner(t *testing.T) {
 
 			r, _ := newResolver(t, t.TempDir(), probeStub{dirsErr: errGitFailed, hasGitEntry: true})
 
-			require.Error(t, r.RequireOwner(t.Context()))
+			require.ErrorIs(t, r.RequireOwner(t.Context()), errGitLayoutUnreadable)
 		})
 	})
 }
@@ -278,7 +277,7 @@ func TestResolver_PrintEnv(t *testing.T) {
 
 			r, out := newResolver(t, t.TempDir(), probeStub{dirsErr: errGitFailed, hasGitEntry: true})
 
-			require.Error(t, r.PrintEnv(t.Context()))
+			require.ErrorIs(t, r.PrintEnv(t.Context()), errGitLayoutUnreadable)
 			assert.Empty(t, out.String())
 		})
 	})
@@ -313,6 +312,19 @@ func TestResolver_PrintValues(t *testing.T) {
 			require.NoError(t, r.PrintValues(t.Context()))
 			assert.Contains(t, out.String(), "INFRA_NO_RECREATE : （渡さない）")
 			assert.Contains(t, out.String(), "slot held         : no")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("判定不能なら何も出力せず失敗させる", func(t *testing.T) {
+			t.Parallel()
+
+			r, out := newResolver(t, t.TempDir(), probeStub{dirsErr: errGitFailed, hasGitEntry: true})
+
+			require.ErrorIs(t, r.PrintValues(t.Context()), errGitLayoutUnreadable)
+			assert.Empty(t, out.String())
 		})
 	})
 }

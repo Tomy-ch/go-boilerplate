@@ -55,7 +55,7 @@ func Test_parseTotal(t *testing.T) {
 			t.Parallel()
 
 			_, err := parseTotal("go-boilerplate/internal/domain/user/user.go:12:\tNew\t100.0%\n")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNoTotalLine)
 			assert.Contains(t, err.Error(), "no total line")
 		})
 
@@ -63,7 +63,7 @@ func Test_parseTotal(t *testing.T) {
 			t.Parallel()
 
 			_, err := parseTotal("")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNoTotalLine)
 			assert.Contains(t, err.Error(), "no total line")
 		})
 
@@ -71,7 +71,7 @@ func Test_parseTotal(t *testing.T) {
 			t.Parallel()
 
 			_, err := parseTotal("total:\t(statements)\n")
-			require.Error(t, err)
+			require.ErrorIs(t, err, errNoTotalLine)
 			assert.Contains(t, err.Error(), "not a percentage")
 		})
 
