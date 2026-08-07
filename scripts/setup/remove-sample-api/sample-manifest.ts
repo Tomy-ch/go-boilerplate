@@ -359,13 +359,9 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
 
   sampleTooling: {
     description: "サンプル削除ツール自身（削除完了後は不要）",
-    paths: [
-      "scripts/setup/remove-sample-api.ts",
-      "scripts/setup/lib/sample-api.ts",
-      "scripts/setup/lib/sample-api.test.ts",
-      "scripts/setup/lib/sample-manifest.ts",
-      "scripts/setup/lib/sample-manifest.test.ts",
-    ],
+    // ディレクトリごと挙げる。ファイルを 1 本ずつ列挙すると、判定モジュールを足したときに
+    // 漏れて、消えたはずの削除ツールの一部だけが利用者のリポジトリへ居座る。
+    paths: ["scripts/setup/remove-sample-api"],
   },
 };
 

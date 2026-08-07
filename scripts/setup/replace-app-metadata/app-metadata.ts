@@ -41,3 +41,16 @@ export function replaceCopilotTitle(content: string, title: string): string | nu
 
   return content.replace(COPILOT_TITLE, () => `# ${title}`);
 }
+
+/**
+ * アプリ名・タイトルを持つ対象。
+ *
+ * @remarks
+ * 「どのファイルがアプリのメタデータを持つか」は置換規則の一部です。入口に定数として置くと、
+ * 置換規則を直した人がこの一覧を見落とし、片方だけ古い名前が残ります。
+ */
+export const APP_METADATA_TARGETS = {
+  envDir: "env",
+  openapiFile: "openapi/openapi.yaml",
+  copilotInstructionsFile: ".github/copilot-instructions.md",
+} as const;

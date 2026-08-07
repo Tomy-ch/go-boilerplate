@@ -35,3 +35,15 @@ export function replaceOpenapiTermsOfService(content: string, repository: string
     () => `  termsOfService: https://github.com/${repository}`,
   );
 }
+
+/**
+ * GitHub リポジトリ参照を持つ対象。
+ *
+ * @remarks
+ * README は英日の対、OpenAPI は `termsOfService`。どれか 1 つを置換対象から落とすと、
+ * 生成したリポジトリにボイラープレート側の URL が残ります。
+ */
+export const REPOSITORY_REFERENCE_TARGETS = {
+  readmeFiles: ["README.md", "README.ja.md"] as readonly string[],
+  openapiFile: "openapi/openapi.yaml",
+} as const;

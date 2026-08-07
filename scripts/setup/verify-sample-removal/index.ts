@@ -15,26 +15,20 @@ import {
   buildDanglingCommand,
   collectFailures,
   parseSnapshot,
-} from "./lib/sample-removal-verify";
+  selfDestructTargets,
+} from "./verify";
 
-const SELF_PATH = fileURLToPath(import.meta.url);
-const SETUP_DIR = path.dirname(SELF_PATH);
+const SELF_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SETUP_DIR = path.resolve(SELF_DIR, "..");
 const ROOT_DIR = path.resolve(SETUP_DIR, "../..");
 const SNAPSHOT_PATH = path.join(SETUP_DIR, ".sample-removal-snapshot.json");
 
-// 自消滅の対象。判定モジュールとそのテストもこのスクリプト専用なので道連れにする
-// （残すと、消えたはずの検証ツールの一部だけが利用者のリポジトリに居座る）。
-const SELF_DESTRUCT_PATHS = [
-  SNAPSHOT_PATH,
-  path.join(SETUP_DIR, "lib/sample-removal-verify.ts"),
-  path.join(SETUP_DIR, "lib/sample-removal-verify.test.ts"),
-  SELF_PATH,
-];
+const SELF_DESTRUCT_PATHS = selfDestructTargets(SELF_DIR, SNAPSHOT_PATH);
 
 function readRegisteredPaths(): string[] {
   if (!fs.existsSync(SNAPSHOT_PATH)) {
     throw new Error(
-      `スナップショットが見つかりません: ${SNAPSHOT_PATH}（remove-sample-api.ts 未実行の可能性）`,
+      `スナップショットが見つかりません: ${SNAPSHOT_PATH}（remove-sample-api 未実行の可能性）`,
     );
   }
 
@@ -64,7 +58,7 @@ function readDanglingHits(): string {
 
 function selfDestruct(): void {
   for (const target of SELF_DESTRUCT_PATHS) {
-    fs.rmSync(target, { force: true });
+    fs.rmSync(target, { force: true, recursive: true });
   }
 }
 

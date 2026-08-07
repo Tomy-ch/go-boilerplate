@@ -97,3 +97,15 @@ export function collectFailures(input: VerificationInput): string[] {
     ...findDanglingReferences(input.danglingHits),
   ];
 }
+
+/**
+ * 検証成功後に消す対象を返す。
+ *
+ * @remarks
+ * このツールはサンプル削除の最終地点なので、自身のディレクトリごと消えます。ファイルを 1 本ずつ
+ * 挙げていると、判定モジュールやそのテストを足したときに列挙から漏れ、消えたはずの検証ツールの
+ * 一部だけが利用者のリポジトリへ居座ります。スナップショットは 1 階層上の共有位置にあるため別に挙げます。
+ */
+export function selfDestructTargets(selfDir: string, snapshotPath: string): string[] {
+  return [snapshotPath, selfDir];
+}

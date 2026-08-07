@@ -8,10 +8,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { toAbsolutePath, updateFile } from "./lib/file-utils";
-import { ROOT_DIR, type SetupOptions, newSetupCommand } from "./lib/runtime";
-import { isWithinRoot, stripSampleMarkers } from "./lib/sample-api";
-import { BUILD_STEPS, MARKER_FILES, SAMPLE_DOMAINS } from "./lib/sample-manifest";
+import { toAbsolutePath, updateFile } from "../lib/file-utils";
+import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
+import { isWithinRoot, stripSampleMarkers } from "./sample-api";
+import { BUILD_STEPS, MARKER_FILES, SAMPLE_DOMAINS } from "./sample-manifest";
 
 // 削除確認スクリプト（verify-sample-removal.ts）が git status と突き合わせる「登録済み削除対象」の
 // スナップショット出力先。manifest（sample-manifest.ts）自身が削除対象で削除後は読めないため、

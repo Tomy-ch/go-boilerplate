@@ -4,14 +4,14 @@
 
 import path from "node:path";
 
-import { listFilesRecursive, updateAbsoluteFile } from "./lib/file-utils";
+import { listFilesRecursive, updateAbsoluteFile } from "../lib/file-utils";
 import {
   EXCLUDED_DIRECTORIES,
   ensureModuleArguments,
   isReplacementTarget,
   replaceModuleOccurrences,
-} from "./lib/module-replace";
-import { ROOT_DIR, type SetupOptions, newSetupCommand } from "./lib/runtime";
+} from "./module-replace";
+import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 
 type ChangedFile = {
   relativePath: string;

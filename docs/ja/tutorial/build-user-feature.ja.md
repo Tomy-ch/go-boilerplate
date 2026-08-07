@@ -76,7 +76,7 @@ git switch -c tutorial/build-user
 ## Step 0 —— ゼロへリセット
 
 リポジトリは、サンプルを構成する全ファイルを
-[`scripts/setup/lib/sample-manifest.ts`](../../../scripts/setup/lib/sample-manifest.ts) に宣言している。
+[`scripts/setup/remove-sample-api/sample-manifest.ts`](../../../scripts/setup/remove-sample-api/sample-manifest.ts) に宣言している。
 1 つのコマンドがそれらを削除し、共有 DI モジュールと `openapi.yaml` から `sample-api` マーカーブロックを
 取り除いたうえで、小さくなったツリーを再生成・検証する:
 

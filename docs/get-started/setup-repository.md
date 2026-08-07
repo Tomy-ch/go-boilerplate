@@ -239,7 +239,7 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
 
 ### Removal Procedure
 
-Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-manifest.ts](../../scripts/setup/lib/sample-manifest.ts), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
+Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/remove-sample-api/sample-manifest.ts](../../scripts/setup/remove-sample-api/sample-manifest.ts), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
 
 > **The DB container must be running** before you run this — the final `gen-query` step dumps the **live** schema with `pg_dump`, so a stopped DB fails with `connection refused`.
 

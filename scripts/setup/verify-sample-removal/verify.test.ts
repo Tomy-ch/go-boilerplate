@@ -8,8 +8,7 @@ import {
   findUnregisteredDeletions,
   findUnremovedPaths,
   parseDeletedPaths,
-  parseSnapshot,
-} from "./sample-removal-verify";
+  parseSnapshot, selfDestructTargets } from "./verify";
 
 const noneExist = (): boolean => false;
 
@@ -235,6 +234,24 @@ describe("collectFailures", () => {
         "make ターゲット setup-remove-sample-api が残っています",
         "残留サンプル参照:\ninternal/di/module/job.go:12: usercount",
       ]);
+    });
+  });
+});
+
+describe("selfDestructTargets", () => {
+  describe("正常系", () => {
+    it("スナップショットと自身のディレクトリを対象にする", () => {
+      expect(selfDestructTargets("/repo/scripts/setup/verify-sample-removal", "/repo/scripts/setup/.snap.json")).toEqual([
+        "/repo/scripts/setup/.snap.json",
+        "/repo/scripts/setup/verify-sample-removal",
+      ]);
+    });
+
+    it("ディレクトリごと消すので個別ファイルを列挙しない", () => {
+      const targets = selfDestructTargets("/d", "/s.json");
+
+      expect(targets).toHaveLength(2);
+      expect(targets.some((t) => t.endsWith(".ts"))).toBe(false);
     });
   });
 });

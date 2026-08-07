@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ROOT_DIR } from "./runtime";
+import { ROOT_DIR } from "../lib/runtime";
 import { stripSampleMarkers } from "./sample-api";
 import { BUILD_STEPS, MARKER_FILES, SAMPLE_DOMAINS } from "./sample-manifest";
 
@@ -50,15 +50,18 @@ describe("SAMPLE_DOMAINS", () => {
 describe("sampleTooling", () => {
   describe("正常系", () => {
     // 削除ツールが自分自身を登録し損ねると、サンプルを消したリポジトリに削除ツールだけが
-    // 残る。拡張子や配置を変えたときに真っ先に腐るのがここ。
-    it("削除ツール自身のファイルをすべて登録している", () => {
-      expect([...SAMPLE_DOMAINS.sampleTooling.paths].sort()).toEqual([
-        "scripts/setup/lib/sample-api.test.ts",
-        "scripts/setup/lib/sample-api.ts",
-        "scripts/setup/lib/sample-manifest.test.ts",
-        "scripts/setup/lib/sample-manifest.ts",
-        "scripts/setup/remove-sample-api.ts",
-      ]);
+    // 残る。配置を変えたときに真っ先に腐るのがここ。
+    it("削除ツール自身のディレクトリを登録している", () => {
+      expect([...SAMPLE_DOMAINS.sampleTooling.paths]).toEqual(["scripts/setup/remove-sample-api"]);
+    });
+
+    // ディレクトリで登録する以上、そのディレクトリが本当にこのツールの実体かどうかが
+    // 唯一の担保になる。別の場所へ移してここを直し忘れると、消し漏れではなく誤爆になる。
+    it("登録したディレクトリが実際にこのツールの入口と manifest を含む", () => {
+      const registered = path.join(ROOT_DIR, SAMPLE_DOMAINS.sampleTooling.paths[0]);
+
+      expect(fs.existsSync(path.join(registered, "index.ts"))).toBe(true);
+      expect(fs.existsSync(path.join(registered, "sample-manifest.ts"))).toBe(true);
     });
   });
 });

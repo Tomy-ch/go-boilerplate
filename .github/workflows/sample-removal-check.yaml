@@ -81,7 +81,7 @@ jobs:
         run: make materialize-env
 
       - name: Remove sample files (delete + strip markers + self-destruct)
-        run: pnpm --dir scripts run tsx scripts/setup/remove-sample-api.ts
+        run: pnpm --dir scripts run tsx scripts/setup/remove-sample-api/index.ts
 
       - name: Format after removal (make fix)
         run: make fix
@@ -101,18 +101,18 @@ jobs:
         run: make test
 
       - name: Verify sample removal (exact deletion + no dangling refs)
-        run: pnpm --dir scripts run tsx scripts/setup/verify-sample-removal.ts
+        run: pnpm --dir scripts run tsx scripts/setup/verify-sample-removal/index.ts
 
-      # The verifier deletes itself, its decision module, that module's test and the
-      # snapshot. Listing every one of them matters: a path left out here silently passes
-      # forever, because the check can only observe the files it is given.
+      # The verifier removes its own directory and the snapshot; the remover's directory
+      # goes with the sample itself. Checking directories rather than files is what keeps
+      # this honest: a module added later is covered without editing this list, and a path
+      # left out here would pass silently forever.
       - name: Verify verification tool self-destructed
         run: |
           set -euo pipefail
           for f in \
-            scripts/setup/verify-sample-removal.ts \
-            scripts/setup/lib/sample-removal-verify.ts \
-            scripts/setup/lib/sample-removal-verify.test.ts \
+            scripts/setup/verify-sample-removal \
+            scripts/setup/remove-sample-api \
             scripts/setup/.sample-removal-snapshot.json; do
             if [ -e "$f" ]; then
               echo "FAIL: $f was not self-deleted"

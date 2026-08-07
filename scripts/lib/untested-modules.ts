@@ -16,10 +16,10 @@
  * 入口ファイル。CLI 引数の受け取り・ファイル入出力・終了コードだけを担い、判定は同じディレクトリの
  * 判定モジュールへ切り出してある。Go 側の `cmd/<command>.go` ↔ `internal/cli/<command>/` と同じ扱い。
  *
- * `*&#47;index.ts` は `scripts/<tool>/index.ts` に当たる。`portal/` と `setup/` は入口の命名が
- * 揃っていないため、それぞれの形で挙げる。
+ * `*&#47;index.ts` は `scripts/<tool>/index.ts`、`*&#47;*&#47;index.ts` は `scripts/setup/<tool>/index.ts` に
+ * 当たる。`portal/` だけは入口の命名が揃っていないため別に挙げる。
  */
-export const ENTRYPOINT_PATTERNS = ["*/index.ts", "portal/gen-*.ts", "setup/*.ts"] as const;
+export const ENTRYPOINT_PATTERNS = ["*/index.ts", "*/*/index.ts", "portal/gen-*.ts"] as const;
 
 /**
  * 判定を持たないモジュール。

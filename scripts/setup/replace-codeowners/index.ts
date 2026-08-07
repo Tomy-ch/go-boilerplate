@@ -4,10 +4,10 @@
 
 import fs from "node:fs";
 
-import { CODEOWNERS_FILE, parseOwners, replaceCodeowners } from "./lib/codeowners";
-import { toAbsolutePath, updateFile } from "./lib/file-utils";
-import { type SetupOptions, newSetupCommand } from "./lib/runtime";
-import { ensureCodeOwners } from "./lib/validators";
+import { CODEOWNERS_FILE, parseOwners, replaceCodeowners } from "./codeowners";
+import { toAbsolutePath, updateFile } from "../lib/file-utils";
+import { type SetupOptions, newSetupCommand } from "../lib/runtime";
+import { ensureCodeOwners } from "../lib/validators";
 
 type Options = SetupOptions & {
   owners: string;

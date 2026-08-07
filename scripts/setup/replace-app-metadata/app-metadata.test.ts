@@ -1,11 +1,14 @@
+import fs from "node:fs";
+import path from "node:path";
+
+import { ROOT_DIR } from "../lib/runtime";
 import { describe, expect, it } from "vitest";
 
 import {
   isEnvFile,
   replaceCopilotTitle,
   replaceEnvAppName,
-  replaceOpenapiTitle,
-} from "./app-metadata";
+  replaceOpenapiTitle, APP_METADATA_TARGETS } from "./app-metadata";
 
 describe("isEnvFile", () => {
   describe("正常系", () => {
@@ -133,6 +136,24 @@ describe("replaceCopilotTitle", () => {
 
     it("見出しが無ければ null を返す（書き込みを起こさない）", () => {
       expect(replaceCopilotTitle("本文だけ\n", "Example")).toBeNull();
+    });
+  });
+});
+
+describe("APP_METADATA_TARGETS", () => {
+  describe("正常系", () => {
+    it("env ディレクトリと OpenAPI と Copilot 指示書を対象にする", () => {
+      expect(APP_METADATA_TARGETS).toEqual({
+        envDir: "env",
+        openapiFile: "openapi/openapi.yaml",
+        copilotInstructionsFile: ".github/copilot-instructions.md",
+      });
+    });
+
+    it("挙げた対象がすべて実在する", () => {
+      for (const target of Object.values(APP_METADATA_TARGETS)) {
+        expect(fs.existsSync(path.join(ROOT_DIR, target)), target).toBe(true);
+      }
     });
   });
 });

@@ -76,7 +76,7 @@ git switch -c tutorial/build-user
 ## Step 0 — Reset to zero
 
 The repository declares every file that constitutes the sample in
-[`scripts/setup/lib/sample-manifest.ts`](../../scripts/setup/lib/sample-manifest.ts). One command
+[`scripts/setup/remove-sample-api/sample-manifest.ts`](../../scripts/setup/remove-sample-api/sample-manifest.ts). One command
 deletes them and strips the `sample-api` marker blocks out of the shared DI modules and
 `openapi.yaml`, then regenerates and verifies the now-smaller tree:
 

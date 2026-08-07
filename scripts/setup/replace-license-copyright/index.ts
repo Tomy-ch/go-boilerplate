@@ -4,10 +4,10 @@
 
 import fs from "node:fs";
 
-import { toAbsolutePath, updateFile } from "./lib/file-utils";
-import { LICENSE_FILE, replaceCopyright } from "./lib/license-copyright";
-import { type SetupOptions, newSetupCommand } from "./lib/runtime";
-import { ensureFourDigitYear } from "./lib/validators";
+import { toAbsolutePath, updateFile } from "../lib/file-utils";
+import { LICENSE_FILE, replaceCopyright } from "./license-copyright";
+import { type SetupOptions, newSetupCommand } from "../lib/runtime";
+import { ensureFourDigitYear } from "../lib/validators";
 
 type Options = SetupOptions & {
   holder: string;

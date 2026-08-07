@@ -2,21 +2,19 @@
 // README と OpenAPI の GitHub リポジトリ参照を <owner>/<repo> へ置換する。置換規則は
 // lib/repository-reference.ts が持ち、ここは書き込み・出力だけを担う。
 
-import { updateFile } from "./lib/file-utils";
+import { updateFile } from "../lib/file-utils";
 import {
   replaceOpenapiTermsOfService,
   replaceReadmeReferences,
-} from "./lib/repository-reference";
-import { type SetupOptions, newSetupCommand } from "./lib/runtime";
-import { ensureRepositoryReference } from "./lib/validators";
-
-const README_FILES = ["README.md", "README.ja.md"];
-const OPENAPI_FILE = "openapi/openapi.yaml";
+  REPOSITORY_REFERENCE_TARGETS,
+} from "./repository-reference";
+import { type SetupOptions, newSetupCommand } from "../lib/runtime";
+import { ensureRepositoryReference } from "../lib/validators";
 
 function run(repository: string, dryRun: boolean): void {
   const changedFiles: string[] = [];
 
-  for (const file of README_FILES) {
+  for (const file of REPOSITORY_REFERENCE_TARGETS.readmeFiles) {
     const result = updateFile(
       file,
       (content) => replaceReadmeReferences(content, repository),
@@ -29,7 +27,7 @@ function run(repository: string, dryRun: boolean): void {
   }
 
   const openapiResult = updateFile(
-    OPENAPI_FILE,
+    REPOSITORY_REFERENCE_TARGETS.openapiFile,
     (content) => replaceOpenapiTermsOfService(content, repository),
     dryRun,
   );

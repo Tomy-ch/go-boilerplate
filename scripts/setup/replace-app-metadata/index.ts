@@ -7,13 +7,10 @@ import {
   replaceCopilotTitle,
   replaceEnvAppName,
   replaceOpenapiTitle,
-} from "./lib/app-metadata";
-import { listChildFiles, updateAbsoluteFile, updateFile } from "./lib/file-utils";
-import { type SetupOptions, newSetupCommand } from "./lib/runtime";
-
-const ENV_DIR = "env";
-const OPENAPI_FILE = "openapi/openapi.yaml";
-const COPILOT_INSTRUCTIONS_FILE = ".github/copilot-instructions.md";
+  APP_METADATA_TARGETS,
+} from "./app-metadata";
+import { listChildFiles, updateAbsoluteFile, updateFile } from "../lib/file-utils";
+import { type SetupOptions, newSetupCommand } from "../lib/runtime";
 
 type Options = SetupOptions & {
   appName: string;
@@ -24,7 +21,7 @@ type Options = SetupOptions & {
 function run(options: Options): void {
   const changedFiles: string[] = [];
 
-  for (const envFile of listChildFiles(ENV_DIR, isEnvFile)) {
+  for (const envFile of listChildFiles(APP_METADATA_TARGETS.envDir, isEnvFile)) {
     const result = updateAbsoluteFile(
       envFile,
       (content) => replaceEnvAppName(content, options.appName),
@@ -37,7 +34,7 @@ function run(options: Options): void {
   }
 
   const openapiResult = updateFile(
-    OPENAPI_FILE,
+    APP_METADATA_TARGETS.openapiFile,
     (content) => replaceOpenapiTitle(content, options.openapiTitle),
     options.dryRun,
   );
@@ -47,7 +44,7 @@ function run(options: Options): void {
   }
 
   const copilotResult = updateFile(
-    COPILOT_INSTRUCTIONS_FILE,
+    APP_METADATA_TARGETS.copilotInstructionsFile,
     (content) => replaceCopilotTitle(content, options.copilotTitle),
     options.dryRun,
   );

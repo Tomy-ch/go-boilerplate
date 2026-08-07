@@ -1,6 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
+
+import { ROOT_DIR } from "../lib/runtime";
 import { describe, expect, it } from "vitest";
 
-import { replaceOpenapiTermsOfService, replaceReadmeReferences } from "./repository-reference";
+import { replaceOpenapiTermsOfService, replaceReadmeReferences, REPOSITORY_REFERENCE_TARGETS } from "./repository-reference";
 
 const README = [
   "# go-boilerplate",
@@ -120,6 +124,26 @@ describe("replaceOpenapiTermsOfService", () => {
       const content = "  termsOfService: https://example.com/terms\n";
 
       expect(replaceOpenapiTermsOfService(content, "org/api")).toBe(content);
+    });
+  });
+});
+
+describe("REPOSITORY_REFERENCE_TARGETS", () => {
+  describe("正常系", () => {
+    it("README の英日対と OpenAPI を対象にする", () => {
+      expect(REPOSITORY_REFERENCE_TARGETS.readmeFiles).toEqual(["README.md", "README.ja.md"]);
+      expect(REPOSITORY_REFERENCE_TARGETS.openapiFile).toBe("openapi/openapi.yaml");
+    });
+
+    it("挙げた対象がすべて実在する", () => {
+      const targets = [
+        ...REPOSITORY_REFERENCE_TARGETS.readmeFiles,
+        REPOSITORY_REFERENCE_TARGETS.openapiFile,
+      ];
+
+      for (const target of targets) {
+        expect(fs.existsSync(path.join(ROOT_DIR, target)), target).toBe(true);
+      }
     });
   });
 });
