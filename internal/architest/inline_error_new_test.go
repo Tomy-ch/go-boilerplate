@@ -25,7 +25,7 @@ var (
 	blockSentinelDeclRe = regexp.MustCompile(`^\t\w+ += xerrors\.New\(`)
 )
 
-// TestNoInlineXerrorsNew は、production コードが関数本体内で xerrors.New を直接生成していないことを
+// TestNoInlineXerrorsNew は、production code が関数本体内で xerrors.New を直接生成していないことを
 // 機械検証する。関数本体で生成したエラーは呼び出し側から errors.Is で識別できず、テストが
 // メッセージ文字列一致でしか検証できない脆いアサーションに退行するため、package-level の
 // sentinel（`var errXxx = xerrors.New(...)`）として宣言し、動的な文脈は xerrors.Wrap で付与する。
@@ -62,7 +62,7 @@ func TestNoInlineXerrorsNew(t *testing.T) {
 	}
 
 	// 走査対象が 0 件だと検証が常に成功してしまうため、ルート解決の破綻を空振りとして検出する。
-	require.NotZero(t, scanned, "走査対象の production Go ファイルが 0 件（moduleSubdirs のルート解決を疑う）")
+	require.NotZero(t, scanned, "走査対象の production code の Go ファイルが 0 件（moduleSubdirs のルート解決を疑う）")
 
 	sort.Strings(violations)
 	for _, v := range violations {

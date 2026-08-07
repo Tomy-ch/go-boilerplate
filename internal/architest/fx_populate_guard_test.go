@@ -39,7 +39,7 @@ type stripState struct {
 	inQuote bool
 }
 
-// TestFxPopulateHasConstructionErrorGuard は、fx.Populate を使う production 関数が、populate 対象を
+// TestFxPopulateHasConstructionErrorGuard は、fx.Populate を使う production code の関数が、populate 対象を
 // 参照する前に構築エラーを検査していることを機械検証する。
 //
 // fx.Populate は fx.New 時点の invoke であり、グラフ構築が失敗すると対象は nil のまま残る。
