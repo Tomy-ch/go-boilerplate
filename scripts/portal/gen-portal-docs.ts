@@ -9,6 +9,8 @@ import {
   assertUniqueDestinations,
   assertWithinOutputRoot,
   assertWithinRepositoryRoot,
+  findMissingSources,
+  formatMissingSources,
   resolveCopyEntries,
 } from "./portal-manifest";
 
@@ -27,15 +29,11 @@ function main(): void {
   assertWithinOutputRoot(entries, OUTPUT_ROOT, resolve);
   assertWithinRepositoryRoot(entries, ".", resolve);
 
-  // 複製の前に全ての src を検査する。途中で気付いて止まると、出力ディレクトリを消した後の
-  // 半端な状態が残る。
-  const missing = entries.filter((entry) => !existsSync(entry.src));
+  const missing = findMissingSources(entries, existsSync);
 
   if (missing.length) {
     console.error("❌ manifest が参照する src が見つかりません（manifest の陳腐化を解消してください）:");
-    for (const entry of missing) {
-      console.error(`  - [${entry.section}] ${entry.src}`);
-    }
+    console.error(formatMissingSources(missing));
     process.exit(1);
   }
 

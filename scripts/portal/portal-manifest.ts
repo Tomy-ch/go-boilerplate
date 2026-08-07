@@ -130,3 +130,22 @@ export function assertWithinRepositoryRoot(
     }
   }
 }
+
+/**
+ * manifest が参照する src のうち存在しないものを返す。
+ *
+ * @remarks
+ * 複製の前に全件を検査するためにあります。1 件ずつ複製しながら気付いて止まると、出力ディレクトリを
+ * 消した後の半端な状態が残ります。存在判定は呼び出し側から渡し、判定順はここが持ちます。
+ */
+export function findMissingSources(
+  entries: readonly ResolvedCopyEntry[],
+  exists: (path: string) => boolean,
+): ResolvedCopyEntry[] {
+  return entries.filter((entry) => !exists(entry.src));
+}
+
+/** 見つからなかった src を、section 付きの一覧行へ整形する。 */
+export function formatMissingSources(entries: readonly ResolvedCopyEntry[]): string {
+  return entries.map((entry) => `  - [${entry.section}] ${entry.src}`).join("\n");
+}

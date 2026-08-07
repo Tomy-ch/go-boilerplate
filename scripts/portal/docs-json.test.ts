@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { autoTitle, buildDocsJson, guideIdOf, slugify, type DiscoveredDocs } from "./docs-json";
+import { autoTitle, buildDocsJson, guideIdOf, slugify, type DiscoveredDocs, isSectionDirectory, isMarkdownFile, sortSectionNames } from "./docs-json";
 
 const EMPTY: DiscoveredDocs = { directories: [], rootEnFiles: [], rootJaFiles: [] };
 
@@ -378,6 +378,65 @@ describe("buildDocsJson", () => {
       const { docs } = build({ adr: { src: "a.md" } });
 
       expect(docs.groups).toEqual([]);
+    });
+  });
+});
+
+describe("isSectionDirectory", () => {
+  describe("正常系", () => {
+    it("通常のディレクトリは section にする", () => {
+      expect(isSectionDirectory("get-started")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("ビューアー自身の生成先は section にしない", () => {
+      expect(isSectionDirectory("portal")).toBe(false);
+    });
+
+    it("翻訳ツリーは section にしない", () => {
+      expect(isSectionDirectory("ja")).toBe(false);
+    });
+  });
+});
+
+describe("isMarkdownFile", () => {
+  describe("正常系", () => {
+    it("Markdown を対象にする", () => {
+      expect(isMarkdownFile("index.md")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("Markdown 以外は対象にしない", () => {
+      expect(isMarkdownFile("index.html")).toBe(false);
+      expect(isMarkdownFile("notes.md.bak")).toBe(false);
+    });
+  });
+});
+
+describe("sortSectionNames", () => {
+  describe("正常系", () => {
+    it("読み取り順に依らず表示順へ整列する", () => {
+      expect(sortSectionNames(["design", "adr", "get-started"])).toEqual([
+        "adr",
+        "design",
+        "get-started",
+      ]);
+    });
+
+    it("渡された配列を書き換えない", () => {
+      const input = ["b", "a"];
+
+      sortSectionNames(input);
+
+      expect(input).toEqual(["b", "a"]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("空なら空を返す", () => {
+      expect(sortSectionNames([])).toEqual([]);
     });
   });
 });

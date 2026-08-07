@@ -4,8 +4,7 @@ import {
   assertUniqueDestinations,
   assertWithinOutputRoot,
   assertWithinRepositoryRoot,
-  resolveCopyEntries,
-} from "./portal-manifest";
+  resolveCopyEntries, findMissingSources, formatMissingSources } from "./portal-manifest";
 
 describe("resolveCopyEntries", () => {
   describe("正常系", () => {
@@ -174,6 +173,52 @@ describe("assertWithinRepositoryRoot", () => {
           resolve,
         ),
       ).toThrow("src がリポジトリの外を指しています");
+    });
+  });
+});
+
+const SOURCE_ENTRIES = [
+  { section: "guides", src: "docs/a.md", dst: "docs/portal/guides/a.md" },
+  { section: "guides", src: "docs/b.md", dst: "docs/portal/guides/b.md" },
+];
+
+describe("findMissingSources", () => {
+  describe("正常系", () => {
+    it("全て存在すれば空を返す", () => {
+      expect(findMissingSources(SOURCE_ENTRIES, () => true)).toEqual([]);
+    });
+
+    it("エントリが無ければ空を返す", () => {
+      expect(findMissingSources([], () => false)).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("存在しない src だけを返す", () => {
+      const missing = findMissingSources(SOURCE_ENTRIES, (p) => p !== "docs/b.md");
+
+      expect(missing).toHaveLength(1);
+      expect(missing[0].src).toBe("docs/b.md");
+    });
+
+    it("全て存在しなければ全件を返す", () => {
+      expect(findMissingSources(SOURCE_ENTRIES, () => false)).toHaveLength(2);
+    });
+  });
+});
+
+describe("formatMissingSources", () => {
+  describe("正常系", () => {
+    it("section を添えた一覧行にする", () => {
+      expect(formatMissingSources(SOURCE_ENTRIES)).toBe(
+        "  - [guides] docs/a.md\n  - [guides] docs/b.md",
+      );
+    });
+  });
+
+  describe("異常系", () => {
+    it("空なら空文字を返す", () => {
+      expect(formatMissingSources([])).toBe("");
     });
   });
 });

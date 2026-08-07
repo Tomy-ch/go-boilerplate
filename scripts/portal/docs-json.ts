@@ -429,3 +429,28 @@ function toDocSection(section: WorkingSection): DocSection {
     ...(section.subgroups ? { subgroups: section.subgroups } : {}),
   };
 }
+
+/** ビューアー自身と翻訳ツリーは section にしない。前者は生成物、後者は各 section の一部。 */
+const NON_SECTION_DIRECTORIES: ReadonlySet<string> = new Set(["portal", "ja"]);
+
+/** `docs/` 直下のディレクトリを section として扱うか。 */
+export function isSectionDirectory(name: string): boolean {
+  return !NON_SECTION_DIRECTORIES.has(name);
+}
+
+/** ビューアーへ載せる Markdown か。 */
+export function isMarkdownFile(fileName: string): boolean {
+  return fileName.endsWith(".md");
+}
+
+/**
+ * section 名を表示順へ整列する。
+ *
+ * @remarks
+ * `localeCompare` を使うのは、`readdir` の順がファイルシステム依存で、同じツリーでも
+ * 環境ごとにビューアーの並びが変わるためです。生成物の差分が環境で揺れると、
+ * 生成物の drift 検査が意味を失います。
+ */
+export function sortSectionNames(names: readonly string[]): string[] {
+  return [...names].sort((left, right) => left.localeCompare(right));
+}
