@@ -10,7 +10,12 @@ import path from "node:path";
 
 import { toAbsolutePath, updateFile } from "../lib/file-utils";
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
-import { isWithinRoot, stripSampleMarkers } from "./sample-api";
+import {
+  SETUP_VERIFIER_DIR,
+  isWithinRoot,
+  sharedModuleTargets,
+  stripSampleMarkers,
+} from "./sample-api";
 import { BUILD_STEPS, MARKER_FILES, SAMPLE_DOMAINS } from "./sample-manifest";
 
 // 削除確認スクリプト（verify-sample-removal.ts）が git status と突き合わせる「登録済み削除対象」の
@@ -129,6 +134,22 @@ function report({ deleted, missing }: DeletionResult, stripped: StrippedFile[], 
   }
 }
 
+/**
+ * 共有モジュール（setup/lib）を、使う側が全て消えたときだけ道連れにする。
+ *
+ * @remarks
+ * このツール自身のディレクトリは manifest の宣言に従って削除されるため、ここでは扱いません。
+ */
+function removeSharedModules(): void {
+  const setupDir = path.join(ROOT_DIR, "scripts/setup");
+  const verifierExists = fs.existsSync(path.join(setupDir, SETUP_VERIFIER_DIR));
+
+  for (const target of sharedModuleTargets(verifierExists)) {
+    fs.rmSync(path.join(setupDir, target), { force: true, recursive: true });
+    console.log(`🧹 初期化ツールは既に消えているため、setup/${target} も撤去しました。`);
+  }
+}
+
 function run({ dryRun }: SetupOptions): void {
   console.log("🧹 サンプルAPI（user / prefecture / product / order）の削除を開始します。");
   console.log(`   ルート: ${ROOT_DIR}`);
@@ -151,6 +172,7 @@ function run({ dryRun }: SetupOptions): void {
   }
 
   writeSnapshot();
+  removeSharedModules();
 
   console.log(
     `\n✅ 削除とマーカー除去が完了しました。\n   続けて再生成・整形・検証を行ってください: \`${buildHint}\`\n   （make setup-remove-sample-api 経由で実行した場合は自動で続行されます）`,
@@ -164,7 +186,7 @@ program
     "after",
     `
 動作:
-  1. manifest（scripts/setup/lib/sample-manifest.ts）の宣言パスを丸ごと削除
+  1. manifest（scripts/setup/remove-sample-api/sample-manifest.ts）の宣言パスを丸ごと削除
   2. 共有ファイル（DI 4 ファイル + openapi.yaml）の sample-api マーカー行を除去
 
 削除後は ${BUILD_STEPS.map((s) => `make ${s}`).join(" → ")} で再生成・整形・検証してください

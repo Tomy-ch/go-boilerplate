@@ -93,7 +93,19 @@ make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib
+
+# Verify the replacements landed, then remove the localization tooling.
+# Run this last: the scripts above are one-shot, and keeping them lets you re-run
+# any of them until this passes.
+make setup-verify
 ```
+
+`setup-verify` checks that every file `replace-module` claims to cover is free of the
+boilerplate name, and that LICENSE, CODEOWNERS, README and the OpenAPI spec carry the values you
+passed. Only once it passes does it delete `scripts/setup/replace-*` and itself — re-applying
+them to an already-localized repository is wrong, since `replace-codeowners` rewrites *every*
+rule's owner to a single value. `scripts/setup/lib` goes with whichever of the two one-shot
+tools (this one and the sample remover) runs last.
 
 ## Phase 6: Localization Verification
 

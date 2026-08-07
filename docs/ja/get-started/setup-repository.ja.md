@@ -93,7 +93,17 @@ make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib
+
+# 置換が当たったことを検証し、通ったら初期化ツールを撤去する。
+# 最後に実行する。上のスクリプトは一度きりのもので、ここが通るまでは何度でも当て直せる。
+make setup-verify
 ```
+
+`setup-verify` は、`replace-module` が対象と宣言した全ファイルにボイラープレート名が残っていないこと、
+および LICENSE・CODEOWNERS・README・OpenAPI が指定した値になっていることを確認する。通った場合にだけ
+`scripts/setup/replace-*` と自身を削除する。初期化済みのリポジトリへ当て直すのは誤りで、
+`replace-codeowners` は**全ルール**の所有者を単一の値へ書き換えてしまうため。`scripts/setup/lib` は、
+一度きりのツール 2 つ（これとサンプル削除）のうち後に走った方が道連れにする。
 
 ## Phase 6: ローカライゼーションの検証
 

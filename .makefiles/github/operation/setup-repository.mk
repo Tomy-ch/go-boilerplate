@@ -5,6 +5,7 @@
 .PHONY: setup-replace-repository-reference ## node_tool_runnerでリポジトリ参照の置換を実行
 .PHONY: setup-replace-license-copyright ## node_tool_runnerでLICENSEの著作権表示更新を実行
 .PHONY: setup-replace-codeowners ## node_tool_runnerでCODEOWNERSの所有者の一括置換を実行
+.PHONY: setup-verify ## 初期化の完了を検証し、通れば初期化ツール一式を撤去する
 .PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
@@ -98,6 +99,15 @@ setup-replace-codeowners:
 # サンプル削除で未使用になる直接依存が go.mod に残ると、後日 go.mod を触った無関係な PR で
 # tidy-check が落ちる。tidy-lib は import が確定する gen の後、整理後の状態を lint で検証して
 # 終えられるよう fix/lint の前に置く。各手順は && で連鎖し、途中の失敗が完了メッセージに隠れない。
+# 初期化（Phase 5 の replace-* 連鎖）の最終地点。置換の過不足を検証し、通ったときだけ
+# 初期化ツールを撤去する。撤去を各スクリプトの実行直後に置かないのは、5 本の連続実行の途中で
+# 引数を打ち間違えた利用者が、直すためのツールを既に失っている状態を作らないため。
+# 期待値は Phase 5 で export した環境変数をそのまま渡す（検証側が同じ値を突き合わせる）。
+setup-verify:
+	@docker compose run --rm \
+		-e MODULE -e REPOSITORY -e COPYRIGHT_HOLDER -e COPYRIGHT_YEAR -e CODE_OWNERS \
+		node_tool_runner $(TSX) scripts/setup/verify-setup
+
 setup-remove-sample-api:
 	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/remove-sample-api $(SETUP_DRY_RUN_FLAG)
 	@if [ -n "$(DRY_RUN)" ]; then \

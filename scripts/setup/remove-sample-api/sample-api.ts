@@ -129,3 +129,21 @@ export function isWithinRoot(absolutePath: string, rootDir: string, separator: s
 
   return absolutePath !== rootDir && absolutePath.startsWith(rootWithSeparator);
 }
+
+/** 初期化ツールの検証器。まだ残っていれば `setup/lib` を使い続けている。 */
+export const SETUP_VERIFIER_DIR = "verify-setup";
+
+/** `setup/` 配下の共有モジュール。使う側が全て消えたときだけ道連れにする。 */
+export const SETUP_SHARED_DIR = "lib";
+
+/**
+ * サンプル削除ツール自身の撤去に、共有モジュールを含めるか。
+ *
+ * @remarks
+ * `setup/lib` は初期化ツールとも共有です。サンプル削除は初期化と独立した任意手順なので、
+ * 初期化の検証器がまだ残っていれば `lib` も要ります。逆順のときは検証器側が同じ規則で
+ * `lib` を持っていくため、どちらの順序でも残骸が出ません。
+ */
+export function sharedModuleTargets(setupVerifierExists: boolean): string[] {
+  return setupVerifierExists ? [] : [SETUP_SHARED_DIR];
+}

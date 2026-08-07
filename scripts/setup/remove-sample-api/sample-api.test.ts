@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { stripSampleMarkers, isWithinRoot } from "./sample-api";
+import { stripSampleMarkers, isWithinRoot, SETUP_SHARED_DIR, sharedModuleTargets } from "./sample-api";
 
 describe("stripSampleMarkers", () => {
   describe("正常系", () => {
@@ -189,6 +189,18 @@ describe("isWithinRoot", () => {
 
     it("親へ抜けたパスを拒否する", () => {
       expect(isWithinRoot("/", "/repo", "/")).toBe(false);
+    });
+  });
+});
+
+describe("sharedModuleTargets", () => {
+  describe("正常系", () => {
+    it("初期化の検証器が残っていれば共有モジュールを消さない", () => {
+      expect(sharedModuleTargets(true)).toEqual([]);
+    });
+
+    it("初期化の検証器が既に消えていれば共有モジュールを道連れにする", () => {
+      expect(sharedModuleTargets(false)).toEqual([SETUP_SHARED_DIR]);
     });
   });
 });

@@ -1,0 +1,155 @@
+name: Setup Scripts Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The localization scripts (Phase 5 of docs/get-started/setup-repository.md) are the first
+  # thing a template user runs, and nothing else exercises them end to end. Unit tests cover
+  # the replacement rules; what breaks silently is the wiring around them — argument handling,
+  # which files get selected, and where the output lands. This job runs the documented sequence
+  # for real and then verifies the result, because that wiring only breaks when it runs: a
+  # directory move once shifted two other entry scripts a level away from their target files,
+  # and neither the type checker nor the unit suite noticed.
+  setup-scripts-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      MODULE: example-api
+      REPOSITORY: example-org/example-api
+      APP_NAME: example-api
+      OPENAPI_TITLE: Example API
+      COPILOT_TITLE: Example API
+      COPYRIGHT_HOLDER: Example Org
+      COPYRIGHT_YEAR: "2026"
+      CODE_OWNERS: "@example-org/tech-leads"
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install node & pnpm
+        run: mise install node npm:pnpm
+
+      # `scripts/pnpm-workspace.yaml` carries the supply-chain policy (cooldown, allowBuilds,
+      # trust policy) that the install must honour.
+      - name: Install script node deps
+        run: pnpm install --dir scripts --frozen-lockfile
+
+      # A preview that writes is worse than no preview: the user acts on output that does not
+      # match what a real run would do. The scripts are run against the checkout, so a leaked
+      # write shows up as a dirty tree.
+      - name: Dry run writes nothing
+        run: |
+          set -euo pipefail
+          pnpm --dir scripts run tsx scripts/setup/replace-module --dry-run go-boilerplate "$MODULE"
+          pnpm --dir scripts run tsx scripts/setup/replace-repository-reference --dry-run "$REPOSITORY"
+          pnpm --dir scripts run tsx scripts/setup/replace-app-metadata --dry-run \
+            --app-name "$APP_NAME" --openapi-title "$OPENAPI_TITLE" --copilot-title "$COPILOT_TITLE"
+          pnpm --dir scripts run tsx scripts/setup/replace-license-copyright --dry-run \
+            --holder "$COPYRIGHT_HOLDER" --year "$COPYRIGHT_YEAR"
+          pnpm --dir scripts run tsx scripts/setup/replace-codeowners --dry-run --owners "$CODE_OWNERS"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "FAIL: --dry-run modified the working tree"
+            git status --porcelain
+            exit 1
+          fi
+          echo "dry run: no writes"
+
+      - name: Localize the repository
+        run: |
+          set -euo pipefail
+          pnpm --dir scripts run tsx scripts/setup/replace-module go-boilerplate "$MODULE"
+          pnpm --dir scripts run tsx scripts/setup/replace-repository-reference "$REPOSITORY"
+          pnpm --dir scripts run tsx scripts/setup/replace-app-metadata \
+            --app-name "$APP_NAME" --openapi-title "$OPENAPI_TITLE" --copilot-title "$COPILOT_TITLE"
+          pnpm --dir scripts run tsx scripts/setup/replace-license-copyright \
+            --holder "$COPYRIGHT_HOLDER" --year "$COPYRIGHT_YEAR"
+          pnpm --dir scripts run tsx scripts/setup/replace-codeowners --owners "$CODE_OWNERS"
+
+      # Re-running must be a no-op. If it is not, a user who runs the documented sequence twice
+      # gets a doubly-replaced tree, and the scripts cannot be used to fix a typo.
+      - name: Second run changes nothing
+        run: |
+          set -euo pipefail
+          git status --porcelain > /tmp/after-first-run.txt
+          pnpm --dir scripts run tsx scripts/setup/replace-repository-reference "$REPOSITORY"
+          pnpm --dir scripts run tsx scripts/setup/replace-app-metadata \
+            --app-name "$APP_NAME" --openapi-title "$OPENAPI_TITLE" --copilot-title "$COPILOT_TITLE"
+          pnpm --dir scripts run tsx scripts/setup/replace-license-copyright \
+            --holder "$COPYRIGHT_HOLDER" --year "$COPYRIGHT_YEAR"
+          pnpm --dir scripts run tsx scripts/setup/replace-codeowners --owners "$CODE_OWNERS"
+          git status --porcelain > /tmp/after-second-run.txt
+          diff -u /tmp/after-first-run.txt /tmp/after-second-run.txt
+          echo "second run: no further changes"
+
+      # Runs the same verifier the documented flow uses, which also removes the setup tooling.
+      #
+      # It does not build. `replace-module` deliberately leaves generated files alone because
+      # they are regenerated right after (Phase 5 ends with `make gen-api` / `gen-sqlc`), so a
+      # build here fails by construction and would say nothing about the rename. What it checks
+      # instead is stronger for this moment: no file the replacer itself claims to cover still
+      # carries the boilerplate name — which also catches leftovers in comments and strings that
+      # a build never would.
+      - name: Verify localization and self-destruct
+        run: pnpm --dir scripts run tsx scripts/setup/verify-setup
+
+      # The localization tools are one-shot: re-applying them to an already-localized repository
+      # is wrong (replace-codeowners rewrites every rule's owner to one value). Leaving them
+      # behind is what the self-destruct exists to prevent, so a path left un-removed has to fail
+      # here. Directories rather than files: a module added later is covered without editing this.
+      - name: Verify setup tooling self-destructed
+        run: |
+          set -euo pipefail
+          for d in \
+            scripts/setup/replace-module \
+            scripts/setup/replace-app-metadata \
+            scripts/setup/replace-license-copyright \
+            scripts/setup/replace-repository-reference \
+            scripts/setup/replace-codeowners \
+            scripts/setup/verify-setup; do
+            if [ -e "$d" ]; then
+              echo "FAIL: $d was not removed"
+              exit 1
+            fi
+          done
+          echo "setup tooling self-destruct: OK"
+
+      # The sample remover still needs the shared modules, so they must survive here. The
+      # symmetric case (remover gone first) is covered by Sample Removal Check.
+      - name: Verify shared modules survive while the sample remover needs them
+        run: |
+          set -euo pipefail
+          for d in scripts/setup/lib scripts/setup/remove-sample-api; do
+            if [ ! -e "$d" ]; then
+              echo "FAIL: $d was removed while the sample remover still needs it"
+              exit 1
+            fi
+          done
+          echo "shared modules retained: OK"
