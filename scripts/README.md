@@ -16,7 +16,7 @@ scripts/
 ├── lib/                        # Shared across tools (pure, tested)
 │   ├── workflow.ts             # Read a workflow definition by column
 │   ├── lint-report.ts          # Finding type and the failure output format
-│   ├── one-to-one.ts           # The 1:1 test-mapping check, shared with the other packages
+│   ├── one-to-one.ts           # The 1:1 test-mapping check
 │   └── untested-modules.ts     # What coverage and the 1:1 gate both exclude, and why
 ├── semver/                     # Semantic versioning helper (patch/minor/major)
 ├── stamp-openapi-version/      # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
@@ -33,7 +33,7 @@ scripts/
 ├── pnpm-workspace.yaml         # pnpm install behaviour and the supply-chain policy (CODEOWNERS-reviewed)
 ├── tsconfig.json               # Type-check settings for the TypeScript scripts
 ├── vitest.config.mts           # Test settings for the TypeScript scripts
-├── one-to-one.gate.test.ts     # 1:1 test-mapping gate for this package
+├── one-to-one.gate.test.ts     # 1:1 test-mapping gate for every TypeScript package
 ├── genctxkey/                  # Context key code generator (Go)
 ├── actions-shellcheck/         # Check the `run:` scripts of composite actions with shellcheck (Go)
 ├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)

@@ -68,6 +68,16 @@ jobs:
       - name: Install the script tree for scripts/
         run: pnpm install --dir scripts --frozen-lockfile
 
+      # The 1:1 gate walks every TypeScript package from here, and it decides "is this export
+      # callable" from the type checker. A package whose dependencies are absent resolves to
+      # `any`, which has no call signatures — the gate would then require nothing and report a
+      # clean run. It fails loudly on an unresolved import instead, so the trees have to be here.
+      - name: Install the trees the 1:1 gate type-checks
+        run: |
+          set -euo pipefail
+          pnpm install --dir docs-viewer --frozen-lockfile
+          npm ci --prefix mock-auth-server --ignore-scripts
+
       - name: Typecheck
         run: make scripts-typecheck-ci
 

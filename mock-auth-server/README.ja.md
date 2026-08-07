@@ -140,12 +140,13 @@ import ではなく実プロセスを起動するため。カバレッジの対�
 
 ### 1:1 テスト対応
 
-`src/one-to-one.gate.test.ts` は、Go 側が `internal/architest` から受けているのと同じ 1:1 の規則を強制する。
+`scripts/one-to-one.gate.test.ts` は、Go 側が `internal/architest` から受けているのと同じ 1:1 の規則を強制する。
 呼べる export はそれぞれ `describe("<export 名>")` を 1 つ持ち、その直下に 正常系 / 異常系 のグループが
 並び、ケースはその中に置く。検査は両方向で、describe を持たない export と、どの export にも対応しない
 describe の双方を挙げる。テストの改名も、テストの無い export の追加も、黙って通ることはない。
-判定そのものは `scripts/lib/one-to-one.ts` が持ち、`scripts/` ・ `docs-viewer` と同一のものを共有する。
-このファイルが担うのはツリーの走査と型解決だけで、除外はカバレッジゲートと同じ 2 つ。
+ゲートの実体がここではなく `scripts/` に在るのは、「呼べる export か」を型検査器で決めるため
+`typescript` を要し、Node はそれを import 元のファイル位置から解決するから。自分の依存しか入れない
+パッケージでは満たせない。除外はカバレッジゲートと同じ 2 つ。
 
 呼べない export（定数・ルートオブジェクト）に対する describe は、要求はされないが許される。
 production のシンボルに対応しない契約テストは違反ではない。

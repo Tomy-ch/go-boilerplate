@@ -138,7 +138,7 @@ run under `NODE_ENV=production` and that it serves `/health` on a normal start.
 
 ### 1:1 test mapping
 
-`src/one-to-one.gate.test.ts` enforces the same 1:1 rule the Go side gets from
+`scripts/one-to-one.gate.test.ts` enforces the same 1:1 rule the Go side gets from
 `internal/architest`: every callable export owns one `describe("<export name>")`, and directly inside it sit
 the `正常系` / `異常系` groups that hold the cases. It checks both directions — an export with no `describe`
 and a `describe` matching no export — so neither renaming a test nor adding an untested export passes

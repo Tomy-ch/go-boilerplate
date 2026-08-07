@@ -16,7 +16,7 @@ scripts/
 ├── lib/                        # ツール間で共有する判定（純粋・テスト有り）
 │   ├── workflow.ts             # ワークフロー定義を桁で読む
 │   ├── lint-report.ts          # 違反の型と失敗出力の書式
-│   ├── one-to-one.ts           # 1:1 テスト対応の判定。他パッケージとも共有する
+│   ├── one-to-one.ts           # 1:1 テスト対応の判定
 │   └── untested-modules.ts     # カバレッジと 1:1 ゲートが共に外す対象とその理由
 ├── semver/                     # セマンティックバージョニングヘルパー（patch/minor/major）
 ├── stamp-openapi-version/      # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
@@ -33,7 +33,7 @@ scripts/
 ├── pnpm-workspace.yaml         # pnpm install の挙動と供給網ポリシー（CODEOWNERS レビュー対象）
 ├── tsconfig.json               # TypeScript スクリプトの型検査設定
 ├── vitest.config.mts           # TypeScript スクリプトのテスト設定
-├── one-to-one.gate.test.ts     # このパッケージの 1:1 テスト対応ゲート
+├── one-to-one.gate.test.ts     # TypeScript 全パッケージの 1:1 テスト対応ゲート
 ├── genctxkey/                  # コンテキストキーのコード生成（Go）
 ├── actions-shellcheck/         # composite action の `run:` を shellcheck で検査（Go）
 ├── pin-actions/                # GitHub Actions の `uses:` を commit SHA へ固定（Go）
