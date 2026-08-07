@@ -55,7 +55,7 @@ lockfile の解決対象となる Python ランタイムは引き続き `mise.to
 **mise のツール解決モデルの外にある Docker イメージバージョン**は `mise.toml` の `[env]` セクションに
 宣言する（例: `OTEL_LGTM_VERSION`）。これにより `[tools]` テーブルを汚染せず、同一ファイル内に収める。
 
-**宣言と lockfile のドリフトゲート:** `scripts/mise-cooldown` は `mise.toml` と併せて `python/*.in` を
+**宣言と lockfile のドリフトゲート:** `scripts/tool-cooldown` は `mise.toml` と併せて `python/*.in` を
 読み、宣言したバージョンが lockfile の固定と食い違っていれば失敗する。この検査が無いと、`.in` を上げて
 `.txt` を再生成し忘れたときに、実際には入らないバージョンに対して cooldown ゲートが通ってしまう。
 
@@ -129,4 +129,4 @@ uv 本来のプロジェクト lockfile もアーティファクトごとにハ�
 - CI ドリフトゲートワークフロー:
   [`.github/workflows/sync-versions-check.yaml`](../../../.github/workflows/sync-versions-check.yaml)。
 - 同期スクリプト: [`scripts/sync-versions/`](../../../scripts/sync-versions/)。
-- 宣言と lockfile のドリフトゲート: [`scripts/mise-cooldown/`](../../../scripts/mise-cooldown/)。
+- 宣言と lockfile のドリフトゲート: [`scripts/tool-cooldown/`](../../../scripts/tool-cooldown/)。

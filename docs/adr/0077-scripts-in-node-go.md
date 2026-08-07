@@ -72,7 +72,7 @@ support is needed, and for anything a gate invokes on the host without a Node to
 - `genctxkey/` — Echo context key code generator; driven by `//go:generate` directives.
 - `pin-actions/` / `pin-images/` — resolve and apply commit-SHA and digest pins; network
   I/O, lockfile management, supply-chain quarantine.
-- `npm-cooldown/` / `go-cooldown/` / `mise-cooldown/` — supply-chain cooldown gates.
+- `npm-cooldown/` / `go-cooldown/` / `tool-cooldown/` — supply-chain cooldown gates.
 - `migration-lint/` / `cover-gate/` / `load-band/` — gates and resolvers called from
   `.makefiles/**`, where the alternative was leaving the decision in a shell recipe.
 
