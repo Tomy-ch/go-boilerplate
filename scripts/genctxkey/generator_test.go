@@ -233,6 +233,13 @@ func Test_resolveImportAlias(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "uuid", got)
 		})
+
+		t.Run("型に修飾子がなくalias指定がある場合、照合せずaliasを返す", func(t *testing.T) {
+			t.Parallel()
+			got, err := resolveImportAlias("UUID", "github.com/google/uuid", "given")
+			require.NoError(t, err)
+			assert.Equal(t, "given", got)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
