@@ -44,9 +44,9 @@ GCP Cloud Run Job, GKE Kubernetes Job, Azure Container App Job, AKS Kubernetes J
 
 The deployment step runs only after the migration job completes successfully.
 
-Setup teams reviewing this ADR must implement the `Run migration (one-time job)` step in
-`.github/workflows/deploy-app.yaml` for their target cloud environment and ensure the
-application start step never invokes `migrate-up`.
+The `Run migration (one-time job)` step in `.github/workflows/deploy-app.yaml` must be
+implemented for the target cloud environment, and the application start step must never
+invoke `migrate-up`.
 
 ## Consequences
 
@@ -81,7 +81,7 @@ achieves the same result without the overhead (see [ADR-0092](0092-single-runtim
 ## Notes
 
 - `.github/workflows/deploy-app.yaml` `Run migration (one-time job)` step (lines 192-204)
-  is the authoritative placeholder that setup teams must implement.
+  is the authoritative placeholder to implement for the target environment.
 - The workflow comment "Must NOT be executed in container startup (entrypoint)" is the
   explicit guard against the rejected alternative.
 - Source: `.github/workflows/deploy-app.yaml`.
