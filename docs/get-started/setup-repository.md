@@ -345,3 +345,37 @@ filling it back in stay on the page.
     - Delete code used by the sample API and its test code under [internal/domain/](../../internal/domain/). Since directories under this path contain only sample domain code, you may delete entire directories.
 
 </details>
+
+## Phase 16: Remove the boilerplate-only conventions
+
+[boilerplate-only-conventions.md](boilerplate-only-conventions.md) collects the conventions that
+hold only while this repository is the upstream template — the in-place ADR amendment regime, the
+consolidation pass, the `setup-review` device. None of them apply to your project, and the general
+form of each rule already lives in the document that owns it.
+
+Do this even if you keep the sample APIs (Phase 15). The two removals are independent and fire on
+different triggers.
+
+1. Delete the file and its Japanese mirror:
+
+    ```sh
+    rm docs/get-started/boilerplate-only-conventions.md \
+       docs/ja/get-started/boilerplate-only-conventions.ja.md
+    ```
+
+2. Remove every line carrying the `boilerplate-only:line` marker. Each is a self-contained pointer
+   into the deleted file, so removing the line leaves the text around it intact:
+
+    ```sh
+    grep -rn "boilerplate-only:line" docs/
+    ```
+
+3. Decide your own ADR regime. What you inherit is [docs/adr/README.md](../adr/README.md) as
+   written: an ADR is an immutable record, and a decision that changes is replaced by a new
+   `accepted` ADR while the old one is marked `superseded`. If you want in-place amendment instead,
+   record that as a decision of your own, in your own ADR.
+
+> The marker namespace `boilerplate-only` is **provisional** and this removal is manual for now; the
+> strip script that will own it is being prepared separately. Never strip `boilerplate-only` and
+> `sample-api` markers in one pass — they fire at different moments, and a fork may do one without
+> the other.
