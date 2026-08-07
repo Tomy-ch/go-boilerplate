@@ -131,4 +131,3 @@ introduce. The reference adapter also stays reusable because the local broker is
 - Reference: [`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md)
   for the adapter, [`internal/infrastructure/publisher/README.md`](../../internal/infrastructure/publisher/README.md)
   for the discriminator that selects it.
-- **Upstream verification**: while this repository is distributed as a boilerplate, E3 is checked by running the sample removal and comparing the result — recorded in [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->

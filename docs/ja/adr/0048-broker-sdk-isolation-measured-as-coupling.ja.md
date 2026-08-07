@@ -75,4 +75,3 @@ Postgres ベースの pull-ack アダプターであれば、ベンダー SDK �
 - [ADR-0046](0046-out-of-scope-push-streaming-brokers.ja.md) は影響を受けない。push 型・ストリーミングログ型のブローカーは引き続き worker ポートの対象外である。outbox の publish 先として pull-ack ブローカーを選ぶことは、そもそも同 ADR の対象ではなかった。
 - E3 は [`docs/design/worker.md`](../design/worker.ja.md) に記載する。
 - 参照: アダプターは [`internal/infrastructure/queue/sqs/README.md`](../../../internal/infrastructure/queue/sqs/README.ja.md)、それを選ぶ判別子は [`internal/infrastructure/publisher/README.md`](../../../internal/infrastructure/publisher/README.ja.md)。
-- **上流での検証**: 本リポジトリがボイラープレートとして頒布されている間、E3 はサンプル削除を実行して結果を突き合わせる形で検査される。詳細は [`docs/get-started/boilerplate-only-conventions.md`](../../get-started/boilerplate-only-conventions.md) に記録する。 <!-- boilerplate-only:line -->
