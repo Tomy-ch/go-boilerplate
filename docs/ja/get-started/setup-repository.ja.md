@@ -354,10 +354,10 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
     grep -rn "boilerplate-only:line" docs/
     ```
 
-3. `boilerplate-only:begin` / `boilerplate-only:end` で挟まれた領域を、両マーカーごと除去します。領域が抱えているのは上流のテンプレートについてのみ真である記述——誰が保守しているのか、何を約束しているのか、fork には持ち続ける理由のないものをなぜ残しているのか——なので、切除後に残るのはその周囲に既に書かれている一般形です。
+3. 領域マーカーを解決します。領域が抱えているのは上流のテンプレートについてのみ真である記述——誰が保守しているのか、何を約束しているのか、fork には持ち続ける理由のないものをなぜ残しているのか——です。`begin` / `end` は領域を落とすだけで、残るのはその周囲に既に書かれている一般形です。`replace-begin` / `replace-with` / `replace-end` は、上流版を落として隣にコメントアウトで置かれた一般形と差し替えます。
 
     ```sh
-    grep -rn "boilerplate-only:begin" docs/
+    grep -rnE "boilerplate-only:(begin|replace-begin)" docs/
     ```
 
     除去が切り口の周囲の行に何をするかは、[scripts/setup/lib/markers.ts](../../../scripts/setup/lib/markers.ts) の `stripMarkers` が定めています（マーカー名を引数に取る汎用実装）。まだ `boilerplate-only` を渡す呼び出し元が無いためこの手順は手作業ですが、手で切る前に読んでください。取りこぼしやすいのは、この関数が行っている継ぎ目の繕いのほうです。

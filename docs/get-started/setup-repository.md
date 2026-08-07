@@ -370,13 +370,14 @@ different triggers.
     grep -rn "boilerplate-only:line" docs/
     ```
 
-3. Remove every region delimited by `boilerplate-only:begin` / `boilerplate-only:end`, both markers
-   included. A region holds a statement that is true only of the upstream template — who maintains
-   it, what it promises, why it keeps something a fork has no reason to keep — so what is left after
-   the cut is the general form, already written around it:
+3. Resolve every region marker. A region holds a statement that is true only of the upstream
+   template — who maintains it, what it promises, why it keeps something a fork has no reason to
+   keep. `begin` / `end` drops the region outright, leaving the general form already written around
+   it; `replace-begin` / `replace-with` / `replace-end` swaps the upstream text for the general form
+   parked beside it as commented-out lines:
 
     ```sh
-    grep -rn "boilerplate-only:begin" docs/
+    grep -rnE "boilerplate-only:(begin|replace-begin)" docs/
     ```
 
    What a removal does to the lines around the cut is defined by `stripMarkers` in
