@@ -194,12 +194,15 @@ cross-cutting structure rules (`t.Parallel()`, subtest groups, assertions) still
 document — only the viewpoints below are local. They hold for the Go tools and the TypeScript ones
 alike: the runner differs (`make test-scripts` vs. `make scripts-test`), the viewpoints do not.
 
-- **Test the decision, not the shell around it.** Each tool splits into a `main` that only turns an
-  error into an exit code, a `run` that parses flags and dispatches, and the pure functions that
-  decide. `run` takes its impure dependencies as arguments — the working directory, an HTTP client,
-  the current time, a coverage total, a command runner — so the dispatch itself is reachable from a
-  test. `main` is the one symbol deliberately left uncovered, which is also why no branch may live
-  in it.
+- **Test the decision, not the shell around it.** Each tool splits into an entry that only reads
+  files, prints, and sets an exit code, and the decision modules beside it. In Go that entry is
+  `main` plus a `run` that takes its impure dependencies as arguments — the working directory, an
+  HTTP client, the current time, a coverage total, a command runner — so the dispatch itself is
+  reachable from a test. In TypeScript it is `index.ts`, which holds no branch at all: what it may
+  not contain, and why, is declared in [`lib/untested-modules.ts`](lib/untested-modules.ts). A
+  module named there is claimed to hold no decision, so the claim has to stay true — when one of
+  them turns out to own a rule (an ordering, a dry-run equivalence, a safety guard), it leaves the
+  declaration rather than keeping the exemption.
 - **Pin the degenerate input, not just the violation.** Most of these tools are gates, and a gate
   fails towards *inspecting nothing and reporting a clean run*. A malformed glob pattern, an
   unreadable target file, a lockfile line that does not parse, and an empty scan therefore each get
