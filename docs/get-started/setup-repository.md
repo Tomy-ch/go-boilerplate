@@ -64,6 +64,7 @@ make tools
 make db-init
 ```
 
+<!-- boilerplate:begin -->
 ## Phase 5: Execute Localization Script
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
@@ -131,6 +132,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
+<!-- boilerplate:end -->
 ## Phase 8: Rewrite env Files
 
 Rewrite the files in the [env/](../../env/) directory according to your project.
@@ -213,7 +215,23 @@ Create authorization functionality by implementing the usecase [Authorizer](../.
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
-## Phase 12: Review the template's deliberate exclusions (ADRs)
+## Phase 12: Remove the boilerplate identity
+
+This repository describes itself as a boilerplate in a few places — two passages in the READMEs
+and the localization phases of this guide. They are template scaffolding, not your project's
+documentation.
+
+```sh
+DRY_RUN=1 make setup-remove-boilerplate-identity
+make setup-remove-boilerplate-identity
+```
+
+It strips the marked passages, drops its own make target from the registry, and then removes
+itself. What it does **not** touch: the repository / module name (already replaced in Phase 5),
+and the parts of this guide you keep reading — the clamped-config review and the exclusion ADRs
+below, which several package READMEs link to.
+
+## Phase 13: Review the template's deliberate exclusions (ADRs)
 
 Beyond authentication / authorization (Phase 11) and deployment (Phase 10), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
 
@@ -230,7 +248,7 @@ For your project, review each and decide:
 
 The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
-## Phase 13: Decide the dependency-license policy
+## Phase 14: Decide the dependency-license policy
 
 The dependency-license scan (`make trivy-license`, and the `trivy-license` job in [.github/workflows/trivy-fs.yaml](../../.github/workflows/trivy-fs.yaml)) is **report-only, permanently**. It enumerates every dependency's license into the job summary and a PR comment, and never fails the build.
 
@@ -243,7 +261,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
 4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0084](../adr/0084-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
-## Phase 14: Remove Sample APIs
+## Phase 15: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 

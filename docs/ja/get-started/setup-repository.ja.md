@@ -64,6 +64,7 @@ make tools
 make db-init
 ```
 
+<!-- boilerplate:begin -->
 ## Phase 5: ローカライゼーションスクリプトの実行
 
 下記コマンドで、Goモジュール名を一括置換するスクリプトを実行してください。
@@ -132,6 +133,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
+<!-- boilerplate:end -->
 ## Phase 8: envファイルの書き換え
 
 [env/](../../../env/) ディレクトリ内のファイルをプロジェクトに合わせて書き換えてください。
@@ -206,7 +208,22 @@ usecase の [Authorizer](../../../internal/usecase/boundary/authz/authorizer.go)
 
 `Authorize(ctx, *auth.Authn, Action, *Resource)` のシグネチャは既に完全な `Authn`（subject / scopes / claims）と対象 `Resource`（任意の `OwnerID` 付き）を運ぶため、RBAC と所有者（オブジェクトレベル）モデルの双方を呼び出し箇所を変えずに表現できます。
 
-## Phase 12: テンプレートの意図的な除外（ADR）のレビュー
+## Phase 12: ボイラープレートの顔を消す
+
+このリポジトリは数箇所で自分をボイラープレートと呼んでいる（README の 2 節と、本ガイドの
+ローカライゼーション手順）。いずれもテンプレートの足場であって、あなたのプロジェクトの
+ドキュメントではない。
+
+```sh
+DRY_RUN=1 make setup-remove-boilerplate-identity
+make setup-remove-boilerplate-identity
+```
+
+マークされた記述を落とし、自身の make ターゲットの登録も外したうえで、ツール自身を撤去する。
+**触らないもの**: リポジトリ名・モジュール名（Phase 5 で置換済み）と、運用中も読み返す部分
+——後述の clamp 設定レビューと除外 ADR。これらは複数のパッケージ README から参照されている。
+
+## Phase 13: テンプレートの意図的な除外（ADR）のレビュー
 
 認証・認可（Phase 11）やデプロイ（Phase 10）以外にも、このテンプレートはいくつかの**意図的な非選択**をしています。例：アプリ内レート制限器を持たない / 汎用 Cache 抽象を持たない / scheduled job の並走制御はスケジューラに委譲 / push・streaming ブローカーは worker の対象外。
 
@@ -223,7 +240,7 @@ grep -rl "setup-review" docs/adr/
 
 不変（元 ADR は編集せず supersede する新 ADR を追加）モデルは、**運用開始後**に決定を見直すときに適用します。セットアップ時の一度きりの再ベースライン化には適用しません。
 
-## Phase 13: 依存ライセンス方針の決定
+## Phase 14: 依存ライセンス方針の決定
 
 依存ライセンススキャン（`make trivy-license` と [.github/workflows/trivy-fs.yaml](../../../.github/workflows/trivy-fs.yaml) の `trivy-license` ジョブ）は**恒久的に報告専用**です。全依存のライセンスをジョブサマリと PR コメントへ列挙するだけで、ビルドを落とすことはありません。
 
@@ -236,7 +253,7 @@ grep -rl "setup-review" docs/adr/
 3. [.makefiles/security/trivy.mk](../../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../../.trivyignore.yaml) へ記録する。
 4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0084](../../../docs/adr/0084-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
 
-## Phase 14: サンプルAPIの削除
+## Phase 15: サンプルAPIの削除
 
 このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
 

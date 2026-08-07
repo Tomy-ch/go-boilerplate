@@ -8,6 +8,9 @@
 .PHONY: setup-replace-codeowners ## node_tool_runnerでCODEOWNERSの所有者の一括置換を実行
 .PHONY: setup-verify ## 初期化の完了を検証し、通れば初期化ツール一式を撤去する
 # setup-localize:end
+# boilerplate:begin
+.PHONY: setup-remove-boilerplate-identity ## テンプレート自身を語る記述を落としボイラープレートの顔を消す
+# boilerplate:end
 .PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
@@ -103,6 +106,14 @@ setup-verify:
 		node_tool_runner $(TSX) scripts/setup/verify-setup
 
 # setup-localize:end
+# boilerplate:begin
+
+# テンプレート自身を語る散文（README の 2 節・設定ガイドのインスタンス化手順）を落とす。
+# 一度きりの操作なのでツール自身も撤去し、このターゲットの宣言も同じマーカーで一緒に消える。
+setup-remove-boilerplate-identity:
+	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/remove-boilerplate-identity $(SETUP_DRY_RUN_FLAG)
+
+# boilerplate:end
 # sample-api:begin
 
 # サンプルAPIの削除はコンテナ内（node_tool_runner）で行い、削除後の再生成・整形・検証・DB 再構築は

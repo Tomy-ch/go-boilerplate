@@ -86,6 +86,13 @@ jobs:
       - name: Format after removal (make fix)
         run: make fix
 
+      # Stripping marker blocks edits Markdown structurally (READMEs, docs, the target
+      # registry), and a block that swallows one line too many leaves a broken table, an
+      # orphaned heading or an unclosed fence. `make fix` only formats Go, and the repo-wide
+      # md-lint job only ever sees the state with the sample still in it.
+      - name: Verify the stripped Markdown is still valid
+        run: make md-markdownlint-ci
+
       - name: Migrate & seed core-only schema
         run: |
           go run ./cmd/ migrate-up --database "${DB}"

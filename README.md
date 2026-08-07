@@ -222,6 +222,7 @@ release branches, and all changes go through Pull Requests. Rules: [docs/rules.m
 
 ## Design Intent
 
+<!-- boilerplate:begin -->
 ### Why it exists
 
 Backend projects tend to re-litigate architecture, library choice, directory layout and
@@ -229,6 +230,7 @@ workflow every time. This boilerplate provides a **baseline that reduces initial
 so teams start safely and quickly. Its value is not any single library but **the integration of
 widely used OSS into a coherent, replaceable architecture**.
 
+<!-- boilerplate:end -->
 ### AI-assisted development
 
 Constraints (enforced layering, generated-code separation, release-based branching,
@@ -273,8 +275,10 @@ of strong framework lock-in. The maintainer may provide dependency updates, secu
 architectural improvements, but issue-response deadlines, guaranteed bug fixes and long-term
 maintenance commitments are **not guaranteed**.
 
+<!-- boilerplate:begin -->
 Planned future releases: Frontend / Infrastructure / Observability boilerplates.
 
+<!-- boilerplate:end -->
 ## License
 
 This project's own source code is released under the **MIT License** — see [LICENSE](LICENSE).

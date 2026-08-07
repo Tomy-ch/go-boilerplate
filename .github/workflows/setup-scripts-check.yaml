@@ -163,6 +163,54 @@ jobs:
           pnpm --dir scripts run --silent tsx scripts/make-help | grep -q 'setup-remove-sample-api'
           echo "sample removal target retained: OK"
 
+      # The identity removal is the other half of instantiation: it strips the prose that calls
+      # this repository a boilerplate. It runs after the localization because the repo-name
+      # mentions are the replacers' job, and only the prose is left for this one.
+      - name: Dry run of the identity removal writes nothing
+        run: |
+          set -euo pipefail
+          before="$(git status --porcelain)"
+          pnpm --dir scripts run tsx scripts/setup/remove-boilerplate-identity --dry-run
+          if [ "$(git status --porcelain)" != "$before" ]; then
+            echo "FAIL: --dry-run modified the working tree"
+            exit 1
+          fi
+          echo "identity removal dry run: no writes"
+
+      - name: Remove the boilerplate identity
+        run: pnpm --dir scripts run tsx scripts/setup/remove-boilerplate-identity
+
+      # Stripping marker blocks edits Markdown structurally, and a block that swallows one line
+      # too many leaves a broken table, an orphaned heading or an unclosed fence. Nothing else
+      # lints the post-removal state: the repo-wide md-lint job only ever sees the template.
+      - name: Verify the stripped Markdown is still valid
+        run: make md-markdownlint-ci
+
+      - name: Verify no boilerplate prose survived
+        run: |
+          set -euo pipefail
+          remaining="$(grep -ric 'boilerplate' README.md README.ja.md | grep -v ':0$' || true)"
+          if [ -n "$remaining" ]; then
+            echo "FAIL: the READMEs still call this a boilerplate"
+            echo "$remaining"
+            exit 1
+          fi
+          echo "boilerplate prose removed: OK"
+
+      - name: Verify the identity removal tool and its target went together
+        run: |
+          set -euo pipefail
+          if [ -e scripts/setup/remove-boilerplate-identity ]; then
+            echo "FAIL: the tool did not remove itself"
+            exit 1
+          fi
+          if pnpm --dir scripts run --silent tsx scripts/make-help \
+            | grep -q 'setup-remove-boilerplate-identity'; then
+            echo "FAIL: the make target outlived the tool"
+            exit 1
+          fi
+          echo "identity removal self-destruct: OK"
+
       # The sample remover still needs the shared modules, so they must survive here. The
       # symmetric case (remover gone first) is covered by Sample Removal Check.
       - name: Verify shared modules survive while the sample remover needs them
