@@ -1,0 +1,40 @@
+/*
+ * ビューアーの stylesheet。移植元ではアプリ本体の globals.css を取り込んでいたが、このリポジトリ
+ * にはアプリ本体が無いため、トークンと foundation をここで直接束ねる。
+ */
+
+@import "tailwindcss";
+@import "./tokens/tokens.css";
+@import "./components/design-system/foundation/scrollbar/scrollbar.css";
+@import "./components/design-system/foundation/typeset/typeset.css";
+@import "./components/design-system/foundation/shimmer/shimmer.css";
+@import "./components/design-system/foundation/print/print.css";
+@import "./components/design-system/foundation/scroll-fade/scroll-fade.css";
+
+/* Tailwind の class 検出はこの CSS の位置から辿る。 */
+@source "./";
+
+/*
+ * dark: を semantic token と同じ 2 経路で発火させる。既定は OS の設定で、
+ * `data-theme` を置いた場合はそちらを優先する。tokens.css の :root と条件を揃えないと、
+ * 面の色だけが切り替わり dark: 付きの class が追従しない状態になる。
+ */
+@custom-variant dark {
+  @media screen and (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+
+  @media screen {
+    &:where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
+      @slot;
+    }
+  }
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}

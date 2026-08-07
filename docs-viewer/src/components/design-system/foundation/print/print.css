@@ -1,0 +1,81 @@
+/*
+ * 紙とその代替（PDF 保存）へ出したときの体裁。
+ *
+ * ADR 0051 §4 が拡張点（`print:` variant / `@media print`）だけを定め、最小実装の同梱は実装
+ * フェーズの判断としていた。ここがその実装で、印刷そのものに属する体裁だけを持つ。
+ *
+ * 何を出すかは持たない。画面の構造・業務内容・PDF の生成はいずれもこの外側にある。PDF を
+ * サーバで組む場合は backend の責務であり（ADR 0070）、ここは印刷可能な HTML と CSS を出す
+ * ところまでを担う。
+ */
+
+@media print {
+  /*
+   * 余白は browser 既定に任せず、綴じ代を見込んだ値を置く。既定は browser ごとに違い、
+   * 同じ画面が環境によって別の紙面になる。
+   */
+  @page {
+    margin: 16mm;
+  }
+
+  /*
+   * 見出しは続く本文と同じ紙面に残す。見出しだけが前の紙の末尾に残ると、次の紙を見るまで
+   * 何の話か分からない。
+   */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    break-after: avoid;
+  }
+
+  /* 段落が 1 行だけ次の紙へこぼれるのを避ける。 */
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* 表が紙をまたぐとき、見出し行を各紙面の先頭へ繰り返す。 */
+  thead {
+    display: table-header-group;
+  }
+
+  /* 行と図は途中で切らない。切れた行は左右の対応が読めなくなる。 */
+  tr,
+  img,
+  figure {
+    break-inside: avoid;
+  }
+}
+
+/*
+ * 紙に出す意味が無い要素を落とす。
+ *
+ * navigation・操作・overlay の trigger は、紙の上では押せないため場所だけを占める。ただし
+ * 「何が操作で何が内容か」は画面ごとの判断なので、tag では決めずに呼び出し元が付ける。
+ */
+@utility print-hidden {
+  @media print {
+    /* biome-ignore lint/complexity/noImportantStyles: display を持つ utility と同じ詳細度で当たるため、印刷時に確実へ落とすには優先度が要る */
+    display: none !important;
+  }
+}
+
+/*
+ * 画面には出さず、紙にだけ出す。
+ *
+ * 画面では link や操作で辿れていた情報（宛先の URL、出力日時、ページの出典）は、紙では辿れない。
+ * その補いをここへ置く。
+ */
+@utility print-only {
+  /* biome-ignore lint/complexity/noImportantStyles: display を持つ utility と同じ詳細度で当たるため、画面から確実へ落とすには優先度が要る */
+  display: none !important;
+
+  @media print {
+    /* biome-ignore lint/complexity/noImportantStyles: 上の宣言を打ち消すため、同じ優先度が要る */
+    display: revert !important;
+  }
+}

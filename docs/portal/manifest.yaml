@@ -1,5 +1,5 @@
 # --- portal viewer の構造制御 (manifest コピー処理は無視) ---
-# gen-docs-json.mjs が読み取り、ビューアー上の見出し階層 (groups → sections → cards) を組み立てる。
+# scripts/portal/gen-docs-json.ts が読み取り、ビューアー上の見出し階層 (groups → sections → cards) を組み立てる。
 # 上から順に表示される。auto-discovered な section id (architecture / project / maintenance /
 # deployment / coverage / db-schema / godoc / openapi) も groups の section リストに含めて配置を決める。
 meta:
@@ -19,7 +19,7 @@ meta:
     - title: Cross-Cutting
       sections: [cross-cutting, integration]
     - title: Build / Operations
-      sections: [docker, database, scripts, agent-config, ci, maintenance, deployment]
+      sections: [docker, mock-auth-server, database, scripts, agent-config, ci, maintenance, deployment]
     - title: API Contracts
       sections: [external]
 
@@ -561,10 +561,6 @@ docker:
     dst: docs/portal/guides/docker-tools.md
   - src: docker/database/sql/README.md
     dst: docs/portal/guides/docker-database-sql.md
-  - src: docker/mock-auth-server/README.md
-    dst: docs/portal/guides/docker-mock-auth-server.md
-  - src: docker/mock-auth-server/fixtures/README.md
-    dst: docs/portal/guides/docker-mock-auth-server-fixtures.md
   # Japanese
   - src: docker/README.ja.md
     dst: docs/portal/guides/ja/docker.ja.md
@@ -574,10 +570,18 @@ docker:
     dst: docs/portal/guides/ja/docker-tools.ja.md
   - src: docker/database/sql/README.ja.md
     dst: docs/portal/guides/ja/docker-database-sql.ja.md
-  - src: docker/mock-auth-server/README.ja.md
-    dst: docs/portal/guides/ja/docker-mock-auth-server.ja.md
-  - src: docker/mock-auth-server/fixtures/README.ja.md
-    dst: docs/portal/guides/ja/docker-mock-auth-server-fixtures.ja.md
+
+mock-auth-server:
+  # English
+  - src: mock-auth-server/README.md
+    dst: docs/portal/guides/mock-auth-server.md
+  - src: mock-auth-server/fixtures/README.md
+    dst: docs/portal/guides/mock-auth-server-fixtures.md
+  # Japanese
+  - src: mock-auth-server/README.ja.md
+    dst: docs/portal/guides/ja/mock-auth-server.ja.md
+  - src: mock-auth-server/fixtures/README.ja.md
+    dst: docs/portal/guides/ja/mock-auth-server-fixtures.ja.md
 
 scripts:
   # English
