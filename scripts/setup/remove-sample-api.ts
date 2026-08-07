@@ -10,10 +10,8 @@ import path from "node:path";
 
 import { toAbsolutePath, updateFile } from "./lib/file-utils";
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "./lib/runtime";
-import { stripSampleMarkers } from "./lib/sample-api";
+import { isWithinRoot, stripSampleMarkers } from "./lib/sample-api";
 import { BUILD_STEPS, MARKER_FILES, SAMPLE_DOMAINS } from "./lib/sample-manifest";
-
-const ROOT_WITH_SEP = ROOT_DIR.endsWith(path.sep) ? ROOT_DIR : ROOT_DIR + path.sep;
 
 // 削除確認スクリプト（verify-sample-removal.ts）が git status と突き合わせる「登録済み削除対象」の
 // スナップショット出力先。manifest（sample-manifest.ts）自身が削除対象で削除後は読めないため、
@@ -41,10 +39,9 @@ function writeSnapshot(): void {
   fs.writeFileSync(SNAPSHOT_PATH, `${JSON.stringify({ registeredPaths }, null, 2)}\n`);
 }
 
-// manifest の追記ミス（`..`・空文字・絶対パス）で ROOT_DIR 外や ROOT_DIR 自体を
-// rmSync しないための安全策。dry-run でも検証されるよう削除前に必ず通す。
+// 判定は lib/sample-api.ts が持つ。ここは違反を例外へ変えるだけ。
 function assertWithinRoot(absolutePath: string, relativePath: string): void {
-  if (absolutePath === ROOT_DIR || !absolutePath.startsWith(ROOT_WITH_SEP)) {
+  if (!isWithinRoot(absolutePath, ROOT_DIR, path.sep)) {
     throw new Error(
       `削除対象が ROOT_DIR の外（または ROOT_DIR 自体）を指しています: "${relativePath}"`,
     );

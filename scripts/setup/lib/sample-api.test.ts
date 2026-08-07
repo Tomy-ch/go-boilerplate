@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { stripSampleMarkers } from "./sample-api";
+import { stripSampleMarkers, isWithinRoot } from "./sample-api";
 
 describe("stripSampleMarkers", () => {
   describe("正常系", () => {
@@ -155,6 +155,40 @@ describe("stripSampleMarkers", () => {
       ].join("\n");
 
       expect(() => stripSampleMarkers(content)).toThrow("//= または #= で始めてください");
+    });
+  });
+});
+
+describe("isWithinRoot", () => {
+  describe("正常系", () => {
+    it("ROOT_DIR 配下のパスを内側と判定する", () => {
+      expect(isWithinRoot("/repo/internal/user", "/repo", "/")).toBe(true);
+    });
+
+    it("ROOT_DIR が区切り文字で終わっていても同じ判定になる", () => {
+      expect(isWithinRoot("/repo/internal", "/repo/", "/")).toBe(true);
+    });
+
+    it("直下のファイルも内側と判定する", () => {
+      expect(isWithinRoot("/repo/a.md", "/repo", "/")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("ROOT_DIR 自体は削除対象として認めない", () => {
+      expect(isWithinRoot("/repo", "/repo", "/")).toBe(false);
+    });
+
+    it("接頭辞が一致するだけの別ディレクトリを内側と誤判定しない", () => {
+      expect(isWithinRoot("/repo-backup/internal", "/repo", "/")).toBe(false);
+    });
+
+    it("ROOT_DIR の外を指すパスを拒否する", () => {
+      expect(isWithinRoot("/etc/passwd", "/repo", "/")).toBe(false);
+    });
+
+    it("親へ抜けたパスを拒否する", () => {
+      expect(isWithinRoot("/", "/repo", "/")).toBe(false);
     });
   });
 });

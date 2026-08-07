@@ -114,3 +114,18 @@ export function stripSampleMarkers(content: string): StripResult {
 
   return { content: out.join("\n"), removed };
 }
+
+/**
+ * 削除対象が ROOT_DIR の内側に収まっているかを判定する。
+ *
+ * @remarks
+ * manifest への追記ミス（`..` を含むパス・空文字・絶対パス）で ROOT_DIR の外や ROOT_DIR 自体を
+ * 消してしまわないための安全策です。dry-run でも必ず通し、削除の前に検証します。
+ * 区切り文字を足してから前方一致を見るのは、`/repo` に対する `/repo-backup` のような
+ * 「接頭辞は一致するが別のディレクトリ」を内側と誤判定しないためです。
+ */
+export function isWithinRoot(absolutePath: string, rootDir: string, separator: string): boolean {
+  const rootWithSeparator = rootDir.endsWith(separator) ? rootDir : rootDir + separator;
+
+  return absolutePath !== rootDir && absolutePath.startsWith(rootWithSeparator);
+}

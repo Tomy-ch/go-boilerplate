@@ -25,10 +25,8 @@ export const ENTRYPOINT_PATTERNS = ["*/index.ts", "portal/gen-*.ts", "setup/*.ts
  * 判定を持たないモジュール。
  *
  * - `setup/lib/runtime.ts` — `ROOT_DIR` の解決と commander の生成だけ。
- * - `setup/lib/file-utils.ts` — `fs` の読み書きだけ。対象ファイルの選別も置換規則も
- *   `setup/lib/` の純粋モジュール側にある。
  */
-export const NON_DECIDING_MODULES = ["setup/lib/runtime.ts", "setup/lib/file-utils.ts"] as const;
+export const NON_DECIDING_MODULES = ["setup/lib/runtime.ts"] as const;
 
 /** カバレッジ母数と 1:1 ゲートの双方が外す対象（`scripts/` からの相対）。 */
 export const EXCLUDED_FROM_CHECKS = [...ENTRYPOINT_PATTERNS, ...NON_DECIDING_MODULES] as const;
