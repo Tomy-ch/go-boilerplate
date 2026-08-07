@@ -55,7 +55,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install node & pnpm
-        run: mise install node npm:pnpm
+        run: mise install node npm:pnpm npm:markdownlint-cli2
 
       # `scripts/pnpm-workspace.yaml` carries the supply-chain policy (cooldown, allowBuilds,
       # trust policy) that the install must honour.
