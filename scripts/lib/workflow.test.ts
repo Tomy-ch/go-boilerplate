@@ -1,10 +1,39 @@
 import { describe, expect, it } from "vitest";
 
-import { splitJobs, splitSteps, usesActionPattern } from "./workflow";
+import { selectWorkflowFiles, splitJobs, splitSteps, usesActionPattern } from "./workflow";
 
 function workflow(...lines: string[]): string {
   return lines.join("\n");
 }
+
+describe("selectWorkflowFiles", () => {
+  describe("正常系", () => {
+    it("yaml と yml の双方を選ぶ", () => {
+      expect(selectWorkflowFiles(["a.yaml", "b.yml"], ".github/workflows")).toEqual([
+        ".github/workflows/a.yaml",
+        ".github/workflows/b.yml",
+      ]);
+    });
+
+    it("読み取り順に依らず名前順へ整列する", () => {
+      expect(selectWorkflowFiles(["b.yaml", "a.yaml"], "d")).toEqual(["d/a.yaml", "d/b.yaml"]);
+    });
+
+    it("渡されたディレクトリを前置したパスを返す", () => {
+      expect(selectWorkflowFiles(["a.yaml"], "some/dir")).toEqual(["some/dir/a.yaml"]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("ワークフローでない拡張子は選ばない", () => {
+      expect(selectWorkflowFiles(["README.md", "a.yaml.bak", "notes.txt"], "d")).toEqual([]);
+    });
+
+    it("空のディレクトリは空を返す", () => {
+      expect(selectWorkflowFiles([], "d")).toEqual([]);
+    });
+  });
+});
 
 describe("splitJobs", () => {
   describe("正常系", () => {

@@ -37,6 +37,21 @@ const JOB_HEADER = /^ {2}(?:"([A-Za-z0-9_-]+)"|'([A-Za-z0-9_-]+)'|([A-Za-z0-9_-]
 const STEPS_KEY = /^ {4}steps:\s*(#.*)?$/;
 const STEP_ITEM = /^ {6}- /;
 
+/**
+ * ディレクトリの読み取り結果から、検査対象のワークフローを選び出してパスへ組み立てる。
+ *
+ * @remarks
+ * 拡張子は `.yaml` / `.yml` の両方を採ります。GitHub がどちらも読むため、片方だけを見ると
+ * 拡張子を替えただけのワークフローが検査から静かに外れます。並びを固定するのは、違反の出力順が
+ * 実行ごとに揺れると CI の失敗差分が読めなくなるためです。
+ */
+export function selectWorkflowFiles(names: readonly string[], dir: string): string[] {
+  return names
+    .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
+    .sort()
+    .map((name) => `${dir}/${name}`);
+}
+
 /** `uses:` にこのローカルアクションを指定している行へ当たる正規表現を組み立てる。 */
 export function usesActionPattern(actionPath: string, anchored: boolean): RegExp {
   const escaped = actionPath.replace(/[.\/]/g, "\\$&");

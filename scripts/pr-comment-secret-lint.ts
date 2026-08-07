@@ -14,42 +14,24 @@
 // 読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えないので、この検査は通る。
 //
 // 判断は含めず、ワークフロー定義から機械的に導けるものだけを見る。1 件でも違反があれば非 0 で終了する。
+//
+// この入口はファイル入出力と終了コードだけを担う。走査と判定は lib/pr-comment-secret.ts にある。
 
 import fs from "node:fs";
 import path from "node:path";
 
-import {
-  COMMENT_ACTION,
-  describeSecret,
-  secretReferences,
-  usesCommentAction,
-} from "./lib/pr-comment-secret";
-import { splitJobs } from "./lib/workflow";
+import { type Finding, formatFindings } from "./lib/lint-report";
+import { scanWorkflow } from "./lib/pr-comment-secret";
+import { selectWorkflowFiles } from "./lib/workflow";
 
 const REPO_ROOT = process.cwd();
 const WORKFLOWS_DIR = ".github/workflows";
-
-type Finding = {
-  file: string;
-  line: number;
-  message: string;
-};
-
-const findings: Finding[] = [];
-
-function report(file: string, line: number, message: string): void {
-  findings.push({ file, line, message });
-}
 
 function listWorkflowFiles(): string[] {
   const dir = path.join(REPO_ROOT, WORKFLOWS_DIR);
   if (!fs.existsSync(dir)) return [];
 
-  return fs
-    .readdirSync(dir)
-    .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
-    .sort()
-    .map((name) => path.join(WORKFLOWS_DIR, name));
+  return selectWorkflowFiles(fs.readdirSync(dir), WORKFLOWS_DIR);
 }
 
 const workflowFiles = listWorkflowFiles();
@@ -62,57 +44,25 @@ if (workflowFiles.length === 0) {
   process.exit(2);
 }
 
+const findings: Finding[] = [];
 let checkedJobs = 0;
 
 for (const rel of workflowFiles) {
   const source = fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-  const { jobs, preamble, found } = splitJobs(source);
+  const scan = scanWorkflow(rel, source);
 
-  if (!found) {
+  if (!scan.found) {
     console.error(`✘ pr-comment-secret-lint: ${rel} に jobs: が見つかりません`);
     process.exit(2);
   }
 
-  const commenting = jobs.filter(usesCommentAction);
-  checkedJobs += commenting.length;
-  if (commenting.length === 0) continue;
-
-  for (const job of commenting) {
-    for (const line of job.lines) {
-      for (const { number, name } of secretReferences(line)) {
-        report(
-          rel,
-          number,
-          `ジョブ \`${job.id}\` は ${COMMENT_ACTION} を使うため ${describeSecret(name)} を渡せません（マスキングは tee したファイルに効かず、生値が PR コメントに載ります）`,
-        );
-      }
-    }
-  }
-
-  for (const line of preamble) {
-    for (const { number, name } of secretReferences(line)) {
-      report(
-        rel,
-        number,
-        `ワークフロー全体に及ぶ ${describeSecret(name)} は ${COMMENT_ACTION} を使うジョブにも届きます（マスキングは tee したファイルに効かず、生値が PR コメントに載ります）`,
-      );
-    }
-  }
+  findings.push(...scan.findings);
+  checkedJobs += scan.commentingJobs;
 }
 
 if (findings.length > 0) {
   console.error(`✘ pr-comment-secret-lint: ${findings.length} 件の違反\n`);
-  let current: string | null = null;
-
-  for (const finding of findings) {
-    if (finding.file !== current) {
-      if (current !== null) console.error("");
-      console.error(`  ${finding.file}`);
-      current = finding.file;
-    }
-    console.error(`    :${finding.line}  ${finding.message}`);
-  }
-
+  console.error(formatFindings(findings));
   console.error(
     `\n検査 ${workflowFiles.length} ワークフロー / ${checkedJobs} ジョブ中 ${findings.length} 件 NG`,
   );
