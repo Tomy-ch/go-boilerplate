@@ -53,13 +53,17 @@ gen-portal-build-ci:
 	pnpm --dir docs-viewer install --frozen-lockfile
 	pnpm --dir docs-viewer build
 
+# これらの出力は PR コメント本文になり ANSI を解釈しないため、色付けを無効化する。
+# tsc の pretty は FORCE_COLOR を見ないので別途落とす。
+portal-test-ci portal-typecheck-ci: export FORCE_COLOR := 0
+
 portal-test-ci:
 	pnpm --dir docs-viewer install --frozen-lockfile
 	pnpm --dir docs-viewer test
 
 portal-typecheck-ci:
 	pnpm --dir docs-viewer install --frozen-lockfile
-	pnpm --dir docs-viewer typecheck
+	pnpm --dir docs-viewer typecheck --pretty false
 
 gen-godoc:
 	@echo "🔍 godoc の静的HTMLの生成を開始します..."
