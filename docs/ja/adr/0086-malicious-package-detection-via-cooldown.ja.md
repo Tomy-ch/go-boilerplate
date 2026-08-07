@@ -33,9 +33,14 @@ accepted
 | 対象 | 窓 | 機構 |
 | --- | --- | --- |
 | npm | 7 日 | 各 `.npmrc` の `min-release-age`（npm 11 ネイティブ） |
+| Go モジュール | 7 日 | `scripts/go-cooldown`。変更が追加 / 更新した direct requirement を対象にする |
+| mise が解決する CLI ツール | 14 日（GitHub リリース） / 7 日（パッケージレジストリ） | `scripts/mise-cooldown` が `mise.toml` を読む |
+| PyPI から入れる CLI ツール | 7 日 | `scripts/mise-cooldown` が `python/*.in` の宣言を読む（[ADR-0075](0075-mise-ssot-drift-gate.ja.md)） |
 | GitHub Actions | 14 日 | `PIN_ACTIONS_MIN_AGE_DAYS`（`scripts/pin-actions` が強制） |
 | コンテナイメージ | 14 日 | `PIN_IMAGES_MIN_AGE_DAYS`（`scripts/pin-images` が強制） |
 | Dependabot | 5 / 7 / 30 日（patch / minor / major） | `.github/dependabot.yml` の cooldown |
+
+mise の行が 2 段になっているのは、ツールではなく backend の性質で決まるためである。GitHub リリース経由の版は tag を別 commit へ付け替えられるため `pin-actions` / `pin-images` と同じ窓を採り、パッケージレジストリ経由の版は公開が immutable なので短いほうの窓を採る。
 
 `capability-diff.yaml` は依存を変更する PR に対して `capslock` を実行するが、これは Go 側のみの**補助的な**シグナルである。report-only であり、検出器として扱わない。
 
@@ -51,6 +56,7 @@ accepted
 
 - **クールダウンが守るのは解決の瞬間であって、インストール済みの状態ではない。** 新しい悪意あるバージョンがロックファイルに入り込む窓を閉じるが、すでに pin されているものには何もせず、窓の経過後に発見された侵害にも何もしない。`@asyncapi` のケースでは、侵害が公になった時点で 7 日の npm 窓はすでに過ぎていた——利用者を守ったのはアップストリームでの削除であって、この統制ではない。
 - セキュリティ更新は、自ら課したのと同じ窓の分だけ遅れる（Dependabot のセキュリティ更新がこの理由で意図的にクールダウンを迂回する）。
+- **言語ランタイム（`go` / `node` / `python`）はどの窓の対象でもない。** ランタイムの配布物が汚染される事態は、供給網の 1 リンクではなく言語の信頼モデルそのものの崩壊であり、遅延では守れない。ランタイムは LTS を待つという別軸の方針が担う。この穴が見落としではなく判断であることを明示しておく。
 - `capslock` は Go のみを対象とするため、グラフの npm 側にはケイパビリティのシグナルが一切ない。
 
 ## 検討した代替案

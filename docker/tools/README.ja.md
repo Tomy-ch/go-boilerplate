@@ -58,6 +58,11 @@ SQL リンティングツール：
 |---|---|
 |`sqlfluff`|migration / DML / seed ファイル用の SQL リンター|
 
+他の 2 つのステージと違い、ツール本体は `mise.toml` 由来ではありません。mise が入れるのは `uv` だけで、
+`sqlfluff` はその `uv` が [`python/sqlfluff.txt`](../../python/sqlfluff.txt) から `--require-hashes` 付きで
+install します。これにより推移依存まで含めてバージョンとハッシュが固定されます
+（[ADR-0075](../../docs/ja/adr/0075-mise-ssot-drift-gate.ja.md)）。
+
 ## docker-compose サービス
 
 ```yaml
@@ -86,5 +91,5 @@ make gen-query  # sqlc コード生成
 
 - すべてのターゲットで作業ディレクトリは `/app`
 - Go ツールはビルダーステージでインストールし、ランタイムステージにコピーしてイメージサイズを最小化（`go_tools`）
-- ツールのバージョンは `mise.toml`（バージョンの SSOT）で固定 — 更新はそこで行い、ローカルと CI のイメージを一致させること
+- ツールのバージョンは `mise.toml`（バージョンの SSOT）で固定 — 更新はそこで行い、ローカルと CI のイメージを一致させること。PyPI のツールだけは例外で、pin は `python/*.in`、固定は `python/*.txt`（`make py-lock`）
 - このイメージが install する Node 依存を宣言するのは `scripts/`（`package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`）と `docs-viewer/` で、ビルドはそれぞれのマニフェストを本来の場所へコピーしてその場で install する。どちらのマニフェストもこのディレクトリには無いため、依存の変更は使う側のコードと並べてレビューされる

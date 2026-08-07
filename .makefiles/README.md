@@ -16,6 +16,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/docker` : Compose project / host port definitions / Dockerfile lint (hadolint) / image digest pinning
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
+- `.makefiles/python` : PyPI tool lockfile generation
 - `.makefiles/docs` : Portal / Tool information documentation generation
 - `.makefiles/gen` : Batch execution of various generation processes
 - `.makefiles/github` : GitHub initialization / Release / Labels / Rule configuration
@@ -428,6 +429,17 @@ several of these scripts are gates, and a broken gate reports a clean run rather
 | `make scripts-test-ci` | Runs `pnpm --dir scripts run test` (`vitest run --coverage --no-cache`). | CI target |
 | `make scripts-test-cached-ci` | Runs `pnpm --dir scripts run test:cached` (`vitest run`). | CI target |
 | `make scripts-typecheck-ci` | Runs `pnpm --dir scripts run typecheck` (`tsc --noEmit`). | CI target |
+
+## `.makefiles/python` group
+
+The CLI tools this repository installs from PyPI are declared in `python/*.in` and locked, with a
+sha256 hash per package, in `python/*.txt` ([ADR-0075](../docs/adr/0075-mise-ssot-drift-gate.md)).
+These targets regenerate the lockfiles; nothing installs from a `.in` file directly.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make py-lock` | Recompiles every `python/*.txt` from its `python/*.in`. | Invokes `make py-lock-ci` inside the `python_tool_runner` container. Run it after changing a pin, and commit both files. |
+| `make py-lock-ci` | Runs `uv pip compile --generate-hashes --universal` per declaration, resolving against the Python version `mise.toml` declares. | CI target |
 
 ## `.makefiles/docs` group
 

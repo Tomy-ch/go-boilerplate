@@ -16,6 +16,7 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/docker` : compose プロジェクト / ホストポート定義・Dockerfile Lint（hadolint）・image digest 固定
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
+- `.makefiles/python` : PyPI ツールの lockfile 生成
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
 - `.makefiles/gen` : 各種生成処理の一括実行
 - `.makefiles/github` : GitHub 初期設定 / リリース / ラベル / ルール設定
@@ -425,6 +426,15 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make scripts-test-ci` | `pnpm --dir scripts run test`（`vitest run --coverage --no-cache`）を実行します。 | CI 用ターゲットです。 |
 | `make scripts-test-cached-ci` | `pnpm --dir scripts run test:cached`（`vitest run`）を実行します。 | CI 用ターゲットです。 |
 | `make scripts-typecheck-ci` | `pnpm --dir scripts run typecheck`（`tsc --noEmit`）を実行します。 | CI 用ターゲットです。 |
+
+## `.makefiles/python` 系
+
+このリポジトリが PyPI から入れる CLI ツールは `python/*.in` で宣言し、パッケージごとの sha256 付きで `python/*.txt` に固定します（[ADR-0075](../docs/adr/0075-mise-ssot-drift-gate.md)）。ここのターゲットはその lockfile を再生成するものです。`.in` から直接 install する経路はありません。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make py-lock` | `python/*.in` から `python/*.txt` をすべて再生成します。 | `python_tool_runner` コンテナ内で `make py-lock-ci` を実行します。pin を変えたら実行し、両方のファイルをコミットしてください。 |
+| `make py-lock-ci` | 宣言ごとに `uv pip compile --generate-hashes --universal` を実行します。解決の対象は `mise.toml` が宣言する Python のバージョンです。 | CI 用ターゲットです。 |
 
 ## `.makefiles/docs` 系
 
