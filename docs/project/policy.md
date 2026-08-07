@@ -2,6 +2,7 @@
 
 This document describes the policies for maintaining and operating this project.
 
+<!-- boilerplate-only:begin -->
 ## Maintainer Policy
 
 This project is an **independently maintained project managed by the author**.
@@ -11,9 +12,10 @@ It is not affiliated with any specific company or organization.
 All decisions regarding architecture and implementation are made based on  
 **the author's design philosophy**.
 
+<!-- boilerplate-only:end -->
 ## Disclaimer
 
-This template is provided in good faith.
+This project is provided in good faith.
 
 However, **no guarantees are made** regarding the following:
 
@@ -21,12 +23,13 @@ However, **no guarantees are made** regarding the following:
 - Security
 - Operational stability
 
-When using this template, users must verify the following by themselves:
+The following must be verified independently before use:
 
 - Vulnerabilities in dependencies
 - Security configurations
-- Compatibility with their runtime environment
+- Compatibility with the runtime environment
 
+<!-- boilerplate-only:begin -->
 ## Maintenance Policy
 
 The maintainer may perform the following within reasonable scope:
@@ -45,6 +48,7 @@ If you find an issue, please create an Issue.
 
 The maintainer will respond within reasonable scope.
 
+<!-- boilerplate-only:end -->
 ## Library Selection Policy
 
 The value of this project lies not in specific libraries themselves, but in  
