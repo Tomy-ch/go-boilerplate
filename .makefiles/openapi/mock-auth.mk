@@ -21,11 +21,11 @@ lint-mock-auth-oapi:
 # -----CI用ターゲット-----
 # orval は provider の devDeps ではなく node_tools 同梱のため、scripts の bin を PATH へ前置して解決する。
 gen-mock-auth-oapi-ci:
-	cd docker/mock-auth-server && PATH="/app/scripts/node_modules/.bin:$$PATH" npm run gen
+	cd mock-auth-server && PATH="/app/scripts/node_modules/.bin:$$PATH" npm run gen
 
 # Redoc は redocly（mise グローバル）で生成する。出力は repo の docs/openapi/mock-auth-server/ 配下。
 gen-mock-auth-oapi-docs-ci:
-	cd docker/mock-auth-server && npm run gen:docs
+	cd mock-auth-server && npm run gen:docs
 
 lint-mock-auth-oapi-ci:
-	cd docker/mock-auth-server && PATH="/app/scripts/node_modules/.bin:$$PATH" npm run lint:oapi
+	cd mock-auth-server && PATH="/app/scripts/node_modules/.bin:$$PATH" npm run lint:oapi

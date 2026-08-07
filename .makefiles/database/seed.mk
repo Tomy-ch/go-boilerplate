@@ -10,12 +10,12 @@
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 # seed の ${AUTH_ISSUER} は投入先で発行されるトークンの iss と一致していなければならない。ツールランナーは
-# env/.env（2010 固定）を読むため、スロット保持時のホスト公開ポートから導いた値（AUTH_ISSUER_SH）を渡し、
+# env/.env（2010 固定）を読むため、db-slot が導いた AUTH_ISSUER を渡し、
 # スロットの有無に関わらず実機で認証済み経路を叩ける identity を投入する。
 db-seed: require-db-owner
 	@echo "🌱 データベースにシードデータを投入します... (database=$(DB))"
-	@$(LOAD_SLOT); docker compose run --rm \
-		-e AUTH_ISSUER=$(AUTH_ISSUER_SH) \
+	@$(DB_SLOT_ENV); docker compose run --rm \
+		-e AUTH_ISSUER="$$AUTH_ISSUER" \
 		go_tool_runner make db-seed-ci DB=$(DB)
 	@echo "✅ シードデータの投入が完了しました。 (database=$(DB))"
 

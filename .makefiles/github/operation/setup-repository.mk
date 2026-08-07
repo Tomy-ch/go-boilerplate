@@ -49,7 +49,7 @@ setup-replace-module:
 		echo "❌ OLD_MODULE と NEW_MODULE を指定してください。例: make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=example-api"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-module.mjs $(OLD_MODULE) $(NEW_MODULE) $(SETUP_DRY_RUN_FLAG)
+	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/replace-module.ts $(OLD_MODULE) $(NEW_MODULE) $(SETUP_DRY_RUN_FLAG)
 
 setup-replace-app-metadata:
 	@if [ -z "$(APP_NAME)" ] || [ -z "$(OPENAPI_TITLE)" ] || [ -z "$(COPILOT_TITLE)" ]; then \
@@ -57,7 +57,7 @@ setup-replace-app-metadata:
 		echo "例: make setup-replace-app-metadata APP_NAME='Example API' OPENAPI_TITLE='Example API with Onion Architecture' COPILOT_TITLE='example-api Copilot Instructions'"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-app-metadata.mjs \
+	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/replace-app-metadata.ts \
 		--app-name "$(APP_NAME)" \
 		--openapi-title "$(OPENAPI_TITLE)" \
 		--copilot-title "$(COPILOT_TITLE)" \
@@ -68,14 +68,14 @@ setup-replace-repository-reference:
 		echo "❌ REPOSITORY を指定してください。例: make setup-replace-repository-reference REPOSITORY=example-org/example-api"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-repository-reference.mjs $(REPOSITORY) $(SETUP_DRY_RUN_FLAG)
+	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/replace-repository-reference.ts $(REPOSITORY) $(SETUP_DRY_RUN_FLAG)
 
 setup-replace-license-copyright:
 	@if [ -z "$(COPYRIGHT_HOLDER)" ]; then \
 		echo "❌ COPYRIGHT_HOLDER を指定してください。例: make setup-replace-license-copyright COPYRIGHT_HOLDER='Example Inc.' COPYRIGHT_YEAR=2026"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-license-copyright.mjs \
+	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/replace-license-copyright.ts \
 		--holder "$(COPYRIGHT_HOLDER)" \
 		$(if $(COPYRIGHT_YEAR),--year $(COPYRIGHT_YEAR),) \
 		$(SETUP_DRY_RUN_FLAG)
@@ -85,7 +85,7 @@ setup-replace-codeowners:
 		echo "❌ OWNERS を指定してください。例: make setup-replace-codeowners OWNERS='@example-org/tech-leads'"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-codeowners.mjs \
+	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/replace-codeowners.ts \
 		--owners "$(OWNERS)" \
 		$(SETUP_DRY_RUN_FLAG)
 # sample-api:begin
@@ -93,13 +93,13 @@ setup-replace-codeowners:
 # サンプルAPIの削除はコンテナ内（node_tool_runner）で行い、削除後の再生成・整形・検証・DB 再構築は
 # Go ツールチェーンが必要なためホスト側の make ターゲットを連鎖させる。
 # プレビューは DRY_RUN=1 を付ける（削除も再生成も行わない）。
-# make は起動時に makefile を全読込するため、手順1の node がこの .mk からターゲットを strip（自消滅）
+# make は起動時に makefile を全読込するため、手順1のスクリプトがこの .mk からターゲットを strip（自消滅）
 # しても、実行中のレシピは継続し regen まで走る。
 # サンプル削除で未使用になる直接依存が go.mod に残ると、後日 go.mod を触った無関係な PR で
 # tidy-check が落ちる。tidy-lib は import が確定する gen の後、整理後の状態を lint で検証して
 # 終えられるよう fix/lint の前に置く。各手順は && で連鎖し、途中の失敗が完了メッセージに隠れない。
 setup-remove-sample-api:
-	@docker compose run --rm node_tool_runner node scripts/setup/remove-sample-api.mjs $(SETUP_DRY_RUN_FLAG)
+	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/remove-sample-api.ts $(SETUP_DRY_RUN_FLAG)
 	@if [ -n "$(DRY_RUN)" ]; then \
 		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
 	else \

@@ -1,11 +1,11 @@
 ## アプリケーションサーバー関連
-.PHONY: serve ## 開発環境(API/mock認証)を起動する（共有インフラは自動起動）
+.PHONY: serve ## 開発環境(API/mock認証)を起動する
 .PHONY: serve-build ## キャッシュを利用したビルド後、開発環境を起動する
 .PHONY: serve-build-clean ## キャッシュ無効・base image を pull したクリーンビルド後、開発環境を起動する
-.PHONY: serve-stop ## この checkout の app コンテナを停止する（共有インフラは残す）
-.PHONY: infra-up ## 共有インフラ(DB/o11y/オブジェクトストレージ)を起動する
-.PHONY: infra-down ## 共有インフラを停止する（全 checkout に影響する）
-.PHONY: tools ## 開発支援サービス(docs/SQL viewer)を起動する
+.PHONY: serve-stop ## この checkout の app コンテナを停止する
+.PHONY: infra-up ## 共有インフラを起動する
+.PHONY: infra-down ## 共有インフラを停止する
+.PHONY: tools ## 開発支援サービスを起動する
 .PHONY: all ## 全サービス(共有インフラ/開発/ツール)を一括起動する
 .PHONY: tool-runners-build ## ツールランナー(go/node/python)をビルドする（キャッシュ利用・起動はしない）
 .PHONY: tool-runners-build-clean ## ツールランナーをクリーンビルドする（--no-cache --pull・起動はしない）
@@ -24,7 +24,7 @@
 # 保証済み。
 infra-up:
 	@echo "🔄 共有インフラを起動します... (project=$(INFRA_PROJECT))"
-	@$(COMPOSE_INFRA) --profile development up -d --wait $(INFRA_NO_RECREATE) $(INFRA_SERVICES)
+	@$(DB_SLOT_ENV); $(COMPOSE_INFRA) --profile development up -d --wait $(INFRA_NO_RECREATE_SH) $(INFRA_SERVICES)
 	@$(COMPOSE_INFRA) --profile development run --rm --build --no-deps -T garage_init > /dev/null
 	@echo "✅ 共有インフラが起動しています。Grafana: http://localhost:3000"
 
@@ -42,7 +42,7 @@ serve: require-db-owner
 	@$(COMPOSE_APP) up -d $(APP_SERVICES)
 	@# スロット保持時のみ heartbeat を更新する（未取得なら何もしない）。
 	@go run ./cmd/ db-slot heartbeat
-	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080} (project=$(APP_PROJECT_SH))"
+	@$(LOAD_SLOT); $(DB_SLOT_ENV); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080} (project=$$APP_PROJECT)"
 
 serve-build: require-db-owner
 	@echo "🧰 ビルド後、開発環境を起動します。"
@@ -58,7 +58,7 @@ serve-build-clean: require-db-owner
 	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080}"
 
 serve-stop:
-	@$(LOAD_SLOT); echo "🛑 app コンテナを停止します... (project=$(APP_PROJECT_SH))"
+	@$(DB_SLOT_ENV); echo "🛑 app コンテナを停止します... (project=$$APP_PROJECT)"
 	@$(COMPOSE_APP) down
 	@echo "✅ app コンテナを停止しました（共有インフラは稼働したままです）。"
 
@@ -66,7 +66,7 @@ serve-stop:
 # 共有インフラの再作成経路として残る（理由は infra-up 参照）。
 tools:
 	@echo "🔄 開発ツールを起動します。"
-	@$(COMPOSE_INFRA) --profile tools up -d --build $(INFRA_NO_RECREATE)
+	@$(DB_SLOT_ENV); $(COMPOSE_INFRA) --profile tools up -d --build $(INFRA_NO_RECREATE_SH)
 	@echo "✅ 開発ツールの起動が完了しました。SQL editor: http://localhost:2000 / docs: http://localhost:2001"
 
 all:
