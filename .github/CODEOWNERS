@@ -14,8 +14,17 @@
 # a legitimate one — and this entry is what reserves that call to the owning role.
 # `npm-cooldown-audit.yaml` detects and reports a bypass but never blocks it; this
 # is the half that enforces.
+#
+# pnpm states the same policy in pnpm-workspace.yaml (minimumReleaseAge and the
+# strictness flags around it, plus allowBuilds, blockExoticSubdeps and trustPolicy).
+# It refuses at resolution time rather than warning afterwards, so there is no
+# audit tool watching that half — the settings file itself is the control, which
+# makes review of it the only thing standing between a weakened window and a
+# lockfile nobody questions.
 **/.npmrc                             @Tomy-ch
 **/package-lock.json                  @Tomy-ch
+**/pnpm-lock.yaml                     @Tomy-ch
+**/pnpm-workspace.yaml                @Tomy-ch
 .github/actions-pin.toml              @Tomy-ch
 docker/images-pin.toml                @Tomy-ch
 

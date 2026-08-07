@@ -12,6 +12,13 @@ name: npm Cooldown Audit
 # accidents, convention rot, and a change in npm's own behaviour. It is not a
 # defence against someone with commit access, who can delete this file in the same
 # change; enforcement of the "tech-lead only" rule lives in CODEOWNERS.
+#
+# Scope note: only mock-auth-server still resolves with npm. scripts and
+# docs-viewer resolve with pnpm, whose `minimumReleaseAge` + `minimumReleaseAgeStrict`
+# refuse a too-new version at resolution time instead of recording it and warning
+# afterwards. There is nothing for this detector to find there — the blind spot it
+# covers is specific to npm's cooldown being advisory during `npm ci`. That leaves
+# the pnpm settings file itself as the thing to watch, which CODEOWNERS reserves.
 on:
   pull_request:
     paths:

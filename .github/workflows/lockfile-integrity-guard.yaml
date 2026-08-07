@@ -14,8 +14,9 @@ on:
   pull_request:
     paths-ignore:
       - '.github/workflows/lockfile-integrity.yaml'
-      - 'docker/tools/package-lock.json'
-      - 'docker/mock-auth-server/package-lock.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
 
 permissions:
   contents: read

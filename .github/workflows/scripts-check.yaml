@@ -1,0 +1,79 @@
+name: Scripts Check
+
+# Type check and unit tests for the repository's TypeScript helper scripts (`scripts/**/*.ts`).
+#
+# Four of them are gates — `skill-lint`, `mermaid-lint`, `pr-comment-secret-lint`,
+# `pr-comment-fence-lint`, `actions-cutoff-lint` — and they all fail in the same direction when
+# broken: they stop finding things and report a clean run. Nothing downstream notices, because a
+# gate that inspects nothing looks exactly like a repository with no violations. The decision
+# logic lives in `scripts/lib/**` precisely so it can be exercised here without a repository to
+# scan, and these tests are what keeps a silent no-op from passing for a pass.
+#
+# `make lint` does not cover this: golangci-lint reads Go, and the Markdown / Actions lint jobs
+# run these scripts rather than checking them.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/scripts-check.yaml'
+      # The entry scripts sit directly under `scripts/` and the decision logic one level
+      # down; both levels are spelled out so a change to either reaches this workflow.
+      - 'scripts/*.ts'
+      - 'scripts/**/*.ts'
+      - 'scripts/**/*.mts'
+      - 'scripts/tsconfig.json'
+      - 'scripts/package.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'scripts/pnpm-workspace.yaml'
+      - '.makefiles/node/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scripts-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install node and pnpm
+        run: mise install node npm:pnpm
+
+      # The tree is the one `scripts/pnpm-lock.yaml` pins, so CI and the container resolve the
+      # same versions.
+      - name: Install the script tree for scripts/
+        run: pnpm install --dir scripts --frozen-lockfile
+
+      - name: Typecheck
+        run: make scripts-typecheck-ci
+
+      # The full variant: coverage with no cache, and the coverage thresholds in
+      # `scripts/vitest.config.mts` are part of the gate. A new decision branch that nobody
+      # exercises is exactly how these scripts start reporting a clean run, so an uncovered
+      # branch fails here rather than being reported as a percentage nobody reads.
+      - name: Test
+        run: make scripts-test-ci

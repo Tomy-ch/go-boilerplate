@@ -77,6 +77,8 @@
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|OpenAPI バンドルとドキュメントの一致検証|
 |Generated Mock-Auth OpenAPI Artifacts Check|`gen-mock-auth-oapi-artifacts-check.yaml`|mock-auth-server の OpenAPI バンドル / zod スキーマ / ドキュメントとコミット済み成果物の一致検証|
 |Mock-Auth Server Check|`mock-auth-server-check.yaml`|mock-auth-server の型検査、ユニット / インテグレーションテスト、golden JWKS フィクスチャのドリフト検出|
+|Portal Check|`portal-check.yaml`|ドキュメントポータルのビューアー（`docs-viewer/`）の型検査とテスト|
+|Scripts Check|`scripts-check.yaml`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）の型検査と、判定ロジックを覆う単体テストを実行します|
 |OpenAPI Lint|`oapi-lint.yaml`|OpenAPI 定義を `redocly lint` で検証（命名 / casing / description / 未使用コンポーネント）|
 |App Boot Check|`app-di-startup-check.yaml`|DB 付きでアプリケーションサーバが正常に起動するか検証|
 |Job Boot Check|`job-boot-check.yaml`|ジョブのエントリポイントが起動し、未知のジョブを拒否するか検証|
@@ -201,7 +203,9 @@ Go には `min-release-age` に当たるものがありません。`go get` に�
 
 **このワークフローは決してビルドを落としません。** これは既定値ではなく設計上の決定です。cooldown の解除はテックリード / アーキテクトの判断であり、CRITICAL への即応こそがその存在理由なので、ハードゲートは正当な行使をこそ塞いでしまいます。ブロックしない性質はワークフローの設定ではなくツール自身に持たせてあり、YAML の編集だけではゲートに変えられません。
 
-守備範囲は正直に狭く、**方針のドリフト**（事故・規約の風化・npm 側の挙動変化）に限ります。commit 権限を持つ攻撃者は同じ変更でワークフローごと削除できるため、技術的な防止手段ではありません。そこで成立するのは検知と attribution までで、抑止は組織側の運用に委ねます。強制の担保は [`CODEOWNERS`](../CODEOWNERS) で、`**/.npmrc` / `**/package-lock.json` と pin lockfile のレビューを所管ロールに限定します。
+守備範囲は正直に狭く、**方針のドリフト**（事故・規約の風化・npm 側の挙動変化）に限ります。commit 権限を持つ攻撃者は同じ変更でワークフローごと削除できるため、技術的な防止手段ではありません。そこで成立するのは検知と attribution までで、抑止は組織側の運用に委ねます。強制の担保は [`CODEOWNERS`](../CODEOWNERS) で、`**/.npmrc` / `**/package-lock.json` / `**/pnpm-lock.yaml` / `**/pnpm-workspace.yaml` と pin lockfile のレビューを所管ロールに限定します。
+
+npm で解決するのは `mock-auth-server/` だけです。`scripts/` と `docs-viewer/` は pnpm で解決し、`minimumReleaseAge` は窓内のバージョンを記録して後から警告するのではなく、解決の時点で拒否します（`minimumReleaseAgeStrict` により、窓が黙って外れるのではなくハード失敗になります）。事後に監査する対象が残らないため、この半分には監査ツールがありません。そのぶん重みは `pnpm-workspace.yaml` 自体のレビューへ全て乗るので、CODEOWNERS に登録しています。
 
 Pull request ではその base との差分を監査するので、検出はその変更が持ち込んだエントリだけを名指しし、対象バージョンが窓から出た後も PR コメントが記録として残ります。週次実行は全エントリを走査する二重の網です。
 

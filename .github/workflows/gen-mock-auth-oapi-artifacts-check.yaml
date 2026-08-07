@@ -6,19 +6,19 @@ on:
     paths:
       # Inputs
       - '.github/workflows/gen-mock-auth-oapi-artifacts-check.yaml'
-      - 'docker/mock-auth-server/openapi/**/*.yaml'
-      - 'docker/mock-auth-server/orval.config.ts'
-      - 'docker/mock-auth-server/redocly.yaml'
-      - 'docker/mock-auth-server/package.json'
-      - 'docker/mock-auth-server/package-lock.json'
-      - 'docker/tools/package.json'
-      - 'docker/tools/package-lock.json'
+      - 'mock-auth-server/openapi/**/*.yaml'
+      - 'mock-auth-server/orval.config.ts'
+      - 'mock-auth-server/redocly.yaml'
+      - 'mock-auth-server/package.json'
+      - 'mock-auth-server/package-lock.json'
+      - 'scripts/package.json'
+      - 'scripts/pnpm-lock.yaml'
       - 'docker/tools/Dockerfile'
       - 'mise.toml'
       - '.makefiles/openapi/mock-auth.mk'
-      # Generated output. `docker/mock-auth-server/openapi/openapi.gen.yaml` is already covered by
-      # `docker/mock-auth-server/openapi/**/*.yaml` above.
-      - 'docker/mock-auth-server/src/generated/**'
+      # Generated output. `mock-auth-server/openapi/openapi.gen.yaml` is already covered by
+      # `mock-auth-server/openapi/**/*.yaml` above.
+      - 'mock-auth-server/src/generated/**'
       - 'docs/openapi/mock-auth-server/**'
   workflow_dispatch:
 
@@ -76,7 +76,7 @@ jobs:
       #   - artifact_modified: the generated output was edited directly, which is a rule violation
       #   - neither:           generator-side drift is the likely cause
       # The bundled spec and the zod schemas are generated output, so they are excluded from the
-      # source set even though they live under `docker/mock-auth-server/`.
+      # source set even though they live under `mock-auth-server/`.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
@@ -91,8 +91,8 @@ jobs:
             echo "::warning::failed to diff ${base_sha}..${head_sha}; cause classification skipped"
             changed=""
           fi
-          artifacts='^docker/mock-auth-server/(openapi/openapi\.gen\.yaml$|src/generated/)|^docs/openapi/mock-auth-server/'
-          if echo "$changed" | grep -E '^docker/mock-auth-server/' | grep -qvE "$artifacts"; then
+          artifacts='^mock-auth-server/(openapi/openapi\.gen\.yaml$|src/generated/)|^docs/openapi/mock-auth-server/'
+          if echo "$changed" | grep -E '^mock-auth-server/' | grep -qvE "$artifacts"; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
@@ -120,10 +120,10 @@ jobs:
             printf '%s\n' "Run \`make gen-mock-auth-oapi\` locally and commit the changes." > "$out"
           elif [ "${{ steps.source_mod.outputs.artifact_modified }}" = "true" ]; then
             echo "title=## ✋ mock-auth OpenAPI generated output was edited directly" >> "$GITHUB_OUTPUT"
-            printf '%s\n' "This PR changes mock-auth OpenAPI generated output without changing any hand-written source under \`docker/mock-auth-server/\`. Generated files must not be hand-edited (see \`AGENTS.md\`). Discard the edit, run \`make gen-mock-auth-oapi\` so the output comes from the generator, and commit that instead." > "$out"
+            printf '%s\n' "This PR changes mock-auth OpenAPI generated output without changing any hand-written source under \`mock-auth-server/\`. Generated files must not be hand-edited (see \`AGENTS.md\`). Discard the edit, run \`make gen-mock-auth-oapi\` so the output comes from the generator, and commit that instead." > "$out"
           else
             echo "title=## ⚠️ Drift in mock-auth OpenAPI generated output detected (source unchanged)" >> "$GITHUB_OUTPUT"
-            printf '%s\n' "This PR does not modify anything under \`docker/mock-auth-server/\`, so this may be generator-side drift (non-deterministic output, dependency version differences, etc.). Run \`make gen-mock-auth-oapi\` locally and commit the changes." > "$out"
+            printf '%s\n' "This PR does not modify anything under \`mock-auth-server/\`, so this may be generator-side drift (non-deterministic output, dependency version differences, etc.). Run \`make gen-mock-auth-oapi\` locally and commit the changes." > "$out"
           fi
           # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, repeated
           # because that helper only wraps a body on the details-summary path and this call passes

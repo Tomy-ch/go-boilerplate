@@ -77,6 +77,8 @@ All three rules live in one check rather than three, because they are not three 
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
 |Generated Mock-Auth OpenAPI Artifacts Check|`gen-mock-auth-oapi-artifacts-check.yaml`|Verify the mock-auth-server OpenAPI bundle, zod schemas, and docs match committed artifacts|
 |Mock-Auth Server Check|`mock-auth-server-check.yaml`|Type-check the mock-auth-server, run its unit / integration tests, and fail on golden JWKS fixture drift|
+|Portal Check|`portal-check.yaml`|Type-check the documentation portal viewer (`docs-viewer/`) and run its test suite|
+|Scripts Check|`scripts-check.yaml`|Type-check the repository's TypeScript helper scripts (`scripts/**/*.ts`) and run the unit tests covering their decision logic|
 |OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
 |App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
@@ -201,7 +203,9 @@ Urgent overrides live in [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml)
 
 **It never fails the build**, and that is a design decision rather than a default. Overriding the cooldown is a tech-lead / architect call — reacting to a CRITICAL advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The non-blocking property lives in the tool itself, not in workflow configuration, so it cannot be turned into a gate by editing YAML.
 
-Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in npm's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/.npmrc`, `**/package-lock.json`, and the pin lockfiles to the owning role.
+Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in npm's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/.npmrc`, `**/package-lock.json`, `**/pnpm-lock.yaml`, `**/pnpm-workspace.yaml`, and the pin lockfiles to the owning role.
+
+Only `mock-auth-server/` still resolves with npm. `scripts/` and `docs-viewer/` resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for that half because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its CODEOWNERS entry.
 
 A pull request is audited against its base, so a finding names exactly the entries that change introduces and the PR comment persists as the record even after those versions age out of the window. The scheduled run audits every entry as a second net.
 

@@ -71,8 +71,13 @@ jobs:
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
+      # The stamp is a TypeScript script now, so it runs through the node tool runner rather than
+      # bare node: the container is where `tsx` and the script's dependencies live, and every
+      # other generation step in this job already goes through it.
       - name: Stamp OpenAPI version from release branch
-        run: node scripts/stamp-openapi-version.mjs
+        run: make stamp-openapi-version REF="${GITHUB_REF_NAME}"
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - name: Generate OpenAPI bundle
         run: make gen-bundle-oapi

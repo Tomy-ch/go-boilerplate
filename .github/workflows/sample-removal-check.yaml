@@ -61,13 +61,13 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install node & golangci-lint
-        run: mise install node golangci-lint
+      - name: Install node, pnpm & golangci-lint
+        run: mise install node npm:pnpm golangci-lint
 
+      # `scripts/pnpm-workspace.yaml` carries the supply-chain policy (cooldown, allowBuilds,
+      # trust policy) that the install must honour.
       - name: Install script node deps
-        run: |
-          cp docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc scripts/
-          npm ci --ignore-scripts --prefix scripts
+        run: pnpm install --dir scripts --frozen-lockfile
 
       - name: Setup DB
         uses: ./.github/actions/setup-postgres
@@ -81,7 +81,7 @@ jobs:
         run: make materialize-env
 
       - name: Remove sample files (delete + strip markers + self-destruct)
-        run: node scripts/setup/remove-sample-api.mjs
+        run: pnpm --dir scripts run tsx scripts/setup/remove-sample-api.ts
 
       - name: Format after removal (make fix)
         run: make fix
@@ -101,12 +101,19 @@ jobs:
         run: make test
 
       - name: Verify sample removal (exact deletion + no dangling refs)
-        run: node scripts/setup/verify-sample-removal.mjs
+        run: pnpm --dir scripts run tsx scripts/setup/verify-sample-removal.ts
 
+      # The verifier deletes itself, its decision module, that module's test and the
+      # snapshot. Listing every one of them matters: a path left out here silently passes
+      # forever, because the check can only observe the files it is given.
       - name: Verify verification tool self-destructed
         run: |
           set -euo pipefail
-          for f in scripts/setup/verify-sample-removal.mjs scripts/setup/.sample-removal-snapshot.json; do
+          for f in \
+            scripts/setup/verify-sample-removal.ts \
+            scripts/setup/lib/sample-removal-verify.ts \
+            scripts/setup/lib/sample-removal-verify.test.ts \
+            scripts/setup/.sample-removal-snapshot.json; do
             if [ -e "$f" ]; then
               echo "FAIL: $f was not self-deleted"
               exit 1
