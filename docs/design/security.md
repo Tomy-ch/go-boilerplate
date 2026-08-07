@@ -213,6 +213,54 @@ freezes the dependency where it is, so when the pinned version later gets its ow
 pin keeps forcing the now-vulnerable one. Every override is meant to be reclaimed once the parent
 ships a release that pulls the fix natively.
 
+### pnpm
+
+Two packages resolve with pnpm — `scripts/` and `docs-viewer/` — each carrying its own
+`pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is the same 7 days as npm and derived the
+same way; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
+
+What differs is **where** the window is enforced, and it inverts npm's weakness. npm checks only
+while it resolves, so an in-window entry that once reached the lockfile is invisible from then on.
+pnpm re-verifies the **entire lockfile** against the active policies on every install — including
+`--frozen-lockfile`, the replay path that `npm ci` leaves unchecked.
+
+Verified behaviour, not inference:
+
+| Action | Result |
+| --- | --- |
+| Resolving an exact in-window version, `minimumReleaseAgeStrict: true` | Rejected (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`), naming the version, its publish time, and the cutoff |
+| Resolving a range whose newest match is in-window | Silently resolves to the newest *aged* match, exit 0 |
+| Resolving an exact in-window version, `minimumReleaseAgeStrict: false` | Succeeds — and pnpm writes the `minimumReleaseAgeExclude` entry into `pnpm-workspace.yaml` itself |
+| `--frozen-lockfile` replaying an in-window entry that no exclusion covers | Rejected (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) |
+| Any `pnpm run` after a policy setting changed | Rejected (`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`) until `pnpm install` re-records the settings |
+
+Three consequences follow, and together they are why pnpm needs no `npm-cooldown-audit`
+counterpart: there is nothing to detect after the fact, because nothing gets through unrecorded.
+
+**An override cannot be silent.** Taking an in-window version requires a
+`minimumReleaseAgeExclude` entry, and without one every later install fails — CI included, since
+its install is the frozen replay. The entry lives in `pnpm-workspace.yaml`, which is tracked and in
+[`CODEOWNERS`](../../.github/CODEOWNERS), so the override is reviewed by construction rather than
+reported by a bot afterwards.
+
+**`minimumReleaseAgeStrict: true` is what keeps the override a human's.** With it off, pnpm writes
+the exclusion itself and carries on — the resolver, not a person, decides to take a fresh publish.
+Strict mode turns that into a stop, on the same reasoning that puts install-shaped commands in
+`ask` rather than letting them run: the point of an override is that someone chose it.
+
+**An exclusion is dated debt whose removal date is load-bearing in both directions.** Deleting the
+entry before the window opens breaks every install; once the version ages past the cutoff the entry
+is redundant and the lockfile passes without it. Each entry therefore records what it exempts, why,
+where that package runs, and the date it becomes deletable.
+
+An exclusion names `<package>@<version>`, never a bare package name: a name-only exemption would
+excuse every future publish of that package, which is exactly what the window exists to catch. The
+same rule governs `trustPolicyExclude`, whose subject is provenance regression rather than freshness.
+
+One operational caveat: the lockfile verification result is cached (`Lockfile passes supply-chain
+policies (verified 1m ago)`), so editing a policy does not always force a re-check on the very next
+install.
+
 ### PyPI
 
 Python tools enter through `mise.toml`'s `pipx:` backend, so they are pinned exactly and their

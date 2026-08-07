@@ -128,6 +128,34 @@ cooldown は実在しますが、見た目より適用範囲が狭い。`min-rel
 
 **推移的な pin は暫定債務。** `overrides` で修正版を強制する際は、exact な版ではなく same-major の floor（`">=<fixed> <<next-major>"`）として書きます。exact pin は依存をその場で凍結するため、固定した版自身が後に advisory を受けたとき、pin が脆弱な版を強制し続けることになるからです。すべての override は、親が修正版を自力で引く release を出した時点で回収する前提のものです。
 
+### pnpm
+
+pnpm で解決するパッケージは 2 つ——`scripts/` と `docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は npm と同じ 7 日で、導出のしかたも同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
+
+異なるのは窓が**どこで**効くかで、それが npm の弱点を裏返します。npm は解決のあいだしか見ないため、一度 lockfile に入った窓内エントリはそれ以降どこからも見えません。pnpm は install のたびに **lockfile 全体**を現行ポリシーで再検証します——`npm ci` が素通りさせる再生経路である `--frozen-lockfile` も含めてです。
+
+推測ではなく実測した挙動:
+
+| 操作 | 結果 |
+| --- | --- |
+| 窓内バージョンを完全固定で解決する（`minimumReleaseAgeStrict: true`） | 拒否（`ERR_PNPM_NO_MATURE_MATCHING_VERSION`）。版・公開時刻・カットオフを名指しする |
+| 最新一致が窓内である範囲を解決する | エラーにならず、**枯れた最新**へ黙って解決。exit 0 |
+| 窓内バージョンを完全固定で解決する（`minimumReleaseAgeStrict: false`） | 成功。しかも pnpm が `minimumReleaseAgeExclude` のエントリを `pnpm-workspace.yaml` へ**自分で書き込む** |
+| どの例外にも該当しない窓内エントリを `--frozen-lockfile` で再生する | 拒否（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`） |
+| ポリシー設定を変えたあとの `pnpm run` | 拒否（`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`）。`pnpm install` が設定を記録し直すまで通らない |
+
+帰結が 3 つあり、それらを合わせると pnpm に `npm-cooldown-audit` の対応物が要らない理由になります。記録されずに通るものが無いので、事後に検知すべき対象がそもそも存在しません。
+
+**解除は不可視にできません。** 窓内バージョンを採るには `minimumReleaseAgeExclude` のエントリが要り、無ければ以降の install がすべて落ちます——CI の install は frozen な再生なので CI も含みます。エントリの置き場である `pnpm-workspace.yaml` は追跡対象で [`CODEOWNERS`](../../../.github/CODEOWNERS) に載っているため、解除は事後に bot が報告するのではなく構造上レビューを通ります。
+
+**解除を人間のものに保っているのが `minimumReleaseAgeStrict: true` です。** これを外すと pnpm は例外を自分で書いて処理を続けます——公開直後の版を採ると決めるのが人ではなく解決器になるということです。strict はそれを停止に変えます。install の形をしたコマンドを実行させずに `ask` へ回すのと同じ理屈で、解除の要点は誰かがそれを選んだことにあります。
+
+**例外は期限つきの債務で、その期限は両方向に効きます。** 窓が開く前に消せば install がすべて落ち、版がカットオフを越えて熟成すればエントリは不要になり、無くても lockfile は通ります。したがって各エントリには、何を免除しているか・理由・そのパッケージがどこで動くか・いつ削除できるようになるかを記録します。
+
+例外は `<パッケージ>@<バージョン>` を名指しし、パッケージ名だけにはしません。名前だけの免除はそのパッケージの将来のすべての公開を見逃すことになり、それこそが窓の捕捉対象だからです。同じ規則は、鮮度ではなく provenance の後退を対象とする `trustPolicyExclude` にも当てはまります。
+
+運用上の注意が 1 つ。lockfile の検証結果はキャッシュされる（`Lockfile passes supply-chain policies (verified 1m ago)`）ため、ポリシーを編集しても次の install で必ず再検査が走るとは限りません。
+
 ### PyPI
 
 Python のツールは `mise.toml` の `pipx:` バックエンドから入るため、厳密に固定され、そのバージョンは他のすべてのツールと同じ SSOT に載ります。lockfile が無く、解決器側の新しさ制御もありません。これは PyPI を、Actions やイメージが既にいる位置——窓を強制するのは pin を編集する人間である、という位置——に置きます。
