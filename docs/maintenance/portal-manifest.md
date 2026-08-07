@@ -6,7 +6,7 @@ The documentation portal at `docs/portal/` is driven by an explicit **contract**
 
 ```txt
 manifest.yaml   ← structure   (what goes where, how it is labeled)
-scripts/*.mjs   ← construction (how it gets assembled)
+scripts/portal/*.ts ← construction (how it gets assembled)
 ```
 
 This document is the single reference for that contract. When you add, move, rename, or remove documentation, the change you actually need to make almost always lives in `manifest.yaml`.
@@ -16,11 +16,12 @@ This document is the single reference for that contract. When you add, move, ren
 | File | Role |
 | --- | --- |
 | `docs/portal/manifest.yaml` | Single source of truth for portal structure |
-| `docs/portal/index.html` + `main.jsx` + `styles.css` | The React SPA viewer (reads `docs.json`) |
-| `docs/portal/docs.json` | **Generated.** Do not edit. Output of `gen-docs-json.mjs` |
-| `docs/portal/guides/**` | **Generated.** Do not edit. Output of `gen-portal-docs.mjs` (flat copies of source READMEs) |
-| `scripts/gen-portal-docs.mjs` | Copies each manifest entry's `src` to `dst` under `docs/portal/guides/` |
-| `scripts/gen-docs-json.mjs` | Reads manifest + scans `docs/` and writes `docs/portal/docs.json` |
+| `docs-viewer/src/**` | Source of the React viewer (reads `docs.json`). Built with Vite |
+| `docs/portal/index.html` + `dist/**` | **Generated.** Build output of `docs-viewer` (`make gen-portal-build`). Both are gitignored and rebuilt on deploy |
+| `docs/portal/docs.json` | **Generated.** Do not edit. Output of `gen-docs-json.ts` |
+| `docs/portal/guides/**` | **Generated.** Do not edit. Output of `gen-portal-docs.ts` (flat copies of source READMEs) |
+| `scripts/portal/gen-portal-docs.ts` | Copies each manifest entry's `src` to `dst` under `docs/portal/guides/` |
+| `scripts/portal/gen-docs-json.ts` | Reads manifest + scans `docs/` and writes `docs/portal/docs.json` |
 
 ## 2. Manifest schema
 
@@ -78,9 +79,9 @@ Every key at the top level **other than `meta`** is a section id. The value is a
 
 **Naming rule for `dst`**: the basename (without `.md` / `.ja.md`) is the **guide id** that `meta.subgroups` references. Keep guide ids unique within the portal.
 
-## 3. Filesystem auto-discovery (JS construction side)
+## 3. Filesystem auto-discovery (TypeScript construction side)
 
-For documentation that lives under `docs/` directly (rather than as `**/README.md` in a code package), `gen-docs-json.mjs` discovers files by scanning the filesystem. The placement and titles for these discovered sections still come from `meta:` — only the **enumeration of files** is JS-side.
+For documentation that lives under `docs/` directly (rather than as `**/README.md` in a code package), `gen-docs-json.ts` discovers files by scanning the filesystem. The placement and titles for these discovered sections still come from `meta:` — only the **enumeration of files** is TypeScript-side.
 
 | Filesystem location | Becomes section | Notes |
 | --- | --- | --- |
@@ -176,12 +177,12 @@ python3 -m http.server 8082 -d docs
 open http://localhost:8082/portal/
 ```
 
-The portal is a single-page React app loaded via CDN. There is no build step — editing `main.jsx` / `styles.css` and reloading the page is enough to iterate.
+The portal is a single-page React app whose source lives in `docs-viewer/` and is bundled by Vite, so a static server only ever shows the last build. To iterate on the viewer itself, run `pnpm --dir docs-viewer dev` and let Vite serve it with hot reload; run `make gen-portal-build` when you want to see exactly what gets published. `docs/portal/dist/` is gitignored — `deploy-docs.yaml` rebuilds it before uploading to Pages, so a viewer change reaches the site without any build output being committed.
 
 ## 7. Anti-patterns
 
 - **Do not hand-edit `docs/portal/docs.json` or `docs/portal/guides/**`.** They are regenerated wholesale; your edits will vanish.
-- **Do not bypass the manifest** by adding sections directly inside `gen-docs-json.mjs`. Anything structural belongs in `meta:`.
+- **Do not bypass the manifest** by adding sections directly inside `gen-docs-json.ts`. Anything structural belongs in `meta:`.
 - **Do not introduce a third level of grouping** inside subgroups. If a subgroup is getting too dense, split the section instead.
 - **Do not give two manifest items the same `dst`.** Guide ids must be unique.
 
@@ -195,8 +196,8 @@ The portal is a single-page React app loaded via CDN. There is no build step —
 | Section heading override | `manifest.yaml` → `meta.section_titles` |
 | Sidebar Reference quick links | `manifest.yaml` → `meta.reference_links` |
 | Which source files are copied to `guides/` | `manifest.yaml` flat entries |
-| File enumeration under `docs/<dir>/` and `docs/*.md` | `scripts/gen-docs-json.mjs` (FS scan) |
-| Filename → card title (`autoTitle`) | `scripts/gen-docs-json.mjs` (deterministic) |
-| EN / JA item ordering and slugification | `scripts/gen-docs-json.mjs` (deterministic) |
+| File enumeration under `docs/<dir>/` and `docs/*.md` | `scripts/portal/gen-docs-json.ts` (FS scan) |
+| Filename → card title (`autoTitle`) | `scripts/portal/gen-docs-json.ts` (deterministic) |
+| EN / JA item ordering and slugification | `scripts/portal/gen-docs-json.ts` (deterministic) |
 
 If a change touches anything in the upper half of the table, the change is **in the manifest**. If a change touches the lower half, the change is **in the script**. Splitting the responsibility this way keeps the manifest small enough to scan in one sitting while letting the build stay self-maintaining for the long tail of READMEs.

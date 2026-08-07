@@ -167,6 +167,8 @@ The source of truth lives close to the code. Start here and follow the link that
 - [env/README.md](env/README.md) — environment variables (embedded per-environment)
 - [.makefiles/README.md](.makefiles/README.md) — every `make` target
 - [docker/README.md](docker/README.md) — images, compose profiles, single-container operation
+- [scripts/README.md](scripts/README.md) — utility scripts & repository gates (codegen, docs, versioning, supply-chain pins, setup)
+- [docs-viewer/README.md](docs-viewer/README.md) — documentation portal frontend (renders the generated `docs/portal/docs.json`)
 
 ## Directory Structure
 
@@ -187,6 +189,9 @@ The source of truth lives close to the code. Start here and follow the link that
 ├── env/            # Per-environment variables (embedded into the binary)
 ├── docker/
 ├── docs/
+├── docs-viewer/    # Documentation portal frontend (build output is committed under docs/portal/)
+├── scripts/        # Utility scripts & repository gates
+├── .github/        # Workflows, composite actions, repository settings
 ├── .makefiles/     # make target registry
 └── makefile
 ```
@@ -217,6 +222,7 @@ release branches, and all changes go through Pull Requests. Rules: [docs/rules.m
 
 ## Design Intent
 
+<!-- boilerplate:begin -->
 ### Why it exists
 
 Backend projects tend to re-litigate architecture, library choice, directory layout and
@@ -224,6 +230,7 @@ workflow every time. This boilerplate provides a **baseline that reduces initial
 so teams start safely and quickly. Its value is not any single library but **the integration of
 widely used OSS into a coherent, replaceable architecture**.
 
+<!-- boilerplate:end -->
 ### AI-assisted development
 
 Constraints (enforced layering, generated-code separation, release-based branching,
@@ -268,8 +275,10 @@ of strong framework lock-in. The maintainer may provide dependency updates, secu
 architectural improvements, but issue-response deadlines, guaranteed bug fixes and long-term
 maintenance commitments are **not guaranteed**.
 
+<!-- boilerplate:begin -->
 Planned future releases: Frontend / Infrastructure / Observability boilerplates.
 
+<!-- boilerplate:end -->
 ## License
 
 This project's own source code is released under the **MIT License** — see [LICENSE](LICENSE).

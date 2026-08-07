@@ -59,17 +59,14 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 		return errMissingNameOrType
 	}
 
-	if outDir == "" {
-		outDir = "."
-	}
-	outDir = filepath.Clean(outDir)
+	outDir = resolveOutDir(outDir)
 
-	camel, err := toExportedName(name)
+	lower, err := toIdentifierLower(name)
 	if err != nil {
 		return err
 	}
 
-	lower, err := toIdentifierLower(name)
+	camel, err := toExportedName(name)
 	if err != nil {
 		return err
 	}
@@ -108,6 +105,12 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 	}
 
 	return nil
+}
+
+// resolveOutDir は、出力先ディレクトリを正規化します。
+// 空文字はカレントディレクトリ（"."）を指します。
+func resolveOutDir(outDir string) string {
+	return filepath.Clean(outDir)
 }
 
 func writeFile(path, tpl string, p Param) error {

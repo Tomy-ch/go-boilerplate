@@ -37,7 +37,7 @@ business word" would make every run disagree with the last one.**
   (names that are *not* terms, and must never be reported).
 - `.agents/glossary-drift/exclusions.yaml` — two lists. `exclusions` are declared paths; apply them
   and carry them into your report. `collisions` narrows which probe forms are usable per identifier.
-- `scripts/setup/lib/sample-manifest.mjs` — the paths that leave with the sample. Read it and treat a
+- `scripts/setup/remove-sample-api/sample-manifest.ts` — the paths that leave with the sample. Read it and treat a
   file under any of them exactly as you treat a `sample-api` region: **not a leak.**
 - The prose corpus: `internal/**/README.md`, `pkg/**/README.md`, `docs/adr/*.md`, `docs/rules.md`,
   `docs/architecture.md`. Exclude `*.ja.md` — a translation mirrors its canonical file, so a finding
@@ -90,7 +90,7 @@ the prose.
 
 **Neither is a file that leaves with the sample.** A whole package can be sample-derived — its README
 is then business vocabulary from the first line, and nobody wraps a marker around an entire file. Read
-`scripts/setup/lib/sample-manifest.mjs` and skip anything under a declared path.
+`scripts/setup/remove-sample-api/sample-manifest.ts` and skip anything under a declared path.
 
 The manifest declares two different things and they are not interchangeable. A path that leaves
 whole is skipped whole. A file listed as marker-bearing keeps most of its content and loses only the

@@ -1,7 +1,7 @@
 name = "drift-detector-glossary"
 description = "業務語彙が README・ADR・規則文書へ漏れた箇所を読み取り専用で検出する"
 developer_instructions = """
-`docs/spec/glossary.md` の Terms 表と Mechanism vocabulary 節、`.agents/glossary-drift/exclusions.yaml`、`scripts/setup/lib/sample-manifest.mjs`、および prose corpus を実行時に読む。業務語彙が `docs/spec/` の外へ漏れた箇所だけを日本語で返し、用語の意味・正名・同義性・用語か否かを自分で判断しない。Mechanism vocabulary は業務語ではない名前の一覧、`collisions` は業務語だが形ごとに技術語と衝突する識別子の一覧として扱う。語彙、除外、衝突、サンプル対象を本文へハードコード・転記しない。
+`docs/spec/glossary.md` の Terms 表と Mechanism vocabulary 節、`.agents/glossary-drift/exclusions.yaml`、`scripts/setup/remove-sample-api/sample-manifest.ts`、および prose corpus を実行時に読む。業務語彙が `docs/spec/` の外へ漏れた箇所だけを日本語で返し、用語の意味・正名・同義性・用語か否かを自分で判断しない。Mechanism vocabulary は業務語ではない名前の一覧、`collisions` は業務語だが形ごとに技術語と衝突する識別子の一覧として扱う。語彙、除外、衝突、サンプル対象を本文へハードコード・転記しない。
 
 Terms 表の日本語の語や、各行に記録された修飾済みコードシンボルを主 probe にしてはならない。いずれも英語正本の prose にほぼ現れない。Terms 表の Owner 列の集約識別子を、必ず表の行へ対応付けられる次の優先順で探す。(1) パスの一部: `internal/domain/<agg>`、`internal/usecase/<agg>`、`docs/spec/<agg>/`、`repository/<agg>`、`command_service/<agg>`。(2) パッケージ修飾子: `<agg>.`。(3) 語境界つきの大文字 Public 名。(4) バッククォート内の裸の語。`collisions` の各 identifier は probe から丸ごと除外せず、`usable_forms` にある形だけを使う。一般語との衝突や長い単語の一部によるノイズは周辺文脈を読んで報告しない。
 

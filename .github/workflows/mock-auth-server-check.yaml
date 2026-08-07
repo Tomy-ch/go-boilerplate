@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/mock-auth-server-check.yaml'
-      - 'docker/mock-auth-server/**'
+      - 'mock-auth-server/**'
       - 'internal/integration/testdata/jwks/**'
       - 'mise.toml'
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: docker/mock-auth-server
+        working-directory: mock-auth-server
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -59,8 +59,8 @@ jobs:
         run: |
           set -euo pipefail
           if ! git diff --exit-code -- \
-            docker/mock-auth-server/fixtures/jwks \
+            mock-auth-server/fixtures/jwks \
             internal/integration/testdata/jwks; then
-            echo "::error::golden JWKS is out of date. Run 'npm run gen:jwks' in docker/mock-auth-server and commit the diff."
+            echo "::error::golden JWKS is out of date. Run 'npm run gen:jwks' in mock-auth-server and commit the diff."
             exit 1
           fi

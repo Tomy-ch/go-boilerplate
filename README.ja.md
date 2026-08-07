@@ -165,6 +165,8 @@ Infra --> External["External Systems"]
 - [env/README.md](env/README.md) — 環境変数（環境別にバイナリ埋め込み）
 - [.makefiles/README.md](.makefiles/README.md) — すべての `make` ターゲット
 - [docker/README.md](docker/README.md) — イメージ・compose プロファイル・単一コンテナ運用
+- [scripts/README.md](scripts/README.md) — ユーティリティスクリプトとリポジトリのゲート（コード生成・ドキュメント・バージョニング・供給網ピン・セットアップ）
+- [docs-viewer/README.md](docs-viewer/README.md) — ドキュメントポータルのフロントエンド（生成された `docs/portal/docs.json` を描画）
 
 ## ディレクトリ構成
 
@@ -185,6 +187,9 @@ Infra --> External["External Systems"]
 ├── env/            # 環境別の環境変数（バイナリへ埋め込み）
 ├── docker/
 ├── docs/
+├── docs-viewer/    # ドキュメントポータルのフロントエンド（ビルド成果物は docs/portal/ にコミットされる）
+├── scripts/        # ユーティリティスクリプトとリポジトリのゲート
+├── .github/        # ワークフロー・複合アクション・リポジトリ設定
 ├── .makefiles/     # make ターゲットレジストリ
 └── makefile
 ```
@@ -215,6 +220,7 @@ Infra --> External["External Systems"]
 
 ## 設計思想
 
+<!-- boilerplate:begin -->
 ### なぜ存在するのか
 
 バックエンド開発では、アーキテクチャ・ライブラリ選定・ディレクトリ構成・開発ワークフローを毎回
@@ -222,6 +228,7 @@ Infra --> External["External Systems"]
 安全かつ迅速に着手できるようにします。その価値は特定ライブラリではなく、**広く使われる OSS を
 一貫した・置換可能なアーキテクチャへ統合した点**にあります。
 
+<!-- boilerplate:end -->
 ### AI 支援開発
 
 制約（レイヤの強制・生成コードの分離・リリースベースのブランチ・OpenAPI ファースト・ドメイン純粋性）は
@@ -261,8 +268,10 @@ read-only のエンドポイントスキャナです。依存としてではな�
 基準に選定しています。メンテナは依存更新・セキュリティ修正・アーキテクチャ改善を提供する場合が
 ありますが、Issue 応答期限・バグ修正の保証・長期メンテナンスの確約は**保証しません**。
 
+<!-- boilerplate:begin -->
 今後のリリース予定: フロントエンド / インフラ / 可観測性の各ボイラープレート。
 
+<!-- boilerplate:end -->
 ## ライセンス
 
 本プロジェクト自身のソースコードは **MIT License** で公開しています — [LICENSE](LICENSE) を参照してください。

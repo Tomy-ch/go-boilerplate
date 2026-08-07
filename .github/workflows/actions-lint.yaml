@@ -9,9 +9,17 @@ on:
       - 'docker/tools/Dockerfile'
       - 'mise.toml'
       - '.makefiles/github/lint.mk'
-      - 'scripts/pr-comment-secret-lint.mjs'
-      - 'scripts/pr-comment-fence-lint.mjs'
-      - 'scripts/actions-cutoff-lint.mjs'
+      - 'scripts/pr-comment-secret-lint/index.ts'
+      - 'scripts/pr-comment-fence-lint/index.ts'
+      - 'scripts/actions-cutoff-lint/index.ts'
+      # The decision logic lives in lib/; filtering on the entry points alone would miss it.
+      - 'scripts/lib/workflow.ts'
+      - 'scripts/pr-comment-secret-lint/secret.ts'
+      - 'scripts/pr-comment-fence-lint/fence.ts'
+      - 'scripts/actions-cutoff-lint/cutoff.ts'
+      - 'scripts/package.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'scripts/pnpm-workspace.yaml'
       - 'scripts/actions-shellcheck/**'
   workflow_dispatch:
 
@@ -54,9 +62,15 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # node runs the PR-comment secret check, which actionlint cannot express.
-      - name: Install actionlint, shellcheck and node
-        run: mise install actionlint shellcheck node
+      # node runs the three checks actionlint cannot express (PR-comment secrets, fences,
+      # cut-off behaviour). They are TypeScript and run through `tsx`, hence pnpm as well.
+      - name: Install actionlint, shellcheck, node and pnpm
+        run: mise install actionlint shellcheck node npm:pnpm
+
+      # The tree is the one `scripts/pnpm-lock.yaml` pins, so CI and the container resolve the
+      # same versions.
+      - name: Install the script tree for scripts/
+        run: pnpm install --dir scripts --frozen-lockfile
 
       - name: Run Actions lint
         id: actions-lint

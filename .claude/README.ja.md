@@ -95,7 +95,7 @@ mise exec "pipx:graphifyy[sql]" -- graphify update . --no-cluster
   叩きます。
 
   ```bash
-  node .claude/scripts/graph-affected.mjs NormalizeError --depth 2
+  node .claude/scripts/graph-affected.ts NormalizeError --depth 2
   ```
 
 - **`query` は `--budget` を上げるか、truncate 警告を読むこと。** 既定（約 2000 トークン）は

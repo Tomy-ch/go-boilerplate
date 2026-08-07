@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -30,20 +31,45 @@ import (
 // duplicateThreshold は、同じ連番を「重複」と数え始める出現回数。
 const duplicateThreshold = 2
 
-// errNoVersionPrefix は、マイグレーションのファイル名に連番の区切りが無いことを表す。
-var errNoVersionPrefix = xerrors.New("migration file has no version prefix")
+var (
+	// errNoVersionPrefix は、マイグレーションのファイル名に連番の区切りが無いことを表す。
+	errNoVersionPrefix = xerrors.New("migration file has no version prefix")
+	// errUnknownCheck は、-check に未知の検査内容が渡されたことを表す。
+	errUnknownCheck = xerrors.New("unknown -check (duplicate / gap)")
+	// errNumberingProblem は、連番の検査で問題が見つかったことを表す。
+	errNumberingProblem = xerrors.New("migration numbering check failed")
+)
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
 
-	kind := flag.String("kind", "up", "検査するマイグレーションの種別 (up / down)")
-	check := flag.String("check", "duplicate", "検査内容 (duplicate / gap)")
-	dir := flag.String("dir", "database/migrations", "マイグレーションディレクトリ")
-	flag.Parse()
+	if err := run(os.Args[1:]); err != nil {
+		log.Fatalf("%v", err)
+	}
+}
+
+// run は、指定された検査をマイグレーションの連番に対して実行します。
+func run(args []string) error {
+	fs := flag.NewFlagSet("migration-lint", flag.ContinueOnError)
+	kind := fs.String("kind", "up", "検査するマイグレーションの種別 (up / down)")
+	check := fs.String("check", "duplicate", "検査内容 (duplicate / gap)")
+	dir := fs.String("dir", "database/migrations", "マイグレーションディレクトリ")
+
+	if err := fs.Parse(args); err != nil {
+		// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+		if xerrors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+
+		return xerrors.Wrap(err, "failed to parse flags")
+	}
 
 	versions, err := collectVersions(*dir, *kind)
 	if err != nil {
-		log.Fatalf("%v", err)
+		return err
 	}
 
 	var problem string
@@ -54,12 +80,18 @@ func main() {
 	case "gap":
 		problem = reportGaps(*kind, versions)
 	default:
-		log.Fatalf("unknown -check: %s (duplicate / gap)", *check)
+		return xerrors.Wrap(errUnknownCheck, *check)
 	}
 
-	if problem != "" {
-		log.Fatalf("%s", problem)
+	if problem == "" {
+		return nil
 	}
+
+	// 報告文は欠番の一覧を含む複数行なので、エラーのメッセージへ畳み込まずそのまま出す。
+	// 畳み込むと sentinel の文言が最終行の末尾に付き、並べた連番が読めなくなる。
+	log.Print(problem)
+
+	return errNumberingProblem
 }
 
 // collectVersions は、指定種別のマイグレーションファイルから連番部分を昇順で返します。

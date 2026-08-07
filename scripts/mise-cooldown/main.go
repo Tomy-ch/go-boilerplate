@@ -48,8 +48,6 @@ import (
 )
 
 const (
-	minArgs = 2 // プログラム名 + サブコマンド
-
 	miseFile   = "mise.toml"
 	bypassFile = ".github/mise-cooldown-bypass.toml" //nolint:gosec // 資格情報ではなくバイパス lockfile のパス
 
@@ -76,6 +74,10 @@ const (
 )
 
 var (
+	// errUsage は、サブコマンドやフラグの与え方が誤っていることを表すエラー。
+	errUsage = xerrors.New("invalid usage")
+	// errBlocking は、gate を通せない違反が残っていることを表すエラー。
+	errBlocking = xerrors.New("blocking violations")
 	// errUnsupportedBackend は、公開時刻の取得経路を持たない backend を指すエラー。
 	errUnsupportedBackend = xerrors.New("no publish-time source for this backend")
 	// errNotFound は、上流がそのバージョンを知らない場合のエラー。
@@ -121,81 +123,122 @@ type finding struct {
 	window    int
 }
 
+// options はサブコマンドに続けて与えられたフラグ。
+type options struct {
+	base       string
+	summaryOut string
+	github     bool
+}
+
 func (t tool) id() string { return t.key + "@" + t.version }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
-	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: mise-cooldown <gate|audit> [--base=<git-ref>] [--summary-out=<path>] [--github]")
+
+	if err := run(os.Args[1:], &http.Client{Timeout: fetchTimeout}, time.Now().UTC()); err != nil {
+		log.Fatalf("%v", err)
 	}
-	sub := os.Args[1]
-	if sub != "gate" && sub != "audit" {
-		log.Fatalf("❌ 未知のサブコマンド %q（gate | audit）", sub) //nolint:gosec // %q が引用する
+}
+
+// run は mise.toml の宣言を cooldown に照らして報告します。gate で違反が残った場合はエラーを
+// 返し、終了コードへの変換は呼び出し側に委ねます。
+// client は上流への問い合わせ手段、now は窓と期限の基準時刻で、差し替えられるよう引数で受けます。
+func run(args []string, client *http.Client, now time.Time) error {
+	sub, opt, err := parseArgs(args)
+	if err != nil {
+		// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+		if xerrors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+
+		return err
 	}
 
-	fs := flag.NewFlagSet(sub, flag.ExitOnError)
-	base := fs.String("base", "", "gate: この git ref からの差分で追加 / 更新されたツールだけを対象にする")
-	summaryOut := fs.String("summary-out", "", "Markdown サマリの出力先")
-	github := fs.Bool("github", false, "GitHub Actions のアノテーションを出力する")
-	_ = fs.Parse(os.Args[2:])
-
-	if sub == "gate" && *base == "" {
-		log.Fatalf("❌ gate には --base が要ります（比較対象が無いと差分を取れません）")
-	}
-
-	now := time.Now().UTC()
 	// 期限の比較は暦日で行う。時刻を残すと 3 ヶ月の境界が実行時刻とタイムゾーンで動く。
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	raw, err := os.ReadFile(miseFile)
 	if err != nil {
-		log.Fatalf("❌ read %s: %v", miseFile, err)
+		return xerrors.Wrap(err, "❌ read "+miseFile)
 	}
 	declared, err := parseTools(raw)
 	if err != nil {
-		log.Fatalf("❌ %s: %v", miseFile, err)
+		return xerrors.Wrap(err, "❌ "+miseFile)
 	}
 
 	bypasses, err := readBypasses(bypassFile)
 	if err != nil {
-		log.Fatalf("❌ %s: %v", bypassFile, err)
+		return xerrors.Wrap(err, "❌ "+bypassFile)
 	}
 	policyViolations, invalidBypasses := validateBypasses(bypasses, declared, today)
 
 	targets := declared
 	if sub == "gate" {
-		targets, err = added(*base, declared)
+		targets, err = added(opt.base, declared)
 		if err != nil {
-			log.Fatalf("❌ %v", err)
+			return xerrors.Wrap(err, "❌ base との差分")
 		}
 	}
 
 	ctx := context.Background()
 	resolved, skipped, err := resolveBackends(ctx, targets)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return xerrors.Wrap(err, "❌ backend の解決")
 	}
 
-	findings, unresolved := inspect(ctx, resolved, now)
+	findings, unresolved := inspect(ctx, client, resolved, now)
 
-	blocking := report(sub, findings, unresolved, skipped, policyViolations, bypasses, invalidBypasses, resolved, *github)
+	blocking := report(sub, findings, unresolved, skipped, policyViolations, bypasses, invalidBypasses, resolved, opt.github)
 
-	if *summaryOut != "" {
+	if opt.summaryOut != "" {
 		body := summary(sub, findings, unresolved, skipped, policyViolations, bypasses, invalidBypasses, resolved)
-		//nolint:gosec // 出力先はワークフローが渡すパスで、外部入力ではない
-		if writeErr := os.WriteFile(*summaryOut, []byte(body), summaryPerm); writeErr != nil {
-			log.Fatalf("❌ write summary: %v", writeErr)
+		if writeErr := os.WriteFile(opt.summaryOut, []byte(body), summaryPerm); writeErr != nil {
+			return xerrors.Wrap(writeErr, "❌ write summary")
 		}
 	}
 	if out := os.Getenv("GITHUB_OUTPUT"); out != "" {
 		if writeErr := appendOutput(out, len(findings), len(resolved), blocking); writeErr != nil {
-			log.Fatalf("❌ write GITHUB_OUTPUT: %v", writeErr)
+			return xerrors.Wrap(writeErr, "❌ write GITHUB_OUTPUT")
 		}
 	}
 
 	if blocking > 0 {
-		os.Exit(1)
+		return xerrors.Wrap(errBlocking, fmt.Sprintf("❌ mise-cooldown %s: %d 件の違反が残っています", sub, blocking))
 	}
+
+	return nil
+}
+
+// parseArgs はサブコマンドとフラグを解釈します。ヘルプ要求は flag.ErrHelp を含むエラーとして
+// 返し、失敗として扱うかどうかの判断は呼び出し側に委ねます。
+func parseArgs(args []string) (string, options, error) {
+	if len(args) == 0 {
+		return "", options{}, xerrors.Wrap(errUsage,
+			"❌ usage: mise-cooldown <gate|audit> [--base=<git-ref>] [--summary-out=<path>] [--github]")
+	}
+
+	sub := args[0]
+	if sub != "gate" && sub != "audit" {
+		return "", options{}, xerrors.Wrap(errUsage, fmt.Sprintf("❌ 未知のサブコマンド %q（gate | audit）", sub))
+	}
+
+	fs := flag.NewFlagSet(sub, flag.ContinueOnError)
+	base := fs.String("base", "", "gate: この git ref からの差分で追加 / 更新されたツールだけを対象にする")
+	summaryOut := fs.String("summary-out", "", "Markdown サマリの出力先")
+	github := fs.Bool("github", false, "GitHub Actions のアノテーションを出力する")
+	if err := fs.Parse(args[1:]); err != nil {
+		return "", options{}, xerrors.Wrap(err, "❌ フラグを解釈できません")
+	}
+
+	// gate は差分を取れないと何も検査しないまま通るため、比較対象の不在を先に落とす。
+	if sub == "gate" && *base == "" {
+		return "", options{}, xerrors.Wrap(errUsage, "❌ gate には --base が要ります（比較対象が無いと差分を取れません）")
+	}
+
+	return sub, options{base: *base, summaryOut: *summaryOut, github: *github}, nil
 }
 
 // parseTools は `[tools]` セクションの宣言だけを読む。`[settings]` の `pipx.uvx` や `[env]` の
@@ -239,7 +282,13 @@ func added(base string, current []tool) ([]tool, error) {
 	if err != nil {
 		return nil, xerrors.Wrap(err, fmt.Sprintf("git show %s:%s（base を取得できていない可能性があります）", base, miseFile))
 	}
-	before, err := parseTools(out)
+	return addedFrom(out, current)
+}
+
+// addedFrom は base 時点の mise.toml の中身と現在の宣言を突き合わせる。base を読めなかった場合に
+// 空の差分を返すと、gate は何も検査しないまま通る。解析の失敗はエラーとして表に出す。
+func addedFrom(baseContent []byte, current []tool) ([]tool, error) {
+	before, err := parseTools(baseContent)
 	if err != nil {
 		return nil, xerrors.Wrap(err, "base の "+miseFile)
 	}
@@ -292,7 +341,13 @@ func miseRegistry(ctx context.Context, name string) (string, error) {
 	if err != nil {
 		return "", xerrors.Wrap(err, "mise registry "+name)
 	}
-	fields := strings.Fields(string(out))
+	return firstBackend(out, name)
+}
+
+// firstBackend は `mise registry` の出力から先頭の候補だけを採る。mise 自身が選ぶのと同じ順序で、
+// 出力全体を採ると backend が空白を含み、以降の種別判定がすべて空振りする。
+func firstBackend(registryOutput []byte, name string) (string, error) {
+	fields := strings.Fields(string(registryOutput))
 	if len(fields) == 0 {
 		return "", xerrors.Wrap(errUnsupportedBackend, name)
 	}
@@ -326,9 +381,7 @@ func backendKind(backend string) string {
 }
 
 // inspect は対象ツールの公開時刻を引き、窓内のものと取得できなかったものを返す。
-func inspect(ctx context.Context, targets []tool, now time.Time) ([]finding, []tool) {
-	client := &http.Client{Timeout: fetchTimeout}
-
+func inspect(ctx context.Context, client *http.Client, targets []tool, now time.Time) ([]finding, []tool) {
 	var (
 		mu         sync.Mutex
 		findings   []finding
@@ -439,6 +492,12 @@ func goModuleAt(ctx context.Context, client *http.Client, pkg, version string) (
 			return body.Time, nil
 		}
 		lastErr = err
+	}
+	// pkg に `/` が無いとループが 1 度も回らない。ここで nil を返すと呼び出し側はゼロ値時刻を
+	// 「公開から数十年経過」と読み、そのツールが cooldown を無条件で通過する。「問い合わせた結果
+	// 見つからない」と「一度も問い合わせていない」は、公開時刻を得られていない点で同じ扱いにする。
+	if lastErr == nil {
+		return time.Time{}, xerrors.Wrap(errNotFound, pkg+"@"+version)
 	}
 	return time.Time{}, lastErr
 }

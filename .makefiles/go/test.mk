@@ -6,27 +6,35 @@
 .PHONY: cover-gate ## 総カバレッジが閾値以上か検証（CIゲート）
 .PHONY: test-scripts ## CI用の scripts 配下ツールのテスト実行（キャッシュ無効）
 .PHONY: test-scripts-cached ## ローカル用の scripts 配下ツールのテスト実行（キャッシュ有効・pre-commit向け）
+.PHONY: cover-scripts ## scripts 配下ツールの総カバレッジを計測し、下限割れを警告する（失敗させない）
+.PHONY: build-scripts ## scripts 配下ツールを scripts/bin/ へビルドする（手元で実バイナリを動かす用）
 
 # カバレッジ対象外パッケージ（test / test-cached / gen-test-repo / test-cover-ci で共有）
 GO_TEST_EXCLUDE := /(gen|cmd|mock|apperror|scripts)(/|$$)
 
-# カバレッジゲートの下限（docs/rules.md の 90% フロア）
+# カバレッジゲートの下限（docs/rules.md の 90% フロア）。対象は boilerplate 本体
+# （internal / pkg）で、GO_TEST_EXCLUDE が scripts を母数から外している。
 COVERAGE_THRESHOLD := 90
+
+# scripts/ 配下の開発ツールの下限。本体とは別の数値を別のプロファイルに対して張る。
+# ここが本体と同じ 1 本のゲートに乗ると、出荷物と無関係なツールの劣化がマージを止める。
+SCRIPTS_COVERAGE_THRESHOLD := 95
 
 # DB を使うテストはテスト用 DB の seed を fixture として読む。その seed の issuer はスロットのポートに
 # 追従する（.makefiles/database/seed.mk）ため、host 実行の go test にも同じ値を渡す。
-GO_TEST_ENV = $(LOAD_SLOT); export AUTH_ISSUER="$(AUTH_ISSUER_SH)"; $(if $(GO_TEST_LOAD_ENV),export $(GO_TEST_LOAD_ENV);,)
+GO_TEST_ENV = $(LOAD_BAND); $(LOAD_SLOT); $(DB_SLOT_ENV); export AUTH_ISSUER; \
+	if [ -n "$$GO_TEST_LOAD_ENV" ]; then export $$GO_TEST_LOAD_ENV; fi;
 
 # ホスト実行の go test は DB_NAME_TEST を見て接続先を決める（internal/config/config_testing_mock.go）。
 # 未設定なら共有 test へ落ちるため、スロット未取得の worktree では require-db-owner で止める
 # （不変条件は .makefiles/database/pool.mk）。CI 用の test-cover-ci は CI 側で DB を用意するため対象外。
 test: require-db-owner
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
-	$(GOBP_NICE) go test $$TGT_PKGS -race -cover -count=1 $(GO_TEST_P_FLAG)
+	$$GOBP_NICE go test $$TGT_PKGS -race -cover -count=1 $$GO_TEST_P_FLAG
 
 test-cached: require-db-owner
 	@$(GO_TEST_ENV) TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
-	$(GOBP_NICE) go test $$TGT_PKGS -cover $(GO_TEST_P_FLAG)
+	$$GOBP_NICE go test $$TGT_PKGS -cover $$GO_TEST_P_FLAG
 
 gen-test-repo: require-db-owner
 	@echo "🔄 テストを実行し、レポートを生成します..."
@@ -54,16 +62,29 @@ test-cover-ci:
 # test / test-cached のいずれにも乗らない。ツール自体がゲート（供給網ピン・lint）なので、
 # 壊れ方が「静かに何も検査しなくなる」方向に出る。カバレッジ計測とは切り離して実行だけを足す。
 test-scripts:
-	@$(GOBP_NICE) go test ./scripts/... -race -count=1 $(GO_TEST_P_FLAG)
+	@$(LOAD_BAND); $$GOBP_NICE go test ./scripts/... -race -count=1 $$GO_TEST_P_FLAG
 
 test-scripts-cached:
-	@$(GOBP_NICE) go test ./scripts/... $(GO_TEST_P_FLAG)
+	@$(LOAD_BAND); $$GOBP_NICE go test ./scripts/... $$GO_TEST_P_FLAG
 
+# 出力先を scripts/bin/ に固定する。`go build ./scripts/<tool>` をリポジトリ直下で叩くと
+# パッケージ名の実行ファイルがルートへ落ち、追跡対象外のまま数十 MB 残る。-o の付け忘れが
+# 起きないようターゲットへ寄せ、置き場所ごと .gitignore で無視する。
+build-scripts:
+	@echo "🧰 scripts 配下のツールを scripts/bin/ へビルドします..."
+	@go build -o scripts/bin/ ./scripts/...
+	@echo "✅ ビルドが完了しました（scripts/bin/）。"
+
+# 判定は scripts/cover-gate（テストの当たる Go 側）が持つ。ここが渡すのはしきい値だけで、
+# 下限値そのものは docs/rules.md に紐づく設定なので make 側に残す。
 cover-gate:
-	@test -f coverage.out || { echo "❌ coverage.out がありません（先に make test-cover-ci を実行）"; exit 1; }
-	@total="$$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$$NF); print $$NF}')"; \
-	awk -v t="$$total" -v th="$(COVERAGE_THRESHOLD)" 'BEGIN { \
-		if (t == "") { print "❌ 総カバレッジを取得できません"; exit 1 } \
-		if (t+0 < th+0) { printf "❌ 総カバレッジ %.1f%% がしきい値 %d%% を下回っています\n", t, th; exit 1 } \
-		printf "✅ 総カバレッジ %.1f%% (しきい値 %d%%)\n", t, th \
-	}'
+	@go run ./scripts/cover-gate -profile coverage.out -threshold $(COVERAGE_THRESHOLD)
+
+# scripts 配下の計測は本体とはプロファイルを分ける。合流させると片方の劣化がもう片方の
+# 合否を動かすため、下限割れは -warn で警告に留める（CI では GITHUB_ACTIONS が立つので
+# ::warning:: アノテーションとして差分ビューに出る）。
+cover-scripts:
+	@$(LOAD_BAND); $$GOBP_NICE go test ./scripts/... -coverprofile=coverage-scripts.out -covermode=atomic -count=1 $$GO_TEST_P_FLAG > /dev/null
+	@go run ./scripts/cover-gate -profile coverage-scripts.out -threshold $(SCRIPTS_COVERAGE_THRESHOLD) \
+		-warn $(if $(GITHUB_ACTIONS),-github,)
+	@rm -f coverage-scripts.out

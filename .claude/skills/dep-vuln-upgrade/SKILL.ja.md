@@ -6,8 +6,15 @@
 
 このスキルは **セキュリティ勧告リスト** を受け取り、名指しされた脆弱な依存だけを修正版へパッチする。対象は本リポジトリが使う 2 つのエコシステムにまたがる:
 
-- **npm** — 各 `package-lock.json`（現状 `docker/tools/` と `docker/mock-auth-server/`）に記録された依存。`package.json` の `overrides` エントリで固定する必要がある **推移的（transitive）** 依存を含む。
+- **npm** — 各 `package-lock.json`（現状 `mock-auth-server/` のみ）に記録された依存。`package.json` の `overrides` エントリで固定する必要がある **推移的（transitive）** 依存を含む。
 - **Go** — `go.mod` / `go.sum` のモジュール。**間接（indirect）** 依存を含む。
+
+2 つのパッケージは **pnpm** で解決する — `scripts/` と `docs-viewer/` で、それぞれ自前の
+`pnpm-lock.yaml` と `pnpm-workspace.yaml` を持つ。以下の手順は npm 向けに書かれており、これらは
+**対象外**である。pnpm は `overrides` を `package.json` ではなく `pnpm-workspace.yaml` に置き、
+その `parent>child` セレクタは直接の辺しか制約しない（npm の入れ子 override はサブツリー全体に効く）
+ため、エントリをそのまま移せない。手順が拡張されるまで pnpm パッケージはこのスキルの自動化の外として
+扱い、検出結果を報告して `pnpm-workspace.yaml` の編集は保守者の判断に委ねること。
 
 このスキルは意図的に **対象を絞る**: 勧告で名指しされた package のみを変更し、「すべてを最新へ」の一括更新はしない。そうすることでセキュリティパッチをレビュー可能に保ち、無関係な変更と切り離す。一括更新には `/tools-upgrade`（mise ツール）や `make tidy-lib`（Go モジュール）を使うこと。
 
@@ -35,7 +42,7 @@
 手順:
 
 1. スキル引数または直近のユーザーメッセージから勧告リストをパースする。各エントリから **package 名** / **現行 version**（あれば）/ **修正版候補**（major 系列ごとに複数あり得る）/ **CVE・GHSA id** / **深刻度** を取り出す。リストは自由形式でよい — よくある形（`- [HIGH] lodash 4.17.23 → 4.18.0 (CVE-...)`、`npm audit` ブロック、Trivy 行）を許容する。エコシステムや所在が曖昧なエントリは Step 1 で解決する（ここで推測しない）。
-2. リポジトリの npm cooldown を検出する: lockfile ディレクトリ配下の各 `.npmrc`（例 `docker/tools/.npmrc`）を読み `min-release-age=N` 行を探す。これは npm 11+ ネイティブの supply-chain 隔離で、**依存解決**時（`npm install` / `npm install --package-lock-only`）に `before = now − N 日` のハード cutoff を適用する — cutoff より新しい版は **そもそも install できず**、単なるフラグでは済まない。見つかれば `N` をその lockfile の `<MIN_AGE_DAYS>` として採用し、スキルの caution しきい値をツールチェーンが実際に敷く壁に合わせる。
+2. リポジトリの npm cooldown を検出する: lockfile ディレクトリ配下の各 `.npmrc`（例 `mock-auth-server/.npmrc`）を読み `min-release-age=N` 行を探す。これは npm 11+ ネイティブの supply-chain 隔離で、**依存解決**時（`npm install` / `npm install --package-lock-only`）に `before = now − N 日` のハード cutoff を適用する — cutoff より新しい版は **そもそも install できず**、単なるフラグでは済まない。見つかれば `N` をその lockfile の `<MIN_AGE_DAYS>` として採用し、スキルの caution しきい値をツールチェーンが実際に敷く壁に合わせる。
 3. ある変更に `.npmrc` cooldown が効かない場合（Go モジュール、または `min-release-age` の無い lockfile）は、引数で値が渡されない限り `7` を既定 `<MIN_AGE_DAYS>` とする。しきい値の確認で `AskUserQuestion` を呼ぶのは真に曖昧なとき（`.npmrc` の値が競合、またはユーザーが override を求めた）だけ。単一の repo `.npmrc` 値や `7` 既定は質問不要 — 使った値を明記して進める。
 
 しきい値はエコシステムにより 2 つの異なる役割を持つ:
@@ -51,11 +58,11 @@
 
 このスキル実行中に変更可:
 
-- `**/package.json` — 承認済み package の `dependencies` version もしくは `overrides` エントリの追加/調整に限る（特に `docker/tools/package.json`、`docker/mock-auth-server/package.json`）。
+- `**/package.json` — 承認済み package の `dependencies` version もしくは `overrides` エントリの追加/調整に限る（npm 側は `mock-auth-server/package.json`。`scripts/package.json` は pnpm で、`overrides` は `scripts/pnpm-workspace.yaml` にあり本スキルは編集しない）。
 - `**/package-lock.json` — 承認済み変更に対する当該 package ディレクトリでの `npm install` の決定的出力。
 - `go.mod` / `go.sum` — 承認済み Go モジュールに対する `go get <module>@<version>` + `go mod tidy` の出力。
 - `vendor/**` — `go mod vendor` の機械的出力として **のみ**、かつ **リポジトリが vendoring するとき（`vendor/modules.txt` が存在）のみ**。`go.mod` バンプは `vendor/modules.txt` を不整合のまま残し、ビルドが `inconsistent vendoring` で落ちる。よって再 vendoring は好みの編集ではなく必須の downstream 手順。vendored ファイルは手編集しない。
-- これら依存が駆動する再生成物 — Step 6 の drift チェックで動いた場合 **のみ**（例: `make gen-mock-auth-oapi` 経由の `docker/mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**`）。リポジトリの `make` ターゲットで再生成する。生成物を手編集しない。
+- これら依存が駆動する再生成物 — Step 6 の drift チェックで動いた場合 **のみ**（例: `make gen-mock-auth-oapi` 経由の `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**`）。リポジトリの `make` ターゲットで再生成する。生成物を手編集しない。
 
 このスキル実行中でも保護（触れない）:
 
@@ -138,14 +145,14 @@ disposition が `too-new` または `blocked` になった全エントリにつ�
 日本語サマリを disposition ごとに出す。例:
 
 ```text
-依存脆弱性パッチ監査（min_age_days = 7, docker/tools/.npmrc 由来）
+依存脆弱性パッチ監査（min_age_days = 7, mock-auth-server/.npmrc 由来）
 
 ✅ 適用（同一 major の最小修正版 / caution 通過 → 確認なしで適用）:
   - lodash 4.17.23 → 4.18.0  [docker/tools, 推移的]  (CVE-2026-4800, CVE-2026-2950 / HIGH)
   - js-yaml 4.2.0 → 4.3.0     [docker/tools, 直接]    (CVE-2026-59869, CVE-2026-53550 / HIGH)
 
 ⚠️ major 跨ぎ（breaking の可能性 / 別途確認）:
-  - @hono/node-server 1.19.14 → 2.0.5  [docker/mock-auth-server, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
+  - @hono/node-server 1.19.14 → 2.0.5  [mock-auth-server, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
 
 ⚠️ too-new（公開が min_age 未満 / 別途 opt-in）:
   - fast-uri 3.1.3 → 3.1.4  [docker/tools]  (公開 3 日 / CVE-2026-16221 / HIGH)
@@ -215,7 +222,7 @@ go mod vendor        # リポジトリが vendoring するとき（vendor/module
 
 実際に変わったものに合わせてチェックを走らせる — 依存パッチが一次ソースに触れることは稀なので、常にフルスイートを回すのではなく、動いたエコシステムに検証をスコープする。各々を OK / FAIL で報告し、失敗しても自動ロールバックしない — ユーザーが判断する。
 
-Go 変更は最低限ビルド + vuln スキャンが clean であること（`go build ./...` + `govulncheck ./...`）。Go 変更がフルスイートに値するほど広ければ `make lint` / `make test` を回す。**major な npm バンプ** はより入念に検証する — その package 自身の `typecheck` + テスト（例 `docker/mock-auth-server/` で `npm run typecheck` + `npm test`）を回す。major は呼び出す API を変え得るため。
+Go 変更は最低限ビルド + vuln スキャンが clean であること（`go build ./...` + `govulncheck ./...`）。Go 変更がフルスイートに値するほど広ければ `make lint` / `make test` を回す。**major な npm バンプ** はより入念に検証する — その package 自身の `typecheck` + テスト（例 `mock-auth-server/` で `npm run typecheck` + `npm test`）を回す。major は呼び出す API を変え得るため。
 
 npm 変更 — 勧告が実際に解消されたか / lockfile が clean かを確認:
 
@@ -236,7 +243,7 @@ govulncheck ./...                # 利用可能なら。GHSA が解消するこ�
 
 生成物 drift — これら npm 依存はコード生成器を駆動するため、バンプで生成出力が動き得る。変更した lockfile が生成器を養う package のものなら、その生成器を走らせて drift を確認する（CI と同じチェック）:
 
-- `docker/mock-auth-server/**` 依存 → `make gen-mock-auth-oapi`（および `make gen-mock-auth-oapi-docs`）→ 生成パスを `git status`。再生成物をパッチの一部としてコミットする。
+- `mock-auth-server/**` 依存 → `make gen-mock-auth-oapi`（および `make gen-mock-auth-oapi-docs`）→ 生成パスを `git status`。再生成物をパッチの一部としてコミットする。
 - `docker/tools/**` 依存（toolbox イメージ: redocly / orval / sqlc 周辺ツール）→ 依存が変わったツールがそれらであるときに限り、そのイメージが生成する成果物（`make gen-*-oapi`、`make gen-query` 等）を再生成し drift を確認。
 
 再生成で変更が出たら含める — 生成出力を黙って変えるセキュリティバンプが、CI の drift チェックを落とす状態でツリーを残してはならない。

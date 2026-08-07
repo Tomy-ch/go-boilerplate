@@ -10,7 +10,7 @@
 //
 // 実体が make のレシピではなくここに在るのは、タグの一括削除やデフォルトブランチの
 // 移動を含み、分岐を実地で確かめようとすると本当にリポジトリを壊すしかないため。
-// 手順の組み立てを純粋関数へ寄せて、テストで固定する。
+// 手順の組み立てを純粋関数へ寄せ、実行層を runner として差し替え可能にして、テストで固定する。
 //
 // git / gh はホストの認証情報を使うため、ツールランナーではなくホストで実行する
 // （cmd/db-slot と同じ扱い）。
@@ -35,8 +35,6 @@ const (
 	defaultBranch = "production"
 	// releaseNoteDir は、リリースノートの置き場所。
 	releaseNoteDir = ".github/release"
-	// minArgs は、プログラム名 + サブコマンドの最小引数数。
-	minArgs = 2
 	// stepsPerTag は、タグ 1 件あたりの削除手順数（ローカル + リモート）。
 	stepsPerTag = 2
 	// commandTimeout は、git / gh 1 コマンドあたりの上限。
@@ -48,6 +46,10 @@ var (
 	managedBranches = []string{"develop", "staging", defaultBranch}
 	// errInitialTagExists は、初期タグが既に在り初期化してはいけないことを表す。
 	errInitialTagExists = xerrors.New("があります。初期化を停止します")
+	// errUsage は、サブコマンドが指定されていないことを表す。
+	errUsage = xerrors.New("❌ usage: repo-setup <preflight|bootstrap|prune-release-notes>")
+	// errUnknownSubcommand は、未知のサブコマンドが指定されたことを表す。
+	errUnknownSubcommand = xerrors.New("❌ unknown subcommand (preflight / bootstrap / prune-release-notes)")
 )
 
 // step は、実行する 1 コマンド。allowFail はリモートに対象が無い場合など、
@@ -58,28 +60,44 @@ type step struct {
 	allowFail bool
 }
 
+// runner は、手順を実際に走らせる実行層。タグの一括削除や origin への push を伴う
+// bootstrap の手順を、実リポジトリを壊さずに検証できるよう関数値で保持する。
+type runner struct {
+	// run は、手順を 1 つ実行する。
+	run func(s step) error
+	// output は、コマンドの標準出力を取り出す。
+	output func(name string, args ...string) (string, error)
+	// branchExists は、ローカルブランチの有無を返す。
+	branchExists func(branch string) bool
+}
+
+// main はエラーを終了コードへ変換するだけに留め、判断は execute が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。名前が run でないのは、1 コマンドを起動する run が
+// 同じパッケージに既に在るため。
 func main() {
 	log.SetFlags(0)
 
-	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: repo-setup <preflight|bootstrap|prune-release-notes>")
-	}
-
-	var err error
-
-	switch os.Args[1] {
-	case "preflight":
-		err = runPreflight()
-	case "bootstrap":
-		err = runBootstrap()
-	case "prune-release-notes":
-		err = runPruneReleaseNotes()
-	default:
-		log.Fatalf("❌ unknown subcommand (preflight / bootstrap / prune-release-notes)")
-	}
-
-	if err != nil {
+	if err := execute(hostRunner(), os.Args[1:]); err != nil {
 		log.Fatalf("%v", err)
+	}
+}
+
+// execute は、サブコマンドを選んで実行します。
+func execute(r runner, args []string) error {
+	if len(args) == 0 {
+		return errUsage
+	}
+
+	switch args[0] {
+	case "preflight":
+		return runPreflight()
+	case "bootstrap":
+		return runBootstrap(r)
+	case "prune-release-notes":
+		return runPruneReleaseNotes()
+	default:
+		return errUnknownSubcommand
 	}
 }
 
@@ -204,22 +222,22 @@ func runPreflight() error {
 	return nil
 }
 
-func runBootstrap() error {
-	if err := resetTags(); err != nil {
+func runBootstrap(r runner) error {
+	if err := resetTags(r); err != nil {
 		return err
 	}
 
-	if err := createBranches(); err != nil {
+	if err := createBranches(r); err != nil {
 		return err
 	}
 
-	return moveDefaultBranch()
+	return moveDefaultBranch(r)
 }
 
-func resetTags() error {
+func resetTags(r runner) error {
 	log.Printf("🔧 タグの初期化を開始します...")
 
-	out, err := output("git", "tag")
+	out, err := r.output("git", "tag")
 	if err != nil {
 		return err
 	}
@@ -228,7 +246,7 @@ func resetTags() error {
 	if len(tags) == 0 {
 		log.Printf("🟡 削除対象のタグが存在しません。")
 	} else {
-		if err := runAll(tagDeletionSteps(tags)); err != nil {
+		if err := r.runAll(tagDeletionSteps(tags)); err != nil {
 			return err
 		}
 
@@ -238,7 +256,7 @@ func resetTags() error {
 	log.Printf("✅ タグの初期化を終了します。")
 	log.Printf("🔧 %s のタグ打ちを開始します...", initialTag)
 
-	if err := runAll(initialTagSteps()); err != nil {
+	if err := r.runAll(initialTagSteps()); err != nil {
 		return err
 	}
 
@@ -247,13 +265,13 @@ func resetTags() error {
 	return nil
 }
 
-func createBranches() error {
+func createBranches(r runner) error {
 	log.Printf("🔧 ブランチ作成を開始します...")
 
 	existing := make([]string, 0, len(managedBranches))
 
 	for _, b := range managedBranches {
-		if branchExists(b) {
+		if r.branchExists(b) {
 			existing = append(existing, b)
 		}
 	}
@@ -264,11 +282,11 @@ func createBranches() error {
 		log.Printf("🟡 ブランチ 【%s】 は既に存在します。作成処理をスキップします。", b)
 	}
 
-	if err := runAll(steps); err != nil {
+	if err := r.runAll(steps); err != nil {
 		return err
 	}
 
-	if err := run(branchPushStep()); err != nil {
+	if err := r.run(branchPushStep()); err != nil {
 		return err
 	}
 
@@ -277,33 +295,33 @@ func createBranches() error {
 	return nil
 }
 
-func moveDefaultBranch() error {
+func moveDefaultBranch(r runner) error {
 	log.Printf("🔧 デフォルトブランチの設定を開始します...")
 
-	repo, err := output("gh", "repo", "view", "--json", "name,owner", "-q", `.owner.login + "/" + .name`)
+	repo, err := r.output("gh", "repo", "view", "--json", "name,owner", "-q", `.owner.login + "/" + .name`)
 	if err != nil {
 		return err
 	}
 
-	if err := run(defaultBranchStep(strings.TrimSpace(repo))); err != nil {
+	if err := r.run(defaultBranchStep(strings.TrimSpace(repo))); err != nil {
 		return err
 	}
 
-	if err := run(step{name: "git", args: []string{"fetch", "--prune"}}); err != nil {
+	if err := r.run(step{name: "git", args: []string{"fetch", "--prune"}}); err != nil {
 		return err
 	}
 
 	// 元居たブランチ名は switch する前に控える。
-	original, err := output("git", "branch", "--show-current")
+	original, err := r.output("git", "branch", "--show-current")
 	if err != nil {
 		return err
 	}
 
-	if err := run(step{name: "git", args: []string{"switch", defaultBranch}}); err != nil {
+	if err := r.run(step{name: "git", args: []string{"switch", defaultBranch}}); err != nil {
 		return err
 	}
 
-	if err := runAll(originalBranchCleanupSteps(strings.TrimSpace(original))); err != nil {
+	if err := r.runAll(originalBranchCleanupSteps(strings.TrimSpace(original))); err != nil {
 		return err
 	}
 
@@ -348,6 +366,22 @@ func runPruneReleaseNotes() error {
 
 // ---- コマンド実行 -----------------------------------------------------------
 
+// hostRunner は、ホストの git / gh を実際に起動する実行器を返します。
+func hostRunner() runner {
+	return runner{run: run, output: output, branchExists: branchExists}
+}
+
+// runAll は、手順を並び順に実行します。失敗した時点で残りは実行しません。
+func (r runner) runAll(steps []step) error {
+	for _, s := range steps {
+		if err := r.run(s); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func tagExists(tag string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
@@ -374,16 +408,6 @@ func run(s step) error {
 
 	if err := cmd.Run(); err != nil && !s.allowFail {
 		return xerrors.Wrap(err, "failed: "+s.String())
-	}
-
-	return nil
-}
-
-func runAll(steps []step) error {
-	for _, s := range steps {
-		if err := run(s); err != nil {
-			return err
-		}
 	}
 
 	return nil

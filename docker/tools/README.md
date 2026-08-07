@@ -13,7 +13,7 @@ This Dockerfile provides **code generation and bundling tool containers** for th
 |Target|Base Image|Included Tools|
 |---|---|---|
 |`go_tools`|`golang:1.26.5-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.18.0-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild (+ portal bundling libs)|
+|`node_tools`|`node:24.18.0-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, pnpm, tsx, typescript, vitest, js-yaml, mermaid, linkedom|
 |`python_tools`|`python:3.14.6-slim`|sqlfluff|
 
 ## go_tools
@@ -35,7 +35,7 @@ Code generation, linting, security, and documentation tools for Go:
 
 ## node_tools
 
-Tools for OpenAPI document processing and portal frontend bundling:
+Tools for OpenAPI document processing and portal generation:
 
 |Tool|Purpose|
 |---|---|
@@ -43,9 +43,12 @@ Tools for OpenAPI document processing and portal frontend bundling:
 |`markdownlint-cli2`|Markdown linter for docs (`make md-lint`)|
 |`@commitlint/cli`|Commit-message linter (`make commitlint`, wired to the `commit-msg` hook)|
 |`js-yaml`|YAML processing for portal doc generation scripts|
-|`esbuild`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`make gen-portal-build`)|
-|`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|Portal frontend runtime libraries bundled by esbuild (replacing the former CDN + in-browser Babel setup). `mermaid` is also reused by `scripts/mermaid-lint.mjs` to validate ` ```mermaid ` fences (`make md-lint`).|
-|`linkedom`|Headless DOM that lets `mermaid.parse` run in Node for the Markdown mermaid syntax lint (`scripts/mermaid-lint.mjs`)|
+|`pnpm`|Resolve both Node packages in the repository: `scripts/` (installed into `/app/scripts/node_modules`) and `docs-viewer/`, which builds the portal frontend into `docs/portal/` (`make gen-portal-build`, `make portal-test`). The two are separate packages with separate lockfiles and separate `node_modules`.|
+|`tsx`|Run the repository's TypeScript helper scripts (`scripts/**/*.ts`) without a build step|
+|`typescript`|Type check those scripts (`make scripts-typecheck`)|
+|`vitest`|Unit tests for the scripts' decision logic (`make scripts-test`)|
+|`mermaid`|Lets `scripts/mermaid-lint/index.ts` validate ` ```mermaid ` fences with the real parser (`make md-lint`)|
+|`linkedom`|Headless DOM that lets `mermaid.parse` run in Node for the Markdown mermaid syntax lint (`scripts/mermaid-lint/index.ts`)|
 
 ## python_tools
 
@@ -84,3 +87,4 @@ make gen-query  # sqlc code generation
 - Working directory is `/app` for all targets
 - Tools are installed in a builder stage and copied to the runtime stage to minimize image size (`go_tools`)
 - Tool versions are pinned in `mise.toml` (the version SSOT); update them there so local and CI images stay in sync
+- The Node dependencies this image installs are declared by `scripts/` (`package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`) and by `docs-viewer/`; the build copies each manifest set into the directory it belongs to and installs it there. Neither manifest set lives in this directory, so a dependency change is reviewed next to the code that uses it

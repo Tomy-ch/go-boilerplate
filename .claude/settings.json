@@ -120,7 +120,7 @@
       "Bash(graphify explain *)",
       "Bash(graphify diagnose *)",
       "Bash(graphify update *)",
-      "Bash(node .claude/scripts/graph-affected.mjs *)",
+      "Bash(node .claude/scripts/graph-affected.ts *)",
 
       "Bash(lefthook run pre-commit)",
 

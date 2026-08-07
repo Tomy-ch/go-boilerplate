@@ -121,7 +121,7 @@ lockfile's scan to `.github/**`, never widening `pin-actions`.
 
 ## Dependencies
 
-### Two principles that hold for every ecosystem
+### Three principles that hold for every ecosystem
 
 **A cooldown window is proportional to upstream's detection latency, not to blast radius.** A
 compromised publish is usually caught and pulled within hours to days; the window exists to sit
@@ -136,6 +136,16 @@ what actually changed, and did new dependencies appear. When a fix is urgent tho
 answered directly — transparency-log lookup, artifact-versus-tag comparison, reading the diff,
 checking the manifest for new requirements. Answering them beats counting days. Skipping *both*
 does not.
+
+**A prerelease is outside what the window measures.** The window buys time for upstream to notice
+a bad publish and pull it. An alpha or beta is not a publish anyone intends to stand behind: it is
+offered on the understanding that it may change shape or vanish, so surviving N days says nothing
+about it. That makes "it cleared the cooldown" the wrong reason to take one. Prereleases therefore
+stay out of the resolved tree unless a specific need names one, even where a dependency's own range
+permits them — a range like `^1.7.1 || ^2.0.0-alpha.3` says the author will accept either, not that
+the alpha is preferred, and a resolver picking the highest match will take the alpha every time.
+Pinning back to the stable line is an `overrides` entry in the ecosystem's own config, carrying the
+reason.
 
 ### Go modules
 

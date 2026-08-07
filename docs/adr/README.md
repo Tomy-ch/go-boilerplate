@@ -123,7 +123,7 @@ do X") are tagged `setup-review`.
 | [0074](0074-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
 | [0075](0075-mise-ssot-drift-gate.md) | mise.toml is the single source of truth; versions propagate downstream with a CI drift gate | accepted |
 | [0076](0076-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
-| [0077](0077-scripts-in-node-go.md) | Operational scripts live in scripts/ as Node (.mjs) or Go; shell scripting is not used | accepted |
+| [0077](0077-scripts-in-node-go.md) | Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used | accepted |
 | [0078](0078-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
 | [0079](0079-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
 | [0080](0080-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |

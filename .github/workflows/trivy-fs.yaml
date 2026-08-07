@@ -12,16 +12,18 @@ on:
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
-      - 'docker/tools/package-lock.json'
-      - 'docker/mock-auth-server/package-lock.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
       - '.github/workflows/trivy-fs.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
-      - 'docker/tools/package-lock.json'
-      - 'docker/mock-auth-server/package-lock.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
   schedule:
     - cron: '0 0 * * 1'
   workflow_dispatch:

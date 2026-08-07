@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [toolchain, scripts]
 ---
 
-# ADR-0077: Operational scripts live in scripts/ as Node (.mjs) or Go; shell scripting is not used
+# ADR-0077: Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used
 
 ## Status
 
@@ -26,30 +26,55 @@ application stack.
 
 ## Decision
 
-Operational scripts live in `scripts/` and are written in Node (ESM `.mjs` modules) or
+Operational scripts live in `scripts/` and are written in TypeScript (run through `tsx`) or
 Go, depending on the nature of the task.
 
-**Node (`.mjs`)** is used for documentation generation, Makefile help output,
-versioning, and initial-setup tasks — work that involves text manipulation, file I/O,
-and Markdown or YAML processing:
+**TypeScript** is used for documentation generation, Makefile help output, versioning, and
+repository gates — work that involves text manipulation, file I/O, and Markdown or YAML
+processing:
 
-- `gen-portal-docs.mjs`, `gen-docs-json.mjs`, `build-portal.mjs` — portal generation.
-- `make_help.mjs` — parse `.makefiles/*.mk` and render the help output.
-- `semver.mjs` — semantic-version bumping.
-- `stamp-openapi-version.mjs` — derive version from branch name and write it to
-  `openapi.yaml`; dependency-free ESM.
-- `mermaid-lint.mjs` — validate Mermaid fences in Markdown.
-- `setup/*.mjs` — one-time initial-project setup scripts (module rename, metadata
-  replacement, sample-API removal).
+- `portal/gen-portal-docs.ts`, `portal/gen-docs-json.ts` — portal generation.
+- `make-help.ts` — parse `.makefiles/*.mk` and render the help output.
+- `semver.ts` — semantic-version bumping.
+- `stamp-openapi-version.ts` — derive version from branch name and write it to `openapi.yaml`.
+- `mermaid-lint.ts`, `skill-lint.ts`, `pr-comment-secret-lint.ts`, `pr-comment-fence-lint.ts`,
+  `actions-cutoff-lint.ts` — repository gates over Markdown and workflow YAML.
+- `setup/replace-*.ts` — one-time rewrites of the Go module path, app metadata, repository
+  references, the LICENSE holder and the CODEOWNERS owner field.
+- `setup/remove-sample-api.ts`, `setup/verify-sample-removal.ts` — sample-API removal and the
+  check that it was exact.
+
+Each script keeps its decision logic in a pure module under `scripts/lib/` (or
+`scripts/portal/`) with a `vitest` suite next to it, leaving the entry file to do file I/O
+and exit codes. Several of these scripts are gates whose failure mode is to inspect nothing
+and still exit `0`, which a type checker and a test can pin and an untyped script cannot.
+
+The one-time initial-setup scripts under `setup/` follow the same split, and are the reason the
+split is not merely a convention. Five of them are never executed by CI at all, and every one of
+them rewrites the user's own repository — a Go module path across every file in the tree, the
+LICENSE holder, the owner field of every CODEOWNERS rule. When a replacement rule over-matches or
+misses a file type, the person who finds out is someone who cloned the boilerplate minutes ago,
+holds no context to debug with, and is looking at their own repository for the first time. So the
+replacement rules live in pure modules under `setup/lib/` with a `vitest` suite next to each, and
+what those tests pin is the rule itself: what it matches, what it must not match, and which file
+types it must not miss.
+
+Two of them delete themselves. `remove-sample-api.ts` removes its own manifest and marker logic
+along with the sample, and `verify-sample-removal.ts` removes itself, its decision module and that
+module's test once the verification passes. A decision module extracted out of a self-deleting
+script has to be deleted with it, or the tool survives in fragments in the user's repository.
 
 **Go** is used where stronger type safety, error handling, or richer standard-library
-support is needed:
+support is needed, and for anything a gate invokes on the host without a Node toolchain:
 
 - `sync-versions/` — parse `mise.toml` and propagate language-runtime versions to
   `go.mod` and Dockerfile `FROM` lines; atomic writes, pre-validation.
 - `genctxkey/` — Echo context key code generator; driven by `//go:generate` directives.
-- `pin-actions/` — resolve and apply commit-SHA pins for GitHub Actions `uses:`
-  references; network I/O, lockfile management, supply-chain quarantine.
+- `pin-actions/` / `pin-images/` — resolve and apply commit-SHA and digest pins; network
+  I/O, lockfile management, supply-chain quarantine.
+- `npm-cooldown/` / `go-cooldown/` / `mise-cooldown/` — supply-chain cooldown gates.
+- `migration-lint/` / `cover-gate/` / `load-band/` — gates and resolvers called from
+  `.makefiles/**`, where the alternative was leaving the decision in a shell recipe.
 
 Shell scripting is not used for any of these tasks.
 
@@ -67,22 +92,29 @@ or by reading configuration files), never by importing `internal/` packages dire
 
 ### Positive Consequences
 
-- Both Node and Go provide proper error handling, testability, and cross-platform
+- Both TypeScript and Go provide proper error handling, testability, and cross-platform
   behaviour absent from shell.
-- Dependency-free ESM scripts (e.g. `stamp-openapi-version.mjs`) run on any Node
-  install without an `npm install` step.
+- A type checker plus a test suite covers the failure mode that matters for a gate — a
+  script that stops inspecting anything while still exiting `0`. Shell cannot express
+  either check, and untyped JavaScript only the second.
 - Go scripts share the project's primary toolchain and run via `go run` without
-  additional installation.
+  additional installation, so a gate in a `make` recipe needs no Node on the host.
 - The role separation keeps `pkg/` and `internal/` clean of build-tooling concerns.
 
 ### Negative Consequences
 
 - The `scripts/` directory houses two runtimes (Node and Go); contributors must identify
   which runtime applies before editing a script.
+- No TypeScript script is dependency-free: every one of them needs `tsx` to run, so
+  `scripts/` carries a `package.json` + `pnpm-lock.yaml` and the scripts cannot run on a
+  bare host until `pnpm install --dir scripts` has been done. That cost is why a gate
+  reachable from a `make` recipe is written in Go instead.
 - Setup scripts are one-time use; they remain in the repository after initial setup is
   complete, which adds volume without ongoing value.
-- Documentation scripts require the `node_modules` available in `docker/tools/`; they
-  cannot be run on a bare host without `npm install`.
+- The self-deleting setup tools take their tests with them, so those tests protect this
+  boilerplate's own CI rather than the repository created from it. That is the correct trade — the
+  alternative is shipping a test suite for a tool that no longer exists — but it does mean the
+  guarantee ends at the moment of use.
 
 ## Alternatives Considered
 
@@ -93,6 +125,15 @@ project's scripts involve enough conditional logic and file manipulation that sh
 becomes a maintenance liability. Shell is also poorly suited for tasks such as numeric
 computation, conditional branching over multiple states, or format-specific tooling such
 as Mermaid diagram linting — all of which appear in this project's script inventory.
+
+### Plain JavaScript (ESM `.mjs`)
+
+Runs with no build step and no dependency. That was the argument for leaving `setup/` on `.mjs`,
+and it did not survive the observation that those scripts are the least observed code in the
+repository: a mistyped field or a renamed key surfaces as a silently empty result set rather than
+an error, and for a setup script nobody is watching the result set. Once a test harness is
+warranted anyway, the marginal cost of adding types over it is small, and `scripts/` now holds a
+single JavaScript dialect rather than two.
 
 ### Python
 

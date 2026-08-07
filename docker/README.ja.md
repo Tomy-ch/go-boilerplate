@@ -12,7 +12,7 @@ docker/
 ├── tools/              # コード生成・ツールランナー用 Dockerfile
 ├── document/           # ドキュメントビューア用 Dockerfile + nginx設定
 ├── garage/             # オブジェクトストレージ用 Dockerfile + 設定 + プロビジョニングスクリプト
-├── mock-auth-server/   # 疑似 OIDC 認証サーバー用 Dockerfile + アプリケーション
+├── mock-auth-server/   # 疑似 OIDC 認証サーバー用 Dockerfile
 └── database/
     ├── sql/            # DB初期化SQL
     ├── schemaspy/      # ER図生成設定
@@ -64,7 +64,7 @@ DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` 
 
 |サービス|Dockerfile / Image|ポート|説明|
 |---|---|---|---|
-|`docs_viewer`|`docker/document/Dockerfile`|2001|ドキュメントポータル（nginx）|
+|`docs_server`|`docker/document/Dockerfile`|2001|ドキュメントポータル（nginx）|
 |`sql_editor`|`sosedoff/pgweb`|2000|Web SQL エディタ|
 
 ### ツールランナー（profile: `generate`・infra 層）
@@ -143,7 +143,7 @@ Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクト�
 
 ## mock-auth-server
 
-疑似 OIDC 認証サーバー（JWT Test Provider）のコンテナです。エンドポイント・フロー・fixture は [`docker/mock-auth-server/README.ja.md`](mock-auth-server/README.ja.md) を参照してください。
+疑似 OIDC 認証サーバー（JWT Test Provider）のコンテナです。ここにあるのは Dockerfile だけで、サービス実装はリポジトリ直下に置いています。エンドポイント・フロー・fixture は [`mock-auth-server/README.ja.md`](../mock-auth-server/README.ja.md) を参照してください。
 
 - ベースイメージ: `node:24.18.0-alpine`。Node のネイティブ型ストリッピングで `.ts` を直接実行（`tsc` ビルド不要）
 - 非rootユーザー（`node`）で実行。コンテナ内部のポートは常に `4000`

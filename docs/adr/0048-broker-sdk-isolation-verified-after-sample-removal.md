@@ -62,7 +62,7 @@ measures coupling rather than linkage.
 E3' decomposes into four conditions, each mechanically verifiable:
 
 1. **No core `*.go` references a broker adapter** — checked by `checkNoDanglingReferences` in
-   `scripts/setup/verify-sample-removal.mjs`.
+   `scripts/setup/verify-sample-removal.ts`.
 2. **No core document references a sample** — core documents describe structure
    (`internal/controller/worker/<name>/`), never a sample's name.
 3. **The seam returns to its pre-sample shape** — any sample-driven change to

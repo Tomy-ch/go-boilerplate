@@ -26,14 +26,20 @@ const (
 	toolsDockerfileGolangCount  = 2
 )
 
+// errAborted は、問題を検出したためファイルを書き換えずに中止したことを表す。
+var errAborted = xerrors.New("❌ 書き換えを中止しました")
+
 var (
 	miseSectionRe = regexp.MustCompile(`^\[([^\]]+)\]`)
 	miseKeyRe     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]+)"`)
 	goModRe       = regexp.MustCompile(`(?m)^go \d+(?:\.\d+){0,2}$`)
-	// `(?m)^[^#]*?` でコメント行（先頭 `#`）を除外する。
-	golangFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+golang:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
-	nodeFromRe   = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
-	pythonFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	// `(?m)^[^#\n]*?` でコメント行（先頭 `#`）を除外する。`\n` を除くのは、Go の文字クラスが
+	// 改行にもマッチするためで、`[^#]` のままだとマッチが行をまたいで広がる。間に `#` を
+	// 含まない 2 つの `FROM` があると、その間の行までマッチに取り込まれ、置換で消える。
+	// マッチ件数は変わらないので expectedCount のゲートも通過してしまう。
+	golangFromRe = regexp.MustCompile(`(?m)^[^#\n]*?(FROM\s+golang:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	nodeFromRe   = regexp.MustCompile(`(?m)^[^#\n]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	pythonFromRe = regexp.MustCompile(`(?m)^[^#\n]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	// バッククォートを capture に含めることで置換後も保持する。
 	golangImageRe    = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	nodeImageRe      = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
@@ -71,18 +77,29 @@ type fileState struct {
 	applied  []string
 }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("")
 
-	root, err := os.Getwd()
+	if err := run(os.Getwd); err != nil {
+		log.Fatalf("%v", err)
+	}
+}
+
+// run は、mise.toml の version を各種ファイルへ反映します。
+// 基点となるディレクトリの取得手段は、差し替えられるよう引数で受けます。
+func run(getwd func() (string, error)) error {
+	root, err := getwd()
 	if err != nil {
-		log.Fatalf("❌ getwd: %v", err)
+		return xerrors.Wrap(err, "❌ getwd")
 	}
 
 	v, err := parseMiseTOML(filepath.Join(root, "mise.toml"))
 	if err != nil {
-		log.Fatalf("❌ mise.toml のパースに失敗: %v", err)
+		return xerrors.Wrap(err, "❌ mise.toml のパースに失敗")
 	}
 
 	printSource(v)
@@ -90,17 +107,19 @@ func main() {
 	rules := buildRules(v)
 
 	if errs := validateRules(rules, root); len(errs) > 0 {
-		reportAndExit("Validation errors（書き換えは行いません）", errs)
+		reportProblems("Validation errors（書き換えは行いません）", errs)
+
+		return errAborted
 	}
 
 	states, errs := computeChanges(rules, root)
 	if len(errs) > 0 {
-		reportAndExit("Match-count errors（書き換えは行いません）", errs)
+		reportProblems("Match-count errors（書き換えは行いません）", errs)
+
+		return errAborted
 	}
 
-	if err := writeChanges(states, root); err != nil {
-		log.Fatalf("❌ %v", err)
-	}
+	return writeChanges(states, root)
 }
 
 // parseMiseTOML は mise.toml の [tools] table 配下の go / node / python キーを抽出する。
@@ -333,13 +352,14 @@ func writeChanges(states map[string]*fileState, root string) error {
 	return nil
 }
 
-func reportAndExit(title string, errs []string) {
+// reportProblems は、書き換えへ進めない理由を一覧で表示する。件数が可変で複数行になるため、
+// エラーのメッセージへ畳み込まず、中止そのものは errAborted で表す。
+func reportProblems(title string, errs []string) {
 	log.Println("")
 	log.Printf("❌ %s:", title)
 	for _, e := range errs {
 		log.Printf("  - %s", e)
 	}
-	os.Exit(1)
 }
 
 func emptyAs(s string) string {

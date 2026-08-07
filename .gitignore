@@ -8,8 +8,25 @@ node_modules/
 # ビルド済みのバイナリファイル
 tmp/
 
+# scripts 配下ツールのビルド出力（make build-scripts）。出力先をここへ固定することで、
+# リポジトリ直下に go build の成果物が散らばるのを防ぐ
+scripts/bin/
+
 # graphify の出力（graph.json / GRAPH_REPORT.md 等）。コード変更ごとに動く派生物
 graphify-out/
+
+# vitest のカバレッジ出力。各 vitest.config は reporter を text へ絞っているが、
+# --coverage.reporter=html を直に指定した実行が生む書き出しをコミット対象から外す。
+# 裸の coverage/ は追跡・公開している docs/coverage/（Go 側）にも一致してしまうため、
+# パッケージごとに列挙する。
+docs-viewer/coverage/
+scripts/coverage/
+mock-auth-server/coverage/
+
+# ビルド済みのドキュメント。docs-viewer(Vite) の出力で、index.html は dist/ のハッシュ付き資産を
+# 参照する対になっているため片方だけ追跡しない。deploy-docs.yaml が公開前に再ビルドする
+docs/portal/dist/**
+docs/portal/index.html
 
 # -----ファイル-----
 # ディレクトリの表示管理ファイル

@@ -8,6 +8,8 @@ include .makefiles/docker/compose.mk
 include .makefiles/database/vars.mk
 # Go言語関連
 include .makefiles/go/vars.mk
+# Node関連
+include .makefiles/node/vars.mk
 # 負荷配分（重いターゲットが参照するため、それらより前に読む）
 include .makefiles/load.mk
 
@@ -53,6 +55,8 @@ include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk
 # Markdown関連
 include .makefiles/markdown/lint.mk
+# Node関連
+include .makefiles/node/scripts.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
@@ -74,5 +78,5 @@ include .makefiles/gen/gen.mk
 
 .PHONY: help
 help:
-	@node scripts/make_help.mjs
+	@$(TSX) scripts/make-help
 

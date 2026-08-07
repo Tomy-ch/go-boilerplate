@@ -1,6 +1,6 @@
 ---
 name: dep-vuln-upgrade
-description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's npm lockfiles (`package-lock.json`, e.g. `docker/tools/` and `docker/mock-auth-server/`) and the Go module graph (`go.mod` / `go.sum`), targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive npm deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the repo's own `.npmrc` `min-release-age` cooldown (deferring any fix that npm would hard-reject as too new), chains `/supply-chain-triage` on every entry the cooldown catches so the opt-in rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps and too-new opt-ins. It updates lockfiles with `npm install --package-lock-only` (scoped `overrides` for transitive deps), runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `npm audit` / `govulncheck` / build plus generated-artifact drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), or for a general `go.mod` dependency refresh (`make tidy-lib`).
+description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's npm lockfile (`mock-auth-server/package-lock.json`) and the Go module graph (`go.mod` / `go.sum`), targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive npm deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the repo's own `.npmrc` `min-release-age` cooldown (deferring any fix that npm would hard-reject as too new), chains `/supply-chain-triage` on every entry the cooldown catches so the opt-in rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps and too-new opt-ins. It updates lockfiles with `npm install --package-lock-only` (scoped `overrides` for transitive deps), runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `npm audit` / `govulncheck` / build plus generated-artifact drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), for a general `go.mod` dependency refresh (`make tidy-lib`), or for the pnpm-resolved packages (`scripts/` and `docs-viewer/`), whose `overrides` live in `pnpm-workspace.yaml` and are not covered by this flow.
 argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" per line] [min_age_days]'
 ---
 
@@ -8,8 +8,16 @@ argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" pe
 
 This skill takes a **security advisory list** and patches only the named vulnerable dependencies to a fixed version, spanning two ecosystems this repo uses:
 
-- **npm** — dependencies recorded in each `package-lock.json` (currently `docker/tools/` and `docker/mock-auth-server/`), including **transitive** deps that must be pinned via a `package.json` `overrides` entry.
+- **npm** — dependencies recorded in each `package-lock.json` (currently `mock-auth-server/` only), including **transitive** deps that must be pinned via a `package.json` `overrides` entry.
 - **Go** — modules in `go.mod` / `go.sum`, including **indirect** dependencies.
+
+Two packages resolve with **pnpm** instead — `scripts/` and `docs-viewer/`, each carrying its own
+`pnpm-lock.yaml` and `pnpm-workspace.yaml`. The step-by-step flow below is written for npm and does
+**not** cover them: pnpm keeps its `overrides` in `pnpm-workspace.yaml` rather than in
+`package.json`, and its `parent>child` selector constrains only the direct edge where npm's nested
+override applies to the whole subtree, so an entry cannot be copied across unchanged. Treat a pnpm
+package as out of this skill's automation until the flow is extended — report the finding, and let
+the maintainer edit `pnpm-workspace.yaml` deliberately.
 
 It is deliberately **targeted**: it changes only the packages named in the advisory, never a blanket "everything to latest". That keeps a security patch reviewable and decoupled from unrelated churn. For blanket upgrades use `/tools-upgrade` (mise tools) or `make tidy-lib` (Go modules) instead.
 
@@ -37,7 +45,7 @@ Parse the advisory list, then resolve the supply-chain caution threshold `<MIN_A
 Procedure:
 
 1. Parse the advisory list from the skill arguments or the most recent user message. Each entry yields: **package name**, **current version** (if given), **candidate fixed version(s)** (there may be several, one per major line), **CVE/GHSA id**, and **severity**. The list may be free-form — tolerate the common shapes (`- [HIGH] lodash 4.17.23 → 4.18.0 (CVE-...)`, `npm audit` blocks, Trivy rows). If an entry's ecosystem or location is ambiguous, resolve it in Step 1 (do not guess here).
-2. Detect the repo's npm cooldown: read every `.npmrc` under the lockfile dirs (e.g. `docker/tools/.npmrc`) for a `min-release-age=N` line. This is npm 11+'s native supply-chain quarantine — it applies a hard `before = now − N days` cutoff at **dependency resolution** time (`npm install` / `npm install --package-lock-only`), so a version newer than the cutoff **cannot be installed at all**, not merely flagged. If found, adopt `N` as `<MIN_AGE_DAYS>` for that lockfile so the skill's caution threshold matches the wall the toolchain will actually enforce.
+2. Detect the repo's npm cooldown: read every `.npmrc` under the lockfile dirs (e.g. `mock-auth-server/.npmrc`) for a `min-release-age=N` line. This is npm 11+'s native supply-chain quarantine — it applies a hard `before = now − N days` cutoff at **dependency resolution** time (`npm install` / `npm install --package-lock-only`), so a version newer than the cutoff **cannot be installed at all**, not merely flagged. If found, adopt `N` as `<MIN_AGE_DAYS>` for that lockfile so the skill's caution threshold matches the wall the toolchain will actually enforce.
 3. If no `.npmrc` cooldown governs a given change (e.g. a Go module, or a lockfile with no `min-release-age`), use `7` as the default `<MIN_AGE_DAYS>` for it, unless a value was passed in arguments. Only call `AskUserQuestion` to confirm the threshold when there is genuine ambiguity (conflicting `.npmrc` values, or the user asked to override); a lone repo `.npmrc` value or the `7` default does not need a question — proceed and state the value you used.
 
 The threshold plays two different roles depending on ecosystem:
@@ -53,11 +61,11 @@ Do NOT fetch registries or edit any file until `<MIN_AGE_DAYS>` is resolved.
 
 Permitted to modify while this skill runs:
 
-- `**/package.json` — only to add/adjust a `dependencies` version or an `overrides` entry for an approved package (notably `docker/tools/package.json`, `docker/mock-auth-server/package.json`).
+- `**/package.json` — only to add/adjust a `dependencies` version or an `overrides` entry for an approved package (the npm one here is `mock-auth-server/package.json`; `scripts/package.json` is pnpm and its `overrides` live in `scripts/pnpm-workspace.yaml`, which this skill does not edit).
 - `**/package-lock.json` — the deterministic output of `npm install` in that package directory for approved changes.
 - `go.mod` / `go.sum` — the output of `go get <module>@<version>` + `go mod tidy` for approved Go modules.
 - `vendor/**` — **only** as the mechanical output of `go mod vendor`, and **only if the repo vendors** (a `vendor/modules.txt` exists). A `go.mod` bump leaves `vendor/modules.txt` out of sync; the build then fails with `inconsistent vendoring`, so re-vendoring is a required downstream step, not an edit of taste. Never hand-edit vendored files.
-- Regenerated artifacts that these dependencies drive, **only** when a drift check (Step 6) shows they moved — e.g. `docker/mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**` via `make gen-mock-auth-oapi`. Regenerate with the repo's `make` target; never hand-edit a generated file.
+- Regenerated artifacts that these dependencies drive, **only** when a drift check (Step 6) shows they moved — e.g. `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**` via `make gen-mock-auth-oapi`. Regenerate with the repo's `make` target; never hand-edit a generated file.
 
 Hard-protected even during this skill (never touch):
 
@@ -140,14 +148,14 @@ Skip it when there is nothing flagged (all `clear`), and skip it for an entry th
 Print a Japanese summary grouped by disposition. Example:
 
 ```text
-依存脆弱性パッチ監査（min_age_days = 7, docker/tools/.npmrc 由来）
+依存脆弱性パッチ監査（min_age_days = 7, mock-auth-server/.npmrc 由来）
 
 ✅ 適用（同一 major の最小修正版 / caution 通過 → 確認なしで適用）:
   - lodash 4.17.23 → 4.18.0  [docker/tools, 推移的]  (CVE-2026-4800, CVE-2026-2950 / HIGH)
   - js-yaml 4.2.0 → 4.3.0     [docker/tools, 直接]    (CVE-2026-59869, CVE-2026-53550 / HIGH)
 
 ⚠️ major 跨ぎ（breaking の可能性 / 別途確認）:
-  - @hono/node-server 1.19.14 → 2.0.5  [docker/mock-auth-server, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
+  - @hono/node-server 1.19.14 → 2.0.5  [mock-auth-server, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
 
 ⚠️ too-new（公開が min_age 未満 / 別途 opt-in）:
   - fast-uri 3.1.3 → 3.1.4  [docker/tools]  (公開 3 日 / CVE-2026-16221 / HIGH)
@@ -217,7 +225,7 @@ Batch all approved Go modules into one `go get` (multiple `module@version` args)
 
 Run the checks that match what actually changed — a dependency patch rarely touches first-party source, so scope the verification to the ecosystems that moved rather than always running the full suite. Report each as OK / FAIL; do NOT auto-roll-back on failure — the user decides.
 
-Go changes at minimum build and vuln-scan clean (`go build ./...` + `govulncheck ./...`); run `make lint` / `make test` when a Go change is broad enough to warrant the full suite. A **major npm bump** must be verified more closely — run that package's own `typecheck` + tests (e.g. `npm run typecheck` + `npm test` in `docker/mock-auth-server/`), since a major can change the API the code calls.
+Go changes at minimum build and vuln-scan clean (`go build ./...` + `govulncheck ./...`); run `make lint` / `make test` when a Go change is broad enough to warrant the full suite. A **major npm bump** must be verified more closely — run that package's own `typecheck` + tests (e.g. `npm run typecheck` + `npm test` in `mock-auth-server/`), since a major can change the API the code calls.
 
 npm changes — confirm the advisory is actually resolved and the lockfile is clean:
 
@@ -238,7 +246,7 @@ govulncheck ./...                # if available; the GHSA should clear
 
 Generated-artifact drift — these npm deps drive code generators, so a bump can move generated output. If a changed lockfile belongs to a package that feeds a generator, run its generator and check for drift (the same check CI runs):
 
-- `docker/mock-auth-server/**` deps → `make gen-mock-auth-oapi` (and `make gen-mock-auth-oapi-docs`), then `git status` the generated paths. Commit the regenerated artifacts as part of the patch.
+- `mock-auth-server/**` deps → `make gen-mock-auth-oapi` (and `make gen-mock-auth-oapi-docs`), then `git status` the generated paths. Commit the regenerated artifacts as part of the patch.
 - `docker/tools/**` deps (the toolbox image: redocly / orval / sqlc-adjacent tooling) → regenerate the artifacts that image produces (`make gen-*-oapi`, `make gen-query`, etc.) only if the tool whose dep changed is one of them, and check for drift.
 
 If regeneration produces changes, include them — a security bump that silently changes generated output must not leave the tree in a state where CI's drift check fails.

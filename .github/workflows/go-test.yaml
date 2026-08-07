@@ -103,6 +103,15 @@ jobs:
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
           exit 0
 
+      # Measured against its own threshold and its own profile, and reported as a warning rather
+      # than a failure. These tools are build/CI tooling, not part of what ships: a gap here says
+      # nothing about the product, so letting it block a merge would stop work for a reason
+      # unrelated to the change under review. The shipped code keeps its hard gate below.
+      - name: Report scripts tool coverage
+        env:
+          REQUIRE_SHELLCHECK: '1'
+        run: make cover-scripts
+
       - name: Initialize Database Table
         run: go run ./cmd/ migrate-up --database "$DB"
 

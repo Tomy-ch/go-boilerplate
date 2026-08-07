@@ -69,6 +69,7 @@ var (
 	errStepsNotSequence  = xerrors.New("runs.steps がリストとして読めません")
 	errFoldedRun         = xerrors.New("run にブロック折り畳み（>）は使えません。リテラル（|）で書いてください")
 	errShellcheckMissing = xerrors.New("shellcheck が PATH にありません（mise install shellcheck）")
+	errFindings          = xerrors.New("composite action の run に指摘があります")
 
 	errActionSymlinkDir        = xerrors.New("ディレクトリへのシンボリックリンクは走査できません。実体を置くか、リンクを外してください")
 	errActionSymlinkUnresolved = xerrors.New("解決できないシンボリックリンクがあります")
@@ -89,34 +90,56 @@ type result struct {
 	findings []string
 }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
-	if _, err := exec.LookPath(shellcheckBin); err != nil {
-		log.Fatalf("❌ %v: %v", errShellcheckMissing, err)
+
+	if err := run(context.Background(), os.Getwd, exec.LookPath); err != nil {
+		log.Fatalf("❌ %v", err)
 	}
-	root, err := os.Getwd()
+}
+
+// run は composite action の run ステップを shellcheck に掛け、結果を報告します。
+// wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段で、
+// どちらも差し替えられるよう引数で受けます。
+func run(ctx context.Context, wd func() (string, error), lookPath func(string) (string, error)) error {
+	if _, err := lookPath(shellcheckBin); err != nil {
+		return xerrors.Wrap(errShellcheckMissing, err.Error())
+	}
+
+	root, err := wd()
 	if err != nil {
-		log.Fatalf("❌ getwd: %v", err)
+		return xerrors.Wrap(err, "getwd")
 	}
+
 	files, steps, err := collectSteps(os.DirFS(root))
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
-	res, err := check(context.Background(), steps)
+
+	res, err := check(ctx, steps)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return err
 	}
+
 	for _, s := range res.skipped {
 		log.Printf("  ⏭️ %s", s)
 	}
+
 	for _, f := range res.findings {
 		log.Print(f)
 	}
+
 	if len(res.findings) > 0 {
-		log.Fatalf("❌ composite action の run に %d 件の指摘があります（検査 %d ステップ）", len(res.findings), res.checked)
+		return xerrors.Wrap(errFindings, fmt.Sprintf("%d 件（検査 %d ステップ）", len(res.findings), res.checked))
 	}
+
 	log.Printf("✅ composite action %d ファイルの run を %d ステップ検査しました（対象外 shell: %d ステップ）",
 		len(files), res.checked, len(res.skipped))
+
+	return nil
 }
 
 func collectSteps(fsys fs.FS) ([]string, []step, error) {
@@ -191,12 +214,12 @@ func isActionFile(name string) bool {
 }
 
 func parseAction(file string, data []byte) ([]step, error) {
-	if err := requireSingleDocument(file, data); err != nil {
-		return nil, err
-	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, xerrors.Wrap(err, "parse "+file)
+	}
+	if err := requireSingleDocument(file, data); err != nil {
+		return nil, err
 	}
 	want, err := countRunSteps(file, data)
 	if err != nil {

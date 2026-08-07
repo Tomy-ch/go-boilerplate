@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: Mock Auth Server (OIDC Provider)
+  version: 1.0.0
+  description: |
+    A mock OIDC Provider for local development.
+    It offers the Authorization Code Flow + PKCE (S256) in a minimal form.
+
+    This is a service separate from go-boilerplate itself, so it keeps its own OpenAPI document here
+    and leaves the primary API contract in `openapi/` untouched.
+    The endpoints fall into three groups:
+
+    - `/oidc/*` — standard OAuth2 / OIDC endpoints (authorize / token / userinfo / logout).
+    - `/bypass/*` — test shortcuts (issuing a token / session for a fixed profile). dev-gate only.
+    - `/admin/*` — operational helpers (fixture reset / user listing / key rotation). dev-gate only.
+
+    Parameters and fields are snake_case, following OAuth2 (RFC 6749) / PKCE (RFC 7636) / RFC 9068 / OIDC Core.
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:4000
+    description: Local development server
+tags:
+  - name: discovery
+    description: OIDC Discovery / JWKS（公開メタデータ）。
+  - name: health
+    description: ヘルスチェック（liveness）。
+  - name: oidc
+    description: OAuth2 / OIDC 標準エンドポイント（Authorization Code Flow + PKCE）。
+  - name: bypass
+    description: テスト用ショートカット（固定 Profile 発行）。dev-gate 限定。
+  - name: admin
+    description: 運用補助（fixture reset / users 一覧 / key rotate）。dev-gate 限定。
+security: []
+paths:
+  /health:
+    $ref: './paths/health.yaml'
+  /.well-known/openid-configuration:
+    $ref: './paths/wellKnown/openidConfiguration.yaml'
+  /.well-known/jwks.json:
+    $ref: './paths/wellKnown/jwks.yaml'
+  /oidc/authorize:
+    $ref: './paths/oidc/authorize.yaml'
+  /oidc/token:
+    $ref: './paths/oidc/token.yaml'
+  /oidc/userinfo:
+    $ref: './paths/oidc/userinfo.yaml'
+  /oidc/logout:
+    $ref: './paths/oidc/logout.yaml'
+  /bypass/token:
+    $ref: './paths/bypass/token.yaml'
+  /bypass/session:
+    $ref: './paths/bypass/session.yaml'
+  /admin/users:
+    $ref: './paths/admin/users.yaml'
+  /admin/reset:
+    $ref: './paths/admin/reset.yaml'
+  /admin/keys/rotate:
+    $ref: './paths/admin/keysRotate.yaml'
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: './components/schemas/BearerAuth.yaml'
+  schemas:
+    OAuthError:
+      $ref: './components/schemas/OAuthError.yaml'
+    TokenResponse:
+      $ref: './components/schemas/TokenResponse.yaml'
+    OidcConfiguration:
+      $ref: './components/schemas/OidcConfiguration.yaml'
+    Jwks:
+      $ref: './components/schemas/Jwks.yaml'
+    KeyRotationRequest:
+      $ref: './components/schemas/KeyRotationRequest.yaml'
+    KeyState:
+      $ref: './components/schemas/KeyState.yaml'
+    UserInfo:
+      $ref: './components/schemas/UserInfo.yaml'
+    AdminUsersResponse:
+      $ref: './components/schemas/AdminUsersResponse.yaml'
+    HealthStatus:
+      $ref: './components/schemas/HealthStatus.yaml'
