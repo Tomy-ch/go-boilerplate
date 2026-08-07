@@ -128,3 +128,83 @@ export function findInterpolatedSpans(lines: readonly string[]): Hit[] {
 
   return hits;
 }
+
+/**
+ * 解決までフェンス検査から外すワークフロー。キーはファイル名、値は根拠の issue。
+ *
+ * @remarks
+ * 空にできるのが正常な状態です。エントリを足すときは必ず根拠を書き、直したら消します。
+ * 除外は実行時に必ず出力するので、除外されたファイルが検査済みとして通ることはありません。
+ */
+export const PASS_THROUGH_EXCLUSIONS: ReadonlyMap<string, string> = new Map<string, string>([]);
+
+/** 1 ワークフロー分の走査結果。 */
+export type FenceScan = {
+  violations: string[];
+  /** そのファイルが持つ `fence_for` の実装。持たなければ null。 */
+  implementation: string | null;
+};
+
+/**
+ * ワークフロー 1 本を走査し、フェンスと span の違反を返す。
+ *
+ * @remarks
+ * span 検査は「本文素通しの呼び出しを持つファイル」だけに掛けます。`details-summary` 付きの
+ * 呼び出しは action 側が本文からフェンス長を決めるため、span を組む責任がワークフローに無いからです。
+ * 粒度はファイル単位で、ステップから本文ファイルへのデータフローは追いません。
+ */
+export function scanWorkflow(
+  file: string,
+  lines: readonly string[],
+  exclusions: ReadonlyMap<string, string> = PASS_THROUGH_EXCLUSIONS,
+): FenceScan {
+  const violations: string[] = [];
+
+  for (const hit of findFixedFences(lines)) {
+    violations.push(
+      `${file}:${hit.line}: 固定長のフェンスを出力しています。本文がこのフェンスを閉じられます: ${hit.text}`,
+    );
+  }
+
+  if (hasPassThroughCall(lines) && !exclusions.has(basename(file))) {
+    for (const hit of findInterpolatedSpans(lines)) {
+      violations.push(
+        `${file}:${hit.line}: 本文素通しの呼び出しがあるワークフローで、inline code span へ値を補間しています。値に含まれるバッククォート 1 個が span を閉じ、以降が生 Markdown になります: ${hit.text}`,
+      );
+    }
+  }
+
+  return { violations, implementation: extractFenceFor(lines) };
+}
+
+/**
+ * 複製された `fence_for` 実装が互いに一致するかを検査する。
+ *
+ * @remarks
+ * 実装を composite action へ集約できないため複製が残ります。フェンス文字列を output 経由で
+ * 受け取るとバッククォートがシェルの二重引用符文脈でコマンド置換になるからです。複製は意図した
+ * 選択で、そのぶん片方だけが直る事故をここで止めます。先頭を基準にするのは、ずれた側だけを
+ * 挙げるためです。
+ */
+export function compareImplementations(
+  implementations: ReadonlyArray<readonly [string, string]>,
+): string[] {
+  if (implementations.length < 2) return [];
+
+  const [referenceFile, referenceImpl] = implementations[0];
+
+  return implementations
+    .slice(1)
+    .filter(([, implementation]) => implementation !== referenceImpl)
+    .map(
+      ([file]) =>
+        `${file}: fence_for の実装が ${referenceFile} と一致しません。フェンス長の計算は全複製で同一である必要があります`,
+    );
+}
+
+/** パス末尾のファイル名。除外宣言はファイル名で書くため、走査側で切り出す。 */
+function basename(file: string): string {
+  const cut = file.lastIndexOf("/");
+
+  return cut === -1 ? file : file.slice(cut + 1);
+}

@@ -28,71 +28,39 @@
 // （`out=/tmp/...` の間接参照解決は脆く、既存の行ベース走査から逸脱する）。素通し呼び出しと
 // `details-summary` 付き呼び出しが同居するファイルでは過剰検出になり得るが、意図した単純化として
 // 除外リストで受ける。span を変数経由や jq の文字列連結で組む形は検出できない（偽陰性）。
+//
+// この入口はファイル入出力と終了コードだけを担う。走査と判定は lib/pr-comment-fence.ts にある。
 
 import fs from "node:fs";
 import path from "node:path";
 
 import {
-  extractFenceFor,
-  findFixedFences,
-  findInterpolatedSpans,
-  hasPassThroughCall,
+  PASS_THROUGH_EXCLUSIONS,
+  compareImplementations,
+  scanWorkflow,
 } from "./lib/pr-comment-fence";
+import { selectWorkflowFiles } from "./lib/workflow";
 
 const REPO_ROOT = process.cwd();
 const WORKFLOWS_DIR = ".github/workflows";
 
-// 解決までフェンス検査から外すワークフロー。エントリは根拠の issue を持ち、直したら消す。
-const PASS_THROUGH_EXCLUSIONS = new Map<string, string>([]);
-
 function listWorkflows(): string[] {
-  const dir = path.join(REPO_ROOT, WORKFLOWS_DIR);
-
-  return fs
-    .readdirSync(dir)
-    .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
-    .sort()
-    .map((name) => path.join(WORKFLOWS_DIR, name));
+  return selectWorkflowFiles(fs.readdirSync(path.join(REPO_ROOT, WORKFLOWS_DIR)), WORKFLOWS_DIR);
 }
 
 const violations: string[] = [];
-const implementations = new Map<string, string>();
+const implementations: Array<[string, string]> = [];
 const workflowFiles = listWorkflows();
 
 for (const file of workflowFiles) {
   const lines = fs.readFileSync(path.join(REPO_ROOT, file), "utf8").split("\n");
+  const scan = scanWorkflow(file, lines);
 
-  for (const hit of findFixedFences(lines)) {
-    violations.push(
-      `${file}:${hit.line}: 固定長のフェンスを出力しています。本文がこのフェンスを閉じられます: ${hit.text}`,
-    );
-  }
-
-  if (hasPassThroughCall(lines) && !PASS_THROUGH_EXCLUSIONS.has(path.basename(file))) {
-    for (const hit of findInterpolatedSpans(lines)) {
-      violations.push(
-        `${file}:${hit.line}: 本文素通しの呼び出しがあるワークフローで、inline code span へ値を補間しています。値に含まれるバッククォート 1 個が span を閉じ、以降が生 Markdown になります: ${hit.text}`,
-      );
-    }
-  }
-
-  const implementation = extractFenceFor(lines);
-  if (implementation !== null) implementations.set(file, implementation);
+  violations.push(...scan.violations);
+  if (scan.implementation !== null) implementations.push([file, scan.implementation]);
 }
 
-const impls = [...implementations.entries()];
-
-if (impls.length > 1) {
-  const [referenceFile, referenceImpl] = impls[0];
-
-  for (const [file, implementation] of impls.slice(1)) {
-    if (implementation !== referenceImpl) {
-      violations.push(
-        `${file}: fence_for の実装が ${referenceFile} と一致しません。フェンス長の計算は全複製で同一である必要があります`,
-      );
-    }
-  }
-}
+violations.push(...compareImplementations(implementations));
 
 if (violations.length > 0) {
   for (const violation of violations) console.error(`✗ ${violation}`);
@@ -106,5 +74,5 @@ for (const [name, reason] of PASS_THROUGH_EXCLUSIONS) {
 }
 
 console.log(
-  `✓ pr-comment-fence-lint: ${workflowFiles.length} ワークフロー / fence_for 実装 ${impls.length} 件すべて OK`,
+  `✓ pr-comment-fence-lint: ${workflowFiles.length} ワークフロー / fence_for 実装 ${implementations.length} 件すべて OK`,
 );
