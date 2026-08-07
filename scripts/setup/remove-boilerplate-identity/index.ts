@@ -1,9 +1,9 @@
 #!/usr/bin/env -S tsx
-// テンプレート自身を語る散文を落とし、ボイラープレートの顔を消す。
+// 上流のボイラープレートである間だけ成り立つ記述を落とす。
 //
-// 落とすのは「これはボイラープレートである」と述べている行だけで、リポジトリ名・モジュール名は
-// replace-module / replace-repository-reference が既に置換している。運用中も読み返す内容
-// （clamp される設定値のレビュー・除外 ADR への入口）は残す。
+// 落とすのはマーカーで囲われた記述だけで、リポジトリ名・モジュール名は replace-module /
+// replace-repository-reference が既に置換している。運用中も読み返す内容（clamp される設定値の
+// レビュー・除外 ADR への入口）はマーカーの外に居るため残る。
 //
 // 使い方:
 //   tsx scripts/setup/remove-boilerplate-identity [--dry-run]
@@ -14,27 +14,38 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { toAbsolutePath } from "../lib/file-utils";
+import { listFilesRecursive, toAbsolutePath, toRelativePath } from "../lib/file-utils";
 import { stripMarkers } from "../lib/markers";
 import { type SetupOptions, newSetupCommand } from "../lib/runtime";
-import { BOILERPLATE_MARKER, BOILERPLATE_MARKER_FILES } from "./targets";
+import { ROOT_DIR } from "../lib/runtime";
+import {
+  BOILERPLATE_DELETE_FILES,
+  BOILERPLATE_MARKER,
+  EXCLUDED_DIRECTORIES,
+  isScanTarget,
+} from "./targets";
 
 type StrippedFile = {
   relativePath: string;
   removedLines: number;
 };
 
-/** マーカー行を落とす。dryRun では書き込みだけを飛ばし、戻り値は実行時と一致させる。 */
+/**
+ * マーカー行を落とす。dryRun では書き込みだけを飛ばし、戻り値は実行時と一致させる。
+ *
+ * @remarks
+ * 対象を列挙せずリポジトリを走査するのは、列挙が「マーカーを書いたのに一覧へ足し忘れる」を
+ * 静かに通すためです。列挙side の取りこぼしは何も出力せず成功するので、fork 先で前提が
+ * 残っていることに誰も気づけません。
+ */
 function stripFiles(dryRun: boolean): StrippedFile[] {
   const stripped: StrippedFile[] = [];
+  const files = listFilesRecursive(ROOT_DIR, {
+    excludedDirectories: EXCLUDED_DIRECTORIES,
+    shouldIncludeFile: (entryPath) => isScanTarget(toRelativePath(entryPath)),
+  });
 
-  for (const relativePath of BOILERPLATE_MARKER_FILES) {
-    const absolute = toAbsolutePath(relativePath);
-
-    if (!fs.existsSync(absolute)) {
-      continue;
-    }
-
+  for (const absolute of files) {
     const result = stripMarkers(fs.readFileSync(absolute, "utf8"), BOILERPLATE_MARKER);
 
     if (result.removed === 0) {
@@ -44,10 +55,30 @@ function stripFiles(dryRun: boolean): StrippedFile[] {
     if (!dryRun) {
       fs.writeFileSync(absolute, result.content);
     }
-    stripped.push({ relativePath, removedLines: result.removed });
+    stripped.push({ relativePath: toRelativePath(absolute), removedLines: result.removed });
   }
 
   return stripped;
+}
+
+/** 全体が上流限定であるファイルを消す。dryRun では消した体で相対パスだけ返す。 */
+function deleteFiles(dryRun: boolean): string[] {
+  const deleted: string[] = [];
+
+  for (const relativePath of BOILERPLATE_DELETE_FILES) {
+    const absolute = toAbsolutePath(relativePath);
+
+    if (!fs.existsSync(absolute)) {
+      continue;
+    }
+
+    if (!dryRun) {
+      fs.rmSync(absolute);
+    }
+    deleted.push(relativePath);
+  }
+
+  return deleted;
 }
 
 /** 撤去の成功後に自身のディレクトリごと消す。ファイル列挙は判定モジュールを足したとき漏れる。 */
@@ -56,14 +87,15 @@ function selfDestruct(): void {
 }
 
 function run({ dryRun }: SetupOptions): void {
-  console.log("🧹 ボイラープレートを名乗る記述を除去します。");
+  console.log("🧹 ボイラープレート限定の記述を除去します。");
   if (dryRun) {
     console.log("   モード: dry-run（ファイルは変更しません）");
   }
 
   const stripped = stripFiles(dryRun);
+  const deleted = deleteFiles(dryRun);
 
-  if (stripped.length === 0) {
+  if (stripped.length === 0 && deleted.length === 0) {
     console.log("除去対象は見つかりませんでした（既に実行済みの可能性があります）。");
     return;
   }
@@ -71,6 +103,13 @@ function run({ dryRun }: SetupOptions): void {
   console.log(`\n${dryRun ? "【Dry Run】除去対象" : "除去完了"}: ${stripped.length} ファイル`);
   for (const item of stripped) {
     console.log(`  - ${item.relativePath} (${item.removedLines} 行)`);
+  }
+
+  if (deleted.length > 0) {
+    console.log(`\n${dryRun ? "【Dry Run】削除対象" : "削除完了"}: ${deleted.length} ファイル`);
+    for (const relativePath of deleted) {
+      console.log(`  - ${relativePath}`);
+    }
   }
 
   if (dryRun) {
@@ -84,7 +123,7 @@ function run({ dryRun }: SetupOptions): void {
 
 const program = newSetupCommand("remove-boilerplate-identity");
 program
-  .description("テンプレート自身を語る散文を落とし、ボイラープレートの顔を消す")
+  .description("ボイラープレートである間だけ成り立つ記述を落とす")
   .action((options: SetupOptions) => {
     try {
       run({ dryRun: options.dryRun });
