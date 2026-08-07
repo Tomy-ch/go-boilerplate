@@ -78,9 +78,14 @@ jobs:
         id: comment
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          LINT_STATUS: ${{ steps.lint.outputs.status }}
+          EXIT_CODE_MIGRATIONS: ${{ steps.lint.outputs.exit_code_migrations }}
+          EXIT_CODE_DML: ${{ steps.lint.outputs.exit_code_dml }}
+          EXIT_CODE_SEED: ${{ steps.lint.outputs.exit_code_seed }}
         run: |
           set -euo pipefail
-          if [ "${{ steps.lint.outputs.status }}" = "success" ]; then
+          if [ "${LINT_STATUS-}" = "success" ]; then
             echo "title=## ✅ SQL lint: PASS" >> "$GITHUB_OUTPUT"
           else
             echo "title=## ❌ SQL lint: FAIL" >> "$GITHUB_OUTPUT"
@@ -130,9 +135,9 @@ jobs:
 
           category_code() {
             case "$1" in
-              migrations) echo '${{ steps.lint.outputs.exit_code_migrations }}' ;;
-              dml)        echo '${{ steps.lint.outputs.exit_code_dml }}' ;;
-              seed)       echo '${{ steps.lint.outputs.exit_code_seed }}' ;;
+              migrations) echo "${EXIT_CODE_MIGRATIONS-}" ;;
+              dml)        echo "${EXIT_CODE_DML-}" ;;
+              seed)       echo "${EXIT_CODE_SEED-}" ;;
             esac
           }
 

@@ -36,7 +36,7 @@ English: [dependencies.md](../../reference/dependencies.md)
 | Testing | `go.uber.org/mock` | モック生成ランタイム |
 | Testing | `stretchr/testify` | アサーション |
 | Messaging / worker | `aws/aws-sdk-go-v2` | AWS API クライアントコア（object storage / queue の両 adapter が共有） |
-| Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS クライアント（pull-ack worker）。配線は削除可能なサンプル群からのみ — [ADR-0048](../adr/0048-broker-sdk-isolation-verified-after-sample-removal.ja.md) 参照 |
+| Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS クライアント（pull-ack worker）。配線は削除可能なサンプル群からのみ — [ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md) 参照 |
 | Metrics exposition | `prometheus/client_golang` | Prometheus 形式メトリクスエンドポイント + カスタムコレクタ |
 | Metrics exposition | `prometheus/client_model` | Prometheus メトリクスデータモデル（共有型） |
 | Observability (otel core) | `go.opentelemetry.io/otel`（+ `trace` / `metric`） | OpenTelemetry API |

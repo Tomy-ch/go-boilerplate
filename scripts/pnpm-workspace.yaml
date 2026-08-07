@@ -10,6 +10,7 @@ minimumReleaseAge: 10080
 # 緊急のセキュリティ修正は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
 minimumReleaseAgeExclude:
   - js-yaml@4.3.1 # 2026-08-08 02:40 JST 以降に削除する。GHSA-5p4m-2wfm-xmqj の修正版で、tool-runner 内のビルド時にのみ動く。
+  - mermaid@11.16.1 # 2026-08-12 00:09 JST 以降に削除する。CVE-2026-50159 / 71436 / 71437 / 71438 / 71439 の修正版で、tool-runner 内のビルド時にのみ動く。
 # 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
 # 公開日時を返さないレジストリの依存は解決を失敗させる。

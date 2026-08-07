@@ -8,21 +8,22 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 これは、シームが（in-memory の fake 以外の）2 つ目の実装でも成立することを示す**参照実装**であり、
 この抽象が fake 都合の形になっていない（fake-shaped でない）ことを証明します。
 
-## 配線と依存隔離（E3'）
+## 配線と依存隔離（E3）
 
 このパッケージを配線すると `aws-sdk-go-v2/service/sqs` がバイナリにリンクされます。`serve` /
 `worker` / `outbox-relay` は**単一**バイナリのサブコマンドであり、キューを消費する役割だけに
-リンクを限定することはできません。そのため隔離は**サンプル削除後**の状態で定義します。すなわち
-`make setup-remove-sample-api` の後、結合はサンプル追加前と同一でなければなりません。サンプル群
-からの配線は、いずれも `sample-api` マーカーを伴います。
-[ADR-0048](../../../../docs/ja/adr/0048-broker-sdk-isolation-verified-after-sample-removal.ja.md) を参照。
+リンクを限定することはできません。そのため隔離は**結合**で定義します。すなわち SQS を名指すのは
+このパッケージと、それを選ぶ配線だけです。サンプル群からの配線は、いずれも `sample-api` マーカーを
+伴います。
+[ADR-0048](../../../../docs/ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md) を参照。
 
 本番で利用するには、integrator が `NewConsumer` / `NewDeadLetter` を `WorkerModule` に登録した
 `worker.Worker` に配線し、outbox の publish 先として `NewPublisher` を選びます。
 
-隔離の検証: サンプル削除後の `go list -deps ./cmd/` は
-`github.com/aws/aws-sdk-go-v2/service/sqs` を列挙してはいけません。SDK コアと `service/s3` は
-object storage adapter 経由で常にリンクされます。
+隔離はリンクグラフに現れます。`github.com/aws/aws-sdk-go-v2/service/sqs` が
+`go list -deps ./cmd/` に現れるのは、このパッケージを選ぶ配線があるときだけです。SDK コアと
+`service/s3` は object storage adapter 経由で常にリンクされます。
+本リポジトリがボイラープレートとして頒布されている間、この条件はサンプル削除を実行して結果を突き合わせる形で検査されます。詳細は [`docs/get-started/boilerplate-only-conventions.md`](../../../../docs/ja/get-started/boilerplate-only-conventions.ja.md) に記録しています。 <!-- boilerplate-only:line -->
 
 ## 送出側
 

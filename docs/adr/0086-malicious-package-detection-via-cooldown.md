@@ -100,8 +100,7 @@ signal on the Go side only. It is report-only and is not treated as a detector.
 ### Commercial malicious-package scanning (Socket / Snyk / Phylum)
 
 Rejected. All require uploading the dependency graph to a vendor and introduce a paid
-external dependency into CI. ADR-0001 rules out that class of lock-in for a template whose
-adopters cannot be assumed to hold the same vendor contracts.
+external dependency into CI. ADR-0001 rules out that class of lock-in.
 
 ### Pinning every transitive dependency by hash and reviewing every lockfile change by hand
 

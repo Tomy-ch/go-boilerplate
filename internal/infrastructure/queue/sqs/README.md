@@ -9,22 +9,23 @@ Implements the `worker.Consumer` and `worker.FailureHandler` ports (consuming si
 This is a **reference implementation** that demonstrates the seam works with a second
 implementation (besides the in-memory fake) — proving the abstraction is not fake-shaped.
 
-## Wiring and dependency isolation (E3')
+## Wiring and dependency isolation (E3)
 
 Wiring this package links `aws-sdk-go-v2/service/sqs` into the binary. Because `serve` /
 `worker` / `outbox-relay` are subcommands of a **single** binary, linkage cannot be scoped to
-the role that consumes a queue — so isolation is defined over the **post-sample-removal** state
-instead: after `make setup-remove-sample-api`, the coupling must equal what it was before the
-sample was added. Any wiring from the sample set therefore carries a `sample-api` marker.
-See [ADR-0048](../../../../docs/adr/0048-broker-sdk-isolation-verified-after-sample-removal.md).
+the role that consumes a queue — so isolation is defined over **coupling** instead: SQS is named
+only here and in the wiring that selects this package. Any wiring from the sample set therefore
+carries a `sample-api` marker.
+See [ADR-0048](../../../../docs/adr/0048-broker-sdk-isolation-measured-as-coupling.md).
 
 To use it in production, an integrator wires `NewConsumer` / `NewDeadLetter` into a
 `worker.Worker` registered in `WorkerModule`, and selects `NewPublisher` as the outbox
 publish target.
 
-Verify isolation: after a sample removal, `go list -deps ./cmd/` must not list
-`github.com/aws/aws-sdk-go-v2/service/sqs`. The SDK core and `service/s3` are linked
-regardless, via the object-storage adapter.
+Isolation is observable in the link graph: `github.com/aws/aws-sdk-go-v2/service/sqs` enters
+`go list -deps ./cmd/` only when wiring that selects this package is present. The SDK core and
+`service/s3` are linked regardless, via the object-storage adapter.
+While this repository is distributed as a boilerplate, that condition is checked by running the sample removal and comparing the result — recorded in [`docs/get-started/boilerplate-only-conventions.md`](../../../../docs/get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
 
 ## Publishing side
 

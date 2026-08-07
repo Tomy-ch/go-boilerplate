@@ -14,7 +14,7 @@ accepted
 ## Context
 
 Rate limiting is a standard production-hardening concern, and it is natural to reach for an
-in-process, in-memory counter when adding it to an API. However, this template targets
+in-process, in-memory counter when adding it to an API. However, this project targets
 cloud-native, multi-instance deployments. In that environment, each application instance
 maintains its own counter independently: counters are not shared across replicas, so an
 attacker distributing requests across pods bypasses any per-instance threshold. An in-memory
@@ -32,9 +32,9 @@ the infrastructure edge — the API gateway, load balancer, reverse proxy, or se
 sits in front of the fleet. These components enforce limits against the true global request
 rate, regardless of how many application instances are running.
 
-Adopters who require rate limiting must configure it at the infrastructure layer appropriate
-to their deployment (e.g. AWS API Gateway usage plans, NGINX `limit_req`, Envoy
-`ratelimit` filter, Kubernetes Gateway API).
+Rate limiting must be configured at the infrastructure layer appropriate to the deployment
+(e.g. AWS API Gateway usage plans, NGINX `limit_req`, Envoy `ratelimit` filter, Kubernetes
+Gateway API).
 
 ## Consequences
 
@@ -47,7 +47,7 @@ to their deployment (e.g. AWS API Gateway usage plans, NGINX `limit_req`, Envoy
 
 ### Negative Consequences
 
-- Adopters must configure rate limiting at the infrastructure layer; there is no fallback if
+- Rate limiting must be configured at the infrastructure layer; there is no fallback if
   none is configured.
 - Local development and testing do not exercise rate-limiting behavior unless the edge
   component is included in the dev environment.
@@ -64,8 +64,8 @@ where `n` is the replica count. Rejected because it provides incorrect enforceme
 
 Shares state across replicas, but requires an additional infrastructure dependency
 (a Redis cluster), couples the application to that specific technology, and replicates
-functionality already available at the edge layer. Rejected as over-engineering for a
-template; the edge layer is the appropriate place.
+functionality already available at the edge layer. Rejected as over-engineering here; the
+edge layer is the appropriate place.
 
 ## Notes
 

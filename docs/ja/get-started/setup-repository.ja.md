@@ -334,3 +334,26 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
     - [internal/domain/](../../../internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
 
 </details>
+
+## Phase 16: ボイラープレート限定の規約の削除
+
+[boilerplate-only-conventions.ja.md](boilerplate-only-conventions.ja.md) は、本リポジトリが上流のテンプレートである間だけ成り立つ規約——ADR のその場改訂 regime、統合パス、`setup-review` の仕掛け——を集約したものです。いずれもあなたのプロジェクトには適用されず、各規則の一般形はそれを所有する文書のほうに既に書かれています。
+
+サンプルAPI（Phase 15）を残す場合でも、この Phase は実施してください。2 つの削除は独立しており、発火する契機が違います。
+
+1. ファイルと日本語ミラーを削除します。
+
+    ```sh
+    rm docs/get-started/boilerplate-only-conventions.md \
+       docs/ja/get-started/boilerplate-only-conventions.ja.md
+    ```
+
+2. `boilerplate-only:line` マーカーを持つ行をすべて除去します。いずれも削除対象ファイルへの自己完結したポインタ 1 行なので、除去しても周囲の文は壊れません。
+
+    ```sh
+    grep -rn "boilerplate-only:line" docs/
+    ```
+
+3. 自分の ADR regime を決めます。継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。その場改訂を望むなら、それはあなた自身の決定として、あなた自身の ADR に記録してください。
+
+> マーカー名前空間 `boilerplate-only` は**暫定**で、この削除は当面手作業です（これを扱う strip スクリプトは別途準備中）。`boilerplate-only` と `sample-api` のマーカーを 1 回のパスで剥がさないでください。発火する契機が違い、fork が片方だけを行うことは十分あり得ます。

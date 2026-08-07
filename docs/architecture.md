@@ -2,13 +2,13 @@
 
 ## Overview
 
-This project is a backend architecture template for Go applications based on the following three primary objectives.
+This project is a backend architecture for Go applications based on the following three primary objectives.
 
 - **Contract-driven development**
 - **Type safety**
 - **Clear layer separation**
 
-This template combines the following architectural approaches.
+This architecture combines the following approaches.
 
 - Pragmatic Onion Architecture
 - OpenAPI-first development
@@ -27,7 +27,7 @@ It is particularly effective for the following types of systems.
 
 ## Architectural Principles
 
-This template is based on several design principles.
+This architecture is based on several design principles.
 
 ### Contract-first API
 
@@ -93,7 +93,7 @@ architectural violations can be prevented.
 
 ### Vendor Neutrality
 
-This template avoids strong dependencies on specific SaaS or proprietary tools.
+This project avoids strong dependencies on specific SaaS or proprietary tools.
 
 As much as possible, the following are prioritized.
 
@@ -252,7 +252,7 @@ The `internal/` directory contains application code with a layered structure.
 
 ## Modular Monolith Strategy
 
-This template assumes a **modular monolith architecture**.
+This project assumes a **modular monolith architecture**.
 
 Characteristics:
 
@@ -293,7 +293,7 @@ AI agents should refer to the following before generating code.
 
 ## Non-Goals
 
-This template does not aim to be:
+This project does not aim to be:
 
 - A microservices framework
 - An ultra low-latency architecture

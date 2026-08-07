@@ -198,9 +198,10 @@ type Users []*User
 > **Departure from Evans.** For Evans a Module is part of the model: the dividing lines and the names
 > are meant to carry an insight about the domain, and the structure is expected to evolve as the model
 > does. The rules above are mechanical beside that — they say what to call things, not what a division
-> should reveal. The gap is structural rather than an oversight. A template has no real domain to have
-> an insight about, so the lines drawn here are the ones the architecture implies; the ones that would
-> express a model belong to whoever forks it.
+> should reveal. The gap is deliberate: the lines drawn here are the ones the architecture implies, and
+> a line that expresses a model is drawn by whoever holds the model. Where a real domain is present,
+> read the mechanical rules as the floor and add the model-revealing divisions on top.
+> While this repository is distributed as a boilerplate, why it stops at the floor is an upstream-only reason recorded in [`docs/get-started/boilerplate-only-conventions.md`](../../docs/get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
 
 ### Bundle attributes into a struct when positional arguments can be swapped
 

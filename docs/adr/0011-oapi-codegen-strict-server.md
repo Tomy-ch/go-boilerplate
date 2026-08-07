@@ -19,7 +19,7 @@ global generation produces one large interface that all handlers must implement 
 which creates tight coupling between otherwise-independent handler packages. Additionally,
 the default oapi-codegen server mode passes raw `*echo.Context` to each handler method,
 leaving request unmarshalling and response serialization to the handler implementation —
-this is boilerplate that every handler author must reproduce consistently.
+this is repetitive code that every handler author must reproduce consistently.
 
 ## Decision
 
@@ -61,7 +61,7 @@ strict interface to the plain `ServerInterface` that Echo route registration exp
 
 - Each handler package is independently generated, compiled, and tested; adding a new tag
   does not affect existing handler packages.
-- Strict-server mode eliminates per-handler boilerplate: unmarshalling and serialisation
+- Strict-server mode eliminates the per-handler binding code: unmarshalling and serialisation
   are handled by generated code.
 - Handler methods receive fully typed Go structs, making type mismatches compile-time
   errors rather than runtime panics.
@@ -90,8 +90,8 @@ generated file also produce frequent merge conflicts.
 
 Still scoped per tag, but each handler method receives a raw `*echo.Context` and must
 perform its own binding and serialisation. Rejected because it reproduces the same
-boilerplate in every handler and leaves room for inconsistent error handling. Writing this
-binding and serialisation boilerplate in every handler also significantly inflates overall
+binding code in every handler and leaves room for inconsistent error handling. Writing this
+binding and serialisation code in every handler also significantly inflates overall
 line count.
 
 ## Notes

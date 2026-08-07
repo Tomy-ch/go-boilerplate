@@ -226,7 +226,7 @@ flowchart LR
 > ①〜⑥ すべての実例が、削除可能なサンプル群の一部として同梱されている。`internal/controller/worker/withdrawalarchive` が outbox の emit する退会イベントを消費し、オブジェクトストレージへ証跡を書き出す。`make setup-remove-sample-api` はそれを削除し、`provideWorkers()` を再び空へ戻す。
 <!-- sample-api:end -->
 
-> ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、サンプルからの配線も例外ではない。したがって分離は adapter を未配線にすることではなく、`make setup-remove-sample-api` の**後**に検証する（E3'、[ADR-0048](../adr/0048-broker-sdk-isolation-verified-after-sample-removal.ja.md)）。
+> ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、リンクをキューを消費する役割へ絞ることはできない。したがって分離は**結合**で定義する。具体的なブローカーを名指すのは、その adapter のパッケージと、それを選ぶ配線だけである（E3、[ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md)）。
 
 ---
 
@@ -257,4 +257,4 @@ flowchart LR
 | **Settings** | engine-core の挙動設定（engine-local struct）。`config.WorkerConfig` から DI でマッピング。 |
 | **WorkerConfig** | engine-core 設定（broker 非依存、`WORKER_*`・`default` タグ付き）。broker 固有は adapter `Config`。 |
 | **traceparent / 継続** | W3C trace context。`Message.Attributes` から `Extract` して span を継続（D1）。 |
-| **E1/E2/E3'** | engine が infra を import しない / fake のみで engine green / `make setup-remove-sample-api` 後の結合がサンプル追加前と同一（core の `*.go` も core のドキュメントも broker adapter / サンプルを参照せず、シームは元の形へ戻り、不要依存が `go.mod` / `vendor/` から落ちる。[ADR-0048](../adr/0048-broker-sdk-isolation-verified-after-sample-removal.ja.md)）。 |
+| **E1/E2/E3** | engine が infra を import しない / fake のみで engine green / 具体的なブローカーの知識が、その adapter のパッケージとそれを選ぶ配線だけに閉じている（core の `*.go` も core のドキュメントも broker adapter を名指さない。[ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md)）。 |
