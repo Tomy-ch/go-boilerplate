@@ -383,9 +383,9 @@ patterns:
     deviation_note: >-
       Evans にとって Module はモデルの一部で、分割線と名前がドメインへの洞察を担い構造もモデルと共に
       進化する。本リポジトリの規則は機械的で、何と呼ぶかは言うが分割が何を明かすべきかは言わない。
-      テンプレートには洞察を持つべき実ドメインが無く、引かれている線はアーキテクチャが含意するもの
-      であるため。モデルを表現する線は fork 先に属する。宣言は internal/domain/README.md の
-      Naming / structure 節。
+      引かれている線はアーキテクチャが含意するものであり、モデルを表現する線はモデルを持つ者が引く。
+      機械的な規則は下限であって、モデルを明かす分割はその上に足される。宣言は
+      internal/domain/README.md の Naming / structure 節。
     enforced_by:
       - kind: depguard
         rule: independent_pkg
