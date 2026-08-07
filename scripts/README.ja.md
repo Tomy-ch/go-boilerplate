@@ -8,19 +8,27 @@
 
 ```text
 scripts/
-├── gen-docs-json.mjs           # ポータルナビゲーション用 docs.json の生成
-├── gen-portal-docs.mjs         # manifest.yaml に基づくドキュメントのポータルへのコピー
-├── build-portal.mjs            # ポータルフロントエンド（src/main.jsx）を esbuild でバンドル
-├── semver.mjs                  # セマンティックバージョニングヘルパー（patch/minor/major）
-├── stamp-openapi-version.mjs   # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
-├── reset-mock-auth-users.mjs   # mock-auth の固定ユーザー fixture を中立な既定へリセット
+├── portal/                     # ポータルドキュメントの生成（TypeScript）
+│   ├── gen-docs-json.ts        # ポータルナビゲーション用 docs.json の生成
+│   ├── gen-portal-docs.ts      # manifest.yaml に基づくドキュメントのポータルへのコピー
+│   ├── docs-json.ts            # docs.json の構造を組み立てる（純粋・テストあり）
+│   └── portal-manifest.ts      # manifest.yaml の読み取りと書き込み先の境界検査（純粋・テストあり）
+├── lib/                        # 以下のスクリプトの判定ロジック（純粋・テストあり）
+├── semver.ts                   # セマンティックバージョニングヘルパー（patch/minor/major）
+├── stamp-openapi-version.ts    # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
+├── reset-mock-auth-users.ts    # mock-auth の固定ユーザー fixture を中立な既定へリセット
 ├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
-├── make_help.mjs                # Make ターゲットのヘルプ出力生成
-├── mermaid-lint.mjs            # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
-├── skill-lint.mjs              # .claude/** のスキル / エージェント定義を実態および .codex/** の対応と突き合わせて検証
-├── pr-comment-secret-lint.mjs  # PR コメントを投稿するワークフロージョブへの secret 混入を検出
-├── pr-comment-fence-lint.mjs   # PR コメント本文を囲む固定長 Markdown フェンスを検出
-├── actions-cutoff-lint.mjs     # ジョブの timeout 設定と、打ち切りに耐える PR コメントを強制
+├── make-help.ts                # Make ターゲットのヘルプ出力生成
+├── mermaid-lint.ts             # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
+├── skill-lint.ts               # .claude/** のスキル / エージェント定義を実態および .codex/** の対応と突き合わせて検証
+├── pr-comment-secret-lint.ts   # PR コメントを投稿するワークフロージョブへの secret 混入を検出
+├── pr-comment-fence-lint.ts    # PR コメント本文を囲む固定長 Markdown フェンスを検出
+├── actions-cutoff-lint.ts      # ジョブの timeout 設定と、打ち切りに耐える PR コメントを強制
+├── package.json                # TypeScript スクリプトの Node 依存と script エントリの宣言
+├── pnpm-lock.yaml              # 解決済みの依存ツリー（固定）
+├── pnpm-workspace.yaml         # pnpm の install 挙動と供給網ポリシー（CODEOWNERS のレビュー対象）
+├── tsconfig.json               # TypeScript スクリプトの型検査設定
+├── vitest.config.mts           # TypeScript スクリプトのテスト設定
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
 ├── actions-shellcheck/         # composite action の `run:` スクリプトを shellcheck で検査（Go）
 ├── pin-actions/                # GitHub Actions の `uses:` 参照を commit SHA へ固定（Go）
@@ -29,16 +37,19 @@ scripts/
 ├── go-cooldown/                # go.mod を供給網 cooldown 窓に対して gate / 棚卸し（Go）
 ├── mise-cooldown/              # mise.toml のツール pin を cooldown 窓に対して gate / 棚卸し（Go）
 ├── migration-lint/             # マイグレーション連番の重複・欠番を検査（Go）
+├── cover-gate/                 # `go tool cover -func` の総カバレッジを閾値に照らすゲート（Go）
+├── load-band/                  # ローカルゲート向けにホストの負荷帯と CPU share を解決（Go）
 ├── release/                    # リリースタグ / リリースブランチの作成（Go）
 ├── repo-setup/                 # boilerplate を自分のリポジトリとして初期化する git / gh 手順（Go）
 └── setup/                     # プロジェクト初期設定スクリプト
-    ├── replace-module.mjs
-    ├── replace-app-metadata.mjs
-    ├── replace-license-copyright.mjs
-    ├── replace-repository-reference.mjs
-    ├── replace-codeowners.mjs
-    ├── remove-sample-api.mjs  # サンプルAPI(user/product/order)を削除 <!-- sample-api:line -->
-    └── lib/                   # setup スクリプト共通ユーティリティ
+    ├── replace-module.ts
+    ├── replace-app-metadata.ts
+    ├── replace-license-copyright.ts
+    ├── replace-repository-reference.ts
+    ├── replace-codeowners.ts
+    ├── remove-sample-api.ts   # サンプルAPI(user/product/order)を削除 <!-- sample-api:line -->
+    ├── verify-sample-removal.ts  # 過不足なく削除できたかを検証し自消滅 <!-- sample-api:line -->
+    └── lib/                   # 判定モジュール（テスト付き）とファイル I/O・CLI アダプタ
 ```
 
 ## スクリプトカテゴリ
@@ -47,24 +58,23 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`gen-portal-docs.mjs`|`manifest.yaml` に基づきソースドキュメントをポータルの `guides/` にコピー|`make gen-docs`|
-|`gen-docs-json.mjs`|ポータルアプリ用のナビゲーション `docs.json` を生成|`make gen-docs`|
-|`build-portal.mjs`|ポータルフロントエンド（`docs/portal/src/main.jsx`）を esbuild で `docs/portal/dist/` 配下（`bundle.js` / `bundle.css` + 遅延チャンク）へバンドルし、`mermaid.min.js` も同じく dist/ へ配置。従来の CDN + ブラウザ内 Babel 構成を置き換え。|`make gen-portal-build`|
+|`portal/gen-portal-docs.ts`|`manifest.yaml` に基づきソースドキュメントをポータルの `guides/` にコピー|`make gen-docs`|
+|`portal/gen-docs-json.ts`|ポータルアプリ用のナビゲーション `docs.json` を生成|`make gen-docs`|
 
 ### Lint
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`mermaid-lint.mjs`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
-|`skill-lint.mjs`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。依存なしの ESM。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
+|`mermaid-lint.ts`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
+|`skill-lint.ts`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
 |`actions-shellcheck/`|`.github/actions/**` の `action.yaml` / `action.yml` を解析し、composite action の `runs.steps[].run` を抽出して各スクリプトを標準入力経由で `shellcheck` に掛け、指摘を `action.yaml` 上の行番号へ写し戻す。`actionlint` は `.github/workflows` しか走査せず、action マニフェストを直接渡してもワークフローとして解釈して失敗するため、composite action 内のシェルはどのゲートにも掛かっていなかった。その死角を埋める。方言はステップの `shell:` から決め、shebang として渡すことで `-s` を使わずに対象シェルを確定させる。`pwsh` / `python` / `cmd` や式で指定された `shell:` は検査せず skip として数える。`${{ }}` 式は行数を保つプレースホルダへ置換する（ワークフローの `run:` に対して `actionlint` が採る方式と同じ）。抽出したステップ数は、同じ YAML をそのままデコードして数えた件数とファイル単位で一致していなければならず、食い違えば非 0 で終了する。2 つの経路は独立に壊れるため、抽出が壊れた状態が「緑」として通ることはない。`run:` をブロック折り畳み（`>`）で書いた場合は拒否する（折り畳みは指摘の位置を写し戻す基準である改行を落とすため）。式がクオートされていたかどうかを本スクリプトが何も言わないのもこのプレースホルダ置換のためで、その問いが残るのは展開位置そのものを読む検査に限られる。担当は `make actions-zizmor`。|`make actions-lint` / `make actions-shellcheck`|
-|`pr-comment-secret-lint.mjs`|`.github/workflows/` の各ワークフローをジョブ単位に切り出し、`./.github/actions/upsert-pr-comment` を使うジョブが `GITHUB_TOKEN` 以外の secret を参照していれば失敗する（ワークフロー全体の `env:` も対象）。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `${{ }}` 式に現れる secrets の直接参照（`secrets.NAME` / `secrets['NAME']` / `toJSON(secrets)` のようなコンテキスト全体）。別ジョブで読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えず、検査を通る。|`make actions-lint` / `make actions-comment-secret-lint`|
-|`pr-comment-fence-lint.mjs`|ワークフローの `run:` ブロックが PR コメント本文を固定長の Markdown フェンスで囲んでいる場合、複製されている `fence_for` の実装が互いに一致しなくなった場合、本文を素通しさせるワークフローが inline code span の内側へ値を補間している場合に失敗する。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、フェンスを囲む本文から算出すべき理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `echo` 中のリテラルなフェンス、実装同士の文字列一致、そしてシェル展開をリテラルな span で囲んだ形。変数経由や `jq` の連結で組んだ span はここからは見えず、ある本文が攻撃者制御かどうかはそもそも判定できない。いずれも規約に委ねる。span 検査はファイル単位で、まだ安全な形に乗っていない本文のための除外マップを持つ。エントリは追跡 issue を明記し、検査を素通りしたファイルが検査済みと区別できなくならないよう毎回出力され、その issue が解決したら消える。|`make actions-lint` / `make actions-comment-fence-lint`|
-|`actions-cutoff-lint.mjs`|ジョブに `timeout-minutes` が無い場合と、`./.github/actions/upsert-pr-comment` を呼ぶステップの `if:` がキャンセルされたジョブから到達できない場合・`title:` に打ち切り時の見出しが無い場合に失敗する。依存なしの ESM。`actionlint` では表現できない規約を機械化したもので、打ち切りが何を残すべきか・なぜ 3 つで 1 本かは [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は条件中の `always()` / `cancelled()`（`failure()` はキャンセル時 false なので意図的に数えない）と、title 式中のリテラル `CUT OFF`。reusable workflow を呼ぶジョブは同キーが invalid なため除外する。構造は YAML パーサではなく桁で読む。ブロックスカラーの中身が必ず親より深い桁に来ることが前提で、入力がそもそもパースできることは同じターゲット内で先に走る `actionlint` が担保する。到達性を自ら打ち消す条件（`!always()`）は書けてしまい静的には捕まらないので、そこは規約が支える。|`make actions-lint` / `make actions-cutoff-lint`|
+|`pr-comment-secret-lint.ts`|`.github/workflows/` の各ワークフローをジョブ単位に切り出し、`./.github/actions/upsert-pr-comment` を使うジョブが `GITHUB_TOKEN` 以外の secret を参照していれば失敗する（ワークフロー全体の `env:` も対象）。`actionlint` では表現できない規約を機械化したもので、規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `${{ }}` 式に現れる secrets の直接参照（`secrets.NAME` / `secrets['NAME']` / `toJSON(secrets)` のようなコンテキスト全体）。別ジョブで読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えず、検査を通る。|`make actions-lint` / `make actions-comment-secret-lint`|
+|`pr-comment-fence-lint.ts`|ワークフローの `run:` ブロックが PR コメント本文を固定長の Markdown フェンスで囲んでいる場合、複製されている `fence_for` の実装が互いに一致しなくなった場合、本文を素通しさせるワークフローが inline code span の内側へ値を補間している場合に失敗する。`actionlint` では表現できない規約を機械化したもので、フェンスを囲む本文から算出すべき理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `echo` 中のリテラルなフェンス、実装同士の文字列一致、そしてシェル展開をリテラルな span で囲んだ形。変数経由や `jq` の連結で組んだ span はここからは見えず、ある本文が攻撃者制御かどうかはそもそも判定できない。いずれも規約に委ねる。span 検査はファイル単位で、まだ安全な形に乗っていない本文のための除外マップを持つ。エントリは追跡 issue を明記し、検査を素通りしたファイルが検査済みと区別できなくならないよう毎回出力され、その issue が解決したら消える。|`make actions-lint` / `make actions-comment-fence-lint`|
+|`actions-cutoff-lint.ts`|ジョブに `timeout-minutes` が無い場合と、`./.github/actions/upsert-pr-comment` を呼ぶステップの `if:` がキャンセルされたジョブから到達できない場合・`title:` に打ち切り時の見出しが無い場合に失敗する。`actionlint` では表現できない規約を機械化したもので、打ち切りが何を残すべきか・なぜ 3 つで 1 本かは [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は条件中の `always()` / `cancelled()`（`failure()` はキャンセル時 false なので意図的に数えない）と、title 式中のリテラル `CUT OFF`。reusable workflow を呼ぶジョブは同キーが invalid なため除外する。構造は YAML パーサではなく桁で読む。ブロックスカラーの中身が必ず親より深い桁に来ることが前提で、入力がそもそもパースできることは同じターゲット内で先に走る `actionlint` が担保する。到達性を自ら打ち消す条件（`!always()`）は書けてしまい静的には捕まらないので、そこは規約が支える。|`make actions-lint` / `make actions-cutoff-lint`|
 
 #### Skill Lint
 
-`skill-lint.mjs` は、Makefile のターゲット一覧・ファイルシステム・見出し抽出から機械的に導出できることだけを主張する（文面の良し悪しは判断しない）。参照検査が読むのは**コードフェンス外のインラインコードスパン**に限る（フェンス内は例示・出力サンプルであり実在性を保証しない）。
+`skill-lint.ts` は、Makefile のターゲット一覧・ファイルシステム・見出し抽出から機械的に導出できることだけを主張する（文面の良し悪しは判断しない）。参照検査が読むのは**コードフェンス外のインラインコードスパン**に限る（フェンス内は例示・出力サンプルであり実在性を保証しない）。
 
 パス参照は、パスであることが一意に決まるときだけ検査する: 先頭セグメントがリポジトリルート直下の実在エントリであり、かつ末尾が `/` か basename にドットを含むもの。これにより Go の import パス（`database/sql`）、パッケージ修飾シンボル（`pkg/ptr.Copy`）、省略記法（`internal/controller/handler/...`）、文脈相対のファイル名（`SKILL.md`）は意図的に対象外となる — いずれも解決先が一意に決まらない。`<placeholder>` / `*` / `**` / `{a,b}` はパターンとして解決し、パスは参照元ファイルからの相対でも解決を試みる（スキルが同梱する `scripts/` を指せるようにするため）。
 
@@ -78,7 +88,7 @@ scripts/
 
 本文の追随は意図的に検査しない。`sync-ai` は逐語コピーではなく意味ポートであり、`CLAUDE.md` ↔ `AGENTS.md` の言い換え・Claude 固有機構の適応・凝縮スタイルへの書き下ろしといった意図的な差分が恒久的に残る（共通スキルのうち少なからぬ数は、見出し集合がまったく重ならない）。存在の対応であれば例外は宣言可能な件数に収まり、それでいて肝心の事故 — 片側の環境にだけマージされた skill — は捕まえられる。
 
-意図的に片側の環境だけへ置く skill は、`skill-lint.mjs` の `PLATFORM_ONLY_SKILLS` へ**理由付きで**登録する。理由が空の登録は落ち、両環境に揃った（あるいはどちらにも無くなった）skill の登録も落ちるので、例外リストが例外より長生きすることはない。**この仕組みの正典はここで、他のドキュメントは再掲せずここへリンクする。**
+意図的に片側の環境だけへ置く skill は、`skill-lint.ts` の `PLATFORM_ONLY_SKILLS` へ**理由付きで**登録する。理由が空の登録は落ち、両環境に揃った（あるいはどちらにも無くなった）skill の登録も落ちるので、例外リストが例外より長生きすることはない。**この仕組みの正典はここで、他のドキュメントは再掲せずここへリンクする。**
 
 エージェント役割にはこの逃げ道が無く、対応は無条件に要求される。意図的に片側だけへ置いたエージェントはこれまで無く、例外の表を用意してもエントリが 0 件になる — 例外機構は実際の事例が出てから足す。
 
@@ -86,8 +96,8 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`semver.mjs`|セマンティックバージョンのバンプ（patch / minor / major）|リリースワークフロー|
-|`stamp-openapi-version.mjs`|`release/vX.Y.Z` のブランチ名から `X.Y.Z` を導出し `openapi.yaml` の `info.version` に書き込む（先頭の `version:` 行のみ・冪等・非 release ref は no-op）。契約版のみで SHA / build metadata は付けない（commit 単位の追跡は runtime の `/version` の責務）。依存ゼロの ESM で、素の runner `node` で動く。|`auto-generate-docs.yaml`|
+|`semver.ts`|セマンティックバージョンのバンプ（patch / minor / major）|リリースワークフロー|
+|`stamp-openapi-version.ts`|`release/vX.Y.Z` のブランチ名から `X.Y.Z` を導出し `openapi.yaml` の `info.version` に書き込む（先頭の `version:` 行のみ・冪等・非 release ref は no-op）。契約版のみで SHA / build metadata は付けない（commit 単位の追跡は runtime の `/version` の責務）。`tsx` 経由で実行する。|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go 実装の sync ツール。`mise.toml` の `[tools]` table を行ベース parser で解析し（外部依存ゼロ）、`go` / `node` / `python` を `go.mod` の `go` directive と `docker/*/Dockerfile` の `FROM golang:` / `FROM node:` / `FROM python:` 行へ反映する。version 存在・ファイル存在・期待マッチ数の事前 validate を全 rule で通してからファイル単位 atomic に書き出すため、partial state にならない。|`make sync-versions`|
 |`release/`|リリースタグ（`tag`）と次のリリースブランチ（`branch`）を作る。次バージョンは `git tag` の最新セマンティックバージョンから `-bump patch\|minor\|major` で決める。手順が make のレシピではなくここに在るのは、どちらも取り消しの効かない操作（タグの push / GitHub Release の作成 / デフォルトブランチの切り替え）を含み、分岐を実地で確かめようとすると本当にリリースするしかないためである。手順の組み立てと中止条件は純粋関数へ寄せてテストで固定してある。|`make tag-patch` / `tag-minor` / `tag-major` / `branch-patch` / `branch-minor` / `branch-major` / `hotfix-patch`|
 
@@ -97,7 +107,8 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`make_help.mjs`|`.makefiles/*.mk` を解析してターゲット説明を表示|`make help`|
+|`make-help.ts`|`.makefiles/*.mk` を解析してターゲット説明を表示|`make help`|
+|`load-band/`|`git worktree` の数からホストの負荷帯（`full` / `low` / `ci-first`）と 1 窓あたりの CPU share を解決し、レシピが `eval` できる `KEY=VALUE`（`env`）または人間向けの要約（`status`）として出力する。解決は make のパース時ではなくレシピ内で行うため、重い処理を伴わないターゲットはこのコストを払わない。置き換え前のシェルは窓数を `git worktree list \| grep -c . \|\| echo 1` で数えており、git が答えられないときに `0` と `1` の両方を出力していた。結果、比較が `integer expression expected` で失敗し、帯は黙って `full` へ縮退していた。|`make load-status` / `gate-*` 系ターゲット|
 
 ### コード生成
 
@@ -117,6 +128,7 @@ scripts/
 |`go-cooldown/`|Go module proxy が返す公開時刻（`<module>/@v/<version>.info`）で `go.mod` を供給網 cooldown 窓に照らす。GOPROXY プロトコルの一部なので追加依存は不要。`gate` は base ref と比較し、その変更が追加 / 更新した **direct** の require が窓内なら失敗する。indirect は MVS が direct の要求下限より上に固定することがあり PR 側で下げられないため報告に留める。`audit` は全 require を棚卸しし、窓そのものでは失敗しない（既存依存は grandfather）。`.github/go-cooldown-bypass.toml` のエントリが期限切れ・3 ヶ月超・`go.mod` に不在のいずれかなら双方で失敗し、無効なエントリは効力も失うので失効したバイパスがモジュールを通し続けることはない。npm の `min-release-age` と違い Go は解決時に窓を強制しないため、この検査は検知器ではなく防御そのものである。|`make go-cooldown-gate BASE=<ref>` / `make go-cooldown-audit`|
 |`mise-cooldown/`|`mise.toml` が pin するツール版を供給網 cooldown 窓に照らす。窓はツールではなく backend の性質で決まる。GitHub リリース経由（aqua / ubi / github）は 14 日で、tag が別 commit へ付け替えられ得るぶん `pin-actions` / `pin-images` と揃える。パッケージレジストリ経由（go / npm / pipx）は公開が immutable なので 7 日で、`npm-cooldown` / `go-cooldown` と揃う。公開時刻はそれぞれ GitHub Releases API・Go module proxy・npm registry・PyPI から取る。`go:` backend はパッケージパスを指すため、proxy が答えるまで接頭辞を遡ってモジュールパスを見つける。短縮名の backend は対応表を持たず `mise registry` に解決させる（表を持つと mise の更新で静かにずれる）。**言語ランタイム（`core:` backend）は受容したリスクとして対象外** — go / node / python の配布自体が汚染される事態は供給網の 1 リンクではなく言語の信頼モデルの崩壊であり、冷却期間で守れるものが無い。`gate` は base ref と比較して失敗し、`audit` は全件を棚卸しして窓では失敗しない。双方とも `.github/mise-cooldown-bypass.toml` のエントリが期限切れ・3 ヶ月超・対象不在なら失敗し、無効なエントリは効力を失う。|`make mise-cooldown-gate BASE=<ref>` / `make mise-cooldown-audit`|
 |`migration-lint/`|`database/migrations` の連番について、重複（`-check duplicate`）と欠番（`-check gap`）を検査する。読むのは `<連番>_<名前>.<kind>.sql` の最初の `_` より前で、up / down は `-kind` で切り替える。lefthook の pre-commit ゲートから呼ばれる。判定がシェルのレシピではなく Go に在るのは、この検査の壊れ方が「何も検査しなくなる」方向に出るためで、そこはテストで固定できるがシェルのパイプラインでは固定できない。|`make check-migration-up-version` / `check-migration-down-version` / `check-migration-up-gap` / `check-migration-down-gap`|
+|`cover-gate/`|`go tool cover -func` が報告する総カバレッジを `-threshold` の値と比較し、下回れば非 0 で終了する。`total:` 行の抽出と判定を別々の純粋関数に分けてあるため双方をテストで固定できる。置き換え前の `awk` パイプラインは数値でないパーセント表記を `t+0` で `0` に丸めていたため、壊れたプロファイルを「ツールの失敗」ではなく「カバレッジ不足」として報告していた。|`make cover-gate`|
 
 ### 初期設定（`setup/` / `repo-setup/`）
 
@@ -124,19 +136,19 @@ scripts/
 
 |スクリプト|説明|
 |---|---|
-|`replace-module.mjs`|Go モジュール名を全 `.go`、`go.mod` 等で置換|
-|`replace-app-metadata.mjs`|env ファイルと OpenAPI 仕様のアプリ名・説明を置換|
-|`replace-license-copyright.mjs`|LICENSE の著作権者名と年を置換|
-|`replace-repository-reference.mjs`|README と OpenAPI の GitHub リポジトリ参照を置換|
-|`replace-codeowners.mjs`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。|
-|`remove-sample-api.mjs`|サンプルAPI(`user`/`product`/`order`)を削除。`lib/sample-api.mjs` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
-|`reset-mock-auth-users.mjs`|mock-auth の固定 User Fixture（`docker/mock-auth-server/fixtures/users.json`）を中立な既定内容へ上書きする。ファイル自体は削除しないため mock は常に起動できる。`make setup-remove-sample-api` がこれを呼び、デモの固定ユーザー（John Doe 等）を中立な既定ユーザー 1 件へ置き換える。|
+|`replace-module.ts`|Go モジュール名を全 `.go`、`go.mod` 等で置換|
+|`replace-app-metadata.ts`|env ファイルと OpenAPI 仕様のアプリ名・説明を置換|
+|`replace-license-copyright.ts`|LICENSE の著作権者名と年を置換|
+|`replace-repository-reference.ts`|README と OpenAPI の GitHub リポジトリ参照を置換|
+|`replace-codeowners.ts`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。|
+|`remove-sample-api.ts`|サンプルAPI(`user`/`product`/`order`)を削除。`lib/sample-manifest.ts` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
+|`reset-mock-auth-users.ts`|mock-auth の固定 User Fixture（`mock-auth-server/fixtures/users.json`）を中立な既定内容へ上書きする。ファイル自体は削除しないため mock は常に起動できる。`make setup-remove-sample-api` がこれを呼び、デモの固定ユーザー（John Doe 等）を中立な既定ユーザー 1 件へ置き換える。|
 |`repo-setup/`|boilerplate を自分のリポジトリとして初期化する際の git / gh 側の手順。`preflight` は `v0.0.0` タグがあれば中止し、`bootstrap` はタグを作り直して develop / staging / production を用意しデフォルトブランチを移し、`prune-release-notes` は `v0.0.0.md` 以外のリリースノートを削除する。ラベル・ルールセット・ワークフローの有効化は全体の連鎖を持つ `setup-repository.mk` に残る。ここも Go なのは、タグの一括削除やデフォルトブランチの移動が、実物のリポジトリを壊さずには試せないためである。|
 
 すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。
 <!-- sample-api:begin -->
 
-`remove-sample-api.mjs` の削除対象とマーカーは [`lib/sample-api.mjs`](setup/lib/sample-api.mjs) に宣言されています。サンプルは3ドメイン構成（`user` はフルスタック、`product`/`order` は拡張予定の DB スタブ）で、拡張時は該当ドメインブロックにパスを追記し、混在行を `sample-api:begin … sample-api:end`（または `sample-api:line`）で囲むだけで対象に含まれます。
+削除対象は [`lib/sample-manifest.ts`](setup/lib/sample-manifest.ts) に、マーカー除去の規則は [`lib/sample-api.ts`](setup/lib/sample-api.ts) に宣言されています。サンプルは3ドメイン構成（`user` はフルスタック、`product`/`order` は拡張予定の DB スタブ）で、拡張時は該当ドメインブロックにパスを追記し、混在行を `sample-api:begin … sample-api:end`（または `sample-api:line`）で囲むだけで対象に含まれます。
 <!-- sample-api:end -->
 
 ## 注意点
@@ -147,6 +159,18 @@ scripts/
 - `actions-shellcheck` のテストは実物の `shellcheck` を呼び、無い環境では自分で skip する。
   `REQUIRE_SHELLCHECK` を立てるとその skip を失敗に変える。skip は既定の出力に現れないため、
   そのままでは「緑だが報告より少なくしか検査していない」状態が残る
-- ドキュメント生成スクリプトは Node.js と `js-yaml` が必要（`docker/tools/` 経由でインストール）
+- TypeScript のスクリプトは `tsx` で実行し `tsc` で型検査する。依存はここが宣言し
+  （`package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml`）、`node_tool_runner` のイメージ
+  ビルドと、必要とする CI ジョブが `scripts/node_modules` へ展開する
+- 入口はいずれも `node_modules/.bin` ではなく `pnpm --dir scripts <script>` で起動する。
+  `pnpm-workspace.yaml` の `verifyDepsBeforeRun` は pnpm を通った実行しか検査しないため。
+  `tsx` の入口は先にリポジトリルートへ戻る。スクリプトはそこを基点に相対パスを解決する
+- 判定ロジックは CLI の入口から切り離して `scripts/lib/**` と `scripts/portal/*.ts` に置く。
+  これらのうち 5 本はゲートであり、検査をやめたときエラーではなく「違反なし」を報告する向きに
+  倒れる。`make scripts-test` / `make scripts-typecheck` が、その沈黙を合格と取り違えないための
+  歯止めで、CI では `scripts-check.yaml` が回す
+- setup スクリプトはサンプル API（およびこのツール群の一部）を撤去した後に走るため、残りのツリーが
+  在ることを前提にできない。`remove-sample-api.ts` は自身の manifest とマーカー除去ロジックごと消え、
+  `verify-sample-removal.ts` は検証を通した後に自身と判定モジュール・そのテストを消す
 - setup スクリプトは一度だけ使用 — ボイラープレートから新規プロジェクト作成時に実行
 - AI エージェントは明示的な指示がない限りこのディレクトリを変更しないこと
