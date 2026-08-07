@@ -58,6 +58,11 @@ SQL linting tools:
 |---|---|
 |`sqlfluff`|SQL linter for migrations, DML, and seed files|
 
+Unlike the other two stages, the tool itself does not come from `mise.toml`: mise installs
+only `uv`, which then installs `sqlfluff` from [`python/sqlfluff.txt`](../../python/sqlfluff.txt)
+with `--require-hashes`, so the whole transitive tree is version- and hash-pinned
+(see [ADR-0075](../../docs/adr/0075-mise-ssot-drift-gate.md)).
+
 ## docker-compose Services
 
 ```yaml
@@ -86,5 +91,5 @@ make gen-query  # sqlc code generation
 
 - Working directory is `/app` for all targets
 - Tools are installed in a builder stage and copied to the runtime stage to minimize image size (`go_tools`)
-- Tool versions are pinned in `mise.toml` (the version SSOT); update them there so local and CI images stay in sync
+- Tool versions are pinned in `mise.toml` (the version SSOT); update them there so local and CI images stay in sync. PyPI tools are the exception — they are pinned in `python/*.in` and locked in `python/*.txt` (`make py-lock`)
 - The Node dependencies this image installs are declared by `scripts/` (`package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`) and by `docs-viewer/`; the build copies each manifest set into the directory it belongs to and installs it there. Neither manifest set lives in this directory, so a dependency change is reviewed next to the code that uses it

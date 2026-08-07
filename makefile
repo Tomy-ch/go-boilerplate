@@ -57,6 +57,8 @@ include .makefiles/sql/lint.mk
 include .makefiles/markdown/lint.mk
 # Node関連
 include .makefiles/node/scripts.mk
+# Python関連
+include .makefiles/python/lock.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
