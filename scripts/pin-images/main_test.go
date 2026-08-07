@@ -463,6 +463,35 @@ func Test_rewritePins(t *testing.T) {
 	})
 }
 
+func Test_isIgnorableLockErr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nil は無視可能", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isIgnorableLockErr(nil))
+		})
+
+		t.Run("ファイル不在は無視可能", func(t *testing.T) {
+			t.Parallel()
+			_, err := readLock(filepath.Join(t.TempDir(), "absent.toml"))
+			require.ErrorIs(t, err, os.ErrNotExist)
+			assert.True(t, isIgnorableLockErr(err))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("不在以外のエラーは無視不可", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isIgnorableLockErr(errLockInvalidLine))
+		})
+	})
+}
+
 func Test_readLock(t *testing.T) {
 	t.Parallel()
 
@@ -834,6 +863,20 @@ func Test_resolve(t *testing.T) { //nolint:paralleltest // useDockerStub が t.S
 			require.ErrorIs(t, err, errNoStepBack)
 			require.ErrorContains(t, err, "alpine:3.24")
 			assert.NotContains(t, readAll(t, filepath.Join(root, lockFile)), digestFresh)
+		})
+
+		t.Run("解釈できない lockfile は既存ピン無しと見なさずエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
+			body := "\"alpine:3.24\" = \"" + digestStale + "\"\n" + "invalid line\n"
+			writeFile(t, filepath.Join(root, lockFile), body)
+			useDockerStub(t, dockerStubBody(digestFresh, time.Now().UTC()))
+
+			err := resolve(root, testTargets(t, root), 14)
+
+			require.ErrorIs(t, err, errLockInvalidLine)
+			assert.Equal(t, body, readAll(t, filepath.Join(root, lockFile)),
+				"読めない lockfile を空と見なすと退行先ごと書き潰される")
 		})
 
 		t.Run("走査対象を読めなければエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用

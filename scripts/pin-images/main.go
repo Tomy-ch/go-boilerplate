@@ -195,7 +195,13 @@ func resolve(root string, targets []target, minAgeDays int) error {
 	if err != nil {
 		return err
 	}
-	existing, _ := readLock(filepath.Join(root, lockFile)) // 無ければ空
+	// lockfile 不在（初回）は空マップで続行するが、それ以外の読み込み失敗は握り潰さず fail-close する
+	// （既存ピンが lock から脱落して quarantine の退行先が消え、出来立ての未検証 digest を掴むか
+	// errNoStepBack で落ちるかの二択になるのを防ぐ。applyOrCheck と対称）。
+	existing, err := readLock(filepath.Join(root, lockFile))
+	if !isIgnorableLockErr(err) {
+		return xerrors.Wrap(err, "read lockfile")
+	}
 
 	ctx := context.Background()
 	lock := map[string]string{}
@@ -468,6 +474,13 @@ func writeLock(path string, lock map[string]string) error {
 		fmt.Fprintf(&b, "%q = %q\n", k, lock[k])
 	}
 	return os.WriteFile(path, []byte(b.String()), filePerm)
+}
+
+// isIgnorableLockErr は、lockfile 読み込みエラーのうち無視して続行してよいものを判定する。
+// nil（成功）と「ファイル不在」（初回 resolve）のみ true。それ以外（解釈できない行・キー重複・
+// 権限エラー等）は fail-close 対象。
+func isIgnorableLockErr(err error) bool {
+	return err == nil || xerrors.Is(err, os.ErrNotExist)
 }
 
 // readLock は lockfile を image:tag→digest として読む。空行とコメント行以外で代入として解釈
