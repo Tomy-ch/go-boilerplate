@@ -61,6 +61,50 @@ describe("stripMarkers", () => {
       expect(stripMarkers(content, "m").content).toBe("  substitute()");
     });
 
+    it("消した跡で空行が隣り合わないよう畳む", () => {
+      const content = doc("keep", "", "# m:begin", "drop", "# m:end", "", "keep2");
+
+      expect(stripMarkers(content, "m").content).toBe(doc("keep", "", "keep2"));
+    });
+
+    // 空行 1 つで隔てられた 2 つの引用は「途中に空行のある 1 つの引用」と読まれて壊れる。
+    // 引用内の段落区切り `>` を置くことで、両側を独立した注記のまま残す。
+    it("引用の間のブロックを抜いたら空行でなく引用の段落区切りを置く", () => {
+      const content = doc("> A", "", "# m:begin", "> sample", "# m:end", "", "> B");
+
+      expect(stripMarkers(content, "m").content).toBe(doc("> A", ">", "> B"));
+    });
+
+    it("継ぎ目の片側だけが引用なら空行のままにする", () => {
+      const content = doc("> A", "", "# m:begin", "sample", "# m:end", "", "text");
+
+      expect(stripMarkers(content, "m").content).toBe(doc("> A", "", "text"));
+    });
+
+    it("末尾が引用の継ぎ目で終わっても空行を落とさない", () => {
+      const content = doc("> A", "", "# m:begin", "> sample", "# m:end", "");
+
+      expect(stripMarkers(content, "m").content).toBe(doc("> A", ""));
+    });
+
+    it("行マーカーの跡でも同じように畳む", () => {
+      const content = doc("keep", "", "drop # m:line", "", "keep2");
+
+      expect(stripMarkers(content, "m").content).toBe(doc("keep", "", "keep2"));
+    });
+
+    it("消していない箇所の連続空行は畳まない", () => {
+      const content = doc("keep", "", "", "keep2");
+
+      expect(stripMarkers(content, "m").content).toBe(content);
+    });
+
+    it("コードフェンス内の連続空行を壊さない", () => {
+      const content = doc("```sh", "a", "", "", "b", "```", "", "# m:begin", "drop", "# m:end");
+
+      expect(stripMarkers(content, "m").content).toBe(doc("```sh", "a", "", "", "b", "```", ""));
+    });
+
     it("正規表現メタ文字を含むマーカー名も literal として扱う", () => {
       expect(stripMarkers(doc("keep", "# a.b:line"), "a.b").removed).toBe(1);
       expect(stripMarkers(doc("keep", "# a.b:line"), "axb").removed).toBe(0);

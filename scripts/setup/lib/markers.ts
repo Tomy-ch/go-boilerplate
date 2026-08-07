@@ -19,6 +19,9 @@ const SUBSTITUTE = 2;
 // 差し替え行の退避コメント。先頭の空白（インデント）は保持し、`//`/`#` と `=` マーカー・直後の空白1つだけ剥がす。
 const REPLACE_CONTENT = /^(\s*)(?:\/\/|#)\s*=\s?(.*)$/;
 
+/** 引用行。継ぎ目の両側が引用なら、空行では分断されてしまう。 */
+const QUOTE_LINE = /^\s*>/;
+
 /** `<comment> <marker>:<suffix>` に当たる正規表現を組み立てる。 */
 function markerPattern(marker: string, suffix: string): RegExp {
   return new RegExp(`(?:\\/\\/|#|<!--)\\s*${marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:${suffix}\\b`);
@@ -50,6 +53,41 @@ export function stripMarkers(content: string, marker: string): StripResult {
   let depth = 0;
   let removed = 0;
   let replaceState: number = OUTSIDE;
+  // 直前の行を消したか。消した跡で空行が隣り合うのを畳むために要る。
+  let cutJustBefore = false;
+
+  /**
+   * 1 行を残す。消した跡の継ぎ目でだけ、空行の重なりと引用の分断を繕う。
+   *
+   * @remarks
+   * ブロックの前後に空行を置くのは Markdown では普通の書き方なので、ブロックを抜くと
+   * その 2 つの空行が隣り合います。繕うのを継ぎ目に限るのは、コードフェンス内の
+   * 意図した連続空行を壊さないためです。
+   *
+   * 引用どうしの継ぎ目はさらに一手要ります。空行 1 つで隔てられた 2 つの引用は、Markdown では
+   * 「途中に空行のある 1 つの引用」と読まれて壊れるため、空行を `>`（引用内の段落区切り）へ
+   * 置き換えます。両側を独立した注記のまま残せる唯一の形です。
+   */
+  const keep = (line: string): void => {
+    if (cutJustBefore) {
+      if (line.trim() === "" && (out.at(-1) ?? "").trim() === "") {
+        removed++;
+
+        return;
+      }
+
+      if (
+        QUOTE_LINE.test(line) &&
+        (out.at(-1) ?? "").trim() === "" &&
+        QUOTE_LINE.test(out.at(-2) ?? "")
+      ) {
+        out[out.length - 1] = ">";
+      }
+    }
+
+    out.push(line);
+    cutJustBefore = false;
+  };
 
   for (const line of lines) {
     if (replaceBegin.test(line)) {
@@ -58,6 +96,7 @@ export function stripMarkers(content: string, marker: string): StripResult {
       }
       replaceState = ACTIVE;
       removed++;
+      cutJustBefore = true;
       continue;
     }
     if (replaceWith.test(line)) {
@@ -66,6 +105,7 @@ export function stripMarkers(content: string, marker: string): StripResult {
       }
       replaceState = SUBSTITUTE;
       removed++;
+      cutJustBefore = true;
       continue;
     }
     if (replaceEnd.test(line)) {
@@ -74,11 +114,13 @@ export function stripMarkers(content: string, marker: string): StripResult {
       }
       replaceState = OUTSIDE;
       removed++;
+      cutJustBefore = true;
       continue;
     }
     if (replaceState === ACTIVE) {
       // 有効側（対象が在るときのコード）は除去する。
       removed++;
+      cutJustBefore = true;
       continue;
     }
     if (replaceState === SUBSTITUTE) {
@@ -89,13 +131,14 @@ export function stripMarkers(content: string, marker: string): StripResult {
           `${marker}:replace-with 〜 replace-end の行は //= または #= で始めてください: ${line}`,
         );
       }
-      out.push(matched[1] + matched[2]);
+      keep(matched[1] + matched[2]);
       continue;
     }
 
     if (blockBegin.test(line)) {
       depth++;
       removed++;
+      cutJustBefore = true;
       continue;
     }
     if (blockEnd.test(line)) {
@@ -104,13 +147,15 @@ export function stripMarkers(content: string, marker: string): StripResult {
       }
       depth--;
       removed++;
+      cutJustBefore = true;
       continue;
     }
     if (depth > 0 || lineMarker.test(line)) {
       removed++;
+      cutJustBefore = true;
       continue;
     }
-    out.push(line);
+    keep(line);
   }
 
   if (depth > 0) {
