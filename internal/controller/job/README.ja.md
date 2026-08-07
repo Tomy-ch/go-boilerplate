@@ -15,7 +15,10 @@ internal/controller/job は、CLI（Cobra）から起動される **バッチ/�
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
+<!-- sample-api:begin -->
 配下の `usercount/` / `userpurge/` / `productimagegc/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
+
+<!-- sample-api:end -->
 
 ## アーキテクチャ
 

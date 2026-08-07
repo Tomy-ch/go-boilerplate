@@ -15,7 +15,10 @@ English | [日本語](README.ja.md)
 
 Delegate "business logic", "DB access", and "domain model operations" to Usecase / Domain / Infra, and keep the Controller thin.
 
+<!-- sample-api:begin -->
 The `usercount/`, `userpurge/` and `productimagegc/` directories are sample implementations. When building an actual service, use them as a reference and remove them if unnecessary.
+
+<!-- sample-api:end -->
 
 ## Architecture
 
