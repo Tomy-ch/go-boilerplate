@@ -83,7 +83,9 @@ Full setup (incl. module localization) is in
 > `golangci-lint`, `sqlc`, `oapi-codegen`, `mockgen`, `lefthook`, …) is pinned in
 > [`mise.toml`](mise.toml); the Dockerfiles, the local installer, and CI all install from that
 > same file via `mise install <tool>`, so local and CI stay identical. `make sync-versions`
-> propagates it to `go.mod` and the Dockerfile `FROM` lines.
+> propagates it to `go.mod` and the Dockerfile `FROM` lines. Tools published to PyPI are the one
+> exception: they are declared and hash-locked in [`python/`](python/README.md), since a version
+> pin alone would leave their dependencies unpinned.
 
 ## Example API
 

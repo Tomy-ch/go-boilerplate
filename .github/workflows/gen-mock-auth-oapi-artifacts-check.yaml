@@ -81,10 +81,13 @@ jobs:
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          base_sha="${{ github.event.pull_request.base.sha }}"
-          head_sha="${{ github.event.pull_request.head.sha }}"
+          base_sha="${BASE_SHA-}"
+          head_sha="${HEAD_SHA-}"
           # Surface a diff failure rather than degrading to an empty file list, which would
           # silently misreport every cause below as generator-side drift.
           if ! changed="$(git diff --name-only "$base_sha" "$head_sha")"; then
@@ -107,18 +110,22 @@ jobs:
         id: comment
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          HAS_DIFF: ${{ steps.gen_diff.outputs.has_diff }}
+          SOURCE_MODIFIED: ${{ steps.source_mod.outputs.source_modified }}
+          ARTIFACT_MODIFIED: ${{ steps.source_mod.outputs.artifact_modified }}
         run: |
           set -euo pipefail
           out=/tmp/gen-mock-auth-oapi-comment.md
-          if [ "${{ steps.gen_diff.outputs.has_diff }}" != "true" ]; then
+          if [ "${HAS_DIFF-}" != "true" ]; then
             echo "title=## ✅ No differences in mock-auth OpenAPI generated output were detected" >> "$GITHUB_OUTPUT"
             echo "No differences in mock-auth OpenAPI generated output were detected." > "$out"
             exit 0
           fi
-          if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
+          if [ "${SOURCE_MODIFIED-}" = "true" ]; then
             echo "title=## 🧾 Differences in mock-auth OpenAPI generated output have been detected" >> "$GITHUB_OUTPUT"
             printf '%s\n' "Run \`make gen-mock-auth-oapi\` locally and commit the changes." > "$out"
-          elif [ "${{ steps.source_mod.outputs.artifact_modified }}" = "true" ]; then
+          elif [ "${ARTIFACT_MODIFIED-}" = "true" ]; then
             echo "title=## ✋ mock-auth OpenAPI generated output was edited directly" >> "$GITHUB_OUTPUT"
             printf '%s\n' "This PR changes mock-auth OpenAPI generated output without changing any hand-written source under \`mock-auth-server/\`. Generated files must not be hand-edited (see \`AGENTS.md\`). Discard the edit, run \`make gen-mock-auth-oapi\` so the output comes from the generator, and commit that instead." > "$out"
           else

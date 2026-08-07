@@ -7,6 +7,7 @@ on:
       - '**/*.sql'
       - '**/*.sqlfluff'
       - 'mise.toml'
+      - 'python/sqlfluff.*'
   workflow_dispatch:
 
 permissions:
@@ -45,8 +46,18 @@ jobs:
       - name: Install uv
         run: mise install uv
 
+      # sqlfluff is pinned by python/sqlfluff.txt, not by mise. `--require-hashes` refuses a
+      # lockfile entry that is missing a version or a hash, so a tampered lockfile fails here
+      # rather than installing. The interpreter is read from mise.toml so this job cannot drift
+      # from the runtime the lockfile was resolved against; uv downloads that version itself
+      # instead of paying for a mise Python install.
       - name: Install sqlfluff
-        run: mise install pipx:sqlfluff
+        run: |
+          set -euo pipefail
+          python_version="$(mise config get tools.python)"
+          uv venv --python "${python_version}" .venv
+          uv pip install --require-hashes --no-cache -r python/sqlfluff.txt
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Run SQL lint
         id: lint
@@ -67,9 +78,14 @@ jobs:
         id: comment
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          LINT_STATUS: ${{ steps.lint.outputs.status }}
+          EXIT_CODE_MIGRATIONS: ${{ steps.lint.outputs.exit_code_migrations }}
+          EXIT_CODE_DML: ${{ steps.lint.outputs.exit_code_dml }}
+          EXIT_CODE_SEED: ${{ steps.lint.outputs.exit_code_seed }}
         run: |
           set -euo pipefail
-          if [ "${{ steps.lint.outputs.status }}" = "success" ]; then
+          if [ "${LINT_STATUS-}" = "success" ]; then
             echo "title=## ✅ SQL lint: PASS" >> "$GITHUB_OUTPUT"
           else
             echo "title=## ❌ SQL lint: FAIL" >> "$GITHUB_OUTPUT"
@@ -119,9 +135,9 @@ jobs:
 
           category_code() {
             case "$1" in
-              migrations) echo '${{ steps.lint.outputs.exit_code_migrations }}' ;;
-              dml)        echo '${{ steps.lint.outputs.exit_code_dml }}' ;;
-              seed)       echo '${{ steps.lint.outputs.exit_code_seed }}' ;;
+              migrations) echo "${EXIT_CODE_MIGRATIONS-}" ;;
+              dml)        echo "${EXIT_CODE_DML-}" ;;
+              seed)       echo "${EXIT_CODE_SEED-}" ;;
             esac
           }
 

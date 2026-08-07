@@ -8,7 +8,8 @@
 # `~/.codex/skills/`) — unlike the plugins, which this repo declares at project
 # scope. A fresh machine therefore needs this script even after a trusted clone.
 #
-# The version is pinned in `mise.toml` (the SSOT); this script never chooses one.
+# The version is pinned in `python/graphify.in`, and the resolved tree with its
+# sha256 hashes in `python/graphify.txt`; this script never chooses one.
 # Idempotent and non-interactive: safe to re-run.
 #
 # Usage: bash .claude/scripts/bootstrap-external-skills.sh
@@ -27,15 +28,29 @@ fi
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$REPO_ROOT"
 
-# The pinned spec, read back from mise.toml so the pin stays single-sourced.
-GRAPHIFY_SPEC=$(mise config get tools 2>/dev/null | grep -o '"pipx:graphifyy\[sql\]"[^,}]*' | grep -o '[0-9][0-9.]*' | head -1 || true)
-if [ -z "$GRAPHIFY_SPEC" ]; then
-  echo "error: no 'pipx:graphifyy[sql]' pin found in mise.toml" >&2
+LOCKFILE=python/graphify.txt
+if [ ! -s "$LOCKFILE" ]; then
+  echo "error: lockfile '$LOCKFILE' not found; run 'make py-lock' first" >&2
   exit 1
 fi
-echo "→ pinned graphify version (mise.toml): $GRAPHIFY_SPEC"
+echo "→ pinned graphify version ($LOCKFILE): $(sed -n 's/^graphifyy==\([^ ]*\).*/\1/p' "$LOCKFILE")"
 
-mise install "pipx:graphifyy[sql]@${GRAPHIFY_SPEC}"
+# The venv lives outside the repository: it is a machine-local artifact of a
+# user-scope install, and a path under the checkout would be one more thing for
+# every worktree to ignore and clean up.
+VENV="${XDG_CACHE_HOME:-$HOME/.cache}/go-boilerplate/graphify"
+
+# `mise exec` rather than the shims: this script runs on a fresh machine where
+# mise may not be activated in the shell yet.
+mise install uv
+mise exec uv -- uv venv --python "$(mise config get tools.python)" "$VENV"
+# `--require-hashes` refuses any entry without a version and a hash, so a
+# tampered lockfile fails here instead of installing.
+mise exec uv -- uv pip install \
+  --python "$VENV/bin/python" \
+  --require-hashes \
+  --no-cache \
+  -r "$LOCKFILE"
 
 # Install unconditionally rather than skipping on the `.graphify_version` marker:
 # a successful install stamps that marker for EVERY platform already on disk
@@ -48,7 +63,7 @@ mise install "pipx:graphifyy[sql]@${GRAPHIFY_SPEC}"
 # keeps hard-protected here.
 for platform in "${PLATFORMS[@]}"; do
   echo "→ installing skill ($platform)"
-  mise exec "pipx:graphifyy[sql]@${GRAPHIFY_SPEC}" -- graphify install --platform "$platform"
+  "$VENV/bin/graphify" install --platform "$platform"
 done
 
 # Verify every platform resolved on disk.

@@ -82,7 +82,9 @@ make db-init
 > （Go・`golangci-lint`・`sqlc`・`oapi-codegen`・`mockgen`・`lefthook` …）は [`mise.toml`](mise.toml)
 > に固定され、Dockerfile・ローカルインストーラ・CI はいずれも同じファイルから `mise install <tool>`
 > で導入します。そのためローカルと CI が一致します。`make sync-versions` がこれを `go.mod` と
-> Dockerfile の `FROM` 行へ反映します。
+> Dockerfile の `FROM` 行へ反映します。PyPI で公開されているツールだけは例外で、
+> [`python/`](python/README.ja.md) で宣言しハッシュ付きで固定します。バージョンの pin だけでは
+> 依存が固定されないためです。
 
 ## API の例
 
