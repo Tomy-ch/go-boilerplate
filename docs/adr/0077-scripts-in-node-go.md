@@ -51,13 +51,12 @@ and still exit `0`, which a type checker and a test can pin and an untyped scrip
 
 The one-time initial-setup scripts under `setup/` follow the same split, and are the reason the
 split is not merely a convention. Five of them are never executed by CI at all, and every one of
-them rewrites the user's own repository — a Go module path across every file in the tree, the
+them rewrites the repository in place — a Go module path across every file in the tree, the
 LICENSE holder, the owner field of every CODEOWNERS rule. When a replacement rule over-matches or
-misses a file type, the person who finds out is someone who cloned the boilerplate minutes ago,
-holds no context to debug with, and is looking at their own repository for the first time. So the
-replacement rules live in pure modules under `setup/lib/` with a `vitest` suite next to each, and
-what those tests pin is the rule itself: what it matches, what it must not match, and which file
-types it must not miss.
+misses a file type, the failure surfaces in a tree that has already been rewritten, in front of
+someone holding no context to debug it with. So the replacement rules live in pure modules under
+`setup/lib/` with a `vitest` suite next to each, and what those tests pin is the rule itself: what
+it matches, what it must not match, and which file types it must not miss.
 
 Two of them delete themselves. `remove-sample-api.ts` removes its own manifest and marker logic
 along with the sample, and `verify-sample-removal.ts` removes itself, its decision module and that
@@ -111,10 +110,9 @@ or by reading configuration files), never by importing `internal/` packages dire
   reachable from a `make` recipe is written in Go instead.
 - Setup scripts are one-time use; they remain in the repository after initial setup is
   complete, which adds volume without ongoing value.
-- The self-deleting setup tools take their tests with them, so those tests protect this
-  boilerplate's own CI rather than the repository created from it. That is the correct trade — the
-  alternative is shipping a test suite for a tool that no longer exists — but it does mean the
-  guarantee ends at the moment of use.
+- The self-deleting setup tools take their tests with them, so the guarantee those tests carry
+  ends at the moment of use. That is the correct trade — the alternative is shipping a test suite
+  for a tool that no longer exists.
 
 ## Alternatives Considered
 
@@ -155,3 +153,4 @@ adds a dependency.
   [ADR-0074](0074-containerized-pinned-toolchain.md).
 - Make target entrypoint for invoking scripts:
   [ADR-0076](0076-make-single-entrypoint.md).
+- **Upstream deviations**: while this repository is distributed as a boilerplate, the setup scripts carry an argument for the split that does not transfer, recorded in [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
