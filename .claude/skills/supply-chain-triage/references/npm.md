@@ -97,6 +97,27 @@ Read in this order, because it is the order of increasing effort and decreasing 
    find ex/*"$CAND"/package -type f -size +100k -o -name '*.min.js' -o -name '*.node' -o -name '*.wasm'
    ```
 
+   **When the package ships a bundler's content-hashed output** (`dist/chunks/foo-A1B2C3D4.mjs`), the
+   two commands above degrade into noise: changing one shared chunk re-hashes most filenames, so
+   `diff -rq` emits hundreds of `Only in` lines that say nothing. Strip the hash and compare the
+   *sets* instead — an added, removed, or renamed logical file is the finding, and identical sets
+   retire that whole class of question in one command:
+
+   ```sh
+   norm() { find "$1" -type f | sed "s#^$1/##" | sed -E 's/-[A-Za-z0-9]{8}\.(mjs|js)/-HASH.\1/' | sort; }
+   diff <(norm ex/*"$BASE"/package) <(norm ex/*"$CAND"/package)
+   ```
+
+   Do **not** then pair the hashed files up to diff them individually — the mapping is ambiguous by
+   construction, and joining on the normalized name explodes combinatorially (many chunks share the
+   name `chunk-HASH.mjs`). Two other moves carry the axis instead. First, run step 2's signature grep
+   over both trees and compare the **hit profile** rather than the file layout: a pattern appearing
+   only in the candidate is the finding, and an identical profile is strong evidence the bundle
+   gained no new capability. Second, confirm the bundle carries the change the release *claims*, by
+   grepping for a token the source diff says should appear or disappear — a removed option name, a
+   renamed export, a new guard. A bundle that does not contain its own advertised fix, or that moved
+   while the source did not, is the highest-signal finding available; treat it as `3`.
+
 4. **Tarball versus repository** — this is where "does the artifact match its source" gets real teeth
    for a package without provenance. Clone the upstream tag and compare the published files against
    it. Files present in the tarball but absent from the tagged source are the classic vector.
@@ -133,15 +154,34 @@ A dependency created days ago, with a handful of versions and no repository, add
 package, is a `3`. Also diff `bin`, `files`, and `directories` — a new `bin` entry means the package
 can now be invoked as a command.
 
-## npm-specific reporting
+## Applies to pnpm too, with one difference
 
-State in the report which of these applies, because it decides what a LOW score can buy:
+`scripts/` and `docs-viewer/` resolve with pnpm, but every command above works unchanged: pnpm pulls
+from the same registry, so the packument, the attestations, and `npm pack` all address the same
+artifact. Only the reporting differs, below.
+
+## Reporting: what a LOW score can actually buy
+
+State in the report which of these applies, because a score is evidence, not permission, and the
+options it unlocks are not the same in the two ecosystems:
 
 - **Under a `.npmrc` `min-release-age`** (this repo: the lockfile dirs' own `.npmrc`), the version
   cannot be resolved at all until it ages — `npm install` fails with
-  `ETARGET … with a date before <cutoff>`. A LOW score does not unlock it. The honest options are
-  wait, take an older aged fixed version, or a deliberate role-level override that
-  `make npm-cooldown-audit` will surface on the PR. Never propose lowering `min-release-age`.
+  `ETARGET … with a date before <cutoff>`. A LOW score does not unlock it, and npm has **no
+  per-version escape hatch**. The honest options are wait, take an older aged fixed version, or a
+  deliberate role-level override that `make npm-cooldown-audit` will surface on the PR. Never
+  propose lowering `min-release-age`.
+- **Under a pnpm `minimumReleaseAge`** (`pnpm-workspace.yaml`, stated in minutes), resolution fails
+  with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` and — because pnpm re-verifies the whole lockfile on
+  every install, `--frozen-lockfile` included — replaying such an entry fails with
+  `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`. pnpm **does** have a per-version escape hatch,
+  `minimumReleaseAgeExclude`, which is exactly the decision a triage report exists to inform. Report
+  the score and say plainly that adding the entry is the caller's or the user's call, never yours.
+  Never propose lowering `minimumReleaseAge` or flipping `minimumReleaseAgeStrict` to `false` — the
+  first opens the window for every dependency at once, the second hands the decision to the
+  resolver, which then writes the exclusion itself. There is no pnpm counterpart to
+  `npm-cooldown-audit` and none is missing: the exemption must be committed to a tracked,
+  CODEOWNERS-covered file for the install to work at all, so it is reviewed rather than detected.
 - **Transitive candidates** reached through an `overrides` floor: the version that will actually
-  resolve is the newest in-range version npm accepts, so triage the version the lockfile would land
-  on, not the advisory's floor.
+  resolve is the newest in-range version the resolver accepts, so triage the version the lockfile
+  would land on, not the advisory's floor.

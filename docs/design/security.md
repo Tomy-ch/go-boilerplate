@@ -213,18 +213,98 @@ freezes the dependency where it is, so when the pinned version later gets its ow
 pin keeps forcing the now-vulnerable one. Every override is meant to be reclaimed once the parent
 ships a release that pulls the fix natively.
 
+### pnpm
+
+Two packages resolve with pnpm — `scripts/` and `docs-viewer/` — each carrying its own
+`pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is the same 7 days as npm and derived the
+same way; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
+
+What differs is **where** the window is enforced, and it inverts npm's weakness. npm checks only
+while it resolves, so an in-window entry that once reached the lockfile is invisible from then on.
+pnpm re-verifies the **entire lockfile** against the active policies on every install — including
+`--frozen-lockfile`, the replay path that `npm ci` leaves unchecked.
+
+Verified behaviour, not inference:
+
+| Action | Result |
+| --- | --- |
+| Resolving an exact in-window version, `minimumReleaseAgeStrict: true` | Rejected (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`), naming the version, its publish time, and the cutoff |
+| Resolving a range whose newest match is in-window | Silently resolves to the newest *aged* match, exit 0 |
+| Resolving an exact in-window version, `minimumReleaseAgeStrict: false` | Succeeds — and pnpm writes the `minimumReleaseAgeExclude` entry into `pnpm-workspace.yaml` itself |
+| `--frozen-lockfile` replaying an in-window entry that no exclusion covers | Rejected (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) |
+| Any `pnpm run` after a policy setting changed | Rejected (`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`) until `pnpm install` re-records the settings |
+
+Three consequences follow, and together they are why pnpm needs no `npm-cooldown-audit`
+counterpart: there is nothing to detect after the fact, because nothing gets through unrecorded.
+
+**An override cannot be silent.** Taking an in-window version requires a
+`minimumReleaseAgeExclude` entry, and without one every later install fails — CI included, since
+its install is the frozen replay. The entry lives in `pnpm-workspace.yaml`, which is tracked and in
+[`CODEOWNERS`](../../.github/CODEOWNERS), so the override is reviewed by construction rather than
+reported by a bot afterwards.
+
+**`minimumReleaseAgeStrict: true` is what keeps the override a human's.** With it off, pnpm writes
+the exclusion itself and carries on — the resolver, not a person, decides to take a fresh publish.
+Strict mode turns that into a stop, on the same reasoning that puts install-shaped commands in
+`ask` rather than letting them run: the point of an override is that someone chose it.
+
+**An exclusion is dated debt whose removal date is load-bearing in both directions.** Deleting the
+entry before the window opens breaks every install; once the version ages past the cutoff the entry
+is redundant and the lockfile passes without it. Each entry therefore records what it exempts, why,
+where that package runs, and the date it becomes deletable.
+
+An exclusion names `<package>@<version>`, never a bare package name: a name-only exemption would
+excuse every future publish of that package, which is exactly what the window exists to catch. The
+same rule governs `trustPolicyExclude`, whose subject is provenance regression rather than freshness.
+
+One operational caveat: the lockfile verification result is cached (`Lockfile passes supply-chain
+policies (verified 1m ago)`), so editing a policy does not always force a re-check on the very next
+install.
+
 ### PyPI
 
-Python tools enter through `mise.toml`'s `pipx:` backend, so they are pinned exactly and their
-version sits in the same SSOT as every other tool. There is no lockfile and no resolver-side
-freshness control, which puts PyPI where Actions and images already are: the window is enforced by
-whoever edits the pin.
+Python tools are the one exception to `mise.toml` holding every tool version, and the reason is a
+supply-chain one: pinning a PyPI tool's version pins almost nothing, because its dependency tree is
+resolved at install time, so the same pin installs a different tree on different days. Each tool
+therefore declares its version in `python/<tool>.in` and carries the resolved tree — every
+transitive package, with sha256 hashes — in `python/<tool>.txt`
+([ADR-0075](../adr/0075-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
+are `uv pip install --require-hashes -r <tool>.txt`, which refuses any requirement lacking a version
+or a hash, so integrity verification is part of installing rather than a step that can be skipped.
 
 **The window is 7 days**, derived the way npm's is — PyPI detects and yanks a malicious publish
-quickly, so the interval to sit out is short. A bump therefore takes the newest release already
-aged past the window, not the newest release. When a pin deliberately trails it says so in a
-comment; that convention is shared across the ecosystems, and `mise.toml`'s `graphifyy` line is
-the PyPI instance of it.
+quickly, so the interval to sit out is short. A bump therefore takes the newest release already aged
+past the window, not the newest release; when a pin deliberately trails it says so in a comment, and
+`python/graphify.in` is the PyPI instance of that convention.
+
+Freshness has no resolver-side enforcement here — `uv pip compile` will resolve a version published
+minutes ago without complaint. What enforces it is a repository gate, `scripts/mise-cooldown`, and
+unlike npm's audit-only counterpart it **fails the build**.
+
+Verified behaviour, not inference:
+
+| Action | Result |
+| --- | --- |
+| `gate` (a pull request's diff) adds or raises a declaration inside the window | Non-zero exit, naming the version, its age, and the bypass file |
+| `audit` (full inventory) finds an in-window declaration | Reported as a warning, **exit 0** — it takes stock, it does not block |
+| A `.in` declares a version its `.txt` does not pin | Non-zero exit in **both** `gate` and `audit` |
+| Installing | `--require-hashes` refuses any requirement without a version and a hash |
+
+The third row is what keeps the first two honest. The gate reads the declaration while the installer
+reads the lockfile, so without that cross-check raising a `.in` and forgetting `make py-lock` would
+clear the cooldown for a version that never gets installed, and say nothing about the one that does.
+It is a structural fault rather than a cooldown finding, which is why it fails the inventory command
+too.
+
+The `gate` / `audit` split is the same one drawn under *Why reporting and gating are split*: `gate`
+judges what a change introduces and can therefore block, while `audit` inventories what is already
+there, where findings arrive as versions age rather than as anyone's edit.
+
+**A bypass is dated debt.** `.github/mise-cooldown-bypass.toml` takes
+`"<key>@<version>" = { expires, issue, reason }`, all three required. An entry that has expired, that
+reaches more than three months out, or that no longer matches any declaration fails `gate` *and*
+`audit`. The expiry arrives without anyone editing a file, which is why the check also runs on a
+schedule instead of only on pull requests.
 
 Two properties make freshness sharper here than for a library:
 
