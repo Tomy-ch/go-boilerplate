@@ -17,7 +17,7 @@ It exists because of a property recorded in `docs/design/security.md`:
 > what actually changed, and did new dependencies appear. […] Answering them beats counting days.
 > Skipping *both* does not.
 
-`docs/design/security.md` (section "Dependencies → Two principles that hold for every ecosystem")
+`docs/design/security.md` (section "Dependencies → Three principles that hold for every ecosystem")
 is the **source of truth** for that reasoning — read it at runtime rather than trusting this
 paragraph, because the policy lives there and this skill is only its instrument. The four axes
 below are those four questions, made operational. In a fork where that document is absent, the
@@ -262,7 +262,7 @@ Two walls to restate in the report whenever they apply:
 
 ## Checklist
 
-- [ ] `docs/design/security.md` "Two principles" read at runtime (or the fallback noted)
+- [ ] `docs/design/security.md` "Three principles" read at runtime (or the fallback noted)
 - [ ] Candidate fixed: ecosystem, name, candidate version, **baseline the caller would keep**, window `N`, disposition, urgency
 - [ ] The one matching `references/<ecosystem>.md` read; its unanswerable axes honored
 - [ ] All four axes attempted; each score carries a command + observation, or an explicit `?` with a reason

@@ -39,3 +39,14 @@ blockExoticSubdeps: true
 trustPolicy: no-downgrade
 # 公開から 180 日を過ぎた版は provenance 情報の不足だけでは拒否しない。
 trustPolicyIgnoreAfter: 259200
+
+# ----- 依存の差し替え -----
+# 「解決結果がこの版域に落ちたら」で書く。意図（踏ませたくない版域）は版域そのものに現れる。
+overrides:
+  # rolldown（vite 8.2.0 以降）が引く @napi-rs/wasm-runtime の peer が
+  # `^1.7.1 || ^2.0.0-alpha.3` で、pnpm は満たす中で高い方＝ alpha を採る。
+  # プレリリースを解決結果へ入れない理由は docs/design/security.md の
+  # 「A prerelease is outside what the window measures」が持つ。
+  "@emnapi/core": "^1.11.1"
+  "@emnapi/runtime": "^1.11.1"
+  "@emnapi/wasi-threads": "^1.2.2"
