@@ -75,6 +75,20 @@ describe("stripMarkers", () => {
       expect(stripMarkers(content, "m").content).toBe(doc("> A", ">", "> B"));
     });
 
+    // 冒頭のブロックを抜くと、繕う相手（直前の行）が 1 行も無い状態で継ぎ目に出る。
+    // 先頭に空行を残すと本文が 1 行下がってしまうので、そのまま落とす。
+    it("先頭のブロックを抜いたら残った空行ごと落とす", () => {
+      const content = doc("# m:begin", "drop", "# m:end", "", "keep");
+
+      expect(stripMarkers(content, "m").content).toBe("keep");
+    });
+
+    it("先頭のブロックの直後が引用でも段落区切りを差し込まない", () => {
+      const content = doc("# m:begin", "drop", "# m:end", "", "> A");
+
+      expect(stripMarkers(content, "m").content).toBe("> A");
+    });
+
     it("継ぎ目の片側だけが引用なら空行のままにする", () => {
       const content = doc("> A", "", "# m:begin", "sample", "# m:end", "", "text");
 
