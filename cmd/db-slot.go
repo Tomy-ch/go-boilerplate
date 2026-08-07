@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -37,10 +38,50 @@ func newDBSlotCommand() *cobra.Command {
 			func(ctx context.Context, p *dbslot.Pool) error { return p.Release(ctx) }),
 		newDBSlotSubCommand("heartbeat", "保持中スロットの heartbeat を更新します。",
 			func(_ context.Context, p *dbslot.Pool) error { return p.Heartbeat() }),
-		newDBSlotSubCommand("status", "スロットの占有状況を表示します。",
-			func(_ context.Context, p *dbslot.Pool) error { return p.Status() }),
+		newDBSlotStatusCommand(),
+		// env の標準出力は make が eval するため出力先を分ける。require-owner の案内は stderr。
+		newDBSlotResolverCommand("env", "スロットから導かれる値を KEY=VALUE で出力します（make が eval します）。",
+			os.Stdout, func(ctx context.Context, r *dbslot.Resolver) error { return r.PrintEnv(ctx) }),
+		newDBSlotResolverCommand("require-owner", "自分が所有するデータベースがあることを検証します。",
+			os.Stderr, func(ctx context.Context, r *dbslot.Resolver) error { return r.RequireOwner(ctx) }),
 	)
 	return cmd
+}
+
+// newDBSlotStatusCommand は、スロットの占有状況に続けて自 checkout の解決済みの値を表示します。
+func newDBSlotStatusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "スロットの占有状況と、自 checkout の解決済みの値を表示します。",
+		RunE: func(c *cobra.Command, _ []string) error {
+			pool, err := newSlotPool()
+			if err != nil {
+				return err
+			}
+			if err := pool.Status(); err != nil {
+				return err
+			}
+			resolver, err := newSlotResolver(os.Stdout)
+			if err != nil {
+				return err
+			}
+			return resolver.PrintValues(c.Context())
+		},
+	}
+}
+
+func newDBSlotResolverCommand(use, short string, out io.Writer, run func(context.Context, *dbslot.Resolver) error) *cobra.Command {
+	return &cobra.Command{
+		Use:   use,
+		Short: short,
+		RunE: func(c *cobra.Command, _ []string) error {
+			resolver, err := newSlotResolver(out)
+			if err != nil {
+				return err
+			}
+			return run(c.Context(), resolver)
+		},
+	}
 }
 
 func newDBSlotSubCommand(use, short string, run func(context.Context, *dbslot.Pool) error) *cobra.Command {
@@ -79,7 +120,20 @@ func newSlotPool() (*dbslot.Pool, error) {
 		envStr("GOBP_DB_POOL_PGPASSWORD", "postgres-password"),
 		envStr("GOBP_DB_POOL_PGMAINTDB", "postgres"),
 	)
-	cfg := dbslot.Config{
+	return dbslot.NewPool(reg, admin, dbslot.ExecCompose{}, slotConfig(root), os.Stdout, os.Stderr), nil
+}
+
+// newSlotResolver は、スロットから導かれる値の解決器を実依存（ホストの git）で配線して生成します。
+func newSlotResolver(out io.Writer) (*dbslot.Resolver, error) {
+	root, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return dbslot.NewResolver(slotConfig(root), nil, out), nil
+}
+
+func slotConfig(root string) dbslot.Config {
+	return dbslot.Config{
 		Root:          root,
 		SharedProject: envStr("GOBP_DB_SHARED_PROJECT", "gobp-shared"),
 		APIBasePort:   envInt("GOBP_API_POOL_BASE", defaultPoolAPIBasePort),
@@ -88,7 +142,6 @@ func newSlotPool() (*dbslot.Pool, error) {
 		PprofBase:     envInt("GOBP_PPROF_POOL_BASE", defaultPoolPprofBasePort),
 		APPEnv:        os.Getenv("APP_ENV"),
 	}
-	return dbslot.NewPool(reg, admin, dbslot.ExecCompose{}, cfg, os.Stdout, os.Stderr), nil
 }
 
 func poolDir() string {
