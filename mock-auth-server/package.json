@@ -21,8 +21,8 @@
     "gen:check": "npm run gen && git diff --exit-code -- openapi/openapi.gen.yaml src/generated"
   },
   "dependencies": {
-    "@hono/node-server": "2.0.10",
-    "hono": "^4.12.31",
+    "@hono/node-server": "2.0.12",
+    "hono": "^4.12.34",
     "jose": "^6.2.3",
     "zod": "^4.4.3"
   },
