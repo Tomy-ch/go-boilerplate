@@ -4,11 +4,12 @@
 
 # Dependency Vulnerability Upgrade
 
-このスキルは **セキュリティ勧告リスト** を受け取り、名指しされた脆弱な依存だけを修正版へパッチする。対象は本リポジトリが使う 3 つのエコシステムにまたがる:
+このスキルは **セキュリティ勧告リスト** を受け取り、名指しされた脆弱な依存だけを修正版へパッチする。本リポジトリの依存解決は 4 通りあり、勧告はそのいずれの package も名指しし得る:
 
 - **npm** — 各 `package-lock.json`（現状 `mock-auth-server/` のみ）に記録された依存。`package.json` の `overrides` エントリで固定する必要がある **推移的（transitive）** 依存を含む。
 - **pnpm** — `scripts/pnpm-lock.yaml` と `docs-viewer/pnpm-lock.yaml` に記録された依存。各パッケージが自前の `pnpm-workspace.yaml` を持ち、そこに cooldown ポリシーと `overrides` の両方が載る。
 - **Go** — `go.mod` / `go.sum` のモジュール。**間接（indirect）** 依存を含む。
+- **PyPI** — `python/*.in` が宣言し、`python/*.txt` が sha256 付きで解決を固定している CLI ツール。所在の特定はここの範囲だが、**引き上げは範囲外** — 2 つの宣言先を持つのは `/tools-upgrade`。後述の *PyPI の勧告はたいていこのスキルのものではない* を見ること。
 
 **pnpm の `overrides` は npm のものを翻訳したものではない。** 直接依存については両者は一致する（宣言版を上げて
 lockfile を再生成する）が、推移的な pin で分かれる。pnpm は `overrides` を `package.json` ではなく
@@ -36,6 +37,16 @@ pnpm パッケージはセレクタを親の名指しではなく **解決結果
 - Go 言語バージョンの引き上げ — それは `/go-upgrade`（downstream 同期が異なる）。
 - 特定勧告と無関係な `go.mod` 依存の一般的リフレッシュ — `make tidy-lib` を使う。
 - 実体が mise 管理ツールである npm パッケージ — それは `/tools-upgrade` の管轄。
+- **PyPI ツールの pin の引き上げ** — `python/*.in` を持つのは `/tools-upgrade` で、そこを変えるなら `make py-lock` による `python/*.txt` の再生成が伴う。ここでは所在を特定し、引き渡す。
+
+## PyPI の勧告はたいていこのスキルのものではない
+
+Python の勧告がこのリポジトリに届く形は 2 つあり、ここで手を動かせるのは前者だけである。
+
+- **このリポジトリが宣言しているツールを名指しする場合**（`sqlfluff` / `graphifyy`）。所在を特定し、修正版とどこで宣言すべきかを報告して、**引き上げは `/tools-upgrade` へ渡す**。`python/*.in` を持つのはあちらで、そこを変えれば `make py-lock` が要ることも、`mise-cooldown` が何に対してゲートするかも知っている。ここで `python/*.in` や `python/*.txt` を編集しない。
+- **`python/<tool>.txt` にしか現れない推移的な package を名指しする場合**。引き上げるべき個別の pin は存在しない。lockfile は解決結果なので、修正はそれを引くツール自体を上げることで届くか、上流が出すまで届かないかのどちらかである。どのツールの lockfile が抱えているか、より新しいツール版が勧告を越えて解決するかを報告し、判断はユーザーに委ねる。`.txt` を手編集しない — sha256 を持ち install 時に `--require-hashes` が強制するので、編集した行は install されずに失敗する。
+
+いずれの場合も、移動を支配する cooldown は後述の *しきい値はエコシステムにより* の節が扱うものであり、逃げ道は `.github/mise-cooldown-bypass.toml` であって、このスキルの書き込み面には無い。
 
 ## First Step: 勧告のパースと caution しきい値の解決
 
@@ -96,6 +107,10 @@ grep -n "\"<pkg>\"" <dir>/package.json
 grep -n "^  <pkg>@" <dir>/pnpm-lock.yaml            # 解決された version
 grep -n "\"<pkg>\"" <dir>/package.json              # 宣言があれば直接
 
+# PyPI: 宣言は .in、推移依存まで含めた解決結果は .txt
+grep -n '<pkg>' python/*.in                          # 宣言あり → ツール。/tools-upgrade の管轄
+grep -niE '^<pkg>==' python/*.txt                    # 解決結果。推移的にしか出ないこともある
+
 # Go: モジュールが go.mod にあるか、直接か間接か
 grep -n '<module-path>' go.mod
 ```
@@ -104,8 +119,8 @@ grep -n '<module-path>' go.mod
 
 | 項目 | 方法 |
 | --- | --- |
-| ecosystem | `npm` / `pnpm` / `go` |
-| location | `package-lock.json` / `pnpm-lock.yaml` のディレクトリ、または `go.mod` |
+| ecosystem | `npm` / `pnpm` / `pypi` / `go` |
+| location | `package-lock.json` / `pnpm-lock.yaml` のディレクトリ、`python/<tool>.in` + `.txt`、または `go.mod` |
 | installed version | lockfile / `go.mod` から |
 | direct / transitive | その `package.json` の `dependencies`/`devDependencies` に宣言がある（npm / pnpm）／`// indirect` が無い（go）→ direct、そうでなければ transitive/indirect |
 

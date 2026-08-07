@@ -95,7 +95,7 @@
 
 - **CI で、自社コードより先に、job の資格情報とともに実行される**——GitHub Action、base image、install script を持つ npm パッケージ。最も高い。ここでの侵害は秘密へ直接届く。
 - **稼働サービスにリンクされる**——Go モジュール、実行時の npm 依存。
-- **ビルド / 開発時のみ**——toolbox image のジェネレータや linter、`pipx:` ツール。
+- **ビルド / 開発時のみ**——toolbox image のジェネレータや linter。**PyPI ツール**はこの行ではなく 1 つ上に置く。リポジトリへの書き込み権を持つワークステーション上で開発者の権限で動くため、「ビルド時のみ」と書くと過小評価になる。
 
 ## 手順
 
@@ -105,7 +105,7 @@
 
 | 項目 | 補足 |
 | --- | --- |
-| エコシステム | `npm` / `go` / `github-actions` / `docker-image`——参照ファイルを選ぶ |
+| エコシステム | `npm` / `pnpm` / `pypi` / `go` / `github-actions` / `docker-image`——参照ファイルを選ぶ |
 | 名前 + 候補バージョン | 検討対象そのもの（tag、version、digest） |
 | baseline バージョン | これを見送った場合に呼び出し元が維持するもの。差分のもう一方の端 |
 | 窓 `N` と捕捉経緯 | どの disposition が発火したか（`blocked` / `pending` / rule 2 …）、および候補が窓を出る日 |
@@ -118,6 +118,7 @@ baseline が決められない場合（初回のピン、`images-pin` rule 3）�
 該当する 1 本だけを読む。各ファイルは軸ごとのコマンドを与え、そのエコシステムが答えられない軸を明記している。
 
 - `references/npm.md` — npm **および pnpm** パッケージ（同じレジストリなので証拠収集コマンドは共通。異なるのは報告の仕方だけ）。`overrides` 経由の推移的依存を含む
+- `references/pypi.md` — `python/*.in` が宣言し `python/*.txt` が固定する PyPI ツール（API が発行者の身元を出さないため、軸 P は間接的に答えるか答えられない）
 - `references/go-modules.md` — Go モジュール
 - `references/github-actions.md` — `uses:` 参照（最も証拠が濃い。実物の commit range がある）
 - `references/docker-images.md` — Dockerfile `FROM` / compose `image:` の digest（最も証拠が薄い）
@@ -163,10 +164,11 @@ baseline が決められない場合（初回のピン、`images-pin` rule 3）�
 | HIGH / CRITICAL | 採用しない。上流への報告と、当該バージョンを避ける代替（一つ前の aged 版）を検討する |
 | INSUFFICIENT-EVIDENCE | 証拠が取れていないため窓がそのまま効く。待つ |
 
-該当する場合に報告で必ず再掲する壁が三つある。
+該当する場合に報告で必ず再掲する壁が四つある。
 
 - **`.npmrc` `min-release-age` 配下の npm**: スコアが何であれ、そのバージョンはそもそも install できず、npm には版指定の免除も無い。選択肢は待つことか、role による意図的な override（その場合 `make npm-cooldown-audit` が PR 上で可視化する）である。`min-release-age` を下げる提案は決してしない。
 - **`pnpm-workspace.yaml` `minimumReleaseAge` 配下の pnpm**: 同じく install できず、しかもブロックは `--frozen-lockfile` の再生にも及ぶため、解決を実行した端末だけでなく CI と他の全チェックアウトに届く。pnpm には版指定の免除（`minimumReleaseAgeExclude`）が **あり**、だからこそ採用か待機かが実際の選択になる。スコアはその入力として報告し、判断は呼び出し元かユーザーに残す。`minimumReleaseAge` を下げる提案も `minimumReleaseAgeStrict` を切る提案も決してしない。
+- **`scripts/mise-cooldown` 配下の PyPI**: 窓を強制するのは解決器ではなくリポジトリ側のゲートで、そのゲートは**ビルドを落とす**。つまり blocked な版はこのリポジトリが持つ検査に塞がれているのであり、LOW スコアが単独でそれを解くことはない。逃げ道は `.github/mise-cooldown-bypass.toml` の期限つきエントリ（`expires` / `issue` / `reason` すべて必須・最長 3 か月）で、トリアージの判定は `reason` に載せるべき証拠であってエントリを足す許可ではない。`scripts/mise-cooldown` の窓定数を編集する提案は決してしない。
 - **`images-pin` rule 3**: 退行先の aged digest が存在しないため、LOW スコアでも「待つ」か「意図的な `days=0` bootstrap」かの選択は残る。
 
 ## 注記
@@ -189,6 +191,6 @@ baseline が決められない場合（初回のピン、`images-pin` rule 3）�
 - [ ] 暴露面をスコアに混ぜず別行で報告した
 - [ ] artifact を一切実行していない（`npm install` なし、`docker run` なし、ダウンロードしたバイナリの実行なし、候補の build なし）。展開先はリポジトリのツリー外
 - [ ] バンド・推奨・何も変更していない旨を含む日本語の報告を出力した
-- [ ] 該当する場合に npm `min-release-age` / pnpm `minimumReleaseAge` / `images-pin` rule 3 の壁を再掲した
+- [ ] 該当する場合に npm `min-release-age` / pnpm `minimumReleaseAge` / PyPI `mise-cooldown` / `images-pin` rule 3 の壁を再掲した
 - [ ] ファイルを一切変更せず、窓を下げず、更新を適用していない
 - [ ] `SKILL.md` を更新したら `SKILL.ja.md` を再同期した

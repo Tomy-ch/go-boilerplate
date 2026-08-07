@@ -1,16 +1,17 @@
 ---
 name: dep-vuln-upgrade
-description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's three dependency resolvers — the npm lockfile (`mock-auth-server/package-lock.json`), the two pnpm-resolved packages (`scripts/` and `docs-viewer/`, each with its own `pnpm-lock.yaml` / `pnpm-workspace.yaml`), and the Go module graph (`go.mod` / `go.sum`) — targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to whichever cooldown actually governs that lockfile (npm's `.npmrc` `min-release-age`, or pnpm's `pnpm-workspace.yaml` `minimumReleaseAge` — both hard-reject an in-window version at resolution time), chains `/supply-chain-triage` on every entry the cooldown catches so the decision rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps, too-new opt-ins, and pnpm's per-version `minimumReleaseAgeExclude` escape hatch — which it surfaces but never takes on its own. It updates lockfiles with `npm install --package-lock-only` or `pnpm install --lockfile-only`, runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `npm audit` / `pnpm audit` / `govulncheck` / build plus generated-artifact and tool-runner-image drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), or for a general `go.mod` dependency refresh (`make tidy-lib`).
+description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's dependency resolvers — the npm lockfile (`mock-auth-server/package-lock.json`), the two pnpm-resolved packages (`scripts/` and `docs-viewer/`, each with its own `pnpm-lock.yaml` / `pnpm-workspace.yaml`), the Go module graph (`go.mod` / `go.sum`), and the PyPI tools declared in `python/*.in` and hash-locked in `python/*.txt` (located here, but bumped by `/tools-upgrade`) — targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to whichever cooldown actually governs that lockfile (npm's `.npmrc` `min-release-age`, or pnpm's `pnpm-workspace.yaml` `minimumReleaseAge` — both hard-reject an in-window version at resolution time), chains `/supply-chain-triage` on every entry the cooldown catches so the decision rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps, too-new opt-ins, and pnpm's per-version `minimumReleaseAgeExclude` escape hatch — which it surfaces but never takes on its own. It updates lockfiles with `npm install --package-lock-only` or `pnpm install --lockfile-only`, runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `npm audit` / `pnpm audit` / `govulncheck` / build plus generated-artifact and tool-runner-image drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), or fa general `go.mod` dependency refresh (`make tidy-lib`), or raising a PyPI tool's pin (`/tools-upgrade`, which owns `python/*.in` and the `make py-lock` regeneration).
 argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" per line] [min_age_days]'
 ---
 
 # Dependency Vulnerability Upgrade
 
-This skill takes a **security advisory list** and patches only the named vulnerable dependencies to a fixed version, spanning two ecosystems this repo uses:
+This skill takes a **security advisory list** and patches only the named vulnerable dependencies to a fixed version. This repo resolves dependencies four ways, and an advisory can name a package in any of them:
 
 - **npm** — dependencies recorded in each `package-lock.json` (currently `mock-auth-server/` only), including **transitive** deps that must be pinned via a `package.json` `overrides` entry.
 - **pnpm** — dependencies recorded in `scripts/pnpm-lock.yaml` and `docs-viewer/pnpm-lock.yaml`, each package carrying its own `pnpm-workspace.yaml` that holds both its cooldown policy and its `overrides`.
 - **Go** — modules in `go.mod` / `go.sum`, including **indirect** dependencies.
+- **PyPI** — the CLI tools declared in `python/*.in` and resolved, with sha256 hashes, into `python/*.txt`. Locating one is in scope; **bumping it is not** — that belongs to `/tools-upgrade`, which owns both declaration sites. See *A PyPI advisory usually is not this skill's* below.
 
 **A pnpm `overrides` entry is not a translated npm one.** The two ecosystems agree on direct
 dependencies — bump the declared version, regenerate the lockfile — and diverge on transitive pins:
@@ -40,6 +41,16 @@ Do NOT use this skill for:
 - Upgrading the Go language version — that is `/go-upgrade` (different downstream sync).
 - A general `go.mod` dependency refresh unrelated to a specific advisory — use `make tidy-lib`.
 - npm packages that are actually mise-managed tools — those belong to `/tools-upgrade`.
+- **Raising a PyPI tool's pin** — `/tools-upgrade` owns `python/*.in`, and raising one there means regenerating `python/*.txt` with `make py-lock`. Locate the package here, then hand it over.
+
+## A PyPI advisory usually is not this skill's
+
+A Python advisory reaches this repo through one of two shapes, and only the first is ever actionable here.
+
+- **The advisory names a tool this repo declares** (`sqlfluff`, `graphifyy`). Locate it, report the fixed version and where it must be declared, and **hand the bump to `/tools-upgrade`** — it owns `python/*.in`, knows that a change there requires `make py-lock`, and is what `mise-cooldown` gates against. Do not edit `python/*.in` or `python/*.txt` here.
+- **The advisory names a transitive package** that appears only in `python/<tool>.txt`. There is no per-package pin to raise: the lockfile is a resolution, so the fix arrives by raising the tool whose tree pulls it, or not at all until upstream releases. Report which tool's lockfile carries it, whether a newer tool version resolves past the advisory, and leave the decision with the user. Never hand-edit a `.txt` — it carries sha256 hashes that `--require-hashes` enforces at install, so an edited line does not install, it fails.
+
+Either way the cooldown that governs the move is the one described under *the threshold plays two different roles* below, and the escape hatch is `.github/mise-cooldown-bypass.toml` rather than anything in this skill's write surface.
 
 ## First Step: Parse Advisories and Resolve the Caution Threshold
 
@@ -100,6 +111,10 @@ grep -n "\"<pkg>\"" <dir>/package.json
 grep -n "^  <pkg>@" <dir>/pnpm-lock.yaml            # resolved version(s)
 grep -n "\"<pkg>\"" <dir>/package.json              # declared → direct
 
+# PyPI: the declaration is the .in, the resolved tree (transitive deps included) is the .txt
+grep -n '<pkg>' python/*.in                          # declared → this is a tool, /tools-upgrade owns it
+grep -niE '^<pkg>==' python/*.txt                    # resolved → may be transitive only
+
 # Go: is the module in go.mod, and is it direct or indirect?
 grep -n '<module-path>' go.mod
 ```
@@ -108,8 +123,8 @@ Record per entry:
 
 | Field | How |
 | --- | --- |
-| ecosystem | `npm`, `pnpm`, or `go` |
-| location | the `package-lock.json` / `pnpm-lock.yaml` dir, or `go.mod` |
+| ecosystem | `npm`, `pnpm`, `pypi`, or `go` |
+| location | the `package-lock.json` / `pnpm-lock.yaml` dir, `python/<tool>.in` + `.txt`, or `go.mod` |
 | installed version | from the lockfile / `go.mod` |
 | direct / transitive | declared in that `package.json`'s `dependencies`/`devDependencies` (npm / pnpm) or without `// indirect` (go) → direct; else transitive/indirect |
 
