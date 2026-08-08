@@ -58,7 +58,11 @@ jobs:
       # `debug:<subject>` bearer token and reports the issuer as `mock`. Seeded
       # `user_identities` rows for that issuer key on the internal user UUID, so a
       # `user-<name>` subject resolves to no identity and the whole scan sees 401.
+      # sample-api:replace-begin
       SCAN_SUBJECT: 550e8400-e29b-41d4-a716-446655440000
+      # sample-api:replace-with
+      # = SCAN_SUBJECT: ''
+      # sample-api:replace-end
     services:
       database:
         image: postgres:18.4-trixie
@@ -206,9 +210,24 @@ jobs:
       - name: Verify the scan credential authenticates
         env:
           SCAN_TOKEN: debug:${{ env.SCAN_SUBJECT }}
+          # sample-api:replace-begin
           PROBE_PATH: /v1/users/me
+          # sample-api:replace-with
+          # = PROBE_PATH: /health
+          # sample-api:replace-end
         run: |
           set -euo pipefail
+
+          # /health answers without a credential, so probing it proves the server is up and
+          # nothing else. It is the value left behind when the API this workflow shipped
+          # against is removed, because at that moment no protected operation exists to
+          # name — and a scan that cannot start is worse than one that warns. Re-point this
+          # at a protected operation of your own; until then the run stays green while ZAP
+          # sees only the unauthenticated surface, which is the failure this step exists to
+          # catch and cannot catch from here.
+          if [ "${PROBE_PATH}" = "/health" ]; then
+            echo "::warning::PROBE_PATH is still the unauthenticated placeholder (/health); the scan is NOT verified to be authenticated. Point it at a protected operation."
+          fi
 
           status="$(curl -s -o /dev/null -w '%{http_code}' \
             -H "Authorization: Bearer ${SCAN_TOKEN}" \

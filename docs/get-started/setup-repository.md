@@ -395,12 +395,18 @@ does what counts as an accepted finding. Read the workflow header before the fir
 re-derive both files against the API you actually have — an inherited `IGNORE` is a finding nobody
 will ever see again.
 
-**Two values are tied to whatever the scan can reach, and they fail loudly rather than quietly.**
-Before ZAP starts, the workflow probes one protected operation (`PROBE_PATH`) as one identity
-(`SCAN_SUBJECT`) to prove the credential is accepted. When the operation or the identity it names
-stops existing — removing the shipped API in Phase 15 does exactly that — the run turns red until
-both point at something of yours. That is intended: an authentication check whose subject has been
-deleted would otherwise keep reporting green while the scan saw nothing but 401.
+**Two values name what the scan reaches, and Phase 15 resets both.** Before ZAP starts, the
+workflow probes one protected operation (`PROBE_PATH`) as one identity (`SCAN_SUBJECT`) to prove the
+credential is accepted — because a scan whose credential is rejected collects 401 everywhere and
+still reports a completed run. Both values point at the API this repository shipped with, so
+removing it takes them with it: `PROBE_PATH` becomes `/health` and `SCAN_SUBJECT` is emptied.
+
+`/health` answers without a credential. It keeps the workflow runnable when no protected operation
+exists yet, and it proves nothing — **the run stays green while the scan sees only the
+unauthenticated surface.** The step says so on every run as a warning rather than passing in
+silence, but a warning nobody reads is the same as no warning. **Point `PROBE_PATH` at a protected
+operation of yours and `SCAN_SUBJECT` at an identity your seed data actually has, as soon as you
+have either.** Until you do, DAST is running but not testing what it exists to test.
 
 If you do not want it, remove the whole thing:
 
