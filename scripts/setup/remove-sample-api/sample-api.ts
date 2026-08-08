@@ -33,13 +33,21 @@ export const SETUP_VERIFIER_DIR = "verify-setup";
 export const SETUP_SHARED_DIR = "lib";
 
 /**
+ * `setup/lib` を使い続ける、サンプル削除以外のツール（`setup/` からの相対）。
+ *
+ * @remarks
+ * どれも独立した任意手順で、実行順は利用者が決めます。1 つでも残っているうちに `lib` を
+ * 消すと、まだ実行していない手順が実行できなくなるため、在否を見てから判断します。
+ */
+export const SETUP_SHARED_DIR_USERS: readonly string[] = [SETUP_VERIFIER_DIR, "remove-dast-setting"];
+
+/**
  * サンプル削除ツール自身の撤去に、共有モジュールを含めるか。
  *
  * @remarks
- * `setup/lib` は初期化ツールとも共有です。サンプル削除は初期化と独立した任意手順なので、
- * 初期化の検証器がまだ残っていれば `lib` も要ります。逆順のときは検証器側が同じ規則で
- * `lib` を持っていくため、どちらの順序でも残骸が出ません。
+ * `setup/lib` は他の任意手順のツールとも共有です。それらがまだ残っていれば `lib` も要ります。
+ * 逆順のときは残った側が同じ規則で `lib` を持っていくため、どちらの順序でも残骸が出ません。
  */
-export function sharedModuleTargets(setupVerifierExists: boolean): string[] {
-  return setupVerifierExists ? [] : [SETUP_SHARED_DIR];
+export function sharedModuleTargets(anyUserExists: boolean): string[] {
+  return anyUserExists ? [] : [SETUP_SHARED_DIR];
 }
