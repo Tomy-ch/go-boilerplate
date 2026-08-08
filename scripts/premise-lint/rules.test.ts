@@ -1,6 +1,119 @@
 import { describe, expect, it } from "vitest";
 
-import { hasPremisePhrase, inspect, isChecked } from "./rules";
+import { hasPremisePhrase, inspect, isChecked, survivingText } from "./rules";
+
+describe("survivingText", () => {
+  describe("正常系", () => {
+    it("boilerplate-only の領域をマーカーごと落とす", () => {
+      const content = ["keep", "<!-- boilerplate-only:begin -->", "drop", "<!-- boilerplate-only:end -->", "keep2"].join("\n");
+
+      expect(survivingText(content)).toBe("keep\nkeep2");
+    });
+
+    // 2 つの名前空間はどちらも fork へ届かないので、検査の前にどちらも落とす。
+    it("sample-api の領域も同じく落とす", () => {
+      const content = ["keep", "// sample-api:begin", "drop", "// sample-api:end"].join("\n");
+
+      expect(survivingText(content)).toBe("keep");
+    });
+
+    it("行マーカーの行だけを落とす", () => {
+      expect(survivingText("keep\ndrop <!-- boilerplate-only:line -->\nkeep2")).toBe("keep\nkeep2");
+    });
+
+    it("入れ子の領域を深さで数える", () => {
+      const content = [
+        "keep",
+        "# sample-api:begin",
+        "# sample-api:begin",
+        "drop",
+        "# sample-api:end",
+        "drop2",
+        "# sample-api:end",
+        "keep2",
+      ].join("\n");
+
+      expect(survivingText(content)).toBe("keep\nkeep2");
+    });
+
+    // replace は前後で扱いが逆になる。上流版は落ちるが、退避側は fork 先に実際に残る本文である。
+    it("replace の上流側を落とし退避側をアンコメントして残す", () => {
+      const content = [
+        "<!-- boilerplate-only:replace-begin -->",
+        "upstream only",
+        "<!-- boilerplate-only:replace-with -->",
+        "<!-- = general form -->",
+        "<!-- boilerplate-only:replace-end -->",
+      ].join("\n");
+
+      expect(survivingText(content)).toBe("general form");
+    });
+
+    it("`//` と `#` の退避コメントもアンコメントする", () => {
+      const content = [
+        "# sample-api:replace-begin",
+        "active()",
+        "# sample-api:replace-with",
+        "  // = substitute()",
+        "# sample-api:replace-end",
+      ].join("\n");
+
+      expect(survivingText(content)).toBe("substitute()");
+    });
+
+    it("マーカーが無ければ本文をそのまま返す", () => {
+      expect(survivingText("a\nb\nc")).toBe("a\nb\nc");
+    });
+  });
+
+  describe("異常系", () => {
+    // 落としすぎる側の失敗は無言である。検査は「0 件」と報告しながら何も見ていない状態になり、
+    // この検査が塞ごうとしている失敗と同じ形になる。以下はその向きを塞ぐ。
+
+    // 退避側は fork 先へ残る本文なので、ここに前提を書いたら検出できなければならない。
+    it("退避側に書かれた前提を検査へ通す", () => {
+      const content = [
+        "<!-- boilerplate-only:replace-begin -->",
+        "upstream",
+        "<!-- boilerplate-only:replace-with -->",
+        "<!-- = This template is maintained by its own team. -->",
+        "<!-- boilerplate-only:replace-end -->",
+      ].join("\n");
+
+      expect(hasPremisePhrase(survivingText(content))).toBe(true);
+    });
+
+    // 退避コメントの形をしていない行を落とすと、fork 先の本文が黙って検査から消える。
+    it("退避側の形をしていない行も落とさない", () => {
+      const content = [
+        "# sample-api:replace-begin",
+        "# sample-api:replace-with",
+        "raw line",
+        "# sample-api:replace-end",
+      ].join("\n");
+
+      expect(survivingText(content)).toBe("raw line");
+    });
+
+    // 対応の取れない end で depth が負に振れると、以降の本文がすべて落ちる。
+    it("対応の取れない end で以降を巻き込まない", () => {
+      expect(survivingText("<!-- boilerplate-only:end -->\nkeep")).toBe("keep");
+    });
+
+    // コメント記号を必須にしないと、マーカー規約を説明している散文を境界と誤認して本文を落とす。
+    it("コメント記号の無い同名トークンを境界と見なさない", () => {
+      const content = 'grep -rn "boilerplate-only:begin" docs/\nkeep';
+
+      expect(survivingText(content)).toBe(content);
+    });
+
+    it("別名のマーカーには反応しない", () => {
+      const content = "keep\n<!-- setup-localize:begin -->\nkeep2\n<!-- setup-localize:end -->";
+
+      expect(survivingText(content)).toBe(content);
+    });
+  });
+});
 
 describe("isChecked", () => {
   describe("正常系", () => {

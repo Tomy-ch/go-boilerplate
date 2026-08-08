@@ -2,7 +2,8 @@
 // fork 後も残る文書に「fork した瞬間に偽になる前提」が書かれていないかを検査する。
 //
 // 規則の出所は docs/rules.md の Documentation Rules「No premise the document will outlive」。
-// 判定は rules.ts、許容の宣言は allowances.ts が持ち、ここはファイル列挙と終了コードだけを担う。
+// 判定（対象の選別・マーカー除去・言い回しの照合）は rules.ts、許容の宣言は allowances.ts が持ち、
+// ここはファイル列挙と終了コードだけを担う。
 //
 // 使い方:
 //   tsx scripts/premise-lint
@@ -12,7 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ALLOWANCES } from "./allowances";
-import { type Finding, inspect, isChecked } from "./rules";
+import { type Finding, inspect, isChecked, survivingText } from "./rules";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -21,39 +22,6 @@ const EXCLUDED_DIRECTORIES = new Set([".git", "node_modules", "vendor"]);
 
 /** 走査から外す相対パス接頭辞。いずれも生成物で、直しても再生成で戻る。 */
 const EXCLUDED_PREFIXES = ["docs/portal/guides/", "docs/coverage/", "docs/db-schema/", "docs/godoc/"];
-
-/**
- * マーカーで囲まれた記述を落とした本文。
- *
- * @remarks
- * `boilerplate-only` は fork 時の除去で、`sample-api` はサンプル撤去で消えます。どちらも
- * 前提を書いてよい場所なので、検査の前に落とします。落とさないと、正しく囲った記述まで
- * 違反として数えることになります。
- *
- * ここで `stripMarkers` を使わないのは、あちらが一度きりの撤去ツールと一緒に消えるためです。
- * この検査は消えずに残るので、消える側へ依存させられません。行単位の素朴な除去で足ります。
- */
-function surviving(content: string): string {
-  const out: string[] = [];
-  let depth = 0;
-
-  for (const line of content.split("\n")) {
-    if (/(?:\/\/|#|<!--)\s*(?:boilerplate-only|sample-api):(?:begin|replace-begin)\b/.test(line)) {
-      depth++;
-      continue;
-    }
-    if (/(?:\/\/|#|<!--)\s*(?:boilerplate-only|sample-api):(?:end|replace-end)\b/.test(line)) {
-      depth = Math.max(0, depth - 1);
-      continue;
-    }
-    if (depth > 0) continue;
-    if (/(?:\/\/|#|<!--)\s*(?:boilerplate-only|sample-api):line\b/.test(line)) continue;
-
-    out.push(line);
-  }
-
-  return out.join("\n");
-}
 
 function listMarkdown(dir: string, acc: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -75,7 +43,7 @@ function listMarkdown(dir: string, acc: string[] = []): string[] {
 const findings: Finding[] = [];
 
 for (const rel of listMarkdown(REPO_ROOT)) {
-  findings.push(...inspect(rel, surviving(fs.readFileSync(path.join(REPO_ROOT, rel), "utf8")), ALLOWANCES));
+  findings.push(...inspect(rel, survivingText(fs.readFileSync(path.join(REPO_ROOT, rel), "utf8")), ALLOWANCES));
 }
 
 if (findings.length === 0) {

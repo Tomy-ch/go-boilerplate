@@ -57,6 +57,85 @@ export const PREMISE_PATTERNS: readonly RegExp[] = [
   /本(?:テンプレート|ボイラープレート)/,
 ];
 
+/** マーカー行に当たる正規表現を組み立てる。両名前空間を 1 本で見る。 */
+function marker(suffix: string): RegExp {
+  return new RegExp(`(?:\\/\\/|#|<!--)\\s*(?:boilerplate-only|sample-api):${suffix}\\b`);
+}
+
+const BLOCK_BEGIN = marker("begin");
+const BLOCK_END = marker("end");
+const LINE_MARKER = marker("line");
+const REPLACE_BEGIN = marker("replace-begin");
+const REPLACE_WITH = marker("replace-with");
+const REPLACE_END = marker("replace-end");
+
+/** 退避コメント。`//` / `#` / `<!-- -->` のいずれかで `=` に続けて書かれる。 */
+const ESCROW = /^\s*(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
+
+/**
+ * fork したあとに残る本文。マーカーで囲まれた記述を落とす。
+ *
+ * @remarks
+ * マーカーの中は前提を書いてよい場所です。`boilerplate-only` は fork 時の除去で、`sample-api` は
+ * サンプル撤去で消えるので、fork した先の文書には届きません。検査の前に落とさないと、正しく
+ * 囲った記述まで違反として数えます。
+ *
+ * `replace` は前後で扱いが逆になります。`replace-begin`〜`replace-with` は上流版なので落とし、
+ * `replace-with`〜`replace-end` の退避コメントは**アンコメントして残します**。ここを一括で
+ * 落とすと、fork 先へ実際に残る文面が検査から消えます。そこに前提が書かれていても、この検査は
+ * 「0 件」と報告します——この検査が塞ごうとしている無言の失敗と、同じ形の穴になります。
+ *
+ * 除去ツール側の `stripMarkers` を呼ばないのは、あちらが一度きりの撤去と一緒に自消滅するためです。
+ * この検査は消えずに残るので、消える側へ依存させられません。
+ */
+export function survivingText(content: string): string {
+  const out: string[] = [];
+  let depth = 0;
+  let inUpstreamSide = false;
+  let inEscrowSide = false;
+
+  for (const line of content.split("\n")) {
+    if (REPLACE_BEGIN.test(line)) {
+      inUpstreamSide = true;
+      continue;
+    }
+    if (REPLACE_WITH.test(line)) {
+      inUpstreamSide = false;
+      inEscrowSide = true;
+      continue;
+    }
+    if (REPLACE_END.test(line)) {
+      inUpstreamSide = false;
+      inEscrowSide = false;
+      continue;
+    }
+    if (inUpstreamSide) continue;
+
+    if (inEscrowSide) {
+      const matched = ESCROW.exec(line);
+
+      // 退避コメントの形をしていない行は、アンコメントの規則が読めない。落とすと fork 先の
+      // 本文を検査から消すことになるので、そのまま検査へ通す。
+      out.push(matched === null ? line : (matched[1] ?? matched[2]));
+      continue;
+    }
+
+    if (BLOCK_BEGIN.test(line)) {
+      depth++;
+      continue;
+    }
+    if (BLOCK_END.test(line)) {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (depth > 0 || LINE_MARKER.test(line)) continue;
+
+    out.push(line);
+  }
+
+  return out.join("\n");
+}
+
 /** 相対パスの区切りを `/` に揃える。判定を OS に依らせないため。 */
 function normalize(relativePath: string): string {
   return relativePath.split("\\").join("/");
