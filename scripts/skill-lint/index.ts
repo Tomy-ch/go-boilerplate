@@ -23,6 +23,7 @@ import {
   asRepoPath,
   collectMakeTargets,
   expandBraces,
+  literalParentDir,
   makeTargetExists,
   placeholderToRegExp,
 } from "./checks";
@@ -179,7 +180,12 @@ function repoPathExists(candidate: string, fromDir: string): boolean {
     if (!WILDCARD_RE.test(text)) return bases.some((base) => fs.existsSync(path.join(base, text)));
 
     const pattern = placeholderToRegExp(text, { segmentSeparator: true });
-    return entryIndex.some((entry) => pattern.test(entry));
+    if (entryIndex.some((entry) => pattern.test(entry))) return true;
+
+    // 一致が無いのは「その形の実体がまだ無い」だけでありうる。置き場所が在れば参照は生きている。
+    const parent = literalParentDir(text);
+
+    return parent !== null && bases.some((base) => fs.existsSync(path.join(base, parent)));
   });
 }
 
