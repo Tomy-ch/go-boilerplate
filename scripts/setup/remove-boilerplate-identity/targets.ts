@@ -86,11 +86,15 @@ export const SELF_DIR = "scripts/setup/remove-boilerplate-identity";
  * 継承しますが、検査が探す言い回し（`this template` / `adopters` / `このテンプレート`）は上流
  * 固有の実例でしかありません。fork にはその前提が無いので、残しても永久に緑のままの検査が
  * 増えるだけで、赤くなったときに何を意味するのかも読めません。
+ *
+ * `marker-baseline` も同じです。あれが守るのは撤去マーカーを**書く側**で、書く場面は上流に
+ * しかありません。fork が受け取るのはマーカーが解決し終えたツリーなので、見張る対象が居ません。
  */
 export const BOILERPLATE_DELETE_PATHS: readonly string[] = [
   "docs/get-started/boilerplate-only-conventions.md",
   "docs/ja/get-started/boilerplate-only-conventions.ja.md",
   "scripts/premise-lint",
+  "scripts/marker-baseline",
 ];
 
 /** 撤去後に残ってはいけない語。検査が的を外していないかの確認にも使う。 */

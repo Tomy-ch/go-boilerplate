@@ -156,6 +156,7 @@ describe("BOILERPLATE_DELETE_PATHS", () => {
     // 残すと永久に緑のままの検査が増えるだけなので、撤去と一緒に消す。
     it("上流でのみ意味を持つ検査を挙げている", () => {
       expect(BOILERPLATE_DELETE_PATHS).toContain("scripts/premise-lint");
+      expect(BOILERPLATE_DELETE_PATHS).toContain("scripts/marker-baseline");
     });
   });
 });

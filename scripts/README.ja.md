@@ -22,6 +22,7 @@ scripts/
 ├── stamp-openapi-version/      # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
 ├── reset-mock-auth-users/      # mock-auth の固定ユーザー fixture を中立な既定へリセット
 ├── make-help/                  # Make ターゲットのヘルプ出力生成
+├── marker-baseline/             # 撤去マーカー行の本数をファイルごとに固定し、増えたら判断を要求する <!-- boilerplate-only:line -->
 ├── premise-lint/               # fork とともに失効する前提が、fork 後も残る文書に無いことを検査 <!-- boilerplate-only:line -->
 ├── mermaid-lint/               # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
 ├── skill-lint/                 # .claude/** のスキル / エージェント定義を実態および .codex/** の対応と突き合わせて検証
@@ -77,6 +78,7 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
+|`marker-baseline/`|撤去マーカー（`boilerplate-only` / `sample-api`）の行数をファイルごとに `baseline.json` へ固定し、動いたら落とす。発火する本物のマーカーと、規約を説明する例示とは同じ形をしているため、除去側は後者を `MARKER_LITERAL_FILES` で宣言する。宣言し忘れると、除去が中断する（声が出る）か、例示した区域が黙って消える（空フェンスは valid な Markdown なので誰も鳴らない）。どちらの経路でも唯一の手がかりは「マーカー行が増えたこと」なので、そこを判断の場にする——ベースラインを更新するか、ファイルを宣言するか。再生成は `tsx scripts/marker-baseline --write`。|`make test`（vitest） <!-- boilerplate-only:line -->|
 |`premise-lint/`|[docs/rules.md](../docs/rules.md) の *No premise the document will outlive* を機械化したもの。fork 後も残る Markdown（`docs/adr/**` / `docs/design/**` / `docs/rules.md` / 各層 README …）をマーカー除去後の姿で読み、fork した瞬間に真でなくなる自己参照があれば落とす。前提を書いてよいのは、セットアップが書き換え・削除する `README*` / `docs/get-started/**` と、`boilerplate-only` / `sample-api` マーカーで囲った領域だけ。同じ語の別語義は `allowances.ts` へ理由付きで宣言する。|`make md-premise-lint` <!-- boilerplate-only:line -->|
 |`mermaid-lint/`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
 |`skill-lint/`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
