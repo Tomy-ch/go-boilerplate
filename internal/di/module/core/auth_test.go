@@ -190,6 +190,22 @@ func Test_provideAuthenticator(t *testing.T) {
 			assert.NotEqual(t, local.New(), authenticator)
 		})
 
+		t.Run("dast環境でAUTH設定とHTTPClientが揃えばJWKS authenticatorが返る", func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.NewTestLogger(t)
+			p := newAuthParams(t, config.EnvDast, logger)
+			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
+			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
+			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
+			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
+
+			authenticator, err := provideAuthenticator(p)
+			require.NoError(t, err)
+			// dast はスタブを配線する CI と隣り合うため、非 nil だけでは stub 側へ落ちた回帰を検出できない。
+			assert.NotEqual(t, local.New(), authenticator)
+		})
+
 		t.Run("development環境でAUTH設定とHTTPClientが揃えばJWKS authenticatorが返る", func(t *testing.T) {
 			t.Parallel()
 
@@ -251,6 +267,12 @@ func Test_allowInsecureJWKSURL(t *testing.T) {
 			t.Parallel()
 
 			assert.True(t, allowInsecureJWKSURL(config.EnvLocal))
+		})
+
+		t.Run("dast環境では非httpsのJWKS URLを許容する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, allowInsecureJWKSURL(config.EnvDast))
 		})
 
 		t.Run("development環境では非httpsのJWKS URLを許容しない", func(t *testing.T) {

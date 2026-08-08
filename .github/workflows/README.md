@@ -51,7 +51,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
 | `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in by a fork must not meet a 10-minute cap |
 | `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml` | 15 | no recent completed run to measure |
-| `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition <!-- dast:line --> |
+| `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition |
 | `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
 | `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
@@ -121,7 +121,7 @@ All three rules live in one check rather than three, because they are not three 
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
 |Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
-|DAST|`zap-api-scan.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast)) <!-- dast:line -->|
+|DAST|`zap-api-scan.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast))|
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
 |Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
 
@@ -158,11 +158,11 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
 | capslock | `go.mod`-change PRs | — | — |
 | Go fuzzing | — | — | weekly |
-| OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly <!-- dast:line --> |
+| OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
 
-DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else. <!-- dast:line -->
+DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
 
 The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` Bearer, `0 16` ESLint.
 
@@ -253,19 +253,17 @@ Only `mock-auth-server/` still resolves with npm. `scripts/` and `docs-viewer/` 
 
 A pull request is audited against its base, so a finding names exactly the entries that change introduces and the PR comment persists as the record even after those versions age out of the window. The scheduled run audits every entry as a second net.
 
-<!-- dast:begin -->
 #### DAST
 
 `zap-api-scan.yaml` is the only workflow here that scans a *running* application. Every other security check reads files; this one builds the server, boots it against a seeded Postgres, and drives HTTP at it from OWASP ZAP, with the endpoint list taken from the bundled OpenAPI definition.
 
 That shape is what decided the tool. Of the six DAST products in GitHub's code-scanning template catalogue, four run the scan on the vendor's own infrastructure — which cannot reach an API that exists only inside a GitHub-hosted runner — and the two that do run in the runner both require a paid token. ZAP needs no credential and scans from inside the job, so it is the only one that can see an ephemeral target at all.
 
-**The scan runs authenticated, and that is the part most easily broken.** An unauthenticated scan collects 401 from every protected operation and stops at the surface, which looks like a completed scan and is not one. The `ci` environment profile wires the dev-only stub authenticator described in [`docs/design/auth.md`](../../docs/design/auth.md), so the credential is a `debug:<subject>` bearer token naming a seeded identity, and the job asserts that the credential is accepted before ZAP starts. Losing that assertion would not turn the check red — it would quietly shrink what the scan covers.
+**The scan runs authenticated, and that is the part most easily broken.** An unauthenticated scan collects 401 from every protected operation and stops at the surface, which looks like a completed scan and is not one. The job runs under the `dast` environment profile, which wires the real JWKS-backed authenticator described in [`docs/design/auth.md`](../../docs/design/auth.md) rather than the dev-only stub `ci` uses, so the credential is a JWT the mock auth server actually signed and the scan drives signature verification, `typ` checking and `kid` resolution on every request. The job asserts that the credential is accepted before ZAP starts. Losing that assertion would not turn the check red — it would quietly shrink what the scan covers.
 
 **It is report-only by design, not by omission.** The alert thresholds in [`.github/zap/rules.tsv`](../zap/rules.tsv) are derived from what this API happens to answer today; gating a merge on them would fail pull requests over findings they were never calibrated for. Alerts go to code scanning under the `zap-dast` category and to an artifact, and only a scan that could not run fails the job. ZAP emits no SARIF of its own, so the JSON report is mapped to it in the workflow; every alert is anchored to the OpenAPI bundle, because that file is what describes the surface the finding is about and pointing at a file that exists is what makes the alert navigable.
 
-The thresholds and the scanned surface are expected to be re-derived against the API they are pointed at, and `scripts/setup/remove-dast-setting` removes the whole thing in one pass — see [Phase 17 of the setup guide](../../docs/get-started/setup-repository.md).
-<!-- dast:end -->
+The thresholds and the scanned surface are expected to be re-derived against the API they are pointed at — see [Phase 17 of the setup guide](../../docs/get-started/setup-repository.md).
 
 #### Runner Hardening
 
@@ -284,7 +282,7 @@ The step stays **inline in every job**, and that is a constraint rather than a p
 | `image` | the Docker Hub hosts and both CDNs, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com`, and the Alpine / Debian package mirrors. Inherits `mise`, because the image build runs `mise install` inside the container | image build / push, service containers, Trivy's DB and checks bundle, and anything driving docker through `make` |
 | `db` | the PGDG apt repository and the Ubuntu archive mirrors that the Postgres service container installs from | jobs that boot Postgres |
 
-Anything genuinely particular to one job goes in that job's `extra`: a scanner's data source (`semgrep.dev`, `api.osv.dev`, `vuln.go.dev`), a deploy target, `hooks.slack.com` for the notifier, `zaproxy.org` for the DAST job (ZAP resolves its add-on manifest at startup). <!-- dast:line --> A host that turns up in a second job's `extra` belongs in a class instead.
+Anything genuinely particular to one job goes in that job's `extra`: a scanner's data source (`semgrep.dev`, `api.osv.dev`, `vuln.go.dev`), a deploy target, `hooks.slack.com` for the notifier, `zaproxy.org` for the DAST job (ZAP resolves its add-on manifest at startup). A host that turns up in a second job's `extra` belongs in a class instead.
 
 **The classes are deliberately coarse.** Splitting them finer buys a tighter allowlist and costs more classification decisions, and a job in the wrong class is the failure this arrangement exists to remove. A class that is slightly wider than one job needs still refuses everything outside it; a job in the wrong class fails the build.
 

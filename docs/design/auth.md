@@ -180,9 +180,10 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 | Authenticator boundary interface | `internal/usecase/boundary/auth/{authenticator,credential,auth,resolver}.go` |
 | JWT verification core | `internal/infrastructure/auth/jwt/auth_jwt.go` |
 | JWKS resolution (`kid` lookup, TTL cache, unknown-`kid` refresh cooldown, negative cache, key rotation) | `internal/infrastructure/auth/jwt/jwks.go` |
-| Dev-only stub (`Bearer debug:<subject>`, CI/test env) | `internal/infrastructure/auth/local/auth_local.go` |
+| Dev-only stub (`Bearer debug:<subject>`, `ci` / `test` env) | `internal/infrastructure/auth/local/auth_local.go` |
 | Identity resolution (`sub` → internal `userID`) | `internal/infrastructure/auth/useridentity/` |
 | DI wiring (env-driven authenticator selection, JWKS downstream profile) | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
+| Real-JWT execution context for scanning (`dast` env: JWKS-backed authenticator against the mock provider over http) | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | Config (`AUTH_*`) | `internal/config/envspec.go`, `internal/config/model.go` |
 | Ops-path / metrics auth exception | `internal/controller/httpstack/oapi/skipper/`, ADR [0016](../adr/0016-metrics-endpoint-auth-exception.md) |
 | Development OIDC provider | `mock-auth-server/` (`src/routes/oidc.ts`, `tokens.ts`, `pkce.ts`, `keys.ts`, `store.ts`) |

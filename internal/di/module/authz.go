@@ -52,7 +52,7 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 	// sample-api:replace-begin
 	case config.EnvCI, config.EnvTest:
 		// sample-api:replace-with
-		// = case config.EnvLocal, config.EnvCI, config.EnvTest:
+		// = case config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast:
 		// sample-api:replace-end
 		authorizer, err := allowall.New(p.AppCfg)
 		if err != nil {
@@ -73,7 +73,7 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 
 		return authorizer, nil
 	// sample-api:begin
-	case config.EnvLocal, config.EnvDevelopment, config.EnvStaging, config.EnvProduction:
+	case config.EnvLocal, config.EnvDast, config.EnvDevelopment, config.EnvStaging, config.EnvProduction:
 		logger.Info(
 			context.Background(),
 			"user_roles-based authorizer wired",

@@ -28,6 +28,12 @@ func TestIsLocalClassEnv(t *testing.T) {
 			assert.False(t, IsLocalClassEnv(EnvProduction))
 		})
 
+		t.Run("dast は非 deploy 系だが false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, IsLocalClassEnv(EnvDast))
+		})
+
 		t.Run("未知ラベル・空文字は false を返す", func(t *testing.T) {
 			t.Parallel()
 

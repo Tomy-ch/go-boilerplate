@@ -51,7 +51,7 @@
 | `image-scan.yaml` `build`、`deploy-app.yaml` `build` | 15 | レイヤキャッシュが冷えたイメージビルドは実測を大きく超えて振れる |
 | `deploy-app.yaml` `deploy` | 30 | 現状はプレースホルダ。フォークが実デプロイを配線したときに 10 分の上限へ当てない |
 | `fuzz.yaml`、`scorecard.yaml`、`notify.yaml`、`osv-release-gate.yaml` | 15 | 直近に完了実行が無く実測できない |
-| `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる <!-- dast:line --> |
+| `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる |
 | `code-ql.yaml` `codeql` | 30 | 上限は matrix の最も遅い leg に掛かるが、`go` 以外の leg には完了実行が無く実測できない。加えて `security-extended` は従前の値を測ったスイートより大きい |
 | `secret-scan.yaml`、`trufflehog.yaml` | 15 | 実測は差分を見る PR 実行のみ。週次は全履歴を走査するが、その完了実行が一度も無く実測できない |
 | `bearer.yaml` `bearer` | 20 | 完了実行が無く実測できないうえ、報告の前に自前ツリー全体のデータフローモデルを構築する |
@@ -121,7 +121,7 @@
 |Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
 |OpenAPI Security|`openapi-security.yaml`|Spectral + OWASP API Security ルールセットによる OpenAPI 定義の検証|
 |Fuzz|`fuzz.yaml`|外部入力を受けるパーサに対する Go ネイティブ fuzzing|
-|DAST|`zap-api-scan.yaml`|ランナー内で起動したアプリケーションに対する、OpenAPI 定義を入力とした OWASP ZAP の API スキャン（報告専用のサンプル。[DAST](#dast) を参照） <!-- dast:line -->|
+|DAST|`zap-api-scan.yaml`|ランナー内で起動したアプリケーションに対する、OpenAPI 定義を入力とした OWASP ZAP の API スキャン（報告専用のサンプル。[DAST](#dast) を参照）|
 |Capability Diff|`capability-diff.yaml`|capslock による Go 依存グラフの capability 差分報告（report-only）|
 |Notify|`notify.yaml`|定期実行の失敗、および非ブロッキングなスキャナの検出を人へ届ける `workflow_call` の再利用ワークフロー|
 
@@ -158,11 +158,11 @@
 | Spectral（OpenAPI） | spec 変更 PR | `release/*` / デプロイ先ブランチ | 不要 |
 | capslock | `go.mod` 変更 PR | 不要 | 不要 |
 | Go fuzzing | 不要 | 不要 | 週次 |
-| OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 <!-- dast:line --> |
+| OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
 
 週次実行は月曜内で 1 時間ごとにずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査）、`0 9` npm cooldown 監査、`0 10` Opengrep、`0 11` fuzz）。同一時刻に全スキャナが並ぶのを避けるためです。
 
-DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。 <!-- dast:line -->
+DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
 
 以降は `0 13` Grype、`0 14` DevSkim、`0 15` Bearer、`0 16` ESLint と続きます。
 
@@ -253,19 +253,17 @@ npm で解決するのは `mock-auth-server/` だけです。`scripts/` と `doc
 
 Pull request ではその base との差分を監査するので、検出はその変更が持ち込んだエントリだけを名指しし、対象バージョンが窓から出た後も PR コメントが記録として残ります。週次実行は全エントリを走査する二重の網です。
 
-<!-- dast:begin -->
 #### DAST
 
 `zap-api-scan.yaml` は、ここで唯一「動いているアプリケーション」を走査するワークフローです。他のセキュリティ検査がファイルを読むのに対し、これはサーバーをビルドし、シードを入れた Postgres に対して起動し、バンドル済みの OpenAPI 定義から得たエンドポイント一覧をもとに OWASP ZAP から HTTP を投げます。
 
 ツールの選定はこの形から決まりました。GitHub の code scanning テンプレート一覧にある DAST 6 件のうち 4 件はベンダー側でスキャンが走り、GitHub-hosted runner の内部にしか存在しない API へは到達できません。runner 内で走る残り 2 件はいずれも有償トークンが必須です。ZAP は資格情報を要さず、ジョブの内部からスキャンできる唯一の選択肢で、そもそも短命な対象を見られるのはこの性質によります。
 
-**スキャンは認証済みで走ります。そしてここが最も壊れやすい部分です。** 未認証のスキャンは保護されたオペレーションから 401 を集めて表層で止まり、完走したように見えて完走していません。`ci` の環境プロファイルは [`docs/design/auth.md`](../../docs/design/auth.md) が述べる dev 限定スタブ認証を配線するため、資格情報はシード済みアイデンティティを指す `debug:<subject>` の bearer トークンで、ジョブは ZAP を起動する前にその資格情報が通ることを確認します。この確認を失うと検査が赤くなるのではなく、スキャンの守備範囲だけが黙って縮みます。
+**スキャンは認証済みで走ります。そしてここが最も壊れやすい部分です。** 未認証のスキャンは保護されたオペレーションから 401 を集めて表層で止まり、完走したように見えて完走していません。ジョブは `dast` の環境プロファイルで走り、`ci` が使う dev 限定スタブではなく [`docs/design/auth.md`](../../docs/design/auth.md) が述べる JWKS backed の実 authenticator を配線します。したがって資格情報は mock 認証サーバーが実際に署名した JWT で、スキャンは毎リクエストで署名検証・`typ` 判定・`kid` 解決を通します。ジョブは ZAP を起動する前にその資格情報が通ることを確認します。この確認を失うと検査が赤くなるのではなく、スキャンの守備範囲だけが黙って縮みます。
 
 **報告専用であることは、決めた結果であって省略ではありません。** [`.github/zap/rules.tsv`](../zap/rules.tsv) のしきい値は、この API が現に何を返すかから導いたものです。これでマージをゲートすれば、しきい値が想定していない検出で pull request を落とすことになります。検出は `zap-dast` カテゴリで code scanning と artifact に上がり、ジョブが落ちるのは「スキャン自体が実行できなかった」ときだけです。ZAP は SARIF を出力しないため、JSON レポートをワークフロー内で SARIF へ写像しています。各検出を OpenAPI バンドルへ紐づけるのは、そのファイルこそ検出対象の面を記述したものであり、実在するファイルを指すことが code scanning 上の辿りやすさになるからです。
 
-しきい値とスキャン対象の面は、向ける先の API に対して導き直される前提です。撤去は `scripts/setup/remove-dast-setting` が一括で行います（[セットアップ手順の Phase 17](../../docs/get-started/setup-repository.md)）。
-<!-- dast:end -->
+しきい値とスキャン対象の面は、向ける先の API に対して導き直される前提です（[セットアップ手順の Phase 17](../../docs/get-started/setup-repository.md)）。
 
 #### ランナーのハードニング
 
@@ -284,7 +282,7 @@ Pull request ではその base との差分を監査するので、検出はそ�
 | `image` | Docker Hub の各ホストと CDN 2 種、`mirror.gcr.io`、`ghcr.io`、`pkg-containers.githubusercontent.com`、および Alpine / Debian のパッケージミラー。`mise` を継承します（イメージのビルドがコンテナ内で `mise install` を走らせるため） | イメージの build / push、service container、Trivy の DB と checks bundle、`make` 経由で docker を起こすもの全般 |
 | `db` | PGDG の apt リポジトリと、Postgres の service container が導入時に参照する Ubuntu のアーカイブミラー | Postgres を起動するジョブ |
 
-本当にそのジョブ固有のものは、当該ジョブの `extra` に書きます。スキャナのデータソース（`semgrep.dev`、`api.osv.dev`、`vuln.go.dev`）、デプロイ先、通知の `hooks.slack.com`、DAST の `zaproxy.org`（ZAP は起動時に add-on のマニフェストを解決します）などです。 <!-- dast:line --> 2 つ目のジョブの `extra` にも現れたホストは、クラスへ移すべきものです。
+本当にそのジョブ固有のものは、当該ジョブの `extra` に書きます。スキャナのデータソース（`semgrep.dev`、`api.osv.dev`、`vuln.go.dev`）、デプロイ先、通知の `hooks.slack.com`、DAST の `zaproxy.org`（ZAP は起動時に add-on のマニフェストを解決します）などです。 2 つ目のジョブの `extra` にも現れたホストは、クラスへ移すべきものです。
 
 **クラスは意図的に粗く保ちます。** 細かく割れば allowlist は締まりますが、そのぶん分類の判定点が増えます。そしてこの仕組みが取り除こうとしている失敗は、まさにジョブのクラス判定を誤ることです。必要より少し広いクラスでも、その外側は依然として全部遮断されます。クラスを取り違えたジョブは落ちます。
 

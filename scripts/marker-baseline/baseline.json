@@ -37,7 +37,7 @@
   "internal/controller/job/README.md": 5,
   "internal/controller/worker/README.ja.md": 2,
   "internal/controller/worker/README.md": 2,
-  "internal/di/module/authz_test.go": 14,
+  "internal/di/module/authz_test.go": 17,
   "internal/di/module/authz.go": 9,
   "internal/di/module/controller.go": 24,
   "internal/di/module/core/auth.go": 6,

@@ -211,7 +211,7 @@ func validateEmbeddedEnv(appCfg Application) error {
 	}
 
 	switch embeddedAppEnv {
-	case EnvLocal, EnvCI, EnvTest, EnvDevelopment, "":
+	case EnvLocal, EnvCI, EnvTest, EnvDast, EnvDevelopment, "":
 		return ErrEmbeddedEnvMismatch
 	default:
 		return nil

@@ -351,6 +351,16 @@ func Test_validateEmbeddedEnv(t *testing.T) {
 			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
 		})
 
+		t.Run("productionモードでdast素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
+			defer restore()()
+			embeddedAppEnv = EnvDast
+
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+
+			require.ErrorIs(t, validateConfig(cfg), ErrEmbeddedEnvMismatch)
+		})
+
 		t.Run("productionモードでdevelopment素性の埋め込みenvの場合、エラーが返されること", func(t *testing.T) {
 			defer restore()()
 			embeddedAppEnv = EnvDevelopment
