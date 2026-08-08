@@ -61,7 +61,7 @@ writes each file atomically, so a failure never leaves partial state.
 the `[env]` section of `mise.toml` (for example `OTEL_LGTM_VERSION`), keeping them in
 the same single file without polluting the `[tools]` table.
 
-**Declaration / lockfile drift gate:** `scripts/mise-cooldown` reads `python/*.in`
+**Declaration / lockfile drift gate:** `scripts/tool-cooldown` reads `python/*.in`
 alongside `mise.toml` and fails when a declared version is not the one its lockfile
 pins. Without that check, raising a `.in` without regenerating its `.txt` would leave
 the cooldown gate clearing a version that is never installed.
@@ -146,4 +146,4 @@ would also put a Python project manifest at the root of a Go repository.
 - CI drift-gate workflow:
   [`.github/workflows/sync-versions-check.yaml`](../../.github/workflows/sync-versions-check.yaml).
 - Sync script: [`scripts/sync-versions/`](../../scripts/sync-versions/).
-- Declaration / lockfile drift gate: [`scripts/mise-cooldown/`](../../scripts/mise-cooldown/).
+- Declaration / lockfile drift gate: [`scripts/tool-cooldown/`](../../scripts/tool-cooldown/).

@@ -34,8 +34,8 @@ accepted
 | --- | --- | --- |
 | npm | 7 日 | 各 `.npmrc` の `min-release-age`（npm 11 ネイティブ） |
 | Go モジュール | 7 日 | `scripts/go-cooldown`。変更が追加 / 更新した direct requirement を対象にする |
-| mise が解決する CLI ツール | 14 日（GitHub リリース） / 7 日（パッケージレジストリ） | `scripts/mise-cooldown` が `mise.toml` を読む |
-| PyPI から入れる CLI ツール | 7 日 | `scripts/mise-cooldown` が `python/*.in` の宣言を読む（[ADR-0075](0075-mise-ssot-drift-gate.ja.md)） |
+| mise が解決する CLI ツール | 14 日（GitHub リリース） / 7 日（パッケージレジストリ） | `scripts/tool-cooldown` が `mise.toml` を読む |
+| PyPI から入れる CLI ツール | 7 日 | `scripts/tool-cooldown` が `python/*.in` の宣言を読む（[ADR-0075](0075-mise-ssot-drift-gate.ja.md)） |
 | GitHub Actions | 14 日 | `PIN_ACTIONS_MIN_AGE_DAYS`（`scripts/pin-actions` が強制） |
 | コンテナイメージ | 14 日 | `PIN_IMAGES_MIN_AGE_DAYS`（`scripts/pin-images` が強制） |
 | Dependabot | 5 / 7 / 30 日（patch / minor / major） | `.github/dependabot.yml` の cooldown |

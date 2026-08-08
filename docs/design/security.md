@@ -279,7 +279,7 @@ past the window, not the newest release; when a pin deliberately trails it says 
 `python/graphify.in` is the PyPI instance of that convention.
 
 Freshness has no resolver-side enforcement here — `uv pip compile` will resolve a version published
-minutes ago without complaint. What enforces it is a repository gate, `scripts/mise-cooldown`, and
+minutes ago without complaint. What enforces it is a repository gate, `scripts/tool-cooldown`, and
 unlike npm's audit-only counterpart it **fails the build**.
 
 Verified behaviour, not inference:
@@ -301,7 +301,7 @@ The `gate` / `audit` split is the same one drawn under *Why reporting and gating
 judges what a change introduces and can therefore block, while `audit` inventories what is already
 there, where findings arrive as versions age rather than as anyone's edit.
 
-**A bypass is dated debt.** `.github/mise-cooldown-bypass.toml` takes
+**A bypass is dated debt.** `.github/tool-cooldown-bypass.toml` takes
 `"<key>@<version>" = { expires, issue, reason }`, all three required. An entry that has expired, that
 reaches more than three months out, or that no longer matches any declaration fails `gate` *and*
 `audit`. The expiry arrives without anyone editing a file, which is why the check also runs on a

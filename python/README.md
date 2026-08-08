@@ -37,7 +37,7 @@ Edit the `==` pin in `<tool>.in`, then regenerate:
 make py-lock
 ```
 
-The two files are checked against each other: `make mise-cooldown-audit` (and the same gate on every
+The two files are checked against each other: `make tool-cooldown-audit` (and the same gate on every
 pull request) fails when a declaration and its lockfile name different versions. Without that check,
 raising a `.in` and forgetting to regenerate would leave the cooldown gate clearing a version that is
 never installed.

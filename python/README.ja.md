@@ -29,7 +29,7 @@ install は常に `uv pip install --require-hashes -r <tool>.txt` です。版�
 make py-lock
 ```
 
-2 つのファイルは互いに突き合わされます。宣言と lockfile が違う版を指していれば `make mise-cooldown-audit`（および pull request 時の同じゲート）が失敗します。この検査が無いと、`.in` を上げて再生成を忘れたときに、実際には入らない版に対して cooldown が通ってしまいます。
+2 つのファイルは互いに突き合わされます。宣言と lockfile が違う版を指していれば `make tool-cooldown-audit`（および pull request 時の同じゲート）が失敗します。この検査が無いと、`.in` を上げて再生成を忘れたときに、実際には入らない版に対して cooldown が通ってしまいます。
 
 新しい版は供給網のクールダウンの対象でもあります。PyPI の窓はパッケージレジストリ共通の 7 日です。最新より前の版で止めている場合は、その理由を `.in` に書きます。
 

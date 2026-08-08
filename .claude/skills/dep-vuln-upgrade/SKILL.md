@@ -47,10 +47,10 @@ Do NOT use this skill for:
 
 A Python advisory reaches this repo through one of two shapes, and only the first is ever actionable here.
 
-- **The advisory names a tool this repo declares** (`sqlfluff`, `graphifyy`). Locate it, report the fixed version and where it must be declared, and **hand the bump to `/tools-upgrade`** — it owns `python/*.in`, knows that a change there requires `make py-lock`, and is what `mise-cooldown` gates against. Do not edit `python/*.in` or `python/*.txt` here.
+- **The advisory names a tool this repo declares** (`sqlfluff`, `graphifyy`). Locate it, report the fixed version and where it must be declared, and **hand the bump to `/tools-upgrade`** — it owns `python/*.in`, knows that a change there requires `make py-lock`, and is what `tool-cooldown` gates against. Do not edit `python/*.in` or `python/*.txt` here.
 - **The advisory names a transitive package** that appears only in `python/<tool>.txt`. There is no per-package pin to raise: the lockfile is a resolution, so the fix arrives by raising the tool whose tree pulls it, or not at all until upstream releases. Report which tool's lockfile carries it, whether a newer tool version resolves past the advisory, and leave the decision with the user. Never hand-edit a `.txt` — it carries sha256 hashes that `--require-hashes` enforces at install, so an edited line does not install, it fails.
 
-Either way the cooldown that governs the move is the one described under *the threshold plays two different roles* below, and the escape hatch is `.github/mise-cooldown-bypass.toml` rather than anything in this skill's write surface.
+Either way the cooldown that governs the move is the one described under *the threshold plays two different roles* below, and the escape hatch is `.github/tool-cooldown-bypass.toml` rather than anything in this skill's write surface.
 
 ## First Step: Parse Advisories and Resolve the Caution Threshold
 

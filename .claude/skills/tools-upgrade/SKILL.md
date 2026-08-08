@@ -162,7 +162,7 @@ For each approved tool declared in `python/*.in`:
   make py-lock
   ```
 
-  The `.in` and its `.txt` are one change. `make mise-cooldown-gate` fails on a pin whose lockfile still names the old version, precisely so that a forgotten regeneration cannot leave the quarantine clearing a version that is never installed. Commit both files together; never hand-edit a `.txt`.
+  The `.in` and its `.txt` are one change. `make tool-cooldown-gate` fails on a pin whose lockfile still names the old version, precisely so that a forgotten regeneration cannot leave the quarantine clearing a version that is never installed. Commit both files together; never hand-edit a `.txt`.
 
   `py-lock` regenerates **every** `python/*.txt`, so an untouched tool can still show a diff when one of its transitive dependencies published a new release. That diff is real and is part of the change — review it, do not discard it. It is also not covered by this run's quarantine decision, which was made per direct pin: say so in the final report.
 
@@ -200,7 +200,7 @@ make test
 If a `python/*.in` pin changed, also run:
 
 ```sh
-make mise-cooldown-audit
+make tool-cooldown-audit
 ```
 
 It is the check that the pin and its lockfile agree, and it re-measures the window against the version now declared — the same gate the pull request will run.
@@ -242,7 +242,7 @@ Confirm the following before reporting completion:
 - [ ] If eligible set non-empty: user confirmed per-tool update set via `AskUserQuestion`; any early-adopted pending tool listed separately and deselected by default with its band
 - [ ] `mise.toml` rewritten atomically with only approved changes, preserving key formats and `v`-prefix convention
 - [ ] Approved `python/*.in` pins rewritten (package name and extras preserved, stale quarantine comments corrected), `make py-lock` run, and both files left in the tree; no `.txt` hand-edited
-- [ ] `make mise-cooldown-audit` run if a `python/*.in` pin changed
+- [ ] `make tool-cooldown-audit` run if a `python/*.in` pin changed
 - [ ] `make sync-versions` run if go / node / python was updated
 - [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`). A rule 3 fail-closed on the new tag is the expected outcome for a just-published image — surfaced with the coupling (bootstrap via `days=0` after triage, or hold the bump), never forced through, and never left as a tag/digest mismatch
 - [ ] `make lint` + `make test` run after writes

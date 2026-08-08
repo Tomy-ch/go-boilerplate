@@ -1,17 +1,14 @@
-name: mise Cooldown
+name: Tool Cooldown
 
-# `mise.toml` pins every CLI tool this repository resolves through mise, and until now nothing
-# checked how old a pinned version was. The convention itself already existed — entries in that
-# file record a version being held back for not clearing the window — so this workflow mechanises
-# a rule that was being applied by hand, rather than introducing one.
+# Every CLI tool version this repository pins is gated here, whichever file declares it. Two files
+# do: `mise.toml` for the tools mise resolves, and `python/*.in` for the PyPI tools, which install
+# from a hash-pinned lockfile instead. The gate is named after what it covers rather than after
+# either declaration site, because a version published inside the window carries the same risk
+# wherever it was written down.
 #
-# PyPI tools are declared in `python/*.in` instead, because they install from a hash-pinned
-# lockfile rather than through mise. They are checked here all the same: the upstream registry is
-# the same one, and so is the risk of grabbing a version too new for anyone to have noticed it is
-# malicious. The lockfiles themselves (transitive dependencies) are out of scope, for the same
-# reason `go-cooldown` only gates direct requirements. A declaration that has drifted from its
-# lockfile is reported as a violation, since the version cleared here would then not be the
-# version installed.
+# The lockfiles themselves (transitive dependencies) are out of scope, for the same reason
+# `go-cooldown` only gates direct requirements. A declaration that has drifted from its lockfile is
+# reported as a violation, since the version cleared here would then not be the version installed.
 #
 # The window has two tiers, taken from the backend rather than from the tool. A version resolved
 # through a GitHub release (aqua / ubi / github) gets 14 days, the same as `pin-actions` and
@@ -34,9 +31,9 @@ on:
       - 'mise.toml'
       - 'python/*.in'
       - 'python/*.txt'
-      - 'scripts/mise-cooldown/**'
-      - '.github/mise-cooldown-bypass.toml'
-      - '.github/workflows/mise-cooldown.yaml'
+      - 'scripts/tool-cooldown/**'
+      - '.github/tool-cooldown-bypass.toml'
+      - '.github/workflows/tool-cooldown.yaml'
   schedule:
     - cron: '0 11 * * 1'
   workflow_dispatch:
@@ -49,7 +46,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mise-cooldown:
+  tool-cooldown:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -124,7 +121,7 @@ jobs:
       # check does not fit into. The summary body is written by the tool, which fences every
       # value it did not author itself: a tool key comes out of `mise.toml`, which the pull
       # request controls, and the step summary renders Markdown.
-      - name: Check mise tool cooldown
+      - name: Check tool cooldown
         shell: bash
         env:
           GATE_BASE: ${{ steps.base.outputs.base }}
@@ -133,14 +130,14 @@ jobs:
           set -euo pipefail
 
           if [ -n "${GATE_BASE}" ]; then
-            go run ./scripts/mise-cooldown gate --base="${GATE_BASE}" --github \
-              --summary-out=mise-cooldown-summary.md \
+            go run ./scripts/tool-cooldown gate --base="${GATE_BASE}" --github \
+              --summary-out=tool-cooldown-summary.md \
               && status=0 || status=$?
           else
-            go run ./scripts/mise-cooldown audit --github \
-              --summary-out=mise-cooldown-summary.md \
+            go run ./scripts/tool-cooldown audit --github \
+              --summary-out=tool-cooldown-summary.md \
               && status=0 || status=$?
           fi
 
-          cat mise-cooldown-summary.md >> "${GITHUB_STEP_SUMMARY}"
+          cat tool-cooldown-summary.md >> "${GITHUB_STEP_SUMMARY}"
           exit "${status}"
