@@ -54,6 +54,7 @@
 | `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる |
 | `code-ql.yaml` `codeql` | 30 | 上限は matrix の最も遅い leg に掛かるが、`go` 以外の leg には完了実行が無く実測できない。加えて `security-extended` は従前の値を測ったスイートより大きい |
 | `secret-scan.yaml`、`trufflehog.yaml` | 15 | 実測は差分を見る PR 実行のみ。週次は全履歴を走査するが、その完了実行が一度も無く実測できない |
+| `bearer.yaml` `bearer` | 20 | 完了実行が無く実測できないうえ、報告の前に自前ツリー全体のデータフローモデルを構築する |
 | `app-di-startup-check.yaml`、`gen-go-artifacts-check.yaml` | 15 | 式より前から存在する値。動いている上限を下げてもリスクしか増えないためそのまま |
 | `claude.yaml`、`go-lint.yaml`、`sample-removal-check.yaml` | 30 | 同上。`go-lint` は golangci-lint 自身の timeout を無効化して走らせているため、これがそのジョブ唯一の打ち切り点でもある |
 
@@ -115,6 +116,7 @@
 |Config Scan|`trivy-config.yaml`|Trivy による Dockerfile の設定不備スキャン（HIGH 以上でゲート）|
 |SAST|`opengrep.yaml`|Opengrep（Semgrep 互換）による自前の Go / TypeScript ソースの解析（taint 追跡あり）|
 |DevSkim Scan|`devskim.yaml`|言語を問わずツリー内の全ファイルに当たる DevSkim の正規表現スキャン|
+|Bearer Scan|`bearer.yaml`|機微な値が sink へ到達する経路を追う Bearer のデータフロースキャン（報告専用。Elastic License 2.0 — [Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照）|
 |ESLint Scan|`eslint.yaml`|3 つの TypeScript ワークスペースに対する `eslint-plugin-security` の検査。matrix の 1 レグずつ（報告専用）|
 |Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
 |OpenAPI Security|`openapi-security.yaml`|Spectral + OWASP API Security ルールセットによる OpenAPI 定義の検証|
@@ -150,6 +152,7 @@
 | Opengrep（SAST） | Go / TypeScript・依存・spec 変更 PR | 同上 | 週次 |
 | Grype | Go・依存変更 PR | 同上 | 週次 |
 | DevSkim | 全 PR | `develop` / `staging` / `production` / `release/*` | 週次 |
+| Bearer | Go / TypeScript 変更 PR | 同上 | 週次 |
 | ESLint（security） | TypeScript ワークスペース変更 PR | 同上 | 週次 |
 | lockfile-lint | lockfile 変更 PR | 不要 | 不要 |
 | Spectral（OpenAPI） | spec 変更 PR | `release/*` / デプロイ先ブランチ | 不要 |
@@ -161,7 +164,7 @@
 
 DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
 
-以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint と続きます。
+以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer と続きます。
 
 週次スケジュールを持つスキャナは、ジョブが `failure` または `cancelled` で終わったときに `notify.yaml` を呼び出します。PR の失敗は作成者に見えていますが、定期実行の失敗は誰にも見えないためです。`cancelled` を含めるのは、タイムアウトやランナー障害で打ち切られたジョブが `failure` ではなくこちらになるからです。
 
@@ -178,7 +181,7 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | `grype.yaml` | 脆弱性の検出 | schedule |
 | `devskim.yaml` | 検出あり | schedule |
 
-他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 4 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint は理由が別で、ベースラインが 0 件ではないため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 5 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 200 件超の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。
 
 #### 検知が重なる面
 
@@ -198,6 +201,22 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） — すべて報告専用 | — |
 | 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） | — |
 | 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
+| sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用 | — |
+
+#### Bearer のライセンスと撤去
+
+`bearer/bearer` は **Elastic License 2.0** で公開されており、利用・改変・再配布は認めつつ、ソフトウェアを hosted / managed service として第三者へ提供することと、ライセンスキー機構の回避とを禁じています。このリポジトリ自身の CI で走らせる限りどちらにも触れません。第三者へ何も提供しておらず、CLI はキーを必要としないためです（`--api-key` フラグは legacy と明記され、提供を終えたクラウド製品のために残っているだけです）。
+
+OSI の定義の外にあること自体は Bearer に固有ではありません。CodeQL も OSI 承認ではなく、専用の節を持っていません。書き留める価値があるのは、このテンプレートから作られたリポジトリがワークフローとともにライセンスも引き継ぐという点です。ツールをサービスの一部として提供したい利用者には、ここにある OSI ライセンスのスキャナには生じない判断が要ります。その答えは撤去であり、撤去は次のすべてを落とします。
+
+| 落とすもの | 落とし忘れを捕まえるもの |
+| --- | --- |
+| `.github/workflows/bearer.yaml` | — |
+| [`mise.toml`](../../mise.toml) の `aqua:Bearer/bearer` 行 | `make tool-cooldown-gate` はこの固定値を読む |
+| [`.github/egress.toml`](../egress.toml) の `[job."bearer.yaml:bearer"]` セクション | `make egress-check` が「対応する workflow の無いジョブセクション」で落ちる |
+| このファイルと対訳の `README.md` にある `bearer.yaml` の行 — timeout 表 / Security 表 / トリガーマトリクス / 週次のずらし方 / 検知が重なる面 — およびこの節 | `make md-lint` が見るのは対訳ペアであって行ではない |
+
+`make pin-actions-check` は、`bearer.yaml` が使っていた Action がすべて他所からも参照されている限り何もする必要がありません。参照されないエントリが lockfile に残ると落ちるため、赤くなったらそこを先に見てください。summary ステップの `level` 補完はワークフローと一緒に消えます。Bearer は全ての結果に `level` を持たず、jq がソートキーで `//` へ落ちずにランタイムエラーになるために置いてあるものです。
 
 #### DevSkim のバージョン固定
 
