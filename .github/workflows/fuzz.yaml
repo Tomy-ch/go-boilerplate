@@ -14,7 +14,7 @@ name: Fuzz
 
 on:
   schedule:
-    # Monday 11:00 UTC — the slot after sast.yaml (10:00), continuing the stagger
+    # Monday 11:00 UTC — the slot after opengrep.yaml (10:00), continuing the stagger
     # that #677 established.
     - cron: '0 11 * * 1'
   workflow_dispatch:

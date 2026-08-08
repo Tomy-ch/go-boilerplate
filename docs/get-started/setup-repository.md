@@ -383,7 +383,7 @@ different triggers.
 <!-- dast:begin -->
 ## Phase 17: Decide whether to keep the DAST setup
 
-The DAST setup is already done. [`.github/workflows/dast.yaml`](../../.github/workflows/dast.yaml)
+The DAST setup is already done. [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
 boots this application inside a GitHub-hosted runner and drives an authenticated
 [OWASP ZAP](https://www.zaproxy.org/) API scan at it, with the endpoint list taken from the OpenAPI
 definition. It runs weekly and on demand, writes to code scanning, and never fails a build on a
@@ -421,5 +421,5 @@ section, the scanner action's entry in the pin lockfile, and finally itself. The
 it means keeping it, and a scanner left configured-but-off is one nobody reads and nobody maintains.
 
 If you later want to see what was there, it is in the git history — the removal is one commit, and
-`git log -- .github/workflows/dast.yaml` finds it.
+`git log -- .github/workflows/zap-api-scan.yaml` finds it.
 <!-- dast:end -->

@@ -33,7 +33,7 @@ describe("DAST_PATHS", () => {
 
     // ワークフローが残れば毎週スキャンが動き続ける。撤去の本体はここ。
     it("ワークフロー本体と ZAP のルールファイルを対象に含む", () => {
-      expect(DAST_PATHS).toContain(".github/workflows/dast.yaml");
+      expect(DAST_PATHS).toContain(".github/workflows/zap-api-scan.yaml");
       expect(DAST_PATHS).toContain(".github/zap");
     });
   });
@@ -137,7 +137,7 @@ describe("stripActionPin", () => {
 describe("isRemovablePath", () => {
   describe("正常系", () => {
     it("リポジトリ相対のパスを受け付ける", () => {
-      expect(isRemovablePath(".github/workflows/dast.yaml")).toBe(true);
+      expect(isRemovablePath(".github/workflows/zap-api-scan.yaml")).toBe(true);
       expect(isRemovablePath(".github/zap")).toBe(true);
     });
 

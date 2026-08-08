@@ -51,7 +51,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
 | `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in by a fork must not meet a 10-minute cap |
 | `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml` | 15 | no recent completed run to measure |
-| `dast.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition <!-- dast:line --> |
+| `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition <!-- dast:line --> |
 | `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
@@ -111,11 +111,11 @@ All three rules live in one check rather than three, because they are not three 
 |Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
 |Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
-|SAST|`sast.yaml`|Opengrep (Semgrep-compatible) scan of first-party Go and TypeScript source with taint tracking|
+|SAST|`opengrep.yaml`|Opengrep (Semgrep-compatible) scan of first-party Go and TypeScript source with taint tracking|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
 |Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
-|DAST|`dast.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast)) <!-- dast:line -->|
+|DAST|`zap-api-scan.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast)) <!-- dast:line -->|
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
 |Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
 
@@ -148,7 +148,7 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
 | capslock | `go.mod`-change PRs | — | — |
 | Go fuzzing | — | — | weekly |
-| OWASP ZAP (DAST) | — | `develop` / `staging` / `production` / `release/*` | weekly <!-- dast:line --> |
+| OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly <!-- dast:line --> |
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
 
@@ -175,9 +175,9 @@ Several tools can detect the same class of finding. Each surface has one owner s
 
 | Surface | Owner | Also capable, deliberately not used here |
 | --- | --- | --- |
-| Dockerfile security policy | `trivy-config.yaml` | Opengrep (its Dockerfile rules are excluded in `sast.yaml`) |
+| Dockerfile security policy | `trivy-config.yaml` | Opengrep (its Dockerfile rules are excluded in `opengrep.yaml`) |
 | Dockerfile style / correctness | `docker-lint.yaml` (hadolint) | — (a different layer, not a duplicate) |
-| First-party Go source | `sast.yaml` (Opengrep) + `gosec` in golangci-lint | — |
+| First-party Go source | `opengrep.yaml` (Opengrep) + `gosec` in golangci-lint | — |
 | OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) | Spectral |
 | OpenAPI security posture | `openapi-security.yaml` (Spectral) | redocly |
 
@@ -219,7 +219,7 @@ A pull request is audited against its base, so a finding names exactly the entri
 <!-- dast:begin -->
 #### DAST
 
-`dast.yaml` is the only workflow here that scans a *running* application. Every other security check reads files; this one builds the server, boots it against a seeded Postgres, and drives HTTP at it from OWASP ZAP, with the endpoint list taken from the bundled OpenAPI definition.
+`zap-api-scan.yaml` is the only workflow here that scans a *running* application. Every other security check reads files; this one builds the server, boots it against a seeded Postgres, and drives HTTP at it from OWASP ZAP, with the endpoint list taken from the bundled OpenAPI definition.
 
 That shape is what decided the tool. Of the six DAST products in GitHub's code-scanning template catalogue, four run the scan on the vendor's own infrastructure — which cannot reach an API that exists only inside a GitHub-hosted runner — and the two that do run in the runner both require a paid token. ZAP needs no credential and scans from inside the job, so it is the only one that can see an ephemeral target at all.
 
@@ -247,7 +247,7 @@ Each list is the base set below plus what the job demonstrably does:
 | Python | `astral.sh`, `pypi.org`, `files.pythonhosted.org` | `uv`-resolved tooling (`sql-lint.yaml`) |
 | Registry | the Docker Hub hosts, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com` | image build / push, service containers, Trivy's DB and checks bundle |
 | Scanner data | `semgrep.dev` (Opengrep rulesets), `api.osv.dev` / `api.deps.dev` (OSV), `vuln.go.dev` (govulncheck), the Scorecard data sources | the scanner that reads them |
-| ZAP | `zaproxy.org` and its subdomains, plus the Registry set for the scanner image | `dast.yaml` (ZAP resolves its add-on manifest at startup) <!-- dast:line --> |
+| ZAP | `zaproxy.org` and its subdomains, plus the Registry set for the scanner image | `zap-api-scan.yaml` (ZAP resolves its add-on manifest at startup) <!-- dast:line --> |
 | Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml` (cosign keyless signing, attestation) **and every `mise install`** — mise fetches the Sigstore TUF root to verify artifact attestations, so a job that installs a tool but cannot reach `tuf-repo-cdn.sigstore.dev` fails before it runs anything |
 
 The lists are inferred from what each job does rather than measured from audit data, so the first runs are expected to surface gaps. A blocked endpoint appears in the harden-runner run summary as a denied connection — that is the thing to read when a job fails for no reason visible in its own logs, and the fix is to widen that job's list, never to drop it back to `audit`.

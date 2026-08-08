@@ -14,7 +14,7 @@ export const DAST_MARKER = "dast";
  * 撤去ツール自身も含みます。一度きりの操作なので、残しても二度目は何も消せません。
  */
 export const DAST_PATHS: readonly string[] = [
-  ".github/workflows/dast.yaml",
+  ".github/workflows/zap-api-scan.yaml",
   ".github/zap",
   "scripts/setup/remove-dast-setting",
 ];

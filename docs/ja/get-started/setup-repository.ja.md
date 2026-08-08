@@ -361,7 +361,7 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
 <!-- dast:begin -->
 ## Phase 17: DAST のセットアップを残すかを決める
 
-DAST のセットアップだけ済ませてあります。[`.github/workflows/dast.yaml`](../../../.github/workflows/dast.yaml) は GitHub-hosted runner の中でこのアプリケーションを起動し、OpenAPI 定義から得たエンドポイント一覧をもとに、認証済みの [OWASP ZAP](https://www.zaproxy.org/) API スキャンを当てます。週次と手動で走り、結果は code scanning へ上がり、検出でビルドを落とすことはありません。動的スキャンが要るならそのまま使ってください。追加で配線するものはありません。
+DAST のセットアップだけ済ませてあります。[`.github/workflows/zap-api-scan.yaml`](../../../.github/workflows/zap-api-scan.yaml) は GitHub-hosted runner の中でこのアプリケーションを起動し、OpenAPI 定義から得たエンドポイント一覧をもとに、認証済みの [OWASP ZAP](https://www.zaproxy.org/) API スキャンを当てます。週次と手動で走り、結果は code scanning へ上がり、検出でビルドを落とすことはありません。動的スキャンが要るならそのまま使ってください。追加で配線するものはありません。
 
 **ただし設定値はサンプルです。** [`.github/zap/rules.tsv`](../../../.github/zap/rules.tsv) のしきい値、スキャンが名乗るアイデンティティ、そのスキャンが到達する面は、いずれもこの boilerplate のサンプル API と `ci` 環境プロファイルに合わせた仮の値であり、あなたの API について何かを主張するものではありません。エンドポイントが違えば、受容してよい検出も違います。最初の週次実行の前にワークフロー冒頭のコメントを読み、実際の API に合わせて両方のファイルを調整してください。引き継いだままの `IGNORE` は、二度と誰の目にも触れない検出になります。
 
@@ -381,5 +381,5 @@ docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
 
 ワークフロー本体・ZAP のルールファイル・[.github/workflows/README.md](../../../.github/workflows/README.md) とその日本語ミラーの該当行・この節・pin lockfile に残るスキャナ用 action のエントリ、そして最後にツール自身を削除します。有効/無効を切り替えるスイッチはありませんし、今後も設けません。残すとは残すことであり、設定されたまま無効なスキャナは、誰も読まず誰も保守しないものになります。
 
-撤去後に中身を参照したくなったら git の履歴から辿れます。撤去はコミット 1 つで、`git log -- .github/workflows/dast.yaml` で見つかります。
+撤去後に中身を参照したくなったら git の履歴から辿れます。撤去はコミット 1 つで、`git log -- .github/workflows/zap-api-scan.yaml` で見つかります。
 <!-- dast:end -->

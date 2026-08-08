@@ -231,7 +231,7 @@ jobs:
         run: |
           set -euo pipefail
           for p in \
-            .github/workflows/dast.yaml \
+            .github/workflows/zap-api-scan.yaml \
             .github/zap \
             scripts/setup/remove-dast-setting; do
             if [ -e "$p" ]; then

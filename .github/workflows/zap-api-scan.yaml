@@ -1,42 +1,33 @@
 name: DAST
 
-# OWASP ZAP's OpenAPI-driven API scan, run against the application started inside this
-# runner. It complements the static scanners: those read the source, this one exercises
-# the running HTTP surface and sees what the code actually answers.
+# OWASP ZAP's OpenAPI-driven API scan against the application started inside this runner.
+# The static scanners read the source; this one exercises the running HTTP surface.
 #
-# EVERY CONFIGURATION VALUE BELOW IS A SAMPLE. The scan target, the endpoint list ZAP
-# derives from the OpenAPI definition, the alert thresholds in .github/zap/rules.tsv and
-# the identity the scan authenticates as are all matched to this repository's sample API.
-# None of them is correct for a real API: a fork's endpoints differ, its risk acceptance
-# differs, and the account it should scan as differs. Treat this workflow as a working
-# example to adjust, not as a policy to inherit — and if you do not want it, remove the
-# whole thing with `make setup-remove-dast-setting` (see docs/get-started/setup-repository.md).
+# ZAP is the only DAST option that scans from inside the job. The alternatives run on the
+# vendor's infrastructure, which cannot reach an API that exists only in a runner.
 #
-# Why ZAP rather than one of the DAST entries in GitHub's code-scanning template
-# catalogue: four of those run the scan on the vendor's own infrastructure, which cannot
-# reach an API that exists only inside a GitHub-hosted runner, and the two that do run in
-# the runner both require a paid token. ZAP is the only option that needs no credential
-# and scans from inside the job, which is precisely what makes an ephemeral target
-# scannable at all.
-#
-# It is report-only and always will be. Sample rules against a sample API produce noise,
-# and a noisy gate is a gate people learn to bypass. The findings go to code scanning and
-# to an artifact; nothing here fails the build on an alert. A scan that could not run at
-# all is a different matter and does fail, because a silent non-scan is worse than a red
-# one.
+# Report-only: alerts go to code scanning and to an artifact, and none of them fails the
+# job. A scan that could not run at all does fail — a silent non-scan is worse than a red
+# one. Tuning the thresholds in .github/zap/rules.tsv is expected; see
+# docs/get-started/setup-repository.md.
 
 on:
   workflow_dispatch:
   # A push to a protected branch is the state that will actually be promoted or deployed,
-  # so that is where a dynamic scan of the running surface earns its cost. Pull requests
-  # are deliberately excluded: a run takes minutes, and this is a sample scanner rather
-  # than a merge gate.
+  # so that is where a dynamic scan of the running surface earns its cost.
   push:
     branches:
       - production
       - staging
       - develop
       - 'release/*'
+  # Pull requests are otherwise excluded (a run takes minutes and this does not gate a
+  # merge). The exception is a change to this workflow or the rules it reads: nothing else
+  # exercises them, so a broken edit would first surface as a red push after review.
+  pull_request:
+    paths:
+      - '.github/workflows/zap-api-scan.yaml'
+      - '.github/zap/**'
   schedule:
     # Monday 12:00 UTC — the next free slot after the scanners already staggered one per
     # hour (00:00 through 11:00). The schedule catches what a push cannot: ZAP's own rules
@@ -62,13 +53,11 @@ jobs:
       DB_USER: postgres
       DB_PASSWORD: postgres-password
       PORT: 8080
-      # The identity the scan authenticates as. Under the `ci` environment profile the
-      # application wires the dev-only stub authenticator (see docs/design/auth.md), which
-      # reads the subject straight out of a `debug:<subject>` bearer token and reports the
-      # issuer as `mock`. The seeded `user_identities` rows for that issuer key on the
-      # internal user UUID rather than on a `user-<name>` subject, so this value is the
-      # seeded UUID of the sample administrator — anything else resolves to no identity and
-      # the whole scan sees 401.
+      # The identity the scan authenticates as. The `ci` profile wires the dev-only stub
+      # authenticator (docs/design/auth.md), which reads the subject from a
+      # `debug:<subject>` bearer token and reports the issuer as `mock`. Seeded
+      # `user_identities` rows for that issuer key on the internal user UUID, so a
+      # `user-<name>` subject resolves to no identity and the whole scan sees 401.
       SCAN_SUBJECT: 550e8400-e29b-41d4-a716-446655440000
     services:
       database:
@@ -187,16 +176,12 @@ jobs:
           exit 1
 
       # An unauthenticated scan sees 401 on every protected operation and stops at the
-      # surface, which would make the whole run theatre. This is the assertion that the
-      # token actually resolves to an identity before ZAP spends twenty minutes proving it
-      # does not.
+      # surface, so this asserts the token resolves to an identity before ZAP spends twenty
+      # minutes proving it does not.
       #
-      # The probe path is a SAMPLE endpoint, so 404 fails here too. Removing the sample API
-      # takes it away, and an assertion whose subject no longer exists stops asserting
+      # A 404 fails here too: once PROBE_PATH stops existing, the assertion stops asserting
       # anything while still reporting green — the exact failure this step exists to catch.
-      # A fork that keeps this workflow past the sample re-points PROBE_PATH at one of its
-      # own protected operations; a fork that does not want DAST removes the workflow (see
-      # docs/get-started/setup-repository.md).
+      # Re-point it at a protected operation that does exist.
       - name: Verify the scan credential authenticates
         env:
           SCAN_TOKEN: debug:${{ env.SCAN_SUBJECT }}

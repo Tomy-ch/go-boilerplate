@@ -1,15 +1,13 @@
-# OWASP ZAP alert thresholds for the API scan in .github/workflows/dast.yaml.
+# OWASP ZAP alert thresholds for the API scan in .github/workflows/zap-api-scan.yaml.
 # Tab-separated: <ruleId> <IGNORE|WARN|FAIL> <reason>. A rule absent from this file keeps
 # its ZAP default.
 #
-# THESE ARE SAMPLE VALUES. Every entry below is justified by something this repository's
-# sample API or its CI environment does, and none of those justifications carries over to
-# a real deployment. Re-derive the list against your own API before trusting it: an
-# inherited IGNORE is a finding nobody will ever see again.
+# Each entry is justified by something this repository's API or its CI environment does,
+# and none of those justifications carries over to a deployed API. Re-derive the list
+# against your own before trusting it: an inherited IGNORE is a finding nobody sees again.
 #
-# The scan is report-only (see the workflow header), so FAIL is deliberately unused — it
-# would change nothing today, and leaving it here would misdescribe the check.
-10015	IGNORE	Re-examine Cache-control Directives — cache policy for this API belongs to the edge in front of it, which no template can choose
+# The scan is report-only, so FAIL is deliberately unused.
+10015	IGNORE	Re-examine Cache-control Directives — cache policy for this API belongs to the edge in front of it
 10027	IGNORE	Information Disclosure - Suspicious Comments — matches ordinary words in the JSON error vocabulary, on every response
 10035	IGNORE	Strict-Transport-Security Header — the ci profile sets SECURITY_HSTS_MAX_AGE=0 deliberately and the scan target is plaintext http inside the runner
-10096	IGNORE	Timestamp Disclosure — every sample resource carries created_at / updated_at, so this fires across the entire read surface
+10096	IGNORE	Timestamp Disclosure — resources carry created_at / updated_at, so this fires across the entire read surface

@@ -37,7 +37,7 @@ on:
       - staging
       - production
     paths:
-      - '.github/workflows/sast.yaml'
+      - '.github/workflows/opengrep.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
@@ -51,7 +51,7 @@ on:
       - 'scripts/**'
   pull_request:
     paths:
-      - '.github/workflows/sast.yaml'
+      - '.github/workflows/opengrep.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
