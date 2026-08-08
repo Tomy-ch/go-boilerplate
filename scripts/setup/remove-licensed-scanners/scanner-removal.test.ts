@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MalformedHeadingError,
   MissingDeclarationError,
   isPinKeyReferenced,
   removeEgressSections,
@@ -146,6 +147,18 @@ describe("MissingDeclarationError", () => {
   });
 });
 
+describe("MalformedHeadingError", () => {
+  describe("正常系", () => {
+    it("どのファイルのどの宣言が見出しでなかったかをメッセージに含める", () => {
+      const error = new MalformedHeadingError("README.md", "Codacy の浮動タグ");
+
+      expect(error.name).toBe("MalformedHeadingError");
+      expect(error.message).toContain("README.md");
+      expect(error.message).toContain("Codacy の浮動タグ");
+    });
+  });
+});
+
 describe("removeExact", () => {
   describe("正常系", () => {
     it("完全一致した箇所だけを取り除く", () => {
@@ -216,6 +229,16 @@ describe("removeSection", () => {
   describe("異常系", () => {
     it("見出しが無ければ投げる", () => {
       expect(() => removeSection(doc, "#### 無い", "f.md")).toThrow(MissingDeclarationError);
+    });
+
+    it("見出しの形をしていない宣言は、同じ行が本文にあっても投げる", () => {
+      expect(() => removeSection(doc, "本文 A", "f.md")).toThrow(MalformedHeadingError);
+    });
+
+    it("# の後ろに空白が無い宣言も投げる", () => {
+      expect(() => removeSection("####対象\n\n消える\n", "####対象", "f.md")).toThrow(
+        MalformedHeadingError,
+      );
     });
   });
 });

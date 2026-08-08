@@ -78,6 +78,14 @@ export class MissingDeclarationError extends Error {
   }
 }
 
+/** 宣言した見出しが Markdown の見出しの形をしていないことを表す。 */
+export class MalformedHeadingError extends Error {
+  constructor(file: string, heading: string) {
+    super(`${file}: 宣言した見出しが Markdown の見出しではありません: ${heading}`);
+    this.name = "MalformedHeadingError";
+  }
+}
+
 /**
  * 完全一致した最初の 1 箇所を取り除く。
  *
@@ -99,9 +107,19 @@ export function removeExact(content: string, needle: string, file: string, kind:
  * 見出しの手前の空行は残す。それは直前の要素との区切りであって消える節の持ち物ではなく、
  * 巻き込むと隣り合う 2 節を続けて消したときに区切りが尽きて markdownlint の MD022 を割る。
  *
+ * 見出しの形をしていない文字列は、本文に同じ行があっても受け付けない。level を 0 に落として
+ * 続けると、どの見出しも境界と見なされず宣言した行から本文の終端までを黙って落とすためである。
+ *
+ * @throws {MalformedHeadingError} 宣言が見出しの形をしていない場合。
  * @throws {MissingDeclarationError} 見出しが無い場合。
  */
 export function removeSection(content: string, heading: string, file: string): string {
+  const level = /^(#+)\s/.exec(heading)?.[1].length;
+
+  if (level === undefined) {
+    throw new MalformedHeadingError(file, heading);
+  }
+
   const lines = content.split("\n");
   const start = lines.findIndex((line) => line === heading);
 
@@ -109,7 +127,6 @@ export function removeSection(content: string, heading: string, file: string): s
     throw new MissingDeclarationError(file, "見出し", heading);
   }
 
-  const level = heading.match(/^#+/)?.[0].length ?? 0;
   let end = lines.length;
 
   for (let i = start + 1; i < lines.length; i += 1) {
