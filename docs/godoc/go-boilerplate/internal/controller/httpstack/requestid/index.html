@@ -104,7 +104,7 @@
 			
 			
 				
-				<dd><a href="#GetRequestIDFromResponse">func GetRequestIDFromResponse(c echo.Context) string</a></dd>
+				<dd><a href="#GetRequestIDFromResponse">func GetRequestIDFromResponse(c *echo.Context) string</a></dd>
 			
 				
 				<dd><a href="#Middleware">func Middleware() echo.MiddlewareFunc</a></dd>
@@ -136,13 +136,13 @@
 		
 			
 			
-			<h2 id="GetRequestIDFromResponse">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/requestid/request_id.go.html?s=548:604#L5">GetRequestIDFromResponse</a>
+			<h2 id="GetRequestIDFromResponse">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/requestid/request_id.go.html?s=548:605#L5">GetRequestIDFromResponse</a>
 				<a class="permalink" href="#GetRequestIDFromResponse">¶</a>
 				
 				
 			</h2>
 			<pre>func GetRequestIDFromResponse(
-    c echo.<a href="#Context">Context</a>,
+    c *echo.<a href="#Context">Context</a>,
 ) <a href="../../../../../builtin/#string">string</a></pre>
 			<p>GetRequestIDFromResponse は、レスポンスヘッダ X-Request-ID からリクエストIDを取得します（Middleware が設定した値を読み出す）。
 

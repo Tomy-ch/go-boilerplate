@@ -86,7 +86,7 @@
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package retry は、失敗分類を消費する有限リトライの行動層です。
 </p><p>classify → bounded attempts → backoff + full jitter → deadline-aware という
-共通ループを 1 度だけ実装し、tx リトライや外部 HTTP の retry が共有します。
+共通ループを 1 度だけ実装し、リトライ可能性の分類を持つ任意の呼び出し側が共有します。
 バックオフの待機時間は呼び出し側が <a href="#Policy.Backoff">Policy.Backoff</a>（attempt → 基本待機時間）で
 与え、本パッケージはそこへ full jitter（<a href="#Full">Full</a>）を重畳します。乱数（math/rand/v2）
 依存を本パッケージ側へ閉じることで、待機時間算出を担う純粋な pkg/backoff の
@@ -156,7 +156,7 @@
 		
 			
 			
-			<h2 id="Do">func <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=2928:3064#L40">Do</a>
+			<h2 id="Do">func <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=2951:3087#L40">Do</a>
 				<a class="permalink" href="#Do">¶</a>
 				
 				
@@ -186,7 +186,7 @@ error（成功時は nil）を返します。
 		
 			
 			
-			</p><h2 id="Full">func <a href="../../../src/go-boilerplate/pkg/retry/jitter.go.html?s=475:515#L4">Full</a>
+			</p><h2 id="Full">func <a href="../../../src/go-boilerplate/pkg/retry/jitter.go.html?s=662:702#L5">Full</a>
 				<a class="permalink" href="#Full">¶</a>
 				
 				
@@ -204,7 +204,7 @@ error（成功時は nil）を返します。
 		
 			
 			
-			</p><h2 id="Policy">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1508:2015#L19">Policy</a>
+			</p><h2 id="Policy">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1531:2038#L19">Policy</a>
 				<a class="permalink" href="#Policy">¶</a>
 				
 				
@@ -235,7 +235,7 @@ error（成功時は nil）を返します。
 		
 			
 			
-			<h2 id="Sleeper">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1280:1453#L13">Sleeper</a>
+			<h2 id="Sleeper">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1303:1476#L13">Sleeper</a>
 				<a class="permalink" href="#Sleeper">¶</a>
 				
 				

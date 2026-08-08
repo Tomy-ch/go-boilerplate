@@ -179,8 +179,8 @@
                                 </tr>
                                 <tr>
                                     <td><span id="price">price</span></td>
-                                    <td>int4</td>
-                                    <td>10</td>
+                                    <td>numeric</td>
+                                    <td>0</td>
                                     <td title=''></td>
                                     <td title=''></td>
                                     <td>null</td>
@@ -290,6 +290,40 @@
                                     <td><p>公開日時</p></td>
                                 </tr>
                                 <tr>
+                                    <td><span id="image_path">image_path</span></td>
+                                    <td>text</td>
+                                    <td>2147483647</td>
+                                    <td title='nullable'>√</td>
+                                    <td title=''></td>
+                                    <td>null</td>
+                                    <td>
+                                        <table border='0' cellspacing='0' cellpadding='0'>
+                                        </table>
+                                    </td>
+                                    <td>
+                                        <table border='0' cellspacing='0' cellpadding='0'>
+                                        </table>
+                                    </td>
+                                    <td><p>画像パス</p></td>
+                                </tr>
+                                <tr>
+                                    <td><span id="lock_version">lock_version</span></td>
+                                    <td>int4</td>
+                                    <td>10</td>
+                                    <td title=''></td>
+                                    <td title=''></td>
+                                    <td>1</td>
+                                    <td>
+                                        <table border='0' cellspacing='0' cellpadding='0'>
+                                        </table>
+                                    </td>
+                                    <td>
+                                        <table border='0' cellspacing='0' cellpadding='0'>
+                                        </table>
+                                    </td>
+                                    <td><p>楽観ロックバージョン</p></td>
+                                </tr>
+                                <tr>
                                     <td><span id="created_at">created_at</span></td>
                                     <td>timestamptz</td>
                                     <td>35,6</td>
@@ -382,7 +416,7 @@
                                 <div class="tab-content no-padding">
                                     <div class="chart tab-pane active" id="oneDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="oneDegreeRelationshipsDiagram" name="oneDegreeRelationshipsDiagram">
-<area shape="rect" id="node1" href="products.html" target="_top" title="products" alt="" coords="320,61,763,453">
+<area shape="rect" id="node1" href="products.html" target="_top" title="products" alt="" coords="320,61,763,512">
 <area shape="rect" id="node2" href="product_categories.html" target="_top" title="product_categories" alt="" coords="5,365,276,571">
 <area shape="rect" id="node3" href="product_statuses.html" target="_top" title="product_statuses" alt="" coords="15,143,267,348">
 <area shape="rect" id="node4" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="807,5,1055,181">
@@ -391,7 +425,7 @@
                                     </div>
                                     <div class="chart tab-pane " id="twodegreesDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="twoDegreesRelationshipsDiagram" name="twoDegreesRelationshipsDiagram">
-<area shape="rect" id="node1" href="products.html" target="_top" title="products" alt="" coords="320,111,763,503">
+<area shape="rect" id="node1" href="products.html" target="_top" title="products" alt="" coords="320,111,763,561">
 <area shape="rect" id="node2" href="product_categories.html" target="_top" title="product_categories" alt="" coords="5,415,276,620">
 <area shape="rect" id="node3" href="product_statuses.html" target="_top" title="product_statuses" alt="" coords="15,192,267,397">
 <area shape="rect" id="node4" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="807,15,1055,191">

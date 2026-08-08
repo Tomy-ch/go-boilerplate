@@ -133,7 +133,7 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/timeout/timeout.go.html?s=846:904#L11">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/timeout/timeout.go.html?s=792:850#L10">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
@@ -141,9 +141,8 @@
 			<pre>func Middleware(timeout <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
 			<p>Middleware は、リクエスト context に timeout の deadline を設定するミドルウェアを返します。
 </p><p>後続の全ミドルウェア・ハンドラ・DB・外部 HTTP が単一の deadline budget を ctx 経由で共有します。
-response writer のデータ競合を避けるため race-free な ContextTimeout を基底とします
-（deprecated な Timeout は競合を抱える）。deadline 超過は apperror.ErrUnavailable(503) へ、
-それ以外のエラーはそのまま伝播します。
+response writer のデータ競合を避けるため race-free な ContextTimeout を基底とします。
+deadline 超過は apperror.ErrUnavailable(503) へ、それ以外のエラーはそのまま伝播します。
 
 			
 			

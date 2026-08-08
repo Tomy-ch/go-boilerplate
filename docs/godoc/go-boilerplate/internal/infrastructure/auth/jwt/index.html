@@ -185,7 +185,7 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=5941:5994#L102">New</a>
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=6503:6556#L110">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -200,7 +200,7 @@
 		
 			
 			
-			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=4078:4158#L68">NewDownstreamProfile</a>
+			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=4549:4629#L74">NewDownstreamProfile</a>
 				<a class="permalink" href="#NewDownstreamProfile">¶</a>
 				
 				
@@ -217,7 +217,7 @@ allowPrivateNetwork は private 網宛て接続の可否で、環境に応じた
 		
 			
 			
-			</p><h2 id="NewJWKS">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=7115:7202#L124">NewJWKS</a>
+			</p><h2 id="NewJWKS">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=7677:7764#L132">NewJWKS</a>
 				<a class="permalink" href="#NewJWKS">¶</a>
 				
 				
@@ -233,7 +233,7 @@ JWKS / discovery の取得は httpclient substrate（timeout / retry / breaker /
 		
 			
 			
-			</p><h2 id="NewWithKeyResolver">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=6452:6545#L113">NewWithKeyResolver</a>
+			</p><h2 id="NewWithKeyResolver">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=7014:7107#L121">NewWithKeyResolver</a>
 				<a class="permalink" href="#NewWithKeyResolver">¶</a>
 				
 				
@@ -248,7 +248,7 @@ JWKS backed の鍵解決を注入するために使用します。
 		
 			
 			
-			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=4637:4684#L80">RequiredDownstream</a>
+			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=5108:5155#L86">RequiredDownstream</a>
 				<a class="permalink" href="#RequiredDownstream">¶</a>
 				
 				
@@ -264,7 +264,7 @@ required_downstreams へ供給することで、起動失敗になることを�
 		
 			
 			
-			</p><h2 id="JWKSParams">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=3577:4528#L56">JWKSParams</a>
+			</p><h2 id="JWKSParams">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=3936:5090#L61">JWKSParams</a>
 				<a class="permalink" href="#JWKSParams">¶</a>
 				
 				
@@ -287,6 +287,9 @@ required_downstreams へ供給することで、起動失敗になることを�
     AllowInsecureURL <a href="../../../../../builtin/#bool">bool</a>
 <span id="JWKSParams.UnknownKidCooldown"></span>    <span class="comment">// UnknownKidCooldown は未知 kid での JWKS 再取得の最小間隔です（0 以下は既定 jwksRefreshCooldown）。</span>
     UnknownKidCooldown <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+<span id="JWKSParams.TracerFactory"></span>    <span class="comment">// TracerFactory は JWKS / discovery の取得に application-level span を張るための factory です。</span>
+    <span class="comment">// nil の場合は span を張りません。</span>
+    TracerFactory <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>
 }
 </pre>
 
@@ -304,7 +307,7 @@ required_downstreams へ供給することで、起動失敗になることを�
 		
 			
 			
-			<h2 id="KeyResolver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=4859:5043#L76">KeyResolver</a>
+			<h2 id="KeyResolver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=5421:5605#L84">KeyResolver</a>
 				<a class="permalink" href="#KeyResolver">¶</a>
 				
 				
@@ -332,7 +335,7 @@ required_downstreams へ供給することで、起動失敗になることを�
 		
 			
 			
-			<h2 id="Params">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=2447:3356#L37">Params</a>
+			<h2 id="Params">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=2806:3715#L42">Params</a>
 				<a class="permalink" href="#Params">¶</a>
 				
 				

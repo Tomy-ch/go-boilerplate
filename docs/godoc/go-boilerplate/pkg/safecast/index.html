@@ -106,6 +106,15 @@
 			
 			
 				
+				<dd><a href="#IntPtrToInt32Ptr">func IntPtrToInt32Ptr(x *int) (*int32, error)</a></dd>
+			
+				
+				<dd><a href="#IntToInt16">func IntToInt16(x int) (int16, error)</a></dd>
+			
+				
+				<dd><a href="#IntToInt32">func IntToInt32(x int) (int32, error)</a></dd>
+			
+				
 				<dd><a href="#UintToInt">func UintToInt(x uint) (int, error)</a></dd>
 			
 			
@@ -144,7 +153,52 @@
 		
 			
 			
-			<h2 id="UintToInt">func <a href="../../../src/go-boilerplate/pkg/safecast/toint.go.html?s=287:322#L3">UintToInt</a>
+			<h2 id="IntPtrToInt32Ptr">func <a href="../../../src/go-boilerplate/pkg/safecast/toint.go.html?s=1401:1446#L31">IntPtrToInt32Ptr</a>
+				<a class="permalink" href="#IntPtrToInt32Ptr">¶</a>
+				
+				
+			</h2>
+			<pre>func IntPtrToInt32Ptr(x *<a href="../../../builtin/#int">int</a>) (*<a href="../../../builtin/#int32">int32</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>IntPtrToInt32Ptr は、任意指定の*intを*int32に安全に変換します。
+nil は変換対象なしとして nil を返し、int32 の範囲外の場合はエラーを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IntToInt16">func <a href="../../../src/go-boilerplate/pkg/safecast/toint.go.html?s=969:1006#L22">IntToInt16</a>
+				<a class="permalink" href="#IntToInt16">¶</a>
+				
+				
+			</h2>
+			<pre>func IntToInt16(x <a href="../../../builtin/#int">int</a>) (<a href="../../../builtin/#int16">int16</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>IntToInt16 は、intをint16に安全に変換します。
+int16 の範囲外の場合はエラーを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IntToInt32">func <a href="../../../src/go-boilerplate/pkg/safecast/toint.go.html?s=611:648#L13">IntToInt32</a>
+				<a class="permalink" href="#IntToInt32">¶</a>
+				
+				
+			</h2>
+			<pre>func IntToInt32(x <a href="../../../builtin/#int">int</a>) (<a href="../../../builtin/#int32">int32</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>IntToInt32 は、intをint32に安全に変換します。
+int32 の範囲外の場合はエラーを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="UintToInt">func <a href="../../../src/go-boilerplate/pkg/safecast/toint.go.html?s=287:322#L3">UintToInt</a>
 				<a class="permalink" href="#UintToInt">¶</a>
 				
 				

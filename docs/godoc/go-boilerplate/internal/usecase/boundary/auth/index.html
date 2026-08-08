@@ -141,7 +141,7 @@
 					<dd>    <a href="#Authn.UserID">func (a *Authn) UserID() (uuid.UUID, error)</a></dd>
 				
 					
-					<dd>    <a href="#Authn.WithUserID">func (a *Authn) WithUserID(userID uuid.UUID) *Authn</a></dd>
+					<dd>    <a href="#Authn.WithUserID">func (a *Authn) WithUserID(userID uuid.UUID) (*Authn, error)</a></dd>
 				
 			
 				
@@ -215,6 +215,8 @@
     <span id="ErrUnauthenticatedSubjectMissing">ErrUnauthenticatedSubjectMissing</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;unauthenticated: subject missing&#34;)
     <span class="comment">// ErrUserIDUnresolved は、内部ユーザー ID が未解決の場合に返す認証エラーです。</span>
     <span id="ErrUserIDUnresolved">ErrUserIDUnresolved</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;unauthenticated: user id unresolved&#34;)
+    <span class="comment">// ErrUserIDZero は、ゼロ値の UUID で内部ユーザー ID を解決しようとした場合に返す認証エラーです。</span>
+    <span id="ErrUserIDZero">ErrUserIDZero</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;unauthenticated: user id is zero&#34;)
     <span class="comment">// ErrTokenMissing は、トークンが指定されていない場合に返す認証エラーです。</span>
     <span id="ErrTokenMissing">ErrTokenMissing</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;unauthenticated: token missing&#34;)
     <span class="comment">// ErrIdentityNotFound は、issuer + subject に対応する内部ユーザーが存在しない場合に返す認証エラーです。</span>
@@ -254,14 +256,14 @@
 		
 			
 			
-			<h2 id="Authn">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=493:824#L8">Authn</a>
+			<h2 id="Authn">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=567:898#L8">Authn</a>
 				<a class="permalink" href="#Authn">¶</a>
 				
 				
 			</h2>
 			<p>Authn は、認証結果を表します。
 中核は認証主体 Subject・発行者 Issuer・内部ユーザー UserID の三点です。
-UserID は WithUserID で設定されるまで未解決（nil）です。
+UserID は WithUserID で設定されるまで未解決（nil）で、解決済みの UserID はゼロ値ではないことが保証されます。
 
 			</p><pre>type Authn struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -278,7 +280,7 @@ UserID は WithUserID で設定されるまで未解決（nil）です。
 
 			
 				
-				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1058:1160#L18">New</a>
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1132:1234#L18">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -298,7 +300,7 @@ subject が空の場合は ErrUnauthenticatedSubjectMissing を返します。�
 
 			
 				
-				</p><h3 id="Authn.Claims">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2442:2481#L74">Claims</a>
+				</p><h3 id="Authn.Claims">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2651:2690#L79">Claims</a>
 					<a class="permalink" href="#Authn.Claims">¶</a>
 					
 					
@@ -311,7 +313,7 @@ subject が空の場合は ErrUnauthenticatedSubjectMissing を返します。�
 				
 			
 				
-				</p><h3 id="Authn.HasUserID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1837:1869#L50">HasUserID</a>
+				</p><h3 id="Authn.HasUserID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2046:2078#L55">HasUserID</a>
 					<a class="permalink" href="#Authn.HasUserID">¶</a>
 					
 					
@@ -324,7 +326,7 @@ subject が空の場合は ErrUnauthenticatedSubjectMissing を返します。�
 				
 			
 				
-				</p><h3 id="Authn.Issuer">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2218:2249#L64">Issuer</a>
+				</p><h3 id="Authn.Issuer">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2427:2458#L69">Issuer</a>
 					<a class="permalink" href="#Authn.Issuer">¶</a>
 					
 					
@@ -337,7 +339,7 @@ subject が空の場合は ErrUnauthenticatedSubjectMissing を返します。�
 				
 			
 				
-				</p><h3 id="Authn.Scopes">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2322:2355#L69">Scopes</a>
+				</p><h3 id="Authn.Scopes">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2531:2564#L74">Scopes</a>
 					<a class="permalink" href="#Authn.Scopes">¶</a>
 					
 					
@@ -350,7 +352,7 @@ subject が空の場合は ErrUnauthenticatedSubjectMissing を返します。�
 				
 			
 				
-				</p><h3 id="Authn.Subject">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1706:1738#L45">Subject</a>
+				</p><h3 id="Authn.Subject">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1915:1947#L50">Subject</a>
 					<a class="permalink" href="#Authn.Subject">¶</a>
 					
 					
@@ -363,7 +365,7 @@ subject が空の場合は ErrUnauthenticatedSubjectMissing を返します。�
 				
 			
 				
-				</p><h3 id="Authn.UserID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2026:2069#L56">UserID</a>
+				</p><h3 id="Authn.UserID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=2235:2278#L61">UserID</a>
 					<a class="permalink" href="#Authn.UserID">¶</a>
 					
 					
@@ -377,13 +379,14 @@ subject が空の場合は ErrUnauthenticatedSubjectMissing を返します。�
 				
 			
 				
-				</p><h3 id="Authn.WithUserID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1546:1597#L38">WithUserID</a>
+				</p><h3 id="Authn.WithUserID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1688:1748#L39">WithUserID</a>
 					<a class="permalink" href="#Authn.WithUserID">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#Authn">Authn</a>) WithUserID(userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) *<a href="#Authn">Authn</a></pre>
+				<pre>func (a *<a href="#Authn">Authn</a>) WithUserID(userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Authn">Authn</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>WithUserID は、内部ユーザー ID を解決した複製を返します（元の Authn は変更しません）。
+userID がゼロ値の場合は ErrUserIDZero を返します。
 
 				
 				

@@ -100,6 +100,24 @@ Infrastructure 層では以下を行ってはいけません。
 - context を必ず伝搬する
 - 外部エラーは必ず正規化する
 
+### doc コメントに技術的詳細を書いてよい
+
+技術的詳細の隠蔽（*設計原則まとめ § 1*）が意味するのは、外側の層がそれを**見ない**ことであって、この層が
+それを**書き残さない**ことではない。Repository / QueryService / CommandService の doc コメントは SQL を
+保守する人間が読むので、保証を担っている仕組みを名指ししてよい — 取得するロック（`FOR UPDATE OF p`）、
+所有権を担保する述語、ページネーションを安定させる keyset の順序、N+1 を避ける固定クエリ数など。
+
+境界は方向性を持つ — この詳細は**ここに留める**。Usecase や Domain の doc コメントがこれを繰り返していれば
+それは層漏れである。[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
+implementation を参照。
+
+この層で警戒すべきはその裏返しである。内側のインターフェイスが保証をアプリケーション語彙で述べている以上、
+その言い換えに留まる実装側 doc は**何も足していない** — 2 箇所で腐る複製でしかない。したがって実装側 doc は
+**機構を名指しする**（`FindByID` は `LockByID` と異なりロックを取らずに読む、`SearchByKeyword` は `active` の
+値で 3 つの固定クエリへ振り分ける、`Update` は影響行数 0 を NotFound へ正規化する、など）か、**省略する**かの
+どちらかである。Repository 型は非 export なので `revive` の `exported` ルールは doc を要求しない。
+インターフェイスの言い換えだけが、常に誤りである。
+
 ## ディレクトリ構成
 
 ```mermaid
@@ -108,6 +126,7 @@ flowchart TB
     Auth["auth/"]
     Authz["authz/"]
     HTTP["httpclient/"]
+    ObjStorage["objectstorage/"]
     Pub["publisher/"]
     Queue["queue/"]
     RDB["rdb/"]
@@ -117,6 +136,7 @@ flowchart TB
     Root --> Auth
     Root --> Authz
     Root --> HTTP
+    Root --> ObjStorage
     Root --> Pub
     Root --> Queue
     Root --> RDB
@@ -131,6 +151,7 @@ flowchart TB
 |`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
 |`authz/`|認可基盤（Authorizer 実装。本番以外はデフォルトの `allowall`）|Usecase boundary|[README](authz/README.ja.md)|
 |`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|—|
+|`objectstorage/`|オブジェクトストレージ adapter（`boundary.Storage` 実装。endpoint / 資格情報の差し替えで Garage / MinIO / 本番 S3 に接続）|Usecase boundary|[README](objectstorage/README.md)|
 |`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|—|
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
@@ -138,6 +159,10 @@ flowchart TB
 |`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|—|
 
 ## テスト戦略
+
+以下の項目が統治するのは、基盤が **DB そのもの** であるサブシステムです。別の基盤の上に build されたサブシステムや、実 I/O を一切持たないサブシステムは、自身のパッケージ README で *Test Strategy* を宣言します。そうしたパッケージから本節へ walk して到達することは、そちらで閉じるべきドキュメントギャップであって、実 DB を要求してよい根拠ではありません。非 DB サブシステムは現在すべて自前の節を宣言済みであり、本節へ到達するのは本節が書かれた対象のサブシステムだけです。新しい基盤の上にサブシステムを追加する場合も、既定で本項目を継承するのではなく自前の節を宣言することが期待されます。
+
+より下位から本節へ到達する唯一のパッケージは `auth/useridentity` で、RDB driver を通じて `user_identities` を読みます。`auth/` 自身の節がこれを名指ししているため、walk して初めて分かるのではなく、両方向から carve-out が見える状態になっています。
 
 - 実DBを用いた Integration Test
 - トランザクション rollback による状態隔離

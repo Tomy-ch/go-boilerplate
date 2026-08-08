@@ -117,15 +117,15 @@
 <span id="L60" class="ln">    60  </span>
 <span id="L61" class="ln">    61  </span>		t.Run(&#34;空文字は不許可&#34;, func(t *testing.T) {
 <span id="L62" class="ln">    62  </span>			t.Parallel()
-<span id="L63" class="ln">    63  </span>			require.Error(t, validateTargetType(&#34;&#34;))
+<span id="L63" class="ln">    63  </span>			require.ErrorIs(t, validateTargetType(&#34;&#34;), errInvalidTargetType)
 <span id="L64" class="ln">    64  </span>		})
 <span id="L65" class="ln">    65  </span>		t.Run(&#34;カレントディレクトリ指定は不許可&#34;, func(t *testing.T) {
 <span id="L66" class="ln">    66  </span>			t.Parallel()
-<span id="L67" class="ln">    67  </span>			require.Error(t, validateTargetType(&#34;.&#34;))
+<span id="L67" class="ln">    67  </span>			require.ErrorIs(t, validateTargetType(&#34;.&#34;), errInvalidTargetType)
 <span id="L68" class="ln">    68  </span>		})
 <span id="L69" class="ln">    69  </span>		t.Run(&#34;想定外のタイプは不許可&#34;, func(t *testing.T) {
 <span id="L70" class="ln">    70  </span>			t.Parallel()
-<span id="L71" class="ln">    71  </span>			require.Error(t, validateTargetType(&#34;unknown&#34;))
+<span id="L71" class="ln">    71  </span>			require.ErrorIs(t, validateTargetType(&#34;unknown&#34;), errInvalidTargetType)
 <span id="L72" class="ln">    72  </span>		})
 <span id="L73" class="ln">    73  </span>	})
 <span id="L74" class="ln">    74  </span>}
@@ -381,7 +381,7 @@
 <span id="L324" class="ln">   324  </span>		t.Run(&#34;genRootDirの外を指すパスはエラー&#34;, func(t *testing.T) {
 <span id="L325" class="ln">   325  </span>			t.Parallel()
 <span id="L326" class="ln">   326  </span>			err := g.ensureUnderDir(filepath.Join(testWorkDir, &#34;database&#34;, &#34;outside.sql&#34;))
-<span id="L327" class="ln">   327  </span>			require.Error(t, err)
+<span id="L327" class="ln">   327  </span>			require.ErrorIs(t, err, errPathOutsideBaseDir)
 <span id="L328" class="ln">   328  </span>		})
 <span id="L329" class="ln">   329  </span>	})
 <span id="L330" class="ln">   330  </span>}

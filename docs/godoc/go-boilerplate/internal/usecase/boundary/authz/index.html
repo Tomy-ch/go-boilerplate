@@ -175,7 +175,7 @@
 		
 			
 			
-			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=481:499#L3">Action</a>
+			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=1800:1818#L21">Action</a>
 				<a class="permalink" href="#Action">¶</a>
 				
 				
@@ -193,6 +193,24 @@
     <span id="ActionUserUpdate">ActionUserUpdate</span> <a href="#Action">Action</a> = &#34;user:update&#34;
     <span class="comment">// ActionUserDelete は、ユーザー削除操作を表します。</span>
     <span id="ActionUserDelete">ActionUserDelete</span> <a href="#Action">Action</a> = &#34;user:delete&#34;
+    <span class="comment">// ActionProductImageUpload は、商品画像のアップロード操作（admin）を表します。</span>
+    <span id="ActionProductImageUpload">ActionProductImageUpload</span> <a href="#Action">Action</a> = &#34;product:image:upload&#34;
+    <span class="comment">// ActionProductCreate は、商品の作成操作（admin）を表します。</span>
+    <span id="ActionProductCreate">ActionProductCreate</span> <a href="#Action">Action</a> = &#34;product:create&#34;
+    <span class="comment">// ActionProductUpdate は、商品の更新操作（admin）を表します。</span>
+    <span id="ActionProductUpdate">ActionProductUpdate</span> <a href="#Action">Action</a> = &#34;product:update&#34;
+    <span class="comment">// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。</span>
+    <span id="ActionProductStockUpdate">ActionProductStockUpdate</span> <a href="#Action">Action</a> = &#34;product:stock:update&#34;
+    <span class="comment">// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。</span>
+    <span id="ActionProductListLowStock">ActionProductListLowStock</span> <a href="#Action">Action</a> = &#34;product:low-stock:list&#34;
+    <span class="comment">// ActionPurchaseListShippable は、発送待ち購入一覧の参照操作（admin）を表します。</span>
+    <span id="ActionPurchaseListShippable">ActionPurchaseListShippable</span> <a href="#Action">Action</a> = &#34;purchase:shippable:list&#34;
+    <span class="comment">// ActionPurchaseShip は、購入の発送操作（admin）を表します。</span>
+    <span id="ActionPurchaseShip">ActionPurchaseShip</span> <a href="#Action">Action</a> = &#34;purchase:ship&#34;
+    <span class="comment">// ActionPurchaseDeliver は、購入の配達完了操作（admin）を表します。</span>
+    <span id="ActionPurchaseDeliver">ActionPurchaseDeliver</span> <a href="#Action">Action</a> = &#34;purchase:deliver&#34;
+    <span class="comment">// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。</span>
+    <span id="ActionDashboardRead">ActionDashboardRead</span> <a href="#Action">Action</a> = &#34;dashboard:read&#34;
 )</pre>
 			
 
@@ -206,7 +224,7 @@
 
 			
 				
-				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=561:592#L6">String</a>
+				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=1880:1911#L24">String</a>
 					<a class="permalink" href="#Action.String">¶</a>
 					
 					

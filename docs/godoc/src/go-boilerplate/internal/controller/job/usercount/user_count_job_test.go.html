@@ -258,6 +258,98 @@
 <span id="L201" class="ln">   201  </span>	})
 <span id="L202" class="ln">   202  </span>}
 <span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span>func Test_parseFilter(t *testing.T) {
+<span id="L205" class="ln">   205  </span>	t.Parallel()
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L208" class="ln">   208  </span>		t.Parallel()
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>		t.Run(&#34;フラグ未指定の場合、nil（全件）を返す&#34;, func(t *testing.T) {
+<span id="L211" class="ln">   211  </span>			t.Parallel()
+<span id="L212" class="ln">   212  </span>			active, err := parseFilter([]string{})
+<span id="L213" class="ln">   213  </span>			require.NoError(t, err)
+<span id="L214" class="ln">   214  </span>			assert.Nil(t, active)
+<span id="L215" class="ln">   215  </span>		})
+<span id="L216" class="ln">   216  </span>
+<span id="L217" class="ln">   217  </span>		t.Run(&#34;--active-only指定の場合、trueを返す&#34;, func(t *testing.T) {
+<span id="L218" class="ln">   218  </span>			t.Parallel()
+<span id="L219" class="ln">   219  </span>			active, err := parseFilter([]string{&#34;--active-only&#34;})
+<span id="L220" class="ln">   220  </span>			require.NoError(t, err)
+<span id="L221" class="ln">   221  </span>			require.NotNil(t, active)
+<span id="L222" class="ln">   222  </span>			assert.True(t, *active)
+<span id="L223" class="ln">   223  </span>		})
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span>		t.Run(&#34;--inactive-only指定の場合、falseを返す&#34;, func(t *testing.T) {
+<span id="L226" class="ln">   226  </span>			t.Parallel()
+<span id="L227" class="ln">   227  </span>			active, err := parseFilter([]string{&#34;--inactive-only&#34;})
+<span id="L228" class="ln">   228  </span>			require.NoError(t, err)
+<span id="L229" class="ln">   229  </span>			require.NotNil(t, active)
+<span id="L230" class="ln">   230  </span>			assert.False(t, *active)
+<span id="L231" class="ln">   231  </span>		})
+<span id="L232" class="ln">   232  </span>	})
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L235" class="ln">   235  </span>		t.Parallel()
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>		t.Run(&#34;同一フラグ（--active-only）重複の場合、duplicateエラーを返す&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>			t.Parallel()
+<span id="L239" class="ln">   239  </span>			active, err := parseFilter([]string{&#34;--active-only&#34;, &#34;--active-only&#34;})
+<span id="L240" class="ln">   240  </span>			require.ErrorIs(t, err, errDuplicateFlag)
+<span id="L241" class="ln">   241  </span>			require.ErrorContains(t, err, activeOnlyFlag)
+<span id="L242" class="ln">   242  </span>			assert.Nil(t, active)
+<span id="L243" class="ln">   243  </span>		})
+<span id="L244" class="ln">   244  </span>
+<span id="L245" class="ln">   245  </span>		t.Run(&#34;同一フラグ（--inactive-only）重複の場合、duplicateエラーを返す&#34;, func(t *testing.T) {
+<span id="L246" class="ln">   246  </span>			t.Parallel()
+<span id="L247" class="ln">   247  </span>			active, err := parseFilter([]string{&#34;--inactive-only&#34;, &#34;--inactive-only&#34;})
+<span id="L248" class="ln">   248  </span>			require.ErrorIs(t, err, errDuplicateFlag)
+<span id="L249" class="ln">   249  </span>			require.ErrorContains(t, err, inactiveOnlyFlag)
+<span id="L250" class="ln">   250  </span>			assert.Nil(t, active)
+<span id="L251" class="ln">   251  </span>		})
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>		t.Run(&#34;両フラグ併用の場合、conflictingエラーを返す&#34;, func(t *testing.T) {
+<span id="L254" class="ln">   254  </span>			t.Parallel()
+<span id="L255" class="ln">   255  </span>			active, err := parseFilter([]string{&#34;--active-only&#34;, &#34;--inactive-only&#34;})
+<span id="L256" class="ln">   256  </span>			require.ErrorIs(t, err, errConflictingFilterFlags)
+<span id="L257" class="ln">   257  </span>			assert.Nil(t, active)
+<span id="L258" class="ln">   258  </span>		})
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>		t.Run(&#34;未知フラグの場合、unknownエラーを返す&#34;, func(t *testing.T) {
+<span id="L261" class="ln">   261  </span>			t.Parallel()
+<span id="L262" class="ln">   262  </span>			active, err := parseFilter([]string{&#34;--nope&#34;})
+<span id="L263" class="ln">   263  </span>			require.ErrorIs(t, err, errUnknownFlag)
+<span id="L264" class="ln">   264  </span>			require.ErrorContains(t, err, &#34;--nope&#34;)
+<span id="L265" class="ln">   265  </span>			assert.Nil(t, active)
+<span id="L266" class="ln">   266  </span>		})
+<span id="L267" class="ln">   267  </span>	})
+<span id="L268" class="ln">   268  </span>}
+<span id="L269" class="ln">   269  </span>
+<span id="L270" class="ln">   270  </span>func Test_filterLabel(t *testing.T) {
+<span id="L271" class="ln">   271  </span>	t.Parallel()
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>	active := true
+<span id="L274" class="ln">   274  </span>	inactive := false
+<span id="L275" class="ln">   275  </span>
+<span id="L276" class="ln">   276  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L277" class="ln">   277  </span>		t.Parallel()
+<span id="L278" class="ln">   278  </span>
+<span id="L279" class="ln">   279  </span>		t.Run(&#34;nilの場合、allを返す&#34;, func(t *testing.T) {
+<span id="L280" class="ln">   280  </span>			t.Parallel()
+<span id="L281" class="ln">   281  </span>			assert.Equal(t, &#34;all&#34;, filterLabel(nil))
+<span id="L282" class="ln">   282  </span>		})
+<span id="L283" class="ln">   283  </span>
+<span id="L284" class="ln">   284  </span>		t.Run(&#34;trueの場合、activeを返す&#34;, func(t *testing.T) {
+<span id="L285" class="ln">   285  </span>			t.Parallel()
+<span id="L286" class="ln">   286  </span>			assert.Equal(t, &#34;active&#34;, filterLabel(&amp;active))
+<span id="L287" class="ln">   287  </span>		})
+<span id="L288" class="ln">   288  </span>
+<span id="L289" class="ln">   289  </span>		t.Run(&#34;falseの場合、inactiveを返す&#34;, func(t *testing.T) {
+<span id="L290" class="ln">   290  </span>			t.Parallel()
+<span id="L291" class="ln">   291  </span>			assert.Equal(t, &#34;inactive&#34;, filterLabel(&amp;inactive))
+<span id="L292" class="ln">   292  </span>		})
+<span id="L293" class="ln">   293  </span>	})
+<span id="L294" class="ln">   294  </span>}
+<span id="L295" class="ln">   295  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/job/usercount/user_count_job_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

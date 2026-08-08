@@ -26,6 +26,7 @@
 - **アプリケーションジョブ** — [docs/design/job.md](docs/design/job.md)
 - **REST の信頼性**（タイムアウト / ボディ上限 / deadline budget / tx リトライ） — [docs/design/rest.md](docs/design/rest.md)
 - **可観測性**（OpenTelemetry の traces / metrics / logs・config 駆動） — [docs/design/observability.md](docs/design/observability.md)
+- **オブジェクトストレージ**（S3 互換アダプタの背後にある中立な境界。ローカルコンテナ・シード投入・匿名 read の公開配信を同梱） — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **自己完結の単一バイナリ**（env とマイグレーションを埋め込み → 単一イメージ） — [docker/README.md](docker/README.md)
 
 ## 前提条件
@@ -81,7 +82,9 @@ make db-init
 > （Go・`golangci-lint`・`sqlc`・`oapi-codegen`・`mockgen`・`lefthook` …）は [`mise.toml`](mise.toml)
 > に固定され、Dockerfile・ローカルインストーラ・CI はいずれも同じファイルから `mise install <tool>`
 > で導入します。そのためローカルと CI が一致します。`make sync-versions` がこれを `go.mod` と
-> Dockerfile の `FROM` 行へ反映します。
+> Dockerfile の `FROM` 行へ反映します。PyPI で公開されているツールだけは例外で、
+> [`python/`](python/README.ja.md) で宣言しハッシュ付きで固定します。バージョンの pin だけでは
+> 依存が固定されないためです。
 
 ## API の例
 
@@ -164,6 +167,8 @@ Infra --> External["External Systems"]
 - [env/README.md](env/README.md) — 環境変数（環境別にバイナリ埋め込み）
 - [.makefiles/README.md](.makefiles/README.md) — すべての `make` ターゲット
 - [docker/README.md](docker/README.md) — イメージ・compose プロファイル・単一コンテナ運用
+- [scripts/README.md](scripts/README.md) — ユーティリティスクリプトとリポジトリのゲート（コード生成・ドキュメント・バージョニング・供給網ピン・セットアップ）
+- [docs-viewer/README.md](docs-viewer/README.md) — ドキュメントポータルのフロントエンド（生成された `docs/portal/docs.json` を描画）
 
 ## ディレクトリ構成
 
@@ -180,9 +185,13 @@ Infra --> External["External Systems"]
 ├── pkg/            # フレームワーク非依存の共有ユーティリティ
 ├── openapi/        # API 契約
 ├── database/       # マイグレーション & SQL（sqlc）
+├── storage/        # バケットへ投入するオブジェクト（ディレクトリ構造 = キー構造）
 ├── env/            # 環境別の環境変数（バイナリへ埋め込み）
 ├── docker/
 ├── docs/
+├── docs-viewer/    # ドキュメントポータルのフロントエンド（ビルド成果物は docs/portal/ にコミットされる）
+├── scripts/        # ユーティリティスクリプトとリポジトリのゲート
+├── .github/        # ワークフロー・複合アクション・リポジトリ設定
 ├── .makefiles/     # make ターゲットレジストリ
 └── makefile
 ```
@@ -196,6 +205,7 @@ Infra --> External["External Systems"]
 | 依存性注入 | uber/fx |
 | API 定義 | OpenAPI + oapi-codegen |
 | データベース | PostgreSQL |
+| オブジェクトストレージ | S3 互換（AWS SDK v2・ローカルは Garage） |
 | クエリ | sqlc |
 | マイグレーション | golang-migrate |
 | ロギング | zap（otelzap 経由で OpenTelemetry へ） |
@@ -212,6 +222,7 @@ Infra --> External["External Systems"]
 
 ## 設計思想
 
+<!-- boilerplate-only:begin -->
 ### なぜ存在するのか
 
 バックエンド開発では、アーキテクチャ・ライブラリ選定・ディレクトリ構成・開発ワークフローを毎回
@@ -219,6 +230,7 @@ Infra --> External["External Systems"]
 安全かつ迅速に着手できるようにします。その価値は特定ライブラリではなく、**広く使われる OSS を
 一貫した・置換可能なアーキテクチャへ統合した点**にあります。
 
+<!-- boilerplate-only:end -->
 ### AI 支援開発
 
 制約（レイヤの強制・生成コードの分離・リリースベースのブランチ・OpenAPI ファースト・ドメイン純粋性）は
@@ -230,6 +242,18 @@ Infra --> External["External Systems"]
 新規バックエンドプロダクト、PoC 〜 初期スケール期、厳格なレイヤードのチーム開発、強いドメインルールを
 持つシステムに向け、**モジュラモノリス**として設計しています。単一ファイルのマイクロ API・アーキテクチャの
 無いプロトタイプ・超低レイテンシシステム・強いマイクロサービス分割にはあまり向きません。
+
+### 守備範囲外: 開発者マシンの衛生
+
+ここでの供給網対策はリポジトリで止まります。依存の cooldown 窓、pin した Actions とベースイメージ、
+SBOM と脆弱性スキャンまでです。**開発者の**マシンで動くもの — グローバルに入れたパッケージ、エディタや
+ブラウザの拡張、エージェント / MCP の設定 — はプロジェクトテンプレートの手が届く範囲になく、それらの
+マシンを管理する主体の領域です。
+
+「advisory がこのパッケージとバージョンを名指した。今どのマシンが一致するか」に答える必要があるなら、
+[`perplexityai/bumblebee`](https://github.com/perplexityai/bumblebee) がまさにその問いのために作られた
+read-only のエンドポイントスキャナです。依存としてではなく参照として挙げています。ここでは何も導入せず、
+呼び出さず、必要ともしません。なお、何かをフラグさせるには別途 exposure catalog が要ります。
 
 ### ベンダー中立性と拡張性
 
@@ -246,8 +270,10 @@ Infra --> External["External Systems"]
 基準に選定しています。メンテナは依存更新・セキュリティ修正・アーキテクチャ改善を提供する場合が
 ありますが、Issue 応答期限・バグ修正の保証・長期メンテナンスの確約は**保証しません**。
 
+<!-- boilerplate-only:begin -->
 今後のリリース予定: フロントエンド / インフラ / 可観測性の各ボイラープレート。
 
+<!-- boilerplate-only:end -->
 ## ライセンス
 
 本プロジェクト自身のソースコードは **MIT License** で公開しています — [LICENSE](LICENSE) を参照してください。

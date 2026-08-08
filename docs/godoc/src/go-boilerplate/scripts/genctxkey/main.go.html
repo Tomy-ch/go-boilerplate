@@ -60,37 +60,59 @@
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;flag&#34;
 <span id="L5" class="ln">     5  </span>	&#34;log&#34;
-<span id="L6" class="ln">     6  </span>)
+<span id="L6" class="ln">     6  </span>	&#34;os&#34;
 <span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>func main() {
-<span id="L9" class="ln">     9  </span>	var name string
-<span id="L10" class="ln">    10  </span>	var typ string
-<span id="L11" class="ln">    11  </span>	var importPath string
-<span id="L12" class="ln">    12  </span>	var importAlias string
-<span id="L13" class="ln">    13  </span>	var out string
-<span id="L14" class="ln">    14  </span>	var testValue string
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>	flag.StringVar(&amp;name, &#34;name&#34;, &#34;&#34;, &#34;context key name&#34;)
-<span id="L17" class="ln">    17  </span>	flag.StringVar(&amp;typ, &#34;type&#34;, &#34;&#34;, &#34;value type&#34;)
-<span id="L18" class="ln">    18  </span>	flag.StringVar(&amp;importPath, &#34;import&#34;, &#34;&#34;, &#34;import path (optional)&#34;)
-<span id="L19" class="ln">    19  </span>	flag.StringVar(&amp;importAlias, &#34;alias&#34;, &#34;&#34;, &#34;import alias (optional)&#34;)
-<span id="L20" class="ln">    20  </span>	flag.StringVar(&amp;out, &#34;out&#34;, &#34;.&#34;, &#34;output directory&#34;)
-<span id="L21" class="ln">    21  </span>	flag.StringVar(&amp;testValue, &#34;test-value&#34;, &#34;&#34;, &#34;test success value expression for non-primitive types (optional)&#34;)
-<span id="L22" class="ln">    22  </span>	flag.Parse()
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>	if name == &#34;&#34; {
-<span id="L25" class="ln">    25  </span>		log.Fatal(&#34;name is required&#34;)
-<span id="L26" class="ln">    26  </span>	}
-<span id="L27" class="ln">    27  </span>
-<span id="L28" class="ln">    28  </span>	if typ == &#34;&#34; {
-<span id="L29" class="ln">    29  </span>		log.Fatal(&#34;type is required&#34;)
-<span id="L30" class="ln">    30  </span>	}
-<span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span>	if err := GenerateCtxKey(name, typ, importPath, importAlias, out, testValue); err != nil {
-<span id="L33" class="ln">    33  </span>		log.Fatal(err)
-<span id="L34" class="ln">    34  </span>	}
-<span id="L35" class="ln">    35  </span>}
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>var (
+<span id="L12" class="ln">    12  </span>	<span class="comment">// errNameRequired は、-name が指定されなかったことを表す。</span>
+<span id="L13" class="ln">    13  </span>	errNameRequired = xerrors.New(&#34;name is required&#34;)
+<span id="L14" class="ln">    14  </span>	<span class="comment">// errTypeRequired は、-type が指定されなかったことを表す。</span>
+<span id="L15" class="ln">    15  </span>	errTypeRequired = xerrors.New(&#34;type is required&#34;)
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。</span>
+<span id="L19" class="ln">    19  </span><span class="comment">// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない</span>
+<span id="L20" class="ln">    20  </span><span class="comment">// コードがそのぶん増える。</span>
+<span id="L21" class="ln">    21  </span>func main() {
+<span id="L22" class="ln">    22  </span>	if err := run(os.Args[1:]); err != nil {
+<span id="L23" class="ln">    23  </span>		log.Fatal(err)
+<span id="L24" class="ln">    24  </span>	}
+<span id="L25" class="ln">    25  </span>}
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// run は、フラグを解釈して context key の生成を実行します。</span>
+<span id="L28" class="ln">    28  </span>func run(args []string) error {
+<span id="L29" class="ln">    29  </span>	fs := flag.NewFlagSet(&#34;genctxkey&#34;, flag.ContinueOnError)
+<span id="L30" class="ln">    30  </span>	name := fs.String(&#34;name&#34;, &#34;&#34;, &#34;context key name&#34;)
+<span id="L31" class="ln">    31  </span>	typ := fs.String(&#34;type&#34;, &#34;&#34;, &#34;value type&#34;)
+<span id="L32" class="ln">    32  </span>	importPath := fs.String(&#34;import&#34;, &#34;&#34;, &#34;import path (optional)&#34;)
+<span id="L33" class="ln">    33  </span>	importAlias := fs.String(&#34;alias&#34;, &#34;&#34;, &#34;import alias (optional)&#34;)
+<span id="L34" class="ln">    34  </span>	out := fs.String(&#34;out&#34;, &#34;.&#34;, &#34;output directory&#34;)
+<span id="L35" class="ln">    35  </span>	testValue := fs.String(&#34;test-value&#34;, &#34;&#34;, &#34;test success value expression for non-primitive types (optional)&#34;)
 <span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>	if err := fs.Parse(args); err != nil {
+<span id="L38" class="ln">    38  </span>		<span class="comment">// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。</span>
+<span id="L39" class="ln">    39  </span>		if xerrors.Is(err, flag.ErrHelp) {
+<span id="L40" class="ln">    40  </span>			return nil
+<span id="L41" class="ln">    41  </span>		}
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>		return xerrors.Wrap(err, &#34;failed to parse flags&#34;)
+<span id="L44" class="ln">    44  </span>	}
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>	<span class="comment">// 生成器も未指定を拒むが、そちらは name / type をまとめた 1 つのエラーになる。</span>
+<span id="L47" class="ln">    47  </span>	<span class="comment">// どちらのフラグが足りないかを呼び出し側へ返すため、ここで個別に見る。</span>
+<span id="L48" class="ln">    48  </span>	if *name == &#34;&#34; {
+<span id="L49" class="ln">    49  </span>		return errNameRequired
+<span id="L50" class="ln">    50  </span>	}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>	if *typ == &#34;&#34; {
+<span id="L53" class="ln">    53  </span>		return errTypeRequired
+<span id="L54" class="ln">    54  </span>	}
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>	return GenerateCtxKey(*name, *typ, *importPath, *importAlias, *out, *testValue)
+<span id="L57" class="ln">    57  </span>}
+<span id="L58" class="ln">    58  </span>
 </pre><p><a href="../../../../src/go-boilerplate/scripts/genctxkey/main.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

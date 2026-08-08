@@ -145,12 +145,12 @@ publish adapter（infrastructure 層）の双方が依存する境界です。
 		
 			
 			
-			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/publisher/publisher.go.html?s=671:1166#L6">Message</a>
+			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/publisher/publisher.go.html?s=683:1178#L6">Message</a>
 				<a class="permalink" href="#Message">¶</a>
 				
 				
 			</h2>
-			<p>Message は、publish 先非依存のメッセージ封筒です。outbox 行から構築され、
+			<p>Message は、publish 先非依存のメッセージ封筒です。outbox のエントリから構築され、
 substrate（HTTP 等）へ載せ替える際の中立表現です。net/http 等の型は露出しません。
 
 			</p><pre>type Message struct {
@@ -179,7 +179,7 @@ substrate（HTTP 等）へ載せ替える際の中立表現です。net/http 等
 		
 			
 			
-			<h2 id="Publisher">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/publisher/publisher.go.html?s=1242:1476#L18">Publisher</a>
+			<h2 id="Publisher">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/publisher/publisher.go.html?s=1254:1488#L18">Publisher</a>
 				<a class="permalink" href="#Publisher">¶</a>
 				
 				

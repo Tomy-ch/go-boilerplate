@@ -75,7 +75,7 @@
 <span id="L18" class="ln">    18  </span>
 <span id="L19" class="ln">    19  </span>	if steps &lt; 0 {
 <span id="L20" class="ln">    20  </span>		<span class="comment">// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。</span>
-<span id="L21" class="ln">    21  </span>		err := xerrors.New(fmt.Sprintf(&#34;steps must be zero or positive, got %d&#34;, steps))
+<span id="L21" class="ln">    21  </span>		err := xerrors.Wrap(errNegativeSteps, fmt.Sprintf(&#34;got %d&#34;, steps))
 <span id="L22" class="ln">    22  </span>		logger.Named(&#34;migrateDownRun&#34;).Error(ctx, &#34;invalid steps&#34;, logging.Error(logging.ErrorKey, err))
 <span id="L23" class="ln">    23  </span>		return err
 <span id="L24" class="ln">    24  </span>	}

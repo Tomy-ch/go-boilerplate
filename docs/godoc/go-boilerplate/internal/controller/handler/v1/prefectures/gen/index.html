@@ -135,6 +135,14 @@
 				
 			
 				
+				<dd><a href="#GetPrefectures405JSONResponse">type GetPrefectures405JSONResponse</a></dd>
+				
+				
+					
+					<dd>    <a href="#GetPrefectures405JSONResponse.VisitGetPrefecturesResponse">func (response GetPrefectures405JSONResponse) VisitGetPrefecturesResponse(w http.ResponseWriter) error</a></dd>
+				
+			
+				
 				<dd><a href="#GetPrefectures500JSONResponse">type GetPrefectures500JSONResponse</a></dd>
 				
 				
@@ -171,6 +179,16 @@
 				
 			
 				
+				<dd><a href="#MethodNotAllowed405">type MethodNotAllowed405</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MethodNotAllowed405JSONResponse">type MethodNotAllowed405JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#PrefectureResponse">type PrefectureResponse</a></dd>
 				
 				
@@ -198,7 +216,7 @@
 				
 				
 					
-					<dd>    <a href="#ServerInterfaceWrapper.GetPrefectures">func (w *ServerInterfaceWrapper) GetPrefectures(ctx echo.Context) error</a></dd>
+					<dd>    <a href="#ServerInterfaceWrapper.GetPrefectures">func (w *ServerInterfaceWrapper) GetPrefectures(ctx *echo.Context) error</a></dd>
 				
 			
 				
@@ -254,7 +272,7 @@
 		
 			
 			
-			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=2462:2522#L56">RegisterHandlers</a>
+			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=2491:2551#L56">RegisterHandlers</a>
 				<a class="permalink" href="#RegisterHandlers">¶</a>
 				
 				
@@ -268,7 +286,7 @@
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=2724:2811#L62">RegisterHandlersWithBaseURL</a>
+			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=2753:2840#L62">RegisterHandlersWithBaseURL</a>
 				<a class="permalink" href="#RegisterHandlersWithBaseURL">¶</a>
 				
 				
@@ -283,7 +301,7 @@ paths so the API can be served under a prefix.
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3022:3126#L68">RegisterHandlersWithOptions</a>
+			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3051:3155#L68">RegisterHandlersWithOptions</a>
 				<a class="permalink" href="#RegisterHandlersWithOptions">¶</a>
 				
 				
@@ -299,7 +317,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=1054:1784#L30">EchoRouter</a>
+			</p><h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=1056:1813#L30">EchoRouter</a>
 				<a class="permalink" href="#EchoRouter">¶</a>
 				
 				
@@ -309,15 +327,15 @@ are present on both echo.Echo and echo.Group, since we want to allow using
 either of them for path registration
 
 			</p><pre>type EchoRouter interface {
-    CONNECT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    DELETE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    GET(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    HEAD(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    OPTIONS(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    PATCH(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    POST(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    PUT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    TRACE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
+    CONNECT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    DELETE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    GET(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    HEAD(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    OPTIONS(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    PATCH(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    POST(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    PUT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    TRACE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
 }</pre>
 
 			
@@ -367,7 +385,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetPrefectures200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3572:3626#L89">GetPrefectures200JSONResponse</a>
+			<h2 id="GetPrefectures200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3653:3707#L91">GetPrefectures200JSONResponse</a>
 				<a class="permalink" href="#GetPrefectures200JSONResponse">¶</a>
 				
 				
@@ -387,7 +405,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetPrefectures200JSONResponse.VisitGetPrefecturesResponse">func (GetPrefectures200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3628:3730#L91">VisitGetPrefecturesResponse</a>
+				<h3 id="GetPrefectures200JSONResponse.VisitGetPrefecturesResponse">func (GetPrefectures200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3709:3811#L93">VisitGetPrefecturesResponse</a>
 					<a class="permalink" href="#GetPrefectures200JSONResponse.VisitGetPrefecturesResponse">¶</a>
 					
 					
@@ -401,7 +419,44 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetPrefectures500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3949:4030#L103">GetPrefectures500JSONResponse</a>
+			<h2 id="GetPrefectures405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4030:4108#L105">GetPrefectures405JSONResponse</a>
+				<a class="permalink" href="#GetPrefectures405JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetPrefectures405JSONResponse struct {
+    <a href="#MethodNotAllowed405JSONResponse">MethodNotAllowed405JSONResponse</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GetPrefectures405JSONResponse.VisitGetPrefecturesResponse">func (GetPrefectures405JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4110:4212#L109">VisitGetPrefecturesResponse</a>
+					<a class="permalink" href="#GetPrefectures405JSONResponse.VisitGetPrefecturesResponse">¶</a>
+					
+					
+				</h3>
+				<pre>func (response <a href="#GetPrefectures405JSONResponse">GetPrefectures405JSONResponse</a>) VisitGetPrefecturesResponse(w <a href="../../../../../../../net/http/">http</a>.<a href="../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GetPrefectures500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4431:4512#L121">GetPrefectures500JSONResponse</a>
 				<a class="permalink" href="#GetPrefectures500JSONResponse">¶</a>
 				
 				
@@ -424,7 +479,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetPrefectures500JSONResponse.VisitGetPrefecturesResponse">func (GetPrefectures500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4032:4134#L107">VisitGetPrefecturesResponse</a>
+				<h3 id="GetPrefectures500JSONResponse.VisitGetPrefecturesResponse">func (GetPrefectures500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4514:4616#L125">VisitGetPrefecturesResponse</a>
 					<a class="permalink" href="#GetPrefectures500JSONResponse.VisitGetPrefecturesResponse">¶</a>
 					
 					
@@ -438,7 +493,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetPrefectures503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4353:4433#L119">GetPrefectures503JSONResponse</a>
+			<h2 id="GetPrefectures503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4835:4915#L137">GetPrefectures503JSONResponse</a>
 				<a class="permalink" href="#GetPrefectures503JSONResponse">¶</a>
 				
 				
@@ -461,7 +516,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetPrefectures503JSONResponse.VisitGetPrefecturesResponse">func (GetPrefectures503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4435:4537#L123">VisitGetPrefecturesResponse</a>
+				<h3 id="GetPrefectures503JSONResponse.VisitGetPrefecturesResponse">func (GetPrefectures503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4917:5019#L141">VisitGetPrefecturesResponse</a>
 					<a class="permalink" href="#GetPrefectures503JSONResponse.VisitGetPrefecturesResponse">¶</a>
 					
 					
@@ -475,7 +530,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetPrefecturesRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3420:3463#L82">GetPrefecturesRequestObject</a>
+			<h2 id="GetPrefecturesRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3501:3544#L84">GetPrefecturesRequestObject</a>
 				<a class="permalink" href="#GetPrefecturesRequestObject">¶</a>
 				
 				
@@ -499,7 +554,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetPrefecturesResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3465:3570#L85">GetPrefecturesResponseObject</a>
+			<h2 id="GetPrefecturesResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3546:3651#L87">GetPrefecturesResponseObject</a>
 				<a class="permalink" href="#GetPrefecturesResponseObject">¶</a>
 				
 				
@@ -546,13 +601,58 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3311:3364#L78">InternalServerError500JSONResponse</a>
+			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3340:3393#L78">InternalServerError500JSONResponse</a>
 				<a class="permalink" href="#InternalServerError500JSONResponse">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type InternalServerError500JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/type.gen.go.html?s=1633:1673#L31">MethodNotAllowed405</a>
+				<a class="permalink" href="#MethodNotAllowed405">¶</a>
+				
+				
+			</h2>
+			<p>MethodNotAllowed405 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+
+			</p><pre>type MethodNotAllowed405 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MethodNotAllowed405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3395:3445#L80">MethodNotAllowed405JSONResponse</a>
+				<a class="permalink" href="#MethodNotAllowed405JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type MethodNotAllowed405JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
 
 			
 
@@ -624,7 +724,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=1853:2398#L43">RegisterHandlersOptions</a>
+			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=1882:2427#L43">RegisterHandlersOptions</a>
 				<a class="permalink" href="#RegisterHandlersOptions">¶</a>
 				
 				
@@ -658,7 +758,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=330:471#L7">ServerInterface</a>
+			<h2 id="ServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=330:472#L7">ServerInterface</a>
 				<a class="permalink" href="#ServerInterface">¶</a>
 				
 				
@@ -668,7 +768,7 @@ either of them for path registration
 			</p><pre>type ServerInterface interface {
     <span class="comment">// 都道府県マスタ一覧の取得</span>
     <span class="comment">// (GET /v1/prefectures)</span>
-    GetPrefectures(ctx echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a>
+    GetPrefectures(ctx *echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a>
 }</pre>
 
 			
@@ -681,7 +781,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=5197:5297#L145">NewStrictHandler</a>
+				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=5680:5780#L163">NewStrictHandler</a>
 					<a class="permalink" href="#NewStrictHandler">¶</a>
 					
 					
@@ -696,7 +796,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=537:600#L14">ServerInterfaceWrapper</a>
+			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=538:601#L14">ServerInterfaceWrapper</a>
 				<a class="permalink" href="#ServerInterfaceWrapper">¶</a>
 				
 				
@@ -720,12 +820,12 @@ either of them for path registration
 
 			
 				
-				<h3 id="ServerInterfaceWrapper.GetPrefectures">func (*ServerInterfaceWrapper) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=653:724#L19">GetPrefectures</a>
+				<h3 id="ServerInterfaceWrapper.GetPrefectures">func (*ServerInterfaceWrapper) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=654:726#L19">GetPrefectures</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.GetPrefectures">¶</a>
 					
 					
 				</h3>
-				<pre>func (w *<a href="#ServerInterfaceWrapper">ServerInterfaceWrapper</a>) GetPrefectures(ctx echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
+				<pre>func (w *<a href="#ServerInterfaceWrapper">ServerInterfaceWrapper</a>) GetPrefectures(ctx *echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
 				<p>GetPrefectures converts echo context to params.
 
 				
@@ -735,7 +835,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/type.gen.go.html?s=1635:1677#L31">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/type.gen.go.html?s=1871:1913#L34">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -758,7 +858,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3366:3418#L80">ServiceUnavailable503JSONResponse</a>
+			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=3447:3499#L82">ServiceUnavailable503JSONResponse</a>
 				<a class="permalink" href="#ServiceUnavailable503JSONResponse">¶</a>
 				
 				
@@ -780,13 +880,13 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=5034:5105#L142">StrictHandlerFunc</a>
+			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=5516:5588#L160">StrictHandlerFunc</a>
 				<a class="permalink" href="#StrictHandlerFunc">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type StrictHandlerFunc func(ctx echo.<a href="#Context">Context</a>, request <a href="../../../../../../../builtin/#any">any</a>) (<a href="../../../../../../../builtin/#any">any</a>, <a href="../../../../../../../builtin/#error">error</a>)</pre>
+			<pre>type StrictHandlerFunc func(ctx *echo.<a href="#Context">Context</a>, request <a href="../../../../../../../builtin/#any">any</a>) (<a href="../../../../../../../builtin/#any">any</a>, <a href="../../../../../../../builtin/#error">error</a>)</pre>
 
 			
 
@@ -802,7 +902,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=5106:5195#L143">StrictMiddlewareFunc</a>
+			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=5589:5678#L161">StrictMiddlewareFunc</a>
 				<a class="permalink" href="#StrictMiddlewareFunc">¶</a>
 				
 				
@@ -824,7 +924,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=4813:5032#L136">StrictServerInterface</a>
+			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/prefectures/gen/server.gen.go.html?s=5295:5514#L154">StrictServerInterface</a>
 				<a class="permalink" href="#StrictServerInterface">¶</a>
 				
 				

@@ -197,6 +197,31 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 
 [system_cqrs ディレクトリの README](system_cqrs/README.ja.md)
 
+## command_service
+
+`command_service` は **CommandService** を実装します。QueryService の書き込み側の対称物で、
+インターフェースは QueryService と並んで Usecase 層に、実装はここに置きます。単一トランザクションでの
+原子性を要する複数集約への書き込みのために予約されています
+（[ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md) /
+[ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)）。最初の実装は
+`command_service/purchase`（在庫減算 + 購入 / 明細 INSERT。
+[ADR-0031](../../../docs/adr/0031-ordered-pessimistic-row-locks.md) 参照）です。
+
+CommandService は `ctx` で渡されたトランザクション上で書き込みを実行し（自前では開かない。境界は
+Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベントは発行しません（Usecase の責務で
+`system_cqrs` カテゴリ）。メソッドは決定済みの Domain 集約を受け取り、sqlc のエラーは
+`pgerror.NormalizeError` で正規化します。
+
+**ここに置いてよいもの。** 集約を読み込んで保存する形では表現できない書き込みだけです。相対更新、
+集合演算、ロックを取らずに原子性を得る操作。読んで変更して保存できるものは Repository に属します。
+この線引きが無いと、このパッケージは「SQL を直接書きたいときの置き場」になります。
+
+**条件は導出であって独立の著作ではない。** ここで SQL に書くガードは、既に存在するドメインの不変条件を
+言い換えたものでなければなりません。在庫減算のガードはドメインの売り越し判定を言い換えたもので、返す
+sentinel も同じものです。つまり下流であり、ドメインの規則が変わればこちらも変わりますが、逆はありません。
+1 つの規則を独立に 2 度書くと、片方だけが動いた瞬間に黙って乖離します。
+[ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md) § Derivation を参照。
+
 ## testkit
 
 `testkit` は **RDB を利用するテストのためのユーティリティ**です。
@@ -272,3 +297,23 @@ Repository / QueryService テストは
 - row → entity 変換（カラム → フィールド対応、NULL 処理）
 
 並行 / ロック競合は既定の `testkit` ヘルパでは再現できません: `WithinTx` はトランザクションを直列化します（最後に rollback する単一 tx）。真に並行なコネクションでしか発火しない分岐 — 例: `Claim` の `lock_timeout` `55P03`（lock_not_available）— は、独立した `TransactionManager.Do` を 2 本（2 コネクション / トランザクション）走らせ、片方が行ロックを保持しもう片方をタイムアウトさせる専用の統合テストが要ります。
+
+#### カバレッジ例外（到達不能な防御分岐）
+
+ドメインの値は `pkg/safecast` を通して sqlc のカラム幅へ絞り込むため、各書き込み箇所には
+`if err != nil` が付きます。ドメインが範囲を保証している以上、呼び出し側からこの分岐へは到達
+できません。範囲チェック本体は `pkg/safecast` にあり全分岐がテスト済みで、呼び出し側に残るのは
+エラープラミングだけなので、[`testing-conventions.md` §9](../../../docs/testing-conventions.md)
+に従い作為的なテストで色を付けるのではなくここに記録します。
+
+|ファイル|関数|未被覆の分岐|到達不能な理由|
+|---|---|---|---|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` のエラー|`product` が `quantity` を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|`product` が閾値を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|同上|
+|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+
+同じメソッド内の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
+範囲外の version は到達可能なため、テストで被覆しています。purchase の `statusCode` / 明細数量の
+変換も同様です。

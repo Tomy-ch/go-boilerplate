@@ -128,6 +128,25 @@
 				
 			
 				
+				<dd><a href="#Limit">type Limit</a></dd>
+				
+					
+					<dd>    <a href="#NewLimit">func NewLimit(first *int, policy LimitPolicy) Limit</a></dd>
+				
+				
+					
+					<dd>    <a href="#Limit.Value">func (l Limit) Value() int</a></dd>
+				
+					
+					<dd>    <a href="#Limit.Value32">func (l Limit) Value32() int32</a></dd>
+				
+			
+				
+				<dd><a href="#LimitPolicy">type LimitPolicy</a></dd>
+				
+				
+			
+				
 				<dd><a href="#Page">type Page</a></dd>
 				
 					
@@ -160,6 +179,8 @@
 			
 				<a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html">cursor.go</a>
 			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/limit.go.html">limit.go</a>
+			
 				<a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html">page.go</a>
 			
 			</span>
@@ -175,7 +196,7 @@
 		
 			
 			
-			<h2 id="EncodeCursor">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=3319:3359#L71">EncodeCursor</a>
+			<h2 id="EncodeCursor">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=3196:3236#L63">EncodeCursor</a>
 				<a class="permalink" href="#EncodeCursor">¶</a>
 				
 				
@@ -193,15 +214,15 @@
 		
 			
 			
-			<h2 id="Cursor">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=933:982#L10">Cursor</a>
+			<h2 id="Cursor">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=905:954#L10">Cursor</a>
 				<a class="permalink" href="#Cursor">¶</a>
 				
 				
 			</h2>
 			<p>Cursor は、キーセット（cursor）ページネーションのリクエストを表す値オブジェクトです。
-</p><pre>offset 版（Page）がページ番号を起点に LIMIT/OFFSET へ変換するのに対し、
+</p><pre>offset 版（Page）がページ番号を起点に取得範囲を決めるのに対し、
 Cursor は「直前ページ末尾行のソートキー」を不透明トークンとして受け取り、
-keyset 比較（例: WHERE (created_at, id) &lt; (:k0, :k1)）で次ページを取得するための情報を保持します。
+そのキーより後ろを次ページとして取得するための境界情報を保持します。
 
 keys はソートキーのタプルを文字列化したものです。型の解釈（RFC3339 → time、UUID 文字列 → uuid 等）は
 Cursor を受け取る呼び出し元（usecase 等）の責務であり、本パッケージは輸送（エンコード/デコード）と件数ポリシーのみを担います。
@@ -222,7 +243,7 @@ Cursor を受け取る呼び出し元（usecase 等）の責務であり、本�
 
 			
 				
-				<h3 id="NewCursor">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=1651:1709#L22">NewCursor</a>
+				<h3 id="NewCursor">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=1623:1681#L22">NewCursor</a>
 					<a class="permalink" href="#NewCursor">¶</a>
 					
 					
@@ -242,7 +263,7 @@ keyset はページ番号を持たないため、offset 版のような最大ペ
 
 			
 				
-				<h3 id="Cursor.HasCursor">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2491:2523#L53">HasCursor</a>
+				<h3 id="Cursor.HasCursor">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2368:2400#L45">HasCursor</a>
 					<a class="permalink" href="#Cursor.HasCursor">¶</a>
 					
 					
@@ -255,7 +276,7 @@ keyset はページ番号を持たないため、offset 版のような最大ペ
 				
 			
 				
-				</p><h3 id="Cursor.Keys">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2801:2832#L58">Keys</a>
+				</p><h3 id="Cursor.Keys">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2678:2709#L50">Keys</a>
 					<a class="permalink" href="#Cursor.Keys">¶</a>
 					
 					
@@ -270,7 +291,7 @@ keyset はページ番号を持たないため、offset 版のような最大ペ
 				
 			
 				
-				<h3 id="Cursor.Limit">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2030:2057#L43">Limit</a>
+				<h3 id="Cursor.Limit">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=1907:1934#L35">Limit</a>
 					<a class="permalink" href="#Cursor.Limit">¶</a>
 					
 					
@@ -283,7 +304,7 @@ keyset はページ番号を持たないため、offset 版のような最大ペ
 				
 			
 				
-				</p><h3 id="Cursor.Limit32">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2149:2180#L46">Limit32</a>
+				</p><h3 id="Cursor.Limit32">func (Cursor) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/cursor.go.html?s=2026:2057#L38">Limit32</a>
 					<a class="permalink" href="#Cursor.Limit32">¶</a>
 					
 					
@@ -298,7 +319,108 @@ keyset はページ番号を持たないため、offset 版のような最大ペ
 		
 			
 			
-			</p><h2 id="Page">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=697:741#L15">Page</a>
+			</p><h2 id="Limit">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/limit.go.html?s=997:1029#L10">Limit</a>
+				<a class="permalink" href="#Limit">¶</a>
+				
+				
+			</h2>
+			<p>Limit は、ポリシーで正規化済みの取得件数を表す値オブジェクトです。
+</p><pre>ページングを持つ読み取り（Page / Cursor）と、ページングを持たない top-N 読み取り
+（ランキング・在庫僅少一覧など）の双方が、この型を通して同じ件数ポリシーを共有します。
+top-N はページ番号もカーソルも持たないため、件数だけを Page / Cursor から切り離してこの型が担います。
+</pre>
+
+			<pre>type Limit struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewLimit">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/limit.go.html?s=1258:1309#L17">NewLimit</a>
+					<a class="permalink" href="#NewLimit">¶</a>
+					
+					
+				</h3>
+				<pre>func NewLimit(first *<a href="../../../../../builtin/#int">int</a>, policy <a href="#LimitPolicy">LimitPolicy</a>) <a href="#Limit">Limit</a></pre>
+				<p>NewLimit は、要求件数をポリシーで正規化した Limit を返します。
+</p><pre>first が nil または 0 以下の場合は policy.Default を、policy.Max を超える場合は policy.Max を採用します。
+</pre>
+
+				
+				
+			
+
+			
+				
+				<h3 id="Limit.Value">func (Limit) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/limit.go.html?s=1532:1558#L30">Value</a>
+					<a class="permalink" href="#Limit.Value">¶</a>
+					
+					
+				</h3>
+				<pre>func (l <a href="#Limit">Limit</a>) Value() <a href="../../../../../builtin/#int">int</a></pre>
+				<p>Value は、正規化後の取得件数を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Limit.Value32">func (Limit) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/limit.go.html?s=1653:1683#L33">Value32</a>
+					<a class="permalink" href="#Limit.Value32">¶</a>
+					
+					
+				</h3>
+				<pre>func (l <a href="#Limit">Limit</a>) Value32() <a href="../../../../../builtin/#int32">int32</a></pre>
+				<p>Value32 は、正規化後の取得件数をint32型で返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="LimitPolicy">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/limit.go.html?s=255:500#L1">LimitPolicy</a>
+				<a class="permalink" href="#LimitPolicy">¶</a>
+				
+				
+			</h2>
+			<p>LimitPolicy は、取得件数の補完・クランプ規約を表します。
+</p><pre>フィールド名で意味を固定するため、既定値と上限を取り違えたまま組み立てることができません。
+</pre>
+
+			<pre>type LimitPolicy struct {
+<span id="LimitPolicy.Default"></span>    <span class="comment">// Default は、件数が指定されなかった場合に採用する件数です。</span>
+    Default <a href="../../../../../builtin/#int">int</a>
+<span id="LimitPolicy.Max"></span>    <span class="comment">// Max は、許容する最大件数です。これを超える要求はこの値へ切り詰めます。</span>
+    Max <a href="../../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Page">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=868:912#L18">Page</a>
 				<a class="permalink" href="#Page">¶</a>
 				
 				
@@ -320,7 +442,7 @@ keyset はページ番号を持たないため、offset 版のような最大ペ
 
 			
 				
-				<h3 id="NewPageFrom1Based">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1241:1298#L25">NewPageFrom1Based</a>
+				<h3 id="NewPageFrom1Based">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1412:1469#L28">NewPageFrom1Based</a>
 					<a class="permalink" href="#NewPageFrom1Based">¶</a>
 					
 					
@@ -338,7 +460,7 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 
 			
 				
-				<h3 id="Page.Limit">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1774:1799#L49">Limit</a>
+				<h3 id="Page.Limit">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1863:1888#L46">Limit</a>
 					<a class="permalink" href="#Page.Limit">¶</a>
 					
 					
@@ -351,7 +473,7 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 				
 			
 				
-				</p><h3 id="Page.Limit32">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1891:1920#L52">Limit32</a>
+				</p><h3 id="Page.Limit32">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=1980:2009#L49">Limit32</a>
 					<a class="permalink" href="#Page.Limit32">¶</a>
 					
 					
@@ -364,7 +486,7 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 				
 			
 				
-				</p><h3 id="Page.Offset">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=2168:2194#L59">Offset</a>
+				</p><h3 id="Page.Offset">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=2257:2283#L56">Offset</a>
 					<a class="permalink" href="#Page.Offset">¶</a>
 					
 					
@@ -377,7 +499,7 @@ perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPag
 				
 			
 				
-				</p><h3 id="Page.Offset32">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=2291:2321#L62">Offset32</a>
+				</p><h3 id="Page.Offset32">func (Page) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?s=2380:2410#L59">Offset32</a>
 					<a class="permalink" href="#Page.Offset32">¶</a>
 					
 					

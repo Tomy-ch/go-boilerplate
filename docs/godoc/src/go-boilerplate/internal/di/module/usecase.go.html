@@ -58,53 +58,91 @@
 <pre><span id="L1" class="ln">     1  </span>package module
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L5" class="ln">     5  </span>	addressuc &#34;go-boilerplate/internal/usecase/address&#34;           <span class="comment">// sample-api:line</span>
-<span id="L6" class="ln">     6  </span>	exchangerateuc &#34;go-boilerplate/internal/usecase/exchangerate&#34; <span class="comment">// sample-api:line</span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/usecase/healthcheck&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/usecase/idempotency&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/usecase/outbox&#34;
-<span id="L10" class="ln">    10  </span>	prefectureuc &#34;go-boilerplate/internal/usecase/prefecture&#34;     <span class="comment">// sample-api:line</span>
-<span id="L11" class="ln">    11  </span>	productuc &#34;go-boilerplate/internal/usecase/product&#34;           <span class="comment">// sample-api:line</span>
-<span id="L12" class="ln">    12  </span>	categoryuc &#34;go-boilerplate/internal/usecase/product/category&#34; <span class="comment">// sample-api:line</span>
-<span id="L13" class="ln">    13  </span>	statusuc &#34;go-boilerplate/internal/usecase/product/status&#34;     <span class="comment">// sample-api:line</span>
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/user&#34;                        <span class="comment">// sample-api:line</span>
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/usecase/user/search&#34;                 <span class="comment">// sample-api:line</span>
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	&#34;go.uber.org/fx&#34;
-<span id="L18" class="ln">    18  </span>)
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span><span class="comment">// UsecaseModule は、ユースケース層の依存関係を提供するfx.Moduleです。</span>
-<span id="L21" class="ln">    21  </span>func UsecaseModule() fx.Option {
-<span id="L22" class="ln">    22  </span>	return fx.Module(&#34;usecase&#34;,
-<span id="L23" class="ln">    23  </span>		fx.Provide(
-<span id="L24" class="ln">    24  </span>			healthcheck.New,
-<span id="L25" class="ln">    25  </span>			<span class="comment">// 具象 IdempotencyMetrics を usecase 境界の Metrics / GCMetrics の双方として供給する。</span>
-<span id="L26" class="ln">    26  </span>			fx.Annotate(
-<span id="L27" class="ln">    27  </span>				observability.NewIdempotencyMetrics,
-<span id="L28" class="ln">    28  </span>				fx.As(new(idempotency.Metrics)),
-<span id="L29" class="ln">    29  </span>				fx.As(new(idempotency.GCMetrics)),
-<span id="L30" class="ln">    30  </span>			),
-<span id="L31" class="ln">    31  </span>			idempotency.NewDeps,
-<span id="L32" class="ln">    32  </span>			idempotency.NewGC,
-<span id="L33" class="ln">    33  </span>			outbox.NewEmit,
-<span id="L34" class="ln">    34  </span>			outbox.NewGC,
-<span id="L35" class="ln">    35  </span>			outbox.NewReplay,
-<span id="L36" class="ln">    36  </span>			<span class="comment">// sample-api:begin</span>
-<span id="L37" class="ln">    37  </span>			<span class="comment">// サンプルのユースケース</span>
-<span id="L38" class="ln">    38  </span>			user.New,
-<span id="L39" class="ln">    39  </span>			search.New,
-<span id="L40" class="ln">    40  </span>			exchangerateuc.New,
-<span id="L41" class="ln">    41  </span>			addressuc.New,
-<span id="L42" class="ln">    42  </span>			prefectureuc.New,
-<span id="L43" class="ln">    43  </span>			statusuc.New,
-<span id="L44" class="ln">    44  </span>			categoryuc.New,
-<span id="L45" class="ln">    45  </span>			productuc.New,
-<span id="L46" class="ln">    46  </span>			<span class="comment">// sample-api:end</span>
-<span id="L47" class="ln">    47  </span>		),
-<span id="L48" class="ln">    48  </span>	)
-<span id="L49" class="ln">    49  </span>}
-<span id="L50" class="ln">    50  </span>
+<span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/config&#34;                                 <span class="comment">// sample-api:line</span>
+<span id="L5" class="ln">     5  </span>	domainproduct &#34;go-boilerplate/internal/domain/product&#34;           <span class="comment">// sample-api:line</span>
+<span id="L6" class="ln">     6  </span>	domaincategory &#34;go-boilerplate/internal/domain/product/category&#34; <span class="comment">// sample-api:line</span>
+<span id="L7" class="ln">     7  </span>	domainstatus &#34;go-boilerplate/internal/domain/product/status&#34;     <span class="comment">// sample-api:line</span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L9" class="ln">     9  </span>	addressuc &#34;go-boilerplate/internal/usecase/address&#34;                      <span class="comment">// sample-api:line</span>
+<span id="L10" class="ln">    10  </span>	authzbd &#34;go-boilerplate/internal/usecase/boundary/authz&#34;                 <span class="comment">// sample-api:line</span>
+<span id="L11" class="ln">    11  </span>	objectstoragebd &#34;go-boilerplate/internal/usecase/boundary/objectstorage&#34; <span class="comment">// sample-api:line</span>
+<span id="L12" class="ln">    12  </span>	txbd &#34;go-boilerplate/internal/usecase/boundary/tx&#34;                       <span class="comment">// sample-api:line</span>
+<span id="L13" class="ln">    13  </span>	checkoutuc &#34;go-boilerplate/internal/usecase/checkout&#34;                    <span class="comment">// sample-api:line</span>
+<span id="L14" class="ln">    14  </span>	dashboarduc &#34;go-boilerplate/internal/usecase/dashboard&#34;                  <span class="comment">// sample-api:line</span>
+<span id="L15" class="ln">    15  </span>	exchangerateuc &#34;go-boilerplate/internal/usecase/exchangerate&#34;            <span class="comment">// sample-api:line</span>
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/usecase/healthcheck&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/usecase/idempotency&#34;
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/internal/usecase/outbox&#34;
+<span id="L19" class="ln">    19  </span>	prefectureuc &#34;go-boilerplate/internal/usecase/prefecture&#34;            <span class="comment">// sample-api:line</span>
+<span id="L20" class="ln">    20  </span>	productuc &#34;go-boilerplate/internal/usecase/product&#34;                  <span class="comment">// sample-api:line</span>
+<span id="L21" class="ln">    21  </span>	categoryuc &#34;go-boilerplate/internal/usecase/product/category&#34;        <span class="comment">// sample-api:line</span>
+<span id="L22" class="ln">    22  </span>	rankinguc &#34;go-boilerplate/internal/usecase/product/ranking&#34;          <span class="comment">// sample-api:line</span>
+<span id="L23" class="ln">    23  </span>	statusuc &#34;go-boilerplate/internal/usecase/product/status&#34;            <span class="comment">// sample-api:line</span>
+<span id="L24" class="ln">    24  </span>	purchaseuc &#34;go-boilerplate/internal/usecase/purchase&#34;                <span class="comment">// sample-api:line</span>
+<span id="L25" class="ln">    25  </span>	purchasesummaryuc &#34;go-boilerplate/internal/usecase/purchase/summary&#34; <span class="comment">// sample-api:line</span>
+<span id="L26" class="ln">    26  </span>	&#34;go-boilerplate/internal/usecase/user&#34;                               <span class="comment">// sample-api:line</span>
+<span id="L27" class="ln">    27  </span>	&#34;go-boilerplate/internal/usecase/user/search&#34;                        <span class="comment">// sample-api:line</span>
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>	&#34;go.uber.org/fx&#34;
+<span id="L30" class="ln">    30  </span>)
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span><span class="comment">// UsecaseModule は、ユースケース層の依存関係を提供するfx.Moduleです。</span>
+<span id="L33" class="ln">    33  </span>func UsecaseModule() fx.Option {
+<span id="L34" class="ln">    34  </span>	return fx.Module(&#34;usecase&#34;,
+<span id="L35" class="ln">    35  </span>		fx.Provide(
+<span id="L36" class="ln">    36  </span>			healthcheck.New,
+<span id="L37" class="ln">    37  </span>			<span class="comment">// 具象 IdempotencyMetrics を usecase 境界の Metrics / GCMetrics の双方として供給する。</span>
+<span id="L38" class="ln">    38  </span>			fx.Annotate(
+<span id="L39" class="ln">    39  </span>				observability.NewIdempotencyMetrics,
+<span id="L40" class="ln">    40  </span>				fx.As(new(idempotency.Metrics)),
+<span id="L41" class="ln">    41  </span>				fx.As(new(idempotency.GCMetrics)),
+<span id="L42" class="ln">    42  </span>			),
+<span id="L43" class="ln">    43  </span>			idempotency.NewDeps,
+<span id="L44" class="ln">    44  </span>			idempotency.NewGC,
+<span id="L45" class="ln">    45  </span>			outbox.NewEmit,
+<span id="L46" class="ln">    46  </span>			outbox.NewGC,
+<span id="L47" class="ln">    47  </span>			outbox.NewReplay,
+<span id="L48" class="ln">    48  </span>			<span class="comment">// sample-api:begin</span>
+<span id="L49" class="ln">    49  </span>			<span class="comment">// サンプルのユースケース</span>
+<span id="L50" class="ln">    50  </span>			user.New,
+<span id="L51" class="ln">    51  </span>			user.NewPurge,
+<span id="L52" class="ln">    52  </span>			user.NewArchive,
+<span id="L53" class="ln">    53  </span>			search.New,
+<span id="L54" class="ln">    54  </span>			exchangerateuc.New,
+<span id="L55" class="ln">    55  </span>			addressuc.New,
+<span id="L56" class="ln">    56  </span>			prefectureuc.New,
+<span id="L57" class="ln">    57  </span>			statusuc.New,
+<span id="L58" class="ln">    58  </span>			categoryuc.New,
+<span id="L59" class="ln">    59  </span>			rankinguc.New,
+<span id="L60" class="ln">    60  </span>			provideProductUsecase,
+<span id="L61" class="ln">    61  </span>			productuc.NewImageGC,
+<span id="L62" class="ln">    62  </span>			purchaseuc.New,
+<span id="L63" class="ln">    63  </span>			checkoutuc.New,
+<span id="L64" class="ln">    64  </span>			purchasesummaryuc.New,
+<span id="L65" class="ln">    65  </span>			dashboarduc.New,
+<span id="L66" class="ln">    66  </span>			<span class="comment">// sample-api:end</span>
+<span id="L67" class="ln">    67  </span>		),
+<span id="L68" class="ln">    68  </span>	)
+<span id="L69" class="ln">    69  </span>}
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span><span class="comment">// sample-api:begin</span>
+<span id="L72" class="ln">    72  </span><span class="comment">// provideProductUsecase は、商品ユースケースを tx / マスタ Repository / object storage / authz /</span>
+<span id="L73" class="ln">    73  </span><span class="comment">// アップロード上限（config 由来）とともに構築します。</span>
+<span id="L74" class="ln">    74  </span>func provideProductUsecase(
+<span id="L75" class="ln">    75  </span>	txm txbd.Manager,
+<span id="L76" class="ln">    76  </span>	repo domainproduct.Repository,
+<span id="L77" class="ln">    77  </span>	categoryRepo domaincategory.Repository,
+<span id="L78" class="ln">    78  </span>	statusRepo domainstatus.Repository,
+<span id="L79" class="ln">    79  </span>	storage objectstoragebd.Storage,
+<span id="L80" class="ln">    80  </span>	authorizer authzbd.Authorizer,
+<span id="L81" class="ln">    81  </span>	cfg *config.ObjectStorageConfig,
+<span id="L82" class="ln">    82  </span>	tf observability.TracerFactory,
+<span id="L83" class="ln">    83  </span>) productuc.Usecase {
+<span id="L84" class="ln">    84  </span>	return productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer, cfg.MaxUploadBytes(), tf)
+<span id="L85" class="ln">    85  </span>}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span><span class="comment">// sample-api:end</span>
+<span id="L88" class="ln">    88  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/usecase.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

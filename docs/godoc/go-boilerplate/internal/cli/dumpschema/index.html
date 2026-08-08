@@ -103,9 +103,6 @@
 			
 			
 			
-				
-				<dd><a href="#RunDump">func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string, error)) error</a></dd>
-			
 			
 				
 				<dd><a href="#Generator">type Generator</a></dd>
@@ -113,6 +110,9 @@
 					
 					<dd>    <a href="#NewGenerator">func NewGenerator(logger logging.Logger, workDir string) *Generator</a></dd>
 				
+				
+					
+					<dd>    <a href="#Generator.RunDump">func (g *Generator) RunDump(ctx context.Context, loadDSN func() (string, string, error)) error</a></dd>
 				
 			
 			
@@ -139,25 +139,10 @@
 		
 		
 		
-			
-			
-			<h2 id="RunDump">func <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=1625:1720#L57">RunDump</a>
-				<a class="permalink" href="#RunDump">¶</a>
-				
-				
-			</h2>
-			<pre>func RunDump(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, gen *<a href="#Generator">Generator</a>, loadDSN func() (<a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#error">error</a>)) <a href="../../../../builtin/#error">error</a></pre>
-			<p>RunDump は、DSN 解決・スキーマダンプ・整形を行い、schema.gen.sql を sqlc が読み込める形で書き出します。
-loadDSN は (パスワード非含有 DSN, パスワード) を返します。
-
-			
-			
-
-		
 		
 			
 			
-			</p><h2 id="Generator">type <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=688:918#L25">Generator</a>
+			<h2 id="Generator">type <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=843:1073#L28">Generator</a>
 				<a class="permalink" href="#Generator">¶</a>
 				
 				
@@ -179,7 +164,7 @@ loadDSN は (パスワード非含有 DSN, パスワード) を返します。
 
 			
 				
-				<h3 id="NewGenerator">func <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=1021:1088#L41">NewGenerator</a>
+				<h3 id="NewGenerator">func <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=1176:1243#L44">NewGenerator</a>
 					<a class="permalink" href="#NewGenerator">¶</a>
 					
 					
@@ -191,6 +176,20 @@ loadDSN は (パスワード非含有 DSN, パスワード) を返します。
 				
 			
 
+			
+				
+				</p><h3 id="Generator.RunDump">func (*Generator) <a href="../../../../src/go-boilerplate/internal/cli/dumpschema/dump_schema.go.html?s=1780:1874#L60">RunDump</a>
+					<a class="permalink" href="#Generator.RunDump">¶</a>
+					
+					
+				</h3>
+				<pre>func (g *<a href="#Generator">Generator</a>) RunDump(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, loadDSN func() (<a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#error">error</a>)) <a href="../../../../builtin/#error">error</a></pre>
+				<p>RunDump は、DSN 解決・スキーマダンプ・整形を行い、schema.gen.sql を sqlc が読み込める形で書き出します。
+loadDSN は (パスワード非含有 DSN, パスワード) を返します。
+
+				
+				
+				
 			
 		
 	

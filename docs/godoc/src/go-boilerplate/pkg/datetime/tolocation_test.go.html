@@ -92,7 +92,7 @@
 <span id="L35" class="ln">    35  </span>		t.Run(&#34;loc が nil の場合はエラーを返し parse を評価しても結果は捨てる&#34;, func(t *testing.T) {
 <span id="L36" class="ln">    36  </span>			t.Parallel()
 <span id="L37" class="ln">    37  </span>			got, err := toLocation(nil, func() (time.Time, error) { return time.Now(), nil })
-<span id="L38" class="ln">    38  </span>			require.ErrorContains(t, err, &#34;loc must not be nil&#34;)
+<span id="L38" class="ln">    38  </span>			require.ErrorIs(t, err, errNilLocation)
 <span id="L39" class="ln">    39  </span>			assert.True(t, got.IsZero())
 <span id="L40" class="ln">    40  </span>		})
 <span id="L41" class="ln">    41  </span>

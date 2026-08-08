@@ -169,15 +169,16 @@ label は method / route / status_code / status_class のみで、raw path や q
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/middleware.go.html?s=1234:1283#L16">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/middleware.go.html?s=1366:1415#L18">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
 			</h2>
 			<pre>func Middleware(rec <a href="#Recorder">Recorder</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
 			<p>Middleware は、HTTP リクエストの count / duration / status を計測する Echo ミドルウェアを返します。
-status は c.Response().After フックで確定後に取得し、error handler / recovery による
+status はレスポンスの After フックで確定後に取得し、error handler / recovery による
 最終 status を安全に観測します。/metrics などの運用系パスは計測対象から除外します。
+レスポンスを取り出せない場合は計測せず素通しします。
 </p><p>After フックはレスポンスの Write ごとに発火するため、ストリーミング応答（チャンク / SSE 等）
 では複数回呼ばれうる。これによる重複計上を防ぐため、Observe は 1 リクエストにつき
 厳密に 1 回だけ呼び出されることを保証する。

@@ -84,7 +84,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package outbox は、outbox テーブルを周期 poll して未 publish メッセージを送る relay engine を提供します。
+				<p>Package outbox は、outbox を周期 poll して未 publish メッセージを送る relay engine を提供します。
 engine 自体は loop と待機制御だけを担い、claim → publish → mark の業務は usecase に委譲します。
 
 				
@@ -148,12 +148,12 @@ engine 自体は loop と待機制御だけを担い、claim → publish → mar
 		
 			
 			
-			<h2 id="Engine">type <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=1076:1229#L18">Engine</a>
+			<h2 id="Engine">type <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=1085:1238#L18">Engine</a>
 				<a class="permalink" href="#Engine">¶</a>
 				
 				
 			</h2>
-			<p>Engine は、pending 行を周期 poll して publish する常駐 engine です。
+			<p>Engine は、pending のエントリを周期 poll して publish する常駐 engine です。
 
 			</p><pre>type Engine struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -170,7 +170,7 @@ engine 自体は loop と待機制御だけを担い、claim → publish → mar
 
 			
 				
-				<h3 id="NewEngine">func <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=1285:1430#L27">NewEngine</a>
+				<h3 id="NewEngine">func <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=1294:1439#L27">NewEngine</a>
 					<a class="permalink" href="#NewEngine">¶</a>
 					
 					
@@ -190,7 +190,7 @@ engine 自体は loop と待機制御だけを担い、claim → publish → mar
 
 			
 				
-				</p><h3 id="Engine.Run">func (*Engine) <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=2318:2365#L50">Run</a>
+				</p><h3 id="Engine.Run">func (*Engine) <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=2327:2374#L50">Run</a>
 					<a class="permalink" href="#Engine.Run">¶</a>
 					
 					
@@ -213,7 +213,7 @@ engine 自体は loop と待機制御だけを担い、claim → publish → mar
 		
 			
 			
-			<h2 id="Settings">type <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=594:987#L8">Settings</a>
+			<h2 id="Settings">type <a href="../../../../src/go-boilerplate/internal/controller/outbox/relay.go.html?s=582:984#L8">Settings</a>
 				<a class="permalink" href="#Settings">¶</a>
 				
 				
@@ -221,7 +221,7 @@ engine 自体は loop と待機制御だけを担い、claim → publish → mar
 			<p>Settings は、relay engine のチューニング値です。
 
 			</p><pre>type Settings struct {
-<span id="Settings.BatchSize"></span>    <span class="comment">// BatchSize は、1 回の poll で claim する pending 行数です。</span>
+<span id="Settings.BatchSize"></span>    <span class="comment">// BatchSize は、1 回の poll で claim する pending エントリ数です。</span>
     BatchSize <a href="../../../../builtin/#int32">int32</a>
 <span id="Settings.PollInterval"></span>    <span class="comment">// PollInterval は、pending を捌き切った（空振り or 部分消化）後に次 poll まで待機する時間です。</span>
     PollInterval <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>

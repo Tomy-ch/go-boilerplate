@@ -102,6 +102,8 @@
 			<dl>
 			
 			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
 			
 				
 				<dd><a href="#GetAuthn">func GetAuthn(ctx context.Context) (auth.Authn, bool)</a></dd>
@@ -110,13 +112,19 @@
 				<dd><a href="#GetErrorHandled">func GetErrorHandled(ctx context.Context) (bool, bool)</a></dd>
 			
 				
-				<dd><a href="#GetErrorHandledFromEcho">func GetErrorHandledFromEcho(c echo.Context) (bool, bool)</a></dd>
+				<dd><a href="#GetErrorHandledFromEcho">func GetErrorHandledFromEcho(c *echo.Context) (bool, bool)</a></dd>
 			
 				
 				<dd><a href="#GetRecovered">func GetRecovered(ctx context.Context) (bool, bool)</a></dd>
 			
 				
-				<dd><a href="#GetRecoveredFromEcho">func GetRecoveredFromEcho(c echo.Context) (bool, bool)</a></dd>
+				<dd><a href="#GetRecoveredFromEcho">func GetRecoveredFromEcho(c *echo.Context) (bool, bool)</a></dd>
+			
+				
+				<dd><a href="#RequireAuthn">func RequireAuthn(ctx context.Context) (auth.Authn, error)</a></dd>
+			
+				
+				<dd><a href="#RequireUserID">func RequireUserID(ctx context.Context) (uuid.UUID, error)</a></dd>
 			
 				
 				<dd><a href="#SetAuthn">func SetAuthn(ctx context.Context, authn auth.Authn) bool</a></dd>
@@ -125,13 +133,13 @@
 				<dd><a href="#SetErrorHandled">func SetErrorHandled(ctx context.Context, val bool) context.Context</a></dd>
 			
 				
-				<dd><a href="#SetErrorHandledToEcho">func SetErrorHandledToEcho(c echo.Context, val bool)</a></dd>
+				<dd><a href="#SetErrorHandledToEcho">func SetErrorHandledToEcho(c *echo.Context, val bool)</a></dd>
 			
 				
 				<dd><a href="#SetRecovered">func SetRecovered(ctx context.Context, val bool) context.Context</a></dd>
 			
 				
-				<dd><a href="#SetRecoveredToEcho">func SetRecoveredToEcho(c echo.Context, val bool)</a></dd>
+				<dd><a href="#SetRecoveredToEcho">func SetRecoveredToEcho(c *echo.Context, val bool)</a></dd>
 			
 				
 				<dd><a href="#WithAuthn">func WithAuthn(ctx context.Context) context.Context</a></dd>
@@ -166,10 +174,17 @@
 
 		
 		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
+
+				</p><pre>var <span id="ErrUnauthenticatedUser">ErrUnauthenticatedUser</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;requires authenticated user&#34;)</pre>
+			
+		
 		
 			
 			
-			<h2 id="GetAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=855:908#L23">GetAuthn</a>
+			<h2 id="GetAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=1156:1209#L29">GetAuthn</a>
 				<a class="permalink" href="#GetAuthn">¶</a>
 				
 				
@@ -196,12 +211,12 @@
 		
 			
 			
-			<h2 id="GetErrorHandledFromEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=747:804#L27">GetErrorHandledFromEcho</a>
+			<h2 id="GetErrorHandledFromEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=748:806#L27">GetErrorHandledFromEcho</a>
 				<a class="permalink" href="#GetErrorHandledFromEcho">¶</a>
 				
 				
 			</h2>
-			<pre>func GetErrorHandledFromEcho(c echo.<a href="#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+			<pre>func GetErrorHandledFromEcho(c *echo.<a href="#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
 			
 			
 			
@@ -222,12 +237,12 @@
 		
 			
 			
-			<h2 id="GetRecoveredFromEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=720:774#L27">GetRecoveredFromEcho</a>
+			<h2 id="GetRecoveredFromEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=721:776#L27">GetRecoveredFromEcho</a>
 				<a class="permalink" href="#GetRecoveredFromEcho">¶</a>
 				
 				
 			</h2>
-			<pre>func GetRecoveredFromEcho(c echo.<a href="#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+			<pre>func GetRecoveredFromEcho(c *echo.<a href="#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
 			
 			
 			
@@ -235,7 +250,37 @@
 		
 			
 			
-			<h2 id="SetAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=573:630#L13">SetAuthn</a>
+			<h2 id="RequireAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=1604:1662#L39">RequireAuthn</a>
+				<a class="permalink" href="#RequireAuthn">¶</a>
+				
+				
+			</h2>
+			<pre>func RequireAuthn(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>RequireAuthn は、ctx のスロットから Authn を読みます。未設定の場合は ErrUnauthenticatedUser を返します。
+認証済み呼び出し元を前提とするハンドラは、GetAuthn を直接呼ばずこちらを使います。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RequireUserID">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=1996:2054#L49">RequireUserID</a>
+				<a class="permalink" href="#RequireUserID">¶</a>
+				
+				
+			</h2>
+			<pre>func RequireUserID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>RequireUserID は、ctx の Authn から内部 UserID を取り出します。
+Authn が未設定の場合は ErrUnauthenticatedUser を、UserID が未解決の場合はその原因をラップして返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="SetAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=874:931#L19">SetAuthn</a>
 				<a class="permalink" href="#SetAuthn">¶</a>
 				
 				
@@ -262,12 +307,12 @@
 		
 			
 			
-			<h2 id="SetErrorHandledToEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=593:645#L22">SetErrorHandledToEcho</a>
+			<h2 id="SetErrorHandledToEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=593:646#L22">SetErrorHandledToEcho</a>
 				<a class="permalink" href="#SetErrorHandledToEcho">¶</a>
 				
 				
 			</h2>
-			<pre>func SetErrorHandledToEcho(c echo.<a href="#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>)</pre>
+			<pre>func SetErrorHandledToEcho(c *echo.<a href="#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>)</pre>
 			
 			
 			
@@ -288,12 +333,12 @@
 		
 			
 			
-			<h2 id="SetRecoveredToEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=572:621#L22">SetRecoveredToEcho</a>
+			<h2 id="SetRecoveredToEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=572:622#L22">SetRecoveredToEcho</a>
 				<a class="permalink" href="#SetRecoveredToEcho">¶</a>
 				
 				
 			</h2>
-			<pre>func SetRecoveredToEcho(c echo.<a href="#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>)</pre>
+			<pre>func SetRecoveredToEcho(c *echo.<a href="#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>)</pre>
 			
 			
 			
@@ -301,7 +346,7 @@
 		
 			
 			
-			<h2 id="WithAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=353:404#L8">WithAuthn</a>
+			<h2 id="WithAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=654:705#L14">WithAuthn</a>
 				<a class="permalink" href="#WithAuthn">¶</a>
 				
 				

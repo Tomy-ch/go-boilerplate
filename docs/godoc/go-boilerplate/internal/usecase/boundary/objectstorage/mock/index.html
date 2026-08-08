@@ -1,0 +1,337 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_objectstorage
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/objectstorage/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_objectstorage is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockStorage">type MockStorage</a></dd>
+				
+					
+					<dd>    <a href="#NewMockStorage">func NewMockStorage(ctrl *gomock.Controller) *MockStorage</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockStorage.Delete">func (m *MockStorage) Delete(ctx context.Context, keys []string) error</a></dd>
+				
+					
+					<dd>    <a href="#MockStorage.EXPECT">func (m *MockStorage) EXPECT() *MockStorageMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockStorage.List">func (m *MockStorage) List(ctx context.Context, query objectstorage.ListQuery) (objectstorage.ListResult, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockStorage.Put">func (m *MockStorage) Put(ctx context.Context, obj objectstorage.PutObject) (objectstorage.Path, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockStorageMockRecorder">type MockStorageMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockStorageMockRecorder.Delete">func (mr *MockStorageMockRecorder) Delete(ctx, keys any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockStorageMockRecorder.List">func (mr *MockStorageMockRecorder) List(ctx, query any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockStorageMockRecorder.Put">func (mr *MockStorageMockRecorder) Put(ctx, obj any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html">mock_objectstorage.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockStorage">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=515:625#L11">MockStorage</a>
+				<a class="permalink" href="#MockStorage">¶</a>
+				
+				
+			</h2>
+			<p>MockStorage is a mock of Storage interface.
+
+			</p><pre>type MockStorage struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockStorage">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=799:856#L23">NewMockStorage</a>
+					<a class="permalink" href="#NewMockStorage">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockStorage(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockStorage">MockStorage</a></pre>
+				<p>NewMockStorage creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockStorage.Delete">func (*MockStorage) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=1143:1213#L35">Delete</a>
+					<a class="permalink" href="#MockStorage.Delete">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStorage">MockStorage</a>) Delete(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, keys []<a href="../../../../../../builtin/#string">string</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Delete mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStorage.EXPECT">func (*MockStorage) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=1034:1089#L30">EXPECT</a>
+					<a class="permalink" href="#MockStorage.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStorage">MockStorage</a>) EXPECT() *<a href="#MockStorageMockRecorder">MockStorageMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStorage.List">func (*MockStorage) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=1617:1729#L49">List</a>
+					<a class="permalink" href="#MockStorage.List">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStorage">MockStorage</a>) List(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, query <a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/">objectstorage</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/#ListQuery">ListQuery</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/">objectstorage</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/#ListResult">ListResult</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>List mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStorage.Put">func (*MockStorage) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=2175:2278#L64">Put</a>
+					<a class="permalink" href="#MockStorage.Put">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStorage">MockStorage</a>) Put(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, obj <a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/">objectstorage</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/#PutObject">PutObject</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/">objectstorage</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/#Path">Path</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Put mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockStorageMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=692:750#L18">MockStorageMockRecorder</a>
+				<a class="permalink" href="#MockStorageMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockStorageMockRecorder is the mock recorder for MockStorage.
+
+			</p><pre>type MockStorageMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockStorageMockRecorder.Delete">func (*MockStorageMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=1370:1439#L43">Delete</a>
+					<a class="permalink" href="#MockStorageMockRecorder.Delete">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStorageMockRecorder">MockStorageMockRecorder</a>) Delete(ctx, keys <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Delete indicates an expected call of Delete.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStorageMockRecorder.List">func (*MockStorageMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=1933:2001#L58">List</a>
+					<a class="permalink" href="#MockStorageMockRecorder.List">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStorageMockRecorder">MockStorageMockRecorder</a>) List(ctx, query <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>List indicates an expected call of List.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStorageMockRecorder.Put">func (*MockStorageMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/mock/mock_objectstorage.go.gen.go.html?s=2471:2536#L73">Put</a>
+					<a class="permalink" href="#MockStorageMockRecorder.Put">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStorageMockRecorder">MockStorageMockRecorder</a>) Put(ctx, obj <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Put indicates an expected call of Put.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

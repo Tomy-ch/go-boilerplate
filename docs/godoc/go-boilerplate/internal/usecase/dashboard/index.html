@@ -1,0 +1,333 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>dashboard - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package dashboard
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/dashboard&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package dashboard は、admin ダッシュボードの横断集計の参照ユースケースを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#GetSummaryParams">type GetSummaryParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#StatusCountView">type StatusCountView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SummaryView">type SummaryView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Usecase">type Usecase</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(qs query.DashboardQueryService, productRepo product.Repository, authorizer authz.Authorizer, tf observability.TracerFactory) Usecase</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html">dashboard_usecase.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="GetSummaryParams">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=825:1264#L14">GetSummaryParams</a>
+				<a class="permalink" href="#GetSummaryParams">¶</a>
+				
+				
+			</h2>
+			<p>GetSummaryParams は、ダッシュボード集計取得ユースケースの入力パラメータです。
+
+			</p><pre>type GetSummaryParams struct {
+<span id="GetSummaryParams.Period"></span>    <span class="comment">// Period は、集計対象期間の区分（&#34;today&#34; / &#34;month&#34; / &#34;range&#34;）です。未知値・空は today として扱います。</span>
+    Period <a href="../../../../builtin/#string">string</a>
+<span id="GetSummaryParams.From"></span>    <span class="comment">// From / To は、Period が &#34;range&#34; のときに必須の開始日・終了日です（両端を含みます）。</span>
+    <span class="comment">// 暦日としての年月日のみが意味を持ちます。他の区分では参照しません。</span>
+    From *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="GetSummaryParams.To"></span>    To   *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="StatusCountView">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=1464:1554#L25">StatusCountView</a>
+				<a class="permalink" href="#StatusCountView">¶</a>
+				
+				
+			</h2>
+			<p>StatusCountView は、購入ステータス別件数 1 件分のユースケース出力 DTO です。
+ステータスは購入ステータスマスタで解決済みの ID と名称です。
+
+			</p><pre>type StatusCountView struct {
+<span id="StatusCountView.StatusID"></span>    StatusID   <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="StatusCountView.StatusName"></span>    StatusName <a href="../../../../builtin/#string">string</a>
+<span id="StatusCountView.Count"></span>    Count      <a href="../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SummaryView">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=1705:2539#L32">SummaryView</a>
+				<a class="permalink" href="#SummaryView">¶</a>
+				
+				
+			</h2>
+			<p>SummaryView は、ダッシュボード横断集計のユースケース出力 DTO です。SalesAmount は USD セント単位の整数です。
+
+			</p><pre>type SummaryView struct {
+<span id="SummaryView.SalesAmount"></span>    <span class="comment">// SalesAmount / SalesCount は、集計対象期間の売上合計と、その母集団の購入件数です。</span>
+    <span class="comment">// キャンセル済みの購入は除外し、未払いの購入は含みます。対象がない場合はいずれも 0 です。</span>
+    SalesAmount <a href="../../../../builtin/#int64">int64</a>
+<span id="SummaryView.SalesCount"></span>    SalesCount  <a href="../../../../builtin/#int64">int64</a>
+<span id="SummaryView.PurchaseStatusCounts"></span>    <span class="comment">// PurchaseStatusCounts は、集計対象期間の購入のステータス別件数です。売上と異なりキャンセル済みも含みます。</span>
+    <span class="comment">// 期間内に購入が出現したステータスのみを含むため、購入がない場合は空スライスです。</span>
+    PurchaseStatusCounts []<a href="#StatusCountView">StatusCountView</a>
+<span id="SummaryView.TotalProductCount"></span>    <span class="comment">// TotalProductCount / PublishedProductCount は、登録商品の総数と公開済み件数です。集計対象期間に依存しません。</span>
+    TotalProductCount     <a href="../../../../builtin/#int64">int64</a>
+<span id="SummaryView.PublishedProductCount"></span>    PublishedProductCount <a href="../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=2649:3036#L46">Usecase</a>
+				<a class="permalink" href="#Usecase">¶</a>
+				
+				
+			</h2>
+			<p>Usecase は、admin ダッシュボードの横断集計の参照ユースケースを定義します。
+
+			</p><pre>type Usecase interface {
+    <span class="comment">// GetDashboardSummary は、集計対象期間の売上・購入ステータス別件数と、商品数を 1 つの DTO に合成して返します。</span>
+    <span class="comment">// 管理者以外は拒否します。対象データがない場合はゼロ値を返します。</span>
+    GetDashboardSummary(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="#GetSummaryParams">GetSummaryParams</a>) (<a href="#SummaryView">SummaryView</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=3353:3501#L61">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(
+    qs <a href="../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../go-boilerplate/internal/usecase/dashboard/query/#DashboardQueryService">DashboardQueryService</a>,
+    productRepo <a href="../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../go-boilerplate/internal/domain/product/#Repository">Repository</a>,
+    authorizer <a href="../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a>,
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+) <a href="#Usecase">Usecase</a></pre>
+				<p>New は、admin ダッシュボードの横断集計の参照ユースケースを生成します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

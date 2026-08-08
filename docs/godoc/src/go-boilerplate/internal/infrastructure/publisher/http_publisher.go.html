@@ -65,77 +65,82 @@
 <span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/httpclient&#34;
 <span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/observability&#34;
 <span id="L10" class="ln">    10  </span>	boundary &#34;go-boilerplate/internal/usecase/boundary/publisher&#34;
-<span id="L11" class="ln">    11  </span>)
-<span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span><span class="comment">// downstream は、profile / breaker / metrics / budget の論理依存名です。</span>
-<span id="L14" class="ln">    14  </span>const downstream httpclient.Downstream = &#34;outbox&#34;
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span><span class="comment">// Endpoint は、メッセージの送信先エンドポイント URL です（構築時に config から固定注入）。</span>
-<span id="L17" class="ln">    17  </span>type Endpoint string
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span><span class="comment">// httpPublisher は、boundary.Publisher の HTTP 実装です。</span>
-<span id="L20" class="ln">    20  </span>type httpPublisher struct {
-<span id="L21" class="ln">    21  </span>	endpoint Endpoint
-<span id="L22" class="ln">    22  </span>	client   httpclient.Client
-<span id="L23" class="ln">    23  </span>	tracer   observability.LayerTracer
-<span id="L24" class="ln">    24  </span>}
-<span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span><span class="comment">// NewDownstreamProfile は、outbox publish 向けの resilient プロファイルを返します。</span>
-<span id="L27" class="ln">    27  </span><span class="comment">// relay の poll ループ自体が at-least-once の retry 本体であるため、transport 層 retry は</span>
-<span id="L28" class="ln">    28  </span><span class="comment">// 二重になる。これを避けるため MaxAttempts=1 で transport retry を無効化する（D10）。</span>
-<span id="L29" class="ln">    29  </span><span class="comment">// traceparent は emit 時に capture した値を headers で明示伝搬するため、ここでの自動 inject は抑止する。</span>
-<span id="L30" class="ln">    30  </span><span class="comment">// 送信先はクラスター外部の受信エンドポイントを想定するため、private/loopback 宛てを拒否する（SSRF 抑止）。</span>
-<span id="L31" class="ln">    31  </span>func NewDownstreamProfile() httpclient.DownstreamProfile {
-<span id="L32" class="ln">    32  </span>	p := httpclient.DefaultProfile()
-<span id="L33" class="ln">    33  </span>	p.MaxAttempts = 1
-<span id="L34" class="ln">    34  </span>	p.PropagateTrace = false
-<span id="L35" class="ln">    35  </span>	p.AllowPrivateNetwork = false
-<span id="L36" class="ln">    36  </span>	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
-<span id="L37" class="ln">    37  </span>}
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span><span class="comment">// RequiredDownstream は、本 publisher が使用する Downstream を返します。</span>
-<span id="L40" class="ln">    40  </span><span class="comment">// required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に</span>
-<span id="L41" class="ln">    41  </span><span class="comment">// silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。</span>
-<span id="L42" class="ln">    42  </span>func RequiredDownstream() httpclient.Downstream {
-<span id="L43" class="ln">    43  </span>	return downstream
-<span id="L44" class="ln">    44  </span>}
-<span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span><span class="comment">// New は、publish 境界の HTTP 実装を生成します。</span>
-<span id="L47" class="ln">    47  </span>func New(
-<span id="L48" class="ln">    48  </span>	endpoint Endpoint,
-<span id="L49" class="ln">    49  </span>	client httpclient.Client,
-<span id="L50" class="ln">    50  </span>	tf observability.TracerFactory,
-<span id="L51" class="ln">    51  </span>) boundary.Publisher {
-<span id="L52" class="ln">    52  </span>	return &amp;httpPublisher{
-<span id="L53" class="ln">    53  </span>		endpoint: endpoint,
-<span id="L54" class="ln">    54  </span>		client:   client,
-<span id="L55" class="ln">    55  </span>		tracer:   tf.Infra(),
-<span id="L56" class="ln">    56  </span>	}
-<span id="L57" class="ln">    57  </span>}
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span><span class="comment">// Publish は、メッセージを受信エンドポイントへ POST します。</span>
-<span id="L60" class="ln">    60  </span><span class="comment">// message_id を Idempotency-Key として伝搬し、非冪等メソッドだが retry は明示的に無効化します</span>
-<span id="L61" class="ln">    61  </span><span class="comment">// （再送は relay の次 poll が担う）。非 2xx / transport 失敗は substrate が apperror へ写像して返します。</span>
-<span id="L62" class="ln">    62  </span>func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
-<span id="L63" class="ln">    63  </span>	ctx, endSpan := p.tracer.Start(ctx)
-<span id="L64" class="ln">    64  </span>	defer endSpan()
-<span id="L65" class="ln">    65  </span>
-<span id="L66" class="ln">    66  </span>	header := httpclient.Header{&#34;Content-Type&#34;: {&#34;application/json&#34;}}
-<span id="L67" class="ln">    67  </span>	for k, v := range m.Headers {
-<span id="L68" class="ln">    68  </span>		header[k] = []string{v}
-<span id="L69" class="ln">    69  </span>	}
-<span id="L70" class="ln">    70  </span>
-<span id="L71" class="ln">    71  </span>	<span class="comment">// AllowRetry は付与しない（at-least-once は relay の poll ループが担う）。</span>
-<span id="L72" class="ln">    72  </span>	<span class="comment">// 受信側 dedup 用に IdempotencyKey（message_id）のみ伝搬する。</span>
-<span id="L73" class="ln">    73  </span>	_, err := p.client.Do(ctx, httpclient.NewRequest(
-<span id="L74" class="ln">    74  </span>		httpclient.MethodPost(), downstream, string(p.endpoint),
-<span id="L75" class="ln">    75  </span>		httpclient.WithHeader(header),
-<span id="L76" class="ln">    76  </span>		httpclient.WithBody(m.Payload),
-<span id="L77" class="ln">    77  </span>		httpclient.WithIdempotencyKey(m.MessageID.String()),
-<span id="L78" class="ln">    78  </span>	))
-<span id="L79" class="ln">    79  </span>	return err
-<span id="L80" class="ln">    80  </span>}
-<span id="L81" class="ln">    81  </span>
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/pkg/httpheader&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span><span class="comment">// downstream は、profile / breaker / metrics / budget の論理依存名です。</span>
+<span id="L15" class="ln">    15  </span>const downstream httpclient.Downstream = &#34;outbox&#34;
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span><span class="comment">// Endpoint は、メッセージの送信先エンドポイント URL です（構築時に config から固定注入）。</span>
+<span id="L18" class="ln">    18  </span>type Endpoint string
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// httpPublisher は、boundary.Publisher の HTTP 実装です。</span>
+<span id="L21" class="ln">    21  </span>type httpPublisher struct {
+<span id="L22" class="ln">    22  </span>	endpoint Endpoint
+<span id="L23" class="ln">    23  </span>	client   httpclient.Client
+<span id="L24" class="ln">    24  </span>	tracer   observability.LayerTracer
+<span id="L25" class="ln">    25  </span>}
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// NewDownstreamProfile は、outbox publish 向けの resilient プロファイルを返します。</span>
+<span id="L28" class="ln">    28  </span><span class="comment">// relay の poll ループ自体が at-least-once の retry 本体であるため、transport 層 retry は</span>
+<span id="L29" class="ln">    29  </span><span class="comment">// 二重になる。これを避けるため MaxAttempts=1 で transport retry を無効化する（D10）。</span>
+<span id="L30" class="ln">    30  </span><span class="comment">// traceparent は emit 時に capture した値を headers で明示伝搬するため、ここでの自動 inject は抑止する。</span>
+<span id="L31" class="ln">    31  </span><span class="comment">// 送信先はクラスター外部の受信エンドポイントを想定するため、private/loopback 宛てを拒否する（SSRF 抑止）。</span>
+<span id="L32" class="ln">    32  </span>func NewDownstreamProfile() httpclient.DownstreamProfile {
+<span id="L33" class="ln">    33  </span>	p := httpclient.DefaultProfile()
+<span id="L34" class="ln">    34  </span>	p.MaxAttempts = 1
+<span id="L35" class="ln">    35  </span>	p.PropagateTrace = false
+<span id="L36" class="ln">    36  </span>	p.AllowPrivateNetwork = false
+<span id="L37" class="ln">    37  </span>	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// RequiredDownstream は、本 publisher が使用する Downstream を返します。</span>
+<span id="L41" class="ln">    41  </span><span class="comment">// required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に</span>
+<span id="L42" class="ln">    42  </span><span class="comment">// silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。</span>
+<span id="L43" class="ln">    43  </span>func RequiredDownstream() httpclient.Downstream {
+<span id="L44" class="ln">    44  </span>	return downstream
+<span id="L45" class="ln">    45  </span>}
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span><span class="comment">// NewHTTP は、publish 境界の HTTP 実装を生成します。</span>
+<span id="L48" class="ln">    48  </span>func NewHTTP(
+<span id="L49" class="ln">    49  </span>	endpoint Endpoint,
+<span id="L50" class="ln">    50  </span>	client httpclient.Client,
+<span id="L51" class="ln">    51  </span>	tf observability.TracerFactory,
+<span id="L52" class="ln">    52  </span>) boundary.Publisher {
+<span id="L53" class="ln">    53  </span>	return &amp;httpPublisher{
+<span id="L54" class="ln">    54  </span>		endpoint: endpoint,
+<span id="L55" class="ln">    55  </span>		client:   client,
+<span id="L56" class="ln">    56  </span>		tracer:   tf.Infra(),
+<span id="L57" class="ln">    57  </span>	}
+<span id="L58" class="ln">    58  </span>}
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span><span class="comment">// Publish は、メッセージを受信エンドポイントへ POST します。</span>
+<span id="L61" class="ln">    61  </span><span class="comment">// message_id を Idempotency-Key として伝搬し、非冪等メソッドだが retry は明示的に無効化します</span>
+<span id="L62" class="ln">    62  </span><span class="comment">// （再送は relay の次 poll が担う）。非 2xx / transport 失敗は substrate が apperror へ写像して返します。</span>
+<span id="L63" class="ln">    63  </span>func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
+<span id="L64" class="ln">    64  </span>	ctx, endSpan := p.tracer.Start(ctx)
+<span id="L65" class="ln">    65  </span>	defer endSpan()
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span>	header := httpclient.Header{&#34;Content-Type&#34;: {&#34;application/json&#34;}}
+<span id="L68" class="ln">    68  </span>	for k, v := range m.Headers {
+<span id="L69" class="ln">    69  </span>		<span class="comment">// emit 側でも同じ判定を行うが、emit を経由せず INSERT された行に対する真の egress 境界での防御。</span>
+<span id="L70" class="ln">    70  </span>		if httpheader.IsSensitive(k) {
+<span id="L71" class="ln">    71  </span>			continue
+<span id="L72" class="ln">    72  </span>		}
+<span id="L73" class="ln">    73  </span>		header[k] = []string{v}
+<span id="L74" class="ln">    74  </span>	}
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>	<span class="comment">// AllowRetry は付与しない（at-least-once は relay の poll ループが担う）。</span>
+<span id="L77" class="ln">    77  </span>	<span class="comment">// 受信側 dedup 用に IdempotencyKey（message_id）のみ伝搬する。</span>
+<span id="L78" class="ln">    78  </span>	_, err := p.client.Do(ctx, httpclient.NewRequest(
+<span id="L79" class="ln">    79  </span>		httpclient.MethodPost(), downstream, string(p.endpoint),
+<span id="L80" class="ln">    80  </span>		httpclient.WithHeader(header),
+<span id="L81" class="ln">    81  </span>		httpclient.WithBody(m.Payload),
+<span id="L82" class="ln">    82  </span>		httpclient.WithIdempotencyKey(m.MessageID.String()),
+<span id="L83" class="ln">    83  </span>	))
+<span id="L84" class="ln">    84  </span>	return err
+<span id="L85" class="ln">    85  </span>}
+<span id="L86" class="ln">    86  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

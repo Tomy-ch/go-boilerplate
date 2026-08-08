@@ -43,13 +43,18 @@ flowchart TB
 |---|---|---|
 |`ErrUnauthorizedInvalidToken`|`ErrUnauthenticated`|`Authenticator` によるトークン検証失敗|
 |`ErrUnauthorizedTokenNotProvided`|`ErrUnauthenticated`|`Authorization` ヘッダーにトークンが見つからない|
-|`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|認証トークンが欠落|
+|`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|認証トークンが欠落（**予約** — 現状は返さない。注意点を参照）|
 |`ErrAuthnSlotNotFound`|`ErrUnauthenticated`|リクエストコンテキストに authn スロットが無い（`oapi.Middleware` が未注入）|
-|`ErrInvalidAuthDefaultMode`|`ErrInternal`|デフォルト認証ポリシーが見つからない|
+|`ErrInvalidAuthDefaultMode`|`ErrInternal`|デフォルト認証ポリシーが見つからない（**予約** — 現状は返さない。注意点を参照）|
+
+authFunc から出るエラーはすべて HTTP ステータスを持つ形へ包まれます —— 上記の認証失敗は 401、
+アイデンティティ解決時の infra 障害は `infraErrorToHTTP` が選んだステータス（500 / 503）です。
+これは見た目の問題ではありません。バリデーションミドルウェアはエラーから読み取れるステータス
+しか伝播させず、それ以外は 403 に丸めるため、包まないと認証エラーが 403 として表に出ます。
 
 ## authn スロット統合
 
-この関数は OpenAPI バリデーションパイプライン内で動作するため、`echo.Context` ではなく `context.Context` のみが利用可能です。親の `oapi.Middleware` がバリデーション実行前に `request.Context()` へ **authn スロット**（`ctxhelper.WithAuthn`）を仕込むことで、バリデータから呼ばれる authFunc がそのスロットへ認証結果 `Authn` を `ctxhelper.SetAuthn` で書き戻せます。ハンドラは後段で `ctxhelper.GetAuthn` により取得します。
+この関数は OpenAPI バリデーションパイプライン内で動作するため、`*echo.Context` ではなく `context.Context` のみが利用可能です。親の `oapi.Middleware` がバリデーション実行前に `request.Context()` へ **authn スロット**（`ctxhelper.WithAuthn`）を仕込むことで、バリデータから呼ばれる authFunc がそのスロットへ認証結果 `Authn` を `ctxhelper.SetAuthn` で書き戻せます。ハンドラは後段で `ctxhelper.GetAuthn` により取得します。
 
 ```mermaid
 flowchart LR
@@ -64,3 +69,4 @@ flowchart LR
 - トークン抽出はヘッダーのみ。Cookie は参照しません（Bearer / リソースサーバーモデル）
 - `Authorization: Bearer <token>` 形式のみ受理（RFC 6750）。非 Bearer スキームやカスタムヘッダー名はサポートしない
 - `Authenticator` の実装は環境固有（ローカルモック、JWT、OAuth 等）で DI 経由で注入される
+- **予約エラーシーム（現状は返さない）。** `ErrUnauthorizedTokenMissing` と `ErrInvalidAuthDefaultMode` は、本パッケージが未実装のシナリオに向けて意図的に用意した拡張ポイントです。前者は *`Authorization` ヘッダー自体の欠如* と *Bearer トークンが空* を将来区別するため、後者は将来の *デフォルト認証ポリシー* 解決経路のためのものです。現状、トークン欠如は `ErrUnauthorizedTokenNotProvided` のみで表現し、デフォルトポリシー解決は存在しません。削除せず意図的な API シームとして残しています。いずれかのシナリオを実際に実装する際は、素のセンチネルに頼らず、返却する実処理とテストを併せて追加してください

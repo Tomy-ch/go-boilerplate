@@ -78,60 +78,57 @@
 <span id="L21" class="ln">    21  </span>	maxOffset = maxPage * maxPerPage
 <span id="L22" class="ln">    22  </span>)
 <span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span><span class="comment">// Page は、ページネーションに必要な取得上限（limit）とオフセット（offset）を保持する値オブジェクトです。</span>
-<span id="L25" class="ln">    25  </span>type Page struct {
-<span id="L26" class="ln">    26  </span>	limit  int
-<span id="L27" class="ln">    27  </span>	offset int
-<span id="L28" class="ln">    28  </span>}
-<span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span><span class="comment">// NewPageFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算して Page を返します。</span>
-<span id="L31" class="ln">    31  </span><span class="comment">//</span>
-<span id="L32" class="ln">    32  </span><span class="comment">//	ページ番号が1未満の場合は1に、1ページあたりの件数が0以下の場合はデフォルト値を使用します。</span>
-<span id="L33" class="ln">    33  </span><span class="comment">//	page[offsetの係数]は最小値1で、maxPage を超える場合はエラーを返します。</span>
-<span id="L34" class="ln">    34  </span><span class="comment">//	perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPageまで許容します。</span>
-<span id="L35" class="ln">    35  </span>func NewPageFrom1Based(page, perPage *int) (*Page, error) {
-<span id="L36" class="ln">    36  </span>	limit := defaultPerPage
-<span id="L37" class="ln">    37  </span>	if perPage != nil &amp;&amp; *perPage &gt; 0 {
-<span id="L38" class="ln">    38  </span>		limit = *perPage
-<span id="L39" class="ln">    39  </span>	}
-<span id="L40" class="ln">    40  </span>	if limit &gt; maxPerPage {
-<span id="L41" class="ln">    41  </span>		limit = maxPerPage
-<span id="L42" class="ln">    42  </span>	}
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	pg := minPage
-<span id="L45" class="ln">    45  </span>	if page != nil &amp;&amp; *page &gt; 0 {
-<span id="L46" class="ln">    46  </span>		pg = *page
+<span id="L24" class="ln">    24  </span><span class="comment">// perPagePolicy は、Page / Cursor が共有する1ページあたりの件数規約です。</span>
+<span id="L25" class="ln">    25  </span>var perPagePolicy = LimitPolicy{Default: defaultPerPage, Max: maxPerPage}
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// Page は、ページネーションに必要な取得上限（limit）とオフセット（offset）を保持する値オブジェクトです。</span>
+<span id="L28" class="ln">    28  </span>type Page struct {
+<span id="L29" class="ln">    29  </span>	limit  int
+<span id="L30" class="ln">    30  </span>	offset int
+<span id="L31" class="ln">    31  </span>}
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span><span class="comment">// NewPageFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算して Page を返します。</span>
+<span id="L34" class="ln">    34  </span><span class="comment">//</span>
+<span id="L35" class="ln">    35  </span><span class="comment">//	ページ番号が1未満の場合は1に、1ページあたりの件数が0以下の場合はデフォルト値を使用します。</span>
+<span id="L36" class="ln">    36  </span><span class="comment">//	page[offsetの係数]は最小値1で、maxPage を超える場合はエラーを返します。</span>
+<span id="L37" class="ln">    37  </span><span class="comment">//	perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPageまで許容します。</span>
+<span id="L38" class="ln">    38  </span>func NewPageFrom1Based(page, perPage *int) (*Page, error) {
+<span id="L39" class="ln">    39  </span>	limit := NewLimit(perPage, perPagePolicy).Value()
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span>	pg := minPage
+<span id="L42" class="ln">    42  </span>	if page != nil &amp;&amp; *page &gt; 0 {
+<span id="L43" class="ln">    43  </span>		pg = *page
+<span id="L44" class="ln">    44  </span>	}
+<span id="L45" class="ln">    45  </span>	if pg &gt; maxPage {
+<span id="L46" class="ln">    46  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, fmt.Sprintf(&#34;invalid page number: %d, max page is %d&#34;, pg, maxPage))
 <span id="L47" class="ln">    47  </span>	}
-<span id="L48" class="ln">    48  </span>	if pg &gt; maxPage {
-<span id="L49" class="ln">    49  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, fmt.Sprintf(&#34;invalid page number: %d, max page is %d&#34;, pg, maxPage))
-<span id="L50" class="ln">    50  </span>	}
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>	return &amp;Page{
-<span id="L53" class="ln">    53  </span>		limit:  limit,
-<span id="L54" class="ln">    54  </span>		offset: (pg - 1) * limit,
-<span id="L55" class="ln">    55  </span>	}, nil
-<span id="L56" class="ln">    56  </span>}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	return &amp;Page{
+<span id="L50" class="ln">    50  </span>		limit:  limit,
+<span id="L51" class="ln">    51  </span>		offset: (pg - 1) * limit,
+<span id="L52" class="ln">    52  </span>	}, nil
+<span id="L53" class="ln">    53  </span>}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span><span class="comment">// Limit は、ページの取得上限を返します。</span>
+<span id="L56" class="ln">    56  </span>func (p Page) Limit() int { return p.limit }
 <span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span><span class="comment">// Limit は、ページの取得上限を返します。</span>
-<span id="L59" class="ln">    59  </span>func (p Page) Limit() int { return p.limit }
-<span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span><span class="comment">// Limit32 は、ページの取得上限をint32型で返します。</span>
-<span id="L62" class="ln">    62  </span>func (p Page) Limit32() int32 {
-<span id="L63" class="ln">    63  </span>	limit := min(p.limit, maxPerPage)
-<span id="L64" class="ln">    64  </span>	<span class="comment">//nolint:gosec // G115: maxPerPage(int32範囲内の定数)でクランプ済みのためオーバーフローしません</span>
-<span id="L65" class="ln">    65  </span>	return int32(limit)
-<span id="L66" class="ln">    66  </span>}
+<span id="L58" class="ln">    58  </span><span class="comment">// Limit32 は、ページの取得上限をint32型で返します。</span>
+<span id="L59" class="ln">    59  </span>func (p Page) Limit32() int32 {
+<span id="L60" class="ln">    60  </span>	limit := min(p.limit, maxPerPage)
+<span id="L61" class="ln">    61  </span>	<span class="comment">//nolint:gosec // G115: maxPerPage(int32範囲内の定数)でクランプ済みのためオーバーフローしません</span>
+<span id="L62" class="ln">    62  </span>	return int32(limit)
+<span id="L63" class="ln">    63  </span>}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span><span class="comment">// Offset は、ページのオフセットを返します。</span>
+<span id="L66" class="ln">    66  </span>func (p Page) Offset() int { return p.offset }
 <span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span><span class="comment">// Offset は、ページのオフセットを返します。</span>
-<span id="L69" class="ln">    69  </span>func (p Page) Offset() int { return p.offset }
-<span id="L70" class="ln">    70  </span>
-<span id="L71" class="ln">    71  </span><span class="comment">// Offset32 は、ページのオフセットをint32型で返します。</span>
-<span id="L72" class="ln">    72  </span>func (p Page) Offset32() int32 {
-<span id="L73" class="ln">    73  </span>	offset := min(p.offset, maxOffset)
-<span id="L74" class="ln">    74  </span>	<span class="comment">//nolint:gosec // G115: maxOffset(int32範囲内の定数)でクランプ済みのためオーバーフローしません</span>
-<span id="L75" class="ln">    75  </span>	return int32(offset)
-<span id="L76" class="ln">    76  </span>}
-<span id="L77" class="ln">    77  </span>
+<span id="L68" class="ln">    68  </span><span class="comment">// Offset32 は、ページのオフセットをint32型で返します。</span>
+<span id="L69" class="ln">    69  </span>func (p Page) Offset32() int32 {
+<span id="L70" class="ln">    70  </span>	offset := min(p.offset, maxOffset)
+<span id="L71" class="ln">    71  </span>	<span class="comment">//nolint:gosec // G115: maxOffset(int32範囲内の定数)でクランプ済みのためオーバーフローしません</span>
+<span id="L72" class="ln">    72  </span>	return int32(offset)
+<span id="L73" class="ln">    73  </span>}
+<span id="L74" class="ln">    74  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/tools/paging/page.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

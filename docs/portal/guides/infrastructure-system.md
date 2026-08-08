@@ -48,6 +48,29 @@ fx.Provide(
 )
 ```
 
+## Test Strategy
+
+There is no database here, so the infrastructure layer's real-DB strategy does not apply. This package is
+also the one place in the repository that legitimately reads wall time: it *is* the implementation the
+rest of the codebase injects instead of calling `time.Now()`, so there is nothing left to inject in its
+place. The rule "never let a test depend on real time" holds everywhere it can be satisfied — here it
+cannot be, so the strategy is to keep the exposure small and bounded rather than to pretend it is absent.
+
+- **Real time is used, in the smallest amount that still proves the contract.** A wait is measured in
+  tens of milliseconds and asserted with a lower bound (`elapsed >= d`), never an upper bound — an upper
+  bound turns scheduler jitter and a loaded CI machine into a red build. `Now()` is compared against
+  `time.Now()` within a generous window for the same reason.
+- **Cancellation is tested without waiting.** The context is cancelled *before* the call, so the case
+  that pins "cancellation wins over the deadline" completes immediately rather than after the duration
+  it was handed.
+- **The non-positive duration is a branch, not an edge case.** `d <= 0` returns immediately, and it must
+  still report a cancelled context — otherwise a zero backoff would silently ignore cancellation. Both
+  the cancelled and the live context are pinned for that path.
+
+Consumers of these interfaces do the opposite: they inject the `clock` testkit doubles and assert on a
+controlled timeline. That asymmetry is the point of the abstraction, and it is why the real-time
+exposure stops at this package.
+
 ## Extending
 
 To add system-dependent operations beyond time (random number generation, hostname retrieval, etc.):

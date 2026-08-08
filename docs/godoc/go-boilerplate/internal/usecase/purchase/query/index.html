@@ -1,0 +1,358 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>query - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package query
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/purchase/query&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package query は、購入の読み取り専用クエリ（QueryService）のインターフェースと読み取りモデルを提供します。
+購入と商品は独立集約であり、明細に商品名を含む集約跨ぎの read 投影のため QueryService として定義します（ADR-0027）。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#PurchaseDetailItem">type PurchaseDetailItem</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseDetailQueryService">type PurchaseDetailQueryService</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseDetailReadModel">type PurchaseDetailReadModel</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseStatusSummaryReadModel">type PurchaseStatusSummaryReadModel</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseSummaryQueryService">type PurchaseSummaryQueryService</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_detail_query_service.go.html">purchase_detail_query_service.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html">purchase_summary_query_service.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="PurchaseDetailItem">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_detail_query_service.go.html?s=1936:2055#L32">PurchaseDetailItem</a>
+				<a class="permalink" href="#PurchaseDetailItem">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseDetailItem は、購入明細 1 件の読み取りモデルです。ProductName は購入時点ではなく現在の商品名、
+UnitPrice は購入時点の単価スナップショット（価格スケール）です。
+
+			</p><pre>type PurchaseDetailItem struct {
+<span id="PurchaseDetailItem.ProductID"></span>    ProductID   <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseDetailItem.ProductName"></span>    ProductName <a href="../../../../../builtin/#string">string</a>
+<span id="PurchaseDetailItem.Quantity"></span>    Quantity    <a href="../../../../../builtin/#int">int</a>
+<span id="PurchaseDetailItem.UnitPrice"></span>    UnitPrice   <a href="../../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseDetailQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_detail_query_service.go.html?s=652:1108#L6">PurchaseDetailQueryService</a>
+				<a class="permalink" href="#PurchaseDetailQueryService">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseDetailQueryService は、購入詳細の集約跨ぎ read 投影を提供する QueryService です。
+
+			</p><pre>type PurchaseDetailQueryService interface {
+    <span class="comment">// FindDetailByUserAndID は、認証主体（userID）が所有する購入 1 件を明細（商品名込み）とともに取得します。</span>
+    <span class="comment">// 所有権は本サービス側の絞り込みで担保し、他人の購入・不存在はいずれも apperror.ErrNotFound を返して秘匿します。</span>
+    FindDetailByUserAndID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID, purchaseID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#PurchaseDetailReadModel">PurchaseDetailReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseDetailReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_detail_query_service.go.html?s=1331:1699#L14">PurchaseDetailReadModel</a>
+				<a class="permalink" href="#PurchaseDetailReadModel">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseDetailReadModel は、購入詳細の読み取りモデルです。金額はすべて USD セント単位の整数、
+ステータスは購入ステータスマスタで解決済みの ID と名称です。
+
+			</p><pre>type PurchaseDetailReadModel struct {
+<span id="PurchaseDetailReadModel.ID"></span>    ID             <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseDetailReadModel.Code"></span>    Code           <a href="../../../../../builtin/#string">string</a>
+<span id="PurchaseDetailReadModel.UserID"></span>    UserID         <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseDetailReadModel.StatusID"></span>    StatusID       <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseDetailReadModel.StatusName"></span>    StatusName     <a href="../../../../../builtin/#string">string</a>
+<span id="PurchaseDetailReadModel.SubtotalAmount"></span>    SubtotalAmount <a href="../../../../../builtin/#int64">int64</a>
+<span id="PurchaseDetailReadModel.TaxAmount"></span>    TaxAmount      <a href="../../../../../builtin/#int64">int64</a>
+<span id="PurchaseDetailReadModel.ShippingFee"></span>    ShippingFee    <a href="../../../../../builtin/#int64">int64</a>
+<span id="PurchaseDetailReadModel.TotalAmount"></span>    TotalAmount    <a href="../../../../../builtin/#int64">int64</a>
+<span id="PurchaseDetailReadModel.Items"></span>    Items          []<a href="#PurchaseDetailItem">PurchaseDetailItem</a>
+<span id="PurchaseDetailReadModel.OrderedAt"></span>    OrderedAt      <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+<span id="PurchaseDetailReadModel.PaidAt"></span>    PaidAt         *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+<span id="PurchaseDetailReadModel.CanceledAt"></span>    CanceledAt     *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseStatusSummaryReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=1289:1650#L13">PurchaseStatusSummaryReadModel</a>
+				<a class="permalink" href="#PurchaseStatusSummaryReadModel">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseStatusSummaryReadModel は、1 ステータス分の購入集計の読み取りモデルです。
+金額は決済スケールの整数（USD セント）です。
+
+			</p><pre>type PurchaseStatusSummaryReadModel struct {
+<span id="PurchaseStatusSummaryReadModel.StatusID"></span>    <span class="comment">// StatusID / StatusName は、購入ステータスマスタで解決済みの ID と名称です。</span>
+    StatusID   <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseStatusSummaryReadModel.StatusName"></span>    StatusName <a href="../../../../../builtin/#string">string</a>
+<span id="PurchaseStatusSummaryReadModel.Count"></span>    <span class="comment">// Count は、当該ステータスの購入件数です。</span>
+    Count <a href="../../../../../builtin/#int64">int64</a>
+<span id="PurchaseStatusSummaryReadModel.TotalAmount"></span>    <span class="comment">// TotalAmount は、当該ステータスの購入金額の合計です。</span>
+    TotalAmount <a href="../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseSummaryQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=466:1110#L4">PurchaseSummaryQueryService</a>
+				<a class="permalink" href="#PurchaseSummaryQueryService">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseSummaryQueryService は、購入の集計 read 投影を提供する QueryService です。
+件数・合計金額・ステータス別内訳は購入集約を再構成できない派生投影であるため、Repository ではなく
+読み取り側に置きます（ADR-0027）。
+
+			</p><pre>type PurchaseSummaryQueryService interface {
+    <span class="comment">// SummarizeByUserID は、認証主体（userID）の購入をステータス単位に集計し、購入ステータスマスタの表示順で返します。</span>
+    <span class="comment">// 他の主体の購入が集計に混入しないことは本メソッドが担保します（呼び出し側での追加の所有権検査は不要です）。</span>
+    <span class="comment">// 対象の購入が存在しない場合は空スライスを返します（エラーとしません）。キャンセル済みの購入も集計対象に含みます。</span>
+    SummarizeByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) ([]<a href="#PurchaseStatusSummaryReadModel">PurchaseStatusSummaryReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

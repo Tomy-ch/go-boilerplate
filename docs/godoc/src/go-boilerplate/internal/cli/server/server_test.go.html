@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>func TestResolveMetricsStop(t *testing.T) {
+<span id="L15" class="ln">    15  </span>func TestStartMetricsAndResolveStop(t *testing.T) {
 <span id="L16" class="ln">    16  </span>	t.Parallel()
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -88,7 +88,7 @@
 <span id="L31" class="ln">    31  </span>				return func() { started = true }, stopFn
 <span id="L32" class="ln">    32  </span>			}
 <span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span>			stop := ResolveMetricsStop(appCfg, newMetrics)
+<span id="L34" class="ln">    34  </span>			stop := StartMetricsAndResolveStop(appCfg, newMetrics)
 <span id="L35" class="ln">    35  </span>			assert.NotNil(t, stop, &#34;非本番では停止関数が返ること&#34;)
 <span id="L36" class="ln">    36  </span>			assert.True(t, started, &#34;メトリクスサーバーが起動されること&#34;)
 <span id="L37" class="ln">    37  </span>		})
@@ -106,7 +106,7 @@
 <span id="L49" class="ln">    49  </span>				return func() {}, func(_ context.Context) {}
 <span id="L50" class="ln">    50  </span>			}
 <span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>			stop := ResolveMetricsStop(appCfg, newMetrics)
+<span id="L52" class="ln">    52  </span>			stop := StartMetricsAndResolveStop(appCfg, newMetrics)
 <span id="L53" class="ln">    53  </span>			assert.Nil(t, stop, &#34;本番では停止関数は nil であること&#34;)
 <span id="L54" class="ln">    54  </span>			assert.False(t, called, &#34;本番ではメトリクス生成自体を呼ばないこと&#34;)
 <span id="L55" class="ln">    55  </span>		})
@@ -198,7 +198,7 @@
 <span id="L141" class="ln">   141  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
 <span id="L142" class="ln">   142  </span>		t.Parallel()
 <span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>		t.Run(&#34;起動失敗時は停止処理を行わずエラーを返す&#34;, func(t *testing.T) {
+<span id="L144" class="ln">   144  </span>		t.Run(&#34;起動失敗時はstopAppを呼ばずエラーを返す&#34;, func(t *testing.T) {
 <span id="L145" class="ln">   145  </span>			t.Parallel()
 <span id="L146" class="ln">   146  </span>
 <span id="L147" class="ln">   147  </span>			startErr := xerrors.New(&#34;start failed&#34;)
@@ -215,22 +215,44 @@
 <span id="L158" class="ln">   158  </span>			assert.False(t, stopCalled, &#34;起動失敗時は stopApp を呼ばないこと&#34;)
 <span id="L159" class="ln">   159  </span>		})
 <span id="L160" class="ln">   160  </span>
-<span id="L161" class="ln">   161  </span>		t.Run(&#34;シグナル受信後にstopAppがエラーを返すとそのエラーを伝播する&#34;, func(t *testing.T) {
+<span id="L161" class="ln">   161  </span>		t.Run(&#34;起動失敗時でも起動済みメトリクスサーバーは停止する&#34;, func(t *testing.T) {
 <span id="L162" class="ln">   162  </span>			t.Parallel()
 <span id="L163" class="ln">   163  </span>
-<span id="L164" class="ln">   164  </span>			ctx, cancel := context.WithCancel(context.Background())
-<span id="L165" class="ln">   165  </span>			cancel() <span class="comment">// 即時にシグナル受信相当にする</span>
-<span id="L166" class="ln">   166  </span>
-<span id="L167" class="ln">   167  </span>			start := func(context.Context) error { return nil }
-<span id="L168" class="ln">   168  </span>			stopErr := xerrors.New(&#34;stop failed&#34;)
-<span id="L169" class="ln">   169  </span>			stop := func(context.Context) error { return stopErr }
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>			err := RunServer(ctx, shutdownTimeout, start, stop, nil)
-<span id="L172" class="ln">   172  </span>			require.ErrorIs(t, err, stopErr)
-<span id="L173" class="ln">   173  </span>		})
-<span id="L174" class="ln">   174  </span>	})
-<span id="L175" class="ln">   175  </span>}
+<span id="L164" class="ln">   164  </span>			startErr := xerrors.New(&#34;start failed&#34;)
+<span id="L165" class="ln">   165  </span>			start := func(context.Context) error { return startErr }
+<span id="L166" class="ln">   166  </span>			stop := func(context.Context) error { return nil }
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span>			var (
+<span id="L169" class="ln">   169  </span>				stopMetricsCalled      bool
+<span id="L170" class="ln">   170  </span>				stopMetricsHasDeadline bool
+<span id="L171" class="ln">   171  </span>			)
+<span id="L172" class="ln">   172  </span>			stopMetrics := func(c context.Context) {
+<span id="L173" class="ln">   173  </span>				stopMetricsCalled = true
+<span id="L174" class="ln">   174  </span>				_, stopMetricsHasDeadline = c.Deadline()
+<span id="L175" class="ln">   175  </span>			}
 <span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>			err := RunServer(context.Background(), shutdownTimeout, start, stop, stopMetrics)
+<span id="L178" class="ln">   178  </span>			require.ErrorIs(t, err, startErr)
+<span id="L179" class="ln">   179  </span>			assert.True(t, stopMetricsCalled, &#34;起動失敗時も起動済みメトリクスは停止すること（確保と解放の対称性）&#34;)
+<span id="L180" class="ln">   180  </span>			assert.True(t, stopMetricsHasDeadline, &#34;メトリクス停止は期限付き context を受け取ること&#34;)
+<span id="L181" class="ln">   181  </span>		})
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>		t.Run(&#34;シグナル受信後にstopAppがエラーを返すとそのエラーを伝播する&#34;, func(t *testing.T) {
+<span id="L184" class="ln">   184  </span>			t.Parallel()
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L187" class="ln">   187  </span>			cancel() <span class="comment">// 即時にシグナル受信相当にする</span>
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>			start := func(context.Context) error { return nil }
+<span id="L190" class="ln">   190  </span>			stopErr := xerrors.New(&#34;stop failed&#34;)
+<span id="L191" class="ln">   191  </span>			stop := func(context.Context) error { return stopErr }
+<span id="L192" class="ln">   192  </span>
+<span id="L193" class="ln">   193  </span>			err := RunServer(ctx, shutdownTimeout, start, stop, nil)
+<span id="L194" class="ln">   194  </span>			require.ErrorIs(t, err, stopErr)
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>	})
+<span id="L197" class="ln">   197  </span>}
+<span id="L198" class="ln">   198  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/server/server_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

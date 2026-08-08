@@ -84,7 +84,7 @@
 <span id="L27" class="ln">    27  </span>	}
 <span id="L28" class="ln">    28  </span>}
 <span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span><span class="comment">// FindRolesByUserID は、指定ユーザーに割り当てられた全ロールを取得します。</span>
+<span id="L30" class="ln">    30  </span><span class="comment">// FindRolesByUserID は、指定ユーザーに割り当てられた全ロールを user_roles と roles の内部結合で取得します。</span>
 <span id="L31" class="ln">    31  </span>func (r *roleRepository) FindRolesByUserID(ctx context.Context, userID uuid.UUID) (user.Roles, error) {
 <span id="L32" class="ln">    32  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L33" class="ln">    33  </span>	defer endSpan()
@@ -97,7 +97,7 @@
 <span id="L40" class="ln">    40  </span>
 <span id="L41" class="ln">    41  </span>	roles := make(user.Roles, len(rows))
 <span id="L42" class="ln">    42  </span>	for i, row := range rows {
-<span id="L43" class="ln">    43  </span>		role, err := rowToRole(row.ID, row.Name, row.Code)
+<span id="L43" class="ln">    43  </span>		role, err := rowToRole(row)
 <span id="L44" class="ln">    44  </span>		if err != nil {
 <span id="L45" class="ln">    45  </span>			return nil, err
 <span id="L46" class="ln">    46  </span>		}
@@ -107,10 +107,10 @@
 <span id="L50" class="ln">    50  </span>	return roles, nil
 <span id="L51" class="ln">    51  </span>}
 <span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span><span class="comment">// rowToRole は、DB 行の値からロールエンティティを再構築します。</span>
+<span id="L53" class="ln">    53  </span><span class="comment">// rowToRole は、sqlc が返す user_roles/roles 結合行をロールエンティティへ変換します。</span>
 <span id="L54" class="ln">    54  </span><span class="comment">// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します。</span>
-<span id="L55" class="ln">    55  </span>func rowToRole(id uuid.UUID, name string, code int16) (*user.Role, error) {
-<span id="L56" class="ln">    56  </span>	entity, err := user.NewRole(id, name, int(code))
+<span id="L55" class="ln">    55  </span>func rowToRole(row *gen.GetUserRolesByUserIDRow) (*user.Role, error) {
+<span id="L56" class="ln">    56  </span>	entity, err := user.NewRole(row.ID, row.Name, int(row.Code))
 <span id="L57" class="ln">    57  </span>	if err != nil {
 <span id="L58" class="ln">    58  </span>		return nil, pgerror.NormalizeReconstructError(err)
 <span id="L59" class="ln">    59  </span>	}

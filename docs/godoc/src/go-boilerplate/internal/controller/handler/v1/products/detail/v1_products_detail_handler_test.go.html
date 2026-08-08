@@ -1,0 +1,604 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>detail - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../../../../src/go-boilerplate/internal/controller/handler">handler</a>/<a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1">v1</a>/<a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/products">products</a>/<a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/products/detail">detail</a>/<span class="text-muted">v1_products_detail_handler_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../../go-boilerplate/internal/controller/handler/v1/products/detail">go-boilerplate/internal/controller/handler/v1/products/detail</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package detail
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;math&#34;
+<span id="L6" class="ln">     6  </span>	&#34;net/http&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/controller/ctxhelper&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/controller/handler/v1/products/detail/gen&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L15" class="ln">    15  </span>	productuc &#34;go-boilerplate/internal/usecase/product&#34;
+<span id="L16" class="ln">    16  </span>	mock_product &#34;go-boilerplate/internal/usecase/product/mock&#34;
+<span id="L17" class="ln">    17  </span>	decimaltestkit &#34;go-boilerplate/pkg/decimal/testkit&#34;
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/pkg/patch&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/pkg/ptr&#34;
+<span id="L20" class="ln">    20  </span>	&#34;go-boilerplate/pkg/safecast&#34;
+<span id="L21" class="ln">    21  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L22" class="ln">    22  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span>	&#34;github.com/labstack/echo/v5&#34;
+<span id="L25" class="ln">    25  </span>	&#34;github.com/oapi-codegen/nullable&#34;
+<span id="L26" class="ln">    26  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L27" class="ln">    27  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L28" class="ln">    28  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L29" class="ln">    29  </span>)
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>const (
+<span id="L32" class="ln">    32  </span>	targetPath = &#34;/v1/products/:productId&#34;
+<span id="L33" class="ln">    33  </span>	stockPath  = &#34;/v1/products/:productId/stock&#34;
+<span id="L34" class="ln">    34  </span>)
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span><span class="comment">// patchPublishedAt は、部分更新リクエストに載せる固定の公開日時です。</span>
+<span id="L37" class="ln">    37  </span>var patchPublishedAt = time.Date(2026, time.February, 3, 4, 5, 6, 0, time.UTC)
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span>func newServer(t *testing.T) (*server, *mock_product.MockUsecase) {
+<span id="L40" class="ln">    40  </span>	t.Helper()
+<span id="L41" class="ln">    41  </span>	mockApp := mock_product.NewMockUsecase(gomock.NewController(t))
+<span id="L42" class="ln">    42  </span>	return &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockApp}, mockApp
+<span id="L43" class="ln">    43  </span>}
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>func newProductView(t *testing.T, salt string) productuc.ProductView {
+<span id="L46" class="ln">    46  </span>	t.Helper()
+<span id="L47" class="ln">    47  </span>	return productuc.ProductView{
+<span id="L48" class="ln">    48  </span>		ID:                    uuidtestkit.NewTestFromSalt(t, salt),
+<span id="L49" class="ln">    49  </span>		Name:                  &#34;商品-&#34; + salt,
+<span id="L50" class="ln">    50  </span>		Description:           ptr.To(&#34;説明-&#34; + salt),
+<span id="L51" class="ln">    51  </span>		Price:                 decimaltestkit.MustParse(t, &#34;19.99&#34;),
+<span id="L52" class="ln">    52  </span>		Quantity:              100,
+<span id="L53" class="ln">    53  </span>		StockWarningThreshold: ptr.To(10),
+<span id="L54" class="ln">    54  </span>		StatusID:              uuidtestkit.NewTestFromSalt(t, salt+&#34;_status&#34;),
+<span id="L55" class="ln">    55  </span>		StatusName:            &#34;在庫あり&#34;,
+<span id="L56" class="ln">    56  </span>		CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+&#34;_category&#34;),
+<span id="L57" class="ln">    57  </span>		CategoryName:          &#34;電子機器&#34;,
+<span id="L58" class="ln">    58  </span>		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
+<span id="L59" class="ln">    59  </span>		ImagePath:             ptr.To(&#34;products/&#34; + salt + &#34;.png&#34;),
+<span id="L60" class="ln">    60  </span>		Version:               3,
+<span id="L61" class="ln">    61  </span>	}
+<span id="L62" class="ln">    62  </span>}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span><span class="comment">// wantProductResponse は、本番 toProductResponse とは独立な検証用オラクル（フィールド取り違え検出）。</span>
+<span id="L65" class="ln">    65  </span>func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
+<span id="L66" class="ln">    66  </span>	<span class="comment">//nolint:gosec // G115: テストデータは int32 範囲内の固定値です</span>
+<span id="L67" class="ln">    67  </span>	quantity := int32(dto.Quantity)
+<span id="L68" class="ln">    68  </span>	var threshold *int32
+<span id="L69" class="ln">    69  </span>	if dto.StockWarningThreshold != nil {
+<span id="L70" class="ln">    70  </span>		<span class="comment">//nolint:gosec // G115: テストデータは int32 範囲内の固定値です</span>
+<span id="L71" class="ln">    71  </span>		v := int32(*dto.StockWarningThreshold)
+<span id="L72" class="ln">    72  </span>		threshold = &amp;v
+<span id="L73" class="ln">    73  </span>	}
+<span id="L74" class="ln">    74  </span>	return gen.ProductResponse{
+<span id="L75" class="ln">    75  </span>		Id:                    dto.ID.ToPrimitive(),
+<span id="L76" class="ln">    76  </span>		Name:                  dto.Name,
+<span id="L77" class="ln">    77  </span>		Description:           dto.Description,
+<span id="L78" class="ln">    78  </span>		Price:                 dto.Price.String(),
+<span id="L79" class="ln">    79  </span>		Quantity:              quantity,
+<span id="L80" class="ln">    80  </span>		StockWarningThreshold: threshold,
+<span id="L81" class="ln">    81  </span>		Status: gen.ProductStatusRef{
+<span id="L82" class="ln">    82  </span>			Id:   dto.StatusID.ToPrimitive(),
+<span id="L83" class="ln">    83  </span>			Name: dto.StatusName,
+<span id="L84" class="ln">    84  </span>		},
+<span id="L85" class="ln">    85  </span>		Category: gen.ProductCategoryRef{
+<span id="L86" class="ln">    86  </span>			Id:   dto.CategoryID.ToPrimitive(),
+<span id="L87" class="ln">    87  </span>			Name: dto.CategoryName,
+<span id="L88" class="ln">    88  </span>		},
+<span id="L89" class="ln">    89  </span>		PublishedAt: dto.PublishedAt,
+<span id="L90" class="ln">    90  </span>		ImagePath:   dto.ImagePath,
+<span id="L91" class="ln">    91  </span>		<span class="comment">//nolint:gosec // G115: テストデータは int32 範囲内の固定値です</span>
+<span id="L92" class="ln">    92  </span>		Version: int32(dto.Version),
+<span id="L93" class="ln">    93  </span>	}
+<span id="L94" class="ln">    94  </span>}
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>func TestBindHandler(t *testing.T) {
+<span id="L97" class="ln">    97  </span>	t.Parallel()
+<span id="L98" class="ln">    98  </span>
+<span id="L99" class="ln">    99  </span>	e := echo.New()
+<span id="L100" class="ln">   100  </span>	tf := observability.NewNoopTracerFactory(t)
+<span id="L101" class="ln">   101  </span>	mockApp := mock_product.NewMockUsecase(gomock.NewController(t))
+<span id="L102" class="ln">   102  </span>
+<span id="L103" class="ln">   103  </span>	BindHandler(e, tf, mockApp)
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>	routes := e.Router().Routes()
+<span id="L106" class="ln">   106  </span>	require.Len(t, routes, 3)
+<span id="L107" class="ln">   107  </span>	registered := make(map[string]bool, len(routes))
+<span id="L108" class="ln">   108  </span>	for _, r := range routes {
+<span id="L109" class="ln">   109  </span>		registered[r.Method+&#34; &#34;+r.Path] = true
+<span id="L110" class="ln">   110  </span>	}
+<span id="L111" class="ln">   111  </span>	assert.True(t, registered[http.MethodGet+&#34; &#34;+targetPath])
+<span id="L112" class="ln">   112  </span>	assert.True(t, registered[http.MethodPatch+&#34; &#34;+targetPath])
+<span id="L113" class="ln">   113  </span>	assert.True(t, registered[http.MethodPatch+&#34; &#34;+stockPath])
+<span id="L114" class="ln">   114  </span>}
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span>func Test_server_GetProductsDetail(t *testing.T) {
+<span id="L117" class="ln">   117  </span>	t.Parallel()
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>	dto := newProductView(t, &#34;handler_detail&#34;)
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L122" class="ln">   122  </span>		t.Parallel()
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>		t.Run(&#34;公開商品が存在する場合_詳細のProductResponseが返る&#34;, func(t *testing.T) {
+<span id="L125" class="ln">   125  </span>			t.Parallel()
+<span id="L126" class="ln">   126  </span>			s, mockApp := newServer(t)
+<span id="L127" class="ln">   127  </span>			mockApp.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(dto, nil)
+<span id="L128" class="ln">   128  </span>
+<span id="L129" class="ln">   129  </span>			resp, err := s.GetProductsDetail(
+<span id="L130" class="ln">   130  </span>				context.Background(),
+<span id="L131" class="ln">   131  </span>				gen.GetProductsDetailRequestObject{ProductId: dto.ID.ToPrimitive()},
+<span id="L132" class="ln">   132  </span>			)
+<span id="L133" class="ln">   133  </span>			require.NoError(t, err)
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>			actual, ok := resp.(gen.GetProductsDetail200JSONResponse)
+<span id="L136" class="ln">   136  </span>			require.True(t, ok)
+<span id="L137" class="ln">   137  </span>			assert.Equal(t, wantProductResponse(dto), gen.ProductResponse(actual))
+<span id="L138" class="ln">   138  </span>		})
+<span id="L139" class="ln">   139  </span>	})
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L142" class="ln">   142  </span>		t.Parallel()
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>		t.Run(&#34;Usecaseが未存在・非公開でNotFoundを返す場合_そのまま伝播する&#34;, func(t *testing.T) {
+<span id="L145" class="ln">   145  </span>			t.Parallel()
+<span id="L146" class="ln">   146  </span>			s, mockApp := newServer(t)
+<span id="L147" class="ln">   147  </span>			mockApp.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>			resp, err := s.GetProductsDetail(
+<span id="L150" class="ln">   150  </span>				context.Background(),
+<span id="L151" class="ln">   151  </span>				gen.GetProductsDetailRequestObject{ProductId: dto.ID.ToPrimitive()},
+<span id="L152" class="ln">   152  </span>			)
+<span id="L153" class="ln">   153  </span>			assert.Nil(t, resp)
+<span id="L154" class="ln">   154  </span>			require.ErrorIs(t, err, apperror.ErrNotFound)
+<span id="L155" class="ln">   155  </span>		})
+<span id="L156" class="ln">   156  </span>	})
+<span id="L157" class="ln">   157  </span>}
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span><span class="comment">// authnContext は、認証済みスロットを仕込んだ context を返します。</span>
+<span id="L160" class="ln">   160  </span>func authnContext(t *testing.T) context.Context {
+<span id="L161" class="ln">   161  </span>	t.Helper()
+<span id="L162" class="ln">   162  </span>	ctx := ctxhelper.WithAuthn(context.Background())
+<span id="L163" class="ln">   163  </span>	a, err := auth.New(&#34;subject-1&#34;, auth.IssuerMock, nil, nil)
+<span id="L164" class="ln">   164  </span>	require.NoError(t, err)
+<span id="L165" class="ln">   165  </span>	require.True(t, ctxhelper.SetAuthn(ctx, *a))
+<span id="L166" class="ln">   166  </span>	return ctx
+<span id="L167" class="ln">   167  </span>}
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span><span class="comment">// newPatchProductsDetailRequest は、全フィールドを値指定した商品部分更新の gen リクエストを生成します。</span>
+<span id="L170" class="ln">   170  </span>func newPatchProductsDetailRequest(t *testing.T, productID uuid.UUID) gen.PatchProductsDetailRequestObject {
+<span id="L171" class="ln">   171  </span>	t.Helper()
+<span id="L172" class="ln">   172  </span>	return gen.PatchProductsDetailRequestObject{
+<span id="L173" class="ln">   173  </span>		ProductId: productID.ToPrimitive(),
+<span id="L174" class="ln">   174  </span>		Body: &amp;gen.ProductPatchRequest{
+<span id="L175" class="ln">   175  </span>			Version:               7,
+<span id="L176" class="ln">   176  </span>			Name:                  ptr.To(&#34;更新後の商品名&#34;),
+<span id="L177" class="ln">   177  </span>			Price:                 ptr.To(&#34;29.99&#34;),
+<span id="L178" class="ln">   178  </span>			Quantity:              ptr.To(int32(50)),
+<span id="L179" class="ln">   179  </span>			CategoryId:            ptr.To(uuidtestkit.NewTestFromSalt(t, &#34;patch_category&#34;).ToPrimitive()),
+<span id="L180" class="ln">   180  </span>			StatusId:              ptr.To(uuidtestkit.NewTestFromSalt(t, &#34;patch_status&#34;).ToPrimitive()),
+<span id="L181" class="ln">   181  </span>			Description:           nullable.NewNullableWithValue(&#34;&lt;p&gt;更新後の説明&lt;/p&gt;&#34;),
+<span id="L182" class="ln">   182  </span>			StockWarningThreshold: nullable.NewNullableWithValue(int32(5)),
+<span id="L183" class="ln">   183  </span>			PublishedAt:           nullable.NewNullableWithValue(patchPublishedAt),
+<span id="L184" class="ln">   184  </span>			ImagePath:             nullable.NewNullableWithValue(&#34;products/updated.png&#34;),
+<span id="L185" class="ln">   185  </span>		},
+<span id="L186" class="ln">   186  </span>	}
+<span id="L187" class="ln">   187  </span>}
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>func Test_server_PatchProductsDetail(t *testing.T) {
+<span id="L190" class="ln">   190  </span>	t.Parallel()
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>	targetID := uuidtestkit.NewTestFromSalt(t, &#34;patch_target&#34;)
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L195" class="ln">   195  </span>		t.Parallel()
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>		t.Run(&#34;全フィールドが値指定の場合_UpdateProductParamsへ忠実に詰め替えて200と更新結果を返す&#34;, func(t *testing.T) {
+<span id="L198" class="ln">   198  </span>			t.Parallel()
+<span id="L199" class="ln">   199  </span>			s, mockApp := newServer(t)
+<span id="L200" class="ln">   200  </span>			view := newProductView(t, &#34;patch_updated&#34;)
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>			mockApp.EXPECT().
+<span id="L203" class="ln">   203  </span>				UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(productuc.UpdateProductParams{})).
+<span id="L204" class="ln">   204  </span>				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID, p productuc.UpdateProductParams) (productuc.ProductView, error) {
+<span id="L205" class="ln">   205  </span>					require.NotNil(t, authn)
+<span id="L206" class="ln">   206  </span>					assert.Equal(t, &#34;subject-1&#34;, authn.Subject())
+<span id="L207" class="ln">   207  </span>					assert.Equal(t, targetID, id)
+<span id="L208" class="ln">   208  </span>
+<span id="L209" class="ln">   209  </span>					assert.Equal(t, 7, p.Version)
+<span id="L210" class="ln">   210  </span>					require.NotNil(t, p.Name)
+<span id="L211" class="ln">   211  </span>					assert.Equal(t, &#34;更新後の商品名&#34;, *p.Name)
+<span id="L212" class="ln">   212  </span>					require.NotNil(t, p.Price)
+<span id="L213" class="ln">   213  </span>					assert.Equal(t, &#34;29.99&#34;, *p.Price)
+<span id="L214" class="ln">   214  </span>					require.NotNil(t, p.Quantity)
+<span id="L215" class="ln">   215  </span>					assert.Equal(t, 50, *p.Quantity)
+<span id="L216" class="ln">   216  </span>					require.NotNil(t, p.CategoryID)
+<span id="L217" class="ln">   217  </span>					assert.Equal(t, uuidtestkit.NewTestFromSalt(t, &#34;patch_category&#34;), *p.CategoryID)
+<span id="L218" class="ln">   218  </span>					require.NotNil(t, p.StatusID)
+<span id="L219" class="ln">   219  </span>					assert.Equal(t, uuidtestkit.NewTestFromSalt(t, &#34;patch_status&#34;), *p.StatusID)
+<span id="L220" class="ln">   220  </span>
+<span id="L221" class="ln">   221  </span>					assert.Equal(t, patch.Value(&#34;&lt;p&gt;更新後の説明&lt;/p&gt;&#34;), p.Description)
+<span id="L222" class="ln">   222  </span>					assert.Equal(t, patch.Value(5), p.StockWarningThreshold)
+<span id="L223" class="ln">   223  </span>					assert.Equal(t, patch.Value(patchPublishedAt), p.PublishedAt)
+<span id="L224" class="ln">   224  </span>					assert.Equal(t, patch.Value(&#34;products/updated.png&#34;), p.ImagePath)
+<span id="L225" class="ln">   225  </span>
+<span id="L226" class="ln">   226  </span>					return view, nil
+<span id="L227" class="ln">   227  </span>				})
+<span id="L228" class="ln">   228  </span>
+<span id="L229" class="ln">   229  </span>			resp, err := s.PatchProductsDetail(authnContext(t), newPatchProductsDetailRequest(t, targetID))
+<span id="L230" class="ln">   230  </span>			require.NoError(t, err)
+<span id="L231" class="ln">   231  </span>
+<span id="L232" class="ln">   232  </span>			actual, ok := resp.(gen.PatchProductsDetail200JSONResponse)
+<span id="L233" class="ln">   233  </span>			require.True(t, ok)
+<span id="L234" class="ln">   234  </span>			assert.Equal(t, wantProductResponse(view), gen.ProductResponse(actual))
+<span id="L235" class="ln">   235  </span>		})
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>		t.Run(&#34;versionのみ指定の場合_他フィールドは未指定のままユースケースへ渡る&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>			t.Parallel()
+<span id="L239" class="ln">   239  </span>			s, mockApp := newServer(t)
+<span id="L240" class="ln">   240  </span>
+<span id="L241" class="ln">   241  </span>			mockApp.EXPECT().
+<span id="L242" class="ln">   242  </span>				UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(productuc.UpdateProductParams{})).
+<span id="L243" class="ln">   243  </span>				DoAndReturn(func(_ context.Context, _ *auth.Authn, _ uuid.UUID, p productuc.UpdateProductParams) (productuc.ProductView, error) {
+<span id="L244" class="ln">   244  </span>					assert.Equal(t, 7, p.Version)
+<span id="L245" class="ln">   245  </span>					assert.Nil(t, p.Name)
+<span id="L246" class="ln">   246  </span>					assert.Nil(t, p.Price)
+<span id="L247" class="ln">   247  </span>					assert.Nil(t, p.Quantity)
+<span id="L248" class="ln">   248  </span>					assert.Nil(t, p.CategoryID)
+<span id="L249" class="ln">   249  </span>					assert.Nil(t, p.StatusID)
+<span id="L250" class="ln">   250  </span>
+<span id="L251" class="ln">   251  </span>					assert.Equal(t, patch.Unspecified[string](), p.Description)
+<span id="L252" class="ln">   252  </span>					assert.Equal(t, patch.Unspecified[int](), p.StockWarningThreshold)
+<span id="L253" class="ln">   253  </span>					assert.Equal(t, patch.Unspecified[time.Time](), p.PublishedAt)
+<span id="L254" class="ln">   254  </span>					assert.Equal(t, patch.Unspecified[string](), p.ImagePath)
+<span id="L255" class="ln">   255  </span>
+<span id="L256" class="ln">   256  </span>					return newProductView(t, &#34;patch_unspecified&#34;), nil
+<span id="L257" class="ln">   257  </span>				})
+<span id="L258" class="ln">   258  </span>
+<span id="L259" class="ln">   259  </span>			req := gen.PatchProductsDetailRequestObject{
+<span id="L260" class="ln">   260  </span>				ProductId: targetID.ToPrimitive(),
+<span id="L261" class="ln">   261  </span>				Body:      &amp;gen.ProductPatchRequest{Version: 7},
+<span id="L262" class="ln">   262  </span>			}
+<span id="L263" class="ln">   263  </span>			_, err := s.PatchProductsDetail(authnContext(t), req)
+<span id="L264" class="ln">   264  </span>			require.NoError(t, err)
+<span id="L265" class="ln">   265  </span>		})
+<span id="L266" class="ln">   266  </span>
+<span id="L267" class="ln">   267  </span>		t.Run(&#34;3状態フィールドがnull指定の場合_クリア指定としてユースケースへ渡る&#34;, func(t *testing.T) {
+<span id="L268" class="ln">   268  </span>			t.Parallel()
+<span id="L269" class="ln">   269  </span>			s, mockApp := newServer(t)
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>			mockApp.EXPECT().
+<span id="L272" class="ln">   272  </span>				UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(productuc.UpdateProductParams{})).
+<span id="L273" class="ln">   273  </span>				DoAndReturn(func(_ context.Context, _ *auth.Authn, _ uuid.UUID, p productuc.UpdateProductParams) (productuc.ProductView, error) {
+<span id="L274" class="ln">   274  </span>					assert.Equal(t, patch.Null[string](), p.Description)
+<span id="L275" class="ln">   275  </span>					assert.Equal(t, patch.Null[int](), p.StockWarningThreshold)
+<span id="L276" class="ln">   276  </span>					assert.Equal(t, patch.Null[time.Time](), p.PublishedAt)
+<span id="L277" class="ln">   277  </span>					assert.Equal(t, patch.Null[string](), p.ImagePath)
+<span id="L278" class="ln">   278  </span>
+<span id="L279" class="ln">   279  </span>					return newProductView(t, &#34;patch_cleared&#34;), nil
+<span id="L280" class="ln">   280  </span>				})
+<span id="L281" class="ln">   281  </span>
+<span id="L282" class="ln">   282  </span>			req := gen.PatchProductsDetailRequestObject{
+<span id="L283" class="ln">   283  </span>				ProductId: targetID.ToPrimitive(),
+<span id="L284" class="ln">   284  </span>				Body: &amp;gen.ProductPatchRequest{
+<span id="L285" class="ln">   285  </span>					Version:               7,
+<span id="L286" class="ln">   286  </span>					Description:           nullable.NewNullNullable[string](),
+<span id="L287" class="ln">   287  </span>					StockWarningThreshold: nullable.NewNullNullable[int32](),
+<span id="L288" class="ln">   288  </span>					PublishedAt:           nullable.NewNullNullable[time.Time](),
+<span id="L289" class="ln">   289  </span>					ImagePath:             nullable.NewNullNullable[string](),
+<span id="L290" class="ln">   290  </span>				},
+<span id="L291" class="ln">   291  </span>			}
+<span id="L292" class="ln">   292  </span>			_, err := s.PatchProductsDetail(authnContext(t), req)
+<span id="L293" class="ln">   293  </span>			require.NoError(t, err)
+<span id="L294" class="ln">   294  </span>		})
+<span id="L295" class="ln">   295  </span>	})
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L298" class="ln">   298  </span>		t.Parallel()
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>		t.Run(&#34;authnが無い場合_認証エラーを返しユースケースを呼ばない&#34;, func(t *testing.T) {
+<span id="L301" class="ln">   301  </span>			t.Parallel()
+<span id="L302" class="ln">   302  </span>			s, _ := newServer(t)
+<span id="L303" class="ln">   303  </span>
+<span id="L304" class="ln">   304  </span>			resp, err := s.PatchProductsDetail(context.Background(), newPatchProductsDetailRequest(t, targetID))
+<span id="L305" class="ln">   305  </span>			assert.Nil(t, resp)
+<span id="L306" class="ln">   306  </span>			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
+<span id="L307" class="ln">   307  </span>			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+<span id="L308" class="ln">   308  </span>		})
+<span id="L309" class="ln">   309  </span>
+<span id="L310" class="ln">   310  </span>		t.Run(&#34;Usecaseがバージョン競合でConflictを返す場合_そのまま伝播する&#34;, func(t *testing.T) {
+<span id="L311" class="ln">   311  </span>			t.Parallel()
+<span id="L312" class="ln">   312  </span>			s, mockApp := newServer(t)
+<span id="L313" class="ln">   313  </span>			mockApp.EXPECT().
+<span id="L314" class="ln">   314  </span>				UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L315" class="ln">   315  </span>				Return(productuc.ProductView{}, apperror.ErrConflict)
+<span id="L316" class="ln">   316  </span>
+<span id="L317" class="ln">   317  </span>			resp, err := s.PatchProductsDetail(authnContext(t), newPatchProductsDetailRequest(t, targetID))
+<span id="L318" class="ln">   318  </span>			assert.Nil(t, resp)
+<span id="L319" class="ln">   319  </span>			require.ErrorIs(t, err, apperror.ErrConflict)
+<span id="L320" class="ln">   320  </span>		})
+<span id="L321" class="ln">   321  </span>	})
+<span id="L322" class="ln">   322  </span>}
+<span id="L323" class="ln">   323  </span>
+<span id="L324" class="ln">   324  </span>func Test_server_PatchProductsStock(t *testing.T) {
+<span id="L325" class="ln">   325  </span>	t.Parallel()
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>	targetID := uuidtestkit.NewTestFromSalt(t, &#34;stock_target&#34;)
+<span id="L328" class="ln">   328  </span>
+<span id="L329" class="ln">   329  </span>	newRequest := func(delta int32) gen.PatchProductsStockRequestObject {
+<span id="L330" class="ln">   330  </span>		return gen.PatchProductsStockRequestObject{
+<span id="L331" class="ln">   331  </span>			ProductId: targetID.ToPrimitive(),
+<span id="L332" class="ln">   332  </span>			Body:      &amp;gen.ProductStockPatchRequest{Delta: delta},
+<span id="L333" class="ln">   333  </span>		}
+<span id="L334" class="ln">   334  </span>	}
+<span id="L335" class="ln">   335  </span>
+<span id="L336" class="ln">   336  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L337" class="ln">   337  </span>		t.Parallel()
+<span id="L338" class="ln">   338  </span>
+<span id="L339" class="ln">   339  </span>		t.Run(&#34;正のdeltaの場合_UpdateProductStockParamsへ詰め替えて200と更新結果を返す&#34;, func(t *testing.T) {
+<span id="L340" class="ln">   340  </span>			t.Parallel()
+<span id="L341" class="ln">   341  </span>			s, mockApp := newServer(t)
+<span id="L342" class="ln">   342  </span>			view := newProductView(t, &#34;stock_replenished&#34;)
+<span id="L343" class="ln">   343  </span>
+<span id="L344" class="ln">   344  </span>			mockApp.EXPECT().
+<span id="L345" class="ln">   345  </span>				UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(),
+<span id="L346" class="ln">   346  </span>					gomock.AssignableToTypeOf(productuc.UpdateProductStockParams{})).
+<span id="L347" class="ln">   347  </span>				DoAndReturn(func(
+<span id="L348" class="ln">   348  </span>					_ context.Context, authn *auth.Authn, id uuid.UUID, p productuc.UpdateProductStockParams,
+<span id="L349" class="ln">   349  </span>				) (productuc.ProductView, error) {
+<span id="L350" class="ln">   350  </span>					require.NotNil(t, authn)
+<span id="L351" class="ln">   351  </span>					assert.Equal(t, &#34;subject-1&#34;, authn.Subject())
+<span id="L352" class="ln">   352  </span>					assert.Equal(t, targetID, id)
+<span id="L353" class="ln">   353  </span>					assert.Equal(t, 50, p.Delta)
+<span id="L354" class="ln">   354  </span>
+<span id="L355" class="ln">   355  </span>					return view, nil
+<span id="L356" class="ln">   356  </span>				})
+<span id="L357" class="ln">   357  </span>
+<span id="L358" class="ln">   358  </span>			resp, err := s.PatchProductsStock(authnContext(t), newRequest(50))
+<span id="L359" class="ln">   359  </span>			require.NoError(t, err)
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span>			actual, ok := resp.(gen.PatchProductsStock200JSONResponse)
+<span id="L362" class="ln">   362  </span>			require.True(t, ok)
+<span id="L363" class="ln">   363  </span>			assert.Equal(t, wantProductResponse(view), gen.ProductResponse(actual))
+<span id="L364" class="ln">   364  </span>		})
+<span id="L365" class="ln">   365  </span>
+<span id="L366" class="ln">   366  </span>		t.Run(&#34;負のdeltaの場合_符号を保ったままユースケースへ渡る&#34;, func(t *testing.T) {
+<span id="L367" class="ln">   367  </span>			t.Parallel()
+<span id="L368" class="ln">   368  </span>			s, mockApp := newServer(t)
+<span id="L369" class="ln">   369  </span>
+<span id="L370" class="ln">   370  </span>			mockApp.EXPECT().
+<span id="L371" class="ln">   371  </span>				UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L372" class="ln">   372  </span>				DoAndReturn(func(
+<span id="L373" class="ln">   373  </span>					_ context.Context, _ *auth.Authn, _ uuid.UUID, p productuc.UpdateProductStockParams,
+<span id="L374" class="ln">   374  </span>				) (productuc.ProductView, error) {
+<span id="L375" class="ln">   375  </span>					assert.Equal(t, -3, p.Delta)
+<span id="L376" class="ln">   376  </span>					return newProductView(t, &#34;stock_decreased&#34;), nil
+<span id="L377" class="ln">   377  </span>				})
+<span id="L378" class="ln">   378  </span>
+<span id="L379" class="ln">   379  </span>			_, err := s.PatchProductsStock(authnContext(t), newRequest(-3))
+<span id="L380" class="ln">   380  </span>			require.NoError(t, err)
+<span id="L381" class="ln">   381  </span>		})
+<span id="L382" class="ln">   382  </span>	})
+<span id="L383" class="ln">   383  </span>
+<span id="L384" class="ln">   384  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L385" class="ln">   385  </span>		t.Parallel()
+<span id="L386" class="ln">   386  </span>
+<span id="L387" class="ln">   387  </span>		t.Run(&#34;authnが無い場合_認証エラーを返しユースケースを呼ばない&#34;, func(t *testing.T) {
+<span id="L388" class="ln">   388  </span>			t.Parallel()
+<span id="L389" class="ln">   389  </span>			s, _ := newServer(t)
+<span id="L390" class="ln">   390  </span>
+<span id="L391" class="ln">   391  </span>			resp, err := s.PatchProductsStock(context.Background(), newRequest(1))
+<span id="L392" class="ln">   392  </span>			assert.Nil(t, resp)
+<span id="L393" class="ln">   393  </span>			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
+<span id="L394" class="ln">   394  </span>			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+<span id="L395" class="ln">   395  </span>		})
+<span id="L396" class="ln">   396  </span>
+<span id="L397" class="ln">   397  </span>		t.Run(&#34;Usecaseが不変条件違反を返す場合_そのまま伝播する&#34;, func(t *testing.T) {
+<span id="L398" class="ln">   398  </span>			t.Parallel()
+<span id="L399" class="ln">   399  </span>			s, mockApp := newServer(t)
+<span id="L400" class="ln">   400  </span>			mockApp.EXPECT().
+<span id="L401" class="ln">   401  </span>				UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L402" class="ln">   402  </span>				Return(productuc.ProductView{}, apperror.ErrValidation)
+<span id="L403" class="ln">   403  </span>
+<span id="L404" class="ln">   404  </span>			resp, err := s.PatchProductsStock(authnContext(t), newRequest(-100))
+<span id="L405" class="ln">   405  </span>			assert.Nil(t, resp)
+<span id="L406" class="ln">   406  </span>			require.ErrorIs(t, err, apperror.ErrValidation)
+<span id="L407" class="ln">   407  </span>		})
+<span id="L408" class="ln">   408  </span>	})
+<span id="L409" class="ln">   409  </span>}
+<span id="L410" class="ln">   410  </span>
+<span id="L411" class="ln">   411  </span>func Test_toPatchField(t *testing.T) {
+<span id="L412" class="ln">   412  </span>	t.Parallel()
+<span id="L413" class="ln">   413  </span>
+<span id="L414" class="ln">   414  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L415" class="ln">   415  </span>		t.Parallel()
+<span id="L416" class="ln">   416  </span>
+<span id="L417" class="ln">   417  </span>		t.Run(&#34;未指定の場合は未指定のFieldを返す&#34;, func(t *testing.T) {
+<span id="L418" class="ln">   418  </span>			t.Parallel()
+<span id="L419" class="ln">   419  </span>			var v nullable.Nullable[string]
+<span id="L420" class="ln">   420  </span>			assert.Equal(t, patch.Unspecified[string](), toPatchField(v))
+<span id="L421" class="ln">   421  </span>		})
+<span id="L422" class="ln">   422  </span>
+<span id="L423" class="ln">   423  </span>		t.Run(&#34;null指定の場合はnull指定のFieldを返す&#34;, func(t *testing.T) {
+<span id="L424" class="ln">   424  </span>			t.Parallel()
+<span id="L425" class="ln">   425  </span>			assert.Equal(t, patch.Null[string](), toPatchField(nullable.NewNullNullable[string]()))
+<span id="L426" class="ln">   426  </span>		})
+<span id="L427" class="ln">   427  </span>
+<span id="L428" class="ln">   428  </span>		t.Run(&#34;値指定の場合は値を保持したFieldを返す&#34;, func(t *testing.T) {
+<span id="L429" class="ln">   429  </span>			t.Parallel()
+<span id="L430" class="ln">   430  </span>			assert.Equal(t, patch.Value(&#34;products/a.png&#34;), toPatchField(nullable.NewNullableWithValue(&#34;products/a.png&#34;)))
+<span id="L431" class="ln">   431  </span>		})
+<span id="L432" class="ln">   432  </span>	})
+<span id="L433" class="ln">   433  </span>}
+<span id="L434" class="ln">   434  </span>
+<span id="L435" class="ln">   435  </span>func Test_toPatchFieldInt(t *testing.T) {
+<span id="L436" class="ln">   436  </span>	t.Parallel()
+<span id="L437" class="ln">   437  </span>
+<span id="L438" class="ln">   438  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L439" class="ln">   439  </span>		t.Parallel()
+<span id="L440" class="ln">   440  </span>
+<span id="L441" class="ln">   441  </span>		t.Run(&#34;未指定の場合は未指定のFieldを返す&#34;, func(t *testing.T) {
+<span id="L442" class="ln">   442  </span>			t.Parallel()
+<span id="L443" class="ln">   443  </span>			var v nullable.Nullable[int32]
+<span id="L444" class="ln">   444  </span>			assert.Equal(t, patch.Unspecified[int](), toPatchFieldInt(v))
+<span id="L445" class="ln">   445  </span>		})
+<span id="L446" class="ln">   446  </span>
+<span id="L447" class="ln">   447  </span>		t.Run(&#34;null指定の場合はnull指定のFieldを返す&#34;, func(t *testing.T) {
+<span id="L448" class="ln">   448  </span>			t.Parallel()
+<span id="L449" class="ln">   449  </span>			assert.Equal(t, patch.Null[int](), toPatchFieldInt(nullable.NewNullNullable[int32]()))
+<span id="L450" class="ln">   450  </span>		})
+<span id="L451" class="ln">   451  </span>
+<span id="L452" class="ln">   452  </span>		t.Run(&#34;値指定の場合はintへ変換した値を保持したFieldを返す&#34;, func(t *testing.T) {
+<span id="L453" class="ln">   453  </span>			t.Parallel()
+<span id="L454" class="ln">   454  </span>			assert.Equal(t, patch.Value(5), toPatchFieldInt(nullable.NewNullableWithValue(int32(5))))
+<span id="L455" class="ln">   455  </span>		})
+<span id="L456" class="ln">   456  </span>	})
+<span id="L457" class="ln">   457  </span>}
+<span id="L458" class="ln">   458  </span>
+<span id="L459" class="ln">   459  </span>func Test_toProductResponse(t *testing.T) {
+<span id="L460" class="ln">   460  </span>	t.Parallel()
+<span id="L461" class="ln">   461  </span>
+<span id="L462" class="ln">   462  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L463" class="ln">   463  </span>		t.Parallel()
+<span id="L464" class="ln">   464  </span>
+<span id="L465" class="ln">   465  </span>		t.Run(&#34;全項目が設定されたDTOをレスポンスへ写像する&#34;, func(t *testing.T) {
+<span id="L466" class="ln">   466  </span>			t.Parallel()
+<span id="L467" class="ln">   467  </span>			dto := newProductView(t, &#34;conv_full&#34;)
+<span id="L468" class="ln">   468  </span>
+<span id="L469" class="ln">   469  </span>			actual, err := toProductResponse(dto)
+<span id="L470" class="ln">   470  </span>			require.NoError(t, err)
+<span id="L471" class="ln">   471  </span>			assert.Equal(t, wantProductResponse(dto), actual)
+<span id="L472" class="ln">   472  </span>		})
+<span id="L473" class="ln">   473  </span>
+<span id="L474" class="ln">   474  </span>		t.Run(&#34;任意項目がnilのDTOはレスポンスでもnilのまま写像する&#34;, func(t *testing.T) {
+<span id="L475" class="ln">   475  </span>			t.Parallel()
+<span id="L476" class="ln">   476  </span>			dto := newProductView(t, &#34;conv_nil&#34;)
+<span id="L477" class="ln">   477  </span>			dto.Description = nil
+<span id="L478" class="ln">   478  </span>			dto.StockWarningThreshold = nil
+<span id="L479" class="ln">   479  </span>			dto.PublishedAt = nil
+<span id="L480" class="ln">   480  </span>			dto.ImagePath = nil
+<span id="L481" class="ln">   481  </span>
+<span id="L482" class="ln">   482  </span>			actual, err := toProductResponse(dto)
+<span id="L483" class="ln">   483  </span>			require.NoError(t, err)
+<span id="L484" class="ln">   484  </span>			assert.Nil(t, actual.Description)
+<span id="L485" class="ln">   485  </span>			assert.Nil(t, actual.StockWarningThreshold)
+<span id="L486" class="ln">   486  </span>			assert.Nil(t, actual.PublishedAt)
+<span id="L487" class="ln">   487  </span>			assert.Nil(t, actual.ImagePath)
+<span id="L488" class="ln">   488  </span>			assert.Equal(t, dto.ID.ToPrimitive(), actual.Id)
+<span id="L489" class="ln">   489  </span>		})
+<span id="L490" class="ln">   490  </span>
+<span id="L491" class="ln">   491  </span>		t.Run(&#34;int32の境界値も値を保ったまま写像する&#34;, func(t *testing.T) {
+<span id="L492" class="ln">   492  </span>			t.Parallel()
+<span id="L493" class="ln">   493  </span>			dto := newProductView(t, &#34;conv_boundary&#34;)
+<span id="L494" class="ln">   494  </span>			dto.Quantity = math.MaxInt32
+<span id="L495" class="ln">   495  </span>			dto.Version = math.MaxInt32
+<span id="L496" class="ln">   496  </span>			dto.StockWarningThreshold = ptr.To(math.MaxInt32)
+<span id="L497" class="ln">   497  </span>
+<span id="L498" class="ln">   498  </span>			actual, err := toProductResponse(dto)
+<span id="L499" class="ln">   499  </span>			require.NoError(t, err)
+<span id="L500" class="ln">   500  </span>			assert.Equal(t, int32(math.MaxInt32), actual.Quantity)
+<span id="L501" class="ln">   501  </span>			assert.Equal(t, int32(math.MaxInt32), actual.Version)
+<span id="L502" class="ln">   502  </span>			require.NotNil(t, actual.StockWarningThreshold)
+<span id="L503" class="ln">   503  </span>			assert.Equal(t, int32(math.MaxInt32), *actual.StockWarningThreshold)
+<span id="L504" class="ln">   504  </span>		})
+<span id="L505" class="ln">   505  </span>	})
+<span id="L506" class="ln">   506  </span>
+<span id="L507" class="ln">   507  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L508" class="ln">   508  </span>		t.Parallel()
+<span id="L509" class="ln">   509  </span>
+<span id="L510" class="ln">   510  </span>		t.Run(&#34;在庫数がint32の範囲を超える場合、オーバーフローとして返す&#34;, func(t *testing.T) {
+<span id="L511" class="ln">   511  </span>			t.Parallel()
+<span id="L512" class="ln">   512  </span>			dto := newProductView(t, &#34;conv_over_quantity&#34;)
+<span id="L513" class="ln">   513  </span>			dto.Quantity = math.MaxInt32 + 1
+<span id="L514" class="ln">   514  </span>
+<span id="L515" class="ln">   515  </span>			_, err := toProductResponse(dto)
+<span id="L516" class="ln">   516  </span>			require.ErrorIs(t, err, safecast.ErrOverflow)
+<span id="L517" class="ln">   517  </span>		})
+<span id="L518" class="ln">   518  </span>
+<span id="L519" class="ln">   519  </span>		t.Run(&#34;在庫警告閾値がint32の範囲を超える場合、オーバーフローとして返す&#34;, func(t *testing.T) {
+<span id="L520" class="ln">   520  </span>			t.Parallel()
+<span id="L521" class="ln">   521  </span>			dto := newProductView(t, &#34;conv_over_threshold&#34;)
+<span id="L522" class="ln">   522  </span>			dto.StockWarningThreshold = ptr.To(math.MaxInt32 + 1)
+<span id="L523" class="ln">   523  </span>
+<span id="L524" class="ln">   524  </span>			_, err := toProductResponse(dto)
+<span id="L525" class="ln">   525  </span>			require.ErrorIs(t, err, safecast.ErrOverflow)
+<span id="L526" class="ln">   526  </span>		})
+<span id="L527" class="ln">   527  </span>
+<span id="L528" class="ln">   528  </span>		t.Run(&#34;バージョンがint32の範囲を超える場合、オーバーフローとして返す&#34;, func(t *testing.T) {
+<span id="L529" class="ln">   529  </span>			t.Parallel()
+<span id="L530" class="ln">   530  </span>			dto := newProductView(t, &#34;conv_over_version&#34;)
+<span id="L531" class="ln">   531  </span>			dto.Version = math.MaxInt32 + 1
+<span id="L532" class="ln">   532  </span>
+<span id="L533" class="ln">   533  </span>			_, err := toProductResponse(dto)
+<span id="L534" class="ln">   534  </span>			require.ErrorIs(t, err, safecast.ErrOverflow)
+<span id="L535" class="ln">   535  </span>		})
+<span id="L536" class="ln">   536  </span>	})
+<span id="L537" class="ln">   537  </span>}
+<span id="L538" class="ln">   538  </span>
+</pre><p><a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/products/detail/v1_products_detail_handler_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

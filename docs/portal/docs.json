@@ -33,11 +33,25 @@
           "title": "Setup Repository",
           "items": [
             {
+              "name": "Boilerplate Only Conventions",
+              "path": "../get-started/boilerplate-only-conventions.md",
+              "lang": "en",
+              "source": "docs/get-started/boilerplate-only-conventions.md",
+              "guideId": "boilerplate-only-conventions"
+            },
+            {
               "name": "Setup Repository",
               "path": "../get-started/setup-repository.md",
               "lang": "en",
               "source": "docs/get-started/setup-repository.md",
               "guideId": "setup-repository"
+            },
+            {
+              "name": "Boilerplate Only Conventions",
+              "path": "../ja/get-started/boilerplate-only-conventions.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/get-started/boilerplate-only-conventions.ja.md",
+              "guideId": "boilerplate-only-conventions"
             },
             {
               "name": "Setup Repository",
@@ -521,487 +535,508 @@
               "guideId": "0030-transaction-retry-idempotent-callers"
             },
             {
-              "name": "0031 Uuidv7 Identifiers",
-              "path": "../adr/0031-uuidv7-identifiers.md",
+              "name": "0031 Ordered Pessimistic Row Locks",
+              "path": "../adr/0031-ordered-pessimistic-row-locks.md",
               "lang": "en",
-              "source": "docs/adr/0031-uuidv7-identifiers.md",
-              "guideId": "0031-uuidv7-identifiers"
+              "source": "docs/adr/0031-ordered-pessimistic-row-locks.md",
+              "guideId": "0031-ordered-pessimistic-row-locks"
             },
             {
-              "name": "0032 Uber Fx Di",
-              "path": "../adr/0032-uber-fx-di.md",
+              "name": "0032 Uuidv7 Identifiers",
+              "path": "../adr/0032-uuidv7-identifiers.md",
               "lang": "en",
-              "source": "docs/adr/0032-uber-fx-di.md",
-              "guideId": "0032-uber-fx-di"
+              "source": "docs/adr/0032-uuidv7-identifiers.md",
+              "guideId": "0032-uuidv7-identifiers"
             },
             {
-              "name": "0033 Fx Neutral Di Abstraction",
-              "path": "../adr/0033-fx-neutral-di-abstraction.md",
+              "name": "0033 Two Scale Quantity Model",
+              "path": "../adr/0033-two-scale-quantity-model.md",
               "lang": "en",
-              "source": "docs/adr/0033-fx-neutral-di-abstraction.md",
-              "guideId": "0033-fx-neutral-di-abstraction"
+              "source": "docs/adr/0033-two-scale-quantity-model.md",
+              "guideId": "0033-two-scale-quantity-model"
             },
             {
-              "name": "0034 Env Gated Wiring",
-              "path": "../adr/0034-env-gated-wiring.md",
+              "name": "0034 Domain Lexicon",
+              "path": "../adr/0034-domain-lexicon.md",
               "lang": "en",
-              "source": "docs/adr/0034-env-gated-wiring.md",
-              "guideId": "0034-env-gated-wiring"
+              "source": "docs/adr/0034-domain-lexicon.md",
+              "guideId": "0034-domain-lexicon"
             },
             {
-              "name": "0035 Subsystem Typed Config Loaders",
-              "path": "../adr/0035-subsystem-typed-config-loaders.md",
+              "name": "0035 Uber Fx Di",
+              "path": "../adr/0035-uber-fx-di.md",
               "lang": "en",
-              "source": "docs/adr/0035-subsystem-typed-config-loaders.md",
-              "guideId": "0035-subsystem-typed-config-loaders"
+              "source": "docs/adr/0035-uber-fx-di.md",
+              "guideId": "0035-uber-fx-di"
             },
             {
-              "name": "0036 Config Default Vs Required Governance",
-              "path": "../adr/0036-config-default-vs-required-governance.md",
+              "name": "0036 Fx Neutral Di Abstraction",
+              "path": "../adr/0036-fx-neutral-di-abstraction.md",
               "lang": "en",
-              "source": "docs/adr/0036-config-default-vs-required-governance.md",
-              "guideId": "0036-config-default-vs-required-governance"
+              "source": "docs/adr/0036-fx-neutral-di-abstraction.md",
+              "guideId": "0036-fx-neutral-di-abstraction"
             },
             {
-              "name": "0037 Immutable Fail Fast Config",
-              "path": "../adr/0037-immutable-fail-fast-config.md",
+              "name": "0037 Env Gated Wiring",
+              "path": "../adr/0037-env-gated-wiring.md",
               "lang": "en",
-              "source": "docs/adr/0037-immutable-fail-fast-config.md",
-              "guideId": "0037-immutable-fail-fast-config"
+              "source": "docs/adr/0037-env-gated-wiring.md",
+              "guideId": "0037-env-gated-wiring"
             },
             {
-              "name": "0038 Embedded Self Contained Binary",
-              "path": "../adr/0038-embedded-self-contained-binary.md",
+              "name": "0038 Subsystem Typed Config Loaders",
+              "path": "../adr/0038-subsystem-typed-config-loaders.md",
               "lang": "en",
-              "source": "docs/adr/0038-embedded-self-contained-binary.md",
-              "guideId": "0038-embedded-self-contained-binary"
+              "source": "docs/adr/0038-subsystem-typed-config-loaders.md",
+              "guideId": "0038-subsystem-typed-config-loaders"
             },
             {
-              "name": "0039 Apperror Protocol Agnostic Errors",
-              "path": "../adr/0039-apperror-protocol-agnostic-errors.md",
+              "name": "0039 Config Default Vs Required Governance",
+              "path": "../adr/0039-config-default-vs-required-governance.md",
               "lang": "en",
-              "source": "docs/adr/0039-apperror-protocol-agnostic-errors.md",
-              "guideId": "0039-apperror-protocol-agnostic-errors"
+              "source": "docs/adr/0039-config-default-vs-required-governance.md",
+              "guideId": "0039-config-default-vs-required-governance"
             },
             {
-              "name": "0040 Error Metadata Code Message Details",
-              "path": "../adr/0040-error-metadata-code-message-details.md",
+              "name": "0040 Immutable Fail Fast Config",
+              "path": "../adr/0040-immutable-fail-fast-config.md",
               "lang": "en",
-              "source": "docs/adr/0040-error-metadata-code-message-details.md",
-              "guideId": "0040-error-metadata-code-message-details"
+              "source": "docs/adr/0040-immutable-fail-fast-config.md",
+              "guideId": "0040-immutable-fail-fast-config"
             },
             {
-              "name": "0041 Error Details Opt In Gate",
-              "path": "../adr/0041-error-details-opt-in-gate.md",
+              "name": "0041 Embedded Self Contained Binary",
+              "path": "../adr/0041-embedded-self-contained-binary.md",
               "lang": "en",
-              "source": "docs/adr/0041-error-details-opt-in-gate.md",
-              "guideId": "0041-error-details-opt-in-gate"
+              "source": "docs/adr/0041-embedded-self-contained-binary.md",
+              "guideId": "0041-embedded-self-contained-binary"
             },
             {
-              "name": "0042 Broker Agnostic Worker Scaffold",
-              "path": "../adr/0042-broker-agnostic-worker-scaffold.md",
+              "name": "0042 Apperror Protocol Agnostic Errors",
+              "path": "../adr/0042-apperror-protocol-agnostic-errors.md",
               "lang": "en",
-              "source": "docs/adr/0042-broker-agnostic-worker-scaffold.md",
-              "guideId": "0042-broker-agnostic-worker-scaffold"
+              "source": "docs/adr/0042-apperror-protocol-agnostic-errors.md",
+              "guideId": "0042-apperror-protocol-agnostic-errors"
             },
             {
-              "name": "0043 Out Of Scope Push Streaming Brokers",
-              "path": "../adr/0043-out-of-scope-push-streaming-brokers.md",
+              "name": "0043 Error Metadata Code Message Details",
+              "path": "../adr/0043-error-metadata-code-message-details.md",
               "lang": "en",
-              "source": "docs/adr/0043-out-of-scope-push-streaming-brokers.md",
-              "guideId": "0043-out-of-scope-push-streaming-brokers"
+              "source": "docs/adr/0043-error-metadata-code-message-details.md",
+              "guideId": "0043-error-metadata-code-message-details"
             },
             {
-              "name": "0044 Sqs Adapter Opt In",
-              "path": "../adr/0044-sqs-adapter-opt-in.md",
+              "name": "0044 Error Details Opt In Gate",
+              "path": "../adr/0044-error-details-opt-in-gate.md",
               "lang": "en",
-              "source": "docs/adr/0044-sqs-adapter-opt-in.md",
-              "guideId": "0044-sqs-adapter-opt-in"
+              "source": "docs/adr/0044-error-details-opt-in-gate.md",
+              "guideId": "0044-error-details-opt-in-gate"
             },
             {
-              "name": "0045 Transactional Outbox",
-              "path": "../adr/0045-transactional-outbox.md",
+              "name": "0045 Broker Agnostic Worker Scaffold",
+              "path": "../adr/0045-broker-agnostic-worker-scaffold.md",
               "lang": "en",
-              "source": "docs/adr/0045-transactional-outbox.md",
-              "guideId": "0045-transactional-outbox"
+              "source": "docs/adr/0045-broker-agnostic-worker-scaffold.md",
+              "guideId": "0045-broker-agnostic-worker-scaffold"
             },
             {
-              "name": "0046 At Least Once Outbox Poll",
-              "path": "../adr/0046-at-least-once-outbox-poll.md",
+              "name": "0046 Out Of Scope Push Streaming Brokers",
+              "path": "../adr/0046-out-of-scope-push-streaming-brokers.md",
               "lang": "en",
-              "source": "docs/adr/0046-at-least-once-outbox-poll.md",
-              "guideId": "0046-at-least-once-outbox-poll"
+              "source": "docs/adr/0046-out-of-scope-push-streaming-brokers.md",
+              "guideId": "0046-out-of-scope-push-streaming-brokers"
             },
             {
-              "name": "0047 Skip Locked Outbox Relay",
-              "path": "../adr/0047-skip-locked-outbox-relay.md",
+              "name": "0047 Sqs Adapter Opt In",
+              "path": "../adr/0047-sqs-adapter-opt-in.md",
               "lang": "en",
-              "source": "docs/adr/0047-skip-locked-outbox-relay.md",
-              "guideId": "0047-skip-locked-outbox-relay"
+              "source": "docs/adr/0047-sqs-adapter-opt-in.md",
+              "guideId": "0047-sqs-adapter-opt-in"
             },
             {
-              "name": "0048 Message Id Idempotency Propagation",
-              "path": "../adr/0048-message-id-idempotency-propagation.md",
+              "name": "0048 Broker Sdk Isolation Measured As Coupling",
+              "path": "../adr/0048-broker-sdk-isolation-measured-as-coupling.md",
               "lang": "en",
-              "source": "docs/adr/0048-message-id-idempotency-propagation.md",
-              "guideId": "0048-message-id-idempotency-propagation"
+              "source": "docs/adr/0048-broker-sdk-isolation-measured-as-coupling.md",
+              "guideId": "0048-broker-sdk-isolation-measured-as-coupling"
             },
             {
-              "name": "0049 Outbox Dead After Max Attempts",
-              "path": "../adr/0049-outbox-dead-after-max-attempts.md",
+              "name": "0049 Transactional Outbox",
+              "path": "../adr/0049-transactional-outbox.md",
               "lang": "en",
-              "source": "docs/adr/0049-outbox-dead-after-max-attempts.md",
-              "guideId": "0049-outbox-dead-after-max-attempts"
+              "source": "docs/adr/0049-transactional-outbox.md",
+              "guideId": "0049-transactional-outbox"
             },
             {
-              "name": "0050 Outbox Retention Gc",
-              "path": "../adr/0050-outbox-retention-gc.md",
+              "name": "0050 At Least Once Outbox Poll",
+              "path": "../adr/0050-at-least-once-outbox-poll.md",
               "lang": "en",
-              "source": "docs/adr/0050-outbox-retention-gc.md",
-              "guideId": "0050-outbox-retention-gc"
+              "source": "docs/adr/0050-at-least-once-outbox-poll.md",
+              "guideId": "0050-at-least-once-outbox-poll"
             },
             {
-              "name": "0051 Publisher Http Profile Isolation",
-              "path": "../adr/0051-publisher-http-profile-isolation.md",
+              "name": "0051 Skip Locked Outbox Relay",
+              "path": "../adr/0051-skip-locked-outbox-relay.md",
               "lang": "en",
-              "source": "docs/adr/0051-publisher-http-profile-isolation.md",
-              "guideId": "0051-publisher-http-profile-isolation"
+              "source": "docs/adr/0051-skip-locked-outbox-relay.md",
+              "guideId": "0051-skip-locked-outbox-relay"
             },
             {
-              "name": "0052 Relay Resident Gc Oneshot",
-              "path": "../adr/0052-relay-resident-gc-oneshot.md",
+              "name": "0052 Message Id Idempotency Propagation",
+              "path": "../adr/0052-message-id-idempotency-propagation.md",
               "lang": "en",
-              "source": "docs/adr/0052-relay-resident-gc-oneshot.md",
-              "guideId": "0052-relay-resident-gc-oneshot"
+              "source": "docs/adr/0052-message-id-idempotency-propagation.md",
+              "guideId": "0052-message-id-idempotency-propagation"
             },
             {
-              "name": "0053 Single Tx At Most Once Idempotency",
-              "path": "../adr/0053-single-tx-at-most-once-idempotency.md",
+              "name": "0053 Outbox Dead After Max Attempts",
+              "path": "../adr/0053-outbox-dead-after-max-attempts.md",
               "lang": "en",
-              "source": "docs/adr/0053-single-tx-at-most-once-idempotency.md",
-              "guideId": "0053-single-tx-at-most-once-idempotency"
+              "source": "docs/adr/0053-outbox-dead-after-max-attempts.md",
+              "guideId": "0053-outbox-dead-after-max-attempts"
             },
             {
-              "name": "0054 Idempotency Scope Required",
-              "path": "../adr/0054-idempotency-scope-required.md",
+              "name": "0054 Outbox Retention Gc",
+              "path": "../adr/0054-outbox-retention-gc.md",
               "lang": "en",
-              "source": "docs/adr/0054-idempotency-scope-required.md",
-              "guideId": "0054-idempotency-scope-required"
+              "source": "docs/adr/0054-outbox-retention-gc.md",
+              "guideId": "0054-outbox-retention-gc"
             },
             {
-              "name": "0055 Idempotency Fixed Ttl",
-              "path": "../adr/0055-idempotency-fixed-ttl.md",
+              "name": "0055 Publisher Http Profile Isolation",
+              "path": "../adr/0055-publisher-http-profile-isolation.md",
               "lang": "en",
-              "source": "docs/adr/0055-idempotency-fixed-ttl.md",
-              "guideId": "0055-idempotency-fixed-ttl"
+              "source": "docs/adr/0055-publisher-http-profile-isolation.md",
+              "guideId": "0055-publisher-http-profile-isolation"
             },
             {
-              "name": "0056 Idempotency Response Persistence",
-              "path": "../adr/0056-idempotency-response-persistence.md",
+              "name": "0056 Relay Resident Gc Oneshot",
+              "path": "../adr/0056-relay-resident-gc-oneshot.md",
               "lang": "en",
-              "source": "docs/adr/0056-idempotency-response-persistence.md",
-              "guideId": "0056-idempotency-response-persistence"
+              "source": "docs/adr/0056-relay-resident-gc-oneshot.md",
+              "guideId": "0056-relay-resident-gc-oneshot"
             },
             {
-              "name": "0057 Idempotency Gc Separate Job",
-              "path": "../adr/0057-idempotency-gc-separate-job.md",
+              "name": "0057 Single Tx At Most Once Idempotency",
+              "path": "../adr/0057-single-tx-at-most-once-idempotency.md",
               "lang": "en",
-              "source": "docs/adr/0057-idempotency-gc-separate-job.md",
-              "guideId": "0057-idempotency-gc-separate-job"
+              "source": "docs/adr/0057-single-tx-at-most-once-idempotency.md",
+              "guideId": "0057-single-tx-at-most-once-idempotency"
             },
             {
-              "name": "0058 Idempotency Orthogonal Concerns",
-              "path": "../adr/0058-idempotency-orthogonal-concerns.md",
+              "name": "0058 Idempotency Scope Required",
+              "path": "../adr/0058-idempotency-scope-required.md",
               "lang": "en",
-              "source": "docs/adr/0058-idempotency-orthogonal-concerns.md",
-              "guideId": "0058-idempotency-orthogonal-concerns"
+              "source": "docs/adr/0058-idempotency-scope-required.md",
+              "guideId": "0058-idempotency-scope-required"
             },
             {
-              "name": "0059 Job Fresh Fx App Per Run",
-              "path": "../adr/0059-job-fresh-fx-app-per-run.md",
+              "name": "0059 Idempotency Fixed Ttl",
+              "path": "../adr/0059-idempotency-fixed-ttl.md",
               "lang": "en",
-              "source": "docs/adr/0059-job-fresh-fx-app-per-run.md",
-              "guideId": "0059-job-fresh-fx-app-per-run"
+              "source": "docs/adr/0059-idempotency-fixed-ttl.md",
+              "guideId": "0059-idempotency-fixed-ttl"
             },
             {
-              "name": "0060 Job No Worker Machinery",
-              "path": "../adr/0060-job-no-worker-machinery.md",
+              "name": "0060 Idempotency Response Persistence",
+              "path": "../adr/0060-idempotency-response-persistence.md",
               "lang": "en",
-              "source": "docs/adr/0060-job-no-worker-machinery.md",
-              "guideId": "0060-job-no-worker-machinery"
+              "source": "docs/adr/0060-idempotency-response-persistence.md",
+              "guideId": "0060-idempotency-response-persistence"
             },
             {
-              "name": "0061 Job Explicit Registration",
-              "path": "../adr/0061-job-explicit-registration.md",
+              "name": "0061 Idempotency Gc Separate Job",
+              "path": "../adr/0061-idempotency-gc-separate-job.md",
               "lang": "en",
-              "source": "docs/adr/0061-job-explicit-registration.md",
-              "guideId": "0061-job-explicit-registration"
+              "source": "docs/adr/0061-idempotency-gc-separate-job.md",
+              "guideId": "0061-idempotency-gc-separate-job"
             },
             {
-              "name": "0062 Config Driven Observability Gating",
-              "path": "../adr/0062-config-driven-observability-gating.md",
+              "name": "0062 Idempotency Orthogonal Concerns",
+              "path": "../adr/0062-idempotency-orthogonal-concerns.md",
               "lang": "en",
-              "source": "docs/adr/0062-config-driven-observability-gating.md",
-              "guideId": "0062-config-driven-observability-gating"
+              "source": "docs/adr/0062-idempotency-orthogonal-concerns.md",
+              "guideId": "0062-idempotency-orthogonal-concerns"
             },
             {
-              "name": "0063 Vendor Neutral Otlp Export",
-              "path": "../adr/0063-vendor-neutral-otlp-export.md",
+              "name": "0063 Job Fresh Fx App Per Run",
+              "path": "../adr/0063-job-fresh-fx-app-per-run.md",
               "lang": "en",
-              "source": "docs/adr/0063-vendor-neutral-otlp-export.md",
-              "guideId": "0063-vendor-neutral-otlp-export"
+              "source": "docs/adr/0063-job-fresh-fx-app-per-run.md",
+              "guideId": "0063-job-fresh-fx-app-per-run"
             },
             {
-              "name": "0064 Official Otel Semconv",
-              "path": "../adr/0064-official-otel-semconv.md",
+              "name": "0064 Job No Worker Machinery",
+              "path": "../adr/0064-job-no-worker-machinery.md",
               "lang": "en",
-              "source": "docs/adr/0064-official-otel-semconv.md",
-              "guideId": "0064-official-otel-semconv"
+              "source": "docs/adr/0064-job-no-worker-machinery.md",
+              "guideId": "0064-job-no-worker-machinery"
             },
             {
-              "name": "0065 Dual Path Metrics",
-              "path": "../adr/0065-dual-path-metrics.md",
+              "name": "0065 Job Explicit Registration",
+              "path": "../adr/0065-job-explicit-registration.md",
               "lang": "en",
-              "source": "docs/adr/0065-dual-path-metrics.md",
-              "guideId": "0065-dual-path-metrics"
+              "source": "docs/adr/0065-job-explicit-registration.md",
+              "guideId": "0065-job-explicit-registration"
             },
             {
-              "name": "0066 Lifecycle Independent Provider",
-              "path": "../adr/0066-lifecycle-independent-provider.md",
+              "name": "0066 Config Driven Observability Gating",
+              "path": "../adr/0066-config-driven-observability-gating.md",
               "lang": "en",
-              "source": "docs/adr/0066-lifecycle-independent-provider.md",
-              "guideId": "0066-lifecycle-independent-provider"
+              "source": "docs/adr/0066-config-driven-observability-gating.md",
+              "guideId": "0066-config-driven-observability-gating"
             },
             {
-              "name": "0067 Fixed Default Sampling",
-              "path": "../adr/0067-fixed-default-sampling.md",
+              "name": "0067 Vendor Neutral Otlp Export",
+              "path": "../adr/0067-vendor-neutral-otlp-export.md",
               "lang": "en",
-              "source": "docs/adr/0067-fixed-default-sampling.md",
-              "guideId": "0067-fixed-default-sampling"
+              "source": "docs/adr/0067-vendor-neutral-otlp-export.md",
+              "guideId": "0067-vendor-neutral-otlp-export"
             },
             {
-              "name": "0068 Library Selection Policy",
-              "path": "../adr/0068-library-selection-policy.md",
+              "name": "0068 Official Otel Semconv",
+              "path": "../adr/0068-official-otel-semconv.md",
               "lang": "en",
-              "source": "docs/adr/0068-library-selection-policy.md",
-              "guideId": "0068-library-selection-policy"
+              "source": "docs/adr/0068-official-otel-semconv.md",
+              "guideId": "0068-official-otel-semconv"
             },
             {
-              "name": "0069 Bridge Instrumentation Exceptions",
-              "path": "../adr/0069-bridge-instrumentation-exceptions.md",
+              "name": "0069 Dual Path Metrics",
+              "path": "../adr/0069-dual-path-metrics.md",
               "lang": "en",
-              "source": "docs/adr/0069-bridge-instrumentation-exceptions.md",
-              "guideId": "0069-bridge-instrumentation-exceptions"
+              "source": "docs/adr/0069-dual-path-metrics.md",
+              "guideId": "0069-dual-path-metrics"
             },
             {
-              "name": "0070 Containerized Pinned Toolchain",
-              "path": "../adr/0070-containerized-pinned-toolchain.md",
+              "name": "0070 Lifecycle Independent Provider",
+              "path": "../adr/0070-lifecycle-independent-provider.md",
               "lang": "en",
-              "source": "docs/adr/0070-containerized-pinned-toolchain.md",
-              "guideId": "0070-containerized-pinned-toolchain"
+              "source": "docs/adr/0070-lifecycle-independent-provider.md",
+              "guideId": "0070-lifecycle-independent-provider"
             },
             {
-              "name": "0071 Mise Ssot Drift Gate",
-              "path": "../adr/0071-mise-ssot-drift-gate.md",
+              "name": "0071 Fixed Default Sampling",
+              "path": "../adr/0071-fixed-default-sampling.md",
               "lang": "en",
-              "source": "docs/adr/0071-mise-ssot-drift-gate.md",
-              "guideId": "0071-mise-ssot-drift-gate"
+              "source": "docs/adr/0071-fixed-default-sampling.md",
+              "guideId": "0071-fixed-default-sampling"
             },
             {
-              "name": "0072 Make Single Entrypoint",
-              "path": "../adr/0072-make-single-entrypoint.md",
+              "name": "0072 Library Selection Policy",
+              "path": "../adr/0072-library-selection-policy.md",
               "lang": "en",
-              "source": "docs/adr/0072-make-single-entrypoint.md",
-              "guideId": "0072-make-single-entrypoint"
+              "source": "docs/adr/0072-library-selection-policy.md",
+              "guideId": "0072-library-selection-policy"
             },
             {
-              "name": "0073 Scripts In Node Go",
-              "path": "../adr/0073-scripts-in-node-go.md",
+              "name": "0073 Bridge Instrumentation Exceptions",
+              "path": "../adr/0073-bridge-instrumentation-exceptions.md",
               "lang": "en",
-              "source": "docs/adr/0073-scripts-in-node-go.md",
-              "guideId": "0073-scripts-in-node-go"
+              "source": "docs/adr/0073-bridge-instrumentation-exceptions.md",
+              "guideId": "0073-bridge-instrumentation-exceptions"
             },
             {
-              "name": "0074 Docker Compose Dev Environment",
-              "path": "../adr/0074-docker-compose-dev-environment.md",
+              "name": "0074 Containerized Pinned Toolchain",
+              "path": "../adr/0074-containerized-pinned-toolchain.md",
               "lang": "en",
-              "source": "docs/adr/0074-docker-compose-dev-environment.md",
-              "guideId": "0074-docker-compose-dev-environment"
+              "source": "docs/adr/0074-containerized-pinned-toolchain.md",
+              "guideId": "0074-containerized-pinned-toolchain"
             },
             {
-              "name": "0075 Two Layer Golangci Config",
-              "path": "../adr/0075-two-layer-golangci-config.md",
+              "name": "0075 Mise Ssot Drift Gate",
+              "path": "../adr/0075-mise-ssot-drift-gate.md",
               "lang": "en",
-              "source": "docs/adr/0075-two-layer-golangci-config.md",
-              "guideId": "0075-two-layer-golangci-config"
+              "source": "docs/adr/0075-mise-ssot-drift-gate.md",
+              "guideId": "0075-mise-ssot-drift-gate"
             },
             {
-              "name": "0076 Local Hooks Mirror Ci",
-              "path": "../adr/0076-local-hooks-mirror-ci.md",
+              "name": "0076 Make Single Entrypoint",
+              "path": "../adr/0076-make-single-entrypoint.md",
               "lang": "en",
-              "source": "docs/adr/0076-local-hooks-mirror-ci.md",
-              "guideId": "0076-local-hooks-mirror-ci"
+              "source": "docs/adr/0076-make-single-entrypoint.md",
+              "guideId": "0076-make-single-entrypoint"
             },
             {
-              "name": "0077 Coverage Hard Gate",
-              "path": "../adr/0077-coverage-hard-gate.md",
+              "name": "0077 Scripts In Node Go",
+              "path": "../adr/0077-scripts-in-node-go.md",
               "lang": "en",
-              "source": "docs/adr/0077-coverage-hard-gate.md",
-              "guideId": "0077-coverage-hard-gate"
+              "source": "docs/adr/0077-scripts-in-node-go.md",
+              "guideId": "0077-scripts-in-node-go"
             },
             {
-              "name": "0078 Ci Real Graph Boot Check",
-              "path": "../adr/0078-ci-real-graph-boot-check.md",
+              "name": "0078 Docker Compose Dev Environment",
+              "path": "../adr/0078-docker-compose-dev-environment.md",
               "lang": "en",
-              "source": "docs/adr/0078-ci-real-graph-boot-check.md",
-              "guideId": "0078-ci-real-graph-boot-check"
+              "source": "docs/adr/0078-docker-compose-dev-environment.md",
+              "guideId": "0078-docker-compose-dev-environment"
             },
             {
-              "name": "0079 Generated Artifact Drift Gate",
-              "path": "../adr/0079-generated-artifact-drift-gate.md",
+              "name": "0079 Two Layer Golangci Config",
+              "path": "../adr/0079-two-layer-golangci-config.md",
               "lang": "en",
-              "source": "docs/adr/0079-generated-artifact-drift-gate.md",
-              "guideId": "0079-generated-artifact-drift-gate"
+              "source": "docs/adr/0079-two-layer-golangci-config.md",
+              "guideId": "0079-two-layer-golangci-config"
             },
             {
-              "name": "0080 Multi Layer Security Scanning",
-              "path": "../adr/0080-multi-layer-security-scanning.md",
+              "name": "0080 Local Hooks Mirror Ci",
+              "path": "../adr/0080-local-hooks-mirror-ci.md",
               "lang": "en",
-              "source": "docs/adr/0080-multi-layer-security-scanning.md",
-              "guideId": "0080-multi-layer-security-scanning"
+              "source": "docs/adr/0080-local-hooks-mirror-ci.md",
+              "guideId": "0080-local-hooks-mirror-ci"
             },
             {
-              "name": "0081 Sha Pinned Actions",
-              "path": "../adr/0081-sha-pinned-actions.md",
+              "name": "0081 Coverage Hard Gate",
+              "path": "../adr/0081-coverage-hard-gate.md",
               "lang": "en",
-              "source": "docs/adr/0081-sha-pinned-actions.md",
-              "guideId": "0081-sha-pinned-actions"
+              "source": "docs/adr/0081-coverage-hard-gate.md",
+              "guideId": "0081-coverage-hard-gate"
             },
             {
-              "name": "0082 Rollback Integration Tests",
-              "path": "../adr/0082-rollback-integration-tests.md",
+              "name": "0082 Ci Real Graph Boot Check",
+              "path": "../adr/0082-ci-real-graph-boot-check.md",
               "lang": "en",
-              "source": "docs/adr/0082-rollback-integration-tests.md",
-              "guideId": "0082-rollback-integration-tests"
+              "source": "docs/adr/0082-ci-real-graph-boot-check.md",
+              "guideId": "0082-ci-real-graph-boot-check"
             },
             {
-              "name": "0083 Multi Model Adversarial Review",
-              "path": "../adr/0083-multi-model-adversarial-review.md",
+              "name": "0083 Generated Artifact Drift Gate",
+              "path": "../adr/0083-generated-artifact-drift-gate.md",
               "lang": "en",
-              "source": "docs/adr/0083-multi-model-adversarial-review.md",
-              "guideId": "0083-multi-model-adversarial-review"
+              "source": "docs/adr/0083-generated-artifact-drift-gate.md",
+              "guideId": "0083-generated-artifact-drift-gate"
             },
             {
-              "name": "0084 Lean A Spec Scaffold",
-              "path": "../adr/0084-lean-a-spec-scaffold.md",
+              "name": "0084 Multi Layer Security Scanning",
+              "path": "../adr/0084-multi-layer-security-scanning.md",
               "lang": "en",
-              "source": "docs/adr/0084-lean-a-spec-scaffold.md",
-              "guideId": "0084-lean-a-spec-scaffold"
+              "source": "docs/adr/0084-multi-layer-security-scanning.md",
+              "guideId": "0084-multi-layer-security-scanning"
             },
             {
-              "name": "0085 Cli Humble Object Split",
-              "path": "../adr/0085-cli-humble-object-split.md",
+              "name": "0085 Sha Pinned Actions",
+              "path": "../adr/0085-sha-pinned-actions.md",
               "lang": "en",
-              "source": "docs/adr/0085-cli-humble-object-split.md",
-              "guideId": "0085-cli-humble-object-split"
+              "source": "docs/adr/0085-sha-pinned-actions.md",
+              "guideId": "0085-sha-pinned-actions"
             },
             {
-              "name": "0086 Single Multi Command Binary",
-              "path": "../adr/0086-single-multi-command-binary.md",
+              "name": "0086 Malicious Package Detection Via Cooldown",
+              "path": "../adr/0086-malicious-package-detection-via-cooldown.md",
               "lang": "en",
-              "source": "docs/adr/0086-single-multi-command-binary.md",
-              "guideId": "0086-single-multi-command-binary"
+              "source": "docs/adr/0086-malicious-package-detection-via-cooldown.md",
+              "guideId": "0086-malicious-package-detection-via-cooldown"
             },
             {
-              "name": "0087 Single Runtime Image",
-              "path": "../adr/0087-single-runtime-image.md",
+              "name": "0087 Rollback Integration Tests",
+              "path": "../adr/0087-rollback-integration-tests.md",
               "lang": "en",
-              "source": "docs/adr/0087-single-runtime-image.md",
-              "guideId": "0087-single-runtime-image"
+              "source": "docs/adr/0087-rollback-integration-tests.md",
+              "guideId": "0087-rollback-integration-tests"
             },
             {
-              "name": "0088 Hardened Alpine Runtime",
-              "path": "../adr/0088-hardened-alpine-runtime.md",
+              "name": "0088 Multi Model Adversarial Review",
+              "path": "../adr/0088-multi-model-adversarial-review.md",
               "lang": "en",
-              "source": "docs/adr/0088-hardened-alpine-runtime.md",
-              "guideId": "0088-hardened-alpine-runtime"
+              "source": "docs/adr/0088-multi-model-adversarial-review.md",
+              "guideId": "0088-multi-model-adversarial-review"
             },
             {
-              "name": "0089 Per Environment Images",
-              "path": "../adr/0089-per-environment-images.md",
+              "name": "0089 Lean A Spec Scaffold",
+              "path": "../adr/0089-lean-a-spec-scaffold.md",
               "lang": "en",
-              "source": "docs/adr/0089-per-environment-images.md",
-              "guideId": "0089-per-environment-images"
+              "source": "docs/adr/0089-lean-a-spec-scaffold.md",
+              "guideId": "0089-lean-a-spec-scaffold"
             },
             {
-              "name": "0090 Predeploy Oneshot Migration",
-              "path": "../adr/0090-predeploy-oneshot-migration.md",
+              "name": "0090 Cli Humble Object Split",
+              "path": "../adr/0090-cli-humble-object-split.md",
               "lang": "en",
-              "source": "docs/adr/0090-predeploy-oneshot-migration.md",
-              "guideId": "0090-predeploy-oneshot-migration"
+              "source": "docs/adr/0090-cli-humble-object-split.md",
+              "guideId": "0090-cli-humble-object-split"
             },
             {
-              "name": "0091 Release Image Supply Chain",
-              "path": "../adr/0091-release-image-supply-chain.md",
+              "name": "0091 Single Multi Command Binary",
+              "path": "../adr/0091-single-multi-command-binary.md",
               "lang": "en",
-              "source": "docs/adr/0091-release-image-supply-chain.md",
-              "guideId": "0091-release-image-supply-chain"
+              "source": "docs/adr/0091-single-multi-command-binary.md",
+              "guideId": "0091-single-multi-command-binary"
             },
             {
-              "name": "0092 Vendor Neutral Deploy Skeleton",
-              "path": "../adr/0092-vendor-neutral-deploy-skeleton.md",
+              "name": "0092 Single Runtime Image",
+              "path": "../adr/0092-single-runtime-image.md",
               "lang": "en",
-              "source": "docs/adr/0092-vendor-neutral-deploy-skeleton.md",
-              "guideId": "0092-vendor-neutral-deploy-skeleton"
+              "source": "docs/adr/0092-single-runtime-image.md",
+              "guideId": "0092-single-runtime-image"
             },
             {
-              "name": "0093 Docs Via Github Pages",
-              "path": "../adr/0093-docs-via-github-pages.md",
+              "name": "0093 Hardened Alpine Runtime",
+              "path": "../adr/0093-hardened-alpine-runtime.md",
               "lang": "en",
-              "source": "docs/adr/0093-docs-via-github-pages.md",
-              "guideId": "0093-docs-via-github-pages"
+              "source": "docs/adr/0093-hardened-alpine-runtime.md",
+              "guideId": "0093-hardened-alpine-runtime"
             },
             {
-              "name": "0094 No In App Rate Limiter",
-              "path": "../adr/0094-no-in-app-rate-limiter.md",
+              "name": "0094 Per Environment Images",
+              "path": "../adr/0094-per-environment-images.md",
               "lang": "en",
-              "source": "docs/adr/0094-no-in-app-rate-limiter.md",
-              "guideId": "0094-no-in-app-rate-limiter"
+              "source": "docs/adr/0094-per-environment-images.md",
+              "guideId": "0094-per-environment-images"
             },
             {
-              "name": "0095 Scheduled Job Concurrency Delegated",
-              "path": "../adr/0095-scheduled-job-concurrency-delegated.md",
+              "name": "0095 Predeploy Oneshot Migration",
+              "path": "../adr/0095-predeploy-oneshot-migration.md",
               "lang": "en",
-              "source": "docs/adr/0095-scheduled-job-concurrency-delegated.md",
-              "guideId": "0095-scheduled-job-concurrency-delegated"
+              "source": "docs/adr/0095-predeploy-oneshot-migration.md",
+              "guideId": "0095-predeploy-oneshot-migration"
             },
             {
-              "name": "0096 No Generic Cache Abstraction",
-              "path": "../adr/0096-no-generic-cache-abstraction.md",
+              "name": "0096 Release Image Supply Chain",
+              "path": "../adr/0096-release-image-supply-chain.md",
               "lang": "en",
-              "source": "docs/adr/0096-no-generic-cache-abstraction.md",
-              "guideId": "0096-no-generic-cache-abstraction"
+              "source": "docs/adr/0096-release-image-supply-chain.md",
+              "guideId": "0096-release-image-supply-chain"
             },
             {
-              "name": "0097 Outbox Relay Hardening Delegated",
-              "path": "../adr/0097-outbox-relay-hardening-delegated.md",
+              "name": "0097 Vendor Neutral Deploy Skeleton",
+              "path": "../adr/0097-vendor-neutral-deploy-skeleton.md",
               "lang": "en",
-              "source": "docs/adr/0097-outbox-relay-hardening-delegated.md",
-              "guideId": "0097-outbox-relay-hardening-delegated"
+              "source": "docs/adr/0097-vendor-neutral-deploy-skeleton.md",
+              "guideId": "0097-vendor-neutral-deploy-skeleton"
             },
             {
-              "name": "0098 Exchange Rate Cache Gateway Decorator",
-              "path": "../adr/0098-exchange-rate-cache-gateway-decorator.md",
+              "name": "0098 Docs Via Github Pages",
+              "path": "../adr/0098-docs-via-github-pages.md",
               "lang": "en",
-              "source": "docs/adr/0098-exchange-rate-cache-gateway-decorator.md",
-              "guideId": "0098-exchange-rate-cache-gateway-decorator"
+              "source": "docs/adr/0098-docs-via-github-pages.md",
+              "guideId": "0098-docs-via-github-pages"
             },
             {
-              "name": "0099 Reference Amount Half Up Rounding",
-              "path": "../adr/0099-reference-amount-half-up-rounding.md",
+              "name": "0099 No In App Rate Limiter",
+              "path": "../adr/0099-no-in-app-rate-limiter.md",
               "lang": "en",
-              "source": "docs/adr/0099-reference-amount-half-up-rounding.md",
-              "guideId": "0099-reference-amount-half-up-rounding"
+              "source": "docs/adr/0099-no-in-app-rate-limiter.md",
+              "guideId": "0099-no-in-app-rate-limiter"
+            },
+            {
+              "name": "0100 Scheduled Job Concurrency Delegated",
+              "path": "../adr/0100-scheduled-job-concurrency-delegated.md",
+              "lang": "en",
+              "source": "docs/adr/0100-scheduled-job-concurrency-delegated.md",
+              "guideId": "0100-scheduled-job-concurrency-delegated"
+            },
+            {
+              "name": "0101 No Generic Cache Abstraction",
+              "path": "../adr/0101-no-generic-cache-abstraction.md",
+              "lang": "en",
+              "source": "docs/adr/0101-no-generic-cache-abstraction.md",
+              "guideId": "0101-no-generic-cache-abstraction"
+            },
+            {
+              "name": "0102 Outbox Relay Hardening Delegated",
+              "path": "../adr/0102-outbox-relay-hardening-delegated.md",
+              "lang": "en",
+              "source": "docs/adr/0102-outbox-relay-hardening-delegated.md",
+              "guideId": "0102-outbox-relay-hardening-delegated"
             },
             {
               "name": "README",
@@ -1235,487 +1270,508 @@
               "guideId": "0030-transaction-retry-idempotent-callers"
             },
             {
-              "name": "0031 Uuidv7 Identifiers",
-              "path": "../ja/adr/0031-uuidv7-identifiers.ja.md",
+              "name": "0031 Ordered Pessimistic Row Locks",
+              "path": "../ja/adr/0031-ordered-pessimistic-row-locks.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0031-uuidv7-identifiers.ja.md",
-              "guideId": "0031-uuidv7-identifiers"
+              "source": "docs/ja/adr/0031-ordered-pessimistic-row-locks.ja.md",
+              "guideId": "0031-ordered-pessimistic-row-locks"
             },
             {
-              "name": "0032 Uber Fx Di",
-              "path": "../ja/adr/0032-uber-fx-di.ja.md",
+              "name": "0032 Uuidv7 Identifiers",
+              "path": "../ja/adr/0032-uuidv7-identifiers.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0032-uber-fx-di.ja.md",
-              "guideId": "0032-uber-fx-di"
+              "source": "docs/ja/adr/0032-uuidv7-identifiers.ja.md",
+              "guideId": "0032-uuidv7-identifiers"
             },
             {
-              "name": "0033 Fx Neutral Di Abstraction",
-              "path": "../ja/adr/0033-fx-neutral-di-abstraction.ja.md",
+              "name": "0033 Two Scale Quantity Model",
+              "path": "../ja/adr/0033-two-scale-quantity-model.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0033-fx-neutral-di-abstraction.ja.md",
-              "guideId": "0033-fx-neutral-di-abstraction"
+              "source": "docs/ja/adr/0033-two-scale-quantity-model.ja.md",
+              "guideId": "0033-two-scale-quantity-model"
             },
             {
-              "name": "0034 Env Gated Wiring",
-              "path": "../ja/adr/0034-env-gated-wiring.ja.md",
+              "name": "0034 Domain Lexicon",
+              "path": "../ja/adr/0034-domain-lexicon.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0034-env-gated-wiring.ja.md",
-              "guideId": "0034-env-gated-wiring"
+              "source": "docs/ja/adr/0034-domain-lexicon.ja.md",
+              "guideId": "0034-domain-lexicon"
             },
             {
-              "name": "0035 Subsystem Typed Config Loaders",
-              "path": "../ja/adr/0035-subsystem-typed-config-loaders.ja.md",
+              "name": "0035 Uber Fx Di",
+              "path": "../ja/adr/0035-uber-fx-di.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0035-subsystem-typed-config-loaders.ja.md",
-              "guideId": "0035-subsystem-typed-config-loaders"
+              "source": "docs/ja/adr/0035-uber-fx-di.ja.md",
+              "guideId": "0035-uber-fx-di"
             },
             {
-              "name": "0036 Config Default Vs Required Governance",
-              "path": "../ja/adr/0036-config-default-vs-required-governance.ja.md",
+              "name": "0036 Fx Neutral Di Abstraction",
+              "path": "../ja/adr/0036-fx-neutral-di-abstraction.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0036-config-default-vs-required-governance.ja.md",
-              "guideId": "0036-config-default-vs-required-governance"
+              "source": "docs/ja/adr/0036-fx-neutral-di-abstraction.ja.md",
+              "guideId": "0036-fx-neutral-di-abstraction"
             },
             {
-              "name": "0037 Immutable Fail Fast Config",
-              "path": "../ja/adr/0037-immutable-fail-fast-config.ja.md",
+              "name": "0037 Env Gated Wiring",
+              "path": "../ja/adr/0037-env-gated-wiring.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0037-immutable-fail-fast-config.ja.md",
-              "guideId": "0037-immutable-fail-fast-config"
+              "source": "docs/ja/adr/0037-env-gated-wiring.ja.md",
+              "guideId": "0037-env-gated-wiring"
             },
             {
-              "name": "0038 Embedded Self Contained Binary",
-              "path": "../ja/adr/0038-embedded-self-contained-binary.ja.md",
+              "name": "0038 Subsystem Typed Config Loaders",
+              "path": "../ja/adr/0038-subsystem-typed-config-loaders.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0038-embedded-self-contained-binary.ja.md",
-              "guideId": "0038-embedded-self-contained-binary"
+              "source": "docs/ja/adr/0038-subsystem-typed-config-loaders.ja.md",
+              "guideId": "0038-subsystem-typed-config-loaders"
             },
             {
-              "name": "0039 Apperror Protocol Agnostic Errors",
-              "path": "../ja/adr/0039-apperror-protocol-agnostic-errors.ja.md",
+              "name": "0039 Config Default Vs Required Governance",
+              "path": "../ja/adr/0039-config-default-vs-required-governance.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0039-apperror-protocol-agnostic-errors.ja.md",
-              "guideId": "0039-apperror-protocol-agnostic-errors"
+              "source": "docs/ja/adr/0039-config-default-vs-required-governance.ja.md",
+              "guideId": "0039-config-default-vs-required-governance"
             },
             {
-              "name": "0040 Error Metadata Code Message Details",
-              "path": "../ja/adr/0040-error-metadata-code-message-details.ja.md",
+              "name": "0040 Immutable Fail Fast Config",
+              "path": "../ja/adr/0040-immutable-fail-fast-config.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0040-error-metadata-code-message-details.ja.md",
-              "guideId": "0040-error-metadata-code-message-details"
+              "source": "docs/ja/adr/0040-immutable-fail-fast-config.ja.md",
+              "guideId": "0040-immutable-fail-fast-config"
             },
             {
-              "name": "0041 Error Details Opt In Gate",
-              "path": "../ja/adr/0041-error-details-opt-in-gate.ja.md",
+              "name": "0041 Embedded Self Contained Binary",
+              "path": "../ja/adr/0041-embedded-self-contained-binary.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0041-error-details-opt-in-gate.ja.md",
-              "guideId": "0041-error-details-opt-in-gate"
+              "source": "docs/ja/adr/0041-embedded-self-contained-binary.ja.md",
+              "guideId": "0041-embedded-self-contained-binary"
             },
             {
-              "name": "0042 Broker Agnostic Worker Scaffold",
-              "path": "../ja/adr/0042-broker-agnostic-worker-scaffold.ja.md",
+              "name": "0042 Apperror Protocol Agnostic Errors",
+              "path": "../ja/adr/0042-apperror-protocol-agnostic-errors.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0042-broker-agnostic-worker-scaffold.ja.md",
-              "guideId": "0042-broker-agnostic-worker-scaffold"
+              "source": "docs/ja/adr/0042-apperror-protocol-agnostic-errors.ja.md",
+              "guideId": "0042-apperror-protocol-agnostic-errors"
             },
             {
-              "name": "0043 Out Of Scope Push Streaming Brokers",
-              "path": "../ja/adr/0043-out-of-scope-push-streaming-brokers.ja.md",
+              "name": "0043 Error Metadata Code Message Details",
+              "path": "../ja/adr/0043-error-metadata-code-message-details.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0043-out-of-scope-push-streaming-brokers.ja.md",
-              "guideId": "0043-out-of-scope-push-streaming-brokers"
+              "source": "docs/ja/adr/0043-error-metadata-code-message-details.ja.md",
+              "guideId": "0043-error-metadata-code-message-details"
             },
             {
-              "name": "0044 Sqs Adapter Opt In",
-              "path": "../ja/adr/0044-sqs-adapter-opt-in.ja.md",
+              "name": "0044 Error Details Opt In Gate",
+              "path": "../ja/adr/0044-error-details-opt-in-gate.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0044-sqs-adapter-opt-in.ja.md",
-              "guideId": "0044-sqs-adapter-opt-in"
+              "source": "docs/ja/adr/0044-error-details-opt-in-gate.ja.md",
+              "guideId": "0044-error-details-opt-in-gate"
             },
             {
-              "name": "0045 Transactional Outbox",
-              "path": "../ja/adr/0045-transactional-outbox.ja.md",
+              "name": "0045 Broker Agnostic Worker Scaffold",
+              "path": "../ja/adr/0045-broker-agnostic-worker-scaffold.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0045-transactional-outbox.ja.md",
-              "guideId": "0045-transactional-outbox"
+              "source": "docs/ja/adr/0045-broker-agnostic-worker-scaffold.ja.md",
+              "guideId": "0045-broker-agnostic-worker-scaffold"
             },
             {
-              "name": "0046 At Least Once Outbox Poll",
-              "path": "../ja/adr/0046-at-least-once-outbox-poll.ja.md",
+              "name": "0046 Out Of Scope Push Streaming Brokers",
+              "path": "../ja/adr/0046-out-of-scope-push-streaming-brokers.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0046-at-least-once-outbox-poll.ja.md",
-              "guideId": "0046-at-least-once-outbox-poll"
+              "source": "docs/ja/adr/0046-out-of-scope-push-streaming-brokers.ja.md",
+              "guideId": "0046-out-of-scope-push-streaming-brokers"
             },
             {
-              "name": "0047 Skip Locked Outbox Relay",
-              "path": "../ja/adr/0047-skip-locked-outbox-relay.ja.md",
+              "name": "0047 Sqs Adapter Opt In",
+              "path": "../ja/adr/0047-sqs-adapter-opt-in.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0047-skip-locked-outbox-relay.ja.md",
-              "guideId": "0047-skip-locked-outbox-relay"
+              "source": "docs/ja/adr/0047-sqs-adapter-opt-in.ja.md",
+              "guideId": "0047-sqs-adapter-opt-in"
             },
             {
-              "name": "0048 Message Id Idempotency Propagation",
-              "path": "../ja/adr/0048-message-id-idempotency-propagation.ja.md",
+              "name": "0048 Broker Sdk Isolation Measured As Coupling",
+              "path": "../ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0048-message-id-idempotency-propagation.ja.md",
-              "guideId": "0048-message-id-idempotency-propagation"
+              "source": "docs/ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md",
+              "guideId": "0048-broker-sdk-isolation-measured-as-coupling"
             },
             {
-              "name": "0049 Outbox Dead After Max Attempts",
-              "path": "../ja/adr/0049-outbox-dead-after-max-attempts.ja.md",
+              "name": "0049 Transactional Outbox",
+              "path": "../ja/adr/0049-transactional-outbox.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0049-outbox-dead-after-max-attempts.ja.md",
-              "guideId": "0049-outbox-dead-after-max-attempts"
+              "source": "docs/ja/adr/0049-transactional-outbox.ja.md",
+              "guideId": "0049-transactional-outbox"
             },
             {
-              "name": "0050 Outbox Retention Gc",
-              "path": "../ja/adr/0050-outbox-retention-gc.ja.md",
+              "name": "0050 At Least Once Outbox Poll",
+              "path": "../ja/adr/0050-at-least-once-outbox-poll.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0050-outbox-retention-gc.ja.md",
-              "guideId": "0050-outbox-retention-gc"
+              "source": "docs/ja/adr/0050-at-least-once-outbox-poll.ja.md",
+              "guideId": "0050-at-least-once-outbox-poll"
             },
             {
-              "name": "0051 Publisher Http Profile Isolation",
-              "path": "../ja/adr/0051-publisher-http-profile-isolation.ja.md",
+              "name": "0051 Skip Locked Outbox Relay",
+              "path": "../ja/adr/0051-skip-locked-outbox-relay.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0051-publisher-http-profile-isolation.ja.md",
-              "guideId": "0051-publisher-http-profile-isolation"
+              "source": "docs/ja/adr/0051-skip-locked-outbox-relay.ja.md",
+              "guideId": "0051-skip-locked-outbox-relay"
             },
             {
-              "name": "0052 Relay Resident Gc Oneshot",
-              "path": "../ja/adr/0052-relay-resident-gc-oneshot.ja.md",
+              "name": "0052 Message Id Idempotency Propagation",
+              "path": "../ja/adr/0052-message-id-idempotency-propagation.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0052-relay-resident-gc-oneshot.ja.md",
-              "guideId": "0052-relay-resident-gc-oneshot"
+              "source": "docs/ja/adr/0052-message-id-idempotency-propagation.ja.md",
+              "guideId": "0052-message-id-idempotency-propagation"
             },
             {
-              "name": "0053 Single Tx At Most Once Idempotency",
-              "path": "../ja/adr/0053-single-tx-at-most-once-idempotency.ja.md",
+              "name": "0053 Outbox Dead After Max Attempts",
+              "path": "../ja/adr/0053-outbox-dead-after-max-attempts.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0053-single-tx-at-most-once-idempotency.ja.md",
-              "guideId": "0053-single-tx-at-most-once-idempotency"
+              "source": "docs/ja/adr/0053-outbox-dead-after-max-attempts.ja.md",
+              "guideId": "0053-outbox-dead-after-max-attempts"
             },
             {
-              "name": "0054 Idempotency Scope Required",
-              "path": "../ja/adr/0054-idempotency-scope-required.ja.md",
+              "name": "0054 Outbox Retention Gc",
+              "path": "../ja/adr/0054-outbox-retention-gc.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0054-idempotency-scope-required.ja.md",
-              "guideId": "0054-idempotency-scope-required"
+              "source": "docs/ja/adr/0054-outbox-retention-gc.ja.md",
+              "guideId": "0054-outbox-retention-gc"
             },
             {
-              "name": "0055 Idempotency Fixed Ttl",
-              "path": "../ja/adr/0055-idempotency-fixed-ttl.ja.md",
+              "name": "0055 Publisher Http Profile Isolation",
+              "path": "../ja/adr/0055-publisher-http-profile-isolation.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0055-idempotency-fixed-ttl.ja.md",
-              "guideId": "0055-idempotency-fixed-ttl"
+              "source": "docs/ja/adr/0055-publisher-http-profile-isolation.ja.md",
+              "guideId": "0055-publisher-http-profile-isolation"
             },
             {
-              "name": "0056 Idempotency Response Persistence",
-              "path": "../ja/adr/0056-idempotency-response-persistence.ja.md",
+              "name": "0056 Relay Resident Gc Oneshot",
+              "path": "../ja/adr/0056-relay-resident-gc-oneshot.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0056-idempotency-response-persistence.ja.md",
-              "guideId": "0056-idempotency-response-persistence"
+              "source": "docs/ja/adr/0056-relay-resident-gc-oneshot.ja.md",
+              "guideId": "0056-relay-resident-gc-oneshot"
             },
             {
-              "name": "0057 Idempotency Gc Separate Job",
-              "path": "../ja/adr/0057-idempotency-gc-separate-job.ja.md",
+              "name": "0057 Single Tx At Most Once Idempotency",
+              "path": "../ja/adr/0057-single-tx-at-most-once-idempotency.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0057-idempotency-gc-separate-job.ja.md",
-              "guideId": "0057-idempotency-gc-separate-job"
+              "source": "docs/ja/adr/0057-single-tx-at-most-once-idempotency.ja.md",
+              "guideId": "0057-single-tx-at-most-once-idempotency"
             },
             {
-              "name": "0058 Idempotency Orthogonal Concerns",
-              "path": "../ja/adr/0058-idempotency-orthogonal-concerns.ja.md",
+              "name": "0058 Idempotency Scope Required",
+              "path": "../ja/adr/0058-idempotency-scope-required.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0058-idempotency-orthogonal-concerns.ja.md",
-              "guideId": "0058-idempotency-orthogonal-concerns"
+              "source": "docs/ja/adr/0058-idempotency-scope-required.ja.md",
+              "guideId": "0058-idempotency-scope-required"
             },
             {
-              "name": "0059 Job Fresh Fx App Per Run",
-              "path": "../ja/adr/0059-job-fresh-fx-app-per-run.ja.md",
+              "name": "0059 Idempotency Fixed Ttl",
+              "path": "../ja/adr/0059-idempotency-fixed-ttl.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0059-job-fresh-fx-app-per-run.ja.md",
-              "guideId": "0059-job-fresh-fx-app-per-run"
+              "source": "docs/ja/adr/0059-idempotency-fixed-ttl.ja.md",
+              "guideId": "0059-idempotency-fixed-ttl"
             },
             {
-              "name": "0060 Job No Worker Machinery",
-              "path": "../ja/adr/0060-job-no-worker-machinery.ja.md",
+              "name": "0060 Idempotency Response Persistence",
+              "path": "../ja/adr/0060-idempotency-response-persistence.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0060-job-no-worker-machinery.ja.md",
-              "guideId": "0060-job-no-worker-machinery"
+              "source": "docs/ja/adr/0060-idempotency-response-persistence.ja.md",
+              "guideId": "0060-idempotency-response-persistence"
             },
             {
-              "name": "0061 Job Explicit Registration",
-              "path": "../ja/adr/0061-job-explicit-registration.ja.md",
+              "name": "0061 Idempotency Gc Separate Job",
+              "path": "../ja/adr/0061-idempotency-gc-separate-job.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0061-job-explicit-registration.ja.md",
-              "guideId": "0061-job-explicit-registration"
+              "source": "docs/ja/adr/0061-idempotency-gc-separate-job.ja.md",
+              "guideId": "0061-idempotency-gc-separate-job"
             },
             {
-              "name": "0062 Config Driven Observability Gating",
-              "path": "../ja/adr/0062-config-driven-observability-gating.ja.md",
+              "name": "0062 Idempotency Orthogonal Concerns",
+              "path": "../ja/adr/0062-idempotency-orthogonal-concerns.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0062-config-driven-observability-gating.ja.md",
-              "guideId": "0062-config-driven-observability-gating"
+              "source": "docs/ja/adr/0062-idempotency-orthogonal-concerns.ja.md",
+              "guideId": "0062-idempotency-orthogonal-concerns"
             },
             {
-              "name": "0063 Vendor Neutral Otlp Export",
-              "path": "../ja/adr/0063-vendor-neutral-otlp-export.ja.md",
+              "name": "0063 Job Fresh Fx App Per Run",
+              "path": "../ja/adr/0063-job-fresh-fx-app-per-run.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0063-vendor-neutral-otlp-export.ja.md",
-              "guideId": "0063-vendor-neutral-otlp-export"
+              "source": "docs/ja/adr/0063-job-fresh-fx-app-per-run.ja.md",
+              "guideId": "0063-job-fresh-fx-app-per-run"
             },
             {
-              "name": "0064 Official Otel Semconv",
-              "path": "../ja/adr/0064-official-otel-semconv.ja.md",
+              "name": "0064 Job No Worker Machinery",
+              "path": "../ja/adr/0064-job-no-worker-machinery.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0064-official-otel-semconv.ja.md",
-              "guideId": "0064-official-otel-semconv"
+              "source": "docs/ja/adr/0064-job-no-worker-machinery.ja.md",
+              "guideId": "0064-job-no-worker-machinery"
             },
             {
-              "name": "0065 Dual Path Metrics",
-              "path": "../ja/adr/0065-dual-path-metrics.ja.md",
+              "name": "0065 Job Explicit Registration",
+              "path": "../ja/adr/0065-job-explicit-registration.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0065-dual-path-metrics.ja.md",
-              "guideId": "0065-dual-path-metrics"
+              "source": "docs/ja/adr/0065-job-explicit-registration.ja.md",
+              "guideId": "0065-job-explicit-registration"
             },
             {
-              "name": "0066 Lifecycle Independent Provider",
-              "path": "../ja/adr/0066-lifecycle-independent-provider.ja.md",
+              "name": "0066 Config Driven Observability Gating",
+              "path": "../ja/adr/0066-config-driven-observability-gating.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0066-lifecycle-independent-provider.ja.md",
-              "guideId": "0066-lifecycle-independent-provider"
+              "source": "docs/ja/adr/0066-config-driven-observability-gating.ja.md",
+              "guideId": "0066-config-driven-observability-gating"
             },
             {
-              "name": "0067 Fixed Default Sampling",
-              "path": "../ja/adr/0067-fixed-default-sampling.ja.md",
+              "name": "0067 Vendor Neutral Otlp Export",
+              "path": "../ja/adr/0067-vendor-neutral-otlp-export.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0067-fixed-default-sampling.ja.md",
-              "guideId": "0067-fixed-default-sampling"
+              "source": "docs/ja/adr/0067-vendor-neutral-otlp-export.ja.md",
+              "guideId": "0067-vendor-neutral-otlp-export"
             },
             {
-              "name": "0068 Library Selection Policy",
-              "path": "../ja/adr/0068-library-selection-policy.ja.md",
+              "name": "0068 Official Otel Semconv",
+              "path": "../ja/adr/0068-official-otel-semconv.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0068-library-selection-policy.ja.md",
-              "guideId": "0068-library-selection-policy"
+              "source": "docs/ja/adr/0068-official-otel-semconv.ja.md",
+              "guideId": "0068-official-otel-semconv"
             },
             {
-              "name": "0069 Bridge Instrumentation Exceptions",
-              "path": "../ja/adr/0069-bridge-instrumentation-exceptions.ja.md",
+              "name": "0069 Dual Path Metrics",
+              "path": "../ja/adr/0069-dual-path-metrics.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0069-bridge-instrumentation-exceptions.ja.md",
-              "guideId": "0069-bridge-instrumentation-exceptions"
+              "source": "docs/ja/adr/0069-dual-path-metrics.ja.md",
+              "guideId": "0069-dual-path-metrics"
             },
             {
-              "name": "0070 Containerized Pinned Toolchain",
-              "path": "../ja/adr/0070-containerized-pinned-toolchain.ja.md",
+              "name": "0070 Lifecycle Independent Provider",
+              "path": "../ja/adr/0070-lifecycle-independent-provider.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0070-containerized-pinned-toolchain.ja.md",
-              "guideId": "0070-containerized-pinned-toolchain"
+              "source": "docs/ja/adr/0070-lifecycle-independent-provider.ja.md",
+              "guideId": "0070-lifecycle-independent-provider"
             },
             {
-              "name": "0071 Mise Ssot Drift Gate",
-              "path": "../ja/adr/0071-mise-ssot-drift-gate.ja.md",
+              "name": "0071 Fixed Default Sampling",
+              "path": "../ja/adr/0071-fixed-default-sampling.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0071-mise-ssot-drift-gate.ja.md",
-              "guideId": "0071-mise-ssot-drift-gate"
+              "source": "docs/ja/adr/0071-fixed-default-sampling.ja.md",
+              "guideId": "0071-fixed-default-sampling"
             },
             {
-              "name": "0072 Make Single Entrypoint",
-              "path": "../ja/adr/0072-make-single-entrypoint.ja.md",
+              "name": "0072 Library Selection Policy",
+              "path": "../ja/adr/0072-library-selection-policy.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0072-make-single-entrypoint.ja.md",
-              "guideId": "0072-make-single-entrypoint"
+              "source": "docs/ja/adr/0072-library-selection-policy.ja.md",
+              "guideId": "0072-library-selection-policy"
             },
             {
-              "name": "0073 Scripts In Node Go",
-              "path": "../ja/adr/0073-scripts-in-node-go.ja.md",
+              "name": "0073 Bridge Instrumentation Exceptions",
+              "path": "../ja/adr/0073-bridge-instrumentation-exceptions.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0073-scripts-in-node-go.ja.md",
-              "guideId": "0073-scripts-in-node-go"
+              "source": "docs/ja/adr/0073-bridge-instrumentation-exceptions.ja.md",
+              "guideId": "0073-bridge-instrumentation-exceptions"
             },
             {
-              "name": "0074 Docker Compose Dev Environment",
-              "path": "../ja/adr/0074-docker-compose-dev-environment.ja.md",
+              "name": "0074 Containerized Pinned Toolchain",
+              "path": "../ja/adr/0074-containerized-pinned-toolchain.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0074-docker-compose-dev-environment.ja.md",
-              "guideId": "0074-docker-compose-dev-environment"
+              "source": "docs/ja/adr/0074-containerized-pinned-toolchain.ja.md",
+              "guideId": "0074-containerized-pinned-toolchain"
             },
             {
-              "name": "0075 Two Layer Golangci Config",
-              "path": "../ja/adr/0075-two-layer-golangci-config.ja.md",
+              "name": "0075 Mise Ssot Drift Gate",
+              "path": "../ja/adr/0075-mise-ssot-drift-gate.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0075-two-layer-golangci-config.ja.md",
-              "guideId": "0075-two-layer-golangci-config"
+              "source": "docs/ja/adr/0075-mise-ssot-drift-gate.ja.md",
+              "guideId": "0075-mise-ssot-drift-gate"
             },
             {
-              "name": "0076 Local Hooks Mirror Ci",
-              "path": "../ja/adr/0076-local-hooks-mirror-ci.ja.md",
+              "name": "0076 Make Single Entrypoint",
+              "path": "../ja/adr/0076-make-single-entrypoint.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0076-local-hooks-mirror-ci.ja.md",
-              "guideId": "0076-local-hooks-mirror-ci"
+              "source": "docs/ja/adr/0076-make-single-entrypoint.ja.md",
+              "guideId": "0076-make-single-entrypoint"
             },
             {
-              "name": "0077 Coverage Hard Gate",
-              "path": "../ja/adr/0077-coverage-hard-gate.ja.md",
+              "name": "0077 Scripts In Node Go",
+              "path": "../ja/adr/0077-scripts-in-node-go.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0077-coverage-hard-gate.ja.md",
-              "guideId": "0077-coverage-hard-gate"
+              "source": "docs/ja/adr/0077-scripts-in-node-go.ja.md",
+              "guideId": "0077-scripts-in-node-go"
             },
             {
-              "name": "0078 Ci Real Graph Boot Check",
-              "path": "../ja/adr/0078-ci-real-graph-boot-check.ja.md",
+              "name": "0078 Docker Compose Dev Environment",
+              "path": "../ja/adr/0078-docker-compose-dev-environment.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0078-ci-real-graph-boot-check.ja.md",
-              "guideId": "0078-ci-real-graph-boot-check"
+              "source": "docs/ja/adr/0078-docker-compose-dev-environment.ja.md",
+              "guideId": "0078-docker-compose-dev-environment"
             },
             {
-              "name": "0079 Generated Artifact Drift Gate",
-              "path": "../ja/adr/0079-generated-artifact-drift-gate.ja.md",
+              "name": "0079 Two Layer Golangci Config",
+              "path": "../ja/adr/0079-two-layer-golangci-config.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0079-generated-artifact-drift-gate.ja.md",
-              "guideId": "0079-generated-artifact-drift-gate"
+              "source": "docs/ja/adr/0079-two-layer-golangci-config.ja.md",
+              "guideId": "0079-two-layer-golangci-config"
             },
             {
-              "name": "0080 Multi Layer Security Scanning",
-              "path": "../ja/adr/0080-multi-layer-security-scanning.ja.md",
+              "name": "0080 Local Hooks Mirror Ci",
+              "path": "../ja/adr/0080-local-hooks-mirror-ci.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0080-multi-layer-security-scanning.ja.md",
-              "guideId": "0080-multi-layer-security-scanning"
+              "source": "docs/ja/adr/0080-local-hooks-mirror-ci.ja.md",
+              "guideId": "0080-local-hooks-mirror-ci"
             },
             {
-              "name": "0081 Sha Pinned Actions",
-              "path": "../ja/adr/0081-sha-pinned-actions.ja.md",
+              "name": "0081 Coverage Hard Gate",
+              "path": "../ja/adr/0081-coverage-hard-gate.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0081-sha-pinned-actions.ja.md",
-              "guideId": "0081-sha-pinned-actions"
+              "source": "docs/ja/adr/0081-coverage-hard-gate.ja.md",
+              "guideId": "0081-coverage-hard-gate"
             },
             {
-              "name": "0082 Rollback Integration Tests",
-              "path": "../ja/adr/0082-rollback-integration-tests.ja.md",
+              "name": "0082 Ci Real Graph Boot Check",
+              "path": "../ja/adr/0082-ci-real-graph-boot-check.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0082-rollback-integration-tests.ja.md",
-              "guideId": "0082-rollback-integration-tests"
+              "source": "docs/ja/adr/0082-ci-real-graph-boot-check.ja.md",
+              "guideId": "0082-ci-real-graph-boot-check"
             },
             {
-              "name": "0083 Multi Model Adversarial Review",
-              "path": "../ja/adr/0083-multi-model-adversarial-review.ja.md",
+              "name": "0083 Generated Artifact Drift Gate",
+              "path": "../ja/adr/0083-generated-artifact-drift-gate.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0083-multi-model-adversarial-review.ja.md",
-              "guideId": "0083-multi-model-adversarial-review"
+              "source": "docs/ja/adr/0083-generated-artifact-drift-gate.ja.md",
+              "guideId": "0083-generated-artifact-drift-gate"
             },
             {
-              "name": "0084 Lean A Spec Scaffold",
-              "path": "../ja/adr/0084-lean-a-spec-scaffold.ja.md",
+              "name": "0084 Multi Layer Security Scanning",
+              "path": "../ja/adr/0084-multi-layer-security-scanning.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0084-lean-a-spec-scaffold.ja.md",
-              "guideId": "0084-lean-a-spec-scaffold"
+              "source": "docs/ja/adr/0084-multi-layer-security-scanning.ja.md",
+              "guideId": "0084-multi-layer-security-scanning"
             },
             {
-              "name": "0085 Cli Humble Object Split",
-              "path": "../ja/adr/0085-cli-humble-object-split.ja.md",
+              "name": "0085 Sha Pinned Actions",
+              "path": "../ja/adr/0085-sha-pinned-actions.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0085-cli-humble-object-split.ja.md",
-              "guideId": "0085-cli-humble-object-split"
+              "source": "docs/ja/adr/0085-sha-pinned-actions.ja.md",
+              "guideId": "0085-sha-pinned-actions"
             },
             {
-              "name": "0086 Single Multi Command Binary",
-              "path": "../ja/adr/0086-single-multi-command-binary.ja.md",
+              "name": "0086 Malicious Package Detection Via Cooldown",
+              "path": "../ja/adr/0086-malicious-package-detection-via-cooldown.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0086-single-multi-command-binary.ja.md",
-              "guideId": "0086-single-multi-command-binary"
+              "source": "docs/ja/adr/0086-malicious-package-detection-via-cooldown.ja.md",
+              "guideId": "0086-malicious-package-detection-via-cooldown"
             },
             {
-              "name": "0087 Single Runtime Image",
-              "path": "../ja/adr/0087-single-runtime-image.ja.md",
+              "name": "0087 Rollback Integration Tests",
+              "path": "../ja/adr/0087-rollback-integration-tests.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0087-single-runtime-image.ja.md",
-              "guideId": "0087-single-runtime-image"
+              "source": "docs/ja/adr/0087-rollback-integration-tests.ja.md",
+              "guideId": "0087-rollback-integration-tests"
             },
             {
-              "name": "0088 Hardened Alpine Runtime",
-              "path": "../ja/adr/0088-hardened-alpine-runtime.ja.md",
+              "name": "0088 Multi Model Adversarial Review",
+              "path": "../ja/adr/0088-multi-model-adversarial-review.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0088-hardened-alpine-runtime.ja.md",
-              "guideId": "0088-hardened-alpine-runtime"
+              "source": "docs/ja/adr/0088-multi-model-adversarial-review.ja.md",
+              "guideId": "0088-multi-model-adversarial-review"
             },
             {
-              "name": "0089 Per Environment Images",
-              "path": "../ja/adr/0089-per-environment-images.ja.md",
+              "name": "0089 Lean A Spec Scaffold",
+              "path": "../ja/adr/0089-lean-a-spec-scaffold.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0089-per-environment-images.ja.md",
-              "guideId": "0089-per-environment-images"
+              "source": "docs/ja/adr/0089-lean-a-spec-scaffold.ja.md",
+              "guideId": "0089-lean-a-spec-scaffold"
             },
             {
-              "name": "0090 Predeploy Oneshot Migration",
-              "path": "../ja/adr/0090-predeploy-oneshot-migration.ja.md",
+              "name": "0090 Cli Humble Object Split",
+              "path": "../ja/adr/0090-cli-humble-object-split.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0090-predeploy-oneshot-migration.ja.md",
-              "guideId": "0090-predeploy-oneshot-migration"
+              "source": "docs/ja/adr/0090-cli-humble-object-split.ja.md",
+              "guideId": "0090-cli-humble-object-split"
             },
             {
-              "name": "0091 Release Image Supply Chain",
-              "path": "../ja/adr/0091-release-image-supply-chain.ja.md",
+              "name": "0091 Single Multi Command Binary",
+              "path": "../ja/adr/0091-single-multi-command-binary.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0091-release-image-supply-chain.ja.md",
-              "guideId": "0091-release-image-supply-chain"
+              "source": "docs/ja/adr/0091-single-multi-command-binary.ja.md",
+              "guideId": "0091-single-multi-command-binary"
             },
             {
-              "name": "0092 Vendor Neutral Deploy Skeleton",
-              "path": "../ja/adr/0092-vendor-neutral-deploy-skeleton.ja.md",
+              "name": "0092 Single Runtime Image",
+              "path": "../ja/adr/0092-single-runtime-image.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0092-vendor-neutral-deploy-skeleton.ja.md",
-              "guideId": "0092-vendor-neutral-deploy-skeleton"
+              "source": "docs/ja/adr/0092-single-runtime-image.ja.md",
+              "guideId": "0092-single-runtime-image"
             },
             {
-              "name": "0093 Docs Via Github Pages",
-              "path": "../ja/adr/0093-docs-via-github-pages.ja.md",
+              "name": "0093 Hardened Alpine Runtime",
+              "path": "../ja/adr/0093-hardened-alpine-runtime.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0093-docs-via-github-pages.ja.md",
-              "guideId": "0093-docs-via-github-pages"
+              "source": "docs/ja/adr/0093-hardened-alpine-runtime.ja.md",
+              "guideId": "0093-hardened-alpine-runtime"
             },
             {
-              "name": "0094 No In App Rate Limiter",
-              "path": "../ja/adr/0094-no-in-app-rate-limiter.ja.md",
+              "name": "0094 Per Environment Images",
+              "path": "../ja/adr/0094-per-environment-images.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0094-no-in-app-rate-limiter.ja.md",
-              "guideId": "0094-no-in-app-rate-limiter"
+              "source": "docs/ja/adr/0094-per-environment-images.ja.md",
+              "guideId": "0094-per-environment-images"
             },
             {
-              "name": "0095 Scheduled Job Concurrency Delegated",
-              "path": "../ja/adr/0095-scheduled-job-concurrency-delegated.ja.md",
+              "name": "0095 Predeploy Oneshot Migration",
+              "path": "../ja/adr/0095-predeploy-oneshot-migration.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0095-scheduled-job-concurrency-delegated.ja.md",
-              "guideId": "0095-scheduled-job-concurrency-delegated"
+              "source": "docs/ja/adr/0095-predeploy-oneshot-migration.ja.md",
+              "guideId": "0095-predeploy-oneshot-migration"
             },
             {
-              "name": "0096 No Generic Cache Abstraction",
-              "path": "../ja/adr/0096-no-generic-cache-abstraction.ja.md",
+              "name": "0096 Release Image Supply Chain",
+              "path": "../ja/adr/0096-release-image-supply-chain.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0096-no-generic-cache-abstraction.ja.md",
-              "guideId": "0096-no-generic-cache-abstraction"
+              "source": "docs/ja/adr/0096-release-image-supply-chain.ja.md",
+              "guideId": "0096-release-image-supply-chain"
             },
             {
-              "name": "0097 Outbox Relay Hardening Delegated",
-              "path": "../ja/adr/0097-outbox-relay-hardening-delegated.ja.md",
+              "name": "0097 Vendor Neutral Deploy Skeleton",
+              "path": "../ja/adr/0097-vendor-neutral-deploy-skeleton.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0097-outbox-relay-hardening-delegated.ja.md",
-              "guideId": "0097-outbox-relay-hardening-delegated"
+              "source": "docs/ja/adr/0097-vendor-neutral-deploy-skeleton.ja.md",
+              "guideId": "0097-vendor-neutral-deploy-skeleton"
             },
             {
-              "name": "0098 Exchange Rate Cache Gateway Decorator",
-              "path": "../ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
+              "name": "0098 Docs Via Github Pages",
+              "path": "../ja/adr/0098-docs-via-github-pages.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
-              "guideId": "0098-exchange-rate-cache-gateway-decorator"
+              "source": "docs/ja/adr/0098-docs-via-github-pages.ja.md",
+              "guideId": "0098-docs-via-github-pages"
             },
             {
-              "name": "0099 Reference Amount Half Up Rounding",
-              "path": "../ja/adr/0099-reference-amount-half-up-rounding.ja.md",
+              "name": "0099 No In App Rate Limiter",
+              "path": "../ja/adr/0099-no-in-app-rate-limiter.ja.md",
               "lang": "ja",
-              "source": "docs/ja/adr/0099-reference-amount-half-up-rounding.ja.md",
-              "guideId": "0099-reference-amount-half-up-rounding"
+              "source": "docs/ja/adr/0099-no-in-app-rate-limiter.ja.md",
+              "guideId": "0099-no-in-app-rate-limiter"
+            },
+            {
+              "name": "0100 Scheduled Job Concurrency Delegated",
+              "path": "../ja/adr/0100-scheduled-job-concurrency-delegated.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/adr/0100-scheduled-job-concurrency-delegated.ja.md",
+              "guideId": "0100-scheduled-job-concurrency-delegated"
+            },
+            {
+              "name": "0101 No Generic Cache Abstraction",
+              "path": "../ja/adr/0101-no-generic-cache-abstraction.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/adr/0101-no-generic-cache-abstraction.ja.md",
+              "guideId": "0101-no-generic-cache-abstraction"
+            },
+            {
+              "name": "0102 Outbox Relay Hardening Delegated",
+              "path": "../ja/adr/0102-outbox-relay-hardening-delegated.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/adr/0102-outbox-relay-hardening-delegated.ja.md",
+              "guideId": "0102-outbox-relay-hardening-delegated"
             },
             {
               "name": "README",
@@ -2217,961 +2273,6 @@
                   "lang": "ja",
                   "source": "docs/ja/adr/0030-transaction-retry-idempotent-callers.ja.md",
                   "guideId": "0030-transaction-retry-idempotent-callers"
-                },
-                {
-                  "name": "0031 Uuidv7 Identifiers",
-                  "path": "../adr/0031-uuidv7-identifiers.md",
-                  "lang": "en",
-                  "source": "docs/adr/0031-uuidv7-identifiers.md",
-                  "guideId": "0031-uuidv7-identifiers"
-                },
-                {
-                  "name": "0031 Uuidv7 Identifiers",
-                  "path": "../ja/adr/0031-uuidv7-identifiers.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0031-uuidv7-identifiers.ja.md",
-                  "guideId": "0031-uuidv7-identifiers"
-                }
-              ]
-            },
-            {
-              "title": "DI / Config / Errors",
-              "items": [
-                {
-                  "name": "0032 Uber Fx Di",
-                  "path": "../adr/0032-uber-fx-di.md",
-                  "lang": "en",
-                  "source": "docs/adr/0032-uber-fx-di.md",
-                  "guideId": "0032-uber-fx-di"
-                },
-                {
-                  "name": "0032 Uber Fx Di",
-                  "path": "../ja/adr/0032-uber-fx-di.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0032-uber-fx-di.ja.md",
-                  "guideId": "0032-uber-fx-di"
-                },
-                {
-                  "name": "0033 Fx Neutral Di Abstraction",
-                  "path": "../adr/0033-fx-neutral-di-abstraction.md",
-                  "lang": "en",
-                  "source": "docs/adr/0033-fx-neutral-di-abstraction.md",
-                  "guideId": "0033-fx-neutral-di-abstraction"
-                },
-                {
-                  "name": "0033 Fx Neutral Di Abstraction",
-                  "path": "../ja/adr/0033-fx-neutral-di-abstraction.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0033-fx-neutral-di-abstraction.ja.md",
-                  "guideId": "0033-fx-neutral-di-abstraction"
-                },
-                {
-                  "name": "0034 Env Gated Wiring",
-                  "path": "../adr/0034-env-gated-wiring.md",
-                  "lang": "en",
-                  "source": "docs/adr/0034-env-gated-wiring.md",
-                  "guideId": "0034-env-gated-wiring"
-                },
-                {
-                  "name": "0034 Env Gated Wiring",
-                  "path": "../ja/adr/0034-env-gated-wiring.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0034-env-gated-wiring.ja.md",
-                  "guideId": "0034-env-gated-wiring"
-                },
-                {
-                  "name": "0035 Subsystem Typed Config Loaders",
-                  "path": "../adr/0035-subsystem-typed-config-loaders.md",
-                  "lang": "en",
-                  "source": "docs/adr/0035-subsystem-typed-config-loaders.md",
-                  "guideId": "0035-subsystem-typed-config-loaders"
-                },
-                {
-                  "name": "0035 Subsystem Typed Config Loaders",
-                  "path": "../ja/adr/0035-subsystem-typed-config-loaders.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0035-subsystem-typed-config-loaders.ja.md",
-                  "guideId": "0035-subsystem-typed-config-loaders"
-                },
-                {
-                  "name": "0036 Config Default Vs Required Governance",
-                  "path": "../adr/0036-config-default-vs-required-governance.md",
-                  "lang": "en",
-                  "source": "docs/adr/0036-config-default-vs-required-governance.md",
-                  "guideId": "0036-config-default-vs-required-governance"
-                },
-                {
-                  "name": "0036 Config Default Vs Required Governance",
-                  "path": "../ja/adr/0036-config-default-vs-required-governance.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0036-config-default-vs-required-governance.ja.md",
-                  "guideId": "0036-config-default-vs-required-governance"
-                },
-                {
-                  "name": "0037 Immutable Fail Fast Config",
-                  "path": "../adr/0037-immutable-fail-fast-config.md",
-                  "lang": "en",
-                  "source": "docs/adr/0037-immutable-fail-fast-config.md",
-                  "guideId": "0037-immutable-fail-fast-config"
-                },
-                {
-                  "name": "0037 Immutable Fail Fast Config",
-                  "path": "../ja/adr/0037-immutable-fail-fast-config.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0037-immutable-fail-fast-config.ja.md",
-                  "guideId": "0037-immutable-fail-fast-config"
-                },
-                {
-                  "name": "0038 Embedded Self Contained Binary",
-                  "path": "../adr/0038-embedded-self-contained-binary.md",
-                  "lang": "en",
-                  "source": "docs/adr/0038-embedded-self-contained-binary.md",
-                  "guideId": "0038-embedded-self-contained-binary"
-                },
-                {
-                  "name": "0038 Embedded Self Contained Binary",
-                  "path": "../ja/adr/0038-embedded-self-contained-binary.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0038-embedded-self-contained-binary.ja.md",
-                  "guideId": "0038-embedded-self-contained-binary"
-                },
-                {
-                  "name": "0039 Apperror Protocol Agnostic Errors",
-                  "path": "../adr/0039-apperror-protocol-agnostic-errors.md",
-                  "lang": "en",
-                  "source": "docs/adr/0039-apperror-protocol-agnostic-errors.md",
-                  "guideId": "0039-apperror-protocol-agnostic-errors"
-                },
-                {
-                  "name": "0039 Apperror Protocol Agnostic Errors",
-                  "path": "../ja/adr/0039-apperror-protocol-agnostic-errors.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0039-apperror-protocol-agnostic-errors.ja.md",
-                  "guideId": "0039-apperror-protocol-agnostic-errors"
-                },
-                {
-                  "name": "0040 Error Metadata Code Message Details",
-                  "path": "../adr/0040-error-metadata-code-message-details.md",
-                  "lang": "en",
-                  "source": "docs/adr/0040-error-metadata-code-message-details.md",
-                  "guideId": "0040-error-metadata-code-message-details"
-                },
-                {
-                  "name": "0040 Error Metadata Code Message Details",
-                  "path": "../ja/adr/0040-error-metadata-code-message-details.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0040-error-metadata-code-message-details.ja.md",
-                  "guideId": "0040-error-metadata-code-message-details"
-                }
-              ]
-            },
-            {
-              "title": "Async Subsystems (worker / outbox / idempotency / job)",
-              "items": [
-                {
-                  "name": "0042 Broker Agnostic Worker Scaffold",
-                  "path": "../adr/0042-broker-agnostic-worker-scaffold.md",
-                  "lang": "en",
-                  "source": "docs/adr/0042-broker-agnostic-worker-scaffold.md",
-                  "guideId": "0042-broker-agnostic-worker-scaffold"
-                },
-                {
-                  "name": "0042 Broker Agnostic Worker Scaffold",
-                  "path": "../ja/adr/0042-broker-agnostic-worker-scaffold.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0042-broker-agnostic-worker-scaffold.ja.md",
-                  "guideId": "0042-broker-agnostic-worker-scaffold"
-                },
-                {
-                  "name": "0043 Out Of Scope Push Streaming Brokers",
-                  "path": "../adr/0043-out-of-scope-push-streaming-brokers.md",
-                  "lang": "en",
-                  "source": "docs/adr/0043-out-of-scope-push-streaming-brokers.md",
-                  "guideId": "0043-out-of-scope-push-streaming-brokers"
-                },
-                {
-                  "name": "0043 Out Of Scope Push Streaming Brokers",
-                  "path": "../ja/adr/0043-out-of-scope-push-streaming-brokers.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0043-out-of-scope-push-streaming-brokers.ja.md",
-                  "guideId": "0043-out-of-scope-push-streaming-brokers"
-                },
-                {
-                  "name": "0044 Sqs Adapter Opt In",
-                  "path": "../adr/0044-sqs-adapter-opt-in.md",
-                  "lang": "en",
-                  "source": "docs/adr/0044-sqs-adapter-opt-in.md",
-                  "guideId": "0044-sqs-adapter-opt-in"
-                },
-                {
-                  "name": "0044 Sqs Adapter Opt In",
-                  "path": "../ja/adr/0044-sqs-adapter-opt-in.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0044-sqs-adapter-opt-in.ja.md",
-                  "guideId": "0044-sqs-adapter-opt-in"
-                },
-                {
-                  "name": "0045 Transactional Outbox",
-                  "path": "../adr/0045-transactional-outbox.md",
-                  "lang": "en",
-                  "source": "docs/adr/0045-transactional-outbox.md",
-                  "guideId": "0045-transactional-outbox"
-                },
-                {
-                  "name": "0045 Transactional Outbox",
-                  "path": "../ja/adr/0045-transactional-outbox.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0045-transactional-outbox.ja.md",
-                  "guideId": "0045-transactional-outbox"
-                },
-                {
-                  "name": "0046 At Least Once Outbox Poll",
-                  "path": "../adr/0046-at-least-once-outbox-poll.md",
-                  "lang": "en",
-                  "source": "docs/adr/0046-at-least-once-outbox-poll.md",
-                  "guideId": "0046-at-least-once-outbox-poll"
-                },
-                {
-                  "name": "0046 At Least Once Outbox Poll",
-                  "path": "../ja/adr/0046-at-least-once-outbox-poll.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0046-at-least-once-outbox-poll.ja.md",
-                  "guideId": "0046-at-least-once-outbox-poll"
-                },
-                {
-                  "name": "0047 Skip Locked Outbox Relay",
-                  "path": "../adr/0047-skip-locked-outbox-relay.md",
-                  "lang": "en",
-                  "source": "docs/adr/0047-skip-locked-outbox-relay.md",
-                  "guideId": "0047-skip-locked-outbox-relay"
-                },
-                {
-                  "name": "0047 Skip Locked Outbox Relay",
-                  "path": "../ja/adr/0047-skip-locked-outbox-relay.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0047-skip-locked-outbox-relay.ja.md",
-                  "guideId": "0047-skip-locked-outbox-relay"
-                },
-                {
-                  "name": "0048 Message Id Idempotency Propagation",
-                  "path": "../adr/0048-message-id-idempotency-propagation.md",
-                  "lang": "en",
-                  "source": "docs/adr/0048-message-id-idempotency-propagation.md",
-                  "guideId": "0048-message-id-idempotency-propagation"
-                },
-                {
-                  "name": "0048 Message Id Idempotency Propagation",
-                  "path": "../ja/adr/0048-message-id-idempotency-propagation.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0048-message-id-idempotency-propagation.ja.md",
-                  "guideId": "0048-message-id-idempotency-propagation"
-                },
-                {
-                  "name": "0049 Outbox Dead After Max Attempts",
-                  "path": "../adr/0049-outbox-dead-after-max-attempts.md",
-                  "lang": "en",
-                  "source": "docs/adr/0049-outbox-dead-after-max-attempts.md",
-                  "guideId": "0049-outbox-dead-after-max-attempts"
-                },
-                {
-                  "name": "0049 Outbox Dead After Max Attempts",
-                  "path": "../ja/adr/0049-outbox-dead-after-max-attempts.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0049-outbox-dead-after-max-attempts.ja.md",
-                  "guideId": "0049-outbox-dead-after-max-attempts"
-                },
-                {
-                  "name": "0050 Outbox Retention Gc",
-                  "path": "../adr/0050-outbox-retention-gc.md",
-                  "lang": "en",
-                  "source": "docs/adr/0050-outbox-retention-gc.md",
-                  "guideId": "0050-outbox-retention-gc"
-                },
-                {
-                  "name": "0050 Outbox Retention Gc",
-                  "path": "../ja/adr/0050-outbox-retention-gc.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0050-outbox-retention-gc.ja.md",
-                  "guideId": "0050-outbox-retention-gc"
-                },
-                {
-                  "name": "0051 Publisher Http Profile Isolation",
-                  "path": "../adr/0051-publisher-http-profile-isolation.md",
-                  "lang": "en",
-                  "source": "docs/adr/0051-publisher-http-profile-isolation.md",
-                  "guideId": "0051-publisher-http-profile-isolation"
-                },
-                {
-                  "name": "0051 Publisher Http Profile Isolation",
-                  "path": "../ja/adr/0051-publisher-http-profile-isolation.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0051-publisher-http-profile-isolation.ja.md",
-                  "guideId": "0051-publisher-http-profile-isolation"
-                },
-                {
-                  "name": "0052 Relay Resident Gc Oneshot",
-                  "path": "../adr/0052-relay-resident-gc-oneshot.md",
-                  "lang": "en",
-                  "source": "docs/adr/0052-relay-resident-gc-oneshot.md",
-                  "guideId": "0052-relay-resident-gc-oneshot"
-                },
-                {
-                  "name": "0052 Relay Resident Gc Oneshot",
-                  "path": "../ja/adr/0052-relay-resident-gc-oneshot.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0052-relay-resident-gc-oneshot.ja.md",
-                  "guideId": "0052-relay-resident-gc-oneshot"
-                },
-                {
-                  "name": "0053 Single Tx At Most Once Idempotency",
-                  "path": "../adr/0053-single-tx-at-most-once-idempotency.md",
-                  "lang": "en",
-                  "source": "docs/adr/0053-single-tx-at-most-once-idempotency.md",
-                  "guideId": "0053-single-tx-at-most-once-idempotency"
-                },
-                {
-                  "name": "0053 Single Tx At Most Once Idempotency",
-                  "path": "../ja/adr/0053-single-tx-at-most-once-idempotency.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0053-single-tx-at-most-once-idempotency.ja.md",
-                  "guideId": "0053-single-tx-at-most-once-idempotency"
-                },
-                {
-                  "name": "0054 Idempotency Scope Required",
-                  "path": "../adr/0054-idempotency-scope-required.md",
-                  "lang": "en",
-                  "source": "docs/adr/0054-idempotency-scope-required.md",
-                  "guideId": "0054-idempotency-scope-required"
-                },
-                {
-                  "name": "0054 Idempotency Scope Required",
-                  "path": "../ja/adr/0054-idempotency-scope-required.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0054-idempotency-scope-required.ja.md",
-                  "guideId": "0054-idempotency-scope-required"
-                },
-                {
-                  "name": "0055 Idempotency Fixed Ttl",
-                  "path": "../adr/0055-idempotency-fixed-ttl.md",
-                  "lang": "en",
-                  "source": "docs/adr/0055-idempotency-fixed-ttl.md",
-                  "guideId": "0055-idempotency-fixed-ttl"
-                },
-                {
-                  "name": "0055 Idempotency Fixed Ttl",
-                  "path": "../ja/adr/0055-idempotency-fixed-ttl.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0055-idempotency-fixed-ttl.ja.md",
-                  "guideId": "0055-idempotency-fixed-ttl"
-                },
-                {
-                  "name": "0056 Idempotency Response Persistence",
-                  "path": "../adr/0056-idempotency-response-persistence.md",
-                  "lang": "en",
-                  "source": "docs/adr/0056-idempotency-response-persistence.md",
-                  "guideId": "0056-idempotency-response-persistence"
-                },
-                {
-                  "name": "0056 Idempotency Response Persistence",
-                  "path": "../ja/adr/0056-idempotency-response-persistence.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0056-idempotency-response-persistence.ja.md",
-                  "guideId": "0056-idempotency-response-persistence"
-                },
-                {
-                  "name": "0057 Idempotency Gc Separate Job",
-                  "path": "../adr/0057-idempotency-gc-separate-job.md",
-                  "lang": "en",
-                  "source": "docs/adr/0057-idempotency-gc-separate-job.md",
-                  "guideId": "0057-idempotency-gc-separate-job"
-                },
-                {
-                  "name": "0057 Idempotency Gc Separate Job",
-                  "path": "../ja/adr/0057-idempotency-gc-separate-job.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0057-idempotency-gc-separate-job.ja.md",
-                  "guideId": "0057-idempotency-gc-separate-job"
-                },
-                {
-                  "name": "0058 Idempotency Orthogonal Concerns",
-                  "path": "../adr/0058-idempotency-orthogonal-concerns.md",
-                  "lang": "en",
-                  "source": "docs/adr/0058-idempotency-orthogonal-concerns.md",
-                  "guideId": "0058-idempotency-orthogonal-concerns"
-                },
-                {
-                  "name": "0058 Idempotency Orthogonal Concerns",
-                  "path": "../ja/adr/0058-idempotency-orthogonal-concerns.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0058-idempotency-orthogonal-concerns.ja.md",
-                  "guideId": "0058-idempotency-orthogonal-concerns"
-                },
-                {
-                  "name": "0059 Job Fresh Fx App Per Run",
-                  "path": "../adr/0059-job-fresh-fx-app-per-run.md",
-                  "lang": "en",
-                  "source": "docs/adr/0059-job-fresh-fx-app-per-run.md",
-                  "guideId": "0059-job-fresh-fx-app-per-run"
-                },
-                {
-                  "name": "0059 Job Fresh Fx App Per Run",
-                  "path": "../ja/adr/0059-job-fresh-fx-app-per-run.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0059-job-fresh-fx-app-per-run.ja.md",
-                  "guideId": "0059-job-fresh-fx-app-per-run"
-                },
-                {
-                  "name": "0060 Job No Worker Machinery",
-                  "path": "../adr/0060-job-no-worker-machinery.md",
-                  "lang": "en",
-                  "source": "docs/adr/0060-job-no-worker-machinery.md",
-                  "guideId": "0060-job-no-worker-machinery"
-                },
-                {
-                  "name": "0060 Job No Worker Machinery",
-                  "path": "../ja/adr/0060-job-no-worker-machinery.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0060-job-no-worker-machinery.ja.md",
-                  "guideId": "0060-job-no-worker-machinery"
-                },
-                {
-                  "name": "0061 Job Explicit Registration",
-                  "path": "../adr/0061-job-explicit-registration.md",
-                  "lang": "en",
-                  "source": "docs/adr/0061-job-explicit-registration.md",
-                  "guideId": "0061-job-explicit-registration"
-                },
-                {
-                  "name": "0061 Job Explicit Registration",
-                  "path": "../ja/adr/0061-job-explicit-registration.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0061-job-explicit-registration.ja.md",
-                  "guideId": "0061-job-explicit-registration"
-                }
-              ]
-            },
-            {
-              "title": "Observability",
-              "items": [
-                {
-                  "name": "0062 Config Driven Observability Gating",
-                  "path": "../adr/0062-config-driven-observability-gating.md",
-                  "lang": "en",
-                  "source": "docs/adr/0062-config-driven-observability-gating.md",
-                  "guideId": "0062-config-driven-observability-gating"
-                },
-                {
-                  "name": "0062 Config Driven Observability Gating",
-                  "path": "../ja/adr/0062-config-driven-observability-gating.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0062-config-driven-observability-gating.ja.md",
-                  "guideId": "0062-config-driven-observability-gating"
-                },
-                {
-                  "name": "0063 Vendor Neutral Otlp Export",
-                  "path": "../adr/0063-vendor-neutral-otlp-export.md",
-                  "lang": "en",
-                  "source": "docs/adr/0063-vendor-neutral-otlp-export.md",
-                  "guideId": "0063-vendor-neutral-otlp-export"
-                },
-                {
-                  "name": "0063 Vendor Neutral Otlp Export",
-                  "path": "../ja/adr/0063-vendor-neutral-otlp-export.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0063-vendor-neutral-otlp-export.ja.md",
-                  "guideId": "0063-vendor-neutral-otlp-export"
-                },
-                {
-                  "name": "0064 Official Otel Semconv",
-                  "path": "../adr/0064-official-otel-semconv.md",
-                  "lang": "en",
-                  "source": "docs/adr/0064-official-otel-semconv.md",
-                  "guideId": "0064-official-otel-semconv"
-                },
-                {
-                  "name": "0064 Official Otel Semconv",
-                  "path": "../ja/adr/0064-official-otel-semconv.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0064-official-otel-semconv.ja.md",
-                  "guideId": "0064-official-otel-semconv"
-                },
-                {
-                  "name": "0065 Dual Path Metrics",
-                  "path": "../adr/0065-dual-path-metrics.md",
-                  "lang": "en",
-                  "source": "docs/adr/0065-dual-path-metrics.md",
-                  "guideId": "0065-dual-path-metrics"
-                },
-                {
-                  "name": "0065 Dual Path Metrics",
-                  "path": "../ja/adr/0065-dual-path-metrics.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0065-dual-path-metrics.ja.md",
-                  "guideId": "0065-dual-path-metrics"
-                },
-                {
-                  "name": "0066 Lifecycle Independent Provider",
-                  "path": "../adr/0066-lifecycle-independent-provider.md",
-                  "lang": "en",
-                  "source": "docs/adr/0066-lifecycle-independent-provider.md",
-                  "guideId": "0066-lifecycle-independent-provider"
-                },
-                {
-                  "name": "0066 Lifecycle Independent Provider",
-                  "path": "../ja/adr/0066-lifecycle-independent-provider.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0066-lifecycle-independent-provider.ja.md",
-                  "guideId": "0066-lifecycle-independent-provider"
-                },
-                {
-                  "name": "0067 Fixed Default Sampling",
-                  "path": "../adr/0067-fixed-default-sampling.md",
-                  "lang": "en",
-                  "source": "docs/adr/0067-fixed-default-sampling.md",
-                  "guideId": "0067-fixed-default-sampling"
-                },
-                {
-                  "name": "0067 Fixed Default Sampling",
-                  "path": "../ja/adr/0067-fixed-default-sampling.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0067-fixed-default-sampling.ja.md",
-                  "guideId": "0067-fixed-default-sampling"
-                }
-              ]
-            },
-            {
-              "title": "Libraries",
-              "items": [
-                {
-                  "name": "0068 Library Selection Policy",
-                  "path": "../adr/0068-library-selection-policy.md",
-                  "lang": "en",
-                  "source": "docs/adr/0068-library-selection-policy.md",
-                  "guideId": "0068-library-selection-policy"
-                },
-                {
-                  "name": "0068 Library Selection Policy",
-                  "path": "../ja/adr/0068-library-selection-policy.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0068-library-selection-policy.ja.md",
-                  "guideId": "0068-library-selection-policy"
-                },
-                {
-                  "name": "0069 Bridge Instrumentation Exceptions",
-                  "path": "../adr/0069-bridge-instrumentation-exceptions.md",
-                  "lang": "en",
-                  "source": "docs/adr/0069-bridge-instrumentation-exceptions.md",
-                  "guideId": "0069-bridge-instrumentation-exceptions"
-                },
-                {
-                  "name": "0069 Bridge Instrumentation Exceptions",
-                  "path": "../ja/adr/0069-bridge-instrumentation-exceptions.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0069-bridge-instrumentation-exceptions.ja.md",
-                  "guideId": "0069-bridge-instrumentation-exceptions"
-                }
-              ]
-            },
-            {
-              "title": "Toolchain / Build",
-              "items": [
-                {
-                  "name": "0070 Containerized Pinned Toolchain",
-                  "path": "../adr/0070-containerized-pinned-toolchain.md",
-                  "lang": "en",
-                  "source": "docs/adr/0070-containerized-pinned-toolchain.md",
-                  "guideId": "0070-containerized-pinned-toolchain"
-                },
-                {
-                  "name": "0070 Containerized Pinned Toolchain",
-                  "path": "../ja/adr/0070-containerized-pinned-toolchain.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0070-containerized-pinned-toolchain.ja.md",
-                  "guideId": "0070-containerized-pinned-toolchain"
-                },
-                {
-                  "name": "0071 Mise Ssot Drift Gate",
-                  "path": "../adr/0071-mise-ssot-drift-gate.md",
-                  "lang": "en",
-                  "source": "docs/adr/0071-mise-ssot-drift-gate.md",
-                  "guideId": "0071-mise-ssot-drift-gate"
-                },
-                {
-                  "name": "0071 Mise Ssot Drift Gate",
-                  "path": "../ja/adr/0071-mise-ssot-drift-gate.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0071-mise-ssot-drift-gate.ja.md",
-                  "guideId": "0071-mise-ssot-drift-gate"
-                },
-                {
-                  "name": "0072 Make Single Entrypoint",
-                  "path": "../adr/0072-make-single-entrypoint.md",
-                  "lang": "en",
-                  "source": "docs/adr/0072-make-single-entrypoint.md",
-                  "guideId": "0072-make-single-entrypoint"
-                },
-                {
-                  "name": "0072 Make Single Entrypoint",
-                  "path": "../ja/adr/0072-make-single-entrypoint.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0072-make-single-entrypoint.ja.md",
-                  "guideId": "0072-make-single-entrypoint"
-                },
-                {
-                  "name": "0073 Scripts In Node Go",
-                  "path": "../adr/0073-scripts-in-node-go.md",
-                  "lang": "en",
-                  "source": "docs/adr/0073-scripts-in-node-go.md",
-                  "guideId": "0073-scripts-in-node-go"
-                },
-                {
-                  "name": "0073 Scripts In Node Go",
-                  "path": "../ja/adr/0073-scripts-in-node-go.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0073-scripts-in-node-go.ja.md",
-                  "guideId": "0073-scripts-in-node-go"
-                },
-                {
-                  "name": "0074 Docker Compose Dev Environment",
-                  "path": "../adr/0074-docker-compose-dev-environment.md",
-                  "lang": "en",
-                  "source": "docs/adr/0074-docker-compose-dev-environment.md",
-                  "guideId": "0074-docker-compose-dev-environment"
-                },
-                {
-                  "name": "0074 Docker Compose Dev Environment",
-                  "path": "../ja/adr/0074-docker-compose-dev-environment.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0074-docker-compose-dev-environment.ja.md",
-                  "guideId": "0074-docker-compose-dev-environment"
-                }
-              ]
-            },
-            {
-              "title": "CI / Quality Gates",
-              "items": [
-                {
-                  "name": "0075 Two Layer Golangci Config",
-                  "path": "../adr/0075-two-layer-golangci-config.md",
-                  "lang": "en",
-                  "source": "docs/adr/0075-two-layer-golangci-config.md",
-                  "guideId": "0075-two-layer-golangci-config"
-                },
-                {
-                  "name": "0075 Two Layer Golangci Config",
-                  "path": "../ja/adr/0075-two-layer-golangci-config.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0075-two-layer-golangci-config.ja.md",
-                  "guideId": "0075-two-layer-golangci-config"
-                },
-                {
-                  "name": "0076 Local Hooks Mirror Ci",
-                  "path": "../adr/0076-local-hooks-mirror-ci.md",
-                  "lang": "en",
-                  "source": "docs/adr/0076-local-hooks-mirror-ci.md",
-                  "guideId": "0076-local-hooks-mirror-ci"
-                },
-                {
-                  "name": "0076 Local Hooks Mirror Ci",
-                  "path": "../ja/adr/0076-local-hooks-mirror-ci.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0076-local-hooks-mirror-ci.ja.md",
-                  "guideId": "0076-local-hooks-mirror-ci"
-                },
-                {
-                  "name": "0077 Coverage Hard Gate",
-                  "path": "../adr/0077-coverage-hard-gate.md",
-                  "lang": "en",
-                  "source": "docs/adr/0077-coverage-hard-gate.md",
-                  "guideId": "0077-coverage-hard-gate"
-                },
-                {
-                  "name": "0077 Coverage Hard Gate",
-                  "path": "../ja/adr/0077-coverage-hard-gate.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0077-coverage-hard-gate.ja.md",
-                  "guideId": "0077-coverage-hard-gate"
-                },
-                {
-                  "name": "0078 Ci Real Graph Boot Check",
-                  "path": "../adr/0078-ci-real-graph-boot-check.md",
-                  "lang": "en",
-                  "source": "docs/adr/0078-ci-real-graph-boot-check.md",
-                  "guideId": "0078-ci-real-graph-boot-check"
-                },
-                {
-                  "name": "0078 Ci Real Graph Boot Check",
-                  "path": "../ja/adr/0078-ci-real-graph-boot-check.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0078-ci-real-graph-boot-check.ja.md",
-                  "guideId": "0078-ci-real-graph-boot-check"
-                },
-                {
-                  "name": "0079 Generated Artifact Drift Gate",
-                  "path": "../adr/0079-generated-artifact-drift-gate.md",
-                  "lang": "en",
-                  "source": "docs/adr/0079-generated-artifact-drift-gate.md",
-                  "guideId": "0079-generated-artifact-drift-gate"
-                },
-                {
-                  "name": "0079 Generated Artifact Drift Gate",
-                  "path": "../ja/adr/0079-generated-artifact-drift-gate.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0079-generated-artifact-drift-gate.ja.md",
-                  "guideId": "0079-generated-artifact-drift-gate"
-                },
-                {
-                  "name": "0080 Multi Layer Security Scanning",
-                  "path": "../adr/0080-multi-layer-security-scanning.md",
-                  "lang": "en",
-                  "source": "docs/adr/0080-multi-layer-security-scanning.md",
-                  "guideId": "0080-multi-layer-security-scanning"
-                },
-                {
-                  "name": "0080 Multi Layer Security Scanning",
-                  "path": "../ja/adr/0080-multi-layer-security-scanning.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0080-multi-layer-security-scanning.ja.md",
-                  "guideId": "0080-multi-layer-security-scanning"
-                },
-                {
-                  "name": "0081 Sha Pinned Actions",
-                  "path": "../adr/0081-sha-pinned-actions.md",
-                  "lang": "en",
-                  "source": "docs/adr/0081-sha-pinned-actions.md",
-                  "guideId": "0081-sha-pinned-actions"
-                },
-                {
-                  "name": "0081 Sha Pinned Actions",
-                  "path": "../ja/adr/0081-sha-pinned-actions.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0081-sha-pinned-actions.ja.md",
-                  "guideId": "0081-sha-pinned-actions"
-                }
-              ]
-            },
-            {
-              "title": "Development Process",
-              "items": [
-                {
-                  "name": "0082 Rollback Integration Tests",
-                  "path": "../adr/0082-rollback-integration-tests.md",
-                  "lang": "en",
-                  "source": "docs/adr/0082-rollback-integration-tests.md",
-                  "guideId": "0082-rollback-integration-tests"
-                },
-                {
-                  "name": "0082 Rollback Integration Tests",
-                  "path": "../ja/adr/0082-rollback-integration-tests.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0082-rollback-integration-tests.ja.md",
-                  "guideId": "0082-rollback-integration-tests"
-                },
-                {
-                  "name": "0083 Multi Model Adversarial Review",
-                  "path": "../adr/0083-multi-model-adversarial-review.md",
-                  "lang": "en",
-                  "source": "docs/adr/0083-multi-model-adversarial-review.md",
-                  "guideId": "0083-multi-model-adversarial-review"
-                },
-                {
-                  "name": "0083 Multi Model Adversarial Review",
-                  "path": "../ja/adr/0083-multi-model-adversarial-review.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0083-multi-model-adversarial-review.ja.md",
-                  "guideId": "0083-multi-model-adversarial-review"
-                },
-                {
-                  "name": "0084 Lean A Spec Scaffold",
-                  "path": "../adr/0084-lean-a-spec-scaffold.md",
-                  "lang": "en",
-                  "source": "docs/adr/0084-lean-a-spec-scaffold.md",
-                  "guideId": "0084-lean-a-spec-scaffold"
-                },
-                {
-                  "name": "0084 Lean A Spec Scaffold",
-                  "path": "../ja/adr/0084-lean-a-spec-scaffold.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0084-lean-a-spec-scaffold.ja.md",
-                  "guideId": "0084-lean-a-spec-scaffold"
-                }
-              ]
-            },
-            {
-              "title": "Binary / Image / Deploy",
-              "items": [
-                {
-                  "name": "0085 Cli Humble Object Split",
-                  "path": "../adr/0085-cli-humble-object-split.md",
-                  "lang": "en",
-                  "source": "docs/adr/0085-cli-humble-object-split.md",
-                  "guideId": "0085-cli-humble-object-split"
-                },
-                {
-                  "name": "0085 Cli Humble Object Split",
-                  "path": "../ja/adr/0085-cli-humble-object-split.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0085-cli-humble-object-split.ja.md",
-                  "guideId": "0085-cli-humble-object-split"
-                },
-                {
-                  "name": "0086 Single Multi Command Binary",
-                  "path": "../adr/0086-single-multi-command-binary.md",
-                  "lang": "en",
-                  "source": "docs/adr/0086-single-multi-command-binary.md",
-                  "guideId": "0086-single-multi-command-binary"
-                },
-                {
-                  "name": "0086 Single Multi Command Binary",
-                  "path": "../ja/adr/0086-single-multi-command-binary.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0086-single-multi-command-binary.ja.md",
-                  "guideId": "0086-single-multi-command-binary"
-                },
-                {
-                  "name": "0087 Single Runtime Image",
-                  "path": "../adr/0087-single-runtime-image.md",
-                  "lang": "en",
-                  "source": "docs/adr/0087-single-runtime-image.md",
-                  "guideId": "0087-single-runtime-image"
-                },
-                {
-                  "name": "0087 Single Runtime Image",
-                  "path": "../ja/adr/0087-single-runtime-image.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0087-single-runtime-image.ja.md",
-                  "guideId": "0087-single-runtime-image"
-                },
-                {
-                  "name": "0088 Hardened Alpine Runtime",
-                  "path": "../adr/0088-hardened-alpine-runtime.md",
-                  "lang": "en",
-                  "source": "docs/adr/0088-hardened-alpine-runtime.md",
-                  "guideId": "0088-hardened-alpine-runtime"
-                },
-                {
-                  "name": "0088 Hardened Alpine Runtime",
-                  "path": "../ja/adr/0088-hardened-alpine-runtime.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0088-hardened-alpine-runtime.ja.md",
-                  "guideId": "0088-hardened-alpine-runtime"
-                },
-                {
-                  "name": "0089 Per Environment Images",
-                  "path": "../adr/0089-per-environment-images.md",
-                  "lang": "en",
-                  "source": "docs/adr/0089-per-environment-images.md",
-                  "guideId": "0089-per-environment-images"
-                },
-                {
-                  "name": "0089 Per Environment Images",
-                  "path": "../ja/adr/0089-per-environment-images.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0089-per-environment-images.ja.md",
-                  "guideId": "0089-per-environment-images"
-                },
-                {
-                  "name": "0090 Predeploy Oneshot Migration",
-                  "path": "../adr/0090-predeploy-oneshot-migration.md",
-                  "lang": "en",
-                  "source": "docs/adr/0090-predeploy-oneshot-migration.md",
-                  "guideId": "0090-predeploy-oneshot-migration"
-                },
-                {
-                  "name": "0090 Predeploy Oneshot Migration",
-                  "path": "../ja/adr/0090-predeploy-oneshot-migration.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0090-predeploy-oneshot-migration.ja.md",
-                  "guideId": "0090-predeploy-oneshot-migration"
-                },
-                {
-                  "name": "0091 Release Image Supply Chain",
-                  "path": "../adr/0091-release-image-supply-chain.md",
-                  "lang": "en",
-                  "source": "docs/adr/0091-release-image-supply-chain.md",
-                  "guideId": "0091-release-image-supply-chain"
-                },
-                {
-                  "name": "0091 Release Image Supply Chain",
-                  "path": "../ja/adr/0091-release-image-supply-chain.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0091-release-image-supply-chain.ja.md",
-                  "guideId": "0091-release-image-supply-chain"
-                },
-                {
-                  "name": "0092 Vendor Neutral Deploy Skeleton",
-                  "path": "../adr/0092-vendor-neutral-deploy-skeleton.md",
-                  "lang": "en",
-                  "source": "docs/adr/0092-vendor-neutral-deploy-skeleton.md",
-                  "guideId": "0092-vendor-neutral-deploy-skeleton"
-                },
-                {
-                  "name": "0092 Vendor Neutral Deploy Skeleton",
-                  "path": "../ja/adr/0092-vendor-neutral-deploy-skeleton.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0092-vendor-neutral-deploy-skeleton.ja.md",
-                  "guideId": "0092-vendor-neutral-deploy-skeleton"
-                },
-                {
-                  "name": "0093 Docs Via Github Pages",
-                  "path": "../adr/0093-docs-via-github-pages.md",
-                  "lang": "en",
-                  "source": "docs/adr/0093-docs-via-github-pages.md",
-                  "guideId": "0093-docs-via-github-pages"
-                },
-                {
-                  "name": "0093 Docs Via Github Pages",
-                  "path": "../ja/adr/0093-docs-via-github-pages.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0093-docs-via-github-pages.ja.md",
-                  "guideId": "0093-docs-via-github-pages"
-                }
-              ]
-            },
-            {
-              "title": "Project Exclusions",
-              "items": [
-                {
-                  "name": "0094 No In App Rate Limiter",
-                  "path": "../adr/0094-no-in-app-rate-limiter.md",
-                  "lang": "en",
-                  "source": "docs/adr/0094-no-in-app-rate-limiter.md",
-                  "guideId": "0094-no-in-app-rate-limiter"
-                },
-                {
-                  "name": "0094 No In App Rate Limiter",
-                  "path": "../ja/adr/0094-no-in-app-rate-limiter.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0094-no-in-app-rate-limiter.ja.md",
-                  "guideId": "0094-no-in-app-rate-limiter"
-                },
-                {
-                  "name": "0095 Scheduled Job Concurrency Delegated",
-                  "path": "../adr/0095-scheduled-job-concurrency-delegated.md",
-                  "lang": "en",
-                  "source": "docs/adr/0095-scheduled-job-concurrency-delegated.md",
-                  "guideId": "0095-scheduled-job-concurrency-delegated"
-                },
-                {
-                  "name": "0095 Scheduled Job Concurrency Delegated",
-                  "path": "../ja/adr/0095-scheduled-job-concurrency-delegated.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0095-scheduled-job-concurrency-delegated.ja.md",
-                  "guideId": "0095-scheduled-job-concurrency-delegated"
-                },
-                {
-                  "name": "0096 No Generic Cache Abstraction",
-                  "path": "../adr/0096-no-generic-cache-abstraction.md",
-                  "lang": "en",
-                  "source": "docs/adr/0096-no-generic-cache-abstraction.md",
-                  "guideId": "0096-no-generic-cache-abstraction"
-                },
-                {
-                  "name": "0096 No Generic Cache Abstraction",
-                  "path": "../ja/adr/0096-no-generic-cache-abstraction.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0096-no-generic-cache-abstraction.ja.md",
-                  "guideId": "0096-no-generic-cache-abstraction"
                 }
               ]
             },
@@ -3179,60 +2280,1012 @@
               "title": "Other",
               "items": [
                 {
-                  "name": "0041 Error Details Opt In Gate",
-                  "path": "../adr/0041-error-details-opt-in-gate.md",
+                  "name": "0031 Ordered Pessimistic Row Locks",
+                  "path": "../adr/0031-ordered-pessimistic-row-locks.md",
                   "lang": "en",
-                  "source": "docs/adr/0041-error-details-opt-in-gate.md",
-                  "guideId": "0041-error-details-opt-in-gate"
+                  "source": "docs/adr/0031-ordered-pessimistic-row-locks.md",
+                  "guideId": "0031-ordered-pessimistic-row-locks"
                 },
                 {
-                  "name": "0097 Outbox Relay Hardening Delegated",
-                  "path": "../adr/0097-outbox-relay-hardening-delegated.md",
+                  "name": "0032 Uuidv7 Identifiers",
+                  "path": "../adr/0032-uuidv7-identifiers.md",
                   "lang": "en",
-                  "source": "docs/adr/0097-outbox-relay-hardening-delegated.md",
-                  "guideId": "0097-outbox-relay-hardening-delegated"
+                  "source": "docs/adr/0032-uuidv7-identifiers.md",
+                  "guideId": "0032-uuidv7-identifiers"
                 },
                 {
-                  "name": "0098 Exchange Rate Cache Gateway Decorator",
-                  "path": "../adr/0098-exchange-rate-cache-gateway-decorator.md",
+                  "name": "0033 Two Scale Quantity Model",
+                  "path": "../adr/0033-two-scale-quantity-model.md",
                   "lang": "en",
-                  "source": "docs/adr/0098-exchange-rate-cache-gateway-decorator.md",
-                  "guideId": "0098-exchange-rate-cache-gateway-decorator"
+                  "source": "docs/adr/0033-two-scale-quantity-model.md",
+                  "guideId": "0033-two-scale-quantity-model"
                 },
                 {
-                  "name": "0099 Reference Amount Half Up Rounding",
-                  "path": "../adr/0099-reference-amount-half-up-rounding.md",
+                  "name": "0034 Domain Lexicon",
+                  "path": "../adr/0034-domain-lexicon.md",
                   "lang": "en",
-                  "source": "docs/adr/0099-reference-amount-half-up-rounding.md",
-                  "guideId": "0099-reference-amount-half-up-rounding"
+                  "source": "docs/adr/0034-domain-lexicon.md",
+                  "guideId": "0034-domain-lexicon"
                 },
                 {
-                  "name": "0041 Error Details Opt In Gate",
-                  "path": "../ja/adr/0041-error-details-opt-in-gate.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0041-error-details-opt-in-gate.ja.md",
-                  "guideId": "0041-error-details-opt-in-gate"
+                  "name": "0035 Uber Fx Di",
+                  "path": "../adr/0035-uber-fx-di.md",
+                  "lang": "en",
+                  "source": "docs/adr/0035-uber-fx-di.md",
+                  "guideId": "0035-uber-fx-di"
                 },
                 {
-                  "name": "0097 Outbox Relay Hardening Delegated",
-                  "path": "../ja/adr/0097-outbox-relay-hardening-delegated.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0097-outbox-relay-hardening-delegated.ja.md",
-                  "guideId": "0097-outbox-relay-hardening-delegated"
+                  "name": "0036 Fx Neutral Di Abstraction",
+                  "path": "../adr/0036-fx-neutral-di-abstraction.md",
+                  "lang": "en",
+                  "source": "docs/adr/0036-fx-neutral-di-abstraction.md",
+                  "guideId": "0036-fx-neutral-di-abstraction"
                 },
                 {
-                  "name": "0098 Exchange Rate Cache Gateway Decorator",
-                  "path": "../ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
-                  "lang": "ja",
-                  "source": "docs/ja/adr/0098-exchange-rate-cache-gateway-decorator.ja.md",
-                  "guideId": "0098-exchange-rate-cache-gateway-decorator"
+                  "name": "0037 Env Gated Wiring",
+                  "path": "../adr/0037-env-gated-wiring.md",
+                  "lang": "en",
+                  "source": "docs/adr/0037-env-gated-wiring.md",
+                  "guideId": "0037-env-gated-wiring"
                 },
                 {
-                  "name": "0099 Reference Amount Half Up Rounding",
-                  "path": "../ja/adr/0099-reference-amount-half-up-rounding.ja.md",
+                  "name": "0038 Subsystem Typed Config Loaders",
+                  "path": "../adr/0038-subsystem-typed-config-loaders.md",
+                  "lang": "en",
+                  "source": "docs/adr/0038-subsystem-typed-config-loaders.md",
+                  "guideId": "0038-subsystem-typed-config-loaders"
+                },
+                {
+                  "name": "0039 Config Default Vs Required Governance",
+                  "path": "../adr/0039-config-default-vs-required-governance.md",
+                  "lang": "en",
+                  "source": "docs/adr/0039-config-default-vs-required-governance.md",
+                  "guideId": "0039-config-default-vs-required-governance"
+                },
+                {
+                  "name": "0040 Immutable Fail Fast Config",
+                  "path": "../adr/0040-immutable-fail-fast-config.md",
+                  "lang": "en",
+                  "source": "docs/adr/0040-immutable-fail-fast-config.md",
+                  "guideId": "0040-immutable-fail-fast-config"
+                },
+                {
+                  "name": "0041 Embedded Self Contained Binary",
+                  "path": "../adr/0041-embedded-self-contained-binary.md",
+                  "lang": "en",
+                  "source": "docs/adr/0041-embedded-self-contained-binary.md",
+                  "guideId": "0041-embedded-self-contained-binary"
+                },
+                {
+                  "name": "0042 Apperror Protocol Agnostic Errors",
+                  "path": "../adr/0042-apperror-protocol-agnostic-errors.md",
+                  "lang": "en",
+                  "source": "docs/adr/0042-apperror-protocol-agnostic-errors.md",
+                  "guideId": "0042-apperror-protocol-agnostic-errors"
+                },
+                {
+                  "name": "0043 Error Metadata Code Message Details",
+                  "path": "../adr/0043-error-metadata-code-message-details.md",
+                  "lang": "en",
+                  "source": "docs/adr/0043-error-metadata-code-message-details.md",
+                  "guideId": "0043-error-metadata-code-message-details"
+                },
+                {
+                  "name": "0044 Error Details Opt In Gate",
+                  "path": "../adr/0044-error-details-opt-in-gate.md",
+                  "lang": "en",
+                  "source": "docs/adr/0044-error-details-opt-in-gate.md",
+                  "guideId": "0044-error-details-opt-in-gate"
+                },
+                {
+                  "name": "0045 Broker Agnostic Worker Scaffold",
+                  "path": "../adr/0045-broker-agnostic-worker-scaffold.md",
+                  "lang": "en",
+                  "source": "docs/adr/0045-broker-agnostic-worker-scaffold.md",
+                  "guideId": "0045-broker-agnostic-worker-scaffold"
+                },
+                {
+                  "name": "0046 Out Of Scope Push Streaming Brokers",
+                  "path": "../adr/0046-out-of-scope-push-streaming-brokers.md",
+                  "lang": "en",
+                  "source": "docs/adr/0046-out-of-scope-push-streaming-brokers.md",
+                  "guideId": "0046-out-of-scope-push-streaming-brokers"
+                },
+                {
+                  "name": "0047 Sqs Adapter Opt In",
+                  "path": "../adr/0047-sqs-adapter-opt-in.md",
+                  "lang": "en",
+                  "source": "docs/adr/0047-sqs-adapter-opt-in.md",
+                  "guideId": "0047-sqs-adapter-opt-in"
+                },
+                {
+                  "name": "0048 Broker Sdk Isolation Measured As Coupling",
+                  "path": "../adr/0048-broker-sdk-isolation-measured-as-coupling.md",
+                  "lang": "en",
+                  "source": "docs/adr/0048-broker-sdk-isolation-measured-as-coupling.md",
+                  "guideId": "0048-broker-sdk-isolation-measured-as-coupling"
+                },
+                {
+                  "name": "0049 Transactional Outbox",
+                  "path": "../adr/0049-transactional-outbox.md",
+                  "lang": "en",
+                  "source": "docs/adr/0049-transactional-outbox.md",
+                  "guideId": "0049-transactional-outbox"
+                },
+                {
+                  "name": "0050 At Least Once Outbox Poll",
+                  "path": "../adr/0050-at-least-once-outbox-poll.md",
+                  "lang": "en",
+                  "source": "docs/adr/0050-at-least-once-outbox-poll.md",
+                  "guideId": "0050-at-least-once-outbox-poll"
+                },
+                {
+                  "name": "0051 Skip Locked Outbox Relay",
+                  "path": "../adr/0051-skip-locked-outbox-relay.md",
+                  "lang": "en",
+                  "source": "docs/adr/0051-skip-locked-outbox-relay.md",
+                  "guideId": "0051-skip-locked-outbox-relay"
+                },
+                {
+                  "name": "0052 Message Id Idempotency Propagation",
+                  "path": "../adr/0052-message-id-idempotency-propagation.md",
+                  "lang": "en",
+                  "source": "docs/adr/0052-message-id-idempotency-propagation.md",
+                  "guideId": "0052-message-id-idempotency-propagation"
+                },
+                {
+                  "name": "0053 Outbox Dead After Max Attempts",
+                  "path": "../adr/0053-outbox-dead-after-max-attempts.md",
+                  "lang": "en",
+                  "source": "docs/adr/0053-outbox-dead-after-max-attempts.md",
+                  "guideId": "0053-outbox-dead-after-max-attempts"
+                },
+                {
+                  "name": "0054 Outbox Retention Gc",
+                  "path": "../adr/0054-outbox-retention-gc.md",
+                  "lang": "en",
+                  "source": "docs/adr/0054-outbox-retention-gc.md",
+                  "guideId": "0054-outbox-retention-gc"
+                },
+                {
+                  "name": "0055 Publisher Http Profile Isolation",
+                  "path": "../adr/0055-publisher-http-profile-isolation.md",
+                  "lang": "en",
+                  "source": "docs/adr/0055-publisher-http-profile-isolation.md",
+                  "guideId": "0055-publisher-http-profile-isolation"
+                },
+                {
+                  "name": "0056 Relay Resident Gc Oneshot",
+                  "path": "../adr/0056-relay-resident-gc-oneshot.md",
+                  "lang": "en",
+                  "source": "docs/adr/0056-relay-resident-gc-oneshot.md",
+                  "guideId": "0056-relay-resident-gc-oneshot"
+                },
+                {
+                  "name": "0057 Single Tx At Most Once Idempotency",
+                  "path": "../adr/0057-single-tx-at-most-once-idempotency.md",
+                  "lang": "en",
+                  "source": "docs/adr/0057-single-tx-at-most-once-idempotency.md",
+                  "guideId": "0057-single-tx-at-most-once-idempotency"
+                },
+                {
+                  "name": "0058 Idempotency Scope Required",
+                  "path": "../adr/0058-idempotency-scope-required.md",
+                  "lang": "en",
+                  "source": "docs/adr/0058-idempotency-scope-required.md",
+                  "guideId": "0058-idempotency-scope-required"
+                },
+                {
+                  "name": "0059 Idempotency Fixed Ttl",
+                  "path": "../adr/0059-idempotency-fixed-ttl.md",
+                  "lang": "en",
+                  "source": "docs/adr/0059-idempotency-fixed-ttl.md",
+                  "guideId": "0059-idempotency-fixed-ttl"
+                },
+                {
+                  "name": "0060 Idempotency Response Persistence",
+                  "path": "../adr/0060-idempotency-response-persistence.md",
+                  "lang": "en",
+                  "source": "docs/adr/0060-idempotency-response-persistence.md",
+                  "guideId": "0060-idempotency-response-persistence"
+                },
+                {
+                  "name": "0061 Idempotency Gc Separate Job",
+                  "path": "../adr/0061-idempotency-gc-separate-job.md",
+                  "lang": "en",
+                  "source": "docs/adr/0061-idempotency-gc-separate-job.md",
+                  "guideId": "0061-idempotency-gc-separate-job"
+                },
+                {
+                  "name": "0062 Idempotency Orthogonal Concerns",
+                  "path": "../adr/0062-idempotency-orthogonal-concerns.md",
+                  "lang": "en",
+                  "source": "docs/adr/0062-idempotency-orthogonal-concerns.md",
+                  "guideId": "0062-idempotency-orthogonal-concerns"
+                },
+                {
+                  "name": "0063 Job Fresh Fx App Per Run",
+                  "path": "../adr/0063-job-fresh-fx-app-per-run.md",
+                  "lang": "en",
+                  "source": "docs/adr/0063-job-fresh-fx-app-per-run.md",
+                  "guideId": "0063-job-fresh-fx-app-per-run"
+                },
+                {
+                  "name": "0064 Job No Worker Machinery",
+                  "path": "../adr/0064-job-no-worker-machinery.md",
+                  "lang": "en",
+                  "source": "docs/adr/0064-job-no-worker-machinery.md",
+                  "guideId": "0064-job-no-worker-machinery"
+                },
+                {
+                  "name": "0065 Job Explicit Registration",
+                  "path": "../adr/0065-job-explicit-registration.md",
+                  "lang": "en",
+                  "source": "docs/adr/0065-job-explicit-registration.md",
+                  "guideId": "0065-job-explicit-registration"
+                },
+                {
+                  "name": "0066 Config Driven Observability Gating",
+                  "path": "../adr/0066-config-driven-observability-gating.md",
+                  "lang": "en",
+                  "source": "docs/adr/0066-config-driven-observability-gating.md",
+                  "guideId": "0066-config-driven-observability-gating"
+                },
+                {
+                  "name": "0067 Vendor Neutral Otlp Export",
+                  "path": "../adr/0067-vendor-neutral-otlp-export.md",
+                  "lang": "en",
+                  "source": "docs/adr/0067-vendor-neutral-otlp-export.md",
+                  "guideId": "0067-vendor-neutral-otlp-export"
+                },
+                {
+                  "name": "0068 Official Otel Semconv",
+                  "path": "../adr/0068-official-otel-semconv.md",
+                  "lang": "en",
+                  "source": "docs/adr/0068-official-otel-semconv.md",
+                  "guideId": "0068-official-otel-semconv"
+                },
+                {
+                  "name": "0069 Dual Path Metrics",
+                  "path": "../adr/0069-dual-path-metrics.md",
+                  "lang": "en",
+                  "source": "docs/adr/0069-dual-path-metrics.md",
+                  "guideId": "0069-dual-path-metrics"
+                },
+                {
+                  "name": "0070 Lifecycle Independent Provider",
+                  "path": "../adr/0070-lifecycle-independent-provider.md",
+                  "lang": "en",
+                  "source": "docs/adr/0070-lifecycle-independent-provider.md",
+                  "guideId": "0070-lifecycle-independent-provider"
+                },
+                {
+                  "name": "0071 Fixed Default Sampling",
+                  "path": "../adr/0071-fixed-default-sampling.md",
+                  "lang": "en",
+                  "source": "docs/adr/0071-fixed-default-sampling.md",
+                  "guideId": "0071-fixed-default-sampling"
+                },
+                {
+                  "name": "0072 Library Selection Policy",
+                  "path": "../adr/0072-library-selection-policy.md",
+                  "lang": "en",
+                  "source": "docs/adr/0072-library-selection-policy.md",
+                  "guideId": "0072-library-selection-policy"
+                },
+                {
+                  "name": "0073 Bridge Instrumentation Exceptions",
+                  "path": "../adr/0073-bridge-instrumentation-exceptions.md",
+                  "lang": "en",
+                  "source": "docs/adr/0073-bridge-instrumentation-exceptions.md",
+                  "guideId": "0073-bridge-instrumentation-exceptions"
+                },
+                {
+                  "name": "0074 Containerized Pinned Toolchain",
+                  "path": "../adr/0074-containerized-pinned-toolchain.md",
+                  "lang": "en",
+                  "source": "docs/adr/0074-containerized-pinned-toolchain.md",
+                  "guideId": "0074-containerized-pinned-toolchain"
+                },
+                {
+                  "name": "0075 Mise Ssot Drift Gate",
+                  "path": "../adr/0075-mise-ssot-drift-gate.md",
+                  "lang": "en",
+                  "source": "docs/adr/0075-mise-ssot-drift-gate.md",
+                  "guideId": "0075-mise-ssot-drift-gate"
+                },
+                {
+                  "name": "0076 Make Single Entrypoint",
+                  "path": "../adr/0076-make-single-entrypoint.md",
+                  "lang": "en",
+                  "source": "docs/adr/0076-make-single-entrypoint.md",
+                  "guideId": "0076-make-single-entrypoint"
+                },
+                {
+                  "name": "0077 Scripts In Node Go",
+                  "path": "../adr/0077-scripts-in-node-go.md",
+                  "lang": "en",
+                  "source": "docs/adr/0077-scripts-in-node-go.md",
+                  "guideId": "0077-scripts-in-node-go"
+                },
+                {
+                  "name": "0078 Docker Compose Dev Environment",
+                  "path": "../adr/0078-docker-compose-dev-environment.md",
+                  "lang": "en",
+                  "source": "docs/adr/0078-docker-compose-dev-environment.md",
+                  "guideId": "0078-docker-compose-dev-environment"
+                },
+                {
+                  "name": "0079 Two Layer Golangci Config",
+                  "path": "../adr/0079-two-layer-golangci-config.md",
+                  "lang": "en",
+                  "source": "docs/adr/0079-two-layer-golangci-config.md",
+                  "guideId": "0079-two-layer-golangci-config"
+                },
+                {
+                  "name": "0080 Local Hooks Mirror Ci",
+                  "path": "../adr/0080-local-hooks-mirror-ci.md",
+                  "lang": "en",
+                  "source": "docs/adr/0080-local-hooks-mirror-ci.md",
+                  "guideId": "0080-local-hooks-mirror-ci"
+                },
+                {
+                  "name": "0081 Coverage Hard Gate",
+                  "path": "../adr/0081-coverage-hard-gate.md",
+                  "lang": "en",
+                  "source": "docs/adr/0081-coverage-hard-gate.md",
+                  "guideId": "0081-coverage-hard-gate"
+                },
+                {
+                  "name": "0082 Ci Real Graph Boot Check",
+                  "path": "../adr/0082-ci-real-graph-boot-check.md",
+                  "lang": "en",
+                  "source": "docs/adr/0082-ci-real-graph-boot-check.md",
+                  "guideId": "0082-ci-real-graph-boot-check"
+                },
+                {
+                  "name": "0083 Generated Artifact Drift Gate",
+                  "path": "../adr/0083-generated-artifact-drift-gate.md",
+                  "lang": "en",
+                  "source": "docs/adr/0083-generated-artifact-drift-gate.md",
+                  "guideId": "0083-generated-artifact-drift-gate"
+                },
+                {
+                  "name": "0084 Multi Layer Security Scanning",
+                  "path": "../adr/0084-multi-layer-security-scanning.md",
+                  "lang": "en",
+                  "source": "docs/adr/0084-multi-layer-security-scanning.md",
+                  "guideId": "0084-multi-layer-security-scanning"
+                },
+                {
+                  "name": "0085 Sha Pinned Actions",
+                  "path": "../adr/0085-sha-pinned-actions.md",
+                  "lang": "en",
+                  "source": "docs/adr/0085-sha-pinned-actions.md",
+                  "guideId": "0085-sha-pinned-actions"
+                },
+                {
+                  "name": "0086 Malicious Package Detection Via Cooldown",
+                  "path": "../adr/0086-malicious-package-detection-via-cooldown.md",
+                  "lang": "en",
+                  "source": "docs/adr/0086-malicious-package-detection-via-cooldown.md",
+                  "guideId": "0086-malicious-package-detection-via-cooldown"
+                },
+                {
+                  "name": "0087 Rollback Integration Tests",
+                  "path": "../adr/0087-rollback-integration-tests.md",
+                  "lang": "en",
+                  "source": "docs/adr/0087-rollback-integration-tests.md",
+                  "guideId": "0087-rollback-integration-tests"
+                },
+                {
+                  "name": "0088 Multi Model Adversarial Review",
+                  "path": "../adr/0088-multi-model-adversarial-review.md",
+                  "lang": "en",
+                  "source": "docs/adr/0088-multi-model-adversarial-review.md",
+                  "guideId": "0088-multi-model-adversarial-review"
+                },
+                {
+                  "name": "0089 Lean A Spec Scaffold",
+                  "path": "../adr/0089-lean-a-spec-scaffold.md",
+                  "lang": "en",
+                  "source": "docs/adr/0089-lean-a-spec-scaffold.md",
+                  "guideId": "0089-lean-a-spec-scaffold"
+                },
+                {
+                  "name": "0090 Cli Humble Object Split",
+                  "path": "../adr/0090-cli-humble-object-split.md",
+                  "lang": "en",
+                  "source": "docs/adr/0090-cli-humble-object-split.md",
+                  "guideId": "0090-cli-humble-object-split"
+                },
+                {
+                  "name": "0091 Single Multi Command Binary",
+                  "path": "../adr/0091-single-multi-command-binary.md",
+                  "lang": "en",
+                  "source": "docs/adr/0091-single-multi-command-binary.md",
+                  "guideId": "0091-single-multi-command-binary"
+                },
+                {
+                  "name": "0092 Single Runtime Image",
+                  "path": "../adr/0092-single-runtime-image.md",
+                  "lang": "en",
+                  "source": "docs/adr/0092-single-runtime-image.md",
+                  "guideId": "0092-single-runtime-image"
+                },
+                {
+                  "name": "0093 Hardened Alpine Runtime",
+                  "path": "../adr/0093-hardened-alpine-runtime.md",
+                  "lang": "en",
+                  "source": "docs/adr/0093-hardened-alpine-runtime.md",
+                  "guideId": "0093-hardened-alpine-runtime"
+                },
+                {
+                  "name": "0094 Per Environment Images",
+                  "path": "../adr/0094-per-environment-images.md",
+                  "lang": "en",
+                  "source": "docs/adr/0094-per-environment-images.md",
+                  "guideId": "0094-per-environment-images"
+                },
+                {
+                  "name": "0095 Predeploy Oneshot Migration",
+                  "path": "../adr/0095-predeploy-oneshot-migration.md",
+                  "lang": "en",
+                  "source": "docs/adr/0095-predeploy-oneshot-migration.md",
+                  "guideId": "0095-predeploy-oneshot-migration"
+                },
+                {
+                  "name": "0096 Release Image Supply Chain",
+                  "path": "../adr/0096-release-image-supply-chain.md",
+                  "lang": "en",
+                  "source": "docs/adr/0096-release-image-supply-chain.md",
+                  "guideId": "0096-release-image-supply-chain"
+                },
+                {
+                  "name": "0097 Vendor Neutral Deploy Skeleton",
+                  "path": "../adr/0097-vendor-neutral-deploy-skeleton.md",
+                  "lang": "en",
+                  "source": "docs/adr/0097-vendor-neutral-deploy-skeleton.md",
+                  "guideId": "0097-vendor-neutral-deploy-skeleton"
+                },
+                {
+                  "name": "0098 Docs Via Github Pages",
+                  "path": "../adr/0098-docs-via-github-pages.md",
+                  "lang": "en",
+                  "source": "docs/adr/0098-docs-via-github-pages.md",
+                  "guideId": "0098-docs-via-github-pages"
+                },
+                {
+                  "name": "0099 No In App Rate Limiter",
+                  "path": "../adr/0099-no-in-app-rate-limiter.md",
+                  "lang": "en",
+                  "source": "docs/adr/0099-no-in-app-rate-limiter.md",
+                  "guideId": "0099-no-in-app-rate-limiter"
+                },
+                {
+                  "name": "0100 Scheduled Job Concurrency Delegated",
+                  "path": "../adr/0100-scheduled-job-concurrency-delegated.md",
+                  "lang": "en",
+                  "source": "docs/adr/0100-scheduled-job-concurrency-delegated.md",
+                  "guideId": "0100-scheduled-job-concurrency-delegated"
+                },
+                {
+                  "name": "0101 No Generic Cache Abstraction",
+                  "path": "../adr/0101-no-generic-cache-abstraction.md",
+                  "lang": "en",
+                  "source": "docs/adr/0101-no-generic-cache-abstraction.md",
+                  "guideId": "0101-no-generic-cache-abstraction"
+                },
+                {
+                  "name": "0102 Outbox Relay Hardening Delegated",
+                  "path": "../adr/0102-outbox-relay-hardening-delegated.md",
+                  "lang": "en",
+                  "source": "docs/adr/0102-outbox-relay-hardening-delegated.md",
+                  "guideId": "0102-outbox-relay-hardening-delegated"
+                },
+                {
+                  "name": "0031 Ordered Pessimistic Row Locks",
+                  "path": "../ja/adr/0031-ordered-pessimistic-row-locks.ja.md",
                   "lang": "ja",
-                  "source": "docs/ja/adr/0099-reference-amount-half-up-rounding.ja.md",
-                  "guideId": "0099-reference-amount-half-up-rounding"
+                  "source": "docs/ja/adr/0031-ordered-pessimistic-row-locks.ja.md",
+                  "guideId": "0031-ordered-pessimistic-row-locks"
+                },
+                {
+                  "name": "0032 Uuidv7 Identifiers",
+                  "path": "../ja/adr/0032-uuidv7-identifiers.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0032-uuidv7-identifiers.ja.md",
+                  "guideId": "0032-uuidv7-identifiers"
+                },
+                {
+                  "name": "0033 Two Scale Quantity Model",
+                  "path": "../ja/adr/0033-two-scale-quantity-model.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0033-two-scale-quantity-model.ja.md",
+                  "guideId": "0033-two-scale-quantity-model"
+                },
+                {
+                  "name": "0034 Domain Lexicon",
+                  "path": "../ja/adr/0034-domain-lexicon.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0034-domain-lexicon.ja.md",
+                  "guideId": "0034-domain-lexicon"
+                },
+                {
+                  "name": "0035 Uber Fx Di",
+                  "path": "../ja/adr/0035-uber-fx-di.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0035-uber-fx-di.ja.md",
+                  "guideId": "0035-uber-fx-di"
+                },
+                {
+                  "name": "0036 Fx Neutral Di Abstraction",
+                  "path": "../ja/adr/0036-fx-neutral-di-abstraction.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0036-fx-neutral-di-abstraction.ja.md",
+                  "guideId": "0036-fx-neutral-di-abstraction"
+                },
+                {
+                  "name": "0037 Env Gated Wiring",
+                  "path": "../ja/adr/0037-env-gated-wiring.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0037-env-gated-wiring.ja.md",
+                  "guideId": "0037-env-gated-wiring"
+                },
+                {
+                  "name": "0038 Subsystem Typed Config Loaders",
+                  "path": "../ja/adr/0038-subsystem-typed-config-loaders.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0038-subsystem-typed-config-loaders.ja.md",
+                  "guideId": "0038-subsystem-typed-config-loaders"
+                },
+                {
+                  "name": "0039 Config Default Vs Required Governance",
+                  "path": "../ja/adr/0039-config-default-vs-required-governance.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0039-config-default-vs-required-governance.ja.md",
+                  "guideId": "0039-config-default-vs-required-governance"
+                },
+                {
+                  "name": "0040 Immutable Fail Fast Config",
+                  "path": "../ja/adr/0040-immutable-fail-fast-config.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0040-immutable-fail-fast-config.ja.md",
+                  "guideId": "0040-immutable-fail-fast-config"
+                },
+                {
+                  "name": "0041 Embedded Self Contained Binary",
+                  "path": "../ja/adr/0041-embedded-self-contained-binary.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0041-embedded-self-contained-binary.ja.md",
+                  "guideId": "0041-embedded-self-contained-binary"
+                },
+                {
+                  "name": "0042 Apperror Protocol Agnostic Errors",
+                  "path": "../ja/adr/0042-apperror-protocol-agnostic-errors.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0042-apperror-protocol-agnostic-errors.ja.md",
+                  "guideId": "0042-apperror-protocol-agnostic-errors"
+                },
+                {
+                  "name": "0043 Error Metadata Code Message Details",
+                  "path": "../ja/adr/0043-error-metadata-code-message-details.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0043-error-metadata-code-message-details.ja.md",
+                  "guideId": "0043-error-metadata-code-message-details"
+                },
+                {
+                  "name": "0044 Error Details Opt In Gate",
+                  "path": "../ja/adr/0044-error-details-opt-in-gate.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0044-error-details-opt-in-gate.ja.md",
+                  "guideId": "0044-error-details-opt-in-gate"
+                },
+                {
+                  "name": "0045 Broker Agnostic Worker Scaffold",
+                  "path": "../ja/adr/0045-broker-agnostic-worker-scaffold.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0045-broker-agnostic-worker-scaffold.ja.md",
+                  "guideId": "0045-broker-agnostic-worker-scaffold"
+                },
+                {
+                  "name": "0046 Out Of Scope Push Streaming Brokers",
+                  "path": "../ja/adr/0046-out-of-scope-push-streaming-brokers.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0046-out-of-scope-push-streaming-brokers.ja.md",
+                  "guideId": "0046-out-of-scope-push-streaming-brokers"
+                },
+                {
+                  "name": "0047 Sqs Adapter Opt In",
+                  "path": "../ja/adr/0047-sqs-adapter-opt-in.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0047-sqs-adapter-opt-in.ja.md",
+                  "guideId": "0047-sqs-adapter-opt-in"
+                },
+                {
+                  "name": "0048 Broker Sdk Isolation Measured As Coupling",
+                  "path": "../ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md",
+                  "guideId": "0048-broker-sdk-isolation-measured-as-coupling"
+                },
+                {
+                  "name": "0049 Transactional Outbox",
+                  "path": "../ja/adr/0049-transactional-outbox.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0049-transactional-outbox.ja.md",
+                  "guideId": "0049-transactional-outbox"
+                },
+                {
+                  "name": "0050 At Least Once Outbox Poll",
+                  "path": "../ja/adr/0050-at-least-once-outbox-poll.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0050-at-least-once-outbox-poll.ja.md",
+                  "guideId": "0050-at-least-once-outbox-poll"
+                },
+                {
+                  "name": "0051 Skip Locked Outbox Relay",
+                  "path": "../ja/adr/0051-skip-locked-outbox-relay.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0051-skip-locked-outbox-relay.ja.md",
+                  "guideId": "0051-skip-locked-outbox-relay"
+                },
+                {
+                  "name": "0052 Message Id Idempotency Propagation",
+                  "path": "../ja/adr/0052-message-id-idempotency-propagation.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0052-message-id-idempotency-propagation.ja.md",
+                  "guideId": "0052-message-id-idempotency-propagation"
+                },
+                {
+                  "name": "0053 Outbox Dead After Max Attempts",
+                  "path": "../ja/adr/0053-outbox-dead-after-max-attempts.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0053-outbox-dead-after-max-attempts.ja.md",
+                  "guideId": "0053-outbox-dead-after-max-attempts"
+                },
+                {
+                  "name": "0054 Outbox Retention Gc",
+                  "path": "../ja/adr/0054-outbox-retention-gc.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0054-outbox-retention-gc.ja.md",
+                  "guideId": "0054-outbox-retention-gc"
+                },
+                {
+                  "name": "0055 Publisher Http Profile Isolation",
+                  "path": "../ja/adr/0055-publisher-http-profile-isolation.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0055-publisher-http-profile-isolation.ja.md",
+                  "guideId": "0055-publisher-http-profile-isolation"
+                },
+                {
+                  "name": "0056 Relay Resident Gc Oneshot",
+                  "path": "../ja/adr/0056-relay-resident-gc-oneshot.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0056-relay-resident-gc-oneshot.ja.md",
+                  "guideId": "0056-relay-resident-gc-oneshot"
+                },
+                {
+                  "name": "0057 Single Tx At Most Once Idempotency",
+                  "path": "../ja/adr/0057-single-tx-at-most-once-idempotency.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0057-single-tx-at-most-once-idempotency.ja.md",
+                  "guideId": "0057-single-tx-at-most-once-idempotency"
+                },
+                {
+                  "name": "0058 Idempotency Scope Required",
+                  "path": "../ja/adr/0058-idempotency-scope-required.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0058-idempotency-scope-required.ja.md",
+                  "guideId": "0058-idempotency-scope-required"
+                },
+                {
+                  "name": "0059 Idempotency Fixed Ttl",
+                  "path": "../ja/adr/0059-idempotency-fixed-ttl.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0059-idempotency-fixed-ttl.ja.md",
+                  "guideId": "0059-idempotency-fixed-ttl"
+                },
+                {
+                  "name": "0060 Idempotency Response Persistence",
+                  "path": "../ja/adr/0060-idempotency-response-persistence.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0060-idempotency-response-persistence.ja.md",
+                  "guideId": "0060-idempotency-response-persistence"
+                },
+                {
+                  "name": "0061 Idempotency Gc Separate Job",
+                  "path": "../ja/adr/0061-idempotency-gc-separate-job.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0061-idempotency-gc-separate-job.ja.md",
+                  "guideId": "0061-idempotency-gc-separate-job"
+                },
+                {
+                  "name": "0062 Idempotency Orthogonal Concerns",
+                  "path": "../ja/adr/0062-idempotency-orthogonal-concerns.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0062-idempotency-orthogonal-concerns.ja.md",
+                  "guideId": "0062-idempotency-orthogonal-concerns"
+                },
+                {
+                  "name": "0063 Job Fresh Fx App Per Run",
+                  "path": "../ja/adr/0063-job-fresh-fx-app-per-run.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0063-job-fresh-fx-app-per-run.ja.md",
+                  "guideId": "0063-job-fresh-fx-app-per-run"
+                },
+                {
+                  "name": "0064 Job No Worker Machinery",
+                  "path": "../ja/adr/0064-job-no-worker-machinery.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0064-job-no-worker-machinery.ja.md",
+                  "guideId": "0064-job-no-worker-machinery"
+                },
+                {
+                  "name": "0065 Job Explicit Registration",
+                  "path": "../ja/adr/0065-job-explicit-registration.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0065-job-explicit-registration.ja.md",
+                  "guideId": "0065-job-explicit-registration"
+                },
+                {
+                  "name": "0066 Config Driven Observability Gating",
+                  "path": "../ja/adr/0066-config-driven-observability-gating.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0066-config-driven-observability-gating.ja.md",
+                  "guideId": "0066-config-driven-observability-gating"
+                },
+                {
+                  "name": "0067 Vendor Neutral Otlp Export",
+                  "path": "../ja/adr/0067-vendor-neutral-otlp-export.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0067-vendor-neutral-otlp-export.ja.md",
+                  "guideId": "0067-vendor-neutral-otlp-export"
+                },
+                {
+                  "name": "0068 Official Otel Semconv",
+                  "path": "../ja/adr/0068-official-otel-semconv.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0068-official-otel-semconv.ja.md",
+                  "guideId": "0068-official-otel-semconv"
+                },
+                {
+                  "name": "0069 Dual Path Metrics",
+                  "path": "../ja/adr/0069-dual-path-metrics.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0069-dual-path-metrics.ja.md",
+                  "guideId": "0069-dual-path-metrics"
+                },
+                {
+                  "name": "0070 Lifecycle Independent Provider",
+                  "path": "../ja/adr/0070-lifecycle-independent-provider.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0070-lifecycle-independent-provider.ja.md",
+                  "guideId": "0070-lifecycle-independent-provider"
+                },
+                {
+                  "name": "0071 Fixed Default Sampling",
+                  "path": "../ja/adr/0071-fixed-default-sampling.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0071-fixed-default-sampling.ja.md",
+                  "guideId": "0071-fixed-default-sampling"
+                },
+                {
+                  "name": "0072 Library Selection Policy",
+                  "path": "../ja/adr/0072-library-selection-policy.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0072-library-selection-policy.ja.md",
+                  "guideId": "0072-library-selection-policy"
+                },
+                {
+                  "name": "0073 Bridge Instrumentation Exceptions",
+                  "path": "../ja/adr/0073-bridge-instrumentation-exceptions.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0073-bridge-instrumentation-exceptions.ja.md",
+                  "guideId": "0073-bridge-instrumentation-exceptions"
+                },
+                {
+                  "name": "0074 Containerized Pinned Toolchain",
+                  "path": "../ja/adr/0074-containerized-pinned-toolchain.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0074-containerized-pinned-toolchain.ja.md",
+                  "guideId": "0074-containerized-pinned-toolchain"
+                },
+                {
+                  "name": "0075 Mise Ssot Drift Gate",
+                  "path": "../ja/adr/0075-mise-ssot-drift-gate.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0075-mise-ssot-drift-gate.ja.md",
+                  "guideId": "0075-mise-ssot-drift-gate"
+                },
+                {
+                  "name": "0076 Make Single Entrypoint",
+                  "path": "../ja/adr/0076-make-single-entrypoint.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0076-make-single-entrypoint.ja.md",
+                  "guideId": "0076-make-single-entrypoint"
+                },
+                {
+                  "name": "0077 Scripts In Node Go",
+                  "path": "../ja/adr/0077-scripts-in-node-go.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0077-scripts-in-node-go.ja.md",
+                  "guideId": "0077-scripts-in-node-go"
+                },
+                {
+                  "name": "0078 Docker Compose Dev Environment",
+                  "path": "../ja/adr/0078-docker-compose-dev-environment.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0078-docker-compose-dev-environment.ja.md",
+                  "guideId": "0078-docker-compose-dev-environment"
+                },
+                {
+                  "name": "0079 Two Layer Golangci Config",
+                  "path": "../ja/adr/0079-two-layer-golangci-config.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0079-two-layer-golangci-config.ja.md",
+                  "guideId": "0079-two-layer-golangci-config"
+                },
+                {
+                  "name": "0080 Local Hooks Mirror Ci",
+                  "path": "../ja/adr/0080-local-hooks-mirror-ci.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0080-local-hooks-mirror-ci.ja.md",
+                  "guideId": "0080-local-hooks-mirror-ci"
+                },
+                {
+                  "name": "0081 Coverage Hard Gate",
+                  "path": "../ja/adr/0081-coverage-hard-gate.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0081-coverage-hard-gate.ja.md",
+                  "guideId": "0081-coverage-hard-gate"
+                },
+                {
+                  "name": "0082 Ci Real Graph Boot Check",
+                  "path": "../ja/adr/0082-ci-real-graph-boot-check.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0082-ci-real-graph-boot-check.ja.md",
+                  "guideId": "0082-ci-real-graph-boot-check"
+                },
+                {
+                  "name": "0083 Generated Artifact Drift Gate",
+                  "path": "../ja/adr/0083-generated-artifact-drift-gate.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0083-generated-artifact-drift-gate.ja.md",
+                  "guideId": "0083-generated-artifact-drift-gate"
+                },
+                {
+                  "name": "0084 Multi Layer Security Scanning",
+                  "path": "../ja/adr/0084-multi-layer-security-scanning.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0084-multi-layer-security-scanning.ja.md",
+                  "guideId": "0084-multi-layer-security-scanning"
+                },
+                {
+                  "name": "0085 Sha Pinned Actions",
+                  "path": "../ja/adr/0085-sha-pinned-actions.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0085-sha-pinned-actions.ja.md",
+                  "guideId": "0085-sha-pinned-actions"
+                },
+                {
+                  "name": "0086 Malicious Package Detection Via Cooldown",
+                  "path": "../ja/adr/0086-malicious-package-detection-via-cooldown.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0086-malicious-package-detection-via-cooldown.ja.md",
+                  "guideId": "0086-malicious-package-detection-via-cooldown"
+                },
+                {
+                  "name": "0087 Rollback Integration Tests",
+                  "path": "../ja/adr/0087-rollback-integration-tests.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0087-rollback-integration-tests.ja.md",
+                  "guideId": "0087-rollback-integration-tests"
+                },
+                {
+                  "name": "0088 Multi Model Adversarial Review",
+                  "path": "../ja/adr/0088-multi-model-adversarial-review.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0088-multi-model-adversarial-review.ja.md",
+                  "guideId": "0088-multi-model-adversarial-review"
+                },
+                {
+                  "name": "0089 Lean A Spec Scaffold",
+                  "path": "../ja/adr/0089-lean-a-spec-scaffold.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0089-lean-a-spec-scaffold.ja.md",
+                  "guideId": "0089-lean-a-spec-scaffold"
+                },
+                {
+                  "name": "0090 Cli Humble Object Split",
+                  "path": "../ja/adr/0090-cli-humble-object-split.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0090-cli-humble-object-split.ja.md",
+                  "guideId": "0090-cli-humble-object-split"
+                },
+                {
+                  "name": "0091 Single Multi Command Binary",
+                  "path": "../ja/adr/0091-single-multi-command-binary.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0091-single-multi-command-binary.ja.md",
+                  "guideId": "0091-single-multi-command-binary"
+                },
+                {
+                  "name": "0092 Single Runtime Image",
+                  "path": "../ja/adr/0092-single-runtime-image.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0092-single-runtime-image.ja.md",
+                  "guideId": "0092-single-runtime-image"
+                },
+                {
+                  "name": "0093 Hardened Alpine Runtime",
+                  "path": "../ja/adr/0093-hardened-alpine-runtime.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0093-hardened-alpine-runtime.ja.md",
+                  "guideId": "0093-hardened-alpine-runtime"
+                },
+                {
+                  "name": "0094 Per Environment Images",
+                  "path": "../ja/adr/0094-per-environment-images.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0094-per-environment-images.ja.md",
+                  "guideId": "0094-per-environment-images"
+                },
+                {
+                  "name": "0095 Predeploy Oneshot Migration",
+                  "path": "../ja/adr/0095-predeploy-oneshot-migration.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0095-predeploy-oneshot-migration.ja.md",
+                  "guideId": "0095-predeploy-oneshot-migration"
+                },
+                {
+                  "name": "0096 Release Image Supply Chain",
+                  "path": "../ja/adr/0096-release-image-supply-chain.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0096-release-image-supply-chain.ja.md",
+                  "guideId": "0096-release-image-supply-chain"
+                },
+                {
+                  "name": "0097 Vendor Neutral Deploy Skeleton",
+                  "path": "../ja/adr/0097-vendor-neutral-deploy-skeleton.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0097-vendor-neutral-deploy-skeleton.ja.md",
+                  "guideId": "0097-vendor-neutral-deploy-skeleton"
+                },
+                {
+                  "name": "0098 Docs Via Github Pages",
+                  "path": "../ja/adr/0098-docs-via-github-pages.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0098-docs-via-github-pages.ja.md",
+                  "guideId": "0098-docs-via-github-pages"
+                },
+                {
+                  "name": "0099 No In App Rate Limiter",
+                  "path": "../ja/adr/0099-no-in-app-rate-limiter.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0099-no-in-app-rate-limiter.ja.md",
+                  "guideId": "0099-no-in-app-rate-limiter"
+                },
+                {
+                  "name": "0100 Scheduled Job Concurrency Delegated",
+                  "path": "../ja/adr/0100-scheduled-job-concurrency-delegated.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0100-scheduled-job-concurrency-delegated.ja.md",
+                  "guideId": "0100-scheduled-job-concurrency-delegated"
+                },
+                {
+                  "name": "0101 No Generic Cache Abstraction",
+                  "path": "../ja/adr/0101-no-generic-cache-abstraction.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0101-no-generic-cache-abstraction.ja.md",
+                  "guideId": "0101-no-generic-cache-abstraction"
+                },
+                {
+                  "name": "0102 Outbox Relay Hardening Delegated",
+                  "path": "../ja/adr/0102-outbox-relay-hardening-delegated.ja.md",
+                  "lang": "ja",
+                  "source": "docs/ja/adr/0102-outbox-relay-hardening-delegated.ja.md",
+                  "guideId": "0102-outbox-relay-hardening-delegated"
                 }
               ]
             }
@@ -4605,20 +4658,6 @@
               "guideId": "docker-database-sql"
             },
             {
-              "name": "Docker Mock Auth Server",
-              "path": "./guides/docker-mock-auth-server.md",
-              "lang": "en",
-              "source": "docker/mock-auth-server/README.md",
-              "guideId": "docker-mock-auth-server"
-            },
-            {
-              "name": "Docker Mock Auth Server Fixtures",
-              "path": "./guides/docker-mock-auth-server-fixtures.md",
-              "lang": "en",
-              "source": "docker/mock-auth-server/fixtures/README.md",
-              "guideId": "docker-mock-auth-server-fixtures"
-            },
-            {
               "name": "Docker Server",
               "path": "./guides/docker-server.md",
               "lang": "en",
@@ -4647,20 +4686,6 @@
               "guideId": "docker-database-sql"
             },
             {
-              "name": "Docker Mock Auth Server",
-              "path": "./guides/ja/docker-mock-auth-server.ja.md",
-              "lang": "ja",
-              "source": "docker/mock-auth-server/README.ja.md",
-              "guideId": "docker-mock-auth-server"
-            },
-            {
-              "name": "Docker Mock Auth Server Fixtures",
-              "path": "./guides/ja/docker-mock-auth-server-fixtures.ja.md",
-              "lang": "ja",
-              "source": "docker/mock-auth-server/fixtures/README.ja.md",
-              "guideId": "docker-mock-auth-server-fixtures"
-            },
-            {
               "name": "Docker Server",
               "path": "./guides/ja/docker-server.ja.md",
               "lang": "ja",
@@ -4673,6 +4698,41 @@
               "lang": "ja",
               "source": "docker/tools/README.ja.md",
               "guideId": "docker-tools"
+            }
+          ]
+        },
+        {
+          "id": "mock-auth-server",
+          "slug": "mock-auth-server",
+          "title": "Mock Auth Server",
+          "items": [
+            {
+              "name": "Mock Auth Server",
+              "path": "./guides/mock-auth-server.md",
+              "lang": "en",
+              "source": "mock-auth-server/README.md",
+              "guideId": "mock-auth-server"
+            },
+            {
+              "name": "Mock Auth Server Fixtures",
+              "path": "./guides/mock-auth-server-fixtures.md",
+              "lang": "en",
+              "source": "mock-auth-server/fixtures/README.md",
+              "guideId": "mock-auth-server-fixtures"
+            },
+            {
+              "name": "Mock Auth Server",
+              "path": "./guides/ja/mock-auth-server.ja.md",
+              "lang": "ja",
+              "source": "mock-auth-server/README.ja.md",
+              "guideId": "mock-auth-server"
+            },
+            {
+              "name": "Mock Auth Server Fixtures",
+              "path": "./guides/ja/mock-auth-server-fixtures.ja.md",
+              "lang": "ja",
+              "source": "mock-auth-server/fixtures/README.ja.md",
+              "guideId": "mock-auth-server-fixtures"
             }
           ]
         },
@@ -4914,6 +4974,13 @@
           "title": "Maintenance",
           "items": [
             {
+              "name": "Db Worktree Pool",
+              "path": "../maintenance/db-worktree-pool.md",
+              "lang": "en",
+              "source": "docs/maintenance/db-worktree-pool.md",
+              "guideId": "db-worktree-pool"
+            },
+            {
               "name": "Docs Structure",
               "path": "../maintenance/docs-structure.md",
               "lang": "en",
@@ -4935,11 +5002,25 @@
               "guideId": "godoc-comment-conventions"
             },
             {
+              "name": "Local Environment",
+              "path": "../maintenance/local-environment.md",
+              "lang": "en",
+              "source": "docs/maintenance/local-environment.md",
+              "guideId": "local-environment"
+            },
+            {
               "name": "Portal Manifest",
               "path": "../maintenance/portal-manifest.md",
               "lang": "en",
               "source": "docs/maintenance/portal-manifest.md",
               "guideId": "portal-manifest"
+            },
+            {
+              "name": "Db Worktree Pool",
+              "path": "../ja/maintenance/db-worktree-pool.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/maintenance/db-worktree-pool.ja.md",
+              "guideId": "db-worktree-pool"
             },
             {
               "name": "Docs Structure",
@@ -4961,6 +5042,13 @@
               "lang": "ja",
               "source": "docs/ja/maintenance/godoc-comment-conventions.ja.md",
               "guideId": "godoc-comment-conventions"
+            },
+            {
+              "name": "Local Environment",
+              "path": "../ja/maintenance/local-environment.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/maintenance/local-environment.ja.md",
+              "guideId": "local-environment"
             },
             {
               "name": "Portal Manifest",
@@ -5068,6 +5156,27 @@
       "slug": "uncategorized",
       "sections": [
         {
+          "id": "context-map-design",
+          "slug": "context-map-design",
+          "title": "Context Map Design",
+          "items": [
+            {
+              "name": "Context Map Design",
+              "path": "./guides/context-map-design.md",
+              "lang": "en",
+              "source": "docs/design/context-map.md",
+              "guideId": "context-map-design"
+            },
+            {
+              "name": "Context Map Design",
+              "path": "./guides/ja/context-map-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/context-map.ja.md",
+              "guideId": "context-map-design"
+            }
+          ]
+        },
+        {
           "id": "design",
           "slug": "design",
           "title": "Design",
@@ -5078,6 +5187,13 @@
               "lang": "en",
               "source": "docs/design/auth.md",
               "guideId": "auth"
+            },
+            {
+              "name": "Context Map",
+              "path": "../design/context-map.md",
+              "lang": "en",
+              "source": "docs/design/context-map.md",
+              "guideId": "context-map"
             },
             {
               "name": "Idempotency",
@@ -5122,6 +5238,13 @@
               "guideId": "rest"
             },
             {
+              "name": "Security",
+              "path": "../design/security.md",
+              "lang": "en",
+              "source": "docs/design/security.md",
+              "guideId": "security"
+            },
+            {
               "name": "Worker",
               "path": "../design/worker.md",
               "lang": "en",
@@ -5134,6 +5257,13 @@
               "lang": "ja",
               "source": "docs/ja/design/auth.ja.md",
               "guideId": "auth"
+            },
+            {
+              "name": "Context Map",
+              "path": "../ja/design/context-map.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/context-map.ja.md",
+              "guideId": "context-map"
             },
             {
               "name": "Idempotency",
@@ -5178,11 +5308,32 @@
               "guideId": "rest"
             },
             {
+              "name": "Security",
+              "path": "../ja/design/security.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/security.ja.md",
+              "guideId": "security"
+            },
+            {
               "name": "Worker",
               "path": "../ja/design/worker.ja.md",
               "lang": "ja",
               "source": "docs/ja/design/worker.ja.md",
               "guideId": "worker"
+            }
+          ]
+        },
+        {
+          "id": "spec",
+          "slug": "spec",
+          "title": "Spec",
+          "items": [
+            {
+              "name": "Glossary",
+              "path": "../spec/glossary.md",
+              "lang": "en",
+              "source": "docs/spec/glossary.md",
+              "guideId": "glossary"
             }
           ]
         }

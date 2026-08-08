@@ -405,6 +405,122 @@
 <span id="L348" class="ln">   348  </span>	})
 <span id="L349" class="ln">   349  </span>}
 <span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>func Test_isConstraintViolation(t *testing.T) {
+<span id="L352" class="ln">   352  </span>	t.Parallel()
+<span id="L353" class="ln">   353  </span>
+<span id="L354" class="ln">   354  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L355" class="ln">   355  </span>		t.Parallel()
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>		t.Run(&#34;整合性制約違反(23xxx)はtrueを返す&#34;, func(t *testing.T) {
+<span id="L358" class="ln">   358  </span>			t.Parallel()
+<span id="L359" class="ln">   359  </span>			assert.True(t, isConstraintViolation(&amp;pgconn.PgError{Code: &#34;23505&#34;}))
+<span id="L360" class="ln">   360  </span>		})
+<span id="L361" class="ln">   361  </span>
+<span id="L362" class="ln">   362  </span>		t.Run(&#34;ラップされていても連鎖を辿ってtrueを返す&#34;, func(t *testing.T) {
+<span id="L363" class="ln">   363  </span>			t.Parallel()
+<span id="L364" class="ln">   364  </span>			assert.True(t, isConstraintViolation(xerrors.Wrap(&amp;pgconn.PgError{Code: &#34;23503&#34;}, &#34;insert failed&#34;)))
+<span id="L365" class="ln">   365  </span>		})
+<span id="L366" class="ln">   366  </span>	})
+<span id="L367" class="ln">   367  </span>
+<span id="L368" class="ln">   368  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L369" class="ln">   369  </span>		t.Parallel()
+<span id="L370" class="ln">   370  </span>
+<span id="L371" class="ln">   371  </span>		t.Run(&#34;23xxx以外のSQLSTATEはfalseを返す&#34;, func(t *testing.T) {
+<span id="L372" class="ln">   372  </span>			t.Parallel()
+<span id="L373" class="ln">   373  </span>			assert.False(t, isConstraintViolation(&amp;pgconn.PgError{Code: &#34;57014&#34;}))
+<span id="L374" class="ln">   374  </span>		})
+<span id="L375" class="ln">   375  </span>
+<span id="L376" class="ln">   376  </span>		t.Run(&#34;PostgreSQL由来でないエラーはfalseを返す&#34;, func(t *testing.T) {
+<span id="L377" class="ln">   377  </span>			t.Parallel()
+<span id="L378" class="ln">   378  </span>			assert.False(t, isConstraintViolation(xerrors.New(&#34;boom&#34;)))
+<span id="L379" class="ln">   379  </span>		})
+<span id="L380" class="ln">   380  </span>
+<span id="L381" class="ln">   381  </span>		t.Run(&#34;nilはfalseを返す&#34;, func(t *testing.T) {
+<span id="L382" class="ln">   382  </span>			t.Parallel()
+<span id="L383" class="ln">   383  </span>			assert.False(t, isConstraintViolation(nil))
+<span id="L384" class="ln">   384  </span>		})
+<span id="L385" class="ln">   385  </span>	})
+<span id="L386" class="ln">   386  </span>}
+<span id="L387" class="ln">   387  </span>
+<span id="L388" class="ln">   388  </span>func Test_isStatementTimeout(t *testing.T) {
+<span id="L389" class="ln">   389  </span>	t.Parallel()
+<span id="L390" class="ln">   390  </span>
+<span id="L391" class="ln">   391  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L392" class="ln">   392  </span>		t.Parallel()
+<span id="L393" class="ln">   393  </span>
+<span id="L394" class="ln">   394  </span>		t.Run(&#34;query_canceled(57014)はtrueを返す&#34;, func(t *testing.T) {
+<span id="L395" class="ln">   395  </span>			t.Parallel()
+<span id="L396" class="ln">   396  </span>			assert.True(t, isStatementTimeout(&amp;pgconn.PgError{Code: &#34;57014&#34;}))
+<span id="L397" class="ln">   397  </span>		})
+<span id="L398" class="ln">   398  </span>
+<span id="L399" class="ln">   399  </span>		t.Run(&#34;ラップされていても連鎖を辿ってtrueを返す&#34;, func(t *testing.T) {
+<span id="L400" class="ln">   400  </span>			t.Parallel()
+<span id="L401" class="ln">   401  </span>			assert.True(t, isStatementTimeout(xerrors.Wrap(&amp;pgconn.PgError{Code: &#34;57014&#34;}, &#34;query failed&#34;)))
+<span id="L402" class="ln">   402  </span>		})
+<span id="L403" class="ln">   403  </span>	})
+<span id="L404" class="ln">   404  </span>
+<span id="L405" class="ln">   405  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L406" class="ln">   406  </span>		t.Parallel()
+<span id="L407" class="ln">   407  </span>
+<span id="L408" class="ln">   408  </span>		t.Run(&#34;lock_timeout失効(55P03)はfalseを返す&#34;, func(t *testing.T) {
+<span id="L409" class="ln">   409  </span>			t.Parallel()
+<span id="L410" class="ln">   410  </span>			assert.False(t, isStatementTimeout(&amp;pgconn.PgError{Code: &#34;55P03&#34;}))
+<span id="L411" class="ln">   411  </span>		})
+<span id="L412" class="ln">   412  </span>
+<span id="L413" class="ln">   413  </span>		t.Run(&#34;PostgreSQL由来でないエラーはfalseを返す&#34;, func(t *testing.T) {
+<span id="L414" class="ln">   414  </span>			t.Parallel()
+<span id="L415" class="ln">   415  </span>			assert.False(t, isStatementTimeout(context.DeadlineExceeded))
+<span id="L416" class="ln">   416  </span>		})
+<span id="L417" class="ln">   417  </span>
+<span id="L418" class="ln">   418  </span>		t.Run(&#34;nilはfalseを返す&#34;, func(t *testing.T) {
+<span id="L419" class="ln">   419  </span>			t.Parallel()
+<span id="L420" class="ln">   420  </span>			assert.False(t, isStatementTimeout(nil))
+<span id="L421" class="ln">   421  </span>		})
+<span id="L422" class="ln">   422  </span>	})
+<span id="L423" class="ln">   423  </span>}
+<span id="L424" class="ln">   424  </span>
+<span id="L425" class="ln">   425  </span>func Test_isTimeout(t *testing.T) {
+<span id="L426" class="ln">   426  </span>	t.Parallel()
+<span id="L427" class="ln">   427  </span>
+<span id="L428" class="ln">   428  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L429" class="ln">   429  </span>		t.Parallel()
+<span id="L430" class="ln">   430  </span>
+<span id="L431" class="ln">   431  </span>		t.Run(&#34;contextの期限切れはtrueを返す&#34;, func(t *testing.T) {
+<span id="L432" class="ln">   432  </span>			t.Parallel()
+<span id="L433" class="ln">   433  </span>			assert.True(t, isTimeout(context.DeadlineExceeded))
+<span id="L434" class="ln">   434  </span>		})
+<span id="L435" class="ln">   435  </span>
+<span id="L436" class="ln">   436  </span>		t.Run(&#34;lock_timeout失効(55P03)はtrueを返す&#34;, func(t *testing.T) {
+<span id="L437" class="ln">   437  </span>			t.Parallel()
+<span id="L438" class="ln">   438  </span>			assert.True(t, isTimeout(&amp;pgconn.PgError{Code: &#34;55P03&#34;}))
+<span id="L439" class="ln">   439  </span>		})
+<span id="L440" class="ln">   440  </span>
+<span id="L441" class="ln">   441  </span>		t.Run(&#34;statement_timeout失効(57014)はtrueを返す&#34;, func(t *testing.T) {
+<span id="L442" class="ln">   442  </span>			t.Parallel()
+<span id="L443" class="ln">   443  </span>			assert.True(t, isTimeout(&amp;pgconn.PgError{Code: &#34;57014&#34;}))
+<span id="L444" class="ln">   444  </span>		})
+<span id="L445" class="ln">   445  </span>	})
+<span id="L446" class="ln">   446  </span>
+<span id="L447" class="ln">   447  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L448" class="ln">   448  </span>		t.Parallel()
+<span id="L449" class="ln">   449  </span>
+<span id="L450" class="ln">   450  </span>		t.Run(&#34;contextのキャンセルはtrueを返さない&#34;, func(t *testing.T) {
+<span id="L451" class="ln">   451  </span>			t.Parallel()
+<span id="L452" class="ln">   452  </span>			assert.False(t, isTimeout(context.Canceled))
+<span id="L453" class="ln">   453  </span>		})
+<span id="L454" class="ln">   454  </span>
+<span id="L455" class="ln">   455  </span>		t.Run(&#34;タイムアウト以外のSQLSTATEはfalseを返す&#34;, func(t *testing.T) {
+<span id="L456" class="ln">   456  </span>			t.Parallel()
+<span id="L457" class="ln">   457  </span>			assert.False(t, isTimeout(&amp;pgconn.PgError{Code: &#34;23505&#34;}))
+<span id="L458" class="ln">   458  </span>		})
+<span id="L459" class="ln">   459  </span>
+<span id="L460" class="ln">   460  </span>		t.Run(&#34;nilはfalseを返す&#34;, func(t *testing.T) {
+<span id="L461" class="ln">   461  </span>			t.Parallel()
+<span id="L462" class="ln">   462  </span>			assert.False(t, isTimeout(nil))
+<span id="L463" class="ln">   463  </span>		})
+<span id="L464" class="ln">   464  </span>	})
+<span id="L465" class="ln">   465  </span>}
+<span id="L466" class="ln">   466  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

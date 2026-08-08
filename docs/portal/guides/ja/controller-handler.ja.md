@@ -37,6 +37,8 @@ Presenterとは`Usecase DTO → OpenAPIレスポンス型`への変換処理で�
 
 同一の変換を複数のハンドラーメソッドで再利用する場合は、ハンドラーパッケージ内に private な `toXxxResponse(dto …) gen.XxxResponse` ヘルパー（例: `toItemResponse`）として定義します。単発の変換はハンドラー本体にインラインで書いてかまいません。
 
+Presenter は**ハンドラーパッケージをまたいで共有しません**。2 つのパッケージが同じ Usecase DTO を同一のコードで変換する場合でも共有しません。レスポンス型はハンドラーパッケージごとに生成される（OpenAPI タグ 1 つにつき `gen` パッケージ 1 つ）ため、2 つのパッケージにある同名のレスポンス型は互いに無関係な 2 つの Go 型です。共有ヘルパーにすると、それらに対してジェネリックにするか、あるパッケージの型を別のパッケージへ返すことになります。**この重複は意図的です。** コピーは独立に保ち、Usecase DTO が変わったときにまとめて更新します。
+
 ## アーキテクチャ
 
 ### HTTPリクエストの処理フロー
@@ -234,7 +236,7 @@ Handler --> Usecase
 
      ```go
      //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
      ```
 
   4. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
@@ -276,6 +278,21 @@ dto, err := s.uc.GetItem(ctx, id)
 OpenAPI → `make gen` → 再生成
 
 の順序で修正してください。
+
+### すべてのルートは OpenAPI に存在しなければならない
+
+Echo に登録するルートは、必ず OpenAPI spec の operation（メソッド + パス）と対応していなければなりません。例外のための許可リストは持ちません。許可リスト自体がドリフト源になるためです。規約そのものの正本は [OpenAPI-first ルール](../../../docs/ja/rules.ja.md#openapi-first-ルール)にあり、この節はハンドラを書くうえで何を意味するかを扱います。
+
+この規約があるのは、HTTP スタックの複数の機能が「登録されたルート = spec の operation」を明示しないまま前提にしているからです。
+
+- **405 の `Allow` ヘッダー** — このヘッダーはそのパスが実際に受け付けるメソッドを広告する必要があり、その一覧は登録ルートと spec の operation が一致している間だけ解決できる。
+- **リクエストバリデーション** — spec に無いパスはバリデーションを受けない。
+- **`details` の opt-in ゲート** — `DetailPolicy` は spec から operation を解決する fail-closed な仕組みのため、未解決のパスでは `details` が静かに落ちる。
+- **404 / 405 の判定** — OpenAPI バリデーションミドルウェアは自前のルータで判定するため、spec に無いパスは 404 になる。
+
+いずれもテストが緑のまま実行時の挙動だけが変わるため、この対応関係は `internal/architest` の `TestRouteSpecParity` で機械検証しています。除外されるのは `/_internal/` 配下の operation だけで、これは spec 自身が「実装・公開されないコード生成用のアンカー」と宣言しているためです。
+
+したがって手書きのルート登録は、spec が既に宣言している operation に対してのみ許されます（[Handler 構造体のルール](#handler-構造体のルール)の `/metrics` の例外を参照）。メソッドとパスをソースから確定できない登録形（`Any` / `Match` / `Static` / `Group` / `AddRoute`、実行時にメソッドを決めるか `Route` リテラルを渡す `Add`、パスが文字列リテラルでない登録）は spec と突き合わせられないため、同じテストが拒否します。
 
 ## Observability
 
@@ -428,7 +445,7 @@ type server struct {
 - new を使って内部で依存生成しない
 - interface（Usecase）に依存する
 
-例外：OpenAPI に定義されない運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は生成された `ServerInterface` を持たないため、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外は非 OpenAPI の運用エンドポイントに限ります。
+例外：レスポンスを外部ライブラリのハンドラーが生成する運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は、そのパッケージで oapi-codegen を走らせないため生成された `ServerInterface` を持たず、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外はコード生成についてのものであって **OpenAPI 定義についてではありません** — [すべてのルートは OpenAPI に存在しなければならない](#すべてのルートは-openapi-に存在しなければならない)が要求するとおり、operation は spec に宣言されています。
 
 ### なぜ fx.Invoke を使うのか
 
@@ -438,7 +455,7 @@ type server struct {
 
 ### AI / 開発者向けルール
 
-- 新しい Handler を追加する場合は `internal/di/module/controller.go` の `fx.Invoke(...)` に追加すること
+- 新しい Handler を追加する場合は `internal/di/module/controller.go` の `fx.Invoke(...)` に追加すること — 生成されたルート登録は配線の有無に関わらず存在するため、追加を忘れると実行時に 404 になる。この漏れは `internal/architest` の `TestBindHandlerDIParity` が検出する
 - Handler 内で new して依存を生成しないこと
 - 必ず constructor（BindHandler）経由で依存を受け取ること
 - Usecase は interface を受け取り、具象型に依存しないこと
@@ -511,7 +528,7 @@ Controller → Database
 
 #### Don’t
 
-- Usecase に `http.Status`, `echo.Context`, `*http.Request` などの HTTP 要素を渡す
+- Usecase に `http.Status`, `*echo.Context`, `*http.Request` などの HTTP 要素を渡す
 - Usecase で `limit/offset` を直に決めるために **HTTP のパラメータ生値**を渡す  
 - `sqlc` 生成型やDB列名をControllerにそのまま持ち込む
 - 一覧0件で `ErrNotFound` を返して404にする  
@@ -788,14 +805,14 @@ rec := testecho.NewEchoTestClient(t, e).
 |`AuthBearer`|Bearer トークンを設定|
 |`PathParams`|パスパラメータを設定|
 |`QueryParams`|クエリパラメータを設定|
-|`Build`|Request / ResponseRecorder / echo.Context を返す|
+|`Build`|Request / ResponseRecorder / *echo.Context を返す|
 |`Serve`|Echo にリクエストを送信し ResponseRecorder を返す|
 
 ### testspan
 
 |関数|説明|
 |---|---|
-|`StartTestSpanForEcho`|echo.Context にテスト用 span を埋め込み、終了関数を返す|
+|`StartTestSpanForEcho`|*echo.Context にテスト用 span を埋め込み、終了関数を返す|
 
 ### testuuid
 
@@ -809,7 +826,7 @@ rec := testecho.NewEchoTestClient(t, e).
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 package items
 
@@ -819,7 +836,7 @@ import (
     "go-boilerplate/internal/observability"
     // それぞれ実装で使うパッケージをimport
 
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 type server struct {

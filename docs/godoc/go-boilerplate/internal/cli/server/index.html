@@ -107,10 +107,10 @@
 				<dd><a href="#NewMetricsServer">func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func(), func(ctx context.Context))</a></dd>
 			
 				
-				<dd><a href="#ResolveMetricsStop">func ResolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context)</a></dd>
+				<dd><a href="#RunServer">func RunServer(ctx context.Context, shutdownTimeout time.Duration, startApp func(context.Context) error, stopApp func(context.Context) error, stopMetrics func(context.Context)) error</a></dd>
 			
 				
-				<dd><a href="#RunServer">func RunServer(ctx context.Context, shutdownTimeout time.Duration, startApp func(context.Context) error, stopApp func(context.Context) error, stopMetrics func(context.Context)) error</a></dd>
+				<dd><a href="#StartMetricsAndResolveStop">func StartMetricsAndResolveStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context)</a></dd>
 			
 			
 			
@@ -155,22 +155,7 @@
 		
 			
 			
-			</p><h2 id="ResolveMetricsStop">func <a href="../../../../src/go-boilerplate/internal/cli/server/server.go.html?s=489:619#L3">ResolveMetricsStop</a>
-				<a class="permalink" href="#ResolveMetricsStop">¶</a>
-				
-				
-			</h2>
-			<pre>func ResolveMetricsStop(appCfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>, newMetrics func() (func(), func(<a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>))) func(<a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>)</pre>
-			<p>ResolveMetricsStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
-本番モードでは起動せず nil を返します（呼び出し側は nil を「停止不要」として扱います）。
-
-			
-			
-
-		
-			
-			
-			</p><h2 id="RunServer">func <a href="../../../../src/go-boilerplate/internal/cli/server/server.go.html?s=1083:1273#L15">RunServer</a>
+			</p><h2 id="RunServer">func <a href="../../../../src/go-boilerplate/internal/cli/server/server.go.html?s=1099:1289#L15">RunServer</a>
 				<a class="permalink" href="#RunServer">¶</a>
 				
 				
@@ -185,6 +170,21 @@
 			<p>RunServer は, アプリ本体を起動し、ctx のキャンセル（終了シグナル）を受けてから
 グレースフルシャットダウンを行います。停止用 context のタイムアウトは「停止開始時点」から
 計測することで稼働時間に消費されないようにしています。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="StartMetricsAndResolveStop">func <a href="../../../../src/go-boilerplate/internal/cli/server/server.go.html?s=497:635#L3">StartMetricsAndResolveStop</a>
+				<a class="permalink" href="#StartMetricsAndResolveStop">¶</a>
+				
+				
+			</h2>
+			<pre>func StartMetricsAndResolveStop(appCfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>, newMetrics func() (func(), func(<a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>))) func(<a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>)</pre>
+			<p>StartMetricsAndResolveStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
+本番モードでは起動せず nil を返します（呼び出し側は nil を「停止不要」として扱います）。
 
 			
 			

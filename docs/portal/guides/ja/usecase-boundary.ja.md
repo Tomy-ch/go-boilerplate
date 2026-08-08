@@ -40,12 +40,14 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 
 |パッケージ|interface|説明|実装場所|
 |---|---|---|---|
+|`address`|`Gateway`|外部の住所検索サービスへの意味的ゲートウェイ（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/address/`|
 |`auth`|`Authenticator`|トークンから認証情報（`Authn`）を取得|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|認証主体がリソースに対し操作を実行してよいか判定|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|現在時刻の取得|`internal/infrastructure/system/`|
 |`exchangerate`|`Gateway`|外部為替レート取得サービスへの意味的 gateway（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/exchangerate/`|
 |`idempotency`|`Store`|冪等性キーの永続化境界（claim / replay / 競合判定）|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
+|`objectstorage`|`Storage`|実体非依存のオブジェクトストレージ境界（キー指定でオブジェクトを `Put` / `List` / `Delete` する）|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
@@ -62,7 +64,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`Authenticator`|`Credential` から `Authn` を生成するインターフェース|
 |`Authn`|認証結果（subject / userID / issuer / scopes / claims）|
 |`New(subject, issuer, scopes, claims)`|`Authn` を UserID 未解決の状態で生成（subject 空は `ErrUnauthenticatedSubjectMissing`）|
-|`WithUserID(userID)`|内部 UserID を解決した `Authn` の複製を返す|
+|`WithUserID(userID)`|内部 UserID を解決した `Authn` の複製を返す（ゼロ値 UUID は `ErrUserIDZero`）|
 |`Credential`|認証スキームとトークンを保持する値オブジェクト|
 |`NewCredential(scheme, token)`|`Credential` を生成（空トークンは `ErrTokenMissing`）|
 
@@ -72,6 +74,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |---|---|
 |`ErrUnauthenticatedSubjectMissing`|subject が空|
 |`ErrUserIDUnresolved`|内部 UserID が未解決|
+|`ErrUserIDZero`|`WithUserID()` にゼロ値 UUID が渡された|
 |`ErrTokenMissing`|トークンが空|
 
 ### authz
@@ -92,6 +95,8 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`ErrForbidden`|認可拒否（`apperror.ErrPermissionDenied` をラップ、HTTP 403）|
 
 `auth.Authn`（subject / scopes / claims）と対象 `Resource` を渡すことで、RBAC（claims からロール）と所有権（subject == OwnerID）の双方を表現できます。デフォルト実装は全許可であり、本番以外の環境に限定されます。
+
+`NewResource` に `ownerID = nil` を渡すことは、**所有者を持たない**リソースの宣言です。所有者が不明という意味ではなく、所有権による主張が適用されないことを呼び出し側が表明しています。それを `Authorizer` がどう扱うかは各実装のポリシーですが、そうしたリソースに対して所有権の一致が成立することはないため、所有権に基づく規則はアクセスを狭める方向にしか働きません。所有者の指定を省くことは、安全側に倒れる選択です。
 
 ### clock
 
@@ -133,6 +138,19 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |`Job`|`Name()` + `Execute(ctx, args)` を持つジョブ定義|
 |`Runner`|`Run(ctx, jobName, args)` + `Names()` でジョブを実行・一覧|
 |`State`|`Set(name, args, done)` + `Snapshot()` でジョブ実行状態を管理|
+
+### objectstorage
+
+実体非依存のオブジェクトストレージ境界。Usecase はこのポートにのみ依存し、S3 互換 adapter（infrastructure）が実装する。bucket / region / etag などの vendor 語彙は境界を越えて漏れない。
+
+|型 / 関数|説明|
+|---|---|
+|`Storage`|`Put(ctx, PutObject) (Path, error)` でオブジェクトをキー配下へ保存する。`List(ctx, ListQuery) (ListResult, error)` で条件に一致するオブジェクトを 1 ページ分列挙する。`Delete(ctx, keys []string) error` でまとめて削除する（空スライスは何もせず、存在しないキーもエラーにならず、同じキーで再実行しても結果は変わらない）。失敗時は `apperror` sentinel（例 `ErrUnavailable`）を返す|
+|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType` / `CacheControl`）。`Key` は呼び出し側が採番し（例 `products/{uuid}.png`）、`CacheControl` も呼び出し側が決める。キャッシュ可否はキーの採番方針から導かれるため（空なら未設定）|
+|`ListQuery`|入力 DTO（`Prefix` / `Cursor`）。`Prefix` が空なら全件が対象。`Cursor` は直前の `ListResult.NextCursor` をそのまま渡す、adapter 依存の不透明な境界|
+|`ListResult`|1 ページ分のオブジェクトと `NextCursor`。`NextCursor` が非空なら続きがあり、次の `ListQuery.Cursor` に渡す|
+|`Object`|列挙されたオブジェクト 1 件を境界の語彙で表したもの|
+|`Path`|保存されたオブジェクトのパス（キー）。表示 URL は上位が別途組み立てる|
 
 ### outbox
 

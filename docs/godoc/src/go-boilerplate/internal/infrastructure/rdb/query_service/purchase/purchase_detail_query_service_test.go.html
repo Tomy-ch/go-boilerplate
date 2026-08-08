@@ -1,0 +1,333 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>purchase - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb">rdb</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service">query_service</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service/purchase">purchase</a>/<span class="text-muted">purchase_detail_query_service_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../go-boilerplate/internal/infrastructure/rdb/query_service/purchase">go-boilerplate/internal/infrastructure/rdb/query_service/purchase</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package purchase
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L13" class="ln">    13  </span>	decimaltestkit &#34;go-boilerplate/pkg/decimal/testkit&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L15" class="ln">    15  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L19" class="ln">    19  </span>)
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// 既存 seed 由来の FK 対象。</span>
+<span id="L22" class="ln">    22  </span>const (
+<span id="L23" class="ln">    23  </span>	seedStatusInStock  = &#34;093170fb-83a2-4864-a2b3-53236eaf3597&#34; <span class="comment">// 商品ステータス（在庫あり）</span>
+<span id="L24" class="ln">    24  </span>	seedCategory       = &#34;5dd52d84-78eb-4a52-ba0b-2e11c95c2af2&#34; <span class="comment">// 商品カテゴリ</span>
+<span id="L25" class="ln">    25  </span>	seedUserA          = &#34;550e8400-e29b-41d4-a716-446655440000&#34; <span class="comment">// 購入所有者</span>
+<span id="L26" class="ln">    26  </span>	seedUserB          = &#34;a95a2dd3-2b37-4def-8041-23d2138faccc&#34; <span class="comment">// 別ユーザー（他人）</span>
+<span id="L27" class="ln">    27  </span>	seedUnprocessedSID = &#34;a66c996c-86b2-41d8-9bdd-9b685fb7c47d&#34; <span class="comment">// 購入ステータス（未処理）</span>
+<span id="L28" class="ln">    28  </span>	seedPaidSID        = &#34;4b8f0e2a-1c3d-4a5e-8b7f-2d9c0e1a3b4c&#34; <span class="comment">// 購入ステータス（支払い済み）</span>
+<span id="L29" class="ln">    29  </span>	seedCanceledSID    = &#34;e9d72547-adfe-48d9-9037-bd1f55d4158b&#34; <span class="comment">// 購入ステータス（キャンセル）</span>
+<span id="L30" class="ln">    30  </span>)
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span>func mustParse(t *testing.T, s string) uuid.UUID {
+<span id="L33" class="ln">    33  </span>	t.Helper()
+<span id="L34" class="ln">    34  </span>	id, err := uuid.Parse(s)
+<span id="L35" class="ln">    35  </span>	require.NoError(t, err)
+<span id="L36" class="ln">    36  </span>	return id
+<span id="L37" class="ln">    37  </span>}
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span><span class="comment">// insertProduct は、FK を満たす商品を挿入し商品 ID を返します。</span>
+<span id="L40" class="ln">    40  </span>func insertProduct(ctx context.Context, t *testing.T, db driver.DBTX, seed, name string, price int) uuid.UUID {
+<span id="L41" class="ln">    41  </span>	t.Helper()
+<span id="L42" class="ln">    42  </span>	productID := mustParse(t, seed)
+<span id="L43" class="ln">    43  </span>	_, err := db.Exec(ctx,
+<span id="L44" class="ln">    44  </span>		&#34;INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
+<span id="L45" class="ln">    45  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())&#34;,
+<span id="L46" class="ln">    46  </span>		productID, name, nil, price, 20, nil, mustParse(t, seedStatusInStock), mustParse(t, seedCategory),
+<span id="L47" class="ln">    47  </span>	)
+<span id="L48" class="ln">    48  </span>	require.NoError(t, err)
+<span id="L49" class="ln">    49  </span>	return productID
+<span id="L50" class="ln">    50  </span>}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span><span class="comment">// insertPurchase は、指定ユーザー・ステータスの購入を挿入し購入 ID を返します。</span>
+<span id="L53" class="ln">    53  </span><span class="comment">// paidAt / canceledAt が非 nil の場合はそれぞれ paid_at / canceled_at をセットします。</span>
+<span id="L54" class="ln">    54  </span>func insertPurchase(
+<span id="L55" class="ln">    55  </span>	ctx context.Context,
+<span id="L56" class="ln">    56  </span>	t *testing.T,
+<span id="L57" class="ln">    57  </span>	db driver.DBTX,
+<span id="L58" class="ln">    58  </span>	userID, statusID uuid.UUID,
+<span id="L59" class="ln">    59  </span>	code string,
+<span id="L60" class="ln">    60  </span>	paidAt, canceledAt *time.Time,
+<span id="L61" class="ln">    61  </span>) uuid.UUID {
+<span id="L62" class="ln">    62  </span>	t.Helper()
+<span id="L63" class="ln">    63  </span>	purchaseID, err := uuid.New()
+<span id="L64" class="ln">    64  </span>	require.NoError(t, err)
+<span id="L65" class="ln">    65  </span>	_, err = db.Exec(ctx,
+<span id="L66" class="ln">    66  </span>		&#34;INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, paid_at, canceled_at) &#34;+
+<span id="L67" class="ln">    67  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)&#34;,
+<span id="L68" class="ln">    68  </span>		purchaseID, code, userID, statusID, 160000, 16000, 500, 176500, paidAt, canceledAt,
+<span id="L69" class="ln">    69  </span>	)
+<span id="L70" class="ln">    70  </span>	require.NoError(t, err)
+<span id="L71" class="ln">    71  </span>	return purchaseID
+<span id="L72" class="ln">    72  </span>}
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span><span class="comment">// insertDetail は、購入明細を 1 件挿入します。</span>
+<span id="L75" class="ln">    75  </span>func insertDetail(ctx context.Context, t *testing.T, db driver.DBTX, purchaseID, productID uuid.UUID, quantity, unitPrice int) {
+<span id="L76" class="ln">    76  </span>	t.Helper()
+<span id="L77" class="ln">    77  </span>	detailID, err := uuid.New()
+<span id="L78" class="ln">    78  </span>	require.NoError(t, err)
+<span id="L79" class="ln">    79  </span>	_, err = db.Exec(ctx,
+<span id="L80" class="ln">    80  </span>		&#34;INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5)&#34;,
+<span id="L81" class="ln">    81  </span>		detailID, purchaseID, productID, quantity, unitPrice,
+<span id="L82" class="ln">    82  </span>	)
+<span id="L83" class="ln">    83  </span>	require.NoError(t, err)
+<span id="L84" class="ln">    84  </span>}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>func Test_service_FindDetailByUserAndID(t *testing.T) {
+<span id="L87" class="ln">    87  </span>	t.Parallel()
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>	testDB := testkit.NewTestDB(t)
+<span id="L90" class="ln">    90  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L91" class="ln">    91  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L92" class="ln">    92  </span>	svc := &amp;service{tracer: lt, db: testDB}
+<span id="L93" class="ln">    93  </span>
+<span id="L94" class="ln">    94  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L95" class="ln">    95  </span>		t.Parallel()
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>		t.Run(&#34;本人の購入を明細と商品名の結合込みで取得する&#34;, func(t *testing.T) {
+<span id="L98" class="ln">    98  </span>			t.Parallel()
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L101" class="ln">   101  </span>				drv := driver.New(ctx, testDB)
+<span id="L102" class="ln">   102  </span>				userA := mustParse(t, seedUserA)
+<span id="L103" class="ln">   103  </span>				productA := insertProduct(ctx, t, drv, &#34;e1000000-0000-4000-8000-000000000001&#34;, &#34;商品A&#34;, 80000)
+<span id="L104" class="ln">   104  </span>				productB := insertProduct(ctx, t, drv, &#34;e1000000-0000-4000-8000-000000000002&#34;, &#34;商品B&#34;, 120000)
+<span id="L105" class="ln">   105  </span>				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), &#34;qs-code-ok&#34;, nil, nil)
+<span id="L106" class="ln">   106  </span>				<span class="comment">// 明細 2 件を 1 回のリスト取得で束ねられること（固定 2 クエリ・N+1 でない）を確認する。</span>
+<span id="L107" class="ln">   107  </span>				insertDetail(ctx, t, drv, purchaseID, productA, 2, 800)
+<span id="L108" class="ln">   108  </span>				insertDetail(ctx, t, drv, purchaseID, productB, 1, 1500)
+<span id="L109" class="ln">   109  </span>
+<span id="L110" class="ln">   110  </span>				got, err := svc.FindDetailByUserAndID(ctx, userA, purchaseID)
+<span id="L111" class="ln">   111  </span>				require.NoError(t, err)
+<span id="L112" class="ln">   112  </span>				assert.Equal(t, purchaseID, got.ID)
+<span id="L113" class="ln">   113  </span>				assert.Equal(t, userA, got.UserID)
+<span id="L114" class="ln">   114  </span>				assert.Equal(t, mustParse(t, seedUnprocessedSID), got.StatusID)
+<span id="L115" class="ln">   115  </span>				assert.Equal(t, &#34;未処理&#34;, got.StatusName)
+<span id="L116" class="ln">   116  </span>				assert.Equal(t, int64(160000), got.SubtotalAmount)
+<span id="L117" class="ln">   117  </span>				assert.Equal(t, int64(16000), got.TaxAmount)
+<span id="L118" class="ln">   118  </span>				assert.Equal(t, int64(500), got.ShippingFee)
+<span id="L119" class="ln">   119  </span>				assert.Equal(t, int64(176500), got.TotalAmount)
+<span id="L120" class="ln">   120  </span>				assert.Nil(t, got.PaidAt)
+<span id="L121" class="ln">   121  </span>				assert.Nil(t, got.CanceledAt)
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>				require.Len(t, got.Items, 2)
+<span id="L124" class="ln">   124  </span>				assert.Equal(t, productA, got.Items[0].ProductID)
+<span id="L125" class="ln">   125  </span>				assert.Equal(t, &#34;商品A&#34;, got.Items[0].ProductName)
+<span id="L126" class="ln">   126  </span>				assert.Equal(t, 2, got.Items[0].Quantity)
+<span id="L127" class="ln">   127  </span>				assert.Equal(t, &#34;800&#34;, got.Items[0].UnitPrice.String())
+<span id="L128" class="ln">   128  </span>				assert.Equal(t, productB, got.Items[1].ProductID)
+<span id="L129" class="ln">   129  </span>				assert.Equal(t, &#34;商品B&#34;, got.Items[1].ProductName)
+<span id="L130" class="ln">   130  </span>				assert.Equal(t, &#34;1500&#34;, got.Items[1].UnitPrice.String())
+<span id="L131" class="ln">   131  </span>			})
+<span id="L132" class="ln">   132  </span>		})
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>		t.Run(&#34;支払い済み購入はpaidAtを返す&#34;, func(t *testing.T) {
+<span id="L135" class="ln">   135  </span>			t.Parallel()
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L138" class="ln">   138  </span>				drv := driver.New(ctx, testDB)
+<span id="L139" class="ln">   139  </span>				userA := mustParse(t, seedUserA)
+<span id="L140" class="ln">   140  </span>				productA := insertProduct(ctx, t, drv, &#34;e2000000-0000-4000-8000-000000000001&#34;, &#34;商品P&#34;, 80000)
+<span id="L141" class="ln">   141  </span>				paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+<span id="L142" class="ln">   142  </span>				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedPaidSID), &#34;qs-code-paid&#34;, &amp;paidAt, nil)
+<span id="L143" class="ln">   143  </span>				insertDetail(ctx, t, drv, purchaseID, productA, 1, 800)
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span>				got, err := svc.FindDetailByUserAndID(ctx, userA, purchaseID)
+<span id="L146" class="ln">   146  </span>				require.NoError(t, err)
+<span id="L147" class="ln">   147  </span>				assert.Equal(t, &#34;支払い済み&#34;, got.StatusName)
+<span id="L148" class="ln">   148  </span>				require.NotNil(t, got.PaidAt)
+<span id="L149" class="ln">   149  </span>				assert.True(t, paidAt.Equal(*got.PaidAt))
+<span id="L150" class="ln">   150  </span>				assert.Nil(t, got.CanceledAt)
+<span id="L151" class="ln">   151  </span>			})
+<span id="L152" class="ln">   152  </span>		})
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span>		t.Run(&#34;キャンセル済み購入はcanceledAtを返す&#34;, func(t *testing.T) {
+<span id="L155" class="ln">   155  </span>			t.Parallel()
+<span id="L156" class="ln">   156  </span>
+<span id="L157" class="ln">   157  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L158" class="ln">   158  </span>				drv := driver.New(ctx, testDB)
+<span id="L159" class="ln">   159  </span>				userA := mustParse(t, seedUserA)
+<span id="L160" class="ln">   160  </span>				productA := insertProduct(ctx, t, drv, &#34;e4000000-0000-4000-8000-000000000001&#34;, &#34;商品C&#34;, 80000)
+<span id="L161" class="ln">   161  </span>				canceledAt := time.Date(2026, time.July, 26, 9, 0, 0, 0, time.UTC)
+<span id="L162" class="ln">   162  </span>				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedCanceledSID), &#34;qs-code-canceled&#34;, nil, &amp;canceledAt)
+<span id="L163" class="ln">   163  </span>				insertDetail(ctx, t, drv, purchaseID, productA, 1, 800)
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>				got, err := svc.FindDetailByUserAndID(ctx, userA, purchaseID)
+<span id="L166" class="ln">   166  </span>				require.NoError(t, err)
+<span id="L167" class="ln">   167  </span>				assert.Equal(t, &#34;キャンセル&#34;, got.StatusName)
+<span id="L168" class="ln">   168  </span>				assert.Nil(t, got.PaidAt)
+<span id="L169" class="ln">   169  </span>				require.NotNil(t, got.CanceledAt)
+<span id="L170" class="ln">   170  </span>				assert.True(t, canceledAt.Equal(*got.CanceledAt))
+<span id="L171" class="ln">   171  </span>			})
+<span id="L172" class="ln">   172  </span>		})
+<span id="L173" class="ln">   173  </span>	})
+<span id="L174" class="ln">   174  </span>
+<span id="L175" class="ln">   175  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L176" class="ln">   176  </span>		t.Parallel()
+<span id="L177" class="ln">   177  </span>
+<span id="L178" class="ln">   178  </span>		t.Run(&#34;他人の購入IDはNotFoundを返し存在を秘匿する&#34;, func(t *testing.T) {
+<span id="L179" class="ln">   179  </span>			t.Parallel()
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L182" class="ln">   182  </span>				drv := driver.New(ctx, testDB)
+<span id="L183" class="ln">   183  </span>				userB := mustParse(t, seedUserB)
+<span id="L184" class="ln">   184  </span>				productA := insertProduct(ctx, t, drv, &#34;e3000000-0000-4000-8000-000000000001&#34;, &#34;商品O&#34;, 80000)
+<span id="L185" class="ln">   185  </span>				<span class="comment">// 購入は userB が所有する。userA で問い合わせると所有権述語で 0 行になる。</span>
+<span id="L186" class="ln">   186  </span>				purchaseID := insertPurchase(ctx, t, drv, userB, mustParse(t, seedUnprocessedSID), &#34;qs-code-other&#34;, nil, nil)
+<span id="L187" class="ln">   187  </span>				insertDetail(ctx, t, drv, purchaseID, productA, 1, 800)
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>				_, err := svc.FindDetailByUserAndID(ctx, mustParse(t, seedUserA), purchaseID)
+<span id="L190" class="ln">   190  </span>				require.ErrorIs(t, err, apperror.ErrNotFound)
+<span id="L191" class="ln">   191  </span>			})
+<span id="L192" class="ln">   192  </span>		})
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>		t.Run(&#34;存在しない購入IDはNotFoundを返す&#34;, func(t *testing.T) {
+<span id="L195" class="ln">   195  </span>			t.Parallel()
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L198" class="ln">   198  </span>				missing, err := uuid.New()
+<span id="L199" class="ln">   199  </span>				require.NoError(t, err)
+<span id="L200" class="ln">   200  </span>				_, ferr := svc.FindDetailByUserAndID(ctx, mustParse(t, seedUserA), missing)
+<span id="L201" class="ln">   201  </span>				require.ErrorIs(t, ferr, apperror.ErrNotFound)
+<span id="L202" class="ln">   202  </span>			})
+<span id="L203" class="ln">   203  </span>		})
+<span id="L204" class="ln">   204  </span>	})
+<span id="L205" class="ln">   205  </span>}
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>func TestNew(t *testing.T) {
+<span id="L208" class="ln">   208  </span>	t.Parallel()
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L211" class="ln">   211  </span>		t.Parallel()
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>		t.Run(&#34;依存を注入したクエリサービス実装を生成する&#34;, func(t *testing.T) {
+<span id="L214" class="ln">   214  </span>			t.Parallel()
+<span id="L215" class="ln">   215  </span>
+<span id="L216" class="ln">   216  </span>			testDB := testkit.NewTestDB(t)
+<span id="L217" class="ln">   217  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>			svc, ok := New(testDB, tf).(*service)
+<span id="L220" class="ln">   220  </span>			require.True(t, ok)
+<span id="L221" class="ln">   221  </span>			assert.Equal(t, testDB, svc.db)
+<span id="L222" class="ln">   222  </span>			assert.NotNil(t, svc.tracer)
+<span id="L223" class="ln">   223  </span>		})
+<span id="L224" class="ln">   224  </span>	})
+<span id="L225" class="ln">   225  </span>}
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>func Test_toPurchaseDetailItems(t *testing.T) {
+<span id="L228" class="ln">   228  </span>	t.Parallel()
+<span id="L229" class="ln">   229  </span>
+<span id="L230" class="ln">   230  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L231" class="ln">   231  </span>		t.Parallel()
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>		t.Run(&#34;明細行を商品名込みの読み取りモデルへ写像する&#34;, func(t *testing.T) {
+<span id="L234" class="ln">   234  </span>			t.Parallel()
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>			rows := []*gen.ListPurchaseDetailItemsForUserRow{
+<span id="L237" class="ln">   237  </span>				{ProductID: uuidtestkit.NewTestFromSalt(t, &#34;ti_p1&#34;), ProductName: &#34;商品A&#34;, Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, &#34;800&#34;)},
+<span id="L238" class="ln">   238  </span>				{ProductID: uuidtestkit.NewTestFromSalt(t, &#34;ti_p2&#34;), ProductName: &#34;商品B&#34;, Quantity: 1, UnitPrice: decimaltestkit.MustParse(t, &#34;1500&#34;)},
+<span id="L239" class="ln">   239  </span>			}
+<span id="L240" class="ln">   240  </span>
+<span id="L241" class="ln">   241  </span>			items, err := toPurchaseDetailItems(rows)
+<span id="L242" class="ln">   242  </span>			require.NoError(t, err)
+<span id="L243" class="ln">   243  </span>			require.Len(t, items, 2)
+<span id="L244" class="ln">   244  </span>			assert.Equal(t, &#34;商品A&#34;, items[0].ProductName)
+<span id="L245" class="ln">   245  </span>			assert.Equal(t, 2, items[0].Quantity)
+<span id="L246" class="ln">   246  </span>			assert.Equal(t, &#34;800&#34;, items[0].UnitPrice.String())
+<span id="L247" class="ln">   247  </span>			assert.Equal(t, &#34;商品B&#34;, items[1].ProductName)
+<span id="L248" class="ln">   248  </span>			assert.Equal(t, &#34;1500&#34;, items[1].UnitPrice.String())
+<span id="L249" class="ln">   249  </span>		})
+<span id="L250" class="ln">   250  </span>	})
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>		t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>		t.Run(&#34;単価が負の行はErrInternalへ正規化する&#34;, func(t *testing.T) {
+<span id="L256" class="ln">   256  </span>			t.Parallel()
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>			rows := []*gen.ListPurchaseDetailItemsForUserRow{
+<span id="L259" class="ln">   259  </span>				{ProductID: uuidtestkit.NewTestFromSalt(t, &#34;ti_neg&#34;), ProductName: &#34;商品N&#34;, Quantity: 1, UnitPrice: decimaltestkit.MustParse(t, &#34;-1&#34;)},
+<span id="L260" class="ln">   260  </span>			}
+<span id="L261" class="ln">   261  </span>
+<span id="L262" class="ln">   262  </span>			_, err := toPurchaseDetailItems(rows)
+<span id="L263" class="ln">   263  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L264" class="ln">   264  </span>		})
+<span id="L265" class="ln">   265  </span>	})
+<span id="L266" class="ln">   266  </span>}
+<span id="L267" class="ln">   267  </span>
+</pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service/purchase/purchase_detail_query_service_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

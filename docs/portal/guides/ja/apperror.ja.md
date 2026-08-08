@@ -142,11 +142,11 @@ if meta, ok := apperror.MetaFrom(err); ok { ... meta.Code() / meta.Message() / m
 
 ルール:
 
-- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0039](../../docs/adr/0039-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0040](../../docs/adr/0040-error-metadata-code-message-details.md) 参照）。
+- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0042](../../docs/adr/0042-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0043](../../docs/adr/0043-error-metadata-code-message-details.md) 参照）。
 - フィールドは非公開で、`Meta` の構築は `NewMeta(code, details...)` 経由のみです（`details` は防御的コピーされます）。全項目任意で、空の値は解決されたステータスに対する controller の既定 `code` / `message` にフォールバックします。
 - 利用者向け文言は明示的で grep 可能な `WithMessage` を通してのみ設定できます。文言の正は controller のカタログにあるため、**呼び出しは controller 層に限ります**。Domain / Usecase は `code` / `details` のみを設定してください。
 - `Details` の値は API レスポンスにそのまま公開されます。**公開して安全な識別子のみ**（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはいけません。理由文はラップしたエラーメッセージ側に残し、ログ専用とします。
-- **`details` の露出はエンドポイントごとの opt-in かつ fail-closed。** ここで `details` を付与するのは必要条件だが十分条件ではありません。クライアントが受け取るのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ。opt-in していない operation では controller の `errorhandler` が wire から `details` を落とします（ログには残る）。[ADR-0041](../../docs/adr/0041-error-details-opt-in-gate.md) を参照。
+- **`details` の露出はエンドポイントごとの opt-in かつ fail-closed。** ここで `details` を付与するのは必要条件だが十分条件ではありません。クライアントが受け取るのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ。opt-in していない operation では controller の `errorhandler` が wire から `details` を落とします（ログには残る）。[ADR-0044](../../docs/adr/0044-error-details-opt-in-gate.md) を参照。
 - チェーン内で `WithMeta` が多重に付与された場合、**最も外側が勝ちます**（`MetaFrom` は `xerrors.As` を使用）。上位層が上書きしたい場合は意図的に再ラップしてください。
 - `WithMeta` は装飾であり分類ではありません。`xerrors.Is` / `IsAppError` はラップされたセンチネル（`xerrors.Join` の全枝を含む）をそのまま検知します。
 
@@ -237,6 +237,8 @@ flowchart TB
 | `ErrNotFound` | 対象が存在しない | 404 Not Found |
 | `ErrConflict` | 競合（ユニーク制約違反・同時更新衝突など） | 409 Conflict |
 | `ErrValidation` | ドメイン/ユースケースの検証失敗 | 422 Unprocessable Entity |
+| `ErrUnsupportedMediaType` | サポートされていない Content-Type / メディア形式 | 415 Unsupported Media Type |
+| `ErrPayloadTooLarge` | リクエストペイロードが許容サイズを超過 | 413 Payload Too Large |
 | `ErrTooManyRequests` | リクエスト過多（流量制限・外部 API のスロットリング応答の伝播など） | 429 Too Many Requests |
 | `ErrCanceled` | クライアントがリクエストをキャンセル/切断 | 499 Client Closed Request |
 | `ErrInternal` | 想定外の内部エラー | 500 Internal Server Error |
@@ -273,3 +275,15 @@ apperror.IsAppError(apperror.ErrRetryable)                       // false
 | `ErrFatal` | プロセス継続不能 | drain して engine を停止 |
 
 これらは HTTP エラー taxonomy には **含まれません**。HTTP ステータス対応を持たず、`IsAppError` の対象外です。
+
+## テスト戦略
+
+本パッケージはセンチネルとそれに付随するメタデータを定義するのみで、I/O を行わず HTTP を知らない。テストはモックを使わない純粋な単体テストで、対象はセンチネル集合・`Meta`・ラップ用ヘルパである。
+
+- **ラップを跨いでセンチネルの同一性が保たれること** — `WithMeta` / `WithDetails` を通し、さらに外側で `%w` ラップした後に `errors.Is` で検証する。エラー文字列の比較ではセンチネルが失われても通ってしまい、それこそが本層の防ごうとしている失敗である。
+- **マッピングの網羅性** — 全センチネルがマッピング表に登録されていることを目視でなく機械的に検証する（`TestAppErrorsCompleteness`）。表に無いセンチネルを追加したらビルドが落ちること。taxonomy が増えるたびに拡張が要る唯一のテストがこれ。
+- **`Meta` の派生が非破壊であること** — `Meta.WithMessage` は派生した `Meta` を返し、レシーバを変更しない。派生後の値だけでなく元の値も検証する。（`WithDetails` は形が異なり、新規に構築した `Meta` を **エラー** へ付与する関数である。保たれるべきはラップ元のセンチネル分類であり、それは 1 つ目の箇条書きが担当する。）
+- **Unwrap 連鎖とフォーマット** — `MetaError` は `Unwrap` でラップ元を公開し、`%v` / `%+v` で文書化された形へ整形する。連鎖は `errors.Is` / `errors.As` で検証し、整形自体が契約である箇所に限りフォーマットを検証する。
+- **分類の境界** — `IsAppError` は HTTP taxonomy を受理し、意図的に対象外としたもの（worker センチネル `ErrRetryable` / `ErrPermanent` / `ErrFatal`）を拒否する。両側を検証すること。この拒否が worker の失敗を HTTP ステータスへ写してしまうのを防いでいる。
+
+HTTP ステータスへのマッピングはここでは **検証しない** —— controller 層のエラーハンドラの担当である。

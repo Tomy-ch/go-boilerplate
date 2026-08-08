@@ -1,0 +1,150 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>observability - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../src/go-boilerplate/internal/observability">observability</a>/<span class="text-muted">outbound_http_client.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/internal/observability">go-boilerplate/internal/observability</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package observability
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;net/http&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go.opentelemetry.io/otel/trace/noop&#34;
+<span id="L7" class="ln">     7  </span>)
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span><span class="comment">// maxOutboundRedirects は、追従を許す最大リダイレクト回数です。</span>
+<span id="L10" class="ln">    10  </span>const maxOutboundRedirects = 10
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span><span class="comment">// OutboundHTTPClient は、SSRF ガード付き transport を持つ外部 SDK 向けの HTTP クライアントです。</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// 自前の substrate（infrastructure/httpclient）を通せない SDK へ渡すための型で、素の *http.Client と</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// 取り違えないよう名前を持たせています。</span>
+<span id="L15" class="ln">    15  </span>type OutboundHTTPClient struct {
+<span id="L16" class="ln">    16  </span>	*http.Client
+<span id="L17" class="ln">    17  </span>}
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span><span class="comment">// policyStampingRoundTripper は、通過する全リクエストへ固定の SSRF ガード方針を適用する RoundTripper です。</span>
+<span id="L20" class="ln">    20  </span>type policyStampingRoundTripper struct {
+<span id="L21" class="ln">    21  </span>	inner               http.RoundTripper
+<span id="L22" class="ln">    22  </span>	allowPrivateNetwork bool
+<span id="L23" class="ln">    23  </span>}
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// NewOutboundHTTPClient は、SSRF ガード付き transport を持つ OutboundHTTPClient を返します。</span>
+<span id="L26" class="ln">    26  </span><span class="comment">//</span>
+<span id="L27" class="ln">    27  </span><span class="comment">// SDK は独自のリトライとタイムアウトを持つため、ここで与えるのは transport だけで、breaker や</span>
+<span id="L28" class="ln">    28  </span><span class="comment">// budget は載せません。</span>
+<span id="L29" class="ln">    29  </span><span class="comment">//</span>
+<span id="L30" class="ln">    30  </span><span class="comment">// allowPrivateNetwork はこの client を通る全リクエストへ一律に適用します。SDK は呼び出し側の ctx を</span>
+<span id="L31" class="ln">    31  </span><span class="comment">// そのままリクエストへ渡すため、呼び出しごとに ctx へ積む形にすると、積み忘れた経路が黙って既定値で</span>
+<span id="L32" class="ln">    32  </span><span class="comment">// 通ってしまいます。link-local（クラウドメタデータ等）の拒否はフラグに依らず常に効きます。</span>
+<span id="L33" class="ln">    33  </span><span class="comment">//</span>
+<span id="L34" class="ln">    34  </span><span class="comment">// 同じ t から方針の異なる client を作らないでください。判定は dial の直前に行う一方、transport は</span>
+<span id="L35" class="ln">    35  </span><span class="comment">// コネクションプールを持つため、許可側が張った接続を拒否側が再利用すると判定を経ずに通ります。</span>
+<span id="L36" class="ln">    36  </span>func NewOutboundHTTPClient(t *HTTPClientTransport, allowPrivateNetwork bool) *OutboundHTTPClient {
+<span id="L37" class="ln">    37  </span>	return &amp;OutboundHTTPClient{
+<span id="L38" class="ln">    38  </span>		Client: &amp;http.Client{
+<span id="L39" class="ln">    39  </span>			Transport: policyStampingRoundTripper{
+<span id="L40" class="ln">    40  </span>				inner:               t.RoundTripper(),
+<span id="L41" class="ln">    41  </span>				allowPrivateNetwork: allowPrivateNetwork,
+<span id="L42" class="ln">    42  </span>			},
+<span id="L43" class="ln">    43  </span>			CheckRedirect: limitedRedirectForOutbound,
+<span id="L44" class="ln">    44  </span>		},
+<span id="L45" class="ln">    45  </span>	}
+<span id="L46" class="ln">    46  </span>}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span><span class="comment">// RoundTrip は、方針を ctx へ積んだ clone を内側へ委譲します。</span>
+<span id="L49" class="ln">    49  </span>func (rt policyStampingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+<span id="L50" class="ln">    50  </span>	<span class="comment">// http.RoundTripper は呼び出し元の Request を変更してはならないため clone する。</span>
+<span id="L51" class="ln">    51  </span>	return rt.inner.RoundTrip(
+<span id="L52" class="ln">    52  </span>		req.Clone(ContextWithAllowPrivateNetwork(req.Context(), rt.allowPrivateNetwork)),
+<span id="L53" class="ln">    53  </span>	)
+<span id="L54" class="ln">    54  </span>}
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span><span class="comment">// limitedRedirectForOutbound は、メソッドと本文を保つ 307 / 308 だけ追従し、他は最終レスポンス</span>
+<span id="L57" class="ln">    57  </span><span class="comment">// （3xx）をそのまま返します。</span>
+<span id="L58" class="ln">    58  </span><span class="comment">//</span>
+<span id="L59" class="ln">    59  </span><span class="comment">// 全面禁止にしないのは、AWS SDK 既定のクライアントが同じ範囲で追従するためです。HTTPClient を</span>
+<span id="L60" class="ln">    60  </span><span class="comment">// 明示した時点で SDK 側の追従は効かなくなるので、ここで同じ範囲を持たないと、S3 が 307 を返す</span>
+<span id="L61" class="ln">    61  </span><span class="comment">// 場面（作成直後のバケット等）で操作が失敗するようになります。</span>
+<span id="L62" class="ln">    62  </span><span class="comment">// 追従先も同じ transport を通るため、link-local / private 宛ての判定は追従後の接続にも効きます。</span>
+<span id="L63" class="ln">    63  </span>func limitedRedirectForOutbound(req *http.Request, via []*http.Request) error {
+<span id="L64" class="ln">    64  </span>	if req.Response == nil || len(via) &gt;= maxOutboundRedirects {
+<span id="L65" class="ln">    65  </span>		return http.ErrUseLastResponse
+<span id="L66" class="ln">    66  </span>	}
+<span id="L67" class="ln">    67  </span>	switch req.Response.StatusCode {
+<span id="L68" class="ln">    68  </span>	case http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+<span id="L69" class="ln">    69  </span>		return nil
+<span id="L70" class="ln">    70  </span>	default:
+<span id="L71" class="ln">    71  </span>		return http.ErrUseLastResponse
+<span id="L72" class="ln">    72  </span>	}
+<span id="L73" class="ln">    73  </span>}
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span><span class="comment">// NewDisabledOutboundHTTPClient は、スパンを一切送出しない OutboundHTTPClient を返します。</span>
+<span id="L76" class="ln">    76  </span><span class="comment">// DI グラフを組まない CLI が infra 実装を直接組み立てる場合に用います。SSRF ガードは計装の有無に</span>
+<span id="L77" class="ln">    77  </span><span class="comment">// 依らず効くため、この経路でも link-local は拒否されます。</span>
+<span id="L78" class="ln">    78  </span>func NewDisabledOutboundHTTPClient(allowPrivateNetwork bool) *OutboundHTTPClient {
+<span id="L79" class="ln">    79  </span>	return NewOutboundHTTPClient(
+<span id="L80" class="ln">    80  </span>		NewHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator()),
+<span id="L81" class="ln">    81  </span>		allowPrivateNetwork,
+<span id="L82" class="ln">    82  </span>	)
+<span id="L83" class="ln">    83  </span>}
+<span id="L84" class="ln">    84  </span>
+</pre><p><a href="../../../../src/go-boilerplate/internal/observability/outbound_http_client.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

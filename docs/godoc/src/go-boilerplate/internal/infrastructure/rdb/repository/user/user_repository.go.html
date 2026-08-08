@@ -55,280 +55,280 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package user は、ユーザーに関するドメインのリポジトリを提供します。</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package user は、ユーザーリポジトリ（user.Repository）の RDB 実装を提供します。</span>
 <span id="L2" class="ln">     2  </span>package user
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
-<span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/domain/user&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/uuid&#34;
-<span id="L14" class="ln">    14  </span>)
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>type repository struct {
-<span id="L17" class="ln">    17  </span>	db     driver.DatabaseDriver
-<span id="L18" class="ln">    18  </span>	tracer observability.LayerTracer
-<span id="L19" class="ln">    19  </span>}
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span><span class="comment">// New は、user.Repository の RDB 実装を生成して返します。</span>
-<span id="L22" class="ln">    22  </span>func New(
-<span id="L23" class="ln">    23  </span>	db driver.DatabaseDriver,
-<span id="L24" class="ln">    24  </span>	tf observability.TracerFactory,
-<span id="L25" class="ln">    25  </span>) user.Repository {
-<span id="L26" class="ln">    26  </span>	return &amp;repository{
-<span id="L27" class="ln">    27  </span>		db:     db,
-<span id="L28" class="ln">    28  </span>		tracer: tf.Infra(),
-<span id="L29" class="ln">    29  </span>	}
-<span id="L30" class="ln">    30  </span>}
-<span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span><span class="comment">// FindByActive は、アクティブ状態に基づいてユーザーの情報を取得します。</span>
-<span id="L33" class="ln">    33  </span>func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (user.Users, error) {
-<span id="L34" class="ln">    34  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L35" class="ln">    35  </span>	defer endSpan()
-<span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span>	db := gen.New(driver.New(ctx, r.db))
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span>	switch {
-<span id="L40" class="ln">    40  </span>	case active == nil:
-<span id="L41" class="ln">    41  </span>		return fetchListUsersRows(ctx, db, &amp;gen.ListUsersParams{
-<span id="L42" class="ln">    42  </span>			OffsetParam: offset,
-<span id="L43" class="ln">    43  </span>			LimitParam:  limit,
-<span id="L44" class="ln">    44  </span>		})
-<span id="L45" class="ln">    45  </span>	case *active:
-<span id="L46" class="ln">    46  </span>		return fetchListUsersRowsByActive(ctx, db, &amp;gen.ListActiveUsersParams{
-<span id="L47" class="ln">    47  </span>			OffsetParam: offset,
-<span id="L48" class="ln">    48  </span>			LimitParam:  limit,
-<span id="L49" class="ln">    49  </span>		})
-<span id="L50" class="ln">    50  </span>	default:
-<span id="L51" class="ln">    51  </span>		return fetchListUsersRowsByDeleted(ctx, db, &amp;gen.ListDeletedUsersParams{
-<span id="L52" class="ln">    52  </span>			OffsetParam: offset,
-<span id="L53" class="ln">    53  </span>			LimitParam:  limit,
-<span id="L54" class="ln">    54  </span>		})
-<span id="L55" class="ln">    55  </span>	}
-<span id="L56" class="ln">    56  </span>}
-<span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span><span class="comment">// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。</span>
-<span id="L59" class="ln">    59  </span><span class="comment">// after=nil の場合は先頭ページ、それ以外は after が表す境界より後ろ（より過去）の行を返します。</span>
-<span id="L60" class="ln">    60  </span>func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error) {
-<span id="L61" class="ln">    61  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L62" class="ln">    62  </span>	defer endSpan()
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span>	db := gen.New(driver.New(ctx, r.db))
-<span id="L65" class="ln">    65  </span>
-<span id="L66" class="ln">    66  </span>	if after == nil {
-<span id="L67" class="ln">    67  </span>		rows, err := db.ListUsersFeedFirst(ctx, limit)
-<span id="L68" class="ln">    68  </span>		if err != nil {
-<span id="L69" class="ln">    69  </span>			return nil, pgerror.NormalizeError(err)
-<span id="L70" class="ln">    70  </span>		}
-<span id="L71" class="ln">    71  </span>		return rowsToUsers(rows, func(r *gen.ListUsersFeedFirstRow) gen.Users { return r.Users })
-<span id="L72" class="ln">    72  </span>	}
-<span id="L73" class="ln">    73  </span>
-<span id="L74" class="ln">    74  </span>	rows, err := db.ListUsersFeedAfter(ctx, &amp;gen.ListUsersFeedAfterParams{
-<span id="L75" class="ln">    75  </span>		AfterCreatedAt: after.CreatedAt(),
-<span id="L76" class="ln">    76  </span>		AfterID:        after.ID(),
-<span id="L77" class="ln">    77  </span>		LimitParam:     limit,
-<span id="L78" class="ln">    78  </span>	})
-<span id="L79" class="ln">    79  </span>	if err != nil {
-<span id="L80" class="ln">    80  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L81" class="ln">    81  </span>	}
-<span id="L82" class="ln">    82  </span>	return rowsToUsers(rows, func(r *gen.ListUsersFeedAfterRow) gen.Users { return r.Users })
-<span id="L83" class="ln">    83  </span>}
-<span id="L84" class="ln">    84  </span>
-<span id="L85" class="ln">    85  </span><span class="comment">// SearchByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得します。</span>
-<span id="L86" class="ln">    86  </span><span class="comment">// active=nil で全件、true でアクティブのみ、false で削除済みのみを対象とします。keywords が空の場合は全ユーザーを対象とします。</span>
-<span id="L87" class="ln">    87  </span>func (r *repository) SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error) {
-<span id="L88" class="ln">    88  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L89" class="ln">    89  </span>	defer endSpan()
-<span id="L90" class="ln">    90  </span>
-<span id="L91" class="ln">    91  </span>	tokens := buildLikeTokens(keywords)
-<span id="L92" class="ln">    92  </span>	db := gen.New(driver.New(ctx, r.db))
-<span id="L93" class="ln">    93  </span>
-<span id="L94" class="ln">    94  </span>	switch {
-<span id="L95" class="ln">    95  </span>	case active == nil:
-<span id="L96" class="ln">    96  </span>		rows, err := db.SearchUsers(ctx, &amp;gen.SearchUsersParams{
-<span id="L97" class="ln">    97  </span>			PatternsParam: tokens,
-<span id="L98" class="ln">    98  </span>			LimitParam:    limit,
-<span id="L99" class="ln">    99  </span>			OffsetParam:   offset,
-<span id="L100" class="ln">   100  </span>		})
-<span id="L101" class="ln">   101  </span>		if err != nil {
-<span id="L102" class="ln">   102  </span>			return nil, pgerror.NormalizeError(err)
-<span id="L103" class="ln">   103  </span>		}
-<span id="L104" class="ln">   104  </span>		return rowsToUsers(rows, func(r *gen.SearchUsersRow) gen.Users { return r.Users })
-<span id="L105" class="ln">   105  </span>	case *active:
-<span id="L106" class="ln">   106  </span>		rows, err := db.SearchActiveUsers(ctx, &amp;gen.SearchActiveUsersParams{
-<span id="L107" class="ln">   107  </span>			PatternsParam: tokens,
-<span id="L108" class="ln">   108  </span>			LimitParam:    limit,
-<span id="L109" class="ln">   109  </span>			OffsetParam:   offset,
-<span id="L110" class="ln">   110  </span>		})
-<span id="L111" class="ln">   111  </span>		if err != nil {
-<span id="L112" class="ln">   112  </span>			return nil, pgerror.NormalizeError(err)
-<span id="L113" class="ln">   113  </span>		}
-<span id="L114" class="ln">   114  </span>		return rowsToUsers(rows, func(r *gen.SearchActiveUsersRow) gen.Users { return r.Users })
-<span id="L115" class="ln">   115  </span>	default:
-<span id="L116" class="ln">   116  </span>		rows, err := db.SearchDeletedUsers(ctx, &amp;gen.SearchDeletedUsersParams{
-<span id="L117" class="ln">   117  </span>			PatternsParam: tokens,
-<span id="L118" class="ln">   118  </span>			LimitParam:    limit,
-<span id="L119" class="ln">   119  </span>			OffsetParam:   offset,
-<span id="L120" class="ln">   120  </span>		})
-<span id="L121" class="ln">   121  </span>		if err != nil {
-<span id="L122" class="ln">   122  </span>			return nil, pgerror.NormalizeError(err)
-<span id="L123" class="ln">   123  </span>		}
-<span id="L124" class="ln">   124  </span>		return rowsToUsers(rows, func(r *gen.SearchDeletedUsersRow) gen.Users { return r.Users })
-<span id="L125" class="ln">   125  </span>	}
-<span id="L126" class="ln">   126  </span>}
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span><span class="comment">// buildLikeTokens は、キーワードを部分一致の LIKE パターンへ変換します。空の場合は全件マッチの [&#34;%&#34;] を返します。</span>
-<span id="L129" class="ln">   129  </span>func buildLikeTokens(keywords []string) []string {
-<span id="L130" class="ln">   130  </span>	if len(keywords) == 0 {
-<span id="L131" class="ln">   131  </span>		return []string{&#34;%&#34;}
-<span id="L132" class="ln">   132  </span>	}
-<span id="L133" class="ln">   133  </span>	tokens := make([]string, len(keywords))
-<span id="L134" class="ln">   134  </span>	for i, kw := range keywords {
-<span id="L135" class="ln">   135  </span>		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
-<span id="L136" class="ln">   136  </span>		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
-<span id="L137" class="ln">   137  </span>	}
-<span id="L138" class="ln">   138  </span>	return tokens
-<span id="L139" class="ln">   139  </span>}
-<span id="L140" class="ln">   140  </span>
-<span id="L141" class="ln">   141  </span><span class="comment">// rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。</span>
-<span id="L142" class="ln">   142  </span><span class="comment">// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。</span>
-<span id="L143" class="ln">   143  </span>func rowToUser(u gen.Users) (*user.User, error) {
-<span id="L144" class="ln">   144  </span>	entity, err := user.New(
-<span id="L145" class="ln">   145  </span>		u.ID,
-<span id="L146" class="ln">   146  </span>		u.FirstName,
-<span id="L147" class="ln">   147  </span>		u.LastName,
-<span id="L148" class="ln">   148  </span>		u.PasswordHash,
-<span id="L149" class="ln">   149  </span>		u.Email,
-<span id="L150" class="ln">   150  </span>		u.Phone,
-<span id="L151" class="ln">   151  </span>		u.PrefectureID,
-<span id="L152" class="ln">   152  </span>		u.City,
-<span id="L153" class="ln">   153  </span>		u.Street,
-<span id="L154" class="ln">   154  </span>		u.Building,
-<span id="L155" class="ln">   155  </span>		u.PostalCode,
-<span id="L156" class="ln">   156  </span>		u.CreatedAt,
-<span id="L157" class="ln">   157  </span>		u.UpdatedAt,
-<span id="L158" class="ln">   158  </span>		u.DeletedAt,
-<span id="L159" class="ln">   159  </span>	)
-<span id="L160" class="ln">   160  </span>	if err != nil {
-<span id="L161" class="ln">   161  </span>		return nil, pgerror.NormalizeReconstructError(err)
-<span id="L162" class="ln">   162  </span>	}
-<span id="L163" class="ln">   163  </span>	return entity, nil
-<span id="L164" class="ln">   164  </span>}
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span><span class="comment">// rowsToUsers は、行スライスをドメインエンティティ列へ変換します。</span>
-<span id="L167" class="ln">   167  </span>func rowsToUsers[T any](rows []T, extract func(T) gen.Users) (user.Users, error) {
-<span id="L168" class="ln">   168  </span>	users := make(user.Users, len(rows))
-<span id="L169" class="ln">   169  </span>	for i, row := range rows {
-<span id="L170" class="ln">   170  </span>		u, err := rowToUser(extract(row))
-<span id="L171" class="ln">   171  </span>		if err != nil {
-<span id="L172" class="ln">   172  </span>			return nil, err
-<span id="L173" class="ln">   173  </span>		}
-<span id="L174" class="ln">   174  </span>		users[i] = u
-<span id="L175" class="ln">   175  </span>	}
-<span id="L176" class="ln">   176  </span>	return users, nil
-<span id="L177" class="ln">   177  </span>}
-<span id="L178" class="ln">   178  </span>
-<span id="L179" class="ln">   179  </span><span class="comment">// fetchListUsersRows は、ユーザーの情報を取得します。</span>
-<span id="L180" class="ln">   180  </span>func fetchListUsersRows(
-<span id="L181" class="ln">   181  </span>	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
-<span id="L182" class="ln">   182  </span>) (user.Users, error) {
-<span id="L183" class="ln">   183  </span>	rows, err := db.ListUsers(ctx, params)
-<span id="L184" class="ln">   184  </span>	if err != nil {
-<span id="L185" class="ln">   185  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L186" class="ln">   186  </span>	}
-<span id="L187" class="ln">   187  </span>	return rowsToUsers(rows, func(r *gen.ListUsersRow) gen.Users { return r.Users })
-<span id="L188" class="ln">   188  </span>}
-<span id="L189" class="ln">   189  </span>
-<span id="L190" class="ln">   190  </span><span class="comment">// fetchListUsersRowsByActive は、アクティブ状態に基づいてユーザーの情報を取得します。</span>
-<span id="L191" class="ln">   191  </span>func fetchListUsersRowsByActive(
-<span id="L192" class="ln">   192  </span>	ctx context.Context, db *gen.Queries, params *gen.ListActiveUsersParams,
-<span id="L193" class="ln">   193  </span>) (user.Users, error) {
-<span id="L194" class="ln">   194  </span>	rows, err := db.ListActiveUsers(ctx, params)
-<span id="L195" class="ln">   195  </span>	if err != nil {
-<span id="L196" class="ln">   196  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L197" class="ln">   197  </span>	}
-<span id="L198" class="ln">   198  </span>	return rowsToUsers(rows, func(r *gen.ListActiveUsersRow) gen.Users { return r.Users })
-<span id="L199" class="ln">   199  </span>}
-<span id="L200" class="ln">   200  </span>
-<span id="L201" class="ln">   201  </span><span class="comment">// fetchListUsersRowsByDeleted は、削除されたユーザーの情報を取得します。</span>
-<span id="L202" class="ln">   202  </span>func fetchListUsersRowsByDeleted(
-<span id="L203" class="ln">   203  </span>	ctx context.Context, db *gen.Queries, params *gen.ListDeletedUsersParams,
-<span id="L204" class="ln">   204  </span>) (user.Users, error) {
-<span id="L205" class="ln">   205  </span>	rows, err := db.ListDeletedUsers(ctx, params)
-<span id="L206" class="ln">   206  </span>	if err != nil {
-<span id="L207" class="ln">   207  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L208" class="ln">   208  </span>	}
-<span id="L209" class="ln">   209  </span>	return rowsToUsers(rows, func(r *gen.ListDeletedUsersRow) gen.Users { return r.Users })
-<span id="L210" class="ln">   210  </span>}
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span><span class="comment">// Create は、ユーザーを作成します。</span>
-<span id="L213" class="ln">   213  </span>func (r *repository) Create(ctx context.Context, u *user.User) error {
-<span id="L214" class="ln">   214  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L215" class="ln">   215  </span>	defer endSpan()
-<span id="L216" class="ln">   216  </span>
-<span id="L217" class="ln">   217  </span>	db := gen.New(driver.New(ctx, r.db))
-<span id="L218" class="ln">   218  </span>	err := db.CreateUser(ctx, &amp;gen.CreateUserParams{
-<span id="L219" class="ln">   219  </span>		ID:           u.ID(),
-<span id="L220" class="ln">   220  </span>		FirstName:    u.FirstName(),
-<span id="L221" class="ln">   221  </span>		LastName:     u.LastName(),
-<span id="L222" class="ln">   222  </span>		PasswordHash: u.PasswordHash(),
-<span id="L223" class="ln">   223  </span>		Email:        u.Email(),
-<span id="L224" class="ln">   224  </span>		Phone:        u.Phone(),
-<span id="L225" class="ln">   225  </span>		PrefectureID: u.PrefectureID(),
-<span id="L226" class="ln">   226  </span>		City:         u.City(),
-<span id="L227" class="ln">   227  </span>		Street:       u.Street(),
-<span id="L228" class="ln">   228  </span>		Building:     u.Building(),
-<span id="L229" class="ln">   229  </span>		PostalCode:   u.PostalCode(),
-<span id="L230" class="ln">   230  </span>		CreatedAt:    u.CreatedAt(),
-<span id="L231" class="ln">   231  </span>		UpdatedAt:    u.UpdatedAt(),
-<span id="L232" class="ln">   232  </span>	})
-<span id="L233" class="ln">   233  </span>	if err != nil {
-<span id="L234" class="ln">   234  </span>		return pgerror.NormalizeError(err)
-<span id="L235" class="ln">   235  </span>	}
-<span id="L236" class="ln">   236  </span>	return nil
-<span id="L237" class="ln">   237  </span>}
-<span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span><span class="comment">// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound に正規化したエラーを返します。</span>
-<span id="L240" class="ln">   240  </span>func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
-<span id="L241" class="ln">   241  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L242" class="ln">   242  </span>	defer endSpan()
-<span id="L243" class="ln">   243  </span>
-<span id="L244" class="ln">   244  </span>	db := gen.New(driver.New(ctx, r.db))
-<span id="L245" class="ln">   245  </span>	row, err := db.GetUserByID(ctx, id)
-<span id="L246" class="ln">   246  </span>	if err != nil {
-<span id="L247" class="ln">   247  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L248" class="ln">   248  </span>	}
-<span id="L249" class="ln">   249  </span>
-<span id="L250" class="ln">   250  </span>	return rowToUser(row.Users)
-<span id="L251" class="ln">   251  </span>}
-<span id="L252" class="ln">   252  </span>
-<span id="L253" class="ln">   253  </span><span class="comment">// Update は、ユーザーの mutable フィールドと updatedAt / deletedAt を更新します。</span>
-<span id="L254" class="ln">   254  </span>func (r *repository) Update(ctx context.Context, u *user.User) error {
-<span id="L255" class="ln">   255  </span>	ctx, endSpan := r.tracer.Start(ctx)
-<span id="L256" class="ln">   256  </span>	defer endSpan()
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>	db := gen.New(driver.New(ctx, r.db))
-<span id="L259" class="ln">   259  </span>	rows, err := db.UpdateUser(ctx, &amp;gen.UpdateUserParams{
-<span id="L260" class="ln">   260  </span>		FirstName:    u.FirstName(),
-<span id="L261" class="ln">   261  </span>		LastName:     u.LastName(),
-<span id="L262" class="ln">   262  </span>		PasswordHash: u.PasswordHash(),
-<span id="L263" class="ln">   263  </span>		Email:        u.Email(),
-<span id="L264" class="ln">   264  </span>		Phone:        u.Phone(),
-<span id="L265" class="ln">   265  </span>		PrefectureID: u.PrefectureID(),
-<span id="L266" class="ln">   266  </span>		City:         u.City(),
-<span id="L267" class="ln">   267  </span>		Street:       u.Street(),
-<span id="L268" class="ln">   268  </span>		Building:     u.Building(),
-<span id="L269" class="ln">   269  </span>		PostalCode:   u.PostalCode(),
-<span id="L270" class="ln">   270  </span>		UpdatedAt:    u.UpdatedAt(),
-<span id="L271" class="ln">   271  </span>		DeletedAt:    u.DeletedAt(),
-<span id="L272" class="ln">   272  </span>		ID:           u.ID(),
-<span id="L273" class="ln">   273  </span>	})
-<span id="L274" class="ln">   274  </span>	<span class="comment">// エラー正規化と「影響行数 0 → NotFound」判定は pgerror に集約</span>
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/domain/user&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L15" class="ln">    15  </span>)
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>type repository struct {
+<span id="L18" class="ln">    18  </span>	db     driver.DatabaseDriver
+<span id="L19" class="ln">    19  </span>	tracer observability.LayerTracer
+<span id="L20" class="ln">    20  </span>}
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// New は、user.Repository の RDB 実装を生成して返します。</span>
+<span id="L23" class="ln">    23  </span>func New(
+<span id="L24" class="ln">    24  </span>	db driver.DatabaseDriver,
+<span id="L25" class="ln">    25  </span>	tf observability.TracerFactory,
+<span id="L26" class="ln">    26  </span>) user.Repository {
+<span id="L27" class="ln">    27  </span>	return &amp;repository{
+<span id="L28" class="ln">    28  </span>		db:     db,
+<span id="L29" class="ln">    29  </span>		tracer: tf.Infra(),
+<span id="L30" class="ln">    30  </span>	}
+<span id="L31" class="ln">    31  </span>}
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span><span class="comment">// FindByActive は、アクティブ状態に基づいてユーザーの情報を取得します。</span>
+<span id="L34" class="ln">    34  </span>func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (user.Users, error) {
+<span id="L35" class="ln">    35  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L36" class="ln">    36  </span>	defer endSpan()
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>	switch {
+<span id="L41" class="ln">    41  </span>	case active == nil:
+<span id="L42" class="ln">    42  </span>		return fetchListUsersRows(ctx, db, &amp;gen.ListUsersParams{
+<span id="L43" class="ln">    43  </span>			OffsetParam: offset,
+<span id="L44" class="ln">    44  </span>			LimitParam:  limit,
+<span id="L45" class="ln">    45  </span>		})
+<span id="L46" class="ln">    46  </span>	case *active:
+<span id="L47" class="ln">    47  </span>		return fetchListUsersRowsByActive(ctx, db, &amp;gen.ListActiveUsersParams{
+<span id="L48" class="ln">    48  </span>			OffsetParam: offset,
+<span id="L49" class="ln">    49  </span>			LimitParam:  limit,
+<span id="L50" class="ln">    50  </span>		})
+<span id="L51" class="ln">    51  </span>	default:
+<span id="L52" class="ln">    52  </span>		return fetchListUsersRowsByDeleted(ctx, db, &amp;gen.ListDeletedUsersParams{
+<span id="L53" class="ln">    53  </span>			OffsetParam: offset,
+<span id="L54" class="ln">    54  </span>			LimitParam:  limit,
+<span id="L55" class="ln">    55  </span>		})
+<span id="L56" class="ln">    56  </span>	}
+<span id="L57" class="ln">    57  </span>}
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span><span class="comment">// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。</span>
+<span id="L60" class="ln">    60  </span><span class="comment">// after=nil の場合は先頭ページ、それ以外は after が表す境界より後ろ（より過去）の行を返します。</span>
+<span id="L61" class="ln">    61  </span>func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error) {
+<span id="L62" class="ln">    62  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L63" class="ln">    63  </span>	defer endSpan()
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span>	if after == nil {
+<span id="L68" class="ln">    68  </span>		rows, err := db.ListUsersFeedFirst(ctx, limit)
+<span id="L69" class="ln">    69  </span>		if err != nil {
+<span id="L70" class="ln">    70  </span>			return nil, pgerror.NormalizeError(err)
+<span id="L71" class="ln">    71  </span>		}
+<span id="L72" class="ln">    72  </span>		return rowsToUsers(rows, func(r *gen.ListUsersFeedFirstRow) gen.Users { return r.Users })
+<span id="L73" class="ln">    73  </span>	}
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>	rows, err := db.ListUsersFeedAfter(ctx, &amp;gen.ListUsersFeedAfterParams{
+<span id="L76" class="ln">    76  </span>		AfterCreatedAt: after.CreatedAt(),
+<span id="L77" class="ln">    77  </span>		AfterID:        after.ID(),
+<span id="L78" class="ln">    78  </span>		LimitParam:     limit,
+<span id="L79" class="ln">    79  </span>	})
+<span id="L80" class="ln">    80  </span>	if err != nil {
+<span id="L81" class="ln">    81  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L82" class="ln">    82  </span>	}
+<span id="L83" class="ln">    83  </span>	return rowsToUsers(rows, func(r *gen.ListUsersFeedAfterRow) gen.Users { return r.Users })
+<span id="L84" class="ln">    84  </span>}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span><span class="comment">// SearchByKeyword は、buildLikeTokens が組み立てた ILIKE パターン列のいずれかに search_text が一致するユーザーを、</span>
+<span id="L87" class="ln">    87  </span><span class="comment">// active の値で 3 つの固定クエリ（全件 / アクティブのみ / 削除済みのみ）へ振り分けて取得します。</span>
+<span id="L88" class="ln">    88  </span><span class="comment">// keywords が空の場合は全件マッチのパターン（%）を用います。</span>
+<span id="L89" class="ln">    89  </span>func (r *repository) SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error) {
+<span id="L90" class="ln">    90  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L91" class="ln">    91  </span>	defer endSpan()
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>	tokens := buildLikeTokens(keywords)
+<span id="L94" class="ln">    94  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>	switch {
+<span id="L97" class="ln">    97  </span>	case active == nil:
+<span id="L98" class="ln">    98  </span>		rows, err := db.SearchUsers(ctx, &amp;gen.SearchUsersParams{
+<span id="L99" class="ln">    99  </span>			PatternsParam: tokens,
+<span id="L100" class="ln">   100  </span>			LimitParam:    limit,
+<span id="L101" class="ln">   101  </span>			OffsetParam:   offset,
+<span id="L102" class="ln">   102  </span>		})
+<span id="L103" class="ln">   103  </span>		if err != nil {
+<span id="L104" class="ln">   104  </span>			return nil, pgerror.NormalizeError(err)
+<span id="L105" class="ln">   105  </span>		}
+<span id="L106" class="ln">   106  </span>		return rowsToUsers(rows, func(r *gen.SearchUsersRow) gen.Users { return r.Users })
+<span id="L107" class="ln">   107  </span>	case *active:
+<span id="L108" class="ln">   108  </span>		rows, err := db.SearchActiveUsers(ctx, &amp;gen.SearchActiveUsersParams{
+<span id="L109" class="ln">   109  </span>			PatternsParam: tokens,
+<span id="L110" class="ln">   110  </span>			LimitParam:    limit,
+<span id="L111" class="ln">   111  </span>			OffsetParam:   offset,
+<span id="L112" class="ln">   112  </span>		})
+<span id="L113" class="ln">   113  </span>		if err != nil {
+<span id="L114" class="ln">   114  </span>			return nil, pgerror.NormalizeError(err)
+<span id="L115" class="ln">   115  </span>		}
+<span id="L116" class="ln">   116  </span>		return rowsToUsers(rows, func(r *gen.SearchActiveUsersRow) gen.Users { return r.Users })
+<span id="L117" class="ln">   117  </span>	default:
+<span id="L118" class="ln">   118  </span>		rows, err := db.SearchDeletedUsers(ctx, &amp;gen.SearchDeletedUsersParams{
+<span id="L119" class="ln">   119  </span>			PatternsParam: tokens,
+<span id="L120" class="ln">   120  </span>			LimitParam:    limit,
+<span id="L121" class="ln">   121  </span>			OffsetParam:   offset,
+<span id="L122" class="ln">   122  </span>		})
+<span id="L123" class="ln">   123  </span>		if err != nil {
+<span id="L124" class="ln">   124  </span>			return nil, pgerror.NormalizeError(err)
+<span id="L125" class="ln">   125  </span>		}
+<span id="L126" class="ln">   126  </span>		return rowsToUsers(rows, func(r *gen.SearchDeletedUsersRow) gen.Users { return r.Users })
+<span id="L127" class="ln">   127  </span>	}
+<span id="L128" class="ln">   128  </span>}
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span><span class="comment">// buildLikeTokens は、キーワードを部分一致の LIKE パターンへ変換します。空の場合は全件マッチの [&#34;%&#34;] を返します。</span>
+<span id="L131" class="ln">   131  </span>func buildLikeTokens(keywords []string) []string {
+<span id="L132" class="ln">   132  </span>	if len(keywords) == 0 {
+<span id="L133" class="ln">   133  </span>		return []string{&#34;%&#34;}
+<span id="L134" class="ln">   134  </span>	}
+<span id="L135" class="ln">   135  </span>	tokens := make([]string, len(keywords))
+<span id="L136" class="ln">   136  </span>	for i, kw := range keywords {
+<span id="L137" class="ln">   137  </span>		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
+<span id="L138" class="ln">   138  </span>		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
+<span id="L139" class="ln">   139  </span>	}
+<span id="L140" class="ln">   140  </span>	return tokens
+<span id="L141" class="ln">   141  </span>}
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span><span class="comment">// rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。</span>
+<span id="L144" class="ln">   144  </span><span class="comment">// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。</span>
+<span id="L145" class="ln">   145  </span>func rowToUser(u gen.Users) (*user.User, error) {
+<span id="L146" class="ln">   146  </span>	entity, err := user.New(u.ID, user.Attributes{
+<span id="L147" class="ln">   147  </span>		Profile: user.Profile{
+<span id="L148" class="ln">   148  </span>			FirstName:    u.FirstName,
+<span id="L149" class="ln">   149  </span>			LastName:     u.LastName,
+<span id="L150" class="ln">   150  </span>			Email:        u.Email,
+<span id="L151" class="ln">   151  </span>			Phone:        u.Phone,
+<span id="L152" class="ln">   152  </span>			PrefectureID: u.PrefectureID,
+<span id="L153" class="ln">   153  </span>			City:         u.City,
+<span id="L154" class="ln">   154  </span>			Street:       u.Street,
+<span id="L155" class="ln">   155  </span>			Building:     u.Building,
+<span id="L156" class="ln">   156  </span>			PostalCode:   u.PostalCode,
+<span id="L157" class="ln">   157  </span>		},
+<span id="L158" class="ln">   158  </span>		CreatedAt: u.CreatedAt,
+<span id="L159" class="ln">   159  </span>		UpdatedAt: u.UpdatedAt,
+<span id="L160" class="ln">   160  </span>		DeletedAt: u.DeletedAt,
+<span id="L161" class="ln">   161  </span>	})
+<span id="L162" class="ln">   162  </span>	if err != nil {
+<span id="L163" class="ln">   163  </span>		return nil, pgerror.NormalizeReconstructError(err)
+<span id="L164" class="ln">   164  </span>	}
+<span id="L165" class="ln">   165  </span>	return entity, nil
+<span id="L166" class="ln">   166  </span>}
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span><span class="comment">// rowsToUsers は、行スライスをドメインエンティティ列へ変換します。</span>
+<span id="L169" class="ln">   169  </span>func rowsToUsers[T any](rows []T, extract func(T) gen.Users) (user.Users, error) {
+<span id="L170" class="ln">   170  </span>	users := make(user.Users, len(rows))
+<span id="L171" class="ln">   171  </span>	for i, row := range rows {
+<span id="L172" class="ln">   172  </span>		u, err := rowToUser(extract(row))
+<span id="L173" class="ln">   173  </span>		if err != nil {
+<span id="L174" class="ln">   174  </span>			return nil, err
+<span id="L175" class="ln">   175  </span>		}
+<span id="L176" class="ln">   176  </span>		users[i] = u
+<span id="L177" class="ln">   177  </span>	}
+<span id="L178" class="ln">   178  </span>	return users, nil
+<span id="L179" class="ln">   179  </span>}
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span><span class="comment">// fetchListUsersRows は、ユーザーの情報を取得します。</span>
+<span id="L182" class="ln">   182  </span>func fetchListUsersRows(
+<span id="L183" class="ln">   183  </span>	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
+<span id="L184" class="ln">   184  </span>) (user.Users, error) {
+<span id="L185" class="ln">   185  </span>	rows, err := db.ListUsers(ctx, params)
+<span id="L186" class="ln">   186  </span>	if err != nil {
+<span id="L187" class="ln">   187  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L188" class="ln">   188  </span>	}
+<span id="L189" class="ln">   189  </span>	return rowsToUsers(rows, func(r *gen.ListUsersRow) gen.Users { return r.Users })
+<span id="L190" class="ln">   190  </span>}
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span><span class="comment">// fetchListUsersRowsByActive は、アクティブ状態に基づいてユーザーの情報を取得します。</span>
+<span id="L193" class="ln">   193  </span>func fetchListUsersRowsByActive(
+<span id="L194" class="ln">   194  </span>	ctx context.Context, db *gen.Queries, params *gen.ListActiveUsersParams,
+<span id="L195" class="ln">   195  </span>) (user.Users, error) {
+<span id="L196" class="ln">   196  </span>	rows, err := db.ListActiveUsers(ctx, params)
+<span id="L197" class="ln">   197  </span>	if err != nil {
+<span id="L198" class="ln">   198  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L199" class="ln">   199  </span>	}
+<span id="L200" class="ln">   200  </span>	return rowsToUsers(rows, func(r *gen.ListActiveUsersRow) gen.Users { return r.Users })
+<span id="L201" class="ln">   201  </span>}
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span><span class="comment">// fetchListUsersRowsByDeleted は、削除されたユーザーの情報を取得します。</span>
+<span id="L204" class="ln">   204  </span>func fetchListUsersRowsByDeleted(
+<span id="L205" class="ln">   205  </span>	ctx context.Context, db *gen.Queries, params *gen.ListDeletedUsersParams,
+<span id="L206" class="ln">   206  </span>) (user.Users, error) {
+<span id="L207" class="ln">   207  </span>	rows, err := db.ListDeletedUsers(ctx, params)
+<span id="L208" class="ln">   208  </span>	if err != nil {
+<span id="L209" class="ln">   209  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L210" class="ln">   210  </span>	}
+<span id="L211" class="ln">   211  </span>	return rowsToUsers(rows, func(r *gen.ListDeletedUsersRow) gen.Users { return r.Users })
+<span id="L212" class="ln">   212  </span>}
+<span id="L213" class="ln">   213  </span>
+<span id="L214" class="ln">   214  </span><span class="comment">// Create は、ユーザーを作成します。</span>
+<span id="L215" class="ln">   215  </span>func (r *repository) Create(ctx context.Context, u *user.User) error {
+<span id="L216" class="ln">   216  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L217" class="ln">   217  </span>	defer endSpan()
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L220" class="ln">   220  </span>	err := db.CreateUser(ctx, &amp;gen.CreateUserParams{
+<span id="L221" class="ln">   221  </span>		ID:           u.ID(),
+<span id="L222" class="ln">   222  </span>		FirstName:    u.FirstName(),
+<span id="L223" class="ln">   223  </span>		LastName:     u.LastName(),
+<span id="L224" class="ln">   224  </span>		Email:        u.Email(),
+<span id="L225" class="ln">   225  </span>		Phone:        u.Phone(),
+<span id="L226" class="ln">   226  </span>		PrefectureID: u.PrefectureID(),
+<span id="L227" class="ln">   227  </span>		City:         u.City(),
+<span id="L228" class="ln">   228  </span>		Street:       u.Street(),
+<span id="L229" class="ln">   229  </span>		Building:     u.Building(),
+<span id="L230" class="ln">   230  </span>		PostalCode:   u.PostalCode(),
+<span id="L231" class="ln">   231  </span>		CreatedAt:    u.CreatedAt(),
+<span id="L232" class="ln">   232  </span>		UpdatedAt:    u.UpdatedAt(),
+<span id="L233" class="ln">   233  </span>	})
+<span id="L234" class="ln">   234  </span>	if err != nil {
+<span id="L235" class="ln">   235  </span>		return pgerror.NormalizeError(err)
+<span id="L236" class="ln">   236  </span>	}
+<span id="L237" class="ln">   237  </span>	return nil
+<span id="L238" class="ln">   238  </span>}
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span><span class="comment">// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound に正規化したエラーを返します。</span>
+<span id="L241" class="ln">   241  </span>func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+<span id="L242" class="ln">   242  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L243" class="ln">   243  </span>	defer endSpan()
+<span id="L244" class="ln">   244  </span>
+<span id="L245" class="ln">   245  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L246" class="ln">   246  </span>	row, err := db.GetUserByID(ctx, id)
+<span id="L247" class="ln">   247  </span>	if err != nil {
+<span id="L248" class="ln">   248  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L249" class="ln">   249  </span>	}
+<span id="L250" class="ln">   250  </span>
+<span id="L251" class="ln">   251  </span>	return rowToUser(row.Users)
+<span id="L252" class="ln">   252  </span>}
+<span id="L253" class="ln">   253  </span>
+<span id="L254" class="ln">   254  </span><span class="comment">// Update は、ユーザーの mutable フィールドと updatedAt / deletedAt を更新します。</span>
+<span id="L255" class="ln">   255  </span><span class="comment">// 影響行数 0 は対象不存在として pgerror.NormalizeExecResult が NotFound へ正規化します。</span>
+<span id="L256" class="ln">   256  </span>func (r *repository) Update(ctx context.Context, u *user.User) error {
+<span id="L257" class="ln">   257  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L258" class="ln">   258  </span>	defer endSpan()
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L261" class="ln">   261  </span>	rows, err := db.UpdateUser(ctx, &amp;gen.UpdateUserParams{
+<span id="L262" class="ln">   262  </span>		FirstName:    u.FirstName(),
+<span id="L263" class="ln">   263  </span>		LastName:     u.LastName(),
+<span id="L264" class="ln">   264  </span>		Email:        u.Email(),
+<span id="L265" class="ln">   265  </span>		Phone:        u.Phone(),
+<span id="L266" class="ln">   266  </span>		PrefectureID: u.PrefectureID(),
+<span id="L267" class="ln">   267  </span>		City:         u.City(),
+<span id="L268" class="ln">   268  </span>		Street:       u.Street(),
+<span id="L269" class="ln">   269  </span>		Building:     u.Building(),
+<span id="L270" class="ln">   270  </span>		PostalCode:   u.PostalCode(),
+<span id="L271" class="ln">   271  </span>		UpdatedAt:    u.UpdatedAt(),
+<span id="L272" class="ln">   272  </span>		DeletedAt:    u.DeletedAt(),
+<span id="L273" class="ln">   273  </span>		ID:           u.ID(),
+<span id="L274" class="ln">   274  </span>	})
 <span id="L275" class="ln">   275  </span>	return pgerror.NormalizeExecResult(rows, err)
 <span id="L276" class="ln">   276  </span>}
 <span id="L277" class="ln">   277  </span>
@@ -360,36 +360,95 @@
 <span id="L303" class="ln">   303  </span>	return count, nil
 <span id="L304" class="ln">   304  </span>}
 <span id="L305" class="ln">   305  </span>
-<span id="L306" class="ln">   306  </span><span class="comment">// CountByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返します。</span>
-<span id="L307" class="ln">   307  </span><span class="comment">// active / keywords の意味は SearchByKeyword と同じです。</span>
-<span id="L308" class="ln">   308  </span>func (r *repository) CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error) {
+<span id="L306" class="ln">   306  </span><span class="comment">// FindDeletedBefore は、deleted_at が cutoff より古い users の ID を id 昇順で最大 limit 件返します。</span>
+<span id="L307" class="ln">   307  </span><span class="comment">// afterID=nil なら先頭から、それ以外は afterID より大きい id を返します。</span>
+<span id="L308" class="ln">   308  </span>func (r *repository) FindDeletedBefore(ctx context.Context, cutoff time.Time, afterID *uuid.UUID, limit int32) ([]uuid.UUID, error) {
 <span id="L309" class="ln">   309  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L310" class="ln">   310  </span>	defer endSpan()
 <span id="L311" class="ln">   311  </span>
-<span id="L312" class="ln">   312  </span>	tokens := buildLikeTokens(keywords)
-<span id="L313" class="ln">   313  </span>	db := gen.New(driver.New(ctx, r.db))
-<span id="L314" class="ln">   314  </span>
-<span id="L315" class="ln">   315  </span>	var (
-<span id="L316" class="ln">   316  </span>		count int64
-<span id="L317" class="ln">   317  </span>		err   error
-<span id="L318" class="ln">   318  </span>	)
-<span id="L319" class="ln">   319  </span>
-<span id="L320" class="ln">   320  </span>	switch {
-<span id="L321" class="ln">   321  </span>	case active == nil:
-<span id="L322" class="ln">   322  </span>		count, err = db.CountSearchUsers(ctx, tokens)
-<span id="L323" class="ln">   323  </span>	case *active:
-<span id="L324" class="ln">   324  </span>		count, err = db.CountSearchActiveUsers(ctx, tokens)
-<span id="L325" class="ln">   325  </span>	default:
-<span id="L326" class="ln">   326  </span>		count, err = db.CountSearchDeletedUsers(ctx, tokens)
-<span id="L327" class="ln">   327  </span>	}
-<span id="L328" class="ln">   328  </span>
-<span id="L329" class="ln">   329  </span>	if err != nil {
-<span id="L330" class="ln">   330  </span>		return 0, pgerror.NormalizeError(err)
+<span id="L312" class="ln">   312  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L313" class="ln">   313  </span>
+<span id="L314" class="ln">   314  </span>	<span class="comment">// keyset は「先頭ページ用」「カーソル以降用」の 2 本の固定クエリへ分ける。1 本へ畳んで</span>
+<span id="L315" class="ln">   315  </span>	<span class="comment">// オプショナル述語にすると、実行計画が入力に依存する単一のステートメントになる。</span>
+<span id="L316" class="ln">   316  </span>	var (
+<span id="L317" class="ln">   317  </span>		ids []uuid.UUID
+<span id="L318" class="ln">   318  </span>		err error
+<span id="L319" class="ln">   319  </span>	)
+<span id="L320" class="ln">   320  </span>	if afterID == nil {
+<span id="L321" class="ln">   321  </span>		ids, err = db.ListPurgeCandidateUserIDsFirst(ctx, &amp;gen.ListPurgeCandidateUserIDsFirstParams{
+<span id="L322" class="ln">   322  </span>			Cutoff:     &amp;cutoff,
+<span id="L323" class="ln">   323  </span>			LimitParam: limit,
+<span id="L324" class="ln">   324  </span>		})
+<span id="L325" class="ln">   325  </span>	} else {
+<span id="L326" class="ln">   326  </span>		ids, err = db.ListPurgeCandidateUserIDsAfter(ctx, &amp;gen.ListPurgeCandidateUserIDsAfterParams{
+<span id="L327" class="ln">   327  </span>			Cutoff:     &amp;cutoff,
+<span id="L328" class="ln">   328  </span>			AfterID:    *afterID,
+<span id="L329" class="ln">   329  </span>			LimitParam: limit,
+<span id="L330" class="ln">   330  </span>		})
 <span id="L331" class="ln">   331  </span>	}
-<span id="L332" class="ln">   332  </span>
-<span id="L333" class="ln">   333  </span>	return count, nil
-<span id="L334" class="ln">   334  </span>}
-<span id="L335" class="ln">   335  </span>
+<span id="L332" class="ln">   332  </span>	if err != nil {
+<span id="L333" class="ln">   333  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L334" class="ln">   334  </span>	}
+<span id="L335" class="ln">   335  </span>	return ids, nil
+<span id="L336" class="ln">   336  </span>}
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span><span class="comment">// PurgeByIDs は、user_identities → user_roles → users の順に削除し、users の削除件数を返します。</span>
+<span id="L339" class="ln">   339  </span><span class="comment">// 子行を先に消すことで FK 違反を避けます。3 クエリは渡された ctx のトランザクションで実行されます</span>
+<span id="L340" class="ln">   340  </span><span class="comment">// （トランザクションの開始は usecase の責務）。</span>
+<span id="L341" class="ln">   341  </span><span class="comment">// 3 クエリとも deleted_at IS NOT NULL を条件に持つため、論理削除されていないユーザーの ID を渡しても</span>
+<span id="L342" class="ln">   342  </span><span class="comment">// そのユーザーは子行を含めて一切削除されず、返る件数が ids の件数を下回ります。</span>
+<span id="L343" class="ln">   343  </span>func (r *repository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
+<span id="L344" class="ln">   344  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L345" class="ln">   345  </span>	defer endSpan()
+<span id="L346" class="ln">   346  </span>
+<span id="L347" class="ln">   347  </span>	if len(ids) == 0 {
+<span id="L348" class="ln">   348  </span>		return 0, nil
+<span id="L349" class="ln">   349  </span>	}
+<span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L352" class="ln">   352  </span>	if err := db.DeleteUserIdentitiesByUserIDs(ctx, ids); err != nil {
+<span id="L353" class="ln">   353  </span>		return 0, pgerror.NormalizeError(err)
+<span id="L354" class="ln">   354  </span>	}
+<span id="L355" class="ln">   355  </span>	if err := db.DeleteUserRolesByUserIDs(ctx, ids); err != nil {
+<span id="L356" class="ln">   356  </span>		return 0, pgerror.NormalizeError(err)
+<span id="L357" class="ln">   357  </span>	}
+<span id="L358" class="ln">   358  </span>	purged, err := db.DeleteUsersByIDs(ctx, ids)
+<span id="L359" class="ln">   359  </span>	if err != nil {
+<span id="L360" class="ln">   360  </span>		return 0, pgerror.NormalizeError(err)
+<span id="L361" class="ln">   361  </span>	}
+<span id="L362" class="ln">   362  </span>	return purged, nil
+<span id="L363" class="ln">   363  </span>}
+<span id="L364" class="ln">   364  </span>
+<span id="L365" class="ln">   365  </span><span class="comment">// CountByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返します。</span>
+<span id="L366" class="ln">   366  </span><span class="comment">// active / keywords の意味は SearchByKeyword と同じです。</span>
+<span id="L367" class="ln">   367  </span>func (r *repository) CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error) {
+<span id="L368" class="ln">   368  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L369" class="ln">   369  </span>	defer endSpan()
+<span id="L370" class="ln">   370  </span>
+<span id="L371" class="ln">   371  </span>	tokens := buildLikeTokens(keywords)
+<span id="L372" class="ln">   372  </span>	db := gen.New(driver.New(ctx, r.db))
+<span id="L373" class="ln">   373  </span>
+<span id="L374" class="ln">   374  </span>	var (
+<span id="L375" class="ln">   375  </span>		count int64
+<span id="L376" class="ln">   376  </span>		err   error
+<span id="L377" class="ln">   377  </span>	)
+<span id="L378" class="ln">   378  </span>
+<span id="L379" class="ln">   379  </span>	switch {
+<span id="L380" class="ln">   380  </span>	case active == nil:
+<span id="L381" class="ln">   381  </span>		count, err = db.CountSearchUsers(ctx, tokens)
+<span id="L382" class="ln">   382  </span>	case *active:
+<span id="L383" class="ln">   383  </span>		count, err = db.CountSearchActiveUsers(ctx, tokens)
+<span id="L384" class="ln">   384  </span>	default:
+<span id="L385" class="ln">   385  </span>		count, err = db.CountSearchDeletedUsers(ctx, tokens)
+<span id="L386" class="ln">   386  </span>	}
+<span id="L387" class="ln">   387  </span>
+<span id="L388" class="ln">   388  </span>	if err != nil {
+<span id="L389" class="ln">   389  </span>		return 0, pgerror.NormalizeError(err)
+<span id="L390" class="ln">   390  </span>	}
+<span id="L391" class="ln">   391  </span>
+<span id="L392" class="ln">   392  </span>	return count, nil
+<span id="L393" class="ln">   393  </span>}
+<span id="L394" class="ln">   394  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_repository.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

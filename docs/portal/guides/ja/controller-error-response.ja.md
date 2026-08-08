@@ -60,7 +60,7 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 組み立て、エラーが持つ `details` を付与します。その `details` が実際にクライアントへ届くかは、
 下流の `errorhandler` のエンドポイントごとの opt-in ゲート（fail-closed）が決めます。`requestId` を
 ここで空にして edge で埋めるのと同じ構図です。`errorhandler` README と
-[ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md) を参照。
+[ADR-0044](../../../../docs/adr/0044-error-details-opt-in-gate.md) を参照。
 
 ## エラーコードとHTTPステータスの対応
 
@@ -73,12 +73,18 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 |`ErrPermissionDenied`|403 Forbidden|`ACCESS_DENIED`|
 |`ErrNotFound`|404 Not Found|`NOT_FOUND`|
 |`ErrConflict`|409 Conflict|`RESOURCE_CONFLICT`|
+|`ErrPayloadTooLarge`|413 Payload Too Large|`PAYLOAD_TOO_LARGE`|
+|`ErrUnsupportedMediaType`|415 Unsupported Media Type|`UNSUPPORTED_MEDIA_TYPE`|
 |`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
 |`ErrTooManyRequests`|429 Too Many Requests|`TOO_MANY_REQUESTS`|
 |`ErrCanceled`|499 Client Closed Request|`CLIENT_CLOSED_REQUEST`|
 |`ErrUnimplemented`|501 Not Implemented|`NOT_IMPLEMENTED`|
 |`ErrUnavailable`|503 Service Unavailable|`SERVICE_UNAVAILABLE`|
 |その他|500 Internal Server Error|`INTERNAL_ERROR`|
+
+405 Method Not Allowed を意図的に載せていません。リクエストメソッドはアプリケーションが選ぶものではなく、
+対応する sentinel が存在しないためです。ステータス単独で解決されます
+（[`errorMeta` の収録基準](#errormeta-の収録基準)を参照）。
 
 ### エラーコード一覧
 
@@ -88,13 +94,29 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 |`UNAUTHORIZED`|ログインが必要です。ログインして再度お試しください。|
 |`ACCESS_DENIED`|この操作を行う権限がありません。|
 |`NOT_FOUND`|お探しの情報が見つかりませんでした。|
+|`METHOD_NOT_ALLOWED`|許可されていないリクエスト方法です。|
 |`RESOURCE_CONFLICT`|既に同じ情報が登録されています。|
+|`PAYLOAD_TOO_LARGE`|ファイルサイズが大きすぎます。上限を超えないファイルで再度お試しください。|
+|`UNSUPPORTED_MEDIA_TYPE`|サポートされていないファイル形式です。形式をご確認のうえ再度お試しください。|
 |`VALIDATION_FAILED`|入力内容の検証に失敗しました。修正して再度お試しください。|
 |`TOO_MANY_REQUESTS`|リクエストが多すぎます。しばらくしてから再度お試しください。|
 |`CLIENT_CLOSED_REQUEST`|リクエストがキャンセルされました。|
 |`INTERNAL_ERROR`|サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。|
 |`NOT_IMPLEMENTED`|この機能は提供されていません。|
 |`SERVICE_UNAVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
+
+### `errorMeta` の収録基準
+
+`errorMeta` は HTTP ステータスをキーに持ち、未収録のステータスは 500 のエントリへフォールバックします。
+このときステータス自体も 500 になるため、未収録のステータスはそのままではなく
+`500` / `INTERNAL_ERROR` としてクライアントに届きます。収録の基準は「アプリケーションが実際に出しうるか」です。
+
+1. **`apperror` sentinel から到達するステータス** — 上のマッピング表にあるものすべて
+2. **常時オンの HTTP スタックが sentinel 無しで出すステータス** — 現状は 405 のみ。
+   パスは一致したがメソッドが一致しない場合にルータが送出する（`echo.ErrMethodNotAllowed`）
+
+いずれにも該当しないステータスは真に想定外であり、500 へのフォールバックが正しい応答です。
+どちらの経路でも生成されないステータスを足すのは、根拠のない先回りになります。
 
 ## 設定変更方法
 

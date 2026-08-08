@@ -1,0 +1,113 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>paging - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/tools">tools</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/tools/paging">paging</a>/<span class="text-muted">limit.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/usecase/tools/paging">go-boilerplate/internal/usecase/tools/paging</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package paging
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import &#34;math&#34;
+<span id="L4" class="ln">     4  </span>
+<span id="L5" class="ln">     5  </span><span class="comment">// LimitPolicy は、取得件数の補完・クランプ規約を表します。</span>
+<span id="L6" class="ln">     6  </span><span class="comment">//</span>
+<span id="L7" class="ln">     7  </span><span class="comment">//	フィールド名で意味を固定するため、既定値と上限を取り違えたまま組み立てることができません。</span>
+<span id="L8" class="ln">     8  </span>type LimitPolicy struct {
+<span id="L9" class="ln">     9  </span>	<span class="comment">// Default は、件数が指定されなかった場合に採用する件数です。</span>
+<span id="L10" class="ln">    10  </span>	Default int
+<span id="L11" class="ln">    11  </span>	<span class="comment">// Max は、許容する最大件数です。これを超える要求はこの値へ切り詰めます。</span>
+<span id="L12" class="ln">    12  </span>	Max int
+<span id="L13" class="ln">    13  </span>}
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// Limit は、ポリシーで正規化済みの取得件数を表す値オブジェクトです。</span>
+<span id="L16" class="ln">    16  </span><span class="comment">//</span>
+<span id="L17" class="ln">    17  </span><span class="comment">//	ページングを持つ読み取り（Page / Cursor）と、ページングを持たない top-N 読み取り</span>
+<span id="L18" class="ln">    18  </span><span class="comment">//	（ランキング・在庫僅少一覧など）の双方が、この型を通して同じ件数ポリシーを共有します。</span>
+<span id="L19" class="ln">    19  </span><span class="comment">//	top-N はページ番号もカーソルも持たないため、件数だけを Page / Cursor から切り離してこの型が担います。</span>
+<span id="L20" class="ln">    20  </span>type Limit struct {
+<span id="L21" class="ln">    21  </span>	value int
+<span id="L22" class="ln">    22  </span>}
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span><span class="comment">// NewLimit は、要求件数をポリシーで正規化した Limit を返します。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">//</span>
+<span id="L26" class="ln">    26  </span><span class="comment">//	first が nil または 0 以下の場合は policy.Default を、policy.Max を超える場合は policy.Max を採用します。</span>
+<span id="L27" class="ln">    27  </span>func NewLimit(first *int, policy LimitPolicy) Limit {
+<span id="L28" class="ln">    28  </span>	value := policy.Default
+<span id="L29" class="ln">    29  </span>	if first != nil &amp;&amp; *first &gt; 0 {
+<span id="L30" class="ln">    30  </span>		value = *first
+<span id="L31" class="ln">    31  </span>	}
+<span id="L32" class="ln">    32  </span>	if value &gt; policy.Max {
+<span id="L33" class="ln">    33  </span>		value = policy.Max
+<span id="L34" class="ln">    34  </span>	}
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>	return Limit{value: value}
+<span id="L37" class="ln">    37  </span>}
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span><span class="comment">// Value は、正規化後の取得件数を返します。</span>
+<span id="L40" class="ln">    40  </span>func (l Limit) Value() int { return l.value }
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span><span class="comment">// Value32 は、正規化後の取得件数をint32型で返します。</span>
+<span id="L43" class="ln">    43  </span>func (l Limit) Value32() int32 {
+<span id="L44" class="ln">    44  </span>	<span class="comment">//nolint:gosec // G115: math.MaxInt32 でクランプ済みのためオーバーフローしません</span>
+<span id="L45" class="ln">    45  </span>	return int32(min(l.value, math.MaxInt32))
+<span id="L46" class="ln">    46  </span>}
+<span id="L47" class="ln">    47  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/tools/paging/limit.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

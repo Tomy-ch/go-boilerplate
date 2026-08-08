@@ -1,0 +1,110 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>purchase - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/domain">domain</a>/<a href="../../../../../src/go-boilerplate/internal/domain/purchase">purchase</a>/<span class="text-muted">purchase_detail.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/domain/purchase">go-boilerplate/internal/domain/purchase</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package purchase
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;time&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L7" class="ln">     7  </span>)
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span><span class="comment">// Detail は、購入 1 件の詳細読み取りモデルです。ステータス名は購入ステータスマスタで</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// 解決済みで、書き込み集約 Purchase とは別型です（read 側・CQRS）。明細は購入明細（PurchaseDetail）の</span>
+<span id="L11" class="ln">    11  </span><span class="comment">// スライスで、小計・税額・送料・合計は USD セント単位の整数、CanceledAt は未キャンセルなら nil です。</span>
+<span id="L12" class="ln">    12  </span>type Detail struct {
+<span id="L13" class="ln">    13  </span>	<span class="comment">// ID は、購入 ID です。</span>
+<span id="L14" class="ln">    14  </span>	ID uuid.UUID
+<span id="L15" class="ln">    15  </span>	<span class="comment">// Code は、購入コード（UUIDv7 文字列・一意）です。</span>
+<span id="L16" class="ln">    16  </span>	Code string
+<span id="L17" class="ln">    17  </span>	<span class="comment">// UserID は、購入したユーザーの ID です。</span>
+<span id="L18" class="ln">    18  </span>	UserID uuid.UUID
+<span id="L19" class="ln">    19  </span>	<span class="comment">// StatusID は、購入ステータス ID（購入ステータスマスタで解決済み）です。</span>
+<span id="L20" class="ln">    20  </span>	StatusID uuid.UUID
+<span id="L21" class="ln">    21  </span>	<span class="comment">// StatusName は、購入ステータスの名称（購入ステータスマスタで解決済み）です。</span>
+<span id="L22" class="ln">    22  </span>	StatusName string
+<span id="L23" class="ln">    23  </span>	<span class="comment">// SubtotalAmount は、小計（USD セント）です。</span>
+<span id="L24" class="ln">    24  </span>	SubtotalAmount int
+<span id="L25" class="ln">    25  </span>	<span class="comment">// TaxAmount は、税額（USD セント）です。</span>
+<span id="L26" class="ln">    26  </span>	TaxAmount int
+<span id="L27" class="ln">    27  </span>	<span class="comment">// ShippingFee は、送料（USD セント）です。</span>
+<span id="L28" class="ln">    28  </span>	ShippingFee int
+<span id="L29" class="ln">    29  </span>	<span class="comment">// TotalAmount は、合計（USD セント）です。</span>
+<span id="L30" class="ln">    30  </span>	TotalAmount int
+<span id="L31" class="ln">    31  </span>	<span class="comment">// Details は、購入明細のスライスです。</span>
+<span id="L32" class="ln">    32  </span>	Details []PurchaseDetail
+<span id="L33" class="ln">    33  </span>	<span class="comment">// OrderedAt は、注文日時です。</span>
+<span id="L34" class="ln">    34  </span>	OrderedAt time.Time
+<span id="L35" class="ln">    35  </span>	<span class="comment">// PaidAt は、支払い日時です。未支払いの場合は nil です。</span>
+<span id="L36" class="ln">    36  </span>	PaidAt *time.Time
+<span id="L37" class="ln">    37  </span>	<span class="comment">// CanceledAt は、キャンセル日時です。未キャンセルの場合は nil です。</span>
+<span id="L38" class="ln">    38  </span>	CanceledAt *time.Time
+<span id="L39" class="ln">    39  </span>	<span class="comment">// ShippedAt は、発送日時です。未発送の場合は nil です。</span>
+<span id="L40" class="ln">    40  </span>	ShippedAt *time.Time
+<span id="L41" class="ln">    41  </span>	<span class="comment">// DeliveredAt は、配達日時です。未配達の場合は nil です。</span>
+<span id="L42" class="ln">    42  </span>	DeliveredAt *time.Time
+<span id="L43" class="ln">    43  </span>}
+<span id="L44" class="ln">    44  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/domain/purchase/purchase_detail.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

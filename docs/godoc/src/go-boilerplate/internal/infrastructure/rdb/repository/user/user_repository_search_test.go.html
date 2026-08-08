@@ -101,195 +101,213 @@
 <span id="L44" class="ln">    44  </span>	})
 <span id="L45" class="ln">    45  </span>}
 <span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span>func Test_repository_SearchByKeyword(t *testing.T) {
-<span id="L48" class="ln">    48  </span>	t.Parallel()
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	testDB := testkit.NewTestDB(t)
-<span id="L51" class="ln">    51  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>	repo := &amp;repository{tracer: lt, db: testDB}
-<span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L56" class="ln">    56  </span>		t.Parallel()
-<span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>		t.Run(&#34;activeがnilの場合、全ての状態のユーザーが対象になり作成日時の降順で返る&#34;, func(t *testing.T) {
-<span id="L59" class="ln">    59  </span>			t.Parallel()
-<span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span>			ctx := context.Background()
-<span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span>			<span class="comment">// Grace(アクティブ) は Charlie(削除済み) より後に作成されており、created_at DESC で先頭に来る。</span>
-<span id="L64" class="ln">    64  </span>			<span class="comment">// = キーワードフィルタと並び順（created_at DESC）を同時に検証する。</span>
-<span id="L65" class="ln">    65  </span>			actual, err := repo.SearchByKeyword(ctx, []string{&#34;Grace&#34;, &#34;Charlie&#34;}, nil, 10, 0)
-<span id="L66" class="ln">    66  </span>			require.NoError(t, err)
-<span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span>			require.Len(t, actual, 2)
-<span id="L69" class="ln">    69  </span>			assert.Equal(t, &#34;Grace&#34;, actual[0].FirstName())
-<span id="L70" class="ln">    70  </span>			assert.Equal(t, &#34;Lee&#34;, actual[0].LastName())
-<span id="L71" class="ln">    71  </span>			assert.Equal(t, &#34;Charlie&#34;, actual[1].FirstName())
-<span id="L72" class="ln">    72  </span>			assert.Equal(t, &#34;Davis&#34;, actual[1].LastName())
-<span id="L73" class="ln">    73  </span>		})
-<span id="L74" class="ln">    74  </span>
-<span id="L75" class="ln">    75  </span>		t.Run(&#34;activeがtrueの場合、アクティブなユーザーのみが対象になる&#34;, func(t *testing.T) {
-<span id="L76" class="ln">    76  </span>			t.Parallel()
-<span id="L77" class="ln">    77  </span>
-<span id="L78" class="ln">    78  </span>			ctx := context.Background()
-<span id="L79" class="ln">    79  </span>
-<span id="L80" class="ln">    80  </span>			actual, err := repo.SearchByKeyword(ctx, []string{&#34;Grace&#34;}, new(true), 10, 0)
-<span id="L81" class="ln">    81  </span>			require.NoError(t, err)
-<span id="L82" class="ln">    82  </span>
-<span id="L83" class="ln">    83  </span>			require.Len(t, actual, 1)
-<span id="L84" class="ln">    84  </span>			assert.Equal(t, &#34;Grace&#34;, actual[0].FirstName())
-<span id="L85" class="ln">    85  </span>			assert.Nil(t, actual[0].DeletedAt())
-<span id="L86" class="ln">    86  </span>		})
-<span id="L87" class="ln">    87  </span>
-<span id="L88" class="ln">    88  </span>		t.Run(&#34;activeがfalseの場合、削除済みのユーザーのみが対象になる&#34;, func(t *testing.T) {
-<span id="L89" class="ln">    89  </span>			t.Parallel()
-<span id="L90" class="ln">    90  </span>
-<span id="L91" class="ln">    91  </span>			ctx := context.Background()
-<span id="L92" class="ln">    92  </span>
-<span id="L93" class="ln">    93  </span>			actual, err := repo.SearchByKeyword(ctx, []string{&#34;Charlie&#34;}, new(false), 10, 0)
-<span id="L94" class="ln">    94  </span>			require.NoError(t, err)
-<span id="L95" class="ln">    95  </span>
-<span id="L96" class="ln">    96  </span>			require.Len(t, actual, 1)
-<span id="L97" class="ln">    97  </span>			assert.Equal(t, &#34;Charlie&#34;, actual[0].FirstName())
-<span id="L98" class="ln">    98  </span>			assert.NotNil(t, actual[0].DeletedAt())
-<span id="L99" class="ln">    99  </span>		})
-<span id="L100" class="ln">   100  </span>
-<span id="L101" class="ln">   101  </span>		t.Run(&#34;keywordsが空の場合、全ユーザーが対象になる&#34;, func(t *testing.T) {
-<span id="L102" class="ln">   102  </span>			t.Parallel()
-<span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>			ctx := context.Background()
-<span id="L105" class="ln">   105  </span>
-<span id="L106" class="ln">   106  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, nil, 20, 0)
-<span id="L107" class="ln">   107  </span>			require.NoError(t, err)
-<span id="L108" class="ln">   108  </span>			assert.Len(t, actual, 10)
-<span id="L109" class="ln">   109  </span>		})
-<span id="L110" class="ln">   110  </span>
-<span id="L111" class="ln">   111  </span>		t.Run(&#34;keywordsが空かつactive=trueの場合、アクティブのみが対象になる&#34;, func(t *testing.T) {
-<span id="L112" class="ln">   112  </span>			t.Parallel()
-<span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span>			ctx := context.Background()
-<span id="L115" class="ln">   115  </span>
-<span id="L116" class="ln">   116  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, new(true), 20, 0)
-<span id="L117" class="ln">   117  </span>			require.NoError(t, err)
-<span id="L118" class="ln">   118  </span>			assert.Len(t, actual, 8)
-<span id="L119" class="ln">   119  </span>		})
-<span id="L120" class="ln">   120  </span>
-<span id="L121" class="ln">   121  </span>		t.Run(&#34;keywordsが空かつactive=falseの場合、削除済みのみが対象になる&#34;, func(t *testing.T) {
-<span id="L122" class="ln">   122  </span>			t.Parallel()
-<span id="L123" class="ln">   123  </span>
-<span id="L124" class="ln">   124  </span>			ctx := context.Background()
-<span id="L125" class="ln">   125  </span>
-<span id="L126" class="ln">   126  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, new(false), 20, 0)
-<span id="L127" class="ln">   127  </span>			require.NoError(t, err)
-<span id="L128" class="ln">   128  </span>			assert.Len(t, actual, 2)
-<span id="L129" class="ln">   129  </span>		})
-<span id="L130" class="ln">   130  </span>	})
-<span id="L131" class="ln">   131  </span>
-<span id="L132" class="ln">   132  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L133" class="ln">   133  </span>		t.Parallel()
+<span id="L47" class="ln">    47  </span><span class="comment">//nolint:tparallel // 最上位で t.Parallel() を呼べない理由は関数内のコメントを参照。</span>
+<span id="L48" class="ln">    48  </span>func Test_repository_SearchByKeyword(t *testing.T) {
+<span id="L49" class="ln">    49  </span>	testDB := testkit.NewTestDB(t)
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>	<span class="comment">// 期待値をシードの総件数で固定しているため、コミット済みの行を足し引きする他テスト</span>
+<span id="L52" class="ln">    52  </span>	<span class="comment">// （user_repository_lock_race_test.go は検証用ユーザーを実コミットする）と重なると件数がずれる。</span>
+<span id="L53" class="ln">    53  </span>	<span class="comment">// 読み取り専用だが直列化スイートを占有して重なりを防ぐ。</span>
+<span id="L54" class="ln">    54  </span>	<span class="comment">//</span>
+<span id="L55" class="ln">    55  </span>	<span class="comment">// このテスト関数だけ t.Parallel() を呼ばないのは、直列化ロックを保持したまま並列テストとして</span>
+<span id="L56" class="ln">    56  </span>	<span class="comment">// 待たされると、並列スロットを占有したまま自分のサブテストを開始できず停止するため。</span>
+<span id="L57" class="ln">    57  </span>	<span class="comment">// 逐次フェーズで走らせれば、他の並列テストが再開する前にロックを解放して終えられる。</span>
+<span id="L58" class="ln">    58  </span>	testkit.HoldSuiteSerialization(t, testDB)
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L65" class="ln">    65  </span>		t.Parallel()
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span>		t.Run(&#34;activeがnilの場合、全ての状態のユーザーが対象になり作成日時の降順で返る&#34;, func(t *testing.T) {
+<span id="L68" class="ln">    68  </span>			t.Parallel()
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>			ctx := context.Background()
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>			<span class="comment">// Grace(アクティブ) は Charlie(削除済み) より後に作成されており、created_at DESC で先頭に来る。</span>
+<span id="L73" class="ln">    73  </span>			<span class="comment">// = キーワードフィルタと並び順（created_at DESC）を同時に検証する。</span>
+<span id="L74" class="ln">    74  </span>			actual, err := repo.SearchByKeyword(ctx, []string{&#34;Grace&#34;, &#34;Charlie&#34;}, nil, 10, 0)
+<span id="L75" class="ln">    75  </span>			require.NoError(t, err)
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>			require.Len(t, actual, 2)
+<span id="L78" class="ln">    78  </span>			assert.Equal(t, &#34;Grace&#34;, actual[0].FirstName())
+<span id="L79" class="ln">    79  </span>			assert.Equal(t, &#34;Lee&#34;, actual[0].LastName())
+<span id="L80" class="ln">    80  </span>			assert.Equal(t, &#34;Charlie&#34;, actual[1].FirstName())
+<span id="L81" class="ln">    81  </span>			assert.Equal(t, &#34;Davis&#34;, actual[1].LastName())
+<span id="L82" class="ln">    82  </span>		})
+<span id="L83" class="ln">    83  </span>
+<span id="L84" class="ln">    84  </span>		t.Run(&#34;activeがtrueの場合、アクティブなユーザーのみが対象になる&#34;, func(t *testing.T) {
+<span id="L85" class="ln">    85  </span>			t.Parallel()
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>			ctx := context.Background()
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>			actual, err := repo.SearchByKeyword(ctx, []string{&#34;Grace&#34;}, new(true), 10, 0)
+<span id="L90" class="ln">    90  </span>			require.NoError(t, err)
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>			require.Len(t, actual, 1)
+<span id="L93" class="ln">    93  </span>			assert.Equal(t, &#34;Grace&#34;, actual[0].FirstName())
+<span id="L94" class="ln">    94  </span>			assert.Nil(t, actual[0].DeletedAt())
+<span id="L95" class="ln">    95  </span>		})
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>		t.Run(&#34;activeがfalseの場合、削除済みのユーザーのみが対象になる&#34;, func(t *testing.T) {
+<span id="L98" class="ln">    98  </span>			t.Parallel()
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>			ctx := context.Background()
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>			actual, err := repo.SearchByKeyword(ctx, []string{&#34;Charlie&#34;}, new(false), 10, 0)
+<span id="L103" class="ln">   103  </span>			require.NoError(t, err)
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>			require.Len(t, actual, 1)
+<span id="L106" class="ln">   106  </span>			assert.Equal(t, &#34;Charlie&#34;, actual[0].FirstName())
+<span id="L107" class="ln">   107  </span>			assert.NotNil(t, actual[0].DeletedAt())
+<span id="L108" class="ln">   108  </span>		})
+<span id="L109" class="ln">   109  </span>
+<span id="L110" class="ln">   110  </span>		t.Run(&#34;keywordsが空の場合、全ユーザーが対象になる&#34;, func(t *testing.T) {
+<span id="L111" class="ln">   111  </span>			t.Parallel()
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>			ctx := context.Background()
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, nil, 20, 0)
+<span id="L116" class="ln">   116  </span>			require.NoError(t, err)
+<span id="L117" class="ln">   117  </span>			assert.Len(t, actual, 10)
+<span id="L118" class="ln">   118  </span>		})
+<span id="L119" class="ln">   119  </span>
+<span id="L120" class="ln">   120  </span>		t.Run(&#34;keywordsが空かつactive=trueの場合、アクティブのみが対象になる&#34;, func(t *testing.T) {
+<span id="L121" class="ln">   121  </span>			t.Parallel()
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>			ctx := context.Background()
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, new(true), 20, 0)
+<span id="L126" class="ln">   126  </span>			require.NoError(t, err)
+<span id="L127" class="ln">   127  </span>			assert.Len(t, actual, 8)
+<span id="L128" class="ln">   128  </span>		})
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span>		t.Run(&#34;keywordsが空かつactive=falseの場合、削除済みのみが対象になる&#34;, func(t *testing.T) {
+<span id="L131" class="ln">   131  </span>			t.Parallel()
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span>			ctx := context.Background()
 <span id="L134" class="ln">   134  </span>
-<span id="L135" class="ln">   135  </span>		t.Run(&#34;キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
-<span id="L136" class="ln">   136  </span>			t.Parallel()
-<span id="L137" class="ln">   137  </span>
-<span id="L138" class="ln">   138  </span>			ctx, cancel := context.WithCancel(context.Background())
-<span id="L139" class="ln">   139  </span>			cancel()
+<span id="L135" class="ln">   135  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, new(false), 20, 0)
+<span id="L136" class="ln">   136  </span>			require.NoError(t, err)
+<span id="L137" class="ln">   137  </span>			assert.Len(t, actual, 2)
+<span id="L138" class="ln">   138  </span>		})
+<span id="L139" class="ln">   139  </span>	})
 <span id="L140" class="ln">   140  </span>
-<span id="L141" class="ln">   141  </span>			_, allErr := repo.SearchByKeyword(ctx, []string{&#34;x&#34;}, nil, 10, 0)
-<span id="L142" class="ln">   142  </span>			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+<span id="L141" class="ln">   141  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L142" class="ln">   142  </span>		t.Parallel()
 <span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>			_, activeErr := repo.SearchByKeyword(ctx, []string{&#34;x&#34;}, new(true), 10, 0)
-<span id="L145" class="ln">   145  </span>			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+<span id="L144" class="ln">   144  </span>		t.Run(&#34;キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
+<span id="L145" class="ln">   145  </span>			t.Parallel()
 <span id="L146" class="ln">   146  </span>
-<span id="L147" class="ln">   147  </span>			_, deletedErr := repo.SearchByKeyword(ctx, []string{&#34;x&#34;}, new(false), 10, 0)
-<span id="L148" class="ln">   148  </span>			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
-<span id="L149" class="ln">   149  </span>		})
-<span id="L150" class="ln">   150  </span>
-<span id="L151" class="ln">   151  </span>		t.Run(&#34;limitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
-<span id="L152" class="ln">   152  </span>			t.Parallel()
-<span id="L153" class="ln">   153  </span>
-<span id="L154" class="ln">   154  </span>			ctx := context.Background()
+<span id="L147" class="ln">   147  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L148" class="ln">   148  </span>			cancel()
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span>			_, allErr := repo.SearchByKeyword(ctx, []string{&#34;x&#34;}, nil, 10, 0)
+<span id="L151" class="ln">   151  </span>			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>			_, activeErr := repo.SearchByKeyword(ctx, []string{&#34;x&#34;}, new(true), 10, 0)
+<span id="L154" class="ln">   154  </span>			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
 <span id="L155" class="ln">   155  </span>
-<span id="L156" class="ln">   156  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, nil, -1, 0)
-<span id="L157" class="ln">   157  </span>			require.Nil(t, actual)
-<span id="L158" class="ln">   158  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L159" class="ln">   159  </span>		})
-<span id="L160" class="ln">   160  </span>	})
-<span id="L161" class="ln">   161  </span>}
+<span id="L156" class="ln">   156  </span>			_, deletedErr := repo.SearchByKeyword(ctx, []string{&#34;x&#34;}, new(false), 10, 0)
+<span id="L157" class="ln">   157  </span>			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
+<span id="L158" class="ln">   158  </span>		})
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span>		t.Run(&#34;limitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L161" class="ln">   161  </span>			t.Parallel()
 <span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span>func Test_repository_CountByKeyword(t *testing.T) {
-<span id="L164" class="ln">   164  </span>	t.Parallel()
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span>	testDB := testkit.NewTestDB(t)
-<span id="L167" class="ln">   167  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L168" class="ln">   168  </span>
-<span id="L169" class="ln">   169  </span>	repo := &amp;repository{tracer: lt, db: testDB}
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L172" class="ln">   172  </span>		t.Parallel()
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span>		t.Run(&#34;activeがnilかつkeywordsが空の場合、全ユーザーの件数が返る&#34;, func(t *testing.T) {
-<span id="L175" class="ln">   175  </span>			t.Parallel()
-<span id="L176" class="ln">   176  </span>
-<span id="L177" class="ln">   177  </span>			ctx := context.Background()
-<span id="L178" class="ln">   178  </span>
-<span id="L179" class="ln">   179  </span>			actual, err := repo.CountByKeyword(ctx, []string{}, nil)
-<span id="L180" class="ln">   180  </span>			require.NoError(t, err)
-<span id="L181" class="ln">   181  </span>			assert.Equal(t, int64(10), actual)
-<span id="L182" class="ln">   182  </span>		})
-<span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span>		t.Run(&#34;activeがtrueかつkeywordsが空の場合、アクティブなユーザーの件数が返る&#34;, func(t *testing.T) {
-<span id="L185" class="ln">   185  </span>			t.Parallel()
+<span id="L163" class="ln">   163  </span>			ctx := context.Background()
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>			actual, err := repo.SearchByKeyword(ctx, []string{}, nil, -1, 0)
+<span id="L166" class="ln">   166  </span>			require.Nil(t, actual)
+<span id="L167" class="ln">   167  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L168" class="ln">   168  </span>		})
+<span id="L169" class="ln">   169  </span>	})
+<span id="L170" class="ln">   170  </span>}
+<span id="L171" class="ln">   171  </span>
+<span id="L172" class="ln">   172  </span><span class="comment">//nolint:tparallel // 最上位で t.Parallel() を呼べない理由は関数内のコメントを参照。</span>
+<span id="L173" class="ln">   173  </span>func Test_repository_CountByKeyword(t *testing.T) {
+<span id="L174" class="ln">   174  </span>	testDB := testkit.NewTestDB(t)
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>	<span class="comment">// 期待値をシードの総件数で固定しているため、コミット済みの行を足し引きする他テスト</span>
+<span id="L177" class="ln">   177  </span>	<span class="comment">// （user_repository_lock_race_test.go は検証用ユーザーを実コミットする）と重なると件数がずれる。</span>
+<span id="L178" class="ln">   178  </span>	<span class="comment">// 読み取り専用だが直列化スイートを占有して重なりを防ぐ。</span>
+<span id="L179" class="ln">   179  </span>	<span class="comment">//</span>
+<span id="L180" class="ln">   180  </span>	<span class="comment">// このテスト関数だけ t.Parallel() を呼ばないのは、直列化ロックを保持したまま並列テストとして</span>
+<span id="L181" class="ln">   181  </span>	<span class="comment">// 待たされると、並列スロットを占有したまま自分のサブテストを開始できず停止するため。</span>
+<span id="L182" class="ln">   182  </span>	<span class="comment">// 逐次フェーズで走らせれば、他の並列テストが再開する前にロックを解放して終えられる。</span>
+<span id="L183" class="ln">   183  </span>	testkit.HoldSuiteSerialization(t, testDB)
+<span id="L184" class="ln">   184  </span>
+<span id="L185" class="ln">   185  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L186" class="ln">   186  </span>
-<span id="L187" class="ln">   187  </span>			ctx := context.Background()
+<span id="L187" class="ln">   187  </span>	repo := &amp;repository{tracer: lt, db: testDB}
 <span id="L188" class="ln">   188  </span>
-<span id="L189" class="ln">   189  </span>			actual, err := repo.CountByKeyword(ctx, []string{}, new(true))
-<span id="L190" class="ln">   190  </span>			require.NoError(t, err)
-<span id="L191" class="ln">   191  </span>			assert.Equal(t, int64(8), actual)
-<span id="L192" class="ln">   192  </span>		})
-<span id="L193" class="ln">   193  </span>
-<span id="L194" class="ln">   194  </span>		t.Run(&#34;activeがfalseかつkeywordsが空の場合、削除済みユーザーの件数が返る&#34;, func(t *testing.T) {
-<span id="L195" class="ln">   195  </span>			t.Parallel()
+<span id="L189" class="ln">   189  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L190" class="ln">   190  </span>		t.Parallel()
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>		t.Run(&#34;activeがnilかつkeywordsが空の場合、全ユーザーの件数が返る&#34;, func(t *testing.T) {
+<span id="L193" class="ln">   193  </span>			t.Parallel()
+<span id="L194" class="ln">   194  </span>
+<span id="L195" class="ln">   195  </span>			ctx := context.Background()
 <span id="L196" class="ln">   196  </span>
-<span id="L197" class="ln">   197  </span>			ctx := context.Background()
-<span id="L198" class="ln">   198  </span>
-<span id="L199" class="ln">   199  </span>			actual, err := repo.CountByKeyword(ctx, []string{}, new(false))
-<span id="L200" class="ln">   200  </span>			require.NoError(t, err)
-<span id="L201" class="ln">   201  </span>			assert.Equal(t, int64(2), actual)
-<span id="L202" class="ln">   202  </span>		})
-<span id="L203" class="ln">   203  </span>
-<span id="L204" class="ln">   204  </span>		t.Run(&#34;キーワードにマッチするユーザーの件数が返る&#34;, func(t *testing.T) {
-<span id="L205" class="ln">   205  </span>			t.Parallel()
+<span id="L197" class="ln">   197  </span>			actual, err := repo.CountByKeyword(ctx, []string{}, nil)
+<span id="L198" class="ln">   198  </span>			require.NoError(t, err)
+<span id="L199" class="ln">   199  </span>			assert.Equal(t, int64(10), actual)
+<span id="L200" class="ln">   200  </span>		})
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>		t.Run(&#34;activeがtrueかつkeywordsが空の場合、アクティブなユーザーの件数が返る&#34;, func(t *testing.T) {
+<span id="L203" class="ln">   203  </span>			t.Parallel()
+<span id="L204" class="ln">   204  </span>
+<span id="L205" class="ln">   205  </span>			ctx := context.Background()
 <span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>			ctx := context.Background()
-<span id="L208" class="ln">   208  </span>
-<span id="L209" class="ln">   209  </span>			actual, err := repo.CountByKeyword(ctx, []string{&#34;Grace&#34;}, nil)
-<span id="L210" class="ln">   210  </span>			require.NoError(t, err)
-<span id="L211" class="ln">   211  </span>			assert.Equal(t, int64(1), actual)
-<span id="L212" class="ln">   212  </span>		})
-<span id="L213" class="ln">   213  </span>	})
+<span id="L207" class="ln">   207  </span>			actual, err := repo.CountByKeyword(ctx, []string{}, new(true))
+<span id="L208" class="ln">   208  </span>			require.NoError(t, err)
+<span id="L209" class="ln">   209  </span>			assert.Equal(t, int64(8), actual)
+<span id="L210" class="ln">   210  </span>		})
+<span id="L211" class="ln">   211  </span>
+<span id="L212" class="ln">   212  </span>		t.Run(&#34;activeがfalseかつkeywordsが空の場合、削除済みユーザーの件数が返る&#34;, func(t *testing.T) {
+<span id="L213" class="ln">   213  </span>			t.Parallel()
 <span id="L214" class="ln">   214  </span>
-<span id="L215" class="ln">   215  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L216" class="ln">   216  </span>		t.Parallel()
-<span id="L217" class="ln">   217  </span>
-<span id="L218" class="ln">   218  </span>		t.Run(&#34;キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
-<span id="L219" class="ln">   219  </span>			t.Parallel()
-<span id="L220" class="ln">   220  </span>
-<span id="L221" class="ln">   221  </span>			ctx, cancel := context.WithCancel(context.Background())
-<span id="L222" class="ln">   222  </span>			cancel()
-<span id="L223" class="ln">   223  </span>
-<span id="L224" class="ln">   224  </span>			_, allErr := repo.CountByKeyword(ctx, []string{&#34;x&#34;}, nil)
-<span id="L225" class="ln">   225  </span>			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+<span id="L215" class="ln">   215  </span>			ctx := context.Background()
+<span id="L216" class="ln">   216  </span>
+<span id="L217" class="ln">   217  </span>			actual, err := repo.CountByKeyword(ctx, []string{}, new(false))
+<span id="L218" class="ln">   218  </span>			require.NoError(t, err)
+<span id="L219" class="ln">   219  </span>			assert.Equal(t, int64(2), actual)
+<span id="L220" class="ln">   220  </span>		})
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>		t.Run(&#34;キーワードにマッチするユーザーの件数が返る&#34;, func(t *testing.T) {
+<span id="L223" class="ln">   223  </span>			t.Parallel()
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span>			ctx := context.Background()
 <span id="L226" class="ln">   226  </span>
-<span id="L227" class="ln">   227  </span>			_, activeErr := repo.CountByKeyword(ctx, []string{&#34;x&#34;}, new(true))
-<span id="L228" class="ln">   228  </span>			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
-<span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span>			_, deletedErr := repo.CountByKeyword(ctx, []string{&#34;x&#34;}, new(false))
-<span id="L231" class="ln">   231  </span>			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
-<span id="L232" class="ln">   232  </span>		})
-<span id="L233" class="ln">   233  </span>	})
-<span id="L234" class="ln">   234  </span>}
+<span id="L227" class="ln">   227  </span>			actual, err := repo.CountByKeyword(ctx, []string{&#34;Grace&#34;}, nil)
+<span id="L228" class="ln">   228  </span>			require.NoError(t, err)
+<span id="L229" class="ln">   229  </span>			assert.Equal(t, int64(1), actual)
+<span id="L230" class="ln">   230  </span>		})
+<span id="L231" class="ln">   231  </span>	})
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L234" class="ln">   234  </span>		t.Parallel()
 <span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>		t.Run(&#34;キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
+<span id="L237" class="ln">   237  </span>			t.Parallel()
+<span id="L238" class="ln">   238  </span>
+<span id="L239" class="ln">   239  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L240" class="ln">   240  </span>			cancel()
+<span id="L241" class="ln">   241  </span>
+<span id="L242" class="ln">   242  </span>			_, allErr := repo.CountByKeyword(ctx, []string{&#34;x&#34;}, nil)
+<span id="L243" class="ln">   243  </span>			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+<span id="L244" class="ln">   244  </span>
+<span id="L245" class="ln">   245  </span>			_, activeErr := repo.CountByKeyword(ctx, []string{&#34;x&#34;}, new(true))
+<span id="L246" class="ln">   246  </span>			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+<span id="L247" class="ln">   247  </span>
+<span id="L248" class="ln">   248  </span>			_, deletedErr := repo.CountByKeyword(ctx, []string{&#34;x&#34;}, new(false))
+<span id="L249" class="ln">   249  </span>			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
+<span id="L250" class="ln">   250  </span>		})
+<span id="L251" class="ln">   251  </span>	})
+<span id="L252" class="ln">   252  </span>}
+<span id="L253" class="ln">   253  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/user/user_repository_search_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

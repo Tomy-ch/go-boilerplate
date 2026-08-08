@@ -267,56 +267,96 @@
 <span id="L210" class="ln">   210  </span>	tb.Cleanup(func() { o.endpoint = prev })
 <span id="L211" class="ln">   211  </span>}
 <span id="L212" class="ln">   212  </span>
-<span id="L213" class="ln">   213  </span><span class="comment">// SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。</span>
+<span id="L213" class="ln">   213  </span><span class="comment">// SetOutboxPublisher は、テスト用に outbox の publish 先種別を設定します。</span>
 <span id="L214" class="ln">   214  </span><span class="comment">//</span>
 <span id="L215" class="ln">   215  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L216" class="ln">   216  </span>func (s *SecureCookieConfig) SetSameSite(tb testing.TB, sameSite string) {
+<span id="L216" class="ln">   216  </span>func (o *OutboxConfig) SetOutboxPublisher(tb testing.TB, publisher string) {
 <span id="L217" class="ln">   217  </span>	tb.Helper()
-<span id="L218" class="ln">   218  </span>	prev := s.sameSite
-<span id="L219" class="ln">   219  </span>	s.sameSite = sameSite
-<span id="L220" class="ln">   220  </span>	tb.Cleanup(func() { s.sameSite = prev })
+<span id="L218" class="ln">   218  </span>	prev := o.publisher
+<span id="L219" class="ln">   219  </span>	o.publisher = publisher
+<span id="L220" class="ln">   220  </span>	tb.Cleanup(func() { o.publisher = prev })
 <span id="L221" class="ln">   221  </span>}
 <span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span><span class="comment">// SetDomain は、テスト用にセキュアクッキーの Domain 強制値を設定します。</span>
+<span id="L223" class="ln">   223  </span><span class="comment">// SetOutboxQueue は、テスト用に SQS publish 先の設定をまとめて行います。</span>
 <span id="L224" class="ln">   224  </span><span class="comment">//</span>
 <span id="L225" class="ln">   225  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L226" class="ln">   226  </span>func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
+<span id="L226" class="ln">   226  </span>func (o *OutboxConfig) SetOutboxQueue(tb testing.TB, queueURL, region, accessKeyID, secretAccessKey string) {
 <span id="L227" class="ln">   227  </span>	tb.Helper()
-<span id="L228" class="ln">   228  </span>	prev := s.domain
-<span id="L229" class="ln">   229  </span>	s.domain = domain
-<span id="L230" class="ln">   230  </span>	tb.Cleanup(func() { s.domain = prev })
-<span id="L231" class="ln">   231  </span>}
-<span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span><span class="comment">// SetAuthIssuer は、テスト用に認証の issuer を設定します。</span>
-<span id="L234" class="ln">   234  </span><span class="comment">//</span>
-<span id="L235" class="ln">   235  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L236" class="ln">   236  </span>func (a *AuthConfig) SetAuthIssuer(tb testing.TB, issuer string) {
-<span id="L237" class="ln">   237  </span>	tb.Helper()
-<span id="L238" class="ln">   238  </span>	prev := a.issuer
-<span id="L239" class="ln">   239  </span>	a.issuer = issuer
-<span id="L240" class="ln">   240  </span>	tb.Cleanup(func() { a.issuer = prev })
-<span id="L241" class="ln">   241  </span>}
-<span id="L242" class="ln">   242  </span>
-<span id="L243" class="ln">   243  </span><span class="comment">// SetAuthAudience は、テスト用に認証の audience を設定します。</span>
-<span id="L244" class="ln">   244  </span><span class="comment">//</span>
-<span id="L245" class="ln">   245  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L246" class="ln">   246  </span>func (a *AuthConfig) SetAuthAudience(tb testing.TB, audience string) {
-<span id="L247" class="ln">   247  </span>	tb.Helper()
-<span id="L248" class="ln">   248  </span>	prev := a.audience
-<span id="L249" class="ln">   249  </span>	a.audience = audience
-<span id="L250" class="ln">   250  </span>	tb.Cleanup(func() { a.audience = prev })
+<span id="L228" class="ln">   228  </span>	prev := *o
+<span id="L229" class="ln">   229  </span>	o.queueURL, o.queueRegion = queueURL, region
+<span id="L230" class="ln">   230  </span>	o.queueAccessKeyID, o.queueSecretAccessKey = accessKeyID, secretAccessKey
+<span id="L231" class="ln">   231  </span>	tb.Cleanup(func() {
+<span id="L232" class="ln">   232  </span>		o.queueURL, o.queueRegion = prev.queueURL, prev.queueRegion
+<span id="L233" class="ln">   233  </span>		o.queueAccessKeyID, o.queueSecretAccessKey = prev.queueAccessKeyID, prev.queueSecretAccessKey
+<span id="L234" class="ln">   234  </span>	})
+<span id="L235" class="ln">   235  </span>}
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span><span class="comment">// SetConsumerQueue は、テスト用に consume 対象キューの接続設定をまとめて行います。</span>
+<span id="L238" class="ln">   238  </span><span class="comment">//</span>
+<span id="L239" class="ln">   239  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
+<span id="L240" class="ln">   240  </span>func (c *ConsumerQueueConfig) SetConsumerQueue(
+<span id="L241" class="ln">   241  </span>	tb testing.TB, url, dlqURL, region, accessKeyID, secretAccessKey string,
+<span id="L242" class="ln">   242  </span>) {
+<span id="L243" class="ln">   243  </span>	tb.Helper()
+<span id="L244" class="ln">   244  </span>	prev := *c
+<span id="L245" class="ln">   245  </span>	c.url, c.dlqURL, c.region = url, dlqURL, region
+<span id="L246" class="ln">   246  </span>	c.accessKeyID, c.secretAccessKey = accessKeyID, secretAccessKey
+<span id="L247" class="ln">   247  </span>	tb.Cleanup(func() {
+<span id="L248" class="ln">   248  </span>		c.url, c.dlqURL, c.region = prev.url, prev.dlqURL, prev.region
+<span id="L249" class="ln">   249  </span>		c.accessKeyID, c.secretAccessKey = prev.accessKeyID, prev.secretAccessKey
+<span id="L250" class="ln">   250  </span>	})
 <span id="L251" class="ln">   251  </span>}
 <span id="L252" class="ln">   252  </span>
-<span id="L253" class="ln">   253  </span><span class="comment">// SetAuthJWKSURL は、テスト用に認証の JWKS URL を設定します。</span>
+<span id="L253" class="ln">   253  </span><span class="comment">// SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。</span>
 <span id="L254" class="ln">   254  </span><span class="comment">//</span>
 <span id="L255" class="ln">   255  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
-<span id="L256" class="ln">   256  </span>func (a *AuthConfig) SetAuthJWKSURL(tb testing.TB, jwksURL string) {
+<span id="L256" class="ln">   256  </span>func (s *SecureCookieConfig) SetSameSite(tb testing.TB, sameSite string) {
 <span id="L257" class="ln">   257  </span>	tb.Helper()
-<span id="L258" class="ln">   258  </span>	prev := a.jwksURL
-<span id="L259" class="ln">   259  </span>	a.jwksURL = jwksURL
-<span id="L260" class="ln">   260  </span>	tb.Cleanup(func() { a.jwksURL = prev })
+<span id="L258" class="ln">   258  </span>	prev := s.sameSite
+<span id="L259" class="ln">   259  </span>	s.sameSite = sameSite
+<span id="L260" class="ln">   260  </span>	tb.Cleanup(func() { s.sameSite = prev })
 <span id="L261" class="ln">   261  </span>}
 <span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span><span class="comment">// SetDomain は、テスト用にセキュアクッキーの Domain 強制値を設定します。</span>
+<span id="L264" class="ln">   264  </span><span class="comment">//</span>
+<span id="L265" class="ln">   265  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
+<span id="L266" class="ln">   266  </span>func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
+<span id="L267" class="ln">   267  </span>	tb.Helper()
+<span id="L268" class="ln">   268  </span>	prev := s.domain
+<span id="L269" class="ln">   269  </span>	s.domain = domain
+<span id="L270" class="ln">   270  </span>	tb.Cleanup(func() { s.domain = prev })
+<span id="L271" class="ln">   271  </span>}
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span><span class="comment">// SetAuthIssuer は、テスト用に認証の issuer を設定します。</span>
+<span id="L274" class="ln">   274  </span><span class="comment">//</span>
+<span id="L275" class="ln">   275  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
+<span id="L276" class="ln">   276  </span>func (a *AuthConfig) SetAuthIssuer(tb testing.TB, issuer string) {
+<span id="L277" class="ln">   277  </span>	tb.Helper()
+<span id="L278" class="ln">   278  </span>	prev := a.issuer
+<span id="L279" class="ln">   279  </span>	a.issuer = issuer
+<span id="L280" class="ln">   280  </span>	tb.Cleanup(func() { a.issuer = prev })
+<span id="L281" class="ln">   281  </span>}
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span><span class="comment">// SetAuthAudience は、テスト用に認証の audience を設定します。</span>
+<span id="L284" class="ln">   284  </span><span class="comment">//</span>
+<span id="L285" class="ln">   285  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
+<span id="L286" class="ln">   286  </span>func (a *AuthConfig) SetAuthAudience(tb testing.TB, audience string) {
+<span id="L287" class="ln">   287  </span>	tb.Helper()
+<span id="L288" class="ln">   288  </span>	prev := a.audience
+<span id="L289" class="ln">   289  </span>	a.audience = audience
+<span id="L290" class="ln">   290  </span>	tb.Cleanup(func() { a.audience = prev })
+<span id="L291" class="ln">   291  </span>}
+<span id="L292" class="ln">   292  </span>
+<span id="L293" class="ln">   293  </span><span class="comment">// SetAuthJWKSURL は、テスト用に認証の JWKS URL を設定します。</span>
+<span id="L294" class="ln">   294  </span><span class="comment">//</span>
+<span id="L295" class="ln">   295  </span><span class="comment">// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。</span>
+<span id="L296" class="ln">   296  </span>func (a *AuthConfig) SetAuthJWKSURL(tb testing.TB, jwksURL string) {
+<span id="L297" class="ln">   297  </span>	tb.Helper()
+<span id="L298" class="ln">   298  </span>	prev := a.jwksURL
+<span id="L299" class="ln">   299  </span>	a.jwksURL = jwksURL
+<span id="L300" class="ln">   300  </span>	tb.Cleanup(func() { a.jwksURL = prev })
+<span id="L301" class="ln">   301  </span>}
+<span id="L302" class="ln">   302  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -61,13 +61,13 @@
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;go-boilerplate/internal/controller/httpstack/ops&#34;
 <span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;github.com/labstack/echo/v4&#34;
-<span id="L8" class="ln">     8  </span>	echomw &#34;github.com/labstack/echo/v4/middleware&#34;
+<span id="L7" class="ln">     7  </span>	&#34;github.com/labstack/echo/v5&#34;
+<span id="L8" class="ln">     8  </span>	echomw &#34;github.com/labstack/echo/v5/middleware&#34;
 <span id="L9" class="ln">     9  </span>)
 <span id="L10" class="ln">    10  </span>
 <span id="L11" class="ln">    11  </span><span class="comment">// New は、運用系エンドポイント（/health, /metrics 等）へのリクエストを OpenAPI バリデーションからスキップする Skipper 関数を返します。</span>
 <span id="L12" class="ln">    12  </span>func New() echomw.Skipper {
-<span id="L13" class="ln">    13  </span>	return func(c echo.Context) bool {
+<span id="L13" class="ln">    13  </span>	return func(c *echo.Context) bool {
 <span id="L14" class="ln">    14  </span>		return ops.IsOpsPath(c.Request().URL.Path)
 <span id="L15" class="ln">    15  </span>	}
 <span id="L16" class="ln">    16  </span>}

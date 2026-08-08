@@ -133,7 +133,7 @@
 		
 			
 			
-			<h2 id="MakeAvailableAuthn">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testauth/test_auth.go.html?s=494:584#L7">MakeAvailableAuthn</a>
+			<h2 id="MakeAvailableAuthn">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testauth/test_auth.go.html?s=588:678#L8">MakeAvailableAuthn</a>
 				<a class="permalink" href="#MakeAvailableAuthn">¶</a>
 				
 				
@@ -141,6 +141,7 @@
 			<pre>func MakeAvailableAuthn(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, subject <a href="../../../../../../builtin/#string">string</a>) <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a></pre>
 			<p>MakeAvailableAuthn は、テスト用のコンテキストに認証情報を設定します。
 subject が UUID として解釈できる場合は内部 UserID も解決済みにします。
+ゼロ値 UUID の subject は解決できないため、テストを失敗させます。
 
 			
 			

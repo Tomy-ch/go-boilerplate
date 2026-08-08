@@ -31,15 +31,29 @@ observability (`internal/observability`), configuration (`internal/config`) — 
 **not** belong in `pkg/` even though they are used across layers. They encode this
 system's choices (error semantics, frameworks such as zap / otel) and therefore live
 under `internal/` as cross-cutting concerns. The domain layer may depend on
-`internal/apperror` as the one permitted such kernel.
+`internal/apperror` as the one permitted exception among these.
 
 ### Constraints
 
 - Must not contain business logic
 - Must not depend on `internal/` packages
 - Must not depend on infrastructure or framework-specific packages
-- Must not depend on other `pkg/` packages — the sole permitted exception is `pkg/xerrors` (enforced by depguard `independent_pkg` in `.golangci-full.yaml`)
+- Must not depend on other `pkg/` packages. Two exceptions are permitted, both enforced by depguard `independent_pkg` in `.golangci-full.yaml`: `pkg/xerrors` may be imported by any package, and a `testkit` sub-package may import its own parent (the rule's file pattern excludes `**/pkg/**/testkit/**.go`)
 - Each package must have a single responsibility
+
+### Doc comments must stay context-independent too
+
+The constraints above govern the doc comments, not just the code. A `pkg/` package is meant to survive
+being copied into another project, so its doc comments must not bake in **this** application's context:
+no specific environment-variable names, no naming of the current call sites, and no examples that
+mirror this repository's layer structure. Write `envutil.Override("SOME_KEY", "value")`, not a real
+`DB_NAME`; say a retry loop is shared by "any caller that classifies retryability", not by "the tx
+retry and the external HTTP retry". Naming the current consumers is also plain noise under
+[`docs/rules.md`](../docs/rules.md) § Comment Rules ("where it is called from").
+
+Conversely, the contract itself must be **complete**, because a generic utility is read without the
+surrounding application to fall back on: mutation of pointer arguments, `nil` semantics, silent
+clamping of out-of-range inputs, and units all belong in the doc comment.
 
 ## Package List
 
@@ -47,15 +61,18 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 |---|---|---|
 |`backoff`|Exponential backoff duration (pure, clock/randomness-free)|None|
 |`datetime`|Date/time parsing|Standard library `time`|
+|`decimal`|Exact-decimal type (money / rate)|`github.com/shopspring/decimal`|
 |`envutil`|Environment variable override (test helper)|Standard library `os`|
 |`exec`|External command execution (interface + mock)|Standard library `os/exec`|
 |`fnmeta`|Function / package name extraction|None|
 |`fs`|Filesystem operations (interface + mock)|Standard library `os`|
+|`httpheader`|Classification of HTTP header names (credential-carrying or not)|None|
+|`patch`|Three-state values for partial-update (PATCH) input|None|
 |`ptr`|Pointer operations|None|
 |`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|
 |`safecast`|Type conversion with overflow detection|None|
 |`stringkit`|String length validation|None|
-|`uuid`|UUID value object|`github.com/google/uuid`|
+|`uuid`|UUID type|`github.com/google/uuid`|
 |`xerrors`|Errors with stack traces|`github.com/cockroachdb/errors`|
 
 ## Package Details
@@ -86,6 +103,23 @@ Key functions
 |`ParseCustomLayout`|Parse with an arbitrary layout|
 
 All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for parsing with a specified timezone.
+
+### decimal
+
+An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/lexicon/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+
+|Symbol|Description|
+|---|---|
+|`Parse` / `FromInt`|Construct from a decimal string / `int64`|
+|`Add` / `Sub` / `Mul` / `Neg` / `DivRound`|Exact decimal arithmetic|
+|`RoundHalfAwayFromZero` / `Truncate`|Rounding at a given number of places|
+|`ToScaledInt64(n)`|Round to `n` places, scale by `10^n`, and return the minor-unit `int64` (or `ErrOverflow`)|
+|`Cmp` / `Equal` / `Sign` / `IsZero` / `IsNegative`|Comparison and inspection|
+|`MarshalJSON` / `UnmarshalJSON`|JSON string wire representation (accepts JSON number on decode)|
+|`Scan` / `Value`|`NUMERIC` database boundary (`sql.Scanner` / `driver.Valuer`)|
+
+Test helpers live in the separate package `pkg/decimal/testkit` (`MustParse`), so `testing` is never
+linked into a production binary.
 
 ### envutil
 
@@ -124,6 +158,16 @@ Abstracts filesystem operations behind an interface so callers can inject a mock
 |`FS` (interface)|`ReadFile` / `WriteFile` / `Glob`|
 |`OS` (struct)|`os`-based implementation of `FS`|
 
+### patch
+
+Three-state values for partial-update (PATCH) input. Distinguishes "not sent (keep current)", "sent as `null` (clear)", and "sent with a value (replace)" — a distinction a plain `*T` collapses into `nil`. The zero value of `Field[T]` is unspecified, so a struct of `Field` values defaults to "change nothing".
+
+|Symbol|Description|
+|---|---|
+|`Field[T]` (struct)|One field's specification state in a partial update|
+|`Unspecified[T]` / `Null[T]` / `Value[T]`|Constructors for the three states|
+|`Field[T].Resolve`|Apply the specification to a current value|
+
 ### ptr
 
 Pointer manipulation utilities using generics.
@@ -132,6 +176,7 @@ Pointer manipulation utilities using generics.
 |---|---|
 |`To[T]`|Create a pointer from a value|
 |`Copy[T]`|Copy a pointer (nil-safe)|
+|`Map[T,U]`|Apply a function to the pointed-to value, preserving nil|
 |`Deref[T]`|Dereference a pointer, returning a fallback when nil|
 
 ### retry
@@ -152,6 +197,9 @@ Provides safe type conversion with overflow detection.
 |Function|Description|
 |---|---|
 |`UintToInt`|Safe conversion from `uint` to `int`|
+|`IntToInt32`|Safe conversion from `int` to `int32`|
+|`IntToInt16`|Safe conversion from `int` to `int16`|
+|`IntPtrToInt32Ptr`|Safe conversion from `*int` to `*int32` (`nil` means nothing to convert and returns `nil`)|
 
 Returns `ErrOverflow` when an overflow occurs.
 
@@ -174,7 +222,10 @@ Each function has a corresponding `ErrorMsg` function for generating validation 
 
 ### uuid
 
-A UUID value object wrapping `github.com/google/uuid`.
+A UUID type wrapping `github.com/google/uuid`.
+
+Test helpers live in the separate package `pkg/uuid/testkit` (`NewTestFromSalt`), so `testing` is never
+linked into a production binary.
 
 Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valuer`).
 
@@ -190,6 +241,7 @@ Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valu
 |`Bytes`|Return the raw `[16]byte`|
 |`ToPtr`|Return a pointer to the value|
 |`ToPrimitive` / `FromPrimitive`|Convert to / from `github.com/google/uuid` (e.g. sqlc integration)|
+|`MarshalJSON` / `UnmarshalJSON`|JSON string wire representation (rejects a non-string value; `null` is a no-op)|
 |`Scan` / `Value`|DB integration interface implementation|
 
 ### xerrors

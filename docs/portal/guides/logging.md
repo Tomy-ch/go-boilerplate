@@ -372,6 +372,8 @@ Log keys defined in `const.go`.
 |`JobArgsKey`|`job_args`|
 |`JobErrorKey`|`job_error`|
 |`JobResultKey`|`job_result`|
+|`JobSkippedKey`|`job_skipped`|
+|`JobScannedKey`|`job_scanned`|
 |`FilterKey`|`filter`|
 
 ### Worker
@@ -404,3 +406,16 @@ Be careful not to output the following information in logs.
 - personal information
 
 If necessary, apply **masking processing**.
+
+## Test Strategy
+
+Logging is a sealed layer — everything else depends on it and nothing here may leak zap into a caller — so its tests verify the *structured* output, never a formatted line.
+
+- **Assert fields, not strings** — drive the subject through `NewObservedTestLogger` and assert on the observed entry's message and `ContextMap()` keys/values. Matching a rendered log line couples the test to the encoder and passes even when a key is wrong.
+- **One `TestXxx` per `Field` constructor** — `String` / `Strings` / `Int` / `Int64` / `Float64` / `Bool` / `Time` / `DurationMs` / `Error` / `Stacktrace` / `Any` each get their own test asserting the produced key **and** the value type. These are the primitives every other layer's log assertions rest on.
+- **Builders emit the documented key set** — `LogFieldBuilder`'s HTTP request / response and SQL builders are asserted against the key constants, so renaming a key without updating consumers fails here rather than silently changing a dashboard query.
+- **Level gating** — a message below the configured level produces no entry; assert the absence, not just the presence at higher levels.
+- **Stacktrace shaping** — `SplitStackLines` turns a raw runtime stack into the line array the log schema expects; assert the shape, not the specific frames (they move).
+- **No secrets in fields** — this package implements **no** masking; the [Security Considerations](#security-considerations) section places that duty on the caller, which must mask before the value reaches a `Field`. There is therefore nothing to assert here, and a test that appears to verify masking in this package would be verifying something that does not exist — assert it at the call site instead.
+
+Helpers this package offers to other layers are inventoried in [Test Kit](#test-kit); do not restate them here.

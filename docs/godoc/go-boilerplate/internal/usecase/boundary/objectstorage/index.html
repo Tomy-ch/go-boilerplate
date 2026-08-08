@@ -1,0 +1,388 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>objectstorage - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package objectstorage
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/objectstorage&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package objectstorage は、オブジェクトストレージへの中立な保存境界（Storage）と
+vendor 非依存の入出力表現を定義します。usecase 層はこの境界にのみ依存し、
+S3 互換 adapter（infrastructure 層）が実装します。bucket / region / etag /
+continuation token 等の vendor 語彙は境界に露出しません。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#ListQuery">type ListQuery</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListResult">type ListResult</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Object">type Object</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Path">type Path</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PutObject">type PutObject</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Storage">type Storage</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html">objectstorage.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="ListQuery">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=2650:3205#L35">ListQuery</a>
+				<a class="permalink" href="#ListQuery">¶</a>
+				
+				
+			</h2>
+			<p>ListQuery は、オブジェクト列挙の条件です。
+
+			</p><pre>type ListQuery struct {
+<span id="ListQuery.Prefix"></span>    <span class="comment">// Prefix は、列挙対象を絞り込むキーの接頭辞（例 &#34;products/&#34;）です。空なら全件が対象になります。</span>
+    Prefix <a href="../../../../../builtin/#string">string</a>
+<span id="ListQuery.Cursor"></span>    <span class="comment">// Cursor は、続きから列挙するための境界です。空なら先頭から列挙します。</span>
+    <span class="comment">// 直前の ListResult.NextCursor をそのまま渡す想定で、中身は adapter 依存の不透明な文字列です。</span>
+    Cursor <a href="../../../../../builtin/#string">string</a>
+<span id="ListQuery.Limit"></span>    <span class="comment">// Limit は、1 ページで列挙する件数の上限です。0 以下なら adapter の既定値になります。</span>
+    Limit <a href="../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3266:3523#L46">ListResult</a>
+				<a class="permalink" href="#ListResult">¶</a>
+				
+				
+			</h2>
+			<p>ListResult は、1 ページ分の列挙結果です。
+
+			</p><pre>type ListResult struct {
+<span id="ListResult.Objects"></span>    <span class="comment">// Objects は、列挙されたオブジェクトです。並び順は保証しません。</span>
+    Objects []<a href="#Object">Object</a>
+<span id="ListResult.NextCursor"></span>    <span class="comment">// NextCursor は、続きを取得するための境界です。空なら最終ページです。</span>
+    NextCursor <a href="../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Object">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3599:3804#L54">Object</a>
+				<a class="permalink" href="#Object">¶</a>
+				
+				
+			</h2>
+			<p>Object は、列挙されたオブジェクトの中立表現です。
+
+			</p><pre>type Object struct {
+<span id="Object.Key"></span>    <span class="comment">// Key は、オブジェクトキー（例 &#34;products/{uuid}.png&#34;）です。</span>
+    Key <a href="../../../../../builtin/#string">string</a>
+<span id="Object.ModifiedAt"></span>    <span class="comment">// ModifiedAt は、オブジェクトの最終更新時刻です。</span>
+    ModifiedAt <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Path">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3884:3900#L62">Path</a>
+				<a class="permalink" href="#Path">¶</a>
+				
+				
+			</h2>
+			<p>Path は、保存されたオブジェクトのパス（キー）です。
+
+			</p><pre>type Path <a href="../../../../../builtin/#string">string</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PutObject">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=1912:2586#L22">PutObject</a>
+				<a class="permalink" href="#PutObject">¶</a>
+				
+				
+			</h2>
+			<p>PutObject は、保存対象オブジェクトの入力 DTO です。
+
+			</p><pre>type PutObject struct {
+<span id="PutObject.Key"></span>    <span class="comment">// Key は、保存先のオブジェクトキー（例 &#34;products/{uuid}.png&#34;）です。呼び出し側が採番します。</span>
+    Key <a href="../../../../../builtin/#string">string</a>
+<span id="PutObject.Body"></span>    <span class="comment">// Body は、保存するバイト列です。長さがそのままオブジェクトサイズになります。</span>
+    Body []<a href="../../../../../builtin/#byte">byte</a>
+<span id="PutObject.ContentType"></span>    <span class="comment">// ContentType は、オブジェクトの MIME タイプ（例 &#34;image/png&#34;）です。</span>
+    ContentType <a href="../../../../../builtin/#string">string</a>
+<span id="PutObject.CacheControl"></span>    <span class="comment">// CacheControl は、配信時に返す Cache-Control（例 &#34;public, max-age=31536000, immutable&#34;）です。</span>
+    <span class="comment">// 空文字なら設定しません。キャッシュ可否はキーの不変性に依存するため、呼び出し側が決めます。</span>
+    CacheControl <a href="../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Storage">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=629:1837#L5">Storage</a>
+				<a class="permalink" href="#Storage">¶</a>
+				
+				
+			</h2>
+			<p>Storage は、オブジェクトを保存・列挙・削除する中立な境界です。
+
+			</p><pre>type Storage interface {
+    <span class="comment">// Put は、obj をそのキー配下へ保存し、保存されたパス（オブジェクトキー）を返します。</span>
+    <span class="comment">// 返された Path は上位が永続化する対象であり、表示 URL は上位（フロント）が</span>
+    <span class="comment">// 配信ベース URL と組み合わせて別途組み立てます。</span>
+    <span class="comment">// 失敗時は apperror sentinel（ErrUnavailable 等）を返します。</span>
+    Put(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, obj <a href="#PutObject">PutObject</a>) (<a href="#Path">Path</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// List は、query に一致するオブジェクトを 1 ページ分列挙します。</span>
+    <span class="comment">// 続きがある場合は ListResult.NextCursor が非空になり、それを次の ListQuery.Cursor に渡すと続きを取得できます。</span>
+    <span class="comment">// 失敗時は apperror sentinel（ErrUnavailable 等）を返します。</span>
+    List(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, query <a href="#ListQuery">ListQuery</a>) (<a href="#ListResult">ListResult</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// Delete は、keys のオブジェクトをまとめて削除します。keys が空の場合は何もしません。</span>
+    <span class="comment">// 存在しないキーはエラーにならず、同じ keys で再実行しても結果は変わりません。</span>
+    <span class="comment">// 失敗時は apperror sentinel（ErrUnavailable 等）を返します。</span>
+    Delete(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, keys []<a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -77,7 +77,7 @@
 <span id="L20" class="ln">    20  </span><span class="comment">// 期待集合は policy とは独立した方法で導出します: 各 operation の error レスポンス JSON スキーマが</span>
 <span id="L21" class="ln">    21  </span><span class="comment">// components.schemas.ErrorResponseWithDetails と同一(kin-openapi は $ref を共有ポインタへ解決する)</span>
 <span id="L22" class="ln">    22  </span><span class="comment">// かをポインタ同一性で判定します。両者が一致することで「details プロパティ有無 ⇔ WithDetails 参照」の</span>
-<span id="L23" class="ln">    23  </span><span class="comment">// 暗黙依存(ADR-0041)が壊れていないことを保証します。</span>
+<span id="L23" class="ln">    23  </span><span class="comment">// 暗黙依存(ADR-0044)が壊れていないことを保証します。</span>
 <span id="L24" class="ln">    24  </span>func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
 <span id="L25" class="ln">    25  </span>	t.Parallel()
 <span id="L26" class="ln">    26  </span>
@@ -405,6 +405,65 @@
 <span id="L348" class="ln">   348  </span>	})
 <span id="L349" class="ln">   349  </span>}
 <span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>func Test_newHostAgnosticRouter(t *testing.T) {
+<span id="L352" class="ln">   352  </span>	t.Parallel()
+<span id="L353" class="ln">   353  </span>
+<span id="L354" class="ln">   354  </span>	newServersSpec := func(t *testing.T) *openapi3.T {
+<span id="L355" class="ln">   355  </span>		t.Helper()
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>		paths := openapi3.NewPaths()
+<span id="L358" class="ln">   358  </span>		paths.Set(&#34;/items&#34;, &amp;openapi3.PathItem{Get: &amp;openapi3.Operation{OperationID: &#34;GetItems&#34;}})
+<span id="L359" class="ln">   359  </span>		return &amp;openapi3.T{
+<span id="L360" class="ln">   360  </span>			OpenAPI: &#34;3.0.0&#34;,
+<span id="L361" class="ln">   361  </span>			Info:    &amp;openapi3.Info{Title: &#34;host-agnostic&#34;, Version: &#34;1&#34;},
+<span id="L362" class="ln">   362  </span>			Paths:   paths,
+<span id="L363" class="ln">   363  </span>			Servers: openapi3.Servers{{URL: &#34;http://spec-host.example&#34;}},
+<span id="L364" class="ln">   364  </span>		}
+<span id="L365" class="ln">   365  </span>	}
+<span id="L366" class="ln">   366  </span>
+<span id="L367" class="ln">   367  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L368" class="ln">   368  </span>		t.Parallel()
+<span id="L369" class="ln">   369  </span>
+<span id="L370" class="ln">   370  </span>		t.Run(&#34;specのserversと異なるHostのリクエストでもルートを解決できる&#34;, func(t *testing.T) {
+<span id="L371" class="ln">   371  </span>			t.Parallel()
+<span id="L372" class="ln">   372  </span>
+<span id="L373" class="ln">   373  </span>			router, err := newHostAgnosticRouter(newServersSpec(t))
+<span id="L374" class="ln">   374  </span>			require.NoError(t, err)
+<span id="L375" class="ln">   375  </span>
+<span id="L376" class="ln">   376  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;http://request-host.example/items&#34;, nil)
+<span id="L377" class="ln">   377  </span>			route, _, err := router.FindRoute(req)
+<span id="L378" class="ln">   378  </span>			require.NoError(t, err)
+<span id="L379" class="ln">   379  </span>			assert.Equal(t, &#34;/items&#34;, route.Path)
+<span id="L380" class="ln">   380  </span>		})
+<span id="L381" class="ln">   381  </span>
+<span id="L382" class="ln">   382  </span>		t.Run(&#34;引数のspecのserversは書き換えられない&#34;, func(t *testing.T) {
+<span id="L383" class="ln">   383  </span>			t.Parallel()
+<span id="L384" class="ln">   384  </span>
+<span id="L385" class="ln">   385  </span>			spec := newServersSpec(t)
+<span id="L386" class="ln">   386  </span>			_, err := newHostAgnosticRouter(spec)
+<span id="L387" class="ln">   387  </span>			require.NoError(t, err)
+<span id="L388" class="ln">   388  </span>
+<span id="L389" class="ln">   389  </span>			require.Len(t, spec.Servers, 1)
+<span id="L390" class="ln">   390  </span>			assert.Equal(t, &#34;http://spec-host.example&#34;, spec.Servers[0].URL)
+<span id="L391" class="ln">   391  </span>		})
+<span id="L392" class="ln">   392  </span>	})
+<span id="L393" class="ln">   393  </span>
+<span id="L394" class="ln">   394  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L395" class="ln">   395  </span>		t.Parallel()
+<span id="L396" class="ln">   396  </span>
+<span id="L397" class="ln">   397  </span>		t.Run(&#34;router構築に失敗するspecの場合、エラーを握り潰さず返す&#34;, func(t *testing.T) {
+<span id="L398" class="ln">   398  </span>			t.Parallel()
+<span id="L399" class="ln">   399  </span>
+<span id="L400" class="ln">   400  </span>			spec := &amp;openapi3.T{Paths: openapi3.NewPaths()}
+<span id="L401" class="ln">   401  </span>			spec.Paths.Set(&#34;/{id:(}&#34;, &amp;openapi3.PathItem{Get: openapi3.NewOperation()})
+<span id="L402" class="ln">   402  </span>
+<span id="L403" class="ln">   403  </span>			router, err := newHostAgnosticRouter(spec)
+<span id="L404" class="ln">   404  </span>			require.Error(t, err)
+<span id="L405" class="ln">   405  </span>			assert.Nil(t, router)
+<span id="L406" class="ln">   406  </span>		})
+<span id="L407" class="ln">   407  </span>	})
+<span id="L408" class="ln">   408  </span>}
+<span id="L409" class="ln">   409  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/errorhandler/detail_exposure_internal_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

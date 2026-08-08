@@ -297,7 +297,7 @@
 <span id="L240" class="ln">   240  </span>			assert.Nil(t, resp)
 <span id="L241" class="ln">   241  </span>		})
 <span id="L242" class="ln">   242  </span>
-<span id="L243" class="ln">   243  </span>		t.Run(&#34;ボディが上限超過ならErrUnavailableを返す&#34;, func(t *testing.T) {
+<span id="L243" class="ln">   243  </span>		t.Run(&#34;ボディ上限超過はErrUnavailableを返しレスポンスはnil&#34;, func(t *testing.T) {
 <span id="L244" class="ln">   244  </span>			t.Parallel()
 <span id="L245" class="ln">   245  </span>
 <span id="L246" class="ln">   246  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -313,481 +313,683 @@
 <span id="L256" class="ln">   256  </span>			client := newClient(t, registry)
 <span id="L257" class="ln">   257  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;tiny&#34;, srv.URL))
 <span id="L258" class="ln">   258  </span>
-<span id="L259" class="ln">   259  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L260" class="ln">   260  </span>			assert.Nil(t, resp)
-<span id="L261" class="ln">   261  </span>		})
-<span id="L262" class="ln">   262  </span>	})
-<span id="L263" class="ln">   263  </span>}
-<span id="L264" class="ln">   264  </span>
-<span id="L265" class="ln">   265  </span>func Test_client_Do_Redirect(t *testing.T) {
-<span id="L266" class="ln">   266  </span>	t.Parallel()
-<span id="L267" class="ln">   267  </span>
-<span id="L268" class="ln">   268  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L269" class="ln">   269  </span>		t.Parallel()
-<span id="L270" class="ln">   270  </span>
-<span id="L271" class="ln">   271  </span>		t.Run(&#34;リダイレクトを追従せず3xxをErrUnavailableとして返す&#34;, func(t *testing.T) {
-<span id="L272" class="ln">   272  </span>			t.Parallel()
-<span id="L273" class="ln">   273  </span>
-<span id="L274" class="ln">   274  </span>			var redirectTargetHit atomic.Int32
-<span id="L275" class="ln">   275  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-<span id="L276" class="ln">   276  </span>				if r.URL.Path == &#34;/moved&#34; {
-<span id="L277" class="ln">   277  </span>					redirectTargetHit.Add(1)
-<span id="L278" class="ln">   278  </span>					w.WriteHeader(http.StatusOK)
-<span id="L279" class="ln">   279  </span>					return
-<span id="L280" class="ln">   280  </span>				}
-<span id="L281" class="ln">   281  </span>				w.Header().Set(&#34;Location&#34;, &#34;/moved&#34;)
-<span id="L282" class="ln">   282  </span>				w.WriteHeader(http.StatusFound)
-<span id="L283" class="ln">   283  </span>			}))
-<span id="L284" class="ln">   284  </span>			t.Cleanup(srv.Close)
-<span id="L285" class="ln">   285  </span>
-<span id="L286" class="ln">   286  </span>			client := newClient(t, httpclient.NewRegistry(nil))
-<span id="L287" class="ln">   287  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;sample&#34;, srv.URL))
-<span id="L288" class="ln">   288  </span>
-<span id="L289" class="ln">   289  </span>			<span class="comment">// 非追従でも resp(Location 付き)は返り、非2xx契約どおり err は ErrUnavailable。</span>
-<span id="L290" class="ln">   290  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L291" class="ln">   291  </span>			require.NotNil(t, resp)
-<span id="L292" class="ln">   292  </span>			assert.Equal(t, http.StatusFound, resp.StatusCode)
-<span id="L293" class="ln">   293  </span>			assert.Equal(t, []string{&#34;/moved&#34;}, resp.Header[&#34;Location&#34;])
-<span id="L294" class="ln">   294  </span>			assert.Equal(t, int32(0), redirectTargetHit.Load()) <span class="comment">// 追従していない</span>
-<span id="L295" class="ln">   295  </span>		})
-<span id="L296" class="ln">   296  </span>	})
-<span id="L297" class="ln">   297  </span>}
+<span id="L259" class="ln">   259  </span>			<span class="comment">// 下流起因の応答異常なので HTTP 語彙は transport 失敗と同じ ErrUnavailable(503)。</span>
+<span id="L260" class="ln">   260  </span>			<span class="comment">// 非 retry 化は isRetryableOutcome が errResponseTooLarge を除外して担う。</span>
+<span id="L261" class="ln">   261  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L262" class="ln">   262  </span>			assert.Nil(t, resp)
+<span id="L263" class="ln">   263  </span>		})
+<span id="L264" class="ln">   264  </span>	})
+<span id="L265" class="ln">   265  </span>}
+<span id="L266" class="ln">   266  </span>
+<span id="L267" class="ln">   267  </span><span class="comment">// truncatingHijackServer は、Content-Length を過大申告しつつ本文を途中で切り接続を閉じる（毎回 readBody を</span>
+<span id="L268" class="ln">   268  </span><span class="comment">// 失敗させる真の read 失敗）テストサーバを、到達回数カウンタ付きで生成します。</span>
+<span id="L269" class="ln">   269  </span>func truncatingHijackServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
+<span id="L270" class="ln">   270  </span>	t.Helper()
+<span id="L271" class="ln">   271  </span>	var hits atomic.Int32
+<span id="L272" class="ln">   272  </span>	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+<span id="L273" class="ln">   273  </span>		hits.Add(1)
+<span id="L274" class="ln">   274  </span>		hj, ok := w.(http.Hijacker)
+<span id="L275" class="ln">   275  </span>		if !ok {
+<span id="L276" class="ln">   276  </span>			return
+<span id="L277" class="ln">   277  </span>		}
+<span id="L278" class="ln">   278  </span>		conn, buf, err := hj.Hijack()
+<span id="L279" class="ln">   279  </span>		if err != nil {
+<span id="L280" class="ln">   280  </span>			return
+<span id="L281" class="ln">   281  </span>		}
+<span id="L282" class="ln">   282  </span>		_, _ = buf.WriteString(&#34;HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nhello&#34;)
+<span id="L283" class="ln">   283  </span>		_ = buf.Flush()
+<span id="L284" class="ln">   284  </span>		_ = conn.Close()
+<span id="L285" class="ln">   285  </span>	}))
+<span id="L286" class="ln">   286  </span>	t.Cleanup(srv.Close)
+<span id="L287" class="ln">   287  </span>	return srv, &amp;hits
+<span id="L288" class="ln">   288  </span>}
+<span id="L289" class="ln">   289  </span>
+<span id="L290" class="ln">   290  </span>func Test_client_Do_ResponseTooLarge(t *testing.T) {
+<span id="L291" class="ln">   291  </span>	t.Parallel()
+<span id="L292" class="ln">   292  </span>
+<span id="L293" class="ln">   293  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L294" class="ln">   294  </span>		t.Parallel()
+<span id="L295" class="ln">   295  </span>
+<span id="L296" class="ln">   296  </span>		t.Run(&#34;上限超過は決定的失敗なので1回しか試行しない&#34;, func(t *testing.T) {
+<span id="L297" class="ln">   297  </span>			t.Parallel()
 <span id="L298" class="ln">   298  </span>
-<span id="L299" class="ln">   299  </span>func TestNewRegistry(t *testing.T) {
-<span id="L300" class="ln">   300  </span>	t.Parallel()
-<span id="L301" class="ln">   301  </span>
-<span id="L302" class="ln">   302  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L303" class="ln">   303  </span>		t.Parallel()
-<span id="L304" class="ln">   304  </span>
-<span id="L305" class="ln">   305  </span>		t.Run(&#34;登録済みキーは対応Profileを返す&#34;, func(t *testing.T) {
-<span id="L306" class="ln">   306  </span>			t.Parallel()
+<span id="L299" class="ln">   299  </span>			srv, hits := countingLargeBodyServer(t)
+<span id="L300" class="ln">   300  </span>
+<span id="L301" class="ln">   301  </span>			profile := httpclient.DefaultProfile()
+<span id="L302" class="ln">   302  </span>			profile.MaxResponseBytes = 4
+<span id="L303" class="ln">   303  </span>			profile.MaxAttempts = 3
+<span id="L304" class="ln">   304  </span>			profile.BaseBackoff = time.Millisecond
+<span id="L305" class="ln">   305  </span>			profile.MaxBackoff = time.Millisecond
+<span id="L306" class="ln">   306  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;tiny&#34;: profile})
 <span id="L307" class="ln">   307  </span>
-<span id="L308" class="ln">   308  </span>			want := httpclient.DefaultProfile()
-<span id="L309" class="ln">   309  </span>			want.MaxAttempts = 99
-<span id="L310" class="ln">   310  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;a&#34;: want})
-<span id="L311" class="ln">   311  </span>
-<span id="L312" class="ln">   312  </span>			assert.Equal(t, 99, registry.Profile(&#34;a&#34;).MaxAttempts)
+<span id="L308" class="ln">   308  </span>			client := newClient(t, registry)
+<span id="L309" class="ln">   309  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;tiny&#34;, srv.URL))
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L312" class="ln">   312  </span>			assert.Equal(t, int32(1), hits.Load()) <span class="comment">// GET でも retry されない</span>
 <span id="L313" class="ln">   313  </span>		})
 <span id="L314" class="ln">   314  </span>
-<span id="L315" class="ln">   315  </span>		t.Run(&#34;未登録キーはDefaultProfileにfallbackする&#34;, func(t *testing.T) {
+<span id="L315" class="ln">   315  </span>		t.Run(&#34;上限超過を繰り返してもbreakerはopenしない&#34;, func(t *testing.T) {
 <span id="L316" class="ln">   316  </span>			t.Parallel()
 <span id="L317" class="ln">   317  </span>
-<span id="L318" class="ln">   318  </span>			registry := httpclient.NewRegistry(nil)
-<span id="L319" class="ln">   319  </span>			assert.Equal(t, httpclient.DefaultProfile(), registry.Profile(&#34;unknown&#34;))
-<span id="L320" class="ln">   320  </span>		})
-<span id="L321" class="ln">   321  </span>	})
-<span id="L322" class="ln">   322  </span>}
-<span id="L323" class="ln">   323  </span>
-<span id="L324" class="ln">   324  </span>func Test_client_Do_MinimumAttempt(t *testing.T) {
-<span id="L325" class="ln">   325  </span>	t.Parallel()
-<span id="L326" class="ln">   326  </span>
-<span id="L327" class="ln">   327  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L328" class="ln">   328  </span>		t.Parallel()
-<span id="L329" class="ln">   329  </span>
-<span id="L330" class="ln">   330  </span>		t.Run(&#34;MaxAttemptsが0でも最低1回試行しnil_nilを返さない&#34;, func(t *testing.T) {
-<span id="L331" class="ln">   331  </span>			t.Parallel()
+<span id="L318" class="ln">   318  </span>			srv, hits := countingLargeBodyServer(t)
+<span id="L319" class="ln">   319  </span>
+<span id="L320" class="ln">   320  </span>			profile := httpclient.DefaultProfile()
+<span id="L321" class="ln">   321  </span>			profile.MaxResponseBytes = 4
+<span id="L322" class="ln">   322  </span>			profile.MaxAttempts = 1
+<span id="L323" class="ln">   323  </span>			<span class="comment">// 1 件の失敗で open する設定。上限超過が失敗計上されないことを、以降もサーバへ到達する事実で確認する。</span>
+<span id="L324" class="ln">   324  </span>			profile.Breaker = httpclient.BreakerConfig{
+<span id="L325" class="ln">   325  </span>				FailureThreshold: 0.5,
+<span id="L326" class="ln">   326  </span>				MinRequests:      1,
+<span id="L327" class="ln">   327  </span>				OpenDuration:     time.Hour,
+<span id="L328" class="ln">   328  </span>				HalfOpenProbes:   1,
+<span id="L329" class="ln">   329  </span>			}
+<span id="L330" class="ln">   330  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;tiny&#34;: profile})
+<span id="L331" class="ln">   331  </span>			client := newClient(t, registry)
 <span id="L332" class="ln">   332  </span>
-<span id="L333" class="ln">   333  </span>			srv, hits := countingServer(t, http.StatusOK)
-<span id="L334" class="ln">   334  </span>
-<span id="L335" class="ln">   335  </span>			profile := httpclient.DefaultProfile()
-<span id="L336" class="ln">   336  </span>			profile.MaxAttempts = 0
-<span id="L337" class="ln">   337  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;zero&#34;: profile})
-<span id="L338" class="ln">   338  </span>
-<span id="L339" class="ln">   339  </span>			client := newClient(t, registry)
-<span id="L340" class="ln">   340  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;zero&#34;, srv.URL))
-<span id="L341" class="ln">   341  </span>
-<span id="L342" class="ln">   342  </span>			require.NoError(t, err)
-<span id="L343" class="ln">   343  </span>			require.NotNil(t, resp)
-<span id="L344" class="ln">   344  </span>			assert.Equal(t, http.StatusOK, resp.StatusCode)
-<span id="L345" class="ln">   345  </span>			assert.Equal(t, int32(1), hits.Load())
-<span id="L346" class="ln">   346  </span>		})
-<span id="L347" class="ln">   347  </span>	})
-<span id="L348" class="ln">   348  </span>}
-<span id="L349" class="ln">   349  </span>
-<span id="L350" class="ln">   350  </span>func Test_client_Do_Retry(t *testing.T) {
-<span id="L351" class="ln">   351  </span>	t.Parallel()
-<span id="L352" class="ln">   352  </span>
-<span id="L353" class="ln">   353  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L354" class="ln">   354  </span>		t.Parallel()
-<span id="L355" class="ln">   355  </span>
-<span id="L356" class="ln">   356  </span>		t.Run(&#34;503はMaxAttemptsまでリトライする&#34;, func(t *testing.T) {
-<span id="L357" class="ln">   357  </span>			t.Parallel()
-<span id="L358" class="ln">   358  </span>
-<span id="L359" class="ln">   359  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
-<span id="L360" class="ln">   360  </span>			client := newClient(t, retryProfile())
-<span id="L361" class="ln">   361  </span>
-<span id="L362" class="ln">   362  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
-<span id="L363" class="ln">   363  </span>
-<span id="L364" class="ln">   364  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L365" class="ln">   365  </span>			require.NotNil(t, resp) <span class="comment">// リトライ後 5xx でも resp は非nilで返る契約</span>
-<span id="L366" class="ln">   366  </span>			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-<span id="L367" class="ln">   367  </span>			assert.Equal(t, int32(3), hits.Load())
-<span id="L368" class="ln">   368  </span>		})
-<span id="L369" class="ln">   369  </span>
-<span id="L370" class="ln">   370  </span>		t.Run(&#34;4xxはリトライしない&#34;, func(t *testing.T) {
-<span id="L371" class="ln">   371  </span>			t.Parallel()
-<span id="L372" class="ln">   372  </span>
-<span id="L373" class="ln">   373  </span>			srv, hits := countingServer(t, http.StatusBadRequest)
-<span id="L374" class="ln">   374  </span>			client := newClient(t, retryProfile())
-<span id="L375" class="ln">   375  </span>
-<span id="L376" class="ln">   376  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
+<span id="L333" class="ln">   333  </span>			req := httpclient.NewRequest(httpclient.MethodGet(), &#34;tiny&#34;, srv.URL)
+<span id="L334" class="ln">   334  </span>			const rounds = 3
+<span id="L335" class="ln">   335  </span>			for range rounds {
+<span id="L336" class="ln">   336  </span>				_, err := client.Do(context.Background(), req)
+<span id="L337" class="ln">   337  </span>				require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L338" class="ln">   338  </span>			}
+<span id="L339" class="ln">   339  </span>
+<span id="L340" class="ln">   340  </span>			<span class="comment">// breaker が open していれば fail-fast でサーバへ到達しなくなる。全リクエストが到達＝open していない。</span>
+<span id="L341" class="ln">   341  </span>			assert.Equal(t, int32(rounds), hits.Load())
+<span id="L342" class="ln">   342  </span>		})
+<span id="L343" class="ln">   343  </span>
+<span id="L344" class="ln">   344  </span>		t.Run(&#34;5xxかつ上限超過ボディでもreadBodyが先勝ちしresp_nilでretryもopenもしない&#34;, func(t *testing.T) {
+<span id="L345" class="ln">   345  </span>			t.Parallel()
+<span id="L346" class="ln">   346  </span>
+<span id="L347" class="ln">   347  </span>			<span class="comment">// attempt は status 分類より先に readBody を行うため、503 とボディ上限超過が同時に起きても</span>
+<span id="L348" class="ln">   348  </span>			<span class="comment">// errResponseTooLarge が先勝ちして resp=nil になる（status(503) は観測されない）。</span>
+<span id="L349" class="ln">   349  </span>			var hits atomic.Int32
+<span id="L350" class="ln">   350  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+<span id="L351" class="ln">   351  </span>				hits.Add(1)
+<span id="L352" class="ln">   352  </span>				w.WriteHeader(http.StatusServiceUnavailable)
+<span id="L353" class="ln">   353  </span>				_, _ = w.Write([]byte(&#34;0123456789&#34;))
+<span id="L354" class="ln">   354  </span>			}))
+<span id="L355" class="ln">   355  </span>			t.Cleanup(srv.Close)
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>			profile := httpclient.DefaultProfile()
+<span id="L358" class="ln">   358  </span>			profile.MaxResponseBytes = 4
+<span id="L359" class="ln">   359  </span>			profile.MaxAttempts = 3
+<span id="L360" class="ln">   360  </span>			profile.BaseBackoff = time.Millisecond
+<span id="L361" class="ln">   361  </span>			profile.MaxBackoff = time.Millisecond
+<span id="L362" class="ln">   362  </span>			<span class="comment">// 1 件の失敗で open する設定。上限超過が失敗計上されない（＝ breaker 非 open）ことも併せて固定する。</span>
+<span id="L363" class="ln">   363  </span>			profile.Breaker = httpclient.BreakerConfig{
+<span id="L364" class="ln">   364  </span>				FailureThreshold: 0.5,
+<span id="L365" class="ln">   365  </span>				MinRequests:      1,
+<span id="L366" class="ln">   366  </span>				OpenDuration:     time.Hour,
+<span id="L367" class="ln">   367  </span>				HalfOpenProbes:   1,
+<span id="L368" class="ln">   368  </span>			}
+<span id="L369" class="ln">   369  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;tiny&#34;: profile})
+<span id="L370" class="ln">   370  </span>			client := newClient(t, registry)
+<span id="L371" class="ln">   371  </span>
+<span id="L372" class="ln">   372  </span>			req := httpclient.NewRequest(httpclient.MethodGet(), &#34;tiny&#34;, srv.URL)
+<span id="L373" class="ln">   373  </span>			resp, err := client.Do(context.Background(), req)
+<span id="L374" class="ln">   374  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L375" class="ln">   375  </span>			assert.Nil(t, resp)                    <span class="comment">// status(503) ではなく上限超過失敗が先勝ちするため resp は返らない</span>
+<span id="L376" class="ln">   376  </span>			assert.Equal(t, int32(1), hits.Load()) <span class="comment">// 決定的失敗なので retry されない</span>
 <span id="L377" class="ln">   377  </span>
-<span id="L378" class="ln">   378  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-<span id="L379" class="ln">   379  </span>			assert.Equal(t, int32(1), hits.Load())
-<span id="L380" class="ln">   380  </span>		})
-<span id="L381" class="ln">   381  </span>
-<span id="L382" class="ln">   382  </span>		t.Run(&#34;AllowRetryなしのPOSTは503でも1回しか飛ばない&#34;, func(t *testing.T) {
-<span id="L383" class="ln">   383  </span>			t.Parallel()
-<span id="L384" class="ln">   384  </span>
-<span id="L385" class="ln">   385  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
-<span id="L386" class="ln">   386  </span>			client := newClient(t, retryProfile())
-<span id="L387" class="ln">   387  </span>
-<span id="L388" class="ln">   388  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodPost(), &#34;retry&#34;, srv.URL))
-<span id="L389" class="ln">   389  </span>
-<span id="L390" class="ln">   390  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L391" class="ln">   391  </span>			assert.Equal(t, int32(1), hits.Load())
-<span id="L392" class="ln">   392  </span>		})
-<span id="L393" class="ln">   393  </span>
-<span id="L394" class="ln">   394  </span>		t.Run(&#34;AllowRetryと冪等性キーありのPOSTはリトライする&#34;, func(t *testing.T) {
-<span id="L395" class="ln">   395  </span>			t.Parallel()
-<span id="L396" class="ln">   396  </span>
-<span id="L397" class="ln">   397  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
-<span id="L398" class="ln">   398  </span>			client := newClient(t, retryProfile())
-<span id="L399" class="ln">   399  </span>
-<span id="L400" class="ln">   400  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(
-<span id="L401" class="ln">   401  </span>				httpclient.MethodPost(), &#34;retry&#34;, srv.URL,
-<span id="L402" class="ln">   402  </span>				httpclient.WithRetry(&#34;key-1&#34;),
-<span id="L403" class="ln">   403  </span>			))
+<span id="L378" class="ln">   378  </span>			<span class="comment">// breaker が open していれば 2 回目は fail-fast でサーバへ到達しない。到達＝ open していない。</span>
+<span id="L379" class="ln">   379  </span>			_, err = client.Do(context.Background(), req)
+<span id="L380" class="ln">   380  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L381" class="ln">   381  </span>			assert.Equal(t, int32(2), hits.Load())
+<span id="L382" class="ln">   382  </span>		})
+<span id="L383" class="ln">   383  </span>
+<span id="L384" class="ln">   384  </span>		t.Run(&#34;真のread失敗は従来どおりリトライされる&#34;, func(t *testing.T) {
+<span id="L385" class="ln">   385  </span>			t.Parallel()
+<span id="L386" class="ln">   386  </span>
+<span id="L387" class="ln">   387  </span>			srv, hits := truncatingHijackServer(t)
+<span id="L388" class="ln">   388  </span>
+<span id="L389" class="ln">   389  </span>			profile := httpclient.DefaultProfile()
+<span id="L390" class="ln">   390  </span>			profile.MaxAttempts = 3
+<span id="L391" class="ln">   391  </span>			profile.BaseBackoff = time.Millisecond
+<span id="L392" class="ln">   392  </span>			profile.MaxBackoff = time.Millisecond
+<span id="L393" class="ln">   393  </span>			profile.RetryBudgetRatio = 100
+<span id="L394" class="ln">   394  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;read&#34;: profile})
+<span id="L395" class="ln">   395  </span>
+<span id="L396" class="ln">   396  </span>			client := newClient(t, registry)
+<span id="L397" class="ln">   397  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;read&#34;, srv.URL))
+<span id="L398" class="ln">   398  </span>
+<span id="L399" class="ln">   399  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L400" class="ln">   400  </span>			assert.Equal(t, int32(3), hits.Load()) <span class="comment">// 応答未取得の transport 失敗は retry 対象のまま</span>
+<span id="L401" class="ln">   401  </span>		})
+<span id="L402" class="ln">   402  </span>	})
+<span id="L403" class="ln">   403  </span>}
 <span id="L404" class="ln">   404  </span>
-<span id="L405" class="ln">   405  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L406" class="ln">   406  </span>			assert.Equal(t, int32(3), hits.Load())
-<span id="L407" class="ln">   407  </span>		})
-<span id="L408" class="ln">   408  </span>	})
-<span id="L409" class="ln">   409  </span>
-<span id="L410" class="ln">   410  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L411" class="ln">   411  </span>		t.Parallel()
-<span id="L412" class="ln">   412  </span>
-<span id="L413" class="ln">   413  </span>		<span class="comment">// 「AllowRetry あり・冪等性キーなし」のランタイムガードは request_guard_internal_test.go で担保しています。</span>
-<span id="L414" class="ln">   414  </span>		<span class="comment">// 公開 API から構築不能（非公開フィールドの直接設定が必要）なため、外部テストからは到達できません。</span>
-<span id="L415" class="ln">   415  </span>
-<span id="L416" class="ln">   416  </span>		t.Run(&#34;backoffのスリープ中にctxがキャンセルされたらErrCanceledを返す&#34;, func(t *testing.T) {
-<span id="L417" class="ln">   417  </span>			t.Parallel()
-<span id="L418" class="ln">   418  </span>
-<span id="L419" class="ln">   419  </span>			srv, _ := countingServer(t, http.StatusServiceUnavailable)
+<span id="L405" class="ln">   405  </span><span class="comment">// countingLargeBodyServer は、上限超過用に固定ボディを返しつつ到達回数を数えるテストサーバを生成します。</span>
+<span id="L406" class="ln">   406  </span>func countingLargeBodyServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
+<span id="L407" class="ln">   407  </span>	t.Helper()
+<span id="L408" class="ln">   408  </span>	var hits atomic.Int32
+<span id="L409" class="ln">   409  </span>	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+<span id="L410" class="ln">   410  </span>		hits.Add(1)
+<span id="L411" class="ln">   411  </span>		w.WriteHeader(http.StatusOK)
+<span id="L412" class="ln">   412  </span>		_, _ = w.Write([]byte(&#34;0123456789&#34;))
+<span id="L413" class="ln">   413  </span>	}))
+<span id="L414" class="ln">   414  </span>	t.Cleanup(srv.Close)
+<span id="L415" class="ln">   415  </span>	return srv, &amp;hits
+<span id="L416" class="ln">   416  </span>}
+<span id="L417" class="ln">   417  </span>
+<span id="L418" class="ln">   418  </span>func Test_client_Do_Redirect(t *testing.T) {
+<span id="L419" class="ln">   419  </span>	t.Parallel()
 <span id="L420" class="ln">   420  </span>
-<span id="L421" class="ln">   421  </span>			ctrl := gomock.NewController(t)
-<span id="L422" class="ln">   422  </span>			sleeper := mock_clock.NewMockSleeper(ctrl)
-<span id="L423" class="ln">   423  </span>			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(context.Canceled).AnyTimes()
-<span id="L424" class="ln">   424  </span>
-<span id="L425" class="ln">   425  </span>			client := httpclient.New(
-<span id="L426" class="ln">   426  </span>				observability.NewNoopHTTPClientTransport(t),
-<span id="L427" class="ln">   427  </span>				sleeper,
-<span id="L428" class="ln">   428  </span>				system.NewClock(),
-<span id="L429" class="ln">   429  </span>				retryProfile(),
-<span id="L430" class="ln">   430  </span>				observability.NewNoopHTTPClientMetrics(t),
-<span id="L431" class="ln">   431  </span>			)
-<span id="L432" class="ln">   432  </span>
-<span id="L433" class="ln">   433  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
-<span id="L434" class="ln">   434  </span>
-<span id="L435" class="ln">   435  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
-<span id="L436" class="ln">   436  </span>		})
-<span id="L437" class="ln">   437  </span>	})
-<span id="L438" class="ln">   438  </span>}
-<span id="L439" class="ln">   439  </span>
-<span id="L440" class="ln">   440  </span>func Test_client_Do_Backoff(t *testing.T) {
-<span id="L441" class="ln">   441  </span>	t.Parallel()
-<span id="L442" class="ln">   442  </span>
-<span id="L443" class="ln">   443  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L444" class="ln">   444  </span>		t.Parallel()
-<span id="L445" class="ln">   445  </span>
-<span id="L446" class="ln">   446  </span>		t.Run(&#34;リトライごとのbackoffが指数cap内のfull_jitter範囲に収まる&#34;, func(t *testing.T) {
-<span id="L447" class="ln">   447  </span>			t.Parallel()
-<span id="L448" class="ln">   448  </span>
-<span id="L449" class="ln">   449  </span>			srv, _ := countingServer(t, http.StatusServiceUnavailable)
-<span id="L450" class="ln">   450  </span>
-<span id="L451" class="ln">   451  </span>			profile := httpclient.DefaultProfile()
-<span id="L452" class="ln">   452  </span>			profile.MaxAttempts = 4
-<span id="L453" class="ln">   453  </span>			profile.BaseBackoff = 10 * time.Millisecond
-<span id="L454" class="ln">   454  </span>			profile.MaxBackoff = time.Second
-<span id="L455" class="ln">   455  </span>			profile.RetryBudgetRatio = 100 <span class="comment">// budget で retry が絞られないよう十分に確保</span>
-<span id="L456" class="ln">   456  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;retry&#34;: profile})
+<span id="L421" class="ln">   421  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L422" class="ln">   422  </span>		t.Parallel()
+<span id="L423" class="ln">   423  </span>
+<span id="L424" class="ln">   424  </span>		t.Run(&#34;リダイレクトを追従せず3xxをErrUnavailableとして返す&#34;, func(t *testing.T) {
+<span id="L425" class="ln">   425  </span>			t.Parallel()
+<span id="L426" class="ln">   426  </span>
+<span id="L427" class="ln">   427  </span>			var redirectTargetHit atomic.Int32
+<span id="L428" class="ln">   428  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+<span id="L429" class="ln">   429  </span>				if r.URL.Path == &#34;/moved&#34; {
+<span id="L430" class="ln">   430  </span>					redirectTargetHit.Add(1)
+<span id="L431" class="ln">   431  </span>					w.WriteHeader(http.StatusOK)
+<span id="L432" class="ln">   432  </span>					return
+<span id="L433" class="ln">   433  </span>				}
+<span id="L434" class="ln">   434  </span>				w.Header().Set(&#34;Location&#34;, &#34;/moved&#34;)
+<span id="L435" class="ln">   435  </span>				w.WriteHeader(http.StatusFound)
+<span id="L436" class="ln">   436  </span>			}))
+<span id="L437" class="ln">   437  </span>			t.Cleanup(srv.Close)
+<span id="L438" class="ln">   438  </span>
+<span id="L439" class="ln">   439  </span>			client := newClient(t, httpclient.NewRegistry(nil))
+<span id="L440" class="ln">   440  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;sample&#34;, srv.URL))
+<span id="L441" class="ln">   441  </span>
+<span id="L442" class="ln">   442  </span>			<span class="comment">// 非追従でも resp(Location 付き)は返り、非2xx契約どおり err は ErrUnavailable。</span>
+<span id="L443" class="ln">   443  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L444" class="ln">   444  </span>			require.NotNil(t, resp)
+<span id="L445" class="ln">   445  </span>			assert.Equal(t, http.StatusFound, resp.StatusCode)
+<span id="L446" class="ln">   446  </span>			assert.Equal(t, []string{&#34;/moved&#34;}, resp.Header[&#34;Location&#34;])
+<span id="L447" class="ln">   447  </span>			assert.Equal(t, int32(0), redirectTargetHit.Load()) <span class="comment">// 追従していない</span>
+<span id="L448" class="ln">   448  </span>		})
+<span id="L449" class="ln">   449  </span>	})
+<span id="L450" class="ln">   450  </span>}
+<span id="L451" class="ln">   451  </span>
+<span id="L452" class="ln">   452  </span>func TestNewRegistry(t *testing.T) {
+<span id="L453" class="ln">   453  </span>	t.Parallel()
+<span id="L454" class="ln">   454  </span>
+<span id="L455" class="ln">   455  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L456" class="ln">   456  </span>		t.Parallel()
 <span id="L457" class="ln">   457  </span>
-<span id="L458" class="ln">   458  </span>			var slept []time.Duration
-<span id="L459" class="ln">   459  </span>			ctrl := gomock.NewController(t)
-<span id="L460" class="ln">   460  </span>			sleeper := mock_clock.NewMockSleeper(ctrl)
-<span id="L461" class="ln">   461  </span>			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).
-<span id="L462" class="ln">   462  </span>				DoAndReturn(func(_ context.Context, d time.Duration) error {
-<span id="L463" class="ln">   463  </span>					slept = append(slept, d)
-<span id="L464" class="ln">   464  </span>					return nil
-<span id="L465" class="ln">   465  </span>				}).AnyTimes()
-<span id="L466" class="ln">   466  </span>
-<span id="L467" class="ln">   467  </span>			client := httpclient.New(
-<span id="L468" class="ln">   468  </span>				observability.NewNoopHTTPClientTransport(t),
-<span id="L469" class="ln">   469  </span>				sleeper,
-<span id="L470" class="ln">   470  </span>				system.NewClock(),
-<span id="L471" class="ln">   471  </span>				registry,
-<span id="L472" class="ln">   472  </span>				observability.NewNoopHTTPClientMetrics(t),
-<span id="L473" class="ln">   473  </span>			)
-<span id="L474" class="ln">   474  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
-<span id="L475" class="ln">   475  </span>
-<span id="L476" class="ln">   476  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L477" class="ln">   477  </span>			require.Len(t, slept, 3) <span class="comment">// MaxAttempts-1 回のリトライ</span>
-<span id="L478" class="ln">   478  </span>			for i, d := range slept {
-<span id="L479" class="ln">   479  </span>				upperBound := min(profile.BaseBackoff&lt;&lt;i, profile.MaxBackoff)
-<span id="L480" class="ln">   480  </span>				assert.GreaterOrEqual(t, d, time.Duration(0))
-<span id="L481" class="ln">   481  </span>				assert.LessOrEqual(t, d, upperBound)
-<span id="L482" class="ln">   482  </span>			}
-<span id="L483" class="ln">   483  </span>		})
-<span id="L484" class="ln">   484  </span>	})
-<span id="L485" class="ln">   485  </span>}
-<span id="L486" class="ln">   486  </span>
-<span id="L487" class="ln">   487  </span>func Test_client_Do_Deadline(t *testing.T) {
-<span id="L488" class="ln">   488  </span>	t.Parallel()
-<span id="L489" class="ln">   489  </span>
-<span id="L490" class="ln">   490  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L491" class="ln">   491  </span>		t.Parallel()
-<span id="L492" class="ln">   492  </span>
-<span id="L493" class="ln">   493  </span>		t.Run(&#34;overallデッドラインを超えるリトライは打ち切られMaxAttemptsに達しない&#34;, func(t *testing.T) {
-<span id="L494" class="ln">   494  </span>			t.Parallel()
-<span id="L495" class="ln">   495  </span>
-<span id="L496" class="ln">   496  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
-<span id="L497" class="ln">   497  </span>
-<span id="L498" class="ln">   498  </span>			profile := httpclient.DefaultProfile()
-<span id="L499" class="ln">   499  </span>			profile.MaxAttempts = 20
-<span id="L500" class="ln">   500  </span>			<span class="comment">// backoff は極小にして jitter の振れ幅を打ち切り判定に対して無視できるようにし、</span>
-<span id="L501" class="ln">   501  </span>			<span class="comment">// 打ち切りは fake clock の固定 step（20ms/サイクル）と overall deadline(60ms) の関係のみで決まる。</span>
-<span id="L502" class="ln">   502  </span>			profile.BaseBackoff = time.Millisecond
-<span id="L503" class="ln">   503  </span>			profile.MaxBackoff = time.Millisecond
-<span id="L504" class="ln">   504  </span>			profile.OverallTimeout = 60 * time.Millisecond
-<span id="L505" class="ln">   505  </span>			<span class="comment">// retry budget が deadline より先に打ち切らないよう十分なトークンを与え、</span>
-<span id="L506" class="ln">   506  </span>			<span class="comment">// 打ち切り要因を overall deadline に限定する。</span>
-<span id="L507" class="ln">   507  </span>			profile.RetryBudgetRatio = 10
-<span id="L508" class="ln">   508  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;retry&#34;: profile})
-<span id="L509" class="ln">   509  </span>
-<span id="L510" class="ln">   510  </span>			<span class="comment">// Sleep で fake 時刻を 20ms/サイクル進める clock を注入し、deadline 到達での打ち切りを検証する。</span>
-<span id="L511" class="ln">   511  </span>			<span class="comment">// context の overall デッドラインは実時間 60ms だが、fake sleep は即時進むためテストは数 ms で</span>
-<span id="L512" class="ln">   512  </span>			<span class="comment">// 完了し実タイマーは発火しない。打ち切りは注入 clock 基準の canRetryWithin（overallDeadline 到達）</span>
-<span id="L513" class="ln">   513  </span>			<span class="comment">// のみが担う（実時間・jitter 非依存）。開始時刻は実時刻と混同しないよう遠未来に置く。</span>
-<span id="L514" class="ln">   514  </span>			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Millisecond)
-<span id="L515" class="ln">   515  </span>			client := httpclient.New(
-<span id="L516" class="ln">   516  </span>				observability.NewNoopHTTPClientTransport(t),
-<span id="L517" class="ln">   517  </span>				fakeClock,
-<span id="L518" class="ln">   518  </span>				fakeClock,
-<span id="L519" class="ln">   519  </span>				registry,
-<span id="L520" class="ln">   520  </span>				observability.NewNoopHTTPClientMetrics(t),
-<span id="L521" class="ln">   521  </span>			)
-<span id="L522" class="ln">   522  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
-<span id="L523" class="ln">   523  </span>
-<span id="L524" class="ln">   524  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L525" class="ln">   525  </span>			<span class="comment">// 打ち切りが canRetryWithin（deadline 到達）由来であることを last attempt の resp で区別する。</span>
-<span id="L526" class="ln">   526  </span>			<span class="comment">// circuit-open / sleeper error 経路なら resp==nil になるため、非nil であることが弁別になる。</span>
-<span id="L527" class="ln">   527  </span>			require.NotNil(t, resp)
-<span id="L528" class="ln">   528  </span>			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-<span id="L529" class="ln">   529  </span>			<span class="comment">// 20ms/step × 3 backoff で fakeNow がちょうど deadline(60ms)に達し、hits は決定的に 4（実時間・jitter 非依存）。</span>
-<span id="L530" class="ln">   530  </span>			assert.Equal(t, int32(4), hits.Load())
-<span id="L531" class="ln">   531  </span>		})
-<span id="L532" class="ln">   532  </span>	})
-<span id="L533" class="ln">   533  </span>}
+<span id="L458" class="ln">   458  </span>		t.Run(&#34;登録済みキーは対応Profileを返す&#34;, func(t *testing.T) {
+<span id="L459" class="ln">   459  </span>			t.Parallel()
+<span id="L460" class="ln">   460  </span>
+<span id="L461" class="ln">   461  </span>			want := httpclient.DefaultProfile()
+<span id="L462" class="ln">   462  </span>			want.MaxAttempts = 99
+<span id="L463" class="ln">   463  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;a&#34;: want})
+<span id="L464" class="ln">   464  </span>
+<span id="L465" class="ln">   465  </span>			assert.Equal(t, 99, registry.Profile(&#34;a&#34;).MaxAttempts)
+<span id="L466" class="ln">   466  </span>		})
+<span id="L467" class="ln">   467  </span>
+<span id="L468" class="ln">   468  </span>		t.Run(&#34;未登録キーはDefaultProfileにfallbackする&#34;, func(t *testing.T) {
+<span id="L469" class="ln">   469  </span>			t.Parallel()
+<span id="L470" class="ln">   470  </span>
+<span id="L471" class="ln">   471  </span>			registry := httpclient.NewRegistry(nil)
+<span id="L472" class="ln">   472  </span>			assert.Equal(t, httpclient.DefaultProfile(), registry.Profile(&#34;unknown&#34;))
+<span id="L473" class="ln">   473  </span>		})
+<span id="L474" class="ln">   474  </span>	})
+<span id="L475" class="ln">   475  </span>}
+<span id="L476" class="ln">   476  </span>
+<span id="L477" class="ln">   477  </span>func Test_client_Do_MinimumAttempt(t *testing.T) {
+<span id="L478" class="ln">   478  </span>	t.Parallel()
+<span id="L479" class="ln">   479  </span>
+<span id="L480" class="ln">   480  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L481" class="ln">   481  </span>		t.Parallel()
+<span id="L482" class="ln">   482  </span>
+<span id="L483" class="ln">   483  </span>		t.Run(&#34;MaxAttemptsが0でも最低1回試行しnil_nilを返さない&#34;, func(t *testing.T) {
+<span id="L484" class="ln">   484  </span>			t.Parallel()
+<span id="L485" class="ln">   485  </span>
+<span id="L486" class="ln">   486  </span>			srv, hits := countingServer(t, http.StatusOK)
+<span id="L487" class="ln">   487  </span>
+<span id="L488" class="ln">   488  </span>			profile := httpclient.DefaultProfile()
+<span id="L489" class="ln">   489  </span>			profile.MaxAttempts = 0
+<span id="L490" class="ln">   490  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;zero&#34;: profile})
+<span id="L491" class="ln">   491  </span>
+<span id="L492" class="ln">   492  </span>			client := newClient(t, registry)
+<span id="L493" class="ln">   493  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;zero&#34;, srv.URL))
+<span id="L494" class="ln">   494  </span>
+<span id="L495" class="ln">   495  </span>			require.NoError(t, err)
+<span id="L496" class="ln">   496  </span>			require.NotNil(t, resp)
+<span id="L497" class="ln">   497  </span>			assert.Equal(t, http.StatusOK, resp.StatusCode)
+<span id="L498" class="ln">   498  </span>			assert.Equal(t, int32(1), hits.Load())
+<span id="L499" class="ln">   499  </span>		})
+<span id="L500" class="ln">   500  </span>	})
+<span id="L501" class="ln">   501  </span>}
+<span id="L502" class="ln">   502  </span>
+<span id="L503" class="ln">   503  </span>func Test_client_Do_Retry(t *testing.T) {
+<span id="L504" class="ln">   504  </span>	t.Parallel()
+<span id="L505" class="ln">   505  </span>
+<span id="L506" class="ln">   506  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L507" class="ln">   507  </span>		t.Parallel()
+<span id="L508" class="ln">   508  </span>
+<span id="L509" class="ln">   509  </span>		t.Run(&#34;503はMaxAttemptsまでリトライする&#34;, func(t *testing.T) {
+<span id="L510" class="ln">   510  </span>			t.Parallel()
+<span id="L511" class="ln">   511  </span>
+<span id="L512" class="ln">   512  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+<span id="L513" class="ln">   513  </span>			client := newClient(t, retryProfile())
+<span id="L514" class="ln">   514  </span>
+<span id="L515" class="ln">   515  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
+<span id="L516" class="ln">   516  </span>
+<span id="L517" class="ln">   517  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L518" class="ln">   518  </span>			require.NotNil(t, resp) <span class="comment">// リトライ後 5xx でも resp は非nilで返る契約</span>
+<span id="L519" class="ln">   519  </span>			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+<span id="L520" class="ln">   520  </span>			assert.Equal(t, int32(3), hits.Load())
+<span id="L521" class="ln">   521  </span>		})
+<span id="L522" class="ln">   522  </span>
+<span id="L523" class="ln">   523  </span>		t.Run(&#34;4xxはリトライしない&#34;, func(t *testing.T) {
+<span id="L524" class="ln">   524  </span>			t.Parallel()
+<span id="L525" class="ln">   525  </span>
+<span id="L526" class="ln">   526  </span>			srv, hits := countingServer(t, http.StatusBadRequest)
+<span id="L527" class="ln">   527  </span>			client := newClient(t, retryProfile())
+<span id="L528" class="ln">   528  </span>
+<span id="L529" class="ln">   529  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
+<span id="L530" class="ln">   530  </span>
+<span id="L531" class="ln">   531  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L532" class="ln">   532  </span>			assert.Equal(t, int32(1), hits.Load())
+<span id="L533" class="ln">   533  </span>		})
 <span id="L534" class="ln">   534  </span>
-<span id="L535" class="ln">   535  </span>func Test_client_Do_Breaker(t *testing.T) {
-<span id="L536" class="ln">   536  </span>	t.Parallel()
+<span id="L535" class="ln">   535  </span>		t.Run(&#34;AllowRetryなしのPOSTは503でも1回しか飛ばない&#34;, func(t *testing.T) {
+<span id="L536" class="ln">   536  </span>			t.Parallel()
 <span id="L537" class="ln">   537  </span>
-<span id="L538" class="ln">   538  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L539" class="ln">   539  </span>		t.Parallel()
+<span id="L538" class="ln">   538  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+<span id="L539" class="ln">   539  </span>			client := newClient(t, retryProfile())
 <span id="L540" class="ln">   540  </span>
-<span id="L541" class="ln">   541  </span>		t.Run(&#34;連続失敗でbreakerがopenになり以降は即fail-fastする&#34;, func(t *testing.T) {
-<span id="L542" class="ln">   542  </span>			t.Parallel()
-<span id="L543" class="ln">   543  </span>
-<span id="L544" class="ln">   544  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
-<span id="L545" class="ln">   545  </span>
-<span id="L546" class="ln">   546  </span>			profile := httpclient.DefaultProfile()
-<span id="L547" class="ln">   547  </span>			profile.MaxAttempts = 1 <span class="comment">// retry を無効化し breaker の挙動を単純化</span>
-<span id="L548" class="ln">   548  </span>			profile.Breaker = httpclient.BreakerConfig{
-<span id="L549" class="ln">   549  </span>				FailureThreshold: 0.5,
-<span id="L550" class="ln">   550  </span>				MinRequests:      2,
-<span id="L551" class="ln">   551  </span>				OpenDuration:     time.Hour, <span class="comment">// テスト中は half-open へ遷移させない</span>
-<span id="L552" class="ln">   552  </span>				HalfOpenProbes:   1,
-<span id="L553" class="ln">   553  </span>			}
-<span id="L554" class="ln">   554  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;brk&#34;: profile})
-<span id="L555" class="ln">   555  </span>			client := newClient(t, registry)
-<span id="L556" class="ln">   556  </span>
-<span id="L557" class="ln">   557  </span>			req := httpclient.NewRequest(httpclient.MethodGet(), &#34;brk&#34;, srv.URL)
-<span id="L558" class="ln">   558  </span>
-<span id="L559" class="ln">   559  </span>			<span class="comment">// MinRequests(2) 件の失敗で open する。</span>
-<span id="L560" class="ln">   560  </span>			_, err1 := client.Do(context.Background(), req)
-<span id="L561" class="ln">   561  </span>			require.ErrorIs(t, err1, apperror.ErrUnavailable)
-<span id="L562" class="ln">   562  </span>			_, err2 := client.Do(context.Background(), req)
-<span id="L563" class="ln">   563  </span>			require.ErrorIs(t, err2, apperror.ErrUnavailable)
-<span id="L564" class="ln">   564  </span>
-<span id="L565" class="ln">   565  </span>			hitsBeforeFastFail := hits.Load()
-<span id="L566" class="ln">   566  </span>
-<span id="L567" class="ln">   567  </span>			<span class="comment">// open 後はサーバへ到達せず即 fail-fast する。</span>
-<span id="L568" class="ln">   568  </span>			_, err3 := client.Do(context.Background(), req)
-<span id="L569" class="ln">   569  </span>			require.ErrorIs(t, err3, apperror.ErrUnavailable)
-<span id="L570" class="ln">   570  </span>			assert.Equal(t, hitsBeforeFastFail, hits.Load())
-<span id="L571" class="ln">   571  </span>		})
-<span id="L572" class="ln">   572  </span>	})
-<span id="L573" class="ln">   573  </span>}
-<span id="L574" class="ln">   574  </span>
-<span id="L575" class="ln">   575  </span>func Test_client_Do_BreakerReturnsLastResponse(t *testing.T) {
-<span id="L576" class="ln">   576  </span>	t.Parallel()
-<span id="L577" class="ln">   577  </span>
-<span id="L578" class="ln">   578  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L579" class="ln">   579  </span>		t.Parallel()
-<span id="L580" class="ln">   580  </span>
-<span id="L581" class="ln">   581  </span>		t.Run(&#34;retry2回目でbreakerがopenでも直前のレスポンスを返す&#34;, func(t *testing.T) {
-<span id="L582" class="ln">   582  </span>			t.Parallel()
-<span id="L583" class="ln">   583  </span>
-<span id="L584" class="ln">   584  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
-<span id="L585" class="ln">   585  </span>
-<span id="L586" class="ln">   586  </span>			profile := httpclient.DefaultProfile()
-<span id="L587" class="ln">   587  </span>			profile.MaxAttempts = 2 <span class="comment">// attempt1 で open させ attempt2 の allow=false を踏む</span>
-<span id="L588" class="ln">   588  </span>			profile.BaseBackoff = time.Millisecond
-<span id="L589" class="ln">   589  </span>			profile.MaxBackoff = time.Millisecond
-<span id="L590" class="ln">   590  </span>			profile.RetryBudgetRatio = 100 <span class="comment">// budget で retry が絞られないよう確保</span>
-<span id="L591" class="ln">   591  </span>			profile.Breaker = httpclient.BreakerConfig{
-<span id="L592" class="ln">   592  </span>				FailureThreshold: 0.5,
-<span id="L593" class="ln">   593  </span>				MinRequests:      1,         <span class="comment">// 1 件の失敗で即 open</span>
-<span id="L594" class="ln">   594  </span>				OpenDuration:     time.Hour, <span class="comment">// attempt2 までに half-open へ遷移させない</span>
-<span id="L595" class="ln">   595  </span>				HalfOpenProbes:   1,
-<span id="L596" class="ln">   596  </span>			}
-<span id="L597" class="ln">   597  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;brk&#34;: profile})
-<span id="L598" class="ln">   598  </span>			client := newClient(t, registry)
-<span id="L599" class="ln">   599  </span>
-<span id="L600" class="ln">   600  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;brk&#34;, srv.URL))
-<span id="L601" class="ln">   601  </span>
-<span id="L602" class="ln">   602  </span>			<span class="comment">// attempt1 の 503 で open。attempt2 は allow=false だが直前 resp を返す。</span>
-<span id="L603" class="ln">   603  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L604" class="ln">   604  </span>			require.NotNil(t, resp)
-<span id="L605" class="ln">   605  </span>			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-<span id="L606" class="ln">   606  </span>			assert.Equal(t, int32(1), hits.Load()) <span class="comment">// attempt2 はサーバへ到達しない</span>
-<span id="L607" class="ln">   607  </span>		})
-<span id="L608" class="ln">   608  </span>	})
-<span id="L609" class="ln">   609  </span>}
-<span id="L610" class="ln">   610  </span>
-<span id="L611" class="ln">   611  </span>func Test_client_Do_Budget(t *testing.T) {
-<span id="L612" class="ln">   612  </span>	t.Parallel()
+<span id="L541" class="ln">   541  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodPost(), &#34;retry&#34;, srv.URL))
+<span id="L542" class="ln">   542  </span>
+<span id="L543" class="ln">   543  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L544" class="ln">   544  </span>			assert.Equal(t, int32(1), hits.Load())
+<span id="L545" class="ln">   545  </span>		})
+<span id="L546" class="ln">   546  </span>
+<span id="L547" class="ln">   547  </span>		t.Run(&#34;AllowRetryと冪等性キーありのPOSTはリトライする&#34;, func(t *testing.T) {
+<span id="L548" class="ln">   548  </span>			t.Parallel()
+<span id="L549" class="ln">   549  </span>
+<span id="L550" class="ln">   550  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+<span id="L551" class="ln">   551  </span>			client := newClient(t, retryProfile())
+<span id="L552" class="ln">   552  </span>
+<span id="L553" class="ln">   553  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(
+<span id="L554" class="ln">   554  </span>				httpclient.MethodPost(), &#34;retry&#34;, srv.URL,
+<span id="L555" class="ln">   555  </span>				httpclient.WithRetry(&#34;key-1&#34;),
+<span id="L556" class="ln">   556  </span>			))
+<span id="L557" class="ln">   557  </span>
+<span id="L558" class="ln">   558  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L559" class="ln">   559  </span>			assert.Equal(t, int32(3), hits.Load())
+<span id="L560" class="ln">   560  </span>		})
+<span id="L561" class="ln">   561  </span>	})
+<span id="L562" class="ln">   562  </span>
+<span id="L563" class="ln">   563  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L564" class="ln">   564  </span>		t.Parallel()
+<span id="L565" class="ln">   565  </span>
+<span id="L566" class="ln">   566  </span>		<span class="comment">// 「AllowRetry あり・冪等性キーなし」のランタイムガードは request_guard_internal_test.go で担保しています。</span>
+<span id="L567" class="ln">   567  </span>		<span class="comment">// 公開 API から構築不能（非公開フィールドの直接設定が必要）なため、外部テストからは到達できません。</span>
+<span id="L568" class="ln">   568  </span>
+<span id="L569" class="ln">   569  </span>		t.Run(&#34;sleeperには呼び出し元ctx由来のctxを渡しキャンセル時はErrCanceledを返して直前のResponseを破棄する&#34;, func(t *testing.T) {
+<span id="L570" class="ln">   570  </span>			t.Parallel()
+<span id="L571" class="ln">   571  </span>
+<span id="L572" class="ln">   572  </span>			srv, _ := countingServer(t, http.StatusServiceUnavailable)
+<span id="L573" class="ln">   573  </span>
+<span id="L574" class="ln">   574  </span>			type callerKey struct{}
+<span id="L575" class="ln">   575  </span>			var sleptCallerValue any
+<span id="L576" class="ln">   576  </span>
+<span id="L577" class="ln">   577  </span>			ctrl := gomock.NewController(t)
+<span id="L578" class="ln">   578  </span>			sleeper := mock_clock.NewMockSleeper(ctrl)
+<span id="L579" class="ln">   579  </span>			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).
+<span id="L580" class="ln">   580  </span>				DoAndReturn(func(ctx context.Context, _ time.Duration) error {
+<span id="L581" class="ln">   581  </span>					sleptCallerValue = ctx.Value(callerKey{})
+<span id="L582" class="ln">   582  </span>					return context.Canceled
+<span id="L583" class="ln">   583  </span>				}).AnyTimes()
+<span id="L584" class="ln">   584  </span>
+<span id="L585" class="ln">   585  </span>			client := httpclient.New(
+<span id="L586" class="ln">   586  </span>				observability.NewNoopHTTPClientTransport(t),
+<span id="L587" class="ln">   587  </span>				sleeper,
+<span id="L588" class="ln">   588  </span>				system.NewClock(),
+<span id="L589" class="ln">   589  </span>				retryProfile(),
+<span id="L590" class="ln">   590  </span>				observability.NewNoopHTTPClientMetrics(t),
+<span id="L591" class="ln">   591  </span>			)
+<span id="L592" class="ln">   592  </span>
+<span id="L593" class="ln">   593  </span>			callerCtx := context.WithValue(context.Background(), callerKey{}, &#34;caller&#34;)
+<span id="L594" class="ln">   594  </span>			resp, err := client.Do(callerCtx, httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
+<span id="L595" class="ln">   595  </span>
+<span id="L596" class="ln">   596  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L597" class="ln">   597  </span>			assert.Nil(t, resp)
+<span id="L598" class="ln">   598  </span>			assert.Equal(t, &#34;caller&#34;, sleptCallerValue)
+<span id="L599" class="ln">   599  </span>		})
+<span id="L600" class="ln">   600  </span>	})
+<span id="L601" class="ln">   601  </span>}
+<span id="L602" class="ln">   602  </span>
+<span id="L603" class="ln">   603  </span>func Test_client_Do_Backoff(t *testing.T) {
+<span id="L604" class="ln">   604  </span>	t.Parallel()
+<span id="L605" class="ln">   605  </span>
+<span id="L606" class="ln">   606  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L607" class="ln">   607  </span>		t.Parallel()
+<span id="L608" class="ln">   608  </span>
+<span id="L609" class="ln">   609  </span>		t.Run(&#34;リトライごとのbackoffが指数cap内のfull_jitter範囲に収まる&#34;, func(t *testing.T) {
+<span id="L610" class="ln">   610  </span>			t.Parallel()
+<span id="L611" class="ln">   611  </span>
+<span id="L612" class="ln">   612  </span>			srv, _ := countingServer(t, http.StatusServiceUnavailable)
 <span id="L613" class="ln">   613  </span>
-<span id="L614" class="ln">   614  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L615" class="ln">   615  </span>		t.Parallel()
-<span id="L616" class="ln">   616  </span>
-<span id="L617" class="ln">   617  </span>		t.Run(&#34;retry_budget枯渇後はリトライせず初回試行のみになる&#34;, func(t *testing.T) {
-<span id="L618" class="ln">   618  </span>			t.Parallel()
-<span id="L619" class="ln">   619  </span>
-<span id="L620" class="ln">   620  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
-<span id="L621" class="ln">   621  </span>
-<span id="L622" class="ln">   622  </span>			profile := httpclient.DefaultProfile()
-<span id="L623" class="ln">   623  </span>			profile.MaxAttempts = 2 <span class="comment">// 1 リクエストあたり retry 1 回(=1トークン消費)</span>
-<span id="L624" class="ln">   624  </span>			profile.BaseBackoff = time.Millisecond
-<span id="L625" class="ln">   625  </span>			profile.MaxBackoff = time.Millisecond
-<span id="L626" class="ln">   626  </span>			profile.RetryBudgetRatio = 0          <span class="comment">// 補充しないため枯渇させやすい</span>
-<span id="L627" class="ln">   627  </span>			profile.Breaker.MinRequests = 1 &lt;&lt; 30 <span class="comment">// breaker は開かせない</span>
-<span id="L628" class="ln">   628  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;bdg&#34;: profile})
-<span id="L629" class="ln">   629  </span>			client := newClient(t, registry)
-<span id="L630" class="ln">   630  </span>
-<span id="L631" class="ln">   631  </span>			req := httpclient.NewRequest(httpclient.MethodGet(), &#34;bdg&#34;, srv.URL)
-<span id="L632" class="ln">   632  </span>
-<span id="L633" class="ln">   633  </span>			<span class="comment">// 初期トークン(=retryBudgetInitialTokens)を消費し切るまでリクエストを繰り返す。</span>
-<span id="L634" class="ln">   634  </span>			for range 2 {
-<span id="L635" class="ln">   635  </span>				_, err := client.Do(context.Background(), req)
-<span id="L636" class="ln">   636  </span>				require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L637" class="ln">   637  </span>			}
+<span id="L614" class="ln">   614  </span>			profile := httpclient.DefaultProfile()
+<span id="L615" class="ln">   615  </span>			profile.MaxAttempts = 4
+<span id="L616" class="ln">   616  </span>			profile.BaseBackoff = 10 * time.Millisecond
+<span id="L617" class="ln">   617  </span>			profile.MaxBackoff = time.Second
+<span id="L618" class="ln">   618  </span>			profile.RetryBudgetRatio = 100 <span class="comment">// budget で retry が絞られないよう十分に確保</span>
+<span id="L619" class="ln">   619  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;retry&#34;: profile})
+<span id="L620" class="ln">   620  </span>
+<span id="L621" class="ln">   621  </span>			var slept []time.Duration
+<span id="L622" class="ln">   622  </span>			ctrl := gomock.NewController(t)
+<span id="L623" class="ln">   623  </span>			sleeper := mock_clock.NewMockSleeper(ctrl)
+<span id="L624" class="ln">   624  </span>			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).
+<span id="L625" class="ln">   625  </span>				DoAndReturn(func(_ context.Context, d time.Duration) error {
+<span id="L626" class="ln">   626  </span>					slept = append(slept, d)
+<span id="L627" class="ln">   627  </span>					return nil
+<span id="L628" class="ln">   628  </span>				}).AnyTimes()
+<span id="L629" class="ln">   629  </span>
+<span id="L630" class="ln">   630  </span>			client := httpclient.New(
+<span id="L631" class="ln">   631  </span>				observability.NewNoopHTTPClientTransport(t),
+<span id="L632" class="ln">   632  </span>				sleeper,
+<span id="L633" class="ln">   633  </span>				system.NewClock(),
+<span id="L634" class="ln">   634  </span>				registry,
+<span id="L635" class="ln">   635  </span>				observability.NewNoopHTTPClientMetrics(t),
+<span id="L636" class="ln">   636  </span>			)
+<span id="L637" class="ln">   637  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
 <span id="L638" class="ln">   638  </span>
-<span id="L639" class="ln">   639  </span>			<span class="comment">// 枯渇後の 1 リクエストは初回試行のみ（retry なし）。</span>
-<span id="L640" class="ln">   640  </span>			before := hits.Load()
-<span id="L641" class="ln">   641  </span>			_, err := client.Do(context.Background(), req)
-<span id="L642" class="ln">   642  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L643" class="ln">   643  </span>			assert.Equal(t, int32(1), hits.Load()-before)
-<span id="L644" class="ln">   644  </span>		})
-<span id="L645" class="ln">   645  </span>	})
-<span id="L646" class="ln">   646  </span>}
-<span id="L647" class="ln">   647  </span>
-<span id="L648" class="ln">   648  </span>func Test_client_Do_RetryAfter(t *testing.T) {
-<span id="L649" class="ln">   649  </span>	t.Parallel()
-<span id="L650" class="ln">   650  </span>
-<span id="L651" class="ln">   651  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L652" class="ln">   652  </span>		t.Parallel()
-<span id="L653" class="ln">   653  </span>
-<span id="L654" class="ln">   654  </span>		t.Run(&#34;Retry-Afterヘッダがあればバックオフより優先して待機する&#34;, func(t *testing.T) {
-<span id="L655" class="ln">   655  </span>			t.Parallel()
-<span id="L656" class="ln">   656  </span>
-<span id="L657" class="ln">   657  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-<span id="L658" class="ln">   658  </span>				w.Header().Set(&#34;Retry-After&#34;, &#34;2&#34;)
-<span id="L659" class="ln">   659  </span>				w.WriteHeader(http.StatusServiceUnavailable)
-<span id="L660" class="ln">   660  </span>			}))
-<span id="L661" class="ln">   661  </span>			t.Cleanup(srv.Close)
-<span id="L662" class="ln">   662  </span>
-<span id="L663" class="ln">   663  </span>			profile := httpclient.DefaultProfile()
-<span id="L664" class="ln">   664  </span>			profile.MaxAttempts = 2
-<span id="L665" class="ln">   665  </span>			profile.BaseBackoff = 10 * time.Millisecond
-<span id="L666" class="ln">   666  </span>			profile.MaxBackoff = 20 * time.Millisecond <span class="comment">// バックオフ上限より Retry-After(2s) が大きい</span>
-<span id="L667" class="ln">   667  </span>			profile.OverallTimeout = time.Hour
-<span id="L668" class="ln">   668  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;ra&#34;: profile})
-<span id="L669" class="ln">   669  </span>
-<span id="L670" class="ln">   670  </span>			var slept []time.Duration
-<span id="L671" class="ln">   671  </span>			ctrl := gomock.NewController(t)
-<span id="L672" class="ln">   672  </span>			sleeper := mock_clock.NewMockSleeper(ctrl)
-<span id="L673" class="ln">   673  </span>			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).
-<span id="L674" class="ln">   674  </span>				DoAndReturn(func(_ context.Context, d time.Duration) error {
-<span id="L675" class="ln">   675  </span>					slept = append(slept, d)
-<span id="L676" class="ln">   676  </span>					return nil
-<span id="L677" class="ln">   677  </span>				}).AnyTimes()
-<span id="L678" class="ln">   678  </span>
-<span id="L679" class="ln">   679  </span>			client := httpclient.New(
-<span id="L680" class="ln">   680  </span>				observability.NewNoopHTTPClientTransport(t),
-<span id="L681" class="ln">   681  </span>				sleeper,
-<span id="L682" class="ln">   682  </span>				system.NewClock(),
-<span id="L683" class="ln">   683  </span>				registry,
-<span id="L684" class="ln">   684  </span>				observability.NewNoopHTTPClientMetrics(t),
-<span id="L685" class="ln">   685  </span>			)
-<span id="L686" class="ln">   686  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;ra&#34;, srv.URL))
-<span id="L687" class="ln">   687  </span>
-<span id="L688" class="ln">   688  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L689" class="ln">   689  </span>			require.Len(t, slept, 1)
-<span id="L690" class="ln">   690  </span>			assert.Equal(t, 2*time.Second, slept[0]) <span class="comment">// バックオフ(&lt;=20ms)ではなく Retry-After(2s)</span>
-<span id="L691" class="ln">   691  </span>		})
-<span id="L692" class="ln">   692  </span>	})
-<span id="L693" class="ln">   693  </span>}
-<span id="L694" class="ln">   694  </span>
-<span id="L695" class="ln">   695  </span>func Test_client_Do_Timeout(t *testing.T) {
-<span id="L696" class="ln">   696  </span>	t.Parallel()
-<span id="L697" class="ln">   697  </span>
-<span id="L698" class="ln">   698  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L699" class="ln">   699  </span>		t.Parallel()
-<span id="L700" class="ln">   700  </span>
-<span id="L701" class="ln">   701  </span>		t.Run(&#34;per-attemptタイムアウト超過はErrUnavailableを返す&#34;, func(t *testing.T) {
-<span id="L702" class="ln">   702  </span>			t.Parallel()
-<span id="L703" class="ln">   703  </span>
-<span id="L704" class="ln">   704  </span>			<span class="comment">// per-attempt タイムアウトでリクエスト context がキャンセルされるまでブロックするサーバ。</span>
-<span id="L705" class="ln">   705  </span>			var hits atomic.Int32
-<span id="L706" class="ln">   706  </span>			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-<span id="L707" class="ln">   707  </span>				hits.Add(1)
-<span id="L708" class="ln">   708  </span>				&lt;-r.Context().Done()
-<span id="L709" class="ln">   709  </span>			}))
-<span id="L710" class="ln">   710  </span>			t.Cleanup(srv.Close)
-<span id="L711" class="ln">   711  </span>
-<span id="L712" class="ln">   712  </span>			profile := httpclient.DefaultProfile()
-<span id="L713" class="ln">   713  </span>			profile.PerAttemptTimeout = 20 * time.Millisecond
-<span id="L714" class="ln">   714  </span>			<span class="comment">// overall とリトライを打ち切り要因から外し、per-attempt タイムアウト単独の打ち切りを分離検証する</span>
-<span id="L715" class="ln">   715  </span>			<span class="comment">// （overall で打ち切られる構成だと per-attempt を外しても同じ ErrUnavailable が返り区別できない）。</span>
-<span id="L716" class="ln">   716  </span>			profile.OverallTimeout = 2 * time.Second
-<span id="L717" class="ln">   717  </span>			profile.MaxAttempts = 1
-<span id="L718" class="ln">   718  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;slow&#34;: profile})
-<span id="L719" class="ln">   719  </span>
-<span id="L720" class="ln">   720  </span>			client := newClient(t, registry)
-<span id="L721" class="ln">   721  </span>			start := time.Now()
-<span id="L722" class="ln">   722  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;slow&#34;, srv.URL))
-<span id="L723" class="ln">   723  </span>			elapsed := time.Since(start)
-<span id="L724" class="ln">   724  </span>
-<span id="L725" class="ln">   725  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L726" class="ln">   726  </span>			assert.Nil(t, resp)
-<span id="L727" class="ln">   727  </span>			assert.Equal(t, int32(1), hits.Load())
-<span id="L728" class="ln">   728  </span>			<span class="comment">// per-attempt(20ms) が打ち切り要因であることを、overall(2s) より大幅に短い経過時間で確認する。</span>
-<span id="L729" class="ln">   729  </span>			assert.Less(t, elapsed, 500*time.Millisecond)
-<span id="L730" class="ln">   730  </span>		})
-<span id="L731" class="ln">   731  </span>	})
-<span id="L732" class="ln">   732  </span>}
+<span id="L639" class="ln">   639  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L640" class="ln">   640  </span>			require.Len(t, slept, 3) <span class="comment">// MaxAttempts-1 回のリトライ</span>
+<span id="L641" class="ln">   641  </span>			for i, d := range slept {
+<span id="L642" class="ln">   642  </span>				upperBound := min(profile.BaseBackoff&lt;&lt;i, profile.MaxBackoff)
+<span id="L643" class="ln">   643  </span>				assert.GreaterOrEqual(t, d, time.Duration(0))
+<span id="L644" class="ln">   644  </span>				assert.LessOrEqual(t, d, upperBound)
+<span id="L645" class="ln">   645  </span>			}
+<span id="L646" class="ln">   646  </span>		})
+<span id="L647" class="ln">   647  </span>	})
+<span id="L648" class="ln">   648  </span>}
+<span id="L649" class="ln">   649  </span>
+<span id="L650" class="ln">   650  </span>func Test_client_Do_Deadline(t *testing.T) {
+<span id="L651" class="ln">   651  </span>	t.Parallel()
+<span id="L652" class="ln">   652  </span>
+<span id="L653" class="ln">   653  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L654" class="ln">   654  </span>		t.Parallel()
+<span id="L655" class="ln">   655  </span>
+<span id="L656" class="ln">   656  </span>		t.Run(&#34;overallデッドラインを超えるリトライは打ち切られMaxAttemptsに達しない&#34;, func(t *testing.T) {
+<span id="L657" class="ln">   657  </span>			t.Parallel()
+<span id="L658" class="ln">   658  </span>
+<span id="L659" class="ln">   659  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+<span id="L660" class="ln">   660  </span>
+<span id="L661" class="ln">   661  </span>			profile := httpclient.DefaultProfile()
+<span id="L662" class="ln">   662  </span>			profile.MaxAttempts = 20
+<span id="L663" class="ln">   663  </span>			<span class="comment">// backoff は極小にして jitter の振れ幅を打ち切り判定に対して無視できるようにし、</span>
+<span id="L664" class="ln">   664  </span>			<span class="comment">// 打ち切りは fake clock の固定 step（20s/サイクル）と overall deadline(60s) の関係のみで決まる。</span>
+<span id="L665" class="ln">   665  </span>			profile.BaseBackoff = time.Millisecond
+<span id="L666" class="ln">   666  </span>			profile.MaxBackoff = time.Millisecond
+<span id="L667" class="ln">   667  </span>			profile.OverallTimeout = 60 * time.Second
+<span id="L668" class="ln">   668  </span>			profile.PerAttemptTimeout = 10 * time.Second <span class="comment">// 既定 3s より広く取り、実時間側を打ち切り要因から外す</span>
+<span id="L669" class="ln">   669  </span>			<span class="comment">// retry budget が deadline より先に打ち切らないよう十分なトークンを与え、</span>
+<span id="L670" class="ln">   670  </span>			<span class="comment">// 打ち切り要因を overall deadline に限定する。</span>
+<span id="L671" class="ln">   671  </span>			profile.RetryBudgetRatio = 10
+<span id="L672" class="ln">   672  </span>			profile.Breaker.MinRequests = 1 &lt;&lt; 30 <span class="comment">// breaker は開かせない（DefaultProfile の閾値に依存させない）</span>
+<span id="L673" class="ln">   673  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;retry&#34;: profile})
+<span id="L674" class="ln">   674  </span>
+<span id="L675" class="ln">   675  </span>			<span class="comment">// Sleep で fake 時刻を 20s/サイクル進める clock を注入し、打ち切りを注入 clock 基準の</span>
+<span id="L676" class="ln">   676  </span>			<span class="comment">// canRetryWithin（overallDeadline 到達）のみに担わせる（jitter 非依存）。</span>
+<span id="L677" class="ln">   677  </span>			<span class="comment">// overall(60s) / per-attempt(10s) の実時間 ctx タイマーは、fake sleep が実待機せず往復先も</span>
+<span id="L678" class="ln">   678  </span>			<span class="comment">// httptest サーバのためテストが ms オーダーで完了し、発火しない。</span>
+<span id="L679" class="ln">   679  </span>			<span class="comment">// 開始時刻は実時刻と混同しないよう遠未来に置く。</span>
+<span id="L680" class="ln">   680  </span>			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Second)
+<span id="L681" class="ln">   681  </span>			client := httpclient.New(
+<span id="L682" class="ln">   682  </span>				observability.NewNoopHTTPClientTransport(t),
+<span id="L683" class="ln">   683  </span>				fakeClock,
+<span id="L684" class="ln">   684  </span>				fakeClock,
+<span id="L685" class="ln">   685  </span>				registry,
+<span id="L686" class="ln">   686  </span>				observability.NewNoopHTTPClientMetrics(t),
+<span id="L687" class="ln">   687  </span>			)
+<span id="L688" class="ln">   688  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;retry&#34;, srv.URL))
+<span id="L689" class="ln">   689  </span>
+<span id="L690" class="ln">   690  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L691" class="ln">   691  </span>			<span class="comment">// 非nil が除外できるのは sleeper error 経路（resp=nil で return）だけで、breaker open は</span>
+<span id="L692" class="ln">   692  </span>			<span class="comment">// 直前の resp を返すため弁別にならない（breaker 非関与は上の MinRequests が保証する）。</span>
+<span id="L693" class="ln">   693  </span>			<span class="comment">// 打ち切りが canRetryWithin（deadline 到達）由来であることの弁別は下の hits 厳密一致が担う。</span>
+<span id="L694" class="ln">   694  </span>			require.NotNil(t, resp)
+<span id="L695" class="ln">   695  </span>			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+<span id="L696" class="ln">   696  </span>			<span class="comment">// 20s/step × 3 backoff で fakeNow がちょうど deadline(60s)に達し、hits は決定的に 4（jitter 非依存）。</span>
+<span id="L697" class="ln">   697  </span>			assert.Equal(t, int32(4), hits.Load())
+<span id="L698" class="ln">   698  </span>		})
+<span id="L699" class="ln">   699  </span>	})
+<span id="L700" class="ln">   700  </span>}
+<span id="L701" class="ln">   701  </span>
+<span id="L702" class="ln">   702  </span>func Test_client_Do_Breaker(t *testing.T) {
+<span id="L703" class="ln">   703  </span>	t.Parallel()
+<span id="L704" class="ln">   704  </span>
+<span id="L705" class="ln">   705  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L706" class="ln">   706  </span>		t.Parallel()
+<span id="L707" class="ln">   707  </span>
+<span id="L708" class="ln">   708  </span>		t.Run(&#34;連続失敗でbreakerがopenになり以降は即fail-fastする&#34;, func(t *testing.T) {
+<span id="L709" class="ln">   709  </span>			t.Parallel()
+<span id="L710" class="ln">   710  </span>
+<span id="L711" class="ln">   711  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+<span id="L712" class="ln">   712  </span>
+<span id="L713" class="ln">   713  </span>			profile := httpclient.DefaultProfile()
+<span id="L714" class="ln">   714  </span>			profile.MaxAttempts = 1 <span class="comment">// retry を無効化し breaker の挙動を単純化</span>
+<span id="L715" class="ln">   715  </span>			profile.Breaker = httpclient.BreakerConfig{
+<span id="L716" class="ln">   716  </span>				FailureThreshold: 0.5,
+<span id="L717" class="ln">   717  </span>				MinRequests:      2,
+<span id="L718" class="ln">   718  </span>				OpenDuration:     time.Hour, <span class="comment">// テスト中は half-open へ遷移させない</span>
+<span id="L719" class="ln">   719  </span>				HalfOpenProbes:   1,
+<span id="L720" class="ln">   720  </span>			}
+<span id="L721" class="ln">   721  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;brk&#34;: profile})
+<span id="L722" class="ln">   722  </span>			client := newClient(t, registry)
+<span id="L723" class="ln">   723  </span>
+<span id="L724" class="ln">   724  </span>			req := httpclient.NewRequest(httpclient.MethodGet(), &#34;brk&#34;, srv.URL)
+<span id="L725" class="ln">   725  </span>
+<span id="L726" class="ln">   726  </span>			<span class="comment">// MinRequests(2) 件の失敗で open する。</span>
+<span id="L727" class="ln">   727  </span>			_, err1 := client.Do(context.Background(), req)
+<span id="L728" class="ln">   728  </span>			require.ErrorIs(t, err1, apperror.ErrUnavailable)
+<span id="L729" class="ln">   729  </span>			_, err2 := client.Do(context.Background(), req)
+<span id="L730" class="ln">   730  </span>			require.ErrorIs(t, err2, apperror.ErrUnavailable)
+<span id="L731" class="ln">   731  </span>
+<span id="L732" class="ln">   732  </span>			hitsBeforeFastFail := hits.Load()
 <span id="L733" class="ln">   733  </span>
+<span id="L734" class="ln">   734  </span>			<span class="comment">// open 後はサーバへ到達せず即 fail-fast する。</span>
+<span id="L735" class="ln">   735  </span>			_, err3 := client.Do(context.Background(), req)
+<span id="L736" class="ln">   736  </span>			require.ErrorIs(t, err3, apperror.ErrUnavailable)
+<span id="L737" class="ln">   737  </span>			assert.Equal(t, hitsBeforeFastFail, hits.Load())
+<span id="L738" class="ln">   738  </span>		})
+<span id="L739" class="ln">   739  </span>	})
+<span id="L740" class="ln">   740  </span>}
+<span id="L741" class="ln">   741  </span>
+<span id="L742" class="ln">   742  </span>func Test_client_Do_BreakerReturnsLastResponse(t *testing.T) {
+<span id="L743" class="ln">   743  </span>	t.Parallel()
+<span id="L744" class="ln">   744  </span>
+<span id="L745" class="ln">   745  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L746" class="ln">   746  </span>		t.Parallel()
+<span id="L747" class="ln">   747  </span>
+<span id="L748" class="ln">   748  </span>		t.Run(&#34;retry2回目でbreakerがopenでも直前のレスポンスを返す&#34;, func(t *testing.T) {
+<span id="L749" class="ln">   749  </span>			t.Parallel()
+<span id="L750" class="ln">   750  </span>
+<span id="L751" class="ln">   751  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+<span id="L752" class="ln">   752  </span>
+<span id="L753" class="ln">   753  </span>			profile := httpclient.DefaultProfile()
+<span id="L754" class="ln">   754  </span>			profile.MaxAttempts = 2 <span class="comment">// attempt1 で open させ attempt2 の allow=false を踏む</span>
+<span id="L755" class="ln">   755  </span>			profile.BaseBackoff = time.Millisecond
+<span id="L756" class="ln">   756  </span>			profile.MaxBackoff = time.Millisecond
+<span id="L757" class="ln">   757  </span>			profile.RetryBudgetRatio = 100 <span class="comment">// budget で retry が絞られないよう確保</span>
+<span id="L758" class="ln">   758  </span>			profile.Breaker = httpclient.BreakerConfig{
+<span id="L759" class="ln">   759  </span>				FailureThreshold: 0.5,
+<span id="L760" class="ln">   760  </span>				MinRequests:      1,         <span class="comment">// 1 件の失敗で即 open</span>
+<span id="L761" class="ln">   761  </span>				OpenDuration:     time.Hour, <span class="comment">// attempt2 までに half-open へ遷移させない</span>
+<span id="L762" class="ln">   762  </span>				HalfOpenProbes:   1,
+<span id="L763" class="ln">   763  </span>			}
+<span id="L764" class="ln">   764  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;brk&#34;: profile})
+<span id="L765" class="ln">   765  </span>			client := newClient(t, registry)
+<span id="L766" class="ln">   766  </span>
+<span id="L767" class="ln">   767  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;brk&#34;, srv.URL))
+<span id="L768" class="ln">   768  </span>
+<span id="L769" class="ln">   769  </span>			<span class="comment">// attempt1 の 503 で open。attempt2 は allow=false だが直前 resp を返す。</span>
+<span id="L770" class="ln">   770  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L771" class="ln">   771  </span>			require.NotNil(t, resp)
+<span id="L772" class="ln">   772  </span>			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+<span id="L773" class="ln">   773  </span>			assert.Equal(t, int32(1), hits.Load()) <span class="comment">// attempt2 はサーバへ到達しない</span>
+<span id="L774" class="ln">   774  </span>		})
+<span id="L775" class="ln">   775  </span>	})
+<span id="L776" class="ln">   776  </span>}
+<span id="L777" class="ln">   777  </span>
+<span id="L778" class="ln">   778  </span>func Test_client_Do_Budget(t *testing.T) {
+<span id="L779" class="ln">   779  </span>	t.Parallel()
+<span id="L780" class="ln">   780  </span>
+<span id="L781" class="ln">   781  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L782" class="ln">   782  </span>		t.Parallel()
+<span id="L783" class="ln">   783  </span>
+<span id="L784" class="ln">   784  </span>		t.Run(&#34;retry_budget枯渇後はリトライせず初回試行のみになる&#34;, func(t *testing.T) {
+<span id="L785" class="ln">   785  </span>			t.Parallel()
+<span id="L786" class="ln">   786  </span>
+<span id="L787" class="ln">   787  </span>			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+<span id="L788" class="ln">   788  </span>
+<span id="L789" class="ln">   789  </span>			profile := httpclient.DefaultProfile()
+<span id="L790" class="ln">   790  </span>			profile.MaxAttempts = 2 <span class="comment">// 1 リクエストあたり retry 1 回(=1トークン消費)</span>
+<span id="L791" class="ln">   791  </span>			profile.BaseBackoff = time.Millisecond
+<span id="L792" class="ln">   792  </span>			profile.MaxBackoff = time.Millisecond
+<span id="L793" class="ln">   793  </span>			profile.RetryBudgetRatio = 0          <span class="comment">// 補充しないため枯渇させやすい</span>
+<span id="L794" class="ln">   794  </span>			profile.Breaker.MinRequests = 1 &lt;&lt; 30 <span class="comment">// breaker は開かせない</span>
+<span id="L795" class="ln">   795  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;bdg&#34;: profile})
+<span id="L796" class="ln">   796  </span>			client := newClient(t, registry)
+<span id="L797" class="ln">   797  </span>
+<span id="L798" class="ln">   798  </span>			req := httpclient.NewRequest(httpclient.MethodGet(), &#34;bdg&#34;, srv.URL)
+<span id="L799" class="ln">   799  </span>
+<span id="L800" class="ln">   800  </span>			<span class="comment">// 初期トークン(=retryBudgetInitialTokens)を消費し切るまでリクエストを繰り返す。</span>
+<span id="L801" class="ln">   801  </span>			for range 2 {
+<span id="L802" class="ln">   802  </span>				_, err := client.Do(context.Background(), req)
+<span id="L803" class="ln">   803  </span>				require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L804" class="ln">   804  </span>			}
+<span id="L805" class="ln">   805  </span>
+<span id="L806" class="ln">   806  </span>			<span class="comment">// 枯渇後の 1 リクエストは初回試行のみ（retry なし）。</span>
+<span id="L807" class="ln">   807  </span>			before := hits.Load()
+<span id="L808" class="ln">   808  </span>			_, err := client.Do(context.Background(), req)
+<span id="L809" class="ln">   809  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L810" class="ln">   810  </span>			assert.Equal(t, int32(1), hits.Load()-before)
+<span id="L811" class="ln">   811  </span>		})
+<span id="L812" class="ln">   812  </span>	})
+<span id="L813" class="ln">   813  </span>}
+<span id="L814" class="ln">   814  </span>
+<span id="L815" class="ln">   815  </span>func Test_client_Do_RetryAfter(t *testing.T) {
+<span id="L816" class="ln">   816  </span>	t.Parallel()
+<span id="L817" class="ln">   817  </span>
+<span id="L818" class="ln">   818  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L819" class="ln">   819  </span>		t.Parallel()
+<span id="L820" class="ln">   820  </span>
+<span id="L821" class="ln">   821  </span>		t.Run(&#34;Retry-Afterヘッダがあればバックオフより優先して待機する&#34;, func(t *testing.T) {
+<span id="L822" class="ln">   822  </span>			t.Parallel()
+<span id="L823" class="ln">   823  </span>
+<span id="L824" class="ln">   824  </span>			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+<span id="L825" class="ln">   825  </span>				w.Header().Set(&#34;Retry-After&#34;, &#34;2&#34;)
+<span id="L826" class="ln">   826  </span>				w.WriteHeader(http.StatusServiceUnavailable)
+<span id="L827" class="ln">   827  </span>			}))
+<span id="L828" class="ln">   828  </span>			t.Cleanup(srv.Close)
+<span id="L829" class="ln">   829  </span>
+<span id="L830" class="ln">   830  </span>			profile := httpclient.DefaultProfile()
+<span id="L831" class="ln">   831  </span>			profile.MaxAttempts = 2
+<span id="L832" class="ln">   832  </span>			profile.BaseBackoff = 10 * time.Millisecond
+<span id="L833" class="ln">   833  </span>			profile.MaxBackoff = 20 * time.Millisecond <span class="comment">// バックオフ上限より Retry-After(2s) が大きい</span>
+<span id="L834" class="ln">   834  </span>			profile.OverallTimeout = time.Hour
+<span id="L835" class="ln">   835  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;ra&#34;: profile})
+<span id="L836" class="ln">   836  </span>
+<span id="L837" class="ln">   837  </span>			var slept []time.Duration
+<span id="L838" class="ln">   838  </span>			ctrl := gomock.NewController(t)
+<span id="L839" class="ln">   839  </span>			sleeper := mock_clock.NewMockSleeper(ctrl)
+<span id="L840" class="ln">   840  </span>			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).
+<span id="L841" class="ln">   841  </span>				DoAndReturn(func(_ context.Context, d time.Duration) error {
+<span id="L842" class="ln">   842  </span>					slept = append(slept, d)
+<span id="L843" class="ln">   843  </span>					return nil
+<span id="L844" class="ln">   844  </span>				}).AnyTimes()
+<span id="L845" class="ln">   845  </span>
+<span id="L846" class="ln">   846  </span>			client := httpclient.New(
+<span id="L847" class="ln">   847  </span>				observability.NewNoopHTTPClientTransport(t),
+<span id="L848" class="ln">   848  </span>				sleeper,
+<span id="L849" class="ln">   849  </span>				system.NewClock(),
+<span id="L850" class="ln">   850  </span>				registry,
+<span id="L851" class="ln">   851  </span>				observability.NewNoopHTTPClientMetrics(t),
+<span id="L852" class="ln">   852  </span>			)
+<span id="L853" class="ln">   853  </span>			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;ra&#34;, srv.URL))
+<span id="L854" class="ln">   854  </span>
+<span id="L855" class="ln">   855  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L856" class="ln">   856  </span>			require.Len(t, slept, 1)
+<span id="L857" class="ln">   857  </span>			assert.Equal(t, 2*time.Second, slept[0]) <span class="comment">// バックオフ(&lt;=20ms)ではなく Retry-After(2s)</span>
+<span id="L858" class="ln">   858  </span>		})
+<span id="L859" class="ln">   859  </span>	})
+<span id="L860" class="ln">   860  </span>}
+<span id="L861" class="ln">   861  </span>
+<span id="L862" class="ln">   862  </span>func Test_client_Do_Timeout(t *testing.T) {
+<span id="L863" class="ln">   863  </span>	t.Parallel()
+<span id="L864" class="ln">   864  </span>
+<span id="L865" class="ln">   865  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L866" class="ln">   866  </span>		t.Parallel()
+<span id="L867" class="ln">   867  </span>
+<span id="L868" class="ln">   868  </span>		t.Run(&#34;per-attemptタイムアウト超過はErrUnavailableを返す&#34;, func(t *testing.T) {
+<span id="L869" class="ln">   869  </span>			t.Parallel()
+<span id="L870" class="ln">   870  </span>
+<span id="L871" class="ln">   871  </span>			<span class="comment">// per-attempt タイムアウトでリクエスト context がキャンセルされるまでブロックするサーバ。</span>
+<span id="L872" class="ln">   872  </span>			var hits atomic.Int32
+<span id="L873" class="ln">   873  </span>			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+<span id="L874" class="ln">   874  </span>				hits.Add(1)
+<span id="L875" class="ln">   875  </span>				&lt;-r.Context().Done()
+<span id="L876" class="ln">   876  </span>			}))
+<span id="L877" class="ln">   877  </span>			t.Cleanup(srv.Close)
+<span id="L878" class="ln">   878  </span>
+<span id="L879" class="ln">   879  </span>			profile := httpclient.DefaultProfile()
+<span id="L880" class="ln">   880  </span>			<span class="comment">// per-attempt は接続確立に十分な余裕を持たせる（短すぎるとサーバ到達前に発火し hits=0 で</span>
+<span id="L881" class="ln">   881  </span>			<span class="comment">// フレークする）。overall とは大きく離し、per-attempt 単独の打ち切りを経過時間で分離検証する</span>
+<span id="L882" class="ln">   882  </span>			<span class="comment">// （overall で打ち切られる構成だと per-attempt を外しても同じ ErrUnavailable が返り区別できない）。</span>
+<span id="L883" class="ln">   883  </span>			profile.PerAttemptTimeout = 200 * time.Millisecond
+<span id="L884" class="ln">   884  </span>			profile.OverallTimeout = 5 * time.Second
+<span id="L885" class="ln">   885  </span>			profile.MaxAttempts = 1
+<span id="L886" class="ln">   886  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;slow&#34;: profile})
+<span id="L887" class="ln">   887  </span>
+<span id="L888" class="ln">   888  </span>			client := newClient(t, registry)
+<span id="L889" class="ln">   889  </span>			start := time.Now()
+<span id="L890" class="ln">   890  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;slow&#34;, srv.URL))
+<span id="L891" class="ln">   891  </span>			elapsed := time.Since(start)
+<span id="L892" class="ln">   892  </span>
+<span id="L893" class="ln">   893  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L894" class="ln">   894  </span>			assert.Nil(t, resp)
+<span id="L895" class="ln">   895  </span>			assert.Equal(t, int32(1), hits.Load())
+<span id="L896" class="ln">   896  </span>			<span class="comment">// per-attempt(200ms) が打ち切り要因であることを、overall(5s) より大幅に短い経過時間で確認する</span>
+<span id="L897" class="ln">   897  </span>			<span class="comment">// （上限は per-attempt の 10 倍・overall の半分未満に取り、負荷変動に耐える）。</span>
+<span id="L898" class="ln">   898  </span>			assert.Less(t, elapsed, 2*time.Second)
+<span id="L899" class="ln">   899  </span>		})
+<span id="L900" class="ln">   900  </span>
+<span id="L901" class="ln">   901  </span>		t.Run(&#34;overallタイムアウト超過はper-attempt発火前にErrUnavailableを返す&#34;, func(t *testing.T) {
+<span id="L902" class="ln">   902  </span>			t.Parallel()
+<span id="L903" class="ln">   903  </span>
+<span id="L904" class="ln">   904  </span>			<span class="comment">// overall タイムアウトでリクエスト context がキャンセルされるまでブロックするサーバ。</span>
+<span id="L905" class="ln">   905  </span>			var hits atomic.Int32
+<span id="L906" class="ln">   906  </span>			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+<span id="L907" class="ln">   907  </span>				hits.Add(1)
+<span id="L908" class="ln">   908  </span>				&lt;-r.Context().Done()
+<span id="L909" class="ln">   909  </span>			}))
+<span id="L910" class="ln">   910  </span>			t.Cleanup(srv.Close)
+<span id="L911" class="ln">   911  </span>
+<span id="L912" class="ln">   912  </span>			profile := httpclient.DefaultProfile()
+<span id="L913" class="ln">   913  </span>			<span class="comment">// per-attempt ケースの対称形。overall は接続確立に十分な余裕を持たせ（短すぎるとサーバ到達前に</span>
+<span id="L914" class="ln">   914  </span>			<span class="comment">// 発火し hits=0 でフレークする）、per-attempt とは大きく離して overall 単独の打ち切りを</span>
+<span id="L915" class="ln">   915  </span>			<span class="comment">// 経過時間で分離検証する（MaxAttempts=1 のため retry は発生しない）。</span>
+<span id="L916" class="ln">   916  </span>			profile.OverallTimeout = 200 * time.Millisecond
+<span id="L917" class="ln">   917  </span>			profile.PerAttemptTimeout = 5 * time.Second
+<span id="L918" class="ln">   918  </span>			profile.MaxAttempts = 1
+<span id="L919" class="ln">   919  </span>			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{&#34;slow&#34;: profile})
+<span id="L920" class="ln">   920  </span>
+<span id="L921" class="ln">   921  </span>			client := newClient(t, registry)
+<span id="L922" class="ln">   922  </span>			start := time.Now()
+<span id="L923" class="ln">   923  </span>			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), &#34;slow&#34;, srv.URL))
+<span id="L924" class="ln">   924  </span>			elapsed := time.Since(start)
+<span id="L925" class="ln">   925  </span>
+<span id="L926" class="ln">   926  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L927" class="ln">   927  </span>			assert.Nil(t, resp)
+<span id="L928" class="ln">   928  </span>			assert.Equal(t, int32(1), hits.Load())
+<span id="L929" class="ln">   929  </span>			<span class="comment">// overall(200ms) が打ち切り要因であることを、per-attempt(5s) より大幅に短い経過時間で確認する</span>
+<span id="L930" class="ln">   930  </span>			<span class="comment">// （上限は overall の 10 倍・per-attempt の半分未満に取り、負荷変動に耐える）。</span>
+<span id="L931" class="ln">   931  </span>			assert.Less(t, elapsed, 2*time.Second)
+<span id="L932" class="ln">   932  </span>		})
+<span id="L933" class="ln">   933  </span>	})
+<span id="L934" class="ln">   934  </span>}
+<span id="L935" class="ln">   935  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/infrastructure/httpclient/client_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -107,6 +107,9 @@
 				<dd><a href="#IsLockNotAvailable">func IsLockNotAvailable(err error) bool</a></dd>
 			
 				
+				<dd><a href="#IsNoRows">func IsNoRows(err error) bool</a></dd>
+			
+				
 				<dd><a href="#IsRetryableTxError">func IsRetryableTxError(err error) bool</a></dd>
 			
 				
@@ -148,7 +151,7 @@
 		
 			
 			
-			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3997:4036#L107">IsLockNotAvailable</a>
+			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=4501:4540#L115">IsLockNotAvailable</a>
 				<a class="permalink" href="#IsLockNotAvailable">¶</a>
 				
 				
@@ -162,7 +165,23 @@
 		
 			
 			
-			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=4503:4542#L116">IsRetryableTxError</a>
+			</p><h2 id="IsNoRows">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=4328:4357#L110">IsNoRows</a>
+				<a class="permalink" href="#IsNoRows">¶</a>
+				
+				
+			</h2>
+			<pre>func IsNoRows(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
+			<p>IsNoRows は、クエリが 1 行も返さなかったことを示すエラーかを判定します。
+条件付き UPDATE（楽観ロック等）では対象行なしが「未存在」ではなく「条件不一致」を意味するため、
+NormalizeError による ErrNotFound への一律の写像に代えて、呼び出し側が固有の意味を与えるための述語です。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=5007:5046#L124">IsRetryableTxError</a>
 				<a class="permalink" href="#IsRetryableTxError">¶</a>
 				
 				
@@ -179,7 +198,7 @@
 		
 			
 			
-			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3376:3410#L80">IsUnavailable</a>
+			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3411:3445#L81">IsUnavailable</a>
 				<a class="permalink" href="#IsUnavailable">¶</a>
 				
 				
@@ -193,7 +212,7 @@
 		
 			
 			
-			</p><h2 id="NormalizeError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=1155:1191#L22">NormalizeError</a>
+			</p><h2 id="NormalizeError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=1190:1226#L23">NormalizeError</a>
 				<a class="permalink" href="#NormalizeError">¶</a>
 				
 				
@@ -208,7 +227,7 @@
 		
 			
 			
-			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2966:3023#L69">NormalizeExecResult</a>
+			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3001:3058#L70">NormalizeExecResult</a>
 				<a class="permalink" href="#NormalizeExecResult">¶</a>
 				
 				
@@ -224,7 +243,7 @@
 		
 			
 			
-			</p><h2 id="NormalizeReconstructError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2422:2469#L59">NormalizeReconstructError</a>
+			</p><h2 id="NormalizeReconstructError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2457:2504#L60">NormalizeReconstructError</a>
 				<a class="permalink" href="#NormalizeReconstructError">¶</a>
 				
 				

@@ -100,6 +100,26 @@ The following must not be done in the Infrastructure layer.
 - Always propagate context
 - Always normalize external errors
 
+### Doc comments may name technical detail
+
+Encapsulating technical detail (see *Design Principles Summary § 1*) means the outer layers must not
+**see** it — not that this layer must not **document** it. A Repository / QueryService /
+CommandService doc comment is read by whoever maintains the SQL, so it should name the mechanics that
+carry a guarantee: the lock it takes (`FOR UPDATE OF p`), the predicate that enforces ownership, the
+keyset ordering that makes pagination stable, the fixed query count that avoids N+1.
+
+The boundary is directional — this detail stays **here**. A Usecase or Domain doc comment that
+repeats it has leaked the layer; see
+[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation.
+
+The converse is the failure mode to watch for here. Because the inward interface states the guarantee
+in application vocabulary, an implementation doc that only paraphrases that interface adds **nothing**
+— it is a duplicate that rots in two places. So an implementation doc must either **name the
+mechanism** (`FindByID` reads without taking a lock, unlike `LockByID`; `SearchByKeyword` dispatches to
+one of three fixed queries on the `active` filter; `Update` normalizes zero affected rows to NotFound)
+or be **omitted** — the Repository type is unexported, so `revive`'s `exported` rule does not require
+one. Paraphrasing the interface is the one option that is never right.
+
 ## Directory Structure
 
 ```mermaid
@@ -108,6 +128,7 @@ flowchart TB
     Auth["auth/"]
     Authz["authz/"]
     HTTP["httpclient/"]
+    ObjStorage["objectstorage/"]
     Pub["publisher/"]
     Queue["queue/"]
     RDB["rdb/"]
@@ -117,6 +138,7 @@ flowchart TB
     Root --> Auth
     Root --> Authz
     Root --> HTTP
+    Root --> ObjStorage
     Root --> Pub
     Root --> Queue
     Root --> RDB
@@ -131,6 +153,7 @@ flowchart TB
 |`auth/`|Authentication infrastructure (environment-specific Authenticator impl)|Usecase boundary|[README](auth/README.md)|
 |`authz/`|Authorization infrastructure (Authorizer impl; default `allowall` for non-production)|Usecase boundary|[README](authz/README.md)|
 |`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|—|
+|`objectstorage/`|Object storage adapter (impl of `boundary.Storage`; endpoint / credential swap connects to Garage / MinIO / production S3)|Usecase boundary|[README](objectstorage/README.md)|
 |`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|—|
 |`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
@@ -138,6 +161,10 @@ flowchart TB
 |`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|—|
 
 ## Test Strategy
+
+These bullets govern the subsystems whose substrate **is** the database. A subsystem built on a different substrate, or with no real I/O at all, declares its own *Test Strategy* in its package README; walking up to this section from such a package is a documentation gap to close there, not a licence to require a real database of it. Every non-database subsystem now declares one, so this section is reached only by the subsystems it was written for, and a subsystem added on a new substrate is expected to declare its own rather than inherit these bullets by default.
+
+The one package that reaches this section from further down is `auth/useridentity`, which reads `user_identities` through the RDB driver. `auth/`'s own section names it explicitly, so the carve-out is visible from both directions rather than only by walking up.
 
 - Integration Test using real DB
 - State isolation using transaction rollback

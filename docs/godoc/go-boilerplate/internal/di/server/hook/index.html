@@ -107,7 +107,7 @@
 				<dd><a href="#RegisterDBCloseHooks">func RegisterDBCloseHooks(reg lifecycle.Registrar, db driver.DatabaseDriver, logger logging.Logger)</a></dd>
 			
 				
-				<dd><a href="#RegisterHTTPServerHooks">func RegisterHTTPServerHooks(e *echo.Echo, reg lifecycle.Registrar, log logging.Logger, appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig, srvCfg *config.ServerConfig, osCfg *config.OperatingSystemConfig, _ *extension.AppliedServerExtends)</a></dd>
+				<dd><a href="#RegisterHTTPServerHooks">func RegisterHTTPServerHooks(srv *http.Server, reg lifecycle.Registrar, log logging.Logger, appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig, srvCfg *config.ServerConfig, osCfg *config.OperatingSystemConfig, _ *extension.AppliedServerExtends)</a></dd>
 			
 				
 				<dd><a href="#RegisterObservabilityShutdownHooks">func RegisterObservabilityShutdownHooks(reg lifecycle.Registrar, shutdowner observability.ProviderShutdowner)</a></dd>
@@ -161,13 +161,13 @@
 		
 			
 			
-			</p><h2 id="RegisterHTTPServerHooks">func <a href="../../../../../src/go-boilerplate/internal/di/server/hook/http_server_hook.go.html?s=737:1087#L15">RegisterHTTPServerHooks</a>
+			</p><h2 id="RegisterHTTPServerHooks">func <a href="../../../../../src/go-boilerplate/internal/di/server/hook/http_server_hook.go.html?s=705:1059#L13">RegisterHTTPServerHooks</a>
 				<a class="permalink" href="#RegisterHTTPServerHooks">¶</a>
 				
 				
 			</h2>
 			<pre>func RegisterHTTPServerHooks(
-    e *echo.<a href="#Echo">Echo</a>,
+    srv *<a href="../../../../../net/http/">http</a>.<a href="../../../../../net/http/#Server">Server</a>,
     reg <a href="../../../../../go-boilerplate/internal/di/lifecycle/">lifecycle</a>.<a href="../../../../../go-boilerplate/internal/di/lifecycle/#Registrar">Registrar</a>,
     log <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>,
     appCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>,

@@ -1,0 +1,556 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>decimal - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package decimal
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/decimal&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package decimal は、金額・比率などの正確な十進量を扱う exact-decimal 値オブジェクトを提供します。
+</p><p>shopspring/decimal をラップして vendor 依存を隠蔽する seam であり、application コードは
+本パッケージ経由でのみ十進量を扱います。通貨・非負・最小単位といった業務意味論は持たず、
+純粋な十進算術（算術・丸め・スケール変換・境界往復）だけを担います。ゼロ値は 0 を表します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+				
+				<dd><a href="#Decimal">type Decimal</a></dd>
+				
+					
+					<dd>    <a href="#FromInt">func FromInt(i int64) Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Parse">func Parse(s string) (Decimal, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Decimal.Add">func (d Decimal) Add(o Decimal) Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Cmp">func (d Decimal) Cmp(o Decimal) int</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.DivRound">func (d Decimal) DivRound(o Decimal, places int32) Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Equal">func (d Decimal) Equal(o Decimal) bool</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.IsNegative">func (d Decimal) IsNegative() bool</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.IsZero">func (d Decimal) IsZero() bool</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.MarshalJSON">func (d Decimal) MarshalJSON() ([]byte, error)</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Mul">func (d Decimal) Mul(o Decimal) Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Neg">func (d Decimal) Neg() Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.RoundHalfAwayFromZero">func (d Decimal) RoundHalfAwayFromZero(places int32) Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Scan">func (d *Decimal) Scan(src any) error</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Sign">func (d Decimal) Sign() int</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.String">func (d Decimal) String() string</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Sub">func (d Decimal) Sub(o Decimal) Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.ToScaledInt64">func (d Decimal) ToScaledInt64(n int32) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Truncate">func (d Decimal) Truncate(places int32) Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.UnmarshalJSON">func (d *Decimal) UnmarshalJSON(b []byte) error</a></dd>
+				
+					
+					<dd>    <a href="#Decimal.Value">func (d Decimal) Value() (driver.Value, error)</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html">decimal.go</a>
+			
+				<a href="../../../src/go-boilerplate/pkg/decimal/error.go.html">error.go</a>
+			
+				<a href="../../../src/go-boilerplate/pkg/decimal/helper.go.html">helper.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrInvalid は、十進量への解析・復元に失敗したことを示すエラーです。
+
+				</p><pre>var <span id="ErrInvalid">ErrInvalid</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;invalid decimal&#34;)</pre>
+			
+				<p>ErrOverflow は、最小単位整数への変換結果が int64 の範囲を超えたことを示すエラーです。
+
+				</p><pre>var <span id="ErrOverflow">ErrOverflow</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;decimal overflow&#34;)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="Decimal">type <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=1486:1526#L19">Decimal</a>
+				<a class="permalink" href="#Decimal">¶</a>
+				
+				
+			</h2>
+			<p>Decimal は、正確な十進量を表す不変の値オブジェクトです。ゼロ値は 0 を表します。
+
+			</p><pre>type Decimal struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+} <span class="comment">//nolint:recvcheck // immutable VO; pointer receiver only for Scan/UnmarshalJSON</span>
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="FromInt">func <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=2663:2692#L53">FromInt</a>
+					<a class="permalink" href="#FromInt">¶</a>
+					
+					
+				</h3>
+				<pre>func FromInt(i <a href="../../../builtin/#int64">int64</a>) <a href="#Decimal">Decimal</a></pre>
+				<p>FromInt は、int64 から Decimal を生成します。
+
+				
+				
+			
+				
+				</p><h3 id="Parse">func <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=1827:1864#L24">Parse</a>
+					<a class="permalink" href="#Parse">¶</a>
+					
+					
+				</h3>
+				<pre>func Parse(s <a href="../../../builtin/#string">string</a>) (<a href="#Decimal">Decimal</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>Parse は、十進文字列を Decimal へ解析します。解析に失敗した場合はエラーを返します。
+</p><pre>桁数が永続化可能な範囲を超える値も ErrInvalid として拒否します。
+</pre>
+
+				
+				
+			
+
+			
+				
+				<h3 id="Decimal.Add">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=2911:2950#L59">Add</a>
+					<a class="permalink" href="#Decimal.Add">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Add(o <a href="#Decimal">Decimal</a>) <a href="#Decimal">Decimal</a></pre>
+				<p>Add は、d と o の和を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Cmp">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=4141:4176#L84">Cmp</a>
+					<a class="permalink" href="#Decimal.Cmp">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Cmp(o <a href="#Decimal">Decimal</a>) <a href="../../../builtin/#int">int</a></pre>
+				<p>Cmp は、d と o を比較し、d&lt;o なら -1、d==o なら 0、d&gt;o なら 1 を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.DivRound">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=3534:3592#L71">DivRound</a>
+					<a class="permalink" href="#Decimal.DivRound">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) DivRound(o <a href="#Decimal">Decimal</a>, places <a href="../../../builtin/#int32">int32</a>) <a href="#Decimal">Decimal</a></pre>
+				<p>DivRound は、d を o で除算し places 桁で 0 から遠い方向へ丸めた商を返します。o が 0 の場合は panic します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Equal">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=4286:4324#L87">Equal</a>
+					<a class="permalink" href="#Decimal.Equal">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Equal(o <a href="#Decimal">Decimal</a>) <a href="../../../builtin/#bool">bool</a></pre>
+				<p>Equal は、d と o が数値として等しいかどうかを判定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.IsNegative">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=4686:4720#L96">IsNegative</a>
+					<a class="permalink" href="#Decimal.IsNegative">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) IsNegative() <a href="../../../builtin/#bool">bool</a></pre>
+				<p>IsNegative は、d が負であるかどうかを判定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.IsZero">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=4559:4589#L93">IsZero</a>
+					<a class="permalink" href="#Decimal.IsZero">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) IsZero() <a href="../../../builtin/#bool">bool</a></pre>
+				<p>IsZero は、d が 0 であるかどうかを判定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.MarshalJSON">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=5460:5506#L111">MarshalJSON</a>
+					<a class="permalink" href="#Decimal.MarshalJSON">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) MarshalJSON() ([]<a href="../../../builtin/#byte">byte</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>MarshalJSON は、Decimal を JSON 文字列（例 &#34;19.99&#34;）へ符号化します。
+JSON number は IEEE754 double として復元され値が壊れるため、常に文字列で表現します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Mul">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=3177:3216#L65">Mul</a>
+					<a class="permalink" href="#Decimal.Mul">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Mul(o <a href="#Decimal">Decimal</a>) <a href="#Decimal">Decimal</a></pre>
+				<p>Mul は、d と o の積を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Neg">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=3319:3349#L68">Neg</a>
+					<a class="permalink" href="#Decimal.Neg">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Neg() <a href="#Decimal">Decimal</a></pre>
+				<p>Neg は、d の符号を反転した値を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.RoundHalfAwayFromZero">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=3756:3816#L76">RoundHalfAwayFromZero</a>
+					<a class="permalink" href="#Decimal.RoundHalfAwayFromZero">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) RoundHalfAwayFromZero(places <a href="../../../builtin/#int32">int32</a>) <a href="#Decimal">Decimal</a></pre>
+				<p>RoundHalfAwayFromZero は、places 桁で 0 から遠い方向へ四捨五入した値を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Scan">func (*Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=6096:6133#L127">Scan</a>
+					<a class="permalink" href="#Decimal.Scan">¶</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#Decimal">Decimal</a>) Scan(src <a href="../../../builtin/#any">any</a>) <a href="../../../builtin/#error">error</a></pre>
+				<p>Scan は、データベースの NUMERIC 値を Decimal へ読み込みます。読み込みに失敗した場合はエラーを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Sign">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=4441:4468#L90">Sign</a>
+					<a class="permalink" href="#Decimal.Sign">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Sign() <a href="../../../builtin/#int">int</a></pre>
+				<p>Sign は、d の符号を返します（負なら -1、0 なら 0、正なら 1）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.String">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=2807:2839#L56">String</a>
+					<a class="permalink" href="#Decimal.String">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) String() <a href="../../../builtin/#string">string</a></pre>
+				<p>String は、Decimal を十進文字列へ変換します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Sub">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=3050:3089#L62">Sub</a>
+					<a class="permalink" href="#Decimal.Sub">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Sub(o <a href="#Decimal">Decimal</a>) <a href="#Decimal">Decimal</a></pre>
+				<p>Sub は、d から o を引いた差を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.ToScaledInt64">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=4998:5052#L100">ToScaledInt64</a>
+					<a class="permalink" href="#Decimal.ToScaledInt64">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) ToScaledInt64(n <a href="../../../builtin/#int32">int32</a>) (<a href="../../../builtin/#int64">int64</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>ToScaledInt64 は、n 桁で 0 から遠い方向へ丸めたうえで 10^n を掛け、最小単位整数へ変換します。
+n は 0 以上を前提とします。結果が int64 の範囲外になる場合は ErrOverflow を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Truncate">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=3944:3991#L81">Truncate</a>
+					<a class="permalink" href="#Decimal.Truncate">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Truncate(places <a href="../../../builtin/#int32">int32</a>) <a href="#Decimal">Decimal</a></pre>
+				<p>Truncate は、places 桁で 0 方向へ切り捨てた値を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.UnmarshalJSON">func (*Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=5746:5793#L117">UnmarshalJSON</a>
+					<a class="permalink" href="#Decimal.UnmarshalJSON">¶</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#Decimal">Decimal</a>) UnmarshalJSON(b []<a href="../../../builtin/#byte">byte</a>) <a href="../../../builtin/#error">error</a></pre>
+				<p>UnmarshalJSON は、JSON 文字列または JSON number から Decimal を復元します。
+number も桁を保持したまま取り込むため、可逆性を損ないません。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Decimal.Value">func (Decimal) <a href="../../../src/go-boilerplate/pkg/decimal/decimal.go.html?s=6378:6424#L137">Value</a>
+					<a class="permalink" href="#Decimal.Value">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Decimal">Decimal</a>) Value() (<a href="../../../database/sql/driver/">driver</a>.<a href="../../../database/sql/driver/#Value">Value</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>Value は、Decimal をデータベースの NUMERIC へ保存する値へ変換します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 0px;">
+						<a href="testkit/">testkit</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package testkit は、decimal のテスト補助を提供します。
+					</td>
+				</tr>
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

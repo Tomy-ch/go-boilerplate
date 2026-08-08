@@ -37,6 +37,13 @@ Presenter is the conversion process from `Usecase DTO → OpenAPI response type`
 
 When the same conversion is reused across handler methods, define it as a private `toXxxResponse(dto …) gen.XxxResponse` helper inside the handler package (e.g. `toItemResponse`). One-off conversions may stay inline in the handler body.
 
+A Presenter is **not shared across handler packages**, even when two of them convert the same Usecase
+DTO with identical code. Response types are generated per handler package — one `gen` package per
+OpenAPI tag — so a response type of the same name in two packages is two unrelated Go types. A shared
+helper would have to be generic over them, or return one package's type to another. **The
+duplication is deliberate**: keep the copies independent and update them together when the Usecase
+DTO changes.
+
 ## Architecture
 
 ### HTTP Request Flow
@@ -235,7 +242,7 @@ Generated code is output under `gen/`.
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 ```
 
 1. Bundle/validate OpenAPI with swagger-cli and generate with oapi-codegen
@@ -276,6 +283,21 @@ The following actions are prohibited:
 If changes are required, always follow:
 
 OpenAPI → `make gen` → regenerate
+
+### Every Route Must Exist in OpenAPI
+
+Every route registered on Echo **must** have a matching operation (method + path) in the OpenAPI spec. There is no allowlist for exceptions — an allowlist would itself become a drift source. The rule itself is canonical in [OpenAPI-first Rules](../../../docs/rules.md#openapi-first-rules); this section covers what it means while writing a handler.
+
+The rule exists because several parts of the HTTP stack assume "registered route = spec operation" without stating it:
+
+- **`Allow` header on 405** — the header has to advertise the methods the path actually accepts, and that list is resolvable only while the registered routes and the spec's operations agree.
+- **Request validation** — a path the spec does not declare is never validated.
+- **`details` opt-in gate** — `DetailPolicy` resolves the operation from the spec and is fail-closed, so an unresolved path silently drops `details`.
+- **404 / 405 decision** — the OpenAPI validation middleware routes with its own router, so a path the spec does not declare answers 404.
+
+Each of these changes behavior at runtime while the tests stay green, so the correspondence is machine-verified by `TestRouteSpecParity` in `internal/architest`. Operations under `/_internal/` are the only ones excluded, and only because the spec itself declares them as code-generation anchors that are never implemented or exposed.
+
+Registering a route by hand is therefore allowed only for an operation the spec already declares (see the `/metrics` carve-out in [Handler Struct Rules](#handler-struct-rules)). Registration forms whose method and path cannot be determined from the source — `Any` / `Match` / `Static` / `Group` / `AddRoute`, `Add` with a runtime method or a `Route` literal, or a non-literal path — cannot be matched against the spec and are rejected by the same test.
 
 ## Observability
 
@@ -423,7 +445,7 @@ type server struct {
 - Do not instantiate dependencies inside
 - Depend on interface
 
-Exception: operational endpoints that are **not** defined in OpenAPI (e.g. the Prometheus `/metrics` handler) have no generated `ServerInterface`, so they do not follow the `server` struct + `gen.NewStrictHandler` pattern. They register their own `echo.HandlerFunc` (e.g. `echo.WrapHandler(promhttp.Handler())`) directly in `BindHandler`. This carve-out is limited to non-OpenAPI ops endpoints.
+Exception: an operational endpoint whose response is produced by a third-party handler (e.g. the Prometheus `/metrics` handler) runs no oapi-codegen for its package, so it has no generated `ServerInterface` and does not follow the `server` struct + `gen.NewStrictHandler` pattern. It registers its own `echo.HandlerFunc` (e.g. `echo.WrapHandler(promhttp.Handler())`) directly in `BindHandler`. The carve-out is the code generation, **not** the OpenAPI definition — the operation is still declared in the spec, as [Every Route Must Exist in OpenAPI](#every-route-must-exist-in-openapi) requires.
 
 ### Why use fx.Invoke
 
@@ -433,7 +455,7 @@ Exception: operational endpoints that are **not** defined in OpenAPI (e.g. the P
 
 ### AI / Developer Rules
 
-- Add new handlers to `fx.Invoke(...)`
+- Add new handlers to `fx.Invoke(...)` — forgetting this answers 404 at runtime, since the generated route registration exists regardless of the wiring; `TestBindHandlerDIParity` in `internal/architest` catches the omission
 - Do not instantiate dependencies in handler
 - Always use constructor (BindHandler)
 - Usecase must be interface-based
@@ -661,14 +683,14 @@ rec := testecho.NewEchoTestClient(t, e).
 |`AuthBearer`|Set Bearer token|
 |`PathParams`|Set path parameters|
 |`QueryParams`|Set query parameters|
-|`Build`|Return Request / ResponseRecorder / echo.Context|
+|`Build`|Return Request / ResponseRecorder / *echo.Context|
 |`Serve`|Send request to Echo and return ResponseRecorder|
 
 ### testspan
 
 |Function|Description|
 |---|---|
-|`StartTestSpanForEcho`|Embed test span into echo.Context and return end function|
+|`StartTestSpanForEcho`|Embed test span into *echo.Context and return end function|
 
 ### testuuid
 
@@ -682,7 +704,7 @@ rec := testecho.NewEchoTestClient(t, e).
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 package items
 
@@ -692,7 +714,7 @@ import (
     "go-boilerplate/internal/observability"
     // import required packages
 
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 type server struct {

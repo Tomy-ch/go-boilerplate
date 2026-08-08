@@ -65,9 +65,9 @@
 <span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/config&#34;
 <span id="L9" class="ln">     9  </span>)
 <span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span><span class="comment">// ResolveMetricsStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。</span>
+<span id="L11" class="ln">    11  </span><span class="comment">// StartMetricsAndResolveStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。</span>
 <span id="L12" class="ln">    12  </span><span class="comment">// 本番モードでは起動せず nil を返します（呼び出し側は nil を「停止不要」として扱います）。</span>
-<span id="L13" class="ln">    13  </span>func ResolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) {
+<span id="L13" class="ln">    13  </span>func StartMetricsAndResolveStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) {
 <span id="L14" class="ln">    14  </span>	if appCfg.IsProductionMode() {
 <span id="L15" class="ln">    15  </span>		return nil
 <span id="L16" class="ln">    16  </span>	}
@@ -87,26 +87,31 @@
 <span id="L30" class="ln">    30  </span>	stopMetrics func(context.Context),
 <span id="L31" class="ln">    31  </span>) error {
 <span id="L32" class="ln">    32  </span>	if err := startApp(ctx); err != nil {
-<span id="L33" class="ln">    33  </span>		return err
-<span id="L34" class="ln">    34  </span>	}
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>	&lt;-ctx.Done()
-<span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>	<span class="comment">// 停止処理は無期限に待たず、シャットダウン開始時点から設定タイムアウト内で完了させます。</span>
-<span id="L39" class="ln">    39  </span>	<span class="comment">// タイムアウトを起動直後ではなくこの時点で計測することで、稼働時間に消費されないようにします。</span>
-<span id="L40" class="ln">    40  </span>	stopCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-<span id="L41" class="ln">    41  </span>	defer cancel()
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>	<span class="comment">// メトリクスサーバーとアプリ本体を、同じシャットダウン用 context で順に停止します。</span>
-<span id="L44" class="ln">    44  </span>	<span class="comment">// 停止用 context は ctx を継承しない（ctx は既にキャンセル済みのため、継承すると即時に</span>
-<span id="L45" class="ln">    45  </span>	<span class="comment">// 期限切れになり停止猶予が無くなる）。これは意図した設計なので contextcheck を抑制する。</span>
-<span id="L46" class="ln">    46  </span>	if stopMetrics != nil {
-<span id="L47" class="ln">    47  </span>		stopMetrics(stopCtx) <span class="comment">//nolint:contextcheck // 停止用 context は意図的に ctx を継承しない</span>
-<span id="L48" class="ln">    48  </span>	}
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	return stopApp(stopCtx) <span class="comment">//nolint:contextcheck // 停止用 context は意図的に ctx を継承しない</span>
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
+<span id="L33" class="ln">    33  </span>		<span class="comment">// 起動に失敗しても、既に起動済みの補助メトリクスサーバーは停止する（確保と解放の対称性）。</span>
+<span id="L34" class="ln">    34  </span>		if stopMetrics != nil {
+<span id="L35" class="ln">    35  </span>			stopCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+<span id="L36" class="ln">    36  </span>			defer cancel()
+<span id="L37" class="ln">    37  </span>			stopMetrics(stopCtx) <span class="comment">//nolint:contextcheck // 停止用 context は意図的に ctx を継承しない</span>
+<span id="L38" class="ln">    38  </span>		}
+<span id="L39" class="ln">    39  </span>		return err
+<span id="L40" class="ln">    40  </span>	}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>	&lt;-ctx.Done()
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>	<span class="comment">// 停止処理は無期限に待たず、シャットダウン開始時点から設定タイムアウト内で完了させます。</span>
+<span id="L45" class="ln">    45  </span>	stopCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+<span id="L46" class="ln">    46  </span>	defer cancel()
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>	<span class="comment">// メトリクスサーバーとアプリ本体を、同じシャットダウン用 context で順に停止します。</span>
+<span id="L49" class="ln">    49  </span>	<span class="comment">// 停止用 context は ctx を継承しない（ctx は既にキャンセル済みのため、継承すると即時に</span>
+<span id="L50" class="ln">    50  </span>	<span class="comment">// 期限切れになり停止猶予が無くなる）。これは意図した設計なので contextcheck を抑制する。</span>
+<span id="L51" class="ln">    51  </span>	if stopMetrics != nil {
+<span id="L52" class="ln">    52  </span>		stopMetrics(stopCtx) <span class="comment">//nolint:contextcheck // 停止用 context は意図的に ctx を継承しない</span>
+<span id="L53" class="ln">    53  </span>	}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>	return stopApp(stopCtx) <span class="comment">//nolint:contextcheck // 停止用 context は意図的に ctx を継承しない</span>
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/server/server.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

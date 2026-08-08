@@ -158,6 +158,14 @@
 				
 			
 				
+				<dd><a href="#GetExchangeRates405JSONResponse">type GetExchangeRates405JSONResponse</a></dd>
+				
+				
+					
+					<dd>    <a href="#GetExchangeRates405JSONResponse.VisitGetExchangeRatesResponse">func (response GetExchangeRates405JSONResponse) VisitGetExchangeRatesResponse(w http.ResponseWriter) error</a></dd>
+				
+			
+				
 				<dd><a href="#GetExchangeRates500JSONResponse">type GetExchangeRates500JSONResponse</a></dd>
 				
 				
@@ -207,6 +215,16 @@
 				
 			
 				
+				<dd><a href="#MethodNotAllowed405">type MethodNotAllowed405</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MethodNotAllowed405JSONResponse">type MethodNotAllowed405JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#ReferenceAmount">type ReferenceAmount</a></dd>
 				
 				
@@ -229,7 +247,7 @@
 				
 				
 					
-					<dd>    <a href="#ServerInterfaceWrapper.GetExchangeRates">func (w *ServerInterfaceWrapper) GetExchangeRates(ctx echo.Context) error</a></dd>
+					<dd>    <a href="#ServerInterfaceWrapper.GetExchangeRates">func (w *ServerInterfaceWrapper) GetExchangeRates(ctx *echo.Context) error</a></dd>
 				
 			
 				
@@ -285,7 +303,7 @@
 		
 			
 			
-			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=4187:4247#L87">RegisterHandlers</a>
+			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=4218:4278#L87">RegisterHandlers</a>
 				<a class="permalink" href="#RegisterHandlers">¶</a>
 				
 				
@@ -299,7 +317,7 @@
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=4449:4536#L93">RegisterHandlersWithBaseURL</a>
+			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=4480:4567#L93">RegisterHandlersWithBaseURL</a>
 				<a class="permalink" href="#RegisterHandlersWithBaseURL">¶</a>
 				
 				
@@ -314,7 +332,7 @@ paths so the API can be served under a prefix.
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=4747:4851#L99">RegisterHandlersWithOptions</a>
+			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=4778:4882#L99">RegisterHandlersWithOptions</a>
 				<a class="permalink" href="#RegisterHandlersWithOptions">¶</a>
 				
 				
@@ -330,7 +348,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=2752:2786#L61">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=2971:3005#L61">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -353,7 +371,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5043:5087#L109">BadRequest400JSONResponse</a>
+			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5074:5118#L109">BadRequest400JSONResponse</a>
 				<a class="permalink" href="#BadRequest400JSONResponse">¶</a>
 				
 				
@@ -375,7 +393,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=2779:3509#L61">EchoRouter</a>
+			<h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=2783:3540#L61">EchoRouter</a>
 				<a class="permalink" href="#EchoRouter">¶</a>
 				
 				
@@ -385,15 +403,15 @@ are present on both echo.Echo and echo.Group, since we want to allow using
 either of them for path registration
 
 			</p><pre>type EchoRouter interface {
-    CONNECT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    DELETE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    GET(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    HEAD(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    OPTIONS(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    PATCH(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    POST(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    PUT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    TRACE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
+    CONNECT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    DELETE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    GET(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    HEAD(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    OPTIONS(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    PATCH(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    POST(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    PUT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    TRACE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
 }</pre>
 
 			
@@ -443,7 +461,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ExchangeRateResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1068:1761#L24">ExchangeRateResponse</a>
+			<h2 id="ExchangeRateResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=1068:1909#L24">ExchangeRateResponse</a>
 				<a class="permalink" href="#ExchangeRateResponse">¶</a>
 				
 				
@@ -451,14 +469,14 @@ either of them for path registration
 			<p>ExchangeRateResponse 為替換算結果のレスポンスです。
 
 			</p><pre>type ExchangeRateResponse struct {
-<span id="ExchangeRateResponse.Amount"></span>    <span class="comment">// Amount 換算元の金額</span>
-    Amount <a href="../../../../../../../builtin/#float64">float64</a> `json:&#34;amount&#34;`
-
 <span id="ExchangeRateResponse.Base"></span>    <span class="comment">// Base 換算元の通貨コード</span>
     Base <a href="../../../../../../../builtin/#string">string</a> `json:&#34;base&#34;`
 
-<span id="ExchangeRateResponse.Converted"></span>    <span class="comment">// Converted 換算後の金額</span>
-    Converted <a href="../../../../../../../builtin/#float64">float64</a> `json:&#34;converted&#34;`
+<span id="ExchangeRateResponse.Converted"></span>    <span class="comment">// Converted 換算後の金額。正確な十進量を保つため decimal 文字列で表します。</span>
+    Converted <a href="../../../../../../../builtin/#string">string</a> `json:&#34;converted&#34;`
+
+<span id="ExchangeRateResponse.Original"></span>    <span class="comment">// Original 換算元の金額。正確な十進量を保つため decimal 文字列で表します。</span>
+    Original <a href="../../../../../../../builtin/#string">string</a> `json:&#34;original&#34;`
 
 <span id="ExchangeRateResponse.Quote"></span>    <span class="comment">// Quote 換算先の通貨コード</span>
     Quote <a href="../../../../../../../builtin/#string">string</a> `json:&#34;quote&#34;`
@@ -484,7 +502,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRates200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5387:5444#L123">GetExchangeRates200JSONResponse</a>
+			<h2 id="GetExchangeRates200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5470:5527#L125">GetExchangeRates200JSONResponse</a>
 				<a class="permalink" href="#GetExchangeRates200JSONResponse">¶</a>
 				
 				
@@ -504,7 +522,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetExchangeRates200JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5446:5552#L125">VisitGetExchangeRatesResponse</a>
+				<h3 id="GetExchangeRates200JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5529:5635#L127">VisitGetExchangeRatesResponse</a>
 					<a class="permalink" href="#GetExchangeRates200JSONResponse.VisitGetExchangeRatesResponse">¶</a>
 					
 					
@@ -518,7 +536,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRates400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5771:5843#L137">GetExchangeRates400JSONResponse</a>
+			<h2 id="GetExchangeRates400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5854:5926#L139">GetExchangeRates400JSONResponse</a>
 				<a class="permalink" href="#GetExchangeRates400JSONResponse">¶</a>
 				
 				
@@ -539,7 +557,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetExchangeRates400JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates400JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5845:5951#L139">VisitGetExchangeRatesResponse</a>
+				<h3 id="GetExchangeRates400JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates400JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5928:6034#L141">VisitGetExchangeRatesResponse</a>
 					<a class="permalink" href="#GetExchangeRates400JSONResponse.VisitGetExchangeRatesResponse">¶</a>
 					
 					
@@ -553,7 +571,44 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRates500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6170:6253#L151">GetExchangeRates500JSONResponse</a>
+			<h2 id="GetExchangeRates405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6253:6333#L153">GetExchangeRates405JSONResponse</a>
+				<a class="permalink" href="#GetExchangeRates405JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetExchangeRates405JSONResponse struct {
+    <a href="#MethodNotAllowed405JSONResponse">MethodNotAllowed405JSONResponse</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GetExchangeRates405JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates405JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6335:6441#L157">VisitGetExchangeRatesResponse</a>
+					<a class="permalink" href="#GetExchangeRates405JSONResponse.VisitGetExchangeRatesResponse">¶</a>
+					
+					
+				</h3>
+				<pre>func (response <a href="#GetExchangeRates405JSONResponse">GetExchangeRates405JSONResponse</a>) VisitGetExchangeRatesResponse(w <a href="../../../../../../../net/http/">http</a>.<a href="../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GetExchangeRates500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6660:6743#L169">GetExchangeRates500JSONResponse</a>
 				<a class="permalink" href="#GetExchangeRates500JSONResponse">¶</a>
 				
 				
@@ -576,7 +631,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetExchangeRates500JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6255:6361#L155">VisitGetExchangeRatesResponse</a>
+				<h3 id="GetExchangeRates500JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6745:6851#L173">VisitGetExchangeRatesResponse</a>
 					<a class="permalink" href="#GetExchangeRates500JSONResponse.VisitGetExchangeRatesResponse">¶</a>
 					
 					
@@ -590,7 +645,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRates503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6580:6662#L167">GetExchangeRates503JSONResponse</a>
+			<h2 id="GetExchangeRates503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7070:7152#L185">GetExchangeRates503JSONResponse</a>
 				<a class="permalink" href="#GetExchangeRates503JSONResponse">¶</a>
 				
 				
@@ -613,7 +668,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetExchangeRates503JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=6664:6770#L171">VisitGetExchangeRatesResponse</a>
+				<h3 id="GetExchangeRates503JSONResponse.VisitGetExchangeRatesResponse">func (GetExchangeRates503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7154:7260#L189">VisitGetExchangeRatesResponse</a>
 					<a class="permalink" href="#GetExchangeRates503JSONResponse.VisitGetExchangeRatesResponse">¶</a>
 					
 					
@@ -627,7 +682,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRatesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=3550:4364#L76">GetExchangeRatesParams</a>
+			<h2 id="GetExchangeRatesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=4005:4831#L79">GetExchangeRatesParams</a>
 				<a class="permalink" href="#GetExchangeRatesParams">¶</a>
 				
 				
@@ -641,9 +696,9 @@ either of them for path registration
 <span id="GetExchangeRatesParams.Quote"></span>    <span class="comment">// Quote 換算先の通貨コード</span>
     Quote <a href="../../../../../../../builtin/#string">string</a> `form:&#34;quote&#34; json:&#34;quote&#34;`
 
-<span id="GetExchangeRatesParams.Amount"></span>    <span class="comment">// Amount 換算する金額（base 通貨建て）。これは換算の入力倍率であり、保存されるマネー値ではないため</span>
-    <span class="comment">// float（double）で受け付けます。保存値および reference_amount の内部計算は整数で行います。</span>
-    Amount <a href="../../../../../../../builtin/#float64">float64</a> `form:&#34;amount&#34; json:&#34;amount&#34;`
+<span id="GetExchangeRatesParams.Original"></span>    <span class="comment">// Original 換算する金額（base 通貨建て）。正確な十進量を保つため decimal 文字列で受け付けます。</span>
+    <span class="comment">// JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。</span>
+    Original <a href="../../../../../../../builtin/#string">string</a> `form:&#34;original&#34; json:&#34;original&#34;`
 
 <span id="GetExchangeRatesParams.DisplayCurrency"></span>    <span class="comment">// DisplayCurrency 指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。</span>
     <span class="comment">// 現状は JPY のみサポートします。</span>
@@ -665,7 +720,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRatesParamsDisplayCurrency">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=4448:4497#L93">GetExchangeRatesParamsDisplayCurrency</a>
+			<h2 id="GetExchangeRatesParamsDisplayCurrency">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=4915:4964#L96">GetExchangeRatesParamsDisplayCurrency</a>
 				<a class="permalink" href="#GetExchangeRatesParamsDisplayCurrency">¶</a>
 				
 				
@@ -707,7 +762,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="GetExchangeRatesRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5198:5274#L115">GetExchangeRatesRequestObject</a>
+			</p><h2 id="GetExchangeRatesRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5281:5357#L117">GetExchangeRatesRequestObject</a>
 				<a class="permalink" href="#GetExchangeRatesRequestObject">¶</a>
 				
 				
@@ -732,7 +787,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetExchangeRatesResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5276:5385#L119">GetExchangeRatesResponseObject</a>
+			<h2 id="GetExchangeRatesResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5359:5468#L121">GetExchangeRatesResponseObject</a>
 				<a class="permalink" href="#GetExchangeRatesResponseObject">¶</a>
 				
 				
@@ -756,7 +811,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=2985:3028#L64">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=3204:3247#L64">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -779,7 +834,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5089:5142#L111">InternalServerError500JSONResponse</a>
+			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5120:5173#L111">InternalServerError500JSONResponse</a>
 				<a class="permalink" href="#InternalServerError500JSONResponse">¶</a>
 				
 				
@@ -801,7 +856,52 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ReferenceAmount">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=2090:2562#L46">ReferenceAmount</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=3443:3483#L67">MethodNotAllowed405</a>
+				<a class="permalink" href="#MethodNotAllowed405">¶</a>
+				
+				
+			</h2>
+			<p>MethodNotAllowed405 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+
+			</p><pre>type MethodNotAllowed405 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MethodNotAllowed405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5175:5225#L113">MethodNotAllowed405JSONResponse</a>
+				<a class="permalink" href="#MethodNotAllowed405JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type MethodNotAllowed405JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ReferenceAmount">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=2238:2781#L46">ReferenceAmount</a>
 				<a class="permalink" href="#ReferenceAmount">¶</a>
 				
 				
@@ -817,8 +917,8 @@ either of them for path registration
 <span id="ReferenceAmount.Currency"></span>    <span class="comment">// Currency 参考換算額の通貨コード</span>
     Currency <a href="../../../../../../../builtin/#string">string</a> `json:&#34;currency&#34;`
 
-<span id="ReferenceAmount.Rate"></span>    <span class="comment">// Rate 換算に用いたレート（base 1 単位あたりの表示通貨換算値）</span>
-    Rate <a href="../../../../../../../builtin/#float64">float64</a> `json:&#34;rate&#34;`
+<span id="ReferenceAmount.Rate"></span>    <span class="comment">// Rate 換算に用いたレート（base 1 単位あたりの表示通貨換算値）。正確な十進量を保つため decimal 文字列で表します。</span>
+    Rate <a href="../../../../../../../builtin/#string">string</a> `json:&#34;rate&#34;`
 
 <span id="ReferenceAmount.RateDate"></span>    <span class="comment">// RateDate レートの基準日（外部レートサービスの公表日）</span>
     RateDate <a href="../../../../../../../builtin/#string">string</a> `json:&#34;rateDate&#34;`
@@ -839,7 +939,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=3578:4123#L74">RegisterHandlersOptions</a>
+			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=3609:4154#L74">RegisterHandlersOptions</a>
 				<a class="permalink" href="#RegisterHandlersOptions">¶</a>
 				
 				
@@ -873,7 +973,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=365:551#L8">ServerInterface</a>
+			<h2 id="ServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=365:552#L8">ServerInterface</a>
 				<a class="permalink" href="#ServerInterface">¶</a>
 				
 				
@@ -883,7 +983,7 @@ either of them for path registration
 			</p><pre>type ServerInterface interface {
     <span class="comment">// 為替レートで金額を換算します。</span>
     <span class="comment">// (GET /v1/exchange-rates)</span>
-    GetExchangeRates(ctx echo.<a href="#Context">Context</a>, params <a href="#GetExchangeRatesParams">GetExchangeRatesParams</a>) <a href="../../../../../../../builtin/#error">error</a>
+    GetExchangeRates(ctx *echo.<a href="#Context">Context</a>, params <a href="#GetExchangeRatesParams">GetExchangeRatesParams</a>) <a href="../../../../../../../builtin/#error">error</a>
 }</pre>
 
 			
@@ -896,7 +996,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7448:7548#L193">NewStrictHandler</a>
+				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7939:8039#L211">NewStrictHandler</a>
 					<a class="permalink" href="#NewStrictHandler">¶</a>
 					
 					
@@ -911,7 +1011,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=617:680#L15">ServerInterfaceWrapper</a>
+			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=618:681#L15">ServerInterfaceWrapper</a>
 				<a class="permalink" href="#ServerInterfaceWrapper">¶</a>
 				
 				
@@ -935,12 +1035,12 @@ either of them for path registration
 
 			
 				
-				<h3 id="ServerInterfaceWrapper.GetExchangeRates">func (*ServerInterfaceWrapper) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=735:808#L20">GetExchangeRates</a>
+				<h3 id="ServerInterfaceWrapper.GetExchangeRates">func (*ServerInterfaceWrapper) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=736:810#L20">GetExchangeRates</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.GetExchangeRates">¶</a>
 					
 					
 				</h3>
-				<pre>func (w *<a href="#ServerInterfaceWrapper">ServerInterfaceWrapper</a>) GetExchangeRates(ctx echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
+				<pre>func (w *<a href="#ServerInterfaceWrapper">ServerInterfaceWrapper</a>) GetExchangeRates(ctx *echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
 				<p>GetExchangeRates converts echo context to params.
 
 				
@@ -950,7 +1050,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=3226:3268#L67">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/type.gen.go.html?s=3681:3723#L70">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -973,7 +1073,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5144:5196#L113">ServiceUnavailable503JSONResponse</a>
+			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=5227:5279#L115">ServiceUnavailable503JSONResponse</a>
 				<a class="permalink" href="#ServiceUnavailable503JSONResponse">¶</a>
 				
 				
@@ -995,13 +1095,13 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7285:7356#L190">StrictHandlerFunc</a>
+			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7775:7847#L208">StrictHandlerFunc</a>
 				<a class="permalink" href="#StrictHandlerFunc">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type StrictHandlerFunc func(ctx echo.<a href="#Context">Context</a>, request <a href="../../../../../../../builtin/#any">any</a>) (<a href="../../../../../../../builtin/#any">any</a>, <a href="../../../../../../../builtin/#error">error</a>)</pre>
+			<pre>type StrictHandlerFunc func(ctx *echo.<a href="#Context">Context</a>, request <a href="../../../../../../../builtin/#any">any</a>) (<a href="../../../../../../../builtin/#any">any</a>, <a href="../../../../../../../builtin/#error">error</a>)</pre>
 
 			
 
@@ -1017,7 +1117,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7357:7446#L191">StrictMiddlewareFunc</a>
+			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7848:7937#L209">StrictMiddlewareFunc</a>
 				<a class="permalink" href="#StrictMiddlewareFunc">¶</a>
 				
 				
@@ -1039,7 +1139,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7046:7283#L184">StrictServerInterface</a>
+			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/gen/server.gen.go.html?s=7536:7773#L202">StrictServerInterface</a>
 				<a class="permalink" href="#StrictServerInterface">¶</a>
 				
 				

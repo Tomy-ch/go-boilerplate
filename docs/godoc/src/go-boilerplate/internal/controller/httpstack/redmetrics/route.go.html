@@ -57,14 +57,14 @@
 
 <pre><span id="L1" class="ln">     1  </span>package redmetrics
 <span id="L2" class="ln">     2  </span>
-<span id="L3" class="ln">     3  </span>import &#34;github.com/labstack/echo/v4&#34;
+<span id="L3" class="ln">     3  </span>import &#34;github.com/labstack/echo/v5&#34;
 <span id="L4" class="ln">     4  </span>
 <span id="L5" class="ln">     5  </span><span class="comment">// routeUnknown は、route pattern が取得できない場合の route label の値です。</span>
 <span id="L6" class="ln">     6  </span>const routeUnknown = &#34;unknown&#34;
 <span id="L7" class="ln">     7  </span>
 <span id="L8" class="ln">     8  </span><span class="comment">// routeOf は、raw path / query を含まない Echo の route pattern（例: /users/:id）を返します。</span>
 <span id="L9" class="ln">     9  </span><span class="comment">// 取得できない場合は unknown に丸めます。</span>
-<span id="L10" class="ln">    10  </span>func routeOf(c echo.Context) string {
+<span id="L10" class="ln">    10  </span>func routeOf(c *echo.Context) string {
 <span id="L11" class="ln">    11  </span>	route := c.Path()
 <span id="L12" class="ln">    12  </span>	if route == &#34;&#34; {
 <span id="L13" class="ln">    13  </span>		return routeUnknown

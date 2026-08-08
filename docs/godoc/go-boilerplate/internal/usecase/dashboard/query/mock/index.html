@@ -1,0 +1,305 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_query
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/dashboard/query/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_query is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockDashboardQueryService">type MockDashboardQueryService</a></dd>
+				
+					
+					<dd>    <a href="#NewMockDashboardQueryService">func NewMockDashboardQueryService(ctrl *gomock.Controller) *MockDashboardQueryService</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDashboardQueryService.CountPurchasesByStatus">func (m *MockDashboardQueryService) CountPurchasesByStatus(ctx context.Context, period query.Period) ([]query.PurchaseStatusCountResult, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockDashboardQueryService.EXPECT">func (m *MockDashboardQueryService) EXPECT() *MockDashboardQueryServiceMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockDashboardQueryService.SummarizeSales">func (m *MockDashboardQueryService) SummarizeSales(ctx context.Context, period query.Period) (query.SalesResult, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockDashboardQueryServiceMockRecorder">type MockDashboardQueryServiceMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDashboardQueryServiceMockRecorder.CountPurchasesByStatus">func (mr *MockDashboardQueryServiceMockRecorder) CountPurchasesByStatus(ctx, period any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDashboardQueryServiceMockRecorder.SummarizeSales">func (mr *MockDashboardQueryServiceMockRecorder) SummarizeSales(ctx, period any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html">mock_dashboard_query_service.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockDashboardQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=534:672#L11">MockDashboardQueryService</a>
+				<a class="permalink" href="#MockDashboardQueryService">¶</a>
+				
+				
+			</h2>
+			<p>MockDashboardQueryService is a mock of DashboardQueryService interface.
+
+			</p><pre>type MockDashboardQueryService struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockDashboardQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=916:1001#L23">NewMockDashboardQueryService</a>
+					<a class="permalink" href="#NewMockDashboardQueryService">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockDashboardQueryService(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockDashboardQueryService">MockDashboardQueryService</a></pre>
+				<p>NewMockDashboardQueryService creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockDashboardQueryService.CountPurchasesByStatus">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1360:1503#L35">CountPurchasesByStatus</a>
+					<a class="permalink" href="#MockDashboardQueryService.CountPurchasesByStatus">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDashboardQueryService">MockDashboardQueryService</a>) CountPurchasesByStatus(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, period <a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#Period">Period</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#PurchaseStatusCountResult">PurchaseStatusCountResult</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>CountPurchasesByStatus mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDashboardQueryService.EXPECT">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1207:1290#L30">EXPECT</a>
+					<a class="permalink" href="#MockDashboardQueryService.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDashboardQueryService">MockDashboardQueryService</a>) EXPECT() *<a href="#MockDashboardQueryServiceMockRecorder">MockDashboardQueryServiceMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDashboardQueryService.SummarizeSales">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=2108:2227#L50">SummarizeSales</a>
+					<a class="permalink" href="#MockDashboardQueryService.SummarizeSales">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDashboardQueryService">MockDashboardQueryService</a>) SummarizeSales(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, period <a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#Period">Period</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#SalesResult">SalesResult</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>SummarizeSales mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockDashboardQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=767:853#L18">MockDashboardQueryServiceMockRecorder</a>
+				<a class="permalink" href="#MockDashboardQueryServiceMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockDashboardQueryServiceMockRecorder is the mock recorder for MockDashboardQueryService.
+
+			</p><pre>type MockDashboardQueryServiceMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockDashboardQueryServiceMockRecorder.CountPurchasesByStatus">func (*MockDashboardQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1771:1872#L44">CountPurchasesByStatus</a>
+					<a class="permalink" href="#MockDashboardQueryServiceMockRecorder.CountPurchasesByStatus">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDashboardQueryServiceMockRecorder">MockDashboardQueryServiceMockRecorder</a>) CountPurchasesByStatus(ctx, period <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CountPurchasesByStatus indicates an expected call of CountPurchasesByStatus.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDashboardQueryServiceMockRecorder.SummarizeSales">func (*MockDashboardQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=2455:2548#L59">SummarizeSales</a>
+					<a class="permalink" href="#MockDashboardQueryServiceMockRecorder.SummarizeSales">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDashboardQueryServiceMockRecorder">MockDashboardQueryServiceMockRecorder</a>) SummarizeSales(ctx, period <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SummarizeSales indicates an expected call of SummarizeSales.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

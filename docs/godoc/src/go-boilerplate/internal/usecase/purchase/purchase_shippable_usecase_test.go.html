@@ -1,0 +1,363 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>purchase - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../src/go-boilerplate/internal/usecase/purchase">purchase</a>/<span class="text-muted">purchase_shippable_usecase_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/usecase/purchase">go-boilerplate/internal/usecase/purchase</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package purchase
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/domain/lexicon/money&#34;
+<span id="L10" class="ln">    10  </span>	domainpurchase &#34;go-boilerplate/internal/domain/purchase&#34;
+<span id="L11" class="ln">    11  </span>	mock_purchase &#34;go-boilerplate/internal/domain/purchase/mock&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/authz&#34;
+<span id="L15" class="ln">    15  </span>	mock_authz &#34;go-boilerplate/internal/usecase/boundary/authz/mock&#34;
+<span id="L16" class="ln">    16  </span>	decimaltestkit &#34;go-boilerplate/pkg/decimal/testkit&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L18" class="ln">    18  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L21" class="ln">    21  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L22" class="ln">    22  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L23" class="ln">    23  </span>)
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// shippableBaseTime は、テスト用の購入の注文日時の基準です。</span>
+<span id="L26" class="ln">    26  </span>var shippableBaseTime = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// shippableTestDeps は、ListShippablePurchases のテストで注入する依存モック一式です。</span>
+<span id="L29" class="ln">    29  </span>type shippableTestDeps struct {
+<span id="L30" class="ln">    30  </span>	repo       *mock_purchase.MockRepository
+<span id="L31" class="ln">    31  </span>	authorizer *mock_authz.MockAuthorizer
+<span id="L32" class="ln">    32  </span>}
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span><span class="comment">// newShippableTestUsecase は、モック依存のみで構成した usecase とそのモック一式を返します。</span>
+<span id="L35" class="ln">    35  </span>func newShippableTestUsecase(t *testing.T) (*usecase, *shippableTestDeps) {
+<span id="L36" class="ln">    36  </span>	t.Helper()
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>	ctrl := gomock.NewController(t)
+<span id="L39" class="ln">    39  </span>	deps := &amp;shippableTestDeps{
+<span id="L40" class="ln">    40  </span>		repo:       mock_purchase.NewMockRepository(ctrl),
+<span id="L41" class="ln">    41  </span>		authorizer: mock_authz.NewMockAuthorizer(ctrl),
+<span id="L42" class="ln">    42  </span>	}
+<span id="L43" class="ln">    43  </span>	u := &amp;usecase{
+<span id="L44" class="ln">    44  </span>		tracer:     observability.NewMockUsecaseLayerTracer(t),
+<span id="L45" class="ln">    45  </span>		repo:       deps.repo,
+<span id="L46" class="ln">    46  </span>		authorizer: deps.authorizer,
+<span id="L47" class="ln">    47  </span>	}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	return u, deps
+<span id="L50" class="ln">    50  </span>}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span><span class="comment">// newShippablePurchase は、発送可能（支払い済み）な購入を再構築します。</span>
+<span id="L53" class="ln">    53  </span>func newShippablePurchase(
+<span id="L54" class="ln">    54  </span>	t *testing.T, salt string, userID uuid.UUID, orderedAt time.Time,
+<span id="L55" class="ln">    55  </span>) *domainpurchase.Purchase {
+<span id="L56" class="ln">    56  </span>	t.Helper()
+<span id="L57" class="ln">    57  </span>	return newPurchaseWithStatus(t, salt, userID, orderedAt, domainpurchase.StatusPaid)
+<span id="L58" class="ln">    58  </span>}
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span><span class="comment">// newPurchaseWithStatus は、指定ステータスの購入を再構築します。発送可能でない購入を作るのに用います。</span>
+<span id="L61" class="ln">    61  </span>func newPurchaseWithStatus(
+<span id="L62" class="ln">    62  </span>	t *testing.T, salt string, userID uuid.UUID, orderedAt time.Time, status domainpurchase.Status,
+<span id="L63" class="ln">    63  </span>) *domainpurchase.Purchase {
+<span id="L64" class="ln">    64  </span>	t.Helper()
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>	unitPrice, err := money.NewPrice(decimaltestkit.MustParse(t, &#34;500&#34;))
+<span id="L67" class="ln">    67  </span>	require.NoError(t, err)
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>	paidAt := orderedAt.Add(time.Minute)
+<span id="L70" class="ln">    70  </span>	attrs := domainpurchase.Attributes{
+<span id="L71" class="ln">    71  </span>		Code:       &#34;code-&#34; + salt,
+<span id="L72" class="ln">    72  </span>		UserID:     userID,
+<span id="L73" class="ln">    73  </span>		StatusID:   uuidtestkit.NewTestFromSalt(t, &#34;shippable_status&#34;),
+<span id="L74" class="ln">    74  </span>		StatusCode: status.Code(),
+<span id="L75" class="ln">    75  </span>		Details: []domainpurchase.PurchaseDetail{
+<span id="L76" class="ln">    76  </span>			domainpurchase.NewPurchaseDetail(
+<span id="L77" class="ln">    77  </span>				uuidtestkit.NewTestFromSalt(t, salt+&#34;_detail&#34;),
+<span id="L78" class="ln">    78  </span>				domainpurchase.PurchaseDetailAttributes{
+<span id="L79" class="ln">    79  </span>					ProductID: uuidtestkit.NewTestFromSalt(t, &#34;shippable_product&#34;),
+<span id="L80" class="ln">    80  </span>					Quantity:  1,
+<span id="L81" class="ln">    81  </span>					UnitPrice: unitPrice,
+<span id="L82" class="ln">    82  </span>				},
+<span id="L83" class="ln">    83  </span>			),
+<span id="L84" class="ln">    84  </span>		},
+<span id="L85" class="ln">    85  </span>		SubtotalAmount: 50000,
+<span id="L86" class="ln">    86  </span>		TaxAmount:      5000,
+<span id="L87" class="ln">    87  </span>		ShippingFee:    500,
+<span id="L88" class="ln">    88  </span>		TotalAmount:    55500,
+<span id="L89" class="ln">    89  </span>		OrderedAt:      orderedAt,
+<span id="L90" class="ln">    90  </span>		PaidAt:         &amp;paidAt,
+<span id="L91" class="ln">    91  </span>	}
+<span id="L92" class="ln">    92  </span>	if status == domainpurchase.StatusShipped {
+<span id="L93" class="ln">    93  </span>		shippedAt := orderedAt.Add(time.Hour)
+<span id="L94" class="ln">    94  </span>		attrs.ShippedAt = &amp;shippedAt
+<span id="L95" class="ln">    95  </span>	}
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>	p, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt), attrs)
+<span id="L98" class="ln">    98  </span>	require.NoError(t, err)
+<span id="L99" class="ln">    99  </span>	return p
+<span id="L100" class="ln">   100  </span>}
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>func Test_toDispatchGroupView(t *testing.T) {
+<span id="L103" class="ln">   103  </span>	t.Parallel()
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L106" class="ln">   106  </span>		t.Parallel()
+<span id="L107" class="ln">   107  </span>
+<span id="L108" class="ln">   108  </span>		t.Run(&#34;組の購入者と購入一覧を順序どおりDTOへ写す&#34;, func(t *testing.T) {
+<span id="L109" class="ln">   109  </span>			t.Parallel()
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>			alice := uuidtestkit.NewTestFromSalt(t, &#34;view_alice&#34;)
+<span id="L112" class="ln">   112  </span>			first := newShippablePurchase(t, &#34;view_p1&#34;, alice, shippableBaseTime)
+<span id="L113" class="ln">   113  </span>			second := newShippablePurchase(t, &#34;view_p2&#34;, alice, shippableBaseTime.Add(time.Hour))
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span>			actual := toDispatchGroupView(domainpurchase.Purchases{first, second})
+<span id="L116" class="ln">   116  </span>
+<span id="L117" class="ln">   117  </span>			assert.Equal(t, alice, actual.UserID)
+<span id="L118" class="ln">   118  </span>			require.Len(t, actual.Purchases, 2)
+<span id="L119" class="ln">   119  </span>			assert.Equal(t, first.ID(), actual.Purchases[0].ID)
+<span id="L120" class="ln">   120  </span>			assert.Equal(t, first.Code(), actual.Purchases[0].Code)
+<span id="L121" class="ln">   121  </span>			assert.Equal(t, first.TotalAmount(), actual.Purchases[0].TotalAmount)
+<span id="L122" class="ln">   122  </span>			assert.Equal(t, first.OrderedAt(), actual.Purchases[0].OrderedAt)
+<span id="L123" class="ln">   123  </span>			assert.Equal(t, second.ID(), actual.Purchases[1].ID)
+<span id="L124" class="ln">   124  </span>		})
+<span id="L125" class="ln">   125  </span>	})
+<span id="L126" class="ln">   126  </span>}
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>func Test_usecase_ListShippablePurchases(t *testing.T) {
+<span id="L129" class="ln">   129  </span>	t.Parallel()
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L132" class="ln">   132  </span>		t.Parallel()
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>		t.Run(&#34;購入者ごとの組へ分けてDTOへ写す&#34;, func(t *testing.T) {
+<span id="L135" class="ln">   135  </span>			t.Parallel()
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L138" class="ln">   138  </span>			alice := uuidtestkit.NewTestFromSalt(t, &#34;uc_alice&#34;)
+<span id="L139" class="ln">   139  </span>			bob := uuidtestkit.NewTestFromSalt(t, &#34;uc_bob&#34;)
+<span id="L140" class="ln">   140  </span>			a1 := newShippablePurchase(t, &#34;uc_a1&#34;, alice, shippableBaseTime)
+<span id="L141" class="ln">   141  </span>			b1 := newShippablePurchase(t, &#34;uc_b1&#34;, bob, shippableBaseTime.Add(time.Hour))
+<span id="L142" class="ln">   142  </span>			a2 := newShippablePurchase(t, &#34;uc_a2&#34;, alice, shippableBaseTime.Add(2*time.Hour))
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L145" class="ln">   145  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).
+<span id="L146" class="ln">   146  </span>				Return(domainpurchase.Purchases{a1, b1, a2}, nil)
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>			actual, err := u.ListShippablePurchases(
+<span id="L149" class="ln">   149  </span>				context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{Limit: 20},
+<span id="L150" class="ln">   150  </span>			)
+<span id="L151" class="ln">   151  </span>			require.NoError(t, err)
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>			require.Len(t, actual.Groups, 2)
+<span id="L154" class="ln">   154  </span>			assert.Equal(t, alice, actual.Groups[0].UserID)
+<span id="L155" class="ln">   155  </span>			require.Len(t, actual.Groups[0].Purchases, 2)
+<span id="L156" class="ln">   156  </span>			assert.Equal(t, a1.ID(), actual.Groups[0].Purchases[0].ID)
+<span id="L157" class="ln">   157  </span>			assert.Equal(t, a2.ID(), actual.Groups[0].Purchases[1].ID)
+<span id="L158" class="ln">   158  </span>			assert.Equal(t, bob, actual.Groups[1].UserID)
+<span id="L159" class="ln">   159  </span>			require.Len(t, actual.Groups[1].Purchases, 1)
+<span id="L160" class="ln">   160  </span>		})
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>		t.Run(&#34;発送待ち一覧の参照を所有者なしリソースとして認可する&#34;, func(t *testing.T) {
+<span id="L163" class="ln">   163  </span>			t.Parallel()
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L166" class="ln">   166  </span>			var capturedAction authz.Action
+<span id="L167" class="ln">   167  </span>			var capturedResource *authz.Resource
+<span id="L168" class="ln">   168  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L169" class="ln">   169  </span>				func(_ context.Context, _ *auth.Authn, action authz.Action, resource *authz.Resource) error {
+<span id="L170" class="ln">   170  </span>					capturedAction = action
+<span id="L171" class="ln">   171  </span>					capturedResource = resource
+<span id="L172" class="ln">   172  </span>					return nil
+<span id="L173" class="ln">   173  </span>				})
+<span id="L174" class="ln">   174  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).Return(domainpurchase.Purchases{}, nil)
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>			_, err := u.ListShippablePurchases(context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{})
+<span id="L177" class="ln">   177  </span>			require.NoError(t, err)
+<span id="L178" class="ln">   178  </span>			assert.Equal(t, authz.ActionPurchaseListShippable, capturedAction)
+<span id="L179" class="ln">   179  </span>			require.NotNil(t, capturedResource)
+<span id="L180" class="ln">   180  </span>			assert.Equal(t, &#34;purchase&#34;, capturedResource.Kind())
+<span id="L181" class="ln">   181  </span>			assert.Nil(t, capturedResource.OwnerID())
+<span id="L182" class="ln">   182  </span>		})
+<span id="L183" class="ln">   183  </span>
+<span id="L184" class="ln">   184  </span>		t.Run(&#34;limit未指定の場合、既定件数がリポジトリへ渡る&#34;, func(t *testing.T) {
+<span id="L185" class="ln">   185  </span>			t.Parallel()
+<span id="L186" class="ln">   186  </span>
+<span id="L187" class="ln">   187  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L188" class="ln">   188  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L189" class="ln">   189  </span>
+<span id="L190" class="ln">   190  </span>			var capturedLimit int32
+<span id="L191" class="ln">   191  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L192" class="ln">   192  </span>				func(_ context.Context, limit int32) (domainpurchase.Purchases, error) {
+<span id="L193" class="ln">   193  </span>					capturedLimit = limit
+<span id="L194" class="ln">   194  </span>					return domainpurchase.Purchases{}, nil
+<span id="L195" class="ln">   195  </span>				})
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>			_, err := u.ListShippablePurchases(
+<span id="L198" class="ln">   198  </span>				context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{Limit: 0},
+<span id="L199" class="ln">   199  </span>			)
+<span id="L200" class="ln">   200  </span>			require.NoError(t, err)
+<span id="L201" class="ln">   201  </span>			assert.Equal(t, int32(shippableDefaultLimit), capturedLimit)
+<span id="L202" class="ln">   202  </span>		})
+<span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span>		t.Run(&#34;limitが上限超過の場合、上限へクランプした件数がリポジトリへ渡る&#34;, func(t *testing.T) {
+<span id="L205" class="ln">   205  </span>			t.Parallel()
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L208" class="ln">   208  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>			var capturedLimit int32
+<span id="L211" class="ln">   211  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L212" class="ln">   212  </span>				func(_ context.Context, limit int32) (domainpurchase.Purchases, error) {
+<span id="L213" class="ln">   213  </span>					capturedLimit = limit
+<span id="L214" class="ln">   214  </span>					return domainpurchase.Purchases{}, nil
+<span id="L215" class="ln">   215  </span>				})
+<span id="L216" class="ln">   216  </span>
+<span id="L217" class="ln">   217  </span>			_, err := u.ListShippablePurchases(
+<span id="L218" class="ln">   218  </span>				context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{Limit: 1000},
+<span id="L219" class="ln">   219  </span>			)
+<span id="L220" class="ln">   220  </span>			require.NoError(t, err)
+<span id="L221" class="ln">   221  </span>			assert.Equal(t, int32(shippableMaxLimit), capturedLimit)
+<span id="L222" class="ln">   222  </span>		})
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>		t.Run(&#34;発送待ちの購入が無い場合、空の一覧を返す&#34;, func(t *testing.T) {
+<span id="L225" class="ln">   225  </span>			t.Parallel()
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L228" class="ln">   228  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L229" class="ln">   229  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).Return(domainpurchase.Purchases{}, nil)
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span>			actual, err := u.ListShippablePurchases(context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{})
+<span id="L232" class="ln">   232  </span>			require.NoError(t, err)
+<span id="L233" class="ln">   233  </span>			assert.Empty(t, actual.Groups)
+<span id="L234" class="ln">   234  </span>		})
+<span id="L235" class="ln">   235  </span>	})
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>		t.Parallel()
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>		t.Run(&#34;認証情報がnilの場合、ErrUnauthenticatedを返し認可もリポジトリも呼ばない&#34;, func(t *testing.T) {
+<span id="L241" class="ln">   241  </span>			t.Parallel()
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L244" class="ln">   244  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L245" class="ln">   245  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).Times(0)
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>			actual, err := u.ListShippablePurchases(context.Background(), nil, ListShippablePurchasesParams{})
+<span id="L248" class="ln">   248  </span>			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+<span id="L249" class="ln">   249  </span>			assert.Empty(t, actual.Groups)
+<span id="L250" class="ln">   250  </span>		})
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>		t.Run(&#34;認可が拒否された場合、ErrForbiddenを伝播しリポジトリを呼ばない&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>			t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L256" class="ln">   256  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L257" class="ln">   257  </span>				Return(authz.ErrForbidden)
+<span id="L258" class="ln">   258  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).Times(0)
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>			actual, err := u.ListShippablePurchases(context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{})
+<span id="L261" class="ln">   261  </span>			require.ErrorIs(t, err, authz.ErrForbidden)
+<span id="L262" class="ln">   262  </span>			assert.Empty(t, actual.Groups)
+<span id="L263" class="ln">   263  </span>		})
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span>		t.Run(&#34;リポジトリがエラーを返した場合、そのまま伝播する&#34;, func(t *testing.T) {
+<span id="L266" class="ln">   266  </span>			t.Parallel()
+<span id="L267" class="ln">   267  </span>
+<span id="L268" class="ln">   268  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L269" class="ln">   269  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L270" class="ln">   270  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).
+<span id="L271" class="ln">   271  </span>				Return(nil, apperror.ErrInternal)
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>			actual, err := u.ListShippablePurchases(context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{})
+<span id="L274" class="ln">   274  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L275" class="ln">   275  </span>			assert.Empty(t, actual.Groups)
+<span id="L276" class="ln">   276  </span>		})
+<span id="L277" class="ln">   277  </span>
+<span id="L278" class="ln">   278  </span>		t.Run(&#34;発送可能でない購入が混じっていた場合、SQLと述語の乖離としてエラーにする&#34;, func(t *testing.T) {
+<span id="L279" class="ln">   279  </span>			t.Parallel()
+<span id="L280" class="ln">   280  </span>
+<span id="L281" class="ln">   281  </span>			u, deps := newShippableTestUsecase(t)
+<span id="L282" class="ln">   282  </span>			alice := uuidtestkit.NewTestFromSalt(t, &#34;uc_mismatch_alice&#34;)
+<span id="L283" class="ln">   283  </span>			shipped := newPurchaseWithStatus(
+<span id="L284" class="ln">   284  </span>				t, &#34;uc_mismatch&#34;, alice, shippableBaseTime, domainpurchase.StatusShipped,
+<span id="L285" class="ln">   285  </span>			)
+<span id="L286" class="ln">   286  </span>
+<span id="L287" class="ln">   287  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L288" class="ln">   288  </span>			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).
+<span id="L289" class="ln">   289  </span>				Return(domainpurchase.Purchases{shipped}, nil)
+<span id="L290" class="ln">   290  </span>
+<span id="L291" class="ln">   291  </span>			actual, err := u.ListShippablePurchases(context.Background(), &amp;auth.Authn{}, ListShippablePurchasesParams{})
+<span id="L292" class="ln">   292  </span>			require.ErrorIs(t, err, errNotShippableInShippableRead)
+<span id="L293" class="ln">   293  </span>			assert.Empty(t, actual.Groups)
+<span id="L294" class="ln">   294  </span>		})
+<span id="L295" class="ln">   295  </span>	})
+<span id="L296" class="ln">   296  </span>}
+<span id="L297" class="ln">   297  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/purchase/purchase_shippable_usecase_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

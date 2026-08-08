@@ -67,11 +67,11 @@
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/controller/ctxhelper&#34;
 <span id="L11" class="ln">    11  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
 <span id="L12" class="ln">    12  </span>	mock_auth &#34;go-boilerplate/internal/usecase/boundary/auth/mock&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L13" class="ln">    13  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>
 <span id="L16" class="ln">    16  </span>	&#34;github.com/getkin/kin-openapi/openapi3filter&#34;
-<span id="L17" class="ln">    17  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L17" class="ln">    17  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L20" class="ln">    20  </span>	&#34;go.uber.org/mock/gomock&#34;
@@ -194,198 +194,227 @@
 <span id="L137" class="ln">   137  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
 <span id="L138" class="ln">   138  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
 <span id="L139" class="ln">   139  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
-<span id="L140" class="ln">   140  </span>			resolved := want.WithUserID(uuid.NewTestFromSalt(t, &#34;resolved&#34;))
-<span id="L141" class="ln">   141  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
-<span id="L142" class="ln">   142  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(resolved, nil)
-<span id="L143" class="ln">   143  </span>			ctx := context.Background()
-<span id="L144" class="ln">   144  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L145" class="ln">   145  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
-<span id="L146" class="ln">   146  </span>
-<span id="L147" class="ln">   147  </span>			got, err := authExtractor(context.Background(), req, m, mr)
-<span id="L148" class="ln">   148  </span>			require.NoError(t, err)
-<span id="L149" class="ln">   149  </span>			require.NotNil(t, got)
-<span id="L150" class="ln">   150  </span>			assert.Equal(t, want.Subject(), got.Subject())
-<span id="L151" class="ln">   151  </span>			<span class="comment">// authExtractor は Resolve の戻り値（UserID 解決済み）を返す。認証前の Authn ではないことを区別する。</span>
-<span id="L152" class="ln">   152  </span>			assert.True(t, got.HasUserID())
-<span id="L153" class="ln">   153  </span>		})
-<span id="L154" class="ln">   154  </span>
-<span id="L155" class="ln">   155  </span>		t.Run(&#34;トークンが空なら認証スキップとしてnil,nilを返す&#34;, func(t *testing.T) {
-<span id="L156" class="ln">   156  </span>			t.Parallel()
-<span id="L157" class="ln">   157  </span>			ctx := context.Background()
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>			authn, err := authExtractor(ctx, httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil), nil, nil)
-<span id="L160" class="ln">   160  </span>			require.NoError(t, err)
-<span id="L161" class="ln">   161  </span>			assert.Nil(t, authn)
-<span id="L162" class="ln">   162  </span>		})
-<span id="L163" class="ln">   163  </span>	})
-<span id="L164" class="ln">   164  </span>
-<span id="L165" class="ln">   165  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L166" class="ln">   166  </span>		t.Parallel()
-<span id="L167" class="ln">   167  </span>
-<span id="L168" class="ln">   168  </span>		t.Run(&#34;AuthenticateがエラーならErrUnauthorizedInvalidTokenを返す&#34;, func(t *testing.T) {
-<span id="L169" class="ln">   169  </span>			t.Parallel()
-<span id="L170" class="ln">   170  </span>			ctrl := gomock.NewController(t)
-<span id="L171" class="ln">   171  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
-<span id="L172" class="ln">   172  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
-<span id="L173" class="ln">   173  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New(&#34;bad&#34;))
-<span id="L174" class="ln">   174  </span>			ctx := context.Background()
-<span id="L175" class="ln">   175  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L176" class="ln">   176  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
-<span id="L179" class="ln">   179  </span>			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
-<span id="L180" class="ln">   180  </span>			assert.Nil(t, authn)
-<span id="L181" class="ln">   181  </span>		})
-<span id="L182" class="ln">   182  </span>
-<span id="L183" class="ln">   183  </span>		t.Run(&#34;resolverがinfra障害(ErrInternal)を返すと500の*echo.HTTPErrorを返す&#34;, func(t *testing.T) {
-<span id="L184" class="ln">   184  </span>			t.Parallel()
-<span id="L185" class="ln">   185  </span>			ctrl := gomock.NewController(t)
-<span id="L186" class="ln">   186  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
-<span id="L187" class="ln">   187  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
-<span id="L188" class="ln">   188  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
-<span id="L189" class="ln">   189  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
-<span id="L190" class="ln">   190  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrInternal, &#34;db down&#34;))
-<span id="L191" class="ln">   191  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
-<span id="L192" class="ln">   192  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
-<span id="L193" class="ln">   193  </span>
-<span id="L194" class="ln">   194  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
-<span id="L195" class="ln">   195  </span>			assert.Nil(t, authn)
-<span id="L196" class="ln">   196  </span>			var he *echo.HTTPError
-<span id="L197" class="ln">   197  </span>			require.ErrorAs(t, err, &amp;he)
-<span id="L198" class="ln">   198  </span>			assert.Equal(t, http.StatusInternalServerError, he.Code)
-<span id="L199" class="ln">   199  </span>			<span class="comment">// 元エラーが Internal に保持され、分類（ErrInternal）が透過することを確認する。</span>
-<span id="L200" class="ln">   200  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L201" class="ln">   201  </span>		})
-<span id="L202" class="ln">   202  </span>
-<span id="L203" class="ln">   203  </span>		t.Run(&#34;resolverがErrUnavailableを返すと503の*echo.HTTPErrorを返す&#34;, func(t *testing.T) {
-<span id="L204" class="ln">   204  </span>			t.Parallel()
-<span id="L205" class="ln">   205  </span>			ctrl := gomock.NewController(t)
-<span id="L206" class="ln">   206  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
-<span id="L207" class="ln">   207  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
-<span id="L208" class="ln">   208  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
-<span id="L209" class="ln">   209  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
-<span id="L210" class="ln">   210  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnavailable, &#34;db unavailable&#34;))
-<span id="L211" class="ln">   211  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
-<span id="L212" class="ln">   212  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
-<span id="L213" class="ln">   213  </span>
-<span id="L214" class="ln">   214  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
-<span id="L215" class="ln">   215  </span>			assert.Nil(t, authn)
-<span id="L216" class="ln">   216  </span>			var he *echo.HTTPError
-<span id="L217" class="ln">   217  </span>			require.ErrorAs(t, err, &amp;he)
-<span id="L218" class="ln">   218  </span>			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
-<span id="L219" class="ln">   219  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L220" class="ln">   220  </span>		})
-<span id="L221" class="ln">   221  </span>
-<span id="L222" class="ln">   222  </span>		t.Run(&#34;resolverが認証失敗(ErrUnauthenticated系)を返すと*echo.HTTPErrorにせずそのまま返す&#34;, func(t *testing.T) {
-<span id="L223" class="ln">   223  </span>			t.Parallel()
-<span id="L224" class="ln">   224  </span>			ctrl := gomock.NewController(t)
-<span id="L225" class="ln">   225  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
-<span id="L226" class="ln">   226  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
-<span id="L227" class="ln">   227  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
-<span id="L228" class="ln">   228  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
-<span id="L229" class="ln">   229  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, authbd.ErrIdentityNotFound)
-<span id="L230" class="ln">   230  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
-<span id="L231" class="ln">   231  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
-<span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
-<span id="L234" class="ln">   234  </span>			assert.Nil(t, authn)
-<span id="L235" class="ln">   235  </span>			require.ErrorIs(t, err, authbd.ErrIdentityNotFound)
-<span id="L236" class="ln">   236  </span>			var he *echo.HTTPError
-<span id="L237" class="ln">   237  </span>			assert.False(t, xerrors.As(err, &amp;he))
-<span id="L238" class="ln">   238  </span>		})
-<span id="L239" class="ln">   239  </span>
-<span id="L240" class="ln">   240  </span>		t.Run(&#34;resolverがnil,nilを返す場合は防御的にErrIdentityNotFoundを返す&#34;, func(t *testing.T) {
-<span id="L241" class="ln">   241  </span>			t.Parallel()
-<span id="L242" class="ln">   242  </span>			ctrl := gomock.NewController(t)
-<span id="L243" class="ln">   243  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
-<span id="L244" class="ln">   244  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
-<span id="L245" class="ln">   245  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
-<span id="L246" class="ln">   246  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
-<span id="L247" class="ln">   247  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, nil)
-<span id="L248" class="ln">   248  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
-<span id="L249" class="ln">   249  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
-<span id="L250" class="ln">   250  </span>
-<span id="L251" class="ln">   251  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
-<span id="L252" class="ln">   252  </span>			assert.Nil(t, authn)
-<span id="L253" class="ln">   253  </span>			require.ErrorIs(t, err, authbd.ErrIdentityNotFound)
-<span id="L254" class="ln">   254  </span>		})
-<span id="L255" class="ln">   255  </span>	})
-<span id="L256" class="ln">   256  </span>}
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>func Test_infraErrorToHTTP(t *testing.T) {
-<span id="L259" class="ln">   259  </span>	t.Parallel()
-<span id="L260" class="ln">   260  </span>
-<span id="L261" class="ln">   261  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L262" class="ln">   262  </span>		t.Parallel()
-<span id="L263" class="ln">   263  </span>
-<span id="L264" class="ln">   264  </span>		t.Run(&#34;ErrUnavailableは503の*echo.HTTPErrorへ変換され元エラーを保持する&#34;, func(t *testing.T) {
-<span id="L265" class="ln">   265  </span>			t.Parallel()
-<span id="L266" class="ln">   266  </span>			orig := xerrors.Wrap(apperror.ErrUnavailable, &#34;db unavailable&#34;)
-<span id="L267" class="ln">   267  </span>
-<span id="L268" class="ln">   268  </span>			err := infraErrorToHTTP(orig)
-<span id="L269" class="ln">   269  </span>
-<span id="L270" class="ln">   270  </span>			var he *echo.HTTPError
-<span id="L271" class="ln">   271  </span>			require.ErrorAs(t, err, &amp;he)
-<span id="L272" class="ln">   272  </span>			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
-<span id="L273" class="ln">   273  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
-<span id="L274" class="ln">   274  </span>		})
-<span id="L275" class="ln">   275  </span>
-<span id="L276" class="ln">   276  </span>		t.Run(&#34;ErrUnavailable以外は500の*echo.HTTPErrorへ変換され元エラーを保持する&#34;, func(t *testing.T) {
-<span id="L277" class="ln">   277  </span>			t.Parallel()
-<span id="L278" class="ln">   278  </span>			orig := xerrors.Wrap(apperror.ErrInternal, &#34;db down&#34;)
-<span id="L279" class="ln">   279  </span>
-<span id="L280" class="ln">   280  </span>			err := infraErrorToHTTP(orig)
-<span id="L281" class="ln">   281  </span>
-<span id="L282" class="ln">   282  </span>			var he *echo.HTTPError
-<span id="L283" class="ln">   283  </span>			require.ErrorAs(t, err, &amp;he)
-<span id="L284" class="ln">   284  </span>			assert.Equal(t, http.StatusInternalServerError, he.Code)
-<span id="L285" class="ln">   285  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L286" class="ln">   286  </span>		})
-<span id="L287" class="ln">   287  </span>	})
-<span id="L288" class="ln">   288  </span>}
-<span id="L289" class="ln">   289  </span>
-<span id="L290" class="ln">   290  </span>func Test_extractBearerToken(t *testing.T) {
-<span id="L291" class="ln">   291  </span>	t.Parallel()
-<span id="L292" class="ln">   292  </span>
-<span id="L293" class="ln">   293  </span>	newReq := func(t *testing.T) *http.Request {
-<span id="L294" class="ln">   294  </span>		t.Helper()
-<span id="L295" class="ln">   295  </span>		return httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
-<span id="L296" class="ln">   296  </span>	}
-<span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L299" class="ln">   299  </span>		t.Parallel()
-<span id="L300" class="ln">   300  </span>
-<span id="L301" class="ln">   301  </span>		t.Run(&#34;Authorization: Bearer 形式ならトークン部分とBearerスキームを抽出する&#34;, func(t *testing.T) {
-<span id="L302" class="ln">   302  </span>			t.Parallel()
-<span id="L303" class="ln">   303  </span>			req := newReq(t)
-<span id="L304" class="ln">   304  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer abcdef&#34;)
-<span id="L305" class="ln">   305  </span>			scheme, tok := extractBearerToken(req)
-<span id="L306" class="ln">   306  </span>			assert.Equal(t, authbd.SchemeBearer, scheme)
-<span id="L307" class="ln">   307  </span>			assert.Equal(t, &#34;abcdef&#34;, tok)
-<span id="L308" class="ln">   308  </span>		})
-<span id="L309" class="ln">   309  </span>	})
+<span id="L140" class="ln">   140  </span>			resolved, err := want.WithUserID(uuidtestkit.NewTestFromSalt(t, &#34;resolved&#34;))
+<span id="L141" class="ln">   141  </span>			require.NoError(t, err)
+<span id="L142" class="ln">   142  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
+<span id="L143" class="ln">   143  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(resolved, nil)
+<span id="L144" class="ln">   144  </span>			ctx := context.Background()
+<span id="L145" class="ln">   145  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
+<span id="L146" class="ln">   146  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>			got, err := authExtractor(context.Background(), req, m, mr)
+<span id="L149" class="ln">   149  </span>			require.NoError(t, err)
+<span id="L150" class="ln">   150  </span>			require.NotNil(t, got)
+<span id="L151" class="ln">   151  </span>			assert.Equal(t, want.Subject(), got.Subject())
+<span id="L152" class="ln">   152  </span>			<span class="comment">// authExtractor は Resolve の戻り値（UserID 解決済み）を返す。認証前の Authn ではないことを区別する。</span>
+<span id="L153" class="ln">   153  </span>			assert.True(t, got.HasUserID())
+<span id="L154" class="ln">   154  </span>		})
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>		t.Run(&#34;トークンが空なら認証スキップとしてnil,nilを返す&#34;, func(t *testing.T) {
+<span id="L157" class="ln">   157  </span>			t.Parallel()
+<span id="L158" class="ln">   158  </span>			ctx := context.Background()
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span>			authn, err := authExtractor(ctx, httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil), nil, nil)
+<span id="L161" class="ln">   161  </span>			require.NoError(t, err)
+<span id="L162" class="ln">   162  </span>			assert.Nil(t, authn)
+<span id="L163" class="ln">   163  </span>		})
+<span id="L164" class="ln">   164  </span>	})
+<span id="L165" class="ln">   165  </span>
+<span id="L166" class="ln">   166  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L167" class="ln">   167  </span>		t.Parallel()
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span>		t.Run(&#34;AuthenticateがエラーならErrUnauthorizedInvalidTokenを返す&#34;, func(t *testing.T) {
+<span id="L170" class="ln">   170  </span>			t.Parallel()
+<span id="L171" class="ln">   171  </span>			ctrl := gomock.NewController(t)
+<span id="L172" class="ln">   172  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
+<span id="L173" class="ln">   173  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
+<span id="L174" class="ln">   174  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New(&#34;bad&#34;))
+<span id="L175" class="ln">   175  </span>			ctx := context.Background()
+<span id="L176" class="ln">   176  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
+<span id="L177" class="ln">   177  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
+<span id="L180" class="ln">   180  </span>			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
+<span id="L181" class="ln">   181  </span>			assert.Nil(t, authn)
+<span id="L182" class="ln">   182  </span>		})
+<span id="L183" class="ln">   183  </span>
+<span id="L184" class="ln">   184  </span>		t.Run(&#34;resolverがinfra障害(ErrInternal)を返すと500の*echo.HTTPErrorを返す&#34;, func(t *testing.T) {
+<span id="L185" class="ln">   185  </span>			t.Parallel()
+<span id="L186" class="ln">   186  </span>			ctrl := gomock.NewController(t)
+<span id="L187" class="ln">   187  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
+<span id="L188" class="ln">   188  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
+<span id="L189" class="ln">   189  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
+<span id="L190" class="ln">   190  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
+<span id="L191" class="ln">   191  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrInternal, &#34;db down&#34;))
+<span id="L192" class="ln">   192  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L193" class="ln">   193  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
+<span id="L194" class="ln">   194  </span>
+<span id="L195" class="ln">   195  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
+<span id="L196" class="ln">   196  </span>			assert.Nil(t, authn)
+<span id="L197" class="ln">   197  </span>			var he *echo.HTTPError
+<span id="L198" class="ln">   198  </span>			require.ErrorAs(t, err, &amp;he)
+<span id="L199" class="ln">   199  </span>			assert.Equal(t, http.StatusInternalServerError, he.Code)
+<span id="L200" class="ln">   200  </span>			<span class="comment">// 元エラーが Internal に保持され、分類（ErrInternal）が透過することを確認する。</span>
+<span id="L201" class="ln">   201  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L202" class="ln">   202  </span>		})
+<span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span>		t.Run(&#34;resolverがErrUnavailableを返すと503の*echo.HTTPErrorを返す&#34;, func(t *testing.T) {
+<span id="L205" class="ln">   205  </span>			t.Parallel()
+<span id="L206" class="ln">   206  </span>			ctrl := gomock.NewController(t)
+<span id="L207" class="ln">   207  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
+<span id="L208" class="ln">   208  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
+<span id="L209" class="ln">   209  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
+<span id="L210" class="ln">   210  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
+<span id="L211" class="ln">   211  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnavailable, &#34;db unavailable&#34;))
+<span id="L212" class="ln">   212  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L213" class="ln">   213  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
+<span id="L216" class="ln">   216  </span>			assert.Nil(t, authn)
+<span id="L217" class="ln">   217  </span>			var he *echo.HTTPError
+<span id="L218" class="ln">   218  </span>			require.ErrorAs(t, err, &amp;he)
+<span id="L219" class="ln">   219  </span>			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
+<span id="L220" class="ln">   220  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L221" class="ln">   221  </span>		})
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span>		t.Run(&#34;resolverが認証失敗(ErrUnauthenticated系)を返すと*echo.HTTPErrorにせずそのまま返す&#34;, func(t *testing.T) {
+<span id="L224" class="ln">   224  </span>			t.Parallel()
+<span id="L225" class="ln">   225  </span>			ctrl := gomock.NewController(t)
+<span id="L226" class="ln">   226  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
+<span id="L227" class="ln">   227  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
+<span id="L228" class="ln">   228  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
+<span id="L229" class="ln">   229  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
+<span id="L230" class="ln">   230  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, authbd.ErrIdentityNotFound)
+<span id="L231" class="ln">   231  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L232" class="ln">   232  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
+<span id="L235" class="ln">   235  </span>			assert.Nil(t, authn)
+<span id="L236" class="ln">   236  </span>			require.ErrorIs(t, err, authbd.ErrIdentityNotFound)
+<span id="L237" class="ln">   237  </span>			var he *echo.HTTPError
+<span id="L238" class="ln">   238  </span>			assert.False(t, xerrors.As(err, &amp;he))
+<span id="L239" class="ln">   239  </span>		})
+<span id="L240" class="ln">   240  </span>
+<span id="L241" class="ln">   241  </span>		t.Run(&#34;resolverがnil,nilを返す場合は防御的にErrIdentityNotFoundを返す&#34;, func(t *testing.T) {
+<span id="L242" class="ln">   242  </span>			t.Parallel()
+<span id="L243" class="ln">   243  </span>			ctrl := gomock.NewController(t)
+<span id="L244" class="ln">   244  </span>			m := mock_auth.NewMockAuthenticator(ctrl)
+<span id="L245" class="ln">   245  </span>			mr := mock_auth.NewMockIdentityResolver(ctrl)
+<span id="L246" class="ln">   246  </span>			want, _ := authbd.New(&#34;subj&#34;, &#34;mock&#34;, nil, nil)
+<span id="L247" class="ln">   247  </span>			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
+<span id="L248" class="ln">   248  </span>			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, nil)
+<span id="L249" class="ln">   249  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L250" class="ln">   250  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer tok&#34;)
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>			authn, err := authExtractor(context.Background(), req, m, mr)
+<span id="L253" class="ln">   253  </span>			assert.Nil(t, authn)
+<span id="L254" class="ln">   254  </span>			require.ErrorIs(t, err, authbd.ErrIdentityNotFound)
+<span id="L255" class="ln">   255  </span>		})
+<span id="L256" class="ln">   256  </span>	})
+<span id="L257" class="ln">   257  </span>}
+<span id="L258" class="ln">   258  </span>
+<span id="L259" class="ln">   259  </span>func Test_infraErrorToHTTP(t *testing.T) {
+<span id="L260" class="ln">   260  </span>	t.Parallel()
+<span id="L261" class="ln">   261  </span>
+<span id="L262" class="ln">   262  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L263" class="ln">   263  </span>		t.Parallel()
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span>		t.Run(&#34;ErrUnavailableは503の*echo.HTTPErrorへ変換され元エラーを保持する&#34;, func(t *testing.T) {
+<span id="L266" class="ln">   266  </span>			t.Parallel()
+<span id="L267" class="ln">   267  </span>			orig := xerrors.Wrap(apperror.ErrUnavailable, &#34;db unavailable&#34;)
+<span id="L268" class="ln">   268  </span>
+<span id="L269" class="ln">   269  </span>			err := infraErrorToHTTP(orig)
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>			var he *echo.HTTPError
+<span id="L272" class="ln">   272  </span>			require.ErrorAs(t, err, &amp;he)
+<span id="L273" class="ln">   273  </span>			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
+<span id="L274" class="ln">   274  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L275" class="ln">   275  </span>		})
+<span id="L276" class="ln">   276  </span>
+<span id="L277" class="ln">   277  </span>		t.Run(&#34;ErrUnavailable以外は500の*echo.HTTPErrorへ変換され元エラーを保持する&#34;, func(t *testing.T) {
+<span id="L278" class="ln">   278  </span>			t.Parallel()
+<span id="L279" class="ln">   279  </span>			orig := xerrors.Wrap(apperror.ErrInternal, &#34;db down&#34;)
+<span id="L280" class="ln">   280  </span>
+<span id="L281" class="ln">   281  </span>			err := infraErrorToHTTP(orig)
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span>			var he *echo.HTTPError
+<span id="L284" class="ln">   284  </span>			require.ErrorAs(t, err, &amp;he)
+<span id="L285" class="ln">   285  </span>			assert.Equal(t, http.StatusInternalServerError, he.Code)
+<span id="L286" class="ln">   286  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L287" class="ln">   287  </span>		})
+<span id="L288" class="ln">   288  </span>	})
+<span id="L289" class="ln">   289  </span>}
+<span id="L290" class="ln">   290  </span>
+<span id="L291" class="ln">   291  </span>func Test_withHTTPStatus(t *testing.T) {
+<span id="L292" class="ln">   292  </span>	t.Parallel()
+<span id="L293" class="ln">   293  </span>
+<span id="L294" class="ln">   294  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L295" class="ln">   295  </span>		t.Parallel()
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span>		t.Run(&#34;ステータスを持たないエラーは401を付与し元エラーを保持する&#34;, func(t *testing.T) {
+<span id="L298" class="ln">   298  </span>			t.Parallel()
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>			err := withHTTPStatus(ErrUnauthorizedInvalidToken)
+<span id="L301" class="ln">   301  </span>
+<span id="L302" class="ln">   302  </span>			assert.Equal(t, http.StatusUnauthorized, echo.StatusCode(err))
+<span id="L303" class="ln">   303  </span>			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+<span id="L304" class="ln">   304  </span>		})
+<span id="L305" class="ln">   305  </span>
+<span id="L306" class="ln">   306  </span>		t.Run(&#34;既にステータスを持つエラーは変換せずそのまま返る&#34;, func(t *testing.T) {
+<span id="L307" class="ln">   307  </span>			t.Parallel()
+<span id="L308" class="ln">   308  </span>
+<span id="L309" class="ln">   309  </span>			orig := infraErrorToHTTP(xerrors.Wrap(apperror.ErrUnavailable, &#34;db unavailable&#34;))
 <span id="L310" class="ln">   310  </span>
-<span id="L311" class="ln">   311  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L312" class="ln">   312  </span>		t.Parallel()
-<span id="L313" class="ln">   313  </span>
-<span id="L314" class="ln">   314  </span>		t.Run(&#34;Authorizationヘッダが未設定なら空を返す&#34;, func(t *testing.T) {
-<span id="L315" class="ln">   315  </span>			t.Parallel()
-<span id="L316" class="ln">   316  </span>			scheme, tok := extractBearerToken(newReq(t))
-<span id="L317" class="ln">   317  </span>			assert.Empty(t, scheme)
-<span id="L318" class="ln">   318  </span>			assert.Empty(t, tok)
-<span id="L319" class="ln">   319  </span>		})
-<span id="L320" class="ln">   320  </span>
-<span id="L321" class="ln">   321  </span>		t.Run(&#34;Bearerプレフィックスが無ければ空を返す&#34;, func(t *testing.T) {
-<span id="L322" class="ln">   322  </span>			t.Parallel()
-<span id="L323" class="ln">   323  </span>			req := newReq(t)
-<span id="L324" class="ln">   324  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Token abcdef&#34;)
-<span id="L325" class="ln">   325  </span>			scheme, tok := extractBearerToken(req)
-<span id="L326" class="ln">   326  </span>			assert.Empty(t, scheme)
-<span id="L327" class="ln">   327  </span>			assert.Empty(t, tok)
-<span id="L328" class="ln">   328  </span>		})
-<span id="L329" class="ln">   329  </span>	})
-<span id="L330" class="ln">   330  </span>}
-<span id="L331" class="ln">   331  </span>
+<span id="L311" class="ln">   311  </span>			err := withHTTPStatus(orig)
+<span id="L312" class="ln">   312  </span>
+<span id="L313" class="ln">   313  </span>			assert.Same(t, orig, err)
+<span id="L314" class="ln">   314  </span>			assert.Equal(t, http.StatusServiceUnavailable, echo.StatusCode(err))
+<span id="L315" class="ln">   315  </span>		})
+<span id="L316" class="ln">   316  </span>	})
+<span id="L317" class="ln">   317  </span>}
+<span id="L318" class="ln">   318  </span>
+<span id="L319" class="ln">   319  </span>func Test_extractBearerToken(t *testing.T) {
+<span id="L320" class="ln">   320  </span>	t.Parallel()
+<span id="L321" class="ln">   321  </span>
+<span id="L322" class="ln">   322  </span>	newReq := func(t *testing.T) *http.Request {
+<span id="L323" class="ln">   323  </span>		t.Helper()
+<span id="L324" class="ln">   324  </span>		return httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L325" class="ln">   325  </span>	}
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L328" class="ln">   328  </span>		t.Parallel()
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span>		t.Run(&#34;Authorization: Bearer 形式ならトークン部分とBearerスキームを抽出する&#34;, func(t *testing.T) {
+<span id="L331" class="ln">   331  </span>			t.Parallel()
+<span id="L332" class="ln">   332  </span>			req := newReq(t)
+<span id="L333" class="ln">   333  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer abcdef&#34;)
+<span id="L334" class="ln">   334  </span>			scheme, tok := extractBearerToken(req)
+<span id="L335" class="ln">   335  </span>			assert.Equal(t, authbd.SchemeBearer, scheme)
+<span id="L336" class="ln">   336  </span>			assert.Equal(t, &#34;abcdef&#34;, tok)
+<span id="L337" class="ln">   337  </span>		})
+<span id="L338" class="ln">   338  </span>	})
+<span id="L339" class="ln">   339  </span>
+<span id="L340" class="ln">   340  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L341" class="ln">   341  </span>		t.Parallel()
+<span id="L342" class="ln">   342  </span>
+<span id="L343" class="ln">   343  </span>		t.Run(&#34;Authorizationヘッダが未設定なら空を返す&#34;, func(t *testing.T) {
+<span id="L344" class="ln">   344  </span>			t.Parallel()
+<span id="L345" class="ln">   345  </span>			scheme, tok := extractBearerToken(newReq(t))
+<span id="L346" class="ln">   346  </span>			assert.Empty(t, scheme)
+<span id="L347" class="ln">   347  </span>			assert.Empty(t, tok)
+<span id="L348" class="ln">   348  </span>		})
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>		t.Run(&#34;Bearerプレフィックスが無ければ空を返す&#34;, func(t *testing.T) {
+<span id="L351" class="ln">   351  </span>			t.Parallel()
+<span id="L352" class="ln">   352  </span>			req := newReq(t)
+<span id="L353" class="ln">   353  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Token abcdef&#34;)
+<span id="L354" class="ln">   354  </span>			scheme, tok := extractBearerToken(req)
+<span id="L355" class="ln">   355  </span>			assert.Empty(t, scheme)
+<span id="L356" class="ln">   356  </span>			assert.Empty(t, tok)
+<span id="L357" class="ln">   357  </span>		})
+<span id="L358" class="ln">   358  </span>	})
+<span id="L359" class="ln">   359  </span>}
+<span id="L360" class="ln">   360  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

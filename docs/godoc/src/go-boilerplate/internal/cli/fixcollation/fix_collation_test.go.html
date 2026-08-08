@@ -84,134 +84,225 @@
 <span id="L27" class="ln">    27  </span>			t.Parallel()
 <span id="L28" class="ln">    28  </span>			require.NoError(t, validateDatabaseName(&#34;test&#34;))
 <span id="L29" class="ln">    29  </span>		})
-<span id="L30" class="ln">    30  </span>	})
-<span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L33" class="ln">    33  </span>		t.Parallel()
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span>		t.Run(&#34;空文字は不許可&#34;, func(t *testing.T) {
-<span id="L36" class="ln">    36  </span>			t.Parallel()
-<span id="L37" class="ln">    37  </span>			require.Error(t, validateDatabaseName(&#34;&#34;))
-<span id="L38" class="ln">    38  </span>		})
-<span id="L39" class="ln">    39  </span>		t.Run(&#34;想定外のDB名は不許可&#34;, func(t *testing.T) {
-<span id="L40" class="ln">    40  </span>			t.Parallel()
-<span id="L41" class="ln">    41  </span>			require.Error(t, validateDatabaseName(&#34;production&#34;))
-<span id="L42" class="ln">    42  </span>		})
-<span id="L43" class="ln">    43  </span>	})
-<span id="L44" class="ln">    44  </span>}
-<span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span>func Test_fixCollation(t *testing.T) {
-<span id="L47" class="ln">    47  </span>	t.Parallel()
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L50" class="ln">    50  </span>		t.Parallel()
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>		t.Run(&#34;REINDEXとALTERをこの順序とON_ERROR_STOP指定で実行する&#34;, func(t *testing.T) {
-<span id="L53" class="ln">    53  </span>			t.Parallel()
-<span id="L54" class="ln">    54  </span>			ctrl := gomock.NewController(t)
-<span id="L55" class="ln">    55  </span>			runner := mock_exec.NewMockRunner(ctrl)
-<span id="L56" class="ln">    56  </span>
-<span id="L57" class="ln">    57  </span>			<span class="comment">// 2 文 (REINDEX → ALTER) が psql 経由で順序通り実行され、 ON_ERROR_STOP=1 が常に</span>
-<span id="L58" class="ln">    58  </span>			<span class="comment">// 付与され、 SQL 内容自体がデータベース名込みで一致することを検証する。</span>
-<span id="L59" class="ln">    59  </span>			gomock.InOrder(
-<span id="L60" class="ln">    60  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand,
-<span id="L61" class="ln">    61  </span>					[]string{&#34;postgres://dsn&#34;, &#34;-v&#34;, &#34;ON_ERROR_STOP=1&#34;, &#34;-c&#34;, &#34;REINDEX DATABASE local;&#34;}).
-<span id="L62" class="ln">    62  </span>					Return(nil, nil),
-<span id="L63" class="ln">    63  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand,
-<span id="L64" class="ln">    64  </span>					[]string{&#34;postgres://dsn&#34;, &#34;-v&#34;, &#34;ON_ERROR_STOP=1&#34;, &#34;-c&#34;, &#34;ALTER DATABASE local REFRESH COLLATION VERSION;&#34;}).
-<span id="L65" class="ln">    65  </span>					Return(nil, nil),
-<span id="L66" class="ln">    66  </span>			)
-<span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span>			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), &#34;postgres://dsn&#34;, &#34;pw&#34;, &#34;local&#34;)
-<span id="L69" class="ln">    69  </span>			require.NoError(t, err)
+<span id="L30" class="ln">    30  </span>		t.Run(&#34;template1は許可&#34;, func(t *testing.T) {
+<span id="L31" class="ln">    31  </span>			t.Parallel()
+<span id="L32" class="ln">    32  </span>			require.NoError(t, validateDatabaseName(&#34;template1&#34;))
+<span id="L33" class="ln">    33  </span>		})
+<span id="L34" class="ln">    34  </span>		t.Run(&#34;スロットのlocalは許可&#34;, func(t *testing.T) {
+<span id="L35" class="ln">    35  </span>			t.Parallel()
+<span id="L36" class="ln">    36  </span>			require.NoError(t, validateDatabaseName(&#34;wt1_local&#34;))
+<span id="L37" class="ln">    37  </span>		})
+<span id="L38" class="ln">    38  </span>		t.Run(&#34;スロットのtestは許可&#34;, func(t *testing.T) {
+<span id="L39" class="ln">    39  </span>			t.Parallel()
+<span id="L40" class="ln">    40  </span>			require.NoError(t, validateDatabaseName(&#34;wt12_test&#34;))
+<span id="L41" class="ln">    41  </span>		})
+<span id="L42" class="ln">    42  </span>	})
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L45" class="ln">    45  </span>		t.Parallel()
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>		t.Run(&#34;空文字は不許可&#34;, func(t *testing.T) {
+<span id="L48" class="ln">    48  </span>			t.Parallel()
+<span id="L49" class="ln">    49  </span>			require.ErrorIs(t, validateDatabaseName(&#34;&#34;), errInvalidDatabaseName)
+<span id="L50" class="ln">    50  </span>		})
+<span id="L51" class="ln">    51  </span>		t.Run(&#34;想定外のDB名は不許可&#34;, func(t *testing.T) {
+<span id="L52" class="ln">    52  </span>			t.Parallel()
+<span id="L53" class="ln">    53  </span>			require.ErrorIs(t, validateDatabaseName(&#34;production&#34;), errInvalidDatabaseName)
+<span id="L54" class="ln">    54  </span>		})
+<span id="L55" class="ln">    55  </span>		t.Run(&#34;template0は接続できないため不許可&#34;, func(t *testing.T) {
+<span id="L56" class="ln">    56  </span>			t.Parallel()
+<span id="L57" class="ln">    57  </span>			require.ErrorIs(t, validateDatabaseName(&#34;template0&#34;), errInvalidDatabaseName)
+<span id="L58" class="ln">    58  </span>		})
+<span id="L59" class="ln">    59  </span>		t.Run(&#34;スロット番号が0のDB名は不許可&#34;, func(t *testing.T) {
+<span id="L60" class="ln">    60  </span>			t.Parallel()
+<span id="L61" class="ln">    61  </span>			require.ErrorIs(t, validateDatabaseName(&#34;wt0_local&#34;), errInvalidDatabaseName)
+<span id="L62" class="ln">    62  </span>		})
+<span id="L63" class="ln">    63  </span>		t.Run(&#34;スロット名の接尾辞が想定外なら不許可&#34;, func(t *testing.T) {
+<span id="L64" class="ln">    64  </span>			t.Parallel()
+<span id="L65" class="ln">    65  </span>			require.ErrorIs(t, validateDatabaseName(&#34;wt1_prod&#34;), errInvalidDatabaseName)
+<span id="L66" class="ln">    66  </span>		})
+<span id="L67" class="ln">    67  </span>		t.Run(&#34;SQLを差し込む形のDB名は不許可&#34;, func(t *testing.T) {
+<span id="L68" class="ln">    68  </span>			t.Parallel()
+<span id="L69" class="ln">    69  </span>			require.ErrorIs(t, validateDatabaseName(&#34;local; DROP DATABASE test&#34;), errInvalidDatabaseName)
 <span id="L70" class="ln">    70  </span>		})
 <span id="L71" class="ln">    71  </span>	})
-<span id="L72" class="ln">    72  </span>
-<span id="L73" class="ln">    73  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L74" class="ln">    74  </span>		t.Parallel()
-<span id="L75" class="ln">    75  </span>
-<span id="L76" class="ln">    76  </span>		t.Run(&#34;1文目のREINDEXが失敗するとエラーを返し2文目は実行しない&#34;, func(t *testing.T) {
-<span id="L77" class="ln">    77  </span>			t.Parallel()
-<span id="L78" class="ln">    78  </span>			ctrl := gomock.NewController(t)
-<span id="L79" class="ln">    79  </span>			runner := mock_exec.NewMockRunner(ctrl)
-<span id="L80" class="ln">    80  </span>
-<span id="L81" class="ln">    81  </span>			<span class="comment">// 1 文目で失敗 → 2 文目は実行されない（Times(1)）。</span>
-<span id="L82" class="ln">    82  </span>			runner.EXPECT().
-<span id="L83" class="ln">    83  </span>				Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-<span id="L84" class="ln">    84  </span>				Return(nil, xerrors.New(&#34;psql failed&#34;)).
-<span id="L85" class="ln">    85  </span>				Times(1)
-<span id="L86" class="ln">    86  </span>
-<span id="L87" class="ln">    87  </span>			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), &#34;postgres://dsn&#34;, &#34;pw&#34;, &#34;local&#34;)
-<span id="L88" class="ln">    88  </span>			require.Error(t, err)
-<span id="L89" class="ln">    89  </span>		})
-<span id="L90" class="ln">    90  </span>
-<span id="L91" class="ln">    91  </span>		t.Run(&#34;REINDEX成功後の2文目ALTERが失敗するとエラーを返す&#34;, func(t *testing.T) {
-<span id="L92" class="ln">    92  </span>			t.Parallel()
-<span id="L93" class="ln">    93  </span>			ctrl := gomock.NewController(t)
-<span id="L94" class="ln">    94  </span>			runner := mock_exec.NewMockRunner(ctrl)
-<span id="L95" class="ln">    95  </span>
-<span id="L96" class="ln">    96  </span>			<span class="comment">// 1 文目成功 → 2 文目失敗。 ループの 2 周目エラー return path を検証。</span>
-<span id="L97" class="ln">    97  </span>			gomock.InOrder(
-<span id="L98" class="ln">    98  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).
-<span id="L99" class="ln">    99  </span>					Return(nil, nil),
-<span id="L100" class="ln">   100  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).
-<span id="L101" class="ln">   101  </span>					Return(nil, xerrors.New(&#34;alter failed&#34;)),
-<span id="L102" class="ln">   102  </span>			)
-<span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), &#34;postgres://dsn&#34;, &#34;pw&#34;, &#34;local&#34;)
-<span id="L105" class="ln">   105  </span>			require.Error(t, err)
-<span id="L106" class="ln">   106  </span>		})
-<span id="L107" class="ln">   107  </span>	})
-<span id="L108" class="ln">   108  </span>}
-<span id="L109" class="ln">   109  </span>
-<span id="L110" class="ln">   110  </span>func TestRunFix(t *testing.T) {
-<span id="L111" class="ln">   111  </span>	t.Parallel()
+<span id="L72" class="ln">    72  </span>}
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>func Test_withDatabase(t *testing.T) {
+<span id="L75" class="ln">    75  </span>	t.Parallel()
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L78" class="ln">    78  </span>		t.Parallel()
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>		t.Run(&#34;接続先データベースを指定した名前へ差し替える&#34;, func(t *testing.T) {
+<span id="L81" class="ln">    81  </span>			t.Parallel()
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>			actual, err := withDatabase(&#34;postgres://user@localhost:5432/local?sslmode=disable&#34;, &#34;template1&#34;)
+<span id="L84" class="ln">    84  </span>
+<span id="L85" class="ln">    85  </span>			require.NoError(t, err)
+<span id="L86" class="ln">    86  </span>			assert.Equal(t, &#34;postgres://user@localhost:5432/template1?sslmode=disable&#34;, actual)
+<span id="L87" class="ln">    87  </span>		})
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>		t.Run(&#34;ホストとクエリパラメータは保持する&#34;, func(t *testing.T) {
+<span id="L90" class="ln">    90  </span>			t.Parallel()
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>			actual, err := withDatabase(&#34;postgres://user@db.example.com:6543/wt1_local?sslmode=require&#34;, &#34;wt3_test&#34;)
+<span id="L93" class="ln">    93  </span>
+<span id="L94" class="ln">    94  </span>			require.NoError(t, err)
+<span id="L95" class="ln">    95  </span>			assert.Equal(t, &#34;postgres://user@db.example.com:6543/wt3_test?sslmode=require&#34;, actual)
+<span id="L96" class="ln">    96  </span>		})
+<span id="L97" class="ln">    97  </span>	})
+<span id="L98" class="ln">    98  </span>
+<span id="L99" class="ln">    99  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L100" class="ln">   100  </span>		t.Parallel()
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>		t.Run(&#34;解釈できない接続URLはErrInvalidDSNを返す&#34;, func(t *testing.T) {
+<span id="L103" class="ln">   103  </span>			t.Parallel()
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>			actual, err := withDatabase(&#34;postgres://user@localhost:5432/local\x7f&#34;, &#34;local&#34;)
+<span id="L106" class="ln">   106  </span>
+<span id="L107" class="ln">   107  </span>			assert.Empty(t, actual)
+<span id="L108" class="ln">   108  </span>			require.ErrorIs(t, err, errInvalidDSN)
+<span id="L109" class="ln">   109  </span>		})
+<span id="L110" class="ln">   110  </span>	})
+<span id="L111" class="ln">   111  </span>}
 <span id="L112" class="ln">   112  </span>
-<span id="L113" class="ln">   113  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L114" class="ln">   114  </span>		t.Parallel()
+<span id="L113" class="ln">   113  </span>func Test_fixCollation(t *testing.T) {
+<span id="L114" class="ln">   114  </span>	t.Parallel()
 <span id="L115" class="ln">   115  </span>
-<span id="L116" class="ln">   116  </span>		t.Run(&#34;検証通過後にDSNを解決しcollation修正を実行する&#34;, func(t *testing.T) {
-<span id="L117" class="ln">   117  </span>			t.Parallel()
-<span id="L118" class="ln">   118  </span>			ctrl := gomock.NewController(t)
-<span id="L119" class="ln">   119  </span>			runner := mock_exec.NewMockRunner(ctrl)
-<span id="L120" class="ln">   120  </span>			runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
-<span id="L121" class="ln">   121  </span>
-<span id="L122" class="ln">   122  </span>			loadDSN := func() (string, string, error) { return &#34;postgres://dsn&#34;, &#34;pw&#34;, nil }
-<span id="L123" class="ln">   123  </span>			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), &#34;local&#34;, loadDSN)
-<span id="L124" class="ln">   124  </span>			require.NoError(t, err)
-<span id="L125" class="ln">   125  </span>		})
-<span id="L126" class="ln">   126  </span>	})
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L129" class="ln">   129  </span>		t.Parallel()
-<span id="L130" class="ln">   130  </span>
-<span id="L131" class="ln">   131  </span>		t.Run(&#34;不正なDB名はDSN解決前に弾く&#34;, func(t *testing.T) {
-<span id="L132" class="ln">   132  </span>			t.Parallel()
-<span id="L133" class="ln">   133  </span>			ctrl := gomock.NewController(t)
-<span id="L134" class="ln">   134  </span>			runner := mock_exec.NewMockRunner(ctrl)
-<span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>			called := false
-<span id="L137" class="ln">   137  </span>			loadDSN := func() (string, string, error) {
-<span id="L138" class="ln">   138  </span>				called = true
-<span id="L139" class="ln">   139  </span>				return &#34;&#34;, &#34;&#34;, nil
-<span id="L140" class="ln">   140  </span>			}
-<span id="L141" class="ln">   141  </span>			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), &#34;production&#34;, loadDSN)
-<span id="L142" class="ln">   142  </span>			require.Error(t, err)
-<span id="L143" class="ln">   143  </span>			assert.False(t, called)
-<span id="L144" class="ln">   144  </span>		})
-<span id="L145" class="ln">   145  </span>
-<span id="L146" class="ln">   146  </span>		t.Run(&#34;DSN解決に失敗すると修正せずエラー&#34;, func(t *testing.T) {
-<span id="L147" class="ln">   147  </span>			t.Parallel()
-<span id="L148" class="ln">   148  </span>			ctrl := gomock.NewController(t)
-<span id="L149" class="ln">   149  </span>			runner := mock_exec.NewMockRunner(ctrl)
-<span id="L150" class="ln">   150  </span>
-<span id="L151" class="ln">   151  </span>			loadDSN := func() (string, string, error) { return &#34;&#34;, &#34;&#34;, xerrors.New(&#34;config failed&#34;) }
-<span id="L152" class="ln">   152  </span>			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), &#34;local&#34;, loadDSN)
-<span id="L153" class="ln">   153  </span>			require.Error(t, err)
-<span id="L154" class="ln">   154  </span>		})
-<span id="L155" class="ln">   155  </span>	})
-<span id="L156" class="ln">   156  </span>}
+<span id="L116" class="ln">   116  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L117" class="ln">   117  </span>		t.Parallel()
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>		t.Run(&#34;REINDEXとALTERをこの順序とON_ERROR_STOP指定で実行する&#34;, func(t *testing.T) {
+<span id="L120" class="ln">   120  </span>			t.Parallel()
+<span id="L121" class="ln">   121  </span>			ctrl := gomock.NewController(t)
+<span id="L122" class="ln">   122  </span>			runner := mock_exec.NewMockRunner(ctrl)
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>			<span class="comment">// 2 文 (REINDEX → ALTER) が psql 経由で順序通り実行され、 ON_ERROR_STOP=1 が常に</span>
+<span id="L125" class="ln">   125  </span>			<span class="comment">// 付与され、 SQL 内容自体がデータベース名込みで一致することを検証する。</span>
+<span id="L126" class="ln">   126  </span>			gomock.InOrder(
+<span id="L127" class="ln">   127  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand,
+<span id="L128" class="ln">   128  </span>					[]string{&#34;postgres://dsn&#34;, &#34;-v&#34;, &#34;ON_ERROR_STOP=1&#34;, &#34;-c&#34;, &#34;REINDEX DATABASE local;&#34;}).
+<span id="L129" class="ln">   129  </span>					Return(nil, nil),
+<span id="L130" class="ln">   130  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand,
+<span id="L131" class="ln">   131  </span>					[]string{&#34;postgres://dsn&#34;, &#34;-v&#34;, &#34;ON_ERROR_STOP=1&#34;, &#34;-c&#34;, &#34;ALTER DATABASE local REFRESH COLLATION VERSION;&#34;}).
+<span id="L132" class="ln">   132  </span>					Return(nil, nil),
+<span id="L133" class="ln">   133  </span>			)
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), &#34;postgres://dsn&#34;, &#34;pw&#34;, &#34;local&#34;)
+<span id="L136" class="ln">   136  </span>			require.NoError(t, err)
+<span id="L137" class="ln">   137  </span>		})
+<span id="L138" class="ln">   138  </span>	})
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L141" class="ln">   141  </span>		t.Parallel()
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span>		t.Run(&#34;1文目のREINDEXが失敗するとエラーを返し2文目は実行しない&#34;, func(t *testing.T) {
+<span id="L144" class="ln">   144  </span>			t.Parallel()
+<span id="L145" class="ln">   145  </span>			ctrl := gomock.NewController(t)
+<span id="L146" class="ln">   146  </span>			runner := mock_exec.NewMockRunner(ctrl)
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>			<span class="comment">// 1 文目で失敗 → 2 文目は実行されない（Times(1)）。</span>
+<span id="L149" class="ln">   149  </span>			runner.EXPECT().
+<span id="L150" class="ln">   150  </span>				Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L151" class="ln">   151  </span>				Return(nil, xerrors.New(&#34;psql failed&#34;)).
+<span id="L152" class="ln">   152  </span>				Times(1)
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span>			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), &#34;postgres://dsn&#34;, &#34;pw&#34;, &#34;local&#34;)
+<span id="L155" class="ln">   155  </span>			require.Error(t, err)
+<span id="L156" class="ln">   156  </span>		})
 <span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>		t.Run(&#34;REINDEX成功後の2文目ALTERが失敗するとエラーを返す&#34;, func(t *testing.T) {
+<span id="L159" class="ln">   159  </span>			t.Parallel()
+<span id="L160" class="ln">   160  </span>			ctrl := gomock.NewController(t)
+<span id="L161" class="ln">   161  </span>			runner := mock_exec.NewMockRunner(ctrl)
+<span id="L162" class="ln">   162  </span>
+<span id="L163" class="ln">   163  </span>			<span class="comment">// 1 文目成功 → 2 文目失敗。 ループの 2 周目エラー return path を検証。</span>
+<span id="L164" class="ln">   164  </span>			gomock.InOrder(
+<span id="L165" class="ln">   165  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).
+<span id="L166" class="ln">   166  </span>					Return(nil, nil),
+<span id="L167" class="ln">   167  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).
+<span id="L168" class="ln">   168  </span>					Return(nil, xerrors.New(&#34;alter failed&#34;)),
+<span id="L169" class="ln">   169  </span>			)
+<span id="L170" class="ln">   170  </span>
+<span id="L171" class="ln">   171  </span>			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), &#34;postgres://dsn&#34;, &#34;pw&#34;, &#34;local&#34;)
+<span id="L172" class="ln">   172  </span>			require.Error(t, err)
+<span id="L173" class="ln">   173  </span>		})
+<span id="L174" class="ln">   174  </span>	})
+<span id="L175" class="ln">   175  </span>}
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>func TestRunFix(t *testing.T) {
+<span id="L178" class="ln">   178  </span>	t.Parallel()
+<span id="L179" class="ln">   179  </span>
+<span id="L180" class="ln">   180  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L181" class="ln">   181  </span>		t.Parallel()
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>		t.Run(&#34;検証通過後にDSNを解決しcollation修正を実行する&#34;, func(t *testing.T) {
+<span id="L184" class="ln">   184  </span>			t.Parallel()
+<span id="L185" class="ln">   185  </span>			ctrl := gomock.NewController(t)
+<span id="L186" class="ln">   186  </span>			runner := mock_exec.NewMockRunner(ctrl)
+<span id="L187" class="ln">   187  </span>			runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>			loadDSN := func() (string, string, error) { return &#34;postgres://dsn&#34;, &#34;pw&#34;, nil }
+<span id="L190" class="ln">   190  </span>			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), &#34;local&#34;, loadDSN)
+<span id="L191" class="ln">   191  </span>			require.NoError(t, err)
+<span id="L192" class="ln">   192  </span>		})
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>		t.Run(&#34;設定の接続先ではなく指定したデータベースへ接続する&#34;, func(t *testing.T) {
+<span id="L195" class="ln">   195  </span>			t.Parallel()
+<span id="L196" class="ln">   196  </span>			ctrl := gomock.NewController(t)
+<span id="L197" class="ln">   197  </span>			runner := mock_exec.NewMockRunner(ctrl)
+<span id="L198" class="ln">   198  </span>
+<span id="L199" class="ln">   199  </span>			<span class="comment">// REINDEX DATABASE は接続中のデータベースしか対象にできないため、設定が local を指していても</span>
+<span id="L200" class="ln">   200  </span>			<span class="comment">// 指定した template1 へ接続し直すことを、psql へ渡す接続 URL で固定する。</span>
+<span id="L201" class="ln">   201  </span>			const targetURL = &#34;postgres://user@localhost:5432/template1?sslmode=disable&#34;
+<span id="L202" class="ln">   202  </span>			gomock.InOrder(
+<span id="L203" class="ln">   203  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand,
+<span id="L204" class="ln">   204  </span>					[]string{targetURL, &#34;-v&#34;, &#34;ON_ERROR_STOP=1&#34;, &#34;-c&#34;, &#34;REINDEX DATABASE template1;&#34;}).
+<span id="L205" class="ln">   205  </span>					Return(nil, nil),
+<span id="L206" class="ln">   206  </span>				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand,
+<span id="L207" class="ln">   207  </span>					[]string{targetURL, &#34;-v&#34;, &#34;ON_ERROR_STOP=1&#34;, &#34;-c&#34;, &#34;ALTER DATABASE template1 REFRESH COLLATION VERSION;&#34;}).
+<span id="L208" class="ln">   208  </span>					Return(nil, nil),
+<span id="L209" class="ln">   209  </span>			)
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>			loadDSN := func() (string, string, error) {
+<span id="L212" class="ln">   212  </span>				return &#34;postgres://user@localhost:5432/local?sslmode=disable&#34;, &#34;pw&#34;, nil
+<span id="L213" class="ln">   213  </span>			}
+<span id="L214" class="ln">   214  </span>			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), &#34;template1&#34;, loadDSN)
+<span id="L215" class="ln">   215  </span>			require.NoError(t, err)
+<span id="L216" class="ln">   216  </span>		})
+<span id="L217" class="ln">   217  </span>	})
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L220" class="ln">   220  </span>		t.Parallel()
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>		t.Run(&#34;不正なDB名はDSN解決前に弾く&#34;, func(t *testing.T) {
+<span id="L223" class="ln">   223  </span>			t.Parallel()
+<span id="L224" class="ln">   224  </span>			ctrl := gomock.NewController(t)
+<span id="L225" class="ln">   225  </span>			runner := mock_exec.NewMockRunner(ctrl)
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>			called := false
+<span id="L228" class="ln">   228  </span>			loadDSN := func() (string, string, error) {
+<span id="L229" class="ln">   229  </span>				called = true
+<span id="L230" class="ln">   230  </span>				return &#34;&#34;, &#34;&#34;, nil
+<span id="L231" class="ln">   231  </span>			}
+<span id="L232" class="ln">   232  </span>			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), &#34;production&#34;, loadDSN)
+<span id="L233" class="ln">   233  </span>			require.Error(t, err)
+<span id="L234" class="ln">   234  </span>			assert.False(t, called)
+<span id="L235" class="ln">   235  </span>		})
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>		t.Run(&#34;DSN解決に失敗すると修正せずエラー&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>			t.Parallel()
+<span id="L239" class="ln">   239  </span>			ctrl := gomock.NewController(t)
+<span id="L240" class="ln">   240  </span>			runner := mock_exec.NewMockRunner(ctrl)
+<span id="L241" class="ln">   241  </span>
+<span id="L242" class="ln">   242  </span>			loadDSN := func() (string, string, error) { return &#34;&#34;, &#34;&#34;, xerrors.New(&#34;config failed&#34;) }
+<span id="L243" class="ln">   243  </span>			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), &#34;local&#34;, loadDSN)
+<span id="L244" class="ln">   244  </span>			require.Error(t, err)
+<span id="L245" class="ln">   245  </span>		})
+<span id="L246" class="ln">   246  </span>	})
+<span id="L247" class="ln">   247  </span>}
+<span id="L248" class="ln">   248  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/fixcollation/fix_collation_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

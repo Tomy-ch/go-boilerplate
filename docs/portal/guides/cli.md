@@ -65,7 +65,11 @@ pushed out to `cmd/`. The package boundary equals the test boundary.
   coverage**. `internal/cli/*` is included in the coverage gate and is expected to meet 90%+.
 - **OS / filesystem / external-process / DB / logger dependencies are injected** (interfaces or
   function seams). Production wires the real implementations in `cmd/`; unit tests pass fakes, so
-  **tests never touch the real filesystem, run external binaries (`pg_dump` / `psql`), or open a DB**.
+  **the decision logic's tests never touch the real filesystem, run external binaries
+  (`pg_dump` / `psql`), or open a DB**. The **real implementation adapter behind a seam** is the one
+  exception: its contract is that the external substrate behaves as expected, which a fake cannot
+  establish, so it may be tested against the real thing. A package doing this declares the split in
+  its own README — see [`dbslot/`](dbslot/README.md).
 - **The thin `cmd/` shells are excluded** from the coverage gate (`gen|cmd|mock|apperror|scripts`).
   Their runtime correctness is covered by CI boot checks: `app-di-startup-check` (serve → `/ready`),
   `job-boot-check` (job dispatch), `worker-boot-check` (worker dispatch), `migration-check`

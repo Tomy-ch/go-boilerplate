@@ -136,7 +136,7 @@
 		
 			
 			
-			<h2 id="ExtractFunctionName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=988:1032#L28">ExtractFunctionName</a>
+			<h2 id="ExtractFunctionName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=956:1000#L28">ExtractFunctionName</a>
 				<a class="permalink" href="#ExtractFunctionName">¶</a>
 				
 				
@@ -145,8 +145,8 @@
 			<p>ExtractFunctionName は、runtime.Func のフルネームから span 名として使いやすい
 メソッド名のみを抽出します。
 例:
-</p><pre>&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34;
-  → &#34;GetUser&#34;
+</p><pre>&#34;github.com/org/proj/foo/bar.(*Baz).Do&#34;
+  → &#34;Do&#34;
 </pre>
 
 			
@@ -155,7 +155,7 @@
 		
 			
 			
-			<h2 id="ExtractPackageName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=1614:1657#L43">ExtractPackageName</a>
+			<h2 id="ExtractPackageName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=1526:1569#L43">ExtractPackageName</a>
 				<a class="permalink" href="#ExtractPackageName">¶</a>
 				
 				
@@ -165,8 +165,8 @@
 パッケージ名は lhs の先頭セグメント（最初の &#34;.&#34; より前）なので、ポインタ／値
 レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。
 例:
-</p><pre>&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34; → &#34;user&#34;
-&#34;github.com/org/proj/internal/usecase/user.UserUsecase.GetUser&#34;    → &#34;user&#34;
+</p><pre>&#34;github.com/org/proj/foo/bar.(*Baz).Do&#34; → &#34;bar&#34;
+&#34;github.com/org/proj/foo/bar.Baz.Do&#34;    → &#34;bar&#34;
 </pre>
 
 			

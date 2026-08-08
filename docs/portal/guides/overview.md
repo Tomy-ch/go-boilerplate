@@ -27,6 +27,7 @@ Each item is a thin seam you extend; follow the link for the design and rules.
 - **Application jobs** — [docs/design/job.md](docs/design/job.md)
 - **REST reliability** (timeouts / body limit / deadline budget / tx retry) — [docs/design/rest.md](docs/design/rest.md)
 - **Observability** (OpenTelemetry traces / metrics / logs, config-driven) — [docs/design/observability.md](docs/design/observability.md)
+- **Object storage** (vendor-neutral boundary behind an S3-compatible adapter; local container, seeding and public read delivery included) — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **Single self-contained binary** (env + migrations embedded → one image) — [docker/README.md](docker/README.md)
 
 ## Prerequisites
@@ -82,7 +83,9 @@ Full setup (incl. module localization) is in
 > `golangci-lint`, `sqlc`, `oapi-codegen`, `mockgen`, `lefthook`, …) is pinned in
 > [`mise.toml`](mise.toml); the Dockerfiles, the local installer, and CI all install from that
 > same file via `mise install <tool>`, so local and CI stay identical. `make sync-versions`
-> propagates it to `go.mod` and the Dockerfile `FROM` lines.
+> propagates it to `go.mod` and the Dockerfile `FROM` lines. Tools published to PyPI are the one
+> exception: they are declared and hash-locked in [`python/`](python/README.md), since a version
+> pin alone would leave their dependencies unpinned.
 
 ## Example API
 
@@ -166,6 +169,8 @@ The source of truth lives close to the code. Start here and follow the link that
 - [env/README.md](env/README.md) — environment variables (embedded per-environment)
 - [.makefiles/README.md](.makefiles/README.md) — every `make` target
 - [docker/README.md](docker/README.md) — images, compose profiles, single-container operation
+- [scripts/README.md](scripts/README.md) — utility scripts & repository gates (codegen, docs, versioning, supply-chain pins, setup)
+- [docs-viewer/README.md](docs-viewer/README.md) — documentation portal frontend (renders the generated `docs/portal/docs.json`)
 
 ## Directory Structure
 
@@ -182,9 +187,13 @@ The source of truth lives close to the code. Start here and follow the link that
 ├── pkg/            # Shared, framework-agnostic utilities
 ├── openapi/        # API contracts
 ├── database/       # Migrations & SQL (sqlc)
+├── storage/        # Objects seeded into the bucket (directory layout = key layout)
 ├── env/            # Per-environment variables (embedded into the binary)
 ├── docker/
 ├── docs/
+├── docs-viewer/    # Documentation portal frontend (build output is committed under docs/portal/)
+├── scripts/        # Utility scripts & repository gates
+├── .github/        # Workflows, composite actions, repository settings
 ├── .makefiles/     # make target registry
 └── makefile
 ```
@@ -198,6 +207,7 @@ The source of truth lives close to the code. Start here and follow the link that
 | Dependency Injection | uber/fx |
 | API Definition | OpenAPI + oapi-codegen |
 | Database | PostgreSQL |
+| Object Storage | S3-compatible (AWS SDK v2; Garage for local) |
 | Query | sqlc |
 | Migration | golang-migrate |
 | Logging | zap (+ OpenTelemetry via otelzap) |
@@ -214,6 +224,7 @@ release branches, and all changes go through Pull Requests. Rules: [docs/rules.m
 
 ## Design Intent
 
+<!-- boilerplate-only:begin -->
 ### Why it exists
 
 Backend projects tend to re-litigate architecture, library choice, directory layout and
@@ -221,6 +232,7 @@ workflow every time. This boilerplate provides a **baseline that reduces initial
 so teams start safely and quickly. Its value is not any single library but **the integration of
 widely used OSS into a coherent, replaceable architecture**.
 
+<!-- boilerplate-only:end -->
 ### AI-assisted development
 
 Constraints (enforced layering, generated-code separation, release-based branching,
@@ -240,6 +252,19 @@ Observability and tooling are OSS-first and vendor-neutral. Components under `in
 loosely coupled, so DI allows infrastructure, implementations and middleware to be replaced per
 runtime environment.
 
+### Out of scope: developer-machine hygiene
+
+Supply-chain defence here stops at the repository: dependency cooldown windows, pinned actions and
+base images, SBOM and vulnerability scanning. What runs on a *developer's* laptop — globally
+installed packages, editor and browser extensions, agent/MCP configuration — is outside a project
+template's reach and belongs to whoever administers those machines.
+
+If you need to answer "an advisory names this package and version; which of our machines match right
+now?", [`perplexityai/bumblebee`](https://github.com/perplexityai/bumblebee) is a read-only endpoint
+scanner built for exactly that question. It is mentioned as a pointer, not a dependency — nothing
+here installs, invokes or requires it, and note that it needs an exposure catalog of its own to flag
+anything.
+
 ## Maintainer Policy / Disclaimer
 
 This repository is **independently maintained by the author** and is not affiliated with any
@@ -252,8 +277,10 @@ of strong framework lock-in. The maintainer may provide dependency updates, secu
 architectural improvements, but issue-response deadlines, guaranteed bug fixes and long-term
 maintenance commitments are **not guaranteed**.
 
+<!-- boilerplate-only:begin -->
 Planned future releases: Frontend / Infrastructure / Observability boilerplates.
 
+<!-- boilerplate-only:end -->
 ## License
 
 This project's own source code is released under the **MIT License** — see [LICENSE](LICENSE).

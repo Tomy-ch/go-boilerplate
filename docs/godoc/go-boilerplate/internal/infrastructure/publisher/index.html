@@ -102,15 +102,20 @@ HTTP 実装を提供します。relay engine が claim した outbox メッセ�
 			<div id="manual-nav">
 			<dl>
 			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
 			
 				<dd><a href="#pkg-variables">Variables</a></dd>
 			
 			
 				
-				<dd><a href="#New">func New(endpoint Endpoint, client httpclient.Client, tf observability.TracerFactory) boundary.Publisher</a></dd>
+				<dd><a href="#New">func New(cfg *config.OutboxConfig, client httpclient.Client, outbound *observability.OutboundHTTPClient, tf observability.TracerFactory) (boundary.Publisher, error)</a></dd>
 			
 				
 				<dd><a href="#NewDownstreamProfile">func NewDownstreamProfile() httpclient.DownstreamProfile</a></dd>
+			
+				
+				<dd><a href="#NewHTTP">func NewHTTP(endpoint Endpoint, client httpclient.Client, tf observability.TracerFactory) boundary.Publisher</a></dd>
 			
 				
 				<dd><a href="#RequiredDownstream">func RequiredDownstream() httpclient.Downstream</a></dd>
@@ -139,6 +144,10 @@ HTTP 実装を提供します。relay engine が claim した outbox メッセ�
 			
 				<a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html">http_publisher.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/publisher.go.html">publisher.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/queue_config.go.html">queue_config.go</a>
+			
 			</span>
 			</p>
 		
@@ -148,6 +157,18 @@ HTTP 実装を提供します。relay engine が claim した outbox メッセ�
 		
 
 		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				
+				<pre>const (
+    <span class="comment">// KindHTTP は、受信エンドポイントへ HTTP POST する publish 先種別です。</span>
+    <span id="KindHTTP">KindHTTP</span> = &#34;http&#34;
+
+    <span class="comment">// KindSQS は、SQS 互換ブローカーへ送出する publish 先種別です。</span>
+    <span id="KindSQS">KindSQS</span> = &#34;sqs&#34;
+)</pre>
+			
+		
 		
 			<h2 id="pkg-variables">Variables</h2>
 			
@@ -155,21 +176,34 @@ HTTP 実装を提供します。relay engine が claim した outbox メッセ�
 
 				</p><pre>var <span id="ErrInvalidEndpoint">ErrInvalidEndpoint</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;invalid outbox endpoint&#34;)</pre>
 			
+				<p>ErrInvalidQueue は、SQS publish 先の設定が不正であることを示すエラーです。
+
+				</p><pre>var <span id="ErrInvalidQueue">ErrInvalidQueue</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;invalid outbox queue&#34;)</pre>
+			
+				<p>ErrUnknownKind は、判別子が未知の publish 先種別を指していることを示すエラーです。
+
+				</p><pre>var <span id="ErrUnknownKind">ErrUnknownKind</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;unknown outbox publisher kind&#34;)</pre>
+			
 		
 		
 			
 			
-			<h2 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=2196:2306#L37">New</a>
+			<h2 id="New">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/publisher.go.html?s=1310:1481#L23">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
 			</h2>
 			<pre>func New(
-    endpoint <a href="#Endpoint">Endpoint</a>,
+    cfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#OutboxConfig">OutboxConfig</a>,
     client <a href="../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/#Client">Client</a>,
+    outbound *<a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#OutboundHTTPClient">OutboundHTTPClient</a>,
     tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
-) <a href="../../../../go-boilerplate/internal/usecase/boundary/publisher/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/publisher/#Publisher">Publisher</a></pre>
-			<p>New は、publish 境界の HTTP 実装を生成します。
+) (<a href="../../../../go-boilerplate/internal/usecase/boundary/publisher/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/publisher/#Publisher">Publisher</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>New は、判別子（OUTBOX_PUBLISHER）に対応する publish 実装を返します。
+publish 先の種別は環境ティアではなくデプロイ先の判断で決まるため、環境分岐ではなく明示の
+判別子で選びます。対応する case が無い値は、意図しない publish 先へ黙って流れることを防ぐため
+起動エラーにします（fail-closed）。
+sample-api:replace-begin
 
 			
 			
@@ -177,7 +211,7 @@ HTTP 実装を提供します。relay engine が claim した outbox メッセ�
 		
 			
 			
-			</p><h2 id="NewDownstreamProfile">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=1516:1572#L21">NewDownstreamProfile</a>
+			</p><h2 id="NewDownstreamProfile">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=1549:1605#L22">NewDownstreamProfile</a>
 				<a class="permalink" href="#NewDownstreamProfile">¶</a>
 				
 				
@@ -195,7 +229,25 @@ traceparent は emit 時に capture した値を headers で明示伝搬する�
 		
 			
 			
-			</p><h2 id="RequiredDownstream">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=2060:2107#L32">RequiredDownstream</a>
+			</p><h2 id="NewHTTP">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=2233:2347#L38">NewHTTP</a>
+				<a class="permalink" href="#NewHTTP">¶</a>
+				
+				
+			</h2>
+			<pre>func NewHTTP(
+    endpoint <a href="#Endpoint">Endpoint</a>,
+    client <a href="../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/#Client">Client</a>,
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+) <a href="../../../../go-boilerplate/internal/usecase/boundary/publisher/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/publisher/#Publisher">Publisher</a></pre>
+			<p>NewHTTP は、publish 境界の HTTP 実装を生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RequiredDownstream">func <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=2093:2140#L33">RequiredDownstream</a>
 				<a class="permalink" href="#RequiredDownstream">¶</a>
 				
 				
@@ -212,7 +264,7 @@ silent な DefaultProfile fallback ではなく loud な起動失敗になるこ
 		
 			
 			
-			</p><h2 id="Endpoint">type <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=707:727#L7">Endpoint</a>
+			</p><h2 id="Endpoint">type <a href="../../../../src/go-boilerplate/internal/infrastructure/publisher/http_publisher.go.html?s=740:760#L8">Endpoint</a>
 				<a class="permalink" href="#Endpoint">¶</a>
 				
 				

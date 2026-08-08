@@ -59,79 +59,106 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/prometheus/client_golang/prometheus&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>const (
-<span id="L13" class="ln">    13  </span>	queryNamespace = &#34;rdb&#34;
-<span id="L14" class="ln">    14  </span>	querySubsystem = &#34;query&#34;
-<span id="L15" class="ln">    15  </span>)
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span><span class="comment">// queryMetrics は、DB クエリの duration / error を Prometheus メトリクスとして記録する driver.QueryRecorder 実装です。</span>
-<span id="L18" class="ln">    18  </span>type queryMetrics struct {
-<span id="L19" class="ln">    19  </span>	duration    *prometheus.HistogramVec
-<span id="L20" class="ln">    20  </span>	errorsTotal *prometheus.CounterVec
-<span id="L21" class="ln">    21  </span>}
-<span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span><span class="comment">// NewQueryRecorder は、DB クエリメトリクス(rdb_query_duration_seconds / rdb_query_errors_total)を</span>
-<span id="L24" class="ln">    24  </span><span class="comment">// 指定レジストリに登録し、recorder を返します。既に登録済みの場合は既存のコレクタを再利用します。</span>
-<span id="L25" class="ln">    25  </span>func NewQueryRecorder(reg prometheus.Registerer) driver.QueryRecorder {
-<span id="L26" class="ln">    26  </span>	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-<span id="L27" class="ln">    27  </span>		Namespace: queryNamespace,
-<span id="L28" class="ln">    28  </span>		Subsystem: querySubsystem,
-<span id="L29" class="ln">    29  </span>		Name:      &#34;duration_seconds&#34;,
-<span id="L30" class="ln">    30  </span>		Help:      &#34;Duration of DB queries in seconds, partitioned by query name, operation and status.&#34;,
-<span id="L31" class="ln">    31  </span>		Buckets:   prometheus.DefBuckets,
-<span id="L32" class="ln">    32  </span>	}, []string{&#34;query_name&#34;, &#34;operation&#34;, &#34;status&#34;})
-<span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span>	errorsTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
-<span id="L35" class="ln">    35  </span>		Namespace: queryNamespace,
-<span id="L36" class="ln">    36  </span>		Subsystem: querySubsystem,
-<span id="L37" class="ln">    37  </span>		Name:      &#34;errors_total&#34;,
-<span id="L38" class="ln">    38  </span>		Help:      &#34;Total number of failed DB queries, partitioned by query name, operation and error class.&#34;,
-<span id="L39" class="ln">    39  </span>	}, []string{&#34;query_name&#34;, &#34;operation&#34;, &#34;error_class&#34;})
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	return &amp;queryMetrics{
-<span id="L42" class="ln">    42  </span>		duration:    registerOrExisting(reg, duration),
-<span id="L43" class="ln">    43  </span>		errorsTotal: registerOrExisting(reg, errorsTotal),
-<span id="L44" class="ln">    44  </span>	}
-<span id="L45" class="ln">    45  </span>}
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span><span class="comment">// Observe は、1 クエリの duration を記録し、エラー時のみ error counter を増分します。</span>
-<span id="L48" class="ln">    48  </span><span class="comment">// QueryAttrs には SQL 本文・bind 値・テーブル名などの高カーディナリティ／秘匿情報が含まれないため、</span>
-<span id="L49" class="ln">    49  </span><span class="comment">// ラベルへ秘匿情報が漏れることはありません。</span>
-<span id="L50" class="ln">    50  </span>func (m *queryMetrics) Observe(_ context.Context, attrs driver.QueryAttrs) {
-<span id="L51" class="ln">    51  </span>	m.duration.
-<span id="L52" class="ln">    52  </span>		WithLabelValues(attrs.QueryName, attrs.Operation, attrs.Status).
-<span id="L53" class="ln">    53  </span>		Observe(attrs.Duration.Seconds())
-<span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>	<span class="comment">// ErrorClass が非空のときのみエラー（pgx.ErrNoRows を除く失敗）として計上します。</span>
-<span id="L56" class="ln">    56  </span>	if attrs.ErrorClass != &#34;&#34; {
-<span id="L57" class="ln">    57  </span>		m.errorsTotal.WithLabelValues(attrs.QueryName, attrs.Operation, attrs.ErrorClass).Inc()
-<span id="L58" class="ln">    58  </span>	}
-<span id="L59" class="ln">    59  </span>}
-<span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span><span class="comment">// registerOrExisting は、コレクタを登録します。既に同一コレクタが登録済みの場合は、</span>
-<span id="L62" class="ln">    62  </span><span class="comment">// 新規生成したものではなく登録済みのコレクタを返し、複数回初期化されても同じメトリクスへ記録できるようにします。</span>
-<span id="L63" class="ln">    63  </span>func registerOrExisting[T prometheus.Collector](reg prometheus.Registerer, c T) T {
-<span id="L64" class="ln">    64  </span>	err := reg.Register(c)
-<span id="L65" class="ln">    65  </span>	if err == nil {
-<span id="L66" class="ln">    66  </span>		return c
-<span id="L67" class="ln">    67  </span>	}
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span>	var alreadyRegisteredErr prometheus.AlreadyRegisteredError
-<span id="L70" class="ln">    70  </span>	if xerrors.As(err, &amp;alreadyRegisteredErr) {
-<span id="L71" class="ln">    71  </span>		if existing, ok := alreadyRegisteredErr.ExistingCollector.(T); ok {
-<span id="L72" class="ln">    72  </span>			return existing
-<span id="L73" class="ln">    73  </span>		}
-<span id="L74" class="ln">    74  </span>	}
-<span id="L75" class="ln">    75  </span>	return c
-<span id="L76" class="ln">    76  </span>}
+<span id="L5" class="ln">     5  </span>	&#34;fmt&#34;
+<span id="L6" class="ln">     6  </span>	&#34;strings&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;github.com/prometheus/client_golang/prometheus&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>const (
+<span id="L15" class="ln">    15  </span>	queryNamespace = &#34;rdb&#34;
+<span id="L16" class="ln">    16  </span>	querySubsystem = &#34;query&#34;
+<span id="L17" class="ln">    17  </span>)
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span><span class="comment">// errIncompatibleCollector は、同名で登録済みのコレクタが期待する型と非互換だった場合のエラーです。</span>
+<span id="L20" class="ln">    20  </span>var errIncompatibleCollector = xerrors.New(&#34;registerOrExisting: collector is already registered with an incompatible type&#34;)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// queryMetrics は、DB クエリの duration / error を Prometheus メトリクスとして記録する driver.QueryRecorder 実装です。</span>
+<span id="L23" class="ln">    23  </span>type queryMetrics struct {
+<span id="L24" class="ln">    24  </span>	duration    *prometheus.HistogramVec
+<span id="L25" class="ln">    25  </span>	errorsTotal *prometheus.CounterVec
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// NewQueryRecorder は、DB クエリメトリクス(rdb_query_duration_seconds / rdb_query_errors_total)を</span>
+<span id="L29" class="ln">    29  </span><span class="comment">// 指定レジストリに登録し、recorder を返します。既に登録済みの場合は既存のコレクタを再利用します。</span>
+<span id="L30" class="ln">    30  </span>func NewQueryRecorder(reg prometheus.Registerer) driver.QueryRecorder {
+<span id="L31" class="ln">    31  </span>	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+<span id="L32" class="ln">    32  </span>		Namespace: queryNamespace,
+<span id="L33" class="ln">    33  </span>		Subsystem: querySubsystem,
+<span id="L34" class="ln">    34  </span>		Name:      &#34;duration_seconds&#34;,
+<span id="L35" class="ln">    35  </span>		Help:      &#34;Duration of DB queries in seconds, partitioned by query name, operation and status.&#34;,
+<span id="L36" class="ln">    36  </span>		Buckets:   prometheus.DefBuckets,
+<span id="L37" class="ln">    37  </span>	}, []string{&#34;query_name&#34;, &#34;operation&#34;, &#34;status&#34;})
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span>	errorsTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+<span id="L40" class="ln">    40  </span>		Namespace: queryNamespace,
+<span id="L41" class="ln">    41  </span>		Subsystem: querySubsystem,
+<span id="L42" class="ln">    42  </span>		Name:      &#34;errors_total&#34;,
+<span id="L43" class="ln">    43  </span>		Help:      &#34;Total number of failed DB queries, partitioned by query name, operation and error class.&#34;,
+<span id="L44" class="ln">    44  </span>	}, []string{&#34;query_name&#34;, &#34;operation&#34;, &#34;error_class&#34;})
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>	return &amp;queryMetrics{
+<span id="L47" class="ln">    47  </span>		duration:    registerOrExisting(reg, duration),
+<span id="L48" class="ln">    48  </span>		errorsTotal: registerOrExisting(reg, errorsTotal),
+<span id="L49" class="ln">    49  </span>	}
+<span id="L50" class="ln">    50  </span>}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span><span class="comment">// Observe は、1 クエリの duration を記録し、エラー時のみ error counter を増分します。</span>
+<span id="L53" class="ln">    53  </span><span class="comment">// QueryAttrs には SQL 本文・bind 値・テーブル名などの高カーディナリティ／秘匿情報が含まれないため、</span>
+<span id="L54" class="ln">    54  </span><span class="comment">// ラベルへ秘匿情報が漏れることはありません。</span>
+<span id="L55" class="ln">    55  </span>func (m *queryMetrics) Observe(_ context.Context, attrs driver.QueryAttrs) {
+<span id="L56" class="ln">    56  </span>	m.duration.
+<span id="L57" class="ln">    57  </span>		WithLabelValues(attrs.QueryName, attrs.Operation, attrs.Status).
+<span id="L58" class="ln">    58  </span>		Observe(attrs.Duration.Seconds())
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>	<span class="comment">// ErrorClass が非空のときのみエラー（pgx.ErrNoRows を除く失敗）として計上します。</span>
+<span id="L61" class="ln">    61  </span>	if attrs.ErrorClass != &#34;&#34; {
+<span id="L62" class="ln">    62  </span>		m.errorsTotal.WithLabelValues(attrs.QueryName, attrs.Operation, attrs.ErrorClass).Inc()
+<span id="L63" class="ln">    63  </span>	}
+<span id="L64" class="ln">    64  </span>}
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span><span class="comment">// registerOrExisting は、コレクタを登録します。既に同一コレクタが登録済みの場合は、</span>
+<span id="L67" class="ln">    67  </span><span class="comment">// 新規生成したものではなく登録済みのコレクタを返し、複数回初期化されても同じメトリクスへ記録できるようにします。</span>
+<span id="L68" class="ln">    68  </span><span class="comment">//</span>
+<span id="L69" class="ln">    69  </span><span class="comment">// 「同名で既存だが型が一致しない」および AlreadyRegistered 以外の登録失敗（descriptor 不整合等）は、</span>
+<span id="L70" class="ln">    70  </span><span class="comment">// メトリクス初期化パスの設定バグです。黙って別インスタンスへ記録し続けると計測が二重化し発見が遅れるため、</span>
+<span id="L71" class="ln">    71  </span><span class="comment">// 起動時に panic で表面化させます（panic 値に対象コレクタの FQName を含めます）。</span>
+<span id="L72" class="ln">    72  </span>func registerOrExisting[T prometheus.Collector](reg prometheus.Registerer, c T) T {
+<span id="L73" class="ln">    73  </span>	err := reg.Register(c)
+<span id="L74" class="ln">    74  </span>	if err == nil {
+<span id="L75" class="ln">    75  </span>		return c
+<span id="L76" class="ln">    76  </span>	}
 <span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>	var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+<span id="L79" class="ln">    79  </span>	if xerrors.As(err, &amp;alreadyRegisteredErr) {
+<span id="L80" class="ln">    80  </span>		if existing, ok := alreadyRegisteredErr.ExistingCollector.(T); ok {
+<span id="L81" class="ln">    81  </span>			return existing
+<span id="L82" class="ln">    82  </span>		}
+<span id="L83" class="ln">    83  </span>		panic(xerrors.Wrap(errIncompatibleCollector, fmt.Sprintf(&#34;collector [%s], existing type %T&#34;,
+<span id="L84" class="ln">    84  </span>			collectorFQNames(c), alreadyRegisteredErr.ExistingCollector)))
+<span id="L85" class="ln">    85  </span>	}
+<span id="L86" class="ln">    86  </span>	panic(xerrors.Wrap(err, fmt.Sprintf(
+<span id="L87" class="ln">    87  </span>		&#34;registerOrExisting: failed to register collector [%s]&#34;, collectorFQNames(c))))
+<span id="L88" class="ln">    88  </span>}
+<span id="L89" class="ln">    89  </span>
+<span id="L90" class="ln">    90  </span><span class="comment">// collectorFQNames は、panic メッセージ用にコレクタの descriptor（FQName 含む）を文字列化します。</span>
+<span id="L91" class="ln">    91  </span>func collectorFQNames(c prometheus.Collector) string {
+<span id="L92" class="ln">    92  </span>	ch := make(chan *prometheus.Desc, 1)
+<span id="L93" class="ln">    93  </span>	go func() {
+<span id="L94" class="ln">    94  </span>		c.Describe(ch)
+<span id="L95" class="ln">    95  </span>		close(ch)
+<span id="L96" class="ln">    96  </span>	}()
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>	descs := make([]string, 0, 1)
+<span id="L99" class="ln">    99  </span>	for d := range ch {
+<span id="L100" class="ln">   100  </span>		descs = append(descs, d.String())
+<span id="L101" class="ln">   101  </span>	}
+<span id="L102" class="ln">   102  </span>	return strings.Join(descs, &#34;, &#34;)
+<span id="L103" class="ln">   103  </span>}
+<span id="L104" class="ln">   104  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/query_metrics.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

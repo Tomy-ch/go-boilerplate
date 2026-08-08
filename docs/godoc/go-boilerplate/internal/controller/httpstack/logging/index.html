@@ -147,7 +147,7 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/logging/logging.go.html?s=696:782#L12">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/logging/logging.go.html?s=807:893#L14">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
@@ -155,6 +155,7 @@
 			<pre>func Middleware(logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
 			<p>Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
 ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップします。
+レスポンスを取り出せない場合はログを出さず素通しします。
 
 			
 			

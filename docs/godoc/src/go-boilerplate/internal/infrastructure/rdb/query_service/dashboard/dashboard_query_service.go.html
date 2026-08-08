@@ -1,0 +1,185 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>dashboard - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb">rdb</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service">query_service</a>/<a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service/dashboard">dashboard</a>/<span class="text-muted">dashboard_query_service.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../go-boilerplate/internal/infrastructure/rdb/query_service/dashboard">go-boilerplate/internal/infrastructure/rdb/query_service/dashboard</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package dashboard は、admin ダッシュボード横断集計クエリサービス（query.DashboardQueryService）の RDB 実装を提供します。</span>
+<span id="L2" class="ln">     2  </span>package dashboard
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span>import (
+<span id="L5" class="ln">     5  </span>	&#34;context&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/dashboard/query&#34;
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>type service struct {
+<span id="L17" class="ln">    17  </span>	db     driver.DatabaseDriver
+<span id="L18" class="ln">    18  </span>	clk    clock.Clock
+<span id="L19" class="ln">    19  </span>	loc    *time.Location
+<span id="L20" class="ln">    20  </span>	tracer observability.LayerTracer
+<span id="L21" class="ln">    21  </span>}
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// New は、admin ダッシュボード横断集計クエリサービスの RDB 実装を生成して返します。</span>
+<span id="L24" class="ln">    24  </span>func New(
+<span id="L25" class="ln">    25  </span>	db driver.DatabaseDriver,
+<span id="L26" class="ln">    26  </span>	clk clock.Clock,
+<span id="L27" class="ln">    27  </span>	loc *time.Location,
+<span id="L28" class="ln">    28  </span>	tf observability.TracerFactory,
+<span id="L29" class="ln">    29  </span>) query.DashboardQueryService {
+<span id="L30" class="ln">    30  </span>	return &amp;service{
+<span id="L31" class="ln">    31  </span>		db:     db,
+<span id="L32" class="ln">    32  </span>		clk:    clk,
+<span id="L33" class="ln">    33  </span>		loc:    loc,
+<span id="L34" class="ln">    34  </span>		tracer: tf.Infra(),
+<span id="L35" class="ln">    35  </span>	}
+<span id="L36" class="ln">    36  </span>}
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// SummarizeSales は、指定期間に注文された購入の売上合計と件数を返します。</span>
+<span id="L39" class="ln">    39  </span><span class="comment">// キャンセル済みの購入は WHERE 述語（canceled_at IS NULL）で除外し、未払いの購入は含めます。</span>
+<span id="L40" class="ln">    40  </span>func (s *service) SummarizeSales(ctx context.Context, period query.Period) (query.SalesResult, error) {
+<span id="L41" class="ln">    41  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L42" class="ln">    42  </span>	defer endSpan()
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>	after, before := resolveWindow(period, s.clk.Now(), s.loc)
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>	db := gen.New(driver.New(ctx, s.db))
+<span id="L47" class="ln">    47  </span>	row, err := db.SummarizeDashboardSales(ctx, &amp;gen.SummarizeDashboardSalesParams{
+<span id="L48" class="ln">    48  </span>		OrderedAfter:  after,
+<span id="L49" class="ln">    49  </span>		OrderedBefore: before,
+<span id="L50" class="ln">    50  </span>	})
+<span id="L51" class="ln">    51  </span>	if err != nil {
+<span id="L52" class="ln">    52  </span>		return query.SalesResult{}, pgerror.NormalizeError(err)
+<span id="L53" class="ln">    53  </span>	}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>	return query.SalesResult{Amount: row.SalesAmount, Count: row.SalesCount}, nil
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span><span class="comment">// CountPurchasesByStatus は、指定期間に注文された購入のステータス別件数を返します。</span>
+<span id="L59" class="ln">    59  </span><span class="comment">// ステータス名は purchase_statuses との一意な等結合で解決するため、別途の名称解決は不要です。</span>
+<span id="L60" class="ln">    60  </span>func (s *service) CountPurchasesByStatus(
+<span id="L61" class="ln">    61  </span>	ctx context.Context, period query.Period,
+<span id="L62" class="ln">    62  </span>) ([]query.PurchaseStatusCountResult, error) {
+<span id="L63" class="ln">    63  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L64" class="ln">    64  </span>	defer endSpan()
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>	after, before := resolveWindow(period, s.clk.Now(), s.loc)
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>	db := gen.New(driver.New(ctx, s.db))
+<span id="L69" class="ln">    69  </span>	rows, err := db.CountDashboardPurchasesByStatus(ctx, &amp;gen.CountDashboardPurchasesByStatusParams{
+<span id="L70" class="ln">    70  </span>		OrderedAfter:  after,
+<span id="L71" class="ln">    71  </span>		OrderedBefore: before,
+<span id="L72" class="ln">    72  </span>	})
+<span id="L73" class="ln">    73  </span>	if err != nil {
+<span id="L74" class="ln">    74  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L75" class="ln">    75  </span>	}
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>	results := make([]query.PurchaseStatusCountResult, len(rows))
+<span id="L78" class="ln">    78  </span>	for i, row := range rows {
+<span id="L79" class="ln">    79  </span>		results[i] = query.PurchaseStatusCountResult{
+<span id="L80" class="ln">    80  </span>			StatusID:   row.StatusID,
+<span id="L81" class="ln">    81  </span>			StatusName: row.StatusName,
+<span id="L82" class="ln">    82  </span>			Count:      row.PurchaseCount,
+<span id="L83" class="ln">    83  </span>		}
+<span id="L84" class="ln">    84  </span>	}
+<span id="L85" class="ln">    85  </span>	return results, nil
+<span id="L86" class="ln">    86  </span>}
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span><span class="comment">// resolveWindow は、集計対象期間の指定を SQL パラメータの半開区間 [after, before) へ変換します。</span>
+<span id="L89" class="ln">    89  </span><span class="comment">// 現在時刻とタイムゾーンへの依存をインフラ層へ閉じ込め、暦日の境界は loc で解釈します。</span>
+<span id="L90" class="ln">    90  </span><span class="comment">// loc は設定のタイムゾーンから構築された値であり、実行環境の time.Local には依存しません</span>
+<span id="L91" class="ln">    91  </span><span class="comment">// （コンテナの既定は UTC のため、依存させると設定と異なる暦日で集計してしまいます）。</span>
+<span id="L92" class="ln">    92  </span><span class="comment">// 区分が未知の場合は today として扱います（ユースケース側で正規化済みのため通常は到達しません）。</span>
+<span id="L93" class="ln">    93  </span>func resolveWindow(period query.Period, now time.Time, loc *time.Location) (time.Time, time.Time) {
+<span id="L94" class="ln">    94  </span>	<span class="comment">// 呼出側の変換有無に依存せず loc 基準の暦日を得るため、ここで現在時刻を loc へ移す。</span>
+<span id="L95" class="ln">    95  </span>	<span class="comment">// period.From / To は利用者が指定した暦日そのものを表すため、同じ変換をしてはならない</span>
+<span id="L96" class="ln">    96  </span>	<span class="comment">// （UTC より西のロケーションでは前日へずれる）。</span>
+<span id="L97" class="ln">    97  </span>	now = now.In(loc)
+<span id="L98" class="ln">    98  </span>
+<span id="L99" class="ln">    99  </span>	switch period.Kind {
+<span id="L100" class="ln">   100  </span>	case query.PeriodMonth:
+<span id="L101" class="ln">   101  </span>		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+<span id="L102" class="ln">   102  </span>		return start, start.AddDate(0, 1, 0)
+<span id="L103" class="ln">   103  </span>	case query.PeriodRange:
+<span id="L104" class="ln">   104  </span>		return startOfDay(period.From, loc), startOfDay(period.To, loc).AddDate(0, 0, 1)
+<span id="L105" class="ln">   105  </span>	case query.PeriodToday:
+<span id="L106" class="ln">   106  </span>		start := startOfDay(now, loc)
+<span id="L107" class="ln">   107  </span>		return start, start.AddDate(0, 0, 1)
+<span id="L108" class="ln">   108  </span>	default:
+<span id="L109" class="ln">   109  </span>		start := startOfDay(now, loc)
+<span id="L110" class="ln">   110  </span>		return start, start.AddDate(0, 0, 1)
+<span id="L111" class="ln">   111  </span>	}
+<span id="L112" class="ln">   112  </span>}
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span><span class="comment">// startOfDay は、t が表す年月日の開始時刻を loc のゾーンで返します。年月日は t 自身のロケーションで解釈し、</span>
+<span id="L115" class="ln">   115  </span><span class="comment">// loc は返り値のゾーンとしてのみ用います（t を loc へ変換し直しません）。</span>
+<span id="L116" class="ln">   116  </span>func startOfDay(t time.Time, loc *time.Location) time.Time {
+<span id="L117" class="ln">   117  </span>	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
+<span id="L118" class="ln">   118  </span>}
+<span id="L119" class="ln">   119  </span>
+</pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service/dashboard/dashboard_query_service.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -69,50 +69,200 @@
 <span id="L12" class="ln">    12  </span>import (
 <span id="L13" class="ln">    13  </span>	context &#34;context&#34;
 <span id="L14" class="ln">    14  </span>	product &#34;go-boilerplate/internal/domain/product&#34;
-<span id="L15" class="ln">    15  </span>	reflect &#34;reflect&#34;
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
-<span id="L18" class="ln">    18  </span>)
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span><span class="comment">// MockRepository is a mock of Repository interface.</span>
-<span id="L21" class="ln">    21  </span>type MockRepository struct {
-<span id="L22" class="ln">    22  </span>	ctrl     *gomock.Controller
-<span id="L23" class="ln">    23  </span>	recorder *MockRepositoryMockRecorder
-<span id="L24" class="ln">    24  </span>	isgomock struct{}
-<span id="L25" class="ln">    25  </span>}
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span><span class="comment">// MockRepositoryMockRecorder is the mock recorder for MockRepository.</span>
-<span id="L28" class="ln">    28  </span>type MockRepositoryMockRecorder struct {
-<span id="L29" class="ln">    29  </span>	mock *MockRepository
-<span id="L30" class="ln">    30  </span>}
-<span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span><span class="comment">// NewMockRepository creates a new mock instance.</span>
-<span id="L33" class="ln">    33  </span>func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
-<span id="L34" class="ln">    34  </span>	mock := &amp;MockRepository{ctrl: ctrl}
-<span id="L35" class="ln">    35  </span>	mock.recorder = &amp;MockRepositoryMockRecorder{mock}
-<span id="L36" class="ln">    36  </span>	return mock
-<span id="L37" class="ln">    37  </span>}
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span><span class="comment">// EXPECT returns an object that allows the caller to indicate expected use.</span>
-<span id="L40" class="ln">    40  </span>func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
-<span id="L41" class="ln">    41  </span>	return m.recorder
-<span id="L42" class="ln">    42  </span>}
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span><span class="comment">// FindPublishedList mocks base method.</span>
-<span id="L45" class="ln">    45  </span>func (m *MockRepository) FindPublishedList(ctx context.Context, params product.ListParams) (product.Products, error) {
-<span id="L46" class="ln">    46  </span>	m.ctrl.T.Helper()
-<span id="L47" class="ln">    47  </span>	ret := m.ctrl.Call(m, &#34;FindPublishedList&#34;, ctx, params)
-<span id="L48" class="ln">    48  </span>	ret0, _ := ret[0].(product.Products)
-<span id="L49" class="ln">    49  </span>	ret1, _ := ret[1].(error)
-<span id="L50" class="ln">    50  </span>	return ret0, ret1
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span><span class="comment">// FindPublishedList indicates an expected call of FindPublishedList.</span>
-<span id="L54" class="ln">    54  </span>func (mr *MockRepositoryMockRecorder) FindPublishedList(ctx, params any) *gomock.Call {
-<span id="L55" class="ln">    55  </span>	mr.mock.ctrl.T.Helper()
-<span id="L56" class="ln">    56  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindPublishedList&#34;, reflect.TypeOf((*MockRepository)(nil).FindPublishedList), ctx, params)
-<span id="L57" class="ln">    57  </span>}
-<span id="L58" class="ln">    58  </span>
+<span id="L15" class="ln">    15  </span>	uuid &#34;go-boilerplate/pkg/uuid&#34;
+<span id="L16" class="ln">    16  </span>	reflect &#34;reflect&#34;
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
+<span id="L19" class="ln">    19  </span>)
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// MockRepository is a mock of Repository interface.</span>
+<span id="L22" class="ln">    22  </span>type MockRepository struct {
+<span id="L23" class="ln">    23  </span>	ctrl     *gomock.Controller
+<span id="L24" class="ln">    24  </span>	recorder *MockRepositoryMockRecorder
+<span id="L25" class="ln">    25  </span>	isgomock struct{}
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// MockRepositoryMockRecorder is the mock recorder for MockRepository.</span>
+<span id="L29" class="ln">    29  </span>type MockRepositoryMockRecorder struct {
+<span id="L30" class="ln">    30  </span>	mock *MockRepository
+<span id="L31" class="ln">    31  </span>}
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span><span class="comment">// NewMockRepository creates a new mock instance.</span>
+<span id="L34" class="ln">    34  </span>func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
+<span id="L35" class="ln">    35  </span>	mock := &amp;MockRepository{ctrl: ctrl}
+<span id="L36" class="ln">    36  </span>	mock.recorder = &amp;MockRepositoryMockRecorder{mock}
+<span id="L37" class="ln">    37  </span>	return mock
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// EXPECT returns an object that allows the caller to indicate expected use.</span>
+<span id="L41" class="ln">    41  </span>func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
+<span id="L42" class="ln">    42  </span>	return m.recorder
+<span id="L43" class="ln">    43  </span>}
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// Count mocks base method.</span>
+<span id="L46" class="ln">    46  </span>func (m *MockRepository) Count(ctx context.Context) (product.Counts, error) {
+<span id="L47" class="ln">    47  </span>	m.ctrl.T.Helper()
+<span id="L48" class="ln">    48  </span>	ret := m.ctrl.Call(m, &#34;Count&#34;, ctx)
+<span id="L49" class="ln">    49  </span>	ret0, _ := ret[0].(product.Counts)
+<span id="L50" class="ln">    50  </span>	ret1, _ := ret[1].(error)
+<span id="L51" class="ln">    51  </span>	return ret0, ret1
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// Count indicates an expected call of Count.</span>
+<span id="L55" class="ln">    55  </span>func (mr *MockRepositoryMockRecorder) Count(ctx any) *gomock.Call {
+<span id="L56" class="ln">    56  </span>	mr.mock.ctrl.T.Helper()
+<span id="L57" class="ln">    57  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;Count&#34;, reflect.TypeOf((*MockRepository)(nil).Count), ctx)
+<span id="L58" class="ln">    58  </span>}
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span><span class="comment">// Create mocks base method.</span>
+<span id="L61" class="ln">    61  </span>func (m *MockRepository) Create(ctx context.Context, p *product.Product) error {
+<span id="L62" class="ln">    62  </span>	m.ctrl.T.Helper()
+<span id="L63" class="ln">    63  </span>	ret := m.ctrl.Call(m, &#34;Create&#34;, ctx, p)
+<span id="L64" class="ln">    64  </span>	ret0, _ := ret[0].(error)
+<span id="L65" class="ln">    65  </span>	return ret0
+<span id="L66" class="ln">    66  </span>}
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span><span class="comment">// Create indicates an expected call of Create.</span>
+<span id="L69" class="ln">    69  </span>func (mr *MockRepositoryMockRecorder) Create(ctx, p any) *gomock.Call {
+<span id="L70" class="ln">    70  </span>	mr.mock.ctrl.T.Helper()
+<span id="L71" class="ln">    71  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;Create&#34;, reflect.TypeOf((*MockRepository)(nil).Create), ctx, p)
+<span id="L72" class="ln">    72  </span>}
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span><span class="comment">// FilterExistingImagePaths mocks base method.</span>
+<span id="L75" class="ln">    75  </span>func (m *MockRepository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
+<span id="L76" class="ln">    76  </span>	m.ctrl.T.Helper()
+<span id="L77" class="ln">    77  </span>	ret := m.ctrl.Call(m, &#34;FilterExistingImagePaths&#34;, ctx, paths)
+<span id="L78" class="ln">    78  </span>	ret0, _ := ret[0].([]string)
+<span id="L79" class="ln">    79  </span>	ret1, _ := ret[1].(error)
+<span id="L80" class="ln">    80  </span>	return ret0, ret1
+<span id="L81" class="ln">    81  </span>}
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span><span class="comment">// FilterExistingImagePaths indicates an expected call of FilterExistingImagePaths.</span>
+<span id="L84" class="ln">    84  </span>func (mr *MockRepositoryMockRecorder) FilterExistingImagePaths(ctx, paths any) *gomock.Call {
+<span id="L85" class="ln">    85  </span>	mr.mock.ctrl.T.Helper()
+<span id="L86" class="ln">    86  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FilterExistingImagePaths&#34;, reflect.TypeOf((*MockRepository)(nil).FilterExistingImagePaths), ctx, paths)
+<span id="L87" class="ln">    87  </span>}
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span><span class="comment">// FindAllLowStock mocks base method.</span>
+<span id="L90" class="ln">    90  </span>func (m *MockRepository) FindAllLowStock(ctx context.Context, limit int32) (product.Products, error) {
+<span id="L91" class="ln">    91  </span>	m.ctrl.T.Helper()
+<span id="L92" class="ln">    92  </span>	ret := m.ctrl.Call(m, &#34;FindAllLowStock&#34;, ctx, limit)
+<span id="L93" class="ln">    93  </span>	ret0, _ := ret[0].(product.Products)
+<span id="L94" class="ln">    94  </span>	ret1, _ := ret[1].(error)
+<span id="L95" class="ln">    95  </span>	return ret0, ret1
+<span id="L96" class="ln">    96  </span>}
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span><span class="comment">// FindAllLowStock indicates an expected call of FindAllLowStock.</span>
+<span id="L99" class="ln">    99  </span>func (mr *MockRepositoryMockRecorder) FindAllLowStock(ctx, limit any) *gomock.Call {
+<span id="L100" class="ln">   100  </span>	mr.mock.ctrl.T.Helper()
+<span id="L101" class="ln">   101  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindAllLowStock&#34;, reflect.TypeOf((*MockRepository)(nil).FindAllLowStock), ctx, limit)
+<span id="L102" class="ln">   102  </span>}
+<span id="L103" class="ln">   103  </span>
+<span id="L104" class="ln">   104  </span><span class="comment">// FindByID mocks base method.</span>
+<span id="L105" class="ln">   105  </span>func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+<span id="L106" class="ln">   106  </span>	m.ctrl.T.Helper()
+<span id="L107" class="ln">   107  </span>	ret := m.ctrl.Call(m, &#34;FindByID&#34;, ctx, id)
+<span id="L108" class="ln">   108  </span>	ret0, _ := ret[0].(*product.Product)
+<span id="L109" class="ln">   109  </span>	ret1, _ := ret[1].(error)
+<span id="L110" class="ln">   110  </span>	return ret0, ret1
+<span id="L111" class="ln">   111  </span>}
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span><span class="comment">// FindByID indicates an expected call of FindByID.</span>
+<span id="L114" class="ln">   114  </span>func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call {
+<span id="L115" class="ln">   115  </span>	mr.mock.ctrl.T.Helper()
+<span id="L116" class="ln">   116  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindByID&#34;, reflect.TypeOf((*MockRepository)(nil).FindByID), ctx, id)
+<span id="L117" class="ln">   117  </span>}
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span><span class="comment">// FindPublishedByID mocks base method.</span>
+<span id="L120" class="ln">   120  </span>func (m *MockRepository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+<span id="L121" class="ln">   121  </span>	m.ctrl.T.Helper()
+<span id="L122" class="ln">   122  </span>	ret := m.ctrl.Call(m, &#34;FindPublishedByID&#34;, ctx, id)
+<span id="L123" class="ln">   123  </span>	ret0, _ := ret[0].(*product.Product)
+<span id="L124" class="ln">   124  </span>	ret1, _ := ret[1].(error)
+<span id="L125" class="ln">   125  </span>	return ret0, ret1
+<span id="L126" class="ln">   126  </span>}
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span><span class="comment">// FindPublishedByID indicates an expected call of FindPublishedByID.</span>
+<span id="L129" class="ln">   129  </span>func (mr *MockRepositoryMockRecorder) FindPublishedByID(ctx, id any) *gomock.Call {
+<span id="L130" class="ln">   130  </span>	mr.mock.ctrl.T.Helper()
+<span id="L131" class="ln">   131  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindPublishedByID&#34;, reflect.TypeOf((*MockRepository)(nil).FindPublishedByID), ctx, id)
+<span id="L132" class="ln">   132  </span>}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span><span class="comment">// FindPublishedList mocks base method.</span>
+<span id="L135" class="ln">   135  </span>func (m *MockRepository) FindPublishedList(ctx context.Context, params product.ListParams) (product.Products, error) {
+<span id="L136" class="ln">   136  </span>	m.ctrl.T.Helper()
+<span id="L137" class="ln">   137  </span>	ret := m.ctrl.Call(m, &#34;FindPublishedList&#34;, ctx, params)
+<span id="L138" class="ln">   138  </span>	ret0, _ := ret[0].(product.Products)
+<span id="L139" class="ln">   139  </span>	ret1, _ := ret[1].(error)
+<span id="L140" class="ln">   140  </span>	return ret0, ret1
+<span id="L141" class="ln">   141  </span>}
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span><span class="comment">// FindPublishedList indicates an expected call of FindPublishedList.</span>
+<span id="L144" class="ln">   144  </span>func (mr *MockRepositoryMockRecorder) FindPublishedList(ctx, params any) *gomock.Call {
+<span id="L145" class="ln">   145  </span>	mr.mock.ctrl.T.Helper()
+<span id="L146" class="ln">   146  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindPublishedList&#34;, reflect.TypeOf((*MockRepository)(nil).FindPublishedList), ctx, params)
+<span id="L147" class="ln">   147  </span>}
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span><span class="comment">// LockByID mocks base method.</span>
+<span id="L150" class="ln">   150  </span>func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
+<span id="L151" class="ln">   151  </span>	m.ctrl.T.Helper()
+<span id="L152" class="ln">   152  </span>	ret := m.ctrl.Call(m, &#34;LockByID&#34;, ctx, id)
+<span id="L153" class="ln">   153  </span>	ret0, _ := ret[0].(*product.Product)
+<span id="L154" class="ln">   154  </span>	ret1, _ := ret[1].(error)
+<span id="L155" class="ln">   155  </span>	return ret0, ret1
+<span id="L156" class="ln">   156  </span>}
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span><span class="comment">// LockByID indicates an expected call of LockByID.</span>
+<span id="L159" class="ln">   159  </span>func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
+<span id="L160" class="ln">   160  </span>	mr.mock.ctrl.T.Helper()
+<span id="L161" class="ln">   161  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;LockByID&#34;, reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
+<span id="L162" class="ln">   162  </span>}
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span><span class="comment">// LockByIDs mocks base method.</span>
+<span id="L165" class="ln">   165  </span>func (m *MockRepository) LockByIDs(ctx context.Context, ids []uuid.UUID) (product.Products, error) {
+<span id="L166" class="ln">   166  </span>	m.ctrl.T.Helper()
+<span id="L167" class="ln">   167  </span>	ret := m.ctrl.Call(m, &#34;LockByIDs&#34;, ctx, ids)
+<span id="L168" class="ln">   168  </span>	ret0, _ := ret[0].(product.Products)
+<span id="L169" class="ln">   169  </span>	ret1, _ := ret[1].(error)
+<span id="L170" class="ln">   170  </span>	return ret0, ret1
+<span id="L171" class="ln">   171  </span>}
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span><span class="comment">// LockByIDs indicates an expected call of LockByIDs.</span>
+<span id="L174" class="ln">   174  </span>func (mr *MockRepositoryMockRecorder) LockByIDs(ctx, ids any) *gomock.Call {
+<span id="L175" class="ln">   175  </span>	mr.mock.ctrl.T.Helper()
+<span id="L176" class="ln">   176  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;LockByIDs&#34;, reflect.TypeOf((*MockRepository)(nil).LockByIDs), ctx, ids)
+<span id="L177" class="ln">   177  </span>}
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span><span class="comment">// Update mocks base method.</span>
+<span id="L180" class="ln">   180  </span>func (m *MockRepository) Update(ctx context.Context, p *product.Product) (int, error) {
+<span id="L181" class="ln">   181  </span>	m.ctrl.T.Helper()
+<span id="L182" class="ln">   182  </span>	ret := m.ctrl.Call(m, &#34;Update&#34;, ctx, p)
+<span id="L183" class="ln">   183  </span>	ret0, _ := ret[0].(int)
+<span id="L184" class="ln">   184  </span>	ret1, _ := ret[1].(error)
+<span id="L185" class="ln">   185  </span>	return ret0, ret1
+<span id="L186" class="ln">   186  </span>}
+<span id="L187" class="ln">   187  </span>
+<span id="L188" class="ln">   188  </span><span class="comment">// Update indicates an expected call of Update.</span>
+<span id="L189" class="ln">   189  </span>func (mr *MockRepositoryMockRecorder) Update(ctx, p any) *gomock.Call {
+<span id="L190" class="ln">   190  </span>	mr.mock.ctrl.T.Helper()
+<span id="L191" class="ln">   191  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;Update&#34;, reflect.TypeOf((*MockRepository)(nil).Update), ctx, p)
+<span id="L192" class="ln">   192  </span>}
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span><span class="comment">// UpdateStock mocks base method.</span>
+<span id="L195" class="ln">   195  </span>func (m *MockRepository) UpdateStock(ctx context.Context, p *product.Product) (int, error) {
+<span id="L196" class="ln">   196  </span>	m.ctrl.T.Helper()
+<span id="L197" class="ln">   197  </span>	ret := m.ctrl.Call(m, &#34;UpdateStock&#34;, ctx, p)
+<span id="L198" class="ln">   198  </span>	ret0, _ := ret[0].(int)
+<span id="L199" class="ln">   199  </span>	ret1, _ := ret[1].(error)
+<span id="L200" class="ln">   200  </span>	return ret0, ret1
+<span id="L201" class="ln">   201  </span>}
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span><span class="comment">// UpdateStock indicates an expected call of UpdateStock.</span>
+<span id="L204" class="ln">   204  </span>func (mr *MockRepositoryMockRecorder) UpdateStock(ctx, p any) *gomock.Call {
+<span id="L205" class="ln">   205  </span>	mr.mock.ctrl.T.Helper()
+<span id="L206" class="ln">   206  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;UpdateStock&#34;, reflect.TypeOf((*MockRepository)(nil).UpdateStock), ctx, p)
+<span id="L207" class="ln">   207  </span>}
+<span id="L208" class="ln">   208  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

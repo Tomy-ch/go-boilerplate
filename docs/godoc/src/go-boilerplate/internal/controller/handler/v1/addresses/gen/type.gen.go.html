@@ -65,7 +65,7 @@
 <span id="L8" class="ln">     8  </span>)
 <span id="L9" class="ln">     9  </span>
 <span id="L10" class="ln">    10  </span><span class="comment">// AddressCandidate 郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、</span>
-<span id="L11" class="ln">    11  </span><span class="comment">// 解決できた場合のみ prefecture_id を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。</span>
+<span id="L11" class="ln">    11  </span><span class="comment">// 解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。</span>
 <span id="L12" class="ln">    12  </span>type AddressCandidate struct {
 <span id="L13" class="ln">    13  </span>	<span class="comment">// City 市区町村</span>
 <span id="L14" class="ln">    14  </span>	City string `json:&#34;city&#34;`
@@ -81,7 +81,7 @@
 <span id="L24" class="ln">    24  </span>}
 <span id="L25" class="ln">    25  </span>
 <span id="L26" class="ln">    26  </span><span class="comment">// AddressCandidatesResponse 郵便番号 lookup による住所候補のレスポンスです。</span>
-<span id="L27" class="ln">    27  </span><span class="comment">// 外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `is_fallback: true` で degrade し、</span>
+<span id="L27" class="ln">    27  </span><span class="comment">// 外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `isFallback: true` で degrade し、</span>
 <span id="L28" class="ln">    28  </span><span class="comment">// 登録フローを止めません（外部が落ちても縦一本のジャーニーを進めるためのフォールバック）。</span>
 <span id="L29" class="ln">    29  </span>type AddressCandidatesResponse struct {
 <span id="L30" class="ln">    30  </span>	<span class="comment">// Candidates 住所候補の一覧。該当なし・degrade 時は空配列。</span>
@@ -113,22 +113,25 @@
 <span id="L56" class="ln">    56  </span><span class="comment">// InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。</span>
 <span id="L57" class="ln">    57  </span>type InternalServerError500 = ErrorResponse
 <span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span><span class="comment">// ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。</span>
-<span id="L60" class="ln">    60  </span>type ServiceUnavailable503 = ErrorResponse
+<span id="L59" class="ln">    59  </span><span class="comment">// MethodNotAllowed405 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。</span>
+<span id="L60" class="ln">    60  </span>type MethodNotAllowed405 = ErrorResponse
 <span id="L61" class="ln">    61  </span>
-<span id="L62" class="ln">    62  </span><span class="comment">// basicAuthContextKey is the context key for BasicAuth security scheme</span>
-<span id="L63" class="ln">    63  </span>type basicAuthContextKey string
+<span id="L62" class="ln">    62  </span><span class="comment">// ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。</span>
+<span id="L63" class="ln">    63  </span>type ServiceUnavailable503 = ErrorResponse
 <span id="L64" class="ln">    64  </span>
-<span id="L65" class="ln">    65  </span><span class="comment">// bearerAuthContextKey is the context key for BearerAuth security scheme</span>
-<span id="L66" class="ln">    66  </span>type bearerAuthContextKey string
+<span id="L65" class="ln">    65  </span><span class="comment">// basicAuthContextKey is the context key for BasicAuth security scheme</span>
+<span id="L66" class="ln">    66  </span>type basicAuthContextKey string
 <span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span><span class="comment">// GetAddressesParams defines parameters for GetAddresses.</span>
-<span id="L69" class="ln">    69  </span>type GetAddressesParams struct {
-<span id="L70" class="ln">    70  </span>	<span class="comment">// PostalCode 検索対象の郵便番号。ハイフンあり（`123-4567`）・なし（`1234567`）の両方を受け付けます。</span>
-<span id="L71" class="ln">    71  </span>	<span class="comment">// ハイフン除去の正規化は handler が行い、内層（usecase / gateway）へは 7 桁の数字列を渡します。</span>
-<span id="L72" class="ln">    72  </span>	PostalCode PostalCodeParam `form:&#34;postalCode&#34; json:&#34;postalCode&#34;`
-<span id="L73" class="ln">    73  </span>}
-<span id="L74" class="ln">    74  </span>
+<span id="L68" class="ln">    68  </span><span class="comment">// bearerAuthContextKey is the context key for BearerAuth security scheme</span>
+<span id="L69" class="ln">    69  </span>type bearerAuthContextKey string
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span><span class="comment">// GetAddressesParams defines parameters for GetAddresses.</span>
+<span id="L72" class="ln">    72  </span>type GetAddressesParams struct {
+<span id="L73" class="ln">    73  </span>	<span class="comment">// PostalCode 検索対象の郵便番号。ハイフンあり（`123-4567`）・なし（`1234567`）の両方を受け付けます。</span>
+<span id="L74" class="ln">    74  </span>	<span class="comment">// ハイフン除去の正規化は handler が行い、内層（usecase / gateway）へは 7 桁の数字列を渡します。</span>
+<span id="L75" class="ln">    75  </span>	PostalCode PostalCodeParam `form:&#34;postalCode&#34; json:&#34;postalCode&#34;`
+<span id="L76" class="ln">    76  </span>}
+<span id="L77" class="ln">    77  </span>
 </pre><p><a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

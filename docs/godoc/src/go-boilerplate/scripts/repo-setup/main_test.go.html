@@ -1,0 +1,1083 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>repo-setup - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/repo-setup">repo-setup</a>/<span class="text-muted">main_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/repo-setup">go-boilerplate/scripts/repo-setup</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package main
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;bytes&#34;
+<span id="L5" class="ln">     5  </span>	&#34;log&#34;
+<span id="L6" class="ln">     6  </span>	&#34;os&#34;
+<span id="L7" class="ln">     7  </span>	&#34;os/exec&#34;
+<span id="L8" class="ln">     8  </span>	&#34;path/filepath&#34;
+<span id="L9" class="ln">     9  </span>	&#34;slices&#34;
+<span id="L10" class="ln">    10  </span>	&#34;testing&#34;
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L15" class="ln">    15  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>const (
+<span id="L19" class="ln">    19  </span>	<span class="comment">// missingCommand は、PATH に存在しない実行ファイル名。失敗する手順を組み立てるために使います。</span>
+<span id="L20" class="ln">    20  </span>	missingCommand = &#34;gobp-repo-setup-missing-command&#34;
+<span id="L21" class="ln">    21  </span>	<span class="comment">// ghRepoViewCall は、リポジトリ名を引く output 呼び出しの記録表記。</span>
+<span id="L22" class="ln">    22  </span>	ghRepoViewCall = `gh repo view --json name,owner -q .owner.login + &#34;/&#34; + .name`
+<span id="L23" class="ln">    23  </span>	<span class="comment">// initialTagCall / initialTagPushCall は、初期タグを打つ 2 手順の記録表記。</span>
+<span id="L24" class="ln">    24  </span>	initialTagCall     = &#34;git tag -a v0.0.0 -m Initial boilerplate tag&#34;
+<span id="L25" class="ln">    25  </span>	initialTagPushCall = &#34;git push origin v0.0.0&#34;
+<span id="L26" class="ln">    26  </span>	<span class="comment">// branchPushCall は、用意したブランチをまとめて push する手順の記録表記。</span>
+<span id="L27" class="ln">    27  </span>	branchPushCall = &#34;git push origin develop staging production&#34;
+<span id="L28" class="ln">    28  </span>)
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// errFakeCommand は、差し替えた実行器が返す失敗。</span>
+<span id="L31" class="ln">    31  </span>var errFakeCommand = xerrors.New(&#34;fake command failed&#34;)
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span><span class="comment">// fakeRunner は、git / gh を一切起動せず呼び出しの並びだけを控える実行器。</span>
+<span id="L34" class="ln">    34  </span><span class="comment">// bootstrap の手順はタグの一括削除と origin への push を含むため、</span>
+<span id="L35" class="ln">    35  </span><span class="comment">// 実リポジトリと GitHub へ触れずに骨格を検証する目的で実行層をここへ差し替えます。</span>
+<span id="L36" class="ln">    36  </span>type fakeRunner struct {
+<span id="L37" class="ln">    37  </span>	<span class="comment">// calls は、run / output が呼ばれた順の「実行ファイル 引数...」表記。</span>
+<span id="L38" class="ln">    38  </span>	calls []string
+<span id="L39" class="ln">    39  </span>	<span class="comment">// outputs は、output が返す標準出力（キーは calls と同じ表記）。</span>
+<span id="L40" class="ln">    40  </span>	outputs map[string]string
+<span id="L41" class="ln">    41  </span>	<span class="comment">// failOn は、この表記の呼び出しだけを失敗させます（空なら常に成功）。</span>
+<span id="L42" class="ln">    42  </span>	<span class="comment">// allowFail は実行層の責務なのでここでは解釈しません。</span>
+<span id="L43" class="ln">    43  </span>	failOn string
+<span id="L44" class="ln">    44  </span>	<span class="comment">// branches は、branchExists が true を返すブランチ。</span>
+<span id="L45" class="ln">    45  </span>	branches map[string]bool
+<span id="L46" class="ln">    46  </span>}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span><span class="comment">// runner は、この実行器を差し込んだ runner を返します。</span>
+<span id="L49" class="ln">    49  </span>func (f *fakeRunner) runner() runner {
+<span id="L50" class="ln">    50  </span>	return runner{run: f.run, output: f.output, branchExists: f.branchExists}
+<span id="L51" class="ln">    51  </span>}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>func (f *fakeRunner) run(s step) error {
+<span id="L54" class="ln">    54  </span>	call := s.String()
+<span id="L55" class="ln">    55  </span>	f.calls = append(f.calls, call)
+<span id="L56" class="ln">    56  </span>
+<span id="L57" class="ln">    57  </span>	if call == f.failOn {
+<span id="L58" class="ln">    58  </span>		return errFakeCommand
+<span id="L59" class="ln">    59  </span>	}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>	return nil
+<span id="L62" class="ln">    62  </span>}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>func (f *fakeRunner) output(name string, args ...string) (string, error) {
+<span id="L65" class="ln">    65  </span>	call := step{name: name, args: args}.String()
+<span id="L66" class="ln">    66  </span>	f.calls = append(f.calls, call)
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>	if call == f.failOn {
+<span id="L69" class="ln">    69  </span>		return &#34;&#34;, errFakeCommand
+<span id="L70" class="ln">    70  </span>	}
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>	return f.outputs[call], nil
+<span id="L73" class="ln">    73  </span>}
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>func (f *fakeRunner) branchExists(branch string) bool { return f.branches[branch] }
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span><span class="comment">// captureLog は、標準ロガーの出力先をバッファへ差し替え、その内容を読む関数を返します。</span>
+<span id="L78" class="ln">    78  </span><span class="comment">// 出力先はプロセス共通のため、使うテストは並列化できません。</span>
+<span id="L79" class="ln">    79  </span>func captureLog(t *testing.T) func() string {
+<span id="L80" class="ln">    80  </span>	t.Helper()
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span>	var buf bytes.Buffer
+<span id="L83" class="ln">    83  </span>
+<span id="L84" class="ln">    84  </span>	log.SetOutput(&amp;buf)
+<span id="L85" class="ln">    85  </span>	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>	return buf.String
+<span id="L88" class="ln">    88  </span>}
+<span id="L89" class="ln">    89  </span>
+<span id="L90" class="ln">    90  </span><span class="comment">// commands は、手順を &#34;実行ファイル 引数...&#34; の文字列列へ畳みます。</span>
+<span id="L91" class="ln">    91  </span>func commands(steps []step) []string {
+<span id="L92" class="ln">    92  </span>	got := make([]string, 0, len(steps))
+<span id="L93" class="ln">    93  </span>	for _, s := range steps {
+<span id="L94" class="ln">    94  </span>		got = append(got, s.String())
+<span id="L95" class="ln">    95  </span>	}
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>	return got
+<span id="L98" class="ln">    98  </span>}
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span><span class="comment">// mkdirStep は、指定パスにディレクトリを作る手順を返します。手順が実行されたかを</span>
+<span id="L101" class="ln">   101  </span><span class="comment">// ファイルシステム側から観測するために使います。</span>
+<span id="L102" class="ln">   102  </span>func mkdirStep(path string) step {
+<span id="L103" class="ln">   103  </span>	return step{name: &#34;mkdir&#34;, args: []string{path}}
+<span id="L104" class="ln">   104  </span>}
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span><span class="comment">// git は、dir のリポジトリに対して git を実行します。作業中のリポジトリへ触れないよう、</span>
+<span id="L107" class="ln">   107  </span><span class="comment">// 対象は常に -C で明示します。</span>
+<span id="L108" class="ln">   108  </span>func git(t *testing.T, dir string, args ...string) {
+<span id="L109" class="ln">   109  </span>	t.Helper()
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>	<span class="comment">//nolint:gosec // 引数はテスト内で組み立てた一時ディレクトリのパスと固定値</span>
+<span id="L112" class="ln">   112  </span>	out, err := exec.CommandContext(t.Context(), &#34;git&#34;, append([]string{&#34;-C&#34;, dir}, args...)...).CombinedOutput()
+<span id="L113" class="ln">   113  </span>	require.NoError(t, err, string(out))
+<span id="L114" class="ln">   114  </span>}
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span><span class="comment">// initRepo は、コミットを 1 つ持つ独立した git リポジトリを一時ディレクトリに作り、そのパスを返します。</span>
+<span id="L117" class="ln">   117  </span><span class="comment">// リモートは持たせないため、誤って push 系の操作が走っても外へは出ません。</span>
+<span id="L118" class="ln">   118  </span>func initRepo(t *testing.T) string {
+<span id="L119" class="ln">   119  </span>	t.Helper()
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>	dir := t.TempDir()
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>	git(t, dir, &#34;init&#34;, &#34;--quiet&#34;)
+<span id="L124" class="ln">   124  </span>	git(t, dir, &#34;config&#34;, &#34;user.email&#34;, &#34;repo-setup-test@example.com&#34;)
+<span id="L125" class="ln">   125  </span>	git(t, dir, &#34;config&#34;, &#34;user.name&#34;, &#34;repo-setup-test&#34;)
+<span id="L126" class="ln">   126  </span>	git(t, dir, &#34;config&#34;, &#34;commit.gpgsign&#34;, &#34;false&#34;)
+<span id="L127" class="ln">   127  </span>	git(t, dir, &#34;commit&#34;, &#34;--quiet&#34;, &#34;--allow-empty&#34;, &#34;-m&#34;, &#34;initial&#34;)
+<span id="L128" class="ln">   128  </span>
+<span id="L129" class="ln">   129  </span>	return dir
+<span id="L130" class="ln">   130  </span>}
+<span id="L131" class="ln">   131  </span>
+<span id="L132" class="ln">   132  </span>func Test_step_String(t *testing.T) {
+<span id="L133" class="ln">   133  </span>	t.Parallel()
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L136" class="ln">   136  </span>		t.Parallel()
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>		t.Run(&#34;実行ファイル名と引数を空白でつないだ 1 行にする&#34;, func(t *testing.T) {
+<span id="L139" class="ln">   139  </span>			t.Parallel()
+<span id="L140" class="ln">   140  </span>			assert.Equal(t, &#34;git push origin :refs/tags/v1.0.0&#34;,
+<span id="L141" class="ln">   141  </span>				step{name: &#34;git&#34;, args: []string{&#34;push&#34;, &#34;origin&#34;, &#34;:refs/tags/v1.0.0&#34;}}.String())
+<span id="L142" class="ln">   142  </span>		})
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>		t.Run(&#34;引数が無い場合は実行ファイル名に区切りの空白だけが続く&#34;, func(t *testing.T) {
+<span id="L145" class="ln">   145  </span>			t.Parallel()
+<span id="L146" class="ln">   146  </span>			assert.Equal(t, &#34;gh &#34;, step{name: &#34;gh&#34;}.String())
+<span id="L147" class="ln">   147  </span>		})
+<span id="L148" class="ln">   148  </span>	})
+<span id="L149" class="ln">   149  </span>}
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>func Test_parseLines(t *testing.T) {
+<span id="L152" class="ln">   152  </span>	t.Parallel()
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L155" class="ln">   155  </span>		t.Parallel()
+<span id="L156" class="ln">   156  </span>
+<span id="L157" class="ln">   157  </span>		t.Run(&#34;空行と前後の空白を落として行を並べる&#34;, func(t *testing.T) {
+<span id="L158" class="ln">   158  </span>			t.Parallel()
+<span id="L159" class="ln">   159  </span>			assert.Equal(t, []string{&#34;v0.0.0&#34;, &#34;v1.0.0&#34;}, parseLines(&#34;v0.0.0\n\n  v1.0.0  \n&#34;))
+<span id="L160" class="ln">   160  </span>		})
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>		t.Run(&#34;出力が空なら空を返す&#34;, func(t *testing.T) {
+<span id="L163" class="ln">   163  </span>			t.Parallel()
+<span id="L164" class="ln">   164  </span>			assert.Empty(t, parseLines(&#34;\n \n&#34;))
+<span id="L165" class="ln">   165  </span>		})
+<span id="L166" class="ln">   166  </span>	})
+<span id="L167" class="ln">   167  </span>}
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span>func Test_tagDeletionSteps(t *testing.T) {
+<span id="L170" class="ln">   170  </span>	t.Parallel()
+<span id="L171" class="ln">   171  </span>
+<span id="L172" class="ln">   172  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L173" class="ln">   173  </span>		t.Parallel()
+<span id="L174" class="ln">   174  </span>
+<span id="L175" class="ln">   175  </span>		t.Run(&#34;タグごとにローカル削除とリモート削除を並べる&#34;, func(t *testing.T) {
+<span id="L176" class="ln">   176  </span>			t.Parallel()
+<span id="L177" class="ln">   177  </span>			assert.Equal(t, []string{
+<span id="L178" class="ln">   178  </span>				&#34;git tag -d v1.0.0&#34;,
+<span id="L179" class="ln">   179  </span>				&#34;git push origin :refs/tags/v1.0.0&#34;,
+<span id="L180" class="ln">   180  </span>				&#34;git tag -d v1.1.0&#34;,
+<span id="L181" class="ln">   181  </span>				&#34;git push origin :refs/tags/v1.1.0&#34;,
+<span id="L182" class="ln">   182  </span>			}, commands(tagDeletionSteps([]string{&#34;v1.0.0&#34;, &#34;v1.1.0&#34;})))
+<span id="L183" class="ln">   183  </span>		})
+<span id="L184" class="ln">   184  </span>
+<span id="L185" class="ln">   185  </span>		t.Run(&#34;リモート削除だけは失敗を許容する（ローカル限定のタグがあり得るため）&#34;, func(t *testing.T) {
+<span id="L186" class="ln">   186  </span>			t.Parallel()
+<span id="L187" class="ln">   187  </span>			steps := tagDeletionSteps([]string{&#34;v1.0.0&#34;})
+<span id="L188" class="ln">   188  </span>			assert.False(t, steps[0].allowFail)
+<span id="L189" class="ln">   189  </span>			assert.True(t, steps[1].allowFail)
+<span id="L190" class="ln">   190  </span>		})
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>		t.Run(&#34;タグが無ければ手順も空&#34;, func(t *testing.T) {
+<span id="L193" class="ln">   193  </span>			t.Parallel()
+<span id="L194" class="ln">   194  </span>			assert.Empty(t, tagDeletionSteps(nil))
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>	})
+<span id="L197" class="ln">   197  </span>}
+<span id="L198" class="ln">   198  </span>
+<span id="L199" class="ln">   199  </span>func Test_initialTagSteps(t *testing.T) {
+<span id="L200" class="ln">   200  </span>	t.Parallel()
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L203" class="ln">   203  </span>		t.Parallel()
+<span id="L204" class="ln">   204  </span>
+<span id="L205" class="ln">   205  </span>		t.Run(&#34;注釈付きタグを作ってから push する&#34;, func(t *testing.T) {
+<span id="L206" class="ln">   206  </span>			t.Parallel()
+<span id="L207" class="ln">   207  </span>			assert.Equal(t, []string{
+<span id="L208" class="ln">   208  </span>				&#34;git tag -a v0.0.0 -m Initial boilerplate tag&#34;,
+<span id="L209" class="ln">   209  </span>				&#34;git push origin v0.0.0&#34;,
+<span id="L210" class="ln">   210  </span>			}, commands(initialTagSteps()))
+<span id="L211" class="ln">   211  </span>		})
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>		t.Run(&#34;タグ作成は失敗を許容しない&#34;, func(t *testing.T) {
+<span id="L214" class="ln">   214  </span>			t.Parallel()
+<span id="L215" class="ln">   215  </span>			assert.False(t, initialTagSteps()[0].allowFail)
+<span id="L216" class="ln">   216  </span>		})
+<span id="L217" class="ln">   217  </span>
+<span id="L218" class="ln">   218  </span>		t.Run(&#34;初期タグの push は失敗を許容しない&#34;, func(t *testing.T) {
+<span id="L219" class="ln">   219  </span>			t.Parallel()
+<span id="L220" class="ln">   220  </span>			assert.False(t, initialTagSteps()[1].allowFail)
+<span id="L221" class="ln">   221  </span>		})
+<span id="L222" class="ln">   222  </span>	})
+<span id="L223" class="ln">   223  </span>}
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span>func Test_branchCreationSteps(t *testing.T) {
+<span id="L226" class="ln">   226  </span>	t.Parallel()
+<span id="L227" class="ln">   227  </span>
+<span id="L228" class="ln">   228  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L229" class="ln">   229  </span>		t.Parallel()
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span>		t.Run(&#34;既存ブランチが無ければ 3 本すべて作る&#34;, func(t *testing.T) {
+<span id="L232" class="ln">   232  </span>			t.Parallel()
+<span id="L233" class="ln">   233  </span>			steps, skipped := branchCreationSteps(nil)
+<span id="L234" class="ln">   234  </span>			assert.Equal(t, []string{
+<span id="L235" class="ln">   235  </span>				&#34;git branch develop&#34;,
+<span id="L236" class="ln">   236  </span>				&#34;git branch staging&#34;,
+<span id="L237" class="ln">   237  </span>				&#34;git branch production&#34;,
+<span id="L238" class="ln">   238  </span>			}, commands(steps))
+<span id="L239" class="ln">   239  </span>			assert.Empty(t, skipped)
+<span id="L240" class="ln">   240  </span>		})
+<span id="L241" class="ln">   241  </span>
+<span id="L242" class="ln">   242  </span>		t.Run(&#34;既存ブランチは作らずスキップとして返す&#34;, func(t *testing.T) {
+<span id="L243" class="ln">   243  </span>			t.Parallel()
+<span id="L244" class="ln">   244  </span>			steps, skipped := branchCreationSteps([]string{&#34;develop&#34;, &#34;production&#34;})
+<span id="L245" class="ln">   245  </span>			assert.Equal(t, []string{&#34;git branch staging&#34;}, commands(steps))
+<span id="L246" class="ln">   246  </span>			assert.Equal(t, []string{&#34;develop&#34;, &#34;production&#34;}, skipped)
+<span id="L247" class="ln">   247  </span>		})
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>		t.Run(&#34;すべて既存なら手順は空&#34;, func(t *testing.T) {
+<span id="L250" class="ln">   250  </span>			t.Parallel()
+<span id="L251" class="ln">   251  </span>			steps, skipped := branchCreationSteps([]string{&#34;develop&#34;, &#34;staging&#34;, &#34;production&#34;})
+<span id="L252" class="ln">   252  </span>			assert.Empty(t, steps)
+<span id="L253" class="ln">   253  </span>			assert.Len(t, skipped, 3)
+<span id="L254" class="ln">   254  </span>		})
+<span id="L255" class="ln">   255  </span>	})
+<span id="L256" class="ln">   256  </span>}
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>func Test_branchPushStep(t *testing.T) {
+<span id="L259" class="ln">   259  </span>	t.Parallel()
+<span id="L260" class="ln">   260  </span>
+<span id="L261" class="ln">   261  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L262" class="ln">   262  </span>		t.Parallel()
+<span id="L263" class="ln">   263  </span>
+<span id="L264" class="ln">   264  </span>		t.Run(&#34;既存かどうかに関わらず 3 本まとめて push する&#34;, func(t *testing.T) {
+<span id="L265" class="ln">   265  </span>			t.Parallel()
+<span id="L266" class="ln">   266  </span>			assert.Equal(t, &#34;git push origin develop staging production&#34;, branchPushStep().String())
+<span id="L267" class="ln">   267  </span>		})
+<span id="L268" class="ln">   268  </span>	})
+<span id="L269" class="ln">   269  </span>}
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>func Test_defaultBranchStep(t *testing.T) {
+<span id="L272" class="ln">   272  </span>	t.Parallel()
+<span id="L273" class="ln">   273  </span>
+<span id="L274" class="ln">   274  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L275" class="ln">   275  </span>		t.Parallel()
+<span id="L276" class="ln">   276  </span>
+<span id="L277" class="ln">   277  </span>		t.Run(&#34;REST API でデフォルトブランチを production にする&#34;, func(t *testing.T) {
+<span id="L278" class="ln">   278  </span>			t.Parallel()
+<span id="L279" class="ln">   279  </span>			assert.Equal(t,
+<span id="L280" class="ln">   280  </span>				&#34;gh api -X PATCH repos/example-org/example-api -f default_branch=production&#34;,
+<span id="L281" class="ln">   281  </span>				defaultBranchStep(&#34;example-org/example-api&#34;).String())
+<span id="L282" class="ln">   282  </span>		})
+<span id="L283" class="ln">   283  </span>	})
+<span id="L284" class="ln">   284  </span>}
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>func Test_isReleaseBranch(t *testing.T) {
+<span id="L287" class="ln">   287  </span>	t.Parallel()
+<span id="L288" class="ln">   288  </span>
+<span id="L289" class="ln">   289  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L290" class="ln">   290  </span>		t.Parallel()
+<span id="L291" class="ln">   291  </span>
+<span id="L292" class="ln">   292  </span>		t.Run(&#34;release/ を含むブランチは破棄対象&#34;, func(t *testing.T) {
+<span id="L293" class="ln">   293  </span>			t.Parallel()
+<span id="L294" class="ln">   294  </span>			assert.True(t, isReleaseBranch(&#34;release/v1.0.0&#34;))
+<span id="L295" class="ln">   295  </span>		})
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span>		t.Run(&#34;前方一致ではなく部分一致で判定する&#34;, func(t *testing.T) {
+<span id="L298" class="ln">   298  </span>			t.Parallel()
+<span id="L299" class="ln">   299  </span>			assert.True(t, isReleaseBranch(&#34;hotfix/release/v1.0.0&#34;))
+<span id="L300" class="ln">   300  </span>		})
+<span id="L301" class="ln">   301  </span>
+<span id="L302" class="ln">   302  </span>		t.Run(&#34;develop は破棄対象にしない&#34;, func(t *testing.T) {
+<span id="L303" class="ln">   303  </span>			t.Parallel()
+<span id="L304" class="ln">   304  </span>			assert.False(t, isReleaseBranch(&#34;develop&#34;))
+<span id="L305" class="ln">   305  </span>		})
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span>		t.Run(&#34;production は破棄対象にしない&#34;, func(t *testing.T) {
+<span id="L308" class="ln">   308  </span>			t.Parallel()
+<span id="L309" class="ln">   309  </span>			assert.False(t, isReleaseBranch(&#34;production&#34;))
+<span id="L310" class="ln">   310  </span>		})
+<span id="L311" class="ln">   311  </span>
+<span id="L312" class="ln">   312  </span>		t.Run(&#34;release で始まっても / が続かなければ破棄対象にしない&#34;, func(t *testing.T) {
+<span id="L313" class="ln">   313  </span>			t.Parallel()
+<span id="L314" class="ln">   314  </span>			assert.False(t, isReleaseBranch(&#34;feature/release-notes&#34;))
+<span id="L315" class="ln">   315  </span>		})
+<span id="L316" class="ln">   316  </span>
+<span id="L317" class="ln">   317  </span>		t.Run(&#34;ブランチ名が空なら破棄対象にしない&#34;, func(t *testing.T) {
+<span id="L318" class="ln">   318  </span>			t.Parallel()
+<span id="L319" class="ln">   319  </span>			assert.False(t, isReleaseBranch(&#34;&#34;))
+<span id="L320" class="ln">   320  </span>		})
+<span id="L321" class="ln">   321  </span>	})
+<span id="L322" class="ln">   322  </span>}
+<span id="L323" class="ln">   323  </span>
+<span id="L324" class="ln">   324  </span>func Test_originalBranchCleanupSteps(t *testing.T) {
+<span id="L325" class="ln">   325  </span>	t.Parallel()
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L328" class="ln">   328  </span>		t.Parallel()
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span>		t.Run(&#34;リリースブランチならローカルとリモートの両方を消す&#34;, func(t *testing.T) {
+<span id="L331" class="ln">   331  </span>			t.Parallel()
+<span id="L332" class="ln">   332  </span>			assert.Equal(t, []string{
+<span id="L333" class="ln">   333  </span>				&#34;git branch -D release/v1.0.0&#34;,
+<span id="L334" class="ln">   334  </span>				&#34;git push origin --delete release/v1.0.0&#34;,
+<span id="L335" class="ln">   335  </span>			}, commands(originalBranchCleanupSteps(&#34;release/v1.0.0&#34;)))
+<span id="L336" class="ln">   336  </span>		})
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span>		t.Run(&#34;リモート削除だけは失敗を許容する（未 push のブランチがあり得るため）&#34;, func(t *testing.T) {
+<span id="L339" class="ln">   339  </span>			t.Parallel()
+<span id="L340" class="ln">   340  </span>			steps := originalBranchCleanupSteps(&#34;release/v1.0.0&#34;)
+<span id="L341" class="ln">   341  </span>			assert.False(t, steps[0].allowFail)
+<span id="L342" class="ln">   342  </span>			assert.True(t, steps[1].allowFail)
+<span id="L343" class="ln">   343  </span>		})
+<span id="L344" class="ln">   344  </span>
+<span id="L345" class="ln">   345  </span>		t.Run(&#34;リリースブランチでなければ何もしない&#34;, func(t *testing.T) {
+<span id="L346" class="ln">   346  </span>			t.Parallel()
+<span id="L347" class="ln">   347  </span>			assert.Empty(t, originalBranchCleanupSteps(&#34;develop&#34;))
+<span id="L348" class="ln">   348  </span>		})
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>		t.Run(&#34;ブランチ名が空でも何もしない&#34;, func(t *testing.T) {
+<span id="L351" class="ln">   351  </span>			t.Parallel()
+<span id="L352" class="ln">   352  </span>			assert.Empty(t, originalBranchCleanupSteps(&#34;&#34;))
+<span id="L353" class="ln">   353  </span>		})
+<span id="L354" class="ln">   354  </span>	})
+<span id="L355" class="ln">   355  </span>}
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>func Test_releaseNotesToDelete(t *testing.T) {
+<span id="L358" class="ln">   358  </span>	t.Parallel()
+<span id="L359" class="ln">   359  </span>
+<span id="L360" class="ln">   360  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L361" class="ln">   361  </span>		t.Parallel()
+<span id="L362" class="ln">   362  </span>
+<span id="L363" class="ln">   363  </span>		t.Run(&#34;初期タグのノートだけを残す&#34;, func(t *testing.T) {
+<span id="L364" class="ln">   364  </span>			t.Parallel()
+<span id="L365" class="ln">   365  </span>			got := releaseNotesToDelete([]string{&#34;v0.0.0.md&#34;, &#34;v1.0.0.md&#34;, &#34;v1.1.0.md&#34;})
+<span id="L366" class="ln">   366  </span>			assert.Equal(t, []string{&#34;v1.0.0.md&#34;, &#34;v1.1.0.md&#34;}, got)
+<span id="L367" class="ln">   367  </span>		})
+<span id="L368" class="ln">   368  </span>
+<span id="L369" class="ln">   369  </span>		t.Run(&#34;初期タグのノートしか無ければ削除対象は空&#34;, func(t *testing.T) {
+<span id="L370" class="ln">   370  </span>			t.Parallel()
+<span id="L371" class="ln">   371  </span>			assert.Empty(t, releaseNotesToDelete([]string{&#34;v0.0.0.md&#34;}))
+<span id="L372" class="ln">   372  </span>		})
+<span id="L373" class="ln">   373  </span>
+<span id="L374" class="ln">   374  </span>		t.Run(&#34;ディレクトリが空なら削除対象も空&#34;, func(t *testing.T) {
+<span id="L375" class="ln">   375  </span>			t.Parallel()
+<span id="L376" class="ln">   376  </span>			assert.Empty(t, releaseNotesToDelete(nil))
+<span id="L377" class="ln">   377  </span>		})
+<span id="L378" class="ln">   378  </span>	})
+<span id="L379" class="ln">   379  </span>}
+<span id="L380" class="ln">   380  </span>
+<span id="L381" class="ln">   381  </span><span class="comment">//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない</span>
+<span id="L382" class="ln">   382  </span>func Test_tagExists(t *testing.T) {
+<span id="L383" class="ln">   383  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L384" class="ln">   384  </span>		t.Run(&#34;初期タグが存在すれば true&#34;, func(t *testing.T) {
+<span id="L385" class="ln">   385  </span>			dir := initRepo(t)
+<span id="L386" class="ln">   386  </span>			git(t, dir, &#34;tag&#34;, initialTag)
+<span id="L387" class="ln">   387  </span>			t.Chdir(dir)
+<span id="L388" class="ln">   388  </span>
+<span id="L389" class="ln">   389  </span>			assert.True(t, tagExists(initialTag))
+<span id="L390" class="ln">   390  </span>		})
+<span id="L391" class="ln">   391  </span>
+<span id="L392" class="ln">   392  </span>		t.Run(&#34;固定のタグ名ではなく引数のタグを見て判定する&#34;, func(t *testing.T) {
+<span id="L393" class="ln">   393  </span>			dir := initRepo(t)
+<span id="L394" class="ln">   394  </span>			git(t, dir, &#34;tag&#34;, &#34;v1.2.3&#34;)
+<span id="L395" class="ln">   395  </span>			t.Chdir(dir)
+<span id="L396" class="ln">   396  </span>
+<span id="L397" class="ln">   397  </span>			assert.True(t, tagExists(&#34;v1.2.3&#34;))
+<span id="L398" class="ln">   398  </span>			assert.False(t, tagExists(initialTag))
+<span id="L399" class="ln">   399  </span>		})
+<span id="L400" class="ln">   400  </span>
+<span id="L401" class="ln">   401  </span>		t.Run(&#34;タグが存在しなければ false&#34;, func(t *testing.T) {
+<span id="L402" class="ln">   402  </span>			t.Chdir(initRepo(t))
+<span id="L403" class="ln">   403  </span>
+<span id="L404" class="ln">   404  </span>			assert.False(t, tagExists(initialTag))
+<span id="L405" class="ln">   405  </span>		})
+<span id="L406" class="ln">   406  </span>
+<span id="L407" class="ln">   407  </span>		t.Run(&#34;同名のブランチがあってもタグとしては存在しない&#34;, func(t *testing.T) {
+<span id="L408" class="ln">   408  </span>			dir := initRepo(t)
+<span id="L409" class="ln">   409  </span>			git(t, dir, &#34;branch&#34;, &#34;v0.0.0&#34;)
+<span id="L410" class="ln">   410  </span>			t.Chdir(dir)
+<span id="L411" class="ln">   411  </span>
+<span id="L412" class="ln">   412  </span>			assert.False(t, tagExists(initialTag))
+<span id="L413" class="ln">   413  </span>		})
+<span id="L414" class="ln">   414  </span>
+<span id="L415" class="ln">   415  </span>		t.Run(&#34;git リポジトリでなければ false&#34;, func(t *testing.T) {
+<span id="L416" class="ln">   416  </span>			t.Chdir(t.TempDir())
+<span id="L417" class="ln">   417  </span>
+<span id="L418" class="ln">   418  </span>			assert.False(t, tagExists(initialTag))
+<span id="L419" class="ln">   419  </span>		})
+<span id="L420" class="ln">   420  </span>	})
+<span id="L421" class="ln">   421  </span>}
+<span id="L422" class="ln">   422  </span>
+<span id="L423" class="ln">   423  </span><span class="comment">//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない</span>
+<span id="L424" class="ln">   424  </span>func Test_branchExists(t *testing.T) {
+<span id="L425" class="ln">   425  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L426" class="ln">   426  </span>		t.Run(&#34;ブランチが存在すれば true&#34;, func(t *testing.T) {
+<span id="L427" class="ln">   427  </span>			dir := initRepo(t)
+<span id="L428" class="ln">   428  </span>			git(t, dir, &#34;branch&#34;, &#34;develop&#34;)
+<span id="L429" class="ln">   429  </span>			t.Chdir(dir)
+<span id="L430" class="ln">   430  </span>
+<span id="L431" class="ln">   431  </span>			assert.True(t, branchExists(&#34;develop&#34;))
+<span id="L432" class="ln">   432  </span>		})
+<span id="L433" class="ln">   433  </span>
+<span id="L434" class="ln">   434  </span>		t.Run(&#34;ブランチが存在しなければ false&#34;, func(t *testing.T) {
+<span id="L435" class="ln">   435  </span>			t.Chdir(initRepo(t))
+<span id="L436" class="ln">   436  </span>
+<span id="L437" class="ln">   437  </span>			assert.False(t, branchExists(&#34;develop&#34;))
+<span id="L438" class="ln">   438  </span>		})
+<span id="L439" class="ln">   439  </span>
+<span id="L440" class="ln">   440  </span>		t.Run(&#34;同名のタグがあってもブランチとしては存在しない&#34;, func(t *testing.T) {
+<span id="L441" class="ln">   441  </span>			dir := initRepo(t)
+<span id="L442" class="ln">   442  </span>			git(t, dir, &#34;tag&#34;, &#34;develop&#34;)
+<span id="L443" class="ln">   443  </span>			t.Chdir(dir)
+<span id="L444" class="ln">   444  </span>
+<span id="L445" class="ln">   445  </span>			assert.False(t, branchExists(&#34;develop&#34;))
+<span id="L446" class="ln">   446  </span>		})
+<span id="L447" class="ln">   447  </span>
+<span id="L448" class="ln">   448  </span>		t.Run(&#34;git リポジトリでなければ false&#34;, func(t *testing.T) {
+<span id="L449" class="ln">   449  </span>			t.Chdir(t.TempDir())
+<span id="L450" class="ln">   450  </span>
+<span id="L451" class="ln">   451  </span>			assert.False(t, branchExists(&#34;develop&#34;))
+<span id="L452" class="ln">   452  </span>		})
+<span id="L453" class="ln">   453  </span>	})
+<span id="L454" class="ln">   454  </span>}
+<span id="L455" class="ln">   455  </span>
+<span id="L456" class="ln">   456  </span>func Test_run(t *testing.T) {
+<span id="L457" class="ln">   457  </span>	t.Parallel()
+<span id="L458" class="ln">   458  </span>
+<span id="L459" class="ln">   459  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L460" class="ln">   460  </span>		t.Parallel()
+<span id="L461" class="ln">   461  </span>
+<span id="L462" class="ln">   462  </span>		t.Run(&#34;コマンドが成功すればエラーを返さない&#34;, func(t *testing.T) {
+<span id="L463" class="ln">   463  </span>			t.Parallel()
+<span id="L464" class="ln">   464  </span>			require.NoError(t, run(step{name: &#34;true&#34;}))
+<span id="L465" class="ln">   465  </span>		})
+<span id="L466" class="ln">   466  </span>
+<span id="L467" class="ln">   467  </span>		t.Run(&#34;allowFail の手順は失敗してもエラーにしない&#34;, func(t *testing.T) {
+<span id="L468" class="ln">   468  </span>			t.Parallel()
+<span id="L469" class="ln">   469  </span>			require.NoError(t, run(step{name: missingCommand, allowFail: true}))
+<span id="L470" class="ln">   470  </span>		})
+<span id="L471" class="ln">   471  </span>	})
+<span id="L472" class="ln">   472  </span>
+<span id="L473" class="ln">   473  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L474" class="ln">   474  </span>		t.Parallel()
+<span id="L475" class="ln">   475  </span>
+<span id="L476" class="ln">   476  </span>		t.Run(&#34;allowFail でない手順が失敗したらどの手順かを含むエラーを返す&#34;, func(t *testing.T) {
+<span id="L477" class="ln">   477  </span>			t.Parallel()
+<span id="L478" class="ln">   478  </span>			err := run(step{name: missingCommand, args: []string{&#34;tag&#34;, &#34;-d&#34;, &#34;v1.0.0&#34;}})
+<span id="L479" class="ln">   479  </span>			require.Error(t, err)
+<span id="L480" class="ln">   480  </span>			assert.Contains(t, err.Error(), &#34;failed: &#34;+missingCommand+&#34; tag -d v1.0.0&#34;)
+<span id="L481" class="ln">   481  </span>		})
+<span id="L482" class="ln">   482  </span>	})
+<span id="L483" class="ln">   483  </span>}
+<span id="L484" class="ln">   484  </span>
+<span id="L485" class="ln">   485  </span>func Test_runner_runAll(t *testing.T) {
+<span id="L486" class="ln">   486  </span>	t.Parallel()
+<span id="L487" class="ln">   487  </span>
+<span id="L488" class="ln">   488  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L489" class="ln">   489  </span>		t.Parallel()
+<span id="L490" class="ln">   490  </span>
+<span id="L491" class="ln">   491  </span>		t.Run(&#34;手順を並び順どおりにすべて実行する&#34;, func(t *testing.T) {
+<span id="L492" class="ln">   492  </span>			t.Parallel()
+<span id="L493" class="ln">   493  </span>			dir := t.TempDir()
+<span id="L494" class="ln">   494  </span>			first := filepath.Join(dir, &#34;first&#34;)
+<span id="L495" class="ln">   495  </span>			second := filepath.Join(first, &#34;second&#34;)
+<span id="L496" class="ln">   496  </span>
+<span id="L497" class="ln">   497  </span>			require.NoError(t, hostRunner().runAll([]step{mkdirStep(first), mkdirStep(second)}))
+<span id="L498" class="ln">   498  </span>			assert.DirExists(t, second)
+<span id="L499" class="ln">   499  </span>		})
+<span id="L500" class="ln">   500  </span>
+<span id="L501" class="ln">   501  </span>		t.Run(&#34;手順が無ければ何もせず成功する&#34;, func(t *testing.T) {
+<span id="L502" class="ln">   502  </span>			t.Parallel()
+<span id="L503" class="ln">   503  </span>			require.NoError(t, hostRunner().runAll(nil))
+<span id="L504" class="ln">   504  </span>		})
+<span id="L505" class="ln">   505  </span>	})
+<span id="L506" class="ln">   506  </span>
+<span id="L507" class="ln">   507  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L508" class="ln">   508  </span>		t.Parallel()
+<span id="L509" class="ln">   509  </span>
+<span id="L510" class="ln">   510  </span>		t.Run(&#34;失敗した時点で後続の手順を実行しない&#34;, func(t *testing.T) {
+<span id="L511" class="ln">   511  </span>			t.Parallel()
+<span id="L512" class="ln">   512  </span>			never := filepath.Join(t.TempDir(), &#34;never&#34;)
+<span id="L513" class="ln">   513  </span>
+<span id="L514" class="ln">   514  </span>			err := hostRunner().runAll([]step{{name: missingCommand}, mkdirStep(never)})
+<span id="L515" class="ln">   515  </span>			require.Error(t, err)
+<span id="L516" class="ln">   516  </span>			assert.Contains(t, err.Error(), missingCommand)
+<span id="L517" class="ln">   517  </span>			assert.NoDirExists(t, never)
+<span id="L518" class="ln">   518  </span>		})
+<span id="L519" class="ln">   519  </span>	})
+<span id="L520" class="ln">   520  </span>}
+<span id="L521" class="ln">   521  </span>
+<span id="L522" class="ln">   522  </span><span class="comment">//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない</span>
+<span id="L523" class="ln">   523  </span>func Test_hostRunner(t *testing.T) {
+<span id="L524" class="ln">   524  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L525" class="ln">   525  </span>		t.Run(&#34;run はホストのコマンドを実行する&#34;, func(t *testing.T) {
+<span id="L526" class="ln">   526  </span>			require.NoError(t, hostRunner().run(step{name: &#34;true&#34;}))
+<span id="L527" class="ln">   527  </span>		})
+<span id="L528" class="ln">   528  </span>
+<span id="L529" class="ln">   529  </span>		t.Run(&#34;output はホストのコマンドの標準出力を返す&#34;, func(t *testing.T) {
+<span id="L530" class="ln">   530  </span>			got, err := hostRunner().output(&#34;echo&#34;, &#34;example-org/example-api&#34;)
+<span id="L531" class="ln">   531  </span>			require.NoError(t, err)
+<span id="L532" class="ln">   532  </span>			assert.Equal(t, &#34;example-org/example-api\n&#34;, got)
+<span id="L533" class="ln">   533  </span>		})
+<span id="L534" class="ln">   534  </span>
+<span id="L535" class="ln">   535  </span>		t.Run(&#34;branchExists はホストの git でブランチの有無を見る&#34;, func(t *testing.T) {
+<span id="L536" class="ln">   536  </span>			dir := initRepo(t)
+<span id="L537" class="ln">   537  </span>			git(t, dir, &#34;branch&#34;, &#34;develop&#34;)
+<span id="L538" class="ln">   538  </span>			t.Chdir(dir)
+<span id="L539" class="ln">   539  </span>
+<span id="L540" class="ln">   540  </span>			assert.True(t, hostRunner().branchExists(&#34;develop&#34;))
+<span id="L541" class="ln">   541  </span>			assert.False(t, hostRunner().branchExists(&#34;staging&#34;))
+<span id="L542" class="ln">   542  </span>		})
+<span id="L543" class="ln">   543  </span>	})
+<span id="L544" class="ln">   544  </span>}
+<span id="L545" class="ln">   545  </span>
+<span id="L546" class="ln">   546  </span>func Test_output(t *testing.T) {
+<span id="L547" class="ln">   547  </span>	t.Parallel()
+<span id="L548" class="ln">   548  </span>
+<span id="L549" class="ln">   549  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L550" class="ln">   550  </span>		t.Parallel()
+<span id="L551" class="ln">   551  </span>
+<span id="L552" class="ln">   552  </span>		t.Run(&#34;標準出力を改行も落とさずそのまま返す&#34;, func(t *testing.T) {
+<span id="L553" class="ln">   553  </span>			t.Parallel()
+<span id="L554" class="ln">   554  </span>			got, err := output(&#34;echo&#34;, &#34;example-org/example-api&#34;)
+<span id="L555" class="ln">   555  </span>			require.NoError(t, err)
+<span id="L556" class="ln">   556  </span>			assert.Equal(t, &#34;example-org/example-api\n&#34;, got)
+<span id="L557" class="ln">   557  </span>		})
+<span id="L558" class="ln">   558  </span>	})
+<span id="L559" class="ln">   559  </span>
+<span id="L560" class="ln">   560  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L561" class="ln">   561  </span>		t.Parallel()
+<span id="L562" class="ln">   562  </span>
+<span id="L563" class="ln">   563  </span>		t.Run(&#34;コマンドが失敗したら出力は返さずどの実行かを含むエラーを返す&#34;, func(t *testing.T) {
+<span id="L564" class="ln">   564  </span>			t.Parallel()
+<span id="L565" class="ln">   565  </span>			got, err := output(missingCommand, &#34;repo&#34;, &#34;view&#34;)
+<span id="L566" class="ln">   566  </span>			require.Error(t, err)
+<span id="L567" class="ln">   567  </span>			assert.Contains(t, err.Error(), &#34;failed: &#34;+missingCommand+&#34; repo view&#34;)
+<span id="L568" class="ln">   568  </span>			assert.Empty(t, got)
+<span id="L569" class="ln">   569  </span>		})
+<span id="L570" class="ln">   570  </span>	})
+<span id="L571" class="ln">   571  </span>}
+<span id="L572" class="ln">   572  </span>
+<span id="L573" class="ln">   573  </span><span class="comment">//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない</span>
+<span id="L574" class="ln">   574  </span>func Test_runPreflight(t *testing.T) {
+<span id="L575" class="ln">   575  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L576" class="ln">   576  </span>		t.Run(&#34;初期タグが無ければ初期化を許可する&#34;, func(t *testing.T) {
+<span id="L577" class="ln">   577  </span>			t.Chdir(initRepo(t))
+<span id="L578" class="ln">   578  </span>
+<span id="L579" class="ln">   579  </span>			require.NoError(t, runPreflight())
+<span id="L580" class="ln">   580  </span>		})
+<span id="L581" class="ln">   581  </span>	})
+<span id="L582" class="ln">   582  </span>
+<span id="L583" class="ln">   583  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L584" class="ln">   584  </span>		t.Run(&#34;初期タグが既にあれば初期化を止める&#34;, func(t *testing.T) {
+<span id="L585" class="ln">   585  </span>			dir := initRepo(t)
+<span id="L586" class="ln">   586  </span>			git(t, dir, &#34;tag&#34;, initialTag)
+<span id="L587" class="ln">   587  </span>			t.Chdir(dir)
+<span id="L588" class="ln">   588  </span>
+<span id="L589" class="ln">   589  </span>			err := runPreflight()
+<span id="L590" class="ln">   590  </span>			require.ErrorIs(t, err, errInitialTagExists)
+<span id="L591" class="ln">   591  </span>		})
+<span id="L592" class="ln">   592  </span>	})
+<span id="L593" class="ln">   593  </span>}
+<span id="L594" class="ln">   594  </span>
+<span id="L595" class="ln">   595  </span>func Test_runBootstrap(t *testing.T) {
+<span id="L596" class="ln">   596  </span>	t.Parallel()
+<span id="L597" class="ln">   597  </span>
+<span id="L598" class="ln">   598  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L599" class="ln">   599  </span>		t.Parallel()
+<span id="L600" class="ln">   600  </span>
+<span id="L601" class="ln">   601  </span>		t.Run(&#34;タグの初期化・ブランチ作成・デフォルトブランチの移動をこの順で実行する&#34;, func(t *testing.T) {
+<span id="L602" class="ln">   602  </span>			t.Parallel()
+<span id="L603" class="ln">   603  </span>			f := &amp;fakeRunner{outputs: map[string]string{
+<span id="L604" class="ln">   604  </span>				ghRepoViewCall:              &#34;example-org/example-api\n&#34;,
+<span id="L605" class="ln">   605  </span>				&#34;git branch --show-current&#34;: &#34;develop\n&#34;,
+<span id="L606" class="ln">   606  </span>			}}
+<span id="L607" class="ln">   607  </span>
+<span id="L608" class="ln">   608  </span>			require.NoError(t, runBootstrap(f.runner()))
+<span id="L609" class="ln">   609  </span>
+<span id="L610" class="ln">   610  </span>			tags := slices.Index(f.calls, &#34;git tag&#34;)
+<span id="L611" class="ln">   611  </span>			branches := slices.Index(f.calls, &#34;git branch develop&#34;)
+<span id="L612" class="ln">   612  </span>			moved := slices.Index(f.calls, ghRepoViewCall)
+<span id="L613" class="ln">   613  </span>			require.NotEqual(t, -1, tags)
+<span id="L614" class="ln">   614  </span>			require.NotEqual(t, -1, branches)
+<span id="L615" class="ln">   615  </span>			require.NotEqual(t, -1, moved)
+<span id="L616" class="ln">   616  </span>			assert.Less(t, tags, branches)
+<span id="L617" class="ln">   617  </span>			assert.Less(t, branches, moved)
+<span id="L618" class="ln">   618  </span>		})
+<span id="L619" class="ln">   619  </span>	})
+<span id="L620" class="ln">   620  </span>
+<span id="L621" class="ln">   621  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L622" class="ln">   622  </span>		t.Parallel()
+<span id="L623" class="ln">   623  </span>
+<span id="L624" class="ln">   624  </span>		t.Run(&#34;タグの初期化に失敗したらブランチ作成へ進まない&#34;, func(t *testing.T) {
+<span id="L625" class="ln">   625  </span>			t.Parallel()
+<span id="L626" class="ln">   626  </span>			f := &amp;fakeRunner{failOn: &#34;git tag&#34;}
+<span id="L627" class="ln">   627  </span>
+<span id="L628" class="ln">   628  </span>			require.ErrorIs(t, runBootstrap(f.runner()), errFakeCommand)
+<span id="L629" class="ln">   629  </span>			assert.NotContains(t, f.calls, &#34;git branch develop&#34;)
+<span id="L630" class="ln">   630  </span>		})
+<span id="L631" class="ln">   631  </span>
+<span id="L632" class="ln">   632  </span>		t.Run(&#34;ブランチ作成に失敗したらデフォルトブランチを移動しない&#34;, func(t *testing.T) {
+<span id="L633" class="ln">   633  </span>			t.Parallel()
+<span id="L634" class="ln">   634  </span>			f := &amp;fakeRunner{failOn: branchPushCall}
+<span id="L635" class="ln">   635  </span>
+<span id="L636" class="ln">   636  </span>			require.ErrorIs(t, runBootstrap(f.runner()), errFakeCommand)
+<span id="L637" class="ln">   637  </span>			assert.NotContains(t, f.calls, ghRepoViewCall)
+<span id="L638" class="ln">   638  </span>		})
+<span id="L639" class="ln">   639  </span>
+<span id="L640" class="ln">   640  </span>		t.Run(&#34;デフォルトブランチの移動に失敗したらエラーを返す&#34;, func(t *testing.T) {
+<span id="L641" class="ln">   641  </span>			t.Parallel()
+<span id="L642" class="ln">   642  </span>			f := &amp;fakeRunner{
+<span id="L643" class="ln">   643  </span>				outputs: map[string]string{ghRepoViewCall: &#34;example-org/example-api\n&#34;},
+<span id="L644" class="ln">   644  </span>				failOn:  &#34;gh api -X PATCH repos/example-org/example-api -f default_branch=production&#34;,
+<span id="L645" class="ln">   645  </span>			}
+<span id="L646" class="ln">   646  </span>
+<span id="L647" class="ln">   647  </span>			require.ErrorIs(t, runBootstrap(f.runner()), errFakeCommand)
+<span id="L648" class="ln">   648  </span>		})
+<span id="L649" class="ln">   649  </span>	})
+<span id="L650" class="ln">   650  </span>}
+<span id="L651" class="ln">   651  </span>
+<span id="L652" class="ln">   652  </span>func Test_resetTags(t *testing.T) {
+<span id="L653" class="ln">   653  </span>	t.Parallel()
+<span id="L654" class="ln">   654  </span>
+<span id="L655" class="ln">   655  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L656" class="ln">   656  </span>		t.Parallel()
+<span id="L657" class="ln">   657  </span>
+<span id="L658" class="ln">   658  </span>		t.Run(&#34;既存タグをローカルとリモートから消してから初期タグを打つ&#34;, func(t *testing.T) {
+<span id="L659" class="ln">   659  </span>			t.Parallel()
+<span id="L660" class="ln">   660  </span>			f := &amp;fakeRunner{outputs: map[string]string{&#34;git tag&#34;: &#34;v1.0.0\nv1.1.0\n&#34;}}
+<span id="L661" class="ln">   661  </span>
+<span id="L662" class="ln">   662  </span>			require.NoError(t, resetTags(f.runner()))
+<span id="L663" class="ln">   663  </span>			assert.Equal(t, []string{
+<span id="L664" class="ln">   664  </span>				&#34;git tag&#34;,
+<span id="L665" class="ln">   665  </span>				&#34;git tag -d v1.0.0&#34;,
+<span id="L666" class="ln">   666  </span>				&#34;git push origin :refs/tags/v1.0.0&#34;,
+<span id="L667" class="ln">   667  </span>				&#34;git tag -d v1.1.0&#34;,
+<span id="L668" class="ln">   668  </span>				&#34;git push origin :refs/tags/v1.1.0&#34;,
+<span id="L669" class="ln">   669  </span>				initialTagCall,
+<span id="L670" class="ln">   670  </span>				initialTagPushCall,
+<span id="L671" class="ln">   671  </span>			}, f.calls)
+<span id="L672" class="ln">   672  </span>		})
+<span id="L673" class="ln">   673  </span>
+<span id="L674" class="ln">   674  </span>		t.Run(&#34;タグが 1 件も無ければ削除手順を挟まず初期タグだけを打つ&#34;, func(t *testing.T) {
+<span id="L675" class="ln">   675  </span>			t.Parallel()
+<span id="L676" class="ln">   676  </span>			f := &amp;fakeRunner{outputs: map[string]string{&#34;git tag&#34;: &#34;\n  \n&#34;}}
+<span id="L677" class="ln">   677  </span>
+<span id="L678" class="ln">   678  </span>			require.NoError(t, resetTags(f.runner()))
+<span id="L679" class="ln">   679  </span>			assert.Equal(t, []string{&#34;git tag&#34;, initialTagCall, initialTagPushCall}, f.calls)
+<span id="L680" class="ln">   680  </span>		})
+<span id="L681" class="ln">   681  </span>	})
+<span id="L682" class="ln">   682  </span>
+<span id="L683" class="ln">   683  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L684" class="ln">   684  </span>		t.Parallel()
+<span id="L685" class="ln">   685  </span>
+<span id="L686" class="ln">   686  </span>		t.Run(&#34;タグ一覧を取得できなければ 1 つも消さない&#34;, func(t *testing.T) {
+<span id="L687" class="ln">   687  </span>			t.Parallel()
+<span id="L688" class="ln">   688  </span>			f := &amp;fakeRunner{failOn: &#34;git tag&#34;}
+<span id="L689" class="ln">   689  </span>
+<span id="L690" class="ln">   690  </span>			require.ErrorIs(t, resetTags(f.runner()), errFakeCommand)
+<span id="L691" class="ln">   691  </span>			assert.Equal(t, []string{&#34;git tag&#34;}, f.calls)
+<span id="L692" class="ln">   692  </span>		})
+<span id="L693" class="ln">   693  </span>
+<span id="L694" class="ln">   694  </span>		t.Run(&#34;タグの削除に失敗したら初期タグを打たない&#34;, func(t *testing.T) {
+<span id="L695" class="ln">   695  </span>			t.Parallel()
+<span id="L696" class="ln">   696  </span>			f := &amp;fakeRunner{
+<span id="L697" class="ln">   697  </span>				outputs: map[string]string{&#34;git tag&#34;: &#34;v1.0.0\nv1.1.0\n&#34;},
+<span id="L698" class="ln">   698  </span>				failOn:  &#34;git tag -d v1.0.0&#34;,
+<span id="L699" class="ln">   699  </span>			}
+<span id="L700" class="ln">   700  </span>
+<span id="L701" class="ln">   701  </span>			require.ErrorIs(t, resetTags(f.runner()), errFakeCommand)
+<span id="L702" class="ln">   702  </span>			assert.Equal(t, []string{&#34;git tag&#34;, &#34;git tag -d v1.0.0&#34;}, f.calls)
+<span id="L703" class="ln">   703  </span>		})
+<span id="L704" class="ln">   704  </span>
+<span id="L705" class="ln">   705  </span>		t.Run(&#34;初期タグの作成に失敗したら push しない&#34;, func(t *testing.T) {
+<span id="L706" class="ln">   706  </span>			t.Parallel()
+<span id="L707" class="ln">   707  </span>			f := &amp;fakeRunner{failOn: initialTagCall}
+<span id="L708" class="ln">   708  </span>
+<span id="L709" class="ln">   709  </span>			require.ErrorIs(t, resetTags(f.runner()), errFakeCommand)
+<span id="L710" class="ln">   710  </span>			assert.Equal(t, []string{&#34;git tag&#34;, initialTagCall}, f.calls)
+<span id="L711" class="ln">   711  </span>		})
+<span id="L712" class="ln">   712  </span>	})
+<span id="L713" class="ln">   713  </span>}
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span><span class="comment">//nolint:paralleltest // ログの出力先はプロセス共通のため並列化できない</span>
+<span id="L716" class="ln">   716  </span>func Test_createBranches(t *testing.T) {
+<span id="L717" class="ln">   717  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L718" class="ln">   718  </span>		t.Run(&#34;既存ブランチが無ければ 3 本作ってからまとめて push する&#34;, func(t *testing.T) {
+<span id="L719" class="ln">   719  </span>			f := &amp;fakeRunner{}
+<span id="L720" class="ln">   720  </span>
+<span id="L721" class="ln">   721  </span>			require.NoError(t, createBranches(f.runner()))
+<span id="L722" class="ln">   722  </span>			assert.Equal(t, []string{
+<span id="L723" class="ln">   723  </span>				&#34;git branch develop&#34;,
+<span id="L724" class="ln">   724  </span>				&#34;git branch staging&#34;,
+<span id="L725" class="ln">   725  </span>				&#34;git branch production&#34;,
+<span id="L726" class="ln">   726  </span>				branchPushCall,
+<span id="L727" class="ln">   727  </span>			}, f.calls)
+<span id="L728" class="ln">   728  </span>		})
+<span id="L729" class="ln">   729  </span>
+<span id="L730" class="ln">   730  </span>		t.Run(&#34;既に在るブランチは作らずスキップしたことを知らせる&#34;, func(t *testing.T) {
+<span id="L731" class="ln">   731  </span>			logged := captureLog(t)
+<span id="L732" class="ln">   732  </span>			f := &amp;fakeRunner{branches: map[string]bool{&#34;develop&#34;: true}}
+<span id="L733" class="ln">   733  </span>
+<span id="L734" class="ln">   734  </span>			require.NoError(t, createBranches(f.runner()))
+<span id="L735" class="ln">   735  </span>			assert.Equal(t, []string{&#34;git branch staging&#34;, &#34;git branch production&#34;, branchPushCall}, f.calls)
+<span id="L736" class="ln">   736  </span>			assert.Contains(t, logged(), &#34;ブランチ 【develop】 は既に存在します&#34;)
+<span id="L737" class="ln">   737  </span>		})
+<span id="L738" class="ln">   738  </span>	})
+<span id="L739" class="ln">   739  </span>
+<span id="L740" class="ln">   740  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L741" class="ln">   741  </span>		t.Run(&#34;ブランチの作成に失敗したら push しない&#34;, func(t *testing.T) {
+<span id="L742" class="ln">   742  </span>			f := &amp;fakeRunner{failOn: &#34;git branch staging&#34;}
+<span id="L743" class="ln">   743  </span>
+<span id="L744" class="ln">   744  </span>			require.ErrorIs(t, createBranches(f.runner()), errFakeCommand)
+<span id="L745" class="ln">   745  </span>			assert.Equal(t, []string{&#34;git branch develop&#34;, &#34;git branch staging&#34;}, f.calls)
+<span id="L746" class="ln">   746  </span>		})
+<span id="L747" class="ln">   747  </span>
+<span id="L748" class="ln">   748  </span>		t.Run(&#34;push に失敗したらエラーを返す&#34;, func(t *testing.T) {
+<span id="L749" class="ln">   749  </span>			f := &amp;fakeRunner{failOn: branchPushCall}
+<span id="L750" class="ln">   750  </span>
+<span id="L751" class="ln">   751  </span>			require.ErrorIs(t, createBranches(f.runner()), errFakeCommand)
+<span id="L752" class="ln">   752  </span>		})
+<span id="L753" class="ln">   753  </span>	})
+<span id="L754" class="ln">   754  </span>}
+<span id="L755" class="ln">   755  </span>
+<span id="L756" class="ln">   756  </span>func Test_moveDefaultBranch(t *testing.T) {
+<span id="L757" class="ln">   757  </span>	t.Parallel()
+<span id="L758" class="ln">   758  </span>
+<span id="L759" class="ln">   759  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L760" class="ln">   760  </span>		t.Parallel()
+<span id="L761" class="ln">   761  </span>
+<span id="L762" class="ln">   762  </span>		t.Run(&#34;リポジトリ名を引いてデフォルトブランチを移し、元のリリースブランチを片付ける&#34;, func(t *testing.T) {
+<span id="L763" class="ln">   763  </span>			t.Parallel()
+<span id="L764" class="ln">   764  </span>			f := &amp;fakeRunner{outputs: map[string]string{
+<span id="L765" class="ln">   765  </span>				ghRepoViewCall:              &#34;example-org/example-api\n&#34;,
+<span id="L766" class="ln">   766  </span>				&#34;git branch --show-current&#34;: &#34;release/v1.0.0\n&#34;,
+<span id="L767" class="ln">   767  </span>			}}
+<span id="L768" class="ln">   768  </span>
+<span id="L769" class="ln">   769  </span>			require.NoError(t, moveDefaultBranch(f.runner()))
+<span id="L770" class="ln">   770  </span>			assert.Equal(t, []string{
+<span id="L771" class="ln">   771  </span>				ghRepoViewCall,
+<span id="L772" class="ln">   772  </span>				&#34;gh api -X PATCH repos/example-org/example-api -f default_branch=production&#34;,
+<span id="L773" class="ln">   773  </span>				&#34;git fetch --prune&#34;,
+<span id="L774" class="ln">   774  </span>				&#34;git branch --show-current&#34;,
+<span id="L775" class="ln">   775  </span>				&#34;git switch production&#34;,
+<span id="L776" class="ln">   776  </span>				&#34;git branch -D release/v1.0.0&#34;,
+<span id="L777" class="ln">   777  </span>				&#34;git push origin --delete release/v1.0.0&#34;,
+<span id="L778" class="ln">   778  </span>			}, f.calls)
+<span id="L779" class="ln">   779  </span>		})
+<span id="L780" class="ln">   780  </span>
+<span id="L781" class="ln">   781  </span>		t.Run(&#34;元のブランチがリリースブランチでなければ何も消さない&#34;, func(t *testing.T) {
+<span id="L782" class="ln">   782  </span>			t.Parallel()
+<span id="L783" class="ln">   783  </span>			f := &amp;fakeRunner{outputs: map[string]string{
+<span id="L784" class="ln">   784  </span>				ghRepoViewCall:              &#34;example-org/example-api\n&#34;,
+<span id="L785" class="ln">   785  </span>				&#34;git branch --show-current&#34;: &#34;develop\n&#34;,
+<span id="L786" class="ln">   786  </span>			}}
+<span id="L787" class="ln">   787  </span>
+<span id="L788" class="ln">   788  </span>			require.NoError(t, moveDefaultBranch(f.runner()))
+<span id="L789" class="ln">   789  </span>			assert.Equal(t, &#34;git switch production&#34;, f.calls[len(f.calls)-1])
+<span id="L790" class="ln">   790  </span>		})
+<span id="L791" class="ln">   791  </span>	})
+<span id="L792" class="ln">   792  </span>
+<span id="L793" class="ln">   793  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L794" class="ln">   794  </span>		t.Parallel()
+<span id="L795" class="ln">   795  </span>
+<span id="L796" class="ln">   796  </span>		t.Run(&#34;リポジトリ名を取得できなければデフォルトブランチを変更しない&#34;, func(t *testing.T) {
+<span id="L797" class="ln">   797  </span>			t.Parallel()
+<span id="L798" class="ln">   798  </span>			f := &amp;fakeRunner{failOn: ghRepoViewCall}
+<span id="L799" class="ln">   799  </span>
+<span id="L800" class="ln">   800  </span>			require.ErrorIs(t, moveDefaultBranch(f.runner()), errFakeCommand)
+<span id="L801" class="ln">   801  </span>			assert.Equal(t, []string{ghRepoViewCall}, f.calls)
+<span id="L802" class="ln">   802  </span>		})
+<span id="L803" class="ln">   803  </span>
+<span id="L804" class="ln">   804  </span>		t.Run(&#34;デフォルトブランチの変更に失敗したら switch しない&#34;, func(t *testing.T) {
+<span id="L805" class="ln">   805  </span>			t.Parallel()
+<span id="L806" class="ln">   806  </span>			f := &amp;fakeRunner{
+<span id="L807" class="ln">   807  </span>				outputs: map[string]string{ghRepoViewCall: &#34;example-org/example-api\n&#34;},
+<span id="L808" class="ln">   808  </span>				failOn:  &#34;gh api -X PATCH repos/example-org/example-api -f default_branch=production&#34;,
+<span id="L809" class="ln">   809  </span>			}
+<span id="L810" class="ln">   810  </span>
+<span id="L811" class="ln">   811  </span>			require.ErrorIs(t, moveDefaultBranch(f.runner()), errFakeCommand)
+<span id="L812" class="ln">   812  </span>			assert.NotContains(t, f.calls, &#34;git switch production&#34;)
+<span id="L813" class="ln">   813  </span>		})
+<span id="L814" class="ln">   814  </span>
+<span id="L815" class="ln">   815  </span>		t.Run(&#34;fetch に失敗したら switch しない&#34;, func(t *testing.T) {
+<span id="L816" class="ln">   816  </span>			t.Parallel()
+<span id="L817" class="ln">   817  </span>			f := &amp;fakeRunner{
+<span id="L818" class="ln">   818  </span>				outputs: map[string]string{ghRepoViewCall: &#34;example-org/example-api\n&#34;},
+<span id="L819" class="ln">   819  </span>				failOn:  &#34;git fetch --prune&#34;,
+<span id="L820" class="ln">   820  </span>			}
+<span id="L821" class="ln">   821  </span>
+<span id="L822" class="ln">   822  </span>			require.ErrorIs(t, moveDefaultBranch(f.runner()), errFakeCommand)
+<span id="L823" class="ln">   823  </span>			assert.NotContains(t, f.calls, &#34;git switch production&#34;)
+<span id="L824" class="ln">   824  </span>		})
+<span id="L825" class="ln">   825  </span>
+<span id="L826" class="ln">   826  </span>		t.Run(&#34;元のブランチ名を取得できなければ switch しない&#34;, func(t *testing.T) {
+<span id="L827" class="ln">   827  </span>			t.Parallel()
+<span id="L828" class="ln">   828  </span>			f := &amp;fakeRunner{
+<span id="L829" class="ln">   829  </span>				outputs: map[string]string{ghRepoViewCall: &#34;example-org/example-api\n&#34;},
+<span id="L830" class="ln">   830  </span>				failOn:  &#34;git branch --show-current&#34;,
+<span id="L831" class="ln">   831  </span>			}
+<span id="L832" class="ln">   832  </span>
+<span id="L833" class="ln">   833  </span>			require.ErrorIs(t, moveDefaultBranch(f.runner()), errFakeCommand)
+<span id="L834" class="ln">   834  </span>			assert.NotContains(t, f.calls, &#34;git switch production&#34;)
+<span id="L835" class="ln">   835  </span>		})
+<span id="L836" class="ln">   836  </span>
+<span id="L837" class="ln">   837  </span>		t.Run(&#34;デフォルトブランチへ移れなければ元のブランチを消さない&#34;, func(t *testing.T) {
+<span id="L838" class="ln">   838  </span>			t.Parallel()
+<span id="L839" class="ln">   839  </span>			f := &amp;fakeRunner{
+<span id="L840" class="ln">   840  </span>				outputs: map[string]string{
+<span id="L841" class="ln">   841  </span>					ghRepoViewCall:              &#34;example-org/example-api\n&#34;,
+<span id="L842" class="ln">   842  </span>					&#34;git branch --show-current&#34;: &#34;release/v1.0.0\n&#34;,
+<span id="L843" class="ln">   843  </span>				},
+<span id="L844" class="ln">   844  </span>				failOn: &#34;git switch production&#34;,
+<span id="L845" class="ln">   845  </span>			}
+<span id="L846" class="ln">   846  </span>
+<span id="L847" class="ln">   847  </span>			require.ErrorIs(t, moveDefaultBranch(f.runner()), errFakeCommand)
+<span id="L848" class="ln">   848  </span>			assert.NotContains(t, f.calls, &#34;git branch -D release/v1.0.0&#34;)
+<span id="L849" class="ln">   849  </span>			assert.NotContains(t, f.calls, &#34;git push origin --delete release/v1.0.0&#34;)
+<span id="L850" class="ln">   850  </span>		})
+<span id="L851" class="ln">   851  </span>
+<span id="L852" class="ln">   852  </span>		t.Run(&#34;元のブランチの片付けに失敗したら成功として終えない&#34;, func(t *testing.T) {
+<span id="L853" class="ln">   853  </span>			t.Parallel()
+<span id="L854" class="ln">   854  </span>			f := &amp;fakeRunner{
+<span id="L855" class="ln">   855  </span>				outputs: map[string]string{
+<span id="L856" class="ln">   856  </span>					ghRepoViewCall:              &#34;example-org/example-api\n&#34;,
+<span id="L857" class="ln">   857  </span>					&#34;git branch --show-current&#34;: &#34;release/v1.0.0\n&#34;,
+<span id="L858" class="ln">   858  </span>				},
+<span id="L859" class="ln">   859  </span>				failOn: &#34;git branch -D release/v1.0.0&#34;,
+<span id="L860" class="ln">   860  </span>			}
+<span id="L861" class="ln">   861  </span>
+<span id="L862" class="ln">   862  </span>			require.ErrorIs(t, moveDefaultBranch(f.runner()), errFakeCommand)
+<span id="L863" class="ln">   863  </span>		})
+<span id="L864" class="ln">   864  </span>	})
+<span id="L865" class="ln">   865  </span>}
+<span id="L866" class="ln">   866  </span>
+<span id="L867" class="ln">   867  </span><span class="comment">//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない</span>
+<span id="L868" class="ln">   868  </span>func Test_runPruneReleaseNotes(t *testing.T) {
+<span id="L869" class="ln">   869  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L870" class="ln">   870  </span>		t.Run(&#34;初期タグのノートとディレクトリを残して他のノートを消す&#34;, func(t *testing.T) {
+<span id="L871" class="ln">   871  </span>			dir := t.TempDir()
+<span id="L872" class="ln">   872  </span>			noteDir := filepath.Join(dir, releaseNoteDir)
+<span id="L873" class="ln">   873  </span>			require.NoError(t, os.MkdirAll(filepath.Join(noteDir, &#34;archive&#34;), 0o750))
+<span id="L874" class="ln">   874  </span>			require.NoError(t, os.WriteFile(filepath.Join(noteDir, initialTag+&#34;.md&#34;), []byte(&#34;keep&#34;), 0o600))
+<span id="L875" class="ln">   875  </span>			require.NoError(t, os.WriteFile(filepath.Join(noteDir, &#34;v1.0.0.md&#34;), []byte(&#34;drop&#34;), 0o600))
+<span id="L876" class="ln">   876  </span>			t.Chdir(dir)
+<span id="L877" class="ln">   877  </span>
+<span id="L878" class="ln">   878  </span>			require.NoError(t, runPruneReleaseNotes())
+<span id="L879" class="ln">   879  </span>			assert.FileExists(t, filepath.Join(noteDir, initialTag+&#34;.md&#34;))
+<span id="L880" class="ln">   880  </span>			assert.NoFileExists(t, filepath.Join(noteDir, &#34;v1.0.0.md&#34;))
+<span id="L881" class="ln">   881  </span>			assert.DirExists(t, filepath.Join(noteDir, &#34;archive&#34;))
+<span id="L882" class="ln">   882  </span>		})
+<span id="L883" class="ln">   883  </span>
+<span id="L884" class="ln">   884  </span>		t.Run(&#34;リリースノートのディレクトリが無ければ何もせず成功する&#34;, func(t *testing.T) {
+<span id="L885" class="ln">   885  </span>			t.Chdir(t.TempDir())
+<span id="L886" class="ln">   886  </span>
+<span id="L887" class="ln">   887  </span>			require.NoError(t, runPruneReleaseNotes())
+<span id="L888" class="ln">   888  </span>		})
+<span id="L889" class="ln">   889  </span>	})
+<span id="L890" class="ln">   890  </span>
+<span id="L891" class="ln">   891  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L892" class="ln">   892  </span>		t.Run(&#34;置き場所がディレクトリとして読めなければ黙って飛ばさずエラーにする&#34;, func(t *testing.T) {
+<span id="L893" class="ln">   893  </span>			dir := t.TempDir()
+<span id="L894" class="ln">   894  </span>			notePath := filepath.Join(dir, releaseNoteDir)
+<span id="L895" class="ln">   895  </span>			require.NoError(t, os.MkdirAll(filepath.Dir(notePath), 0o750))
+<span id="L896" class="ln">   896  </span>			require.NoError(t, os.WriteFile(notePath, nil, 0o600))
+<span id="L897" class="ln">   897  </span>			t.Chdir(dir)
+<span id="L898" class="ln">   898  </span>
+<span id="L899" class="ln">   899  </span>			require.Error(t, runPruneReleaseNotes())
+<span id="L900" class="ln">   900  </span>		})
+<span id="L901" class="ln">   901  </span>
+<span id="L902" class="ln">   902  </span>		<span class="comment">// 消せなかったノートを黙って飛ばすと、初期化後のリポジトリに前身のリリース履歴が残る。</span>
+<span id="L903" class="ln">   903  </span>		t.Run(&#34;ノートを消せなければどのファイルかを含むエラーにする&#34;, func(t *testing.T) {
+<span id="L904" class="ln">   904  </span>			if os.Geteuid() == 0 {
+<span id="L905" class="ln">   905  </span>				t.Skip(&#34;特権実行では書き込み権限を落としても unlink が通ってしまい、削除の失敗を作れない&#34;)
+<span id="L906" class="ln">   906  </span>			}
+<span id="L907" class="ln">   907  </span>
+<span id="L908" class="ln">   908  </span>			dir := t.TempDir()
+<span id="L909" class="ln">   909  </span>			noteDir := filepath.Join(dir, releaseNoteDir)
+<span id="L910" class="ln">   910  </span>			require.NoError(t, os.MkdirAll(noteDir, 0o750))
+<span id="L911" class="ln">   911  </span>			require.NoError(t, os.WriteFile(filepath.Join(noteDir, &#34;v1.0.0.md&#34;), []byte(&#34;drop&#34;), 0o600))
+<span id="L912" class="ln">   912  </span>			<span class="comment">// ディレクトリは走査に実行ビットが要るため 0600 以下にはできない。書き込みビットだけを落とす。</span>
+<span id="L913" class="ln">   913  </span>			require.NoError(t, os.Chmod(noteDir, 0o500))       <span class="comment">//nolint:gosec // 削除を失敗させるためディレクトリの権限を落とす</span>
+<span id="L914" class="ln">   914  </span>			t.Cleanup(func() { _ = os.Chmod(noteDir, 0o750) }) <span class="comment">//nolint:gosec // t.TempDir を後片付けできるよう権限を戻す</span>
+<span id="L915" class="ln">   915  </span>			t.Chdir(dir)
+<span id="L916" class="ln">   916  </span>
+<span id="L917" class="ln">   917  </span>			err := runPruneReleaseNotes()
+<span id="L918" class="ln">   918  </span>			require.Error(t, err)
+<span id="L919" class="ln">   919  </span>			assert.Contains(t, err.Error(), &#34;failed to remove v1.0.0.md&#34;)
+<span id="L920" class="ln">   920  </span>		})
+<span id="L921" class="ln">   921  </span>	})
+<span id="L922" class="ln">   922  </span>}
+<span id="L923" class="ln">   923  </span>
+<span id="L924" class="ln">   924  </span><span class="comment">// bootstrappableRunner は、bootstrap の手順を最後まで通せる出力を備えた実行器を返します。</span>
+<span id="L925" class="ln">   925  </span>func bootstrappableRunner() *fakeRunner {
+<span id="L926" class="ln">   926  </span>	return &amp;fakeRunner{outputs: map[string]string{
+<span id="L927" class="ln">   927  </span>		ghRepoViewCall:              &#34;example-org/example-api\n&#34;,
+<span id="L928" class="ln">   928  </span>		&#34;git branch --show-current&#34;: &#34;develop\n&#34;,
+<span id="L929" class="ln">   929  </span>	}}
+<span id="L930" class="ln">   930  </span>}
+<span id="L931" class="ln">   931  </span>
+<span id="L932" class="ln">   932  </span><span class="comment">// writeReleaseNotes は、初期タグのノートと破棄対象のノートを持つ作業ディレクトリへ移り、</span>
+<span id="L933" class="ln">   933  </span><span class="comment">// ノートの置き場所の絶対パスを返します。</span>
+<span id="L934" class="ln">   934  </span>func writeReleaseNotes(t *testing.T) string {
+<span id="L935" class="ln">   935  </span>	t.Helper()
+<span id="L936" class="ln">   936  </span>
+<span id="L937" class="ln">   937  </span>	dir := t.TempDir()
+<span id="L938" class="ln">   938  </span>	noteDir := filepath.Join(dir, releaseNoteDir)
+<span id="L939" class="ln">   939  </span>	require.NoError(t, os.MkdirAll(noteDir, 0o750))
+<span id="L940" class="ln">   940  </span>	require.NoError(t, os.WriteFile(filepath.Join(noteDir, initialTag+&#34;.md&#34;), []byte(&#34;keep&#34;), 0o600))
+<span id="L941" class="ln">   941  </span>	require.NoError(t, os.WriteFile(filepath.Join(noteDir, &#34;v1.0.0.md&#34;), []byte(&#34;drop&#34;), 0o600))
+<span id="L942" class="ln">   942  </span>	t.Chdir(dir)
+<span id="L943" class="ln">   943  </span>
+<span id="L944" class="ln">   944  </span>	return noteDir
+<span id="L945" class="ln">   945  </span>}
+<span id="L946" class="ln">   946  </span>
+<span id="L947" class="ln">   947  </span><span class="comment">//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない</span>
+<span id="L948" class="ln">   948  </span>func Test_execute(t *testing.T) {
+<span id="L949" class="ln">   949  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L950" class="ln">   950  </span>		t.Run(&#34;preflight は実行層を使わず初期タグの有無だけを見る&#34;, func(t *testing.T) {
+<span id="L951" class="ln">   951  </span>			t.Chdir(initRepo(t))
+<span id="L952" class="ln">   952  </span>			f := bootstrappableRunner()
+<span id="L953" class="ln">   953  </span>
+<span id="L954" class="ln">   954  </span>			require.NoError(t, execute(f.runner(), []string{&#34;preflight&#34;}))
+<span id="L955" class="ln">   955  </span>			assert.Empty(t, f.calls)
+<span id="L956" class="ln">   956  </span>		})
+<span id="L957" class="ln">   957  </span>
+<span id="L958" class="ln">   958  </span>		t.Run(&#34;bootstrap は差し替えた実行層で手順を進める&#34;, func(t *testing.T) {
+<span id="L959" class="ln">   959  </span>			f := bootstrappableRunner()
+<span id="L960" class="ln">   960  </span>
+<span id="L961" class="ln">   961  </span>			require.NoError(t, execute(f.runner(), []string{&#34;bootstrap&#34;}))
+<span id="L962" class="ln">   962  </span>			assert.Contains(t, f.calls, initialTagCall)
+<span id="L963" class="ln">   963  </span>			assert.Contains(t, f.calls, branchPushCall)
+<span id="L964" class="ln">   964  </span>		})
+<span id="L965" class="ln">   965  </span>
+<span id="L966" class="ln">   966  </span>		t.Run(&#34;prune-release-notes は初期タグ以外のノートを消す&#34;, func(t *testing.T) {
+<span id="L967" class="ln">   967  </span>			noteDir := writeReleaseNotes(t)
+<span id="L968" class="ln">   968  </span>			f := bootstrappableRunner()
+<span id="L969" class="ln">   969  </span>
+<span id="L970" class="ln">   970  </span>			require.NoError(t, execute(f.runner(), []string{&#34;prune-release-notes&#34;}))
+<span id="L971" class="ln">   971  </span>			assert.FileExists(t, filepath.Join(noteDir, initialTag+&#34;.md&#34;))
+<span id="L972" class="ln">   972  </span>			assert.NoFileExists(t, filepath.Join(noteDir, &#34;v1.0.0.md&#34;))
+<span id="L973" class="ln">   973  </span>			assert.Empty(t, f.calls)
+<span id="L974" class="ln">   974  </span>		})
+<span id="L975" class="ln">   975  </span>	})
+<span id="L976" class="ln">   976  </span>
+<span id="L977" class="ln">   977  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L978" class="ln">   978  </span>		t.Run(&#34;サブコマンドが無ければ使い方を示して手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L979" class="ln">   979  </span>			f := bootstrappableRunner()
+<span id="L980" class="ln">   980  </span>
+<span id="L981" class="ln">   981  </span>			require.ErrorIs(t, execute(f.runner(), nil), errUsage)
+<span id="L982" class="ln">   982  </span>			assert.Empty(t, f.calls)
+<span id="L983" class="ln">   983  </span>		})
+<span id="L984" class="ln">   984  </span>
+<span id="L985" class="ln">   985  </span>		t.Run(&#34;未知のサブコマンドでは手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L986" class="ln">   986  </span>			f := bootstrappableRunner()
+<span id="L987" class="ln">   987  </span>
+<span id="L988" class="ln">   988  </span>			require.ErrorIs(t, execute(f.runner(), []string{&#34;bogus&#34;}), errUnknownSubcommand)
+<span id="L989" class="ln">   989  </span>			assert.Empty(t, f.calls)
+<span id="L990" class="ln">   990  </span>		})
+<span id="L991" class="ln">   991  </span>
+<span id="L992" class="ln">   992  </span>		t.Run(&#34;preflight の中止をそのまま返す&#34;, func(t *testing.T) {
+<span id="L993" class="ln">   993  </span>			dir := initRepo(t)
+<span id="L994" class="ln">   994  </span>			git(t, dir, &#34;tag&#34;, initialTag)
+<span id="L995" class="ln">   995  </span>			t.Chdir(dir)
+<span id="L996" class="ln">   996  </span>
+<span id="L997" class="ln">   997  </span>			require.ErrorIs(t, execute(bootstrappableRunner().runner(), []string{&#34;preflight&#34;}), errInitialTagExists)
+<span id="L998" class="ln">   998  </span>		})
+<span id="L999" class="ln">   999  </span>
+<span id="L1000" class="ln">  1000  </span>		t.Run(&#34;bootstrap の失敗をそのまま返す&#34;, func(t *testing.T) {
+<span id="L1001" class="ln">  1001  </span>			f := &amp;fakeRunner{failOn: &#34;git tag&#34;}
+<span id="L1002" class="ln">  1002  </span>
+<span id="L1003" class="ln">  1003  </span>			require.ErrorIs(t, execute(f.runner(), []string{&#34;bootstrap&#34;}), errFakeCommand)
+<span id="L1004" class="ln">  1004  </span>		})
+<span id="L1005" class="ln">  1005  </span>
+<span id="L1006" class="ln">  1006  </span>		t.Run(&#34;prune-release-notes の失敗をそのまま返す&#34;, func(t *testing.T) {
+<span id="L1007" class="ln">  1007  </span>			dir := t.TempDir()
+<span id="L1008" class="ln">  1008  </span>			notePath := filepath.Join(dir, releaseNoteDir)
+<span id="L1009" class="ln">  1009  </span>			require.NoError(t, os.MkdirAll(filepath.Dir(notePath), 0o750))
+<span id="L1010" class="ln">  1010  </span>			require.NoError(t, os.WriteFile(notePath, nil, 0o600))
+<span id="L1011" class="ln">  1011  </span>			t.Chdir(dir)
+<span id="L1012" class="ln">  1012  </span>
+<span id="L1013" class="ln">  1013  </span>			require.Error(t, execute(bootstrappableRunner().runner(), []string{&#34;prune-release-notes&#34;}))
+<span id="L1014" class="ln">  1014  </span>		})
+<span id="L1015" class="ln">  1015  </span>	})
+<span id="L1016" class="ln">  1016  </span>}
+<span id="L1017" class="ln">  1017  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/repo-setup/main_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

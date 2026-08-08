@@ -223,6 +223,28 @@ env/.env と database/migrations を参照できるモジュールルートに�
 				<tr>
 				
 					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/decimal/">decimal</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package decimal は、金額・比率などの正確な十進量を扱う exact-decimal 値オブジェクトを提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 40px;">
+						<a href="pkg/decimal/testkit/">testkit</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package testkit は、decimal のテスト補助を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
 						<a href="pkg/envutil/">envutil</a>
 					</td>
 				
@@ -289,6 +311,28 @@ env/.env と database/migrations を参照できるモジュールルートに�
 				<tr>
 				
 					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/httpheader/">httpheader</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package httpheader は、HTTP ヘッダ名の判定を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/patch/">patch</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package patch は、部分更新の入力が取りうる状態を表す値を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
 						<a href="pkg/ptr/">ptr</a>
 					</td>
 				
@@ -343,6 +387,17 @@ env/.env と database/migrations を参照できるモジュールルートに�
 			
 				<tr>
 				
+					<td class="pkg-name" style="padding-left: 40px;">
+						<a href="pkg/uuid/testkit/">testkit</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package testkit は、uuid のテスト補助を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
 					<td class="pkg-name" style="padding-left: 20px;">
 						<a href="pkg/xerrors/">xerrors</a>
 					</td>
@@ -366,11 +421,88 @@ env/.env と database/migrations を参照できるモジュールルートに�
 				<tr>
 				
 					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/actions-shellcheck/">actions-shellcheck</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は composite action（.github/actions/**）の runs.steps[].run を shellcheck で検査し、 指摘を action 定義ファイルの行・列へ写し戻す。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/base-branch/">base-branch</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は、フィーチャーブランチの分岐元となるリリースブランチを解決するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/cover-gate/">cover-gate</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は、カバレッジプロファイルの総カバレッジがしきい値以上かを検査するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
 						<a href="scripts/genctxkey/">genctxkey</a>
 					</td>
 				
 					<td class="pkg-synopsis">
 						
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/go-cooldown/">go-cooldown</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は go.mod の各モジュールが供給網 cooldown を満たしているかを検査するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/load-band/">load-band</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は、ホスト負荷の配分（負荷帯・CPU シェア・各ツールへ渡す並列度）を解決するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/migration-lint/">migration-lint</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は database/migrations の連番を検査するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/npm-cooldown/">npm-cooldown</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は package-lock.json のエントリが、その lockfile 自身の .npmrc `min-release-age` を満たしているかを監査するツール。
 					</td>
 				</tr>
 			
@@ -392,7 +524,29 @@ env/.env と database/migrations を参照できるモジュールルートに�
 					</td>
 				
 					<td class="pkg-synopsis">
-						Package main は Dockerfile の `FROM` base image を不変の digest へ固定するツール。
+						Package main は Dockerfile の `FROM` base image と docker compose の `image:` を 不変の digest へ固定するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/release/">release</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は、リリースタグとリリースブランチを作成するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/repo-setup/">repo-setup</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main は、boilerplate を自分のリポジトリとして初期化する際の git / gh 操作を担うツール。
 					</td>
 				</tr>
 			
@@ -404,6 +558,17 @@ env/.env と database/migrations を参照できるモジュールルートに�
 				
 					<td class="pkg-synopsis">
 						Package main は mise.toml の version を各種ファイルに反映する。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/tool-cooldown/">tool-cooldown</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main はこのリポジトリが宣言するツールのバージョンが供給網 cooldown を満たしているかを 検査するツール。
 					</td>
 				</tr>
 			

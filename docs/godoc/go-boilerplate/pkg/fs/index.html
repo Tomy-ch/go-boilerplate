@@ -202,7 +202,7 @@ os への直接依存を一点に集約し、利用側はインターフェー�
 
 			
 				
-				<h3 id="OS.Glob">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1287:1335#L23">Glob</a>
+				<h3 id="OS.Glob">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1405:1453#L24">Glob</a>
 					<a class="permalink" href="#OS.Glob">¶</a>
 					
 					
@@ -228,13 +228,14 @@ os への直接依存を一点に集約し、利用側はインターフェー�
 				
 			
 				
-				</p><h3 id="OS.WriteFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1090:1159#L18">WriteFile</a>
+				</p><h3 id="OS.WriteFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1208:1277#L19">WriteFile</a>
 					<a class="permalink" href="#OS.WriteFile">¶</a>
 					
 					
 				</h3>
 				<pre>func (<a href="#OS">OS</a>) WriteFile(name <a href="../../../builtin/#string">string</a>, data []<a href="../../../builtin/#byte">byte</a>, perm <a href="../../../os/">os</a>.<a href="../../../os/#FileMode">FileMode</a>) <a href="../../../builtin/#error">error</a></pre>
-				<p>WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成します。
+				<p>WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成し、
+既に存在する場合はパーミッションを変えずに既存内容を切り詰めてから書き込みます。
 
 				
 				

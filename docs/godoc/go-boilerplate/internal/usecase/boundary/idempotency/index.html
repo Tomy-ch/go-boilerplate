@@ -287,7 +287,7 @@
 		
 			
 			
-			<h2 id="Store">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html?s=1550:2487#L43">Store</a>
+			<h2 id="Store">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/store.go.html?s=1550:2508#L43">Store</a>
 				<a class="permalink" href="#Store">¶</a>
 				
 				
@@ -295,7 +295,7 @@
 			<p>Store は、冪等性キーの永続化境界です。すべて scope 必須（id 単独 lookup を持たない＝越境防止）。
 
 			</p><pre>type Store interface {
-    <span class="comment">// Claim は、claimed 行を作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。</span>
+    <span class="comment">// Claim は、claimed のエントリを作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。</span>
     <span class="comment">// ロック待ちタイムアウト時は ErrLockTimeout を返します。</span>
     <span class="comment">// 業務トランザクション内から呼び出すこと（ロック待ちの上限がトランザクションスコープのため）。</span>
     Claim(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p <a href="#ClaimParams">ClaimParams</a>) (claimed <a href="../../../../../builtin/#bool">bool</a>, err <a href="../../../../../builtin/#error">error</a>)
@@ -303,7 +303,7 @@
     Get(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, scope, key <a href="../../../../../builtin/#string">string</a>) (*<a href="#Record">Record</a>, <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// Complete は、claimed → completed へ遷移し結果を保存します。</span>
     Complete(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p <a href="#CompleteParams">CompleteParams</a>) <a href="../../../../../builtin/#error">error</a>
-    <span class="comment">// DeleteExpired は、cutoff より古い行を limit 件まで削除し、削除件数を返します。</span>
+    <span class="comment">// DeleteExpired は、cutoff より古いエントリを limit 件まで削除し、削除件数を返します。</span>
     DeleteExpired(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, cutoff <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>, limit <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 

@@ -67,12 +67,12 @@
 <span id="L10" class="ln">    10  </span>
 <span id="L11" class="ln">    11  </span><span class="comment">// Override は、環境変数を一時的に上書きし、元の状態へ戻す復元関数を返します。</span>
 <span id="L12" class="ln">    12  </span><span class="comment">//</span>
-<span id="L13" class="ln">    13  </span><span class="comment">// 設定読み込みの間だけ特定の環境変数（例: DB_NAME）を差し替える等、プロセス環境のグローバル汚染を</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// 設定読み込みの間だけ特定の環境変数を差し替える等、プロセス環境のグローバル汚染を</span>
 <span id="L14" class="ln">    14  </span><span class="comment">// 防ぎつつ冪等性を保つために使います。上書きに失敗した場合（不正なキー等）はエラーを返し、副作用を</span>
 <span id="L15" class="ln">    15  </span><span class="comment">// 残しません。復元関数は、元値が存在した場合はその値へ、存在しなかった場合は Unset へ戻します</span>
 <span id="L16" class="ln">    16  </span><span class="comment">// （復元は defer 実行のため best-effort です）。</span>
 <span id="L17" class="ln">    17  </span><span class="comment">//</span>
-<span id="L18" class="ln">    18  </span><span class="comment">//	restore, err := envutil.Override(&#34;DB_NAME&#34;, &#34;test&#34;)</span>
+<span id="L18" class="ln">    18  </span><span class="comment">//	restore, err := envutil.Override(&#34;SOME_KEY&#34;, &#34;value&#34;)</span>
 <span id="L19" class="ln">    19  </span><span class="comment">//	if err != nil {</span>
 <span id="L20" class="ln">    20  </span><span class="comment">//		return err</span>
 <span id="L21" class="ln">    21  </span><span class="comment">//	}</span>

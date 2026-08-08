@@ -120,7 +120,7 @@
 				<dd><a href="#ReferenceAmount">type ReferenceAmount</a></dd>
 				
 					
-					<dd>    <a href="#BuildReferenceAmount">func BuildReferenceAmount(rate *boundary.Rate, amountMinor int64) *ReferenceAmount</a></dd>
+					<dd>    <a href="#BuildReferenceAmount">func BuildReferenceAmount(rate *boundary.Rate, amount decimal.Decimal) (*ReferenceAmount, error)</a></dd>
 				
 				
 			
@@ -128,7 +128,7 @@
 				<dd><a href="#Usecase">type Usecase</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(gateway boundary.Gateway, tf observability.TracerFactory) Usecase</a></dd>
+					<dd>    <a href="#New">func New(gateway boundary.Gateway, logger logging.Logger, tf observability.TracerFactory) Usecase</a></dd>
 				
 				
 			
@@ -159,7 +159,7 @@
 		
 			
 			
-			<h2 id="ConvertInput">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=1228:1614#L17">ConvertInput</a>
+			<h2 id="ConvertInput">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=1139:1597#L17">ConvertInput</a>
 				<a class="permalink" href="#ConvertInput">¶</a>
 				
 				
@@ -171,8 +171,8 @@
     Base <a href="../../../../builtin/#string">string</a>
 <span id="ConvertInput.Quote"></span>    <span class="comment">// Quote は、換算先の通貨コードです。</span>
     Quote <a href="../../../../builtin/#string">string</a>
-<span id="ConvertInput.Amount"></span>    <span class="comment">// Amount は、換算する金額（base 通貨建て）です。</span>
-    Amount <a href="../../../../builtin/#float64">float64</a>
+<span id="ConvertInput.Amount"></span>    <span class="comment">// Amount は、換算する金額（base 通貨建て）です。正確な十進量として扱い float を経由しません。</span>
+    Amount <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
 <span id="ConvertInput.DisplayCurrency"></span>    <span class="comment">// DisplayCurrency は、参考換算額の表示通貨です。未指定なら参考換算額を返しません。</span>
     DisplayCurrency *<a href="../../../../builtin/#string">string</a>
 }
@@ -192,7 +192,7 @@
 		
 			
 			
-			<h2 id="ConvertResult">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=1675:1927#L29">ConvertResult</a>
+			<h2 id="ConvertResult">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=1658:1963#L29">ConvertResult</a>
 				<a class="permalink" href="#ConvertResult">¶</a>
 				
 				
@@ -200,8 +200,8 @@
 			<p>ConvertResult は、換算結果の出力 DTO です。
 
 			</p><pre>type ConvertResult struct {
-<span id="ConvertResult.Converted"></span>    <span class="comment">// Converted は、Quote 通貨へ換算した金額です。</span>
-    Converted <a href="../../../../builtin/#float64">float64</a>
+<span id="ConvertResult.Converted"></span>    <span class="comment">// Converted は、Quote 通貨へ換算した金額です。正確な十進量として保持します。</span>
+    Converted <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
 <span id="ConvertResult.Reference"></span>    <span class="comment">// Reference は、表示通貨での参考換算額です。未指定時および degrade 時は nil です。</span>
     Reference *<a href="#ReferenceAmount">ReferenceAmount</a>
 }
@@ -221,7 +221,7 @@
 		
 			
 			
-			<h2 id="ReferenceAmount">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=2033:2383#L37">ReferenceAmount</a>
+			<h2 id="ReferenceAmount">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=2069:2427#L37">ReferenceAmount</a>
 				<a class="permalink" href="#ReferenceAmount">¶</a>
 				
 				
@@ -234,7 +234,7 @@
 <span id="ReferenceAmount.Amount"></span>    <span class="comment">// Amount は、丸め後の参考換算額（表示通貨の最小単位整数）です。</span>
     Amount <a href="../../../../builtin/#int64">int64</a>
 <span id="ReferenceAmount.Rate"></span>    <span class="comment">// Rate は、換算に用いたレートです。</span>
-    Rate <a href="../../../../builtin/#float64">float64</a>
+    Rate <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
 <span id="ReferenceAmount.RateDate"></span>    <span class="comment">// RateDate は、レートの基準日です。</span>
     RateDate <a href="../../../../builtin/#string">string</a>
 }
@@ -250,14 +250,14 @@
 
 			
 				
-				<h3 id="BuildReferenceAmount">func <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=3794:3876#L86">BuildReferenceAmount</a>
+				<h3 id="BuildReferenceAmount">func <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=4055:4151#L95">BuildReferenceAmount</a>
 					<a class="permalink" href="#BuildReferenceAmount">¶</a>
 					
 					
 				</h3>
-				<pre>func BuildReferenceAmount(rate *<a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Rate">Rate</a>, amountMinor <a href="../../../../builtin/#int64">int64</a>) *<a href="#ReferenceAmount">ReferenceAmount</a></pre>
-				<p>BuildReferenceAmount は、レートと base 最小単位額から参考換算額を組み立てます。
-referenceAmount の組み立てを 1 箇所へ集約し、後続 API（purchases 等）から再利用します。
+				<pre>func BuildReferenceAmount(rate *<a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Rate">Rate</a>, amount <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>) (*<a href="#ReferenceAmount">ReferenceAmount</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>BuildReferenceAmount は、レートと base 通貨建て金額から参考換算額を組み立てます。
+金額が表示通貨の最小単位整数の範囲を超える場合はエラーを返します。
 
 				
 				
@@ -267,7 +267,7 @@ referenceAmount の組み立てを 1 箇所へ集約し、後続 API（purchases
 		
 			
 			
-			</p><h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=938:1168#L11">Usecase</a>
+			</p><h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=849:1079#L11">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -289,12 +289,12 @@ referenceAmount の組み立てを 1 箇所へ集約し、後続 API（purchases
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=2580:2654#L55">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/exchangerate/exchangerate_usecase.go.html?s=2648:2745#L56">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
 				</h3>
-				<pre>func New(gateway <a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Gateway">Gateway</a>, tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="#Usecase">Usecase</a></pre>
+				<pre>func New(gateway <a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Gateway">Gateway</a>, logger <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="#Usecase">Usecase</a></pre>
 				<p>New は、為替換算ユースケースを生成します。
 
 				

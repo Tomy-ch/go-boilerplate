@@ -110,6 +110,9 @@
 				<dd><a href="#Deref">func Deref[T any](p *T, fallback T) T</a></dd>
 			
 				
+				<dd><a href="#Map">func Map[T, U any](p *T, f func(T) U) *U</a></dd>
+			
+				
 				<dd><a href="#To">func To[T any](v T) *T</a></dd>
 			
 			
@@ -154,13 +157,28 @@ T が参照型フィールド（スライス・マップ・ポインタ等）を
 		
 			
 			
-			</p><h2 id="Deref">func <a href="../../../src/go-boilerplate/pkg/ptr/ptr.go.html?s=685:722#L8">Deref</a>
+			</p><h2 id="Deref">func <a href="../../../src/go-boilerplate/pkg/ptr/ptr.go.html?s=976:1013#L18">Deref</a>
 				<a class="permalink" href="#Deref">¶</a>
 				
 				
 			</h2>
 			<pre>func Deref[T <a href="../../../builtin/#any">any</a>](p *T, fallback T) T</pre>
 			<p>Deref は、p が非 nil ならその指す値を、nil なら fallback を返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="Map">func <a href="../../../src/go-boilerplate/pkg/ptr/ptr.go.html?s=782:822#L9">Map</a>
+				<a class="permalink" href="#Map">¶</a>
+				
+				
+			</h2>
+			<pre>func Map[T, U <a href="../../../builtin/#any">any</a>](p *T, f func(T) U) *U</pre>
+			<p>Map は、p が非 nil ならその指す値に f を適用した結果のポインタを、nil なら nil を返します。
+f は p が nil の場合には呼び出されません。
 
 			
 			

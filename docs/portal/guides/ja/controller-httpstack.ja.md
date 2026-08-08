@@ -18,12 +18,6 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 
 ## サブパッケージ一覧
 
-### サーバ設定
-
-|パッケージ|関数|説明|
-|---|---|---|
-|`debugmode`|`New`|開発環境でのみデバッグモードを有効化|
-
 ### ミドルウェア
 
 |パッケージ|関数|説明|
@@ -86,9 +80,49 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 
 |機能|Development|Production|
 |---|---|---|
-|デバッグモード|有効|無効|
 |IP 抽出|直接抽出|X-Forwarded-For + CIDR|
 |リカバリスタック|10KB（フル）|4KB（制限）|
+
+## テスト戦略
+
+各サブパッケージは **単一のユニットとして独立に**テストする。`next` を包むものは単体のミドルウェアとして、それ以外は *ミドルウェアではないサブパッケージ* の類型に従う。登録順序と組み上がったチェーンは `internal/di/server/extension` の担当であり、合成後のスタックは `internal/integration` の HTTP 境界テストで検証する — どちらもここで再テストしないこと。
+
+### 実体を使う対象とモックにする対象
+
+|依存|方法|
+|---|---|
+|`*echo.Echo` / ルータ / `*echo.Context`|実体（`echo.New()` + `httptest`）|
+|後続ハンドラ（`next`）|受け取った内容を記録する / 固定エラーを返すテスト用クロージャ|
+|`logging.Logger`|`logging.NewTestLogger` / `NewObservedTestLogger` — observed エントリ（メッセージ・フィールド）で検証し、整形済みログ文字列では検証しない|
+|`config.*Config`|`config.MockConfigForTest` + `Set*(t, …)` セッタ|
+|パッケージが宣言する協調オブジェクトのインターフェース（例: `redmetrics.Recorder`）|`*/mock/` の生成モック|
+
+戻り値のエラーを検証するときはミドルウェアを直接駆動し（`Middleware(...)(next)(c)`）、実際に書き出されたレスポンス（status / ヘッダ / ボディ）を検証するときは `e.ServeHTTP` 経由で駆動する — レスポンスが commit されるのは実 Echo 経路のみ。oapi-codegen の `StrictMiddleware` スロットに入るミドルウェア（`idempotency`）は `e.Use` ではなくそのシグネチャ経由で駆動する。
+
+### ミドルウェアではないサブパッケージ
+
+境界はどの表に載っているかではなく `next` を取るかどうかにある。`oapi` は *OpenAPI 連携* 表に置かれているが `echo.MiddlewareFunc` を返して同じ `e.Use` チェーンに乗るため、以下のミドルウェア向け観点がそのまま適用される。Echo や oapi-codegen が持つスロットに収まるサブパッケージ — `ops` / `oapi/skipper` / `oapi/auth` / `oapi/validator` / `basicauth` / `ipextractor` — は `next` を持たない。素通しと `Before` / `After` の観点は適用されず、*実体を使う対象とモックにする対象* の表は適用される。次の 3 類型に分かれる。
+
+- **述語・抽出関数**（`ops` / `oapi/skipper` / `basicauth` / `ipextractor`）— 構築した関数値を直接呼んで判定結果を検証する。`echo.New()` + `httptest` は関数が受け取る `*echo.Context` を組む材料にすぎない。観点は判定境界の両側であり、正常経路では通らないが呼び出し側からは到達しうる端（末尾スラッシュ・空の資格情報・ルート不一致のパス）を含める。加えて *環境による分岐* に挙げた config 選択の各モードを網羅する。
+- **アダプタのスロットに入る関数**（`oapi/auth`）— Echo ではなくアダプタが要求するシグネチャ（`openapi3filter.AuthenticationFunc`）で駆動する。結果は戻り値ではなくリクエストコンテキストへの副作用として現れることが多いため、書き込まれた値を検証する。拒否経路では「エラーが返った」ではなくエラーの同一性を検証する。
+- **spec プロバイダ**（`oapi/validator`）— 返る `*openapi3.T` そのものが検証対象であり、テストは spec に対する契約になる（例: 公開許可リスト外の全 operation が認証必須の `security` を宣言している）。production 側に対応関数を持たないのは設計どおり。
+
+`errorhandler` は `e.HTTPErrorHandler` を差し替えるもので観点がパッケージ固有になるため、自前の *テスト戦略* 節を持つ — [`errorhandler/README.ja.md`](errorhandler/README.ja.md) を参照。
+
+### 全ミドルウェア共通で押さえる観点
+
+- **素通し** — ミドルウェアが介入しないリクエストは変更されずに `next` へ届き、`next` の戻り値がそのまま伝播すること。
+- **運用系パスの除外** — `ops.IsOpsPath` を参照するミドルウェア（`logging` / `redmetrics`、および `oapi/skipper` の skipper）は両側を検証する。運用系パス（`/health`・`/metrics` 等）ではログ／メトリクスが出ず、アプリケーションパスでは出ること。
+- **`server.ResponseOf` の縮退** — Echo のレスポンスを取り出すミドルウェアは、ライタを unwrap できない場合に単なる素通しへ縮退する。`c.SetResponse(httptest.NewRecorder())` で再現し、失敗もせず何も記録しないことを検証する。この分岐は本番スタック経由では到達しないため、パッケージ単体テストだけが担保となる。
+- **環境依存の分岐** — 設定によって振る舞いが切り替わる場合（`recovery` のスタックサイズ、`ipextractor` の抽出方式）は、config セッタで各モードを網羅する。不明モードのフォールバックも含めること。
+
+### `Before` / `After` フックの観点
+
+`server.ResponseOf(c).Before(...)` / `.After(...)` は遅延実行を登録するため、検証はミドルウェア呼び出しの戻り後ではなく、レスポンス書き出し後に置く。
+
+- **発火条件** — `Before` は `WriteHeader` の直前に走り、ヘッダを補正できる最後の地点である（`forcejson`）。`After` は status 確定後の `Write` で走るため、エラーハンドラ／リカバリが最終的に決めた status を観測できる（`logging` / `redmetrics`）。
+- **複数回の発火** — `After` は `Write` ごとに発火するため、チャンク／ストリーミング応答では複数回呼ばれる。1 リクエスト 1 回であるべき効果は、1 回に留まることを検証する（`redmetrics` は `sync.Once` で担保）。
+- **発火しない経路** — ボディ無し応答（204 / 304）は `Write` が呼ばれないため `After` が走らない。それが観測欠落を招く場合、その欠落はフックの仕様上の限界として文書化し、暗黙にせずテストで固定する。
 
 ## 補足
 

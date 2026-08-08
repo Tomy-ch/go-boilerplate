@@ -168,7 +168,7 @@ substrate は以下の即利用可能な計装を同梱します。integrator �
 | --- | --- | --- |
 | **レイヤー別トレーシング** | `TracerFactory.Controller()/Usecase()/Infra()` → `LayerTracer.Start` | span 名 `layer.package.function`。開始/終了 + `trace_id`/`span_id` の構造化ログを自動出力 |
 | **アドホック span helper** | `RunWithSpan` / `StartSpanWithParent` / `StartWithSuffix` | layer tracer 無しに任意関数を span 化。suffix で同一関数内の複数 span を区別 |
-| **HTTP root span** | `otelecho` middleware | リクエスト毎の root span（controller 層 span はこれとほぼ重複 — README 設計ポリシー 5 参照） |
+| **HTTP root span** | `echootel` middleware | リクエスト毎の root span（controller 層 span はこれとほぼ重複 — README 設計ポリシー 5 参照） |
 | **DB トレーシング + metrics** | `NewPgxTracer`（`otelpgx`） | 接続情報は属性から抑止 |
 | **外向き HTTP RED metrics** | `NewHTTPClientTransport` + `HTTPClientMetrics` | requests / errors / latency + retries / in-flight / breaker 状態 gauge |
 | **サブシステム metrics** | `OutboxMetrics` / `WorkerMetrics` / `IdempotencyMetrics` | lag & dead / engine RED + DLQ / 冪等性の結果 & GC。低カーディナリティラベルのみ |

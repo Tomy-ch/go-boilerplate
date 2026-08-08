@@ -107,7 +107,7 @@
 				<dd><a href="#Middleware">func Middleware() func(next NextFunc, operationID string) NextFunc</a></dd>
 			
 				
-				<dd><a href="#StrictMiddleware">func StrictMiddleware[H ~func(ec echo.Context, request any) (any, error)]() func(f H, operationID string) H</a></dd>
+				<dd><a href="#StrictMiddleware">func StrictMiddleware[H ~func(ec *echo.Context, request any) (any, error)]() func(f H, operationID string) H</a></dd>
 			
 			
 				
@@ -141,7 +141,7 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=912:978#L17">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=913:979#L17">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
@@ -155,12 +155,12 @@
 		
 			
 			
-			</p><h2 id="StrictMiddleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=1316:1423#L27">StrictMiddleware</a>
+			</p><h2 id="StrictMiddleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=1318:1426#L27">StrictMiddleware</a>
 				<a class="permalink" href="#StrictMiddleware">¶</a>
 				
 				
 			</h2>
-			<pre>func StrictMiddleware[H ~func(ec echo.<a href="#Context">Context</a>, request <a href="../../../../../builtin/#any">any</a>) (<a href="../../../../../builtin/#any">any</a>, <a href="../../../../../builtin/#error">error</a>)]() func(f H, operationID <a href="../../../../../builtin/#string">string</a>) H</pre>
+			<pre>func StrictMiddleware[H ~func(ec *echo.<a href="#Context">Context</a>, request <a href="../../../../../builtin/#any">any</a>) (<a href="../../../../../builtin/#any">any</a>, <a href="../../../../../builtin/#error">error</a>)]() func(f H, operationID <a href="../../../../../builtin/#string">string</a>) H</pre>
 			<p>StrictMiddleware は、Middleware() を oapi-codegen のパッケージ固有 StrictMiddlewareFunc 形へ
 適合させたアダプタを返します。
 
@@ -171,14 +171,14 @@
 		
 			
 			
-			</p><h2 id="NextFunc">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=743:805#L14">NextFunc</a>
+			</p><h2 id="NextFunc">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=743:806#L14">NextFunc</a>
 				<a class="permalink" href="#NextFunc">¶</a>
 				
 				
 			</h2>
 			<p>NextFunc は、StrictHandlerFunc と構造的に同一の handler 呼び出しシグネチャです。
 
-			</p><pre>type NextFunc func(ctx echo.<a href="#Context">Context</a>, request <a href="../../../../../builtin/#any">any</a>) (<a href="../../../../../builtin/#any">any</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			</p><pre>type NextFunc func(ctx *echo.<a href="#Context">Context</a>, request <a href="../../../../../builtin/#any">any</a>) (<a href="../../../../../builtin/#any">any</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 
 			
 

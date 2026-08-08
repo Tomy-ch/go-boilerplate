@@ -1,0 +1,349 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>query - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package query
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/dashboard/query&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package query は、admin ダッシュボードの横断集計のクエリサービスインターフェースを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#DashboardQueryService">type DashboardQueryService</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Period">type Period</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PeriodKind">type PeriodKind</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseStatusCountResult">type PurchaseStatusCountResult</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SalesResult">type SalesResult</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html">dashboard_query_service.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="DashboardQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=1606:2428#L28">DashboardQueryService</a>
+				<a class="permalink" href="#DashboardQueryService">¶</a>
+				
+				
+			</h2>
+			<p>DashboardQueryService は、購入・商品を横断した admin ダッシュボード向け集計の参照を提供するクエリサービスです。
+各集計は独立した投影であり、単一のスナップショットで整合することは保証しません。
+
+			</p><pre>type DashboardQueryService interface {
+    <span class="comment">// SummarizeSales は、指定期間に注文された購入の売上合計と件数を返します。</span>
+    <span class="comment">// キャンセル済みの購入は除外し、未払いの購入は含みます。対象がない場合はゼロ値を返します。</span>
+    SummarizeSales(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, period <a href="#Period">Period</a>) (<a href="#SalesResult">SalesResult</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// CountPurchasesByStatus は、指定期間に注文された購入のステータス別件数を購入ステータスマスタの表示順で返します。</span>
+    <span class="comment">// SummarizeSales と異なりキャンセル済みも 1 ステータスとして含みます。</span>
+    <span class="comment">// 期間内に購入が存在しない場合は空スライスを返します（エラーとしません）。</span>
+    CountPurchasesByStatus(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, period <a href="#Period">Period</a>) ([]<a href="#PurchaseStatusCountResult">PurchaseStatusCountResult</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Period">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=956:1324#L17">Period</a>
+				<a class="permalink" href="#Period">¶</a>
+				
+				
+			</h2>
+			<p>Period は、集計対象期間の指定です。today / month の境界はインフラ層が現在時刻から算出し、
+range の境界はインフラ層が From / To の暦日から算出します。
+
+			</p><pre>type Period struct {
+<span id="Period.Kind"></span>    <span class="comment">// Kind は、集計対象期間の区分です。</span>
+    Kind <a href="#PeriodKind">PeriodKind</a>
+<span id="Period.From"></span>    <span class="comment">// From / To は、Kind が PeriodRange のときの開始日・終了日です（両端を含みます）。</span>
+    <span class="comment">// 暦日としての年月日のみが意味を持ち、時刻部分は解釈しません。他の区分では参照しません。</span>
+    From <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+<span id="Period.To"></span>    To   <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PeriodKind">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=721:743#L13">PeriodKind</a>
+				<a class="permalink" href="#PeriodKind">¶</a>
+				
+				
+			</h2>
+			<p>PeriodKind は、集計対象期間の区分です。
+
+			</p><pre>type PeriodKind <a href="../../../../../builtin/#string">string</a></pre>
+
+			
+				
+				<pre>const (
+    <span class="comment">// PeriodToday は、今日を集計対象とする区分です。</span>
+    <span id="PeriodToday">PeriodToday</span> <a href="#PeriodKind">PeriodKind</a> = &#34;today&#34;
+    <span class="comment">// PeriodMonth は、今月を集計対象とする区分です。</span>
+    <span id="PeriodMonth">PeriodMonth</span> <a href="#PeriodKind">PeriodKind</a> = &#34;month&#34;
+    <span class="comment">// PeriodRange は、Period の From / To で指定した期間を集計対象とする区分です。</span>
+    <span id="PeriodRange">PeriodRange</span> <a href="#PeriodKind">PeriodKind</a> = &#34;range&#34;
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseStatusCountResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=2801:2901#L46">PurchaseStatusCountResult</a>
+				<a class="permalink" href="#PurchaseStatusCountResult">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseStatusCountResult は、1 ステータス分の購入件数の集計結果です。
+StatusID / StatusName は、購入ステータスマスタで解決済みの ID と名称です。
+
+			</p><pre>type PurchaseStatusCountResult struct {
+<span id="PurchaseStatusCountResult.StatusID"></span>    StatusID   <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseStatusCountResult.StatusName"></span>    StatusName <a href="../../../../../builtin/#string">string</a>
+<span id="PurchaseStatusCountResult.Count"></span>    Count      <a href="../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SalesResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=2547:2602#L39">SalesResult</a>
+				<a class="permalink" href="#SalesResult">¶</a>
+				
+				
+			</h2>
+			<p>SalesResult は、売上集計の結果です。Amount は決済スケールの整数（USD セント）です。
+
+			</p><pre>type SalesResult struct {
+<span id="SalesResult.Amount"></span>    Amount <a href="../../../../../builtin/#int64">int64</a>
+<span id="SalesResult.Count"></span>    Count  <a href="../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

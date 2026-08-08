@@ -1,0 +1,235 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>dashboard - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../src/go-boilerplate/internal/usecase/dashboard">dashboard</a>/<span class="text-muted">dashboard_usecase.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/usecase/dashboard">go-boilerplate/internal/usecase/dashboard</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span><span class="comment">// Package dashboard は、admin ダッシュボードの横断集計の参照ユースケースを提供します。</span>
+<span id="L4" class="ln">     4  </span>package dashboard
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>import (
+<span id="L7" class="ln">     7  </span>	&#34;context&#34;
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/domain/product&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/authz&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/usecase/dashboard/query&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L18" class="ln">    18  </span>)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// resourceKindDashboard は、認可対象リソースの種別です。</span>
+<span id="L21" class="ln">    21  </span>const resourceKindDashboard = &#34;dashboard&#34;
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// GetSummaryParams は、ダッシュボード集計取得ユースケースの入力パラメータです。</span>
+<span id="L24" class="ln">    24  </span>type GetSummaryParams struct {
+<span id="L25" class="ln">    25  </span>	<span class="comment">// Period は、集計対象期間の区分（&#34;today&#34; / &#34;month&#34; / &#34;range&#34;）です。未知値・空は today として扱います。</span>
+<span id="L26" class="ln">    26  </span>	Period string
+<span id="L27" class="ln">    27  </span>	<span class="comment">// From / To は、Period が &#34;range&#34; のときに必須の開始日・終了日です（両端を含みます）。</span>
+<span id="L28" class="ln">    28  </span>	<span class="comment">// 暦日としての年月日のみが意味を持ちます。他の区分では参照しません。</span>
+<span id="L29" class="ln">    29  </span>	From *time.Time
+<span id="L30" class="ln">    30  </span>	To   *time.Time
+<span id="L31" class="ln">    31  </span>}
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span><span class="comment">// StatusCountView は、購入ステータス別件数 1 件分のユースケース出力 DTO です。</span>
+<span id="L34" class="ln">    34  </span><span class="comment">// ステータスは購入ステータスマスタで解決済みの ID と名称です。</span>
+<span id="L35" class="ln">    35  </span>type StatusCountView struct {
+<span id="L36" class="ln">    36  </span>	StatusID   uuid.UUID
+<span id="L37" class="ln">    37  </span>	StatusName string
+<span id="L38" class="ln">    38  </span>	Count      int64
+<span id="L39" class="ln">    39  </span>}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span><span class="comment">// SummaryView は、ダッシュボード横断集計のユースケース出力 DTO です。SalesAmount は USD セント単位の整数です。</span>
+<span id="L42" class="ln">    42  </span>type SummaryView struct {
+<span id="L43" class="ln">    43  </span>	<span class="comment">// SalesAmount / SalesCount は、集計対象期間の売上合計と、その母集団の購入件数です。</span>
+<span id="L44" class="ln">    44  </span>	<span class="comment">// キャンセル済みの購入は除外し、未払いの購入は含みます。対象がない場合はいずれも 0 です。</span>
+<span id="L45" class="ln">    45  </span>	SalesAmount int64
+<span id="L46" class="ln">    46  </span>	SalesCount  int64
+<span id="L47" class="ln">    47  </span>	<span class="comment">// PurchaseStatusCounts は、集計対象期間の購入のステータス別件数です。売上と異なりキャンセル済みも含みます。</span>
+<span id="L48" class="ln">    48  </span>	<span class="comment">// 期間内に購入が出現したステータスのみを含むため、購入がない場合は空スライスです。</span>
+<span id="L49" class="ln">    49  </span>	PurchaseStatusCounts []StatusCountView
+<span id="L50" class="ln">    50  </span>	<span class="comment">// TotalProductCount / PublishedProductCount は、登録商品の総数と公開済み件数です。集計対象期間に依存しません。</span>
+<span id="L51" class="ln">    51  </span>	TotalProductCount     int64
+<span id="L52" class="ln">    52  </span>	PublishedProductCount int64
+<span id="L53" class="ln">    53  </span>}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span><span class="comment">// Usecase は、admin ダッシュボードの横断集計の参照ユースケースを定義します。</span>
+<span id="L56" class="ln">    56  </span>type Usecase interface {
+<span id="L57" class="ln">    57  </span>	<span class="comment">// GetDashboardSummary は、集計対象期間の売上・購入ステータス別件数と、商品数を 1 つの DTO に合成して返します。</span>
+<span id="L58" class="ln">    58  </span>	<span class="comment">// 管理者以外は拒否します。対象データがない場合はゼロ値を返します。</span>
+<span id="L59" class="ln">    59  </span>	GetDashboardSummary(ctx context.Context, authn *auth.Authn, params GetSummaryParams) (SummaryView, error)
+<span id="L60" class="ln">    60  </span>}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span><span class="comment">// usecase は、Usecase の実装です。</span>
+<span id="L63" class="ln">    63  </span>type usecase struct {
+<span id="L64" class="ln">    64  </span>	tracer      observability.LayerTracer
+<span id="L65" class="ln">    65  </span>	authorizer  authz.Authorizer
+<span id="L66" class="ln">    66  </span>	qs          query.DashboardQueryService
+<span id="L67" class="ln">    67  </span>	productRepo product.Repository
+<span id="L68" class="ln">    68  </span>}
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span><span class="comment">// New は、admin ダッシュボードの横断集計の参照ユースケースを生成します。</span>
+<span id="L71" class="ln">    71  </span>func New(
+<span id="L72" class="ln">    72  </span>	qs query.DashboardQueryService,
+<span id="L73" class="ln">    73  </span>	productRepo product.Repository,
+<span id="L74" class="ln">    74  </span>	authorizer authz.Authorizer,
+<span id="L75" class="ln">    75  </span>	tf observability.TracerFactory,
+<span id="L76" class="ln">    76  </span>) Usecase {
+<span id="L77" class="ln">    77  </span>	return &amp;usecase{
+<span id="L78" class="ln">    78  </span>		tracer:      tf.Usecase(),
+<span id="L79" class="ln">    79  </span>		authorizer:  authorizer,
+<span id="L80" class="ln">    80  </span>		qs:          qs,
+<span id="L81" class="ln">    81  </span>		productRepo: productRepo,
+<span id="L82" class="ln">    82  </span>	}
+<span id="L83" class="ln">    83  </span>}
+<span id="L84" class="ln">    84  </span>
+<span id="L85" class="ln">    85  </span>func (u *usecase) GetDashboardSummary(
+<span id="L86" class="ln">    86  </span>	ctx context.Context, authn *auth.Authn, params GetSummaryParams,
+<span id="L87" class="ln">    87  </span>) (SummaryView, error) {
+<span id="L88" class="ln">    88  </span>	ctx, endSpan := u.tracer.Start(ctx)
+<span id="L89" class="ln">    89  </span>	defer endSpan()
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>	if authn == nil {
+<span id="L92" class="ln">    92  </span>		return SummaryView{}, xerrors.Wrap(apperror.ErrUnauthenticated, &#34;requires authenticated user&#34;)
+<span id="L93" class="ln">    93  </span>	}
+<span id="L94" class="ln">    94  </span>	<span class="comment">// ダッシュボードは運用（admin）の参照で所有者概念を持たないため、所有者なしリソースとして認可する。</span>
+<span id="L95" class="ln">    95  </span>	<span class="comment">// 所有者を渡さないことで Authorizer の所有者フォールバックが働かず、admin だけが通る。</span>
+<span id="L96" class="ln">    96  </span>	if err := u.authorizer.Authorize(
+<span id="L97" class="ln">    97  </span>		ctx, authn, authz.ActionDashboardRead, authz.NewResource(resourceKindDashboard, nil),
+<span id="L98" class="ln">    98  </span>	); err != nil {
+<span id="L99" class="ln">    99  </span>		return SummaryView{}, err
+<span id="L100" class="ln">   100  </span>	}
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>	period, err := normalizePeriod(params)
+<span id="L103" class="ln">   103  </span>	if err != nil {
+<span id="L104" class="ln">   104  </span>		return SummaryView{}, err
+<span id="L105" class="ln">   105  </span>	}
+<span id="L106" class="ln">   106  </span>
+<span id="L107" class="ln">   107  </span>	sales, err := u.qs.SummarizeSales(ctx, period)
+<span id="L108" class="ln">   108  </span>	if err != nil {
+<span id="L109" class="ln">   109  </span>		return SummaryView{}, err
+<span id="L110" class="ln">   110  </span>	}
+<span id="L111" class="ln">   111  </span>	statusCounts, err := u.qs.CountPurchasesByStatus(ctx, period)
+<span id="L112" class="ln">   112  </span>	if err != nil {
+<span id="L113" class="ln">   113  </span>		return SummaryView{}, err
+<span id="L114" class="ln">   114  </span>	}
+<span id="L115" class="ln">   115  </span>	<span class="comment">// 商品数は商品集約の属性による単純な件数であり、期間集計の投影ではないため Repository から取る。</span>
+<span id="L116" class="ln">   116  </span>	productCounts, err := u.productRepo.Count(ctx)
+<span id="L117" class="ln">   117  </span>	if err != nil {
+<span id="L118" class="ln">   118  </span>		return SummaryView{}, err
+<span id="L119" class="ln">   119  </span>	}
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>	return SummaryView{
+<span id="L122" class="ln">   122  </span>		SalesAmount:           sales.Amount,
+<span id="L123" class="ln">   123  </span>		SalesCount:            sales.Count,
+<span id="L124" class="ln">   124  </span>		PurchaseStatusCounts:  toStatusCountViews(statusCounts),
+<span id="L125" class="ln">   125  </span>		TotalProductCount:     productCounts.Total,
+<span id="L126" class="ln">   126  </span>		PublishedProductCount: productCounts.Published,
+<span id="L127" class="ln">   127  </span>	}, nil
+<span id="L128" class="ln">   128  </span>}
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span><span class="comment">// normalizePeriod は、入力期間を集計区分へ正規化します。&#34;month&#34; / &#34;range&#34; のみ該当区分とし、それ以外は today として扱います。</span>
+<span id="L131" class="ln">   131  </span><span class="comment">// range のときだけ開始日・終了日の相関を検証し、QueryService へは検証済みの指定だけが渡ります。</span>
+<span id="L132" class="ln">   132  </span>func normalizePeriod(params GetSummaryParams) (query.Period, error) {
+<span id="L133" class="ln">   133  </span>	switch params.Period {
+<span id="L134" class="ln">   134  </span>	case string(query.PeriodMonth):
+<span id="L135" class="ln">   135  </span>		return query.Period{Kind: query.PeriodMonth}, nil
+<span id="L136" class="ln">   136  </span>	case string(query.PeriodRange):
+<span id="L137" class="ln">   137  </span>		if params.From == nil || params.To == nil {
+<span id="L138" class="ln">   138  </span>			return query.Period{}, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;period=range requires both from and to&#34;)
+<span id="L139" class="ln">   139  </span>		}
+<span id="L140" class="ln">   140  </span>		<span class="comment">// 開始日・終了日は暦日のみが意味を持つため、比較も QueryService へ渡す値も暦日へ揃える。</span>
+<span id="L141" class="ln">   141  </span>		from, to := dateOnly(*params.From), dateOnly(*params.To)
+<span id="L142" class="ln">   142  </span>		if to.Before(from) {
+<span id="L143" class="ln">   143  </span>			return query.Period{}, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;to must not be before from&#34;)
+<span id="L144" class="ln">   144  </span>		}
+<span id="L145" class="ln">   145  </span>		return query.Period{Kind: query.PeriodRange, From: from, To: to}, nil
+<span id="L146" class="ln">   146  </span>	default:
+<span id="L147" class="ln">   147  </span>		return query.Period{Kind: query.PeriodToday}, nil
+<span id="L148" class="ln">   148  </span>	}
+<span id="L149" class="ln">   149  </span>}
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span><span class="comment">// dateOnly は、時刻成分を落として t の暦日だけを表す時刻を返します。ロケーションは t のものを保ちます。</span>
+<span id="L152" class="ln">   152  </span>func dateOnly(t time.Time) time.Time {
+<span id="L153" class="ln">   153  </span>	y, m, d := t.Date()
+<span id="L154" class="ln">   154  </span>	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+<span id="L155" class="ln">   155  </span>}
+<span id="L156" class="ln">   156  </span>
+<span id="L157" class="ln">   157  </span><span class="comment">// toStatusCountViews は、ステータス別件数の集計結果を出力 DTO へ写像します。</span>
+<span id="L158" class="ln">   158  </span>func toStatusCountViews(results []query.PurchaseStatusCountResult) []StatusCountView {
+<span id="L159" class="ln">   159  </span>	views := make([]StatusCountView, len(results))
+<span id="L160" class="ln">   160  </span>	for i, r := range results {
+<span id="L161" class="ln">   161  </span>		views[i] = StatusCountView{
+<span id="L162" class="ln">   162  </span>			StatusID:   r.StatusID,
+<span id="L163" class="ln">   163  </span>			StatusName: r.StatusName,
+<span id="L164" class="ln">   164  </span>			Count:      r.Count,
+<span id="L165" class="ln">   165  </span>		}
+<span id="L166" class="ln">   166  </span>	}
+<span id="L167" class="ln">   167  </span>	return views
+<span id="L168" class="ln">   168  </span>}
+<span id="L169" class="ln">   169  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

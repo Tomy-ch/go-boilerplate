@@ -66,10 +66,11 @@
 
 	
 		
-		<p>Package main は Dockerfile の `FROM` base image を不変の digest へ固定するツール。
-</p><pre>resolve: docker/*/Dockerfile の FROM を走査し、image:tag を registry の現在 digest へ
-         解決して lockfile (docker/images-pin.toml) へ書き出す。
-apply:   lockfile を SSOT に各 FROM を `FROM image:tag@sha256:... [AS stage]` へ固定する。
+		<p>Package main は Dockerfile の `FROM` base image と docker compose の `image:` を
+不変の digest へ固定するツール。
+</p><pre>resolve: docker/*/Dockerfile の FROM と docker-compose*.yaml の image: を走査し、
+         image:tag を registry の現在 digest へ解決して lockfile (docker/images-pin.toml) へ書き出す。
+apply:   lockfile を SSOT に各参照を `image:tag@sha256:...` へ固定する（FROM は AS stage を保持）。
 check:   apply と同じ判定を書き換えなしで行い、未固定/未登録/drift があれば非ゼロ終了する（CI / hook 用）。
 </pre>
 <p>tag は版の SSOT として FROM 行に残し、digest を lock 側で管理する（tag 再割り当て攻撃の遮断）。

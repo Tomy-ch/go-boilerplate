@@ -1,0 +1,289 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>event - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package event
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/purchase/event&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package event は、購入ユースケースが発行する outbox イベントの本文（自己完結 snapshot）と
+その marshal を提供します。版付きのイベント種別と JSON のワイヤ表現を本パッケージへ隔離し、
+usecase 本体を薄く保ちます（ADR-0046）。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+				
+				<dd><a href="#BuildCanceled">func BuildCanceled(p *purchase.Purchase) ([]byte, error)</a></dd>
+			
+				
+				<dd><a href="#BuildCreated">func BuildCreated(p *purchase.Purchase) ([]byte, error)</a></dd>
+			
+				
+				<dd><a href="#BuildDelivered">func BuildDelivered(p *purchase.Purchase) ([]byte, error)</a></dd>
+			
+				
+				<dd><a href="#BuildPaid">func BuildPaid(p *purchase.Purchase) ([]byte, error)</a></dd>
+			
+				
+				<dd><a href="#BuildShipped">func BuildShipped(p *purchase.Purchase) ([]byte, error)</a></dd>
+			
+				
+				<dd><a href="#WireType">func WireType(t domainpurchase.EventType) (string, error)</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/canceled.go.html">canceled.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/created.go.html">created.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/delivered.go.html">delivered.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/paid.go.html">paid.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/shipped.go.html">shipped.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/wire.go.html">wire.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				<p>TypeCanceled は、購入キャンセルの outbox イベント種別（version 込み）です。
+
+				</p><pre>const <span id="TypeCanceled">TypeCanceled</span> = &#34;purchase.canceled.v1&#34;</pre>
+			
+				<p>TypeCreated は、購入作成の outbox イベント種別（version 込み）です。
+
+				</p><pre>const <span id="TypeCreated">TypeCreated</span> = &#34;purchase.created.v1&#34;</pre>
+			
+				<p>TypeDelivered は、購入配達完了の outbox イベント種別（version 込み）です。
+
+				</p><pre>const <span id="TypeDelivered">TypeDelivered</span> = &#34;purchase.delivered.v1&#34;</pre>
+			
+				<p>TypePaid は、購入支払いの outbox イベント種別（version 込み）です。
+
+				</p><pre>const <span id="TypePaid">TypePaid</span> = &#34;purchase.paid.v1&#34;</pre>
+			
+				<p>TypeShipped は、購入発送の outbox イベント種別（version 込み）です。
+
+				</p><pre>const <span id="TypeShipped">TypeShipped</span> = &#34;purchase.shipped.v1&#34;</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="BuildCanceled">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/canceled.go.html?s=1220:1276#L20">BuildCanceled</a>
+				<a class="permalink" href="#BuildCanceled">¶</a>
+				
+				
+			</h2>
+			<pre>func BuildCanceled(p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) ([]<a href="../../../../../builtin/#byte">byte</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>BuildCanceled は、購入集約から purchase.canceled.v1 の自己完結 snapshot payload を marshal します。
+キャンセルされていない購入を渡された場合は payload を生成せず errNotCanceled を返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="BuildCreated">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/created.go.html?s=1609:1664#L27">BuildCreated</a>
+				<a class="permalink" href="#BuildCreated">¶</a>
+				
+				
+			</h2>
+			<pre>func BuildCreated(p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) ([]<a href="../../../../../builtin/#byte">byte</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>BuildCreated は、購入集約から purchase.created.v1 の自己完結 snapshot payload を marshal します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="BuildDelivered">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/delivered.go.html?s=698:755#L14">BuildDelivered</a>
+				<a class="permalink" href="#BuildDelivered">¶</a>
+				
+				
+			</h2>
+			<pre>func BuildDelivered(p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) ([]<a href="../../../../../builtin/#byte">byte</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>BuildDelivered は、購入集約から purchase.delivered.v1 の自己完結 snapshot payload を marshal します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="BuildPaid">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/paid.go.html?s=645:697#L14">BuildPaid</a>
+				<a class="permalink" href="#BuildPaid">¶</a>
+				
+				
+			</h2>
+			<pre>func BuildPaid(p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) ([]<a href="../../../../../builtin/#byte">byte</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>BuildPaid は、購入集約から purchase.paid.v1 の自己完結 snapshot payload を marshal します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="BuildShipped">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/shipped.go.html?s=669:724#L14">BuildShipped</a>
+				<a class="permalink" href="#BuildShipped">¶</a>
+				
+				
+			</h2>
+			<pre>func BuildShipped(p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) ([]<a href="../../../../../builtin/#byte">byte</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>BuildShipped は、購入集約から purchase.shipped.v1 の自己完結 snapshot payload を marshal します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="WireType">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/event/wire.go.html?s=1123:1180#L15">WireType</a>
+				<a class="permalink" href="#WireType">¶</a>
+				
+				
+			</h2>
+			<pre>func WireType(t <a href="../../../../../go-boilerplate/internal/domain/purchase/">domainpurchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#EventType">EventType</a>) (<a href="../../../../../builtin/#string">string</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>WireType は、ドメインの事象に対応する版付きの種別文字列を返します。
+対応が無い事象は、ワイヤ表現を用意し忘れた実装漏れなのでエラーにします。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

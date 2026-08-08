@@ -60,69 +60,174 @@
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;bytes&#34;
 <span id="L5" class="ln">     5  </span>	&#34;os&#34;
-<span id="L6" class="ln">     6  </span>	&#34;strings&#34;
-<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	root &#34;go-boilerplate&#34;
+<span id="L6" class="ln">     6  </span>	&#34;reflect&#34; <span class="comment">//nolint:depguard // テスト専用。envspec.go のタグから env キー集合を導出するのに reflect が必須で、代替は env ファイルの写経になり検証にならない（本番コードは reflect を使わない）。</span>
+<span id="L7" class="ln">     7  </span>	&#34;slices&#34;
+<span id="L8" class="ln">     8  </span>	&#34;strings&#34;
+<span id="L9" class="ln">     9  </span>	&#34;testing&#34;
 <span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;github.com/joho/godotenv&#34;
-<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L13" class="ln">    13  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L14" class="ln">    14  </span>)
-<span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span><span class="comment">//nolint:paralleltest // Load は os.Setenv でグローバル環境を変更するため並列化不可</span>
-<span id="L17" class="ln">    17  </span>func TestLoad(t *testing.T) {
-<span id="L18" class="ln">    18  </span>	restoreEnvAfterTest(t)
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L21" class="ln">    21  </span>		t.Run(&#34;埋め込み env を読み込み環境変数へ反映する&#34;, func(t *testing.T) {
-<span id="L22" class="ln">    22  </span>			_ = os.Unsetenv(&#34;APP_NAME&#34;)
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>			require.NoError(t, Load())
-<span id="L25" class="ln">    25  </span>			assert.Equal(t, &#34;Boilerplate&#34;, os.Getenv(&#34;APP_NAME&#34;))
-<span id="L26" class="ln">    26  </span>		})
-<span id="L27" class="ln">    27  </span>
-<span id="L28" class="ln">    28  </span>		t.Run(&#34;既存の環境変数は上書きしない&#34;, func(t *testing.T) {
-<span id="L29" class="ln">    29  </span>			t.Setenv(&#34;APP_NAME&#34;, &#34;existing-value&#34;)
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span>			require.NoError(t, Load())
-<span id="L32" class="ln">    32  </span>			assert.Equal(t, &#34;existing-value&#34;, os.Getenv(&#34;APP_NAME&#34;))
-<span id="L33" class="ln">    33  </span>		})
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span>		t.Run(&#34;埋め込み env の APP_ENV 素性をパッケージ変数へ捕捉する&#34;, func(t *testing.T) {
-<span id="L36" class="ln">    36  </span>			<span class="comment">// OS 側で APP_ENV を上書きしても、捕捉されるのはあくまで埋め込み値であること。</span>
-<span id="L37" class="ln">    37  </span>			<span class="comment">// 期待値を同じ埋め込み env から再導出して完全一致を検証するため materialize 対象の env に</span>
-<span id="L38" class="ln">    38  </span>			<span class="comment">// 依存せず、別キーへの捕捉退行を検出できる（値が偶然 APP_ENV と一致するキーはローカルの</span>
-<span id="L39" class="ln">    39  </span>			<span class="comment">// env/.env では区別できないが、CI が materialize する env/.env.ci では全キーを検出できる）。</span>
-<span id="L40" class="ln">    40  </span>			t.Setenv(&#34;APP_ENV&#34;, &#34;injected-at-runtime&#34;)
-<span id="L41" class="ln">    41  </span>			prev := embeddedAppEnv
-<span id="L42" class="ln">    42  </span>			t.Cleanup(func() { embeddedAppEnv = prev })
-<span id="L43" class="ln">    43  </span>			embeddedAppEnv = &#34;&#34;
-<span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>			require.NoError(t, Load())
-<span id="L46" class="ln">    46  </span>			b, err := root.FS.ReadFile(&#34;env/.env&#34;)
-<span id="L47" class="ln">    47  </span>			require.NoError(t, err)
-<span id="L48" class="ln">    48  </span>			embedded, err := godotenv.Parse(bytes.NewReader(b))
-<span id="L49" class="ln">    49  </span>			require.NoError(t, err)
-<span id="L50" class="ln">    50  </span>			assert.Equal(t, embedded[&#34;APP_ENV&#34;], embeddedAppEnv)
-<span id="L51" class="ln">    51  </span>		})
-<span id="L52" class="ln">    52  </span>	})
-<span id="L53" class="ln">    53  </span>}
-<span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span><span class="comment">// restoreEnvAfterTest は、テスト終了時に環境変数をテスト開始時点へ戻します。</span>
-<span id="L56" class="ln">    56  </span>func restoreEnvAfterTest(t *testing.T) {
-<span id="L57" class="ln">    57  </span>	t.Helper()
-<span id="L58" class="ln">    58  </span>	snapshot := os.Environ()
-<span id="L59" class="ln">    59  </span>	t.Cleanup(func() {
-<span id="L60" class="ln">    60  </span>		os.Clearenv()
-<span id="L61" class="ln">    61  </span>		for _, kv := range snapshot {
-<span id="L62" class="ln">    62  </span>			k, v, _ := strings.Cut(kv, &#34;=&#34;)
-<span id="L63" class="ln">    63  </span>			<span class="comment">//nolint:usetesting // テスト後の環境変数一括復元のため t.Setenv は使用できない</span>
-<span id="L64" class="ln">    64  </span>			_ = os.Setenv(k, v)
-<span id="L65" class="ln">    65  </span>		}
-<span id="L66" class="ln">    66  </span>	})
-<span id="L67" class="ln">    67  </span>}
-<span id="L68" class="ln">    68  </span>
+<span id="L11" class="ln">    11  </span>	root &#34;go-boilerplate&#34;
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>	&#34;github.com/joho/godotenv&#34;
+<span id="L14" class="ln">    14  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L15" class="ln">    15  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">//nolint:paralleltest // Load は os.Setenv でグローバル環境を変更するため並列化不可</span>
+<span id="L19" class="ln">    19  </span>func TestLoad(t *testing.T) {
+<span id="L20" class="ln">    20  </span>	restoreEnvAfterTest(t)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L23" class="ln">    23  </span>		t.Run(&#34;埋め込み env を読み込み環境変数へ反映する&#34;, func(t *testing.T) {
+<span id="L24" class="ln">    24  </span>			_ = os.Unsetenv(&#34;APP_NAME&#34;)
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>			require.NoError(t, Load())
+<span id="L27" class="ln">    27  </span>			assert.Equal(t, &#34;Boilerplate&#34;, os.Getenv(&#34;APP_NAME&#34;))
+<span id="L28" class="ln">    28  </span>		})
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span>		t.Run(&#34;既存の環境変数は上書きしない&#34;, func(t *testing.T) {
+<span id="L31" class="ln">    31  </span>			t.Setenv(&#34;APP_NAME&#34;, &#34;existing-value&#34;)
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>			require.NoError(t, Load())
+<span id="L34" class="ln">    34  </span>			assert.Equal(t, &#34;existing-value&#34;, os.Getenv(&#34;APP_NAME&#34;))
+<span id="L35" class="ln">    35  </span>		})
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>		t.Run(&#34;埋め込み env の APP_ENV 素性をパッケージ変数へ捕捉する&#34;, func(t *testing.T) {
+<span id="L38" class="ln">    38  </span>			<span class="comment">// OS 側で APP_ENV を上書きしても、捕捉されるのはあくまで埋め込み値であること。</span>
+<span id="L39" class="ln">    39  </span>			<span class="comment">// 期待値を同じ埋め込み env から再導出して完全一致を検証するため materialize 対象の env に</span>
+<span id="L40" class="ln">    40  </span>			<span class="comment">// 依存せず、別キーへの捕捉退行を検出できる（値が偶然 APP_ENV と一致するキーはローカルの</span>
+<span id="L41" class="ln">    41  </span>			<span class="comment">// env/.env では区別できないが、CI が materialize する env/.env.ci では全キーを検出できる）。</span>
+<span id="L42" class="ln">    42  </span>			t.Setenv(&#34;APP_ENV&#34;, &#34;injected-at-runtime&#34;)
+<span id="L43" class="ln">    43  </span>			prev := embeddedAppEnv
+<span id="L44" class="ln">    44  </span>			t.Cleanup(func() { embeddedAppEnv = prev })
+<span id="L45" class="ln">    45  </span>			embeddedAppEnv = &#34;&#34;
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>			require.NoError(t, Load())
+<span id="L48" class="ln">    48  </span>			assert.Equal(t, parseEmbeddedEnv(t)[&#34;APP_ENV&#34;], embeddedAppEnv)
+<span id="L49" class="ln">    49  </span>		})
+<span id="L50" class="ln">    50  </span>	})
+<span id="L51" class="ln">    51  </span>}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>func TestEmbeddedEnvConsistency(t *testing.T) {
+<span id="L54" class="ln">    54  </span>	t.Parallel()
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L57" class="ln">    57  </span>		t.Parallel()
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>		t.Run(&#34;既定値を持たないキーが埋め込み env に全て存在する&#34;, func(t *testing.T) {
+<span id="L60" class="ln">    60  </span>			t.Parallel()
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>			embedded := parseEmbeddedEnv(t)
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>			var required, missing []string
+<span id="L65" class="ln">    65  </span>			for key, hasDefault := range declaredEnvKeys(t) {
+<span id="L66" class="ln">    66  </span>				if hasDefault {
+<span id="L67" class="ln">    67  </span>					continue
+<span id="L68" class="ln">    68  </span>				}
+<span id="L69" class="ln">    69  </span>				required = append(required, key)
+<span id="L70" class="ln">    70  </span>				if _, ok := embedded[key]; !ok {
+<span id="L71" class="ln">    71  </span>					missing = append(missing, key)
+<span id="L72" class="ln">    72  </span>				}
+<span id="L73" class="ln">    73  </span>			}
+<span id="L74" class="ln">    74  </span>			require.NotEmpty(t, required, &#34;envDefault 無しのキーが1つも無く、この検証は空振りする&#34;)
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>			slices.Sort(missing)
+<span id="L77" class="ln">    77  </span>			assert.Emptyf(t, missing,
+<span id="L78" class="ln">    78  </span>				&#34;envspec.go が envDefault 無しで宣言するキーが %s に無い&#34;, embeddedEnvFile)
+<span id="L79" class="ln">    79  </span>		})
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>		t.Run(&#34;埋め込み env のキーが全て envspec に宣言されている&#34;, func(t *testing.T) {
+<span id="L82" class="ln">    82  </span>			t.Parallel()
+<span id="L83" class="ln">    83  </span>
+<span id="L84" class="ln">    84  </span>			declared := declaredEnvKeys(t)
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>			var undeclared []string
+<span id="L87" class="ln">    87  </span>			for key := range parseEmbeddedEnv(t) {
+<span id="L88" class="ln">    88  </span>				if _, ok := declared[key]; !ok {
+<span id="L89" class="ln">    89  </span>					undeclared = append(undeclared, key)
+<span id="L90" class="ln">    90  </span>				}
+<span id="L91" class="ln">    91  </span>			}
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>			slices.Sort(undeclared)
+<span id="L94" class="ln">    94  </span>			assert.Emptyf(t, undeclared,
+<span id="L95" class="ln">    95  </span>				&#34;%s のキーが envspec.go に宣言されていない&#34;, embeddedEnvFile)
+<span id="L96" class="ln">    96  </span>		})
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>		t.Run(&#34;埋め込み env の OBS_TARGET_STATUS_CODES がテストの期待値と一致する&#34;, func(t *testing.T) {
+<span id="L99" class="ln">    99  </span>			t.Parallel()
+<span id="L100" class="ln">   100  </span>
+<span id="L101" class="ln">   101  </span>			assert.Equal(t, expectedObservabilityTargetStatusCodesStr,
+<span id="L102" class="ln">   102  </span>				parseEmbeddedEnv(t)[&#34;OBS_TARGET_STATUS_CODES&#34;])
+<span id="L103" class="ln">   103  </span>		})
+<span id="L104" class="ln">   104  </span>	})
+<span id="L105" class="ln">   105  </span>}
+<span id="L106" class="ln">   106  </span>
+<span id="L107" class="ln">   107  </span><span class="comment">// parseEmbeddedEnv は、埋め込み env ファイルをパースしたキーと値を返します。</span>
+<span id="L108" class="ln">   108  </span>func parseEmbeddedEnv(t *testing.T) map[string]string {
+<span id="L109" class="ln">   109  </span>	t.Helper()
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>	b, err := root.FS.ReadFile(embeddedEnvFile)
+<span id="L112" class="ln">   112  </span>	require.NoError(t, err)
+<span id="L113" class="ln">   113  </span>	kv, err := godotenv.Parse(bytes.NewReader(b))
+<span id="L114" class="ln">   114  </span>	require.NoError(t, err)
+<span id="L115" class="ln">   115  </span>	require.NotEmpty(t, kv)
+<span id="L116" class="ln">   116  </span>
+<span id="L117" class="ln">   117  </span>	return kv
+<span id="L118" class="ln">   118  </span>}
+<span id="L119" class="ln">   119  </span>
+<span id="L120" class="ln">   120  </span><span class="comment">// declaredEnvKeys は、Loader が宣言する環境変数キーから envDefault タグの有無への対応を返します。</span>
+<span id="L121" class="ln">   121  </span><span class="comment">// envDefault を持つキーは env ファイルへの記載を省いてよく、持たないキーは記載が要ります</span>
+<span id="L122" class="ln">   122  </span><span class="comment">// （env/README.md の Conventions）。</span>
+<span id="L123" class="ln">   123  </span>func declaredEnvKeys(t *testing.T) map[string]bool {
+<span id="L124" class="ln">   124  </span>	t.Helper()
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>	keys := map[string]bool{}
+<span id="L127" class="ln">   127  </span>	collectEnvKeys(t, reflect.TypeFor[Loader](), &#34;&#34;, keys)
+<span id="L128" class="ln">   128  </span>	require.NotEmpty(t, keys)
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span>	return keys
+<span id="L131" class="ln">   131  </span>}
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span><span class="comment">// collectEnvKeys は、typ の env タグを prefix 付きで keys へ集めます。envPrefix を持つ構造体フィールドは</span>
+<span id="L134" class="ln">   134  </span><span class="comment">// その prefix を連ねて再帰します。</span>
+<span id="L135" class="ln">   135  </span>func collectEnvKeys(t *testing.T, typ reflect.Type, prefix string, keys map[string]bool) {
+<span id="L136" class="ln">   136  </span>	t.Helper()
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>	for field := range typ.Fields() {
+<span id="L139" class="ln">   139  </span>		if p, ok := field.Tag.Lookup(&#34;envPrefix&#34;); ok {
+<span id="L140" class="ln">   140  </span>			require.Equal(t, reflect.Struct, field.Type.Kind(),
+<span id="L141" class="ln">   141  </span>				&#34;envPrefix を持つ %s が構造体でない&#34;, field.Name)
+<span id="L142" class="ln">   142  </span>			collectEnvKeys(t, field.Type, prefix+p, keys)
+<span id="L143" class="ln">   143  </span>			continue
+<span id="L144" class="ln">   144  </span>		}
+<span id="L145" class="ln">   145  </span>
+<span id="L146" class="ln">   146  </span>		tag, ok := field.Tag.Lookup(&#34;env&#34;)
+<span id="L147" class="ln">   147  </span>		if !ok {
+<span id="L148" class="ln">   148  </span>			continue
+<span id="L149" class="ln">   149  </span>		}
+<span id="L150" class="ln">   150  </span>		name, _, _ := strings.Cut(tag, &#34;,&#34;)
+<span id="L151" class="ln">   151  </span>		<span class="comment">// env:&#34;-&#34; は caarlos0/env が読み飛ばすため、env ファイルの記載対象にもならない。</span>
+<span id="L152" class="ln">   152  </span>		if name == &#34;-&#34; {
+<span id="L153" class="ln">   153  </span>			continue
+<span id="L154" class="ln">   154  </span>		}
+<span id="L155" class="ln">   155  </span>		_, hasDefault := field.Tag.Lookup(&#34;envDefault&#34;)
+<span id="L156" class="ln">   156  </span>		keys[prefix+name] = hasDefault
+<span id="L157" class="ln">   157  </span>	}
+<span id="L158" class="ln">   158  </span>}
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span><span class="comment">// restoreEnvAfterTest は、テスト終了時に環境変数をテスト開始時点へ戻します。</span>
+<span id="L161" class="ln">   161  </span>func restoreEnvAfterTest(t *testing.T) {
+<span id="L162" class="ln">   162  </span>	t.Helper()
+<span id="L163" class="ln">   163  </span>	snapshot := os.Environ()
+<span id="L164" class="ln">   164  </span>	t.Cleanup(func() {
+<span id="L165" class="ln">   165  </span>		os.Clearenv()
+<span id="L166" class="ln">   166  </span>		for _, kv := range snapshot {
+<span id="L167" class="ln">   167  </span>			k, v, _ := strings.Cut(kv, &#34;=&#34;)
+<span id="L168" class="ln">   168  </span>			<span class="comment">//nolint:usetesting // テスト後の環境変数一括復元のため t.Setenv は使用できない</span>
+<span id="L169" class="ln">   169  </span>			_ = os.Setenv(k, v)
+<span id="L170" class="ln">   170  </span>		}
+<span id="L171" class="ln">   171  </span>	})
+<span id="L172" class="ln">   172  </span>}
+<span id="L173" class="ln">   173  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/loader_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

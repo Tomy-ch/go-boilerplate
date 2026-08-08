@@ -60,7 +60,7 @@ This builder is **request-agnostic**: it always constructs the superset envelope
 (`gen.ErrorResponseWithDetails`) and attaches whatever `details` the error holds. Whether
 those `details` actually reach the client is decided downstream by the `errorhandler`'s
 per-endpoint opt-in gate (fail-closed), the same way `requestId` is left empty here and filled
-at the edge. See the `errorhandler` README and [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
+at the edge. See the `errorhandler` README and [ADR-0044](../../../../docs/adr/0044-error-details-opt-in-gate.md).
 
 ## Error Code and HTTP Status Mapping
 
@@ -73,12 +73,18 @@ at the edge. See the `errorhandler` README and [ADR-0041](../../../../docs/adr/0
 |`ErrPermissionDenied`|403 Forbidden|`ACCESS_DENIED`|
 |`ErrNotFound`|404 Not Found|`NOT_FOUND`|
 |`ErrConflict`|409 Conflict|`RESOURCE_CONFLICT`|
+|`ErrPayloadTooLarge`|413 Payload Too Large|`PAYLOAD_TOO_LARGE`|
+|`ErrUnsupportedMediaType`|415 Unsupported Media Type|`UNSUPPORTED_MEDIA_TYPE`|
 |`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
 |`ErrTooManyRequests`|429 Too Many Requests|`TOO_MANY_REQUESTS`|
 |`ErrCanceled`|499 Client Closed Request|`CLIENT_CLOSED_REQUEST`|
 |`ErrUnimplemented`|501 Not Implemented|`NOT_IMPLEMENTED`|
 |`ErrUnavailable`|503 Service Unavailable|`SERVICE_UNAVAILABLE`|
 |Other|500 Internal Server Error|`INTERNAL_ERROR`|
+
+405 Method Not Allowed is absent from this table on purpose: the application never chooses the
+request method, so there is no sentinel for it. It is resolved by status alone — see
+[Statuses Covered by `errorMeta`](#statuses-covered-by-errormeta).
 
 ### Error Code List
 
@@ -88,13 +94,29 @@ at the edge. See the `errorhandler` README and [ADR-0041](../../../../docs/adr/0
 |`UNAUTHORIZED`|ログインが必要です。ログインして再度お試しください。|
 |`ACCESS_DENIED`|この操作を行う権限がありません。|
 |`NOT_FOUND`|お探しの情報が見つかりませんでした。|
+|`METHOD_NOT_ALLOWED`|許可されていないリクエスト方法です。|
 |`RESOURCE_CONFLICT`|既に同じ情報が登録されています。|
+|`PAYLOAD_TOO_LARGE`|ファイルサイズが大きすぎます。上限を超えないファイルで再度お試しください。|
+|`UNSUPPORTED_MEDIA_TYPE`|サポートされていないファイル形式です。形式をご確認のうえ再度お試しください。|
 |`VALIDATION_FAILED`|入力内容の検証に失敗しました。修正して再度お試しください。|
 |`TOO_MANY_REQUESTS`|リクエストが多すぎます。しばらくしてから再度お試しください。|
 |`CLIENT_CLOSED_REQUEST`|リクエストがキャンセルされました。|
 |`INTERNAL_ERROR`|サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。|
 |`NOT_IMPLEMENTED`|この機能は提供されていません。|
 |`SERVICE_UNAVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
+
+### Statuses Covered by `errorMeta`
+
+`errorMeta` is keyed by HTTP status and an unlisted status falls back to the 500 entry — the
+status included, so an unmapped status reaches the client as `500` / `INTERNAL_ERROR` rather than
+as itself. A status belongs in the table when the application can actually produce it:
+
+1. **Reachable from an `apperror` sentinel** — every status in the mapping table above
+2. **Produced by the always-on HTTP stack with no sentinel behind it** — currently 405 alone,
+   raised by the router (`echo.ErrMethodNotAllowed`) when the path matches but the method does not
+
+Any other status is genuinely unexpected, and the 500 fallback is the right answer for it. Adding
+a status that neither source can produce would be speculative.
 
 ## Configuration Changes
 

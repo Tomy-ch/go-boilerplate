@@ -61,44 +61,48 @@
 <span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/controller/job&#34;
 <span id="L5" class="ln">     5  </span>	&#34;go-boilerplate/internal/controller/job/idempotencygc&#34;
 <span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/controller/job/outboxgc&#34;
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/controller/job/usercount&#34; <span class="comment">// sample-api:line</span>
-<span id="L8" class="ln">     8  </span>	dijob &#34;go-boilerplate/internal/di/job&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/di/job/hook&#34;
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;go.uber.org/fx&#34;
-<span id="L12" class="ln">    12  </span>)
-<span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span><span class="comment">// JobModule は、バックグラウンドジョブ関連の依存関係を提供するfx.Moduleです。</span>
-<span id="L15" class="ln">    15  </span>func JobModule() fx.Option {
-<span id="L16" class="ln">    16  </span>	return fx.Module(&#34;job&#34;,
-<span id="L17" class="ln">    17  </span>		provideJobs(
-<span id="L18" class="ln">    18  </span>			<span class="comment">// ここにジョブのコンストラクタを追加します。</span>
-<span id="L19" class="ln">    19  </span>			idempotencygc.New,
-<span id="L20" class="ln">    20  </span>			outboxgc.New,
-<span id="L21" class="ln">    21  </span>			usercount.New, <span class="comment">// sample-api:line</span>
-<span id="L22" class="ln">    22  </span>		),
-<span id="L23" class="ln">    23  </span>		fx.Provide(
-<span id="L24" class="ln">    24  </span>			dijob.ProvideRunner,
-<span id="L25" class="ln">    25  </span>			job.NewState,
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/controller/job/productimagegc&#34; <span class="comment">// sample-api:line</span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/controller/job/usercount&#34;      <span class="comment">// sample-api:line</span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/controller/job/userpurge&#34;      <span class="comment">// sample-api:line</span>
+<span id="L10" class="ln">    10  </span>	dijob &#34;go-boilerplate/internal/di/job&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/di/job/hook&#34;
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>	&#34;go.uber.org/fx&#34;
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span><span class="comment">// JobModule は、バックグラウンドジョブ関連の依存関係を提供するfx.Moduleです。</span>
+<span id="L17" class="ln">    17  </span>func JobModule() fx.Option {
+<span id="L18" class="ln">    18  </span>	return fx.Module(&#34;job&#34;,
+<span id="L19" class="ln">    19  </span>		provideJobs(
+<span id="L20" class="ln">    20  </span>			<span class="comment">// ここにジョブのコンストラクタを追加します。</span>
+<span id="L21" class="ln">    21  </span>			idempotencygc.New,
+<span id="L22" class="ln">    22  </span>			outboxgc.New,
+<span id="L23" class="ln">    23  </span>			productimagegc.New, <span class="comment">// sample-api:line</span>
+<span id="L24" class="ln">    24  </span>			usercount.New,      <span class="comment">// sample-api:line</span>
+<span id="L25" class="ln">    25  </span>			userpurge.New,      <span class="comment">// sample-api:line</span>
 <span id="L26" class="ln">    26  </span>		),
-<span id="L27" class="ln">    27  </span>		fx.Invoke(hook.RegisterJobHooks),
-<span id="L28" class="ln">    28  </span>	)
-<span id="L29" class="ln">    29  </span>}
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span><span class="comment">// provideJobs は、ジョブのコンストラクタをfxのオプションとして提供します。</span>
-<span id="L32" class="ln">    32  </span>func provideJobs(constructors ...any) fx.Option {
-<span id="L33" class="ln">    33  </span>	opts := make([]fx.Option, len(constructors))
-<span id="L34" class="ln">    34  </span>	for i, c := range constructors {
-<span id="L35" class="ln">    35  </span>		opts[i] = fx.Provide(
-<span id="L36" class="ln">    36  </span>			fx.Annotate(
-<span id="L37" class="ln">    37  </span>				c,
-<span id="L38" class="ln">    38  </span>				fx.ResultTags(`group:&#34;jobs&#34;`),
-<span id="L39" class="ln">    39  </span>			),
-<span id="L40" class="ln">    40  </span>		)
-<span id="L41" class="ln">    41  </span>	}
-<span id="L42" class="ln">    42  </span>	return fx.Options(opts...)
-<span id="L43" class="ln">    43  </span>}
-<span id="L44" class="ln">    44  </span>
+<span id="L27" class="ln">    27  </span>		fx.Provide(
+<span id="L28" class="ln">    28  </span>			dijob.ProvideRunner,
+<span id="L29" class="ln">    29  </span>			job.NewState,
+<span id="L30" class="ln">    30  </span>		),
+<span id="L31" class="ln">    31  </span>		fx.Invoke(hook.RegisterJobHooks),
+<span id="L32" class="ln">    32  </span>	)
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// provideJobs は、ジョブのコンストラクタをfxのオプションとして提供します。</span>
+<span id="L36" class="ln">    36  </span>func provideJobs(constructors ...any) fx.Option {
+<span id="L37" class="ln">    37  </span>	opts := make([]fx.Option, len(constructors))
+<span id="L38" class="ln">    38  </span>	for i, c := range constructors {
+<span id="L39" class="ln">    39  </span>		opts[i] = fx.Provide(
+<span id="L40" class="ln">    40  </span>			fx.Annotate(
+<span id="L41" class="ln">    41  </span>				c,
+<span id="L42" class="ln">    42  </span>				fx.ResultTags(`group:&#34;jobs&#34;`),
+<span id="L43" class="ln">    43  </span>			),
+<span id="L44" class="ln">    44  </span>		)
+<span id="L45" class="ln">    45  </span>	}
+<span id="L46" class="ln">    46  </span>	return fx.Options(opts...)
+<span id="L47" class="ln">    47  </span>}
+<span id="L48" class="ln">    48  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/job.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

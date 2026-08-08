@@ -239,6 +239,9 @@ HTTP 境界の到達確認アサーションです。レスポンスが HTTP 経
 - HTTP Status Code = 200
 - Content-Type = application/json
 - レスポンスボディが型 `T` に Unmarshal 可能
+- `T` に Go スライスとして宣言されたフィールド（ネストした struct / スライス要素を含む）は
+  JSON 配列としてシリアライズされ、`null` にならない。キーが存在して値が `null` の場合のみ
+  違反で、キー自体が無い（`omitempty` で absent）場合は違反ではない
 
 このヘルパーは意図的に値比較を行いません。上記のテストピラミッドのとおり、レスポンス値の
 正しさ（Presenter のフィールドマッピング）は **Controller Unit Test** が独立したオラクルで
@@ -246,21 +249,31 @@ HTTP 境界の到達確認アサーションです。レスポンスが HTTP 経
 壊れやすくなります。build info や `RegisteredAt` などの動的な値を含むレスポンスでは、
 そもそも型のみが検証可能です。
 
+配列が `null` でないことの検査は値のアサーションではなく**シリアライズの形**の検査です。
+空のコレクションがクライアントへ `[]` として届くか `null` として届くかは HTTP 境界で
+決まるため、この担保は integration 層が担います。
+
 使用例
 
 ```go
 AssertJSONResponseType[gen.HealthResponse](t, actual)
 ```
 
-### `UseAppErrorHandler(t, e)`
+### `UseAppErrorHandler(t, e, extra ...extension.UseMiddleware)`
 
 本番相当の `HTTPErrorHandler` を Echo に登録します。素の `echo.New()` は Echo 標準の
 エラーハンドラしか持たないため、`apperror` → HTTP ステータスの実マッピングを観測する異常系
 テストでは、先に本番ハンドラを配線する必要があります。
 
-各エンドポイントが返し得るエラーレスポンスは **OpenAPI の契約**（各オペレーションの
-`responses`）で定義されます。異常系テストは、そのオペレーションが契約上宣言している
-ステータスコードのみを対象とし、恣意的なコードは対象にしません。
+あわせて本番の `requestid` ミドルウェアも配線します。ハンドラはボディの `requestId` を、
+ミドルウェアがレスポンスへ書いた `X-Request-Id` を**読み戻して**埋めるため、ハンドラだけを
+配線するとすべてのエラーボディの `requestId` が空になり、契約が成立しないからです。両者で
+1 つの契約なので、各テストの記憶に委ねずここで一体に配線します。
+
+`extra` には、このスタックへ追加したい本番ミドルウェアを渡します。各ミドルウェアは自身の
+DI provider から取得し、順序は `extension.ApplyUseMiddlewares` に決めさせてください（後述の
+「ミドルウェア順序の契約は手書きせず DI provider から配線する」を参照）。呼び出し側は順序を
+書きません。
 
 ### `AssertErrorResponse(t, actual, wantStatus)`
 
@@ -268,6 +281,12 @@ AssertJSONResponseType[gen.HealthResponse](t, actual)
 デシリアライズ可能であることを検証します。`AssertJSONResponseType` と同様に、検証するのは
 境界の関心事（`apperror` → ステータスのマッピングとエラーボディの形）のみで、`code` /
 `message` の値の正しさはユニットテストの責務のままです。
+
+加えて、ボディの `requestId` が非空であること、かつ**ワイヤ上の `X-Request-Id` ヘッダーと
+一致すること**を検証します。これは値の検証ではなく境界の関心事です。ヘッダーとボディは
+別々のコンポーネント（ミドルウェアとエラーハンドラ）が生成し、HTTP 境界でしか出会わないため、
+両者の食い違いはこの層より下では検出できません。すべての異常系テストがこのヘルパーを通るので、
+専用テスト 1 本ではなくスイート全体でこの保証が成立します。
 
 使用例
 
@@ -327,3 +346,18 @@ handler を直接呼ぶのではなく `httptest.Server` を利用します。
 - `gen.HealthResponse`
 - `gen.VersionResponse`
 - feature ハンドラの `gen` パッケージが公開するレスポンス型 — `gen.<Xxx>Response`（1 テストファイルで複数 handler の `gen` を import する場合は `detailgen.<Xxx>Response` のようにエイリアス）
+
+### 5 ミドルウェア順序の契約は手書きせず DI provider から配線する
+
+ここでのテストの多くは、エンドポイントに必要なミドルウェアだけをテストが書いた順序で登録します。
+アサーション対象が 1 つのミドルウェアに閉じている限りはそれで十分ですが、「ミドルウェア A が B の
+外側で動く」ことによってのみ成立する契約は、手書きの順序では検証できません。実際の優先度が背後で
+変わってもテストは通り続けてしまいます。
+
+そうしたテストでは、ミドルウェアを各 DI provider（`instrumentation.RequestIDMiddleware()`、
+`security.CookieMiddleware(...)` など）から取得し、本番と同じ `Priority` ソートを行う
+`extension.ApplyUseMiddlewares` で適用します。順序が実サーバーと同一の出所から決まるため、
+スタックの並べ替えは、それに依存するテストを壊します。
+
+統合テストが `internal/di` に触れてよいのはこのケースだけです。DI コンテナで usecase や
+infrastructure を組み立ててよいという意味ではなく、それらは上記のポリシーどおり mock のままです。

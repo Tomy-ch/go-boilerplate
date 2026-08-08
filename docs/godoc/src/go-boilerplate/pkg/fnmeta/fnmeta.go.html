@@ -90,8 +90,8 @@
 <span id="L33" class="ln">    33  </span><span class="comment">// メソッド名のみを抽出します。</span>
 <span id="L34" class="ln">    34  </span><span class="comment">// 例:</span>
 <span id="L35" class="ln">    35  </span><span class="comment">//</span>
-<span id="L36" class="ln">    36  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34;</span>
-<span id="L37" class="ln">    37  </span><span class="comment">//	  → &#34;GetUser&#34;</span>
+<span id="L36" class="ln">    36  </span><span class="comment">//	&#34;github.com/org/proj/foo/bar.(*Baz).Do&#34;</span>
+<span id="L37" class="ln">    37  </span><span class="comment">//	  → &#34;Do&#34;</span>
 <span id="L38" class="ln">    38  </span>func ExtractFunctionName(full string) string {
 <span id="L39" class="ln">    39  </span>	_, fn := splitFuncName(full)
 <span id="L40" class="ln">    40  </span>	if fn == &#34;&#34; {
@@ -105,8 +105,8 @@
 <span id="L48" class="ln">    48  </span><span class="comment">// レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。</span>
 <span id="L49" class="ln">    49  </span><span class="comment">// 例:</span>
 <span id="L50" class="ln">    50  </span><span class="comment">//</span>
-<span id="L51" class="ln">    51  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34; → &#34;user&#34;</span>
-<span id="L52" class="ln">    52  </span><span class="comment">//	&#34;github.com/org/proj/internal/usecase/user.UserUsecase.GetUser&#34;    → &#34;user&#34;</span>
+<span id="L51" class="ln">    51  </span><span class="comment">//	&#34;github.com/org/proj/foo/bar.(*Baz).Do&#34; → &#34;bar&#34;</span>
+<span id="L52" class="ln">    52  </span><span class="comment">//	&#34;github.com/org/proj/foo/bar.Baz.Do&#34;    → &#34;bar&#34;</span>
 <span id="L53" class="ln">    53  </span>func ExtractPackageName(full string) string {
 <span id="L54" class="ln">    54  </span>	lhs, fn := splitFuncName(full)
 <span id="L55" class="ln">    55  </span>	<span class="comment">// 分割できない（&#34;.&#34; が無い）入力は抽出不能として ExtractFunctionName と</span>

@@ -163,6 +163,14 @@
 				
 			
 				
+				<dd><a href="#GetAddresses405JSONResponse">type GetAddresses405JSONResponse</a></dd>
+				
+				
+					
+					<dd>    <a href="#GetAddresses405JSONResponse.VisitGetAddressesResponse">func (response GetAddresses405JSONResponse) VisitGetAddressesResponse(w http.ResponseWriter) error</a></dd>
+				
+			
+				
 				<dd><a href="#GetAddresses500JSONResponse">type GetAddresses500JSONResponse</a></dd>
 				
 				
@@ -204,6 +212,16 @@
 				
 			
 				
+				<dd><a href="#MethodNotAllowed405">type MethodNotAllowed405</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MethodNotAllowed405JSONResponse">type MethodNotAllowed405JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#PostalCodeParam">type PostalCodeParam</a></dd>
 				
 				
@@ -226,7 +244,7 @@
 				
 				
 					
-					<dd>    <a href="#ServerInterfaceWrapper.GetAddresses">func (w *ServerInterfaceWrapper) GetAddresses(ctx echo.Context) error</a></dd>
+					<dd>    <a href="#ServerInterfaceWrapper.GetAddresses">func (w *ServerInterfaceWrapper) GetAddresses(ctx *echo.Context) error</a></dd>
 				
 			
 				
@@ -282,7 +300,7 @@
 		
 			
 			
-			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3033:3093#L66">RegisterHandlers</a>
+			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3062:3122#L66">RegisterHandlers</a>
 				<a class="permalink" href="#RegisterHandlers">¶</a>
 				
 				
@@ -296,7 +314,7 @@
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3295:3382#L72">RegisterHandlersWithBaseURL</a>
+			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3324:3411#L72">RegisterHandlersWithBaseURL</a>
 				<a class="permalink" href="#RegisterHandlersWithBaseURL">¶</a>
 				
 				
@@ -311,7 +329,7 @@ paths so the API can be served under a prefix.
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3593:3697#L78">RegisterHandlersWithOptions</a>
+			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3622:3726#L78">RegisterHandlersWithOptions</a>
 				<a class="permalink" href="#RegisterHandlersWithOptions">¶</a>
 				
 				
@@ -327,13 +345,13 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="AddressCandidate">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=532:978#L2">AddressCandidate</a>
+			</p><h2 id="AddressCandidate">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=531:977#L2">AddressCandidate</a>
 				<a class="permalink" href="#AddressCandidate">¶</a>
 				
 				
 			</h2>
 			<p>AddressCandidate 郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、
-解決できた場合のみ prefecture_id を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
+解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
 
 			</p><pre>type AddressCandidate struct {
 <span id="AddressCandidate.City"></span>    <span class="comment">// City 市区町村</span>
@@ -364,13 +382,13 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="AddressCandidatesResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=1334:1851#L19">AddressCandidatesResponse</a>
+			<h2 id="AddressCandidatesResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=1332:1849#L19">AddressCandidatesResponse</a>
 				<a class="permalink" href="#AddressCandidatesResponse">¶</a>
 				
 				
 			</h2>
 			<p>AddressCandidatesResponse 郵便番号 lookup による住所候補のレスポンスです。
-外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `is_fallback: true` で degrade し、
+外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `isFallback: true` で degrade し、
 登録フローを止めません（外部が落ちても縦一本のジャーニーを進めるためのフォールバック）。
 
 			</p><pre>type AddressCandidatesResponse struct {
@@ -397,7 +415,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2586:2620#L44">BadRequest400</a>
+			<h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2584:2618#L44">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -420,7 +438,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3876:3920#L88">BadRequest400JSONResponse</a>
+			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3905:3949#L88">BadRequest400JSONResponse</a>
 				<a class="permalink" href="#BadRequest400JSONResponse">¶</a>
 				
 				
@@ -442,7 +460,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=1625:2355#L40">EchoRouter</a>
+			<h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=1627:2384#L40">EchoRouter</a>
 				<a class="permalink" href="#EchoRouter">¶</a>
 				
 				
@@ -452,15 +470,15 @@ are present on both echo.Echo and echo.Group, since we want to allow using
 either of them for path registration
 
 			</p><pre>type EchoRouter interface {
-    CONNECT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    DELETE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    GET(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    HEAD(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    OPTIONS(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    PATCH(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    POST(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    PUT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
-    TRACE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) *echo.<a href="#Route">Route</a>
+    CONNECT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    DELETE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    GET(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    HEAD(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    OPTIONS(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    PATCH(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    POST(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    PUT(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
+    TRACE(path <a href="../../../../../../../builtin/#string">string</a>, h echo.<a href="#HandlerFunc">HandlerFunc</a>, m ...echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>) echo.<a href="#RouteInfo">RouteInfo</a>
 }</pre>
 
 			
@@ -477,7 +495,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2041:2311#L29">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2039:2309#L29">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -510,7 +528,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetAddresses200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4204:4262#L102">GetAddresses200JSONResponse</a>
+			<h2 id="GetAddresses200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4285:4343#L104">GetAddresses200JSONResponse</a>
 				<a class="permalink" href="#GetAddresses200JSONResponse">¶</a>
 				
 				
@@ -530,7 +548,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetAddresses200JSONResponse.VisitGetAddressesResponse">func (GetAddresses200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4264:4362#L104">VisitGetAddressesResponse</a>
+				<h3 id="GetAddresses200JSONResponse.VisitGetAddressesResponse">func (GetAddresses200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4345:4443#L106">VisitGetAddressesResponse</a>
 					<a class="permalink" href="#GetAddresses200JSONResponse.VisitGetAddressesResponse">¶</a>
 					
 					
@@ -544,7 +562,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetAddresses400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4581:4649#L116">GetAddresses400JSONResponse</a>
+			<h2 id="GetAddresses400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4662:4730#L118">GetAddresses400JSONResponse</a>
 				<a class="permalink" href="#GetAddresses400JSONResponse">¶</a>
 				
 				
@@ -565,7 +583,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetAddresses400JSONResponse.VisitGetAddressesResponse">func (GetAddresses400JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4651:4749#L118">VisitGetAddressesResponse</a>
+				<h3 id="GetAddresses400JSONResponse.VisitGetAddressesResponse">func (GetAddresses400JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4732:4830#L120">VisitGetAddressesResponse</a>
 					<a class="permalink" href="#GetAddresses400JSONResponse.VisitGetAddressesResponse">¶</a>
 					
 					
@@ -579,7 +597,44 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetAddresses500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4968:5047#L130">GetAddresses500JSONResponse</a>
+			<h2 id="GetAddresses405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5049:5125#L132">GetAddresses405JSONResponse</a>
+				<a class="permalink" href="#GetAddresses405JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetAddresses405JSONResponse struct {
+    <a href="#MethodNotAllowed405JSONResponse">MethodNotAllowed405JSONResponse</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GetAddresses405JSONResponse.VisitGetAddressesResponse">func (GetAddresses405JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5127:5225#L136">VisitGetAddressesResponse</a>
+					<a class="permalink" href="#GetAddresses405JSONResponse.VisitGetAddressesResponse">¶</a>
+					
+					
+				</h3>
+				<pre>func (response <a href="#GetAddresses405JSONResponse">GetAddresses405JSONResponse</a>) VisitGetAddressesResponse(w <a href="../../../../../../../net/http/">http</a>.<a href="../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GetAddresses500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5444:5523#L148">GetAddresses500JSONResponse</a>
 				<a class="permalink" href="#GetAddresses500JSONResponse">¶</a>
 				
 				
@@ -602,7 +657,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetAddresses500JSONResponse.VisitGetAddressesResponse">func (GetAddresses500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5049:5147#L134">VisitGetAddressesResponse</a>
+				<h3 id="GetAddresses500JSONResponse.VisitGetAddressesResponse">func (GetAddresses500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5525:5623#L152">VisitGetAddressesResponse</a>
 					<a class="permalink" href="#GetAddresses500JSONResponse.VisitGetAddressesResponse">¶</a>
 					
 					
@@ -616,7 +671,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetAddresses503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5366:5444#L146">GetAddresses503JSONResponse</a>
+			<h2 id="GetAddresses503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5842:5920#L164">GetAddresses503JSONResponse</a>
 				<a class="permalink" href="#GetAddresses503JSONResponse">¶</a>
 				
 				
@@ -639,7 +694,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetAddresses503JSONResponse.VisitGetAddressesResponse">func (GetAddresses503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5446:5544#L150">VisitGetAddressesResponse</a>
+				<h3 id="GetAddresses503JSONResponse.VisitGetAddressesResponse">func (GetAddresses503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5922:6020#L168">VisitGetAddressesResponse</a>
 					<a class="permalink" href="#GetAddresses503JSONResponse.VisitGetAddressesResponse">¶</a>
 					
 					
@@ -653,7 +708,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetAddressesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=3376:3743#L59">GetAddressesParams</a>
+			<h2 id="GetAddressesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=3610:3977#L62">GetAddressesParams</a>
 				<a class="permalink" href="#GetAddressesParams">¶</a>
 				
 				
@@ -681,7 +736,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetAddressesRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4031:4099#L94">GetAddressesRequestObject</a>
+			<h2 id="GetAddressesRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4112:4180#L96">GetAddressesRequestObject</a>
 				<a class="permalink" href="#GetAddressesRequestObject">¶</a>
 				
 				
@@ -706,7 +761,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetAddressesResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4101:4202#L98">GetAddressesResponseObject</a>
+			<h2 id="GetAddressesResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4182:4283#L100">GetAddressesResponseObject</a>
 				<a class="permalink" href="#GetAddressesResponseObject">¶</a>
 				
 				
@@ -730,7 +785,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2819:2862#L47">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2817:2860#L47">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -753,7 +808,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3922:3975#L90">InternalServerError500JSONResponse</a>
+			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3951:4004#L90">InternalServerError500JSONResponse</a>
 				<a class="permalink" href="#InternalServerError500JSONResponse">¶</a>
 				
 				
@@ -775,7 +830,52 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PostalCodeParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2367:2396#L41">PostalCodeParam</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=3056:3096#L50">MethodNotAllowed405</a>
+				<a class="permalink" href="#MethodNotAllowed405">¶</a>
+				
+				
+			</h2>
+			<p>MethodNotAllowed405 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+
+			</p><pre>type MethodNotAllowed405 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MethodNotAllowed405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4006:4056#L92">MethodNotAllowed405JSONResponse</a>
+				<a class="permalink" href="#MethodNotAllowed405JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type MethodNotAllowed405JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PostalCodeParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=2365:2394#L41">PostalCodeParam</a>
 				<a class="permalink" href="#PostalCodeParam">¶</a>
 				
 				
@@ -798,7 +898,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=2424:2969#L53">RegisterHandlersOptions</a>
+			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=2453:2998#L53">RegisterHandlersOptions</a>
 				<a class="permalink" href="#RegisterHandlersOptions">¶</a>
 				
 				
@@ -832,7 +932,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=365:544#L8">ServerInterface</a>
+			<h2 id="ServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=365:545#L8">ServerInterface</a>
 				<a class="permalink" href="#ServerInterface">¶</a>
 				
 				
@@ -842,7 +942,7 @@ either of them for path registration
 			</p><pre>type ServerInterface interface {
     <span class="comment">// 郵便番号から住所候補を補完します。</span>
     <span class="comment">// (GET /v1/addresses)</span>
-    GetAddresses(ctx echo.<a href="#Context">Context</a>, params <a href="#GetAddressesParams">GetAddressesParams</a>) <a href="../../../../../../../builtin/#error">error</a>
+    GetAddresses(ctx *echo.<a href="#Context">Context</a>, params <a href="#GetAddressesParams">GetAddressesParams</a>) <a href="../../../../../../../builtin/#error">error</a>
 }</pre>
 
 			
@@ -855,7 +955,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=6211:6311#L172">NewStrictHandler</a>
+				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=6688:6788#L190">NewStrictHandler</a>
 					<a class="permalink" href="#NewStrictHandler">¶</a>
 					
 					
@@ -870,7 +970,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=610:673#L15">ServerInterfaceWrapper</a>
+			<h2 id="ServerInterfaceWrapper">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=611:674#L15">ServerInterfaceWrapper</a>
 				<a class="permalink" href="#ServerInterfaceWrapper">¶</a>
 				
 				
@@ -894,12 +994,12 @@ either of them for path registration
 
 			
 				
-				<h3 id="ServerInterfaceWrapper.GetAddresses">func (*ServerInterfaceWrapper) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=724:793#L20">GetAddresses</a>
+				<h3 id="ServerInterfaceWrapper.GetAddresses">func (*ServerInterfaceWrapper) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=725:795#L20">GetAddresses</a>
 					<a class="permalink" href="#ServerInterfaceWrapper.GetAddresses">¶</a>
 					
 					
 				</h3>
-				<pre>func (w *<a href="#ServerInterfaceWrapper">ServerInterfaceWrapper</a>) GetAddresses(ctx echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
+				<pre>func (w *<a href="#ServerInterfaceWrapper">ServerInterfaceWrapper</a>) GetAddresses(ctx *echo.<a href="#Context">Context</a>) <a href="../../../../../../../builtin/#error">error</a></pre>
 				<p>GetAddresses converts echo context to params.
 
 				
@@ -909,7 +1009,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=3060:3102#L50">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/type.gen.go.html?s=3294:3336#L53">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -932,7 +1032,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=3977:4029#L92">ServiceUnavailable503JSONResponse</a>
+			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=4058:4110#L94">ServiceUnavailable503JSONResponse</a>
 				<a class="permalink" href="#ServiceUnavailable503JSONResponse">¶</a>
 				
 				
@@ -954,13 +1054,13 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=6048:6119#L169">StrictHandlerFunc</a>
+			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=6524:6596#L187">StrictHandlerFunc</a>
 				<a class="permalink" href="#StrictHandlerFunc">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type StrictHandlerFunc func(ctx echo.<a href="#Context">Context</a>, request <a href="../../../../../../../builtin/#any">any</a>) (<a href="../../../../../../../builtin/#any">any</a>, <a href="../../../../../../../builtin/#error">error</a>)</pre>
+			<pre>type StrictHandlerFunc func(ctx *echo.<a href="#Context">Context</a>, request <a href="../../../../../../../builtin/#any">any</a>) (<a href="../../../../../../../builtin/#any">any</a>, <a href="../../../../../../../builtin/#error">error</a>)</pre>
 
 			
 
@@ -976,7 +1076,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=6120:6209#L170">StrictMiddlewareFunc</a>
+			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=6597:6686#L188">StrictMiddlewareFunc</a>
 				<a class="permalink" href="#StrictMiddlewareFunc">¶</a>
 				
 				
@@ -998,7 +1098,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=5820:6046#L163">StrictServerInterface</a>
+			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/addresses/gen/server.gen.go.html?s=6296:6522#L181">StrictServerInterface</a>
 				<a class="permalink" href="#StrictServerInterface">¶</a>
 				
 				

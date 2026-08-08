@@ -143,7 +143,7 @@
 		
 			
 			
-			<h2 id="Gateway">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/exchangerate/exchangerate.go.html?s=356:629#L1">Gateway</a>
+			<h2 id="Gateway">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/exchangerate/exchangerate.go.html?s=392:665#L3">Gateway</a>
 				<a class="permalink" href="#Gateway">¶</a>
 				
 				
@@ -170,7 +170,7 @@
 		
 			
 			
-			<h2 id="Rate">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/exchangerate/exchangerate.go.html?s=705:1151#L6">Rate</a>
+			<h2 id="Rate">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/exchangerate/exchangerate.go.html?s=741:1312#L10">Rate</a>
 				<a class="permalink" href="#Rate">¶</a>
 				
 				
@@ -182,8 +182,8 @@
     Base <a href="../../../../../builtin/#string">string</a>
 <span id="Rate.Quote"></span>    <span class="comment">// Quote は、換算先の通貨コードです。</span>
     Quote <a href="../../../../../builtin/#string">string</a>
-<span id="Rate.Value"></span>    <span class="comment">// Value は、Base 1 単位あたりの Quote 換算値です。</span>
-    Value <a href="../../../../../builtin/#float64">float64</a>
+<span id="Rate.Value"></span>    <span class="comment">// Value は、Base 1 単位あたりの Quote 換算値です。源泉は正確な十進量であり、float は取込時点で値を破壊するため Decimal で保持します。</span>
+    Value <a href="../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
 <span id="Rate.Date"></span>    <span class="comment">// Date は、レートの基準日（外部レートサービスの公表日、例 &#34;2026-07-21&#34;）です。</span>
     <span class="comment">// 外部レスポンスに date が含まれない場合は空文字になります。</span>
     Date <a href="../../../../../builtin/#string">string</a>

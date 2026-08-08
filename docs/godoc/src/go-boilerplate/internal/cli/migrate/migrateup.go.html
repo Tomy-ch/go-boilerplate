@@ -73,7 +73,7 @@
 <span id="L16" class="ln">    16  </span>	ctx := context.Background()
 <span id="L17" class="ln">    17  </span>
 <span id="L18" class="ln">    18  </span>	if steps &lt; 0 {
-<span id="L19" class="ln">    19  </span>		err := xerrors.New(fmt.Sprintf(&#34;steps must be zero or positive, got %d&#34;, steps))
+<span id="L19" class="ln">    19  </span>		err := xerrors.Wrap(errNegativeSteps, fmt.Sprintf(&#34;got %d&#34;, steps))
 <span id="L20" class="ln">    20  </span>		logger.Named(&#34;migrateUpRun&#34;).Error(ctx, &#34;invalid steps&#34;, logging.Error(logging.ErrorKey, err))
 <span id="L21" class="ln">    21  </span>		return err
 <span id="L22" class="ln">    22  </span>	}

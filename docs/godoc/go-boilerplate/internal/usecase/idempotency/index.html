@@ -108,7 +108,7 @@
 			
 			
 				
-				<dd><a href="#Run">func Run[T any](ctx context.Context, deps Deps, successStatus int, businessFn func(ctx context.Context) (T, error)) (T, bool, error)</a></dd>
+				<dd><a href="#Run">func Run[T any](ctx context.Context, deps Deps, successStatus int32, businessFn func(ctx context.Context) (T, error)) (T, bool, error)</a></dd>
 			
 				
 				<dd><a href="#WithRequest">func WithRequest(ctx context.Context, r Request) context.Context</a></dd>
@@ -184,7 +184,7 @@
 		
 			
 			
-			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=2613:2752#L44">Run</a>
+			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=2640:2781#L44">Run</a>
 				<a class="permalink" href="#Run">¶</a>
 				
 				
@@ -192,12 +192,12 @@
 			<pre>func Run[T <a href="../../../../builtin/#any">any</a>](
     ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>,
     deps <a href="#Deps">Deps</a>,
-    successStatus <a href="../../../../builtin/#int">int</a>,
+    successStatus <a href="../../../../builtin/#int32">int32</a>,
     businessFn func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (T, <a href="../../../../builtin/#error">error</a>),
 ) (T, <a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#error">error</a>)</pre>
 			<p>Run は、ctx に Idempotency-Key が無ければ businessFn を素通し実行し、ある場合は業務 tx 内で
 claim → businessFn → complete を 1 tx で行います。再送は replay、並行 claim は 409、指紋不一致は 422。
-successStatus は completed 行へ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。
+successStatus は completed のエントリへ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。
 </p><p>前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。
 replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。
 
@@ -222,7 +222,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 		
 			
 			
-			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1703:1906#L28">Deps</a>
+			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1718:1921#L28">Deps</a>
 				<a class="permalink" href="#Deps">¶</a>
 				
 				
@@ -300,7 +300,7 @@ interface を分離しています。
 		
 			
 			
-			<h2 id="GCUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=1078:1277#L15">GCUsecase</a>
+			<h2 id="GCUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=1078:1530#L15">GCUsecase</a>
 				<a class="permalink" href="#GCUsecase">¶</a>
 				
 				
@@ -308,7 +308,9 @@ interface を分離しています。
 			<p>GCUsecase は、TTL 失効した冪等性キーを掃除するユースケースです。
 
 			</p><pre>type GCUsecase interface {
-    <span class="comment">// SweepExpired は、失効行を batchSize 件ずつ削除し、合計削除件数を返します。</span>
+    <span class="comment">// SweepExpired は、失効したエントリを batchSize 件ずつ削除し、合計削除件数を返します。</span>
+    <span class="comment">// エラーを返す場合も、失敗したバッチより前にコミット済みの件数を返します。</span>
+    <span class="comment">// コミット済みの削除は取り消せないため、呼び手が実績を失わないようにするためです。</span>
     SweepExpired(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, batchSize <a href="../../../../builtin/#int32">int32</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
 }</pre>
 
@@ -322,7 +324,7 @@ interface を分離しています。
 
 			
 				
-				<h3 id="NewGC">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=1630:1716#L30">NewGC</a>
+				<h3 id="NewGC">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=1883:1969#L32">NewGC</a>
 					<a class="permalink" href="#NewGC">¶</a>
 					
 					
@@ -338,7 +340,7 @@ interface を分離しています。
 		
 			
 			
-			</p><h2 id="Metrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=761:1649#L12">Metrics</a>
+			</p><h2 id="Metrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=761:1664#L12">Metrics</a>
 				<a class="permalink" href="#Metrics">¶</a>
 				
 				
@@ -347,7 +349,7 @@ interface を分離しています。
 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
 
 			</p><pre>type Metrics interface {
-    <span class="comment">// IncHit は、completed 行の再送（replay）を計上します。</span>
+    <span class="comment">// IncHit は、completed のエントリへの再送（replay）を計上します。</span>
     IncHit(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)
     <span class="comment">// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。</span>
     IncMiss(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)

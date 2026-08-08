@@ -1,0 +1,561 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_purchase
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/domain/purchase/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_purchase is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockRepository">type MockRepository</a></dd>
+				
+					
+					<dd>    <a href="#NewMockRepository">func NewMockRepository(ctrl *gomock.Controller) *MockRepository</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepository.EXPECT">func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindByID">func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindDetailByID">func (m *MockRepository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchase.Detail, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindFeedByUserID">func (m *MockRepository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params purchase.ListFeedParams) ([]purchase.FeedItem, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindShippable">func (m *MockRepository) FindShippable(ctx context.Context, limit int32) (purchase.Purchases, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindStatusesByUserID">func (m *MockRepository) FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]purchase.Status, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindUserIDsWithPurchases">func (m *MockRepository) FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.LockByID">func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.UpdateDelivered">func (m *MockRepository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) error</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.UpdatePaid">func (m *MockRepository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.UpdateShipped">func (m *MockRepository) UpdateShipped(ctx context.Context, p *purchase.Purchase) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockRepositoryMockRecorder">type MockRepositoryMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByID">func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindDetailByID">func (mr *MockRepositoryMockRecorder) FindDetailByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindFeedByUserID">func (mr *MockRepositoryMockRecorder) FindFeedByUserID(ctx, userID, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindShippable">func (mr *MockRepositoryMockRecorder) FindShippable(ctx, limit any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindStatusesByUserID">func (mr *MockRepositoryMockRecorder) FindStatusesByUserID(ctx, userID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindUserIDsWithPurchases">func (mr *MockRepositoryMockRecorder) FindUserIDsWithPurchases(ctx, userIDs any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.LockByID">func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.UpdateDelivered">func (mr *MockRepositoryMockRecorder) UpdateDelivered(ctx, p any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.UpdatePaid">func (mr *MockRepositoryMockRecorder) UpdatePaid(ctx, p any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.UpdateShipped">func (mr *MockRepositoryMockRecorder) UpdateShipped(ctx, p any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html">mock_purchase_repository.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockRepository">type <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=536:652#L12">MockRepository</a>
+				<a class="permalink" href="#MockRepository">¶</a>
+				
+				
+			</h2>
+			<p>MockRepository is a mock of Repository interface.
+
+			</p><pre>type MockRepository struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockRepository">func <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=841:904#L24">NewMockRepository</a>
+					<a class="permalink" href="#NewMockRepository">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockRepository(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockRepository">MockRepository</a></pre>
+				<p>NewMockRepository creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=1088:1149#L31">EXPECT</a>
+					<a class="permalink" href="#MockRepository.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) EXPECT() *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=1205:1301#L36">FindByID</a>
+					<a class="permalink" href="#MockRepository.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindDetailByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=1773:1873#L51">FindDetailByID</a>
+					<a class="permalink" href="#MockRepository.FindDetailByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindDetailByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Detail">Detail</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindDetailByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindFeedByUserID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=2381:2522#L66">FindFeedByUserID</a>
+					<a class="permalink" href="#MockRepository.FindFeedByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindFeedByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, params <a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#ListFeedParams">ListFeedParams</a>) ([]<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#FeedItem">FeedItem</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindFeedByUserID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindShippable">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=3078:3178#L81">FindShippable</a>
+					<a class="permalink" href="#MockRepository.FindShippable">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindShippable(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, limit <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchases">Purchases</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindShippable mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindStatusesByUserID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=3695:3806#L96">FindStatusesByUserID</a>
+					<a class="permalink" href="#MockRepository.FindStatusesByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindStatusesByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) ([]<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Status">Status</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindStatusesByUserID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindUserIDsWithPurchases">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=4371:4483#L111">FindUserIDsWithPurchases</a>
+					<a class="permalink" href="#MockRepository.FindUserIDsWithPurchases">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindUserIDsWithPurchases(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userIDs []<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) ([]<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindUserIDsWithPurchases mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.LockByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=5053:5149#L126">LockByID</a>
+					<a class="permalink" href="#MockRepository.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) LockByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>LockByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.UpdateDelivered">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=5622:5711#L141">UpdateDelivered</a>
+					<a class="permalink" href="#MockRepository.UpdateDelivered">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) UpdateDelivered(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>UpdateDelivered mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.UpdatePaid">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=6172:6256#L155">UpdatePaid</a>
+					<a class="permalink" href="#MockRepository.UpdatePaid">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) UpdatePaid(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>UpdatePaid mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.UpdateShipped">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=6690:6777#L169">UpdateShipped</a>
+					<a class="permalink" href="#MockRepository.UpdateShipped">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) UpdateShipped(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p *<a href="../../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/domain/purchase/#Purchase">Purchase</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>UpdateShipped mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=725:789#L19">MockRepositoryMockRecorder</a>
+				<a class="permalink" href="#MockRepositoryMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRepositoryMockRecorder is the mock recorder for MockRepository.
+
+			</p><pre>type MockRepositoryMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=1508:1580#L45">FindByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByID indicates an expected call of FindByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindDetailByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=2096:2174#L60">FindDetailByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindDetailByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindDetailByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindDetailByID indicates an expected call of FindDetailByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindFeedByUserID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=2766:2858#L75">FindFeedByUserID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindFeedByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindFeedByUserID(ctx, userID, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindFeedByUserID indicates an expected call of FindFeedByUserID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindShippable">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=3403:3483#L90">FindShippable</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindShippable">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindShippable(ctx, limit <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindShippable indicates an expected call of FindShippable.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindStatusesByUserID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=4052:4140#L105">FindStatusesByUserID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindStatusesByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindStatusesByUserID(ctx, userID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindStatusesByUserID indicates an expected call of FindStatusesByUserID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindUserIDsWithPurchases">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=4736:4829#L120">FindUserIDsWithPurchases</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindUserIDsWithPurchases">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindUserIDsWithPurchases(ctx, userIDs <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindUserIDsWithPurchases indicates an expected call of FindUserIDsWithPurchases.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.LockByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=5356:5428#L135">LockByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) LockByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>LockByID indicates an expected call of LockByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.UpdateDelivered">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=5892:5970#L149">UpdateDelivered</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.UpdateDelivered">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) UpdateDelivered(ctx, p <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpdateDelivered indicates an expected call of UpdateDelivered.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.UpdatePaid">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=6422:6495#L163">UpdatePaid</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.UpdatePaid">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) UpdatePaid(ctx, p <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpdatePaid indicates an expected call of UpdatePaid.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.UpdateShipped">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/purchase/mock/mock_purchase_repository.go.gen.go.html?s=6952:7028#L177">UpdateShipped</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.UpdateShipped">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) UpdateShipped(ctx, p <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpdateShipped indicates an expected call of UpdateShipped.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

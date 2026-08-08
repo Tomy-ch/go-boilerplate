@@ -77,7 +77,7 @@
 <span id="L20" class="ln">    20  </span><span class="comment">// Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。</span>
 <span id="L21" class="ln">    21  </span><span class="comment">// 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。</span>
 <span id="L22" class="ln">    22  </span>type Metrics interface {
-<span id="L23" class="ln">    23  </span>	<span class="comment">// IncHit は、completed 行の再送（replay）を計上します。</span>
+<span id="L23" class="ln">    23  </span>	<span class="comment">// IncHit は、completed のエントリへの再送（replay）を計上します。</span>
 <span id="L24" class="ln">    24  </span>	IncHit(ctx context.Context, operationID string)
 <span id="L25" class="ln">    25  </span>	<span class="comment">// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。</span>
 <span id="L26" class="ln">    26  </span>	IncMiss(ctx context.Context, operationID string)
@@ -104,14 +104,14 @@
 <span id="L47" class="ln">    47  </span>
 <span id="L48" class="ln">    48  </span><span class="comment">// Run は、ctx に Idempotency-Key が無ければ businessFn を素通し実行し、ある場合は業務 tx 内で</span>
 <span id="L49" class="ln">    49  </span><span class="comment">// claim → businessFn → complete を 1 tx で行います。再送は replay、並行 claim は 409、指紋不一致は 422。</span>
-<span id="L50" class="ln">    50  </span><span class="comment">// successStatus は completed 行へ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。</span>
+<span id="L50" class="ln">    50  </span><span class="comment">// successStatus は completed のエントリへ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。</span>
 <span id="L51" class="ln">    51  </span><span class="comment">//</span>
 <span id="L52" class="ln">    52  </span><span class="comment">// 前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。</span>
 <span id="L53" class="ln">    53  </span><span class="comment">// replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。</span>
 <span id="L54" class="ln">    54  </span>func Run[T any](
 <span id="L55" class="ln">    55  </span>	ctx context.Context,
 <span id="L56" class="ln">    56  </span>	deps Deps,
-<span id="L57" class="ln">    57  </span>	successStatus int,
+<span id="L57" class="ln">    57  </span>	successStatus int32,
 <span id="L58" class="ln">    58  </span>	businessFn func(ctx context.Context) (T, error),
 <span id="L59" class="ln">    59  </span>) (T, bool, error) {
 <span id="L60" class="ln">    60  </span>	req, ok := requestFromContext(ctx)
@@ -162,7 +162,7 @@
 <span id="L105" class="ln">   105  </span>		if err := deps.Store.Complete(ctx, idempotencybndry.CompleteParams{
 <span id="L106" class="ln">   106  </span>			Scope:           req.Scope,
 <span id="L107" class="ln">   107  </span>			Key:             req.Key,
-<span id="L108" class="ln">   108  </span>			ResponseStatus:  int32(successStatus), <span class="comment">//nolint:gosec // HTTP ステータスコードは int32 に収まる</span>
+<span id="L108" class="ln">   108  </span>			ResponseStatus:  successStatus,
 <span id="L109" class="ln">   109  </span>			ResponsePayload: payload,
 <span id="L110" class="ln">   110  </span>		}); err != nil {
 <span id="L111" class="ln">   111  </span>			deps.metrics().IncCompleteFailure(ctx, req.OperationID)
@@ -188,7 +188,7 @@
 <span id="L131" class="ln">   131  </span>		return zero, false, err
 <span id="L132" class="ln">   132  </span>	}
 <span id="L133" class="ln">   133  </span>	if rec == nil {
-<span id="L134" class="ln">   134  </span>		<span class="comment">// claim 衝突直後に行が消えた稀なレース。後で再試行させる。</span>
+<span id="L134" class="ln">   134  </span>		<span class="comment">// claim 衝突直後にエントリが消えた稀なレース。後で再試行させる。</span>
 <span id="L135" class="ln">   135  </span>		deps.metrics().IncConflict(ctx, req.OperationID)
 <span id="L136" class="ln">   136  </span>		return zero, false, xerrors.Wrap(apperror.ErrConflict, &#34;idempotency key state unavailable, retry later&#34;)
 <span id="L137" class="ln">   137  </span>	}

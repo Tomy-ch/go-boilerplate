@@ -85,8 +85,8 @@
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package money は、Usecase 層のマネー計算ヘルパを提供します。
-</p><p>マネー値は最小単位の整数（例: USD セント / JPY 円）で保持し、float による
-累積誤差を避けます。丸め方式はアプリ規約（ADR）で確定した half-up に統一します。
+</p><p>正確な十進の算術・丸め・最小単位整数への変換といった純機構は pkg/decimal が担い、本パッケージは
+「どの最小単位桁へ・どの丸めモードで」決済スケールへ落とすかという policy の選択のみを残します。
 
 				
 			</p></div>
@@ -106,7 +106,7 @@
 			
 			
 				
-				<dd><a href="#ApplyRateHalfUp">func ApplyRateHalfUp(amountMinor int64, rate float64, scale int64) int64</a></dd>
+				<dd><a href="#ApplyRateHalfUp">func ApplyRateHalfUp(amount, rate decimal.Decimal, minorUnitDigits int32) (int64, error)</a></dd>
 			
 			
 			
@@ -135,18 +135,16 @@
 		
 			
 			
-			<h2 id="ApplyRateHalfUp">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/money/money.go.html?s=1138:1210#L12">ApplyRateHalfUp</a>
+			<h2 id="ApplyRateHalfUp">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/money/money.go.html?s=856:944#L4">ApplyRateHalfUp</a>
 				<a class="permalink" href="#ApplyRateHalfUp">¶</a>
 				
 				
 			</h2>
-			<pre>func ApplyRateHalfUp(amountMinor <a href="../../../../../builtin/#int64">int64</a>, rate <a href="../../../../../builtin/#float64">float64</a>, scale <a href="../../../../../builtin/#int64">int64</a>) <a href="../../../../../builtin/#int64">int64</a></pre>
-			<p>ApplyRateHalfUp は、最小単位整数 amountMinor に rate を適用し、scale で除して
-half-up（0 から遠い方向への四捨五入）した整数を返します。
-</p><p>scale は amountMinor を得る際に用いた固定小数スケールです（例: amount×100 で
-セント化したなら 100）。中間積は多倍長整数で計算するため int64 の乗算オーバーフローは
-起きません。amountMinor と rate は任意符号を許容し、負値は 0 から遠い方向へ丸めます。
-scale は正の整数を前提とします（0 以下はゼロ除算で panic）。
+			<pre>func ApplyRateHalfUp(amount, rate <a href="../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>, minorUnitDigits <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>ApplyRateHalfUp は、金額 amount にレート rate を掛け、最小単位（小数 minorUnitDigits 桁）へ
+half-up（0 から遠い方向）で丸めた決済スケールの整数を返します。
+</p><p>丸めは決済境界のこの 1 点でのみ行い、途中は正確な十進のまま計算するため float 誤差は生じません。
+結果が int64 の範囲外になる場合はエラーを返します。
 
 			
 			

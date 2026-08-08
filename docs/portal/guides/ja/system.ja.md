@@ -141,18 +141,20 @@ flowchart TB
 - Infrastructure に依存しない
 - アプリケーション全体から参照可能
 
-## テスト
+## テスト戦略
 
-`BuildInfo` は interface のため、テストでは mock を利用できます。
+本パッケージが公開する値はリンク時（`-ldflags`）に注入されるため、テストバイナリはそれ **無し** でビルドされる。これが定義的な制約であり、全てのテストが実際に走るのは未注入の状態である。したがって未注入時の値は、事故ではなく文書化された値でなければならない。
 
-`go:generate mockgen`
+- **未注入（テストバイナリ）の値** — `NewBuildInfo` は注入が無い場合に各フィールドの文書化されたプレースホルダを返すこと。空文字が黙って `/version` や build-info メトリクスへ流れないよう、プレースホルダを明示的に検証する。
+- **注入された値** — 各 getter は構築時に渡された値を返すこと。アクセサ 1 つにつき `TestXxx` 1 つ（`docs/testing-conventions.md` §1。まとめたアクセサテストにしないこと）。
+- **利用側は interface を mock する** — `BuildInfo` は `go:generate mockgen` を持つ interface なので、ビルド情報を読むだけのパッケージはリンク時注入に依存せず生成 mock を使う:
 
-例
+  ```go
+  mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
+  mockBuildInfo.EXPECT().Version().Return("1.0.0")
+  ```
 
-```go
-mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
-mockBuildInfo.EXPECT().Version().Return("1.0.0")
-```
+これを土台にした build-info **メトリクス** は `internal/observability/metrics/buildinfo` にあり、検証もそちらの担当である。
 
 ## セキュリティ注意点
 

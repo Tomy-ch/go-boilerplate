@@ -1,0 +1,214 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>s3 - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package s3
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/objectstorage/s3&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package s3 は、オブジェクトストレージ境界（objectstorage.Storage）の S3 互換実装を提供します。
+AWS SDK v2 S3 クライアントを用い、endpoint / 資格情報の差し替えだけで Garage・MinIO・本番 S3 の
+いずれにも接続できます。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#New">func New(ctx context.Context, cfg Config, tf observability.TracerFactory) (boundary.Storage, error)</a></dd>
+			
+			
+				
+				<dd><a href="#Config">type Config</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/objectstorage/s3/s3_storage.go.html">s3_storage.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/objectstorage/s3/s3_storage.go.html?s=2280:2379#L41">New</a>
+				<a class="permalink" href="#New">¶</a>
+				
+				
+			</h2>
+			<pre>func New(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, cfg <a href="#Config">Config</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) (<a href="../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/">boundary</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/objectstorage/#Storage">Storage</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>New は、S3 互換オブジェクトストレージ実装を生成します。
+資格情報を解決できない場合はエラーを返し、認証エラーが最初の操作まで隠れないようにします。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Config">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/objectstorage/s3/s3_storage.go.html?s=822:1897#L13">Config</a>
+				<a class="permalink" href="#Config">¶</a>
+				
+				
+			</h2>
+			<p>Config は、S3 互換オブジェクトストレージへの接続設定です（DI で注入）。
+
+			</p><pre>type Config struct {
+<span id="Config.Endpoint"></span>    <span class="comment">// Endpoint は、S3 互換エンドポイントです（例 Garage: &#34;http://garage:3900&#34;）。</span>
+    <span class="comment">// 空の場合は SDK 既定のエンドポイント解決に委ねます（本番 AWS S3 等）。</span>
+    Endpoint <a href="../../../../../builtin/#string">string</a>
+<span id="Config.Region"></span>    <span class="comment">// Region は、署名に用いるリージョンです。</span>
+    Region <a href="../../../../../builtin/#string">string</a>
+<span id="Config.Bucket"></span>    <span class="comment">// Bucket は、オブジェクトを格納するバケット名です。</span>
+    Bucket <a href="../../../../../builtin/#string">string</a>
+<span id="Config.AccessKeyID"></span>    <span class="comment">// AccessKeyID / SecretAccessKey は、明示注入する静的資格情報です。両方空なら</span>
+    <span class="comment">// SDK 既定の credential chain（IAM ロール等）へ委ねます。詳細は awsclient.Resolve を参照。</span>
+    AccessKeyID     <a href="../../../../../builtin/#string">string</a>
+<span id="Config.SecretAccessKey"></span>    SecretAccessKey <a href="../../../../../builtin/#string">string</a>
+<span id="Config.UsePathStyle"></span>    <span class="comment">// UsePathStyle は、path-style アクセスを使うかどうかです（Garage / MinIO は true が必要）。</span>
+    UsePathStyle <a href="../../../../../builtin/#bool">bool</a>
+<span id="Config.HTTPClient"></span>    <span class="comment">// HTTPClient は、SDK が API 呼び出しに使う HTTP クライアントです。SSRF ガード付きの実装を DI が</span>
+    <span class="comment">// 注入します。nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。</span>
+    HTTPClient <a href="../../../../../github.com/aws/aws-sdk-go-v2/aws/">aws</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/aws/#HTTPClient">HTTPClient</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

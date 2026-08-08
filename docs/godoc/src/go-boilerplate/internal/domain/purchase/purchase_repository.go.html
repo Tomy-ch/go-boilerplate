@@ -1,0 +1,115 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>purchase - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/domain">domain</a>/<a href="../../../../../src/go-boilerplate/internal/domain/purchase">purchase</a>/<span class="text-muted">purchase_repository.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/domain/purchase">go-boilerplate/internal/domain/purchase</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L2" class="ln">     2  </span>package purchase
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span>import (
+<span id="L5" class="ln">     5  </span>	&#34;context&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L8" class="ln">     8  </span>)
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span><span class="comment">// Repository は、購入の永続化操作を定義するドメインリポジトリインターフェースです。</span>
+<span id="L11" class="ln">    11  </span>type Repository interface {
+<span id="L12" class="ln">    12  </span>	<span class="comment">// FindByID は、ID から購入を明細込みで取得します。書き込み後のドメイン整合の再検証と</span>
+<span id="L13" class="ln">    13  </span>	<span class="comment">// レスポンス組み立ての取得元に用います。存在しない場合は NotFound を返します。</span>
+<span id="L14" class="ln">    14  </span>	FindByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+<span id="L15" class="ln">    15  </span>	<span class="comment">// LockByID は、対象の購入のみを悲観ロックして明細込みで再構築し返します。</span>
+<span id="L16" class="ln">    16  </span>	<span class="comment">// 支払いの状態遷移の競合（同一購入への並行支払い）をこのロックで直列化します。擬似決済は購入集約</span>
+<span id="L17" class="ln">    17  </span>	<span class="comment">// のみを更新するため、複数集約の原子性を要する CommandService ではなく Repository が担います。</span>
+<span id="L18" class="ln">    18  </span>	<span class="comment">// 存在しない場合は NotFound を返します。</span>
+<span id="L19" class="ln">    19  </span>	LockByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+<span id="L20" class="ln">    20  </span>	<span class="comment">// UpdatePaid は、購入の状態遷移（→ 支払い済み）を、渡された ctx のトランザクション内で実行します。</span>
+<span id="L21" class="ln">    21  </span>	<span class="comment">// 擬似決済のため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。</span>
+<span id="L22" class="ln">    22  </span>	UpdatePaid(ctx context.Context, p *Purchase) error
+<span id="L23" class="ln">    23  </span>	<span class="comment">// UpdateShipped は、購入の状態遷移（→ 発送済み）を、渡された ctx のトランザクション内で実行します。</span>
+<span id="L24" class="ln">    24  </span>	<span class="comment">// 配送追跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。</span>
+<span id="L25" class="ln">    25  </span>	UpdateShipped(ctx context.Context, p *Purchase) error
+<span id="L26" class="ln">    26  </span>	<span class="comment">// UpdateDelivered は、購入の状態遷移（→ 配達済み）を、渡された ctx のトランザクション内で実行します。</span>
+<span id="L27" class="ln">    27  </span>	<span class="comment">// 配達確認の証跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。</span>
+<span id="L28" class="ln">    28  </span>	UpdateDelivered(ctx context.Context, p *Purchase) error
+<span id="L29" class="ln">    29  </span>	<span class="comment">// FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で明細込みに最大 limit 件</span>
+<span id="L30" class="ln">    30  </span>	<span class="comment">// 取得します。該当が無い場合は空を返します。絞り込みは Purchase.IsShippable の定義と一致させること。</span>
+<span id="L31" class="ln">    31  </span>	FindShippable(ctx context.Context, limit int32) (Purchases, error)
+<span id="L32" class="ln">    32  </span>	<span class="comment">// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は</span>
+<span id="L33" class="ln">    33  </span>	<span class="comment">// 購入ステータスマスタで解決します（購入ステータスは購入集約に属する固定参照マスタのため、</span>
+<span id="L34" class="ln">    34  </span>	<span class="comment">// 単一集約の Repository read です）。存在しない場合は NotFound を返します。</span>
+<span id="L35" class="ln">    35  </span>	FindDetailByID(ctx context.Context, id uuid.UUID) (*Detail, error)
+<span id="L36" class="ln">    36  </span>	<span class="comment">// FindFeedByUserID は、指定ユーザーの購入履歴を注文日時の降順（同時刻は ID 降順）の安定順で</span>
+<span id="L37" class="ln">    37  </span>	<span class="comment">// keyset ページネーション取得します。ステータス名は購入ステータスマスタで解決します</span>
+<span id="L38" class="ln">    38  </span>	<span class="comment">// （購入ステータスは購入集約に属する固定参照マスタのため、単一集約の Repository read です）。</span>
+<span id="L39" class="ln">    39  </span>	<span class="comment">// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。</span>
+<span id="L40" class="ln">    40  </span>	FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
+<span id="L41" class="ln">    41  </span>	<span class="comment">// FindStatusesByUserID は、指定ユーザーの購入が取っているステータスを重複なく返します。</span>
+<span id="L42" class="ln">    42  </span>	<span class="comment">// 進行中かどうかで絞り込まないため、その判定（Status.IsTerminal の否定）は呼び出し側が行います。</span>
+<span id="L43" class="ln">    43  </span>	<span class="comment">// 購入を 1 件も持たない場合は空を返し、順序は保証しません。</span>
+<span id="L44" class="ln">    44  </span>	FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]Status, error)
+<span id="L45" class="ln">    45  </span>	<span class="comment">// FindUserIDsWithPurchases は、与えたユーザー ID のうち、購入を 1 件以上持つものを返します。</span>
+<span id="L46" class="ln">    46  </span>	<span class="comment">// ステータスは問わず、順序は保証しません。userIDs が空の場合は空を返します。</span>
+<span id="L47" class="ln">    47  </span>	FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)
+<span id="L48" class="ln">    48  </span>}
+<span id="L49" class="ln">    49  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/domain/purchase/purchase_repository.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

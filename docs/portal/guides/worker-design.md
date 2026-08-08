@@ -2,7 +2,7 @@
 
 [Worker README](../../internal/controller/worker/README.md) | 日本語: [worker.ja.md](../ja/design/worker.ja.md)
 
-This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0042](../adr/0042-broker-agnostic-worker-scaffold.md) onward).
+This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0045](../adr/0045-broker-agnostic-worker-scaffold.md) onward).
 
 ---
 
@@ -161,7 +161,7 @@ flowchart TD
     class CMD,CLI,HL,DIW,DIR,DIH,DIM,DIC,ENG,CIR,OBS,PORT,FAKE,MOCK,SQS,APPERR,BO,CFG,LOG,OTEL done;
 ```
 
-> Green = implemented by the scaffold. Dependencies always point inward (`controller→usecase/boundary`, `infrastructure→usecase/boundary`). The `controller` (engine) does not import `infrastructure` (depguard `maintain_a_sound_controller`).
+> Green = implemented here. Dependencies always point inward (`controller→usecase/boundary`, `infrastructure→usecase/boundary`). The `controller` (engine) does not import `infrastructure` (depguard `maintain_a_sound_controller`).
 
 ### 3.2 Per-message action sequence (when a real broker is wired)
 
@@ -192,9 +192,9 @@ sequenceDiagram
 
 ---
 
-## 4. What an integrator implements (the parts the scaffold does not provide)
+## 4. What an integrator implements (the parts this project does not provide)
 
-The scaffold provides the **engine, seam, fake, SQS reference adapter, and wiring templates**. To run an actual worker in production, the consumer supplies the following (no worker is registered by default).
+This project provides the **engine, seam, fake, SQS reference adapter, and wiring templates**. To run an actual worker in production, the consumer supplies the following (no worker is registered by default).
 
 ```mermaid
 flowchart LR
@@ -212,14 +212,20 @@ flowchart LR
 
 | # | Required implementation | Location (recommended) | Reference |
 | --- | --- | --- | --- |
-| ① | business `Handler` (idempotent, calls usecases) | `internal/controller/worker/<name>/` | structure of job's `usercount` |
+| ① | business `Handler` (idempotent, calls usecases) | `internal/controller/worker/<name>/` | `worker.Handler` IF |
 | ② | `Consumer` (+ `FailureHandler`) adapter | wire `infrastructure/queue/sqs` for SQS / new package otherwise | `sqs.NewConsumer` / `NewDeadLetter` |
 | ③ | `Worker` (returns Name/Consumer/Handler/FailureHandler) + `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
 | ④ | add the constructor to `provideWorkers(...)` in `WorkerModule()` | `internal/di/module/worker.go` | same shape as `provideJobs` |
 | ⑤ | `fx.Provide` the broker client and adapter `Config` | `internal/di/...` | `sqs.Config` |
-| ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `WorkerConfig` defaults |
+| ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` defaults |
 
-> Only when using SQS in production do you import sqs into the `cmd` wiring, and at that point `aws-sdk-go-v2` enters that binary (it is absent from the default serve/worker binary = E3).
+> `CONSUMER_QUEUE_*` names *a* consumer queue, not *the* consumer queue — it is sized for the one worker shipped here. A second worker consuming a different queue gets its own prefix carrying the worker's name (`<WORKER_NAME>_QUEUE_*`); do not overload the existing one. `WORKER_*` stays shared, because engine-core settings are broker-agnostic and per-process.
+
+<!-- sample-api:begin -->
+> A worked example of all six ships as part of the removable sample set: `internal/controller/worker/withdrawalarchive` consumes the withdrawal event the outbox emits and archives it to object storage. `make setup-remove-sample-api` removes it and leaves `provideWorkers()` empty again.
+<!-- sample-api:end -->
+
+> A wired broker adapter links its SDK into the binary, and `serve` / `worker` / `outbox-relay` share one binary, so linkage cannot be scoped to the role that consumes a queue. Isolation is therefore defined over **coupling**: a concrete broker is named only by its adapter package and the wiring that selects it (E3, [ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.md)).
 
 ---
 
@@ -233,6 +239,7 @@ flowchart LR
 | **PartitionKey** | The normalization key that serializes the same key (empty = parallel). The adapter fills it from a broker value (e.g. SQS MessageGroupId). |
 | **ReceiveCount** | Redelivery count. Used for poison detection (A7). |
 | **reserved key (`_receipt_handle`)** | A `_`-prefixed key that isolates broker-specific handle/lease in `Attributes`. The engine passes it through without interpreting it. |
+| **`event_type` attribute** | The `Attributes` key under which an adapter surfaces the event kind, so a `Handler` can decide whether a message is its own before decoding the body. Permanent seam vocabulary, not sample-specific: one queue carrying several kinds is a property of the pull-ack model, not of the bundled example, so it survives `make setup-remove-sample-api` like the rest of the seam. |
 | **engine** | The driving adapter that runs the selected worker via pull-ack (`controller/worker.Engine`). |
 | **poll loop** | The single goroutine that drives `Receive`. It has a two-stage gate (circuit and prefetch). |
 | **dispatch** | Routes received messages to processing units. Empty key = parallel, non-empty = per-key serialized. |
@@ -249,4 +256,4 @@ flowchart LR
 | **Settings** | The engine-core behavior settings (an engine-local struct). Mapped from `config.WorkerConfig` via DI. |
 | **WorkerConfig** | The engine-core settings (broker-agnostic, `WORKER_*` with `default` tags). Broker-specific settings live in the adapter `Config`. |
 | **traceparent / continuation** | W3C trace context. `Extract`ed from `Message.Attributes` to continue the span (D1). |
-| **E1/E2/E3** | engine does not import infra / engine is green on the fake alone / the shipped binary contains no broker SDK. |
+| **E1/E2/E3** | engine does not import infra / engine is green on the fake alone / knowledge of a concrete broker is confined to its adapter package and the wiring that selects it — no core `*.go` and no core document names a broker adapter ([ADR-0048](../adr/0048-broker-sdk-isolation-measured-as-coupling.md)). |

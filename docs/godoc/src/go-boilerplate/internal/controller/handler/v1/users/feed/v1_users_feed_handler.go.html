@@ -56,7 +56,7 @@
 
 
 <pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml</span>
-<span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml</span>
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span><span class="comment">// Package feed は、/v1/users/feed エンドポイントに関連するハンドラを提供します。</span>
 <span id="L5" class="ln">     5  </span>package feed
@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/tools/paging&#34;
 <span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/user&#34;
 <span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L15" class="ln">    15  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L16" class="ln">    16  </span>	&#34;github.com/oapi-codegen/runtime/types&#34;
 <span id="L17" class="ln">    17  </span>)
 <span id="L18" class="ln">    18  </span>

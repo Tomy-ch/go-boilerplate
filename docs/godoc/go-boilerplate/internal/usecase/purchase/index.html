@@ -1,0 +1,924 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>purchase - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package purchase
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/purchase&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package purchase は、購入の作成ユースケースを提供します。単価は価格スケール（ドル decimal）、
+決済額は決済スケール（整数セント）で扱います（ADR-0033）。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#CancelPurchaseParams">type CancelPurchaseParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CancelPurchaseView">type CancelPurchaseView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CreatePurchaseParams">type CreatePurchaseParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DeliverPurchaseView">type DeliverPurchaseView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DetailParam">type DetailParam</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DispatchGroupView">type DispatchGroupView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListShippablePurchasesParams">type ListShippablePurchasesParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PayPurchaseParams">type PayPurchaseParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PayPurchaseView">type PayPurchaseView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseDetailItemView">type PurchaseDetailItemView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseDetailView">type PurchaseDetailView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseGetDetailView">type PurchaseGetDetailView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseListView">type PurchaseListView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseShippableListView">type PurchaseShippableListView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseSummaryView">type PurchaseSummaryView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurchaseView">type PurchaseView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ShipPurchaseView">type ShipPurchaseView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ShippablePurchaseView">type ShippablePurchaseView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Usecase">type Usecase</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(txm tx.Manager, cmd command.CommandService, repo purchase.Repository, productRepo product.Repository, userLock user.LockRepository, detailQS query.PurchaseDetailQueryService, emit outbox.EmitUsecase, clock clock.Clock, authorizer authz.Authorizer, tf observability.TracerFactory) Usecase</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_detail_usecase.go.html">purchase_detail_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_feed_usecase.go.html">purchase_feed_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_shippable_usecase.go.html">purchase_shippable_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html">purchase_usecase.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="CancelPurchaseParams">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=2403:2674#L62">CancelPurchaseParams</a>
+				<a class="permalink" href="#CancelPurchaseParams">¶</a>
+				
+				
+			</h2>
+			<p>CancelPurchaseParams は、購入キャンセルの入力パラメータです。
+
+			</p><pre>type CancelPurchaseParams struct {
+<span id="CancelPurchaseParams.PurchaseID"></span>    <span class="comment">// PurchaseID は、キャンセル対象の購入 ID です。</span>
+    PurchaseID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CancelPurchaseParams.UserID"></span>    <span class="comment">// UserID は、キャンセルを要求した認証済みの内部ユーザー ID です。所有権の検証に用います。</span>
+    UserID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CancelPurchaseView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=2968:3296#L71">CancelPurchaseView</a>
+				<a class="permalink" href="#CancelPurchaseView">¶</a>
+				
+				
+			</h2>
+			<p>CancelPurchaseView は、キャンセル後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+マスタで解決済みの ID と名称、CanceledAt はキャンセル日時です。金額はすべて USD セント単位の整数です。
+
+			</p><pre>type CancelPurchaseView struct {
+<span id="CancelPurchaseView.ID"></span>    ID             <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CancelPurchaseView.Code"></span>    Code           <a href="../../../../builtin/#string">string</a>
+<span id="CancelPurchaseView.UserID"></span>    UserID         <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CancelPurchaseView.StatusID"></span>    StatusID       <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CancelPurchaseView.StatusName"></span>    StatusName     <a href="../../../../builtin/#string">string</a>
+<span id="CancelPurchaseView.SubtotalAmount"></span>    SubtotalAmount <a href="../../../../builtin/#int">int</a>
+<span id="CancelPurchaseView.TaxAmount"></span>    TaxAmount      <a href="../../../../builtin/#int">int</a>
+<span id="CancelPurchaseView.ShippingFee"></span>    ShippingFee    <a href="../../../../builtin/#int">int</a>
+<span id="CancelPurchaseView.TotalAmount"></span>    TotalAmount    <a href="../../../../builtin/#int">int</a>
+<span id="CancelPurchaseView.Details"></span>    Details        []<a href="#PurchaseDetailView">PurchaseDetailView</a>
+<span id="CancelPurchaseView.OrderedAt"></span>    OrderedAt      <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="CancelPurchaseView.CanceledAt"></span>    CanceledAt     *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CreatePurchaseParams">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=1462:1666#L33">CreatePurchaseParams</a>
+				<a class="permalink" href="#CreatePurchaseParams">¶</a>
+				
+				
+			</h2>
+			<p>CreatePurchaseParams は、購入作成の入力パラメータです。
+
+			</p><pre>type CreatePurchaseParams struct {
+<span id="CreatePurchaseParams.UserID"></span>    <span class="comment">// UserID は、購入者（認証済みの内部ユーザー ID）です。</span>
+    UserID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreatePurchaseParams.Details"></span>    <span class="comment">// Details は、購入明細の配列です。</span>
+    Details []<a href="#DetailParam">DetailParam</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DeliverPurchaseView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=5113:5442#L130">DeliverPurchaseView</a>
+				<a class="permalink" href="#DeliverPurchaseView">¶</a>
+				
+				
+			</h2>
+			<p>DeliverPurchaseView は、配達完了後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+マスタで解決済みの ID と名称、DeliveredAt は配達日時です。金額はすべて USD セント単位の整数です。
+
+			</p><pre>type DeliverPurchaseView struct {
+<span id="DeliverPurchaseView.ID"></span>    ID             <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="DeliverPurchaseView.Code"></span>    Code           <a href="../../../../builtin/#string">string</a>
+<span id="DeliverPurchaseView.UserID"></span>    UserID         <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="DeliverPurchaseView.StatusID"></span>    StatusID       <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="DeliverPurchaseView.StatusName"></span>    StatusName     <a href="../../../../builtin/#string">string</a>
+<span id="DeliverPurchaseView.SubtotalAmount"></span>    SubtotalAmount <a href="../../../../builtin/#int">int</a>
+<span id="DeliverPurchaseView.TaxAmount"></span>    TaxAmount      <a href="../../../../builtin/#int">int</a>
+<span id="DeliverPurchaseView.ShippingFee"></span>    ShippingFee    <a href="../../../../builtin/#int">int</a>
+<span id="DeliverPurchaseView.TotalAmount"></span>    TotalAmount    <a href="../../../../builtin/#int">int</a>
+<span id="DeliverPurchaseView.Details"></span>    Details        []<a href="#PurchaseDetailView">PurchaseDetailView</a>
+<span id="DeliverPurchaseView.OrderedAt"></span>    OrderedAt      <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="DeliverPurchaseView.DeliveredAt"></span>    DeliveredAt    *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DetailParam">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=1321:1384#L27">DetailParam</a>
+				<a class="permalink" href="#DetailParam">¶</a>
+				
+				
+			</h2>
+			<p>DetailParam は、購入明細の入力（商品 ID と数量）です。
+
+			</p><pre>type DetailParam struct {
+<span id="DetailParam.ProductID"></span>    ProductID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="DetailParam.Quantity"></span>    Quantity  <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DispatchGroupView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_shippable_usecase.go.html?s=2019:2344#L41">DispatchGroupView</a>
+				<a class="permalink" href="#DispatchGroupView">¶</a>
+				
+				
+			</h2>
+			<p>DispatchGroupView は、まとめて発送してよい購入の組のユースケース出力 DTO です。
+
+			</p><pre>type DispatchGroupView struct {
+<span id="DispatchGroupView.UserID"></span>    <span class="comment">// UserID は、組に含まれる購入の購入者 ID です。組の中では全件が同一です。</span>
+    UserID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="DispatchGroupView.Purchases"></span>    <span class="comment">// Purchases は、組に含まれる購入です。注文日時の古い順（同時刻は購入 ID の昇順）で並びます。</span>
+    Purchases []<a href="#ShippablePurchaseView">ShippablePurchaseView</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListShippablePurchasesParams">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_shippable_usecase.go.html?s=1411:1612#L26">ListShippablePurchasesParams</a>
+				<a class="permalink" href="#ListShippablePurchasesParams">¶</a>
+				
+				
+			</h2>
+			<p>ListShippablePurchasesParams は、発送待ち購入一覧取得の入力パラメータです。
+
+			</p><pre>type ListShippablePurchasesParams struct {
+<span id="ListShippablePurchasesParams.Limit"></span>    <span class="comment">// Limit は、読み出す購入の件数です。1 未満は既定値 20 を適用し、100 を超える値は 100 にクランプします。</span>
+    Limit <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PayPurchaseParams">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=3374:3630#L87">PayPurchaseParams</a>
+				<a class="permalink" href="#PayPurchaseParams">¶</a>
+				
+				
+			</h2>
+			<p>PayPurchaseParams は、購入支払いの入力パラメータです。
+
+			</p><pre>type PayPurchaseParams struct {
+<span id="PayPurchaseParams.PurchaseID"></span>    <span class="comment">// PurchaseID は、支払い対象の購入 ID です。</span>
+    PurchaseID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PayPurchaseParams.UserID"></span>    <span class="comment">// UserID は、支払いを要求した認証済みの内部ユーザー ID です。所有権の検証に用います。</span>
+    UserID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PayPurchaseView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=3905:4230#L96">PayPurchaseView</a>
+				<a class="permalink" href="#PayPurchaseView">¶</a>
+				
+				
+			</h2>
+			<p>PayPurchaseView は、支払い後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+マスタで解決済みの ID と名称、PaidAt は支払い日時です。金額はすべて USD セント単位の整数です。
+
+			</p><pre>type PayPurchaseView struct {
+<span id="PayPurchaseView.ID"></span>    ID             <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PayPurchaseView.Code"></span>    Code           <a href="../../../../builtin/#string">string</a>
+<span id="PayPurchaseView.UserID"></span>    UserID         <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PayPurchaseView.StatusID"></span>    StatusID       <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PayPurchaseView.StatusName"></span>    StatusName     <a href="../../../../builtin/#string">string</a>
+<span id="PayPurchaseView.SubtotalAmount"></span>    SubtotalAmount <a href="../../../../builtin/#int">int</a>
+<span id="PayPurchaseView.TaxAmount"></span>    TaxAmount      <a href="../../../../builtin/#int">int</a>
+<span id="PayPurchaseView.ShippingFee"></span>    ShippingFee    <a href="../../../../builtin/#int">int</a>
+<span id="PayPurchaseView.TotalAmount"></span>    TotalAmount    <a href="../../../../builtin/#int">int</a>
+<span id="PayPurchaseView.Details"></span>    Details        []<a href="#PurchaseDetailView">PurchaseDetailView</a>
+<span id="PayPurchaseView.OrderedAt"></span>    OrderedAt      <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="PayPurchaseView.PaidAt"></span>    PaidAt         *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseDetailItemView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_detail_usecase.go.html?s=509:636#L7">PurchaseDetailItemView</a>
+				<a class="permalink" href="#PurchaseDetailItemView">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseDetailItemView は、購入詳細（取得）の明細 1 件のユースケース出力 DTO です。
+ProductName は購入時点ではなく現在の商品名、UnitPrice は価格スケール（ドル decimal）です。
+
+			</p><pre>type PurchaseDetailItemView struct {
+<span id="PurchaseDetailItemView.ProductID"></span>    ProductID   <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseDetailItemView.ProductName"></span>    ProductName <a href="../../../../builtin/#string">string</a>
+<span id="PurchaseDetailItemView.Quantity"></span>    Quantity    <a href="../../../../builtin/#int">int</a>
+<span id="PurchaseDetailItemView.UnitPrice"></span>    UnitPrice   <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseDetailView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=1810:1907#L41">PurchaseDetailView</a>
+				<a class="permalink" href="#PurchaseDetailView">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseDetailView は、購入明細のユースケース出力 DTO です。UnitPrice は価格スケール（ドル decimal）です。
+
+			</p><pre>type PurchaseDetailView struct {
+<span id="PurchaseDetailView.ProductID"></span>    ProductID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseDetailView.Quantity"></span>    Quantity  <a href="../../../../builtin/#int">int</a>
+<span id="PurchaseDetailView.UnitPrice"></span>    UnitPrice <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseGetDetailView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_detail_usecase.go.html?s=931:1301#L16">PurchaseGetDetailView</a>
+				<a class="permalink" href="#PurchaseGetDetailView">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseGetDetailView は、購入詳細（取得）1 件分のユースケース出力 DTO です。金額はすべて USD セント単位の整数、
+ステータスは購入ステータスマスタで解決済みの ID と名称、PaidAt / CanceledAt は未確定なら nil です。
+
+			</p><pre>type PurchaseGetDetailView struct {
+<span id="PurchaseGetDetailView.ID"></span>    ID             <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseGetDetailView.Code"></span>    Code           <a href="../../../../builtin/#string">string</a>
+<span id="PurchaseGetDetailView.UserID"></span>    UserID         <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseGetDetailView.StatusID"></span>    StatusID       <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseGetDetailView.StatusName"></span>    StatusName     <a href="../../../../builtin/#string">string</a>
+<span id="PurchaseGetDetailView.SubtotalAmount"></span>    SubtotalAmount <a href="../../../../builtin/#int64">int64</a>
+<span id="PurchaseGetDetailView.TaxAmount"></span>    TaxAmount      <a href="../../../../builtin/#int64">int64</a>
+<span id="PurchaseGetDetailView.ShippingFee"></span>    ShippingFee    <a href="../../../../builtin/#int64">int64</a>
+<span id="PurchaseGetDetailView.TotalAmount"></span>    TotalAmount    <a href="../../../../builtin/#int64">int64</a>
+<span id="PurchaseGetDetailView.Details"></span>    Details        []<a href="#PurchaseDetailItemView">PurchaseDetailItemView</a>
+<span id="PurchaseGetDetailView.OrderedAt"></span>    OrderedAt      <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="PurchaseGetDetailView.PaidAt"></span>    PaidAt         *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="PurchaseGetDetailView.CanceledAt"></span>    CanceledAt     *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseListView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_feed_usecase.go.html?s=911:1177#L19">PurchaseListView</a>
+				<a class="permalink" href="#PurchaseListView">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseListView は、購入履歴一覧（cursor ページネーション）のユースケース出力 DTO です。
+
+			</p><pre>type PurchaseListView struct {
+<span id="PurchaseListView.Items"></span>    <span class="comment">// Items は、現在ページの購入履歴概要一覧です。</span>
+    Items []<a href="#PurchaseSummaryView">PurchaseSummaryView</a>
+<span id="PurchaseListView.NextCursor"></span>    <span class="comment">// NextCursor は、次ページ取得用の不透明カーソルです。最終ページの場合は nil です。</span>
+    NextCursor *<a href="../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseShippableListView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_shippable_usecase.go.html?s=2439:2631#L49">PurchaseShippableListView</a>
+				<a class="permalink" href="#PurchaseShippableListView">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseShippableListView は、発送待ち購入一覧の取得結果を表します。
+
+			</p><pre>type PurchaseShippableListView struct {
+<span id="PurchaseShippableListView.Groups"></span>    <span class="comment">// Groups は、まとめ発送の組の一覧です。組同士はその組の最も古い購入の順に並びます。</span>
+    Groups []<a href="#DispatchGroupView">DispatchGroupView</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseSummaryView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_feed_usecase.go.html?s=648:786#L10">PurchaseSummaryView</a>
+				<a class="permalink" href="#PurchaseSummaryView">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseSummaryView は、購入履歴一覧の 1 件分のユースケース出力 DTO です。
+TotalAmount は USD セント単位の整数、ステータスは購入ステータスマスタで解決済みの ID と名称です。
+
+			</p><pre>type PurchaseSummaryView struct {
+<span id="PurchaseSummaryView.Code"></span>    Code        <a href="../../../../builtin/#string">string</a>
+<span id="PurchaseSummaryView.TotalAmount"></span>    TotalAmount <a href="../../../../builtin/#int">int</a>
+<span id="PurchaseSummaryView.StatusID"></span>    StatusID    <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseSummaryView.StatusName"></span>    StatusName  <a href="../../../../builtin/#string">string</a>
+<span id="PurchaseSummaryView.OrderedAt"></span>    OrderedAt   <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=2044:2316#L48">PurchaseView</a>
+				<a class="permalink" href="#PurchaseView">¶</a>
+				
+				
+			</h2>
+			<p>PurchaseView は、購入 1 件分のユースケース出力 DTO です。金額はすべて USD セント単位の整数です。
+
+			</p><pre>type PurchaseView struct {
+<span id="PurchaseView.ID"></span>    ID             <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseView.Code"></span>    Code           <a href="../../../../builtin/#string">string</a>
+<span id="PurchaseView.UserID"></span>    UserID         <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseView.StatusID"></span>    StatusID       <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="PurchaseView.SubtotalAmount"></span>    SubtotalAmount <a href="../../../../builtin/#int">int</a>
+<span id="PurchaseView.TaxAmount"></span>    TaxAmount      <a href="../../../../builtin/#int">int</a>
+<span id="PurchaseView.ShippingFee"></span>    ShippingFee    <a href="../../../../builtin/#int">int</a>
+<span id="PurchaseView.TotalAmount"></span>    TotalAmount    <a href="../../../../builtin/#int">int</a>
+<span id="PurchaseView.Details"></span>    Details        []<a href="#PurchaseDetailView">PurchaseDetailView</a>
+<span id="PurchaseView.OrderedAt"></span>    OrderedAt      <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ShipPurchaseView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=4503:4829#L113">ShipPurchaseView</a>
+				<a class="permalink" href="#ShipPurchaseView">¶</a>
+				
+				
+			</h2>
+			<p>ShipPurchaseView は、発送後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
+マスタで解決済みの ID と名称、ShippedAt は発送日時です。金額はすべて USD セント単位の整数です。
+
+			</p><pre>type ShipPurchaseView struct {
+<span id="ShipPurchaseView.ID"></span>    ID             <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ShipPurchaseView.Code"></span>    Code           <a href="../../../../builtin/#string">string</a>
+<span id="ShipPurchaseView.UserID"></span>    UserID         <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ShipPurchaseView.StatusID"></span>    StatusID       <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ShipPurchaseView.StatusName"></span>    StatusName     <a href="../../../../builtin/#string">string</a>
+<span id="ShipPurchaseView.SubtotalAmount"></span>    SubtotalAmount <a href="../../../../builtin/#int">int</a>
+<span id="ShipPurchaseView.TaxAmount"></span>    TaxAmount      <a href="../../../../builtin/#int">int</a>
+<span id="ShipPurchaseView.ShippingFee"></span>    ShippingFee    <a href="../../../../builtin/#int">int</a>
+<span id="ShipPurchaseView.TotalAmount"></span>    TotalAmount    <a href="../../../../builtin/#int">int</a>
+<span id="ShipPurchaseView.Details"></span>    Details        []<a href="#PurchaseDetailView">PurchaseDetailView</a>
+<span id="ShipPurchaseView.OrderedAt"></span>    OrderedAt      <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="ShipPurchaseView.ShippedAt"></span>    ShippedAt      *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ShippablePurchaseView">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_shippable_usecase.go.html?s=1786:1906#L33">ShippablePurchaseView</a>
+				<a class="permalink" href="#ShippablePurchaseView">¶</a>
+				
+				
+			</h2>
+			<p>ShippablePurchaseView は、まとめ発送の組に含まれる購入 1 件のユースケース出力 DTO です。
+金額は USD セント単位の整数です。
+
+			</p><pre>type ShippablePurchaseView struct {
+<span id="ShippablePurchaseView.ID"></span>    ID          <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ShippablePurchaseView.Code"></span>    Code        <a href="../../../../builtin/#string">string</a>
+<span id="ShippablePurchaseView.TotalAmount"></span>    TotalAmount <a href="../../../../builtin/#int">int</a>
+<span id="ShippablePurchaseView.OrderedAt"></span>    OrderedAt   <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=5516:8799#L146">Usecase</a>
+				<a class="permalink" href="#Usecase">¶</a>
+				
+				
+			</h2>
+			<p>Usecase は、購入の作成ユースケースを定義します。
+
+			</p><pre>type Usecase interface {
+    <span class="comment">// CreatePurchase は、明細から購入を作成します。在庫の引当・購入の成立・イベント発行は単一 tx で</span>
+    <span class="comment">// 原子的に成立し、売り越しは 409 で成立させません。DisplayCurrency 指定時は参考換算額を付与します。</span>
+    CreatePurchase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#CreatePurchaseParams">CreatePurchaseParams</a>) (<a href="#PurchaseView">PurchaseView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// GetPurchases は、認証主体（userID）の購入履歴を注文日時降順（cursor ページネーション）で取得します。</span>
+    <span class="comment">// 一覧は概要（code / totalAmount / status / orderedAt）のみを返し、他ユーザーの購入は返しません。</span>
+    GetPurchases(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, userID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, cursor *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Cursor">Cursor</a>) (*<a href="#PurchaseListView">PurchaseListView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// CancelPurchase は、本人の購入をキャンセルし、明細分の在庫を復元します。キャンセル・在庫復元・</span>
+    <span class="comment">// イベント発行は単一 tx で原子的に成立します。他ユーザーの購入・不存在はいずれも存在秘匿のため</span>
+    <span class="comment">// NotFound（404）、不正遷移は 409 を返します。</span>
+    CancelPurchase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#CancelPurchaseParams">CancelPurchaseParams</a>) (<a href="#CancelPurchaseView">CancelPurchaseView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// PayPurchase は、本人の購入を支払い済みへ遷移させます。決済 SDK / PSP 連携は行わない擬似決済です。</span>
+    <span class="comment">// 状態遷移とイベント発行は単一 tx で原子的に成立します。他ユーザーの購入・不存在はいずれも存在秘匿のため</span>
+    <span class="comment">// NotFound（404）、二重支払い・不正遷移は 409 を返します。</span>
+    PayPurchase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#PayPurchaseParams">PayPurchaseParams</a>) (<a href="#PayPurchaseView">PayPurchaseView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// ShipPurchase は、購入を発送済みへ遷移させます。実行できるのは管理者のみで、購入の所有者であるかは問いません。</span>
+    <span class="comment">// 状態遷移とイベント発行は単一 tx で原子的に成立します。管理者でない場合は 403、不存在は 404、</span>
+    <span class="comment">// 二重発送・不正遷移は 409 を返します。</span>
+    ShipPurchase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, purchaseID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#ShipPurchaseView">ShipPurchaseView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// DeliverPurchase は、購入を配達済みへ遷移させます。実行できるのは管理者のみで、購入の所有者であるかは問いません。</span>
+    <span class="comment">// 状態遷移とイベント発行は単一 tx で原子的に成立します。管理者でない場合は 403、不存在は 404、</span>
+    <span class="comment">// 二重配達・不正遷移は 409 を返します。</span>
+    DeliverPurchase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, purchaseID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#DeliverPurchaseView">DeliverPurchaseView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// GetPurchaseDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。</span>
+    <span class="comment">// 他ユーザーの購入・不存在はいずれも存在秘匿のため NotFound（404）を返します。</span>
+    GetPurchaseDetail(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, purchaseID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#PurchaseGetDetailView">PurchaseGetDetailView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// ListShippablePurchases は、発送可能な購入を、まとめて発送してよい組に分けて取得します。</span>
+    <span class="comment">// 実行できるのは管理者のみで、管理者でない場合は 403 を返します。</span>
+    ListShippablePurchases(
+        ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="#ListShippablePurchasesParams">ListShippablePurchasesParams</a>,
+    ) (<a href="#PurchaseShippableListView">PurchaseShippableListView</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/purchase/purchase_usecase.go.html?s=9498:9807#L202">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(
+    txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
+    cmd <a href="../../../../go-boilerplate/internal/usecase/purchase/command/">command</a>.<a href="../../../../go-boilerplate/internal/usecase/purchase/command/#CommandService">CommandService</a>,
+    repo <a href="../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../go-boilerplate/internal/domain/purchase/#Repository">Repository</a>,
+    productRepo <a href="../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../go-boilerplate/internal/domain/product/#Repository">Repository</a>,
+    userLock <a href="../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../go-boilerplate/internal/domain/user/#LockRepository">LockRepository</a>,
+    detailQS <a href="../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseDetailQueryService">PurchaseDetailQueryService</a>,
+    emit <a href="../../../../go-boilerplate/internal/usecase/outbox/">outbox</a>.<a href="../../../../go-boilerplate/internal/usecase/outbox/#EmitUsecase">EmitUsecase</a>,
+    clock <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
+    authorizer <a href="../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a>,
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+) <a href="#Usecase">Usecase</a></pre>
+				<p>New は、購入ユースケースを生成します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

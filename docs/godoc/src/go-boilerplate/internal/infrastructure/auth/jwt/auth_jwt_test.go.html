@@ -544,304 +544,310 @@
 <span id="L487" class="ln">   487  </span>
 <span id="L488" class="ln">   488  </span>		<span class="comment">// alg allowlist(WithValidMethods)は第 1 層。ここでは allowlist をすり抜けて keyFunc に</span>
 <span id="L489" class="ln">   489  </span>		<span class="comment">// 到達した場合の第 2 層(鍵種別不一致)の防御だけを直接検証する（鍵混同攻撃対策の regression）。</span>
-<span id="L490" class="ln">   490  </span>		t.Run(&#34;HS256(対称鍵)は allowlist をすり抜けても鍵種別不一致で拒否する&#34;, func(t *testing.T) {
-<span id="L491" class="ln">   491  </span>			t.Parallel()
-<span id="L492" class="ln">   492  </span>			got, err := a.keyFunc(context.Background())(&amp;jwtlib.Token{Method: jwtlib.SigningMethodHS256})
-<span id="L493" class="ln">   493  </span>			assert.Nil(t, got)
-<span id="L494" class="ln">   494  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-<span id="L495" class="ln">   495  </span>			assert.ErrorContains(t, err, &#34;unexpected signing method type&#34;)
-<span id="L496" class="ln">   496  </span>		})
-<span id="L497" class="ln">   497  </span>
-<span id="L498" class="ln">   498  </span>		t.Run(&#34;ES256(ECDSA)は鍵種別不一致で拒否する&#34;, func(t *testing.T) {
-<span id="L499" class="ln">   499  </span>			t.Parallel()
-<span id="L500" class="ln">   500  </span>			got, err := a.keyFunc(context.Background())(&amp;jwtlib.Token{Method: jwtlib.SigningMethodES256})
-<span id="L501" class="ln">   501  </span>			assert.Nil(t, got)
-<span id="L502" class="ln">   502  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-<span id="L503" class="ln">   503  </span>		})
-<span id="L504" class="ln">   504  </span>
-<span id="L505" class="ln">   505  </span>		t.Run(&#34;alg=none は鍵種別不一致で拒否する&#34;, func(t *testing.T) {
-<span id="L506" class="ln">   506  </span>			t.Parallel()
-<span id="L507" class="ln">   507  </span>			got, err := a.keyFunc(context.Background())(&amp;jwtlib.Token{Method: jwtlib.SigningMethodNone})
-<span id="L508" class="ln">   508  </span>			assert.Nil(t, got)
-<span id="L509" class="ln">   509  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-<span id="L510" class="ln">   510  </span>		})
-<span id="L511" class="ln">   511  </span>	})
-<span id="L512" class="ln">   512  </span>}
-<span id="L513" class="ln">   513  </span>
-<span id="L514" class="ln">   514  </span>func TestNewWithKeyResolver(t *testing.T) {
-<span id="L515" class="ln">   515  </span>	t.Parallel()
-<span id="L516" class="ln">   516  </span>
-<span id="L517" class="ln">   517  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L518" class="ln">   518  </span>		t.Parallel()
+<span id="L490" class="ln">   490  </span>		<span class="comment">// keyFunc は原因のみを持つ素の error を返し、ErrJWTAuthenticatorInvalidToken への正規化は</span>
+<span id="L491" class="ln">   491  </span>		<span class="comment">// Authenticate の境界一箇所に集約する。ここでは内側でセンチネルを付けない契約を固定する</span>
+<span id="L492" class="ln">   492  </span>		<span class="comment">// （境界での正規化は Test_authenticator_Authenticate の HS256 ケースで担保）。</span>
+<span id="L493" class="ln">   493  </span>		t.Run(&#34;HS256(対称鍵)は allowlist をすり抜けても鍵種別不一致で拒否する&#34;, func(t *testing.T) {
+<span id="L494" class="ln">   494  </span>			t.Parallel()
+<span id="L495" class="ln">   495  </span>			got, err := a.keyFunc(context.Background())(&amp;jwtlib.Token{Method: jwtlib.SigningMethodHS256})
+<span id="L496" class="ln">   496  </span>			assert.Nil(t, got)
+<span id="L497" class="ln">   497  </span>			require.Error(t, err)
+<span id="L498" class="ln">   498  </span>			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+<span id="L499" class="ln">   499  </span>			assert.ErrorIs(t, err, errUnexpectedSigningMethod)
+<span id="L500" class="ln">   500  </span>		})
+<span id="L501" class="ln">   501  </span>
+<span id="L502" class="ln">   502  </span>		t.Run(&#34;ES256(ECDSA)は鍵種別不一致で拒否する&#34;, func(t *testing.T) {
+<span id="L503" class="ln">   503  </span>			t.Parallel()
+<span id="L504" class="ln">   504  </span>			got, err := a.keyFunc(context.Background())(&amp;jwtlib.Token{Method: jwtlib.SigningMethodES256})
+<span id="L505" class="ln">   505  </span>			assert.Nil(t, got)
+<span id="L506" class="ln">   506  </span>			require.Error(t, err)
+<span id="L507" class="ln">   507  </span>			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+<span id="L508" class="ln">   508  </span>		})
+<span id="L509" class="ln">   509  </span>
+<span id="L510" class="ln">   510  </span>		t.Run(&#34;alg=none は鍵種別不一致で拒否する&#34;, func(t *testing.T) {
+<span id="L511" class="ln">   511  </span>			t.Parallel()
+<span id="L512" class="ln">   512  </span>			got, err := a.keyFunc(context.Background())(&amp;jwtlib.Token{Method: jwtlib.SigningMethodNone})
+<span id="L513" class="ln">   513  </span>			assert.Nil(t, got)
+<span id="L514" class="ln">   514  </span>			require.Error(t, err)
+<span id="L515" class="ln">   515  </span>			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+<span id="L516" class="ln">   516  </span>		})
+<span id="L517" class="ln">   517  </span>	})
+<span id="L518" class="ln">   518  </span>}
 <span id="L519" class="ln">   519  </span>
-<span id="L520" class="ln">   520  </span>		t.Run(&#34;注入した KeyResolver で正当なトークンを検証できる&#34;, func(t *testing.T) {
-<span id="L521" class="ln">   521  </span>			t.Parallel()
-<span id="L522" class="ln">   522  </span>			key := newRSAKey(t)
-<span id="L523" class="ln">   523  </span>			a, err := NewWithKeyResolver(Params{
-<span id="L524" class="ln">   524  </span>				Issuer:   testIssuer,
-<span id="L525" class="ln">   525  </span>				Audience: testAudience,
-<span id="L526" class="ln">   526  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
-<span id="L527" class="ln">   527  </span>			}, fixedKeyResolver{key: &amp;key.PublicKey})
-<span id="L528" class="ln">   528  </span>			require.NoError(t, err)
-<span id="L529" class="ln">   529  </span>
-<span id="L530" class="ln">   530  </span>			token := signToken(t, key, jwtlib.SigningMethodRS256, &#34;&#34;, validClaims())
-<span id="L531" class="ln">   531  </span>			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
-<span id="L532" class="ln">   532  </span>			require.NoError(t, err)
-<span id="L533" class="ln">   533  </span>			assert.Equal(t, testSubject, authn.Subject())
-<span id="L534" class="ln">   534  </span>		})
-<span id="L535" class="ln">   535  </span>	})
-<span id="L536" class="ln">   536  </span>
-<span id="L537" class="ln">   537  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L538" class="ln">   538  </span>		t.Parallel()
-<span id="L539" class="ln">   539  </span>
-<span id="L540" class="ln">   540  </span>		t.Run(&#34;KeyResolver が nil の場合は設定エラーになる&#34;, func(t *testing.T) {
-<span id="L541" class="ln">   541  </span>			t.Parallel()
-<span id="L542" class="ln">   542  </span>			a, err := NewWithKeyResolver(Params{
-<span id="L543" class="ln">   543  </span>				Issuer:   testIssuer,
-<span id="L544" class="ln">   544  </span>				Audience: testAudience,
-<span id="L545" class="ln">   545  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
-<span id="L546" class="ln">   546  </span>			}, nil)
-<span id="L547" class="ln">   547  </span>			assert.Nil(t, a)
-<span id="L548" class="ln">   548  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
-<span id="L549" class="ln">   549  </span>		})
-<span id="L550" class="ln">   550  </span>	})
-<span id="L551" class="ln">   551  </span>}
-<span id="L552" class="ln">   552  </span>
-<span id="L553" class="ln">   553  </span><span class="comment">// newKeyResolver は固定のダミー鍵を返す KeyResolver です（buildAuthenticator 検証用）。</span>
-<span id="L554" class="ln">   554  </span>func newKeyResolver() KeyResolver {
-<span id="L555" class="ln">   555  </span>	return fixedKeyResolver{key: &#34;dummy-key&#34;}
-<span id="L556" class="ln">   556  </span>}
-<span id="L557" class="ln">   557  </span>
-<span id="L558" class="ln">   558  </span>func Test_buildJWKSURLProvider(t *testing.T) {
-<span id="L559" class="ln">   559  </span>	t.Parallel()
-<span id="L560" class="ln">   560  </span>
-<span id="L561" class="ln">   561  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L562" class="ln">   562  </span>		t.Parallel()
+<span id="L520" class="ln">   520  </span>func TestNewWithKeyResolver(t *testing.T) {
+<span id="L521" class="ln">   521  </span>	t.Parallel()
+<span id="L522" class="ln">   522  </span>
+<span id="L523" class="ln">   523  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L524" class="ln">   524  </span>		t.Parallel()
+<span id="L525" class="ln">   525  </span>
+<span id="L526" class="ln">   526  </span>		t.Run(&#34;注入した KeyResolver で正当なトークンを検証できる&#34;, func(t *testing.T) {
+<span id="L527" class="ln">   527  </span>			t.Parallel()
+<span id="L528" class="ln">   528  </span>			key := newRSAKey(t)
+<span id="L529" class="ln">   529  </span>			a, err := NewWithKeyResolver(Params{
+<span id="L530" class="ln">   530  </span>				Issuer:   testIssuer,
+<span id="L531" class="ln">   531  </span>				Audience: testAudience,
+<span id="L532" class="ln">   532  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
+<span id="L533" class="ln">   533  </span>			}, fixedKeyResolver{key: &amp;key.PublicKey})
+<span id="L534" class="ln">   534  </span>			require.NoError(t, err)
+<span id="L535" class="ln">   535  </span>
+<span id="L536" class="ln">   536  </span>			token := signToken(t, key, jwtlib.SigningMethodRS256, &#34;&#34;, validClaims())
+<span id="L537" class="ln">   537  </span>			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
+<span id="L538" class="ln">   538  </span>			require.NoError(t, err)
+<span id="L539" class="ln">   539  </span>			assert.Equal(t, testSubject, authn.Subject())
+<span id="L540" class="ln">   540  </span>		})
+<span id="L541" class="ln">   541  </span>	})
+<span id="L542" class="ln">   542  </span>
+<span id="L543" class="ln">   543  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L544" class="ln">   544  </span>		t.Parallel()
+<span id="L545" class="ln">   545  </span>
+<span id="L546" class="ln">   546  </span>		t.Run(&#34;KeyResolver が nil の場合は設定エラーになる&#34;, func(t *testing.T) {
+<span id="L547" class="ln">   547  </span>			t.Parallel()
+<span id="L548" class="ln">   548  </span>			a, err := NewWithKeyResolver(Params{
+<span id="L549" class="ln">   549  </span>				Issuer:   testIssuer,
+<span id="L550" class="ln">   550  </span>				Audience: testAudience,
+<span id="L551" class="ln">   551  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
+<span id="L552" class="ln">   552  </span>			}, nil)
+<span id="L553" class="ln">   553  </span>			assert.Nil(t, a)
+<span id="L554" class="ln">   554  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+<span id="L555" class="ln">   555  </span>		})
+<span id="L556" class="ln">   556  </span>	})
+<span id="L557" class="ln">   557  </span>}
+<span id="L558" class="ln">   558  </span>
+<span id="L559" class="ln">   559  </span><span class="comment">// newKeyResolver は固定のダミー鍵を返す KeyResolver です（buildAuthenticator 検証用）。</span>
+<span id="L560" class="ln">   560  </span>func newKeyResolver() KeyResolver {
+<span id="L561" class="ln">   561  </span>	return fixedKeyResolver{key: &#34;dummy-key&#34;}
+<span id="L562" class="ln">   562  </span>}
 <span id="L563" class="ln">   563  </span>
-<span id="L564" class="ln">   564  </span>		t.Run(&#34;JWKSURL を明示した場合は静的にその URL を返す&#34;, func(t *testing.T) {
-<span id="L565" class="ln">   565  </span>			t.Parallel()
-<span id="L566" class="ln">   566  </span>			fn, err := buildJWKSURLProvider(JWKSParams{JWKSURL: &#34;https://idp.example.test/keys.json&#34;}, stubJWKSClient(t, nil))
-<span id="L567" class="ln">   567  </span>			require.NoError(t, err)
-<span id="L568" class="ln">   568  </span>
-<span id="L569" class="ln">   569  </span>			got, err := fn(context.Background())
-<span id="L570" class="ln">   570  </span>			require.NoError(t, err)
-<span id="L571" class="ln">   571  </span>			assert.Equal(t, &#34;https://idp.example.test/keys.json&#34;, got)
-<span id="L572" class="ln">   572  </span>		})
-<span id="L573" class="ln">   573  </span>
-<span id="L574" class="ln">   574  </span>		t.Run(&#34;JWKSURL 未指定なら issuer からの discovery で jwks_uri を返す&#34;, func(t *testing.T) {
-<span id="L575" class="ln">   575  </span>			t.Parallel()
-<span id="L576" class="ln">   576  </span>			client := jwksClientReturning(t, discoveryDoc(t, testIssuer, testIssuer+&#34;/keys.json&#34;))
-<span id="L577" class="ln">   577  </span>			fn, err := buildJWKSURLProvider(JWKSParams{
-<span id="L578" class="ln">   578  </span>				Params: Params{Issuer: testIssuer, Clock: testkit.NewMockClock(t, fixedNow)},
-<span id="L579" class="ln">   579  </span>			}, client)
-<span id="L580" class="ln">   580  </span>			require.NoError(t, err)
-<span id="L581" class="ln">   581  </span>
-<span id="L582" class="ln">   582  </span>			got, err := fn(context.Background())
-<span id="L583" class="ln">   583  </span>			require.NoError(t, err)
-<span id="L584" class="ln">   584  </span>			assert.Equal(t, testIssuer+&#34;/keys.json&#34;, got)
-<span id="L585" class="ln">   585  </span>		})
-<span id="L586" class="ln">   586  </span>	})
+<span id="L564" class="ln">   564  </span>func Test_buildJWKSURLProvider(t *testing.T) {
+<span id="L565" class="ln">   565  </span>	t.Parallel()
+<span id="L566" class="ln">   566  </span>
+<span id="L567" class="ln">   567  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L568" class="ln">   568  </span>		t.Parallel()
+<span id="L569" class="ln">   569  </span>
+<span id="L570" class="ln">   570  </span>		t.Run(&#34;JWKSURL を明示した場合は静的にその URL を返す&#34;, func(t *testing.T) {
+<span id="L571" class="ln">   571  </span>			t.Parallel()
+<span id="L572" class="ln">   572  </span>			fn, err := buildJWKSURLProvider(JWKSParams{JWKSURL: &#34;https://idp.example.test/keys.json&#34;}, stubJWKSClient(t, nil))
+<span id="L573" class="ln">   573  </span>			require.NoError(t, err)
+<span id="L574" class="ln">   574  </span>
+<span id="L575" class="ln">   575  </span>			got, err := fn(context.Background())
+<span id="L576" class="ln">   576  </span>			require.NoError(t, err)
+<span id="L577" class="ln">   577  </span>			assert.Equal(t, &#34;https://idp.example.test/keys.json&#34;, got)
+<span id="L578" class="ln">   578  </span>		})
+<span id="L579" class="ln">   579  </span>
+<span id="L580" class="ln">   580  </span>		t.Run(&#34;JWKSURL 未指定なら issuer からの discovery で jwks_uri を返す&#34;, func(t *testing.T) {
+<span id="L581" class="ln">   581  </span>			t.Parallel()
+<span id="L582" class="ln">   582  </span>			client := jwksClientReturning(t, discoveryDoc(t, testIssuer, testIssuer+&#34;/keys.json&#34;))
+<span id="L583" class="ln">   583  </span>			fn, err := buildJWKSURLProvider(JWKSParams{
+<span id="L584" class="ln">   584  </span>				Params: Params{Issuer: testIssuer, Clock: testkit.NewMockClock(t, fixedNow)},
+<span id="L585" class="ln">   585  </span>			}, client)
+<span id="L586" class="ln">   586  </span>			require.NoError(t, err)
 <span id="L587" class="ln">   587  </span>
-<span id="L588" class="ln">   588  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L589" class="ln">   589  </span>		t.Parallel()
-<span id="L590" class="ln">   590  </span>
-<span id="L591" class="ln">   591  </span>		t.Run(&#34;JWKSURL と issuer の両方が空なら設定エラーになる&#34;, func(t *testing.T) {
-<span id="L592" class="ln">   592  </span>			t.Parallel()
-<span id="L593" class="ln">   593  </span>			fn, err := buildJWKSURLProvider(JWKSParams{}, stubJWKSClient(t, nil))
-<span id="L594" class="ln">   594  </span>			assert.Nil(t, fn)
-<span id="L595" class="ln">   595  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
-<span id="L596" class="ln">   596  </span>		})
-<span id="L597" class="ln">   597  </span>
-<span id="L598" class="ln">   598  </span>		t.Run(&#34;override URL が http かつ AllowInsecureURL=false なら設定エラーになる&#34;, func(t *testing.T) {
-<span id="L599" class="ln">   599  </span>			t.Parallel()
-<span id="L600" class="ln">   600  </span>			fn, err := buildJWKSURLProvider(JWKSParams{JWKSURL: &#34;http://idp.example.test/keys.json&#34;}, stubJWKSClient(t, nil))
-<span id="L601" class="ln">   601  </span>			assert.Nil(t, fn)
-<span id="L602" class="ln">   602  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
-<span id="L603" class="ln">   603  </span>		})
-<span id="L604" class="ln">   604  </span>
-<span id="L605" class="ln">   605  </span>		t.Run(&#34;discovery(issuer=http) かつ AllowInsecureURL=false なら設定エラーになる&#34;, func(t *testing.T) {
-<span id="L606" class="ln">   606  </span>			t.Parallel()
-<span id="L607" class="ln">   607  </span>			fn, err := buildJWKSURLProvider(JWKSParams{
-<span id="L608" class="ln">   608  </span>				Params: Params{Issuer: &#34;http://issuer.example.test&#34;, Clock: testkit.NewMockClock(t, fixedNow)},
-<span id="L609" class="ln">   609  </span>			}, stubJWKSClient(t, nil))
-<span id="L610" class="ln">   610  </span>			assert.Nil(t, fn)
-<span id="L611" class="ln">   611  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
-<span id="L612" class="ln">   612  </span>		})
-<span id="L613" class="ln">   613  </span>	})
-<span id="L614" class="ln">   614  </span>}
-<span id="L615" class="ln">   615  </span>
-<span id="L616" class="ln">   616  </span>func Test_fixedKeyResolver_ResolveKey(t *testing.T) {
-<span id="L617" class="ln">   617  </span>	t.Parallel()
-<span id="L618" class="ln">   618  </span>
-<span id="L619" class="ln">   619  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L620" class="ln">   620  </span>		t.Parallel()
+<span id="L588" class="ln">   588  </span>			got, err := fn(context.Background())
+<span id="L589" class="ln">   589  </span>			require.NoError(t, err)
+<span id="L590" class="ln">   590  </span>			assert.Equal(t, testIssuer+&#34;/keys.json&#34;, got)
+<span id="L591" class="ln">   591  </span>		})
+<span id="L592" class="ln">   592  </span>	})
+<span id="L593" class="ln">   593  </span>
+<span id="L594" class="ln">   594  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L595" class="ln">   595  </span>		t.Parallel()
+<span id="L596" class="ln">   596  </span>
+<span id="L597" class="ln">   597  </span>		t.Run(&#34;JWKSURL と issuer の両方が空なら設定エラーになる&#34;, func(t *testing.T) {
+<span id="L598" class="ln">   598  </span>			t.Parallel()
+<span id="L599" class="ln">   599  </span>			fn, err := buildJWKSURLProvider(JWKSParams{}, stubJWKSClient(t, nil))
+<span id="L600" class="ln">   600  </span>			assert.Nil(t, fn)
+<span id="L601" class="ln">   601  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+<span id="L602" class="ln">   602  </span>		})
+<span id="L603" class="ln">   603  </span>
+<span id="L604" class="ln">   604  </span>		t.Run(&#34;override URL が http かつ AllowInsecureURL=false なら設定エラーになる&#34;, func(t *testing.T) {
+<span id="L605" class="ln">   605  </span>			t.Parallel()
+<span id="L606" class="ln">   606  </span>			fn, err := buildJWKSURLProvider(JWKSParams{JWKSURL: &#34;http://idp.example.test/keys.json&#34;}, stubJWKSClient(t, nil))
+<span id="L607" class="ln">   607  </span>			assert.Nil(t, fn)
+<span id="L608" class="ln">   608  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+<span id="L609" class="ln">   609  </span>		})
+<span id="L610" class="ln">   610  </span>
+<span id="L611" class="ln">   611  </span>		t.Run(&#34;discovery(issuer=http) かつ AllowInsecureURL=false なら設定エラーになる&#34;, func(t *testing.T) {
+<span id="L612" class="ln">   612  </span>			t.Parallel()
+<span id="L613" class="ln">   613  </span>			fn, err := buildJWKSURLProvider(JWKSParams{
+<span id="L614" class="ln">   614  </span>				Params: Params{Issuer: &#34;http://issuer.example.test&#34;, Clock: testkit.NewMockClock(t, fixedNow)},
+<span id="L615" class="ln">   615  </span>			}, stubJWKSClient(t, nil))
+<span id="L616" class="ln">   616  </span>			assert.Nil(t, fn)
+<span id="L617" class="ln">   617  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+<span id="L618" class="ln">   618  </span>		})
+<span id="L619" class="ln">   619  </span>	})
+<span id="L620" class="ln">   620  </span>}
 <span id="L621" class="ln">   621  </span>
-<span id="L622" class="ln">   622  </span>		t.Run(&#34;kid によらず保持する固定公開鍵を返す&#34;, func(t *testing.T) {
-<span id="L623" class="ln">   623  </span>			t.Parallel()
-<span id="L624" class="ln">   624  </span>			key := newRSAKey(t)
-<span id="L625" class="ln">   625  </span>			r := fixedKeyResolver{key: &amp;key.PublicKey}
-<span id="L626" class="ln">   626  </span>
-<span id="L627" class="ln">   627  </span>			got, err := r.ResolveKey(context.Background(), &#34;any-kid&#34;)
-<span id="L628" class="ln">   628  </span>			require.NoError(t, err)
-<span id="L629" class="ln">   629  </span>			assert.Equal(t, &amp;key.PublicKey, got)
-<span id="L630" class="ln">   630  </span>		})
-<span id="L631" class="ln">   631  </span>	})
-<span id="L632" class="ln">   632  </span>}
-<span id="L633" class="ln">   633  </span>
-<span id="L634" class="ln">   634  </span>func Test_buildAuthenticator(t *testing.T) {
-<span id="L635" class="ln">   635  </span>	t.Parallel()
-<span id="L636" class="ln">   636  </span>
-<span id="L637" class="ln">   637  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L638" class="ln">   638  </span>		t.Parallel()
+<span id="L622" class="ln">   622  </span>func Test_fixedKeyResolver_ResolveKey(t *testing.T) {
+<span id="L623" class="ln">   623  </span>	t.Parallel()
+<span id="L624" class="ln">   624  </span>
+<span id="L625" class="ln">   625  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L626" class="ln">   626  </span>		t.Parallel()
+<span id="L627" class="ln">   627  </span>
+<span id="L628" class="ln">   628  </span>		t.Run(&#34;kid によらず保持する固定公開鍵を返す&#34;, func(t *testing.T) {
+<span id="L629" class="ln">   629  </span>			t.Parallel()
+<span id="L630" class="ln">   630  </span>			key := newRSAKey(t)
+<span id="L631" class="ln">   631  </span>			r := fixedKeyResolver{key: &amp;key.PublicKey}
+<span id="L632" class="ln">   632  </span>
+<span id="L633" class="ln">   633  </span>			got, err := r.ResolveKey(context.Background(), &#34;any-kid&#34;)
+<span id="L634" class="ln">   634  </span>			require.NoError(t, err)
+<span id="L635" class="ln">   635  </span>			assert.Equal(t, &amp;key.PublicKey, got)
+<span id="L636" class="ln">   636  </span>		})
+<span id="L637" class="ln">   637  </span>	})
+<span id="L638" class="ln">   638  </span>}
 <span id="L639" class="ln">   639  </span>
-<span id="L640" class="ln">   640  </span>		t.Run(&#34;妥当なパラメータで authenticator を構築し expectedType / issuer を保持する&#34;, func(t *testing.T) {
-<span id="L641" class="ln">   641  </span>			t.Parallel()
-<span id="L642" class="ln">   642  </span>			a, err := buildAuthenticator(Params{
-<span id="L643" class="ln">   643  </span>				Issuer:       testIssuer,
-<span id="L644" class="ln">   644  </span>				Audience:     testAudience,
-<span id="L645" class="ln">   645  </span>				ExpectedType: &#34; at+jwt &#34;,
-<span id="L646" class="ln">   646  </span>				Clock:        testkit.NewMockClock(t, fixedNow),
-<span id="L647" class="ln">   647  </span>			}, newKeyResolver())
-<span id="L648" class="ln">   648  </span>			require.NoError(t, err)
-<span id="L649" class="ln">   649  </span>
-<span id="L650" class="ln">   650  </span>			impl, ok := a.(*authenticator)
-<span id="L651" class="ln">   651  </span>			require.True(t, ok)
-<span id="L652" class="ln">   652  </span>			assert.Equal(t, &#34;at+jwt&#34;, impl.expectedType)
-<span id="L653" class="ln">   653  </span>			assert.Equal(t, testIssuer, impl.issuer)
-<span id="L654" class="ln">   654  </span>		})
+<span id="L640" class="ln">   640  </span>func Test_buildAuthenticator(t *testing.T) {
+<span id="L641" class="ln">   641  </span>	t.Parallel()
+<span id="L642" class="ln">   642  </span>
+<span id="L643" class="ln">   643  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L644" class="ln">   644  </span>		t.Parallel()
+<span id="L645" class="ln">   645  </span>
+<span id="L646" class="ln">   646  </span>		t.Run(&#34;妥当なパラメータで authenticator を構築し expectedType / issuer を保持する&#34;, func(t *testing.T) {
+<span id="L647" class="ln">   647  </span>			t.Parallel()
+<span id="L648" class="ln">   648  </span>			a, err := buildAuthenticator(Params{
+<span id="L649" class="ln">   649  </span>				Issuer:       testIssuer,
+<span id="L650" class="ln">   650  </span>				Audience:     testAudience,
+<span id="L651" class="ln">   651  </span>				ExpectedType: &#34; at+jwt &#34;,
+<span id="L652" class="ln">   652  </span>				Clock:        testkit.NewMockClock(t, fixedNow),
+<span id="L653" class="ln">   653  </span>			}, newKeyResolver())
+<span id="L654" class="ln">   654  </span>			require.NoError(t, err)
 <span id="L655" class="ln">   655  </span>
-<span id="L656" class="ln">   656  </span>		t.Run(&#34;AllowedAlgs / Leeway 未指定でも既定値で構築できる&#34;, func(t *testing.T) {
-<span id="L657" class="ln">   657  </span>			t.Parallel()
-<span id="L658" class="ln">   658  </span>			a, err := buildAuthenticator(Params{
-<span id="L659" class="ln">   659  </span>				Issuer:   testIssuer,
-<span id="L660" class="ln">   660  </span>				Audience: testAudience,
-<span id="L661" class="ln">   661  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
-<span id="L662" class="ln">   662  </span>			}, newKeyResolver())
-<span id="L663" class="ln">   663  </span>			require.NoError(t, err)
-<span id="L664" class="ln">   664  </span>			assert.NotNil(t, a)
-<span id="L665" class="ln">   665  </span>		})
-<span id="L666" class="ln">   666  </span>	})
-<span id="L667" class="ln">   667  </span>
-<span id="L668" class="ln">   668  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L669" class="ln">   669  </span>		t.Parallel()
-<span id="L670" class="ln">   670  </span>
-<span id="L671" class="ln">   671  </span>		t.Run(&#34;clock が nil の場合は設定エラーになる&#34;, func(t *testing.T) {
-<span id="L672" class="ln">   672  </span>			t.Parallel()
-<span id="L673" class="ln">   673  </span>			a, err := buildAuthenticator(Params{
-<span id="L674" class="ln">   674  </span>				Issuer:   testIssuer,
-<span id="L675" class="ln">   675  </span>				Audience: testAudience,
-<span id="L676" class="ln">   676  </span>				Clock:    nil,
-<span id="L677" class="ln">   677  </span>			}, newKeyResolver())
-<span id="L678" class="ln">   678  </span>			assert.Nil(t, a)
-<span id="L679" class="ln">   679  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
-<span id="L680" class="ln">   680  </span>		})
-<span id="L681" class="ln">   681  </span>
-<span id="L682" class="ln">   682  </span>		t.Run(&#34;issuer が空の場合は設定エラーになる&#34;, func(t *testing.T) {
-<span id="L683" class="ln">   683  </span>			t.Parallel()
-<span id="L684" class="ln">   684  </span>			a, err := buildAuthenticator(Params{
-<span id="L685" class="ln">   685  </span>				Issuer:   &#34;  &#34;,
-<span id="L686" class="ln">   686  </span>				Audience: testAudience,
-<span id="L687" class="ln">   687  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
-<span id="L688" class="ln">   688  </span>			}, newKeyResolver())
-<span id="L689" class="ln">   689  </span>			assert.Nil(t, a)
-<span id="L690" class="ln">   690  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
-<span id="L691" class="ln">   691  </span>		})
-<span id="L692" class="ln">   692  </span>
-<span id="L693" class="ln">   693  </span>		t.Run(&#34;audience が空の場合は設定エラーになる&#34;, func(t *testing.T) {
-<span id="L694" class="ln">   694  </span>			t.Parallel()
-<span id="L695" class="ln">   695  </span>			a, err := buildAuthenticator(Params{
-<span id="L696" class="ln">   696  </span>				Issuer:   testIssuer,
-<span id="L697" class="ln">   697  </span>				Audience: &#34;  &#34;,
-<span id="L698" class="ln">   698  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
-<span id="L699" class="ln">   699  </span>			}, newKeyResolver())
-<span id="L700" class="ln">   700  </span>			assert.Nil(t, a)
-<span id="L701" class="ln">   701  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
-<span id="L702" class="ln">   702  </span>		})
-<span id="L703" class="ln">   703  </span>	})
-<span id="L704" class="ln">   704  </span>}
-<span id="L705" class="ln">   705  </span>
-<span id="L706" class="ln">   706  </span>func Test_authenticator_verifyType(t *testing.T) {
-<span id="L707" class="ln">   707  </span>	t.Parallel()
-<span id="L708" class="ln">   708  </span>
-<span id="L709" class="ln">   709  </span>	newToken := func(typ any) *jwtlib.Token {
-<span id="L710" class="ln">   710  </span>		tok := &amp;jwtlib.Token{Header: map[string]any{}}
-<span id="L711" class="ln">   711  </span>		if typ != nil {
-<span id="L712" class="ln">   712  </span>			tok.Header[&#34;typ&#34;] = typ
-<span id="L713" class="ln">   713  </span>		}
-<span id="L714" class="ln">   714  </span>		return tok
-<span id="L715" class="ln">   715  </span>	}
-<span id="L716" class="ln">   716  </span>
-<span id="L717" class="ln">   717  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L718" class="ln">   718  </span>		t.Parallel()
-<span id="L719" class="ln">   719  </span>
-<span id="L720" class="ln">   720  </span>		t.Run(&#34;expectedType が空なら typ 検証をスキップして常に成功する&#34;, func(t *testing.T) {
-<span id="L721" class="ln">   721  </span>			t.Parallel()
-<span id="L722" class="ln">   722  </span>			a := &amp;authenticator{expectedType: &#34;&#34;}
-<span id="L723" class="ln">   723  </span>			require.NoError(t, a.verifyType(newToken(&#34;anything&#34;)))
-<span id="L724" class="ln">   724  </span>		})
+<span id="L656" class="ln">   656  </span>			impl, ok := a.(*authenticator)
+<span id="L657" class="ln">   657  </span>			require.True(t, ok)
+<span id="L658" class="ln">   658  </span>			assert.Equal(t, &#34;at+jwt&#34;, impl.expectedType)
+<span id="L659" class="ln">   659  </span>			assert.Equal(t, testIssuer, impl.issuer)
+<span id="L660" class="ln">   660  </span>		})
+<span id="L661" class="ln">   661  </span>
+<span id="L662" class="ln">   662  </span>		t.Run(&#34;AllowedAlgs / Leeway 未指定でも既定値で構築できる&#34;, func(t *testing.T) {
+<span id="L663" class="ln">   663  </span>			t.Parallel()
+<span id="L664" class="ln">   664  </span>			a, err := buildAuthenticator(Params{
+<span id="L665" class="ln">   665  </span>				Issuer:   testIssuer,
+<span id="L666" class="ln">   666  </span>				Audience: testAudience,
+<span id="L667" class="ln">   667  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
+<span id="L668" class="ln">   668  </span>			}, newKeyResolver())
+<span id="L669" class="ln">   669  </span>			require.NoError(t, err)
+<span id="L670" class="ln">   670  </span>			assert.NotNil(t, a)
+<span id="L671" class="ln">   671  </span>		})
+<span id="L672" class="ln">   672  </span>	})
+<span id="L673" class="ln">   673  </span>
+<span id="L674" class="ln">   674  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L675" class="ln">   675  </span>		t.Parallel()
+<span id="L676" class="ln">   676  </span>
+<span id="L677" class="ln">   677  </span>		t.Run(&#34;clock が nil の場合は設定エラーになる&#34;, func(t *testing.T) {
+<span id="L678" class="ln">   678  </span>			t.Parallel()
+<span id="L679" class="ln">   679  </span>			a, err := buildAuthenticator(Params{
+<span id="L680" class="ln">   680  </span>				Issuer:   testIssuer,
+<span id="L681" class="ln">   681  </span>				Audience: testAudience,
+<span id="L682" class="ln">   682  </span>				Clock:    nil,
+<span id="L683" class="ln">   683  </span>			}, newKeyResolver())
+<span id="L684" class="ln">   684  </span>			assert.Nil(t, a)
+<span id="L685" class="ln">   685  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+<span id="L686" class="ln">   686  </span>		})
+<span id="L687" class="ln">   687  </span>
+<span id="L688" class="ln">   688  </span>		t.Run(&#34;issuer が空の場合は設定エラーになる&#34;, func(t *testing.T) {
+<span id="L689" class="ln">   689  </span>			t.Parallel()
+<span id="L690" class="ln">   690  </span>			a, err := buildAuthenticator(Params{
+<span id="L691" class="ln">   691  </span>				Issuer:   &#34;  &#34;,
+<span id="L692" class="ln">   692  </span>				Audience: testAudience,
+<span id="L693" class="ln">   693  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
+<span id="L694" class="ln">   694  </span>			}, newKeyResolver())
+<span id="L695" class="ln">   695  </span>			assert.Nil(t, a)
+<span id="L696" class="ln">   696  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+<span id="L697" class="ln">   697  </span>		})
+<span id="L698" class="ln">   698  </span>
+<span id="L699" class="ln">   699  </span>		t.Run(&#34;audience が空の場合は設定エラーになる&#34;, func(t *testing.T) {
+<span id="L700" class="ln">   700  </span>			t.Parallel()
+<span id="L701" class="ln">   701  </span>			a, err := buildAuthenticator(Params{
+<span id="L702" class="ln">   702  </span>				Issuer:   testIssuer,
+<span id="L703" class="ln">   703  </span>				Audience: &#34;  &#34;,
+<span id="L704" class="ln">   704  </span>				Clock:    testkit.NewMockClock(t, fixedNow),
+<span id="L705" class="ln">   705  </span>			}, newKeyResolver())
+<span id="L706" class="ln">   706  </span>			assert.Nil(t, a)
+<span id="L707" class="ln">   707  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
+<span id="L708" class="ln">   708  </span>		})
+<span id="L709" class="ln">   709  </span>	})
+<span id="L710" class="ln">   710  </span>}
+<span id="L711" class="ln">   711  </span>
+<span id="L712" class="ln">   712  </span>func Test_authenticator_verifyType(t *testing.T) {
+<span id="L713" class="ln">   713  </span>	t.Parallel()
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span>	newToken := func(typ any) *jwtlib.Token {
+<span id="L716" class="ln">   716  </span>		tok := &amp;jwtlib.Token{Header: map[string]any{}}
+<span id="L717" class="ln">   717  </span>		if typ != nil {
+<span id="L718" class="ln">   718  </span>			tok.Header[&#34;typ&#34;] = typ
+<span id="L719" class="ln">   719  </span>		}
+<span id="L720" class="ln">   720  </span>		return tok
+<span id="L721" class="ln">   721  </span>	}
+<span id="L722" class="ln">   722  </span>
+<span id="L723" class="ln">   723  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L724" class="ln">   724  </span>		t.Parallel()
 <span id="L725" class="ln">   725  </span>
-<span id="L726" class="ln">   726  </span>		t.Run(&#34;typ が expectedType と大文字小文字を無視して一致すれば成功する&#34;, func(t *testing.T) {
+<span id="L726" class="ln">   726  </span>		t.Run(&#34;expectedType が空なら typ 検証をスキップして常に成功する&#34;, func(t *testing.T) {
 <span id="L727" class="ln">   727  </span>			t.Parallel()
-<span id="L728" class="ln">   728  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
-<span id="L729" class="ln">   729  </span>			require.NoError(t, a.verifyType(newToken(&#34;AT+JWT&#34;)))
+<span id="L728" class="ln">   728  </span>			a := &amp;authenticator{expectedType: &#34;&#34;}
+<span id="L729" class="ln">   729  </span>			require.NoError(t, a.verifyType(newToken(&#34;anything&#34;)))
 <span id="L730" class="ln">   730  </span>		})
-<span id="L731" class="ln">   731  </span>	})
-<span id="L732" class="ln">   732  </span>
-<span id="L733" class="ln">   733  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L734" class="ln">   734  </span>		t.Parallel()
-<span id="L735" class="ln">   735  </span>
-<span id="L736" class="ln">   736  </span>		t.Run(&#34;typ が expectedType と一致しない場合は無効トークンになる&#34;, func(t *testing.T) {
-<span id="L737" class="ln">   737  </span>			t.Parallel()
-<span id="L738" class="ln">   738  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
-<span id="L739" class="ln">   739  </span>			err := a.verifyType(newToken(&#34;JWT&#34;))
-<span id="L740" class="ln">   740  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-<span id="L741" class="ln">   741  </span>		})
-<span id="L742" class="ln">   742  </span>
-<span id="L743" class="ln">   743  </span>		t.Run(&#34;typ ヘッダが無い場合は無効トークンになる&#34;, func(t *testing.T) {
-<span id="L744" class="ln">   744  </span>			t.Parallel()
-<span id="L745" class="ln">   745  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
-<span id="L746" class="ln">   746  </span>			err := a.verifyType(newToken(nil))
-<span id="L747" class="ln">   747  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-<span id="L748" class="ln">   748  </span>		})
-<span id="L749" class="ln">   749  </span>
-<span id="L750" class="ln">   750  </span>		t.Run(&#34;typ ヘッダが文字列型でない場合は無効トークンになる&#34;, func(t *testing.T) {
-<span id="L751" class="ln">   751  </span>			t.Parallel()
-<span id="L752" class="ln">   752  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
-<span id="L753" class="ln">   753  </span>			err := a.verifyType(newToken(123))
-<span id="L754" class="ln">   754  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
-<span id="L755" class="ln">   755  </span>		})
-<span id="L756" class="ln">   756  </span>	})
-<span id="L757" class="ln">   757  </span>}
-<span id="L758" class="ln">   758  </span>
-<span id="L759" class="ln">   759  </span>func Test_extractScopes(t *testing.T) {
-<span id="L760" class="ln">   760  </span>	t.Parallel()
-<span id="L761" class="ln">   761  </span>
-<span id="L762" class="ln">   762  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L763" class="ln">   763  </span>		t.Parallel()
+<span id="L731" class="ln">   731  </span>
+<span id="L732" class="ln">   732  </span>		t.Run(&#34;typ が expectedType と大文字小文字を無視して一致すれば成功する&#34;, func(t *testing.T) {
+<span id="L733" class="ln">   733  </span>			t.Parallel()
+<span id="L734" class="ln">   734  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
+<span id="L735" class="ln">   735  </span>			require.NoError(t, a.verifyType(newToken(&#34;AT+JWT&#34;)))
+<span id="L736" class="ln">   736  </span>		})
+<span id="L737" class="ln">   737  </span>	})
+<span id="L738" class="ln">   738  </span>
+<span id="L739" class="ln">   739  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L740" class="ln">   740  </span>		t.Parallel()
+<span id="L741" class="ln">   741  </span>
+<span id="L742" class="ln">   742  </span>		t.Run(&#34;typ が expectedType と一致しない場合は無効トークンになる&#34;, func(t *testing.T) {
+<span id="L743" class="ln">   743  </span>			t.Parallel()
+<span id="L744" class="ln">   744  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
+<span id="L745" class="ln">   745  </span>			err := a.verifyType(newToken(&#34;JWT&#34;))
+<span id="L746" class="ln">   746  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+<span id="L747" class="ln">   747  </span>		})
+<span id="L748" class="ln">   748  </span>
+<span id="L749" class="ln">   749  </span>		t.Run(&#34;typ ヘッダが無い場合は無効トークンになる&#34;, func(t *testing.T) {
+<span id="L750" class="ln">   750  </span>			t.Parallel()
+<span id="L751" class="ln">   751  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
+<span id="L752" class="ln">   752  </span>			err := a.verifyType(newToken(nil))
+<span id="L753" class="ln">   753  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+<span id="L754" class="ln">   754  </span>		})
+<span id="L755" class="ln">   755  </span>
+<span id="L756" class="ln">   756  </span>		t.Run(&#34;typ ヘッダが文字列型でない場合は無効トークンになる&#34;, func(t *testing.T) {
+<span id="L757" class="ln">   757  </span>			t.Parallel()
+<span id="L758" class="ln">   758  </span>			a := &amp;authenticator{expectedType: &#34;at+jwt&#34;}
+<span id="L759" class="ln">   759  </span>			err := a.verifyType(newToken(123))
+<span id="L760" class="ln">   760  </span>			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
+<span id="L761" class="ln">   761  </span>		})
+<span id="L762" class="ln">   762  </span>	})
+<span id="L763" class="ln">   763  </span>}
 <span id="L764" class="ln">   764  </span>
-<span id="L765" class="ln">   765  </span>		t.Run(&#34;スペース区切りの scope 文字列を []string へ分割する&#34;, func(t *testing.T) {
-<span id="L766" class="ln">   766  </span>			t.Parallel()
-<span id="L767" class="ln">   767  </span>			got := extractScopes(jwtlib.MapClaims{&#34;scope&#34;: &#34;read  write&#34;})
-<span id="L768" class="ln">   768  </span>			assert.Equal(t, []string{&#34;read&#34;, &#34;write&#34;}, got)
-<span id="L769" class="ln">   769  </span>		})
+<span id="L765" class="ln">   765  </span>func Test_extractScopes(t *testing.T) {
+<span id="L766" class="ln">   766  </span>	t.Parallel()
+<span id="L767" class="ln">   767  </span>
+<span id="L768" class="ln">   768  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L769" class="ln">   769  </span>		t.Parallel()
 <span id="L770" class="ln">   770  </span>
-<span id="L771" class="ln">   771  </span>		t.Run(&#34;scope クレームが無い場合は nil を返す&#34;, func(t *testing.T) {
+<span id="L771" class="ln">   771  </span>		t.Run(&#34;スペース区切りの scope 文字列を []string へ分割する&#34;, func(t *testing.T) {
 <span id="L772" class="ln">   772  </span>			t.Parallel()
-<span id="L773" class="ln">   773  </span>			assert.Nil(t, extractScopes(jwtlib.MapClaims{}))
-<span id="L774" class="ln">   774  </span>		})
-<span id="L775" class="ln">   775  </span>
-<span id="L776" class="ln">   776  </span>		t.Run(&#34;scope クレームが文字列型でない場合は nil を返す&#34;, func(t *testing.T) {
-<span id="L777" class="ln">   777  </span>			t.Parallel()
-<span id="L778" class="ln">   778  </span>			assert.Nil(t, extractScopes(jwtlib.MapClaims{&#34;scope&#34;: []string{&#34;read&#34;}}))
-<span id="L779" class="ln">   779  </span>		})
-<span id="L780" class="ln">   780  </span>
-<span id="L781" class="ln">   781  </span>		t.Run(&#34;scope が空文字列の場合は空になる&#34;, func(t *testing.T) {
-<span id="L782" class="ln">   782  </span>			t.Parallel()
-<span id="L783" class="ln">   783  </span>			assert.Empty(t, extractScopes(jwtlib.MapClaims{&#34;scope&#34;: &#34;   &#34;}))
-<span id="L784" class="ln">   784  </span>		})
-<span id="L785" class="ln">   785  </span>	})
-<span id="L786" class="ln">   786  </span>}
-<span id="L787" class="ln">   787  </span>
+<span id="L773" class="ln">   773  </span>			got := extractScopes(jwtlib.MapClaims{&#34;scope&#34;: &#34;read  write&#34;})
+<span id="L774" class="ln">   774  </span>			assert.Equal(t, []string{&#34;read&#34;, &#34;write&#34;}, got)
+<span id="L775" class="ln">   775  </span>		})
+<span id="L776" class="ln">   776  </span>
+<span id="L777" class="ln">   777  </span>		t.Run(&#34;scope クレームが無い場合は nil を返す&#34;, func(t *testing.T) {
+<span id="L778" class="ln">   778  </span>			t.Parallel()
+<span id="L779" class="ln">   779  </span>			assert.Nil(t, extractScopes(jwtlib.MapClaims{}))
+<span id="L780" class="ln">   780  </span>		})
+<span id="L781" class="ln">   781  </span>
+<span id="L782" class="ln">   782  </span>		t.Run(&#34;scope クレームが文字列型でない場合は nil を返す&#34;, func(t *testing.T) {
+<span id="L783" class="ln">   783  </span>			t.Parallel()
+<span id="L784" class="ln">   784  </span>			assert.Nil(t, extractScopes(jwtlib.MapClaims{&#34;scope&#34;: []string{&#34;read&#34;}}))
+<span id="L785" class="ln">   785  </span>		})
+<span id="L786" class="ln">   786  </span>
+<span id="L787" class="ln">   787  </span>		t.Run(&#34;scope が空文字列の場合は空になる&#34;, func(t *testing.T) {
+<span id="L788" class="ln">   788  </span>			t.Parallel()
+<span id="L789" class="ln">   789  </span>			assert.Empty(t, extractScopes(jwtlib.MapClaims{&#34;scope&#34;: &#34;   &#34;}))
+<span id="L790" class="ln">   790  </span>		})
+<span id="L791" class="ln">   791  </span>	})
+<span id="L792" class="ln">   792  </span>}
+<span id="L793" class="ln">   793  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

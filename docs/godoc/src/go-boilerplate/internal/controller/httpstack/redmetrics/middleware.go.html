@@ -62,47 +62,54 @@
 <span id="L5" class="ln">     5  </span>	&#34;time&#34;
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/controller/httpstack/ops&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v4&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span><span class="comment">// Middleware は、HTTP リクエストの count / duration / status を計測する Echo ミドルウェアを返します。</span>
-<span id="L13" class="ln">    13  </span><span class="comment">// status は c.Response().After フックで確定後に取得し、error handler / recovery による</span>
-<span id="L14" class="ln">    14  </span><span class="comment">// 最終 status を安全に観測します。/metrics などの運用系パスは計測対象から除外します。</span>
-<span id="L15" class="ln">    15  </span><span class="comment">//</span>
-<span id="L16" class="ln">    16  </span><span class="comment">// After フックはレスポンスの Write ごとに発火するため、ストリーミング応答（チャンク / SSE 等）</span>
-<span id="L17" class="ln">    17  </span><span class="comment">// では複数回呼ばれうる。これによる重複計上を防ぐため、Observe は 1 リクエストにつき</span>
-<span id="L18" class="ln">    18  </span><span class="comment">// 厳密に 1 回だけ呼び出されることを保証する。</span>
-<span id="L19" class="ln">    19  </span><span class="comment">//</span>
-<span id="L20" class="ln">    20  </span><span class="comment">// 計測の既知の限界（After フック方式に起因する仕様）:</span>
-<span id="L21" class="ln">    21  </span><span class="comment">//   - ボディ無し応答（204 No Content / 304 Not Modified など）は Write が呼ばれず</span>
-<span id="L22" class="ln">    22  </span><span class="comment">//     After フックが発火しないため、計測されない。</span>
-<span id="L23" class="ln">    23  </span><span class="comment">//</span>
-<span id="L24" class="ln">    24  </span><span class="comment">// これは status を確定後に安全に観測するための After フック採用とのトレードオフであり、</span>
-<span id="L25" class="ln">    25  </span><span class="comment">// 現時点では仕様として許容する。</span>
-<span id="L26" class="ln">    26  </span>func Middleware(rec Recorder) echo.MiddlewareFunc {
-<span id="L27" class="ln">    27  </span>	return func(next echo.HandlerFunc) echo.HandlerFunc {
-<span id="L28" class="ln">    28  </span>		return func(c echo.Context) error {
-<span id="L29" class="ln">    29  </span>			if ops.IsOpsPath(c.Request().URL.Path) {
-<span id="L30" class="ln">    30  </span>				return next(c)
-<span id="L31" class="ln">    31  </span>			}
-<span id="L32" class="ln">    32  </span>
-<span id="L33" class="ln">    33  </span>			start := time.Now()
-<span id="L34" class="ln">    34  </span>			method := c.Request().Method
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>			var once sync.Once
-<span id="L37" class="ln">    37  </span>			c.Response().After(func() {
-<span id="L38" class="ln">    38  </span>				once.Do(func() {
-<span id="L39" class="ln">    39  </span>					status := normalizeStatus(c.Response().Status)
-<span id="L40" class="ln">    40  </span>					rec.Observe(method, routeOf(c), status, statusClass(status), time.Since(start))
-<span id="L41" class="ln">    41  </span>				})
-<span id="L42" class="ln">    42  </span>			})
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>			return next(c)
-<span id="L45" class="ln">    45  </span>		}
-<span id="L46" class="ln">    46  </span>	}
-<span id="L47" class="ln">    47  </span>}
-<span id="L48" class="ln">    48  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/controller/server&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;github.com/labstack/echo/v5&#34;
+<span id="L11" class="ln">    11  </span>)
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span><span class="comment">// Middleware は、HTTP リクエストの count / duration / status を計測する Echo ミドルウェアを返します。</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// status はレスポンスの After フックで確定後に取得し、error handler / recovery による</span>
+<span id="L15" class="ln">    15  </span><span class="comment">// 最終 status を安全に観測します。/metrics などの運用系パスは計測対象から除外します。</span>
+<span id="L16" class="ln">    16  </span><span class="comment">// レスポンスを取り出せない場合は計測せず素通しします。</span>
+<span id="L17" class="ln">    17  </span><span class="comment">//</span>
+<span id="L18" class="ln">    18  </span><span class="comment">// After フックはレスポンスの Write ごとに発火するため、ストリーミング応答（チャンク / SSE 等）</span>
+<span id="L19" class="ln">    19  </span><span class="comment">// では複数回呼ばれうる。これによる重複計上を防ぐため、Observe は 1 リクエストにつき</span>
+<span id="L20" class="ln">    20  </span><span class="comment">// 厳密に 1 回だけ呼び出されることを保証する。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">//</span>
+<span id="L22" class="ln">    22  </span><span class="comment">// 計測の既知の限界（After フック方式に起因する仕様）:</span>
+<span id="L23" class="ln">    23  </span><span class="comment">//   - ボディ無し応答（204 No Content / 304 Not Modified など）は Write が呼ばれず</span>
+<span id="L24" class="ln">    24  </span><span class="comment">//     After フックが発火しないため、計測されない。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">//</span>
+<span id="L26" class="ln">    26  </span><span class="comment">// これは status を確定後に安全に観測するための After フック採用とのトレードオフであり、</span>
+<span id="L27" class="ln">    27  </span><span class="comment">// 現時点では仕様として許容する。</span>
+<span id="L28" class="ln">    28  </span>func Middleware(rec Recorder) echo.MiddlewareFunc {
+<span id="L29" class="ln">    29  </span>	return func(next echo.HandlerFunc) echo.HandlerFunc {
+<span id="L30" class="ln">    30  </span>		return func(c *echo.Context) error {
+<span id="L31" class="ln">    31  </span>			if ops.IsOpsPath(c.Request().URL.Path) {
+<span id="L32" class="ln">    32  </span>				return next(c)
+<span id="L33" class="ln">    33  </span>			}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>			res := server.ResponseOf(c)
+<span id="L36" class="ln">    36  </span>			if res == nil {
+<span id="L37" class="ln">    37  </span>				return next(c)
+<span id="L38" class="ln">    38  </span>			}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>			start := time.Now()
+<span id="L41" class="ln">    41  </span>			method := c.Request().Method
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>			var once sync.Once
+<span id="L44" class="ln">    44  </span>			res.After(func() {
+<span id="L45" class="ln">    45  </span>				once.Do(func() {
+<span id="L46" class="ln">    46  </span>					status := normalizeStatus(res.Status)
+<span id="L47" class="ln">    47  </span>					rec.Observe(method, routeOf(c), status, statusClass(status), time.Since(start))
+<span id="L48" class="ln">    48  </span>				})
+<span id="L49" class="ln">    49  </span>			})
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>			return next(c)
+<span id="L52" class="ln">    52  </span>		}
+<span id="L53" class="ln">    53  </span>	}
+<span id="L54" class="ln">    54  </span>}
+<span id="L55" class="ln">    55  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/middleware.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

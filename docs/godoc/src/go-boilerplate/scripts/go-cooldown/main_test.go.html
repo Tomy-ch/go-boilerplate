@@ -1,0 +1,1407 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>go-cooldown - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/go-cooldown">go-cooldown</a>/<span class="text-muted">main_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/go-cooldown">go-boilerplate/scripts/go-cooldown</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package main
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;bufio&#34;
+<span id="L5" class="ln">     5  </span>	&#34;bytes&#34;
+<span id="L6" class="ln">     6  </span>	&#34;flag&#34;
+<span id="L7" class="ln">     7  </span>	&#34;io&#34;
+<span id="L8" class="ln">     8  </span>	&#34;log&#34;
+<span id="L9" class="ln">     9  </span>	&#34;net/http&#34;
+<span id="L10" class="ln">    10  </span>	&#34;os&#34;
+<span id="L11" class="ln">    11  </span>	&#34;os/exec&#34;
+<span id="L12" class="ln">    12  </span>	&#34;path/filepath&#34;
+<span id="L13" class="ln">    13  </span>	&#34;strings&#34;
+<span id="L14" class="ln">    14  </span>	&#34;testing&#34;
+<span id="L15" class="ln">    15  </span>	&#34;time&#34;
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L19" class="ln">    19  </span>)
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// goModFixture は require ブロックが 2 つに割れた実際の go.mod の形を最小で再現する。</span>
+<span id="L22" class="ln">    22  </span>const goModFixture = `module go-boilerplate
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span>go 1.26.5
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>require (
+<span id="L27" class="ln">    27  </span>	github.com/labstack/echo/v4 v4.15.4
+<span id="L28" class="ln">    28  </span>	github.com/BurntSushi/toml v1.4.0
+<span id="L29" class="ln">    29  </span>)
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>require (
+<span id="L32" class="ln">    32  </span>	github.com/aws/smithy-go v1.27.6 // indirect
+<span id="L33" class="ln">    33  </span>	golang.org/x/sys v0.45.0 // indirect
+<span id="L34" class="ln">    34  </span>)
+<span id="L35" class="ln">    35  </span>`
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span><span class="comment">// goModOneRequire は、direct な require を 1 本だけ持つ最小の go.mod。</span>
+<span id="L38" class="ln">    38  </span>const goModOneRequire = `module m
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>go 1.26.5
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>require example.com/mod v1.0.0
+<span id="L43" class="ln">    43  </span>`
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// roundTripFunc は http.Client の往復を関数で受ける。proxy の宛先は定数なので、</span>
+<span id="L46" class="ln">    46  </span><span class="comment">// 実ネットワークへ出さずに応答を与えられるのはトランスポートの層だけである。</span>
+<span id="L47" class="ln">    47  </span>type roundTripFunc func(*http.Request) (*http.Response, error)
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>func writeBypass(t *testing.T, body string) string {
+<span id="L50" class="ln">    50  </span>	t.Helper()
+<span id="L51" class="ln">    51  </span>	path := filepath.Join(t.TempDir(), &#34;bypass.toml&#34;)
+<span id="L52" class="ln">    52  </span>	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
+<span id="L53" class="ln">    53  </span>	return path
+<span id="L54" class="ln">    54  </span>}
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>func day(s string) time.Time {
+<span id="L57" class="ln">    57  </span>	d, err := time.Parse(time.DateOnly, s)
+<span id="L58" class="ln">    58  </span>	if err != nil {
+<span id="L59" class="ln">    59  </span>		panic(err)
+<span id="L60" class="ln">    60  </span>	}
+<span id="L61" class="ln">    61  </span>	return d
+<span id="L62" class="ln">    62  </span>}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>func keysOf(reqs []requirement) []string {
+<span id="L65" class="ln">    65  </span>	keys := make([]string, 0, len(reqs))
+<span id="L66" class="ln">    66  </span>	for _, r := range reqs {
+<span id="L67" class="ln">    67  </span>		keys = append(keys, r.key())
+<span id="L68" class="ln">    68  </span>	}
+<span id="L69" class="ln">    69  </span>	return keys
+<span id="L70" class="ln">    70  </span>}
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>func proxyResponse(code int, body string) *http.Response {
+<span id="L75" class="ln">    75  </span>	return &amp;http.Response{
+<span id="L76" class="ln">    76  </span>		StatusCode: code,
+<span id="L77" class="ln">    77  </span>		Body:       io.NopCloser(strings.NewReader(body)),
+<span id="L78" class="ln">    78  </span>		Header:     make(http.Header),
+<span id="L79" class="ln">    79  </span>	}
+<span id="L80" class="ln">    80  </span>}
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span>func infoBody(published time.Time) string {
+<span id="L83" class="ln">    83  </span>	return `{&#34;Version&#34;:&#34;v1&#34;,&#34;Time&#34;:&#34;` + published.Format(time.RFC3339) + `&#34;}`
+<span id="L84" class="ln">    84  </span>}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span><span class="comment">// stubProxy は module proxy への往復を差し替える。inspect が http.Client を内部で組み立てる</span>
+<span id="L87" class="ln">    87  </span><span class="comment">// ため差し替え口はプロセス共有の DefaultTransport しかなく、呼び出し側は並列化できない。</span>
+<span id="L88" class="ln">    88  </span>func stubProxy(t *testing.T, respond func(path string) (int, string)) {
+<span id="L89" class="ln">    89  </span>	t.Helper()
+<span id="L90" class="ln">    90  </span>	original := http.DefaultTransport
+<span id="L91" class="ln">    91  </span>	t.Cleanup(func() { http.DefaultTransport = original })
+<span id="L92" class="ln">    92  </span>	http.DefaultTransport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+<span id="L93" class="ln">    93  </span>		code, body := respond(r.URL.Path)
+<span id="L94" class="ln">    94  </span>		return proxyResponse(code, body), nil
+<span id="L95" class="ln">    95  </span>	})
+<span id="L96" class="ln">    96  </span>}
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span><span class="comment">// captureLog は log の出力先を差し替える。出力先はプロセス共有なので並列化できない。</span>
+<span id="L99" class="ln">    99  </span>func captureLog(t *testing.T) *bytes.Buffer {
+<span id="L100" class="ln">   100  </span>	t.Helper()
+<span id="L101" class="ln">   101  </span>	var buf bytes.Buffer
+<span id="L102" class="ln">   102  </span>	log.SetOutput(&amp;buf)
+<span id="L103" class="ln">   103  </span>	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+<span id="L104" class="ln">   104  </span>	return &amp;buf
+<span id="L105" class="ln">   105  </span>}
+<span id="L106" class="ln">   106  </span>
+<span id="L107" class="ln">   107  </span><span class="comment">// stubProxyPublishedAt は、どのバージョンにも同じ公開時刻を返す module proxy を差し込む。</span>
+<span id="L108" class="ln">   108  </span>func stubProxyPublishedAt(t *testing.T, published time.Time) {
+<span id="L109" class="ln">   109  </span>	t.Helper()
+<span id="L110" class="ln">   110  </span>	stubProxy(t, func(string) (int, string) { return http.StatusOK, infoBody(published) })
+<span id="L111" class="ln">   111  </span>}
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span><span class="comment">// useWorkTree は go.mod だけを持つ作業ディレクトリを作り、そこへ移動する。パスを返すのは</span>
+<span id="L114" class="ln">   114  </span><span class="comment">// バイパス lockfile を同じツリーへ置けるようにするため。</span>
+<span id="L115" class="ln">   115  </span>func useWorkTree(t *testing.T, goMod string) string {
+<span id="L116" class="ln">   116  </span>	t.Helper()
+<span id="L117" class="ln">   117  </span>	dir := t.TempDir()
+<span id="L118" class="ln">   118  </span>	require.NoError(t, os.WriteFile(filepath.Join(dir, &#34;go.mod&#34;), []byte(goMod), 0o600))
+<span id="L119" class="ln">   119  </span>	t.Chdir(dir)
+<span id="L120" class="ln">   120  </span>	return dir
+<span id="L121" class="ln">   121  </span>}
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span><span class="comment">// useGateRepo は base 側 go.mod を 1 コミット持つリポジトリを作り、作業ツリーの go.mod を</span>
+<span id="L124" class="ln">   124  </span><span class="comment">// current へ差し替えてそこへ移動する。gate の差分は git 越しに取るため実リポジトリが要る。</span>
+<span id="L125" class="ln">   125  </span>func useGateRepo(t *testing.T, base, current string) {
+<span id="L126" class="ln">   126  </span>	t.Helper()
+<span id="L127" class="ln">   127  </span>	dir := t.TempDir()
+<span id="L128" class="ln">   128  </span>	initGoModRepo(t, dir, base)
+<span id="L129" class="ln">   129  </span>	require.NoError(t, os.WriteFile(filepath.Join(dir, &#34;go.mod&#34;), []byte(current), 0o600))
+<span id="L130" class="ln">   130  </span>	t.Chdir(dir)
+<span id="L131" class="ln">   131  </span>}
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span><span class="comment">// writeWorkTreeBypass は、作業ディレクトリの規定位置へバイパス lockfile を書く。</span>
+<span id="L134" class="ln">   134  </span>func writeWorkTreeBypass(t *testing.T, dir, body string) {
+<span id="L135" class="ln">   135  </span>	t.Helper()
+<span id="L136" class="ln">   136  </span>	require.NoError(t, os.MkdirAll(filepath.Join(dir, filepath.Dir(bypassFile)), 0o750))
+<span id="L137" class="ln">   137  </span>	require.NoError(t, os.WriteFile(filepath.Join(dir, bypassFile), []byte(body), 0o600))
+<span id="L138" class="ln">   138  </span>}
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span><span class="comment">// initGoModRepo は go.mod を 1 コミットだけ持つ git リポジトリを作る。ホストの設定に</span>
+<span id="L141" class="ln">   141  </span><span class="comment">// 左右されないよう著者と署名を固定する。</span>
+<span id="L142" class="ln">   142  </span>func initGoModRepo(t *testing.T, dir, goMod string) {
+<span id="L143" class="ln">   143  </span>	t.Helper()
+<span id="L144" class="ln">   144  </span>	require.NoError(t, os.WriteFile(filepath.Join(dir, &#34;go.mod&#34;), []byte(goMod), 0o600))
+<span id="L145" class="ln">   145  </span>	base := []string{&#34;-C&#34;, dir, &#34;-c&#34;, &#34;user.email=t@example.com&#34;, &#34;-c&#34;, &#34;user.name=t&#34;, &#34;-c&#34;, &#34;commit.gpgsign=false&#34;}
+<span id="L146" class="ln">   146  </span>	for _, args := range [][]string{{&#34;init&#34;, &#34;-q&#34;}, {&#34;add&#34;, &#34;go.mod&#34;}, {&#34;commit&#34;, &#34;-q&#34;, &#34;-m&#34;, &#34;init&#34;}} {
+<span id="L147" class="ln">   147  </span>		<span class="comment">//nolint:gosec // 引数は本ファイル内のリテラルと t.TempDir のパス</span>
+<span id="L148" class="ln">   148  </span>		out, err := exec.CommandContext(t.Context(), &#34;git&#34;, append(base, args...)...).CombinedOutput()
+<span id="L149" class="ln">   149  </span>		require.NoError(t, err, &#34;git %v: %s&#34;, args, out)
+<span id="L150" class="ln">   150  </span>	}
+<span id="L151" class="ln">   151  </span>}
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>func Test_parseGoMod(t *testing.T) {
+<span id="L154" class="ln">   154  </span>	t.Parallel()
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L157" class="ln">   157  </span>		t.Parallel()
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>		t.Run(&#34;複数の require ブロックを跨いで読む&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>			t.Parallel()
+<span id="L161" class="ln">   161  </span>			got, err := parseGoMod([]byte(goModFixture))
+<span id="L162" class="ln">   162  </span>			require.NoError(t, err)
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span>			keys := make([]string, 0, len(got))
+<span id="L165" class="ln">   165  </span>			for _, r := range got {
+<span id="L166" class="ln">   166  </span>				keys = append(keys, r.key())
+<span id="L167" class="ln">   167  </span>			}
+<span id="L168" class="ln">   168  </span>			assert.ElementsMatch(t, []string{
+<span id="L169" class="ln">   169  </span>				&#34;github.com/labstack/echo/v4@v4.15.4&#34;,
+<span id="L170" class="ln">   170  </span>				&#34;github.com/BurntSushi/toml@v1.4.0&#34;,
+<span id="L171" class="ln">   171  </span>				&#34;github.com/aws/smithy-go@v1.27.6&#34;,
+<span id="L172" class="ln">   172  </span>				&#34;golang.org/x/sys@v0.45.0&#34;,
+<span id="L173" class="ln">   173  </span>			}, keys)
+<span id="L174" class="ln">   174  </span>		})
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>		t.Run(&#34;indirect 注釈の有無を保持する&#34;, func(t *testing.T) {
+<span id="L177" class="ln">   177  </span>			t.Parallel()
+<span id="L178" class="ln">   178  </span>			got, err := parseGoMod([]byte(goModFixture))
+<span id="L179" class="ln">   179  </span>			require.NoError(t, err)
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span>			indirect := map[string]bool{}
+<span id="L182" class="ln">   182  </span>			for _, r := range got {
+<span id="L183" class="ln">   183  </span>				indirect[r.module] = r.indirect
+<span id="L184" class="ln">   184  </span>			}
+<span id="L185" class="ln">   185  </span>			assert.False(t, indirect[&#34;github.com/labstack/echo/v4&#34;])
+<span id="L186" class="ln">   186  </span>			assert.True(t, indirect[&#34;github.com/aws/smithy-go&#34;])
+<span id="L187" class="ln">   187  </span>		})
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>		t.Run(&#34;ブロックを使わない単一行の require も読む&#34;, func(t *testing.T) {
+<span id="L190" class="ln">   190  </span>			t.Parallel()
+<span id="L191" class="ln">   191  </span>			got, err := parseGoMod([]byte(&#34;module m\n\ngo 1.26.5\n\nrequire github.com/x/y v1.2.3\n&#34;))
+<span id="L192" class="ln">   192  </span>			require.NoError(t, err)
+<span id="L193" class="ln">   193  </span>			require.Len(t, got, 1)
+<span id="L194" class="ln">   194  </span>			assert.Equal(t, &#34;github.com/x/y@v1.2.3&#34;, got[0].key())
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>		t.Run(&#34;module / go 行や閉じ括弧を依存として拾わない&#34;, func(t *testing.T) {
+<span id="L198" class="ln">   198  </span>			t.Parallel()
+<span id="L199" class="ln">   199  </span>			got, err := parseGoMod([]byte(goModFixture))
+<span id="L200" class="ln">   200  </span>			require.NoError(t, err)
+<span id="L201" class="ln">   201  </span>			for _, r := range got {
+<span id="L202" class="ln">   202  </span>				assert.NotEqual(t, &#34;module&#34;, r.module)
+<span id="L203" class="ln">   203  </span>				assert.NotEqual(t, &#34;go&#34;, r.module)
+<span id="L204" class="ln">   204  </span>			}
+<span id="L205" class="ln">   205  </span>		})
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>		<span class="comment">// 行末コメントを落とさないと require 行が正規表現に当たらず、その依存は検査対象から</span>
+<span id="L208" class="ln">   208  </span>		<span class="comment">// 黙って消える。indirect 注釈だけは意味を持つので、落とす対象から外す。</span>
+<span id="L209" class="ln">   209  </span>		t.Run(&#34;indirect 以外の行末コメントは落として require を読む&#34;, func(t *testing.T) {
+<span id="L210" class="ln">   210  </span>			t.Parallel()
+<span id="L211" class="ln">   211  </span>			got, err := parseGoMod([]byte(&#34;module m\n\nrequire (\n\tgithub.com/x/y v1.2.3 // 一時ピン\n)\n&#34;))
+<span id="L212" class="ln">   212  </span>			require.NoError(t, err)
+<span id="L213" class="ln">   213  </span>			require.Len(t, got, 1)
+<span id="L214" class="ln">   214  </span>			assert.Equal(t, &#34;github.com/x/y@v1.2.3&#34;, got[0].key())
+<span id="L215" class="ln">   215  </span>			assert.False(t, got[0].indirect)
+<span id="L216" class="ln">   216  </span>		})
+<span id="L217" class="ln">   217  </span>	})
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L220" class="ln">   220  </span>		t.Parallel()
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>		<span class="comment">// 走査に失敗した go.mod を「依存ゼロ」として返すと、gate は何も見ないまま通る。</span>
+<span id="L223" class="ln">   223  </span>		t.Run(&#34;1 行が走査上限を超える go.mod はエラーにする&#34;, func(t *testing.T) {
+<span id="L224" class="ln">   224  </span>			t.Parallel()
+<span id="L225" class="ln">   225  </span>			got, err := parseGoMod([]byte(&#34;module m\n// &#34; + strings.Repeat(&#34;a&#34;, bufio.MaxScanTokenSize) + &#34;\n&#34;))
+<span id="L226" class="ln">   226  </span>			require.Error(t, err)
+<span id="L227" class="ln">   227  </span>			assert.Empty(t, got)
+<span id="L228" class="ln">   228  </span>		})
+<span id="L229" class="ln">   229  </span>	})
+<span id="L230" class="ln">   230  </span>}
+<span id="L231" class="ln">   231  </span>
+<span id="L232" class="ln">   232  </span>func Test_escapePath(t *testing.T) {
+<span id="L233" class="ln">   233  </span>	t.Parallel()
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L236" class="ln">   236  </span>		t.Parallel()
+<span id="L237" class="ln">   237  </span>
+<span id="L238" class="ln">   238  </span>		<span class="comment">// 未エスケープの大文字は proxy が 404 を返し「存在しないバージョン」に化けるため、</span>
+<span id="L239" class="ln">   239  </span>		<span class="comment">// この変換は取得可否そのものを決める。</span>
+<span id="L240" class="ln">   240  </span>		t.Run(&#34;大文字を ! + 小文字へ変換する&#34;, func(t *testing.T) {
+<span id="L241" class="ln">   241  </span>			t.Parallel()
+<span id="L242" class="ln">   242  </span>			assert.Equal(t, &#34;github.com/!burnt!sushi/toml&#34;, escapePath(&#34;github.com/BurntSushi/toml&#34;))
+<span id="L243" class="ln">   243  </span>		})
+<span id="L244" class="ln">   244  </span>
+<span id="L245" class="ln">   245  </span>		t.Run(&#34;小文字だけのパスは変えない&#34;, func(t *testing.T) {
+<span id="L246" class="ln">   246  </span>			t.Parallel()
+<span id="L247" class="ln">   247  </span>			assert.Equal(t, &#34;golang.org/x/sys&#34;, escapePath(&#34;golang.org/x/sys&#34;))
+<span id="L248" class="ln">   248  </span>		})
+<span id="L249" class="ln">   249  </span>	})
+<span id="L250" class="ln">   250  </span>}
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>func Test_diffAdded(t *testing.T) {
+<span id="L253" class="ln">   253  </span>	t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>	before := []requirement{
+<span id="L256" class="ln">   256  </span>		{module: &#34;a&#34;, version: &#34;v1.0.0&#34;},
+<span id="L257" class="ln">   257  </span>		{module: &#34;b&#34;, version: &#34;v1.0.0&#34;},
+<span id="L258" class="ln">   258  </span>	}
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L261" class="ln">   261  </span>		t.Parallel()
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>		t.Run(&#34;新規追加のみを返す&#34;, func(t *testing.T) {
+<span id="L264" class="ln">   264  </span>			t.Parallel()
+<span id="L265" class="ln">   265  </span>			got := diffAdded(before, append(before, requirement{module: &#34;c&#34;, version: &#34;v0.1.0&#34;}))
+<span id="L266" class="ln">   266  </span>			require.Len(t, got, 1)
+<span id="L267" class="ln">   267  </span>			assert.Equal(t, &#34;c@v0.1.0&#34;, got[0].key())
+<span id="L268" class="ln">   268  </span>		})
+<span id="L269" class="ln">   269  </span>
+<span id="L270" class="ln">   270  </span>		<span class="comment">// 版を上げたモジュールは別のキーとして現れるので、追加と更新を 1 つの判定で拾える。</span>
+<span id="L271" class="ln">   271  </span>		t.Run(&#34;バージョンを上げたモジュールも対象にする&#34;, func(t *testing.T) {
+<span id="L272" class="ln">   272  </span>			t.Parallel()
+<span id="L273" class="ln">   273  </span>			got := diffAdded(before, []requirement{
+<span id="L274" class="ln">   274  </span>				{module: &#34;a&#34;, version: &#34;v1.0.0&#34;},
+<span id="L275" class="ln">   275  </span>				{module: &#34;b&#34;, version: &#34;v2.0.0&#34;},
+<span id="L276" class="ln">   276  </span>			})
+<span id="L277" class="ln">   277  </span>			require.Len(t, got, 1)
+<span id="L278" class="ln">   278  </span>			assert.Equal(t, &#34;b@v2.0.0&#34;, got[0].key())
+<span id="L279" class="ln">   279  </span>		})
+<span id="L280" class="ln">   280  </span>
+<span id="L281" class="ln">   281  </span>		t.Run(&#34;変化が無ければ空を返す&#34;, func(t *testing.T) {
+<span id="L282" class="ln">   282  </span>			t.Parallel()
+<span id="L283" class="ln">   283  </span>			assert.Empty(t, diffAdded(before, before))
+<span id="L284" class="ln">   284  </span>		})
+<span id="L285" class="ln">   285  </span>	})
+<span id="L286" class="ln">   286  </span>}
+<span id="L287" class="ln">   287  </span>
+<span id="L288" class="ln">   288  </span>func Test_readBypasses(t *testing.T) {
+<span id="L289" class="ln">   289  </span>	t.Parallel()
+<span id="L290" class="ln">   290  </span>
+<span id="L291" class="ln">   291  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L292" class="ln">   292  </span>		t.Parallel()
+<span id="L293" class="ln">   293  </span>
+<span id="L294" class="ln">   294  </span>		t.Run(&#34;コメントと空行を読み飛ばして 1 エントリを読む&#34;, func(t *testing.T) {
+<span id="L295" class="ln">   295  </span>			t.Parallel()
+<span id="L296" class="ln">   296  </span>			path := writeBypass(t, &#34;# comment\n\n&#34;+
+<span id="L297" class="ln">   297  </span>				`&#34;github.com/x/y@v1.2.3&#34; = { expires = 2026-11-06, issue = 931, reason = &#34;CRITICAL への即応&#34; }`+&#34;\n&#34;)
+<span id="L298" class="ln">   298  </span>			got, err := readBypasses(path)
+<span id="L299" class="ln">   299  </span>			require.NoError(t, err)
+<span id="L300" class="ln">   300  </span>			require.Len(t, got, 1)
+<span id="L301" class="ln">   301  </span>
+<span id="L302" class="ln">   302  </span>			b := got[&#34;github.com/x/y@v1.2.3&#34;]
+<span id="L303" class="ln">   303  </span>			assert.Equal(t, day(&#34;2026-11-06&#34;), b.expires)
+<span id="L304" class="ln">   304  </span>			assert.Equal(t, 931, b.issue)
+<span id="L305" class="ln">   305  </span>			assert.Equal(t, &#34;CRITICAL への即応&#34;, b.reason)
+<span id="L306" class="ln">   306  </span>		})
+<span id="L307" class="ln">   307  </span>
+<span id="L308" class="ln">   308  </span>		t.Run(&#34;ファイルが無ければ空として扱う&#34;, func(t *testing.T) {
+<span id="L309" class="ln">   309  </span>			t.Parallel()
+<span id="L310" class="ln">   310  </span>			got, err := readBypasses(filepath.Join(t.TempDir(), &#34;absent.toml&#34;))
+<span id="L311" class="ln">   311  </span>			require.NoError(t, err)
+<span id="L312" class="ln">   312  </span>			assert.Empty(t, got)
+<span id="L313" class="ln">   313  </span>		})
+<span id="L314" class="ln">   314  </span>	})
+<span id="L315" class="ln">   315  </span>
+<span id="L316" class="ln">   316  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L317" class="ln">   317  </span>		t.Parallel()
+<span id="L318" class="ln">   318  </span>
+<span id="L319" class="ln">   319  </span>		<span class="comment">// 読み飛ばしを許すと、書き損じたエントリが「存在しない」状態を警告なく作る。</span>
+<span id="L320" class="ln">   320  </span>		t.Run(&#34;解釈できない行はエラーにする&#34;, func(t *testing.T) {
+<span id="L321" class="ln">   321  </span>			t.Parallel()
+<span id="L322" class="ln">   322  </span>			_, err := readBypasses(writeBypass(t, &#34;これは TOML ではない\n&#34;))
+<span id="L323" class="ln">   323  </span>			require.Error(t, err)
+<span id="L324" class="ln">   324  </span>			assert.ErrorIs(t, err, errBypassInvalidLine)
+<span id="L325" class="ln">   325  </span>		})
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>		t.Run(&#34;expires を欠いた行はエラーにする&#34;, func(t *testing.T) {
+<span id="L328" class="ln">   328  </span>			t.Parallel()
+<span id="L329" class="ln">   329  </span>			_, err := readBypasses(writeBypass(t,
+<span id="L330" class="ln">   330  </span>				`&#34;github.com/x/y@v1.2.3&#34; = { issue = 931, reason = &#34;期限が無い&#34; }`+&#34;\n&#34;))
+<span id="L331" class="ln">   331  </span>			require.Error(t, err)
+<span id="L332" class="ln">   332  </span>			assert.ErrorIs(t, err, errBypassInvalidLine)
+<span id="L333" class="ln">   333  </span>		})
+<span id="L334" class="ln">   334  </span>
+<span id="L335" class="ln">   335  </span>		<span class="comment">// 後勝ちの上書きを許すと、どちらのエントリが効くかが行順で決まる。</span>
+<span id="L336" class="ln">   336  </span>		t.Run(&#34;キーの重複はエラーにする&#34;, func(t *testing.T) {
+<span id="L337" class="ln">   337  </span>			t.Parallel()
+<span id="L338" class="ln">   338  </span>			line := `&#34;github.com/x/y@v1.2.3&#34; = { expires = 2026-11-06, issue = 931, reason = &#34;r&#34; }` + &#34;\n&#34;
+<span id="L339" class="ln">   339  </span>			_, err := readBypasses(writeBypass(t, line+line))
+<span id="L340" class="ln">   340  </span>			require.Error(t, err)
+<span id="L341" class="ln">   341  </span>			assert.ErrorIs(t, err, errBypassDuplicateKey)
+<span id="L342" class="ln">   342  </span>		})
+<span id="L343" class="ln">   343  </span>
+<span id="L344" class="ln">   344  </span>		<span class="comment">// 不在だけを空として扱う。読めない理由を一緒くたに空へ丸めると、バイパスの検査が</span>
+<span id="L345" class="ln">   345  </span>		<span class="comment">// 「1 件も無い」と報告したまま素通りする。</span>
+<span id="L346" class="ln">   346  </span>		t.Run(&#34;不在以外の理由で開けないパスはエラーにする&#34;, func(t *testing.T) {
+<span id="L347" class="ln">   347  </span>			t.Parallel()
+<span id="L348" class="ln">   348  </span>			notDir := filepath.Join(t.TempDir(), &#34;not-a-directory&#34;)
+<span id="L349" class="ln">   349  </span>			require.NoError(t, os.WriteFile(notDir, nil, 0o600))
+<span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>			_, err := readBypasses(filepath.Join(notDir, &#34;bypass.toml&#34;))
+<span id="L352" class="ln">   352  </span>			require.Error(t, err)
+<span id="L353" class="ln">   353  </span>			assert.NotErrorIs(t, err, os.ErrNotExist)
+<span id="L354" class="ln">   354  </span>		})
+<span id="L355" class="ln">   355  </span>
+<span id="L356" class="ln">   356  </span>		<span class="comment">// 書式だけ通って日付として成立しない期限を素通しすると、期限切れ検査が空回りする。</span>
+<span id="L357" class="ln">   357  </span>		t.Run(&#34;書式は合うが暦日として成立しない expires はエラーにする&#34;, func(t *testing.T) {
+<span id="L358" class="ln">   358  </span>			t.Parallel()
+<span id="L359" class="ln">   359  </span>			_, err := readBypasses(writeBypass(t,
+<span id="L360" class="ln">   360  </span>				`&#34;github.com/x/y@v1.2.3&#34; = { expires = 2026-13-45, issue = 931, reason = &#34;r&#34; }`+&#34;\n&#34;))
+<span id="L361" class="ln">   361  </span>			require.Error(t, err)
+<span id="L362" class="ln">   362  </span>			assert.Contains(t, err.Error(), &#34;1 行目の expires&#34;)
+<span id="L363" class="ln">   363  </span>		})
+<span id="L364" class="ln">   364  </span>
+<span id="L365" class="ln">   365  </span>		t.Run(&#34;int に収まらない issue 番号はエラーにする&#34;, func(t *testing.T) {
+<span id="L366" class="ln">   366  </span>			t.Parallel()
+<span id="L367" class="ln">   367  </span>			_, err := readBypasses(writeBypass(t,
+<span id="L368" class="ln">   368  </span>				`&#34;github.com/x/y@v1.2.3&#34; = { expires = 2026-11-06, issue = 99999999999999999999, reason = &#34;r&#34; }`+&#34;\n&#34;))
+<span id="L369" class="ln">   369  </span>			require.Error(t, err)
+<span id="L370" class="ln">   370  </span>			assert.Contains(t, err.Error(), &#34;1 行目の issue&#34;)
+<span id="L371" class="ln">   371  </span>		})
+<span id="L372" class="ln">   372  </span>	})
+<span id="L373" class="ln">   373  </span>}
+<span id="L374" class="ln">   374  </span>
+<span id="L375" class="ln">   375  </span>func Test_validateBypasses(t *testing.T) {
+<span id="L376" class="ln">   376  </span>	t.Parallel()
+<span id="L377" class="ln">   377  </span>
+<span id="L378" class="ln">   378  </span>	today := day(&#34;2026-08-06&#34;)
+<span id="L379" class="ln">   379  </span>	current := []requirement{{module: &#34;github.com/x/y&#34;, version: &#34;v1.2.3&#34;}}
+<span id="L380" class="ln">   380  </span>
+<span id="L381" class="ln">   381  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L382" class="ln">   382  </span>		t.Parallel()
+<span id="L383" class="ln">   383  </span>
+<span id="L384" class="ln">   384  </span>		t.Run(&#34;期限内かつ go.mod にあるエントリは違反にならない&#34;, func(t *testing.T) {
+<span id="L385" class="ln">   385  </span>			t.Parallel()
+<span id="L386" class="ln">   386  </span>			violations, invalid := validateBypasses(map[string]bypass{
+<span id="L387" class="ln">   387  </span>				&#34;github.com/x/y@v1.2.3&#34;: {expires: day(&#34;2026-09-06&#34;), issue: 931, reason: &#34;r&#34;, line: 1},
+<span id="L388" class="ln">   388  </span>			}, current, today)
+<span id="L389" class="ln">   389  </span>			assert.Empty(t, violations)
+<span id="L390" class="ln">   390  </span>			assert.Empty(t, invalid)
+<span id="L391" class="ln">   391  </span>		})
+<span id="L392" class="ln">   392  </span>
+<span id="L393" class="ln">   393  </span>		t.Run(&#34;期限当日は期限内として扱う&#34;, func(t *testing.T) {
+<span id="L394" class="ln">   394  </span>			t.Parallel()
+<span id="L395" class="ln">   395  </span>			violations, invalid := validateBypasses(map[string]bypass{
+<span id="L396" class="ln">   396  </span>				&#34;github.com/x/y@v1.2.3&#34;: {expires: today, issue: 931, reason: &#34;r&#34;, line: 1},
+<span id="L397" class="ln">   397  </span>			}, current, today)
+<span id="L398" class="ln">   398  </span>			assert.Empty(t, violations)
+<span id="L399" class="ln">   399  </span>			assert.Empty(t, invalid)
+<span id="L400" class="ln">   400  </span>		})
+<span id="L401" class="ln">   401  </span>
+<span id="L402" class="ln">   402  </span>		t.Run(&#34;上限ちょうどの期限は許す&#34;, func(t *testing.T) {
+<span id="L403" class="ln">   403  </span>			t.Parallel()
+<span id="L404" class="ln">   404  </span>			violations, invalid := validateBypasses(map[string]bypass{
+<span id="L405" class="ln">   405  </span>				&#34;github.com/x/y@v1.2.3&#34;: {expires: today.AddDate(0, maxBypassMonths, 0), issue: 931, reason: &#34;r&#34;, line: 1},
+<span id="L406" class="ln">   406  </span>			}, current, today)
+<span id="L407" class="ln">   407  </span>			assert.Empty(t, violations)
+<span id="L408" class="ln">   408  </span>			assert.Empty(t, invalid)
+<span id="L409" class="ln">   409  </span>		})
+<span id="L410" class="ln">   410  </span>	})
+<span id="L411" class="ln">   411  </span>
+<span id="L412" class="ln">   412  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L413" class="ln">   413  </span>		t.Parallel()
+<span id="L414" class="ln">   414  </span>
+<span id="L415" class="ln">   415  </span>		<span class="comment">// 放置されたバイパスは恒久 allowlist と区別が付かなくなるので、期限で必ず回収する。</span>
+<span id="L416" class="ln">   416  </span>		t.Run(&#34;期限切れは違反にし効力も失わせる&#34;, func(t *testing.T) {
+<span id="L417" class="ln">   417  </span>			t.Parallel()
+<span id="L418" class="ln">   418  </span>			violations, invalid := validateBypasses(map[string]bypass{
+<span id="L419" class="ln">   419  </span>				&#34;github.com/x/y@v1.2.3&#34;: {expires: day(&#34;2026-08-05&#34;), issue: 931, reason: &#34;r&#34;, line: 3},
+<span id="L420" class="ln">   420  </span>			}, current, today)
+<span id="L421" class="ln">   421  </span>			require.Len(t, violations, 1)
+<span id="L422" class="ln">   422  </span>			assert.Contains(t, violations[0], &#34;期限 2026-08-05 が切れています&#34;)
+<span id="L423" class="ln">   423  </span>			assert.Contains(t, invalid, &#34;github.com/x/y@v1.2.3&#34;)
+<span id="L424" class="ln">   424  </span>		})
+<span id="L425" class="ln">   425  </span>
+<span id="L426" class="ln">   426  </span>		<span class="comment">// 期限を遠い未来へ置くだけで、期限切れ検査を素通りする恒久 allowlist を作れてしまう。</span>
+<span id="L427" class="ln">   427  </span>		t.Run(&#34;上限を越えた期限は違反にし効力も失わせる&#34;, func(t *testing.T) {
+<span id="L428" class="ln">   428  </span>			t.Parallel()
+<span id="L429" class="ln">   429  </span>			violations, invalid := validateBypasses(map[string]bypass{
+<span id="L430" class="ln">   430  </span>				&#34;github.com/x/y@v1.2.3&#34;: {expires: today.AddDate(0, maxBypassMonths, 1), issue: 931, reason: &#34;r&#34;, line: 3},
+<span id="L431" class="ln">   431  </span>			}, current, today)
+<span id="L432" class="ln">   432  </span>			require.Len(t, violations, 1)
+<span id="L433" class="ln">   433  </span>			assert.Contains(t, violations[0], &#34;を越えています&#34;)
+<span id="L434" class="ln">   434  </span>			assert.Contains(t, invalid, &#34;github.com/x/y@v1.2.3&#34;)
+<span id="L435" class="ln">   435  </span>		})
+<span id="L436" class="ln">   436  </span>
+<span id="L437" class="ln">   437  </span>		t.Run(&#34;go.mod に無いエントリは違反にする&#34;, func(t *testing.T) {
+<span id="L438" class="ln">   438  </span>			t.Parallel()
+<span id="L439" class="ln">   439  </span>			violations, _ := validateBypasses(map[string]bypass{
+<span id="L440" class="ln">   440  </span>				&#34;github.com/gone/away@v9.9.9&#34;: {expires: day(&#34;2026-09-06&#34;), issue: 931, reason: &#34;r&#34;, line: 3},
+<span id="L441" class="ln">   441  </span>			}, current, today)
+<span id="L442" class="ln">   442  </span>			require.Len(t, violations, 1)
+<span id="L443" class="ln">   443  </span>			assert.Contains(t, violations[0], &#34;go.mod に存在しません&#34;)
+<span id="L444" class="ln">   444  </span>		})
+<span id="L445" class="ln">   445  </span>	})
+<span id="L446" class="ln">   446  </span>}
+<span id="L447" class="ln">   447  </span>
+<span id="L448" class="ln">   448  </span>func Test_classify(t *testing.T) {
+<span id="L449" class="ln">   449  </span>	t.Parallel()
+<span id="L450" class="ln">   450  </span>
+<span id="L451" class="ln">   451  </span>	directFinding := finding{req: requirement{module: &#34;d&#34;, version: &#34;v1&#34;}, ageDays: 1}
+<span id="L452" class="ln">   452  </span>	indirectFinding := finding{req: requirement{module: &#34;i&#34;, version: &#34;v1&#34;, indirect: true}, ageDays: 1}
+<span id="L453" class="ln">   453  </span>	findings := []finding{directFinding, indirectFinding}
+<span id="L454" class="ln">   454  </span>
+<span id="L455" class="ln">   455  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L456" class="ln">   456  </span>		t.Parallel()
+<span id="L457" class="ln">   457  </span>
+<span id="L458" class="ln">   458  </span>		<span class="comment">// indirect の版は MVS で direct の要求下限に縛られ、落としても打つ手が無いことがある。</span>
+<span id="L459" class="ln">   459  </span>		t.Run(&#34;gate は direct だけを落とし indirect は報告に留める&#34;, func(t *testing.T) {
+<span id="L460" class="ln">   460  </span>			t.Parallel()
+<span id="L461" class="ln">   461  </span>			bypassed, blocked, reported := classify(&#34;gate&#34;, findings, nil, nil)
+<span id="L462" class="ln">   462  </span>			assert.Empty(t, bypassed)
+<span id="L463" class="ln">   463  </span>			require.Len(t, blocked, 1)
+<span id="L464" class="ln">   464  </span>			assert.Equal(t, &#34;d@v1&#34;, blocked[0].req.key())
+<span id="L465" class="ln">   465  </span>			require.Len(t, reported, 1)
+<span id="L466" class="ln">   466  </span>			assert.Equal(t, &#34;i@v1&#34;, reported[0].req.key())
+<span id="L467" class="ln">   467  </span>		})
+<span id="L468" class="ln">   468  </span>
+<span id="L469" class="ln">   469  </span>		t.Run(&#34;audit は何も落とさない&#34;, func(t *testing.T) {
+<span id="L470" class="ln">   470  </span>			t.Parallel()
+<span id="L471" class="ln">   471  </span>			_, blocked, reported := classify(&#34;audit&#34;, findings, nil, nil)
+<span id="L472" class="ln">   472  </span>			assert.Empty(t, blocked)
+<span id="L473" class="ln">   473  </span>			assert.Len(t, reported, 2)
+<span id="L474" class="ln">   474  </span>		})
+<span id="L475" class="ln">   475  </span>
+<span id="L476" class="ln">   476  </span>		t.Run(&#34;有効なバイパスは gate を通す&#34;, func(t *testing.T) {
+<span id="L477" class="ln">   477  </span>			t.Parallel()
+<span id="L478" class="ln">   478  </span>			bypassed, blocked, _ := classify(&#34;gate&#34;, findings, map[string]bypass{
+<span id="L479" class="ln">   479  </span>				&#34;d@v1&#34;: {expires: day(&#34;2026-09-06&#34;), issue: 931, reason: &#34;r&#34;},
+<span id="L480" class="ln">   480  </span>			}, nil)
+<span id="L481" class="ln">   481  </span>			require.Len(t, bypassed, 1)
+<span id="L482" class="ln">   482  </span>			assert.Empty(t, blocked)
+<span id="L483" class="ln">   483  </span>		})
+<span id="L484" class="ln">   484  </span>
+<span id="L485" class="ln">   485  </span>		<span class="comment">// 期限切れのバイパスが素通しするなら、期限そのものが何も担保しないことになる。</span>
+<span id="L486" class="ln">   486  </span>		t.Run(&#34;無効なバイパスは効力を失い gate が落とす&#34;, func(t *testing.T) {
+<span id="L487" class="ln">   487  </span>			t.Parallel()
+<span id="L488" class="ln">   488  </span>			bypassed, blocked, _ := classify(&#34;gate&#34;, findings, map[string]bypass{
+<span id="L489" class="ln">   489  </span>				&#34;d@v1&#34;: {expires: day(&#34;2026-01-01&#34;), issue: 931, reason: &#34;r&#34;},
+<span id="L490" class="ln">   490  </span>			}, map[string]struct{}{&#34;d@v1&#34;: {}})
+<span id="L491" class="ln">   491  </span>			assert.Empty(t, bypassed)
+<span id="L492" class="ln">   492  </span>			require.Len(t, blocked, 1)
+<span id="L493" class="ln">   493  </span>			assert.Equal(t, &#34;d@v1&#34;, blocked[0].req.key())
+<span id="L494" class="ln">   494  </span>		})
+<span id="L495" class="ln">   495  </span>	})
+<span id="L496" class="ln">   496  </span>}
+<span id="L497" class="ln">   497  </span>
+<span id="L498" class="ln">   498  </span>func Test_summary(t *testing.T) {
+<span id="L499" class="ln">   499  </span>	t.Parallel()
+<span id="L500" class="ln">   500  </span>
+<span id="L501" class="ln">   501  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L502" class="ln">   502  </span>		t.Parallel()
+<span id="L503" class="ln">   503  </span>
+<span id="L504" class="ln">   504  </span>		t.Run(&#34;違反が無ければ対象件数だけを述べる&#34;, func(t *testing.T) {
+<span id="L505" class="ln">   505  </span>			t.Parallel()
+<span id="L506" class="ln">   506  </span>			got := summary(&#34;audit&#34;, nil, nil, nil, nil, nil, []requirement{{module: &#34;a&#34;, version: &#34;v1&#34;}}, 7)
+<span id="L507" class="ln">   507  </span>			assert.Contains(t, got, &#34;対象 1 件 / 窓 7 日&#34;)
+<span id="L508" class="ln">   508  </span>			assert.NotContains(t, got, &#34;## cooldown 未達&#34;)
+<span id="L509" class="ln">   509  </span>		})
+<span id="L510" class="ln">   510  </span>
+<span id="L511" class="ln">   511  </span>		<span class="comment">// 節が 1 つも無い出力を件数の行だけで終えると、検査が通ったのか節の組み立てが</span>
+<span id="L512" class="ln">   512  </span>		<span class="comment">// 壊れて何も書けなかったのかを読者が区別できない。</span>
+<span id="L513" class="ln">   513  </span>		t.Run(&#34;節が 1 つも無ければ違反なしと明示する&#34;, func(t *testing.T) {
+<span id="L514" class="ln">   514  </span>			t.Parallel()
+<span id="L515" class="ln">   515  </span>			got := summary(&#34;audit&#34;, nil, nil, nil, nil, nil, nil, 7)
+<span id="L516" class="ln">   516  </span>			assert.Equal(t, &#34;対象 0 件 / 窓 7 日 / バイパス 0 件\n\n違反はありません。\n&#34;, got)
+<span id="L517" class="ln">   517  </span>		})
+<span id="L518" class="ln">   518  </span>
+<span id="L519" class="ln">   519  </span>		<span class="comment">// gate が落とすものと落とさないものを同じ見出しに混ぜると、直す必要のある件が埋もれる。</span>
+<span id="L520" class="ln">   520  </span>		t.Run(&#34;ブロックしないものは参考の見出しへ分けて並べる&#34;, func(t *testing.T) {
+<span id="L521" class="ln">   521  </span>			t.Parallel()
+<span id="L522" class="ln">   522  </span>			f := finding{req: requirement{module: &#34;i&#34;, version: &#34;v1&#34;, indirect: true}, ageDays: 3}
+<span id="L523" class="ln">   523  </span>			got := summary(&#34;gate&#34;, []finding{f}, nil, nil, nil, nil, []requirement{f.req}, 7)
+<span id="L524" class="ln">   524  </span>			assert.Contains(t, got, &#34;## 参考: 窓内だがブロックしないもの (1)&#34;)
+<span id="L525" class="ln">   525  </span>			assert.Contains(t, got, &#34;- i@v1 — 公開 3 日&#34;)
+<span id="L526" class="ln">   526  </span>			assert.NotContains(t, got, &#34;## cooldown 未達&#34;)
+<span id="L527" class="ln">   527  </span>		})
+<span id="L528" class="ln">   528  </span>
+<span id="L529" class="ln">   529  </span>		t.Run(&#34;ブロックした件を見出し付きで並べる&#34;, func(t *testing.T) {
+<span id="L530" class="ln">   530  </span>			t.Parallel()
+<span id="L531" class="ln">   531  </span>			f := finding{req: requirement{module: &#34;d&#34;, version: &#34;v1&#34;}, published: day(&#34;2026-08-01&#34;), ageDays: 5}
+<span id="L532" class="ln">   532  </span>			got := summary(&#34;gate&#34;, []finding{f}, nil, nil, nil, nil, []requirement{f.req}, 7)
+<span id="L533" class="ln">   533  </span>			assert.Contains(t, got, &#34;## cooldown 未達 (1)&#34;)
+<span id="L534" class="ln">   534  </span>			assert.Contains(t, got, &#34;- d@v1 — 公開 5 日（2026-08-01）&#34;)
+<span id="L535" class="ln">   535  </span>		})
+<span id="L536" class="ln">   536  </span>
+<span id="L537" class="ln">   537  </span>		t.Run(&#34;バイパス設定の違反を見出し付きで並べる&#34;, func(t *testing.T) {
+<span id="L538" class="ln">   538  </span>			t.Parallel()
+<span id="L539" class="ln">   539  </span>			got := summary(&#34;audit&#34;, nil, nil, []string{&#34;期限切れ&#34;}, nil, nil, nil, 7)
+<span id="L540" class="ln">   540  </span>			assert.Contains(t, got, &#34;## バイパス設定の違反 (1)&#34;)
+<span id="L541" class="ln">   541  </span>			assert.Contains(t, got, &#34;期限切れ&#34;)
+<span id="L542" class="ln">   542  </span>		})
+<span id="L543" class="ln">   543  </span>
+<span id="L544" class="ln">   544  </span>		<span class="comment">// 値は go.mod 由来で pull request が中身を決めるため、フェンスは値の側から長さを取る。</span>
+<span id="L545" class="ln">   545  </span>		t.Run(&#34;値に含まれるバッククォート連より長いフェンスで包む&#34;, func(t *testing.T) {
+<span id="L546" class="ln">   546  </span>			t.Parallel()
+<span id="L547" class="ln">   547  </span>			got := summary(&#34;audit&#34;, nil, nil, []string{&#34;``` を含む理由&#34;}, nil, nil, nil, 7)
+<span id="L548" class="ln">   548  </span>			assert.Contains(t, got, &#34;````text&#34;)
+<span id="L549" class="ln">   549  </span>		})
+<span id="L550" class="ln">   550  </span>
+<span id="L551" class="ln">   551  </span>		<span class="comment">// 取得できなかったものを黙らせると、「見た結果 OK」と「見ていない」が区別できなくなる。</span>
+<span id="L552" class="ln">   552  </span>		t.Run(&#34;公開時刻を取得できなかったものを別枠で並べる&#34;, func(t *testing.T) {
+<span id="L553" class="ln">   553  </span>			t.Parallel()
+<span id="L554" class="ln">   554  </span>			got := summary(&#34;audit&#34;, nil, []requirement{{module: &#34;p&#34;, version: &#34;v1&#34;}}, nil, nil, nil, nil, 7)
+<span id="L555" class="ln">   555  </span>			assert.Contains(t, got, &#34;## 公開時刻を取得できなかったもの (1)&#34;)
+<span id="L556" class="ln">   556  </span>			assert.Contains(t, got, &#34;- p@v1&#34;)
+<span id="L557" class="ln">   557  </span>		})
+<span id="L558" class="ln">   558  </span>	})
+<span id="L559" class="ln">   559  </span>}
+<span id="L560" class="ln">   560  </span>
+<span id="L561" class="ln">   561  </span>func Test_appendOutput(t *testing.T) {
+<span id="L562" class="ln">   562  </span>	t.Parallel()
+<span id="L563" class="ln">   563  </span>
+<span id="L564" class="ln">   564  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L565" class="ln">   565  </span>		t.Parallel()
+<span id="L566" class="ln">   566  </span>
+<span id="L567" class="ln">   567  </span>		t.Run(&#34;件数を key=value で追記する&#34;, func(t *testing.T) {
+<span id="L568" class="ln">   568  </span>			t.Parallel()
+<span id="L569" class="ln">   569  </span>			path := filepath.Join(t.TempDir(), &#34;out&#34;)
+<span id="L570" class="ln">   570  </span>			require.NoError(t, appendOutput(path, 2, 111, 1))
+<span id="L571" class="ln">   571  </span>
+<span id="L572" class="ln">   572  </span>			body, err := os.ReadFile(path) <span class="comment">//nolint:gosec // path は t.TempDir 配下</span>
+<span id="L573" class="ln">   573  </span>			require.NoError(t, err)
+<span id="L574" class="ln">   574  </span>			assert.Equal(t, &#34;findings=2\naudited=111\nblocking=1\n&#34;, string(body))
+<span id="L575" class="ln">   575  </span>		})
+<span id="L576" class="ln">   576  </span>
+<span id="L577" class="ln">   577  </span>		<span class="comment">// 上書きすると同じジョブの先行ステップが書いた出力を消してしまう。</span>
+<span id="L578" class="ln">   578  </span>		t.Run(&#34;既にある内容へ追記する&#34;, func(t *testing.T) {
+<span id="L579" class="ln">   579  </span>			t.Parallel()
+<span id="L580" class="ln">   580  </span>			path := filepath.Join(t.TempDir(), &#34;out&#34;)
+<span id="L581" class="ln">   581  </span>			require.NoError(t, os.WriteFile(path, []byte(&#34;existing=1\n&#34;), 0o600))
+<span id="L582" class="ln">   582  </span>			require.NoError(t, appendOutput(path, 0, 3, 0))
+<span id="L583" class="ln">   583  </span>
+<span id="L584" class="ln">   584  </span>			body, err := os.ReadFile(path) <span class="comment">//nolint:gosec // path は t.TempDir 配下</span>
+<span id="L585" class="ln">   585  </span>			require.NoError(t, err)
+<span id="L586" class="ln">   586  </span>			assert.Equal(t, &#34;existing=1\nfindings=0\naudited=3\nblocking=0\n&#34;, string(body))
+<span id="L587" class="ln">   587  </span>		})
+<span id="L588" class="ln">   588  </span>	})
+<span id="L589" class="ln">   589  </span>
+<span id="L590" class="ln">   590  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L591" class="ln">   591  </span>		t.Parallel()
+<span id="L592" class="ln">   592  </span>
+<span id="L593" class="ln">   593  </span>		t.Run(&#34;開けないパスはどの出力に失敗したかを含むエラーにする&#34;, func(t *testing.T) {
+<span id="L594" class="ln">   594  </span>			t.Parallel()
+<span id="L595" class="ln">   595  </span>			err := appendOutput(filepath.Join(t.TempDir(), &#34;absent-dir&#34;, &#34;out&#34;), 1, 1, 1)
+<span id="L596" class="ln">   596  </span>			require.Error(t, err)
+<span id="L597" class="ln">   597  </span>			assert.Contains(t, err.Error(), &#34;open GITHUB_OUTPUT&#34;)
+<span id="L598" class="ln">   598  </span>		})
+<span id="L599" class="ln">   599  </span>	})
+<span id="L600" class="ln">   600  </span>}
+<span id="L601" class="ln">   601  </span>
+<span id="L602" class="ln">   602  </span>func Test_requirement_key(t *testing.T) {
+<span id="L603" class="ln">   603  </span>	t.Parallel()
+<span id="L604" class="ln">   604  </span>
+<span id="L605" class="ln">   605  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L606" class="ln">   606  </span>		t.Parallel()
+<span id="L607" class="ln">   607  </span>
+<span id="L608" class="ln">   608  </span>		t.Run(&#34;module と version を @ で繋ぐ&#34;, func(t *testing.T) {
+<span id="L609" class="ln">   609  </span>			t.Parallel()
+<span id="L610" class="ln">   610  </span>			assert.Equal(t, &#34;github.com/x/y@v1.2.3&#34;, requirement{module: &#34;github.com/x/y&#34;, version: &#34;v1.2.3&#34;}.key())
+<span id="L611" class="ln">   611  </span>		})
+<span id="L612" class="ln">   612  </span>
+<span id="L613" class="ln">   613  </span>		<span class="comment">// 版ごとに別のキーになることが、更新を新規追加として拾える根拠になっている。</span>
+<span id="L614" class="ln">   614  </span>		t.Run(&#34;同じ module でも版が違えば別のキーになる&#34;, func(t *testing.T) {
+<span id="L615" class="ln">   615  </span>			t.Parallel()
+<span id="L616" class="ln">   616  </span>			a := requirement{module: &#34;github.com/x/y&#34;, version: &#34;v1.2.3&#34;}
+<span id="L617" class="ln">   617  </span>			b := requirement{module: &#34;github.com/x/y&#34;, version: &#34;v1.2.4&#34;}
+<span id="L618" class="ln">   618  </span>			assert.NotEqual(t, a.key(), b.key())
+<span id="L619" class="ln">   619  </span>		})
+<span id="L620" class="ln">   620  </span>
+<span id="L621" class="ln">   621  </span>		t.Run(&#34;indirect 注釈はキーに影響しない&#34;, func(t *testing.T) {
+<span id="L622" class="ln">   622  </span>			t.Parallel()
+<span id="L623" class="ln">   623  </span>			direct := requirement{module: &#34;github.com/x/y&#34;, version: &#34;v1.2.3&#34;}
+<span id="L624" class="ln">   624  </span>			indirect := requirement{module: &#34;github.com/x/y&#34;, version: &#34;v1.2.3&#34;, indirect: true}
+<span id="L625" class="ln">   625  </span>			assert.Equal(t, direct.key(), indirect.key())
+<span id="L626" class="ln">   626  </span>		})
+<span id="L627" class="ln">   627  </span>	})
+<span id="L628" class="ln">   628  </span>}
+<span id="L629" class="ln">   629  </span>
+<span id="L630" class="ln">   630  </span>func Test_sortedKeys(t *testing.T) {
+<span id="L631" class="ln">   631  </span>	t.Parallel()
+<span id="L632" class="ln">   632  </span>
+<span id="L633" class="ln">   633  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L634" class="ln">   634  </span>		t.Parallel()
+<span id="L635" class="ln">   635  </span>
+<span id="L636" class="ln">   636  </span>		<span class="comment">// バイパスの違反報告はこの順で並ぶため、map の反復順が漏れると報告順が実行ごとに変わる。</span>
+<span id="L637" class="ln">   637  </span>		t.Run(&#34;キーを辞書順で返す&#34;, func(t *testing.T) {
+<span id="L638" class="ln">   638  </span>			t.Parallel()
+<span id="L639" class="ln">   639  </span>			got := sortedKeys(map[string]bypass{&#34;c@v1&#34;: {}, &#34;a@v1&#34;: {}, &#34;b@v1&#34;: {}})
+<span id="L640" class="ln">   640  </span>			assert.Equal(t, []string{&#34;a@v1&#34;, &#34;b@v1&#34;, &#34;c@v1&#34;}, got)
+<span id="L641" class="ln">   641  </span>		})
+<span id="L642" class="ln">   642  </span>
+<span id="L643" class="ln">   643  </span>		t.Run(&#34;空のマップには空を返す&#34;, func(t *testing.T) {
+<span id="L644" class="ln">   644  </span>			t.Parallel()
+<span id="L645" class="ln">   645  </span>			assert.Empty(t, sortedKeys(map[string]bypass{}))
+<span id="L646" class="ln">   646  </span>		})
+<span id="L647" class="ln">   647  </span>	})
+<span id="L648" class="ln">   648  </span>}
+<span id="L649" class="ln">   649  </span>
+<span id="L650" class="ln">   650  </span>func Test_hasBypass(t *testing.T) {
+<span id="L651" class="ln">   651  </span>	t.Parallel()
+<span id="L652" class="ln">   652  </span>
+<span id="L653" class="ln">   653  </span>	req := requirement{module: &#34;github.com/x/y&#34;, version: &#34;v1.2.3&#34;}
+<span id="L654" class="ln">   654  </span>	bypasses := map[string]bypass{&#34;github.com/x/y@v1.2.3&#34;: {expires: day(&#34;2026-09-06&#34;), issue: 931, reason: &#34;r&#34;}}
+<span id="L655" class="ln">   655  </span>
+<span id="L656" class="ln">   656  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L657" class="ln">   657  </span>		t.Parallel()
+<span id="L658" class="ln">   658  </span>
+<span id="L659" class="ln">   659  </span>		t.Run(&#34;登録があれば真を返す&#34;, func(t *testing.T) {
+<span id="L660" class="ln">   660  </span>			t.Parallel()
+<span id="L661" class="ln">   661  </span>			assert.True(t, hasBypass(bypasses, map[string]struct{}{}, req))
+<span id="L662" class="ln">   662  </span>		})
+<span id="L663" class="ln">   663  </span>
+<span id="L664" class="ln">   664  </span>		t.Run(&#34;登録が無ければ偽を返す&#34;, func(t *testing.T) {
+<span id="L665" class="ln">   665  </span>			t.Parallel()
+<span id="L666" class="ln">   666  </span>			assert.False(t, hasBypass(bypasses, map[string]struct{}{}, requirement{module: &#34;other&#34;, version: &#34;v1&#34;}))
+<span id="L667" class="ln">   667  </span>		})
+<span id="L668" class="ln">   668  </span>
+<span id="L669" class="ln">   669  </span>		<span class="comment">// 期限切れのバイパスが素通しするなら、期限そのものが何も担保しないことになる。</span>
+<span id="L670" class="ln">   670  </span>		t.Run(&#34;無効と判定されたキーは登録があっても偽を返す&#34;, func(t *testing.T) {
+<span id="L671" class="ln">   671  </span>			t.Parallel()
+<span id="L672" class="ln">   672  </span>			invalid := map[string]struct{}{&#34;github.com/x/y@v1.2.3&#34;: {}}
+<span id="L673" class="ln">   673  </span>			assert.False(t, hasBypass(bypasses, invalid, req))
+<span id="L674" class="ln">   674  </span>		})
+<span id="L675" class="ln">   675  </span>	})
+<span id="L676" class="ln">   676  </span>}
+<span id="L677" class="ln">   677  </span>
+<span id="L678" class="ln">   678  </span>func Test_fenceFor(t *testing.T) {
+<span id="L679" class="ln">   679  </span>	t.Parallel()
+<span id="L680" class="ln">   680  </span>
+<span id="L681" class="ln">   681  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L682" class="ln">   682  </span>		t.Parallel()
+<span id="L683" class="ln">   683  </span>
+<span id="L684" class="ln">   684  </span>		t.Run(&#34;バッククォートを含まなければ CommonMark の下限 3 を返す&#34;, func(t *testing.T) {
+<span id="L685" class="ln">   685  </span>			t.Parallel()
+<span id="L686" class="ln">   686  </span>			assert.Equal(t, &#34;```&#34;, fenceFor(&#34;普通の理由&#34;))
+<span id="L687" class="ln">   687  </span>		})
+<span id="L688" class="ln">   688  </span>
+<span id="L689" class="ln">   689  </span>		<span class="comment">// 値と同じ長さのフェンスを返すと、値の側がフェンスを閉じて Markdown を脱出できる。</span>
+<span id="L690" class="ln">   690  </span>		t.Run(&#34;3 連バッククォートを含む値には 4 連を返す&#34;, func(t *testing.T) {
+<span id="L691" class="ln">   691  </span>			t.Parallel()
+<span id="L692" class="ln">   692  </span>			assert.Equal(t, &#34;````&#34;, fenceFor(&#34;``` を含む理由&#34;))
+<span id="L693" class="ln">   693  </span>		})
+<span id="L694" class="ln">   694  </span>
+<span id="L695" class="ln">   695  </span>		t.Run(&#34;最長の連より 1 つ長い長さを返す&#34;, func(t *testing.T) {
+<span id="L696" class="ln">   696  </span>			t.Parallel()
+<span id="L697" class="ln">   697  </span>			assert.Equal(t, &#34;``````&#34;, fenceFor(&#34;a `````&#34;))
+<span id="L698" class="ln">   698  </span>		})
+<span id="L699" class="ln">   699  </span>
+<span id="L700" class="ln">   700  </span>		t.Run(&#34;連が途切れれば長さは数え直す&#34;, func(t *testing.T) {
+<span id="L701" class="ln">   701  </span>			t.Parallel()
+<span id="L702" class="ln">   702  </span>			assert.Equal(t, &#34;```&#34;, fenceFor(&#34;`a`b`c`&#34;))
+<span id="L703" class="ln">   703  </span>		})
+<span id="L704" class="ln">   704  </span>	})
+<span id="L705" class="ln">   705  </span>}
+<span id="L706" class="ln">   706  </span>
+<span id="L707" class="ln">   707  </span>func Test_fenced(t *testing.T) {
+<span id="L708" class="ln">   708  </span>	t.Parallel()
+<span id="L709" class="ln">   709  </span>
+<span id="L710" class="ln">   710  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L711" class="ln">   711  </span>		t.Parallel()
+<span id="L712" class="ln">   712  </span>
+<span id="L713" class="ln">   713  </span>		t.Run(&#34;見出しに件数を添えて本文をフェンスで包む&#34;, func(t *testing.T) {
+<span id="L714" class="ln">   714  </span>			t.Parallel()
+<span id="L715" class="ln">   715  </span>			var b strings.Builder
+<span id="L716" class="ln">   716  </span>			fenced(&amp;b, &#34;cooldown 未達&#34;, []string{&#34;- a@v1&#34;, &#34;- b@v2&#34;})
+<span id="L717" class="ln">   717  </span>			assert.Equal(t, &#34;## cooldown 未達 (2)\n\n```text\n- a@v1\n- b@v2\n```\n\n&#34;, b.String())
+<span id="L718" class="ln">   718  </span>		})
+<span id="L719" class="ln">   719  </span>
+<span id="L720" class="ln">   720  </span>		t.Run(&#34;本文が閉じられない長さのフェンスを使う&#34;, func(t *testing.T) {
+<span id="L721" class="ln">   721  </span>			t.Parallel()
+<span id="L722" class="ln">   722  </span>			var b strings.Builder
+<span id="L723" class="ln">   723  </span>			fenced(&amp;b, &#34;見出し&#34;, []string{&#34;``` を含む行&#34;})
+<span id="L724" class="ln">   724  </span>			assert.Contains(t, b.String(), &#34;````text\n``` を含む行\n````&#34;)
+<span id="L725" class="ln">   725  </span>		})
+<span id="L726" class="ln">   726  </span>	})
+<span id="L727" class="ln">   727  </span>}
+<span id="L728" class="ln">   728  </span>
+<span id="L729" class="ln">   729  </span>func Test_publishedAt(t *testing.T) {
+<span id="L730" class="ln">   730  </span>	t.Parallel()
+<span id="L731" class="ln">   731  </span>
+<span id="L732" class="ln">   732  </span>	req := requirement{module: &#34;github.com/BurntSushi/toml&#34;, version: &#34;v1.4.0&#34;}
+<span id="L733" class="ln">   733  </span>	published := day(&#34;2026-08-01&#34;)
+<span id="L734" class="ln">   734  </span>	client := func(fn roundTripFunc) *http.Client { return &amp;http.Client{Transport: fn} }
+<span id="L735" class="ln">   735  </span>
+<span id="L736" class="ln">   736  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L737" class="ln">   737  </span>		t.Parallel()
+<span id="L738" class="ln">   738  </span>
+<span id="L739" class="ln">   739  </span>		<span class="comment">// 大文字を未エスケープのまま引くと proxy は 404 を返し、「存在しないバージョン」に化ける。</span>
+<span id="L740" class="ln">   740  </span>		t.Run(&#34;エスケープした .info を引き公開時刻を返す&#34;, func(t *testing.T) {
+<span id="L741" class="ln">   741  </span>			t.Parallel()
+<span id="L742" class="ln">   742  </span>			var requested string
+<span id="L743" class="ln">   743  </span>			at, err := publishedAt(t.Context(), client(func(r *http.Request) (*http.Response, error) {
+<span id="L744" class="ln">   744  </span>				requested = r.URL.String()
+<span id="L745" class="ln">   745  </span>				return proxyResponse(http.StatusOK, infoBody(published)), nil
+<span id="L746" class="ln">   746  </span>			}), req)
+<span id="L747" class="ln">   747  </span>			require.NoError(t, err)
+<span id="L748" class="ln">   748  </span>			assert.Equal(t, &#34;https://proxy.golang.org/github.com/!burnt!sushi/toml/@v/v1.4.0.info&#34;, requested)
+<span id="L749" class="ln">   749  </span>			assert.Equal(t, published, at.UTC())
+<span id="L750" class="ln">   750  </span>		})
+<span id="L751" class="ln">   751  </span>	})
+<span id="L752" class="ln">   752  </span>
+<span id="L753" class="ln">   753  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L754" class="ln">   754  </span>		t.Parallel()
+<span id="L755" class="ln">   755  </span>
+<span id="L756" class="ln">   756  </span>		t.Run(&#34;404 は proxy が知らないバージョンとして返す&#34;, func(t *testing.T) {
+<span id="L757" class="ln">   757  </span>			t.Parallel()
+<span id="L758" class="ln">   758  </span>			_, err := publishedAt(t.Context(), client(func(*http.Request) (*http.Response, error) {
+<span id="L759" class="ln">   759  </span>				return proxyResponse(http.StatusNotFound, &#34;&#34;), nil
+<span id="L760" class="ln">   760  </span>			}), req)
+<span id="L761" class="ln">   761  </span>			require.ErrorIs(t, err, errProxyNotFound)
+<span id="L762" class="ln">   762  </span>		})
+<span id="L763" class="ln">   763  </span>
+<span id="L764" class="ln">   764  </span>		t.Run(&#34;410 も proxy が知らないバージョンとして返す&#34;, func(t *testing.T) {
+<span id="L765" class="ln">   765  </span>			t.Parallel()
+<span id="L766" class="ln">   766  </span>			_, err := publishedAt(t.Context(), client(func(*http.Request) (*http.Response, error) {
+<span id="L767" class="ln">   767  </span>				return proxyResponse(http.StatusGone, &#34;&#34;), nil
+<span id="L768" class="ln">   768  </span>			}), req)
+<span id="L769" class="ln">   769  </span>			require.ErrorIs(t, err, errProxyNotFound)
+<span id="L770" class="ln">   770  </span>		})
+<span id="L771" class="ln">   771  </span>
+<span id="L772" class="ln">   772  </span>		<span class="comment">// 500 を「知らないバージョン」と同じ扱いにすると、proxy 障害が検査の素通しになる。</span>
+<span id="L773" class="ln">   773  </span>		t.Run(&#34;想定外のステータスは取得失敗として区別する&#34;, func(t *testing.T) {
+<span id="L774" class="ln">   774  </span>			t.Parallel()
+<span id="L775" class="ln">   775  </span>			_, err := publishedAt(t.Context(), client(func(*http.Request) (*http.Response, error) {
+<span id="L776" class="ln">   776  </span>				return proxyResponse(http.StatusInternalServerError, &#34;&#34;), nil
+<span id="L777" class="ln">   777  </span>			}), req)
+<span id="L778" class="ln">   778  </span>			require.ErrorIs(t, err, errProxyStatus)
+<span id="L779" class="ln">   779  </span>			assert.Contains(t, err.Error(), &#34;500&#34;)
+<span id="L780" class="ln">   780  </span>		})
+<span id="L781" class="ln">   781  </span>
+<span id="L782" class="ln">   782  </span>		t.Run(&#34;壊れた JSON はエラーにする&#34;, func(t *testing.T) {
+<span id="L783" class="ln">   783  </span>			t.Parallel()
+<span id="L784" class="ln">   784  </span>			_, err := publishedAt(t.Context(), client(func(*http.Request) (*http.Response, error) {
+<span id="L785" class="ln">   785  </span>				return proxyResponse(http.StatusOK, &#34;{&#34;), nil
+<span id="L786" class="ln">   786  </span>			}), req)
+<span id="L787" class="ln">   787  </span>			require.Error(t, err)
+<span id="L788" class="ln">   788  </span>		})
+<span id="L789" class="ln">   789  </span>
+<span id="L790" class="ln">   790  </span>		t.Run(&#34;転送層のエラーを包んで返す&#34;, func(t *testing.T) {
+<span id="L791" class="ln">   791  </span>			t.Parallel()
+<span id="L792" class="ln">   792  </span>			_, err := publishedAt(t.Context(), client(func(*http.Request) (*http.Response, error) {
+<span id="L793" class="ln">   793  </span>				return nil, errProxyStatus
+<span id="L794" class="ln">   794  </span>			}), req)
+<span id="L795" class="ln">   795  </span>			require.Error(t, err)
+<span id="L796" class="ln">   796  </span>			assert.Contains(t, err.Error(), &#34;fetch https://proxy.golang.org/&#34;)
+<span id="L797" class="ln">   797  </span>		})
+<span id="L798" class="ln">   798  </span>
+<span id="L799" class="ln">   799  </span>		<span class="comment">// URL を組めない module path は「窓を満たした」でも「proxy が知らない」でもないため、</span>
+<span id="L800" class="ln">   800  </span>		<span class="comment">// 取得失敗として上へ返す。</span>
+<span id="L801" class="ln">   801  </span>		t.Run(&#34;URL に使えない module path はリクエストを組めずエラーにする&#34;, func(t *testing.T) {
+<span id="L802" class="ln">   802  </span>			t.Parallel()
+<span id="L803" class="ln">   803  </span>			_, err := publishedAt(t.Context(), client(func(*http.Request) (*http.Response, error) {
+<span id="L804" class="ln">   804  </span>				return proxyResponse(http.StatusOK, infoBody(published)), nil
+<span id="L805" class="ln">   805  </span>			}), requirement{module: &#34;github.com/x/\ny&#34;, version: &#34;v1.0.0&#34;})
+<span id="L806" class="ln">   806  </span>			require.Error(t, err)
+<span id="L807" class="ln">   807  </span>			assert.NotErrorIs(t, err, errProxyNotFound)
+<span id="L808" class="ln">   808  </span>		})
+<span id="L809" class="ln">   809  </span>	})
+<span id="L810" class="ln">   810  </span>}
+<span id="L811" class="ln">   811  </span>
+<span id="L812" class="ln">   812  </span><span class="comment">//nolint:paralleltest // プロセス共有の http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L813" class="ln">   813  </span>func Test_inspect(t *testing.T) {
+<span id="L814" class="ln">   814  </span>	now := day(&#34;2026-08-06&#34;)
+<span id="L815" class="ln">   815  </span>	targets := []requirement{
+<span id="L816" class="ln">   816  </span>		{module: &#34;old&#34;, version: &#34;v1&#34;},
+<span id="L817" class="ln">   817  </span>		{module: &#34;fresh&#34;, version: &#34;v1&#34;},
+<span id="L818" class="ln">   818  </span>		{module: &#34;edge&#34;, version: &#34;v1&#34;},
+<span id="L819" class="ln">   819  </span>	}
+<span id="L820" class="ln">   820  </span>	info := func(path string) string {
+<span id="L821" class="ln">   821  </span>		switch {
+<span id="L822" class="ln">   822  </span>		case strings.HasPrefix(path, &#34;/fresh/&#34;):
+<span id="L823" class="ln">   823  </span>			return infoBody(now.AddDate(0, 0, -1))
+<span id="L824" class="ln">   824  </span>		case strings.HasPrefix(path, &#34;/edge/&#34;):
+<span id="L825" class="ln">   825  </span>			return infoBody(now.AddDate(0, 0, -7))
+<span id="L826" class="ln">   826  </span>		default:
+<span id="L827" class="ln">   827  </span>			return infoBody(now.AddDate(0, 0, -30))
+<span id="L828" class="ln">   828  </span>		}
+<span id="L829" class="ln">   829  </span>	}
+<span id="L830" class="ln">   830  </span>	ages := func(path string) (int, string) { return http.StatusOK, info(path) }
+<span id="L831" class="ln">   831  </span>
+<span id="L832" class="ln">   832  </span>	<span class="comment">//nolint:paralleltest // 親が http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L833" class="ln">   833  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L834" class="ln">   834  </span>		<span class="comment">//nolint:paralleltest // 親が http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L835" class="ln">   835  </span>		t.Run(&#34;公開から窓日数ちょうどのものは含めず、窓に満たないものだけを返す&#34;, func(t *testing.T) {
+<span id="L836" class="ln">   836  </span>			stubProxy(t, ages)
+<span id="L837" class="ln">   837  </span>			findings, unresolved, err := inspect(t.Context(), targets, 7, now)
+<span id="L838" class="ln">   838  </span>			require.NoError(t, err)
+<span id="L839" class="ln">   839  </span>			assert.Empty(t, unresolved)
+<span id="L840" class="ln">   840  </span>			require.Len(t, findings, 1)
+<span id="L841" class="ln">   841  </span>			assert.Equal(t, &#34;fresh@v1&#34;, findings[0].req.key())
+<span id="L842" class="ln">   842  </span>			assert.Equal(t, 1, findings[0].ageDays)
+<span id="L843" class="ln">   843  </span>		})
+<span id="L844" class="ln">   844  </span>
+<span id="L845" class="ln">   845  </span>		<span class="comment">//nolint:paralleltest // 親が http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L846" class="ln">   846  </span>		t.Run(&#34;経過日数の昇順に並べる&#34;, func(t *testing.T) {
+<span id="L847" class="ln">   847  </span>			stubProxy(t, ages)
+<span id="L848" class="ln">   848  </span>			findings, _, err := inspect(t.Context(), targets, 30, now)
+<span id="L849" class="ln">   849  </span>			require.NoError(t, err)
+<span id="L850" class="ln">   850  </span>			assert.Equal(t, []string{&#34;fresh@v1&#34;, &#34;edge@v1&#34;}, keysOf([]requirement{findings[0].req, findings[1].req}))
+<span id="L851" class="ln">   851  </span>		})
+<span id="L852" class="ln">   852  </span>
+<span id="L853" class="ln">   853  </span>		<span class="comment">// 打つ手の無い違反を作らないため、proxy に載らないものは失敗ではなく別枠へ回す。</span>
+<span id="L854" class="ln">   854  </span>		<span class="comment">//nolint:paralleltest // 親が http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L855" class="ln">   855  </span>		t.Run(&#34;proxy が知らないバージョンは未解決として分ける&#34;, func(t *testing.T) {
+<span id="L856" class="ln">   856  </span>			stubProxy(t, func(path string) (int, string) {
+<span id="L857" class="ln">   857  </span>				if strings.HasPrefix(path, &#34;/fresh/&#34;) {
+<span id="L858" class="ln">   858  </span>					return http.StatusNotFound, &#34;&#34;
+<span id="L859" class="ln">   859  </span>				}
+<span id="L860" class="ln">   860  </span>				return ages(path)
+<span id="L861" class="ln">   861  </span>			})
+<span id="L862" class="ln">   862  </span>			findings, unresolved, err := inspect(t.Context(), targets, 7, now)
+<span id="L863" class="ln">   863  </span>			require.NoError(t, err)
+<span id="L864" class="ln">   864  </span>			assert.Empty(t, findings)
+<span id="L865" class="ln">   865  </span>			assert.Equal(t, []string{&#34;fresh@v1&#34;}, keysOf(unresolved))
+<span id="L866" class="ln">   866  </span>		})
+<span id="L867" class="ln">   867  </span>
+<span id="L868" class="ln">   868  </span>		<span class="comment">// 取得は並行に走るので、並べ替えを落とすと未解決の報告順が実行ごとに変わる。</span>
+<span id="L869" class="ln">   869  </span>		<span class="comment">//nolint:paralleltest // 親が http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L870" class="ln">   870  </span>		t.Run(&#34;未解決はキーの辞書順に並べる&#34;, func(t *testing.T) {
+<span id="L871" class="ln">   871  </span>			stubProxy(t, func(string) (int, string) { return http.StatusNotFound, &#34;&#34; })
+<span id="L872" class="ln">   872  </span>			_, unresolved, err := inspect(t.Context(), targets, 7, now)
+<span id="L873" class="ln">   873  </span>			require.NoError(t, err)
+<span id="L874" class="ln">   874  </span>			assert.Equal(t, []string{&#34;edge@v1&#34;, &#34;fresh@v1&#34;, &#34;old@v1&#34;}, keysOf(unresolved))
+<span id="L875" class="ln">   875  </span>		})
+<span id="L876" class="ln">   876  </span>	})
+<span id="L877" class="ln">   877  </span>
+<span id="L878" class="ln">   878  </span>	<span class="comment">//nolint:paralleltest // 親が http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L879" class="ln">   879  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L880" class="ln">   880  </span>		<span class="comment">// 取得できないものを黙って通すと、「見た結果 OK」と「見ていない」を区別できなくなる。</span>
+<span id="L881" class="ln">   881  </span>		<span class="comment">//nolint:paralleltest // 親が http.DefaultTransport を差し替えるため並列化不可</span>
+<span id="L882" class="ln">   882  </span>		t.Run(&#34;proxy の障害は検査全体の失敗にする&#34;, func(t *testing.T) {
+<span id="L883" class="ln">   883  </span>			stubProxy(t, func(string) (int, string) { return http.StatusInternalServerError, &#34;&#34; })
+<span id="L884" class="ln">   884  </span>			findings, unresolved, err := inspect(t.Context(), targets, 7, now)
+<span id="L885" class="ln">   885  </span>			require.ErrorIs(t, err, errProxyStatus)
+<span id="L886" class="ln">   886  </span>			assert.Empty(t, findings)
+<span id="L887" class="ln">   887  </span>			assert.Empty(t, unresolved)
+<span id="L888" class="ln">   888  </span>		})
+<span id="L889" class="ln">   889  </span>	})
+<span id="L890" class="ln">   890  </span>}
+<span id="L891" class="ln">   891  </span>
+<span id="L892" class="ln">   892  </span><span class="comment">//nolint:paralleltest // プロセス共有の log 出力先を差し替えるため並列化不可</span>
+<span id="L893" class="ln">   893  </span>func Test_report(t *testing.T) {
+<span id="L894" class="ln">   894  </span>	direct := finding{req: requirement{module: &#34;d&#34;, version: &#34;v1&#34;}, ageDays: 1}
+<span id="L895" class="ln">   895  </span>	indirect := finding{req: requirement{module: &#34;i&#34;, version: &#34;v1&#34;, indirect: true}, ageDays: 1}
+<span id="L896" class="ln">   896  </span>
+<span id="L897" class="ln">   897  </span>	<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L898" class="ln">   898  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L899" class="ln">   899  </span>		<span class="comment">// Go には解決時に窓を強制する機構が無く、gate が落とさなければ窓はどこにも存在しない。</span>
+<span id="L900" class="ln">   900  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L901" class="ln">   901  </span>		t.Run(&#34;gate は direct の窓内違反を非ゼロ終了として数える&#34;, func(t *testing.T) {
+<span id="L902" class="ln">   902  </span>			captureLog(t)
+<span id="L903" class="ln">   903  </span>			got := report(&#34;gate&#34;, []finding{direct}, nil, nil, nil, nil, []requirement{direct.req}, 7, false)
+<span id="L904" class="ln">   904  </span>			assert.Equal(t, 1, got)
+<span id="L905" class="ln">   905  </span>		})
+<span id="L906" class="ln">   906  </span>
+<span id="L907" class="ln">   907  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L908" class="ln">   908  </span>		t.Run(&#34;gate でも indirect の窓内違反は数えない&#34;, func(t *testing.T) {
+<span id="L909" class="ln">   909  </span>			captureLog(t)
+<span id="L910" class="ln">   910  </span>			got := report(&#34;gate&#34;, []finding{indirect}, nil, nil, nil, nil, []requirement{indirect.req}, 7, false)
+<span id="L911" class="ln">   911  </span>			assert.Equal(t, 0, got)
+<span id="L912" class="ln">   912  </span>		})
+<span id="L913" class="ln">   913  </span>
+<span id="L914" class="ln">   914  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L915" class="ln">   915  </span>		t.Run(&#34;audit は窓内違反では落ちない&#34;, func(t *testing.T) {
+<span id="L916" class="ln">   916  </span>			captureLog(t)
+<span id="L917" class="ln">   917  </span>			got := report(&#34;audit&#34;, []finding{direct, indirect}, nil, nil, nil, nil, nil, 7, false)
+<span id="L918" class="ln">   918  </span>			assert.Equal(t, 0, got)
+<span id="L919" class="ln">   919  </span>		})
+<span id="L920" class="ln">   920  </span>
+<span id="L921" class="ln">   921  </span>		<span class="comment">// 期限切れの回収はスケジュール実行に懸かっているため、audit でも失敗させる。</span>
+<span id="L922" class="ln">   922  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L923" class="ln">   923  </span>		t.Run(&#34;バイパス設定の違反は audit でも数える&#34;, func(t *testing.T) {
+<span id="L924" class="ln">   924  </span>			buf := captureLog(t)
+<span id="L925" class="ln">   925  </span>			got := report(&#34;audit&#34;, nil, nil, []string{&#34;期限が切れています&#34;}, nil, nil, nil, 7, false)
+<span id="L926" class="ln">   926  </span>			assert.Equal(t, 1, got)
+<span id="L927" class="ln">   927  </span>			assert.Contains(t, buf.String(), &#34;期限が切れています&#34;)
+<span id="L928" class="ln">   928  </span>		})
+<span id="L929" class="ln">   929  </span>
+<span id="L930" class="ln">   930  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L931" class="ln">   931  </span>		t.Run(&#34;有効なバイパスは数えず通した事実を残す&#34;, func(t *testing.T) {
+<span id="L932" class="ln">   932  </span>			buf := captureLog(t)
+<span id="L933" class="ln">   933  </span>			bypasses := map[string]bypass{&#34;d@v1&#34;: {expires: day(&#34;2026-09-06&#34;), issue: 931, reason: &#34;CRITICAL への即応&#34;}}
+<span id="L934" class="ln">   934  </span>			got := report(&#34;gate&#34;, []finding{direct}, nil, nil, bypasses, nil, []requirement{direct.req}, 7, false)
+<span id="L935" class="ln">   935  </span>			assert.Equal(t, 0, got)
+<span id="L936" class="ln">   936  </span>			assert.Contains(t, buf.String(), &#34;#931 のバイパスで通します&#34;)
+<span id="L937" class="ln">   937  </span>		})
+<span id="L938" class="ln">   938  </span>
+<span id="L939" class="ln">   939  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L940" class="ln">   940  </span>		t.Run(&#34;gate は公開時刻を取得できなかった direct だけを数える&#34;, func(t *testing.T) {
+<span id="L941" class="ln">   941  </span>			captureLog(t)
+<span id="L942" class="ln">   942  </span>			unresolved := []requirement{direct.req, indirect.req}
+<span id="L943" class="ln">   943  </span>			got := report(&#34;gate&#34;, nil, unresolved, nil, nil, nil, unresolved, 7, false)
+<span id="L944" class="ln">   944  </span>			assert.Equal(t, 1, got)
+<span id="L945" class="ln">   945  </span>		})
+<span id="L946" class="ln">   946  </span>
+<span id="L947" class="ln">   947  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L948" class="ln">   948  </span>		t.Run(&#34;github 指定のときだけアノテーションを出す&#34;, func(t *testing.T) {
+<span id="L949" class="ln">   949  </span>			buf := captureLog(t)
+<span id="L950" class="ln">   950  </span>			report(&#34;gate&#34;, []finding{direct}, nil, nil, nil, nil, []requirement{direct.req}, 7, true)
+<span id="L951" class="ln">   951  </span>			assert.Contains(t, buf.String(), &#34;::error file=go.mod::d@v1 は公開 1 日で&#34;)
+<span id="L952" class="ln">   952  </span>		})
+<span id="L953" class="ln">   953  </span>
+<span id="L954" class="ln">   954  </span>		<span class="comment">// 直すべき場所は go.mod ではなくバイパス lockfile なので、注釈の宛先を取り違えると</span>
+<span id="L955" class="ln">   955  </span>		<span class="comment">// 差分行に印が付かず、レビューで気づけない。</span>
+<span id="L956" class="ln">   956  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L957" class="ln">   957  </span>		t.Run(&#34;バイパス設定の違反はバイパス lockfile 宛のアノテーションにする&#34;, func(t *testing.T) {
+<span id="L958" class="ln">   958  </span>			buf := captureLog(t)
+<span id="L959" class="ln">   959  </span>			report(&#34;audit&#34;, nil, nil, []string{&#34;期限が切れています&#34;}, nil, nil, nil, 7, true)
+<span id="L960" class="ln">   960  </span>			assert.Contains(t, buf.String(), &#34;::error file=&#34;+bypassFile+&#34;::期限が切れています&#34;)
+<span id="L961" class="ln">   961  </span>		})
+<span id="L962" class="ln">   962  </span>
+<span id="L963" class="ln">   963  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L964" class="ln">   964  </span>		t.Run(&#34;報告に留めるものは error ではなく warning のアノテーションにする&#34;, func(t *testing.T) {
+<span id="L965" class="ln">   965  </span>			buf := captureLog(t)
+<span id="L966" class="ln">   966  </span>			report(&#34;gate&#34;, []finding{indirect}, nil, nil, nil, nil, []requirement{indirect.req}, 7, true)
+<span id="L967" class="ln">   967  </span>			assert.Contains(t, buf.String(), &#34;::warning file=go.mod::i@v1（indirect）は公開 1 日で&#34;)
+<span id="L968" class="ln">   968  </span>			assert.NotContains(t, buf.String(), &#34;::error&#34;)
+<span id="L969" class="ln">   969  </span>		})
+<span id="L970" class="ln">   970  </span>
+<span id="L971" class="ln">   971  </span>		<span class="comment">//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可</span>
+<span id="L972" class="ln">   972  </span>		t.Run(&#34;公開時刻を取得できなかった direct もアノテーションにする&#34;, func(t *testing.T) {
+<span id="L973" class="ln">   973  </span>			buf := captureLog(t)
+<span id="L974" class="ln">   974  </span>			unresolved := []requirement{direct.req}
+<span id="L975" class="ln">   975  </span>			report(&#34;gate&#34;, nil, unresolved, nil, nil, nil, unresolved, 7, true)
+<span id="L976" class="ln">   976  </span>			assert.Contains(t, buf.String(), &#34;::error file=go.mod::d@v1 の公開時刻を module proxy から取得できませんでした&#34;)
+<span id="L977" class="ln">   977  </span>		})
+<span id="L978" class="ln">   978  </span>	})
+<span id="L979" class="ln">   979  </span>}
+<span id="L980" class="ln">   980  </span>
+<span id="L981" class="ln">   981  </span><span class="comment">//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可</span>
+<span id="L982" class="ln">   982  </span>func Test_added(t *testing.T) {
+<span id="L983" class="ln">   983  </span>	current := []requirement{
+<span id="L984" class="ln">   984  </span>		{module: &#34;github.com/x/y&#34;, version: &#34;v2.0.0&#34;},
+<span id="L985" class="ln">   985  </span>		{module: &#34;github.com/kept/same&#34;, version: &#34;v1.0.0&#34;},
+<span id="L986" class="ln">   986  </span>		{module: &#34;github.com/new/one&#34;, version: &#34;v0.1.0&#34;},
+<span id="L987" class="ln">   987  </span>	}
+<span id="L988" class="ln">   988  </span>
+<span id="L989" class="ln">   989  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L990" class="ln">   990  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L991" class="ln">   991  </span>		<span class="comment">// 版を上げたモジュールも新しい組として現れるので、追加と更新を 1 つの判定で拾える。</span>
+<span id="L992" class="ln">   992  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L993" class="ln">   993  </span>		t.Run(&#34;base に無い組だけを対象にする&#34;, func(t *testing.T) {
+<span id="L994" class="ln">   994  </span>			dir := t.TempDir()
+<span id="L995" class="ln">   995  </span>			initGoModRepo(t, dir, &#34;module m\n\nrequire (\n\tgithub.com/x/y v1.0.0\n\tgithub.com/kept/same v1.0.0\n)\n&#34;)
+<span id="L996" class="ln">   996  </span>			t.Chdir(dir)
+<span id="L997" class="ln">   997  </span>
+<span id="L998" class="ln">   998  </span>			got, err := added(&#34;HEAD&#34;, current)
+<span id="L999" class="ln">   999  </span>			require.NoError(t, err)
+<span id="L1000" class="ln">  1000  </span>			assert.ElementsMatch(t, []string{&#34;github.com/x/y@v2.0.0&#34;, &#34;github.com/new/one@v0.1.0&#34;}, keysOf(got))
+<span id="L1001" class="ln">  1001  </span>		})
+<span id="L1002" class="ln">  1002  </span>	})
+<span id="L1003" class="ln">  1003  </span>
+<span id="L1004" class="ln">  1004  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L1005" class="ln">  1005  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1006" class="ln">  1006  </span>		<span class="comment">// base を取れないまま空の差分を返すと、検査が素通りしたことに誰も気づけない。</span>
+<span id="L1007" class="ln">  1007  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L1008" class="ln">  1008  </span>		t.Run(&#34;base を解決できなければ取得手段を示してエラーにする&#34;, func(t *testing.T) {
+<span id="L1009" class="ln">  1009  </span>			dir := t.TempDir()
+<span id="L1010" class="ln">  1010  </span>			initGoModRepo(t, dir, &#34;module m\n&#34;)
+<span id="L1011" class="ln">  1011  </span>			t.Chdir(dir)
+<span id="L1012" class="ln">  1012  </span>
+<span id="L1013" class="ln">  1013  </span>			_, err := added(&#34;no-such-ref&#34;, current)
+<span id="L1014" class="ln">  1014  </span>			require.Error(t, err)
+<span id="L1015" class="ln">  1015  </span>			assert.Contains(t, err.Error(), &#34;fetch-depth: 0&#34;)
+<span id="L1016" class="ln">  1016  </span>		})
+<span id="L1017" class="ln">  1017  </span>
+<span id="L1018" class="ln">  1018  </span>		<span class="comment">// base を読めないまま差分を空として返すと、追加した依存がひとつも検査されない。</span>
+<span id="L1019" class="ln">  1019  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L1020" class="ln">  1020  </span>		t.Run(&#34;base の go.mod を読み切れなければエラーにする&#34;, func(t *testing.T) {
+<span id="L1021" class="ln">  1021  </span>			dir := t.TempDir()
+<span id="L1022" class="ln">  1022  </span>			initGoModRepo(t, dir, &#34;module m\n// &#34;+strings.Repeat(&#34;a&#34;, bufio.MaxScanTokenSize)+&#34;\n&#34;)
+<span id="L1023" class="ln">  1023  </span>			t.Chdir(dir)
+<span id="L1024" class="ln">  1024  </span>
+<span id="L1025" class="ln">  1025  </span>			got, err := added(&#34;HEAD&#34;, current)
+<span id="L1026" class="ln">  1026  </span>			require.Error(t, err)
+<span id="L1027" class="ln">  1027  </span>			assert.Contains(t, err.Error(), &#34;base の go.mod&#34;)
+<span id="L1028" class="ln">  1028  </span>			assert.Empty(t, got)
+<span id="L1029" class="ln">  1029  </span>		})
+<span id="L1030" class="ln">  1030  </span>	})
+<span id="L1031" class="ln">  1031  </span>}
+<span id="L1032" class="ln">  1032  </span>
+<span id="L1033" class="ln">  1033  </span>func Test_parseArgs(t *testing.T) {
+<span id="L1034" class="ln">  1034  </span>	t.Parallel()
+<span id="L1035" class="ln">  1035  </span>
+<span id="L1036" class="ln">  1036  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1037" class="ln">  1037  </span>		t.Parallel()
+<span id="L1038" class="ln">  1038  </span>
+<span id="L1039" class="ln">  1039  </span>		t.Run(&#34;フラグを省略すれば既定の窓を採る&#34;, func(t *testing.T) {
+<span id="L1040" class="ln">  1040  </span>			t.Parallel()
+<span id="L1041" class="ln">  1041  </span>
+<span id="L1042" class="ln">  1042  </span>			sub, opt, err := parseArgs([]string{&#34;audit&#34;})
+<span id="L1043" class="ln">  1043  </span>
+<span id="L1044" class="ln">  1044  </span>			require.NoError(t, err)
+<span id="L1045" class="ln">  1045  </span>			assert.Equal(t, &#34;audit&#34;, sub)
+<span id="L1046" class="ln">  1046  </span>			assert.Equal(t, options{window: defaultWindowDays}, opt)
+<span id="L1047" class="ln">  1047  </span>		})
+<span id="L1048" class="ln">  1048  </span>
+<span id="L1049" class="ln">  1049  </span>		t.Run(&#34;与えられたフラグを options へ載せる&#34;, func(t *testing.T) {
+<span id="L1050" class="ln">  1050  </span>			t.Parallel()
+<span id="L1051" class="ln">  1051  </span>
+<span id="L1052" class="ln">  1052  </span>			sub, opt, err := parseArgs([]string{&#34;gate&#34;, &#34;--base=origin/main&#34;, &#34;--window-days=3&#34;, &#34;--summary-out=s.md&#34;, &#34;--github&#34;})
+<span id="L1053" class="ln">  1053  </span>
+<span id="L1054" class="ln">  1054  </span>			require.NoError(t, err)
+<span id="L1055" class="ln">  1055  </span>			assert.Equal(t, &#34;gate&#34;, sub)
+<span id="L1056" class="ln">  1056  </span>			assert.Equal(t, options{base: &#34;origin/main&#34;, summaryOut: &#34;s.md&#34;, window: 3, github: true}, opt)
+<span id="L1057" class="ln">  1057  </span>		})
+<span id="L1058" class="ln">  1058  </span>	})
+<span id="L1059" class="ln">  1059  </span>
+<span id="L1060" class="ln">  1060  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1061" class="ln">  1061  </span>		t.Parallel()
+<span id="L1062" class="ln">  1062  </span>
+<span id="L1063" class="ln">  1063  </span>		t.Run(&#34;サブコマンドが無ければ使い方を示す&#34;, func(t *testing.T) {
+<span id="L1064" class="ln">  1064  </span>			t.Parallel()
+<span id="L1065" class="ln">  1065  </span>
+<span id="L1066" class="ln">  1066  </span>			_, _, err := parseArgs(nil)
+<span id="L1067" class="ln">  1067  </span>
+<span id="L1068" class="ln">  1068  </span>			require.ErrorIs(t, err, errUsage)
+<span id="L1069" class="ln">  1069  </span>			assert.Contains(t, err.Error(), &#34;usage: go-cooldown &lt;gate|audit&gt;&#34;)
+<span id="L1070" class="ln">  1070  </span>		})
+<span id="L1071" class="ln">  1071  </span>
+<span id="L1072" class="ln">  1072  </span>		t.Run(&#34;未知のサブコマンドはエラーにする&#34;, func(t *testing.T) {
+<span id="L1073" class="ln">  1073  </span>			t.Parallel()
+<span id="L1074" class="ln">  1074  </span>
+<span id="L1075" class="ln">  1075  </span>			_, _, err := parseArgs([]string{&#34;inspect&#34;})
+<span id="L1076" class="ln">  1076  </span>
+<span id="L1077" class="ln">  1077  </span>			require.ErrorIs(t, err, errUsage)
+<span id="L1078" class="ln">  1078  </span>			assert.Contains(t, err.Error(), &#34;未知のサブコマンド&#34;)
+<span id="L1079" class="ln">  1079  </span>		})
+<span id="L1080" class="ln">  1080  </span>
+<span id="L1081" class="ln">  1081  </span>		<span class="comment">// base 無しの gate を通すと、比較対象が無いまま全 require を窓違反として落とす。</span>
+<span id="L1082" class="ln">  1082  </span>		t.Run(&#34;gate に base が無ければエラーにする&#34;, func(t *testing.T) {
+<span id="L1083" class="ln">  1083  </span>			t.Parallel()
+<span id="L1084" class="ln">  1084  </span>
+<span id="L1085" class="ln">  1085  </span>			_, _, err := parseArgs([]string{&#34;gate&#34;})
+<span id="L1086" class="ln">  1086  </span>
+<span id="L1087" class="ln">  1087  </span>			require.ErrorIs(t, err, errUsage)
+<span id="L1088" class="ln">  1088  </span>			assert.Contains(t, err.Error(), &#34;--base&#34;)
+<span id="L1089" class="ln">  1089  </span>		})
+<span id="L1090" class="ln">  1090  </span>
+<span id="L1091" class="ln">  1091  </span>		<span class="comment">// ヘルプ要求を解析失敗と同じ扱いにすると、`-h` が異常終了に化ける。</span>
+<span id="L1092" class="ln">  1092  </span>		t.Run(&#34;ヘルプ要求は flag.ErrHelp のまま返す&#34;, func(t *testing.T) {
+<span id="L1093" class="ln">  1093  </span>			t.Parallel()
+<span id="L1094" class="ln">  1094  </span>
+<span id="L1095" class="ln">  1095  </span>			_, _, err := parseArgs([]string{&#34;audit&#34;, &#34;-h&#34;})
+<span id="L1096" class="ln">  1096  </span>
+<span id="L1097" class="ln">  1097  </span>			require.ErrorIs(t, err, flag.ErrHelp)
+<span id="L1098" class="ln">  1098  </span>		})
+<span id="L1099" class="ln">  1099  </span>
+<span id="L1100" class="ln">  1100  </span>		t.Run(&#34;解釈できないフラグはエラーにする&#34;, func(t *testing.T) {
+<span id="L1101" class="ln">  1101  </span>			t.Parallel()
+<span id="L1102" class="ln">  1102  </span>
+<span id="L1103" class="ln">  1103  </span>			_, _, err := parseArgs([]string{&#34;audit&#34;, &#34;--no-such-flag&#34;})
+<span id="L1104" class="ln">  1104  </span>
+<span id="L1105" class="ln">  1105  </span>			require.Error(t, err)
+<span id="L1106" class="ln">  1106  </span>			require.NotErrorIs(t, err, flag.ErrHelp)
+<span id="L1107" class="ln">  1107  </span>			assert.Contains(t, err.Error(), &#34;フラグを解釈できません&#34;)
+<span id="L1108" class="ln">  1108  </span>		})
+<span id="L1109" class="ln">  1109  </span>	})
+<span id="L1110" class="ln">  1110  </span>}
+<span id="L1111" class="ln">  1111  </span>
+<span id="L1112" class="ln">  1112  </span><span class="comment">//nolint:paralleltest // t.Chdir・captureLog・stubProxy がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1113" class="ln">  1113  </span>func Test_run(t *testing.T) {
+<span id="L1114" class="ln">  1114  </span>	now := day(&#34;2026-08-06&#34;)
+<span id="L1115" class="ln">  1115  </span>	fresh := day(&#34;2026-08-05&#34;)
+<span id="L1116" class="ln">  1116  </span>	aged := day(&#34;2020-01-01&#34;)
+<span id="L1117" class="ln">  1117  </span>
+<span id="L1118" class="ln">  1118  </span>	<span class="comment">// 実行環境の GITHUB_OUTPUT を持ち込まないよう空にする。設定済みのランナー上で走らせると</span>
+<span id="L1119" class="ln">  1119  </span>	<span class="comment">// 検査とは無関係なファイルへ追記してしまう。</span>
+<span id="L1120" class="ln">  1120  </span>	t.Setenv(&#34;GITHUB_OUTPUT&#34;, &#34;&#34;)
+<span id="L1121" class="ln">  1121  </span>
+<span id="L1122" class="ln">  1122  </span>	<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1123" class="ln">  1123  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1124" class="ln">  1124  </span>		<span class="comment">// audit は既存依存の棚卸しで、窓内であること自体は誰の違反でもない。</span>
+<span id="L1125" class="ln">  1125  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1126" class="ln">  1126  </span>		t.Run(&#34;audit は窓内の require を報告しつつ正常終了する&#34;, func(t *testing.T) {
+<span id="L1127" class="ln">  1127  </span>			out := captureLog(t)
+<span id="L1128" class="ln">  1128  </span>			useWorkTree(t, goModOneRequire)
+<span id="L1129" class="ln">  1129  </span>			stubProxyPublishedAt(t, fresh)
+<span id="L1130" class="ln">  1130  </span>
+<span id="L1131" class="ln">  1131  </span>			require.NoError(t, run([]string{&#34;audit&#34;}, now))
+<span id="L1132" class="ln">  1132  </span>			assert.Contains(t, out.String(), &#34;example.com/mod@v1.0.0（direct）は公開 1 日で&#34;)
+<span id="L1133" class="ln">  1133  </span>		})
+<span id="L1134" class="ln">  1134  </span>
+<span id="L1135" class="ln">  1135  </span>		<span class="comment">// 窓の値を握り潰すと、gate が守る幅が既定値に固定されて設定が効かなくなる。</span>
+<span id="L1136" class="ln">  1136  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1137" class="ln">  1137  </span>		t.Run(&#34;window-days で窓を狭められる&#34;, func(t *testing.T) {
+<span id="L1138" class="ln">  1138  </span>			out := captureLog(t)
+<span id="L1139" class="ln">  1139  </span>			useWorkTree(t, goModOneRequire)
+<span id="L1140" class="ln">  1140  </span>			stubProxyPublishedAt(t, fresh)
+<span id="L1141" class="ln">  1141  </span>
+<span id="L1142" class="ln">  1142  </span>			require.NoError(t, run([]string{&#34;audit&#34;, &#34;--window-days=1&#34;}, now))
+<span id="L1143" class="ln">  1143  </span>			assert.NotContains(t, out.String(), &#34;example.com/mod@v1.0.0&#34;)
+<span id="L1144" class="ln">  1144  </span>		})
+<span id="L1145" class="ln">  1145  </span>
+<span id="L1146" class="ln">  1146  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1147" class="ln">  1147  </span>		t.Run(&#34;gate は base に無い require でも窓を越えていれば通す&#34;, func(t *testing.T) {
+<span id="L1148" class="ln">  1148  </span>			out := captureLog(t)
+<span id="L1149" class="ln">  1149  </span>			useGateRepo(t, &#34;module m\n&#34;, goModOneRequire)
+<span id="L1150" class="ln">  1150  </span>			stubProxyPublishedAt(t, aged)
+<span id="L1151" class="ln">  1151  </span>
+<span id="L1152" class="ln">  1152  </span>			require.NoError(t, run([]string{&#34;gate&#34;, &#34;--base=HEAD&#34;}, now))
+<span id="L1153" class="ln">  1153  </span>			assert.Contains(t, out.String(), &#34;対象 1 件&#34;)
+<span id="L1154" class="ln">  1154  </span>		})
+<span id="L1155" class="ln">  1155  </span>
+<span id="L1156" class="ln">  1156  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1157" class="ln">  1157  </span>		t.Run(&#34;github 指定のときだけアノテーションを出す&#34;, func(t *testing.T) {
+<span id="L1158" class="ln">  1158  </span>			out := captureLog(t)
+<span id="L1159" class="ln">  1159  </span>			useWorkTree(t, goModOneRequire)
+<span id="L1160" class="ln">  1160  </span>			stubProxyPublishedAt(t, fresh)
+<span id="L1161" class="ln">  1161  </span>
+<span id="L1162" class="ln">  1162  </span>			require.NoError(t, run([]string{&#34;audit&#34;, &#34;--github&#34;}, now))
+<span id="L1163" class="ln">  1163  </span>			assert.Contains(t, out.String(), &#34;::warning file=go.mod::example.com/mod@v1.0.0&#34;)
+<span id="L1164" class="ln">  1164  </span>		})
+<span id="L1165" class="ln">  1165  </span>
+<span id="L1166" class="ln">  1166  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1167" class="ln">  1167  </span>		t.Run(&#34;summary-out 指定でサマリを書き出す&#34;, func(t *testing.T) {
+<span id="L1168" class="ln">  1168  </span>			captureLog(t)
+<span id="L1169" class="ln">  1169  </span>			dir := useWorkTree(t, goModOneRequire)
+<span id="L1170" class="ln">  1170  </span>			stubProxyPublishedAt(t, fresh)
+<span id="L1171" class="ln">  1171  </span>			path := filepath.Join(dir, &#34;summary.md&#34;)
+<span id="L1172" class="ln">  1172  </span>
+<span id="L1173" class="ln">  1173  </span>			require.NoError(t, run([]string{&#34;audit&#34;, &#34;--summary-out=&#34; + path}, now))
+<span id="L1174" class="ln">  1174  </span>
+<span id="L1175" class="ln">  1175  </span>			body, err := os.ReadFile(path) <span class="comment">//nolint:gosec // テスト内の一時ファイル</span>
+<span id="L1176" class="ln">  1176  </span>			require.NoError(t, err)
+<span id="L1177" class="ln">  1177  </span>			assert.Contains(t, string(body), &#34;example.com/mod@v1.0.0&#34;)
+<span id="L1178" class="ln">  1178  </span>		})
+<span id="L1179" class="ln">  1179  </span>
+<span id="L1180" class="ln">  1180  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1181" class="ln">  1181  </span>		t.Run(&#34;GITHUB_OUTPUT があれば件数を追記する&#34;, func(t *testing.T) {
+<span id="L1182" class="ln">  1182  </span>			captureLog(t)
+<span id="L1183" class="ln">  1183  </span>			dir := useWorkTree(t, goModOneRequire)
+<span id="L1184" class="ln">  1184  </span>			stubProxyPublishedAt(t, fresh)
+<span id="L1185" class="ln">  1185  </span>			path := filepath.Join(dir, &#34;github-output&#34;)
+<span id="L1186" class="ln">  1186  </span>			t.Setenv(&#34;GITHUB_OUTPUT&#34;, path)
+<span id="L1187" class="ln">  1187  </span>
+<span id="L1188" class="ln">  1188  </span>			require.NoError(t, run([]string{&#34;audit&#34;}, now))
+<span id="L1189" class="ln">  1189  </span>
+<span id="L1190" class="ln">  1190  </span>			body, err := os.ReadFile(path) <span class="comment">//nolint:gosec // テスト内の一時ファイル</span>
+<span id="L1191" class="ln">  1191  </span>			require.NoError(t, err)
+<span id="L1192" class="ln">  1192  </span>			assert.Contains(t, string(body), &#34;findings=1&#34;)
+<span id="L1193" class="ln">  1193  </span>			assert.Contains(t, string(body), &#34;audited=1&#34;)
+<span id="L1194" class="ln">  1194  </span>			assert.Contains(t, string(body), &#34;blocking=0&#34;)
+<span id="L1195" class="ln">  1195  </span>		})
+<span id="L1196" class="ln">  1196  </span>
+<span id="L1197" class="ln">  1197  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1198" class="ln">  1198  </span>		t.Run(&#34;ヘルプ要求は失敗にしない&#34;, func(t *testing.T) {
+<span id="L1199" class="ln">  1199  </span>			captureLog(t)
+<span id="L1200" class="ln">  1200  </span>
+<span id="L1201" class="ln">  1201  </span>			require.NoError(t, run([]string{&#34;audit&#34;, &#34;-h&#34;}, now))
+<span id="L1202" class="ln">  1202  </span>		})
+<span id="L1203" class="ln">  1203  </span>	})
+<span id="L1204" class="ln">  1204  </span>
+<span id="L1205" class="ln">  1205  </span>	<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1206" class="ln">  1206  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1207" class="ln">  1207  </span>		<span class="comment">// Go には解決時に窓を強制する機構が無く、gate が落とさなければ窓はどこにも存在しない。</span>
+<span id="L1208" class="ln">  1208  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1209" class="ln">  1209  </span>		t.Run(&#34;gate は base に無い窓内の direct require を失敗にする&#34;, func(t *testing.T) {
+<span id="L1210" class="ln">  1210  </span>			out := captureLog(t)
+<span id="L1211" class="ln">  1211  </span>			useGateRepo(t, &#34;module m\n&#34;, goModOneRequire)
+<span id="L1212" class="ln">  1212  </span>			stubProxyPublishedAt(t, fresh)
+<span id="L1213" class="ln">  1213  </span>
+<span id="L1214" class="ln">  1214  </span>			err := run([]string{&#34;gate&#34;, &#34;--base=HEAD&#34;}, now)
+<span id="L1215" class="ln">  1215  </span>
+<span id="L1216" class="ln">  1216  </span>			require.ErrorIs(t, err, errBlocking)
+<span id="L1217" class="ln">  1217  </span>			assert.Contains(t, out.String(), &#34;窓明けを待つか&#34;)
+<span id="L1218" class="ln">  1218  </span>		})
+<span id="L1219" class="ln">  1219  </span>
+<span id="L1220" class="ln">  1220  </span>		<span class="comment">// 期限切れの回収はスケジュール実行に懸かっているため、audit でも失敗させる必要がある。</span>
+<span id="L1221" class="ln">  1221  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1222" class="ln">  1222  </span>		t.Run(&#34;期限切れのバイパスは audit でも失敗にする&#34;, func(t *testing.T) {
+<span id="L1223" class="ln">  1223  </span>			captureLog(t)
+<span id="L1224" class="ln">  1224  </span>			dir := useWorkTree(t, goModOneRequire)
+<span id="L1225" class="ln">  1225  </span>			writeWorkTreeBypass(t, dir,
+<span id="L1226" class="ln">  1226  </span>				`&#34;example.com/mod@v1.0.0&#34; = { expires = 2000-01-01, issue = 1, reason = &#34;済んだ緊急対応&#34; }`+&#34;\n&#34;)
+<span id="L1227" class="ln">  1227  </span>			stubProxyPublishedAt(t, aged)
+<span id="L1228" class="ln">  1228  </span>
+<span id="L1229" class="ln">  1229  </span>			require.ErrorIs(t, run([]string{&#34;audit&#34;}, now), errBlocking)
+<span id="L1230" class="ln">  1230  </span>		})
+<span id="L1231" class="ln">  1231  </span>
+<span id="L1232" class="ln">  1232  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1233" class="ln">  1233  </span>		t.Run(&#34;使い方の誤りはそのまま失敗にする&#34;, func(t *testing.T) {
+<span id="L1234" class="ln">  1234  </span>			captureLog(t)
+<span id="L1235" class="ln">  1235  </span>
+<span id="L1236" class="ln">  1236  </span>			require.ErrorIs(t, run(nil, now), errUsage)
+<span id="L1237" class="ln">  1237  </span>		})
+<span id="L1238" class="ln">  1238  </span>
+<span id="L1239" class="ln">  1239  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1240" class="ln">  1240  </span>		t.Run(&#34;go.mod を読み切れなければ失敗にする&#34;, func(t *testing.T) {
+<span id="L1241" class="ln">  1241  </span>			captureLog(t)
+<span id="L1242" class="ln">  1242  </span>			useWorkTree(t, &#34;module m\n// &#34;+strings.Repeat(&#34;a&#34;, bufio.MaxScanTokenSize)+&#34;\n&#34;)
+<span id="L1243" class="ln">  1243  </span>
+<span id="L1244" class="ln">  1244  </span>			err := run([]string{&#34;audit&#34;}, now)
+<span id="L1245" class="ln">  1245  </span>
+<span id="L1246" class="ln">  1246  </span>			require.Error(t, err)
+<span id="L1247" class="ln">  1247  </span>			assert.Contains(t, err.Error(), &#34;go.mod&#34;)
+<span id="L1248" class="ln">  1248  </span>		})
+<span id="L1249" class="ln">  1249  </span>
+<span id="L1250" class="ln">  1250  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1251" class="ln">  1251  </span>		t.Run(&#34;バイパス lockfile を解釈できなければ失敗にする&#34;, func(t *testing.T) {
+<span id="L1252" class="ln">  1252  </span>			captureLog(t)
+<span id="L1253" class="ln">  1253  </span>			dir := useWorkTree(t, goModOneRequire)
+<span id="L1254" class="ln">  1254  </span>			writeWorkTreeBypass(t, dir, &#34;これは行として解釈できない\n&#34;)
+<span id="L1255" class="ln">  1255  </span>
+<span id="L1256" class="ln">  1256  </span>			require.ErrorIs(t, run([]string{&#34;audit&#34;}, now), errBypassInvalidLine)
+<span id="L1257" class="ln">  1257  </span>		})
+<span id="L1258" class="ln">  1258  </span>
+<span id="L1259" class="ln">  1259  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1260" class="ln">  1260  </span>		t.Run(&#34;gate の base を解決できなければ失敗にする&#34;, func(t *testing.T) {
+<span id="L1261" class="ln">  1261  </span>			captureLog(t)
+<span id="L1262" class="ln">  1262  </span>			useWorkTree(t, goModOneRequire)
+<span id="L1263" class="ln">  1263  </span>
+<span id="L1264" class="ln">  1264  </span>			err := run([]string{&#34;gate&#34;, &#34;--base=no-such-ref&#34;}, now)
+<span id="L1265" class="ln">  1265  </span>
+<span id="L1266" class="ln">  1266  </span>			require.Error(t, err)
+<span id="L1267" class="ln">  1267  </span>			assert.Contains(t, err.Error(), &#34;base との差分&#34;)
+<span id="L1268" class="ln">  1268  </span>		})
+<span id="L1269" class="ln">  1269  </span>
+<span id="L1270" class="ln">  1270  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1271" class="ln">  1271  </span>		t.Run(&#34;公開時刻を取得できなければ失敗にする&#34;, func(t *testing.T) {
+<span id="L1272" class="ln">  1272  </span>			captureLog(t)
+<span id="L1273" class="ln">  1273  </span>			useWorkTree(t, goModOneRequire)
+<span id="L1274" class="ln">  1274  </span>			stubProxy(t, func(string) (int, string) { return http.StatusInternalServerError, &#34;&#34; })
+<span id="L1275" class="ln">  1275  </span>
+<span id="L1276" class="ln">  1276  </span>			err := run([]string{&#34;audit&#34;}, now)
+<span id="L1277" class="ln">  1277  </span>
+<span id="L1278" class="ln">  1278  </span>			require.ErrorIs(t, err, errProxyStatus)
+<span id="L1279" class="ln">  1279  </span>			assert.Contains(t, err.Error(), &#34;公開時刻の取得&#34;)
+<span id="L1280" class="ln">  1280  </span>		})
+<span id="L1281" class="ln">  1281  </span>
+<span id="L1282" class="ln">  1282  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1283" class="ln">  1283  </span>		t.Run(&#34;サマリを書き出せなければ失敗にする&#34;, func(t *testing.T) {
+<span id="L1284" class="ln">  1284  </span>			captureLog(t)
+<span id="L1285" class="ln">  1285  </span>			dir := useWorkTree(t, goModOneRequire)
+<span id="L1286" class="ln">  1286  </span>			stubProxyPublishedAt(t, aged)
+<span id="L1287" class="ln">  1287  </span>
+<span id="L1288" class="ln">  1288  </span>			err := run([]string{&#34;audit&#34;, &#34;--summary-out=&#34; + dir}, now)
+<span id="L1289" class="ln">  1289  </span>
+<span id="L1290" class="ln">  1290  </span>			require.Error(t, err)
+<span id="L1291" class="ln">  1291  </span>			assert.Contains(t, err.Error(), &#34;write summary&#34;)
+<span id="L1292" class="ln">  1292  </span>		})
+<span id="L1293" class="ln">  1293  </span>
+<span id="L1294" class="ln">  1294  </span>		<span class="comment">//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可</span>
+<span id="L1295" class="ln">  1295  </span>		t.Run(&#34;GITHUB_OUTPUT へ追記できなければ失敗にする&#34;, func(t *testing.T) {
+<span id="L1296" class="ln">  1296  </span>			captureLog(t)
+<span id="L1297" class="ln">  1297  </span>			dir := useWorkTree(t, goModOneRequire)
+<span id="L1298" class="ln">  1298  </span>			stubProxyPublishedAt(t, aged)
+<span id="L1299" class="ln">  1299  </span>			t.Setenv(&#34;GITHUB_OUTPUT&#34;, dir)
+<span id="L1300" class="ln">  1300  </span>
+<span id="L1301" class="ln">  1301  </span>			err := run([]string{&#34;audit&#34;}, now)
+<span id="L1302" class="ln">  1302  </span>
+<span id="L1303" class="ln">  1303  </span>			require.Error(t, err)
+<span id="L1304" class="ln">  1304  </span>			assert.Contains(t, err.Error(), &#34;write GITHUB_OUTPUT&#34;)
+<span id="L1305" class="ln">  1305  </span>		})
+<span id="L1306" class="ln">  1306  </span>	})
+<span id="L1307" class="ln">  1307  </span>}
+<span id="L1308" class="ln">  1308  </span>
+<span id="L1309" class="ln">  1309  </span><span class="comment">//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可</span>
+<span id="L1310" class="ln">  1310  </span>func Test_readWorkTreeGoMod(t *testing.T) {
+<span id="L1311" class="ln">  1311  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L1312" class="ln">  1312  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1313" class="ln">  1313  </span>		<span class="comment">// 検査対象は「今のツリーの go.mod」であって、base 側でも生成物でもない。</span>
+<span id="L1314" class="ln">  1314  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L1315" class="ln">  1315  </span>		t.Run(&#34;作業ディレクトリの go.mod をそのまま返す&#34;, func(t *testing.T) {
+<span id="L1316" class="ln">  1316  </span>			dir := t.TempDir()
+<span id="L1317" class="ln">  1317  </span>			require.NoError(t, os.WriteFile(filepath.Join(dir, &#34;go.mod&#34;), []byte(goModFixture), 0o600))
+<span id="L1318" class="ln">  1318  </span>			t.Chdir(dir)
+<span id="L1319" class="ln">  1319  </span>
+<span id="L1320" class="ln">  1320  </span>			got, err := readWorkTreeGoMod()
+<span id="L1321" class="ln">  1321  </span>
+<span id="L1322" class="ln">  1322  </span>			require.NoError(t, err)
+<span id="L1323" class="ln">  1323  </span>			assert.Equal(t, goModFixture, string(got))
+<span id="L1324" class="ln">  1324  </span>		})
+<span id="L1325" class="ln">  1325  </span>	})
+<span id="L1326" class="ln">  1326  </span>
+<span id="L1327" class="ln">  1327  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L1328" class="ln">  1328  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1329" class="ln">  1329  </span>		<span class="comment">// 読めないことを黙って空の go.mod として扱うと、依存ゼロ＝違反ゼロとして素通りする。</span>
+<span id="L1330" class="ln">  1330  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L1331" class="ln">  1331  </span>		t.Run(&#34;go.mod を読めなければ空を返さずエラーにする&#34;, func(t *testing.T) {
+<span id="L1332" class="ln">  1332  </span>			t.Chdir(t.TempDir())
+<span id="L1333" class="ln">  1333  </span>
+<span id="L1334" class="ln">  1334  </span>			got, err := readWorkTreeGoMod()
+<span id="L1335" class="ln">  1335  </span>
+<span id="L1336" class="ln">  1336  </span>			require.ErrorIs(t, err, os.ErrNotExist)
+<span id="L1337" class="ln">  1337  </span>			assert.Nil(t, got)
+<span id="L1338" class="ln">  1338  </span>		})
+<span id="L1339" class="ln">  1339  </span>	})
+<span id="L1340" class="ln">  1340  </span>}
+<span id="L1341" class="ln">  1341  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/go-cooldown/main_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

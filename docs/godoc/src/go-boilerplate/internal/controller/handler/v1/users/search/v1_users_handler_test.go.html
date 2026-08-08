@@ -71,7 +71,7 @@
 <span id="L14" class="ln">    14  </span>	usecase_search &#34;go-boilerplate/internal/usecase/user/search&#34;
 <span id="L15" class="ln">    15  </span>	mock_query &#34;go-boilerplate/internal/usecase/user/search/mock&#34;
 <span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L17" class="ln">    17  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L18" class="ln">    18  </span>	&#34;github.com/oapi-codegen/runtime/types&#34;
 <span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L20" class="ln">    20  </span>	&#34;github.com/stretchr/testify/require&#34;
@@ -112,8 +112,8 @@
 <span id="L55" class="ln">    55  </span>
 <span id="L56" class="ln">    56  </span>	BindHandler(e, tf, mockApp)
 <span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>	testassert.AssertEchoRouterPath(t, targetPath, e.Routes())
-<span id="L59" class="ln">    59  </span>	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
+<span id="L58" class="ln">    58  </span>	testassert.AssertEchoRouterPath(t, targetPath, e.Router().Routes())
+<span id="L59" class="ln">    59  </span>	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Router().Routes())
 <span id="L60" class="ln">    60  </span>}
 <span id="L61" class="ln">    61  </span>
 <span id="L62" class="ln">    62  </span>func Test_server_GetUsersSearch(t *testing.T) {

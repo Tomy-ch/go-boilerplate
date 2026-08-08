@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<database name="test" schema="public" type="PostgreSQL - 18.3 (Debian 18.3-1.pgdg12+1)">
+<database name="test" schema="public" type="PostgreSQL - 18.4 (Debian 18.4-1.pgdg13+1)">
    <tables>
       <table name="idempotency_keys" remarks="冪等性キー" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="gen_random_uuid()" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111"/>
@@ -129,7 +129,7 @@
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="255" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="description" nullable="true" remarks="説明" size="2147483647" type="text" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="price" nullable="false" remarks="価格" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="price" nullable="false" remarks="価格" size="0" type="numeric" typeCode="2"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="quantity" nullable="false" remarks="在庫数" size="10" type="int4" typeCode="4"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="stock_warning_threshold" nullable="true" remarks="在庫警告閾値" size="10" type="int4" typeCode="4"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="status_id" nullable="false" remarks="商品ステータスID" size="2147483647" type="uuid" typeCode="1111">
@@ -139,8 +139,10 @@
             <parent column="id" foreignKey="products_category_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="product_categories"/>
          </column>
          <column autoUpdated="false" defaultValue="null" digits="6" id="8" name="published_at" nullable="true" remarks="公開日時" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="9" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="10" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="9" name="image_path" nullable="true" remarks="画像パス" size="2147483647" type="text" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="1" digits="0" id="10" name="lock_version" nullable="false" remarks="楽観ロックバージョン" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="11" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="12" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="products_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -155,7 +157,7 @@
             <parent column="id" foreignKey="purchase_details_product_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="products"/>
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="quantity" nullable="false" remarks="数量" size="10" type="int4" typeCode="4"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="unit_price" nullable="false" remarks="単価" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="unit_price" nullable="false" remarks="単価" size="0" type="numeric" typeCode="2"/>
          <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
          <column autoUpdated="false" defaultValue="now()" digits="6" id="6" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
@@ -197,10 +199,10 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="status_id" nullable="false" remarks="購入ステータスID" size="2147483647" type="uuid" typeCode="1111">
             <parent column="id" foreignKey="purchases_status_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchase_statuses"/>
          </column>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="subtotal_amount" nullable="false" remarks="小計金額" size="10" type="int4" typeCode="4"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="tax_amount" nullable="false" remarks="税金額" size="10" type="int4" typeCode="4"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="shipping_fee" nullable="false" remarks="配送料" size="10" type="int4" typeCode="4"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="total_amount" nullable="false" remarks="合計金額" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="subtotal_amount" nullable="false" remarks="小計金額" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="tax_amount" nullable="false" remarks="税金額" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="shipping_fee" nullable="false" remarks="配送料" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="total_amount" nullable="false" remarks="合計金額" size="19" type="int8" typeCode="-5"/>
          <column autoUpdated="false" defaultValue="now()" digits="6" id="8" name="ordered_at" nullable="false" remarks="注文日時" size="35" type="timestamptz" typeCode="93"/>
          <column autoUpdated="false" defaultValue="null" digits="6" id="9" name="paid_at" nullable="true" remarks="支払日時" size="35" type="timestamptz" typeCode="93"/>
          <column autoUpdated="false" defaultValue="null" digits="6" id="10" name="canceled_at" nullable="true" remarks="キャンセル日時" size="35" type="timestamptz" typeCode="93"/>
@@ -214,6 +216,11 @@
          </index>
          <index name="purchases_code_unique" unique="true">
             <column ascending="true" name="code"/>
+         </index>
+         <index name="purchases_user_id_ordered_at_id_idx" unique="false">
+            <column ascending="true" name="user_id"/>
+            <column ascending="false" name="ordered_at"/>
+            <column ascending="false" name="id"/>
          </index>
       </table>
       <table name="roles" remarks="ロール" schema="public" type="TABLE">
@@ -289,20 +296,19 @@
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="first_name" nullable="false" remarks="名前" size="100" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="last_name" nullable="false" remarks="苗字" size="100" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="password_hash" nullable="false" remarks="パスワードハッシュ" size="255" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="email" nullable="false" remarks="メールアドレス" size="100" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="phone" nullable="false" remarks="電話番号" size="20" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="prefecture_id" nullable="false" remarks="都道府県ID" size="2147483647" type="uuid" typeCode="1111">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="email" nullable="false" remarks="メールアドレス" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="phone" nullable="false" remarks="電話番号" size="20" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="prefecture_id" nullable="false" remarks="都道府県ID" size="2147483647" type="uuid" typeCode="1111">
             <parent column="id" foreignKey="users_prefecture_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="prefectures"/>
          </column>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="city" nullable="false" remarks="市区町村" size="100" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="8" name="street" nullable="false" remarks="番地" size="255" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="9" name="building" nullable="true" remarks="建物名" size="255" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="10" name="postal_code" nullable="false" remarks="郵便番号" size="8" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="deleted_at" nullable="true" remarks="削除日時" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="12" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="(((((((((((((((COALESCE(first_name, ''::character varying))::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text) || ' '::text) || (COALESCE(email, ''::character varying))::text) || ' '::text) || (COALESCE(phone, ''::character varying))::text) || ' '::text) || (COALESCE(city, ''::character varying))::text) || ' '::text) || (COALESCE(street, ''::character varying))::text) || ' '::text) || (COALESCE(building, ''::character varying))::text) || ' '::text) || (COALESCE(postal_code, ''::character varying))::text)" digits="0" id="14" name="search_text" nullable="true" remarks="全文検索用テキスト" size="2147483647" type="text" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="city" nullable="false" remarks="市区町村" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="street" nullable="false" remarks="番地" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="8" name="building" nullable="true" remarks="建物名" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="9" name="postal_code" nullable="false" remarks="郵便番号" size="8" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="10" name="deleted_at" nullable="true" remarks="削除日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="11" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="12" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="(((((((((((((((COALESCE(first_name, ''::character varying))::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text) || ' '::text) || (COALESCE(email, ''::character varying))::text) || ' '::text) || (COALESCE(phone, ''::character varying))::text) || ' '::text) || (COALESCE(city, ''::character varying))::text) || ' '::text) || (COALESCE(street, ''::character varying))::text) || ' '::text) || (COALESCE(building, ''::character varying))::text) || ' '::text) || (COALESCE(postal_code, ''::character varying))::text)" digits="0" id="13" name="search_text" nullable="true" remarks="全文検索用テキスト" size="2147483647" type="text" typeCode="12"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="users_id_primary" unique="true">
             <column ascending="true" name="id"/>

@@ -193,13 +193,18 @@ broker adapter（infrastructure 層）の双方が依存する境界です。
 			
 				
 				<pre>const (
-    <span class="comment">// ReservedKeyPrefix は、Attributes のうち engine が解釈せず素通しする</span>
-    <span class="comment">// broker 固有値（lease/handle 等）の予約キーに付ける接頭辞です。</span>
+    <span class="comment">// ReservedKeyPrefix は、engine が解釈も伝播もしない adapter 専用の broker 固有値</span>
+    <span class="comment">// （receipt handle / lease 等）を、traceparent 等の伝播対象属性と区別して隔離するための予約キー接頭辞です。</span>
     <span id="ReservedKeyPrefix">ReservedKeyPrefix</span> = &#34;_&#34;
 
     <span class="comment">// AttrReceiptHandle は、broker のメッセージ識別子（SQS の receipt handle 等）を</span>
     <span class="comment">// Attributes に隔離するための予約キーです。adapter が設定し、Ack/Nack/Extend 時に読み戻します。</span>
     <span id="AttrReceiptHandle">AttrReceiptHandle</span> = <a href="#ReservedKeyPrefix">ReservedKeyPrefix</a> + &#34;receipt_handle&#34;
+
+    <span class="comment">// AttrEventType は、イベント種別（version 込み）を運ぶ属性キーです。1 つのキューには複数種別が</span>
+    <span class="comment">// 流れるため、Handler は本文を解釈する前にこの属性で自分の処理対象かを判定します。</span>
+    <span class="comment">// 予約キーではなく、publish 側 adapter が載せ consume 側 adapter が素通しする伝播対象の値です。</span>
+    <span id="AttrEventType">AttrEventType</span> = &#34;event_type&#34;
 )</pre>
 			
 		
@@ -302,7 +307,7 @@ engine は Permanent と分類したメッセージを Fail へ流してから�
 		
 			
 			
-			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/message.go.html?s=855:1568#L7">Message</a>
+			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/message.go.html?s=1336:2049#L12">Message</a>
 				<a class="permalink" href="#Message">¶</a>
 				
 				
@@ -430,7 +435,7 @@ observability collector だけがこの capability を実装する adapter か�
 		
 			
 			
-			<h2 id="State">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/state.go.html?s=245:709#L1">State</a>
+			<h2 id="State">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/state.go.html?s=245:777#L1">State</a>
 				<a class="permalink" href="#State">¶</a>
 				
 				
@@ -439,7 +444,8 @@ observability collector だけがこの capability を実装する adapter か�
 
 			</p><pre>type State interface {
     <span class="comment">// Set は、起動対象の worker 名・引数と done チャネルを設定します。</span>
-    <span class="comment">// done はバッファ付き（cap≥1）であること。engine 停止時に結果を 1 度送って close します。</span>
+    <span class="comment">// done はバッファ付き（cap≥1）であること。送信・close は受け手（Snapshot 側）が所有し、</span>
+    <span class="comment">// engine の実行結果を 1 度だけ送って close します。</span>
     Set(name <a href="../../../../../builtin/#string">string</a>, args []<a href="../../../../../builtin/#string">string</a>, done chan <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// Snapshot は、現在の起動対象と done チャネルをスナップショットとして取得します。</span>
     Snapshot() (name <a href="../../../../../builtin/#string">string</a>, args []<a href="../../../../../builtin/#string">string</a>, done chan <a href="../../../../../builtin/#error">error</a>)

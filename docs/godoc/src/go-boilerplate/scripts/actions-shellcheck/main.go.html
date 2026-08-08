@@ -1,0 +1,637 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>actions-shellcheck - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/actions-shellcheck">actions-shellcheck</a>/<span class="text-muted">main.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/actions-shellcheck">go-boilerplate/scripts/actions-shellcheck</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package main は composite action（.github/actions/**）の runs.steps[].run を shellcheck で検査し、</span>
+<span id="L2" class="ln">     2  </span><span class="comment">// 指摘を action 定義ファイルの行・列へ写し戻す。</span>
+<span id="L3" class="ln">     3  </span><span class="comment">//</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// actionlint は .github/workflows しか走査せず、action 定義を直接渡すと workflow として解釈して</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// 構文エラーで落ちるため、composite action の中のシェルはどのゲートにも掛からない。</span>
+<span id="L6" class="ln">     6  </span><span class="comment">//</span>
+<span id="L7" class="ln">     7  </span><span class="comment">// 抽出したステップ数は、YAML をそのままデコードして数えた件数とファイル単位で突き合わせる。</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// 経路が分かれるため、片方が壊れれば件数差として現れ、検査範囲が黙って縮んだまま緑になることを防ぐ。</span>
+<span id="L9" class="ln">     9  </span>package main
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>import (
+<span id="L12" class="ln">    12  </span>	&#34;bytes&#34;
+<span id="L13" class="ln">    13  </span>	&#34;context&#34;
+<span id="L14" class="ln">    14  </span>	&#34;fmt&#34;
+<span id="L15" class="ln">    15  </span>	&#34;io&#34;
+<span id="L16" class="ln">    16  </span>	&#34;io/fs&#34;
+<span id="L17" class="ln">    17  </span>	&#34;log&#34;
+<span id="L18" class="ln">    18  </span>	&#34;os&#34;
+<span id="L19" class="ln">    19  </span>	&#34;os/exec&#34;
+<span id="L20" class="ln">    20  </span>	&#34;regexp&#34;
+<span id="L21" class="ln">    21  </span>	&#34;slices&#34;
+<span id="L22" class="ln">    22  </span>	&#34;sort&#34;
+<span id="L23" class="ln">    23  </span>	&#34;strconv&#34;
+<span id="L24" class="ln">    24  </span>	&#34;strings&#34;
+<span id="L25" class="ln">    25  </span>	&#34;time&#34;
+<span id="L26" class="ln">    26  </span>	&#34;unicode&#34;
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span>	&#34;gopkg.in/yaml.v3&#34;
+<span id="L31" class="ln">    31  </span>)
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>const (
+<span id="L34" class="ln">    34  </span>	actionsDir     = &#34;.github/actions&#34;
+<span id="L35" class="ln">    35  </span>	compositeUsing = &#34;composite&#34;
+<span id="L36" class="ln">    36  </span>	mergeKey       = &#34;&lt;&lt;&#34;
+<span id="L37" class="ln">    37  </span>	envCommand     = &#34;env&#34;
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span>	shellcheckBin     = &#34;shellcheck&#34;
+<span id="L40" class="ln">    40  </span>	findingsExitCode  = 1
+<span id="L41" class="ln">    41  </span>	shellcheckTimeout = 30 * time.Second
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>	shebangLines        = 1
+<span id="L44" class="ln">    44  </span>	blockScalarKeyLines = 1
+<span id="L45" class="ln">    45  </span>	firstBodyIndex      = 1
+<span id="L46" class="ln">    46  </span>	firstColumn         = 1
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>	exprOpen        = &#34;${{&#34;
+<span id="L49" class="ln">    49  </span>	exprClose       = &#34;}}&#34;
+<span id="L50" class="ln">    50  </span>	exprPlaceholder = &#34;GH_EXPR&#34;
+<span id="L51" class="ln">    51  </span>)
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>var (
+<span id="L54" class="ln">    54  </span>	actionFileNames = []string{&#34;action.yml&#34;, &#34;action.yaml&#34;}
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>	findingRe = regexp.MustCompile(`^[^:]*:(\d+):(\d+):(.*)$`)
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>	shebangs = map[string]string{
+<span id="L59" class="ln">    59  </span>		&#34;bash&#34;: &#34;#!/usr/bin/env bash&#34;,
+<span id="L60" class="ln">    60  </span>		&#34;sh&#34;:   &#34;#!/bin/sh&#34;,
+<span id="L61" class="ln">    61  </span>	}
+<span id="L62" class="ln">    62  </span>)
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>var (
+<span id="L65" class="ln">    65  </span>	errNoShell           = xerrors.New(&#34;composite の run ステップに shell 指定がありません&#34;)
+<span id="L66" class="ln">    66  </span>	errShellcheck        = xerrors.New(&#34;shellcheck の実行に失敗しました&#34;)
+<span id="L67" class="ln">    67  </span>	errUnterminatedExpr  = xerrors.New(&#34;閉じていない ${{ があります&#34;)
+<span id="L68" class="ln">    68  </span>	errStepCountMismatch = xerrors.New(&#34;run ステップの抽出数が YAML のデコード結果と一致しません&#34;)
+<span id="L69" class="ln">    69  </span>	errStepsNotSequence  = xerrors.New(&#34;runs.steps がリストとして読めません&#34;)
+<span id="L70" class="ln">    70  </span>	errFoldedRun         = xerrors.New(&#34;run にブロック折り畳み（&gt;）は使えません。リテラル（|）で書いてください&#34;)
+<span id="L71" class="ln">    71  </span>	errShellcheckMissing = xerrors.New(&#34;shellcheck が PATH にありません（mise install shellcheck）&#34;)
+<span id="L72" class="ln">    72  </span>	errFindings          = xerrors.New(&#34;composite action の run に指摘があります&#34;)
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>	errActionSymlinkDir        = xerrors.New(&#34;ディレクトリへのシンボリックリンクは走査できません。実体を置くか、リンクを外してください&#34;)
+<span id="L75" class="ln">    75  </span>	errActionSymlinkUnresolved = xerrors.New(&#34;解決できないシンボリックリンクがあります&#34;)
+<span id="L76" class="ln">    76  </span>	errMultipleDocuments       = xerrors.New(&#34;action 定義に複数の YAML ドキュメントがあります。--- 区切りの 2 番目以降は検査されません&#34;)
+<span id="L77" class="ln">    77  </span>)
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>type step struct {
+<span id="L80" class="ln">    80  </span>	file      string
+<span id="L81" class="ln">    81  </span>	shell     string
+<span id="L82" class="ln">    82  </span>	script    string
+<span id="L83" class="ln">    83  </span>	firstLine int
+<span id="L84" class="ln">    84  </span>	colBase   int
+<span id="L85" class="ln">    85  </span>}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>type result struct {
+<span id="L88" class="ln">    88  </span>	checked  int
+<span id="L89" class="ln">    89  </span>	skipped  []string
+<span id="L90" class="ln">    90  </span>	findings []string
+<span id="L91" class="ln">    91  </span>}
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span><span class="comment">// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。</span>
+<span id="L94" class="ln">    94  </span><span class="comment">// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない</span>
+<span id="L95" class="ln">    95  </span><span class="comment">// コードがそのぶん増える。</span>
+<span id="L96" class="ln">    96  </span>func main() {
+<span id="L97" class="ln">    97  </span>	log.SetFlags(0)
+<span id="L98" class="ln">    98  </span>
+<span id="L99" class="ln">    99  </span>	if err := run(context.Background(), os.Getwd, exec.LookPath); err != nil {
+<span id="L100" class="ln">   100  </span>		log.Fatalf(&#34;❌ %v&#34;, err)
+<span id="L101" class="ln">   101  </span>	}
+<span id="L102" class="ln">   102  </span>}
+<span id="L103" class="ln">   103  </span>
+<span id="L104" class="ln">   104  </span><span class="comment">// run は composite action の run ステップを shellcheck に掛け、結果を報告します。</span>
+<span id="L105" class="ln">   105  </span><span class="comment">// wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段で、</span>
+<span id="L106" class="ln">   106  </span><span class="comment">// どちらも差し替えられるよう引数で受けます。</span>
+<span id="L107" class="ln">   107  </span>func run(ctx context.Context, wd func() (string, error), lookPath func(string) (string, error)) error {
+<span id="L108" class="ln">   108  </span>	if _, err := lookPath(shellcheckBin); err != nil {
+<span id="L109" class="ln">   109  </span>		return xerrors.Wrap(errShellcheckMissing, err.Error())
+<span id="L110" class="ln">   110  </span>	}
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>	root, err := wd()
+<span id="L113" class="ln">   113  </span>	if err != nil {
+<span id="L114" class="ln">   114  </span>		return xerrors.Wrap(err, &#34;getwd&#34;)
+<span id="L115" class="ln">   115  </span>	}
+<span id="L116" class="ln">   116  </span>
+<span id="L117" class="ln">   117  </span>	files, steps, err := collectSteps(os.DirFS(root))
+<span id="L118" class="ln">   118  </span>	if err != nil {
+<span id="L119" class="ln">   119  </span>		return err
+<span id="L120" class="ln">   120  </span>	}
+<span id="L121" class="ln">   121  </span>
+<span id="L122" class="ln">   122  </span>	res, err := check(ctx, steps)
+<span id="L123" class="ln">   123  </span>	if err != nil {
+<span id="L124" class="ln">   124  </span>		return err
+<span id="L125" class="ln">   125  </span>	}
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>	for _, s := range res.skipped {
+<span id="L128" class="ln">   128  </span>		log.Printf(&#34;  ⏭️ %s&#34;, s)
+<span id="L129" class="ln">   129  </span>	}
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>	for _, f := range res.findings {
+<span id="L132" class="ln">   132  </span>		log.Print(f)
+<span id="L133" class="ln">   133  </span>	}
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>	if len(res.findings) &gt; 0 {
+<span id="L136" class="ln">   136  </span>		return xerrors.Wrap(errFindings, fmt.Sprintf(&#34;%d 件（検査 %d ステップ）&#34;, len(res.findings), res.checked))
+<span id="L137" class="ln">   137  </span>	}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>	log.Printf(&#34;✅ composite action %d ファイルの run を %d ステップ検査しました（対象外 shell: %d ステップ）&#34;,
+<span id="L140" class="ln">   140  </span>		len(files), res.checked, len(res.skipped))
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span>	return nil
+<span id="L143" class="ln">   143  </span>}
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span>func collectSteps(fsys fs.FS) ([]string, []step, error) {
+<span id="L146" class="ln">   146  </span>	files, err := actionFiles(fsys)
+<span id="L147" class="ln">   147  </span>	if err != nil {
+<span id="L148" class="ln">   148  </span>		return nil, nil, err
+<span id="L149" class="ln">   149  </span>	}
+<span id="L150" class="ln">   150  </span>	var steps []step
+<span id="L151" class="ln">   151  </span>	for _, f := range files {
+<span id="L152" class="ln">   152  </span>		data, err := fs.ReadFile(fsys, f)
+<span id="L153" class="ln">   153  </span>		if err != nil {
+<span id="L154" class="ln">   154  </span>			return nil, nil, xerrors.Wrap(err, &#34;read &#34;+f)
+<span id="L155" class="ln">   155  </span>		}
+<span id="L156" class="ln">   156  </span>		s, err := parseAction(f, data)
+<span id="L157" class="ln">   157  </span>		if err != nil {
+<span id="L158" class="ln">   158  </span>			return nil, nil, err
+<span id="L159" class="ln">   159  </span>		}
+<span id="L160" class="ln">   160  </span>		steps = append(steps, s...)
+<span id="L161" class="ln">   161  </span>	}
+<span id="L162" class="ln">   162  </span>	return files, steps, nil
+<span id="L163" class="ln">   163  </span>}
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span><span class="comment">// actionFiles は .github/actions 配下の action 定義ファイルをパス順に返す。</span>
+<span id="L166" class="ln">   166  </span><span class="comment">//</span>
+<span id="L167" class="ln">   167  </span><span class="comment">// WalkDir はリンク先を辿らない DirEntry で再帰要否を決めるため、シンボリックリンクを素通しにすると</span>
+<span id="L168" class="ln">   168  </span><span class="comment">// リンク先の action がどのゲートにも掛からないまま緑で通る。リンク先を解決して扱いを決める。</span>
+<span id="L169" class="ln">   169  </span>func actionFiles(fsys fs.FS) ([]string, error) {
+<span id="L170" class="ln">   170  </span>	var files []string
+<span id="L171" class="ln">   171  </span>	err := fs.WalkDir(fsys, actionsDir, func(path string, entry fs.DirEntry, err error) error {
+<span id="L172" class="ln">   172  </span>		if err != nil {
+<span id="L173" class="ln">   173  </span>			if xerrors.Is(err, fs.ErrNotExist) {
+<span id="L174" class="ln">   174  </span>				return fs.SkipAll
+<span id="L175" class="ln">   175  </span>			}
+<span id="L176" class="ln">   176  </span>			return err
+<span id="L177" class="ln">   177  </span>		}
+<span id="L178" class="ln">   178  </span>		if entry.Type()&amp;fs.ModeSymlink != 0 {
+<span id="L179" class="ln">   179  </span>			return appendSymlink(fsys, path, entry.Name(), &amp;files)
+<span id="L180" class="ln">   180  </span>		}
+<span id="L181" class="ln">   181  </span>		if !entry.IsDir() &amp;&amp; isActionFile(entry.Name()) {
+<span id="L182" class="ln">   182  </span>			files = append(files, path)
+<span id="L183" class="ln">   183  </span>		}
+<span id="L184" class="ln">   184  </span>		return nil
+<span id="L185" class="ln">   185  </span>	})
+<span id="L186" class="ln">   186  </span>	if err != nil {
+<span id="L187" class="ln">   187  </span>		return nil, xerrors.Wrap(err, &#34;walk &#34;+actionsDir)
+<span id="L188" class="ln">   188  </span>	}
+<span id="L189" class="ln">   189  </span>	sort.Strings(files)
+<span id="L190" class="ln">   190  </span>	return files, nil
+<span id="L191" class="ln">   191  </span>}
+<span id="L192" class="ln">   192  </span>
+<span id="L193" class="ln">   193  </span><span class="comment">// appendSymlink はシンボリックリンクの実体を見て、action 定義ファイルなら files へ加える。</span>
+<span id="L194" class="ln">   194  </span><span class="comment">//</span>
+<span id="L195" class="ln">   195  </span><span class="comment">// ディレクトリへのリンクは、辿ると循環し得るうえ fs.FS には実体の同一性を判定する手段が無いため</span>
+<span id="L196" class="ln">   196  </span><span class="comment">// 受け付けない。解決できないリンクも、実体がファイルだったのかディレクトリだったのかを言えず、</span>
+<span id="L197" class="ln">   197  </span><span class="comment">// 対象外に寄せると走査が黙って縮むため同じく受け付けない。どちらも人手で解消する。</span>
+<span id="L198" class="ln">   198  </span>func appendSymlink(fsys fs.FS, path, name string, files *[]string) error {
+<span id="L199" class="ln">   199  </span>	info, err := fs.Stat(fsys, path)
+<span id="L200" class="ln">   200  </span>	if err != nil {
+<span id="L201" class="ln">   201  </span>		return xerrors.Wrap(errActionSymlinkUnresolved, path)
+<span id="L202" class="ln">   202  </span>	}
+<span id="L203" class="ln">   203  </span>	if info.IsDir() {
+<span id="L204" class="ln">   204  </span>		return xerrors.Wrap(errActionSymlinkDir, path)
+<span id="L205" class="ln">   205  </span>	}
+<span id="L206" class="ln">   206  </span>	if isActionFile(name) {
+<span id="L207" class="ln">   207  </span>		*files = append(*files, path)
+<span id="L208" class="ln">   208  </span>	}
+<span id="L209" class="ln">   209  </span>	return nil
+<span id="L210" class="ln">   210  </span>}
+<span id="L211" class="ln">   211  </span>
+<span id="L212" class="ln">   212  </span>func isActionFile(name string) bool {
+<span id="L213" class="ln">   213  </span>	return slices.Contains(actionFileNames, name)
+<span id="L214" class="ln">   214  </span>}
+<span id="L215" class="ln">   215  </span>
+<span id="L216" class="ln">   216  </span>func parseAction(file string, data []byte) ([]step, error) {
+<span id="L217" class="ln">   217  </span>	var doc yaml.Node
+<span id="L218" class="ln">   218  </span>	if err := yaml.Unmarshal(data, &amp;doc); err != nil {
+<span id="L219" class="ln">   219  </span>		return nil, xerrors.Wrap(err, &#34;parse &#34;+file)
+<span id="L220" class="ln">   220  </span>	}
+<span id="L221" class="ln">   221  </span>	if err := requireSingleDocument(file, data); err != nil {
+<span id="L222" class="ln">   222  </span>		return nil, err
+<span id="L223" class="ln">   223  </span>	}
+<span id="L224" class="ln">   224  </span>	want, err := countRunSteps(file, data)
+<span id="L225" class="ln">   225  </span>	if err != nil {
+<span id="L226" class="ln">   226  </span>		return nil, err
+<span id="L227" class="ln">   227  </span>	}
+<span id="L228" class="ln">   228  </span>	steps, err := extractSteps(file, data, &amp;doc)
+<span id="L229" class="ln">   229  </span>	if err != nil {
+<span id="L230" class="ln">   230  </span>		return nil, err
+<span id="L231" class="ln">   231  </span>	}
+<span id="L232" class="ln">   232  </span>	if len(steps) != want {
+<span id="L233" class="ln">   233  </span>		return nil, xerrors.Wrap(errStepCountMismatch, fmt.Sprintf(&#34;%s: 抽出 %d / 期待 %d&#34;, file, len(steps), want))
+<span id="L234" class="ln">   234  </span>	}
+<span id="L235" class="ln">   235  </span>	return steps, nil
+<span id="L236" class="ln">   236  </span>}
+<span id="L237" class="ln">   237  </span>
+<span id="L238" class="ln">   238  </span><span class="comment">// requireSingleDocument は action 定義ファイルが単一の YAML ドキュメントであることを確かめる。</span>
+<span id="L239" class="ln">   239  </span><span class="comment">//</span>
+<span id="L240" class="ln">   240  </span><span class="comment">// yaml.Unmarshal は --- で区切られた 2 番目以降のドキュメントをエラー無しで捨てるため、</span>
+<span id="L241" class="ln">   241  </span><span class="comment">// 抽出側もデコードして数える側も揃って見落とす。件数差の突き合わせでも検知できないので、</span>
+<span id="L242" class="ln">   242  </span><span class="comment">// ここで落とす。GitHub Actions は action 定義に複数ドキュメントを認めていない。</span>
+<span id="L243" class="ln">   243  </span>func requireSingleDocument(file string, data []byte) error {
+<span id="L244" class="ln">   244  </span>	dec := yaml.NewDecoder(bytes.NewReader(data))
+<span id="L245" class="ln">   245  </span>	var first any
+<span id="L246" class="ln">   246  </span>	if err := dec.Decode(&amp;first); err != nil {
+<span id="L247" class="ln">   247  </span>		if xerrors.Is(err, io.EOF) {
+<span id="L248" class="ln">   248  </span>			return nil
+<span id="L249" class="ln">   249  </span>		}
+<span id="L250" class="ln">   250  </span>		return xerrors.Wrap(err, &#34;parse &#34;+file)
+<span id="L251" class="ln">   251  </span>	}
+<span id="L252" class="ln">   252  </span>	var second any
+<span id="L253" class="ln">   253  </span>	switch err := dec.Decode(&amp;second); {
+<span id="L254" class="ln">   254  </span>	case err == nil:
+<span id="L255" class="ln">   255  </span>		return xerrors.Wrap(errMultipleDocuments, file)
+<span id="L256" class="ln">   256  </span>	case xerrors.Is(err, io.EOF):
+<span id="L257" class="ln">   257  </span>		return nil
+<span id="L258" class="ln">   258  </span>	default:
+<span id="L259" class="ln">   259  </span>		return xerrors.Wrap(err, &#34;parse &#34;+file)
+<span id="L260" class="ln">   260  </span>	}
+<span id="L261" class="ln">   261  </span>}
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span><span class="comment">// countRunSteps はデコード結果から run ステップ数を数える。件数を using の値と無関係に数えるのは、</span>
+<span id="L264" class="ln">   264  </span><span class="comment">// 綴りを取り違えた action（using: Composite など）を「対象外」に寄せると、run を持つのに 1 件も</span>
+<span id="L265" class="ln">   265  </span><span class="comment">// 検査されない状態が緑で通るため。</span>
+<span id="L266" class="ln">   266  </span>func countRunSteps(file string, data []byte) (int, error) {
+<span id="L267" class="ln">   267  </span>	var doc any
+<span id="L268" class="ln">   268  </span>	if err := yaml.Unmarshal(data, &amp;doc); err != nil {
+<span id="L269" class="ln">   269  </span>		return 0, xerrors.Wrap(err, &#34;decode &#34;+file)
+<span id="L270" class="ln">   270  </span>	}
+<span id="L271" class="ln">   271  </span>	steps := fieldValue(fieldValue(doc, &#34;runs&#34;), &#34;steps&#34;)
+<span id="L272" class="ln">   272  </span>	if steps == nil {
+<span id="L273" class="ln">   273  </span>		return 0, nil
+<span id="L274" class="ln">   274  </span>	}
+<span id="L275" class="ln">   275  </span>	<span class="comment">// リストとして読めない形を「対象外」に寄せると、検査範囲が黙って縮んだまま緑になる。</span>
+<span id="L276" class="ln">   276  </span>	list, ok := steps.([]any)
+<span id="L277" class="ln">   277  </span>	if !ok {
+<span id="L278" class="ln">   278  </span>		return 0, xerrors.Wrap(errStepsNotSequence, file)
+<span id="L279" class="ln">   279  </span>	}
+<span id="L280" class="ln">   280  </span>	count := 0
+<span id="L281" class="ln">   281  </span>	for _, item := range list {
+<span id="L282" class="ln">   282  </span>		if _, ok := fieldValue(item, &#34;run&#34;).(string); ok {
+<span id="L283" class="ln">   283  </span>			count++
+<span id="L284" class="ln">   284  </span>		}
+<span id="L285" class="ln">   285  </span>	}
+<span id="L286" class="ln">   286  </span>	return count, nil
+<span id="L287" class="ln">   287  </span>}
+<span id="L288" class="ln">   288  </span>
+<span id="L289" class="ln">   289  </span>func fieldValue(node any, key string) any {
+<span id="L290" class="ln">   290  </span>	fields, ok := node.(map[string]any)
+<span id="L291" class="ln">   291  </span>	if !ok {
+<span id="L292" class="ln">   292  </span>		return nil
+<span id="L293" class="ln">   293  </span>	}
+<span id="L294" class="ln">   294  </span>	return fields[key]
+<span id="L295" class="ln">   295  </span>}
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span>func extractSteps(file string, data []byte, doc *yaml.Node) ([]step, error) {
+<span id="L298" class="ln">   298  </span>	runs := mapValue(documentRoot(doc), &#34;runs&#34;)
+<span id="L299" class="ln">   299  </span>	if using := mapValue(runs, &#34;using&#34;); using == nil || using.Value != compositeUsing {
+<span id="L300" class="ln">   300  </span>		return nil, nil
+<span id="L301" class="ln">   301  </span>	}
+<span id="L302" class="ln">   302  </span>	stepsNode := mapValue(runs, &#34;steps&#34;)
+<span id="L303" class="ln">   303  </span>	if stepsNode == nil {
+<span id="L304" class="ln">   304  </span>		return nil, nil
+<span id="L305" class="ln">   305  </span>	}
+<span id="L306" class="ln">   306  </span>	var steps []step
+<span id="L307" class="ln">   307  </span>	for _, node := range stepsNode.Content {
+<span id="L308" class="ln">   308  </span>		run := mapValue(node, &#34;run&#34;)
+<span id="L309" class="ln">   309  </span>		if run == nil {
+<span id="L310" class="ln">   310  </span>			continue
+<span id="L311" class="ln">   311  </span>		}
+<span id="L312" class="ln">   312  </span>		<span class="comment">// ブロック折り畳み（&gt;）は隣接する非空行を空白へ畳むため、本文の行と action 定義ファイルの行が</span>
+<span id="L313" class="ln">   313  </span>		<span class="comment">// 1 対 1 で対応しない。指摘の位置を写し戻せないうえ、畳まれた行がソースに無い構文を作って</span>
+<span id="L314" class="ln">   314  </span>		<span class="comment">// 誤検知も生むため受け付けない。</span>
+<span id="L315" class="ln">   315  </span>		if run.Style == yaml.FoldedStyle {
+<span id="L316" class="ln">   316  </span>			return nil, xerrors.Wrap(errFoldedRun, fmt.Sprintf(&#34;%s:%d&#34;, file, run.Line))
+<span id="L317" class="ln">   317  </span>		}
+<span id="L318" class="ln">   318  </span>		shell := mapValue(node, &#34;shell&#34;)
+<span id="L319" class="ln">   319  </span>		if shell == nil {
+<span id="L320" class="ln">   320  </span>			return nil, xerrors.Wrap(errNoShell, fmt.Sprintf(&#34;%s:%d&#34;, file, run.Line))
+<span id="L321" class="ln">   321  </span>		}
+<span id="L322" class="ln">   322  </span>		firstLine := bodyFirstLine(run)
+<span id="L323" class="ln">   323  </span>		steps = append(steps, step{
+<span id="L324" class="ln">   324  </span>			file:      file,
+<span id="L325" class="ln">   325  </span>			shell:     shell.Value,
+<span id="L326" class="ln">   326  </span>			script:    run.Value,
+<span id="L327" class="ln">   327  </span>			firstLine: firstLine,
+<span id="L328" class="ln">   328  </span>			colBase:   bodyColumnBase(data, run, firstLine),
+<span id="L329" class="ln">   329  </span>		})
+<span id="L330" class="ln">   330  </span>	}
+<span id="L331" class="ln">   331  </span>	return steps, nil
+<span id="L332" class="ln">   332  </span>}
+<span id="L333" class="ln">   333  </span>
+<span id="L334" class="ln">   334  </span>func documentRoot(doc *yaml.Node) *yaml.Node {
+<span id="L335" class="ln">   335  </span>	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+<span id="L336" class="ln">   336  </span>		return nil
+<span id="L337" class="ln">   337  </span>	}
+<span id="L338" class="ln">   338  </span>	return doc.Content[0]
+<span id="L339" class="ln">   339  </span>}
+<span id="L340" class="ln">   340  </span>
+<span id="L341" class="ln">   341  </span>func mapValue(node *yaml.Node, key string) *yaml.Node {
+<span id="L342" class="ln">   342  </span>	node = resolveAlias(node)
+<span id="L343" class="ln">   343  </span>	if node == nil || node.Kind != yaml.MappingNode {
+<span id="L344" class="ln">   344  </span>		return nil
+<span id="L345" class="ln">   345  </span>	}
+<span id="L346" class="ln">   346  </span>	var merged *yaml.Node
+<span id="L347" class="ln">   347  </span>	for i := 0; i+1 &lt; len(node.Content); i += 2 {
+<span id="L348" class="ln">   348  </span>		switch node.Content[i].Value {
+<span id="L349" class="ln">   349  </span>		case key:
+<span id="L350" class="ln">   350  </span>			return resolveAlias(node.Content[i+1])
+<span id="L351" class="ln">   351  </span>		case mergeKey:
+<span id="L352" class="ln">   352  </span>			merged = node.Content[i+1]
+<span id="L353" class="ln">   353  </span>		}
+<span id="L354" class="ln">   354  </span>	}
+<span id="L355" class="ln">   355  </span>	return mergeValue(merged, key)
+<span id="L356" class="ln">   356  </span>}
+<span id="L357" class="ln">   357  </span>
+<span id="L358" class="ln">   358  </span>func mergeValue(merged *yaml.Node, key string) *yaml.Node {
+<span id="L359" class="ln">   359  </span>	merged = resolveAlias(merged)
+<span id="L360" class="ln">   360  </span>	if merged == nil {
+<span id="L361" class="ln">   361  </span>		return nil
+<span id="L362" class="ln">   362  </span>	}
+<span id="L363" class="ln">   363  </span>	if merged.Kind != yaml.SequenceNode {
+<span id="L364" class="ln">   364  </span>		return mapValue(merged, key)
+<span id="L365" class="ln">   365  </span>	}
+<span id="L366" class="ln">   366  </span>	for _, node := range merged.Content {
+<span id="L367" class="ln">   367  </span>		if v := mapValue(node, key); v != nil {
+<span id="L368" class="ln">   368  </span>			return v
+<span id="L369" class="ln">   369  </span>		}
+<span id="L370" class="ln">   370  </span>	}
+<span id="L371" class="ln">   371  </span>	return nil
+<span id="L372" class="ln">   372  </span>}
+<span id="L373" class="ln">   373  </span>
+<span id="L374" class="ln">   374  </span>func resolveAlias(node *yaml.Node) *yaml.Node {
+<span id="L375" class="ln">   375  </span>	for node != nil &amp;&amp; node.Kind == yaml.AliasNode {
+<span id="L376" class="ln">   376  </span>		node = node.Alias
+<span id="L377" class="ln">   377  </span>	}
+<span id="L378" class="ln">   378  </span>	return node
+<span id="L379" class="ln">   379  </span>}
+<span id="L380" class="ln">   380  </span>
+<span id="L381" class="ln">   381  </span>func bodyFirstLine(run *yaml.Node) int {
+<span id="L382" class="ln">   382  </span>	if run.Style == yaml.LiteralStyle {
+<span id="L383" class="ln">   383  </span>		return run.Line + blockScalarKeyLines
+<span id="L384" class="ln">   384  </span>	}
+<span id="L385" class="ln">   385  </span>	return run.Line
+<span id="L386" class="ln">   386  </span>}
+<span id="L387" class="ln">   387  </span>
+<span id="L388" class="ln">   388  </span>func bodyColumnBase(data []byte, run *yaml.Node, firstLine int) int {
+<span id="L389" class="ln">   389  </span>	switch run.Style {
+<span id="L390" class="ln">   390  </span>	case yaml.LiteralStyle:
+<span id="L391" class="ln">   391  </span>		<span class="comment">// ブロックスカラーの本文はインデントを剥がした形で得られるため、剥がされた幅を足し戻す。</span>
+<span id="L392" class="ln">   392  </span>		return blockIndentWidth(data, firstLine, run.Value)
+<span id="L393" class="ln">   393  </span>	case yaml.SingleQuotedStyle, yaml.DoubleQuotedStyle:
+<span id="L394" class="ln">   394  </span>		<span class="comment">// 引用符付きスカラーは範囲の先頭が開き引用符を指すため、その 1 文字分を読み飛ばす。</span>
+<span id="L395" class="ln">   395  </span>		return run.Column
+<span id="L396" class="ln">   396  </span>	default:
+<span id="L397" class="ln">   397  </span>		return run.Column - firstColumn
+<span id="L398" class="ln">   398  </span>	}
+<span id="L399" class="ln">   399  </span>}
+<span id="L400" class="ln">   400  </span>
+<span id="L401" class="ln">   401  </span><span class="comment">// blockIndentWidth はブロックスカラーから剥がされたインデント幅を返す。</span>
+<span id="L402" class="ln">   402  </span><span class="comment">//</span>
+<span id="L403" class="ln">   403  </span><span class="comment">// 幅を決めるのは最初の非空行だが、その行の空白をそのまま採ると明示インデント指示子（run: |2 など）</span>
+<span id="L404" class="ln">   404  </span><span class="comment">// を書いた本文で列がずれる。指示子は剥がす幅を親ノード基準で固定するので、本文がそれより深く</span>
+<span id="L405" class="ln">   405  </span><span class="comment">// 書かれていれば余りが値側へ残り、生の行の空白は剥がされた幅より広くなる。</span>
+<span id="L406" class="ln">   406  </span><span class="comment">// 生の行の空白から値に残った空白を引けば、指示子の有無に依らず剥がされた幅そのものが出る。</span>
+<span id="L407" class="ln">   407  </span><span class="comment">// 本文が空行で始まる場合に幅 0 を採るとそのステップの全指摘がずれるため、両側とも最初の非空行を見る。</span>
+<span id="L408" class="ln">   408  </span>func blockIndentWidth(data []byte, firstLine int, value string) int {
+<span id="L409" class="ln">   409  </span>	lines := strings.Split(string(data), &#34;\n&#34;)
+<span id="L410" class="ln">   410  </span>	if firstLine &lt; firstBodyIndex || firstLine &gt; len(lines) {
+<span id="L411" class="ln">   411  </span>		return 0
+<span id="L412" class="ln">   412  </span>	}
+<span id="L413" class="ln">   413  </span>	raw, ok := firstIndentWidth(lines[firstLine-firstBodyIndex:])
+<span id="L414" class="ln">   414  </span>	if !ok {
+<span id="L415" class="ln">   415  </span>		return 0
+<span id="L416" class="ln">   416  </span>	}
+<span id="L417" class="ln">   417  </span>	kept, _ := firstIndentWidth(strings.Split(value, &#34;\n&#34;))
+<span id="L418" class="ln">   418  </span>	return raw - kept
+<span id="L419" class="ln">   419  </span>}
+<span id="L420" class="ln">   420  </span>
+<span id="L421" class="ln">   421  </span><span class="comment">// firstIndentWidth は最初の非空行のインデント幅を返す。第2戻り値が false なら非空行が無い。</span>
+<span id="L422" class="ln">   422  </span>func firstIndentWidth(lines []string) (int, bool) {
+<span id="L423" class="ln">   423  </span>	for _, line := range lines {
+<span id="L424" class="ln">   424  </span>		trimmed := strings.TrimLeft(line, &#34; \t&#34;)
+<span id="L425" class="ln">   425  </span>		if trimmed == &#34;&#34; {
+<span id="L426" class="ln">   426  </span>			continue
+<span id="L427" class="ln">   427  </span>		}
+<span id="L428" class="ln">   428  </span>		return len(line) - len(trimmed), true
+<span id="L429" class="ln">   429  </span>	}
+<span id="L430" class="ln">   430  </span>	return 0, false
+<span id="L431" class="ln">   431  </span>}
+<span id="L432" class="ln">   432  </span>
+<span id="L433" class="ln">   433  </span>func check(ctx context.Context, steps []step) (result, error) {
+<span id="L434" class="ln">   434  </span>	var res result
+<span id="L435" class="ln">   435  </span>	for _, s := range steps {
+<span id="L436" class="ln">   436  </span>		shebang, ok := shebangs[shellDialect(s.shell)]
+<span id="L437" class="ln">   437  </span>		if !ok {
+<span id="L438" class="ln">   438  </span>			res.skipped = append(res.skipped,
+<span id="L439" class="ln">   439  </span>				fmt.Sprintf(&#34;%s:%d: shell=%q は shellcheck の対象外のため検査しません&#34;, s.file, s.firstLine, s.shell))
+<span id="L440" class="ln">   440  </span>			continue
+<span id="L441" class="ln">   441  </span>		}
+<span id="L442" class="ln">   442  </span>		script, err := maskExpressions(s.script)
+<span id="L443" class="ln">   443  </span>		if err != nil {
+<span id="L444" class="ln">   444  </span>			return result{}, xerrors.Wrap(err, fmt.Sprintf(&#34;%s:%d&#34;, s.file, s.firstLine))
+<span id="L445" class="ln">   445  </span>		}
+<span id="L446" class="ln">   446  </span>		out, err := runShellcheck(ctx, shebang, script)
+<span id="L447" class="ln">   447  </span>		if err != nil {
+<span id="L448" class="ln">   448  </span>			return result{}, err
+<span id="L449" class="ln">   449  </span>		}
+<span id="L450" class="ln">   450  </span>		res.checked++
+<span id="L451" class="ln">   451  </span>		res.findings = append(res.findings, remapFindings(s, out)...)
+<span id="L452" class="ln">   452  </span>	}
+<span id="L453" class="ln">   453  </span>	return res, nil
+<span id="L454" class="ln">   454  </span>}
+<span id="L455" class="ln">   455  </span>
+<span id="L456" class="ln">   456  </span><span class="comment">// shellDialect は shell 指定から shellcheck へ渡す方言名を取り出す。env 経由の指定（shell: env FOO=bar bash）</span>
+<span id="L457" class="ln">   457  </span><span class="comment">// では KEY=VALUE 形の変数代入がインタプリタ名の手前に並ぶため、それらを読み飛ばして最初のコマンドを採る。</span>
+<span id="L458" class="ln">   458  </span>func shellDialect(shell string) string {
+<span id="L459" class="ln">   459  </span>	if strings.Contains(shell, exprOpen) {
+<span id="L460" class="ln">   460  </span>		return &#34;&#34;
+<span id="L461" class="ln">   461  </span>	}
+<span id="L462" class="ln">   462  </span>	for field := range strings.FieldsSeq(shell) {
+<span id="L463" class="ln">   463  </span>		if fieldBase(field) == envCommand || isAssignment(field) {
+<span id="L464" class="ln">   464  </span>			continue
+<span id="L465" class="ln">   465  </span>		}
+<span id="L466" class="ln">   466  </span>		return fieldBase(field)
+<span id="L467" class="ln">   467  </span>	}
+<span id="L468" class="ln">   468  </span>	return &#34;&#34;
+<span id="L469" class="ln">   469  </span>}
+<span id="L470" class="ln">   470  </span>
+<span id="L471" class="ln">   471  </span>func isAssignment(field string) bool {
+<span id="L472" class="ln">   472  </span>	name, _, ok := strings.Cut(field, &#34;=&#34;)
+<span id="L473" class="ln">   473  </span>	if !ok || name == &#34;&#34; {
+<span id="L474" class="ln">   474  </span>		return false
+<span id="L475" class="ln">   475  </span>	}
+<span id="L476" class="ln">   476  </span>	for i, r := range name {
+<span id="L477" class="ln">   477  </span>		if r == &#39;_&#39; || unicode.IsLetter(r) || (i &gt; 0 &amp;&amp; unicode.IsDigit(r)) {
+<span id="L478" class="ln">   478  </span>			continue
+<span id="L479" class="ln">   479  </span>		}
+<span id="L480" class="ln">   480  </span>		return false
+<span id="L481" class="ln">   481  </span>	}
+<span id="L482" class="ln">   482  </span>	return true
+<span id="L483" class="ln">   483  </span>}
+<span id="L484" class="ln">   484  </span>
+<span id="L485" class="ln">   485  </span>func fieldBase(cmd string) string {
+<span id="L486" class="ln">   486  </span>	if i := strings.LastIndex(cmd, &#34;/&#34;); i &gt;= 0 {
+<span id="L487" class="ln">   487  </span>		return cmd[i+1:]
+<span id="L488" class="ln">   488  </span>	}
+<span id="L489" class="ln">   489  </span>	return cmd
+<span id="L490" class="ln">   490  </span>}
+<span id="L491" class="ln">   491  </span>
+<span id="L492" class="ln">   492  </span>func maskExpressions(script string) (string, error) {
+<span id="L493" class="ln">   493  </span>	var masked strings.Builder
+<span id="L494" class="ln">   494  </span>	for {
+<span id="L495" class="ln">   495  </span>		open := strings.Index(script, exprOpen)
+<span id="L496" class="ln">   496  </span>		if open &lt; 0 {
+<span id="L497" class="ln">   497  </span>			masked.WriteString(script)
+<span id="L498" class="ln">   498  </span>			return masked.String(), nil
+<span id="L499" class="ln">   499  </span>		}
+<span id="L500" class="ln">   500  </span>		masked.WriteString(script[:open])
+<span id="L501" class="ln">   501  </span>		rest := script[open+len(exprOpen):]
+<span id="L502" class="ln">   502  </span>		end := exprEnd(rest)
+<span id="L503" class="ln">   503  </span>		if end &lt; 0 {
+<span id="L504" class="ln">   504  </span>			return &#34;&#34;, errUnterminatedExpr
+<span id="L505" class="ln">   505  </span>		}
+<span id="L506" class="ln">   506  </span>		masked.WriteString(exprPlaceholder)
+<span id="L507" class="ln">   507  </span>		masked.WriteString(strings.Repeat(&#34;\n&#34;, strings.Count(rest[:end], &#34;\n&#34;)))
+<span id="L508" class="ln">   508  </span>		script = rest[end+len(exprClose):]
+<span id="L509" class="ln">   509  </span>	}
+<span id="L510" class="ln">   510  </span>}
+<span id="L511" class="ln">   511  </span>
+<span id="L512" class="ln">   512  </span><span class="comment">// exprEnd は式の開始直後から見た閉じ位置を返す。閉じが無ければ -1。</span>
+<span id="L513" class="ln">   513  </span><span class="comment">//</span>
+<span id="L514" class="ln">   514  </span><span class="comment">// 式の中の &#39; は文字列リテラルの境界なので、その内側の }} で式を打ち切らないよう引用符を追う。</span>
+<span id="L515" class="ln">   515  </span><span class="comment">// ただし &#39; が奇数個だと引用符の状態が戻らず、自分の }} を読み飛ばして後続の別の式まで</span>
+<span id="L516" class="ln">   516  </span><span class="comment">// 巻き込む。GitHub Expressions の式は入れ子にならないため、閉じを見つける前に次の ${{ が</span>
+<span id="L517" class="ln">   517  </span><span class="comment">// 来ることは引用符の対応が壊れている証拠であり、そこで未閉じとして扱う。</span>
+<span id="L518" class="ln">   518  </span><span class="comment">// 巻き込んだ区間は maskExpressions が空行へ潰すので、fail-open にするとその間のシェルが</span>
+<span id="L519" class="ln">   519  </span><span class="comment">// 検査対象から丸ごと消える。</span>
+<span id="L520" class="ln">   520  </span>func exprEnd(expr string) int {
+<span id="L521" class="ln">   521  </span>	quoted := false
+<span id="L522" class="ln">   522  </span>	for i := range len(expr) {
+<span id="L523" class="ln">   523  </span>		switch {
+<span id="L524" class="ln">   524  </span>		case strings.HasPrefix(expr[i:], exprOpen):
+<span id="L525" class="ln">   525  </span>			return -1
+<span id="L526" class="ln">   526  </span>		case expr[i] == &#39;\&#39;&#39;:
+<span id="L527" class="ln">   527  </span>			quoted = !quoted
+<span id="L528" class="ln">   528  </span>		case !quoted &amp;&amp; strings.HasPrefix(expr[i:], exprClose):
+<span id="L529" class="ln">   529  </span>			return i
+<span id="L530" class="ln">   530  </span>		}
+<span id="L531" class="ln">   531  </span>	}
+<span id="L532" class="ln">   532  </span>	return -1
+<span id="L533" class="ln">   533  </span>}
+<span id="L534" class="ln">   534  </span>
+<span id="L535" class="ln">   535  </span>func runShellcheck(ctx context.Context, shebang, script string) (string, error) {
+<span id="L536" class="ln">   536  </span>	cctx, cancel := context.WithTimeout(ctx, shellcheckTimeout)
+<span id="L537" class="ln">   537  </span>	defer cancel()
+<span id="L538" class="ln">   538  </span>	cmd := exec.CommandContext(cctx, shellcheckBin, &#34;--norc&#34;, &#34;--format=gcc&#34;, &#34;-&#34;)
+<span id="L539" class="ln">   539  </span>	cmd.Stdin = strings.NewReader(shebang + &#34;\n&#34; + script)
+<span id="L540" class="ln">   540  </span>	var stdout, stderr strings.Builder
+<span id="L541" class="ln">   541  </span>	cmd.Stdout = &amp;stdout
+<span id="L542" class="ln">   542  </span>	cmd.Stderr = &amp;stderr
+<span id="L543" class="ln">   543  </span>	err := cmd.Run()
+<span id="L544" class="ln">   544  </span>	if err == nil {
+<span id="L545" class="ln">   545  </span>		return stdout.String(), nil
+<span id="L546" class="ln">   546  </span>	}
+<span id="L547" class="ln">   547  </span>	var exitErr *exec.ExitError
+<span id="L548" class="ln">   548  </span>	if xerrors.As(err, &amp;exitErr) &amp;&amp; exitErr.ExitCode() == findingsExitCode {
+<span id="L549" class="ln">   549  </span>		return stdout.String(), nil
+<span id="L550" class="ln">   550  </span>	}
+<span id="L551" class="ln">   551  </span>	return &#34;&#34;, xerrors.Wrap(errShellcheck, fmt.Sprintf(&#34;%v: %s&#34;, err, strings.TrimSpace(stderr.String())))
+<span id="L552" class="ln">   552  </span>}
+<span id="L553" class="ln">   553  </span>
+<span id="L554" class="ln">   554  </span>func remapFindings(s step, out string) []string {
+<span id="L555" class="ln">   555  </span>	lineBase := s.firstLine - shebangLines - firstBodyIndex
+<span id="L556" class="ln">   556  </span>	var findings []string
+<span id="L557" class="ln">   557  </span>	for line := range strings.SplitSeq(strings.TrimSpace(out), &#34;\n&#34;) {
+<span id="L558" class="ln">   558  </span>		m := findingRe.FindStringSubmatch(line)
+<span id="L559" class="ln">   559  </span>		if m == nil {
+<span id="L560" class="ln">   560  </span>			continue
+<span id="L561" class="ln">   561  </span>		}
+<span id="L562" class="ln">   562  </span>		row, rowErr := strconv.Atoi(m[1])
+<span id="L563" class="ln">   563  </span>		col, colErr := strconv.Atoi(m[2])
+<span id="L564" class="ln">   564  </span>		if rowErr != nil || colErr != nil {
+<span id="L565" class="ln">   565  </span>			continue
+<span id="L566" class="ln">   566  </span>		}
+<span id="L567" class="ln">   567  </span>		findings = append(findings, fmt.Sprintf(&#34;  %s:%d:%d:%s&#34;, s.file, lineBase+row, col+s.colBase, m[3]))
+<span id="L568" class="ln">   568  </span>	}
+<span id="L569" class="ln">   569  </span>	return findings
+<span id="L570" class="ln">   570  </span>}
+<span id="L571" class="ln">   571  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/actions-shellcheck/main.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

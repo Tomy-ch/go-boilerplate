@@ -1,0 +1,127 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>dispatch - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/domain">domain</a>/<a href="../../../../../../src/go-boilerplate/internal/domain/service">service</a>/<a href="../../../../../../src/go-boilerplate/internal/domain/service/dispatch">dispatch</a>/<span class="text-muted">dispatch_service.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/domain/service/dispatch">go-boilerplate/internal/domain/service/dispatch</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package dispatch は、発送待ちの購入をまとめて発送してよい組へ分ける規則を表すドメインサービスです。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">// 「この購入は発送可能か」は 1 件の購入自身の状態だけで決まるため Purchase のメソッド（IsShippable）</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// ですが、「これらのうちどれとどれを 1 便にまとめてよいか」は集合についての問いで、ある 1 件についての</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// 答えが集合に他のどれが含まれるかに依存します。どの Purchase 1 件のメソッドにもなり得ないため、</span>
+<span id="L6" class="ln">     6  </span><span class="comment">// 購入集約の自然な責務にはなりません。状態を持たず、読み込み済みの状態だけを受け取って組を返すため、</span>
+<span id="L7" class="ln">     7  </span><span class="comment">// 集約の外に置くドメインサービスとして表現します。</span>
+<span id="L8" class="ln">     8  </span><span class="comment">//</span>
+<span id="L9" class="ln">     9  </span><span class="comment">// 語るのは購入集約だけで、import するのも internal/domain/purchase だけです。この置き場が集約の</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// import を許すのは許可であって要求ではありません（internal/domain/README.md）。</span>
+<span id="L11" class="ln">    11  </span><span class="comment">//</span>
+<span id="L12" class="ln">    12  </span><span class="comment">// 対象の取得（絞り込み・件数の上限）と、取得した行が実際に発送可能かの検証、および</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// トランザクション境界は Usecase の責務です。本パッケージは I/O を持たず、context.Context も</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// 受け取りません。</span>
+<span id="L15" class="ln">    15  </span>package dispatch
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>import (
+<span id="L18" class="ln">    18  </span>	&#34;cmp&#34;
+<span id="L19" class="ln">    19  </span>	&#34;slices&#34;
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>	&#34;go-boilerplate/internal/domain/purchase&#34;
+<span id="L22" class="ln">    22  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L23" class="ln">    23  </span>)
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// GroupForDispatch は、発送待ちの購入を、まとめて発送してよい組に分けます。</span>
+<span id="L26" class="ln">    26  </span><span class="comment">// 同一の購入者宛てであることを軸とし、同じ購入者の購入は 1 つの組にまとまります。</span>
+<span id="L27" class="ln">    27  </span><span class="comment">//</span>
+<span id="L28" class="ln">    28  </span><span class="comment">// 受け取るのは発送可能な購入の集合であることを前提とし、本関数は発送可能性を検証しません</span>
+<span id="L29" class="ln">    29  </span><span class="comment">// （その定義は Purchase.IsShippable が持ち、取得した行との突き合わせは Usecase が行います）。</span>
+<span id="L30" class="ln">    30  </span><span class="comment">// 同梱可能期間などの追加条件は現時点では持ちません。</span>
+<span id="L31" class="ln">    31  </span><span class="comment">//</span>
+<span id="L32" class="ln">    32  </span><span class="comment">// 結果は入力の並び順に依存せず一意に定まります。組の中は注文日時の古い順（同時刻は購入 ID の昇順）、</span>
+<span id="L33" class="ln">    33  </span><span class="comment">// 組同士はその組の最も古い購入の同じ順序で並びます。購入が 1 件だけの購入者もその 1 件からなる組に</span>
+<span id="L34" class="ln">    34  </span><span class="comment">// なります。purchases が空の場合は空を返します。</span>
+<span id="L35" class="ln">    35  </span>func GroupForDispatch(purchases purchase.Purchases) []purchase.Purchases {
+<span id="L36" class="ln">    36  </span>	byPurchaser := make(map[uuid.UUID]purchase.Purchases, len(purchases))
+<span id="L37" class="ln">    37  </span>	for _, p := range purchases {
+<span id="L38" class="ln">    38  </span>		byPurchaser[p.UserID()] = append(byPurchaser[p.UserID()], p)
+<span id="L39" class="ln">    39  </span>	}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span>	groups := make([]purchase.Purchases, 0, len(byPurchaser))
+<span id="L42" class="ln">    42  </span>	for _, group := range byPurchaser {
+<span id="L43" class="ln">    43  </span>		slices.SortFunc(group, compareDispatchOrder)
+<span id="L44" class="ln">    44  </span>		groups = append(groups, group)
+<span id="L45" class="ln">    45  </span>	}
+<span id="L46" class="ln">    46  </span>	slices.SortFunc(groups, func(a, b purchase.Purchases) int {
+<span id="L47" class="ln">    47  </span>		return compareDispatchOrder(a[0], b[0])
+<span id="L48" class="ln">    48  </span>	})
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>	return groups
+<span id="L51" class="ln">    51  </span>}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span><span class="comment">// compareDispatchOrder は、購入 a と b の発送順を比較します。注文日時の古い順、同時刻は購入 ID の</span>
+<span id="L54" class="ln">    54  </span><span class="comment">// 昇順です。同時刻の並びを ID で決めるのは、順序を一意にするためです。</span>
+<span id="L55" class="ln">    55  </span>func compareDispatchOrder(a, b *purchase.Purchase) int {
+<span id="L56" class="ln">    56  </span>	if !a.OrderedAt().Equal(b.OrderedAt()) {
+<span id="L57" class="ln">    57  </span>		return a.OrderedAt().Compare(b.OrderedAt())
+<span id="L58" class="ln">    58  </span>	}
+<span id="L59" class="ln">    59  </span>	return cmp.Compare(a.ID().String(), b.ID().String())
+<span id="L60" class="ln">    60  </span>}
+<span id="L61" class="ln">    61  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/domain/service/dispatch/dispatch_service.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

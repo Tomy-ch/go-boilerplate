@@ -68,7 +68,7 @@
 <span id="L11" class="ln">    11  </span>	idempotencyuc &#34;go-boilerplate/internal/usecase/idempotency&#34;
 <span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L14" class="ln">    14  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L15" class="ln">    15  </span>)
 <span id="L16" class="ln">    16  </span>
 <span id="L17" class="ln">    17  </span><span class="comment">// headerName は、冪等性キーのリクエストヘッダ名です。</span>
@@ -78,12 +78,12 @@
 <span id="L21" class="ln">    21  </span>const maxKeyLength = 255
 <span id="L22" class="ln">    22  </span>
 <span id="L23" class="ln">    23  </span><span class="comment">// NextFunc は、StrictHandlerFunc と構造的に同一の handler 呼び出しシグネチャです。</span>
-<span id="L24" class="ln">    24  </span>type NextFunc func(ctx echo.Context, request any) (any, error)
+<span id="L24" class="ln">    24  </span>type NextFunc func(ctx *echo.Context, request any) (any, error)
 <span id="L25" class="ln">    25  </span>
 <span id="L26" class="ln">    26  </span><span class="comment">// Middleware は、冪等性入り口を StrictMiddleware の構造的シグネチャで返します。</span>
 <span id="L27" class="ln">    27  </span>func Middleware() func(next NextFunc, operationID string) NextFunc {
 <span id="L28" class="ln">    28  </span>	return func(next NextFunc, operationID string) NextFunc {
-<span id="L29" class="ln">    29  </span>		return func(ec echo.Context, request any) (any, error) {
+<span id="L29" class="ln">    29  </span>		return func(ec *echo.Context, request any) (any, error) {
 <span id="L30" class="ln">    30  </span>			return handle(ec, request, operationID, next)
 <span id="L31" class="ln">    31  </span>		}
 <span id="L32" class="ln">    32  </span>	}
@@ -91,14 +91,14 @@
 <span id="L34" class="ln">    34  </span>
 <span id="L35" class="ln">    35  </span><span class="comment">// StrictMiddleware は、Middleware() を oapi-codegen のパッケージ固有 StrictMiddlewareFunc 形へ</span>
 <span id="L36" class="ln">    36  </span><span class="comment">// 適合させたアダプタを返します。</span>
-<span id="L37" class="ln">    37  </span>func StrictMiddleware[H ~func(ec echo.Context, request any) (any, error)]() func(f H, operationID string) H {
+<span id="L37" class="ln">    37  </span>func StrictMiddleware[H ~func(ec *echo.Context, request any) (any, error)]() func(f H, operationID string) H {
 <span id="L38" class="ln">    38  </span>	core := Middleware()
 <span id="L39" class="ln">    39  </span>	return func(f H, operationID string) H {
 <span id="L40" class="ln">    40  </span>		return H(core(NextFunc(f), operationID))
 <span id="L41" class="ln">    41  </span>	}
 <span id="L42" class="ln">    42  </span>}
 <span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>func handle(ec echo.Context, request any, operationID string, next NextFunc) (any, error) {
+<span id="L44" class="ln">    44  </span>func handle(ec *echo.Context, request any, operationID string, next NextFunc) (any, error) {
 <span id="L45" class="ln">    45  </span>	r := ec.Request()
 <span id="L46" class="ln">    46  </span>	key := strings.TrimSpace(r.Header.Get(headerName))
 <span id="L47" class="ln">    47  </span>	if key == &#34;&#34; {

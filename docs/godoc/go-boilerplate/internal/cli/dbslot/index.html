@@ -1,0 +1,1139 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>dbslot - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package dbslot
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/cli/dbslot&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package dbslot は、複数の git worktree が単一共有 Postgres を per-worktree のデータベース
+（wt&lt;N&gt;_local / wt&lt;N&gt;_test）として貸し借りする DB スロットプールのコアロジックを提供します。
+リース（ロックディレクトリ）管理・stale 回収・DB 作成・compose 起動を担い、cmd/db-slot.go から
+実依存を配線して呼び出します。詳細は docs/maintenance/db-worktree-pool.md。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#RenderEnv">func RenderEnv(v Values) string</a></dd>
+			
+				
+				<dd><a href="#RenderValues">func RenderValues(v Values) string</a></dd>
+			
+			
+				
+				<dd><a href="#Compose">type Compose</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Config">type Config</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DBAdmin">type DBAdmin</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ExecCompose">type ExecCompose</a></dd>
+				
+				
+					
+					<dd>    <a href="#ExecCompose.DownServe">func (c ExecCompose) DownServe(ctx context.Context, project string) error</a></dd>
+				
+					
+					<dd>    <a href="#ExecCompose.RunningContainers">func (c ExecCompose) RunningContainers(ctx context.Context, project string) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#ExecCompose.UpSharedDB">func (c ExecCompose) UpSharedDB(ctx context.Context, project string) error</a></dd>
+				
+			
+				
+				<dd><a href="#GitContext">type GitContext</a></dd>
+				
+				
+					
+					<dd>    <a href="#GitContext.String">func (c GitContext) String() string</a></dd>
+				
+			
+				
+				<dd><a href="#GitProbe">type GitProbe</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Meta">type Meta</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PgxAdmin">type PgxAdmin</a></dd>
+				
+					
+					<dd>    <a href="#NewPgxAdmin">func NewPgxAdmin(host string, port int, user, password, maintenanceDB string) *PgxAdmin</a></dd>
+				
+				
+					
+					<dd>    <a href="#PgxAdmin.ActiveConnections">func (a *PgxAdmin) ActiveConnections(ctx context.Context, names ...string) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#PgxAdmin.EnsureDatabase">func (a *PgxAdmin) EnsureDatabase(ctx context.Context, name string) error</a></dd>
+				
+					
+					<dd>    <a href="#PgxAdmin.SetupDatabase">func (a *PgxAdmin) SetupDatabase(ctx context.Context, name string) error</a></dd>
+				
+			
+				
+				<dd><a href="#Pool">type Pool</a></dd>
+				
+					
+					<dd>    <a href="#NewPool">func NewPool(reg *Registry, admin DBAdmin, comp Compose, cfg Config, out, logw io.Writer) *Pool</a></dd>
+				
+				
+					
+					<dd>    <a href="#Pool.Acquire">func (p *Pool) Acquire(ctx context.Context) error</a></dd>
+				
+					
+					<dd>    <a href="#Pool.Heartbeat">func (p *Pool) Heartbeat() error</a></dd>
+				
+					
+					<dd>    <a href="#Pool.Release">func (p *Pool) Release(ctx context.Context) error</a></dd>
+				
+					
+					<dd>    <a href="#Pool.Status">func (p *Pool) Status() error</a></dd>
+				
+			
+				
+				<dd><a href="#Registry">type Registry</a></dd>
+				
+					
+					<dd>    <a href="#NewRegistry">func NewRegistry(dir, owner, branch string, ttl time.Duration, maxSlots int, now func() time.Time) *Registry</a></dd>
+				
+				
+					
+					<dd>    <a href="#Registry.AgeSeconds">func (r *Registry) AgeSeconds(slot int) int64</a></dd>
+				
+					
+					<dd>    <a href="#Registry.EnsureDir">func (r *Registry) EnsureDir() error</a></dd>
+				
+					
+					<dd>    <a href="#Registry.Exists">func (r *Registry) Exists(slot int) bool</a></dd>
+				
+					
+					<dd>    <a href="#Registry.IsStale">func (r *Registry) IsStale(slot int) bool</a></dd>
+				
+					
+					<dd>    <a href="#Registry.Lock">func (r *Registry) Lock() (func(), error)</a></dd>
+				
+					
+					<dd>    <a href="#Registry.MaxSlots">func (r *Registry) MaxSlots() int</a></dd>
+				
+					
+					<dd>    <a href="#Registry.OwnedBySelf">func (r *Registry) OwnedBySelf(slot int) bool</a></dd>
+				
+					
+					<dd>    <a href="#Registry.ReadMeta">func (r *Registry) ReadMeta(slot int) (Meta, bool)</a></dd>
+				
+					
+					<dd>    <a href="#Registry.Release">func (r *Registry) Release(slot int)</a></dd>
+				
+					
+					<dd>    <a href="#Registry.TryAcquireFresh">func (r *Registry) TryAcquireFresh(slot int) bool</a></dd>
+				
+					
+					<dd>    <a href="#Registry.TryReclaim">func (r *Registry) TryReclaim(slot int) bool</a></dd>
+				
+					
+					<dd>    <a href="#Registry.WriteMeta">func (r *Registry) WriteMeta(slot int) error</a></dd>
+				
+			
+				
+				<dd><a href="#Resolver">type Resolver</a></dd>
+				
+					
+					<dd>    <a href="#NewResolver">func NewResolver(cfg Config, probe *GitProbe, out io.Writer) *Resolver</a></dd>
+				
+				
+					
+					<dd>    <a href="#Resolver.PrintEnv">func (r *Resolver) PrintEnv(ctx context.Context) error</a></dd>
+				
+					
+					<dd>    <a href="#Resolver.PrintValues">func (r *Resolver) PrintValues(ctx context.Context) error</a></dd>
+				
+					
+					<dd>    <a href="#Resolver.RequireOwner">func (r *Resolver) RequireOwner(ctx context.Context) error</a></dd>
+				
+					
+					<dd>    <a href="#Resolver.Resolve">func (r *Resolver) Resolve(ctx context.Context) (Values, error)</a></dd>
+				
+			
+				
+				<dd><a href="#Values">type Values</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/cli/dbslot/admin.go.html">admin.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/cli/dbslot/compose.go.html">compose.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html">dbslot.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html">registry.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html">resolve.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="RenderEnv">func <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=9062:9093#L218">RenderEnv</a>
+				<a class="permalink" href="#RenderEnv">¶</a>
+				
+				
+			</h2>
+			<pre>func RenderEnv(v <a href="#Values">Values</a>) <a href="../../../../builtin/#string">string</a></pre>
+			<p>RenderEnv は、解決済みの値を make のレシピが eval できる KEY=VALUE へ整形します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RenderValues">func <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=9569:9603#L237">RenderValues</a>
+				<a class="permalink" href="#RenderValues">¶</a>
+				
+				
+			</h2>
+			<pre>func RenderValues(v <a href="#Values">Values</a>) <a href="../../../../builtin/#string">string</a></pre>
+			<p>RenderValues は、解決済みの値を人間向けの一覧へ整形します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Compose">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/compose.go.html?s=313:855#L6">Compose</a>
+				<a class="permalink" href="#Compose">¶</a>
+				
+				
+			</h2>
+			<p>Compose は、docker compose 操作を抽象化します（テストでフェイク可能）。
+
+			</p><pre>type Compose interface {
+    <span class="comment">// UpSharedDB は、共有 DB コンテナを固定プロジェクトで起動し healthcheck 完了まで待ちます。</span>
+    UpSharedDB(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, project <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a>
+    <span class="comment">// DownServe は、per-worktree の serve プロジェクト（app コンテナ）を停止・削除します。</span>
+    DownServe(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, project <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a>
+    <span class="comment">// RunningContainers は、指定プロジェクトで稼働中のコンテナ数を返します。</span>
+    RunningContainers(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, project <a href="../../../../builtin/#string">string</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Config">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html?s=644:1188#L14">Config</a>
+				<a class="permalink" href="#Config">¶</a>
+				
+				
+			</h2>
+			<p>Config は、Pool の振る舞いを決めるパラメータです。
+
+			</p><pre>type Config struct {
+<span id="Config.Root"></span>    Root          <a href="../../../../builtin/#string">string</a> <span class="comment">// 自 worktree の絶対パス（.gobp-db-slot の出力先・owner）</span>
+<span id="Config.SharedProject"></span>    SharedProject <a href="../../../../builtin/#string">string</a> <span class="comment">// 共有インフラの固定 compose プロジェクト（例: gobp-shared）</span>
+<span id="Config.APIBasePort"></span>    APIBasePort   <a href="../../../../builtin/#int">int</a>    <span class="comment">// API_HOST_PORT のベース（スロット N = base+N）</span>
+<span id="Config.MockAuthBase"></span>    MockAuthBase  <a href="../../../../builtin/#int">int</a>    <span class="comment">// MOCK_AUTH_HOST_PORT のベース</span>
+<span id="Config.DlvBase"></span>    DlvBase       <a href="../../../../builtin/#int">int</a>    <span class="comment">// DLV_HOST_PORT のベース</span>
+<span id="Config.PprofBase"></span>    PprofBase     <a href="../../../../builtin/#int">int</a>    <span class="comment">// PPROF_HOST_PORT のベース</span>
+<span id="Config.APPEnv"></span>    APPEnv        <a href="../../../../builtin/#string">string</a> <span class="comment">// 実行環境ラベル（deploy 系ガードに使用）</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DBAdmin">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/admin.go.html?s=336:851#L6">DBAdmin</a>
+				<a class="permalink" href="#DBAdmin">¶</a>
+				
+				
+			</h2>
+			<p>DBAdmin は、共有 DB に対する管理操作を抽象化します（テストでフェイク可能）。
+
+			</p><pre>type DBAdmin interface {
+    <span class="comment">// EnsureDatabase は、データベースが無ければ作成します（冪等）。</span>
+    EnsureDatabase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a>
+    <span class="comment">// SetupDatabase は、init スクリプトが local/test に施すのと同じ拡張を対象 DB に設定します。</span>
+    SetupDatabase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a>
+    <span class="comment">// ActiveConnections は、指定データベース群への稼働中接続数を返します。</span>
+    ActiveConnections(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, names ...<a href="../../../../builtin/#string">string</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ExecCompose">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/compose.go.html?s=1002:1027#L17">ExecCompose</a>
+				<a class="permalink" href="#ExecCompose">¶</a>
+				
+				
+			</h2>
+			<p>ExecCompose は、docker compose をホストで実行する Compose 実装です。
+出力（進捗ログ）は stderr へ流します。
+
+			</p><pre>type ExecCompose struct{}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="ExecCompose.DownServe">func (ExecCompose) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/compose.go.html?s=2200:2273#L31">DownServe</a>
+					<a class="permalink" href="#ExecCompose.DownServe">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#ExecCompose">ExecCompose</a>) DownServe(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, project <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>DownServe は `docker compose -f docker-compose.yaml -f docker-compose.attach.yaml down` を実行します。
+docker compose down はコンテナ不在でも exit 0 のため、返るエラーは docker 未起動・権限不足などの実失敗のみです。
+
+				
+				
+				
+			
+				
+				</p><h3 id="ExecCompose.RunningContainers">func (ExecCompose) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/compose.go.html?s=2613:2701#L37">RunningContainers</a>
+					<a class="permalink" href="#ExecCompose.RunningContainers">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#ExecCompose">ExecCompose</a>) RunningContainers(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, project <a href="../../../../builtin/#string">string</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>RunningContainers は `docker compose ps -q --status running` の出力行数を返します。
+プロジェクトが存在しない場合は 0 を返します（未 serve と稼働中を区別できれば足りるため）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="ExecCompose.UpSharedDB">func (ExecCompose) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/compose.go.html?s=1748:1822#L25">UpSharedDB</a>
+					<a class="permalink" href="#ExecCompose.UpSharedDB">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#ExecCompose">ExecCompose</a>) UpSharedDB(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, project <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>UpSharedDB は `docker compose --profile database up -d --wait --no-recreate database` を実行します。
+--no-recreate は、稼働中のコンテナを他の checkout が使っている前提に立つものです。compose の
+config-hash は bind mount と build context の解決後の絶対パスを含むため、同一コミットでも
+呼び出す worktree が違えば差分ありと判定され、既定では毎回作り直しになります。
+make 側（INFRA_NO_RECREATE）と違い条件を持ちません。スロットを取ること自体が共有インフラを
+他の checkout と分け合うという宣言であり、その状況でだけこの経路が走るためです。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="GitContext">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=1944:1963#L41">GitContext</a>
+				<a class="permalink" href="#GitContext">¶</a>
+				
+				
+			</h2>
+			<p>GitContext は、この checkout がどの git 文脈にあるかを表します。
+「所有データベースが無い状態を検出できるか」はこの区別で決まります。
+
+			</p><pre>type GitContext <a href="../../../../builtin/#int">int</a></pre>
+
+			
+				
+				<pre>const (
+    <span class="comment">// GitUnavailable は、git 実行ファイルが無い状態です（ツールランナーのコンテナ内など）。</span>
+    <span id="GitUnavailable">GitUnavailable</span> <a href="#GitContext">GitContext</a> = <a href="../../../../builtin/#iota">iota</a>
+    <span class="comment">// GitNoRepository は、git はあるが作業ディレクトリが git リポジトリでない状態です。</span>
+    <span id="GitNoRepository">GitNoRepository</span>
+    <span class="comment">// GitMainCheckout は、主 checkout です（git-dir と git-common-dir が一致する）。</span>
+    <span id="GitMainCheckout">GitMainCheckout</span>
+    <span class="comment">// GitLinkedWorktree は、git worktree add で作ったリンク worktree です（両者が食い違う）。</span>
+    <span id="GitLinkedWorktree">GitLinkedWorktree</span>
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GitContext.String">func (GitContext) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=3697:3732#L75">String</a>
+					<a class="permalink" href="#GitContext.String">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#GitContext">GitContext</a>) String() <a href="../../../../builtin/#string">string</a></pre>
+				<p>String は、GitContext の表示名を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="GitProbe">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=2081:2506#L44">GitProbe</a>
+				<a class="permalink" href="#GitProbe">¶</a>
+				
+				
+			</h2>
+			<p>GitProbe は、git 文脈の判定に使う外部依存の注入点です（テストで差し替えます）。
+
+			</p><pre>type GitProbe struct {
+<span id="GitProbe.LookGit"></span>    <span class="comment">// LookGit は、git 実行ファイルが使えるかを返します。</span>
+    LookGit func() <a href="../../../../builtin/#error">error</a>
+<span id="GitProbe.GitDirs"></span>    <span class="comment">// GitDirs は、root で `git rev-parse --git-dir --git-common-dir` を実行した標準出力を返します。</span>
+    GitDirs func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, root <a href="../../../../builtin/#string">string</a>) (<a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#error">error</a>)
+<span id="GitProbe.HasGitEntry"></span>    <span class="comment">// HasGitEntry は、root か その祖先に .git が存在するかを返します。</span>
+    HasGitEntry func(root <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#bool">bool</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Meta">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=1238:1374#L23">Meta</a>
+				<a class="permalink" href="#Meta">¶</a>
+				
+				
+			</h2>
+			<p>Meta は、スロットのリース保持者情報です。
+
+			</p><pre>type Meta struct {
+<span id="Meta.Owner"></span>    Owner     <a href="../../../../builtin/#string">string</a> <span class="comment">// リース保持 worktree の絶対パス</span>
+<span id="Meta.Heartbeat"></span>    Heartbeat <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="Meta.Branch"></span>    Branch    <a href="../../../../builtin/#string">string</a>
+<span id="Meta.Slot"></span>    Slot      <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PgxAdmin">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/admin.go.html?s=1047:1156#L17">PgxAdmin</a>
+				<a class="permalink" href="#PgxAdmin">¶</a>
+				
+				
+			</h2>
+			<p>PgxAdmin は、pgx でホストから共有 DB へ接続する DBAdmin 実装です。
+CREATE DATABASE / pg_stat_activity は maintenance DB へ、拡張は対象 DB へ接続します。
+
+			</p><pre>type PgxAdmin struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewPgxAdmin">func <a href="../../../../src/go-boilerplate/internal/cli/dbslot/admin.go.html?s=1208:1295#L23">NewPgxAdmin</a>
+					<a class="permalink" href="#NewPgxAdmin">¶</a>
+					
+					
+				</h3>
+				<pre>func NewPgxAdmin(host <a href="../../../../builtin/#string">string</a>, port <a href="../../../../builtin/#int">int</a>, user, password, maintenanceDB <a href="../../../../builtin/#string">string</a>) *<a href="#PgxAdmin">PgxAdmin</a></pre>
+				<p>NewPgxAdmin は PgxAdmin を生成します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="PgxAdmin.ActiveConnections">func (*PgxAdmin) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/admin.go.html?s=2878:2965#L66">ActiveConnections</a>
+					<a class="permalink" href="#PgxAdmin.ActiveConnections">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#PgxAdmin">PgxAdmin</a>) ActiveConnections(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, names ...<a href="../../../../builtin/#string">string</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>ActiveConnections は、指定 DB 群への稼働中接続数を返します（stale 回収前の破壊防止ガードに使用）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="PgxAdmin.EnsureDatabase">func (*PgxAdmin) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/admin.go.html?s=1484:1557#L28">EnsureDatabase</a>
+					<a class="permalink" href="#PgxAdmin.EnsureDatabase">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#PgxAdmin">PgxAdmin</a>) EnsureDatabase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>EnsureDatabase は、対象 DB が無ければ CREATE DATABASE します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="PgxAdmin.SetupDatabase">func (*PgxAdmin) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/admin.go.html?s=2388:2460#L52">SetupDatabase</a>
+					<a class="permalink" href="#PgxAdmin.SetupDatabase">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#PgxAdmin">PgxAdmin</a>) SetupDatabase(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>SetupDatabase は、対象 DB に pg_trgm 拡張を設定します。
+timezone は DB コンテナの TZ 由来のクラスタ既定を継承するため、ここでは設定しません。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Pool">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html?s=1291:1492#L25">Pool</a>
+				<a class="permalink" href="#Pool">¶</a>
+				
+				
+			</h2>
+			<p>Pool は、リース・DB 管理・compose 起動を統合するオーケストレータです。
+
+			</p><pre>type Pool struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewPool">func <a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html?s=1536:1631#L35">NewPool</a>
+					<a class="permalink" href="#NewPool">¶</a>
+					
+					
+				</h3>
+				<pre>func NewPool(reg *<a href="#Registry">Registry</a>, admin <a href="#DBAdmin">DBAdmin</a>, comp <a href="#Compose">Compose</a>, cfg <a href="#Config">Config</a>, out, logw <a href="../../../../io/">io</a>.<a href="../../../../io/#Writer">Writer</a>) *<a href="#Pool">Pool</a></pre>
+				<p>NewPool は Pool を生成します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Pool.Acquire">func (*Pool) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html?s=1860:1909#L40">Acquire</a>
+					<a class="permalink" href="#Pool.Acquire">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Pool">Pool</a>) Acquire(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>Acquire は、空きスロットをリースし共有 DB 上に自 worktree の DB を用意して .gobp-db-slot を書き出します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Pool.Heartbeat">func (*Pool) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html?s=4178:4210#L108">Heartbeat</a>
+					<a class="permalink" href="#Pool.Heartbeat">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Pool">Pool</a>) Heartbeat() <a href="../../../../builtin/#error">error</a></pre>
+				<p>Heartbeat は、自 worktree の保持スロットの heartbeat を更新します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Pool.Release">func (*Pool) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html?s=3385:3434#L90">Release</a>
+					<a class="permalink" href="#Pool.Release">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Pool">Pool</a>) Release(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>Release は、serve コンテナを停止し、リースと .gobp-db-slot を解放します（DB は warm 保持）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Pool.Status">func (*Pool) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/dbslot.go.html?s=4391:4420#L117">Status</a>
+					<a class="permalink" href="#Pool.Status">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Pool">Pool</a>) Status() <a href="../../../../builtin/#error">error</a></pre>
+				<p>Status は、スロットの占有状況を表示します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Registry">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=1485:1726#L31">Registry</a>
+				<a class="permalink" href="#Registry">¶</a>
+				
+				
+			</h2>
+			<p>Registry は、ホスト上のロックディレクトリでスロットのリースを管理します。
+
+			</p><pre>type Registry struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewRegistry">func <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=1830:1938#L41">NewRegistry</a>
+					<a class="permalink" href="#NewRegistry">¶</a>
+					
+					
+				</h3>
+				<pre>func NewRegistry(dir, owner, branch <a href="../../../../builtin/#string">string</a>, ttl <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>, maxSlots <a href="../../../../builtin/#int">int</a>, now func() <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) *<a href="#Registry">Registry</a></pre>
+				<p>NewRegistry は Registry を生成します。now が nil の場合は time.Now を使います。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Registry.AgeSeconds">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=6237:6282#L174">AgeSeconds</a>
+					<a class="permalink" href="#Registry.AgeSeconds">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) AgeSeconds(slot <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#int64">int64</a></pre>
+				<p>AgeSeconds は、スロットの heartbeat からの経過秒数を返します（meta 無しは -1）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.EnsureDir">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=2908:2944#L66">EnsureDir</a>
+					<a class="permalink" href="#Registry.EnsureDir">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) EnsureDir() <a href="../../../../builtin/#error">error</a></pre>
+				<p>EnsureDir は、レジストリを用意します。symlink は先読み攻撃対策として拒否します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.Exists">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=4196:4236#L98">Exists</a>
+					<a class="permalink" href="#Registry.Exists">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) Exists(slot <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>Exists は、スロットのロックが存在するかを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.IsStale">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=5693:5734#L152">IsStale</a>
+					<a class="permalink" href="#Registry.IsStale">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) IsStale(slot <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsStale は、他 worktree のリースが heartbeat TTL を超過しているかを返します（自分の保持は常に非 stale）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.Lock">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=2332:2373#L50">Lock</a>
+					<a class="permalink" href="#Registry.Lock">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) Lock() (func(), <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>Lock は、acquire 走査を全プロセス・goroutine 横断で直列化する flock を取得します（戻り値で解放）。
+fresh mkdir と reclaim rename の隙間で起きる二重取得を防ぐため。EnsureDir 後に呼ぶこと。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.MaxSlots">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=3304:3337#L78">MaxSlots</a>
+					<a class="permalink" href="#Registry.MaxSlots">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) MaxSlots() <a href="../../../../builtin/#int">int</a></pre>
+				<p>MaxSlots は、スロット数を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.OwnedBySelf">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=5440:5485#L146">OwnedBySelf</a>
+					<a class="permalink" href="#Registry.OwnedBySelf">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) OwnedBySelf(slot <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>OwnedBySelf は、スロットが自 worktree の保持かを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.ReadMeta">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=4784:4834#L114">ReadMeta</a>
+					<a class="permalink" href="#Registry.ReadMeta">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) ReadMeta(slot <a href="../../../../builtin/#int">int</a>) (<a href="#Meta">Meta</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+				<p>ReadMeta は、スロットの meta を読み取ります（存在しなければ ok=false）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.Release">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=6021:6057#L167">Release</a>
+					<a class="permalink" href="#Registry.Release">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) Release(slot <a href="../../../../builtin/#int">int</a>)</pre>
+				<p>Release は、スロットのロックを解放します（自分の保持のときのみ）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.TryAcquireFresh">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=3474:3523#L81">TryAcquireFresh</a>
+					<a class="permalink" href="#Registry.TryAcquireFresh">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) TryAcquireFresh(slot <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>TryAcquireFresh は、未使用スロットを os.Mkdir の原子性で取得します（成功で true）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.TryReclaim">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=3844:3888#L87">TryReclaim</a>
+					<a class="permalink" href="#Registry.TryReclaim">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) TryReclaim(slot <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>TryReclaim は、stale スロットを rename で原子的に奪って作り直します（勝者は1つ、負けは false）。
+rename の source は一度しか成功しないのが要点。rm→mkdir は互いの mkdir を消して全員成功しうる。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Registry.WriteMeta">func (*Registry) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/registry.go.html?s=4377:4421#L104">WriteMeta</a>
+					<a class="permalink" href="#Registry.WriteMeta">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Registry">Registry</a>) WriteMeta(slot <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>WriteMeta は、スロットの meta を書き出します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Resolver">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=3566:3637#L68">Resolver</a>
+				<a class="permalink" href="#Resolver">¶</a>
+				
+				
+			</h2>
+			<p>Resolver は、スロットから導かれる値の解決と所有者判定を担います。
+.gobp-db-slot を書いているのが Pool である以上、そこから導かれる値の所有者も同じ側に置きます。
+
+			</p><pre>type Resolver struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewResolver">func <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=4090:4160#L91">NewResolver</a>
+					<a class="permalink" href="#NewResolver">¶</a>
+					
+					
+				</h3>
+				<pre>func NewResolver(cfg <a href="#Config">Config</a>, probe *<a href="#GitProbe">GitProbe</a>, out <a href="../../../../io/">io</a>.<a href="../../../../io/#Writer">Writer</a>) *<a href="#Resolver">Resolver</a></pre>
+				<p>NewResolver は Resolver を生成します。probe が nil の場合はホストの git を使います。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Resolver.PrintEnv">func (*Resolver) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=7012:7066#L155">PrintEnv</a>
+					<a class="permalink" href="#Resolver.PrintEnv">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Resolver">Resolver</a>) PrintEnv(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>PrintEnv は、make のレシピが eval して読む KEY=VALUE を出力します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Resolver.PrintValues">func (*Resolver) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=7410:7467#L168">PrintValues</a>
+					<a class="permalink" href="#Resolver.PrintValues">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Resolver">Resolver</a>) PrintValues(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>PrintValues は、解決済みの値を人間向けに表示します。どの compose プロジェクトとどの
+データベースを叩くのかは、この経路が唯一の確認窓口になります。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Resolver.RequireOwner">func (*Resolver) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=6256:6314#L136">RequireOwner</a>
+					<a class="permalink" href="#Resolver.RequireOwner">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Resolver">Resolver</a>) RequireOwner(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>RequireOwner は、所有データベースを持たない状態（リンク worktree かつスロット未取得）を
+検出してエラーにします。主 checkout・ツールランナー内・CI は素通りします。
+</p><p>素通りさせる 3 つのうち、ツールランナー内と CI は「git 文脈を確かめられない」側に属します。
+git を引けないことを一律に素通りの理由にすると、リンク worktree で git が失敗したときまで
+素通りし、1 つのデータベースを 2 箇所から触る状態へ黙って落ちます（pool.mk の不変条件）。
+そのため「git 実行ファイルが無い」「リポジトリでない」は素通り、「リポジトリなのに読めない」は
+失敗として扱います。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Resolver.Resolve">func (*Resolver) <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=4486:4549#L102">Resolve</a>
+					<a class="permalink" href="#Resolver.Resolve">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Resolver">Resolver</a>) Resolve(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="#Values">Values</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>Resolve は、git 文脈と .gobp-db-slot から解決済みの値を組み立てます。
+git リポジトリなのに構成を読めなかった場合だけエラーにします（inspectGit を参照）。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Values">type <a href="../../../../src/go-boilerplate/internal/cli/dbslot/resolve.go.html?s=2798:3332#L56">Values</a>
+				<a class="permalink" href="#Values">¶</a>
+				
+				
+			</h2>
+			<p>Values は、スロットから導かれる解決済みの値です。
+一箇所で導いて env（make が eval する KEY=VALUE）と status（人間向けの表示）の両方へ流すため、
+「make が使う値」と「デバッグで読む値」が食い違いません。
+
+			</p><pre>type Values struct {
+<span id="Values.Git"></span>    Git             <a href="#GitContext">GitContext</a>
+<span id="Values.SlotHeld"></span>    SlotHeld        <a href="../../../../builtin/#bool">bool</a>   <span class="comment">// .gobp-db-slot が所有データベースを宣言しているか</span>
+<span id="Values.DBLocal"></span>    DBLocal         <a href="../../../../builtin/#string">string</a> <span class="comment">// 所有する local 系データベース</span>
+<span id="Values.DBTest"></span>    DBTest          <a href="../../../../builtin/#string">string</a> <span class="comment">// 所有する test 系データベース</span>
+<span id="Values.AppProject"></span>    AppProject      <a href="../../../../builtin/#string">string</a> <span class="comment">// app 層の compose プロジェクト名</span>
+<span id="Values.AuthIssuer"></span>    AuthIssuer      <a href="../../../../builtin/#string">string</a> <span class="comment">// mock 認証サーバーのホスト公開 URL（トークンの iss）</span>
+<span id="Values.InfraNoRecreate"></span>    InfraNoRecreate <a href="../../../../builtin/#string">string</a> <span class="comment">// 共有インフラへ渡す --no-recreate（不要なら空）</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

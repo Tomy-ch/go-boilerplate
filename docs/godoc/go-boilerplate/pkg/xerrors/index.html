@@ -148,13 +148,14 @@
 		
 			
 			
-			<h2 id="As">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=881:916#L18">As</a>
+			<h2 id="As">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1075:1110#L19">As</a>
 				<a class="permalink" href="#As">¶</a>
 				
 				
 			</h2>
 			<pre>func As(err <a href="../../../builtin/#error">error</a>, target <a href="../../../builtin/#any">any</a>) <a href="../../../builtin/#bool">bool</a></pre>
-			<p>As は、エラーが特定のターゲット型に変換可能かを判定します。
+			<p>As は、err のエラーチェーンから target が指す型に一致する最初のエラーを探し、見つかった場合は
+target へその値を設定して true を返します。target は非 nil のポインタである必要があります。
 
 			
 			
@@ -162,13 +163,13 @@
 		
 			
 			
-			</p><h2 id="Is">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=722:753#L13">Is</a>
+			</p><h2 id="Is">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=743:774#L13">Is</a>
 				<a class="permalink" href="#Is">¶</a>
 				
 				
 			</h2>
 			<pre>func Is(err, target <a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#bool">bool</a></pre>
-			<p>Is は、エラーが特定のターゲットエラーと一致するかを判定します。
+			<p>Is は、err のエラーチェーン中に target と一致するエラーが含まれるかを判定します。
 
 			
 			
@@ -176,13 +177,14 @@
 		
 			
 			
-			</p><h2 id="Join">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1040:1070#L23">Join</a>
+			</p><h2 id="Join">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1327:1357#L25">Join</a>
 				<a class="permalink" href="#Join">¶</a>
 				
 				
 			</h2>
 			<pre>func Join(errs ...<a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#error">error</a></pre>
 			<p>Join は、複数のエラーを結合して新しいエラーを生成します。
+nil の要素は捨てられ、非 nil が 1 つも無い場合は nil を返します。
 
 			
 			
@@ -204,7 +206,7 @@
 		
 			
 			
-			</p><h2 id="StackTrace">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1340:1373#L28">StackTrace</a>
+			</p><h2 id="StackTrace">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1627:1660#L30">StackTrace</a>
 				<a class="permalink" href="#StackTrace">¶</a>
 				
 				

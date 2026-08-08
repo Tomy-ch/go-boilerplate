@@ -109,6 +109,11 @@
 			
 			
 				
+				<dd><a href="#Attributes">type Attributes</a></dd>
+				
+				
+			
+				
 				<dd><a href="#Repository">type Repository</a></dd>
 				
 				
@@ -117,7 +122,7 @@
 				<dd><a href="#Status">type Status</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(id uuid.UUID, name string, code int, sortKey int) (*Status, error)</a></dd>
+					<dd>    <a href="#New">func New(id uuid.UUID, attrs Attributes) (*Status, error)</a></dd>
 				
 				
 					
@@ -187,7 +192,36 @@
 		
 			
 			
-			<h2 id="Repository">type <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_repository.go.html?s=275:434#L1">Repository</a>
+			<h2 id="Attributes">type <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=886:954#L15">Attributes</a>
+				<a class="permalink" href="#Attributes">¶</a>
+				
+				
+			</h2>
+			<p>Attributes は、商品ステータスの属性一式です。Code と SortKey は同じ int かつ同じ値域（1〜32767）で、
+位置引数のままだと取り違えても検証を通過してしまうため構造体で受けます。
+
+			</p><pre>type Attributes struct {
+<span id="Attributes.Name"></span>    Name    <a href="../../../../../builtin/#string">string</a>
+<span id="Attributes.Code"></span>    Code    <a href="../../../../../builtin/#int">int</a>
+<span id="Attributes.SortKey"></span>    SortKey <a href="../../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Repository">type <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_repository.go.html?s=303:644#L1">Repository</a>
 				<a class="permalink" href="#Repository">¶</a>
 				
 				
@@ -197,6 +231,8 @@
 			</p><pre>type Repository interface {
     <span class="comment">// FindAll は、全商品ステータスを sortKey 昇順で取得します。</span>
     FindAll(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (<a href="#Statuses">Statuses</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// FindByID は、ID から単一の商品ステータスを取得します。未存在は NotFound を返します。</span>
+    FindByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Status">Status</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -235,19 +271,14 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=997:1079#L16">New</a>
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=1295:1352#L24">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
 				</h3>
-				<pre>func New(
-    id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>,
-    name <a href="../../../../../builtin/#string">string</a>,
-    code <a href="../../../../../builtin/#int">int</a>,
-    sortKey <a href="../../../../../builtin/#int">int</a>,
-) (*<a href="#Status">Status</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				<p>New は、商品ステータスエンティティの検証と生成を行います。code・sortKey は 1〜32767（正の SMALLINT）
-の整数である必要があります。id が nil の場合は ErrInvalidID、名前長・code 範囲・sortKey 範囲の
+				<pre>func New(id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#Attributes">Attributes</a>) (*<a href="#Status">Status</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>New は、商品ステータスエンティティの検証と生成を行います。Code・SortKey は 1〜32767 の整数である
+必要があります。id が nil の場合は ErrInvalidID、名前長・Code 範囲・SortKey 範囲の
 違反の場合は ErrInvalidName / ErrInvalidCode / ErrInvalidSortKey を返します。
 
 				
@@ -256,7 +287,7 @@
 
 			
 				
-				</p><h3 id="Status.Code">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=2048:2075#L56">Code</a>
+				</p><h3 id="Status.Code">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=2381:2408#L59">Code</a>
 					<a class="permalink" href="#Status.Code">¶</a>
 					
 					
@@ -269,7 +300,7 @@
 				
 			
 				
-				</p><h3 id="Status.ID">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=1829:1860#L50">ID</a>
+				</p><h3 id="Status.ID">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=2162:2193#L53">ID</a>
 					<a class="permalink" href="#Status.ID">¶</a>
 					
 					
@@ -282,7 +313,7 @@
 				
 			
 				
-				</p><h3 id="Status.Name">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=1935:1965#L53">Name</a>
+				</p><h3 id="Status.Name">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=2268:2298#L56">Name</a>
 					<a class="permalink" href="#Status.Name">¶</a>
 					
 					
@@ -295,7 +326,7 @@
 				
 			
 				
-				</p><h3 id="Status.SortKey">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=2164:2194#L59">SortKey</a>
+				</p><h3 id="Status.SortKey">func (*Status) <a href="../../../../../src/go-boilerplate/internal/domain/product/status/status_domain.go.html?s=2497:2527#L62">SortKey</a>
 					<a class="permalink" href="#Status.SortKey">¶</a>
 					
 					

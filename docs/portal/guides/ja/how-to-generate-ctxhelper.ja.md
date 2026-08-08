@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-`genctxkey` は、`context.Context` および `echo.Context` に対する値の受け渡しを型安全に行うためのコードを生成するツールです。
+`genctxkey` は、`context.Context` および `*echo.Context` に対する値の受け渡しを型安全に行うためのコードを生成するツールです。
 
 ## 概要
 
@@ -19,7 +19,7 @@ context に対する値の格納・取得を、以下のような問題を避け
 - context.Context 用
   - `SetXxx`
   - `GetXxx`
-- echo.Context 用
+- *echo.Context 用
   - `SetXxxToEcho`
   - `GetXxxFromEcho`
 

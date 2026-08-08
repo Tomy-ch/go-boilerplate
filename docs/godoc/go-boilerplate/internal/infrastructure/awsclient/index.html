@@ -1,0 +1,234 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>awsclient - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package awsclient
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/awsclient&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package awsclient は、AWS SDK v2 クライアントに共通する組み立て — 資格情報の解決と、
+API 呼び出し用 / 資格情報解決用に分けた HTTP クライアントの割り当て — を提供します。
+SQS・S3 などの adapter はこの結果の aws.Config からサービスクライアントを生成します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+				
+				<dd><a href="#Resolve">func Resolve(ctx context.Context, cfg Config) (aws.Config, error)</a></dd>
+			
+			
+				
+				<dd><a href="#Config">type Config</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/infrastructure/awsclient/awsclient.go.html">awsclient.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrInvalidCredentials は、資格情報の指定が解決できる形になっていないことを示すエラーです。
+
+				</p><pre>var <span id="ErrInvalidCredentials">ErrInvalidCredentials</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;invalid aws credentials&#34;)</pre>
+			
+		
+		
+			
+			
+			<h2 id="Resolve">func <a href="../../../../src/go-boilerplate/internal/infrastructure/awsclient/awsclient.go.html?s=4132:4197#L53">Resolve</a>
+				<a class="permalink" href="#Resolve">¶</a>
+				
+				
+			</h2>
+			<pre>func Resolve(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, cfg <a href="#Config">Config</a>) (<a href="../../../../github.com/aws/aws-sdk-go-v2/aws/">aws</a>.<a href="../../../../github.com/aws/aws-sdk-go-v2/aws/#Config">Config</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>Resolve は、資格情報を解決した aws.Config を返します。
+</p><p>資格情報は「明示注入か chain か」を設定で選ばせません。SDK 既定の chain は静的資格情報
+（環境変数プロバイダ）を自身の一部として含むため、static / chain の二者択一は SDK の標準形に
+存在せず、判別子を足すのは標準が決めている所へノブを置くことになるためです。明示注入は
+chain の上書きとして扱います。
+</p><p>解決可否は起動時に一度だけ確かめます。誤設定のまま起動すると、最初の API 呼び出しまで
+認証エラーが顕在化しません。確認には resolveTimeout の締切を与え、応答しない解決先で
+起動が止まったままにならないようにします。
+</p><p>cfg.HTTPClient（SSRF ガード付き）はサービス API の呼び出しにだけ割り当て、資格情報の解決は
+SDK 既定のトランスポートで行います。IMDS（169.254.169.254）と ECS の
+task metadata（169.254.170.2）は link-local にあり、ガードは link-local を常に拒否するため、
+同じクライアントを共有すると EC2 / ECS のロール運用だけが解決不能になります。守る対象が
+違う — ガードが防ぐのは外部サービスへの egress であって、自身の実行基盤への資格情報の
+問い合わせではありません。
+</p><p>適用外になるのは metadata 経由だけではなく、STS の web identity 交換や SSO も含む credential
+chain の通信すべてです。宛先 IP の検査も、ガードが行う proxy 環境変数の無効化も効きません。
+chain の接続先を差し替えられる（AWS_EC2_METADATA_SERVICE_ENDPOINT / HTTPS_PROXY 等）のは
+プロセスの環境変数を書ける主体だけで、その主体は資格情報そのものにも手が届きます。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Config">type <a href="../../../../src/go-boilerplate/internal/infrastructure/awsclient/awsclient.go.html?s=1346:2166#L17">Config</a>
+				<a class="permalink" href="#Config">¶</a>
+				
+				
+			</h2>
+			<p>Config は、AWS サービスクライアントを組み立てるための共通設定です。
+
+			</p><pre>type Config struct {
+<span id="Config.Region"></span>    <span class="comment">// Region は、署名に用いるリージョンです。空の場合は SDK 既定の解決（環境変数・共有プロファイル）に委ねます。</span>
+    Region <a href="../../../../builtin/#string">string</a>
+<span id="Config.AccessKeyID"></span>    <span class="comment">// AccessKeyID / SecretAccessKey は、明示注入する静的資格情報です。</span>
+    <span class="comment">// 両方空なら SDK 既定の credential chain（環境変数・共有プロファイル・web identity・</span>
+    <span class="comment">// コンテナ / IMDS）へ委ね、両方非空ならその chain を上書きします。</span>
+    AccessKeyID     <a href="../../../../builtin/#string">string</a>
+<span id="Config.SecretAccessKey"></span>    SecretAccessKey <a href="../../../../builtin/#string">string</a>
+<span id="Config.HTTPClient"></span>    <span class="comment">// HTTPClient は、サービス API の呼び出しに使う HTTP クライアントです。</span>
+    <span class="comment">// SSRF ガード付きの実装を DI が注入します。nil を渡すと SDK 既定のトランスポートになり、</span>
+    <span class="comment">// ガードを素通りします。</span>
+    HTTPClient <a href="../../../../github.com/aws/aws-sdk-go-v2/aws/">aws</a>.<a href="../../../../github.com/aws/aws-sdk-go-v2/aws/#HTTPClient">HTTPClient</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

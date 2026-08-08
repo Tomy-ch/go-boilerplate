@@ -86,7 +86,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package outbox は、トランザクショナル outbox テーブルの永続化境界（Store）を定義します。
+				<p>Package outbox は、トランザクショナル outbox の永続化境界（Store）を定義します。
 emit（usecase 層）と relay engine（controller 層）の双方がこの境界に依存します。
 
 				
@@ -149,12 +149,12 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 		
 			
 			
-			<h2 id="EmitParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=491:1072#L5">EmitParams</a>
+			<h2 id="EmitParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=474:1055#L5">EmitParams</a>
 				<a class="permalink" href="#EmitParams">¶</a>
 				
 				
 			</h2>
-			<p>EmitParams は、業務 tx 内で outbox 行を 1 行 INSERT する入力です。
+			<p>EmitParams は、業務 tx 内で outbox へ 1 件記録する入力です。
 
 			</p><pre>type EmitParams struct {
 <span id="EmitParams.AggregateType"></span>    <span class="comment">// AggregateType は集約種別です（観測・調査用。順序キーではない）。</span>
@@ -184,15 +184,15 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 		
 			
 			
-			<h2 id="PendingMessage">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1190:1679#L19">PendingMessage</a>
+			<h2 id="PendingMessage">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1185:1683#L19">PendingMessage</a>
 				<a class="permalink" href="#PendingMessage">¶</a>
 				
 				
 			</h2>
-			<p>PendingMessage は、claim した未 publish 行です。relay engine が publish 対象として扱います。
+			<p>PendingMessage は、claim した未 publish のエントリです。relay engine が publish 対象として扱います。
 
 			</p><pre>type PendingMessage struct {
-<span id="PendingMessage.ID"></span>    <span class="comment">// ID は outbox 行の主キーです（mark 系の対象）。</span>
+<span id="PendingMessage.ID"></span>    <span class="comment">// ID は outbox エントリの識別子です（mark 系の対象）。</span>
     ID <a href="../../../../../builtin/#int64">int64</a>
 <span id="PendingMessage.MessageID"></span>    <span class="comment">// MessageID は dedup の安定キーです（Idempotency-Key へ伝搬）。</span>
     MessageID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
@@ -221,32 +221,33 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 		
 			
 			
-			<h2 id="Store">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1743:3635#L35">Store</a>
+			<h2 id="Store">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1735:3783#L35">Store</a>
 				<a class="permalink" href="#Store">¶</a>
 				
 				
 			</h2>
-			<p>Store は、outbox テーブルの永続化境界です。
+			<p>Store は、outbox の永続化境界です。
 
 			</p><pre>type Store interface {
-    <span class="comment">// Insert は、業務 tx 内で outbox 行を 1 行 INSERT し、採番された message_id を返します。</span>
+    <span class="comment">// Insert は、業務 tx 内で outbox へちょうど 1 件記録し、採番された message_id を返します。</span>
     Insert(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p <a href="#EmitParams">EmitParams</a>) (<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// ClaimPending は、pending 行を最大 limit 件を排他取得します。複数インスタンスが同時に呼び出しても同一行を二重取得しません。</span>
+    <span class="comment">// ClaimPending は、pending のエントリを最大 limit 件まで排他取得します。</span>
+    <span class="comment">// 複数インスタンスが同時に呼び出しても同一のエントリを二重取得しません。</span>
     ClaimPending(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, limit <a href="../../../../../builtin/#int32">int32</a>) ([]<a href="#PendingMessage">PendingMessage</a>, <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// MarkPublished は、publish 成功行を published へ遷移します。</span>
-    <span class="comment">// 遷移対象として所有していない行には作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。</span>
+    <span class="comment">// MarkPublished は、publish に成功したエントリを published へ遷移します。</span>
+    <span class="comment">// 遷移対象として所有していないエントリには作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。</span>
     MarkPublished(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../builtin/#int64">int64</a>) <a href="../../../../../builtin/#error">error</a>
-    <span class="comment">// MarkFailed は、attempts を加算し last_error を記録し、加算後の attempts を返します。</span>
+    <span class="comment">// MarkFailed は、試行回数を加算し直近の失敗理由を記録し、加算後の試行回数を返します。</span>
     MarkFailed(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../builtin/#int64">int64</a>, lastErr <a href="../../../../../builtin/#string">string</a>) (attempts <a href="../../../../../builtin/#int32">int32</a>, err <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// MarkDead は、行を dead へ遷移します。</span>
-    <span class="comment">// 遷移対象として所有していない行には作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。</span>
+    <span class="comment">// MarkDead は、エントリを dead へ遷移します。</span>
+    <span class="comment">// 遷移対象として所有していないエントリには作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。</span>
     MarkDead(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../builtin/#int64">int64</a>) <a href="../../../../../builtin/#error">error</a>
-    <span class="comment">// ReplayDead は、dead 行を pending へ戻します。messageID が nil なら全 dead 行を対象とし、戻した件数を返します。</span>
+    <span class="comment">// ReplayDead は、dead のエントリを pending へ戻します。messageID が nil なら dead のすべてを対象とし、戻した件数を返します。</span>
     ReplayDead(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, messageID *<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// DeletePublished は、published_at が cutoff より古い行を limit 件まで削除し、削除件数を返します（GC）。</span>
+    <span class="comment">// DeletePublished は、publish 完了時刻が cutoff より古いエントリを limit 件まで削除し、削除件数を返します（GC）。</span>
     DeletePublished(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, cutoff <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>, limit <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// OldestPendingCreatedAt は、最古 pending 行の created_at を返します（SLI=outbox lag 用）。</span>
-    <span class="comment">// pending 行が無ければ ok=false を返します。</span>
+    <span class="comment">// OldestPendingCreatedAt は、最古の pending エントリの作成時刻を返します（SLI=outbox lag 用）。</span>
+    <span class="comment">// pending のエントリが無ければ ok=false を返します。</span>
     OldestPendingCreatedAt(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (createdAt <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>, ok <a href="../../../../../builtin/#bool">bool</a>, err <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 

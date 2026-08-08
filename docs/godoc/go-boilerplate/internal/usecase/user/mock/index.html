@@ -85,6 +85,8 @@
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package mock_user is a generated GoMock package.
+</p><p>Package mock_user is a generated GoMock package.
+</p><p>Package mock_user is a generated GoMock package.
 
 				
 			</p></div>
@@ -105,14 +107,55 @@
 			
 			
 				
+				<dd><a href="#MockArchiveUsecase">type MockArchiveUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockArchiveUsecase">func NewMockArchiveUsecase(ctrl *gomock.Controller) *MockArchiveUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockArchiveUsecase.ArchiveWithdrawal">func (m *MockArchiveUsecase) ArchiveWithdrawal(ctx context.Context, params user.ArchiveWithdrawalParams) (string, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockArchiveUsecase.EXPECT">func (m *MockArchiveUsecase) EXPECT() *MockArchiveUsecaseMockRecorder</a></dd>
+				
+			
+				
+				<dd><a href="#MockArchiveUsecaseMockRecorder">type MockArchiveUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockArchiveUsecaseMockRecorder.ArchiveWithdrawal">func (mr *MockArchiveUsecaseMockRecorder) ArchiveWithdrawal(ctx, params any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockPurgeUsecase">type MockPurgeUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockPurgeUsecase">func NewMockPurgeUsecase(ctrl *gomock.Controller) *MockPurgeUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurgeUsecase.EXPECT">func (m *MockPurgeUsecase) EXPECT() *MockPurgeUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockPurgeUsecase.PurgeDeleted">func (m *MockPurgeUsecase) PurgeDeleted(ctx context.Context, retention time.Duration, batchSize int32, dryRun bool) (user.PurgeResult, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockPurgeUsecaseMockRecorder">type MockPurgeUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurgeUsecaseMockRecorder.PurgeDeleted">func (mr *MockPurgeUsecaseMockRecorder) PurgeDeleted(ctx, retention, batchSize, dryRun any) *gomock.Call</a></dd>
+				
+			
+				
 				<dd><a href="#MockUsecase">type MockUsecase</a></dd>
 				
 					
 					<dd>    <a href="#NewMockUsecase">func NewMockUsecase(ctrl *gomock.Controller) *MockUsecase</a></dd>
 				
-				
-					
-					<dd>    <a href="#MockUsecase.ChangePassword">func (m *MockUsecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecase.CountUsers">func (m *MockUsecase) CountUsers(ctx context.Context, active *bool) (int64, error)</a></dd>
@@ -148,9 +191,6 @@
 				
 				<dd><a href="#MockUsecaseMockRecorder">type MockUsecaseMockRecorder</a></dd>
 				
-				
-					
-					<dd>    <a href="#MockUsecaseMockRecorder.ChangePassword">func (mr *MockUsecaseMockRecorder) ChangePassword(ctx, id, currentPassword, newPassword any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecaseMockRecorder.CountUsers">func (mr *MockUsecaseMockRecorder) CountUsers(ctx, active any) *gomock.Call</a></dd>
@@ -191,7 +231,11 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_purge_usecase.go.gen.go.html">mock_user_purge_usecase.go.gen.go</a>
+			
 				<a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html">mock_user_usecase.go.gen.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_withdrawal_archive_usecase.go.gen.go.html">mock_withdrawal_archive_usecase.go.gen.go</a>
 			
 			</span>
 			</p>
@@ -207,7 +251,213 @@
 		
 			
 			
-			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=599:709#L14">MockUsecase</a>
+			<h2 id="MockArchiveUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_withdrawal_archive_usecase.go.gen.go.html?s=514:638#L11">MockArchiveUsecase</a>
+				<a class="permalink" href="#MockArchiveUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockArchiveUsecase is a mock of ArchiveUsecase interface.
+
+			</p><pre>type MockArchiveUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockArchiveUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_withdrawal_archive_usecase.go.gen.go.html?s=847:918#L23">NewMockArchiveUsecase</a>
+					<a class="permalink" href="#NewMockArchiveUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockArchiveUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockArchiveUsecase">MockArchiveUsecase</a></pre>
+				<p>NewMockArchiveUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockArchiveUsecase.ArchiveWithdrawal">func (*MockArchiveUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_withdrawal_archive_usecase.go.gen.go.html?s=1244:1364#L35">ArchiveWithdrawal</a>
+					<a class="permalink" href="#MockArchiveUsecase.ArchiveWithdrawal">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockArchiveUsecase">MockArchiveUsecase</a>) ArchiveWithdrawal(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#ArchiveWithdrawalParams">ArchiveWithdrawalParams</a>) (<a href="../../../../../builtin/#string">string</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ArchiveWithdrawal mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockArchiveUsecase.EXPECT">func (*MockArchiveUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_withdrawal_archive_usecase.go.gen.go.html?s=1110:1179#L30">EXPECT</a>
+					<a class="permalink" href="#MockArchiveUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockArchiveUsecase">MockArchiveUsecase</a>) EXPECT() *<a href="#MockArchiveUsecaseMockRecorder">MockArchiveUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockArchiveUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_withdrawal_archive_usecase.go.gen.go.html?s=719:791#L18">MockArchiveUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockArchiveUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockArchiveUsecaseMockRecorder is the mock recorder for MockArchiveUsecase.
+
+			</p><pre>type MockArchiveUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockArchiveUsecaseMockRecorder.ArchiveWithdrawal">func (*MockArchiveUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_withdrawal_archive_usecase.go.gen.go.html?s=1590:1679#L44">ArchiveWithdrawal</a>
+					<a class="permalink" href="#MockArchiveUsecaseMockRecorder.ArchiveWithdrawal">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockArchiveUsecaseMockRecorder">MockArchiveUsecaseMockRecorder</a>) ArchiveWithdrawal(ctx, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ArchiveWithdrawal indicates an expected call of ArchiveWithdrawal.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockPurgeUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_purge_usecase.go.gen.go.html?s=499:619#L12">MockPurgeUsecase</a>
+				<a class="permalink" href="#MockPurgeUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockPurgeUsecase is a mock of PurgeUsecase interface.
+
+			</p><pre>type MockPurgeUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockPurgeUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_purge_usecase.go.gen.go.html?s=818:885#L24">NewMockPurgeUsecase</a>
+					<a class="permalink" href="#NewMockPurgeUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockPurgeUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockPurgeUsecase">MockPurgeUsecase</a></pre>
+				<p>NewMockPurgeUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockPurgeUsecase.EXPECT">func (*MockPurgeUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_purge_usecase.go.gen.go.html?s=1073:1138#L31">EXPECT</a>
+					<a class="permalink" href="#MockPurgeUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurgeUsecase">MockPurgeUsecase</a>) EXPECT() *<a href="#MockPurgeUsecaseMockRecorder">MockPurgeUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurgeUsecase.PurgeDeleted">func (*MockPurgeUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_purge_usecase.go.gen.go.html?s=1198:1339#L36">PurgeDeleted</a>
+					<a class="permalink" href="#MockPurgeUsecase.PurgeDeleted">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurgeUsecase">MockPurgeUsecase</a>) PurgeDeleted(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, retention <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>, batchSize <a href="../../../../../builtin/#int32">int32</a>, dryRun <a href="../../../../../builtin/#bool">bool</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#PurgeResult">PurgeResult</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>PurgeDeleted mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockPurgeUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_purge_usecase.go.gen.go.html?s=696:764#L19">MockPurgeUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockPurgeUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockPurgeUsecaseMockRecorder is the mock recorder for MockPurgeUsecase.
+
+			</p><pre>type MockPurgeUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockPurgeUsecaseMockRecorder.PurgeDeleted">func (*MockPurgeUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_purge_usecase.go.gen.go.html?s=1582:1686#L45">PurgeDeleted</a>
+					<a class="permalink" href="#MockPurgeUsecaseMockRecorder.PurgeDeleted">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurgeUsecaseMockRecorder">MockPurgeUsecaseMockRecorder</a>) PurgeDeleted(ctx, retention, batchSize, dryRun <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>PurgeDeleted indicates an expected call of PurgeDeleted.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=599:709#L14">MockUsecase</a>
 				<a class="permalink" href="#MockUsecase">¶</a>
 				
 				
@@ -243,20 +493,7 @@
 
 			
 				
-				</p><h3 id="MockUsecase.ChangePassword">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1235:1349#L38">ChangePassword</a>
-					<a class="permalink" href="#MockUsecase.ChangePassword">¶</a>
-					
-					
-				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ChangePassword(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, currentPassword, newPassword <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#error">error</a></pre>
-				<p>ChangePassword mocks base method.
-
-				
-				
-				
-			
-				
-				</p><h3 id="MockUsecase.CountUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1891:1973#L52">CountUsers</a>
+				</p><h3 id="MockUsecase.CountUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1231:1313#L38">CountUsers</a>
 					<a class="permalink" href="#MockUsecase.CountUsers">¶</a>
 					
 					
@@ -269,7 +506,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.CreateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2446:2549#L67">CreateUser</a>
+				</p><h3 id="MockUsecase.CreateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1786:1889#L53">CreateUser</a>
 					<a class="permalink" href="#MockUsecase.CreateUser">¶</a>
 					
 					
@@ -282,7 +519,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.DeleteUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3021:3113#L82">DeleteUser</a>
+				</p><h3 id="MockUsecase.DeleteUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2361:2453#L68">DeleteUser</a>
 					<a class="permalink" href="#MockUsecase.DeleteUser">¶</a>
 					
 					
@@ -308,7 +545,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.GetUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3559:3665#L96">GetUser</a>
+				</p><h3 id="MockUsecase.GetUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2899:3005#L82">GetUser</a>
 					<a class="permalink" href="#MockUsecase.GetUser">¶</a>
 					
 					
@@ -321,7 +558,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4136:4246#L111">ListUsers</a>
+				</p><h3 id="MockUsecase.ListUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3476:3586#L97">ListUsers</a>
 					<a class="permalink" href="#MockUsecase.ListUsers">¶</a>
 					
 					
@@ -334,7 +571,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsersFeed">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4744:4851#L126">ListUsersFeed</a>
+				</p><h3 id="MockUsecase.ListUsersFeed">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4084:4191#L112">ListUsersFeed</a>
 					<a class="permalink" href="#MockUsecase.ListUsersFeed">¶</a>
 					
 					
@@ -347,7 +584,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsersWithTotal">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5363:5485#L141">ListUsersWithTotal</a>
+				</p><h3 id="MockUsecase.ListUsersWithTotal">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4703:4825#L127">ListUsersWithTotal</a>
 					<a class="permalink" href="#MockUsecase.ListUsersWithTotal">¶</a>
 					
 					
@@ -360,7 +597,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.UpdateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6037:6177#L156">UpdateUser</a>
+				</p><h3 id="MockUsecase.UpdateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5377:5517#L142">UpdateUser</a>
 					<a class="permalink" href="#MockUsecase.UpdateUser">¶</a>
 					
 					
@@ -373,7 +610,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.UpdateUserPartially">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6691:6835#L171">UpdateUserPartially</a>
+				</p><h3 id="MockUsecase.UpdateUserPartially">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6031:6175#L157">UpdateUserPartially</a>
 					<a class="permalink" href="#MockUsecase.UpdateUserPartially">¶</a>
 					
 					
@@ -412,20 +649,7 @@
 
 			
 				
-				<h3 id="MockUsecaseMockRecorder.ChangePassword">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1558:1663#L46">ChangePassword</a>
-					<a class="permalink" href="#MockUsecaseMockRecorder.ChangePassword">¶</a>
-					
-					
-				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) ChangePassword(ctx, id, currentPassword, newPassword <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
-				<p>ChangePassword indicates an expected call of ChangePassword.
-
-				
-				
-				
-			
-				
-				</p><h3 id="MockUsecaseMockRecorder.CountUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2177:2252#L61">CountUsers</a>
+				<h3 id="MockUsecaseMockRecorder.CountUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1517:1592#L47">CountUsers</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.CountUsers">¶</a>
 					
 					
@@ -438,7 +662,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.CreateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2758:2830#L76">CreateUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.CreateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2098:2170#L62">CreateUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.CreateUser">¶</a>
 					
 					
@@ -451,7 +675,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.DeleteUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3287:3365#L90">DeleteUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.DeleteUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2627:2705#L76">DeleteUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.DeleteUser">¶</a>
 					
 					
@@ -464,7 +688,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.GetUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3871:3946#L105">GetUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.GetUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3211:3286#L91">GetUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.GetUser">¶</a>
 					
 					
@@ -477,7 +701,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4463:4543#L120">ListUsers</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3803:3883#L106">ListUsers</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsers">¶</a>
 					
 					
@@ -490,7 +714,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsersFeed">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5077:5155#L135">ListUsersFeed</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsersFeed">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4417:4495#L121">ListUsersFeed</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsersFeed">¶</a>
 					
 					
@@ -503,7 +727,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsersWithTotal">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5732:5821#L150">ListUsersWithTotal</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsersWithTotal">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5072:5161#L136">ListUsersWithTotal</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsersWithTotal">¶</a>
 					
 					
@@ -516,7 +740,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.UpdateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6397:6480#L165">UpdateUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.UpdateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5737:5820#L151">UpdateUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.UpdateUser">¶</a>
 					
 					
@@ -529,7 +753,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.UpdateUserPartially">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=7082:7174#L180">UpdateUserPartially</a>
+				</p><h3 id="MockUsecaseMockRecorder.UpdateUserPartially">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6422:6514#L166">UpdateUserPartially</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.UpdateUserPartially">¶</a>
 					
 					

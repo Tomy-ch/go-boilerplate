@@ -116,55 +116,198 @@
 <span id="L59" class="ln">    59  </span>				fx.Populate(&amp;client),
 <span id="L60" class="ln">    60  </span>			)
 <span id="L61" class="ln">    61  </span>
-<span id="L62" class="ln">    62  </span>			require.Error(t, app.Start(context.Background()))
+<span id="L62" class="ln">    62  </span>			require.ErrorIs(t, app.Start(context.Background()), errRequiredProfileMissing)
 <span id="L63" class="ln">    63  </span>		})
 <span id="L64" class="ln">    64  </span>	})
 <span id="L65" class="ln">    65  </span>}
 <span id="L66" class="ln">    66  </span>
 <span id="L67" class="ln">    67  </span>func Test_provideHTTPClientRegistry(t *testing.T) {
 <span id="L68" class="ln">    68  </span>	t.Parallel()
-<span id="L69" class="ln">    69  </span>	t.Skip(&#34;Test_httpClientModule_ProvidesClient で Registry 構築と required 欠落時の起動失敗分岐を検証済み&#34;)
-<span id="L70" class="ln">    70  </span>}
-<span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>func Test_provideHTTPClientProfiles(t *testing.T) {
-<span id="L73" class="ln">    73  </span>	t.Parallel()
-<span id="L74" class="ln">    74  </span>	t.Skip(&#34;Test_httpClientModule_ProvidesClient で profile 登録経路を検証済み&#34;)
-<span id="L75" class="ln">    75  </span>}
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>	profile := func(name httpclient.Downstream) httpclient.DownstreamProfile {
+<span id="L71" class="ln">    71  </span>		return httpclient.DownstreamProfile{Name: name, Profile: httpclient.DefaultProfile()}
+<span id="L72" class="ln">    72  </span>	}
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L75" class="ln">    75  </span>		t.Parallel()
 <span id="L76" class="ln">    76  </span>
-<span id="L77" class="ln">    77  </span>func Test_provideRequiredDownstreams(t *testing.T) {
-<span id="L78" class="ln">    78  </span>	t.Parallel()
-<span id="L79" class="ln">    79  </span>	t.Skip(&#34;Test_httpClientModule_ProvidesClient で required 登録経路と欠落時の起動失敗を検証済み&#34;)
-<span id="L80" class="ln">    80  </span>}
-<span id="L81" class="ln">    81  </span>
-<span id="L82" class="ln">    82  </span><span class="comment">// newHTTPClientTestApp は、本番同様の clockModule / httpClientModule 配線に extra を足した fx アプリを構築します。</span>
-<span id="L83" class="ln">    83  </span>func newHTTPClientTestApp(t *testing.T, extra ...fx.Option) *fx.App {
-<span id="L84" class="ln">    84  </span>	t.Helper()
-<span id="L85" class="ln">    85  </span>
-<span id="L86" class="ln">    86  </span>	ctrl := gomock.NewController(t)
-<span id="L87" class="ln">    87  </span>	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
-<span id="L88" class="ln">    88  </span>	mockLog := mock_logging.NewMockLogger(ctrl)
-<span id="L89" class="ln">    89  </span>	mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
-<span id="L90" class="ln">    90  </span>	mockReg.EXPECT().RegisterStop(gomock.Any()).AnyTimes()
+<span id="L77" class="ln">    77  </span>		t.Run(&#34;required が全て登録済みの場合は Profile を引ける Registry を返す&#34;, func(t *testing.T) {
+<span id="L78" class="ln">    78  </span>			t.Parallel()
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>			in := HTTPClientProfilesIn{
+<span id="L81" class="ln">    81  </span>				Profiles: []httpclient.DownstreamProfile{profile(&#34;svc&#34;)},
+<span id="L82" class="ln">    82  </span>				Required: []httpclient.Downstream{&#34;svc&#34;},
+<span id="L83" class="ln">    83  </span>			}
+<span id="L84" class="ln">    84  </span>
+<span id="L85" class="ln">    85  </span>			reg, err := provideHTTPClientRegistry(in)
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>			require.NoError(t, err)
+<span id="L88" class="ln">    88  </span>			require.NotNil(t, reg)
+<span id="L89" class="ln">    89  </span>			assert.Equal(t, httpclient.DefaultProfile(), reg.Profile(&#34;svc&#34;))
+<span id="L90" class="ln">    90  </span>		})
 <span id="L91" class="ln">    91  </span>
-<span id="L92" class="ln">    92  </span>	return fx.New(append([]fx.Option{
-<span id="L93" class="ln">    93  </span>		ObservabilityModule(),
-<span id="L94" class="ln">    94  </span>		clockModule(),
-<span id="L95" class="ln">    95  </span>		httpClientModule(),
-<span id="L96" class="ln">    96  </span>		fx.Provide(func() testing.TB { return t }),
-<span id="L97" class="ln">    97  </span>		fx.Provide(func() lifecycle.Registrar { return mockReg }),
-<span id="L98" class="ln">    98  </span>		fx.Provide(func() logging.Logger { return mockLog }),
-<span id="L99" class="ln">    99  </span>		fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
-<span id="L100" class="ln">   100  </span>		fx.Provide(func() *config.ApplicationConfig {
-<span id="L101" class="ln">   101  </span>			return config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L102" class="ln">   102  </span>		}),
-<span id="L103" class="ln">   103  </span>		fx.Provide(func() *config.ObservabilityConfig {
-<span id="L104" class="ln">   104  </span>			return config.NewObservabilityConfig(config.MockConfigForTest(t))
-<span id="L105" class="ln">   105  </span>		}),
-<span id="L106" class="ln">   106  </span>		fx.Provide(infrasystem.NewBuildInfo),
-<span id="L107" class="ln">   107  </span>		fx.NopLogger,
-<span id="L108" class="ln">   108  </span>	}, extra...)...)
-<span id="L109" class="ln">   109  </span>}
-<span id="L110" class="ln">   110  </span>
+<span id="L92" class="ln">    92  </span>		t.Run(&#34;required が空の場合も Registry を返す&#34;, func(t *testing.T) {
+<span id="L93" class="ln">    93  </span>			t.Parallel()
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span>			reg, err := provideHTTPClientRegistry(HTTPClientProfilesIn{})
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>			require.NoError(t, err)
+<span id="L98" class="ln">    98  </span>			assert.NotNil(t, reg)
+<span id="L99" class="ln">    99  </span>		})
+<span id="L100" class="ln">   100  </span>	})
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L103" class="ln">   103  </span>		t.Parallel()
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>		t.Run(&#34;required に対応する profile が無い場合は欠落名を含むエラーを返す&#34;, func(t *testing.T) {
+<span id="L106" class="ln">   106  </span>			t.Parallel()
+<span id="L107" class="ln">   107  </span>
+<span id="L108" class="ln">   108  </span>			in := HTTPClientProfilesIn{
+<span id="L109" class="ln">   109  </span>				Profiles: []httpclient.DownstreamProfile{profile(&#34;svc&#34;)},
+<span id="L110" class="ln">   110  </span>				Required: []httpclient.Downstream{&#34;svc&#34;, &#34;orphan&#34;},
+<span id="L111" class="ln">   111  </span>			}
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>			reg, err := provideHTTPClientRegistry(in)
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span>			require.ErrorContains(t, err, &#34;orphan&#34;)
+<span id="L116" class="ln">   116  </span>			assert.Nil(t, reg)
+<span id="L117" class="ln">   117  </span>		})
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>		t.Run(&#34;同一 Downstream の profile が重複登録された場合はエラーを返す&#34;, func(t *testing.T) {
+<span id="L120" class="ln">   120  </span>			t.Parallel()
+<span id="L121" class="ln">   121  </span>
+<span id="L122" class="ln">   122  </span>			in := HTTPClientProfilesIn{
+<span id="L123" class="ln">   123  </span>				Profiles: []httpclient.DownstreamProfile{profile(&#34;svc&#34;), profile(&#34;svc&#34;)},
+<span id="L124" class="ln">   124  </span>			}
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>			reg, err := provideHTTPClientRegistry(in)
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>			require.ErrorContains(t, err, &#34;duplicate&#34;)
+<span id="L129" class="ln">   129  </span>			assert.Nil(t, reg)
+<span id="L130" class="ln">   130  </span>		})
+<span id="L131" class="ln">   131  </span>	})
+<span id="L132" class="ln">   132  </span>}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>func Test_provideHTTPClientProfiles(t *testing.T) {
+<span id="L135" class="ln">   135  </span>	t.Parallel()
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L138" class="ln">   138  </span>		t.Parallel()
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>		t.Run(&#34;渡した全コンストラクタの Profile が httpclient_profiles グループへ集まる&#34;, func(t *testing.T) {
+<span id="L141" class="ln">   141  </span>			t.Parallel()
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span>			got := collectGroup[httpclient.DownstreamProfile](t, `group:&#34;httpclient_profiles&#34;`, provideHTTPClientProfiles(
+<span id="L144" class="ln">   144  </span>				func() httpclient.DownstreamProfile {
+<span id="L145" class="ln">   145  </span>					return httpclient.DownstreamProfile{Name: &#34;a&#34;, Profile: httpclient.DefaultProfile()}
+<span id="L146" class="ln">   146  </span>				},
+<span id="L147" class="ln">   147  </span>				func() httpclient.DownstreamProfile {
+<span id="L148" class="ln">   148  </span>					return httpclient.DownstreamProfile{Name: &#34;b&#34;, Profile: httpclient.DefaultProfile()}
+<span id="L149" class="ln">   149  </span>				},
+<span id="L150" class="ln">   150  </span>			))
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>			names := make([]httpclient.Downstream, 0, len(got))
+<span id="L153" class="ln">   153  </span>			for _, p := range got {
+<span id="L154" class="ln">   154  </span>				names = append(names, p.Name)
+<span id="L155" class="ln">   155  </span>			}
+<span id="L156" class="ln">   156  </span>			assert.ElementsMatch(t, []httpclient.Downstream{&#34;a&#34;, &#34;b&#34;}, names)
+<span id="L157" class="ln">   157  </span>		})
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>		t.Run(&#34;コンストラクタが 0 個の場合は何も登録しない&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>			t.Parallel()
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>			assert.Empty(t, collectGroup[httpclient.DownstreamProfile](t, `group:&#34;httpclient_profiles&#34;`, provideHTTPClientProfiles()))
+<span id="L163" class="ln">   163  </span>		})
+<span id="L164" class="ln">   164  </span>	})
+<span id="L165" class="ln">   165  </span>}
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>func Test_provideRequiredDownstreams(t *testing.T) {
+<span id="L168" class="ln">   168  </span>	t.Parallel()
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L171" class="ln">   171  </span>		t.Parallel()
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>		t.Run(&#34;渡した全コンストラクタの Downstream が required_downstreams グループへ集まる&#34;, func(t *testing.T) {
+<span id="L174" class="ln">   174  </span>			t.Parallel()
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>			got := collectGroup[httpclient.Downstream](t, `group:&#34;required_downstreams&#34;`, provideRequiredDownstreams(
+<span id="L177" class="ln">   177  </span>				func() httpclient.Downstream { return &#34;a&#34; },
+<span id="L178" class="ln">   178  </span>				func() httpclient.Downstream { return &#34;b&#34; },
+<span id="L179" class="ln">   179  </span>			))
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span>			assert.ElementsMatch(t, []httpclient.Downstream{&#34;a&#34;, &#34;b&#34;}, got)
+<span id="L182" class="ln">   182  </span>		})
+<span id="L183" class="ln">   183  </span>
+<span id="L184" class="ln">   184  </span>		t.Run(&#34;コンストラクタが 0 個の場合は何も登録しない&#34;, func(t *testing.T) {
+<span id="L185" class="ln">   185  </span>			t.Parallel()
+<span id="L186" class="ln">   186  </span>
+<span id="L187" class="ln">   187  </span>			assert.Empty(t, collectGroup[httpclient.Downstream](t, `group:&#34;required_downstreams&#34;`, provideRequiredDownstreams()))
+<span id="L188" class="ln">   188  </span>		})
+<span id="L189" class="ln">   189  </span>	})
+<span id="L190" class="ln">   190  </span>}
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span><span class="comment">// newHTTPClientTestApp は、本番同様の clockModule / httpClientModule 配線に extra を足した fx アプリを構築します。</span>
+<span id="L193" class="ln">   193  </span>func newHTTPClientTestApp(t *testing.T, extra ...fx.Option) *fx.App {
+<span id="L194" class="ln">   194  </span>	t.Helper()
+<span id="L195" class="ln">   195  </span>
+<span id="L196" class="ln">   196  </span>	ctrl := gomock.NewController(t)
+<span id="L197" class="ln">   197  </span>	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
+<span id="L198" class="ln">   198  </span>	mockLog := mock_logging.NewMockLogger(ctrl)
+<span id="L199" class="ln">   199  </span>	mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+<span id="L200" class="ln">   200  </span>	mockReg.EXPECT().RegisterStop(gomock.Any()).AnyTimes()
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>	return fx.New(append([]fx.Option{
+<span id="L203" class="ln">   203  </span>		ObservabilityModule(),
+<span id="L204" class="ln">   204  </span>		clockModule(),
+<span id="L205" class="ln">   205  </span>		httpClientModule(),
+<span id="L206" class="ln">   206  </span>		fx.Provide(func() testing.TB { return t }),
+<span id="L207" class="ln">   207  </span>		fx.Provide(func() lifecycle.Registrar { return mockReg }),
+<span id="L208" class="ln">   208  </span>		fx.Provide(func() logging.Logger { return mockLog }),
+<span id="L209" class="ln">   209  </span>		fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+<span id="L210" class="ln">   210  </span>		fx.Provide(func() *config.ApplicationConfig {
+<span id="L211" class="ln">   211  </span>			return config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L212" class="ln">   212  </span>		}),
+<span id="L213" class="ln">   213  </span>		fx.Provide(func() *config.ObservabilityConfig {
+<span id="L214" class="ln">   214  </span>			return config.NewObservabilityConfig(config.MockConfigForTest(t))
+<span id="L215" class="ln">   215  </span>		}),
+<span id="L216" class="ln">   216  </span>		fx.Provide(infrasystem.NewBuildInfo),
+<span id="L217" class="ln">   217  </span>		fx.NopLogger,
+<span id="L218" class="ln">   218  </span>	}, extra...)...)
+<span id="L219" class="ln">   219  </span>}
+<span id="L220" class="ln">   220  </span>
+<span id="L221" class="ln">   221  </span><span class="comment">// value group 経由で登録した profile が registry へ反映されるかを見るため実アプリを起動する。</span>
+<span id="L222" class="ln">   222  </span><span class="comment">// 起動を伴うケースは global registerer 競合を避けるため非並列にする。</span>
+<span id="L223" class="ln">   223  </span><span class="comment">//</span>
+<span id="L224" class="ln">   224  </span><span class="comment">//nolint:paralleltest // 上記の理由により fx アプリ起動ケースは非並列</span>
+<span id="L225" class="ln">   225  </span>func Test_httpClientModule(t *testing.T) {
+<span id="L226" class="ln">   226  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L227" class="ln">   227  </span>		t.Run(&#34;value group に集めた profile を引ける Registry を提供する&#34;, func(t *testing.T) {
+<span id="L228" class="ln">   228  </span>			var registry httpclient.Registry
+<span id="L229" class="ln">   229  </span>			app := newHTTPClientTestApp(t,
+<span id="L230" class="ln">   230  </span>				provideHTTPClientProfiles(func() httpclient.DownstreamProfile {
+<span id="L231" class="ln">   231  </span>					return httpclient.DownstreamProfile{Name: &#34;svc&#34;, Profile: httpclient.DefaultProfile()}
+<span id="L232" class="ln">   232  </span>				}),
+<span id="L233" class="ln">   233  </span>				fx.Populate(&amp;registry),
+<span id="L234" class="ln">   234  </span>			)
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>			require.NoError(t, app.Start(context.Background()))
+<span id="L237" class="ln">   237  </span>			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+<span id="L238" class="ln">   238  </span>
+<span id="L239" class="ln">   239  </span>			require.NotNil(t, registry)
+<span id="L240" class="ln">   240  </span>			assert.Equal(t, httpclient.DefaultProfile(), registry.Profile(&#34;svc&#34;))
+<span id="L241" class="ln">   241  </span>		})
+<span id="L242" class="ln">   242  </span>	})
+<span id="L243" class="ln">   243  </span>
+<span id="L244" class="ln">   244  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L245" class="ln">   245  </span>		t.Run(&#34;未配線では Registry が解決できずグラフ検証に失敗する&#34;, func(t *testing.T) {
+<span id="L246" class="ln">   246  </span>			var registry httpclient.Registry
+<span id="L247" class="ln">   247  </span>
+<span id="L248" class="ln">   248  </span>			opts := append(commonDeps(), clockModule(), fx.Populate(&amp;registry), fx.NopLogger)
+<span id="L249" class="ln">   249  </span>			require.Error(t, fx.ValidateApp(opts...))
+<span id="L250" class="ln">   250  </span>		})
+<span id="L251" class="ln">   251  </span>	})
+<span id="L252" class="ln">   252  </span>}
+<span id="L253" class="ln">   253  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/httpclient_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

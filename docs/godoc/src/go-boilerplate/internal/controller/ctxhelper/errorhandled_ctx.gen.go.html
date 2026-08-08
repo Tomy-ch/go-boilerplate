@@ -62,7 +62,7 @@
 <span id="L5" class="ln">     5  </span>import (
 <span id="L6" class="ln">     6  </span>	&#34;context&#34;
 <span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L8" class="ln">     8  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L9" class="ln">     9  </span>)
 <span id="L10" class="ln">    10  </span>
 <span id="L11" class="ln">    11  </span>type errorhandledKeyType struct{}
@@ -86,12 +86,12 @@
 <span id="L29" class="ln">    29  </span>
 <span id="L30" class="ln">    30  </span><span class="comment">// --- echo.Context wrapper（std lib 版へ委譲） ---</span>
 <span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span>func SetErrorHandledToEcho(c echo.Context, val bool) {
+<span id="L32" class="ln">    32  </span>func SetErrorHandledToEcho(c *echo.Context, val bool) {
 <span id="L33" class="ln">    33  </span>	ctx := SetErrorHandled(c.Request().Context(), val)
 <span id="L34" class="ln">    34  </span>	c.SetRequest(c.Request().WithContext(ctx))
 <span id="L35" class="ln">    35  </span>}
 <span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span>func GetErrorHandledFromEcho(c echo.Context) (bool, bool) {
+<span id="L37" class="ln">    37  </span>func GetErrorHandledFromEcho(c *echo.Context) (bool, bool) {
 <span id="L38" class="ln">    38  </span>	return GetErrorHandled(c.Request().Context())
 <span id="L39" class="ln">    39  </span>}
 <span id="L40" class="ln">    40  </span>

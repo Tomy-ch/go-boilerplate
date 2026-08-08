@@ -18,7 +18,7 @@ internal/controller/
 ├── handler/        # HTTP ハンドラ（サーバーのエントリポイント）
 ├── job/            # ジョブコントローラ（CLI のエントリポイント）
 ├── worker/         # ワーカーエンジン（メッセージキューのエントリポイント）
-├── outbox/         # outbox リレーエンジン（outbox テーブルを poll して publish）
+├── outbox/         # outbox リレーエンジン（outbox を poll して publish）
 ├── server/         # Echo インスタンス生成・サーバー起動
 ├── httpstack/      # HTTP ミドルウェア群
 ├── error/response/ # エラーレスポンス生成
@@ -33,7 +33,7 @@ internal/controller/
 |`handler/`|HTTP リクエストを受け取り Usecase へ委譲するハンドラ|[README](handler/README.ja.md)|
 |`job/`|CLI から起動されるジョブのコントローラ|[README](job/README.ja.md)|
 |`worker/`|pull-ack メッセージキューを消費し Usecase へディスパッチするワーカーエンジン|[README](worker/README.ja.md)|
-|`outbox/`|outbox テーブルを周期的に poll し未 publish メッセージを送るリレーエンジン|—|
+|`outbox/`|outbox を周期的に poll し未 publish メッセージを送るリレーエンジン|—|
 |`server/`|Echo インスタンスの初期化と DI ライフサイクルへの統合|[README](server/README.ja.md)|
 |`httpstack/`|ミドルウェア群（CORS, セキュリティ, ログ, 認証等）|[README](httpstack/README.ja.md)|
 |`error/response/`|統一的な HTTP エラーレスポンスの生成と apperror マッピング|[README](error/response/README.ja.md)|
@@ -55,7 +55,22 @@ flowchart TB
 
 Controller は **Usecase を通してのみ下位層にアクセス**します。
 
+### doc コメントは HTTP 語彙で書く
+
+上記の禁止された依存の矢印は doc コメントにも適用されます。ハンドラの doc コメントは HTTP レベルの契約
+（そのエンドポイントが何を返すか、失敗がどのステータスコードへ写像されるか、認証が必要か）を述べ、
+テーブル名・カラム名・SQL 断片・トランザクション境界の所在は述べません。それらはそれを所有する層に属します
+（[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation および
+[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail を参照）。ハンドラのメソッドは非公開の `server` に対するメソッドであるため `revive` は doc コメントを
+要求しません。生成された `ServerInterface` が既に OpenAPI の summary を持ち、HTTP レベルで足す価値のある
+具体が無いなら、言い換えを書くのではなく省略します。
+
 ## テスト戦略
+
+ここに書くのは層の基準である。controller は inbound adapter の総称であり、全てが HTTP を話すわけではない。以下を適用する前に、駆動方式に対応するサブセクションを読むこと。独自の節を持つサブツリーはその節が観点を専有する: [`handler/`](handler/README.ja.md)、[`job/`](job/README.ja.md)、[`httpstack/`](httpstack/README.ja.md)、[`server/`](server/README.ja.md)。
+
+### HTTP ハンドラ
 
 ハンドラテストは usecase を mock し、Echo 経由でハンドラを駆動する（`testkit/testecho` + `testkit/testassert`）。ビジネスロジックは usecase 側にありここでは再テストしない。各ハンドラテストが検証する観点:
 
@@ -65,3 +80,12 @@ Controller は **Usecase を通してのみ下位層にアクセス**します�
 - middleware が乗せる context — ハンドラが context から読む値（auth principal / request id / idempotency）
 
 境界レベルの HTTP 結線（Router → Middleware → Handler → Presenter）は `internal/integration` の HTTP 境界テストで別途カバーする。
+
+### ループ駆動の controller（`outbox/` / `worker/`）
+
+これらの adapter はリクエストではなく poll / consume ループで駆動されるため、上記の Echo・bind・HTTP status に関する記述は一切当てはまらない。usecase と boundary ポート（`usecase/boundary/clock`・`usecase/boundary/worker`）を mock し、ロガーは `logging.NewTestLogger`、トレーサは `observability.NewNoopTracerFactory`、実ブローカの代わりに `usecase/boundary/worker/testkit` の in-memory fake を使う。テスト対象はループそのものなので、ループとして駆動して検証する。
+
+- **1 反復の効果** — 処理対象を見つけた poll はディスパッチし、見つからなかった poll は設定された間隔だけバックオフすること。検証は mock した sleeper を通して行い、テスト内で実際に sleep しないこと。
+- **停止のセマンティクス** — context のキャンセルでループが終了して return すること、処理中の要素が各パッケージの文書化された drain 契約どおりに完了 or 放棄されること。`SupervisedRunner` 駆動の shutdown が依存しているのがこの分岐。
+- **反復ごとのエラー処理** — usecase のエラーはバックオフして継続し、ループを殺さないこと。パッケージが文書化する失敗経路（retry / circuit / failure handler）は「panic しない」ではなくその分岐固有の outcome で検証すること。
+- **設定値の clamp** — 受理範囲外の値が文書化された境界へ clamp され、その clamp が黙って行われず観測可能（ログ／実効設定への反映）であること。

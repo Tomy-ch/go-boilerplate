@@ -89,7 +89,7 @@
 <span id="L32" class="ln">    32  </span>
 <span id="L33" class="ln">    33  </span>	current, ok := b.tokens[d]
 <span id="L34" class="ln">    34  </span>	if !ok {
-<span id="L35" class="ln">    35  </span>		current = retryBudgetInitialTokens <span class="comment">// 初回は小さく始め、refill で上限まで獲得させる</span>
+<span id="L35" class="ln">    35  </span>		current = retryBudgetInitialTokens
 <span id="L36" class="ln">    36  </span>	}
 <span id="L37" class="ln">    37  </span>	b.tokens[d] = min(retryBudgetMaxTokens, current+ratio)
 <span id="L38" class="ln">    38  </span>}

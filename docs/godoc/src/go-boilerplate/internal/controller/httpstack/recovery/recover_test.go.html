@@ -70,8 +70,8 @@
 <span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/logging&#34;
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>
-<span id="L16" class="ln">    16  </span>	&#34;github.com/labstack/echo/v4&#34;
-<span id="L17" class="ln">    17  </span>	&#34;github.com/labstack/echo/v4/middleware&#34;
+<span id="L16" class="ln">    16  </span>	&#34;github.com/labstack/echo/v5&#34;
+<span id="L17" class="ln">    17  </span>	&#34;github.com/labstack/echo/v5/middleware&#34;
 <span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L20" class="ln">    20  </span>)
@@ -92,7 +92,7 @@
 <span id="L35" class="ln">    35  </span>			require.NotNil(t, Middleware(logger, lf, appCfg))
 <span id="L36" class="ln">    36  </span>		})
 <span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>		t.Run(&#34;パニックがリカバーされ可読スタックがログに残る&#34;, func(t *testing.T) {
+<span id="L38" class="ln">    38  </span>		t.Run(&#34;パニックが無ければ後続の戻り値をそのまま返しログも残さない&#34;, func(t *testing.T) {
 <span id="L39" class="ln">    39  </span>			t.Parallel()
 <span id="L40" class="ln">    40  </span>
 <span id="L41" class="ln">    41  </span>			cfg := config.MockConfigForTest(t)
@@ -100,245 +100,282 @@
 <span id="L43" class="ln">    43  </span>			lf := logging.NewTestLogFieldBuilder(t)
 <span id="L44" class="ln">    44  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
 <span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span>			e := echo.New()
-<span id="L47" class="ln">    47  </span>			e.Use(Middleware(obsLogger, lf, appCfg))
-<span id="L48" class="ln">    48  </span>			e.GET(&#34;/panic&#34;, func(_ echo.Context) error { panic(&#34;boom-panic&#34;) })
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/panic&#34;, nil)
-<span id="L51" class="ln">    51  </span>			e.ServeHTTP(httptest.NewRecorder(), req)
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>			entries := observed.FilterMessage(&#34;panic recovered&#34;).All()
-<span id="L54" class="ln">    54  </span>			require.Len(t, entries, 1)
-<span id="L55" class="ln">    55  </span>			cm := entries[0].ContextMap()
-<span id="L56" class="ln">    56  </span>
-<span id="L57" class="ln">    57  </span>			assert.Equal(t, logging.EventTypePanic, cm[logging.EventTypeKey])
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>			errStr, ok := cm[logging.InternalErrorKey].(string)
-<span id="L60" class="ln">    60  </span>			require.True(t, ok)
-<span id="L61" class="ln">    61  </span>			assert.Contains(t, errStr, &#34;boom-panic&#34;)
+<span id="L46" class="ln">    46  </span>			wantErr := xerrors.New(&#34;handler error&#34;)
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>			e := echo.New()
+<span id="L49" class="ln">    49  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/ok&#34;, nil)
+<span id="L50" class="ln">    50  </span>			c := e.NewContext(req, httptest.NewRecorder())
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>			handler := Middleware(obsLogger, lf, appCfg)(func(_ *echo.Context) error { return wantErr })
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>			require.ErrorIs(t, handler(c), wantErr)
+<span id="L55" class="ln">    55  </span>			assert.Equal(t, 0, observed.Len())
+<span id="L56" class="ln">    56  </span>			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+<span id="L57" class="ln">    57  </span>			assert.False(t, recovered)
+<span id="L58" class="ln">    58  </span>		})
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>		t.Run(&#34;パニックがリカバーされ可読スタックがログに残る&#34;, func(t *testing.T) {
+<span id="L61" class="ln">    61  </span>			t.Parallel()
 <span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span>			<span class="comment">// 実ランタイムスタックが行配列で出力されること（Grafana 表示用に []string 化済み）。</span>
-<span id="L64" class="ln">    64  </span>			<span class="comment">// zap observer は []any として保持するため、要素ごとに string にアサートする。</span>
-<span id="L65" class="ln">    65  </span>			stackLines, ok := cm[logging.InternalStackTraceKey].([]any)
-<span id="L66" class="ln">    66  </span>			require.True(t, ok)
-<span id="L67" class="ln">    67  </span>			require.NotEmpty(t, stackLines)
-<span id="L68" class="ln">    68  </span>			first, ok := stackLines[0].(string)
-<span id="L69" class="ln">    69  </span>			require.True(t, ok)
-<span id="L70" class="ln">    70  </span>			assert.Contains(t, first, &#34;goroutine&#34;)
-<span id="L71" class="ln">    71  </span>		})
-<span id="L72" class="ln">    72  </span>
-<span id="L73" class="ln">    73  </span>		t.Run(&#34;パニックでも500を返しログはmiddleware.recoverの1件のみになる&#34;, func(t *testing.T) {
-<span id="L74" class="ln">    74  </span>			t.Parallel()
-<span id="L75" class="ln">    75  </span>
-<span id="L76" class="ln">    76  </span>			cfg := config.MockConfigForTest(t)
-<span id="L77" class="ln">    77  </span>			appCfg := config.NewApplicationConfig(cfg)
-<span id="L78" class="ln">    78  </span>			obsCfg := config.NewObservabilityConfig(cfg)
-<span id="L79" class="ln">    79  </span>			lf := logging.NewTestLogFieldBuilder(t)
-<span id="L80" class="ln">    80  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
-<span id="L81" class="ln">    81  </span>
-<span id="L82" class="ln">    82  </span>			spec, err := validator.GetValidator()
-<span id="L83" class="ln">    83  </span>			require.NoError(t, err)
-<span id="L84" class="ln">    84  </span>			policy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
-<span id="L85" class="ln">    85  </span>			require.NoError(t, err)
-<span id="L86" class="ln">    86  </span>
-<span id="L87" class="ln">    87  </span>			e := echo.New()
-<span id="L88" class="ln">    88  </span>			errorhandler.New(e, policy, obsLogger, lf, obsCfg)
-<span id="L89" class="ln">    89  </span>			e.Use(Middleware(obsLogger, lf, appCfg))
-<span id="L90" class="ln">    90  </span>			e.GET(&#34;/panic&#34;, func(_ echo.Context) error { panic(&#34;boom-panic&#34;) })
-<span id="L91" class="ln">    91  </span>
-<span id="L92" class="ln">    92  </span>			rec := httptest.NewRecorder()
-<span id="L93" class="ln">    93  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/panic&#34;, nil)
-<span id="L94" class="ln">    94  </span>			e.ServeHTTP(rec, req)
-<span id="L95" class="ln">    95  </span>
-<span id="L96" class="ln">    96  </span>			<span class="comment">// パニックでも 200 空ではなく 500 が返る。</span>
-<span id="L97" class="ln">    97  </span>			assert.Equal(t, http.StatusInternalServerError, rec.Code)
-<span id="L98" class="ln">    98  </span>			<span class="comment">// ログは middleware.recover の 1 件のみ（エラーハンドラの重複ログは出ない）。</span>
-<span id="L99" class="ln">    99  </span>			assert.Equal(t, 1, observed.Len())
-<span id="L100" class="ln">   100  </span>			assert.Equal(t, 1, observed.FilterMessage(&#34;panic recovered&#34;).Len())
-<span id="L101" class="ln">   101  </span>			assert.Equal(t, 0, observed.FilterMessage(&#34;errorhandler.server_error&#34;).Len())
-<span id="L102" class="ln">   102  </span>		})
+<span id="L63" class="ln">    63  </span>			cfg := config.MockConfigForTest(t)
+<span id="L64" class="ln">    64  </span>			appCfg := config.NewApplicationConfig(cfg)
+<span id="L65" class="ln">    65  </span>			lf := logging.NewTestLogFieldBuilder(t)
+<span id="L66" class="ln">    66  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>			e := echo.New()
+<span id="L69" class="ln">    69  </span>			e.Use(Middleware(obsLogger, lf, appCfg))
+<span id="L70" class="ln">    70  </span>			e.GET(&#34;/panic&#34;, func(_ *echo.Context) error { panic(&#34;boom-panic&#34;) })
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/panic&#34;, nil)
+<span id="L73" class="ln">    73  </span>			e.ServeHTTP(httptest.NewRecorder(), req)
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>			entries := observed.FilterMessage(&#34;panic recovered&#34;).All()
+<span id="L76" class="ln">    76  </span>			require.Len(t, entries, 1)
+<span id="L77" class="ln">    77  </span>			cm := entries[0].ContextMap()
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>			assert.Equal(t, logging.EventTypePanic, cm[logging.EventTypeKey])
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>			errStr, ok := cm[logging.InternalErrorKey].(string)
+<span id="L82" class="ln">    82  </span>			require.True(t, ok)
+<span id="L83" class="ln">    83  </span>			assert.Contains(t, errStr, &#34;boom-panic&#34;)
+<span id="L84" class="ln">    84  </span>
+<span id="L85" class="ln">    85  </span>			<span class="comment">// 実ランタイムスタックが行配列で出力されること（Grafana 表示用に []string 化済み）。</span>
+<span id="L86" class="ln">    86  </span>			<span class="comment">// zap observer は []any として保持するため、要素ごとに string にアサートする。</span>
+<span id="L87" class="ln">    87  </span>			stackLines, ok := cm[logging.InternalStackTraceKey].([]any)
+<span id="L88" class="ln">    88  </span>			require.True(t, ok)
+<span id="L89" class="ln">    89  </span>			require.NotEmpty(t, stackLines)
+<span id="L90" class="ln">    90  </span>			first, ok := stackLines[0].(string)
+<span id="L91" class="ln">    91  </span>			require.True(t, ok)
+<span id="L92" class="ln">    92  </span>			assert.Contains(t, first, &#34;goroutine&#34;)
+<span id="L93" class="ln">    93  </span>		})
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span>		t.Run(&#34;パニックでも500を返しログはmiddleware.recoverの1件のみになる&#34;, func(t *testing.T) {
+<span id="L96" class="ln">    96  </span>			t.Parallel()
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>			cfg := config.MockConfigForTest(t)
+<span id="L99" class="ln">    99  </span>			appCfg := config.NewApplicationConfig(cfg)
+<span id="L100" class="ln">   100  </span>			obsCfg := config.NewObservabilityConfig(cfg)
+<span id="L101" class="ln">   101  </span>			lf := logging.NewTestLogFieldBuilder(t)
+<span id="L102" class="ln">   102  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
 <span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>		t.Run(&#34;http.ErrAbortHandlerのパニックはリカバーせず再パニックしログも残さない&#34;, func(t *testing.T) {
-<span id="L105" class="ln">   105  </span>			t.Parallel()
-<span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span>			cfg := config.MockConfigForTest(t)
-<span id="L108" class="ln">   108  </span>			appCfg := config.NewApplicationConfig(cfg)
-<span id="L109" class="ln">   109  </span>			lf := logging.NewTestLogFieldBuilder(t)
-<span id="L110" class="ln">   110  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
-<span id="L111" class="ln">   111  </span>
-<span id="L112" class="ln">   112  </span>			e := echo.New()
+<span id="L104" class="ln">   104  </span>			spec, err := validator.GetValidator()
+<span id="L105" class="ln">   105  </span>			require.NoError(t, err)
+<span id="L106" class="ln">   106  </span>			detailPolicy, err := errorhandler.NewOpenAPIDetailPolicy(spec)
+<span id="L107" class="ln">   107  </span>			require.NoError(t, err)
+<span id="L108" class="ln">   108  </span>			allowPolicy, err := errorhandler.NewOpenAPIAllowPolicy(spec)
+<span id="L109" class="ln">   109  </span>			require.NoError(t, err)
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>			e := echo.New()
+<span id="L112" class="ln">   112  </span>			errorhandler.New(e, errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}, obsLogger, lf, obsCfg)
 <span id="L113" class="ln">   113  </span>			e.Use(Middleware(obsLogger, lf, appCfg))
-<span id="L114" class="ln">   114  </span>			e.GET(&#34;/abort&#34;, func(_ echo.Context) error { panic(http.ErrAbortHandler) })
+<span id="L114" class="ln">   114  </span>			e.GET(&#34;/panic&#34;, func(_ *echo.Context) error { panic(&#34;boom-panic&#34;) })
 <span id="L115" class="ln">   115  </span>
 <span id="L116" class="ln">   116  </span>			rec := httptest.NewRecorder()
-<span id="L117" class="ln">   117  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/abort&#34;, nil)
-<span id="L118" class="ln">   118  </span>
-<span id="L119" class="ln">   119  </span>			<span class="comment">// echo の recover は http.ErrAbortHandler を握り潰さず再パニックする。</span>
-<span id="L120" class="ln">   120  </span>			assert.PanicsWithValue(t, http.ErrAbortHandler, func() {
-<span id="L121" class="ln">   121  </span>				e.ServeHTTP(rec, req)
-<span id="L122" class="ln">   122  </span>			})
-<span id="L123" class="ln">   123  </span>			<span class="comment">// 再パニックされるため LogErrorFunc は呼ばれず &#34;panic recovered&#34; ログは出力されない。</span>
-<span id="L124" class="ln">   124  </span>			assert.Equal(t, 0, observed.FilterMessage(&#34;panic recovered&#34;).Len())
-<span id="L125" class="ln">   125  </span>		})
-<span id="L126" class="ln">   126  </span>	})
-<span id="L127" class="ln">   127  </span>}
-<span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span>func Test_newRecoverLogErrorFunc(t *testing.T) {
-<span id="L130" class="ln">   130  </span>	t.Parallel()
-<span id="L131" class="ln">   131  </span>
-<span id="L132" class="ln">   132  </span>	logger := logging.NewTestLogger(t)
-<span id="L133" class="ln">   133  </span>	lf := logging.NewTestLogFieldBuilder(t)
-<span id="L134" class="ln">   134  </span>	e := echo.New()
+<span id="L117" class="ln">   117  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/panic&#34;, nil)
+<span id="L118" class="ln">   118  </span>			e.ServeHTTP(rec, req)
+<span id="L119" class="ln">   119  </span>
+<span id="L120" class="ln">   120  </span>			<span class="comment">// パニックでも 200 空ではなく 500 が返る。</span>
+<span id="L121" class="ln">   121  </span>			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+<span id="L122" class="ln">   122  </span>			<span class="comment">// ログは middleware.recover の 1 件のみ（エラーハンドラの重複ログは出ない）。</span>
+<span id="L123" class="ln">   123  </span>			assert.Equal(t, 1, observed.Len())
+<span id="L124" class="ln">   124  </span>			assert.Equal(t, 1, observed.FilterMessage(&#34;panic recovered&#34;).Len())
+<span id="L125" class="ln">   125  </span>			assert.Equal(t, 0, observed.FilterMessage(&#34;errorhandler.server_error&#34;).Len())
+<span id="L126" class="ln">   126  </span>		})
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>		t.Run(&#34;エラーハンドラへはスタックを含まない元のパニックエラーが渡る&#34;, func(t *testing.T) {
+<span id="L129" class="ln">   129  </span>			t.Parallel()
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>			cfg := config.MockConfigForTest(t)
+<span id="L132" class="ln">   132  </span>			appCfg := config.NewApplicationConfig(cfg)
+<span id="L133" class="ln">   133  </span>			lf := logging.NewTestLogFieldBuilder(t)
+<span id="L134" class="ln">   134  </span>			obsLogger, _ := logging.NewObservedTestLogger(t)
 <span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L137" class="ln">   137  </span>		t.Parallel()
-<span id="L138" class="ln">   138  </span>
-<span id="L139" class="ln">   139  </span>		t.Run(&#34;RemoteAddrがある場合、元errを返しリカバリ済みを記録する&#34;, func(t *testing.T) {
-<span id="L140" class="ln">   140  </span>			t.Parallel()
-<span id="L141" class="ln">   141  </span>
-<span id="L142" class="ln">   142  </span>			ctx := context.Background()
-<span id="L143" class="ln">   143  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/path&#34;, nil)
-<span id="L144" class="ln">   144  </span>			req.RemoteAddr = &#34;9.8.7.6:1234&#34;
-<span id="L145" class="ln">   145  </span>			rec := httptest.NewRecorder()
-<span id="L146" class="ln">   146  </span>			c := e.NewContext(req, rec)
-<span id="L147" class="ln">   147  </span>
-<span id="L148" class="ln">   148  </span>			inErr := xerrors.New(&#34;boom&#34;)
-<span id="L149" class="ln">   149  </span>			f := newRecoverLogErrorFunc(logger, lf)
-<span id="L150" class="ln">   150  </span>			err := f(c, inErr, []byte(&#34;stack&#34;))
-<span id="L151" class="ln">   151  </span>			require.ErrorIs(t, err, inErr)
-<span id="L152" class="ln">   152  </span>			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
-<span id="L153" class="ln">   153  </span>			assert.True(t, recovered)
-<span id="L154" class="ln">   154  </span>		})
-<span id="L155" class="ln">   155  </span>
-<span id="L156" class="ln">   156  </span>		t.Run(&#34;X-Real-Ipヘッダがある場合、元errを返しリカバリ済みを記録する&#34;, func(t *testing.T) {
-<span id="L157" class="ln">   157  </span>			t.Parallel()
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>			ctx := context.Background()
-<span id="L160" class="ln">   160  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodPost, &#34;/other&#34;, nil)
-<span id="L161" class="ln">   161  </span>			req.Header.Set(&#34;X-Real-Ip&#34;, &#34;10.0.0.1&#34;)
-<span id="L162" class="ln">   162  </span>			rec := httptest.NewRecorder()
-<span id="L163" class="ln">   163  </span>			c := e.NewContext(req, rec)
-<span id="L164" class="ln">   164  </span>
-<span id="L165" class="ln">   165  </span>			inErr := xerrors.New(&#34;boom2&#34;)
-<span id="L166" class="ln">   166  </span>			f := newRecoverLogErrorFunc(logger, lf)
-<span id="L167" class="ln">   167  </span>			err := f(c, inErr, []byte(&#34;stack2&#34;))
-<span id="L168" class="ln">   168  </span>			require.ErrorIs(t, err, inErr)
-<span id="L169" class="ln">   169  </span>			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
-<span id="L170" class="ln">   170  </span>			assert.True(t, recovered)
-<span id="L171" class="ln">   171  </span>		})
-<span id="L172" class="ln">   172  </span>	})
-<span id="L173" class="ln">   173  </span>}
-<span id="L174" class="ln">   174  </span>
-<span id="L175" class="ln">   175  </span>func Test_newRecoverConfig(t *testing.T) {
-<span id="L176" class="ln">   176  </span>	t.Parallel()
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>	logger := logging.NewTestLogger(t)
+<span id="L136" class="ln">   136  </span>			panicked := xerrors.New(&#34;boom-panic&#34;)
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>			e := echo.New()
+<span id="L139" class="ln">   139  </span>			var got error
+<span id="L140" class="ln">   140  </span>			e.HTTPErrorHandler = func(_ *echo.Context, err error) { got = err }
+<span id="L141" class="ln">   141  </span>			e.Use(Middleware(obsLogger, lf, appCfg))
+<span id="L142" class="ln">   142  </span>			e.GET(&#34;/panic&#34;, func(_ *echo.Context) error { panic(panicked) })
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/panic&#34;, nil)
+<span id="L145" class="ln">   145  </span>			e.ServeHTTP(httptest.NewRecorder(), req)
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>			require.ErrorIs(t, got, panicked)
+<span id="L148" class="ln">   148  </span>			var pse *middleware.PanicStackError
+<span id="L149" class="ln">   149  </span>			assert.False(t, xerrors.As(got, &amp;pse), &#34;スタックを抱えたままのエラーは伝播しない&#34;)
+<span id="L150" class="ln">   150  </span>		})
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>		t.Run(&#34;http.ErrAbortHandlerのパニックはリカバーせず再パニックしログも残さない&#34;, func(t *testing.T) {
+<span id="L153" class="ln">   153  </span>			t.Parallel()
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>			cfg := config.MockConfigForTest(t)
+<span id="L156" class="ln">   156  </span>			appCfg := config.NewApplicationConfig(cfg)
+<span id="L157" class="ln">   157  </span>			lf := logging.NewTestLogFieldBuilder(t)
+<span id="L158" class="ln">   158  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span>			e := echo.New()
+<span id="L161" class="ln">   161  </span>			e.Use(Middleware(obsLogger, lf, appCfg))
+<span id="L162" class="ln">   162  </span>			e.GET(&#34;/abort&#34;, func(_ *echo.Context) error { panic(http.ErrAbortHandler) })
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span>			rec := httptest.NewRecorder()
+<span id="L165" class="ln">   165  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/abort&#34;, nil)
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>			<span class="comment">// echo の recover は http.ErrAbortHandler を握り潰さず再パニックする。</span>
+<span id="L168" class="ln">   168  </span>			assert.PanicsWithValue(t, http.ErrAbortHandler, func() {
+<span id="L169" class="ln">   169  </span>				e.ServeHTTP(rec, req)
+<span id="L170" class="ln">   170  </span>			})
+<span id="L171" class="ln">   171  </span>			<span class="comment">// 再パニックされるためログ関数は呼ばれず &#34;panic recovered&#34; ログは出力されない。</span>
+<span id="L172" class="ln">   172  </span>			assert.Equal(t, 0, observed.FilterMessage(&#34;panic recovered&#34;).Len())
+<span id="L173" class="ln">   173  </span>		})
+<span id="L174" class="ln">   174  </span>	})
+<span id="L175" class="ln">   175  </span>}
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>func Test_newPanicLogFunc(t *testing.T) {
+<span id="L178" class="ln">   178  </span>	t.Parallel()
 <span id="L179" class="ln">   179  </span>
-<span id="L180" class="ln">   180  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L181" class="ln">   181  </span>		t.Parallel()
+<span id="L180" class="ln">   180  </span>	lf := logging.NewTestLogFieldBuilder(t)
+<span id="L181" class="ln">   181  </span>	e := echo.New()
 <span id="L182" class="ln">   182  </span>
-<span id="L183" class="ln">   183  </span>		t.Run(&#34;開発モードの場合、developmentConfigを返す&#34;, func(t *testing.T) {
-<span id="L184" class="ln">   184  </span>			t.Parallel()
+<span id="L183" class="ln">   183  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L184" class="ln">   184  </span>		t.Parallel()
 <span id="L185" class="ln">   185  </span>
-<span id="L186" class="ln">   186  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L187" class="ln">   187  </span>			appCfg.SetApplicationMode(t, config.DevelopmentMode)
+<span id="L186" class="ln">   186  </span>		t.Run(&#34;RemoteAddrがある場合、パニックをログしリカバリ済みを記録する&#34;, func(t *testing.T) {
+<span id="L187" class="ln">   187  </span>			t.Parallel()
 <span id="L188" class="ln">   188  </span>
-<span id="L189" class="ln">   189  </span>			expected := developmentConfig()
-<span id="L190" class="ln">   190  </span>			actual := newRecoverConfig(logger, appCfg)
-<span id="L191" class="ln">   191  </span>			assert.Equal(t, expected, actual)
-<span id="L192" class="ln">   192  </span>		})
-<span id="L193" class="ln">   193  </span>
-<span id="L194" class="ln">   194  </span>		t.Run(&#34;本番モードの場合、productionConfigを返す&#34;, func(t *testing.T) {
-<span id="L195" class="ln">   195  </span>			t.Parallel()
-<span id="L196" class="ln">   196  </span>
-<span id="L197" class="ln">   197  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L198" class="ln">   198  </span>			appCfg.SetApplicationMode(t, config.ProductionMode)
-<span id="L199" class="ln">   199  </span>
-<span id="L200" class="ln">   200  </span>			expected := productionConfig()
-<span id="L201" class="ln">   201  </span>			actual := newRecoverConfig(logger, appCfg)
-<span id="L202" class="ln">   202  </span>			assert.Equal(t, expected, actual)
-<span id="L203" class="ln">   203  </span>		})
-<span id="L204" class="ln">   204  </span>
-<span id="L205" class="ln">   205  </span>		t.Run(&#34;不明なモードの場合、warningを出してproductionConfigを返す&#34;, func(t *testing.T) {
-<span id="L206" class="ln">   206  </span>			t.Parallel()
-<span id="L207" class="ln">   207  </span>
-<span id="L208" class="ln">   208  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L209" class="ln">   209  </span>			appCfg.SetApplicationMode(t, &#34;unknown-mode&#34;)
-<span id="L210" class="ln">   210  </span>
-<span id="L211" class="ln">   211  </span>			expected := productionConfig()
-<span id="L212" class="ln">   212  </span>			actual := newRecoverConfig(logger, appCfg)
-<span id="L213" class="ln">   213  </span>			assert.Equal(t, expected, actual)
-<span id="L214" class="ln">   214  </span>		})
-<span id="L215" class="ln">   215  </span>	})
-<span id="L216" class="ln">   216  </span>}
-<span id="L217" class="ln">   217  </span>
-<span id="L218" class="ln">   218  </span>func Test_developmentConfig(t *testing.T) {
-<span id="L219" class="ln">   219  </span>	t.Parallel()
-<span id="L220" class="ln">   220  </span>
-<span id="L221" class="ln">   221  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L222" class="ln">   222  </span>		t.Parallel()
-<span id="L223" class="ln">   223  </span>
-<span id="L224" class="ln">   224  </span>		t.Run(&#34;開発用設定が返る&#34;, func(t *testing.T) {
-<span id="L225" class="ln">   225  </span>			t.Parallel()
-<span id="L226" class="ln">   226  </span>			expected := middleware.RecoverConfig{
-<span id="L227" class="ln">   227  </span>				StackSize:         10 &lt;&lt; 10,
-<span id="L228" class="ln">   228  </span>				DisableStackAll:   false,
-<span id="L229" class="ln">   229  </span>				DisablePrintStack: false,
-<span id="L230" class="ln">   230  </span>			}
-<span id="L231" class="ln">   231  </span>
-<span id="L232" class="ln">   232  </span>			actual := developmentConfig()
-<span id="L233" class="ln">   233  </span>			assert.Equal(t, expected, actual)
-<span id="L234" class="ln">   234  </span>		})
-<span id="L235" class="ln">   235  </span>	})
-<span id="L236" class="ln">   236  </span>}
-<span id="L237" class="ln">   237  </span>
-<span id="L238" class="ln">   238  </span>func Test_productionConfig(t *testing.T) {
-<span id="L239" class="ln">   239  </span>	t.Parallel()
+<span id="L189" class="ln">   189  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
+<span id="L190" class="ln">   190  </span>			ctx := context.Background()
+<span id="L191" class="ln">   191  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/path&#34;, nil)
+<span id="L192" class="ln">   192  </span>			req.RemoteAddr = &#34;9.8.7.6:1234&#34;
+<span id="L193" class="ln">   193  </span>			rec := httptest.NewRecorder()
+<span id="L194" class="ln">   194  </span>			c := e.NewContext(req, rec)
+<span id="L195" class="ln">   195  </span>
+<span id="L196" class="ln">   196  </span>			newPanicLogFunc(obsLogger, lf)(c, xerrors.New(&#34;boom&#34;), []byte(&#34;stack&#34;))
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span>			assert.Equal(t, 1, observed.FilterMessage(&#34;panic recovered&#34;).Len())
+<span id="L199" class="ln">   199  </span>			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+<span id="L200" class="ln">   200  </span>			assert.True(t, recovered)
+<span id="L201" class="ln">   201  </span>		})
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span>		t.Run(&#34;X-Real-Ipヘッダがある場合、パニックをログしリカバリ済みを記録する&#34;, func(t *testing.T) {
+<span id="L204" class="ln">   204  </span>			t.Parallel()
+<span id="L205" class="ln">   205  </span>
+<span id="L206" class="ln">   206  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
+<span id="L207" class="ln">   207  </span>			ctx := context.Background()
+<span id="L208" class="ln">   208  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodPost, &#34;/other&#34;, nil)
+<span id="L209" class="ln">   209  </span>			req.Header.Set(&#34;X-Real-Ip&#34;, &#34;10.0.0.1&#34;)
+<span id="L210" class="ln">   210  </span>			rec := httptest.NewRecorder()
+<span id="L211" class="ln">   211  </span>			c := e.NewContext(req, rec)
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>			newPanicLogFunc(obsLogger, lf)(c, xerrors.New(&#34;boom2&#34;), []byte(&#34;stack2&#34;))
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>			assert.Equal(t, 1, observed.FilterMessage(&#34;panic recovered&#34;).Len())
+<span id="L216" class="ln">   216  </span>			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+<span id="L217" class="ln">   217  </span>			assert.True(t, recovered)
+<span id="L218" class="ln">   218  </span>		})
+<span id="L219" class="ln">   219  </span>	})
+<span id="L220" class="ln">   220  </span>}
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>func Test_newRecoverConfig(t *testing.T) {
+<span id="L223" class="ln">   223  </span>	t.Parallel()
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span>	logger := logging.NewTestLogger(t)
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L228" class="ln">   228  </span>		t.Parallel()
+<span id="L229" class="ln">   229  </span>
+<span id="L230" class="ln">   230  </span>		t.Run(&#34;開発モードの場合、developmentConfigを返す&#34;, func(t *testing.T) {
+<span id="L231" class="ln">   231  </span>			t.Parallel()
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L234" class="ln">   234  </span>			appCfg.SetApplicationMode(t, config.DevelopmentMode)
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>			expected := developmentConfig()
+<span id="L237" class="ln">   237  </span>			actual := newRecoverConfig(logger, appCfg)
+<span id="L238" class="ln">   238  </span>			assert.Equal(t, expected, actual)
+<span id="L239" class="ln">   239  </span>		})
 <span id="L240" class="ln">   240  </span>
-<span id="L241" class="ln">   241  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L242" class="ln">   242  </span>		t.Parallel()
+<span id="L241" class="ln">   241  </span>		t.Run(&#34;本番モードの場合、productionConfigを返す&#34;, func(t *testing.T) {
+<span id="L242" class="ln">   242  </span>			t.Parallel()
 <span id="L243" class="ln">   243  </span>
-<span id="L244" class="ln">   244  </span>		t.Run(&#34;本番用設定が返る&#34;, func(t *testing.T) {
-<span id="L245" class="ln">   245  </span>			t.Parallel()
-<span id="L246" class="ln">   246  </span>			expected := middleware.RecoverConfig{
-<span id="L247" class="ln">   247  </span>				StackSize:         4 &lt;&lt; 10,
-<span id="L248" class="ln">   248  </span>				DisableStackAll:   true,
-<span id="L249" class="ln">   249  </span>				DisablePrintStack: false,
-<span id="L250" class="ln">   250  </span>			}
+<span id="L244" class="ln">   244  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L245" class="ln">   245  </span>			appCfg.SetApplicationMode(t, config.ProductionMode)
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>			expected := productionConfig()
+<span id="L248" class="ln">   248  </span>			actual := newRecoverConfig(logger, appCfg)
+<span id="L249" class="ln">   249  </span>			assert.Equal(t, expected, actual)
+<span id="L250" class="ln">   250  </span>		})
 <span id="L251" class="ln">   251  </span>
-<span id="L252" class="ln">   252  </span>			actual := productionConfig()
-<span id="L253" class="ln">   253  </span>			assert.Equal(t, expected, actual)
-<span id="L254" class="ln">   254  </span>		})
-<span id="L255" class="ln">   255  </span>
-<span id="L256" class="ln">   256  </span>		t.Run(&#34;本番設定でもruntimeスタックが捕捉される&#34;, func(t *testing.T) {
-<span id="L257" class="ln">   257  </span>			t.Parallel()
-<span id="L258" class="ln">   258  </span>
-<span id="L259" class="ln">   259  </span>			lf := logging.NewTestLogFieldBuilder(t)
-<span id="L260" class="ln">   260  </span>			obsLogger, observed := logging.NewObservedTestLogger(t)
-<span id="L261" class="ln">   261  </span>
-<span id="L262" class="ln">   262  </span>			cnf := productionConfig()
-<span id="L263" class="ln">   263  </span>			cnf.LogErrorFunc = newRecoverLogErrorFunc(obsLogger, lf)
+<span id="L252" class="ln">   252  </span>		t.Run(&#34;不明なモードの場合、warningを出してproductionConfigを返す&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>			t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L256" class="ln">   256  </span>			appCfg.SetApplicationMode(t, &#34;unknown-mode&#34;)
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>			expected := productionConfig()
+<span id="L259" class="ln">   259  </span>			actual := newRecoverConfig(logger, appCfg)
+<span id="L260" class="ln">   260  </span>			assert.Equal(t, expected, actual)
+<span id="L261" class="ln">   261  </span>		})
+<span id="L262" class="ln">   262  </span>	})
+<span id="L263" class="ln">   263  </span>}
 <span id="L264" class="ln">   264  </span>
-<span id="L265" class="ln">   265  </span>			e := echo.New()
-<span id="L266" class="ln">   266  </span>			e.Use(middleware.RecoverWithConfig(cnf))
-<span id="L267" class="ln">   267  </span>			e.GET(&#34;/panic&#34;, func(_ echo.Context) error { panic(&#34;prod-panic&#34;) })
-<span id="L268" class="ln">   268  </span>
-<span id="L269" class="ln">   269  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/panic&#34;, nil)
-<span id="L270" class="ln">   270  </span>			e.ServeHTTP(httptest.NewRecorder(), req)
-<span id="L271" class="ln">   271  </span>
-<span id="L272" class="ln">   272  </span>			entries := observed.FilterMessage(&#34;panic recovered&#34;).All()
-<span id="L273" class="ln">   273  </span>			require.Len(t, entries, 1)
-<span id="L274" class="ln">   274  </span>			stackLines, ok := entries[0].ContextMap()[logging.InternalStackTraceKey].([]any)
-<span id="L275" class="ln">   275  </span>			require.True(t, ok)
-<span id="L276" class="ln">   276  </span>			require.NotEmpty(t, stackLines)
-<span id="L277" class="ln">   277  </span>			first, ok := stackLines[0].(string)
-<span id="L278" class="ln">   278  </span>			require.True(t, ok)
-<span id="L279" class="ln">   279  </span>			<span class="comment">// 本番設定(DisablePrintStack=false)でも runtime スタックが捕捉される。</span>
-<span id="L280" class="ln">   280  </span>			assert.Contains(t, first, &#34;goroutine&#34;)
+<span id="L265" class="ln">   265  </span>func Test_developmentConfig(t *testing.T) {
+<span id="L266" class="ln">   266  </span>	t.Parallel()
+<span id="L267" class="ln">   267  </span>
+<span id="L268" class="ln">   268  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L269" class="ln">   269  </span>		t.Parallel()
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>		t.Run(&#34;開発用設定が返る&#34;, func(t *testing.T) {
+<span id="L272" class="ln">   272  </span>			t.Parallel()
+<span id="L273" class="ln">   273  </span>			expected := middleware.RecoverConfig{
+<span id="L274" class="ln">   274  </span>				StackSize:         10 &lt;&lt; 10,
+<span id="L275" class="ln">   275  </span>				DisableStackAll:   false,
+<span id="L276" class="ln">   276  </span>				DisablePrintStack: false,
+<span id="L277" class="ln">   277  </span>			}
+<span id="L278" class="ln">   278  </span>
+<span id="L279" class="ln">   279  </span>			actual := developmentConfig()
+<span id="L280" class="ln">   280  </span>			assert.Equal(t, expected, actual)
 <span id="L281" class="ln">   281  </span>		})
 <span id="L282" class="ln">   282  </span>	})
 <span id="L283" class="ln">   283  </span>}
 <span id="L284" class="ln">   284  </span>
+<span id="L285" class="ln">   285  </span>func Test_productionConfig(t *testing.T) {
+<span id="L286" class="ln">   286  </span>	t.Parallel()
+<span id="L287" class="ln">   287  </span>
+<span id="L288" class="ln">   288  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L289" class="ln">   289  </span>		t.Parallel()
+<span id="L290" class="ln">   290  </span>
+<span id="L291" class="ln">   291  </span>		t.Run(&#34;本番用設定が返る&#34;, func(t *testing.T) {
+<span id="L292" class="ln">   292  </span>			t.Parallel()
+<span id="L293" class="ln">   293  </span>			expected := middleware.RecoverConfig{
+<span id="L294" class="ln">   294  </span>				StackSize:         4 &lt;&lt; 10,
+<span id="L295" class="ln">   295  </span>				DisableStackAll:   true,
+<span id="L296" class="ln">   296  </span>				DisablePrintStack: false,
+<span id="L297" class="ln">   297  </span>			}
+<span id="L298" class="ln">   298  </span>
+<span id="L299" class="ln">   299  </span>			actual := productionConfig()
+<span id="L300" class="ln">   300  </span>			assert.Equal(t, expected, actual)
+<span id="L301" class="ln">   301  </span>		})
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>		t.Run(&#34;本番設定でもruntimeスタックが捕捉される&#34;, func(t *testing.T) {
+<span id="L304" class="ln">   304  </span>			t.Parallel()
+<span id="L305" class="ln">   305  </span>
+<span id="L306" class="ln">   306  </span>			e := echo.New()
+<span id="L307" class="ln">   307  </span>			handler := middleware.RecoverWithConfig(productionConfig())(
+<span id="L308" class="ln">   308  </span>				func(_ *echo.Context) error { panic(&#34;prod-panic&#34;) },
+<span id="L309" class="ln">   309  </span>			)
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/panic&#34;, nil)
+<span id="L312" class="ln">   312  </span>			c := e.NewContext(req, httptest.NewRecorder())
+<span id="L313" class="ln">   313  </span>
+<span id="L314" class="ln">   314  </span>			var pse *middleware.PanicStackError
+<span id="L315" class="ln">   315  </span>			require.ErrorAs(t, handler(c), &amp;pse)
+<span id="L316" class="ln">   316  </span>			<span class="comment">// 本番設定(DisablePrintStack=false)でも runtime スタックが捕捉される。</span>
+<span id="L317" class="ln">   317  </span>			assert.Contains(t, string(pse.Stack), &#34;goroutine&#34;)
+<span id="L318" class="ln">   318  </span>		})
+<span id="L319" class="ln">   319  </span>	})
+<span id="L320" class="ln">   320  </span>}
+<span id="L321" class="ln">   321  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/recovery/recover_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -196,6 +196,10 @@
     <span id="ErrConflict">ErrConflict</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;conflict&#34;)
     <span class="comment">// ErrValidation は検証が失敗した場合に使用します。</span>
     <span id="ErrValidation">ErrValidation</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;validation error&#34;)
+    <span class="comment">// ErrUnsupportedMediaType はサポートされていない Content-Type / メディア形式の場合に使用します。</span>
+    <span id="ErrUnsupportedMediaType">ErrUnsupportedMediaType</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;unsupported media type&#34;)
+    <span class="comment">// ErrPayloadTooLarge はリクエストペイロードが許容サイズを超える場合に使用します。</span>
+    <span id="ErrPayloadTooLarge">ErrPayloadTooLarge</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;payload too large&#34;)
     <span class="comment">// ErrTooManyRequests はリクエストが多すぎる場合に使用します。</span>
     <span id="ErrTooManyRequests">ErrTooManyRequests</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;too many requests&#34;)
     <span class="comment">// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。</span>
@@ -226,7 +230,7 @@ engine が Handler の返すエラーを分類して挙動を変えるために�
 		
 			
 			
-			<h2 id="IsAppError">func <a href="../../../src/go-boilerplate/internal/apperror/apperror.go.html?s=2915:2946#L50">IsAppError</a>
+			<h2 id="IsAppError">func <a href="../../../src/go-boilerplate/internal/apperror/apperror.go.html?s=3322:3353#L56">IsAppError</a>
 				<a class="permalink" href="#IsAppError">¶</a>
 				
 				

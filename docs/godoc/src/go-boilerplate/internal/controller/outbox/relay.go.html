@@ -55,7 +55,7 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package outbox は、outbox テーブルを周期 poll して未 publish メッセージを送る relay engine を提供します。</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package outbox は、outbox を周期 poll して未 publish メッセージを送る relay engine を提供します。</span>
 <span id="L2" class="ln">     2  </span><span class="comment">// engine 自体は loop と待機制御だけを担い、claim → publish → mark の業務は usecase に委譲します。</span>
 <span id="L3" class="ln">     3  </span>package outbox
 <span id="L4" class="ln">     4  </span>
@@ -73,7 +73,7 @@
 <span id="L16" class="ln">    16  </span>
 <span id="L17" class="ln">    17  </span><span class="comment">// Settings は、relay engine のチューニング値です。</span>
 <span id="L18" class="ln">    18  </span>type Settings struct {
-<span id="L19" class="ln">    19  </span>	<span class="comment">// BatchSize は、1 回の poll で claim する pending 行数です。</span>
+<span id="L19" class="ln">    19  </span>	<span class="comment">// BatchSize は、1 回の poll で claim する pending エントリ数です。</span>
 <span id="L20" class="ln">    20  </span>	BatchSize int32
 <span id="L21" class="ln">    21  </span>	<span class="comment">// PollInterval は、pending を捌き切った（空振り or 部分消化）後に次 poll まで待機する時間です。</span>
 <span id="L22" class="ln">    22  </span>	PollInterval time.Duration
@@ -81,7 +81,7 @@
 <span id="L24" class="ln">    24  </span>	ErrorBackoff time.Duration
 <span id="L25" class="ln">    25  </span>}
 <span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span><span class="comment">// Engine は、pending 行を周期 poll して publish する常駐 engine です。</span>
+<span id="L27" class="ln">    27  </span><span class="comment">// Engine は、pending のエントリを周期 poll して publish する常駐 engine です。</span>
 <span id="L28" class="ln">    28  </span>type Engine struct {
 <span id="L29" class="ln">    29  </span>	uc      outboxuc.RelayUsecase
 <span id="L30" class="ln">    30  </span>	sleeper clock.Sleeper

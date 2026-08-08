@@ -111,9 +111,9 @@
 <span id="L54" class="ln">    54  </span>			require.NoError(t, err)
 <span id="L55" class="ln">    55  </span>
 <span id="L56" class="ln">    56  </span>			<span class="comment">// sortKey 昇順（検討中 sortKey=1, 在庫あり sortKey=5）でリポジトリが返す想定。</span>
-<span id="L57" class="ln">    57  </span>			reviewing, err := domainstatus.New(reviewingID, &#34;検討中&#34;, 8, 1)
+<span id="L57" class="ln">    57  </span>			reviewing, err := domainstatus.New(reviewingID, domainstatus.Attributes{Name: &#34;検討中&#34;, Code: 8, SortKey: 1})
 <span id="L58" class="ln">    58  </span>			require.NoError(t, err)
-<span id="L59" class="ln">    59  </span>			inStock, err := domainstatus.New(inStockID, &#34;在庫あり&#34;, 1, 5)
+<span id="L59" class="ln">    59  </span>			inStock, err := domainstatus.New(inStockID, domainstatus.Attributes{Name: &#34;在庫あり&#34;, Code: 1, SortKey: 5})
 <span id="L60" class="ln">    60  </span>			require.NoError(t, err)
 <span id="L61" class="ln">    61  </span>
 <span id="L62" class="ln">    62  </span>			repo := mock_status.NewMockRepository(ctrl)

@@ -240,6 +240,10 @@ Verification contents:
 - HTTP Status Code = 200
 - Content-Type = application/json
 - The response body can be unmarshaled into type `T`
+- Every field declared as a Go slice in `T` (recursively, including nested
+  structs and slice elements) is serialized as a JSON array — never `null`.
+  Only a key that is present with a `null` value is a violation; an absent key
+  (e.g. `omitempty`) is not.
 
 This helper intentionally does **not** compare field values. Per the test
 pyramid above, response value correctness (the presenter's field mapping) is the
@@ -249,22 +253,35 @@ integration test to presenter details and make it brittle; for responses that
 carry dynamic values (e.g. build info, `RegisteredAt`) only the type is
 checkable anyway.
 
+The array-not-`null` check is not a value assertion but a check on the
+**serialization shape**: whether an empty collection reaches the client as `[]`
+or `null` is decided at the HTTP boundary, so the integration layer owns this
+guarantee.
+
 Usage example:
 
 ```go
 AssertJSONResponseType[gen.HealthResponse](t, actual)
 ```
 
-### `UseAppErrorHandler(t, e)`
+### `UseAppErrorHandler(t, e, extra ...extension.UseMiddleware)`
 
 Installs the production `HTTPErrorHandler` on the Echo instance. The bare
 `echo.New()` only carries Echo's default error handler, so error-path tests
 that need to observe the real `apperror` → HTTP status mapping must wire the
 production handler first.
 
-The set of error responses an endpoint is expected to produce is defined by the
-**OpenAPI contract** (each operation's `responses`); error-path tests target the
-status codes the contract declares for that operation, not arbitrary ones.
+It also wires the production `requestid` middleware, because the handler alone
+cannot produce a conformant error response: it fills the body's `requestId` by
+**reading back** the `X-Request-Id` that the middleware wrote onto the response.
+Wire only the handler and every error body carries an empty `requestId`. The two
+are one contract, so they are wired together here instead of being left for each
+test to remember.
+
+Pass `extra` to add further production middleware to that stack — take each one
+from its own DI provider and let `extension.ApplyUseMiddlewares` sort them (see
+"Wire a middleware-order contract from the DI providers, not by hand" below).
+Call sites never write the order themselves.
 
 ### `AssertErrorResponse(t, actual, wantStatus)`
 
@@ -273,6 +290,14 @@ deserializes into the JSON error shape (`ErrorResponse`). As with
 `AssertJSONResponseType`, only the boundary concern is checked — the
 `apperror` → status mapping and the error body's shape — while the correctness
 of the `code` / `message` values stays the responsibility of the unit tests.
+
+It additionally asserts that the body's `requestId` is non-empty **and equals
+the `X-Request-Id` header on the wire**. This is a boundary concern rather than
+a value assertion: the header and the body are produced by two different
+components (a middleware and the error handler) that only meet at the HTTP
+boundary, so nothing below this layer can catch them disagreeing. Because every
+error-path test funnels through this helper, the guarantee holds across the
+whole suite rather than in one dedicated test.
 
 Usage example:
 
@@ -333,3 +358,21 @@ Responses are verified using **OpenAPI types**.
 - `gen.HealthResponse`
 - `gen.VersionResponse`
 - a feature handler's response type from its `gen` package — `gen.<Xxx>Response` (aliased, e.g. `detailgen.<Xxx>Response`, when one test file imports several handler `gen` packages)
+
+### 5 Wire a middleware-order contract from the DI providers, not by hand
+
+Most tests here register only the middleware the endpoint needs, in the order the
+test writes them. That is fine while the assertion is about one middleware, but a
+contract that only holds because middleware A runs outside middleware B is not
+verified by a hand-written order — the test would keep passing after the real
+priorities changed underneath it.
+
+For those tests, take the middleware from its own DI provider
+(`instrumentation.RequestIDMiddleware()`, `security.CookieMiddleware(...)`, …) and
+apply it with `extension.ApplyUseMiddlewares`, which performs the same `Priority`
+sort production does. The ordering then comes from the same source of truth as the
+running server, so reordering the stack breaks the test that depends on it.
+
+This is the one case where an integration test reaches into `internal/di`; it does
+not license using the DI container to assemble usecases or infrastructure, which
+stays mocked per the policies above.

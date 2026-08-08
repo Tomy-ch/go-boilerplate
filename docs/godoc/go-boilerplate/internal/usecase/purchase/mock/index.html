@@ -1,0 +1,497 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_purchase
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/purchase/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_purchase is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockUsecase">type MockUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockUsecase">func NewMockUsecase(ctrl *gomock.Controller) *MockUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockUsecase.CancelPurchase">func (m *MockUsecase) CancelPurchase(ctx context.Context, params purchase.CancelPurchaseParams) (purchase.CancelPurchaseView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.CreatePurchase">func (m *MockUsecase) CreatePurchase(ctx context.Context, params purchase.CreatePurchaseParams) (purchase.PurchaseView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.DeliverPurchase">func (m *MockUsecase) DeliverPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (purchase.DeliverPurchaseView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.EXPECT">func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.GetPurchaseDetail">func (m *MockUsecase) GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (purchase.PurchaseGetDetailView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.GetPurchases">func (m *MockUsecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*purchase.PurchaseListView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.ListShippablePurchases">func (m *MockUsecase) ListShippablePurchases(ctx context.Context, authn *auth.Authn, params purchase.ListShippablePurchasesParams) (purchase.PurchaseShippableListView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.PayPurchase">func (m *MockUsecase) PayPurchase(ctx context.Context, params purchase.PayPurchaseParams) (purchase.PayPurchaseView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.ShipPurchase">func (m *MockUsecase) ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (purchase.ShipPurchaseView, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockUsecaseMockRecorder">type MockUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.CancelPurchase">func (mr *MockUsecaseMockRecorder) CancelPurchase(ctx, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.CreatePurchase">func (mr *MockUsecaseMockRecorder) CreatePurchase(ctx, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.DeliverPurchase">func (mr *MockUsecaseMockRecorder) DeliverPurchase(ctx, authn, purchaseID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.GetPurchaseDetail">func (mr *MockUsecaseMockRecorder) GetPurchaseDetail(ctx, authn, purchaseID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.GetPurchases">func (mr *MockUsecaseMockRecorder) GetPurchases(ctx, userID, cursor any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.ListShippablePurchases">func (mr *MockUsecaseMockRecorder) ListShippablePurchases(ctx, authn, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.PayPurchase">func (mr *MockUsecaseMockRecorder) PayPurchase(ctx, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.ShipPurchase">func (mr *MockUsecaseMockRecorder) ShipPurchase(ctx, authn, purchaseID any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html">mock_purchase_usecase.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=631:741#L14">MockUsecase</a>
+				<a class="permalink" href="#MockUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockUsecase is a mock of Usecase interface.
+
+			</p><pre>type MockUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=915:972#L26">NewMockUsecase</a>
+					<a class="permalink" href="#NewMockUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockUsecase">MockUsecase</a></pre>
+				<p>NewMockUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockUsecase.CancelPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1267:1399#L38">CancelPurchase</a>
+					<a class="permalink" href="#MockUsecase.CancelPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) CancelPurchase(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#CancelPurchaseParams">CancelPurchaseParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#CancelPurchaseView">CancelPurchaseView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CancelPurchase mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.CreatePurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1922:2048#L53">CreatePurchase</a>
+					<a class="permalink" href="#MockUsecase.CreatePurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) CreatePurchase(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#CreatePurchaseParams">CreatePurchaseParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PurchaseView">PurchaseView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CreatePurchase mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.DeliverPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2566:2703#L68">DeliverPurchase</a>
+					<a class="permalink" href="#MockUsecase.DeliverPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) DeliverPurchase(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, purchaseID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#DeliverPurchaseView">DeliverPurchaseView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>DeliverPurchase mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1150:1205#L33">EXPECT</a>
+					<a class="permalink" href="#MockUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) EXPECT() *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.GetPurchaseDetail">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3269:3410#L83">GetPurchaseDetail</a>
+					<a class="permalink" href="#MockUsecase.GetPurchaseDetail">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetPurchaseDetail(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, purchaseID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PurchaseGetDetailView">PurchaseGetDetailView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>GetPurchaseDetail mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.GetPurchases">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3985:4117#L98">GetPurchases</a>
+					<a class="permalink" href="#MockUsecase.GetPurchases">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetPurchases(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, cursor *<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/#Cursor">Cursor</a>) (*<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PurchaseListView">PurchaseListView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>GetPurchases mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.ListShippablePurchases">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=4659:4833#L113">ListShippablePurchases</a>
+					<a class="permalink" href="#MockUsecase.ListShippablePurchases">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ListShippablePurchases(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#ListShippablePurchasesParams">ListShippablePurchasesParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PurchaseShippableListView">PurchaseShippableListView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ListShippablePurchases mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.PayPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5429:5552#L128">PayPurchase</a>
+					<a class="permalink" href="#MockUsecase.PayPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) PayPurchase(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PayPurchaseParams">PayPurchaseParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PayPurchaseView">PayPurchaseView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>PayPurchase mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.ShipPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=6052:6183#L143">ShipPurchase</a>
+					<a class="permalink" href="#MockUsecase.ShipPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ShipPurchase(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, purchaseID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#ShipPurchaseView">ShipPurchaseView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ShipPurchase mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=808:866#L21">MockUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockUsecaseMockRecorder is the mock recorder for MockUsecase.
+
+			</p><pre>type MockUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockUsecaseMockRecorder.CancelPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1637:1716#L47">CancelPurchase</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.CancelPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) CancelPurchase(ctx, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CancelPurchase indicates an expected call of CancelPurchase.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.CreatePurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2280:2359#L62">CreatePurchase</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.CreatePurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) CreatePurchase(ctx, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CreatePurchase indicates an expected call of CreatePurchase.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.DeliverPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2956:3047#L77">DeliverPurchase</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.DeliverPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) DeliverPurchase(ctx, authn, purchaseID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>DeliverPurchase indicates an expected call of DeliverPurchase.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.GetPurchaseDetail">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3671:3764#L92">GetPurchaseDetail</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.GetPurchaseDetail">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetPurchaseDetail(ctx, authn, purchaseID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>GetPurchaseDetail indicates an expected call of GetPurchaseDetail.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.GetPurchases">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=4356:4441#L107">GetPurchases</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.GetPurchases">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetPurchases(ctx, userID, cursor <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>GetPurchases indicates an expected call of GetPurchases.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.ListShippablePurchases">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5109:5203#L122">ListShippablePurchases</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.ListShippablePurchases">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) ListShippablePurchases(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ListShippablePurchases indicates an expected call of ListShippablePurchases.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.PayPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5778:5854#L137">PayPurchase</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.PayPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) PayPurchase(ctx, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>PayPurchase indicates an expected call of PayPurchase.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.ShipPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=6424:6512#L152">ShipPurchase</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.ShipPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) ShipPurchase(ctx, authn, purchaseID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ShipPurchase indicates an expected call of ShipPurchase.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

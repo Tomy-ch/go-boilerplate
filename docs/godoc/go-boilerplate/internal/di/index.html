@@ -223,7 +223,7 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
-			</p><h2 id="NewJobCore">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1118:1145#L18">NewJobCore</a>
+			</p><h2 id="NewJobCore">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1622:1649#L29">NewJobCore</a>
 				<a class="permalink" href="#NewJobCore">¶</a>
 				
 				
@@ -281,7 +281,7 @@ grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、fx 既定（15s
 		
 			
 			
-			</p><h2 id="RunJob">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1932:1986#L41">RunJob</a>
+			</p><h2 id="RunJob">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=2559:2613#L53">RunJob</a>
 				<a class="permalink" href="#RunJob">¶</a>
 				
 				
@@ -290,6 +290,7 @@ grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、fx 既定（15s
 			<p>RunJob は、ジョブ実行用の開始関数・停止関数を生成して返します。context／タイムアウトの制御は返した関数の呼出側が担います。
 grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
 停止猶予より先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
+DI グラフの構築に失敗した場合、返す start／stop はいずれもその構築エラーを返します。
 
 			
 			
@@ -297,7 +298,7 @@ grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx
 		
 			
 			
-			</p><h2 id="RunOutboxReplay">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1686:1764#L36">RunOutboxReplay</a>
+			</p><h2 id="RunOutboxReplay">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1796:1874#L37">RunOutboxReplay</a>
 				<a class="permalink" href="#RunOutboxReplay">¶</a>
 				
 				
@@ -306,6 +307,7 @@ grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx
 			<p>RunOutboxReplay は、dead 状態の outbox 行を pending へ戻すワンショット実行を行い、
 書き換えた行数と発生したエラーを返します。messageID が nil の場合は全 dead 行を対象とします。
 停止処理のエラーは runErr と errors.Join で結合して返します。
+DI グラフの構築に失敗した場合、replay を実行せずその構築エラーを返します。
 
 			
 			
@@ -313,7 +315,7 @@ grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx
 		
 			
 			
-			</p><h2 id="RunWorker">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=977:1034#L25">RunWorker</a>
+			</p><h2 id="RunWorker">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=1100:1157#L26">RunWorker</a>
 				<a class="permalink" href="#RunWorker">¶</a>
 				
 				
@@ -322,6 +324,7 @@ grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx
 			<p>RunWorker は、worker 実行用の開始関数・停止関数を生成して返します。
 grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
 DrainTimeout より先に drain を打ち切らないようにします。
+DI グラフの構築に失敗した場合、返す start／stop はいずれもその構築エラーを返します。
 
 			
 			
@@ -330,12 +333,12 @@ DrainTimeout より先に drain を打ち切らないようにします。
 		
 			
 			
-			</p><h2 id="StartFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=834:910#L12">StartFunc</a>
+			</p><h2 id="StartFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=876:952#L12">StartFunc</a>
 				<a class="permalink" href="#StartFunc">¶</a>
 				
 				
 			</h2>
-			<p>StartFunc は、ジョブを起動して完了通知チャネルを返す関数の型です。返却チャネルはジョブ終了時に error（成功時 nil）を送信した後クローズされます。起動失敗時は専用の閉じ済みチャネルで直接エラーを返します。
+			<p>StartFunc は、ジョブを起動して完了通知チャネルを返す関数の型です。返却チャネルはジョブ終了時に error（成功時 nil）を送信した後クローズされます。DI グラフの構築失敗および起動失敗のときは専用の閉じ済みチャネルで直接エラーを返します。
 
 			</p><pre>type StartFunc func(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, name <a href="../../../builtin/#string">string</a>, args []<a href="../../../builtin/#string">string</a>) &lt;-chan <a href="../../../builtin/#error">error</a></pre>
 
@@ -353,7 +356,7 @@ DrainTimeout より先に drain を打ち切らないようにします。
 		
 			
 			
-			<h2 id="StopFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=980:1020#L14">StopFunc</a>
+			<h2 id="StopFunc">type <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1022:1062#L14">StopFunc</a>
 				<a class="permalink" href="#StopFunc">¶</a>
 				
 				

@@ -86,7 +86,9 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package logging は、アプリケーションのロギング機能を提供します。
+				<p>Package logging は、zap を基盤とする構造化ロギングの抽象を提供します。呼び出し側は zap へ直接
+依存せず Logger 経由でログを出力し、ctx からの trace_id / span_id の自動注入と、HTTP / SQL の
+ログフィールド生成（LogFieldBuilder）を利用できます。
 
 				
 			</p></div>
@@ -348,6 +350,10 @@
     <span id="JobErrorKey">JobErrorKey</span> = &#34;job_error&#34;
     <span class="comment">// JobResultKey は、ジョブ結果を表すログフィールドのキーです。</span>
     <span id="JobResultKey">JobResultKey</span> = &#34;job_result&#34;
+    <span class="comment">// JobSkippedKey は、ジョブが対象から除外した件数を表すログフィールドのキーです。</span>
+    <span id="JobSkippedKey">JobSkippedKey</span> = &#34;job_skipped&#34;
+    <span class="comment">// JobScannedKey は、ジョブが処理対象として検査した件数を表すログフィールドのキーです。</span>
+    <span id="JobScannedKey">JobScannedKey</span> = &#34;job_scanned&#34;
     <span class="comment">// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。</span>
     <span id="FilterKey">FilterKey</span> = &#34;filter&#34;
 
@@ -381,7 +387,7 @@
 		
 			
 			
-			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3598:3637#L129">SplitStackLines</a>
+			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3536:3575#L128">SplitStackLines</a>
 				<a class="permalink" href="#SplitStackLines">¶</a>
 				
 				
@@ -400,7 +406,7 @@
 		
 			
 			
-			</p><h2 id="Field">type <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=376:588#L18">Field</a>
+			</p><h2 id="Field">type <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=314:526#L17">Field</a>
 				<a class="permalink" href="#Field">¶</a>
 				
 				
@@ -422,7 +428,7 @@
 
 			
 				
-				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3919:3955#L142">Any</a>
+				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3857:3893#L141">Any</a>
 					<a class="permalink" href="#Any">¶</a>
 					
 					
@@ -434,7 +440,7 @@
 				
 			
 				
-				</p><h3 id="Bool">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1746:1784#L78">Bool</a>
+				</p><h3 id="Bool">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1684:1722#L77">Bool</a>
 					<a class="permalink" href="#Bool">¶</a>
 					
 					
@@ -446,7 +452,7 @@
 				
 			
 				
-				</p><h3 id="DurationMs">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2204:2257#L96">DurationMs</a>
+				</p><h3 id="DurationMs">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2142:2195#L95">DurationMs</a>
 					<a class="permalink" href="#DurationMs">¶</a>
 					
 					
@@ -458,7 +464,7 @@
 				
 			
 				
-				</p><h3 id="Error">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2441:2483#L105">Error</a>
+				</p><h3 id="Error">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2379:2421#L104">Error</a>
 					<a class="permalink" href="#Error">¶</a>
 					
 					
@@ -470,7 +476,7 @@
 				
 			
 				
-				</p><h3 id="Float64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1530:1574#L69">Float64</a>
+				</p><h3 id="Float64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1468:1512#L68">Float64</a>
 					<a class="permalink" href="#Float64">¶</a>
 					
 					
@@ -482,7 +488,7 @@
 				
 			
 				
-				</p><h3 id="Int">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=867:903#L42">Int</a>
+				</p><h3 id="Int">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=805:841#L41">Int</a>
 					<a class="permalink" href="#Int">¶</a>
 					
 					
@@ -494,7 +500,7 @@
 				
 			
 				
-				</p><h3 id="Int64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1303:1343#L60">Int64</a>
+				</p><h3 id="Int64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1241:1281#L59">Int64</a>
 					<a class="permalink" href="#Int64">¶</a>
 					
 					
@@ -506,7 +512,7 @@
 				
 			
 				
-				</p><h3 id="Stacktrace">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2855:2902#L116">Stacktrace</a>
+				</p><h3 id="Stacktrace">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2793:2840#L115">Stacktrace</a>
 					<a class="permalink" href="#Stacktrace">¶</a>
 					
 					
@@ -520,7 +526,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				
 			
 				
-				</p><h3 id="String">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=661:703#L33">String</a>
+				</p><h3 id="String">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=599:641#L32">String</a>
 					<a class="permalink" href="#String">¶</a>
 					
 					
@@ -532,7 +538,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				
 			
 				
-				</p><h3 id="Strings">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1077:1122#L51">Strings</a>
+				</p><h3 id="Strings">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1015:1060#L50">Strings</a>
 					<a class="permalink" href="#Strings">¶</a>
 					
 					
@@ -544,7 +550,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				
 			
 				
-				</p><h3 id="Time">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1941:1984#L87">Time</a>
+				</p><h3 id="Time">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1879:1922#L86">Time</a>
 					<a class="permalink" href="#Time">¶</a>
 					
 					
@@ -638,7 +644,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="Level">type <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=217:256#L3">Level</a>
+			<h2 id="Level">type <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=409:448#L6">Level</a>
 				<a class="permalink" href="#Level">¶</a>
 				
 				
@@ -660,7 +666,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="LevelDebug">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=310:333#L8">LevelDebug</a>
+				<h3 id="LevelDebug">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=502:525#L11">LevelDebug</a>
 					<a class="permalink" href="#LevelDebug">¶</a>
 					
 					
@@ -672,7 +678,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				
 			
 				
-				</p><h3 id="LevelError">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=644:667#L17">LevelError</a>
+				</p><h3 id="LevelError">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=836:859#L20">LevelError</a>
 					<a class="permalink" href="#LevelError">¶</a>
 					
 					
@@ -684,7 +690,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				
 			
 				
-				</p><h3 id="LevelInfo">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=422:444#L11">LevelInfo</a>
+				</p><h3 id="LevelInfo">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=614:636#L14">LevelInfo</a>
 					<a class="permalink" href="#LevelInfo">¶</a>
 					
 					
@@ -696,7 +702,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				
 			
 				
-				</p><h3 id="LevelWarn">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=532:554#L14">LevelWarn</a>
+				</p><h3 id="LevelWarn">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=724:746#L17">LevelWarn</a>
 					<a class="permalink" href="#LevelWarn">¶</a>
 					
 					
@@ -708,7 +714,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				
 			
 				
-				</p><h3 id="ParseLevel">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=872:912#L21">ParseLevel</a>
+				</p><h3 id="ParseLevel">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=1064:1104#L24">ParseLevel</a>
 					<a class="permalink" href="#ParseLevel">¶</a>
 					
 					
@@ -725,7 +731,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=553:580#L8">LogCore</a>
+			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=790:817#L10">LogCore</a>
 				<a class="permalink" href="#LogCore">¶</a>
 				
 				
@@ -802,7 +808,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1195:1901#L17">Logger</a>
+			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1432:2245#L19">Logger</a>
 				<a class="permalink" href="#Logger">¶</a>
 				
 				
@@ -822,7 +828,8 @@ trace_id / span_id を注入します（未設定・span 無効時は注入し�
     Error(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
     <span class="comment">// Named は、新しい名前付きの Logger を返す。</span>
     Named(name <a href="../../../builtin/#string">string</a>) <a href="#Logger">Logger</a>
-    <span class="comment">// CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。</span>
+    <span class="comment">// CallerSkip は、既存のスキップ数へ skip を加算した新しい Logger を返す。</span>
+    <span class="comment">// 絶対値の設定ではないため、CallerSkip 済みの Logger へ重ねて呼ぶと積み上がる。</span>
     CallerSkip(skip <a href="../../../builtin/#int">int</a>) <a href="#Logger">Logger</a>
 }</pre>
 
@@ -902,14 +909,15 @@ caller（発生源）を検証したいテストで使用します。
 				
 			
 				
-				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=2391:2435#L46">WithCore</a>
+				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=2852:2896#L50">WithCore</a>
 					<a class="permalink" href="#WithCore">¶</a>
 					
 					
 				</h3>
 				<pre>func WithCore(l <a href="#Logger">Logger</a>, core <a href="#LogCore">LogCore</a>) <a href="#Logger">Logger</a></pre>
 				<p>WithCore は、既存 Logger に追加のログ core を、元 Logger と同じ最小レベルでゲートして
-Tee した新しい Logger を返します。core が nil の場合は、元の Logger をそのまま返します。
+Tee した新しい Logger を返します。core が nil の場合、および l が本パッケージの具象型でない
+場合（テスト用 fake 等）は Tee できないため、元の Logger をそのまま返します。
 
 				
 				
@@ -960,7 +968,7 @@ Tee した新しい Logger を返します。core が nil の場合は、元の 
 		
 			
 			
-			<h2 id="TraceExtractor">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=815:894#L12">TraceExtractor</a>
+			<h2 id="TraceExtractor">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1052:1131#L14">TraceExtractor</a>
 				<a class="permalink" href="#TraceExtractor">¶</a>
 				
 				

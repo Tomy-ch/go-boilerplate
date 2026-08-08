@@ -68,7 +68,7 @@
 <span id="L11" class="ln">    11  </span>type Manager interface {
 <span id="L12" class="ln">    12  </span>	<span class="comment">// Do は serialization failure / deadlock 検出時に fn を最大 N 回再実行しうります。</span>
 <span id="L13" class="ln">    13  </span>	<span class="comment">// よって fn は DB 副作用以外について冪等であること（呼出側責務）。外部副作用（イベント発行・</span>
-<span id="L14" class="ln">    14  </span>	<span class="comment">// メール送信等）は、同一 tx 内で outbox 行として書き込めば rollback と共に巻き戻り retry-safe に</span>
+<span id="L14" class="ln">    14  </span>	<span class="comment">// メール送信等）は、同一 tx 内で outbox へ記録すれば rollback と共に巻き戻り retry-safe に</span>
 <span id="L15" class="ln">    15  </span>	<span class="comment">// なります。nested（既存 tx を再利用する）経路はリトライ対象外で 1 回のみ実行されます。</span>
 <span id="L16" class="ln">    16  </span>	Do(ctx context.Context, fn func(ctx context.Context) error) error
 <span id="L17" class="ln">    17  </span>}

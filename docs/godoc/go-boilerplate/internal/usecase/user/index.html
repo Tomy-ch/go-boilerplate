@@ -103,8 +103,23 @@
 			<div id="manual-nav">
 			<dl>
 			
+				<dd><a href="#pkg-constants">Constants</a></dd>
 			
 			
+			
+			
+				
+				<dd><a href="#ArchiveUsecase">type ArchiveUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewArchive">func NewArchive(tf observability.TracerFactory, storage objectstorage.Storage) ArchiveUsecase</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ArchiveWithdrawalParams">type ArchiveWithdrawalParams</a></dd>
+				
+				
 			
 				
 				<dd><a href="#CreateParamsDTO">type CreateParamsDTO</a></dd>
@@ -117,6 +132,19 @@
 				
 			
 				
+				<dd><a href="#PurgeResult">type PurgeResult</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PurgeUsecase">type PurgeUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewPurge">func NewPurge(tf observability.TracerFactory, txm tx.Manager, clock clock.Clock, userRepo user.Repository, purchaseRepo purchase.Repository) PurgeUsecase</a></dd>
+				
+				
+			
+				
 				<dd><a href="#UpdateProfileParams">type UpdateProfileParams</a></dd>
 				
 				
@@ -125,7 +153,7 @@
 				<dd><a href="#Usecase">type Usecase</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(tf observability.TracerFactory, txm tx.Manager, clock clock.Clock, encrypter security.Hasher, authorizer authz.Authorizer, userRepo user.Repository, prefectureRepo prefecture.Repository) Usecase</a></dd>
+					<dd>    <a href="#New">func New(tf observability.TracerFactory, txm tx.Manager, clock clock.Clock, authorizer authz.Authorizer, userRepo user.Repository, userLock user.LockRepository, prefectureRepo prefecture.Repository, purchaseRepo purchase.Repository, emit outbox.EmitUsecase) Usecase</a></dd>
 				
 				
 			
@@ -157,7 +185,11 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/usecase/user/feed_cursor.go.html">feed_cursor.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/usecase/user/user_purge_usecase.go.html">user_purge_usecase.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html">user_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/user/withdrawal_archive_usecase.go.html">withdrawal_archive_usecase.go</a>
 			
 			</span>
 			</p>
@@ -168,23 +200,75 @@
 		
 
 		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				
+				<pre>const (
+    <span class="comment">// DefaultPurgeBatchSize は、1 バッチあたりの候補取得件数の既定値です。</span>
+    <span id="DefaultPurgeBatchSize">DefaultPurgeBatchSize</span> <a href="../../../../builtin/#int32">int32</a> = 1_000
+    <span class="comment">// DefaultPurgeRetention は、退会したユーザーを物理削除せず保持する既定期間です。</span>
+    <span id="DefaultPurgeRetention">DefaultPurgeRetention</span> = 30 * 24 * <a href="../../../../time/">time</a>.<a href="../../../../time/#Hour">Hour</a>
+)</pre>
+			
+		
 		
 		
 		
 			
 			
-			<h2 id="CreateParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2335:2431#L60">CreateParamsDTO</a>
-				<a class="permalink" href="#CreateParamsDTO">¶</a>
+			<h2 id="ArchiveUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/withdrawal_archive_usecase.go.html?s=1304:1867#L23">ArchiveUsecase</a>
+				<a class="permalink" href="#ArchiveUsecase">¶</a>
 				
 				
 			</h2>
-			<p>CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
+			<p>ArchiveUsecase は、退会の証跡をオブジェクトストレージへ保存するユースケースを定義します。
 
-			</p><pre>type CreateParamsDTO struct {
-    <a href="#UpdateProfileParams">UpdateProfileParams</a>
+			</p><pre>type ArchiveUsecase interface {
+    <span class="comment">// ArchiveWithdrawal は、退会証跡を UserID から決まるキーへ保存し、保存先のパスを返します。</span>
+    <span class="comment">// キーが入力だけで決まり本文も加工しないため、同じ入力での再実行は同じ結果に収束します</span>
+    <span class="comment">// （at-least-once 配信で複数回実行されうるため）。</span>
+    <span class="comment">// UserID が UUID でない場合、または Payload が空の場合は apperror.ErrValidation を返します。</span>
+    ArchiveWithdrawal(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#ArchiveWithdrawalParams">ArchiveWithdrawalParams</a>) (<a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
 
-<span id="CreateParamsDTO.UserID"></span>    UserID      <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="CreateParamsDTO.RawPassword"></span>    RawPassword <a href="../../../../builtin/#string">string</a>
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewArchive">func <a href="../../../../src/go-boilerplate/internal/usecase/user/withdrawal_archive_usecase.go.html?s=2136:2229#L38">NewArchive</a>
+					<a class="permalink" href="#NewArchive">¶</a>
+					
+					
+				</h3>
+				<pre>func NewArchive(tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>, storage <a href="../../../../go-boilerplate/internal/usecase/boundary/objectstorage/">objectstorage</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/objectstorage/#Storage">Storage</a>) <a href="#ArchiveUsecase">ArchiveUsecase</a></pre>
+				<p>NewArchive は、退会証跡の保存ユースケースを初期化します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="ArchiveWithdrawalParams">type <a href="../../../../src/go-boilerplate/internal/usecase/user/withdrawal_archive_usecase.go.html?s=884:1172#L15">ArchiveWithdrawalParams</a>
+				<a class="permalink" href="#ArchiveWithdrawalParams">¶</a>
+				
+				
+			</h2>
+			<p>ArchiveWithdrawalParams は、退会証跡の保存入力です。
+
+			</p><pre>type ArchiveWithdrawalParams struct {
+<span id="ArchiveWithdrawalParams.UserID"></span>    <span class="comment">// UserID は、退会したユーザーの ID（UUID）です。保存先キーの決定に使います。</span>
+    UserID <a href="../../../../builtin/#string">string</a>
+<span id="ArchiveWithdrawalParams.Payload"></span>    <span class="comment">// Payload は、保存する退会イベントの本文です。加工せずそのまま保存します。</span>
+    Payload []<a href="../../../../builtin/#byte">byte</a>
 }
 </pre>
 
@@ -202,12 +286,40 @@
 		
 			
 			
-			<h2 id="PatchParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2617:2863#L68">PatchParamsDTO</a>
+			<h2 id="CreateParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2551:2622#L66">CreateParamsDTO</a>
+				<a class="permalink" href="#CreateParamsDTO">¶</a>
+				
+				
+			</h2>
+			<p>CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
+
+			</p><pre>type CreateParamsDTO struct {
+    <a href="#UpdateProfileParams">UpdateProfileParams</a>
+
+<span id="CreateParamsDTO.UserID"></span>    UserID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PatchParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2775:3021#L73">PatchParamsDTO</a>
 				<a class="permalink" href="#PatchParamsDTO">¶</a>
 				
 				
 			</h2>
-			<p>PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
+			<p>PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません。
 
 			</p><pre>type PatchParamsDTO struct {
 <span id="PatchParamsDTO.FirstName"></span>    FirstName      *<a href="../../../../builtin/#string">string</a>
@@ -236,7 +348,85 @@
 		
 			
 			
-			<h2 id="UpdateProfileParams">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2001:2244#L47">UpdateProfileParams</a>
+			<h2 id="PurgeResult">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_purge_usecase.go.html?s=752:1055#L15">PurgeResult</a>
+				<a class="permalink" href="#PurgeResult">¶</a>
+				
+				
+			</h2>
+			<p>PurgeResult は、物理削除の実行結果です。
+
+			</p><pre>type PurgeResult struct {
+<span id="PurgeResult.Purged"></span>    <span class="comment">// Purged は、物理削除したユーザー件数です。dryRun の場合は削除対象となった件数です。</span>
+    Purged <a href="../../../../builtin/#int64">int64</a>
+<span id="PurgeResult.SkippedWithPurchases"></span>    <span class="comment">// SkippedWithPurchases は、購入を保持しているため削除しなかったユーザー件数です。</span>
+    SkippedWithPurchases <a href="../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurgeUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_purge_usecase.go.html?s=1187:2032#L23">PurgeUsecase</a>
+				<a class="permalink" href="#PurgeUsecase">¶</a>
+				
+				
+			</h2>
+			<p>PurgeUsecase は、退会から retention を過ぎたユーザーを物理削除するユースケースを定義します。
+
+			</p><pre>type PurgeUsecase interface {
+    <span class="comment">// PurgeDeleted は、退会から retention より長く経過したユーザーを batchSize 件ずつ物理削除し、結果を返します。</span>
+    <span class="comment">// 購入を持つユーザーは削除せず、その件数を結果に含めます。</span>
+    <span class="comment">// dryRun が true の場合は削除を行わず、削除対象となった件数だけを結果に返します。</span>
+    <span class="comment">// retention / batchSize が 0 以下の場合は、それぞれ既定値を用います。</span>
+    <span class="comment">// エラーを返す場合も、失敗したバッチより前にコミット済みの累計を結果に含めます。</span>
+    <span class="comment">// 失敗したバッチはロールバックされますが、コミット済みの物理削除は取り消せないためです。</span>
+    PurgeDeleted(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, retention <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>, batchSize <a href="../../../../builtin/#int32">int32</a>, dryRun <a href="../../../../builtin/#bool">bool</a>) (<a href="#PurgeResult">PurgeResult</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewPurge">func <a href="../../../../src/go-boilerplate/internal/usecase/user/user_purge_usecase.go.html?s=3051:3212#L55">NewPurge</a>
+					<a class="permalink" href="#NewPurge">¶</a>
+					
+					
+				</h3>
+				<pre>func NewPurge(
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+    txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
+    clock <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
+    userRepo <a href="../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../go-boilerplate/internal/domain/user/#Repository">Repository</a>,
+    purchaseRepo <a href="../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../go-boilerplate/internal/domain/purchase/#Repository">Repository</a>,
+) <a href="#PurgeUsecase">PurgeUsecase</a></pre>
+				<p>NewPurge は、PurgeUsecase を初期化します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="UpdateProfileParams">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2217:2460#L53">UpdateProfileParams</a>
 				<a class="permalink" href="#UpdateProfileParams">¶</a>
 				
 				
@@ -270,7 +460,7 @@
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=3256:5652#L92">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=3499:6122#L99">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -291,15 +481,17 @@
     <span class="comment">// GetUser は、認可を確認したうえで ID から単一ユーザーを取得します。</span>
     <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
     GetUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します（パスワードは含みません）。</span>
+    <span class="comment">// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します。</span>
     <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
     UpdateUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="#UpdateProfileParams">UpdateProfileParams</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します（パスワードは更新しません）。</span>
+    <span class="comment">// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します。指定されたフィールドのみを</span>
+    <span class="comment">// 反映し、未指定 / null は据え置きます（値のクリアは非対応で、クリアには全更新の UpdateUser を使います）。</span>
     <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
     UpdateUserPartially(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="#PatchParamsDTO">PatchParamsDTO</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。</span>
-    ChangePassword(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, currentPassword, newPassword <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a>
-    <span class="comment">// DeleteUser は、認可を確認したうえでユーザーを論理削除します。</span>
+    <span class="comment">// DeleteUser は、認可を確認したうえでユーザーを退会させます。ユーザーを論理削除し、</span>
+    <span class="comment">// 同一トランザクションで退会イベントを発行します。退会に伴う関連データの後始末は、</span>
+    <span class="comment">// このイベントを受け取る側の結果整合に委ねます。</span>
+    <span class="comment">// 進行中の購入が残っている場合は apperror.ErrConflict を返し、退会させません。</span>
     <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
     DeleteUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../builtin/#error">error</a>
 }</pre>
@@ -314,7 +506,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=5734:5947#L120">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=6204:6481#L129">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -323,10 +515,12 @@
     tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
     txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
     clock <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
-    encrypter <a href="../../../../go-boilerplate/internal/usecase/boundary/security/">security</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/security/#Hasher">Hasher</a>,
     authorizer <a href="../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a>,
     userRepo <a href="../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../go-boilerplate/internal/domain/user/#Repository">Repository</a>,
+    userLock <a href="../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../go-boilerplate/internal/domain/user/#LockRepository">LockRepository</a>,
     prefectureRepo <a href="../../../../go-boilerplate/internal/domain/prefecture/">prefecture</a>.<a href="../../../../go-boilerplate/internal/domain/prefecture/#Repository">Repository</a>,
+    purchaseRepo <a href="../../../../go-boilerplate/internal/domain/purchase/">purchase</a>.<a href="../../../../go-boilerplate/internal/domain/purchase/#Repository">Repository</a>,
+    emit <a href="../../../../go-boilerplate/internal/usecase/outbox/">outbox</a>.<a href="../../../../go-boilerplate/internal/usecase/outbox/#EmitUsecase">EmitUsecase</a>,
 ) <a href="#Usecase">Usecase</a></pre>
 				<p>New は、ユーザーに関するユースケースを初期化します。
 
@@ -338,7 +532,7 @@
 		
 			
 			
-			</p><h2 id="UserFeedView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1634:1879#L39">UserFeedView</a>
+			</p><h2 id="UserFeedView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1850:2095#L45">UserFeedView</a>
 				<a class="permalink" href="#UserFeedView">¶</a>
 				
 				
@@ -367,7 +561,7 @@
 		
 			
 			
-			<h2 id="UserListView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1456:1515#L33">UserListView</a>
+			<h2 id="UserListView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1672:1731#L39">UserListView</a>
 				<a class="permalink" href="#UserListView">¶</a>
 				
 				
@@ -394,7 +588,7 @@
 		
 			
 			
-			<h2 id="UserView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1097:1356#L19">UserView</a>
+			<h2 id="UserView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1313:1572#L25">UserView</a>
 				<a class="permalink" href="#UserView">¶</a>
 				
 				

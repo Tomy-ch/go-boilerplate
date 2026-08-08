@@ -59,318 +59,1625 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
-<span id="L6" class="ln">     6  </span>	&#34;time&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/apperror&#34;
-<span id="L9" class="ln">     9  </span>	domainproduct &#34;go-boilerplate/internal/domain/product&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/ptr&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/uuid&#34;
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L19" class="ln">    19  </span>)
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span><span class="comment">// 既存 seed に含まれるカテゴリ / ステータス ID（FK 制約を満たすために使用）。</span>
-<span id="L22" class="ln">    22  </span>const (
-<span id="L23" class="ln">    23  </span>	categoryElectronics = &#34;5dd52d84-78eb-4a52-ba0b-2e11c95c2af2&#34;
-<span id="L24" class="ln">    24  </span>	categoryBooks       = &#34;b39be992-fe5a-4b4c-9f98-e695f0f5101e&#34;
-<span id="L25" class="ln">    25  </span>	statusInStock       = &#34;093170fb-83a2-4864-a2b3-53236eaf3597&#34;
-<span id="L26" class="ln">    26  </span>	statusOutOfStock    = &#34;f33654fe-1041-498d-be18-3a1384c10df4&#34;
-<span id="L27" class="ln">    27  </span>	<span class="comment">// probeKeyword は、seed データと隔離してテスト挿入行のみを対象化するための一意なキーワードです。</span>
-<span id="L28" class="ln">    28  </span>	probeKeyword = &#34;KEYSETPROBE563&#34;
-<span id="L29" class="ln">    29  </span>)
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span><span class="comment">// insertProduct は、keyset 検証用に published_at / id を明示した商品を挿入するヘルパーです。</span>
-<span id="L32" class="ln">    32  </span>func insertProduct(
-<span id="L33" class="ln">    33  </span>	ctx context.Context, t *testing.T, db driver.DBTX,
-<span id="L34" class="ln">    34  </span>	id, name string, description *string, price int, statusID, categoryID string, publishedAt *time.Time,
-<span id="L35" class="ln">    35  </span>) {
-<span id="L36" class="ln">    36  </span>	t.Helper()
-<span id="L37" class="ln">    37  </span>	_, err := db.Exec(ctx,
-<span id="L38" class="ln">    38  </span>		&#34;INSERT INTO products &#34;+
-<span id="L39" class="ln">    39  </span>			&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
-<span id="L40" class="ln">    40  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)&#34;,
-<span id="L41" class="ln">    41  </span>		id, name, description, price, 10, nil, statusID, categoryID, publishedAt,
-<span id="L42" class="ln">    42  </span>	)
-<span id="L43" class="ln">    43  </span>	require.NoError(t, err)
-<span id="L44" class="ln">    44  </span>}
-<span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span>func mustParse(t *testing.T, s string) uuid.UUID {
-<span id="L47" class="ln">    47  </span>	t.Helper()
-<span id="L48" class="ln">    48  </span>	id, err := uuid.Parse(s)
-<span id="L49" class="ln">    49  </span>	require.NoError(t, err)
-<span id="L50" class="ln">    50  </span>	return id
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>func Test_repository_FindPublishedList(t *testing.T) {
-<span id="L54" class="ln">    54  </span>	t.Parallel()
-<span id="L55" class="ln">    55  </span>
-<span id="L56" class="ln">    56  </span>	testDB := testkit.NewTestDB(t)
-<span id="L57" class="ln">    57  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L58" class="ln">    58  </span>	txm := testkit.NewTestTransactionRunner(t)
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L5" class="ln">     5  </span>	&#34;math&#34;
+<span id="L6" class="ln">     6  </span>	&#34;sync&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/domain/lexicon/money&#34;
+<span id="L13" class="ln">    13  </span>	domainproduct &#34;go-boilerplate/internal/domain/product&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/infrastructure/system&#34;
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L20" class="ln">    20  </span>	&#34;go-boilerplate/pkg/decimal&#34;
+<span id="L21" class="ln">    21  </span>	&#34;go-boilerplate/pkg/ptr&#34;
+<span id="L22" class="ln">    22  </span>	&#34;go-boilerplate/pkg/safecast&#34;
+<span id="L23" class="ln">    23  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L24" class="ln">    24  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L27" class="ln">    27  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L28" class="ln">    28  </span>)
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// 既存 seed に含まれるカテゴリ / ステータス ID（FK 制約を満たすために使用）。</span>
+<span id="L31" class="ln">    31  </span>const (
+<span id="L32" class="ln">    32  </span>	categoryElectronics = &#34;5dd52d84-78eb-4a52-ba0b-2e11c95c2af2&#34;
+<span id="L33" class="ln">    33  </span>	categoryBooks       = &#34;b39be992-fe5a-4b4c-9f98-e695f0f5101e&#34;
+<span id="L34" class="ln">    34  </span>	statusInStock       = &#34;093170fb-83a2-4864-a2b3-53236eaf3597&#34;
+<span id="L35" class="ln">    35  </span>	statusOutOfStock    = &#34;f33654fe-1041-498d-be18-3a1384c10df4&#34;
+<span id="L36" class="ln">    36  </span>	<span class="comment">// probeKeyword は、seed データと隔離してテスト挿入行のみを対象化するための一意なキーワードです。</span>
+<span id="L37" class="ln">    37  </span>	probeKeyword = &#34;KEYSETPROBE563&#34;
+<span id="L38" class="ln">    38  </span>)
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// insertProduct は、keyset 検証用に published_at / id を明示した商品を挿入するヘルパーです。</span>
+<span id="L41" class="ln">    41  </span>func insertProduct(
+<span id="L42" class="ln">    42  </span>	ctx context.Context, t *testing.T, db driver.DBTX,
+<span id="L43" class="ln">    43  </span>	id, name string, description *string, price int, statusID, categoryID string, publishedAt *time.Time,
+<span id="L44" class="ln">    44  </span>) {
+<span id="L45" class="ln">    45  </span>	t.Helper()
+<span id="L46" class="ln">    46  </span>	_, err := db.Exec(ctx,
+<span id="L47" class="ln">    47  </span>		&#34;INSERT INTO products &#34;+
+<span id="L48" class="ln">    48  </span>			&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
+<span id="L49" class="ln">    49  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)&#34;,
+<span id="L50" class="ln">    50  </span>		id, name, description, price, 10, nil, statusID, categoryID, publishedAt,
+<span id="L51" class="ln">    51  </span>	)
+<span id="L52" class="ln">    52  </span>	require.NoError(t, err)
+<span id="L53" class="ln">    53  </span>}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>func mustParse(t *testing.T, s string) uuid.UUID {
+<span id="L56" class="ln">    56  </span>	t.Helper()
+<span id="L57" class="ln">    57  </span>	id, err := uuid.Parse(s)
+<span id="L58" class="ln">    58  </span>	require.NoError(t, err)
+<span id="L59" class="ln">    59  </span>	return id
+<span id="L60" class="ln">    60  </span>}
 <span id="L61" class="ln">    61  </span>
-<span id="L62" class="ln">    62  </span>	<span class="comment">// seed より確実に新しい固定時刻。id の大小でタイブレークを検証するため tie ペアを含む。</span>
-<span id="L63" class="ln">    63  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L64" class="ln">    64  </span>	tieHigh := &#34;eeeeeeee-0000-4000-8000-000000000002&#34;
-<span id="L65" class="ln">    65  </span>	tieLow := &#34;eeeeeeee-0000-4000-8000-000000000001&#34;
-<span id="L66" class="ln">    66  </span>	mid := &#34;eeeeeeee-0000-4000-8000-000000000003&#34;  <span class="comment">// base-1h</span>
-<span id="L67" class="ln">    67  </span>	old := &#34;eeeeeeee-0000-4000-8000-000000000004&#34;  <span class="comment">// base-2h</span>
-<span id="L68" class="ln">    68  </span>	null := &#34;eeeeeeee-0000-4000-8000-000000000005&#34; <span class="comment">// published_at=NULL</span>
-<span id="L69" class="ln">    69  </span>
-<span id="L70" class="ln">    70  </span>	<span class="comment">// insertProbeSet は、tie ペア + 2 件 + 未公開(NULL) を probeKeyword 付きで挿入します。</span>
-<span id="L71" class="ln">    71  </span>	insertProbeSet := func(ctx context.Context, t *testing.T, drv driver.DBTX) {
-<span id="L72" class="ln">    72  </span>		t.Helper()
-<span id="L73" class="ln">    73  </span>		insertProduct(ctx, t, drv, tieHigh, probeKeyword+&#34;-A&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
-<span id="L74" class="ln">    74  </span>		insertProduct(ctx, t, drv, tieLow, probeKeyword+&#34;-B&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
-<span id="L75" class="ln">    75  </span>		insertProduct(ctx, t, drv, mid, probeKeyword+&#34;-C&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base.Add(-time.Hour)))
-<span id="L76" class="ln">    76  </span>		insertProduct(ctx, t, drv, old, probeKeyword+&#34;-D&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base.Add(-2*time.Hour)))
-<span id="L77" class="ln">    77  </span>		insertProduct(ctx, t, drv, null, probeKeyword+&#34;-NULL&#34;, nil, 1000, statusInStock, categoryElectronics, nil)
-<span id="L78" class="ln">    78  </span>	}
-<span id="L79" class="ln">    79  </span>
-<span id="L80" class="ln">    80  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L81" class="ln">    81  </span>		t.Parallel()
-<span id="L82" class="ln">    82  </span>
-<span id="L83" class="ln">    83  </span>		t.Run(&#34;降順で先頭ページとafter境界がkeyset安定順に次ページを返し未公開行は除外される&#34;, func(t *testing.T) {
-<span id="L84" class="ln">    84  </span>			t.Parallel()
-<span id="L85" class="ln">    85  </span>
-<span id="L86" class="ln">    86  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L87" class="ln">    87  </span>				drv := driver.New(ctx, testDB)
-<span id="L88" class="ln">    88  </span>				insertProbeSet(ctx, t, drv)
-<span id="L89" class="ln">    89  </span>
-<span id="L90" class="ln">    90  </span>				<span class="comment">// 先頭ページ(limit=2): 公開日時降順・id降順で tieHigh, tieLow。</span>
-<span id="L91" class="ln">    91  </span>				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L92" class="ln">    92  </span>					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
-<span id="L93" class="ln">    93  </span>				})
-<span id="L94" class="ln">    94  </span>				require.NoError(t, err)
-<span id="L95" class="ln">    95  </span>				require.Len(t, firstPage, 2)
-<span id="L96" class="ln">    96  </span>				assert.Equal(t, mustParse(t, tieHigh), firstPage[0].ID())
-<span id="L97" class="ln">    97  </span>				assert.Equal(t, mustParse(t, tieLow), firstPage[1].ID())
+<span id="L62" class="ln">    62  </span>func Test_repository_FindPublishedList(t *testing.T) {
+<span id="L63" class="ln">    63  </span>	t.Parallel()
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>	testDB := testkit.NewTestDB(t)
+<span id="L66" class="ln">    66  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L67" class="ln">    67  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span>	<span class="comment">// seed より確実に新しい固定時刻。id の大小でタイブレークを検証するため tie ペアを含む。</span>
+<span id="L72" class="ln">    72  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L73" class="ln">    73  </span>	tieHigh := &#34;eeeeeeee-0000-4000-8000-000000000002&#34;
+<span id="L74" class="ln">    74  </span>	tieLow := &#34;eeeeeeee-0000-4000-8000-000000000001&#34;
+<span id="L75" class="ln">    75  </span>	mid := &#34;eeeeeeee-0000-4000-8000-000000000003&#34;  <span class="comment">// base-1h</span>
+<span id="L76" class="ln">    76  </span>	old := &#34;eeeeeeee-0000-4000-8000-000000000004&#34;  <span class="comment">// base-2h</span>
+<span id="L77" class="ln">    77  </span>	null := &#34;eeeeeeee-0000-4000-8000-000000000005&#34; <span class="comment">// published_at=NULL</span>
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>	<span class="comment">// insertProbeSet は、tie ペア + 2 件 + 未公開(NULL) を probeKeyword 付きで挿入します。</span>
+<span id="L80" class="ln">    80  </span>	insertProbeSet := func(ctx context.Context, t *testing.T, drv driver.DBTX) {
+<span id="L81" class="ln">    81  </span>		t.Helper()
+<span id="L82" class="ln">    82  </span>		insertProduct(ctx, t, drv, tieHigh, probeKeyword+&#34;-A&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L83" class="ln">    83  </span>		insertProduct(ctx, t, drv, tieLow, probeKeyword+&#34;-B&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L84" class="ln">    84  </span>		insertProduct(ctx, t, drv, mid, probeKeyword+&#34;-C&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base.Add(-time.Hour)))
+<span id="L85" class="ln">    85  </span>		insertProduct(ctx, t, drv, old, probeKeyword+&#34;-D&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base.Add(-2*time.Hour)))
+<span id="L86" class="ln">    86  </span>		insertProduct(ctx, t, drv, null, probeKeyword+&#34;-NULL&#34;, nil, 1000, statusInStock, categoryElectronics, nil)
+<span id="L87" class="ln">    87  </span>	}
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L90" class="ln">    90  </span>		t.Parallel()
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>		t.Run(&#34;降順で先頭ページとafter境界がkeyset安定順に次ページを返し未公開行は除外される&#34;, func(t *testing.T) {
+<span id="L93" class="ln">    93  </span>			t.Parallel()
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L96" class="ln">    96  </span>				drv := driver.New(ctx, testDB)
+<span id="L97" class="ln">    97  </span>				insertProbeSet(ctx, t, drv)
 <span id="L98" class="ln">    98  </span>
-<span id="L99" class="ln">    99  </span>				<span class="comment">// 次ページ: 末尾行(tieLow)を境界に keyset を進めると mid → old。</span>
-<span id="L100" class="ln">   100  </span>				last := firstPage[len(firstPage)-1]
-<span id="L101" class="ln">   101  </span>				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L102" class="ln">   102  </span>					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
-<span id="L103" class="ln">   103  </span>					AfterPublishedAt: ptr.To(last.PublishedAt()), AfterID: ptr.To(last.ID()),
-<span id="L104" class="ln">   104  </span>				})
-<span id="L105" class="ln">   105  </span>				require.NoError(t, err)
-<span id="L106" class="ln">   106  </span>				require.Len(t, secondPage, 2)
-<span id="L107" class="ln">   107  </span>				assert.Equal(t, mustParse(t, mid), secondPage[0].ID())
-<span id="L108" class="ln">   108  </span>				assert.Equal(t, mustParse(t, old), secondPage[1].ID())
-<span id="L109" class="ln">   109  </span>
-<span id="L110" class="ln">   110  </span>				<span class="comment">// 未公開(NULL)行はどのページにも現れない。</span>
-<span id="L111" class="ln">   111  </span>				all, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L112" class="ln">   112  </span>					Limit: 100, Ascending: false, Keyword: ptr.To(probeKeyword),
+<span id="L99" class="ln">    99  </span>				<span class="comment">// 先頭ページ(limit=2): 公開日時降順・id降順で tieHigh, tieLow。</span>
+<span id="L100" class="ln">   100  </span>				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L101" class="ln">   101  </span>					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
+<span id="L102" class="ln">   102  </span>				})
+<span id="L103" class="ln">   103  </span>				require.NoError(t, err)
+<span id="L104" class="ln">   104  </span>				require.Len(t, firstPage, 2)
+<span id="L105" class="ln">   105  </span>				assert.Equal(t, mustParse(t, tieHigh), firstPage[0].ID())
+<span id="L106" class="ln">   106  </span>				assert.Equal(t, mustParse(t, tieLow), firstPage[1].ID())
+<span id="L107" class="ln">   107  </span>
+<span id="L108" class="ln">   108  </span>				<span class="comment">// 次ページ: 末尾行(tieLow)を境界に keyset を進めると mid → old。</span>
+<span id="L109" class="ln">   109  </span>				last := firstPage[len(firstPage)-1]
+<span id="L110" class="ln">   110  </span>				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L111" class="ln">   111  </span>					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
+<span id="L112" class="ln">   112  </span>					AfterPublishedAt: last.PublishedAt(), AfterID: ptr.To(last.ID()),
 <span id="L113" class="ln">   113  </span>				})
 <span id="L114" class="ln">   114  </span>				require.NoError(t, err)
-<span id="L115" class="ln">   115  </span>				for _, p := range all {
-<span id="L116" class="ln">   116  </span>					assert.NotEqual(t, mustParse(t, null), p.ID())
-<span id="L117" class="ln">   117  </span>				}
-<span id="L118" class="ln">   118  </span>			})
-<span id="L119" class="ln">   119  </span>		})
-<span id="L120" class="ln">   120  </span>
-<span id="L121" class="ln">   121  </span>		t.Run(&#34;昇順では公開日時の古い順に返る&#34;, func(t *testing.T) {
-<span id="L122" class="ln">   122  </span>			t.Parallel()
-<span id="L123" class="ln">   123  </span>
-<span id="L124" class="ln">   124  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L125" class="ln">   125  </span>				drv := driver.New(ctx, testDB)
-<span id="L126" class="ln">   126  </span>				insertProbeSet(ctx, t, drv)
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L129" class="ln">   129  </span>					Limit: 10, Ascending: true, Keyword: ptr.To(probeKeyword),
-<span id="L130" class="ln">   130  </span>				})
-<span id="L131" class="ln">   131  </span>				require.NoError(t, err)
-<span id="L132" class="ln">   132  </span>				require.Len(t, page, 4)
-<span id="L133" class="ln">   133  </span>				assert.Equal(t, mustParse(t, old), page[0].ID())
-<span id="L134" class="ln">   134  </span>				assert.Equal(t, mustParse(t, mid), page[1].ID())
-<span id="L135" class="ln">   135  </span>				assert.Equal(t, mustParse(t, tieLow), page[2].ID())
-<span id="L136" class="ln">   136  </span>				assert.Equal(t, mustParse(t, tieHigh), page[3].ID())
-<span id="L137" class="ln">   137  </span>			})
-<span id="L138" class="ln">   138  </span>		})
-<span id="L139" class="ln">   139  </span>
-<span id="L140" class="ln">   140  </span>		t.Run(&#34;category_idフィルタは該当カテゴリのみを返す&#34;, func(t *testing.T) {
-<span id="L141" class="ln">   141  </span>			t.Parallel()
-<span id="L142" class="ln">   142  </span>
-<span id="L143" class="ln">   143  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L144" class="ln">   144  </span>				drv := driver.New(ctx, testDB)
-<span id="L145" class="ln">   145  </span>				bookID := &#34;eeeeeeee-0000-4000-8000-0000000000b1&#34;
-<span id="L146" class="ln">   146  </span>				insertProduct(ctx, t, drv, tieHigh, probeKeyword+&#34;-E&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
-<span id="L147" class="ln">   147  </span>				insertProduct(ctx, t, drv, bookID, probeKeyword+&#34;-BOOK&#34;, nil, 1000, statusInStock, categoryBooks, ptr.To(base))
+<span id="L115" class="ln">   115  </span>				require.Len(t, secondPage, 2)
+<span id="L116" class="ln">   116  </span>				assert.Equal(t, mustParse(t, mid), secondPage[0].ID())
+<span id="L117" class="ln">   117  </span>				assert.Equal(t, mustParse(t, old), secondPage[1].ID())
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>				<span class="comment">// 未公開(NULL)行はどのページにも現れない。</span>
+<span id="L120" class="ln">   120  </span>				all, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L121" class="ln">   121  </span>					Limit: 100, Ascending: false, Keyword: ptr.To(probeKeyword),
+<span id="L122" class="ln">   122  </span>				})
+<span id="L123" class="ln">   123  </span>				require.NoError(t, err)
+<span id="L124" class="ln">   124  </span>				for _, p := range all {
+<span id="L125" class="ln">   125  </span>					assert.NotEqual(t, mustParse(t, null), p.ID())
+<span id="L126" class="ln">   126  </span>				}
+<span id="L127" class="ln">   127  </span>			})
+<span id="L128" class="ln">   128  </span>		})
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span>		t.Run(&#34;昇順では公開日時の古い順に返る&#34;, func(t *testing.T) {
+<span id="L131" class="ln">   131  </span>			t.Parallel()
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L134" class="ln">   134  </span>				drv := driver.New(ctx, testDB)
+<span id="L135" class="ln">   135  </span>				insertProbeSet(ctx, t, drv)
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L138" class="ln">   138  </span>					Limit: 10, Ascending: true, Keyword: ptr.To(probeKeyword),
+<span id="L139" class="ln">   139  </span>				})
+<span id="L140" class="ln">   140  </span>				require.NoError(t, err)
+<span id="L141" class="ln">   141  </span>				require.Len(t, page, 4)
+<span id="L142" class="ln">   142  </span>				assert.Equal(t, mustParse(t, old), page[0].ID())
+<span id="L143" class="ln">   143  </span>				assert.Equal(t, mustParse(t, mid), page[1].ID())
+<span id="L144" class="ln">   144  </span>				assert.Equal(t, mustParse(t, tieLow), page[2].ID())
+<span id="L145" class="ln">   145  </span>				assert.Equal(t, mustParse(t, tieHigh), page[3].ID())
+<span id="L146" class="ln">   146  </span>			})
+<span id="L147" class="ln">   147  </span>		})
 <span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span>				categoryID := mustParse(t, categoryBooks)
-<span id="L150" class="ln">   150  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L151" class="ln">   151  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword), CategoryID: &amp;categoryID,
-<span id="L152" class="ln">   152  </span>				})
-<span id="L153" class="ln">   153  </span>				require.NoError(t, err)
-<span id="L154" class="ln">   154  </span>				require.Len(t, page, 1)
-<span id="L155" class="ln">   155  </span>				assert.Equal(t, mustParse(t, bookID), page[0].ID())
-<span id="L156" class="ln">   156  </span>			})
-<span id="L157" class="ln">   157  </span>		})
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>		t.Run(&#34;status_idフィルタは該当ステータスのみを返す&#34;, func(t *testing.T) {
-<span id="L160" class="ln">   160  </span>			t.Parallel()
-<span id="L161" class="ln">   161  </span>
-<span id="L162" class="ln">   162  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L163" class="ln">   163  </span>				drv := driver.New(ctx, testDB)
-<span id="L164" class="ln">   164  </span>				outID := &#34;eeeeeeee-0000-4000-8000-0000000000c1&#34;
-<span id="L165" class="ln">   165  </span>				insertProduct(ctx, t, drv, tieHigh, probeKeyword+&#34;-F&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
-<span id="L166" class="ln">   166  </span>				insertProduct(ctx, t, drv, outID, probeKeyword+&#34;-OUT&#34;, nil, 1000, statusOutOfStock, categoryElectronics, ptr.To(base))
+<span id="L149" class="ln">   149  </span>		t.Run(&#34;category_idフィルタは該当カテゴリのみを返す&#34;, func(t *testing.T) {
+<span id="L150" class="ln">   150  </span>			t.Parallel()
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L153" class="ln">   153  </span>				drv := driver.New(ctx, testDB)
+<span id="L154" class="ln">   154  </span>				bookID := &#34;eeeeeeee-0000-4000-8000-0000000000b1&#34;
+<span id="L155" class="ln">   155  </span>				insertProduct(ctx, t, drv, tieHigh, probeKeyword+&#34;-E&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L156" class="ln">   156  </span>				insertProduct(ctx, t, drv, bookID, probeKeyword+&#34;-BOOK&#34;, nil, 1000, statusInStock, categoryBooks, ptr.To(base))
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>				categoryID := mustParse(t, categoryBooks)
+<span id="L159" class="ln">   159  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L160" class="ln">   160  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword), CategoryID: &amp;categoryID,
+<span id="L161" class="ln">   161  </span>				})
+<span id="L162" class="ln">   162  </span>				require.NoError(t, err)
+<span id="L163" class="ln">   163  </span>				require.Len(t, page, 1)
+<span id="L164" class="ln">   164  </span>				assert.Equal(t, mustParse(t, bookID), page[0].ID())
+<span id="L165" class="ln">   165  </span>			})
+<span id="L166" class="ln">   166  </span>		})
 <span id="L167" class="ln">   167  </span>
-<span id="L168" class="ln">   168  </span>				statusID := mustParse(t, statusOutOfStock)
-<span id="L169" class="ln">   169  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L170" class="ln">   170  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword), StatusID: &amp;statusID,
-<span id="L171" class="ln">   171  </span>				})
-<span id="L172" class="ln">   172  </span>				require.NoError(t, err)
-<span id="L173" class="ln">   173  </span>				require.Len(t, page, 1)
-<span id="L174" class="ln">   174  </span>				assert.Equal(t, mustParse(t, outID), page[0].ID())
-<span id="L175" class="ln">   175  </span>			})
-<span id="L176" class="ln">   176  </span>		})
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>		t.Run(&#34;keywordは名称と説明の両方に部分一致する&#34;, func(t *testing.T) {
-<span id="L179" class="ln">   179  </span>			t.Parallel()
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L182" class="ln">   182  </span>				drv := driver.New(ctx, testDB)
-<span id="L183" class="ln">   183  </span>				nameHit := &#34;eeeeeeee-0000-4000-8000-0000000000d1&#34;
-<span id="L184" class="ln">   184  </span>				descHit := &#34;eeeeeeee-0000-4000-8000-0000000000d2&#34;
-<span id="L185" class="ln">   185  </span>				<span class="comment">// name に一致。</span>
-<span id="L186" class="ln">   186  </span>				insertProduct(ctx, t, drv, nameHit, probeKeyword+&#34;-NAME&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
-<span id="L187" class="ln">   187  </span>				<span class="comment">// description に一致（name は非一致）。</span>
-<span id="L188" class="ln">   188  </span>				insertProduct(
-<span id="L189" class="ln">   189  </span>					ctx,
-<span id="L190" class="ln">   190  </span>					t,
-<span id="L191" class="ln">   191  </span>					drv,
-<span id="L192" class="ln">   192  </span>					descHit,
-<span id="L193" class="ln">   193  </span>					&#34;無関係な商品名&#34;,
-<span id="L194" class="ln">   194  </span>					ptr.To(&#34;これは &#34;+probeKeyword+&#34; を含む説明&#34;),
-<span id="L195" class="ln">   195  </span>					1000,
-<span id="L196" class="ln">   196  </span>					statusInStock,
-<span id="L197" class="ln">   197  </span>					categoryElectronics,
-<span id="L198" class="ln">   198  </span>					ptr.To(base.Add(-time.Hour)),
-<span id="L199" class="ln">   199  </span>				)
-<span id="L200" class="ln">   200  </span>
-<span id="L201" class="ln">   201  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L202" class="ln">   202  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword),
-<span id="L203" class="ln">   203  </span>				})
-<span id="L204" class="ln">   204  </span>				require.NoError(t, err)
-<span id="L205" class="ln">   205  </span>				require.Len(t, page, 2)
-<span id="L206" class="ln">   206  </span>			})
-<span id="L207" class="ln">   207  </span>		})
-<span id="L208" class="ln">   208  </span>	})
+<span id="L168" class="ln">   168  </span>		t.Run(&#34;status_idフィルタは該当ステータスのみを返す&#34;, func(t *testing.T) {
+<span id="L169" class="ln">   169  </span>			t.Parallel()
+<span id="L170" class="ln">   170  </span>
+<span id="L171" class="ln">   171  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L172" class="ln">   172  </span>				drv := driver.New(ctx, testDB)
+<span id="L173" class="ln">   173  </span>				outID := &#34;eeeeeeee-0000-4000-8000-0000000000c1&#34;
+<span id="L174" class="ln">   174  </span>				insertProduct(ctx, t, drv, tieHigh, probeKeyword+&#34;-F&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L175" class="ln">   175  </span>				insertProduct(ctx, t, drv, outID, probeKeyword+&#34;-OUT&#34;, nil, 1000, statusOutOfStock, categoryElectronics, ptr.To(base))
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>				statusID := mustParse(t, statusOutOfStock)
+<span id="L178" class="ln">   178  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L179" class="ln">   179  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword), StatusID: &amp;statusID,
+<span id="L180" class="ln">   180  </span>				})
+<span id="L181" class="ln">   181  </span>				require.NoError(t, err)
+<span id="L182" class="ln">   182  </span>				require.Len(t, page, 1)
+<span id="L183" class="ln">   183  </span>				assert.Equal(t, mustParse(t, outID), page[0].ID())
+<span id="L184" class="ln">   184  </span>			})
+<span id="L185" class="ln">   185  </span>		})
+<span id="L186" class="ln">   186  </span>
+<span id="L187" class="ln">   187  </span>		t.Run(&#34;keywordは名称と説明の両方に部分一致する&#34;, func(t *testing.T) {
+<span id="L188" class="ln">   188  </span>			t.Parallel()
+<span id="L189" class="ln">   189  </span>
+<span id="L190" class="ln">   190  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L191" class="ln">   191  </span>				drv := driver.New(ctx, testDB)
+<span id="L192" class="ln">   192  </span>				nameHit := &#34;eeeeeeee-0000-4000-8000-0000000000d1&#34;
+<span id="L193" class="ln">   193  </span>				descHit := &#34;eeeeeeee-0000-4000-8000-0000000000d2&#34;
+<span id="L194" class="ln">   194  </span>				<span class="comment">// name に一致。</span>
+<span id="L195" class="ln">   195  </span>				insertProduct(ctx, t, drv, nameHit, probeKeyword+&#34;-NAME&#34;, nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L196" class="ln">   196  </span>				<span class="comment">// description に一致（name は非一致）。</span>
+<span id="L197" class="ln">   197  </span>				insertProduct(
+<span id="L198" class="ln">   198  </span>					ctx,
+<span id="L199" class="ln">   199  </span>					t,
+<span id="L200" class="ln">   200  </span>					drv,
+<span id="L201" class="ln">   201  </span>					descHit,
+<span id="L202" class="ln">   202  </span>					&#34;無関係な商品名&#34;,
+<span id="L203" class="ln">   203  </span>					ptr.To(&#34;これは &#34;+probeKeyword+&#34; を含む説明&#34;),
+<span id="L204" class="ln">   204  </span>					1000,
+<span id="L205" class="ln">   205  </span>					statusInStock,
+<span id="L206" class="ln">   206  </span>					categoryElectronics,
+<span id="L207" class="ln">   207  </span>					ptr.To(base.Add(-time.Hour)),
+<span id="L208" class="ln">   208  </span>				)
 <span id="L209" class="ln">   209  </span>
-<span id="L210" class="ln">   210  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L211" class="ln">   211  </span>		t.Parallel()
-<span id="L212" class="ln">   212  </span>
-<span id="L213" class="ln">   213  </span>		t.Run(&#34;limitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
-<span id="L214" class="ln">   214  </span>			t.Parallel()
-<span id="L215" class="ln">   215  </span>
-<span id="L216" class="ln">   216  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L217" class="ln">   217  </span>				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{Limit: -1, Ascending: false})
-<span id="L218" class="ln">   218  </span>				require.Nil(t, actual)
-<span id="L219" class="ln">   219  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L220" class="ln">   220  </span>			})
-<span id="L221" class="ln">   221  </span>		})
-<span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>		t.Run(&#34;不正な行(価格が負数)が含まれるとデータ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
-<span id="L224" class="ln">   224  </span>			t.Parallel()
-<span id="L225" class="ln">   225  </span>
-<span id="L226" class="ln">   226  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L227" class="ln">   227  </span>				drv := driver.New(ctx, testDB)
-<span id="L228" class="ln">   228  </span>				invalidID := &#34;eeeeeeee-0000-4000-8000-0000000000e1&#34;
-<span id="L229" class="ln">   229  </span>				<span class="comment">// price=-1 はドメイン不変条件違反(再構築エラー)を誘発する。</span>
-<span id="L230" class="ln">   230  </span>				insertProduct(ctx, t, drv, invalidID, probeKeyword+&#34;-BADPRICE&#34;, nil, -1, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L210" class="ln">   210  </span>				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L211" class="ln">   211  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword),
+<span id="L212" class="ln">   212  </span>				})
+<span id="L213" class="ln">   213  </span>				require.NoError(t, err)
+<span id="L214" class="ln">   214  </span>				require.Len(t, page, 2)
+<span id="L215" class="ln">   215  </span>			})
+<span id="L216" class="ln">   216  </span>		})
+<span id="L217" class="ln">   217  </span>	})
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L220" class="ln">   220  </span>		t.Parallel()
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>		t.Run(&#34;limitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L223" class="ln">   223  </span>			t.Parallel()
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L226" class="ln">   226  </span>				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{Limit: -1, Ascending: false})
+<span id="L227" class="ln">   227  </span>				assert.Nil(t, actual)
+<span id="L228" class="ln">   228  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L229" class="ln">   229  </span>			})
+<span id="L230" class="ln">   230  </span>		})
 <span id="L231" class="ln">   231  </span>
-<span id="L232" class="ln">   232  </span>				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-<span id="L233" class="ln">   233  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword),
-<span id="L234" class="ln">   234  </span>				})
-<span id="L235" class="ln">   235  </span>				require.Nil(t, actual)
-<span id="L236" class="ln">   236  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L237" class="ln">   237  </span>				require.NotErrorIs(t, err, domainproduct.ErrInvalidPrice)
-<span id="L238" class="ln">   238  </span>			})
-<span id="L239" class="ln">   239  </span>		})
-<span id="L240" class="ln">   240  </span>	})
-<span id="L241" class="ln">   241  </span>}
-<span id="L242" class="ln">   242  </span>
-<span id="L243" class="ln">   243  </span>func Test_int32PtrToIntPtr(t *testing.T) {
-<span id="L244" class="ln">   244  </span>	t.Parallel()
-<span id="L245" class="ln">   245  </span>
-<span id="L246" class="ln">   246  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L247" class="ln">   247  </span>		t.Parallel()
-<span id="L248" class="ln">   248  </span>
-<span id="L249" class="ln">   249  </span>		t.Run(&#34;nilの場合はnilを返す&#34;, func(t *testing.T) {
-<span id="L250" class="ln">   250  </span>			t.Parallel()
-<span id="L251" class="ln">   251  </span>			assert.Nil(t, int32PtrToIntPtr(nil))
-<span id="L252" class="ln">   252  </span>		})
-<span id="L253" class="ln">   253  </span>
-<span id="L254" class="ln">   254  </span>		t.Run(&#34;非nilの場合は値を保持したintポインタを返す&#34;, func(t *testing.T) {
-<span id="L255" class="ln">   255  </span>			t.Parallel()
-<span id="L256" class="ln">   256  </span>			v := int32(7)
-<span id="L257" class="ln">   257  </span>			got := int32PtrToIntPtr(&amp;v)
-<span id="L258" class="ln">   258  </span>			require.NotNil(t, got)
-<span id="L259" class="ln">   259  </span>			assert.Equal(t, 7, *got)
-<span id="L260" class="ln">   260  </span>		})
-<span id="L261" class="ln">   261  </span>	})
-<span id="L262" class="ln">   262  </span>}
-<span id="L263" class="ln">   263  </span>
-<span id="L264" class="ln">   264  </span>func Test_rowToProduct(t *testing.T) {
-<span id="L265" class="ln">   265  </span>	t.Parallel()
-<span id="L266" class="ln">   266  </span>
-<span id="L267" class="ln">   267  </span>	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
-<span id="L268" class="ln">   268  </span>	id := uuid.NewTestFromSalt(t, &#34;row_to_product_id&#34;)
-<span id="L269" class="ln">   269  </span>	statusID := uuid.NewTestFromSalt(t, &#34;row_to_product_status&#34;)
-<span id="L270" class="ln">   270  </span>	categoryID := uuid.NewTestFromSalt(t, &#34;row_to_product_category&#34;)
-<span id="L271" class="ln">   271  </span>
-<span id="L272" class="ln">   272  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L273" class="ln">   273  </span>		t.Parallel()
+<span id="L232" class="ln">   232  </span>		t.Run(&#34;不正な行(価格が負数)が含まれるとデータ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
+<span id="L233" class="ln">   233  </span>			t.Parallel()
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L236" class="ln">   236  </span>				drv := driver.New(ctx, testDB)
+<span id="L237" class="ln">   237  </span>				invalidID := &#34;eeeeeeee-0000-4000-8000-0000000000e1&#34;
+<span id="L238" class="ln">   238  </span>				<span class="comment">// price=-1 はドメイン不変条件違反(再構築エラー)を誘発する。</span>
+<span id="L239" class="ln">   239  </span>				insertProduct(ctx, t, drv, invalidID, probeKeyword+&#34;-BADPRICE&#34;, nil, -1, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L240" class="ln">   240  </span>
+<span id="L241" class="ln">   241  </span>				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+<span id="L242" class="ln">   242  </span>					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword),
+<span id="L243" class="ln">   243  </span>				})
+<span id="L244" class="ln">   244  </span>				assert.Nil(t, actual)
+<span id="L245" class="ln">   245  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L246" class="ln">   246  </span>				require.NotErrorIs(t, err, money.ErrNegativePrice)
+<span id="L247" class="ln">   247  </span>			})
+<span id="L248" class="ln">   248  </span>		})
+<span id="L249" class="ln">   249  </span>	})
+<span id="L250" class="ln">   250  </span>}
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>func Test_repository_FindPublishedByID(t *testing.T) {
+<span id="L253" class="ln">   253  </span>	t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>	testDB := testkit.NewTestDB(t)
+<span id="L256" class="ln">   256  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L257" class="ln">   257  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L258" class="ln">   258  </span>
+<span id="L259" class="ln">   259  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L260" class="ln">   260  </span>
+<span id="L261" class="ln">   261  </span>	publishedID := &#34;ffffffff-0000-4000-8000-000000000001&#34;
+<span id="L262" class="ln">   262  </span>	unpublishedID := &#34;ffffffff-0000-4000-8000-000000000002&#34;
+<span id="L263" class="ln">   263  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L266" class="ln">   266  </span>		t.Parallel()
+<span id="L267" class="ln">   267  </span>
+<span id="L268" class="ln">   268  </span>		t.Run(&#34;公開中の商品をIDで取得できる&#34;, func(t *testing.T) {
+<span id="L269" class="ln">   269  </span>			t.Parallel()
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L272" class="ln">   272  </span>				drv := driver.New(ctx, testDB)
+<span id="L273" class="ln">   273  </span>				insertProduct(ctx, t, drv, publishedID, probeKeyword+&#34;-PUB&#34;, ptr.To(&#34;説明&#34;), 1999, statusInStock, categoryElectronics, ptr.To(base))
 <span id="L274" class="ln">   274  </span>
-<span id="L275" class="ln">   275  </span>		t.Run(&#34;gen.Products をドメインエンティティへ変換する&#34;, func(t *testing.T) {
-<span id="L276" class="ln">   276  </span>			t.Parallel()
-<span id="L277" class="ln">   277  </span>			row := gen.Products{
-<span id="L278" class="ln">   278  </span>				ID:                    id,
-<span id="L279" class="ln">   279  </span>				Name:                  &#34;商品&#34;,
-<span id="L280" class="ln">   280  </span>				Description:           ptr.To(&#34;説明&#34;),
-<span id="L281" class="ln">   281  </span>				Price:                 1999,
-<span id="L282" class="ln">   282  </span>				Quantity:              100,
-<span id="L283" class="ln">   283  </span>				StockWarningThreshold: ptr.To(int32(10)),
-<span id="L284" class="ln">   284  </span>				StatusID:              statusID,
-<span id="L285" class="ln">   285  </span>				CategoryID:            categoryID,
-<span id="L286" class="ln">   286  </span>				PublishedAt:           ptr.To(publishedAt),
-<span id="L287" class="ln">   287  </span>			}
-<span id="L288" class="ln">   288  </span>			got, err := rowToProduct(row)
-<span id="L289" class="ln">   289  </span>			require.NoError(t, err)
-<span id="L290" class="ln">   290  </span>			assert.Equal(t, id, got.ID())
-<span id="L291" class="ln">   291  </span>			assert.Equal(t, 1999, got.Price())
-<span id="L292" class="ln">   292  </span>			assert.Equal(t, publishedAt, got.PublishedAt())
-<span id="L293" class="ln">   293  </span>		})
-<span id="L294" class="ln">   294  </span>	})
-<span id="L295" class="ln">   295  </span>
-<span id="L296" class="ln">   296  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L297" class="ln">   297  </span>		t.Parallel()
-<span id="L298" class="ln">   298  </span>
-<span id="L299" class="ln">   299  </span>		t.Run(&#34;不変条件違反(価格が負数)はデータ不整合としてErrInternalへ正規化される&#34;, func(t *testing.T) {
-<span id="L300" class="ln">   300  </span>			t.Parallel()
-<span id="L301" class="ln">   301  </span>			row := gen.Products{
-<span id="L302" class="ln">   302  </span>				ID:          id,
-<span id="L303" class="ln">   303  </span>				Name:        &#34;商品&#34;,
-<span id="L304" class="ln">   304  </span>				Price:       -1,
-<span id="L305" class="ln">   305  </span>				Quantity:    100,
-<span id="L306" class="ln">   306  </span>				StatusID:    statusID,
-<span id="L307" class="ln">   307  </span>				CategoryID:  categoryID,
-<span id="L308" class="ln">   308  </span>				PublishedAt: ptr.To(publishedAt),
-<span id="L309" class="ln">   309  </span>			}
-<span id="L310" class="ln">   310  </span>			got, err := rowToProduct(row)
-<span id="L311" class="ln">   311  </span>			require.Nil(t, got)
-<span id="L312" class="ln">   312  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L313" class="ln">   313  </span>		})
-<span id="L314" class="ln">   314  </span>	})
-<span id="L315" class="ln">   315  </span>}
-<span id="L316" class="ln">   316  </span>
+<span id="L275" class="ln">   275  </span>				got, err := repo.FindPublishedByID(ctx, mustParse(t, publishedID))
+<span id="L276" class="ln">   276  </span>				require.NoError(t, err)
+<span id="L277" class="ln">   277  </span>				require.NotNil(t, got)
+<span id="L278" class="ln">   278  </span>				assert.Equal(t, mustParse(t, publishedID), got.ID())
+<span id="L279" class="ln">   279  </span>				require.NotNil(t, got.Description())
+<span id="L280" class="ln">   280  </span>				assert.Equal(t, &#34;説明&#34;, *got.Description())
+<span id="L281" class="ln">   281  </span>				assert.Equal(t, &#34;1999&#34;, got.Price().String())
+<span id="L282" class="ln">   282  </span>				assert.Equal(t, 10, got.Quantity())
+<span id="L283" class="ln">   283  </span>				assert.Nil(t, got.StockWarningThreshold())
+<span id="L284" class="ln">   284  </span>				<span class="comment">// 固定参照マスタとの結合で解決した status / category を ID・名称とも実 DB 経由で固定する</span>
+<span id="L285" class="ln">   285  </span>				<span class="comment">// （SQL の結合エイリアス取り違え＝status/category の名称入れ替わりを検出するため、異なる 2 値で検証）。</span>
+<span id="L286" class="ln">   286  </span>				assert.Equal(t, mustParse(t, statusInStock), got.Status().ID())
+<span id="L287" class="ln">   287  </span>				assert.Equal(t, &#34;在庫あり&#34;, got.Status().Name())
+<span id="L288" class="ln">   288  </span>				assert.Equal(t, mustParse(t, categoryElectronics), got.Category().ID())
+<span id="L289" class="ln">   289  </span>				assert.Equal(t, &#34;電子機器&#34;, got.Category().Name())
+<span id="L290" class="ln">   290  </span>				<span class="comment">// DB は timestamptz をローカルタイムゾーンで返すため、格納した瞬間の一致で比較する。</span>
+<span id="L291" class="ln">   291  </span>				require.NotNil(t, got.PublishedAt())
+<span id="L292" class="ln">   292  </span>				assert.True(t, base.Equal(*got.PublishedAt()))
+<span id="L293" class="ln">   293  </span>			})
+<span id="L294" class="ln">   294  </span>		})
+<span id="L295" class="ln">   295  </span>	})
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L298" class="ln">   298  </span>		t.Parallel()
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>		t.Run(&#34;未存在のIDはNotFoundを返す&#34;, func(t *testing.T) {
+<span id="L301" class="ln">   301  </span>			t.Parallel()
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L304" class="ln">   304  </span>				got, err := repo.FindPublishedByID(ctx, uuidtestkit.NewTestFromSalt(t, &#34;find_published_by_id_missing&#34;))
+<span id="L305" class="ln">   305  </span>				assert.Nil(t, got)
+<span id="L306" class="ln">   306  </span>				require.ErrorIs(t, err, apperror.ErrNotFound)
+<span id="L307" class="ln">   307  </span>			})
+<span id="L308" class="ln">   308  </span>		})
+<span id="L309" class="ln">   309  </span>
+<span id="L310" class="ln">   310  </span>		t.Run(&#34;非公開(published_atがNULL)の商品はNotFoundを返し存在を秘匿する&#34;, func(t *testing.T) {
+<span id="L311" class="ln">   311  </span>			t.Parallel()
+<span id="L312" class="ln">   312  </span>
+<span id="L313" class="ln">   313  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L314" class="ln">   314  </span>				drv := driver.New(ctx, testDB)
+<span id="L315" class="ln">   315  </span>				<span class="comment">// published_at が NULL の行は公開述語に合致しないため、未存在と同じ NotFound が返る（存在秘匿）。</span>
+<span id="L316" class="ln">   316  </span>				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+&#34;-UNPUB&#34;, nil, 1999, statusInStock, categoryElectronics, nil)
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>				got, err := repo.FindPublishedByID(ctx, mustParse(t, unpublishedID))
+<span id="L319" class="ln">   319  </span>				assert.Nil(t, got)
+<span id="L320" class="ln">   320  </span>				require.ErrorIs(t, err, apperror.ErrNotFound)
+<span id="L321" class="ln">   321  </span>			})
+<span id="L322" class="ln">   322  </span>		})
+<span id="L323" class="ln">   323  </span>
+<span id="L324" class="ln">   324  </span>		t.Run(&#34;不正な行(価格が負数)が取得されるとデータ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
+<span id="L325" class="ln">   325  </span>			t.Parallel()
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L328" class="ln">   328  </span>				drv := driver.New(ctx, testDB)
+<span id="L329" class="ln">   329  </span>				invalidID := &#34;ffffffff-0000-4000-8000-000000000003&#34;
+<span id="L330" class="ln">   330  </span>				<span class="comment">// price=-1 はドメイン不変条件違反(再構築エラー)を誘発する。公開述語を通すため published_at は設定する。</span>
+<span id="L331" class="ln">   331  </span>				insertProduct(ctx, t, drv, invalidID, probeKeyword+&#34;-BADPRICE&#34;, nil, -1, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span>				got, err := repo.FindPublishedByID(ctx, mustParse(t, invalidID))
+<span id="L334" class="ln">   334  </span>				assert.Nil(t, got)
+<span id="L335" class="ln">   335  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L336" class="ln">   336  </span>				require.NotErrorIs(t, err, money.ErrNegativePrice)
+<span id="L337" class="ln">   337  </span>			})
+<span id="L338" class="ln">   338  </span>		})
+<span id="L339" class="ln">   339  </span>	})
+<span id="L340" class="ln">   340  </span>}
+<span id="L341" class="ln">   341  </span>
+<span id="L342" class="ln">   342  </span>func Test_rowToProduct(t *testing.T) {
+<span id="L343" class="ln">   343  </span>	t.Parallel()
+<span id="L344" class="ln">   344  </span>
+<span id="L345" class="ln">   345  </span>	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+<span id="L346" class="ln">   346  </span>	id := uuidtestkit.NewTestFromSalt(t, &#34;row_to_product_id&#34;)
+<span id="L347" class="ln">   347  </span>	statusID := uuidtestkit.NewTestFromSalt(t, &#34;row_to_product_status&#34;)
+<span id="L348" class="ln">   348  </span>	categoryID := uuidtestkit.NewTestFromSalt(t, &#34;row_to_product_category&#34;)
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L351" class="ln">   351  </span>		t.Parallel()
+<span id="L352" class="ln">   352  </span>
+<span id="L353" class="ln">   353  </span>		t.Run(&#34;商品行(マスタ JOIN 込み)をドメインエンティティへ変換する&#34;, func(t *testing.T) {
+<span id="L354" class="ln">   354  </span>			t.Parallel()
+<span id="L355" class="ln">   355  </span>			row := gen.Products{
+<span id="L356" class="ln">   356  </span>				ID:                    id,
+<span id="L357" class="ln">   357  </span>				Name:                  &#34;商品&#34;,
+<span id="L358" class="ln">   358  </span>				Description:           ptr.To(&#34;説明&#34;),
+<span id="L359" class="ln">   359  </span>				Price:                 decimal.FromInt(1999),
+<span id="L360" class="ln">   360  </span>				Quantity:              100,
+<span id="L361" class="ln">   361  </span>				StockWarningThreshold: ptr.To(int32(10)),
+<span id="L362" class="ln">   362  </span>				StatusID:              statusID,
+<span id="L363" class="ln">   363  </span>				CategoryID:            categoryID,
+<span id="L364" class="ln">   364  </span>				PublishedAt:           ptr.To(publishedAt),
+<span id="L365" class="ln">   365  </span>				ImagePath:             ptr.To(&#34;products/earphone.png&#34;),
+<span id="L366" class="ln">   366  </span>				LockVersion:           3,
+<span id="L367" class="ln">   367  </span>			}
+<span id="L368" class="ln">   368  </span>			got, err := rowToProduct(productRow{p: row, statusName: &#34;在庫あり&#34;, categoryName: &#34;電子機器&#34;})
+<span id="L369" class="ln">   369  </span>			require.NoError(t, err)
+<span id="L370" class="ln">   370  </span>			assert.Equal(t, id, got.ID())
+<span id="L371" class="ln">   371  </span>			assert.Equal(t, &#34;商品&#34;, got.Name())
+<span id="L372" class="ln">   372  </span>			assert.Equal(t, &#34;1999&#34;, got.Price().String())
+<span id="L373" class="ln">   373  </span>			assert.Equal(t, 100, got.Quantity())
+<span id="L374" class="ln">   374  </span>			require.NotNil(t, got.StockWarningThreshold())
+<span id="L375" class="ln">   375  </span>			assert.Equal(t, 10, *got.StockWarningThreshold())
+<span id="L376" class="ln">   376  </span>			assert.Equal(t, statusID, got.Status().ID())
+<span id="L377" class="ln">   377  </span>			assert.Equal(t, &#34;在庫あり&#34;, got.Status().Name())
+<span id="L378" class="ln">   378  </span>			assert.Equal(t, categoryID, got.Category().ID())
+<span id="L379" class="ln">   379  </span>			assert.Equal(t, &#34;電子機器&#34;, got.Category().Name())
+<span id="L380" class="ln">   380  </span>			require.NotNil(t, got.PublishedAt())
+<span id="L381" class="ln">   381  </span>			assert.Equal(t, publishedAt, *got.PublishedAt())
+<span id="L382" class="ln">   382  </span>			<span class="comment">// 同型の description / image_path は、取り違えを検出できるよう異なる値で対応を固定する。</span>
+<span id="L383" class="ln">   383  </span>			require.NotNil(t, got.Description())
+<span id="L384" class="ln">   384  </span>			assert.Equal(t, &#34;説明&#34;, *got.Description())
+<span id="L385" class="ln">   385  </span>			require.NotNil(t, got.ImagePath())
+<span id="L386" class="ln">   386  </span>			assert.Equal(t, &#34;products/earphone.png&#34;, *got.ImagePath())
+<span id="L387" class="ln">   387  </span>			assert.Equal(t, 3, got.Version())
+<span id="L388" class="ln">   388  </span>		})
+<span id="L389" class="ln">   389  </span>	})
+<span id="L390" class="ln">   390  </span>
+<span id="L391" class="ln">   391  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L392" class="ln">   392  </span>		t.Parallel()
+<span id="L393" class="ln">   393  </span>
+<span id="L394" class="ln">   394  </span>		t.Run(&#34;不変条件違反(価格が負数)はデータ不整合としてErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L395" class="ln">   395  </span>			t.Parallel()
+<span id="L396" class="ln">   396  </span>			row := gen.Products{
+<span id="L397" class="ln">   397  </span>				ID:          id,
+<span id="L398" class="ln">   398  </span>				Name:        &#34;商品&#34;,
+<span id="L399" class="ln">   399  </span>				Price:       decimal.FromInt(-1),
+<span id="L400" class="ln">   400  </span>				Quantity:    100,
+<span id="L401" class="ln">   401  </span>				StatusID:    statusID,
+<span id="L402" class="ln">   402  </span>				CategoryID:  categoryID,
+<span id="L403" class="ln">   403  </span>				PublishedAt: ptr.To(publishedAt),
+<span id="L404" class="ln">   404  </span>			}
+<span id="L405" class="ln">   405  </span>			got, err := rowToProduct(productRow{p: row, statusName: &#34;在庫あり&#34;, categoryName: &#34;電子機器&#34;})
+<span id="L406" class="ln">   406  </span>			assert.Nil(t, got)
+<span id="L407" class="ln">   407  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L408" class="ln">   408  </span>		})
+<span id="L409" class="ln">   409  </span>
+<span id="L410" class="ln">   410  </span>		t.Run(&#34;JOIN で解決したステータス名が空の場合はデータ不整合としてErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L411" class="ln">   411  </span>			t.Parallel()
+<span id="L412" class="ln">   412  </span>			row := gen.Products{
+<span id="L413" class="ln">   413  </span>				ID:          id,
+<span id="L414" class="ln">   414  </span>				Name:        &#34;商品&#34;,
+<span id="L415" class="ln">   415  </span>				Price:       decimal.FromInt(1999),
+<span id="L416" class="ln">   416  </span>				Quantity:    100,
+<span id="L417" class="ln">   417  </span>				StatusID:    statusID,
+<span id="L418" class="ln">   418  </span>				CategoryID:  categoryID,
+<span id="L419" class="ln">   419  </span>				PublishedAt: ptr.To(publishedAt),
+<span id="L420" class="ln">   420  </span>			}
+<span id="L421" class="ln">   421  </span>			got, err := rowToProduct(productRow{p: row, statusName: &#34;&#34;, categoryName: &#34;電子機器&#34;})
+<span id="L422" class="ln">   422  </span>			assert.Nil(t, got)
+<span id="L423" class="ln">   423  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L424" class="ln">   424  </span>		})
+<span id="L425" class="ln">   425  </span>
+<span id="L426" class="ln">   426  </span>		t.Run(&#34;JOIN で解決したカテゴリ名が空の場合はデータ不整合としてErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L427" class="ln">   427  </span>			t.Parallel()
+<span id="L428" class="ln">   428  </span>			row := gen.Products{
+<span id="L429" class="ln">   429  </span>				ID:          id,
+<span id="L430" class="ln">   430  </span>				Name:        &#34;商品&#34;,
+<span id="L431" class="ln">   431  </span>				Price:       decimal.FromInt(1999),
+<span id="L432" class="ln">   432  </span>				Quantity:    100,
+<span id="L433" class="ln">   433  </span>				StatusID:    statusID,
+<span id="L434" class="ln">   434  </span>				CategoryID:  categoryID,
+<span id="L435" class="ln">   435  </span>				PublishedAt: ptr.To(publishedAt),
+<span id="L436" class="ln">   436  </span>			}
+<span id="L437" class="ln">   437  </span>			got, err := rowToProduct(productRow{p: row, statusName: &#34;在庫あり&#34;, categoryName: &#34;&#34;})
+<span id="L438" class="ln">   438  </span>			assert.Nil(t, got)
+<span id="L439" class="ln">   439  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L440" class="ln">   440  </span>		})
+<span id="L441" class="ln">   441  </span>
+<span id="L442" class="ln">   442  </span>		t.Run(&#34;バージョンが下限未満の行はエンティティ再構築の失敗としてErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L443" class="ln">   443  </span>			t.Parallel()
+<span id="L444" class="ln">   444  </span>			row := gen.Products{
+<span id="L445" class="ln">   445  </span>				ID:          id,
+<span id="L446" class="ln">   446  </span>				Name:        &#34;商品&#34;,
+<span id="L447" class="ln">   447  </span>				Price:       decimal.FromInt(1999),
+<span id="L448" class="ln">   448  </span>				Quantity:    100,
+<span id="L449" class="ln">   449  </span>				StatusID:    statusID,
+<span id="L450" class="ln">   450  </span>				CategoryID:  categoryID,
+<span id="L451" class="ln">   451  </span>				PublishedAt: ptr.To(publishedAt),
+<span id="L452" class="ln">   452  </span>				LockVersion: 0,
+<span id="L453" class="ln">   453  </span>			}
+<span id="L454" class="ln">   454  </span>			got, err := rowToProduct(productRow{p: row, statusName: &#34;在庫あり&#34;, categoryName: &#34;電子機器&#34;})
+<span id="L455" class="ln">   455  </span>			assert.Nil(t, got)
+<span id="L456" class="ln">   456  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L457" class="ln">   457  </span>			require.NotErrorIs(t, err, domainproduct.ErrInvalidVersion)
+<span id="L458" class="ln">   458  </span>		})
+<span id="L459" class="ln">   459  </span>	})
+<span id="L460" class="ln">   460  </span>}
+<span id="L461" class="ln">   461  </span>
+<span id="L462" class="ln">   462  </span>func Test_repository_Create(t *testing.T) {
+<span id="L463" class="ln">   463  </span>	t.Parallel()
+<span id="L464" class="ln">   464  </span>
+<span id="L465" class="ln">   465  </span>	testDB := testkit.NewTestDB(t)
+<span id="L466" class="ln">   466  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L467" class="ln">   467  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L468" class="ln">   468  </span>
+<span id="L469" class="ln">   469  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L470" class="ln">   470  </span>
+<span id="L471" class="ln">   471  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L472" class="ln">   472  </span>		t.Parallel()
+<span id="L473" class="ln">   473  </span>
+<span id="L474" class="ln">   474  </span>		t.Run(&#34;商品を登録し image_path / published_at / 説明を往復して取得できる&#34;, func(t *testing.T) {
+<span id="L475" class="ln">   475  </span>			t.Parallel()
+<span id="L476" class="ln">   476  </span>
+<span id="L477" class="ln">   477  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L478" class="ln">   478  </span>				id := uuidtestkit.NewTestFromSalt(t, &#34;create_roundtrip_id&#34;)
+<span id="L479" class="ln">   479  </span>				publishedAt := time.Date(2099, time.June, 1, 0, 0, 0, 0, time.UTC)
+<span id="L480" class="ln">   480  </span>				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), &#34;在庫あり&#34;)
+<span id="L481" class="ln">   481  </span>				require.NoError(t, err)
+<span id="L482" class="ln">   482  </span>				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), &#34;電子機器&#34;)
+<span id="L483" class="ln">   483  </span>				require.NoError(t, err)
+<span id="L484" class="ln">   484  </span>				price, err := money.NewPrice(decimal.FromInt(1999))
+<span id="L485" class="ln">   485  </span>				require.NoError(t, err)
+<span id="L486" class="ln">   486  </span>				entity, err := domainproduct.New(id, domainproduct.Attributes{
+<span id="L487" class="ln">   487  </span>					Name:                  &#34;作成商品&#34;,
+<span id="L488" class="ln">   488  </span>					Description:           ptr.To(&#34;&lt;p&gt;リッチテキスト説明&lt;/p&gt;&#34;),
+<span id="L489" class="ln">   489  </span>					Price:                 price,
+<span id="L490" class="ln">   490  </span>					Quantity:              100,
+<span id="L491" class="ln">   491  </span>					StockWarningThreshold: ptr.To(10),
+<span id="L492" class="ln">   492  </span>					Status:                statusRef,
+<span id="L493" class="ln">   493  </span>					Category:              categoryRef,
+<span id="L494" class="ln">   494  </span>					PublishedAt:           ptr.To(publishedAt),
+<span id="L495" class="ln">   495  </span>					ImagePath:             ptr.To(&#34;products/created.png&#34;),
+<span id="L496" class="ln">   496  </span>				})
+<span id="L497" class="ln">   497  </span>				require.NoError(t, err)
+<span id="L498" class="ln">   498  </span>
+<span id="L499" class="ln">   499  </span>				require.NoError(t, repo.Create(ctx, entity))
+<span id="L500" class="ln">   500  </span>
+<span id="L501" class="ln">   501  </span>				got, err := repo.FindPublishedByID(ctx, id)
+<span id="L502" class="ln">   502  </span>				require.NoError(t, err)
+<span id="L503" class="ln">   503  </span>				assert.Equal(t, &#34;作成商品&#34;, got.Name())
+<span id="L504" class="ln">   504  </span>				require.NotNil(t, got.Description())
+<span id="L505" class="ln">   505  </span>				assert.Equal(t, &#34;&lt;p&gt;リッチテキスト説明&lt;/p&gt;&#34;, *got.Description())
+<span id="L506" class="ln">   506  </span>				require.NotNil(t, got.ImagePath())
+<span id="L507" class="ln">   507  </span>				assert.Equal(t, &#34;products/created.png&#34;, *got.ImagePath())
+<span id="L508" class="ln">   508  </span>				require.NotNil(t, got.PublishedAt())
+<span id="L509" class="ln">   509  </span>				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
+<span id="L510" class="ln">   510  </span>			})
+<span id="L511" class="ln">   511  </span>		})
+<span id="L512" class="ln">   512  </span>
+<span id="L513" class="ln">   513  </span>		t.Run(&#34;image_path / published_at が nil の場合、DB へ NULL として登録される&#34;, func(t *testing.T) {
+<span id="L514" class="ln">   514  </span>			t.Parallel()
+<span id="L515" class="ln">   515  </span>
+<span id="L516" class="ln">   516  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L517" class="ln">   517  </span>				id := uuidtestkit.NewTestFromSalt(t, &#34;create_nil_optional_id&#34;)
+<span id="L518" class="ln">   518  </span>				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), &#34;在庫あり&#34;)
+<span id="L519" class="ln">   519  </span>				require.NoError(t, err)
+<span id="L520" class="ln">   520  </span>				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), &#34;電子機器&#34;)
+<span id="L521" class="ln">   521  </span>				require.NoError(t, err)
+<span id="L522" class="ln">   522  </span>				price, err := money.NewPrice(decimal.FromInt(500))
+<span id="L523" class="ln">   523  </span>				require.NoError(t, err)
+<span id="L524" class="ln">   524  </span>				entity, err := domainproduct.New(id, domainproduct.Attributes{
+<span id="L525" class="ln">   525  </span>					Name:     &#34;未公開商品&#34;,
+<span id="L526" class="ln">   526  </span>					Price:    price,
+<span id="L527" class="ln">   527  </span>					Quantity: 0,
+<span id="L528" class="ln">   528  </span>					Status:   statusRef,
+<span id="L529" class="ln">   529  </span>					Category: categoryRef,
+<span id="L530" class="ln">   530  </span>				})
+<span id="L531" class="ln">   531  </span>				require.NoError(t, err)
+<span id="L532" class="ln">   532  </span>
+<span id="L533" class="ln">   533  </span>				require.NoError(t, repo.Create(ctx, entity))
+<span id="L534" class="ln">   534  </span>
+<span id="L535" class="ln">   535  </span>				<span class="comment">// 公開述語(published_at IS NOT NULL)で除外されるため FindPublishedByID では読み戻せない。</span>
+<span id="L536" class="ln">   536  </span>				<span class="comment">// 実際に NULL 列として書き込まれたことを生 SQL で直接検証する。</span>
+<span id="L537" class="ln">   537  </span>				var publishedAt *time.Time
+<span id="L538" class="ln">   538  </span>				var imagePath *string
+<span id="L539" class="ln">   539  </span>				err = driver.New(ctx, testDB).
+<span id="L540" class="ln">   540  </span>					QueryRow(ctx, &#34;SELECT published_at, image_path FROM products WHERE id = $1&#34;, id).
+<span id="L541" class="ln">   541  </span>					Scan(&amp;publishedAt, &amp;imagePath)
+<span id="L542" class="ln">   542  </span>				require.NoError(t, err)
+<span id="L543" class="ln">   543  </span>				assert.Nil(t, publishedAt)
+<span id="L544" class="ln">   544  </span>				assert.Nil(t, imagePath)
+<span id="L545" class="ln">   545  </span>			})
+<span id="L546" class="ln">   546  </span>		})
+<span id="L547" class="ln">   547  </span>	})
+<span id="L548" class="ln">   548  </span>
+<span id="L549" class="ln">   549  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L550" class="ln">   550  </span>		t.Parallel()
+<span id="L551" class="ln">   551  </span>
+<span id="L552" class="ln">   552  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化される&#34;, func(t *testing.T) {
+<span id="L553" class="ln">   553  </span>			t.Parallel()
+<span id="L554" class="ln">   554  </span>
+<span id="L555" class="ln">   555  </span>			id := uuidtestkit.NewTestFromSalt(t, &#34;create_canceled_id&#34;)
+<span id="L556" class="ln">   556  </span>			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), &#34;在庫あり&#34;)
+<span id="L557" class="ln">   557  </span>			require.NoError(t, err)
+<span id="L558" class="ln">   558  </span>			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), &#34;電子機器&#34;)
+<span id="L559" class="ln">   559  </span>			require.NoError(t, err)
+<span id="L560" class="ln">   560  </span>			price, err := money.NewPrice(decimal.FromInt(100))
+<span id="L561" class="ln">   561  </span>			require.NoError(t, err)
+<span id="L562" class="ln">   562  </span>			entity, err := domainproduct.New(id, domainproduct.Attributes{
+<span id="L563" class="ln">   563  </span>				Name:     &#34;キャンセル商品&#34;,
+<span id="L564" class="ln">   564  </span>				Price:    price,
+<span id="L565" class="ln">   565  </span>				Quantity: 1,
+<span id="L566" class="ln">   566  </span>				Status:   statusRef,
+<span id="L567" class="ln">   567  </span>				Category: categoryRef,
+<span id="L568" class="ln">   568  </span>			})
+<span id="L569" class="ln">   569  </span>			require.NoError(t, err)
+<span id="L570" class="ln">   570  </span>
+<span id="L571" class="ln">   571  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L572" class="ln">   572  </span>			cancel()
+<span id="L573" class="ln">   573  </span>
+<span id="L574" class="ln">   574  </span>			<span class="comment">// db.CreateProduct が context.Canceled を返し、pgerror.NormalizeError が ErrCanceled へ正規化する。</span>
+<span id="L575" class="ln">   575  </span>			err = repo.Create(ctx, entity)
+<span id="L576" class="ln">   576  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L577" class="ln">   577  </span>		})
+<span id="L578" class="ln">   578  </span>	})
+<span id="L579" class="ln">   579  </span>}
+<span id="L580" class="ln">   580  </span>
+<span id="L581" class="ln">   581  </span>func Test_repository_FindByID(t *testing.T) {
+<span id="L582" class="ln">   582  </span>	t.Parallel()
+<span id="L583" class="ln">   583  </span>
+<span id="L584" class="ln">   584  </span>	testDB := testkit.NewTestDB(t)
+<span id="L585" class="ln">   585  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L586" class="ln">   586  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L587" class="ln">   587  </span>
+<span id="L588" class="ln">   588  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L589" class="ln">   589  </span>
+<span id="L590" class="ln">   590  </span>	unpublishedID := &#34;aaaaaaaa-0000-4000-8000-000000000001&#34;
+<span id="L591" class="ln">   591  </span>	versionedID := &#34;aaaaaaaa-0000-4000-8000-000000000002&#34;
+<span id="L592" class="ln">   592  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L593" class="ln">   593  </span>
+<span id="L594" class="ln">   594  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L595" class="ln">   595  </span>		t.Parallel()
+<span id="L596" class="ln">   596  </span>
+<span id="L597" class="ln">   597  </span>		t.Run(&#34;非公開(published_atがNULL)の商品も取得できる&#34;, func(t *testing.T) {
+<span id="L598" class="ln">   598  </span>			t.Parallel()
+<span id="L599" class="ln">   599  </span>
+<span id="L600" class="ln">   600  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L601" class="ln">   601  </span>				drv := driver.New(ctx, testDB)
+<span id="L602" class="ln">   602  </span>				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+&#34;-UNPUB-ANY&#34;, nil, 1999, statusInStock, categoryElectronics, nil)
+<span id="L603" class="ln">   603  </span>
+<span id="L604" class="ln">   604  </span>				got, err := repo.FindByID(ctx, mustParse(t, unpublishedID))
+<span id="L605" class="ln">   605  </span>				require.NoError(t, err)
+<span id="L606" class="ln">   606  </span>				require.NotNil(t, got)
+<span id="L607" class="ln">   607  </span>				assert.Equal(t, mustParse(t, unpublishedID), got.ID())
+<span id="L608" class="ln">   608  </span>				assert.Equal(t, probeKeyword+&#34;-UNPUB-ANY&#34;, got.Name())
+<span id="L609" class="ln">   609  </span>				assert.Nil(t, got.PublishedAt())
+<span id="L610" class="ln">   610  </span>			})
+<span id="L611" class="ln">   611  </span>		})
+<span id="L612" class="ln">   612  </span>
+<span id="L613" class="ln">   613  </span>		t.Run(&#34;DBに永続化されたversionがエンティティに反映される&#34;, func(t *testing.T) {
+<span id="L614" class="ln">   614  </span>			t.Parallel()
+<span id="L615" class="ln">   615  </span>
+<span id="L616" class="ln">   616  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L617" class="ln">   617  </span>				drv := driver.New(ctx, testDB)
+<span id="L618" class="ln">   618  </span>				insertProduct(ctx, t, drv, versionedID, probeKeyword+&#34;-VER&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L619" class="ln">   619  </span>				<span class="comment">// 初期値(1)との区別が付くよう、DB 側のバージョンだけを進めた行を用意する。</span>
+<span id="L620" class="ln">   620  </span>				_, err := drv.Exec(ctx, &#34;UPDATE products SET lock_version = 3 WHERE id = $1&#34;, mustParse(t, versionedID))
+<span id="L621" class="ln">   621  </span>				require.NoError(t, err)
+<span id="L622" class="ln">   622  </span>
+<span id="L623" class="ln">   623  </span>				got, err := repo.FindByID(ctx, mustParse(t, versionedID))
+<span id="L624" class="ln">   624  </span>				require.NoError(t, err)
+<span id="L625" class="ln">   625  </span>				require.NotNil(t, got)
+<span id="L626" class="ln">   626  </span>				assert.Equal(t, 3, got.Version())
+<span id="L627" class="ln">   627  </span>			})
+<span id="L628" class="ln">   628  </span>		})
+<span id="L629" class="ln">   629  </span>	})
+<span id="L630" class="ln">   630  </span>
+<span id="L631" class="ln">   631  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L632" class="ln">   632  </span>		t.Parallel()
+<span id="L633" class="ln">   633  </span>
+<span id="L634" class="ln">   634  </span>		t.Run(&#34;未存在のIDはNotFoundを返す&#34;, func(t *testing.T) {
+<span id="L635" class="ln">   635  </span>			t.Parallel()
+<span id="L636" class="ln">   636  </span>
+<span id="L637" class="ln">   637  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L638" class="ln">   638  </span>				got, err := repo.FindByID(ctx, uuidtestkit.NewTestFromSalt(t, &#34;find_by_id_missing&#34;))
+<span id="L639" class="ln">   639  </span>				assert.Nil(t, got)
+<span id="L640" class="ln">   640  </span>				require.ErrorIs(t, err, apperror.ErrNotFound)
+<span id="L641" class="ln">   641  </span>			})
+<span id="L642" class="ln">   642  </span>		})
+<span id="L643" class="ln">   643  </span>	})
+<span id="L644" class="ln">   644  </span>}
+<span id="L645" class="ln">   645  </span>
+<span id="L646" class="ln">   646  </span>func Test_repository_Update(t *testing.T) {
+<span id="L647" class="ln">   647  </span>	t.Parallel()
+<span id="L648" class="ln">   648  </span>
+<span id="L649" class="ln">   649  </span>	testDB := testkit.NewTestDB(t)
+<span id="L650" class="ln">   650  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L651" class="ln">   651  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L652" class="ln">   652  </span>
+<span id="L653" class="ln">   653  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L654" class="ln">   654  </span>
+<span id="L655" class="ln">   655  </span>	updatedID := &#34;bbbbbbbb-0000-4000-8000-000000000001&#34;
+<span id="L656" class="ln">   656  </span>	conflictID := &#34;bbbbbbbb-0000-4000-8000-000000000002&#34;
+<span id="L657" class="ln">   657  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L658" class="ln">   658  </span>
+<span id="L659" class="ln">   659  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L660" class="ln">   660  </span>		t.Parallel()
+<span id="L661" class="ln">   661  </span>
+<span id="L662" class="ln">   662  </span>		t.Run(&#34;更新に成功すると採番後のversionを返しDBの行が更新される&#34;, func(t *testing.T) {
+<span id="L663" class="ln">   663  </span>			t.Parallel()
+<span id="L664" class="ln">   664  </span>
+<span id="L665" class="ln">   665  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L666" class="ln">   666  </span>				drv := driver.New(ctx, testDB)
+<span id="L667" class="ln">   667  </span>				insertProduct(ctx, t, drv, updatedID, probeKeyword+&#34;-UPD&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L668" class="ln">   668  </span>
+<span id="L669" class="ln">   669  </span>				entity, err := repo.FindByID(ctx, mustParse(t, updatedID))
+<span id="L670" class="ln">   670  </span>				require.NoError(t, err)
+<span id="L671" class="ln">   671  </span>				require.Equal(t, 1, entity.Version())
+<span id="L672" class="ln">   672  </span>
+<span id="L673" class="ln">   673  </span>				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusOutOfStock), &#34;在庫切れ&#34;)
+<span id="L674" class="ln">   674  </span>				require.NoError(t, err)
+<span id="L675" class="ln">   675  </span>				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryBooks), &#34;書籍&#34;)
+<span id="L676" class="ln">   676  </span>				require.NoError(t, err)
+<span id="L677" class="ln">   677  </span>				price, err := money.NewPrice(decimal.FromInt(2500))
+<span id="L678" class="ln">   678  </span>				require.NoError(t, err)
+<span id="L679" class="ln">   679  </span>				publishedAt := base.Add(24 * time.Hour)
+<span id="L680" class="ln">   680  </span>				require.NoError(t, entity.Update(domainproduct.Attributes{
+<span id="L681" class="ln">   681  </span>					Name:                  &#34;更新後商品&#34;,
+<span id="L682" class="ln">   682  </span>					Description:           ptr.To(&#34;更新後の説明&#34;),
+<span id="L683" class="ln">   683  </span>					Price:                 price,
+<span id="L684" class="ln">   684  </span>					Quantity:              5,
+<span id="L685" class="ln">   685  </span>					StockWarningThreshold: ptr.To(3),
+<span id="L686" class="ln">   686  </span>					Status:                statusRef,
+<span id="L687" class="ln">   687  </span>					Category:              categoryRef,
+<span id="L688" class="ln">   688  </span>					PublishedAt:           ptr.To(publishedAt),
+<span id="L689" class="ln">   689  </span>					ImagePath:             ptr.To(&#34;products/updated.png&#34;),
+<span id="L690" class="ln">   690  </span>				}))
+<span id="L691" class="ln">   691  </span>
+<span id="L692" class="ln">   692  </span>				version, err := repo.Update(ctx, entity)
+<span id="L693" class="ln">   693  </span>				require.NoError(t, err)
+<span id="L694" class="ln">   694  </span>				assert.Equal(t, 2, version)
+<span id="L695" class="ln">   695  </span>
+<span id="L696" class="ln">   696  </span>				got, err := repo.FindByID(ctx, mustParse(t, updatedID))
+<span id="L697" class="ln">   697  </span>				require.NoError(t, err)
+<span id="L698" class="ln">   698  </span>				assert.Equal(t, &#34;更新後商品&#34;, got.Name())
+<span id="L699" class="ln">   699  </span>				require.NotNil(t, got.Description())
+<span id="L700" class="ln">   700  </span>				assert.Equal(t, &#34;更新後の説明&#34;, *got.Description())
+<span id="L701" class="ln">   701  </span>				assert.Equal(t, &#34;2500&#34;, got.Price().String())
+<span id="L702" class="ln">   702  </span>				assert.Equal(t, 5, got.Quantity())
+<span id="L703" class="ln">   703  </span>				require.NotNil(t, got.StockWarningThreshold())
+<span id="L704" class="ln">   704  </span>				assert.Equal(t, 3, *got.StockWarningThreshold())
+<span id="L705" class="ln">   705  </span>				assert.Equal(t, mustParse(t, statusOutOfStock), got.Status().ID())
+<span id="L706" class="ln">   706  </span>				assert.Equal(t, mustParse(t, categoryBooks), got.Category().ID())
+<span id="L707" class="ln">   707  </span>				require.NotNil(t, got.PublishedAt())
+<span id="L708" class="ln">   708  </span>				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
+<span id="L709" class="ln">   709  </span>				require.NotNil(t, got.ImagePath())
+<span id="L710" class="ln">   710  </span>				assert.Equal(t, &#34;products/updated.png&#34;, *got.ImagePath())
+<span id="L711" class="ln">   711  </span>				assert.Equal(t, 2, got.Version())
+<span id="L712" class="ln">   712  </span>			})
+<span id="L713" class="ln">   713  </span>		})
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span>		t.Run(&#34;description / stock_warning_threshold / published_at / image_path を nil で更新するとDBへNULLとして書き込まれる&#34;, func(t *testing.T) {
+<span id="L716" class="ln">   716  </span>			t.Parallel()
+<span id="L717" class="ln">   717  </span>
+<span id="L718" class="ln">   718  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L719" class="ln">   719  </span>				id := uuidtestkit.NewTestFromSalt(t, &#34;update_clear_nullable_id&#34;)
+<span id="L720" class="ln">   720  </span>				statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), &#34;在庫あり&#34;)
+<span id="L721" class="ln">   721  </span>				require.NoError(t, err)
+<span id="L722" class="ln">   722  </span>				categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), &#34;電子機器&#34;)
+<span id="L723" class="ln">   723  </span>				require.NoError(t, err)
+<span id="L724" class="ln">   724  </span>				price, err := money.NewPrice(decimal.FromInt(1999))
+<span id="L725" class="ln">   725  </span>				require.NoError(t, err)
+<span id="L726" class="ln">   726  </span>				entity, err := domainproduct.New(id, domainproduct.Attributes{
+<span id="L727" class="ln">   727  </span>					Name:                  &#34;クリア対象商品&#34;,
+<span id="L728" class="ln">   728  </span>					Description:           ptr.To(&#34;&lt;p&gt;クリア前の説明&lt;/p&gt;&#34;),
+<span id="L729" class="ln">   729  </span>					Price:                 price,
+<span id="L730" class="ln">   730  </span>					Quantity:              5,
+<span id="L731" class="ln">   731  </span>					StockWarningThreshold: ptr.To(10),
+<span id="L732" class="ln">   732  </span>					Status:                statusRef,
+<span id="L733" class="ln">   733  </span>					Category:              categoryRef,
+<span id="L734" class="ln">   734  </span>					PublishedAt:           ptr.To(base),
+<span id="L735" class="ln">   735  </span>					ImagePath:             ptr.To(&#34;products/cleared.png&#34;),
+<span id="L736" class="ln">   736  </span>				})
+<span id="L737" class="ln">   737  </span>				require.NoError(t, err)
+<span id="L738" class="ln">   738  </span>				require.NoError(t, repo.Create(ctx, entity))
+<span id="L739" class="ln">   739  </span>
+<span id="L740" class="ln">   740  </span>				loaded, err := repo.FindByID(ctx, id)
+<span id="L741" class="ln">   741  </span>				require.NoError(t, err)
+<span id="L742" class="ln">   742  </span>				<span class="comment">// クリア前が非 NULL であることを確かめないと、最初から NULL だった場合と区別が付かない。</span>
+<span id="L743" class="ln">   743  </span>				require.NotNil(t, loaded.Description())
+<span id="L744" class="ln">   744  </span>				require.NotNil(t, loaded.StockWarningThreshold())
+<span id="L745" class="ln">   745  </span>				require.NotNil(t, loaded.PublishedAt())
+<span id="L746" class="ln">   746  </span>				require.NotNil(t, loaded.ImagePath())
+<span id="L747" class="ln">   747  </span>
+<span id="L748" class="ln">   748  </span>				require.NoError(t, loaded.Update(domainproduct.Attributes{
+<span id="L749" class="ln">   749  </span>					Name:     loaded.Name(),
+<span id="L750" class="ln">   750  </span>					Price:    loaded.Price(),
+<span id="L751" class="ln">   751  </span>					Quantity: loaded.Quantity(),
+<span id="L752" class="ln">   752  </span>					Status:   loaded.Status(),
+<span id="L753" class="ln">   753  </span>					Category: loaded.Category(),
+<span id="L754" class="ln">   754  </span>				}))
+<span id="L755" class="ln">   755  </span>
+<span id="L756" class="ln">   756  </span>				version, err := repo.Update(ctx, loaded)
+<span id="L757" class="ln">   757  </span>				require.NoError(t, err)
+<span id="L758" class="ln">   758  </span>				assert.Equal(t, 2, version)
+<span id="L759" class="ln">   759  </span>
+<span id="L760" class="ln">   760  </span>				<span class="comment">// FindByID は公開述語を持たないため、published_at をクリアした後も読み戻せる。</span>
+<span id="L761" class="ln">   761  </span>				got, err := repo.FindByID(ctx, id)
+<span id="L762" class="ln">   762  </span>				require.NoError(t, err)
+<span id="L763" class="ln">   763  </span>				assert.Nil(t, got.Description())
+<span id="L764" class="ln">   764  </span>				assert.Nil(t, got.StockWarningThreshold())
+<span id="L765" class="ln">   765  </span>				assert.Nil(t, got.PublishedAt())
+<span id="L766" class="ln">   766  </span>				assert.Nil(t, got.ImagePath())
+<span id="L767" class="ln">   767  </span>			})
+<span id="L768" class="ln">   768  </span>		})
+<span id="L769" class="ln">   769  </span>	})
+<span id="L770" class="ln">   770  </span>
+<span id="L771" class="ln">   771  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L772" class="ln">   772  </span>		t.Parallel()
+<span id="L773" class="ln">   773  </span>
+<span id="L774" class="ln">   774  </span>		t.Run(&#34;古いversionを持つエンティティの更新はErrVersionConflictを返しDBの行を変更しない&#34;, func(t *testing.T) {
+<span id="L775" class="ln">   775  </span>			t.Parallel()
+<span id="L776" class="ln">   776  </span>
+<span id="L777" class="ln">   777  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L778" class="ln">   778  </span>				drv := driver.New(ctx, testDB)
+<span id="L779" class="ln">   779  </span>				insertProduct(ctx, t, drv, conflictID, probeKeyword+&#34;-CONFLICT&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L780" class="ln">   780  </span>
+<span id="L781" class="ln">   781  </span>				stale, err := repo.FindByID(ctx, mustParse(t, conflictID))
+<span id="L782" class="ln">   782  </span>				require.NoError(t, err)
+<span id="L783" class="ln">   783  </span>
+<span id="L784" class="ln">   784  </span>				<span class="comment">// 読み込み後に他トランザクションが更新し、DB 側のバージョンだけが進んだ状態を再現する。</span>
+<span id="L785" class="ln">   785  </span>				_, err = drv.Exec(ctx,
+<span id="L786" class="ln">   786  </span>					&#34;UPDATE products SET name = $2, lock_version = lock_version + 1 WHERE id = $1&#34;,
+<span id="L787" class="ln">   787  </span>					mustParse(t, conflictID), probeKeyword+&#34;-BY-OTHER&#34;,
+<span id="L788" class="ln">   788  </span>				)
+<span id="L789" class="ln">   789  </span>				require.NoError(t, err)
+<span id="L790" class="ln">   790  </span>
+<span id="L791" class="ln">   791  </span>				require.NoError(t, stale.Update(domainproduct.Attributes{
+<span id="L792" class="ln">   792  </span>					Name:                  &#34;衝突する更新&#34;,
+<span id="L793" class="ln">   793  </span>					Description:           stale.Description(),
+<span id="L794" class="ln">   794  </span>					Price:                 stale.Price(),
+<span id="L795" class="ln">   795  </span>					Quantity:              stale.Quantity(),
+<span id="L796" class="ln">   796  </span>					StockWarningThreshold: stale.StockWarningThreshold(),
+<span id="L797" class="ln">   797  </span>					Status:                stale.Status(),
+<span id="L798" class="ln">   798  </span>					Category:              stale.Category(),
+<span id="L799" class="ln">   799  </span>					PublishedAt:           stale.PublishedAt(),
+<span id="L800" class="ln">   800  </span>					ImagePath:             stale.ImagePath(),
+<span id="L801" class="ln">   801  </span>				}))
+<span id="L802" class="ln">   802  </span>
+<span id="L803" class="ln">   803  </span>				version, err := repo.Update(ctx, stale)
+<span id="L804" class="ln">   804  </span>				require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+<span id="L805" class="ln">   805  </span>				assert.Equal(t, 0, version)
+<span id="L806" class="ln">   806  </span>
+<span id="L807" class="ln">   807  </span>				got, err := repo.FindByID(ctx, mustParse(t, conflictID))
+<span id="L808" class="ln">   808  </span>				require.NoError(t, err)
+<span id="L809" class="ln">   809  </span>				assert.Equal(t, probeKeyword+&#34;-BY-OTHER&#34;, got.Name())
+<span id="L810" class="ln">   810  </span>				assert.Equal(t, 2, got.Version())
+<span id="L811" class="ln">   811  </span>			})
+<span id="L812" class="ln">   812  </span>		})
+<span id="L813" class="ln">   813  </span>
+<span id="L814" class="ln">   814  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化され衝突とは区別される&#34;, func(t *testing.T) {
+<span id="L815" class="ln">   815  </span>			t.Parallel()
+<span id="L816" class="ln">   816  </span>
+<span id="L817" class="ln">   817  </span>			id := uuidtestkit.NewTestFromSalt(t, &#34;update_canceled_id&#34;)
+<span id="L818" class="ln">   818  </span>			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), &#34;在庫あり&#34;)
+<span id="L819" class="ln">   819  </span>			require.NoError(t, err)
+<span id="L820" class="ln">   820  </span>			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), &#34;電子機器&#34;)
+<span id="L821" class="ln">   821  </span>			require.NoError(t, err)
+<span id="L822" class="ln">   822  </span>			price, err := money.NewPrice(decimal.FromInt(100))
+<span id="L823" class="ln">   823  </span>			require.NoError(t, err)
+<span id="L824" class="ln">   824  </span>			entity, err := domainproduct.New(id, domainproduct.Attributes{
+<span id="L825" class="ln">   825  </span>				Name:     &#34;キャンセル商品&#34;,
+<span id="L826" class="ln">   826  </span>				Price:    price,
+<span id="L827" class="ln">   827  </span>				Quantity: 1,
+<span id="L828" class="ln">   828  </span>				Status:   statusRef,
+<span id="L829" class="ln">   829  </span>				Category: categoryRef,
+<span id="L830" class="ln">   830  </span>			})
+<span id="L831" class="ln">   831  </span>			require.NoError(t, err)
+<span id="L832" class="ln">   832  </span>
+<span id="L833" class="ln">   833  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L834" class="ln">   834  </span>			cancel()
+<span id="L835" class="ln">   835  </span>
+<span id="L836" class="ln">   836  </span>			version, err := repo.Update(ctx, entity)
+<span id="L837" class="ln">   837  </span>			assert.Equal(t, 0, version)
+<span id="L838" class="ln">   838  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L839" class="ln">   839  </span>			require.NotErrorIs(t, err, domainproduct.ErrVersionConflict)
+<span id="L840" class="ln">   840  </span>		})
+<span id="L841" class="ln">   841  </span>
+<span id="L842" class="ln">   842  </span>		t.Run(&#34;versionがINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す&#34;, func(t *testing.T) {
+<span id="L843" class="ln">   843  </span>			t.Parallel()
+<span id="L844" class="ln">   844  </span>
+<span id="L845" class="ln">   845  </span>			entity := reconstructWithVersion(t, &#34;update_version_overflow_id&#34;, math.MaxInt32+1)
+<span id="L846" class="ln">   846  </span>
+<span id="L847" class="ln">   847  </span>			version, err := repo.Update(context.Background(), entity)
+<span id="L848" class="ln">   848  </span>			assert.Equal(t, 0, version)
+<span id="L849" class="ln">   849  </span>			require.ErrorIs(t, err, safecast.ErrOverflow)
+<span id="L850" class="ln">   850  </span>		})
+<span id="L851" class="ln">   851  </span>	})
+<span id="L852" class="ln">   852  </span>}
+<span id="L853" class="ln">   853  </span>
+<span id="L854" class="ln">   854  </span><span class="comment">// reconstructWithVersion は、指定バージョンで再構築した最小構成の商品エンティティを返します。</span>
+<span id="L855" class="ln">   855  </span>func reconstructWithVersion(t *testing.T, salt string, version int) *domainproduct.Product {
+<span id="L856" class="ln">   856  </span>	t.Helper()
+<span id="L857" class="ln">   857  </span>
+<span id="L858" class="ln">   858  </span>	statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), &#34;在庫あり&#34;)
+<span id="L859" class="ln">   859  </span>	require.NoError(t, err)
+<span id="L860" class="ln">   860  </span>	categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), &#34;電子機器&#34;)
+<span id="L861" class="ln">   861  </span>	require.NoError(t, err)
+<span id="L862" class="ln">   862  </span>	price, err := money.NewPrice(decimal.FromInt(100))
+<span id="L863" class="ln">   863  </span>	require.NoError(t, err)
+<span id="L864" class="ln">   864  </span>
+<span id="L865" class="ln">   865  </span>	entity, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+<span id="L866" class="ln">   866  </span>		Name:     &#34;バージョン過大商品&#34;,
+<span id="L867" class="ln">   867  </span>		Price:    price,
+<span id="L868" class="ln">   868  </span>		Quantity: 1,
+<span id="L869" class="ln">   869  </span>		Status:   statusRef,
+<span id="L870" class="ln">   870  </span>		Category: categoryRef,
+<span id="L871" class="ln">   871  </span>	}, version)
+<span id="L872" class="ln">   872  </span>	require.NoError(t, err)
+<span id="L873" class="ln">   873  </span>	return entity
+<span id="L874" class="ln">   874  </span>}
+<span id="L875" class="ln">   875  </span>
+<span id="L876" class="ln">   876  </span>func Test_repository_LockByID(t *testing.T) {
+<span id="L877" class="ln">   877  </span>	t.Parallel()
+<span id="L878" class="ln">   878  </span>
+<span id="L879" class="ln">   879  </span>	testDB := testkit.NewTestDB(t)
+<span id="L880" class="ln">   880  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L881" class="ln">   881  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L882" class="ln">   882  </span>
+<span id="L883" class="ln">   883  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L884" class="ln">   884  </span>
+<span id="L885" class="ln">   885  </span>	unpublishedID := &#34;cccccccc-0000-4000-8000-000000000001&#34;
+<span id="L886" class="ln">   886  </span>	versionedID := &#34;cccccccc-0000-4000-8000-000000000002&#34;
+<span id="L887" class="ln">   887  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L888" class="ln">   888  </span>
+<span id="L889" class="ln">   889  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L890" class="ln">   890  </span>		t.Parallel()
+<span id="L891" class="ln">   891  </span>
+<span id="L892" class="ln">   892  </span>		t.Run(&#34;非公開(published_atがNULL)の商品も取得できる&#34;, func(t *testing.T) {
+<span id="L893" class="ln">   893  </span>			t.Parallel()
+<span id="L894" class="ln">   894  </span>
+<span id="L895" class="ln">   895  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L896" class="ln">   896  </span>				drv := driver.New(ctx, testDB)
+<span id="L897" class="ln">   897  </span>				insertProduct(ctx, t, drv, unpublishedID, probeKeyword+&#34;-LOCK-UNPUB&#34;, nil, 1999, statusInStock, categoryElectronics, nil)
+<span id="L898" class="ln">   898  </span>
+<span id="L899" class="ln">   899  </span>				got, err := repo.LockByID(ctx, mustParse(t, unpublishedID))
+<span id="L900" class="ln">   900  </span>				require.NoError(t, err)
+<span id="L901" class="ln">   901  </span>				require.NotNil(t, got)
+<span id="L902" class="ln">   902  </span>				assert.Equal(t, mustParse(t, unpublishedID), got.ID())
+<span id="L903" class="ln">   903  </span>				assert.Equal(t, probeKeyword+&#34;-LOCK-UNPUB&#34;, got.Name())
+<span id="L904" class="ln">   904  </span>				assert.Nil(t, got.PublishedAt())
+<span id="L905" class="ln">   905  </span>				assert.Equal(t, &#34;在庫あり&#34;, got.Status().Name())
+<span id="L906" class="ln">   906  </span>				assert.Equal(t, &#34;電子機器&#34;, got.Category().Name())
+<span id="L907" class="ln">   907  </span>			})
+<span id="L908" class="ln">   908  </span>		})
+<span id="L909" class="ln">   909  </span>
+<span id="L910" class="ln">   910  </span>		t.Run(&#34;DBに永続化されたversionがエンティティに反映される&#34;, func(t *testing.T) {
+<span id="L911" class="ln">   911  </span>			t.Parallel()
+<span id="L912" class="ln">   912  </span>
+<span id="L913" class="ln">   913  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L914" class="ln">   914  </span>				drv := driver.New(ctx, testDB)
+<span id="L915" class="ln">   915  </span>				insertProduct(ctx, t, drv, versionedID, probeKeyword+&#34;-LOCK-VER&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L916" class="ln">   916  </span>				<span class="comment">// 初期値(1)との区別が付くよう、DB 側のバージョンだけを進めた行を用意する。</span>
+<span id="L917" class="ln">   917  </span>				_, err := drv.Exec(ctx, &#34;UPDATE products SET lock_version = 4 WHERE id = $1&#34;, mustParse(t, versionedID))
+<span id="L918" class="ln">   918  </span>				require.NoError(t, err)
+<span id="L919" class="ln">   919  </span>
+<span id="L920" class="ln">   920  </span>				got, err := repo.LockByID(ctx, mustParse(t, versionedID))
+<span id="L921" class="ln">   921  </span>				require.NoError(t, err)
+<span id="L922" class="ln">   922  </span>				require.NotNil(t, got)
+<span id="L923" class="ln">   923  </span>				assert.Equal(t, 4, got.Version())
+<span id="L924" class="ln">   924  </span>			})
+<span id="L925" class="ln">   925  </span>		})
+<span id="L926" class="ln">   926  </span>	})
+<span id="L927" class="ln">   927  </span>
+<span id="L928" class="ln">   928  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L929" class="ln">   929  </span>		t.Parallel()
+<span id="L930" class="ln">   930  </span>
+<span id="L931" class="ln">   931  </span>		t.Run(&#34;未存在のIDはNotFoundを返す&#34;, func(t *testing.T) {
+<span id="L932" class="ln">   932  </span>			t.Parallel()
+<span id="L933" class="ln">   933  </span>
+<span id="L934" class="ln">   934  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L935" class="ln">   935  </span>				got, err := repo.LockByID(ctx, uuidtestkit.NewTestFromSalt(t, &#34;lock_by_id_missing&#34;))
+<span id="L936" class="ln">   936  </span>				assert.Nil(t, got)
+<span id="L937" class="ln">   937  </span>				require.ErrorIs(t, err, apperror.ErrNotFound)
+<span id="L938" class="ln">   938  </span>			})
+<span id="L939" class="ln">   939  </span>		})
+<span id="L940" class="ln">   940  </span>	})
+<span id="L941" class="ln">   941  </span>}
+<span id="L942" class="ln">   942  </span>
+<span id="L943" class="ln">   943  </span>func Test_repository_LockByIDs(t *testing.T) {
+<span id="L944" class="ln">   944  </span>	t.Parallel()
+<span id="L945" class="ln">   945  </span>
+<span id="L946" class="ln">   946  </span>	testDB := testkit.NewTestDB(t)
+<span id="L947" class="ln">   947  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L948" class="ln">   948  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L949" class="ln">   949  </span>
+<span id="L950" class="ln">   950  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L951" class="ln">   951  </span>
+<span id="L952" class="ln">   952  </span>	lowID := &#34;cccccccc-0000-4000-8001-000000000001&#34;
+<span id="L953" class="ln">   953  </span>	highID := &#34;cccccccc-0000-4000-8001-000000000002&#34;
+<span id="L954" class="ln">   954  </span>	negativeID := &#34;cccccccc-0000-4000-8001-0000000000bb&#34;
+<span id="L955" class="ln">   955  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L956" class="ln">   956  </span>
+<span id="L957" class="ln">   957  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L958" class="ln">   958  </span>		t.Parallel()
+<span id="L959" class="ln">   959  </span>
+<span id="L960" class="ln">   960  </span>		t.Run(&#34;複数IDをまとめてID昇順で取得し非公開の商品も含める&#34;, func(t *testing.T) {
+<span id="L961" class="ln">   961  </span>			t.Parallel()
+<span id="L962" class="ln">   962  </span>
+<span id="L963" class="ln">   963  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L964" class="ln">   964  </span>				drv := driver.New(ctx, testDB)
+<span id="L965" class="ln">   965  </span>				<span class="comment">// 挿入順を id 降順にし、戻り値が挿入順ではなく id 昇順であることを検証する。</span>
+<span id="L966" class="ln">   966  </span>				insertProduct(ctx, t, drv, highID, probeKeyword+&#34;-LOCKS-PUB&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L967" class="ln">   967  </span>				insertProduct(ctx, t, drv, lowID, probeKeyword+&#34;-LOCKS-UNPUB&#34;, nil, 2999, statusInStock, categoryElectronics, nil)
+<span id="L968" class="ln">   968  </span>
+<span id="L969" class="ln">   969  </span>				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, highID), mustParse(t, lowID)})
+<span id="L970" class="ln">   970  </span>				require.NoError(t, err)
+<span id="L971" class="ln">   971  </span>				require.Len(t, got, 2)
+<span id="L972" class="ln">   972  </span>				assert.Equal(t, mustParse(t, lowID), got[0].ID())
+<span id="L973" class="ln">   973  </span>				assert.Equal(t, mustParse(t, highID), got[1].ID())
+<span id="L974" class="ln">   974  </span>				assert.Nil(t, got[0].PublishedAt())
+<span id="L975" class="ln">   975  </span>				assert.Equal(t, &#34;在庫あり&#34;, got[0].Status().Name())
+<span id="L976" class="ln">   976  </span>				assert.Equal(t, &#34;電子機器&#34;, got[0].Category().Name())
+<span id="L977" class="ln">   977  </span>			})
+<span id="L978" class="ln">   978  </span>		})
+<span id="L979" class="ln">   979  </span>
+<span id="L980" class="ln">   980  </span>		t.Run(&#34;未存在のIDは結果から除外され件数が引数より少なくなる&#34;, func(t *testing.T) {
+<span id="L981" class="ln">   981  </span>			t.Parallel()
+<span id="L982" class="ln">   982  </span>
+<span id="L983" class="ln">   983  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L984" class="ln">   984  </span>				drv := driver.New(ctx, testDB)
+<span id="L985" class="ln">   985  </span>				existing := &#34;cccccccc-0000-4000-8001-000000000003&#34;
+<span id="L986" class="ln">   986  </span>				insertProduct(ctx, t, drv, existing, probeKeyword+&#34;-LOCKS-PARTIAL&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L987" class="ln">   987  </span>
+<span id="L988" class="ln">   988  </span>				ids := []uuid.UUID{mustParse(t, existing), uuidtestkit.NewTestFromSalt(t, &#34;lock_by_ids_missing&#34;)}
+<span id="L989" class="ln">   989  </span>				got, err := repo.LockByIDs(ctx, ids)
+<span id="L990" class="ln">   990  </span>				require.NoError(t, err)
+<span id="L991" class="ln">   991  </span>				require.Len(t, got, 1)
+<span id="L992" class="ln">   992  </span>				assert.Equal(t, mustParse(t, existing), got[0].ID())
+<span id="L993" class="ln">   993  </span>			})
+<span id="L994" class="ln">   994  </span>		})
+<span id="L995" class="ln">   995  </span>
+<span id="L996" class="ln">   996  </span>		t.Run(&#34;空のID集合は空の結果を返す&#34;, func(t *testing.T) {
+<span id="L997" class="ln">   997  </span>			t.Parallel()
+<span id="L998" class="ln">   998  </span>
+<span id="L999" class="ln">   999  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1000" class="ln">  1000  </span>				got, err := repo.LockByIDs(ctx, []uuid.UUID{})
+<span id="L1001" class="ln">  1001  </span>				require.NoError(t, err)
+<span id="L1002" class="ln">  1002  </span>				assert.Empty(t, got)
+<span id="L1003" class="ln">  1003  </span>			})
+<span id="L1004" class="ln">  1004  </span>		})
+<span id="L1005" class="ln">  1005  </span>
+<span id="L1006" class="ln">  1006  </span>		t.Run(&#34;サブセント単価をNUMERIC精度を保ったまま取得する&#34;, func(t *testing.T) {
+<span id="L1007" class="ln">  1007  </span>			t.Parallel()
+<span id="L1008" class="ln">  1008  </span>
+<span id="L1009" class="ln">  1009  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1010" class="ln">  1010  </span>				drv := driver.New(ctx, testDB)
+<span id="L1011" class="ln">  1011  </span>				subcentID := &#34;cccccccc-0000-4000-8001-0000000000aa&#34;
+<span id="L1012" class="ln">  1012  </span>				<span class="comment">// price=19.995（サブセント）を NUMERIC 列へ直接挿入し、価格スケールの往復を検証する。</span>
+<span id="L1013" class="ln">  1013  </span>				_, err := drv.Exec(ctx,
+<span id="L1014" class="ln">  1014  </span>					&#34;INSERT INTO products &#34;+
+<span id="L1015" class="ln">  1015  </span>						&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
+<span id="L1016" class="ln">  1016  </span>						&#34;VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9)&#34;,
+<span id="L1017" class="ln">  1017  </span>					subcentID, probeKeyword+&#34;-LOCKS-SUBCENT&#34;, nil, &#34;19.995&#34;, 10, nil, statusInStock, categoryElectronics, base,
+<span id="L1018" class="ln">  1018  </span>				)
+<span id="L1019" class="ln">  1019  </span>				require.NoError(t, err)
+<span id="L1020" class="ln">  1020  </span>
+<span id="L1021" class="ln">  1021  </span>				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, subcentID)})
+<span id="L1022" class="ln">  1022  </span>				require.NoError(t, err)
+<span id="L1023" class="ln">  1023  </span>				require.Len(t, got, 1)
+<span id="L1024" class="ln">  1024  </span>				assert.Equal(t, &#34;19.995&#34;, got[0].Price().String())
+<span id="L1025" class="ln">  1025  </span>			})
+<span id="L1026" class="ln">  1026  </span>		})
+<span id="L1027" class="ln">  1027  </span>	})
+<span id="L1028" class="ln">  1028  </span>
+<span id="L1029" class="ln">  1029  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1030" class="ln">  1030  </span>		t.Parallel()
+<span id="L1031" class="ln">  1031  </span>
+<span id="L1032" class="ln">  1032  </span>		t.Run(&#34;負値の価格は再構築不能としてErrInternalへ正規化する&#34;, func(t *testing.T) {
+<span id="L1033" class="ln">  1033  </span>			t.Parallel()
+<span id="L1034" class="ln">  1034  </span>
+<span id="L1035" class="ln">  1035  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1036" class="ln">  1036  </span>				drv := driver.New(ctx, testDB)
+<span id="L1037" class="ln">  1037  </span>				<span class="comment">// NUMERIC 列は負値を格納できるが、money.Price は非負不変条件を持つ。</span>
+<span id="L1038" class="ln">  1038  </span>				_, err := drv.Exec(ctx,
+<span id="L1039" class="ln">  1039  </span>					&#34;INSERT INTO products &#34;+
+<span id="L1040" class="ln">  1040  </span>						&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
+<span id="L1041" class="ln">  1041  </span>						&#34;VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9)&#34;,
+<span id="L1042" class="ln">  1042  </span>					negativeID, probeKeyword+&#34;-LOCKS-NEG&#34;, nil, &#34;-1&#34;, 10, nil, statusInStock, categoryElectronics, base,
+<span id="L1043" class="ln">  1043  </span>				)
+<span id="L1044" class="ln">  1044  </span>				require.NoError(t, err)
+<span id="L1045" class="ln">  1045  </span>
+<span id="L1046" class="ln">  1046  </span>				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, negativeID)})
+<span id="L1047" class="ln">  1047  </span>				assert.Nil(t, got)
+<span id="L1048" class="ln">  1048  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L1049" class="ln">  1049  </span>			})
+<span id="L1050" class="ln">  1050  </span>		})
+<span id="L1051" class="ln">  1051  </span>	})
+<span id="L1052" class="ln">  1052  </span>}
+<span id="L1053" class="ln">  1053  </span>
+<span id="L1054" class="ln">  1054  </span>func Test_repository_UpdateStock(t *testing.T) {
+<span id="L1055" class="ln">  1055  </span>	t.Parallel()
+<span id="L1056" class="ln">  1056  </span>
+<span id="L1057" class="ln">  1057  </span>	testDB := testkit.NewTestDB(t)
+<span id="L1058" class="ln">  1058  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L1059" class="ln">  1059  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L1060" class="ln">  1060  </span>
+<span id="L1061" class="ln">  1061  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L1062" class="ln">  1062  </span>
+<span id="L1063" class="ln">  1063  </span>	adjustedID := &#34;dddddddd-0000-4000-8000-000000000001&#34;
+<span id="L1064" class="ln">  1064  </span>	conflictID := &#34;dddddddd-0000-4000-8000-000000000002&#34;
+<span id="L1065" class="ln">  1065  </span>	untouchedID := &#34;dddddddd-0000-4000-8000-000000000003&#34;
+<span id="L1066" class="ln">  1066  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L1067" class="ln">  1067  </span>
+<span id="L1068" class="ln">  1068  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1069" class="ln">  1069  </span>		t.Parallel()
+<span id="L1070" class="ln">  1070  </span>
+<span id="L1071" class="ln">  1071  </span>		t.Run(&#34;在庫を更新すると採番後のversionを返しDBの行が更新される&#34;, func(t *testing.T) {
+<span id="L1072" class="ln">  1072  </span>			t.Parallel()
+<span id="L1073" class="ln">  1073  </span>
+<span id="L1074" class="ln">  1074  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1075" class="ln">  1075  </span>				drv := driver.New(ctx, testDB)
+<span id="L1076" class="ln">  1076  </span>				insertProduct(ctx, t, drv, adjustedID, probeKeyword+&#34;-STOCK&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L1077" class="ln">  1077  </span>
+<span id="L1078" class="ln">  1078  </span>				entity, err := repo.LockByID(ctx, mustParse(t, adjustedID))
+<span id="L1079" class="ln">  1079  </span>				require.NoError(t, err)
+<span id="L1080" class="ln">  1080  </span>				before := entity.Quantity()
+<span id="L1081" class="ln">  1081  </span>				require.Equal(t, 1, entity.Version())
+<span id="L1082" class="ln">  1082  </span>				require.NoError(t, entity.AdjustStock(7))
+<span id="L1083" class="ln">  1083  </span>
+<span id="L1084" class="ln">  1084  </span>				version, err := repo.UpdateStock(ctx, entity)
+<span id="L1085" class="ln">  1085  </span>				require.NoError(t, err)
+<span id="L1086" class="ln">  1086  </span>				assert.Equal(t, 2, version)
+<span id="L1087" class="ln">  1087  </span>
+<span id="L1088" class="ln">  1088  </span>				got, err := repo.FindByID(ctx, mustParse(t, adjustedID))
+<span id="L1089" class="ln">  1089  </span>				require.NoError(t, err)
+<span id="L1090" class="ln">  1090  </span>				assert.Equal(t, before+7, got.Quantity())
+<span id="L1091" class="ln">  1091  </span>				assert.Equal(t, 2, got.Version())
+<span id="L1092" class="ln">  1092  </span>			})
+<span id="L1093" class="ln">  1093  </span>		})
+<span id="L1094" class="ln">  1094  </span>
+<span id="L1095" class="ln">  1095  </span>		t.Run(&#34;在庫以外の列は更新されない&#34;, func(t *testing.T) {
+<span id="L1096" class="ln">  1096  </span>			t.Parallel()
+<span id="L1097" class="ln">  1097  </span>
+<span id="L1098" class="ln">  1098  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1099" class="ln">  1099  </span>				drv := driver.New(ctx, testDB)
+<span id="L1100" class="ln">  1100  </span>				insertProduct(
+<span id="L1101" class="ln">  1101  </span>					ctx,
+<span id="L1102" class="ln">  1102  </span>					t,
+<span id="L1103" class="ln">  1103  </span>					drv,
+<span id="L1104" class="ln">  1104  </span>					untouchedID,
+<span id="L1105" class="ln">  1105  </span>					probeKeyword+&#34;-STOCK-KEEP&#34;,
+<span id="L1106" class="ln">  1106  </span>					ptr.To(&#34;据え置きの説明&#34;),
+<span id="L1107" class="ln">  1107  </span>					1999,
+<span id="L1108" class="ln">  1108  </span>					statusInStock,
+<span id="L1109" class="ln">  1109  </span>					categoryElectronics,
+<span id="L1110" class="ln">  1110  </span>					ptr.To(base),
+<span id="L1111" class="ln">  1111  </span>				)
+<span id="L1112" class="ln">  1112  </span>
+<span id="L1113" class="ln">  1113  </span>				entity, err := repo.LockByID(ctx, mustParse(t, untouchedID))
+<span id="L1114" class="ln">  1114  </span>				require.NoError(t, err)
+<span id="L1115" class="ln">  1115  </span>				require.NoError(t, entity.AdjustStock(1))
+<span id="L1116" class="ln">  1116  </span>				_, err = repo.UpdateStock(ctx, entity)
+<span id="L1117" class="ln">  1117  </span>				require.NoError(t, err)
+<span id="L1118" class="ln">  1118  </span>
+<span id="L1119" class="ln">  1119  </span>				got, err := repo.FindByID(ctx, mustParse(t, untouchedID))
+<span id="L1120" class="ln">  1120  </span>				require.NoError(t, err)
+<span id="L1121" class="ln">  1121  </span>				assert.Equal(t, probeKeyword+&#34;-STOCK-KEEP&#34;, got.Name())
+<span id="L1122" class="ln">  1122  </span>				require.NotNil(t, got.Description())
+<span id="L1123" class="ln">  1123  </span>				assert.Equal(t, &#34;据え置きの説明&#34;, *got.Description())
+<span id="L1124" class="ln">  1124  </span>				assert.Equal(t, &#34;1999&#34;, got.Price().String())
+<span id="L1125" class="ln">  1125  </span>				assert.Equal(t, mustParse(t, statusInStock), got.Status().ID())
+<span id="L1126" class="ln">  1126  </span>				require.NotNil(t, got.PublishedAt())
+<span id="L1127" class="ln">  1127  </span>				assert.True(t, base.Equal(*got.PublishedAt()))
+<span id="L1128" class="ln">  1128  </span>			})
+<span id="L1129" class="ln">  1129  </span>		})
+<span id="L1130" class="ln">  1130  </span>	})
+<span id="L1131" class="ln">  1131  </span>
+<span id="L1132" class="ln">  1132  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1133" class="ln">  1133  </span>		t.Parallel()
+<span id="L1134" class="ln">  1134  </span>
+<span id="L1135" class="ln">  1135  </span>		t.Run(&#34;古いversionを持つエンティティの在庫更新はErrVersionConflictを返しDBの行を変更しない&#34;, func(t *testing.T) {
+<span id="L1136" class="ln">  1136  </span>			t.Parallel()
+<span id="L1137" class="ln">  1137  </span>
+<span id="L1138" class="ln">  1138  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1139" class="ln">  1139  </span>				drv := driver.New(ctx, testDB)
+<span id="L1140" class="ln">  1140  </span>				insertProduct(ctx, t, drv, conflictID, probeKeyword+&#34;-STOCK-CONFLICT&#34;, nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+<span id="L1141" class="ln">  1141  </span>
+<span id="L1142" class="ln">  1142  </span>				stale, err := repo.FindByID(ctx, mustParse(t, conflictID))
+<span id="L1143" class="ln">  1143  </span>				require.NoError(t, err)
+<span id="L1144" class="ln">  1144  </span>				require.NoError(t, stale.AdjustStock(3))
+<span id="L1145" class="ln">  1145  </span>
+<span id="L1146" class="ln">  1146  </span>				<span class="comment">// 取得後に他トランザクションが更新し、DB 側のバージョンだけが進んだ状態を再現する。</span>
+<span id="L1147" class="ln">  1147  </span>				_, err = drv.Exec(ctx,
+<span id="L1148" class="ln">  1148  </span>					&#34;UPDATE products SET quantity = quantity + 100, lock_version = lock_version + 1 WHERE id = $1&#34;,
+<span id="L1149" class="ln">  1149  </span>					mustParse(t, conflictID),
+<span id="L1150" class="ln">  1150  </span>				)
+<span id="L1151" class="ln">  1151  </span>				require.NoError(t, err)
+<span id="L1152" class="ln">  1152  </span>
+<span id="L1153" class="ln">  1153  </span>				version, err := repo.UpdateStock(ctx, stale)
+<span id="L1154" class="ln">  1154  </span>				require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+<span id="L1155" class="ln">  1155  </span>				assert.Equal(t, 0, version)
+<span id="L1156" class="ln">  1156  </span>
+<span id="L1157" class="ln">  1157  </span>				got, err := repo.FindByID(ctx, mustParse(t, conflictID))
+<span id="L1158" class="ln">  1158  </span>				require.NoError(t, err)
+<span id="L1159" class="ln">  1159  </span>				assert.Equal(t, 110, got.Quantity())
+<span id="L1160" class="ln">  1160  </span>				assert.Equal(t, 2, got.Version())
+<span id="L1161" class="ln">  1161  </span>			})
+<span id="L1162" class="ln">  1162  </span>		})
+<span id="L1163" class="ln">  1163  </span>
+<span id="L1164" class="ln">  1164  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化され衝突とは区別される&#34;, func(t *testing.T) {
+<span id="L1165" class="ln">  1165  </span>			t.Parallel()
+<span id="L1166" class="ln">  1166  </span>
+<span id="L1167" class="ln">  1167  </span>			id := uuidtestkit.NewTestFromSalt(t, &#34;update_stock_canceled_id&#34;)
+<span id="L1168" class="ln">  1168  </span>			statusRef, err := domainproduct.NewStatusRef(mustParse(t, statusInStock), &#34;在庫あり&#34;)
+<span id="L1169" class="ln">  1169  </span>			require.NoError(t, err)
+<span id="L1170" class="ln">  1170  </span>			categoryRef, err := domainproduct.NewCategoryRef(mustParse(t, categoryElectronics), &#34;電子機器&#34;)
+<span id="L1171" class="ln">  1171  </span>			require.NoError(t, err)
+<span id="L1172" class="ln">  1172  </span>			price, err := money.NewPrice(decimal.FromInt(100))
+<span id="L1173" class="ln">  1173  </span>			require.NoError(t, err)
+<span id="L1174" class="ln">  1174  </span>			entity, err := domainproduct.New(id, domainproduct.Attributes{
+<span id="L1175" class="ln">  1175  </span>				Name:     &#34;キャンセル商品&#34;,
+<span id="L1176" class="ln">  1176  </span>				Price:    price,
+<span id="L1177" class="ln">  1177  </span>				Quantity: 1,
+<span id="L1178" class="ln">  1178  </span>				Status:   statusRef,
+<span id="L1179" class="ln">  1179  </span>				Category: categoryRef,
+<span id="L1180" class="ln">  1180  </span>			})
+<span id="L1181" class="ln">  1181  </span>			require.NoError(t, err)
+<span id="L1182" class="ln">  1182  </span>
+<span id="L1183" class="ln">  1183  </span>			ctx, cancel := context.WithCancel(context.Background())
+<span id="L1184" class="ln">  1184  </span>			cancel()
+<span id="L1185" class="ln">  1185  </span>
+<span id="L1186" class="ln">  1186  </span>			version, err := repo.UpdateStock(ctx, entity)
+<span id="L1187" class="ln">  1187  </span>			assert.Equal(t, 0, version)
+<span id="L1188" class="ln">  1188  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L1189" class="ln">  1189  </span>			require.NotErrorIs(t, err, domainproduct.ErrVersionConflict)
+<span id="L1190" class="ln">  1190  </span>		})
+<span id="L1191" class="ln">  1191  </span>
+<span id="L1192" class="ln">  1192  </span>		t.Run(&#34;versionがINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す&#34;, func(t *testing.T) {
+<span id="L1193" class="ln">  1193  </span>			t.Parallel()
+<span id="L1194" class="ln">  1194  </span>
+<span id="L1195" class="ln">  1195  </span>			entity := reconstructWithVersion(t, &#34;update_stock_version_overflow_id&#34;, math.MaxInt32+1)
+<span id="L1196" class="ln">  1196  </span>
+<span id="L1197" class="ln">  1197  </span>			version, err := repo.UpdateStock(context.Background(), entity)
+<span id="L1198" class="ln">  1198  </span>			assert.Equal(t, 0, version)
+<span id="L1199" class="ln">  1199  </span>			require.ErrorIs(t, err, safecast.ErrOverflow)
+<span id="L1200" class="ln">  1200  </span>		})
+<span id="L1201" class="ln">  1201  </span>	})
+<span id="L1202" class="ln">  1202  </span>}
+<span id="L1203" class="ln">  1203  </span>
+<span id="L1204" class="ln">  1204  </span><span class="comment">//nolint:paralleltest // 両 tx から見える commit 済みの行を使うため非並列</span>
+<span id="L1205" class="ln">  1205  </span>func Test_repository_UpdateStock_concurrentRowLock(t *testing.T) {
+<span id="L1206" class="ln">  1206  </span>	testDB := testkit.NewTestDB(t)
+<span id="L1207" class="ln">  1207  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L1208" class="ln">  1208  </span>	repo := &amp;repository{tracer: lt, db: testDB}
+<span id="L1209" class="ln">  1209  </span>
+<span id="L1210" class="ln">  1210  </span>	dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+<span id="L1211" class="ln">  1211  </span>	txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
+<span id="L1212" class="ln">  1212  </span>
+<span id="L1213" class="ln">  1213  </span>	<span class="comment">// commit する専用行のため、rollback 前提の他テストが使う ID・keyword とは重ならない値にする。</span>
+<span id="L1214" class="ln">  1214  </span>	productID := mustParse(t, &#34;9a592000-0000-4000-8000-000000000001&#34;)
+<span id="L1215" class="ln">  1215  </span>
+<span id="L1216" class="ln">  1216  </span>	t.Cleanup(func() {
+<span id="L1217" class="ln">  1217  </span>		_ = txm.Do(context.Background(), func(ctx context.Context) error {
+<span id="L1218" class="ln">  1218  </span>			_, err := driver.New(ctx, testDB).Exec(ctx, &#34;DELETE FROM products WHERE id = $1&#34;, productID)
+<span id="L1219" class="ln">  1219  </span>			return err
+<span id="L1220" class="ln">  1220  </span>		})
+<span id="L1221" class="ln">  1221  </span>	})
+<span id="L1222" class="ln">  1222  </span>
+<span id="L1223" class="ln">  1223  </span>	<span class="comment">// 両 tx から見える commit 済みの在庫 10・バージョン 1 の行を用意する。</span>
+<span id="L1224" class="ln">  1224  </span>	require.NoError(t, txm.Do(context.Background(), func(ctx context.Context) error {
+<span id="L1225" class="ln">  1225  </span>		_, err := driver.New(ctx, testDB).Exec(ctx, &#34;DELETE FROM products WHERE id = $1&#34;, productID)
+<span id="L1226" class="ln">  1226  </span>		require.NoError(t, err)
+<span id="L1227" class="ln">  1227  </span>		insertProduct(ctx, t, driver.New(ctx, testDB), productID.String(), &#34;STOCKCONCURRENT592&#34;,
+<span id="L1228" class="ln">  1228  </span>			nil, 1999, statusInStock, categoryElectronics, nil)
+<span id="L1229" class="ln">  1229  </span>		return nil
+<span id="L1230" class="ln">  1230  </span>	}))
+<span id="L1231" class="ln">  1231  </span>
+<span id="L1232" class="ln">  1232  </span>	holderLocked := make(chan struct{})
+<span id="L1233" class="ln">  1233  </span>	release := make(chan struct{})
+<span id="L1234" class="ln">  1234  </span>	holderDone := make(chan error, 1)
+<span id="L1235" class="ln">  1235  </span>
+<span id="L1236" class="ln">  1236  </span>	var once sync.Once
+<span id="L1237" class="ln">  1237  </span>	rel := func() { once.Do(func() { close(release) }) }
+<span id="L1238" class="ln">  1238  </span>	t.Cleanup(rel) <span class="comment">// 失敗時も保持側 goroutine をリークさせない</span>
+<span id="L1239" class="ln">  1239  </span>
+<span id="L1240" class="ln">  1240  </span>	go func() {
+<span id="L1241" class="ln">  1241  </span>		holderDone &lt;- txm.Do(context.Background(), func(ctx context.Context) error {
+<span id="L1242" class="ln">  1242  </span>			entity, err := repo.LockByID(ctx, productID)
+<span id="L1243" class="ln">  1243  </span>			if err != nil {
+<span id="L1244" class="ln">  1244  </span>				return err
+<span id="L1245" class="ln">  1245  </span>			}
+<span id="L1246" class="ln">  1246  </span>			close(holderLocked)
+<span id="L1247" class="ln">  1247  </span>			&lt;-release
+<span id="L1248" class="ln">  1248  </span>			if err = entity.AdjustStock(5); err != nil {
+<span id="L1249" class="ln">  1249  </span>				return err
+<span id="L1250" class="ln">  1250  </span>			}
+<span id="L1251" class="ln">  1251  </span>			_, err = repo.UpdateStock(ctx, entity)
+<span id="L1252" class="ln">  1252  </span>			return err
+<span id="L1253" class="ln">  1253  </span>		})
+<span id="L1254" class="ln">  1254  </span>	}()
+<span id="L1255" class="ln">  1255  </span>
+<span id="L1256" class="ln">  1256  </span>	select {
+<span id="L1257" class="ln">  1257  </span>	case &lt;-holderLocked:
+<span id="L1258" class="ln">  1258  </span>	case err := &lt;-holderDone:
+<span id="L1259" class="ln">  1259  </span>		require.NoError(t, err, &#34;保持側 tx がロック取得前に失敗した&#34;)
+<span id="L1260" class="ln">  1260  </span>		return
+<span id="L1261" class="ln">  1261  </span>	}
+<span id="L1262" class="ln">  1262  </span>
+<span id="L1263" class="ln">  1263  </span>	timeoutErr := txm.Do(context.Background(), func(ctx context.Context) error {
+<span id="L1264" class="ln">  1264  </span>		if _, err := driver.New(ctx, testDB).Exec(ctx, &#34;SET LOCAL lock_timeout = &#39;50ms&#39;&#34;); err != nil {
+<span id="L1265" class="ln">  1265  </span>			return err
+<span id="L1266" class="ln">  1266  </span>		}
+<span id="L1267" class="ln">  1267  </span>		_, err := repo.LockByID(ctx, productID)
+<span id="L1268" class="ln">  1268  </span>		return err
+<span id="L1269" class="ln">  1269  </span>	})
+<span id="L1270" class="ln">  1270  </span>	require.ErrorIs(t, timeoutErr, apperror.ErrUnavailable, &#34;ロック待ちのタイムアウト(55P03)は待てば解消しうる一時障害として扱う&#34;)
+<span id="L1271" class="ln">  1271  </span>	require.NotErrorIs(t, timeoutErr, apperror.ErrInternal, &#34;サーバ内部エラー(500)として露出させない&#34;)
+<span id="L1272" class="ln">  1272  </span>
+<span id="L1273" class="ln">  1273  </span>	contenderDone := make(chan error, 1)
+<span id="L1274" class="ln">  1274  </span>	go func() {
+<span id="L1275" class="ln">  1275  </span>		contenderDone &lt;- txm.Do(context.Background(), func(ctx context.Context) error {
+<span id="L1276" class="ln">  1276  </span>			entity, err := repo.LockByID(ctx, productID)
+<span id="L1277" class="ln">  1277  </span>			if err != nil {
+<span id="L1278" class="ln">  1278  </span>				return err
+<span id="L1279" class="ln">  1279  </span>			}
+<span id="L1280" class="ln">  1280  </span>			assert.Equal(t, 15, entity.Quantity(), &#34;後続 tx は先行 tx の更新後の在庫を読む&#34;)
+<span id="L1281" class="ln">  1281  </span>			if err = entity.AdjustStock(-3); err != nil {
+<span id="L1282" class="ln">  1282  </span>				return err
+<span id="L1283" class="ln">  1283  </span>			}
+<span id="L1284" class="ln">  1284  </span>			_, err = repo.UpdateStock(ctx, entity)
+<span id="L1285" class="ln">  1285  </span>			return err
+<span id="L1286" class="ln">  1286  </span>		})
+<span id="L1287" class="ln">  1287  </span>	}()
+<span id="L1288" class="ln">  1288  </span>
+<span id="L1289" class="ln">  1289  </span>	rel()
+<span id="L1290" class="ln">  1290  </span>	require.NoError(t, &lt;-holderDone)
+<span id="L1291" class="ln">  1291  </span>	require.NoError(t, &lt;-contenderDone)
+<span id="L1292" class="ln">  1292  </span>
+<span id="L1293" class="ln">  1293  </span>	got, err := repo.FindByID(context.Background(), productID)
+<span id="L1294" class="ln">  1294  </span>	require.NoError(t, err)
+<span id="L1295" class="ln">  1295  </span>	assert.Equal(t, 12, got.Quantity(), &#34;両 tx の増減が失われず合成される&#34;)
+<span id="L1296" class="ln">  1296  </span>	assert.Equal(t, 3, got.Version(), &#34;在庫更新のたびにバージョンが進む&#34;)
+<span id="L1297" class="ln">  1297  </span>}
+<span id="L1298" class="ln">  1298  </span>
+<span id="L1299" class="ln">  1299  </span>func Test_rowsToProducts(t *testing.T) {
+<span id="L1300" class="ln">  1300  </span>	t.Parallel()
+<span id="L1301" class="ln">  1301  </span>
+<span id="L1302" class="ln">  1302  </span>	newRow := func(t *testing.T, salt string) productRow {
+<span id="L1303" class="ln">  1303  </span>		t.Helper()
+<span id="L1304" class="ln">  1304  </span>		return productRow{
+<span id="L1305" class="ln">  1305  </span>			p: gen.Products{
+<span id="L1306" class="ln">  1306  </span>				ID:          uuidtestkit.NewTestFromSalt(t, salt),
+<span id="L1307" class="ln">  1307  </span>				Name:        &#34;商品&#34;,
+<span id="L1308" class="ln">  1308  </span>				Description: ptr.To(&#34;説明&#34;),
+<span id="L1309" class="ln">  1309  </span>				Price:       decimal.FromInt(1999),
+<span id="L1310" class="ln">  1310  </span>				Quantity:    100,
+<span id="L1311" class="ln">  1311  </span>				StatusID:    uuidtestkit.NewTestFromSalt(t, salt+&#34;_status&#34;),
+<span id="L1312" class="ln">  1312  </span>				CategoryID:  uuidtestkit.NewTestFromSalt(t, salt+&#34;_category&#34;),
+<span id="L1313" class="ln">  1313  </span>				LockVersion: 3,
+<span id="L1314" class="ln">  1314  </span>			},
+<span id="L1315" class="ln">  1315  </span>			statusName:   &#34;在庫あり&#34;,
+<span id="L1316" class="ln">  1316  </span>			categoryName: &#34;電子機器&#34;,
+<span id="L1317" class="ln">  1317  </span>		}
+<span id="L1318" class="ln">  1318  </span>	}
+<span id="L1319" class="ln">  1319  </span>	identity := func(r productRow) productRow { return r }
+<span id="L1320" class="ln">  1320  </span>
+<span id="L1321" class="ln">  1321  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1322" class="ln">  1322  </span>		t.Parallel()
+<span id="L1323" class="ln">  1323  </span>
+<span id="L1324" class="ln">  1324  </span>		t.Run(&#34;行スライスを順序を保ってエンティティ列へ変換する&#34;, func(t *testing.T) {
+<span id="L1325" class="ln">  1325  </span>			t.Parallel()
+<span id="L1326" class="ln">  1326  </span>
+<span id="L1327" class="ln">  1327  </span>			r1 := newRow(t, &#34;rows_a&#34;)
+<span id="L1328" class="ln">  1328  </span>			r2 := newRow(t, &#34;rows_b&#34;)
+<span id="L1329" class="ln">  1329  </span>
+<span id="L1330" class="ln">  1330  </span>			got, err := rowsToProducts([]productRow{r1, r2}, identity)
+<span id="L1331" class="ln">  1331  </span>
+<span id="L1332" class="ln">  1332  </span>			require.NoError(t, err)
+<span id="L1333" class="ln">  1333  </span>			require.Len(t, got, 2)
+<span id="L1334" class="ln">  1334  </span>			assert.Equal(t, r1.p.ID, got[0].ID())
+<span id="L1335" class="ln">  1335  </span>			assert.Equal(t, r2.p.ID, got[1].ID())
+<span id="L1336" class="ln">  1336  </span>		})
+<span id="L1337" class="ln">  1337  </span>
+<span id="L1338" class="ln">  1338  </span>		t.Run(&#34;空スライスは空の列を返す&#34;, func(t *testing.T) {
+<span id="L1339" class="ln">  1339  </span>			t.Parallel()
+<span id="L1340" class="ln">  1340  </span>
+<span id="L1341" class="ln">  1341  </span>			got, err := rowsToProducts([]productRow{}, identity)
+<span id="L1342" class="ln">  1342  </span>
+<span id="L1343" class="ln">  1343  </span>			require.NoError(t, err)
+<span id="L1344" class="ln">  1344  </span>			assert.Empty(t, got)
+<span id="L1345" class="ln">  1345  </span>		})
+<span id="L1346" class="ln">  1346  </span>	})
+<span id="L1347" class="ln">  1347  </span>
+<span id="L1348" class="ln">  1348  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1349" class="ln">  1349  </span>		t.Parallel()
+<span id="L1350" class="ln">  1350  </span>
+<span id="L1351" class="ln">  1351  </span>		t.Run(&#34;変換失敗があれば先頭で打ち切り nil とエラーを返す&#34;, func(t *testing.T) {
+<span id="L1352" class="ln">  1352  </span>			t.Parallel()
+<span id="L1353" class="ln">  1353  </span>
+<span id="L1354" class="ln">  1354  </span>			invalid := newRow(t, &#34;rows_invalid&#34;)
+<span id="L1355" class="ln">  1355  </span>			invalid.statusName = &#34;&#34; <span class="comment">// status 名が空だと rowToProduct が検証失敗する</span>
+<span id="L1356" class="ln">  1356  </span>
+<span id="L1357" class="ln">  1357  </span>			got, err := rowsToProducts([]productRow{invalid, newRow(t, &#34;rows_valid&#34;)}, identity)
+<span id="L1358" class="ln">  1358  </span>
+<span id="L1359" class="ln">  1359  </span>			require.Error(t, err)
+<span id="L1360" class="ln">  1360  </span>			assert.Nil(t, got)
+<span id="L1361" class="ln">  1361  </span>		})
+<span id="L1362" class="ln">  1362  </span>	})
+<span id="L1363" class="ln">  1363  </span>}
+<span id="L1364" class="ln">  1364  </span>
+<span id="L1365" class="ln">  1365  </span>func Test_repository_Count(t *testing.T) {
+<span id="L1366" class="ln">  1366  </span>	t.Parallel()
+<span id="L1367" class="ln">  1367  </span>
+<span id="L1368" class="ln">  1368  </span>	testDB := testkit.NewTestDB(t)
+<span id="L1369" class="ln">  1369  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L1370" class="ln">  1370  </span>	repo := &amp;repository{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
+<span id="L1371" class="ln">  1371  </span>
+<span id="L1372" class="ln">  1372  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1373" class="ln">  1373  </span>		t.Parallel()
+<span id="L1374" class="ln">  1374  </span>
+<span id="L1375" class="ln">  1375  </span>		t.Run(&#34;公開商品は総数と公開数の双方を増やし非公開は総数のみを増やす&#34;, func(t *testing.T) {
+<span id="L1376" class="ln">  1376  </span>			t.Parallel()
+<span id="L1377" class="ln">  1377  </span>
+<span id="L1378" class="ln">  1378  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1379" class="ln">  1379  </span>				drv := driver.New(ctx, testDB)
+<span id="L1380" class="ln">  1380  </span>				before, err := repo.Count(ctx)
+<span id="L1381" class="ln">  1381  </span>				require.NoError(t, err)
+<span id="L1382" class="ln">  1382  </span>
+<span id="L1383" class="ln">  1383  </span>				publishedAt := time.Now()
+<span id="L1384" class="ln">  1384  </span>				insertProduct(ctx, t, drv, &#34;e1000000-0000-4000-8000-000000000001&#34;, &#34;集計対象の公開商品&#34;,
+<span id="L1385" class="ln">  1385  </span>					nil, 100, statusInStock, categoryElectronics, &amp;publishedAt)
+<span id="L1386" class="ln">  1386  </span>				insertProduct(ctx, t, drv, &#34;e1000000-0000-4000-8000-000000000002&#34;, &#34;集計対象の非公開商品&#34;,
+<span id="L1387" class="ln">  1387  </span>					nil, 100, statusInStock, categoryElectronics, nil)
+<span id="L1388" class="ln">  1388  </span>
+<span id="L1389" class="ln">  1389  </span>				after, err := repo.Count(ctx)
+<span id="L1390" class="ln">  1390  </span>				require.NoError(t, err)
+<span id="L1391" class="ln">  1391  </span>
+<span id="L1392" class="ln">  1392  </span>				assert.Equal(t, before.Total+2, after.Total)
+<span id="L1393" class="ln">  1393  </span>				assert.Equal(t, before.Published+1, after.Published)
+<span id="L1394" class="ln">  1394  </span>			})
+<span id="L1395" class="ln">  1395  </span>		})
+<span id="L1396" class="ln">  1396  </span>	})
+<span id="L1397" class="ln">  1397  </span>
+<span id="L1398" class="ln">  1398  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1399" class="ln">  1399  </span>		t.Parallel()
+<span id="L1400" class="ln">  1400  </span>
+<span id="L1401" class="ln">  1401  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
+<span id="L1402" class="ln">  1402  </span>			t.Parallel()
+<span id="L1403" class="ln">  1403  </span>
+<span id="L1404" class="ln">  1404  </span>			ctx, cancel := context.WithCancel(t.Context())
+<span id="L1405" class="ln">  1405  </span>			cancel()
+<span id="L1406" class="ln">  1406  </span>
+<span id="L1407" class="ln">  1407  </span>			got, err := repo.Count(ctx)
+<span id="L1408" class="ln">  1408  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L1409" class="ln">  1409  </span>			assert.Zero(t, got.Total)
+<span id="L1410" class="ln">  1410  </span>		})
+<span id="L1411" class="ln">  1411  </span>	})
+<span id="L1412" class="ln">  1412  </span>}
+<span id="L1413" class="ln">  1413  </span>
+<span id="L1414" class="ln">  1414  </span><span class="comment">// insertStockProduct は、在庫数・在庫警告閾値・公開日時を明示した商品を挿入するヘルパーです。</span>
+<span id="L1415" class="ln">  1415  </span>func insertStockProduct(
+<span id="L1416" class="ln">  1416  </span>	ctx context.Context, t *testing.T, db driver.DBTX,
+<span id="L1417" class="ln">  1417  </span>	id, name string, quantity int, threshold *int, publishedAt *time.Time,
+<span id="L1418" class="ln">  1418  </span>) {
+<span id="L1419" class="ln">  1419  </span>	t.Helper()
+<span id="L1420" class="ln">  1420  </span>	_, err := db.Exec(ctx,
+<span id="L1421" class="ln">  1421  </span>		&#34;INSERT INTO products &#34;+
+<span id="L1422" class="ln">  1422  </span>			&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
+<span id="L1423" class="ln">  1423  </span>			&#34;VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,$8)&#34;,
+<span id="L1424" class="ln">  1424  </span>		id, name, 1000, quantity, threshold, statusInStock, categoryElectronics, publishedAt,
+<span id="L1425" class="ln">  1425  </span>	)
+<span id="L1426" class="ln">  1426  </span>	require.NoError(t, err)
+<span id="L1427" class="ln">  1427  </span>}
+<span id="L1428" class="ln">  1428  </span>
+<span id="L1429" class="ln">  1429  </span><span class="comment">// insertNegativePriceLowStockProduct は、在庫僅少の条件を満たしつつ価格が負数の行を挿入するヘルパーです。</span>
+<span id="L1430" class="ln">  1430  </span>func insertNegativePriceLowStockProduct(ctx context.Context, t *testing.T, db driver.DBTX, id string) {
+<span id="L1431" class="ln">  1431  </span>	t.Helper()
+<span id="L1432" class="ln">  1432  </span>	_, err := db.Exec(ctx,
+<span id="L1433" class="ln">  1433  </span>		&#34;INSERT INTO products &#34;+
+<span id="L1434" class="ln">  1434  </span>			&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
+<span id="L1435" class="ln">  1435  </span>			&#34;VALUES ($1,$2,NULL,$3,$4,$5,$6,$7,NULL)&#34;,
+<span id="L1436" class="ln">  1436  </span>		id, &#34;在庫僅少-価格不正&#34;, -1, 0, 100, statusInStock, categoryElectronics,
+<span id="L1437" class="ln">  1437  </span>	)
+<span id="L1438" class="ln">  1438  </span>	require.NoError(t, err)
+<span id="L1439" class="ln">  1439  </span>}
+<span id="L1440" class="ln">  1440  </span>
+<span id="L1441" class="ln">  1441  </span>func Test_repository_FindAllLowStock(t *testing.T) {
+<span id="L1442" class="ln">  1442  </span>	t.Parallel()
+<span id="L1443" class="ln">  1443  </span>
+<span id="L1444" class="ln">  1444  </span>	testDB := testkit.NewTestDB(t)
+<span id="L1445" class="ln">  1445  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L1446" class="ln">  1446  </span>	repo := &amp;repository{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
+<span id="L1447" class="ln">  1447  </span>
+<span id="L1448" class="ln">  1448  </span>	<span class="comment">// seed 済み商品にも在庫僅少行が含まれるため、検証は挿入した probe 行に絞り込んで行う。</span>
+<span id="L1449" class="ln">  1449  </span>	const (
+<span id="L1450" class="ln">  1450  </span>		below       = &#34;ffffffff-0000-4000-8000-000000000001&#34; <span class="comment">// quantity(50) &lt; threshold(100)</span>
+<span id="L1451" class="ln">  1451  </span>		unpublished = &#34;ffffffff-0000-4000-8000-000000000002&#34; <span class="comment">// quantity(55) &lt; threshold(100) / 未公開</span>
+<span id="L1452" class="ln">  1452  </span>		tieLow      = &#34;ffffffff-0000-4000-8000-000000000003&#34; <span class="comment">// quantity(60) / id 小</span>
+<span id="L1453" class="ln">  1453  </span>		tieHigh     = &#34;ffffffff-0000-4000-8000-000000000004&#34; <span class="comment">// quantity(60) / id 大</span>
+<span id="L1454" class="ln">  1454  </span>		equal       = &#34;ffffffff-0000-4000-8000-000000000005&#34; <span class="comment">// quantity(100) == threshold(100)</span>
+<span id="L1455" class="ln">  1455  </span>		above       = &#34;ffffffff-0000-4000-8000-000000000006&#34; <span class="comment">// quantity(101) &gt; threshold(100)</span>
+<span id="L1456" class="ln">  1456  </span>		noThreshold = &#34;ffffffff-0000-4000-8000-000000000007&#34; <span class="comment">// threshold 未設定 / 在庫 0</span>
+<span id="L1457" class="ln">  1457  </span>	)
+<span id="L1458" class="ln">  1458  </span>	<span class="comment">// probeLimit は、挿入した probe 行が seed 行に押し出されない十分な取得件数です。</span>
+<span id="L1459" class="ln">  1459  </span>	const probeLimit = 1000
+<span id="L1460" class="ln">  1460  </span>
+<span id="L1461" class="ln">  1461  </span>	publishedAt := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L1462" class="ln">  1462  </span>
+<span id="L1463" class="ln">  1463  </span>	insertProbeSet := func(ctx context.Context, t *testing.T, drv driver.DBTX) {
+<span id="L1464" class="ln">  1464  </span>		t.Helper()
+<span id="L1465" class="ln">  1465  </span>		insertStockProduct(ctx, t, drv, below, &#34;在庫僅少-閾値未満&#34;, 50, ptr.To(100), &amp;publishedAt)
+<span id="L1466" class="ln">  1466  </span>		insertStockProduct(ctx, t, drv, unpublished, &#34;在庫僅少-未公開&#34;, 55, ptr.To(100), nil)
+<span id="L1467" class="ln">  1467  </span>		insertStockProduct(ctx, t, drv, tieLow, &#34;在庫僅少-同数A&#34;, 60, ptr.To(100), &amp;publishedAt)
+<span id="L1468" class="ln">  1468  </span>		insertStockProduct(ctx, t, drv, tieHigh, &#34;在庫僅少-同数B&#34;, 60, ptr.To(100), &amp;publishedAt)
+<span id="L1469" class="ln">  1469  </span>		insertStockProduct(ctx, t, drv, equal, &#34;在庫僅少-閾値ちょうど&#34;, 100, ptr.To(100), &amp;publishedAt)
+<span id="L1470" class="ln">  1470  </span>		insertStockProduct(ctx, t, drv, above, &#34;在庫十分-閾値超過&#34;, 101, ptr.To(100), &amp;publishedAt)
+<span id="L1471" class="ln">  1471  </span>		insertStockProduct(ctx, t, drv, noThreshold, &#34;閾値未設定-在庫ゼロ&#34;, 0, nil, &amp;publishedAt)
+<span id="L1472" class="ln">  1472  </span>	}
+<span id="L1473" class="ln">  1473  </span>
+<span id="L1474" class="ln">  1474  </span>	<span class="comment">// probeIDs は、取得結果から probe 行だけを挿入順ではなく取得順で抜き出します。</span>
+<span id="L1475" class="ln">  1475  </span>	probeIDs := func(t *testing.T, products domainproduct.Products) []uuid.UUID {
+<span id="L1476" class="ln">  1476  </span>		t.Helper()
+<span id="L1477" class="ln">  1477  </span>		probes := map[uuid.UUID]struct{}{
+<span id="L1478" class="ln">  1478  </span>			mustParse(t, below): {}, mustParse(t, unpublished): {}, mustParse(t, tieLow): {},
+<span id="L1479" class="ln">  1479  </span>			mustParse(t, tieHigh): {}, mustParse(t, equal): {}, mustParse(t, above): {},
+<span id="L1480" class="ln">  1480  </span>			mustParse(t, noThreshold): {},
+<span id="L1481" class="ln">  1481  </span>		}
+<span id="L1482" class="ln">  1482  </span>		var ids []uuid.UUID
+<span id="L1483" class="ln">  1483  </span>		for _, p := range products {
+<span id="L1484" class="ln">  1484  </span>			if _, ok := probes[p.ID()]; ok {
+<span id="L1485" class="ln">  1485  </span>				ids = append(ids, p.ID())
+<span id="L1486" class="ln">  1486  </span>			}
+<span id="L1487" class="ln">  1487  </span>		}
+<span id="L1488" class="ln">  1488  </span>		return ids
+<span id="L1489" class="ln">  1489  </span>	}
+<span id="L1490" class="ln">  1490  </span>
+<span id="L1491" class="ln">  1491  </span>	<span class="comment">// findProbe は、取得結果から指定 ID の probe 行を 1 件取り出します。</span>
+<span id="L1492" class="ln">  1492  </span>	findProbe := func(t *testing.T, products domainproduct.Products, id string) *domainproduct.Product {
+<span id="L1493" class="ln">  1493  </span>		t.Helper()
+<span id="L1494" class="ln">  1494  </span>		for _, p := range products {
+<span id="L1495" class="ln">  1495  </span>			if p.ID() == mustParse(t, id) {
+<span id="L1496" class="ln">  1496  </span>				return p
+<span id="L1497" class="ln">  1497  </span>			}
+<span id="L1498" class="ln">  1498  </span>		}
+<span id="L1499" class="ln">  1499  </span>		return nil
+<span id="L1500" class="ln">  1500  </span>	}
+<span id="L1501" class="ln">  1501  </span>
+<span id="L1502" class="ln">  1502  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1503" class="ln">  1503  </span>		t.Parallel()
+<span id="L1504" class="ln">  1504  </span>
+<span id="L1505" class="ln">  1505  </span>		t.Run(&#34;閾値以下の商品のみを在庫昇順同数はID昇順で返し閾値超過と閾値未設定は返さない&#34;, func(t *testing.T) {
+<span id="L1506" class="ln">  1506  </span>			t.Parallel()
+<span id="L1507" class="ln">  1507  </span>
+<span id="L1508" class="ln">  1508  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1509" class="ln">  1509  </span>				drv := driver.New(ctx, testDB)
+<span id="L1510" class="ln">  1510  </span>				insertProbeSet(ctx, t, drv)
+<span id="L1511" class="ln">  1511  </span>
+<span id="L1512" class="ln">  1512  </span>				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+<span id="L1513" class="ln">  1513  </span>				require.NoError(t, err)
+<span id="L1514" class="ln">  1514  </span>
+<span id="L1515" class="ln">  1515  </span>				assert.Equal(t, []uuid.UUID{
+<span id="L1516" class="ln">  1516  </span>					mustParse(t, below),
+<span id="L1517" class="ln">  1517  </span>					mustParse(t, unpublished),
+<span id="L1518" class="ln">  1518  </span>					mustParse(t, tieLow),
+<span id="L1519" class="ln">  1519  </span>					mustParse(t, tieHigh),
+<span id="L1520" class="ln">  1520  </span>					mustParse(t, equal),
+<span id="L1521" class="ln">  1521  </span>				}, probeIDs(t, actual))
+<span id="L1522" class="ln">  1522  </span>			})
+<span id="L1523" class="ln">  1523  </span>		})
+<span id="L1524" class="ln">  1524  </span>
+<span id="L1525" class="ln">  1525  </span>		t.Run(&#34;未公開商品も在庫僅少であれば返る&#34;, func(t *testing.T) {
+<span id="L1526" class="ln">  1526  </span>			t.Parallel()
+<span id="L1527" class="ln">  1527  </span>
+<span id="L1528" class="ln">  1528  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1529" class="ln">  1529  </span>				drv := driver.New(ctx, testDB)
+<span id="L1530" class="ln">  1530  </span>				insertProbeSet(ctx, t, drv)
+<span id="L1531" class="ln">  1531  </span>
+<span id="L1532" class="ln">  1532  </span>				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+<span id="L1533" class="ln">  1533  </span>				require.NoError(t, err)
+<span id="L1534" class="ln">  1534  </span>
+<span id="L1535" class="ln">  1535  </span>				found := findProbe(t, actual, unpublished)
+<span id="L1536" class="ln">  1536  </span>				require.NotNil(t, found)
+<span id="L1537" class="ln">  1537  </span>				assert.Nil(t, found.PublishedAt())
+<span id="L1538" class="ln">  1538  </span>			})
+<span id="L1539" class="ln">  1539  </span>		})
+<span id="L1540" class="ln">  1540  </span>
+<span id="L1541" class="ln">  1541  </span>		t.Run(&#34;ステータス名とカテゴリ名を結合して復元する&#34;, func(t *testing.T) {
+<span id="L1542" class="ln">  1542  </span>			t.Parallel()
+<span id="L1543" class="ln">  1543  </span>
+<span id="L1544" class="ln">  1544  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1545" class="ln">  1545  </span>				drv := driver.New(ctx, testDB)
+<span id="L1546" class="ln">  1546  </span>				insertProbeSet(ctx, t, drv)
+<span id="L1547" class="ln">  1547  </span>
+<span id="L1548" class="ln">  1548  </span>				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+<span id="L1549" class="ln">  1549  </span>				require.NoError(t, err)
+<span id="L1550" class="ln">  1550  </span>
+<span id="L1551" class="ln">  1551  </span>				found := findProbe(t, actual, below)
+<span id="L1552" class="ln">  1552  </span>				require.NotNil(t, found)
+<span id="L1553" class="ln">  1553  </span>				<span class="comment">// SQL の結合エイリアス取り違え（status / category の名称入れ替わり）を検出するため、異なる 2 値で検証する。</span>
+<span id="L1554" class="ln">  1554  </span>				assert.Equal(t, mustParse(t, statusInStock), found.Status().ID())
+<span id="L1555" class="ln">  1555  </span>				assert.Equal(t, &#34;在庫あり&#34;, found.Status().Name())
+<span id="L1556" class="ln">  1556  </span>				assert.Equal(t, mustParse(t, categoryElectronics), found.Category().ID())
+<span id="L1557" class="ln">  1557  </span>				assert.Equal(t, &#34;電子機器&#34;, found.Category().Name())
+<span id="L1558" class="ln">  1558  </span>			})
+<span id="L1559" class="ln">  1559  </span>		})
+<span id="L1560" class="ln">  1560  </span>
+<span id="L1561" class="ln">  1561  </span>		t.Run(&#34;limitで取得件数が打ち切られる&#34;, func(t *testing.T) {
+<span id="L1562" class="ln">  1562  </span>			t.Parallel()
+<span id="L1563" class="ln">  1563  </span>
+<span id="L1564" class="ln">  1564  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1565" class="ln">  1565  </span>				drv := driver.New(ctx, testDB)
+<span id="L1566" class="ln">  1566  </span>				insertProbeSet(ctx, t, drv)
+<span id="L1567" class="ln">  1567  </span>
+<span id="L1568" class="ln">  1568  </span>				actual, err := repo.FindAllLowStock(ctx, 3)
+<span id="L1569" class="ln">  1569  </span>				require.NoError(t, err)
+<span id="L1570" class="ln">  1570  </span>				assert.Len(t, actual, 3)
+<span id="L1571" class="ln">  1571  </span>			})
+<span id="L1572" class="ln">  1572  </span>		})
+<span id="L1573" class="ln">  1573  </span>	})
+<span id="L1574" class="ln">  1574  </span>
+<span id="L1575" class="ln">  1575  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1576" class="ln">  1576  </span>		t.Parallel()
+<span id="L1577" class="ln">  1577  </span>
+<span id="L1578" class="ln">  1578  </span>		t.Run(&#34;キャンセル済みコンテキストではErrCanceledへ正規化して返す&#34;, func(t *testing.T) {
+<span id="L1579" class="ln">  1579  </span>			t.Parallel()
+<span id="L1580" class="ln">  1580  </span>
+<span id="L1581" class="ln">  1581  </span>			ctx, cancel := context.WithCancel(t.Context())
+<span id="L1582" class="ln">  1582  </span>			cancel()
+<span id="L1583" class="ln">  1583  </span>
+<span id="L1584" class="ln">  1584  </span>			actual, err := repo.FindAllLowStock(ctx, 10)
+<span id="L1585" class="ln">  1585  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
+<span id="L1586" class="ln">  1586  </span>			assert.Nil(t, actual)
+<span id="L1587" class="ln">  1587  </span>		})
+<span id="L1588" class="ln">  1588  </span>
+<span id="L1589" class="ln">  1589  </span>		t.Run(&#34;不正な行(価格が負数)が含まれるとデータ不整合としてErrInternalを返す&#34;, func(t *testing.T) {
+<span id="L1590" class="ln">  1590  </span>			t.Parallel()
+<span id="L1591" class="ln">  1591  </span>
+<span id="L1592" class="ln">  1592  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L1593" class="ln">  1593  </span>				drv := driver.New(ctx, testDB)
+<span id="L1594" class="ln">  1594  </span>				insertNegativePriceLowStockProduct(ctx, t, drv, &#34;ffffffff-0000-4000-8000-0000000000e1&#34;)
+<span id="L1595" class="ln">  1595  </span>
+<span id="L1596" class="ln">  1596  </span>				actual, err := repo.FindAllLowStock(ctx, probeLimit)
+<span id="L1597" class="ln">  1597  </span>				assert.Nil(t, actual)
+<span id="L1598" class="ln">  1598  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L1599" class="ln">  1599  </span>				require.NotErrorIs(t, err, money.ErrNegativePrice)
+<span id="L1600" class="ln">  1600  </span>			})
+<span id="L1601" class="ln">  1601  </span>		})
+<span id="L1602" class="ln">  1602  </span>	})
+<span id="L1603" class="ln">  1603  </span>}
+<span id="L1604" class="ln">  1604  </span>
+<span id="L1605" class="ln">  1605  </span>func TestNew(t *testing.T) {
+<span id="L1606" class="ln">  1606  </span>	t.Parallel()
+<span id="L1607" class="ln">  1607  </span>
+<span id="L1608" class="ln">  1608  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1609" class="ln">  1609  </span>		t.Parallel()
+<span id="L1610" class="ln">  1610  </span>
+<span id="L1611" class="ln">  1611  </span>		t.Run(&#34;渡したドライバとinfra層トレーサーを保持した実装を返す&#34;, func(t *testing.T) {
+<span id="L1612" class="ln">  1612  </span>			t.Parallel()
+<span id="L1613" class="ln">  1613  </span>
+<span id="L1614" class="ln">  1614  </span>			testDB := testkit.NewTestDB(t)
+<span id="L1615" class="ln">  1615  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L1616" class="ln">  1616  </span>
+<span id="L1617" class="ln">  1617  </span>			actual := New(testDB, tf)
+<span id="L1618" class="ln">  1618  </span>
+<span id="L1619" class="ln">  1619  </span>			assert.Equal(t, &amp;repository{db: testDB, tracer: tf.Infra()}, actual)
+<span id="L1620" class="ln">  1620  </span>		})
+<span id="L1621" class="ln">  1621  </span>	})
+<span id="L1622" class="ln">  1622  </span>}
+<span id="L1623" class="ln">  1623  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/repository/product/product_repository_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

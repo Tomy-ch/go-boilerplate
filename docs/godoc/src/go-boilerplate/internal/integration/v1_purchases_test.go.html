@@ -1,0 +1,312 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>integration - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../src/go-boilerplate/internal/integration">integration</a>/<span class="text-muted">v1_purchases_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/internal/integration">go-boilerplate/internal/integration</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package integration
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;encoding/json&#34;
+<span id="L6" class="ln">     6  </span>	&#34;net/http&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	v1purchases &#34;go-boilerplate/internal/controller/handler/v1/purchases&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/controller/handler/v1/purchases/gen&#34;
+<span id="L12" class="ln">    12  </span>	domainpurchase &#34;go-boilerplate/internal/domain/purchase&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L14" class="ln">    14  </span>	clocktest &#34;go-boilerplate/internal/usecase/boundary/clock/testkit&#34;
+<span id="L15" class="ln">    15  </span>	mock_idempotency &#34;go-boilerplate/internal/usecase/boundary/idempotency/mock&#34;
+<span id="L16" class="ln">    16  </span>	mock_tx &#34;go-boilerplate/internal/usecase/boundary/tx/mock&#34;
+<span id="L17" class="ln">    17  </span>	checkoutuc &#34;go-boilerplate/internal/usecase/checkout&#34;
+<span id="L18" class="ln">    18  </span>	mock_checkoutuc &#34;go-boilerplate/internal/usecase/checkout/mock&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/internal/usecase/idempotency&#34;
+<span id="L20" class="ln">    20  </span>	purchaseuc &#34;go-boilerplate/internal/usecase/purchase&#34;
+<span id="L21" class="ln">    21  </span>	decimaltestkit &#34;go-boilerplate/pkg/decimal/testkit&#34;
+<span id="L22" class="ln">    22  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L23" class="ln">    23  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	&#34;github.com/labstack/echo/v5&#34;
+<span id="L26" class="ln">    26  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L27" class="ln">    27  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L28" class="ln">    28  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L29" class="ln">    29  </span>)
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>func purchaseViewFixture(t *testing.T) purchaseuc.PurchaseView {
+<span id="L32" class="ln">    32  </span>	t.Helper()
+<span id="L33" class="ln">    33  </span>	return purchaseuc.PurchaseView{
+<span id="L34" class="ln">    34  </span>		ID:             uuidtestkit.NewTestFromSalt(t, &#34;int_id&#34;),
+<span id="L35" class="ln">    35  </span>		Code:           &#34;int-code&#34;,
+<span id="L36" class="ln">    36  </span>		UserID:         uuidtestkit.NewTestFromSalt(t, &#34;int_user&#34;),
+<span id="L37" class="ln">    37  </span>		StatusID:       uuidtestkit.NewTestFromSalt(t, &#34;int_status&#34;),
+<span id="L38" class="ln">    38  </span>		SubtotalAmount: 160000,
+<span id="L39" class="ln">    39  </span>		TaxAmount:      16000,
+<span id="L40" class="ln">    40  </span>		ShippingFee:    500,
+<span id="L41" class="ln">    41  </span>		TotalAmount:    176500,
+<span id="L42" class="ln">    42  </span>		Details: []purchaseuc.PurchaseDetailView{
+<span id="L43" class="ln">    43  </span>			{ProductID: uuidtestkit.NewTestFromSalt(t, &#34;int_prod&#34;), Quantity: 2, UnitPrice: decimaltestkit.MustParse(t, &#34;800&#34;)},
+<span id="L44" class="ln">    44  </span>		},
+<span id="L45" class="ln">    45  </span>		OrderedAt: time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+<span id="L46" class="ln">    46  </span>	}
+<span id="L47" class="ln">    47  </span>}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>func purchaseRequestBody(t *testing.T) *gen.PostPurchasesJSONRequestBody {
+<span id="L50" class="ln">    50  </span>	t.Helper()
+<span id="L51" class="ln">    51  </span>	return &amp;gen.PostPurchasesJSONRequestBody{
+<span id="L52" class="ln">    52  </span>		Details: []gen.PurchaseDetailInput{
+<span id="L53" class="ln">    53  </span>			{ProductId: uuidtestkit.NewTestFromSalt(t, &#34;int_prod&#34;).ToPrimitive(), Quantity: 2},
+<span id="L54" class="ln">    54  </span>		},
+<span id="L55" class="ln">    55  </span>	}
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>func availablePurchaseUser(t *testing.T, e *echo.Echo) http.Header {
+<span id="L59" class="ln">    59  </span>	t.Helper()
+<span id="L60" class="ln">    60  </span>	id, err := uuid.Parse(&#34;b7f64798-7321-242b-e4ff-115f6a0b7810&#34;)
+<span id="L61" class="ln">    61  </span>	require.NoError(t, err)
+<span id="L62" class="ln">    62  </span>	return MakeAvailableUserID(t, e, id)
+<span id="L63" class="ln">    63  </span>}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>func TestV1Purchases_Integration(t *testing.T) {
+<span id="L66" class="ln">    66  </span>	t.Parallel()
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L69" class="ln">    69  </span>		t.Parallel()
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span>		t.Run(&#34;POST /v1/purchasesが購入を作成し201を返す&#34;, func(t *testing.T) {
+<span id="L72" class="ln">    72  </span>			t.Parallel()
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>			e := echo.New()
+<span id="L75" class="ln">    75  </span>			ctrl := gomock.NewController(t)
+<span id="L76" class="ln">    76  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+<span id="L79" class="ln">    79  </span>			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(checkoutuc.PurchaseView{Purchase: purchaseViewFixture(t)}, nil)
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>			headers := availablePurchaseUser(t, e)
+<span id="L84" class="ln">    84  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, &#34;/v1/purchases&#34;, purchaseRequestBody(t), headers)
+<span id="L85" class="ln">    85  </span>			require.Equal(t, http.StatusCreated, actual.StatusCode)
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>			var body gen.PurchaseResponse
+<span id="L88" class="ln">    88  </span>			require.NoError(t, json.NewDecoder(actual.Body).Decode(&amp;body))
+<span id="L89" class="ln">    89  </span>			assert.Equal(t, &#34;int-code&#34;, body.Code)
+<span id="L90" class="ln">    90  </span>			require.Len(t, body.Details, 1)
+<span id="L91" class="ln">    91  </span>		})
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>		t.Run(&#34;Idempotency-Key付きでclaim→completeし201を返す&#34;, func(t *testing.T) {
+<span id="L94" class="ln">    94  </span>			t.Parallel()
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>			e := echo.New()
+<span id="L97" class="ln">    97  </span>			ctrl := gomock.NewController(t)
+<span id="L98" class="ln">    98  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+<span id="L101" class="ln">   101  </span>			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(checkoutuc.PurchaseView{Purchase: purchaseViewFixture(t)}, nil)
+<span id="L102" class="ln">   102  </span>
+<span id="L103" class="ln">   103  </span>			store := mock_idempotency.NewMockStore(ctrl)
+<span id="L104" class="ln">   104  </span>			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+<span id="L105" class="ln">   105  </span>			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
+<span id="L106" class="ln">   106  </span>			txm := mock_tx.NewMockManager(ctrl)
+<span id="L107" class="ln">   107  </span>			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L108" class="ln">   108  </span>				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+<span id="L109" class="ln">   109  </span>			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{Txm: txm, Store: store, Clock: clk})
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>			headers := availablePurchaseUser(t, e)
+<span id="L114" class="ln">   114  </span>			headers.Set(&#34;Idempotency-Key&#34;, &#34;integration-key-1&#34;)
+<span id="L115" class="ln">   115  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, &#34;/v1/purchases&#34;, purchaseRequestBody(t), headers)
+<span id="L116" class="ln">   116  </span>			require.Equal(t, http.StatusCreated, actual.StatusCode)
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span>			var body gen.PurchaseResponse
+<span id="L119" class="ln">   119  </span>			require.NoError(t, json.NewDecoder(actual.Body).Decode(&amp;body))
+<span id="L120" class="ln">   120  </span>			assert.Equal(t, &#34;int-code&#34;, body.Code)
+<span id="L121" class="ln">   121  </span>		})
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>		t.Run(&#34;displayCurrency指定時はreferenceAmountを含める&#34;, func(t *testing.T) {
+<span id="L124" class="ln">   124  </span>			t.Parallel()
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>			e := echo.New()
+<span id="L127" class="ln">   127  </span>			ctrl := gomock.NewController(t)
+<span id="L128" class="ln">   128  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span>			view := checkoutuc.PurchaseView{
+<span id="L131" class="ln">   131  </span>				Purchase: purchaseViewFixture(t),
+<span id="L132" class="ln">   132  </span>				ReferenceAmount: &amp;checkoutuc.ReferenceAmountView{
+<span id="L133" class="ln">   133  </span>					Currency: &#34;JPY&#34;,
+<span id="L134" class="ln">   134  </span>					Amount:   26475,
+<span id="L135" class="ln">   135  </span>					Rate:     decimaltestkit.MustParse(t, &#34;150.5&#34;),
+<span id="L136" class="ln">   136  </span>					RateDate: &#34;2026-07-21&#34;,
+<span id="L137" class="ln">   137  </span>				},
+<span id="L138" class="ln">   138  </span>			}
+<span id="L139" class="ln">   139  </span>			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+<span id="L140" class="ln">   140  </span>			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(view, nil)
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span>			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>			headers := availablePurchaseUser(t, e)
+<span id="L145" class="ln">   145  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, &#34;/v1/purchases?displayCurrency=JPY&#34;, purchaseRequestBody(t), headers)
+<span id="L146" class="ln">   146  </span>			require.Equal(t, http.StatusCreated, actual.StatusCode)
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>			var body gen.PurchaseResponse
+<span id="L149" class="ln">   149  </span>			require.NoError(t, json.NewDecoder(actual.Body).Decode(&amp;body))
+<span id="L150" class="ln">   150  </span>			require.NotNil(t, body.ReferenceAmount)
+<span id="L151" class="ln">   151  </span>			assert.Equal(t, int64(26475), body.ReferenceAmount.Amount)
+<span id="L152" class="ln">   152  </span>		})
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span>		t.Run(&#34;exchange障害時はreferenceAmountがnullでも購入は成立する&#34;, func(t *testing.T) {
+<span id="L155" class="ln">   155  </span>			t.Parallel()
+<span id="L156" class="ln">   156  </span>
+<span id="L157" class="ln">   157  </span>			e := echo.New()
+<span id="L158" class="ln">   158  </span>			ctrl := gomock.NewController(t)
+<span id="L159" class="ln">   159  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>			<span class="comment">// degrade: usecase が ReferenceAmount=nil のビューを返す</span>
+<span id="L162" class="ln">   162  </span>			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+<span id="L163" class="ln">   163  </span>			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(checkoutuc.PurchaseView{Purchase: purchaseViewFixture(t)}, nil)
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>			headers := availablePurchaseUser(t, e)
+<span id="L168" class="ln">   168  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, &#34;/v1/purchases?displayCurrency=JPY&#34;, purchaseRequestBody(t), headers)
+<span id="L169" class="ln">   169  </span>			require.Equal(t, http.StatusCreated, actual.StatusCode)
+<span id="L170" class="ln">   170  </span>
+<span id="L171" class="ln">   171  </span>			var body gen.PurchaseResponse
+<span id="L172" class="ln">   172  </span>			require.NoError(t, json.NewDecoder(actual.Body).Decode(&amp;body))
+<span id="L173" class="ln">   173  </span>			assert.Nil(t, body.ReferenceAmount)
+<span id="L174" class="ln">   174  </span>		})
+<span id="L175" class="ln">   175  </span>	})
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L178" class="ln">   178  </span>		t.Parallel()
+<span id="L179" class="ln">   179  </span>
+<span id="L180" class="ln">   180  </span>		t.Run(&#34;売り越し（在庫不足）は409を返す&#34;, func(t *testing.T) {
+<span id="L181" class="ln">   181  </span>			t.Parallel()
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>			e := echo.New()
+<span id="L184" class="ln">   184  </span>			UseAppErrorHandler(t, e)
+<span id="L185" class="ln">   185  </span>			ctrl := gomock.NewController(t)
+<span id="L186" class="ln">   186  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L187" class="ln">   187  </span>
+<span id="L188" class="ln">   188  </span>			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+<span id="L189" class="ln">   189  </span>			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+<span id="L190" class="ln">   190  </span>				Return(checkoutuc.PurchaseView{}, domainpurchase.ErrInsufficientStock)
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>			headers := availablePurchaseUser(t, e)
+<span id="L195" class="ln">   195  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, &#34;/v1/purchases&#34;, purchaseRequestBody(t), headers)
+<span id="L196" class="ln">   196  </span>			AssertErrorResponse(t, actual, http.StatusConflict)
+<span id="L197" class="ln">   197  </span>		})
+<span id="L198" class="ln">   198  </span>
+<span id="L199" class="ln">   199  </span>		t.Run(&#34;明細が空配列の場合は422を返す&#34;, func(t *testing.T) {
+<span id="L200" class="ln">   200  </span>			t.Parallel()
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>			e := echo.New()
+<span id="L203" class="ln">   203  </span>			UseAppErrorHandler(t, e)
+<span id="L204" class="ln">   204  </span>			ctrl := gomock.NewController(t)
+<span id="L205" class="ln">   205  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+<span id="L208" class="ln">   208  </span>			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+<span id="L209" class="ln">   209  </span>				Return(checkoutuc.PurchaseView{}, domainpurchase.ErrEmptyDetails)
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>			headers := availablePurchaseUser(t, e)
+<span id="L214" class="ln">   214  </span>			actual := StartServer(
+<span id="L215" class="ln">   215  </span>				t,
+<span id="L216" class="ln">   216  </span>				e,
+<span id="L217" class="ln">   217  </span>			).DoJSON(http.MethodPost, &#34;/v1/purchases&#34;, &amp;gen.PostPurchasesJSONRequestBody{Details: []gen.PurchaseDetailInput{}}, headers)
+<span id="L218" class="ln">   218  </span>			AssertErrorResponse(t, actual, http.StatusUnprocessableEntity)
+<span id="L219" class="ln">   219  </span>		})
+<span id="L220" class="ln">   220  </span>
+<span id="L221" class="ln">   221  </span>		t.Run(&#34;同一productIDが重複する場合は422を返す&#34;, func(t *testing.T) {
+<span id="L222" class="ln">   222  </span>			t.Parallel()
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>			e := echo.New()
+<span id="L225" class="ln">   225  </span>			UseAppErrorHandler(t, e)
+<span id="L226" class="ln">   226  </span>			ctrl := gomock.NewController(t)
+<span id="L227" class="ln">   227  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L228" class="ln">   228  </span>
+<span id="L229" class="ln">   229  </span>			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+<span id="L230" class="ln">   230  </span>			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).
+<span id="L231" class="ln">   231  </span>				Return(checkoutuc.PurchaseView{}, domainpurchase.ErrDuplicateProductID)
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{})
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>			dupID := uuidtestkit.NewTestFromSalt(t, &#34;dup_prod&#34;).ToPrimitive()
+<span id="L236" class="ln">   236  </span>			body := &amp;gen.PostPurchasesJSONRequestBody{Details: []gen.PurchaseDetailInput{
+<span id="L237" class="ln">   237  </span>				{ProductId: dupID, Quantity: 1},
+<span id="L238" class="ln">   238  </span>				{ProductId: dupID, Quantity: 2},
+<span id="L239" class="ln">   239  </span>			}}
+<span id="L240" class="ln">   240  </span>			headers := availablePurchaseUser(t, e)
+<span id="L241" class="ln">   241  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, &#34;/v1/purchases&#34;, body, headers)
+<span id="L242" class="ln">   242  </span>			AssertErrorResponse(t, actual, http.StatusUnprocessableEntity)
+<span id="L243" class="ln">   243  </span>		})
+<span id="L244" class="ln">   244  </span>	})
+<span id="L245" class="ln">   245  </span>}
+<span id="L246" class="ln">   246  </span>
+</pre><p><a href="../../../../src/go-boilerplate/internal/integration/v1_purchases_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

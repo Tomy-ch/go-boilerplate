@@ -68,11 +68,11 @@
 <span id="L11" class="ln">    11  </span>)
 <span id="L12" class="ln">    12  </span>
 <span id="L13" class="ln">    13  </span><span class="comment">// RequestUUID は、リクエスト用の openapi UUID（生成型）を1件生成します。</span>
-<span id="L14" class="ln">    14  </span>func RequestUUID(t *testing.T) types.UUID {
-<span id="L15" class="ln">    15  </span>	t.Helper()
+<span id="L14" class="ln">    14  </span>func RequestUUID(tb testing.TB) types.UUID {
+<span id="L15" class="ln">    15  </span>	tb.Helper()
 <span id="L16" class="ln">    16  </span>
 <span id="L17" class="ln">    17  </span>	id, err := uuid.New()
-<span id="L18" class="ln">    18  </span>	require.NoError(t, err)
+<span id="L18" class="ln">    18  </span>	require.NoError(tb, err)
 <span id="L19" class="ln">    19  </span>
 <span id="L20" class="ln">    20  </span>	return id.ToPrimitive()
 <span id="L21" class="ln">    21  </span>}

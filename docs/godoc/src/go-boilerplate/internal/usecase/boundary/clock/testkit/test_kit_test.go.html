@@ -84,65 +84,77 @@
 <span id="L27" class="ln">    27  </span>func TestNewMockClock(t *testing.T) {
 <span id="L28" class="ln">    28  </span>	t.Parallel()
 <span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span>	t.Run(&#34;AnyTimesなので複数回呼んでも常に指定した時刻を返す&#34;, func(t *testing.T) {
+<span id="L30" class="ln">    30  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L31" class="ln">    31  </span>		t.Parallel()
 <span id="L32" class="ln">    32  </span>
-<span id="L33" class="ln">    33  </span>		now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L34" class="ln">    34  </span>		clk := NewMockClock(t, now)
+<span id="L33" class="ln">    33  </span>		t.Run(&#34;AnyTimesなので複数回呼んでも常に指定した時刻を返す&#34;, func(t *testing.T) {
+<span id="L34" class="ln">    34  </span>			t.Parallel()
 <span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>		assert.Equal(t, now, clk.Now())
-<span id="L37" class="ln">    37  </span>		assert.Equal(t, now, clk.Now())
-<span id="L38" class="ln">    38  </span>	})
-<span id="L39" class="ln">    39  </span>}
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>func TestNewNoopSleeper(t *testing.T) {
-<span id="L42" class="ln">    42  </span>	t.Parallel()
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L45" class="ln">    45  </span>		t.Parallel()
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span>		t.Run(&#34;待機せず常に nil を返す&#34;, func(t *testing.T) {
-<span id="L48" class="ln">    48  </span>			t.Parallel()
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>			s := NewNoopSleeper(t)
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>			require.NoError(t, s.Sleep(context.Background(), time.Hour))
-<span id="L53" class="ln">    53  </span>		})
-<span id="L54" class="ln">    54  </span>	})
-<span id="L55" class="ln">    55  </span>}
-<span id="L56" class="ln">    56  </span>
-<span id="L57" class="ln">    57  </span>func TestNewMockClockOnce(t *testing.T) {
-<span id="L58" class="ln">    58  </span>	t.Parallel()
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>	t.Run(&#34;1回の呼び出しで指定した時刻を返す&#34;, func(t *testing.T) {
-<span id="L61" class="ln">    61  </span>		t.Parallel()
-<span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span>		now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L64" class="ln">    64  </span>		clk := NewMockClockOnce(t, now)
-<span id="L65" class="ln">    65  </span>
-<span id="L66" class="ln">    66  </span>		assert.Equal(t, now, clk.Now())
-<span id="L67" class="ln">    67  </span>	})
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span>	t.Run(&#34;Times(1)制約により2回目の呼び出しは期待違反として検出される&#34;, func(t *testing.T) {
-<span id="L70" class="ln">    70  </span>		t.Parallel()
-<span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>		<span class="comment">// NewMockClockOnce が用いる Times(1) と同じ期待を、フェイク TestReporter 上に組み立てる。</span>
-<span id="L73" class="ln">    73  </span>		<span class="comment">// 本物の *testing.T へ渡すと 2 回目で実テストごと落ちてしまうため、ここで Times(1) と</span>
-<span id="L74" class="ln">    74  </span>		<span class="comment">// AnyTimes の差（2 回目を許容するか否か）を安全に実証する。</span>
-<span id="L75" class="ln">    75  </span>		now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L76" class="ln">    76  </span>		rec := &amp;fatalRecorder{}
-<span id="L77" class="ln">    77  </span>		ctrl := gomock.NewController(rec)
-<span id="L78" class="ln">    78  </span>		<span class="comment">// rec は *testing.T ではなく自動 Cleanup が走らないため、期待検証を明示的に締める。</span>
-<span id="L79" class="ln">    79  </span>		defer ctrl.Finish()
-<span id="L80" class="ln">    80  </span>		clk := mock_clock.NewMockClock(ctrl)
-<span id="L81" class="ln">    81  </span>		clk.EXPECT().Now().Return(now).Times(1)
+<span id="L36" class="ln">    36  </span>			now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L37" class="ln">    37  </span>			clk := NewMockClock(t, now)
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span>			assert.Equal(t, now, clk.Now())
+<span id="L40" class="ln">    40  </span>			assert.Equal(t, now, clk.Now())
+<span id="L41" class="ln">    41  </span>		})
+<span id="L42" class="ln">    42  </span>	})
+<span id="L43" class="ln">    43  </span>}
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>func TestNewNoopSleeper(t *testing.T) {
+<span id="L46" class="ln">    46  </span>	t.Parallel()
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L49" class="ln">    49  </span>		t.Parallel()
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>		t.Run(&#34;待機せず常に nil を返す&#34;, func(t *testing.T) {
+<span id="L52" class="ln">    52  </span>			t.Parallel()
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>			s := NewNoopSleeper(t)
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>			require.NoError(t, s.Sleep(context.Background(), time.Hour))
+<span id="L57" class="ln">    57  </span>		})
+<span id="L58" class="ln">    58  </span>	})
+<span id="L59" class="ln">    59  </span>}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>func TestNewMockClockOnce(t *testing.T) {
+<span id="L62" class="ln">    62  </span>	t.Parallel()
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L65" class="ln">    65  </span>		t.Parallel()
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span>		t.Run(&#34;1回の呼び出しで指定した時刻を返す&#34;, func(t *testing.T) {
+<span id="L68" class="ln">    68  </span>			t.Parallel()
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>			now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L71" class="ln">    71  </span>			clk := NewMockClockOnce(t, now)
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>			assert.Equal(t, now, clk.Now())
+<span id="L74" class="ln">    74  </span>		})
+<span id="L75" class="ln">    75  </span>	})
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L78" class="ln">    78  </span>		t.Parallel()
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>		t.Run(&#34;Times(1)制約により2回目の呼び出しは期待違反として検出される&#34;, func(t *testing.T) {
+<span id="L81" class="ln">    81  </span>			t.Parallel()
 <span id="L82" class="ln">    82  </span>
-<span id="L83" class="ln">    83  </span>		assert.Equal(t, now, clk.Now())
-<span id="L84" class="ln">    84  </span>		require.Panics(t, func() { clk.Now() }, &#34;2回目の呼び出しはFatalfでpanicすること&#34;)
-<span id="L85" class="ln">    85  </span>		assert.True(t, rec.failed, &#34;gomockが期待違反を報告すること&#34;)
-<span id="L86" class="ln">    86  </span>	})
-<span id="L87" class="ln">    87  </span>}
-<span id="L88" class="ln">    88  </span>
+<span id="L83" class="ln">    83  </span>			<span class="comment">// NewMockClockOnce が用いる Times(1) と同じ期待を、フェイク TestReporter 上に組み立てる。</span>
+<span id="L84" class="ln">    84  </span>			<span class="comment">// 本物の *testing.T へ渡すと 2 回目で実テストごと落ちてしまうため、ここで Times(1) と</span>
+<span id="L85" class="ln">    85  </span>			<span class="comment">// AnyTimes の差（2 回目を許容するか否か）を安全に実証する。</span>
+<span id="L86" class="ln">    86  </span>			now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L87" class="ln">    87  </span>			rec := &amp;fatalRecorder{}
+<span id="L88" class="ln">    88  </span>			ctrl := gomock.NewController(rec)
+<span id="L89" class="ln">    89  </span>			<span class="comment">// rec は *testing.T ではなく自動 Cleanup が走らないため、期待検証を明示的に締める。</span>
+<span id="L90" class="ln">    90  </span>			defer ctrl.Finish()
+<span id="L91" class="ln">    91  </span>			clk := mock_clock.NewMockClock(ctrl)
+<span id="L92" class="ln">    92  </span>			clk.EXPECT().Now().Return(now).Times(1)
+<span id="L93" class="ln">    93  </span>
+<span id="L94" class="ln">    94  </span>			assert.Equal(t, now, clk.Now())
+<span id="L95" class="ln">    95  </span>			require.Panics(t, func() { clk.Now() }, &#34;2回目の呼び出しはFatalfでpanicすること&#34;)
+<span id="L96" class="ln">    96  </span>			assert.True(t, rec.failed, &#34;gomockが期待違反を報告すること&#34;)
+<span id="L97" class="ln">    97  </span>		})
+<span id="L98" class="ln">    98  </span>	})
+<span id="L99" class="ln">    99  </span>}
+<span id="L100" class="ln">   100  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/test_kit_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

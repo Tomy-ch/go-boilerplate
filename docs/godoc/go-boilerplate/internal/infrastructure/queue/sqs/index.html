@@ -86,9 +86,11 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package sqs は、worker seam（Consumer / FailureHandler）の AWS SQS 実装を提供します。
-</p><p>cmd の default 配線からは import しないこと（出荷バイナリに aws-sdk を含めないため）。
-本番利用時は integrator が WorkerModule に配線します。詳細は README.md を参照。
+				<p>Package sqs は、worker seam（Consumer / FailureHandler）と outbox の publish 境界
+（Publisher）の AWS SQS 実装を提供します。
+</p><p>本パッケージの配線は、サンプル削除で外れる形に限ります（SQS の知識を本パッケージと
+それを選ぶ配線だけに閉じ込めるため。ADR-0048 の E3）。本番利用時は integrator が、受信側を WorkerModule へ
+配線し、送出側を outbox の publish 先として選びます。詳細は README.md を参照。
 
 				
 			</p></div>
@@ -105,13 +107,23 @@
 			<div id="manual-nav">
 			<dl>
 			
+				<dd><a href="#pkg-constants">Constants</a></dd>
 			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+				
+				<dd><a href="#NewClient">func NewClient(ctx context.Context, cfg ClientConfig) (*sqs.Client, error)</a></dd>
 			
 				
 				<dd><a href="#NewConsumer">func NewConsumer(api API, cfg Config, tf observability.TracerFactory) worker.Consumer</a></dd>
 			
 				
 				<dd><a href="#NewDeadLetter">func NewDeadLetter(api API, dlqURL string, tf observability.TracerFactory) worker.FailureHandler</a></dd>
+			
+				
+				<dd><a href="#NewPublisher">func NewPublisher(api API, cfg PublisherConfig, tf observability.TracerFactory) boundary.Publisher</a></dd>
 			
 				
 				<dd><a href="#NewQueueStatsProvider">func NewQueueStatsProvider(api API, cfg Config, tf observability.TracerFactory) worker.QueueStatsProvider</a></dd>
@@ -123,7 +135,17 @@
 				
 			
 				
+				<dd><a href="#ClientConfig">type ClientConfig</a></dd>
+				
+				
+			
+				
 				<dd><a href="#Config">type Config</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PublisherConfig">type PublisherConfig</a></dd>
 				
 				
 			
@@ -138,11 +160,15 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/client.go.html">client.go</a>
+			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/config.go.html">config.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/errors.go.html">errors.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/failure.go.html">failure.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/publisher.go.html">publisher.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html">sqs.go</a>
 			
@@ -157,11 +183,51 @@
 		
 
 		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				<p>AttrEventType は、イベント種別を運ぶ MessageAttribute のキーです。
+受信側 Handler が本文を parse する前に処理対象を選別できるよう、worker seam が定める属性名で載せます。
+
+				</p><pre>const <span id="AttrEventType">AttrEventType</span> = <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#AttrEventType">AttrEventType</a></pre>
+			
+				<p>AttrMessageID は、outbox の message_id を運ぶ MessageAttribute のキーです。
+SQS の MessageId は broker が採番する別物で、再 publish のたびに変わるため冪等キーには使えません。
+受信側はこの属性を冪等キーの材料として読みます。
+
+				</p><pre>const <span id="AttrMessageID">AttrMessageID</span> = &#34;message_id&#34;</pre>
+			
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrMissingEventType は、イベント種別を持たないメッセージを publish しようとしたことを示すエラーです。
+
+				</p><pre>var <span id="ErrMissingEventType">ErrMissingEventType</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;missing event type&#34;)</pre>
+			
+				<p>ErrTooManyAttributes は、伝搬対象ヘッダが SQS の MessageAttributes 上限を超えたことを示すエラーです。
+
+				</p><pre>var <span id="ErrTooManyAttributes">ErrTooManyAttributes</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;too many message attributes&#34;)</pre>
+			
 		
 		
 			
 			
-			<h2 id="NewConsumer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1649:1734#L40">NewConsumer</a>
+			<h2 id="NewClient">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/client.go.html?s=1450:1524#L21">NewClient</a>
+				<a class="permalink" href="#NewClient">¶</a>
+				
+				
+			</h2>
+			<pre>func NewClient(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, cfg <a href="#ClientConfig">ClientConfig</a>) (*<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Client">Client</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>NewClient は、設定から SQS クライアントを生成します。
+資格情報を解決できない場合はエラーを返し、認証エラーが最初の送受信まで隠れないようにします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewConsumer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1649:1734#L40">NewConsumer</a>
 				<a class="permalink" href="#NewConsumer">¶</a>
 				
 				
@@ -182,6 +248,20 @@
 			</h2>
 			<pre>func NewDeadLetter(api <a href="#API">API</a>, dlqURL <a href="../../../../../builtin/#string">string</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#FailureHandler">FailureHandler</a></pre>
 			<p>NewDeadLetter は、DLQ への退避を行う FailureHandler を生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewPublisher">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/publisher.go.html?s=2611:2709#L52">NewPublisher</a>
+				<a class="permalink" href="#NewPublisher">¶</a>
+				
+				
+			</h2>
+			<pre>func NewPublisher(api <a href="#API">API</a>, cfg <a href="#PublisherConfig">PublisherConfig</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/publisher/">boundary</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/publisher/#Publisher">Publisher</a></pre>
+			<p>NewPublisher は、SQS publisher を生成します。
 
 			
 			
@@ -242,7 +322,45 @@ NewConsumer とは別 capability として provide し、既存の Consumer inte
 		
 			
 			
-			<h2 id="Config">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/config.go.html?s=451:988#L1">Config</a>
+			<h2 id="ClientConfig">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/client.go.html?s=366:1230#L4">ClientConfig</a>
+				<a class="permalink" href="#ClientConfig">¶</a>
+				
+				
+			</h2>
+			<p>ClientConfig は、SQS クライアントの接続設定です。
+endpoint / 資格情報の差し替えだけで ElasticMQ・LocalStack・本番 SQS のいずれにも接続できます。
+
+			</p><pre>type ClientConfig struct {
+<span id="ClientConfig.Endpoint"></span>    <span class="comment">// Endpoint は、SQS 互換エンドポイントです（例 ElasticMQ: &#34;http://elasticmq:9324&#34;）。</span>
+    <span class="comment">// 空の場合は SDK 既定のエンドポイント解決に委ねます（本番 AWS SQS 等）。</span>
+    Endpoint <a href="../../../../../builtin/#string">string</a>
+<span id="ClientConfig.Region"></span>    <span class="comment">// Region は、署名に用いるリージョンです。</span>
+    Region <a href="../../../../../builtin/#string">string</a>
+<span id="ClientConfig.AccessKeyID"></span>    <span class="comment">// AccessKeyID / SecretAccessKey は、明示注入する静的資格情報です。両方空なら</span>
+    <span class="comment">// SDK 既定の credential chain（IAM ロール等）へ委ねます。詳細は awsclient.Resolve を参照。</span>
+    AccessKeyID     <a href="../../../../../builtin/#string">string</a>
+<span id="ClientConfig.SecretAccessKey"></span>    SecretAccessKey <a href="../../../../../builtin/#string">string</a>
+<span id="ClientConfig.HTTPClient"></span>    <span class="comment">// HTTPClient は、SDK が API 呼び出しに使う HTTP クライアントです。SSRF ガード付きの実装を DI が</span>
+    <span class="comment">// 注入します。nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。</span>
+    HTTPClient <a href="../../../../../github.com/aws/aws-sdk-go-v2/aws/">aws</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/aws/#HTTPClient">HTTPClient</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Config">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/config.go.html?s=653:1190#L1">Config</a>
 				<a class="permalink" href="#Config">¶</a>
 				
 				
@@ -260,6 +378,33 @@ NewConsumer とは別 capability として provide し、既存の Consumer inte
     WaitTimeSeconds <a href="../../../../../builtin/#int32">int32</a>
 <span id="Config.VisibilityTimeout"></span>    <span class="comment">// VisibilityTimeout は、受信メッセージの可視性タイムアウト秒数です。</span>
     VisibilityTimeout <a href="../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PublisherConfig">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/publisher.go.html?s=2287:2392#L39">PublisherConfig</a>
+				<a class="permalink" href="#PublisherConfig">¶</a>
+				
+				
+			</h2>
+			<p>PublisherConfig は、SQS publisher の adapter 固有設定です。
+
+			</p><pre>type PublisherConfig struct {
+<span id="PublisherConfig.QueueURL"></span>    <span class="comment">// QueueURL は、publish 先キューの URL です。</span>
+    QueueURL <a href="../../../../../builtin/#string">string</a>
 }
 </pre>
 

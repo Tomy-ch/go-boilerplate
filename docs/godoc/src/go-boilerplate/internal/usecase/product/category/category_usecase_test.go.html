@@ -110,9 +110,9 @@
 <span id="L53" class="ln">    53  </span>			booksID, err := uuid.Parse(&#34;b39be992-fe5a-4b4c-9f98-e695f0f5101e&#34;)
 <span id="L54" class="ln">    54  </span>			require.NoError(t, err)
 <span id="L55" class="ln">    55  </span>
-<span id="L56" class="ln">    56  </span>			electronics, err := domaincategory.New(electronicsID, &#34;電子機器&#34;, 1, 1)
+<span id="L56" class="ln">    56  </span>			electronics, err := domaincategory.New(electronicsID, domaincategory.Attributes{Name: &#34;電子機器&#34;, Code: 1, SortKey: 1})
 <span id="L57" class="ln">    57  </span>			require.NoError(t, err)
-<span id="L58" class="ln">    58  </span>			books, err := domaincategory.New(booksID, &#34;書籍&#34;, 2, 2)
+<span id="L58" class="ln">    58  </span>			books, err := domaincategory.New(booksID, domaincategory.Attributes{Name: &#34;書籍&#34;, Code: 2, SortKey: 2})
 <span id="L59" class="ln">    59  </span>			require.NoError(t, err)
 <span id="L60" class="ln">    60  </span>
 <span id="L61" class="ln">    61  </span>			repo := mock_category.NewMockRepository(ctrl)

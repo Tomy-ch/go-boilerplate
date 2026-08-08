@@ -117,6 +117,9 @@
 					
 					<dd>    <a href="#MockRepository.FindAll">func (m *MockRepository) FindAll(ctx context.Context) (category.Categories, error)</a></dd>
 				
+					
+					<dd>    <a href="#MockRepository.FindByID">func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*category.Category, error)</a></dd>
+				
 			
 				
 				<dd><a href="#MockRepositoryMockRecorder">type MockRepositoryMockRecorder</a></dd>
@@ -124,6 +127,9 @@
 				
 					
 					<dd>    <a href="#MockRepositoryMockRecorder.FindAll">func (mr *MockRepositoryMockRecorder) FindAll(ctx any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByID">func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call</a></dd>
 				
 			
 			
@@ -153,7 +159,7 @@
 		
 			
 			
-			<h2 id="MockRepository">type <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=512:628#L11">MockRepository</a>
+			<h2 id="MockRepository">type <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=544:660#L12">MockRepository</a>
 				<a class="permalink" href="#MockRepository">¶</a>
 				
 				
@@ -175,7 +181,7 @@
 
 			
 				
-				<h3 id="NewMockRepository">func <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=817:880#L23">NewMockRepository</a>
+				<h3 id="NewMockRepository">func <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=849:912#L24">NewMockRepository</a>
 					<a class="permalink" href="#NewMockRepository">¶</a>
 					
 					
@@ -189,7 +195,7 @@
 
 			
 				
-				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=1064:1125#L30">EXPECT</a>
+				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=1096:1157#L31">EXPECT</a>
 					<a class="permalink" href="#MockRepository.EXPECT">¶</a>
 					
 					
@@ -202,7 +208,7 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindAll">func (*MockRepository) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=1180:1262#L35">FindAll</a>
+				</p><h3 id="MockRepository.FindAll">func (*MockRepository) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=1212:1294#L36">FindAll</a>
 					<a class="permalink" href="#MockRepository.FindAll">¶</a>
 					
 					
@@ -214,10 +220,23 @@
 				
 				
 			
+				
+				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=1743:1839#L51">FindByID</a>
+					<a class="permalink" href="#MockRepository.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, id <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../../go-boilerplate/internal/domain/product/category/">category</a>.<a href="../../../../../../go-boilerplate/internal/domain/product/category/#Category">Category</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByID mocks base method.
+
+				
+				
+				
+			
 		
 			
 			
-			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=701:765#L18">MockRepositoryMockRecorder</a>
+			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=733:797#L19">MockRepositoryMockRecorder</a>
 				<a class="permalink" href="#MockRepositoryMockRecorder">¶</a>
 				
 				
@@ -241,13 +260,26 @@
 
 			
 				
-				<h3 id="MockRepositoryMockRecorder.FindAll">func (*MockRepositoryMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=1463:1530#L44">FindAll</a>
+				<h3 id="MockRepositoryMockRecorder.FindAll">func (*MockRepositoryMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=1495:1562#L45">FindAll</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindAll">¶</a>
 					
 					
 				</h3>
 				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindAll(ctx <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>FindAll indicates an expected call of FindAll.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/domain/product/category/mock/mock_category_repository.go.gen.go.html?s=2046:2118#L60">FindByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByID(ctx, id <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByID indicates an expected call of FindByID.
 
 				
 				

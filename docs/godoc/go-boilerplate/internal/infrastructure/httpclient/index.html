@@ -110,6 +110,8 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 			<dl>
 			
 			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
 			
 			
 				
@@ -271,11 +273,18 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 
 		
 		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrDuplicateProfile は、同一 Downstream の Profile が重複登録されたことを示すエラーです。
+
+				</p><pre>var <span id="ErrDuplicateProfile">ErrDuplicateProfile</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;duplicate httpclient profile for downstream&#34;)</pre>
+			
+		
 		
 		
 			
 			
-			<h2 id="BreakerConfig">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=2610:3036#L49">BreakerConfig</a>
+			<h2 id="BreakerConfig">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=2813:3239#L52">BreakerConfig</a>
 				<a class="permalink" href="#BreakerConfig">¶</a>
 				
 				
@@ -379,7 +388,7 @@ Do が ErrInvalidArgument で弾きます（string 別名で型では空値を�
 
 			
 				
-				<h3 id="MissingDownstreams">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=5960:6049#L127">MissingDownstreams</a>
+				<h3 id="MissingDownstreams">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=6141:6230#L130">MissingDownstreams</a>
 					<a class="permalink" href="#MissingDownstreams">¶</a>
 					
 					
@@ -398,7 +407,7 @@ loud な起動失敗として顕在化します。
 		
 			
 			
-			</p><h2 id="DownstreamProfile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3412:3585#L67">DownstreamProfile</a>
+			</p><h2 id="DownstreamProfile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3615:3788#L70">DownstreamProfile</a>
 				<a class="permalink" href="#DownstreamProfile">¶</a>
 				
 				
@@ -553,7 +562,7 @@ ErrInvalidArgument で弾きます。
 		
 			
 			
-			</p><h2 id="Profile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=1066:2550#L22">Profile</a>
+			</p><h2 id="Profile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=1269:2753#L25">Profile</a>
 				<a class="permalink" href="#Profile">¶</a>
 				
 				
@@ -597,7 +606,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				<h3 id="DefaultProfile">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3877:3906#L81">DefaultProfile</a>
+				<h3 id="DefaultProfile">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=4080:4109#L84">DefaultProfile</a>
 					<a class="permalink" href="#DefaultProfile">¶</a>
 					
 					
@@ -613,7 +622,7 @@ ErrInvalidArgument で弾きます。
 		
 			
 			
-			</p><h2 id="Registry">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3174:3344#L61">Registry</a>
+			</p><h2 id="Registry">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=3377:3547#L64">Registry</a>
 				<a class="permalink" href="#Registry">¶</a>
 				
 				
@@ -635,7 +644,7 @@ ErrInvalidArgument で弾きます。
 
 			
 				
-				<h3 id="NewRegistry">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=4716:4774#L102">NewRegistry</a>
+				<h3 id="NewRegistry">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=4919:4977#L105">NewRegistry</a>
 					<a class="permalink" href="#NewRegistry">¶</a>
 					
 					
@@ -647,7 +656,7 @@ ErrInvalidArgument で弾きます。
 				
 			
 				
-				</p><h3 id="NewRegistryFromProfiles">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=5172:5248#L112">NewRegistryFromProfiles</a>
+				</p><h3 id="NewRegistryFromProfiles">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=5375:5451#L115">NewRegistryFromProfiles</a>
 					<a class="permalink" href="#NewRegistryFromProfiles">¶</a>
 					
 					

@@ -64,7 +64,7 @@
 <span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/config&#34;
 <span id="L8" class="ln">     8  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
 <span id="L9" class="ln">     9  </span>	authzbd &#34;go-boilerplate/internal/usecase/boundary/authz&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L10" class="ln">    10  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
 <span id="L11" class="ln">    11  </span>
 <span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L13" class="ln">    13  </span>	&#34;github.com/stretchr/testify/require&#34;
@@ -103,55 +103,56 @@
 <span id="L46" class="ln">    46  </span>			t.Run(env+&#34;環境では生成を拒否してエラーを返す&#34;, func(t *testing.T) {
 <span id="L47" class="ln">    47  </span>				t.Parallel()
 <span id="L48" class="ln">    48  </span>				authorizer, err := New(newAppCfg(t, env))
-<span id="L49" class="ln">    49  </span>				require.Error(t, err)
-<span id="L50" class="ln">    50  </span>				assert.Nil(t, authorizer)
-<span id="L51" class="ln">    51  </span>			})
-<span id="L52" class="ln">    52  </span>		}
-<span id="L53" class="ln">    53  </span>	})
-<span id="L54" class="ln">    54  </span>}
-<span id="L55" class="ln">    55  </span>
-<span id="L56" class="ln">    56  </span>func Test_authorizer_Authorize(t *testing.T) {
-<span id="L57" class="ln">    57  </span>	t.Parallel()
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>	newAuthn := func(t *testing.T) *authbd.Authn {
-<span id="L60" class="ln">    60  </span>		t.Helper()
-<span id="L61" class="ln">    61  </span>		authn, err := authbd.New(&#34;11111111-1111-1111-1111-111111111111&#34;, authbd.IssuerMock, nil, nil)
-<span id="L62" class="ln">    62  </span>		require.NoError(t, err)
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span>		return authn
-<span id="L65" class="ln">    65  </span>	}
-<span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>	ownerID := uuid.NewTestFromSalt(t, &#34;owner&#34;)
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L70" class="ln">    70  </span>		t.Parallel()
-<span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>		t.Run(&#34;取得操作_所有者ありリソースを許可してnilを返す&#34;, func(t *testing.T) {
-<span id="L73" class="ln">    73  </span>			t.Parallel()
-<span id="L74" class="ln">    74  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserGet, authzbd.NewResource(&#34;user&#34;, &amp;ownerID))
-<span id="L75" class="ln">    75  </span>			require.NoError(t, err)
-<span id="L76" class="ln">    76  </span>		})
-<span id="L77" class="ln">    77  </span>
-<span id="L78" class="ln">    78  </span>		t.Run(&#34;更新操作_所有者ありリソースを許可してnilを返す&#34;, func(t *testing.T) {
-<span id="L79" class="ln">    79  </span>			t.Parallel()
-<span id="L80" class="ln">    80  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserUpdate, authzbd.NewResource(&#34;user&#34;, &amp;ownerID))
-<span id="L81" class="ln">    81  </span>			require.NoError(t, err)
-<span id="L82" class="ln">    82  </span>		})
-<span id="L83" class="ln">    83  </span>
-<span id="L84" class="ln">    84  </span>		t.Run(&#34;削除操作_所有者ありリソースを許可してnilを返す&#34;, func(t *testing.T) {
-<span id="L85" class="ln">    85  </span>			t.Parallel()
-<span id="L86" class="ln">    86  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, authzbd.NewResource(&#34;user&#34;, &amp;ownerID))
-<span id="L87" class="ln">    87  </span>			require.NoError(t, err)
-<span id="L88" class="ln">    88  </span>		})
-<span id="L89" class="ln">    89  </span>
-<span id="L90" class="ln">    90  </span>		t.Run(&#34;resourceがnilでも許可してnilを返す&#34;, func(t *testing.T) {
-<span id="L91" class="ln">    91  </span>			t.Parallel()
-<span id="L92" class="ln">    92  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, nil)
-<span id="L93" class="ln">    93  </span>			require.NoError(t, err)
-<span id="L94" class="ln">    94  </span>		})
-<span id="L95" class="ln">    95  </span>	})
-<span id="L96" class="ln">    96  </span>}
-<span id="L97" class="ln">    97  </span>
+<span id="L49" class="ln">    49  </span>				require.ErrorIs(t, err, errNonLocalEnv)
+<span id="L50" class="ln">    50  </span>				require.ErrorContains(t, err, env)
+<span id="L51" class="ln">    51  </span>				assert.Nil(t, authorizer)
+<span id="L52" class="ln">    52  </span>			})
+<span id="L53" class="ln">    53  </span>		}
+<span id="L54" class="ln">    54  </span>	})
+<span id="L55" class="ln">    55  </span>}
+<span id="L56" class="ln">    56  </span>
+<span id="L57" class="ln">    57  </span>func Test_authorizer_Authorize(t *testing.T) {
+<span id="L58" class="ln">    58  </span>	t.Parallel()
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>	newAuthn := func(t *testing.T) *authbd.Authn {
+<span id="L61" class="ln">    61  </span>		t.Helper()
+<span id="L62" class="ln">    62  </span>		authn, err := authbd.New(&#34;11111111-1111-1111-1111-111111111111&#34;, authbd.IssuerMock, nil, nil)
+<span id="L63" class="ln">    63  </span>		require.NoError(t, err)
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>		return authn
+<span id="L66" class="ln">    66  </span>	}
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>	ownerID := uuidtestkit.NewTestFromSalt(t, &#34;owner&#34;)
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L71" class="ln">    71  </span>		t.Parallel()
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>		t.Run(&#34;取得操作_所有者ありリソースを許可してnilを返す&#34;, func(t *testing.T) {
+<span id="L74" class="ln">    74  </span>			t.Parallel()
+<span id="L75" class="ln">    75  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserGet, authzbd.NewResource(&#34;user&#34;, &amp;ownerID))
+<span id="L76" class="ln">    76  </span>			require.NoError(t, err)
+<span id="L77" class="ln">    77  </span>		})
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>		t.Run(&#34;更新操作_所有者ありリソースを許可してnilを返す&#34;, func(t *testing.T) {
+<span id="L80" class="ln">    80  </span>			t.Parallel()
+<span id="L81" class="ln">    81  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserUpdate, authzbd.NewResource(&#34;user&#34;, &amp;ownerID))
+<span id="L82" class="ln">    82  </span>			require.NoError(t, err)
+<span id="L83" class="ln">    83  </span>		})
+<span id="L84" class="ln">    84  </span>
+<span id="L85" class="ln">    85  </span>		t.Run(&#34;削除操作_所有者ありリソースを許可してnilを返す&#34;, func(t *testing.T) {
+<span id="L86" class="ln">    86  </span>			t.Parallel()
+<span id="L87" class="ln">    87  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, authzbd.NewResource(&#34;user&#34;, &amp;ownerID))
+<span id="L88" class="ln">    88  </span>			require.NoError(t, err)
+<span id="L89" class="ln">    89  </span>		})
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>		t.Run(&#34;resourceがnilでも許可してnilを返す&#34;, func(t *testing.T) {
+<span id="L92" class="ln">    92  </span>			t.Parallel()
+<span id="L93" class="ln">    93  </span>			err := (&amp;authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, nil)
+<span id="L94" class="ln">    94  </span>			require.NoError(t, err)
+<span id="L95" class="ln">    95  </span>		})
+<span id="L96" class="ln">    96  </span>	})
+<span id="L97" class="ln">    97  </span>}
+<span id="L98" class="ln">    98  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/authz/allowall/authz_allowall_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

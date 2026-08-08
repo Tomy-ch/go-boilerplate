@@ -149,7 +149,7 @@
 <span id="L92" class="ln">    92  </span>			}
 <span id="L93" class="ln">    93  </span>
 <span id="L94" class="ln">    94  </span>			err := MigrateUpRun(-1, &#34;&#34;, logging.NewTestLogger(t), factory)
-<span id="L95" class="ln">    95  </span>			require.Error(t, err)
+<span id="L95" class="ln">    95  </span>			require.ErrorIs(t, err, errNegativeSteps)
 <span id="L96" class="ln">    96  </span>			assert.False(t, called)
 <span id="L97" class="ln">    97  </span>		})
 <span id="L98" class="ln">    98  </span>
@@ -252,7 +252,7 @@
 <span id="L195" class="ln">   195  </span>			}
 <span id="L196" class="ln">   196  </span>
 <span id="L197" class="ln">   197  </span>			err := MigrateDownRun(-2, &#34;&#34;, logging.NewTestLogger(t), factory)
-<span id="L198" class="ln">   198  </span>			require.Error(t, err)
+<span id="L198" class="ln">   198  </span>			require.ErrorIs(t, err, errNegativeSteps)
 <span id="L199" class="ln">   199  </span>			assert.False(t, called)
 <span id="L200" class="ln">   200  </span>		})
 <span id="L201" class="ln">   201  </span>

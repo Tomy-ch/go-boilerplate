@@ -72,118 +72,132 @@
 <span id="L15" class="ln">    15  </span>	<span class="comment">// = &#34;go-boilerplate/internal/infrastructure/auth/identity&#34;</span>
 <span id="L16" class="ln">    16  </span>	<span class="comment">// sample-api:replace-end</span>
 <span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
-<span id="L20" class="ln">    20  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>	&#34;go.uber.org/fx&#34;
-<span id="L25" class="ln">    25  </span>)
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span><span class="comment">// callerSkipCount は、ロギングラッパーが追加するフレーム数を補正するためのスキップ数です。</span>
-<span id="L28" class="ln">    28  </span>const callerSkipCount = 1
-<span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span><span class="comment">// accessTokenType は、access token に期待する RFC 9068 の typ ヘッダ値です。</span>
-<span id="L31" class="ln">    31  </span><span class="comment">// mock 認証サーバーは access token に付与し ID Token には付与しないため、typ 不一致で ID Token 誤用を拒否します。</span>
-<span id="L32" class="ln">    32  </span>const accessTokenType = &#34;at+jwt&#34;
-<span id="L33" class="ln">    33  </span>
-<span id="L34" class="ln">    34  </span><span class="comment">// authenticatorParams は、provideAuthenticator の依存を集約する fx パラメータです。</span>
-<span id="L35" class="ln">    35  </span><span class="comment">// HTTPClient は JWKS 取得に用いる outbound HTTP substrate で、infra 層（InfrastructureModule）が全プロファイルで提供する常設依存です。</span>
-<span id="L36" class="ln">    36  </span>type authenticatorParams struct {
-<span id="L37" class="ln">    37  </span>	fx.In
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span>	AppCfg     *config.ApplicationConfig
-<span id="L40" class="ln">    40  </span>	AuthCfg    *config.AuthConfig
-<span id="L41" class="ln">    41  </span>	Clock      clock.Clock
-<span id="L42" class="ln">    42  </span>	Logger     logging.Logger
-<span id="L43" class="ln">    43  </span>	HTTPClient httpclient.Client
-<span id="L44" class="ln">    44  </span>}
-<span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span><span class="comment">// AuthnModule は、認証関連の依存関係（Authenticator・IdentityResolver・Auth コントローラ）を提供するfxモジュールを返します。</span>
-<span id="L47" class="ln">    47  </span>func AuthnModule() fx.Option {
-<span id="L48" class="ln">    48  </span>	return fx.Module(
-<span id="L49" class="ln">    49  </span>		&#34;core.authn&#34;,
-<span id="L50" class="ln">    50  </span>		fx.Provide(
-<span id="L51" class="ln">    51  </span>			provideAuthenticator,
-<span id="L52" class="ln">    52  </span>			<span class="comment">// sample-api:replace-begin</span>
-<span id="L53" class="ln">    53  </span>			useridentity.New,
-<span id="L54" class="ln">    54  </span>			<span class="comment">// sample-api:replace-with</span>
-<span id="L55" class="ln">    55  </span>			<span class="comment">// = identity.New,</span>
-<span id="L56" class="ln">    56  </span>			<span class="comment">// sample-api:replace-end</span>
-<span id="L57" class="ln">    57  </span>			auth.NewAuthenticator,
-<span id="L58" class="ln">    58  </span>		),
-<span id="L59" class="ln">    59  </span>	)
-<span id="L60" class="ln">    60  </span>}
-<span id="L61" class="ln">    61  </span>
-<span id="L62" class="ln">    62  </span><span class="comment">// provideAuthenticator は、環境に対応した Authenticator を選んで返します。</span>
-<span id="L63" class="ln">    63  </span><span class="comment">// 対応する case が無い環境（staging / production 等）は誤った Authenticator を配線しないよう</span>
-<span id="L64" class="ln">    64  </span><span class="comment">// default で起動エラーにします（fail-closed）。</span>
-<span id="L65" class="ln">    65  </span>func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
-<span id="L66" class="ln">    66  </span>	logger := p.Logger.Named(&#34;core.authn&#34;).CallerSkip(callerSkipCount)
-<span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span>	switch p.AppCfg.Env() {
-<span id="L69" class="ln">    69  </span>	case config.EnvCI, config.EnvTest:
-<span id="L70" class="ln">    70  </span>		logger.Warn(
-<span id="L71" class="ln">    71  </span>			context.Background(),
-<span id="L72" class="ln">    72  </span>			&#34;Local authenticator wired: authentication is stubbed (non-production only)&#34;,
-<span id="L73" class="ln">    73  </span>			logging.String(&#34;env&#34;, p.AppCfg.Env()),
-<span id="L74" class="ln">    74  </span>		)
-<span id="L75" class="ln">    75  </span>
-<span id="L76" class="ln">    76  </span>		return local.New(), nil
-<span id="L77" class="ln">    77  </span>	case config.EnvLocal, config.EnvDevelopment:
-<span id="L78" class="ln">    78  </span>		return provideJWKSAuthenticator(p, logger)
-<span id="L79" class="ln">    79  </span>	default:
-<span id="L80" class="ln">    80  </span>		logger.Error(
-<span id="L81" class="ln">    81  </span>			context.Background(),
-<span id="L82" class="ln">    82  </span>			&#34;No authenticator configured for the current environment&#34;,
-<span id="L83" class="ln">    83  </span>			logging.String(&#34;env&#34;, p.AppCfg.Env()),
-<span id="L84" class="ln">    84  </span>		)
-<span id="L85" class="ln">    85  </span>
-<span id="L86" class="ln">    86  </span>		return nil, xerrors.New(&#34;no authenticator configured for environment: &#34; + p.AppCfg.Env())
-<span id="L87" class="ln">    87  </span>	}
-<span id="L88" class="ln">    88  </span>}
-<span id="L89" class="ln">    89  </span>
-<span id="L90" class="ln">    90  </span><span class="comment">// provideJWKSAuthenticator は、AUTH_* 設定から JWKS backed の JWT authenticator を構築します。</span>
-<span id="L91" class="ln">    91  </span><span class="comment">// JWKS の取得は httpclient substrate に委ねるため、goroutine / lifecycle の管理は不要です（遅延取得）。</span>
-<span id="L92" class="ln">    92  </span>func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (authbd.Authenticator, error) {
-<span id="L93" class="ln">    93  </span>	authenticator, err := jwt.NewJWKS(jwt.JWKSParams{
-<span id="L94" class="ln">    94  </span>		Params: jwt.Params{
-<span id="L95" class="ln">    95  </span>			Issuer:       p.AuthCfg.Issuer(),
-<span id="L96" class="ln">    96  </span>			Audience:     p.AuthCfg.Audience(),
-<span id="L97" class="ln">    97  </span>			AllowedAlgs:  p.AuthCfg.AllowedAlgorithms(),
-<span id="L98" class="ln">    98  </span>			Leeway:       p.AuthCfg.ClockSkew(),
-<span id="L99" class="ln">    99  </span>			ExpectedType: accessTokenType,
-<span id="L100" class="ln">   100  </span>			Clock:        p.Clock,
-<span id="L101" class="ln">   101  </span>		},
-<span id="L102" class="ln">   102  </span>		JWKSURL:            p.AuthCfg.JWKSURL(),
-<span id="L103" class="ln">   103  </span>		CacheTTL:           p.AuthCfg.JWKSCacheTTL(),
-<span id="L104" class="ln">   104  </span>		DiscoveryTTL:       p.AuthCfg.DiscoveryTTL(),
-<span id="L105" class="ln">   105  </span>		UnknownKidCooldown: p.AuthCfg.UnknownKidCooldown(),
-<span id="L106" class="ln">   106  </span>		<span class="comment">// local は疑似 provider（http）へ接続するため非 https を許容。それ以外の環境では https を強制する。</span>
-<span id="L107" class="ln">   107  </span>		AllowInsecureURL: p.AppCfg.Env() == config.EnvLocal,
-<span id="L108" class="ln">   108  </span>	}, p.HTTPClient)
-<span id="L109" class="ln">   109  </span>	if err != nil {
-<span id="L110" class="ln">   110  </span>		logger.Error(
-<span id="L111" class="ln">   111  </span>			context.Background(),
-<span id="L112" class="ln">   112  </span>			&#34;Failed to wire JWKS JWT authenticator&#34;,
-<span id="L113" class="ln">   113  </span>			logging.String(&#34;env&#34;, p.AppCfg.Env()),
-<span id="L114" class="ln">   114  </span>			logging.Error(&#34;error&#34;, err),
-<span id="L115" class="ln">   115  </span>		)
-<span id="L116" class="ln">   116  </span>
-<span id="L117" class="ln">   117  </span>		return nil, err
-<span id="L118" class="ln">   118  </span>	}
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>	logger.Info(
-<span id="L121" class="ln">   121  </span>		context.Background(),
-<span id="L122" class="ln">   122  </span>		&#34;JWKS JWT authenticator wired&#34;,
-<span id="L123" class="ln">   123  </span>		logging.String(&#34;env&#34;, p.AppCfg.Env()),
-<span id="L124" class="ln">   124  </span>		logging.String(&#34;issuer&#34;, p.AuthCfg.Issuer()),
-<span id="L125" class="ln">   125  </span>	)
-<span id="L126" class="ln">   126  </span>
-<span id="L127" class="ln">   127  </span>	return authenticator, nil
-<span id="L128" class="ln">   128  </span>}
-<span id="L129" class="ln">   129  </span>
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L21" class="ln">    21  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	&#34;go.uber.org/fx&#34;
+<span id="L26" class="ln">    26  </span>)
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// callerSkipCount は、ロギングラッパーが追加するフレーム数を補正するためのスキップ数です。</span>
+<span id="L29" class="ln">    29  </span>const callerSkipCount = 1
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// accessTokenType は、access token に期待する RFC 9068 の typ ヘッダ値です。</span>
+<span id="L32" class="ln">    32  </span><span class="comment">// mock 認証サーバーは access token に付与し ID Token には付与しないため、typ 不一致で ID Token 誤用を拒否します。</span>
+<span id="L33" class="ln">    33  </span>const accessTokenType = &#34;at+jwt&#34;
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// errNoAuthenticatorForEnv は、現在の環境に対応する Authenticator が無く配線に失敗した場合のエラーです。</span>
+<span id="L36" class="ln">    36  </span>var errNoAuthenticatorForEnv = xerrors.New(&#34;no authenticator configured for environment&#34;)
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// authenticatorParams は、provideAuthenticator の依存を集約する fx パラメータです。</span>
+<span id="L39" class="ln">    39  </span><span class="comment">// HTTPClient は JWKS 取得に用いる outbound HTTP substrate で、infra 層（InfrastructureModule）が全プロファイルで提供する常設依存です。</span>
+<span id="L40" class="ln">    40  </span>type authenticatorParams struct {
+<span id="L41" class="ln">    41  </span>	fx.In
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>	AppCfg     *config.ApplicationConfig
+<span id="L44" class="ln">    44  </span>	AuthCfg    *config.AuthConfig
+<span id="L45" class="ln">    45  </span>	Clock      clock.Clock
+<span id="L46" class="ln">    46  </span>	Logger     logging.Logger
+<span id="L47" class="ln">    47  </span>	HTTPClient httpclient.Client
+<span id="L48" class="ln">    48  </span>	TracerFtry observability.TracerFactory
+<span id="L49" class="ln">    49  </span>}
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span><span class="comment">// AuthnModule は、認証関連の依存関係（Authenticator・IdentityResolver・Auth コントローラ）を提供するfxモジュールを返します。</span>
+<span id="L52" class="ln">    52  </span>func AuthnModule() fx.Option {
+<span id="L53" class="ln">    53  </span>	return fx.Module(
+<span id="L54" class="ln">    54  </span>		&#34;core.authn&#34;,
+<span id="L55" class="ln">    55  </span>		fx.Provide(
+<span id="L56" class="ln">    56  </span>			provideAuthenticator,
+<span id="L57" class="ln">    57  </span>			<span class="comment">// sample-api:replace-begin</span>
+<span id="L58" class="ln">    58  </span>			useridentity.New,
+<span id="L59" class="ln">    59  </span>			<span class="comment">// sample-api:replace-with</span>
+<span id="L60" class="ln">    60  </span>			<span class="comment">// = identity.New,</span>
+<span id="L61" class="ln">    61  </span>			<span class="comment">// sample-api:replace-end</span>
+<span id="L62" class="ln">    62  </span>			auth.NewAuthenticator,
+<span id="L63" class="ln">    63  </span>		),
+<span id="L64" class="ln">    64  </span>	)
+<span id="L65" class="ln">    65  </span>}
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span><span class="comment">// provideAuthenticator は、環境に対応した Authenticator を選んで返します。</span>
+<span id="L68" class="ln">    68  </span><span class="comment">// 対応する case が無い環境（staging / production 等）は誤った Authenticator を配線しないよう</span>
+<span id="L69" class="ln">    69  </span><span class="comment">// default で起動エラーにします（fail-closed）。</span>
+<span id="L70" class="ln">    70  </span>func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
+<span id="L71" class="ln">    71  </span>	logger := p.Logger.Named(&#34;core.authn&#34;).CallerSkip(callerSkipCount)
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>	switch p.AppCfg.Env() {
+<span id="L74" class="ln">    74  </span>	case config.EnvCI, config.EnvTest:
+<span id="L75" class="ln">    75  </span>		logger.Warn(
+<span id="L76" class="ln">    76  </span>			context.Background(),
+<span id="L77" class="ln">    77  </span>			&#34;Local authenticator wired: authentication is stubbed (non-production only)&#34;,
+<span id="L78" class="ln">    78  </span>			logging.String(&#34;env&#34;, p.AppCfg.Env()),
+<span id="L79" class="ln">    79  </span>		)
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>		return local.New(), nil
+<span id="L82" class="ln">    82  </span>	case config.EnvLocal, config.EnvDevelopment:
+<span id="L83" class="ln">    83  </span>		return provideJWKSAuthenticator(p, logger)
+<span id="L84" class="ln">    84  </span>	default:
+<span id="L85" class="ln">    85  </span>		logger.Error(
+<span id="L86" class="ln">    86  </span>			context.Background(),
+<span id="L87" class="ln">    87  </span>			&#34;No authenticator configured for the current environment&#34;,
+<span id="L88" class="ln">    88  </span>			logging.String(&#34;env&#34;, p.AppCfg.Env()),
+<span id="L89" class="ln">    89  </span>		)
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>		return nil, xerrors.Wrap(errNoAuthenticatorForEnv, p.AppCfg.Env())
+<span id="L92" class="ln">    92  </span>	}
+<span id="L93" class="ln">    93  </span>}
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span><span class="comment">// allowInsecureJWKSURL は、指定環境で JWKS URL に非 https を許すかを返します。</span>
+<span id="L96" class="ln">    96  </span><span class="comment">// local だけが疑似 provider（http）へ接続するため許容され、それ以外の環境では https を強制します。</span>
+<span id="L97" class="ln">    97  </span><span class="comment">//</span>
+<span id="L98" class="ln">    98  </span><span class="comment">// 許容の可否は https 経由の構築成否に現れないため、呼び出し元から観測できるのは http を渡した</span>
+<span id="L99" class="ln">    99  </span><span class="comment">// ときだけです。環境ごとの対応を直接固定できるよう、判定を独立した関数として切り出しています。</span>
+<span id="L100" class="ln">   100  </span>func allowInsecureJWKSURL(env string) bool {
+<span id="L101" class="ln">   101  </span>	return env == config.EnvLocal
+<span id="L102" class="ln">   102  </span>}
+<span id="L103" class="ln">   103  </span>
+<span id="L104" class="ln">   104  </span><span class="comment">// provideJWKSAuthenticator は、AUTH_* 設定から JWKS backed の JWT authenticator を構築します。</span>
+<span id="L105" class="ln">   105  </span><span class="comment">// JWKS の取得は httpclient substrate に委ねるため、goroutine / lifecycle の管理は不要です（遅延取得）。</span>
+<span id="L106" class="ln">   106  </span>func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (authbd.Authenticator, error) {
+<span id="L107" class="ln">   107  </span>	authenticator, err := jwt.NewJWKS(jwt.JWKSParams{
+<span id="L108" class="ln">   108  </span>		Params: jwt.Params{
+<span id="L109" class="ln">   109  </span>			Issuer:       p.AuthCfg.Issuer(),
+<span id="L110" class="ln">   110  </span>			Audience:     p.AuthCfg.Audience(),
+<span id="L111" class="ln">   111  </span>			AllowedAlgs:  p.AuthCfg.AllowedAlgorithms(),
+<span id="L112" class="ln">   112  </span>			Leeway:       p.AuthCfg.ClockSkew(),
+<span id="L113" class="ln">   113  </span>			ExpectedType: accessTokenType,
+<span id="L114" class="ln">   114  </span>			Clock:        p.Clock,
+<span id="L115" class="ln">   115  </span>		},
+<span id="L116" class="ln">   116  </span>		JWKSURL:            p.AuthCfg.JWKSURL(),
+<span id="L117" class="ln">   117  </span>		CacheTTL:           p.AuthCfg.JWKSCacheTTL(),
+<span id="L118" class="ln">   118  </span>		DiscoveryTTL:       p.AuthCfg.DiscoveryTTL(),
+<span id="L119" class="ln">   119  </span>		UnknownKidCooldown: p.AuthCfg.UnknownKidCooldown(),
+<span id="L120" class="ln">   120  </span>		AllowInsecureURL:   allowInsecureJWKSURL(p.AppCfg.Env()),
+<span id="L121" class="ln">   121  </span>		TracerFactory:      p.TracerFtry,
+<span id="L122" class="ln">   122  </span>	}, p.HTTPClient)
+<span id="L123" class="ln">   123  </span>	if err != nil {
+<span id="L124" class="ln">   124  </span>		logger.Error(
+<span id="L125" class="ln">   125  </span>			context.Background(),
+<span id="L126" class="ln">   126  </span>			&#34;Failed to wire JWKS JWT authenticator&#34;,
+<span id="L127" class="ln">   127  </span>			logging.String(&#34;env&#34;, p.AppCfg.Env()),
+<span id="L128" class="ln">   128  </span>			logging.Error(&#34;error&#34;, err),
+<span id="L129" class="ln">   129  </span>		)
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>		return nil, err
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>	logger.Info(
+<span id="L135" class="ln">   135  </span>		context.Background(),
+<span id="L136" class="ln">   136  </span>		&#34;JWKS JWT authenticator wired&#34;,
+<span id="L137" class="ln">   137  </span>		logging.String(&#34;env&#34;, p.AppCfg.Env()),
+<span id="L138" class="ln">   138  </span>		logging.String(&#34;issuer&#34;, p.AuthCfg.Issuer()),
+<span id="L139" class="ln">   139  </span>	)
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span>	return authenticator, nil
+<span id="L142" class="ln">   142  </span>}
+<span id="L143" class="ln">   143  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/di/module/core/auth.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

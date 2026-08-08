@@ -104,7 +104,7 @@
 			
 			
 				
-				<dd><a href="#StartTestSpanForEcho">func StartTestSpanForEcho(t *testing.T, c echo.Context) (echo.Context, func())</a></dd>
+				<dd><a href="#StartTestSpanForEcho">func StartTestSpanForEcho(t *testing.T, c *echo.Context) (*echo.Context, func())</a></dd>
 			
 			
 			
@@ -133,16 +133,16 @@
 		
 			
 			
-			<h2 id="StartTestSpanForEcho">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testspan/test_span.go.html?s=367:450#L3">StartTestSpanForEcho</a>
+			<h2 id="StartTestSpanForEcho">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testspan/test_span.go.html?s=368:453#L3">StartTestSpanForEcho</a>
 				<a class="permalink" href="#StartTestSpanForEcho">¶</a>
 				
 				
 			</h2>
 			<pre>func StartTestSpanForEcho(
     t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>,
-    c echo.<a href="#Context">Context</a>,
-) (echo.<a href="#Context">Context</a>, func())</pre>
-			<p>StartTestSpanForEcho は、テスト用のスタブトレーススパンを echo.Context に設定し、スパン終了関数を返します。
+    c *echo.<a href="#Context">Context</a>,
+) (*echo.<a href="#Context">Context</a>, func())</pre>
+			<p>StartTestSpanForEcho は、テスト用のスタブトレーススパンを *echo.Context に設定し、スパン終了関数を返します。
 
 			
 			

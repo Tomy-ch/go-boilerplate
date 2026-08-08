@@ -1,0 +1,529 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_dbslot
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/cli/dbslot/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_dbslot is a generated GoMock package.
+</p><p>Package mock_dbslot is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockCompose">type MockCompose</a></dd>
+				
+					
+					<dd>    <a href="#NewMockCompose">func NewMockCompose(ctrl *gomock.Controller) *MockCompose</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockCompose.DownServe">func (m *MockCompose) DownServe(ctx context.Context, project string) error</a></dd>
+				
+					
+					<dd>    <a href="#MockCompose.EXPECT">func (m *MockCompose) EXPECT() *MockComposeMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockCompose.RunningContainers">func (m *MockCompose) RunningContainers(ctx context.Context, project string) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockCompose.UpSharedDB">func (m *MockCompose) UpSharedDB(ctx context.Context, project string) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockComposeMockRecorder">type MockComposeMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockComposeMockRecorder.DownServe">func (mr *MockComposeMockRecorder) DownServe(ctx, project any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockComposeMockRecorder.RunningContainers">func (mr *MockComposeMockRecorder) RunningContainers(ctx, project any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockComposeMockRecorder.UpSharedDB">func (mr *MockComposeMockRecorder) UpSharedDB(ctx, project any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockDBAdmin">type MockDBAdmin</a></dd>
+				
+					
+					<dd>    <a href="#NewMockDBAdmin">func NewMockDBAdmin(ctrl *gomock.Controller) *MockDBAdmin</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDBAdmin.ActiveConnections">func (m *MockDBAdmin) ActiveConnections(ctx context.Context, names ...string) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockDBAdmin.EXPECT">func (m *MockDBAdmin) EXPECT() *MockDBAdminMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockDBAdmin.EnsureDatabase">func (m *MockDBAdmin) EnsureDatabase(ctx context.Context, name string) error</a></dd>
+				
+					
+					<dd>    <a href="#MockDBAdmin.SetupDatabase">func (m *MockDBAdmin) SetupDatabase(ctx context.Context, name string) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockDBAdminMockRecorder">type MockDBAdminMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDBAdminMockRecorder.ActiveConnections">func (mr *MockDBAdminMockRecorder) ActiveConnections(ctx any, names ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDBAdminMockRecorder.EnsureDatabase">func (mr *MockDBAdminMockRecorder) EnsureDatabase(ctx, name any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDBAdminMockRecorder.SetupDatabase">func (mr *MockDBAdminMockRecorder) SetupDatabase(ctx, name any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html">mock_admin.go.gen.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html">mock_compose.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockCompose">type <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=404:514#L10">MockCompose</a>
+				<a class="permalink" href="#MockCompose">¶</a>
+				
+				
+			</h2>
+			<p>MockCompose is a mock of Compose interface.
+
+			</p><pre>type MockCompose struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockCompose">func <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=688:745#L22">NewMockCompose</a>
+					<a class="permalink" href="#NewMockCompose">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockCompose(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockCompose">MockCompose</a></pre>
+				<p>NewMockCompose creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockCompose.DownServe">func (*MockCompose) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=1035:1109#L34">DownServe</a>
+					<a class="permalink" href="#MockCompose.DownServe">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockCompose">MockCompose</a>) DownServe(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, project <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>DownServe mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockCompose.EXPECT">func (*MockCompose) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=923:978#L29">EXPECT</a>
+					<a class="permalink" href="#MockCompose.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockCompose">MockCompose</a>) EXPECT() *<a href="#MockComposeMockRecorder">MockComposeMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockCompose.RunningContainers">func (*MockCompose) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=1553:1642#L48">RunningContainers</a>
+					<a class="permalink" href="#MockCompose.RunningContainers">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockCompose">MockCompose</a>) RunningContainers(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, project <a href="../../../../../builtin/#string">string</a>) (<a href="../../../../../builtin/#int">int</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>RunningContainers mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockCompose.UpSharedDB">func (*MockCompose) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=2158:2233#L63">UpSharedDB</a>
+					<a class="permalink" href="#MockCompose.UpSharedDB">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockCompose">MockCompose</a>) UpSharedDB(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, project <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>UpSharedDB mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockComposeMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=581:639#L17">MockComposeMockRecorder</a>
+				<a class="permalink" href="#MockComposeMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockComposeMockRecorder is the mock recorder for MockCompose.
+
+			</p><pre>type MockComposeMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockComposeMockRecorder.DownServe">func (*MockComposeMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=1278:1353#L42">DownServe</a>
+					<a class="permalink" href="#MockComposeMockRecorder.DownServe">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockComposeMockRecorder">MockComposeMockRecorder</a>) DownServe(ctx, project <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>DownServe indicates an expected call of DownServe.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockComposeMockRecorder.RunningContainers">func (*MockComposeMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=1866:1949#L57">RunningContainers</a>
+					<a class="permalink" href="#MockComposeMockRecorder.RunningContainers">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockComposeMockRecorder">MockComposeMockRecorder</a>) RunningContainers(ctx, project <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>RunningContainers indicates an expected call of RunningContainers.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockComposeMockRecorder.UpSharedDB">func (*MockComposeMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_compose.go.gen.go.html?s=2405:2481#L71">UpSharedDB</a>
+					<a class="permalink" href="#MockComposeMockRecorder.UpSharedDB">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockComposeMockRecorder">MockComposeMockRecorder</a>) UpSharedDB(ctx, project <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpSharedDB indicates an expected call of UpSharedDB.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockDBAdmin">type <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=398:508#L10">MockDBAdmin</a>
+				<a class="permalink" href="#MockDBAdmin">¶</a>
+				
+				
+			</h2>
+			<p>MockDBAdmin is a mock of DBAdmin interface.
+
+			</p><pre>type MockDBAdmin struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockDBAdmin">func <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=682:739#L22">NewMockDBAdmin</a>
+					<a class="permalink" href="#NewMockDBAdmin">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockDBAdmin(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockDBAdmin">MockDBAdmin</a></pre>
+				<p>NewMockDBAdmin creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockDBAdmin.ActiveConnections">func (*MockDBAdmin) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=1037:1127#L34">ActiveConnections</a>
+					<a class="permalink" href="#MockDBAdmin.ActiveConnections">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBAdmin">MockDBAdmin</a>) ActiveConnections(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, names ...<a href="../../../../../builtin/#string">string</a>) (<a href="../../../../../builtin/#int">int</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ActiveConnections mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBAdmin.EXPECT">func (*MockDBAdmin) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=917:972#L29">EXPECT</a>
+					<a class="permalink" href="#MockDBAdmin.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBAdmin">MockDBAdmin</a>) EXPECT() *<a href="#MockDBAdminMockRecorder">MockDBAdminMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBAdmin.EnsureDatabase">func (*MockDBAdmin) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=1773:1849#L54">EnsureDatabase</a>
+					<a class="permalink" href="#MockDBAdmin.EnsureDatabase">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBAdmin">MockDBAdmin</a>) EnsureDatabase(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, name <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>EnsureDatabase mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBAdmin.SetupDatabase">func (*MockDBAdmin) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=2310:2385#L68">SetupDatabase</a>
+					<a class="permalink" href="#MockDBAdmin.SetupDatabase">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBAdmin">MockDBAdmin</a>) SetupDatabase(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, name <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>SetupDatabase mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockDBAdminMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=575:633#L17">MockDBAdminMockRecorder</a>
+				<a class="permalink" href="#MockDBAdminMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockDBAdminMockRecorder is the mock recorder for MockDBAdmin.
+
+			</p><pre>type MockDBAdminMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockDBAdminMockRecorder.ActiveConnections">func (*MockDBAdminMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=1433:1521#L47">ActiveConnections</a>
+					<a class="permalink" href="#MockDBAdminMockRecorder.ActiveConnections">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDBAdminMockRecorder">MockDBAdminMockRecorder</a>) ActiveConnections(ctx <a href="../../../../../builtin/#any">any</a>, names ...<a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ActiveConnections indicates an expected call of ActiveConnections.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBAdminMockRecorder.EnsureDatabase">func (*MockDBAdminMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=2030:2107#L62">EnsureDatabase</a>
+					<a class="permalink" href="#MockDBAdminMockRecorder.EnsureDatabase">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDBAdminMockRecorder">MockDBAdminMockRecorder</a>) EnsureDatabase(ctx, name <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>EnsureDatabase indicates an expected call of EnsureDatabase.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBAdminMockRecorder.SetupDatabase">func (*MockDBAdminMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/dbslot/mock/mock_admin.go.gen.go.html?s=2563:2639#L76">SetupDatabase</a>
+					<a class="permalink" href="#MockDBAdminMockRecorder.SetupDatabase">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDBAdminMockRecorder">MockDBAdminMockRecorder</a>) SetupDatabase(ctx, name <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SetupDatabase indicates an expected call of SetupDatabase.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

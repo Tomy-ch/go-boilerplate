@@ -1,0 +1,551 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>npm-cooldown - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/npm-cooldown">npm-cooldown</a>/<span class="text-muted">main.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/npm-cooldown">go-boilerplate/scripts/npm-cooldown</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package main は package-lock.json のエントリが、その lockfile 自身の</span>
+<span id="L2" class="ln">     2  </span><span class="comment">// .npmrc `min-release-age` を満たしているかを監査するツール。</span>
+<span id="L3" class="ln">     3  </span><span class="comment">//</span>
+<span id="L4" class="ln">     4  </span><span class="comment">//	audit: 各 package-lock.json を走査し、公開から min-release-age 日未満の</span>
+<span id="L5" class="ln">     5  </span><span class="comment">//	       バージョンが記録されていないかを調べる。</span>
+<span id="L6" class="ln">     6  </span><span class="comment">//</span>
+<span id="L7" class="ln">     7  </span><span class="comment">// npm の `min-release-age` は依存解決（npm install / update）時にだけ効き、</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// lockfile を再現するだけの `npm ci` では評価されない。本リポジトリの CI と</span>
+<span id="L9" class="ln">     9  </span><span class="comment">// イメージビルドは全て `npm ci` なので、cooldown を破って作られた lockfile は</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// CI 上では何の異常も示さずに通る。このツールはその死角を埋める。</span>
+<span id="L11" class="ln">    11  </span><span class="comment">//</span>
+<span id="L12" class="ln">    12  </span><span class="comment">// 検出＝バイパスの証拠になる。cooldown 下の `npm install` は窓内バージョンの</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// 解決自体を拒否するため、窓内エントリが lockfile に載る経路は</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// 「cooldown を明示的に外して解決した」以外に存在しない。誤検知はほぼ出ない。</span>
+<span id="L15" class="ln">    15  </span><span class="comment">//</span>
+<span id="L16" class="ln">    16  </span><span class="comment">// **本ツールは finding があっても正常終了する。** cooldown のバイパスは</span>
+<span id="L17" class="ln">    17  </span><span class="comment">// テックリード / アーキテクトの専任判断であり、CRITICAL への即応など正当な</span>
+<span id="L18" class="ln">    18  </span><span class="comment">// 行使を CI が塞ぐのは誤り。非ゼロ終了はツール自身の失敗（取得不能・解析不能）</span>
+<span id="L19" class="ln">    19  </span><span class="comment">// に限る。ゲートではなく検知器であることを、ワークフロー側の設定ではなく</span>
+<span id="L20" class="ln">    20  </span><span class="comment">// ツールの性質として持たせている。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">//</span>
+<span id="L22" class="ln">    22  </span><span class="comment">// 守備範囲は「方針のドリフト」に限る。すなわち事故によるバイパス、規約の風化、</span>
+<span id="L23" class="ln">    23  </span><span class="comment">// npm 側の挙動変化である。commit 権限を持つ攻撃者はこのツールもワークフローも</span>
+<span id="L24" class="ln">    24  </span><span class="comment">// 同じ変更で削除できるため、技術的な防止手段ではない。成立するのは検知と</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// attribution までで、そこから先の抑止は組織側の運用に委ねる。</span>
+<span id="L26" class="ln">    26  </span><span class="comment">// 強制の担保は CODEOWNERS による lockfile / .npmrc のレビュー必須化が担う。</span>
+<span id="L27" class="ln">    27  </span>package main
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>import (
+<span id="L30" class="ln">    30  </span>	&#34;context&#34;
+<span id="L31" class="ln">    31  </span>	&#34;encoding/json&#34;
+<span id="L32" class="ln">    32  </span>	&#34;flag&#34;
+<span id="L33" class="ln">    33  </span>	&#34;fmt&#34;
+<span id="L34" class="ln">    34  </span>	&#34;log&#34;
+<span id="L35" class="ln">    35  </span>	&#34;net/http&#34;
+<span id="L36" class="ln">    36  </span>	&#34;os&#34;
+<span id="L37" class="ln">    37  </span>	&#34;os/exec&#34;
+<span id="L38" class="ln">    38  </span>	&#34;path/filepath&#34;
+<span id="L39" class="ln">    39  </span>	&#34;sort&#34;
+<span id="L40" class="ln">    40  </span>	&#34;strconv&#34;
+<span id="L41" class="ln">    41  </span>	&#34;strings&#34;
+<span id="L42" class="ln">    42  </span>	&#34;sync&#34;
+<span id="L43" class="ln">    43  </span>	&#34;time&#34;
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L46" class="ln">    46  </span>)
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>const (
+<span id="L49" class="ln">    49  </span>	registryBase   = &#34;https://registry.npmjs.org/&#34;
+<span id="L50" class="ln">    50  </span>	fetchTimeout   = 30 * time.Second
+<span id="L51" class="ln">    51  </span>	gitTimeout     = 30 * time.Second
+<span id="L52" class="ln">    52  </span>	fetchWorkers   = 8
+<span id="L53" class="ln">    53  </span>	hoursPerDay    = 24
+<span id="L54" class="ln">    54  </span>	nodeModulesSep = &#34;node_modules/&#34;
+<span id="L55" class="ln">    55  </span>	summaryPerm    = 0o644
+<span id="L56" class="ln">    56  </span>	outputPerm     = 0o600
+<span id="L57" class="ln">    57  </span>)
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>var (
+<span id="L60" class="ln">    60  </span>	<span class="comment">// errRegistryStatus は、npm registry が 200 / 404 以外のステータスを返した場合のエラー。</span>
+<span id="L61" class="ln">    61  </span>	errRegistryStatus = xerrors.New(&#34;unexpected npm registry status&#34;)
+<span id="L62" class="ln">    62  </span>	<span class="comment">// errUsage は、サブコマンドやフラグの与え方が誤っていることを表すエラー。</span>
+<span id="L63" class="ln">    63  </span>	errUsage = xerrors.New(&#34;invalid usage&#34;)
+<span id="L64" class="ln">    64  </span>)
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span><span class="comment">// entry は lockfile に記録された 1 パッケージ。path は lockfile 内のキー（差分表示用に保持する）。</span>
+<span id="L67" class="ln">    67  </span>type entry struct {
+<span id="L68" class="ln">    68  </span>	path    string
+<span id="L69" class="ln">    69  </span>	name    string
+<span id="L70" class="ln">    70  </span>	version string
+<span id="L71" class="ln">    71  </span>}
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span><span class="comment">// finding は cooldown を満たさないエントリ 1 件。</span>
+<span id="L74" class="ln">    74  </span>type finding struct {
+<span id="L75" class="ln">    75  </span>	lockfile  string
+<span id="L76" class="ln">    76  </span>	entry     entry
+<span id="L77" class="ln">    77  </span>	published time.Time
+<span id="L78" class="ln">    78  </span>	ageDays   int
+<span id="L79" class="ln">    79  </span>	minAge    int
+<span id="L80" class="ln">    80  </span>}
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span>func (e entry) key() string { return e.name + &#34;@&#34; + e.version }
+<span id="L83" class="ln">    83  </span>
+<span id="L84" class="ln">    84  </span><span class="comment">// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。</span>
+<span id="L85" class="ln">    85  </span><span class="comment">// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない</span>
+<span id="L86" class="ln">    86  </span><span class="comment">// コードがそのぶん増える。</span>
+<span id="L87" class="ln">    87  </span>func main() {
+<span id="L88" class="ln">    88  </span>	log.SetFlags(0)
+<span id="L89" class="ln">    89  </span>
+<span id="L90" class="ln">    90  </span>	if err := run(os.Args[1:], &amp;http.Client{Timeout: fetchTimeout}, os.Getwd); err != nil {
+<span id="L91" class="ln">    91  </span>		log.Fatalf(&#34;%v&#34;, err)
+<span id="L92" class="ln">    92  </span>	}
+<span id="L93" class="ln">    93  </span>}
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span><span class="comment">// run は lockfile を監査して結果を報告します。client は registry への問い合わせ手段、</span>
+<span id="L96" class="ln">    96  </span><span class="comment">// wd は走査の起点となるディレクトリの取得手段で、差し替えられるよう引数で受けます。</span>
+<span id="L97" class="ln">    97  </span><span class="comment">//</span>
+<span id="L98" class="ln">    98  </span><span class="comment">// finding があっても nil を返します。返すエラーはツール自身の失敗（取得不能・書き出し不能）に</span>
+<span id="L99" class="ln">    99  </span><span class="comment">// 限られ、cooldown 違反の検出は終了コードへ影響しません（パッケージ doc の設計意図）。</span>
+<span id="L100" class="ln">   100  </span>func run(args []string, client *http.Client, wd func() (string, error)) error {
+<span id="L101" class="ln">   101  </span>	if len(args) == 0 || args[0] != &#34;audit&#34; {
+<span id="L102" class="ln">   102  </span>		return xerrors.Wrap(errUsage, &#34;❌ usage: npm-cooldown audit [--base=&lt;git-ref&gt;] [--summary-out=&lt;path&gt;] [--github]&#34;)
+<span id="L103" class="ln">   103  </span>	}
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>	fs := flag.NewFlagSet(&#34;audit&#34;, flag.ContinueOnError)
+<span id="L106" class="ln">   106  </span>	base := fs.String(&#34;base&#34;, &#34;&#34;, &#34;この git ref からの差分で追加/変更されたエントリだけを対象にする（未指定なら全件）&#34;)
+<span id="L107" class="ln">   107  </span>	summaryOut := fs.String(&#34;summary-out&#34;, &#34;&#34;, &#34;Markdown サマリの出力先&#34;)
+<span id="L108" class="ln">   108  </span>	github := fs.Bool(&#34;github&#34;, false, &#34;GitHub Actions の ::warning:: アノテーションを出力する&#34;)
+<span id="L109" class="ln">   109  </span>	if err := fs.Parse(args[1:]); err != nil {
+<span id="L110" class="ln">   110  </span>		<span class="comment">// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。</span>
+<span id="L111" class="ln">   111  </span>		if xerrors.Is(err, flag.ErrHelp) {
+<span id="L112" class="ln">   112  </span>			return nil
+<span id="L113" class="ln">   113  </span>		}
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span>		return xerrors.Wrap(err, &#34;❌ フラグを解釈できません&#34;)
+<span id="L116" class="ln">   116  </span>	}
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span>	root, err := wd()
+<span id="L119" class="ln">   119  </span>	if err != nil {
+<span id="L120" class="ln">   120  </span>		return xerrors.Wrap(err, &#34;❌ getwd&#34;)
+<span id="L121" class="ln">   121  </span>	}
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>	locks, err := lockfiles(root)
+<span id="L124" class="ln">   124  </span>	if err != nil {
+<span id="L125" class="ln">   125  </span>		return xerrors.Wrap(err, &#34;❌ lockfile の走査&#34;)
+<span id="L126" class="ln">   126  </span>	}
+<span id="L127" class="ln">   127  </span>	if len(locks) == 0 {
+<span id="L128" class="ln">   128  </span>		log.Printf(&#34;ℹ️ package-lock.json が見つかりません&#34;)
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span>		return nil
+<span id="L131" class="ln">   131  </span>	}
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span>	findings, audited, err := auditAll(context.Background(), client, root, locks, *base)
+<span id="L134" class="ln">   134  </span>	if err != nil {
+<span id="L135" class="ln">   135  </span>		return xerrors.Wrap(err, &#34;❌ 監査&#34;)
+<span id="L136" class="ln">   136  </span>	}
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>	report(findings, audited, *base, *github)
+<span id="L139" class="ln">   139  </span>	if *summaryOut != &#34;&#34; {
+<span id="L140" class="ln">   140  </span>		if writeErr := os.WriteFile(*summaryOut, []byte(summary(findings, audited, *base)), summaryPerm); writeErr != nil {
+<span id="L141" class="ln">   141  </span>			return xerrors.Wrap(writeErr, &#34;❌ write summary&#34;)
+<span id="L142" class="ln">   142  </span>		}
+<span id="L143" class="ln">   143  </span>	}
+<span id="L144" class="ln">   144  </span>	if out := os.Getenv(&#34;GITHUB_OUTPUT&#34;); out != &#34;&#34; {
+<span id="L145" class="ln">   145  </span>		if writeErr := appendOutput(out, len(findings), audited); writeErr != nil {
+<span id="L146" class="ln">   146  </span>			return xerrors.Wrap(writeErr, &#34;❌ write GITHUB_OUTPUT&#34;)
+<span id="L147" class="ln">   147  </span>		}
+<span id="L148" class="ln">   148  </span>	}
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span>	<span class="comment">// finding があっても nil を返す（パッケージ doc の設計意図）。</span>
+<span id="L151" class="ln">   151  </span>	return nil
+<span id="L152" class="ln">   152  </span>}
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span><span class="comment">// lockfiles は node_modules / vendor 配下を除く package-lock.json を返す。</span>
+<span id="L155" class="ln">   155  </span>func lockfiles(root string) ([]string, error) {
+<span id="L156" class="ln">   156  </span>	var found []string
+<span id="L157" class="ln">   157  </span>	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+<span id="L158" class="ln">   158  </span>		if err != nil {
+<span id="L159" class="ln">   159  </span>			return err
+<span id="L160" class="ln">   160  </span>		}
+<span id="L161" class="ln">   161  </span>		rel, perr := lockPath(root, path, d)
+<span id="L162" class="ln">   162  </span>		if perr != nil {
+<span id="L163" class="ln">   163  </span>			return perr
+<span id="L164" class="ln">   164  </span>		}
+<span id="L165" class="ln">   165  </span>		if rel != &#34;&#34; {
+<span id="L166" class="ln">   166  </span>			found = append(found, rel)
+<span id="L167" class="ln">   167  </span>		}
+<span id="L168" class="ln">   168  </span>		return nil
+<span id="L169" class="ln">   169  </span>	})
+<span id="L170" class="ln">   170  </span>	if err != nil {
+<span id="L171" class="ln">   171  </span>		return nil, xerrors.Wrap(err, &#34;walk&#34;)
+<span id="L172" class="ln">   172  </span>	}
+<span id="L173" class="ln">   173  </span>	sort.Strings(found)
+<span id="L174" class="ln">   174  </span>	return found, nil
+<span id="L175" class="ln">   175  </span>}
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span><span class="comment">// lockPath は走査中の 1 エントリを、収集すべき root からの相対パスへ変換する。対象外なら空文字を、</span>
+<span id="L178" class="ln">   178  </span><span class="comment">// 枝ごと落とすディレクトリでは filepath.SkipDir を返す。相対化に失敗したものを絶対パスのまま</span>
+<span id="L179" class="ln">   179  </span><span class="comment">// 収集すると、以降の root との結合が壊れた場所を指す。</span>
+<span id="L180" class="ln">   180  </span>func lockPath(root, path string, d os.DirEntry) (string, error) {
+<span id="L181" class="ln">   181  </span>	if d.IsDir() {
+<span id="L182" class="ln">   182  </span>		switch d.Name() {
+<span id="L183" class="ln">   183  </span>		case &#34;node_modules&#34;, &#34;vendor&#34;, &#34;.git&#34;:
+<span id="L184" class="ln">   184  </span>			return &#34;&#34;, filepath.SkipDir
+<span id="L185" class="ln">   185  </span>		}
+<span id="L186" class="ln">   186  </span>		return &#34;&#34;, nil
+<span id="L187" class="ln">   187  </span>	}
+<span id="L188" class="ln">   188  </span>	if d.Name() != &#34;package-lock.json&#34; {
+<span id="L189" class="ln">   189  </span>		return &#34;&#34;, nil
+<span id="L190" class="ln">   190  </span>	}
+<span id="L191" class="ln">   191  </span>	return filepath.Rel(root, path)
+<span id="L192" class="ln">   192  </span>}
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span><span class="comment">// minReleaseAge は lockfile と同じディレクトリの .npmrc から min-release-age を読む。</span>
+<span id="L195" class="ln">   195  </span><span class="comment">// 宣言が無ければ 0 を返す（＝そのlockfileには守るべき cooldown が無い）。</span>
+<span id="L196" class="ln">   196  </span>func minReleaseAge(root, lock string) (int, error) {
+<span id="L197" class="ln">   197  </span>	p := filepath.Join(root, filepath.Dir(lock), &#34;.npmrc&#34;)
+<span id="L198" class="ln">   198  </span>	b, err := os.ReadFile(p) <span class="comment">//nolint:gosec // path は lockfile の同階層に限定</span>
+<span id="L199" class="ln">   199  </span>	if os.IsNotExist(err) {
+<span id="L200" class="ln">   200  </span>		return 0, nil
+<span id="L201" class="ln">   201  </span>	}
+<span id="L202" class="ln">   202  </span>	if err != nil {
+<span id="L203" class="ln">   203  </span>		return 0, xerrors.Wrap(err, &#34;read &#34;+p)
+<span id="L204" class="ln">   204  </span>	}
+<span id="L205" class="ln">   205  </span>	for line := range strings.SplitSeq(string(b), &#34;\n&#34;) {
+<span id="L206" class="ln">   206  </span>		line = strings.TrimSpace(line)
+<span id="L207" class="ln">   207  </span>		if strings.HasPrefix(line, &#34;#&#34;) || strings.HasPrefix(line, &#34;;&#34;) {
+<span id="L208" class="ln">   208  </span>			continue
+<span id="L209" class="ln">   209  </span>		}
+<span id="L210" class="ln">   210  </span>		k, v, ok := strings.Cut(line, &#34;=&#34;)
+<span id="L211" class="ln">   211  </span>		if !ok || strings.TrimSpace(k) != &#34;min-release-age&#34; {
+<span id="L212" class="ln">   212  </span>			continue
+<span id="L213" class="ln">   213  </span>		}
+<span id="L214" class="ln">   214  </span>		n, cerr := strconv.Atoi(strings.TrimSpace(v))
+<span id="L215" class="ln">   215  </span>		if cerr != nil {
+<span id="L216" class="ln">   216  </span>			return 0, xerrors.Wrap(cerr, &#34;parse min-release-age in &#34;+p)
+<span id="L217" class="ln">   217  </span>		}
+<span id="L218" class="ln">   218  </span>		return n, nil
+<span id="L219" class="ln">   219  </span>	}
+<span id="L220" class="ln">   220  </span>	return 0, nil
+<span id="L221" class="ln">   221  </span>}
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span><span class="comment">// parseLock は lockfile(v2/v3) の packages から実パッケージのエントリを取り出す。</span>
+<span id="L224" class="ln">   224  </span><span class="comment">// ルート（キーが空文字）と workspace リンクは対象外。</span>
+<span id="L225" class="ln">   225  </span>func parseLock(data []byte) ([]entry, error) {
+<span id="L226" class="ln">   226  </span>	var doc struct {
+<span id="L227" class="ln">   227  </span>		Packages map[string]struct {
+<span id="L228" class="ln">   228  </span>			Version string `json:&#34;version&#34;`
+<span id="L229" class="ln">   229  </span>			Link    bool   `json:&#34;link&#34;`
+<span id="L230" class="ln">   230  </span>		} `json:&#34;packages&#34;`
+<span id="L231" class="ln">   231  </span>	}
+<span id="L232" class="ln">   232  </span>	if err := json.Unmarshal(data, &amp;doc); err != nil {
+<span id="L233" class="ln">   233  </span>		return nil, xerrors.Wrap(err, &#34;unmarshal lockfile&#34;)
+<span id="L234" class="ln">   234  </span>	}
+<span id="L235" class="ln">   235  </span>	var out []entry
+<span id="L236" class="ln">   236  </span>	for path, p := range doc.Packages {
+<span id="L237" class="ln">   237  </span>		if path == &#34;&#34; || p.Link || p.Version == &#34;&#34; {
+<span id="L238" class="ln">   238  </span>			continue
+<span id="L239" class="ln">   239  </span>		}
+<span id="L240" class="ln">   240  </span>		idx := strings.LastIndex(path, nodeModulesSep)
+<span id="L241" class="ln">   241  </span>		if idx &lt; 0 {
+<span id="L242" class="ln">   242  </span>			continue <span class="comment">// node_modules 配下でない＝workspace 自身</span>
+<span id="L243" class="ln">   243  </span>		}
+<span id="L244" class="ln">   244  </span>		out = append(out, entry{path: path, name: path[idx+len(nodeModulesSep):], version: p.Version})
+<span id="L245" class="ln">   245  </span>	}
+<span id="L246" class="ln">   246  </span>	sort.Slice(out, func(i, j int) bool { return out[i].path &lt; out[j].path })
+<span id="L247" class="ln">   247  </span>	return out, nil
+<span id="L248" class="ln">   248  </span>}
+<span id="L249" class="ln">   249  </span>
+<span id="L250" class="ln">   250  </span><span class="comment">// changedOnly は base ref 時点の lockfile と比較し、追加/変更された name@version だけを残す。</span>
+<span id="L251" class="ln">   251  </span><span class="comment">// base に lockfile が存在しない（新規追加）場合は全件を対象にする。</span>
+<span id="L252" class="ln">   252  </span>func changedOnly(ctx context.Context, root, lock, base string, cur []entry) ([]entry, error) {
+<span id="L253" class="ln">   253  </span>	cctx, cancel := context.WithTimeout(ctx, gitTimeout)
+<span id="L254" class="ln">   254  </span>	defer cancel()
+<span id="L255" class="ln">   255  </span>
+<span id="L256" class="ln">   256  </span>	cmd := exec.CommandContext(cctx, &#34;git&#34;, &#34;show&#34;, base+&#34;:&#34;+lock) <span class="comment">//nolint:gosec // base は CI 由来の ref、lock は走査結果</span>
+<span id="L257" class="ln">   257  </span>	cmd.Dir = root
+<span id="L258" class="ln">   258  </span>	out, err := cmd.Output()
+<span id="L259" class="ln">   259  </span>	if err != nil {
+<span id="L260" class="ln">   260  </span>		<span class="comment">// base 側に lockfile が無い＝新規追加。全件が「追加分」なのでそのまま返す。</span>
+<span id="L261" class="ln">   261  </span>		return cur, nil
+<span id="L262" class="ln">   262  </span>	}
+<span id="L263" class="ln">   263  </span>	prev, err := parseLock(out)
+<span id="L264" class="ln">   264  </span>	if err != nil {
+<span id="L265" class="ln">   265  </span>		return nil, err
+<span id="L266" class="ln">   266  </span>	}
+<span id="L267" class="ln">   267  </span>	known := make(map[string]struct{}, len(prev))
+<span id="L268" class="ln">   268  </span>	for _, e := range prev {
+<span id="L269" class="ln">   269  </span>		known[e.key()] = struct{}{}
+<span id="L270" class="ln">   270  </span>	}
+<span id="L271" class="ln">   271  </span>	var diff []entry
+<span id="L272" class="ln">   272  </span>	for _, e := range cur {
+<span id="L273" class="ln">   273  </span>		if _, ok := known[e.key()]; !ok {
+<span id="L274" class="ln">   274  </span>			diff = append(diff, e)
+<span id="L275" class="ln">   275  </span>		}
+<span id="L276" class="ln">   276  </span>	}
+<span id="L277" class="ln">   277  </span>	return diff, nil
+<span id="L278" class="ln">   278  </span>}
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span><span class="comment">// auditAll は全 lockfile を監査し、finding と監査したエントリ総数を返す。</span>
+<span id="L281" class="ln">   281  </span>func auditAll(ctx context.Context, client *http.Client, root string, locks []string, base string) ([]finding, int, error) {
+<span id="L282" class="ln">   282  </span>	var findings []finding
+<span id="L283" class="ln">   283  </span>	audited := 0
+<span id="L284" class="ln">   284  </span>
+<span id="L285" class="ln">   285  </span>	for _, lock := range locks {
+<span id="L286" class="ln">   286  </span>		fs, n, err := auditLock(ctx, client, root, lock, base)
+<span id="L287" class="ln">   287  </span>		if err != nil {
+<span id="L288" class="ln">   288  </span>			return nil, 0, err
+<span id="L289" class="ln">   289  </span>		}
+<span id="L290" class="ln">   290  </span>		findings = append(findings, fs...)
+<span id="L291" class="ln">   291  </span>		audited += n
+<span id="L292" class="ln">   292  </span>	}
+<span id="L293" class="ln">   293  </span>
+<span id="L294" class="ln">   294  </span>	sort.Slice(findings, func(i, j int) bool { return findings[i].ageDays &lt; findings[j].ageDays })
+<span id="L295" class="ln">   295  </span>	return findings, audited, nil
+<span id="L296" class="ln">   296  </span>}
+<span id="L297" class="ln">   297  </span>
+<span id="L298" class="ln">   298  </span><span class="comment">// auditLock は lockfile 1 本を監査する。min-release-age の宣言が無ければ対象外として何も返さない。</span>
+<span id="L299" class="ln">   299  </span>func auditLock(ctx context.Context, client *http.Client, root, lock, base string) ([]finding, int, error) {
+<span id="L300" class="ln">   300  </span>	minAge, err := minReleaseAge(root, lock)
+<span id="L301" class="ln">   301  </span>	if err != nil {
+<span id="L302" class="ln">   302  </span>		return nil, 0, err
+<span id="L303" class="ln">   303  </span>	}
+<span id="L304" class="ln">   304  </span>	if minAge &lt;= 0 {
+<span id="L305" class="ln">   305  </span>		log.Printf(&#34;⏭️  %s: .npmrc に min-release-age が無いため対象外&#34;, lock)
+<span id="L306" class="ln">   306  </span>		return nil, 0, nil
+<span id="L307" class="ln">   307  </span>	}
+<span id="L308" class="ln">   308  </span>
+<span id="L309" class="ln">   309  </span>	entries, err := lockEntries(ctx, root, lock, base)
+<span id="L310" class="ln">   310  </span>	if err != nil {
+<span id="L311" class="ln">   311  </span>		return nil, 0, err
+<span id="L312" class="ln">   312  </span>	}
+<span id="L313" class="ln">   313  </span>	if len(entries) == 0 {
+<span id="L314" class="ln">   314  </span>		log.Printf(&#34;✅ %s: 対象エントリなし&#34;, lock)
+<span id="L315" class="ln">   315  </span>		return nil, 0, nil
+<span id="L316" class="ln">   316  </span>	}
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>	times, err := publishTimes(ctx, client, entries)
+<span id="L319" class="ln">   319  </span>	if err != nil {
+<span id="L320" class="ln">   320  </span>		return nil, 0, err
+<span id="L321" class="ln">   321  </span>	}
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span>	var findings []finding
+<span id="L324" class="ln">   324  </span>	for _, e := range entries {
+<span id="L325" class="ln">   325  </span>		pub, ok := times[e.key()]
+<span id="L326" class="ln">   326  </span>		if !ok || pub.IsZero() {
+<span id="L327" class="ln">   327  </span>			continue <span class="comment">// registry に公開日が無い（private / 取得不能）。判定不能は報告しない</span>
+<span id="L328" class="ln">   328  </span>		}
+<span id="L329" class="ln">   329  </span>		if age := int(time.Since(pub).Hours() / hoursPerDay); age &lt; minAge {
+<span id="L330" class="ln">   330  </span>			findings = append(findings, finding{lockfile: lock, entry: e, published: pub, ageDays: age, minAge: minAge})
+<span id="L331" class="ln">   331  </span>		}
+<span id="L332" class="ln">   332  </span>	}
+<span id="L333" class="ln">   333  </span>	log.Printf(&#34;🔍 %s: %d 件を監査（min-release-age=%d）&#34;, lock, len(entries), minAge)
+<span id="L334" class="ln">   334  </span>	return findings, len(entries), nil
+<span id="L335" class="ln">   335  </span>}
+<span id="L336" class="ln">   336  </span>
+<span id="L337" class="ln">   337  </span><span class="comment">// lockEntries は監査対象のエントリを返す。base 指定時はそこからの追加/変更分に絞る。</span>
+<span id="L338" class="ln">   338  </span>func lockEntries(ctx context.Context, root, lock, base string) ([]entry, error) {
+<span id="L339" class="ln">   339  </span>	data, err := os.ReadFile(filepath.Join(root, lock)) <span class="comment">//nolint:gosec // lockfiles() の走査結果</span>
+<span id="L340" class="ln">   340  </span>	if err != nil {
+<span id="L341" class="ln">   341  </span>		return nil, xerrors.Wrap(err, &#34;read &#34;+lock)
+<span id="L342" class="ln">   342  </span>	}
+<span id="L343" class="ln">   343  </span>	entries, err := parseLock(data)
+<span id="L344" class="ln">   344  </span>	if err != nil {
+<span id="L345" class="ln">   345  </span>		return nil, err
+<span id="L346" class="ln">   346  </span>	}
+<span id="L347" class="ln">   347  </span>	if base == &#34;&#34; {
+<span id="L348" class="ln">   348  </span>		return entries, nil
+<span id="L349" class="ln">   349  </span>	}
+<span id="L350" class="ln">   350  </span>	return changedOnly(ctx, root, lock, base, entries)
+<span id="L351" class="ln">   351  </span>}
+<span id="L352" class="ln">   352  </span>
+<span id="L353" class="ln">   353  </span><span class="comment">// publishTimes は name@version の公開日時を registry から並列取得する。</span>
+<span id="L354" class="ln">   354  </span><span class="comment">// packument の .time にのみ公開日があるため version 文書では代替できない。</span>
+<span id="L355" class="ln">   355  </span>func publishTimes(ctx context.Context, client *http.Client, entries []entry) (map[string]time.Time, error) {
+<span id="L356" class="ln">   356  </span>	byName := map[string][]entry{}
+<span id="L357" class="ln">   357  </span>	for _, e := range entries {
+<span id="L358" class="ln">   358  </span>		byName[e.name] = append(byName[e.name], e)
+<span id="L359" class="ln">   359  </span>	}
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span>	var (
+<span id="L362" class="ln">   362  </span>		mu      sync.Mutex
+<span id="L363" class="ln">   363  </span>		result  = map[string]time.Time{}
+<span id="L364" class="ln">   364  </span>		firstEr error
+<span id="L365" class="ln">   365  </span>		wg      sync.WaitGroup
+<span id="L366" class="ln">   366  </span>		sem     = make(chan struct{}, fetchWorkers)
+<span id="L367" class="ln">   367  </span>	)
+<span id="L368" class="ln">   368  </span>	for name, es := range byName {
+<span id="L369" class="ln">   369  </span>		wg.Add(1)
+<span id="L370" class="ln">   370  </span>		go func(name string, es []entry) {
+<span id="L371" class="ln">   371  </span>			defer wg.Done()
+<span id="L372" class="ln">   372  </span>			sem &lt;- struct{}{}
+<span id="L373" class="ln">   373  </span>			defer func() { &lt;-sem }()
+<span id="L374" class="ln">   374  </span>
+<span id="L375" class="ln">   375  </span>			times, err := packumentTimes(ctx, client, name)
+<span id="L376" class="ln">   376  </span>			mu.Lock()
+<span id="L377" class="ln">   377  </span>			defer mu.Unlock()
+<span id="L378" class="ln">   378  </span>			if err != nil {
+<span id="L379" class="ln">   379  </span>				if firstEr == nil {
+<span id="L380" class="ln">   380  </span>					firstEr = err
+<span id="L381" class="ln">   381  </span>				}
+<span id="L382" class="ln">   382  </span>				return
+<span id="L383" class="ln">   383  </span>			}
+<span id="L384" class="ln">   384  </span>			for _, e := range es {
+<span id="L385" class="ln">   385  </span>				if t, ok := times[e.version]; ok {
+<span id="L386" class="ln">   386  </span>					result[e.key()] = t
+<span id="L387" class="ln">   387  </span>				}
+<span id="L388" class="ln">   388  </span>			}
+<span id="L389" class="ln">   389  </span>		}(name, es)
+<span id="L390" class="ln">   390  </span>	}
+<span id="L391" class="ln">   391  </span>	wg.Wait()
+<span id="L392" class="ln">   392  </span>	if firstEr != nil {
+<span id="L393" class="ln">   393  </span>		return nil, firstEr
+<span id="L394" class="ln">   394  </span>	}
+<span id="L395" class="ln">   395  </span>	return result, nil
+<span id="L396" class="ln">   396  </span>}
+<span id="L397" class="ln">   397  </span>
+<span id="L398" class="ln">   398  </span><span class="comment">// packumentTimes は 1 パッケージの全バージョンの公開日時を返す。</span>
+<span id="L399" class="ln">   399  </span>func packumentTimes(ctx context.Context, client *http.Client, name string) (map[string]time.Time, error) {
+<span id="L400" class="ln">   400  </span>	cctx, cancel := context.WithTimeout(ctx, fetchTimeout)
+<span id="L401" class="ln">   401  </span>	defer cancel()
+<span id="L402" class="ln">   402  </span>
+<span id="L403" class="ln">   403  </span>	req, err := http.NewRequestWithContext(cctx, http.MethodGet, registryBase+name, nil)
+<span id="L404" class="ln">   404  </span>	if err != nil {
+<span id="L405" class="ln">   405  </span>		return nil, xerrors.Wrap(err, &#34;request &#34;+name)
+<span id="L406" class="ln">   406  </span>	}
+<span id="L407" class="ln">   407  </span>	resp, err := client.Do(req)
+<span id="L408" class="ln">   408  </span>	if err != nil {
+<span id="L409" class="ln">   409  </span>		return nil, xerrors.Wrap(err, &#34;fetch &#34;+name)
+<span id="L410" class="ln">   410  </span>	}
+<span id="L411" class="ln">   411  </span>	defer func() { _ = resp.Body.Close() }()
+<span id="L412" class="ln">   412  </span>
+<span id="L413" class="ln">   413  </span>	if resp.StatusCode == http.StatusNotFound {
+<span id="L414" class="ln">   414  </span>		return map[string]time.Time{}, nil <span class="comment">// private / 削除済み。判定不能として扱う</span>
+<span id="L415" class="ln">   415  </span>	}
+<span id="L416" class="ln">   416  </span>	if resp.StatusCode != http.StatusOK {
+<span id="L417" class="ln">   417  </span>		return nil, xerrors.Wrap(errRegistryStatus, fmt.Sprintf(&#34;registry %s status=%d&#34;, name, resp.StatusCode))
+<span id="L418" class="ln">   418  </span>	}
+<span id="L419" class="ln">   419  </span>
+<span id="L420" class="ln">   420  </span>	var doc struct {
+<span id="L421" class="ln">   421  </span>		Time map[string]time.Time `json:&#34;time&#34;`
+<span id="L422" class="ln">   422  </span>	}
+<span id="L423" class="ln">   423  </span>	if err := json.NewDecoder(resp.Body).Decode(&amp;doc); err != nil {
+<span id="L424" class="ln">   424  </span>		return nil, xerrors.Wrap(err, &#34;decode packument &#34;+name)
+<span id="L425" class="ln">   425  </span>	}
+<span id="L426" class="ln">   426  </span>	return doc.Time, nil
+<span id="L427" class="ln">   427  </span>}
+<span id="L428" class="ln">   428  </span>
+<span id="L429" class="ln">   429  </span><span class="comment">// report は人間向け出力と、GitHub Actions のアノテーションを出す。</span>
+<span id="L430" class="ln">   430  </span>func report(findings []finding, audited int, base string, github bool) {
+<span id="L431" class="ln">   431  </span>	scope := &#34;全件&#34;
+<span id="L432" class="ln">   432  </span>	if base != &#34;&#34; {
+<span id="L433" class="ln">   433  </span>		scope = base + &#34; からの追加/変更分&#34;
+<span id="L434" class="ln">   434  </span>	}
+<span id="L435" class="ln">   435  </span>	if len(findings) == 0 {
+<span id="L436" class="ln">   436  </span>		log.Printf(&#34;✅ cooldown 違反なし（%s / %d 件を監査）&#34;, scope, audited)
+<span id="L437" class="ln">   437  </span>		return
+<span id="L438" class="ln">   438  </span>	}
+<span id="L439" class="ln">   439  </span>
+<span id="L440" class="ln">   440  </span>	log.Printf(&#34;⚠️ cooldown 違反 %d 件（%s / %d 件を監査）&#34;, len(findings), scope, audited)
+<span id="L441" class="ln">   441  </span>	for _, f := range findings {
+<span id="L442" class="ln">   442  </span>		log.Printf(&#34;  - %s %s: 公開 %d 日 (&lt; %d) [%s]&#34;,
+<span id="L443" class="ln">   443  </span>			f.entry.name, f.entry.version, f.ageDays, f.minAge, f.lockfile)
+<span id="L444" class="ln">   444  </span>		if github {
+<span id="L445" class="ln">   445  </span>			log.Printf(&#34;::warning file=%s::%s@%s は公開 %d 日で min-release-age=%d を満たしていません。npm の cooldown を外して解決した lockfile の可能性があります&#34;,
+<span id="L446" class="ln">   446  </span>				f.lockfile, f.entry.name, f.entry.version, f.ageDays, f.minAge)
+<span id="L447" class="ln">   447  </span>		}
+<span id="L448" class="ln">   448  </span>	}
+<span id="L449" class="ln">   449  </span>}
+<span id="L450" class="ln">   450  </span>
+<span id="L451" class="ln">   451  </span><span class="comment">// summary は PR コメント用の Markdown を組み立てる。</span>
+<span id="L452" class="ln">   452  </span>func summary(findings []finding, audited int, base string) string {
+<span id="L453" class="ln">   453  </span>	var b strings.Builder
+<span id="L454" class="ln">   454  </span>	scope := &#34;全エントリ&#34;
+<span id="L455" class="ln">   455  </span>	if base != &#34;&#34; {
+<span id="L456" class="ln">   456  </span>		scope = &#34;この変更で追加/変更されたエントリ&#34;
+<span id="L457" class="ln">   457  </span>	}
+<span id="L458" class="ln">   458  </span>	if len(findings) == 0 {
+<span id="L459" class="ln">   459  </span>		fmt.Fprintf(&amp;b, &#34;%s %d 件を監査し、cooldown 違反はありませんでした。\n&#34;, scope, audited)
+<span id="L460" class="ln">   460  </span>		return b.String()
+<span id="L461" class="ln">   461  </span>	}
+<span id="L462" class="ln">   462  </span>
+<span id="L463" class="ln">   463  </span>	fmt.Fprintf(&amp;b, &#34;%s %d 件のうち %d 件が min-release-age を満たしていません。\n\n&#34;, scope, audited, len(findings))
+<span id="L464" class="ln">   464  </span>	for _, f := range findings {
+<span id="L465" class="ln">   465  </span>		fmt.Fprintf(&amp;b, &#34;- `%s@%s` — 公開 %d 日 (&lt; %d) / %s / %s\n&#34;,
+<span id="L466" class="ln">   466  </span>			f.entry.name, f.entry.version, f.ageDays, f.minAge, f.published.Format(time.RFC3339), f.lockfile)
+<span id="L467" class="ln">   467  </span>	}
+<span id="L468" class="ln">   468  </span>	b.WriteString(&#34;\n&#34;)
+<span id="L469" class="ln">   469  </span>	b.WriteString(&#34;npm の cooldown は `npm install` の依存解決時にしか効かず、CI とイメージビルドが使う `npm ci` では評価されません。\n&#34;)
+<span id="L470" class="ln">   470  </span>	b.WriteString(&#34;そのため窓内バージョンが lockfile に載る経路は「cooldown を明示的に外して解決した」以外にありません。\n&#34;)
+<span id="L471" class="ln">   471  </span>	b.WriteString(&#34;意図的なバイパス（CRITICAL への即応など）であれば、その判断根拠を PR に残してください。心当たりが無い場合は lockfile の出所を確認してください。\n&#34;)
+<span id="L472" class="ln">   472  </span>	return b.String()
+<span id="L473" class="ln">   473  </span>}
+<span id="L474" class="ln">   474  </span>
+<span id="L475" class="ln">   475  </span><span class="comment">// appendOutput は後続ステップ用に findings / audited を GITHUB_OUTPUT へ書く。</span>
+<span id="L476" class="ln">   476  </span>func appendOutput(path string, findings, audited int) error {
+<span id="L477" class="ln">   477  </span>	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, outputPerm) <span class="comment">//nolint:gosec // path は GITHUB_OUTPUT（ランナー提供）</span>
+<span id="L478" class="ln">   478  </span>	if err != nil {
+<span id="L479" class="ln">   479  </span>		return xerrors.Wrap(err, &#34;open GITHUB_OUTPUT&#34;)
+<span id="L480" class="ln">   480  </span>	}
+<span id="L481" class="ln">   481  </span>	defer func() { _ = f.Close() }()
+<span id="L482" class="ln">   482  </span>	_, err = fmt.Fprintf(f, &#34;findings=%d\naudited=%d\n&#34;, findings, audited)
+<span id="L483" class="ln">   483  </span>	return err
+<span id="L484" class="ln">   484  </span>}
+<span id="L485" class="ln">   485  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/npm-cooldown/main.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

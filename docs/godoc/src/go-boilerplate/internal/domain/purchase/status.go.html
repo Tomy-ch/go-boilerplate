@@ -1,0 +1,172 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>purchase - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/domain">domain</a>/<a href="../../../../../src/go-boilerplate/internal/domain/purchase">purchase</a>/<span class="text-muted">status.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/domain/purchase">go-boilerplate/internal/domain/purchase</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package purchase
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;fmt&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L7" class="ln">     7  </span>)
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span><span class="comment">// 既知のステータスの業務キー。**到達順序を意味しません**</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// （完了=5 / キャンセル=6 より支払い済み=7 のほうが大きい）。</span>
+<span id="L11" class="ln">    11  </span>const (
+<span id="L12" class="ln">    12  </span>	statusCodeUnprocessed = 1
+<span id="L13" class="ln">    13  </span>	statusCodeCompleted   = 5
+<span id="L14" class="ln">    14  </span>	statusCodeCanceled    = 6
+<span id="L15" class="ln">    15  </span>	statusCodePaid        = 7
+<span id="L16" class="ln">    16  </span>	statusCodeShipped     = 8
+<span id="L17" class="ln">    17  </span>	statusCodeDelivered   = 9
+<span id="L18" class="ln">    18  </span>)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// 既知のステータス。ステータスの UUID はドメインに焼き込まず、永続化時に code から解決します</span>
+<span id="L21" class="ln">    21  </span><span class="comment">// （seed との二重管理を避けるため）。</span>
+<span id="L22" class="ln">    22  </span>var (
+<span id="L23" class="ln">    23  </span>	<span class="comment">// StatusUnprocessed は、購入作成直後に設定される「未処理」です。</span>
+<span id="L24" class="ln">    24  </span>	StatusUnprocessed = Status{code: statusCodeUnprocessed, name: &#34;unprocessed&#34;}
+<span id="L25" class="ln">    25  </span>	<span class="comment">// StatusCompleted は、購入完了です。完了後はキャンセルできません。</span>
+<span id="L26" class="ln">    26  </span>	StatusCompleted = Status{code: statusCodeCompleted, name: &#34;completed&#34;}
+<span id="L27" class="ln">    27  </span>	<span class="comment">// StatusCanceled は、購入キャンセルです。発送前にのみ到達します。</span>
+<span id="L28" class="ln">    28  </span>	StatusCanceled = Status{code: statusCodeCanceled, name: &#34;canceled&#34;}
+<span id="L29" class="ln">    29  </span>	<span class="comment">// StatusPaid は、支払い済みです。未払い相当からのみ到達します。</span>
+<span id="L30" class="ln">    30  </span>	StatusPaid = Status{code: statusCodePaid, name: &#34;paid&#34;}
+<span id="L31" class="ln">    31  </span>	<span class="comment">// StatusShipped は、発送済みです。支払い済みからのみ到達します。</span>
+<span id="L32" class="ln">    32  </span>	StatusShipped = Status{code: statusCodeShipped, name: &#34;shipped&#34;}
+<span id="L33" class="ln">    33  </span>	<span class="comment">// StatusDelivered は、配達済みです。発送済みからのみ到達する終端状態です。</span>
+<span id="L34" class="ln">    34  </span>	StatusDelivered = Status{code: statusCodeDelivered, name: &#34;delivered&#34;}
+<span id="L35" class="ln">    35  </span>)
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span><span class="comment">// Status は、購入のステータスを表す値オブジェクトです。</span>
+<span id="L38" class="ln">    38  </span><span class="comment">//</span>
+<span id="L39" class="ln">    39  </span><span class="comment">// 内側に持つ code は永続化と外部公開のための業務キーであり、到達順序を意味しません。</span>
+<span id="L40" class="ln">    40  </span><span class="comment">// したがって遷移の可否や終端性を code の大小で判定してはならず、必ず本型のメソッドを通します。</span>
+<span id="L41" class="ln">    41  </span>type Status struct {
+<span id="L42" class="ln">    42  </span>	code int
+<span id="L43" class="ln">    43  </span>	name string
+<span id="L44" class="ln">    44  </span>}
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span><span class="comment">// allStatuses は、既知のステータス一覧です。code からの解決に用います。</span>
+<span id="L47" class="ln">    47  </span>func allStatuses() []Status {
+<span id="L48" class="ln">    48  </span>	return []Status{
+<span id="L49" class="ln">    49  </span>		StatusUnprocessed, StatusCompleted, StatusCanceled,
+<span id="L50" class="ln">    50  </span>		StatusPaid, StatusShipped, StatusDelivered,
+<span id="L51" class="ln">    51  </span>	}
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// NewStatus は、永続化されている code からステータスを解決します。</span>
+<span id="L55" class="ln">    55  </span><span class="comment">// 既知でない code は ErrInvalidStatusID を返します（永続化状態の破損を再構築時に弾くため）。</span>
+<span id="L56" class="ln">    56  </span>func NewStatus(code int) (Status, error) {
+<span id="L57" class="ln">    57  </span>	for _, s := range allStatuses() {
+<span id="L58" class="ln">    58  </span>		if s.code == code {
+<span id="L59" class="ln">    59  </span>			return s, nil
+<span id="L60" class="ln">    60  </span>		}
+<span id="L61" class="ln">    61  </span>	}
+<span id="L62" class="ln">    62  </span>	return Status{}, xerrors.Wrap(ErrInvalidStatusID, fmt.Sprintf(&#34;unknown status code: %d&#34;, code))
+<span id="L63" class="ln">    63  </span>}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span><span class="comment">// Code は、永続化と外部公開に用いる業務キーを返します。到達順序の比較には使えません。</span>
+<span id="L66" class="ln">    66  </span>func (s Status) Code() int { return s.code }
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span><span class="comment">// Name は、ステータスの名前を返します。外部へ状態を伝えるときは code ではなくこちらを用います。</span>
+<span id="L69" class="ln">    69  </span>func (s Status) Name() string { return s.name }
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span><span class="comment">// IsZero は、未設定のステータスかどうかを返します。</span>
+<span id="L72" class="ln">    72  </span>func (s Status) IsZero() bool { return s.code == 0 }
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span><span class="comment">// IsTerminal は、そこから他の状態へ遷移しない終端状態かどうかを返します。</span>
+<span id="L75" class="ln">    75  </span><span class="comment">// 終端でないステータスの購入は進行中として扱います。</span>
+<span id="L76" class="ln">    76  </span>func (s Status) IsTerminal() bool {
+<span id="L77" class="ln">    77  </span>	switch s {
+<span id="L78" class="ln">    78  </span>	case StatusCompleted, StatusCanceled, StatusDelivered:
+<span id="L79" class="ln">    79  </span>		return true
+<span id="L80" class="ln">    80  </span>	default:
+<span id="L81" class="ln">    81  </span>		return false
+<span id="L82" class="ln">    82  </span>	}
+<span id="L83" class="ln">    83  </span>}
+<span id="L84" class="ln">    84  </span>
+<span id="L85" class="ln">    85  </span><span class="comment">// CanTransitionTo は、next へ遷移できるかを返します。ステータスだけで決まる可否を判定するもので、</span>
+<span id="L86" class="ln">    86  </span><span class="comment">// 集約の状態（発送記録の有無など）に依存する条件は集約側が併せて検証します。</span>
+<span id="L87" class="ln">    87  </span>func (s Status) CanTransitionTo(next Status) bool {
+<span id="L88" class="ln">    88  </span>	if s.IsTerminal() || s == next {
+<span id="L89" class="ln">    89  </span>		return false
+<span id="L90" class="ln">    90  </span>	}
+<span id="L91" class="ln">    91  </span>	switch next {
+<span id="L92" class="ln">    92  </span>	case StatusCanceled:
+<span id="L93" class="ln">    93  </span>		<span class="comment">// キャンセルは進行中からのみ。発送済みからのキャンセル不可は集約が発送記録で併せて弾く。</span>
+<span id="L94" class="ln">    94  </span>		return true
+<span id="L95" class="ln">    95  </span>	case StatusPaid:
+<span id="L96" class="ln">    96  </span>		<span class="comment">// 支払いは未払い相当からのみ。</span>
+<span id="L97" class="ln">    97  </span>		return s == StatusUnprocessed
+<span id="L98" class="ln">    98  </span>	case StatusShipped:
+<span id="L99" class="ln">    99  </span>		return s == StatusPaid
+<span id="L100" class="ln">   100  </span>	case StatusDelivered:
+<span id="L101" class="ln">   101  </span>		return s == StatusShipped
+<span id="L102" class="ln">   102  </span>	default:
+<span id="L103" class="ln">   103  </span>		return false
+<span id="L104" class="ln">   104  </span>	}
+<span id="L105" class="ln">   105  </span>}
+<span id="L106" class="ln">   106  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

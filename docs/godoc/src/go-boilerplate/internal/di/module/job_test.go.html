@@ -58,10 +58,10 @@
 <pre><span id="L1" class="ln">     1  </span>package module
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
-<span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/di/shutdowner&#34;
+<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/di/shutdowner&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/usecase/boundary/job&#34;
 <span id="L8" class="ln">     8  </span>
 <span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
@@ -81,34 +81,73 @@
 <span id="L24" class="ln">    24  </span>	validateGraph(t, opts...)
 <span id="L25" class="ln">    25  </span>}
 <span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span>func Test_provideJobs_AnnotatesIntoJobsGroup(t *testing.T) {
+<span id="L27" class="ln">    27  </span>func Test_provideJobs(t *testing.T) {
 <span id="L28" class="ln">    28  </span>	t.Parallel()
 <span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span>	<span class="comment">// provideJobs は渡したコンストラクタ群を group:&#34;jobs&#34; として登録する。</span>
-<span id="L31" class="ln">    31  </span>	<span class="comment">// 登録した数だけグループに集約されることを確認する。</span>
-<span id="L32" class="ln">    32  </span>	type fakeJob struct{ name string }
-<span id="L33" class="ln">    33  </span>	var jobs []*fakeJob
+<span id="L30" class="ln">    30  </span>	type fakeJob struct{ name string }
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L33" class="ln">    33  </span>		t.Parallel()
 <span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span>	app := fx.New(
-<span id="L36" class="ln">    36  </span>		provideJobs(
-<span id="L37" class="ln">    37  </span>			func() *fakeJob { return &amp;fakeJob{name: &#34;a&#34;} },
-<span id="L38" class="ln">    38  </span>			func() *fakeJob { return &amp;fakeJob{name: &#34;b&#34;} },
-<span id="L39" class="ln">    39  </span>		),
-<span id="L40" class="ln">    40  </span>		fx.Populate(fx.Annotate(&amp;jobs, fx.ParamTags(`group:&#34;jobs&#34;`))),
-<span id="L41" class="ln">    41  </span>		fx.NopLogger,
-<span id="L42" class="ln">    42  </span>	)
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	require.NoError(t, app.Start(context.Background()))
-<span id="L45" class="ln">    45  </span>	defer func() { require.NoError(t, app.Stop(context.Background())) }()
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span>	assert.Len(t, jobs, 2)
-<span id="L48" class="ln">    48  </span>}
+<span id="L35" class="ln">    35  </span>		t.Run(&#34;渡した全コンストラクタのジョブが jobs グループへ集まる&#34;, func(t *testing.T) {
+<span id="L36" class="ln">    36  </span>			t.Parallel()
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>			got := collectGroup[*fakeJob](t, `group:&#34;jobs&#34;`, provideJobs(
+<span id="L39" class="ln">    39  </span>				func() *fakeJob { return &amp;fakeJob{name: &#34;a&#34;} },
+<span id="L40" class="ln">    40  </span>				func() *fakeJob { return &amp;fakeJob{name: &#34;b&#34;} },
+<span id="L41" class="ln">    41  </span>			))
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>			names := make([]string, 0, len(got))
+<span id="L44" class="ln">    44  </span>			for _, j := range got {
+<span id="L45" class="ln">    45  </span>				names = append(names, j.name)
+<span id="L46" class="ln">    46  </span>			}
+<span id="L47" class="ln">    47  </span>			assert.ElementsMatch(t, []string{&#34;a&#34;, &#34;b&#34;}, names)
+<span id="L48" class="ln">    48  </span>		})
 <span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>func Test_provideJobs(t *testing.T) {
-<span id="L51" class="ln">    51  </span>	t.Parallel()
-<span id="L52" class="ln">    52  </span>	t.Skip(&#34;Test_provideJobs_AnnotatesIntoJobsGroup で group 登録分岐を検証済み&#34;)
-<span id="L53" class="ln">    53  </span>}
-<span id="L54" class="ln">    54  </span>
+<span id="L50" class="ln">    50  </span>		t.Run(&#34;コンストラクタが 0 個の場合は何も登録しない&#34;, func(t *testing.T) {
+<span id="L51" class="ln">    51  </span>			t.Parallel()
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>			assert.Empty(t, collectGroup[*fakeJob](t, `group:&#34;jobs&#34;`, provideJobs()))
+<span id="L54" class="ln">    54  </span>		})
+<span id="L55" class="ln">    55  </span>	})
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>func TestJobModule(t *testing.T) {
+<span id="L59" class="ln">    59  </span>	t.Parallel()
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>	jobDeps := func() []fx.Option {
+<span id="L62" class="ln">    62  </span>		return append(commonDeps(), shutdowner.Module(), InfrastructureModule(), UsecaseModule())
+<span id="L63" class="ln">    63  </span>	}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L66" class="ln">    66  </span>		t.Parallel()
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>		t.Run(&#34;ジョブ実行に必要な Runner と State を提供する&#34;, func(t *testing.T) {
+<span id="L69" class="ln">    69  </span>			t.Parallel()
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span>			var (
+<span id="L72" class="ln">    72  </span>				runner job.Runner
+<span id="L73" class="ln">    73  </span>				state  job.State
+<span id="L74" class="ln">    74  </span>			)
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>			validateGraph(t, append(jobDeps(), JobModule(), fx.Populate(&amp;runner, &amp;state))...)
+<span id="L77" class="ln">    77  </span>		})
+<span id="L78" class="ln">    78  </span>	})
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L81" class="ln">    81  </span>		t.Parallel()
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>		t.Run(&#34;未配線では Runner が解決できずグラフ検証に失敗する&#34;, func(t *testing.T) {
+<span id="L84" class="ln">    84  </span>			t.Parallel()
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>			var runner job.Runner
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span>			opts := append(jobDeps(), fx.Populate(&amp;runner), fx.NopLogger)
+<span id="L89" class="ln">    89  </span>			require.Error(t, fx.ValidateApp(opts...))
+<span id="L90" class="ln">    90  </span>		})
+<span id="L91" class="ln">    91  </span>	})
+<span id="L92" class="ln">    92  </span>}
+<span id="L93" class="ln">    93  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/job_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

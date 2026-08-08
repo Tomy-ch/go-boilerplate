@@ -104,6 +104,8 @@
 			<dl>
 			
 			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
 			
 				
 				<dd><a href="#ConfigModule">func ConfigModule() fx.Option</a></dd>
@@ -175,7 +177,11 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/logging.go.html">logging.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/di/module/objectstorage.go.html">objectstorage.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/di/module/observability.go.html">observability.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/outboundhttp.go.html">outboundhttp.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/outboxpublisher.go.html">outboxpublisher.go</a>
 			
@@ -183,13 +189,13 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/persistence.go.html">persistence.go</a>
 			
-				<a href="../../../../src/go-boilerplate/internal/di/module/security.go.html">security.go</a>
-			
 				<a href="../../../../src/go-boilerplate/internal/di/module/system.go.html">system.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html">usecase.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/webapi.go.html">webapi.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/withdrawalarchive.go.html">withdrawalarchive.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/worker.go.html">worker.go</a>
 			
@@ -202,6 +208,13 @@
 		
 
 		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrInvalidConsumerQueue は、consume 対象キューの設定が不正であることを示すエラーです。
+
+				</p><pre>var <span id="ErrInvalidConsumerQueue">ErrInvalidConsumerQueue</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;invalid consumer queue&#34;)</pre>
+			
 		
 		
 			
@@ -220,7 +233,7 @@
 		
 			
 			
-			</p><h2 id="ControllerModule">func <a href="../../../../src/go-boilerplate/internal/di/module/controller.go.html?s=1533:1566#L14">ControllerModule</a>
+			</p><h2 id="ControllerModule">func <a href="../../../../src/go-boilerplate/internal/di/module/controller.go.html?s=2987:3020#L26">ControllerModule</a>
 				<a class="permalink" href="#ControllerModule">¶</a>
 				
 				
@@ -248,14 +261,14 @@
 		
 			
 			
-			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=417:454#L1">InfrastructureModule</a>
+			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=423:460#L1">InfrastructureModule</a>
 				<a class="permalink" href="#InfrastructureModule">¶</a>
 				
 				
 			</h2>
 			<pre>func InfrastructureModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
 			<p>InfrastructureModule は、全プロセス共通のインフラストラクチャ層の依存関係を集約して提供するfx.Moduleです。
-含む concern は永続化 / clock / HTTP client / webapi gateway / auth（JWKS profile）/ security / authz です。
+含む concern は永続化 / clock / HTTP client / webapi gateway / object storage / auth（JWKS profile）/ authz です。
 outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で提供します。
 
 			
@@ -264,7 +277,7 @@ outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で�
 		
 			
 			
-			</p><h2 id="JobModule">func <a href="../../../../src/go-boilerplate/internal/di/module/job.go.html?s=453:479#L5">JobModule</a>
+			</p><h2 id="JobModule">func <a href="../../../../src/go-boilerplate/internal/di/module/job.go.html?s=610:636#L7">JobModule</a>
 				<a class="permalink" href="#JobModule">¶</a>
 				
 				
@@ -278,7 +291,7 @@ outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で�
 		
 			
 			
-			</p><h2 id="LoggingModule">func <a href="../../../../src/go-boilerplate/internal/di/module/logging.go.html?s=244:274#L4">LoggingModule</a>
+			</p><h2 id="LoggingModule">func <a href="../../../../src/go-boilerplate/internal/di/module/logging.go.html?s=428:458#L7">LoggingModule</a>
 				<a class="permalink" href="#LoggingModule">¶</a>
 				
 				
@@ -306,7 +319,7 @@ outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で�
 		
 			
 			
-			</p><h2 id="OutboxRelayModule">func <a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html?s=1150:1184#L16">OutboxRelayModule</a>
+			</p><h2 id="OutboxRelayModule">func <a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html?s=1211:1245#L18">OutboxRelayModule</a>
 				<a class="permalink" href="#OutboxRelayModule">¶</a>
 				
 				
@@ -337,7 +350,7 @@ relay 以外のプロセスへ漏れないよう共有 InfrastructureModule で�
 		
 			
 			
-			</p><h2 id="UsecaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html?s=973:1003#L11">UsecaseModule</a>
+			</p><h2 id="UsecaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html?s=2109:2139#L23">UsecaseModule</a>
 				<a class="permalink" href="#UsecaseModule">¶</a>
 				
 				
@@ -367,7 +380,7 @@ relay 以外のプロセスへ漏れないよう共有 InfrastructureModule で�
 		
 			
 			
-			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=366:553#L4">HTTPClientProfilesIn</a>
+			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=604:791#L7">HTTPClientProfilesIn</a>
 				<a class="permalink" href="#HTTPClientProfilesIn">¶</a>
 				
 				

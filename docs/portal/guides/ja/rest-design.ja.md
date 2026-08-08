@@ -14,7 +14,7 @@ REST は **「request-in driving adapter」、Usecase 層への同期 HTTP 入�
 
 | 構成要素 | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
-| **Echo サーバ**（`server.NewAppServer`） | controller | TCP リスナ / read·write·idle タイムアウト / 生成 `RegisterHandlers` によるルート表 | 業務ロジック・middleware 方針 |
+| **HTTP サーバ**（`server.NewAppServer` / `server.NewHTTPServer`） | controller | Echo インスタンスとそれを配信する `http.Server`：read·write·idle タイムアウト / 生成 `RegisterHandlers` によるルート表 | 業務ロジック・middleware 方針 |
 | **middleware チェーン**（`httpstack/*`） | controller | 固定順の横断関心事：uri(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | 業務ロジック |
 | **handler**（`controller/handler/**`） | controller | 型付きリクエスト解釈（`StrictHandler`）→ usecase を**1 メソッド**呼ぶ → DTO → `gen` 応答へ変換 | 業務ロジック・永続化・tx |
 | **error handler**（`httpstack/errorhandler`） | controller | `apperror` / Echo / OpenAPI エラー → HTTP ステータス＋コード、統一エラーボディ | 業務方針 |
@@ -38,11 +38,11 @@ REST は **「request-in driving adapter」、Usecase 層への同期 HTTP 入�
 stateDiagram-v2
     [*] --> Building: NewApplicationCore() → fx.New (config→logging→o11y→db→infra→usecase→controller→server)
     Building --> Wired: BindHandler×N (RegisterHandlers) ＋ ApplyExtends (middleware ソート＆適用) ＋ RegisterHTTPServerHooks
-    Wired --> Listening: fx OnStart → net listen port → go e.Start()
+    Wired --> Listening: fx OnStart → net listen port → go srv.Serve(ln)
     Listening --> Serving: request → middleware チェーン → handler → 応答（常駐）
     Serving --> Listening: 応答送出
     Listening --> Draining: SIGINT/SIGTERM → RunServer の ctx.Done()
-    Draining --> Stopped: e.Shutdown(stopCtx) が in-flight を shutdownTimeout 内で drain
+    Draining --> Stopped: srv.Shutdown(stopCtx) が in-flight を shutdownTimeout 内で drain
     Stopped --> [*]: fx OnStop 完了 → プロセス終了
 
     note right of Draining
@@ -91,11 +91,9 @@ stateDiagram-v2
     EchoCore --> Recovered: recovery が既に panic を記録済み? → 再ログ省略
     EchoCore --> Normalize: それ以外 → HTTPErrorHandler
     Normalize --> MapAppError: apperror → status+code (lookupErrorMetaByAppError)
-    Normalize --> MapEcho: echo.HTTPError → normalizeEchoHTTPError
-    Normalize --> MapOpenAPI: openapi validation → normalizeOpenAPIError
+    Normalize --> MapEcho: ステータスを持つエラー（echo / openapi 検証）→ normalizeEchoHTTPError
     MapAppError --> Write: HTTPErrorResponse（JSON）＋ヘッダを書く
     MapEcho --> Write
-    MapOpenAPI --> Write
     Write --> LogIf: status ∈ ObservabilityConfig 対象集合 ならログ
     Recovered --> Write
     LogIf --> [*]
@@ -127,7 +125,7 @@ flowchart TD
         DICTRL["module/controller.go: ControllerModule (fx.Invoke BindHandler×N)"]
     end
     subgraph srvL["internal/controller/server"]
-        APPSRV["app_server.go: NewAppServer (echo ＋ timeouts)"]
+        APPSRV["app_server.go: NewAppServer (echo) / NewHTTPServer (http.Server ＋ timeouts)"]
         ECHOH["echo.go: request/response 抽出ヘルパ"]
     end
     subgraph mwL["internal/controller/httpstack  ＝ middleware ＋ errors"]
@@ -205,7 +203,7 @@ sequenceDiagram
 
 ## 4. integrator が実装する箇所（contract-first のエンドポイント手順）
 
-scaffold は **サーバ起動・順序付き middleware チェーン・error handler・DI 配線・`scaffold-*` スキル**を提供する。エンドポイント追加は contract-first 順（OpenAPI 変更が handler/usecase コードに先行する）に従う。
+本プロジェクトは **サーバ起動・順序付き middleware チェーン・error handler・DI 配線・`scaffold-*` スキル**を提供する。エンドポイント追加は contract-first 順（OpenAPI 変更が handler/usecase コードに先行する）に従う。
 
 ```mermaid
 flowchart LR
@@ -235,7 +233,7 @@ flowchart LR
 | 用語 | 意味 |
 | --- | --- |
 | **driving adapter** | usecase 層を駆動する入口。REST（HTTP）が同期、[worker](worker.ja.md)（キュー）・[job](job.ja.md)（CLI）が兄弟。 |
-| **Echo** | HTTP フレームワーク。`server.NewAppServer(ServerConfig)` が timeouts 付きの `*echo.Echo` を構築し、ルートは生成コードが登録。 |
+| **Echo** | HTTP フレームワーク。`server.NewAppServer()` が `*echo.Echo` を構築し、`server.NewHTTPServer(e, ServerConfig)` が timeouts を持つ `http.Server` で包む。ルートは生成コードが登録。 |
 | **ServerInterface / StrictServerInterface** | OpenAPI 生成のルート interface / その強型（request-object, response-object）版。handler は strict 版を実装。 |
 | **RegisterHandlers / NewStrictHandler** | 生成関数：Echo にルート登録 / strict handler を `StrictMiddlewareFunc` スライス（例: 冪等性）で包む。 |
 | **BindHandler** | handler パッケージのコンストラクタ：`server{}`（tracer ＋ usecase）を作り `RegisterHandlers(e, NewStrictHandler(...))` を呼ぶ。`fx.Invoke` で配線。 |
@@ -244,9 +242,9 @@ flowchart LR
 | **middleware (Use) / Pre** | priority 順に適用される per-request 横断関数（`Use`）と、ルーティング前に走る `Pre`（パス正規化）。 |
 | **priority** | 各 middleware の `*_di.go` の整数で extension エンジンがソート（uri-pre 1; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10）。 |
 | **extension エンジン**（`ApplyExtends`） | `Pre`/`Use`/`SrvCfg` provider を集約し priority でソートして Echo に適用。非 middleware の構成器（IP extractor, error handler）も適用。 |
-| **error handler** | Echo に設定する `HTTPErrorHandler`。`apperror` / `echo.HTTPError` / OpenAPI 検証エラーを統一 `HTTPErrorResponse`（status ＋ code 写像付き）へ正規化。 |
+| **error handler** | Echo に設定する `HTTPErrorHandler`。`apperror` と、ステータスを持つエラー（`echo.HTTPError` / OpenAPI 検証エラー）を統一 `HTTPErrorResponse`（status ＋ code 写像付き）へ正規化。 |
 | **apperror** | フレームワーク非依存のエラー分類。error handler が HTTP ステータスへ写像（例 `ErrConflict`→409, `ErrValidation`→422, `ErrInvalidArgument`→400）。 |
-| **graceful shutdown** | SIGINT/SIGTERM で `RunServer` が受付停止し `e.Shutdown(stopCtx)` で in-flight を `shutdownTimeout` 内に drain（停止開始時点から計る）。 |
+| **graceful shutdown** | SIGINT/SIGTERM で `RunServer` が受付停止し `srv.Shutdown(stopCtx)` で in-flight を `shutdownTimeout` 内に drain（停止開始時点から計る）。 |
 | **lifecycle / Registrar** | fx フックの seam：`RegisterHTTPServerHooks` が OnStart（listen ＋ serve）と OnStop（shutdown）を登録。 |
-| **ServerConfig** | host / port / read-header / read / write / idle タイムアウト（`SERVER_*`）。`NewAppServer` に注入。 |
+| **ServerConfig** | host / port / read-header / read / write / idle タイムアウト（`SERVER_*`）。`NewHTTPServer` に注入。 |
 | **冪等性 middleware** | 採用 handler が非冪等書き込みを安全にするために差す `StrictMiddleware` スロット。[idempotency.ja.md](idempotency.ja.md) 参照。 |

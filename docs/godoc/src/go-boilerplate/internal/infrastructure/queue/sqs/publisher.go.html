@@ -1,0 +1,191 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>sqs - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue">queue</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs">sqs</a>/<span class="text-muted">publisher.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/infrastructure/queue/sqs">go-boilerplate/internal/infrastructure/queue/sqs</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package sqs
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;fmt&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;github.com/aws/aws-sdk-go-v2/aws&#34;
+<span id="L8" class="ln">     8  </span>	&#34;github.com/aws/aws-sdk-go-v2/service/sqs&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/aws/aws-sdk-go-v2/service/sqs/types&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L13" class="ln">    13  </span>	boundary &#34;go-boilerplate/internal/usecase/boundary/publisher&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/worker&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/httpheader&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L17" class="ln">    17  </span>)
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span><span class="comment">// AttrMessageID は、outbox の message_id を運ぶ MessageAttribute のキーです。</span>
+<span id="L20" class="ln">    20  </span><span class="comment">// SQS の MessageId は broker が採番する別物で、再 publish のたびに変わるため冪等キーには使えません。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">// 受信側はこの属性を冪等キーの材料として読みます。</span>
+<span id="L22" class="ln">    22  </span>const AttrMessageID = &#34;message_id&#34;
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span><span class="comment">// AttrEventType は、イベント種別を運ぶ MessageAttribute のキーです。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// 受信側 Handler が本文を parse する前に処理対象を選別できるよう、worker seam が定める属性名で載せます。</span>
+<span id="L26" class="ln">    26  </span>const AttrEventType = worker.AttrEventType
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// attrTypeString は、MessageAttribute の DataType です（SQS は型名の指定を必須とします）。</span>
+<span id="L29" class="ln">    29  </span>const attrTypeString = &#34;String&#34;
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// maxMessageAttributes は、SendMessage が受け付ける MessageAttributes の上限です（SQS の仕様）。</span>
+<span id="L32" class="ln">    32  </span><span class="comment">// 超過するとメッセージ全体が InvalidParameterValue で拒否されます。</span>
+<span id="L33" class="ln">    33  </span>const maxMessageAttributes = 10
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// reservedAttributes は、adapter 自身が占める属性の数（message_id / event_type）です。</span>
+<span id="L36" class="ln">    36  </span><span class="comment">// 伝搬できるヘッダの数は、上限からこの分だけ減ります。</span>
+<span id="L37" class="ln">    37  </span>const reservedAttributes = 2
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span><span class="comment">// ErrTooManyAttributes は、伝搬対象ヘッダが SQS の MessageAttributes 上限を超えたことを示すエラーです。</span>
+<span id="L40" class="ln">    40  </span>var ErrTooManyAttributes = xerrors.Wrap(apperror.ErrInvalidArgument, &#34;too many message attributes&#34;)
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span><span class="comment">// ErrMissingEventType は、イベント種別を持たないメッセージを publish しようとしたことを示すエラーです。</span>
+<span id="L43" class="ln">    43  </span>var ErrMissingEventType = xerrors.Wrap(apperror.ErrInvalidArgument, &#34;missing event type&#34;)
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// 実装漏れをコンパイル時に検出します。</span>
+<span id="L46" class="ln">    46  </span>var _ boundary.Publisher = (*publisher)(nil)
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span><span class="comment">// PublisherConfig は、SQS publisher の adapter 固有設定です。</span>
+<span id="L49" class="ln">    49  </span>type PublisherConfig struct {
+<span id="L50" class="ln">    50  </span>	<span class="comment">// QueueURL は、publish 先キューの URL です。</span>
+<span id="L51" class="ln">    51  </span>	QueueURL string
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// publisher は、boundary.Publisher の SQS 実装です。</span>
+<span id="L55" class="ln">    55  </span>type publisher struct {
+<span id="L56" class="ln">    56  </span>	api    API
+<span id="L57" class="ln">    57  </span>	cfg    PublisherConfig
+<span id="L58" class="ln">    58  </span>	tracer observability.LayerTracer
+<span id="L59" class="ln">    59  </span>}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span><span class="comment">// NewPublisher は、SQS publisher を生成します。</span>
+<span id="L62" class="ln">    62  </span>func NewPublisher(api API, cfg PublisherConfig, tf observability.TracerFactory) boundary.Publisher {
+<span id="L63" class="ln">    63  </span>	return &amp;publisher{api: api, cfg: cfg, tracer: tf.Infra()}
+<span id="L64" class="ln">    64  </span>}
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span><span class="comment">// Publish は、メッセージを SendMessage でキューへ送ります。</span>
+<span id="L67" class="ln">    67  </span><span class="comment">// outbox の message_id と伝搬対象ヘッダは MessageAttributes へ載せます。本文は payload そのままで、</span>
+<span id="L68" class="ln">    68  </span><span class="comment">// 受信側が本文を解釈せずに冪等キーを取り出せるようにするためです。</span>
+<span id="L69" class="ln">    69  </span><span class="comment">// 上限超過は送信前に ErrTooManyAttributes として返します。超過分を落とすと、どのヘッダが残るかが</span>
+<span id="L70" class="ln">    70  </span><span class="comment">// map の反復順に左右され、traceparent を失ったことにも気付けないためです。</span>
+<span id="L71" class="ln">    71  </span><span class="comment">// 送信失敗は apperror へ正規化して返し、再送は relay の次 poll が担います（at-least-once）。</span>
+<span id="L72" class="ln">    72  </span>func (p *publisher) Publish(ctx context.Context, m boundary.Message) error {
+<span id="L73" class="ln">    73  </span>	ctx, endSpan := p.tracer.Start(ctx)
+<span id="L74" class="ln">    74  </span>	defer endSpan()
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>	<span class="comment">// SQS は空値の属性を拒むため、送れないメッセージは送信前に弾く。ヘッダと違って落として済ませられない。</span>
+<span id="L77" class="ln">    77  </span>	<span class="comment">// 種別を欠いたメッセージは受信側が自分宛かを判定できず、黙って読み捨てられる。</span>
+<span id="L78" class="ln">    78  </span>	if m.EventType == &#34;&#34; {
+<span id="L79" class="ln">    79  </span>		return xerrors.Wrap(ErrMissingEventType, &#34;event type must not be empty&#34;)
+<span id="L80" class="ln">    80  </span>	}
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span>	attrs := p.messageAttributes(m)
+<span id="L83" class="ln">    83  </span>	if len(attrs) &gt; maxMessageAttributes {
+<span id="L84" class="ln">    84  </span>		return xerrors.Wrap(ErrTooManyAttributes,
+<span id="L85" class="ln">    85  </span>			fmt.Sprintf(&#34;%d attributes exceed the SQS limit of %d&#34;, len(attrs), maxMessageAttributes))
+<span id="L86" class="ln">    86  </span>	}
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span>	_, err := p.api.SendMessage(ctx, &amp;sqs.SendMessageInput{
+<span id="L89" class="ln">    89  </span>		QueueUrl:          aws.String(p.cfg.QueueURL),
+<span id="L90" class="ln">    90  </span>		MessageBody:       aws.String(string(m.Payload)),
+<span id="L91" class="ln">    91  </span>		MessageAttributes: attrs,
+<span id="L92" class="ln">    92  </span>	})
+<span id="L93" class="ln">    93  </span>	return normalizeError(err)
+<span id="L94" class="ln">    94  </span>}
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span><span class="comment">// messageAttributes は、message_id / event_type と伝搬対象ヘッダを MessageAttributes へ組み立てます。</span>
+<span id="L97" class="ln">    97  </span><span class="comment">// 空値のヘッダは SQS が InvalidParameterValue で拒否するため落とします。</span>
+<span id="L98" class="ln">    98  </span>func (p *publisher) messageAttributes(m boundary.Message) map[string]types.MessageAttributeValue {
+<span id="L99" class="ln">    99  </span>	attrs := make(map[string]types.MessageAttributeValue, len(m.Headers)+reservedAttributes)
+<span id="L100" class="ln">   100  </span>	attrs[AttrMessageID] = types.MessageAttributeValue{
+<span id="L101" class="ln">   101  </span>		DataType:    aws.String(attrTypeString),
+<span id="L102" class="ln">   102  </span>		StringValue: aws.String(m.MessageID.String()),
+<span id="L103" class="ln">   103  </span>	}
+<span id="L104" class="ln">   104  </span>	attrs[AttrEventType] = types.MessageAttributeValue{
+<span id="L105" class="ln">   105  </span>		DataType:    aws.String(attrTypeString),
+<span id="L106" class="ln">   106  </span>		StringValue: aws.String(m.EventType),
+<span id="L107" class="ln">   107  </span>	}
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span>	for k, v := range m.Headers {
+<span id="L110" class="ln">   110  </span>		<span class="comment">// emit 側でも同じ判定を行いますが、emit を経由せず INSERT された行に対する egress 境界での防御です。</span>
+<span id="L111" class="ln">   111  </span>		if httpheader.IsSensitive(k) {
+<span id="L112" class="ln">   112  </span>			continue
+<span id="L113" class="ln">   113  </span>		}
+<span id="L114" class="ln">   114  </span>		<span class="comment">// 同名ヘッダに outbox 由来の値を上書きさせません。受信側の選別が本文と食い違うためです。</span>
+<span id="L115" class="ln">   115  </span>		if k == AttrMessageID || k == AttrEventType || v == &#34;&#34; {
+<span id="L116" class="ln">   116  </span>			continue
+<span id="L117" class="ln">   117  </span>		}
+<span id="L118" class="ln">   118  </span>		attrs[k] = types.MessageAttributeValue{
+<span id="L119" class="ln">   119  </span>			DataType:    aws.String(attrTypeString),
+<span id="L120" class="ln">   120  </span>			StringValue: aws.String(v),
+<span id="L121" class="ln">   121  </span>		}
+<span id="L122" class="ln">   122  </span>	}
+<span id="L123" class="ln">   123  </span>	return attrs
+<span id="L124" class="ln">   124  </span>}
+<span id="L125" class="ln">   125  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/publisher.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

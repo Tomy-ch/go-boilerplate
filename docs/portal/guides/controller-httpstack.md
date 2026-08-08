@@ -18,12 +18,6 @@ Each sub-package is split into small responsibilities and combined during applic
 
 ## Sub-package List
 
-### Server Configuration
-
-|Package|Function|Description|
-|---|---|---|
-|`debugmode`|`New`|Enable debug mode in development only|
-
 ### Middleware
 
 |Package|Function|Description|
@@ -86,9 +80,49 @@ Do not register middleware directly within `httpstack`. This can cause dependenc
 
 |Feature|Development|Production|
 |---|---|---|
-|Debug mode|Enabled|Disabled|
 |IP extraction|Direct|X-Forwarded-For + CIDR|
 |Recovery stack|10KB (full)|4KB (limited)|
+
+## Test Strategy
+
+Each sub-package is tested **in isolation as a single unit** — as a single middleware for those that wrap a `next`, and per the shapes in *Sub-packages that are not middleware* for the rest. Registration order and the assembled chain belong to `internal/di/server/extension`, and the composed stack is verified by the `internal/integration` HTTP-boundary tests — do not re-test either here.
+
+### Real vs mocked
+
+|Dependency|Method|
+|---|---|
+|`*echo.Echo` / router / `*echo.Context`|real (`echo.New()` + `httptest`)|
+|Downstream handler (`next`)|a test closure that records what it received / returns a fixed error|
+|`logging.Logger`|`logging.NewTestLogger` / `NewObservedTestLogger` — assert on observed entries (message, field), never on a formatted log string|
+|`config.*Config`|`config.MockConfigForTest` + the `Set*(t, …)` setters|
+|A collaborator interface the package declares (e.g. `redmetrics.Recorder`)|generated mock under `*/mock/`|
+
+Drive the middleware directly (`Middleware(...)(next)(c)`) when the assertion is about the returned error, and through `e.ServeHTTP` when it is about the response actually written (status / header / body) — the response is only committed on the real Echo path. A middleware that occupies the oapi-codegen `StrictMiddleware` slot (`idempotency`) is driven through that signature instead of `e.Use`.
+
+### Sub-packages that are not middleware
+
+The dividing line is whether the sub-package takes a `next`, not which table it sits in: `oapi` is listed under *OpenAPI Integration* but returns an `echo.MiddlewareFunc` and joins the same `e.Use` chain, so the middleware viewpoints below apply to it in full. The sub-packages that go into a slot Echo or oapi-codegen owns — `ops`, `oapi/skipper`, `oapi/auth`, `oapi/validator`, `basicauth`, `ipextractor` — have no `next`: pass-through and the `Before` / `After` viewpoints do not apply to them, while the *Real vs mocked* table does. They fall into three shapes.
+
+- **Predicates and extractors** (`ops`, `oapi/skipper`, `basicauth`, `ipextractor`) — call the constructed function value directly and assert its verdict; `echo.New()` + `httptest` is only the material for the `*echo.Context` it takes. The viewpoint is the decision boundary from both sides, including the edges a caller can reach but the happy path does not (a trailing slash, an empty credential, an unroutable path), plus the config-selected variants under *Environment-dependent branches*.
+- **Adapter-slot functions** (`oapi/auth`) — driven through the signature the adapter demands (`openapi3filter.AuthenticationFunc`), not through Echo. The result is usually a side effect on the request context rather than a return value, so assert the written value, and on each rejection path assert the error identity rather than merely that an error occurred.
+- **Spec providers** (`oapi/validator`) — the returned `*openapi3.T` is itself the subject, so the tests are contracts over the spec (e.g. every operation outside the public allowlist declares an authenticated `security`). They have no production counterpart by design.
+
+`errorhandler` replaces `e.HTTPErrorHandler` and its viewpoints are package-specific, so it carries its own *Test Strategy* section — see [`errorhandler/README.md`](errorhandler/README.md).
+
+### Viewpoints every middleware covers
+
+- **Pass-through** — a request the middleware does not act on reaches `next` unchanged, and `next`'s return value is propagated verbatim.
+- **Ops-path exclusion** — for middleware that consults `ops.IsOpsPath` (`logging` / `redmetrics`, and the `oapi/skipper` skipper), assert both sides: an ops path (`/health`, `/metrics`, …) produces no log / no metric, an application path does.
+- **`server.ResponseOf` degradation** — middleware that unwraps the Echo response degrades to a plain pass-through when the writer cannot be unwrapped. Reproduce it with `c.SetResponse(httptest.NewRecorder())` and assert the middleware neither fails nor records anything. This branch is unreachable through the production stack, so the package-level test is the only thing holding it.
+- **Environment-dependent branches** — when config selects a variant (`recovery` stack size, `ipextractor` extraction mode), exercise each mode through the config setters, including the unknown-mode fallback.
+
+### Viewpoints for `Before` / `After` hooks
+
+`server.ResponseOf(c).Before(...)` / `.After(...)` register deferred work, so the assertion belongs after the response is written — not after the middleware call returns.
+
+- **Firing condition** — `Before` runs immediately before `WriteHeader`, which is the last point a header can still be corrected (`forcejson`); `After` runs on `Write`, once the status is final, so it observes the status the error handler / recovery ultimately produced (`logging` / `redmetrics`).
+- **Repeat firing** — `After` fires per `Write`, so a chunked / streaming response invokes it more than once. A once-per-request effect must be asserted to stay once-per-request (`redmetrics` guards this with `sync.Once`).
+- **Non-firing** — a body-less response (204 / 304) never calls `Write`, so `After` does not run. Where that costs an observation, the gap is a documented limitation of the hook and is pinned by a test rather than left implicit.
 
 ## Notes
 

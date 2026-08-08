@@ -46,6 +46,21 @@ Repository handles **Aggregate persistence (CRUD)**. Read-only queries for searc
 
 This separation allows Repository to focus on Aggregate integrity while delegating search performance optimization to QS.
 
+> **Reference-master exception (return type / JOIN).** A Repository read MAY JOIN a *fixed reference
+> master* (enum-like lookup data with no independent write lifecycle, reached by a mandatory
+> uniquely-determined FK) and return a small read model carrying the resolved display value, rather
+> than a full Domain Entity.
+> <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+>      目的: 具体の JOIN と解決される表示値が無いと、どこまでが例外なのか読めない。
+>      意義: 効くのは「参照マスタを必須 FK でたどること」で、返る型の小ささではない。
+>      書き方: 集約の表が参照マスタを JOIN する形と、解決される表示値のフィールド名を挙げる。 -->
+> <!-- sample-api:begin -->
+> （サンプルでの例は `purchases` が `purchase_statuses` を JOIN し `StatusName` を返す形）
+> <!-- sample-api:end -->
+> This is
+> still a single-Aggregate Repository read, not a cross-Aggregate QueryService. The criterion is the
+> joined data's nature, not its Go modeling. See `docs/rules.md` § "Repository / QueryService Rules".
+
 ## Role
 
 Repository is the layer that **implements the Domain persistence abstraction (Repository Interface) in Infrastructure**.
@@ -114,7 +129,8 @@ Repository does not perform the following:
 
 - Business rules
 - Aggregation processing
-- DTO generation
+- DTO generation (exception: a small read model resolving a *reference-master* JOIN — see the
+  Reference-master exception above)
 - Usecase logic
 
 These are the **responsibility of Usecase / Domain**.
@@ -163,6 +179,25 @@ Important rules
 - Do not return `sqlc` types directly to upper layers
 - Use Domain constructors
 - Repository converts Row / Model into Domain entities and returns them
+- When the conversion goes beyond a direct constructor call, or is reused by more than one method,
+  extract it as an unexported helper named `rowToXxx` (single) / `rowsToXxx` (slice). Fixing the name
+  keeps conversion readable apart from the fetch helpers around it.
+
+## Keyset pagination
+
+Express keyset pagination as **two fixed sqlc queries per ordering** — one for the first page, with
+no cursor predicate, and one for "after the cursor", taking the ordering-key tuple — rather than one
+query carrying an optional predicate. Branch on the presence of the cursor in Go and call the
+matching query. Folding both into one query makes a single statement whose plan depends on its
+input.
+
+## Rebuilding an aggregate that owns a subordinate collection
+
+An aggregate whose root owns a collection of subordinate entities is rebuilt from **two fixed
+queries** — one for the root row, one for the subordinate rows — joined in Go, not from a single
+JOIN. The query count stays fixed however many subordinate rows there are, so there is no N+1, and
+the root row is not repeated once per subordinate row. Share the subordinate query across every
+entry point that rebuilds that aggregate.
 
 ## Domain constructor error
 
@@ -735,7 +770,7 @@ Repository **does not depend on HTTP layer**.
 NG example
 
 ```go
-func (r *repository) Create(ctx echo.Context)
+func (r *repository) Create(ctx *echo.Context)
 ```
 
 Repository is implemented as a **pure Go interface**.
