@@ -2,7 +2,7 @@
 status: superseded
 date: 2026-07-04
 deciders: [maintainers]
-superseded-by: 0049
+superseded-by: 0048
 tags: [worker, async, dependencies]
 ---
 
@@ -12,7 +12,7 @@ English canonical: [0048-sqs-adapter-opt-in.md](../../adr/0048-sqs-adapter-opt-i
 
 ## ステータス
 
-superseded by [ADR-0049](0049-broker-sdk-isolation-verified-after-sample-removal.ja.md)
+superseded by [ADR-0049](0049-broker-sdk-isolation-measured-as-coupling.ja.md)
 
 ## 背景
 

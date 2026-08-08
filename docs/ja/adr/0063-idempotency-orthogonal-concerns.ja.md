@@ -54,5 +54,4 @@ accepted
 ## 補足
 
 - 出典: [`docs/design/idempotency.md`](../../design/idempotency.md) §1（「optimistic locking（lost-update prevention）および rate limiting（edge concern）と直交」）。
-- これは**セットアップレビュー ADR** である。このスキャフォールドを採用する際は、冪等性・オプティミスティックロック・レート制限の境界がターゲットシステムにとって適切かどうかを確認すること。ターゲットが結合された強制を必要とする場合、スキャフォールドの分離されたデフォルトに依存するのではなく、各メカニズムを明示的に拡張しなければならない。
 - 関連: [ADR-0002](0002-onion-architecture.ja.md)（レイヤー分離 — オプティミスティックロックはドメイン/ユースケースレイヤー、レート制限はエッジに属する）。

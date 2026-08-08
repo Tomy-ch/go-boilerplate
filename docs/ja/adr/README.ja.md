@@ -19,21 +19,23 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 
 ## 規約
 
-- **ファイル名**: `NNNN-kebab-title.md`、ゼロパディング 4 桁。supersession で空いた番号を別の決定へ再割り当てすることはない。下記の統合パスで空いた番号も同様である——統合後は番号が再び連続するが、生き残った ADR が退役した ADR の旧番号を継承することはない。
+- **ファイル名**: `NNNN-kebab-title.md`、ゼロパディング 4 桁。supersession では番号は空かない——supersede された ADR は番号もファイルも保持し続ける——ので、退いた決定の番号が別の決定へ渡ることはない。番号自体は動くが、動くのは下記の挿入リナンバーが範囲ごと一斉にずらす場合だけで、個別の番号が使い回されることはない。
 - **順序**: 番号は依存関係 / 基礎的な順序に従う（原則 → コントラクト → レイヤー → サブシステム → 横断関心事 → exclusion）、発見順ではない。この順序を保つため、新しい ADR を**テーマ上の位置へ挿入し、後続の全番号を +1 シフト**してよい（純粋なリナンバー: シフトされた各 ADR の内容は不変で、リポジトリ内の全参照は同一変更内で更新する）。シフト以前の外部からの番号参照は古くなり得るため、安定識別子はファイル名の kebab タイトルである。
 - **ステータスライフサイクル**: `proposed` → `accepted` → (`superseded` | `deprecated`)。
-- **改訂**: `accepted` な ADR は**その場で**改訂する——`date` を更新し、`status: accepted` を保ち、同じ決定であり続けるものに対して supersede する ADR を新設しない。本リポジトリはボイラープレートであり、頒布するのは現在の設計であって、そこへ至った立場の系列ではない。1 つの規則を知るために 3 本の ADR を読まされる fork 先は、自分が生きていない履歴の代金を払っている。改訂で結論が変わる場合、置き換えられた立場は却下理由とともに Alternatives Considered へ移す——捨てるのではなく、節が変わるだけである。上記の挿入リナンバーが変えるのは番号のみで記録ではない。
-- **誰が改訂してよいか**: 改訂はこのリポジトリのアーキテクトまたはテックリードの判断であり、改訂ごとに取る。`accepted` な ADR が実装と食い違っていると気づいたことは、その人に提起する理由であって改訂の許可ではない——**実装側が誤りである可能性が同じだけある**。過去の改訂は次の改訂の常時承認にはならない。
-- **新しい ADR** は、隣の決定とは独立に読まれるべき決定のために書くものであって、ある決定の改訂のために書くものではない。`superseded` は、改訂ではなく本当に置き換えられた決定のためにライフサイクルへ残す。
-- **統合の例外（承認済み。収穫ごとに一度）**: 本リポジトリはサンプル機能群を実装し、そこから知見を収穫し、最後にサンプルを削除するボイラープレートである。サンプルの実装が生む ADR は、アーキテクチャ上の決定と機能の詳細が混ざったものになり、しかも発見順に番号の末尾へ積み上がる——それはまさに上記の順序規約が防ぐために存在する状態である。したがって**統合パスはそうした ADR を統合・書き換え・退役させてよい**。アーキテクチャとしての残滓を順序付けられた集合へ戻し、機能の内容は `docs/spec/` へ移す。これは不変性に対する意図的な例外であり、範囲は限定される: 対象はサンプル開発が生んだ ADR に限り、レビューされる 1 つの変更としてまとめて行い、退役した ADR のアーキテクチャ上の内容は必ずそれを吸収した ADR に残る——捨てるのではなく置き場所を変えるだけである。統合パス以外では、同じ決定であり続ける ADR は上記の改訂規約に従ってその場で改訂する。この例外が加えるのはファイルを統合・退役させる権限であり、それは改訂が持たないものである。
+- **誰が決定の記録を変更してよいか**: `accepted` な ADR を supersede する / deprecate することは、このリポジトリのアーキテクトまたはテックリードの判断であり、変更ごとに取る。`accepted` な ADR が実装と食い違っていると気づいたことは、その人に提起する理由であって変更の許可ではない——**実装側が誤りである可能性が同じだけある**。過去の変更は次の変更の常時承認にはならない。
 - **テンプレート**: [`template.ja.md`](template.ja.md) をコピーする。
 - **メタ**: [`0000-record-architecture-decisions.ja.md`](0000-record-architecture-decisions.ja.md) は ADR の使用とこの分類の決定を記録する。
 - **翻訳**: 各 ADR は `docs/ja/adr/` にミラーされる（`canonicalize-doc` フローを経由）。
-- **Exclusion ADR**（意図的な「X はしない」）は `setup-review` タグを持ち、リポジトリセットアップフローがそれを列挙できるようにする。初期セットアップ時、フォークはこれらを **直接編集して** 自分のベースラインを確立してよい; 新 ADR による上書きモデルはその後の変更にのみ適用される。`docs/get-started/setup-repository.md` Phase 10 を参照のこと。
+- **上流の逸脱**: 本リポジトリがボイラープレートとして配布される間は上記への例外の下で運用されており、それは [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.ja.md) に記録されている。そこから作られたプロジェクトには適用されない。 <!-- boilerplate-only:line -->
 
 ## ログ
 
-`docs/decisions.md` およびリポジトリ全体の潜在的な決定から、すべての決定が ADR として具体化された。番号付けは依存関係 / 基礎的な順序に従う（原則 → コントラクト → HTTP → 永続化 → DI/設定 → 非同期サブシステム → 可観測性 → ツールチェーン/CI → プロセス → バイナリ/デプロイ → exclusion）。Exclusion ADR（意図的な「X はしない」）は `setup-review` タグ付き。
+`docs/decisions.md` およびリポジトリ全体の潜在的な決定から、すべての決定が ADR として具体化された。番号付けは依存関係 / 基礎的な順序に従う（原則 → コントラクト → HTTP → 永続化 → DI/設定 → 非同期サブシステム → 可観測性 → ツールチェーン/CI → プロセス → バイナリ/デプロイ → exclusion）。
+
+<!-- boilerplate-only:begin -->
+Exclusion ADR（意図的な「X はしない」）は、リポジトリセットアップフローが列挙できるよう `setup-review` タグを持つ。セットアップが済めばこのタグを読む者は居ない。
+
+<!-- boilerplate-only:end -->
 
 | # | 決定 | ステータス |
 | --- | --- | --- |
@@ -85,8 +87,8 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0045](0045-error-details-opt-in-gate.ja.md) | スキーマ分割によるエラー details の opt-in ゲート（0043 を精緻化） | accepted |
 | [0046](0046-broker-agnostic-worker-scaffold.ja.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
 | [0047](0047-out-of-scope-push-streaming-brokers.ja.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
-| [0048](0048-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0049](0049-broker-sdk-isolation-verified-after-sample-removal.ja.md) |
-| [0049](0049-broker-sdk-isolation-verified-after-sample-removal.ja.md) | ブローカー SDK の分離は、アダプターを未配線にすることではなくサンプル削除後に検証する | accepted |
+| [0048](0048-sqs-adapter-opt-in.ja.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0049](0049-broker-sdk-isolation-measured-as-coupling.ja.md) |
+| [0049](0049-broker-sdk-isolation-measured-as-coupling.ja.md) | ブローカー SDK の分離はリンクではなく結合で測る | accepted |
 | [0050](0050-transactional-outbox.ja.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
 | [0051](0051-at-least-once-outbox-poll.ja.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
 | [0052](0052-skip-locked-outbox-relay.ja.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |
@@ -113,9 +115,9 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0073](0073-library-selection-policy.ja.md) | 単一責任のライブラリ選定ポリシー | accepted |
 | [0074](0074-bridge-instrumentation-exceptions.ja.md) | ブリッジ / 計装ライブラリを有界な SRP 例外として認める | accepted |
 | [0075](0075-containerized-pinned-toolchain.ja.md) | 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する | accepted |
-| [0076](0076-mise-ssot-drift-gate.ja.md) | mise.toml を単一の情報源とし、バージョンを下流に伝播させ CI でドリフトを検知する | accepted |
+| [0076](0076-mise-ssot-drift-gate.ja.md) | mise が解決するバージョンは mise.toml を単一の情報源とし、下流に伝播させ CI でドリフトを検知する | accepted |
 | [0077](0077-make-single-entrypoint.ja.md) | Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する | accepted |
-| [0078](0078-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に Node（.mjs）または Go で配置し、シェルスクリプトは使用しない | accepted |
+| [0078](0078-scripts-in-node-go.ja.md) | 運用スクリプトは scripts/ に TypeScript または Go で配置し、シェルスクリプトは使用しない | accepted |
 | [0079](0079-docker-compose-dev-environment.ja.md) | ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する | accepted |
 | [0080](0080-two-layer-golangci-config.ja.md) | 2 層の golangci 設定——最小デフォルトと完全な権威ゲート | accepted |
 | [0081](0081-local-hooks-mirror-ci.ja.md) | ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証） | accepted |
@@ -135,12 +137,12 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 | [0095](0095-per-environment-images.ja.md) | 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定） | accepted |
 | [0096](0096-predeploy-oneshot-migration.ja.md) | マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない | accepted (exclusion) |
 | [0097](0097-release-image-supply-chain.ja.md) | リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM） | accepted |
-| [0098](0098-vendor-neutral-deploy-skeleton.ja.md) | デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はテンプレート；レジストリは固定しない） | accepted |
+| [0098](0098-vendor-neutral-deploy-skeleton.ja.md) | デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はスタブ；レジストリは固定しない） | accepted |
 | [0099](0099-docs-via-github-pages.ja.md) | docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース） | accepted |
 | [0100](0100-no-in-app-rate-limiter.ja.md) | アプリケーション内レートリミッターを提供しない | accepted (exclusion) |
 | [0101](0101-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
 | [0102](0102-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
-| [0103](0103-outbox-relay-hardening-delegated.ja.md) | outbox relay の重複窓ハードニング（多層 lease 再設計）を本番コピー側の責務とする | accepted (exclusion) |
+| [0103](0103-outbox-relay-hardening-delegated.ja.md) | outbox relay はバランス型で出荷し、ハードニング（多層 lease 再設計）は運用で得た事実に委ねる | accepted (exclusion) |
 
 フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
 Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。

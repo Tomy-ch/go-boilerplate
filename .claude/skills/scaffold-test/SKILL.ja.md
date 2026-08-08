@@ -2,7 +2,7 @@
 
 # Scaffold Test
 
-既存の関数 / メソッドに対する Go ユニットテストファイルを生成するスキル。書き方は `internal/domain/user/user_domain_test.go` から抽象化したパターン（全階層 `t.Parallel()` ＋ ネスト `t.Run` ＋ 日本語ケース名 ＋ 最外殻 `正常系` / `異常系` グループ、table-driven の `for` ループは原則禁止）に従う。
+既存の関数 / メソッドに対する Go ユニットテストファイルを生成するスキル。書き方は `internal/domain/<aggregate>/<aggregate>_domain_test.go` から抽象化したパターン（全階層 `t.Parallel()` ＋ ネスト `t.Run` ＋ 日本語ケース名 ＋ 最外殻 `正常系` / `異常系` グループ、table-driven の `for` ループは原則禁止）に従う。
 
 ## 使うとき
 
@@ -161,7 +161,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 
 ## Step 5. test ファイル書き出し
 
-`internal/domain/user/user_domain_test.go` から抽象化した骨格に従う:
+`internal/domain/<aggregate>/<aggregate>_domain_test.go` から抽象化した骨格に従う:
 
 ```go
 func Test<Subject>(t *testing.T) {

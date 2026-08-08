@@ -80,9 +80,11 @@ fields:
 
 ```yaml
 # 派生メソッド（単純フィールド getter ではない）
-- name: FullName
-  signature: FullName() string
-  description: firstName + " " + lastName を連結したフルネームを返す派生値。
+- name: IsActive
+  signature: IsActive() bool
+  description: |
+    ユーザーが在籍しているか（退会していないか）を返す述語。
+    「在籍している」が指す条件はこの述語が定義であり、永続化層の絞り込み条件が定義になることはない。
 
 # 状態遷移メソッド（更新・論理削除エンドポイント向け。追記分）
 - name: UpdateProfile

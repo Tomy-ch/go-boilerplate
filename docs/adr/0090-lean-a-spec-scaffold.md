@@ -32,7 +32,7 @@ given the generated code and naming convention.
 
 ## Decision
 
-The scaffold tooling follows a **lean-A constitution**: only `domain.md` and `usecase.md`
+The spec scaffolding follows a **lean-A constitution**: only `domain.md` and `usecase.md`
 spec files are required under `docs/spec/<feature>/`. Controller and infrastructure layers
 are derived from generated code and naming conventions — no `controller.md` or `infra.md`
 spec files exist.
@@ -88,7 +88,7 @@ separate spec.
 
 ### No spec files (pure derivation)
 
-Would require the scaffold to infer domain invariants, validation rules, behavior method
+Would require the scaffolding to infer domain invariants, validation rules, behavior method
 semantics, and usecase workflow orchestration from the SQL schema and OpenAPI spec alone.
 Domain invariants and usecase Workflow are design decisions that cannot be reliably derived
 from data schema definitions. Rejected because the spec captures design judgment that is

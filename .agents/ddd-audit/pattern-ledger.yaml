@@ -151,29 +151,19 @@ patterns:
     part: 1
     scope: core
     status: interpreted
-    verdict: 差異あり
-    gap: >-
-      横断語彙の器が立った。docs/spec/glossary.md が正本の所在（業務語彙は spec に住み README / ADR には
-      住まない）、行を得る基準（業務を知っている人がそう認めるか）、機構語彙との分離、同音異義と同義の
-      監視を定め、Evans が最も警戒する「1 語 2 義・2 語 1 義」への構造的な応答を持つ。台帳の corpus へ
-      その 1 ファイルだけを足したため、この判定は初めて「正本を読んだ結果」になった。
-      器の Terms 表はサンプル由来でマーカーの内側にあり撤去後は空になるが、規約を述べる各節はマーカーの
-      外にあって行の有無に依存せず読める。空であることは未解釈の理由にならない。
-      残る差異は狭くなった。Evans の中核のうち「エキスパートと開発者が対話を通じて言語を共同所有し、
-      言語の変化がモデルの変化を継続的に駆動する」という生きた慣行が規定されていない。器が定めるのは
-      語の登録手続きであって、相互洗練のループではない。誰がいつ語彙を見直すか、モデル側の発見が語彙を
-      変える経路も書かれていない。
-      これはテンプレートという性質に由来すると読めるが、コーパス自身がそう宣言してはいない。
-      「Evans はこう要求するが、本リポジトリはこうする、理由はこう」の三点が着地していないため未宣言。
+    verdict: 差異なし
+    gap: ""
     interpreted_by:
       - kind: doc
         path: docs/spec/glossary.md
-        section: "Overview / How a term earns a row / Mechanism vocabulary / Watch list"
+        section: "Overview / How a term earns a row / Mechanism vocabulary / 語彙を改訂するとき / Watch list"
     deviation_declared: false
     deviation_note: ""
-    enforced_by: []
+    enforced_by:
+      - kind: agent
+        rule: drift-detector-glossary
     last_audited: "2026-08-06"
-    last_audited_commit: "069f65db52672d417537cc70a94ea1abda0c8d6d"
+    last_audited_commit: "c3a355153c861ff4c7216df1d90bbabc74847b4e"
 
   - id: layered-architecture
     name: Layered Architecture
@@ -393,9 +383,9 @@ patterns:
     deviation_note: >-
       Evans にとって Module はモデルの一部で、分割線と名前がドメインへの洞察を担い構造もモデルと共に
       進化する。本リポジトリの規則は機械的で、何と呼ぶかは言うが分割が何を明かすべきかは言わない。
-      テンプレートには洞察を持つべき実ドメインが無く、引かれている線はアーキテクチャが含意するもの
-      であるため。モデルを表現する線は fork 先に属する。宣言は internal/domain/README.md の
-      Naming / structure 節。
+      引かれている線はアーキテクチャが含意するものであり、モデルを表現する線はモデルを持つ者が引く。
+      機械的な規則は下限であって、モデルを明かす分割はその上に足される。宣言は
+      internal/domain/README.md の Naming / structure 節。
     enforced_by:
       - kind: depguard
         rule: independent_pkg

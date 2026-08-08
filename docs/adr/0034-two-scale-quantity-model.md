@@ -54,9 +54,10 @@ meaning. A mechanism that decided them would force every future policy change th
 generic `pkg/` package.
 
 **The database column for the exact scale is `NUMERIC` with no precision or scale.** Scale is a
-property of the value, not a design-time constant, so the schema does not assert a currency-specific
-decimal exponent the boilerplate cannot justify for an arbitrary future currency. The settlement
-scale is a plain integer column.
+property of the value, not a design-time constant, so the schema does not assert a decimal exponent
+that cannot be justified at design time: for money it would have to be the minor-unit digit count of
+whichever currency is in play, which the column cannot know. The settlement scale is a plain integer
+column.
 
 **On the wire, an exact-decimal value is a JSON string** (`"19.99"`), never a JSON number, and the
 OpenAPI schema types those fields as `type: string` with a decimal `pattern`. A JSON number is
@@ -121,8 +122,8 @@ removes, not a trade-off to weigh.
 
 ### Fix `NUMERIC(precision, scale)` per column
 
-Rejected: it bakes a currency-specific decimal exponent into the schema as a design-time constant,
-contradicting "scale is a property of the value" and committing the boilerplate to an assumption it
+Rejected: it bakes a unit-specific decimal exponent into the schema as a design-time constant,
+contradicting "scale is a property of the value" and committing the column to an assumption it
 cannot justify for a currency it has never seen.
 
 ### Keep the wire as a JSON number (`format: decimal` / `double`)

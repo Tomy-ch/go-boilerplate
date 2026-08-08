@@ -8,7 +8,7 @@
 ## Overview
 
 為替レート換算ユースケース（`GET /v1/exchange-rates`）は、基軸通貨 `base` から `quote` への現在レートを
-外部サービス（gateway 経由）で取得し、`amount` を換算した `converted` を返す thin orchestrator。
+外部サービス（gateway 経由）で取得し、`original` を換算した `converted` を返す thin orchestrator。
 `displayCurrency` が指定されたときのみ、`base → displayCurrency` のレートを追加取得して
 **参考換算額（`referenceAmount`）**を添える。外部レスポンスの型・エラーは gateway 内で完結しており、
 本 usecase は boundary DTO（`exchangerate.Rate`）のみを扱う（外部型の内層非漏洩）。
@@ -38,7 +38,7 @@ address（外部不通でも `200 + 空候補 + IsFallback: true` へ倒す）�
 USD のみである（決済スケールの仕様は [`docs/spec/purchase/domain.md`](../purchase/domain.md)）。多通貨決済は
 スコープ外。
 
-`amount` / `converted` / `rate` はいずれもワイヤ上で**十進文字列**として扱う。JSON number は一般的な
+`original` / `converted` / `rate` はいずれもワイヤ上で**十進文字列**として扱う。JSON number は一般的な
 パーサが IEEE754 double として復号するため、そこで精度が落ちる（[ADR-0034]）。
 
 ## Interface
@@ -153,7 +153,7 @@ query:
   - name: quote
     type: string
     required: true
-  - name: amount
+  - name: original
     type: string                  # 十進文字列。pattern ^\d{1,20}(\.\d{1,18})?$ / maxLength 40
     required: true                # 桁数を有界にし、巨大入力による十進解析を使った未認証 DoS を防ぐ
   - name: displayCurrency
@@ -163,7 +163,7 @@ query:
 response_200:
   - base: string
   - quote: string
-  - amount: string                # 十進文字列
+  - original: string              # 十進文字列
   - converted: string             # 十進文字列（符号付きパターン）
   - referenceAmount: object|null  # { currency, amount(int64), rate(string), rateDate(string) }
 responses: [400, 405, 500, 503]

@@ -15,13 +15,14 @@ concrete message broker.
 
 ## SQS is one worked example, not the target
 
-The seam is broker-agnostic, but a template that ships only an abstraction proves nothing — the
+The seam is broker-agnostic, but an abstraction shipped with nothing behind it proves nothing — the
 port is only credible once something real is wired through it. So one broker is implemented
 concretely, and SQS is that one. It is the **reference**, not the assumption: retargeting means
 adding a sibling package under `queue/`, with nothing above this layer changing.
 
 To keep that claim honest rather than aspirational, here is the local container each major
-provider's queue is developed against, so a fork can stand up the equivalent loop on day one.
+provider's queue is developed against, so the equivalent loop can be stood up on day one after
+retargeting.
 
 |Provider|Service|Local container|License|Published by|
 |---|---|---|---|---|

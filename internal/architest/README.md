@@ -53,5 +53,5 @@ expressed as a structural carve-out with a test pinning it, or it is a failure.
 
 - `depguard` forbids `go/ast` here, so detection is text scanning over gofmt-normalised sources.
   Assuming gofmt's output (indentation depth, `var (` blocks at column 0) is what makes that tractable.
-- A check may legitimately match zero subjects — the sample API can be removed. The scan-logic tests
+- A check may legitimately match zero subjects — the code it scans may hold none. The scan-logic tests
   above are what keep a zero count from being indistinguishable from a broken scanner.

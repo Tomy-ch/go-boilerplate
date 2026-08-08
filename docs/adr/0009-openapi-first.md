@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-The template needs API contracts to be clear, type-safe, and agreed on **before**
+This project needs API contracts to be clear, type-safe, and agreed on **before**
 implementation, so that request/response shapes are unambiguous and can stay consistent with
 frontend consumers and generated documentation. Deriving the contract from handwritten
 handler code instead leaves the contract implicit and prone to drift.

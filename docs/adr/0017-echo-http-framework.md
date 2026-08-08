@@ -13,11 +13,11 @@ accepted
 
 ## Context
 
-The template needs an HTTP framework for routing and middleware that is lightweight,
+This repository needs an HTTP framework for routing and middleware that is lightweight,
 predictable, and imposes low abstraction over the standard library, consistent with the
 design goals of maintainability and structural safety over raw feature richness.
 
-Echo v4 receives security and bug fixes only, so a template that gates dependency
+Echo v4 receives security and bug fixes only, so a repository that gates dependency
 vulnerabilities in CI cannot keep an end-of-life HTTP framework. Echo v5 is the maintained
 line, and the surrounding ecosystem (OpenAPI validation, OpenTelemetry instrumentation)
 supplies v5 counterparts through separate modules.
@@ -37,13 +37,13 @@ two ecosystem modules the HTTP stack depends on:
 repositories" and is maintained by Echo maintainers; the OTel contrib instrumentation for
 Echo is v4-only and its maintainers declined v5 support, pointing at this module instead.
 The version number reflects a conservative first numbering of a new package rather than an
-unstable API, and its dependency set matches the OTel version this template already pins.
+unstable API, and its dependency set matches the OTel version this repository already pins.
 
-**Server lifecycle is owned by the template, not by the framework.** Echo v5 removed the
+**Server lifecycle is owned by the application, not by the framework.** Echo v5 removed the
 server fields and start/stop methods on `Echo` and concentrated them in `StartConfig`,
 whose model is "block until the context is cancelled, then shut down within its own
 graceful timeout". That does not compose with a DI container that separates start and stop
-hooks, so the template constructs its own `http.Server` with `Echo` as the handler. The
+hooks, so the application constructs its own `http.Server` with `Echo` as the handler. The
 listener is opened in the start hook (so a bind failure fails fast and aborts startup) and
 `Shutdown` is driven by the stop hook's context. `http.Server` is also where the
 per-request timeouts live now that `Echo.Server` is gone.
@@ -51,7 +51,7 @@ per-request timeouts live now that `Echo.Server` is gone.
 **Error detail on spans follows semantic conventions.** The v4 instrumentation put the
 error text on the span as a non-standard `echo.error` attribute; the v5 instrumentation
 records `error.type` instead, and the error text still reaches the span status description
-for 5xx and the trace-correlated application logs. The template does not add a hook to
+for 5xx and the trace-correlated application logs. This repository does not add a hook to
 restore the old attribute.
 
 ## Consequences

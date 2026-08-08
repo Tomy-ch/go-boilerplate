@@ -60,7 +60,7 @@ https://<username>.github.io/<repository-name>/
 例:
 
 ```text
-https://tomy-ch.github.io/go-boilerplate/
+https://example-org.github.io/example-api/
 ```
 
 そのため、ドキュメント内のリンクや静的アセット参照には注意が必要です。

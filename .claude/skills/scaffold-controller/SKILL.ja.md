@@ -70,7 +70,7 @@ skill が書き込み前に検証:
 2. `internal/usecase/<package>/<package>_usecase.go` を読んで `Usecase` Interface メソッド一覧抽出（signature）
 3. `internal/usecase/README.md` と（必要なら）1〜2 個の sibling usecase パッケージから命名規約（このコードベースで使われている動詞接頭辞）を取得
 4. `internal/controller/README.md` + `internal/controller/handler/README.md` から layer 規約取得
-5. 1 個の sibling handler（`internal/controller/handler/v1/users/v1_users_handler.go` 等）を構造 template として参照
+5. 1 個の sibling handler（`internal/controller/handler/v1/<sibling>/v1_<sibling>_handler.go` 等）を構造 template として参照
 
 ## Step 2. mapping 導出（lean A の核）
 

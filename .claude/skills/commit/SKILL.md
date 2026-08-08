@@ -71,11 +71,13 @@ Interpret the result:
     - 「新しいブランチを切る（推奨）」 — propose a branch name derived from the pending change (e.g. `feature/<topic>`), confirm it, then refresh the base and switch:
 
       ```sh
-      git fetch origin <baseRefName>
-      git switch -c <new-branch> origin/<baseRefName>
+      BASE=$(make -s base-branch)
+      test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
+      git fetch origin "$BASE"
+      git switch -c <new-branch> "origin/$BASE"
       ```
 
-      `<baseRefName>` is the **active release line** — this repo bases feature work on the latest `release/v1.X.0`, which is NOT the GitHub default branch (the default lags behind the current release). Trust the merged PR's `baseRefName` over `defaultBranchRef`. Note that `git switch -c … origin/release/*` sets the new branch's upstream to the **protected** base, so the eventual push must use an explicit refspec (`git push -u origin <new-branch>`), never a bare `git push` (which would target the protected base). The uncommitted working-tree changes carry over to the new branch; continue the normal flow (Step 2 onward) on it. **Exception:** under `--dry-run`, do not switch branches — only surface the warning and the recommended command, then proceed with the dry-run proposal.
+      The base here is the **current** active release line, which `make base-branch` resolves from `origin`'s live state — not the merged PR's `baseRefName`. That field records the line the old work merged into, and a release line may well have opened since; branching off it would start the new work one generation behind. This is also why `gh repo view --json defaultBranchRef` is not the answer: the GitHub default branch lags behind the active line too. Note that `git switch -c … origin/release/*` sets the new branch's upstream to the **protected** base, so the eventual push must use an explicit refspec (`git push -u origin <new-branch>`), never a bare `git push` (which would target the protected base). The uncommitted working-tree changes carry over to the new branch; continue the normal flow (Step 2 onward) on it. **Exception:** under `--dry-run`, do not switch branches — only surface the warning and the recommended command, then proceed with the dry-run proposal.
     - 「このブランチのまま続ける」 — the user accepts committing on the merged branch; continue on the current branch.
 - **`state` is `CLOSED`** (closed without merge) → not blocked, but note it to the user once (the branch's PR was closed) and continue.
 
@@ -202,7 +204,7 @@ git commit --no-verify -m "$(cat <<'EOF'
 
 <Optional body: what changed and why>
 
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude {running model} <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -212,7 +214,7 @@ EOF
 - **Title**: `<Prefix>: <Japanese title>`, aim for 50 characters or fewer.
 - **Body**: Optional. If present, leave one blank line after the title and wrap around 72 characters. Prefer "why" over "what".
 - **Language**: Japanese (per the output rule in `CLAUDE.md`).
-- **`Co-Authored-By` footer**: Required. Use `Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+- **`Co-Authored-By` footer**: Required. `Claude <model> <noreply@anthropic.com>`, where `<model>` is the identity of the model actually executing the commit, as the harness states it (e.g. `Opus 5 (1M context)`) — never guessed. Do not write a version number into this file: it would be the same fact in two places, and the copy nobody re-reads is the one that goes stale.
 - **`Refs:` footer (review-applied commits only)**: when a commit applies a finding from `full-apply` / `impl-review` / `code-review` (the change traces back to a review ledger), add a `Refs: <reviews-dir>/mod_*.md (<severity>)` line in the footer so the commit links to the finding. Omit it for ordinary commits.
 - **HEREDOC**: Required (keeps the title + blank line + body + footer layout intact).
 - **`--no-verify`**: Required for every commit produced by this command. This is an explicit, command-scoped carve-out from the project-wide rule; the rationale is documented in Step 4 (lefthook is run once manually before push, not N times during the split).

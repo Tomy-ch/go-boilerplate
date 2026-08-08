@@ -51,7 +51,10 @@
 | `image-scan.yaml` `build`、`deploy-app.yaml` `build` | 15 | レイヤキャッシュが冷えたイメージビルドは実測を大きく超えて振れる |
 | `deploy-app.yaml` `deploy` | 30 | 現状はプレースホルダ。フォークが実デプロイを配線したときに 10 分の上限へ当てない |
 | `fuzz.yaml`、`scorecard.yaml`、`notify.yaml`、`osv-release-gate.yaml` | 15 | 直近に完了実行が無く実測できない |
+| `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる |
+| `code-ql.yaml` `codeql` | 30 | 上限は matrix の最も遅い leg に掛かるが、`go` 以外の leg には完了実行が無く実測できない。加えて `security-extended` は従前の値を測ったスイートより大きい |
 | `secret-scan.yaml`、`trufflehog.yaml` | 15 | 実測は差分を見る PR 実行のみ。週次は全履歴を走査するが、その完了実行が一度も無く実測できない |
+| `bearer.yaml` `bearer` | 20 | 完了実行が無く実測できないうえ、報告の前に自前ツリー全体のデータフローモデルを構築する |
 | `app-di-startup-check.yaml`、`gen-go-artifacts-check.yaml` | 15 | 式より前から存在する値。動いている上限を下げてもリスクしか増えないためそのまま |
 | `claude.yaml`、`go-lint.yaml`、`sample-removal-check.yaml` | 30 | 同上。`go-lint` は golangci-lint 自身の timeout を無効化して走らせているため、これがそのジョブ唯一の打ち切り点でもある |
 
@@ -77,6 +80,8 @@
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|OpenAPI バンドルとドキュメントの一致検証|
 |Generated Mock-Auth OpenAPI Artifacts Check|`gen-mock-auth-oapi-artifacts-check.yaml`|mock-auth-server の OpenAPI バンドル / zod スキーマ / ドキュメントとコミット済み成果物の一致検証|
 |Mock-Auth Server Check|`mock-auth-server-check.yaml`|mock-auth-server の型検査、ユニット / インテグレーションテスト、golden JWKS フィクスチャのドリフト検出|
+|Portal Check|`portal-check.yaml`|ドキュメントポータルのビューアー（`docs-viewer/`）の型検査とテスト|
+|Scripts Check|`scripts-check.yaml`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）の型検査と、判定ロジックを覆う単体テストを実行します|
 |OpenAPI Lint|`oapi-lint.yaml`|OpenAPI 定義を `redocly lint` で検証（命名 / casing / description / 未使用コンポーネント）|
 |App Boot Check|`app-di-startup-check.yaml`|DB 付きでアプリケーションサーバが正常に起動するか検証|
 |Job Boot Check|`job-boot-check.yaml`|ジョブのエントリポイントが起動し、未知のジョブを拒否するか検証|
@@ -86,31 +91,37 @@
 |Commitlint|`commitlint.yaml`|PR が base ブランチへ加えるコミットのメッセージを検証（`commit-msg` フックが覆えない経路を担う）|
 |Pin Actions Check|`pin-actions-check.yaml`|GitHub Actions が SHA でピン留めされているか検証（サプライチェーン対策）|
 |Pin Images Check|`pin-images-check.yaml`|Docker base image が lockfile 通り digest でピン留めされているか検証（サプライチェーン対策）|
+|Egress Check|`egress-check.yaml`|各ジョブのインライン `allowed-endpoints` が SSOT 通りか検証（[ランナーのハードニング](#ランナーのハードニング)を参照）|
 
 ### セキュリティ
 
 |ワークフロー|ファイル|説明|
 |---|---|---|
-|CodeQL Scan|`code-ql.yaml`|CodeQL によるセキュリティ脆弱性分析|
+|CodeQL Scan|`code-ql.yaml`|`security-extended` スイートでの CodeQL 解析。言語ごとに matrix を分け、`go` / `javascript-typescript`（mock-auth-server / docs-viewer / scripts）/ `actions`（ワークフロー定義そのもの）を対象とする|
 |Dependency Scan|`trivy-fs.yaml`|Trivy によるライブラリ脆弱性スキャン(開発者向け)|
 |Release Dependency Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
-|Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成 + Trivy スキャン|
+|Grype Scan|`grype.yaml`|Trivy と同じ依存マニフェストを、別の脆弱性 DB と別のマッチャで走査する Anchore Grype のファイルシステムスキャン|
+|Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成（SPDX-JSON と CycloneDX-JSON の両形式）+ Trivy スキャン|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck による Go パッケージ脆弱性検出|
 |OSV Scan|`osv-scanner.yaml`|OSV データベースによる Go モジュール / npm lockfile 横断の脆弱性スキャン|
 |Release OSV Scan|`osv-release-gate.yaml`|develop/staging/production 向け PR での OSV スキャン。HIGH 以上で fail|
-|Secret Scan|`secret-scan.yaml`|gitleaks によるコミット済みシークレットの検出（go_tool_runner 経由）|
+|Secret Scan|`secret-scan.yaml`|ワーキングツリーに対する 2 系統の独立したシークレット検出。gitleaks（正規表現 / エントロピーの広い網）と Trivy（誤検知の少ない固定ルール）を、判定を分けた別ジョブとして実行する|
 |Secret Scan (TruffleHog)|`trufflehog.yaml`|TruffleHog による**検証済み**シークレット（実際に有効なクレデンシャル）の検出|
 |Actions Static Analysis|`zizmor.yaml`|zizmor によるワークフロー / composite action 定義自体の静的解析（pre-commit フックと同じ `make` ゲートを共有）|
 |Dependency Review|`dependency-review.yaml`|PR が新たに持ち込む脆弱な依存をマージ前にブロック|
 |OpenSSF Scorecard|`scorecard.yaml`|リポジトリのセキュリティ姿勢のスコアリングと結果の公開|
 |npm Cooldown Audit|`npm-cooldown-audit.yaml`|lockfile が `.npmrc` の供給網 cooldown を満たしているかを報告（ブロックはしない）|
 |Go Cooldown|`go-cooldown.yaml`|cooldown 窓の内側で公開された direct Go モジュールを足す / 上げる PR をゲート|
-|mise Cooldown|`mise-cooldown.yaml`|cooldown 窓の内側で公開された `mise.toml` のツール版を pin する PR をゲート|
+|Tool Cooldown|`tool-cooldown.yaml`|cooldown 窓の内側で公開された CLI ツール版（`mise.toml` / `python/*.in` の宣言）を pin する PR をゲート|
 |Config Scan|`trivy-config.yaml`|Trivy による Dockerfile の設定不備スキャン（HIGH 以上でゲート）|
-|SAST|`sast.yaml`|Opengrep（Semgrep 互換）による自前ソースの解析（taint 追跡あり）|
+|SAST|`opengrep.yaml`|Opengrep（Semgrep 互換）による自前の Go / TypeScript ソースの解析（taint 追跡あり）|
+|DevSkim Scan|`devskim.yaml`|言語を問わずツリー内の全ファイルに当たる DevSkim の正規表現スキャン|
+|Bearer Scan|`bearer.yaml`|機微な値が sink へ到達する経路を追う Bearer のデータフロースキャン（報告専用。Elastic License 2.0 — [Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照）|
+|ESLint Scan|`eslint.yaml`|3 つの TypeScript ワークスペースに対する `eslint-plugin-security` の検査。matrix の 1 レグずつ（報告専用）|
 |Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
 |OpenAPI Security|`openapi-security.yaml`|Spectral + OWASP API Security ルールセットによる OpenAPI 定義の検証|
 |Fuzz|`fuzz.yaml`|外部入力を受けるパーサに対する Go ネイティブ fuzzing|
+|DAST|`zap-api-scan.yaml`|ランナー内で起動したアプリケーションに対する、OpenAPI 定義を入力とした OWASP ZAP の API スキャン（報告専用のサンプル。[DAST](#dast) を参照）|
 |Capability Diff|`capability-diff.yaml`|capslock による Go 依存グラフの capability 差分報告（report-only）|
 |Notify|`notify.yaml`|定期実行の失敗、および非ブロッキングなスキャナの検出を人へ届ける `workflow_call` の再利用ワークフロー|
 
@@ -123,13 +134,14 @@
 | 種別 | PR | protected branch への push | 定期 |
 | --- | --- | --- | --- |
 | gitleaks | 全 PR | 不要 | 週次で履歴全体 |
+| Trivy secret | 全 PR・作業ツリー | 不要 | 週次 |
 | TruffleHog | 全 PR の差分 | 不要 | 週次で履歴全体 |
 | zizmor | Actions 関連ファイル変更時 | `develop` / `staging` / `production` / `release/*` | 週次（オンライン監査） |
 | Dependency Review | 依存関係変更 PR | 不要 | 不要 |
 | govulncheck | Go・依存変更 PR | 同上 | 週次 |
 | Trivy FS | Go・依存変更 PR | 同上 | 週次 |
 | OSV-Scanner | 依存関係変更 PR | 同上 | 週次 |
-| CodeQL | Go・依存変更 PR | 同上 | 週次 |
+| CodeQL | Go / TypeScript / Actions 定義の変更 PR | 同上 | 週次 |
 | OpenSSF Scorecard | 不要 | 既定ブランチのみ | 週次 |
 | Image Scan | デプロイ先ブランチへの PR | 不要 | 週次 |
 | リリースゲート（Trivy FS / OSV） | デプロイ先ブランチへの PR | 不要 | 不要 |
@@ -137,13 +149,22 @@
 | Trivy config（設定不備） | Dockerfile 変更 PR | 同上 | 不要 |
 | Trivy ライセンス | Trivy FS と同一トリガー | 同上 | 週次 |
 | OSV diff | 依存関係変更 PR | 不要 | 不要 |
-| Opengrep（SAST） | Go・依存・spec 変更 PR | 同上 | 週次 |
+| Opengrep（SAST） | Go / TypeScript・依存・spec 変更 PR | 同上 | 週次 |
+| Grype | Go・依存変更 PR | 同上 | 週次 |
+| DevSkim | 全 PR | `develop` / `staging` / `production` / `release/*` | 週次 |
+| Bearer | Go / TypeScript 変更 PR | 同上 | 週次 |
+| ESLint（security） | TypeScript ワークスペース変更 PR | 同上 | 週次 |
 | lockfile-lint | lockfile 変更 PR | 不要 | 不要 |
 | Spectral（OpenAPI） | spec 変更 PR | `release/*` / デプロイ先ブランチ | 不要 |
 | capslock | `go.mod` 変更 PR | 不要 | 不要 |
 | Go fuzzing | 不要 | 不要 | 週次 |
+| OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
 
 週次実行は月曜内で 1 時間ごとにずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査）、`0 9` npm cooldown 監査、`0 10` Opengrep、`0 11` fuzz）。同一時刻に全スキャナが並ぶのを避けるためです。
+
+DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
+
+以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer と続きます。
 
 週次スケジュールを持つスキャナは、ジョブが `failure` または `cancelled` で終わったときに `notify.yaml` を呼び出します。PR の失敗は作成者に見えていますが、定期実行の失敗は誰にも見えないためです。`cancelled` を含めるのは、タイムアウトやランナー障害で打ち切られたジョブが `failure` ではなくこちらになるからです。
 
@@ -157,20 +178,55 @@
 | `trivy-fs.yaml` | 修正版のある CRITICAL / HIGH / MEDIUM | schedule |
 | `vulnerability-check.yaml` | 到達可能な脆弱性 | schedule |
 | `osv-scanner.yaml` | 昇格をブロックする検出 | schedule |
+| `grype.yaml` | 脆弱性の検出 | schedule |
+| `devskim.yaml` | 検出あり | schedule |
 
-他の定期実行スキャナに検出通知は不要です。gitleaks / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 3 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 5 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 200 件超の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。
 
 #### 検知が重なる面
 
-複数のツールが同じ種類の指摘を出せます。1 つの問題が二重にゲートされ二重に抑止されることを避けるため、面ごとに担当を 1 つに決めています。
+複数のツールが同じ種類の指摘を出せます。**重複させてはならないのはゲートであって、ツールではありません**。1 つの問題で PR が 2 回赤くなるということは、抑止する場所が 2 箇所になり、抑止が腐る場所も 2 箇所になるということです。報告は別で、同じファイルを別の DB / 別のルールセットで読む 2 つ目のエンジンは、1 つ目がまだ知らないものを拾います。この冗長性は意図して買っています。
+
+したがって 1 つの面に複数のツールが同時に乗って構いません。ゲートを 1 つに保っているのは「走るツールが 1 つだけ」だからではなく、**ゲートする 2 つのツールが同じ指摘を担当しないから**です。これを支える仕組みは 2 つあり、表はその両方を記録しています。同じルールを judge しうる 2 つのツールがある場合は片方をその面で切る（3 列目がそれを名指しし、検知可能なツールがなぜ使われないかを示す）。2 つのゲートが同居する場合は、互いに素なルールセットを judge する。`自前の Go ソース` の行がその違いを示す例です — Opengrep は Semgrep の ERROR 帯でゲートし、`gosec` は golangci-lint 経由でゲートしますが、対象ファイルは同じでもルールは決して重なりません。つまりここでの「担当 1 つ」は**ルール単位で 1 つ**という意味であり、ツールが 1 つという意味ではありません。
+
+共有された面に乗るそれ以外のツールは報告専用で、その面の判定は下表で `(gate)` が付いたものが持ちます。`(gate)` の無い行はどこでもゲートしません。依存スキャナは報告に徹し、ブロック判定は[リリースゲート](#リリースゲート)が持ちます。
 
 | 面 | 担当 | 検知可能だがここでは使わない |
 | --- | --- | --- |
-| Dockerfile のセキュリティポリシー | `trivy-config.yaml` | Opengrep（`sast.yaml` で Dockerfile ルールを除外） |
-| Dockerfile のスタイル / 正しさ | `docker-lint.yaml`（hadolint） | —（層が違い重複ではない） |
-| 自前の Go ソース | `sast.yaml`（Opengrep）+ golangci-lint の `gosec` | — |
-| OpenAPI の規約 / 命名 | `oapi-lint.yaml`（redocly） | Spectral |
-| OpenAPI のセキュリティ姿勢 | `openapi-security.yaml`（Spectral） | redocly |
+| Dockerfile のセキュリティポリシー | `trivy-config.yaml` **(gate, HIGH+)** | Opengrep（`opengrep.yaml` で Dockerfile ルールを除外） |
+| Dockerfile のスタイル / 正しさ | `docker-lint.yaml`（hadolint） **(gate)** | —（層が違い重複ではない） |
+| 自前の Go ソース | `opengrep.yaml`（Opengrep・ERROR 帯） **(gate)** + `go-lint.yaml` 経由の `gosec` **(gate)** — ルールセットは互いに素 | — |
+| OpenAPI の規約 / 命名 | `oapi-lint.yaml`（redocly） **(gate)** | Spectral |
+| OpenAPI のセキュリティ姿勢 | `openapi-security.yaml`（Spectral） **(gate)** | redocly |
+| 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） — すべて報告専用 | — |
+| 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） | — |
+| 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
+| sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用 | — |
+
+#### Bearer のライセンスと撤去
+
+`bearer/bearer` は **Elastic License 2.0** で公開されており、利用・改変・再配布は認めつつ、ソフトウェアを hosted / managed service として第三者へ提供することと、ライセンスキー機構の回避とを禁じています。このリポジトリ自身の CI で走らせる限りどちらにも触れません。第三者へ何も提供しておらず、CLI はキーを必要としないためです（`--api-key` フラグは legacy と明記され、提供を終えたクラウド製品のために残っているだけです）。
+
+OSI の定義の外にあること自体は Bearer に固有ではありません。CodeQL も OSI 承認ではなく、専用の節を持っていません。書き留める価値があるのは、このテンプレートから作られたリポジトリがワークフローとともにライセンスも引き継ぐという点です。ツールをサービスの一部として提供したい利用者には、ここにある OSI ライセンスのスキャナには生じない判断が要ります。その答えは撤去であり、撤去は次のすべてを落とします。
+
+| 落とすもの | 落とし忘れを捕まえるもの |
+| --- | --- |
+| `.github/workflows/bearer.yaml` | — |
+| [`mise.toml`](../../mise.toml) の `aqua:Bearer/bearer` 行 | `make tool-cooldown-gate` はこの固定値を読む |
+| [`.github/egress.toml`](../egress.toml) の `[job."bearer.yaml:bearer"]` セクション | `make egress-check` が「対応する workflow の無いジョブセクション」で落ちる |
+| このファイルと対訳の `README.md` にある `bearer.yaml` の行 — timeout 表 / Security 表 / トリガーマトリクス / 週次のずらし方 / 検知が重なる面 — およびこの節 | `make md-lint` が見るのは対訳ペアであって行ではない |
+
+`make pin-actions-check` は、`bearer.yaml` が使っていた Action がすべて他所からも参照されている限り何もする必要がありません。参照されないエントリが lockfile に残ると落ちるため、赤くなったらそこを先に見てください。summary ステップの `level` 補完はワークフローと一緒に消えます。Bearer は全ての結果に `level` を持たず、jq がソートキーで `//` へ落ちずにランタイムエラーになるために置いてあるものです。
+
+#### DevSkim のバージョン固定
+
+ここのワークフローが入れる他のツールはすべて [`mise.toml`](../../mise.toml) で固定されており、それがあるから `tool-cooldown.yaml` は「供給網クールダウンの窓の内側に公開された版」をゲートできます。DevSkim だけが例外です。`microsoft/DevSkim` はリリースバイナリを公開しておらず aqua パッケージも無いため、配布経路は NuGet のグローバルツールだけです。
+
+mise はそれ自体には届きます（`dotnet:` バックエンドが NuGet パッケージを解決します）。それでも使っていない理由は 2 つです。このバックエンドは .NET ランタイム自体も mise 管理下のツールにすることを要求し、リンタ 1 本のためにバージョン SSOT へ言語ランタイムを丸ごと入れることになります。そして [`scripts/tool-cooldown`](../../scripts/tool-cooldown) は `dotnet:` バックエンドの公開時刻の取得経路を持たないため、宣言してもゲートされず *unresolved* として報告されるだけです。`mise.toml` へ移すと、検査されている見た目だけが手に入ります。
+
+そのためバージョンは `devskim.yaml` の `env:` が持ち、これを守る仕組みはありません。更新はリリースノートを人が読んで判断します。
+
+代替の `microsoft/DevSkim-Action` は、この軸ではむしろ悪化します。`Dockerfile` が浮動タグ `mcr.microsoft.com/dotnet/sdk:8.0` から起こしてバージョン未指定の `dotnet tool install` を走らせる Docker action なので、Action を SHA で固定してもレシピが固定されるだけで、実際に走るコードは固定されません。
 
 #### リリースゲート
 
@@ -201,13 +257,52 @@ Go には `min-release-age` に当たるものがありません。`go get` に�
 
 **このワークフローは決してビルドを落としません。** これは既定値ではなく設計上の決定です。cooldown の解除はテックリード / アーキテクトの判断であり、CRITICAL への即応こそがその存在理由なので、ハードゲートは正当な行使をこそ塞いでしまいます。ブロックしない性質はワークフローの設定ではなくツール自身に持たせてあり、YAML の編集だけではゲートに変えられません。
 
-守備範囲は正直に狭く、**方針のドリフト**（事故・規約の風化・npm 側の挙動変化）に限ります。commit 権限を持つ攻撃者は同じ変更でワークフローごと削除できるため、技術的な防止手段ではありません。そこで成立するのは検知と attribution までで、抑止は組織側の運用に委ねます。強制の担保は [`CODEOWNERS`](../CODEOWNERS) で、`**/.npmrc` / `**/package-lock.json` と pin lockfile のレビューを所管ロールに限定します。
+守備範囲は正直に狭く、**方針のドリフト**（事故・規約の風化・npm 側の挙動変化）に限ります。commit 権限を持つ攻撃者は同じ変更でワークフローごと削除できるため、技術的な防止手段ではありません。そこで成立するのは検知と attribution までで、抑止は組織側の運用に委ねます。強制の担保は [`CODEOWNERS`](../CODEOWNERS) で、`**/.npmrc` / `**/package-lock.json` / `**/pnpm-lock.yaml` / `**/pnpm-workspace.yaml` と pin lockfile のレビューを所管ロールに限定します。
+
+npm で解決するのは `mock-auth-server/` だけです。`scripts/` と `docs-viewer/` は pnpm で解決し、`minimumReleaseAge` は窓内のバージョンを記録して後から警告するのではなく、解決の時点で拒否します（`minimumReleaseAgeStrict` により、窓が黙って外れるのではなくハード失敗になります）。事後に監査する対象が残らないため、この半分には監査ツールがありません。そのぶん重みは `pnpm-workspace.yaml` 自体のレビューへ全て乗るので、CODEOWNERS に登録しています。
 
 Pull request ではその base との差分を監査するので、検出はその変更が持ち込んだエントリだけを名指しし、対象バージョンが窓から出た後も PR コメントが記録として残ります。週次実行は全エントリを走査する二重の網です。
 
+#### DAST
+
+`zap-api-scan.yaml` は、ここで唯一「動いているアプリケーション」を走査するワークフローです。他のセキュリティ検査がファイルを読むのに対し、これはサーバーをビルドし、シードを入れた Postgres に対して起動し、バンドル済みの OpenAPI 定義から得たエンドポイント一覧をもとに OWASP ZAP から HTTP を投げます。
+
+ツールの選定はこの形から決まりました。GitHub の code scanning テンプレート一覧にある DAST 6 件のうち 4 件はベンダー側でスキャンが走り、GitHub-hosted runner の内部にしか存在しない API へは到達できません。runner 内で走る残り 2 件はいずれも有償トークンが必須です。ZAP は資格情報を要さず、ジョブの内部からスキャンできる唯一の選択肢で、そもそも短命な対象を見られるのはこの性質によります。
+
+**スキャンは認証済みで走ります。そしてここが最も壊れやすい部分です。** 未認証のスキャンは保護されたオペレーションから 401 を集めて表層で止まり、完走したように見えて完走していません。ジョブは `dast` の環境プロファイルで走り、`ci` が使う dev 限定スタブではなく [`docs/design/auth.md`](../../docs/design/auth.md) が述べる JWKS backed の実 authenticator を配線します。したがって資格情報は mock 認証サーバーが実際に署名した JWT で、スキャンは毎リクエストで署名検証・`typ` 判定・`kid` 解決を通します。ジョブは ZAP を起動する前にその資格情報が通ることを確認します。この確認を失うと検査が赤くなるのではなく、スキャンの守備範囲だけが黙って縮みます。
+
+**報告専用であることは、決めた結果であって省略ではありません。** [`.github/zap/rules.tsv`](../zap/rules.tsv) のしきい値は、この API が現に何を返すかから導いたものです。これでマージをゲートすれば、しきい値が想定していない検出で pull request を落とすことになります。検出は `zap-dast` カテゴリで code scanning と artifact に上がり、ジョブが落ちるのは「スキャン自体が実行できなかった」ときだけです。ZAP は SARIF を出力しないため、JSON レポートをワークフロー内で SARIF へ写像しています。各検出を OpenAPI バンドルへ紐づけるのは、そのファイルこそ検出対象の面を記述したものであり、実在するファイルを指すことが code scanning 上の辿りやすさになるからです。
+
+しきい値とスキャン対象の面は、向ける先の API に対して導き直される前提です（[セットアップ手順の Phase 17](../../docs/get-started/setup-repository.md)）。
+
 #### ランナーのハードニング
 
-このディレクトリの全ジョブは `step-security/harden-runner` を `egress-policy: audit` で先頭に置いています。ランナーの外向き通信とファイル改変を記録することで、侵害されたアクションやツールの推移的ダウンロードが可視化されます。`audit` は記録のみで、`block` へ移行するには許可エンドポイントの確定が前提になるため、監査データが溜まるまで意図的に見送っています。
+このディレクトリの全ジョブは `step-security/harden-runner` を `egress-policy: block` と、そのジョブ専用の `allowed-endpoints` とで先頭に置いています。外向き接続はすべてこの一覧と照合され、載っていない宛先は遮断されます。侵害されたアクションやツールの推移的ダウンロードは、そのジョブが本来必要としない宛先へ持ち出すことができません。ファイル改変の記録は従来どおり併走します。
+
+このステップは**全ジョブにインラインのまま置きます**。これは好みではなく制約です。ローカルの composite action（`uses: ./.github/actions/*`）はリポジトリが checkout 済みでなければ解決できず、harden-runner は checkout の**前**に走る必要があります。checkout 自体が外向き通信であり、それを守るのが目的だからです。括り出せば、塞ごうとしている窓がそのまま開きます。この案は繰り返し再提案されますが、答えは「検討して見送った」ではなく「そもそも成立しない」です。
+
+**固定されていないのは、その一覧を何処から持ってくるかです。** 正本は [`.github/egress.toml`](../egress.toml) です。`make egress-apply` が各ジョブへ書き込み、インラインのブロックが正本からずれていれば `make egress-check` が落とします（pre-commit フックと `egress-check.yaml` の両方）。
+
+**ジョブが宣言するのは能力クラスであって、ホストの列挙ではありません。** ジョブが何処へ到達するかは、そのジョブが**何をするか**（ツールを入れる / イメージを作る / DB を起動する）から決まり、ジョブそれ自体の性質ではありません。実行は `make` → docker → コンテナ内 `mise` と潜っていくため、必要な宛先はジョブの YAML には現れません。クラスは 4 つで足り、ジョブは自分に当たるものを名指しします。
+
+| クラス | エンドポイント | 対象 |
+| --- | --- | --- |
+| `base` | harden-runner 自身の agent、GitHub の API / web / codeload、`objects` / `raw` / `release-assets.githubusercontent.com`、`*.actions.githubusercontent.com`、`*.blob.core.windows.net` | **全ジョブへ暗黙に適用**（checkout、action の取得、artifact のアップロード）。`classes` へは書きません |
+| `mise` | mise 自身の配布元と、`mise.toml` が解決に使う全 backend: aqua / GitHub リリース、Go のツールチェーンと module proxy、`downloads.sqlc.dev`、npm レジストリと `get.pnpm.io`、`astral.sh` と PyPI。加えて Sigstore（mise は各ツールの GitHub artifact attestation をここで検証します） | ツールを入れる全ジョブ。`setup-go` しか使わないジョブもこのクラスを名指しします。module proxy はここに居り、Go 専用の細いクラスを設ければ判定を 1 つ増やすだけだからです |
+| `image` | Docker Hub の各ホストと CDN 2 種、`mirror.gcr.io`、`ghcr.io`、`pkg-containers.githubusercontent.com`、および Alpine / Debian のパッケージミラー。`mise` を継承します（イメージのビルドがコンテナ内で `mise install` を走らせるため） | イメージの build / push、service container、Trivy の DB と checks bundle、`make` 経由で docker を起こすもの全般 |
+| `db` | PGDG の apt リポジトリと、Postgres の service container が導入時に参照する Ubuntu のアーカイブミラー | Postgres を起動するジョブ |
+
+本当にそのジョブ固有のものは、当該ジョブの `extra` に書きます。スキャナのデータソース（`semgrep.dev`、`api.osv.dev`、`vuln.go.dev`）、デプロイ先、通知の `hooks.slack.com`、DAST の `zaproxy.org`（ZAP は起動時に add-on のマニフェストを解決します）などです。 2 つ目のジョブの `extra` にも現れたホストは、クラスへ移すべきものです。
+
+**クラスは意図的に粗く保ちます。** 細かく割れば allowlist は締まりますが、そのぶん分類の判定点が増えます。そしてこの仕組みが取り除こうとしている失敗は、まさにジョブのクラス判定を誤ることです。必要より少し広いクラスでも、その外側は依然として全部遮断されます。クラスを取り違えたジョブは落ちます。
+
+エンドポイントを足すときは `.github/egress.toml` を直します。能力から導けるものはクラスへ、導けないものはそのジョブの `extra` へ。そのうえで `make egress-apply` を実行し、生成されたブロックをコミットします。インラインのブロックを手で書き換えてはいけません。`make egress-check` が弾きます。
+
+遮断された宛先は harden-runner の実行サマリに拒否接続として現れます。ジョブ自身のログからは理由が読めない失敗のとき読むべきはそこで、対処はクラスか `extra` を広げることであり、`audit` へ戻すことではありません。
+
+**1 つだけ失敗の出方が逆転しているジョブがあり、その旨は当該ファイルに書いてあります。** `trufflehog.yaml` は候補の資格情報を発行元サービスへ問い合わせて検証しますが、その発行元の集合には上限がありません。ここでのエンドポイント漏れはジョブを赤くせず、本物の漏洩を「未検証」に変えます。このワークフローは検証済みのみを報告するため、結果として黙って緑になります。TruffleHog の検出が消えたときは allowlist の漏れをまず疑ってください。`egress-policy: audit` を持つ唯一のジョブで、SSOT 上もそう宣言してあるため `allowed-endpoints` を一切持ちません。両者が食い違えば `make egress-check` が落ちます。
+
+fork 時に読み直す価値のある前提が 2 つあります。`deploy-app.yaml` の build ジョブは `ghcr.io` と公開 Sigstore インスタンスを前提にしており（その `extra`）、deploy ジョブは placeholder でクラスを 1 つも宣言しないため `base` だけを持ちます。実際のデプロイを結線する際は、その環境の control plane のホストをそのジョブの `extra` へ足す必要があります。`id-token` の交換も外向き通信だからです。
 
 ### デプロイ（Push）
 

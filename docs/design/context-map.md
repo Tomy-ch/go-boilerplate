@@ -13,13 +13,15 @@ Maintained by [`/context-map`](../../.claude/skills/context-map/SKILL.md); drift
 
 Several of Evans's relationships are distinguished by facts that do not exist in a codebase. On a
 downstream edge, what separates Customer-Supplier from the alternatives is whether the upstream will
-take our requirements — an organisational fact, and in a template a fact about the *adopting*
-organisation rather than about this repository. The code shows what was built at the boundary; it
-cannot show whether anyone on the other side would have listened.
+take our requirements — a fact about the two organisations, not about the code. The code shows what
+was built at the boundary; it cannot show whether anyone on the other side would have listened.
 
-So most edges here are recorded as `未確定` with their evidence and the question that would settle
-them. **That is the correct state for this repository, not an omission.** An unlabelled edge invites
-the adopter to decide; a wrongly labelled one closes the question before they see it.
+An edge whose settling fact is not available is therefore recorded as `未確定`, carrying its
+evidence and the question that would settle it, rather than left blank or guessed at. An unlabelled
+edge leaves the question open for whoever can answer it; a wrongly labelled one closes it before
+they see it.
+
+> Upstream-only: why `未確定` is a terminal state here rather than an open task — [boilerplate-only conventions](../get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
 
 ## What counts as a contact point
 
@@ -59,6 +61,7 @@ Each `未確定` edge above is waiting on one thing. Answering it is a decision,
   (Customer-Supplier), or an open set consuming what is emitted (Open Host Service)? The asymmetry
   with the synchronous side is recorded in [`outbox.md`](outbox.md) §4: the language is not published.
 
+<!-- sample-api:replace-begin -->
 ## Sample-derived contact points
 
 The sample feature set adds outbound gateways to external web APIs. **They disappear when the sample
@@ -71,6 +74,13 @@ exist:
 What survives their removal is the pattern they demonstrate: a `<service>.Gateway` port stated in
 this system's vocabulary, with transport and vendor failure modes translated at the adapter. A real
 integration added later occupies the same shape and earns its own row in the table above.
+<!-- sample-api:replace-with -->
+<!-- = ## Outbound contact points -->
+<!-- = -->
+<!-- = An outbound integration is a `<service>.Gateway` port stated in this system's vocabulary, with -->
+<!-- = transport and vendor failure modes translated at the adapter. Each one added occupies that -->
+<!-- = shape and earns its own row in the table above. -->
+<!-- sample-api:replace-end -->
 
 ## Diagram
 

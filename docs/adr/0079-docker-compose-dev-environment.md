@@ -44,7 +44,7 @@ need.
 
 | Service | Image / Dockerfile | Ports | Description |
 | --- | --- | --- | --- |
-| `docs_viewer` | `docker/document/Dockerfile` target `document_viewer` | 2001 | nginx serving `docs/`; portal at `/portal/` |
+| `docs_server` | `docker/document/Dockerfile` target `document_viewer` | 2001 | nginx serving `docs/`; portal at `/portal/` |
 | `sql_editor` | `sosedoff/pgweb` | 2000 | Web SQL editor |
 
 (A lightweight **`database`** profile also exists — `database` + `sql_editor` only — for working

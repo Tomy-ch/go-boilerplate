@@ -61,9 +61,9 @@ the engine relies on.
 
 ### Negative Consequences
 
-- Push-type and streaming workloads require a separate subsystem (outside this scaffold)
+- Push-type and streaming workloads require a separate subsystem (outside the worker port)
   when they cannot be served by HTTP webhooks.
-- The constraint must be communicated to integrators at setup time to prevent incorrect
+- The constraint must be communicated to whoever wires a new adapter, to prevent incorrect
   adapter attempts.
 
 ## Alternatives Considered
@@ -76,7 +76,7 @@ extension of this port.
 
 ### A separate streaming-log port alongside the pull-ack port
 
-Not rejected in principle, but out of scope for this scaffold — no concrete demand, and
+Not rejected in principle, but out of scope for the worker port — no concrete demand, and
 adding it speculatively violates [ADR-0001](0001-avoid-lock-in.md)'s preference for
 concrete over hypothetical abstraction.
 

@@ -4,16 +4,23 @@ This document describes the policies for maintaining and operating this project.
 
 ## Maintainer Policy
 
+<!-- boilerplate-only:replace-begin -->
 This project is an **independently maintained project managed by the author**.
 
 It is not affiliated with any specific company or organization.
 
 All decisions regarding architecture and implementation are made based on  
 **the author's design philosophy**.
+<!-- boilerplate-only:replace-with -->
+<!-- = Architecture and implementation decisions rest with the team that maintains this repository. -->
+<!-- = -->
+<!-- = They are made under a single design philosophy rather than per-change preference, so that a -->
+<!-- = reader can tell whose judgement the design reflects. -->
+<!-- boilerplate-only:replace-end -->
 
 ## Disclaimer
 
-This template is provided in good faith.
+This project is provided in good faith.
 
 However, **no guarantees are made** regarding the following:
 
@@ -21,14 +28,15 @@ However, **no guarantees are made** regarding the following:
 - Security
 - Operational stability
 
-When using this template, users must verify the following by themselves:
+The following must be verified independently before use:
 
 - Vulnerabilities in dependencies
 - Security configurations
-- Compatibility with their runtime environment
+- Compatibility with the runtime environment
 
 ## Maintenance Policy
 
+<!-- boilerplate-only:replace-begin -->
 The maintainer may perform the following within reasonable scope:
 
 - Dependency updates
@@ -44,6 +52,13 @@ However, the following are **not guaranteed**:
 If you find an issue, please create an Issue.
 
 The maintainer will respond within reasonable scope.
+<!-- boilerplate-only:replace-with -->
+<!-- = Maintenance covers dependency updates, security updates, and architectural improvements. -->
+<!-- = -->
+<!-- = What it does not cover — response times, guaranteed bug fixes, how long maintenance -->
+<!-- = continues — depends on who maintains the repository and under what commitment. State that -->
+<!-- = rather than leave it to assumption. -->
+<!-- boilerplate-only:replace-end -->
 
 ## Library Selection Policy
 

@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [exclusion, outbox, messaging, reliability, setup-review]
 ---
 
-# ADR-0103: Delegate outbox-relay duplicate-window hardening to production copies
+# ADR-0103: Ship a balanced outbox relay; delegate hardening to operational evidence
 
 ## Status
 
@@ -42,23 +42,38 @@ The shipped single-transaction relay carries these windows:
 - **Lag SLI ambiguity**: rows being published still count as `pending`, so the lag gauge cannot
   distinguish in-flight from stalled.
 
-A hardened design that closes every closable window exists (the blueprint below). The pressure to
-ship it in the template is real. However, it adds schema (two columns and a status value), a
-leader-election dependency on runtime topology, and tuning knobs (lease length, deadline margin,
-backoff curve) whose correct values are deployment-specific — policy the template cannot know,
-mirroring the reasoning of [ADR-0100] and [ADR-0101].
+A hardened design that closes every closable window exists (the blueprint below). Whether to run it
+is not a correctness question — it is a trade-off between three things:
+
+- **Duplicate suppression** — how far duplicates are pushed from "absorbed harmlessly downstream"
+  toward "structurally impossible".
+- **Availability** — a lease- and leader-based relay stalls for the takeover interval when the
+  holder dies, where a stateless poll loop simply continues on whichever instance polls next.
+- **Implementation and operational cost** — extra schema (two columns and a status value), a
+  dependency on runtime topology for leader election, and tuning knobs (lease length, deadline
+  margin, backoff curve) that only a specific deployment can set.
+
+Which of the three binds is rarely knowable before the system runs. Message volume, instance count,
+how long a receiver outage actually lasts, and whether receivers deduplicate are operational facts,
+not design-time ones. Fixing a point on this trade-off in advance therefore risks paying
+availability and cost for a duplicate rate that never materialises — the same reasoning as
+[ADR-0100] and [ADR-0101].
 
 ## Decision
 
-We deliberately do NOT harden the outbox relay in this template. The template keeps the simple
-single-transaction relay together with its shipped absorption contract: `message_id` propagates as
-`Idempotency-Key` ([ADR-0053]) and the bundled idempotency middleware deduplicates on the receiving
-side, so duplicates collapse to exactly-once *effect* whenever the receiver is built from this
-template (third-party receivers inherit the dedup obligation as an integration requirement).
+We ship the **balanced** point on that trade-off and move from it on operational evidence.
 
-Production copies that operate the outbox at scale SHOULD redesign the relay with the following
-multi-layer structure. It has no functional trade-off; its price is implementation cost plus an
-availability window.
+The relay stays the simple single-transaction one, and duplicates are handled by absorption rather
+than by structural exclusion: `message_id` propagates as `Idempotency-Key` ([ADR-0053]) and the
+bundled idempotency middleware deduplicates on the receiving side, so duplicates collapse to
+exactly-once *effect* wherever that middleware runs (third-party receivers inherit the dedup
+obligation as an integration requirement). This point costs no availability and no extra schema,
+never loses a message, and leaves duplicates possible but harmless.
+
+Once operation shows the duplicate axis binding — a multi-instance relay, volume that makes
+normal-operation duplicates routine, or a receiver that cannot deduplicate — the relay SHOULD be
+redesigned with the following multi-layer structure. It has no functional trade-off; its price is
+implementation cost plus an availability window.
 
 ### Hardening blueprint
 
@@ -87,15 +102,15 @@ only crash-recovery latency (no longer a duplicate-probability trade-off); and t
 is an availability window (failover takeover, hung-leader detection), which belongs to deployment
 runbooks.
 
-### Balanced delegation
+### Keeping the later move cheap
 
-The delegation splits the cost of hardening between the template and its copies:
+Deferring a decision is only safe while taking it later stays cheap. Four things keep it so:
 
 - **Blueprint, not just a verdict**: this ADR carries the full mechanical design — schema, claim
-  predicate, fences, and the residual-window ledger — so a copy pays for implementation and
+  predicate, fences, and the residual-window ledger — so the later move pays for implementation and
   tuning, never for re-deriving the analysis.
-- **Extension seams, not a rewrite**: the hardened design fits the template's existing seams, so a
-  copy builds it as an extension of specific interfaces and tables rather than a fork-and-rewrite:
+- **Extension seams, not a rewrite**: the hardened design fits the existing seams, so it arrives as
+  an extension of specific interfaces and tables rather than a rewrite:
   - *Strategy seam*: the relay engine owns only the poll loop and its waits, and reaches the
     claim → publish → mark business solely through the `RelayUsecase` interface; the hardened
     orchestration is a new implementation of that interface, selected in DI.
@@ -110,43 +125,45 @@ The delegation splits the cost of hardening between the template and its copies:
 - **What is not additive, declared honestly**: swapping the `outbox_status_check` CHECK to admit
   `claiming` and replacing `outbox_pending_idx` for the new claim predicate (both via new
   migration files — the standard schema-evolution mechanism; a CHECK cannot be "extended"), plus
-  the one-line DI provide swap. The template deliberately does NOT pre-admit `claiming` in its
-  CHECK nor ship an unused strategy switch — its schema and wiring declare only what its own code
+  the one-line DI provide swap. The schema deliberately does NOT pre-admit `claiming` in its CHECK,
+  and no unused strategy switch is shipped — schema and wiring declare only what the code
   exercises.
-- **Escalation trigger**: if hardened copies become the norm rather than the exception, promote
+- **Escalation trigger**: if hardened relays become the norm rather than the exception, promote
   this blueprint to an implementation guide under `docs/design/` (or a reference implementation)
-  and revisit this ADR — the exclusion is a default for the scaffold's audience, not a ceiling.
+  and revisit this ADR — the balanced point is where a relay starts, not where it must stay.
 
 ## Consequences
 
 ### Positive Consequences
 
-- The template's relay stays small and readable, and teaches the at-least-once contract honestly
+- The shipped relay stays small and readable, and states the at-least-once contract honestly
   instead of implying exactly-once.
-- Copies get a fully-analyzed, mechanically-applicable blueprint (schema, predicates, fences,
-  residual-window ledger) rather than a half-hardened default with template-chosen policy values.
-- Responsibility is explicit: the template owns the absorption contract and this analysis; the
-  copy owns hardening and its operational tuning.
+- Hardening starts from a fully-analyzed, mechanically-applicable blueprint (schema, predicates,
+  fences, residual-window ledger) rather than from a half-hardened default whose policy values were
+  fixed before any operational evidence existed.
+- Responsibility is explicit: this decision owns the absorption contract and this analysis; the
+  deployment that hardens owns the implementation and its operational tuning.
 
 ### Negative Consequences
 
-- The template's relay retains the enumerated windows: under multi-instance operation duplicates
+- The shipped relay retains the enumerated windows: under multi-instance operation duplicates
   can occur in normal operation, and a short downstream outage dead-letters the backlog. The
   shipped defaults therefore suit low-volume or single-instance relays.
-- Copies must do real implementation work (migration, claim/mark rewrite, lock, fence, tests) to
-  productionize; divergence from the template grows once they do — mitigated, not eliminated, by
+- Hardening is real implementation work (migration, claim/mark rewrite, lock, fence, tests);
+  divergence from the shipped default grows once it is done — mitigated, not eliminated, by
   the blueprint and the extension seams above, which bound the divergence to an enumerated surface.
 - Third-party receivers remain protected only by the documented dedup obligation — nothing in this
   repository can enforce it.
 
 ## Alternatives Considered
 
-### Implement the multi-layer redesign in the template
+### Implement the multi-layer redesign up front
 
-Closes every closable window out of the box, but bakes deployment-specific policy (lease, margin,
-backoff, singleton topology) into a scaffold that cannot know the right values, and grows the
-teaching surface of the core sample. Rejected for the template; recorded here so the copy-side
-work is mechanical.
+Closes every closable window out of the box, but fixes a point on the trade-off before operation
+can say which axis binds: it commits deployment-specific policy (lease, margin, backoff, singleton
+topology) to values chosen without that evidence, and pays availability and reading cost on the
+core path from day one. Rejected as the shipped default; recorded here so the work is mechanical
+once the evidence arrives.
 
 ### Narrow-only tuning (smaller batches, shorter timeouts, lease values)
 

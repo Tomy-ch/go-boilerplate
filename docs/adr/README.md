@@ -24,25 +24,27 @@ a decision (an ADR); the *list* of them is a living reference.
 
 ## Conventions
 
-- **Filename**: `NNNN-kebab-title.md`, zero-padded 4 digits. A number freed by supersession is never re-assigned to a different decision, and neither is a number freed by the consolidation pass below — after a consolidation the range is contiguous again, but no surviving ADR inherits a retired ADR's old number.
+- **Filename**: `NNNN-kebab-title.md`, zero-padded 4 digits. Supersession frees no number — a superseded ADR keeps both its number and its file — so a retired decision's number is never handed to a different one. Numbers do move, but only wholesale: the insertion renumbering below shifts a whole range at once, and never recycles an individual number.
 - **Ordering**: numbers follow dependency / foundational order (principles → contract → layers → subsystems → cross-cutting → exclusions), not discovery order. To preserve this order, a new ADR may be **inserted at its thematic position by shifting all subsequent numbers +1** (a pure renumbering: every shifted ADR keeps its content, and all repository-internal references are updated in the same change). External references to ADR numbers from before such a shift may be stale — the kebab title in the filename is the stable identifier.
 - **Status lifecycle**: `proposed` → `accepted` → (`superseded` | `deprecated`).
-- **Amendment**: an `accepted` ADR is amended **in place** — update `date`, keep `status: accepted`, and do not create a superseding ADR for what is still the same decision. This repository is a boilerplate: what it ships is the current design, not the sequence of positions that produced it, and a fork that must read three ADRs to learn one rule pays for history it did not live. When an amendment changes the conclusion, the position it replaces moves to Alternatives Considered with the reason it was dropped — nothing is discarded, it changes section. The insertion renumbering above changes only the number, not the record.
-- **Who may amend**: amendment is a decision for this repository's architect or tech lead, taken per amendment. Finding that an accepted ADR is contradicted by the implementation is a reason to raise it with them, not a licence to amend it — the implementation is as likely to be the error. A previous amendment is not standing authorization for the next.
-- **A new ADR** is for a decision that should be read independently of the one beside it, not for a revision of one. `superseded` remains in the lifecycle for a decision genuinely replaced rather than revised.
-- **Consolidation exception (authorised, one-off per harvest)**: this repository is a boilerplate whose sample feature set is developed, harvested, and then removed. Implementing a sample produces ADRs that are part architectural decision and part feature detail, and they accumulate at the tail of the numbering in discovery order — which is exactly what the ordering convention above exists to prevent. A **consolidation pass may therefore merge, rewrite, and retire such ADRs**, feeding the architectural residue back into the ordered set and moving the feature content to `docs/spec/`. This is a deliberate exception to immutability, and it is bounded: it applies only to ADRs produced by sample development, it is performed as one reviewed change, and every retired ADR's architectural content survives in the ADR that absorbed it — nothing is discarded, only relocated. Outside a consolidation pass, an ADR that is still the same decision is amended in place per the Amendment convention above; what this exception adds is the authority to merge and retire files, which an amendment does not have.
+- **Who may change a decision record**: superseding or deprecating an `accepted` ADR is a decision for this repository's architect or tech lead, taken per change. Finding that an accepted ADR is contradicted by the implementation is a reason to raise it with them, not a licence to change it — the implementation is as likely to be the error. A previous change is not standing authorization for the next.
 - **Template**: copy [`template.md`](template.md).
 - **Meta**: [`0000-record-architecture-decisions.md`](0000-record-architecture-decisions.md) records the decision to use ADRs and this classification.
 - **Translation**: each ADR mirrors to `docs/ja/adr/` (via the `canonicalize-doc` flow).
-- **Exclusion ADRs** (deliberate "we do NOT do X") carry a `setup-review` tag so the repository-setup flow can enumerate them. At initial setup a fork may **edit these directly** to establish its own baseline; the supersede-by-new-ADR model applies only to changes made later. See `docs/get-started/setup-repository.md` Phase 12.
+- **Upstream deviations**: while this repository is distributed as a boilerplate it operates under exceptions to the above, recorded in [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md). They do not apply to a project built from it. <!-- boilerplate-only:line -->
 
 ## Log
 
 All decisions from `docs/decisions.md` and the latent decisions across the repository have
 been materialized as ADRs. Numbering follows dependency / foundational order (principles →
 contract → HTTP → persistence → DI/config → async subsystems → observability →
-toolchain/CI → process → binary/deploy → exclusions). Exclusion ADRs (deliberate "we do NOT
-do X") are tagged `setup-review`.
+toolchain/CI → process → binary/deploy → exclusions).
+
+<!-- boilerplate-only:begin -->
+Exclusion ADRs (deliberate "we do NOT do X") are tagged `setup-review` so the repository-setup flow
+can enumerate them. The tag has no reader once setup is done.
+
+<!-- boilerplate-only:end -->
 
 | # | Decision | Status |
 | --- | --- | --- |
@@ -94,8 +96,8 @@ do X") are tagged `setup-review`.
 | [0045](0045-error-details-opt-in-gate.md) | Opt-in gate for error-response details via schema split (refines 0043) | accepted |
 | [0046](0046-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
 | [0047](0047-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
-| [0048](0048-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0049](0049-broker-sdk-isolation-verified-after-sample-removal.md) |
-| [0049](0049-broker-sdk-isolation-verified-after-sample-removal.md) | Broker-SDK isolation is verified after sample removal, not by leaving the adapter unwired | accepted |
+| [0048](0048-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0049](0049-broker-sdk-isolation-measured-as-coupling.md) |
+| [0049](0049-broker-sdk-isolation-measured-as-coupling.md) | Measure broker-SDK isolation as coupling, not as linkage | accepted |
 | [0050](0050-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
 | [0051](0051-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
 | [0052](0052-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
@@ -122,9 +124,9 @@ do X") are tagged `setup-review`.
 | [0073](0073-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
 | [0074](0074-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
 | [0075](0075-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
-| [0076](0076-mise-ssot-drift-gate.md) | mise.toml is the single source of truth; versions propagate downstream with a CI drift gate | accepted |
+| [0076](0076-mise-ssot-drift-gate.md) | mise.toml is the single source of truth for mise-resolved versions; versions propagate downstream with a CI drift gate | accepted |
 | [0077](0077-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
-| [0078](0078-scripts-in-node-go.md) | Operational scripts live in scripts/ as Node (.mjs) or Go; shell scripting is not used | accepted |
+| [0078](0078-scripts-in-node-go.md) | Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used | accepted |
 | [0079](0079-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
 | [0080](0080-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
 | [0081](0081-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
@@ -144,12 +146,12 @@ do X") are tagged `setup-review`.
 | [0095](0095-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
 | [0096](0096-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
 | [0097](0097-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
-| [0098](0098-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a template; registry not fixed) | accepted |
+| [0098](0098-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
 | [0099](0099-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
 | [0100](0100-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
 | [0101](0101-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
 | [0102](0102-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
-| [0103](0103-outbox-relay-hardening-delegated.md) | Delegate outbox-relay duplicate-window hardening (multi-layer lease redesign) to production copies | accepted (exclusion) |
+| [0103](0103-outbox-relay-hardening-delegated.md) | Ship a balanced outbox relay; delegate hardening (multi-layer lease redesign) to operational evidence | accepted (exclusion) |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

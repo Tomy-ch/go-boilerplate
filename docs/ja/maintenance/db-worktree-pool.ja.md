@@ -33,8 +33,12 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
 前提条件に置いている — `db-migrate-*` / `db-seed` / `db-drop-tables` / `db-ensure` / `dump-schema` に加え、
 `make test` / `test-cached` / `gen-test-repo`（host 実行の `go test` が `DB_NAME_TEST` を読む）と
 `make serve` / `serve-build` / `serve-build-clean`（app コンテナが `DB_NAME_LOCAL` を読む）。
-リンク worktree の判定は `git-dir` ≠ `git-common-dir` の食い違いで行うため、主 checkout・CI・
-ツールランナーのコンテナは素通りする。
+判定の実体は `internal/cli/dbslot` にある。リンク worktree は `git-dir` ≠ `git-common-dir` の
+食い違いで識別するため、主 checkout と CI は素通りする。`git` がそもそも答えられない場合も一律には
+扱わない。git 実行ファイルが無い場合（ツールランナーのコンテナ）と、git リポジトリでない場合は
+どちらも worktree ではありえないため素通りする。一方、git リポジトリではあるのに構成を読み取れない
+場合は失敗する — そこでは worktree でないと断定できず、黙ってフォールバックしないことこそが
+このガードの目的だからである。
 
 知っておくべき帰結: worktree では `make slot-acquire` するまで `make test` が落ちる。それが狙いで、
 このガードが無かった頃は共有 `test` データベースに対して黙って走っていた。
@@ -187,7 +191,7 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   使っているコンテナを置き換えずそのまま使う。
   代償として、image の digest pin 更新や `garage.toml` の編集といった**正当な定義変更も自動では
   反映されなくなる**。全 checkout が中断を許容できるタイミングで `make infra-down && make infra-up`
-  を実行すること。`tools` プロファイルも同じで、`docs_viewer` は最初に作った checkout の `docs/` を
+  を実行すること。`tools` プロファイルも同じで、`docs_server` は最初に作った checkout の `docs/` を
   配り続ける。単一 checkout には奪い合う相手が居ないためフラグは空で、compose は従来どおり
   定義変更へ再収束する。
 - **オブジェクトストレージは共有**: `garage` のバケットは全 checkout で共通（DB と違いスキーマを持たないため
@@ -203,7 +207,7 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   止めることになる。スロット毎のキューを事前宣言していないのは、プールのサイズが可変
   （`GOBP_DB_POOL_MAX`）で、conf 側の静的な一覧はその値が変わった時点で黙ってプールを覆わなくなる
   ためである。
-- `sql_editor` / `docs_viewer` / `er_diagram_generator` / `mock_auth_server` は、いずれも自前のデファクト
+- `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` は、いずれも自前のデファクト
   ポートを持たないため `2000` 番台に置いている。規則とその帯が安全な理由は
   [`local-environment.ja.md`](local-environment.ja.md) にある。
 - `docker/`・`internal/cli/dbslot`・`.makefiles/` を含む配線のため、変更時はこのドキュメントも更新すること。

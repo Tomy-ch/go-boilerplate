@@ -58,7 +58,7 @@ the shared DB connection.
   and transaction isolation are all exercised against the actual PostgreSQL schema.
 - No cleanup between tests — rollback restores the DB state automatically.
 - Parallel test scheduling is safe: `t.Parallel()` can be used without data interference.
-- Minimal test boilerplate: wrap with `WithinTx`, assert with `require`/`assert` inside the
+- Minimal per-test setup: wrap with `WithinTx`, assert with `require`/`assert` inside the
   closure.
 
 ### Negative Consequences

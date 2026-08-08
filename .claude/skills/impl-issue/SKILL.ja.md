@@ -25,6 +25,23 @@ GitHub issue を、環境確保からマージ済み PR まで進める半自動
 | テスト品質レビュー | `test-review`（`impl-review` が連鎖） |
 | 実装そのもの | 承認された計画に従うあなた |
 
+## AI の変更範囲
+
+`AGENTS.md` は AI の編集対象を `internal/` / `pkg/` / `database/` / `openapi/` に限り、それ以外 — `.github/workflows/`、`docker/`、`scripts/`、`docs/`、`.makefiles/`、ルートのドットファイル — をスコープ外としている。**このスキルの起動は、その制限を緩めるユーザーの明示指示にあたる。** このスキルは issue 汎用のドライバであり、対象面を決めるのは issue の側だからである。CI・ツールチェーン・コンテナイメージ・ドキュメントについての issue は、既定の 4 ディレクトリの中では解決できない。これは `AGENTS.md` の「Skills must not be a loophole」条項に対する、明示された抜け穴でない例外である。
+
+緩和には境界があり、その境界は計画である:
+
+- Step 3 の計画の **触るファイル一覧** が許可された対象面。既定の 4 ディレクトリの外にあるセンシティブなパスは、編集する**前**にそこへ現れていなければならない。glob で暗に含めるのではなく、明示的に名前を書く。
+- 計画を提示するときにそれを言う。ユーザーは diff で気づくのではなく、承知のうえでセンシティブなパスを承認する — 黙ってスコープが広がる計画こそ、この条項が防ごうとしている失敗である。
+- 計画に無いセンシティブなパスへ到達したら Step 4 の trip-wire 1。止まって聞く。対象面を広げてから事後報告しない。
+
+このスキルの実行中も保護されるもの（issue が何を要求しても触らない）:
+
+- `AGENTS.md` / `CLAUDE.md`
+- 生成物: `**/*.gen.go`、`*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、および `docs/` 配下の生成物（`docs/openapi/**`、`docs/coverage/**`、`docs/db-schema/**`、`docs/godoc/**`、`docs/portal/docs.json`、`docs/portal/guides/**`）。`make` ターゲット経由での再生成はよい。手編集は駄目。
+- `.claude/settings.json` の `permissions.deny` 配下
+- `database/migrations/**` の既存ファイル（新規 migration ファイルのみ）
+
 ## Step 0 — 3 つのモードを確認する（`AskUserQuestion` 1 回）
 
 何より先に、1 回の呼び出しで聞く。既定は明示するが、ユーザーの選択が常に優先。
@@ -75,12 +92,13 @@ gh issue comment <n> --body-file <file>
 コードに触れる前に済ませる。共有 checkout に何も落とさないため。
 
 ```bash
-# 1. 現行のリリース線を特定する。GitHub の default branch は遅れているが、直近のマージ済み PR は正確。
-gh pr list --state merged --limit 10 --json baseRefName -q '.[].baseRefName' | sort | uniq -c
+# 1. 現行のリリース線を origin の実状態から解決する。
+BASE=$(make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 
 # 2. 古いローカル ref ではなく、今の origin から切る。
-git fetch origin release/vX.Y.0
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> origin/release/vX.Y.0
+git fetch origin "$BASE"
+git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
@@ -89,11 +107,13 @@ cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 go mod vendor
 ```
 
+`make base-branch` は `origin` の実状態を読む。これ以外を使わないこと。ローカルの `refs/remotes/origin/HEAD` は clone 時に一度決まったきり `git fetch` では更新されず、GitHub のデフォルトブランチは前のリリースラインに留まり、ハーネスが提示する "Main branch" はその陳腐化したローカル symref を読んでいる。3 つとも警告なく答えるため、1 世代前のベースから切ったことは、サブエージェントが「あるはずのファイルが無い」と報告するまで表に出ない。そこまで進んだ作業は丸ごと無駄になる。
+
 `slot-acquire` が失敗を報告したら、再試行の前に `make slot-status` を見る — コマンドがエラーでもリースだけ成功していることが多い。
 
 **スロットは自分から解放しない。片付けフェーズで解放を聞きもしない。** 握ったままのコストはほぼゼロ（リースは stale になれば自動回収される）だが、作業途中で失うと DB とポートを失う。本当に終わったかを知っているのはユーザーだけ。
 
-ユーザーの指示がリリースバージョンを含まず、マージ済み PR の傾向も割れる場合は聞く。
+ユーザーの指示が解決結果と違うリリースバージョンを指していた場合は、切る前に聞く。意図的な backport 先だけは解決器に知りようがない。
 
 ## Step 3 — 計画を立て、そこで待つ
 

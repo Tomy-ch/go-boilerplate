@@ -15,7 +15,7 @@ accepted
 
 ## 背景
 
-このテンプレートは異なるマシンと OS で作業する複数のコントリビューターを持つチームを
+このプロジェクトは異なるマシンと OS で作業する複数のコントリビューターを持つチームを
 対象としている。Go・Node・Python および多数の補助プログラム（リンター・コード生成ツール・
 マイグレーションランナー・デバッガーなど）にはそれぞれ厳密なバージョン要件があり、
 バージョン管理されていないホストツールは環境をまたいで異なる出力を生成したり
@@ -28,7 +28,9 @@ accepted
 
 ## 決定
 
-ツールバージョンは `mise.toml` に一元的に宣言され、Docker イメージに焼き込まれる。
+ツールバージョンは一元的に宣言され（mise が解決するものは `mise.toml`、PyPI のツールは
+`python/*.in` と `python/*.txt`。[ADR-0076](0076-mise-ssot-drift-gate.ja.md)）、Docker イメージに
+焼き込まれる。
 リント・フォーマット・コード生成・ドキュメント生成・コミットメッセージリントなど
 すべてのツール実行は、適切な Docker コンテナ（`go_tool_runner`・`node_tool_runner`・
 `python_tool_runner`）内でツールを呼び出す `make` ターゲットを通じて行う。
@@ -54,7 +56,7 @@ accepted
 - 新しいコントリビューターは Docker と mise のインストール以外にツールバージョンを
   手動で管理する必要がない。
 - 同じ `make` ターゲットが CI でもローカルでも変更なく動作する。
-- ツールバージョンのアップグレードは `mise.toml`（およびそれを使用する Dockerfile）の
+- ツールバージョンのアップグレードは宣言（およびそれを使用する Dockerfile）の
   単一変更で完結する。
 
 ### ネガティブな影響
@@ -87,7 +89,7 @@ Docker Compose によるアプローチはエディター非依存である。
 
 - ツールチェーン実行ルール（「コンテナをバイパスしてはならない」制約を含む）:
   [`docs/rules.md`](../rules.ja.md) §「Toolchain Execution Rules」。
-- ツールバージョンの宣言: [`mise.toml`](../../../mise.toml)。
+- ツールバージョンの宣言: [`mise.toml`](../../../mise.toml)、PyPI のツールは [`python/`](../../../python/)。
 - コンテナサービス定義: [`docker-compose.yaml`](../../../docker-compose.yaml)
   （`go_tool_runner`・`node_tool_runner`・`python_tool_runner` — プロファイル `generate`）。
 - Docker イメージ / Dockerfile の詳細: [`docker/README.md`](../../../docker/README.ja.md)。

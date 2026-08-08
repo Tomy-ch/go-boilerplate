@@ -13,8 +13,8 @@ accepted
 
 ## Context
 
-Caching is a common performance optimization, and it is natural to expect a template to
-supply a `Cache` interface analogous to the domain `Repository` interfaces. Such an interface
+Caching is a common performance optimization, and it is natural to expect a `Cache`
+interface analogous to the domain `Repository` interfaces. Such an interface
 would appear to support the lock-in avoidance principle from [ADR-0001](0001-avoid-lock-in.md)
 by hiding the cache technology behind a seam.
 
@@ -37,7 +37,7 @@ read-path optimization over repository access, not a separate domain concept.
 ## Decision
 
 We deliberately do NOT provide a generic `Cache` interface or cache abstraction layer. When
-caching is needed, adopters implement it as a **decorator** that satisfies the existing
+caching is needed, it is implemented as a **decorator** that satisfies the existing
 domain `Repository` interface. Domain and usecase layers remain unaware of caching because
 the decorator is wired at the infrastructure / dependency-injection layer — domain code
 calls the same repository method; the decorator decides whether to serve from cache or
@@ -69,10 +69,10 @@ callers, is feature content and belongs with the feature.
 
 ### Negative Consequences
 
-- Adopters must write the decorator themselves; no off-the-shelf generic cache helper is
+- The decorator must be written per case; no off-the-shelf generic cache helper is
   provided.
 - Each cached repository requires its own decorator, which increases per-repository
-  boilerplate compared to a single shared cache wrapper.
+  code compared to a single shared cache wrapper.
 - Without a common interface, tooling or instrumentation that operates on "all caches" must
   be implemented individually per decorator.
 
@@ -82,7 +82,7 @@ callers, is feature content and belongs with the feature.
 
 Provides a consistent seam and makes caching testable via a stub. Rejected because the
 interface collapses to a TTL-backed map that cannot express the capabilities of modern cache
-backends (pipelines, atomics, pub/sub, sorted sets). Adopters who need those capabilities
+backends (pipelines, atomics, pub/sub, sorted sets). Code needing those capabilities
 would have to add backend-specific methods, breaking the interface and negating its value.
 See [ADR-0001](0001-avoid-lock-in.md) on the cost of neutral seams.
 

@@ -41,6 +41,7 @@ Three facts explain almost everything below:
 | `env/.env` is dirty and you did not edit it | §8 |
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §9 |
 | `commitlint: not found`, `orval: not found`, stale tool version | §10 |
+| `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §10 |
 | A hook fails for something outside your change | §11 |
 | A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §21 |
 | Want to know why `make lint` skipped, throttled, or deferred itself to CI | §21 |
@@ -218,7 +219,7 @@ credentials) — a genuinely new finding is a real secret and must be removed fr
 
 ## 7. `sample-removal-check` fails in CI
 
-`scripts/setup/lib/sample-manifest.mjs` declares every path that `make setup-remove-sample-api`
+`scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api` <!-- skill-lint-ignore -->
 deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample
 domain (user / product / purchase / …) without registering them leaves dangling references after
 removal, which the CI job catches by actually performing the removal and then building, linting, and
@@ -262,12 +263,32 @@ golangci-lint run --config .golangci-full.yaml     # equivalent, when you need e
 
 Always reproduce CI failures with the full config.
 
-## 10. `commitlint: not found` / `orval: not found` / a stale tool version
+## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / a stale tool version
 
-The tool-runner images are **build artifacts of `mise.toml` and `docker/tools/package*.json`**. Tools
+The tool-runner images are **build artifacts of `mise.toml` and `scripts/package.json` +
+`scripts/pnpm-lock.yaml` + `scripts/pnpm-workspace.yaml`**. Tools
 are resolved inside the runners, never on the host (the same reproducibility rule as codegen — see
-`docs/rules.md`). After changing either file — or on a fresh clone whose images predate them — the
-runner is missing the tool or ships an old version.
+`docs/rules.md`). After changing any of those files — or on a fresh clone whose images predate them —
+the runner is missing the tool, ships an old version, or refuses to run anything at all.
+
+That last symptom is the one that reads as unrelated to the edit. `scripts/pnpm-workspace.yaml` sets
+`verifyDepsBeforeRun: error`, so once its settings no longer match what the image's
+`scripts/node_modules` was installed under, every `pnpm run` inside the runner fails with
+`[ERR_PNPM_VERIFY_DEPS_BEFORE_RUN] The value of the <setting> setting has changed`. It takes down
+gates with no visible connection to the change — `make md-lint`, `make actions-lint`, `make
+lint-oapi` — while the host-side `-ci` targets stay green, because the host tree was re-installed
+when the file changed. Adding a `minimumReleaseAgeExclude` or `overrides` entry is enough to trigger
+it. Green on the host is therefore **not** evidence that the containerized gate passes: rebuild
+first, then re-run whichever gate you intend to report.
+
+**Across worktrees this is a shared resource, and it holds one branch's settings at a time.** The
+runner images belong to the single `gobp-shared` compose project (§1), so a rebuild in one worktree
+re-points every other worktree's containerized gates at *that* branch's `scripts/pnpm-workspace.yaml`.
+Two windows whose branches disagree — one adding a `minimumReleaseAgeExclude` entry, one not — will
+take turns failing, and the direction flips with whoever rebuilt last. The failure is the same
+`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in both directions, so read it as "the image matches someone
+else's branch", not as a defect in yours. Rebuild before the gates you are about to report, and
+expect the other window to need the same.
 
 ```bash
 make tool-runners-build           # rebuild go / node / python runners (cached)
@@ -289,7 +310,7 @@ enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are i
 
 | Hook | Glob → command (abridged) |
 | --- | --- |
-| pre-commit | `*.go` → `make gate-go` (bundles `lint` + `test-cached`); `scripts/**/*.go` → `make test-scripts-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
+| pre-commit | `*.go` → `make gate-go` (bundles `lint` + `test-cached`); `scripts/**/*.go` → `make test-scripts-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
 | pre-push | `make secret-scan`; `*.go` → `make gate-go-push` (bundles `test` + `test-scripts`); `*.go` / `openapi/**` → regenerate and `git diff --exit-code` on `*.gen.go` / mocks / `openapi.gen.yaml`; `go.mod` / `go.sum` → `go mod tidy` + diff |
 
@@ -337,12 +358,12 @@ they use in-process gofakes3.
 
 ## 15. mock-auth-server — a separate npm project with its own generated artifacts
 
-`docker/mock-auth-server/` is a standalone Node project (its own `package.json`, OpenAPI, and tests).
+`mock-auth-server/` is a standalone Node project (its own `package.json`, OpenAPI, and tests).
 Two of its outputs are drift-checked in CI:
 
 - **Golden JWKS** — `fixtures/jwks/*.json` and `internal/integration/testdata/jwks/*.json` are written
   by one generator so the provider and the Go integration tests share a single source. After touching
-  the key store or the keys, run `npm run gen:jwks` in `docker/mock-auth-server` and commit both
+  the key store or the keys, run `npm run gen:jwks` in `mock-auth-server` and commit both
   directories.
 - **OpenAPI bundle + zod schemas** — regenerate with `make gen-mock-auth-oapi` (runs in
   `node_tool_runner`, resolving `orval` from `/app/scripts/node_modules`; see §10 if it is not found).

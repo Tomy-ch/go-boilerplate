@@ -207,7 +207,7 @@ sequenceDiagram
 
 ## 4. integrator が実装する箇所（採用はオプトイン・2 ステップ）
 
-scaffold は **middleware・`Run[T]` オーケストレータ・`Store` seam ＋ RDB 実装・スキーマ・GC usecase/job・参考採用例**（`POST /v1/users`）を提供する。handler が冪等になるのは**両ステップを行ったときのみ**——でなければ通常動作のまま。
+本プロジェクトは **middleware・`Run[T]` オーケストレータ・`Store` seam ＋ RDB 実装・スキーマ・GC usecase/job・参考採用例**（`POST /v1/users`）を提供する。handler が冪等になるのは**両ステップを行ったときのみ**——でなければ通常動作のまま。
 
 ```mermaid
 flowchart LR

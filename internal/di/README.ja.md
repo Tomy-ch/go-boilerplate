@@ -239,14 +239,14 @@ internal/di
 - **環境ゲート付きのスタブ** — `authzModule` と `core.AuthnModule` は環境ごとに実装を
   選択し、自身の `switch` が名前を挙げていない環境に対しては **fail closed**（エラーを
   返す）ことで、未設定の環境が寛容なデフォルトのまま起動するのを防ぎます。どの環境を
-  名前で挙げるかは両者で異なり、サンプル API の有無で境界が動きます。サンプルがある
-  状態では `provideAuthorizer` は CI / test に allow-all を、local から production には
-  `user_roles` authorizer を結線します。`make setup-remove-sample-api` 後は `user_roles`
-  の case が除かれ、local / CI / test が allow-all、本番相当の環境は実際の RBAC /
-  ポリシー adapter を結線するまで fail-closed になります。`core.provideAuthenticator`
-  はこれとは独立にゲートされ、CI / test はスタブ、local / development は JWKS
-  authenticator、staging / production は fail-closed です。共通の境界を前提とせず
-  `switch` を読んでください。
+  名前で挙げるかは両者で異なり、認可実装の増減で境界が動きます。現状 `provideAuthorizer`
+  は CI / test に allow-all を、local から production には `user_roles` authorizer を
+  結線しており、その実装を落とすと local / CI / test が allow-all、本番相当の環境は
+  実際の RBAC / ポリシー adapter を結線するまで fail-closed になります。
+  `core.provideAuthenticator` はこれとは独立にゲートされ、CI / test はスタブ、
+  local / development は JWKS authenticator、staging / production は fail-closed です。
+  共通の境界を前提とせず `switch` を読んでください。
+- 本リポジトリがボイラープレートとして頒布されている間は、認可ゲートがどの環境を名前で挙げるかはサンプル API の撤去でも動きます。[`docs/ja/get-started/boilerplate-only-conventions.ja.md`](../../docs/ja/get-started/boilerplate-only-conventions.ja.md) を参照してください。ここから作られたプロジェクトには当てはまりません。 <!-- boilerplate-only:line -->
 
 ## Do / Don't
 
@@ -531,7 +531,7 @@ DI レイヤは配線を行うのみで、計算はしない。したがって�
 - **グラフの妥当性** — モジュール単位の `fx.ValidateApp`。コンストラクタもライフサイクルフックも実行せずにグラフを解決するため、配線の充足だけを証明し、それ以上は証明しない。起動に実インフラを必要としないモジュールは、加えて最小アプリを起動し、提供コンポーネントを assert してよい — グラフ検証が定義上到達できない箇所である。[`module/README.ja.md`](module/README.ja.md) を参照。
 - **独自ロジックを持つ provider / `fx.Invoke` の本体** — まさにグラフ検証が到達しない箇所。単体テストで関数を直接呼ぶこと。グラフ上にしか登場しない本体は未テストである。
 - **ライフサイクルフック** — `lifecycle.Registrar` のモックで登録された start / stop クロージャを捕捉して駆動する。[`server/hook/README.ja.md`](server/hook/README.ja.md) を参照。`job` / `worker` / `outboxrelay` の各フックは `lifecycle.SupervisedRunner` の上で同じ形を取り、drain 経路（cancel → grace 上限つきの wait）が固定すべき分岐となる。
-- **環境ゲート付きの配線** — 環境ごとに実装を選び、担ってはならない環境では拒否（エラーを返す）する provider（`provideAuthorizer`、`core.provideAuthenticator`）は、拒否を含むゲートの **全ケース** を検証する。安全側に倒すこと自体が防御であり、解決に成功する環境しか通らないテストは要点を何も担保しない。現在の境界は推測せずゲート自身の `switch` を読むこと — どの環境がどの case に落ちるかは sample-api マーカーによって変わる。
+- **環境ゲート付きの配線** — 環境ごとに実装を選び、担ってはならない環境では拒否（エラーを返す）する provider（`provideAuthorizer`、`core.provideAuthenticator`）は、拒否を含むゲートの **全ケース** を検証する。安全側に倒すこと自体が防御であり、解決に成功する環境しか通らないテストは要点を何も担保しない。現在の境界は推測せずゲート自身の `switch` を読むこと — どの環境がどの case に落ちるかは認可実装の増減によって変わる。
 
 実 Echo と実 DB を使ったプロセス全体の起動はここでは対象外 —— それは [`internal/integration`](../integration/README.ja.md) の担当。
 

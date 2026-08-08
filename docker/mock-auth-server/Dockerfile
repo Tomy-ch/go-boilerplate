@@ -3,13 +3,13 @@ FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a
 WORKDIR /app
 
 # 依存のみ先に入れてレイヤキャッシュを効かせる
-COPY docker/mock-auth-server/package.json docker/mock-auth-server/package-lock.json ./
+COPY mock-auth-server/package.json mock-auth-server/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
 # アプリ本体（TypeScript。Node の型ストリッピングでビルド無しに実行する） / 固定 RSA 鍵 / 固定 User Fixture
-COPY docker/mock-auth-server/src ./src
-COPY docker/mock-auth-server/keys ./keys
-COPY docker/mock-auth-server/fixtures ./fixtures
+COPY mock-auth-server/src ./src
+COPY mock-auth-server/keys ./keys
+COPY mock-auth-server/fixtures ./fixtures
 
 ENV OIDC_PORT=4000
 EXPOSE 4000

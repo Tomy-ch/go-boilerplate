@@ -2,7 +2,7 @@
 status: superseded
 date: 2026-07-04
 deciders: [maintainers]
-superseded-by: 0049
+superseded-by: 0048
 tags: [worker, async, dependencies]
 ---
 
@@ -10,7 +10,7 @@ tags: [worker, async, dependencies]
 
 ## Status
 
-superseded by [ADR-0049](0049-broker-sdk-isolation-verified-after-sample-removal.md)
+superseded by [ADR-0049](0049-broker-sdk-isolation-measured-as-coupling.md)
 
 ## Context
 

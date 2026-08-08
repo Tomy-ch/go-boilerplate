@@ -22,6 +22,19 @@ jobs:
       pull-requests: write
 
     steps:
+      # The only job here left on `audit`, and the exception is deliberate.
+      # --results=verified means TruffleHog proves a candidate credential live by
+      # calling the service that issued it, and the set of issuers is open-ended, so
+      # no allowlist can be complete. A detector for a provider outside the list
+      # cannot reach it, the credential is downgraded to unverified, and this
+      # workflow — which reports verified results only — stays green over a real
+      # leak. Everywhere else a missing endpoint produces a red run that gets fixed;
+      # here it produces a false pass that nobody sees.
+      #
+      # Egress control exists to keep a compromised dependency from reaching the
+      # trunk, and this scanner is one of the things doing that work on the branch
+      # side. Hardening it into silence trades a detection away for a control that
+      # was never the point. Detection wins; this job stays on `audit`.
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:

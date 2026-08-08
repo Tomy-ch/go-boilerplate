@@ -48,7 +48,63 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            apt.postgresql.org:443
+            apt.postgresql.org:80
+            www.postgresql.org:443
+            archive.ubuntu.com:80
+            azure.archive.ubuntu.com:80
+            security.ubuntu.com:80
+            esm.ubuntu.com:443
+            motd.ubuntu.com:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -89,22 +145,238 @@ jobs:
       # REQUIRE_SHELLCHECK turns the tests that need shellcheck from self-skipping into failing: a
       # skip is invisible in the default output, so a failed install would leave this step green
       # while checking less than it reports.
+      # The exit code is recorded instead of ending the job, so a failure here and one in the
+      # DB-backed run reach the same comment: a step that aborts the job hides every test that
+      # never got to run, and the author pays a round trip per failing group.
       - name: Run scripts tool tests
+        id: scripts-test
+        shell: bash
         env:
           REQUIRE_SHELLCHECK: '1'
-        run: make test-scripts
+        run: |
+          set +e
+          make test-scripts 2>&1 | tee /tmp/go-test-scripts.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # Measured against its own threshold and its own profile, and reported as a warning rather
+      # than a failure. These tools are build/CI tooling, not part of what ships: a gap here says
+      # nothing about the product, so letting it block a merge would stop work for a reason
+      # unrelated to the change under review. The shipped code keeps its hard gate below.
+      - name: Report scripts tool coverage
+        env:
+          REQUIRE_SHELLCHECK: '1'
+        run: make cover-scripts
 
       - name: Initialize Database Table
-        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
+        run: go run ./cmd/ migrate-up --database "$DB"
 
       - name: Seed Database
-        run: go run ./cmd/ db-seed --database ${{ env.DB }}
+        run: go run ./cmd/ db-seed --database "$DB"
 
       - name: Run Tests with Coverage
-        run: make test-cover-ci
+        id: cover-test
+        shell: bash
+        run: |
+          set +e
+          make test-cover-ci 2>&1 | tee /tmp/go-test-cover.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
 
+      # A profile written by a run that failed measures whichever packages happened to finish, so
+      # both the report and the gate are read as facts about a codebase that never passed. They are
+      # gated on the clean signal itself rather than on the job's state, which the recorded exit
+      # code above no longer reflects.
       - name: Report Test Coverage
+        if: steps.cover-test.outputs.exit_code == '0'
         uses: k1LoW/octocov-action@b3b6ee60482a667950f87553abf1df63217235d9 # v1
 
+      # Coverage below the threshold is an ordinary outcome of an ordinary change, so it reaches
+      # the comment the way a failing test does rather than only turning the check red. The gate
+      # prints the measured total against the threshold, which is the whole of what a reader needs.
       - name: Coverage gate
-        run: make cover-gate
+        id: cover-gate
+        if: steps.cover-test.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          set +e
+          make cover-gate 2>&1 | tee /tmp/go-test-gate.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # always() rather than the implicit `success() &&`: the DB setup steps sit between the two
+      # test runs, so an earlier step failing outright is an ordinary path here, not only a
+      # cut-off. Skipping would answer it with the action's cut-off notice, which names no cause
+      # and would drop the scripts-test result that had already been captured.
+      - name: Build PR comment body
+        id: comment
+        if: always() && github.event_name == 'pull_request'
+        shell: bash
+        # Handed over as environment rather than interpolated into the script. All four values are
+        # this job's own and hold a number or a fixed word, so none can carry shell today — but an
+        # expression is substituted into the script text before bash parses it, so what makes that
+        # safe is a property of the producer, not of this step, and it stops holding the moment one
+        # of them carries something richer. Reading them as variables removes the question.
+        env:
+          SCRIPTS_CODE: ${{ steps.scripts-test.outputs.exit_code }}
+          COVER_CODE: ${{ steps.cover-test.outputs.exit_code }}
+          GATE_CODE: ${{ steps.cover-gate.outputs.exit_code }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+
+          # A step that never ran leaves its output empty, which arrives here as an unset variable
+          # rather than an empty one, so every read carries the fallback.
+          scripts_code="${SCRIPTS_CODE-}"
+          cover_code="${COVER_CODE-}"
+          gate_code="${GATE_CODE-}"
+
+          # The three steps above no longer fail the job themselves and every other step that can
+          # sits before this one, so `success` here means nothing else went wrong — octocov, the
+          # database setup, a `mise install`. Reading it keeps the verdict from claiming a pass on
+          # a job that is already red, without enumerating steps whose only report is having failed.
+          job_status="${JOB_STATUS-}"
+
+          # Derived from the clean signal, so a step that never ran leaves an empty value that is
+          # not `0` and therefore reports, rather than reading as a pass.
+          if [ "$scripts_code" = "0" ] && [ "$cover_code" = "0" ] && [ "$gate_code" = "0" ] \
+            && [ "$job_status" = "success" ]; then
+            status=success
+          else
+            status=failure
+          fi
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+
+          out=/tmp/go-test-comment.md
+
+          if [ "$status" = "success" ]; then
+            echo "title=## ✅ Go test: PASS" >> "$GITHUB_OUTPUT"
+            # Reached only when an earlier push left a red comment to overwrite; a passing run
+            # creates none. The failure log has nothing left to say, so the body states the verdict.
+            echo "All Go tests passed." > "$out"
+            exit 0
+          fi
+
+          echo "title=## ❌ Go test: FAIL" >> "$GITHUB_OUTPUT"
+          # Each opening answers the question its own case raises. Sections that are all clean on a
+          # failing run otherwise read as the comment contradicting the check, and sections that all
+          # say "not run" read as the comment having lost them. In the ordinary case what was left
+          # out is stated here rather than only in the fold label, so a reader who finds nothing
+          # about a package knows it passed instead of wondering whether the comment dropped it.
+          if [ -z "$scripts_code" ] && [ -z "$cover_code" ] && [ -z "$gate_code" ]; then
+            echo 'No test run was reached: the job failed before it got there — see the run log.' > "$out"
+          elif [ "$scripts_code" = "0" ] && [ "$cover_code" = "0" ] && [ "$gate_code" = "0" ]; then
+            echo 'Every run captured below came back clean, so the failure is in a step this comment does not capture — see the run log.' > "$out"
+          else
+            echo 'Passing packages are omitted; the full output is in the run log.' > "$out"
+          fi
+          echo "" >> "$out"
+
+          # Two sections share the action's 45000 character default, which it applies before
+          # building the fence on the details-summary path, so a trim here cannot leave the block
+          # unclosed. The cap keeps one runaway section from crowding the other out.
+          section_limit=18000
+
+          write_section() {
+            local label="$1" src="$2" code="$3"
+            printf '=== %s ===\n' "$label" >> "$out"
+
+            if [ -z "$code" ]; then
+              printf '(not run)\n\n' >> "$out"
+              return
+            fi
+            if [ ! -f "$src" ]; then
+              printf '(log not found)\n\n' >> "$out"
+              return
+            fi
+
+            # `go test` reports every package that passed on a line of its own, and a repository
+            # this size answers one broken assertion with a hundred of them — which is what buries
+            # the failure the reader came for. Dropping those two forms leaves the failures, and
+            # passes through build errors, panics and race reports: those are the other reasons a
+            # run fails and none of them takes the `--- FAIL` shape a narrower filter would look for.
+            # `-a`: without it a single NUL byte makes grep treat the log as binary and print nothing.
+            local filtered=/tmp/go-test-section.log
+            { grep -avE '^(ok|\?)[[:space:]]' "$src" || true; } > "$filtered"
+
+            if [ ! -s "$filtered" ]; then
+              if [ "$code" = "0" ]; then
+                printf '(passed)\n\n' >> "$out"
+              else
+                # A non-zero exit whose whole log was filtered away. The filter recognises the
+                # passing forms rather than the failing ones precisely so this stays rare, but a
+                # section that said nothing at all would read as if the run had been fine.
+                printf '(exit %s, no output left after dropping the passing packages; see the run log)\n\n' "$code" >> "$out"
+              fi
+              return
+            fi
+
+            # head cuts on a byte boundary and Go test names in this repository are Japanese, so it
+            # can split a trailing multi-byte character. `-c` drops an invalid sequence mid-stream
+            # but not a truncated one at the end: iconv exits non-zero there, which under
+            # `set -euo pipefail` would fail this step over a cut that landed one byte off. It
+            # writes the converted prefix before exiting, which is the wanted result.
+            # sed: the action sizes its fence from the longest backtick run in the body, so a run
+            # this long would spend the size budget on the fence alone.
+            # tr: a NUL is valid UTF-8, so it survives the conversion and lands in the request the
+            # comment is posted with, which the API rejects. The comment step is
+            # `continue-on-error`, so that failure would take the comment down silently — the one
+            # outcome this whole path exists to prevent, on exactly the kind of run that produces
+            # a stray NUL. The same byte is why the filter above needs `grep -a`.
+            { head -c "$section_limit" "$filtered" | tr -d '\000' | iconv -f UTF-8 -t UTF-8 -c || true; } \
+              | sed -E 's/`{10,}/[long backtick run elided]/g' >> "$out"
+            if [ "$(wc -c < "$filtered")" -gt "$section_limit" ]; then
+              printf '\n... (log truncated)\n' >> "$out"
+            fi
+            printf '\n' >> "$out"
+          }
+
+          write_section 'make test-scripts' /tmp/go-test-scripts.log "$scripts_code"
+          write_section 'make test-cover-ci' /tmp/go-test-cover.log "$cover_code"
+          write_section 'make cover-gate' /tmp/go-test-gate.log "$gate_code"
+
+      - name: Comment Go test result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- go-test-result -->'
+          status: ${{ steps.comment.outputs.status }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ Go Test: CUT OFF (no result produced)' }}"
+          body-file: /tmp/go-test-comment.md
+          details-summary: 'go test log'
+
+      # The verdict is re-derived from the exit codes rather than read off the comment step, which
+      # only runs for a pull request and could not carry the check on any other trigger.
+      - name: Fail if Go tests failed
+        if: always()
+        shell: bash
+        # Read as environment for the same reason as the step above.
+        env:
+          SCRIPTS_CODE: ${{ steps.scripts-test.outputs.exit_code }}
+          COVER_CODE: ${{ steps.cover-test.outputs.exit_code }}
+          GATE_CODE: ${{ steps.cover-gate.outputs.exit_code }}
+        run: |
+          scripts_code="${SCRIPTS_CODE-}"
+          cover_code="${COVER_CODE-}"
+          gate_code="${GATE_CODE-}"
+
+          # Empty means the run never reached its own exit: the job was cut off, or a step before
+          # it failed outright.
+          if [ -z "$scripts_code" ] || [ -z "$cover_code" ] || [ -z "$gate_code" ]; then
+            echo "a test step produced no exit code; see the steps above for how far the job got"
+            exit 1
+          fi
+          if [ "$scripts_code" != "0" ]; then
+            echo "make test-scripts failed with exit code $scripts_code"
+          fi
+          if [ "$cover_code" != "0" ]; then
+            echo "make test-cover-ci failed with exit code $cover_code"
+          fi
+          if [ "$gate_code" != "0" ]; then
+            echo "make cover-gate failed with exit code $gate_code"
+          fi
+          if [ "$scripts_code" != "0" ] || [ "$cover_code" != "0" ] || [ "$gate_code" != "0" ]; then
+            exit 1
+          fi

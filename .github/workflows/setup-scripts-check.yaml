@@ -1,0 +1,273 @@
+name: Setup Scripts Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The localization scripts (Phase 5 of docs/get-started/setup-repository.md) are the first
+  # thing a template user runs, and nothing else exercises them end to end. Unit tests cover
+  # the replacement rules; what breaks silently is the wiring around them — argument handling,
+  # which files get selected, and where the output lands. This job runs the documented sequence
+  # for real and then verifies the result, because that wiring only breaks when it runs: a
+  # directory move once shifted two other entry scripts a level away from their target files,
+  # and neither the type checker nor the unit suite noticed.
+  setup-scripts-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      MODULE: example-api
+      REPOSITORY: example-org/example-api
+      APP_NAME: example-api
+      OPENAPI_TITLE: Example API
+      COPILOT_TITLE: Example API
+      COPYRIGHT_HOLDER: Example Org
+      COPYRIGHT_YEAR: "2026"
+      CODE_OWNERS: "@example-org/tech-leads"
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install node & pnpm
+        run: mise install node npm:pnpm npm:markdownlint-cli2
+
+      # `scripts/pnpm-workspace.yaml` carries the supply-chain policy (cooldown, allowBuilds,
+      # trust policy) that the install must honour.
+      - name: Install script node deps
+        run: pnpm install --dir scripts --frozen-lockfile
+
+      # A preview that writes is worse than no preview: the user acts on output that does not
+      # match what a real run would do. The scripts are run against the checkout, so a leaked
+      # write shows up as a dirty tree.
+      - name: Dry run writes nothing
+        run: |
+          set -euo pipefail
+          pnpm --dir scripts run tsx scripts/setup/replace-module --dry-run go-boilerplate "$MODULE"
+          pnpm --dir scripts run tsx scripts/setup/replace-repository-reference --dry-run "$REPOSITORY"
+          pnpm --dir scripts run tsx scripts/setup/replace-app-metadata --dry-run \
+            --app-name "$APP_NAME" --openapi-title "$OPENAPI_TITLE" --copilot-title "$COPILOT_TITLE"
+          pnpm --dir scripts run tsx scripts/setup/replace-license-copyright --dry-run \
+            --holder "$COPYRIGHT_HOLDER" --year "$COPYRIGHT_YEAR"
+          pnpm --dir scripts run tsx scripts/setup/replace-codeowners --dry-run --owners "$CODE_OWNERS"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "FAIL: --dry-run modified the working tree"
+            git status --porcelain
+            exit 1
+          fi
+          echo "dry run: no writes"
+
+      - name: Localize the repository
+        run: |
+          set -euo pipefail
+          pnpm --dir scripts run tsx scripts/setup/replace-module go-boilerplate "$MODULE"
+          pnpm --dir scripts run tsx scripts/setup/replace-repository-reference "$REPOSITORY"
+          pnpm --dir scripts run tsx scripts/setup/replace-app-metadata \
+            --app-name "$APP_NAME" --openapi-title "$OPENAPI_TITLE" --copilot-title "$COPILOT_TITLE"
+          pnpm --dir scripts run tsx scripts/setup/replace-license-copyright \
+            --holder "$COPYRIGHT_HOLDER" --year "$COPYRIGHT_YEAR"
+          pnpm --dir scripts run tsx scripts/setup/replace-codeowners --owners "$CODE_OWNERS"
+
+      # Re-running must be a no-op. If it is not, a user who runs the documented sequence twice
+      # gets a doubly-replaced tree, and the scripts cannot be used to fix a typo.
+      - name: Second run changes nothing
+        run: |
+          set -euo pipefail
+          git status --porcelain > /tmp/after-first-run.txt
+          pnpm --dir scripts run tsx scripts/setup/replace-repository-reference "$REPOSITORY"
+          pnpm --dir scripts run tsx scripts/setup/replace-app-metadata \
+            --app-name "$APP_NAME" --openapi-title "$OPENAPI_TITLE" --copilot-title "$COPILOT_TITLE"
+          pnpm --dir scripts run tsx scripts/setup/replace-license-copyright \
+            --holder "$COPYRIGHT_HOLDER" --year "$COPYRIGHT_YEAR"
+          pnpm --dir scripts run tsx scripts/setup/replace-codeowners --owners "$CODE_OWNERS"
+          git status --porcelain > /tmp/after-second-run.txt
+          diff -u /tmp/after-first-run.txt /tmp/after-second-run.txt
+          echo "second run: no further changes"
+
+      # Runs the same verifier the documented flow uses, which also removes the setup tooling.
+      #
+      # It does not build. `replace-module` deliberately leaves generated files alone because
+      # they are regenerated right after (Phase 5 ends with `make gen-api` / `gen-sqlc`), so a
+      # build here fails by construction and would say nothing about the rename. What it checks
+      # instead is stronger for this moment: no file the replacer itself claims to cover still
+      # carries the boilerplate name — which also catches leftovers in comments and strings that
+      # a build never would.
+      - name: Verify localization and self-destruct
+        run: pnpm --dir scripts run tsx scripts/setup/verify-setup
+
+      # The localization tools are one-shot: re-applying them to an already-localized repository
+      # is wrong (replace-codeowners rewrites every rule's owner to one value). Leaving them
+      # behind is what the self-destruct exists to prevent, so a path left un-removed has to fail
+      # here. Directories rather than files: a module added later is covered without editing this.
+      - name: Verify setup tooling self-destructed
+        run: |
+          set -euo pipefail
+          for d in \
+            scripts/setup/replace-module \
+            scripts/setup/replace-app-metadata \
+            scripts/setup/replace-license-copyright \
+            scripts/setup/replace-repository-reference \
+            scripts/setup/replace-codeowners \
+            scripts/setup/verify-setup; do
+            if [ -e "$d" ]; then
+              echo "FAIL: $d was not removed"
+              exit 1
+            fi
+          done
+          echo "setup tooling self-destruct: OK"
+
+      # Deleting the directories is only half of it: the make targets that invoke them are
+      # declared elsewhere, and a target left behind stays in `make help` and fails when run.
+      # The declarations carry `setup-localize` markers and are stripped by the same step.
+      - name: Verify the make targets went with the tools
+        run: |
+          set -euo pipefail
+          remaining="$(pnpm --dir scripts run --silent tsx scripts/make-help \
+            | grep -c -E 'setup-replace|setup-verify' || true)"
+          if [ "$remaining" != "0" ]; then
+            echo "FAIL: $remaining localization target(s) still listed by make help"
+            exit 1
+          fi
+          echo "make targets removed: OK"
+
+      # The sample removal targets are wrapped in their own markers and must survive, otherwise
+      # a user who kept the sample can no longer remove it.
+      - name: Verify the sample removal target survived
+        run: |
+          set -euo pipefail
+          pnpm --dir scripts run --silent tsx scripts/make-help | grep -q 'setup-remove-sample-api'
+          echo "sample removal target retained: OK"
+
+      # The identity removal is the other half of instantiation: it strips the prose that calls
+      # this repository a boilerplate. It runs after the localization because the repo-name
+      # mentions are the replacers' job, and only the prose is left for this one.
+      - name: Dry run of the identity removal writes nothing
+        run: |
+          set -euo pipefail
+          before="$(git status --porcelain)"
+          pnpm --dir scripts run tsx scripts/setup/remove-boilerplate-identity --dry-run
+          if [ "$(git status --porcelain)" != "$before" ]; then
+            echo "FAIL: --dry-run modified the working tree"
+            exit 1
+          fi
+          echo "identity removal dry run: no writes"
+
+      - name: Remove the boilerplate identity
+        run: pnpm --dir scripts run tsx scripts/setup/remove-boilerplate-identity
+
+      # Stripping marker blocks edits Markdown structurally, and a block that swallows one line
+      # too many leaves a broken table, an orphaned heading or an unclosed fence. Nothing else
+      # lints the post-removal state: the repo-wide md-lint job only ever sees the template.
+      - name: Verify the stripped Markdown is still valid
+        run: make md-markdownlint-ci
+
+      - name: Verify no boilerplate prose survived
+        run: |
+          set -euo pipefail
+          remaining="$(grep -ric 'boilerplate' README.md README.ja.md | grep -v ':0$' || true)"
+          if [ -n "$remaining" ]; then
+            echo "FAIL: the READMEs still call this a boilerplate"
+            echo "$remaining"
+            exit 1
+          fi
+          echo "boilerplate prose removed: OK"
+
+      - name: Verify the identity removal tool and its target went together
+        run: |
+          set -euo pipefail
+          if [ -e scripts/setup/remove-boilerplate-identity ]; then
+            echo "FAIL: the tool did not remove itself"
+            exit 1
+          fi
+          if pnpm --dir scripts run --silent tsx scripts/make-help \
+            | grep -q 'setup-remove-boilerplate-identity'; then
+            echo "FAIL: the make target outlived the tool"
+            exit 1
+          fi
+          echo "identity removal self-destruct: OK"
+
+      # The sample remover still needs the shared modules, so they must survive here. The
+      # symmetric case (remover gone first) is covered by Sample Removal Check.
+      - name: Verify shared modules survive while the sample remover needs them
+        run: |
+          set -euo pipefail
+          for d in scripts/setup/lib scripts/setup/remove-sample-api; do
+            if [ ! -e "$d" ]; then
+              echo "FAIL: $d was removed while the sample remover still needs it"
+              exit 1
+            fi
+          done
+          echo "shared modules retained: OK"

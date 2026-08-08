@@ -120,10 +120,15 @@ three responsibilities:
 - Implementation lives in `internal/infrastructure/rdb/command_service/<aggregate>/`.
 
 > **Implementation status**: the `command_service` sub-module in `persistenceModule`
-> (`internal/di/module/persistence.go`) holds exactly one provider, and it belongs to the sample
-> purchase feature. Removing the samples empties the sub-module and leaves this section describing
-> an intended design with no occupant — which is the state a fork starts from. The occupant is kept
-> because the eligibility bar below is only legible against a concrete case that meets it.
+> (`internal/di/module/persistence.go`) may legitimately hold zero providers. This section
+> describes an intended design; a system with no cross-aggregate write of its own has nothing to
+> register, and an empty sub-module is not a defect.
+
+<!-- boilerplate-only:begin -->
+> The upstream boilerplate keeps one sample occupant here for a reason recorded in
+> [boilerplate-only conventions](../get-started/boilerplate-only-conventions.md); it does not
+> apply to a project built from it.
+<!-- boilerplate-only:end -->
 
 Repository, QueryService, and CommandService are all registered in `persistenceModule` in
 `internal/di/module/persistence.go` and injected via Uber Fx (see

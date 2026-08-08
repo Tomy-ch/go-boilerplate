@@ -53,9 +53,17 @@ corrects a compromise rather than by blast radius:
 | Surface | Window | Mechanism |
 | --- | --- | --- |
 | npm | 7 days | `min-release-age` in each `.npmrc` (npm 11 native) |
+| Go modules | 7 days | `scripts/go-cooldown`, gating the direct requirements a change adds or raises |
+| CLI tools resolved by mise | 14 days (GitHub release) / 7 days (package registry) | `scripts/tool-cooldown`, reading `mise.toml` |
+| CLI tools installed from PyPI | 7 days | `scripts/tool-cooldown`, reading the `python/*.in` declarations ([ADR-0076](0076-mise-ssot-drift-gate.md)) |
 | GitHub Actions | 14 days | `PIN_ACTIONS_MIN_AGE_DAYS`, enforced by `scripts/pin-actions` |
 | Container images | 14 days | `PIN_IMAGES_MIN_AGE_DAYS`, enforced by `scripts/pin-images` |
 | Dependabot | 5 / 7 / 30 days (patch / minor / major) | cooldown in `.github/dependabot.yml` |
+
+The two tiers in the mise row come from the backend rather than the tool: a version resolved
+through a GitHub release gets the same window as `pin-actions` / `pin-images`, because a tag can
+be moved onto a different commit, while a version resolved through a package registry gets the
+shorter window, because a published version there is immutable.
 
 `capability-diff.yaml` runs `capslock` on dependency-changing PRs as a **supplementary**
 signal on the Go side only. It is report-only and is not treated as a detector.
@@ -80,6 +88,11 @@ signal on the Go side only. It is report-only and is not treated as a detector.
   compromise was public — removal upstream is what protected consumers, not this control.
 - Security updates are delayed by the same window they impose (Dependabot's security
   updates deliberately bypass their cooldown for this reason).
+- **Language runtimes (`go` / `node` / `python`) are outside every window.** A compromised
+  runtime distribution is a failure of the language's trust model rather than of one supply-chain
+  link, and a delay protects nothing against it; runtimes are governed instead by the separate
+  policy of waiting for an LTS. Stated here so the gap reads as a decision rather than an
+  oversight.
 - `capslock` covers Go only, so the npm half of the graph has no capability signal at all.
 
 ## Alternatives Considered
@@ -87,8 +100,7 @@ signal on the Go side only. It is report-only and is not treated as a detector.
 ### Commercial malicious-package scanning (Socket / Snyk / Phylum)
 
 Rejected. All require uploading the dependency graph to a vendor and introduce a paid
-external dependency into CI. ADR-0001 rules out that class of lock-in for a template whose
-adopters cannot be assumed to hold the same vendor contracts.
+external dependency into CI. ADR-0001 rules out that class of lock-in.
 
 ### Pinning every transitive dependency by hash and reviewing every lockfile change by hand
 

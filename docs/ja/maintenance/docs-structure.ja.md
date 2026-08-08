@@ -6,7 +6,7 @@
 このファイルは以下のスクリプトによって生成されます。
 
 ```txt
-scripts/gen-docs-json.mjs
+scripts/portal/gen-docs-json.ts
 ```
 
 この生成処理が正しく動作するよう、以下のルールを守る必要があります。
@@ -134,7 +134,7 @@ docs/portal/docs.json
 再生成する場合:
 
 ```txt
-node scripts/gen-docs-json.mjs
+make gen-docs-json
 ```
 
 ## 7. 新しいドキュメントセクションの追加
@@ -165,7 +165,7 @@ Security (Japanese)
 ドキュメントポータルは CI により自動更新されます。
 
 ```sh
-node scripts/gen-docs-json.mjs
+make gen-docs-json
 ```
 
 ## まとめ

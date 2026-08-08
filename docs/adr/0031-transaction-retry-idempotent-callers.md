@@ -24,8 +24,8 @@ Both are expected conditions under concurrent write load, not application bugs. 
 own documentation recommends retrying these transactions at the application layer.
 
 Without automatic retry, these errors propagate as transient failures that every usecase
-must handle individually. The resulting boilerplate is inconsistent, error-prone, and easy
-to omit.
+must handle individually. The resulting per-usecase handling is inconsistent, error-prone,
+and easy to omit.
 
 However, automatic retry introduces a subtle safety constraint: the transaction body
 function `fn` may be executed multiple times if the transaction is retried. Any non-database
@@ -68,7 +68,7 @@ the project uses `xerrors.Join` rather than string-flattening wraps (see
 ### Positive Consequences
 
 - Serialization and deadlock errors are handled automatically and consistently. Usecases do
-  not need per-call retry boilerplate.
+  not need a per-call retry loop of their own.
 - Retry parameters are tunable per deployment without code changes.
 - The outbox pattern (write side effects transactionally) makes the idempotency constraint
   easy to satisfy and auditable: retry safety is visible in the schema, not hidden in

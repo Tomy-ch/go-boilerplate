@@ -352,7 +352,7 @@ func Test_isScannableGoFile(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("production の Go ソースは走査対象になる", func(t *testing.T) {
+		t.Run("production code の Go ソースは走査対象になる", func(t *testing.T) {
 			t.Parallel()
 
 			assert.True(t, isScannableGoFile("internal/controller/handler/metrics/metrics_handler.go"))

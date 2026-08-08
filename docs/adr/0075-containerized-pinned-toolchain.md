@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-The template is intended for teams with multiple contributors working on different
+This project is intended for teams with multiple contributors working on different
 machines and operating systems. Go, Node, Python, and a wide set of secondary programs
 (linters, codegen tools, migration runner, debugger, etc.) each have exact version
 requirements: an unversioned host tool can silently produce different output or behave
@@ -26,7 +26,9 @@ what a developer happens to have installed.
 
 ## Decision
 
-Tool versions are declared centrally in `mise.toml` and baked into Docker images. All
+Tool versions are declared centrally — in `mise.toml` for everything mise resolves, and in
+`python/*.in` + `python/*.txt` for PyPI tools ([ADR-0076](0076-mise-ssot-drift-gate.md)) —
+and baked into Docker images. All
 tool execution — lint, format, codegen, documentation generation, commit-message lint,
 and so on — runs through `make` targets that invoke the tools inside the appropriate
 Docker container (`go_tool_runner`, `node_tool_runner`, or `python_tool_runner`).
@@ -53,8 +55,8 @@ container depends on host-local tool state and breaks reproducibility.
 - New contributors do not need to manage tool versions manually beyond installing
   Docker and mise.
 - The same `make` target works in CI and locally without modification.
-- Upgrading a tool version is a single change in `mise.toml` (and the Dockerfile that
-  consumes it).
+- Upgrading a tool version is a single change in its declaration (and the Dockerfile that
+  consumes it); for a PyPI tool, `make py-lock` then regenerates the lockfile.
 
 ### Negative Consequences
 
@@ -86,7 +88,8 @@ approach is editor-agnostic.
 
 - Toolchain execution rules (including the "never bypass the container" constraint):
   [`docs/rules.md`](../rules.md) § "Toolchain Execution Rules".
-- Tool versions declared in: [`mise.toml`](../../mise.toml).
+- Tool versions declared in: [`mise.toml`](../../mise.toml), and [`python/`](../../python/)
+  for PyPI tools.
 - Container service definitions: [`docker-compose.yaml`](../../docker-compose.yaml)
   (`go_tool_runner`, `node_tool_runner`, `python_tool_runner` — profile `generate`).
 - Docker image / Dockerfile details: [`docker/README.md`](../../docker/README.md).

@@ -203,7 +203,7 @@ sequenceDiagram
 
 ## 4. integrator が実装する箇所（contract-first のエンドポイント手順）
 
-scaffold は **サーバ起動・順序付き middleware チェーン・error handler・DI 配線・`scaffold-*` スキル**を提供する。エンドポイント追加は contract-first 順（OpenAPI 変更が handler/usecase コードに先行する）に従う。
+本プロジェクトは **サーバ起動・順序付き middleware チェーン・error handler・DI 配線・`scaffold-*` スキル**を提供する。エンドポイント追加は contract-first 順（OpenAPI 変更が handler/usecase コードに先行する）に従う。
 
 ```mermaid
 flowchart LR

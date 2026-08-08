@@ -16,6 +16,7 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/docker` : compose プロジェクト / ホストポート定義・Dockerfile Lint（hadolint）・image digest 固定
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
+- `.makefiles/python` : PyPI ツールの lockfile 生成
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
 - `.makefiles/gen` : 各種生成処理の一括実行
 - `.makefiles/github` : GitHub 初期設定 / リリース / ラベル / ルール設定
@@ -24,7 +25,7 @@ Make ターゲットは主に以下の単位で整理されています。
 
 - ターゲット名はハイフン区切りの小文字（`make new-migrate-<name>`、`make gen-api`）
 - ターゲットは 2 種類:
-  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行。ただし一部はホスト上のツールを解決する（`lint` / `fix` の `golangci-lint`、`actions-zizmor` の `zizmor`、`npm-cooldown-audit`、`go-cooldown-gate` / `go-cooldown-audit`、`mise-cooldown-gate` / `mise-cooldown-audit`）。tool-runner が Alpine であり、上流が musl ビルドを配布していないためである。これは規約の例外ではなく [ツールチェイン実行ルール](../docs/ja/rules.ja.md#ツールチェイン実行ルール) が定める最終手段であり、供給は `make install-tools` が担い、イメージが担うはずだった再現性は `mise.toml` のピンが引き受ける
+  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行。ただし一部はホスト上のツールを解決する（`lint` / `fix` の `golangci-lint`、`actions-zizmor` の `zizmor`、`npm-cooldown-audit`、`go-cooldown-gate` / `go-cooldown-audit`、`tool-cooldown-gate` / `tool-cooldown-audit`）。tool-runner が Alpine であり、上流が musl ビルドを配布していないためである。これは規約の例外ではなく [ツールチェイン実行ルール](../docs/ja/rules.ja.md#ツールチェイン実行ルール) が定める最終手段であり、供給は `make install-tools` が担い、イメージが担うはずだった再現性は `mise.toml` のピンが引き受ける
   - **`-ci` ターゲット**: CI ランナー、またはツールをローカルインストール済みの開発者向け低レベルコマンド
 - すべて `.PHONY` 指定し、末尾 `##` コメントで `make help` 出力に載せること
 
@@ -83,7 +84,7 @@ app プロジェクトの使い捨て `api_server` コンテナ内（`make job` 
 
 pull-ack worker を起動します。`NAME` は worker 名（必須）、`ARGS` は任意です。
 
-> スキャフォールドは既定で worker を1つも登録しません（`WorkerModule()` は空の seam）。
+> 既定では worker が 1 つも登録されていません（`WorkerModule()` は空の seam）。
 > そのため実 worker を配線するまでは `unknown worker` で失敗します。worker 追加後の
 > ローカル動作確認用の起動口として置いています。
 
@@ -124,7 +125,7 @@ DB 操作全般を扱うターゲット群です。
 | `make db-init` | 所有している local / test データベースの初期化をまとめて実行します。 | `db-init-local` と `db-init-test` を順に呼び出します。 |
 | `make db-init-local` | 所有している local データベースを初期化します。 | `db-local-migrate-down` → `db-local-migrate-up` → `db-local-seed` を実行します。 |
 | `make db-init-test` | 所有している test データベースを初期化します。 | `db-test-migrate-down` → `db-test-migrate-up` → `db-test-seed` を実行します。 |
-| `make require-db-owner` | この checkout が所有するデータベースがあることを検証します。 | データベース名を解決する全ターゲットの前提条件です。DB スロットを持たないリンク worktree では、主 checkout の `local` / `test` へフォールバックせず失敗します。`docs/ja/maintenance/db-worktree-pool.ja.md` を参照。 |
+| `make require-db-owner` | この checkout が所有するデータベースがあることを検証します。 | データベース名を解決する全ターゲットの前提条件です。DB スロットを持たないリンク worktree では、主 checkout の `local` / `test` へフォールバックせず失敗します。`docs/ja/maintenance/db-worktree-pool.ja.md` を参照。判定の実体は `internal/cli/dbslot` にあり、git 実行ファイルが無い場合と git リポジトリでない場合は素通り、git リポジトリではあるのに構成を読み取れない場合は失敗します。 |
 
 ### DB マイグレーション関連
 
@@ -133,7 +134,7 @@ DB 操作全般を扱うターゲット群です。
 | `make new-migrate-<name>` | 新しいマイグレーションファイルを生成します。 | `database/migrations` 配下に連番付きの `.up.sql` / `.down.sql` を作成します。 |
 | `make check-migration-up-version` | `up` 側マイグレーションのバージョン重複をチェックします。 | `scripts/migration-lint` を実行します。連番の判定規則はシェル片ではなくそちらにテスト付きで置いています。 |
 | `make check-migration-down-version` | `down` 側マイグレーションのバージョン重複をチェックします。 | `scripts/migration-lint` を実行します。 |
-| `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。マイグレーションが 1 件も無い場合は通過するため、サンプル API の削除でゲートが壊れません。 |
+| `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。マイグレーションが 1 件も無い場合は通過するため、マイグレーション集合が空でもゲートは落ちません。 |
 | `make check-migration-down-gap` | `down` 側マイグレーションの連番ギャップをチェックします。 | `scripts/migration-lint` を実行します。 |
 | `make db-migrate-up DB=<database>` | 指定した DB に対して、全マイグレーションを最新まで適用します。 | 例: `make db-migrate-up DB=local` |
 | `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
@@ -242,14 +243,16 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 | `make md-fix` | Markdown ファイルの Lint 自動修正を実行します。 | `node_tool_runner` コンテナ内で `make md-fix-ci` を呼び出します。 |
 | `make md-mermaid-lint` | ` ```mermaid ` フェンスのみを構文検証します。 | `node_tool_runner` コンテナ内で `make md-mermaid-lint-ci` を呼び出します。 |
 | `make md-skill-lint` | `.claude/**` のスキル / エージェント定義と、その `.codex/**` 対応のみを検証します。 | `node_tool_runner` コンテナ内で `make md-skill-lint-ci` を呼び出します。 |
+| `make md-premise-lint` | fork 後も残る文書が、fork とともに失効する前提に乗っていないことのみを検査します。 | `node_tool_runner` コンテナ内で `make md-premise-lint-ci` を呼び出します。  <!-- boilerplate-only:line --> |
 | `make md-lint-ci` | `markdownlint-cli2` を実行後、mermaid 構文 Lint、スキル定義 Lint の順に実行します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
-| `make md-mermaid-lint-ci` | `scripts/mermaid-lint.mjs`（実 `mermaid.parse`）で ` ```mermaid ` フェンスを検証します。 | CI 用ターゲット。markdownlint は図の文法を見ません。 |
-| `make md-skill-lint-ci` | `scripts/skill-lint.mjs` で `.claude/**` の定義（frontmatter / 対訳ペアの構造 / 参照の実在性）と、`.codex/**` との対応（skill / agent の存在対応、Codex skill の構造）を検証します。 | CI 用ターゲット。markdownlint は記述と実態の一致を見ず、片側の環境にだけ入った skill も他の誰も気づきません。 |
+| `make md-mermaid-lint-ci` | `scripts/mermaid-lint/index.ts`（実 `mermaid.parse`）で ` ```mermaid ` フェンスを検証します。 | CI 用ターゲット。markdownlint は図の文法を見ません。 |
+| `make md-skill-lint-ci` | `scripts/skill-lint/index.ts` で `.claude/**` の定義（frontmatter / 対訳ペアの構造 / 参照の実在性）と、`.codex/**` との対応（skill / agent の存在対応、Codex skill の構造）を検証します。 | CI 用ターゲット。markdownlint は記述と実態の一致を見ず、片側の環境にだけ入った skill も他の誰も気づきません。 |
+| `make md-premise-lint-ci` | [docs/rules.md](../docs/rules.md) の *No premise the document will outlive* を `scripts/premise-lint/index.ts` で機械化したものです。fork 後も残る文書に、そこでは真でなくなる自己参照があると落ちます。探す言い回しは `scripts/premise-lint/rules.ts` が宣言します。 | CI 用ターゲット。前提を書いてよいのは、セットアップが書き換え・削除する `README*` / `docs/get-started/**` と、`boilerplate-only` / `sample-api` マーカーで囲った領域だけです。同じ語の別語義は `scripts/premise-lint/allowances.ts` へ理由付きで宣言します。  <!-- boilerplate-only:line --> |
 | `make md-fix-ci` | `markdownlint-cli2 --fix` で `**/*.md` を直接修正します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
 
 ## `.makefiles/security` 系
 
-CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン、zizmor による Actions 定義の監査）です。image スキャンは CI 専用（`image-scan.yaml`）です。
+CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy の依存 / シークレットスキャン、gitleaks シークレットスキャン、zizmor による Actions 定義の監査）です。image スキャンは CI 専用（`image-scan.yaml`）です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
@@ -260,6 +263,8 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make trivy-config-ci` | `trivy config` を直接実行します。 | CI 用ターゲット。`CRITICAL,HIGH` でゲートし、許容する例外は `.trivyignore.yaml` に置きます。 |
 | `make trivy-license` | 依存ライブラリのライセンスを列挙します。 | `go_tool_runner` コンテナ内で `make trivy-license-ci` を呼び出します。 |
 | `make trivy-license-ci` | `trivy fs --scanners license` を直接実行します。 | CI 用ターゲット。禁止ライセンス方針が未策定のため報告専用で、severity では絞りません。 |
+| `make trivy-secret` | ワーキングツリーのシークレットを Trivy でスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-secret-ci` を呼び出します。 |
+| `make trivy-secret-ci` | `trivy fs --scanners secret` を直接実行します。 | CI 用ターゲット。脆弱性側のターゲットは `--scanners vuln` を明示しているため、これは報告の追加ではなく検査そのものの追加です。severity では絞らず、許容する検出は `.trivyignore.yaml` に path 固定で置きます。gitleaks との重複は意図的で、Trivy は誤検知が少なく、gitleaks の正規表現 / エントロピー網は取りこぼしが少ない、という差を残します。 |
 | `make trivy-image-ci` | ビルド済みイメージの脆弱性をスキャンします。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
 | `make trivy-image-gate-ci` | ビルド済みイメージの修正版のある `CRITICAL` / `HIGH` で失敗します。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
 | `make secret-scan` | ワーキングツリーのシークレットを gitleaks でスキャンします。 | `go_tool_runner` コンテナ内で `make secret-scan-ci` を呼び出します。 |
@@ -268,8 +273,8 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make npm-cooldown-audit` | lockfile のエントリのうち、同階層 `.npmrc` の `min-release-age` を満たさないものを報告します。 | ホスト上で実行。報告のみで、検出があっても 0 で終了します（cooldown の解除は意図的な判断であるため）。 |
 | `make go-cooldown-gate BASE=<ref>` | `BASE` との `go.mod` 差分が、cooldown 窓の内側で公開された **direct** モジュールを追加 / 更新している場合に失敗します。 | ホスト上で実行。`BASE` に既定を置かないのは意図的で、古い base は差分を黙って狭め、gate が何も見ていない状態へ縮退させるためです。Go には解決時の cooldown が無いため、この検査は検知器ではなく防御そのものです。 |
 | `make go-cooldown-audit` | `go.mod` のうち窓の内側で公開されたものを報告し、期限切れ・3 ヶ月超・対象不在のバイパスエントリがあれば失敗します。 | ホスト上で実行。窓そのものではここで落ちません（既存依存は grandfather）が、失効したバイパスでは落ちます。期限は `go.mod` が変わらなくても訪れるためです。 |
-| `make mise-cooldown-gate BASE=<ref>` | `BASE` との `mise.toml` 差分が、backend の窓（GitHub リリース 14 日 / パッケージレジストリ 7 日）の内側で公開されたツール版を pin している場合に失敗します。 | ホスト上で実行。短縮名の backend 解決に `mise` を、未認証では 1 回の実行を賄えない GitHub API のために `GITHUB_TOKEN` を使います。言語ランタイムは受容したリスクとして対象外です。 |
-| `make mise-cooldown-audit` | `mise.toml` のうち窓の内側で公開されたものを報告し、期限切れ・3 ヶ月超・対象不在のバイパスエントリがあれば失敗します。 | ホスト上で実行。grandfather と失効バイパスでの失敗は Go 版と同じです。 |
+| `make tool-cooldown-gate BASE=<ref>` | `BASE` との宣言差分（`mise.toml` と `python/*.in`）が、backend の窓（GitHub リリース 14 日 / パッケージレジストリ 7 日）の内側で公開されたツール版を pin している場合に失敗します。`python/*.in` の宣言と `python/*.txt` の lockfile が別の版を指している場合にも失敗します。 | ホスト上で実行。短縮名の backend 解決に `mise` を、未認証では 1 回の実行を賄えない GitHub API のために `GITHUB_TOKEN` を使います。言語ランタイムは受容したリスクとして対象外です。 |
+| `make tool-cooldown-audit` | 宣言しているツールのうち窓の内側で公開されたものを報告し、期限切れ・3 ヶ月超・対象不在のバイパスエントリがあれば失敗します。 | ホスト上で実行。grandfather と失効バイパスでの失敗は Go 版と同じです。 |
 | `make actions-zizmor` | ワークフロー / composite action の定義を zizmor で監査し、`high` の指摘で失敗します。 | ホスト上で実行。`--offline` なので pre-commit フックはネットワークも `GH_TOKEN` も不要で、オンライン監査は CI に委ねます。例外設定は `.github/zizmor.yml`。 |
 | `make actions-zizmor-sarif-ci` | zizmor の全指摘を SARIF として標準出力へ書き出します。 | CI 用ターゲット。severity で絞らないため code scanning には全体像が残ります。`make -s` で呼ぶこと。 |
 | `make actions-zizmor-gate-ci` | zizmor の `high` の指摘で失敗します。 | CI 用ターゲット。ゲート条件は `actions-zizmor` と同じで、`GH_TOKEN` を要するオンライン監査が加わります。 |
@@ -293,7 +298,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `INFRA_SERVICES` | `database observability garage elasticmq` | 固定ポートでしか動けないため共有するサービス。 |
 | `APP_SERVICES` | `api_server mock_auth_server` | checkout 毎に起動するサービス。 |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | infra 層向けの compose 呼び出し。 |
-| `INFRA_NO_RECREATE` | worktree では `--no-recreate`、それ以外は空 | 他の checkout が使っている共有インフラのコンテナを作り直さずそのまま使います。単一 checkout では空で、compose は従来どおり定義変更へ再収束します。独立した clone を複数持つなど worktree 判定で拾えない構成では明示的に指定してください。 |
+| `INFRA_NO_RECREATE` | worktree では `--no-recreate`、それ以外は空 | 他の checkout が使っている共有インフラのコンテナを作り直さずそのまま使います。単一 checkout では空で、compose は従来どおり定義変更へ再収束します。独立した clone を複数持つなど worktree 判定で拾えない構成では明示的に指定してください。解決は make のパース時ではなく、レシピ内の `db-slot env` が行います。 |
 | `COMPOSE_APP` | `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` | app 層向けの compose 呼び出し。`docker-compose.attach.yaml` が app サービスの接続先を `host.docker.internal` 経由の共有インフラへ差し替えます。 |
 | `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` | `8080` / `2010` | API / mock 認証サーバーのホスト公開ポート。 |
 | `DLV_HOST_PORT` / `PPROF_HOST_PORT` | `2345` / `6060` | dlv デバッグ / pprof のホスト公開ポート。 |
@@ -319,13 +324,15 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gen-bundle-oapi-ci` | `redocly bundle` により `openapi/openapi.gen.yaml` を生成します。 | CI 用ターゲットです。 |
 | `make gen-api-docs-ci` | `redocly build-docs` により `docs/openapi/index.html` を生成します。 | CI 用ターゲットです。 |
 | `make lint-oapi-ci` | `redocly lint openapi/openapi.yaml` を直接実行します。 | CI 用ターゲットです。 |
-| `make lint-oapi-security-ci` | Spectral + OWASP API Security ルールセットで検証します。 | CI 用ターゲット。Spectral が ruleset を `docker/tools/node_modules` から解決するためコンテナを介さず実行します。事前に同ディレクトリで `npm ci` が必要です。 |
+| `make stamp-openapi-version` | リリースブランチ名から `info.version` を書き換えます。 | `node_tool_runner` コンテナ内で `make stamp-openapi-version-ci` を実行します。`REF=release/vX.Y.Z` を取り、未指定なら `GITHUB_REF_NAME` を使います。それ以外の ref は何もしません。 |
+| `make stamp-openapi-version-ci` | `scripts/stamp-openapi-version/index.ts` を直接実行します。 | CI 用ターゲットです。 |
+| `make lint-oapi-security-ci` | Spectral + OWASP API Security ルールセットで検証します。 | CI 用ターゲット。spec だけを見る検査のためにツールランナーのイメージを起こさないので、コンテナを介さず実行します。事前に `pnpm install --dir scripts --frozen-lockfile` が必要です。 |
 | `make gen-mock-auth-oapi` | mock-auth-server の OpenAPI をバンドルし zod スキーマを生成します。 | `node_tool_runner` コンテナ内で `make gen-mock-auth-oapi-ci` を呼び出します。 |
 | `make gen-mock-auth-oapi-docs` | mock-auth-server の OpenAPI から Redoc HTML を生成します。 | `node_tool_runner` コンテナ経由で `docs/openapi/mock-auth-server/index.html` を出力します。 |
 | `make lint-mock-auth-oapi` | mock-auth-server の OpenAPI 定義を `redocly lint` で検証します。 | `node_tool_runner` コンテナ内で `make lint-mock-auth-oapi-ci` を呼び出します。 |
-| `make gen-mock-auth-oapi-ci` | `docker/mock-auth-server` で `npm run gen`（redocly bundle + orval）を実行します。 | CI 用ターゲットです。 |
-| `make gen-mock-auth-oapi-docs-ci` | `docker/mock-auth-server` で `npm run gen:docs`（redocly build-docs）を実行します。 | CI 用ターゲットです。 |
-| `make lint-mock-auth-oapi-ci` | `docker/mock-auth-server` で `npm run lint:oapi` を実行します。 | CI 用ターゲットです。 |
+| `make gen-mock-auth-oapi-ci` | `mock-auth-server` で `npm run gen`（redocly bundle + orval）を実行します。 | CI 用ターゲットです。 |
+| `make gen-mock-auth-oapi-docs-ci` | `mock-auth-server` で `npm run gen:docs`（redocly build-docs）を実行します。 | CI 用ターゲットです。 |
+| `make lint-mock-auth-oapi-ci` | `mock-auth-server` で `npm run lint:oapi` を実行します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/load` 系
 
@@ -356,6 +363,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 
 帯は `GOBP_LOAD=full|low|ci-first` で明示的に上書きできます（例: 残りは委譲したまま重いゲートを 1 つだけ
 手で回すなら `make lint GOBP_LOAD=low`）。閾値は `GOBP_LOW_THRESHOLD` と `GOBP_CI_FIRST_THRESHOLD` です。
+これらの既定値と帯の解決そのものは `scripts/load-band` にあり、make のパース時ではなくゲートのレシピ実行時に評価されます。
 
 **ゲートを `.lefthook.yaml` に個別に並べず束ねている理由**: lefthook はフック内の commands を並列に
 走らせるため、ゲートごとにエントリを置くと、窓の数に**加えて**ゲートの数だけ負荷が乗算されます。束ねる
@@ -386,6 +394,7 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make lint` | GolangCI-Lint による静的解析を実行します。 | なし |
 | `make fix` | GolangCI-Lint の自動修正を実行します。 | なし |
 | `make tidy-lib` | Go モジュール依存関係を整理し、`vendor` を更新します。 | `go mod tidy` と `go mod vendor` を順に実行します。 |
+| `make vendor-sync` | `vendor` が `go.mod` からずれていれば再生成します。 | Go 自身の vendor 整合検査が失敗したときだけ `go mod vendor` を実行するため、通常は何もしません。`post-merge` / `post-checkout` フックから呼ばれます。`vendor` は gitignore されているため、他人の `go.mod` 変更を受け取っただけの checkout が壊れる側になります。 |
 
 ### Go テスト関連
 
@@ -408,16 +417,44 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 | `make sync-versions` | `mise.toml` の go / node / python バージョンを `go.mod` と Dockerfile の `FROM` に反映します。 | `docs/maintenance/go-upgrade.md` の手順で参照されます。`scripts/sync-versions` を実行します。 |
 
+## `.makefiles/node` 系
+
+リポジトリの補助スクリプトは TypeScript で、`scripts/node_modules/.bin` の `tsx` 経由で実行します。
+判定ロジックを `scripts/lib/**` に置いてあるのは、検査対象のリポジトリ無しでテストできるようにするためです。
+これらの一部はゲートであり、壊れたときはエラーではなく「違反なし」を報告する向きに倒れます。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make scripts-test` | `scripts/**/*.ts` の単体テストをカバレッジ付き・キャッシュ無効で実行します。 | `node_tool_runner` コンテナ内で `make scripts-test-ci` を実行します。`scripts/vitest.config.mts` の閾値を下回ると失敗します。 |
+| `make scripts-test-cached` | 同じテストをキャッシュ有効・カバレッジ無しで実行します。 | `node_tool_runner` コンテナ内で `make scripts-test-cached-ci` を実行します。`pre-push` 向けの系統です。 |
+| `make scripts-typecheck` | `scripts/**/*.ts` の型検査を実行します。 | `node_tool_runner` コンテナ内で `make scripts-typecheck-ci` を実行します。 |
+| `make scripts-test-ci` | `pnpm --dir scripts run test`（`vitest run --coverage --no-cache`）を実行します。 | CI 用ターゲットです。 |
+| `make scripts-test-cached-ci` | `pnpm --dir scripts run test:cached`（`vitest run`）を実行します。 | CI 用ターゲットです。 |
+| `make scripts-typecheck-ci` | `pnpm --dir scripts run typecheck`（`tsc --noEmit`）を実行します。 | CI 用ターゲットです。 |
+
+## `.makefiles/python` 系
+
+このリポジトリが PyPI から入れる CLI ツールは `python/*.in` で宣言し、パッケージごとの sha256 付きで `python/*.txt` に固定します（[ADR-0075](../docs/adr/0075-mise-ssot-drift-gate.md)）。ここのターゲットはその lockfile を再生成するものです。`.in` から直接 install する経路はありません。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make py-lock` | `python/*.in` から `python/*.txt` をすべて再生成します。 | `python_tool_runner` コンテナ内で `make py-lock-ci` を実行します。pin を変えたら実行し、両方のファイルをコミットしてください。 |
+| `make py-lock-ci` | 宣言ごとに `uv pip compile --generate-hashes --universal` を実行します。解決の対象は `mise.toml` が宣言する Python のバージョンです。 | CI 用ターゲットです。 |
+
 ## `.makefiles/docs` 系
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make gen-portal-docs` | Portal 用ドキュメントを生成します。 | なし |
 | `make gen-docs-json` | Portal 用ドキュメントリンク JSON を生成します。 | なし |
-| `make gen-portal-build` | Portal フロントエンド（`docs/portal/src/main.jsx`）を esbuild で `bundle.js` / `bundle.css` にバンドルします。 | なし |
+| `make gen-portal-build` | Portal フロントエンド（`docs-viewer/`）を Vite で `docs/portal/` へビルドします。 | なし |
+| `make portal-test` | `docs-viewer/` のテストを実行します。 | なし |
+| `make portal-typecheck` | `docs-viewer/` の型検査を実行します。 | なし |
 | `make gen-portal-docs-ci` | Node.js スクリプトで Portal 用ドキュメントを直接生成します。 | CI 用ターゲットです。 |
 | `make gen-docs-json-ci` | Node.js スクリプトで Portal 用 JSON を直接生成します。 | CI 用ターゲットです。 |
-| `make gen-portal-build-ci` | esbuild を直接実行して Portal フロントエンドをバンドルします。 | CI 用ターゲットです。 |
+| `make gen-portal-build-ci` | pnpm を直接実行して Portal フロントエンドをビルドします。 | CI 用ターゲットです。 |
+| `make portal-test-ci` | pnpm を直接実行して Portal フロントエンドのテストを実行します。 | CI 用ターゲットです。 |
+| `make portal-typecheck-ci` | pnpm を直接実行して Portal フロントエンドの型検査を実行します。 | CI 用ターゲットです。 |
 | `make gen-godoc` | godoc の静的 HTML を `docs/godoc/` に生成します。 | なし |
 | `make gen-godoc-ci` | godoc-static を直接実行して静的 HTML を生成します。 | CI 用ターゲットです。 |
 
@@ -449,12 +486,14 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make actions-node-lint-ci` | node の 3 検査（secret / フェンス / 打ち切り）を直接実行します。 | CI 用ターゲット。 |
 | `make actions-actionlint-ci` | `actionlint` を直接実行します。 | CI 用ターゲット。 |
 | `make actions-shellcheck-ci` | `scripts/actions-shellcheck` を直接実行します。 | CI 用ターゲット。 |
-| `make actions-comment-secret-lint-ci` | `upsert-pr-comment` を使うジョブに `GITHUB_TOKEN` 以外の secret が渡っていれば失敗します（`scripts/pr-comment-secret-lint.mjs`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
-| `make actions-comment-fence-lint-ci` | `run:` ブロックが PR コメント本文を固定長 Markdown フェンスで囲んでいる場合、または複製された `fence_for` の実装が食い違う場合に失敗します（`scripts/pr-comment-fence-lint.mjs`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
-| `make actions-cutoff-lint-ci` | ジョブに `timeout-minutes` が無い場合、または `upsert-pr-comment` を呼ぶステップの `if:` がキャンセルされたジョブから到達できない場合に失敗します（`scripts/actions-cutoff-lint.mjs`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
+| `make actions-comment-secret-lint-ci` | `upsert-pr-comment` を使うジョブに `GITHUB_TOKEN` 以外の secret が渡っていれば失敗します（`scripts/pr-comment-secret-lint/index.ts`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
+| `make actions-comment-fence-lint-ci` | `run:` ブロックが PR コメント本文を固定長 Markdown フェンスで囲んでいる場合、または複製された `fence_for` の実装が食い違う場合に失敗します（`scripts/pr-comment-fence-lint/index.ts`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
+| `make actions-cutoff-lint-ci` | ジョブに `timeout-minutes` が無い場合、または `upsert-pr-comment` を呼ぶステップの `if:` がキャンセルされたジョブから到達できない場合に失敗します（`scripts/actions-cutoff-lint/index.ts`）。 | CI 用ターゲット。規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。 |
 | `make pin-actions-resolve` | 各 `uses:` のタグを commit SHA に解決し `.github/actions-pin.toml` lockfile を更新します。 | `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14・0 で無効）より新しい解決先を quarantine。 |
 | `make pin-actions-apply` | lockfile を元に `uses:` を `@<sha> # <tag>` へ固定します。 | なし |
 | `make pin-actions-check` | `uses:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
+| `make egress-apply` | `.github/egress.toml` を各ジョブのインライン `allowed-endpoints` ブロックへ反映します。 | クラスの意味と追加手順は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) の「ランナーのハードニング」節。 |
+| `make egress-check` | 各インライン `allowed-endpoints` が SSOT 通りか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
 
 ### コミットメッセージ Lint 関連
 
@@ -472,7 +511,7 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make delete-all-labels` | GitHub リポジトリ上の既存ラベルをすべて削除します。 | なし |
 | `make create-default-labels` | `.github/settings/labels.json` をもとに、デフォルトラベルを作成します。 | なし |
 | `make apply-branch-protection` | `.github/settings/branch-protection.json` をもとに、対象リポジトリへブランチルールセットを適用します。 | 一方向の適用です。適用後に JSON を再適用する仕組みも実ルールセットと突き合わせる仕組みも無いため、このファイルが表すのは強制されている状態ではなく意図です。`.github/settings/README.ja.md` を参照してください。 |
-| `make enable-workflows` | `disabled_fork` 状態のワークフローを一括で有効化します。 | 冪等です。fork / テンプレート由来のリポジトリは全ワークフローが無効の状態で作られます。 |
+| `make enable-workflows` | `disabled_fork` 状態のワークフローを一括で有効化します。 | 冪等です。新規に作成されたリポジトリは全ワークフローが無効の状態で始まります。 |
 
 ### GitHub リポジトリ初期化関連
 
@@ -492,18 +531,26 @@ Trivy スキャン）は放置します。ループで回すものではない�
 `prune-release-notes`）が担い、ラベル・ルールセット・ワークフローの各手順は個別の `make`
 ターゲットのまま残しているため、このターゲットは両者の連鎖です。
 
-新規リポジトリを boilerplate として立ち上げる際の初期セットアップ用コマンドです。
+新規リポジトリを立ち上げる際の初期セットアップ用コマンドです。
 
 #### セットアップ補助コマンド
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make setup-replace-module OLD_MODULE=<old> NEW_MODULE=<new>` | Go モジュール名を一括置換します。 | `node_tool_runner` を使用して `go.mod` や import パスを更新します。 |
-| `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。 |
-| `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。 |
-| `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。 |
-| `make setup-replace-codeowners OWNERS='<owners>'` | `.github/CODEOWNERS` の全ルールの所有者を一括置換します。 | `@user` / `@org/team` / メールアドレスを指定でき、空白区切りで複数指定できます。コメント行は対象外なので、ヘッダーの記載例は書き換わりません。 |
+| `make setup-replace-module OLD_MODULE=<old> NEW_MODULE=<new>` | Go モジュール名を一括置換します。 | `node_tool_runner` を使用して `go.mod` や import パスを更新します。  <!-- setup-localize:line --> |
+| `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。  <!-- setup-localize:line --> |
+| `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。  <!-- setup-localize:line --> |
+| `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。  <!-- setup-localize:line --> |
+| `make setup-replace-codeowners OWNERS='<owners>'` | `.github/CODEOWNERS` の全ルールの所有者を一括置換します。 | `@user` / `@org/team` / メールアドレスを指定でき、空白区切りで複数指定できます。コメント行は対象外なので、ヘッダーの記載例は書き換わりません。  <!-- setup-localize:line --> |
+| `make setup-verify` | 初期化が当たったことを検証し、通れば初期化ツールを撤去します。 | `node_tool_runner` で `scripts/setup/verify-setup` を実行します。Phase 5 の値を環境変数で渡します。  <!-- setup-localize:line --> |
+| `make setup-remove-boilerplate-identity` | ボイラープレートである間だけ成り立つ記述を削除します。 | `node_tool_runner` でリポジトリを走査して `boilerplate-only` マーカーをすべて解決し、ボイラープレート限定の規約ドキュメントを削除したうえで、ツール自身も撤去します。`DRY_RUN=1` でプレビューできます。 <!-- boilerplate-only:line --> |
 | `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`reset-mock-auth-users` → `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint` を実行します。DB 再構築により削除済みテーブルが生成モデルに残らず、`tidy-lib` によりサンプルAPIだけが使っていた直接依存が go.mod から落ちます。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
+
+### ベースブランチ解決関連
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make base-branch` | 最新のリリースライン(`release/vX.Y.Z`)のブランチ名を 1 行で出力します。 | `git ls-remote` で `origin` の実状態を読むため(`scripts/base-branch`)、`git fetch` では更新されないローカルの `refs/remotes/origin/HEAD` が古くても、GitHub のデフォルトブランチが前のリリースラインを指したままでも答えは変わりません。「最新」の定義はコミット日時ではなくバージョン番号の数値比較で、その理由はパッケージコメントにあります。出力は装飾を持たないので `$(make base-branch)` でそのまま受けられます。プルリクエストが既にある場合はその `baseRefName` が正で、これはその fallback です。 |
 
 ### リリースブランチ関連
 

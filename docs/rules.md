@@ -449,6 +449,7 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
 - **Which side is the error depends on what the document does.** A doc that *describes* — a package README, a command reference, a guide — is corrected to match the code. A doc that *governs* — `docs/rules.md`, `docs/architecture.md`, `docs/adr/**` — is not: it states the intent the code is meant to satisfy, so a disagreement is as likely to be a defect in the code. Report the disagreement; changing a governing document to match what was built is a decision for this repository's architect or tech lead, not a drift fix.
 - **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
 - **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
+- **No premise the document will outlive** — the mirror image of *No rot*: rot is a past that stopped mattering, this is a present that will stop holding. Do not rest a statement in an evergreen document on a premise that is scheduled to lapse — the repository's current positioning, its distribution form, the lifecycle stage it is in ("we are still in PoC", "the demo data is present"). Such a statement is correct when written and no later review catches it, because the document never changes — reality does. Keep the **general form** of the rule in the evergreen document, and put the premise-bound part where the premise dies: a document that is discarded or rewritten at the moment it lapses. **Collect those parts into one document rather than marking them where they stand** — a region cut out of prose leaves the text on either side to be repaired, and every later edit near the cut is a fresh chance to break it unnoticed. Cross-references into that document must each be a single self-contained line, removable on its own.
 - **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
 - **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
@@ -485,8 +486,11 @@ Before generating code, AI agents must refer to the following documents.
 
 > Rationale: [ADR-0075](adr/0075-containerized-pinned-toolchain.md), [ADR-0076](adr/0076-mise-ssot-drift-gate.md).
 
-Tool versions are pinned in `mise.toml` (the single source of truth) and executed in the
-containerized tool-runners so they stay reproducible across machines.
+Tool versions are pinned in `mise.toml` (the single source of truth for everything mise resolves)
+and executed in the containerized tool-runners so they stay reproducible across machines. Tools
+installed from PyPI are declared in `python/*.in` and locked with per-package hashes in
+`python/*.txt` instead, because a mise pin leaves their transitive dependencies floating
+([ADR-0076](adr/0076-mise-ssot-drift-gate.md)).
 
 - Tool execution — lint / format / codegen / doc generation / commit-message lint / etc. — runs
   through the `make` targets that execute inside the tool-runners (`go_tool_runner` /

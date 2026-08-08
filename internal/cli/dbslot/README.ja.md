@@ -9,10 +9,12 @@
 ## コマンド
 
 ```text
-db-slot acquire     # 空きスロットをリースし wt<N> DB を作成/設定して .gobp-db-slot を書き出す
-db-slot release     # スロットの app コンテナを停止しリースを解放（DB は warm 保持）
-db-slot heartbeat   # 保持スロットのリース heartbeat を更新
-db-slot status      # スロット占有状況を表示
+db-slot acquire        # 空きスロットをリースし wt<N> DB を作成/設定して .gobp-db-slot を書き出す
+db-slot release        # スロットの app コンテナを停止しリースを解放（DB は warm 保持）
+db-slot heartbeat      # 保持スロットのリース heartbeat を更新
+db-slot status         # スロット占有状況に続けて、この checkout の解決済み値を表示
+db-slot env            # 解決済み値を make が eval するための KEY=VALUE として出力
+db-slot require-owner  # この checkout がデータベースを所有していなければ失敗（終了コードが interface）
 ```
 
 通常は make ラッパ（`make slot-acquire` / `slot-free` / `slot-release` / `slot-status`）を使う。`slot-acquire` はリースした DB のスキーマ再構築も行い、`slot-release` は worktree ごと撤収する。
@@ -24,6 +26,8 @@ db-slot status      # スロット占有状況を表示
 - **使用中判定** — stale スロットを reclaim する前に、app プロジェクト（`gobp-wt-N`）の稼働中コンテナと、その DB への接続の両方を確認する。接続プールはアイドルで空になるため接続確認だけでは serve 中の worktree を見落とし、コンテナ確認だけではホスト実行の `go test` を捉えられない。
 - **Compose**（`Compose` / `ExecCompose`）— 共有 DB を固定 infra プロジェクトで起動（`--wait --no-recreate`）し、release 時にスロットの app プロジェクト（`gobp-wt-N`）を `docker-compose.yaml` + `docker-compose.attach.yaml` で停止する。`--no-recreate` は、他の checkout が使っているコンテナを `acquire` が置き換えないためのもの。compose の config ハッシュは bind mount の絶対パスを含むため、同じコミットでも worktree が違えば一致しない。make 側の `INFRA_NO_RECREATE` と違いここでは条件を持たない。スロットを取ること自体が、共有インフラを他の checkout と分け合うという宣言だからである。
 - **スロットファイル** — `acquire` が `.gobp-db-slot`（gitignore・`make` が `-include` で読む `KEY=VALUE`）を書き出し、`.makefiles/docker/compose.mk` の既定値を上書きする。内容は `SLOT`、`DB_NAME_LOCAL` / `DB_NAME_TEST`、スロット相対のホスト公開ポート `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` / `DLV_HOST_PORT` / `PPROF_HOST_PORT`、`COMPOSE_PROJECT_NAME`（共有 infra プロジェクト）、`SERVE_PROJECT`（`gobp-wt-N`＝app 層プロジェクト）。
+- **解決済み値**（`Resolver`）— *スロットの関数*であるものは `make` ではなくここで導出する: `DB_LOCAL` / `DB_TEST`、app 層の compose プロジェクト、mock-auth の issuer URL、そして `INFRA_NO_RECREATE`。1 つの導出が `db-slot env`（`make` が eval する値）と `db-slot status`（人間が読む値）の両方を賄うため、表示される値と実際に使われる値が食い違うことはない。`DB_LOCAL` / `DB_TEST` だけは `.gobp-db-slot` を読む `make` 変数としても保持する。target-specific な代入（`db-local-migrate-up: DB=$(DB_LOCAL)`）はパース時に評価され、どのレシピよりも先に決まるからである。
+- **所有権ガード**（`RequireOwner`）— `make require-db-owner` の実体で、「スロットを持たないリンク worktree」を検出する。依拠する区別は 2 値ではなく 3 値である。**git が無い**（ツールランナーのコンテナ）と**リポジトリでない**は素通りし、**リポジトリではあるのに構成を読み取れない**場合は失敗する。最後の 1 つを「git が無い＝worktree ではない」へ畳み込むことが、リンク worktree を黙って共有 `local` / `test` へフォールバックさせる原因になる。リポジトリか否かは、ローカライズされる git のエラーテキストではなく `.git` を遡って探すことで判定する。
 - **env ガード** — `APP_ENV` が deploy 系（`dev` / `stg` / `prd`）のときは実行を拒否する。pool は DB を作成/破棄するため dev/test 専用ツールに留める（`config.IsLocalClassEnv`）。
 
 ## Test Strategy
@@ -31,6 +35,7 @@ db-slot status      # スロット占有状況を表示
 上位層の Testing Policy は、判断ロジックをダブルに対してテストできるよう、依存をすべて seam の裏へ押し出す。ここでも判断ロジックはそれに従う — ただし seam の実装自体はアダプタであり、アダプタは実物を駆動して初めて価値を持つ。したがって各コンポーネントは、その subject が実際に存在する層でテストする。
 
 - **`Pool`**（判断ロジック） — 生成 mock（`MockDBAdmin` / `MockCompose`）に対する単体テスト。Postgres にも docker にも到達しない。acquire / release / reclaim の全分岐をここで固定する。「片方だけでは取りこぼす」ことこそが要点である 2 段構えの in-use 判定も含む。
+- **`Resolver`**（判断ロジック） — スタブ `GitProbe` に対する単体テスト。1 台のマシンから git の 4 文脈すべてに到達する唯一の方法である。実機は常にそのうちのちょうど 1 つでしかなく、危険なケース（git が読み取れないリポジトリ）は望んだときに再現できない。
 - **`Registry`** — `t.TempDir()` 上の実ファイルシステムプリミティブ。subject が `os.Mkdir` / `os.Rename` の**原子性そのもの**なので、FS を fake にしても何も証明できない。二重リースはまさに fake が覆い隠してしまう類の欠陥である。
 - **`ExecCompose`** — `PATH` の先頭に仕込んだスタブ `docker` が、組み立てられた引数列と `COMPOSE_PROJECT_NAME` を記録する。実 compose を走らせずにコマンド構築と環境変数注入を固定する。`PATH` への `t.Setenv` を使うため、これらのケースは `t.Parallel()` と両立しない。
 - **`PgxAdmin`** — `DBAdmin` の唯一の実装。共有 Postgres（`localhost:5432`）に対してテストする。その SQL が実際に実行できることを証明する唯一の網である。到達不能ホストのケースはサーバ無しでエラー経路を固定し、作成した DB は cleanup で drop するので実行を繰り返せる。

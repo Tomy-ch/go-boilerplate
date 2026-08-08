@@ -33,7 +33,7 @@ type prodSubject struct {
 	candidates []string // 許容するテスト関数名（いずれか 1 つでも存在すれば充足）
 }
 
-// TestUnitTestMappingCompleteness は、production の全 func / method が、命名規約に一致する
+// TestUnitTestMappingCompleteness は、production code の全 func / method が、命名規約に一致する
 // TestXxx を同一パッケージに持つことを機械検証する。テスト対象と TestXxx の 1:1 を強制し、
 // レビュー頼みの見落とし（例: keyFunc の防御分岐が呼び出し側テストに埋もれて専用テストが
 // 無い状態、ルート登録だけを行う分岐なしの BindHandler が未テストのまま残る状態）を
@@ -48,7 +48,7 @@ type prodSubject struct {
 // という意味ではないため、候補名の TestXxx を 2 つ以上持つ subject も違反とする。
 // 逆方向の検査はここまでで、候補名に一致しない TestXxx が同じ subject を対象にしている
 // 状態（1 シンボルが規約外の名前のテストと分業している状態）は検知できない。テスト名から
-// subject を逆引きする手段が無く、production に対応シンボルを持たない TestXxx は
+// subject を逆引きする手段が無く、production code に対応シンボルを持たない TestXxx は
 // docs/testing-conventions.md §1 が by construction 正当と認めているため、そこまで踏み込むと
 // 検出のほとんどが誤検知になる。その形は test-review のレビューが受け持つ。
 func TestUnitTestMappingCompleteness(t *testing.T) {
@@ -63,23 +63,30 @@ func TestUnitTestMappingCompleteness(t *testing.T) {
 	t.Logf("total 1:1 violations: %d", len(violations))
 
 	require.Empty(t, violations,
-		"production 関数/メソッドと TestXxx の 1:1 が崩れている。"+
+		"production code の関数/メソッドと TestXxx の 1:1 が崩れている。"+
 			"対応する TestXxx が無い場合は専用テストを追加すること。検証不可能であるために到達できない"+
 			"対象に限り、命名規約どおりの TestXxx を宣言し、なぜ検証不可能かを t.Skip の理由文に書いて"+
 			"明示できる。候補名の TestXxx が重複している場合は、どちらか 1 本へケースを統合すること。")
 }
 
-// scanPackages は internal / pkg 配下を走査し、ディレクトリ単位で
-// production subject と TestXxx 名を収集して返す。
+// scanPackages は internal / pkg / scripts 配下を走査し、ディレクトリ単位で
+// production code の subject と TestXxx 名を収集して返す。
+//
+// scripts を含めるのは、そこに置かれた Go ツールがゲート（供給網ピン・連番検査・カバレッジ
+// 閾値・負荷帯の解決）であり、壊れ方が「何も検査しなくなる」方向に出るためである。
+// カバレッジ母数からは GO_TEST_EXCLUDE で外れているので、1:1 を欠くと対応の有無すら誰も見ない。
 func scanPackages(t *testing.T) (map[string][]prodSubject, map[string]map[string]struct{}) {
 	t.Helper()
 	prodByDir := map[string][]prodSubject{}
 	testsByDir := map[string]map[string]struct{}{}
 
-	for _, root := range moduleSubdirs(t, "internal", "pkg") {
+	for _, root := range moduleSubdirs(t, "internal", "pkg", "scripts") {
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, werr error) error {
 			if werr != nil {
 				return werr
+			}
+			if serr := skipDependencyTree(d); serr != nil {
+				return serr
 			}
 			if d.IsDir() || !strings.HasSuffix(path, ".go") {
 				return nil
@@ -96,7 +103,7 @@ func scanPackages(t *testing.T) (map[string][]prodSubject, map[string]map[string
 	return prodByDir, testsByDir
 }
 
-// indexGoFile は 1 ファイルを分類する。_test.go は TestXxx 名を、production は分岐持ち subject を収集する。
+// indexGoFile は 1 ファイルを分類する。_test.go は TestXxx 名を、production code は分岐持ち subject を収集する。
 func indexGoFile(path string, lines []string, prodByDir map[string][]prodSubject, testsByDir map[string]map[string]struct{}) {
 	dir := filepath.Dir(path)
 	if strings.HasSuffix(path, "_test.go") {
@@ -269,7 +276,10 @@ func Test_collectSubjects(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split("package p\n\nfunc (s server) Name() string {\n\treturn s.name\n}\n", "\n")
 
-			assert.Len(t, collectSubjects(lines, "p.go"), 1)
+			subs := collectSubjects(lines, "p.go")
+
+			require.Len(t, subs, 1)
+			assert.Equal(t, "server.Name", subs[0].name)
 		})
 
 		t.Run("宣言を含まないソースからは何も収集しない", func(t *testing.T) {
@@ -287,7 +297,7 @@ func Test_indexGoFile(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("productionファイルはsubjectとしてディレクトリ単位に収集する", func(t *testing.T) {
+		t.Run("production code のファイルは subject としてディレクトリ単位に収集する", func(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split("package p\n\nfunc newServer() *Server {\n\treturn nil\n}\n", "\n")
 			prodByDir := map[string][]prodSubject{}
@@ -295,7 +305,9 @@ func Test_indexGoFile(t *testing.T) {
 
 			indexGoFile(filepath.Join("internal", "p", "server.go"), lines, prodByDir, testsByDir)
 
-			require.Len(t, prodByDir[filepath.Join("internal", "p")], 1)
+			prod := prodByDir[filepath.Join("internal", "p")]
+			require.Len(t, prod, 1)
+			assert.Equal(t, "newServer", prod[0].name)
 			assert.Empty(t, testsByDir)
 		})
 
@@ -475,6 +487,17 @@ func Test_collectViolations(t *testing.T) {
 			assert.Equal(t, "server.go: newServer → 候補名の TestXxx が重複: TestnewServer / Test_newServer", violations[0])
 		})
 	})
+}
+
+// skipDependencyTree は node_modules 配下を走査から外す。npm / pnpm が展開する依存には Go 実装を
+// 同梱するパッケージがあり（ESLint が引く flatted の golang/）、第三者のコードをこのリポジトリの
+// production code として数えてしまう。go の走査系は node_modules を特別扱いしないため、
+// .golangci.yaml と GO_TEST_EXCLUDE が持つのと同じ除外を、ファイルを直に歩く側にも置く。
+func skipDependencyTree(d fs.DirEntry) error {
+	if d.IsDir() && d.Name() == "node_modules" {
+		return fs.SkipDir
+	}
+	return nil
 }
 
 // moduleSubdirs は、モジュールルート配下の指定サブディレクトリの絶対パス群を返す。

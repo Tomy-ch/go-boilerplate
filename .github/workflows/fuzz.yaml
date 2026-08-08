@@ -14,7 +14,7 @@ name: Fuzz
 
 on:
   schedule:
-    # Monday 11:00 UTC — the slot after sast.yaml (10:00), continuing the stagger
+    # Monday 11:00 UTC — the slot after opengrep.yaml (10:00), continuing the stagger
     # that #677 established.
     - cron: '0 11 * * 1'
   workflow_dispatch:
@@ -50,7 +50,39 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

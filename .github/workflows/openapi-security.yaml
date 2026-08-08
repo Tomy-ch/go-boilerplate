@@ -21,8 +21,9 @@ on:
       - '.github/workflows/openapi-security.yaml'
       - '.spectral.yaml'
       - 'openapi/**'
-      - 'docker/tools/package.json'
-      - 'docker/tools/package-lock.json'
+      - 'scripts/package.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'scripts/pnpm-workspace.yaml'
   push:
     branches:
       - 'release/*'
@@ -54,7 +55,39 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -68,17 +101,17 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # The Node version is pinned in mise.toml (SSOT), same as every other
-      # Node-using workflow here.
-      - name: Install node
-        run: mise install node
+      # The Node and pnpm versions are pinned in mise.toml (SSOT), same as every
+      # other Node-using workflow here.
+      - name: Install node and pnpm
+        run: mise install node npm:pnpm
 
-      # --ignore-scripts blocks the postinstall RCE path, matching how the tool
-      # runner image installs the same manifest. The Spectral CLI and the OWASP
-      # ruleset are pinned in docker/tools/package-lock.json.
+      # pnpm-workspace.yaml declares which dependencies may run lifecycle scripts
+      # (strictDepBuilds + allowBuilds), which blocks the postinstall RCE path and
+      # matches how the tool runner image installs the same manifest. The Spectral
+      # CLI and the OWASP ruleset are pinned in scripts/pnpm-lock.yaml.
       - name: Install OpenAPI tooling
-        run: npm ci --ignore-scripts
-        working-directory: docker/tools
+        run: pnpm install --dir scripts --frozen-lockfile
 
       # spectral exits non-zero on an error-severity finding, so the status is
       # captured and the PR comment is produced either way; the final step turns

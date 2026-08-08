@@ -80,10 +80,10 @@ ENTRYPOINT []
 CMD []
 
 # ------------------------------
-# Node ツールボックス：redocly / markdownlint-cli2 を mise.toml のバージョンで提供
+# Node ツールボックス：redocly / markdownlint-cli2 / pnpm を mise.toml のバージョンで提供
 # Node ランタイムは公式 node:X.Y-alpine（musl 対応のプリビルド）を使用。
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
-# 補助スクリプトが依存する npm パッケージをローカル node_modules にインストールしておく
+# 補助スクリプトが依存するパッケージを pnpm でローカル node_modules にインストールしておく
 # ------------------------------
 FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS node_tools
 
@@ -114,17 +114,32 @@ RUN --mount=type=secret,id=github_token \
     mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
     && mise install npm:@commitlint/cli \
+    && mise install npm:pnpm \
     && rm -rf /root/.cache /root/.npm
 
-# scripts の依存を in-tree（/app/scripts/node_modules）へ install する。
-# --ignore-scripts はサプライチェーン攻撃の主要 RCE 経路（依存の postinstall 等）を封じる防御。
-# 本ツリーの install script は esbuild のみで、そのバイナリは @esbuild/<platform>（lock 済み）
-# から実行時に解決されるため、script を飛ばしても portal ビルドは動く。
+# scripts の依存を in-tree（/app/scripts/node_modules）へ install する。補助スクリプト
+# （TypeScript）は同じ場所の tsx / vitest で実行・検査する。
+#
+# 以降の pnpm install は、依存ライフサイクルスクリプトの実行可否を各 package の
+# pnpm-workspace.yaml が宣言する（strictDepBuilds + allowBuilds）。宣言に無い依存が script を
+# 持ち込んだ時点で install が失敗する。
 WORKDIR /app/scripts
-COPY docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc ./
-RUN npm ci --ignore-scripts \
-    && npm cache clean --force \
-    && rm -rf /root/.npm
+COPY scripts/package.json scripts/pnpm-lock.yaml scripts/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile \
+    && pnpm store prune \
+    && rm -rf /root/.cache
+
+# docs-viewer の依存を in-tree（/app/docs-viewer/node_modules）へ install する。scripts とは
+# 別パッケージで、パッケージマネージャも pnpm で分かれている。
+#
+# ここで install しておくのは、compose がこのパスへ匿名ボリュームを当てて host の node_modules を
+# 隠すため。vite / rolldown はプラットフォーム別のバイナリを引くので、host（darwin）の解決結果が
+# そのままコンテナ（linux）へ見えると実行できない。
+WORKDIR /app/docs-viewer
+COPY docs-viewer/package.json docs-viewer/pnpm-lock.yaml docs-viewer/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile \
+    && pnpm store prune \
+    && rm -rf /root/.cache
 
 WORKDIR /app
 
@@ -132,13 +147,10 @@ ENTRYPOINT []
 CMD []
 
 # ------------------------------
-# Python ツールボックス：sqlfluff を mise.toml のバージョンで提供
+# Python ツールボックス：sqlfluff を python/sqlfluff.txt のバージョンで提供
 # Python ランタイムは公式 python:X.Y.Z-slim（プリビルド）を使用。
 # mise の Python ビルドは python-build によるソースコンパイルが必要で時間がかかるため、ここでは公式 base に頼る。
-# NOTE: mise の pipx バックエンドが extras 構文（`sqlfluff[jinja]`）を受け付けないため、
-#       jinja extras 無しの素の sqlfluff を入れている。
-#       jinja テンプレートを SQL ファイルで使う場合は別途見直し。
-# pipx backend の実行系は mise.toml の pipx.uvx=true により uv（mise 管理版）へ固定。
+# mise が入れるのは uv までで、sqlfluff 本体は sha256 付きの lockfile から uv が入れる。
 # ------------------------------
 FROM python:3.14.6-slim@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6 AS python_tools
 
@@ -169,8 +181,13 @@ RUN --mount=type=secret,id=github_token \
     github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
     if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
     mise install uv \
-    && mise install pipx:sqlfluff \
     && rm -rf /root/.cache
+
+# --require-hashes は lockfile の全エントリが版とハッシュで固定されていることを要求するため、
+# 記載漏れのある lockfile はここで install ごと失敗する。ハッシュ照合そのものが検査を兼ねる。
+COPY python/sqlfluff.txt python/
+RUN uv pip install --system --require-hashes --no-cache -r python/sqlfluff.txt \
+    && sqlfluff --version
 
 ENTRYPOINT []
 CMD []

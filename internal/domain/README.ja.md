@@ -186,9 +186,10 @@ type Users []*User
 
 > **Evans からの逸脱。** Evans にとって Module はモデルの一部である。分割線と名前はドメインへの洞察を
 > 担うことを意図され、構造はモデルと共に進化することが期待される。上記の規則はそれに比べれば機械的で、
-> 何と呼ぶかは言うが、その分割が何を明かすべきかは言わない。この差は見落としではなく構造的なものである。
-> テンプレートには洞察を持つべき実ドメインが無いため、ここで引かれている線はアーキテクチャが含意する
-> ものであり、モデルを表現する線は fork する者に属する。
+> 何と呼ぶかは言うが、その分割が何を明かすべきかは言わない。この差は意図的である。ここで引かれている
+> 線はアーキテクチャが含意するものであり、モデルを表現する線はモデルを持つ者が引く。実ドメインがある
+> 場面では、機械的な規則を下限と読み、モデルを明かす分割をその上に足すこと。
+> 本リポジトリがボイラープレートとして頒布されている間、下限で留めている理由は上流限定のものであり、[`docs/get-started/boilerplate-only-conventions.md`](../../docs/ja/get-started/boilerplate-only-conventions.ja.md) に記録している。 <!-- boilerplate-only:line -->
 
 ### 位置引数を取り違えうる場合は属性を構造体へ束ねる
 
@@ -870,8 +871,8 @@ Entity内部は変化しない。
 例：
 
 ```go
-func (u *User) FullName() string {
-    return u.firstName + " " + u.lastName
+func (u *User) IsActive() bool {
+    return u.deletedAt == nil
 }
 ```
 
@@ -1129,7 +1130,6 @@ func New(id uuid.UUID, attrs Attributes) (*User, error) {
 func (u *User) ID() uuid.UUID     { return u.id }
 func (u *User) Email() string     { return u.email }
 func (u *User) Building() *string { return ptr.Copy(u.building) }
-func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
 // 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
 // ビジネスロジック（振る舞い）: プロフィール一括更新

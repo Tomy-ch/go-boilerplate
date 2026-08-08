@@ -48,7 +48,7 @@ layer 別アーキ適合性チェックの統合スキル。scope に応じて 1
 
 `AskUserQuestion` を起動直後に 2 質問 batched で呼ぶ。
 
-既定検出 scope: ブランチ vs base (`gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'`):
+既定検出 scope: ブランチ vs base（base の解決は Step 1 と同じ手順で行う）:
 
 - 未マージのコミットあり → 「変更ファイルのみ」を既定
 - main / release/* / no diff → 「リポジトリ全体」を既定
@@ -74,9 +74,17 @@ TODO opt は domain / controller / infra の suggestion 検出にのみ適用。
 「変更ファイルのみ」モード:
 
 ```sh
-BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$' || true
 ```
+
+PR が既にあるならその `baseRefName` が正である。検査する diff は PR が見せている diff と一致していな
+ければならない。PR が無い場合は `make base-branch` が `origin` の実状態から最新のリリースラインを解決
+する。fallback に `gh repo view --json defaultBranchRef` を使ってはならない。GitHub のデフォルトブランチ
+は前のリリースラインを指したまま答え続けるためである。空チェックは形式ではない。解決に失敗すると次行の
+`|| true` がそれを空のファイルリストへ変えてしまい、空のファイルリストは「検査して何も無かった」と
+区別が付かない。
 
 path prefix で layer マッピングし、**per-layer のファイルリストを保持**（各 auditor へ渡し、auditor が git を再解決しないようにする）:
 

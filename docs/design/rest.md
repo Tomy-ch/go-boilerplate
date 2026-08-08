@@ -203,7 +203,7 @@ sequenceDiagram
 
 ## 4. What an integrator implements (contract-first endpoint flow)
 
-The scaffold provides the **server bootstrap, ordered middleware chain, error handler, DI wiring, and the `scaffold-*` skills**. To add an endpoint, follow the contract-first order (OpenAPI changes must precede handler/usecase code).
+This project provides the **server bootstrap, ordered middleware chain, error handler, DI wiring, and the `scaffold-*` skills**. To add an endpoint, follow the contract-first order (OpenAPI changes must precede handler/usecase code).
 
 ```mermaid
 flowchart LR

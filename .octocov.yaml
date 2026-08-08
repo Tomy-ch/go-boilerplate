@@ -3,7 +3,7 @@ coverage:
     - coverage.out
 codeToTestRatio:
   # production code 判定は .makefiles/go/test.mk の除外集合
-  # (gen|cmd|mock|apperror|scripts) と一致させる。cli はコア純粋層としてテスト対象に含めるため除外しない。
+  # (gen|cmd|mock|apperror|scripts|node_modules) と一致させる。cli はコア純粋層としてテスト対象に含めるため除外しない。
   # ディレクトリ除外はセグメント横断のため '**/<dir>/**/*.go' 形に統一する。
   code:
     - '**/*.go'
@@ -15,6 +15,7 @@ codeToTestRatio:
     - '!**/mock/**/*.go'
     - '!**/apperror/**/*.go'
     - '!**/scripts/**/*.go'
+    - '!**/node_modules/**/*.go'
   test:
     - '**/*_test.go'
 testExecutionTime:

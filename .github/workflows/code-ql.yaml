@@ -1,5 +1,20 @@
 name: CodeQL Scan
 
+# One matrix leg per CodeQL language. The legs share nothing but the config file at
+# .github/codeql/codeql-config.yml, which is what keeps the query suite and the
+# exclusion list from drifting between them.
+#
+#   go                    — the application itself; the only leg that needs a build.
+#   javascript-typescript — mock-auth-server / docs-viewer / scripts, none of which
+#                           any other SAST reaches (opengrep.yaml covers Go).
+#   actions               — the workflows in this directory. It overlaps zizmor and
+#                           actionlint on purpose: they lint syntax and permissions,
+#                           CodeQL follows data flow from an untrusted trigger input
+#                           into a run: block, which the other two do not do.
+#
+# The path filter has to admit all three surfaces or a leg never fires on the change
+# that concerns it.
+
 on:
   push:
     branches:
@@ -9,15 +24,33 @@ on:
       - production
     paths:
       - '.github/workflows/code-ql.yaml'
+      - '.github/codeql/**'
+      - '.github/workflows/**'
+      - '.github/actions/**'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
   pull_request:
     paths:
       - '.github/workflows/code-ql.yaml'
+      - '.github/codeql/**'
+      - '.github/workflows/**'
+      - '.github/actions/**'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
   schedule:
     - cron: '0 5 * * 1'
   workflow_dispatch:
@@ -34,19 +67,67 @@ concurrency:
 jobs:
   codeql:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Raised from 10 with the matrix: the legs run in parallel, but security-extended
+    # is a larger suite than the default one and javascript-typescript has three
+    # workspaces to extract.
+    timeout-minutes: 30
+    strategy:
+      # One language failing must not cancel the others: their SARIF uploads are
+      # independent, and a cancelled leg leaves its category's alerts stale.
+      fail-fast: false
+      matrix:
+        language:
+          - go
+          - javascript-typescript
+          - actions
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            uploads.github.com:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
+      # Go is the only language here that CodeQL builds; the other two are extracted
+      # from source, so a toolchain they never invoke is not installed for them.
       - name: Setup Go
+        if: ${{ matrix.language == 'go' }}
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
@@ -57,15 +138,27 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
-          languages: go
+          languages: ${{ matrix.language }}
+          config-file: .github/codeql/codeql-config.yml
+          # javascript-typescript and actions are extracted straight from source and
+          # must say so, or CodeQL looks for a build that does not exist. Go keeps the
+          # unset default and is built by the Autobuild step below.
+          #
+          # Negated on purpose: `cond && '' || X` always yields X, since an empty
+          # string is falsy. The empty value has to sit in the falsy branch, and an
+          # empty input reads as "not supplied" to the action.
+          build-mode: ${{ matrix.language != 'go' && 'none' || '' }}
 
       - name: Autobuild
+        if: ${{ matrix.language == 'go' }}
         uses: github/codeql-action/autobuild@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
 
+      # Per-language category: code scanning keys a SARIF upload by it, so a shared
+      # category would make each leg overwrite the previous one's alerts.
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
-          category: '/language:go'
+          category: '/language:${{ matrix.language }}'
 
   # A scheduled failure has no author watching it, so it is pushed to a human.
   # PR / push failures are deliberately excluded: they are already visible.

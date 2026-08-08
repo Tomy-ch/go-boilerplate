@@ -42,6 +42,35 @@ right, or whether a finding deserves an issue. It routes those to the user and r
 | Test-quality review | `test-review` (chained by `impl-review`) |
 | The implementation itself | you, following the approved plan |
 
+## AI Modification Scope
+
+`AGENTS.md` confines AI edits to `internal/` / `pkg/` / `database/` / `openapi/` and treats everything
+else — `.github/workflows/`, `docker/`, `scripts/`, `docs/`, `.makefiles/`, root dotfiles — as out of
+scope. **Invoking this skill is the explicit user instruction that relaxes that**, because this skill
+is issue-generic: the issue decides the surface, and an issue about CI, tooling, container images, or
+documentation cannot be resolved inside the four default directories. This is a documented,
+non-loophole exception per the "Skills must not be a loophole" clause in `AGENTS.md`.
+
+The relaxation is bounded, and the bound is the plan:
+
+- The Step 3 plan's **Files to touch** section is the permitted surface. A sensitive path outside the
+  four default directories must appear there **before** it is edited, named explicitly rather than
+  implied by a glob.
+- Say so when presenting the plan. The user approves the sensitive paths knowingly, not by discovering
+  them in the diff — a plan that quietly widens the scope is the failure this clause exists to prevent.
+- Reaching a sensitive path the plan does not list is trip-wire 1 (Step 4). Stop and ask; do not widen
+  the surface and report it afterwards.
+
+Hard-protected even during this skill (never touch, regardless of what the issue asks):
+
+- `AGENTS.md` / `CLAUDE.md`
+- Generated files: `**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, and generated content
+  under `docs/` (`docs/openapi/**`, `docs/coverage/**`, `docs/db-schema/**`, `docs/godoc/**`,
+  `docs/portal/docs.json`, `docs/portal/guides/**`). Regenerating through a `make` target is fine;
+  hand-editing is not.
+- Anything under `permissions.deny` in `.claude/settings.json`
+- Existing files under `database/migrations/**` (new migration files only)
+
 ## Step 0 — Confirm the three modes (one `AskUserQuestion`)
 
 Ask once, before anything else, in a single call. Defaults are marked; the user's choice always wins.
@@ -98,12 +127,13 @@ gh issue comment <n> --body-file <file>
 Do this before any code is touched, so nothing lands in a shared checkout.
 
 ```bash
-# 1. Find the active release line. The GitHub default branch lags behind it; recent merged PRs do not.
-gh pr list --state merged --limit 10 --json baseRefName -q '.[].baseRefName' | sort | uniq -c
+# 1. Resolve the active release line off origin's live state.
+BASE=$(make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 
 # 2. Branch from current origin, not a stale local ref.
-git fetch origin release/vX.Y.0
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> origin/release/vX.Y.0
+git fetch origin "$BASE"
+git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 4000+N.
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
@@ -112,6 +142,13 @@ cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 go mod vendor
 ```
 
+`make base-branch` reads `origin`'s live state. Use nothing else for this: the local
+`refs/remotes/origin/HEAD` is set once at clone time and `git fetch` never updates it, the GitHub
+default branch stays on an earlier release line, and the harness's own "Main branch" line reports that
+stale local symref. All three answer without warning, and branching from a generation-old base is not
+visible until a subagent reports that files everyone expects are missing — by which point the work on
+that branch is wasted.
+
 If `slot-acquire` reports failure, run `make slot-status` before retrying — the lease often succeeded
 even when the command errored.
 
@@ -119,7 +156,8 @@ even when the command errored.
 (the lease is reclaimed automatically once stale) and expensive to lose mid-task; only the user knows
 when the work is really over.
 
-If the user's instruction did not name a release version and the merged-PR signal is ambiguous, ask.
+If the user's instruction named a release version other than the resolved one, ask before branching —
+a deliberate backport target is the one case the resolver cannot know about.
 
 ## Step 3 — Plan, then wait
 

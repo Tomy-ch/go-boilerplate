@@ -5,6 +5,10 @@ name: Lockfile Integrity
 # lockfile's `resolved` URL points at. The version and the integrity hash can look
 # untouched while the tarball comes from somewhere else entirely.
 #
+# Both resolvers in the repository are covered. npm (mock-auth-server/) is
+# checked with lockfile-lint; pnpm (scripts/, docs-viewer/) states the same
+# requirement differently and is checked in its own step below.
+#
 # This is a different question from the vulnerability scanners. OSV and Trivy ask
 # "is this package known-bad"; a poisoned lockfile names a package that is not
 # known-bad at all, because the malicious artifact was never published to the
@@ -18,8 +22,9 @@ on:
   pull_request:
     paths:
       - '.github/workflows/lockfile-integrity.yaml'
-      - 'docker/tools/package-lock.json'
-      - 'docker/mock-auth-server/package-lock.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
   workflow_dispatch:
 
 permissions:
@@ -41,7 +46,39 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -75,7 +112,7 @@ jobs:
           : > lockfile-lint.log
           status=success
 
-          for lockfile in docker/tools/package-lock.json docker/mock-auth-server/package-lock.json; do
+          for lockfile in mock-auth-server/package-lock.json; do
             echo "### ${lockfile}" >> lockfile-lint.log
             if lockfile-lint \
                  --path "${lockfile}" \
@@ -90,9 +127,59 @@ jobs:
           done
 
           echo "status=${status}" >> "$GITHUB_OUTPUT"
-          if [ "${status}" = "success" ]; then
+        shell: bash
+
+      # scripts and docs-viewer resolve with pnpm, and lockfile-lint does not read
+      # pnpm-lock.yaml. The poisoning vector is the same question in a different shape:
+      # pnpm-lock.yaml names no URL at all for a registry package — the entry is
+      # `resolution: {integrity: ...}` and the host comes from the resolver's configuration.
+      # An entry that carries any other key (`tarball`, `directory`, a git reference) is
+      # fetching from somewhere the registry settings never approved, which is exactly what
+      # the npm check above rejects.
+      #
+      # `blockExoticSubdeps` in pnpm-workspace.yaml refuses those at install time. This step is
+      # the committed-state counterpart: the setting protects the machine that runs install,
+      # the check protects the reviewer looking at the diff.
+      - name: Lint pnpm lockfiles
+        id: pnpm-lint
+        run: |
+          set -uo pipefail
+
+          status=success
+
+          for lockfile in scripts/pnpm-lock.yaml docs-viewer/pnpm-lock.yaml; do
+            echo "### ${lockfile}" >> lockfile-lint.log
+
+            if exotic=$(grep -n 'resolution: {' "${lockfile}" | grep -v 'resolution: {integrity:'); then
+              echo "non-registry resolutions found:" >> lockfile-lint.log
+              echo "${exotic}" >> lockfile-lint.log
+              status=failure
+            else
+              total=$(grep -c 'resolution: {integrity:' "${lockfile}")
+              echo "ok (${total} registry resolutions, no other resolution form)" >> lockfile-lint.log
+            fi
+            echo >> lockfile-lint.log
+          done
+
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      # The verdict covers both resolvers. Computing it here rather than inside either lint
+      # step keeps a green npm result from reporting PASS while the pnpm lockfile is failing.
+      - name: Summarize lockfile verdict
+        id: verdict
+        if: always()
+        env:
+          NPM_STATUS: ${{ steps.lint.outputs.status }}
+          PNPM_STATUS: ${{ steps.pnpm-lint.outputs.status }}
+        run: |
+          set -uo pipefail
+
+          if [ "${NPM_STATUS}" = "success" ] && [ "${PNPM_STATUS}" = "success" ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
             echo "title=## ✅ Lockfile Integrity: PASS" >> "$GITHUB_OUTPUT"
           else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
             echo "title=## 🚨 Lockfile Integrity: FAIL" >> "$GITHUB_OUTPUT"
           fi
 
@@ -113,13 +200,13 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- lockfile-integrity-result -->'
-          status: ${{ steps.lint.outputs.status }}
-          title: "${{ steps.lint.outputs.title || '## ⚠️ Lockfile Integrity: CUT OFF (no result produced)' }}"
+          status: ${{ steps.verdict.outputs.status }}
+          title: "${{ steps.verdict.outputs.title || '## ⚠️ Lockfile Integrity: CUT OFF (no result produced)' }}"
           body-file: lockfile-lint.log
           details-summary: 'lockfile-lint log'
 
-      # Gating with no severity threshold: a resolved URL either points at the
-      # registry over HTTPS or it does not.
+      # Gating with no severity threshold: a resolution either names the registry over
+      # HTTPS (npm) or carries nothing but an integrity hash (pnpm), or it does not.
       - name: Fail if a lockfile finding was found
-        if: always() && steps.lint.outputs.status != 'success'
+        if: always() && steps.verdict.outputs.status != 'success'
         run: exit 1

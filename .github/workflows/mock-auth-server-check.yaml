@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/mock-auth-server-check.yaml'
-      - 'docker/mock-auth-server/**'
+      - 'mock-auth-server/**'
       - 'internal/integration/testdata/jwks/**'
       - 'mise.toml'
   workflow_dispatch:
@@ -21,12 +21,44 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: docker/mock-auth-server
+        working-directory: mock-auth-server
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -59,8 +91,8 @@ jobs:
         run: |
           set -euo pipefail
           if ! git diff --exit-code -- \
-            docker/mock-auth-server/fixtures/jwks \
+            mock-auth-server/fixtures/jwks \
             internal/integration/testdata/jwks; then
-            echo "::error::golden JWKS is out of date. Run 'npm run gen:jwks' in docker/mock-auth-server and commit the diff."
+            echo "::error::golden JWKS is out of date. Run 'npm run gen:jwks' in mock-auth-server and commit the diff."
             exit 1
           fi

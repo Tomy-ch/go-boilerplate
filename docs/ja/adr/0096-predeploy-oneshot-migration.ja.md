@@ -35,7 +35,7 @@ docker run <image> /app/server migrate-up
 
 デプロイメントステップはマイグレーションジョブが正常に完了した後にのみ実行される。
 
-この ADR をレビューするセットアップチームは、ターゲットクラウド環境のために `.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップを実装し、アプリケーション起動ステップが `migrate-up` を呼び出さないことを確認しなければならない。
+`.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップは対象クラウド環境向けに実装しなければならず、アプリケーション起動ステップが `migrate-up` を呼び出してはならない。
 
 ## 影響
 
@@ -62,6 +62,6 @@ docker run <image> /app/server migrate-up
 
 ## 補足
 
-- `.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップ（192-204 行）が、セットアップチームが実装しなければならない権威ある placeholder である。
+- `.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップ（192-204 行）が、対象環境向けに実装すべき権威ある placeholder である。
 - ワークフローのコメント "Must NOT be executed in container startup (entrypoint)" が却下された代替案に対する明示的なガードである。
 - ソース: `.github/workflows/deploy-app.yaml`。

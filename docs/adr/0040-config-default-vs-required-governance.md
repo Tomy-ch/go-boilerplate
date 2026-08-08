@@ -16,9 +16,8 @@ accepted
 Config fields in `internal/config/envspec.go` are backed by environment variables. For
 each field, a decision must be made about whether the value is:
 
-- **a universal framework constant** — a sensible default that every project derived from
-  the boilerplate keeps unchanged (e.g., a database driver name, a timeout that works
-  for most workloads), or
+- **a universal framework constant** — a sensible default that is not expected to be
+  changed (e.g., a database driver name, a timeout that works for most workloads), or
 - **a project-specific or per-environment value** — something that differs between
   projects, environments, or deployment targets and must therefore be set explicitly
   (e.g., database host, allowed CORS origins, authentication credentials).
@@ -33,10 +32,9 @@ operator burden.
 Two distinct categories govern how a config value is supplied:
 
 **Code default (immutable):** Fields carrying a `envDefault` tag in `envspec.go` are
-intentionally omitted from `.env` files. They are framework-level constants that any
-project derived from this boilerplate is expected to keep unchanged. The default applies
-automatically; an explicit `.env` entry is added only when a project genuinely needs to
-override it. These are marked **Code default `<value>`** in `env/README.md`.
+intentionally omitted from `.env` files. They are framework-level constants that are
+expected to stay unchanged. The default applies automatically; an explicit `.env` entry is
+added only when a deployment genuinely needs to override it. These are marked **Code default `<value>`** in `env/README.md`.
 
 **Required in file (variable):** Fields marked `required` in `envspec.go` have no
 embedded default. Every such variable must be present in `env/.env` (the local default)

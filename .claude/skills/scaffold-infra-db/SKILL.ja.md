@@ -71,7 +71,7 @@ skill が書き込み前に検証:
 3. `internal/infrastructure/rdb/README.md` から命名規約（Repository method 名がどう sqlc gen 関数名にマップされるか）と実装規則を取得
 4. `internal/infrastructure/README.md` から layer 規約取得
 5. `internal/infrastructure/rdb/pgerror/README.md` を読んで SQLSTATE → apperror mapping と single-normalization-point 原則（全 sqlc 呼び出しの error は必ず `pgerror.NormalizeError` 経由）を確認
-6. 1 個の sibling repository（`internal/infrastructure/rdb/repository/user/user_repository.go` 等）を **具体 reference** として参照 — tracer 配線、`gen.New(driver.New(ctx, r.db))` 利用、pgerror 正規化位置、変換ヘルパー pattern。infra READMEs に完全 code snippet 無いため sibling が最も近い具体例。衝突時は READMEs が勝つ
+6. 1 個の sibling repository（`internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` 等）を **具体 reference** として参照 — tracer 配線、`gen.New(driver.New(ctx, r.db))` 利用、pgerror 正規化位置、変換ヘルパー pattern。infra READMEs に完全 code snippet 無いため sibling が最も近い具体例。衝突時は READMEs が勝つ
 
 ## Step 2. mapping 導出（lean A の核）
 

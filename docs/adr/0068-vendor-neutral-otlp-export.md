@@ -15,9 +15,8 @@ accepted
 
 The observability subsystem must ship traces, metrics, and logs to a monitoring backend
 without coupling the application binary to any specific vendor's SDK or proprietary
-endpoint. Downstream users of this template deploy to environments with different backends
-(Grafana, Datadog, New Relic, and others), and the template must remain neutral across
-those choices. Embedding vendor-specific exporters in the application binary would require
+endpoint. The same service is deployed to environments with different backends (Grafana,
+Datadog, New Relic, and others), and the binary must remain neutral across those choices. Embedding vendor-specific exporters in the application binary would require
 code changes when switching providers, contradicting the lock-in avoidance principle in
 [ADR-0001](0001-avoid-lock-in.md).
 

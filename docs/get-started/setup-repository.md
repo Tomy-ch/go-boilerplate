@@ -50,7 +50,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope
 **Declining the AI-assist layer is the adopting architect's call.** This template is built to stay fully maintainable without AI tooling — the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration — so nothing above is load-bearing for building, testing, or shipping. A fork that does not want the layer should remove it deliberately rather than leave it half-configured:
 
 - skip both bootstraps; no other phase of this setup depends on them, and
-- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint.mjs`.
+- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint/index.ts`.
 
 Removing it later costs the same as removing it now, so adopting the recommended configuration first and deciding afterwards is a safe order.
 
@@ -64,6 +64,7 @@ make tools
 make db-init
 ```
 
+<!-- boilerplate-only:begin -->
 ## Phase 5: Execute Localization Script
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
@@ -93,7 +94,19 @@ make setup-replace-codeowners OWNERS="$CODE_OWNERS"
 make gen-api
 make gen-sqlc
 make tidy-lib
+
+# Verify the replacements landed, then remove the localization tooling.
+# Run this last: the scripts above are one-shot, and keeping them lets you re-run
+# any of them until this passes.
+make setup-verify
 ```
+
+`setup-verify` checks that every file `replace-module` claims to cover is free of the
+boilerplate name, and that LICENSE, CODEOWNERS, README and the OpenAPI spec carry the values you
+passed. Only once it passes does it delete `scripts/setup/replace-*` and itself — re-applying
+them to an already-localized repository is wrong, since `replace-codeowners` rewrites *every*
+rule's owner to a single value. `scripts/setup/lib` goes with whichever of the two one-shot
+tools (this one and the sample remover) runs last.
 
 ## Phase 6: Localization Verification
 
@@ -119,6 +132,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
+<!-- boilerplate-only:end -->
 ## Phase 8: Rewrite env Files
 
 Rewrite the files in the [env/](../../env/) directory according to your project.
@@ -201,7 +215,40 @@ Create authorization functionality by implementing the usecase [Authorizer](../.
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
-## Phase 12: Review the template's deliberate exclusions (ADRs)
+<!-- boilerplate-only:begin -->
+## Phase 12: Remove what only holds while this is a boilerplate
+
+Two kinds of statement in this repository stop being true the moment you fork it: the passages
+where it describes *itself* as a boilerplate, and the conventions it follows *because* it is one —
+the in-place ADR amendment regime, the consolidation pass, the `setup-review` device. Both are
+template scaffolding, not your project's documentation.
+
+```sh
+DRY_RUN=1 make setup-remove-boilerplate-identity
+make setup-remove-boilerplate-identity
+```
+
+It scans the repository for `boilerplate-only` markers and resolves each one, deletes
+[boilerplate-only-conventions.md](boilerplate-only-conventions.md) and its Japanese mirror, drops
+its own make target from the registry, and then removes itself. It scans rather than working from
+a list of files, because a list is something a marker can be written outside of — and a marker
+nobody strips is a premise that survives into your project with nothing to announce it.
+
+What it does **not** touch: the repository / module name (already replaced in Phase 5), and the
+parts of this guide you keep reading — the clamped-config review and the exclusion ADRs below,
+which several package READMEs link to.
+
+What survives each removal is the general form of the rule, stated in the document that owns it:
+[docs/adr/README.md](../adr/README.md), [docs/rules.md](../rules.md), the layer READMEs. Where a
+statement needed a fork-appropriate replacement rather than plain deletion, the replacement is
+already parked beside it and is swapped in by the same pass.
+
+> Never strip `boilerplate-only` and `sample-api` markers in one run. They fire at different
+> moments — this phase versus the sample removal in Phase 15 — and a fork may reasonably do one
+> without the other.
+
+<!-- boilerplate-only:end -->
+## Phase 13: Review the template's deliberate exclusions (ADRs)
 
 Beyond authentication / authorization (Phase 11) and deployment (Phase 10), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
 
@@ -218,7 +265,7 @@ For your project, review each and decide:
 
 The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
-## Phase 13: Decide the dependency-license policy
+## Phase 14: Decide the dependency-license policy
 
 The dependency-license scan (`make trivy-license`, and the `trivy-license` job in [.github/workflows/trivy-fs.yaml](../../.github/workflows/trivy-fs.yaml)) is **report-only, permanently**. It enumerates every dependency's license into the job summary and a PR comment, and never fails the build.
 
@@ -231,7 +278,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
 4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0085](../adr/0085-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
-## Phase 14: Remove Sample APIs
+## Phase 15: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 
@@ -239,7 +286,7 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
 
 ### Removal Procedure
 
-Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-api.mjs](../../scripts/setup/lib/sample-api.mjs), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
+Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/remove-sample-api/sample-manifest.ts](../../scripts/setup/remove-sample-api/sample-manifest.ts), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
 
 > **The DB container must be running** before you run this — the final `gen-query` step dumps the **live** schema with `pg_dump`, so a stopped DB fails with `connection refused`.
 
@@ -264,7 +311,7 @@ Notes:
 - The base master data `prefecture` (migration `000001`, etc.) is **kept**.
 - `gen-query` regenerates Go models from a `pg_dump` of the **live** DB. If you skip the DB rebuild above, the still-present `users` table is re-dumped and a stale `Users` type is regenerated into `models.gen.go` — the rebuild + re-`gen-query` is what actually drops it.
 - Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step.
-- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-api.mjs`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
+- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-manifest.ts`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
 
 ### Rules keep their examples only until you remove the sample
 
@@ -315,3 +362,60 @@ filling it back in stay on the page.
     - Delete code used by the sample API and its test code under [internal/domain/](../../internal/domain/). Since directories under this path contain only sample domain code, you may delete entire directories.
 
 </details>
+
+## Phase 16: Decide your own ADR regime
+
+The upstream's own ADR conventions were removed along with everything else that rested on this
+repository being a boilerplate. What is left is a decision only you can take, because it is about
+how your project records its own history rather than how this one shipped.
+
+What you inherit is [docs/adr/README.md](../adr/README.md) as written: an ADR is an immutable
+record, and a decision that changes is replaced by a new `accepted` ADR while the old one is marked
+`superseded`. That is the ADR form as [MADR](https://adr.github.io/madr/) defines it, and what
+[ADR-0000](../adr/0000-record-architecture-decisions.md) decided.
+
+If you want in-place amendment instead — a legitimate choice for a design document that is shipped
+rather than lived — record that as a decision of your own, in your own ADR. Do not infer it from
+the fact that the upstream did it.
+
+## Phase 17: Decide whether to keep the DAST setup
+
+The DAST setup is already done. [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
+boots this application inside a GitHub-hosted runner and drives an authenticated
+[OWASP ZAP](https://www.zaproxy.org/) API scan at it, with the endpoint list taken from the OpenAPI
+definition. It runs weekly and on demand, writes to code scanning, and never fails a build on a
+finding. If you want dynamic scanning, you can use it as it stands — nothing else needs wiring.
+
+**The configuration values describe the API that shipped with this repository, not yours.** The
+alert thresholds in [`.github/zap/rules.tsv`](../../.github/zap/rules.tsv), the identity the scan
+authenticates as, and the surface the scan reaches were all derived from what that API answers under
+the `dast` environment profile — which, unlike `ci`, verifies a real JWT signed by the mock auth
+server instead of accepting a stub bearer token. None of it is a claim about your API: your endpoints differ, and so
+does what counts as an accepted finding. Read the workflow header before the first scheduled run and
+re-derive both files against the API you actually have — an inherited `IGNORE` is a finding nobody
+will ever see again.
+
+**Two values name what the scan reaches, and Phase 15 resets both.** Before ZAP starts, the
+workflow probes one protected operation (`PROBE_PATH`) as one identity (`SCAN_SUBJECT`) to prove the
+credential is accepted — because a scan whose credential is rejected collects 401 everywhere and
+still reports a completed run. Both values point at the API this repository shipped with, so
+removing it takes them with it: `PROBE_PATH` becomes `/health` and `SCAN_SUBJECT` is emptied.
+
+`/health` answers without a credential. It keeps the workflow runnable when no protected operation
+exists yet, and it proves nothing — **the run stays green while the scan sees only the
+unauthenticated surface.** The step says so on every run as a warning rather than passing in
+silence, but a warning nobody reads is the same as no warning. **Point `PROBE_PATH` at a protected
+operation of yours and `SCAN_SUBJECT` at an identity your seed data actually has, as soon as you
+have either.** Until you do, DAST is running but not testing what it exists to test.
+
+If you do not want it, delete [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
+and [`.github/zap`](../../.github/zap), then drop the scanner action's entry from
+[`.github/actions-pin.toml`](../../.github/actions-pin.toml) and the `zap-api-scan.yaml:dast` job
+section from [`.github/egress.toml`](../../.github/egress.toml) — `make pin-actions-check` and
+`make egress-check` both fail on an entry no workflow claims, so neither one can be forgotten
+silently. There is no enable / disable switch and there will not be one: keeping it means keeping
+it, and a scanner left configured-but-off is one nobody reads and nobody maintains.
+
+The `dast` environment profile is not part of that deletion. It names an execution context rather
+than a scanner, so `env/.env.dast` and the `EnvDast` branches stay useful to anything else that
+needs the real authenticator against a mocked provider.

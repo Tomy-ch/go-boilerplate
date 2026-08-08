@@ -161,7 +161,7 @@ flowchart TD
     class CMD,CLI,HL,DIW,DIR,DIH,DIM,DIC,ENG,CIR,OBS,PORT,FAKE,MOCK,SQS,APPERR,BO,CFG,LOG,OTEL done;
 ```
 
-> Green = implemented by the scaffold. Dependencies always point inward (`controller→usecase/boundary`, `infrastructure→usecase/boundary`). The `controller` (engine) does not import `infrastructure` (depguard `maintain_a_sound_controller`).
+> Green = implemented here. Dependencies always point inward (`controller→usecase/boundary`, `infrastructure→usecase/boundary`). The `controller` (engine) does not import `infrastructure` (depguard `maintain_a_sound_controller`).
 
 ### 3.2 Per-message action sequence (when a real broker is wired)
 
@@ -192,9 +192,9 @@ sequenceDiagram
 
 ---
 
-## 4. What an integrator implements (the parts the scaffold does not provide)
+## 4. What an integrator implements (the parts this project does not provide)
 
-The scaffold provides the **engine, seam, fake, SQS reference adapter, and wiring templates**. To run an actual worker in production, the consumer supplies the following (no worker is registered by default).
+This project provides the **engine, seam, fake, SQS reference adapter, and wiring templates**. To run an actual worker in production, the consumer supplies the following (no worker is registered by default).
 
 ```mermaid
 flowchart LR
@@ -219,13 +219,13 @@ flowchart LR
 | ⑤ | `fx.Provide` the broker client and adapter `Config` | `internal/di/...` | `sqs.Config` |
 | ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` defaults |
 
-> `CONSUMER_QUEUE_*` names *a* consumer queue, not *the* consumer queue — it is sized for the one worker the scaffold ships. A second worker consuming a different queue gets its own prefix carrying the worker's name (`<WORKER_NAME>_QUEUE_*`); do not overload the existing one. `WORKER_*` stays shared, because engine-core settings are broker-agnostic and per-process.
+> `CONSUMER_QUEUE_*` names *a* consumer queue, not *the* consumer queue — it is sized for the one worker shipped here. A second worker consuming a different queue gets its own prefix carrying the worker's name (`<WORKER_NAME>_QUEUE_*`); do not overload the existing one. `WORKER_*` stays shared, because engine-core settings are broker-agnostic and per-process.
 
 <!-- sample-api:begin -->
 > A worked example of all six ships as part of the removable sample set: `internal/controller/worker/withdrawalarchive` consumes the withdrawal event the outbox emits and archives it to object storage. `make setup-remove-sample-api` removes it and leaves `provideWorkers()` empty again.
 <!-- sample-api:end -->
 
-> A wired broker adapter links its SDK into the binary — including the sample wiring, since `serve` / `worker` / `outbox-relay` share one binary. Isolation is therefore verified **after** `make setup-remove-sample-api` rather than by leaving the adapter unwired (E3', [ADR-0049](../adr/0049-broker-sdk-isolation-verified-after-sample-removal.md)).
+> A wired broker adapter links its SDK into the binary, and `serve` / `worker` / `outbox-relay` share one binary, so linkage cannot be scoped to the role that consumes a queue. Isolation is therefore defined over **coupling**: a concrete broker is named only by its adapter package and the wiring that selects it (E3, [ADR-0049](../adr/0049-broker-sdk-isolation-measured-as-coupling.md)).
 
 ---
 
@@ -256,4 +256,4 @@ flowchart LR
 | **Settings** | The engine-core behavior settings (an engine-local struct). Mapped from `config.WorkerConfig` via DI. |
 | **WorkerConfig** | The engine-core settings (broker-agnostic, `WORKER_*` with `default` tags). Broker-specific settings live in the adapter `Config`. |
 | **traceparent / continuation** | W3C trace context. `Extract`ed from `Message.Attributes` to continue the span (D1). |
-| **E1/E2/E3'** | engine does not import infra / engine is green on the fake alone / after `make setup-remove-sample-api` the coupling equals the pre-sample state — no core `*.go` or core document references a broker adapter or a sample, the seam is restored, and removed dependencies leave `go.mod` / `vendor/` ([ADR-0049](../adr/0049-broker-sdk-isolation-verified-after-sample-removal.md)). |
+| **E1/E2/E3** | engine does not import infra / engine is green on the fake alone / knowledge of a concrete broker is confined to its adapter package and the wiring that selects it — no core `*.go` and no core document names a broker adapter ([ADR-0049](../adr/0049-broker-sdk-isolation-measured-as-coupling.md)). |

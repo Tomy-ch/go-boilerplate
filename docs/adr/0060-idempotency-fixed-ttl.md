@@ -24,7 +24,7 @@ configuration surface, require each handler to supply and document its TTL, and 
 edge cases when a TTL change is deployed mid-flight. It would also complicate the GC job,
 which currently iterates over expired rows without knowledge of per-route policies.
 
-For the template's intended use cases (API writes on the order of minutes to hours of
+For this project's intended use cases (API writes on the order of minutes to hours of
 client retry windows), 24 hours is a practical upper bound that comfortably covers
 transient network failures and manual retries.
 
@@ -58,7 +58,7 @@ is treated as a fresh operation — no cached state is present.
 
 Allow each handler to pass a TTL when calling `Run[T]`. Rejected because it significantly
 increases integration surface area, makes the GC query more complex, and offers little
-practical benefit for the template's intended use cases.
+practical benefit for this project's intended use cases.
 
 ### Configurable system-wide TTL via environment variable
 

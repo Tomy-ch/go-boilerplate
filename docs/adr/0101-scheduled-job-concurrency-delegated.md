@@ -20,7 +20,7 @@ advisory database lock (e.g. `pg_try_advisory_lock`) or a distributed lock (e.g.
 `SET NX`). These mechanisms add infrastructure dependencies and coordination logic that must
 be tested, operated, and kept in sync with the job lifecycle.
 
-The template bundles three scheduled one-shot jobs — `outbox-gc`, `idempotency-gc`, and
+Three scheduled one-shot jobs are bundled — `outbox-gc`, `idempotency-gc`, and
 `usercount` — plus the continuously running outbox relay process (a resident engine, not a
 scheduled job; see [ADR-0057](0057-relay-resident-gc-oneshot.md)). Each is designed to be
 concurrency-safe without application-level locking:
@@ -41,11 +41,11 @@ prevention and multi-instance guarding are delegated to the scheduler (e.g. Kube
 `CronJob` with `concurrencyPolicy: Forbid` or `Replace`, or an equivalent advisory-lock
 mechanism at the scheduler layer).
 
-Adopters who require strict single-run semantics must configure `concurrencyPolicy: Forbid`
-at the Kubernetes `CronJob` (or the equivalent for their scheduler). For jobs added by
-adopters that are not concurrency-safe by design, the same scheduler-level policy applies;
-if the adopter's job requires fine-grained locking beyond scheduler control, they should
-implement it within that specific job.
+Strict single-run semantics require `concurrencyPolicy: Forbid` at the Kubernetes `CronJob`
+(or the equivalent for the scheduler in use). For jobs added later that are not
+concurrency-safe by design, the same scheduler-level policy applies; if such a job requires
+fine-grained locking beyond scheduler control, it must be implemented within that specific
+job.
 
 ## Consequences
 
@@ -58,9 +58,9 @@ implement it within that specific job.
 
 ### Negative Consequences
 
-- Adopters are responsible for setting `concurrencyPolicy` correctly; the application
-  provides no guard if they omit it.
-- Adopters who add non-idempotent jobs must implement their own locking or rely on the
+- Setting `concurrencyPolicy` correctly is the operator's responsibility; the application
+  provides no guard if it is omitted.
+- A non-idempotent job added later must implement its own locking or rely on the
   scheduler policy — neither is provided out of the box.
 - The concurrency guarantee is only as strong as the scheduler's enforcement, which may
   vary (e.g. clock skew on multi-master Kubernetes setups).
@@ -77,8 +77,8 @@ are already safe by design.
 ### Distributed lock via Redis
 
 Robust across multiple database replicas, but introduces a Redis dependency solely for
-coordination. Rejected as over-engineering for the template; scheduler-level policy achieves
-the same outcome without an extra infrastructure component.
+coordination. Rejected as over-engineering here; scheduler-level policy achieves the same
+outcome without an extra infrastructure component.
 
 ## Notes
 

@@ -3,16 +3,15 @@ name: Markdown Lint
 # `make md-lint` is wired into the lefthook pre-commit hook only, so `--no-verify` and edits
 # made through the GitHub web UI reach a merge unchecked. All three stages run here.
 #
-# Until this job covered them, only `md-skill-lint-ci` did: `skill-lint.mjs` is dependency-free
-# ESM, while markdownlint-cli2 and `mermaid-lint.mjs` need tooling the node_tool_runner image
-# builds. markdownlint-cli2 turned out to be a mise npm-backend tool like any other, and the
-# mermaid tree costs ~5s to install, so neither needs the container.
+# Neither stage needs the node_tool_runner container: markdownlint-cli2 is a mise npm-backend
+# tool like any other, and the script tree `scripts/pnpm-lock.yaml` pins costs a few seconds
+# to install here.
 #
 # A broken mermaid diagram reaches the documentation portal, and markdownlint never looks inside
 # a fence — the mermaid stage is the only thing standing in front of it.
 #
 # No `paths` filter, deliberately. The Markdown checks read every `.md` in the repo, and
-# `skill-lint.mjs` additionally resolves the paths and make targets its prose quotes against the
+# `skill-lint.ts` additionally resolves the paths and make targets its prose quotes against the
 # whole tree, so renaming `docs/rules.md` or moving a file under `internal/` breaks it without
 # touching anything a filter could name.
 
@@ -39,7 +38,55 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -53,29 +100,19 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install node and markdownlint
-        run: mise install node npm:markdownlint-cli2
+      - name: Install node, pnpm and markdownlint
+        run: mise install node npm:pnpm npm:markdownlint-cli2
 
-      # `mermaid-lint.mjs` resolves linkedom through createRequire and mermaid through a dynamic
-      # import; both walk up from `scripts/`, so one `scripts/node_modules` satisfies them.
+      # Both Markdown checks are TypeScript now and run through `tsx`, so `scripts/node_modules`
+      # is what makes this job able to run them at all. `mermaid-lint.ts` additionally resolves
+      # linkedom through createRequire and mermaid through a dynamic import; both walk up from
+      # `scripts/`, so the same tree satisfies them.
       #
-      # The manifests are installed outside the repository and only the resulting tree is moved
-      # in. Placing them under `scripts/` — which is what the container does at build time, where
-      # the image is the working tree — would leave three untracked files behind here, whereas
-      # `node_modules/` is already ignored. The tree is the one `docker/tools/package-lock.json`
-      # pins, so CI and the container resolve the same versions.
-      - name: Install the mermaid tree for scripts/
-        env:
-          TOOLS_DIR: ${{ runner.temp }}/docs-tools
-        run: |
-          set -euo pipefail
-
-          mkdir -p "$TOOLS_DIR"
-          cp docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc "$TOOLS_DIR/"
-          npm ci --ignore-scripts --prefix "$TOOLS_DIR"
-
-          mkdir -p scripts
-          mv "$TOOLS_DIR/node_modules" scripts/node_modules
+      # `--frozen-lockfile` keeps the install from rewriting the lockfile, and `node_modules/` is
+      # already ignored, so the tree-cleanliness check below still sees nothing. The tree is the
+      # one `scripts/pnpm-lock.yaml` pins, so CI and the container resolve the same versions.
+      - name: Install the script tree for scripts/
+        run: pnpm install --dir scripts --frozen-lockfile
 
       - name: Run Markdown lint
         id: md-lint

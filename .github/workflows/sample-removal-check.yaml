@@ -41,7 +41,63 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            apt.postgresql.org:443
+            apt.postgresql.org:80
+            www.postgresql.org:443
+            archive.ubuntu.com:80
+            azure.archive.ubuntu.com:80
+            security.ubuntu.com:80
+            esm.ubuntu.com:443
+            motd.ubuntu.com:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -61,13 +117,13 @@ jobs:
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install node & golangci-lint
-        run: mise install node golangci-lint
+      - name: Install node, pnpm & golangci-lint
+        run: mise install node npm:pnpm golangci-lint npm:markdownlint-cli2
 
+      # `scripts/pnpm-workspace.yaml` carries the supply-chain policy (cooldown, allowBuilds,
+      # trust policy) that the install must honour.
       - name: Install script node deps
-        run: |
-          cp docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc scripts/
-          npm ci --ignore-scripts --prefix scripts
+        run: pnpm install --dir scripts --frozen-lockfile
 
       - name: Setup DB
         uses: ./.github/actions/setup-postgres
@@ -81,10 +137,23 @@ jobs:
         run: make materialize-env
 
       - name: Remove sample files (delete + strip markers + self-destruct)
-        run: node scripts/setup/remove-sample-api.mjs
+        run: pnpm --dir scripts run tsx scripts/setup/remove-sample-api/index.ts
 
       - name: Format after removal (make fix)
         run: make fix
+
+      # Stripping marker blocks edits Markdown structurally (READMEs, docs, the target
+      # registry), and a block that swallows one line too many leaves a broken table, an
+      # orphaned heading or an unclosed fence. `make fix` only formats Go, and the repo-wide
+      # md-lint job only ever sees the state with the sample still in it.
+      - name: Verify the stripped Markdown is still valid
+        run: make md-markdownlint-ci
+
+      # The skills point at where things go, so a sample-shaped path left in one dangles the
+      # moment the sample is gone. markdownlint cannot see that: the link is well-formed, it
+      # just leads nowhere. Nothing else runs this against the post-removal tree.
+      - name: Verify the skills still resolve their references
+        run: make md-skill-lint-ci
 
       - name: Migrate & seed core-only schema
         run: |
@@ -101,12 +170,19 @@ jobs:
         run: make test
 
       - name: Verify sample removal (exact deletion + no dangling refs)
-        run: node scripts/setup/verify-sample-removal.mjs
+        run: pnpm --dir scripts run tsx scripts/setup/verify-sample-removal/index.ts
 
+      # The verifier removes its own directory and the snapshot; the remover's directory
+      # goes with the sample itself. Checking directories rather than files is what keeps
+      # this honest: a module added later is covered without editing this list, and a path
+      # left out here would pass silently forever.
       - name: Verify verification tool self-destructed
         run: |
           set -euo pipefail
-          for f in scripts/setup/verify-sample-removal.mjs scripts/setup/.sample-removal-snapshot.json; do
+          for f in \
+            scripts/setup/verify-sample-removal \
+            scripts/setup/remove-sample-api \
+            scripts/setup/.sample-removal-snapshot.json; do
             if [ -e "$f" ]; then
               echo "FAIL: $f was not self-deleted"
               exit 1

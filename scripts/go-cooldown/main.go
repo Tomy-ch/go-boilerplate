@@ -48,8 +48,6 @@ import (
 )
 
 const (
-	minArgs = 2 // プログラム名 + サブコマンド
-
 	proxyBase  = "https://proxy.golang.org/"
 	bypassFile = ".github/go-cooldown-bypass.toml" //nolint:gosec // 資格情報ではなくバイパス lockfile のパス
 
@@ -66,6 +64,10 @@ const (
 )
 
 var (
+	// errUsage は、サブコマンドやフラグの与え方が誤っていることを表すエラー。
+	errUsage = xerrors.New("invalid usage")
+	// errBlocking は、gate を通せない違反が残っていることを表すエラー。
+	errBlocking = xerrors.New("blocking violations")
 	// errProxyStatus は、module proxy が 200 / 404 以外のステータスを返した場合のエラー。
 	errProxyStatus = xerrors.New("unexpected module proxy status")
 	// errProxyNotFound は、proxy がそのバージョンを知らない場合のエラー。
@@ -106,42 +108,57 @@ type finding struct {
 	ageDays   int
 }
 
+// options はサブコマンドに続けて与えられたフラグ。
+type options struct {
+	base       string
+	summaryOut string
+	window     int
+	github     bool
+}
+
 func (r requirement) key() string { return r.module + "@" + r.version }
 
+// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。
 func main() {
 	log.SetFlags(0)
-	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: go-cooldown <gate|audit> [--base=<git-ref>] [--window-days=N] [--summary-out=<path>] [--github]")
+
+	if err := run(os.Args[1:], time.Now().UTC()); err != nil {
+		log.Fatalf("%v", err)
 	}
-	sub := os.Args[1]
-	if sub != "gate" && sub != "audit" {
-		log.Fatalf("❌ 未知のサブコマンド %q（gate | audit）", sub) //nolint:gosec // 出力先は CI のログで、値は %q が引用する
+}
+
+// run は go.mod の require を cooldown に照らして報告します。gate で違反が残った場合はエラーを
+// 返し、終了コードへの変換は呼び出し側に委ねます。
+// now は窓と期限の基準時刻で、差し替えられるよう引数で受けます。
+func run(args []string, now time.Time) error {
+	sub, opt, err := parseArgs(args)
+	if err != nil {
+		// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+		if xerrors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+
+		return err
 	}
 
-	fs := flag.NewFlagSet(sub, flag.ExitOnError)
-	base := fs.String("base", "", "gate: この git ref からの差分で追加 / 更新された require だけを対象にする")
-	window := fs.Int("window-days", defaultWindowDays, "公開からこの日数に満たないバージョンを窓内とみなす")
-	summaryOut := fs.String("summary-out", "", "Markdown サマリの出力先")
-	github := fs.Bool("github", false, "GitHub Actions のアノテーションを出力する")
-	_ = fs.Parse(os.Args[2:])
-
-	if sub == "gate" && *base == "" {
-		log.Fatalf("❌ gate には --base が要ります（比較対象が無いと差分を取れません）")
-	}
-
-	ctx := context.Background()
-	now := time.Now().UTC()
 	// 期限の比較は暦日で行う。時刻を残すと 3 ヶ月の境界が実行時刻とタイムゾーンで動く。
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
-	current, err := parseGoMod(readWorkTreeGoMod())
+	goMod, err := readWorkTreeGoMod()
 	if err != nil {
-		log.Fatalf("❌ go.mod: %v", err)
+		return xerrors.Wrap(err, "❌ go.mod")
+	}
+
+	current, err := parseGoMod(goMod)
+	if err != nil {
+		return xerrors.Wrap(err, "❌ go.mod")
 	}
 
 	bypasses, err := readBypasses(bypassFile)
 	if err != nil {
-		log.Fatalf("❌ %s: %v", bypassFile, err)
+		return xerrors.Wrap(err, "❌ "+bypassFile)
 	}
 
 	// バイパスの規約違反は gate / audit のどちらでも失敗させる。期限切れは go.mod が
@@ -150,43 +167,77 @@ func main() {
 
 	targets := current
 	if sub == "gate" {
-		targets, err = added(*base, current)
+		targets, err = added(opt.base, current)
 		if err != nil {
-			log.Fatalf("❌ %v", err)
+			return xerrors.Wrap(err, "❌ base との差分")
 		}
 	}
 
-	findings, unresolved, err := inspect(ctx, targets, *window, now)
+	findings, unresolved, err := inspect(context.Background(), targets, opt.window, now)
 	if err != nil {
-		log.Fatalf("❌ %v", err)
+		return xerrors.Wrap(err, "❌ 公開時刻の取得")
 	}
 
-	blocking := report(sub, findings, unresolved, policyViolations, bypasses, invalidBypasses, targets, *window, *github)
+	blocking := report(sub, findings, unresolved, policyViolations, bypasses, invalidBypasses, targets, opt.window, opt.github)
 
-	if *summaryOut != "" {
-		body := summary(sub, findings, unresolved, policyViolations, bypasses, invalidBypasses, targets, *window)
-		//nolint:gosec // 出力先はワークフローが渡すパスで、外部入力ではない
-		if writeErr := os.WriteFile(*summaryOut, []byte(body), summaryPerm); writeErr != nil {
-			log.Fatalf("❌ write summary: %v", writeErr)
+	if opt.summaryOut != "" {
+		body := summary(sub, findings, unresolved, policyViolations, bypasses, invalidBypasses, targets, opt.window)
+		if writeErr := os.WriteFile(opt.summaryOut, []byte(body), summaryPerm); writeErr != nil {
+			return xerrors.Wrap(writeErr, "❌ write summary")
 		}
 	}
 	if out := os.Getenv("GITHUB_OUTPUT"); out != "" {
 		if writeErr := appendOutput(out, len(findings), len(targets), blocking); writeErr != nil {
-			log.Fatalf("❌ write GITHUB_OUTPUT: %v", writeErr)
+			return xerrors.Wrap(writeErr, "❌ write GITHUB_OUTPUT")
 		}
 	}
 
 	if blocking > 0 {
-		os.Exit(1)
+		return xerrors.Wrap(errBlocking, fmt.Sprintf("❌ go-cooldown %s: %d 件の違反が残っています", sub, blocking))
 	}
+
+	return nil
 }
 
-func readWorkTreeGoMod() []byte {
+// parseArgs はサブコマンドとフラグを解釈します。ヘルプ要求は flag.ErrHelp を含むエラーとして
+// 返し、失敗として扱うかどうかの判断は呼び出し側に委ねます。
+func parseArgs(args []string) (string, options, error) {
+	if len(args) == 0 {
+		return "", options{}, xerrors.Wrap(errUsage,
+			"❌ usage: go-cooldown <gate|audit> [--base=<git-ref>] [--window-days=N] [--summary-out=<path>] [--github]")
+	}
+
+	sub := args[0]
+	if sub != "gate" && sub != "audit" {
+		return "", options{}, xerrors.Wrap(errUsage, fmt.Sprintf("❌ 未知のサブコマンド %q（gate | audit）", sub))
+	}
+
+	fs := flag.NewFlagSet(sub, flag.ContinueOnError)
+	base := fs.String("base", "", "gate: この git ref からの差分で追加 / 更新された require だけを対象にする")
+	window := fs.Int("window-days", defaultWindowDays, "公開からこの日数に満たないバージョンを窓内とみなす")
+	summaryOut := fs.String("summary-out", "", "Markdown サマリの出力先")
+	github := fs.Bool("github", false, "GitHub Actions のアノテーションを出力する")
+	if err := fs.Parse(args[1:]); err != nil {
+		return "", options{}, xerrors.Wrap(err, "❌ フラグを解釈できません")
+	}
+
+	// gate は差分を取れないと何も検査しないまま通るため、比較対象の不在を先に落とす。
+	if sub == "gate" && *base == "" {
+		return "", options{}, xerrors.Wrap(errUsage, "❌ gate には --base が要ります（比較対象が無いと差分を取れません）")
+	}
+
+	return sub, options{base: *base, summaryOut: *summaryOut, window: *window, github: *github}, nil
+}
+
+// readWorkTreeGoMod は作業ディレクトリの go.mod を返す。読めないことは run の戻り値として
+// 伝える。log.Fatal はここで os.Exit してしまい、呼び出し元の後始末も検査も通らなくなる。
+func readWorkTreeGoMod() ([]byte, error) {
 	b, err := os.ReadFile("go.mod")
 	if err != nil {
-		log.Fatalf("❌ read go.mod: %v", err)
+		return nil, xerrors.Wrap(err, "read go.mod")
 	}
-	return b
+
+	return b, nil
 }
 
 // parseGoMod は require ブロックと単一行 require の両方から依存を読む。go.mod は direct と
@@ -490,10 +541,8 @@ func report(
 	for _, f := range blocked {
 		msg := fmt.Sprintf("%s は公開 %d 日で cooldown %d 日を満たしていません。窓明けを待つか、"+
 			"待てない根拠を %s へ期限付きで記録してください", f.req.key(), f.ageDays, window, bypassFile)
-		//nolint:gosec // module path は空白を許さない正規表現で切り出しており改行を持ち込めない
 		log.Printf("❌ %s", msg)
 		if github {
-			//nolint:gosec // module path は空白を許さない正規表現で切り出しており改行を持ち込めない
 			log.Printf("::error file=go.mod::%s", msg)
 		}
 	}
@@ -503,10 +552,8 @@ func report(
 		if f.req.indirect {
 			kind = "indirect"
 		}
-		//nolint:gosec // module path は空白を許さない正規表現で切り出しており改行を持ち込めない
 		log.Printf("⚠️ %s（%s）は公開 %d 日で cooldown %d 日を満たしていません", f.req.key(), kind, f.ageDays, window)
 		if github {
-			//nolint:gosec // module path は空白を許さない正規表現で切り出しており改行を持ち込めない
 			log.Printf("::warning file=go.mod::%s（%s）は公開 %d 日で cooldown %d 日を満たしていません",
 				f.req.key(), kind, f.ageDays, window)
 		}
@@ -570,8 +617,6 @@ func summary(
 	var b strings.Builder
 	_, blocked, reported := classify(sub, findings, bypasses, invalid)
 
-	fmt.Fprintf(&b, "対象 %d 件 / 窓 %d 日 / バイパス %d 件\n\n", len(targets), window, len(bypasses))
-
 	if len(policyViolations) > 0 {
 		fenced(&b, "バイパス設定の違反", policyViolations)
 	}
@@ -597,10 +642,12 @@ func summary(
 		}
 		fenced(&b, "公開時刻を取得できなかったもの", lines)
 	}
+	// 件数の行は常に付くので、同じ Builder へ先に書くと節の有無を見分けられなくなる。
+	// 本文を組み終えてから前置きすることで、節が 1 つも無い場合にそう述べられる。
 	if b.Len() == 0 {
 		b.WriteString("違反はありません。\n")
 	}
-	return b.String()
+	return fmt.Sprintf("対象 %d 件 / 窓 %d 日 / バイパス %d 件\n\n", len(targets), window, len(bypasses)) + b.String()
 }
 
 // appendOutput は後続ステップ用に件数を GITHUB_OUTPUT へ書く。

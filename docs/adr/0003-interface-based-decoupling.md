@@ -68,7 +68,7 @@ Concretely:
 - Every cross-layer concern requires an interface declaration plus at least one concrete
   implementation, increasing file count.
 - Mapping between layer-local types (domain entity to DTO, DTO to OpenAPI response) adds
-  boilerplate at each boundary crossing.
+  repetitive conversion code at each boundary crossing.
 
 ## Alternatives Considered
 

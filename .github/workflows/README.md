@@ -51,7 +51,10 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
 | `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in by a fork must not meet a 10-minute cap |
 | `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml` | 15 | no recent completed run to measure |
+| `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition |
+| `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
+| `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
 
@@ -77,6 +80,8 @@ All three rules live in one check rather than three, because they are not three 
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
 |Generated Mock-Auth OpenAPI Artifacts Check|`gen-mock-auth-oapi-artifacts-check.yaml`|Verify the mock-auth-server OpenAPI bundle, zod schemas, and docs match committed artifacts|
 |Mock-Auth Server Check|`mock-auth-server-check.yaml`|Type-check the mock-auth-server, run its unit / integration tests, and fail on golden JWKS fixture drift|
+|Portal Check|`portal-check.yaml`|Type-check the documentation portal viewer (`docs-viewer/`) and run its test suite|
+|Scripts Check|`scripts-check.yaml`|Type-check the repository's TypeScript helper scripts (`scripts/**/*.ts`) and run the unit tests covering their decision logic|
 |OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
 |App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
@@ -86,31 +91,37 @@ All three rules live in one check rather than three, because they are not three 
 |Commitlint|`commitlint.yaml`|Lint every commit message the PR adds to the base branch — the route the `commit-msg` hook cannot cover|
 |Pin Actions Check|`pin-actions-check.yaml`|Verify GitHub Actions are pinned to a SHA (supply-chain hardening)|
 |Pin Images Check|`pin-images-check.yaml`|Verify Docker base images are pinned to a digest per the lockfile (supply-chain hardening)|
+|Egress Check|`egress-check.yaml`|Verify every job's inline `allowed-endpoints` matches the SSOT (see [Runner Hardening](#runner-hardening))|
 
 ### Security
 
 |Workflow|File|Description|
 |---|---|---|
-|CodeQL Scan|`code-ql.yaml`|CodeQL analysis for security vulnerabilities|
+|CodeQL Scan|`code-ql.yaml`|CodeQL analysis on the `security-extended` suite, one matrix leg per language: `go`, `javascript-typescript` (mock-auth-server / docs-viewer / scripts) and `actions` (the workflow definitions themselves)|
 |Dependency Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
 |Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
-|Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
+|Grype Scan|`grype.yaml`|Anchore Grype filesystem scan of the same dependency manifests Trivy reads, against a different vulnerability database and a different matcher|
+|Image Scan|`image-scan.yaml`|Build image, generate the SBOM in both SPDX-JSON and CycloneDX-JSON, run Trivy scan|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
 |OSV Scan|`osv-scanner.yaml`|OSV database scan across the Go module graph and the npm lockfiles|
 |Release OSV Scan|`osv-release-gate.yaml`|OSV scan on PRs into develop/staging/production, failing on HIGH or above|
-|Secret Scan|`secret-scan.yaml`|gitleaks scan for committed secrets (via go_tool_runner)|
+|Secret Scan|`secret-scan.yaml`|Two independent scans of the working tree for committed secrets: gitleaks (wide regex / entropy net) and Trivy (curated rules, far fewer false positives), as separate jobs with separate verdicts|
 |Secret Scan (TruffleHog)|`trufflehog.yaml`|TruffleHog scan for *verified* secrets — credentials that are actually live|
 |Actions Static Analysis|`zizmor.yaml`|zizmor audit of the workflow / composite-action definitions themselves (same `make` gate as the pre-commit hook)|
 |Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
 |OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
 |npm Cooldown Audit|`npm-cooldown-audit.yaml`|Report lockfile entries that do not satisfy the `.npmrc` supply-chain cooldown (never blocks)|
 |Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
-|mise Cooldown|`mise-cooldown.yaml`|Gate a PR that pins a `mise.toml` tool version published inside the cooldown window|
+|Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
-|SAST|`sast.yaml`|Opengrep (Semgrep-compatible) scan of first-party source with taint tracking|
+|SAST|`opengrep.yaml`|Opengrep (Semgrep-compatible) scan of first-party Go and TypeScript source with taint tracking|
+|DevSkim Scan|`devskim.yaml`|DevSkim regex scan over every file in the tree, whatever its language|
+|Bearer Scan|`bearer.yaml`|Bearer data-flow scan for sensitive values reaching a sink (report-only; Elastic License 2.0, see [Bearer's licence and removal](#bearers-licence-and-removal))|
+|ESLint Scan|`eslint.yaml`|ESLint with `eslint-plugin-security` over the three TypeScript workspaces, one matrix leg each (report-only)|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
 |Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
+|DAST|`zap-api-scan.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast))|
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
 |Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
 
@@ -123,13 +134,14 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Tool | Pull request | Push to protected branch | Schedule |
 | --- | --- | --- | --- |
 | gitleaks | all PRs | — | weekly, full history |
+| Trivy secret | all PRs, working tree | — | weekly |
 | TruffleHog | all PRs, diff only | — | weekly, full history |
 | zizmor | when Actions files change | `develop` / `staging` / `production` / `release/*` | weekly (online audits) |
 | Dependency Review | dependency-change PRs | — | — |
 | govulncheck | Go / dependency-change PRs | same as above | weekly |
 | Trivy FS | Go / dependency-change PRs | same as above | weekly |
 | OSV-Scanner | dependency-change PRs | same as above | weekly |
-| CodeQL | Go / dependency-change PRs | same as above | weekly |
+| CodeQL | Go / TypeScript / Actions-definition-change PRs | same as above | weekly |
 | OpenSSF Scorecard | — | default branch only | weekly |
 | Image Scan | PRs into a deploy branch | — | weekly |
 | Release gates (Trivy FS / OSV) | PRs into a deploy branch | — | — |
@@ -137,13 +149,22 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Trivy config (misconfig) | Dockerfile-change PRs | same as above | — |
 | Trivy licence | same trigger as Trivy FS | same as above | weekly |
 | OSV diff | dependency-change PRs | — | — |
-| Opengrep (SAST) | Go / dependency / spec-change PRs | same as above | weekly |
+| Opengrep (SAST) | Go / TypeScript / dependency / spec-change PRs | same as above | weekly |
+| Grype | Go / dependency-change PRs | same as above | weekly |
+| DevSkim | all PRs | `develop` / `staging` / `production` / `release/*` | weekly |
+| Bearer | Go / TypeScript-change PRs | same as above | weekly |
+| ESLint (security) | TypeScript-workspace-change PRs | same as above | weekly |
 | lockfile-lint | lockfile-change PRs | — | — |
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
 | capslock | `go.mod`-change PRs | — | — |
 | Go fuzzing | — | — | weekly |
+| OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
+
+DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
+
+The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer.
 
 Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
 
@@ -157,20 +178,55 @@ Which trigger a detection notification fires on follows from who the right recip
 | `trivy-fs.yaml` | fixable CRITICAL / HIGH / MEDIUM found | schedule |
 | `vulnerability-check.yaml` | reachable vulnerability found | schedule |
 | `osv-scanner.yaml` | promotion-blocking finding | schedule |
+| `grype.yaml` | any vulnerability found | schedule |
+| `devskim.yaml` | any finding | schedule |
 
-The other scheduled scanners need no detection notification: gitleaks, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Three are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does.
+The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Five are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. ESLint and Bearer are the fourth and fifth, and for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, over two hundred findings for Bearer — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore.
 
 #### Overlapping surfaces
 
-Several tools can detect the same class of finding. Each surface has one owner so that a single problem does not gate twice and get suppressed twice:
+Several tools can detect the same class of finding. **What must not be duplicated is the gate, not the tool**: one problem turning a pull request red twice means two places to suppress it and two places for a suppression to rot. Reporting is a different matter — a second engine reading the same files against its own database or rule set catches what the first has not learned about yet, and that redundancy is bought deliberately.
+
+So a surface may carry several tools at once. What keeps the gate single is not that only one tool runs, but that **no two gating tools claim the same finding**. Two mechanisms hold that, and the table records both: where two tools would judge the same rule, one side is switched off for that surface (the third column names it, and why a capable tool is unused); where two gates coexist, they judge disjoint rule sets. `First-party Go source` is the case that shows the difference — Opengrep gates on Semgrep's ERROR band and `gosec` gates through golangci-lint, over the same files but never the same rule — so "one owner" there means one owner *per rule*, not one tool.
+
+Every other tool on a shared surface is report-only, and the verdict on that surface belongs to the gate(s) marked below. A row with no `(gate)` marker gates nowhere: the dependency scanners report, and the blocking verdict is the release gates' (see [Release Gates](#release-gates)).
 
 | Surface | Owner | Also capable, deliberately not used here |
 | --- | --- | --- |
-| Dockerfile security policy | `trivy-config.yaml` | Opengrep (its Dockerfile rules are excluded in `sast.yaml`) |
-| Dockerfile style / correctness | `docker-lint.yaml` (hadolint) | — (a different layer, not a duplicate) |
-| First-party Go source | `sast.yaml` (Opengrep) + `gosec` in golangci-lint | — |
-| OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) | Spectral |
-| OpenAPI security posture | `openapi-security.yaml` (Spectral) | redocly |
+| Dockerfile security policy | `trivy-config.yaml` **(gate, HIGH+)** | Opengrep (its Dockerfile rules are excluded in `opengrep.yaml`) |
+| Dockerfile style / correctness | `docker-lint.yaml` (hadolint) **(gate)** | — (a different layer, not a duplicate) |
+| First-party Go source | `opengrep.yaml` (Opengrep, ERROR band) **(gate)** + `gosec` via `go-lint.yaml` **(gate)** — disjoint rule sets | — |
+| OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) **(gate)** | Spectral |
+| OpenAPI security posture | `openapi-security.yaml` (Spectral) **(gate)** | redocly |
+| Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) — all report-only | — |
+| First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) | — |
+| Any file, whatever its language | `devskim.yaml` (DevSkim) | — |
+| Sensitive values reaching a sink | `bearer.yaml` (Bearer) — report-only | — |
+
+#### Bearer's licence and removal
+
+`bearer/bearer` is published under the **Elastic License 2.0**, which permits use, modification and redistribution but forbids providing the software to third parties as a hosted or managed service, and forbids circumventing its licence-key functionality. Running it inside this repository's own CI engages neither: nothing here is offered to a third party, and the CLI needs no key — its `--api-key` flag is documented as legacy and exists only for the vendor's discontinued cloud product.
+
+Being outside the OSI definition is not what makes Bearer unusual here — CodeQL is not OSI-approved either, and gets no section of its own. What is worth writing down is that a repository created from this template inherits the workflow along with the licence, so a consumer who then wants to offer the tool as part of a service has a question to answer that the OSI-licensed scanners here do not raise. Removing Bearer is the answer, and it has to take all of this with it:
+
+| Remove | Kept green by |
+| --- | --- |
+| `.github/workflows/bearer.yaml` | — |
+| the `aqua:Bearer/bearer` line in [`mise.toml`](../../mise.toml) | `make tool-cooldown-gate` reads the pin from here |
+| the `[job."bearer.yaml:bearer"]` section in [`.github/egress.toml`](../egress.toml) | `make egress-check` fails on a job section with no matching workflow |
+| the `bearer.yaml` rows in this file and its `README.ja.md` translation — timeout table, Security table, trigger matrix, weekly rotation, overlapping surfaces — and this section | `make md-lint` checks the pair, not the rows |
+
+`make pin-actions-check` needs nothing done to it as long as every action `bearer.yaml` used is still referenced elsewhere; it fails on a lockfile entry nothing references, so check that first if it goes red. The `level` defaulting in the summary step goes with the workflow: it exists because Bearer omits `level` from every result, and jq raises a runtime error on the sort key rather than falling through to `//`.
+
+#### DevSkim's version pin
+
+Every other tool a workflow here installs is pinned in [`mise.toml`](../../mise.toml), which is what makes `tool-cooldown.yaml` able to gate a version published inside the supply-chain cooldown window. DevSkim is the exception: `microsoft/DevSkim` publishes no release binary and has no aqua package, so the only distribution is the NuGet global tool.
+
+mise can in fact reach that — its `dotnet:` backend resolves NuGet packages — and it is still not used, for two reasons. The backend requires the .NET runtime to become a mise-managed tool as well, which puts a whole language runtime into the version SSOT for the sake of one linter. And [`scripts/tool-cooldown`](../../scripts/tool-cooldown) has no publish-time source for a `dotnet:` backend, so the entry would be reported as *unresolved* rather than gated. Moving the pin into `mise.toml` would therefore buy the appearance of coverage without the coverage.
+
+The version consequently lives in `devskim.yaml`'s own `env:` block, and nothing guards it — bumping it means reading the release notes by hand.
+
+The alternative — `microsoft/DevSkim-Action` — is worse on exactly this axis, not better. It is a Docker action whose `Dockerfile` builds from the floating `mcr.microsoft.com/dotnet/sdk:8.0` tag and then runs an unversioned `dotnet tool install`, so pinning the action to a SHA pins the recipe and not the code that ends up executing.
 
 #### Release Gates
 
@@ -201,13 +257,52 @@ Urgent overrides live in [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml)
 
 **It never fails the build**, and that is a design decision rather than a default. Overriding the cooldown is a tech-lead / architect call — reacting to a CRITICAL advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The non-blocking property lives in the tool itself, not in workflow configuration, so it cannot be turned into a gate by editing YAML.
 
-Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in npm's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/.npmrc`, `**/package-lock.json`, and the pin lockfiles to the owning role.
+Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in npm's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/.npmrc`, `**/package-lock.json`, `**/pnpm-lock.yaml`, `**/pnpm-workspace.yaml`, and the pin lockfiles to the owning role.
+
+Only `mock-auth-server/` still resolves with npm. `scripts/` and `docs-viewer/` resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for that half because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its CODEOWNERS entry.
 
 A pull request is audited against its base, so a finding names exactly the entries that change introduces and the PR comment persists as the record even after those versions age out of the window. The scheduled run audits every entry as a second net.
 
+#### DAST
+
+`zap-api-scan.yaml` is the only workflow here that scans a *running* application. Every other security check reads files; this one builds the server, boots it against a seeded Postgres, and drives HTTP at it from OWASP ZAP, with the endpoint list taken from the bundled OpenAPI definition.
+
+That shape is what decided the tool. Of the six DAST products in GitHub's code-scanning template catalogue, four run the scan on the vendor's own infrastructure — which cannot reach an API that exists only inside a GitHub-hosted runner — and the two that do run in the runner both require a paid token. ZAP needs no credential and scans from inside the job, so it is the only one that can see an ephemeral target at all.
+
+**The scan runs authenticated, and that is the part most easily broken.** An unauthenticated scan collects 401 from every protected operation and stops at the surface, which looks like a completed scan and is not one. The job runs under the `dast` environment profile, which wires the real JWKS-backed authenticator described in [`docs/design/auth.md`](../../docs/design/auth.md) rather than the dev-only stub `ci` uses, so the credential is a JWT the mock auth server actually signed and the scan drives signature verification, `typ` checking and `kid` resolution on every request. The job asserts that the credential is accepted before ZAP starts. Losing that assertion would not turn the check red — it would quietly shrink what the scan covers.
+
+**It is report-only by design, not by omission.** The alert thresholds in [`.github/zap/rules.tsv`](../zap/rules.tsv) are derived from what this API happens to answer today; gating a merge on them would fail pull requests over findings they were never calibrated for. Alerts go to code scanning under the `zap-dast` category and to an artifact, and only a scan that could not run fails the job. ZAP emits no SARIF of its own, so the JSON report is mapped to it in the workflow; every alert is anchored to the OpenAPI bundle, because that file is what describes the surface the finding is about and pointing at a file that exists is what makes the alert navigable.
+
+The thresholds and the scanned surface are expected to be re-derived against the API they are pointed at — see [Phase 17 of the setup guide](../../docs/get-started/setup-repository.md).
+
 #### Runner Hardening
 
-Every job in this directory starts with `step-security/harden-runner` in `egress-policy: audit` mode. It records the runner's outbound network calls and file-integrity events so a compromised action or transitive tool download becomes visible. `audit` only reports — moving to `block` requires a settled allowlist of endpoints, which is deliberately deferred until the audit data exists.
+Every job in this directory starts with `step-security/harden-runner` in `egress-policy: block` mode with its own `allowed-endpoints`. It resolves every outbound connection against that list and refuses the rest, so a compromised action or transitive tool download cannot exfiltrate to an endpoint the job has no business reaching. File-integrity events are still recorded alongside.
+
+The step stays **inline in every job**, and that is a constraint rather than a preference. A local composite action (`uses: ./.github/actions/*`) resolves only once the repository is checked out, and harden-runner has to run *before* the checkout — the checkout is itself an outbound call, and guarding it is the point. Factoring the step out would open the window it exists to close. Expect this proposal to recur; the answer is that it is not available, not that it was weighed and declined.
+
+**What is not fixed is where the list comes from.** [`.github/egress.toml`](../egress.toml) is the source of truth. `make egress-apply` writes it into every job, and `make egress-check` fails when an inline block has drifted from it — on the pre-commit hook and in `egress-check.yaml`.
+
+**A job declares its capability class, not its hosts.** What a job reaches follows from what it *does* — install tooling, build an image, boot a database — and not from the job's own identity: execution descends from `make` into docker into `mise` inside the container, so the endpoints a job needs are not visible in its YAML. Four classes cover it, and a job names the ones that apply:
+
+| Class | Endpoints | Applies to |
+| --- | --- | --- |
+| `base` | harden-runner's own agent, the GitHub API / web / codeload hosts, `objects` / `raw` / `release-assets.githubusercontent.com`, `*.actions.githubusercontent.com`, `*.blob.core.windows.net` | **every job, implicitly** — checkout, action download, artifact upload. It is never written in `classes` |
+| `mise` | mise's own distribution, plus every backend `mise.toml` resolves through: aqua / GitHub releases, the Go toolchain and module proxy, `downloads.sqlc.dev`, the npm registry and `get.pnpm.io`, `astral.sh` and PyPI — and Sigstore, because mise verifies each tool's GitHub artifact attestation through it | any job that installs tooling. A job that only runs `setup-go` names this class too: the module proxy lives here, and a narrower Go-only class would be one more classification to get wrong |
+| `image` | the Docker Hub hosts and both CDNs, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com`, and the Alpine / Debian package mirrors. Inherits `mise`, because the image build runs `mise install` inside the container | image build / push, service containers, Trivy's DB and checks bundle, and anything driving docker through `make` |
+| `db` | the PGDG apt repository and the Ubuntu archive mirrors that the Postgres service container installs from | jobs that boot Postgres |
+
+Anything genuinely particular to one job goes in that job's `extra`: a scanner's data source (`semgrep.dev`, `api.osv.dev`, `vuln.go.dev`), a deploy target, `hooks.slack.com` for the notifier, `zaproxy.org` for the DAST job (ZAP resolves its add-on manifest at startup). A host that turns up in a second job's `extra` belongs in a class instead.
+
+**The classes are deliberately coarse.** Splitting them finer buys a tighter allowlist and costs more classification decisions, and a job in the wrong class is the failure this arrangement exists to remove. A class that is slightly wider than one job needs still refuses everything outside it; a job in the wrong class fails the build.
+
+To add an endpoint: edit `.github/egress.toml` — into the class when the need follows from a capability, into the job's `extra` when it does not — then run `make egress-apply` and commit the generated blocks. Never hand-edit an inline block; `make egress-check` rejects it.
+
+A blocked endpoint appears in the harden-runner run summary as a denied connection. That is the thing to read when a job fails for no reason visible in its own logs, and the fix is to widen the class or the `extra`, never to drop the job back to `audit`.
+
+**One job's failure mode is inverted and is called out where it lives.** `trufflehog.yaml` verifies a candidate credential by calling the service that issued it, and that set of services is open-ended. A missing endpoint there does not turn the job red; it turns a real leak into an unverified result the workflow does not report. Treat a disappearing TruffleHog finding as a possible allowlist gap. It is the only job on `egress-policy: audit`, declared as such in the SSOT so that it carries no `allowed-endpoints` at all — and `make egress-check` fails if the two ever disagree.
+
+Two jobs carry an assumption worth restating when forking: `deploy-app.yaml`'s build job assumes `ghcr.io` and the public Sigstore instance (its `extra`), and its deploy job is a placeholder that declares no class at all, so it gets `base` and nothing else — wiring a real deployment in means adding that cloud's control-plane hosts to its `extra`, since the OIDC exchange is an outbound call like any other.
 
 ### Deployment (Push)
 

@@ -98,7 +98,7 @@ Measured on this repository, not inherited from upstream's claims:
   the wrapper, which resolves the name and lists the candidates when a name is ambiguous:
 
   ```bash
-  node .claude/scripts/graph-affected.mjs NormalizeError --depth 2
+  node .claude/scripts/graph-affected.ts NormalizeError --depth 2
   ```
 
 - **Raise `--budget` on `query`, or read the truncation warning.** The default (~2000 tokens) cuts

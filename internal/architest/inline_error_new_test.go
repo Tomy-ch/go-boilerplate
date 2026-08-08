@@ -25,7 +25,7 @@ var (
 	blockSentinelDeclRe = regexp.MustCompile(`^\t\w+ += xerrors\.New\(`)
 )
 
-// TestNoInlineXerrorsNew は、production コードが関数本体内で xerrors.New を直接生成していないことを
+// TestNoInlineXerrorsNew は、production code が関数本体内で xerrors.New を直接生成していないことを
 // 機械検証する。関数本体で生成したエラーは呼び出し側から errors.Is で識別できず、テストが
 // メッセージ文字列一致でしか検証できない脆いアサーションに退行するため、package-level の
 // sentinel（`var errXxx = xerrors.New(...)`）として宣言し、動的な文脈は xerrors.Wrap で付与する。
@@ -42,6 +42,9 @@ func TestNoInlineXerrorsNew(t *testing.T) {
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, werr error) error {
 			if werr != nil {
 				return werr
+			}
+			if serr := skipDependencyTree(d); serr != nil {
+				return serr
 			}
 			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return nil
@@ -62,7 +65,7 @@ func TestNoInlineXerrorsNew(t *testing.T) {
 	}
 
 	// 走査対象が 0 件だと検証が常に成功してしまうため、ルート解決の破綻を空振りとして検出する。
-	require.NotZero(t, scanned, "走査対象の production Go ファイルが 0 件（moduleSubdirs のルート解決を疑う）")
+	require.NotZero(t, scanned, "走査対象の production code の Go ファイルが 0 件（moduleSubdirs のルート解決を疑う）")
 
 	sort.Strings(violations)
 	for _, v := range violations {
@@ -167,7 +170,9 @@ func Test_collectInlineXerrorsNew(t *testing.T) {
 		t.Run("関数本体内のvarブロック内の生成を検出する", func(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split("package p\n\nfunc f() error {\n\tvar (\n\t\terr = xerrors.New(\"boom\")\n\t)\n\treturn err\n}\n", "\n")
-			assert.Len(t, collectInlineXerrorsNew(lines, "p.go"), 1)
+			violations := collectInlineXerrorsNew(lines, "p.go")
+			require.Len(t, violations, 1)
+			assert.Equal(t, `p.go:5: err = xerrors.New("boom")`, violations[0])
 		})
 
 		t.Run("package-levelのvarブロックを閉じた後の生成を検出する", func(t *testing.T) {
@@ -176,13 +181,17 @@ func Test_collectInlineXerrorsNew(t *testing.T) {
 				"package p\n\nvar (\n\terrA = xerrors.New(\"a\")\n)\n\nfunc f() error {\n\treturn xerrors.New(\"boom\")\n}\n",
 				"\n",
 			)
-			assert.Len(t, collectInlineXerrorsNew(lines, "p.go"), 1)
+			violations := collectInlineXerrorsNew(lines, "p.go")
+			require.Len(t, violations, 1)
+			assert.Equal(t, `p.go:8: return xerrors.New("boom")`, violations[0])
 		})
 
 		t.Run("package-levelのvar宣言でもsentinel以外への代入は検出する", func(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split("package p\n\nvar f = func() error { return xerrors.New(\"boom\") }\n", "\n")
-			assert.Len(t, collectInlineXerrorsNew(lines, "p.go"), 1)
+			violations := collectInlineXerrorsNew(lines, "p.go")
+			require.Len(t, violations, 1)
+			assert.Equal(t, `p.go:3: var f = func() error { return xerrors.New("boom") }`, violations[0])
 		})
 
 		t.Run("package-levelのvarブロック内でも関数リテラル内の生成は検出する", func(t *testing.T) {

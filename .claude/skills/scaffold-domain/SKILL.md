@@ -28,7 +28,7 @@ Do NOT use this skill for:
 
 - `docs/spec/<feature>/domain.md` — single source of truth for what gets generated.
 - `internal/domain/README.md` — layer-wide convention (principles, naming, getter style, `ptr.Copy` usage, error wrapping, file separation). **Canonical**: README wins on any conflict with sibling code.
-- Existing sibling aggregates under `internal/domain/<sibling>/` (e.g., `internal/domain/user/`) — secondary structural template for imports, file layout, formatting style.
+- Existing sibling aggregates under `internal/domain/<sibling>/` — secondary structural template for imports, file layout, formatting style.
 - `internal/domain/<aggregate>/` — to verify the directory does not already exist (abort if it does).
 
 **Writes (with confirmation)**:

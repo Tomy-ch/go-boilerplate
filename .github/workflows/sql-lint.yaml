@@ -7,6 +7,7 @@ on:
       - '**/*.sql'
       - '**/*.sqlfluff'
       - 'mise.toml'
+      - 'python/sqlfluff.*'
   workflow_dispatch:
 
 permissions:
@@ -28,7 +29,39 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -45,8 +78,18 @@ jobs:
       - name: Install uv
         run: mise install uv
 
+      # sqlfluff is pinned by python/sqlfluff.txt, not by mise. `--require-hashes` refuses a
+      # lockfile entry that is missing a version or a hash, so a tampered lockfile fails here
+      # rather than installing. The interpreter is read from mise.toml so this job cannot drift
+      # from the runtime the lockfile was resolved against; uv downloads that version itself
+      # instead of paying for a mise Python install.
       - name: Install sqlfluff
-        run: mise install pipx:sqlfluff
+        run: |
+          set -euo pipefail
+          python_version="$(mise config get tools.python)"
+          uv venv --python "${python_version}" .venv
+          uv pip install --require-hashes --no-cache -r python/sqlfluff.txt
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Run SQL lint
         id: lint
@@ -67,9 +110,14 @@ jobs:
         id: comment
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          LINT_STATUS: ${{ steps.lint.outputs.status }}
+          EXIT_CODE_MIGRATIONS: ${{ steps.lint.outputs.exit_code_migrations }}
+          EXIT_CODE_DML: ${{ steps.lint.outputs.exit_code_dml }}
+          EXIT_CODE_SEED: ${{ steps.lint.outputs.exit_code_seed }}
         run: |
           set -euo pipefail
-          if [ "${{ steps.lint.outputs.status }}" = "success" ]; then
+          if [ "${LINT_STATUS-}" = "success" ]; then
             echo "title=## ✅ SQL lint: PASS" >> "$GITHUB_OUTPUT"
           else
             echo "title=## ❌ SQL lint: FAIL" >> "$GITHUB_OUTPUT"
@@ -119,9 +167,9 @@ jobs:
 
           category_code() {
             case "$1" in
-              migrations) echo '${{ steps.lint.outputs.exit_code_migrations }}' ;;
-              dml)        echo '${{ steps.lint.outputs.exit_code_dml }}' ;;
-              seed)       echo '${{ steps.lint.outputs.exit_code_seed }}' ;;
+              migrations) echo "${EXIT_CODE_MIGRATIONS-}" ;;
+              dml)        echo "${EXIT_CODE_DML-}" ;;
+              seed)       echo "${EXIT_CODE_SEED-}" ;;
             esac
           }
 

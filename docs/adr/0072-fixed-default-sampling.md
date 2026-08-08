@@ -50,8 +50,8 @@ an `OBS_SAMPLE_RATE` or equivalent field into `ObservabilityConfig`.
 ### Negative Consequences
 
 - Without Collector-side sampling, high-traffic deployments will emit all spans over OTLP,
-  increasing Collector and storage load. The adopter must add Collector-side sampling
-  when needed.
+  increasing Collector and storage load. Collector-side sampling must be added when
+  needed.
 - The sampling strategy cannot be changed without deploying a Collector configuration
   change (or a code change); there is no runtime knob in the application.
 

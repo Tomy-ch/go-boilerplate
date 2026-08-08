@@ -1,7 +1,7 @@
 ---
 name: supply-chain-triage
 description: >-
-  Gather direct supply-chain evidence about ONE artifact version that a cooldown / quarantine window has caught, and score how likely it is to be a compromised publish (0–12 over four evidence axes) so a human can decide adopt-now vs wait from evidence rather than from a day count alone. Use this whenever a version is held / deferred / blocked / quarantined or classified `too-new` / `pending` by `/dep-vuln-upgrade`, `/tools-upgrade`, `/actions-pin`, or `/images-pin`; whenever `make npm-cooldown-audit` reports a lockfile entry younger than its own `.npmrc` `min-release-age` and someone must judge whether that override was safe; whenever the user asks to "analyze the implementation" of a release, "is this version safe / malicious", or "why is this quarantined and can we take it anyway"; and before any deliberate window override (`days=0`, `--min-release-age=0`, an `overrides` pin onto a fresh version). It reads the artifact — npm tarball, Go module zip, Actions commit range, image config / SBOM — and never executes it, answers the four questions recorded in `docs/design/security.md` (did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear), reports an axis as unanswerable rather than as a pass when the evidence cannot be obtained, and is strictly report-only: it never edits a lockfile, pin, `package.json`, or `.npmrc`, never lowers a window, and never applies an upgrade — the calling skill or the user makes that call. Do NOT use it to perform the upgrade itself (that is the four skills above), to triage a CVE in an already-adopted dependency (`/dep-vuln-upgrade`), or as a malware scanner for first-party code.
+  Gather direct supply-chain evidence about ONE artifact version that a cooldown / quarantine window has caught, and score how likely it is to be a compromised publish (0–12 over four evidence axes) so a human can decide adopt-now vs wait from evidence rather than from a day count alone. Use this whenever a version is held / deferred / blocked / quarantined or classified `too-new` / `pending` by `/dep-vuln-upgrade`, `/tools-upgrade`, `/actions-pin`, or `/images-pin`; whenever `make npm-cooldown-audit` reports a lockfile entry younger than its own `.npmrc` `min-release-age`, or `make tool-cooldown-gate` blocks a `mise.toml` / `python/*.in` declaration, and someone must judge whether waiting is protective or merely inconvenient; whenever the user asks to "analyze the implementation" of a release, "is this version safe / malicious", or "why is this quarantined and can we take it anyway"; and before any deliberate window override (`days=0`, `--min-release-age=0`, a pnpm `minimumReleaseAgeExclude` entry, a `.github/tool-cooldown-bypass.toml` entry, an `overrides` pin onto a fresh version). It reads the artifact — npm / pnpm tarball, PyPI wheel or sdist, Go module zip, Actions commit range, image config / SBOM — and never executes it, answers the four questions recorded in `docs/design/security.md` (did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear), reports an axis as unanswerable rather than as a pass when the evidence cannot be obtained, and is strictly report-only: it never edits a lockfile, pin, `package.json`, `.npmrc`, `pnpm-workspace.yaml`, `python/*.in`, or a cooldown bypass file, never lowers a window, and never applies an upgrade — the calling skill or the user makes that call. Do NOT use it to perform the upgrade itself (that is the four skills above), to triage a CVE in an already-adopted dependency (`/dep-vuln-upgrade`), or as a malware scanner for first-party code.
 argument-hint: '[<ecosystem>:<name>@<candidate-version>] [baseline=<version>] [days=<N>]'
 ---
 
@@ -17,7 +17,7 @@ It exists because of a property recorded in `docs/design/security.md`:
 > what actually changed, and did new dependencies appear. […] Answering them beats counting days.
 > Skipping *both* does not.
 
-`docs/design/security.md` (section "Dependencies → Two principles that hold for every ecosystem")
+`docs/design/security.md` (section "Dependencies → Three principles that hold for every ecosystem")
 is the **source of truth** for that reasoning — read it at runtime rather than trusting this
 paragraph, because the policy lives there and this skill is only its instrument. The four axes
 below are those four questions, made operational. In a fork where that document is absent, the
@@ -39,8 +39,12 @@ only — they are command recipes, not prose for human readers.
 - `make npm-cooldown-audit` reports a lockfile entry younger than its `.npmrc` `min-release-age`.
   That audit is detection-only by design — it says an override happened, not whether it was safe.
   This skill supplies the missing half.
-- Before any deliberate window override (`days=0`, `--min-release-age=0`, pinning `overrides` onto
-  a fresh version). Overriding without evidence is the one combination the design doc rules out.
+- `make tool-cooldown-gate` blocks a `mise.toml` or `python/*.in` declaration. That gate *does* fail
+  the build, so the question is not whether an override slipped through but whether waiting is
+  protective — which is what this skill answers, and what the bypass entry's `reason` needs.
+- Before any deliberate window override (`days=0`, `--min-release-age=0`, a pnpm
+  `minimumReleaseAgeExclude` entry, a `.github/tool-cooldown-bypass.toml` entry, pinning `overrides`
+  onto a fresh version). Overriding without evidence is the one combination the design doc rules out.
 - The user asks, in any phrasing, whether a specific release is safe to take.
 
 Do NOT use this skill for:
@@ -60,13 +64,16 @@ Do NOT use this skill for:
 These are what make the skill safe to invoke on a possibly-malicious artifact.
 
 - **Report-only.** Never edit `mise.toml`, `.github/actions-pin.toml`, `docker/images-pin.toml`,
-  `package.json`, a lockfile, `go.mod`, `.npmrc`, or a `FROM` / `uses:` / `image:` line. Never
+  `.github/tool-cooldown-bypass.toml`, `package.json`, `pnpm-workspace.yaml`, `python/*.in`, a
+  lockfile, `go.mod`, `.npmrc`, or a `FROM` / `uses:` / `image:` line. Never
   re-run a caller's `resolve` / `apply`. Never lower a window or pass `days=0` /
   `--min-release-age=0` yourself. A low score is evidence handed to a decision-maker, not a
   decision — the caller's `AskUserQuestion`, or the user, adopts or waits.
 - **Never execute the artifact.** Download and read; do not install, build, or run it. Running an
   install script *is* the attack for npm, so use `npm pack` / the registry tarball, never
-  `npm install`; if a resolve is unavoidable add `--ignore-scripts --dry-run`. Never `docker run` a
+  `npm install`; if a resolve is unavoidable add `--ignore-scripts --dry-run`. The equivalent for
+  PyPI is an sdist's build backend, which runs on install — download and unzip the wheel, never
+  `pip install` / `uv pip install` the candidate. Never `docker run` a
   quarantined image, never execute a downloaded binary, never `go build` / `go generate` a candidate
   module you are about to accuse.
 - **Work outside the repo tree.** Extract artifacts into the session scratchpad (or `tmp/`), never
@@ -157,7 +164,7 @@ separate line, in the terms that actually differ:
 - **Executes in CI with the job's credentials before our code does** — a GitHub Action, a base
   image, an npm package with an install script. Highest; a compromise here reaches secrets directly.
 - **Linked into the running service** — a Go module, a runtime npm dependency.
-- **Build / dev-time only** — a generator or linter in the toolbox image, a `pipx:` tool.
+- **Build / dev-time only** — a generator or linter in the toolbox image. A **PyPI tool** sits above this line rather than on it: it runs with the developer's privileges on a workstation holding repo write access, so report it as such instead of as build-time only.
 
 ## Procedure
 
@@ -167,7 +174,7 @@ Fix these before gathering anything, from the arguments, the calling skill's con
 
 | Field | Note |
 | --- | --- |
-| ecosystem | `npm` / `go` / `github-actions` / `docker-image` — selects the reference file |
+| ecosystem | `npm` / `pnpm` / `pypi` / `go` / `github-actions` / `docker-image` — selects the reference file |
 | name + candidate version | The exact thing under consideration (tag, version, digest) |
 | baseline version | What the caller keeps if this is declined; the diff's other end |
 | window `N` and how it was caught | Which disposition fired (`blocked` / `pending` / rule 2 …), and when the candidate ages out |
@@ -181,7 +188,8 @@ its other end and is `?` unless the ecosystem offers another comparison.
 Read only the one that applies. Each gives the commands per axis and states which axes that
 ecosystem cannot answer:
 
-- `references/npm.md` — npm packages, including transitive deps under `overrides`
+- `references/npm.md` — npm **and pnpm** packages (same registry, so the same evidence commands; only the reporting differs), including transitive deps under `overrides`
+- `references/pypi.md` — PyPI tools declared in `python/*.in` and locked in `python/*.txt` (no publisher identity in the API, so axis P is answered indirectly or not at all)
 - `references/go-modules.md` — Go modules
 - `references/github-actions.md` — `uses:` references (richest evidence: a real commit range)
 - `references/docker-images.md` — Dockerfile `FROM` / compose `image:` digests (thinnest evidence)
@@ -234,11 +242,24 @@ not make a blocked install possible:
 | HIGH / CRITICAL | 採用しない。上流への報告と、当該バージョンを避ける代替（一つ前の aged 版）を検討する |
 | INSUFFICIENT-EVIDENCE | 証拠が取れていないため窓がそのまま効く。待つ |
 
-Two walls to restate in the report whenever they apply:
+Four walls to restate in the report whenever they apply:
 
 - **npm under a `.npmrc` `min-release-age`**: the version cannot be installed at all, whatever the
-  score. The options are to wait, or for a role to override deliberately — which
-  `make npm-cooldown-audit` will then surface on the PR. Never suggest lowering `min-release-age`.
+  score, and npm offers no per-version exemption. The options are to wait, or for a role to override
+  deliberately — which `make npm-cooldown-audit` will then surface on the PR. Never suggest lowering
+  `min-release-age`.
+- **pnpm under a `pnpm-workspace.yaml` `minimumReleaseAge`**: likewise uninstallable, and the block
+  extends to `--frozen-lockfile` replay, so it reaches CI and every other checkout rather than only
+  the machine doing the resolve. pnpm *does* have a per-version exemption
+  (`minimumReleaseAgeExclude`), which makes the adopt-or-wait choice a real one — report the score
+  as the input to it and leave the decision with the caller. Never suggest lowering
+  `minimumReleaseAge` or turning off `minimumReleaseAgeStrict`.
+- **PyPI under `scripts/tool-cooldown`**: the window is enforced by a repository gate rather than by
+  the resolver, and that gate **fails the build** — so a blocked version is blocked by a check this
+  repository owns, and a LOW score does not clear it. The escape hatch is a dated entry in
+  `.github/tool-cooldown-bypass.toml` (`expires` / `issue` / `reason`, all required, three months
+  maximum); a triage verdict is the evidence that belongs in `reason`, not permission to add the
+  entry. Never propose editing the window constant in `scripts/tool-cooldown`.
 - **`images-pin` rule 3**: there is no aged digest to fall back to, so a LOW score still leaves the
   choice between waiting and a deliberate `days=0` bootstrap.
 
@@ -262,7 +283,7 @@ Two walls to restate in the report whenever they apply:
 
 ## Checklist
 
-- [ ] `docs/design/security.md` "Two principles" read at runtime (or the fallback noted)
+- [ ] `docs/design/security.md` "Three principles" read at runtime (or the fallback noted)
 - [ ] Candidate fixed: ecosystem, name, candidate version, **baseline the caller would keep**, window `N`, disposition, urgency
 - [ ] The one matching `references/<ecosystem>.md` read; its unanswerable axes honored
 - [ ] All four axes attempted; each score carries a command + observation, or an explicit `?` with a reason
@@ -271,6 +292,6 @@ Two walls to restate in the report whenever they apply:
 - [ ] Exposure reported as a separate line, not folded into the score
 - [ ] Artifact never executed (no `npm install`, no `docker run`, no downloaded binary, no build of the candidate); extracted outside the repo tree
 - [ ] Japanese report printed with band, recommendation, and the explicit statement that nothing was changed
-- [ ] npm `min-release-age` / `images-pin` rule 3 walls restated when they apply
+- [ ] npm `min-release-age` / pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 walls restated when they apply
 - [ ] No file modified, no window lowered, no upgrade applied
 - [ ] After updating `SKILL.md`, re-sync `SKILL.ja.md`

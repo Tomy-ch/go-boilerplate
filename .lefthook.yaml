@@ -23,9 +23,14 @@ pre-commit:
       glob:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
-        - "scripts/pr-comment-secret-lint.mjs"
-        - "scripts/pr-comment-fence-lint.mjs"
-        - "scripts/actions-cutoff-lint.mjs"
+        - "scripts/pr-comment-secret-lint/index.ts"
+        - "scripts/pr-comment-fence-lint/index.ts"
+        - "scripts/actions-cutoff-lint/index.ts"
+        # 判定ロジックは lib/ 側に居るため、入口だけを見ると検査の変更を取り逃がす。
+        - "scripts/lib/workflow.ts"
+        - "scripts/pr-comment-secret-lint/secret.ts"
+        - "scripts/pr-comment-fence-lint/fence.ts"
+        - "scripts/actions-cutoff-lint/cutoff.ts"
         - "scripts/actions-shellcheck/*.go"
       run: make actions-lint
     actions-zizmor:
@@ -40,7 +45,7 @@ pre-commit:
       run: make lint-oapi
     mock-auth-oapi-lint:
       glob:
-        - "docker/mock-auth-server/openapi/**/*.yaml"
+        - "mock-auth-server/openapi/**/*.yaml"
       run: make lint-mock-auth-oapi
     docker-lint:
       glob:
@@ -53,6 +58,13 @@ pre-commit:
         - ".github/actions/**/*.{yml,yaml}"
         - ".github/actions-pin.toml"
       run: make pin-actions-check
+    egress:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/egress.toml"
+        - "scripts/egress/*.go"
+        - ".makefiles/github/egress.mk"
+      run: make egress-check
     pin-images:
       glob:
         - "docker/**/Dockerfile"
@@ -80,6 +92,18 @@ pre-push:
     go-gates:
       glob: "*.go"
       run: make gate-go-push
+    # 補助スクリプトの判定ロジックは検査ゲートそのものなので、壊れると「違反なし」を報告する
+    # 向きに倒れる。ただし実行は docker のツールランナーを起こすため、窓が多いときは CI の
+    # scripts-check へ委ねる（同じ入力に対して等価に効く）。
+    scripts-test:
+      glob:
+        # 入口ファイル（scripts/*.ts）と判定ロジック（scripts/lib/** ほか）は階層が違い、
+        # lefthook の `**` は区切りを跨ぐ「文字」なので 1 段目を別に書かないと拾えない。
+        - "scripts/*.ts"
+        - "scripts/**/*.ts"
+      skip:
+        - run: make -s gate-heavy-skip
+      run: make scripts-test-cached
     # 生成物の再生成は docker のツールランナーを起こすため、窓が多いときは CI の
     # generate-go-check に委ねる（差分検出は CI でも等価に効く）。
     gen-go-check:
@@ -94,3 +118,13 @@ pre-push:
         - "go.mod"
         - "go.sum"
       run: go mod tidy && git diff --exit-code go.mod go.sum
+
+post-merge:
+  commands:
+    vendor-sync:
+      run: make vendor-sync
+
+post-checkout:
+  commands:
+    vendor-sync:
+      run: make vendor-sync

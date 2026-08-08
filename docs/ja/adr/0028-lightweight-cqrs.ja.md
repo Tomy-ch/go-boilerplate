@@ -54,7 +54,11 @@ accepted
 - Usecase の返り値はドメインエンティティではなく DTO を返す。
 - 実装は `internal/infrastructure/rdb/command_service/<aggregate>/` に置く。
 
-> **実装状況**: `persistenceModule`（`internal/di/module/persistence.go`）の `command_service` サブモジュールが持つプロバイダーはちょうど 1 つで、それはサンプルの購入機能に属する。サンプルを削除するとサブモジュールは空になり、本セクションは占有者のいない意図した設計の記述に戻る——fork 先が出発する状態がそれである。占有者を残しているのは、後述の適格基準が、それを満たす具体例と突き合わせて初めて読めるものだからである。
+> **実装状況**: `persistenceModule`（`internal/di/module/persistence.go`）の `command_service` サブモジュールは、プロバイダーが 0 個でも正当である。本セクションは意図した設計を記述しており、自分自身の集約横断の書き込みを持たないシステムには登録すべきものが無い。空のサブモジュールは欠陥ではない。
+
+<!-- boilerplate-only:begin -->
+> 上流のボイラープレートがここにサンプルの占有者を 1 つ残している理由は [boilerplate-only conventions](../get-started/boilerplate-only-conventions.ja.md) に記録されている。そこから作られたプロジェクトには適用されない。
+<!-- boilerplate-only:end -->
 
 Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の `persistenceModule` に登録され、Uber Fx 経由でインジェクトされる（[ADR-0036](0036-uber-fx-di.ja.md)参照）。これはフルCQRSではない：別個の読み込みストア・イベントソーシング・結果整合性のプロジェクションパイプラインは存在しない。
 

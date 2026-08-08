@@ -1,0 +1,52 @@
+/*
+ * 進捗が測れない処理が今も動いていることを示す、面の上を流れる帯。
+ *
+ * Skeleton の pulse が「ここに箱がある」ことを示すのに対し、shimmer は「止まっていない」ことを
+ * 示す。どちらも待機の表示だが伝える内容が違うので、置き換えではなく併用する。
+ *
+ * 同じ要素の `animate-pulse` とは併用できない。どちらも animation プロパティを使うため、後に
+ * 効いたほうだけが残る。両方を出す場合は Skeleton の子として重ねる。
+ *
+ * component ではなく Tailwind の utility として定義する。付ける先が面にも文字にもなり、
+ * `group-data-[state=uploading]/attachment:shimmer` のように状態の variant と合成するため、
+ * variant を受け取れる形でなければ使えない。
+ */
+
+/*
+ * 帯の色は前景色から作る。「明るい帯」を固定すると light テーマでは背景に埋もれるため、
+ * どちらのテーマでも面との差が出る側から取る。
+ */
+@utility shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--color-foreground) 14%, transparent) 50%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  /* 帯を面より狭くしないと、流れているのではなく全体が明滅しているように見える。 */
+  background-size: 40% 100%;
+  animation: shimmer-sweep 1.6s linear infinite;
+
+  /*
+   * 動きを止めたときに帯が残らないよう、背景ごと消す。停止した見た目が「処理中」を伝えないため、
+   * 呼び出し元は Skeleton か待機の文言と併用する。
+   */
+  @media (prefers-reduced-motion: reduce) {
+    background-image: none;
+    animation: none;
+  }
+}
+
+/*
+ * 1.6s は、遅いと止まって見え、速いと注意を奪うため、その間で採った値。開始と終了を面の外に
+ * 置くことで、帯が端で現れたり消えたりせず、通り過ぎたように見える。
+ */
+@keyframes shimmer-sweep {
+  from {
+    background-position: -60% 0;
+  }
+  to {
+    background-position: 160% 0;
+  }
+}

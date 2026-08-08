@@ -31,7 +31,7 @@ Three structural concerns arise:
    generation failures block documentation access and the portal format becomes a constraint
    on content.
 3. If documentation is scattered without a stable directory convention, generators
-   (`scripts/gen-docs-json.mjs`) and agent harnesses (`AGENTS.md`) cannot reliably locate
+   (`scripts/portal/gen-docs-json.ts`) and agent harnesses (`AGENTS.md`) cannot reliably locate
    canonical content.
 
 ## Decision
@@ -46,7 +46,7 @@ Adopt a three-layer documentation strategy:
    read `*.ja.md` files). Naming convention: `<name>.ja.md` in a parallel directory structure
    under `docs/ja/`.
 3. **Generated portal** — `docs/portal/docs.json` and `docs/portal/guides/**` are generated
-   by `scripts/gen-docs-json.mjs` from the canonical sources, driven by
+   by `scripts/portal/gen-docs-json.ts` from the canonical sources, driven by
    `docs/portal/manifest.yaml`. Portal content must not be edited manually.
 
 `docs/portal/manifest.yaml` is the structural control file for the portal: it maps source
@@ -83,8 +83,8 @@ documentation sections: `docs/portal`, `docs/openapi`, `docs/coverage`, `docs/er
 
 ### Single-language (English only)
 
-Drop Japanese translations entirely. Simpler maintenance, but reduces accessibility for
-Japanese-speaking development teams who are the primary adopters of this template.
+Drop Japanese translations entirely. Simpler maintenance, but reduces accessibility for the
+Japanese-speaking development teams who are this documentation's primary human readers.
 
 ### Auto-translation
 

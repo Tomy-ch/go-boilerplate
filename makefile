@@ -8,6 +8,8 @@ include .makefiles/docker/compose.mk
 include .makefiles/database/vars.mk
 # Go言語関連
 include .makefiles/go/vars.mk
+# Node関連
+include .makefiles/node/vars.mk
 # 負荷配分（重いターゲットが参照するため、それらより前に読む）
 include .makefiles/load.mk
 
@@ -31,9 +33,11 @@ include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
+include .makefiles/github/base-branch.mk
 include .makefiles/github/lint.mk
 include .makefiles/github/commitlint.mk
 include .makefiles/github/pin.mk
+include .makefiles/github/egress.mk
 include .makefiles/github/workflows.mk
 # Go言語関連
 include .makefiles/go/fmt.mk
@@ -53,12 +57,16 @@ include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk
 # Markdown関連
 include .makefiles/markdown/lint.mk
+# Node関連
+include .makefiles/node/scripts.mk
+# Python関連
+include .makefiles/python/lock.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
 include .makefiles/security/npm-cooldown.mk
 include .makefiles/security/go-cooldown.mk
-include .makefiles/security/mise-cooldown.mk
+include .makefiles/security/tool-cooldown.mk
 include .makefiles/security/zizmor.mk
 # Docker関連
 include .makefiles/docker/lint.mk
@@ -74,5 +82,5 @@ include .makefiles/gen/gen.mk
 
 .PHONY: help
 help:
-	@node scripts/make_help.mjs
+	@$(TSX) scripts/make-help
 

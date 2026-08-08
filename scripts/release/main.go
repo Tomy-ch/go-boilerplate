@@ -32,8 +32,6 @@ import (
 const (
 	// releaseNoteDir は、タグ作成時に読むリリースノートの置き場所。
 	releaseNoteDir = ".github/release"
-	// minArgs は、プログラム名 + サブコマンドの最小引数数。
-	minArgs = 2
 	// commandTimeout は、git / gh 1 コマンドあたりの上限。push や Release 作成は
 	// ネットワーク越しのため、対話が無い前提で余裕を持たせる。
 	commandTimeout = 120 * time.Second
@@ -49,12 +47,18 @@ var (
 		"➡️ 先に make tag-patch などで初期タグを作成してから再実行してください")
 	// errUnknownBump は、-bump に未知の粒度が渡されたことを表す。
 	errUnknownBump = xerrors.New("unknown -bump (patch / minor / major)")
+	// errHelpRequested は、-h でヘルプを求められたことを表す。失敗ではないため 0 で終える。
+	errHelpRequested = xerrors.New("help requested")
 	// errNoReleaseNote は、タグ本文にするリリースノートが production に無いことを表す。
 	errNoReleaseNote = xerrors.New("が存在しません。タグとリリースをスキップしました")
 	// errBranchExists は、作成しようとしたブランチが origin に既に在ることを表す。
 	errBranchExists = xerrors.New("は既に存在します。処理を中止します")
 	// errDirtyWorktree は、作業ツリーに未コミットの変更が残っていることを表す。
 	errDirtyWorktree = xerrors.New("❌ 作業ツリーに未コミットの変更があります。変更をコミットまたは退避してから再実行してください")
+	// errUsage は、サブコマンドが指定されていないことを表す。
+	errUsage = xerrors.New("❌ usage: release <tag|branch> [flags]")
+	// errUnknownSubcommand は、未知のサブコマンドが指定されたことを表す。
+	errUnknownSubcommand = xerrors.New("❌ unknown subcommand (tag / branch)")
 )
 
 // version は、リリースタグの意味的なバージョン。
@@ -68,27 +72,53 @@ type step struct {
 	args []string
 }
 
+// runner は、手順を実際に走らせる実行層。タグの push と GitHub Release の作成は
+// 取り消しが効かないため、中止条件と手順の順序を実リポジトリへ触れずに検証できるよう
+// 関数値で保持する。
+type runner struct {
+	// run は、手順を 1 つ実行する。
+	run func(s step) error
+	// output は、コマンドの標準出力を取り出す。
+	output func(name string, args ...string) (string, error)
+	// remoteBranchExists は、origin に同名ブランチがあるかを返す。
+	remoteBranchExists func(branch string) bool
+}
+
+// main はエラーを終了コードへ変換するだけに留め、判断は execute が持ちます。
+// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
+// コードがそのぶん増える。名前が run でないのは、1 コマンドを起動する run が
+// 同じパッケージに既に在るため。
 func main() {
 	log.SetFlags(0)
 
-	if len(os.Args) < minArgs {
-		log.Fatalf("❌ usage: release <tag|branch> [flags]")
+	if err := execute(hostRunner(), os.Args[1:]); err != nil {
+		log.Fatalf("%v", err)
+	}
+}
+
+// execute は、サブコマンドを選んで実行します。
+func execute(r runner, args []string) error {
+	if len(args) == 0 {
+		return errUsage
 	}
 
 	var err error
 
-	switch os.Args[1] {
+	switch args[0] {
 	case "tag":
-		err = runTag(os.Args[2:])
+		err = runTag(r, args[1:])
 	case "branch":
-		err = runBranch(os.Args[2:])
+		err = runBranch(r, args[1:])
 	default:
-		log.Fatalf("❌ unknown subcommand (tag / branch)")
+		return errUnknownSubcommand
 	}
 
-	if err != nil {
-		log.Fatalf("%v", err)
+	// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。
+	if xerrors.Is(err, errHelpRequested) {
+		return nil
 	}
+
+	return err
 }
 
 // ---- バージョン解決（純粋） -------------------------------------------------
@@ -195,12 +225,12 @@ func notePath(v string) string { return releaseNoteDir + "/" + v + ".md" }
 // ---- 実行 -------------------------------------------------------------------
 
 // resolveNext は、最新タグを取得して次バージョン（現在, 次）を決めます。
-func resolveNext(bumpKind string) (version, version, error) {
-	if err := run(step{name: "git", args: []string{"fetch", "--tags", "origin"}}); err != nil {
+func resolveNext(r runner, bumpKind string) (version, version, error) {
+	if err := r.run(step{name: "git", args: []string{"fetch", "--tags", "origin"}}); err != nil {
 		return version{}, version{}, err
 	}
 
-	out, err := output("git", "tag")
+	out, err := r.output("git", "tag")
 	if err != nil {
 		return version{}, version{}, err
 	}
@@ -218,15 +248,30 @@ func resolveNext(bumpKind string) (version, version, error) {
 	return current, next, nil
 }
 
-func runTag(args []string) error {
-	fs := flag.NewFlagSet("tag", flag.ExitOnError)
-	bumpKind := fs.String("bump", "", "patch / minor / major")
-
-	if err := fs.Parse(args); err != nil {
+// parseFlags は、サブコマンドのフラグを解釈します。ヘルプ要求は失敗ではないため、通常のエラーと
+// 区別できるよう errHelpRequested を返します。ここを一括りにすると `-h` が異常終了になり、
+// 同じリポジトリの他ツール（tool-cooldown / go-cooldown）と終了コードが食い違います。
+func parseFlags(fs *flag.FlagSet, args []string) error {
+	err := fs.Parse(args)
+	switch {
+	case err == nil:
+		return nil
+	case xerrors.Is(err, flag.ErrHelp):
+		return errHelpRequested
+	default:
 		return xerrors.Wrap(err, "failed to parse flags")
 	}
+}
 
-	current, next, err := resolveNext(*bumpKind)
+func runTag(r runner, args []string) error {
+	fs := flag.NewFlagSet("tag", flag.ContinueOnError)
+	bumpKind := fs.String("bump", "", "patch / minor / major")
+
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+
+	current, next, err := resolveNext(r, *bumpKind)
 	if err != nil {
 		return err
 	}
@@ -239,7 +284,7 @@ func runTag(args []string) error {
 	// switch 前の作業ツリー（別ブランチ）にノートがあるかではない。
 	log.Printf("🔄 productionブランチの最新を取得中...")
 
-	if err := runAll(syncProductionSteps()); err != nil {
+	if err := r.runAll(syncProductionSteps()); err != nil {
 		return err
 	}
 
@@ -250,7 +295,7 @@ func runTag(args []string) error {
 		return xerrors.Wrap(errNoReleaseNote, "❌ "+note)
 	}
 
-	if err := runAll(tagSteps(next.String(), note)); err != nil {
+	if err := r.runAll(tagSteps(next.String(), note)); err != nil {
 		return err
 	}
 
@@ -259,19 +304,19 @@ func runTag(args []string) error {
 	return nil
 }
 
-func runBranch(args []string) error {
-	fs := flag.NewFlagSet("branch", flag.ExitOnError)
+func runBranch(r runner, args []string) error {
+	fs := flag.NewFlagSet("branch", flag.ContinueOnError)
 	bumpKind := fs.String("bump", "", "patch / minor / major")
 	prefix := fs.String("prefix", "release", "ブランチ名の接頭辞 (release / hotfix)")
 	base := fs.String("base", "production", "分岐元ブランチ")
 
-	if err := fs.Parse(args); err != nil {
-		return xerrors.Wrap(err, "failed to parse flags")
+	if err := parseFlags(fs, args); err != nil {
+		return err
 	}
 
 	log.Printf("🔄 最新のタグを取得中...")
 
-	current, next, err := resolveNext(*bumpKind)
+	current, next, err := resolveNext(r, *bumpKind)
 	if err != nil {
 		if xerrors.Is(err, errNoTag) {
 			return errNoTagForBranch
@@ -288,28 +333,33 @@ func runBranch(args []string) error {
 	log.Printf("➡️ 次のリリースバージョンを作成: 【 %s 】", next)
 	log.Printf("🌱 ブランチを作成: %s → 【 %s 】", *base, branch)
 
-	if remoteBranchExists(branch) {
+	if r.remoteBranchExists(branch) {
 		return xerrors.Wrap(errBranchExists, "❌ ブランチ【 "+branch+" 】")
 	}
 
-	status, err := output("git", "status", "--porcelain")
+	status, err := r.output("git", "status", "--porcelain")
 	if err != nil {
 		return err
 	}
 
 	if strings.TrimSpace(status) != "" {
-		_ = run(step{name: "git", args: []string{"status", "--short"}})
+		_ = r.run(step{name: "git", args: []string{"status", "--short"}})
 
 		return errDirtyWorktree
 	}
 
-	if err := runAll(branchSteps(*base, branch)); err != nil {
+	if err := r.runAll(branchSteps(*base, branch)); err != nil {
 		return err
 	}
 
 	log.Printf("✅ デフォルトブランチを %s に切り替えて、プッシュしました。", branch)
 
 	return nil
+}
+
+// hostRunner は、ホストの git / gh を実際に起動する実行器を返します。
+func hostRunner() runner {
+	return runner{run: run, output: output, remoteBranchExists: remoteBranchExists}
 }
 
 // remoteBranchExists は、origin に同名ブランチが既にあるかを返します。
@@ -336,9 +386,10 @@ func run(s step) error {
 	return nil
 }
 
-func runAll(steps []step) error {
+// runAll は、手順を並び順に実行します。失敗した時点で残りは実行しません。
+func (r runner) runAll(steps []step) error {
 	for _, s := range steps {
-		if err := run(s); err != nil {
+		if err := r.run(s); err != nil {
 			return err
 		}
 	}

@@ -25,6 +25,7 @@
 | 触っていないのに `env/.env` が dirty | §8 |
 | ローカル golangci-lint が CI と食い違う / `golangci-lint: not found` | §9 |
 | `commitlint: not found` / `orval: not found` / ツールが古い | §10 |
+| コンテナ経由のゲートが `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` で落ちる / Docker 内でだけ落ちる | §10 |
 | 自分の変更と無関係な理由でフックが落ちる | §11 |
 | 複数の worktree を開いている状態で、変更と無関係にゲートが落ちる／異常に遅い | §21 |
 | `make lint` がスキップ・低速化・CI 委譲された理由を知りたい | §21 |
@@ -156,7 +157,7 @@ make secret-scan          # 再現する。出力に新しいフィンガープ�
 
 ## 7. `sample-removal-check` が CI で落ちる
 
-`scripts/setup/lib/sample-manifest.mjs` は、テンプレート利用者がサンプル API を剥がすときに `make setup-remove-sample-api` が削除する全パスを宣言している。サンプルドメイン（user / product / purchase / …）配下でファイルを追加・移動・改名したのに登録しないと、削除後に参照が宙に浮く。CI はこれを、実際に削除を実行してから build / lint / test することで検出する。ローカルでは何も落ちない＝自分で走らせない限り CI 専用で見つかる。
+`scripts/setup/remove-sample-api/sample-manifest.ts` は、テンプレート利用者がサンプル API を剥がすときに `make setup-remove-sample-api` が削除する全パスを宣言している。サンプルドメイン（user / product / purchase / …）配下でファイルを追加・移動・改名したのに登録しないと、削除後に参照が宙に浮く。CI はこれを、実際に削除を実行してから build / lint / test することで検出する。ローカルでは何も落ちない＝自分で走らせない限り CI 専用で見つかる。 <!-- skill-lint-ignore -->
 
 サンプルドメインにファイルを足したら（handler / usecase / domain / repository / DML / migration / seed / spec / 統合テスト / サンプル専用の生成物）、該当ドメインのエントリにパスを追記する。共有ファイルに混ざった行はパスではなく `sample-api` マーカーコメントで囲って扱う。削除せずに影響だけ見るには:
 
@@ -188,9 +189,13 @@ golangci-lint run --config .golangci-full.yaml     # 追加フラグを付けた
 
 CI の失敗を再現するときは必ず full 設定を使う。
 
-## 10. `commitlint: not found` / `orval: not found` / ツールが古い
+## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / ツールが古い
 
-ツールランナーのイメージは **`mise.toml` と `docker/tools/package*.json` のビルド成果物**。ツールはホストではなくランナー内で解決される（コード生成と同じ再現性ルール。`docs/rules.md` 参照）。どちらかを変更した後、あるいはイメージがそれらより古いクローンでは、ランナーにツールが無い / 版が古い状態になる。
+ツールランナーのイメージは **`mise.toml` と `scripts/package.json` + `scripts/pnpm-lock.yaml` + `scripts/pnpm-workspace.yaml` のビルド成果物**。ツールはホストではなくランナー内で解決される（コード生成と同じ再現性ルール。`docs/rules.md` 参照）。いずれかを変更した後、あるいはイメージがそれらより古いクローンでは、ランナーにツールが無い / 版が古い / そもそも何も実行できない状態になる。
+
+最後の症状は、変更との関係が見えにくい。`scripts/pnpm-workspace.yaml` は `verifyDepsBeforeRun: error` を設定しているため、その設定がイメージ内の `scripts/node_modules` を入れたときの設定と食い違うと、ランナー内の `pnpm run` はすべて `[ERR_PNPM_VERIFY_DEPS_BEFORE_RUN] The value of the <setting> setting has changed` で落ちる。倒れるのは変更と無関係に見えるゲート（`make md-lint` / `make actions-lint` / `make lint-oapi`）で、一方ホスト側の `-ci` ターゲットは緑のままである（ファイル変更時にホストのツリーは入れ直されているため）。`minimumReleaseAgeExclude` や `overrides` のエントリを 1 行足すだけで発火する。したがって**ホストで緑であることは、コンテナ側のゲートが通る証拠にならない**。先に再ビルドし、そのうえで報告するつもりのゲートを回し直すこと。
+
+**worktree をまたぐと、これは共有資源であり、一度に 1 ブランチ分の設定しか保持できない。** ランナーのイメージは単一の `gobp-shared` compose プロジェクトに属する（§1）ため、ある worktree での再ビルドは、他の全 worktree のコンテナ側ゲートを *そのブランチの* `scripts/pnpm-workspace.yaml` に向け直す。ブランチが食い違う 2 つの窓（片方は `minimumReleaseAgeExclude` を足し、片方は足していない）は交互に落ちることになり、どちらが落ちるかは最後に再ビルドした側で反転する。どちらの向きでも症状は同じ `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` なので、自分のブランチの不具合ではなく「イメージが他人のブランチに一致している」と読むこと。報告するゲートの直前に再ビルドし、もう一方の窓でも同じことが必要になると見込んでおく。
 
 ```bash
 make tool-runners-build           # go / node / python ランナーを再ビルド（キャッシュ利用）
@@ -207,7 +212,7 @@ commit-msg フックは `node_tool_runner` 経由で `make commitlint COMMIT_MSG
 
 | フック | glob → コマンド（抜粋） |
 | --- | --- |
-| pre-commit | `*.go` → `make gate-go`（`lint` + `test-cached` を束ねる）／`scripts/**/*.go` → `make test-scripts-cached`／`*.sql` → `make sql-lint`／`*.md` → `make md-lint`／`.github/workflows/**` → `make actions-lint`・`make pin-actions-check`／`openapi/**` → `make lint-oapi`／`docker/mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`／`docker/**/Dockerfile`・`docker-compose*.yaml` → `make docker-lint`・`make pin-images-check`／`database/migrations/*.sql` → migration の重複・ギャップ検査 |
+| pre-commit | `*.go` → `make gate-go`（`lint` + `test-cached` を束ねる）／`scripts/**/*.go` → `make test-scripts-cached`／`*.sql` → `make sql-lint`／`*.md` → `make md-lint`／`.github/workflows/**` → `make actions-lint`・`make pin-actions-check`／`openapi/**` → `make lint-oapi`／`mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`／`docker/**/Dockerfile`・`docker-compose*.yaml` → `make docker-lint`・`make pin-images-check`／`database/migrations/*.sql` → migration の重複・ギャップ検査 |
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
 | pre-push | `make secret-scan`／`*.go` → `make gate-go-push`（`test` + `test-scripts` を束ねる）／`*.go`・`openapi/**` → 再生成して `*.gen.go`・mock・`openapi.gen.yaml` を `git diff --exit-code`／`go.mod`・`go.sum` → `go mod tidy` + diff |
 
@@ -237,9 +242,9 @@ make infra-up                     # 冪等。garage_init の終了まで待つ
 
 ## 15. mock-auth-server — 独自の生成物を持つ別 npm プロジェクト
 
-`docker/mock-auth-server/` は独立した Node プロジェクト（自前の `package.json` / OpenAPI / テスト）。その出力のうち2つが CI でドリフト検知される:
+`mock-auth-server/` は独立した Node プロジェクト（自前の `package.json` / OpenAPI / テスト）。その出力のうち2つが CI でドリフト検知される:
 
-- **golden JWKS** — `fixtures/jwks/*.json` と `internal/integration/testdata/jwks/*.json` は同一の generator が書き出し、provider と Go 統合テストが単一ソースを共有する。鍵ストアや鍵に触ったら `docker/mock-auth-server` で `npm run gen:jwks` を実行し、両ディレクトリをコミットする。
+- **golden JWKS** — `fixtures/jwks/*.json` と `internal/integration/testdata/jwks/*.json` は同一の generator が書き出し、provider と Go 統合テストが単一ソースを共有する。鍵ストアや鍵に触ったら `mock-auth-server` で `npm run gen:jwks` を実行し、両ディレクトリをコミットする。
 - **OpenAPI バンドル + zod スキーマ** — `make gen-mock-auth-oapi` で再生成する（`node_tool_runner` 内で実行され、`orval` は `/app/scripts/node_modules` から解決される。見つからない場合は §10）。
 
 `make reset-mock-auth-users` は、テスト実行で書き換わった固定 mock ユーザーを中立な既定へ戻す。

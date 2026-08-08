@@ -48,13 +48,13 @@ actions-shellcheck-ci:
 
 # actionlint は「upsert-pr-comment を使うジョブに secret を渡すな」という規約を表現できない。
 actions-comment-secret-lint-ci:
-	node scripts/pr-comment-secret-lint.mjs
+	$(TSX) scripts/pr-comment-secret-lint
 
 # actionlint は「PR コメント本文のフェンスを固定長にするな」「素通し経路で span へ値を補間するな」
 # という規約を表現できない。
 actions-comment-fence-lint-ci:
-	node scripts/pr-comment-fence-lint.mjs
+	$(TSX) scripts/pr-comment-fence-lint
 
 # actionlint は「打ち切られたジョブでも PR に結果を残せ」「全ジョブに timeout-minutes を置け」という規約を表現できない。
 actions-cutoff-lint-ci:
-	node scripts/actions-cutoff-lint.mjs
+	$(TSX) scripts/actions-cutoff-lint
