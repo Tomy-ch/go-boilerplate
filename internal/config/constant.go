@@ -8,6 +8,9 @@ const (
 	EnvCI = "ci"
 	// EnvTest はテスト環境を表します。
 	EnvTest = "test"
+	// EnvDast は DAST スキャンの実行環境を表します。
+	// 認証をスタブに倒す EnvCI と違い、mock 認証サーバーが発行する実 JWT を実際に検証させます。
+	EnvDast = "dast"
 	// EnvDevelopment は開発環境を表します（env ファイルの APP_ENV 実値）。
 	EnvDevelopment = "dev"
 	// EnvStaging はステージング環境を表します（env ファイルの APP_ENV 実値）。
