@@ -68,7 +68,7 @@ arch-auditor-usecase 結果（スコープ: <scope>）
   - <file:line>: <linter>: <message>
 
 [semantic] M 件
-  internal/usecase/<sibling>/<sibling>_usecase.go:42
+  internal/usecase/user/user_usecase.go:42
     violation: "time.Now()" を直接呼び出し
     source: internal/usecase/boundary/README.md "時刻は Clock 経由"
     remediation: u.clock.Now() に置換
