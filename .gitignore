@@ -23,6 +23,12 @@ docs-viewer/coverage/
 scripts/coverage/
 mock-auth-server/coverage/
 
+# lint:security:json（eslint.yaml が読む JSON レポート）の書き出し。手元で走らせても
+# 同じ名前でワークスペース直下に落ちるため、カバレッジと同じくパッケージごとに列挙する。
+docs-viewer/eslint-report.json
+scripts/eslint-report.json
+mock-auth-server/eslint-report.json
+
 # ビルド済みのドキュメント。docs-viewer(Vite) の出力で、index.html は dist/ のハッシュ付き資産を
 # 参照する対になっているため片方だけ追跡しない。deploy-docs.yaml が公開前に再ビルドする
 docs/portal/dist/**

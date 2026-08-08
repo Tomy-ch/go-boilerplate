@@ -157,8 +157,15 @@ jobs:
 
       # Invoked through the package script rather than the binary, so the scanned target
       # is declared once in package.json and the local run and this job cannot drift.
-      # Going through `pnpm run` also keeps pnpm-workspace.yaml's verifyDepsBeforeRun
-      # active, which reaching into node_modules/.bin would bypass.
+      # Going through `run` also keeps pnpm-workspace.yaml's verifyDepsBeforeRun active,
+      # which reaching into node_modules/.bin would bypass.
+      #
+      # The flags live in their own script (`lint:security:json`) rather than being
+      # appended here, because the two package managers disagree about how to forward
+      # them: npm strips a `--` separator before handing the rest to the script, pnpm
+      # passes it through literally, so a single invocation that works for one runs
+      # `eslint . -- --format json` under the other and dies on a file pattern named
+      # `--`. Passing no arguments at all is the only form both agree on.
       #
       # Exit code 1 means ESLint found problems and 2 means ESLint itself could not run —
       # a broken config, an unparsable file. Only the second is this job's failure.
@@ -168,8 +175,8 @@ jobs:
         run: |
           set -uo pipefail
           case "${WORKSPACE}" in
-            mock-auth-server) npm --prefix mock-auth-server run lint:security -- --format json --output-file "${GITHUB_WORKSPACE}/eslint.json" ;;
-            *) pnpm --dir "${WORKSPACE}" run lint:security -- --format json --output-file "${GITHUB_WORKSPACE}/eslint.json" ;;
+            mock-auth-server) npm --prefix mock-auth-server run lint:security:json ;;
+            *) pnpm --dir "${WORKSPACE}" run lint:security:json ;;
           esac
           code=$?
           if [ "${code}" -ge 2 ]; then
@@ -187,7 +194,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ ! -f eslint.json ]; then
+          report="${WORKSPACE}/eslint-report.json"
+          if [ ! -f "${report}" ]; then
             echo "::error::ESLint produced no JSON report; the scan did not complete"
             exit 1
           fi
@@ -235,9 +243,9 @@ jobs:
                   }
                 ]
               }
-          ' eslint.json > eslint.sarif
+          ' "${report}" > eslint.sarif
 
-          echo "findings: $(jq '.runs[0].results | length' eslint.sarif)" >> "${GITHUB_STEP_SUMMARY}"
+          echo "${WORKSPACE}: $(jq '.runs[0].results | length' eslint.sarif) finding(s)" >> "${GITHUB_STEP_SUMMARY}"
         shell: bash
 
       - name: Upload ESLint report
@@ -246,7 +254,7 @@ jobs:
         with:
           name: eslint-${{ matrix.workspace }}
           path: |
-            eslint.json
+            ${{ matrix.workspace }}/eslint-report.json
             eslint.sarif
 
       # Per-workspace category: code scanning keys a SARIF upload by it, so a shared

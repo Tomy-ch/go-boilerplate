@@ -8,7 +8,8 @@
     "build": "node ./scripts/clean-dist.mjs && vite build",
     "test": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "lint:security": "eslint ."
+    "lint:security": "eslint .",
+    "lint:security:json": "eslint . --format json --output-file eslint-report.json"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.23",

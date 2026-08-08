@@ -13,6 +13,7 @@
     "test": "vitest run --coverage",
     "test:integration": "node --test \"integration/**/*.test.ts\"",
     "lint:security": "eslint .",
+    "lint:security:json": "eslint . --format json --output-file eslint-report.json",
     "lint:oapi": "redocly lint openapi/openapi.yaml",
     "gen:bundle": "redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml",
     "gen:zod": "orval --config orval.config.ts",

@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "tsx": "cd .. && tsx",
     "lint:security": "eslint .",
+    "lint:security:json": "eslint . --format json --output-file eslint-report.json",
     "lint:openapi-security": "cd .. && spectral lint openapi/openapi.yaml --ruleset .spectral.yaml"
   },
   "dependencies": {
