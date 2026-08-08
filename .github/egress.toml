@@ -107,6 +107,19 @@ extra = [
   "uploads.github.com:443",
 ]
 
+[job."codacy.yaml:codacy"]
+classes = ["image"]
+extra = [
+  "api.codacy.com:443",
+  "artifacts.codacy.com:443",
+]
+
+[job."codacy.yaml:preflight"]
+classes = []
+
+[job."codacy.yaml:report"]
+classes = []
+
 [job."commitlint.yaml:commitlint"]
 classes = ["mise"]
 
@@ -191,6 +204,9 @@ classes = ["image"]
 
 [job."job-boot-check.yaml:job-boot-check"]
 classes = ["image"]
+
+[job."licensed-scanners-removal-check.yaml:licensed-scanners-removal-check"]
+classes = ["mise"]
 
 [job."lockfile-integrity-guard.yaml:lockfile-lint"]
 classes = []
@@ -304,6 +320,51 @@ classes = ["image"]
 
 [job."setup-scripts-check.yaml:setup-scripts-check"]
 classes = ["image"]
+
+[job."snyk.yaml:preflight"]
+classes = []
+
+[job."snyk.yaml:report"]
+classes = []
+
+[job."snyk.yaml:snyk-code"]
+classes = []
+extra = [
+  "downloads.snyk.io:443",
+  "static.snyk.io:443",
+  "api.snyk.io:443",
+  "deeproxy.snyk.io:443",
+]
+
+[job."snyk.yaml:snyk-container"]
+classes = ["image"]
+extra = [
+  "downloads.snyk.io:443",
+  "static.snyk.io:443",
+  "api.snyk.io:443",
+]
+
+[job."snyk.yaml:snyk-sca"]
+classes = ["mise"]
+extra = [
+  "downloads.snyk.io:443",
+  "static.snyk.io:443",
+  "api.snyk.io:443",
+]
+
+[job."sonarqube.yaml:preflight"]
+classes = []
+
+[job."sonarqube.yaml:report"]
+classes = []
+
+[job."sonarqube.yaml:sonarqube"]
+classes = []
+extra = [
+  "sonarcloud.io:443",
+  "*.sonarcloud.io:443",
+  "binaries.sonarsource.com:443",
+]
 
 [job."sql-lint.yaml:sql-lint"]
 classes = ["mise"]

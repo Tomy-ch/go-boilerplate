@@ -1,0 +1,681 @@
+name: Snyk Scan
+
+# Snyk over three surfaces other tools here already watch: dependency manifests (Open
+# Source), first-party source (Code) and the runtime image (Container). All three legs are
+# report-only; the blocking verdicts stay with the release gates and with Opengrep/gosec.
+#
+# One file because Snyk is one product: `make setup-remove-licensed-scanners` deletes it as
+# a unit, and a unit spanning three files would have to be reassembled to be removed.
+#
+# Scanning and reporting are separate jobs because `make actions-lint` refuses a job that
+# both holds a secret and uses ./.github/actions/upsert-pr-comment — masking does not reach
+# a file the action tees into a comment body, so a raw token could be published.
+#
+# The container leg builds its own image instead of reusing image-scan.yaml's. That
+# duplicates a build, and it is the price of keeping the blast radius inside this file: a
+# step living in image-scan.yaml would need excising from a workflow that survives removal.
+#
+# The CLI version is pinned below rather than in mise.toml for the same reason DevSkim's is:
+# no aqua package exists, so `make tool-cooldown-gate` has no publish-time source and an
+# entry there would buy the appearance of coverage without the coverage.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/snyk.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
+      - 'docker/server/Dockerfile'
+  pull_request:
+    paths:
+      - '.github/workflows/snyk.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
+      - 'docker/server/Dockerfile'
+  schedule:
+    # Monday 17:00 UTC — the first free slot after DevSkim at 14:00, Bearer at 15:00 and
+    # the image scan at 16:00. A newly published advisory turns unchanged code into a
+    # finding, so the weekly run earns its place for the Open Source leg; the Code leg
+    # rides along because its rule set moves for the same reason.
+    - cron: '0 17 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Held one release behind the newest on purpose: the supply-chain cooldown this
+  # repository applies to every other pinned artifact is 14 days, and the newest CLI
+  # release is routinely younger than that.
+  SNYK_VERSION: v1.1306.1
+
+jobs:
+  # A job rather than a step guard because the `secrets` context is unavailable to a
+  # job-level `if:`, so the answer has to travel as a job output. Keeping it separate also
+  # lets the scan jobs skip without starting a runner, which matters most for the container
+  # leg where the alternative is building an image and discarding it.
+  #
+  # A missing token leaves every leg skipped and the run green, following notify.yaml: a
+  # missing credential is a setup gap, not a scan result. This is not only the window before
+  # the secret is registered — a fork's pull request never receives repository secrets, and
+  # this repository is a public template whose forks are the point.
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      configured: ${{ steps.token.outputs.configured }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Resolve Snyk credentials
+        id: token
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SNYK_TOKEN:-}" ]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::SNYK_TOKEN is not configured, so every Snyk leg is skipped. Register the secret to enable them."
+          fi
+        shell: bash
+
+  # Open Source (SCA) — the dependency manifests, the same surface trivy-fs, osv-scanner
+  # and grype read.
+  snyk-sca:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            downloads.snyk.io:443
+            static.snyk.io:443
+            api.snyk.io:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # Snyk resolves the Go module graph with the Go toolchain rather than by parsing
+      # go.mod alone, so the toolchain has to be present for the Go projects to be seen.
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+        with:
+          snyk-version: ${{ env.SNYK_VERSION }}
+
+      # Report-only: `snyk test` exits 1 when it finds something, which is a result and
+      # not a failure. Anything above 1 is a real failure (2 = error, 3 = no supported
+      # project found) and is left to fail the job, because a scanner that silently
+      # scanned nothing is indistinguishable from a clean scan in the report below.
+      #
+      # vendor/ and node_modules/ are excluded for the reason grype.yaml gives: the
+      # manifests already name every package they hold, so cataloguing the unpacked
+      # copies reports each finding a second time under a path nobody edits.
+      - name: Snyk Open Source test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          set -euo pipefail
+          set +e
+          snyk test \
+            --all-projects \
+            --exclude=vendor,node_modules \
+            --sarif-file-output=snyk-sca.sarif
+          STATUS=$?
+          set -e
+          if [ "${STATUS}" -gt 1 ]; then
+            echo "::error::snyk test exited ${STATUS}"
+            exit "${STATUS}"
+          fi
+        shell: bash
+
+      - name: Create Snyk Open Source summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '[(.runs // [])[] | (.results // [])[]] | length' snyk-sca.sarif)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Snyk Open Source: PASS (no vulnerabilities)" >> "$GITHUB_OUTPUT"
+            echo "No vulnerabilities found." > snyk-sca-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Snyk Open Source: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          # `level` is defaulted before the lookup rather than after: SARIF lets a result
+          # omit it, and indexing an object with null is a jq runtime error that `//`
+          # cannot catch.
+          jq -r '
+            [(.runs // [])[] | (.results // [])[]]
+            | map(.level //= "warning")
+            | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
+            | .[]
+            | "- [\(.level)] `\(.locations[0].physicalLocation.artifactLocation.uri // "?")` \(.ruleId // "?")\n  - \((.message.text // "") | gsub("\n"; " "))"
+          ' snyk-sca.sarif > snyk-sca-summary.md
+        shell: bash
+
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: snyk-sca-summary.md
+
+      - name: Upload Snyk Open Source report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: snyk-sca
+          path: |
+            snyk-sca.sarif
+            snyk-sca-summary.md
+
+  # Code (SAST) — first-party Go and TypeScript, the surface Opengrep gates and gosec
+  # gates. Snyk Code analyses server-side, so the source leaves the runner: that is the
+  # trade this leg makes, and it is why the repository being public matters.
+  snyk-code:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            downloads.snyk.io:443
+            static.snyk.io:443
+            api.snyk.io:443
+            deeproxy.snyk.io:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+        with:
+          snyk-version: ${{ env.SNYK_VERSION }}
+
+      # Exit 1 means issues were found, which is a result. Anything above 1 is a real
+      # failure — 3 in particular means Snyk Code is not enabled for the organisation
+      # behind the token, and reporting that as a clean scan would be a lie.
+      - name: Snyk Code test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          set -euo pipefail
+          set +e
+          snyk code test --sarif-file-output=snyk-code.sarif
+          STATUS=$?
+          set -e
+          if [ "${STATUS}" -gt 1 ]; then
+            echo "::error::snyk code test exited ${STATUS} (3 usually means Snyk Code is disabled for this organisation)"
+            exit "${STATUS}"
+          fi
+        shell: bash
+
+      - name: Create Snyk Code summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '[(.runs // [])[] | (.results // [])[]] | length' snyk-code.sarif)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Snyk Code: PASS (no findings)" >> "$GITHUB_OUTPUT"
+            echo "No findings." > snyk-code-summary.md
+            exit 0
+          fi
+
+          echo "title=## ⚠️ Snyk Code: ${COUNT} finding(s)" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            [(.runs // [])[] | (.results // [])[]]
+            | map(.level //= "warning")
+            | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
+            | .[]
+            | "- [\(.level)] `\(.locations[0].physicalLocation.artifactLocation.uri // "?"):\(.locations[0].physicalLocation.region.startLine // 0)` \(.ruleId // "?")\n  - \((.message.text // "") | gsub("\n"; " "))"
+          ' snyk-code.sarif > snyk-code-summary.md
+        shell: bash
+
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: snyk-code-summary.md
+
+      - name: Upload Snyk Code report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: snyk-code
+          path: |
+            snyk-code.sarif
+            snyk-code-summary.md
+
+  # Container — the runtime image, the same artifact image-scan.yaml sends through Trivy.
+  # The image is built here rather than pulled: nothing publishes it, and the tag exists
+  # only for the length of this job.
+  snyk-container:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            downloads.snyk.io:443
+            static.snyk.io:443
+            api.snyk.io:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      # The Dockerfile builds with --mod=vendor, and vendor/ is not committed.
+      - name: Prepare vendor
+        run: go mod vendor
+        shell: bash
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Define image tag
+        id: meta
+        run: |
+          set -euo pipefail
+          IMAGE="local/${GITHUB_REPOSITORY#*/}/app:${GITHUB_SHA::7}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: ./docker/server/Dockerfile
+          target: runtime
+          tags: ${{ steps.meta.outputs.image }}
+          push: false
+          load: true
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+        with:
+          snyk-version: ${{ env.SNYK_VERSION }}
+
+      # --file lets Snyk attribute a base-image finding to the FROM line that introduced
+      # it, which is the difference between "alpine has a CVE" and "this line pins the
+      # alpine that has it".
+      - name: Snyk Container test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: |
+          set -euo pipefail
+          set +e
+          snyk container test "${IMAGE}" \
+            --file=docker/server/Dockerfile \
+            --sarif-file-output=snyk-container.sarif
+          STATUS=$?
+          set -e
+          if [ "${STATUS}" -gt 1 ]; then
+            echo "::error::snyk container test exited ${STATUS}"
+            exit "${STATUS}"
+          fi
+        shell: bash
+
+      - name: Create Snyk Container summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '[(.runs // [])[] | (.results // [])[]] | length' snyk-container.sarif)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Snyk Container: PASS (no vulnerabilities)" >> "$GITHUB_OUTPUT"
+            echo "No vulnerabilities found." > snyk-container-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Snyk Container: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            [(.runs // [])[] | (.results // [])[]]
+            | map(.level //= "warning")
+            | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
+            | .[]
+            | "- [\(.level)] `\(.ruleId // "?")`\n  - \((.message.text // "") | gsub("\n"; " "))"
+          ' snyk-container.sarif > snyk-container-summary.md
+        shell: bash
+
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: snyk-container-summary.md
+
+      - name: Upload Snyk Container report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: snyk-container
+          path: |
+            snyk-container.sarif
+            snyk-container-summary.md
+
+  # The only job that writes anywhere outside this run, and the only one with no token.
+  # It runs even when a leg failed: a scan that was cut off still has to say so on the
+  # pull request, because a missing comment is indistinguishable from a clean scan.
+  report:
+    needs:
+      - preflight
+      - snyk-sca
+      - snyk-code
+      - snyk-container
+    if: ${{ always() && needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      # The composite actions below are read from the workspace, so the repository has
+      # to be present even though nothing here scans it.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # A leg that died before uploading leaves no artifact. That is not an error here:
+      # the comment step below falls back to its CUT OFF title, which is the honest
+      # report of exactly that state.
+      - name: Download Snyk reports
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: snyk-*
+          path: reports
+
+      - name: Comment Snyk Open Source result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- snyk-sca-result -->'
+          status: "${{ needs.snyk-sca.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ needs.snyk-sca.outputs.count == '' && '## ⚠️ Snyk Open Source: CUT OFF (no result produced)' || (needs.snyk-sca.outputs.count == '0' && '## ✅ Snyk Open Source: PASS (no vulnerabilities)' || format('## 🚨 Snyk Open Source: FOUND ({0})', needs.snyk-sca.outputs.count)) }}"
+          body-file: reports/snyk-sca/snyk-sca-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Comment Snyk Code result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- snyk-code-result -->'
+          status: "${{ needs.snyk-code.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ needs.snyk-code.outputs.count == '' && '## ⚠️ Snyk Code: CUT OFF (no result produced)' || (needs.snyk-code.outputs.count == '0' && '## ✅ Snyk Code: PASS (no findings)' || format('## ⚠️ Snyk Code: {0} finding(s)', needs.snyk-code.outputs.count)) }}"
+          body-file: reports/snyk-code/snyk-code-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Comment Snyk Container result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- snyk-container-result -->'
+          status: "${{ needs.snyk-container.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ needs.snyk-container.outputs.count == '' && '## ⚠️ Snyk Container: CUT OFF (no result produced)' || (needs.snyk-container.outputs.count == '0' && '## ✅ Snyk Container: PASS (no vulnerabilities)' || format('## 🚨 Snyk Container: FOUND ({0})', needs.snyk-container.outputs.count)) }}"
+          body-file: reports/snyk-container/snyk-container-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload Snyk Open Source SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: reports/snyk-sca/snyk-sca.sarif
+          category: snyk-sca
+
+      - name: Upload Snyk Code SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: reports/snyk-code/snyk-code.sarif
+          category: snyk-code
+
+      - name: Upload Snyk Container SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: reports/snyk-container/snyk-container.sarif
+          category: snyk-container
+
+  # Report-only, so a finding leaves the job green and failure mode can never fire for
+  # one. On a pull request the finding is already in a comment addressed to the author;
+  # on the weekly run there is no author and no change, which is the case nothing else
+  # surfaces. Only the Open Source leg is wired up: its baseline is the dependency tree,
+  # which is expected to be clean, whereas the Code leg's baseline over an existing
+  # codebase is not, and a weekly notification that always fires is one people learn to
+  # ignore — the reason ESLint and Bearer are unwired too.
+  notify-detection:
+    needs: snyk-sca
+    if: ${{ github.event_name == 'schedule' && needs.snyk-sca.outputs.count != '' && needs.snyk-sca.outputs.count != '0' }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      detected: Snyk Open Source found ${{ needs.snyk-sca.outputs.count }} vulnerabilities
+      details: ${{ needs.snyk-sca.outputs.detail }}
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure. A skipped leg is not a failure — that is the
+  # unconfigured-token path, which is deliberately green.
+  notify-failure:
+    needs:
+      - snyk-sca
+      - snyk-code
+      - snyk-container
+    if: >-
+      ${{ always() && github.event_name == 'schedule'
+      && (contains(fromJSON('["failure", "cancelled"]'), needs.snyk-sca.result)
+      || contains(fromJSON('["failure", "cancelled"]'), needs.snyk-code.result)
+      || contains(fromJSON('["failure", "cancelled"]'), needs.snyk-container.result)) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: snyk
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

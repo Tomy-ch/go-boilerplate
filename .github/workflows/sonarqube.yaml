@@ -1,0 +1,403 @@
+name: SonarQube Cloud Scan
+
+# SonarQube Cloud over the first-party tree, for the rule families the other scanners do not
+# carry: maintainability and reliability alongside security, from Sonar's own taxonomy. The
+# analysis runs on Sonar's servers, so the source leaves the runner — which weighs less for
+# a public repository than it would for a private one.
+#
+# Report-only; the blocking verdict on first-party source stays with Opengrep and gosec.
+# Scanning and reporting are separate jobs for the reason snyk.yaml gives.
+#
+# Unlike every other scanner here this one produces no SARIF: the action wraps the Sonar
+# Scanner CLI, which uploads its analysis and returns nothing local. The conversion below
+# is what gets the findings into code scanning — wait for the server-side analysis, read the
+# issues back over the Web API, build the SARIF. It lives in this file rather than in
+# scripts/ so that removing Sonar stays a single deletion.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/sonarqube.yaml'
+      - 'sonar-project.properties'
+      - '**/*.go'
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.mjs'
+      - '**/*.jsx'
+  pull_request:
+    paths:
+      - '.github/workflows/sonarqube.yaml'
+      - 'sonar-project.properties'
+      - '**/*.go'
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.mjs'
+      - '**/*.jsx'
+  schedule:
+    # Monday 19:00 UTC — the slot after Codacy. Sonar's rule set is updated on their side,
+    # so an unchanged tree can produce a different result from one week to the next.
+    - cron: '0 19 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # See snyk.yaml: the credential check is a job of its own because the `secrets` context
+  # is not available to a job-level `if:`, and a missing token has to leave the run green.
+  # A pull request from a fork never receives repository secrets, and this repository is a
+  # public template whose forks are the point.
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      configured: ${{ steps.token.outputs.configured }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Resolve SonarQube credentials
+        id: token
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SONAR_TOKEN:-}" ]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::SONAR_TOKEN is not configured, so the SonarQube Cloud scan is skipped. Register the secret to enable it."
+          fi
+        shell: bash
+
+  sonarqube:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            sonarcloud.io:443
+            *.sonarcloud.io:443
+            binaries.sonarsource.com:443
+
+      # Sonar attributes an issue to the commit that introduced it, which it can only do
+      # with the history present. fetch-depth: 0 is the vendor's documented requirement
+      # for that, not a convenience.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: SonarQube Cloud scan
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # The scanner writes the analysis it just queued into report-task.txt. Everything
+      # below reads the result back out of that queue entry, because the scan itself
+      # returns nothing that could be reported.
+      - name: Read analysis task
+        id: task
+        run: |
+          set -euo pipefail
+
+          TASK_FILE=.scannerwork/report-task.txt
+          if [ ! -f "${TASK_FILE}" ]; then
+            echo "::error::${TASK_FILE} was not produced, so the analysis cannot be read back"
+            exit 1
+          fi
+
+          # The file is a flat key=value list; a value may itself contain '=' (URLs do),
+          # so the split is on the first one only.
+          while IFS= read -r line; do
+            key=${line%%=*}
+            value=${line#*=}
+            case "${key}" in
+              ceTaskId|serverUrl|projectKey|dashboardUrl)
+                echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+                ;;
+              *) ;;
+            esac
+          done < "${TASK_FILE}"
+        shell: bash
+
+      # Sonar queues the analysis rather than running it inline, so the issues cannot be
+      # read until the queue entry reports SUCCESS. The ceiling exists because a queue
+      # that never drains would otherwise be indistinguishable from a clean scan.
+      - name: Wait for analysis to complete
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          CE_TASK_ID: ${{ steps.task.outputs.ceTaskId }}
+          SERVER_URL: ${{ steps.task.outputs.serverUrl }}
+        run: |
+          set -euo pipefail
+
+          for _ in $(seq 1 60); do
+            STATUS=$(curl -sS --fail-with-body \
+              -H "Authorization: Bearer ${SONAR_TOKEN}" \
+              "${SERVER_URL}/api/ce/task?id=${CE_TASK_ID}" \
+              | jq -r '.task.status // "UNKNOWN"')
+
+            case "${STATUS}" in
+              SUCCESS)
+                exit 0
+                ;;
+              FAILED|CANCELED)
+                echo "::error::the SonarQube analysis finished as ${STATUS}"
+                exit 1
+                ;;
+              *)
+                sleep 10
+                ;;
+            esac
+          done
+
+          echo "::error::the SonarQube analysis did not complete within 10 minutes"
+          exit 1
+        shell: bash
+
+      # A pull request analysis is stored against the PR rather than the branch, so the
+      # issues have to be requested the same way the scanner filed them.
+      - name: Fetch issues
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SERVER_URL: ${{ steps.task.outputs.serverUrl }}
+          PROJECT_KEY: ${{ steps.task.outputs.projectKey }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          SCOPE=""
+          if [ -n "${PR_NUMBER:-}" ]; then
+            SCOPE="&pullRequest=${PR_NUMBER}"
+          fi
+
+          curl -sS --fail-with-body \
+            -H "Authorization: Bearer ${SONAR_TOKEN}" \
+            "${SERVER_URL}/api/issues/search?componentKeys=${PROJECT_KEY}&resolved=false&ps=500${SCOPE}" \
+            -o sonar-issues.json
+        shell: bash
+
+      # Sonar's issue list becomes SARIF here. The component is reported as
+      # "<projectKey>:<path>", so the key is stripped to leave the repository-relative
+      # path that code scanning needs to anchor an alert to a file.
+      - name: Convert issues to SARIF
+        env:
+          SERVER_URL: ${{ steps.task.outputs.serverUrl }}
+          PROJECT_KEY: ${{ steps.task.outputs.projectKey }}
+        run: |
+          set -euo pipefail
+
+          jq \
+            --arg serverUrl "${SERVER_URL}" '
+            def level:
+              {BLOCKER: "error", CRITICAL: "error", MAJOR: "warning", MINOR: "note", INFO: "note"}[.] // "warning";
+            # The key is dropped by splitting rather than by matching it as a pattern: a
+            # project key is user-supplied and may contain regex metacharacters, and an
+            # escaping bug here would silently mislocate every alert.
+            def relpath: split(":") | if length > 1 then .[1:] | join(":") else .[0] end;
+
+            (.issues // []) as $issues
+            | {
+                "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+                version: "2.1.0",
+                runs: [{
+                  tool: {
+                    driver: {
+                      name: "SonarQube Cloud",
+                      informationUri: $serverUrl,
+                      rules: (
+                        $issues
+                        | map(.rule // "unknown")
+                        | unique
+                        | map({id: ., helpUri: ($serverUrl + "/coding_rules?open=" + .)})
+                      )
+                    }
+                  },
+                  results: (
+                    $issues
+                    | map({
+                        ruleId: (.rule // "unknown"),
+                        level: (.severity // "MAJOR" | level),
+                        message: {text: (.message // "")},
+                        locations: [{
+                          physicalLocation: {
+                            artifactLocation: {uri: ((.component // "") | relpath)},
+                            region: {startLine: (.line // .textRange.startLine // 1)}
+                          }
+                        }]
+                      })
+                  )
+                }]
+              }
+          ' sonar-issues.json > sonarqube.sarif
+        shell: bash
+
+      - name: Create SonarQube summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '[(.runs // [])[] | (.results // [])[]] | length' sonarqube.sarif)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No issues." > sonarqube-summary.md
+            exit 0
+          fi
+
+          jq -r '
+            [(.runs // [])[] | (.results // [])[]]
+            | map(.level //= "warning")
+            | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
+            | .[]
+            | "- [\(.level)] `\(.locations[0].physicalLocation.artifactLocation.uri // "?"):\(.locations[0].physicalLocation.region.startLine // 0)` \(.ruleId // "?")\n  - \((.message.text // "") | gsub("\n"; " "))"
+          ' sonarqube.sarif > sonarqube-summary.md
+        shell: bash
+
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: sonarqube-summary.md
+
+      - name: Upload SonarQube report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sonarqube
+          path: |
+            sonarqube.sarif
+            sonarqube-summary.md
+            sonar-issues.json
+
+  # The only job that writes outside this run, and the only one with no token. It runs even
+  # when the scan failed: a scan that was cut off still has to say so on the pull request,
+  # because a missing comment is indistinguishable from a clean scan.
+  report:
+    needs:
+      - preflight
+      - sonarqube
+    if: ${{ always() && needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      # The composite action below is read from the workspace, so the repository has to be
+      # present even though nothing here scans it.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download SonarQube report
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: sonarqube
+          path: reports
+
+      - name: Comment SonarQube result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- sonarqube-result -->'
+          status: "${{ needs.sonarqube.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ needs.sonarqube.outputs.count == '' && '## ⚠️ SonarQube Cloud: CUT OFF (no result produced)' || (needs.sonarqube.outputs.count == '0' && '## ✅ SonarQube Cloud: PASS (no issues)' || format('## ⚠️ SonarQube Cloud: {0} issue(s)', needs.sonarqube.outputs.count)) }}"
+          body-file: reports/sonarqube-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload SonarQube SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: reports/sonarqube.sarif
+          category: sonarqube
+
+  # Deliberately no notify-detection. Sonar's baseline over an existing codebase is not
+  # zero — it reports maintainability alongside security — so a weekly notification keyed
+  # on "any finding" would fire every week regardless of what changed, which is the shape
+  # of a notification people learn to ignore. ESLint and Bearer are unwired for the same
+  # reason.
+  #
+  # A scheduled failure has no author watching it, so it is pushed to a human. cancelled
+  # counts too: a job killed by a timeout or a runner fault reports cancelled rather than
+  # failure. A skipped scan is not a failure — that is the unconfigured-token path, which
+  # is deliberately green.
+  notify-failure:
+    needs: sonarqube
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.sonarqube.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: sonarqube
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
