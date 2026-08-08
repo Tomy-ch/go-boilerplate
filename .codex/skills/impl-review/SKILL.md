@@ -34,7 +34,14 @@ Bias reduction is the design constraint, not a nicety. Reviewers therefore run a
 
 ## Step 0 — Confirm Scope
 
-Call `ask the user explicitly` immediately. Default-detect scope by checking branch vs base — get the base with `gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'` (this repo's base is a `release/*` branch); if there are unmerged commits, default to "changed files", otherwise "whole working tree / specific paths".
+Call `ask the user explicitly` immediately. Default-detect scope by checking branch vs base; if there are unmerged commits, default to "changed files", otherwise "whole working tree / specific paths".
+
+Resolve the base so the review covers the same diff the pull request shows: an existing PR's
+`baseRefName` wins; with no PR, use `make base-branch` to resolve the latest release line (this
+repository's base is always a `release/*` branch) from `origin`'s live state. Do not fall back to
+`gh repo view --json defaultBranchRef`: the GitHub default branch can name an earlier release line,
+silently widening the diff to a generation of changes nobody asked to review. Stop and report the
+failure in Japanese if the base cannot be resolved.
 
 ```text
 質問: どの範囲をレビューしますか？

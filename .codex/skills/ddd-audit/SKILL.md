@@ -30,8 +30,12 @@ Evans conformance, so whether a divergence is deliberate remains a human decisio
 2. Read `.agents/ddd-audit/pattern-ledger.yaml`. The ledger is the source of truth for both the
    pattern list and its `corpus` globs; never hardcode either in this skill.
 3. For `quick`, resolve changed files and select patterns whose `interpreted_by` points to a changed
-   file, plus every `unexamined` or `uninterpreted` pattern. If none are selected, report this in
-   Japanese and stop cleanly.
+   file, plus every `unexamined` or `uninterpreted` pattern. An existing pull request's
+   `baseRefName` is authoritative; without a pull request, use `make base-branch` to resolve the
+   latest release line from origin's live state. Never use `gh repo view --json defaultBranchRef`
+   as the fallback. If the
+   base cannot be resolved, stop and report the failure in Japanese, distinguishing it from the
+   normal Japanese clean exit when no patterns are selected.
 4. Before delegation, deterministically compare the changed files with the ledger's corpus globs.
    If a corpus file changed but the ledger did not, report a ledger-staleness banner. This is useful
    information, not a gate, and must be a set comparison rather than an LLM judgement.
