@@ -394,6 +394,7 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make lint` | GolangCI-Lint による静的解析を実行します。 | なし |
 | `make fix` | GolangCI-Lint の自動修正を実行します。 | なし |
 | `make tidy-lib` | Go モジュール依存関係を整理し、`vendor` を更新します。 | `go mod tidy` と `go mod vendor` を順に実行します。 |
+| `make vendor-sync` | `vendor` が `go.mod` からずれていれば再生成します。 | Go 自身の vendor 整合検査が失敗したときだけ `go mod vendor` を実行するため、通常は何もしません。`post-merge` / `post-checkout` フックから呼ばれます。`vendor` は gitignore されているため、他人の `go.mod` 変更を受け取っただけの checkout が壊れる側になります。 |
 
 ### Go テスト関連
 
