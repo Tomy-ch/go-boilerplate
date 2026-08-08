@@ -54,6 +54,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition <!-- dast:line --> |
 | `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
+| `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
 
@@ -99,6 +100,7 @@ All three rules live in one check rather than three, because they are not three 
 |CodeQL Scan|`code-ql.yaml`|CodeQL analysis on the `security-extended` suite, one matrix leg per language: `go`, `javascript-typescript` (mock-auth-server / docs-viewer / scripts) and `actions` (the workflow definitions themselves)|
 |Dependency Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
 |Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
+|Grype Scan|`grype.yaml`|Anchore Grype filesystem scan of the same dependency manifests Trivy reads, against a different vulnerability database and a different matcher|
 |Image Scan|`image-scan.yaml`|Build image, generate the SBOM in both SPDX-JSON and CycloneDX-JSON, run Trivy scan|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
 |OSV Scan|`osv-scanner.yaml`|OSV database scan across the Go module graph and the npm lockfiles|
@@ -113,6 +115,9 @@ All three rules live in one check rather than three, because they are not three 
 |Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
 |SAST|`opengrep.yaml`|Opengrep (Semgrep-compatible) scan of first-party Go and TypeScript source with taint tracking|
+|DevSkim Scan|`devskim.yaml`|DevSkim regex scan over every file in the tree, whatever its language|
+|Bearer Scan|`bearer.yaml`|Bearer data-flow scan for sensitive values reaching a sink (Elastic License 2.0, not OSI-approved — see [Bearer's licence](#bearers-licence))|
+|ESLint Scan|`eslint.yaml`|ESLint with `eslint-plugin-security` over the three TypeScript workspaces, one matrix leg each (report-only)|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
 |Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
@@ -145,6 +150,10 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Trivy licence | same trigger as Trivy FS | same as above | weekly |
 | OSV diff | dependency-change PRs | — | — |
 | Opengrep (SAST) | Go / TypeScript / dependency / spec-change PRs | same as above | weekly |
+| Grype | Go / dependency-change PRs | same as above | weekly |
+| DevSkim | all PRs | `develop` / `staging` / `production` / `release/*` | weekly |
+| Bearer | Go / TypeScript-change PRs | same as above | weekly |
+| ESLint (security) | TypeScript-workspace-change PRs | same as above | weekly |
 | lockfile-lint | lockfile-change PRs | — | — |
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
 | capslock | `go.mod`-change PRs | — | — |
@@ -153,7 +162,9 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
 
-DAST takes the next slot, `0 12`. It sits at the end of the rotation because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else. <!-- dast:line -->
+DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else. <!-- dast:line -->
+
+The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` Bearer, `0 16` ESLint.
 
 Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
 
@@ -167,8 +178,11 @@ Which trigger a detection notification fires on follows from who the right recip
 | `trivy-fs.yaml` | fixable CRITICAL / HIGH / MEDIUM found | schedule |
 | `vulnerability-check.yaml` | reachable vulnerability found | schedule |
 | `osv-scanner.yaml` | promotion-blocking finding | schedule |
+| `grype.yaml` | any vulnerability found | schedule |
+| `devskim.yaml` | any finding | schedule |
+| `bearer.yaml` | any finding | schedule |
 
-The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Three are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does.
+The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Four are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. ESLint is the fourth, and for a different reason: its baseline is non-zero, so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore.
 
 #### Overlapping surfaces
 
@@ -181,6 +195,28 @@ Several tools can detect the same class of finding. Each surface has one owner s
 | First-party Go source | `opengrep.yaml` (Opengrep) + `gosec` in golangci-lint | — |
 | OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) | Spectral |
 | OpenAPI security posture | `openapi-security.yaml` (Spectral) | redocly |
+| Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) | — |
+| First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) + `eslint.yaml` (`eslint-plugin-security`) | — |
+| Any file, whatever its language | `devskim.yaml` (DevSkim) | — |
+| Sensitive values reaching a sink | `bearer.yaml` (Bearer) | — |
+
+#### Bearer's licence
+
+`bearer.yaml` is the one scanner here whose tool is not open source under the OSI definition. `bearer/bearer` is published under the **Elastic License 2.0**, which permits use, modification and redistribution but forbids providing the software to third parties as a hosted or managed service, and forbids circumventing its licence-key functionality.
+
+Running it inside this repository's own CI does not engage either restriction: nothing here is offered to a third party, and the CLI needs no key — its `--api-key` flag is documented as legacy and exists only for the vendor's discontinued cloud product, so the scan is entirely local to the runner.
+
+It is called out because a repository created from this template inherits the workflow along with the licence, and a consumer who then wants to offer the tool as part of a service has a licence question the other scanners here do not raise. Removing the workflow and the `aqua:Bearer/bearer` line in `mise.toml` is all it takes.
+
+#### DevSkim's version pin
+
+Every other tool a workflow here installs is pinned in [`mise.toml`](../../mise.toml), which is what makes `tool-cooldown.yaml` able to gate a version published inside the supply-chain cooldown window. DevSkim is the exception: `microsoft/DevSkim` publishes no release binary and has no aqua package, so the only distribution is the NuGet global tool.
+
+mise can in fact reach that — its `dotnet:` backend resolves NuGet packages — and it is still not used, for two reasons. The backend requires the .NET runtime to become a mise-managed tool as well, which puts a whole language runtime into the version SSOT for the sake of one linter. And [`scripts/tool-cooldown`](../../scripts/tool-cooldown) has no publish-time source for a `dotnet:` backend, so the entry would be reported as *unresolved* rather than gated. Moving the pin into `mise.toml` would therefore buy the appearance of coverage without the coverage.
+
+The version consequently lives in `devskim.yaml`'s own `env:` block, and nothing guards it — bumping it means reading the release notes by hand.
+
+The alternative — `microsoft/DevSkim-Action` — is worse on exactly this axis, not better. It is a Docker action whose `Dockerfile` builds from the floating `mcr.microsoft.com/dotnet/sdk:8.0` tag and then runs an unversioned `dotnet tool install`, so pinning the action to a SHA pins the recipe and not the code that ends up executing.
 
 #### Release Gates
 

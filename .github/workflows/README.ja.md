@@ -54,6 +54,7 @@
 | `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる <!-- dast:line --> |
 | `code-ql.yaml` `codeql` | 30 | 上限は matrix の最も遅い leg に掛かるが、`go` 以外の leg には完了実行が無く実測できない。加えて `security-extended` は従前の値を測ったスイートより大きい |
 | `secret-scan.yaml`、`trufflehog.yaml` | 15 | 実測は差分を見る PR 実行のみ。週次は全履歴を走査するが、その完了実行が一度も無く実測できない |
+| `bearer.yaml` `bearer` | 20 | 完了実行が無く実測できないうえ、報告の前に自前ツリー全体のデータフローモデルを構築する |
 | `app-di-startup-check.yaml`、`gen-go-artifacts-check.yaml` | 15 | 式より前から存在する値。動いている上限を下げてもリスクしか増えないためそのまま |
 | `claude.yaml`、`go-lint.yaml`、`sample-removal-check.yaml` | 30 | 同上。`go-lint` は golangci-lint 自身の timeout を無効化して走らせているため、これがそのジョブ唯一の打ち切り点でもある |
 
@@ -99,6 +100,7 @@
 |CodeQL Scan|`code-ql.yaml`|`security-extended` スイートでの CodeQL 解析。言語ごとに matrix を分け、`go` / `javascript-typescript`（mock-auth-server / docs-viewer / scripts）/ `actions`（ワークフロー定義そのもの）を対象とする|
 |Dependency Scan|`trivy-fs.yaml`|Trivy によるライブラリ脆弱性スキャン(開発者向け)|
 |Release Dependency Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
+|Grype Scan|`grype.yaml`|Trivy と同じ依存マニフェストを、別の脆弱性 DB と別のマッチャで走査する Anchore Grype のファイルシステムスキャン|
 |Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成（SPDX-JSON と CycloneDX-JSON の両形式）+ Trivy スキャン|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck による Go パッケージ脆弱性検出|
 |OSV Scan|`osv-scanner.yaml`|OSV データベースによる Go モジュール / npm lockfile 横断の脆弱性スキャン|
@@ -113,6 +115,9 @@
 |Tool Cooldown|`tool-cooldown.yaml`|cooldown 窓の内側で公開された CLI ツール版（`mise.toml` / `python/*.in` の宣言）を pin する PR をゲート|
 |Config Scan|`trivy-config.yaml`|Trivy による Dockerfile の設定不備スキャン（HIGH 以上でゲート）|
 |SAST|`opengrep.yaml`|Opengrep（Semgrep 互換）による自前の Go / TypeScript ソースの解析（taint 追跡あり）|
+|DevSkim Scan|`devskim.yaml`|言語を問わずツリー内の全ファイルに当たる DevSkim の正規表現スキャン|
+|Bearer Scan|`bearer.yaml`|機微な値が sink へ到達する経路を追う Bearer のデータフロースキャン（Elastic License 2.0 で OSI 承認の OSS ではない — [Bearer のライセンス](#bearer-のライセンス)を参照）|
+|ESLint Scan|`eslint.yaml`|3 つの TypeScript ワークスペースに対する `eslint-plugin-security` の検査。matrix の 1 レグずつ（報告専用）|
 |Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
 |OpenAPI Security|`openapi-security.yaml`|Spectral + OWASP API Security ルールセットによる OpenAPI 定義の検証|
 |Fuzz|`fuzz.yaml`|外部入力を受けるパーサに対する Go ネイティブ fuzzing|
@@ -145,6 +150,10 @@
 | Trivy ライセンス | Trivy FS と同一トリガー | 同上 | 週次 |
 | OSV diff | 依存関係変更 PR | 不要 | 不要 |
 | Opengrep（SAST） | Go / TypeScript・依存・spec 変更 PR | 同上 | 週次 |
+| Grype | Go・依存変更 PR | 同上 | 週次 |
+| DevSkim | 全 PR | `develop` / `staging` / `production` / `release/*` | 週次 |
+| Bearer | Go / TypeScript 変更 PR | 同上 | 週次 |
+| ESLint（security） | TypeScript ワークスペース変更 PR | 同上 | 週次 |
 | lockfile-lint | lockfile 変更 PR | 不要 | 不要 |
 | Spectral（OpenAPI） | spec 変更 PR | `release/*` / デプロイ先ブランチ | 不要 |
 | capslock | `go.mod` 変更 PR | 不要 | 不要 |
@@ -153,7 +162,9 @@
 
 週次実行は月曜内で 1 時間ごとにずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査）、`0 9` npm cooldown 監査、`0 10` Opengrep、`0 11` fuzz）。同一時刻に全スキャナが並ぶのを避けるためです。
 
-DAST は次の枠 `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、順番の末尾に置いています。 <!-- dast:line -->
+DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。 <!-- dast:line -->
+
+以降は `0 13` Grype、`0 14` DevSkim、`0 15` Bearer、`0 16` ESLint と続きます。
 
 週次スケジュールを持つスキャナは、ジョブが `failure` または `cancelled` で終わったときに `notify.yaml` を呼び出します。PR の失敗は作成者に見えていますが、定期実行の失敗は誰にも見えないためです。`cancelled` を含めるのは、タイムアウトやランナー障害で打ち切られたジョブが `failure` ではなくこちらになるからです。
 
@@ -167,8 +178,11 @@ DAST は次の枠 `0 12` に入ります。スキャンの前にアプリケー�
 | `trivy-fs.yaml` | 修正版のある CRITICAL / HIGH / MEDIUM | schedule |
 | `vulnerability-check.yaml` | 到達可能な脆弱性 | schedule |
 | `osv-scanner.yaml` | 昇格をブロックする検出 | schedule |
+| `grype.yaml` | 脆弱性の検出 | schedule |
+| `devskim.yaml` | 検出あり | schedule |
+| `bearer.yaml` | 検出あり | schedule |
 
-他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 3 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 4 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint は理由が別で、ベースラインが 0 件ではないため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。
 
 #### 検知が重なる面
 
@@ -181,6 +195,28 @@ DAST は次の枠 `0 12` に入ります。スキャンの前にアプリケー�
 | 自前の Go ソース | `opengrep.yaml`（Opengrep）+ golangci-lint の `gosec` | — |
 | OpenAPI の規約 / 命名 | `oapi-lint.yaml`（redocly） | Spectral |
 | OpenAPI のセキュリティ姿勢 | `openapi-security.yaml`（Spectral） | redocly |
+| 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） | — |
+| 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`）+ `eslint.yaml`（`eslint-plugin-security`） | — |
+| 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
+| sink へ到達する機微な値 | `bearer.yaml`（Bearer） | — |
+
+#### Bearer のライセンス
+
+`bearer.yaml` は、ここにあるスキャナのうち唯一 OSI の定義する OSS ではないツールです。`bearer/bearer` は **Elastic License 2.0** で公開されており、利用・改変・再配布は認めつつ、ソフトウェアを hosted / managed service として第三者へ提供することと、ライセンスキー機構の回避とを禁じています。
+
+このリポジトリ自身の CI で走らせる限り、どちらの制限にも触れません。第三者へ何も提供しておらず、CLI はキーを必要としないためです（`--api-key` フラグは legacy と明記され、提供を終えたクラウド製品のために残っているだけで、スキャンは runner 内で完結します）。
+
+明記しているのは、このテンプレートから作られたリポジトリがワークフローとともにライセンスも引き継ぐためです。ツールをサービスの一部として提供したい利用者には、他のスキャナには生じないライセンス上の判断が要ります。不要なら、このワークフローと `mise.toml` の `aqua:Bearer/bearer` 行を消せば済みます。
+
+#### DevSkim のバージョン固定
+
+ここのワークフローが入れる他のツールはすべて [`mise.toml`](../../mise.toml) で固定されており、それがあるから `tool-cooldown.yaml` は「供給網クールダウンの窓の内側に公開された版」をゲートできます。DevSkim だけが例外です。`microsoft/DevSkim` はリリースバイナリを公開しておらず aqua パッケージも無いため、配布経路は NuGet のグローバルツールだけです。
+
+mise はそれ自体には届きます（`dotnet:` バックエンドが NuGet パッケージを解決します）。それでも使っていない理由は 2 つです。このバックエンドは .NET ランタイム自体も mise 管理下のツールにすることを要求し、リンタ 1 本のためにバージョン SSOT へ言語ランタイムを丸ごと入れることになります。そして [`scripts/tool-cooldown`](../../scripts/tool-cooldown) は `dotnet:` バックエンドの公開時刻の取得経路を持たないため、宣言してもゲートされず *unresolved* として報告されるだけです。`mise.toml` へ移すと、検査されている見た目だけが手に入ります。
+
+そのためバージョンは `devskim.yaml` の `env:` が持ち、これを守る仕組みはありません。更新はリリースノートを人が読んで判断します。
+
+代替の `microsoft/DevSkim-Action` は、この軸ではむしろ悪化します。`Dockerfile` が浮動タグ `mcr.microsoft.com/dotnet/sdk:8.0` から起こしてバージョン未指定の `dotnet tool install` を走らせる Docker action なので、Action を SHA で固定してもレシピが固定されるだけで、実際に走るコードは固定されません。
 
 #### リリースゲート
 
