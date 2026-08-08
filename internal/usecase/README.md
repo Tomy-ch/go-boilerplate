@@ -300,7 +300,7 @@ other.** This holds in both directions and is the same rule stated twice.
 
 - **Write** — infrastructure performs the write, then the usecase re-reads the affected aggregate
   through its Repository so the aggregate re-validates the result
-  ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+  ([ADR-0028](../../docs/adr/0028-lightweight-cqrs.md)).
 - **Read** — infrastructure applies the filter, then the usecase checks the returned entities
   against the domain predicate that defines the criterion. Infrastructure *executes* a criterion; it
   does not *author* one (see [`internal/domain/README.md`](../domain/README.md) § Query and

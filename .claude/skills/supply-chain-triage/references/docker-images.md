@@ -75,7 +75,7 @@ docker buildx imagetools inspect "$IMG" --format '{{json .Image.Config.Labels}}'
 - With no labels, no attestation, and no official listing, A is `?`. Say so; do not score `0`.
 
 Note what this repo's own release pipeline already does for images it *builds*
-(`docs/design/security.md` → ADR-0096: signing, provenance, SBOM). That covers our artifacts, not
+(`docs/design/security.md` → ADR-0097: signing, provenance, SBOM). That covers our artifacts, not
 the third-party base images this axis is about.
 
 ## Axis D — what actually changed

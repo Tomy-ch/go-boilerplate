@@ -92,7 +92,7 @@ additionalProperties: false
 2 つのエラーエンベロープ。`ErrorResponse` は base（`details` なし）で大半のエラーステータスが
 使う。`ErrorResponseWithDetails` は `details` を追加し、意図的に露出するレスポンスだけが参照する。
 どの operation が `ErrorResponseWithDetails` を参照するかが、details 露出の**エンドポイントごとの
-opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0044](../../../docs/adr/0044-error-details-opt-in-gate.md) 参照）。
+opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0045](../../../docs/adr/0045-error-details-opt-in-gate.md) 参照）。
 
 ```yaml
 # ErrorResponse.yaml (base)

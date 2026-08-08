@@ -31,3 +31,12 @@ COMMENT ON COLUMN products.image_path IS '画像パス';
 COMMENT ON COLUMN products.lock_version IS '楽観ロックバージョン';
 COMMENT ON COLUMN products.created_at IS '作成日時';
 COMMENT ON COLUMN products.updated_at IS '更新日時';
+
+-- 在庫僅少一覧（GET /v1/products/low-stock）の top-N 用部分インデックス。
+-- ORDER BY quantity ASC, id ASC を index scan の順序で処理し、LIMIT で早期に打ち切る。
+-- 絞り込みの quantity <= stock_warning_threshold は列同士の比較でインデックスキーにできないため、
+-- 在庫の少ない順に歩きながら残余述語として評価する。
+-- 閾値未設定（NULL）の商品は警告対象外で走査する意味がないため、部分インデックスの条件で除外する。
+CREATE INDEX products_low_stock_idx
+ON products (quantity ASC, id ASC)
+WHERE stock_warning_threshold IS NOT NULL;

@@ -896,6 +896,10 @@ CREATE INDEX outbox_pending_idx ON public.outbox USING btree (id) WHERE (status 
 --
 CREATE INDEX outbox_published_gc_idx ON public.outbox USING btree (published_at) WHERE (status = 'published'::text);
 --
+-- Name: products_low_stock_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_low_stock_idx ON public.products USING btree (quantity, id) WHERE (stock_warning_threshold IS NOT NULL);
+--
 -- Name: purchases_user_id_ordered_at_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree (user_id, ordered_at DESC, id DESC);

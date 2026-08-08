@@ -135,11 +135,11 @@ if meta, ok := apperror.MetaFrom(err); ok { ... meta.Code() / meta.Message() / m
 
 Rules:
 
-- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0042](../../docs/adr/0042-apperror-protocol-agnostic-errors.md) intact (see [ADR-0043](../../docs/adr/0043-error-metadata-code-message-details.md)).
+- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0043](../../docs/adr/0043-apperror-protocol-agnostic-errors.md) intact (see [ADR-0044](../../docs/adr/0044-error-metadata-code-message-details.md)).
 - Fields are unexported; `Meta` is built only via `NewMeta(code, details...)` (which defensively copies `details`). Everything is optional — empty values fall back to the controller's default `code` / `message` for the resolved status.
 - The user-facing message can be set only through the explicit, greppable `WithMessage` — its source of truth is the controller catalog, so **only the controller layer may call it**; Domain / Usecase set `code` / `details` only.
 - `Details` values are exposed verbatim in the API response. Put **public-safe identifiers only** (e.g., invalid field names) — never reason texts or raw input values. Reason texts belong in the wrapped error message, which stays log-only.
-- **`details` exposure is opt-in per endpoint and fail-closed.** Attaching `details` here is necessary but not sufficient: the client only receives them if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI. The controller's `errorhandler` drops `details` from the wire for any non-opted-in operation (logs keep them). See [ADR-0044](../../docs/adr/0044-error-details-opt-in-gate.md).
+- **`details` exposure is opt-in per endpoint and fail-closed.** Attaching `details` here is necessary but not sufficient: the client only receives them if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI. The controller's `errorhandler` drops `details` from the wire for any non-opted-in operation (logs keep them). See [ADR-0045](../../docs/adr/0045-error-details-opt-in-gate.md).
 - When `WithMeta` is applied multiple times in a chain, **the outermost one wins** (`MetaFrom` uses `xerrors.As`). Re-wrapping is the intended way for an upper layer to override.
 - `WithMeta` decorates, it does not classify: `xerrors.Is` / `IsAppError` still see the wrapped sentinel(s), including all branches of a `xerrors.Join`.
 

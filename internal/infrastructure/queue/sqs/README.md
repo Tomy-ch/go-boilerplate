@@ -16,7 +16,7 @@ Wiring this package links `aws-sdk-go-v2/service/sqs` into the binary. Because `
 the role that consumes a queue — so isolation is defined over the **post-sample-removal** state
 instead: after `make setup-remove-sample-api`, the coupling must equal what it was before the
 sample was added. Any wiring from the sample set therefore carries a `sample-api` marker.
-See [ADR-0048](../../../../docs/adr/0048-broker-sdk-isolation-verified-after-sample-removal.md).
+See [ADR-0049](../../../../docs/adr/0049-broker-sdk-isolation-verified-after-sample-removal.md).
 
 To use it in production, an integrator wires `NewConsumer` / `NewDeadLetter` into a
 `worker.Worker` registered in `WorkerModule`, and selects `NewPublisher` as the outbox

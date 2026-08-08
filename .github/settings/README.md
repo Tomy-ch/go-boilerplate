@@ -44,7 +44,7 @@ GitHub's own guidance is to confirm that the Code Quality workflow is running an
 
 No `required_status_checks` rule is declared, so no workflow result gates a merge; a pull request can be merged over a red check.
 
-Adding one is not just a matter of listing check contexts. A required check whose workflow is `paths`-filtered never reports on a pull request that skips it, which blocks the merge forever — so each gate registered as required needs a `*-guard.yaml` companion reporting the same check context on the complementary path set. `docs/adr/0084-multi-layer-security-scanning.md` records that design.
+Adding one is not just a matter of listing check contexts. A required check whose workflow is `paths`-filtered never reports on a pull request that skips it, which blocks the merge forever — so each gate registered as required needs a `*-guard.yaml` companion reporting the same check context on the complementary path set. `docs/adr/0085-multi-layer-security-scanning.md` records that design.
 
 ## labels.json
 

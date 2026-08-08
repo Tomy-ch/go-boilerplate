@@ -350,6 +350,7 @@ type ListLowStockProductsRow struct {
 // 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 // stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
 // 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
+// 並びと閾値未設定の除外は部分インデックス products_low_stock_idx のキー順・条件に対応します。片方だけ変更しないこと。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -419,7 +420,7 @@ type ListProductsByIDsForUpdateRow struct {
 
 // === source: database/dml/repository/product/select_products_by_ids_for_update.sql ===
 // ID の集合から公開状態を問わない商品群を、更新のために悲観ロック（FOR UPDATE）して取得します。
-// ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0031）。
+// ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0032）。
 // 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
 // ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
 // status_name / category_name は商品の付随表示値。

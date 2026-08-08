@@ -17,6 +17,6 @@ Usecase 層のマネー決済 **policy** を提供します。正確な算術・
 
 - 丸めをここに集約し、呼び出し側では丸めないことで方針のドリフトを防ぐ。
 - half-up 方式と丸め 1 箇所ルールは
-  [ADR-0033](../../../../docs/adr/0033-two-scale-quantity-model.md) に、具体的な方針はそれを適用する機能とともに（`docs/spec/exchange-rate/`。サンプル側の内容）記録している。
+  [ADR-0034](../../../../docs/adr/0034-two-scale-quantity-model.md) に、具体的な方針はそれを適用する機能とともに（`docs/spec/exchange-rate/`。サンプル側の内容）記録している。
 - 汎用の十進機構は [`pkg/decimal`](../../../../pkg/decimal/README.ja.md)。本パッケージは policy
   （`minorUnitDigits`・half-up）のみを持ち、infra 依存を持たない。

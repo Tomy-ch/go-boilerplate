@@ -31,7 +31,7 @@ strict-server）が消費し、Go スタブ生成後は他の中間ビルドア�
 
 プロジェクト全体のルール（「生成ファイルをコミットしない」）は、古くなった出力が
 暗黙的に信頼されることを防ぐために存在する。この緊張関係は、生成アーティファクトの
-ドリフトゲート（ADR-0083、generated-artifact drift gate）によって解消される。
+ドリフトゲート（ADR-0084、generated-artifact drift gate）によって解消される。
 このゲートは、コミット済みの `openapi.gen.yaml` が現在のソースから乖離している場合に
 PR を失敗させ、ファイルを常に最新の状態に保つ。
 
@@ -41,7 +41,7 @@ PR を失敗させ、ファイルを常に最新の状態に保つ。
 
 このファイルは `make gen-api`（`gen-bundle-oapi` ステップが
 `redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml` を実行する）
-によって再生成され、その鮮度は生成アーティファクトのドリフトゲート（ADR-0083）で
+によって再生成され、その鮮度は生成アーティファクトのドリフトゲート（ADR-0084）で
 定義された `gen-oapi-artifacts-check` CI ワークフローによって強制される。
 フロントエンドは GitHub API 経由（例: `gh` CLI）でコミット済みファイルを取得し、
 Redocly ツールチェーンをインストールすることなく、自前のコード生成パイプライン
@@ -60,7 +60,7 @@ Redocly ツールチェーンをインストールすることなく、自前の
   （orval、openapi-typescript、swagger-codegen など）で即座に解析可能である。
 - コミット済みファイルは監査可能なスナップショットとして機能し、レビュアーは
   git 履歴のどの時点においても公開された契約の状態を確認できる。
-- ドリフトゲート（ADR-0083）により、コミット済みファイルはモジュラーソースと
+- ドリフトゲート（ADR-0084）により、コミット済みファイルはモジュラーソースと
   常に同期が保たれる — 生成ファイルのコミットを通常躊躇させる「古くなったコミット済み出力」
   のリスクは CI によって機械的に排除される。
 
@@ -102,11 +102,11 @@ Redocly ツールチェーンをインストールすることなく、自前の
   .gitignore に記載なし）。
 - ビルドターゲット: `.makefiles/openapi/gen.mk`（`gen-bundle-oapi-ci` が
   `redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml` を実行する）。
-- 鮮度の強制: ADR-0083（generated-artifact drift gate）、CI ワークフロー
+- 鮮度の強制: ADR-0084（generated-artifact drift gate）、CI ワークフロー
   `gen-oapi-artifacts-check`。
 - クライアント側の使用パターン（orval + zod）: `openapi/boundary-ownership.md` 参照。
 - 関連: ADR-0009（OpenAPI ファースト）— 仕様をワイヤー契約の真実のソースとする根本的な決定。
 - 関連: ADR-0010（Redocly モジュラー仕様パイプライン）— このファイルを生成するバンドルステップ。
 - 関連: ADR-0011（oapi-codegen strict-server）— このファイルのサーバー側コンシューマー。
-- 関連: ADR-0083（generated-artifact drift gate）— このコミット済みアーティファクトを
+- 関連: ADR-0084（generated-artifact drift gate）— このコミット済みアーティファクトを
   最新に保つ CI の仕組み。

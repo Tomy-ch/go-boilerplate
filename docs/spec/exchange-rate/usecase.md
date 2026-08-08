@@ -1,7 +1,7 @@
 # Exchange Rate — Usecase Spec
 
 > exchange-rate は外部の為替レート配信サービスを参照するだけの非永続 API であり、固有の domain
-> エンティティ・テーブルを持たない。そのため lean-a-spec（[ADR-0089]）の「原則 domain + usecase」から
+> エンティティ・テーブルを持たない。そのため lean-a-spec（[ADR-0090]）の「原則 domain + usecase」から
 > domain.md を省略し、本 usecase.md のみで表現する。外部レート取得への意味的 gateway は
 > `internal/usecase/boundary/exchangerate.Gateway`（boundary IF）として Dependencies 節に明示する。
 
@@ -33,13 +33,13 @@ address（外部不通でも `200 + 空候補 + IsFallback: true` へ倒す）�
 方針がエンドポイント間でドリフトしない）。
 
 表示通貨の最小単位桁数（`minorUnitDigits`）は **usecase が持つ policy** であり、汎用の decimal 機構
-（`pkg/decimal.ToScaledInt64`）には焼き込まない（[ADR-0033]）。現状の表示通貨は JPY のみで
+（`pkg/decimal.ToScaledInt64`）には焼き込まない（[ADR-0034]）。現状の表示通貨は JPY のみで
 `displayMinorUnitDigits = 0`（1 円 = 小数 0 桁）。JPY はあくまで**参考表示**として現れるだけで、決済通貨は
 USD のみである（決済スケールの仕様は [`docs/spec/purchase/domain.md`](../purchase/domain.md)）。多通貨決済は
 スコープ外。
 
 `amount` / `converted` / `rate` はいずれもワイヤ上で**十進文字列**として扱う。JSON number は一般的な
-パーサが IEEE754 double として復号するため、そこで精度が落ちる（[ADR-0033]）。
+パーサが IEEE754 double として復号するため、そこで精度が落ちる（[ADR-0034]）。
 
 ## Interface
 
@@ -125,7 +125,7 @@ errors:
 叩くのは無駄であり、リクエストのレイテンシを外部依存に結びつけてしまう。キャッシュは
 **`boundary.Gateway` を満たす TTL decorator**（`internal/infrastructure/webapi/exchangerate/cache.go`）として
 infra 層に置き、DI で生の gateway を包む。usecase・domain はキャッシュの存在を知らない。汎用の Cache 抽象を
-作らず既存の継ぎ目を decorate するという判断そのものは [ADR-0101]。
+作らず既存の継ぎ目を decorate するという判断そのものは [ADR-0102]。
 
 - **TTL は `rateTTL = 24h` の定数**であり、config 値にはしない。環境ごとに変える理由を述べられないため。
   配信元が日次更新であることが 24h の根拠である。
@@ -176,6 +176,6 @@ responses: [400, 405, 500, 503]
   `referenceAmount`）も同じ関数を再利用する。
 - 決済スケール（USD セント整数）の仕様は [`docs/spec/purchase/domain.md`](../purchase/domain.md)。
 
-[ADR-0033]: ../../adr/0033-two-scale-quantity-model.md
-[ADR-0089]: ../../adr/0089-lean-a-spec-scaffold.md
-[ADR-0101]: ../../adr/0101-no-generic-cache-abstraction.md
+[ADR-0034]: ../../adr/0034-two-scale-quantity-model.md
+[ADR-0090]: ../../adr/0090-lean-a-spec-scaffold.md
+[ADR-0102]: ../../adr/0102-no-generic-cache-abstraction.md

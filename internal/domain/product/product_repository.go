@@ -37,7 +37,7 @@ type Counts struct {
 
 // Repository は、商品の永続化操作を定義するドメインリポジトリインターフェースです。
 //
-//nolint:interfacebloat // 集約の永続化契約は 1 本に保つ（ADR-0027）。呼び出し側ごとに分割すると同一集約の契約が複数箇所へ散る
+//nolint:interfacebloat // 集約の永続化契約は 1 本に保つ（ADR-0028）。呼び出し側ごとに分割すると同一集約の契約が複数箇所へ散る
 type Repository interface {
 	// FindPublishedList は、公開済みの商品を keyset ページネーションで取得します。
 	// 並び順は公開日時（同時刻は ID）で、params.Ascending により昇順／降順を切り替えます。

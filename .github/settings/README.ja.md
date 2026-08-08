@@ -44,7 +44,7 @@ GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に*
 
 `required_status_checks` ルールを宣言していないため、どのワークフローの結果もマージのゲートになりません。赤いチェックのまま PR をマージできます。
 
-これを追加するのはチェックコンテキストを列挙するだけの作業ではありません。required にしたチェックのワークフローが `paths` フィルタで起動しなかった PR では、そのコンテキストが永久に報告されずマージが止まります。そのため required に登録するゲートには、同じチェックコンテキストを補集合のパスセットで報告する `*-guard.yaml` の companion が必要です。この設計は `docs/adr/0084-multi-layer-security-scanning.md` に記録されています。
+これを追加するのはチェックコンテキストを列挙するだけの作業ではありません。required にしたチェックのワークフローが `paths` フィルタで起動しなかった PR では、そのコンテキストが永久に報告されずマージが止まります。そのため required に登録するゲートには、同じチェックコンテキストを補集合のパスセットで報告する `*-guard.yaml` の companion が必要です。この設計は `docs/adr/0085-multi-layer-security-scanning.md` に記録されています。
 
 ## labels.json
 

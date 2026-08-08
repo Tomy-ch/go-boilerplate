@@ -204,10 +204,10 @@ See details below.
 
 `command_service` implements a **CommandService** — the write-side counterpart of QueryService
 (interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
-that require single-transaction atomicity (see [ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md)
-/ [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)); the first implementation
+that require single-transaction atomicity (see [ADR-0028](../../../docs/adr/0028-lightweight-cqrs.md)
+/ [ADR-0030](../../../docs/adr/0030-commandservice-atomicity-criterion.md)); the first implementation
 is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
-[ADR-0031](../../../docs/adr/0031-ordered-pessimistic-row-locks.md)).
+[ADR-0032](../../../docs/adr/0032-ordered-pessimistic-row-locks.md)).
 
 A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
 the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events
@@ -224,7 +224,7 @@ invariant that already exists — the stock guard in the decrement statement res
 insufficient-stock rule, and returns that same domain sentinel. It is downstream: a change to the
 domain rule obliges a change here, never the reverse. Two independently written copies of one rule
 diverge silently the first time only one of them moves. See
-[ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md) § Derivation.
+[ADR-0028](../../../docs/adr/0028-lightweight-cqrs.md) § Derivation.
 
 ## testkit
 

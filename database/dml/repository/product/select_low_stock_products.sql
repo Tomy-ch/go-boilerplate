@@ -4,6 +4,7 @@
 -- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
 -- stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
 -- 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
+-- 並びと閾値未設定の除外は部分インデックス products_low_stock_idx のキー順・条件に対応します。片方だけ変更しないこと。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,

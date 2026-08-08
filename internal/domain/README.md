@@ -59,7 +59,7 @@ Examples:
   [`internal/domain/lexicon`](lexicon/README.md), which every domain package may import. Placement is
   resolved `pkg/` first, and admission is deliberately narrow — the name states the question asked at
   the door: is this a word of the business? See its README.
-  Rationale: [ADR-0034](../../docs/adr/0034-domain-lexicon.md).
+  Rationale: [ADR-0035](../../docs/adr/0035-domain-lexicon.md).
 
   The other path that may import an aggregate is `internal/domain/service/**`, where every Domain
   Service lives; it has its own depguard rule that repeats every other domain deny. The rule permits
@@ -497,17 +497,17 @@ Avoid:
 **Two named situations depart from the principle**, and only these two. Both put rows belonging to
 more than one aggregate inside a single transaction, and each has to be justified against its own
 criterion before it is used — the criterion, and the default that precedes both, are the three
-branches of [ADR-0029](../../docs/adr/0029-commandservice-atomicity-criterion.md) § Decision
+branches of [ADR-0030](../../docs/adr/0030-commandservice-atomicity-criterion.md) § Decision
 procedure:
 
 - **A guard that must not go stale** (branch 2). An operation reads another aggregate to decide
   whether it is permitted, and a concurrent write could invalidate that condition between the check
   and the commit. The guard row is locked before the condition is evaluated, and held to the commit
-  ([ADR-0031](../../docs/adr/0031-ordered-pessimistic-row-locks.md)). The other aggregate is
+  ([ADR-0032](../../docs/adr/0032-ordered-pessimistic-row-locks.md)). The other aggregate is
   observed, never mutated, and the operation stays a regular usecase.
 - **A multi-aggregate write that must be atomic** (branch 3). The requirements say an intermediate
   state must never be observable, so the writes run in one transaction through a CommandService
-  ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+  ([ADR-0028](../../docs/adr/0028-lightweight-cqrs.md)).
 
 Everything else decomposes: a single-aggregate write plus an eventually consistent cascade, which is
 the branch this principle describes without exception.
@@ -716,7 +716,7 @@ not. The check is one question — can the meaning of the term be answered by re
 package alone? If not, its authorship has left.
 
 The same discipline is already imposed on the write side, where a CommandService may only enforce
-conditions derived from domain invariants ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+conditions derived from domain invariants ([ADR-0028](../../docs/adr/0028-lightweight-cqrs.md)).
 There is no reason for the read side to be the exception.
 
 Read paths are free to skip the aggregate entirely — a search index is a projection of the system of
@@ -744,7 +744,7 @@ The domain's claim on a read path is the vocabulary of the question, not the sha
 > evaluated in place, at no cost, so composition is absent only where it would have had to travel.
 > Predicates that gate a change return a typed error rather than a bool, and the identity of that
 > error is what the response status is derived from
-> ([ADR-0042](../../docs/adr/0042-apperror-protocol-agnostic-errors.md)); a composed `isSatisfiedBy`
+> ([ADR-0043](../../docs/adr/0043-apperror-protocol-agnostic-errors.md)); a composed `isSatisfiedBy`
 > collapses that to "not satisfied", and recovering which part failed rebuilds the error return.
 > Queries stay static SQL, generated and type-checked against the real schema — a criterion-to-SQL
 > translator would end that.

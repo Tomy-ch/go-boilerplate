@@ -15,7 +15,7 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 リンクを限定することはできません。そのため隔離は**サンプル削除後**の状態で定義します。すなわち
 `make setup-remove-sample-api` の後、結合はサンプル追加前と同一でなければなりません。サンプル群
 からの配線は、いずれも `sample-api` マーカーを伴います。
-[ADR-0048](../../../../docs/ja/adr/0048-broker-sdk-isolation-verified-after-sample-removal.ja.md) を参照。
+[ADR-0049](../../../../docs/ja/adr/0049-broker-sdk-isolation-verified-after-sample-removal.ja.md) を参照。
 
 本番で利用するには、integrator が `NewConsumer` / `NewDeadLetter` を `WorkerModule` に登録した
 `worker.Worker` に配線し、outbox の publish 先として `NewPublisher` を選びます。
