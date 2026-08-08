@@ -1,0 +1,4 @@
+interface:
+  display_name: "Supply Chain Triage"
+  short_description: "隔離中バージョンの改ざん公開証拠を判定し、変更せず報告"
+  default_prompt: "$supply-chain-triage を使い、隔離期間に捕捉された npm:example@1.2.3 の改ざん公開の証拠を報告のみでトリアージして。"

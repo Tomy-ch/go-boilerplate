@@ -12,12 +12,7 @@ import { fileURLToPath } from "node:url";
  * 判断が要ります）。異常なのは「未移植であることが宣言されていない」状態なので、理由を書かせた
  * うえで許可します。両側に揃ったらこの表から消してください（残すと stale として落ちます）。
  */
-export const PLATFORM_ONLY_SKILLS: ReadonlyMap<string, string> = new Map([
-  [
-    "supply-chain-triage",
-    "Codex へ未移植。Codex 側の冷却窓スキル群が本スキルへの連鎖を持たないため、移植方針の判断が保留されている。",
-  ],
-]);
+export const PLATFORM_ONLY_SKILLS: ReadonlyMap<string, string> = new Map<string, string>();
 
 /** allowlist の在り処。違反メッセージから編集先へ辿れるようにするため、自身のパスを持つ。 */
 export function allowlistLocation(repoRoot: string): string {
