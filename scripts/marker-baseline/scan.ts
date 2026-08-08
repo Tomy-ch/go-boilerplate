@@ -29,20 +29,20 @@ function walk(dir: string, acc: string[]): string[] {
   return acc;
 }
 
-/** 実ツリーのマーカー行分布。キーは相対パスの昇順。 */
+/**
+ * 実ツリーのマーカー行分布。キーは相対パスの昇順。
+ *
+ * @remarks
+ * 読めないファイルを握り潰しません。読めなければマーカー行数は**不明**であり、飛ばすことは
+ * 「0 行」と記録するのと同じです。ベースラインに 0 として載れば、そこへ後からマーカーが
+ * 増えても差分に出ません——この検査が塞ごうとしている無言の見落としと、同じ形の穴になります。
+ * 読めないファイルが現れたなら、それ自体が知るべき事実なので、そのまま投げます。
+ */
 export function scanRepository(): Baseline {
   const found: Array<[string, number]> = [];
 
   for (const rel of walk(REPO_ROOT, [])) {
-    let content: string;
-
-    try {
-      content = fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
-    } catch {
-      continue;
-    }
-
-    const count = countMarkerLines(content);
+    const count = countMarkerLines(fs.readFileSync(path.join(REPO_ROOT, rel), "utf8"));
 
     if (count > 0) found.push([rel, count]);
   }
