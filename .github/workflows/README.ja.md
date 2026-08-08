@@ -193,7 +193,7 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | `devskim.yaml` | 検出あり | schedule |
 | `snyk.yaml` | Open Source の脆弱性の検出あり | schedule |
 
-他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 5 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 200 件超の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud と Codacy、そして Snyk の Code / Container レグも同じ理由で未接続です。Sonar と Codacy はセキュリティと並んで保守性も報告するため既存コードベースに対するベースラインが 0 件になることはなく、Codacy に至ってはツールイメージが浮動タグで動くのでコードが変わらなくてもベースラインが動きます。Snyk の Open Source レグだけを接続しているのは、そのベースラインが「クリーンであることを期待してよい依存ツリー」だからです。
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 5 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud と Codacy、そして Snyk の Code / Container レグも同じ理由で未接続です。Sonar と Codacy はセキュリティと並んで保守性も報告するため既存コードベースに対するベースラインが 0 件になることはなく、Codacy に至ってはツールイメージが浮動タグで動くのでコードが変わらなくてもベースラインが動きます。Snyk の Open Source レグだけを接続しているのは、そのベースラインが「クリーンであることを期待してよい依存ツリー」だからです。
 
 #### 検知が重なる面
 
@@ -213,7 +213,7 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） + `snyk.yaml`（Snyk Open Source） — すべて報告専用 | — |
 | 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） + `codacy.yaml`（Codacy） + `snyk.yaml`（Snyk Code） | — |
 | 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
-| sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用 | — |
+| sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用。対象はアプリケーションコードのみで `/scripts` は除外（リポジトリのツーリングはユーザーデータを扱わず、この問いが訊いているのはそれだけであるため） | — |
 | ランタイムイメージ | `image-scan.yaml`（Trivy） **(gate)** + `snyk.yaml`（Snyk Container） — 報告専用 | — |
 
 `自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 3 つも乗っていますが、いずれもそこでは報告専用です。どれもゲートを持たないため、そのうちの 1 つが発火したルールで PR が 2 回赤くなることはありません。エンジンが 4 つ増えても「ルール単位で担当 1 つ」が保たれるのはそのためです。
