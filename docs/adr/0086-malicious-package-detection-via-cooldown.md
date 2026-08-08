@@ -54,8 +54,8 @@ corrects a compromise rather than by blast radius:
 | --- | --- | --- |
 | npm | 7 days | `min-release-age` in each `.npmrc` (npm 11 native) |
 | Go modules | 7 days | `scripts/go-cooldown`, gating the direct requirements a change adds or raises |
-| CLI tools resolved by mise | 14 days (GitHub release) / 7 days (package registry) | `scripts/mise-cooldown`, reading `mise.toml` |
-| CLI tools installed from PyPI | 7 days | `scripts/mise-cooldown`, reading the `python/*.in` declarations ([ADR-0075](0075-mise-ssot-drift-gate.md)) |
+| CLI tools resolved by mise | 14 days (GitHub release) / 7 days (package registry) | `scripts/tool-cooldown`, reading `mise.toml` |
+| CLI tools installed from PyPI | 7 days | `scripts/tool-cooldown`, reading the `python/*.in` declarations ([ADR-0075](0075-mise-ssot-drift-gate.md)) |
 | GitHub Actions | 14 days | `PIN_ACTIONS_MIN_AGE_DAYS`, enforced by `scripts/pin-actions` |
 | Container images | 14 days | `PIN_IMAGES_MIN_AGE_DAYS`, enforced by `scripts/pin-images` |
 | Dependabot | 5 / 7 / 30 days (patch / minor / major) | cooldown in `.github/dependabot.yml` |

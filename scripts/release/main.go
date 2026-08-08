@@ -250,7 +250,7 @@ func resolveNext(r runner, bumpKind string) (version, version, error) {
 
 // parseFlags は、サブコマンドのフラグを解釈します。ヘルプ要求は失敗ではないため、通常のエラーと
 // 区別できるよう errHelpRequested を返します。ここを一括りにすると `-h` が異常終了になり、
-// 同じリポジトリの他ツール（mise-cooldown / go-cooldown）と終了コードが食い違います。
+// 同じリポジトリの他ツール（tool-cooldown / go-cooldown）と終了コードが食い違います。
 func parseFlags(fs *flag.FlagSet, args []string) error {
 	err := fs.Parse(args)
 	switch {

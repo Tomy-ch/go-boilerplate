@@ -159,7 +159,7 @@ backend、ツールキー、候補バージョン、**`mise.toml` で現在ピ�
   make py-lock
   ```
 
-  `.in` と `.txt` は 1 つの変更である。`make mise-cooldown-gate` は lockfile が古い版のままの pin を失敗にする。再生成の忘れが「実際には入らない版に対して隔離が通る」状態を作らないためである。2 つのファイルは必ず一緒にコミットし、`.txt` を手書きしない。
+  `.in` と `.txt` は 1 つの変更である。`make tool-cooldown-gate` は lockfile が古い版のままの pin を失敗にする。再生成の忘れが「実際には入らない版に対して隔離が通る」状態を作らないためである。2 つのファイルは必ず一緒にコミットし、`.txt` を手書きしない。
 
   `py-lock` は `python/*.txt` を **すべて** 再生成するため、触っていないツールでも推移依存の新リリースによって差分が出ることがある。その差分は本物で、変更の一部である——確認して残すこと。ただし今回の run の隔離判断は直接の pin ごとに下したものであり、この差分はその外にある。最終報告でその旨を述べる。
 
@@ -197,7 +197,7 @@ make test
 `python/*.in` の pin を変えた場合は、併せて以下も実行する。
 
 ```sh
-make mise-cooldown-audit
+make tool-cooldown-audit
 ```
 
 pin と lockfile が一致しているかを見る検査であり、いま宣言している版に対して窓を測り直す。pull request が回すのと同じゲートである。
@@ -239,7 +239,7 @@ pin と lockfile が一致しているかを見る検査であり、いま宣言
 - [ ] eligible が非空なら、per-tool 適用候補を `AskUserQuestion` で確定。早期採用する pending は別枠・既定未選択・バンド付きで提示
 - [ ] `mise.toml` を承認分のみ atomic に書き換え、key 形式と `v` prefix 慣習を保持
 - [ ] 承認された `python/*.in` の pin を書き換え（パッケージ名と extras を保持し、古い隔離コメントを是正）、`make py-lock` を実行し、両方のファイルを残す。`.txt` は手書きしない
-- [ ] `python/*.in` の pin を変えたなら `make mise-cooldown-audit` を実行
+- [ ] `python/*.in` の pin を変えたなら `make tool-cooldown-audit` を実行
 - [ ] go / node / python が更新されたなら `make sync-versions` を実行
 - [ ] ランタイム bump 時は base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）。公開直後のイメージでは新 tag に対するルール 3 の fail-closed が想定どおりの結果であり、結合（トリアージのうえ `days=0` でブートストラップするか bump を保留するか）とともに提示する。無理に通さず、tag と digest の食い違いを残さない
 - [ ] `make lint` + `make test` を実行

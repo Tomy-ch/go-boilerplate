@@ -107,7 +107,7 @@ All three rules live in one check rather than three, because they are not three 
 |OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
 |npm Cooldown Audit|`npm-cooldown-audit.yaml`|Report lockfile entries that do not satisfy the `.npmrc` supply-chain cooldown (never blocks)|
 |Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
-|mise Cooldown|`mise-cooldown.yaml`|Gate a PR that pins a `mise.toml` tool version published inside the cooldown window|
+|Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
 |SAST|`sast.yaml`|Opengrep (Semgrep-compatible) scan of first-party source with taint tracking|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|

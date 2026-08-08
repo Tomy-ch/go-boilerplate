@@ -5,9 +5,9 @@
 //	       報告し、非ゼロで終了する。
 //	audit: 宣言の全件を棚卸しし、窓内のものを報告する。常に 0 で終了する。
 //
-// **緊急のバイパスは .github/mise-cooldown-bypass.toml が受ける。** エントリは期限を必ず持ち、
-// 期限切れ・期限過長・対象不在は gate / audit のどちらでも失敗になる。期限は mise.toml が
-// 変わらなくても訪れるので、このツールはスケジュール実行にも載せる必要がある。
+// **緊急のバイパスは .github/tool-cooldown-bypass.toml が受ける。** エントリは期限を必ず持ち、
+// 期限切れ・期限過長・対象不在は gate / audit のどちらでも失敗になる。期限は宣言が変わらなく
+// ても訪れるので、このツールはスケジュール実行にも載せる必要がある。
 package main
 
 import (
@@ -33,7 +33,7 @@ import (
 
 const (
 	miseFile   = "mise.toml"
-	bypassFile = ".github/mise-cooldown-bypass.toml" //nolint:gosec // 資格情報ではなくバイパス lockfile のパス
+	bypassFile = ".github/tool-cooldown-bypass.toml" //nolint:gosec // 資格情報ではなくバイパス lockfile のパス
 	// pyRequirementsGlob は PyPI ツールの直接宣言。解決結果は同名の .txt が持つ。
 	pyRequirementsGlob  = "python/*.in"
 	pyRequirementSuffix = ".in"
@@ -229,7 +229,7 @@ func run(args []string, client *http.Client, now time.Time) error {
 	}
 
 	if blocking > 0 {
-		return xerrors.Wrap(errBlocking, fmt.Sprintf("❌ mise-cooldown %s: %d 件の違反が残っています", sub, blocking))
+		return xerrors.Wrap(errBlocking, fmt.Sprintf("❌ tool-cooldown %s: %d 件の違反が残っています", sub, blocking))
 	}
 
 	return nil
@@ -240,7 +240,7 @@ func run(args []string, client *http.Client, now time.Time) error {
 func parseArgs(args []string) (string, options, error) {
 	if len(args) == 0 {
 		return "", options{}, xerrors.Wrap(errUsage,
-			"❌ usage: mise-cooldown <gate|audit> [--base=<git-ref>] [--summary-out=<path>] [--github]")
+			"❌ usage: tool-cooldown <gate|audit> [--base=<git-ref>] [--summary-out=<path>] [--github]")
 	}
 
 	sub := args[0]
@@ -846,7 +846,7 @@ func report(
 	targets []tool, github bool,
 ) int {
 	//nolint:gosec // sub は gate / audit のいずれかに限定済み
-	log.Printf("ℹ️ mise-cooldown %s: 対象 %d 件 / ランタイム除外 %d 件 / 窓 GitHub %d 日・レジストリ %d 日",
+	log.Printf("ℹ️ tool-cooldown %s: 対象 %d 件 / ランタイム除外 %d 件 / 窓 GitHub %d 日・レジストリ %d 日",
 		sub, len(targets), len(skipped), releaseWindowDays, registryWindowDays)
 
 	blockingCount := len(policyViolations)
@@ -895,7 +895,7 @@ func report(
 
 	if blockingCount == 0 {
 		//nolint:gosec // sub は gate / audit のいずれかに限定済み
-		log.Printf("✅ mise-cooldown %s: 違反なし（バイパス %d 件）", sub, len(bypasses))
+		log.Printf("✅ tool-cooldown %s: 違反なし（バイパス %d 件）", sub, len(bypasses))
 	}
 	return blockingCount
 }

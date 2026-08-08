@@ -21,16 +21,27 @@
 # audit tool watching that half — the settings file itself is the control, which
 # makes review of it the only thing standing between a weakened window and a
 # lockfile nobody questions.
+#
+# The two bypass ledgers state the override differently again. The entries above
+# are settings and lockfiles where a weakened window has to be inferred from what
+# the file no longer refuses; a ledger is the override written out in full, one
+# dated entry per module or tool taken early. That makes them the easiest of these
+# to read and the easiest to add a line to, which is why the reservation matters
+# here rather than mattering less.
 **/.npmrc                             @Tomy-ch
 **/package-lock.json                  @Tomy-ch
 **/pnpm-lock.yaml                     @Tomy-ch
 **/pnpm-workspace.yaml                @Tomy-ch
 .github/actions-pin.toml              @Tomy-ch
+.github/go-cooldown-bypass.toml       @Tomy-ch
+.github/tool-cooldown-bypass.toml     @Tomy-ch
 docker/images-pin.toml                @Tomy-ch
 
-# Go modules have no toolchain-side cooldown to bypass — nothing refuses a
-# freshly published version, so nothing can detect that one was taken. Review is
-# the only control on this ecosystem, which makes the entry below load-bearing
-# rather than symmetrical bookkeeping.
+# The Go toolchain still has no cooldown of its own — nothing in `go get` refuses
+# a freshly published version — so the refusal had to be built here, and taking one
+# early is written down in the ledger above. The gate reads the `go.mod` diff and
+# covers direct requirements only, which leaves indirect modules controlled by
+# review alone and makes the entries below load-bearing rather than symmetrical
+# bookkeeping.
 go.mod                                @Tomy-ch
 go.sum                                @Tomy-ch

@@ -173,15 +173,15 @@ would newly enter, not just the direct requirements the wheel declares.
 State which of these applies, because it decides what a LOW score can buy:
 
 - **The window is enforced by a repository gate, not by the resolver.** `uv pip compile` will
-  resolve a version published minutes ago without complaint; `scripts/mise-cooldown gate` is what
+  resolve a version published minutes ago without complaint; `scripts/tool-cooldown gate` is what
   refuses it, and unlike npm's audit-only counterpart it **fails the build**. So a blocked PyPI
   version is blocked by a check the repository owns, and a LOW score does not clear it on its own.
-- **The escape hatch is `.github/mise-cooldown-bypass.toml`**, which takes
+- **The escape hatch is `.github/tool-cooldown-bypass.toml`**, which takes
   `"<key>@<version>" = { expires, issue, reason }` with all three required, a maximum expiry three
   months out, and failure in *both* `gate` and `audit` once it expires or stops matching a
   declaration. A triage verdict is the evidence that belongs in `reason` and in the linked issue —
   it is not permission to add the entry. Adding one is the caller's or the user's call. Never
-  propose editing the window constant in `scripts/mise-cooldown` instead.
+  propose editing the window constant in `scripts/tool-cooldown` instead.
 - **Triage the version the lockfile will pin.** The declaration in `python/<tool>.in` is what the
   gate reads, but `python/<tool>.txt` is what gets installed, and an advisory may name a transitive
   package that appears only in the `.txt`. When it does, the baseline is that lockfile's current
