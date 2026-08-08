@@ -228,56 +228,6 @@ jobs:
       - name: Remove the boilerplate identity
         run: pnpm --dir scripts run tsx scripts/setup/remove-boilerplate-identity
 
-      # dast:begin
-      # The DAST removal (Phase 17) is the other optional teardown a fork may run, and like
-      # the ones above it only breaks when it runs: it deletes a workflow, strips rows out of
-      # two translated READMEs and a translated guide, and removes itself. Exercising it here
-      # also puts its Markdown edits in front of the markdownlint step below.
-      - name: Dry run of the DAST removal writes nothing
-        run: |
-          set -euo pipefail
-          before="$(git status --porcelain)"
-          pnpm --dir scripts run tsx scripts/setup/remove-dast-setting --dry-run
-          if [ "$(git status --porcelain)" != "$before" ]; then
-            echo "FAIL: --dry-run modified the working tree"
-            exit 1
-          fi
-          echo "DAST removal dry run: no writes"
-
-      - name: Remove the DAST setting
-        run: pnpm --dir scripts run tsx scripts/setup/remove-dast-setting
-
-      # Deleting the workflow is the point of the removal; leaving the tool behind would let a
-      # second run report that there is nothing left to remove, which reads as success.
-      - name: Verify the DAST setting and its tool went together
-        run: |
-          set -euo pipefail
-          for p in \
-            .github/workflows/zap-api-scan.yaml \
-            .github/zap \
-            scripts/setup/remove-dast-setting; do
-            if [ -e "$p" ]; then
-              echo "FAIL: $p was not removed"
-              exit 1
-            fi
-          done
-          if grep -rq 'dast:begin\|dast:line' .github/workflows/README.md docs/get-started/setup-repository.md; then
-            echo "FAIL: DAST markers survived the removal"
-            exit 1
-          fi
-          echo "DAST removal: OK"
-
-      # The scanner is the only user of its action, so the pin lockfile entry has to go with it
-      # — an entry nothing references fails this check, and it would fail in the fork's
-      # repository rather than in this one.
-      - name: Verify the action pin lockfile still checks out
-        run: make pin-actions-check
-
-      # The same holds for the egress SSOT: a job entry no workflow claims fails the check.
-      - name: Verify the egress SSOT still checks out
-        run: make egress-check
-      # dast:end
-
       # Stripping marker blocks edits Markdown structurally, and a block that swallows one line
       # too many leaves a broken table, an orphaned heading or an unclosed fence. Nothing else
       # lints the post-removal state: the repo-wide md-lint job only ever sees the template.

@@ -75,7 +75,7 @@ export const SETUP_SHARED_DIR = "lib";
  * どれも独立した任意手順で、実行順は利用者が決めます。1 つでも残っているうちに `lib` を
  * 消すと、まだ実行していない手順が実行できなくなるため、在否を見てから判断します。
  */
-export const SETUP_SHARED_DIR_USERS: readonly string[] = [SETUP_VERIFIER_DIR, "remove-dast-setting"];
+export const SETUP_SHARED_DIR_USERS: readonly string[] = [SETUP_VERIFIER_DIR];
 
 /**
  * サンプル削除ツール自身の撤去に、共有モジュールを含めるか。

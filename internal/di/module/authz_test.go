@@ -69,6 +69,31 @@ func Test_provideAuthorizer(t *testing.T) {
 		// = })
 		// sample-api:replace-end
 
+		// sample-api:replace-begin
+		t.Run("dast環境ではuser_rolesベースAuthorizerが提供されINFOが出る", func(t *testing.T) {
+			t.Parallel()
+
+			logger, logs := logging.NewObservedTestLogger(t)
+			roleRepo := mock_user.NewMockRoleRepository(gomock.NewController(t))
+
+			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvDast), Logger: logger, RoleRepo: roleRepo})
+			require.NoError(t, err)
+			assert.Equal(t, userrole.New(roleRepo), authorizer)
+			assert.Len(t, logs.FilterMessage("user_roles-based authorizer wired").All(), 1)
+		})
+		// sample-api:replace-with
+		// = t.Run("dast環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
+		// = 	t.Parallel()
+		// = 	logger, logs := logging.NewObservedTestLogger(t)
+		// = 	authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvDast), Logger: logger})
+		// = 	require.NoError(t, err)
+		// = 	expected, err := allowall.New(newAppCfg(t, config.EnvDast))
+		// = 	require.NoError(t, err)
+		// = 	assert.Equal(t, expected, authorizer)
+		// = 	assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
+		// = })
+		// sample-api:replace-end
+
 		t.Run("CI環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
 			t.Parallel()
 

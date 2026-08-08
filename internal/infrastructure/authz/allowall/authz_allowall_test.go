@@ -27,8 +27,9 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 全許可を許容する非本番環境。
-		for _, env := range []string{config.EnvLocal, config.EnvCI, config.EnvTest} {
+		// 全許可を許容する非本番環境。dast はサンプル API 撤去後に allowall 側へ移るため、
+		// DI の case だけでなくこのガードも通らないと撤去後の起動が落ちる。
+		for _, env := range []string{config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast} {
 			t.Run(env+"環境ではAuthorizerを生成する", func(t *testing.T) {
 				t.Parallel()
 				authorizer, err := New(newAppCfg(t, env))

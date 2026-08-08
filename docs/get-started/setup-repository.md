@@ -378,7 +378,6 @@ If you want in-place amendment instead — a legitimate choice for a design docu
 rather than lived — record that as a decision of your own, in your own ADR. Do not infer it from
 the fact that the upstream did it.
 
-<!-- dast:begin -->
 ## Phase 17: Decide whether to keep the DAST setup
 
 The DAST setup is already done. [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
@@ -390,7 +389,8 @@ finding. If you want dynamic scanning, you can use it as it stands — nothing e
 **The configuration values describe the API that shipped with this repository, not yours.** The
 alert thresholds in [`.github/zap/rules.tsv`](../../.github/zap/rules.tsv), the identity the scan
 authenticates as, and the surface the scan reaches were all derived from what that API answers under
-the `ci` environment profile. None of it is a claim about your API: your endpoints differ, and so
+the `dast` environment profile — which, unlike `ci`, verifies a real JWT signed by the mock auth
+server instead of accepting a stub bearer token. None of it is a claim about your API: your endpoints differ, and so
 does what counts as an accepted finding. Read the workflow header before the first scheduled run and
 re-derive both files against the API you actually have — an inherited `IGNORE` is a finding nobody
 will ever see again.
@@ -408,23 +408,14 @@ silence, but a warning nobody reads is the same as no warning. **Point `PROBE_PA
 operation of yours and `SCAN_SUBJECT` at an identity your seed data actually has, as soon as you
 have either.** Until you do, DAST is running but not testing what it exists to test.
 
-If you do not want it, remove the whole thing:
+If you do not want it, delete [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
+and [`.github/zap`](../../.github/zap), then drop the scanner action's entry from
+[`.github/actions-pin.toml`](../../.github/actions-pin.toml) and the `zap-api-scan.yaml:dast` job
+section from [`.github/egress.toml`](../../.github/egress.toml) — `make pin-actions-check` and
+`make egress-check` both fail on an entry no workflow claims, so neither one can be forgotten
+silently. There is no enable / disable switch and there will not be one: keeping it means keeping
+it, and a scanner left configured-but-off is one nobody reads and nobody maintains.
 
-```sh
-# Preview what will be removed (no changes are made)
-docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
-  scripts/setup/remove-dast-setting --dry-run
-
-# Remove it
-docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
-  scripts/setup/remove-dast-setting
-```
-
-It deletes the workflow, the ZAP rules file, the rows describing DAST in
-[.github/workflows/README.md](../../.github/workflows/README.md) and its Japanese mirror, this
-section, the scanner action's entry in the pin lockfile, and finally itself. There is no enable / disable switch and there will not be one: keeping
-it means keeping it, and a scanner left configured-but-off is one nobody reads and nobody maintains.
-
-If you later want to see what was there, it is in the git history — the removal is one commit, and
-`git log -- .github/workflows/zap-api-scan.yaml` finds it.
-<!-- dast:end -->
+The `dast` environment profile is not part of that deletion. It names an execution context rather
+than a scanner, so `env/.env.dast` and the `EnvDast` branches stay useful to anything else that
+needs the real authenticator against a mocked provider.
