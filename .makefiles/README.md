@@ -397,6 +397,7 @@ in a loop.
 | `make lint` | Executes static analysis via GolangCI-Lint. | None |
 | `make fix` | Executes auto-fix via GolangCI-Lint. | None |
 | `make tidy-lib` | Cleans Go module dependencies and updates `vendor`. | Executes `go mod tidy` and `go mod vendor`. |
+| `make vendor-sync` | Regenerates `vendor` when it has drifted from `go.mod`. | Runs `go mod vendor` only when Go's own vendor consistency check fails, so it is a no-op in the normal case. Called by the `post-merge` / `post-checkout` hooks: `vendor` is gitignored, so the checkout that breaks is the one merely receiving someone else's `go.mod` change. |
 
 ### Go test related
 

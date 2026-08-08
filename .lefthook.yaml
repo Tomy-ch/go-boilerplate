@@ -111,3 +111,13 @@ pre-push:
         - "go.mod"
         - "go.sum"
       run: go mod tidy && git diff --exit-code go.mod go.sum
+
+post-merge:
+  commands:
+    vendor-sync:
+      run: make vendor-sync
+
+post-checkout:
+  commands:
+    vendor-sync:
+      run: make vendor-sync
