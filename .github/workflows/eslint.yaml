@@ -29,13 +29,13 @@ name: ESLint Scan
 # an end-of-life ESLint 8 in all three lockfiles and leave one dependency unbounded. The
 # JSON report is mapped below instead, as zap-api-scan.yaml already does for ZAP.
 #
-# **This job executes code the pull request controls, which the other three scanners do
-# not.** A flat config is a module ESLint imports, so `eslint.config.js` — a file any pull
-# request may edit — runs inside this job; Grype, DevSkim and Bearer are compiled binaries
-# that only read. The permissions below are the whole containment: no `pull-requests:
-# write` (nothing here comments), no `id-token`, no secret reaching any step, and
-# harden-runner refusing egress. Adding a permission to this job means deciding first
-# whether a pull-request author should have it.
+# **This job executes code the pull request controls, which the other scanners do not.** A
+# flat config is a module ESLint imports, so `eslint.config.js` — a file any pull request
+# may edit — runs inside this job; Grype and DevSkim are compiled binaries that only read.
+# The permissions below are the whole containment: no `pull-requests: write` (nothing here
+# comments), no `id-token`, no secret reaching any step, and harden-runner refusing egress.
+# Adding a permission to this job means deciding first whether a pull-request author
+# should have it.
 
 on:
   push:
@@ -56,9 +56,9 @@ on:
       - 'scripts/**'
       - 'mock-auth-server/**'
   schedule:
-    # Monday 16:00 UTC — the slot after Bearer. A preset update turns unchanged code
+    # Monday 15:00 UTC — the slot after DevSkim. A preset update turns unchanged code
     # into a finding, which is what the weekly run is for.
-    - cron: '0 16 * * 1'
+    - cron: '0 15 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -167,6 +167,13 @@ jobs:
       # `eslint . -- --format json` under the other and dies on a file pattern named
       # `--`. Passing no arguments at all is the only form both agree on.
       #
+      # That script writes into `node_modules/`, which is not squeamishness about a
+      # stray file: several of this repository's own checks walk the source tree, and a
+      # report left in the workspace root gets read as source. It embeds excerpts of
+      # every file it flagged, so the removal markers quoted inside it register as real
+      # ones and `marker-baseline` and the sample-removal manifests all fail. Everything
+      # already skips `node_modules`, which makes it the one place the report is inert.
+      #
       # Exit code 1 means ESLint found problems and 2 means ESLint itself could not run —
       # a broken config, an unparsable file. Only the second is this job's failure.
       - name: ESLint scan
@@ -194,7 +201,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          report="${WORKSPACE}/eslint-report.json"
+          report="${WORKSPACE}/node_modules/.eslint-report.json"
           if [ ! -f "${report}" ]; then
             echo "::error::ESLint produced no JSON report; the scan did not complete"
             exit 1
@@ -254,7 +261,7 @@ jobs:
         with:
           name: eslint-${{ matrix.workspace }}
           path: |
-            ${{ matrix.workspace }}/eslint-report.json
+            ${{ matrix.workspace }}/node_modules/.eslint-report.json
             eslint.sarif
 
       # Per-workspace category: code scanning keys a SARIF upload by it, so a shared
