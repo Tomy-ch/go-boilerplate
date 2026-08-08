@@ -492,6 +492,8 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make pin-actions-resolve` | 各 `uses:` のタグを commit SHA に解決し `.github/actions-pin.toml` lockfile を更新します。 | `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14・0 で無効）より新しい解決先を quarantine。 |
 | `make pin-actions-apply` | lockfile を元に `uses:` を `@<sha> # <tag>` へ固定します。 | なし |
 | `make pin-actions-check` | `uses:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
+| `make egress-apply` | `.github/egress.toml` を各ジョブのインライン `allowed-endpoints` ブロックへ反映します。 | クラスの意味と追加手順は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) の「ランナーのハードニング」節。 |
+| `make egress-check` | 各インライン `allowed-endpoints` が SSOT 通りか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
 
 ### コミットメッセージ Lint 関連
 

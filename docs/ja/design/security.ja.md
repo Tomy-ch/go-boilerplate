@@ -33,13 +33,14 @@ English canonical: [security.md](../../design/security.md)
 | 機構 | 種別 | 備考 |
 | --- | --- | --- |
 | `pin-actions-check` / `pin-images-check` | 強制 | fail-closed。未固定・未登録はいずれもエラー |
+| `egress-check` | 強制 | fail-closed。インラインの `allowed-endpoints` が `.github/egress.toml` からずれていればエラー |
 | リリースゲート（`trivy-release-gate` / `osv-release-gate`） | 強制 | デプロイ先ブランチ宛 PR でのみ |
 | `dependency-review` | 強制 | PR が**追加する**分だけを評価 |
 | シークレットスキャン（gitleaks / TruffleHog） | 強制 | コミットされたシークレットは許容可能な取引ではない |
 | `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で。pre-commit でもオフライン監査のみでゲートする |
 | 報告系スキャナ（`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL） | 検知 | code scanning と PR には届くが、ブロックしない |
 | `npm-cooldown-audit` | 検知 | 構造としてブロックしない（後述） |
-| `harden-runner`（`egress-policy: audit`） | 検知 | egress を記録する。制限はしない |
+| `harden-runner`（`egress-policy: block`） | 強制 | ジョブの `allowed-endpoints` の外への egress を拒否する。`trufflehog` だけが `audit` |
 | `CODEOWNERS` | 強制 | 「この判断はこのロールのもの」を支えるレビュー要求 |
 | OpenSSF Scorecard | 検知 | 姿勢の計測であり判定ではない |
 
@@ -216,7 +217,7 @@ Python のツールは、`mise.toml` が全ツールのバージョンを持つ�
 
 制御が支えられる以上に強い前提を誰かが置かないよう、明記します。
 
-- `harden-runner` は `audit` モードで動きます。egress を**記録**しますが、制限はしません。`block` への移行には許可エンドポイントの確定が必要で、監査データが溜まるまで意図的に見送っています。
+- `harden-runner` は `block` モードで動きます。allowlist の価値はその正確さ以上にはなりません。各一覧は実測ではなく各ジョブの動作から導いたもので、`.github/egress.toml` の SSOT から能力クラス単位で生成されるため、クラスはその中で最も狭いジョブより広くなります。`trufflehog` の 1 ジョブだけは意図的に `audit` のままです。上限のない発行元集合へ候補資格情報を問い合わせて検証するため、ここでのエンドポイント漏れはビルドを赤くせず、本物の漏洩を「未検証」に変えてしまうからです。
 - リリースゲートは **required status check** として登録されて初めてブロックします。そのブランチ保護規則が無ければ報告するだけで、報告／ゲートの分離はどこでも報告のみに退化します。
 - `CODEOWNERS` は **「Require review from Code Owners」** 規則の下でのみ強制されます。無ければレビュアーの自動要求に留まります。
 - 検知が届くのは PR コメントと run のアノテーションです。どちらも受動的で、アノテーションは run の保持期限とともに消えます。所管ロールが実際に見ているチャンネルへ流すことは別途追跡しています。

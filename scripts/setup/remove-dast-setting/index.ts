@@ -19,11 +19,14 @@ import { type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
   ACTION_PIN_LOCKFILE,
   DAST_ACTION_PIN_KEY,
+  DAST_EGRESS_SECTION_PREFIX,
   DAST_MARKER,
   DAST_MARKER_FILES,
   DAST_PATHS,
+  EGRESS_SSOT,
   isRemovablePath,
   stripActionPin,
+  stripEgressJob,
 } from "./dast-targets";
 
 type StrippedFile = {
@@ -98,6 +101,15 @@ function stripActionPinEntry(dryRun: boolean): string | null {
   );
 }
 
+/** egress の SSOT から DAST のジョブセクションを落とす。書き換えたパスを返す（不要なら null）。 */
+function stripEgressEntry(dryRun: boolean): string | null {
+  return updateFile(
+    EGRESS_SSOT,
+    (original) => stripEgressJob(original, DAST_EGRESS_SECTION_PREFIX),
+    dryRun,
+  );
+}
+
 function report({ deleted, missing }: DeletionResult, stripped: StrippedFile[], dryRun: boolean): void {
   console.log(`\n${dryRun ? "【Dry Run】削除対象" : "削除完了"}: ${deleted.length} パス`);
   for (const relativePath of deleted) {
@@ -129,12 +141,21 @@ function run({ dryRun }: SetupOptions): void {
   // （削除済み・マーカー未除去の半端な状態を避ける）。
   const stripped = stripMarkerFiles(dryRun);
   const pinEntry = stripActionPinEntry(dryRun);
+  const egressEntry = stripEgressEntry(dryRun);
   const deletion = deletePaths(dryRun);
   report(deletion, stripped, dryRun);
 
   console.log(
     `\n${dryRun ? "【Dry Run】pin lockfile" : "pin lockfile"}: ${
       pinEntry === null ? "該当エントリなし" : `${pinEntry} から ${DAST_ACTION_PIN_KEY} を除去`
+    }`,
+  );
+
+  console.log(
+    `${dryRun ? "【Dry Run】egress SSOT" : "egress SSOT"}: ${
+      egressEntry === null
+        ? "該当エントリなし"
+        : `${egressEntry} から ${DAST_EGRESS_SECTION_PREFIX} のジョブを除去`
     }`,
   );
 
@@ -156,6 +177,7 @@ program
   1. dast-targets.ts の宣言パス（ワークフロー本体 / ZAP ルールファイル / このツール自身）を削除
   2. ワークフロー一覧・セットアップ手順・CI 定義の dast マーカー行を除去
   3. .github/actions-pin.toml から、参照が消える action のエントリを除去
+  4. .github/egress.toml から、消えるワークフローのジョブセクションを除去
 
 有効/無効を切り替えるオプションはありません。撤去するかしないかの二択で足り、無効のまま
 残る設定は誰にも読まれないまま腐ります。撤去後に中身を参照したくなったら git の履歴から辿れます。`,

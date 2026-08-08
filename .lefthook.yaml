@@ -58,6 +58,13 @@ pre-commit:
         - ".github/actions/**/*.{yml,yaml}"
         - ".github/actions-pin.toml"
       run: make pin-actions-check
+    egress:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/egress.toml"
+        - "scripts/egress/*.go"
+        - ".makefiles/github/egress.mk"
+      run: make egress-check
     pin-images:
       glob:
         - "docker/**/Dockerfile"

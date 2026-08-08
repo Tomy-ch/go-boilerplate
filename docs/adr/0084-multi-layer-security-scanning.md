@@ -130,9 +130,13 @@ go through the SHA pinning and quarantine of [ADR-0085](0085-sha-pinned-actions.
 **3. Every job is hardened at the runner level.**
 
 Each job in `.github/workflows/**` starts with `step-security/harden-runner` in
-`egress-policy: audit`, recording outbound network calls and file-integrity events so a
-compromised action or transitive tool download becomes visible. Jobs that need no git
-credentials after checkout set `persist-credentials: false`.
+`egress-policy: block` with its own `allowed-endpoints`, refusing every outbound call the
+job has no business making and recording file-integrity events alongside. One job —
+`trufflehog` — stays on `audit`, because it verifies a candidate credential against an
+open-ended set of issuers and a blocked endpoint there would silently downgrade a real leak
+to an unverified result. The lists are generated from the SSOT in `.github/egress.toml` by
+capability class rather than written per job. Jobs that need no git credentials after
+checkout set `persist-credentials: false`.
 
 ## Consequences
 
@@ -175,8 +179,9 @@ credentials after checkout set `persist-credentials: false`.
 - Govulncheck's reachability analysis requires Go module awareness; if the module graph
   changes structure, filtering assumptions may need revisiting.
 - Secret scans run unconditionally on every PR (no path filter), adding fixed overhead.
-- `harden-runner` adds a third-party step to every job and reports to an external service;
-  `audit` records rather than restricts, so it detects rather than prevents.
+- `harden-runner` adds a third-party step to every job and reports to an external service.
+  Under `block` an endpoint the allowlist omits fails the job, so a new outbound dependency
+  surfaces as a red build rather than as a warning.
 - TruffleHog's `--results=verified` deliberately drops `unknown` results, so a credential
   whose verification call failed is not reported.
 - Scheduled runs may produce findings not associated with any open PR, requiring
@@ -220,6 +225,14 @@ workflow definitions that invoke it. Consolidation would sacrifice depth for sim
 Stronger than `audit`, and the eventual goal. Rejected for now because a block policy needs
 a settled allowlist of endpoints; deriving one from guesswork breaks CI on the first
 unlisted host. Audit first, then narrow.
+
+**Since adopted.** The allowlist was derived and every job moved to `block` (`trufflehog`
+excepted, for the reason given above). What the rejection anticipated did happen — the first
+runs broke on unlisted hosts, over several rounds — and the resolution was not more accurate
+per-job lists but a coarser unit: the endpoints follow from a job's capability class, which
+is declared in `.github/egress.toml` and generated into every inline block. The rejection is
+kept here because its reasoning still holds for anyone considering the same move without an
+allowlist to move to.
 
 ## Notes
 

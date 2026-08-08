@@ -90,6 +90,7 @@
 |Commitlint|`commitlint.yaml`|PR が base ブランチへ加えるコミットのメッセージを検証（`commit-msg` フックが覆えない経路を担う）|
 |Pin Actions Check|`pin-actions-check.yaml`|GitHub Actions が SHA でピン留めされているか検証（サプライチェーン対策）|
 |Pin Images Check|`pin-images-check.yaml`|Docker base image が lockfile 通り digest でピン留めされているか検証（サプライチェーン対策）|
+|Egress Check|`egress-check.yaml`|各ジョブのインライン `allowed-endpoints` が SSOT 通りか検証（[ランナーのハードニング](#ランナーのハードニング)を参照）|
 
 ### セキュリティ
 
@@ -234,27 +235,30 @@ Pull request ではその base との差分を監査するので、検出はそ�
 
 このディレクトリの全ジョブは `step-security/harden-runner` を `egress-policy: block` と、そのジョブ専用の `allowed-endpoints` とで先頭に置いています。外向き接続はすべてこの一覧と照合され、載っていない宛先は遮断されます。侵害されたアクションやツールの推移的ダウンロードは、そのジョブが本来必要としない宛先へ持ち出すことができません。ファイル改変の記録は従来どおり併走します。
 
-このステップは**全ジョブにインラインのまま置きます**。composite action へ括り出すと重複の除去に見えますが、重複しているその部分こそ共有してはならないものです。全ジョブに足りる 1 本の allowlist は全ジョブの和集合であり、それはもはや allowlist ではありません。何処へ到達してよいかはジョブ固有の性質です。
+このステップは**全ジョブにインラインのまま置きます**。これは好みではなく制約です。ローカルの composite action（`uses: ./.github/actions/*`）はリポジトリが checkout 済みでなければ解決できず、harden-runner は checkout の**前**に走る必要があります。checkout 自体が外向き通信であり、それを守るのが目的だからです。括り出せば、塞ごうとしている窓がそのまま開きます。この案は繰り返し再提案されますが、答えは「検討して見送った」ではなく「そもそも成立しない」です。
 
-各一覧は、以下の base に「そのジョブが実際に行うこと」を足したものです。
+**固定されていないのは、その一覧を何処から持ってくるかです。** 正本は [`.github/egress.toml`](../egress.toml) です。`make egress-apply` が各ジョブへ書き込み、インラインのブロックが正本からずれていれば `make egress-check` が落とします（pre-commit フックと `egress-check.yaml` の両方）。
 
-| 集合 | エンドポイント | 対象 |
+**ジョブが宣言するのは能力クラスであって、ホストの列挙ではありません。** ジョブが何処へ到達するかは、そのジョブが**何をするか**（ツールを入れる / イメージを作る / DB を起動する）から決まり、ジョブそれ自体の性質ではありません。実行は `make` → docker → コンテナ内 `mise` と潜っていくため、必要な宛先はジョブの YAML には現れません。クラスは 4 つで足り、ジョブは自分に当たるものを名指しします。
+
+| クラス | エンドポイント | 対象 |
 | --- | --- | --- |
-| base | harden-runner 自身の agent、GitHub の API / web / codeload、`objects` / `raw` / `release-assets.githubusercontent.com`、`*.actions.githubusercontent.com`、`*.blob.core.windows.net` | 全ジョブ（checkout、action の取得、artifact のアップロード） |
-| Go | `proxy.golang.org`、`sum.golang.org`、`index.golang.org`、`storage.googleapis.com`、`dl.google.com` | `setup-go`、`go build` / `go test` / `go run` |
-| mise | `mise.jdx.dev`、`mise-versions.jdx.dev`、`aquaproj.github.io`、および Go・Sigstore の集合 | 各 `mise install`。aqua backend のツール自体は GitHub リリース経由（base に含まれる）ですが、mise はその後 GitHub artifact attestation を Sigstore で検証し、`go:` backend のツールは module proxy 経由で解決するため、どちらの集合も省けません |
-| Node | `nodejs.org`、`registry.npmjs.org`、`get.pnpm.io` | `npm ci` / `pnpm install` |
-| Python | `astral.sh`、`pypi.org`、`files.pythonhosted.org` | `uv` で解決するツール（`sql-lint.yaml`） |
-| レジストリ | Docker Hub の各ホスト、`mirror.gcr.io`、`ghcr.io`、`pkg-containers.githubusercontent.com` | イメージの build / push、service container、Trivy の DB と checks bundle |
-| スキャナのデータ | `semgrep.dev`（Opengrep のルールセット）、`api.osv.dev` / `api.deps.dev`（OSV）、`vuln.go.dev`（govulncheck）、Scorecard の各データソース | それを読むスキャナ |
-| ZAP | `zaproxy.org` とそのサブドメイン、およびスキャナのイメージ取得のためのレジストリ集合 | `zap-api-scan.yaml`（ZAP は起動時に add-on のマニフェストを解決します） <!-- dast:line --> |
-| Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml`（cosign keyless 署名、attestation）**および各 `mise install`** — mise は artifact attestation の検証に Sigstore の TUF root を取得するため、`tuf-repo-cdn.sigstore.dev` へ到達できないジョブはツールを 1 つも実行する前に落ちます |
+| `base` | harden-runner 自身の agent、GitHub の API / web / codeload、`objects` / `raw` / `release-assets.githubusercontent.com`、`*.actions.githubusercontent.com`、`*.blob.core.windows.net` | **全ジョブへ暗黙に適用**（checkout、action の取得、artifact のアップロード）。`classes` へは書きません |
+| `mise` | mise 自身の配布元と、`mise.toml` が解決に使う全 backend: aqua / GitHub リリース、Go のツールチェーンと module proxy、`downloads.sqlc.dev`、npm レジストリと `get.pnpm.io`、`astral.sh` と PyPI。加えて Sigstore（mise は各ツールの GitHub artifact attestation をここで検証します） | ツールを入れる全ジョブ。`setup-go` しか使わないジョブもこのクラスを名指しします。module proxy はここに居り、Go 専用の細いクラスを設ければ判定を 1 つ増やすだけだからです |
+| `image` | Docker Hub の各ホストと CDN 2 種、`mirror.gcr.io`、`ghcr.io`、`pkg-containers.githubusercontent.com`、および Alpine / Debian のパッケージミラー。`mise` を継承します（イメージのビルドがコンテナ内で `mise install` を走らせるため） | イメージの build / push、service container、Trivy の DB と checks bundle、`make` 経由で docker を起こすもの全般 |
+| `db` | PGDG の apt リポジトリと、Postgres の service container が導入時に参照する Ubuntu のアーカイブミラー | Postgres を起動するジョブ |
 
-一覧は監査データの実測ではなく、各ジョブの動作から導いたものです。したがって当初の実行では取りこぼしが出る前提です。遮断された宛先は harden-runner の実行サマリに拒否接続として現れます。ジョブ自身のログからは理由が読めない失敗のとき読むべきはそこで、対処はそのジョブの一覧を広げることであり、`audit` へ戻すことではありません。
+本当にそのジョブ固有のものは、当該ジョブの `extra` に書きます。スキャナのデータソース（`semgrep.dev`、`api.osv.dev`、`vuln.go.dev`）、デプロイ先、通知の `hooks.slack.com`、DAST の `zaproxy.org`（ZAP は起動時に add-on のマニフェストを解決します）などです。 <!-- dast:line --> 2 つ目のジョブの `extra` にも現れたホストは、クラスへ移すべきものです。
 
-**1 つだけ失敗の出方が逆転しているジョブがあり、その旨は当該ファイルに書いてあります。** `trufflehog.yaml` は候補の資格情報を発行元サービスへ問い合わせて検証しますが、その発行元の集合には上限がありません。ここでのエンドポイント漏れはジョブを赤くせず、本物の漏洩を「未検証」に変えます。このワークフローは検証済みのみを報告するため、結果として黙って緑になります。TruffleHog の検出が消えたときは allowlist の漏れをまず疑ってください。
+**クラスは意図的に粗く保ちます。** 細かく割れば allowlist は締まりますが、そのぶん分類の判定点が増えます。そしてこの仕組みが取り除こうとしている失敗は、まさにジョブのクラス判定を誤ることです。必要より少し広いクラスでも、その外側は依然として全部遮断されます。クラスを取り違えたジョブは落ちます。
 
-fork 時に読み直す価値のある前提が 2 つあります。`deploy-app.yaml` の build ジョブは `ghcr.io` と公開 Sigstore インスタンスを前提にしており、deploy ジョブは placeholder なので一覧は base のみです。実際のデプロイを結線する際は、その環境の control plane のホストを足す必要があります。`id-token` の交換も外向き通信だからです。
+エンドポイントを足すときは `.github/egress.toml` を直します。能力から導けるものはクラスへ、導けないものはそのジョブの `extra` へ。そのうえで `make egress-apply` を実行し、生成されたブロックをコミットします。インラインのブロックを手で書き換えてはいけません。`make egress-check` が弾きます。
+
+遮断された宛先は harden-runner の実行サマリに拒否接続として現れます。ジョブ自身のログからは理由が読めない失敗のとき読むべきはそこで、対処はクラスか `extra` を広げることであり、`audit` へ戻すことではありません。
+
+**1 つだけ失敗の出方が逆転しているジョブがあり、その旨は当該ファイルに書いてあります。** `trufflehog.yaml` は候補の資格情報を発行元サービスへ問い合わせて検証しますが、その発行元の集合には上限がありません。ここでのエンドポイント漏れはジョブを赤くせず、本物の漏洩を「未検証」に変えます。このワークフローは検証済みのみを報告するため、結果として黙って緑になります。TruffleHog の検出が消えたときは allowlist の漏れをまず疑ってください。`egress-policy: audit` を持つ唯一のジョブで、SSOT 上もそう宣言してあるため `allowed-endpoints` を一切持ちません。両者が食い違えば `make egress-check` が落ちます。
+
+fork 時に読み直す価値のある前提が 2 つあります。`deploy-app.yaml` の build ジョブは `ghcr.io` と公開 Sigstore インスタンスを前提にしており（その `extra`）、deploy ジョブは placeholder でクラスを 1 つも宣言しないため `base` だけを持ちます。実際のデプロイを結線する際は、その環境の control plane のホストをそのジョブの `extra` へ足す必要があります。`id-token` の交換も外向き通信だからです。
 
 ### デプロイ（Push）
 
