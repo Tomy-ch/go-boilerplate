@@ -93,6 +93,9 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 
 feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` の内側へ、そうでなければ外側へ置く。マーカーの反対側に置かれた行は、サンプルと共に消えるか、サンプルより長生きするかのどちらかになる。
 
+この責務は、domain 層が用語を導入する場合にだけ成り立つ。aggregate も `domain.md` もなく、QueryService
+だけの projection-only feature では、read-side の語を導入する者がいなくなるため、その場合は `/glossary` が担う。このスキルは aggregate を作るときにだけ動くので、projection まで対象を広げると `/glossary` の責務と重複する。
+
 ## Step 4. クロージング
 
 ```text

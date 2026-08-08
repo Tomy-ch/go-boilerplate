@@ -106,6 +106,11 @@ Place the row inside the `sample-api:begin` / `sample-api:end` markers when the 
 sample-derived, outside them otherwise. A row on the wrong side of a marker either vanishes with the
 sample or outlives it.
 
+This responsibility exists only when a domain layer introduces the terms. A projection-only feature
+with no aggregate or `domain.md` — only a QueryService — would otherwise have nobody to introduce
+its read-side words, so `/glossary` owns that case. This skill runs precisely when an aggregate is
+being created; extending it to projections would duplicate `/glossary`'s responsibility.
+
 ## Step 4. Closing
 
 ```text
