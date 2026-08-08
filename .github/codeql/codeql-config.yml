@@ -1,4 +1,4 @@
-name: 'go-boilerplate CodeQL config'
+name: 'CodeQL config'
 
 # Shared by every language in the matrix so the go / javascript-typescript / actions
 # jobs cannot drift apart on either the query suite or the exclusion list.

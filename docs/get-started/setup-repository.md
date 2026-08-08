@@ -387,19 +387,20 @@ boots this application inside a GitHub-hosted runner and drives an authenticated
 definition. It runs weekly and on demand, writes to code scanning, and never fails a build on a
 finding. If you want dynamic scanning, you can use it as it stands — nothing else needs wiring.
 
-**The configuration values are samples.** The alert thresholds in
-[`.github/zap/rules.tsv`](../../.github/zap/rules.tsv), the identity the scan authenticates as, and
-the surface the scan reaches are all matched to this boilerplate's sample API and its `ci`
-environment profile. None of that is a claim about your API: your endpoints differ, and so does what
-counts as an accepted finding. Read the workflow header before the first scheduled run and adjust
-both files against the API you actually have — an inherited `IGNORE` is a finding nobody will ever
-see again.
+**The configuration values describe the API that shipped with this repository, not yours.** The
+alert thresholds in [`.github/zap/rules.tsv`](../../.github/zap/rules.tsv), the identity the scan
+authenticates as, and the surface the scan reaches were all derived from what that API answers under
+the `ci` environment profile. None of it is a claim about your API: your endpoints differ, and so
+does what counts as an accepted finding. Read the workflow header before the first scheduled run and
+re-derive both files against the API you actually have — an inherited `IGNORE` is a finding nobody
+will ever see again.
 
-It is tied to the sample API in one place that fails loudly rather than quietly: the workflow probes
-a protected sample endpoint to prove the scan is authenticated before ZAP starts, so removing the
-sample API (Phase 15) while keeping DAST turns the weekly run red until `PROBE_PATH` names an
-operation of your own. That is the intended behaviour — an authentication check whose subject has
-been deleted would otherwise keep reporting green while the scan saw nothing but 401.
+**Two values are tied to whatever the scan can reach, and they fail loudly rather than quietly.**
+Before ZAP starts, the workflow probes one protected operation (`PROBE_PATH`) as one identity
+(`SCAN_SUBJECT`) to prove the credential is accepted. When the operation or the identity it names
+stops existing — removing the shipped API in Phase 15 does exactly that — the run turns red until
+both point at something of yours. That is intended: an authentication check whose subject has been
+deleted would otherwise keep reporting green while the scan saw nothing but 401.
 
 If you do not want it, remove the whole thing:
 
