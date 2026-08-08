@@ -38,8 +38,13 @@ a decision (an ADR); the *list* of them is a living reference.
 All decisions from `docs/decisions.md` and the latent decisions across the repository have
 been materialized as ADRs. Numbering follows dependency / foundational order (principles →
 contract → HTTP → persistence → DI/config → async subsystems → observability →
-toolchain/CI → process → binary/deploy → exclusions). Exclusion ADRs (deliberate "we do NOT
-do X") are tagged `setup-review`.
+toolchain/CI → process → binary/deploy → exclusions).
+
+<!-- boilerplate-only:begin -->
+Exclusion ADRs (deliberate "we do NOT do X") are tagged `setup-review` so the repository-setup flow
+can enumerate them. The tag has no reader once setup is done.
+
+<!-- boilerplate-only:end -->
 
 | # | Decision | Status |
 | --- | --- | --- |

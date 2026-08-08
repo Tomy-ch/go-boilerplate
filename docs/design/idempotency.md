@@ -207,7 +207,7 @@ sequenceDiagram
 
 ## 4. What an integrator implements (adoption is opt-in, two steps)
 
-The scaffold provides the **middleware, `Run[T]` orchestrator, `Store` seam + RDB impl, schema, GC usecase/job, and a reference adoption** (`POST /v1/users`). A handler is idempotent **only if both steps are done** — otherwise it behaves normally.
+This project provides the **middleware, `Run[T]` orchestrator, `Store` seam + RDB impl, schema, GC usecase/job, and a reference adoption** (`POST /v1/users`). A handler is idempotent **only if both steps are done** — otherwise it behaves normally.
 
 ```mermaid
 flowchart LR

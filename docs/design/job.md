@@ -144,7 +144,7 @@ flowchart TD
     class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,UC,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
 ```
 
-> Green = implemented by the scaffold. Dependencies always point inward (`controller→usecase/boundary`). The runner/state hold no business logic and no infrastructure imports; jobs reach data only through the usecase layer.
+> Green = implemented here. Dependencies always point inward (`controller→usecase/boundary`). The runner/state hold no business logic and no infrastructure imports; jobs reach data only through the usecase layer.
 
 ### 3.2 Per-invocation action sequence
 
@@ -173,9 +173,9 @@ sequenceDiagram
 
 ---
 
-## 4. What an integrator implements (the parts the scaffold does not provide)
+## 4. What an integrator implements (the parts this project does not provide)
 
-The scaffold provides the **runner, state, lifecycle hook, DI wiring, and two reference jobs** (`usercount`, `idempotencygc`). To add a job, supply the following (jobs are registered explicitly — there is no auto-discovery).
+This project provides the **runner, state, lifecycle hook, DI wiring, and two reference jobs** (`usercount`, `idempotencygc`). To add a job, supply the following (jobs are registered explicitly — there is no auto-discovery).
 
 ```mermaid
 flowchart LR

@@ -61,6 +61,7 @@ Each `未確定` edge above is waiting on one thing. Answering it is a decision,
   (Customer-Supplier), or an open set consuming what is emitted (Open Host Service)? The asymmetry
   with the synchronous side is recorded in [`outbox.md`](outbox.md) §4: the language is not published.
 
+<!-- sample-api:replace-begin -->
 ## Sample-derived contact points
 
 The sample feature set adds outbound gateways to external web APIs. **They disappear when the sample
@@ -73,6 +74,13 @@ exist:
 What survives their removal is the pattern they demonstrate: a `<service>.Gateway` port stated in
 this system's vocabulary, with transport and vendor failure modes translated at the adapter. A real
 integration added later occupies the same shape and earns its own row in the table above.
+<!-- sample-api:replace-with -->
+<!-- = ## Outbound contact points -->
+<!-- = -->
+<!-- = An outbound integration is a `<service>.Gateway` port stated in this system's vocabulary, with -->
+<!-- = transport and vendor failure modes translated at the adapter. Each one added occupies that -->
+<!-- = shape and earns its own row in the table above. -->
+<!-- sample-api:replace-end -->
 
 ## Diagram
 

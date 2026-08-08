@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { stripSampleMarkers, isWithinRoot, SETUP_SHARED_DIR, sharedModuleTargets } from "./sample-api";
+import {
+  SETUP_SHARED_DIR,
+  containsSampleMarker,
+  isScanTarget,
+  isWithinRoot,
+  sharedModuleTargets,
+  stripSampleMarkers,
+} from "./sample-api";
+import { EXCLUDED_PATH_PREFIXES, MARKER_LITERAL_FILES } from "./sample-manifest";
 
 describe("stripSampleMarkers", () => {
   describe("正常系", () => {
@@ -154,7 +162,7 @@ describe("stripSampleMarkers", () => {
         "// sample-api:replace-end",
       ].join("\n");
 
-      expect(() => stripSampleMarkers(content)).toThrow("//= または #= で始めてください");
+      expect(() => stripSampleMarkers(content)).toThrow("のいずれかで書いてください");
     });
   });
 });
@@ -201,6 +209,48 @@ describe("sharedModuleTargets", () => {
 
     it("初期化の検証器が既に消えていれば共有モジュールを道連れにする", () => {
       expect(sharedModuleTargets(false)).toEqual([SETUP_SHARED_DIR]);
+    });
+  });
+});
+
+describe("isScanTarget", () => {
+  describe("正常系", () => {
+    it("除外に当たらないパスを対象にする", () => {
+      expect(isScanTarget("internal/di/module/job.go")).toBe(true);
+      expect(isScanTarget("docs/rules.md")).toBe(true);
+    });
+
+    it("Windows 形式の区切りでも除外を判定する", () => {
+      expect(isScanTarget("docs\\portal\\guides\\index.md")).toBe(false);
+    });
+  });
+
+  describe("異常系", () => {
+    // 生成物はマーカーを持っていても再生成で戻るため、除去の対象にしてはいけない。
+    it("生成物の接頭辞を対象から外す", () => {
+      for (const prefix of EXCLUDED_PATH_PREFIXES) {
+        expect(isScanTarget(`${prefix}anything.md`), prefix).toBe(false);
+      }
+    });
+
+    it("接頭辞が途中まで一致するだけのパスは外さない", () => {
+      expect(isScanTarget("docs/portal/manifest.yaml")).toBe(true);
+    });
+  });
+});
+
+describe("containsSampleMarker", () => {
+  describe("正常系", () => {
+    it("コメント記号を伴うマーカーを検出する", () => {
+      expect(containsSampleMarker("<!-- sample-api:begin -->")).toBe(true);
+      expect(containsSampleMarker("x // sample-api:line")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    // コメント記号を必須にしないと、規約を説明している散文を境界と誤認する。
+    it("コメント記号の無い同名トークンを検出しない", () => {
+      expect(containsSampleMarker('const marker = "sample-api:begin"')).toBe(false);
     });
   });
 });

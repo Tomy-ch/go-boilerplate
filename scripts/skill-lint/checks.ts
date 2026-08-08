@@ -76,6 +76,29 @@ export function expandBraces(text: string): string[] {
  * @remarks
  * `<name>` は書き手が埋める任意の 1 セグメント、`**` は任意階層、`*` は 1 セグメント内の任意文字列。
  */
+/**
+ * プレースホルダを含むパスの、ワイルドカードが現れる前までの実在すべき親ディレクトリ。
+ *
+ * @remarks
+ * `internal/domain/<aggregate>/error.go` のような参照は「どこへ置くか」を述べたものであり、
+ * その形の実体がまだ 1 つも無いことは正常です。サンプル API を撤去した直後のリポジトリが
+ * まさにその状態で、`internal/domain/` は空になります。そこで具体的な一致を要求すると、
+ * scaffold の手順書が「壊れた参照」として報告されます。
+ *
+ * 実在を要求してよいのは、置き場所そのもの——最初のワイルドカードより手前——だけです。
+ * ここが消えていれば手順書は本当に古く、残っていれば占有者が居ないだけです。
+ *
+ * ワイルドカードが先頭セグメントにある場合は `null`（確かめられる親が無い）。
+ */
+export function literalParentDir(text: string): string | null {
+  const segments = text.split("/");
+  const wildcardAt = segments.findIndex((segment) => WILDCARD_RE.test(segment));
+
+  if (wildcardAt <= 0) return null;
+
+  return segments.slice(0, wildcardAt).join("/");
+}
+
 export function placeholderToRegExp(
   text: string,
   { segmentSeparator }: { segmentSeparator: boolean },

@@ -76,7 +76,7 @@ This skill **MUST call `ask the user explicitly` immediately after invocation** 
 2. Read `internal/usecase/<package>/<package>_usecase.go` and extract the `Usecase` Interface method list (signatures).
 3. Read `internal/usecase/README.md` and (if needed) 1〜2 sibling usecase packages for the naming convention (verb prefixes used in this codebase).
 4. Read `internal/controller/README.md` + `internal/controller/handler/README.md` for layer rules.
-5. Read 1 sibling handler (`internal/controller/handler/v1/users/v1_users_handler.go` etc.) as structural template.
+5. Read 1 sibling handler (`internal/controller/handler/v1/<sibling>/v1_<sibling>_handler.go` etc.) as structural template.
 
 ## Step 2. Derive Mapping (lean A core)
 

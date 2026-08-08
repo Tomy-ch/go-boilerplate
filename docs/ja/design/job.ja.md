@@ -144,7 +144,7 @@ flowchart TD
     class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,UC,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
 ```
 
-> 緑＝scaffold 実装済み。依存方向は常に内向き（`controller→usecase/boundary`）。runner/state は業務ロジックも infra import も持たず、ジョブはデータへ usecase 層経由でのみ到達する。
+> 緑＝本プロジェクトの実装済み。依存方向は常に内向き（`controller→usecase/boundary`）。runner/state は業務ロジックも infra import も持たず、ジョブはデータへ usecase 層経由でのみ到達する。
 
 ### 3.2 実行 1 回の作用シーケンス
 
@@ -173,9 +173,9 @@ sequenceDiagram
 
 ---
 
-## 4. integrator が実装する箇所（scaffold が用意しない部分）
+## 4. integrator が実装する箇所（本プロジェクトが用意しない部分）
 
-scaffold は **runner・state・lifecycle hook・DI 配線・2 つの参考ジョブ**（`usercount`・`idempotencygc`）を提供する。ジョブを追加するには次を用意する（ジョブは明示登録・自動検出なし）。
+本プロジェクトは **runner・state・lifecycle hook・DI 配線・2 つの参考ジョブ**（`usercount`・`idempotencygc`）を提供する。ジョブを追加するには次を用意する（ジョブは明示登録・自動検出なし）。
 
 ```mermaid
 flowchart LR

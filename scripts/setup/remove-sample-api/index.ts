@@ -8,15 +8,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { toAbsolutePath, updateFile } from "../lib/file-utils";
+import { listFilesRecursive, toAbsolutePath, toRelativePath, updateFile } from "../lib/file-utils";
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
   SETUP_VERIFIER_DIR,
+  isScanTarget,
   isWithinRoot,
   sharedModuleTargets,
   stripSampleMarkers,
 } from "./sample-api";
-import { BUILD_STEPS, MARKER_FILES, SAMPLE_DOMAINS } from "./sample-manifest";
+import { BUILD_STEPS, EXCLUDED_DIRECTORIES, SAMPLE_DOMAINS } from "./sample-manifest";
 
 // 削除確認スクリプト（verify-sample-removal.ts）が git status と突き合わせる「登録済み削除対象」の
 // スナップショット出力先。manifest（sample-manifest.ts）自身が削除対象で削除後は読めないため、
@@ -79,10 +80,23 @@ function deletePaths(dryRun: boolean): DeletionResult {
   return { deleted, missing };
 }
 
+/**
+ * マーカーを持つファイルを走査して除去する。
+ *
+ * @remarks
+ * 削除登録されたパスは `isScanTarget` が外すので、ここに現れるのは「サンプルの行が core の
+ * 内容と混在しているファイル」だけです。
+ */
 function stripMarkerFiles(dryRun: boolean): StrippedFile[] {
   const changed: StrippedFile[] = [];
 
-  for (const relativePath of MARKER_FILES) {
+  const files = listFilesRecursive(ROOT_DIR, {
+    excludedDirectories: EXCLUDED_DIRECTORIES,
+    shouldIncludeFile: (entryPath) => isScanTarget(toRelativePath(entryPath)),
+  });
+
+  for (const absolutePath of files) {
+    const relativePath = toRelativePath(absolutePath);
     let removedLines = 0;
 
     const updated = updateFile(

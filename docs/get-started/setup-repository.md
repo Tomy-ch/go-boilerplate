@@ -64,7 +64,7 @@ make tools
 make db-init
 ```
 
-<!-- boilerplate:begin -->
+<!-- boilerplate-only:begin -->
 ## Phase 5: Execute Localization Script
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
@@ -132,7 +132,7 @@ curl http://localhost:8080/ready
         - description
         - license
 
-<!-- boilerplate:end -->
+<!-- boilerplate-only:end -->
 ## Phase 8: Rewrite env Files
 
 Rewrite the files in the [env/](../../env/) directory according to your project.
@@ -215,22 +215,39 @@ Create authorization functionality by implementing the usecase [Authorizer](../.
 
 The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
-## Phase 12: Remove the boilerplate identity
+<!-- boilerplate-only:begin -->
+## Phase 12: Remove what only holds while this is a boilerplate
 
-This repository describes itself as a boilerplate in a few places — two passages in the READMEs
-and the localization phases of this guide. They are template scaffolding, not your project's
-documentation.
+Two kinds of statement in this repository stop being true the moment you fork it: the passages
+where it describes *itself* as a boilerplate, and the conventions it follows *because* it is one —
+the in-place ADR amendment regime, the consolidation pass, the `setup-review` device. Both are
+template scaffolding, not your project's documentation.
 
 ```sh
 DRY_RUN=1 make setup-remove-boilerplate-identity
 make setup-remove-boilerplate-identity
 ```
 
-It strips the marked passages, drops its own make target from the registry, and then removes
-itself. What it does **not** touch: the repository / module name (already replaced in Phase 5),
-and the parts of this guide you keep reading — the clamped-config review and the exclusion ADRs
-below, which several package READMEs link to.
+It scans the repository for `boilerplate-only` markers and resolves each one, deletes
+[boilerplate-only-conventions.md](boilerplate-only-conventions.md) and its Japanese mirror, drops
+its own make target from the registry, and then removes itself. It scans rather than working from
+a list of files, because a list is something a marker can be written outside of — and a marker
+nobody strips is a premise that survives into your project with nothing to announce it.
 
+What it does **not** touch: the repository / module name (already replaced in Phase 5), and the
+parts of this guide you keep reading — the clamped-config review and the exclusion ADRs below,
+which several package READMEs link to.
+
+What survives each removal is the general form of the rule, stated in the document that owns it:
+[docs/adr/README.md](../adr/README.md), [docs/rules.md](../rules.md), the layer READMEs. Where a
+statement needed a fork-appropriate replacement rather than plain deletion, the replacement is
+already parked beside it and is swapped in by the same pass.
+
+> Never strip `boilerplate-only` and `sample-api` markers in one run. They fire at different
+> moments — this phase versus the sample removal in Phase 15 — and a fork may reasonably do one
+> without the other.
+
+<!-- boilerplate-only:end -->
 ## Phase 13: Review the template's deliberate exclusions (ADRs)
 
 Beyond authentication / authorization (Phase 11) and deployment (Phase 10), this template makes other **deliberate non-choices** — for example: no in-application rate limiter, no generic cache abstraction, scheduled-job concurrency left to the scheduler, and push / streaming brokers kept out of the worker port.
@@ -346,36 +363,17 @@ filling it back in stay on the page.
 
 </details>
 
-## Phase 16: Remove the boilerplate-only conventions
+## Phase 16: Decide your own ADR regime
 
-[boilerplate-only-conventions.md](boilerplate-only-conventions.md) collects the conventions that
-hold only while this repository is the upstream template — the in-place ADR amendment regime, the
-consolidation pass, the `setup-review` device. None of them apply to your project, and the general
-form of each rule already lives in the document that owns it.
+The upstream's own ADR conventions were removed along with everything else that rested on this
+repository being a boilerplate. What is left is a decision only you can take, because it is about
+how your project records its own history rather than how this one shipped.
 
-Do this even if you keep the sample APIs (Phase 15). The two removals are independent and fire on
-different triggers.
+What you inherit is [docs/adr/README.md](../adr/README.md) as written: an ADR is an immutable
+record, and a decision that changes is replaced by a new `accepted` ADR while the old one is marked
+`superseded`. That is the ADR form as [MADR](https://adr.github.io/madr/) defines it, and what
+[ADR-0000](../adr/0000-record-architecture-decisions.md) decided.
 
-1. Delete the file and its Japanese mirror:
-
-    ```sh
-    rm docs/get-started/boilerplate-only-conventions.md \
-       docs/ja/get-started/boilerplate-only-conventions.ja.md
-    ```
-
-2. Remove every line carrying the `boilerplate-only:line` marker. Each is a self-contained pointer
-   into the deleted file, so removing the line leaves the text around it intact:
-
-    ```sh
-    grep -rn "boilerplate-only:line" docs/
-    ```
-
-3. Decide your own ADR regime. What you inherit is [docs/adr/README.md](../adr/README.md) as
-   written: an ADR is an immutable record, and a decision that changes is replaced by a new
-   `accepted` ADR while the old one is marked `superseded`. If you want in-place amendment instead,
-   record that as a decision of your own, in your own ADR.
-
-> The marker namespace `boilerplate-only` is **provisional** and this removal is manual for now; the
-> strip script that will own it is being prepared separately. Never strip `boilerplate-only` and
-> `sample-api` markers in one pass — they fire at different moments, and a fork may do one without
-> the other.
+If you want in-place amendment instead — a legitimate choice for a design document that is shipped
+rather than lived — record that as a decision of your own, in your own ADR. Do not infer it from
+the fact that the upstream did it.
