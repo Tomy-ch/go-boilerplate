@@ -55,6 +55,13 @@ jobs:
             production.cloudfront.docker.com:443
             dl-cdn.alpinelinux.org:443
             dl-cdn.alpinelinux.org:80
+            mise.run:443
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            pypi.org:443
+            files.pythonhosted.org:443
             *.docker.io:443
             mirror.gcr.io:443
             ghcr.io:443
