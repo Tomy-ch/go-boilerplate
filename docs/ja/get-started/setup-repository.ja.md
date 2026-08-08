@@ -357,3 +357,29 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
 3. 自分の ADR regime を決めます。継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。その場改訂を望むなら、それはあなた自身の決定として、あなた自身の ADR に記録してください。
 
 > マーカー名前空間 `boilerplate-only` は**暫定**で、この削除は当面手作業です（これを扱う strip スクリプトは別途準備中）。`boilerplate-only` と `sample-api` のマーカーを 1 回のパスで剥がさないでください。発火する契機が違い、fork が片方だけを行うことは十分あり得ます。
+
+<!-- dast:begin -->
+## Phase 17: DAST のセットアップを残すかを決める
+
+DAST のセットアップだけ済ませてあります。[`.github/workflows/dast.yaml`](../../../.github/workflows/dast.yaml) は GitHub-hosted runner の中でこのアプリケーションを起動し、OpenAPI 定義から得たエンドポイント一覧をもとに、認証済みの [OWASP ZAP](https://www.zaproxy.org/) API スキャンを当てます。週次と手動で走り、結果は code scanning へ上がり、検出でビルドを落とすことはありません。動的スキャンが要るならそのまま使ってください。追加で配線するものはありません。
+
+**ただし設定値はサンプルです。** [`.github/zap/rules.tsv`](../../../.github/zap/rules.tsv) のしきい値、スキャンが名乗るアイデンティティ、そのスキャンが到達する面は、いずれもこの boilerplate のサンプル API と `ci` 環境プロファイルに合わせた仮の値であり、あなたの API について何かを主張するものではありません。エンドポイントが違えば、受容してよい検出も違います。最初の週次実行の前にワークフロー冒頭のコメントを読み、実際の API に合わせて両方のファイルを調整してください。引き継いだままの `IGNORE` は、二度と誰の目にも触れない検出になります。
+
+サンプル API との結合は 1 箇所だけ残してあり、そこは黙らず落ちる作りにしてあります。ワークフローは ZAP を起動する前に、保護されたサンプルエンドポイントを叩いてスキャンが認証済みであることを確かめます。したがってサンプル API を削除（Phase 15）したまま DAST を残すと、`PROBE_PATH` を自分のオペレーションに向け直すまで週次実行が赤くなります。これは意図した挙動です。対象が消えた認証確認をそのままにすると、スキャンが 401 しか見ていないのに緑を報告し続けることになります。
+
+要らなければ、丸ごと撤去してください。
+
+```sh
+# 撤去対象のプレビュー（何も変更しません）
+docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
+  scripts/setup/remove-dast-setting --dry-run
+
+# 撤去
+docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
+  scripts/setup/remove-dast-setting
+```
+
+ワークフロー本体・ZAP のルールファイル・[.github/workflows/README.md](../../../.github/workflows/README.md) とその日本語ミラーの該当行・この節・pin lockfile に残るスキャナ用 action のエントリ、そして最後にツール自身を削除します。有効/無効を切り替えるスイッチはありませんし、今後も設けません。残すとは残すことであり、設定されたまま無効なスキャナは、誰も読まず誰も保守しないものになります。
+
+撤去後に中身を参照したくなったら git の履歴から辿れます。撤去はコミット 1 つで、`git log -- .github/workflows/dast.yaml` で見つかります。
+<!-- dast:end -->
