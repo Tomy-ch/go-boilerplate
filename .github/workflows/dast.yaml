@@ -27,10 +27,20 @@ name: DAST
 
 on:
   workflow_dispatch:
+  # A push to a protected branch is the state that will actually be promoted or deployed,
+  # so that is where a dynamic scan of the running surface earns its cost. Pull requests
+  # are deliberately excluded: a run takes minutes, and this is a sample scanner rather
+  # than a merge gate.
+  push:
+    branches:
+      - production
+      - staging
+      - develop
+      - 'release/*'
   schedule:
     # Monday 12:00 UTC — the next free slot after the scanners already staggered one per
-    # hour (00:00 through 11:00). A DAST run takes minutes, so it is deliberately absent
-    # from the pull-request triggers: this is a sample scanner, not a merge gate.
+    # hour (00:00 through 11:00). The schedule catches what a push cannot: ZAP's own rules
+    # and add-ons change while the code stands still.
     - cron: '0 12 * * 1'
 
 permissions:

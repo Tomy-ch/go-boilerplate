@@ -148,7 +148,7 @@
 | Spectral（OpenAPI） | spec 変更 PR | `release/*` / デプロイ先ブランチ | 不要 |
 | capslock | `go.mod` 変更 PR | 不要 | 不要 |
 | Go fuzzing | 不要 | 不要 | 週次 |
-| OWASP ZAP（DAST） | 不要 | 不要 | 週次 <!-- dast:line --> |
+| OWASP ZAP（DAST） | 不要 | `develop` / `staging` / `production` / `release/*` | 週次 <!-- dast:line --> |
 
 週次実行は月曜内で 1 時間ごとにずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査）、`0 9` npm cooldown 監査、`0 10` Opengrep、`0 11` fuzz）。同一時刻に全スキャナが並ぶのを避けるためです。
 

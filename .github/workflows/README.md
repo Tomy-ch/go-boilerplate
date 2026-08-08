@@ -148,7 +148,7 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
 | capslock | `go.mod`-change PRs | — | — |
 | Go fuzzing | — | — | weekly |
-| OWASP ZAP (DAST) | — | — | weekly <!-- dast:line --> |
+| OWASP ZAP (DAST) | — | `develop` / `staging` / `production` / `release/*` | weekly <!-- dast:line --> |
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
 
