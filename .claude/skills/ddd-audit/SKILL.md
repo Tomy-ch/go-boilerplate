@@ -87,9 +87,16 @@ select them — and those are the findings that matter most, since a pattern nob
 one nobody is watching):
 
 ```sh
-BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 git diff --name-only "origin/${BASE}...HEAD"
 ```
+
+An existing pull request's `baseRefName` stays the authority — the changed corpus you select from has
+to be the one the PR shows. With no PR, `make base-branch` resolves the latest release line from
+`origin`'s live state; `gh repo view --json defaultBranchRef` is not the fallback, because the GitHub
+default branch keeps answering with an earlier release line. Stop on an unresolved base: an empty diff
+selects no patterns, and `quick` would then exit cleanly having audited nothing.
 
 If the selected pattern set is empty, say so and exit cleanly.
 

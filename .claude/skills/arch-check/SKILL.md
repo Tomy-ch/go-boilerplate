@@ -53,7 +53,7 @@ These auditors are the per-layer audit workers. They are **strictly read-only** 
 
 This skill **MUST call `AskUserQuestion` immediately after invocation** with 2 questions (batched).
 
-Default-detect scope by checking branch vs base (`gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'`):
+Default-detect scope by checking branch vs base (resolve the base exactly as Step 1 does):
 
 - 未マージのコミットあり → 「変更ファイルのみ」を既定
 - main / release/* / no diff → 「リポジトリ全体」を既定
@@ -79,9 +79,17 @@ TODO opt は domain / controller / infra の suggestion 検出にのみ適用。
 For "changed files" mode:
 
 ```sh
-BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$' || true
 ```
+
+An existing pull request's `baseRefName` stays the authority — the audited diff has to be the one the
+PR shows. With no PR, `make base-branch` resolves the latest release line from `origin`'s live state;
+`gh repo view --json defaultBranchRef` is not the fallback, because the GitHub default branch keeps
+answering with an earlier release line. The emptiness check is not ceremony: the `|| true` on the next
+line would turn a failed resolution into an empty file list, and an empty file list is
+indistinguishable from a clean audit.
 
 Map to layers by path prefix, and **keep the per-layer file list** (you pass it to each auditor so the auditor does not re-resolve git):
 

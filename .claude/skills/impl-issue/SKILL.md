@@ -98,12 +98,13 @@ gh issue comment <n> --body-file <file>
 Do this before any code is touched, so nothing lands in a shared checkout.
 
 ```bash
-# 1. Find the active release line. The GitHub default branch lags behind it; recent merged PRs do not.
-gh pr list --state merged --limit 10 --json baseRefName -q '.[].baseRefName' | sort | uniq -c
+# 1. Resolve the active release line off origin's live state.
+BASE=$(make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 
 # 2. Branch from current origin, not a stale local ref.
-git fetch origin release/vX.Y.0
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> origin/release/vX.Y.0
+git fetch origin "$BASE"
+git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 4000+N.
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
@@ -112,6 +113,13 @@ cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 go mod vendor
 ```
 
+`make base-branch` reads `origin`'s live state. Use nothing else for this: the local
+`refs/remotes/origin/HEAD` is set once at clone time and `git fetch` never updates it, the GitHub
+default branch stays on an earlier release line, and the harness's own "Main branch" line reports that
+stale local symref. All three answer without warning, and branching from a generation-old base is not
+visible until a subagent reports that files everyone expects are missing — by which point the work on
+that branch is wasted.
+
 If `slot-acquire` reports failure, run `make slot-status` before retrying — the lease often succeeded
 even when the command errored.
 
@@ -119,7 +127,8 @@ even when the command errored.
 (the lease is reclaimed automatically once stale) and expensive to lose mid-task; only the user knows
 when the work is really over.
 
-If the user's instruction did not name a release version and the merged-PR signal is ambiguous, ask.
+If the user's instruction named a release version other than the resolved one, ask before branching —
+a deliberate backport target is the one case the resolver cannot know about.
 
 ## Step 3 — Plan, then wait
 

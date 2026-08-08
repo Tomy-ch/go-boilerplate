@@ -73,21 +73,23 @@ diff の主たる性質（変更パス / commit prefix）で既定の推奨を�
 
 ```sh
 gh pr view --json number,state,baseRefName,headRefName,url,title,body 2>/dev/null
-gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'
+make -s base-branch
 ```
 
 結果に応じて分岐する。
 
-- **PR が存在し state が `OPEN`** → "update" 経路。ベースブランチは固定（結果の `baseRefName`）。
+- **PR が存在し state が `OPEN`** → "update" 経路。ベースブランチは固定（結果の `baseRefName`）。PR の base は既にその PR がマージ先にしているブランチであり、何かが再解決してよいものではない。
 - **PR が存在するが state が `MERGED` / `CLOSED`** → `AskUserQuestion` でユーザーに確認:
   - 質問: 「このブランチには `<state>` 状態の PR #N があります。新規 PR を作成しますか？」
   - 選択肢: 「新規 PR を作成する」 / 「キャンセル」
-- **PR が存在しない** → "create" 経路。ベースブランチは既定ではリポジトリのデフォルトブランチだが、本リポジトリの GitHub デフォルト（`defaultBranchRef`）は現行リリースより遅れているため、実際の対象は通常**最新の `release/v1.X.0`**。デフォルトより最新リリース系列を優先し、下記で確認する。
+- **PR が存在しない** → "create" 経路。ベースは `make base-branch` が解決するブランチ、すなわち `origin` の実状態から読んだ最新のリリースライン。`gh repo view --json defaultBranchRef` は使わない。GitHub のデフォルトブランチは現行のリリースラインより遅れており、そこへ向けて PR を作ると 1 世代前のベースを対象にしてしまう。
 
-"create" 経路で、ローカルに複数の `release/*` ブランチがある等、デフォルト以外を対象にしたい可能性がある場合は `AskUserQuestion` で確認:
+`make base-branch` が失敗した場合は、ベースを推測せず報告して止める。間違ったブランチへ PR を作ってしまうと、PR を編集して取り消せる種類の失敗ではない。
+
+"create" 経路では、解決したベースを `AskUserQuestion` で確認する。backport や意図的な hotfix 対象は、解決器が知りようのないケースだからである:
 
 - 質問: 「ベースブランチをこれで作成しますか？」
-- 選択肢: 「`<default-branch>` を使う」 / 「別のブランチを指定する」
+- 選択肢: 「`<resolved-base>` を使う」 / 「別のブランチを指定する」
 
 早期終了の特殊ケース:
 
