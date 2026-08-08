@@ -242,13 +242,13 @@ Each list is the base set below plus what the job demonstrably does:
 | --- | --- | --- |
 | Base | harden-runner's own agent, the GitHub API / web / codeload hosts, `objects` / `raw` / `release-assets.githubusercontent.com`, `*.actions.githubusercontent.com`, `*.blob.core.windows.net` | every job — checkout, action download, artifact upload |
 | Go | `proxy.golang.org`, `sum.golang.org`, `index.golang.org`, `storage.googleapis.com`, `dl.google.com` | `setup-go`, any `go build` / `go test` / `go run` |
-| mise | `mise.jdx.dev`, `mise-versions.jdx.dev`, `aquaproj.github.io` | every `mise install` (aqua-backed tools resolve through GitHub releases, already in the base set) |
+| mise | `mise.jdx.dev`, `mise-versions.jdx.dev`, `aquaproj.github.io`, plus the Go and Sigstore sets | every `mise install`. aqua-backed tools resolve through GitHub releases (already in the base set), but mise then verifies their GitHub artifact attestations through Sigstore, and `go:`-backed tools resolve through the module proxy — so neither set is optional here |
 | Node | `nodejs.org`, `registry.npmjs.org`, `get.pnpm.io` | `npm ci` / `pnpm install` |
 | Python | `astral.sh`, `pypi.org`, `files.pythonhosted.org` | `uv`-resolved tooling (`sql-lint.yaml`) |
 | Registry | the Docker Hub hosts, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com` | image build / push, service containers, Trivy's DB and checks bundle |
 | Scanner data | `semgrep.dev` (Opengrep rulesets), `api.osv.dev` / `api.deps.dev` (OSV), `vuln.go.dev` (govulncheck), the Scorecard data sources | the scanner that reads them |
 | ZAP | `zaproxy.org` and its subdomains, plus the Registry set for the scanner image | `dast.yaml` (ZAP resolves its add-on manifest at startup) <!-- dast:line --> |
-| Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml` (cosign keyless signing, attestation) |
+| Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml` (cosign keyless signing, attestation) **and every `mise install`** — mise fetches the Sigstore TUF root to verify artifact attestations, so a job that installs a tool but cannot reach `tuf-repo-cdn.sigstore.dev` fails before it runs anything |
 
 The lists are inferred from what each job does rather than measured from audit data, so the first runs are expected to surface gaps. A blocked endpoint appears in the harden-runner run summary as a denied connection — that is the thing to read when a job fails for no reason visible in its own logs, and the fix is to widen that job's list, never to drop it back to `audit`.
 

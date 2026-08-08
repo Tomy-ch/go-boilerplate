@@ -47,6 +47,12 @@ jobs:
             nodejs.org:443
             registry.npmjs.org:443
             get.pnpm.io:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            storage.googleapis.com:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -109,6 +115,12 @@ jobs:
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
             *.github.io:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            storage.googleapis.com:443
 
       - name: Deploy to GitHub Pages
         id: deployment

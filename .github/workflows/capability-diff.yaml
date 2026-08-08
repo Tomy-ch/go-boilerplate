@@ -64,6 +64,9 @@ jobs:
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
             aquaproj.github.io:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       # fetch-depth: 0 so the base commit is available for git worktree. The base
       # tree is materialized outside the workspace so the head analysis cannot walk

@@ -58,6 +58,12 @@ jobs:
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
             aquaproj.github.io:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            storage.googleapis.com:443
 
       # persist-credentials: false — nothing after checkout talks to git, and this
       # job holds security-events: write, so the job token must not be left behind

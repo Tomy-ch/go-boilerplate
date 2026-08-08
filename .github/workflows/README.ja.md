@@ -242,13 +242,13 @@ Pull request ではその base との差分を監査するので、検出はそ�
 | --- | --- | --- |
 | base | harden-runner 自身の agent、GitHub の API / web / codeload、`objects` / `raw` / `release-assets.githubusercontent.com`、`*.actions.githubusercontent.com`、`*.blob.core.windows.net` | 全ジョブ（checkout、action の取得、artifact のアップロード） |
 | Go | `proxy.golang.org`、`sum.golang.org`、`index.golang.org`、`storage.googleapis.com`、`dl.google.com` | `setup-go`、`go build` / `go test` / `go run` |
-| mise | `mise.jdx.dev`、`mise-versions.jdx.dev`、`aquaproj.github.io` | 各 `mise install`（aqua backend のツールは GitHub リリース経由なので base で足ります） |
+| mise | `mise.jdx.dev`、`mise-versions.jdx.dev`、`aquaproj.github.io`、および Go・Sigstore の集合 | 各 `mise install`。aqua backend のツール自体は GitHub リリース経由（base に含まれる）ですが、mise はその後 GitHub artifact attestation を Sigstore で検証し、`go:` backend のツールは module proxy 経由で解決するため、どちらの集合も省けません |
 | Node | `nodejs.org`、`registry.npmjs.org`、`get.pnpm.io` | `npm ci` / `pnpm install` |
 | Python | `astral.sh`、`pypi.org`、`files.pythonhosted.org` | `uv` で解決するツール（`sql-lint.yaml`） |
 | レジストリ | Docker Hub の各ホスト、`mirror.gcr.io`、`ghcr.io`、`pkg-containers.githubusercontent.com` | イメージの build / push、service container、Trivy の DB と checks bundle |
 | スキャナのデータ | `semgrep.dev`（Opengrep のルールセット）、`api.osv.dev` / `api.deps.dev`（OSV）、`vuln.go.dev`（govulncheck）、Scorecard の各データソース | それを読むスキャナ |
 | ZAP | `zaproxy.org` とそのサブドメイン、およびスキャナのイメージ取得のためのレジストリ集合 | `dast.yaml`（ZAP は起動時に add-on のマニフェストを解決します） <!-- dast:line --> |
-| Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml`（cosign keyless 署名、attestation） |
+| Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml`（cosign keyless 署名、attestation）**および各 `mise install`** — mise は artifact attestation の検証に Sigstore の TUF root を取得するため、`tuf-repo-cdn.sigstore.dev` へ到達できないジョブはツールを 1 つも実行する前に落ちます |
 
 一覧は監査データの実測ではなく、各ジョブの動作から導いたものです。したがって当初の実行では取りこぼしが出る前提です。遮断された宛先は harden-runner の実行サマリに拒否接続として現れます。ジョブ自身のログからは理由が読めない失敗のとき読むべきはそこで、対処はそのジョブの一覧を広げることであり、`audit` へ戻すことではありません。
 

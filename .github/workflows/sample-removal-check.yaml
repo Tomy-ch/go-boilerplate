@@ -82,6 +82,9 @@ jobs:
             apt.postgresql.org:80
             apt.postgresql.org:443
             www.postgresql.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
