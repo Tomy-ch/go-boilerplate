@@ -1,0 +1,341 @@
+# harden-runner の allowed-endpoints の SSOT。ジョブは自分がどの能力クラスかを宣言し、
+# ホストの列挙はクラスが持つ。base は全ジョブへ暗黙に適用される。
+#
+# 反映は make egress-apply、ドリフト検査は make egress-check。
+# クラスの意味と追加手順は .github/workflows/README.md の Runner Hardening 節。
+
+[class.base]
+hosts = [
+  "agent.api.stepsecurity.io:443",
+  "api.github.com:443",
+  "github.com:443",
+  "codeload.github.com:443",
+  "objects.githubusercontent.com:443",
+  "raw.githubusercontent.com:443",
+  "release-assets.githubusercontent.com:443",
+  "*.actions.githubusercontent.com:443",
+  "*.blob.core.windows.net:443",
+]
+
+[class.mise]
+hosts = [
+  "mise.jdx.dev:443",
+  "mise-versions.jdx.dev:443",
+  "mise.run:443",
+  "mise.en.dev:443",
+  "aquaproj.github.io:443",
+  "proxy.golang.org:443",
+  "sum.golang.org:443",
+  "index.golang.org:443",
+  "storage.googleapis.com:443",
+  "dl.google.com:443",
+  "go.dev:443",
+  "golang.org:443",
+  "downloads.sqlc.dev:443",
+  "nodejs.org:443",
+  "registry.npmjs.org:443",
+  "get.pnpm.io:443",
+  "astral.sh:443",
+  "pypi.org:443",
+  "files.pythonhosted.org:443",
+  "tuf-repo-cdn.sigstore.dev:443",
+  "rekor.sigstore.dev:443",
+  "fulcio.sigstore.dev:443",
+]
+
+[class.image]
+includes = ["mise"]
+hosts = [
+  "docker.io:443",
+  "index.docker.io:443",
+  "registry-1.docker.io:443",
+  "auth.docker.io:443",
+  "*.docker.io:443",
+  "production.cloudflare.docker.com:443",
+  "production.cloudfront.docker.com:443",
+  "mirror.gcr.io:443",
+  "ghcr.io:443",
+  "pkg-containers.githubusercontent.com:443",
+  "dl-cdn.alpinelinux.org:443",
+  "dl-cdn.alpinelinux.org:80",
+  "deb.debian.org:443",
+  "deb.debian.org:80",
+  "security.debian.org:443",
+  "security.debian.org:80",
+]
+
+[class.db]
+hosts = [
+  "apt.postgresql.org:443",
+  "apt.postgresql.org:80",
+  "www.postgresql.org:443",
+  "archive.ubuntu.com:80",
+  "azure.archive.ubuntu.com:80",
+  "security.ubuntu.com:80",
+  "esm.ubuntu.com:443",
+  "motd.ubuntu.com:443",
+]
+
+[job."actions-lint.yaml:actions-lint"]
+classes = ["mise"]
+
+[job."app-di-startup-check.yaml:app-boot-check"]
+classes = ["image"]
+
+[job."auto-generate-docs.yaml:generate-docs"]
+classes = ["image"]
+
+[job."capability-diff.yaml:capability-diff"]
+classes = ["mise"]
+
+[job."claude.yaml:claude"]
+classes = []
+extra = [
+  "api.anthropic.com:443",
+  "*.anthropic.com:443",
+  "statsig.anthropic.com:443",
+  "sentry.io:443",
+  "*.ingest.sentry.io:443",
+]
+
+[job."code-ql.yaml:codeql"]
+classes = ["mise"]
+extra = [
+  "uploads.github.com:443",
+]
+
+[job."commitlint.yaml:commitlint"]
+classes = ["mise"]
+
+[job."dependency-review.yaml:dependency-review"]
+classes = []
+
+[job."deploy-app.yaml:build"]
+classes = ["image"]
+extra = [
+  "oauth2.sigstore.dev:443",
+  "*.sigstore.dev:443",
+]
+
+[job."deploy-app.yaml:deploy"]
+classes = []
+
+[job."deploy-docs.yaml:build"]
+classes = ["mise"]
+
+[job."deploy-docs.yaml:deploy"]
+classes = ["mise"]
+extra = [
+  "*.github.io:443",
+]
+
+[job."docker-lint.yaml:docker-lint"]
+classes = ["mise"]
+
+[job."egress-check.yaml:egress-check"]
+classes = ["mise"]
+
+[job."fuzz.yaml:fuzz"]
+classes = ["mise"]
+
+[job."gen-db-artifacts-check.yaml:generate-db-check"]
+classes = ["image", "db"]
+
+[job."gen-go-artifacts-check.yaml:generate-go-check"]
+classes = ["image"]
+
+[job."gen-mock-auth-oapi-artifacts-check.yaml:generate-mock-auth-oapi-check"]
+classes = ["image"]
+
+[job."gen-oapi-artifacts-check.yaml:generate-oapi-check"]
+classes = ["image"]
+
+[job."go-cooldown.yaml:go-cooldown"]
+classes = ["mise"]
+
+[job."go-lint.yaml:go-lint"]
+classes = ["image"]
+
+[job."go-test.yaml:go-test"]
+classes = ["image", "db"]
+
+[job."image-scan.yaml:build"]
+classes = ["image"]
+
+[job."job-boot-check.yaml:job-boot-check"]
+classes = ["image"]
+
+[job."lockfile-integrity-guard.yaml:lockfile-lint"]
+classes = []
+
+[job."lockfile-integrity.yaml:lockfile-lint"]
+classes = ["mise"]
+
+[job."md-lint.yaml:md-lint"]
+classes = ["image"]
+
+[job."migration-check.yaml:migration-check"]
+classes = ["image"]
+
+[job."mock-auth-server-check.yaml:mock-auth-server-check"]
+classes = ["mise"]
+
+[job."notify.yaml:notify"]
+classes = []
+extra = [
+  "hooks.slack.com:443",
+]
+
+[job."npm-cooldown-audit.yaml:npm-cooldown-audit"]
+classes = ["mise"]
+
+[job."oapi-lint.yaml:oapi-lint"]
+classes = ["mise"]
+
+[job."openapi-security-guard.yaml:openapi-security"]
+classes = []
+
+[job."openapi-security.yaml:openapi-security"]
+classes = ["mise"]
+
+[job."opengrep-guard.yaml:sast"]
+classes = []
+
+[job."opengrep.yaml:sast"]
+classes = ["mise"]
+extra = [
+  "semgrep.dev:443",
+  "*.semgrep.dev:443",
+]
+
+[job."osv-release-gate-guard.yaml:osv-release"]
+classes = []
+
+[job."osv-release-gate.yaml:osv-release"]
+classes = ["mise"]
+extra = [
+  "api.osv.dev:443",
+  "api.deps.dev:443",
+  "osv-vulnerabilities.storage.googleapis.com:443",
+]
+
+[job."osv-scanner-guard.yaml:osv-diff"]
+classes = []
+
+[job."osv-scanner.yaml:osv-diff"]
+classes = ["mise"]
+extra = [
+  "api.osv.dev:443",
+  "api.deps.dev:443",
+  "osv-vulnerabilities.storage.googleapis.com:443",
+]
+
+[job."osv-scanner.yaml:osv-scanner"]
+classes = ["mise"]
+extra = [
+  "api.osv.dev:443",
+  "api.deps.dev:443",
+  "osv-vulnerabilities.storage.googleapis.com:443",
+]
+
+[job."pin-actions-check.yaml:pin-actions-check"]
+classes = ["image"]
+
+[job."pin-images-check.yaml:pin-images-check"]
+classes = ["image"]
+
+[job."portal-check.yaml:portal-check"]
+classes = ["mise"]
+
+[job."sample-removal-check.yaml:sample-removal-check"]
+classes = ["image", "db"]
+
+[job."scorecard.yaml:scorecard"]
+classes = []
+extra = [
+  "api.securityscorecards.dev:443",
+  "api.scorecard.dev:443",
+  "api.osv.dev:443",
+  "api.deps.dev:443",
+  "www.bestpractices.dev:443",
+  "bestpractices.coreinfrastructure.org:443",
+  "oss-fuzz-build-logs.storage.googleapis.com:443",
+  "storage.googleapis.com:443",
+  "tuf-repo-cdn.sigstore.dev:443",
+  "rekor.sigstore.dev:443",
+  "fulcio.sigstore.dev:443",
+]
+
+[job."scripts-check.yaml:scripts-check"]
+classes = ["image"]
+
+[job."secret-scan.yaml:secret-scan"]
+classes = ["image"]
+
+[job."secret-scan.yaml:trivy-secret"]
+classes = ["image"]
+
+[job."setup-scripts-check.yaml:setup-scripts-check"]
+classes = ["image"]
+
+[job."sql-lint.yaml:sql-lint"]
+classes = ["mise"]
+
+[job."sync-versions-check.yaml:sync-versions-check"]
+classes = ["image"]
+
+[job."tidy-check.yaml:mod-tidy-check"]
+classes = ["mise"]
+
+[job."tool-cooldown.yaml:tool-cooldown"]
+classes = ["mise"]
+
+[job."trivy-config-guard.yaml:trivy-config"]
+classes = []
+
+[job."trivy-config.yaml:trivy-config"]
+classes = ["mise"]
+extra = [
+  "mirror.gcr.io:443",
+  "ghcr.io:443",
+  "pkg-containers.githubusercontent.com:443",
+]
+
+[job."trivy-fs.yaml:trivy-fs"]
+classes = ["image"]
+
+[job."trivy-fs.yaml:trivy-license"]
+classes = ["image"]
+
+[job."trivy-release-gate-guard.yaml:trivy-fs-release"]
+classes = []
+
+[job."trivy-release-gate.yaml:trivy-fs-release"]
+classes = ["mise"]
+extra = [
+  "mirror.gcr.io:443",
+  "ghcr.io:443",
+  "pkg-containers.githubusercontent.com:443",
+]
+
+[job."vulnerability-check.yaml:govulncheck"]
+classes = ["mise"]
+extra = [
+  "vuln.go.dev:443",
+]
+
+[job."worker-boot-check.yaml:worker-boot-check"]
+classes = ["image"]
+
+[job."zap-api-scan.yaml:dast"]
+classes = ["image"]
+extra = [
+  "zaproxy.org:443",
+  "*.zaproxy.org:443",
+]
+
+[job."zizmor.yaml:zizmor"]
+classes = ["image"]
+
+[job."trufflehog.yaml:trufflehog"]
+egress_policy = "audit"
