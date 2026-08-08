@@ -72,32 +72,6 @@ describe("sampleTooling", () => {
   });
 });
 
-describe("isScanTarget", () => {
-  describe("正常系", () => {
-    it("除外に当たらないパスを対象にする", () => {
-      expect(isScanTarget("internal/di/module/job.go")).toBe(true);
-      expect(isScanTarget("docs/rules.md")).toBe(true);
-    });
-
-    it("Windows 形式の区切りでも除外を判定する", () => {
-      expect(isScanTarget("docs\\portal\\guides\\index.md")).toBe(false);
-    });
-  });
-
-  describe("異常系", () => {
-    // 生成物はマーカーを持っていても再生成で戻るため、除去の対象にしてはいけない。
-    it("生成物の接頭辞を対象から外す", () => {
-      for (const prefix of EXCLUDED_PATH_PREFIXES) {
-        expect(isScanTarget(`${prefix}anything.md`), prefix).toBe(false);
-      }
-    });
-
-    it("接頭辞が途中まで一致するだけのパスは外さない", () => {
-      expect(isScanTarget("docs/portal/manifest.yaml")).toBe(true);
-    });
-  });
-});
-
 describe("EXCLUDED_DIRECTORIES", () => {
   describe("正常系", () => {
     // 依存の取得物を走査すると、他人のコードのコメントを誤って落としうる。

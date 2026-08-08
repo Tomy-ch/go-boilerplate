@@ -22,6 +22,7 @@ scripts/
 ├── stamp-openapi-version/      # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
 ├── reset-mock-auth-users/      # mock-auth の固定ユーザー fixture を中立な既定へリセット
 ├── make-help/                  # Make ターゲットのヘルプ出力生成
+├── premise-lint/               # fork とともに失効する前提が、fork 後も残る文書に無いことを検査
 ├── mermaid-lint/               # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
 ├── skill-lint/                 # .claude/** のスキル / エージェント定義を実態および .codex/** の対応と突き合わせて検証
 ├── pr-comment-secret-lint/     # PR コメントを投稿するワークフロージョブへの secret 混入を検出
@@ -76,6 +77,7 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
+|`premise-lint/`|[docs/rules.md](../docs/rules.md) の *No premise the document will outlive* を機械化したもの。fork 後も残る Markdown（`docs/adr/**` / `docs/design/**` / `docs/rules.md` / 各層 README …）をマーカー除去後の姿で読み、fork した瞬間に真でなくなる自己参照があれば落とす。前提を書いてよいのは、セットアップが書き換え・削除する `README*` / `docs/get-started/**` と、`boilerplate-only` / `sample-api` マーカーで囲った領域だけ。同じ語の別語義は `allowances.ts` へ理由付きで宣言する。|`make md-premise-lint`|
 |`mermaid-lint/`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
 |`skill-lint/`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
 |`actions-shellcheck/`|`.github/actions/**` の `action.yaml` / `action.yml` を解析し、composite action の `runs.steps[].run` を抽出して各スクリプトを標準入力経由で `shellcheck` に掛け、指摘を `action.yaml` 上の行番号へ写し戻す。`actionlint` は `.github/workflows` しか走査せず、action マニフェストを直接渡してもワークフローとして解釈して失敗するため、composite action 内のシェルはどのゲートにも掛かっていなかった。その死角を埋める。方言はステップの `shell:` から決め、shebang として渡すことで `-s` を使わずに対象シェルを確定させる。`pwsh` / `python` / `cmd` や式で指定された `shell:` は検査せず skip として数える。`${{ }}` 式は行数を保つプレースホルダへ置換する（ワークフローの `run:` に対して `actionlint` が採る方式と同じ）。抽出したステップ数は、同じ YAML をそのままデコードして数えた件数とファイル単位で一致していなければならず、食い違えば非 0 で終了する。2 つの経路は独立に壊れるため、抽出が壊れた状態が「緑」として通ることはない。`run:` をブロック折り畳み（`>`）で書いた場合は拒否する（折り畳みは指摘の位置を写し戻す基準である改行を落とすため）。式がクオートされていたかどうかを本スクリプトが何も言わないのもこのプレースホルダ置換のためで、その問いが残るのは展開位置そのものを読む検査に限られる。担当は `make actions-zizmor`。|`make actions-lint` / `make actions-shellcheck`|
