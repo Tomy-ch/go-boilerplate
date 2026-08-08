@@ -161,9 +161,10 @@ flowchart TD
 | Authenticator 境界インタフェース | `internal/usecase/boundary/auth/{authenticator,credential,auth,resolver}.go` |
 | JWT 検証コア | `internal/infrastructure/auth/jwt/auth_jwt.go` |
 | JWKS 解決（`kid` lookup・TTL キャッシュ・refresh cooldown） | `internal/infrastructure/auth/jwt/jwks.go` |
-| dev 限定スタブ（`Bearer debug:<subject>`、CI/test env） | `internal/infrastructure/auth/local/auth_local.go` |
+| dev 限定スタブ（`Bearer debug:<subject>`、`ci` / `test` env） | `internal/infrastructure/auth/local/auth_local.go` |
 | identity 解決（`sub` → 内部 `userID`） | `internal/infrastructure/auth/useridentity/` |
 | DI 配線（env 駆動の authenticator 選択・JWKS downstream profile） | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
+| スキャン用の実 JWT 実行文脈（`dast` env: mock provider へ http で JWKS backed authenticator を配線） | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | config（`AUTH_*`） | `internal/config/envspec.go`, `internal/config/model.go` |
 | ops-path / metrics の auth 例外 | `internal/controller/httpstack/oapi/skipper/`, ADR [0016](../../adr/0016-metrics-endpoint-auth-exception.md) |
 | 開発用 OIDC provider | `mock-auth-server/`（`src/routes/oidc.ts`, `tokens.ts`, `pkce.ts`, `keys.ts`, `store.ts`） |
