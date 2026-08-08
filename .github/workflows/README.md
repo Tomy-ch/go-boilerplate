@@ -90,6 +90,7 @@ All three rules live in one check rather than three, because they are not three 
 |Commitlint|`commitlint.yaml`|Lint every commit message the PR adds to the base branch — the route the `commit-msg` hook cannot cover|
 |Pin Actions Check|`pin-actions-check.yaml`|Verify GitHub Actions are pinned to a SHA (supply-chain hardening)|
 |Pin Images Check|`pin-images-check.yaml`|Verify Docker base images are pinned to a digest per the lockfile (supply-chain hardening)|
+|Egress Check|`egress-check.yaml`|Verify every job's inline `allowed-endpoints` matches the SSOT (see [Runner Hardening](#runner-hardening))|
 
 ### Security
 
@@ -234,27 +235,30 @@ The thresholds and the scanned surface are expected to be re-derived against the
 
 Every job in this directory starts with `step-security/harden-runner` in `egress-policy: block` mode with its own `allowed-endpoints`. It resolves every outbound connection against that list and refuses the rest, so a compromised action or transitive tool download cannot exfiltrate to an endpoint the job has no business reaching. File-integrity events are still recorded alongside.
 
-The step stays **inline in every job**. Factoring it into a composite action would read as removing duplication, but the duplicated part is exactly the part that must not be shared: a single allowlist wide enough for every job is the union of all of them, which is no allowlist at all. What each job may reach is a property of that job.
+The step stays **inline in every job**, and that is a constraint rather than a preference. A local composite action (`uses: ./.github/actions/*`) resolves only once the repository is checked out, and harden-runner has to run *before* the checkout — the checkout is itself an outbound call, and guarding it is the point. Factoring the step out would open the window it exists to close. Expect this proposal to recur; the answer is that it is not available, not that it was weighed and declined.
 
-Each list is the base set below plus what the job demonstrably does:
+**What is not fixed is where the list comes from.** [`.github/egress.toml`](../egress.toml) is the source of truth. `make egress-apply` writes it into every job, and `make egress-check` fails when an inline block has drifted from it — on the pre-commit hook and in `egress-check.yaml`.
 
-| Set | Endpoints | Applies to |
+**A job declares its capability class, not its hosts.** What a job reaches follows from what it *does* — install tooling, build an image, boot a database — and not from the job's own identity: execution descends from `make` into docker into `mise` inside the container, so the endpoints a job needs are not visible in its YAML. Four classes cover it, and a job names the ones that apply:
+
+| Class | Endpoints | Applies to |
 | --- | --- | --- |
-| Base | harden-runner's own agent, the GitHub API / web / codeload hosts, `objects` / `raw` / `release-assets.githubusercontent.com`, `*.actions.githubusercontent.com`, `*.blob.core.windows.net` | every job — checkout, action download, artifact upload |
-| Go | `proxy.golang.org`, `sum.golang.org`, `index.golang.org`, `storage.googleapis.com`, `dl.google.com` | `setup-go`, any `go build` / `go test` / `go run` |
-| mise | `mise.jdx.dev`, `mise-versions.jdx.dev`, `aquaproj.github.io`, plus the Go and Sigstore sets | every `mise install`. aqua-backed tools resolve through GitHub releases (already in the base set), but mise then verifies their GitHub artifact attestations through Sigstore, and `go:`-backed tools resolve through the module proxy — so neither set is optional here |
-| Node | `nodejs.org`, `registry.npmjs.org`, `get.pnpm.io` | `npm ci` / `pnpm install` |
-| Python | `astral.sh`, `pypi.org`, `files.pythonhosted.org` | `uv`-resolved tooling (`sql-lint.yaml`) |
-| Registry | the Docker Hub hosts, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com` | image build / push, service containers, Trivy's DB and checks bundle |
-| Scanner data | `semgrep.dev` (Opengrep rulesets), `api.osv.dev` / `api.deps.dev` (OSV), `vuln.go.dev` (govulncheck), the Scorecard data sources | the scanner that reads them |
-| ZAP | `zaproxy.org` and its subdomains, plus the Registry set for the scanner image | `zap-api-scan.yaml` (ZAP resolves its add-on manifest at startup) <!-- dast:line --> |
-| Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml` (cosign keyless signing, attestation) **and every `mise install`** — mise fetches the Sigstore TUF root to verify artifact attestations, so a job that installs a tool but cannot reach `tuf-repo-cdn.sigstore.dev` fails before it runs anything |
+| `base` | harden-runner's own agent, the GitHub API / web / codeload hosts, `objects` / `raw` / `release-assets.githubusercontent.com`, `*.actions.githubusercontent.com`, `*.blob.core.windows.net` | **every job, implicitly** — checkout, action download, artifact upload. It is never written in `classes` |
+| `mise` | mise's own distribution, plus every backend `mise.toml` resolves through: aqua / GitHub releases, the Go toolchain and module proxy, `downloads.sqlc.dev`, the npm registry and `get.pnpm.io`, `astral.sh` and PyPI — and Sigstore, because mise verifies each tool's GitHub artifact attestation through it | any job that installs tooling. A job that only runs `setup-go` names this class too: the module proxy lives here, and a narrower Go-only class would be one more classification to get wrong |
+| `image` | the Docker Hub hosts and both CDNs, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com`, and the Alpine / Debian package mirrors. Inherits `mise`, because the image build runs `mise install` inside the container | image build / push, service containers, Trivy's DB and checks bundle, and anything driving docker through `make` |
+| `db` | the PGDG apt repository and the Ubuntu archive mirrors that the Postgres service container installs from | jobs that boot Postgres |
 
-The lists are inferred from what each job does rather than measured from audit data, so the first runs are expected to surface gaps. A blocked endpoint appears in the harden-runner run summary as a denied connection — that is the thing to read when a job fails for no reason visible in its own logs, and the fix is to widen that job's list, never to drop it back to `audit`.
+Anything genuinely particular to one job goes in that job's `extra`: a scanner's data source (`semgrep.dev`, `api.osv.dev`, `vuln.go.dev`), a deploy target, `hooks.slack.com` for the notifier, `zaproxy.org` for the DAST job (ZAP resolves its add-on manifest at startup). <!-- dast:line --> A host that turns up in a second job's `extra` belongs in a class instead.
 
-**One job's failure mode is inverted and is called out where it lives.** `trufflehog.yaml` verifies a candidate credential by calling the service that issued it, and that set of services is open-ended. A missing endpoint there does not turn the job red; it turns a real leak into an unverified result the workflow does not report. Treat a disappearing TruffleHog finding as a possible allowlist gap.
+**The classes are deliberately coarse.** Splitting them finer buys a tighter allowlist and costs more classification decisions, and a job in the wrong class is the failure this arrangement exists to remove. A class that is slightly wider than one job needs still refuses everything outside it; a job in the wrong class fails the build.
 
-Two jobs carry an assumption worth restating when forking: `deploy-app.yaml`'s build job assumes `ghcr.io` and the public Sigstore instance, and its deploy job is a placeholder whose list is the base set only — wiring a real deployment in means adding that cloud's control-plane hosts, since the OIDC exchange is an outbound call like any other.
+To add an endpoint: edit `.github/egress.toml` — into the class when the need follows from a capability, into the job's `extra` when it does not — then run `make egress-apply` and commit the generated blocks. Never hand-edit an inline block; `make egress-check` rejects it.
+
+A blocked endpoint appears in the harden-runner run summary as a denied connection. That is the thing to read when a job fails for no reason visible in its own logs, and the fix is to widen the class or the `extra`, never to drop the job back to `audit`.
+
+**One job's failure mode is inverted and is called out where it lives.** `trufflehog.yaml` verifies a candidate credential by calling the service that issued it, and that set of services is open-ended. A missing endpoint there does not turn the job red; it turns a real leak into an unverified result the workflow does not report. Treat a disappearing TruffleHog finding as a possible allowlist gap. It is the only job on `egress-policy: audit`, declared as such in the SSOT so that it carries no `allowed-endpoints` at all — and `make egress-check` fails if the two ever disagree.
+
+Two jobs carry an assumption worth restating when forking: `deploy-app.yaml`'s build job assumes `ghcr.io` and the public Sigstore instance (its `extra`), and its deploy job is a placeholder that declares no class at all, so it gets `base` and nothing else — wiring a real deployment in means adding that cloud's control-plane hosts to its `extra`, since the OIDC exchange is an outbound call like any other.
 
 ### Deployment (Push)
 
