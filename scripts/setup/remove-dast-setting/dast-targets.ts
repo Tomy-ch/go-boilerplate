@@ -59,6 +59,41 @@ export function stripActionPin(content: string, actionKey: string): string | nul
   return kept.length === lines.length ? null : kept.join("\n");
 }
 
+/** harden-runner の allowed-endpoints の SSOT。 */
+export const EGRESS_SSOT = ".github/egress.toml";
+
+/** DAST のワークフローに属するジョブのセクション見出し接頭辞。 */
+export const DAST_EGRESS_SECTION_PREFIX = '[job."zap-api-scan.yaml:';
+
+/**
+ * egress の SSOT から、指定接頭辞のジョブセクションを丸ごと落とす。書き換え不要なら `null` を返す。
+ *
+ * @remarks
+ * ここもマーカーではなくキーで消します。SSOT はジョブ単位のセクションで、`make egress-apply` が
+ * 出力する側ではないためマーカーは残りますが、行末コメントを 1 行ずつ付けても
+ * 「セクションごと落とす」意図はそこに書けません。
+ *
+ * 落とし忘れると `make egress-check` が「対応する workflow が無いジョブ」で落ちます。
+ * 撤去した利用者の側で初めて赤くなるので、こちらでは気づけません。
+ */
+export function stripEgressJob(content: string, sectionPrefix: string): string | null {
+  const lines = content.split("\n");
+  const kept: string[] = [];
+  let dropping = false;
+
+  for (const line of lines) {
+    if (line.startsWith("[")) {
+      dropping = line.startsWith(sectionPrefix);
+    }
+    if (dropping) {
+      continue;
+    }
+    kept.push(line);
+  }
+
+  return kept.length === lines.length ? null : kept.join("\n");
+}
+
 /**
  * 削除対象として受け付けてよい相対パスかを判定する。
  *

@@ -6,11 +6,14 @@ import { ROOT_DIR } from "../lib/runtime";
 import {
   ACTION_PIN_LOCKFILE,
   DAST_ACTION_PIN_KEY,
+  DAST_EGRESS_SECTION_PREFIX,
   DAST_MARKER,
   DAST_MARKER_FILES,
   DAST_PATHS,
+  EGRESS_SSOT,
   isRemovablePath,
   stripActionPin,
+  stripEgressJob,
 } from "./dast-targets";
 
 /** 宣言したファイルの実際の中身。 */
@@ -130,6 +133,62 @@ describe("stripActionPin", () => {
       const content = '"zaproxy/action-api-scan-extra@v1" = "aaa"';
 
       expect(stripActionPin(content, "zaproxy/action-api-scan")).toBeNull();
+    });
+  });
+});
+
+describe("stripEgressJob", () => {
+  describe("正常系", () => {
+    it("指定接頭辞のジョブセクションを本文ごと落とす", () => {
+      const content = [
+        "# header",
+        "",
+        '[job."go-lint.yaml:go-lint"]',
+        'classes = ["image"]',
+        "",
+        '[job."zap-api-scan.yaml:dast"]',
+        'classes = ["image"]',
+        "extra = [",
+        '  "zaproxy.org:443",',
+        "]",
+        "",
+        '[job."zizmor.yaml:zizmor"]',
+        'classes = ["image"]',
+        "",
+      ].join("\n");
+
+      expect(stripEgressJob(content, DAST_EGRESS_SECTION_PREFIX)).toBe(
+        [
+          "# header",
+          "",
+          '[job."go-lint.yaml:go-lint"]',
+          'classes = ["image"]',
+          "",
+          '[job."zizmor.yaml:zizmor"]',
+          'classes = ["image"]',
+          "",
+        ].join("\n"),
+      );
+    });
+
+    // 撤去後に対応する workflow の無いジョブが残ると egress-check が落ちる。実在する
+    // セクションを相手にしていることは、SSOT の実物と突き合わせて初めて確かめられる。
+    it("宣言した接頭辞が実際の SSOT に存在する", () => {
+      expect(stripEgressJob(read(EGRESS_SSOT), DAST_EGRESS_SECTION_PREFIX)).not.toBeNull();
+    });
+  });
+
+  describe("異常系", () => {
+    it("該当が無ければ書き換え不要として null を返す", () => {
+      const content = '[job."go-lint.yaml:go-lint"]\nclasses = ["image"]\n';
+
+      expect(stripEgressJob(content, DAST_EGRESS_SECTION_PREFIX)).toBeNull();
+    });
+
+    it("接頭辞が一致するだけの別ワークフローを落とさない", () => {
+      const content = '[job."zap-api-scan-extra.yaml:dast"]\nclasses = ["image"]\n';
+
+      expect(stripEgressJob(content, DAST_EGRESS_SECTION_PREFIX)).toBeNull();
     });
   });
 });
