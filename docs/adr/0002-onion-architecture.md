@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-The template needs business logic to stay independent of infrastructure and framework
+This project needs business logic to stay independent of infrastructure and framework
 choices so that infrastructure is replaceable (see [ADR-0001](0001-avoid-lock-in.md)) and
 the domain core stays stable and testable over the long term. The driving design goals are
 maintainability, structural safety, type safety, replaceable infrastructure, and long-term

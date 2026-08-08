@@ -39,7 +39,7 @@ All verification failures are normalized to the `ErrJWTAuthenticatorInvalidToken
 
 ## Extension Points
 
-The following are **out of scope** for the standard core and left to the template consumer to add when their IdP requires them:
+The following are **out of scope** for the standard core and are added by the consuming project when their IdP requires them:
 
 - Cognito access-token dialect (`token_use=access` verification, `aud`→`client_id` substitution — Cognito access tokens carry no `aud`)
 - Azure AD `scp` / `roles` claims

@@ -134,7 +134,7 @@ not inside business logic.
 
 Offloads retry and circuit breaking to the mesh. Rejected because it introduces a hard
 infrastructure dependency that makes local development and testing complex, and it conflicts
-with the template's goal of running with minimal external dependencies
+with this project's goal of running with minimal external dependencies
 (see [ADR-0001](0001-avoid-lock-in.md)).
 
 ## Notes

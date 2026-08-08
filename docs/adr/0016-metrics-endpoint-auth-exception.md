@@ -102,7 +102,7 @@ values in `env/.env.*`).
 
 ### Skip auth on /metrics and rely on network-level access control
 
-Simpler operationally. Rejected: the template should provide a usable auth mechanism out
+Simpler operationally. Rejected: this project should provide a usable auth mechanism out
 of the box; leaving the endpoint open shifts the security responsibility entirely to
 infrastructure configuration.
 

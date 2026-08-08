@@ -162,7 +162,7 @@ flowchart TD
     class CMD,CLI,HL,DIW,DIR,DIH,DIM,DIC,ENG,CIR,OBS,PORT,FAKE,MOCK,SQS,APPERR,BO,CFG,LOG,OTEL done;
 ```
 
-> 緑＝scaffold 実装済み。依存方向は常に内向き（`controller→usecase/boundary`、`infrastructure→usecase/boundary`）。`controller`(engine) は `infrastructure` を import しない（depguard `maintain_a_sound_controller`）。
+> 緑＝本プロジェクトの実装済み。依存方向は常に内向き（`controller→usecase/boundary`、`infrastructure→usecase/boundary`）。`controller`(engine) は `infrastructure` を import しない（depguard `maintain_a_sound_controller`）。
 
 ### 3.2 メッセージ 1 件の作用シーケンス（実 broker 配線時）
 
@@ -193,9 +193,9 @@ sequenceDiagram
 
 ---
 
-## 4. integrator が実装する箇所（scaffold が用意しない部分）
+## 4. integrator が実装する箇所（本プロジェクトが用意しない部分）
 
-scaffold は **engine・seam・fake・SQS 参考 adapter・配線雛形** を提供する。実際に 1 つの worker を本番で動かすには、利用側が次を用意する（既定では登録 worker 0 件）。
+本プロジェクトは **engine・seam・fake・SQS 参考 adapter・配線雛形** を提供する。実際に 1 つの worker を本番で動かすには、利用側が次を用意する（既定では登録 worker 0 件）。
 
 ```mermaid
 flowchart LR
@@ -220,7 +220,7 @@ flowchart LR
 | ⑤ | broker クライアント・adapter `Config` の `fx.Provide` | `internal/di/...` | `sqs.Config` |
 | ⑥ | env（`WORKER_*` は既定あり・上書き任意）／broker 認証／DLQ・redrive(IaC) | `env/` ・IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` 既定 |
 
-> `CONSUMER_QUEUE_*` が指すのは *the* consumer キューではなく *a* consumer キューであり、scaffold が同梱する 1 つの worker に合わせた大きさになっている。別のキューを消費する 2 つ目の worker には、worker 名を含む独自の接頭辞（`<WORKER_NAME>_QUEUE_*`）を与えること。既存のものを兼用しない。`WORKER_*` は engine-core 設定でありプロセス単位・broker 非依存なので共有のままでよい。
+> `CONSUMER_QUEUE_*` が指すのは *the* consumer キューではなく *a* consumer キューであり、同梱する 1 つの worker に合わせた大きさになっている。別のキューを消費する 2 つ目の worker には、worker 名を含む独自の接頭辞（`<WORKER_NAME>_QUEUE_*`）を与えること。既存のものを兼用しない。`WORKER_*` は engine-core 設定でありプロセス単位・broker 非依存なので共有のままでよい。
 
 <!-- sample-api:begin -->
 > ①〜⑥ すべての実例が、削除可能なサンプル群の一部として同梱されている。`internal/controller/worker/withdrawalarchive` が outbox の emit する退会イベントを消費し、オブジェクトストレージへ証跡を書き出す。`make setup-remove-sample-api` はそれを削除し、`provideWorkers()` を再び空へ戻す。

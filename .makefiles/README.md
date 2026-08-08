@@ -509,7 +509,7 @@ These targets regenerate the lockfiles; nothing installs from a `.in` file direc
 | `make delete-all-labels` | Deletes all existing labels in the GitHub repository. | None |
 | `make create-default-labels` | Creates default labels based on `.github/settings/labels.json`. | None |
 | `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | One-directional apply. Nothing re-applies the JSON or compares it against the live ruleset afterwards, so the file states intent rather than the enforced state — see `.github/settings/README.md`. |
-| `make enable-workflows` | Enables every workflow left in `disabled_fork` state. | Idempotent. A fork or template-derived repository starts with all workflows disabled. |
+| `make enable-workflows` | Enables every workflow left in `disabled_fork` state. | Idempotent. A newly created repository starts with all workflows disabled. |
 
 ### GitHub repository initialization related
 
