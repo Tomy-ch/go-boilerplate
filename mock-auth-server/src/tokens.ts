@@ -9,8 +9,9 @@ import type { Claims, OidcConfig } from "./types.ts";
 // SignKey は jose の SignJWT.sign が受理する鍵型（CryptoKey / KeyObject / Uint8Array 等）を導出する。
 type SignKey = Parameters<SignJWT["sign"]>[0];
 
-// ACCESS_TTL_SECONDS は access token の有効期間（300 秒）。
-const ACCESS_TTL_SECONDS = 300;
+// ACCESS_TTL_SECONDS は access token の有効期間。1 本のトークンで通す一連の操作
+// （DAST スキャン、手動の curl）の途中で失効させないため、長めに採る。
+const ACCESS_TTL_SECONDS = 3600;
 // ACCESS_SCOPE は Client に許された API 用途を表す標準 scope（Role とは別軸）。
 const ACCESS_SCOPE = "openid profile email api.read api.write";
 // ACCESS_TOKEN_TYPE は access token の typ ヘッダ（RFC 9068）。Go 側はこの typ で ID Token 誤用を拒否する。
