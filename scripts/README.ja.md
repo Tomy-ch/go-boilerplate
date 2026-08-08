@@ -45,6 +45,7 @@ scripts/
 ├── cover-gate/                 # `go tool cover -func` の総カバレッジをしきい値に照らす（Go）
 ├── load-band/                  # ローカルゲートの負荷帯と CPU シェアを解決（Go）
 ├── release/                    # リリースタグ / リリースブランチを切る（Go）
+├── base-branch/                # origin の実状態から分岐元の最新リリースラインを解決（Go）
 ├── repo-setup/                 # boilerplate を自分のリポジトリとして初期化する git / gh 手順（Go）
 └── setup/                     # 初期セットアップスクリプト（上と同じくツール 1 つ 1 ディレクトリ）
     ├── replace-module/ <!-- setup-localize:line -->
@@ -111,6 +112,7 @@ scripts/
 |`stamp-openapi-version/`|`release/vX.Y.Z` のブランチ名から `X.Y.Z` を導出し `openapi.yaml` の `info.version` に書き込む（先頭の `version:` 行のみ・冪等・非 release ref は no-op）。契約版のみで SHA / build metadata は付けない（commit 単位の追跡は runtime の `/version` の責務）。`tsx` 経由で実行する。|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go 実装の sync ツール。`mise.toml` の `[tools]` table を行ベース parser で解析し（外部依存ゼロ）、`go` / `node` / `python` を `go.mod` の `go` directive と `docker/*/Dockerfile` の `FROM golang:` / `FROM node:` / `FROM python:` 行へ反映する。version 存在・ファイル存在・期待マッチ数の事前 validate を全 rule で通してからファイル単位 atomic に書き出すため、partial state にならない。|`make sync-versions`|
 |`release/`|リリースタグ（`tag`）と次のリリースブランチ（`branch`）を作る。次バージョンは `git tag` の最新セマンティックバージョンから `-bump patch\|minor\|major` で決める。手順が make のレシピではなくここに在るのは、どちらも取り消しの効かない操作（タグの push / GitHub Release の作成 / デフォルトブランチの切り替え）を含み、分岐を実地で確かめようとすると本当にリリースするしかないためである。手順の組み立てと中止条件は純粋関数へ寄せてテストで固定してある。|`make tag-patch` / `tag-minor` / `tag-major` / `branch-patch` / `branch-minor` / `branch-major` / `hotfix-patch`|
+|`base-branch/`|フィーチャーブランチの分岐元となる最新のリリースラインのブランチ名を出力する。出所は `origin` の実状態（`git ls-remote --heads origin 'refs/heads/release/*'`）で、ローカルの参照は一切読まない。`refs/remotes/origin/HEAD` は clone 時に決まったきり `git fetch` では更新されず、GitHub のデフォルトブランチも前のリリースラインを指したままのことがある。どちらも警告なく古い答えを返すので、1 世代前のベースからフィーチャーブランチを切る事故になる。「最新」は `major` / `minor` / `patch` の数値比較で、ブランチを作る `release/` が次版を決める基準と同じにしてある（作る側と解決する側の基準が揃う）。コミット日時は古いラインへの hotfix やベース merge で前後し、文字列順は `v1.10.0` を `v1.9.0` より前に並べる。`release/vX.Y.Z` が 1 本も無いリモートは空の答えではなくエラーにする — 空のベースと解決できなかったことを呼び出し側が区別できないため。対象は `release/*` のみで、これが解決する規則（「最新の `release/*` からフィーチャーブランチを切る」）に合わせてある。`make hotfix-patch` が GitHub のデフォルトに設定する `hotfix/*` は候補に入れない。|`make base-branch`|
 
 その他のツールのバージョンは [`mise.toml`](../mise.toml) を SSOT として管理しています（PyPI のツールだけは例外で、[`python/`](../python/README.ja.md) で宣言しハッシュ固定の lockfile から入れます）。各環境（host / docker / CI）は必要なものだけ `mise install <tool>`（または `uv pip install --require-hashes`）で個別に取得するため、sync スクリプトは不要です。
 

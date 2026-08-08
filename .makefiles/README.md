@@ -544,6 +544,12 @@ This is the initial setup command when launching a new repository.
 | `make setup-remove-boilerplate-identity` | Removes the prose that calls this repository a boilerplate. | Strips `boilerplate` marker blocks from the READMEs and the setup guide via `node_tool_runner`, then removes itself. Preview with `DRY_RUN=1`. <!-- boilerplate:line --> |
 | `make setup-remove-sample-api` | Removes the sample API (`user`/`product`/`order`) in batch. | Deletes via `node_tool_runner`, then runs `reset-mock-auth-users` → `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint`. The DB rebuild keeps dropped tables out of the generated models, and `tidy-lib` drops the direct dependencies the sample API was the only user of. **Requires the DB container (`database`) running** (`gen-query` dumps the live schema). Preview without changing anything with `DRY_RUN=1` (any non-empty value counts as preview, `0` included, so omit the variable entirely for a real run). <!-- sample-api:line --> |
 
+### Base branch resolution related
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make base-branch` | Prints the branch name of the latest release line (`release/vX.Y.Z`) on one line. | Reads `origin`'s live state with `git ls-remote` (`scripts/base-branch`), so a stale local `refs/remotes/origin/HEAD` — which `git fetch` never updates — and a GitHub default branch still pointing at an earlier release line both leave the answer unchanged. "Latest" means the numeric version comparison, not the commit date; the reasoning is in the package comment. Output carries no decoration so a caller can take it with `$(make base-branch)`; where a pull request already exists, its `baseRefName` is the authority and this is the fallback. |
+
 ### Release branch related
 
 | Command | Description | Notes |
