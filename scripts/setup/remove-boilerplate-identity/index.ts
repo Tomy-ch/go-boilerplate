@@ -18,7 +18,7 @@ import { listFilesRecursive, toAbsolutePath, toRelativePath } from "../lib/file-
 import { stripMarkers } from "../lib/markers";
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
-  BOILERPLATE_DELETE_FILES,
+  BOILERPLATE_DELETE_PATHS,
   BOILERPLATE_MARKER,
   EXCLUDED_DIRECTORIES,
   isScanTarget,
@@ -60,11 +60,11 @@ function stripFiles(dryRun: boolean): StrippedFile[] {
   return stripped;
 }
 
-/** 全体が上流限定であるファイルを消す。dryRun では消した体で相対パスだけ返す。 */
-function deleteFiles(dryRun: boolean): string[] {
+/** 全体が上流限定であるファイル / ディレクトリを消す。dryRun では消した体で相対パスだけ返す。 */
+function deletePaths(dryRun: boolean): string[] {
   const deleted: string[] = [];
 
-  for (const relativePath of BOILERPLATE_DELETE_FILES) {
+  for (const relativePath of BOILERPLATE_DELETE_PATHS) {
     const absolute = toAbsolutePath(relativePath);
 
     if (!fs.existsSync(absolute)) {
@@ -72,7 +72,7 @@ function deleteFiles(dryRun: boolean): string[] {
     }
 
     if (!dryRun) {
-      fs.rmSync(absolute);
+      fs.rmSync(absolute, { force: true, recursive: true });
     }
     deleted.push(relativePath);
   }
@@ -92,7 +92,7 @@ function run({ dryRun }: SetupOptions): void {
   }
 
   const stripped = stripFiles(dryRun);
-  const deleted = deleteFiles(dryRun);
+  const deleted = deletePaths(dryRun);
 
   if (stripped.length === 0 && deleted.length === 0) {
     console.log("除去対象は見つかりませんでした（既に実行済みの可能性があります）。");

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { listFilesRecursive, toRelativePath } from "../lib/file-utils";
 import { ROOT_DIR } from "../lib/runtime";
 import {
-  BOILERPLATE_DELETE_FILES,
+  BOILERPLATE_DELETE_PATHS,
   BOILERPLATE_MARKER,
   BOILERPLATE_PROSE_MARKERS,
   EXCLUDED_DIRECTORIES,
@@ -65,6 +65,15 @@ describe("isScanTarget", () => {
     it("自分自身のディレクトリを対象から外す", () => {
       expect(isScanTarget(`${SELF_DIR}/targets.ts`)).toBe(false);
       expect(isScanTarget(`${SELF_DIR}/targets.test.ts`)).toBe(false);
+    });
+
+    // 除去は削除より先に走る。外さないと、丸ごと消えるはずのファイルを先に書き換えることになり、
+    // そこがマーカーの形を入力として持つテストなら、対応の取れない片割れとして除去全体が止まる。
+    it("丸ごと消えるパスの配下を対象から外す", () => {
+      for (const target of BOILERPLATE_DELETE_PATHS) {
+        expect(isScanTarget(target), target).toBe(false);
+        expect(isScanTarget(`${target}/anything.ts`), target).toBe(false);
+      }
     });
   });
 });
@@ -127,19 +136,25 @@ describe("MARKER_LITERAL_FILES", () => {
   });
 });
 
-describe("BOILERPLATE_DELETE_FILES", () => {
+describe("BOILERPLATE_DELETE_PATHS", () => {
   describe("正常系", () => {
     it("挙げた対象がすべて実在する", () => {
-      for (const target of BOILERPLATE_DELETE_FILES) {
+      for (const target of BOILERPLATE_DELETE_PATHS) {
         expect(fs.existsSync(path.join(ROOT_DIR, target)), target).toBe(true);
       }
     });
 
     it("正本と日本語ミラーを対にして挙げている", () => {
-      expect(BOILERPLATE_DELETE_FILES).toContain("docs/get-started/boilerplate-only-conventions.md");
-      expect(BOILERPLATE_DELETE_FILES).toContain(
+      expect(BOILERPLATE_DELETE_PATHS).toContain("docs/get-started/boilerplate-only-conventions.md");
+      expect(BOILERPLATE_DELETE_PATHS).toContain(
         "docs/ja/get-started/boilerplate-only-conventions.ja.md",
       );
+    });
+
+    // premise-lint が守る規則は fork が継承するが、検査が探す言い回しは上流固有の実例でしかない。
+    // 残すと永久に緑のままの検査が増えるだけなので、撤去と一緒に消す。
+    it("上流でのみ意味を持つ検査を挙げている", () => {
+      expect(BOILERPLATE_DELETE_PATHS).toContain("scripts/premise-lint");
     });
   });
 });

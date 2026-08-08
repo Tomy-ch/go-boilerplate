@@ -75,25 +75,51 @@ export const MARKER_LITERAL_FILES: readonly string[] = [];
 export const SELF_DIR = "scripts/setup/remove-boilerplate-identity";
 
 /**
- * マーカーではなくパスで消えるファイル。
+ * マーカーではなくパスで消えるファイル / ディレクトリ。
  *
  * @remarks
  * 全体が上流限定であるものは、領域を囲うより丸ごと消すほうが安全です。散文から領域を切り出すと
- * 前後の文が修復対象になりますが、ファイルごとなら継ぎ目が生まれません。
+ * 前後の文が修復対象になりますが、まるごとなら継ぎ目が生まれません。
+ *
+ * `premise-lint` がここに居るのは、あれが「上流である間だけ意味を持つ検査」だからです。守って
+ * いる規則（`docs/rules.md` の *No premise the document will outlive*）は一般形なので fork が
+ * 継承しますが、検査が探す言い回し（`this template` / `adopters` / `このテンプレート`）は上流
+ * 固有の実例でしかありません。fork にはその前提が無いので、残しても永久に緑のままの検査が
+ * 増えるだけで、赤くなったときに何を意味するのかも読めません。
  */
-export const BOILERPLATE_DELETE_FILES: readonly string[] = [
+export const BOILERPLATE_DELETE_PATHS: readonly string[] = [
   "docs/get-started/boilerplate-only-conventions.md",
   "docs/ja/get-started/boilerplate-only-conventions.ja.md",
+  "scripts/premise-lint",
 ];
 
 /** 撤去後に残ってはいけない語。検査が的を外していないかの確認にも使う。 */
 export const BOILERPLATE_PROSE_MARKERS: readonly string[] = ["boilerplate", "ボイラープレート"];
 
-/** 走査対象か。ディレクトリ名の除外は列挙側が行うため、ここは接頭辞・自ディレクトリ・literal を見る。 */
+/** 丸ごと消えるパスの配下か。消すものを書き換えても意味が無い。 */
+function isDeletedWhole(normalizedPath: string): boolean {
+  return BOILERPLATE_DELETE_PATHS.some(
+    (target) => normalizedPath === target || normalizedPath.startsWith(`${target}/`),
+  );
+}
+
+/**
+ * 走査対象か。ディレクトリ名の除外は列挙側が行うため、ここは接頭辞・自ディレクトリ・
+ * 丸ごと消えるパス・literal を見る。
+ *
+ * @remarks
+ * 丸ごと消えるパスを外すのは、除去が削除より先に走るためです。順序を入れ替えても `dryRun` では
+ * 何も消えないので、走査には現れ続けます。`premise-lint` のテストはマーカーの形を入力として
+ * 持つので、外さないと対応の取れない片割れとして除去全体が止まります（実際に止まりました）。
+ */
 export function isScanTarget(relativePath: string): boolean {
   const normalized = relativePath.split("\\").join("/");
 
-  if (MARKER_LITERAL_FILES.includes(normalized) || normalized.startsWith(`${SELF_DIR}/`)) {
+  if (
+    MARKER_LITERAL_FILES.includes(normalized) ||
+    normalized.startsWith(`${SELF_DIR}/`) ||
+    isDeletedWhole(normalized)
+  ) {
     return false;
   }
 
