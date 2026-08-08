@@ -42,6 +42,35 @@ right, or whether a finding deserves an issue. It routes those to the user and r
 | Test-quality review | `test-review` (chained by `impl-review`) |
 | The implementation itself | you, following the approved plan |
 
+## AI Modification Scope
+
+`AGENTS.md` confines AI edits to `internal/` / `pkg/` / `database/` / `openapi/` and treats everything
+else — `.github/workflows/`, `docker/`, `scripts/`, `docs/`, `.makefiles/`, root dotfiles — as out of
+scope. **Invoking this skill is the explicit user instruction that relaxes that**, because this skill
+is issue-generic: the issue decides the surface, and an issue about CI, tooling, container images, or
+documentation cannot be resolved inside the four default directories. This is a documented,
+non-loophole exception per the "Skills must not be a loophole" clause in `AGENTS.md`.
+
+The relaxation is bounded, and the bound is the plan:
+
+- The Step 3 plan's **Files to touch** section is the permitted surface. A sensitive path outside the
+  four default directories must appear there **before** it is edited, named explicitly rather than
+  implied by a glob.
+- Say so when presenting the plan. The user approves the sensitive paths knowingly, not by discovering
+  them in the diff — a plan that quietly widens the scope is the failure this clause exists to prevent.
+- Reaching a sensitive path the plan does not list is trip-wire 1 (Step 4). Stop and ask; do not widen
+  the surface and report it afterwards.
+
+Hard-protected even during this skill (never touch, regardless of what the issue asks):
+
+- `AGENTS.md` / `CLAUDE.md`
+- Generated files: `**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, and generated content
+  under `docs/` (`docs/openapi/**`, `docs/coverage/**`, `docs/db-schema/**`, `docs/godoc/**`,
+  `docs/portal/docs.json`, `docs/portal/guides/**`). Regenerating through a `make` target is fine;
+  hand-editing is not.
+- Anything under `permissions.deny` in `.claude/settings.json`
+- Existing files under `database/migrations/**` (new migration files only)
+
 ## Step 0 — Confirm the three modes (one `AskUserQuestion`)
 
 Ask once, before anything else, in a single call. Defaults are marked; the user's choice always wins.
