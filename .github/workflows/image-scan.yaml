@@ -31,7 +31,36 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            aquaproj.github.io:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            production.cloudflare.docker.com:443
+            *.docker.io:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -72,13 +101,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Generate SBOM
+      # Two SBOM formats over the same image, because consumers are split and
+      # converting between them is lossy. SPDX-JSON is what the licence / compliance
+      # side reads and what the summary below is built from; CycloneDX-JSON is what
+      # the vulnerability tooling (dependency-track, cdxgen consumers, `trivy sbom`)
+      # expects, and it carries component relationships SPDX flattens away. Syft
+      # produces both from one catalogue, so the second run costs a scan of an image
+      # already on the runner.
+      - name: Generate SBOM (SPDX)
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           image: ${{ steps.meta.outputs.image }}
           format: spdx-json
           output-file: sbom-spdx.json
           artifact-name: sbom-spdx.json
+          upload-artifact: true
+
+      - name: Generate SBOM (CycloneDX)
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ steps.meta.outputs.image }}
+          format: cyclonedx-json
+          output-file: sbom-cyclonedx.json
+          artifact-name: sbom-cyclonedx.json
           upload-artifact: true
 
       - name: Summarize SBOM (Markdown)
@@ -192,6 +237,10 @@ jobs:
             printf '%s\n' "- Distro: $(code_span "$DISTRO")"
             printf '%s\n' "- Total Packages: ${TOTAL_PKGS}"
             printf '%s\n' "- Go Toolchain: $(code_span "$GOVERSION")"
+            # A constant, so it needs neither helper. Deliberately not a code span:
+            # the filename is plain text here, which keeps this line out of the
+            # backtick-balancing the two helpers above exist for.
+            echo "- CycloneDX view of the same image: see the sbom-cyclonedx.json artifact on this run"
             echo "### Key Go Modules (top 50)"
             echo "${gomods_fence}text"
             cat _gomods.md
