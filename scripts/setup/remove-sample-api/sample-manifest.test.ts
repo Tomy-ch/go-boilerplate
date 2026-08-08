@@ -4,7 +4,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ROOT_DIR } from "../lib/runtime";
-import { containsSampleMarker, isScanTarget } from "./sample-api";
+import { listFilesRecursive, toRelativePath } from "../lib/file-utils";
+import { containsSampleMarker, isScanTarget, stripSampleMarkers } from "./sample-api";
 import {
   BUILD_STEPS,
   EXCLUDED_DIRECTORIES,
@@ -114,6 +115,26 @@ describe("MARKER_LITERAL_FILES", () => {
       for (const relativePath of MARKER_LITERAL_FILES) {
         expect(isScanTarget(relativePath), relativePath).toBe(false);
       }
+    });
+
+    // 宣言し忘れると、マーカーの形を「データ」として持つファイルが走査に入り、対応の取れない
+    // 片割れとして除去が中断する。実際に CI でしか気づけない形で一度落ちた。走査対象すべてで
+    // 除去が成立することを、削除を実行せずに確かめる。
+    it("走査対象すべてでマーカー除去が成立する", () => {
+      const offenders: string[] = [];
+
+      for (const file of listFilesRecursive(ROOT_DIR, {
+        excludedDirectories: EXCLUDED_DIRECTORIES,
+        shouldIncludeFile: (entryPath) => isScanTarget(toRelativePath(entryPath)),
+      })) {
+        try {
+          stripSampleMarkers(fs.readFileSync(file, "utf8"));
+        } catch (error) {
+          offenders.push(`${toRelativePath(file)}: ${(error as Error).message}`);
+        }
+      }
+
+      expect(offenders).toEqual([]);
     });
   });
 

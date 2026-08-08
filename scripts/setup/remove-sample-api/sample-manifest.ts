@@ -409,6 +409,9 @@ export const EXCLUDED_PATH_PREFIXES: readonly string[] = [
 export const MARKER_LITERAL_FILES: readonly string[] = [
   // マーカー除去そのもののテスト。入力として `# sample-api:begin` を持つ。
   "scripts/setup/lib/markers.test.ts",
+  // 前提検査もマーカー除去を行うため、両名前空間を入力として持つ。あちらは撤去の契機が違う
+  // （ボイラープレート撤去で丸ごと消える）ので、こちらからは通常のファイルとして見える。
+  "scripts/premise-lint/rules.test.ts",
   // Go の文字列リテラルとして `// sample-api:line` を組み立て、走査器の挙動を検査している。
   "internal/architest/bindhandler_di_parity_test.go",
   // 教材。マーカーの書き方をコード例として示している。

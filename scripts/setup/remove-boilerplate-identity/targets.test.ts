@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { listFilesRecursive, toRelativePath } from "../lib/file-utils";
+import { stripMarkers } from "../lib/markers";
 import { ROOT_DIR } from "../lib/runtime";
 import {
   BOILERPLATE_DELETE_PATHS,
@@ -172,6 +173,22 @@ describe("BOILERPLATE_MARKER", () => {
       const found = scanTargets().some((file) => containsBoilerplateMarker(fs.readFileSync(file, "utf8")));
 
       expect(found).toBe(true);
+    });
+
+    // 宣言し忘れると、マーカーの形を「データ」として持つファイルが走査に入り、対応の取れない
+    // 片割れとして除去が中断する。走査対象すべてで除去が成立することを、実行せずに確かめる。
+    it("走査対象すべてでマーカー除去が成立する", () => {
+      const offenders: string[] = [];
+
+      for (const file of scanTargets()) {
+        try {
+          stripMarkers(fs.readFileSync(file, "utf8"), BOILERPLATE_MARKER);
+        } catch (error) {
+          offenders.push(`${toRelativePath(file)}: ${(error as Error).message}`);
+        }
+      }
+
+      expect(offenders).toEqual([]);
     });
 
     // 素の `boilerplate` へ寄せ戻すと、除去されないマーカーが静かに増える。
