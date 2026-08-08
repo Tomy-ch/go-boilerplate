@@ -85,6 +85,9 @@ classes = ["image"]
 [job."auto-generate-docs.yaml:generate-docs"]
 classes = ["image"]
 
+[job."bearer.yaml:bearer"]
+classes = ["mise"]
+
 [job."capability-diff.yaml:capability-diff"]
 classes = ["mise"]
 
@@ -109,6 +112,14 @@ classes = ["mise"]
 
 [job."dependency-review.yaml:dependency-review"]
 classes = []
+# OpenSSF Scorecard の要約（show-openssf-scorecard は既定で有効）が引くデータ源。
+# 呼ぶのは「その PR が新しく足した依存」がある時だけなので、依存を増やさない PR では
+# 一度も出ていかない。そのため、この 2 ホストが欠けていても依存を足す PR が現れるまで
+# 誰も気づかず、現れた瞬間にその PR だけが fetch failed で落ちる。
+extra = [
+  "api.securityscorecards.dev:443",
+  "api.deps.dev:443",
+]
 
 [job."deploy-app.yaml:build"]
 classes = ["image"]
@@ -129,10 +140,20 @@ extra = [
   "*.github.io:443",
 ]
 
+[job."devskim.yaml:devskim"]
+classes = []
+extra = [
+  "api.nuget.org:443",
+  "globalcdn.nuget.org:443",
+]
+
 [job."docker-lint.yaml:docker-lint"]
 classes = ["mise"]
 
 [job."egress-check.yaml:egress-check"]
+classes = ["mise"]
+
+[job."eslint.yaml:eslint"]
 classes = ["mise"]
 
 [job."fuzz.yaml:fuzz"]
@@ -158,6 +179,12 @@ classes = ["image"]
 
 [job."go-test.yaml:go-test"]
 classes = ["image", "db"]
+
+[job."grype.yaml:grype"]
+classes = ["mise"]
+extra = [
+  "grype.anchore.io:443",
+]
 
 [job."image-scan.yaml:build"]
 classes = ["image"]

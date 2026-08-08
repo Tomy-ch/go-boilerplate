@@ -574,6 +574,9 @@ linters:
   exclusions:
     paths:
       - vendor
+      # npm が展開する依存ツリー。`flatted` のように Go 実装を同梱するパッケージがあり、
+      # そこは第三者のコードなので指摘しても直せない（pnpm 側は `.pnpm` 配下で go が自ら飛ばす）。
+      - node_modules
     rules:
       - path: (.+)_test\.go
         linters:
@@ -632,3 +635,4 @@ formatters:
       - ".*\\.gen\\.go$"
       - ".*\\.sql\\.go$"
       - ".*mock_.*\\.go$"
+      - "node_modules/.*"

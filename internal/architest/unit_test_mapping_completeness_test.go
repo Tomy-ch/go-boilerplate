@@ -85,6 +85,9 @@ func scanPackages(t *testing.T) (map[string][]prodSubject, map[string]map[string
 			if werr != nil {
 				return werr
 			}
+			if serr := skipDependencyTree(d); serr != nil {
+				return serr
+			}
 			if d.IsDir() || !strings.HasSuffix(path, ".go") {
 				return nil
 			}
@@ -484,6 +487,17 @@ func Test_collectViolations(t *testing.T) {
 			assert.Equal(t, "server.go: newServer → 候補名の TestXxx が重複: TestnewServer / Test_newServer", violations[0])
 		})
 	})
+}
+
+// skipDependencyTree は node_modules 配下を走査から外す。npm / pnpm が展開する依存には Go 実装を
+// 同梱するパッケージがあり（ESLint が引く flatted の golang/）、第三者のコードをこのリポジトリの
+// production code として数えてしまう。go の走査系は node_modules を特別扱いしないため、
+// .golangci.yaml と GO_TEST_EXCLUDE が持つのと同じ除外を、ファイルを直に歩く側にも置く。
+func skipDependencyTree(d fs.DirEntry) error {
+	if d.IsDir() && d.Name() == "node_modules" {
+		return fs.SkipDir
+	}
+	return nil
 }
 
 // moduleSubdirs は、モジュールルート配下の指定サブディレクトリの絶対パス群を返す。

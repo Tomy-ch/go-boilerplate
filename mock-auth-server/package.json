@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "test:integration": "node --test \"integration/**/*.test.ts\"",
+    "lint:security": "eslint .",
+    "lint:security:json": "eslint . --format json --output-file node_modules/.eslint-report.json",
     "lint:oapi": "redocly lint openapi/openapi.yaml",
     "gen:bundle": "redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml",
     "gen:zod": "orval --config orval.config.ts",
@@ -29,7 +31,10 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.0",
+    "eslint-plugin-security": "^4.0.1",
     "typescript": "^5.9.0",
+    "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.10"
   }
 }
