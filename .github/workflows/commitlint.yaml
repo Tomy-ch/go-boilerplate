@@ -64,6 +64,11 @@ jobs:
             proxy.golang.org:443
             sum.golang.org:443
             storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            astral.sh:443
 
       # fetch-depth: 0 is required. The default shallow checkout has neither the base branch tip
       # nor the PR's own commits, and both ends of the range resolve to a bad object.

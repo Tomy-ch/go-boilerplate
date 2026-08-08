@@ -89,6 +89,7 @@ jobs:
             registry-1.docker.io:443
             auth.docker.io:443
             production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
             *.docker.io:443
             mirror.gcr.io:443
             ghcr.io:443
@@ -104,6 +105,10 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            downloads.sqlc.dev:443
+            astral.sh:443
 
       # fetch-depth: 0 so the PR's base and head commits are present locally. The default
       # shallow checkout fetches only the merge commit, so the `git diff` that classifies the

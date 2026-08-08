@@ -67,6 +67,10 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            downloads.sqlc.dev:443
+            astral.sh:443
 
       # fetch-depth: 0 so the base commit is available for git worktree. The base
       # tree is materialized outside the workspace so the head analysis cannot walk
