@@ -358,3 +358,31 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
 継承されるのは [docs/adr/README.md](../../adr/README.md)（日本語は [README.ja.md](../adr/README.ja.md)）に書かれたとおりのもの——ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする——です。これは [MADR](https://adr.github.io/madr/) の定める ADR の形であり、[ADR-0000](../adr/0000-record-architecture-decisions.ja.md) が決めたことです。
 
 その場改訂を望むなら——生きられるのではなく出荷される設計文書にとっては正当な選択です——それはあなた自身の決定として、あなた自身の ADR に記録してください。上流がそうしていたという事実から導かないでください。
+
+<!-- dast:begin -->
+## Phase 17: DAST のセットアップを残すかを決める
+
+DAST のセットアップだけ済ませてあります。[`.github/workflows/zap-api-scan.yaml`](../../../.github/workflows/zap-api-scan.yaml) は GitHub-hosted runner の中でこのアプリケーションを起動し、OpenAPI 定義から得たエンドポイント一覧をもとに、認証済みの [OWASP ZAP](https://www.zaproxy.org/) API スキャンを当てます。週次と手動で走り、結果は code scanning へ上がり、検出でビルドを落とすことはありません。動的スキャンが要るならそのまま使ってください。追加で配線するものはありません。
+
+**設定値は、このリポジトリに同梱されていた API を記述したものであって、あなたの API のものではありません。** [`.github/zap/rules.tsv`](../../../.github/zap/rules.tsv) のしきい値、スキャンが名乗るアイデンティティ、そのスキャンが到達する面は、いずれもその API が `ci` 環境プロファイルで何を返すかから導いた値です。あなたの API について何かを主張するものではありません。エンドポイントが違えば、受容してよい検出も違います。最初の週次実行の前にワークフロー冒頭のコメントを読み、実際の API に対して両方のファイルを導き直してください。引き継いだままの `IGNORE` は、二度と誰の目にも触れない検出になります。
+
+**スキャンの到達先を指す値が 2 つあり、Phase 15 は両方をリセットします。** ワークフローは ZAP を起動する前に、保護されたオペレーション 1 つ（`PROBE_PATH`）を 1 つのアイデンティティ（`SCAN_SUBJECT`）で叩き、資格情報が受理されることを確かめます。資格情報が拒否されたスキャンは全ての保護オペレーションで 401 を集め、それでも「完了したスキャン」として報告されるからです。どちらの値もこのリポジトリに同梱されていた API を指しているため、その削除とともに撤去されます — `PROBE_PATH` は `/health` に、`SCAN_SUBJECT` は空になります。
+
+`/health` は資格情報なしで応答します。保護されたオペレーションがまだ 1 つも無い状態でもワークフローを動かせる代わりに、**何も証明しません。スキャンが未認証面しか見ていなくても実行は緑のままです。** ステップは黙って通さず毎回 warning を出しますが、読まれない warning は無いのと同じです。**保護されたオペレーションができ次第 `PROBE_PATH` をそこへ、シードに実在するアイデンティティへ `SCAN_SUBJECT` を向けてください。** それまでの DAST は、動いてはいても、存在意義である検査をしていません。
+
+要らなければ、丸ごと撤去してください。
+
+```sh
+# 撤去対象のプレビュー（何も変更しません）
+docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
+  scripts/setup/remove-dast-setting --dry-run
+
+# 撤去
+docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
+  scripts/setup/remove-dast-setting
+```
+
+ワークフロー本体・ZAP のルールファイル・[.github/workflows/README.md](../../../.github/workflows/README.md) とその日本語ミラーの該当行・この節・pin lockfile に残るスキャナ用 action のエントリ、そして最後にツール自身を削除します。有効/無効を切り替えるスイッチはありませんし、今後も設けません。残すとは残すことであり、設定されたまま無効なスキャナは、誰も読まず誰も保守しないものになります。
+
+撤去後に中身を参照したくなったら git の履歴から辿れます。撤去はコミット 1 つで、`git log -- .github/workflows/zap-api-scan.yaml` で見つかります。
+<!-- dast:end -->

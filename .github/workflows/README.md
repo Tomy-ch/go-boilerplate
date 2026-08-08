@@ -51,6 +51,8 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
 | `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in by a fork must not meet a 10-minute cap |
 | `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml` | 15 | no recent completed run to measure |
+| `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition <!-- dast:line --> |
+| `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
@@ -93,14 +95,14 @@ All three rules live in one check rather than three, because they are not three 
 
 |Workflow|File|Description|
 |---|---|---|
-|CodeQL Scan|`code-ql.yaml`|CodeQL analysis for security vulnerabilities|
+|CodeQL Scan|`code-ql.yaml`|CodeQL analysis on the `security-extended` suite, one matrix leg per language: `go`, `javascript-typescript` (mock-auth-server / docs-viewer / scripts) and `actions` (the workflow definitions themselves)|
 |Dependency Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
 |Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
-|Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
+|Image Scan|`image-scan.yaml`|Build image, generate the SBOM in both SPDX-JSON and CycloneDX-JSON, run Trivy scan|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
 |OSV Scan|`osv-scanner.yaml`|OSV database scan across the Go module graph and the npm lockfiles|
 |Release OSV Scan|`osv-release-gate.yaml`|OSV scan on PRs into develop/staging/production, failing on HIGH or above|
-|Secret Scan|`secret-scan.yaml`|gitleaks scan for committed secrets (via go_tool_runner)|
+|Secret Scan|`secret-scan.yaml`|Two independent scans of the working tree for committed secrets: gitleaks (wide regex / entropy net) and Trivy (curated rules, far fewer false positives), as separate jobs with separate verdicts|
 |Secret Scan (TruffleHog)|`trufflehog.yaml`|TruffleHog scan for *verified* secrets — credentials that are actually live|
 |Actions Static Analysis|`zizmor.yaml`|zizmor audit of the workflow / composite-action definitions themselves (same `make` gate as the pre-commit hook)|
 |Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
@@ -109,10 +111,11 @@ All three rules live in one check rather than three, because they are not three 
 |Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
 |Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
-|SAST|`sast.yaml`|Opengrep (Semgrep-compatible) scan of first-party source with taint tracking|
+|SAST|`opengrep.yaml`|Opengrep (Semgrep-compatible) scan of first-party Go and TypeScript source with taint tracking|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
 |Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
+|DAST|`zap-api-scan.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast)) <!-- dast:line -->|
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
 |Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
 
@@ -125,13 +128,14 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Tool | Pull request | Push to protected branch | Schedule |
 | --- | --- | --- | --- |
 | gitleaks | all PRs | — | weekly, full history |
+| Trivy secret | all PRs, working tree | — | weekly |
 | TruffleHog | all PRs, diff only | — | weekly, full history |
 | zizmor | when Actions files change | `develop` / `staging` / `production` / `release/*` | weekly (online audits) |
 | Dependency Review | dependency-change PRs | — | — |
 | govulncheck | Go / dependency-change PRs | same as above | weekly |
 | Trivy FS | Go / dependency-change PRs | same as above | weekly |
 | OSV-Scanner | dependency-change PRs | same as above | weekly |
-| CodeQL | Go / dependency-change PRs | same as above | weekly |
+| CodeQL | Go / TypeScript / Actions-definition-change PRs | same as above | weekly |
 | OpenSSF Scorecard | — | default branch only | weekly |
 | Image Scan | PRs into a deploy branch | — | weekly |
 | Release gates (Trivy FS / OSV) | PRs into a deploy branch | — | — |
@@ -139,13 +143,16 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Trivy config (misconfig) | Dockerfile-change PRs | same as above | — |
 | Trivy licence | same trigger as Trivy FS | same as above | weekly |
 | OSV diff | dependency-change PRs | — | — |
-| Opengrep (SAST) | Go / dependency / spec-change PRs | same as above | weekly |
+| Opengrep (SAST) | Go / TypeScript / dependency / spec-change PRs | same as above | weekly |
 | lockfile-lint | lockfile-change PRs | — | — |
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
 | capslock | `go.mod`-change PRs | — | — |
 | Go fuzzing | — | — | weekly |
+| OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly <!-- dast:line --> |
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
+
+DAST takes the next slot, `0 12`. It sits at the end of the rotation because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else. <!-- dast:line -->
 
 Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
 
@@ -160,7 +167,7 @@ Which trigger a detection notification fires on follows from who the right recip
 | `vulnerability-check.yaml` | reachable vulnerability found | schedule |
 | `osv-scanner.yaml` | promotion-blocking finding | schedule |
 
-The other scheduled scanners need no detection notification: gitleaks, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Three are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does.
+The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Three are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does.
 
 #### Overlapping surfaces
 
@@ -168,9 +175,9 @@ Several tools can detect the same class of finding. Each surface has one owner s
 
 | Surface | Owner | Also capable, deliberately not used here |
 | --- | --- | --- |
-| Dockerfile security policy | `trivy-config.yaml` | Opengrep (its Dockerfile rules are excluded in `sast.yaml`) |
+| Dockerfile security policy | `trivy-config.yaml` | Opengrep (its Dockerfile rules are excluded in `opengrep.yaml`) |
 | Dockerfile style / correctness | `docker-lint.yaml` (hadolint) | — (a different layer, not a duplicate) |
-| First-party Go source | `sast.yaml` (Opengrep) + `gosec` in golangci-lint | — |
+| First-party Go source | `opengrep.yaml` (Opengrep) + `gosec` in golangci-lint | — |
 | OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) | Spectral |
 | OpenAPI security posture | `openapi-security.yaml` (Spectral) | redocly |
 
@@ -209,9 +216,45 @@ Only `mock-auth-server/` still resolves with npm. `scripts/` and `docs-viewer/` 
 
 A pull request is audited against its base, so a finding names exactly the entries that change introduces and the PR comment persists as the record even after those versions age out of the window. The scheduled run audits every entry as a second net.
 
+<!-- dast:begin -->
+#### DAST
+
+`zap-api-scan.yaml` is the only workflow here that scans a *running* application. Every other security check reads files; this one builds the server, boots it against a seeded Postgres, and drives HTTP at it from OWASP ZAP, with the endpoint list taken from the bundled OpenAPI definition.
+
+That shape is what decided the tool. Of the six DAST products in GitHub's code-scanning template catalogue, four run the scan on the vendor's own infrastructure — which cannot reach an API that exists only inside a GitHub-hosted runner — and the two that do run in the runner both require a paid token. ZAP needs no credential and scans from inside the job, so it is the only one that can see an ephemeral target at all.
+
+**The scan runs authenticated, and that is the part most easily broken.** An unauthenticated scan collects 401 from every protected operation and stops at the surface, which looks like a completed scan and is not one. The `ci` environment profile wires the dev-only stub authenticator described in [`docs/design/auth.md`](../../docs/design/auth.md), so the credential is a `debug:<subject>` bearer token naming a seeded identity, and the job asserts that the credential is accepted before ZAP starts. Losing that assertion would not turn the check red — it would quietly shrink what the scan covers.
+
+**It is report-only by design, not by omission.** The alert thresholds in [`.github/zap/rules.tsv`](../zap/rules.tsv) are derived from what this API happens to answer today; gating a merge on them would fail pull requests over findings they were never calibrated for. Alerts go to code scanning under the `zap-dast` category and to an artifact, and only a scan that could not run fails the job. ZAP emits no SARIF of its own, so the JSON report is mapped to it in the workflow; every alert is anchored to the OpenAPI bundle, because that file is what describes the surface the finding is about and pointing at a file that exists is what makes the alert navigable.
+
+The thresholds and the scanned surface are expected to be re-derived against the API they are pointed at, and `scripts/setup/remove-dast-setting` removes the whole thing in one pass — see [Phase 17 of the setup guide](../../docs/get-started/setup-repository.md).
+<!-- dast:end -->
+
 #### Runner Hardening
 
-Every job in this directory starts with `step-security/harden-runner` in `egress-policy: audit` mode. It records the runner's outbound network calls and file-integrity events so a compromised action or transitive tool download becomes visible. `audit` only reports — moving to `block` requires a settled allowlist of endpoints, which is deliberately deferred until the audit data exists.
+Every job in this directory starts with `step-security/harden-runner` in `egress-policy: block` mode with its own `allowed-endpoints`. It resolves every outbound connection against that list and refuses the rest, so a compromised action or transitive tool download cannot exfiltrate to an endpoint the job has no business reaching. File-integrity events are still recorded alongside.
+
+The step stays **inline in every job**. Factoring it into a composite action would read as removing duplication, but the duplicated part is exactly the part that must not be shared: a single allowlist wide enough for every job is the union of all of them, which is no allowlist at all. What each job may reach is a property of that job.
+
+Each list is the base set below plus what the job demonstrably does:
+
+| Set | Endpoints | Applies to |
+| --- | --- | --- |
+| Base | harden-runner's own agent, the GitHub API / web / codeload hosts, `objects` / `raw` / `release-assets.githubusercontent.com`, `*.actions.githubusercontent.com`, `*.blob.core.windows.net` | every job — checkout, action download, artifact upload |
+| Go | `proxy.golang.org`, `sum.golang.org`, `index.golang.org`, `storage.googleapis.com`, `dl.google.com` | `setup-go`, any `go build` / `go test` / `go run` |
+| mise | `mise.jdx.dev`, `mise-versions.jdx.dev`, `aquaproj.github.io`, plus the Go and Sigstore sets | every `mise install`. aqua-backed tools resolve through GitHub releases (already in the base set), but mise then verifies their GitHub artifact attestations through Sigstore, and `go:`-backed tools resolve through the module proxy — so neither set is optional here |
+| Node | `nodejs.org`, `registry.npmjs.org`, `get.pnpm.io` | `npm ci` / `pnpm install` |
+| Python | `astral.sh`, `pypi.org`, `files.pythonhosted.org` | `uv`-resolved tooling (`sql-lint.yaml`) |
+| Registry | the Docker Hub hosts, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com` | image build / push, service containers, Trivy's DB and checks bundle |
+| Scanner data | `semgrep.dev` (Opengrep rulesets), `api.osv.dev` / `api.deps.dev` (OSV), `vuln.go.dev` (govulncheck), the Scorecard data sources | the scanner that reads them |
+| ZAP | `zaproxy.org` and its subdomains, plus the Registry set for the scanner image | `zap-api-scan.yaml` (ZAP resolves its add-on manifest at startup) <!-- dast:line --> |
+| Sigstore | `fulcio` / `rekor` / `tuf-repo-cdn` / `oauth2.sigstore.dev` | `deploy-app.yaml` (cosign keyless signing, attestation) **and every `mise install`** — mise fetches the Sigstore TUF root to verify artifact attestations, so a job that installs a tool but cannot reach `tuf-repo-cdn.sigstore.dev` fails before it runs anything |
+
+The lists are inferred from what each job does rather than measured from audit data, so the first runs are expected to surface gaps. A blocked endpoint appears in the harden-runner run summary as a denied connection — that is the thing to read when a job fails for no reason visible in its own logs, and the fix is to widen that job's list, never to drop it back to `audit`.
+
+**One job's failure mode is inverted and is called out where it lives.** `trufflehog.yaml` verifies a candidate credential by calling the service that issued it, and that set of services is open-ended. A missing endpoint there does not turn the job red; it turns a real leak into an unverified result the workflow does not report. Treat a disappearing TruffleHog finding as a possible allowlist gap.
+
+Two jobs carry an assumption worth restating when forking: `deploy-app.yaml`'s build job assumes `ghcr.io` and the public Sigstore instance, and its deploy job is a placeholder whose list is the base set only — wiring a real deployment in means adding that cloud's control-plane hosts, since the OIDC exchange is an outbound call like any other.
 
 ### Deployment (Push)
 

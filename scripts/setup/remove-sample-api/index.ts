@@ -11,7 +11,7 @@ import path from "node:path";
 import { listFilesRecursive, toAbsolutePath, toRelativePath, updateFile } from "../lib/file-utils";
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
-  SETUP_VERIFIER_DIR,
+  SETUP_SHARED_DIR_USERS,
   isScanTarget,
   isWithinRoot,
   sharedModuleTargets,
@@ -156,9 +156,11 @@ function report({ deleted, missing }: DeletionResult, stripped: StrippedFile[], 
  */
 function removeSharedModules(): void {
   const setupDir = path.join(ROOT_DIR, "scripts/setup");
-  const verifierExists = fs.existsSync(path.join(setupDir, SETUP_VERIFIER_DIR));
+  const anyUserExists = SETUP_SHARED_DIR_USERS.some((dir) =>
+    fs.existsSync(path.join(setupDir, dir)),
+  );
 
-  for (const target of sharedModuleTargets(verifierExists)) {
+  for (const target of sharedModuleTargets(anyUserExists)) {
     fs.rmSync(path.join(setupDir, target), { force: true, recursive: true });
     console.log(`🧹 初期化ツールは既に消えているため、setup/${target} も撤去しました。`);
   }

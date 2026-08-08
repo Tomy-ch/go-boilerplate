@@ -1,0 +1,408 @@
+name: DAST
+
+# OWASP ZAP's OpenAPI-driven API scan against the application started inside this runner.
+# The static scanners read the source; this one exercises the running HTTP surface.
+#
+# ZAP is the only DAST option that scans from inside the job. The alternatives run on the
+# vendor's infrastructure, which cannot reach an API that exists only in a runner.
+#
+# Report-only: alerts go to code scanning and to an artifact, and none of them fails the
+# job. A scan that could not run at all does fail — a silent non-scan is worse than a red
+# one. Tuning the thresholds in .github/zap/rules.tsv is expected; see
+# docs/get-started/setup-repository.md.
+
+on:
+  workflow_dispatch:
+  # A push to a protected branch is the state that will actually be promoted or deployed,
+  # so that is where a dynamic scan of the running surface earns its cost.
+  push:
+    branches:
+      - production
+      - staging
+      - develop
+      - 'release/*'
+  # Pull requests are otherwise excluded (a run takes minutes and this does not gate a
+  # merge). The exception is a change to this workflow or the rules it reads: nothing else
+  # exercises them, so a broken edit would first surface as a red push after review.
+  pull_request:
+    paths:
+      - '.github/workflows/zap-api-scan.yaml'
+      - '.github/zap/**'
+  schedule:
+    # Monday 12:00 UTC — the next free slot after the scanners already staggered one per
+    # hour (00:00 through 11:00). The schedule catches what a push cannot: ZAP's own rules
+    # and add-ons change while the code stands still.
+    - cron: '0 12 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
+      PORT: 8080
+      # The identity the scan authenticates as. The `ci` profile wires the dev-only stub
+      # authenticator (docs/design/auth.md), which reads the subject from a
+      # `debug:<subject>` bearer token and reports the issuer as `mock`. Seeded
+      # `user_identities` rows for that issuer key on the internal user UUID, so a
+      # `user-<name>` subject resolves to no identity and the whole scan sees 401.
+      # sample-api:replace-begin
+      SCAN_SUBJECT: 550e8400-e29b-41d4-a716-446655440000
+      # sample-api:replace-with
+      # = SCAN_SUBJECT: ''
+      # sample-api:replace-end
+    services:
+      database:
+        image: postgres:18.4-trixie
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            mise.run:443
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            pypi.org:443
+            files.pythonhosted.org:443
+            *.docker.io:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            zaproxy.org:443
+            *.zaproxy.org:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            downloads.sqlc.dev:443
+            astral.sh:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          # cache: false — this job holds security-events: write, so it must not restore a
+          # tool cache that a less privileged workflow could have written.
+          cache: false
+
+      # install_psql: false because the migration that adds the user search column needs
+      # pg_trgm and nothing else here does, so the only work left for this action is the
+      # readiness wait and one CREATE EXTENSION. The GitHub-hosted Ubuntu image already
+      # ships psql / pg_isready, and installing the client would mean opening this job's
+      # egress to the apt mirrors for a binary that is already on disk.
+      - name: Setup DB
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
+          install_psql: "false"
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
+
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
+      # A scan against an empty database only ever reaches the empty-collection branch of
+      # every read endpoint, so the seed is what gives the scan something to find.
+      - name: Migrate & seed
+        run: |
+          go run ./cmd/ migrate-up --database "${DB}"
+          go run ./cmd/ db-seed --database "${DB}"
+
+      - name: Build server
+        run: go build -o ./bin/server ./cmd/
+
+      - name: Start server
+        run: |
+          ./bin/server serve > server.log 2>&1 &
+          echo $! > server.pid
+
+      - name: Wait for /ready endpoint
+        run: |
+          set -euo pipefail
+
+          for i in {1..30}; do
+            if curl -fsS "http://localhost:${PORT}/ready" > /dev/null; then
+              echo "Readiness check OK"
+              exit 0
+            fi
+            echo "Waiting for server... ($i)"
+            sleep 2
+          done
+
+          echo "Readiness check failed"
+          echo "Server logs:"
+          cat server.log || true
+          exit 1
+
+      # An unauthenticated scan sees 401 on every protected operation and stops at the
+      # surface, so this asserts the token resolves to an identity before ZAP spends twenty
+      # minutes proving it does not.
+      #
+      # A 404 fails here too: once PROBE_PATH stops existing, the assertion stops asserting
+      # anything while still reporting green — the exact failure this step exists to catch.
+      # Re-point it at a protected operation that does exist.
+      - name: Verify the scan credential authenticates
+        env:
+          SCAN_TOKEN: debug:${{ env.SCAN_SUBJECT }}
+          # sample-api:replace-begin
+          PROBE_PATH: /v1/users/me
+          # sample-api:replace-with
+          # = PROBE_PATH: /health
+          # sample-api:replace-end
+        run: |
+          set -euo pipefail
+
+          # /health answers without a credential, so probing it proves the server is up and
+          # nothing else. It is the value left behind when the API this workflow shipped
+          # against is removed, because at that moment no protected operation exists to
+          # name — and a scan that cannot start is worse than one that warns. Re-point this
+          # at a protected operation of your own; until then the run stays green while ZAP
+          # sees only the unauthenticated surface, which is the failure this step exists to
+          # catch and cannot catch from here.
+          if [ "${PROBE_PATH}" = "/health" ]; then
+            echo "::warning::PROBE_PATH is still the unauthenticated placeholder (/health); the scan is NOT verified to be authenticated. Point it at a protected operation."
+          fi
+
+          status="$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${SCAN_TOKEN}" \
+            "http://localhost:${PORT}${PROBE_PATH}")"
+
+          case "$status" in
+            401 | 403)
+              echo "::error::the scan credential was rejected (HTTP ${status}); the scan would only see the unauthenticated surface"
+              exit 1
+              ;;
+            404)
+              echo "::error::the probe endpoint ${PROBE_PATH} does not exist (HTTP 404); re-point PROBE_PATH at a protected operation of this API, or remove the DAST setup"
+              exit 1
+              ;;
+          esac
+
+          echo "scan credential accepted (HTTP ${status})"
+
+      # The bundled definition rather than openapi/openapi.yaml: the hand-written entry
+      # point is split across openapi/paths/** and openapi/components/** with relative
+      # $ref, and ZAP's OpenAPI importer resolves internal references only, so it would
+      # import a spec with no operations in it and report a clean scan of nothing. The
+      # bundle is the same definition with every $ref inlined.
+      #
+      # ZAP runs in a container with --network=host and the workspace mounted at /zap/wrk,
+      # so both the target host and the spec path are the ones this job sees. The auth
+      # header is passed through the ZAP_AUTH_HEADER_* variables the action forwards into
+      # that container; ZAP_AUTH_HEADER_SITE keeps the credential from being replayed to
+      # any host but this one.
+      #
+      # fail_action stays false — see the header of this file. allow_issue_writing is off
+      # because a scheduled scanner filing and re-filing an issue on every run is not how
+      # anything else here reports; code scanning and the artifact are the surfaces.
+      - name: ZAP API scan
+        id: zap
+        continue-on-error: true
+        env:
+          ZAP_AUTH_HEADER: Authorization
+          ZAP_AUTH_HEADER_VALUE: Bearer debug:${{ env.SCAN_SUBJECT }}
+          ZAP_AUTH_HEADER_SITE: localhost
+        uses: zaproxy/action-api-scan@5158fe4d9d8fcc75ea204db81317cce7f9e5453d # v0.10.0
+        with:
+          target: /zap/wrk/openapi/openapi.gen.yaml
+          format: openapi
+          docker_name: 'ghcr.io/zaproxy/zaproxy:stable'
+          rules_file_name: '.github/zap/rules.tsv'
+          cmd_options: '-O http://localhost:8080'
+          fail_action: false
+          allow_issue_writing: false
+          artifact_name: zap-dast-report
+
+      # ZAP writes no SARIF of its own, so the JSON report is mapped here. Every alert
+      # instance becomes one result, and all of them are anchored to the OpenAPI bundle:
+      # a DAST finding is about the HTTP surface that file describes, and pointing at a
+      # file that exists is what makes the alert navigable in code scanning. The request
+      # that produced it is in the message, where it is not lost.
+      - name: Convert the ZAP report to SARIF
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if [ ! -f report_json.json ]; then
+            echo "::error::ZAP produced no JSON report; the scan did not complete"
+            exit 1
+          fi
+
+          jq '
+            def level: {"3": "error", "2": "warning", "1": "note", "0": "none"}[.] // "warning";
+            def plain: (. // "") | gsub("<[^>]*>"; "") | gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ");
+
+            [ (.site // [])[] | (.alerts // [])[] ] as $alerts
+            | {
+                "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+                version: "2.1.0",
+                runs: [
+                  {
+                    tool: {
+                      driver: {
+                        name: "OWASP ZAP",
+                        version: (."@version" // "unknown"),
+                        informationUri: "https://www.zaproxy.org/",
+                        rules: (
+                          $alerts
+                          | group_by(.pluginid)
+                          | map(.[0] | {
+                              id: .pluginid,
+                              name: .alert,
+                              shortDescription: { text: .alert },
+                              fullDescription: { text: (.desc | plain) },
+                              help: { text: ((.solution | plain) + " " + (.reference | plain)) },
+                              defaultConfiguration: { level: (.riskcode | level) },
+                              properties: {
+                                tags: (["security"] + (if (.cweid // "") == "" or .cweid == "-1" then [] else ["external/cwe/cwe-" + .cweid] end)),
+                                "security-severity": ({"3": "8.0", "2": "5.0", "1": "3.0", "0": "0.0"}[.riskcode] // "5.0")
+                              }
+                            })
+                        )
+                      }
+                    },
+                    results: (
+                      $alerts
+                      | map(. as $a | (.instances // [{}]) | map({
+                          ruleId: $a.pluginid,
+                          level: ($a.riskcode | level),
+                          message: {
+                            text: ($a.alert
+                              + " — " + ((.method // "GET") + " " + (.uri // "unknown"))
+                              + (if (.param // "") == "" then "" else " (param: " + .param + ")" end)
+                              + (if (.evidence // "") == "" then "" else " (evidence: " + .evidence + ")" end))
+                          },
+                          locations: [
+                            {
+                              physicalLocation: {
+                                artifactLocation: { uri: "openapi/openapi.gen.yaml" },
+                                region: { startLine: 1 }
+                              }
+                            }
+                          ],
+                          partialFingerprints: {
+                            zapAlertInstance: ($a.pluginid + ":" + (.method // "") + ":" + (.uri // "") + ":" + (.param // ""))
+                          }
+                        }))
+                      | flatten
+                    )
+                  }
+                ]
+              }
+          ' report_json.json > zap.sarif
+
+          echo "alerts: $(jq '.runs[0].results | length' zap.sarif)"
+        shell: bash
+
+      - name: Upload DAST SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: zap.sarif
+          category: zap-dast
+
+      - name: Upload DAST SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: zap-dast-sarif
+          path: zap.sarif
+
+      # The scan step is continue-on-error so that the report is always converted and
+      # uploaded, which means the outcome has to be re-asserted here. A scan that could not
+      # run is a broken check, not a clean one.
+      - name: Fail if the scan itself could not run
+        if: always() && steps.zap.outcome == 'failure'
+        run: |
+          echo "::error::the ZAP scan did not complete; see the step log above"
+          exit 1
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill "$(cat server.pid)" || true
+          fi
+
+      - name: Dump server log on failure
+        if: failure()
+        run: cat server.log || true
+
+  # A scheduled failure has no author watching it, so it is pushed to a human. cancelled
+  # counts too: a job killed by a timeout or a runner fault reports that rather than
+  # failure, and that is precisely the silent breakage this notification exists to surface.
+  notify-failure:
+    needs: dast
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.dast.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: dast
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

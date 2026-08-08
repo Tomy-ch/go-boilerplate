@@ -61,7 +61,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | 認可コード | `/oidc/authorize` | `/oidc/token`（単回）または期限切れ | 60s |
 | session | `/oidc/authorize`（ログイン）・`/bypass/session` | `/oidc/logout`（subject 単位）・`/admin/reset` | 1h |
-| access / id token | `/oidc/token`・`/bypass/token` | 期限切れ（stateless・非保存） | 300s |
+| access / id token | `/oidc/token`・`/bypass/token` | 期限切れ（stateless・非保存） | 3600s |
 
 `/admin/reset` は揮発ストア（code / session）を初期化し、鍵ストアを Phase 1 へ戻す（[鍵ローテーション](#鍵ローテーション)を参照）。鍵素材そのもの（固定 PEM）と fixture はプロセス再起動でのみ初期化される。
 

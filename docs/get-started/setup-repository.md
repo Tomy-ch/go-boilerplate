@@ -377,3 +377,54 @@ record, and a decision that changes is replaced by a new `accepted` ADR while th
 If you want in-place amendment instead — a legitimate choice for a design document that is shipped
 rather than lived — record that as a decision of your own, in your own ADR. Do not infer it from
 the fact that the upstream did it.
+
+<!-- dast:begin -->
+## Phase 17: Decide whether to keep the DAST setup
+
+The DAST setup is already done. [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
+boots this application inside a GitHub-hosted runner and drives an authenticated
+[OWASP ZAP](https://www.zaproxy.org/) API scan at it, with the endpoint list taken from the OpenAPI
+definition. It runs weekly and on demand, writes to code scanning, and never fails a build on a
+finding. If you want dynamic scanning, you can use it as it stands — nothing else needs wiring.
+
+**The configuration values describe the API that shipped with this repository, not yours.** The
+alert thresholds in [`.github/zap/rules.tsv`](../../.github/zap/rules.tsv), the identity the scan
+authenticates as, and the surface the scan reaches were all derived from what that API answers under
+the `ci` environment profile. None of it is a claim about your API: your endpoints differ, and so
+does what counts as an accepted finding. Read the workflow header before the first scheduled run and
+re-derive both files against the API you actually have — an inherited `IGNORE` is a finding nobody
+will ever see again.
+
+**Two values name what the scan reaches, and Phase 15 resets both.** Before ZAP starts, the
+workflow probes one protected operation (`PROBE_PATH`) as one identity (`SCAN_SUBJECT`) to prove the
+credential is accepted — because a scan whose credential is rejected collects 401 everywhere and
+still reports a completed run. Both values point at the API this repository shipped with, so
+removing it takes them with it: `PROBE_PATH` becomes `/health` and `SCAN_SUBJECT` is emptied.
+
+`/health` answers without a credential. It keeps the workflow runnable when no protected operation
+exists yet, and it proves nothing — **the run stays green while the scan sees only the
+unauthenticated surface.** The step says so on every run as a warning rather than passing in
+silence, but a warning nobody reads is the same as no warning. **Point `PROBE_PATH` at a protected
+operation of yours and `SCAN_SUBJECT` at an identity your seed data actually has, as soon as you
+have either.** Until you do, DAST is running but not testing what it exists to test.
+
+If you do not want it, remove the whole thing:
+
+```sh
+# Preview what will be removed (no changes are made)
+docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
+  scripts/setup/remove-dast-setting --dry-run
+
+# Remove it
+docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
+  scripts/setup/remove-dast-setting
+```
+
+It deletes the workflow, the ZAP rules file, the rows describing DAST in
+[.github/workflows/README.md](../../.github/workflows/README.md) and its Japanese mirror, this
+section, the scanner action's entry in the pin lockfile, and finally itself. There is no enable / disable switch and there will not be one: keeping
+it means keeping it, and a scanner left configured-but-off is one nobody reads and nobody maintains.
+
+If you later want to see what was there, it is in the git history — the removal is one commit, and
+`git log -- .github/workflows/zap-api-scan.yaml` finds it.
+<!-- dast:end -->

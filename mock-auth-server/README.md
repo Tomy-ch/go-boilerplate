@@ -59,7 +59,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | Authorization code | `/oidc/authorize` | `/oidc/token` (single-use) or expiry | 60s |
 | Session | `/oidc/authorize` (login) · `/bypass/session` | `/oidc/logout` (by subject) · `/admin/reset` | 1h |
-| Access / ID token | `/oidc/token` · `/bypass/token` | expiry (stateless; not stored) | 300s |
+| Access / ID token | `/oidc/token` · `/bypass/token` | expiry (stateless; not stored) | 3600s |
 
 `/admin/reset` clears the volatile stores (code / session) and returns the key store to Phase 1 (see [Key Rotation](#key-rotation)); the key material and fixtures themselves (fixed PEMs) are reset only by a process restart.
 

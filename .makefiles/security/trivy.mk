@@ -3,11 +3,13 @@
 .PHONY: trivy-fs ## 依存ライブラリの脆弱性を Trivy fs でスキャン
 .PHONY: trivy-config ## Dockerfileの設定不備を Trivy config でスキャン
 .PHONY: trivy-license ## 依存ライブラリのライセンスを Trivy fs でスキャン
+.PHONY: trivy-secret ## ワーキングツリーのシークレットを Trivy fs でスキャン
 # -----CI内で実行するコマンド群-----
 .PHONY: trivy-fs-ci ## 依存ライブラリの脆弱性を Trivy fs でスキャン(CI用)
 .PHONY: trivy-fs-release-ci ## 修正版のない脆弱性も含めて依存ライブラリをスキャン(CI用・リリースゲート)
 .PHONY: trivy-config-ci ## Dockerfileの設定不備をスキャン(CI用)
 .PHONY: trivy-license-ci ## 依存ライブラリのライセンスをスキャン(CI用)
+.PHONY: trivy-secret-ci ## ワーキングツリーのシークレットをスキャン(CI用)
 .PHONY: trivy-image-ci ## ビルド済みイメージの脆弱性をスキャン(CI用)
 .PHONY: trivy-image-gate-ci ## ビルド済みイメージを修正版のあるCRITICAL/HIGHでゲート(CI用)
 
@@ -39,6 +41,9 @@ trivy-config:
 trivy-license:
 	@docker compose run --rm go_tool_runner make trivy-license-ci
 
+trivy-secret:
+	@docker compose run --rm go_tool_runner make trivy-secret-ci
+
 # -----CI内で実行するコマンド群-----
 # 通常の依存スキャンは報告専用。修正版のない脆弱性は、その PR が持ち込んだもので
 # ない以上ここでは落とさず、trivy-fs-release-ci が昇格時にまとめて判定する。
@@ -61,6 +66,23 @@ trivy-config-ci:
 # 絞らない（方針策定前に閾値を決めると、その閾値自体が根拠のない既成事実になる）。
 trivy-license-ci:
 	trivy fs --scanners license $(TRIVY_SKIP_FLAGS) --format $(TRIVY_FORMAT) .
+
+# シークレットスキャン。trivy fs の既定 --scanners は vuln,secret だが、上の脆弱性
+# ターゲット群は --scanners vuln を明示して secret を落としているため、これは報告先が
+# 増えるだけの変更ではなく検査そのものの追加にあたる。
+#
+# gitleaks（secret-scan.yaml）との重複は意図的。gitleaks は正規表現とエントロピーで広く
+# 拾い、trivy は誤検知の少ない固定ルール集で拾う。実際、公開鍵を private-key として挙げる
+# gitleaks の誤検知は trivy 側には出ない。検出漏れが致命的な対象なので二重化を残す。
+#
+# node_modules は依存が同梱するテスト用の鍵素材を拾うだけで、本リポジトリが管理する
+# シークレットではない。severity では絞らない（シークレットは「軽微な漏洩」が無い）。
+# 許容済みの検出は .trivyignore.yaml に path 固定で載せる。config スキャンと同じく
+# --ignorefile の明示が必須。
+TRIVY_SECRET_SKIP_FLAGS := $(TRIVY_SKIP_FLAGS) --skip-dirs '**/node_modules'
+
+trivy-secret-ci:
+	trivy fs --scanners secret --ignorefile .trivyignore.yaml $(TRIVY_SECRET_SKIP_FLAGS) --format $(TRIVY_FORMAT) .
 
 # イメージスキャン。ファイルシステムスキャンと違い OS パッケージも対象に含める
 # （ベースイメージ由来の脆弱性はここでしか見えない）。対象イメージは CI がビルド

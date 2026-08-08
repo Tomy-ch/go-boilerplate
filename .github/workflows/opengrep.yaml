@@ -7,20 +7,27 @@ name: SAST
 # Scope is deliberately narrow, and each exclusion was chosen against a measured
 # full-repository run rather than guessed:
 #
-#   - Only internal / pkg / cmd / database / openapi are scanned. A whole-repo run
-#     returned 347 findings, 335 of which were plaintext-HTTP links inside the
-#     generated SchemaSpy HTML under docs/db-schema/.
+#   - Only hand-written source is scanned: internal / pkg / cmd / database / openapi
+#     on the Go side, and mock-auth-server / docs-viewer / scripts on the TypeScript
+#     side. A whole-repo run returned 347 findings, 335 of which were plaintext-HTTP
+#     links inside the generated SchemaSpy HTML under docs/db-schema/.
 #   - Dockerfiles are NOT scanned here even though the rulesets cover them. Every
 #     Dockerfile finding duplicated a Trivy DS-0002 result, and trivy-config.yaml
 #     already owns that surface with its own gate and its own documented
 #     exceptions. Two gates on one finding is one gate too many.
-#   - Generated Go and the bundled OpenAPI are excluded: they are not editable, so
-#     a finding there is not actionable.
+#   - Generated Go, the bundled OpenAPI, the orval-generated zod schemas and the
+#     dependency / build directories of the TypeScript workspaces are excluded: they
+#     are not editable, so a finding there is not actionable.
 #
-# With that scope the baseline is zero findings, which is the point — a new finding
-# is signal rather than something to scroll past. Accepted exceptions are pinned in
+# The Go scope holds a zero-finding baseline, which is the point — a new finding is
+# signal rather than something to scroll past. Accepted exceptions are pinned in
 # source with `// nosemgrep: <rule-id>` next to the reason, so they stay visible at
 # the code and still reach code scanning as suppressed SARIF results.
+#
+# The scan runs twice on purpose — once for JSON (the gate and the PR comment) and
+# once for SARIF (code scanning). The two invocations must carry an identical
+# --config / --exclude / target set, or the gate and the alert list describe
+# different scans.
 
 on:
   push:
@@ -30,20 +37,29 @@ on:
       - staging
       - production
     paths:
-      - '.github/workflows/sast.yaml'
+      - '.github/workflows/opengrep.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
       - 'openapi/**'
       - 'database/**'
+      # The TypeScript workspaces. Without these the TS rulesets below would only
+      # ever run on the weekly schedule, never on the change that introduced the
+      # pattern.
+      - 'mock-auth-server/**'
+      - 'docs-viewer/**'
+      - 'scripts/**'
   pull_request:
     paths:
-      - '.github/workflows/sast.yaml'
+      - '.github/workflows/opengrep.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
       - 'openapi/**'
       - 'database/**'
+      - 'mock-auth-server/**'
+      - 'docs-viewer/**'
+      - 'scripts/**'
   schedule:
     # Monday 10:00 UTC — the next free slot after the scanners staggered by #677
     # (00:00 through 09:00). New rules can turn existing code into a finding, so a
@@ -71,7 +87,35 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            aquaproj.github.io:443
+            semgrep.dev:443
+            *.semgrep.dev:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            downloads.sqlc.dev:443
+            astral.sh:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -104,15 +148,22 @@ jobs:
         run: |
           opengrep scan \
             --config p/golang \
+            --config p/javascript \
+            --config p/typescript \
             --config p/owasp-top-ten \
             --taint-intrafile \
             --exclude '*.gen.go' \
             --exclude '*.sql.go' \
             --exclude '*_mock.go' \
             --exclude 'openapi.gen.yaml' \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude 'coverage' \
+            --exclude 'src/generated' \
             --json \
             --output opengrep.json \
-            internal pkg cmd database openapi
+            internal pkg cmd database openapi \
+            mock-auth-server docs-viewer scripts
         shell: bash
 
       - name: Create SAST summary (Markdown)
@@ -188,15 +239,22 @@ jobs:
 
           opengrep scan \
             --config p/golang \
+            --config p/javascript \
+            --config p/typescript \
             --config p/owasp-top-ten \
             --taint-intrafile \
             --exclude '*.gen.go' \
             --exclude '*.sql.go' \
             --exclude '*_mock.go' \
             --exclude 'openapi.gen.yaml' \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude 'coverage' \
+            --exclude 'src/generated' \
             --sarif \
             --output opengrep-raw.sarif \
-            internal pkg cmd database openapi
+            internal pkg cmd database openapi \
+            mock-auth-server docs-viewer scripts
 
           jq '.runs[]?.results |= map(select((.suppressions // []) | length == 0))' \
             opengrep-raw.sarif > opengrep.sarif

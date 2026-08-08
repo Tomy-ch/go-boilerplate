@@ -252,7 +252,7 @@ This group handles linting and auto-fixing of Markdown files.
 
 ## `.makefiles/security` group
 
-This group runs local security scans (Trivy dependency scan, gitleaks secret scan, zizmor Actions audit), mainly to reproduce a CI security finding on the developer's machine. Image scanning is CI-only (`image-scan.yaml`).
+This group runs local security scans (Trivy dependency / secret scan, gitleaks secret scan, zizmor Actions audit), mainly to reproduce a CI security finding on the developer's machine. Image scanning is CI-only (`image-scan.yaml`).
 
 | Command | Description | Notes |
 | --- | --- | --- |
@@ -263,6 +263,8 @@ This group runs local security scans (Trivy dependency scan, gitleaks secret sca
 | `make trivy-config-ci` | Runs `trivy config` directly. | CI target. Gates at `CRITICAL,HIGH`; accepted exceptions live in `.trivyignore.yaml`. |
 | `make trivy-license` | Lists dependency licences. | Invokes `make trivy-license-ci` inside the `go_tool_runner` container. |
 | `make trivy-license-ci` | Runs `trivy fs --scanners license` directly. | CI target. Report-only; no severity threshold until a prohibited-licence policy exists. |
+| `make trivy-secret` | Scans the working tree for secrets with Trivy. | Invokes `make trivy-secret-ci` inside the `go_tool_runner` container. |
+| `make trivy-secret-ci` | Runs `trivy fs --scanners secret` directly. | CI target. The vulnerability targets pass `--scanners vuln` explicitly, so the secret scanner is a check of its own rather than a second view of theirs. No severity threshold; accepted detections are pinned per path in `.trivyignore.yaml`. Deliberately overlaps gitleaks: Trivy's curated rules false-positive less, gitleaks' regex / entropy net catches more. |
 | `make trivy-image-ci` | Scans a built image for vulnerabilities. | CI target. Pass the image with `TRIVY_IMAGE=`. |
 | `make trivy-image-gate-ci` | Fails on fixable `CRITICAL` / `HIGH` in a built image. | CI target. Pass the image with `TRIVY_IMAGE=`. |
 | `make secret-scan` | Scans the working tree for secrets with gitleaks. | Invokes `make secret-scan-ci` inside the `go_tool_runner` container. |

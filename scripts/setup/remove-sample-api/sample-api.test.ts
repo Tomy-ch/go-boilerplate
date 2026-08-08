@@ -1,7 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { ROOT_DIR } from "../lib/runtime";
 import {
   SETUP_SHARED_DIR,
+  SETUP_SHARED_DIR_USERS,
+  SETUP_VERIFIER_DIR,
   containsSampleMarker,
   isScanTarget,
   isWithinRoot,
@@ -203,12 +208,32 @@ describe("isWithinRoot", () => {
 
 describe("sharedModuleTargets", () => {
   describe("正常系", () => {
-    it("初期化の検証器が残っていれば共有モジュールを消さない", () => {
+    it("共有モジュールを使う他のツールが残っていれば消さない", () => {
       expect(sharedModuleTargets(true)).toEqual([]);
     });
 
-    it("初期化の検証器が既に消えていれば共有モジュールを道連れにする", () => {
+    it("使う側が全て消えていれば共有モジュールを道連れにする", () => {
       expect(sharedModuleTargets(false)).toEqual([SETUP_SHARED_DIR]);
+    });
+  });
+});
+
+describe("SETUP_SHARED_DIR_USERS", () => {
+  describe("正常系", () => {
+    // 挙げ漏らしたツールは、先にサンプル削除を実行した利用者の手元で共有モジュールごと壊れる。
+    // 壊れ方が「まだ実行していない手順が実行できない」なので、その手順に来るまで気づけない。
+    // 初期化ツール群（Phase 5）は検証器と一緒に消えるため、検証器 1 つで代表できる。
+    it("サンプル削除と独立して残りうるツールを挙げている", () => {
+      expect(SETUP_SHARED_DIR_USERS).toContain(SETUP_VERIFIER_DIR);
+      expect(SETUP_SHARED_DIR_USERS).toContain("remove-dast-setting");
+    });
+
+    it("挙げたツールが実在する", () => {
+      for (const user of SETUP_SHARED_DIR_USERS) {
+        const dir = path.join(ROOT_DIR, "scripts/setup", user);
+
+        expect(fs.existsSync(dir), user).toBe(true);
+      }
     });
   });
 });

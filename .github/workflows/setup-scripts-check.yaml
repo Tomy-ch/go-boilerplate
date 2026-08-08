@@ -34,7 +34,52 @@ jobs:
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            aquaproj.github.io:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            downloads.sqlc.dev:443
+            astral.sh:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            mise.run:443
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            pypi.org:443
+            files.pythonhosted.org:443
+            *.docker.io:443
+            mise.en.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -179,6 +224,52 @@ jobs:
 
       - name: Remove the boilerplate identity
         run: pnpm --dir scripts run tsx scripts/setup/remove-boilerplate-identity
+
+      # dast:begin
+      # The DAST removal (Phase 17) is the other optional teardown a fork may run, and like
+      # the ones above it only breaks when it runs: it deletes a workflow, strips rows out of
+      # two translated READMEs and a translated guide, and removes itself. Exercising it here
+      # also puts its Markdown edits in front of the markdownlint step below.
+      - name: Dry run of the DAST removal writes nothing
+        run: |
+          set -euo pipefail
+          before="$(git status --porcelain)"
+          pnpm --dir scripts run tsx scripts/setup/remove-dast-setting --dry-run
+          if [ "$(git status --porcelain)" != "$before" ]; then
+            echo "FAIL: --dry-run modified the working tree"
+            exit 1
+          fi
+          echo "DAST removal dry run: no writes"
+
+      - name: Remove the DAST setting
+        run: pnpm --dir scripts run tsx scripts/setup/remove-dast-setting
+
+      # Deleting the workflow is the point of the removal; leaving the tool behind would let a
+      # second run report that there is nothing left to remove, which reads as success.
+      - name: Verify the DAST setting and its tool went together
+        run: |
+          set -euo pipefail
+          for p in \
+            .github/workflows/zap-api-scan.yaml \
+            .github/zap \
+            scripts/setup/remove-dast-setting; do
+            if [ -e "$p" ]; then
+              echo "FAIL: $p was not removed"
+              exit 1
+            fi
+          done
+          if grep -rq 'dast:begin\|dast:line' .github/workflows/README.md docs/get-started/setup-repository.md; then
+            echo "FAIL: DAST markers survived the removal"
+            exit 1
+          fi
+          echo "DAST removal: OK"
+
+      # The scanner is the only user of its action, so the pin lockfile entry has to go with it
+      # — an entry nothing references fails this check, and it would fail in the fork's
+      # repository rather than in this one.
+      - name: Verify the action pin lockfile still checks out
+        run: make pin-actions-check
+      # dast:end
 
       # Stripping marker blocks edits Markdown structurally, and a block that swallows one line
       # too many leaves a broken table, an orphaned heading or an unclosed fence. Nothing else
