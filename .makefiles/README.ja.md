@@ -539,6 +539,12 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make setup-remove-boilerplate-identity` | このリポジトリをボイラープレートと呼んでいる記述を削除します。 | `node_tool_runner` で README と設定ガイドから `boilerplate` マーカーブロックを除去し、ツール自身も撤去します。`DRY_RUN=1` でプレビューできます。 <!-- boilerplate:line --> |
 | `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`reset-mock-auth-users` → `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint` を実行します。DB 再構築により削除済みテーブルが生成モデルに残らず、`tidy-lib` によりサンプルAPIだけが使っていた直接依存が go.mod から落ちます。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
 
+### ベースブランチ解決関連
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make base-branch` | 最新のリリースライン(`release/vX.Y.Z`)のブランチ名を 1 行で出力します。 | `git ls-remote` で `origin` の実状態を読むため(`scripts/base-branch`)、`git fetch` では更新されないローカルの `refs/remotes/origin/HEAD` が古くても、GitHub のデフォルトブランチが前のリリースラインを指したままでも答えは変わりません。「最新」の定義はコミット日時ではなくバージョン番号の数値比較で、その理由はパッケージコメントにあります。出力は装飾を持たないので `$(make base-branch)` でそのまま受けられます。プルリクエストが既にある場合はその `baseRefName` が正で、これはその fallback です。 |
+
 ### リリースブランチ関連
 
 | コマンド | 説明 | 補足 |

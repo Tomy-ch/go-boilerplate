@@ -71,9 +71,16 @@ Evans 原義に忠実かどうかは扱わない（`ddd-audit` / `ddd-origin-aud
 「変更ファイルのみ」モード:
 
 ```sh
-BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$'
 ```
+
+PR が既にあるならその `baseRefName` が正である。報告する drift は PR が見せている diff の中に無ければ
+ならない。PR が無い場合は `make base-branch` が `origin` の実状態から最新のリリースラインを解決する。
+fallback に `gh repo view --json defaultBranchRef` を使ってはならない。GitHub のデフォルトブランチは前の
+リリースラインを指したまま答え続けるためである。base を解決できなければ続行せず止める。空のファイル
+リストは detector を 1 つも fan-out せず drift ゼロを報告し、それは正常な実行と区別が付かない。
 
 path prefix で layer マッピングし、per-layer ファイルリストを保持（各 detector へ渡し git 再解決を防ぐ）:
 

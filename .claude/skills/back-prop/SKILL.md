@@ -78,9 +78,16 @@ is exactly the case that rots the ledger, and the one that lets a business term 
 For "changed files" mode:
 
 ```sh
-BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$'
 ```
+
+An existing pull request's `baseRefName` stays the authority — the drift you report has to sit in the
+diff the PR shows. With no PR, `make base-branch` resolves the latest release line from `origin`'s live
+state; `gh repo view --json defaultBranchRef` is not the fallback, because the GitHub default branch
+keeps answering with an earlier release line. Stop on an unresolved base rather than continuing: an
+empty file list fans out zero detectors and reports no drift, which reads exactly like a clean run.
 
 Map to layers by path prefix, keeping the per-layer file list (you pass it to each detector so it does not re-resolve git):
 

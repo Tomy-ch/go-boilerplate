@@ -77,9 +77,16 @@ Step 0 のスコープに従いパターンを選ぶ。`quick` では先に変�
 いないパターンは誰も見張っていないパターンなので、最も価値の高い finding である）:
 
 ```sh
-BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 git diff --name-only "origin/${BASE}...HEAD"
 ```
+
+PR が既にあるならその `baseRefName` が正である。選別の元にする変更コーパスは PR が見せているものと
+一致していなければならない。PR が無い場合は `make base-branch` が `origin` の実状態から最新のリリース
+ラインを解決する。fallback に `gh repo view --json defaultBranchRef` を使ってはならない。GitHub の
+デフォルトブランチは前のリリースラインを指したまま答え続けるためである。base を解決できなければ止める。
+diff が空ならパターンが 1 つも選ばれず、`quick` は何も監査しないまま正常終了してしまう。
 
 選択パターンが空なら、その旨を述べて正常終了する。
 

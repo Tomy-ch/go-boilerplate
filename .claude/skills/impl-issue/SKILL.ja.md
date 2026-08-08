@@ -75,12 +75,13 @@ gh issue comment <n> --body-file <file>
 コードに触れる前に済ませる。共有 checkout に何も落とさないため。
 
 ```bash
-# 1. 現行のリリース線を特定する。GitHub の default branch は遅れているが、直近のマージ済み PR は正確。
-gh pr list --state merged --limit 10 --json baseRefName -q '.[].baseRefName' | sort | uniq -c
+# 1. 現行のリリース線を origin の実状態から解決する。
+BASE=$(make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 
 # 2. 古いローカル ref ではなく、今の origin から切る。
-git fetch origin release/vX.Y.0
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> origin/release/vX.Y.0
+git fetch origin "$BASE"
+git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
@@ -89,11 +90,13 @@ cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 go mod vendor
 ```
 
+`make base-branch` は `origin` の実状態を読む。これ以外を使わないこと。ローカルの `refs/remotes/origin/HEAD` は clone 時に一度決まったきり `git fetch` では更新されず、GitHub のデフォルトブランチは前のリリースラインに留まり、ハーネスが提示する "Main branch" はその陳腐化したローカル symref を読んでいる。3 つとも警告なく答えるため、1 世代前のベースから切ったことは、サブエージェントが「あるはずのファイルが無い」と報告するまで表に出ない。そこまで進んだ作業は丸ごと無駄になる。
+
 `slot-acquire` が失敗を報告したら、再試行の前に `make slot-status` を見る — コマンドがエラーでもリースだけ成功していることが多い。
 
 **スロットは自分から解放しない。片付けフェーズで解放を聞きもしない。** 握ったままのコストはほぼゼロ（リースは stale になれば自動回収される）だが、作業途中で失うと DB とポートを失う。本当に終わったかを知っているのはユーザーだけ。
 
-ユーザーの指示がリリースバージョンを含まず、マージ済み PR の傾向も割れる場合は聞く。
+ユーザーの指示が解決結果と違うリリースバージョンを指していた場合は、切る前に聞く。意図的な backport 先だけは解決器に知りようがない。
 
 ## Step 3 — 計画を立て、そこで待つ
 
