@@ -1,0 +1,29 @@
+name: 'go-boilerplate CodeQL config'
+
+# Shared by every language in the matrix so the go / javascript-typescript / actions
+# jobs cannot drift apart on either the query suite or the exclusion list.
+
+# security-extended trades a higher false-positive rate for recall. Kept here rather
+# than on the init step because a per-language override is exactly the drift this
+# file exists to prevent.
+queries:
+  - uses: security-extended
+
+# Only interpreted languages (javascript-typescript, actions) honour these entries;
+# the Go analysis is scoped by what the build actually compiles.
+paths-ignore:
+  # Go dependencies vendored by `go mod vendor` (gitignored, restored during CI).
+  - vendor
+  # npm / pnpm dependencies of the tooling workspaces.
+  - '**/node_modules'
+  # SchemaSpy output: generated DB documentation that bundles third-party JS
+  # (jQuery, DataTables, AdminLTE, ...) it does not own.
+  - docs/db-schema
+  # Bundled output of the docs-viewer Vite app; the TypeScript sources under
+  # docs-viewer/src are analyzed instead.
+  - docs/portal/dist
+  # Generated documentation output: godoc HTML, the Redoc-bundled OpenAPI pages and
+  # the coverage report. None of it is editable, so a finding there is not actionable.
+  - docs/godoc
+  - docs/openapi
+  - docs/coverage
