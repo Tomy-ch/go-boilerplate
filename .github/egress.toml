@@ -85,9 +85,6 @@ classes = ["image"]
 [job."auto-generate-docs.yaml:generate-docs"]
 classes = ["image"]
 
-[job."bearer.yaml:bearer"]
-classes = ["mise"]
-
 [job."capability-diff.yaml:capability-diff"]
 classes = ["mise"]
 

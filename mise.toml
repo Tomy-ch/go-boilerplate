@@ -39,9 +39,6 @@ gitleaks = "8.30.1"
 "aqua:google/osv-scanner" = "2.4.0"
 # 最新は v0.116.1 だが公開 11 日でクールダウン 14 日に満たないため 1 つ前を採る。
 "aqua:anchore/grype" = "0.116.0"
-# 最新は v2.1.0 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
-# ライセンスは Elastic License 2.0 で OSI 承認の OSS ではない（CI 内の自己検査は制限に触れない）。
-"aqua:Bearer/bearer" = "2.0.2"
 "aqua:trufflesecurity/trufflehog" = "3.95.9"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.3.0"
 "go:github.com/cweill/gotests/gotests" = "1.9.0"
