@@ -4,8 +4,9 @@ name: Licensed Scanners Removal Check
 #
 # 撤去は template の利用者側で一度きり走るもので、失敗しても壊れるのは利用者のリポジトリであり
 # こちらでは何も赤くならない。だからここで走らせる。検証するのは 4 点で、どれも撤去した側でしか
-# 現れないものである。dry run が何も書かないこと、実行が製品ごとのコミットを積むこと、2 回目が
-# no-op であること、そして撤去後のリポジトリで pin / egress / markdown の検査が緑であること。
+# 現れないものである。dry run が何も書かないこと、実行が製品ごとのコミットを積むこと、撤去済みの
+# リポジトリで再実行しても何も起きないこと、そして撤去後のリポジトリで pin / egress / markdown の
+# 検査が緑であること。
 #
 # 最後のひとつが本命である。`make pin-actions-check` と `make egress-check` は「どの workflow も
 # 参照しないエントリ」で落ちるので、撤去の取りこぼしは撤去した人の手元で初めて赤くなる。ここで
@@ -206,17 +207,27 @@ jobs:
           make md-markdownlint-ci
         shell: bash
 
+      # 撤去はスクリプト自身と make ターゲットも道連れにするので、撤去し終えたリポジトリでは
+      # 2 回目をそもそも起動できない。べき等性が守るのは製品を 1 つ `git revert` した利用者が
+      # 再実行する状態のほうで、そこではスクリプトが戻っている。ここではそれだけを戻して
+      # 同じ状態を作り、撤去済みの製品に手を付けないことを確かめる。
       - name: A second run changes nothing
         run: |
           set -euo pipefail
+          git restore --source="${before}" --staged --worktree -- \
+            scripts/setup/remove-licensed-scanners \
+            .makefiles/github/operation/setup-repository.mk
+          git commit --quiet -m 'Chore: 再実行のため撤去スクリプトだけ戻す'
           HEAD_BEFORE=$(git rev-parse HEAD)
           make setup-remove-licensed-scanners
           if [ "$(git rev-parse HEAD)" != "${HEAD_BEFORE}" ]; then
             echo "::error::2 回目の実行がコミットを積みました（べき等ではありません）"
+            git log --oneline "${HEAD_BEFORE}..HEAD"
             exit 1
           fi
           if [ -n "$(git status --porcelain)" ]; then
             echo "::error::2 回目の実行が作業ツリーを変更しました"
+            git status --porcelain
             exit 1
           fi
           echo "second run: no further changes"
