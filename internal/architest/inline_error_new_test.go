@@ -43,6 +43,9 @@ func TestNoInlineXerrorsNew(t *testing.T) {
 			if werr != nil {
 				return werr
 			}
+			if serr := skipDependencyTree(d); serr != nil {
+				return serr
+			}
 			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
