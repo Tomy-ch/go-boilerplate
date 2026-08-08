@@ -118,6 +118,7 @@ jobs:
             registry.npmjs.org:443
             downloads.sqlc.dev:443
             astral.sh:443
+            mise.en.dev:443
 
       # fetch-depth: 0 so the PR's base and head commits are present locally. The default
       # shallow checkout fetches only the merge commit, so the `git diff` that classifies the

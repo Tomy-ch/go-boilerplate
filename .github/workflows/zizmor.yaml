@@ -87,6 +87,7 @@ jobs:
             pypi.org:443
             files.pythonhosted.org:443
             *.docker.io:443
+            mise.en.dev:443
 
       # persist-credentials: false — nothing after checkout talks to git, and this
       # job holds security-events: write, so the job token must not be left behind

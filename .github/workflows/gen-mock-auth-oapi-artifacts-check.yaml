@@ -75,6 +75,18 @@ jobs:
             mirror.gcr.io:443
             ghcr.io:443
             pkg-containers.githubusercontent.com:443
+            mise.en.dev:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            astral.sh:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            storage.googleapis.com:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
       # fetch-depth: 0 so the PR's base and head commits are present locally. The default
       # shallow checkout fetches only the merge commit, so the `git diff` that classifies the
