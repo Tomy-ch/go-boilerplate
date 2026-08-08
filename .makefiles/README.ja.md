@@ -250,7 +250,7 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 ## `.makefiles/security` 系
 
-CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン、zizmor による Actions 定義の監査）です。image スキャンは CI 専用（`image-scan.yaml`）です。
+CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy の依存 / シークレットスキャン、gitleaks シークレットスキャン、zizmor による Actions 定義の監査）です。image スキャンは CI 専用（`image-scan.yaml`）です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
@@ -261,6 +261,8 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make trivy-config-ci` | `trivy config` を直接実行します。 | CI 用ターゲット。`CRITICAL,HIGH` でゲートし、許容する例外は `.trivyignore.yaml` に置きます。 |
 | `make trivy-license` | 依存ライブラリのライセンスを列挙します。 | `go_tool_runner` コンテナ内で `make trivy-license-ci` を呼び出します。 |
 | `make trivy-license-ci` | `trivy fs --scanners license` を直接実行します。 | CI 用ターゲット。禁止ライセンス方針が未策定のため報告専用で、severity では絞りません。 |
+| `make trivy-secret` | ワーキングツリーのシークレットを Trivy でスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-secret-ci` を呼び出します。 |
+| `make trivy-secret-ci` | `trivy fs --scanners secret` を直接実行します。 | CI 用ターゲット。脆弱性側のターゲットは `--scanners vuln` を明示しているため、これは報告の追加ではなく検査そのものの追加です。severity では絞らず、許容する検出は `.trivyignore.yaml` に path 固定で置きます。gitleaks との重複は意図的で、Trivy は誤検知が少なく、gitleaks の正規表現 / エントロピー網は取りこぼしが少ない、という差を残します。 |
 | `make trivy-image-ci` | ビルド済みイメージの脆弱性をスキャンします。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
 | `make trivy-image-gate-ci` | ビルド済みイメージの修正版のある `CRITICAL` / `HIGH` で失敗します。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
 | `make secret-scan` | ワーキングツリーのシークレットを gitleaks でスキャンします。 | `go_tool_runner` コンテナ内で `make secret-scan-ci` を呼び出します。 |
