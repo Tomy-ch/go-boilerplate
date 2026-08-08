@@ -85,6 +85,9 @@ classes = ["image"]
 [job."auto-generate-docs.yaml:generate-docs"]
 classes = ["image"]
 
+[job."bearer.yaml:bearer"]
+classes = ["mise"]
+
 [job."capability-diff.yaml:capability-diff"]
 classes = ["mise"]
 
@@ -129,10 +132,20 @@ extra = [
   "*.github.io:443",
 ]
 
+[job."devskim.yaml:devskim"]
+classes = []
+extra = [
+  "api.nuget.org:443",
+  "globalcdn.nuget.org:443",
+]
+
 [job."docker-lint.yaml:docker-lint"]
 classes = ["mise"]
 
 [job."egress-check.yaml:egress-check"]
+classes = ["mise"]
+
+[job."eslint.yaml:eslint"]
 classes = ["mise"]
 
 [job."fuzz.yaml:fuzz"]
@@ -158,6 +171,12 @@ classes = ["image"]
 
 [job."go-test.yaml:go-test"]
 classes = ["image", "db"]
+
+[job."grype.yaml:grype"]
+classes = ["mise"]
+extra = [
+  "grype.anchore.io:443",
+]
 
 [job."image-scan.yaml:build"]
 classes = ["image"]
