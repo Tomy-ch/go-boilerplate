@@ -149,6 +149,12 @@ jobs:
       - name: Verify the stripped Markdown is still valid
         run: make md-markdownlint-ci
 
+      # The skills point at where things go, so a sample-shaped path left in one dangles the
+      # moment the sample is gone. markdownlint cannot see that: the link is well-formed, it
+      # just leads nowhere. Nothing else runs this against the post-removal tree.
+      - name: Verify the skills still resolve their references
+        run: make md-skill-lint-ci
+
       - name: Migrate & seed core-only schema
         run: |
           go run ./cmd/ migrate-up --database "${DB}"

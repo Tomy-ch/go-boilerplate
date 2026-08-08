@@ -16,8 +16,13 @@ const OUTSIDE = 0;
 const ACTIVE = 1;
 const SUBSTITUTE = 2;
 
-// 差し替え行の退避コメント。先頭の空白（インデント）は保持し、`//`/`#` と `=` マーカー・直後の空白1つだけ剥がす。
-const REPLACE_CONTENT = /^(\s*)(?:\/\/|#)\s*=\s?(.*)$/;
+// 差し替え行の退避コメント。先頭の空白（インデント）は保持し、コメント記号と `=` マーカー・
+// 直後の空白1つだけ剥がす。
+//
+// `<!-- = ... -->` 形式を別の枝に分けているのは、閉じ記号を剥がす処理が行末に触れるため。
+// `//`/`#` 側の行末はそのまま返す必要がある（Markdown の行末 2 スペースは hard line break で、
+// 落とすと意味が変わる）。HTML コメント側は閉じ記号を必須にして、閉じ忘れを通さない。
+const REPLACE_CONTENT = /^(\s*)(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
 
 /** 引用行。継ぎ目の両側が引用なら、空行では分断されてしまう。 */
 const QUOTE_LINE = /^\s*>/;
@@ -37,6 +42,8 @@ function markerPattern(marker: string, suffix: string): RegExp {
  * `replace-with`〜`replace-end` の差し替え行（`// =` / `# =` でコメント化された退避コード）を
  * アンコメントして残す。除去後にだけ有効化したい代替コードを、単純な行/ブロック除去では
  * 表現できない「置換」として扱うための仕組み。退避コメントは `//` 直後にスペースを置く（gocritic 準拠）。
+ * Markdown 散文では `<!-- = ... -->` を使う。`# =` は 2 つ目の H1 として描画されて markdownlint の
+ * MD025 に落ち、`// =` はその文字列が本文に出てしまうため、この形式でしか書けない。
  *
  * @throws 対応の取れないマーカー、または差し替え側に退避コメント以外の行がある場合。
  */
@@ -128,10 +135,10 @@ export function stripMarkers(content: string, marker: string): StripResult {
       const matched = REPLACE_CONTENT.exec(line);
       if (matched === null) {
         throw new Error(
-          `${marker}:replace-with 〜 replace-end の行は //= または #= で始めてください: ${line}`,
+          `${marker}:replace-with 〜 replace-end の行は // = / # = / <!-- = --> のいずれかで書いてください: ${line}`,
         );
       }
-      keep(matched[1] + matched[2]);
+      keep(matched[1] + (matched[2] ?? matched[3]));
       continue;
     }
 

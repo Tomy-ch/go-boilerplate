@@ -28,7 +28,7 @@ A separate GC job decouples cleanup entirely from the request path. It can be sc
 a fixed cadence, sized independently (batch size is configurable), and monitored or
 restarted without touching the API serving path.
 
-The scaffold's CLI job mechanism (`internal/controller/job/`) provides a natural home for
+This project's CLI job mechanism (`internal/controller/job/`) provides a natural home for
 one-shot batch operations, and the idempotency subsystem already ships a `GCUsecase` with
 a `SweepExpired` method designed for batch iteration.
 

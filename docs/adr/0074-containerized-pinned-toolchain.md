@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-The template is intended for teams with multiple contributors working on different
+This project is intended for teams with multiple contributors working on different
 machines and operating systems. Go, Node, Python, and a wide set of secondary programs
 (linters, codegen tools, migration runner, debugger, etc.) each have exact version
 requirements: an unversioned host tool can silently produce different output or behave

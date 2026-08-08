@@ -15,6 +15,7 @@ import {
   makeTargetExists,
   onlyIn,
   parseFrontmatterKeys,
+  literalParentDir,
   placeholderToRegExp,
   splitFrontmatter,
 } from "./checks";
@@ -36,6 +37,38 @@ describe("expandBraces", () => {
     });
     it("波括弧が無ければそのまま 1 件で返す", () => {
       expect(expandBraces("make lint")).toEqual(["make lint"]);
+    });
+  });
+});
+
+describe("literalParentDir", () => {
+  describe("正常系", () => {
+    it("最初のワイルドカードより手前を親として返す", () => {
+      expect(literalParentDir("internal/domain/<aggregate>/error.go")).toBe("internal/domain");
+      expect(literalParentDir("internal/domain/<aggregate>/mock/")).toBe("internal/domain");
+    });
+
+    it("`*` も `**` もワイルドカードとして扱う", () => {
+      expect(literalParentDir("internal/domain/**/*.go")).toBe("internal/domain");
+      expect(literalParentDir("pkg/uuid/*.go")).toBe("pkg/uuid");
+    });
+
+    // 途中セグメントの一部がプレースホルダでも、そのセグメントごと手前で切る。
+    it("セグメント内の部分プレースホルダでもそのセグメントを含めない", () => {
+      expect(literalParentDir("internal/domain/<aggregate>/<aggregate>_domain.go")).toBe(
+        "internal/domain",
+      );
+    });
+  });
+
+  describe("異常系", () => {
+    // 確かめられる親が無い。ここで実在を主張すると、根拠の無い通過になる。
+    it("先頭セグメントがワイルドカードなら null", () => {
+      expect(literalParentDir("<layer>/domain/x.go")).toBeNull();
+    });
+
+    it("ワイルドカードを含まないパスは null", () => {
+      expect(literalParentDir("internal/domain/user/error.go")).toBeNull();
     });
   });
 });

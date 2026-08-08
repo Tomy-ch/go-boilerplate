@@ -33,6 +33,7 @@ include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
+include .makefiles/github/base-branch.mk
 include .makefiles/github/lint.mk
 include .makefiles/github/commitlint.mk
 include .makefiles/github/pin.mk

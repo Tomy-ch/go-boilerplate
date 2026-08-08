@@ -63,11 +63,13 @@ gh pr view --json number,state,mergedAt,baseRefName,headRefName,url 2>/dev/null
     - 「新しいブランチを切る（推奨）」 — 保留中の変更に由来するブランチ名（例: `feature/<topic>`）を提案・確認し、base を更新して切り替える:
 
       ```sh
-      git fetch origin <baseRefName>
-      git switch -c <new-branch> origin/<baseRefName>
+      BASE=$(make -s base-branch)
+      test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
+      git fetch origin "$BASE"
+      git switch -c <new-branch> "origin/$BASE"
       ```
 
-      `<baseRefName>` は **アクティブなリリースライン** である — 本リポジトリは feature 作業を最新の `release/v1.X.0` を base にしており、これは GitHub のデフォルトブランチではない（デフォルトは現行リリースより遅れている）。`defaultBranchRef` よりマージ済み PR の `baseRefName` を信頼する。`git switch -c … origin/release/*` は新ブランチの upstream を **保護された** base に設定するため、最終的な push は明示 refspec（`git push -u origin <new-branch>`）を使い、bare `git push`（保護 base を対象にしてしまう）は決して使わないこと。未コミットの作業ツリー変更は新ブランチへ持ち越されるので、そのまま通常フロー（Step 2 以降）を続ける。**例外:** `--dry-run` ではブランチを切り替えず、警告と推奨コマンドを提示するだけにして、dry-run の提案に進む。
+      ここでの base は **現在の** アクティブなリリースラインであり、`make base-branch` が `origin` の実状態から解決する。マージ済み PR の `baseRefName` は使わない。あれは古い作業がマージされた先を記録しているだけで、その後に新しいリリースラインが開いていることは十分あり、そこから切ると新しい作業が 1 世代遅れて始まる。`gh repo view --json defaultBranchRef` が答えにならないのも同じ理由で、GitHub のデフォルトブランチもアクティブなラインより遅れている。`git switch -c … origin/release/*` は新ブランチの upstream を **保護された** base に設定するため、最終的な push は明示 refspec（`git push -u origin <new-branch>`）を使い、bare `git push`（保護 base を対象にしてしまう）は決して使わないこと。未コミットの作業ツリー変更は新ブランチへ持ち越されるので、そのまま通常フロー（Step 2 以降）を続ける。**例外:** `--dry-run` ではブランチを切り替えず、警告と推奨コマンドを提示するだけにして、dry-run の提案に進む。
     - 「このブランチのまま続ける」 — ユーザーがマージ済みブランチへのコミットを受け入れる場合は、現在のブランチのまま続行する。
 - **`state` が `CLOSED`**（マージされずクローズ）→ ブロックはしないが、一度ユーザーに知らせて（ブランチの PR はクローズ済み）続行する。
 

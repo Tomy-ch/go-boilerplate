@@ -22,7 +22,7 @@
 
 - `docs/spec/<feature>/domain.md` — single source of truth
 - `internal/domain/README.md` — layer 規約
-- 既存 aggregate package 1〜2 件（例: `internal/domain/user/`）— 構造 template
+- 既存の sibling aggregate package 1〜2 件（`internal/domain/<sibling>/`）— 構造 template
 - `internal/domain/<aggregate>/` — 既存確認（あれば中断）
 
 **書き込み（承認後）**:

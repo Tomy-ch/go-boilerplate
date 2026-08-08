@@ -4,7 +4,11 @@ date: YYYY-MM-DD
 deciders: []            # 決定者, 例: [maintainers]
 supersedes:             # この ADR が置き換える ADR 番号（あれば, 例: 0003）
 superseded-by:          # この ADR を置き換える ADR 番号（あれば）
+# boilerplate-only:replace-begin
 tags: []                # 例: [architecture, http]; exclusion は追加: setup-review
+# boilerplate-only:replace-with
+# = tags: []                # 例: [architecture, http]
+# boilerplate-only:replace-end
 ---
 
 # ADR-NNNN: 命令形の決定タイトル

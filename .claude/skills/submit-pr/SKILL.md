@@ -76,21 +76,23 @@ Judge the dominant nature of the diff (changed paths / commit prefixes) for the 
 
 ```sh
 gh pr view --json number,state,baseRefName,headRefName,url,title,body 2>/dev/null
-gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'
+make -s base-branch
 ```
 
 Branch on the result:
 
-- **PR exists and state is `OPEN`** → "update" path. Base branch is fixed (`baseRefName` from the result).
+- **PR exists and state is `OPEN`** → "update" path. Base branch is fixed (`baseRefName` from the result). The PR's own base is what the pull request is already merging into; nothing may re-resolve it.
 - **PR exists but state is `MERGED` / `CLOSED`** → ask the user via `AskUserQuestion`:
   - Question: 「このブランチには `<state>` 状態の PR #N があります。新規 PR を作成しますか？」
   - Options: 「新規 PR を作成する」 / 「キャンセル」
-- **No PR exists** → "create" path. Base branch defaults to the repo's default branch — but in this repo the GitHub default (`defaultBranchRef`) lags behind the active release line, so the real target is usually the **latest `release/v1.X.0`**, not the default. Prefer the latest release line and confirm it below.
+- **No PR exists** → "create" path. The base is the branch `make base-branch` resolves: the latest release line, read from `origin`'s live state. Do not use `gh repo view --json defaultBranchRef` — the GitHub default branch lags behind the active release line, and a PR opened against it targets a generation-old base.
 
-For the "create" path, if multiple `release/*` branches exist locally and the user may want a non-default target, confirm via `AskUserQuestion`:
+If `make base-branch` fails, stop and report it rather than guessing a base; opening a pull request against the wrong branch is not something the user can undo by editing the PR.
+
+For the "create" path, confirm the resolved base via `AskUserQuestion` — a backport or a deliberate hotfix target is the case the resolver cannot know about:
 
 - Question: 「ベースブランチをこれで作成しますか？」
-- Options: 「`<default-branch>` を使う」 / 「別のブランチを指定する」
+- Options: 「`<resolved-base>` を使う」 / 「別のブランチを指定する」
 
 Special early-exit cases:
 

@@ -15,7 +15,10 @@ English | [日本語](README.ja.md)
 
 Delegate "business logic", "DB access", and "domain model operations" to Usecase / Domain / Infra, and keep the Controller thin.
 
+<!-- sample-api:begin -->
 The `usercount/`, `userpurge/` and `productimagegc/` directories are sample implementations. When building an actual service, use them as a reference and remove them if unnecessary.
+
+<!-- sample-api:end -->
 
 ## Architecture
 
@@ -380,9 +383,9 @@ func JobModule() fx.Option {
             // Add job constructors here.
             idempotencygc.New,
             outboxgc.New,
-            usercount.New, // sample (removed by setup-remove-sample-api)
-            userpurge.New, // sample (removed by setup-remove-sample-api)
-            productimagegc.New, // sample (removed by setup-remove-sample-api)
+            usercount.New,      // sample-api:line
+            userpurge.New,      // sample-api:line
+            productimagegc.New, // sample-api:line
         ),
         fx.Provide(
             dijob.ProvideRunner,

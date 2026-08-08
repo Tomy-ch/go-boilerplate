@@ -28,7 +28,19 @@
 
 ## Step 0 — スコープ確認
 
-即座に `AskUserQuestion`。ベースは `gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'` で取得（本リポジトリのベースは `release/*`）。未マージのコミットがあれば「変更ファイルのみ」を既定、なければ作業ツリー / 指定パスを既定。
+即座に `AskUserQuestion`。未マージのコミットがあれば「変更ファイルのみ」を既定、なければ作業ツリー / 指定パスを既定。
+
+ベースは次の手順で解決する。レビュー対象は PR が見せている diff と一致していなければならないので、PR が
+既にあるならその `baseRefName` が正。PR が無い場合は `make base-branch` が `origin` の実状態から最新の
+リリースライン（本リポジトリのベースは常に `release/*`）を解決する。fallback に
+`gh repo view --json defaultBranchRef` を使ってはならない。GitHub のデフォルトブランチは前のリリース
+ラインを指したまま答え続け、diff が誰も依頼していない 1 世代分の変更まで黙って広がる。
+
+```sh
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
+git diff --name-only "origin/${BASE}...HEAD"
+```
 
 ```text
 質問: どの範囲をレビューしますか？

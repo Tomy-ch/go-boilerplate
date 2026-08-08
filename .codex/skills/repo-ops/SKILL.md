@@ -215,7 +215,7 @@ credentials) — a genuinely new finding is a real secret and must be removed fr
 
 ## 7. `sample-removal-check` fails in CI
 
-`scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api`
+`scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api` <!-- skill-lint-ignore -->
 deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample
 domain (user / product / purchase / …) without registering them leaves dangling references after
 removal, which the CI job catches by actually performing the removal and then building, linting, and

@@ -4,8 +4,15 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ROOT_DIR } from "../lib/runtime";
-import { stripSampleMarkers } from "./sample-api";
-import { BUILD_STEPS, MARKER_FILES, SAMPLE_DOMAINS } from "./sample-manifest";
+import { listFilesRecursive, toRelativePath } from "../lib/file-utils";
+import { containsSampleMarker, isScanTarget, stripSampleMarkers } from "./sample-api";
+import {
+  BUILD_STEPS,
+  EXCLUDED_DIRECTORIES,
+  EXCLUDED_PATH_PREFIXES,
+  MARKER_LITERAL_FILES,
+  SAMPLE_DOMAINS,
+} from "./sample-manifest";
 
 const registeredPaths = Object.values(SAMPLE_DOMAINS).flatMap((domain) => domain.paths);
 
@@ -66,39 +73,86 @@ describe("sampleTooling", () => {
   });
 });
 
-describe("MARKER_FILES", () => {
+describe("EXCLUDED_DIRECTORIES", () => {
   describe("正常系", () => {
-    it("すべて実在する", () => {
-      for (const relativePath of MARKER_FILES) {
-        expect(fs.existsSync(path.join(ROOT_DIR, relativePath)), relativePath).toBe(true);
-      }
-    });
-
-    // マーカーが別ファイルへ移った後も登録だけが残ると、除去は 0 行で静かに成功する。
-    // 実在確認では通ってしまうため、除去される行があることまで確かめないと
-    // 「共有ファイルの手当てが不要になった」と「必要な手当てを書き忘れた」を見分けられない。
-    it("登録したファイルが除去される行を実際に持つ", () => {
-      for (const relativePath of MARKER_FILES) {
-        const content = fs.readFileSync(path.join(ROOT_DIR, relativePath), "utf8");
-
-        expect(stripSampleMarkers(content).removed, relativePath).toBeGreaterThan(0);
-      }
+    // 依存の取得物を走査すると、他人のコードのコメントを誤って落としうる。
+    it("依存の取得物と VCS の内部を挙げている", () => {
+      expect(EXCLUDED_DIRECTORIES.has("node_modules")).toBe(true);
+      expect(EXCLUDED_DIRECTORIES.has("vendor")).toBe(true);
+      expect(EXCLUDED_DIRECTORIES.has(".git")).toBe(true);
     });
   });
 
   describe("異常系", () => {
-    it("同じファイルを二重に登録していない", () => {
-      expect(MARKER_FILES).toHaveLength(new Set(MARKER_FILES).size);
+    // マーカーを持つ本文が実際に居るディレクトリを外すと、除去が静かに素通りする。
+    it("本文の居るディレクトリを外していない", () => {
+      expect(EXCLUDED_DIRECTORIES.has("internal")).toBe(false);
+      expect(EXCLUDED_DIRECTORIES.has("docs")).toBe(false);
+    });
+  });
+});
+
+describe("MARKER_LITERAL_FILES", () => {
+  describe("正常系", () => {
+    it("挙げた対象がすべて実在する", () => {
+      for (const relativePath of MARKER_LITERAL_FILES) {
+        expect(fs.existsSync(path.join(ROOT_DIR, relativePath)), relativePath).toBe(true);
+      }
     });
 
-    // 削除されるファイルをマーカー除去の対象にも入れると、消えるファイルを書き換える
-    // 指定になる。どちらの手当てが要るのかを宣言の時点で取り違えている合図。
+    // 除去を止める宣言なので、対象がもうマーカー文字列を持たないなら宣言のほうが古い。
+    // 放置すると「なぜ除去されないのか」が誰にも分からないファイルが増える。
+    it("挙げた対象が実際にマーカー文字列を持つ", () => {
+      for (const relativePath of MARKER_LITERAL_FILES) {
+        const content = fs.readFileSync(path.join(ROOT_DIR, relativePath), "utf8");
+
+        expect(containsSampleMarker(content), relativePath).toBe(true);
+      }
+    });
+
+    // 宣言したファイルが本当に走査から外れることを、判定側と突き合わせて固定する。
+    it("挙げた対象が走査から外れる", () => {
+      for (const relativePath of MARKER_LITERAL_FILES) {
+        expect(isScanTarget(relativePath), relativePath).toBe(false);
+      }
+    });
+
+    // 宣言し忘れると、マーカーの形を「データ」として持つファイルが走査に入り、対応の取れない
+    // 片割れとして除去が中断する。実際に CI でしか気づけない形で一度落ちた。走査対象すべてで
+    // 除去が成立することを、削除を実行せずに確かめる。
+    it("走査対象すべてでマーカー除去が成立する", () => {
+      const offenders: string[] = [];
+
+      for (const file of listFilesRecursive(ROOT_DIR, {
+        excludedDirectories: EXCLUDED_DIRECTORIES,
+        shouldIncludeFile: (entryPath) => isScanTarget(toRelativePath(entryPath)),
+      })) {
+        try {
+          stripSampleMarkers(fs.readFileSync(file, "utf8"));
+        } catch (error) {
+          offenders.push(`${toRelativePath(file)}: ${(error as Error).message}`);
+        }
+      }
+
+      expect(offenders).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("同じファイルを二重に宣言していない", () => {
+      expect(MARKER_LITERAL_FILES).toHaveLength(new Set(MARKER_LITERAL_FILES).size);
+    });
+
+    // 削除されるパスを除去対象から外しても意味が無く、「マーカーではない」という
+    // 宣言だけが残って読み手を誤らせる。どちらの手当てが要るのかの取り違えの合図。
     it("削除対象のパスと重ならない", () => {
-      const deleted = MARKER_FILES.filter((marker) =>
-        registeredPaths.some((registered) => marker === registered || marker.startsWith(`${registered}/`)),
+      const overlapping = MARKER_LITERAL_FILES.filter((literal) =>
+        registeredPaths.some(
+          (registered) => literal === registered || literal.startsWith(`${registered}/`),
+        ),
       );
 
-      expect(deleted).toEqual([]);
+      expect(overlapping).toEqual([]);
     });
   });
 });
