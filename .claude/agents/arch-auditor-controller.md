@@ -82,7 +82,7 @@ arch-auditor-controller 結果（スコープ: <scope>）
   - <file:line>: <linter>: <message>
 
 [operationId ↔ handler method] K 件
-  internal/controller/handler/v1/users/v1_users_handler.go
+  internal/controller/handler/v1/<sibling>/v1_<sibling>_handler.go
     violation: ServerInterface に PutUsers あるが handler メソッド未実装
     source: internal/controller/handler/v1/users/gen/server.gen.go
 

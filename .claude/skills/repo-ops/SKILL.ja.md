@@ -157,7 +157,7 @@ make secret-scan          # 再現する。出力に新しいフィンガープ�
 
 ## 7. `sample-removal-check` が CI で落ちる
 
-`scripts/setup/remove-sample-api/sample-manifest.ts` は、テンプレート利用者がサンプル API を剥がすときに `make setup-remove-sample-api` が削除する全パスを宣言している。サンプルドメイン（user / product / purchase / …）配下でファイルを追加・移動・改名したのに登録しないと、削除後に参照が宙に浮く。CI はこれを、実際に削除を実行してから build / lint / test することで検出する。ローカルでは何も落ちない＝自分で走らせない限り CI 専用で見つかる。
+`scripts/setup/remove-sample-api/sample-manifest.ts` は、テンプレート利用者がサンプル API を剥がすときに `make setup-remove-sample-api` が削除する全パスを宣言している。サンプルドメイン（user / product / purchase / …）配下でファイルを追加・移動・改名したのに登録しないと、削除後に参照が宙に浮く。CI はこれを、実際に削除を実行してから build / lint / test することで検出する。ローカルでは何も落ちない＝自分で走らせない限り CI 専用で見つかる。 <!-- skill-lint-ignore -->
 
 サンプルドメインにファイルを足したら（handler / usecase / domain / repository / DML / migration / seed / spec / 統合テスト / サンプル専用の生成物）、該当ドメインのエントリにパスを追記する。共有ファイルに混ざった行はパスではなく `sample-api` マーカーコメントで囲って扱う。削除せずに影響だけ見るには:
 

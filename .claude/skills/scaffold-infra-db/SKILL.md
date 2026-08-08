@@ -77,7 +77,7 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** (unless 
 3. Read `internal/infrastructure/rdb/README.md` for the naming convention (how Repository method names typically map to sqlc gen function names) and impl rules.
 4. Read `internal/infrastructure/README.md` for layer rules.
 5. Read `internal/infrastructure/rdb/pgerror/README.md` for SQLSTATE → apperror mapping and the single-normalization-point principle (every sqlc call's error MUST flow through `pgerror.NormalizeError`).
-6. Read 1 sibling repository (`internal/infrastructure/rdb/repository/user/user_repository.go` etc.) as **concrete reference** — tracer wiring, `gen.New(driver.New(ctx, r.db))` usage, pgerror normalization placement, conversion helper pattern. The infra READMEs do not carry a full code snippet, so sibling code is the closest concrete reference; on any conflict the READMEs win.
+6. Read 1 sibling repository (`internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` etc.) as **concrete reference** — tracer wiring, `gen.New(driver.New(ctx, r.db))` usage, pgerror normalization placement, conversion helper pattern. The infra READMEs do not carry a full code snippet, so sibling code is the closest concrete reference; on any conflict the READMEs win.
 
 ## Step 2. Derive Mapping (lean A core)
 

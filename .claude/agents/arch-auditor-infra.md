@@ -85,7 +85,7 @@ arch-auditor-infra 結果（スコープ: <scope>）
   - <file:line>: <linter>: <message>
 
 [Repository ↔ sqlc gen] K 件（suggestion only）
-  internal/infrastructure/rdb/repository/user/user_repository.go
+  internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go
     suggestion: Save メソッドが sqlc gen 関数を呼んでいません
     remediation: 対応 query 追加 or 実装の見直し
 
