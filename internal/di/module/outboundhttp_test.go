@@ -28,11 +28,12 @@ func Test_allowPrivateNetworkForEnv(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("local / CI / Test は private network を許可する", func(t *testing.T) {
+		t.Run("local / CI / Test / dast は private network を許可する", func(t *testing.T) {
 			t.Parallel()
 			assert.True(t, allowPrivateNetworkForEnv(config.EnvLocal))
 			assert.True(t, allowPrivateNetworkForEnv(config.EnvCI))
 			assert.True(t, allowPrivateNetworkForEnv(config.EnvTest))
+			assert.True(t, allowPrivateNetworkForEnv(config.EnvDast))
 		})
 
 		t.Run("dev / stg / prd および未知環境は許可しない", func(t *testing.T) {

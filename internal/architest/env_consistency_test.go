@@ -30,7 +30,7 @@ const (
 )
 
 // envValueFiles は、値を突き合わせる env ファイルの全件です（ローカル既定と各環境ファイル）。
-var envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"}
+var envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dast", "env/.env.dev", "env/.env.stg", "env/.env.prd"}
 
 // targetStatusCodesPolicy は、OBS_TARGET_STATUS_CODES の環境別ポリシーの宣言です。
 // 上の段ほど広く監視し、下の段ほど本番の監視ノイズを避けて絞る単調な絞り込みです。
@@ -40,7 +40,7 @@ var envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dev", "env/.
 // 差として失敗します。特定の環境から意図的に外す場合に限り excluded の更新が要り、環境別ポリシーの
 // 変更が人手の確認を経ることになります。
 var targetStatusCodesPolicy = []statusCodeTier{
-	{files: []string{"env/.env", "env/.env.ci"}},
+	{files: []string{"env/.env", "env/.env.ci", "env/.env.dast"}},
 	{files: []string{"env/.env.dev", "env/.env.stg"}, excluded: []string{"429"}},
 	{files: []string{"env/.env.prd"}, excluded: []string{"403", "404", "405"}},
 }
@@ -291,7 +291,7 @@ func Test_policyEnvFiles(t *testing.T) {
 			t.Parallel()
 
 			assert.Equal(t,
-				[]string{"env/.env", "env/.env.ci", "env/.env.dev", "env/.env.stg", "env/.env.prd"},
+				[]string{"env/.env", "env/.env.ci", "env/.env.dast", "env/.env.dev", "env/.env.stg", "env/.env.prd"},
 				policyEnvFiles())
 		})
 	})
