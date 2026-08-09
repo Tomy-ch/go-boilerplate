@@ -8,7 +8,18 @@ name: Release OSV Scan
 # Deliberately carries no `paths` filter: a promotion PR often changes nothing under
 # go.mod or the npm lockfiles, yet it is exactly the moment the dependency state has to
 # be re-judged — and a required check must run to be able to block.
+#
+# The `push` trigger covers the same boundary crossed the other way. A commit landing
+# on a deploy branch directly is a promotion that skipped its promotion PR, which is
+# precisely the case this gate exists to judge and the one case it would otherwise
+# never see. It cannot block a commit that has already landed, so on push the failing
+# job is a record rather than a gate — but a silent landing is the worse of the two.
 on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
   pull_request:
     branches:
       - develop
@@ -21,7 +32,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

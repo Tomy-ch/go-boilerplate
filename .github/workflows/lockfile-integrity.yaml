@@ -14,11 +14,30 @@ name: Lockfile Integrity
 # known-bad at all, because the malicious artifact was never published to the
 # registry under that name.
 #
-# PR-only and gating on purpose. There is no scheduled run: the lockfiles in the
-# repository cannot change without a commit, so re-checking an unchanged tree
-# weekly would only ever restate the previous answer.
+# Gating on purpose. There is no scheduled run: the lockfiles in the repository
+# cannot change without a commit, so re-checking an unchanged tree weekly would
+# only ever restate the previous answer.
+#
+# The `push` trigger is what keeps that reasoning honest. "A commit" is not the
+# same set as "a pull request": a commit landing on a protected branch directly —
+# because the ruleset does not require a PR, or because someone bypasses it —
+# changes a lockfile without any pull_request event ever firing. Reviewing only
+# the reviewed path is the blind spot a poisoned lockfile would be pushed through,
+# so the same check runs on the push itself. It cannot block what has already
+# landed; it makes the landing visible instead of silent.
 
 on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/lockfile-integrity.yaml'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/package-lock.json'
+      - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
       - '.github/workflows/lockfile-integrity.yaml'
