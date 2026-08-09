@@ -4,7 +4,8 @@ name: Codacy Scan
 # open-source linters under one roof, with the rule selection held in the Codacy project.
 # That is both the reason it is here and its main caveat: the configuration deciding what
 # this workflow reports is not in version control, so a finding appearing or disappearing
-# is not necessarily a code change.
+# is not necessarily a code change. The scope those linters are given is in `.codacy.yaml`
+# at the repository root, which is.
 #
 # Report-only; the blocking verdict on first-party source stays with Opengrep and gosec.
 # Scanning and reporting are separate jobs for the reason sonarqube.yaml gives.

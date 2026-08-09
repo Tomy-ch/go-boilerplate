@@ -108,7 +108,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
     label: "Codacy",
     commitSubject: "CI: Codacy のワークフローを撤去する",
     presenceMarker: ".github/workflows/codacy.yaml",
-    paths: [".github/workflows/codacy.yaml"],
+    paths: [".github/workflows/codacy.yaml", ".codacy.yaml"],
     pinKeys: ["codacy/codacy-analysis-cli-action@v4.4.7", "actions/download-artifact@v7"],
     egressJobs: [
       'codacy.yaml:codacy',
