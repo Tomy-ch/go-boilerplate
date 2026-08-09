@@ -42,6 +42,8 @@ jobs:
   preflight:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
       configured: ${{ steps.token.outputs.configured }}
 
