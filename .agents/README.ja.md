@@ -38,9 +38,17 @@ Gemini なら `.gemini/`。中身の指示が 1 つのツールの契約に対�
 
 ```txt
 .agents/
+├── comment-remediation/
+│   ├── comment-remediated.toml   # コメントの在庫を掃き終えたファイル
+│   ├── comment-remediated.sh     # その照会。編集前に PreToolUse フックが実行する
+│   └── …sweep_on_touch.prompt    # 未是正だったときの手順。必要時のみ読む
 └── ddd-audit/
-    └── pattern-ledger.yaml   # DDD パターン台帳 — .claude/skills/ddd-audit/SKILL.md を参照
+    └── pattern-ledger.yaml       # DDD パターン台帳 — .claude/skills/ddd-audit/SKILL.md を参照
 ```
+
+`comment-remediation/` はここで唯一、寿命のあるドメインです。コメント方針への移行がどこまで進んだ
+かを記録するものなので、ツリーを掃き終えれば意味を失います。ディレクトリと `.claude/settings.json`
+のフック定義を削除するのが放置ではなく想定された終着点です。
 
 各ファイルは自身のスキーマをヘッダコメントで説明します。ここには再掲しません。スキーマが必要な読者は
 すでにそのファイルを開いており、二重に書けば drift するからです。

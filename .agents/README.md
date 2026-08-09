@@ -39,9 +39,18 @@ One subdirectory per artifact domain, named after the skill family that owns it.
 
 ```txt
 .agents/
+├── comment-remediation/
+│   ├── comment-remediated.toml   # files whose comment stock has been swept
+│   ├── comment-remediated.sh     # the lookup, run by a PreToolUse hook before an edit
+│   └── …sweep_on_touch.prompt    # what to do about a miss, read on demand
 └── ddd-audit/
-    └── pattern-ledger.yaml   # DDD pattern ledger — see .claude/skills/ddd-audit/SKILL.md
+    └── pattern-ledger.yaml       # DDD pattern ledger — see .claude/skills/ddd-audit/SKILL.md
 ```
+
+`comment-remediation/` is the one domain here with a finite life. It records progress through a
+migration to the comment policy, so it stops meaning anything once the tree is fully swept; deleting
+the directory and the hook entry in `.claude/settings.json` is then the intended end state, not
+neglect.
 
 Each file documents its own schema in a header comment. The schema is not repeated here: a reader who
 needs it is already opening the file, and a second copy would drift.

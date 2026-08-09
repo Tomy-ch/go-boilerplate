@@ -1,0 +1,20 @@
+# Files whose comments have been brought fully in line with the Comment Rules in
+# docs/rules.md, and stripped of prose that only makes sense while this repository is
+# still the boilerplate itself.
+#
+# Schema: one `"<repository-relative path>" = "<YYYY-MM-DD>"` entry per file. The date is
+# when the file was swept, and carries no expiry — nothing re-reads it to decide anything.
+#
+# An entry means the file's whole comment stock was reviewed, not that the file was
+# edited. A file already conforming is recorded on the day that was established.
+#
+# Absence is the default and says nothing more than "not yet swept". New comments arriving
+# after an entry are not this ledger's problem: `comment-reviewer` gates the inflow on every
+# diff, and this records only the stock that predates the policy.
+#
+# Queried by comment-remediated.sh, which the Claude Code PreToolUse hook runs before an
+# edit; what to do about a miss is in feedback_comment_remediation_sweep_on_touch.prompt,
+# alongside. This ledger exists for the migration to that policy — when nothing in the tree
+# is missing, delete this directory and the hook entry in .claude/settings.json with it.
+
+".github/CODEOWNERS" = "2026-08-09"
