@@ -1,9 +1,9 @@
-// 資格情報 / ライセンス費用を要するスキャナ 2 件の撤去対象を宣言する manifest（データ定義）。
+// 資格情報 / ライセンス費用を要するスキャナ 3 件の撤去対象を宣言する manifest（データ定義）。
 // 削除ロジックは scanner-removal.ts、git 操作は git-commit.ts を参照。
 //
-// 対象は 2 分類の和集合である。ベンダーのトークンを要するもの（SonarQube Cloud）と、private
-// リポジトリで課金されるもの（CodeQL）。Bearer は Elastic License 2.0 で CI 実行そのものは
-// 無償無制限のため、どちらにも当たらず対象外である。
+// 対象は 2 分類の和集合である。ベンダーのトークンを要するもの（SonarQube Cloud・Nancy）と、
+// private リポジトリで課金されるもの（CodeQL）。Bearer は Elastic License 2.0 で CI 実行その
+// ものは無償無制限のため、どちらにも当たらず対象外である。
 //
 // README の編集を完全一致で宣言するのは、README が動いたときに scanner-removal.ts が投げて
 // 「消えたつもりで消えていない」を防ぐため。宣言の重さはその引き換えである。
@@ -46,6 +46,7 @@ export type ScannerDomain = {
 const README_EN = ".github/workflows/README.md";
 const README_JA = ".github/workflows/README.ja.md";
 const SETUP_MK = ".makefiles/github/operation/setup-repository.mk";
+const MISE_TOML = "mise.toml";
 
 export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
   {
@@ -104,7 +105,69 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
     docSections: [],
   },
   {
-    // 2 件をまとめて説明する散文はこのドメインが持つため、最後に置く。
+    key: "nancy",
+    label: "Nancy",
+    commitSubject: "CI: Nancy のワークフローを撤去する",
+    presenceMarker: ".github/workflows/nancy.yaml",
+    paths: [".github/workflows/nancy.yaml"],
+    // download-artifact は Sonar の report ジョブと共有しているため、参照数が 0 になった側の
+    // コミットが消す。
+    pinKeys: ["actions/download-artifact@v7"],
+    egressJobs: [
+      'nancy.yaml:nancy',
+      'nancy.yaml:preflight',
+      'nancy.yaml:report',
+      'nancy.yaml:unconfigured-notice',
+    ],
+    docBlocks: [
+      {
+        file: README_EN,
+        block:
+          "|Nancy Scan|`nancy.yaml`|Sonatype Nancy scan of the Go dependency list against Sonatype Guide (report-only, and the only scanner here that publishes no SARIF; needs `GUIDE_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|\n",
+      },
+      {
+        file: README_EN,
+        block:
+          "| Nancy | Go / dependency-change PRs | same as above | weekly |\n",
+      },
+      {
+        file: README_EN,
+        block:
+          "| Nancy | Apache-2.0 | yes, with a token | yes, with a token | **Adopted** — `nancy.yaml`, report-only. It is the fifth engine over the same Go dependencies, which on its own would not justify it; what does is that its database is Sonatype's and is answered by neither Trivy, OSV, Grype nor govulncheck. It needs a free Sonatype Guide token, which is why it is in the removal set above |\n",
+      },
+      {
+        file: README_JA,
+        block:
+          "|Nancy Scan|`nancy.yaml`|Sonatype Nancy による Go 依存一覧の Sonatype Guide 照合（報告専用。ここで唯一 SARIF を publish しないスキャナ。`GUIDE_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|\n",
+      },
+      {
+        file: README_JA,
+        block:
+          "| Nancy | Go・依存変更 PR | 同上 | 週次 |\n",
+      },
+      {
+        file: README_JA,
+        block:
+          "| Nancy | Apache-2.0 | 可（トークンが要る） | 可（トークンが要る） | **採用** — `nancy.yaml`・報告専用。同じ Go 依存に対する 5 つ目のエンジンで、それだけなら採る理由にならない。採ったのは DB が Sonatype のもので、Trivy・OSV・Grype・govulncheck のいずれもそれを答えないため。無料の Sonatype Guide トークンを要するので、上の撤去対象に入れている |\n",
+      },
+      // mise.toml の pin も一緒に落とす。残しても検査は赤くならず、静かな残骸になるだけである。
+      {
+        file: MISE_TOML,
+        block: "\"aqua:sonatype-nexus-community/nancy\" = \"2.1.0\"\n",
+      },
+    ],
+    docFragments: [
+      { file: README_EN, fragment: ", `nancy.yaml` `nancy`" },
+      { file: README_EN, fragment: " + `nancy.yaml` (Nancy, Go only)" },
+      { file: README_EN, fragment: ", `0 18` Nancy" },
+      { file: README_JA, fragment: "、`nancy.yaml` `nancy`" },
+      { file: README_JA, fragment: "+ `nancy.yaml`（Nancy・Go のみ）" },
+      { file: README_JA, fragment: "、`0 18` Nancy" },
+    ],
+    docSections: [],
+  },
+  {
+    // 3 件をまとめて説明する散文はこのドメインが持つため、最後に置く。
     key: "code-ql",
     label: "CodeQL",
     commitSubject: "CI: CodeQL のワークフローを撤去する",
@@ -118,7 +181,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       ".github/workflows/licensed-scanners-removal-check.yaml",
       "scripts/setup/remove-licensed-scanners",
     ],
-    // 他の 13 本が upload-sarif に使うので、参照数の判定に委ねる（残っていれば消えない）。
+    // 他の workflow も upload-sarif に使うので、参照数の判定に委ねる（残っていれば消えない）。
     pinKeys: ["github/codeql-action@v4"],
     egressJobs: [
       'code-ql.yaml:codeql',
@@ -164,12 +227,12 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: SETUP_MK,
         block:
-          ".PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ2件を撤去し製品ごとにコミット\n",
+          ".PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ3件を撤去し製品ごとにコミット\n",
       },
       {
         file: SETUP_MK,
         block: `
-# 資格情報 / ライセンス費用を要するスキャナ 2 件の撤去。
+# 資格情報 / ライセンス費用を要するスキャナ 3 件の撤去。
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。このスクリプトは
 # 製品ごとに git commit を積むため、setup-repo と同じくホストの git を使う必要がある
 # （worktree では .git がマウント外の実体を指すファイルなので、コンテナ内からは辿れない）。
@@ -181,7 +244,9 @@ setup-remove-licensed-scanners:
     ],
     docFragments: [
       { file: README_EN, fragment: "`code-ql.yaml` (`javascript-typescript` leg) + " },
+      { file: README_EN, fragment: " + `code-ql.yaml` (`actions` leg)" },
       { file: README_JA, fragment: "`code-ql.yaml`（`javascript-typescript` レグ）+ " },
+      { file: README_JA, fragment: "+ `code-ql.yaml`（`actions` レグ）" },
     ],
     docSections: [
       { file: README_EN, heading: "#### Removing the credential-bearing scanners" },
