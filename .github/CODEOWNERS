@@ -45,3 +45,21 @@ docker/images-pin.toml                @Tomy-ch
 # bookkeeping.
 go.mod                                @Tomy-ch
 go.sum                                @Tomy-ch
+
+# The version SSOT. `tool-cooldown.yaml` gates the CLI tools declared here, and taking
+# one early is written down in the ledger above — but the file states its own exemption:
+# the language runtimes are outside that check, on the ground that a poisoned runtime is
+# not a supply-chain link a cooldown can protect. Those lines are therefore held by
+# review alone, and `make sync-versions` carries them into go.mod, the Dockerfile FROM
+# tags and the READMEs, so what is reviewed here is what every build then runs.
+mise.toml                             @Tomy-ch
+
+# The runner egress allowlist. Every scanning job runs `harden-runner` with
+# egress-policy: block, so a host is reachable only by being named here, and
+# `make egress-apply` writes the entry out to every workflow that carries the job.
+# Widening it is the decision worth reserving: a host added here is one a compromised
+# action can reach from a runner that holds the job's secrets, and the widening is a
+# line in a list rather than anything that looks like a policy change.
+# `make egress-check` holds the other half — it fails when a workflow and this file
+# disagree, and says nothing about whether an entry belongs at all.
+.github/egress.toml                   @Tomy-ch
