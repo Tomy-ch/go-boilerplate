@@ -120,13 +120,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Two SBOM formats over the same image, because consumers are split and
-      # converting between them is lossy. SPDX-JSON is what the licence / compliance
-      # side reads and what the summary below is built from; CycloneDX-JSON is what
-      # the vulnerability tooling (dependency-track, cdxgen consumers, `trivy sbom`)
-      # expects, and it carries component relationships SPDX flattens away. Syft
-      # produces both from one catalogue, so the second run costs a scan of an image
-      # already on the runner.
+      # Neither format is spare. The summary below is built from the SPDX one, and the
+      # CycloneDX one is what the `trivy sbom` step further down reads.
       - name: Generate SBOM (SPDX)
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
@@ -218,12 +213,10 @@ jobs:
           # body unescaped.
           TOTAL_PKGS=$(jq -r '.packages | length' "$FILE")
           DIGEST=$(jq -r '[.packages[] | select(.primaryPackagePurpose=="CONTAINER") | .checksums[]? | select(.algorithm=="SHA256") | .checksumValue][0] // "unknown"' "$FILE")
-          # A SHA256 digest has exactly one shape, and anything else in that field is not a digest
-          # this comment should be repeating.
+          # A SHA256 digest has exactly one shape; anything else in that field is not one.
           if ! printf '%s' "$DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then DIGEST="unknown"; fi
           DISTRO=$(jq -r '[.packages[]?.externalRefs[]? | select(.referenceType=="purl") | .referenceLocator | capture("distro=(?<distro>[^&]+)").distro] | .[0] // "unknown"' "$FILE")
           GOVERSION=$(jq -r '(.packages[] | select(.name=="stdlib") | .versionInfo) // "unknown"' "$FILE")
-          # Top 50 Go modules with versions
           jq -r '
             [ .packages[]
               | select(.name|type=="string")
@@ -234,7 +227,6 @@ jobs:
             | map("- " + .n + "@" + .v)
             | join("\n")
           ' "$FILE" > _gomods_raw.md
-          # Declared licenses histogram (top 25)
           jq -r '
             [ .packages[] | .licenseDeclared? | select(. != null and . != "NOASSERTION") ]
             | reduce .[] as $l ({}; .[$l] = ( .[$l] // 0 ) + 1)
@@ -348,6 +340,7 @@ jobs:
           title: "${{ steps.trivy.outcome == 'success' && '## Trivy Image Scan (table)' || '## ⚠️ Image Scan (Trivy): CUT OFF (no result produced)' }}"
           details-summary: 'Image Scan Results'
 
+
       # On PRs this blocks promotion; on the weekly schedule it surfaces newly published fixable
       # CRITICAL/HIGH findings on already-merged images as a red scheduled run.
       # workflow_dispatch is exploratory, so it is not gated.
@@ -357,6 +350,128 @@ jobs:
           IMAGE: ${{ steps.meta.outputs.image }}
         run: make trivy-image-gate-ci TRIVY_IMAGE="${IMAGE}"
         shell: bash
+
+      # Everything from here down is report-only and sits after the gate, so a scanner that
+      # falls over cannot stop the vulnerability verdict from being reached. Each step needs
+      # its own always(): the gate above fails on a finding, and an `if:` carrying no
+      # status-check function would inherit an implicit success() and skip.
+      #
+      # Dockle reads the built image for CIS-benchmark practice — root execution, stray
+      # setuid bits, credentials left in the layers — which is a different question from the
+      # vulnerability scan above and from hadolint's reading of the Dockerfile.
+      - name: Install dockle
+        if: always()
+        run: mise install aqua:goodwithtech/dockle
+
+      # --exit-code 0 is the default and is passed explicitly: the verdict on this image
+      # belongs to the gate above.
+      - name: Dockle scan
+        id: dockle
+        if: always()
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: |
+          set -euo pipefail
+          dockle --exit-code 0 --format json --output dockle.json "${IMAGE}"
+          dockle --exit-code 0 --format sarif --output dockle.sarif "${IMAGE}"
+        shell: bash
+
+      - name: Create Dockle summary (Markdown)
+        id: dockle-summary
+        if: always()
+        run: |
+          set -euo pipefail
+
+          # INFO is excluded from the count: dockle reports it for checks that passed with a
+          # remark, so counting it would leave the comment permanently non-zero.
+          COUNT=$(jq '[(.details // [])[] | select(.level == "FATAL" or .level == "WARN")] | length' dockle.json)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Dockle: PASS (no FATAL/WARN)" >> "$GITHUB_OUTPUT"
+            echo "No FATAL or WARN finding." > dockle-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Dockle: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            (.details // [])[]
+            | select(.level == "FATAL" or .level == "WARN")
+            | "- [\(.level)] \(.code) — \(.title)\n" + ((.alerts // []) | map("  - " + .) | join("\n"))
+          ' dockle.json > dockle-summary.md
+        shell: bash
+
+      - name: Upload Dockle SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: dockle.sarif
+          category: dockle
+
+      - name: Comment Dockle result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- dockle-result -->'
+          status: "${{ steps.dockle-summary.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ steps.dockle-summary.outputs.title || '## ⚠️ Image Scan (Dockle): CUT OFF (no result produced)' }}"
+          body-file: dockle-summary.md
+          details-summary: '📄 Summary'
+
+      # The same image the scans above read, but the package list comes from the CycloneDX
+      # SBOM syft wrote rather than from Trivy's own cataloguer, so a package one of them
+      # identifies and the other does not shows up as a difference between the two results.
+      #
+      # A malformed or unreadable SBOM fails this step, and that is the point: the SBOM is
+      # published as an artifact, and nothing else here checks that it can be consumed.
+      - name: Trivy SBOM scan
+        id: trivy-sbom
+        if: always()
+        run: make -s trivy-sbom-ci TRIVY_SBOM_FILE=sbom-cyclonedx.json TRIVY_FORMAT=table > trivy-sbom-scan.txt
+        shell: bash
+
+      - name: Trivy SBOM scan (SARIF)
+        if: always()
+        run: make -s trivy-sbom-ci TRIVY_SBOM_FILE=sbom-cyclonedx.json TRIVY_FORMAT=sarif > trivy-sbom-scan.sarif
+        shell: bash
+
+      - name: Upload Trivy SBOM SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: trivy-sbom-scan.sarif
+          category: trivy-sbom
+
+      - name: Comment Trivy SBOM scan result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- trivy-sbom-scan -->'
+          # A table rather than a count, so this step has no clean signal to be quiet on —
+          # the same reason the image scan above passes a constant.
+          status: report
+          body-file: trivy-sbom-scan.txt
+          title: "${{ steps.trivy-sbom.outcome == 'success' && '## Trivy SBOM Scan (table)' || '## ⚠️ Image Scan (Trivy SBOM): CUT OFF (no result produced)' }}"
+          details-summary: 'SBOM Scan Results'
+
+      - name: Upload Dockle and SBOM scan artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: image-practice-scan
+          path: |
+            dockle.json
+            dockle.sarif
+            dockle-summary.md
+            trivy-sbom-scan.txt
+            trivy-sbom-scan.sarif
 
   # A scheduled failure has no author watching it, so it is pushed to a human.
   # PR / push failures are deliberately excluded: they are already visible.
