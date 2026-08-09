@@ -125,6 +125,28 @@ jobs:
             release-assets.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
             sonarcloud.io:443
             *.sonarcloud.io:443
             binaries.sonarsource.com:443
@@ -139,6 +161,31 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install node and pnpm
+        run: mise install node npm:pnpm
+
+      - name: Install script dependencies
+        run: pnpm install --dir scripts --frozen-lockfile --ignore-scripts
+
+      # The scripts test suite's 1:1 gate resolves callable exports through TypeScript. Its
+      # docs-viewer and mock-auth-server scans must have dependencies, or unresolved imports
+      # would make the gate fail before the coverage report is generated.
+      - name: Install trees checked by the scripts test suite
+        run: |
+          set -euo pipefail
+          pnpm install --dir docs-viewer --frozen-lockfile --ignore-scripts
+          npm ci --prefix mock-auth-server --ignore-scripts
+
+      - name: Generate TypeScript coverage
+        run: pnpm --dir scripts run test
 
       - name: SonarQube Cloud scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1

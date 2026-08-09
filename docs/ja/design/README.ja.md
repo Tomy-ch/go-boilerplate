@@ -33,6 +33,7 @@ English: [README.md](../../design/README.md)
 | [auth.ja.md](auth.ja.md) | 認証 | RS 側の JWT / JWKS 検証と開発用 OIDC provider（`mock-auth-server`） | [jwt](../../../internal/infrastructure/auth/jwt/README.ja.md) |
 | [security.ja.md](security.ja.md) | セキュリティ姿勢 | 脅威モデル、各制御が何のためにあるか（強制 / 検知 / 抑止）、どこで発火するか | [workflows](../../../.github/workflows/README.ja.md) |
 | [context-map.ja.md](context-map.ja.md) | コンテキストマップ | このシステムが周囲のシステムとどう関係しているかを辺ごとに | [boundary](../../../internal/usecase/boundary/README.ja.md) |
+| [agent-environment.ja.md](agent-environment.ja.md) | エージェント環境 | 指示、機械的 gate、独立 review、負荷を考慮した検証がどう協調するか | [AGENTS.md](../../../AGENTS.md) |
 
 ## 読む順序
 

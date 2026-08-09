@@ -15,6 +15,10 @@ scripts/bin/
 # graphify の出力（graph.json / GRAPH_REPORT.md 等）。コード変更ごとに動く派生物
 graphify-out/
 
+# Codex が issue ごとに作成する linked worktree。親 checkout から未追跡に見えるため、
+# worktree 自身を含めて除外する。
+.codex/worktrees/
+
 # vitest のカバレッジ出力。各 vitest.config は reporter を text へ絞っているが、
 # --coverage.reporter=html を直に指定した実行が生む書き出しをコミット対象から外す。
 # 裸の coverage/ は追跡・公開している docs/coverage/（Go 側）にも一致してしまうため、

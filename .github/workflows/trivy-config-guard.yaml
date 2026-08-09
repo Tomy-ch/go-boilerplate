@@ -1,7 +1,7 @@
 name: Config Scan (required-check guard)
 
 # Skip-guard companion for trivy-config.yaml. The `trivy-config` job is registered
-# as a required status check, but trivy-config.yaml only triggers when the PR
+# in `.github/settings/branch-protection.json` as a required status check, but trivy-config.yaml only triggers when the PR
 # touches its `paths`; a PR that changes no Dockerfile would never report the
 # `trivy-config` context and would block merging forever.
 #

@@ -1,11 +1,11 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package command は、購入の書き込み操作（CommandService）のインターフェースを定義します（ADR-0027）。
+// Package command は、購入の書き込み操作（CommandService）のインターフェースを定義します（ADR-0029）。
 // 実装は infra 層に置き、渡された ctx のトランザクションに参加します。outbox 発行は含めません（usecase 責務）。
 //
 // 所在が usecase 層なのは、CommandService がトランザクションの道具であり、所有者はトランザクションを
 // 開く側だからです。パッケージ名 command はワークフローの名であって集約の名ではありません。この配置を
-// 動かす判断は docs/adr/0027-lightweight-cqrs.md § Command Service の更新を伴います。
+// 動かす判断は docs/adr/0029-lightweight-cqrs.md § Command Service の更新を伴います。
 package command
 
 import (

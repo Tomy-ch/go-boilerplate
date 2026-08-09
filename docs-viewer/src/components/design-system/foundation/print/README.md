@@ -4,7 +4,7 @@
 
 紙とその代替（PDF 保存）へ出したときの体裁を定める CSS 基盤です。React component は公開しません。
 
-ADR [0051](../../../../docs/adr/0051-styling-system.md) §4 は拡張点（`print:` variant / `@media print`）だけを定め、最小実装の同梱は実装フェーズの判断としていました。これがその実装です。
+ADR [0053](../../../../docs/adr/0053-styling-system.md) §4 は拡張点（`print:` variant / `@media print`）だけを定め、最小実装の同梱は実装フェーズの判断としていました。これがその実装です。
 
 ## 何を持つか
 
@@ -38,7 +38,7 @@ ADR [0051](../../../../docs/adr/0051-styling-system.md) §4 は拡張点（`prin
 
 何を印刷するかは持ちません。画面の構造、業務内容、印刷の実行（`window.print()`）はいずれもこの外側です。
 
-PDF をサーバで組む場合は backend の責務です（ADR [0070](../../../../docs/adr/0070-backend-role-separation.md)）。ここが担うのは印刷可能な HTML と CSS を出すところまでで、その先は境界として切ります。
+PDF をサーバで組む場合は backend の責務です（ADR [0072](../../../../docs/adr/0072-backend-role-separation.md)）。ここが担うのは印刷可能な HTML と CSS を出すところまでで、その先は境界として切ります。
 
 ## 配色
 

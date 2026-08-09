@@ -47,7 +47,7 @@ SDK の失敗は各呼び出し箇所（`Put` / `List` / `Delete`）で `apperro
 
 ## 既定で配線される — SQS adapter との違い
 
-この adapter は既定の DI グラフに**入っています**。したがって `aws-sdk-go-v2/service/s3` と SDK コアは出荷バイナリにリンクされます。[`queue/sqs`](../queue/sqs/README.ja.md) は削除可能なサンプル群からのみ配線されるため、サンプルを削除すれば `service/sqs` はバイナリから外れます（[ADR-0048](../../../docs/ja/adr/0048-broker-sdk-isolation-measured-as-coupling.ja.md)）。
+この adapter は既定の DI グラフに**入っています**。したがって `aws-sdk-go-v2/service/s3` と SDK コアは出荷バイナリにリンクされます。[`queue/sqs`](../queue/sqs/README.ja.md) は削除可能なサンプル群からのみ配線されるため、サンプルを削除すれば `service/sqs` はバイナリから外れます（[ADR-0050](../../../docs/ja/adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md)）。
 
 この非対称性は意図的です。worker はブローカーが選ばれるまでブローカーを持ちませんが、オブジェクトストレージのポートは最初から使われており、宣言以上のものであるためには動く実装が要ります。何も保存しない構成は `InfrastructureModule()` から `objectStorageModule()` を外せます。
 
@@ -69,7 +69,7 @@ seam は基盤非依存ですが、背後に何も無いまま出された抽象
 |Azure|Blob Storage|`mcr.microsoft.com/azure-storage/azurite`|MIT|Microsoft|
 |GCP|Cloud Storage|`fsouza/fake-gcs-server`|BSD-2-Clause|fsouza（個人メンテナ）|
 
-選定基準はここでの他の依存と同じく「1 コンポーネント 1 責務」（[ADR-0072](../../../docs/adr/0072-library-selection-policy.md)）です。したがって、クラウド一式をエミュレートするスイートよりも単機能のエミュレータを優先します。各選択の補足は次のとおりです。
+選定基準はここでの他の依存と同じく「1 コンポーネント 1 責務」（[ADR-0074](../../../docs/adr/0074-library-selection-policy.md)）です。したがって、クラウド一式をエミュレートするスイートよりも単機能のエミュレータを優先します。各選択の補足は次のとおりです。
 
 - **Garage** は S3 API だけを話し、checkout ごとに動かせる程度に小さいままです。AGPL-3.0 の義務は改変した Garage を配布する場合に生じるものであり、公開イメージを開発時の依存として動かす分には、それと通信するアプリケーション側に義務は生じません
 - **Azurite** は Microsoft 自身のエミュレータで、Blob と Queue の**両方**を賄います。したがって Azure は、この seam と worker seam の 2 つに対して 1 コンテナで済みます

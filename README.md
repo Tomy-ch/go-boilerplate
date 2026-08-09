@@ -277,6 +277,15 @@ of strong framework lock-in. The maintainer may provide dependency updates, secu
 architectural improvements, but issue-response deadlines, guaranteed bug fixes and long-term
 maintenance commitments are **not guaranteed**.
 
+### This repository's branch-rule exception
+
+The template declares code-owner review and seven required status checks in
+`.github/settings/branch-protection.json`. This repository applies them with single-maintainer
+relaxations: no approving review or last-push approval is required, unresolved review threads do
+not block, and rebase merge is allowed. The seven status checks and CODEOWNERS review remain
+required. This is this repository's operational state, not a recommendation for a derived project;
+replace or remove this subsection when rewriting this README during setup.
+
 <!-- boilerplate-only:begin -->
 Planned future releases: Frontend / Infrastructure / Observability boilerplates.
 

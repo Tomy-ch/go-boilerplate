@@ -91,6 +91,12 @@ gh issue comment <n> --body-file <file>
 
 コードに触れる前に済ませる。共有 checkout に何も落とさないため。
 
+既存 worktree を再開する場合は、まず状態を変えずに確認する。worktree のパス、`vendor/` の有無、`.gobp-db-slot` の有無を確認する。slot が無い場合、DB 作業を始める直前に `make slot-acquire` を実行する必要がある。会話を再開するだけで取得してはならない。再開時の無条件な slot 取得や DB 再初期化は禁止する。
+
+### [Codex側の差分]
+
+このリポジトリでは Codex の session-start hook 契約を検証できていない。そのため再開確認は `.codex/hooks.json` ではなく Step 2 に置く。skill を同期するときもこの位置を保つこと。Claude 側の session hook が同じ観測を行っても、Codex 側で再開時の DB slot 取得や DB 再初期化を起こしてはならない。
+
 ```bash
 # 1. origin の live state から現行のリリース線を解決する。
 BASE=$(make -s base-branch)
@@ -98,14 +104,17 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 
 # 2. 古いローカル ref ではなく、今の origin から切る。
 git fetch origin "$BASE"
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
+mkdir -p .codex/worktrees
+git worktree add -b feature/<n>-<slug> .codex/worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
-cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
+cd .codex/worktrees/<n>-<slug> && make slot-acquire
 
 # 4. 新規 worktree には vendor/ が無く、air は --mod=vendor でビルドするため、これが無いと serve が失敗する。
 go mod vendor
 ```
+
+`.codex/worktrees/` は trusted workspace の内側に置く linked worktree のコンテナである。通常作業は sandbox の書込み境界をまたがない。親 checkout からは各 linked worktree が未追跡に見えるため、このディレクトリは ignore する。親 checkout で `git clean -fdx` を実行してはならない。これらの worktree を削除し得るためである。リポジトリの local-safety rule は `git clean` を禁止している。このディレクトリを掃除するための例外を求めてはならない。
 
 `make base-branch` は `origin` の live state を読む。この用途で他の情報は使わない。ローカルの
 `refs/remotes/origin/HEAD` は clone 時に一度だけ設定され、`git fetch` では更新されない。GitHub の
@@ -295,7 +304,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 
 - [ ] `ask the user explicitly` の対話 1 回で 3 モードを確認した。
 - [ ] 着手コメントを投稿した（issue ↔ ベースの食い違いを含む）。
-- [ ] fetch 済みのベースから worktree を作成、スロットをリース、`go mod vendor` 実行。
+- [ ] fetch 済みのベースから worktree を作成。DB slot は DB 作業開始時にのみリースし、必要なら `go mod vendor` を実行した。
 - [ ] 別モデルが計画を作成、必須 4 セクションが揃い、実装前に承認された。
 - [ ] trip-wire を進行モードどおりに処理した。黙って吸収したものが無い。
 - [ ] 計画と実差分を突合した。

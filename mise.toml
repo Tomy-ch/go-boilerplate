@@ -6,7 +6,7 @@
 # FROM タグ・関連 README へ伝播する。短い名前で解決できないツールは backend を明示する。
 #
 # PyPI のツールだけはここに書かない。バージョンの宣言は python/*.in、推移依存まで含めた
-# 解決結果と sha256 は python/*.txt が持つ（ADR-0075）。
+# 解決結果と sha256 は python/*.txt が持つ（ADR-0077）。
 min_version = "2026.6.0"
 
 [tools]

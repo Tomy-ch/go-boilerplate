@@ -128,6 +128,18 @@ gh issue comment <n> --body-file <file>
 
 Do this before any code is touched, so nothing lands in a shared checkout.
 
+When resuming an existing worktree, first inspect it without changing state: confirm the worktree
+path, whether `vendor/` exists, and whether `.gobp-db-slot` exists. A missing slot means that DB work
+must run `make slot-acquire` immediately before it begins; do **not** acquire it merely to resume the
+conversation. Never run slot acquisition or DB reinitialization as an unconditional resume action.
+
+### [Codex-side difference]
+
+Codex has no verified session-start hook contract in this repository. This resume check therefore
+lives in Step 2 rather than in `.codex/hooks.json`. Keep it here when synchronizing the skill: a
+Claude-side session hook may provide the same observation, but must not cause Codex to acquire a DB
+slot or reinitialize a database on resume.
+
 ```bash
 # 1. Resolve the active release line off origin's live state.
 BASE=$(make -s base-branch)
@@ -135,14 +147,21 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 
 # 2. Branch from current origin, not a stale local ref.
 git fetch origin "$BASE"
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
+mkdir -p .codex/worktrees
+git worktree add -b feature/<n>-<slug> .codex/worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 4000+N.
-cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
+cd .codex/worktrees/<n>-<slug> && make slot-acquire
 
 # 4. A fresh worktree has no vendor/ and air builds with --mod=vendor, so serve would fail without this.
 go mod vendor
 ```
+
+`.codex/worktrees/` is a linked-worktree container inside the trusted workspace, so ordinary work
+does not cross the sandbox write boundary. It is ignored because the parent checkout otherwise sees
+each linked worktree as untracked. Never run `git clean -fdx` in the parent checkout: it can delete
+these worktrees. The repository's local-safety rule forbids `git clean`; do not request an exception
+to clean this directory.
 
 `make base-branch` reads `origin`'s live state. Use nothing else for this: the local
 `refs/remotes/origin/HEAD` is set once at clone time and `git fetch` never updates it, the GitHub
@@ -383,7 +402,7 @@ decision points this skill exists to create.
 
 - [ ] Modes confirmed in one `ask the user explicitly` interaction.
 - [ ] Kickoff comment posted, including issue-vs-base discrepancies.
-- [ ] Worktree created from a freshly fetched base; slot leased; `go mod vendor` run.
+- [ ] Worktree created from a freshly fetched base; DB slot leased only when DB work begins; `go mod vendor` run when needed.
 - [ ] Plan drafted by a different model, all four sections present, approved before implementation.
 - [ ] Trip-wires handled per flow mode; nothing silently absorbed.
 - [ ] Plan reconciled against the actual diff.
