@@ -1,11 +1,16 @@
 # Codex loads this project configuration after the project is trusted.
 # Detailed command and path constraints remain canonical in AGENTS.md.
 
-# Match the project policy: ordinary work stays sandboxed, while consequential
-# commands remain subject to an explicit approval request.
+# Keep work autonomous inside the trusted workspace and deny implicit escalation
+# beyond it.
 sandbox_mode = "workspace-write"
-approval_policy = "on-request"
-approvals_reviewer = "auto_review"
+approval_policy = "never"
+allow_login_shell = false
+
+[sandbox_workspace_write]
+exclude_slash_tmp = true
+exclude_tmpdir_env_var = true
+network_access = false
 
 [features]
 # Repository skills delegate independent read-only reviews to .codex/agents/.

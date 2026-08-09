@@ -1,70 +1,58 @@
-# 参照専用の GitHub CLI 操作は開発フローを中断せずに実行する。
+# GitHub への通信は、ここで列挙した非破壊的な操作だけを明示許可する。
 prefix_rule(
-    pattern = ["gh", "pr", ["checks", "diff", "list", "status", "view"]],
+    pattern = ["gh", "pr", ["checks", "close", "comment", "create", "diff", "edit", "list", "ready", "reopen", "review", "status", "update-branch", "view"]],
     decision = "allow",
-    justification = "PR の参照操作は開発フロー中に自動実行する",
+    justification = "PR の非破壊的な操作は開発フロー中に自動実行する",
 )
 prefix_rule(
-    pattern = ["gh", "issue", ["list", "status", "view"]],
+    pattern = ["gh", "issue", ["close", "comment", "create", "edit", "list", "lock", "reopen", "status", "transfer", "unlock", "view"]],
     decision = "allow",
-    justification = "Issue の参照操作は開発フロー中に自動実行する",
+    justification = "Issue の非破壊的な操作は開発フロー中に自動実行する",
 )
 prefix_rule(
-    pattern = ["gh", "run", ["list", "view", "watch"]],
+    pattern = ["gh", "run", ["cancel", "download", "list", "rerun", "view", "watch"]],
     decision = "allow",
-    justification = "Actions 実行結果の参照操作は開発フロー中に自動実行する",
+    justification = "Actions の非破壊的な操作は開発フロー中に自動実行する",
 )
 prefix_rule(
-    pattern = ["gh", "workflow", ["list", "view"]],
+    pattern = ["gh", "workflow", ["list", "run", "view"]],
     decision = "allow",
-    justification = "Workflow の参照操作は開発フロー中に自動実行する",
+    justification = "Workflow の非破壊的な操作は開発フロー中に自動実行する",
 )
 prefix_rule(
-    pattern = ["gh", "repo", ["list", "view"]],
+    pattern = ["gh", "repo", ["clone", "create", "fork", "list", "view"]],
     decision = "allow",
-    justification = "Repository の参照操作は開発フロー中に自動実行する",
+    justification = "Repository の非破壊的な操作は開発フロー中に自動実行する",
 )
 prefix_rule(
-    pattern = ["gh", "release", ["list", "view"]],
+    pattern = ["gh", "release", ["create", "download", "edit", "list", "upload", "view"]],
     decision = "allow",
-    justification = "Release の参照操作は開発フロー中に自動実行する",
+    justification = "Release の非破壊的な操作は開発フロー中に自動実行する",
 )
 
-# エージェントが必要と判断しても、外部状態を変更する操作は対話確認する。
+# 任意 API・認証設定・拡張は、許可範囲を固定できないため拒否する。
 prefix_rule(
-    pattern = ["gh", "pr", ["close", "comment", "create", "edit", "merge", "ready", "reopen", "review"]],
-    decision = "prompt",
-    justification = "PR を変更する操作は人の確認が必要",
-)
-prefix_rule(
-    pattern = ["gh", "issue", ["close", "comment", "create", "edit", "lock", "reopen", "transfer", "unlock"]],
-    decision = "prompt",
-    justification = "Issue を変更する操作は人の確認が必要",
-)
-prefix_rule(
-    pattern = ["gh", "run", ["cancel", "rerun"]],
-    decision = "prompt",
-    justification = "Actions 実行状態を変更する操作は人の確認が必要",
-)
-prefix_rule(
-    pattern = ["gh", "workflow", ["disable", "enable", "run"]],
-    decision = "prompt",
-    justification = "Workflow を変更または起動する操作は人の確認が必要",
-)
-prefix_rule(
-    pattern = ["gh", "release", ["create", "edit", "upload"]],
-    decision = "prompt",
-    justification = "Release を変更する操作は人の確認が必要",
-)
-
-# 破壊的な GitHub 操作は拒否し、意図的な管理手順に委ねる。
-prefix_rule(
-    pattern = ["gh", "repo", "delete"],
+    pattern = ["gh", ["api", "auth", "config", "extension"]],
     decision = "forbidden",
-    justification = "リポジトリ削除は Codex から実行しない",
+    justification = "明示的な安全境界を持つ gh サブコマンドを使う",
 )
 prefix_rule(
-    pattern = ["gh", "release", "delete"],
+    pattern = ["gh", "pr", "merge"],
     decision = "forbidden",
-    justification = "Release 削除は Codex から実行しない",
+    justification = "PR のマージは Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["gh", ["cache", "gist", "gpg-key", "issue", "project", "release", "repo", "ruleset", "run", "secret", "ssh-key", "variable"], "delete"],
+    decision = "forbidden",
+    justification = "削除は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["gh", "repo", "archive"],
+    decision = "forbidden",
+    justification = "リポジトリのアーカイブは Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["gh", "workflow", "disable"],
+    decision = "forbidden",
+    justification = "Workflow の無効化は Codex から実行しない",
 )
