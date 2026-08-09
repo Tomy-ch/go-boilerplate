@@ -5,6 +5,19 @@
 #
 # Codacy Cloud reads this file from the default branch only, so an entry added on a pull
 # request takes effect for the CLI immediately and for the Cloud analysis at merge.
+
+# The CLI drops Codacy's own default ignore list the moment this file exists — it takes the
+# remote defaults only when no local configuration parses. Everything below the first entry
+# is therefore not a narrowing but the replacement for what that list covered: generated
+# trees, and the third-party UI assets SchemaSpy ships inside its output.
+exclude_paths:
+  - 'docs/db-schema/**'
+  - 'docs/godoc/**'
+  - 'docs/coverage/**'
+  - 'docs/openapi/**'
+  - 'docs/portal/guides/**'
+  - 'docs/portal/docs.json'
+
 engines:
   # PMD's only SQL grammar is PL/SQL, and the SQL here is PostgreSQL — `ON CONFLICT` alone
   # puts it outside that grammar, so every file fails to parse. Its other languages (Java,
@@ -16,5 +29,14 @@ engines:
   # parse-failure output, and the exception it raises leaves the run hanging rather than
   # failing, taking every tool still queued behind it with it.
   pmd:
+    exclude_paths:
+      - '**'
+
+  # Codacy's Trivy reports a CycloneDX SBOM, which the CLI reads with the same parser it
+  # uses for findings and cannot map — the hang PMD caused, from a second direction. The
+  # dependency and image surfaces it covers are already gated by `trivy-fs.yaml`,
+  # `trivy-config.yaml`, `image-scan.yaml`, `osv-scanner.yaml` and Dependabot, so the
+  # analysis loses no ground it held alone.
+  trivy:
     exclude_paths:
       - '**'
