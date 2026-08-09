@@ -318,7 +318,7 @@ workflow:
 
 ## PATCH 支払い (purchase pay)
 
-`PATCH /v1/purchases/{purchaseId}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0081）。
+`PATCH /v1/purchases/{purchaseId}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0080）。
 決済 SDK / PSP 連携・金額検証は行わず、`paid_at` のセットと `status_id` の「支払い済み」への更新のみを担う。在庫操作は伴わない。
 **単一集約（`purchases`）のみを更新するため、複数集約の原子性を要する CommandService（[ADR-0030]）ではなく通常 usecase + Repository で完結する**
 （cancel は在庫復元を伴う複数集約書き込みのため CommandService を用いる。判定軸は「集約を跨ぐ書き込みの原子性が要るか」）。

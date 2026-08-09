@@ -131,7 +131,7 @@ feature, and it is the sole registration in the `command_service` sub-module of 
 [ADR-0028](../adr/0028-lightweight-cqrs.md)'s CommandService section describing an intended design
 with no occupant — which is the state a fork starts from.
 
-The upstream keeps that occupant deliberately: the eligibility bar ADR-0027 states (which writes
+The upstream keeps that occupant deliberately: the eligibility bar ADR-0028 states (which writes
 deserve a CommandService) is only legible against a concrete case that meets it, so the sample
 carries the bar's reading.
 
@@ -198,7 +198,7 @@ with them, so those tests protect this repository's own CI rather than the one c
 
 **This premise does not transfer.** In a project built from the template the setup scripts have
 already run — there is no stranger holding no context, and no CI whose coverage stops at the moment
-of use. What survives is the general rule in ADR-0077, which stands on the gate failure mode alone.
+of use. What survives is the general rule in ADR-0078, which stands on the gate failure mode alone.
 
 ### Why the domain Module rules stop at the mechanical floor
 
