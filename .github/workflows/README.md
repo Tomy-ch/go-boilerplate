@@ -57,7 +57,6 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
 | `sonarqube.yaml` `sonarqube` | 20 | the analysis runs on Sonar's servers and the job waits for it; that wait is itself capped at 10 minutes, so a lower job limit would cut the wait off rather than the hang it exists to catch |
 | `codacy.yaml` `codacy` | 20 | no completed run to measure, and the action pulls one tool image per language before any analysis starts |
-| `snyk.yaml` `snyk-container` | 20 | builds the runtime image before it scans, like `image-scan.yaml` `build`, and then waits on a vendor round trip |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
 
@@ -122,7 +121,6 @@ All three rules live in one check rather than three, because they are not three 
 |Bearer Scan|`bearer.yaml`|Bearer data-flow scan for sensitive values reaching a sink (report-only; Elastic License 2.0, see [Bearer's licence and removal](#bearers-licence-and-removal))|
 |ESLint Scan|`eslint.yaml`|ESLint with `eslint-plugin-security` over the three TypeScript workspaces, one matrix leg each (report-only)|
 |SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|
-|Snyk Scan|`snyk.yaml`|Snyk over three surfaces — Open Source, Code and Container (report-only; needs `SNYK_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|
 |Codacy Scan|`codacy.yaml`|Codacy multi-linter analysis of first-party source (report-only; needs `CODACY_PROJECT_TOKEN`, see [Codacy's floating tool images](#codacys-floating-tool-images))|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
@@ -161,7 +159,6 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | Bearer | Go / TypeScript-change PRs | same as above | weekly |
 | ESLint (security) | TypeScript-workspace-change PRs | same as above | weekly |
 | SonarQube Cloud | Go / TypeScript / `sonar-project.properties`-change PRs | same as above | weekly |
-| Snyk (Open Source / Code / Container) | Go / TypeScript / dependency / Dockerfile-change PRs | same as above | weekly |
 | Codacy | Go / TypeScript-change PRs | same as above | weekly |
 | lockfile-lint | lockfile-change PRs | — | — |
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
@@ -173,9 +170,9 @@ Weekly runs are staggered across Monday, one scanner per hour, so a single hour 
 
 DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
 
-The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Snyk, `0 18` Codacy, `0 19` SonarQube Cloud.
+The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 18` Codacy, `0 19` SonarQube Cloud.
 
-The last three are the scanners whose analysis runs on a vendor's servers, and they are placed at the end for the same reason DAST is placed behind the file-reading scanners: their duration depends on a queue this repository does not control, so nothing useful is gained by having them queued ahead of a scanner that finishes on its own runner.
+The last two are the scanners whose analysis runs on a vendor's servers, and they are placed at the end for the same reason DAST is placed behind the file-reading scanners: their duration depends on a queue this repository does not control, so nothing useful is gained by having them queued ahead of a scanner that finishes on its own runner.
 
 Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
 
@@ -191,9 +188,8 @@ Which trigger a detection notification fires on follows from who the right recip
 | `osv-scanner.yaml` | promotion-blocking finding | schedule |
 | `grype.yaml` | any vulnerability found | schedule |
 | `devskim.yaml` | any finding | schedule |
-| `snyk.yaml` | any Open Source vulnerability found | schedule |
 
-The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Five are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. ESLint and Bearer are the fourth and fifth, and for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud and Codacy join them on that reason, and so do Snyk's Code and Container legs: Sonar and Codacy report maintainability alongside security, so their baseline over an existing codebase is never zero, and Codacy's tool images move on floating tags, which moves the baseline without any code changing. Snyk's Open Source leg is wired up because its baseline is the dependency tree, which is expected to be clean.
+The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Five are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. ESLint and Bearer are the fourth and fifth, and for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud and Codacy join them on that reason: both report maintainability alongside security, so their baseline over an existing codebase is never zero, and Codacy's tool images move on floating tags, which moves the baseline without any code changing.
 
 #### Overlapping surfaces
 
@@ -207,16 +203,16 @@ Every other tool on a shared surface is report-only, and the verdict on that sur
 | --- | --- | --- |
 | Dockerfile security policy | `trivy-config.yaml` **(gate, HIGH+)** | Opengrep (its Dockerfile rules are excluded in `opengrep.yaml`) |
 | Dockerfile style / correctness | `docker-lint.yaml` (hadolint) **(gate)** | — (a different layer, not a duplicate) |
-| First-party Go source | `opengrep.yaml` (Opengrep, ERROR band) **(gate)** + `gosec` via `go-lint.yaml` **(gate)** — disjoint rule sets + `sonarqube.yaml` (SonarQube Cloud, report-only) + `codacy.yaml` (Codacy, report-only) + `snyk.yaml` (Snyk Code, report-only) | — |
+| First-party Go source | `opengrep.yaml` (Opengrep, ERROR band) **(gate)** + `gosec` via `go-lint.yaml` **(gate)** — disjoint rule sets + `sonarqube.yaml` (SonarQube Cloud, report-only) + `codacy.yaml` (Codacy, report-only) | — |
 | OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) **(gate)** | Spectral |
 | OpenAPI security posture | `openapi-security.yaml` (Spectral) **(gate)** | redocly |
-| Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) + `snyk.yaml` (Snyk Open Source) — all report-only | — |
-| First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) + `sonarqube.yaml` (SonarQube Cloud) + `codacy.yaml` (Codacy) + `snyk.yaml` (Snyk Code) | — |
+| Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) — all report-only | — |
+| First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) + `sonarqube.yaml` (SonarQube Cloud) + `codacy.yaml` (Codacy) | — |
 | Any file, whatever its language | `devskim.yaml` (DevSkim) | — |
 | Sensitive values reaching a sink | `bearer.yaml` (Bearer) — report-only, over application code only (`/scripts` is excluded: repository tooling handles no user data, which is the whole of what this question asks) | — |
-| Runtime image | `image-scan.yaml` (Trivy) **(gate)** + `snyk.yaml` (Snyk Container) — report-only | — |
+| Runtime image | `image-scan.yaml` (Trivy) **(gate)** | — |
 
-The `First-party Go source` and `First-party TypeScript source` rows carry the three vendor-hosted scanners as well, and they are all report-only there: none of them holds a gate, so a rule one of them fires on cannot turn a pull request red twice. That is what keeps the "one owner per rule" property intact while four more engines read the same files.
+The `First-party Go source` and `First-party TypeScript source` rows carry the two vendor-hosted scanners as well, and they are all report-only there: none of them holds a gate, so a rule one of them fires on cannot turn a pull request red twice. That is what keeps the "one owner per rule" property intact while three more engines read the same files.
 
 #### Bearer's licence and removal
 
@@ -243,11 +239,11 @@ The exception is accepted rather than hidden: a scanner whose rule selection liv
 
 #### Removing the credential-bearing scanners
 
-Four scanners here need something the repository cannot supply on its own. Three need a token for a vendor's service — `sonarqube.yaml`, `snyk.yaml`, `codacy.yaml` — and CodeQL needs GitHub Advanced Security, which is free for a public repository and billed for a private one. All four are free for this repository because it is public; a repository created from this template may be neither public nor willing to pay.
+Three scanners here need something the repository cannot supply on its own. Two need a token for a vendor's service — `sonarqube.yaml`, `codacy.yaml` — and CodeQL needs GitHub Advanced Security, which is free for a public repository and billed for a private one. All three are free for this repository because it is public; a repository created from this template may be neither public nor willing to pay.
 
-`make setup-remove-licensed-scanners` removes all four in one run, and commits each product separately so a consumer who holds a licence for one of them can restore it with `git revert` on that commit alone. Which is why the removal is one script and not four: the decision a consumer actually makes once is "do I want scanners that bill me or phone a vendor", and the per-product choice is better expressed as an undo than as four scripts to remember.
+`make setup-remove-licensed-scanners` removes all three in one run, and commits each product separately so a consumer who holds a licence for one of them can restore it with `git revert` on that commit alone. Which is why the removal is one script and not four: the decision a consumer actually makes once is "do I want scanners that bill me or phone a vendor", and the per-product choice is better expressed as an undo than as three scripts to remember.
 
-The edits to this file and its translation are **not** in those per-product commits — they land in one final commit of their own. The four products occupy adjacent rows of the same tables, so a per-product doc edit makes every `git revert` but the last one conflict here, which is the one thing the split exists to prevent. The cost is that a reverted scanner comes back working but undocumented; its rows can be read back out of that final commit.
+The edits to this file and its translation are **not** in those per-product commits — they land in one final commit of their own. The three products occupy adjacent rows of the same tables, so a per-product doc edit makes every `git revert` but the last one conflict here, which is the one thing the split exists to prevent. The cost is that a reverted scanner comes back working but undocumented; its rows can be read back out of that final commit.
 
 `bearer.yaml` is deliberately **not** in that set. The Elastic License 2.0 costs nothing to run in CI and constrains only redistribution as a service, which is a different question with a different answer — see [Bearer's licence and removal](#bearers-licence-and-removal), which stays a manual procedure.
 
@@ -261,11 +257,11 @@ What the script takes with each product, and what has to survive:
 | the rows and prose in this file and its `README.ja.md` translation | the rows of every scanner that stays |
 | `.github/codeql/**` for CodeQL | — |
 
-The lockfile rule is not a list of exceptions: the script counts references in the workflows that remain and deletes an entry only when the count reaches zero. `actions/download-artifact@v7` exists solely for the three report jobs added with these scanners, so removing all four does take it; removing only some leaves it. `make pin-actions-check` and `make egress-check` both fail on an orphan, which is what turns a missed entry into a red run rather than a silent leftover.
+The lockfile rule is not a list of exceptions: the script counts references in the workflows that remain and deletes an entry only when the count reaches zero. `actions/download-artifact@v7` exists solely for the two report jobs added with these scanners, so removing both does take it; removing only one leaves it. `make pin-actions-check` and `make egress-check` both fail on an orphan, which is what turns a missed entry into a red run rather than a silent leftover.
 
 The same counting is why reverting one scanner can leave `make pin-actions-check` red on an *unregistered* reference rather than an orphan: an entry shared with another scanner is deleted by whichever commit removed its last user, so restoring an earlier scanner brings back a `uses:` whose entry a later commit already took. `make pin-actions-resolve` puts it back, and the check names the entry.
 
-Registering the tokens (`SONAR_TOKEN` / `SNYK_TOKEN` / `CODACY_PROJECT_TOKEN`) stays a human step, and so does creating the projects on the vendors' side. Until they exist every leg skips itself and the run stays green — see [Result Comments](#result-comments) for why a missing credential is reported as a setup gap rather than as a scan result.
+Registering the tokens (`SONAR_TOKEN` / `CODACY_PROJECT_TOKEN`) stays a human step, and so does creating the projects on the vendors' side. Until they exist every leg skips itself and the run stays green — see [Result Comments](#result-comments) for why a missing credential is reported as a setup gap rather than as a scan result.
 
 #### DevSkim's version pin
 
