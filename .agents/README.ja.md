@@ -40,7 +40,8 @@ Gemini なら `.gemini/`。中身の指示が 1 つのツールの契約に対�
 .agents/
 ├── comment-remediation/
 │   ├── comment-remediated.toml   # コメントの在庫を掃き終えたファイル
-│   └── comment-remediated.sh     # その照会。編集前に PreToolUse フックが実行する
+│   ├── comment-remediated.sh     # その照会。編集前に PreToolUse フックが実行する
+│   └── …sweep_on_touch.prompt    # 未是正だったときの手順。必要時のみ読む
 └── ddd-audit/
     └── pattern-ledger.yaml       # DDD パターン台帳 — .claude/skills/ddd-audit/SKILL.md を参照
 ```

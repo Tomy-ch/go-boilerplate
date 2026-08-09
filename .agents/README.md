@@ -41,7 +41,8 @@ One subdirectory per artifact domain, named after the skill family that owns it.
 .agents/
 ├── comment-remediation/
 │   ├── comment-remediated.toml   # files whose comment stock has been swept
-│   └── comment-remediated.sh     # the lookup, run by a PreToolUse hook before an edit
+│   ├── comment-remediated.sh     # the lookup, run by a PreToolUse hook before an edit
+│   └── …sweep_on_touch.prompt    # what to do about a miss, read on demand
 └── ddd-audit/
     └── pattern-ledger.yaml       # DDD pattern ledger — see .claude/skills/ddd-audit/SKILL.md
 ```

@@ -13,7 +13,8 @@
 # diff, and this records only the stock that predates the policy.
 #
 # Queried by comment-remediated.sh, which the Claude Code PreToolUse hook runs before an
-# edit. This ledger exists for the migration to that policy — when nothing in the tree is
-# missing, delete this directory and the hook entry in .claude/settings.json with it.
+# edit; what to do about a miss is in feedback_comment_remediation_sweep_on_touch.prompt,
+# alongside. This ledger exists for the migration to that policy — when nothing in the tree
+# is missing, delete this directory and the hook entry in .claude/settings.json with it.
 
 ".github/CODEOWNERS" = "2026-08-09"

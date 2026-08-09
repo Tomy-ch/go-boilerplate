@@ -17,6 +17,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 LEDGER="${SCRIPT_DIR}/comment-remediated.toml"
 REPO_ROOT=$(CDPATH='' cd -- "${SCRIPT_DIR}/../.." && pwd)
+PROMPT_REL=".agents/comment-remediation/feedback_comment_remediation_sweep_on_touch.prompt"
 
 CLEAR='no action needed'
 REQUIRED='comment remediation required'
@@ -30,11 +31,8 @@ Usage:
 Verdicts:
   no action needed               In the ledger, or holding no comment stock to sweep —
                                  the parenthetical says which.
-  comment remediation required   Not in the ledger. Before finishing, bring the whole
-                                 file in line with the Comment Rules in docs/rules.md,
-                                 drop prose that only holds while this repository is the
-                                 boilerplate, keep each comment in the language it is
-                                 already written in, then add the file to the ledger.
+  comment remediation required   Read feedback_comment_remediation_sweep_on_touch.prompt
+                                 in this directory and follow it.
 USAGE
 }
 
@@ -108,16 +106,15 @@ run_hook() {
   [ -z "$(out_of_scope_reason "${rel}")" ] || exit 0
   is_listed "${rel}" && exit 0
 
-  jq -n --arg path "${rel}" '{
+  # Deliberately a pointer, not the instruction. This is emitted on every edit to every
+  # unswept file, so its cost is paid whether or not the sweep happens; the prompt behind it
+  # is read once, and only when it will be acted on.
+  jq -n --arg path "${rel}" --arg prompt "${PROMPT_REL}" '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       additionalContext: (
-        $path + " is not in .agents/comment-remediation/comment-remediated.toml, so its "
-        + "comments predate the current policy. Proceed with the edit. Before finishing "
-        + "the task, sweep the whole file: apply the Comment Rules in docs/rules.md, "
-        + "remove prose that only holds while this repository is the boilerplate itself, "
-        + "keep each comment in the language it is already written in, then add "
-        + "\"" + $path + "\" with today'"'"'s date to that ledger."
+        $path + ": comments predate the current policy. Make your edit, then before "
+        + "finishing the task read " + $prompt + " and follow it."
       )
     }
   }'
