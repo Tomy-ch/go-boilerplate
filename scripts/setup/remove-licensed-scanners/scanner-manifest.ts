@@ -1,9 +1,9 @@
-// 資格情報 / ライセンス費用を要するスキャナ 3 件の撤去対象を宣言する manifest（データ定義）。
+// 資格情報 / ライセンス費用を要するスキャナ 2 件の撤去対象を宣言する manifest（データ定義）。
 // 削除ロジックは scanner-removal.ts、git 操作は git-commit.ts を参照。
 //
-// 対象は 2 分類の和集合である。ベンダーのトークンを要するもの（SonarQube Cloud / Codacy）と、
-// private リポジトリで課金されるもの（CodeQL / 同 2 件）。Bearer は Elastic License 2.0 で CI 実行
-// そのものは無償無制限のため、どちらにも当たらず対象外である。
+// 対象は 2 分類の和集合である。ベンダーのトークンを要するもの（SonarQube Cloud）と、private
+// リポジトリで課金されるもの（CodeQL）。Bearer は Elastic License 2.0 で CI 実行そのものは
+// 無償無制限のため、どちらにも当たらず対象外である。
 //
 // README の編集を完全一致で宣言するのは、README が動いたときに scanner-removal.ts が投げて
 // 「消えたつもりで消えていない」を防ぐため。宣言の重さはその引き換えである。
@@ -104,63 +104,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
     docSections: [],
   },
   {
-    key: "codacy",
-    label: "Codacy",
-    commitSubject: "CI: Codacy のワークフローを撤去する",
-    presenceMarker: ".github/workflows/codacy.yaml",
-    paths: [".github/workflows/codacy.yaml", ".codacy.yaml"],
-    pinKeys: ["codacy/codacy-analysis-cli-action@v4.4.7", "actions/download-artifact@v7"],
-    egressJobs: [
-      'codacy.yaml:codacy',
-      'codacy.yaml:preflight',
-      'codacy.yaml:report',
-      'codacy.yaml:unconfigured-notice',
-    ],
-    docBlocks: [
-      {
-        file: README_EN,
-        block:
-          "|Codacy Scan|`codacy.yaml`|Codacy multi-linter analysis of first-party source (report-only; needs `CODACY_PROJECT_TOKEN`, see [Codacy's floating tool images](#codacys-floating-tool-images))|\n",
-      },
-      {
-        file: README_EN,
-        block: "| Codacy | Go / TypeScript-change PRs | same as above | weekly |\n",
-      },
-      {
-        file: README_EN,
-        block:
-          "| `codacy.yaml` `codacy` | 25 | measured at 8m15s across the full tool set, before `.codacy.yaml` narrowed the tree to first-party source |\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "|Codacy Scan|`codacy.yaml`|Codacy による一次ソースの複数リンタ解析（報告専用。`CODACY_PROJECT_TOKEN` が必要。[Codacy の浮動タグのツールイメージ](#codacy-の浮動タグのツールイメージ)を参照）|\n",
-      },
-      {
-        file: README_JA,
-        block: "| Codacy | Go / TypeScript 変更 PR | 同上 | 週次 |\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "| `codacy.yaml` `codacy` | 25 | 全ツールでの実測 8 分 15 秒 × 3。この実測は `.codacy.yaml` が範囲を一次ソースへ絞る前のもの |\n",
-      },
-    ],
-    docFragments: [
-      { file: README_EN, fragment: " + `codacy.yaml` (Codacy, report-only)" },
-      { file: README_EN, fragment: " + `codacy.yaml` (Codacy)" },
-      { file: README_EN, fragment: ", `0 18` Codacy" },
-      { file: README_JA, fragment: " + `codacy.yaml`（Codacy・報告専用）" },
-      { file: README_JA, fragment: " + `codacy.yaml`（Codacy）" },
-      { file: README_JA, fragment: "、`0 18` Codacy" },
-    ],
-    docSections: [
-      { file: README_EN, heading: "#### Codacy's floating tool images" },
-      { file: README_JA, heading: "#### Codacy の浮動タグのツールイメージ" },
-    ],
-  },
-  {
-    // 3 件をまとめて説明する散文はこのドメインが持つため、最後に置く。
+    // 2 件をまとめて説明する散文はこのドメインが持つため、最後に置く。
     key: "code-ql",
     label: "CodeQL",
     commitSubject: "CI: CodeQL のワークフローを撤去する",
@@ -194,12 +138,12 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_EN,
         block:
-          "\nThe last two are the scanners whose analysis runs on a vendor's servers, and they are placed at the end for the same reason DAST is placed behind the file-reading scanners: their duration depends on a queue this repository does not control, so nothing useful is gained by having them queued ahead of a scanner that finishes on its own runner.\n",
+          "\nThe last one is the scanner whose analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.\n",
       },
       {
         file: README_EN,
         block:
-          "\nThe `First-party Go source` and `First-party TypeScript source` rows carry the two vendor-hosted scanners as well. Codacy is report-only there; Sonar is the one deliberate departure from \"one owner per rule\" in this table. Its quality gate judges the analysis as a whole — new-code coverage and duplication alongside its own issue taxonomy — so it cannot be narrowed to the rules Opengrep and gosec do not claim, and a finding both engines recognize can turn a pull request red twice. That is accepted here because the alternative was discarding the vendor's verdict entirely, which left the scan reporting into a run that merged regardless.\n",
+          "\nThe `First-party Go source` and `First-party TypeScript source` rows carry the vendor-hosted scanner as well. Sonar is the one deliberate departure from \"one owner per rule\" in this table. Its quality gate judges the analysis as a whole — new-code coverage and duplication alongside its own issue taxonomy — so it cannot be narrowed to the rules Opengrep and gosec do not claim, and a finding both engines recognize can turn a pull request red twice. That is accepted here because the alternative was discarding the vendor's verdict entirely, which left the scan reporting into a run that merged regardless.\n",
       },
       {
         file: README_JA,
@@ -209,23 +153,23 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "\n末尾の 2 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\n",
+          "\n末尾の 1 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\n",
       },
       {
         file: README_JA,
         block:
-          "\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 2 つも乗っています。Codacy はそこでは報告専用ですが、Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは解析全体——新規コードのカバレッジや重複と、Sonar 自身の issue 分類——をまとめて判定するため、Opengrep と gosec が担当しないルールだけに絞れず、両者が認識する検出で PR が 2 回赤くなり得ます。それを受け入れているのは、代わりに得られるのがベンダーの判定を捨てることであり、実際それは「スキャンは報告するが run はそのままマージされる」状態を作っていたためです。\n",
+          "\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナも乗っています。Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは解析全体——新規コードのカバレッジや重複と、Sonar 自身の issue 分類——をまとめて判定するため、Opengrep と gosec が担当しないルールだけに絞れず、両者が認識する検出で PR が 2 回赤くなり得ます。それを受け入れているのは、代わりに得られるのがベンダーの判定を捨てることであり、実際それは「スキャンは報告するが run はそのままマージされる」状態を作っていたためです。\n",
       },
       // 撤去後は呼ぶ先が無くなるので、ターゲットの宣言とレシピも一緒に落とす。
       {
         file: SETUP_MK,
         block:
-          ".PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ3件を撤去し製品ごとにコミット\n",
+          ".PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ2件を撤去し製品ごとにコミット\n",
       },
       {
         file: SETUP_MK,
         block: `
-# 資格情報 / ライセンス費用を要するスキャナ 3 件の撤去。
+# 資格情報 / ライセンス費用を要するスキャナ 2 件の撤去。
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。このスクリプトは
 # 製品ごとに git commit を積むため、setup-repo と同じくホストの git を使う必要がある
 # （worktree では .git がマウント外の実体を指すファイルなので、コンテナ内からは辿れない）。

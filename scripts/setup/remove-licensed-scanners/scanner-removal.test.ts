@@ -14,9 +14,7 @@ import {
 describe("repoOf", () => {
   describe("正常系", () => {
     it("タグを落として owner/repo を返す", () => {
-      expect(repoOf("codacy/codacy-analysis-cli-action@v4.4.7")).toBe(
-        "codacy/codacy-analysis-cli-action",
-      );
+      expect(repoOf("github/codeql-action@v4")).toBe("github/codeql-action");
     });
 
     it("タグに @ を含んでも最後の @ で割る", () => {
@@ -154,11 +152,11 @@ describe("MissingDeclarationError", () => {
 describe("MalformedHeadingError", () => {
   describe("正常系", () => {
     it("どのファイルのどの宣言が見出しでなかったかをメッセージに含める", () => {
-      const error = new MalformedHeadingError("README.md", "Codacy の浮動タグ");
+      const error = new MalformedHeadingError("README.md", "Bearer のライセンス");
 
       expect(error.name).toBe("MalformedHeadingError");
       expect(error.message).toContain("README.md");
-      expect(error.message).toContain("Codacy の浮動タグ");
+      expect(error.message).toContain("Bearer のライセンス");
     });
   });
 });

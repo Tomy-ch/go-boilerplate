@@ -204,7 +204,7 @@ function run(dryRun: boolean): void {
       : "撤去完了: 製品ごとにコミットを積みました。1 つだけ戻すには該当コミットを git revert してください（README の記述は戻りません）。",
   );
   console.log(
-    "SONAR_TOKEN / CODACY_PROJECT_TOKEN を登録済みの場合は、併せて削除してください（スクリプトからは操作できません）。",
+    "SONAR_TOKEN を登録済みの場合は、併せて削除してください（スクリプトからは操作できません）。",
   );
 }
 
