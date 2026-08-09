@@ -28,8 +28,6 @@ on:
       - '.github/actions-pin.toml'
       - '.github/egress.toml'
       - '.github/workflows/sonarqube.yaml'
-      - '.github/workflows/snyk.yaml'
-      - '.github/workflows/codacy.yaml'
       - '.github/workflows/code-ql.yaml'
   pull_request:
     paths:
@@ -41,8 +39,6 @@ on:
       - '.github/actions-pin.toml'
       - '.github/egress.toml'
       - '.github/workflows/sonarqube.yaml'
-      - '.github/workflows/snyk.yaml'
-      - '.github/workflows/codacy.yaml'
       - '.github/workflows/code-ql.yaml'
   workflow_dispatch:
 
@@ -156,12 +152,12 @@ jobs:
         shell: bash
 
       # 製品ごとに 1 つ + README で 1 つ。数が変わったら撤去の分割が壊れている。
-      - name: Five commits were stacked
+      - name: Three commits were stacked
         run: |
           set -euo pipefail
           COUNT=$(git rev-list --count "${before}..HEAD")
-          if [ "${COUNT}" -ne 5 ]; then
-            echo "::error::expected 5 commits (4 scanners + 1 docs), got ${COUNT}"
+          if [ "${COUNT}" -ne 3 ]; then
+            echo "::error::expected 3 commits (2 scanners + 1 docs), got ${COUNT}"
             git log --oneline "${before}..HEAD"
             exit 1
           fi
@@ -173,8 +169,6 @@ jobs:
           set -euo pipefail
           for path in \
             .github/workflows/sonarqube.yaml \
-            .github/workflows/snyk.yaml \
-            .github/workflows/codacy.yaml \
             .github/workflows/code-ql.yaml \
             .github/codeql \
             sonar-project.properties

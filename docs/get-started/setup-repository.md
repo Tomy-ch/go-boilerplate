@@ -422,26 +422,23 @@ needs the real authenticator against a mocked provider.
 
 ## Phase 18: Decide whether to keep the credential-bearing scanners
 
-Four scanners here need something this repository cannot supply on its own. Three want a token for
-a vendor's service — [`sonarqube.yaml`](../../.github/workflows/sonarqube.yaml),
-[`snyk.yaml`](../../.github/workflows/snyk.yaml), [`codacy.yaml`](../../.github/workflows/codacy.yaml) —
+Two scanners here need something this repository cannot supply on its own. One wants a token for
+a vendor's service — [`sonarqube.yaml`](../../.github/workflows/sonarqube.yaml) —
 and [`code-ql.yaml`](../../.github/workflows/code-ql.yaml) needs GitHub Advanced Security, which is
-free for a public repository and billed for a private one. All four are free here because this
+free for a public repository and billed for a private one. Both are free here because this
 repository is public. Yours may be neither public nor willing to pay.
 
-Nothing is broken while you decide. Each of the three checks for its token before it scans and skips
+Nothing is broken while you decide. Each checks for what it needs before it scans and skips
 itself when it is absent, leaving the run green — a missing credential is a setup gap, not a scan
 result. The same path covers pull requests from forks, which never receive repository secrets at all.
 
 ### To keep them
 
-Register three secrets on the repository, and create the matching project on each vendor's side:
+Register the secret on the repository, and create the matching project on the vendor's side:
 
 | Secret | Vendor-side setup |
 | --- | --- |
 | `SONAR_TOKEN` | Create the organization and project on [SonarQube Cloud](https://sonarcloud.io), then turn **Automatic Analysis off** — leaving it on makes the server analyse the repository itself and collide with the CI analysis |
-| `SNYK_TOKEN` | Create a service account in your Snyk organization. Snyk Code must be enabled for that organization, or the Code leg exits 3 |
-| `CODACY_PROJECT_TOKEN` | Add the repository on [Codacy](https://www.codacy.com) and take the project token |
 
 `sonar-project.properties` identifies a project on SonarQube Cloud, so it is boilerplate identity
 rather than configuration. Phase 5's `make setup-replace-repository-reference` rewrites it along with
@@ -458,23 +455,22 @@ DRY_RUN=1 make setup-remove-licensed-scanners
 make setup-remove-licensed-scanners
 ```
 
-The script deletes all four and **commits each product separately**, so a licence you already hold
+The script deletes both and **commits each product separately**, so a licence you already hold
 is one `git revert` away:
 
 ```bash
-git revert <the "CI: Snyk のワークフローを撤去する" commit>
+git revert <the "CI: SonarQube Cloud のワークフローを撤去する" commit>
 ```
 
 Two things to know about that undo. The README rows come off in a single final commit rather than
-with each product, because the four occupy adjacent rows of the same tables and a per-product doc
+with each product, because the two occupy adjacent rows of the same tables and a per-product doc
 edit would make every revert but the last one conflict — so a restored scanner works but is no longer
 documented. And a lockfile entry shared between scanners is deleted by whichever commit removed its
 last user, so a revert can leave `make pin-actions-check` red on an unregistered reference;
 `make pin-actions-resolve` puts it back and the check names the entry.
 
-Removing the workflows does not remove the secrets. Delete `SONAR_TOKEN` / `SNYK_TOKEN` /
-`CODACY_PROJECT_TOKEN` from the repository settings yourself — a token nothing uses is still a token
-someone can steal.
+Removing the workflows does not remove the secret. Delete `SONAR_TOKEN` from the repository
+settings yourself — a token nothing uses is still a token someone can steal.
 
 There is no enable / disable switch, for the reason Phase 17 gives: a scanner left configured-but-off
 is one nobody reads and nobody maintains. `bearer.yaml` is deliberately outside this set — its

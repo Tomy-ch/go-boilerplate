@@ -56,8 +56,6 @@
 | `secret-scan.yaml`、`trufflehog.yaml` | 15 | 実測は差分を見る PR 実行のみ。週次は全履歴を走査するが、その完了実行が一度も無く実測できない |
 | `bearer.yaml` `bearer` | 20 | 完了実行が無く実測できないうえ、報告の前に自前ツリー全体のデータフローモデルを構築する |
 | `sonarqube.yaml` `sonarqube` | 20 | 解析は Sonar 側のサーバで走り、ジョブはその完了を待つ。待ち自体が 10 分で打ち切られるため、これより低いとハングではなく待ちのほうを切ってしまう |
-| `codacy.yaml` `codacy` | 20 | 完了実行が無く実測できないうえ、解析の前に言語ごとのツールイメージを取得する |
-| `snyk.yaml` `snyk-container` | 20 | `image-scan.yaml` `build` と同様にランタイムイメージをビルドしてから走査し、さらにベンダーへの往復を待つ |
 | `app-di-startup-check.yaml`、`gen-go-artifacts-check.yaml` | 15 | 式より前から存在する値。動いている上限を下げてもリスクしか増えないためそのまま |
 | `claude.yaml`、`go-lint.yaml`、`sample-removal-check.yaml` | 30 | 同上。`go-lint` は golangci-lint 自身の timeout を無効化して走らせているため、これがそのジョブ唯一の打ち切り点でもある |
 
@@ -121,9 +119,7 @@
 |DevSkim Scan|`devskim.yaml`|言語を問わずツリー内の全ファイルに当たる DevSkim の正規表現スキャン|
 |Bearer Scan|`bearer.yaml`|機微な値が sink へ到達する経路を追う Bearer のデータフロースキャン（報告専用。Elastic License 2.0 — [Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照）|
 |ESLint Scan|`eslint.yaml`|3 つの TypeScript ワークスペースに対する `eslint-plugin-security` の検査。matrix の 1 レグずつ（報告専用）|
-|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|
-|Snyk Scan|`snyk.yaml`|Snyk による 3 つの面の検査 — Open Source / Code / Container（報告専用。`SNYK_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|
-|Codacy Scan|`codacy.yaml`|Codacy による一次ソースの複数リンタ解析（報告専用。`CODACY_PROJECT_TOKEN` が必要。[Codacy の浮動タグのツールイメージ](#codacy-の浮動タグのツールイメージ)を参照）|
+|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（**Sonar の品質ゲートでブロックする**。issue の一覧は報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|
 |Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
 |OpenAPI Security|`openapi-security.yaml`|Spectral + OWASP API Security ルールセットによる OpenAPI 定義の検証|
 |Fuzz|`fuzz.yaml`|外部入力を受けるパーサに対する Go ネイティブ fuzzing|
@@ -161,8 +157,6 @@
 | Bearer | Go / TypeScript 変更 PR | 同上 | 週次 |
 | ESLint（security） | TypeScript ワークスペース変更 PR | 同上 | 週次 |
 | SonarQube Cloud | Go / TypeScript / `sonar-project.properties` 変更 PR | 同上 | 週次 |
-| Snyk（Open Source / Code / Container） | Go / TypeScript / 依存 / Dockerfile 変更 PR | 同上 | 週次 |
-| Codacy | Go / TypeScript 変更 PR | 同上 | 週次 |
 | lockfile-lint | lockfile 変更 PR | 不要 | 不要 |
 | Spectral（OpenAPI） | spec 変更 PR | `release/*` / デプロイ先ブランチ | 不要 |
 | capslock | `go.mod` 変更 PR | 不要 | 不要 |
@@ -173,9 +167,9 @@
 
 DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
 
-以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer、`0 17` Snyk、`0 18` Codacy、`0 19` SonarQube Cloud と続きます。
+以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer、`0 19` SonarQube Cloud と続きます。
 
-末尾の 3 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。
+末尾の 1 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。
 
 週次スケジュールを持つスキャナは、ジョブが `failure` または `cancelled` で終わったときに `notify.yaml` を呼び出します。PR の失敗は作成者に見えていますが、定期実行の失敗は誰にも見えないためです。`cancelled` を含めるのは、タイムアウトやランナー障害で打ち切られたジョブが `failure` ではなくこちらになるからです。
 
@@ -191,9 +185,8 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | `osv-scanner.yaml` | 昇格をブロックする検出 | schedule |
 | `grype.yaml` | 脆弱性の検出 | schedule |
 | `devskim.yaml` | 検出あり | schedule |
-| `snyk.yaml` | Open Source の脆弱性の検出あり | schedule |
 
-他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 5 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud と Codacy、そして Snyk の Code / Container レグも同じ理由で未接続です。Sonar と Codacy はセキュリティと並んで保守性も報告するため既存コードベースに対するベースラインが 0 件になることはなく、Codacy に至ってはツールイメージが浮動タグで動くのでコードが変わらなくてもベースラインが動きます。Snyk の Open Source レグだけを接続しているのは、そのベースラインが「クリーンであることを期待してよい依存ツリー」だからです。
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 5 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud も同じ理由で未接続です。セキュリティと並んで保守性を報告するため、既存コードベースに対するベースラインが 0 件になることはありません。
 
 #### 検知が重なる面
 
@@ -207,16 +200,16 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | --- | --- | --- |
 | Dockerfile のセキュリティポリシー | `trivy-config.yaml` **(gate, HIGH+)** | Opengrep（`opengrep.yaml` で Dockerfile ルールを除外） |
 | Dockerfile のスタイル / 正しさ | `docker-lint.yaml`（hadolint） **(gate)** | —（層が違い重複ではない） |
-| 自前の Go ソース | `opengrep.yaml`（Opengrep・ERROR 帯） **(gate)** + `go-lint.yaml` 経由の `gosec` **(gate)** — ルールセットは互いに素 + `sonarqube.yaml`（SonarQube Cloud・報告専用） + `codacy.yaml`（Codacy・報告専用） + `snyk.yaml`（Snyk Code・報告専用） | — |
+| 自前の Go ソース | `opengrep.yaml`（Opengrep・ERROR 帯） **(gate)** + `go-lint.yaml` 経由の `gosec` **(gate)** — ルールセットは互いに素 + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** | — |
 | OpenAPI の規約 / 命名 | `oapi-lint.yaml`（redocly） **(gate)** | Spectral |
 | OpenAPI のセキュリティ姿勢 | `openapi-security.yaml`（Spectral） **(gate)** | redocly |
-| 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） + `snyk.yaml`（Snyk Open Source） — すべて報告専用 | — |
-| 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） + `codacy.yaml`（Codacy） + `snyk.yaml`（Snyk Code） | — |
+| 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） — すべて報告専用 | — |
+| 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** | — |
 | 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
 | sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用。対象はアプリケーションコードのみで `/scripts` は除外（リポジトリのツーリングはユーザーデータを扱わず、この問いが訊いているのはそれだけであるため） | — |
-| ランタイムイメージ | `image-scan.yaml`（Trivy） **(gate)** + `snyk.yaml`（Snyk Container） — 報告専用 | — |
+| ランタイムイメージ | `image-scan.yaml`（Trivy） **(gate)** | — |
 
-`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 3 つも乗っていますが、いずれもそこでは報告専用です。どれもゲートを持たないため、そのうちの 1 つが発火したルールで PR が 2 回赤くなることはありません。エンジンが 4 つ増えても「ルール単位で担当 1 つ」が保たれるのはそのためです。
+`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナも乗っています。Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは解析全体——新規コードのカバレッジや重複と、Sonar 自身の issue 分類——をまとめて判定するため、Opengrep と gosec が担当しないルールだけに絞れず、両者が認識する検出で PR が 2 回赤くなり得ます。それを受け入れているのは、代わりに得られるのがベンダーの判定を捨てることであり、実際それは「スキャンは報告するが run はそのままマージされる」状態を作っていたためです。
 
 #### Bearer のライセンスと撤去
 
@@ -233,21 +226,13 @@ OSI の定義の外にあること自体は Bearer に固有ではありませ�
 
 `make pin-actions-check` は、`bearer.yaml` が使っていた Action がすべて他所からも参照されている限り何もする必要がありません。参照されないエントリが lockfile に残ると落ちるため、赤くなったらそこを先に見てください。summary ステップの `level` 補完はワークフローと一緒に消えます。Bearer は全ての結果に `level` を持たず、jq がソートキーで `//` へ落ちずにランタイムエラーになるために置いてあるものです。
 
-#### Codacy の浮動タグのツールイメージ
-
-`codacy/codacy-analysis-cli-action` も他の action と同様に SHA で固定していますが、その固定が覆う範囲は他より狭いです。この action 自身は解析器を持たず、言語ごとのリンタを Docker コンテナとして起動します。それらのイメージは実行時に Codacy のレジストリから浮動タグで取得されます。イメージは [`.github/actions-pin.toml`](../actions-pin.toml) の外にあるため `make pin-actions-check` からは見えず、同じコミットを再実行しても結果が変わりうるということです。
-
-これを悪化させる 2 つの設定は意図的に外しています。`run-gosec` と `run-staticcheck` はいずれも、浮動ブランチから `curl | sh` でインストーラを取得し `latest` の成果物をダウンロードさせます。既定の経路が 1 重に浮動しているところを 2 重に浮動させることになります。`gosec` は [`mise.toml`](../../mise.toml) が固定したバージョンで `go-lint.yaml` のゲートとして既に走っているため、この設定は「固定されたゲート」を「固定されていない報告」に置き換えるだけです。
-
-この例外は隠さずに受け入れています。ルール選択がベンダーのプロジェクト設定側にあるスキャナは既にバージョン管理の外にあり、イメージを固定してもルールが戻ってくるわけではないからです。
-
 #### 資格情報を要するスキャナの撤去
 
-ここには、リポジトリ自身では用意できないものを必要とするスキャナが 4 つあります。3 つはベンダーのサービスへのトークンを要し（`sonarqube.yaml` / `snyk.yaml` / `codacy.yaml`）、CodeQL は GitHub Advanced Security を要します。後者は public リポジトリでは無料、private では課金対象です。このリポジトリは public なので 4 つとも無料で回りますが、このテンプレートから作られたリポジトリが public とは限らず、課金を受け入れるとも限りません。
+ここには、リポジトリ自身では用意できないものを必要とするスキャナが 2 つあります。1 つはベンダーのサービスへのトークンを要し（`sonarqube.yaml`）、CodeQL は GitHub Advanced Security を要します。後者は public リポジトリでは無料、private では課金対象です。このリポジトリは public なので 2 つとも無料で回りますが、このテンプレートから作られたリポジトリが public とは限らず、課金を受け入れるとも限りません。
 
-`make setup-remove-licensed-scanners` は 4 つを 1 回の実行でまとめて撤去し、**製品ごとに別のコミットを積みます**。どれか 1 つのライセンスを既に持っている利用者は、そのコミットだけを `git revert` すれば復活させられます。撤去を 4 つのスクリプトに分けず 1 つにしているのはこのためです。利用者が実際に一度だけ下す判断は「課金されるスキャナやベンダーへ送信するスキャナを使うか」であり、製品単位の選択は 4 つのスクリプトを覚えることよりも「取り消し」として表現するほうが適切です。
+`make setup-remove-licensed-scanners` は 3 つを 1 回の実行でまとめて撤去し、**製品ごとに別のコミットを積みます**。どれか 1 つのライセンスを既に持っている利用者は、そのコミットだけを `git revert` すれば復活させられます。撤去を 3 つのスクリプトに分けず 1 つにしているのはこのためです。利用者が実際に一度だけ下す判断は「課金されるスキャナやベンダーへ送信するスキャナを使うか」であり、製品単位の選択は 3 つのスクリプトを覚えることよりも「取り消し」として表現するほうが適切です。
 
-このファイルと対訳の編集は、製品ごとのコミットには**含めず**独立した最後の 1 コミットにまとめます。4 製品は同じ表の隣り合う行を占めるため、ドキュメント編集を製品側へ混ぜると最後の 1 つ以外の `git revert` が必ずここで衝突し、分割した意味がなくなるからです。代償として、復活させたスキャナは動きますが記述は戻りません。行はその最後のコミットから読み出せます。
+このファイルと対訳の編集は、製品ごとのコミットには**含めず**独立した最後の 1 コミットにまとめます。3 製品は同じ表の隣り合う行を占めるため、ドキュメント編集を製品側へ混ぜると最後の 1 つ以外の `git revert` が必ずここで衝突し、分割した意味がなくなるからです。代償として、復活させたスキャナは動きますが記述は戻りません。行はその最後のコミットから読み出せます。
 
 `bearer.yaml` は意図的にこの対象**外**です。Elastic License 2.0 は CI での実行に費用を課さず、制約するのはサービスとしての再配布だけで、これは別の問いであり別の答えになります。[Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照してください。そちらは手動手順のままです。
 
@@ -261,11 +246,11 @@ OSI の定義の外にあること自体は Bearer に固有ではありませ�
 | このファイルと `README.ja.md` の行および散文 | 残るスキャナの行 |
 | CodeQL の `.github/codeql/**` | — |
 
-lockfile の規則は例外リストではありません。スクリプトは残るワークフロー側の参照数を数え、0 になったエントリだけを削除します。`actions/download-artifact@v7` はこれらのスキャナと一緒に入った 3 つの report ジョブのためだけに存在するので、4 つすべてを撤去すればこれも消えますが、一部だけの撤去なら残ります。`make pin-actions-check` と `make egress-check` はどちらも孤児で落ちるため、消し忘れは静かな残骸ではなく赤い run になります。
+lockfile の規則は例外リストではありません。スクリプトは残るワークフロー側の参照数を数え、0 になったエントリだけを削除します。`actions/download-artifact@v7` は Sonar が持ち込んだ report ジョブのためだけに存在するので、Sonar を撤去すればこれも消えます。`make pin-actions-check` と `make egress-check` はどちらも孤児で落ちるため、消し忘れは静かな残骸ではなく赤い run になります。
 
 この参照数の数え方は、1 つのスキャナを revert したときに `make pin-actions-check` が孤児ではなく**未登録の参照**で赤くなる理由でもあります。他のスキャナと共有するエントリは「最後の利用者を消したコミット」が削除するため、より前のスキャナを戻すと、後のコミットが既に消したエントリを参照する `uses:` が復活します。`make pin-actions-resolve` で戻せますし、どのエントリかは検査が名指しします。
 
-トークン（`SONAR_TOKEN` / `SNYK_TOKEN` / `CODACY_PROJECT_TOKEN`）の登録は人手の作業として残り、ベンダー側でのプロジェクト作成も同様です。それらが存在しない間は各レグが自分をスキップし run は green のままです。資格情報の欠如をスキャン結果ではなくセットアップの未了として報告する理由は[結果コメント](#結果コメント)を参照してください。
+トークン（`SONAR_TOKEN`）の登録は人手の作業として残り、ベンダー側でのプロジェクト作成も同様です。それが存在しない間はレグが自分をスキップし run は green のままです。資格情報の欠如をスキャン結果ではなくセットアップの未了として報告する理由は[結果コメント](#結果コメント)を参照してください。
 
 #### DevSkim のバージョン固定
 

@@ -12,7 +12,7 @@
 .PHONY: setup-remove-boilerplate-identity ## テンプレート自身を語る記述を落としボイラープレートの顔を消す
 # boilerplate-only:end
 .PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
-.PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ4件を撤去し製品ごとにコミット
+.PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ2件を撤去し製品ごとにコミット
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
@@ -141,7 +141,7 @@ setup-remove-sample-api:
 	fi
 # sample-api:end
 
-# 資格情報 / ライセンス費用を要するスキャナ 4 件の撤去。
+# 資格情報 / ライセンス費用を要するスキャナ 2 件の撤去。
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。このスクリプトは
 # 製品ごとに git commit を積むため、setup-repo と同じくホストの git を使う必要がある
 # （worktree では .git がマウント外の実体を指すファイルなので、コンテナ内からは辿れない）。

@@ -107,19 +107,6 @@ extra = [
   "uploads.github.com:443",
 ]
 
-[job."codacy.yaml:codacy"]
-classes = ["image"]
-extra = [
-  "api.codacy.com:443",
-  "artifacts.codacy.com:443",
-]
-
-[job."codacy.yaml:preflight"]
-classes = []
-
-[job."codacy.yaml:report"]
-classes = []
-
 [job."commitlint.yaml:commitlint"]
 classes = ["mise"]
 
@@ -321,41 +308,13 @@ classes = ["image"]
 [job."setup-scripts-check.yaml:setup-scripts-check"]
 classes = ["image"]
 
-[job."snyk.yaml:preflight"]
-classes = []
-
-[job."snyk.yaml:report"]
-classes = []
-
-[job."snyk.yaml:snyk-code"]
-classes = []
-extra = [
-  "downloads.snyk.io:443",
-  "static.snyk.io:443",
-  "api.snyk.io:443",
-  "deeproxy.snyk.io:443",
-]
-
-[job."snyk.yaml:snyk-container"]
-classes = ["image"]
-extra = [
-  "downloads.snyk.io:443",
-  "static.snyk.io:443",
-  "api.snyk.io:443",
-]
-
-[job."snyk.yaml:snyk-sca"]
-classes = ["mise"]
-extra = [
-  "downloads.snyk.io:443",
-  "static.snyk.io:443",
-  "api.snyk.io:443",
-]
-
 [job."sonarqube.yaml:preflight"]
 classes = []
 
 [job."sonarqube.yaml:report"]
+classes = []
+
+[job."sonarqube.yaml:unconfigured-notice"]
 classes = []
 
 [job."sonarqube.yaml:sonarqube"]
@@ -364,6 +323,11 @@ extra = [
   "sonarcloud.io:443",
   "*.sonarcloud.io:443",
   "binaries.sonarsource.com:443",
+  # スキャナ CLI の署名検証が SonarSource の公開鍵を鍵サーバから取りに行く。到達できないと
+  # アクションは検証を飛ばさずハードエラーで落ちるため、この 2 つは検証の一部である。
+  # フォールバック側も許可するのは、アクションが一次側の失敗時に自動で切り替えるため。
+  "keyserver.ubuntu.com:443",
+  "keys.openpgp.org:443",
 ]
 
 [job."sql-lint.yaml:sql-lint"]

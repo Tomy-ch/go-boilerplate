@@ -14,7 +14,7 @@ import {
 describe("repoOf", () => {
   describe("正常系", () => {
     it("タグを落として owner/repo を返す", () => {
-      expect(repoOf("snyk/actions@v1.0.0")).toBe("snyk/actions");
+      expect(repoOf("github/codeql-action@v4")).toBe("github/codeql-action");
     });
 
     it("タグに @ を含んでも最後の @ で割る", () => {
@@ -34,8 +34,8 @@ describe("isPinKeyReferenced", () => {
     it("残るワークフローが参照していれば true", () => {
       expect(
         isPinKeyReferenced({
-          key: "github/codeql-action@v4",
-          survivingContents: ["      uses: github/codeql-action/upload-sarif@abc # v4"],
+          key: "SonarSource/sonarqube-scan-action@v8.2.1",
+          survivingContents: ["      uses: SonarSource/sonarqube-scan-action@abc # v8.2.1"],
         }),
       ).toBe(true);
     });
@@ -43,7 +43,7 @@ describe("isPinKeyReferenced", () => {
     it("どこからも参照が無ければ false", () => {
       expect(
         isPinKeyReferenced({
-          key: "snyk/actions@v1.0.0",
+          key: "SonarSource/sonarqube-scan-action@v8.2.1",
           survivingContents: ["      uses: actions/checkout@abc # v7.0.0"],
         }),
       ).toBe(false);
@@ -52,8 +52,8 @@ describe("isPinKeyReferenced", () => {
     it("サブパス付きの uses でも owner/repo で拾う", () => {
       expect(
         isPinKeyReferenced({
-          key: "snyk/actions@v1.0.0",
-          survivingContents: ["      uses: snyk/actions/setup@abc # v1.0.0"],
+          key: "github/codeql-action@v4",
+          survivingContents: ["      uses: github/codeql-action/upload-sarif@abc # v4"],
         }),
       ).toBe(true);
     });
@@ -61,7 +61,9 @@ describe("isPinKeyReferenced", () => {
 
   describe("異常系", () => {
     it("残るファイルが 1 件も無ければ false", () => {
-      expect(isPinKeyReferenced({ key: "snyk/actions@v1.0.0", survivingContents: [] })).toBe(false);
+      expect(
+        isPinKeyReferenced({ key: "SonarSource/sonarqube-scan-action@v8.2.1", survivingContents: [] }),
+      ).toBe(false);
     });
   });
 });
@@ -70,16 +72,16 @@ describe("removePinEntries", () => {
   const lockfile = [
     "# コメント",
     '"actions/checkout@v7.0.0" = "aaa"',
-    '"snyk/actions@v1.0.0" = "bbb"',
+    '"SonarSource/sonarqube-scan-action@v8.2.1" = "bbb"',
     '"github/codeql-action@v4" = "ccc"',
     "",
   ].join("\n");
 
   describe("正常系", () => {
     it("指定したキーの行だけを落とす", () => {
-      const result = removePinEntries(lockfile, ["snyk/actions@v1.0.0"]);
+      const result = removePinEntries(lockfile, ["SonarSource/sonarqube-scan-action@v8.2.1"]);
 
-      expect(result).not.toContain("snyk/actions");
+      expect(result).not.toContain("SonarSource/sonarqube-scan-action");
       expect(result).toContain('"actions/checkout@v7.0.0"');
       expect(result).toContain('"github/codeql-action@v4"');
       expect(result).toContain("# コメント");
@@ -102,10 +104,10 @@ describe("removeEgressSections", () => {
     "[class.base]",
     'hosts = ["a:443"]',
     "",
-    '[job."snyk.yaml:snyk-sca"]',
+    '[job."sonarqube.yaml:sonarqube"]',
     'classes = ["mise"]',
     "extra = [",
-    '  "api.snyk.io:443",',
+    '  "sonarcloud.io:443",',
     "]",
     "",
     '[job."sql-lint.yaml:sql-lint"]',
@@ -115,9 +117,9 @@ describe("removeEgressSections", () => {
 
   describe("正常系", () => {
     it("セクションを本文ごと落とし、後続のセクションは残す", () => {
-      const result = removeEgressSections(ssot, ["snyk.yaml:snyk-sca"]);
+      const result = removeEgressSections(ssot, ["sonarqube.yaml:sonarqube"]);
 
-      expect(result).not.toContain("snyk");
+      expect(result).not.toContain("sonarqube");
       expect(result).toContain('[job."sql-lint.yaml:sql-lint"]');
       expect(result).toContain("[class.base]");
     });
@@ -137,12 +139,12 @@ describe("removeEgressSections", () => {
 describe("MissingDeclarationError", () => {
   describe("正常系", () => {
     it("どのファイルの何が見つからなかったかをメッセージに含める", () => {
-      const error = new MissingDeclarationError("README.md", "語句", "+ `snyk.yaml`");
+      const error = new MissingDeclarationError("README.md", "語句", "+ `sonarqube.yaml`");
 
       expect(error.name).toBe("MissingDeclarationError");
       expect(error.message).toContain("README.md");
       expect(error.message).toContain("語句");
-      expect(error.message).toContain("+ `snyk.yaml`");
+      expect(error.message).toContain("+ `sonarqube.yaml`");
     });
   });
 });
@@ -150,11 +152,11 @@ describe("MissingDeclarationError", () => {
 describe("MalformedHeadingError", () => {
   describe("正常系", () => {
     it("どのファイルのどの宣言が見出しでなかったかをメッセージに含める", () => {
-      const error = new MalformedHeadingError("README.md", "Codacy の浮動タグ");
+      const error = new MalformedHeadingError("README.md", "Bearer のライセンス");
 
       expect(error.name).toBe("MalformedHeadingError");
       expect(error.message).toContain("README.md");
-      expect(error.message).toContain("Codacy の浮動タグ");
+      expect(error.message).toContain("Bearer のライセンス");
     });
   });
 });
