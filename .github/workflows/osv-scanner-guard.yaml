@@ -1,7 +1,7 @@
 name: OSV Scan (required-check guard)
 
 # Skip-guard companion for osv-scanner.yaml's `osv-diff` job. That job is
-# registered as a required status check, but osv-scanner.yaml only triggers on a
+# declared in `.github/settings/branch-protection.json` as a required status check, but osv-scanner.yaml only triggers on a
 # pull_request when it touches the dependency `paths`; a PR that changes no
 # dependency manifest would never report the `osv-diff` context and would block
 # merging forever.

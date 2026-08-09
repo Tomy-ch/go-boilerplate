@@ -1,7 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package purchase は、購入の作成ユースケースを提供します。単価は価格スケール（ドル decimal）、
-// 決済額は決済スケール（整数セント）で扱います（ADR-0033）。
+// 決済額は決済スケール（整数セント）で扱います（ADR-0035）。
 package purchase
 
 import (
@@ -313,7 +313,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return eerr
 		}
 
-		// 書き込み後、Repository 経由でドメイン整合を再検証しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		// 書き込み後、Repository 経由でドメイン整合を再検証しレスポンスの取得元とする（ADR-0029 / ADR-0031）。
 		reread, rerr := u.repo.FindByID(ctx, draft.purchaseID)
 		if rerr != nil {
 			return rerr
@@ -373,7 +373,7 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 / ADR-0031）。
 		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
 		if rerr != nil {
 			return rerr
@@ -434,7 +434,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 / ADR-0031）。
 		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
 		if rerr != nil {
 			return rerr
@@ -503,7 +503,7 @@ func (u *usecase) ShipPurchase(
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 / ADR-0031）。
 		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
 		if rerr != nil {
 			return rerr
@@ -572,7 +572,7 @@ func (u *usecase) DeliverPurchase(
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0027 / ADR-0029）。
+		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 / ADR-0031）。
 		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
 		if rerr != nil {
 			return rerr

@@ -1,7 +1,7 @@
 name: Lockfile Integrity (required-check guard)
 
 # Skip-guard companion for lockfile-integrity.yaml. The `lockfile-lint` job is
-# registered as a required status check, but lockfile-integrity.yaml only triggers
+# declared in `.github/settings/branch-protection.json` as a required status check, but lockfile-integrity.yaml only triggers
 # when the PR touches its `paths`; a PR that changes no lockfile would never report
 # the `lockfile-lint` context and would block merging forever.
 #

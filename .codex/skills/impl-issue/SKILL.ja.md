@@ -91,6 +91,12 @@ gh issue comment <n> --body-file <file>
 
 コードに触れる前に済ませる。共有 checkout に何も落とさないため。
 
+既存 worktree を再開する場合は、まず状態を変えずに確認する。worktree のパス、`vendor/` の有無、`.gobp-db-slot` の有無を確認する。slot が無い場合、DB 作業を始める直前に `make slot-acquire` を実行する必要がある。会話を再開するだけで取得してはならない。再開時の無条件な slot 取得や DB 再初期化は禁止する。
+
+### [Codex側の差分]
+
+このリポジトリでは Codex の session-start hook 契約を検証できていない。そのため再開確認は `.codex/hooks.json` ではなく Step 2 に置く。skill を同期するときもこの位置を保つこと。Claude 側の session hook が同じ観測を行っても、Codex 側で再開時の DB slot 取得や DB 再初期化を起こしてはならない。
+
 ```bash
 # 1. origin の live state から現行のリリース線を解決する。
 BASE=$(make -s base-branch)
@@ -295,7 +301,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 
 - [ ] `ask the user explicitly` の対話 1 回で 3 モードを確認した。
 - [ ] 着手コメントを投稿した（issue ↔ ベースの食い違いを含む）。
-- [ ] fetch 済みのベースから worktree を作成、スロットをリース、`go mod vendor` 実行。
+- [ ] fetch 済みのベースから worktree を作成。DB slot は DB 作業開始時にのみリースし、必要なら `go mod vendor` を実行した。
 - [ ] 別モデルが計画を作成、必須 4 セクションが揃い、実装前に承認された。
 - [ ] trip-wire を進行モードどおりに処理した。黙って吸収したものが無い。
 - [ ] 計画と実差分を突合した。

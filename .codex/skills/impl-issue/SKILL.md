@@ -128,6 +128,18 @@ gh issue comment <n> --body-file <file>
 
 Do this before any code is touched, so nothing lands in a shared checkout.
 
+When resuming an existing worktree, first inspect it without changing state: confirm the worktree
+path, whether `vendor/` exists, and whether `.gobp-db-slot` exists. A missing slot means that DB work
+must run `make slot-acquire` immediately before it begins; do **not** acquire it merely to resume the
+conversation. Never run slot acquisition or DB reinitialization as an unconditional resume action.
+
+### [Codex-side difference]
+
+Codex has no verified session-start hook contract in this repository. This resume check therefore
+lives in Step 2 rather than in `.codex/hooks.json`. Keep it here when synchronizing the skill: a
+Claude-side session hook may provide the same observation, but must not cause Codex to acquire a DB
+slot or reinitialize a database on resume.
+
 ```bash
 # 1. Resolve the active release line off origin's live state.
 BASE=$(make -s base-branch)
@@ -383,7 +395,7 @@ decision points this skill exists to create.
 
 - [ ] Modes confirmed in one `ask the user explicitly` interaction.
 - [ ] Kickoff comment posted, including issue-vs-base discrepancies.
-- [ ] Worktree created from a freshly fetched base; slot leased; `go mod vendor` run.
+- [ ] Worktree created from a freshly fetched base; DB slot leased only when DB work begins; `go mod vendor` run when needed.
 - [ ] Plan drafted by a different model, all four sections present, approved before implementation.
 - [ ] Trip-wires handled per flow mode; nothing silently absorbed.
 - [ ] Plan reconciled against the actual diff.

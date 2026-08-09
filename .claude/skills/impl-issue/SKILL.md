@@ -124,7 +124,11 @@ gh issue comment <n> --body-file <file>
 
 ## Step 2 — Secure the environment
 
-Do this before any code is touched, so nothing lands in a shared checkout.
+Do this before any code is touched, so nothing lands in a shared checkout. Which half applies depends
+on whether the worktree exists yet — setting one up and resuming into one are different operations,
+and running the first against an already-live worktree destroys work.
+
+### Initial setup — no worktree yet
 
 ```bash
 # 1. Resolve the active release line off origin's live state.
@@ -135,7 +139,7 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 git fetch origin "$BASE"
 git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
-# 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 4000+N.
+# 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 2010+N.
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 
 # 4. A fresh worktree has no vendor/ and air builds with --mod=vendor, so serve would fail without this.
@@ -158,6 +162,33 @@ when the work is really over.
 
 If the user's instruction named a release version other than the resolved one, ask before branching —
 a deliberate backport target is the one case the resolver cannot know about.
+
+### Resuming into an existing worktree
+
+Setup already happened. Observe it and report what you found; do not re-run any of it.
+
+The session-start environment line (`[agent-env] checkout=… branch=… vendor=… db-slot=…`) already
+carries the three facts that matter — which checkout this is, whether `vendor/` exists, and which DB
+slot is held. When it is present, state those back before continuing rather than re-deriving them.
+
+Do not depend on it being there. A hook can be absent, disabled, or attached to a harness that never
+ran it, and the fallback has to be inspection rather than repair. Every command below only reads:
+
+```bash
+git rev-parse --show-toplevel
+test -d vendor && echo 'vendor: present' || echo 'vendor: absent'
+cat .gobp-db-slot 2>/dev/null || echo 'slot: none'
+```
+
+A missing or malformed slot is a fact to report, not a fault to fix on the spot. Lease one with
+`make slot-acquire` immediately before DB-backed work actually begins — the first `make test`,
+`make serve`, or `psql` — and not before. `go mod vendor` is the same: run it when `vendor/` is absent
+and a build is imminent, not as a resume ritual.
+
+**Never acquire a slot or reinitialize a database because a session resumed.** `slot-acquire` and the
+`db-*-reinit` targets rebuild the slot's `wt<N>_local` / `wt<N>_test` databases from scratch, so a
+reflexive resume-time acquire destroys the state belonging to the very run it is resuming — seeded
+fixtures, a half-applied migration, the data a failure was about to be diagnosed from.
 
 ## Step 3 — Plan, then wait
 
@@ -263,9 +294,9 @@ Open the PR first via `submit-pr`, so CI starts while you verify locally.
 Exercise the real HTTP path against the running system. No mode relaxes this.
 
 ```bash
-make serve                                    # API on 8080+N, mock-auth on 4000+N
+make serve                                    # API on 8080+N, mock-auth on 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
@@ -282,7 +313,7 @@ docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
   "select ui.subject, r.name from user_identities ui
      left join user_roles ur on ur.user_id = ui.user_id
      left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:400N';"
+   where ui.issuer = 'http://localhost:201N';"
 ```
 
 Check the happy path, the error paths the change introduces, and — for a protected operation — that
@@ -359,6 +390,7 @@ decision points this skill exists to create.
 ## Do / Do NOT
 
 - ✅ Secure the worktree and slot before touching code.
+- ✅ On resume, inspect the worktree and report what you found — path, `vendor/`, slot.
 - ✅ Verify the issue's claims against the actual base, and put the discrepancies in the kickoff comment.
 - ✅ Get the plan approved before implementing, and keep it as a file so Step 5 can diff against it.
 - ✅ Treat the five trip-wires as mechanical triggers, not as things to notice.
@@ -370,13 +402,16 @@ decision points this skill exists to create.
 - ❌ Auto-apply a fix that changes the design, in any mode.
 - ❌ File an issue without checking for an existing one, unless issue mode says to.
 - ❌ Release the DB slot, or ask about releasing it, unprompted.
+- ❌ Acquire a slot or reinitialize a database merely because a session resumed.
 - ❌ Poll CI in a foreground sleep loop.
 
 ## Checklist
 
 - [ ] Modes confirmed in one `AskUserQuestion`.
 - [ ] Kickoff comment posted, including issue-vs-base discrepancies.
-- [ ] Worktree created from a freshly fetched base; slot leased; `go mod vendor` run.
+- [ ] Environment secured on the right half of Step 2: a new worktree created from a freshly fetched
+      base with a slot leased and `go mod vendor` run — or an existing one observed and reported,
+      with no slot acquired and no database reinitialized just because the session resumed.
 - [ ] Plan drafted by a different model, all four sections present, approved before implementation.
 - [ ] Trip-wires handled per flow mode; nothing silently absorbed.
 - [ ] Plan reconciled against the actual diff.

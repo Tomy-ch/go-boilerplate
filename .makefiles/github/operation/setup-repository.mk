@@ -33,9 +33,9 @@ setup-repo:
 
 	@$(REPO_SETUP) bootstrap
 
-	@echo "🔧 ルールセットの適用を開始します..."
-	@$(MAKE) apply-branch-protection
-	@echo "✅ ルールセットの適用を終了します。"
+	@echo "🔧 ワークフローの有効化を開始します..."
+	@$(MAKE) enable-workflows
+	@echo "✅ ワークフローの有効化を終了します。"
 
 	@echo "🔧 ラベルの初期化を開始します..."
 	@$(MAKE) delete-all-labels
@@ -44,9 +44,9 @@ setup-repo:
 
 	@$(REPO_SETUP) prune-release-notes
 
-	@echo "🔧 ワークフローの有効化を開始します..."
-	@$(MAKE) enable-workflows
-	@echo "✅ ワークフローの有効化を終了します。"
+	@echo "🔧 ルールセットの適用を開始します..."
+	@$(MAKE) apply-branch-protection
+	@echo "✅ ルールセットの適用を終了します。"
 
 	@git remote remove upstream || true
 	@echo "✅ Initialization complete. Default branch: production"

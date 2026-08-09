@@ -28,9 +28,10 @@ gh api /repos/{owner}/{repo}/rulesets/{ruleset_id}
 | --- | --- |
 | `deletion` | 対象ブランチを削除できない。 |
 | `non_fast_forward` | 対象ブランチへの force-push を拒否する。 |
-| `pull_request` | 対象ブランチへの変更は PR 経由に限る。承認 1 件、push 時に既存の承認を破棄、最終 push 後の再承認、全レビュースレッドの解決、マージ方法は merge commit か squash に限定（rebase merge を除外）。 |
+| `pull_request` | 対象ブランチへの変更は PR 経由に限る。承認 1 件、push 時に既存の承認を破棄、最終 push 後の再承認、全レビュースレッドの解決、CODEOWNERS レビュー、マージ方法は merge commit か squash に限定（rebase merge を除外）。 |
 | `copilot_code_review` | Copilot が各 PR を自動レビューする。push のたび、および draft に対しても実行する。 |
 | `code_quality` | GitHub の code quality ルールを `errors` 深刻度でブロックする。 |
+| `required_status_checks` | guard を持つ 7 件のチェックが成功してからマージする。 |
 
 ### 単独メンテナのリポジトリに `pull_request` を適用する場合
 
@@ -40,11 +41,12 @@ GitHub では自分の PR を自分で承認できません。`required_approvin
 
 GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に** Code Quality のワークフローが動作し PR へ結果を報告していることを確認せよ、というものです。確認しないまま宣言すると、このルールが全 PR のマージをブロックし得ます。機能の有効化はこのディレクトリの外にあるリポジトリ単位の操作なので、機能が無効なら無害だと仮定せず、適用前に確認してください。
 
-### CI の結果はマージをブロックしない
+### Required status check はすべての PR で報告経路を持つ必要がある
 
-`required_status_checks` ルールを宣言していないため、どのワークフローの結果もマージのゲートになりません。赤いチェックのまま PR をマージできます。
-
-これを追加するのはチェックコンテキストを列挙するだけの作業ではありません。required にしたチェックのワークフローが `paths` フィルタで起動しなかった PR では、そのコンテキストが永久に報告されずマージが止まります。そのため required に登録するゲートには、同じチェックコンテキストを補集合のパスセットで報告する `*-guard.yaml` の companion が必要です。この設計は `docs/adr/0084-multi-layer-security-scanning.md` に記録されています。
+宣言する required context は `trivy-fs-release`、`osv-release`、`trivy-config`、`sast`、
+`lockfile-lint`、`openapi-security`、`osv-diff` です。それぞれの `*-guard.yaml` が、path または
+branch filter で本体 workflow が skip されたときも同じ context を報告します。これが無いと、開始されない
+check を PR が永久に待つことになります。設計は `docs/adr/0084-multi-layer-security-scanning.md` を参照してください。
 
 ## labels.json
 
