@@ -5,7 +5,9 @@ name: SonarQube Cloud Scan
 # analysis runs on Sonar's servers, so the source leaves the runner — which weighs less for
 # a public repository than it would for a private one.
 #
-# Report-only; the blocking verdict on first-party source stays with Opengrep and gosec.
+# Sonar's quality gate is enforced here: the job fails when the gate reports anything but
+# OK. The issue list it also produces stays report-only, and the blocking verdict on the
+# rules Opengrep and gosec own stays with them.
 # Scanning and reporting are separate jobs because `make actions-lint` refuses a job that
 # both holds a secret and uses ./.github/actions/upsert-pr-comment — masking does not reach
 # a file the action tees into a comment body, so a raw token could be published.
@@ -106,6 +108,7 @@ jobs:
     outputs:
       count: ${{ steps.summarize.outputs.count }}
       detail: ${{ steps.detail.outputs.markdown }}
+      gate: ${{ steps.gate.outputs.status }}
 
     steps:
       - name: Harden the runner
@@ -174,6 +177,7 @@ jobs:
       # read until the queue entry reports SUCCESS. The ceiling exists because a queue
       # that never drains would otherwise be indistinguishable from a clean scan.
       - name: Wait for analysis to complete
+        id: analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           CE_TASK_ID: ${{ steps.task.outputs.ceTaskId }}
@@ -182,13 +186,16 @@ jobs:
           set -euo pipefail
 
           for _ in $(seq 1 60); do
-            STATUS=$(curl -sS --fail-with-body \
+            TASK=$(curl -sS --fail-with-body \
               -H "Authorization: Bearer ${SONAR_TOKEN}" \
-              "${SERVER_URL}/api/ce/task?id=${CE_TASK_ID}" \
-              | jq -r '.task.status // "UNKNOWN"')
+              "${SERVER_URL}/api/ce/task?id=${CE_TASK_ID}")
+            STATUS=$(jq -r '.task.status // "UNKNOWN"' <<<"${TASK}")
 
             case "${STATUS}" in
               SUCCESS)
+                # The verdict below is requested by analysisId rather than by project, so
+                # that a run concurrent with this one cannot answer for this analysis.
+                echo "analysisId=$(jq -r '.task.analysisId // ""' <<<"${TASK}")" >> "$GITHUB_OUTPUT"
                 exit 0
                 ;;
               FAILED|CANCELED)
@@ -203,6 +210,41 @@ jobs:
 
           echo "::error::the SonarQube analysis did not complete within 10 minutes"
           exit 1
+        shell: bash
+
+      # Sonar's own pass/fail verdict, which is a different question from whether the
+      # analysis ran: a gate can fail on coverage or duplication with no issue raised at
+      # all. Read here and enforced at the end of the job, so the findings are collected
+      # and reported before the job goes red.
+      - name: Read the quality gate
+        id: gate
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SERVER_URL: ${{ steps.task.outputs.serverUrl }}
+          ANALYSIS_ID: ${{ steps.analysis.outputs.analysisId }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ANALYSIS_ID:-}" ]; then
+            echo "::error::the completed task carried no analysisId, so the quality gate cannot be read"
+            exit 1
+          fi
+
+          curl -sS --fail-with-body \
+            -H "Authorization: Bearer ${SONAR_TOKEN}" \
+            "${SERVER_URL}/api/qualitygates/project_status?analysisId=${ANALYSIS_ID}" \
+            -o sonar-quality-gate.json
+
+          STATUS=$(jq -r '.projectStatus.status // "UNKNOWN"' sonar-quality-gate.json)
+          echo "status=${STATUS}" >> "$GITHUB_OUTPUT"
+
+          # Only the failing conditions are written out. The passing ones are the gate
+          # doing its job, and listing them buries the ones that need reading.
+          jq -r '
+            [(.projectStatus.conditions // [])[] | select(.status == "ERROR")]
+            | .[]
+            | "- `\(.metricKey)` \(.comparator | ascii_downcase) \(.errorThreshold) — actual \(.actualValue)"
+          ' sonar-quality-gate.json > sonar-quality-gate.md
         shell: bash
 
       # A pull request analysis is stored against the PR rather than the branch, so the
@@ -284,14 +326,30 @@ jobs:
 
       - name: Create SonarQube summary (Markdown)
         id: summarize
+        env:
+          GATE_STATUS: ${{ steps.gate.outputs.status }}
         run: |
           set -euo pipefail
 
           COUNT=$(jq '[(.runs // [])[] | (.results // [])[]] | length' sonarqube.sarif)
           echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
 
+          # The failing conditions lead the body: a gate can fail on a metric that raises
+          # no issue, and then the issue list below explains nothing about why it failed.
+          if [ -s sonar-quality-gate.md ]; then
+            {
+              echo "**Quality gate: ${GATE_STATUS}**"
+              echo
+              cat sonar-quality-gate.md
+              echo
+            } > sonarqube-summary.md
+          else
+            echo "**Quality gate: ${GATE_STATUS}**" > sonarqube-summary.md
+            echo >> sonarqube-summary.md
+          fi
+
           if [ "$COUNT" -eq 0 ]; then
-            echo "No issues." > sonarqube-summary.md
+            echo "No issues." >> sonarqube-summary.md
             exit 0
           fi
 
@@ -301,7 +359,7 @@ jobs:
             | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
             | .[]
             | "- [\(.level)] `\(.locations[0].physicalLocation.artifactLocation.uri // "?"):\(.locations[0].physicalLocation.region.startLine // 0)` \(.ruleId // "?")\n  - \((.message.text // "") | gsub("\n"; " "))"
-          ' sonarqube.sarif > sonarqube-summary.md
+          ' sonarqube.sarif >> sonarqube-summary.md
         shell: bash
 
       - name: Build detection detail
@@ -320,6 +378,31 @@ jobs:
             sonarqube.sarif
             sonarqube-summary.md
             sonar-issues.json
+            sonar-quality-gate.json
+
+      # Last, so everything above has already reported. NONE fails alongside ERROR: it
+      # means the project carries no gate, and a verdict nobody defined is not a pass.
+      - name: Enforce the quality gate
+        env:
+          GATE_STATUS: ${{ steps.gate.outputs.status }}
+          DASHBOARD_URL: ${{ steps.task.outputs.dashboardUrl }}
+        run: |
+          set -euo pipefail
+
+          case "${GATE_STATUS}" in
+            OK)
+              echo "quality gate: OK"
+              ;;
+            NONE)
+              echo "::error::no quality gate is assigned to this project, so the analysis proves nothing. Assign one in SonarQube Cloud: ${DASHBOARD_URL}"
+              exit 1
+              ;;
+            *)
+              echo "::error::the SonarQube quality gate reported ${GATE_STATUS}. Failing conditions are in the pull-request comment and at ${DASHBOARD_URL}"
+              exit 1
+              ;;
+          esac
+        shell: bash
 
   # The only job that writes outside this run, and the only one with no token. It runs even
   # when the scan failed: a scan that was cut off still has to say so on the pull request,
@@ -374,8 +457,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sonarqube-result -->'
-          status: "${{ needs.sonarqube.outputs.count == '0' && 'success' || 'findings' }}"
-          title: "${{ needs.sonarqube.outputs.count == '' && '## ⚠️ SonarQube Cloud: CUT OFF (no result produced)' || (needs.sonarqube.outputs.count == '0' && '## ✅ SonarQube Cloud: PASS (no issues)' || format('## ⚠️ SonarQube Cloud: {0} issue(s)', needs.sonarqube.outputs.count)) }}"
+          status: "${{ needs.sonarqube.outputs.gate == 'OK' && 'success' || 'findings' }}"
+          title: "${{ needs.sonarqube.outputs.gate == '' && '## ⚠️ SonarQube Cloud: CUT OFF (no result produced)' || (needs.sonarqube.outputs.gate != 'OK' && format('## 🚨 SonarQube Cloud: QUALITY GATE {0}', needs.sonarqube.outputs.gate) || (needs.sonarqube.outputs.count == '0' && '## ✅ SonarQube Cloud: PASS (no issues)' || format('## ✅ SonarQube Cloud: quality gate OK ({0} issue(s))', needs.sonarqube.outputs.count))) }}"
           body-file: reports/sonarqube-summary.md
           details-summary: '📄 Summary'
 
@@ -386,6 +469,68 @@ jobs:
         with:
           sarif_file: reports/sonarqube.sarif
           category: sonarqube
+
+  # A missing token leaves the scan skipped and the run green, and green is the right
+  # answer: a setup gap is not a scan result, and a fork's pull request never receives
+  # repository secrets. Silence is not — a pull request with no comment is indistinguishable
+  # from one that was scanned and came back clean. This posts under the same marker the
+  # result would use, so the notice and a verdict can never both stand.
+  unconfigured-notice:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'false' && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Describe the gap
+        id: gap
+        run: |
+          set -euo pipefail
+          echo "title=## ⚠️ SonarQube Cloud: NOT RUN (SONAR_TOKEN is not configured)" >> "$GITHUB_OUTPUT"
+          cat > sonarqube-unconfigured.md <<'EOF'
+          `SONAR_TOKEN` is not registered for this repository, so no analysis ran and this
+          pull request carries no SonarQube Cloud verdict. The run is green because a
+          missing credential is a setup gap rather than a scan result — it is not evidence
+          that the code is clean.
+
+          A pull request from a fork always lands here: repository secrets are never
+          exposed to one.
+          EOF
+        shell: bash
+
+      - name: Comment the gap on PR
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- sonarqube-result -->'
+          status: unconfigured
+          title: "${{ steps.gap.outputs.title || '## ⚠️ SonarQube Cloud: CUT OFF (no result produced)' }}"
+          body-file: sonarqube-unconfigured.md
 
   # Deliberately no notify-detection. Sonar's baseline over an existing codebase is not
   # zero — it reports maintainability alongside security — so a weekly notification keyed

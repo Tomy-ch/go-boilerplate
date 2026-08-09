@@ -120,7 +120,7 @@
 |DevSkim Scan|`devskim.yaml`|言語を問わずツリー内の全ファイルに当たる DevSkim の正規表現スキャン|
 |Bearer Scan|`bearer.yaml`|機微な値が sink へ到達する経路を追う Bearer のデータフロースキャン（報告専用。Elastic License 2.0 — [Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照）|
 |ESLint Scan|`eslint.yaml`|3 つの TypeScript ワークスペースに対する `eslint-plugin-security` の検査。matrix の 1 レグずつ（報告専用）|
-|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|
+|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（**Sonar の品質ゲートでブロックする**。issue の一覧は報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|
 |Codacy Scan|`codacy.yaml`|Codacy による一次ソースの複数リンタ解析（報告専用。`CODACY_PROJECT_TOKEN` が必要。[Codacy の浮動タグのツールイメージ](#codacy-の浮動タグのツールイメージ)を参照）|
 |Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
 |OpenAPI Security|`openapi-security.yaml`|Spectral + OWASP API Security ルールセットによる OpenAPI 定義の検証|
@@ -203,16 +203,16 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | --- | --- | --- |
 | Dockerfile のセキュリティポリシー | `trivy-config.yaml` **(gate, HIGH+)** | Opengrep（`opengrep.yaml` で Dockerfile ルールを除外） |
 | Dockerfile のスタイル / 正しさ | `docker-lint.yaml`（hadolint） **(gate)** | —（層が違い重複ではない） |
-| 自前の Go ソース | `opengrep.yaml`（Opengrep・ERROR 帯） **(gate)** + `go-lint.yaml` 経由の `gosec` **(gate)** — ルールセットは互いに素 + `sonarqube.yaml`（SonarQube Cloud・報告専用） + `codacy.yaml`（Codacy・報告専用） | — |
+| 自前の Go ソース | `opengrep.yaml`（Opengrep・ERROR 帯） **(gate)** + `go-lint.yaml` 経由の `gosec` **(gate)** — ルールセットは互いに素 + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** + `codacy.yaml`（Codacy・報告専用） | — |
 | OpenAPI の規約 / 命名 | `oapi-lint.yaml`（redocly） **(gate)** | Spectral |
 | OpenAPI のセキュリティ姿勢 | `openapi-security.yaml`（Spectral） **(gate)** | redocly |
 | 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） — すべて報告専用 | — |
-| 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） + `codacy.yaml`（Codacy） | — |
+| 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** + `codacy.yaml`（Codacy） | — |
 | 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
 | sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用。対象はアプリケーションコードのみで `/scripts` は除外（リポジトリのツーリングはユーザーデータを扱わず、この問いが訊いているのはそれだけであるため） | — |
 | ランタイムイメージ | `image-scan.yaml`（Trivy） **(gate)** | — |
 
-`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 2 つも乗っていますが、いずれもそこでは報告専用です。どれもゲートを持たないため、そのうちの 1 つが発火したルールで PR が 2 回赤くなることはありません。エンジンが 3 つ増えても「ルール単位で担当 1 つ」が保たれるのはそのためです。
+`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 2 つも乗っています。Codacy はそこでは報告専用ですが、Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは解析全体——新規コードのカバレッジや重複と、Sonar 自身の issue 分類——をまとめて判定するため、Opengrep と gosec が担当しないルールだけに絞れず、両者が認識する検出で PR が 2 回赤くなり得ます。それを受け入れているのは、代わりに得られるのがベンダーの判定を捨てることであり、実際それは「スキャンは報告するが run はそのままマージされる」状態を作っていたためです。
 
 #### Bearer のライセンスと撤去
 

@@ -59,12 +59,13 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       'sonarqube.yaml:preflight',
       'sonarqube.yaml:report',
       'sonarqube.yaml:sonarqube',
+      'sonarqube.yaml:unconfigured-notice',
     ],
     docBlocks: [
       {
         file: README_EN,
         block:
-          "|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|\n",
+          "|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (**gates on Sonar's quality gate**, issue list report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|\n",
       },
       {
         file: README_EN,
@@ -79,7 +80,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|\n",
+          "|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（**Sonar の品質ゲートでブロックする**。issue の一覧は報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|\n",
       },
       {
         file: README_JA,
@@ -93,11 +94,11 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       },
     ],
     docFragments: [
-      { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud, report-only)" },
-      { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud)" },
+      { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**" },
+      { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**" },
       { file: README_EN, fragment: ", `0 19` SonarQube Cloud" },
-      { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud・報告専用）" },
-      { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud）" },
+      { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**" },
+      { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**" },
       { file: README_JA, fragment: "、`0 19` SonarQube Cloud" },
     ],
     docSections: [],
@@ -109,7 +110,12 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
     presenceMarker: ".github/workflows/codacy.yaml",
     paths: [".github/workflows/codacy.yaml"],
     pinKeys: ["codacy/codacy-analysis-cli-action@v4.4.7", "actions/download-artifact@v7"],
-    egressJobs: ['codacy.yaml:codacy', 'codacy.yaml:preflight', 'codacy.yaml:report'],
+    egressJobs: [
+      'codacy.yaml:codacy',
+      'codacy.yaml:preflight',
+      'codacy.yaml:report',
+      'codacy.yaml:unconfigured-notice',
+    ],
     docBlocks: [
       {
         file: README_EN,
@@ -193,7 +199,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_EN,
         block:
-          "\nThe `First-party Go source` and `First-party TypeScript source` rows carry the two vendor-hosted scanners as well, and they are all report-only there: none of them holds a gate, so a rule one of them fires on cannot turn a pull request red twice. That is what keeps the \"one owner per rule\" property intact while three more engines read the same files.\n",
+          "\nThe `First-party Go source` and `First-party TypeScript source` rows carry the two vendor-hosted scanners as well. Codacy is report-only there; Sonar is the one deliberate departure from \"one owner per rule\" in this table. Its quality gate judges the analysis as a whole — new-code coverage and duplication alongside its own issue taxonomy — so it cannot be narrowed to the rules Opengrep and gosec do not claim, and a finding both engines recognize can turn a pull request red twice. That is accepted here because the alternative was discarding the vendor's verdict entirely, which left the scan reporting into a run that merged regardless.\n",
       },
       {
         file: README_JA,
@@ -208,7 +214,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 2 つも乗っていますが、いずれもそこでは報告専用です。どれもゲートを持たないため、そのうちの 1 つが発火したルールで PR が 2 回赤くなることはありません。エンジンが 3 つ増えても「ルール単位で担当 1 つ」が保たれるのはそのためです。\n",
+          "\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 2 つも乗っています。Codacy はそこでは報告専用ですが、Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは解析全体——新規コードのカバレッジや重複と、Sonar 自身の issue 分類——をまとめて判定するため、Opengrep と gosec が担当しないルールだけに絞れず、両者が認識する検出で PR が 2 回赤くなり得ます。それを受け入れているのは、代わりに得られるのがベンダーの判定を捨てることであり、実際それは「スキャンは報告するが run はそのままマージされる」状態を作っていたためです。\n",
       },
       // 撤去後は呼ぶ先が無くなるので、ターゲットの宣言とレシピも一緒に落とす。
       {

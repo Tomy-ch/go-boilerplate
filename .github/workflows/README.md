@@ -120,7 +120,7 @@ All three rules live in one check rather than three, because they are not three 
 |DevSkim Scan|`devskim.yaml`|DevSkim regex scan over every file in the tree, whatever its language|
 |Bearer Scan|`bearer.yaml`|Bearer data-flow scan for sensitive values reaching a sink (report-only; Elastic License 2.0, see [Bearer's licence and removal](#bearers-licence-and-removal))|
 |ESLint Scan|`eslint.yaml`|ESLint with `eslint-plugin-security` over the three TypeScript workspaces, one matrix leg each (report-only)|
-|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|
+|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (**gates on Sonar's quality gate**, issue list report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|
 |Codacy Scan|`codacy.yaml`|Codacy multi-linter analysis of first-party source (report-only; needs `CODACY_PROJECT_TOKEN`, see [Codacy's floating tool images](#codacys-floating-tool-images))|
 |Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
 |OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
@@ -203,16 +203,16 @@ Every other tool on a shared surface is report-only, and the verdict on that sur
 | --- | --- | --- |
 | Dockerfile security policy | `trivy-config.yaml` **(gate, HIGH+)** | Opengrep (its Dockerfile rules are excluded in `opengrep.yaml`) |
 | Dockerfile style / correctness | `docker-lint.yaml` (hadolint) **(gate)** | — (a different layer, not a duplicate) |
-| First-party Go source | `opengrep.yaml` (Opengrep, ERROR band) **(gate)** + `gosec` via `go-lint.yaml` **(gate)** — disjoint rule sets + `sonarqube.yaml` (SonarQube Cloud, report-only) + `codacy.yaml` (Codacy, report-only) | — |
+| First-party Go source | `opengrep.yaml` (Opengrep, ERROR band) **(gate)** + `gosec` via `go-lint.yaml` **(gate)** — disjoint rule sets + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)** + `codacy.yaml` (Codacy, report-only) | — |
 | OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) **(gate)** | Spectral |
 | OpenAPI security posture | `openapi-security.yaml` (Spectral) **(gate)** | redocly |
 | Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) — all report-only | — |
-| First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) + `sonarqube.yaml` (SonarQube Cloud) + `codacy.yaml` (Codacy) | — |
+| First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)** + `codacy.yaml` (Codacy) | — |
 | Any file, whatever its language | `devskim.yaml` (DevSkim) | — |
 | Sensitive values reaching a sink | `bearer.yaml` (Bearer) — report-only, over application code only (`/scripts` is excluded: repository tooling handles no user data, which is the whole of what this question asks) | — |
 | Runtime image | `image-scan.yaml` (Trivy) **(gate)** | — |
 
-The `First-party Go source` and `First-party TypeScript source` rows carry the two vendor-hosted scanners as well, and they are all report-only there: none of them holds a gate, so a rule one of them fires on cannot turn a pull request red twice. That is what keeps the "one owner per rule" property intact while three more engines read the same files.
+The `First-party Go source` and `First-party TypeScript source` rows carry the two vendor-hosted scanners as well. Codacy is report-only there; Sonar is the one deliberate departure from "one owner per rule" in this table. Its quality gate judges the analysis as a whole — new-code coverage and duplication alongside its own issue taxonomy — so it cannot be narrowed to the rules Opengrep and gosec do not claim, and a finding both engines recognize can turn a pull request red twice. That is accepted here because the alternative was discarding the vendor's verdict entirely, which left the scan reporting into a run that merged regardless.
 
 #### Bearer's licence and removal
 
