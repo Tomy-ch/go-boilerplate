@@ -3,7 +3,7 @@
 # comment-remediated.toml.
 #
 # Two modes. With paths as arguments it prints one verdict per path. With --hook it reads a
-# Claude Code PreToolUse payload on stdin and emits the additionalContext envelope.
+# Claude Code or Codex PreToolUse payload on stdin and emits the additionalContext envelope.
 #
 # It always exits 0. The verdict is advice to whoever is about to edit the file, and a
 # non-zero exit from the hook path would turn that advice into a blocked edit — which would
@@ -99,21 +99,34 @@ run_hook() {
   # the alternative is an error notice on every single edit.
   command -v jq >/dev/null 2>&1 || exit 0
 
-  path=$(jq -r '.tool_input.file_path // empty' 2>/dev/null) || exit 0
-  [ -n "${path}" ] || exit 0
+  payload=$(cat) || exit 0
+  paths=$(printf '%s' "${payload}" | jq -r '.tool_input.file_path // empty' 2>/dev/null) || exit 0
+  if [ -z "${paths}" ]; then
+    paths=$(printf '%s' "${payload}" | jq -r '.tool_input.command // empty' 2>/dev/null \
+      | awk '/^\*\*\* (Add|Update|Delete) File: / { sub(/^\*\*\* (Add|Update|Delete) File: /, ""); print }') || exit 0
+  fi
+  [ -n "${paths}" ] || exit 0
 
-  rel=$(to_relative "${path}")
-  [ -z "$(out_of_scope_reason "${rel}")" ] || exit 0
-  is_listed "${rel}" && exit 0
+  required=''
+  while IFS= read -r path; do
+    [ -n "${path}" ] || continue
+    rel=$(to_relative "${path}")
+    [ -z "$(out_of_scope_reason "${rel}")" ] || continue
+    is_listed "${rel}" && continue
+    required="${required}${required:+, }${rel}"
+  done <<EOF
+${paths}
+EOF
+  [ -n "${required}" ] || exit 0
 
   # Deliberately a pointer, not the instruction. This is emitted on every edit to every
   # unswept file, so its cost is paid whether or not the sweep happens; the prompt behind it
   # is read once, and only when it will be acted on.
-  jq -n --arg path "${rel}" --arg prompt "${PROMPT_REL}" '{
+  jq -n --arg paths "${required}" --arg prompt "${PROMPT_REL}" '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       additionalContext: (
-        $path + ": comments predate the current policy. Make your edit, then before "
+        $paths + ": comments predate the current policy. Make your edit, then before "
         + "finishing the task read " + $prompt + " and follow it."
       )
     }
