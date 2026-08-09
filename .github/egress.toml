@@ -101,6 +101,9 @@ extra = [
   "*.ingest.sentry.io:443",
 ]
 
+[job."checkov.yaml:checkov"]
+classes = ["mise"]
+
 [job."code-ql.yaml:codeql"]
 classes = ["mise"]
 extra = [
