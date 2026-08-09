@@ -147,14 +147,21 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 
 # 2. Branch from current origin, not a stale local ref.
 git fetch origin "$BASE"
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
+mkdir -p .codex/worktrees
+git worktree add -b feature/<n>-<slug> .codex/worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 4000+N.
-cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
+cd .codex/worktrees/<n>-<slug> && make slot-acquire
 
 # 4. A fresh worktree has no vendor/ and air builds with --mod=vendor, so serve would fail without this.
 go mod vendor
 ```
+
+`.codex/worktrees/` is a linked-worktree container inside the trusted workspace, so ordinary work
+does not cross the sandbox write boundary. It is ignored because the parent checkout otherwise sees
+each linked worktree as untracked. Never run `git clean -fdx` in the parent checkout: it can delete
+these worktrees. The repository's local-safety rule forbids `git clean`; do not request an exception
+to clean this directory.
 
 `make base-branch` reads `origin`'s live state. Use nothing else for this: the local
 `refs/remotes/origin/HEAD` is set once at clone time and `git fetch` never updates it, the GitHub

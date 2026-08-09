@@ -104,14 +104,17 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 
 # 2. 古いローカル ref ではなく、今の origin から切る。
 git fetch origin "$BASE"
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
+mkdir -p .codex/worktrees
+git worktree add -b feature/<n>-<slug> .codex/worktrees/<n>-<slug> "origin/$BASE"
 
 # 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
-cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
+cd .codex/worktrees/<n>-<slug> && make slot-acquire
 
 # 4. 新規 worktree には vendor/ が無く、air は --mod=vendor でビルドするため、これが無いと serve が失敗する。
 go mod vendor
 ```
+
+`.codex/worktrees/` は trusted workspace の内側に置く linked worktree のコンテナである。通常作業は sandbox の書込み境界をまたがない。親 checkout からは各 linked worktree が未追跡に見えるため、このディレクトリは ignore する。親 checkout で `git clean -fdx` を実行してはならない。これらの worktree を削除し得るためである。リポジトリの local-safety rule は `git clean` を禁止している。このディレクトリを掃除するための例外を求めてはならない。
 
 `make base-branch` は `origin` の live state を読む。この用途で他の情報は使わない。ローカルの
 `refs/remotes/origin/HEAD` は clone 時に一度だけ設定され、`git fetch` では更新されない。GitHub の

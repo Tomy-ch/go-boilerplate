@@ -15,7 +15,8 @@ prefix_rule(
     justification = "ファイル削除は Codex から実行しない",
 )
 
-# 復元不能または履歴を失わせる Git 操作は実行しない。
+# 復元不能または履歴を失わせる Git 操作は実行しない。特に `.codex/worktrees/` は
+# linked worktree の実体なので、`git clean -fdx` で削除してはならない。
 prefix_rule(
     pattern = ["git", ["clean", "filter-branch", "gc", "prune", "rebase", "reset", "restore", "update-ref"]],
     decision = "forbidden",
