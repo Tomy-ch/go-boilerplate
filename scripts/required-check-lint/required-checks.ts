@@ -14,6 +14,18 @@ export function checkRequiredChecks(
 
   for (const context of required) jobsByContext.set(context, { main: [], guard: [] });
 
+  collectWorkflowJobs(required, workflows, jobsByContext, findings);
+  appendRequiredContextFindings(requiredContexts, jobsByContext, findings);
+
+  return findings;
+}
+
+function collectWorkflowJobs(
+  required: ReadonlySet<string>,
+  workflows: readonly WorkflowSource[],
+  jobsByContext: Map<string, { main: string[]; guard: string[] }>,
+  findings: Finding[],
+): void {
   for (const workflow of workflows) {
     const { found, jobs } = splitJobs(workflow.source);
     if (!found) {
@@ -36,24 +48,31 @@ export function checkRequiredChecks(
       }
     }
   }
+}
 
+function appendRequiredContextFindings(
+  requiredContexts: readonly string[],
+  jobsByContext: ReadonlyMap<string, { main: string[]; guard: string[] }>,
+  findings: Finding[],
+): void {
   for (const context of requiredContexts) {
     const entry = jobsByContext.get(context)!;
-    if (entry.main.length !== 1) {
-      findings.push({
-        file: ".github/settings/branch-protection.json",
-        line: 1,
-        message: `required context \`${context}\` の本体 job は 1 件必要です（実際: ${entry.main.length}）`,
-      });
-    }
-    if (entry.guard.length !== 1) {
-      findings.push({
-        file: ".github/settings/branch-protection.json",
-        line: 1,
-        message: `required context \`${context}\` の skip guard job は 1 件必要です（実際: ${entry.guard.length}）`,
-      });
-    }
+    appendJobCountFinding(context, "本体", entry.main.length, findings);
+    appendJobCountFinding(context, "skip guard", entry.guard.length, findings);
   }
+}
 
-  return findings;
+function appendJobCountFinding(
+  context: string,
+  kind: "本体" | "skip guard",
+  actual: number,
+  findings: Finding[],
+): void {
+  if (actual === 1) return;
+
+  findings.push({
+    file: ".github/settings/branch-protection.json",
+    line: 1,
+    message: `required context \`${context}\` の${kind} job は 1 件必要です（実際: ${actual}）`,
+  });
 }

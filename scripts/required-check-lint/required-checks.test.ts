@@ -30,6 +30,17 @@ describe("checkRequiredChecks", () => {
       expect(checkRequiredChecks(required, [main])[0]?.message).toContain("skip guard job は 1 件必要");
     });
 
+    it("本体 job が無ければ失敗する", () => {
+      expect(checkRequiredChecks(required, [guard])[0]?.message).toContain("本体 job は 1 件必要です（実際: 0）");
+    });
+
+    it("本体 job が複数あれば失敗する", () => {
+      const duplicateMain = { ...main, file: ".github/workflows/scan-copy.yaml" };
+      expect(checkRequiredChecks(required, [main, duplicateMain, guard])[0]?.message).toContain(
+        "本体 job は 1 件必要です（実際: 2）",
+      );
+    });
+
     it("required にない guard job を失敗にする", () => {
       const extra = { ...guard, source: "# required-check guard\njobs:\n  other:\n    steps: []" };
       expect(checkRequiredChecks(required, [main, extra])[0]?.message).toContain("required context ではありません");
