@@ -38,8 +38,7 @@ export function checkRequiredChecks(
   }
 
   for (const context of requiredContexts) {
-    const entry = jobsByContext.get(context);
-    if (entry === undefined) continue;
+    const entry = jobsByContext.get(context)!;
     if (entry.main.length !== 1) {
       findings.push({
         file: ".github/settings/branch-protection.json",

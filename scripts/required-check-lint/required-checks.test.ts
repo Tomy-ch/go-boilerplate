@@ -17,6 +17,15 @@ describe("checkRequiredChecks", () => {
   });
 
   describe("異常系", () => {
+    it("jobs 宣言のないワークフローを失敗にする", () => {
+      const missingJobs = { file: ".github/workflows/invalid.yaml", source: "name: invalid" };
+      expect(checkRequiredChecks(required, [main, guard, missingJobs])[0]).toMatchObject({
+        file: missingJobs.file,
+        line: 1,
+        message: "jobs: が見つかりません",
+      });
+    });
+
     it("guard が無ければ失敗する", () => {
       expect(checkRequiredChecks(required, [main])[0]?.message).toContain("skip guard job は 1 件必要");
     });
