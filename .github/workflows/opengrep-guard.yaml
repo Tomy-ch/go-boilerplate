@@ -20,6 +20,9 @@ on:
       - 'go.sum'
       - 'openapi/**'
       - 'database/**'
+      - 'mock-auth-server/**'
+      - 'docs-viewer/**'
+      - 'scripts/**'
 
 permissions:
   contents: read
