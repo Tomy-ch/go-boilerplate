@@ -54,6 +54,11 @@ Before implementing any change:
 
 For API changes: OpenAPI is defined first. For DB changes: the migration + SQL exist first.
 
+**Comment remediation.** For each file you are about to edit, run
+`.agents/comment-remediation/comment-remediated.sh <path>`. On `comment remediation required`,
+read the prompt named in that directory and follow it before the task is finished. Assistants
+whose hooks fire this automatically need not run it by hand.
+
 ## Layer Rules (hard constraints — enforced by `golangci-lint` depguard)
 
 Boundaries are enforced in CI, not just documented. Full table + rationale: `docs/rules.md`.
