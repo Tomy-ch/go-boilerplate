@@ -45,8 +45,8 @@ on:
       - '**/*.mjs'
       - '**/*.jsx'
   schedule:
-    # Monday 19:00 UTC — the slot after Codacy. Sonar's rule set is updated on their side,
-    # so an unchanged tree can produce a different result from one week to the next.
+    # Monday 19:00 UTC — the last slot in the rotation. Sonar's rule set is updated on their
+    # side, so an unchanged tree can produce a different result from one week to the next.
     - cron: '0 19 * * 1'
   workflow_dispatch:
 

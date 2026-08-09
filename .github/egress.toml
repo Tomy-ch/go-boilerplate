@@ -107,22 +107,6 @@ extra = [
   "uploads.github.com:443",
 ]
 
-[job."codacy.yaml:codacy"]
-classes = ["image"]
-extra = [
-  "api.codacy.com:443",
-  "artifacts.codacy.com:443",
-]
-
-[job."codacy.yaml:preflight"]
-classes = []
-
-[job."codacy.yaml:report"]
-classes = []
-
-[job."codacy.yaml:unconfigured-notice"]
-classes = []
-
 [job."commitlint.yaml:commitlint"]
 classes = ["mise"]
 

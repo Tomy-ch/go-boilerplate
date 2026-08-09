@@ -33,7 +33,3 @@ mise.toml                             @Tomy-ch
 # The `harden-runner` allowlist SSOT — `make egress-apply` writes each entry out to
 # every workflow that carries the job.
 .github/egress.toml                   @Tomy-ch
-
-# What the Codacy linters are given to read. An exclusion added here takes code out of the
-# analysis and leaves the job green.
-.codacy.yaml                          @Tomy-ch
