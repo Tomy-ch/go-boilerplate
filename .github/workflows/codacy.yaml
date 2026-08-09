@@ -23,6 +23,7 @@ on:
       - production
     paths:
       - '.github/workflows/codacy.yaml'
+      - '.codacy.yaml'
       - '**/*.go'
       - '**/*.ts'
       - '**/*.tsx'
@@ -32,6 +33,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/codacy.yaml'
+      - '.codacy.yaml'
       - '**/*.go'
       - '**/*.ts'
       - '**/*.tsx'
