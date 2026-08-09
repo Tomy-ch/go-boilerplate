@@ -321,37 +321,6 @@ classes = ["image"]
 [job."setup-scripts-check.yaml:setup-scripts-check"]
 classes = ["image"]
 
-[job."snyk.yaml:preflight"]
-classes = []
-
-[job."snyk.yaml:report"]
-classes = []
-
-[job."snyk.yaml:snyk-code"]
-classes = []
-extra = [
-  "downloads.snyk.io:443",
-  "static.snyk.io:443",
-  "api.snyk.io:443",
-  "deeproxy.snyk.io:443",
-]
-
-[job."snyk.yaml:snyk-container"]
-classes = ["image"]
-extra = [
-  "downloads.snyk.io:443",
-  "static.snyk.io:443",
-  "api.snyk.io:443",
-]
-
-[job."snyk.yaml:snyk-sca"]
-classes = ["mise"]
-extra = [
-  "downloads.snyk.io:443",
-  "static.snyk.io:443",
-  "api.snyk.io:443",
-]
-
 [job."sonarqube.yaml:preflight"]
 classes = []
 

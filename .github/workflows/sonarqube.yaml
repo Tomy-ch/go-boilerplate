@@ -6,7 +6,9 @@ name: SonarQube Cloud Scan
 # a public repository than it would for a private one.
 #
 # Report-only; the blocking verdict on first-party source stays with Opengrep and gosec.
-# Scanning and reporting are separate jobs for the reason snyk.yaml gives.
+# Scanning and reporting are separate jobs because `make actions-lint` refuses a job that
+# both holds a secret and uses ./.github/actions/upsert-pr-comment — masking does not reach
+# a file the action tees into a comment body, so a raw token could be published.
 #
 # Unlike every other scanner here this one produces no SARIF: the action wraps the Sonar
 # Scanner CLI, which uploads its analysis and returns nothing local. The conversion below
@@ -54,8 +56,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # See snyk.yaml: the credential check is a job of its own because the `secrets` context
-  # is not available to a job-level `if:`, and a missing token has to leave the run green.
+  # The credential check is a job of its own because the `secrets` context is not available
+  # to a job-level `if:`, and a missing token has to leave the run green.
   # A pull request from a fork never receives repository secrets, and this repository is a
   # public template whose forks are the point.
   preflight:

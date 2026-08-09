@@ -7,7 +7,7 @@ name: Codacy Scan
 # is not necessarily a code change.
 #
 # Report-only; the blocking verdict on first-party source stays with Opengrep and gosec.
-# Scanning and reporting are separate jobs for the reason snyk.yaml gives.
+# Scanning and reporting are separate jobs for the reason sonarqube.yaml gives.
 #
 # The tool images are pulled at run time on floating tags, outside
 # `.github/actions-pin.toml` and outside `make pin-actions-check` — a known exception,
@@ -38,9 +38,9 @@ on:
       - '**/*.mjs'
       - '**/*.jsx'
   schedule:
-    # Monday 18:00 UTC — the slot after Snyk. Codacy's tool images move on floating tags,
-    # so an unchanged tree can produce a different result from one week to the next, which
-    # is exactly what a scheduled run is for.
+    # Monday 18:00 UTC — behind every scanner that reads files on its own runner. Codacy's
+    # tool images move on floating tags, so an unchanged tree can produce a different result
+    # from one week to the next, which is exactly what a scheduled run is for.
     - cron: '0 18 * * 1'
   workflow_dispatch:
 
@@ -52,7 +52,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # See snyk.yaml: the credential check is a job of its own because the `secrets` context
+  # See sonarqube.yaml: the credential check is a job of its own because the `secrets` context
   # is not available to a job-level `if:`, and a missing token has to leave the run green.
   # A pull request from a fork never receives repository secrets, and this repository is a
   # public template whose forks are the point.
