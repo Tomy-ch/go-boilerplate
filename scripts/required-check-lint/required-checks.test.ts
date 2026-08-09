@@ -14,6 +14,11 @@ describe("checkRequiredChecks", () => {
     it("本体と guard が各 1 件なら通す", () => {
       expect(checkRequiredChecks(required, [main, guard])).toEqual([]);
     });
+
+    it(".yml 拡張子の guard も認識する", () => {
+      const ymlGuard = { ...guard, file: ".github/workflows/scan-guard.yml" };
+      expect(checkRequiredChecks(required, [main, ymlGuard])).toEqual([]);
+    });
   });
 
   describe("異常系", () => {
