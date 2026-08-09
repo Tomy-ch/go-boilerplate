@@ -11,13 +11,11 @@ on:
       - staging
       - production
     paths:
-      - '.github/workflows/checkov.yaml'
       - '.github/workflows/**'
       - '.github/actions/**'
       - 'docker/**/Dockerfile'
   pull_request:
     paths:
-      - '.github/workflows/checkov.yaml'
       - '.github/workflows/**'
       - '.github/actions/**'
       - 'docker/**/Dockerfile'
