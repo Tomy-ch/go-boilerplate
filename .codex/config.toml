@@ -1,13 +1,11 @@
-# Codex does not auto-load project-level configuration as of codex-cli 0.145.0.
-# This file records the intended posture; it does not apply it. Apply these values
-# with -c key=value, layer them through --profile, or reflect them in
-# ~/.codex/config.toml.
+# Codex loads this project configuration after the project is trusted.
 # Detailed command and path constraints remain canonical in AGENTS.md.
 
 # Match the project policy: ordinary work stays sandboxed, while consequential
 # commands remain subject to an explicit approval request.
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
+approvals_reviewer = "auto_review"
 
 [features]
 # Repository skills delegate independent read-only reviews to .codex/agents/.
