@@ -27,25 +27,34 @@ function collectWorkflowJobs(
   findings: Finding[],
 ): void {
   for (const workflow of workflows) {
-    const { found, jobs } = splitJobs(workflow.source);
-    if (!found) {
-      findings.push({ file: workflow.file, line: 1, message: "jobs: が見つかりません" });
-      continue;
-    }
+    collectWorkflowJob(required, workflow, jobsByContext, findings);
+  }
+}
 
-    const isGuard = workflow.file.endsWith("-guard.yaml") || workflow.file.endsWith("-guard.yml");
+function collectWorkflowJob(
+  required: ReadonlySet<string>,
+  workflow: WorkflowSource,
+  jobsByContext: Map<string, { main: string[]; guard: string[] }>,
+  findings: Finding[],
+): void {
+  const { found, jobs } = splitJobs(workflow.source);
+  if (!found) {
+    findings.push({ file: workflow.file, line: 1, message: "jobs: が見つかりません" });
+    return;
+  }
 
-    for (const job of jobs) {
-      const entry = jobsByContext.get(job.id);
-      if (entry !== undefined) (isGuard ? entry.guard : entry.main).push(workflow.file);
+  const isGuard = workflow.file.endsWith("-guard.yaml") || workflow.file.endsWith("-guard.yml");
 
-      if (isGuard && !required.has(job.id)) {
-        findings.push({
-          file: workflow.file,
-          line: job.number,
-          message: `guard job \`${job.id}\` は branch-protection.json の required context ではありません`,
-        });
-      }
+  for (const job of jobs) {
+    const entry = jobsByContext.get(job.id);
+    if (entry !== undefined) (isGuard ? entry.guard : entry.main).push(workflow.file);
+
+    if (isGuard && !required.has(job.id)) {
+      findings.push({
+        file: workflow.file,
+        line: job.number,
+        message: `guard job \`${job.id}\` は branch-protection.json の required context ではありません`,
+      });
     }
   }
 }

@@ -20,7 +20,7 @@ export default defineConfig({
       exclude: [...EXCLUDED_FROM_CHECKS],
       // text だけに絞る。HTML を出すとディスクへ書き出したものを .gitignore で面倒見る話に
       // なるが、Go 側の docs/coverage/ と違って公開する consumer がまだ無い。
-      reporter: ["text"],
+      reporter: ["text", "lcov"],
       // 母数を判定モジュールへ絞ってあるぶん、100% は「網羅せよ」ではなく「検査されない分岐を
       // 残さない」を意味する。ここが下がるのは新しい判定を足して踏まないまま置いた場合で、
       // それはゲートが黙る方向の変更そのものなので、率ではなく不変条件として止める。
