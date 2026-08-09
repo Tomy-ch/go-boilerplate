@@ -129,7 +129,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_EN,
         block:
-          "| `codacy.yaml` `codacy` | 20 | no completed run to measure, and the action pulls one tool image per language before any analysis starts |\n",
+          "| `codacy.yaml` `codacy` | 45 | not the formula — the analysis has never finished, so there is nothing to multiply; this is headroom to obtain a first measurement, and comes back down to `measured × 3` once one run completes |\n",
       },
       {
         file: README_JA,
@@ -143,7 +143,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "| `codacy.yaml` `codacy` | 20 | 完了実行が無く実測できないうえ、解析の前に言語ごとのツールイメージを取得する |\n",
+          "| `codacy.yaml` `codacy` | 45 | 式ではない。解析が一度も完了しておらず掛ける元が無いため、最初の実測を取るための余裕。1 回完了したら `実測 × 3` へ戻す |\n",
       },
     ],
     docFragments: [

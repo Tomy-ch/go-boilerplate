@@ -96,7 +96,10 @@ jobs:
     needs: preflight
     if: ${{ needs.preflight.outputs.configured == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Not the formula. The analysis has never finished, so there is nothing to multiply —
+    # this is headroom to obtain the first measurement, and it comes back down to
+    # `measured × 3` once one run completes.
+    timeout-minutes: 45
     permissions:
       contents: read
     outputs:
@@ -172,6 +175,9 @@ jobs:
       # max-allowed-issues is set to the action's own maximum so a finding cannot fail the
       # job: this workflow reports, and the count that matters is the one in the summary
       # below.
+      # verbose, because the default prints nothing between pulling the CLI image and
+      # finishing. A run that is cut off then leaves a log that ends at the pull, which
+      # cannot distinguish a slow analysis from a hung one.
       - name: Codacy analysis
         uses: codacy/codacy-analysis-cli-action@562ee3e92b8e92df8b67e0a5ff8aa8e261919c08 # v4.4.7
         with:
@@ -179,6 +185,7 @@ jobs:
           format: sarif
           output: codacy.sarif
           max-allowed-issues: 2147483647
+          verbose: true
 
       - name: Create Codacy summary (Markdown)
         id: summarize

@@ -56,7 +56,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
 | `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
 | `sonarqube.yaml` `sonarqube` | 20 | the analysis runs on Sonar's servers and the job waits for it; that wait is itself capped at 10 minutes, so a lower job limit would cut the wait off rather than the hang it exists to catch |
-| `codacy.yaml` `codacy` | 20 | no completed run to measure, and the action pulls one tool image per language before any analysis starts |
+| `codacy.yaml` `codacy` | 45 | not the formula — the analysis has never finished, so there is nothing to multiply; this is headroom to obtain a first measurement, and comes back down to `measured × 3` once one run completes |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
 
