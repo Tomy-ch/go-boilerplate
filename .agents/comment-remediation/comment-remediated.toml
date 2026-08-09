@@ -31,3 +31,4 @@
 ".codex/rules/github.rules" = "2026-08-10"
 ".codex/rules/local-safety.rules" = "2026-08-10"
 ".codex/rules/make-safety.rules" = "2026-08-10"
+"sonar-project.properties" = "2026-08-10"
