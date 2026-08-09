@@ -42,11 +42,6 @@ prefix_rule(
     justification = "stash の破棄は Codex から実行しない",
 )
 prefix_rule(
-    pattern = ["git", "worktree", ["prune", "remove"]],
-    decision = "forbidden",
-    justification = "worktree の破棄は Codex から実行しない",
-)
-prefix_rule(
     pattern = ["git", "remote", "remove"],
     decision = "forbidden",
     justification = "remote の削除は Codex から実行しない",
