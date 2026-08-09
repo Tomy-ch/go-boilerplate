@@ -129,7 +129,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_EN,
         block:
-          "| `codacy.yaml` `codacy` | 45 | not the formula — the analysis has never finished, so there is nothing to multiply; this is headroom to obtain a first measurement, and comes back down to `measured × 3` once one run completes |\n",
+          "| `codacy.yaml` `codacy` | 25 | measured at 8m15s across the full tool set, before `.codacy.yaml` narrowed the tree to first-party source |\n",
       },
       {
         file: README_JA,
@@ -143,7 +143,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "| `codacy.yaml` `codacy` | 45 | 式ではない。解析が一度も完了しておらず掛ける元が無いため、最初の実測を取るための余裕。1 回完了したら `実測 × 3` へ戻す |\n",
+          "| `codacy.yaml` `codacy` | 25 | 全ツールでの実測 8 分 15 秒 × 3。この実測は `.codacy.yaml` が範囲を一次ソースへ絞る前のもの |\n",
       },
     ],
     docFragments: [

@@ -1,33 +1,56 @@
 ---
 # Scope for the Codacy analysis, read by the CLI in `.github/workflows/codacy.yaml` and by
 # Codacy Cloud. Which linters run at all is held in the Codacy project rather than here;
-# this file narrows what they are given.
+# this file decides what they are given.
 #
 # Codacy Cloud reads this file from the default branch only, so an entry added on a pull
 # request takes effect for the CLI immediately and for the Cloud analysis at merge.
 
-# The CLI drops Codacy's own default ignore list the moment this file exists — it takes the
-# remote defaults only when no local configuration parses. Everything below the first entry
-# is therefore not a narrowing but the replacement for what that list covered: generated
-# trees, and the third-party UI assets SchemaSpy ships inside its output.
+# What Codacy analyses is the first-party tree: Go under `internal`, `pkg`, `cmd` and the
+# two root files, TypeScript under `scripts`, `docs-viewer` and `mock-auth-server`. This
+# reads as its inverse because the CLI has no allowlist — it decodes exactly `engines`,
+# `exclude_paths` and `languages`, and ignores the `include_paths` the Cloud honours. A
+# top-level directory added later is therefore analysed until it is named here.
+#
+# Everything below is owned by a gate of its own: `openapi` by spectral, `database` by
+# sqlfluff, `docker` by hadolint, `.github` by zizmor and actionlint, `docs` by
+# markdownlint. Codacy reporting on them a second time adds a finding, not a reader.
 exclude_paths:
-  - 'docs/db-schema/**'
-  - 'docs/godoc/**'
-  - 'docs/coverage/**'
-  - 'docs/openapi/**'
-  - 'docs/portal/guides/**'
-  - 'docs/portal/docs.json'
+  - '.agents/**'
+  - '.claude/**'
+  - '.codex/**'
+  - '.github/**'
+  - '.makefiles/**'
+  - '.vscode/**'
+  - 'database/**'
+  - 'docker/**'
+  - 'docs/**'
+  - 'env/**'
+  - 'openapi/**'
+  - 'python/**'
+  - 'storage/**'
+  - 'vendor/**'
+  # Root-level configuration and prose. A single `*` stays inside one path segment, so
+  # these reach the repository root only.
+  - '*.js'
+  - '*.md'
+  - '*.properties'
+  - '*.toml'
+  - '*.yaml'
+  # Generated output, rewritten by its generator rather than by a reviewer.
+  - '**/*.gen.go'
+  - '**/*.sql.go'
+  - '**/*_mock.go'
 
 engines:
   # PMD's only SQL grammar is PL/SQL, and the SQL here is PostgreSQL — `ON CONFLICT` alone
   # puts it outside that grammar, so every file fails to parse. Its other languages (Java,
   # Apex, Kotlin, Swift, JSP, Velocity) are absent from this repository, which leaves it no
-  # input; PostgreSQL is sqlfluff's through `make sql-lint`. The exclusion is the whole tree
-  # rather than `**/*.sql` because there is nothing else for it to read.
+  # input; PostgreSQL is sqlfluff's through `make sql-lint`.
   #
-  # Keeping it pointed at the SQL was not an option: the CLI cannot parse PMD's own
+  # Held even though `database` is excluded above: the CLI cannot parse PMD's own
   # parse-failure output, and the exception it raises leaves the run hanging rather than
-  # failing, taking every tool still queued behind it with it.
+  # failing, so a `.sql` file appearing inside the first-party tree would stall it again.
   pmd:
     exclude_paths:
       - '**'

@@ -99,10 +99,10 @@ jobs:
     needs: preflight
     if: ${{ needs.preflight.outputs.configured == 'true' }}
     runs-on: ubuntu-latest
-    # Not the formula. The analysis has never finished, so there is nothing to multiply —
-    # this is headroom to obtain the first measurement, and it comes back down to
-    # `measured × 3` once one run completes.
-    timeout-minutes: 45
+    # `measured × 3`, from 8m15s across the full tool set. The measurement predates the
+    # scope in `.codacy.yaml`, which cut the tree to a third of the files, so the limit has
+    # more room than the number suggests.
+    timeout-minutes: 25
     permissions:
       contents: read
     outputs:
