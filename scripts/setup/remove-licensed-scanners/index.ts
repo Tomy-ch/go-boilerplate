@@ -1,10 +1,10 @@
 #!/usr/bin/env -S tsx
-// 資格情報 / ライセンス費用を要するスキャナ 4 件を一括撤去する。撤去対象の宣言は
+// 資格情報 / ライセンス費用を要するスキャナ 3 件を一括撤去する。撤去対象の宣言は
 // scanner-manifest.ts、書き換え規則は scanner-removal.ts、git 操作は git-commit.ts が持ち、
 // ここは削除・書き込み・出力とコミットの順序だけを担う。
 //
 // コミットは「製品ごとに 1 つ + README をまとめた 1 つ」に分ける。README の編集を製品側へ
-// 混ぜないのは、4 製品の行が同じ表に隣接して並んでいるためで、混ぜると 2 つ目以降の
+// 混ぜないのは、3 製品の行が同じ表に隣接して並んでいるためで、混ぜると 2 つ目以降の
 // `git revert` が必ず README で衝突し、1 製品だけ戻すという撤去設計の目的が果たせなくなる。
 // 代わりに、復活させた製品の記述は README に戻らない。
 
@@ -204,13 +204,13 @@ function run(dryRun: boolean): void {
       : "撤去完了: 製品ごとにコミットを積みました。1 つだけ戻すには該当コミットを git revert してください（README の記述は戻りません）。",
   );
   console.log(
-    "SONAR_TOKEN / SNYK_TOKEN / CODACY_PROJECT_TOKEN を登録済みの場合は、併せて削除してください（スクリプトからは操作できません）。",
+    "SONAR_TOKEN / CODACY_PROJECT_TOKEN を登録済みの場合は、併せて削除してください（スクリプトからは操作できません）。",
   );
 }
 
 const program = newSetupCommand("remove-licensed-scanners");
 program
-  .description("資格情報 / ライセンス費用を要するスキャナ 4 件を撤去し、製品ごとにコミットする")
+  .description("資格情報 / ライセンス費用を要するスキャナ 3 件を撤去し、製品ごとにコミットする")
   .action((options: SetupOptions) => {
     try {
       run(options.dryRun);

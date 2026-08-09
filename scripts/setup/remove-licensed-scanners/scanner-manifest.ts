@@ -1,8 +1,8 @@
-// 資格情報 / ライセンス費用を要するスキャナ 4 件の撤去対象を宣言する manifest（データ定義）。
+// 資格情報 / ライセンス費用を要するスキャナ 3 件の撤去対象を宣言する manifest（データ定義）。
 // 削除ロジックは scanner-removal.ts、git 操作は git-commit.ts を参照。
 //
-// 対象は 2 分類の和集合である。ベンダーのトークンを要するもの（SonarQube Cloud / Snyk / Codacy）と、
-// private リポジトリで課金されるもの（CodeQL / 同 3 件）。Bearer は Elastic License 2.0 で CI 実行
+// 対象は 2 分類の和集合である。ベンダーのトークンを要するもの（SonarQube Cloud / Codacy）と、
+// private リポジトリで課金されるもの（CodeQL / 同 2 件）。Bearer は Elastic License 2.0 で CI 実行
 // そのものは無償無制限のため、どちらにも当たらず対象外である。
 //
 // README の編集を完全一致で宣言するのは、README が動いたときに scanner-removal.ts が投げて
@@ -103,82 +103,6 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
     docSections: [],
   },
   {
-    key: "snyk",
-    label: "Snyk",
-    commitSubject: "CI: Snyk のワークフローを撤去する",
-    presenceMarker: ".github/workflows/snyk.yaml",
-    paths: [".github/workflows/snyk.yaml"],
-    pinKeys: ["snyk/actions@v1.0.0", "actions/download-artifact@v7"],
-    egressJobs: [
-      'snyk.yaml:preflight',
-      'snyk.yaml:report',
-      'snyk.yaml:snyk-code',
-      'snyk.yaml:snyk-container',
-      'snyk.yaml:snyk-sca',
-    ],
-    docBlocks: [
-      {
-        file: README_EN,
-        block:
-          "|Snyk Scan|`snyk.yaml`|Snyk over three surfaces — Open Source, Code and Container (report-only; needs `SNYK_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|\n",
-      },
-      {
-        file: README_EN,
-        block:
-          "| Snyk (Open Source / Code / Container) | Go / TypeScript / dependency / Dockerfile-change PRs | same as above | weekly |\n",
-      },
-      {
-        file: README_EN,
-        block: "| `snyk.yaml` | any Open Source vulnerability found | schedule |\n",
-      },
-      {
-        file: README_EN,
-        block:
-          "| `snyk.yaml` `snyk-container` | 20 | builds the runtime image before it scans, like `image-scan.yaml` `build`, and then waits on a vendor round trip |\n",
-      },
-      {
-        file: README_EN,
-        block:
-          "| Runtime image | `image-scan.yaml` (Trivy) **(gate)** + `snyk.yaml` (Snyk Container) — report-only | — |\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "|Snyk Scan|`snyk.yaml`|Snyk による 3 つの面の検査 — Open Source / Code / Container（報告専用。`SNYK_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "| Snyk（Open Source / Code / Container） | Go / TypeScript / 依存 / Dockerfile 変更 PR | 同上 | 週次 |\n",
-      },
-      {
-        file: README_JA,
-        block: "| `snyk.yaml` | Open Source の脆弱性の検出あり | schedule |\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "| `snyk.yaml` `snyk-container` | 20 | `image-scan.yaml` `build` と同様にランタイムイメージをビルドしてから走査し、さらにベンダーへの往復を待つ |\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "| ランタイムイメージ | `image-scan.yaml`（Trivy） **(gate)** + `snyk.yaml`（Snyk Container） — 報告専用 | — |\n",
-      },
-    ],
-    docFragments: [
-      { file: README_EN, fragment: " + `snyk.yaml` (Snyk Code, report-only)" },
-      { file: README_EN, fragment: " + `snyk.yaml` (Snyk Code)" },
-      { file: README_EN, fragment: " + `snyk.yaml` (Snyk Open Source)" },
-      { file: README_EN, fragment: ", `0 17` Snyk" },
-      { file: README_JA, fragment: " + `snyk.yaml`（Snyk Code・報告専用）" },
-      { file: README_JA, fragment: " + `snyk.yaml`（Snyk Code）" },
-      { file: README_JA, fragment: " + `snyk.yaml`（Snyk Open Source）" },
-      { file: README_JA, fragment: "、`0 17` Snyk" },
-    ],
-    docSections: [],
-  },
-  {
     key: "codacy",
     label: "Codacy",
     commitSubject: "CI: Codacy のワークフローを撤去する",
@@ -230,7 +154,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
     ],
   },
   {
-    // 4 件をまとめて説明する散文はこのドメインが持つため、最後に置く。
+    // 3 件をまとめて説明する散文はこのドメインが持つため、最後に置く。
     key: "code-ql",
     label: "CodeQL",
     commitSubject: "CI: CodeQL のワークフローを撤去する",
@@ -264,12 +188,12 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_EN,
         block:
-          "\nThe last three are the scanners whose analysis runs on a vendor's servers, and they are placed at the end for the same reason DAST is placed behind the file-reading scanners: their duration depends on a queue this repository does not control, so nothing useful is gained by having them queued ahead of a scanner that finishes on its own runner.\n",
+          "\nThe last two are the scanners whose analysis runs on a vendor's servers, and they are placed at the end for the same reason DAST is placed behind the file-reading scanners: their duration depends on a queue this repository does not control, so nothing useful is gained by having them queued ahead of a scanner that finishes on its own runner.\n",
       },
       {
         file: README_EN,
         block:
-          "\nThe `First-party Go source` and `First-party TypeScript source` rows carry the three vendor-hosted scanners as well, and they are all report-only there: none of them holds a gate, so a rule one of them fires on cannot turn a pull request red twice. That is what keeps the \"one owner per rule\" property intact while four more engines read the same files.\n",
+          "\nThe `First-party Go source` and `First-party TypeScript source` rows carry the two vendor-hosted scanners as well, and they are all report-only there: none of them holds a gate, so a rule one of them fires on cannot turn a pull request red twice. That is what keeps the \"one owner per rule\" property intact while three more engines read the same files.\n",
       },
       {
         file: README_JA,
@@ -279,23 +203,23 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "\n末尾の 3 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\n",
+          "\n末尾の 2 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\n",
       },
       {
         file: README_JA,
         block:
-          "\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 3 つも乗っていますが、いずれもそこでは報告専用です。どれもゲートを持たないため、そのうちの 1 つが発火したルールで PR が 2 回赤くなることはありません。エンジンが 4 つ増えても「ルール単位で担当 1 つ」が保たれるのはそのためです。\n",
+          "\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナ 2 つも乗っていますが、いずれもそこでは報告専用です。どれもゲートを持たないため、そのうちの 1 つが発火したルールで PR が 2 回赤くなることはありません。エンジンが 3 つ増えても「ルール単位で担当 1 つ」が保たれるのはそのためです。\n",
       },
       // 撤去後は呼ぶ先が無くなるので、ターゲットの宣言とレシピも一緒に落とす。
       {
         file: SETUP_MK,
         block:
-          ".PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ4件を撤去し製品ごとにコミット\n",
+          ".PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ3件を撤去し製品ごとにコミット\n",
       },
       {
         file: SETUP_MK,
         block: `
-# 資格情報 / ライセンス費用を要するスキャナ 4 件の撤去。
+# 資格情報 / ライセンス費用を要するスキャナ 3 件の撤去。
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。このスクリプトは
 # 製品ごとに git commit を積むため、setup-repo と同じくホストの git を使う必要がある
 # （worktree では .git がマウント外の実体を指すファイルなので、コンテナ内からは辿れない）。

@@ -13,7 +13,7 @@ export type PinReferenceInput = {
 /**
  * lockfile キーから `owner/repo` を取り出す。
  *
- * `uses:` はサブパス付き（`snyk/actions/setup`）でも書けるため、参照の有無はタグを外した
+ * `uses:` はサブパス付き（`github/codeql-action/upload-sarif`）でも書けるため、参照の有無はタグを外した
  * `owner/repo` で数える。
  */
 export function repoOf(key: string): string {
