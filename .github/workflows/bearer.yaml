@@ -6,14 +6,21 @@ name: Bearer Scan
 # pattern or a taint path on its own terms, and neither of them knows that the string
 # reaching a logger happens to be an email address.
 #
-# Wired the way code-ql.yaml is: report-only, findings go to code scanning, nothing gates,
-# and there is no pull-request comment. The measured baseline is in the hundreds and all
-# but a handful of it sits in `scripts/` — repository tooling that reads paths it computes
-# and shells out to the commands it was written to drive — so a comment reproducing it on
-# every pull request would bury the checks that do have something to say, and a weekly
-# "any finding" notification would fire every week regardless of what changed. An alert
-# introduced by the change under review surfaces on the diff instead, which is the same
-# arrangement code-ql.yaml and eslint.yaml already use.
+# Wired the way code-ql.yaml is: the job itself never fails (`--exit-code 0`), findings go to
+# code scanning, and there is no pull-request comment. What turns a pull request red is
+# GitHub's own check over the alerts the diff introduces, so a new finding blocks even though
+# this workflow reports green. A weekly "any finding" notification is left unwired because the
+# baseline is not zero; an alert introduced by the change under review surfaces on the diff
+# instead, which is the same arrangement code-ql.yaml and eslint.yaml already use.
+#
+# `/scripts` is out of scope, and that exclusion is what makes the rest of it readable. Bearer
+# asks what a value *is* when it leaves the process, and repository tooling handles no user data:
+# 216 of the 230 findings measured across this repository sat there, 179 of them `*_logger_leak`
+# — every one a progress line naming a path the tool had just computed. Carrying them costs twice
+# over, because they bury the surfaces where the question has an answer, and because a red check
+# on every new CLI script is a gate nobody can act on. Excluding them leaves fourteen. Opengrep
+# and ESLint still read `/scripts`: they judge patterns, which does not depend on the data being
+# user data.
 #
 # Its licence is Elastic License 2.0, which is not OSI-approved; scanning this repository's
 # own code inside CI engages neither restriction it imposes. That is a fact about the tool
@@ -43,7 +50,6 @@ on:
       - 'go.sum'
       - 'mock-auth-server/**'
       - 'docs-viewer/**'
-      - 'scripts/**'
   pull_request:
     paths:
       - '.github/workflows/bearer.yaml'
@@ -52,7 +58,6 @@ on:
       - 'go.sum'
       - 'mock-auth-server/**'
       - 'docs-viewer/**'
-      - 'scripts/**'
   schedule:
     # Monday 16:00 UTC — the slot after ESLint. Rule updates change the verdict on code
     # that stood still, which is what the weekly run is for.
@@ -135,8 +140,16 @@ jobs:
       # --disable-version-check keeps the scan from calling home for a release check. It
       # does not silence every outbound attempt: the binary also reports usage telemetry to
       # api.cycode.com, which harden-runner blocks and which the scan completes without.
-      # The skip list mirrors opengrep.yaml's exclusions: generated and vendored trees are
-      # not editable, so a finding there is not actionable.
+      # The skip list mirrors opengrep.yaml's exclusions — generated and vendored trees are
+      # not editable, so a finding there is not actionable — and departs from it on one entry:
+      # `/scripts/**`, which Opengrep does scan. The reason is at the top of this file, and it is
+      # about what Bearer asks rather than about whether the code is editable.
+      #
+      # That entry is the only one written with a leading slash, and it has to be. A pattern
+      # matches a path segment anywhere unless anchored, so a bare `scripts/**` would also take
+      # `mock-auth-server/scripts` and `docs-viewer/scripts` — two trees this workflow is
+      # deliberately pointed at. `./scripts/**` is not the fix: it matches nothing at all, and
+      # silently scans everything.
       - name: Bearer scan
         run: |
           bearer scan . \
@@ -148,7 +161,7 @@ jobs:
             --disable-version-check \
             --hide-progress-bar \
             --no-color \
-            --skip-path 'vendor/**,**/node_modules/**,**/dist/**,**/coverage/**,**/src/generated/**,docs/**,**/*.gen.go,**/*.sql.go,**/*_mock.go'
+            --skip-path 'vendor/**,**/node_modules/**,**/dist/**,**/coverage/**,**/src/generated/**,docs/**,/scripts/**,**/*.gen.go,**/*.sql.go,**/*_mock.go'
         shell: bash
 
       - name: Create Bearer summary (Markdown)

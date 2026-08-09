@@ -211,5 +211,18 @@
       "Edit(.makefiles/app/env.mk)",
       "Write(.makefiles/app/env.mk)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/comment-remediation/comment-remediated.sh --hook"
+          }
+        ]
+      }
+    ]
   }
 }

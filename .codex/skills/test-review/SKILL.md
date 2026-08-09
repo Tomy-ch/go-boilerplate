@@ -65,7 +65,7 @@ Do NOT use this skill for:
 - Question: 「test-review の対象スコープを指定してください」
 - Options (single-select):
   - 「変更ファイル (HEAD-vs-working tree, 推奨)」 — `git diff --name-only` で `*_test.go` を抽出（このフローは `impl-review` / `code-review` と同じ振る舞い）。新規追加 (`git diff --name-only --diff-filter=A`) も含める。
-  - 「ブランチ base 比較 (release/v1.x.y 以降の変更)」 — `git merge-base` 経由で base を解決し、その間に touched された `*_test.go`。 PR 単位で見たいとき。
+  - 「ブランチ base 比較 (ベースブランチ以降の変更)」 — base からの分岐点を `git merge-base` で取り、その間に touched された `*_test.go`。 PR 単位で見たいとき。base は PR があればその `baseRefName`、無ければ `make base-branch`（`origin` の実状態から最新のリリースラインを解決する）。`gh repo view --json defaultBranchRef` は使わない — GitHub のデフォルトブランチはアクティブなリリースラインより遅れており、レビュー範囲が 1 世代分黙って広がる。
   - 「特定パス / パッケージ (free-text)」 — ユーザがパスを指定。 ファイルでもディレクトリでもよい。
   - 「キャンセル」.
 

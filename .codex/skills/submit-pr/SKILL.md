@@ -76,21 +76,21 @@ Judge the dominant nature of the diff (changed paths / commit prefixes) for the 
 
 ```sh
 gh pr view --json number,state,baseRefName,headRefName,url,title,body 2>/dev/null
-gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'
+make -s base-branch
 ```
 
 Branch on the result:
 
-- **PR exists and state is `OPEN`** → "update" path. Base branch is fixed (`baseRefName` from the result).
+- **PR exists and state is `OPEN`** → "update" path. Base branch is fixed (`baseRefName` from the result): the PR's own base is what it is already merging into, and nothing may re-resolve it.
 - **PR exists but state is `MERGED` / `CLOSED`** → ask the user via `ask the user explicitly`:
   - Question: 「このブランチには `<state>` 状態の PR #N があります。新規 PR を作成しますか？」
   - Options: 「新規 PR を作成する」 / 「キャンセル」
-- **No PR exists** → "create" path. Base branch defaults to the repo's default branch — but in this repo the GitHub default (`defaultBranchRef`) lags behind the active release line, so the real target is usually the **latest `release/v1.X.0`**, not the default. Prefer the latest release line and confirm it below.
+- **No PR exists** → "create" path. Base branch is the branch resolved by `make base-branch`: the latest release line read from `origin`'s live state. Do not use `gh repo view --json defaultBranchRef`; the GitHub default branch lags behind the active release line, and a PR opened against it targets a generation-old base. If `make base-branch` fails, stop and report the failure rather than guessing: a PR opened against the wrong branch cannot be corrected by editing it afterwards.
 
-For the "create" path, if multiple `release/*` branches exist locally and the user may want a non-default target, confirm via `ask the user explicitly`:
+For the "create" path, always confirm the resolved base via `ask the user explicitly`; a backport or deliberate hotfix target is outside what the resolver can determine:
 
 - Question: 「ベースブランチをこれで作成しますか？」
-- Options: 「`<default-branch>` を使う」 / 「別のブランチを指定する」
+- Options: 「`<resolved-base>` を使う」 / 「別のブランチを指定する」
 
 Special early-exit cases:
 

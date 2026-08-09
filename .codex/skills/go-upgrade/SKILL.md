@@ -165,7 +165,9 @@ make pin-images-apply
 make pin-images-check
 ```
 
-The new Go image was just published, so it is normally inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown (default 14 days) and gets **quarantined**: `pin-images-apply` strips the now-stale digest and leaves the `FROM` on the tag only, which `pin-images-check` accepts. Report this to the user and note that `/pin-images` should be re-run once the new image ages past the window to restore the digest pin. See the `pin-images` skill for detail.
+The new Go image was just published, so re-pinning normally hits `images-pin`'s **rule 3**: the new `golang:` tag has no prior lockfile entry and its image is inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown (default 14 days), so there is no aged digest to step back to. `pin-images-resolve` **fails closed** (`❌ 退行先の無い出来立て image は採用できません`) rather than adopting the fresh digest or stripping the pin to tag-only; `apply` never runs, and `pin-images-check` rejects the surviving stale digest as `未登録`.
+
+So a Go upgrade and its base-image pin are coupled, and the upgrade cannot be landed cleanly until one of two things holds: the new Go image has aged past the window, or the user deliberately bootstraps it with `days=0` — which `images-pin` step 2.5 gates behind a `supply-chain-triage` evidence check. Surface that choice rather than deciding it; do not force `resolve` through, and do not leave the tag/digest mismatch in the tree. See the `images-pin` skill for detail.
 
 ### 11. Rebuild Docker Containers
 
@@ -220,7 +222,7 @@ Confirm the following before reporting completion:
 - [ ] Release notes reviewed
 - [ ] `mise.toml` `[tools] go` updated to `<TARGET_VERSION>`
 - [ ] `make sync-versions` executed (propagates to go.mod / Dockerfile / docker/**/README.md)
-- [ ] Base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`); new Go image quarantined-until-aged is reported for a later `/pin-images` re-run
+- [ ] Base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`). A rule 3 fail-closed on the new `golang:` tag is the expected outcome for a just-published image — the coupling is surfaced (wait for it to age, or `days=0` bootstrap after triage), never forced through, and no tag/digest mismatch is left behind
 - [ ] Local Go updated via `make go-update` (user task)
 - [ ] `make tidy-lib` executed
 - [ ] (Optional) Go module dependency update confirmed with the user via `ask the user explicitly`; if chosen, executed (`go get -u[=patch] ./...` + `make tidy-lib`) with the `go` directive left at `<TARGET_VERSION>`

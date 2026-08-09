@@ -6,7 +6,7 @@
 
 ## スコープと分類
 
-既定では PR のベースブランチまたはデフォルトブランチに対する変更済み production Go ファイルを対象にします。全体走査または layer 指定も受け付けます。生成物、mock、test は除外します。スコープと複数選択の分類を 1 回だけ確認し、既定では 5 分類すべてを対象にします。
+既定では、既存 PR の `baseRefName` に対する変更済み production Go ファイルを対象にします。PR がなければ、`origin` の live state を読み最新の release line を返す `make base-branch` でベースを解決します。GitHub のデフォルトブランチは以前の release line を指すことがあるため、`gh repo view --json defaultBranchRef` には決して fallback しません。ベースを解決できなければ、日本語で報告して停止します。空の file list は detector を一つも fan-out せず、drift がない正常結果と区別できないためです。全体走査または layer 指定も受け付けます。生成物、mock、test は除外します。スコープと複数選択の分類を 1 回だけ確認し、既定では 5 分類すべてを対象にします。
 
 要求された分類だけを監査します。
 

@@ -13,6 +13,12 @@ const CLONE_URL = /https:\/\/github\.com\/[^/\s>]+\/[^/\s>]+\.git/g;
 
 const OPENAPI_TERMS_OF_SERVICE = /^ {2}termsOfService: https:\/\/github\.com\/.*$/m;
 
+// SonarQube Cloud はプロジェクトを `<owner>_<repo>`、組織を小文字の owner で識別する。
+// 置換しないまま解析を走らせると、テンプレート側のプロジェクトへ結果が送られる。
+const SONAR_PROJECT_KEY = /^sonar\.projectKey=.*$/m;
+const SONAR_ORGANIZATION = /^sonar\.organization=.*$/m;
+const SONAR_PROJECT_NAME = /^sonar\.projectName=.*$/m;
+
 /** README の見出し・バッジ・clone URL・`cd` 行のリポジトリ参照を置き換える。 */
 export function replaceReadmeReferences(content: string, repository: string): string {
   const repoName = repository.split("/")[1];
@@ -36,14 +42,26 @@ export function replaceOpenapiTermsOfService(content: string, repository: string
   );
 }
 
+/** SonarQube Cloud のプロジェクト識別子を置き換える。 */
+export function replaceSonarProject(content: string, repository: string): string {
+  const [owner, repoName] = repository.split("/");
+
+  return content
+    .replace(SONAR_PROJECT_KEY, () => `sonar.projectKey=${owner}_${repoName}`)
+    .replace(SONAR_ORGANIZATION, () => `sonar.organization=${owner.toLowerCase()}`)
+    .replace(SONAR_PROJECT_NAME, () => `sonar.projectName=${repoName}`);
+}
+
 /**
  * GitHub リポジトリ参照を持つ対象。
  *
  * @remarks
- * README は英日の対、OpenAPI は `termsOfService`。どれか 1 つを置換対象から落とすと、
- * 生成したリポジトリにボイラープレート側の URL が残ります。
+ * README は英日の対、OpenAPI は `termsOfService`、Sonar は解析の送り先。どれか 1 つを
+ * 落とすと、生成したリポジトリにボイラープレート側の参照が残ります。`sonarFile` は
+ * `make setup-remove-licensed-scanners` で消えていることがあるため、不在は正常です。
  */
 export const REPOSITORY_REFERENCE_TARGETS = {
   readmeFiles: ["README.md", "README.ja.md"] as readonly string[],
   openapiFile: "openapi/openapi.yaml",
+  sonarFile: "sonar-project.properties",
 } as const;
