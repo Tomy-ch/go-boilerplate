@@ -294,6 +294,68 @@ jobs:
           sarif_file: reports/codacy.sarif
           category: codacy
 
+  # A missing token leaves the scan skipped and the run green, and green is the right
+  # answer: a setup gap is not a scan result, and a fork's pull request never receives
+  # repository secrets. Silence is not — a pull request with no comment is indistinguishable
+  # from one that was scanned and came back clean. This posts under the same marker the
+  # result would use, so the notice and a verdict can never both stand.
+  unconfigured-notice:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'false' && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Describe the gap
+        id: gap
+        run: |
+          set -euo pipefail
+          echo "title=## ⚠️ Codacy: NOT RUN (CODACY_PROJECT_TOKEN is not configured)" >> "$GITHUB_OUTPUT"
+          cat > codacy-unconfigured.md <<'EOF'
+          `CODACY_PROJECT_TOKEN` is not registered for this repository, so no analysis ran
+          and this pull request carries no Codacy verdict. The run is green because a
+          missing credential is a setup gap rather than a scan result — it is not evidence
+          that the code is clean.
+
+          A pull request from a fork always lands here: repository secrets are never
+          exposed to one.
+          EOF
+        shell: bash
+
+      - name: Comment the gap on PR
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- codacy-result -->'
+          status: unconfigured
+          title: "${{ steps.gap.outputs.title || '## ⚠️ Codacy: CUT OFF (no result produced)' }}"
+          body-file: codacy-unconfigured.md
+
   # Deliberately no notify-detection. Codacy's baseline over an existing codebase is not
   # zero, and its floating tool images move that baseline on their own, so a weekly
   # notification keyed on "any finding" would fire every week regardless of what changed —
