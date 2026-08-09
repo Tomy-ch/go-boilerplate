@@ -1,33 +1,16 @@
 # Paths whose review is reserved to a specific role, rather than any reviewer.
 #
-# GitHub requires the "Require review from Code Owners" branch-protection rule for
-# these entries to be enforced; without it they only auto-request the reviewer.
+# GitHub enforces these entries only under the "Require review from Code Owners"
+# branch-protection rule; without it they merely auto-request the reviewer.
 #
-# The owner below is a placeholder. Point every rule at your fork's owning role with:
-#
-#   make setup-replace-codeowners OWNERS='@example-org/tech-leads'
+# The paths below share a shape: the automation around them checks that declarations
+# agree with one another, never that a declaration should have been made at all.
+# Weakening one leaves every check green, and review is what is left.
 
-# Supply-chain controls. The npm `min-release-age` cooldown in each .npmrc is
-# evaluated only while npm resolves dependencies, so a lockfile produced with it
-# switched off installs cleanly under `npm ci` and shows no symptom in CI.
-# Overriding the cooldown is a deliberate call — reacting to a CRITICAL advisory is
-# a legitimate one — and this entry is what reserves that call to the owning role.
-# `npm-cooldown-audit.yaml` detects and reports a bypass but never blocks it; this
-# is the half that enforces.
-#
-# pnpm states the same policy in pnpm-workspace.yaml (minimumReleaseAge and the
-# strictness flags around it, plus allowBuilds, blockExoticSubdeps and trustPolicy).
-# It refuses at resolution time rather than warning afterwards, so there is no
-# audit tool watching that half — the settings file itself is the control, which
-# makes review of it the only thing standing between a weakened window and a
-# lockfile nobody questions.
-#
-# The two bypass ledgers state the override differently again. The entries above
-# are settings and lockfiles where a weakened window has to be inferred from what
-# the file no longer refuses; a ledger is the override written out in full, one
-# dated entry per module or tool taken early. That makes them the easiest of these
-# to read and the easiest to add a line to, which is why the reservation matters
-# here rather than mattering less.
+# Supply-chain controls — the cooldown settings, the lockfiles they produce, the pin
+# lockfiles, and the two bypass ledgers. A narrowed window leaves no trace in the
+# resulting lockfile, so `npm-cooldown-audit.yaml`, which reports a bypass but never
+# blocks it, cannot see one either.
 **/.npmrc                             @Tomy-ch
 **/package-lock.json                  @Tomy-ch
 **/pnpm-lock.yaml                     @Tomy-ch
@@ -37,29 +20,16 @@
 .github/tool-cooldown-bypass.toml     @Tomy-ch
 docker/images-pin.toml                @Tomy-ch
 
-# The Go toolchain still has no cooldown of its own — nothing in `go get` refuses
-# a freshly published version — so the refusal had to be built here, and taking one
-# early is written down in the ledger above. The gate reads the `go.mod` diff and
-# covers direct requirements only, which leaves indirect modules controlled by
-# review alone and makes the entries below load-bearing rather than symmetrical
-# bookkeeping.
+# The Go cooldown gate reads the `go.mod` diff and covers direct requirements only,
+# which leaves indirect modules to review.
 go.mod                                @Tomy-ch
 go.sum                                @Tomy-ch
 
-# The version SSOT. `tool-cooldown.yaml` gates the CLI tools declared here, and taking
-# one early is written down in the ledger above — but the file states its own exemption:
-# the language runtimes are outside that check, on the ground that a poisoned runtime is
-# not a supply-chain link a cooldown can protect. Those lines are therefore held by
-# review alone, and `make sync-versions` carries them into go.mod, the Dockerfile FROM
-# tags and the READMEs, so what is reviewed here is what every build then runs.
+# The version SSOT. `tool-cooldown.yaml` covers the CLI tools declared here; the
+# language runtimes are exempt by the file's own declaration, and `make sync-versions`
+# carries them into go.mod, the Dockerfile FROM tags and the READMEs.
 mise.toml                             @Tomy-ch
 
-# The runner egress allowlist. Every scanning job runs `harden-runner` with
-# egress-policy: block, so a host is reachable only by being named here, and
-# `make egress-apply` writes the entry out to every workflow that carries the job.
-# Widening it is the decision worth reserving: a host added here is one a compromised
-# action can reach from a runner that holds the job's secrets, and the widening is a
-# line in a list rather than anything that looks like a policy change.
-# `make egress-check` holds the other half — it fails when a workflow and this file
-# disagree, and says nothing about whether an entry belongs at all.
+# The `harden-runner` allowlist SSOT — `make egress-apply` writes each entry out to
+# every workflow that carries the job.
 .github/egress.toml                   @Tomy-ch
