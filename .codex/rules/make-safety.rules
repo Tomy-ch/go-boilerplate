@@ -1,0 +1,31 @@
+# GitHub・リポジトリの不可逆または広範囲な状態を変更するターゲット。
+prefix_rule(
+    pattern = ["make", [
+        "setup-repo",
+        "setup-verify",
+        "setup-remove-boilerplate-identity",
+        "setup-remove-sample-api",
+        "setup-remove-licensed-scanners",
+        "delete-all-labels",
+        "apply-branch-protection",
+    ]],
+    decision = "forbidden",
+    justification = "リポジトリ・GitHub・共有インフラを不可逆または広範囲に変更する make ターゲットは実行しない",
+)
+
+# リリースタグとリリース／hotfix ブランチ作成は、都度の承認が必要。
+prefix_rule(
+    pattern = ["make", [
+        "tag-patch",
+        "tag-minor",
+        "tag-major",
+        "hotfix-patch",
+        "branch-patch",
+        "branch-minor",
+        "branch-major",
+    ]],
+    decision = "prompt",
+    justification = "リリースタグまたはブランチの作成前に承認を求める",
+)
+
+# `slot-release` は worktree 整理時に明示許可されており、dirty worktree を自ら拒否するため含めない。

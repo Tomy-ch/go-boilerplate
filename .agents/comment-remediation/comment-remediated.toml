@@ -20,3 +20,7 @@
 ".github/CODEOWNERS" = "2026-08-09"
 ".agents/comment-remediation/comment-remediated.sh" = "2026-08-09"
 ".agents/comment-remediation/comment-remediated.toml" = "2026-08-09"
+".codex/config.toml" = "2026-08-10"
+".codex/rules/github.rules" = "2026-08-10"
+".codex/rules/local-safety.rules" = "2026-08-10"
+".codex/rules/make-safety.rules" = "2026-08-10"
