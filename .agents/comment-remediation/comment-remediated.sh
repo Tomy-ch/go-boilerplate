@@ -19,6 +19,11 @@ LEDGER="${SCRIPT_DIR}/comment-remediated.toml"
 REPO_ROOT=$(CDPATH='' cd -- "${SCRIPT_DIR}/../.." && pwd)
 PROMPT_REL=".agents/comment-remediation/feedback_comment_remediation_sweep_on_touch.prompt"
 
+# The object store REPO_ROOT shares with its worktrees, and the sole test for whether a path
+# belongs to this repository. Empty when git cannot answer, which narrows recognition to
+# paths under REPO_ROOT.
+REPO_COMMON=$(git -C "${REPO_ROOT}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || :)
+
 CLEAR='no action needed'
 REQUIRED='comment remediation required'
 
@@ -36,23 +41,65 @@ Verdicts:
 USAGE
 }
 
+# The checkout holding an absolute path: REPO_ROOT itself, or one of its worktrees, which
+# lives beside REPO_ROOT rather than under it. Empty for a path in another repository or in
+# none, leaving such a path unrelativised.
+checkout_root() {
+  [ -n "${REPO_COMMON}" ] || return 0
+
+  # A path being created has no directory yet; its nearest existing ancestor answers for it.
+  dir=$(dirname -- "$1")
+  while [ ! -d "${dir}" ]; do
+    parent=$(dirname -- "${dir}")
+    [ "${parent}" != "${dir}" ] || return 0
+    dir=${parent}
+  done
+
+  info=$(git -C "${dir}" rev-parse --path-format=absolute --show-toplevel --git-common-dir 2>/dev/null) || return 0
+  [ "$(printf '%s\n' "${info}" | sed -n 2p)" = "${REPO_COMMON}" ] || return 0
+  printf '%s\n' "${info}" | sed -n 1p | tr -d '\n'
+}
+
 # Repository-relative, so an absolute path from a hook and a relative one from a shell
-# reach the same entry. Paths outside the repository are left as they are and will simply
-# miss.
+# reach the same entry, whichever checkout the file lives in. Paths outside the repository
+# are left as they are and will simply miss.
 to_relative() {
   case "$1" in
     "${REPO_ROOT}/"*) printf '%s' "${1#"${REPO_ROOT}"/}" ;;
-    /*) printf '%s' "$1" ;;
+    /*)
+      root=$(checkout_root "$1")
+      if [ -n "${root}" ] && [ "$1" != "${1#"${root}"/}" ]; then
+        printf '%s' "${1#"${root}"/}"
+      else
+        printf '%s' "$1"
+      fi
+      ;;
     ./*) printf '%s' "${1#./}" ;;
     *) printf '%s' "$1" ;;
   esac
 }
 
+# Where the path is on disk, which for a worktree file is not under REPO_ROOT. A relative
+# path is taken as repository-relative, matching to_relative.
+on_disk() {
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    *) printf '%s/%s' "${REPO_ROOT}" "$(to_relative "$1")" ;;
+  esac
+}
+
 # Nothing outside the sweep's reach: generated output is rewritten by its generator, and
 # vendored code is not ours to restyle. A path that does not exist is a file being created,
-# which has no comment stock to sweep. Prints the reason, empty when the file is in scope.
+# which has no comment stock to sweep. Takes the repository-relative path and the same file
+# on disk. Prints the reason, empty when the file is in scope.
 out_of_scope_reason() {
   case "$1" in
+    # Only to_relative leaves a path absolute, and only when it belongs to no checkout of
+    # this repository — this ledger says nothing about such a file.
+    /*)
+      printf 'outside the repository'
+      return
+      ;;
     vendor/* | */node_modules/* | node_modules/*)
       printf 'vendored'
       return
@@ -71,7 +118,7 @@ out_of_scope_reason() {
       ;;
   esac
 
-  [ -f "${REPO_ROOT}/$1" ] || printf 'file does not exist'
+  [ -f "$2" ] || printf 'file does not exist'
 }
 
 # The lookup is a literal match on the quoted key rather than a TOML parse, so the script
@@ -83,7 +130,7 @@ is_listed() {
 
 verdict() {
   rel=$(to_relative "$1")
-  reason=$(out_of_scope_reason "${rel}")
+  reason=$(out_of_scope_reason "${rel}" "$(on_disk "$1")")
 
   if [ -n "${reason}" ]; then
     printf '%s (%s)' "${CLEAR}" "${reason}"
@@ -111,7 +158,7 @@ run_hook() {
   while IFS= read -r path; do
     [ -n "${path}" ] || continue
     rel=$(to_relative "${path}")
-    [ -z "$(out_of_scope_reason "${rel}")" ] || continue
+    [ -z "$(out_of_scope_reason "${rel}" "$(on_disk "${path}")")" ] || continue
     is_listed "${rel}" && continue
     required="${required}${required:+, }${rel}"
   done <<EOF
