@@ -3,6 +3,7 @@
 package testkit
 
 import (
+	"crypto/sha256"
 	"testing"
 
 	guuid "github.com/google/uuid"
@@ -12,8 +13,8 @@ import (
 
 // NewTestFromSalt はテスト専用の決定論UUID生成関数です。
 //
-// v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
+// SHA-256 ベースの UUID v8 を返すため、同じ salt では毎回同じ値になります。
 func NewTestFromSalt(tb testing.TB, salt string) uuid.UUID {
 	tb.Helper()
-	return uuid.FromPrimitive(guuid.NewSHA1(guuid.NameSpaceURL, []byte(salt)))
+	return uuid.FromPrimitive(guuid.NewHash(sha256.New(), guuid.NameSpaceURL, []byte(salt), 8))
 }
