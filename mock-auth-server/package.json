@@ -19,8 +19,8 @@
     "gen:zod": "orval --config orval.config.ts",
     "gen:jwks": "node scripts/gen-jwks-fixtures.ts",
     "gen:docs": "redocly build-docs openapi/openapi.yaml --output ../docs/openapi/mock-auth-server/index.html",
-    "gen": "npm run gen:bundle && npm run gen:zod",
-    "gen:check": "npm run gen && git diff --exit-code -- openapi/openapi.gen.yaml src/generated"
+    "gen": "pnpm run gen:bundle && pnpm run gen:zod",
+    "gen:check": "pnpm run gen && git diff --exit-code -- openapi/openapi.gen.yaml src/generated"
   },
   "dependencies": {
     "@hono/node-server": "2.0.12",

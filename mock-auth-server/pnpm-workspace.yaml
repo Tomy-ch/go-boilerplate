@@ -1,0 +1,41 @@
+# mock-auth-server の依存解決設定。
+# リポジトリ直下ではなく mock-auth-server/ に置くのは、トークン発行側が引いた依存を
+# 検証側（Go API）やリポジトリ補助ツールのツールチェーンへ広げないため。
+
+packages:
+  - "."
+
+# ----- 時間差防御 -----
+# 公開直後の版を解決対象から外す。scripts / docs-viewer と窓を揃える（pnpm は分指定。7 日 = 10080 分）。
+minimumReleaseAge: 10080
+# 緊急のセキュリティ修正は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+minimumReleaseAgeExclude: []
+# 冷却期間を満たす版が無ければ解決を失敗させる。
+minimumReleaseAgeStrict: true
+# 公開日時を返さないレジストリの依存は解決を失敗させる。
+minimumReleaseAgeIgnoreMissingTime: false
+
+# 依存状態が lockfile と一致しないままスクリプトを実行しない。
+verifyDepsBeforeRun: error
+
+# mise.toml[SSOT] と同じ Node.js 版を依存の engine 判定にも使う。
+nodeVersion: 24.18.0
+# Node.js の対応範囲外を宣言する依存の導入を拒否する。
+engineStrict: true
+
+# ----- 実行制御 -----
+# 未レビューの依存ライフサイクルスクリプトを install エラーにする。
+strictDepBuilds: true
+# 依存ライフサイクルスクリプトの実行可否をパッケージ単位で明示する。
+allowBuilds:
+  esbuild: false
+
+# ----- 公開元の信頼性 -----
+# 間接依存による Git・URL などの非標準ソースを拒否する。
+blockExoticSubdeps: true
+# 過去より弱い provenance に下がった版の導入を拒否する。
+trustPolicy: no-downgrade
+# 公開から180日を過ぎた版は provenance 情報不足だけでは拒否しない。
+trustPolicyIgnoreAfter: 259200
+# provenance の後退は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+trustPolicyExclude: []
