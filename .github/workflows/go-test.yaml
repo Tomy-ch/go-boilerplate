@@ -9,6 +9,9 @@ on:
       - 'go.sum'
       - '**/*.sql'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -189,7 +192,7 @@ jobs:
       # code above no longer reflects.
       - name: Report Test Coverage
         if: steps.cover-test.outputs.exit_code == '0'
-        uses: k1LoW/octocov-action@b3b6ee60482a667950f87553abf1df63217235d9 # v1
+        uses: k1LoW/octocov-action@a167dc0dee441b7ffc45e1b862ab55ec0d87f278 # v1
 
       # Coverage below the threshold is an ordinary outcome of an ordinary change, so it reaches
       # the comment the way a failing test does rather than only turning the check red. The gate

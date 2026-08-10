@@ -8,11 +8,9 @@
 # Weakening one leaves every check green, and review is what is left.
 
 # Supply-chain controls — the cooldown settings, the lockfiles they produce, the pin
-# lockfiles, and the two bypass ledgers. A narrowed window leaves no trace in the
-# resulting lockfile, so `npm-cooldown-audit.yaml`, which reports a bypass but never
-# blocks it, cannot see one either.
-**/.npmrc                             @Tomy-ch
-**/package-lock.json                  @Tomy-ch
+# lockfiles, and the two bypass ledgers. Taking an in-window version requires a
+# `minimumReleaseAgeExclude` entry in `pnpm-workspace.yaml`, so the override is a
+# reviewed edit rather than something a check has to detect afterwards.
 **/pnpm-lock.yaml                     @Tomy-ch
 **/pnpm-workspace.yaml                @Tomy-ch
 .github/actions-pin.toml              @Tomy-ch

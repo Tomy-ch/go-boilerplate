@@ -211,15 +211,15 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml, so it is never duplicated here.
-      - name: Install node
-        run: mise install node
+      - name: Install node and pnpm
+        run: mise install node npm:pnpm
 
       # The provider runs from source: it is TypeScript executed by Node's native type
       # stripping, which is also how docker/mock-auth-server/Dockerfile runs it, so there is
       # no build step to keep in sync.
       - name: Install mock-auth-server dependencies
         working-directory: mock-auth-server
-        run: npm ci --ignore-scripts
+        run: pnpm install --frozen-lockfile
 
       - name: Start mock-auth-server
         working-directory: mock-auth-server

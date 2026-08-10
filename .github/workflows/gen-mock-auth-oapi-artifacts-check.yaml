@@ -10,7 +10,7 @@ on:
       - 'mock-auth-server/orval.config.ts'
       - 'mock-auth-server/redocly.yaml'
       - 'mock-auth-server/package.json'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'scripts/package.json'
       - 'scripts/pnpm-lock.yaml'
       - 'docker/tools/Dockerfile'
@@ -21,6 +21,9 @@ on:
       - 'mock-auth-server/src/generated/**'
       - 'docs/openapi/mock-auth-server/**'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

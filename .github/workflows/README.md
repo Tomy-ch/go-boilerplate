@@ -50,7 +50,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `go-test.yaml` `go-test` | 20 | measured ~5m |
 | `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
 | `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in by a fork must not meet a 10-minute cap |
-| `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml`, `checkov.yaml`, `nancy.yaml` `nancy` | 15 | no recent completed run to measure |
+| `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml`, `checkov.yaml` | 15 | no recent completed run to measure |
 | `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition |
 | `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
@@ -103,7 +103,6 @@ All three rules live in one check rather than three, because they are not three 
 |Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
 |Grype Scan|`grype.yaml`|Anchore Grype filesystem scan of the same dependency manifests Trivy reads, against a different vulnerability database and a different matcher|
 |Image Scan|`image-scan.yaml`|Build image, generate the SBOM in both SPDX-JSON and CycloneDX-JSON, run Trivy scan, check the built image against Dockle's practice rules, and re-check the CycloneDX SBOM with `trivy sbom`|
-|Nancy Scan|`nancy.yaml`|Sonatype Nancy scan of the Go dependency list against Sonatype Guide (report-only, and the only scanner here that publishes no SARIF; needs `GUIDE_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
 |OSV Scan|`osv-scanner.yaml`|OSV database scan across the Go module graph and the npm lockfiles|
 |Release OSV Scan|`osv-release-gate.yaml`|OSV scan on PRs into develop/staging/production, failing on HIGH or above|
@@ -112,7 +111,6 @@ All three rules live in one check rather than three, because they are not three 
 |Actions Static Analysis|`zizmor.yaml`|zizmor audit of the workflow / composite-action definitions themselves (same `make` gate as the pre-commit hook)|
 |Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
 |OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
-|npm Cooldown Audit|`npm-cooldown-audit.yaml`|Report lockfile entries that do not satisfy the `.npmrc` supply-chain cooldown (never blocks)|
 |Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
 |Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
@@ -149,12 +147,10 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OpenSSF Scorecard | — | default branch only | weekly |
 | Image Scan | PRs into a deploy branch | — | weekly |
 | Release gates (Trivy FS / OSV) | PRs into a deploy branch | — | — |
-| npm cooldown audit | lockfile / `.npmrc` changes | same as above | weekly |
 | Trivy config (misconfig) | Dockerfile-change PRs | same as above | — |
 | Checkov | Actions-definition / Dockerfile-change PRs | same as above | weekly |
 | Dockle | PRs into a deploy branch | — | weekly (inside Image Scan) |
 | Trivy SBOM | PRs into a deploy branch | — | weekly (inside Image Scan) |
-| Nancy | Go / dependency-change PRs | same as above | weekly |
 | Trivy licence | same trigger as Trivy FS | same as above | weekly |
 | OSV diff | dependency-change PRs | — | — |
 | Opengrep (SAST) | Go / TypeScript / dependency / spec-change PRs | same as above | weekly |
@@ -173,7 +169,7 @@ Weekly runs are staggered across Monday, one scanner per hour, so a single hour 
 
 DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
 
-The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 18` Nancy, `0 19` SonarQube Cloud.
+The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 19` SonarQube Cloud.
 
 The last one is the scanner whose analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
 
@@ -185,16 +181,15 @@ Which trigger a detection notification fires on follows from who the right recip
 
 | Workflow | Fires when | Trigger |
 | --- | --- | --- |
-| `npm-cooldown-audit.yaml` | any cooldown finding | all |
 | `trivy-fs.yaml` | fixable CRITICAL / HIGH / MEDIUM found | schedule |
 | `vulnerability-check.yaml` | reachable vulnerability found | schedule |
 | `osv-scanner.yaml` | promotion-blocking finding | schedule |
 | `grype.yaml` | any vulnerability found | schedule |
 | `devskim.yaml` | any finding | schedule |
 
-The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Five are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. Checkov joins them on the same terms: its baseline over this repository is twenty findings, most of them one rule reported once per workflow file. Nancy is unwired for a reason of its own — its baseline cannot be measured from here at all, because the scan does not run without a credential, and a notification whose quiet state has never been observed is not one anybody can trust. Dockle and `trivy sbom` need no wiring of their own: they run inside `image-scan.yaml`, whose scheduled failure already reaches a human.
+The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Four are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. Checkov joins them on the same terms: its baseline over this repository is twenty findings, most of them one rule reported once per workflow file. Dockle and `trivy sbom` need no wiring of their own: they run inside `image-scan.yaml`, whose scheduled failure already reaches a human.
 
-ESLint and Bearer are the fourth and fifth, and for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud joins them on that reason: it reports maintainability alongside security, so its baseline over an existing codebase is never zero.
+ESLint and Bearer are left unconnected for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud joins them on that reason: it reports maintainability alongside security, so its baseline over an existing codebase is never zero.
 
 #### Overlapping surfaces
 
@@ -212,7 +207,7 @@ Every other tool on a shared surface is report-only, and the verdict on that sur
 | First-party Go source | `opengrep.yaml` (Opengrep, ERROR band) **(gate)** + `gosec` via `go-lint.yaml` **(gate)** — disjoint rule sets + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)** | — |
 | OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) **(gate)** | Spectral |
 | OpenAPI security posture | `openapi-security.yaml` (Spectral) **(gate)** | redocly |
-| Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) + `nancy.yaml` (Nancy, Go only) — all report-only | — |
+| Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) — all report-only | — |
 | First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)** | — |
 | Any file, whatever its language | `devskim.yaml` (DevSkim) | — |
 | Sensitive values reaching a sink | `bearer.yaml` (Bearer) — report-only, over application code only (`/scripts` is excluded: repository tooling handles no user data, which is the whole of what this question asks) | — |
@@ -237,9 +232,9 @@ Being outside the OSI definition is not what makes Bearer unusual here — CodeQ
 
 #### Removing the credential-bearing scanners
 
-Three scanners here need something the repository cannot supply on its own. Two need a token for a vendor's service — `sonarqube.yaml` and `nancy.yaml` — and CodeQL needs GitHub Advanced Security, which is free for a public repository and billed for a private one. All three are free for this repository because it is public; a repository created from this template may be neither public nor willing to pay.
+Two scanners here need something the repository cannot supply on its own. SonarQube Cloud needs a token for a vendor's service, and CodeQL needs GitHub Advanced Security, which is free for a public repository and billed for a private one. Both are free for this repository because it is public; a repository created from this template may be neither public nor willing to pay.
 
-`make setup-remove-licensed-scanners` removes all three in one run, and commits each product separately so a consumer who holds a licence for one of them can restore it with `git revert` on that commit alone. Which is why the removal is one script and not one per product: the decision a consumer actually makes once is "do I want scanners that bill me or phone a vendor", and the per-product choice is better expressed as an undo than as three scripts to remember.
+`make setup-remove-licensed-scanners` removes both in one run, and commits each product separately so a consumer who holds a licence for one of them can restore it with `git revert` on that commit alone. Which is why the removal is one script and not one per product: the decision a consumer actually makes once is "do I want scanners that bill me or phone a vendor", and the per-product choice is better expressed as an undo than as two scripts to remember.
 
 The edits to this file and its translation are **not** in those per-product commits — they land in one final commit of their own. The products occupy adjacent rows of the same tables, so a per-product doc edit makes every `git revert` but the last one conflict here, which is the one thing the split exists to prevent. The cost is that a reverted scanner comes back working but undocumented; its rows can be read back out of that final commit.
 
@@ -255,11 +250,11 @@ What the script takes with each product, and what has to survive:
 | the rows and prose in this file and its `README.ja.md` translation | the rows of every scanner that stays |
 | `.github/codeql/**` for CodeQL | — |
 
-The lockfile rule is not a list of exceptions: the script counts references in the workflows that remain and deletes an entry only when the count reaches zero. `actions/download-artifact@v7` is the case that shows why counting beats a list — Sonar's report job introduced it and Nancy's now uses it too, so removing either one alone leaves it in place. `make pin-actions-check` and `make egress-check` both fail on an orphan, which is what turns a missed entry into a red run rather than a silent leftover.
+The lockfile rule is not a list of exceptions: the script counts references in the workflows that remain and deletes an entry only when the count reaches zero. `github/codeql-action@v4` is the case that shows why counting beats a list — it is registered with CodeQL, but every scanner that publishes SARIF calls `upload-sarif` from that same action, so removing CodeQL leaves the entry in place where a fixed list would have taken it. `actions/download-artifact@v7` is the opposite case: Sonar's report job is its only user today, so removing Sonar takes it along. `make pin-actions-check` and `make egress-check` both fail on an orphan, which is what turns a missed entry into a red run rather than a silent leftover.
 
-The same counting is why reverting one scanner can leave `make pin-actions-check` red on an *unregistered* reference rather than an orphan: an entry shared with another scanner is deleted by whichever commit removed its last user, so restoring an earlier scanner brings back a `uses:` whose entry a later commit already took. `make pin-actions-resolve` puts it back, and the check names the entry.
+The same counting is why reverting one scanner can leave `make pin-actions-check` red on an *unregistered* reference rather than an orphan: where two scanners in the removal set share an entry, it is deleted by whichever commit removed its last user, so restoring the earlier one brings back a `uses:` whose entry a later commit already took. The present set of two shares no such entry, so no revert hits this today — it returns the moment a third scanner joins. `make pin-actions-resolve` puts it back, and the check names the entry.
 
-Registering the tokens (`SONAR_TOKEN`, `GUIDE_TOKEN`) stays a human step, and so does creating the project on the vendor's side. Until they exist every leg skips itself and the run stays green — see [Result Comments](#result-comments) for why a missing credential is reported as a setup gap rather than as a scan result.
+Registering `SONAR_TOKEN` stays a human step, as does creating the project on the vendor's side. Until it exists the leg skips itself and the run stays green — see [Result Comments](#result-comments) for why a missing credential is reported as a setup gap rather than as a scan result.
 
 #### OSS scanners evaluated but not in the catalogue
 
@@ -272,7 +267,6 @@ Licences were read from each project's own licence file rather than from a third
 | Dockle | Apache-2.0 | yes | yes | **Adopted** — inside `image-scan.yaml`. Practice rules over the built image, which no other scanner here reads. Runs entirely on the runner. Note that its last release is from January 2025, though the project still takes commits |
 | `trivy sbom` | Apache-2.0 | yes | yes | **Adopted** — inside `image-scan.yaml`. Not a new tool but a subcommand of the Trivy already pinned here, so it raises no licence or supply-chain question of its own |
 | Checkov | Apache-2.0 (CLI and Action alike) | yes | yes | **Adopted** — `checkov.yaml`. The CLI needs no account and reaches nothing outside the runner; the vendor's SaaS integration is a separate opt-in feature that is not used. Its `github_actions` rules are the part that earns its place, and they matter more, not less, once CodeQL is removed |
-| Nancy | Apache-2.0 | yes, with a token | yes, with a token | **Adopted** — `nancy.yaml`, report-only. It is the fifth engine over the same Go dependencies, which on its own would not justify it; what does is that its database is Sonatype's and is answered by neither Trivy, OSV, Grype nor govulncheck. It needs a free Sonatype Guide token, which is why it is in the removal set above |
 | KICS | core Apache-2.0, **Action GPL-3.0** | yes | yes | **Declined** — on distribution shape, not on licence. Its release archive ships the binary alone without the query library, and its aqua package is a `go_build` recipe mise cannot install, so no route to it stays inside this repository's version SSOT. Calling the Action from a workflow would create no GPL obligation, but it would leave the tool outside `mise.toml` and outside `tool-cooldown.yaml` |
 | detect-secrets | Apache-2.0 | yes | yes | **Declined** — it would be the fourth secret engine after gitleaks, Trivy secret and TruffleHog |
 | Renovate | **AGPL-3.0** (MIT through v11; AGPL from v12) | yes, self-hosted | yes, self-hosted | **Declined** — Dependabot plus the cooldown gates already cover this, and nothing here needs what Renovate adds. Running it unmodified for one's own dependency updates triggers no AGPL disclosure; the terms of Mend's hosted app were **not established** and would need checking by anyone who adopts that form |
@@ -301,15 +295,9 @@ The dependency scanners are a double gate. On an ordinary PR they report only: a
 
 Severity for the OSV gate comes from the advisory's own rating and falls back to the CVSS score osv-scanner aggregates per group. Advisories from the Go vulnerability database publish neither, so they cannot be measured against the HIGH threshold at all; those gate only when a fixed version exists, which keeps an advisory that can be neither rated nor updated away from turning every promotion permanently red. Both gates deliberately carry no `paths` filter — a promotion PR often changes no manifest, and a required check has to run to be able to block.
 
-#### npm Cooldown Audit
-
-Each `.npmrc` sets `min-release-age`, npm's own supply-chain quarantine: a version published inside that window cannot be resolved at all. The catch is that it applies only while npm *resolves* dependencies. Every CI job and image build here runs `npm ci`, which replays the lockfile without resolving, so a lockfile produced with the cooldown switched off installs cleanly and shows no symptom anywhere in CI.
-
-`npm-cooldown-audit.yaml` closes that blind spot. It reads the window from each lockfile's own `.npmrc` rather than hardcoding it, and reports any entry younger than the window. The signal is close to noise-free: under an active cooldown npm refuses to resolve an in-window version, so the only way one reaches a lockfile is a deliberate override.
-
 #### Go Cooldown
 
-Go has no counterpart to `min-release-age`: nothing lets `go get` refuse a version for being too new. That inverts the relationship between tool and guard. The npm audit above looks for evidence that an existing guard was bypassed, so reporting is enough; here the check **is** the guard, and reporting alone would leave the window existing nowhere.
+Go has no counterpart to `min-release-age`: nothing lets `go get` refuse a version for being too new. That inverts the relationship between tool and guard: pnpm refuses a too-new version at resolution time, so the resolver is the guard; here the check **is** the guard, and reporting alone would leave the window existing nowhere.
 
 `go-cooldown.yaml` therefore gates on a pull request, and only over the requirements the change adds or upgrades — everything already in `go.mod` is grandfathered, so the window applies going forward instead of holding every branch hostage to the state it inherited. Only **direct** requirements fail it. An indirect version is chosen by MVS and can sit above a direct dependency's own lower bound, where lowering it is not something the pull request can do; failing there would produce a red with no remedy, so those are reported.
 
@@ -319,9 +307,9 @@ Urgent overrides live in [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml)
 
 **It never fails the build**, and that is a design decision rather than a default. Overriding the cooldown is a tech-lead / architect call — reacting to a CRITICAL advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The non-blocking property lives in the tool itself, not in workflow configuration, so it cannot be turned into a gate by editing YAML.
 
-Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in npm's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/.npmrc`, `**/package-lock.json`, `**/pnpm-lock.yaml`, `**/pnpm-workspace.yaml`, and the pin lockfiles to the owning role.
+Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in the resolver's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/pnpm-lock.yaml`, `**/pnpm-workspace.yaml`, and the pin lockfiles to the owning role.
 
-Only `mock-auth-server/` still resolves with npm. `scripts/` and `docs-viewer/` resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for that half because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its CODEOWNERS entry.
+All three packages resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for it because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its CODEOWNERS entry.
 
 A pull request is audited against its base, so a finding names exactly the entries that change introduces and the PR comment persists as the record even after those versions age out of the window. The scheduled run audits every entry as a second net.
 

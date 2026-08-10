@@ -202,7 +202,7 @@ classes = ["mise"]
 classes = []
 
 [job."lockfile-integrity.yaml:lockfile-lint"]
-classes = ["mise"]
+classes = []
 
 [job."md-lint.yaml:md-lint"]
 classes = ["image"]
@@ -213,32 +213,11 @@ classes = ["image"]
 [job."mock-auth-server-check.yaml:mock-auth-server-check"]
 classes = ["mise"]
 
-[job."nancy.yaml:nancy"]
-classes = ["mise"]
-# nancy は依存の一覧を Sonatype Guide へ問い合わせて照合する。ossindex は v2 が互換のため
-# 残している OSS Index 資格情報向けの旧 API の宛先で、v3 で削除予定と upstream が告知している。
-extra = [
-  "guide.sonatype.com:443",
-  "ossindex.sonatype.org:443",
-]
-
-[job."nancy.yaml:preflight"]
-classes = []
-
-[job."nancy.yaml:report"]
-classes = []
-
-[job."nancy.yaml:unconfigured-notice"]
-classes = []
-
 [job."notify.yaml:notify"]
 classes = []
 extra = [
   "hooks.slack.com:443",
 ]
-
-[job."npm-cooldown-audit.yaml:npm-cooldown-audit"]
-classes = ["mise"]
 
 [job."oapi-lint.yaml:oapi-lint"]
 classes = ["mise"]

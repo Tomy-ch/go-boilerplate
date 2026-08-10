@@ -25,7 +25,7 @@ Make targets are mainly organized into the following units.
 
 - Target names use dash-separated lower case (`make new-migrate-<name>`, `make gen-api`).
 - Targets are split into two flavors:
-  - **Normal targets**: invoked by developers locally; run inside Docker containers for reproducibility. A few resolve their tool on the host instead — `lint` / `fix` (`golangci-lint`), `actions-zizmor` (`zizmor`), `npm-cooldown-audit`, `go-cooldown-gate` / `go-cooldown-audit`, `tool-cooldown-gate` / `tool-cooldown-audit` — because the tool-runners are Alpine and upstream publishes no musl build. That is the documented last resort in [Toolchain Execution Rules](../docs/rules.md#toolchain-execution-rules), not an exception to the convention: `make install-tools` provisions those tools, and the `mise.toml` pin carries the reproducibility the image otherwise would.
+  - **Normal targets**: invoked by developers locally; run inside Docker containers for reproducibility. A few resolve their tool on the host instead — `lint` / `fix` (`golangci-lint`), `actions-zizmor` (`zizmor`), `go-cooldown-gate` / `go-cooldown-audit`, `tool-cooldown-gate` / `tool-cooldown-audit` — because the tool-runners are Alpine and upstream publishes no musl build. That is the documented last resort in [Toolchain Execution Rules](../docs/rules.md#toolchain-execution-rules), not an exception to the convention: `make install-tools` provisions those tools, and the `mise.toml` pin carries the reproducibility the image otherwise would.
   - **`-ci` targets**: low-level commands intended to run on bare metal (CI runners, or developers who already have the tool installed).
 - Every target should be `.PHONY` and self-documenting via a trailing `##` comment so `make help` can pick it up.
 
@@ -271,7 +271,6 @@ This group runs local security scans (Trivy dependency / secret scan, gitleaks s
 | `make secret-scan` | Scans the working tree for secrets with gitleaks. | Invokes `make secret-scan-ci` inside the `go_tool_runner` container. |
 | `make secret-scan-ci` | Runs `gitleaks dir . --redact` directly. | CI target. Generated files are allowlisted in `.gitleaks.toml`. |
 | `make secret-scan-history-ci` | Runs `gitleaks git . --redact` directly. | CI target, used by the weekly run. `dir` only sees the working tree, so it misses a secret that was committed and later deleted; `git` walks the whole history. |
-| `make npm-cooldown-audit` | Reports lockfile entries younger than the `min-release-age` declared in their own `.npmrc`. | Runs on the host. Reports only — exits 0 even on a finding, because overriding the cooldown is a deliberate call. |
 | `make go-cooldown-gate BASE=<ref>` | Fails when the `go.mod` diff against `BASE` adds or upgrades a **direct** module published inside the cooldown window. | Runs on the host. `BASE` has no default on purpose: a stale one would silently narrow the diff until the gate inspects nothing. Go has no resolver-side cooldown, so this check is the guard rather than a detector for one. |
 | `make go-cooldown-audit` | Reports every module in `go.mod` published inside the window, and fails on a bypass entry that has expired, reaches beyond three months, or matches nothing. | Runs on the host. The window itself never fails here — existing dependencies are grandfathered — but a lapsed bypass does, since its deadline arrives without `go.mod` changing. |
 | `make tool-cooldown-gate BASE=<ref>` | Fails when the declaration diff against `BASE` — `mise.toml` and `python/*.in` — pins a tool version published inside its backend's window (14 days for a GitHub release, 7 for a package registry). Also fails when a `python/*.in` declaration and its `python/*.txt` lockfile name different versions. | Runs on the host; needs `mise` on PATH to resolve a short name's backend, and a `GITHUB_TOKEN` because the unauthenticated API cannot carry one run. Language runtimes are excluded as an accepted risk. |
@@ -331,9 +330,9 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make gen-mock-auth-oapi` | Bundles the mock-auth-server OpenAPI and generates zod schemas. | Invokes `make gen-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
 | `make gen-mock-auth-oapi-docs` | Generates the mock-auth-server Redoc HTML from its OpenAPI. | Outputs `docs/openapi/mock-auth-server/index.html` via the `node_tool_runner` container. |
 | `make lint-mock-auth-oapi` | Validates the mock-auth-server OpenAPI definition with `redocly lint`. | Invokes `make lint-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
-| `make gen-mock-auth-oapi-ci` | Runs `npm run gen` (redocly bundle + orval) in `mock-auth-server`. | CI target |
-| `make gen-mock-auth-oapi-docs-ci` | Runs `npm run gen:docs` (redocly build-docs) in `mock-auth-server`. | CI target |
-| `make lint-mock-auth-oapi-ci` | Runs `npm run lint:oapi` in `mock-auth-server`. | CI target |
+| `make gen-mock-auth-oapi-ci` | Runs `pnpm run gen` (redocly bundle + orval) in `mock-auth-server`. | CI target |
+| `make gen-mock-auth-oapi-docs-ci` | Runs `pnpm run gen:docs` (redocly build-docs) in `mock-auth-server`. | CI target |
+| `make lint-mock-auth-oapi-ci` | Runs `pnpm run lint:oapi` in `mock-auth-server`. | CI target |
 
 ## `.makefiles/load` group
 

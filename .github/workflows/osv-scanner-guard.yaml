@@ -19,7 +19,7 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
 
 permissions:

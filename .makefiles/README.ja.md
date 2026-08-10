@@ -25,7 +25,7 @@ Make ターゲットは主に以下の単位で整理されています。
 
 - ターゲット名はハイフン区切りの小文字（`make new-migrate-<name>`、`make gen-api`）
 - ターゲットは 2 種類:
-  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行。ただし一部はホスト上のツールを解決する（`lint` / `fix` の `golangci-lint`、`actions-zizmor` の `zizmor`、`npm-cooldown-audit`、`go-cooldown-gate` / `go-cooldown-audit`、`tool-cooldown-gate` / `tool-cooldown-audit`）。tool-runner が Alpine であり、上流が musl ビルドを配布していないためである。これは規約の例外ではなく [ツールチェイン実行ルール](../docs/ja/rules.ja.md#ツールチェイン実行ルール) が定める最終手段であり、供給は `make install-tools` が担い、イメージが担うはずだった再現性は `mise.toml` のピンが引き受ける
+  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行。ただし一部はホスト上のツールを解決する（`lint` / `fix` の `golangci-lint`、`actions-zizmor` の `zizmor`、`go-cooldown-gate` / `go-cooldown-audit`、`tool-cooldown-gate` / `tool-cooldown-audit`）。tool-runner が Alpine であり、上流が musl ビルドを配布していないためである。これは規約の例外ではなく [ツールチェイン実行ルール](../docs/ja/rules.ja.md#ツールチェイン実行ルール) が定める最終手段であり、供給は `make install-tools` が担い、イメージが担うはずだった再現性は `mise.toml` のピンが引き受ける
   - **`-ci` ターゲット**: CI ランナー、またはツールをローカルインストール済みの開発者向け低レベルコマンド
 - すべて `.PHONY` 指定し、末尾 `##` コメントで `make help` 出力に載せること
 
@@ -270,7 +270,6 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make secret-scan` | ワーキングツリーのシークレットを gitleaks でスキャンします。 | `go_tool_runner` コンテナ内で `make secret-scan-ci` を呼び出します。 |
 | `make secret-scan-ci` | `gitleaks dir . --redact` を直接実行します。 | CI 用ターゲット。生成ファイルは `.gitleaks.toml` で allowlist。 |
 | `make secret-scan-history-ci` | `gitleaks git . --redact` を直接実行します。 | CI 用ターゲット。週次実行が使用。`dir` は作業ツリーしか見ないためコミット後に消したシークレットを取りこぼすが、`git` は履歴全体を走査する。 |
-| `make npm-cooldown-audit` | lockfile のエントリのうち、同階層 `.npmrc` の `min-release-age` を満たさないものを報告します。 | ホスト上で実行。報告のみで、検出があっても 0 で終了します（cooldown の解除は意図的な判断であるため）。 |
 | `make go-cooldown-gate BASE=<ref>` | `BASE` との `go.mod` 差分が、cooldown 窓の内側で公開された **direct** モジュールを追加 / 更新している場合に失敗します。 | ホスト上で実行。`BASE` に既定を置かないのは意図的で、古い base は差分を黙って狭め、gate が何も見ていない状態へ縮退させるためです。Go には解決時の cooldown が無いため、この検査は検知器ではなく防御そのものです。 |
 | `make go-cooldown-audit` | `go.mod` のうち窓の内側で公開されたものを報告し、期限切れ・3 ヶ月超・対象不在のバイパスエントリがあれば失敗します。 | ホスト上で実行。窓そのものではここで落ちません（既存依存は grandfather）が、失効したバイパスでは落ちます。期限は `go.mod` が変わらなくても訪れるためです。 |
 | `make tool-cooldown-gate BASE=<ref>` | `BASE` との宣言差分（`mise.toml` と `python/*.in`）が、backend の窓（GitHub リリース 14 日 / パッケージレジストリ 7 日）の内側で公開されたツール版を pin している場合に失敗します。`python/*.in` の宣言と `python/*.txt` の lockfile が別の版を指している場合にも失敗します。 | ホスト上で実行。短縮名の backend 解決に `mise` を、未認証では 1 回の実行を賄えない GitHub API のために `GITHUB_TOKEN` を使います。言語ランタイムは受容したリスクとして対象外です。 |
@@ -330,9 +329,9 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make gen-mock-auth-oapi` | mock-auth-server の OpenAPI をバンドルし zod スキーマを生成します。 | `node_tool_runner` コンテナ内で `make gen-mock-auth-oapi-ci` を呼び出します。 |
 | `make gen-mock-auth-oapi-docs` | mock-auth-server の OpenAPI から Redoc HTML を生成します。 | `node_tool_runner` コンテナ経由で `docs/openapi/mock-auth-server/index.html` を出力します。 |
 | `make lint-mock-auth-oapi` | mock-auth-server の OpenAPI 定義を `redocly lint` で検証します。 | `node_tool_runner` コンテナ内で `make lint-mock-auth-oapi-ci` を呼び出します。 |
-| `make gen-mock-auth-oapi-ci` | `mock-auth-server` で `npm run gen`（redocly bundle + orval）を実行します。 | CI 用ターゲットです。 |
-| `make gen-mock-auth-oapi-docs-ci` | `mock-auth-server` で `npm run gen:docs`（redocly build-docs）を実行します。 | CI 用ターゲットです。 |
-| `make lint-mock-auth-oapi-ci` | `mock-auth-server` で `npm run lint:oapi` を実行します。 | CI 用ターゲットです。 |
+| `make gen-mock-auth-oapi-ci` | `mock-auth-server` で `pnpm run gen`（redocly bundle + orval）を実行します。 | CI 用ターゲットです。 |
+| `make gen-mock-auth-oapi-docs-ci` | `mock-auth-server` で `pnpm run gen:docs`（redocly build-docs）を実行します。 | CI 用ターゲットです。 |
+| `make lint-mock-auth-oapi-ci` | `mock-auth-server` で `pnpm run lint:oapi` を実行します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/load` 系
 

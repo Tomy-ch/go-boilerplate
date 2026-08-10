@@ -124,7 +124,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm install --dir docs-viewer --frozen-lockfile
-          npm ci --prefix mock-auth-server --ignore-scripts
+          pnpm install --dir mock-auth-server --frozen-lockfile
 
       - name: Typecheck
         run: make scripts-typecheck-ci

@@ -29,7 +29,6 @@ on:
       - '.github/egress.toml'
       - '.github/workflows/sonarqube.yaml'
       - '.github/workflows/code-ql.yaml'
-      - '.github/workflows/nancy.yaml'
       - 'mise.toml'
   pull_request:
     paths:
@@ -42,7 +41,6 @@ on:
       - '.github/egress.toml'
       - '.github/workflows/sonarqube.yaml'
       - '.github/workflows/code-ql.yaml'
-      - '.github/workflows/nancy.yaml'
       - 'mise.toml'
   workflow_dispatch:
 
@@ -156,12 +154,12 @@ jobs:
         shell: bash
 
       # 製品ごとに 1 つ + README で 1 つ。数が変わったら撤去の分割が壊れている。
-      - name: Four commits were stacked
+      - name: Three commits were stacked
         run: |
           set -euo pipefail
           COUNT=$(git rev-list --count "${before}..HEAD")
-          if [ "${COUNT}" -ne 4 ]; then
-            echo "::error::expected 4 commits (3 scanners + 1 docs), got ${COUNT}"
+          if [ "${COUNT}" -ne 3 ]; then
+            echo "::error::expected 3 commits (2 scanners + 1 docs), got ${COUNT}"
             git log --oneline "${before}..HEAD"
             exit 1
           fi
@@ -174,7 +172,6 @@ jobs:
           for path in \
             .github/workflows/sonarqube.yaml \
             .github/workflows/code-ql.yaml \
-            .github/workflows/nancy.yaml \
             .github/codeql \
             sonar-project.properties
           do

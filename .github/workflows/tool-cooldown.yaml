@@ -13,7 +13,7 @@ name: Tool Cooldown
 # The window has two tiers, taken from the backend rather than from the tool. A version resolved
 # through a GitHub release (aqua / ubi / github) gets 14 days, the same as `pin-actions` and
 # `pin-images`, because a tag can be moved onto a different commit. A version resolved through a
-# package registry (go / npm / PyPI) gets 7 days, the same as `npm-cooldown-audit` and
+# package registry (go / npm / PyPI) gets 7 days, the same as pnpm's `minimumReleaseAge` and
 # `go-cooldown`, because a published version there is immutable.
 #
 # **Language runtimes are deliberately not checked.** If the go / node / python distribution

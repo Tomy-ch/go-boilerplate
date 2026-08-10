@@ -1,16 +1,15 @@
-# リポジトリ補助スクリプト（scripts/）とドキュメント系ツールの依存解決設定。
-# このディレクトリで閉じた 1 パッケージとして宣言し、tool-runner イメージも CI もここを install 先に指す。
+# mock-auth-server の依存解決設定。
+# リポジトリ直下ではなく mock-auth-server/ に置くのは、トークン発行側が引いた依存を
+# 検証側（Go API）やリポジトリ補助ツールのツールチェーンへ広げないため。
 
 packages:
   - "."
 
 # ----- 時間差防御 -----
-# 公開直後の版を解決対象から外す。docs-viewer と窓を揃える（pnpm は分指定。7 日 = 10080 分）。
+# 公開直後の版を解決対象から外す。scripts / docs-viewer と窓を揃える（pnpm は分指定。7 日 = 10080 分）。
 minimumReleaseAge: 10080
 # 緊急のセキュリティ修正は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
-minimumReleaseAgeExclude:
-  - js-yaml@4.3.1 # 2026-08-08 02:40 JST 以降に削除する。GHSA-5p4m-2wfm-xmqj の修正版で、tool-runner 内のビルド時にのみ動く。
-  - mermaid@11.16.1 # 2026-08-12 00:09 JST 以降に削除する。CVE-2026-50159 / 71436 / 71437 / 71438 / 71439 の修正版で、tool-runner 内のビルド時にのみ動く。
+minimumReleaseAgeExclude: []
 # 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
 # 公開日時を返さないレジストリの依存は解決を失敗させる。
@@ -29,7 +28,6 @@ engineStrict: true
 strictDepBuilds: true
 # 依存ライフサイクルスクリプトの実行可否をパッケージ単位で明示する。
 allowBuilds:
-  '@scarf/scarf': false
   esbuild: false
 
 # ----- 公開元の信頼性 -----
@@ -40,22 +38,10 @@ trustPolicy: no-downgrade
 # 公開から180日を過ぎた版は provenance 情報不足だけでは拒否しない。
 trustPolicyIgnoreAfter: 259200
 # provenance の後退は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
-trustPolicyExclude:
-  - rollup@2.80.0 # 2026-08-21 以降に削除する。spectral が引く v2 系の保守リリースで、npm 時代の lockfile が解決していた版と同一。
+trustPolicyExclude: []
 
 # ----- 依存の差し替え -----
 # pnpm は親子の直接辺しか指せないため、親ではなく「解決結果がこの版域に落ちたら」で書く。
 overrides:
-  # size が 0 のとき custom generator が無限ループする（GHSA-2v37-7h3g-55p8）。postcss が引く。
+  # size が 0 のとき custom generator が無限ループする（GHSA-2v37-7h3g-55p8）。
   "nanoid@3": ">=3.3.17 <4"
-  # 解析器を 1 実装へ揃える。複数版が同居すると Lint 結果が呼び出し経路で変わる。
-  js-yaml: 4.3.1
-  # spectral が引く巨大な spec 束を 1 版へ寄せ、重複展開を避ける。
-  "@asyncapi/specs": 6.11.1
-  # v1 系のみ DoS 修正版を下限にする。1.1.17 は中間配列の膨張（CVE-2026-69152）が残る。
-  "brace-expansion@1": ">=1.1.18 <2"
-  "lodash@<4.18.0": 4.18.0
-  # authority の backslash を経路区切りと読む実装差（CVE-2026-18446）を塞ぐ。
-  "fast-uri@<3.1.5": ">=3.1.5 <4"
-  # IN_PLACE hook 除去後に切り離された部分木が実行可能なまま残る（GHSA-55q2-fjhq-7xh7）。
-  "dompurify@<3.4.13": ">=3.4.13 <4"

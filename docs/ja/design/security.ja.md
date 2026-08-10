@@ -39,7 +39,6 @@ English canonical: [security.md](../../design/security.md)
 | シークレットスキャン（gitleaks / TruffleHog） | 強制 | コミットされたシークレットは許容可能な取引ではない |
 | `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で。pre-commit でもオフライン監査のみでゲートする |
 | 報告系スキャナ（`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL） | 検知 | code scanning と PR には届くが、ブロックしない |
-| `npm-cooldown-audit` | 検知 | 構造としてブロックしない（後述） |
 | `harden-runner`（`egress-policy: block`） | 強制 | ジョブの `allowed-endpoints` の外への egress を拒否する。`trufflehog` だけが `audit` |
 | `CODEOWNERS` | 強制 | 「この判断はこのロールのもの」を支えるレビュー要求 |
 | OpenSSF Scorecard | 検知 | 姿勢の計測であり判定ではない |
@@ -102,38 +101,18 @@ Go のエコシステムは完全性をほぼ無償で与え、新しさにつ�
 | --- | --- | --- |
 | ツールチェーンによる cooldown 強制 | あり（解決時） | **なし** |
 | バイパスできるか | できる（フラグ） | バイパスすべき対象が無い |
-| バイパスを検知できるか | できる（`npm-cooldown-audit`） | **検知すべき対象が無い** |
+| バイパスが可視か | 可視（レビューされる差分に残る） | **検知すべき対象が無い** |
 | 残る制御 | レビュー + 検知 | **レビューのみ** |
 
 レビューが唯一の制御であるため、`go.mod` と `go.sum` を [`CODEOWNERS`](../../../.github/CODEOWNERS) の対象にしています。これは対称性のための記帳ではなく実効を担うエントリです。npm なら取りこぼしても事後に捕まりますが、Go では捕まりません。
 
 **到達可能性フィルタは諸刃。** `govulncheck` はアプリケーションが実際に呼び出す脆弱性だけを報告し、それが「対処するに値する」信頼性を生みます。代償は網羅性です。Go 脆弱性データベースがまだ取り込んでいない advisory は検出そのものが出ないため、`govulncheck` が緑であることは今週公開された GHSA について何も語りません。網羅側は、呼び出しグラフではなくバージョンで照合する Trivy FS と OSV-Scanner が担います。
 
-### npm
-
-cooldown は実在しますが、見た目より適用範囲が狭い。`min-release-age` は npm が**解決する**あいだだけ効き、`npm ci` は解決しません——lockfile を再生するだけです。本リポジトリの CI とイメージビルドはすべて `npm ci` を使います。
-
-推測ではなく実測した挙動:
-
-| 操作 | 結果 |
-| --- | --- |
-| 窓内バージョンを解決する | 拒否（`ETARGET`） |
-| 最新一致が窓内である範囲を解決する | エラーにならず、**枯れた最新**へ黙って解決。exit 0 |
-| `--min-release-age=0` を付けて解決する | 成功。窓内バージョンが lockfile に入る |
-| 窓内エントリを含む lockfile で `npm ci` | 成功。警告も出ない |
-| そのエントリがある状態で `npm install` / パッケージ追加 | 成功。当該エントリは保持される |
-
-帰結が 2 つ。意図的な解除はチームに何のコストも課しません（誰も詰まらず、回避策も不要）。そして解除はどこにも痕跡を残しません——イメージビルドにも CI にも現れず、窓を過ぎれば通常解決されたエントリと区別がつかなくなります。
-
-`npm-cooldown-audit` が存在するのはこのためです。現在のツリーを走査するだけでなく **PR を base と比較して**監査するのも同じ理由で（エントリは窓から出ていきますが、PR コメントは残ります）、そして**決してビルドを落とさない**のもこのためです。cooldown の解除はロールの判断であり——CRITICAL advisory への即応こそがその存在理由です——ハードゲートは正当な行使をこそ塞ぎます。ブロックしない性質はワークフロー設定ではなくツール自身に実装されており、YAML の編集ではゲートに変えられません。
-
-**推移的な pin は暫定債務。** `overrides` で修正版を強制する際は、exact な版ではなく same-major の floor（`">=<fixed> <<next-major>"`）として書きます。exact pin は依存をその場で凍結するため、固定した版自身が後に advisory を受けたとき、pin が脆弱な版を強制し続けることになるからです。すべての override は、親が修正版を自力で引く release を出した時点で回収する前提のものです。
-
 ### pnpm
 
-pnpm で解決するパッケージは 2 つ——`scripts/` と `docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は npm と同じ 7 日で、導出のしかたも同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
+Node のパッケージはすべて pnpm で解決します——`scripts/`・`mock-auth-server/`・`docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は 7 日で、導出のしかたは他のエコシステムと同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
 
-異なるのは窓が**どこで**効くかで、それが npm の弱点を裏返します。npm は解決のあいだしか見ないため、一度 lockfile に入った窓内エントリはそれ以降どこからも見えません。pnpm は install のたびに **lockfile 全体**を現行ポリシーで再検証します——`npm ci` が素通りさせる再生経路である `--frozen-lockfile` も含めてです。
+窓は解決時だけでなく **install のたび**に効きます。pnpm は毎回 lockfile 全体を現行ポリシーで再検証します——CI とイメージビルドが使う再生経路である `--frozen-lockfile` も含めてです。窓内のエントリが lockfile に入ったあと見えなくなる、ということが起こりません。
 
 推測ではなく実測した挙動:
 
@@ -145,7 +124,7 @@ pnpm で解決するパッケージは 2 つ——`scripts/` と `docs-viewer/`�
 | どの例外にも該当しない窓内エントリを `--frozen-lockfile` で再生する | 拒否（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`） |
 | ポリシー設定を変えたあとの `pnpm run` | 拒否（`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`）。`pnpm install` が設定を記録し直すまで通らない |
 
-帰結が 3 つあり、それらを合わせると pnpm に `npm-cooldown-audit` の対応物が要らない理由になります。記録されずに通るものが無いので、事後に検知すべき対象がそもそも存在しません。
+帰結が 3 つあり、それらを合わせると事後監査が要らない理由になります。記録されずに通るものが無いので、検知すべき対象がそもそも存在しません。
 
 **解除は不可視にできません。** 窓内バージョンを採るには `minimumReleaseAgeExclude` のエントリが要り、無ければ以降の install がすべて落ちます——CI の install は frozen な再生なので CI も含みます。エントリの置き場である `pnpm-workspace.yaml` は追跡対象で [`CODEOWNERS`](../../../.github/CODEOWNERS) に載っているため、解除は事後に bot が報告するのではなく構造上レビューを通ります。
 
