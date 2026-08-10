@@ -6,9 +6,6 @@ import { describe, expect, it } from "vitest";
 import { ROOT_DIR } from "../lib/runtime";
 import { SCANNER_DOMAINS } from "./scanner-manifest";
 
-// manifest は完全一致の文字列で README を書き換える。宣言と現物がずれた瞬間に撤去が例外で
-// 落ちるが、それが分かるのは撤去を実行した利用者の手元になる。ここで先に落とすことで、
-// ずれを持ち込んだ PR の側で赤くする。
 describe("SCANNER_DOMAINS", () => {
   const read = (file: string): string => fs.readFileSync(path.join(ROOT_DIR, file), "utf8");
 
@@ -97,7 +94,7 @@ describe("SCANNER_DOMAINS", () => {
       }
     });
 
-    it("CodeQL を最後に置く（4 件をまとめて説明する散文を持つため）", () => {
+    it("CodeQL を最後に置く（2 件をまとめて説明する散文を持つため）", () => {
       expect(SCANNER_DOMAINS.at(-1)?.key).toBe("code-ql");
     });
   });

@@ -1,13 +1,4 @@
 #!/usr/bin/env -S tsx
-// 資格情報 / ライセンス費用を要するスキャナ 3 件を一括撤去する。撤去対象の宣言は
-// scanner-manifest.ts、書き換え規則は scanner-removal.ts、git 操作は git-commit.ts が持ち、
-// ここは削除・書き込み・出力とコミットの順序だけを担う。
-//
-// コミットは「製品ごとに 1 つ + README をまとめた 1 つ」に分ける。README の編集を製品側へ
-// 混ぜないのは、3 製品の行が同じ表に隣接して並んでいるためで、混ぜると 2 つ目以降の
-// `git revert` が必ず README で衝突し、1 製品だけ戻すという撤去設計の目的が果たせなくなる。
-// 代わりに、復活させた製品の記述は README に戻らない。
-
 import fs from "node:fs";
 
 import { listFilesRecursive, toAbsolutePath, toRelativePath, updateFile } from "../lib/file-utils";
@@ -27,7 +18,6 @@ const EGRESS_FILE = ".github/egress.toml";
 const SCANNED_DIRS = [".github/workflows", ".github/actions"];
 const DOCS_COMMIT_SUBJECT = "Docs: 撤去したスキャナの記述を workflows の README から落とす";
 
-/** 撤去後に残るワークフロー / composite action の本文。lockfile の孤児判定に使う。 */
 function survivingContents(removedPaths: ReadonlySet<string>): string[] {
   return SCANNED_DIRS.map(toAbsolutePath)
     .filter((dir) => fs.existsSync(dir))
@@ -89,7 +79,6 @@ function editSsot(
   return changed;
 }
 
-/** 撤去したドメインだけ返す。既に消えているものは触らない。 */
 function removeDomain(
   domain: ScannerDomain,
   removedPaths: Set<string>,
@@ -97,8 +86,6 @@ function removeDomain(
 ): boolean {
   console.log(`\n▶ ${domain.label}`);
 
-  // 撤去済みなら手を付けない。README の書き換えは完全一致に一致しないと投げる設計なので、
-  // ここで抜けないと 2 回目の実行が「既に消えている」を「README が動いた」と報告してしまう。
   if (!fs.existsSync(toAbsolutePath(domain.presenceMarker))) {
     console.log("  - 撤去済みのため変更はありません");
     return false;
@@ -106,8 +93,6 @@ function removeDomain(
 
   const deleted = deletePaths(domain, dryRun);
 
-  // dry run では実ファイルが残るため、判定用の集合には製品をまたいで積み上げる。積まないと
-  // dry run だけが「まだ参照が残っている」と答え、本番と違う結論を出す。
   for (const relativePath of domain.paths) {
     removedPaths.add(relativePath);
   }
@@ -174,8 +159,6 @@ function editDocs(domains: readonly ScannerDomain[], dryRun: boolean): string[] 
 }
 
 function run(dryRun: boolean): void {
-  // dry run でも確認する。汚れたツリーでは結局実行できないので、プレビューだけ通しても
-  // 「プレビューは通ったのに本番で止まる」を作るだけになる。
   assertCleanWorktree();
 
   const removedPaths = new Set<string>();
@@ -210,7 +193,7 @@ function run(dryRun: boolean): void {
 
 const program = newSetupCommand("remove-licensed-scanners");
 program
-  .description("資格情報 / ライセンス費用を要するスキャナ 3 件を撤去し、製品ごとにコミットする")
+  .description("資格情報 / ライセンス費用を要するスキャナ 2 件を撤去し、製品ごとにコミットする")
   .action((options: SetupOptions) => {
     try {
       run(options.dryRun);
