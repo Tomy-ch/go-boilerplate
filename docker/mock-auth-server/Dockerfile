@@ -5,20 +5,19 @@
 # tool-cooldown ゲート（レジストリ公開日で測る窓）の管理外へ出る。
 FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS mock_auth_server_deps
 
-RUN apk add --no-cache ca-certificates curl
+RUN apk add --no-cache ca-certificates
 
 ARG MISE_VERSION
-# 上流は install スクリプトの checksum を公開しないため、取得した実体をこの固定値と照合して
-# から実行する。上流がスクリプトを更新するとここで落ちる。追随するときは差分を見て値を更新する。
-ARG MISE_INSTALL_SHA256=b11ef4cdc9bb3d8acdb95ad1cc2905b76d47936e9b8d9e76faded4d44f39f711
+# 上流は install スクリプトの checksum を公開しないため、この固定値を ADD に照合させてから
+# 実行する。上流がスクリプトを更新すると取得の時点で落ちる。追随するときは差分を見て値を更新する。
+ADD --checksum=sha256:b11ef4cdc9bb3d8acdb95ad1cc2905b76d47936e9b8d9e76faded4d44f39f711 \
+    https://mise.run /tmp/mise-install.sh
+
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
-    && echo "${MISE_INSTALL_SHA256}  /tmp/mise-install.sh" > /tmp/mise-install.sha256 \
-    && sha256sum -c /tmp/mise-install.sha256 \
-    && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
-    && rm /tmp/mise-install.sh /tmp/mise-install.sha256 \
+RUN MISE_VERSION="${MISE_VERSION}" sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app

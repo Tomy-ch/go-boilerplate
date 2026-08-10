@@ -159,6 +159,7 @@ can enumerate them. The tag has no reader once setup is done.
 | [0102](0102-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
 | [0103](0103-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
 | [0104](0104-outbox-relay-hardening-delegated.md) | Ship a balanced outbox relay; delegate hardening (multi-layer lease redesign) to operational evidence | accepted (exclusion) |
+| [0105](0105-pnpm-as-the-only-node-resolver.md) | Resolve every Node package with pnpm; do not use npm | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).
