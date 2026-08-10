@@ -81,3 +81,5 @@
 ".github/workflows/scorecard.yaml" = "2026-08-11"
 ".github/workflows/go-test.yaml" = "2026-08-11"
 ".github/actions-pin.toml" = "2026-08-11"
+".claude/skills/repo-ops/SKILL.md" = "2026-08-11"
+".claude/skills/repo-ops/SKILL.ja.md" = "2026-08-11"
