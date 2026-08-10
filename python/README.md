@@ -6,7 +6,7 @@ that happen to be published as Python packages.
 
 ## Why these tools are not in `mise.toml`
 
-Every other tool version lives in `mise.toml` ([ADR-0077](../docs/adr/0077-mise-ssot-drift-gate.md)).
+Every other tool version lives in `mise.toml` ([ADR-0077 (mise-ssot-drift-gate)](../docs/adr/0077-mise-ssot-drift-gate.md)).
 A PyPI tool is the exception, because pinning its version pins almost nothing: its dependencies are
 resolved at install time, so the same pin installs a different tree on different days, and no
 scanner can read a version pin as a lockfile.

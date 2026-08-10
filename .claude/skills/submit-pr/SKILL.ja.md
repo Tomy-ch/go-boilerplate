@@ -213,7 +213,7 @@ EOF
 
 ## Step 8. 結果報告
 
-PR の URL と簡単な要約を日本語で表示する。
+PR の URL と簡単な要約を日本語で表示する。`make -s load-status` を実行する。解決された帯が `ci-first` の場合、push フックが重いゲートを CI へ委譲しているため、`gh pr checks --watch` で CI 結果を待ち、最終ステータスをこの報告へ含める。チェックが失敗したら失敗を報告し、PR を検証済みとして扱わない。`full` / `low` では CI を待たない。この手順は全 CI 専用チェックを待つためではなく、委譲した検証を追従するためのものである。
 
 Create 経路:
 
@@ -222,6 +222,7 @@ PR を作成しました: <url>
 ベース: <base-branch>
 タイトル: <title>
 コミット数: N
+CI 委譲: <なし / ci-first。gh pr checks の最終結果>
 ```
 
 Update 経路:
@@ -229,6 +230,7 @@ Update 経路:
 ```text
 PR を更新しました: <url>
 追加コミット数: N
+CI 委譲: <なし / ci-first。gh pr checks の最終結果>
 ```
 
 ## Step 9. PR 後レビュー（確認）

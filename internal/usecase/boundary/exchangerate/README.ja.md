@@ -17,7 +17,7 @@ type Rate struct {
 ```
 
 `Value` は `float64` ではなく正確な `pkg/decimal.Decimal` です。レートはマネー経路の乗数であり、
-float は取込時点で値を破壊するためです（[ADR-0035](../../../../docs/adr/0035-two-scale-quantity-model.md)）。
+float は取込時点で値を破壊するためです（[ADR-0035 (two-scale-quantity-model)](../../../../docs/adr/0035-two-scale-quantity-model.md)）。
 
 ## なぜ抽象化するのか
 

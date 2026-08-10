@@ -61,7 +61,7 @@ SQL linting tools:
 Unlike the other two stages, the tool itself does not come from `mise.toml`: mise installs
 only `uv`, which then installs `sqlfluff` from [`python/sqlfluff.txt`](../../python/sqlfluff.txt)
 with `--require-hashes`, so the whole transitive tree is version- and hash-pinned
-(see [ADR-0077](../../docs/adr/0077-mise-ssot-drift-gate.md)).
+(see [ADR-0077 (mise-ssot-drift-gate)](../../docs/adr/0077-mise-ssot-drift-gate.md)).
 
 ## docker-compose Services
 

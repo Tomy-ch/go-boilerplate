@@ -17,7 +17,7 @@ change or a running skill relaxes the scope for its own duration. Read `AGENTS.m
 
 | Path | What it is |
 | --- | --- |
-| `settings.json` | Project-scoped permissions (`allow` / `ask` / `deny`), enabled plugins, and known marketplaces. Shared with everyone who trusts the repo. |
+| `settings.json` | Project-scoped permissions (`allow` / `ask` / `deny`), enabled plugins, and known marketplaces. Generated artifacts are denied for `Edit` / `Write`; `AGENTS.md` and its `CLAUDE.md` symlink require confirmation. Shared with everyone who trusts the repo. |
 | `skills/<name>/` | Reusable skills. Each has an English-canonical `SKILL.md` (+ a `SKILL.ja.md` reference translation) and optional bundled `scripts/` / `references/`. Invoked as `/<name>`. |
 | `agents/` | Subagent definitions used by the skills (e.g. the read-only `arch-auditor-*` / `drift-detector-*` per-layer workers that integrator skills fan out in parallel). |
 | `scaffold-spec/` | Spec-format definitions (`domain-spec.md`, `usecase-spec.md`, `verify-rules.md`, …) read **at runtime** by the `scaffold-*` / `verify-spec` / `new-spec-*` skills, so format changes propagate without editing the skills. |

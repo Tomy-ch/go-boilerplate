@@ -32,7 +32,7 @@ func webapiModule() fx.Option {
 }
 
 // provideCachedExchangeRateGateway は、素の為替レート gateway を TTL キャッシュ decorator で包み、
-// usecase へ注入する boundary.Gateway を返します。ADR-0103 の decorator seam 原理を Gateway
+// usecase へ注入する boundary.Gateway を返します。ADR-0103 (no-generic-cache-abstraction) の decorator seam 原理を Gateway
 // boundary へ適用し、TTL の時刻依存を infra 層 decorator に閉じます。
 // sample-api:begin
 func provideCachedExchangeRateGateway(

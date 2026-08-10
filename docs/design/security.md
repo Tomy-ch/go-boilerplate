@@ -81,7 +81,7 @@ change without the code changing.** Everything else is noise on a timer.
 ### Why reporting and gating are split
 
 An ordinary PR reports; a promotion PR gates. The reasoning is in
-[ADR-0086](../adr/0086-multi-layer-security-scanning.md), and reduces to this: a vulnerability
+[ADR-0086 (multi-layer-security-scanning)](../adr/0086-multi-layer-security-scanning.md), and reduces to this: a vulnerability
 inherited from the existing dependency tree is not something the current PR introduced, and
 not something its author can fix. Blocking there turns every unrelated change red until an
 upstream fix lands elsewhere. The predictable outcome is that the check gets disabled or
@@ -99,7 +99,7 @@ images run with the job's credentials before any of our code does, so they are p
 **A version reference is not an identity.** A tag can be re-pointed and a mutable image tag can
 be rebuilt, so the version stays in the source as human-readable intent while an immutable
 digest lives in a lockfile that is the single source of truth —
-`.github/actions-pin.toml` ([ADR-0087](../adr/0087-sha-pinned-actions.md)) and
+`.github/actions-pin.toml` ([ADR-0087 (sha-pinned-actions)](../adr/0087-sha-pinned-actions.md)) and
 `docker/images-pin.toml`. Both checks are fail-closed, and unpinned versus unregistered are
 distinct errors so neither degrades into the other.
 
@@ -270,7 +270,7 @@ supply-chain one: pinning a PyPI tool's version pins almost nothing, because its
 resolved at install time, so the same pin installs a different tree on different days. Each tool
 therefore declares its version in `python/<tool>.in` and carries the resolved tree — every
 transitive package, with sha256 hashes — in `python/<tool>.txt`
-([ADR-0077](../adr/0077-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
+([ADR-0077 (mise-ssot-drift-gate)](../adr/0077-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
 are `uv pip install --require-hashes -r <tool>.txt`, which refuses any requirement lacking a version
 or a hash, so integrity verification is part of installing rather than a step that can be skipped.
 
@@ -353,7 +353,7 @@ does with a request. Three patterns repeat, and they are the part worth carrying
 than rediscovering.
 
 **Deny by default, at every boundary.** The outbound dial guard
-(`internal/observability/http_client_transport.go`, [ADR-0022](../adr/0022-egress-ssrf-guard.md))
+(`internal/observability/http_client_transport.go`, [ADR-0022 (egress-ssrf-guard)](../adr/0022-egress-ssrf-guard.md))
 refuses link-local, multicast, unspecified, and bogon destinations unconditionally, and refuses
 loopback / private / CGNAT unless the caller opted in through the context — with the unset case
 resolving to the safe `false`. Error-detail exposure
@@ -362,25 +362,25 @@ mismatch, unresolved operation, empty `operationId`, and not-opted-in all evalua
 Neither control has a state where forgetting something opens it.
 
 **The spec is the authority for the request boundary.** Request validation and authentication are
-enforced at runtime from the OpenAPI document ([ADR-0015](../adr/0015-spec-driven-request-validation.md)),
+enforced at runtime from the OpenAPI document ([ADR-0015 (spec-driven-request-validation)](../adr/0015-spec-driven-request-validation.md)),
 not from hand-written checks in handlers. The direct consequence is that **reviewing the spec
 diff is reviewing the security posture** — an operation that omits its `security` requirement is
 unprotected no matter how the handler is written, and no amount of Go review will surface it.
 Business-validity rules are deliberately *not* here: the domain layer is their sole authority
-([ADR-0016](../adr/0016-validation-value-authority.md)), so the two never drift into each other.
+([ADR-0016 (validation-value-authority)](../adr/0016-validation-value-authority.md)), so the two never drift into each other.
 
 **Escape hatches are named, narrow, and greppable.** `ContextWithAllowPrivateNetwork`, the
 `details` property that opts an error schema into detail exposure, and `/metrics` as a declared
-auth exception ([ADR-0018](../adr/0018-metrics-endpoint-auth-exception.md)) are each a specific
+auth exception ([ADR-0018 (metrics-endpoint-auth-exception)](../adr/0018-metrics-endpoint-auth-exception.md)) are each a specific
 seam you can search for and enumerate. None of them is a general-purpose flag, because a general
 flag becomes the thing everyone sets.
 
 Two absences are deliberate rather than pending: there is no in-application rate limiter
-([ADR-0101](../adr/0101-no-in-app-rate-limiter.md)), and responses are not validated against the
-spec ([ADR-0015](../adr/0015-spec-driven-request-validation.md)). SQL injection is handled
+([ADR-0101 (no-in-app-rate-limiter)](../adr/0101-no-in-app-rate-limiter.md)), and responses are not validated against the
+spec ([ADR-0015 (spec-driven-request-validation)](../adr/0015-spec-driven-request-validation.md)). SQL injection is handled
 structurally instead of by review — queries are generated by sqlc and therefore parameterised
-([ADR-0024](../adr/0024-sqlc-type-safe-sql.md)) — and `gosec` runs in the authoritative
-golangci gate ([ADR-0081](../adr/0081-two-layer-golangci-config.md)).
+([ADR-0024 (sqlc-type-safe-sql)](../adr/0024-sqlc-type-safe-sql.md)) — and `gosec` runs in the authoritative
+golangci gate ([ADR-0081 (two-layer-golangci-config)](../adr/0081-two-layer-golangci-config.md)).
 
 A detail worth copying rather than rediscovering: Go's `netip.Addr.IsPrivate` covers RFC1918 and
 ULA but **not** CGNAT (`100.64.0.0/10`), so the guard carries its own prefix check. Reimplementing
@@ -419,8 +419,8 @@ Worth stating so nobody builds on a stronger assumption than the controls suppor
 
 ## Related
 
-- [ADR-0086](../adr/0086-multi-layer-security-scanning.md) — layered scanning, reporting/gating split, runner hardening
-- [ADR-0087](../adr/0087-sha-pinned-actions.md) — SHA-pinned Actions and the supply-chain quarantine
-- [ADR-0098](../adr/0098-release-image-supply-chain.md) — release-image integrity (signing, provenance, SBOM)
-- [ADR-0081](../adr/0081-two-layer-golangci-config.md) — `gosec` as an in-process check during static analysis
+- [ADR-0086 (multi-layer-security-scanning)](../adr/0086-multi-layer-security-scanning.md) — layered scanning, reporting/gating split, runner hardening
+- [ADR-0087 (sha-pinned-actions)](../adr/0087-sha-pinned-actions.md) — SHA-pinned Actions and the supply-chain quarantine
+- [ADR-0098 (release-image-supply-chain)](../adr/0098-release-image-supply-chain.md) — release-image integrity (signing, provenance, SBOM)
+- [ADR-0081 (two-layer-golangci-config)](../adr/0081-two-layer-golangci-config.md) — `gosec` as an in-process check during static analysis
 - [`.github/workflows/README.md`](../../.github/workflows/README.md) — the workflow inventory and full trigger matrix

@@ -1,7 +1,7 @@
 # Prefecture — Domain Spec
 
 > `user` usecase 等の依存集約として参照される。`GET /v1/prefectures`（一覧取得 usecase は `usecase.md`）の
-> 全件一覧は QueryService ではなく Repository の simple list（`FindAll`）として提供する（ADR-0029 /
+> 全件一覧は QueryService ではなく Repository の simple list（`FindAll`）として提供する（ADR-0029 (lightweight-cqrs) /
 > `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview

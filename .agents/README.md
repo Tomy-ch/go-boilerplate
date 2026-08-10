@@ -66,7 +66,7 @@ Hand-editing is reasonable for one case: repairing a file that a failed run left
 the owning skill afterwards so the content matches what the tooling would produce.
 
 The distinction between durable knowledge and per-run state is decided in
-[ADR-0009](../docs/adr/0009-long-running-agent-state.md). A finding belongs in its owning canonical
+[ADR-0009 (long-running-agent-state)](../docs/adr/0009-long-running-agent-state.md). A finding belongs in its owning canonical
 document only when it changes that document's described relationship; do not turn activity logs into
 another durable artifact domain.
 

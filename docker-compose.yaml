@@ -249,6 +249,7 @@ services:
       - .:/app
       # node_modules を匿名ボリュームで保持（バインドマウントの shadow 回避）
       - /app/scripts/node_modules
+      - /app/mock-auth-server/node_modules
       # docs-viewer も同様。host（darwin）が解決した vite / rolldown のバイナリは
       # コンテナ（linux）では実行できないため、バインドマウント越しに見せない
       - /app/docs-viewer/node_modules

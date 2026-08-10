@@ -1,7 +1,7 @@
 # ProductStatus — Usecase Spec
 
 > 全件一覧は単一集約・無フィルタ・無ページングの simple list であり、QueryService ではなく
-> domain `product_status.Repository` の `FindAll` に委譲する（ADR-0029 / `docs/rules.md` の
+> domain `product_status.Repository` の `FindAll` に委譲する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の
 > Repository 境界に準拠）。
 
 ## Overview

@@ -277,6 +277,13 @@ If the user passes `--no-verify` to `/commit` itself (a future-compatible flag),
   プッシュは手動で実行してください: `git push`
   ```
 
+  When the resolved band was `ci-first`:
+
+  ```txt
+  N 件のコミットを作成しました。重い Go ゲートと自動フォーマットは CI へ委譲されています。
+  push 後に CI の結果を確認してください。ローカルでは重いゲートを実行していません。
+  ```
+
   When some checks failed:
 
   ```txt

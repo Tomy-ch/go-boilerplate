@@ -8,7 +8,7 @@ Violating these rules may compromise the architectural integrity of the system.
 
 ## Layer Dependency Rules
 
-> Rationale: [ADR-0002](adr/0002-onion-architecture.md), [ADR-0003](adr/0003-interface-based-decoupling.md); enforced via [ADR-0006](adr/0006-structural-safety-via-tooling.md).
+> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md), [ADR-0003 (interface-based-decoupling)](adr/0003-interface-based-decoupling.md); enforced via [ADR-0006 (structural-safety-via-tooling)](adr/0006-structural-safety-via-tooling.md).
 
 Dependencies must always point **toward the inner layers**.
 
@@ -44,7 +44,7 @@ prose bar cannot push a type across a boundary a linter draws. Failing `pkg/` is
 the lexicon; a type that clears neither stays in its aggregate. Admission is deliberately narrow
 (value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README), and the
 name states the question asked at the door: is this a word of the business?
-Rationale: [ADR-0036](adr/0036-domain-lexicon.md).
+Rationale: [ADR-0036 (domain-lexicon)](adr/0036-domain-lexicon.md).
 
 ### Domain services
 
@@ -76,7 +76,7 @@ These boundaries are **enforced in CI by `golangci-lint` depguard**, not by docu
 
 ## Usecase Dependency Rules
 
-> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
+> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md).
 
 Usecase must not directly depend on Infrastructure.
 
@@ -89,7 +89,7 @@ Usecase → Boundary(interface) → Infrastructure
 
 ## Generated Code Rules
 
-> Rationale: [ADR-0013](adr/0013-oapi-codegen-strict-server.md), [ADR-0024](adr/0024-sqlc-type-safe-sql.md), [ADR-0025](adr/0025-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0085](adr/0085-generated-artifact-drift-gate.md).
+> Rationale: [ADR-0013 (oapi-codegen-strict-server)](adr/0013-oapi-codegen-strict-server.md), [ADR-0024 (sqlc-type-safe-sql)](adr/0024-sqlc-type-safe-sql.md), [ADR-0025 (merged-dml-schema-as-sqlc-input)](adr/0025-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0085 (generated-artifact-drift-gate)](adr/0085-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -120,7 +120,7 @@ Examples:
 
 ## OpenAPI-first
 
-> Rationale: [ADR-0011](adr/0011-openapi-first.md).
+> Rationale: [ADR-0011 (openapi-first)](adr/0011-openapi-first.md).
 
 Changes to APIs must always start from the **OpenAPI definition**.
 
@@ -140,7 +140,7 @@ OpenAPI definition is the **single source of truth of API**.
 
 ## Database Migration
 
-> Rationale: [ADR-0026](adr/0026-append-only-immutable-migrations.md), [ADR-0027](adr/0027-sequential-migration-ids.md).
+> Rationale: [ADR-0026 (append-only-immutable-migrations)](adr/0026-append-only-immutable-migrations.md), [ADR-0027 (sequential-migration-ids)](adr/0027-sequential-migration-ids.md).
 
 Changes to the database schema must follow strict migration rules.
 
@@ -161,7 +161,7 @@ This ensures that database history is always reproducible.
 
 ## Domain Layer Constraints
 
-> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
+> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md).
 
 The Domain layer must maintain a **pure and independent state**.
 
@@ -217,7 +217,7 @@ Examples:
 
 ## Repository / QueryService Rules
 
-> Rationale: [ADR-0029](adr/0029-lightweight-cqrs.md), [ADR-0030](adr/0030-system-cqrs-dml-category.md).
+> Rationale: [ADR-0029 (lightweight-cqrs)](adr/0029-lightweight-cqrs.md), [ADR-0030 (system-cqrs-dml-category)](adr/0030-system-cqrs-dml-category.md).
 
 - Repository handles Aggregate persistence and simple reads of a single Aggregate
   (fetch by ID, and simple filter / list / count by the Aggregate's own attributes), **including a
@@ -400,22 +400,22 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ### Transaction Rules
 
-> Rationale: [ADR-0032](adr/0032-transaction-retry-idempotent-callers.md).
+> Rationale: [ADR-0032 (transaction-retry-idempotent-callers)](adr/0032-transaction-retry-idempotent-callers.md).
 
 - Transactions must be started only in the Usecase layer
 - Infrastructure / Repository must not start transactions
 
 ## Error Handling Rules
 
-> Rationale: [ADR-0044](adr/0044-apperror-protocol-agnostic-errors.md).
+> Rationale: [ADR-0044 (apperror-protocol-agnostic-errors)](adr/0044-apperror-protocol-agnostic-errors.md).
 
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
 - **Never return a `xerrors.New(...)` built inside a function body.** Declare the error as a package-level sentinel (`var errXxx = xerrors.New("...")`) and attach the dynamic context with `xerrors.Wrap(errXxx, ctx)`. An error created in place is unreachable to `errors.Is`, so callers cannot branch on it and tests are forced onto message-string matching — a one-word wording change then breaks the test, and a different error passes it. Enforced mechanically by `internal/architest` (`TestNoInlineXerrorsNew`); there is no allowlist. `_test.go` is out of scope — building an ad-hoc error to inject is a legitimate use there.
 - When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
-- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0045](adr/0045-error-metadata-code-message-details.md).
-- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0046](adr/0046-error-details-opt-in-gate.md).
+- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0045 (error-metadata-code-message-details)](adr/0045-error-metadata-code-message-details.md).
+- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0046 (error-details-opt-in-gate)](adr/0046-error-details-opt-in-gate.md).
 
 ## Comment Rules
 
@@ -455,7 +455,7 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
 - **Durable knowledge, not activity logs** — return a finding that changes a describing document to
   its owning README or `docs/` reference. Do not accumulate per-run progress as repository state;
   its skill-owned `tmp/` artifact is the only appropriate resume state. A conflict with a governing
-  document is raised, not rewritten. Rationale: [ADR-0009](adr/0009-long-running-agent-state.md).
+  document is raised, not rewritten. Rationale: [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md).
 - **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 
@@ -489,13 +489,13 @@ Before generating code, AI agents must refer to the following documents.
 
 ## Toolchain Execution Rules
 
-> Rationale: [ADR-0076](adr/0076-containerized-pinned-toolchain.md), [ADR-0077](adr/0077-mise-ssot-drift-gate.md).
+> Rationale: [ADR-0076 (containerized-pinned-toolchain)](adr/0076-containerized-pinned-toolchain.md), [ADR-0077 (mise-ssot-drift-gate)](adr/0077-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth for everything mise resolves)
 and executed in the containerized tool-runners so they stay reproducible across machines. Tools
 installed from PyPI are declared in `python/*.in` and locked with per-package hashes in
 `python/*.txt` instead, because a mise pin leaves their transitive dependencies floating
-([ADR-0077](adr/0077-mise-ssot-drift-gate.md)).
+([ADR-0077 (mise-ssot-drift-gate)](adr/0077-mise-ssot-drift-gate.md)).
 
 - Tool execution — lint / format / codegen / doc generation / commit-message lint / etc. — runs
   through the `make` targets that execute inside the tool-runners (`go_tool_runner` /

@@ -16,4 +16,4 @@ observability gating) now lives as individual ADRs:
 Why the split: a single mutable file lost decision history on in-place edits and mixed
 immutable decisions with a `go.mod`-tracking dependency table. Per-file ADRs let one decision be
 superseded by adding one file, and keep the dependency inventory separate from the immutable
-records. See [ADR-0000](adr/0000-record-architecture-decisions.md).
+records. See [ADR-0000 (record-architecture-decisions)](adr/0000-record-architecture-decisions.md).

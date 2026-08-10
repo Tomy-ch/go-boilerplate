@@ -5,7 +5,7 @@ name: Release OSV Scan (required-check guard)
 # which also covers PRs into release/** and hotfix/**. The gate itself only runs on
 # a PR into a deploy branch (develop / staging / production) — by design, so an
 # inherited finding is decided at the promotion boundary rather than on every
-# feature PR (ADR-0084). A PR into release/** or hotfix/** would therefore never
+# feature PR (ADR-0084 (ci-real-graph-boot-check)). A PR into release/** or hotfix/** would therefore never
 # report the `osv-release` context and would block merging forever.
 #
 # This workflow runs on the complementary branch set (`branches-ignore` mirrors the

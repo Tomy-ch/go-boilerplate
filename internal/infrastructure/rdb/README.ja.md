@@ -202,10 +202,10 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 `command_service` は **CommandService** を実装します。QueryService の書き込み側の対称物で、
 インターフェースは QueryService と並んで Usecase 層に、実装はここに置きます。単一トランザクションでの
 原子性を要する複数集約への書き込みのために予約されています
-（[ADR-0029](../../../docs/adr/0029-lightweight-cqrs.md) /
-[ADR-0031](../../../docs/adr/0031-commandservice-atomicity-criterion.md)）。最初の実装は
+（[ADR-0029 (lightweight-cqrs)](../../../docs/adr/0029-lightweight-cqrs.md) /
+[ADR-0031 (commandservice-atomicity-criterion)](../../../docs/adr/0031-commandservice-atomicity-criterion.md)）。最初の実装は
 `command_service/purchase`（在庫減算 + 購入 / 明細 INSERT。
-[ADR-0033](../../../docs/adr/0033-ordered-pessimistic-row-locks.md) 参照）です。
+[ADR-0033 (ordered-pessimistic-row-locks)](../../../docs/adr/0033-ordered-pessimistic-row-locks.md) 参照）です。
 
 CommandService は `ctx` で渡されたトランザクション上で書き込みを実行し（自前では開かない。境界は
 Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベントは発行しません（Usecase の責務で
@@ -220,7 +220,7 @@ Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベ�
 言い換えたものでなければなりません。在庫減算のガードはドメインの売り越し判定を言い換えたもので、返す
 sentinel も同じものです。つまり下流であり、ドメインの規則が変わればこちらも変わりますが、逆はありません。
 1 つの規則を独立に 2 度書くと、片方だけが動いた瞬間に黙って乖離します。
-[ADR-0029](../../../docs/adr/0029-lightweight-cqrs.md) § Derivation を参照。
+[ADR-0029 (lightweight-cqrs)](../../../docs/adr/0029-lightweight-cqrs.md) § Derivation を参照。
 
 ## testkit
 

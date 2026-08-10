@@ -2,7 +2,7 @@
 
 [Worker README](../../internal/controller/worker/README.md) | 日本語: [worker.ja.md](../ja/design/worker.ja.md)
 
-This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0047](../adr/0047-broker-agnostic-worker-scaffold.md) onward).
+This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0047 (broker-agnostic-worker-scaffold)](../adr/0047-broker-agnostic-worker-scaffold.md) onward).
 
 ---
 
@@ -225,7 +225,7 @@ flowchart LR
 > A worked example of all six ships as part of the removable sample set: `internal/controller/worker/withdrawalarchive` consumes the withdrawal event the outbox emits and archives it to object storage. `make setup-remove-sample-api` removes it and leaves `provideWorkers()` empty again.
 <!-- sample-api:end -->
 
-> A wired broker adapter links its SDK into the binary, and `serve` / `worker` / `outbox-relay` share one binary, so linkage cannot be scoped to the role that consumes a queue. Isolation is therefore defined over **coupling**: a concrete broker is named only by its adapter package and the wiring that selects it (E3, [ADR-0050](../adr/0050-broker-sdk-isolation-measured-as-coupling.md)).
+> A wired broker adapter links its SDK into the binary, and `serve` / `worker` / `outbox-relay` share one binary, so linkage cannot be scoped to the role that consumes a queue. Isolation is therefore defined over **coupling**: a concrete broker is named only by its adapter package and the wiring that selects it (E3, [ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../adr/0050-broker-sdk-isolation-measured-as-coupling.md)).
 
 ---
 
@@ -256,4 +256,4 @@ flowchart LR
 | **Settings** | The engine-core behavior settings (an engine-local struct). Mapped from `config.WorkerConfig` via DI. |
 | **WorkerConfig** | The engine-core settings (broker-agnostic, `WORKER_*` with `default` tags). Broker-specific settings live in the adapter `Config`. |
 | **traceparent / continuation** | W3C trace context. `Extract`ed from `Message.Attributes` to continue the span (D1). |
-| **E1/E2/E3** | engine does not import infra / engine is green on the fake alone / knowledge of a concrete broker is confined to its adapter package and the wiring that selects it — no core `*.go` and no core document names a broker adapter ([ADR-0050](../adr/0050-broker-sdk-isolation-measured-as-coupling.md)). |
+| **E1/E2/E3** | engine does not import infra / engine is green on the fake alone / knowledge of a concrete broker is confined to its adapter package and the wiring that selects it — no core `*.go` and no core document names a broker adapter ([ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../adr/0050-broker-sdk-isolation-measured-as-coupling.md)). |
