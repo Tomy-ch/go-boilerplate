@@ -83,3 +83,6 @@
 ".github/actions-pin.toml" = "2026-08-11"
 ".claude/skills/repo-ops/SKILL.md" = "2026-08-11"
 ".claude/skills/repo-ops/SKILL.ja.md" = "2026-08-11"
+".github/workflows/scripts-check.yaml" = "2026-08-11"
+".lefthook.yaml" = "2026-08-11"
+"scripts/one-to-one.gate.test.ts" = "2026-08-11"
