@@ -19,7 +19,6 @@
 ## いつ使うか
 
 - 冷却窓が候補を捕捉し、待つべきかを誰かが判断しなければならないとき。`/dep-vuln-upgrade` が修正版を `too-new` / `blocked` とした、`/tools-upgrade` が `pending` に分類した、`/actions-pin` が step-back や hold をした、`/images-pin` が rule 2 / rule 3 に当たった、のいずれか。
-- `make npm-cooldown-audit` が、自身の `.npmrc` `min-release-age` を満たさない lockfile エントリを報告したとき。この監査は設計上検知専用であり、override が起きたことは言うが、それが安全だったかは言わない。本スキルが欠けている半分を供給する。
 - 窓の意図的な override（`days=0`、`--min-release-age=0`、出来立てのバージョンへの `overrides` 固定）の前。証拠なしの override は、設計文書が唯一排除している組み合わせである。
 - 特定のリリースを採用して安全かを、どんな言い方であれ利用者が尋ねたとき。
 
@@ -166,7 +165,7 @@ baseline が決められない場合（初回のピン、`images-pin` rule 3）�
 
 該当する場合に報告で必ず再掲する壁が四つある。
 
-- **`.npmrc` `min-release-age` 配下の npm**: スコアが何であれ、そのバージョンはそもそも install できず、npm には版指定の免除も無い。選択肢は待つことか、role による意図的な override（その場合 `make npm-cooldown-audit` が PR 上で可視化する）である。`min-release-age` を下げる提案は決してしない。
+- **`minimumReleaseAge` 配下の pnpm**: スコアが何であれ、そのバージョンはそもそも install できず、npm には版指定の免除も無い。選択肢は待つことか、role による意図的な override（その場合 `minimumReleaseAgeExclude` の記載としてレビュー差分に残る）である。`min-release-age` を下げる提案は決してしない。
 - **`pnpm-workspace.yaml` `minimumReleaseAge` 配下の pnpm**: 同じく install できず、しかもブロックは `--frozen-lockfile` の再生にも及ぶため、解決を実行した端末だけでなく CI と他の全チェックアウトに届く。pnpm には版指定の免除（`minimumReleaseAgeExclude`）が **あり**、だからこそ採用か待機かが実際の選択になる。スコアはその入力として報告し、判断は呼び出し元かユーザーに残す。`minimumReleaseAge` を下げる提案も `minimumReleaseAgeStrict` を切る提案も決してしない。
 - **`scripts/tool-cooldown` 配下の PyPI**: 窓を強制するのは解決器ではなくリポジトリ側のゲートで、そのゲートは**ビルドを落とす**。つまり blocked な版はこのリポジトリが持つ検査に塞がれているのであり、LOW スコアが単独でそれを解くことはない。逃げ道は `.github/tool-cooldown-bypass.toml` の期限つきエントリ（`expires` / `issue` / `reason` すべて必須・最長 3 か月）で、トリアージの判定は `reason` に載せるべき証拠であってエントリを足す許可ではない。`scripts/tool-cooldown` の窓定数を編集する提案は決してしない。
 - **`images-pin` rule 3**: 退行先の aged digest が存在しないため、LOW スコアでも「待つ」か「意図的な `days=0` bootstrap」かの選択は残る。

@@ -8,7 +8,7 @@ name: ESLint Scan
 #
 # One workflow with a leg per workspace rather than three workflows, mirroring
 # code-ql.yaml. The three trees resolve independently — docs-viewer and scripts each own
-# a pnpm-workspace.yaml, mock-auth-server resolves with npm — so a shared install is not
+# a pnpm-workspace.yaml and its own lockfile — so a shared install is not
 # available, but a shared verdict is not wanted either: `fail-fast: false` keeps one
 # leg's failure from cancelling the others and leaving their categories stale.
 #
@@ -147,25 +147,13 @@ jobs:
       - name: Install the workspace tree
         env:
           WORKSPACE: ${{ matrix.workspace }}
-        run: |
-          set -euo pipefail
-          case "${WORKSPACE}" in
-            mock-auth-server) npm ci --prefix mock-auth-server --ignore-scripts ;;
-            *) pnpm install --dir "${WORKSPACE}" --frozen-lockfile ;;
-          esac
+        run: pnpm install --dir "${WORKSPACE}" --frozen-lockfile
         shell: bash
 
       # Invoked through the package script rather than the binary, so the scanned target
       # is declared once in package.json and the local run and this job cannot drift.
       # Going through `run` also keeps pnpm-workspace.yaml's verifyDepsBeforeRun active,
       # which reaching into node_modules/.bin would bypass.
-      #
-      # The flags live in their own script (`lint:security:json`) rather than being
-      # appended here, because the two package managers disagree about how to forward
-      # them: npm strips a `--` separator before handing the rest to the script, pnpm
-      # passes it through literally, so a single invocation that works for one runs
-      # `eslint . -- --format json` under the other and dies on a file pattern named
-      # `--`. Passing no arguments at all is the only form both agree on.
       #
       # That script writes into `node_modules/`, which is not squeamishness about a
       # stray file: several of this repository's own checks walk the source tree, and a
@@ -181,10 +169,7 @@ jobs:
           WORKSPACE: ${{ matrix.workspace }}
         run: |
           set -uo pipefail
-          case "${WORKSPACE}" in
-            mock-auth-server) npm --prefix mock-auth-server run lint:security:json ;;
-            *) pnpm --dir "${WORKSPACE}" run lint:security:json ;;
-          esac
+          pnpm --dir "${WORKSPACE}" run lint:security:json
           code=$?
           if [ "${code}" -ge 2 ]; then
             echo "::error::ESLint could not complete in ${WORKSPACE} (exit ${code})"

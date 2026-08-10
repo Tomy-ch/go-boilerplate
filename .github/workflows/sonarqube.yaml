@@ -211,7 +211,7 @@ jobs:
         run: mise install node npm:pnpm
 
       - name: Install script dependencies
-        run: pnpm install --dir scripts --frozen-lockfile --ignore-scripts
+        run: pnpm install --dir scripts --frozen-lockfile
 
       # The scripts test suite's 1:1 gate resolves callable exports through TypeScript. Its
       # docs-viewer and mock-auth-server scans must have dependencies, or unresolved imports
@@ -219,8 +219,8 @@ jobs:
       - name: Install trees checked by the scripts test suite
         run: |
           set -euo pipefail
-          pnpm install --dir docs-viewer --frozen-lockfile --ignore-scripts
-          npm ci --prefix mock-auth-server --ignore-scripts
+          pnpm install --dir docs-viewer --frozen-lockfile
+          pnpm install --dir mock-auth-server --frozen-lockfile
 
       - name: Generate TypeScript coverage
         run: pnpm --dir scripts run test

@@ -58,7 +58,6 @@ Where each mechanism sits:
 | Secret scans (gitleaks / TruffleHog) | Enforcement | A committed secret is never an acceptable trade |
 | `zizmor` | Enforcement | High severity only; exceptions are file-scoped in `.github/zizmor.yml`. Also gates pre-commit, offline audits only |
 | Reporting scanners (`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL) | Detection | Findings reach code scanning and the PR, but do not block |
-| `npm-cooldown-audit` | Detection | Non-blocking by construction — see below |
 | `harden-runner` (`egress-policy: block`) | Enforcement | Refuses any egress outside the job's `allowed-endpoints`; `trufflehog` alone stays on `audit` |
 | `CODEOWNERS` | Enforcement | The review requirement behind "this decision belongs to a role" |
 | OpenSSF Scorecard | Detection | Posture measurement, no verdict |
@@ -165,16 +164,16 @@ than trusted from the tree.
 will take a version published minutes ago without complaint. This inverts the npm situation in a
 way worth internalising:
 
-| | npm | Go modules |
+| | pnpm | Go modules |
 | --- | --- | --- |
-| Cooldown enforced by the toolchain | Yes, at resolution | **No** |
-| Can be bypassed | Yes, with a flag | Nothing to bypass |
-| Bypass is detectable | Yes (`npm-cooldown-audit`) | **Nothing to detect** |
-| Remaining control | Review + detection | **Review only** |
+| Cooldown enforced by the toolchain | Yes, on every install | **No** |
+| Can be bypassed | Only by a recorded exclusion | Nothing to bypass |
+| Bypass is visible | Yes, in the reviewed diff | **Nothing to detect** |
+| Remaining control | Review + toolchain refusal | **Review only** |
 
 Because review is the only control here, `go.mod` and `go.sum` are in
 [`CODEOWNERS`](../../.github/CODEOWNERS). That entry is load-bearing rather than symmetrical
-bookkeeping: for npm a slip is caught after the fact, for Go it is not caught at all.
+bookkeeping: under pnpm a slip cannot reach an install unrecorded, for Go it is not caught at all.
 
 **Reachability filtering cuts both ways.** `govulncheck` reports only vulnerabilities the
 application actually calls, which is what makes it trustworthy enough to act on. The cost is
@@ -182,49 +181,16 @@ coverage: an advisory the Go vulnerability database has not ingested yet produce
 all, so a clean `govulncheck` says nothing about a GHSA published this week. Breadth is covered
 separately by Trivy FS and OSV-Scanner, which match on version rather than call graph.
 
-### npm
-
-The cooldown is real but narrower than it looks: `min-release-age` is enforced while npm
-**resolves**, and `npm ci` does not resolve — it replays the lockfile. Every CI job and image
-build here uses `npm ci`.
-
-Verified behaviour, not inference:
-
-| Action | Result |
-| --- | --- |
-| Resolving an in-window version | Rejected (`ETARGET`) |
-| Resolving a range whose newest match is in-window | Silently resolves to the newest *aged* version, exit 0 |
-| Resolving with `--min-release-age=0` | Succeeds; the in-window version enters the lockfile |
-| `npm ci` with an in-window entry already in the lockfile | Succeeds, no warning |
-| `npm install` / adding a package, with that entry present | Succeeds; the entry is kept |
-
-Two consequences. A deliberate override costs the team nothing — no member is blocked and no
-workaround is needed. And it leaves no trace anywhere: not at image build, not in CI, and once
-the window passes the entry is indistinguishable from a normally resolved one.
-
-That is why `npm-cooldown-audit` exists, why it audits a **PR against its base** rather than only
-scanning the current tree (an entry ages out of the window; the PR comment does not), and why it
-**never fails the build**. Overriding the cooldown is a role's call — reacting to a CRITICAL
-advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The
-non-blocking property is implemented in the tool itself rather than in workflow configuration, so
-it cannot be turned into a gate by editing YAML.
-
-**A transitive pin is provisional debt.** Forcing a patched version through `overrides` is
-written as a same-major floor (`">=<fixed> <<next-major>"`), never an exact version: an exact pin
-freezes the dependency where it is, so when the pinned version later gets its own advisory the
-pin keeps forcing the now-vulnerable one. Every override is meant to be reclaimed once the parent
-ships a release that pulls the fix natively.
-
 ### pnpm
 
-Two packages resolve with pnpm — `scripts/` and `docs-viewer/` — each carrying its own
-`pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is the same 7 days as npm and derived the
-same way; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
+Every Node package resolves with pnpm — `scripts/`, `mock-auth-server/` and `docs-viewer/` —
+each carrying its own `pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is 7 days, derived
+the same way as the other ecosystems; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
 
-What differs is **where** the window is enforced, and it inverts npm's weakness. npm checks only
-while it resolves, so an in-window entry that once reached the lockfile is invisible from then on.
-pnpm re-verifies the **entire lockfile** against the active policies on every install — including
-`--frozen-lockfile`, the replay path that `npm ci` leaves unchecked.
+The window is enforced on **every install**, not only while resolving: pnpm re-verifies the
+entire lockfile against the active policies each time — including `--frozen-lockfile`, the
+replay path CI and image builds use. An in-window entry cannot reach the lockfile and then
+become invisible.
 
 Verified behaviour, not inference:
 
@@ -236,8 +202,8 @@ Verified behaviour, not inference:
 | `--frozen-lockfile` replaying an in-window entry that no exclusion covers | Rejected (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) |
 | Any `pnpm run` after a policy setting changed | Rejected (`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`) until `pnpm install` re-records the settings |
 
-Three consequences follow, and together they are why pnpm needs no `npm-cooldown-audit`
-counterpart: there is nothing to detect after the fact, because nothing gets through unrecorded.
+Three consequences follow, and together they are why no after-the-fact audit exists: there is
+nothing to detect, because nothing gets through unrecorded.
 
 **An override cannot be silent.** Taking an in-window version requires a
 `minimumReleaseAgeExclude` entry, and without one every later install fails — CI included, since

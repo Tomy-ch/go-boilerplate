@@ -111,7 +111,6 @@
 |Actions Static Analysis|`zizmor.yaml`|zizmor によるワークフロー / composite action 定義自体の静的解析（pre-commit フックと同じ `make` ゲートを共有）|
 |Dependency Review|`dependency-review.yaml`|PR が新たに持ち込む脆弱な依存をマージ前にブロック|
 |OpenSSF Scorecard|`scorecard.yaml`|リポジトリのセキュリティ姿勢のスコアリングと結果の公開|
-|npm Cooldown Audit|`npm-cooldown-audit.yaml`|lockfile が `.npmrc` の供給網 cooldown を満たしているかを報告（ブロックはしない）|
 |Go Cooldown|`go-cooldown.yaml`|cooldown 窓の内側で公開された direct Go モジュールを足す / 上げる PR をゲート|
 |Tool Cooldown|`tool-cooldown.yaml`|cooldown 窓の内側で公開された CLI ツール版（`mise.toml` / `python/*.in` の宣言）を pin する PR をゲート|
 |Config Scan|`trivy-config.yaml`|Trivy による Dockerfile の設定不備スキャン（HIGH 以上でゲート）|
@@ -183,7 +182,6 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 
 | ワークフロー | 発火条件 | トリガー |
 | --- | --- | --- |
-| `npm-cooldown-audit.yaml` | cooldown 違反の検出 | 全て |
 | `trivy-fs.yaml` | 修正版のある CRITICAL / HIGH / MEDIUM | schedule |
 | `vulnerability-check.yaml` | 到達可能な脆弱性 | schedule |
 | `osv-scanner.yaml` | 昇格をブロックする検出 | schedule |

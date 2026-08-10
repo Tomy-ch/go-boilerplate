@@ -149,6 +149,7 @@ Exclusion ADR（意図的な「X はしない」）は、リポジトリセッ�
 | [0102](0102-scheduled-job-concurrency-delegated.ja.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
 | [0103](0103-no-generic-cache-abstraction.ja.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
 | [0104](0104-outbox-relay-hardening-delegated.ja.md) | outbox relay はバランス型で出荷し、ハードニング（多層 lease 再設計）は運用で得た事実に委ねる | accepted (exclusion) |
+| [0105](0105-pnpm-as-the-only-node-resolver.ja.md) | Node パッケージはすべて pnpm で解決し、npm を使わない | accepted |
 
 フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
 Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。

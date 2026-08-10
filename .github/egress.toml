@@ -202,7 +202,7 @@ classes = ["mise"]
 classes = []
 
 [job."lockfile-integrity.yaml:lockfile-lint"]
-classes = ["mise"]
+classes = []
 
 [job."md-lint.yaml:md-lint"]
 classes = ["image"]
@@ -218,9 +218,6 @@ classes = []
 extra = [
   "hooks.slack.com:443",
 ]
-
-[job."npm-cooldown-audit.yaml:npm-cooldown-audit"]
-classes = ["mise"]
 
 [job."oapi-lint.yaml:oapi-lint"]
 classes = ["mise"]

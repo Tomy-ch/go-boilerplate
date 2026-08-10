@@ -20,7 +20,7 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
@@ -29,7 +29,7 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   schedule:
     - cron: '0 3 * * 1'

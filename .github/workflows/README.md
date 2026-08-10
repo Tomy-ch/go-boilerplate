@@ -111,7 +111,6 @@ All three rules live in one check rather than three, because they are not three 
 |Actions Static Analysis|`zizmor.yaml`|zizmor audit of the workflow / composite-action definitions themselves (same `make` gate as the pre-commit hook)|
 |Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
 |OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
-|npm Cooldown Audit|`npm-cooldown-audit.yaml`|Report lockfile entries that do not satisfy the `.npmrc` supply-chain cooldown (never blocks)|
 |Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
 |Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
@@ -148,7 +147,6 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OpenSSF Scorecard | — | default branch only | weekly |
 | Image Scan | PRs into a deploy branch | — | weekly |
 | Release gates (Trivy FS / OSV) | PRs into a deploy branch | — | — |
-| npm cooldown audit | lockfile / `.npmrc` changes | same as above | weekly |
 | Trivy config (misconfig) | Dockerfile-change PRs | same as above | — |
 | Checkov | Actions-definition / Dockerfile-change PRs | same as above | weekly |
 | Dockle | PRs into a deploy branch | — | weekly (inside Image Scan) |
@@ -183,7 +181,6 @@ Which trigger a detection notification fires on follows from who the right recip
 
 | Workflow | Fires when | Trigger |
 | --- | --- | --- |
-| `npm-cooldown-audit.yaml` | any cooldown finding | all |
 | `trivy-fs.yaml` | fixable CRITICAL / HIGH / MEDIUM found | schedule |
 | `vulnerability-check.yaml` | reachable vulnerability found | schedule |
 | `osv-scanner.yaml` | promotion-blocking finding | schedule |
@@ -298,15 +295,9 @@ The dependency scanners are a double gate. On an ordinary PR they report only: a
 
 Severity for the OSV gate comes from the advisory's own rating and falls back to the CVSS score osv-scanner aggregates per group. Advisories from the Go vulnerability database publish neither, so they cannot be measured against the HIGH threshold at all; those gate only when a fixed version exists, which keeps an advisory that can be neither rated nor updated away from turning every promotion permanently red. Both gates deliberately carry no `paths` filter — a promotion PR often changes no manifest, and a required check has to run to be able to block.
 
-#### npm Cooldown Audit
-
-Each `.npmrc` sets `min-release-age`, npm's own supply-chain quarantine: a version published inside that window cannot be resolved at all. The catch is that it applies only while npm *resolves* dependencies. Every CI job and image build here runs `npm ci`, which replays the lockfile without resolving, so a lockfile produced with the cooldown switched off installs cleanly and shows no symptom anywhere in CI.
-
-`npm-cooldown-audit.yaml` closes that blind spot. It reads the window from each lockfile's own `.npmrc` rather than hardcoding it, and reports any entry younger than the window. The signal is close to noise-free: under an active cooldown npm refuses to resolve an in-window version, so the only way one reaches a lockfile is a deliberate override.
-
 #### Go Cooldown
 
-Go has no counterpart to `min-release-age`: nothing lets `go get` refuse a version for being too new. That inverts the relationship between tool and guard. The npm audit above looks for evidence that an existing guard was bypassed, so reporting is enough; here the check **is** the guard, and reporting alone would leave the window existing nowhere.
+Go has no counterpart to `min-release-age`: nothing lets `go get` refuse a version for being too new. That inverts the relationship between tool and guard: pnpm refuses a too-new version at resolution time, so the resolver is the guard; here the check **is** the guard, and reporting alone would leave the window existing nowhere.
 
 `go-cooldown.yaml` therefore gates on a pull request, and only over the requirements the change adds or upgrades — everything already in `go.mod` is grandfathered, so the window applies going forward instead of holding every branch hostage to the state it inherited. Only **direct** requirements fail it. An indirect version is chosen by MVS and can sit above a direct dependency's own lower bound, where lowering it is not something the pull request can do; failing there would produce a red with no remedy, so those are reported.
 
@@ -316,9 +307,9 @@ Urgent overrides live in [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml)
 
 **It never fails the build**, and that is a design decision rather than a default. Overriding the cooldown is a tech-lead / architect call — reacting to a CRITICAL advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The non-blocking property lives in the tool itself, not in workflow configuration, so it cannot be turned into a gate by editing YAML.
 
-Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in npm's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/.npmrc`, `**/package-lock.json`, `**/pnpm-lock.yaml`, `**/pnpm-workspace.yaml`, and the pin lockfiles to the owning role.
+Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in the resolver's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/pnpm-lock.yaml`, `**/pnpm-workspace.yaml`, and the pin lockfiles to the owning role.
 
-Only `mock-auth-server/` still resolves with npm. `scripts/` and `docs-viewer/` resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for that half because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its CODEOWNERS entry.
+All three packages resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for it because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its CODEOWNERS entry.
 
 A pull request is audited against its base, so a finding names exactly the entries that change introduces and the PR comment persists as the record even after those versions age out of the window. The scheduled run audits every entry as a second net.
 
