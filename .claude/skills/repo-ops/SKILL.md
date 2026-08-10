@@ -42,6 +42,7 @@ Three facts explain almost everything below:
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §9 |
 | `commitlint: not found`, `orval: not found`, stale tool version | §10 |
 | `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §10 |
+| A containerized gate reports missing dependencies for a package you never touched, or `make` fails where a bare `docker compose run` passes | §10 |
 | A hook fails for something outside your change | §11 |
 | A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §21 |
 | Want to know why `make lint` skipped, throttled, or deferred itself to CI | §21 |
@@ -265,11 +266,16 @@ Always reproduce CI failures with the full config.
 
 ## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / a stale tool version
 
-The tool-runner images are **build artifacts of `mise.toml` and `scripts/package.json` +
-`scripts/pnpm-lock.yaml` + `scripts/pnpm-workspace.yaml`**. Tools
+The tool-runner images are **build artifacts of `docker/tools/Dockerfile`, `mise.toml`, and the
+`package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` triple of every package the node runner
+installs in-tree — `scripts/`, `mock-auth-server/`, and `docs-viewer/`**. Tools
 are resolved inside the runners, never on the host (the same reproducibility rule as codegen — see
 `docs/rules.md`). After changing any of those files — or on a fresh clone whose images predate them —
 the runner is missing the tool, ships an old version, or refuses to run anything at all.
+
+The three-package span is the part that surprises: a change confined to `mock-auth-server/` or
+`docs-viewer/` still stales the image that `scripts/`-based gates run in, because all three are
+installed into the one node runner.
 
 That last symptom is the one that reads as unrelated to the edit. `scripts/pnpm-workspace.yaml` sets
 `verifyDepsBeforeRun: error`, so once its settings no longer match what the image's
@@ -280,6 +286,18 @@ lint-oapi` — while the host-side `-ci` targets stay green, because the host tr
 when the file changed. Adding a `minimumReleaseAgeExclude` or `overrides` entry is enough to trigger
 it. Green on the host is therefore **not** evidence that the containerized gate passes: rebuild
 first, then re-run whichever gate you intend to report.
+
+A stale image also shows up as **a containerized gate reporting missing dependencies for a package
+you never touched**. The 1:1 test gate (`scripts/one-to-one.gate.test.ts`) type-checks all three
+packages, so an image built before `mock-auth-server/` gained its current manifests answers with a
+column of TS2307 `Cannot find module 'hono' / 'jose' / 'zod'` against `mock-auth-server/src/**`. It
+reads as a dependency the repository forgot to declare, which is the wrong tree to search.
+
+**The tell is that `make` fails while the same command through a bare `docker compose run` passes.**
+`.makefiles/docker/compose.mk` exports `COMPOSE_PROJECT_NAME` as the shared infra project (§1), so
+`make` always reaches the `gobp-shared` image; a bare invocation takes the project from the directory
+name and therefore hits a different — usually newer — one. Read that asymmetry as an image-age
+difference, never as evidence about the code.
 
 **Across worktrees this is a shared resource, and it holds one branch's settings at a time.** The
 runner images belong to the single `gobp-shared` compose project (§1), so a rebuild in one worktree
@@ -294,6 +312,14 @@ expect the other window to need the same.
 make tool-runners-build           # rebuild go / node / python runners (cached)
 make tool-runners-build-clean     # --no-cache --pull, when the cached layer is the problem
 ```
+
+**While the cause of a containerized failure is still unidentified, rebuild clean before concluding
+anything about it.** "Unrelated to my change" and "a pre-existing failure on the base branch" are
+conclusions, and a stale image produces evidence for both. So spend the rebuild first: run
+`make tool-runners-build-clean`, restart whatever is already up (`make serve` and the tool stack, not
+only the runner that failed), then re-run the gate. It costs minutes and it is the cheapest way to
+eliminate the one explanation that mimics every other one. Reaching for `--no-verify` while the cause
+is unknown skips that check rather than passing it.
 
 The node runner also carries `/app/scripts/node_modules` as an anonymous volume (so the bind mount
 does not shadow it); helper scripts and `gen-mock-auth-oapi` resolve their binaries from there, which
@@ -321,7 +347,9 @@ number of gates on top of the number of open windows. How hard they run is decid
 The pre-push `gen-go-check` regenerates in Docker and fails on any diff — the fix is to commit the
 regenerated output (§2, §4), not to re-run it. When a hook is red for a reason unrelated to your
 change (a pre-existing failure on the base branch, an environment problem), push with `--no-verify`
-and fix the cause separately rather than reshaping your change around it.
+and fix the cause separately rather than reshaping your change around it. Rule out a stale
+tool-runner image (§10) before calling it pre-existing — the failure text alone does not tell the two
+apart.
 
 ## 12. `pin-images-check` / `pin-actions-check` — fail-closed lockfiles
 

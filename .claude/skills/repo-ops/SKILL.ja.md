@@ -26,6 +26,7 @@
 | ローカル golangci-lint が CI と食い違う / `golangci-lint: not found` | §9 |
 | `commitlint: not found` / `orval: not found` / ツールが古い | §10 |
 | コンテナ経由のゲートが `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` で落ちる / Docker 内でだけ落ちる | §10 |
+| 触っていないパッケージの依存が無いとコンテナ側のゲートが言う / `make` では落ちるのに素の `docker compose run` では通る | §10 |
 | 自分の変更と無関係な理由でフックが落ちる | §11 |
 | 複数の worktree を開いている状態で、変更と無関係にゲートが落ちる／異常に遅い | §21 |
 | `make lint` がスキップ・低速化・CI 委譲された理由を知りたい | §21 |
@@ -191,9 +192,15 @@ CI の失敗を再現するときは必ず full 設定を使う。
 
 ## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / ツールが古い
 
-ツールランナーのイメージは **`mise.toml` と `scripts/package.json` + `scripts/pnpm-lock.yaml` + `scripts/pnpm-workspace.yaml` のビルド成果物**。ツールはホストではなくランナー内で解決される（コード生成と同じ再現性ルール。`docs/rules.md` 参照）。いずれかを変更した後、あるいはイメージがそれらより古いクローンでは、ランナーにツールが無い / 版が古い / そもそも何も実行できない状態になる。
+ツールランナーのイメージは **`docker/tools/Dockerfile` と `mise.toml`、および node ランナーが in-tree で install する全パッケージ（`scripts/` に加えて `mock-auth-server/` と `docs-viewer/`）の `package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` の 3 点セットのビルド成果物**。ツールはホストではなくランナー内で解決される（コード生成と同じ再現性ルール。`docs/rules.md` 参照）。いずれかを変更した後、あるいはイメージがそれらより古いクローンでは、ランナーにツールが無い / 版が古い / そもそも何も実行できない状態になる。
+
+対象が 3 パッケージにまたがる点は意外に映る。`mock-auth-server/` や `docs-viewer/` だけに閉じた変更でも、3 つとも単一の node ランナーへ install されるため、`scripts/` 側のゲートが走るイメージが古くなる。
 
 最後の症状は、変更との関係が見えにくい。`scripts/pnpm-workspace.yaml` は `verifyDepsBeforeRun: error` を設定しているため、その設定がイメージ内の `scripts/node_modules` を入れたときの設定と食い違うと、ランナー内の `pnpm run` はすべて `[ERR_PNPM_VERIFY_DEPS_BEFORE_RUN] The value of the <setting> setting has changed` で落ちる。倒れるのは変更と無関係に見えるゲート（`make md-lint` / `make actions-lint` / `make lint-oapi`）で、一方ホスト側の `-ci` ターゲットは緑のままである（ファイル変更時にホストのツリーは入れ直されているため）。`minimumReleaseAgeExclude` や `overrides` のエントリを 1 行足すだけで発火する。したがって**ホストで緑であることは、コンテナ側のゲートが通る証拠にならない**。先に再ビルドし、そのうえで報告するつもりのゲートを回し直すこと。
+
+古いイメージは、**触ってすらいないパッケージの依存が見つからない、という形でコンテナ側のゲートを落とす**形でも現れる。1:1 テストゲート（`scripts/one-to-one.gate.test.ts`）は 3 パッケージすべてを型検査するため、`mock-auth-server/` が現在の manifest を得る前にビルドされたイメージは、`mock-auth-server/src/**` に対して TS2307 `Cannot find module 'hono' / 'jose' / 'zod'` を並べて返す。リポジトリが依存の宣言を忘れているように読めるが、探す木が違う。
+
+**見分けの決め手は、`make` では落ちるのに同じコマンドを素の `docker compose run` で叩くと通ること。** `.makefiles/docker/compose.mk` は `COMPOSE_PROJECT_NAME` を共有インフラのプロジェクトとして export する（§1）ので、`make` は必ず `gobp-shared` のイメージに当たる。一方、素の呼び出しはディレクトリ名からプロジェクトを決めるため、別の——多くは新しい——イメージに当たる。この非対称は、コードについての証拠ではなくイメージの新旧差として読むこと。
 
 **worktree をまたぐと、これは共有資源であり、一度に 1 ブランチ分の設定しか保持できない。** ランナーのイメージは単一の `gobp-shared` compose プロジェクトに属する（§1）ため、ある worktree での再ビルドは、他の全 worktree のコンテナ側ゲートを *そのブランチの* `scripts/pnpm-workspace.yaml` に向け直す。ブランチが食い違う 2 つの窓（片方は `minimumReleaseAgeExclude` を足し、片方は足していない）は交互に落ちることになり、どちらが落ちるかは最後に再ビルドした側で反転する。どちらの向きでも症状は同じ `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` なので、自分のブランチの不具合ではなく「イメージが他人のブランチに一致している」と読むこと。報告するゲートの直前に再ビルドし、もう一方の窓でも同じことが必要になると見込んでおく。
 
@@ -201,6 +208,8 @@ CI の失敗を再現するときは必ず full 設定を使う。
 make tool-runners-build           # go / node / python ランナーを再ビルド（キャッシュ利用）
 make tool-runners-build-clean     # --no-cache --pull。キャッシュ層が原因のとき
 ```
+
+**コンテナ側の失敗の原因が特定できていないうちは、何かを結論づける前にクリーンビルドすること。** 「自分の変更と無関係」も「base ブランチに元からある失敗」も結論であり、古いイメージはそのどちらの証拠も作り出す。だから先に再ビルドを払う——`make tool-runners-build-clean` を回し、既に起動しているものは（落ちたランナーだけでなく `make serve` とツールスタックも）再起動し、そのうえでゲートを回し直す。数分で済み、他のあらゆる説明を模倣してしまう唯一の説明を消すには最も安い。原因不明のまま `--no-verify` に手を伸ばすのは、この確認を通過することではなく飛ばすこと。
 
 node ランナーは `/app/scripts/node_modules` を匿名ボリュームとして持つ（バインドマウントによる shadow を防ぐため）。補助スクリプトと `gen-mock-auth-oapi` はここからバイナリを解決するので、イメージが古いとこれらが壊れる。
 
@@ -218,7 +227,7 @@ commit-msg フックは `node_tool_runner` 経由で `make commitlint COMMIT_MSG
 
 Go のゲートは 1 コマンドずつ並べず `gate-go` / `gate-go-push` に**束ねてある**。lefthook はフック内の commands を並列に走らせるため、ゲートごとにエントリを置くと、開いている窓の数に**加えて**ゲートの数だけホスト負荷が乗算されるためである。どれだけ全力で走るかは §21 が決める。
 
-pre-push の `gen-go-check` は Docker で再生成して差分があれば落ちる。対処は再実行ではなく、再生成物をコミットすること（§2・§4）。自分の変更と無関係な理由で赤いとき（base ブランチに元からある失敗・環境要因）は `--no-verify` で push し、原因は別途つぶす。変更のほうを歪めない。
+pre-push の `gen-go-check` は Docker で再生成して差分があれば落ちる。対処は再実行ではなく、再生成物をコミットすること（§2・§4）。自分の変更と無関係な理由で赤いとき（base ブランチに元からある失敗・環境要因）は `--no-verify` で push し、原因は別途つぶす。変更のほうを歪めない。ただし「元からある失敗」と断ずる前に、ツールランナーのイメージが古い線（§10）を消しておくこと。失敗メッセージだけでは両者を区別できない。
 
 ## 12. `pin-images-check` / `pin-actions-check` — fail-closed な lockfile
 
