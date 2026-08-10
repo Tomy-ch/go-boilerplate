@@ -8,12 +8,17 @@ FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a
 RUN apk add --no-cache ca-certificates curl
 
 ARG MISE_VERSION
+# 上流は install スクリプトの checksum を公開しないため、取得した実体をこの固定値と照合して
+# から実行する。上流がスクリプトを更新するとここで落ちる。追随するときは差分を見て値を更新する。
+ARG MISE_INSTALL_SHA256=b11ef4cdc9bb3d8acdb95ad1cc2905b76d47936e9b8d9e76faded4d44f39f711
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
 RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && echo "${MISE_INSTALL_SHA256}  /tmp/mise-install.sh" > /tmp/mise-install.sha256 \
+    && sha256sum -c /tmp/mise-install.sha256 \
     && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
-    && rm /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh /tmp/mise-install.sha256 \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
