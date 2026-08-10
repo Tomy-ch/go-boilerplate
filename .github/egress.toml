@@ -317,6 +317,9 @@ extra = [
   "fulcio.sigstore.dev:443",
 ]
 
+[job."scan-issue-report.yaml:report"]
+classes = []
+
 [job."scripts-check.yaml:scripts-check"]
 classes = ["image"]
 
