@@ -20,7 +20,6 @@ on:
       - OSV Scan
       - Grype Scan
       - Vulnerability Scan
-      - Nancy Scan
       - Secret Scan
       - Secret Scan (TruffleHog)
       - Image Scan
@@ -94,7 +93,6 @@ jobs:
                 { name: 'Image Scan / Dockle', artifact: 'image-practice-scan', files: ['dockle-summary.md', 'dockle.sarif'] },
                 { name: 'Image Scan / Trivy SBOM', artifact: 'image-practice-scan', files: ['trivy-sbom-scan.txt', 'trivy-sbom-scan.sarif'] },
               ],
-              'Nancy Scan': [{ name: 'Nancy Scan', artifact: 'nancy', files: ['nancy-summary.md', 'nancy.json'] }],
               'OSV Scan': [{ name: 'OSV Scan', artifact: 'osv-scanner', files: ['osv-scanner-summary.md', 'osv-scanner.sarif'] }],
               'OpenAPI Security': [{ name: 'OpenAPI Security', artifact: 'spectral', files: ['spectral.log'] }],
               'OpenSSF Scorecard': [{ name: 'OpenSSF Scorecard', artifact: 'scorecard', files: ['scorecard.sarif'] }],
