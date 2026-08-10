@@ -1,4 +1,6 @@
 # syntax=docker/dockerfile:1
+#checkov:skip=CKV_DOCKER_2:garage CLI を叩いて終了するプロビジョニング専用で、常駐しないため健全性の観測対象が無い
+#checkov:skip=CKV_DOCKER_3:init スクリプトが garage の設定と鍵を書くため root 実行が要る。ローカル開発 profile 専用で配布しない
 # ローカル開発用 Garage のプロビジョニング専用イメージ（server 本体は公式イメージをそのまま使う）。
 # 公式 dxflrs/garage は scratch ベースで shell を持たず init スクリプトを実行できないため、
 # alpine へ garage バイナリを載せて CLI を shell から叩けるようにする。
