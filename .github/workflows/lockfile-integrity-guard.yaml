@@ -15,7 +15,7 @@ on:
     paths-ignore:
       - '.github/workflows/lockfile-integrity.yaml'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
 
 permissions:

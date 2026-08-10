@@ -219,7 +219,7 @@ jobs:
       # no build step to keep in sync.
       - name: Install mock-auth-server dependencies
         working-directory: mock-auth-server
-        run: npm ci --ignore-scripts
+        run: pnpm install --frozen-lockfile
 
       - name: Start mock-auth-server
         working-directory: mock-auth-server

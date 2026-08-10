@@ -62,7 +62,6 @@ gitleaks = "8.30.1"
 "npm:@redocly/cli" = "2.31.4"
 "npm:markdownlint-cli2" = "0.22.1"
 "npm:@commitlint/cli" = "21.0.2"
-"npm:lockfile-lint" = "5.0.0"
 # docs-viewer（ドキュメントポータルのビューアー）の依存解決に使う。aqua backend ではなく
 # npm backend を指定するのは、pnpm の公開元が npm レジストリであり、cooldown の窓を
 # レジストリ側（7 日）で測るのが実態に合うため。

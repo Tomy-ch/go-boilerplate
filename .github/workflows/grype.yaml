@@ -25,7 +25,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
@@ -34,7 +34,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   schedule:
     # Monday 13:00 UTC — the next free slot after DAST at 12:00. A newly published
