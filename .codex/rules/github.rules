@@ -1,5 +1,11 @@
 # GitHub への通信は、ここで列挙した非破壊的な操作だけを明示許可する。
 prefix_rule(
+    pattern = ["git", "push"],
+    decision = "allow",
+    justification = "検証済みの既存 PR ブランチは通常 push まで自動で反映する",
+)
+
+prefix_rule(
     pattern = ["gh", "pr", ["checks", "close", "comment", "create", "diff", "edit", "list", "ready", "reopen", "review", "status", "update-branch", "view"]],
     decision = "allow",
     justification = "PR の非破壊的な操作は開発フロー中に自動実行する",
