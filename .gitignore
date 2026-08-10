@@ -4,6 +4,8 @@ vendor/
 
 # Node ライブラリの依存解決ディレクトリ（docker ビルド時/ローカルとも生成物）
 node_modules/
+# pnpm がコンテナ実行時にリポジトリ直下へ作る内容アドレス store。
+.pnpm-store/
 
 # ビルド済みのバイナリファイル
 tmp/
