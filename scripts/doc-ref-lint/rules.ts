@@ -6,7 +6,9 @@ export type ADRIndex = ReadonlyMap<string, string>;
 const GENERATED_DOC_PREFIXES = ["docs/openapi/", "docs/coverage/", "docs/db-schema/", "docs/godoc/", "docs/portal/"];
 const GENERATED_SUFFIXES = [".gen.go", ".gen.sql", ".sql.go", ".gen.yaml"];
 export const ADR_FILE = /^docs\/adr\/(\d{4})-(.+)\.md$/;
-const REFERENCE = /ADR-(\d{4})(?:\s*\(([-a-z0-9]+)\))?/g;
+const REFERENCE = /ADR-(\d{4})/g;
+// slug 注釈は参照の直後にしか現れない。
+const ANNOTATION = /\s*\(([-a-z0-9]+)\)/y;
 
 export const TRANSLATION_EXCLUSIONS = [
   { prefix: "docs/spec/", reason: "feature specifications are intentionally English-only" },
@@ -37,7 +39,8 @@ export function checkReferences(file: string, source: string, adrs: ADRIndex): F
   return [...source.matchAll(REFERENCE)].flatMap((match) => {
     const slug = adrs.get(match[1]);
     if (slug === undefined) return [{ file, message: `ADR-${match[1]} does not exist` }];
-    return match[2] === slug ? [] : [{ file, message: `ADR-${match[1]} must include (${slug})` }];
+    ANNOTATION.lastIndex = (match.index ?? 0) + match[0].length;
+    return ANNOTATION.exec(source)?.[1] === slug ? [] : [{ file, message: `ADR-${match[1]} must include (${slug})` }];
   });
 }
 

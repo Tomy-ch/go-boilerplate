@@ -48,6 +48,9 @@ describe("checkReferences", () => {
       expect(checkReferences("a.md", "ADR-9999", ADRS)[0].message).toContain("does not exist");
       expect(checkReferences("a.md", `${ADR} (other)`, ADRS)[0].message).toContain("must include");
     });
+    it("参照の直後にない slug 注釈を一致とみなさない", () => {
+      expect(checkReferences("a.md", `${ADR} と無関係な (structural-safety-via-tooling)`, ADRS)[0].message).toContain("must include");
+    });
   });
 });
 
