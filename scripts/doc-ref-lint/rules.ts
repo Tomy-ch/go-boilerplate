@@ -39,7 +39,7 @@ export function checkReferences(file: string, source: string, adrs: ADRIndex): F
   return [...source.matchAll(REFERENCE)].flatMap((match) => {
     const slug = adrs.get(match[1]);
     if (slug === undefined) return [{ file, message: `ADR-${match[1]} does not exist` }];
-    ANNOTATION.lastIndex = (match.index ?? 0) + match[0].length;
+    ANNOTATION.lastIndex = match.index + match[0].length;
     return ANNOTATION.exec(source)?.[1] === slug ? [] : [{ file, message: `ADR-${match[1]} must include (${slug})` }];
   });
 }
