@@ -281,7 +281,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 1. Decide the acceptable set in terms of Trivy's own classification (`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`), and decide whether shipped artifacts and build-only tooling get the same bar. They may not: the classifications outside `notice` / `unencumbered` in this repository come from `docker/tools/`, which is build-only and never shipped.
 2. Treat Trivy's classification as a starting point, not an authority. `BlueOak-1.0.0` lands in `unknown` even though it is OSI-approved and permissive, so decide such cases explicitly instead of letting the bucket decide for you.
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
-4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0086](../adr/0086-multi-layer-security-scanning.md), which both currently state that no policy exists.
+4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0086 (multi-layer-security-scanning)](../adr/0086-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
 ## Phase 15: Remove Sample APIs
 
@@ -377,7 +377,7 @@ how your project records its own history rather than how this one shipped.
 What you inherit is [docs/adr/README.md](../adr/README.md) as written: an ADR is an immutable
 record, and a decision that changes is replaced by a new `accepted` ADR while the old one is marked
 `superseded`. That is the ADR form as [MADR](https://adr.github.io/madr/) defines it, and what
-[ADR-0000](../adr/0000-record-architecture-decisions.md) decided.
+[ADR-0000 (record-architecture-decisions)](../adr/0000-record-architecture-decisions.md) decided.
 
 If you want in-place amendment instead — a legitimate choice for a design document that is shipped
 rather than lived — record that as a decision of your own, in your own ADR. Do not infer it from

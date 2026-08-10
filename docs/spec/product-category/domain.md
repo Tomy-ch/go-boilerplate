@@ -2,7 +2,7 @@
 
 > `products`（#563）が `categoryID` で参照する商品カテゴリマスタ集約。`GET /v1/product-categories`
 > （一覧取得 usecase は `usecase.md`）の全件一覧は QueryService ではなく Repository の simple list
-> （`FindAll`）として提供する（ADR-0029 / `docs/rules.md` の Repository 境界に準拠）。
+> （`FindAll`）として提供する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 

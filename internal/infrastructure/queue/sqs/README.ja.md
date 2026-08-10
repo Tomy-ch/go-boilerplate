@@ -15,7 +15,7 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 リンクを限定することはできません。そのため隔離は**結合**で定義します。すなわち SQS を名指すのは
 このパッケージと、それを選ぶ配線だけです。サンプル群からの配線は、いずれも `sample-api` マーカーを
 伴います。
-[ADR-0050](../../../../docs/ja/adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md) を参照。
+[ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../../docs/ja/adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md) を参照。
 
 本番で利用するには、integrator が `NewConsumer` / `NewDeadLetter` を `WorkerModule` に登録した
 `worker.Worker` に配線し、outbox の publish 先として `NewPublisher` を選びます。

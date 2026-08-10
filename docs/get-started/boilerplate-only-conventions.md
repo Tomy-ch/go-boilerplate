@@ -79,7 +79,7 @@ discarded, it changes section.
 
 **This deviation does not transfer.** In a project built from the template, an ADR records a
 decision that project actually took, and amending it in place destroys precisely the history
-[ADR-0000](../adr/0000-record-architecture-decisions.md) exists to keep.
+[ADR-0000 (record-architecture-decisions)](../adr/0000-record-architecture-decisions.md) exists to keep.
 
 ### A new ADR versus a revision
 
@@ -128,10 +128,10 @@ rule, never the illustration.
 The only provider in `internal/infrastructure/rdb/command_service/` belongs to the sample purchase
 feature, and it is the sole registration in the `command_service` sub-module of `persistenceModule`
 (`internal/di/module/persistence.go`). Removing the samples empties the sub-module and leaves
-[ADR-0029](../adr/0029-lightweight-cqrs.md)'s CommandService section describing an intended design
+[ADR-0029 (lightweight-cqrs)](../adr/0029-lightweight-cqrs.md)'s CommandService section describing an intended design
 with no occupant — which is the state a fork starts from.
 
-The upstream keeps that occupant deliberately: the eligibility bar ADR-0029 states (which writes
+The upstream keeps that occupant deliberately: the eligibility bar ADR-0029 (lightweight-cqrs) states (which writes
 deserve a CommandService) is only legible against a concrete case that meets it, so the sample
 carries the bar's reading.
 
@@ -181,7 +181,7 @@ exists, so the reason is gone and the stopping point is no longer justified by i
 
 ### Setup scripts: why the pure-module split is a rule, not a convention
 
-[ADR-0079](../adr/0079-scripts-in-node-go.md) states the general form: every script keeps its
+[ADR-0079 (scripts-in-node-go)](../adr/0079-scripts-in-node-go.md) states the general form: every script keeps its
 decision logic in a pure module with a test suite next to it, because a gate whose failure mode is
 to inspect nothing and still exit `0` can be pinned by a type checker and a test and by nothing
 else. The one-time setup scripts under `scripts/setup/` are what turned that from a convention into
@@ -198,7 +198,7 @@ with them, so those tests protect this repository's own CI rather than the one c
 
 **This premise does not transfer.** In a project built from the template the setup scripts have
 already run — there is no stranger holding no context, and no CI whose coverage stops at the moment
-of use. What survives is the general rule in ADR-0079, which stands on the gate failure mode alone.
+of use. What survives is the general rule in ADR-0079 (scripts-in-node-go), which stands on the gate failure mode alone.
 
 ### Why the domain Module rules stop at the mechanical floor
 
@@ -242,7 +242,7 @@ Once this file is gone, [`docs/adr/README.md`](../adr/README.md) is the whole co
 exception attached: an ADR is an immutable record, and a decision that changes is replaced by a new
 `accepted` ADR while the old one is marked `superseded`. That is the ADR form as
 [MADR](https://adr.github.io/madr/) defines it, and it is what
-[ADR-0000](../adr/0000-record-architecture-decisions.md) decided.
+[ADR-0000 (record-architecture-decisions)](../adr/0000-record-architecture-decisions.md) decided.
 
 If your project wants the in-place regime instead — a legitimate choice for a design document that
 is shipped rather than lived — record that as your own decision, in your own ADR. Do not infer it

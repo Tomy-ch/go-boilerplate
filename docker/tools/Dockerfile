@@ -129,6 +129,13 @@ RUN pnpm install --frozen-lockfile \
     && pnpm store prune \
     && rm -rf /root/.cache
 
+# 1:1 テストゲートは mock-auth-server の型情報も読むため、同じ Node tool runner に
+# lockfile どおりの依存を保持する。compose の匿名ボリュームが host 側の node_modules を隠す。
+WORKDIR /app/mock-auth-server
+COPY mock-auth-server/package.json mock-auth-server/package-lock.json ./
+RUN npm ci --ignore-scripts \
+    && npm cache clean --force
+
 # docs-viewer の依存を in-tree（/app/docs-viewer/node_modules）へ install する。scripts とは
 # 別パッケージで、パッケージマネージャも pnpm で分かれている。
 #

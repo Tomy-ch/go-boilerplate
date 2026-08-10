@@ -120,6 +120,16 @@ function createProgram(packageRoot: string): ts.Program {
     packageRoot,
   );
 
+  if (packageRoot.endsWith("/mock-auth-server")) {
+    const stubs = resolve(REPOSITORY_ROOT, "scripts/lib/one-to-one-stubs");
+    parsed.options.baseUrl = packageRoot;
+    parsed.options.paths = {
+      jose: [`${stubs}/jose.d.ts`],
+      hono: [`${stubs}/hono.d.ts`],
+      zod: [`${stubs}/zod.d.ts`],
+    };
+  }
+
   return ts.createProgram(parsed.fileNames, parsed.options);
 }
 

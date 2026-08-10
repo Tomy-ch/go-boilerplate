@@ -4,6 +4,8 @@
 .PHONY: md-fix ## MarkdownのLint自動修正を実行
 .PHONY: md-mermaid-lint ## Mermaid 図の構文Lintのみを実行
 .PHONY: md-skill-lint ## スキル/エージェント定義(.claude/** と .codex/** の対応)の意味検査のみを実行
+.PHONY: md-doc-ref-lint ## ADR 参照と対訳ペアの実在性を検査
+.PHONY: md-doc-ref-fix ## ADR 参照へ canonical slug を補う
 .PHONY: md-premise-lint ## fork 後も残る文書に失効予定の前提が書かれていないかのみを検査 # boilerplate-only:line
 # -----CI内で実行するコマンド群-----
 .PHONY: md-lint-ci ## MarkdownのLintを実行(CI用)
@@ -26,6 +28,12 @@ md-mermaid-lint:
 md-skill-lint:
 	@docker compose run --rm node_tool_runner make md-skill-lint-ci
 
+md-doc-ref-lint:
+	@docker compose run --rm node_tool_runner make md-doc-ref-lint-ci
+
+md-doc-ref-fix:
+	@docker compose run --rm node_tool_runner make md-doc-ref-fix-ci
+
 # boilerplate-only:begin
 md-premise-lint:
 	@docker compose run --rm node_tool_runner make md-premise-lint-ci
@@ -38,7 +46,7 @@ MD_GLOBS := "**/*.md"
 # markdownlint（体裁）・mermaid（図の構文）・skill-lint（.claude/** の意味と .codex/** との対応）の3段を通す。
 # 上流ではこれに premise-lint（fork 後も残る文書に失効予定の前提が無いこと）が加わる。 # boilerplate-only:line
 # boilerplate-only:replace-begin
-md-lint-ci: md-markdownlint-ci md-mermaid-lint-ci md-skill-lint-ci md-premise-lint-ci
+md-lint-ci: md-markdownlint-ci md-mermaid-lint-ci md-skill-lint-ci md-doc-ref-lint-ci md-premise-lint-ci
 # boilerplate-only:replace-with
 # = md-lint-ci: md-markdownlint-ci md-mermaid-lint-ci md-skill-lint-ci
 # boilerplate-only:replace-end
@@ -54,6 +62,12 @@ md-mermaid-lint-ci:
 # および .claude/** と .codex/** の存在対応を検証する。
 md-skill-lint-ci:
 	$(TSX) scripts/skill-lint
+
+md-doc-ref-lint-ci:
+	$(TSX) scripts/doc-ref-lint
+
+md-doc-ref-fix-ci:
+	$(TSX) scripts/doc-ref-lint --write
 
 # boilerplate-only:begin
 # docs/rules.md の「No premise the document will outlive」を機械化したもの。前提を書いてよいのは
