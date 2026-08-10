@@ -18,12 +18,6 @@ On conflict, follow this order:
 3. `docs/architecture.md`
 4. User instructions
 
-## Codex CLI
-
-Codex CLI must read and follow the repository-root [CODEX.md](./CODEX.md) before starting work. That file
-contains Codex-specific operational safeguards and controls Codex's operational details where it
-is more specific than a general rule below; it does not apply to other agents.
-
 ## Canonical Documentation (read before changing code)
 
 The source of truth for design, rules, and flows is under `docs/` and the per-package
