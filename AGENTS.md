@@ -20,7 +20,7 @@ On conflict, follow this order:
 
 ## Codex CLI
 
-Codex CLI must read and follow the repository-root `CODEX.md` before starting work. That file
+Codex CLI must read and follow the repository-root [CODEX.md](./CODEX.md) before starting work. That file
 contains Codex-specific operational safeguards and controls Codex's operational details where it
 is more specific than a general rule below; it does not apply to other agents.
 
