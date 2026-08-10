@@ -39,3 +39,9 @@ trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 259200
 # provenance の後退は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
 trustPolicyExclude: []
+
+# ----- 依存の差し替え -----
+# pnpm は親子の直接辺しか指せないため、親ではなく「解決結果がこの版域に落ちたら」で書く。
+overrides:
+  # size が 0 のとき custom generator が無限ループする（GHSA-2v37-7h3g-55p8）。
+  "nanoid@3": ">=3.3.17 <4"
