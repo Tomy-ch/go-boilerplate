@@ -276,7 +276,7 @@ is_generated_path() { # $1=path（REPO_ROOT 相対 or 絶対）
 }
 is_junk_file() { # レビュー価値の無いメタ/ロック/バイナリ
   case "$(basename "$1")" in
-    LICENSE|go.sum|go.mod|*.lock|package-lock.json|yarn.lock|pnpm-lock.yaml|\
+    LICENSE|go.sum|go.mod|*.lock|pnpm-lock.yaml|\
     .gitignore|.gitattributes|.gitkeep|.dockerignore|.editorconfig|.DS_Store) return 0 ;;
   esac
   case "$1" in

@@ -70,7 +70,7 @@ Node ツールチェーンの無いホスト上でゲートから呼ばれるも
 - `genctxkey/` — Echo コンテキストキーのコードジェネレータ。`//go:generate` ディレクティブにより実行される。
 - `pin-actions/` / `pin-images/` — コミット SHA と digest のピンを解決して適用する。
   ネットワーク I/O、ロックファイル管理、サプライチェーン隔離。
-- `npm-cooldown/` / `go-cooldown/` / `tool-cooldown/` — 供給網 cooldown のゲート。
+- `go-cooldown/` / `tool-cooldown/` — 供給網 cooldown のゲート。
 - `migration-lint/` / `cover-gate/` / `load-band/` — `.makefiles/**` から呼ばれるゲートと解決器。
   代替案が「判定をシェルのレシピに置いたままにする」ことだった領域である。
 

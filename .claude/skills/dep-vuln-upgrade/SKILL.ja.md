@@ -6,7 +6,6 @@
 
 このスキルは **セキュリティ勧告リスト** を受け取り、名指しされた脆弱な依存だけを修正版へパッチする。本リポジトリの依存解決は 4 通りあり、勧告はそのいずれの package も名指しし得る:
 
-- **npm** — 各 `package-lock.json`（現状 `mock-auth-server/` のみ）に記録された依存。`package.json` の `overrides` エントリで固定する必要がある **推移的（transitive）** 依存を含む。
 - **pnpm** — `scripts/pnpm-lock.yaml` と `docs-viewer/pnpm-lock.yaml` に記録された依存。各パッケージが自前の `pnpm-workspace.yaml` を持ち、そこに cooldown ポリシーと `overrides` の両方が載る。
 - **Go** — `go.mod` / `go.sum` のモジュール。**間接（indirect）** 依存を含む。
 - **PyPI** — `python/*.in` が宣言し、`python/*.txt` が sha256 付きで解決を固定している CLI ツール。所在の特定はここの範囲だが、**引き上げは範囲外** — 2 つの宣言先を持つのは `/tools-upgrade`。後述の *PyPI の勧告はたいていこのスキルのものではない* を見ること。

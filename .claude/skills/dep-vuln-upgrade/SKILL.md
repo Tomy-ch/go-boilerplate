@@ -65,7 +65,7 @@ Procedure:
 
 The threshold plays two different roles depending on ecosystem:
 
-- **npm under a `.npmrc` `min-release-age`**: a **hard block**. A fixed version inside the cooldown will make `npm install` fail with `ETARGET ... No matching version found ... with a date before <cutoff>`. Do not fight the repo's own policy — treat such a version as **deferred** (Step 4), not applied.
+- **pnpm under `minimumReleaseAge`**: a **hard block**. A fixed version inside the cooldown will make `npm install` fail with `ETARGET ... No matching version found ... with a date before <cutoff>`. Do not fight the repo's own policy — treat such a version as **deferred** (Step 4), not applied.
 - **pnpm under `minimumReleaseAge`**: also a **hard block**, and a wider one — pnpm re-verifies the **whole lockfile** against the policy on every install, `--frozen-lockfile` included, so an in-window entry fails the replay path too (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) and not merely fresh resolution (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`). Unlike npm, pnpm offers a first-class per-version escape hatch (`minimumReleaseAgeExclude`); it is a decision to surface at Step 4, never one to take here. The behavioural detail is recorded in [`docs/design/security.md`](../../../docs/design/security.md) → "Dependencies → pnpm" — read it rather than trusting this summary.
 - **everywhere else (Go, a lockfile with no cooldown)**: a **caution flag, not a hard block** — because the point is to fix a known vulnerability, a too-new fixed version is surfaced and confirmed, not silently withheld.
 
