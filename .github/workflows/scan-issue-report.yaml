@@ -81,9 +81,6 @@ jobs:
             const reportUrl = run.html_url;
             const commitUrl = `${context.serverUrl}/${owner}/${repo}/commit/${run.head_sha}`;
 
-            // A target names only artifact files written by its own scanner. The report job
-            // never checks out or executes an upstream artifact: it streams known text files
-            // from the zip archive, because workflow_run has issue-write permission.
             const targets = {
               'Bearer Scan': [{ name: 'Bearer Scan', artifact: 'bearer', files: ['bearer-summary.md', 'bearer.sarif'] }],
               'Checkov Scan': [{ name: 'Checkov Scan', artifact: 'checkov', files: ['checkov-summary.md', 'results_sarif.sarif'] }],
@@ -138,48 +135,57 @@ jobs:
               });
             };
 
-            const findingCount = files => files.reduce((count, file) => {
-              if (files.some(candidate => candidate.name.endsWith('.sarif'))) {
-                if (!file.name.endsWith('.sarif')) return count;
-                const sarif = JSON.parse(file.text);
-                return count + (sarif.runs || []).reduce((sum, current) => sum + (current.results || []).length, 0);
+            const summarizeFindings = files => {
+              const sarifFiles = files.filter(file => file.name.endsWith('.sarif'));
+              if (sarifFiles.length > 0) {
+                const findings = sarifFiles.flatMap(file => {
+                  const sarif = JSON.parse(file.text);
+                  return (sarif.runs || []).flatMap(run => run.results || []);
+                }).filter(result => result.level === 'error' || result.level === 'warning');
+                const errors = findings.filter(result => result.level === 'error');
+                const warnings = findings.filter(result => result.level === 'warning');
+                const format = result => {
+                  const message = (result.message?.text || result.message?.markdown || '詳細なし').replace(/\s+/g, ' ').trim();
+                  return `[${result.ruleId || 'unknown'}] ${message}`;
+                };
+                return { errors, warnings, detail: [...errors, ...warnings].map(format).join('\n') };
               }
-              if (file.name.endsWith('.sarif')) {
-                const sarif = JSON.parse(file.text);
-                return count + (sarif.runs || []).reduce((sum, current) => sum + (current.results || []).length, 0);
-              }
-              if (file.name.endsWith('.json')) {
-                const json = JSON.parse(file.text);
-                if (Array.isArray(json.vulnerable)) return count + json.vulnerable.length;
-                if (typeof json.num_vulnerable === 'number') return count + json.num_vulnerable;
-              }
-              const match = file.text.match(/(?:^|\D)(\d+)\s+(?:finding|vulnerabilit|alert|issue|failed check)/im);
-              return count + (match ? Number(match[1]) : 0);
-            }, 0);
 
-            const upsert = async (name, findings, detail) => {
+              const count = files.reduce((total, file) => {
+                if (file.name.endsWith('.json')) {
+                  const json = JSON.parse(file.text);
+                  if (Array.isArray(json.vulnerable)) return total + json.vulnerable.length;
+                  if (typeof json.num_vulnerable === 'number') return total + json.num_vulnerable;
+                }
+                const match = file.text.match(/(?:^|\D)(\d+)\s+(?:finding|vulnerabilit|alert|issue|failed check)/im);
+                return total + (match ? Number(match[1]) : 0);
+              }, 0);
+              return { errors: [], warnings: Array.from({ length: count }), detail: '' };
+            };
+
+            const upsert = async (name, summary) => {
               const title = `${issuePrefix}${name}`;
               const issues = await github.paginate(github.rest.issues.listForRepo, {
                 owner, repo, state: 'open', per_page: 100,
               });
               const existing = issues.find(issue => issue.title === title);
+              const findings = summary.errors.length + summary.warnings.length;
               if (findings === 0) {
                 if (existing) await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
                 return;
               }
-              const fence = '`'.repeat(Math.max(3, ...Array.from(detail.matchAll(/`+/g), match => match[0].length)) + 1);
+              const fence = '`'.repeat(Math.max(3, ...Array.from(summary.detail.matchAll(/`+/g), match => match[0].length)) + 1);
               const body = [
                 '<!-- scan-issue-report -->',
                 `## ${name}`,
                 '',
-                `検出件数: **${findings}**`,
+                `エラー: **${summary.errors.length}**`,
+                `警告: **${summary.warnings.length}**`,
                 `対象ブランチ: \`${run.head_branch}\``,
                 `コミット: [\`${run.head_sha.slice(0, 7)}\`](${commitUrl})`,
                 `実行: [${run.name} #${run.run_number}](${reportUrl})`,
                 '',
-                `${fence}text`,
-                detail.slice(0, 45000),
-                fence,
+                ...(summary.detail ? [`${fence}text`, summary.detail, fence] : []),
               ].join('\n');
               if (existing) {
                 await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
@@ -192,25 +198,35 @@ jobs:
               for (const target of targets[run.name] || []) {
                 const artifact = artifacts.get(target.artifact);
                 if (!artifact) {
-                  if (run.conclusion === 'success') await upsert(target.name, 0, '');
+                  if (run.conclusion === 'success') await upsert(target.name, { errors: [], warnings: [], detail: '' });
                   continue;
                 }
                 const files = readArtifactFiles(artifact, target.files);
-                const detail = files.map(file => `# ${file.name}\n${file.text}`).join('\n\n');
-                await upsert(target.name, findingCount(files), detail || 'スキャン結果を取得できませんでした。実行ログを確認してください。');
+                const summary = summarizeFindings(files);
+                if (summary.errors.length === 0 && summary.warnings.length === 0 && files.length === 0) {
+                  summary.errors.push({});
+                  summary.detail = 'スキャン結果を取得できませんでした。実行ログを確認してください。';
+                }
+                await upsert(target.name, summary);
               }
 
               for (const target of codeScanningTargets[run.name] || []) {
                 if (!target.category) {
-                  await upsert(target.name, run.conclusion === 'success' ? 0 : 1, `スキャンは ${run.conclusion} で終了しました。実行ログを確認してください。`);
+                  await upsert(target.name, run.conclusion === 'success'
+                    ? { errors: [], warnings: [], detail: '' }
+                    : { errors: [{}], warnings: [], detail: `スキャンは ${run.conclusion} で終了しました。実行ログを確認してください。` });
                   continue;
                 }
                 const alerts = await github.paginate(github.rest.codeScanning.listAlertsForRepo, {
                   owner, repo, ref: run.head_branch, state: 'open', per_page: 100,
                 });
                 const matched = alerts.filter(alert => (alert.most_recent_instance?.analysis_key || '').includes(target.category));
-                const detail = matched.map(alert => `- [${alert.rule.security_severity_level || alert.rule.severity || 'info'}] ${alert.rule.id}: ${alert.rule.description || alert.rule.name}`).join('\n');
-                await upsert(target.name, matched.length, detail);
+                const errors = matched.filter(alert => alert.rule.severity === 'error');
+                const warnings = matched.filter(alert => alert.rule.severity === 'warning');
+                const detail = [...errors, ...warnings]
+                  .map(alert => `[${alert.rule.id}] ${alert.rule.description || alert.rule.name || '詳細なし'}`)
+                  .join('\n');
+                await upsert(target.name, { errors, warnings, detail });
               }
             } finally {
               fs.rmSync(tempDir, { recursive: true, force: true });
