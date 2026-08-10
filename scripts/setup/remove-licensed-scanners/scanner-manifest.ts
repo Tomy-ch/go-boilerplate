@@ -76,7 +76,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_EN,
         block:
-          "| `sonarqube.yaml` `sonarqube` | 20 | the analysis runs on Sonar's servers and the job waits for it; that wait is itself capped at 10 minutes, so a lower job limit would cut the wait off rather than the hang it exists to catch |\n",
+          "| `sonarqube.yaml` `sonarqube` | 40 | no completed run yet measures the added Go and TypeScript coverage generation; the provisional limit reserves time for that work and Sonar's 10-minute analysis wait, then must be re-derived from the first completed run |\n",
       },
       {
         file: README_JA,
@@ -91,7 +91,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "| `sonarqube.yaml` `sonarqube` | 20 | 解析は Sonar 側のサーバで走り、ジョブはその完了を待つ。待ち自体が 10 分で打ち切られるため、これより低いとハングではなく待ちのほうを切ってしまう |\n",
+          "| `sonarqube.yaml` `sonarqube` | 40 | 追加した Go / TypeScript のカバレッジ生成を計測した完了 run がまだ無いため、暫定的にその処理と Sonar の最大 10 分の解析待ちを収める値とし、最初の完了 run 後に再導出する |\n",
       },
     ],
     docFragments: [

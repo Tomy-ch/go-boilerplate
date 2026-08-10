@@ -55,7 +55,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
 | `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
-| `sonarqube.yaml` `sonarqube` | 20 | the analysis runs on Sonar's servers and the job waits for it; that wait is itself capped at 10 minutes, so a lower job limit would cut the wait off rather than the hang it exists to catch |
+| `sonarqube.yaml` `sonarqube` | 40 | no completed run yet measures the added Go and TypeScript coverage generation; the provisional limit reserves time for that work and Sonar's 10-minute analysis wait, then must be re-derived from the first completed run |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
 
