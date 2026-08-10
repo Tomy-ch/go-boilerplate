@@ -50,7 +50,7 @@
 | `go-test.yaml` `go-test` | 20 | 実測 約 5 分 |
 | `image-scan.yaml` `build`、`deploy-app.yaml` `build` | 15 | レイヤキャッシュが冷えたイメージビルドは実測を大きく超えて振れる |
 | `deploy-app.yaml` `deploy` | 30 | 現状はプレースホルダ。フォークが実デプロイを配線したときに 10 分の上限へ当てない |
-| `fuzz.yaml`、`scorecard.yaml`、`notify.yaml`、`osv-release-gate.yaml`、`checkov.yaml`、`nancy.yaml` `nancy` | 15 | 直近に完了実行が無く実測できない |
+| `fuzz.yaml`、`scorecard.yaml`、`notify.yaml`、`osv-release-gate.yaml`、`checkov.yaml` | 15 | 直近に完了実行が無く実測できない |
 | `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる |
 | `code-ql.yaml` `codeql` | 30 | 上限は matrix の最も遅い leg に掛かるが、`go` 以外の leg には完了実行が無く実測できない。加えて `security-extended` は従前の値を測ったスイートより大きい |
 | `secret-scan.yaml`、`trufflehog.yaml` | 15 | 実測は差分を見る PR 実行のみ。週次は全履歴を走査するが、その完了実行が一度も無く実測できない |
@@ -103,7 +103,6 @@
 |Release Dependency Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
 |Grype Scan|`grype.yaml`|Trivy と同じ依存マニフェストを、別の脆弱性 DB と別のマッチャで走査する Anchore Grype のファイルシステムスキャン|
 |Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成（SPDX-JSON と CycloneDX-JSON の両形式）+ Trivy スキャン + ビルド済みイメージへの Dockle のプラクティス検査 + CycloneDX SBOM への `trivy sbom` による再照合|
-|Nancy Scan|`nancy.yaml`|Sonatype Nancy による Go 依存一覧の Sonatype Guide 照合（報告専用。ここで唯一 SARIF を publish しないスキャナ。`GUIDE_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|
 |Vulnerability Scan|`vulnerability-check.yaml`|govulncheck による Go パッケージ脆弱性検出|
 |OSV Scan|`osv-scanner.yaml`|OSV データベースによる Go モジュール / npm lockfile 横断の脆弱性スキャン|
 |Release OSV Scan|`osv-release-gate.yaml`|develop/staging/production 向け PR での OSV スキャン。HIGH 以上で fail|
@@ -154,7 +153,6 @@
 | Checkov | Actions 定義 / Dockerfile 変更 PR | 同上 | 週次 |
 | Dockle | デプロイ先ブランチへの PR | 不要 | 週次（Image Scan 内） |
 | Trivy SBOM | デプロイ先ブランチへの PR | 不要 | 週次（Image Scan 内） |
-| Nancy | Go・依存変更 PR | 同上 | 週次 |
 | Trivy ライセンス | Trivy FS と同一トリガー | 同上 | 週次 |
 | OSV diff | 依存関係変更 PR | 不要 | 不要 |
 | Opengrep（SAST） | Go / TypeScript・依存・spec 変更 PR | 同上 | 週次 |
@@ -173,7 +171,7 @@
 
 DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
 
-以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer、`0 17` Checkov、`0 18` Nancy、`0 19` SonarQube Cloud と続きます。
+以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer、`0 17` Checkov、`0 19` SonarQube Cloud と続きます。
 
 末尾の 1 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。
 
@@ -192,7 +190,7 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | `grype.yaml` | 脆弱性の検出 | schedule |
 | `devskim.yaml` | 検出あり | schedule |
 
-他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 5 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。Checkov も同じ条件で未接続です。このリポジトリに対するベースラインが 20 件あり、その大半は 1 つのルールがワークフローファイルごとに 1 回ずつ出ているものです。Nancy は理由が別で、そもそもここからベースラインを測れません。資格情報が無ければスキャン自体が走らず、静かな状態を一度も観測していない通知は誰も信用できないからです。Dockle と `trivy sbom` は自前の配線が要りません。どちらも `image-scan.yaml` の中で走り、その定期実行の失敗は既に人へ届きます。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud も同じ理由で未接続です。セキュリティと並んで保守性を報告するため、既存コードベースに対するベースラインが 0 件になることはありません。
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 4 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。Checkov も同じ条件で未接続です。このリポジトリに対するベースラインが 20 件あり、その大半は 1 つのルールがワークフローファイルごとに 1 回ずつ出ているものです。Dockle と `trivy sbom` は自前の配線が要りません。どちらも `image-scan.yaml` の中で走り、その定期実行の失敗は既に人へ届きます。4 つ目の ESLint と 5 つ目の Bearer は理由が別で、ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud も同じ理由で未接続です。セキュリティと並んで保守性を報告するため、既存コードベースに対するベースラインが 0 件になることはありません。
 
 #### 検知が重なる面
 
@@ -210,7 +208,7 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | 自前の Go ソース | `opengrep.yaml`（Opengrep・ERROR 帯） **(gate)** + `go-lint.yaml` 経由の `gosec` **(gate)** — ルールセットは互いに素 + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** | — |
 | OpenAPI の規約 / 命名 | `oapi-lint.yaml`（redocly） **(gate)** | Spectral |
 | OpenAPI のセキュリティ姿勢 | `openapi-security.yaml`（Spectral） **(gate)** | redocly |
-| 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype）+ `nancy.yaml`（Nancy・Go のみ） — すべて報告専用 | — |
+| 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） — すべて報告専用 | — |
 | 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** | — |
 | 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
 | sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用。対象はアプリケーションコードのみで `/scripts` は除外（リポジトリのツーリングはユーザーデータを扱わず、この問いが訊いているのはそれだけであるため） | — |
@@ -235,11 +233,11 @@ OSI の定義の外にあること自体は Bearer に固有ではありませ�
 
 #### 資格情報を要するスキャナの撤去
 
-ここには、リポジトリ自身では用意できないものを必要とするスキャナが 3 つあります。2 つはベンダーのサービスへのトークンを要し（`sonarqube.yaml` と `nancy.yaml`）、CodeQL は GitHub Advanced Security を要します。後者は public リポジトリでは無料、private では課金対象です。このリポジトリは public なので 3 つとも無料で回りますが、このテンプレートから作られたリポジトリが public とは限らず、課金を受け入れるとも限りません。
+ここには、リポジトリ自身では用意できないものを必要とするスキャナが 2 つあります。SonarQube Cloud はベンダーのサービスへのトークンを要し、CodeQL は GitHub Advanced Security を要します。後者は public リポジトリでは無料、private では課金対象です。このリポジトリは public なので 2 つとも無料で回りますが、このテンプレートから作られたリポジトリが public とは限らず、課金を受け入れるとも限りません。
 
-`make setup-remove-licensed-scanners` は 3 つを 1 回の実行でまとめて撤去し、**製品ごとに別のコミットを積みます**。どれか 1 つのライセンスを既に持っている利用者は、そのコミットだけを `git revert` すれば復活させられます。撤去を 3 つのスクリプトに分けず 1 つにしているのはこのためです。利用者が実際に一度だけ下す判断は「課金されるスキャナやベンダーへ送信するスキャナを使うか」であり、製品単位の選択は 3 つのスクリプトを覚えることよりも「取り消し」として表現するほうが適切です。
+`make setup-remove-licensed-scanners` は 2 つを 1 回の実行でまとめて撤去し、**製品ごとに別のコミットを積みます**。どれか 1 つのライセンスを既に持っている利用者は、そのコミットだけを `git revert` すれば復活させられます。撤去を 2 つのスクリプトに分けず 1 つにしているのはこのためです。利用者が実際に一度だけ下す判断は「課金されるスキャナやベンダーへ送信するスキャナを使うか」であり、製品単位の選択は 2 つのスクリプトを覚えることよりも「取り消し」として表現するほうが適切です。
 
-このファイルと対訳の編集は、製品ごとのコミットには**含めず**独立した最後の 1 コミットにまとめます。3 製品は同じ表の隣り合う行を占めるため、ドキュメント編集を製品側へ混ぜると最後の 1 つ以外の `git revert` が必ずここで衝突し、分割した意味がなくなるからです。代償として、復活させたスキャナは動きますが記述は戻りません。行はその最後のコミットから読み出せます。
+このファイルと対訳の編集は、製品ごとのコミットには**含めず**独立した最後の 1 コミットにまとめます。2 製品は同じ表の隣り合う行を占めるため、ドキュメント編集を製品側へ混ぜると最後の 1 つ以外の `git revert` が必ずここで衝突し、分割した意味がなくなるからです。代償として、復活させたスキャナは動きますが記述は戻りません。行はその最後のコミットから読み出せます。
 
 `bearer.yaml` は意図的にこの対象**外**です。Elastic License 2.0 は CI での実行に費用を課さず、制約するのはサービスとしての再配布だけで、これは別の問いであり別の答えになります。[Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照してください。そちらは手動手順のままです。
 
@@ -253,11 +251,11 @@ OSI の定義の外にあること自体は Bearer に固有ではありませ�
 | このファイルと `README.ja.md` の行および散文 | 残るスキャナの行 |
 | CodeQL の `.github/codeql/**` | — |
 
-lockfile の規則は例外リストではありません。スクリプトは残るワークフロー側の参照数を数え、0 になったエントリだけを削除します。`actions/download-artifact@v7` は数えることがリストに勝つ理由を示す例です。Sonar の report ジョブが持ち込み、いまは Nancy の report ジョブも使うため、どちらか一方だけを撤去しても残ります。`make pin-actions-check` と `make egress-check` はどちらも孤児で落ちるため、消し忘れは静かな残骸ではなく赤い run になります。
+lockfile の規則は例外リストではありません。スクリプトは残るワークフロー側の参照数を数え、0 になったエントリだけを削除します。`actions/download-artifact@v7` は数えることがリストに勝つ理由を示す例です。Sonar の report ジョブが持ち込んだもので、Sonar を撤去したときに削除されるのは、残るワークフローのどれもそれを使っていない場合だけです。`make pin-actions-check` と `make egress-check` はどちらも孤児で落ちるため、消し忘れは静かな残骸ではなく赤い run になります。
 
 この参照数の数え方は、1 つのスキャナを revert したときに `make pin-actions-check` が孤児ではなく**未登録の参照**で赤くなる理由でもあります。他のスキャナと共有するエントリは「最後の利用者を消したコミット」が削除するため、より前のスキャナを戻すと、後のコミットが既に消したエントリを参照する `uses:` が復活します。`make pin-actions-resolve` で戻せますし、どのエントリかは検査が名指しします。
 
-トークン（`SONAR_TOKEN` / `GUIDE_TOKEN`）の登録は人手の作業として残り、ベンダー側でのプロジェクト作成も同様です。それが存在しない間はレグが自分をスキップし run は green のままです。資格情報の欠如をスキャン結果ではなくセットアップの未了として報告する理由は[結果コメント](#結果コメント)を参照してください。
+`SONAR_TOKEN` の登録は人手の作業として残り、ベンダー側でのプロジェクト作成も同様です。それが存在しない間はレグが自分をスキップし run は green のままです。資格情報の欠如をスキャン結果ではなくセットアップの未了として報告する理由は[結果コメント](#結果コメント)を参照してください。
 
 #### 一覧に無い OSS スキャナの評価
 
@@ -270,7 +268,6 @@ GitHub の code scanning テンプレート一覧は、ここで走らせられ�
 | Dockle | Apache-2.0 | 可 | 可 | **採用** — `image-scan.yaml` 内。ビルド済みイメージへのプラクティス検査で、ここの他のどのスキャナも読んでいない面。runner 内で完結する。最新リリースは 2025 年 1 月で止まっているが、本体へのコミットは続いている |
 | `trivy sbom` | Apache-2.0 | 可 | 可 | **採用** — `image-scan.yaml` 内。新規ツールではなく既に pin 済み Trivy のサブコマンドなので、ライセンスと供給網の判断が増えない |
 | Checkov | Apache-2.0（CLI・Action とも） | 可 | 可 | **採用** — `checkov.yaml`。CLI はアカウント不要で runner の外へ出ない。ベンダーの SaaS 連携は別建てのオプトイン機能で、使っていない。採用の理由は `github_actions` ルールで、これは CodeQL を撤去したあとほど重みが増す |
-| Nancy | Apache-2.0 | 可（トークンが要る） | 可（トークンが要る） | **採用** — `nancy.yaml`・報告専用。同じ Go 依存に対する 5 つ目のエンジンで、それだけなら採る理由にならない。採ったのは DB が Sonatype のもので、Trivy・OSV・Grype・govulncheck のいずれもそれを答えないため。無料の Sonatype Guide トークンを要するので、上の撤去対象に入れている |
 | KICS | 本体 Apache-2.0、**Action は GPL-3.0** | 可 | 可 | **見送り** — 理由はライセンスではなく配布形態。リリース書庫はバイナリ単体でクエリ本体を同梱せず、aqua パッケージは mise が扱えない `go_build` 形式のため、このリポジトリのバージョン SSOT の内側に収まる経路が無い。ワークフローから Action を呼ぶだけなら GPL の義務は生じないが、それでもツールは `mise.toml` と `tool-cooldown.yaml` の外に出る |
 | detect-secrets | Apache-2.0 | 可 | 可 | **見送り** — gitleaks・Trivy secret・TruffleHog に続く 4 つ目のシークレットエンジンになる |
 | Renovate | **AGPL-3.0**（v11 までは MIT、v12 から AGPL） | 可（self-host 形態） | 可（self-host 形態） | **見送り** — Dependabot と cooldown ゲートで足りており、Renovate が足すものを必要としていない。自リポジトリの依存更新に未改変で使う限り AGPL の開示義務は生じない。Mend のホスト型の条件は**確認できていない**。その形態を採る場合は採用側で確認が要る |
