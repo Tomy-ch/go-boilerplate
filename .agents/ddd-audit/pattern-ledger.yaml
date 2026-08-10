@@ -163,7 +163,7 @@ patterns:
       - kind: agent
         rule: drift-detector-glossary
     last_audited: "2026-08-06"
-    last_audited_commit: "c3a355153c861ff4c7216df1d90bbabc74847b4e"
+    last_audited_commit: "c3a355153c86"
 
   - id: layered-architecture
     name: Layered Architecture
@@ -207,7 +207,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_infrastructure
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: entity
     name: Entity
@@ -233,7 +233,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: value-object
     name: Value Object
@@ -277,7 +277,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: domain-service
     name: Service (Domain Service)
@@ -312,7 +312,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain_service
     last_audited: "2026-08-06"
-    last_audited_commit: "c3a355153c861ff4c7216df1d90bbabc74847b4e"
+    last_audited_commit: "c3a355153c86"
 
   - id: application-service
     name: Application Layer Service
@@ -350,7 +350,7 @@ patterns:
     deviation_note: ""
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: module
     name: Module (Package)
@@ -394,7 +394,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain_service
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: aggregate
     name: Aggregate
@@ -454,7 +454,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: factory
     name: Factory
@@ -506,7 +506,7 @@ patterns:
       Do not set outside constructor 節。
     enforced_by: []
     last_audited: "2026-08-06"
-    last_audited_commit: "cd254c46a1c239d89aa9fea9d65a7d7133958f06"
+    last_audited_commit: "cd254c46a1c2"
 
   - id: repository
     name: Repository
@@ -557,7 +557,7 @@ patterns:
       適格基準の背景は ADR-0029 (lightweight-cqrs)。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: specification
     name: Specification
@@ -629,7 +629,7 @@ patterns:
       宣言は internal/domain/README.md の Query and Aggregate 節末尾、Departure from Evans ブロック。
     enforced_by: []
     last_audited: "2026-08-06"
-    last_audited_commit: "cd254c46a1c239d89aa9fea9d65a7d7133958f06"
+    last_audited_commit: "cd254c46a1c2"
 
   - id: domain-event
     name: Domain Event
@@ -676,7 +676,7 @@ patterns:
       集約に管理すべき可変状態を増やさずに済むため。宣言は internal/domain/README.md の Domain events 節。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "8c622f888df8638e1a6556bc56a5a4383c1626ce"
+    last_audited_commit: "8c622f888df8"
 
   - id: bounded-context
     name: Bounded Context
@@ -713,7 +713,7 @@ patterns:
       internal/domain/lexicon/README.md 冒頭の注記。
     enforced_by: []
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "1dbf9b0fb7b6"
 
   - id: context-map
     name: Context Map
@@ -755,7 +755,7 @@ patterns:
       「An undecided edge is an entry, not a blank」節。
     enforced_by: []
     last_audited: "2026-08-06"
-    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
+    last_audited_commit: "cdaa2f26a60b"
 
   - id: shared-kernel
     name: Shared Kernel
@@ -789,7 +789,7 @@ patterns:
       - kind: depguard
         rule: maintain_a_sound_domain
     last_audited: "2026-08-05"
-    last_audited_commit: "1dbf9b0fb7b6898d396fa9013686c1f7a4346333"
+    last_audited_commit: "1dbf9b0fb7b6"
 
   - id: anticorruption-layer
     name: Anticorruption Layer
@@ -836,7 +836,7 @@ patterns:
       記録する運用とする。宣言は internal/infrastructure/webapi/README.md の Design Policy 節。
     enforced_by: []
     last_audited: "2026-08-06"
-    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
+    last_audited_commit: "cdaa2f26a60b"
 
   - id: published-language
     name: Published Language
@@ -882,4 +882,4 @@ patterns:
       宣言は docs/design/outbox.md の第 4 節。
     enforced_by: []
     last_audited: "2026-08-06"
-    last_audited_commit: "cdaa2f26a60bc03278f45186725cf4bfb0ba61bb"
+    last_audited_commit: "cdaa2f26a60b"

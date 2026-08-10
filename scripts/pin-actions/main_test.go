@@ -17,15 +17,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// テスト用の 40-hex commit SHA（値は任意、形式のみ意味を持つ）。
 const (
-	shaCheckout = "1111111111111111111111111111111111111111"
-	shaSetupGo  = "2222222222222222222222222222222222222222"
-	shaCodeQL   = "3333333333333333333333333333333333333333"
+	// テスト用の 40-hex commit SHA（値は任意、形式のみ意味を持つ）。
+	testCommitSHALength = 40
+
+	// absentRelease は githubTimesStub で「そのエンドポイントの資源が存在しない（404）」を表す日数。
+	absentRelease = -1
 )
 
-// absentRelease は githubTimesStub で「そのエンドポイントの資源が存在しない（404）」を表す日数。
-const absentRelease = -1
+var (
+	shaCheckout = strings.Repeat("1", testCommitSHALength)
+	shaSetupGo  = strings.Repeat("2", testCommitSHALength)
+	shaCodeQL   = strings.Repeat("3", testCommitSHALength)
+)
 
 var (
 	// errAge は、ageFn の失敗伝播を検証するためのセンチネルです。
@@ -241,10 +245,11 @@ func writeLockFile(t *testing.T, body string) string {
 func Test_quarantine(t *testing.T) {
 	t.Parallel()
 
-	const (
-		key       = "actions/checkout@v7.0.0"
+	const key = "actions/checkout@v7.0.0"
+
+	var (
 		candidate = shaCheckout
-		prev      = "9999999999999999999999999999999999999999"
+		prev      = strings.Repeat("9", testCommitSHALength)
 	)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -340,8 +345,9 @@ func Test_quarantine(t *testing.T) {
 func Test_selectSHA(t *testing.T) {
 	t.Parallel()
 
-	const (
-		tag         = "v7.0.0"
+	const tag = "v7.0.0"
+
+	var (
 		derefSHA    = shaCheckout
 		lightTagSHA = shaSetupGo
 		headSHA     = shaCodeQL
