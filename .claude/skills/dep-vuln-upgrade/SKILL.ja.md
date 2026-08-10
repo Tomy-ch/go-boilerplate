@@ -27,7 +27,7 @@ pnpm パッケージはセレクタを親の名指しではなく **解決結果
 次の場合に使う:
 
 - ユーザーが脆弱性レポート（`npm audit` / Trivy / Dependabot alert / `govulncheck`、あるいは手書きの一覧）を貼り、指摘 package のパッチを望むとき。
-- CVE / GHSA 勧告が `package-lock.json` / `pnpm-lock.yaml` / `go.mod` に存在する package を名指しし、最小の修正版バンプ + 検証を行いたいとき。
+- CVE / GHSA 勧告が `pnpm-lock.yaml` / `go.mod` に存在する package を名指しし、最小の修正版バンプ + 検証を行いたいとき。
 - ツール（`redocly` / `orval` / `spectral` 等）が引き込む推移的依存を、`overrides` でパッチ版へ強制する必要があるとき。
 
 次には使わない:
@@ -54,13 +54,13 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 手順:
 
 1. スキル引数または直近のユーザーメッセージから勧告リストをパースする。各エントリから **package 名** / **現行 version**（あれば）/ **修正版候補**（major 系列ごとに複数あり得る）/ **CVE・GHSA id** / **深刻度** を取り出す。リストは自由形式でよい — よくある形（`- [HIGH] lodash 4.17.23 → 4.18.0 (CVE-...)`、`npm audit` ブロック、Trivy 行）を許容する。エコシステムや所在が曖昧なエントリは Step 1 で解決する（ここで推測しない）。
-2. リポジトリの npm cooldown を検出する: lockfile ディレクトリ配下の各 `.npmrc`（例 `mock-auth-server/.npmrc`）を読み `min-release-age=N` 行を探す。これは npm 11+ ネイティブの supply-chain 隔離で、**依存解決**時（`npm install` / `npm install --package-lock-only`）に `before = now − N 日` のハード cutoff を適用する — cutoff より新しい版は **そもそも install できず**、単なるフラグでは済まない。見つかれば `N` をその lockfile の `<MIN_AGE_DAYS>` として採用し、スキルの caution しきい値をツールチェーンが実際に敷く壁に合わせる。
+2. リポジトリの cooldown を検出する: 各 `pnpm-workspace.yaml` の `minimumReleaseAge` 行（分指定）を読む。`minimumReleaseAgeStrict: true` の下では解決時のハード遮断であり、pnpm は install のたびに lockfile 全体を再検証するため `--frozen-lockfile` の再生経路でも効く。つまり cutoff より新しい版は**そもそも install できない**（単なる警告ではない）。その窓を当該 lockfile の `<MIN_AGE_DAYS>` として採用し、本スキルの注意しきい値をツールチェインが実際に敷く壁へ合わせる。
 3. リポジトリの pnpm cooldown を検出する: 各 `pnpm-lock.yaml` と同階層の `pnpm-workspace.yaml` から `minimumReleaseAge`（**分指定**。`10080` = 7 日なので 1440 で割る）と `minimumReleaseAgeStrict`、既存の `minimumReleaseAgeExclude` 一覧を読む。その値をそのパッケージの `<MIN_AGE_DAYS>` として採用する。例外一覧は無関係に見えても必ず読むこと — 候補版を既に覆うエントリがあるなら、窓は意図的に開けられており disposition は `blocked` ではない。
 4. ある変更にどの cooldown も効かない場合（Go モジュール、またはどちらの設定も無い lockfile）は、引数で値が渡されない限り `7` を既定 `<MIN_AGE_DAYS>` とする。しきい値の確認で `AskUserQuestion` を呼ぶのは真に曖昧なとき（支配ファイル同士が食い違う、またはユーザーが override を求めた）だけ。単一の宣言値や `7` 既定は質問不要 — 使った値とその出所を明記して進める。
 
 しきい値はエコシステムにより 2 つの異なる役割を持つ:
 
-- **`.npmrc` `min-release-age` 下の npm**: **ハードブロック**。cooldown 内の修正版は `npm install` を `ETARGET ... No matching version found ... with a date before <cutoff>` で失敗させる。リポジトリ自身のポリシーと戦わず、そうした版は **deferred（Step 4）** として扱い、適用しない。
+- **`minimumReleaseAge` 下の pnpm**: **ハードブロック**。cooldown 内の修正版は `pnpm install` を `ERR_PNPM_NO_MATURE_MATCHING_VERSION` で失敗させる。
 - **`minimumReleaseAge` 下の pnpm**: 同じく **ハードブロック**で、しかも範囲が広い。pnpm は install のたびに **lockfile 全体**をポリシーで再検証し、それは `--frozen-lockfile` にも及ぶ。よって窓内エントリは新規解決（`ERR_PNPM_NO_MATURE_MATCHING_VERSION`）だけでなく再生経路でも落ちる（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`）。npm と違い pnpm には版指定の正式な例外経路（`minimumReleaseAgeExclude`）がある。それは Step 4 で提示する選択肢であって、ここで取る判断ではない。挙動の詳細は [`docs/design/security.md`](../../../docs/design/security.md) の「Dependencies → pnpm」が持つ — この要約を信用せず、そちらを読むこと。
 - **それ以外（Go、cooldown 無しの lockfile）**: **caution フラグでありハードブロックではない** — 既知脆弱性を直すのが目的なので、新しすぎる修正版は握り潰さず提示・確認する。
 
@@ -73,7 +73,6 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 このスキル実行中に変更可:
 
 - `**/package.json` — 承認済み package の `dependencies` version、もしくは（npm パッケージに限り）`overrides` エントリの追加/調整に限る。
-- `**/package-lock.json` — 承認済み変更に対する当該 package ディレクトリでの `npm install` の決定的出力。
 - `**/pnpm-lock.yaml` — 承認済み変更に対する当該 package ディレクトリでの `pnpm install --lockfile-only` の決定的出力。
 - `**/pnpm-workspace.yaml` — `overrides` と `minimumReleaseAgeExclude` キー **のみ**。例外エントリは **Step 4 でユーザーがその版を承認した後にのみ** 書く。`minimumReleaseAge` / `minimumReleaseAgeStrict` / `minimumReleaseAgeIgnoreMissingTime` / `trustPolicy*` / `allowBuilds` / `blockExoticSubdeps` / `engineStrict` には決して触れない — それらはパッチではなくポリシーそのもの。
 - `go.mod` / `go.sum` — 承認済み Go モジュールに対する `go get <module>@<version>` + `go mod tidy` の出力。
@@ -95,7 +94,7 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 
 ```sh
 # そもそもどの lockfile が存在するか — エコシステムを決めるのは package 名ではなくこれ
-find . \( -name package-lock.json -o -name pnpm-lock.yaml \) -not -path '*/node_modules/*'
+find . -name pnpm-lock.yaml -not -path '*/node_modules/*'
 
 # npm: 存在 + インストール済み version、次に直接 vs 推移的
 grep -n "\"node_modules/<pkg>\"" <lockfile>
@@ -119,7 +118,7 @@ grep -n '<module-path>' go.mod
 | 項目 | 方法 |
 | --- | --- |
 | ecosystem | `npm` / `pnpm` / `pypi` / `go` |
-| location | `package-lock.json` / `pnpm-lock.yaml` のディレクトリ、`python/<tool>.in` + `.txt`、または `go.mod` |
+| location | `pnpm-lock.yaml` のディレクトリ、`python/<tool>.in` + `.txt`、または `go.mod` |
 | installed version | lockfile / `go.mod` から |
 | direct / transitive | その `package.json` の `dependencies`/`devDependencies` に宣言がある（npm / pnpm）／`// indirect` が無い（go）→ direct、そうでなければ transitive/indirect |
 
@@ -153,7 +152,7 @@ curl -fsSL "https://proxy.golang.org/<module>/@v/<version>.info" | jq -r '.Time'
 | --- | --- | --- |
 | **clear** | `>= MIN_AGE_DAYS`、または既に `minimumReleaseAgeExclude` に名指しされている | eligible — 既定で適用（Step 4） |
 | **too-new** | `< MIN_AGE_DAYS` で、cooldown **無し**のディレクトリ、または Go | eligible だがフラグ付き。⚠️ 提示・既定では未適用 — ユーザーが opt-in する必要 |
-| **blocked** | `.npmrc` `min-release-age` または pnpm `minimumReleaseAge` 下で `< MIN_AGE_DAYS` | **そのままでは install 不可** — リポジトリ自身の cooldown がハード拒否。独断で適用せず **deferred** とし、解除時期（`publish_date + N 日`）を報告。pnpm なら Step 4 で例外の選択肢も併せて提示する |
+| **blocked** | pnpm `minimumReleaseAge` 下で `< MIN_AGE_DAYS` | **そのままでは install 不可** — リポジトリ自身の cooldown がハード拒否。独断で適用せず **deferred** とし、解除時期（`publish_date + N 日`）を報告。pnpm なら Step 4 で例外の選択肢も併せて提示する |
 
 npm / Go proxy への悪意ある publish は通常、数時間〜数日で検知・撤回されるため caution を設ける。セキュリティ修正は急ぐので `too-new` はユーザーが override できる警告だが、`blocked` はリポジトリ自身のポリシーをパッケージマネージャ自体が強制するものであり、スキルはそのポリシーを決して無効化しない。境界は現実的である点に注意: N 日窓の内側に数分でも入って公開された版は、窓がその正確な publish 時刻を跨ぐまで `blocked`。
 
@@ -174,7 +173,7 @@ disposition が `too-new` または `blocked` になった全エントリにつ�
 日本語サマリを disposition ごとに出す。例:
 
 ```text
-依存脆弱性パッチ監査（min_age_days = 7, mock-auth-server/.npmrc 由来）
+依存脆弱性パッチ監査（min_age_days = 7, pnpm-workspace.yaml 由来）
 
 ✅ 適用（同一 major の最小修正版 / caution 通過 → 確認なしで適用）:
   - lodash 4.17.23 → 4.18.0  [docker/tools, 推移的]  (CVE-2026-4800, CVE-2026-2950 / HIGH)
@@ -189,7 +188,7 @@ disposition が `too-new` または `blocked` になった全エントリにつ�
 
 ⛔ deferred（repo の cooldown に阻まれ install 不可）:
   - brace-expansion 1.1.16  [docker/tools, spectral-core 内]  (公開が cooldown 内 / 2026-07-22 頃に解除)
-      トリアージ: 2/12 LOW（ただし .npmrc の cooldown により install 自体が不可。npm に例外経路は無い）
+      トリアージ: 2/12 LOW（ただし cooldown により install 自体が不可。解除には minimumReleaseAgeExclude の記載が要る）
   - mermaid 11.16.1  [docs-viewer + scripts, 直接]  (公開 3 日 / 2026-08-12 00:09 JST に解除)
       トリアージ: 0/12 LOW（pnpm は minimumReleaseAgeExclude での版指定例外が選択肢）
 
@@ -208,36 +207,9 @@ disposition が `too-new` または `blocked` になった全エントリにつ�
 
 ### 5. 更新の適用
 
-承認 package を location ごとにまとめて適用する。`package-lock.json` は決して手編集せず、`npm` に再生成させる。
+承認 package を location ごとにまとめて適用する。`pnpm-lock.yaml` は決して手編集せず、`pnpm` に再生成させる。
 
-ここで追跡されるのは `package.json` + `package-lock.json` のみ（`node_modules/` は git-ignore、toolbox イメージで再構築）なので、`--package-lock-only` で **lockfile のみ** 更新する — レジストリから解決し、ツリー全体をダウンロードせず lockfile を書き直す。`package.json` の編集は自分で行い、lockfile は `npm` に再生成させる。`package-lock.json` は手編集しない。
-
-**npm — 直接依存**（その package.json の `dependencies`/`devDependencies` にある）: 宣言レンジをバンプして再生成。
-
-```sh
-# <dir>/package.json を編集: "<pkg>": "<new-range>"
-cd <dir>
-npm install --package-lock-only
-```
-
-再生成後、**lockfile が実際に pin した version を読み戻す**（`node -e '...node_modules/<pkg>...'`）。`^`/`~` レンジは一致する最新 patch へ解決するため、`^2.0.5` が昨日公開の `2.0.11` へ landing することがある — その解決版を Step 3 に対して再ゲートする。`too-new`（かつ `.npmrc` cooldown で抑えられないディレクトリ）なら、exact 承認版（`"<pkg>": "2.0.5"`）で pin して再生成し、最新版ではなく検証済み版へ landing させる。
-
-**npm — 推移的依存**（他 package が引き込む・直接依存でない）: `overrides` エントリでパッチ版へ強制する。ここでは **specifier の書き方** と **スコープ** の 2 点が要点。
-
-**specifier — exact pin ではなく同一 major の range フロアを優先する。** `overrides` エントリは権威的かつ *sticky* で、npm は書いたとおりを強制し、勝手に上へ流れることはない。したがって exact pin（`"<pkg>": "1.2.3"`）はその nested コピーを **凍結** する — 親が後に修正版を native に取り込んでも override は古い枝を保持し、さらに `1.2.3` 自体に後日 CVE が出れば override は今や脆弱な版を強制し続ける（pin 自体が脆弱性となり、しかも見落としやすい）。修正を *最低ライン* として強制しつつ、依存が親に追従して上へ動けるよう、**インストール済み major 内に留まるフロア** を書く:
-
-```jsonc
-// <dir>/package.json — スコープ付きフロア: 少なくともパッチ版・major 内でなお上へ流れる
-"overrides": {
-  "<vulnerable-parent>": { "<pkg>": ">=<fixed> <<next-major>" }   // 例 ">=1.2.3 <2"
-}
-// exact pin（"<pkg>": "<fixed>"）は、range 内のより新しい版が既知の壊れで留めざるを得ないときだけ
-// 素の（スコープ無し）"<pkg>": "..." は、全コピーを動かす必要があるときだけ
-```
-
-**スコープ — 問題の親配下に pin する**（global ではない）。そうすれば同一 package の **既に修正済み top-level コピーを downgrade せずに** 脆弱な nested コピーを直せる。素の global override は全コピーを指定 specifier へ強制する。
-
-その後 `cd <dir> && npm install --package-lock-only` で再生成。既存の `overrides` ブロックがあれば追記し、兄弟を潰さない。同一 package の承認済み変更は 1 回の編集 + 1 回の `npm install --package-lock-only` にまとめる。range フロアは npm が受理できる range 内の最新版に解決されるので、`.npmrc` `min-release-age` 下では修正版以上で最新の *枯れた* 版に着地する — 依存が動いても手動の再 pin は不要。フロアでも npm が `ETARGET ... date before <cutoff>` で拒否したら、修正版そのものがまだ cooldown 内（Step 3 `blocked`）— そのエントリを外し、当該 package は deferred のまま残して他を進める。
+ここで追跡されるのは `package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` のみ（`node_modules/` は git-ignore、toolbox イメージで再構築）なので、`--lockfile-only` で **lockfile だけ** を更新する。レジストリから解決し、ツリーを実体化せずに lockfile を書き換える。
 
 **pnpm — 直接依存**: `<dir>/package.json` の宣言版をバンプし、lockfile だけ再生成する。本リポジトリの pnpm パッケージはレンジではなく **exact 版**で pin しているので、その形を保つこと。
 
@@ -345,13 +317,13 @@ commit / stage / push はしない。ユーザーがツリーをレビューし 
 
 - **一括ではなく対象限定。** このスキルの本質は勧告で名指しされた package のみに触れること。実行中に無関係な古い依存に気づいても、言及はしてもここでバンプしない。
 - **聞きすぎない。** `clear` かつ非 major のパッチは、まさにユーザーがスキルを起動した目的 — 確認クリックなしで適用する。`AskUserQuestion` は本当に重い判断のためだけに取っておく: **major 跨ぎ**（breaking リスク）、**too-new** の opt-in、そして **pnpm の cooldown 例外**。それらは別途・明確に報告する。
-- **リポジトリの cooldown を尊重し、無効化しない。** `.npmrc` `min-release-age=N` と pnpm の `minimumReleaseAge` は意図的な supply-chain 制御。いずれかが修正版をブロックしたら、その版は `blocked`/deferred — 解除時期（`publish_date + N 日`）を報告し、窓を下げたり `--min-release-age=0` を渡したり `--before` を足したり `minimumReleaseAgeStrict` を `false` にしたり迂回したりしない。LOW のトリアージ・バンドもこれを変えない。トリアージが供給するのは証拠であって許可ではない。勧告の唯一の cooldown 内修正版が同日公開の新しい patch であることが多い。窓が明けるのを待つ、より古く既に枯れた修正版を選ぶ、あるいは（pnpm に限り）版指定の例外を足す — *いずれもユーザーが承認した場合のみ*。
+- **リポジトリの cooldown を尊重し、無効化しない。** pnpm の `minimumReleaseAge` は意図的な supply-chain 制御。いずれかが修正版をブロックしたら、その版は `blocked`/deferred — 解除時期（`publish_date + N 日`）を報告し、窓を下げたり `--min-release-age=0` を渡したり `--before` を足したり `minimumReleaseAgeStrict` を `false` にしたり迂回したりしない。LOW のトリアージ・バンドもこれを変えない。トリアージが供給するのは証拠であって許可ではない。勧告の唯一の cooldown 内修正版が同日公開の新しい patch であることが多い。窓が明けるのを待つ、より古く既に枯れた修正版を選ぶ、あるいは（pnpm に限り）版指定の例外を足す — *いずれもユーザーが承認した場合のみ*。
 - **版指定の例外は「窓を下げること」ではなく、その区別こそが要点である。** `minimumReleaseAgeExclude` が免除するのは 1 つの `pkg@version` だが、`minimumReleaseAge` を下げると全依存が一斉に、黙って、無期限に免除される。後者を前者の代替として提示してはならない。同様に、例外をパッケージ名だけへ広げてはならない。
 - **Vendoring。** `vendor/` があるなら、`go.mod` の変更は `go mod vendor` が `vendor/modules.txt` を再同期するまで完了しない。さもなくばビルドが `inconsistent vendoring` で落ちる。
 - **推移的 vs 直接。** 修正を含む互換な直接依存版が既にあるなら直接バンプが望ましい。親がまだ release していない純粋な推移的依存にはスコープ付き `overrides` を使う。スコープ付き override（`"parent": {"pkg": ">=<fixed> <<next-major>"}`）は、既に修正済みの top-level コピーを downgrade せずに脆弱な nested コピーを直す。各 package がどちらを使ったか報告に明記する。
-- **override は暫定的な負債 — フロアで書き、後で回収する。** `overrides` エントリは手動の sticky な pin で、npm は失効も通知もしないため、推移的依存への静かなキャップとして腐っていく。健全に保つ 2 つの規則: (1) exact version ではなく **同一 major のフロア**（`">=<fixed> <<next-major>"`）で書き、依存を凍結せずに修正を *最低ライン* として強制する — exact pin は range 内のより新しい版が既知の壊れで留めざるを得ないときだけに取っておく。(2) すべての override を **暫定** として扱う — **親** が修正版を native に引き込む release を出したら回収する: 親をバンプし、不要になった override を削除し、`npm install --package-lock-only`、そして `npm audit` を再実行して pin 無しでも修正が保たれることを確認する。腐った exact override は、pin した版自体が指摘されると脆弱性を再導入すらしうる。
+- **override は暫定的な負債 — フロアで書き、後で回収する。** `overrides` エントリは手動の sticky な pin で、リゾルバは失効も通知もしないため、推移的依存への静かなキャップとして腐っていく。健全に保つ 2 つの規則: (1) exact version ではなく **同一 major のフロア**（`">=<fixed> <<next-major>"`）で書き、依存を凍結せずに修正を *最低ライン* として強制する — exact pin は range 内のより新しい版が既知の壊れで留めざるを得ないときだけに取っておく。(2) すべての override を **暫定** として扱う — **親** が修正版を native に引き込む release を出したら回収する: 親をバンプし、不要になった override を削除し、`pnpm install --lockfile-only`、そして `pnpm audit` を再実行して pin 無しでも修正が保たれることを確認する。腐った exact override は、pin した版自体が指摘されると脆弱性を再導入すらしうる。
 - **複数 CVE の package。** 1 つの package が複数勧告行に出ることがある（例 `lodash` が 2 つの CVE 下）— すべてを満たす 1 回のバンプに dedup し、解消する全 CVE を挙げる。
-- **lockfile のみ。** `node_modules/` は追跡されない。`npm install --package-lock-only` / `pnpm install --lockfile-only` はフルインストールなしでマニフェストと lockfile を更新する。バンプは解決器に lockfile 内の兄弟コピーを再配置させ得る — diff は確認するが、同一 package の `4.17.x → 4.18.x` 的な dedup churn の増加は想定内で無害。
+- **lockfile のみ。** `node_modules/` は追跡されない。`pnpm install --lockfile-only` はフルインストールなしでマニフェストと lockfile を更新する。バンプは解決器に lockfile 内の兄弟コピーを再配置させ得る — diff は確認するが、同一 package の `4.17.x → 4.18.x` 的な dedup churn の増加は想定内で無害。
 - **同じ package が複数の lockfile に載ることがある。** 勧告が届くすべての所在にパッチを当て、理由が無い限り版を揃える。2 つの pnpm パッケージは意図的に設定を揃えているので、片方だけ直すのは慎重さではなく drift である。
 - **冪等性。** 適用成功後の再実行は、package が既に修正版であること（audit / `govulncheck` clean）を示し、書き込みをしない。
 - スキルは決して自動 push しない。ユーザーがレビューし、手動でコミット・push する。
@@ -361,13 +333,12 @@ commit / stage / push はしない。ユーザーがツリーをレビューし 
 完了報告の前に確認:
 
 - [ ] 勧告リストを（package, current, 修正版候補, CVE/GHSA, ecosystem）にパースした
-- [ ] `<MIN_AGE_DAYS>` を **lockfile ごとに** 宣言元から解決した（`.npmrc min-release-age` / `pnpm-workspace.yaml minimumReleaseAge` は分なので ÷1440。それ以外は `7` 既定）。既存の `minimumReleaseAgeExclude` を読んだ。質問は真に曖昧なときだけ
-- [ ] 各 package を、それを保持する **すべての** lockfile（`package-lock.json` / `pnpm-lock.yaml` / `go.mod`）で特定し direct vs transitive/indirect を分類、not-present を提示した
+- [ ] `<MIN_AGE_DAYS>` を **lockfile ごとに** 宣言元から解決した（`pnpm-workspace.yaml minimumReleaseAge` は分なので ÷1440。それ以外は `7` 既定）。既存の `minimumReleaseAgeExclude` を読んだ。質問は真に曖昧なときだけ
+- [ ] 各 package を、それを保持する **すべての** lockfile（`pnpm-lock.yaml` / `go.mod`）で特定し direct vs transitive/indirect を分類、not-present を提示した
 - [ ] 修正版を同一 major の最小として選び、major 跨ぎを breaking の可能性としてフラグ、downgrade ガードを適用した
 - [ ] 公開日を取得し disposition を設定した（clear / too-new / blocked-by-cooldown）
 - [ ] `too-new` / `blocked` の全エントリを `/supply-chain-triage` でトリアージした（baseline = lockfile の現行版）。バンドをサマリと `AskUserQuestion` の選択肢説明へ引き継いだ
 - [ ] 日本語サマリを表示し、**clear 非 major は確認なしで適用**、`AskUserQuestion` は major-bump / too-new / pnpm 例外のみに使用、blocked を独断で適用していない
-- [ ] npm 直接は `npm install --package-lock-only`、推移的は **スコープ付き同一 major フロア** の `overrides`（`">=<fixed> <<next-major>"`。exact pin は既知の壊れた新版のときだけ）+ `npm install --package-lock-only`、lockfile は手編集しない
 - [ ] pnpm 直接は `package.json` の exact 版 + `pnpm install --lockfile-only`、推移的は `pnpm-workspace.yaml` の解決版域 `overrides`、lockfile は手編集しない
 - [ ] 承認された `minimumReleaseAgeExclude` は `pkg@version` 形式で削除日 + advisory + 動作箇所を添えて書き、影響する **すべての** パッケージに入れ、窓の設定自体には触れていない
 - [ ] 追加した override を報告で暫定と明示した（親が修正版を native に出したら回収 — 親バンプ・override 削除・再 audit）
