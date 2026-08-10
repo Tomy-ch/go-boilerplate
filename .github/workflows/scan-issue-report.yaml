@@ -1,6 +1,9 @@
 name: Scan Issue Report
 
 on:
+  # zizmor: ignore[dangerous-triggers]
+  # This privileged run streams known report files only; it never checks out or executes
+  # content from the completed workflow.
   workflow_run:
     workflows:
       - CodeQL Scan
