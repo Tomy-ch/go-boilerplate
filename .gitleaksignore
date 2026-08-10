@@ -1,17 +1,19 @@
 # gitleaks が無視する既知・許容済みフィンガープリントの一覧。
 # https://github.com/gitleaks/gitleaks#gitleaksignore
 #
-# mock-auth-server の固定 RSA 署名鍵は、ローカル開発専用の疑似 OIDC provider が JWT 署名に使う
-# 意図的なサンプル鍵で秘密情報ではない（発行 Token の再現性のため固定しリポジトリで管理する）。
+# boilerplate-only:begin
+# ローカル開発用 fixture の既知検出だけを許可する完全 fingerprint。
 mock-auth-server/keys/mock-key-1.pem:private-key:1
 mock-auth-server/keys/mock-key-2.pem:private-key:1
 mock-auth-server/keys/mock-key-retired.pem:private-key:1
-# 同じ固定署名鍵の公開部を Go 側ローテーション統合テストが //go:embed で取り込むためのコピー。
+# 履歴スキャンの fingerprint はコミット SHA と docker/ 接頭辞を含む。
+4eb9ea41915735f7d4354a09c28afe0422e404ab:docker-compose.yaml:generic-api-key:133
+daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-2.pem:private-key:1
+daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-retired.pem:private-key:1
+a77359f8d20ba3797acf260ecfc9c789e34f9e7d:docker/mock-auth-server/keys/mock-key-1.pem:private-key:1
 internal/integration/testdata/keys/mock-key-1.pem:private-key:1
 internal/integration/testdata/keys/mock-key-2.pem:private-key:1
-# ローカル開発用 Garage（S3 互換）の固定ダミー資格情報。実秘密ではなく make serve の
-# object storage バックエンド接続用にリポジトリで固定管理する（Garage 形式: rpc_secret=64hex /
-# secret access key=64hex）。テストは gofakes3 を使うため本値は本番・CI に流れない。
 docker/garage/garage.toml:generic-api-key:12
 docker-compose.yaml:generic-api-key:136
 env/.env:generic-api-key:64
+# boilerplate-only:end
