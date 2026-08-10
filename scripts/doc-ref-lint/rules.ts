@@ -3,7 +3,8 @@ import path from "node:path";
 export type Finding = { file: string; message: string };
 export type ADRIndex = ReadonlyMap<string, string>;
 
-export const GENERATED_PATH = /(^|\/)(docs\/(openapi|coverage|db-schema|godoc|portal)\/|.*\.(gen\.go|gen\.sql|sql\.go|gen\.yaml)$)/;
+const GENERATED_DOC_PREFIXES = ["docs/openapi/", "docs/coverage/", "docs/db-schema/", "docs/godoc/", "docs/portal/"];
+const GENERATED_SUFFIXES = [".gen.go", ".gen.sql", ".sql.go", ".gen.yaml"];
 export const ADR_FILE = /^docs\/adr\/(\d{4})-(.+)\.md$/;
 const REFERENCE = /ADR-(\d{4})(?:\s*\(([-a-z0-9]+)\))?/g;
 
@@ -11,8 +12,12 @@ export const TRANSLATION_EXCLUSIONS = [
   { prefix: "docs/spec/", reason: "feature specifications are intentionally English-only" },
 ] as const;
 
+function isGenerated(file: string): boolean {
+  return GENERATED_DOC_PREFIXES.some((prefix) => file.startsWith(prefix)) || GENERATED_SUFFIXES.some((suffix) => file.endsWith(suffix));
+}
+
 export function isEligible(file: string): boolean {
-  return /\.(md|go|sql|ya?ml|[cm]?js|ts)$/.test(file) && !file.endsWith(".test.ts") && !GENERATED_PATH.test(file) && file !== "AGENTS.md";
+  return /\.(md|go|sql|ya?ml|[cm]?js|ts)$/.test(file) && !file.endsWith(".test.ts") && !isGenerated(file) && file !== "AGENTS.md";
 }
 
 export function adrIndex(files: readonly string[]): Map<string, string> {
@@ -37,7 +42,7 @@ export function checkReferences(file: string, source: string, adrs: ADRIndex): F
 }
 
 export function expectedTranslation(file: string): string | null {
-  if (!file.startsWith("docs/") || !file.endsWith(".md") || file.startsWith("docs/ja/") || file.startsWith("docs/adr/") || GENERATED_PATH.test(file) || translationExclusion(file) !== null) return null;
+  if (!file.startsWith("docs/") || !file.endsWith(".md") || file.startsWith("docs/ja/") || file.startsWith("docs/adr/") || isGenerated(file) || translationExclusion(file) !== null) return null;
   return path.join("docs/ja", path.relative("docs", path.dirname(file)), `${path.basename(file, ".md")}.ja.md`);
 }
 

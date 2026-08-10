@@ -25,9 +25,11 @@ for (const file of files.filter(isEligible).filter((file) => !file.startsWith("d
 }
 for (const file of files.filter((file) => ADR_FILE.test(file))) {
   const number = path.basename(file).slice(0, 4);
-  if (!new RegExp(`^# ADR-${number}\\b`, "m").test(fs.readFileSync(path.join(root, file), "utf8"))) findings.push(`${file}: ADR filename and H1 disagree`);
+  if (!new RegExp(String.raw`^# ADR-${number}\b`, "m").test(fs.readFileSync(path.join(root, file), "utf8"))) findings.push(`${file}: ADR filename and H1 disagree`);
 }
 for (const file of files.filter((file) => /^(internal|pkg)\/.*\/README\.md$/.test(file))) if (!fs.existsSync(path.join(root, path.dirname(file), "README.ja.md"))) findings.push(`${file}: missing README.ja.md`);
-findings.push(...checkTranslations(files).map((finding) => `${finding.file}: ${finding.message}`));
-findings.push(...checkTranslationExclusions(files).map((finding) => `${finding.file}: ${finding.message}`));
+findings.push(
+  ...checkTranslations(files).map((finding) => `${finding.file}: ${finding.message}`),
+  ...checkTranslationExclusions(files).map((finding) => `${finding.file}: ${finding.message}`),
+);
 if (findings.length) { console.error(findings.map((item) => `✘ doc-ref-lint: ${item}`).join("\n")); process.exit(1); }

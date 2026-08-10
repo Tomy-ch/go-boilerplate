@@ -133,7 +133,7 @@ RUN pnpm install --frozen-lockfile \
 # lockfile どおりの依存を保持する。compose の匿名ボリュームが host 側の node_modules を隠す。
 WORKDIR /app/mock-auth-server
 COPY mock-auth-server/package.json mock-auth-server/package-lock.json ./
-RUN npm ci \
+RUN npm ci --ignore-scripts \
     && npm cache clean --force
 
 # docs-viewer の依存を in-tree（/app/docs-viewer/node_modules）へ install する。scripts とは
