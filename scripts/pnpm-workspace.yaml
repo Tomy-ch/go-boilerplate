@@ -57,4 +57,5 @@ overrides:
   "lodash@<4.18.0": 4.18.0
   # authority の backslash を経路区切りと読む実装差（CVE-2026-18446）を塞ぐ。
   "fast-uri@<3.1.5": ">=3.1.5 <4"
-  "dompurify@<3.4.12": ">=3.4.12 <4"
+  # IN_PLACE hook 除去後に切り離された部分木が実行可能なまま残る（GHSA-55q2-fjhq-7xh7）。
+  "dompurify@<3.4.13": ">=3.4.13 <4"
