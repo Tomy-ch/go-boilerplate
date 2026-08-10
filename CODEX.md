@@ -12,11 +12,19 @@ authoritative unless this file states a Codex-specific execution detail.
 - Treat a user instruction to resolve a remote conflict as authorization to fetch, merge the PR
   base, resolve the resulting conflicts, verify the result, commit the merge, and push the
   feature branch. Do not stop to request confirmation for the already-requested `git push`.
+- For a verified, task-scoped change on an existing feature PR branch, stage the change, create
+  the required commit, and perform an ordinary push without asking again. Inspect `git status`
+  and the diff first to exclude unrelated work; use `git add .` when the worktree contains only
+  the task's changes, otherwise stage the task-scoped paths explicitly.
 
 ## Scope and confirmation
 
-- Execute the concrete operation the user requested. Do not ask for confirmation of a command
-  that is a normal, non-destructive step of that requested operation.
+- A user request to implement, change, fix, or configure this repository authorizes every
+  non-destructive edit required anywhere inside the repository. Do not ask whether an individual
+  file may be changed.
+- Do not ask for confirmation of normal implementation commands, including `git add`, `git
+  commit`, and an ordinary `git push` to the current feature branch. Check the worktree to avoid
+  including unrelated changes, but perform that check without pausing for confirmation.
 - Do not broaden the task: configuration changes for Codex belong under `.codex/` or this file.
   Do not modify `AGENTS.md` for Codex-only behavior unless the user explicitly asks.
 - Before changing behavior outside the user's stated scope, report the consequence and ask for
