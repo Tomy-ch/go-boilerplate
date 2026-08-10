@@ -77,3 +77,7 @@
 ".github/actions/setup-postgres/action.yaml" = "2026-08-10"
 "docker-compose.attach.yaml" = "2026-08-10"
 "docker/mock-auth-server/Dockerfile" = "2026-08-11"
+".github/workflows/code-ql.yaml" = "2026-08-11"
+".github/workflows/scorecard.yaml" = "2026-08-11"
+".github/workflows/go-test.yaml" = "2026-08-11"
+".github/actions-pin.toml" = "2026-08-11"

@@ -57,8 +57,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
-  actions: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
@@ -67,10 +65,15 @@ concurrency:
 jobs:
   codeql:
     runs-on: ubuntu-latest
-    # Raised from 10 with the matrix: the legs run in parallel, but security-extended
-    # is a larger suite than the default one and javascript-typescript has three
-    # workspaces to extract.
+    # The legs run in parallel, but security-extended is a larger suite than the
+    # default one and javascript-typescript has three workspaces to extract.
     timeout-minutes: 30
+    # Scoped to this job rather than the workflow: notify-failure only forwards a
+    # result to Slack and has no dashboard to write to.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     strategy:
       # One language failing must not cancel the others: their SARIF uploads are
       # independent, and a cancelled leg leaves its category's alerts stale.
