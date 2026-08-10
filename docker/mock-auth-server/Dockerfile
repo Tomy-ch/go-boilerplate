@@ -10,6 +10,10 @@ RUN apk add --no-cache ca-certificates
 ARG MISE_VERSION
 # 上流は install スクリプトの checksum を公開しないため、この固定値を ADD に照合させてから
 # 実行する。上流がスクリプトを更新すると取得の時点で落ちる。追随するときは差分を見て値を更新する。
+#
+# CKV_DOCKER_4 が ADD を避けよと言うのは、暗黙の展開とリモート取得が検証を伴わないため。
+# --checksum はその検証そのものであり、COPY はリモート URL を取れないので代替にならない。
+#checkov:skip=CKV_DOCKER_4:--checksum 付きの ADD が検証付き取得の形。COPY はリモートを扱えない
 ADD --checksum=sha256:b11ef4cdc9bb3d8acdb95ad1cc2905b76d47936e9b8d9e76faded4d44f39f711 \
     https://mise.run /tmp/mise-install.sh
 
