@@ -1,6 +1,5 @@
-# ランタイム / ツールのバージョンを一元管理する SSOT。
-# mise の役割はバージョン宣言のみ。ツールの実行は docker tool-runner 経由で行い、
-# `mise exec` での実行には依存しない。
+# ランタイム / ツールのバージョンを一元管理する SSOT。ここが持つのはバージョンの宣言だけで、
+# ツールをどう実行するかは docs/rules.md の Toolchain Execution Rules が持つ。
 #
 # go / node / python の version は `make sync-versions` が go.mod・各 Dockerfile の
 # FROM タグ・関連 README へ伝播する。短い名前で解決できないツールは backend を明示する。
@@ -10,9 +9,8 @@
 min_version = "2026.6.0"
 
 [tools]
-# 言語ランタイム。make tool-cooldown-* の cooldown 検査は対象外にしている。ランタイム本体が
-# 汚染される事態は供給網の 1 リンクではなく言語の信頼モデルそのものが崩れたときで、冷却期間で
-# 守れるものが無い。検査の穴ではなく受容したリスクである。昇格の判断は LTS を待つ方針が担う。
+# 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0086）、
+# 昇格の判断は LTS を待つ方針が担う。
 go = "1.26.5"
 node = "24.18.0"
 python = "3.14.6"
@@ -40,9 +38,11 @@ gitleaks = "8.30.1"
 # 最新は v0.116.1 だが公開 11 日でクールダウン 14 日に満たないため 1 つ前を採る。
 "aqua:anchore/grype" = "0.116.0"
 # 最新は v2.1.0 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
-# ライセンスは Elastic License 2.0 で OSI 承認の OSS ではない（CI 内の自己検査は制限に触れない）。
 "aqua:Bearer/bearer" = "2.0.2"
 "aqua:trufflesecurity/trufflehog" = "3.95.9"
+# v0.4.15 が最新。以降リリースが無いだけで、これがクールダウンを満たす最新版である。
+"aqua:goodwithtech/dockle" = "0.4.15"
+"aqua:sonatype-nexus-community/nancy" = "2.1.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.3.0"
 "go:github.com/cweill/gotests/gotests" = "1.9.0"
 "go:golang.org/x/tools/gopls" = "0.22.0"
@@ -70,6 +70,10 @@ gitleaks = "8.30.1"
 
 # Python ベース
 uv = "0.11.27"
+# Python 実装だが実行環境を同梱した単体バイナリで配布されるため、python/*.in ではなく
+# aqua backend で入れる。
+# 最新は 3.3.9 だが公開 7 日でクールダウン 14 日に満たないため 1 つ前を採る。
+"aqua:bridgecrewio/checkov" = "3.3.8"
 
 # Docker イメージのバージョン。[tools] は mise の解決対象専用のため [env] で宣言する。
 [env]

@@ -1,0 +1,186 @@
+name: Checkov Scan
+
+# Report-only. The Dockerfile verdict is trivy-config.yaml's, and the workflow-definition
+# verdict is zizmor.yaml's — see Overlapping surfaces in README.md.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'docker/**/Dockerfile'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'docker/**/Dockerfile'
+  schedule:
+    # Monday 17:00 UTC. A rule set the scanner ships can grow without the files changing.
+    - cron: '0 17 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checkov:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          # cache: false — this job holds security-events: write, so it must not
+          # restore a tool cache that a less privileged workflow could have written.
+          cache: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml (SSOT) — never duplicated here.
+      - name: Install checkov
+        run: mise install aqua:bridgecrewio/checkov
+
+      # The framework list is the scan's scope: every other framework checkov ships either
+      # has no asset here or reads a surface another scanner owns. --soft-fail is what keeps
+      # a finding from failing the job.
+      - name: Checkov scan
+        run: |
+          checkov -d . \
+            --framework github_actions dockerfile \
+            --skip-path vendor \
+            --skip-path node_modules \
+            --compact \
+            --quiet \
+            --soft-fail \
+            -o json -o sarif \
+            --output-file-path checkov-out
+        shell: bash
+
+      - name: Create Checkov summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          # checkov writes one result object per framework, and wraps them in an array only
+          # when more than one ran. Normalising first keeps the count correct if the
+          # framework list above ever shrinks to one.
+          jq -s '[.[] | if type == "array" then .[] else . end]' \
+            checkov-out/results_json.json > checkov-normalized.json
+
+          COUNT=$(jq '[.[] | .summary.failed] | add // 0' checkov-normalized.json)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Checkov: PASS (no failed check)" >> "$GITHUB_OUTPUT"
+            echo "No failed check." > checkov-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Checkov: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            .[]
+            | .check_type as $type
+            | (.results.failed_checks // [])[]
+            | "- [\($type)] \(.check_id) `\(.file_path)`:\(.file_line_range[0]) — \(.check_name)"
+          ' checkov-normalized.json > checkov-summary.md
+        shell: bash
+
+      - name: Upload Checkov report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: checkov
+          path: |
+            checkov-out
+            checkov-summary.md
+
+      - name: Comment Checkov result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- checkov-result -->'
+          status: "${{ steps.summarize.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Checkov Scan: CUT OFF (no result produced)' }}"
+          body-file: checkov-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload Checkov SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: checkov-out/results_sarif.sarif
+          category: checkov
+
+  # A scheduled failure has no author watching it, so it is pushed to a human.
+  # cancelled counts too: a job killed by a timeout or a runner fault reports
+  # cancelled rather than failure.
+  notify-failure:
+    needs: checkov
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.checkov.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: checkov
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

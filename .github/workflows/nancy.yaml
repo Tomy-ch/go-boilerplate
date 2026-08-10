@@ -1,0 +1,335 @@
+name: Nancy Scan
+
+# Report-only, and it writes no SARIF: nancy emits json / text / csv only, so nothing
+# reaches code scanning until a converter exists. The blocking verdict on a dependency
+# state stays with the release gates.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/nancy.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+  pull_request:
+    paths:
+      - '.github/workflows/nancy.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+  schedule:
+    # Monday 18:00 UTC. A newly published advisory turns unchanged code into a finding.
+    - cron: '0 18 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The credential check is a job of its own because the `secrets` context is not available
+  # to a job-level `if:`, and a missing token has to leave the run green.
+  # A pull request from a fork never receives repository secrets, and this repository is a
+  # public template whose forks are the point.
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      configured: ${{ steps.token.outputs.configured }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Resolve Sonatype Guide credentials
+        id: token
+        env:
+          GUIDE_TOKEN: ${{ secrets.GUIDE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${GUIDE_TOKEN:-}" ]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::GUIDE_TOKEN is not configured, so the Nancy scan is skipped. Register the secret to enable it."
+          fi
+        shell: bash
+
+  nancy:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      title: ${{ steps.summarize.outputs.title }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            guide.sonatype.com:443
+            ossindex.sonatype.org:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.0
+          install: false
+          cache: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml (SSOT) — never duplicated here.
+      - name: Install nancy
+        run: mise install aqua:sonatype-nexus-community/nancy
+
+      # -mod=mod because vendor/ is not committed. --skip-update-check stops nancy from
+      # reaching a host for a version answer the pin in mise.toml makes unusable.
+      #
+      # nancy exits non-zero for two unrelated reasons — it found something, and it could not
+      # reach Sonatype Guide — so the exit code alone cannot be acted on and is absorbed. What
+      # separates them is the report: a failed call writes an empty file, so the `jq -e` is
+      # what turns that case back into a failed step. Without it the summary below reads the
+      # empty file as a non-zero count and posts a finding that nothing detected.
+      - name: Nancy scan
+        env:
+          GUIDE_TOKEN: ${{ secrets.GUIDE_TOKEN }}
+        run: |
+          set -euo pipefail
+          go list -mod=mod -json -deps ./... > go-deps.json
+          nancy sleuth --skip-update-check -o json < go-deps.json > nancy.json || true
+          jq -e . nancy.json > /dev/null
+        shell: bash
+
+      - name: Create Nancy summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '.num_vulnerable // ((.vulnerable // []) | length)' nancy.json)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Nancy: PASS (no vulnerabilities)" >> "$GITHUB_OUTPUT"
+            echo "No vulnerabilities found." > nancy-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Nancy: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            (.vulnerable // [])[]
+            | .Coordinates as $coord
+            | (.Vulnerabilities // [])[]
+            | "- [\(.CvssScore // "?")] \($coord) — \(.Title) (\(.Id))"
+          ' nancy.json > nancy-summary.md
+        shell: bash
+
+      - name: Upload Nancy report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: nancy
+          path: |
+            nancy.json
+            nancy-summary.md
+
+  # Separate from the scan because the scan holds GUIDE_TOKEN, and a job with a secret in
+  # scope must not reach upsert-pr-comment. It runs even when the scan failed — a missing
+  # comment reads the same as a clean scan.
+  report:
+    needs:
+      - preflight
+      - nancy
+    if: ${{ always() && needs.preflight.outputs.configured == 'true' && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      # The composite action below is read from the workspace, so the repository has to be
+      # present even though nothing here scans it.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download Nancy report
+        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: nancy
+          path: reports
+
+      - name: Comment Nancy result on PR
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- nancy-result -->'
+          status: "${{ needs.nancy.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ needs.nancy.outputs.title || '## ⚠️ Nancy Scan: CUT OFF (no result produced)' }}"
+          body-file: reports/nancy-summary.md
+          details-summary: '📄 Summary'
+
+  # Posts under the same marker a result would use, so the notice and a verdict can never
+  # both stand on the pull request.
+  unconfigured-notice:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.configured == 'false' && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Describe the gap
+        id: gap
+        run: |
+          set -euo pipefail
+          echo "title=## ⚠️ Nancy: NOT RUN (GUIDE_TOKEN is not configured)" >> "$GITHUB_OUTPUT"
+          cat > nancy-unconfigured.md <<'EOF'
+          `GUIDE_TOKEN` is not registered for this repository, so no scan ran and this pull
+          request carries no Nancy verdict. The run is green because a missing credential is
+          a setup gap rather than a scan result — it is not evidence that the dependencies
+          are clean. A free token is issued by Sonatype Guide.
+
+          A pull request from a fork always lands here: repository secrets are never
+          exposed to one.
+
+          The other dependency scanners need no credential and still ran.
+          EOF
+        shell: bash
+
+      - name: Comment the gap on PR
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- nancy-result -->'
+          status: unconfigured
+          title: "${{ steps.gap.outputs.title || '## ⚠️ Nancy: CUT OFF (no result produced)' }}"
+          body-file: nancy-unconfigured.md
+
+  # A scheduled failure has no author watching it, so it is pushed to a human. cancelled
+  # counts too: a job killed by a timeout or a runner fault reports that rather than failure.
+  # A skipped scan is neither — that is the unconfigured-token path, which leaves the run
+  # green.
+  notify-failure:
+    needs:
+      - preflight
+      - nancy
+    if: ${{ always() && github.event_name == 'schedule' && needs.preflight.outputs.configured == 'true' && contains(fromJSON('["failure", "cancelled"]'), needs.nancy.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: nancy
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

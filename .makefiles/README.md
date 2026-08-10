@@ -267,6 +267,7 @@ This group runs local security scans (Trivy dependency / secret scan, gitleaks s
 | `make trivy-secret-ci` | Runs `trivy fs --scanners secret` directly. | CI target. The vulnerability targets pass `--scanners vuln` explicitly, so the secret scanner is a check of its own rather than a second view of theirs. No severity threshold; accepted detections are pinned per path in `.trivyignore.yaml`. Deliberately overlaps gitleaks: Trivy's curated rules false-positive less, gitleaks' regex / entropy net catches more. |
 | `make trivy-image-ci` | Scans a built image for vulnerabilities. | CI target. Pass the image with `TRIVY_IMAGE=`. |
 | `make trivy-image-gate-ci` | Fails on fixable `CRITICAL` / `HIGH` in a built image. | CI target. Pass the image with `TRIVY_IMAGE=`. |
+| `make trivy-sbom-ci` | Matches a pre-generated SBOM against the vulnerability database. | CI target. Pass the file with `TRIVY_SBOM_FILE=`. |
 | `make secret-scan` | Scans the working tree for secrets with gitleaks. | Invokes `make secret-scan-ci` inside the `go_tool_runner` container. |
 | `make secret-scan-ci` | Runs `gitleaks dir . --redact` directly. | CI target. Generated files are allowlisted in `.gitleaks.toml`. |
 | `make secret-scan-history-ci` | Runs `gitleaks git . --redact` directly. | CI target, used by the weekly run. `dir` only sees the working tree, so it misses a secret that was committed and later deleted; `git` walks the whole history. |

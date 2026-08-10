@@ -1,23 +1,5 @@
 name: SonarQube Cloud Scan
 
-# SonarQube Cloud over the first-party tree, for the rule families the other scanners do not
-# carry: maintainability and reliability alongside security, from Sonar's own taxonomy. The
-# analysis runs on Sonar's servers, so the source leaves the runner — which weighs less for
-# a public repository than it would for a private one.
-#
-# Sonar's quality gate is enforced here: the job fails when the gate reports anything but
-# OK. The issue list it also produces stays report-only, and the blocking verdict on the
-# rules Opengrep and gosec own stays with them.
-# Scanning and reporting are separate jobs because `make actions-lint` refuses a job that
-# both holds a secret and uses ./.github/actions/upsert-pr-comment — masking does not reach
-# a file the action tees into a comment body, so a raw token could be published.
-#
-# Unlike every other scanner here this one produces no SARIF: the action wraps the Sonar
-# Scanner CLI, which uploads its analysis and returns nothing local. The conversion below
-# is what gets the findings into code scanning — wait for the server-side analysis, read the
-# issues back over the Web API, build the SARIF. It lives in this file rather than in
-# scripts/ so that removing Sonar stays a single deletion.
-
 on:
   push:
     branches:
@@ -45,8 +27,6 @@ on:
       - '**/*.mjs'
       - '**/*.jsx'
   schedule:
-    # Monday 19:00 UTC — the last slot in the rotation. Sonar's rule set is updated on their
-    # side, so an unchanged tree can produce a different result from one week to the next.
     - cron: '0 19 * * 1'
   workflow_dispatch:
 
@@ -58,10 +38,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The credential check is a job of its own because the `secrets` context is not available
-  # to a job-level `if:`, and a missing token has to leave the run green.
-  # A pull request from a fork never receives repository secrets, and this repository is a
-  # public template whose forks are the point.
   preflight:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -102,9 +78,31 @@ jobs:
     needs: preflight
     if: ${{ needs.preflight.outputs.configured == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     permissions:
       contents: read
+    env:
+      ENV: ci
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
+    services:
+      database:
+        image: postgres:18.4-trixie
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     outputs:
       count: ${{ steps.summarize.outputs.count }}
       detail: ${{ steps.detail.outputs.markdown }}
@@ -147,6 +145,30 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            apt.postgresql.org:443
+            apt.postgresql.org:80
+            www.postgresql.org:443
+            archive.ubuntu.com:80
+            azure.archive.ubuntu.com:80
+            security.ubuntu.com:80
+            esm.ubuntu.com:443
+            motd.ubuntu.com:443
             sonarcloud.io:443
             *.sonarcloud.io:443
             binaries.sonarsource.com:443
@@ -162,6 +184,22 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup DB
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
+
+      - name: Materialize ci env for embedding
+        run: make materialize-env
       - name: Setup mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
@@ -186,6 +224,19 @@ jobs:
 
       - name: Generate TypeScript coverage
         run: pnpm --dir scripts run test
+
+      - name: Rebase the lcov paths onto the repository root
+        run: sed -i 's|^SF:|SF:scripts/|' scripts/coverage/lcov.info
+        shell: bash
+
+      - name: Initialize Database Table
+        run: go run ./cmd/ migrate-up --database "$DB"
+
+      - name: Seed Database
+        run: go run ./cmd/ db-seed --database "$DB"
+
+      - name: Run Go tests with coverage
+        run: make test-cover-ci
 
       - name: SonarQube Cloud scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
