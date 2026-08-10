@@ -44,11 +44,14 @@ export function updateAbsoluteFile(
   transformer: Transformer,
   dryRun: boolean,
 ): string | null {
-  if (!fs.existsSync(filePath)) {
+  // 存在確認と読み出しを分けると、その間に消えたファイルで例外になる。読めなければ不在として扱う。
+  let original: string;
+  try {
+    original = fs.readFileSync(filePath, "utf8");
+  } catch {
     return null;
   }
 
-  const original = fs.readFileSync(filePath, "utf8");
   const updated = transformer(original);
 
   if (updated === null || updated === original) {

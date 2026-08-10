@@ -88,9 +88,15 @@ function stripDeclarations(): void {
   for (const relativePath of LOCALIZATION_MARKER_FILES) {
     const absolute = path.join(ROOT_DIR, relativePath);
 
-    if (!fs.existsSync(absolute)) continue;
+    // 存在確認と読み出しを分けると、その間に消えたファイルで例外になる。読めなければ対象外とする。
+    let source: string;
+    try {
+      source = fs.readFileSync(absolute, "utf8");
+    } catch {
+      continue;
+    }
 
-    const result = stripMarkers(fs.readFileSync(absolute, "utf8"), LOCALIZATION_MARKER);
+    const result = stripMarkers(source, LOCALIZATION_MARKER);
 
     if (result.removed === 0) continue;
 
