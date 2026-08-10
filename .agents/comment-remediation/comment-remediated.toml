@@ -34,6 +34,8 @@
 ".codex/rules/github.rules" = "2026-08-10"
 ".codex/rules/local-safety.rules" = "2026-08-10"
 ".codex/rules/make-safety.rules" = "2026-08-10"
+".codex/hooks.json" = "2026-08-10"
+".codex/hooks/load-codex-instructions.sh" = "2026-08-10"
 ".codex/skills/commit/SKILL.md" = "2026-08-10"
 ".github/egress.toml" = "2026-08-09"
 ".github/workflows/README.ja.md" = "2026-08-09"
