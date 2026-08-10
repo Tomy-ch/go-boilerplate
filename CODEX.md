@@ -56,3 +56,14 @@ authoritative unless this file states a Codex-specific execution detail.
   destroy shared stashes, or perform destructive DB/filesystem operations without explicit
   authorization or a governing repository policy. Do not modify another agent's worktree or branch
   unless the task explicitly requires it.
+
+## Worktree and release synchronization
+
+- Before investigating or changing an implementation request, fetch `origin`, resolve the latest
+  numeric `release/*` branch, and update the local release branch to that remote state. Treat this
+  as the work's required starting point, not as a later synchronization step.
+- Never implement directly on a release branch. Create the task feature branch from the updated
+  release branch.
+- Perform every implementation task in a Git worktree beneath `./codex/worktree/`. Do not use the
+  primary checkout as the implementation location. When a task already has an assigned worktree,
+  continue there rather than creating or modifying another checkout.
