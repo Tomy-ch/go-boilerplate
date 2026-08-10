@@ -23,16 +23,8 @@ func Test_extractFromCarrier(t *testing.T) {
 		t.Run("attrs の traceparent から trace context を継続する", func(t *testing.T) {
 			t.Parallel()
 
-			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
-			require.NoError(t, err)
-			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
-			require.NoError(t, err)
-			sc := trace.NewSpanContext(trace.SpanContextConfig{
-				TraceID:    traceID,
-				SpanID:     spanID,
-				TraceFlags: trace.FlagsSampled,
-				Remote:     true,
-			})
+			sc := testSampledSpanContext(true)
+			traceID := sc.TraceID()
 			// producer 側が attrs に traceparent を載せた状態を作る
 			carrier := propagation.MapCarrier{}
 			prop.Inject(trace.ContextWithSpanContext(context.Background(), sc), carrier)
@@ -91,15 +83,8 @@ func Test_injectToCarrier(t *testing.T) {
 		t.Run("ctx の trace context を attrs へ traceparent として書き込む", func(t *testing.T) {
 			t.Parallel()
 
-			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
-			require.NoError(t, err)
-			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
-			require.NoError(t, err)
-			sc := trace.NewSpanContext(trace.SpanContextConfig{
-				TraceID:    traceID,
-				SpanID:     spanID,
-				TraceFlags: trace.FlagsSampled,
-			})
+			sc := testSampledSpanContext(false)
+			traceID := sc.TraceID()
 			ctx := trace.ContextWithSpanContext(context.Background(), sc)
 
 			attrs := map[string]string{}
@@ -132,16 +117,9 @@ func TestExtractFromCarrier(t *testing.T) {
 			otel.SetTextMapPropagator(propagation.TraceContext{})
 			t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
 
-			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
-			require.NoError(t, err)
-			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
-			require.NoError(t, err)
-			sc := trace.NewSpanContext(trace.SpanContextConfig{
-				TraceID:    traceID,
-				SpanID:     spanID,
-				TraceFlags: trace.FlagsSampled,
-				Remote:     true,
-			})
+			sc := testSampledSpanContext(true)
+			traceID := sc.TraceID()
+			spanID := sc.SpanID()
 			carrier := propagation.MapCarrier{}
 			propagation.TraceContext{}.Inject(trace.ContextWithSpanContext(context.Background(), sc), carrier)
 
@@ -170,15 +148,7 @@ func TestInjectTraceContextToCarrier(t *testing.T) {
 		t.Run("trace context を inject しつつ baggage は転送しない", func(t *testing.T) {
 			// span が無いと traceparent も書かれず NotContains が疑似陽性になるため、
 			// span 有りで traceparent が書かれた上で baggage だけが落ちることを検証する。
-			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
-			require.NoError(t, err)
-			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
-			require.NoError(t, err)
-			sc := trace.NewSpanContext(trace.SpanContextConfig{
-				TraceID:    traceID,
-				SpanID:     spanID,
-				TraceFlags: trace.FlagsSampled,
-			})
+			sc := testSampledSpanContext(false)
 			ctx := trace.ContextWithSpanContext(context.Background(), sc)
 
 			member, err := baggage.NewMember("tenant", "acme")
@@ -201,15 +171,7 @@ func TestInjectTraceContextToCarrier(t *testing.T) {
 			otel.SetTextMapPropagator(propagation.Baggage{})
 			t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
 
-			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
-			require.NoError(t, err)
-			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
-			require.NoError(t, err)
-			sc := trace.NewSpanContext(trace.SpanContextConfig{
-				TraceID:    traceID,
-				SpanID:     spanID,
-				TraceFlags: trace.FlagsSampled,
-			})
+			sc := testSampledSpanContext(false)
 
 			attrs := map[string]string{}
 			InjectTraceContextToCarrier(trace.ContextWithSpanContext(context.Background(), sc), attrs)
@@ -222,6 +184,15 @@ func TestInjectTraceContextToCarrier(t *testing.T) {
 		t.Run("attrs が nil なら何もせずパニックしない", func(t *testing.T) {
 			assert.NotPanics(t, func() { InjectTraceContextToCarrier(newSampledContext(), nil) })
 		})
+	})
+}
+
+func testSampledSpanContext(remote bool) trace.SpanContext {
+	return trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    trace.TraceID{1, 35, 69, 103, 137, 171, 205, 239, 1, 35, 69, 103, 137, 171, 205, 239},
+		SpanID:     trace.SpanID{1, 35, 69, 103, 137, 171, 205, 239},
+		TraceFlags: trace.FlagsSampled,
+		Remote:     remote,
 	})
 }
 

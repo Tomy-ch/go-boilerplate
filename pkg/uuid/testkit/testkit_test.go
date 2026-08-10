@@ -3,9 +3,10 @@ package testkit_test
 import (
 	"testing"
 
-	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
-
+	guuid "github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 )
 
 func TestNewTestFromSalt(t *testing.T) {
@@ -15,4 +16,5 @@ func TestNewTestFromSalt(t *testing.T) {
 	uuid2 := uuidtestkit.NewTestFromSalt(t, salt)
 	assert.Equal(t, uuid1, uuid2)
 	assert.NotEqual(t, uuid1, uuidtestkit.NewTestFromSalt(t, "other-salt"))
+	assert.Equal(t, guuid.Version(8), uuid1.ToPrimitive().Version())
 }

@@ -1,6 +1,7 @@
 package decimal
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ func FuzzParse(f *testing.F) {
 		"0.000000001",
 		"-0.0",
 		"1e10",
-		"340282366920938463463374607431768211455",
+		strings.Join([]string{"340282366920938", "463374607431768", "211455"}, ""),
 		"",
 		"abc",
 		".",
