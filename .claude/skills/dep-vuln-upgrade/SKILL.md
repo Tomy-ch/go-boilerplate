@@ -6,9 +6,9 @@ argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" pe
 
 # Dependency Vulnerability Upgrade
 
-This skill takes a **security advisory list** and patches only the named vulnerable dependencies to a fixed version. This repo resolves dependencies four ways, and an advisory can name a package in any of them:
+This skill takes a **security advisory list** and patches only the named vulnerable dependencies to a fixed version. This repo resolves dependencies three ways, and an advisory can name a package in any of them:
 
-- **pnpm** — dependencies recorded in `scripts/pnpm-lock.yaml` and `docs-viewer/pnpm-lock.yaml`, each package carrying its own `pnpm-workspace.yaml` that holds both its cooldown policy and its `overrides`.
+- **pnpm** — dependencies recorded in `scripts/pnpm-lock.yaml`, `mock-auth-server/pnpm-lock.yaml` and `docs-viewer/pnpm-lock.yaml`, each package carrying its own `pnpm-workspace.yaml` that holds both its cooldown policy and its `overrides`.
 - **Go** — modules in `go.mod` / `go.sum`, including **indirect** dependencies.
 - **PyPI** — the CLI tools declared in `python/*.in` and resolved, with sha256 hashes, into `python/*.txt`. Locating one is in scope; **bumping it is not** — that belongs to `/tools-upgrade`, which owns both declaration sites. See *A PyPI advisory usually is not this skill's* below.
 
@@ -58,14 +58,12 @@ Parse the advisory list, then resolve the supply-chain caution threshold `<MIN_A
 Procedure:
 
 1. Parse the advisory list from the skill arguments or the most recent user message. Each entry yields: **package name**, **current version** (if given), **candidate fixed version(s)** (there may be several, one per major line), **CVE/GHSA id**, and **severity**. The list may be free-form — tolerate the common shapes (`- [HIGH] lodash 4.17.23 → 4.18.0 (CVE-...)`, `npm audit` blocks, Trivy rows). If an entry's ecosystem or location is ambiguous, resolve it in Step 1 (do not guess here).
-2. Detect the repo's cooldown: read every `pnpm-workspace.yaml` for a `minimumReleaseAge` line (stated in minutes). With `minimumReleaseAgeStrict: true` it is a hard cutoff at **resolution** time and, because pnpm re-verifies the whole lockfile on every install, on the `--frozen-lockfile` replay path too — a version newer than the cutoff **cannot be installed at all**, not merely flagged. Adopt that window as `<MIN_AGE_DAYS>` for that lockfile so the skill's caution threshold matches the wall the toolchain will actually enforce.
-3. Detect the repo's pnpm cooldown: read the `pnpm-workspace.yaml` beside each `pnpm-lock.yaml` for `minimumReleaseAge` (**stated in minutes** — `10080` is 7 days, so divide by 1440), plus `minimumReleaseAgeStrict` and the existing `minimumReleaseAgeExclude` list. Adopt that value as `<MIN_AGE_DAYS>` for that package. Read the exclusion list even when it looks irrelevant: an entry already covering the candidate version means the window has been opened deliberately and the disposition is not `blocked`.
-4. If no cooldown governs a given change (e.g. a Go module, or a lockfile with neither setting), use `7` as the default `<MIN_AGE_DAYS>` for it, unless a value was passed in arguments. Only call `AskUserQuestion` to confirm the threshold when there is genuine ambiguity (the governing files disagree, or the user asked to override); a lone declared value or the `7` default does not need a question — proceed and state the value you used and where it came from.
+2. Detect the repo's cooldown: read the `pnpm-workspace.yaml` beside each `pnpm-lock.yaml` for `minimumReleaseAge` (**stated in minutes** — `10080` is 7 days, so divide by 1440), plus `minimumReleaseAgeStrict` and the existing `minimumReleaseAgeExclude` list. Adopt that value as `<MIN_AGE_DAYS>` for that package. Read the exclusion list even when it looks irrelevant: an entry already covering the candidate version means the window has been opened deliberately and the disposition is not `blocked`.
+3. If no cooldown governs a given change (e.g. a Go module, or a lockfile with neither setting), use `7` as the default `<MIN_AGE_DAYS>` for it, unless a value was passed in arguments. Only call `AskUserQuestion` to confirm the threshold when there is genuine ambiguity (the governing files disagree, or the user asked to override); a lone declared value or the `7` default does not need a question — proceed and state the value you used and where it came from.
 
 The threshold plays two different roles depending on ecosystem:
 
-- **pnpm under `minimumReleaseAge`**: a **hard block**. A fixed version inside the cooldown will make `pnpm install` fail with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. Do not fight the repo's own policy — treat such a version as **deferred** (Step 4), not applied.
-- **pnpm under `minimumReleaseAge`**: also a **hard block**, and a wider one — pnpm re-verifies the **whole lockfile** against the policy on every install, `--frozen-lockfile` included, so an in-window entry fails the replay path too (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) and not merely fresh resolution (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`). Unlike npm, pnpm offers a first-class per-version escape hatch (`minimumReleaseAgeExclude`); it is a decision to surface at Step 4, never one to take here. The behavioural detail is recorded in [`docs/design/security.md`](../../../docs/design/security.md) → "Dependencies → pnpm" — read it rather than trusting this summary.
+- **pnpm under `minimumReleaseAge`**: a **hard block**, and a wide one — pnpm re-verifies the **whole lockfile** against the policy on every install, `--frozen-lockfile` included, so an in-window entry fails the replay path too (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) and not merely fresh resolution (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`). pnpm offers a first-class per-version escape hatch (`minimumReleaseAgeExclude`); it is a decision to surface at Step 4, never one to take here. The behavioural detail is recorded in [`docs/design/security.md`](../../../docs/design/security.md) → "Dependencies → pnpm" — read it rather than trusting this summary.
 - **everywhere else (Go, a lockfile with no cooldown)**: a **caution flag, not a hard block** — because the point is to fix a known vulnerability, a too-new fixed version is surfaced and confirmed, not silently withheld.
 
 Do NOT fetch registries or edit any file until `<MIN_AGE_DAYS>` is resolved.
@@ -76,7 +74,7 @@ Do NOT fetch registries or edit any file until `<MIN_AGE_DAYS>` is resolved.
 
 Permitted to modify while this skill runs:
 
-- `**/package.json` — only to add/adjust a `dependencies` version, or (npm packages only) an `overrides` entry, for an approved package.
+- `**/package.json` — only to add/adjust a `dependencies` version for an approved package.
 - `**/pnpm-lock.yaml` — the deterministic output of `pnpm install --lockfile-only` in that package directory for approved changes.
 - `**/pnpm-workspace.yaml` — **only** the `overrides` and `minimumReleaseAgeExclude` keys, and the exclusion **only after the user has approved that specific version** at Step 4. Never touch `minimumReleaseAge`, `minimumReleaseAgeStrict`, `minimumReleaseAgeIgnoreMissingTime`, `trustPolicy*`, `allowBuilds`, `blockExoticSubdeps`, or `engineStrict` — those are the policy itself, not the patch.
 - `go.mod` / `go.sum` — the output of `go get <module>@<version>` + `go mod tidy` for approved Go modules.

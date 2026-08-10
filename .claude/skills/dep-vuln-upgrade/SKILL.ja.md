@@ -4,9 +4,9 @@
 
 # Dependency Vulnerability Upgrade
 
-このスキルは **セキュリティ勧告リスト** を受け取り、名指しされた脆弱な依存だけを修正版へパッチする。本リポジトリの依存解決は 4 通りあり、勧告はそのいずれの package も名指しし得る:
+このスキルは **セキュリティ勧告リスト** を受け取り、名指しされた脆弱な依存だけを修正版へパッチする。本リポジトリの依存解決は 3 通りあり、勧告はそのいずれの package も名指しし得る:
 
-- **pnpm** — `scripts/pnpm-lock.yaml` と `docs-viewer/pnpm-lock.yaml` に記録された依存。各パッケージが自前の `pnpm-workspace.yaml` を持ち、そこに cooldown ポリシーと `overrides` の両方が載る。
+- **pnpm** — `scripts/pnpm-lock.yaml`・`mock-auth-server/pnpm-lock.yaml`・`docs-viewer/pnpm-lock.yaml` に記録された依存。各パッケージが自前の `pnpm-workspace.yaml` を持ち、そこに cooldown ポリシーと `overrides` の両方が載る。
 - **Go** — `go.mod` / `go.sum` のモジュール。**間接（indirect）** 依存を含む。
 - **PyPI** — `python/*.in` が宣言し、`python/*.txt` が sha256 付きで解決を固定している CLI ツール。所在の特定はここの範囲だが、**引き上げは範囲外** — 2 つの宣言先を持つのは `/tools-upgrade`。後述の *PyPI の勧告はたいていこのスキルのものではない* を見ること。
 
@@ -54,14 +54,12 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 手順:
 
 1. スキル引数または直近のユーザーメッセージから勧告リストをパースする。各エントリから **package 名** / **現行 version**（あれば）/ **修正版候補**（major 系列ごとに複数あり得る）/ **CVE・GHSA id** / **深刻度** を取り出す。リストは自由形式でよい — よくある形（`- [HIGH] lodash 4.17.23 → 4.18.0 (CVE-...)`、`npm audit` ブロック、Trivy 行）を許容する。エコシステムや所在が曖昧なエントリは Step 1 で解決する（ここで推測しない）。
-2. リポジトリの cooldown を検出する: 各 `pnpm-workspace.yaml` の `minimumReleaseAge` 行（分指定）を読む。`minimumReleaseAgeStrict: true` の下では解決時のハード遮断であり、pnpm は install のたびに lockfile 全体を再検証するため `--frozen-lockfile` の再生経路でも効く。つまり cutoff より新しい版は**そもそも install できない**（単なる警告ではない）。その窓を当該 lockfile の `<MIN_AGE_DAYS>` として採用し、本スキルの注意しきい値をツールチェインが実際に敷く壁へ合わせる。
-3. リポジトリの pnpm cooldown を検出する: 各 `pnpm-lock.yaml` と同階層の `pnpm-workspace.yaml` から `minimumReleaseAge`（**分指定**。`10080` = 7 日なので 1440 で割る）と `minimumReleaseAgeStrict`、既存の `minimumReleaseAgeExclude` 一覧を読む。その値をそのパッケージの `<MIN_AGE_DAYS>` として採用する。例外一覧は無関係に見えても必ず読むこと — 候補版を既に覆うエントリがあるなら、窓は意図的に開けられており disposition は `blocked` ではない。
+2. リポジトリの cooldown を検出する: 各 `pnpm-lock.yaml` と同階層の `pnpm-workspace.yaml` から `minimumReleaseAge`（**分指定**。`10080` = 7 日なので 1440 で割る）と `minimumReleaseAgeStrict`、既存の `minimumReleaseAgeExclude` 一覧を読む。その値をそのパッケージの `<MIN_AGE_DAYS>` として採用する。例外一覧は無関係に見えても必ず読むこと — 候補版を既に覆うエントリがあるなら、窓は意図的に開けられており disposition は `blocked` ではない。
 4. ある変更にどの cooldown も効かない場合（Go モジュール、またはどちらの設定も無い lockfile）は、引数で値が渡されない限り `7` を既定 `<MIN_AGE_DAYS>` とする。しきい値の確認で `AskUserQuestion` を呼ぶのは真に曖昧なとき（支配ファイル同士が食い違う、またはユーザーが override を求めた）だけ。単一の宣言値や `7` 既定は質問不要 — 使った値とその出所を明記して進める。
 
 しきい値はエコシステムにより 2 つの異なる役割を持つ:
 
-- **`minimumReleaseAge` 下の pnpm**: **ハードブロック**。cooldown 内の修正版は `pnpm install` を `ERR_PNPM_NO_MATURE_MATCHING_VERSION` で失敗させる。
-- **`minimumReleaseAge` 下の pnpm**: 同じく **ハードブロック**で、しかも範囲が広い。pnpm は install のたびに **lockfile 全体**をポリシーで再検証し、それは `--frozen-lockfile` にも及ぶ。よって窓内エントリは新規解決（`ERR_PNPM_NO_MATURE_MATCHING_VERSION`）だけでなく再生経路でも落ちる（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`）。npm と違い pnpm には版指定の正式な例外経路（`minimumReleaseAgeExclude`）がある。それは Step 4 で提示する選択肢であって、ここで取る判断ではない。挙動の詳細は [`docs/design/security.md`](../../../docs/design/security.md) の「Dependencies → pnpm」が持つ — この要約を信用せず、そちらを読むこと。
+- **`minimumReleaseAge` 下の pnpm**: **ハードブロック**で、しかも範囲が広い。pnpm は install のたびに **lockfile 全体**をポリシーで再検証し、それは `--frozen-lockfile` にも及ぶ。よって窓内エントリは新規解決（`ERR_PNPM_NO_MATURE_MATCHING_VERSION`）だけでなく再生経路でも落ちる（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`）。npm と違い pnpm には版指定の正式な例外経路（`minimumReleaseAgeExclude`）がある。それは Step 4 で提示する選択肢であって、ここで取る判断ではない。挙動の詳細は [`docs/design/security.md`](../../../docs/design/security.md) の「Dependencies → pnpm」が持つ — この要約を信用せず、そちらを読むこと。
 - **それ以外（Go、cooldown 無しの lockfile）**: **caution フラグでありハードブロックではない** — 既知脆弱性を直すのが目的なので、新しすぎる修正版は握り潰さず提示・確認する。
 
 `<MIN_AGE_DAYS>` が解決するまでレジストリ取得やファイル編集を行わない。
