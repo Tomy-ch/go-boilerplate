@@ -99,10 +99,8 @@ jobs:
           echo "${HOME}/.dotnet/tools" >> "${GITHUB_PATH}"
         shell: bash
 
-      # The ignore globs mirror opengrep.yaml's exclusions and for the same reason:
-      # generated code, vendored trees and build output are not editable, so a finding
-      # there is not actionable. --base-path keeps the SARIF locations repository-
-      # relative, which is what lets code scanning anchor an alert to a file.
+      # Generated, vendored, test-only, and local-development-only files are outside
+      # the deployed application. --base-path keeps SARIF locations repository-relative.
       - name: DevSkim scan
         run: |
           devskim analyze \
@@ -110,7 +108,7 @@ jobs:
             --output-file devskim.sarif \
             --file-format sarif \
             --base-path . \
-            --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/openapi.gen.yaml,docs/**'
+            --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/*_test.go,**/*.test.ts,**/*.spec.ts,**/pnpm-lock.yaml,**/package-lock.json,**/openapi.gen.yaml,.agents/**,docs/openapi/**,docs/coverage/**,docs/db-schema/**,docs/godoc/**,docs/portal/docs.json,docs/portal/guides/**,docker-compose.attach.yaml,mock-auth-server/**'
         shell: bash
 
       - name: Create DevSkim summary (Markdown)
