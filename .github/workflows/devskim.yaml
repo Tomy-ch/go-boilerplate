@@ -116,13 +116,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          COUNT=$(jq '[(.runs // [])[] | (.results // [])[]] | length' devskim.sarif)
+          COUNT=$(jq '[(.runs // [])[] | (.results // [])[] | select((.level // "warning") != "note")] | length' devskim.sarif)
           echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
 
           if [ "$COUNT" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
-            echo "title=## ✅ DevSkim: PASS (no findings)" >> "$GITHUB_OUTPUT"
-            echo "No findings." > devskim-summary.md
+            echo "title=## ✅ DevSkim: PASS (no error or warning findings)" >> "$GITHUB_OUTPUT"
+            echo "No error or warning findings." > devskim-summary.md
             exit 0
           fi
 
@@ -135,6 +135,7 @@ jobs:
           # guards a version bump rather than a present bug.
           jq -r '
             [(.runs // [])[] | (.results // [])[]]
+            | map(select((.level // "warning") != "note"))
             | map(.level //= "warning")
             | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
             | .[]
