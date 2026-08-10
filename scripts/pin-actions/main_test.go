@@ -17,17 +17,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// テスト用の 40-hex commit SHA（値は任意、形式のみ意味を持つ）。
-const testCommitSHALength = 40
+const (
+	// テスト用の 40-hex commit SHA（値は任意、形式のみ意味を持つ）。
+	testCommitSHALength = 40
+
+	// absentRelease は githubTimesStub で「そのエンドポイントの資源が存在しない（404）」を表す日数。
+	absentRelease = -1
+)
 
 var (
 	shaCheckout = strings.Repeat("1", testCommitSHALength)
 	shaSetupGo  = strings.Repeat("2", testCommitSHALength)
 	shaCodeQL   = strings.Repeat("3", testCommitSHALength)
 )
-
-// absentRelease は githubTimesStub で「そのエンドポイントの資源が存在しない（404）」を表す日数。
-const absentRelease = -1
 
 var (
 	// errAge は、ageFn の失敗伝播を検証するためのセンチネルです。

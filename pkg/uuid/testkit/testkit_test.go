@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	guuid "github.com/google/uuid"
-	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
-
 	"github.com/stretchr/testify/assert"
+
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 )
 
 func TestNewTestFromSalt(t *testing.T) {

@@ -54,6 +54,8 @@
 ".gitleaksignore" = "2026-08-10"
 ".github/workflows/scan-issue-report.yaml" = "2026-08-10"
 ".github/workflows/devskim.yaml" = "2026-08-10"
+"scripts/pin-actions/main_test.go" = "2026-08-10"
+"scripts/marker-baseline/baseline.json" = "2026-08-10"
 "pkg/uuid/testkit/testkit.go" = "2026-08-10"
 "pkg/uuid/testkit/testkit_test.go" = "2026-08-10"
 ".github/actions/setup-postgres/action.yaml" = "2026-08-10"

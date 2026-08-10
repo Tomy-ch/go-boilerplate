@@ -2,6 +2,7 @@
   ".claude/agents/drift-detector-glossary.md": 1,
   ".codex/agents/drift-detector-glossary.toml": 1,
   ".github/workflows/zap-api-scan.yaml": 6,
+  ".gitleaksignore": 2,
   ".makefiles/github/operation/setup-repository.mk": 7,
   ".makefiles/markdown/lint.mk": 10,
   ".makefiles/README.ja.md": 4,
