@@ -9,13 +9,10 @@ authoritative unless this file states a Codex-specific execution detail.
   supplying a commit message. Preserve Git's generated merge subject and body; do not rename it
   to a conventional-commit-style subject such as `Merge: ...`.
 - Do not amend, rebase, squash, or force-push unless the user explicitly requests that operation.
-- Treat a user instruction to resolve a remote conflict as authorization to fetch, merge the PR
-  base, resolve the resulting conflicts, verify the result, commit the merge, and push the
-  feature branch. Do not stop to request confirmation for the already-requested `git push`.
-- For a verified, task-scoped change on an existing feature PR branch, stage the change, create
-  the required commit, and perform an ordinary push without asking again. Inspect `git status`
-  and the diff first to exclude unrelated work; use `git add .` when the worktree contains only
-  the task's changes, otherwise stage the task-scoped paths explicitly.
+- Use this repository's `/commit` workflow for every commit. Do not stage, commit, or push
+  manually; `/commit` owns change grouping, verification, and an ordinary push for an open PR.
+- Use this repository's `/submit-pr` workflow to create or update a pull request. It owns the
+  PR template, review decision, and required push confirmation.
 
 ## Scope and confirmation
 
