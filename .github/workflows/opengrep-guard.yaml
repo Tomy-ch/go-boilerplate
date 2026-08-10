@@ -1,7 +1,8 @@
 name: SAST (required-check guard)
 
-# Skip-guard companion for opengrep.yaml. The `sast` job is registered as a required
-# status check, but opengrep.yaml only triggers when the PR touches its `paths`; a PR
+# Skip-guard companion for opengrep.yaml. The `sast` job is declared in
+# `.github/settings/branch-protection.json` as a required status check, but opengrep.yaml only
+# triggers when the PR touches its `paths`; a PR
 # that changes nothing under them would never report the `sast` context and would
 # block merging forever ("Expected — Waiting for status to be reported").
 #

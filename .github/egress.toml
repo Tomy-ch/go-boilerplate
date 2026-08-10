@@ -339,7 +339,7 @@ classes = []
 classes = []
 
 [job."sonarqube.yaml:sonarqube"]
-classes = ["image", "db"]
+classes = ["image", "db", "mise"]
 extra = [
   "sonarcloud.io:443",
   "*.sonarcloud.io:443",

@@ -5,6 +5,7 @@
 .PHONY: actions-comment-secret-lint ## upsert-pr-comment を使うジョブへの secret 混入検査のみを実行
 .PHONY: actions-comment-fence-lint ## PRコメント本文のフェンス検査(固定長フェンス/実装一致/補間span)のみを実行
 .PHONY: actions-cutoff-lint ## ジョブ打ち切り時の振る舞い(timeout-minutes / PRコメントの always())検査のみを実行
+.PHONY: required-check-lint ## Ruleset の required context と本体 / guard workflow の対応を検査
 # -----CI内で実行するコマンド群-----
 .PHONY: actions-lint-ci ## GitHub Actions 定義のLintを実行(CI用)
 .PHONY: actions-actionlint-ci ## actionlint でワークフロー定義をLint(CI用)
@@ -13,6 +14,7 @@
 .PHONY: actions-comment-fence-lint-ci ## PRコメント本文のフェンス(固定長フェンス/実装一致/補間span)を検査(CI用)
 .PHONY: actions-node-lint-ci ## node で書かれた検査 3 種をまとめて実行(CI用)
 .PHONY: actions-cutoff-lint-ci ## ジョブ打ち切り時の振る舞いを検査(CI用)
+.PHONY: required-check-lint-ci ## Ruleset の required context と本体 / guard workflow の対応を検査(CI用)
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 # actionlint は Go ツール、secret / フェンス検査は node スクリプトなので tool-runner を跨ぐ。
@@ -32,6 +34,9 @@ actions-comment-fence-lint:
 
 actions-cutoff-lint:
 	@docker compose run --rm node_tool_runner make actions-cutoff-lint-ci
+
+required-check-lint:
+	@docker compose run --rm node_tool_runner make required-check-lint-ci
 
 # -----CI内で実行するコマンド群-----
 actions-lint-ci: actions-actionlint-ci actions-shellcheck-ci actions-node-lint-ci
@@ -58,3 +63,6 @@ actions-comment-fence-lint-ci:
 # actionlint は「打ち切られたジョブでも PR に結果を残せ」「全ジョブに timeout-minutes を置け」という規約を表現できない。
 actions-cutoff-lint-ci:
 	$(TSX) scripts/actions-cutoff-lint
+
+required-check-lint-ci:
+	$(TSX) scripts/required-check-lint

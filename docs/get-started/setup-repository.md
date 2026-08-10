@@ -122,7 +122,8 @@ curl http://localhost:8080/ready
 
 ## Phase 7: Manual Rewrites
 
-1. Rewrite the contents of README.md according to your project.
+1. Rewrite the contents of README.md and README.ja.md according to your project; replace or remove
+   the repository-specific branch-rule exception in the maintainer-policy section.
 2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
     - Rewrite the entire Info section according to your project.
         - title
@@ -150,6 +151,10 @@ A few subsystems **clamp** out-of-range values to safe defaults instead of faili
 ## Phase 9: Repository Initialization
 
 After completing the above steps, initialize the repository after the first push.
+
+`setup-repo` enables workflows before it applies the ruleset. Before applying required status
+checks to an existing repository, confirm that each declared context has reported successfully on
+a pull request; otherwise GitHub can block merges while waiting for a context it has never seen.
 
 ### When starting from a GitHub template
 
@@ -276,7 +281,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 1. Decide the acceptable set in terms of Trivy's own classification (`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`), and decide whether shipped artifacts and build-only tooling get the same bar. They may not: the classifications outside `notice` / `unencumbered` in this repository come from `docker/tools/`, which is build-only and never shipped.
 2. Treat Trivy's classification as a starting point, not an authority. `BlueOak-1.0.0` lands in `unknown` even though it is OSI-approved and permissive, so decide such cases explicitly instead of letting the bucket decide for you.
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
-4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0084](../adr/0084-multi-layer-security-scanning.md), which both currently state that no policy exists.
+4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0086](../adr/0086-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
 ## Phase 15: Remove Sample APIs
 

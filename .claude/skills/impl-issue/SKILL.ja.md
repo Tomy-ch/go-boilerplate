@@ -89,7 +89,9 @@ gh issue comment <n> --body-file <file>
 
 ## Step 2 — 実行環境を確保する
 
-コードに触れる前に済ませる。共有 checkout に何も落とさないため。
+コードに触れる前に済ませる。共有 checkout に何も落とさないため。どちらの半分を実行するかは worktree が既にあるかで決まる。新規に用意することと既存へ再開することは別の操作で、動いている worktree に前者を当てると作業が壊れる。
+
+### 初期セットアップ — worktree がまだ無い
 
 ```bash
 # 1. 現行のリリース線を origin の実状態から解決する。
@@ -100,7 +102,7 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 git fetch origin "$BASE"
 git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
-# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
+# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 2010+N。
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 
 # 4. 新規 worktree には vendor/ が無く、air は --mod=vendor でビルドするため、これが無いと serve が失敗する。
@@ -114,6 +116,24 @@ go mod vendor
 **スロットは自分から解放しない。片付けフェーズで解放を聞きもしない。** 握ったままのコストはほぼゼロ（リースは stale になれば自動回収される）だが、作業途中で失うと DB とポートを失う。本当に終わったかを知っているのはユーザーだけ。
 
 ユーザーの指示が解決結果と違うリリースバージョンを指していた場合は、切る前に聞く。意図的な backport 先だけは解決器に知りようがない。
+
+### 既存 worktree へ再開する
+
+セットアップは済んでいる。観測して結果を報告するだけにし、どれ一つ再実行しない。
+
+session-start の環境行（`[agent-env] checkout=… branch=… vendor=… db-slot=…`）が、重要な 3 つの事実 — どの checkout か、`vendor/` があるか、どの DB スロットを保持しているか — を既に運んでいる。存在するなら、導出し直さずそのまま報告してから先へ進む。
+
+ただしそれがある前提に寄りかからない。hook は無いことも、無効化されていることも、そもそも実行しないハーネスに繋がっていることもある。その場合のフォールバックは修復ではなく確認である。以下はいずれも読むだけ:
+
+```bash
+git rev-parse --show-toplevel
+test -d vendor && echo 'vendor: present' || echo 'vendor: absent'
+cat .gobp-db-slot 2>/dev/null || echo 'slot: none'
+```
+
+スロットが無い・壊れているのは報告すべき事実であって、その場で直すべき障害ではない。`make slot-acquire` は DB 作業が実際に始まる直前 — 最初の `make test` / `make serve` / `psql` — に実行し、それより前には実行しない。`go mod vendor` も同じで、`vendor/` が無く、かつビルドが目前に迫っているときに走らせる。再開の儀式として走らせるものではない。
+
+**セッションを再開したというだけの理由でスロットを取得したり DB を再初期化したりしない。** `slot-acquire` と `db-*-reinit` はスロットの `wt<N>_local` / `wt<N>_test` を作り直すため、反射的な再開時取得は、まさに再開しようとしている実行の状態 — 投入済みのシード、途中まで当てた migration、障害の診断に使うはずだったデータ — を破壊する。
 
 ## Step 3 — 計画を立て、そこで待つ
 
@@ -200,9 +220,9 @@ runtime 検証は意図的にここに置いていない。PR ができた後（
 動いているシステムに対して実 HTTP 経路を通す。どのモードでも緩められない。
 
 ```bash
-make serve                                    # API は 8080+N、mock-auth は 4000+N
+make serve                                    # API は 8080+N、mock-auth は 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
@@ -217,7 +237,7 @@ docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
   "select ui.subject, r.name from user_identities ui
      left join user_roles ur on ur.user_id = ui.user_id
      left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:400N';"
+   where ui.issuer = 'http://localhost:201N';"
 ```
 
 正常系、変更が持ち込むエラー経路、そして保護された操作ならトークン無しで 401 になることを確認する。その上で **LGTM スタックのトレースを読み、リクエストが想定どおりの経路（controller → usecase → infrastructure、意図した SQL）を通ったことを確認する**。ステータスコードだけでは、そのリクエストが変更した層に届いたことの証明にならない — 間違ったが尤もらしい経路は、間違った理由で正しいステータスを返す。
@@ -273,6 +293,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 ## やること / やらないこと
 
 - ✅ コードに触れる前に worktree とスロットを確保する。
+- ✅ 再開時は worktree を観測し、見えたもの — パス・`vendor/`・スロット — を報告する。
 - ✅ issue の主張をベース実物で検証し、食い違いを着手コメントに書く。
 - ✅ 実装前に計画の承認を取り、Step 5 が突合できるようファイルとして残す。
 - ✅ 5 つの trip-wire を「気づくもの」ではなく機械的トリガーとして扱う。
@@ -284,13 +305,14 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 - ❌ 設計を変える修正を、どのモードであれ自動適用する。
 - ❌ issue モードが指示しない限り、既存を確認せず起票する。
 - ❌ 頼まれてもいないのに DB スロットを解放する、または解放を聞く。
+- ❌ セッションを再開したというだけの理由でスロットを取得する、または DB を再初期化する。
 - ❌ foreground の sleep ループで CI をポーリングする。
 
 ## チェックリスト
 
 - [ ] `AskUserQuestion` 1 回で 3 モードを確認した。
 - [ ] 着手コメントを投稿した（issue ↔ ベースの食い違いを含む）。
-- [ ] fetch 済みのベースから worktree を作成、スロットをリース、`go mod vendor` 実行。
+- [ ] Step 2 の正しい半分で実行環境を確保した: 新規なら fetch 済みのベースから worktree を作成し、スロットをリースし `go mod vendor` を実行 — 既存なら観測して報告し、再開しただけでスロットを取得も DB を再初期化もしていない。
 - [ ] 別モデルが計画を作成、必須 4 セクションが揃い、実装前に承認された。
 - [ ] trip-wire を進行モードどおりに処理した。黙って吸収したものが無い。
 - [ ] 計画と実差分を突合した。

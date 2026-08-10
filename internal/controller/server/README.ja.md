@@ -35,7 +35,7 @@ Echo インスタンスと、それを配信する `ServerConfig` のタイム�
 ## 注意点
 
 - `NewAppServer` で生成した Echo インスタンスには、後続の extension でミドルウェアが適用される —— 本パッケージは **ミドルウェアを直接定義しない**
-- Echo v5 はサーバの起動 / 停止を `echo.StartConfig` へ集約するが、そのブロッキングモデルは DI コンテナの起動 / 停止フック分離と噛み合わないため、本プロジェクトは `http.Server` を自前で持つ（`NewHTTPServer`）。リクエストのタイムアウトもそこに置く（[ADR-0017](../../../docs/ja/adr/0017-echo-http-framework.ja.md) 参照）
+- Echo v5 はサーバの起動 / 停止を `echo.StartConfig` へ集約するが、そのブロッキングモデルは DI コンテナの起動 / 停止フック分離と噛み合わないため、本プロジェクトは `http.Server` を自前で持つ（`NewHTTPServer`）。リクエストのタイムアウトもそこに置く（[ADR-0019](../../../docs/ja/adr/0019-echo-http-framework.ja.md) 参照）
 - Echo v5 の `Context.Response()` は `http.ResponseWriter` を返すため、Echo 固有のステータスや `Before` / `After` フックが必要な場合は `ResponseOf` を使う
 - ログには `logging.Logger` を使用し、zap の直接利用は禁止（sealed layer）
 - Graceful shutdown の Timeout は `ServerConfig` に従う —— 設定が正しいことを確認すること

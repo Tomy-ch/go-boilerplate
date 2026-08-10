@@ -2,7 +2,7 @@
 
 [Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](../ja/design/outbox.ja.md)
 
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0049](../adr/0049-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0102](../adr/0102-outbox-relay-hardening-delegated.md).
+This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0051](../adr/0051-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0104](../adr/0104-outbox-relay-hardening-delegated.md).
 
 ---
 
@@ -218,7 +218,7 @@ The subsystem ships the **full machinery**: emit/relay/gc/replay usecases, the R
 > **Departure from Evans — no Published Language on this side.** The synchronous HTTP surface has one:
 > OpenAPI is committed as a resolved contract that a consumer in another repository can read without
 > this repository's toolchain, and a drift gate keeps it honest. The asynchronous surface has none.
-> [ADR-0052](../adr/0052-message-id-idempotency-propagation.md) fixes a *transport* convention
+> [ADR-0054](../adr/0054-message-id-idempotency-propagation.md) fixes a *transport* convention
 > (`Idempotency-Key`), not a language: nothing here defines or publishes the schema of the event
 > payloads or the vocabulary of `event_type`, so a receiver learns both by reading this repository's
 > source. The asymmetry is deliberate to the extent that item ② below hands payload and `event_type`

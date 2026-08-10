@@ -1,7 +1,7 @@
 name: OpenAPI Security (required-check guard)
 
 # Skip-guard companion for openapi-security.yaml. The `openapi-security` job is
-# registered as a required status check, but openapi-security.yaml only triggers
+# declared in `.github/settings/branch-protection.json` as a required status check, but openapi-security.yaml only triggers
 # when the PR touches its `paths`; a PR that changes nothing under them would never
 # report the `openapi-security` context and would block merging forever.
 #

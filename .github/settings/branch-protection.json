@@ -28,7 +28,7 @@
         "required_approving_review_count": 1,
         "dismiss_stale_reviews_on_push": true,
         "required_reviewers": [],
-        "require_code_owner_review": false,
+        "require_code_owner_review": true,
         "require_last_push_approval": true,
         "required_review_thread_resolution": true,
         "allowed_merge_methods": [
@@ -48,6 +48,22 @@
       "type": "code_quality",
       "parameters": {
         "severity": "errors"
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          { "context": "trivy-fs-release" },
+          { "context": "osv-release" },
+          { "context": "trivy-config" },
+          { "context": "sast" },
+          { "context": "lockfile-lint" },
+          { "context": "openapi-security" },
+          { "context": "osv-diff" }
+        ]
       }
     }
   ],

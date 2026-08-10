@@ -200,7 +200,6 @@ jobs:
 
       - name: Materialize ci env for embedding
         run: make materialize-env
-
       - name: Setup mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
@@ -211,15 +210,20 @@ jobs:
       - name: Install node and pnpm
         run: mise install node npm:pnpm
 
-      - name: Install the TypeScript trees
+      - name: Install script dependencies
+        run: pnpm install --dir scripts --frozen-lockfile --ignore-scripts
+
+      # The scripts test suite's 1:1 gate resolves callable exports through TypeScript. Its
+      # docs-viewer and mock-auth-server scans must have dependencies, or unresolved imports
+      # would make the gate fail before the coverage report is generated.
+      - name: Install trees checked by the scripts test suite
         run: |
           set -euo pipefail
-          pnpm install --dir scripts --frozen-lockfile
-          pnpm install --dir docs-viewer --frozen-lockfile
+          pnpm install --dir docs-viewer --frozen-lockfile --ignore-scripts
           npm ci --prefix mock-auth-server --ignore-scripts
 
-      - name: Run TypeScript tests with coverage
-        run: make scripts-test-ci
+      - name: Generate TypeScript coverage
+        run: pnpm --dir scripts run test
 
       - name: Rebase the lcov paths onto the repository root
         run: sed -i 's|^SF:|SF:scripts/|' scripts/coverage/lcov.info

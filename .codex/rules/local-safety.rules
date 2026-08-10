@@ -1,0 +1,59 @@
+# リポジトリ内であっても削除コマンドは実行しない。
+prefix_rule(
+    pattern = ["rm"],
+    decision = "forbidden",
+    justification = "ファイル削除は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["rmdir"],
+    decision = "forbidden",
+    justification = "ディレクトリ削除は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["unlink"],
+    decision = "forbidden",
+    justification = "ファイル削除は Codex から実行しない",
+)
+
+# 復元不能または履歴を失わせる Git 操作は実行しない。特に `.codex/worktrees/` は
+# linked worktree の実体なので、`git clean -fdx` で削除してはならない。
+prefix_rule(
+    pattern = ["git", ["clean", "filter-branch", "gc", "prune", "rebase", "reset", "restore", "update-ref"]],
+    decision = "forbidden",
+    justification = "復元不能または履歴を失わせる Git 操作は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["git", "checkout"],
+    decision = "forbidden",
+    justification = "ファイルを破棄し得るため git switch を使う",
+)
+prefix_rule(
+    pattern = ["git", "branch", ["-d", "-D", "--delete"]],
+    decision = "forbidden",
+    justification = "ブランチ削除は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["git", "tag", ["-d", "--delete"]],
+    decision = "forbidden",
+    justification = "タグ削除は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["git", "stash", ["clear", "drop"]],
+    decision = "forbidden",
+    justification = "stash の破棄は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["git", "remote", "remove"],
+    decision = "forbidden",
+    justification = "remote の削除は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["git", "commit", "--amend"],
+    decision = "forbidden",
+    justification = "既存コミットの改変は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease"]],
+    decision = "forbidden",
+    justification = "強制 push は Codex から実行しない",
+)

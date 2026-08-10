@@ -120,7 +120,7 @@ curl http://localhost:8080/ready
 
 ## Phase 7: 手動書き換え
 
-1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
+1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。
 2. [README.md](../../../README.md) は英語で書かれているので、必要に応じて [README.ja.md](../../../README.ja.md) を [README.md](../../../README.md) に置換しても構いません。
     - ただし、[gen-docs-json.ts](../../../scripts/portal/gen-docs-json.ts) やその生成元になる [manifest.yaml](../../../docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
     - また、portal表示のReactも EnとJp切り替えを持つので、README.mdを日本語にする場合は、portal表示のReactも書き換える必要があります。
@@ -143,6 +143,10 @@ curl http://localhost:8080/ready
 ## Phase 9: リポジトリの初期化
 
 ここまでの手順を完了したら、ファーストプッシュ後にリポジトリの初期化を行います。
+
+`setup-repo` は workflow を有効化してから ruleset を適用します。既存リポジトリへ required status
+check を適用する前に、宣言した各 context が PR で正常に報告されたことを確認してください。未報告の
+context を GitHub が待ち続けるとマージが止まります。
 
 ### GitHubテンプレートから始めた場合
 
@@ -267,7 +271,7 @@ grep -rl "setup-review" docs/adr/
 1. 許容する集合を Trivy 自身の分類（`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`）で決め、**出荷物とビルド専用ツールに同じ基準を当てるか**を判断する。同じでなくてよい：本リポジトリで `notice` / `unencumbered` 以外に分類される依存は、出荷されないビルド専用の `docker/tools/` 由来です。
 2. Trivy の分類は出発点であり権威ではないものとして扱う。`BlueOak-1.0.0` は OSI 承認の permissive ライセンスでありながら `unknown` に落ちるため、この種のケースは分類任せにせず明示的に決める。
 3. [.makefiles/security/trivy.mk](../../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../../.trivyignore.yaml) へ記録する。
-4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0084](../../../docs/adr/0084-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
+4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0086](../../../docs/adr/0086-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
 
 ## Phase 15: サンプルAPIの削除
 

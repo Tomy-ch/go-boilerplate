@@ -1,7 +1,7 @@
 name: Release OSV Scan (required-check guard)
 
 # Skip-guard companion for osv-release-gate.yaml. The `osv-release` job is
-# registered as a required status check on the shared branch-protection ruleset,
+# declared in `.github/settings/branch-protection.json` as a required status check,
 # which also covers PRs into release/** and hotfix/**. The gate itself only runs on
 # a PR into a deploy branch (develop / staging / production) — by design, so an
 # inherited finding is decided at the promotion boundary rather than on every
