@@ -54,6 +54,11 @@ COPY --from=builder --chown=app:app /app/bin/server /app/server
 
 WORKDIR /app
 
+# 待受ポートは SERVER_PORT の既定値。上書きしたときは compose 側の healthcheck が優先されるため、
+# ここはイメージ単体で起動した場合の判定になる。
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=10s \
+  CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
+
 # 既定はサーバ常駐。マイグレーションは同一イメージを command override で実行する
 # （例: 起動コマンドを ["/app/server", "migrate-up"] に差し替えてジョブ実行）。
 CMD ["/app/server", "serve"]

@@ -1,3 +1,5 @@
+#checkov:skip=CKV_DOCKER_2:make から docker compose run --rm で起動して終了する使い捨てで、常駐しないため健全性の観測対象が無い
+#checkov:skip=CKV_DOCKER_3:root 実行が要件。mise を /root 配下へ配置しており、非 root では mise と各ツールを解決できない（docker-compose.yaml 参照）
 # mise 本体の固定バージョン（全ツールステージ共通。bump 時はここだけ変更する）
 ARG MISE_VERSION=v2026.6.0
 
