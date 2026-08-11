@@ -8,6 +8,18 @@
 
 `RegisterRelayHooks` が `lifecycle.Registrar` に Start フックと Stop フックを登録し、以下の処理を行います。
 
+```mermaid
+flowchart TB
+    Start["OnStart フック"]
+    Run["goroutine で engine.Run()"]
+    Stop["OnStop フック"]
+    Cancel["cancel()"]
+    Wait["engineDone / stopCtx 待ち"]
+
+    Start --> Run
+    Stop --> Cancel --> Wait
+```
+
 1. Start 時: poll ループ（`engine.Run(engineCtx)`）を detached goroutine で起動し、即座に返す（Start はブロックしない）
 2. Stop 時: `engineCtx` をキャンセルし、`stopCtx` の範囲でループの終了を待つ
 

@@ -12,6 +12,22 @@
 
 `fx.Lifecycle` を直接使うと、以下の問題が生じます。
 
+```mermaid
+flowchart TB
+    subgraph "fx に直接依存（NG）"
+        Server1["HTTP Server"] --> FxLC["fx.Lifecycle"]
+        Tracer1["TracerProvider"] --> FxLC
+        Metrics1["Metrics"] --> FxLC
+    end
+
+    subgraph "Registrar で抽象化（OK）"
+        Server2["HTTP Server"] --> Reg["Registrar"]
+        Tracer2["TracerProvider"] --> Reg
+        Metrics2["Metrics"] --> Reg
+        Reg --> FxLC2["fx.Lifecycle"]
+    end
+```
+
 ### 1. fx 依存がアプリケーション全体へ漏れる
 
 `fx.Lifecycle` を直接使うと、すべての層（HTTP サーバー、Observability、メトリクス、ワーカーなど）が fx に依存し、外部の技術詳細を内側の層へ持ち込まないという Onion Architecture の原則に反します。

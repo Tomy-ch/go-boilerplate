@@ -8,6 +8,25 @@
 
 `RegisterWorkerHooks` が `lifecycle.Registrar` に Start フックと Stop フックを登録し、以下の処理を行います。
 
+```mermaid
+flowchart TB
+    Start["OnStart フック"]
+    Health["startHealth()"]
+    Snapshot["state.Snapshot()"]
+    Check{"done == nil?"}
+    NoWorker["ログ出力 → engine 起動せず"]
+    RunWorker["goroutine で engine.Run()"]
+    Done["done <- err"]
+    Stop["OnStop フック"]
+    Cancel["cancel() → drain 待ち"]
+    StopHealth["stopHealth()"]
+
+    Start --> Health --> Snapshot --> Check
+    Check -- yes --> NoWorker
+    Check -- no --> RunWorker --> Done
+    Stop --> Cancel --> StopHealth
+```
+
 1. Start 時: health listener を起動し、`state.Snapshot()` で worker 名と done チャネルを取得する
 2. `done == nil` の場合: 「実行する worker なし」をログに出し、engine を起動せず戻る
 3. それ以外: detached goroutine で `engine.Run(engineCtx, name)` を実行し、結果を `done` へ送る

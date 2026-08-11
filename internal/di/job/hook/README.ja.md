@@ -8,6 +8,20 @@
 
 `RegisterJobHooks` はジョブを `lifecycle.SupervisedRunner`（worker / outbox relay hook も使う共通プリミティブ）に載せ、`lifecycle.Registrar` に Start と Stop の両フックを登録します。Start 時に以下の処理を行います。
 
+```mermaid
+flowchart TB
+    Start["Start フック"]
+    Snapshot["state.Snapshot()"]
+    Check{"done == nil?"}
+    NoJob["ログ出力 → Shutdown"]
+    RunJob["goroutine で runner.Run()"]
+    Done["done <- err → Shutdown"]
+
+    Start --> Snapshot --> Check
+    Check -- yes --> NoJob
+    Check -- no --> RunJob --> Done
+```
+
 1. `state.Snapshot()` でジョブ名・引数・done チャネルを取得する
 2. `done == nil` の場合: ログに出して `sd.Shutdown()` を発火する
 3. それ以外: goroutine で `runner.Run(jobCtx, name, args)` を実行し、結果を `done` へ送ってから `sd.Shutdown()` を呼ぶ
