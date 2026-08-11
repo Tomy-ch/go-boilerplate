@@ -125,6 +125,7 @@
 |Fuzz|`fuzz.yaml`|外部入力を受けるパーサに対する Go ネイティブ fuzzing|
 |DAST|`zap-api-scan.yaml`|ランナー内で起動したアプリケーションに対する、OpenAPI 定義を入力とした OWASP ZAP の API スキャン（報告専用のサンプル。[DAST](#dast) を参照）|
 |Capability Diff|`capability-diff.yaml`|capslock による Go 依存グラフの capability 差分報告（report-only）|
+|Agent Config Scan|`trustabl.yaml`|AI エージェント設定—— `.claude/` 配下の subagent / skill 宣言と MCP サーバー宣言——に対する trustabl のスキャン（報告専用。[エージェント設定スキャン](#エージェント設定スキャン)を参照）|
 |Notify|`notify.yaml`|定期実行の失敗、および非ブロッキングなスキャナの検出を人へ届ける `workflow_call` の再利用ワークフロー|
 
 各スキャナは可能な限り SARIF を GitHub code scanning へ送り、検出は共通の `upsert-pr-comment` アクションで PR にコメントします（そもそもコメントを書くのがどういうときかは [結果コメント](#結果コメント) を参照）。
@@ -165,12 +166,13 @@
 | capslock | `go.mod` 変更 PR | 不要 | 不要 |
 | Go fuzzing | 不要 | 不要 | 週次 |
 | OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
+| trustabl（エージェント設定） | — | — | 週次 |
 
 週次実行は月曜内で 1 時間ごとにずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査）、`0 9` npm cooldown 監査、`0 10` Opengrep、`0 11` fuzz）。同一時刻に全スキャナが並ぶのを避けるためです。
 
 DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
 
-以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer、`0 17` Checkov、`0 19` SonarQube Cloud と続きます。
+以降は `0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer、`0 17` Checkov、`0 18` trustabl、`0 19` SonarQube Cloud と続きます。
 
 末尾の 1 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。
 
@@ -188,7 +190,7 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | `grype.yaml` | 脆弱性の検出 | schedule |
 | `devskim.yaml` | 検出あり | schedule |
 
-他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 4 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。Checkov も同じ条件で未接続です。このリポジトリに対するベースラインが 20 件あり、その大半は 1 つのルールがワークフローファイルごとに 1 回ずつ出ているものです。Dockle と `trivy sbom` は自前の配線が要りません。どちらも `image-scan.yaml` の中で走り、その定期実行の失敗は既に人へ届きます。ESLint と Bearer は理由が別で未接続です。ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud も同じ理由で未接続です。セキュリティと並んで保守性を報告するため、既存コードベースに対するベースラインが 0 件になることはありません。
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 4 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。Checkov も同じ条件で未接続です。このリポジトリに対するベースラインが 20 件あり、その大半は 1 つのルールがワークフローファイルごとに 1 回ずつ出ているものです。Dockle と `trivy sbom` は自前の配線が要りません。どちらも `image-scan.yaml` の中で走り、その定期実行の失敗は既に人へ届きます。ESLint と Bearer と trustabl は理由が別で未接続です。ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出、trustabl は `.claude/agents/` 配下の読み取り専用 subagent 1 本につき high が 1 件）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud も同じ理由で未接続です。セキュリティと並んで保守性を報告するため、既存コードベースに対するベースラインが 0 件になることはありません。
 
 #### 検知が重なる面
 
@@ -209,6 +211,7 @@ DAST は `0 12` に入ります。スキャンの前にアプリケーション�
 | 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） — すべて報告専用 | — |
 | 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** | — |
 | 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
+| AI エージェント設定（`.claude/**`、MCP 宣言） | `trustabl.yaml`（trustabl）——報告専用 | —（ツール付与を解釈するスキャナは他に無い） |
 | sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用。対象はアプリケーションコードのみで `/scripts` は除外（リポジトリのツーリングはユーザーデータを扱わず、この問いが訊いているのはそれだけであるため） | — |
 | ランタイムイメージ | `image-scan.yaml`（Trivy） **(gate)** + Dockle（プラクティス検査・報告専用）+ `trivy sbom`（報告専用。ゲートと同じ DB を、Trivy 自身ではなく syft のパッケージ一覧で引く） | — |
 
@@ -329,6 +332,16 @@ Pull request ではその base との差分を監査するので、検出はそ�
 **報告専用であることは、決めた結果であって省略ではありません。** [`.github/zap/rules.tsv`](../zap/rules.tsv) のしきい値は、この API が現に何を返すかから導いたものです。これでマージをゲートすれば、しきい値が想定していない検出で pull request を落とすことになります。検出は `zap-dast` カテゴリで code scanning と artifact に上がり、ジョブが落ちるのは「スキャン自体が実行できなかった」ときだけです。ZAP は SARIF を出力しないため、JSON レポートをワークフロー内で SARIF へ写像しています。各検出を OpenAPI バンドルへ紐づけるのは、そのファイルこそ検出対象の面を記述したものであり、実在するファイルを指すことが code scanning 上の辿りやすさになるからです。
 
 しきい値とスキャン対象の面は、向ける先の API に対して導き直される前提です（[セットアップ手順の Phase 17](../../docs/get-started/setup-repository.md)）。
+
+#### エージェント設定スキャン
+
+`trustabl.yaml` は、ここの他のどの検査も読まない面——AI エージェント設定そのもの——を走査します。zizmor と Checkov はワークフロー定義を、CodeQL と Go の linter はソースを読みますが、subagent の `tools:` 付与や skill の `allowed-tools:` を解釈するものはありません。このリポジトリで効くのは Claude の subagent / skill ルールパックです。エンジンは OpenAI・Google ADK・LangChain・CrewAI・MCP 向けのパックも同梱しますが、ここでは何も検出しません。
+
+**この 1 ステップでは別々にバージョン付けされた 3 つの成果物が動き、アクションを固定して固定できるのは最初の 1 つだけです。** アクションは実行時にベンダーのリリースからエンジンバイナリを取得し、エンジンはさらに 2 つ目のリポジトリからルールパックを clone します——どちらも既定は可動先です。既定のままだと、このリポジトリの他のピンが守っているクールダウン窓の外側で、未レビューの第三者コードが毎週ランナーに載ります。そのためワークフローは 3 つとも明示します。アクションは [`.github/actions-pin.toml`](../actions-pin.toml) 経由の SHA、エンジンはリリースタグ、ルールパックはタグです。弱いのはルールパックで、エンジンはこの入力をブランチとタグには解決しますがコミットには解決しないため、タグの張り替えは黙って取り込まれます。エンジンは実際に clone した SHA をログに出すので、張り替えはそこに現れます。
+
+**報告専用であり、その理由はベースラインにあります。** subagent ルールは `Bash` の付与を一律に検出しますが、`.claude/agents/` 配下の読み取り専用レビュワーはいずれもそれを持っています——`git diff` や `go build` を走らせるための付与なので、検出が指しているのは欠陥ではなく設計です。severity ゲートを置けば初回からそのベースラインで落ちます。有用なのは skill パックの側で、狭い `Bash(git status:*)` 形を意図した箇所に裸の `Bash` が入っているのを捕まえます。`allowed-tools` は sandbox ではなく自動承認リストなので、この差は実在します。検出は step summary と `trustabl` アーティファクトで人に届きます。
+
+SARIF アップロードと sticky な PR コメントはどちらも切っています。それぞれ書き込みスコープ——`security-events: write` と `pull-requests: write`——を第三者バイナリへ渡す代償を伴い、報告専用のスキャナにその要求権はありません。これによりジョブは `contents: read` のままに保たれます。
 
 #### ランナーのハードニング
 

@@ -22,4 +22,5 @@
 "peter-evans/create-pull-request@v8" = "5f6978faf089d4d20b00c7766989d076bb2fc7f1"
 "sigstore/cosign-installer@v4.1.2" = "6f9f17788090df1f26f669e9d70d6ae9567deba6"
 "step-security/harden-runner@v2.20.0" = "bf7454d06d71f1098171f2acdf0cd4708d7b5920"
+"trustabl/trustabl-action@v0.4.1" = "973f666d20b5fbb2e6a4511bd3846e965a08c28b"
 "zaproxy/action-api-scan@v0.10.0" = "5158fe4d9d8fcc75ea204db81317cce7f9e5453d"
