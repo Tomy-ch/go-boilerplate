@@ -217,83 +217,30 @@ Examples:
 
 ## Repository / QueryService Rules
 
-> Rationale: [ADR-0029 (lightweight-cqrs)](adr/0029-lightweight-cqrs.md), [ADR-0030 (system-cqrs-dml-category)](adr/0030-system-cqrs-dml-category.md).
+> Criterion: [`docs/design/data-access-pattern.md`](design/data-access-pattern.md) — which construct a
+> given operation belongs to, and why. Decisions:
+> [ADR-0029 (lightweight-cqrs)](adr/0029-lightweight-cqrs.md),
+> [ADR-0030 (system-cqrs-dml-category)](adr/0030-system-cqrs-dml-category.md),
+> [ADR-0031 (commandservice-atomicity-criterion)](adr/0031-commandservice-atomicity-criterion.md).
 
-- Repository handles Aggregate persistence and simple reads of a single Aggregate
-  (fetch by ID, and simple filter / list / count by the Aggregate's own attributes), **including a
-  uniquely-determined JOIN to a context-nested reference master** (see boundary clarifications).
-- QueryService handles reads that cross *independent* Aggregates or require high query complexity
-  (multi-table joins across independent Aggregates, aggregation, keyword/full-text search, dedicated
-  read models) -- CQRS read side.
+Repository is the default for both reads and writes. QueryService and CommandService are the residue
+that remains where a non-functional requirement forbids decomposing an operation into per-aggregate
+work; `system_cqrs` sits outside the split entirely. **Do not restate the criterion here, in an ADR, or
+in a package README** — every copy drifts, and the copy nobody re-reads is the one that goes stale.
+Link to the criterion document instead.
 
 Forbidden:
 
 - Writing join / aggregation queries across *independent* Aggregates in Repository — **exempt**: a
-  uniquely-determined JOIN to a context-nested reference master (a child sub-domain lookup, see below)
+  uniquely-determined JOIN to a context-nested reference master
 - Writing domain logic in QueryService
+- Placing a write on CommandService that can be expressed as loading an Aggregate, mutating it, and
+  saving it
+- Enforcing a condition in CommandService that is not derived from a domain invariant
+- Placing an infrastructure-operational query (health verification, idempotency, outbox delivery) in
+  `repository/`, which keeps a 1:1 correspondence with domain Aggregates
 - Authoring a named business condition in a query — the `WHERE` clause is that condition's
   *execution*, not its definition (see [Domain Layer Constraints](#domain-layer-constraints))
-
-Boundary clarifications (common misreads):
-
-- **"Returns many rows" is not "crosses Aggregates."** Listing every row of one table is a
-  single-Aggregate `list` and stays in Repository.
-  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
-       目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
-       意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
-       書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
-  <!-- sample-api:begin -->
-  例: `SELECT * FROM prefectures ORDER BY code`。
-  <!-- sample-api:end -->
-   "Cross-Aggregate" means joining or spanning *different* Aggregates, not returning
-  multiple rows of one.
-- **"The response is a DTO" is not a QueryService trigger.** Every read is eventually mapped to
-  a response DTO. What moves a read to QueryService is a natural shape that would be wasteful to
-  reconstruct as a full Aggregate (heavy Aggregate, joins, pagination) — not the mere fact that
-  the API returns a DTO.
-- Repository reads are **not limited to fetch-by-ID**: simple filter / list / count by the
-  Aggregate's own attributes — including an unfiltered full list — belong to Repository.
-- **The Repository / QueryService split is storage-agnostic.** The discriminator is not the
-  engine (RDB vs NoSQL) or the technique (full-text search), but *what the read targets*: the
-  Aggregate's own system-of-record state, from which the full Aggregate is reconstructable
-  (→ Repository), versus a derived projection / read model — a search index, a separate search
-  store, a denormalized / generated search column, or a cross-Aggregate JOIN view — from which
-  the Aggregate cannot be reconstructed (→ QueryService). A document store used as the
-  Aggregate's system of record stays Repository even when it offers full-text search; an
-  Elasticsearch index built from that store is QueryService because it is a derived projection.
-- **"Keyword / full-text search" is a typical QueryService instance, not the rule.** A plain
-  `ILIKE` on the Aggregate's *own* columns is a single-Aggregate Repository filter. Full-text
-  search becomes QueryService only when it reads a derived search projection (a search index, a
-  search store, or a denormalized / generated search column).
-- **Independent Aggregates: resolve their fields in the Usecase, not via a JOIN.** To attach a
-  *separate* Aggregate's data — one with its own top-level domain and an independent transactional
-  lifecycle (e.g. a prefecture name; `internal/domain/prefecture`) — to a list, batch-fetch it
-  through its own Repository (`FindByIDs`) and merge by key in the Usecase layer, keeping each read
-  a single-Aggregate Repository read. A JOIN spanning two *independent* Aggregates returns a
-  flattened view and is a QueryService read model, not a Repository read.
-- **A reference-master JOIN stays a single-Aggregate Repository read.** A *reference master* —
-  fixed / standing lookup data with no independent write / transactional lifecycle, reached through
-  a mandatory, uniquely-determined FK — is part of the owning Aggregate's semantic set, not a
-  foreign Aggregate.
-  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
-       目的: 「参照マスタ」は抽象語のままだと読者が自分のテーブルを当てはめられない。
-       意義: 判定に効くのは「独立した書き込み・トランザクションのライフサイクルを持たないこと」で、
-             テーブルの名前や規模ではない。ここを外すと例が規則を誤解させる。
-       書き方: 列挙型に相当する固定テーブルを 1〜2 個、次の行と同じ 1 文の形で挙げる。 -->
-  <!-- sample-api:begin -->
-  サンプルでの該当例は `purchase_statuses` / `product_statuses`（取扱状態の列挙）。
-  <!-- sample-api:end -->
-  Projecting such a master's display attribute (e.g. the status *name*) by JOINing it into the
-  owner's list / read is a single-Aggregate Repository read — **not** a cross-Aggregate JOIN — and
-  does **not** require a QueryService or a usecase-layer merge. **The criterion is the joined data's
-  *nature*, not how it is modeled in Go.** Whether the master also has its own domain sub-package is
-  irrelevant: `internal/domain/product/status` exists only because products expose a master-list
-  endpoint, whereas `purchases` resolves its status purely by JOIN into a `StatusName string` with no
-  Go type of its own — both qualify equally. Discriminator: an *independent* Aggregate (its own
-  transactional lifecycle, typically its own top-level domain, e.g. `internal/domain/prefecture`)
-  MUST be resolved by a usecase-layer `FindByIDs` merge, never a Repository JOIN; a *fixed reference
-  master* reached by a mandatory uniquely-determined FK MAY be JOINed in the owner's Repository. The
-  merge form remains valid for a reference master too; the JOIN is simply not forbidden.
 
 ## DTO / Type Boundary Rules
 
@@ -448,6 +395,7 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
 
 - **Accurate** — the prose must match reality: the code, files, commands, flags, and APIs it describes. A doc that has **drifted** from the code (a removed symbol, a renamed file, a changed flag) is the **highest-priority** finding — a confidently wrong doc misleads more than a missing one. Verify claims against the actual code / files, do not trust the prose.
 - **Which side is the error depends on what the document does.** A doc that *describes* — a package README, a command reference, a guide — is corrected to match the code. A doc that *governs* — `docs/rules.md`, `docs/architecture.md`, `docs/adr/**` — is not: it states the intent the code is meant to satisfy, so a disagreement is as likely to be a defect in the code. Report the disagreement; changing a governing document to match what was built is a decision for this repository's architect or tech lead, not a drift fix.
+- **`docs/design/**` splits by statement, not by file.** A design document carries both kinds at once: the **mechanism it defines** — a protocol, a state machine, a placement criterion — *governs*, so a disagreement with the code is reported, not fixed; the **particulars it cites** — a symbol name, a default value, a step order, a line reference — *describe*, so drift there is corrected. Classifying by filename is what lets a governing criterion sit on the describing side and get quietly rewritten to match whatever was built.
 - **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
 - **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
 - **No premise the document will outlive** — the mirror image of *No rot*: rot is a past that stopped mattering, this is a present that will stop holding. Do not rest a statement in an evergreen document on a premise that is scheduled to lapse — the repository's current positioning, its distribution form, the lifecycle stage it is in ("we are still in PoC", "the demo data is present"). Such a statement is correct when written and no later review catches it, because the document never changes — reality does. Keep the **general form** of the rule in the evergreen document, and put the premise-bound part where the premise dies: a document that is discarded or rewritten at the moment it lapses. **Collect those parts into one document rather than marking them where they stand** — a region cut out of prose leaves the text on either side to be repaired, and every later edit near the cut is a fresh chance to break it unnoticed. Cross-references into that document must each be a single self-contained line, removable on its own.

@@ -21,6 +21,9 @@ English: [dependencies.md](../../reference/dependencies.md)
 | Web / API | `labstack/echo/v5` | HTTP web フレームワーク（[ADR-0019](../adr/0019-echo-http-framework.ja.md) 参照） |
 | Web / API | `oapi-codegen/echo-v5-middleware` | Echo 向け OpenAPI リクエスト検証ミドルウェア |
 | Web / API | `oapi-codegen/runtime` | oapi-codegen 生成コードのランタイムサポート |
+| Web / API | `oapi-codegen/nullable` | 生成 DTO でフィールドの不在と明示的 null を区別する |
+| Web / API | `go-jose/go-jose/v4` | アクセストークン検証のための JWKS 解析 |
+| Web / API | `golang-jwt/jwt/v5` | JWT の解析と署名検証 |
 | Web / API | `getkin/kin-openapi` | OpenAPI 3 ドキュメントモデル / ローダ |
 | Config | `caarlos0/env/v11` | 環境変数 → 構造体デコード |
 | Config | `joho/godotenv` | `.env` ファイルの読み込み |
@@ -28,14 +31,16 @@ English: [dependencies.md](../../reference/dependencies.md)
 | Database | `golang-migrate/migrate/v4` | スキーママイグレーション実行 |
 | Errors / utils | `cockroachdb/errors` | スタックトレース付きエラーラップ |
 | Errors / utils | `google/uuid` | UUID 生成（UUIDv7、[ADR-0034](../adr/0034-uuidv7-identifiers.ja.md) 参照） |
-| Errors / utils | `golang.org/x/crypto` | 暗号プリミティブ |
 | Errors / utils | `golang.org/x/sync` | 並行プリミティブ（errgroup など） |
+| Errors / utils | `shopspring/decimal` | 金額のための正確な十進演算 |
+| Errors / utils | `gopkg.in/yaml.v3` | YAML パース |
 | DI / logging / CLI | `go.uber.org/fx` | DI コンテナ（[ADR-0037](../adr/0037-uber-fx-di.ja.md) 参照） |
 | DI / logging / CLI | `go.uber.org/zap` | 構造化ロギング |
 | DI / logging / CLI | `spf13/cobra` | CLI コマンドフレームワーク |
 | Testing | `go.uber.org/mock` | モック生成ランタイム |
 | Testing | `stretchr/testify` | アサーション |
 | Messaging / worker | `aws/aws-sdk-go-v2` | AWS API クライアントコア（object storage / queue の両 adapter が共有） |
+| Storage | `aws/aws-sdk-go-v2/service/s3` | S3 互換オブジェクトストレージのクライアント（ローカルは Garage） |
 | Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS クライアント（pull-ack worker）。配線は削除可能なサンプル群からのみ — [ADR-0050](../adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md) 参照 |
 | Metrics exposition | `prometheus/client_golang` | Prometheus 形式メトリクスエンドポイント + カスタムコレクタ |
 | Metrics exposition | `prometheus/client_model` | Prometheus メトリクスデータモデル（共有型） |

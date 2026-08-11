@@ -17,7 +17,7 @@ meta:
     - title: Application Layers
       sections: [domain, usecase, controller, infrastructure]
     - title: Design
-      sections: [rest-design, worker-design, job-design, outbox-design, idempotency-design, observability-design]
+      sections: [data-access-pattern-design, rest-design, worker-design, job-design, outbox-design, idempotency-design, observability-design]
     - title: Wiring & Helpers
       sections: [di, context-helper, cli, pkg]
     - title: Cross-Cutting
@@ -302,6 +302,14 @@ controller:
     dst: docs/portal/guides/ja/controller-httpstack-oapi-auth.ja.md
   - src: internal/controller/httpstack/oapi/skipper/README.ja.md
     dst: docs/portal/guides/ja/controller-httpstack-oapi-skipper.ja.md
+
+data-access-pattern-design:
+  # English
+  - src: docs/design/data-access-pattern.md
+    dst: docs/portal/guides/data-access-pattern-design.md
+  # Japanese
+  - src: docs/ja/design/data-access-pattern.ja.md
+    dst: docs/portal/guides/ja/data-access-pattern-design.ja.md
 
 context-map-design:
   # English

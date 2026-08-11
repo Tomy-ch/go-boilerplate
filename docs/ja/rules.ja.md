@@ -202,48 +202,28 @@ Infrastructure コンポーネントは
 
 ## Repository / QueryService ルール
 
-- Repository は Aggregate の永続化と、単一 Aggregate の単純な読み取りを扱う
-  （ID 取得、および Aggregate 自身の属性による単純なフィルタ・一覧・件数取得）。
-- QueryService は Aggregate を横断する読み取り、または高い検索複雑性を要する読み取りを扱う
-  （複数テーブル結合・集計・キーワード/全文検索・専用 read model）＝CQRS の読み取り側。
+> 判定基準: [`docs/design/data-access-pattern.md`](ja/design/data-access-pattern.ja.md) —— ある操作が
+> どの構築物に属するのか、そしてなぜか。決定:
+> [ADR-0029 (lightweight-cqrs)](ja/adr/0029-lightweight-cqrs.ja.md)、
+> [ADR-0030 (system-cqrs-dml-category)](ja/adr/0030-system-cqrs-dml-category.ja.md)、
+> [ADR-0031 (commandservice-atomicity-criterion)](ja/adr/0031-commandservice-atomicity-criterion.ja.md)。
 
-禁止：
+Repository は読み・書きの両方向で既定である。QueryService と CommandService は、非機能要件が操作を集約単位の
+作業へ分解することを禁じるときに残る残余であり、`system_cqrs` は分割の外側にある。**判定基準をここにも、ADR にも、
+パッケージ README にも書き写さないこと** —— 写しは必ず乖離し、誰も読み返さない写しこそが古くなる。判定基準の文書へ
+リンクすること。
 
-- Repository に Aggregate 横断や集計・結合のクエリを書くこと
+禁止:
+
+- Repository に *独立した* Aggregate を跨ぐ結合 / 集計クエリを書くこと —— **例外**: 一意に定まる、文脈に入れ子の
+  参照マスタへの JOIN
 - QueryService にドメインロジックを書くこと
-- 業務語彙で名前を持つ条件をクエリで著作すること — `WHERE` 句はその条件の**実行**であって定義ではない
+- 集約を読み込み・変更し・保存する形で表現できる書き込みを CommandService に置くこと
+- ドメイン不変条件から導出されていない条件を CommandService で強制すること
+- インフラ運用のクエリ（ヘルス検証・冪等性・outbox 配信）を `repository/` へ置くこと。`repository/` は
+  ドメイン集約との 1:1 対応を保つ
+- 業務語彙で名前を持つ条件をクエリで著作すること —— `WHERE` 句はその条件の**実行**であって定義ではない
   （[Domain レイヤ制約](#domain-レイヤ制約)を参照）
-
-境界の明確化（よくある誤読）：
-
-- **「多数の行を返す」ことは「Aggregate 横断」ではない。** 1 つのテーブルの全行を列挙することは
-  単一 Aggregate の `一覧` であり Repository に留まる。
-  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
-       目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
-       意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
-       書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
-  <!-- sample-api:begin -->
-  例: `SELECT * FROM prefectures ORDER BY code`。
-  <!-- sample-api:end -->
-  「Aggregate 横断」とは *異なる* Aggregate を結合・またぐことであり、1 つの Aggregate の複数行を返すことではない。
-- **「レスポンスが DTO である」ことは QueryService のトリガではない。** あらゆる読み取りは最終的にレスポンス
-  DTO へ写像される。読み取りを QueryService へ移すのは、full Aggregate として再構築するのが無駄になる
-  自然な形（重い Aggregate・結合・ページング）であって、API が DTO を返すという事実そのものではない。
-- Repository の読み取りは **ID 取得に限定されない**：Aggregate 自身の属性による単純なフィルタ・一覧・件数取得
-  （無フィルタの全件一覧を含む）は Repository に属する。
-- **Repository / QueryService の判別はストレージ非依存。** 基準はエンジン（RDB か NoSQL か）でも手法
-  （全文検索か）でもなく、*読み取り先が何か*：Aggregate 自身の正本（system of record）の状態で full Aggregate を
-  再構成できるなら Repository、正本から派生した写像 / read model（検索インデックス・別の検索ストア・非正規化 /
-  生成された検索列・Aggregate 横断の JOIN view）で Aggregate を再構成できないなら QueryService。document ストアを
-  Aggregate の正本として使う場合は全文検索を備えていても Repository、その正本から構築した Elasticsearch
-  インデックスは派生写像なので QueryService。
-- **「keyword / 全文検索 = QueryService」は典型例であって規則ではない。** Aggregate *自身* の列への素の `ILIKE`
-  は単一 Aggregate の Repository フィルタ。全文検索が QueryService になるのは、派生した検索射影（検索インデックス・
-  検索ストア・非正規化 / 生成された検索列）を読む場合に限る。
-- **別 Aggregate のフィールド解決は JOIN ではなく Usecase で行う。** 一覧に関連 Aggregate のデータ（例: 名称）を
-  付与するには、その Aggregate 自身の Repository（`FindByIDs`）で一括取得し Usecase 層でキー突合する。各読み取りは
-  単一 Aggregate の Repository read のまま保つ。平坦化した view を返す Aggregate 横断 SQL JOIN は Repository read
-  ではなく QueryService の read model。
 
 ## DTO / 型境界ルール
 
@@ -388,6 +368,7 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 
 - **正確**: 散文が実体（記述対象のコード・ファイル・コマンド・フラグ・API）と一致すること。コードから**乖離**した doc（削除済みシンボル、リネームされたファイル、変わったフラグ）は**最優先**の指摘 — 自信ありげに誤った doc は、無い doc より誤誘導する。散文を信じず、実コード/ファイルと突き合わせて検証する。
 - **どちらが誤りかは、その文書が何をする文書かで決まる。** *記述する*文書——パッケージ README、コマンドリファレンス、ガイド——はコードに合わせて直す。*統べる*文書——`docs/rules.md`・`docs/architecture.md`・`docs/adr/**`——は違う。そちらはコードが満たすべき意図を述べているのだから、食い違いはコード側の欠陥である可能性が同じだけある。食い違いは報告すること。統べる文書を「作られたもの」に合わせて変えるのは、このリポジトリのアーキテクトまたはテックリードの判断であって、ドリフトの修正ではない。
+- **`docs/design/**` はファイル単位ではなく記述単位で分かれる。** 設計文書は両方を同時に抱える。**そこで定義される機構**——プロトコル、状態機械、配置の判定基準——は*統べる*側なので、コードとの食い違いは報告するだけで直さない。**そこで引用される個別値**——シンボル名、既定値、手順の順序、行番号参照——は*記述する*側なので、ドリフトは訂正する。ファイル名で分類すると、統べるべき判定基準が記述する側に乗り、作られたものに合わせて黙って書き換えられる。
 - **有意**: 自明を超えて情報を与えること。見出しやディレクトリ名の単なる言い換えのような埋め草は不可。
 - **経緯排除**: 恒久 doc に開発の経緯を語らない。移行履歴・障害の後日談・「なぜ X から乗り換えたか」は release note（`.github/release/`）/ PR / commit ログに置き、常に真であるべき README には置かない。
 - **その文書より先に失効する前提に立たない**: *経緯排除* の鏡像である。経緯が「意味を失った過去」なら、こちらは「これから成り立たなくなる現在」。恒久 doc の記述を、失効が予定されている前提——このリポジトリの現在の位置づけ、配布形態、いま置かれているライフサイクル段階（「まだ PoC 段階である」「デモ用データが同梱されている」）——の上に立てないこと。この種の記述は書いた時点では正しく、後のレビューでも捕まらない。文書は変わらず、変わるのは実態のほうだからである。恒久 doc には規則の**一般形**だけを置き、前提に縛られた部分は前提が死ぬ場所——前提が失効するのと同時に破棄または書き換えられる文書——に置く。**その部分は現場でマーキングせず 1 つの文書へ集約すること**。散文から領域を切り出せば前後の文を修復する必要が残り、切除点近傍への後日の追記はそのたびに気づかれず壊す機会になる。その文書への相互参照は、それぞれ単独で除去できる自己完結した 1 行にすること。
