@@ -38,7 +38,7 @@ type updateTestDeps struct {
 }
 
 // newUpdateTarget は、部分更新の対象として読み込み済みの商品エンティティを構築します。
-// クリア可能な 4 フィールド（説明・在庫警告閾値・公開日時・画像パス）はいずれも値を持ち、
+// クリア可能な 4 フィールド（説明・在庫警告閾値・公開日時・画像）はいずれも値を持ち、
 // status / category の名称はマスタ再解決との差分が判別できるよう現行値であることが分かる名称にしています。
 func newUpdateTarget(t *testing.T, version int) *domainproduct.Product {
 	t.Helper()
@@ -57,7 +57,12 @@ func newUpdateTarget(t *testing.T, version int) *domainproduct.Product {
 		Status:                statusRef,
 		Category:              categoryRef,
 		PublishedAt:           ptr.To(updateBasePublishedAt),
-		ImagePath:             ptr.To("products/current.png"),
+		Images: []domainproduct.Image{
+			domainproduct.NewImage(
+				uuidtestkit.NewTestFromSalt(t, "update_current_image"),
+				domainproduct.ImageAttributes{ImagePath: "products/current.png", SortKey: 1},
+			),
+		},
 	}, version)
 	require.NoError(t, err)
 
@@ -114,6 +119,15 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			})
 	}
 
+	// captureReplaceImages は、repo.ReplaceImages へ渡されたエンティティを捕捉します。
+	captureReplaceImages := func(deps *updateTestDeps, captured **domainproduct.Product) {
+		deps.repo.EXPECT().ReplaceImages(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, p *domainproduct.Product) error {
+				*captured = p
+				return nil
+			})
+	}
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -144,8 +158,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Equal(t, 2, *captured.StockWarningThreshold())
 			require.NotNil(t, captured.PublishedAt())
 			assert.Equal(t, updateBasePublishedAt, *captured.PublishedAt())
-			require.NotNil(t, captured.ImagePath())
-			assert.Equal(t, "products/current.png", *captured.ImagePath())
+			require.Len(t, captured.Images(), 1)
+			assert.Equal(t, "products/current.png", captured.Images()[0].ImagePath())
 			assert.Equal(t, "現行ステータス", captured.Status().Name())
 			assert.Equal(t, "現行カテゴリ", captured.Category().Name())
 
@@ -160,15 +174,16 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
 
-			var captured *domainproduct.Product
+			var captured, replaced *domainproduct.Product
 			captureUpdate(deps, &captured)
+			captureReplaceImages(deps, &replaced)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version:               currentVersion,
 				Description:           patch.Null[string](),
 				StockWarningThreshold: patch.Null[int](),
 				PublishedAt:           patch.Null[time.Time](),
-				ImagePath:             patch.Null[string](),
+				Images:                patch.Null[[]ProductImageParams](),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, captured)
@@ -176,11 +191,13 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Nil(t, captured.Description())
 			assert.Nil(t, captured.StockWarningThreshold())
 			assert.Nil(t, captured.PublishedAt())
-			assert.Nil(t, captured.ImagePath())
+			assert.Empty(t, captured.Images())
+			require.NotNil(t, replaced)
+			assert.Empty(t, replaced.Images())
 
 			assert.Nil(t, actual.Description)
 			assert.Nil(t, actual.PublishedAt)
-			assert.Nil(t, actual.ImagePath)
+			assert.Empty(t, actual.Images)
 		})
 
 		t.Run("値指定されたフィールドがその値へ更新される", func(t *testing.T) {
@@ -190,8 +207,9 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
 
-			var captured *domainproduct.Product
+			var captured, replaced *domainproduct.Product
 			captureUpdate(deps, &captured)
+			captureReplaceImages(deps, &replaced)
 
 			publishedAt := updateBasePublishedAt.Add(24 * time.Hour)
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
@@ -200,7 +218,9 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 				Description:           patch.Value("更新後説明"),
 				StockWarningThreshold: patch.Value(7),
 				PublishedAt:           patch.Value(publishedAt),
-				ImagePath:             patch.Value("products/updated.png"),
+				Images: patch.Value([]ProductImageParams{
+					{ImagePath: "products/updated.png", SortKey: 1},
+				}),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, captured)
@@ -212,10 +232,37 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Equal(t, 7, *captured.StockWarningThreshold())
 			require.NotNil(t, captured.PublishedAt())
 			assert.Equal(t, publishedAt, *captured.PublishedAt())
-			require.NotNil(t, captured.ImagePath())
-			assert.Equal(t, "products/updated.png", *captured.ImagePath())
+			require.Len(t, captured.Images(), 1)
+			assert.Equal(t, "products/updated.png", captured.Images()[0].ImagePath())
+			require.NotNil(t, replaced)
+			require.Len(t, replaced.Images(), 1)
+			assert.Equal(t, "products/updated.png", replaced.Images()[0].ImagePath())
 
 			assert.Equal(t, "29.95", actual.Price.String())
+		})
+
+		t.Run("imagesが未指定の場合、画像の置き換えを行わない", func(t *testing.T) {
+			t.Parallel()
+
+			u, deps := newUpdateTestUsecase(t)
+			entity := newUpdateTarget(t, currentVersion)
+			expectAuthorizedLoad(deps, entity)
+
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
+			deps.repo.EXPECT().ReplaceImages(gomock.Any(), gomock.Any()).Times(0)
+
+			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
+				Version: currentVersion,
+				Name:    ptr.To("更新後商品名"),
+			})
+			require.NoError(t, err)
+			require.NotNil(t, captured)
+
+			require.Len(t, captured.Images(), 1)
+			assert.Equal(t, "products/current.png", captured.Images()[0].ImagePath())
+			require.Len(t, actual.Images, 1)
+			assert.Equal(t, "products/current.png", actual.Images[0].Path)
 		})
 
 		t.Run("statusIdが指定された場合、再解決した名称付き参照へ更新される", func(t *testing.T) {
@@ -578,6 +625,47 @@ func Test_parseOptionalPrice(t *testing.T) {
 			actual, err := parseOptionalPrice(ptr.To("-0.01"))
 			require.ErrorIs(t, err, money.ErrNegativePrice)
 			assert.Nil(t, actual)
+		})
+	})
+}
+
+func Test_resolveUpdatedImages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未指定の場合、置き換えを行わないことを表すnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := resolveUpdatedImages(patch.Unspecified[[]ProductImageParams]())
+
+			require.NoError(t, err)
+			assert.Nil(t, actual)
+		})
+
+		t.Run("null指定の場合、空の集合を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := resolveUpdatedImages(patch.Null[[]ProductImageParams]())
+
+			require.NoError(t, err)
+			require.NotNil(t, actual)
+			assert.Empty(t, *actual)
+		})
+
+		t.Run("値指定の場合、その内容へ変換した集合を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := resolveUpdatedImages(patch.Value([]ProductImageParams{
+				{ImagePath: "products/a.png", SortKey: 3},
+			}))
+
+			require.NoError(t, err)
+			require.NotNil(t, actual)
+			require.Len(t, *actual, 1)
+			assert.Equal(t, "products/a.png", (*actual)[0].ImagePath())
+			assert.Equal(t, 3, (*actual)[0].SortKey())
 		})
 	})
 }

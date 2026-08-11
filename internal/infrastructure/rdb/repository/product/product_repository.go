@@ -65,9 +65,9 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
 		}
-		return rowsToProducts(rows, func(row *gen.ListPublishedProductsAscAfterRow) productRow {
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListPublishedProductsAscAfterRow) productRow {
 			return toRow(row.Products, row.StatusName, row.CategoryName)
-		})
+		}))
 	case params.Ascending:
 		rows, err := db.ListPublishedProductsAscFirst(ctx, &gen.ListPublishedProductsAscFirstParams{
 			CategoryID: params.CategoryID,
@@ -78,9 +78,9 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
 		}
-		return rowsToProducts(rows, func(row *gen.ListPublishedProductsAscFirstRow) productRow {
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListPublishedProductsAscFirstRow) productRow {
 			return toRow(row.Products, row.StatusName, row.CategoryName)
-		})
+		}))
 	case hasAfter:
 		rows, err := db.ListPublishedProductsDescAfter(ctx, &gen.ListPublishedProductsDescAfterParams{
 			CategoryID:       params.CategoryID,
@@ -93,9 +93,9 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
 		}
-		return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescAfterRow) productRow {
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListPublishedProductsDescAfterRow) productRow {
 			return toRow(row.Products, row.StatusName, row.CategoryName)
-		})
+		}))
 	default:
 		rows, err := db.ListPublishedProductsDescFirst(ctx, &gen.ListPublishedProductsDescFirstParams{
 			CategoryID: params.CategoryID,
@@ -106,9 +106,9 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
 		}
-		return rowsToProducts(rows, func(row *gen.ListPublishedProductsDescFirstRow) productRow {
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListPublishedProductsDescFirstRow) productRow {
 			return toRow(row.Products, row.StatusName, row.CategoryName)
-		})
+		}))
 	}
 }
 
@@ -125,9 +125,9 @@ func (r *repository) FindAllLowStock(ctx context.Context, limit int32) (product.
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return rowsToProducts(rows, func(row *gen.ListLowStockProductsRow) productRow {
+	return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListLowStockProductsRow) productRow {
 		return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
-	})
+	}))
 }
 
 // FindPublishedByID は、ID から公開中（published_at 非 NULL）の単一商品を取得します。
@@ -142,7 +142,7 @@ func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*prod
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
+	return r.buildProduct(ctx, productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
 // FindByID は、GetProductByID で published_at を絞らずに単一商品を取得します
@@ -157,7 +157,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*product.Produ
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
+	return r.buildProduct(ctx, productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
 // LockByID は、GetProductByIDForUpdate で対象行を悲観ロック（FOR UPDATE）したうえで取得します。
@@ -172,7 +172,7 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*product.Produ
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
+	return r.buildProduct(ctx, productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
 // LockByIDs は、ListProductsByIDsForUpdate で対象行を ID 昇順に悲観ロック（FOR UPDATE）したうえで取得します。
@@ -187,9 +187,9 @@ func (r *repository) LockByIDs(ctx context.Context, ids []uuid.UUID) (product.Pr
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return rowsToProducts(rows, func(row *gen.ListProductsByIDsForUpdateRow) productRow {
+	return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListProductsByIDsForUpdateRow) productRow {
 		return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
-	})
+	}))
 }
 
 // UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。
@@ -226,7 +226,7 @@ func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, 
 	return int(lockVersion), nil
 }
 
-// Create は、商品を新規登録します。
+// Create は、商品を新規登録します。p が保持する画像も併せて登録します。
 func (r *repository) Create(ctx context.Context, p *product.Product) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -251,15 +251,32 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
-		ImagePath:             p.ImagePath(),
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)
 	}
-	return nil
+
+	return r.insertImages(ctx, db, p)
+}
+
+// ReplaceImages は、商品が現在参照している画像を p が保持する画像で置き換えます。
+// 置き換え前の画像は論理削除として残ります。
+//
+// 同一商品への置換が直列化されるのは、先行する Update の条件付き UPDATE が商品行のロックを取るためです。
+func (r *repository) ReplaceImages(ctx context.Context, p *product.Product) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	if err := db.SoftDeleteProductImages(ctx, p.ID()); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	return r.insertImages(ctx, db, p)
 }
 
 // Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
+// 画像は対象に含みません（置換は ReplaceImages が担います）。
 func (r *repository) Update(ctx context.Context, p *product.Product) (int, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -287,7 +304,6 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
-		ImagePath:             p.ImagePath(),
 		ID:                    p.ID(),
 		CurrentVersion:        currentVersion,
 	})
@@ -319,7 +335,7 @@ func (r *repository) Count(ctx context.Context) (product.Counts, error) {
 	return product.Counts{Total: row.TotalCount, Published: row.PublishedCount}, nil
 }
 
-// FilterExistingImagePaths は、paths のうち products が実際に参照しているものを重複排除して返します。
+// FilterExistingImagePaths は、paths のうち商品が現在の画像として参照しているものを重複排除して返します。
 // 未参照オブジェクトの回収で「消してよいか」を判定するための照会で、返らなかったパスが孤児にあたります。
 func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
@@ -330,25 +346,98 @@ func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []strin
 	}
 
 	db := gen.New(driver.New(ctx, r.db))
-	rows, err := db.ListExistingProductImagePaths(ctx, paths)
+	existing, err := db.ListExistingProductImagePaths(ctx, paths)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	existing := make([]string, 0, len(rows))
-	for _, p := range rows {
-		// image_path は NULL 許容だが、NULL はどの要素とも一致しないため結果には現れない。
-		// それでも nil を空文字として拾うと、参照されていないパスを参照済みと誤判定して孤児を残すため取り除く。
-		if p == nil {
-			continue
-		}
-		existing = append(existing, *p)
-	}
 	return existing, nil
 }
 
-// rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）をドメインエンティティへ変換します。
-func rowToProduct(row productRow) (*product.Product, error) {
+// insertImages は、p が保持する画像を登録します。
+func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
+	for _, img := range p.Images() {
+		sortKey, err := safecast.IntToInt16(img.SortKey())
+		if err != nil {
+			return xerrors.Wrap(err, "invalid product image sortKey")
+		}
+
+		if err = db.CreateProductImage(ctx, &gen.CreateProductImageParams{
+			ID:        img.ID(),
+			ProductID: p.ID(),
+			ImagePath: img.ImagePath(),
+			SortKey:   sortKey,
+		}); err != nil {
+			return pgerror.NormalizeError(err)
+		}
+	}
+
+	return nil
+}
+
+// findImagesByProductIDs は、商品 ID ごとの画像を表示順の昇順で返します。
+// 置き換えで論理削除された画像は現在の参照ではないため、SQL 側で除いています。
+func (r *repository) findImagesByProductIDs(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID][]product.Image, error) {
+	images := make(map[uuid.UUID][]product.Image, len(ids))
+	if len(ids) == 0 {
+		return images, nil
+	}
+
+	db := gen.New(driver.New(ctx, r.db))
+	rows, err := db.ListProductImagesByProductIDs(ctx, ids)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	for _, row := range rows {
+		img := row.ProductImages
+		images[img.ProductID] = append(images[img.ProductID], product.NewImage(img.ID, product.ImageAttributes{
+			ImagePath: img.ImagePath,
+			SortKey:   int(img.SortKey),
+		}))
+	}
+
+	return images, nil
+}
+
+// buildProducts は、商品行の集合を画像込みのドメインエンティティ列へ変換します。
+// 画像は行数によらず 1 度の問い合わせでまとめて取得します。
+func (r *repository) buildProducts(ctx context.Context, rows []productRow) (product.Products, error) {
+	ids := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		ids[i] = row.p.ID
+	}
+	imagesByProductID, err := r.findImagesByProductIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	products := make(product.Products, len(rows))
+	for i, row := range rows {
+		p, perr := rowToProduct(row, imagesByProductID[row.p.ID])
+		if perr != nil {
+			return nil, perr
+		}
+		products[i] = p
+	}
+
+	return products, nil
+}
+
+// buildProduct は、単一の商品行を画像込みのドメインエンティティへ変換します。
+func (r *repository) buildProduct(ctx context.Context, row productRow) (*product.Product, error) {
+	products, err := r.buildProducts(ctx, []productRow{row})
+	if err != nil {
+		return nil, err
+	}
+
+	return products[0], nil
+}
+
+// rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）と画像をドメインエンティティへ変換します。
+func rowToProduct(row productRow, images []product.Image) (*product.Product, error) {
 	price, err := money.NewPrice(row.p.Price)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
@@ -371,7 +460,7 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		Status:                status,
 		Category:              category,
 		PublishedAt:           row.p.PublishedAt,
-		ImagePath:             row.p.ImagePath,
+		Images:                images,
 	}, int(row.p.LockVersion))
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
@@ -379,15 +468,11 @@ func rowToProduct(row productRow) (*product.Product, error) {
 	return entity, nil
 }
 
-// rowsToProducts は、行スライスをドメインエンティティ列へ変換します。
-func rowsToProducts[T any](rows []T, extract func(T) productRow) (product.Products, error) {
-	products := make(product.Products, len(rows))
+// toProductRows は、クエリごとに異なる行型を共通の変換元へ揃えます。
+func toProductRows[T any](rows []T, extract func(T) productRow) []productRow {
+	converted := make([]productRow, len(rows))
 	for i, row := range rows {
-		p, err := rowToProduct(extract(row))
-		if err != nil {
-			return nil, err
-		}
-		products[i] = p
+		converted[i] = extract(row)
 	}
-	return products, nil
+	return converted
 }

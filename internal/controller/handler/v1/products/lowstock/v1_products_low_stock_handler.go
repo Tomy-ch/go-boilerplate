@@ -69,6 +69,20 @@ func limitParam(limit *int) int {
 	return *limit
 }
 
+// toProductImageItems は、商品画像の DTO を HTTP レスポンスへ変換します。
+// 表示順が int32 に収まらない場合はエラーを返します。
+func toProductImageItems(dtos []productuc.ProductImageItemView) ([]gen.ProductImageItem, error) {
+	items := make([]gen.ProductImageItem, len(dtos))
+	for i, dto := range dtos {
+		sortKey, err := safecast.IntToInt32(dto.SortKey)
+		if err != nil {
+			return nil, xerrors.Wrap(err, "invalid product image sort key")
+		}
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: sortKey}
+	}
+	return items, nil
+}
+
 // toProductResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
 // 在庫数・在庫警告閾値・バージョンが int32 に収まらない場合はエラーを返します。
 func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
@@ -87,6 +101,11 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product version")
 	}
 
+	images, err := toProductImageItems(dto.Images)
+	if err != nil {
+		return gen.ProductResponse{}, err
+	}
+
 	return gen.ProductResponse{
 		Id:                    dto.ID.ToPrimitive(),
 		Name:                  dto.Name,
@@ -103,7 +122,7 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 			Name: dto.CategoryName,
 		},
 		PublishedAt: dto.PublishedAt,
-		ImagePath:   dto.ImagePath,
+		Images:      images,
 		Version:     version,
 	}, nil
 }

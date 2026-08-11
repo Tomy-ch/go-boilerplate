@@ -29,7 +29,7 @@ func (s *server) PostProducts(ctx context.Context, request gen.PostProductsReque
 		CategoryID:            conv.UUID(request.Body.CategoryId),
 		StatusID:              conv.UUID(request.Body.StatusId),
 		PublishedAt:           request.Body.PublishedAt,
-		ImagePath:             request.Body.ImagePath,
+		Images:                toProductImageParams(ptr.Deref(request.Body.Images, nil)),
 	})
 	if err != nil {
 		return nil, err

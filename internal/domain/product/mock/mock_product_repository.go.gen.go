@@ -176,6 +176,20 @@ func (mr *MockRepositoryMockRecorder) LockByIDs(ctx, ids any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByIDs", reflect.TypeOf((*MockRepository)(nil).LockByIDs), ctx, ids)
 }
 
+// ReplaceImages mocks base method.
+func (m *MockRepository) ReplaceImages(ctx context.Context, p *product.Product) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplaceImages", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplaceImages indicates an expected call of ReplaceImages.
+func (mr *MockRepositoryMockRecorder) ReplaceImages(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceImages", reflect.TypeOf((*MockRepository)(nil).ReplaceImages), ctx, p)
+}
+
 // Update mocks base method.
 func (m *MockRepository) Update(ctx context.Context, p *product.Product) (int, error) {
 	m.ctrl.T.Helper()

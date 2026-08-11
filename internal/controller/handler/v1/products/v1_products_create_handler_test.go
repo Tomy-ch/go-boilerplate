@@ -30,7 +30,10 @@ func newPostProductsRequest(t *testing.T) gen.PostProductsRequestObject {
 			CategoryId:            uuidtestkit.NewTestFromSalt(t, "post_category").ToPrimitive(),
 			StatusId:              uuidtestkit.NewTestFromSalt(t, "post_status").ToPrimitive(),
 			PublishedAt:           ptr.To(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)),
-			ImagePath:             ptr.To("products/earphone.png"),
+			Images: ptr.To([]gen.ProductImageInput{
+				{ImagePath: "products/earphone.png", SortKey: 1},
+				{ImagePath: "products/earphone-sub.png", SortKey: 2},
+			}),
 		},
 	}
 }
@@ -52,8 +55,11 @@ func Test_server_PostProducts(t *testing.T) {
 					assert.Equal(t, "ワイヤレスイヤホン", p.Name)
 					assert.Equal(t, "19.99", p.Price)
 					assert.Equal(t, 100, p.Quantity)
-					require.NotNil(t, p.ImagePath)
-					assert.Equal(t, "products/earphone.png", *p.ImagePath)
+					require.Len(t, p.Images, 2)
+					assert.Equal(t, "products/earphone.png", p.Images[0].ImagePath)
+					assert.Equal(t, 1, p.Images[0].SortKey)
+					assert.Equal(t, "products/earphone-sub.png", p.Images[1].ImagePath)
+					assert.Equal(t, 2, p.Images[1].SortKey)
 					require.NotNil(t, p.Description)
 					assert.Equal(t, "<p>ノイズキャンセリング対応</p>", *p.Description)
 					require.NotNil(t, p.PublishedAt)
@@ -67,8 +73,8 @@ func Test_server_PostProducts(t *testing.T) {
 			actual, ok := resp.(gen.PostProducts201JSONResponse)
 			require.True(t, ok)
 			assert.Equal(t, view.Name, actual.Name)
-			require.NotNil(t, actual.ImagePath)
-			assert.Equal(t, *view.ImagePath, *actual.ImagePath)
+			require.Len(t, actual.Images, len(view.Images))
+			assert.Equal(t, view.Images[0].Path, actual.Images[0].ImagePath)
 		})
 	})
 

@@ -62,8 +62,10 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 		CategoryName:          "電子機器",
 		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
-		ImagePath:             ptr.To("products/" + salt + ".png"),
-		Version:               3,
+		Images: []productuc.ProductImageItemView{
+			{Path: "products/" + salt + ".png", SortKey: 1},
+		},
+		Version: 3,
 	}
 }
 
@@ -93,10 +95,21 @@ func wantProductResponse(dto productuc.ProductView) gen.ProductResponse {
 			Name: dto.CategoryName,
 		},
 		PublishedAt: dto.PublishedAt,
-		ImagePath:   dto.ImagePath,
+		Images:      expectedImageItems(dto.Images),
 		//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
 		Version: int32(dto.Version),
 	}
+}
+
+// expectedImageItems は、期待レスポンスの商品画像を組み立てます。
+// production の写像と同じ順序・同じ値になることを固定するため、要素は素直に書き下します。
+func expectedImageItems(dtos []productuc.ProductImageItemView) []gen.ProductImageItem {
+	items := make([]gen.ProductImageItem, len(dtos))
+	for i, dto := range dtos {
+		//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: int32(dto.SortKey)}
+	}
+	return items
 }
 
 func TestBindHandler(t *testing.T) {
@@ -302,14 +315,14 @@ func Test_toProductResponse(t *testing.T) {
 			dto.Description = nil
 			dto.StockWarningThreshold = nil
 			dto.PublishedAt = nil
-			dto.ImagePath = nil
+			dto.Images = nil
 
 			actual, err := toProductResponse(dto)
 			require.NoError(t, err)
 			assert.Nil(t, actual.Description)
 			assert.Nil(t, actual.StockWarningThreshold)
 			assert.Nil(t, actual.PublishedAt)
-			assert.Nil(t, actual.ImagePath)
+			assert.Empty(t, actual.Images)
 			assert.Equal(t, dto.ID.ToPrimitive(), actual.Id)
 		})
 
@@ -357,6 +370,52 @@ func Test_toProductResponse(t *testing.T) {
 
 			_, err := toProductResponse(dto)
 			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
+	})
+}
+
+func Test_toProductImageItems(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("DTOの並びのままレスポンスへ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := toProductImageItems([]productuc.ProductImageItemView{
+				{Path: "products/a.png", SortKey: 1},
+				{Path: "products/b.png", SortKey: 5},
+			})
+
+			require.NoError(t, err)
+			require.Len(t, actual, 2)
+			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/a.png", SortKey: 1}, actual[0])
+			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/b.png", SortKey: 5}, actual[1])
+		})
+
+		t.Run("画像が空の場合、空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := toProductImageItems(nil)
+
+			require.NoError(t, err)
+			assert.Empty(t, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("表示順がint32に収まらない場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := toProductImageItems([]productuc.ProductImageItemView{
+				{Path: "products/a.png", SortKey: math.MaxInt32 + 1},
+			})
+
+			require.Error(t, err)
+			assert.Nil(t, actual)
 		})
 	})
 }
