@@ -1,13 +1,13 @@
 name: Scripts Check
 
-# Type check and unit tests for the repository's TypeScript helper scripts (`scripts/**/*.ts`).
+# Type check and unit tests for the repository's TypeScript helper scripts (`scripts/**/*.ts`),
+# plus the 1:1 test gate, which walks `docs-viewer` and `mock-auth-server` as well.
 #
-# Four of them are gates — `skill-lint`, `mermaid-lint`, `pr-comment-secret-lint`,
-# `pr-comment-fence-lint`, `actions-cutoff-lint` — and they all fail in the same direction when
-# broken: they stop finding things and report a clean run. Nothing downstream notices, because a
-# gate that inspects nothing looks exactly like a repository with no violations. The decision
-# logic lives in `scripts/lib/**` precisely so it can be exercised here without a repository to
-# scan, and these tests are what keeps a silent no-op from passing for a pass.
+# Many of those scripts are gates, and they all fail in the same direction when broken: they stop
+# finding things and report a clean run. Nothing downstream notices, because a gate that inspects
+# nothing looks exactly like a repository with no violations. The decision logic sits beside each
+# entry point, and in `scripts/lib/**` where it is shared, precisely so it can be exercised here
+# without a repository to scan; these tests are what keeps a silent no-op from passing for a pass.
 #
 # `make lint` does not cover this: golangci-lint reads Go, and the Markdown / Actions lint jobs
 # run these scripts rather than checking them.
@@ -25,6 +25,12 @@ on:
       - 'scripts/package.json'
       - 'scripts/pnpm-lock.yaml'
       - 'scripts/pnpm-workspace.yaml'
+      # The 1:1 gate walks two packages beyond `scripts/`, so their sources have to reach this
+      # workflow too — otherwise a new callable export lands untested and the PR adding it never
+      # runs the gate that would have said so. These entries track the gate's own package list,
+      # and `one-to-one.gate.test.ts` fails when they stop tracking it.
+      - 'mock-auth-server/src/**'
+      - 'docs-viewer/src/**'
       - '.makefiles/node/**'
   workflow_dispatch:
 
