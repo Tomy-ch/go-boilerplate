@@ -49,12 +49,12 @@ type Store interface {
 	// 複数インスタンスが同時に呼び出しても同一のエントリを二重取得しません。
 	ClaimPending(ctx context.Context, limit int32) ([]PendingMessage, error)
 	// MarkPublished は、publish に成功したエントリを published へ遷移します。
-	// 遷移対象として所有していないエントリには作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。
+	// pending でなければ何もしません（no-op）。
 	MarkPublished(ctx context.Context, id int64) error
 	// MarkFailed は、試行回数を加算し直近の失敗理由を記録し、加算後の試行回数を返します。
 	MarkFailed(ctx context.Context, id int64, lastErr string) (attempts int32, err error)
 	// MarkDead は、エントリを dead へ遷移します。
-	// 遷移対象として所有していないエントリには作用しません（no-op）。どの状態を遷移対象とみなすかは infra 実装が決めます。
+	// pending でなければ何もしません（no-op）。
 	MarkDead(ctx context.Context, id int64) error
 	// ReplayDead は、dead のエントリを pending へ戻します。messageID が nil なら dead のすべてを対象とし、戻した件数を返します。
 	ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error)

@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	// ErrUnauthenticatedSubjectMissing は、JWT 等のトークンに subject クレームが存在しない場合に返す認証エラーです。
+	// ErrUnauthenticatedSubjectMissing は、認証情報に subject が含まれない場合に返す認証エラーです。
 	ErrUnauthenticatedSubjectMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthenticated: subject missing")
 	// ErrUserIDUnresolved は、内部ユーザー ID が未解決の場合に返す認証エラーです。
 	ErrUserIDUnresolved = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthenticated: user id unresolved")
