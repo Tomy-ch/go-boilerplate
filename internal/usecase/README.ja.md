@@ -516,17 +516,9 @@ detail を参照）。
 
 ### エラー方針
 
-- 入力の意味的な不正:
-  - `apperror.ErrValidation` → 422
-  - `apperror.ErrInvalidArgument` → 400
-- 存在しない:
-  - `apperror.ErrNotFound` → 404
-- 競合:
-  - `apperror.ErrConflict` → 409
-- 一時的不可:
-  - `apperror.ErrUnavailable` → 503
-- 想定外:
-  - そのまま or `apperror.ErrInternal` に包む → 500
+操作の結果に応じて `internal/apperror` のセンチネルでラップする。`ErrXXX` から HTTP ステータスへの
+対応表は [`internal/apperror/README.ja.md`](../apperror/README.ja.md) の対応表を参照。想定外のエラーは
+そのまま返すか `apperror.ErrInternal` に包む。
 
 `apperror.ErrXXX` センチネルでラップする場合は、標準の `fmt.Errorf("%w", ...)` ではなく
 `pkg/xerrors.Wrap(apperror.ErrXXX, "context")` を使う。スタックトレースを保持しつつ

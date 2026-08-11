@@ -19,7 +19,6 @@ const imageKeyPrefix = "products/"
 const imageCacheControl = "public, max-age=31536000, immutable"
 
 // allowedImageContentTypes は、許可する画像 Content-Type から拡張子への対応表です。
-// Content-Type は controller 側で実バイトから判定（sniff）した値を受け取ります。
 var allowedImageContentTypes = map[string]string{
 	"image/png":  "png",
 	"image/jpeg": "jpg",

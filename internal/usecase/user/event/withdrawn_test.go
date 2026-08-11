@@ -22,7 +22,6 @@ func TestParseWithdrawn(t *testing.T) {
 
 		t.Run("BuildWithdrawn が生成した payload をそのまま復元する", func(t *testing.T) {
 			t.Parallel()
-			// producing 側と consuming 側が同じ payload 形を見ていることを、両者を突き合わせて固定する。
 			createdAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
 			entity, err := domainuser.New(uuidtestkit.NewTestFromSalt(t, "pw_id"), domainuser.Attributes{
 				Profile: domainuser.Profile{

@@ -50,7 +50,6 @@ type UserSearchListView struct {
 	Total int64
 }
 
-// usecase は、Usecase インターフェースの実装です。
 type usecase struct {
 	tracer   observability.LayerTracer
 	userRepo user.Repository

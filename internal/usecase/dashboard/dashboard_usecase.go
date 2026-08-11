@@ -59,7 +59,6 @@ type Usecase interface {
 	GetDashboardSummary(ctx context.Context, authn *auth.Authn, params GetSummaryParams) (SummaryView, error)
 }
 
-// usecase は、Usecase の実装です。
 type usecase struct {
 	tracer      observability.LayerTracer
 	authorizer  authz.Authorizer

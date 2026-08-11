@@ -14,7 +14,7 @@ import (
 )
 
 // displayMinorUnitDigits は、参考換算額を表示通貨の最小単位へ丸める際の小数桁数です。
-// 現状の表示通貨は JPY のみで最小単位は 1 円（小数 0 桁）です。丸めは決済境界のこの 1 点でのみ行います。
+// 通貨ごとの具体値・丸め方針の根拠は docs/spec/exchange-rate/usecase.md を参照。
 const displayMinorUnitDigits = 0
 
 // Usecase は、為替換算ユースケースを表します。
@@ -82,7 +82,7 @@ func (u *usecase) Convert(ctx context.Context, in ConvertInput) (*ConvertResult,
 
 	result := &ConvertResult{Converted: in.Amount.Mul(rate.Value)}
 
-	// 参考換算額は degrade（Reference = nil）しても本体換算は継続させる。無音にせず理由を warn ログへ残す。
+	// degrade 方針は docs/spec/exchange-rate/usecase.md を参照。
 	if in.DisplayCurrency != nil {
 		refRate, refErr := u.gateway.GetRate(ctx, in.Base, *in.DisplayCurrency)
 		switch {

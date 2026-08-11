@@ -14,9 +14,7 @@ type LimitPolicy struct {
 
 // Limit は、ポリシーで正規化済みの取得件数を表す値オブジェクトです。
 //
-//	ページングを持つ読み取り（Page / Cursor）と、ページングを持たない top-N 読み取り
-//	（ランキング・在庫僅少一覧など）の双方が、この型を通して同じ件数ポリシーを共有します。
-//	top-N はページ番号もカーソルも持たないため、件数だけを Page / Cursor から切り離してこの型が担います。
+//	Page / Cursor と top-N 読み取りが共有する件数ポリシーです（詳細: README）。
 type Limit struct {
 	value int
 }

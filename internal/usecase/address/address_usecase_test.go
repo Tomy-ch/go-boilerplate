@@ -46,7 +46,6 @@ func Test_usecase_LookupByPostalCode(t *testing.T) {
 				{PrefectureName: "東京都", City: "千代田区", Town: "千代田"},
 				{PrefectureName: "東京都", City: "千代田区", Town: "大手町"},
 			}, nil)
-			// 同一県名は重複排除され FindByName は 1 回だけ呼ばれる。
 			repo.EXPECT().FindByName(gomock.Any(), "東京都").Return(tokyo, nil).Times(1)
 
 			uc := address.New(gw, repo, observability.NewNoopTracerFactory(t))

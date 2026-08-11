@@ -17,8 +17,7 @@ const (
 	// DefaultImageGCBatchSize は、1 バッチあたりのオブジェクト列挙件数の既定値です。
 	DefaultImageGCBatchSize int32 = 1_000
 	// DefaultImageGCGrace は、アップロードされた画像を未参照でも回収しない既定の猶予期間です。
-	// アップロード直後のオブジェクトは「商品作成フォーム記入中でまだ参照されていない」正常な状態と
-	// 区別がつかないため、管理画面のフォーム滞在時間を見込んで待ちます。
+	// 猶予が要る理由は docs/spec/product/usecase.md の SweepOrphans notes を参照。
 	DefaultImageGCGrace = 24 * time.Hour
 )
 
@@ -36,8 +35,8 @@ type ImageGCUsecase interface {
 	// 商品画像オブジェクトを batchSize 件ずつ削除し、結果を返します。
 	// dryRun が true の場合は削除を行わず、削除対象となった件数だけを結果に返します。
 	// grace / batchSize が 0 以下の場合は、それぞれ既定値を用います。
-	// エラーを返す場合も、失敗したページより前に削除済みの累計を結果に含めます。
-	// 削除済みのオブジェクトは復元できないため、呼び手が実績を失わないようにするためです。
+	// エラーを返す場合も、失敗したページより前に削除済みの累計を結果に含めます
+	// （理由は docs/spec/product/usecase.md の SweepOrphans errors）。
 	SweepOrphans(ctx context.Context, grace time.Duration, batchSize int32, dryRun bool) (ImageGCResult, error)
 }
 
@@ -95,7 +94,6 @@ func (u *imageGCUsecase) SweepOrphans(
 	for {
 		page, err := u.sweepPage(ctx, cutoff, cursor, batchSize, dryRun)
 		if err != nil {
-			// 削除済みのオブジェクトは復元できない。累計を捨てると、実際に消えた件数が呼び手から見えなくなる。
 			return result, err
 		}
 		result.Deleted += page.deleted
@@ -128,8 +126,8 @@ func (u *imageGCUsecase) sweepPage(
 	}
 	page.scanned = int64(len(candidates))
 
-	// 参照の照合に失敗したまま削除へ進むと、全オブジェクトが未参照に見えて生きている画像を消してしまう。
-	// この経路だけは fail-open が許されないため、エラーはそのまま伝播して当ページの削除を行わない。
+	// 参照照合の失敗はそのまま伝播し、このページの削除は行わない（fail-open 禁止。理由は
+	// docs/spec/product/usecase.md の SweepOrphans notes）。
 	referenced, err := u.productRepo.FilterExistingImagePaths(ctx, candidates)
 	if err != nil {
 		return imageGCPageResult{}, err
@@ -151,9 +149,8 @@ func (u *imageGCUsecase) sweepPage(
 	return page, nil
 }
 
-// agedImageKeys は、猶予期間を過ぎた商品画像オブジェクトのキーを返します。
-// 接頭辞を再検査するのは、列挙の絞り込みを取りこぼした実装に当たっても
-// 商品画像以外のオブジェクトを削除対象にしないためです。
+// agedImageKeys は、猶予期間を過ぎた商品画像オブジェクトのキーを返します。接頭辞を再検査する理由は
+// docs/spec/product/usecase.md の SweepOrphans notes を参照。
 func agedImageKeys(objects []objectstorage.Object, cutoff time.Time) []string {
 	keys := make([]string, 0, len(objects))
 	for _, o := range objects {

@@ -92,7 +92,7 @@ func Run[T any](
 			return nil
 		}
 
-		// 新規 claim 成立。業務処理を同一 tx で実行する（失敗は tx ロールバックで claim ごと解放）。
+		// 新規 claim 成立。
 		deps.metrics().IncMiss(ctx, req.OperationID)
 		res, err := businessFn(ctx)
 		if err != nil {

@@ -203,10 +203,8 @@ func (u *usecase) GetProduct(ctx context.Context, id uuid.UUID) (ProductView, er
 	return toProductView(p), nil
 }
 
-// ensurePublished は、Repository が公開中として返した商品が、ドメインの定義でも公開中であることを確かめます。
-//
-// 絞り込みを実行するのは SQL ですが、「公開中」を定義するのは Product.IsPublished です。両者が食い違えば、
-// 一方だけが変更されたということであり、それは黙って落としてよい行ではなく表に出すべき欠陥です。
+// ensurePublished は、Repository が公開中として返した商品が、ドメインの定義（Product.IsPublished）でも
+// 公開中であることを確かめます。乖離時の扱いは README の Verifying infrastructure against the domain を参照。
 func ensurePublished(products product.Products) error {
 	for _, p := range products {
 		if !p.IsPublished() {
