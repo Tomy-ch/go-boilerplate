@@ -32,6 +32,7 @@ flowchart TB
 |---|---|
 |Repository|Aggregate 永続化（Domain Repository Interface の実装）|
 |QueryService|検索専用クエリーの提供（Usecase Interface の実装）|
+|CommandService|複数集約への原子的な書き込み（QueryService の write 側対称物）|
 |driver|DB 接続 / トランザクション管理、および pgx クエリトレーサーによる SQL ログ / トレース|
 |PostgreSQL|実際の DB|
 
@@ -41,7 +42,7 @@ flowchart TB
 |---|---|
 |sqlc|SQL から生成された型安全なクエリ実行コード|
 |pgerror|PostgreSQL エラー → アプリケーションエラー変換|
-|metrics|コネクションプール統計の Prometheus メトリクス|
+|metrics|コネクションプール統計とクエリ duration / error の Prometheus メトリクス|
 |system_cqrs|システム運用クエリ（ヘルスチェック等）|
 |testkit|RDB テストユーティリティ（実DB + rollback）|
 
@@ -51,11 +52,12 @@ flowchart TB
 internal/infrastructure/rdb
  ├ repository/        Repository 実装
  ├ query_service/     QueryService 実装
+ ├ command_service/   CommandService 実装（QueryService の write 側対称物）
  ├ system_cqrs/      システム運用クエリ（ヘルスチェック等）
  ├ driver/            DB 接続 / トランザクション + pgx クエリトレーサー（ログ / トレース）
  ├ sqlc/              sqlc 生成コード + SQL helper
  ├ pgerror/           PostgreSQL エラー正規化
- ├ metrics/           コネクションプール Prometheus メトリクス
+ ├ metrics/           コネクションプール + クエリ duration/error の Prometheus メトリクス
  └ testkit/           RDB テストユーティリティ
 ```
 
@@ -179,7 +181,7 @@ flowchart TB
 
 ## metrics
 
-`metrics` は **pgxpool コネクションプールの統計情報を Prometheus メトリクスとして公開する**パッケージです。
+`metrics` は **pgxpool コネクションプールの統計情報と、クエリ単位の duration / error を Prometheus メトリクスとして公開する**パッケージです。
 
 Gauge（接続数）と Counter（取得回数・破棄回数等）を提供します。
 
