@@ -25,6 +25,7 @@
 - **冪等なリクエスト処理** — [docs/design/idempotency.md](docs/design/idempotency.md)
 - **アプリケーションジョブ** — [docs/design/job.md](docs/design/job.md)
 - **REST の信頼性**（タイムアウト / ボディ上限 / deadline budget / tx リトライ） — [docs/design/rest.md](docs/design/rest.md)
+- **認証**（リソースサーバ側の JWT / JWKS 検証。開発用の OIDC プロバイダを同梱） — [docs/design/auth.md](docs/design/auth.md) / [mock-auth-server/README.ja.md](mock-auth-server/README.ja.md)
 - **可観測性**（OpenTelemetry の traces / metrics / logs・config 駆動） — [docs/design/observability.md](docs/design/observability.md)
 - **オブジェクトストレージ**（S3 互換アダプタの背後にある中立な境界。ローカルコンテナ・シード投入・匿名 read の公開配信を同梱） — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **自己完結の単一バイナリ**（env とマイグレーションを埋め込み → 単一イメージ） — [docker/README.md](docker/README.md)
@@ -111,27 +112,67 @@ curl http://localhost:8080/health
 controller → usecase → domain ← infrastructure
 ```
 
+以下の矢印はすべて**依存**を表し、各ボックスはそれを所有するレイヤに置いています。
+
 ```mermaid
 flowchart TB
 
-Client --> Controller
-Controller --> Usecase
+Client
+
+subgraph controller["Controller"]
+    Handler
+    Job
+    Worker
+    OutboxRelay["Outbox relay"]
+end
+
+subgraph usecase["Usecase"]
+    Usecase
+    QueryService["QueryService (interface)"]
+    CommandService["CommandService (interface)"]
+end
+
+subgraph domain["Domain"]
+    Domain["Entity / Value Object"]
+    Repository["Repository (interface)"]
+end
+
+subgraph infrastructure["Infrastructure"]
+    Infra["RDB / オブジェクトストレージ / キューのアダプタ"]
+end
+
+External["External systems"]
+
+Client --> Handler
+
+Handler --> Usecase
 Job --> Usecase
 Worker --> Usecase
+OutboxRelay --> Usecase
 
 Usecase --> Domain
 Usecase --> Repository
 Usecase --> QueryService
+Usecase --> CommandService
 
 Repository --> Domain
-QueryService --> Domain
+CommandService --> Domain
 
-Repository --> Infra
-QueryService --> Infra
-
+Infra --> Repository
+Infra --> QueryService
+Infra --> CommandService
 Infra --> Domain
-Infra --> External["External Systems"]
+Infra --> External
 ```
+
+永続化は 3 つのインターフェースに分かれており、所属レイヤが揃っていないのは意図的です。`Repository` は
+集約自身の契約なのでドメインが所有し、これがドメインの持つ唯一の永続化契約です。`QueryService`（read
+model）と `CommandService`（読み込み・変更・保存の形では表現できない書き込みのためのトランザクションの
+道具）はいずれも usecase の関心事なので usecase レイヤに置きます。
+
+読み側と書き側が非対称なのも意図的で、ドメインへの矢印が片方にしか無いのはそのためです。`QueryService`
+は DTO を返しドメイン型に一切触れませんが、`CommandService` は決定済みの集約を受け取ります。3 者の
+判別基準は [ADR-0029 (lightweight-cqrs)](docs/adr/0029-lightweight-cqrs.md) にあります。
 
 レイヤ境界は CI（`golangci-lint` depguard）で強制されており、ドキュメント上の約束事に留まりません。
 詳細: [docs/architecture.md](docs/architecture.md) / [docs/rules.md](docs/rules.md)。
@@ -146,14 +187,19 @@ Infra --> External["External Systems"]
 - [docs/architecture.md](docs/architecture.md) — システム構造とレイヤ責務
 - [docs/rules.md](docs/rules.md) — 非交渉ルール（レイヤ依存・生成コード・DTO・tx・エラー）
 - [docs/development-flow.md](docs/development-flow.md) — 変更の進め方（API / DB / ロジック）
-- [docs/decisions.md](docs/decisions.md) — 技術選定の根拠（ADR）
+- [docs/adr/](docs/adr/README.md) — アーキテクチャ決定記録（ADR）。技術選定の根拠
 - [docs/testing-conventions.md](docs/testing-conventions.md) — テスト規約
-- [docs/project/versioning.md](docs/project/versioning.md) — バージョニング方針
+- [docs/tutorial/build-user-feature.md](docs/tutorial/build-user-feature.md) — 実例: 1 つの機能を端から端まで作る
+- [docs/spec/glossary.md](docs/spec/glossary.md) — 業務語彙（ユビキタス言語）
+- [docs/project/policy.md](docs/project/policy.md) · [docs/project/versioning.md](docs/project/versioning.md) — メンテナンス方針とバージョニング方針
+- [docs/reference/dependencies.md](docs/reference/dependencies.md) — 直接依存の目録。1 エントリ = 1 責務
+- [docs/maintenance/](docs/maintenance/db-worktree-pool.md) — 運用 runbook（worktree DB プール・ドキュメント構造・アップグレード）
 
 ### サブシステム設計
 
 - [docs/design/README.md](docs/design/README.md) — 索引
 - [rest](docs/design/rest.md) · [worker](docs/design/worker.md) · [job](docs/design/job.md) · [outbox](docs/design/outbox.md) · [idempotency](docs/design/idempotency.md) · [observability](docs/design/observability.md)
+- [auth](docs/design/auth.md) · [security](docs/design/security.md) · [context-map](docs/design/context-map.md) · [agent-environment](docs/design/agent-environment.md)
 
 ### レイヤ README（`internal/`・`pkg/`）
 
@@ -164,11 +210,15 @@ Infra --> External["External Systems"]
 
 - [openapi/README.md](openapi/README.md) — API 契約（OpenAPI ファースト）
 - [database/README.md](database/README.md) — マイグレーション & SQL（sqlc）
+- [storage/README.md](storage/README.md) — オブジェクトストレージのシード内容（ディレクトリ構造 = キー構造）
 - [env/README.md](env/README.md) — 環境変数（環境別にバイナリ埋め込み）
 - [.makefiles/README.md](.makefiles/README.md) — すべての `make` ターゲット
 - [docker/README.md](docker/README.md) — イメージ・compose プロファイル・単一コンテナ運用
 - [scripts/README.md](scripts/README.md) — ユーティリティスクリプトとリポジトリのゲート（コード生成・ドキュメント・バージョニング・供給網ピン・セットアップ）
+- [python/README.md](python/README.md) — PyPI 公開の CLI ツール。宣言とハッシュ固定
+- [mock-auth-server/README.md](mock-auth-server/README.md) — 開発用 OIDC プロバイダ（TypeScript。API とは意図的に別ランタイム）
 - [docs-viewer/README.md](docs-viewer/README.md) — ドキュメントポータルのフロントエンド（生成された `docs/portal/docs.json` を描画）
+- [.github/workflows/README.md](.github/workflows/README.md) — CI ワークフローとリポジトリのセキュリティ統制の目録
 
 ## ディレクトリ構成
 
@@ -178,21 +228,33 @@ Infra --> External["External Systems"]
 ├── internal/       # アプリケーションコード（オニオンアーキテクチャ）
 │   ├── domain/
 │   ├── usecase/
-│   ├── infrastructure/
 │   ├── controller/
-│   ├── observability/
-│   └── di/
+│   ├── infrastructure/
+│   ├── di/
+│   ├── apperror/       # レイヤ横断で共有するアプリケーションエラー型
+│   ├── architest/      # レイヤ規則を検証するアーキテクチャテスト
+│   ├── cli/            # 各 cmd/ サブコマンドのテスト可能な中核
+│   ├── config/         # 環境変数のバインド
+│   ├── integration/    # レイヤをまたぐ結合テスト
+│   ├── logging/        # ロガーの構築と context 伝播
+│   ├── observability/  # OpenTelemetry の traces / metrics / logs 基盤
+│   └── system/         # プロセスレベルの関心事（ビルド情報・シグナル）
 ├── pkg/            # フレームワーク非依存の共有ユーティリティ
 ├── openapi/        # API 契約
 ├── database/       # マイグレーション & SQL（sqlc）
 ├── storage/        # バケットへ投入するオブジェクト（ディレクトリ構造 = キー構造）
 ├── env/            # 環境別の環境変数（バイナリへ埋め込み）
+├── mock-auth-server/ # 開発用 OIDC プロバイダ（TypeScript。配布物には含まない）
+├── python/         # PyPI 公開の CLI ツール。宣言とハッシュ固定
 ├── docker/
 ├── docs/
 ├── docs-viewer/    # ドキュメントポータルのフロントエンド（ビルド成果物は docs/portal/ にコミットされる）
 ├── scripts/        # ユーティリティスクリプトとリポジトリのゲート
 ├── .github/        # ワークフロー・複合アクション・リポジトリ設定
 ├── .makefiles/     # make ターゲットレジストリ
+├── .agents/        # すべての AI ツールが共有するエージェント向け契約資産
+├── .claude/        # Claude Code の設定（スキル・settings）
+├── .codex/         # OpenAI Codex CLI の設定（スキル）
 └── makefile
 ```
 
@@ -204,13 +266,15 @@ Infra --> External["External Systems"]
 | Web フレームワーク | Echo |
 | 依存性注入 | uber/fx |
 | API 定義 | OpenAPI + oapi-codegen |
-| データベース | PostgreSQL |
+| データベース | PostgreSQL（pgx） |
 | オブジェクトストレージ | S3 互換（AWS SDK v2・ローカルは Garage） |
+| メッセージキュー | SQS 互換（AWS SDK v2・ローカルは ElasticMQ） |
+| 認証 | JWT / JWKS 検証（golang-jwt・go-jose） |
 | クエリ | sqlc |
 | マイグレーション | golang-migrate |
 | ロギング | zap（otelzap 経由で OpenTelemetry へ） |
 | 可観測性 | OpenTelemetry（OTLP）/ Prometheus |
-| テスト | testify |
+| テスト | testify / uber-go/mock |
 | CLI | cobra |
 | 開発ツール | Docker / docker-compose / air |
 
@@ -227,21 +291,73 @@ Infra --> External["External Systems"]
 
 バックエンド開発では、アーキテクチャ・ライブラリ選定・ディレクトリ構成・開発ワークフローを毎回
 一から議論しがちです。本ボイラープレートは**初期設計コストを下げるベースライン**を提供し、チームが
-安全かつ迅速に着手できるようにします。その価値は特定ライブラリではなく、**広く使われる OSS を
-一貫した・置換可能なアーキテクチャへ統合した点**にあります。
+安全かつ迅速に着手できるようにします。
+
+その価値は特定ライブラリではなく、**広く使われる OSS・設計原則・開発上の制約を、一貫したかたちで
+統合し、それぞれを可能な限り疎結合かつ置換可能に保っていること**にあります。
 
 <!-- boilerplate-only:end -->
+### Opinionated, but replaceable
+
+本リポジトリは意図的に強い設計思想を持ちますが、その思想をコード全体へ暗黙に焼き付けることを
+避けています。設計上の意図・責務・不変条件・拡張点は、それを所有する README / Design Reference / ADR に
+明示し、機械的に判定可能な境界は lint・architecture test・generation / drift check で強制します。
+
+目的は「この設計以外を許さない」ことではありません。**要件と既存思想が合わない場合に、どの前提が
+衝突し、どこを書き換えればよいかを追跡可能にすること**です。設計そのものを変更することも可能ですが、
+コードだけでなく、その設計を説明・検証する artifact も同期して変更する必要があるため、最も高コストな
+拡張になります。
+
+### 変更を観測可能にする
+
+ここで追跡するのは変更の「結果」だけではなく、その**理由・影響範囲・守るべき性質**です。設計判断は
+ADR、サブシステムの役割と状態遷移は Design Reference、局所的な契約は package README、機械的に判定
+可能な制約は tooling がそれぞれ所有します。
+
+これにより、コードの精読だけに頼らず次を追跡できる構成を目指します。
+
+- この実装がなぜこの形なのか
+- どの設計判断に基づくのか
+- どの境界を変更すると何が影響を受けるのか
+- 実装と設計ドキュメントのどちらが drift したのか
+
+### 実装から設計へ書き戻す
+
+設計は仮説であり、実装・レビュー中に露出した制約や破綻は、その仮説に対する観測結果です。
+
+そのためバグやアーキテクチャ逸脱をその場限りで修正するだけでなく、再発価値の高いものは原因を
+調査・トリアージし、ADR・Design Reference・README・tooling へ反映します。
+
+個別の問題をすべて規則へ昇格させるのではなく、**複数箇所・複数実装で再利用価値を持つ原因だけを
+設計資産として残す**ことを重視します。
+
 ### AI 支援開発
 
-制約（レイヤの強制・生成コードの分離・リリースベースのブランチ・OpenAPI ファースト・ドメイン純粋性）は
-意図的なものです。AI 支援による変更のアーキテクチャドリフトを抑えつつ、AI ツール**なしでも**完全に
-保守できます。参照: [docs/rules.md](docs/rules.md)。
+本プロジェクトは **AI が無くても完全に開発・保守できること**を前提としています。AI 専用の
+アーキテクチャではなく、人間向けに明示された設計・契約・検証機構を、AI エージェントからも
+利用できるようにしています。
+
+レイヤ境界・生成コード・OpenAPI 契約・ADR・Design Reference・各 package README などをエージェントの
+context として再利用し、機械的に判定可能な性質は tooling、読解を要する判断は review signal によって
+検証します。
+
+目的は AI の自由度を増やすことではなく、**既に承認された設計判断の範囲では探索空間を意図的に狭め、
+設計判断が必要な変更だけを人間へ戻すこと**です。そのため AI 支援による開発速度を利用しつつ、特定の
+モデル・ベンダー・エージェントへ基盤そのものを依存させません。
+
+参照: [docs/design/agent-environment.md](docs/design/agent-environment.md) /
+[docs/rules.md](docs/rules.md)。
 
 ### 想定するシステム種別
 
 新規バックエンドプロダクト、PoC 〜 初期スケール期、厳格なレイヤードのチーム開発、強いドメインルールを
 持つシステムに向け、**モジュラモノリス**として設計しています。単一ファイルのマイクロ API・アーキテクチャの
 無いプロトタイプ・超低レイテンシシステム・強いマイクロサービス分割にはあまり向きません。
+
+### ベンダー中立性と拡張性
+
+可観測性・ツールは OSS ファーストでベンダー中立です。`internal/` 配下は疎結合で、DI によりインフラ・
+実装・ミドルウェアを実行環境ごとに差し替えられます。
 
 ### 守備範囲外: 開発者マシンの衛生
 
@@ -254,11 +370,6 @@ SBOM と脆弱性スキャンまでです。**開発者の**マシンで動く�
 [`perplexityai/bumblebee`](https://github.com/perplexityai/bumblebee) がまさにその問いのために作られた
 read-only のエンドポイントスキャナです。依存としてではなく参照として挙げています。ここでは何も導入せず、
 呼び出さず、必要ともしません。なお、何かをフラグさせるには別途 exposure catalog が要ります。
-
-### ベンダー中立性と拡張性
-
-可観測性・ツールは OSS ファーストでベンダー中立です。`internal/` 配下は疎結合で、DI によりインフラ・
-実装・ミドルウェアを実行環境ごとに差し替えられます。
 
 ## メンテナ方針 / 免責事項
 
@@ -287,7 +398,7 @@ status check を宣言しています。本リポジトリでは単独メンテ�
 本プロジェクト自身のソースコードは **MIT License** で公開しています — [LICENSE](LICENSE) を参照してください。
 
 配布するコンテナイメージには、ベースイメージ由来のサードパーティ OS パッケージが同梱されます。
-たとえば本番用の `runtime` イメージは `alpine:3.23` をベースにしており、その基本パッケージ
+たとえば本番用の `runtime` イメージは `alpine:3.24` をベースにしており、その基本パッケージ
 （`busybox` / `apk-tools` / `alpine-baselayout` / `ssl_client` など）は **GPL-2.0-only** です。
 これらは *mere aggregation（単なる同梱）* にあたります。独立したプログラムとして動作し、Go バイナリには
 **リンクされない**ため、コピーレフトの条件が本プロジェクトのコードに波及することはなく、商用利用を

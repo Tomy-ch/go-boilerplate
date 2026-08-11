@@ -9,7 +9,9 @@ and drifts with the code. What is recorded here is the part that should *not* dr
 
 It covers three surfaces, in the order a risk reaches them: what CI **executes** (build
 inputs), what the application **links** (dependencies), and what the running service **does
-with a request** (application runtime). The mechanics of identity verification are a separate
+with a request** (application runtime). A fourth — the developer's own machine — sits outside
+all three on purpose, and *The developer endpoint* below records where that boundary falls
+rather than leaving it to be rediscovered. The mechanics of identity verification are a separate
 concern with their own reference — see [auth.md](auth.md); what appears here is only where
 authentication sits in the enforcement model.
 
@@ -363,6 +365,44 @@ One rule overrides convenience everywhere: **a detected secret's value never rea
 a PR comment, or an artifact.** Summaries carry detector name, path, line, and commit — never
 the match itself. A leak report that leaks is worse than no report, because it publishes the
 credential to a wider audience than the commit did.
+
+## The developer endpoint
+
+Every control above sits on a path *into* the repository: what CI executes, what the application
+links, what a request reaches. None of them observes a machine a developer already has. That is a
+separate surface, deliberately out of scope — but it is easy to mistake for covered, because the
+controls that leave it open are the ones that look most complete.
+
+**A cooldown window protects a resolved tree, not a machine.** The window keeps a compromised publish
+out of the lockfiles here — npm refuses it while resolving, pnpm re-checks the whole lockfile on
+every install. Neither reaches an install a developer ran somewhere else: a scratch project, a global
+CLI, a package pulled once to try it. That machine is exposed, and no lockfile here says so. The same
+holds, more sharply, for everything that never reaches a lockfile
+at all: editor and browser extensions, agent skills, and MCP server configs are user-scope by
+construction (`~/.claude.json`, `~/.gemini/settings.json`, `~/.agents/.skill-lock.json`) — the shape
+already noted above for a tool's user-scope installer, generalised to everything installed that way.
+
+**The question is about state, not behaviour.** When an advisory names a package and a version, what
+matters is which machines match *right now*. An SBOM answers what shipped and endpoint telemetry
+answers what ran; neither answers what is sitting on disk. Answering it takes an inventory collected
+from the endpoint plus a catalog of what to match against — and without the catalog, an inventory is
+a census rather than an exposure check.
+
+**It is not a repository control, and could not be made into one.** What is protected is the
+developer's machine, not this repository, so the decision to inventory one belongs to whoever owns
+it. Wiring a collector into `mise.toml` and `install-tools` would put it on every developer's host,
+on machines whose owner never chose to be inventoried, and the Toolchain Execution Rules could not
+carry it either: the
+tool-runner containers cannot see the host state that is the entire subject. The repository's part
+is to record the gap; closing it is the operating organisation's call.
+
+**If it is closed, `perplexityai/bumblebee` is the candidate examined** — Apache-2.0, a single static
+Go binary with no non-stdlib dependencies. It reads lockfiles, package-manager install metadata,
+extension manifests and MCP JSON configs, and executes no package manager, so a scan cannot become
+the incident it was meant to find. It has no configuration file: profile, roots, exposure catalog,
+cadence (`launchd` / `cron`) and output are supplied per run and live outside the repository — so
+taking it is a decision about a run, made when an advisory lands, rather than a decision about this
+repository's toolchain.
 
 ## Honest limits
 

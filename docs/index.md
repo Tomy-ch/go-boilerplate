@@ -10,12 +10,34 @@ The documentation is intended for both **human developers** and **AI agents**.
 
 ## Document List
 
+### Root documents
+
 |Document|Description|
 |--------|--------|
 |[architecture.md](architecture.md)|Overall system architecture and layer responsibilities|
 |[rules.md](rules.md)|Architectural rules that must not be violated|
 |[development-flow.md](development-flow.md)|Standard development workflow|
-|[adr/](adr/README.md)|Architecture Decision Records — background of technology selection and design decisions|
+|[testing-conventions.md](testing-conventions.md)|Test structure, naming, assertions, and coverage exceptions|
+|[decisions.md](decisions.md)|Redirect stub — the decision log now lives in `adr/`|
+
+### Sections
+
+|Section|Description|
+|--------|--------|
+|[adr/](adr/README.md)|Architecture Decision Records — one record per decision, with the technology rationale|
+|[design/](design/README.md)|Subsystem design references — rest / worker / job / outbox / idempotency / observability / auth / security / context-map / agent-environment|
+|[get-started/](get-started/setup-repository.md)|Setup performed once, before development starts|
+|[tutorial/](tutorial/build-user-feature.md)|Worked example — one feature built end to end|
+|[spec/](spec/glossary.md)|Feature specifications and the business-vocabulary glossary|
+|[project/](project/scope.md)|Scope, out-of-scope, maintenance policy, versioning|
+|[reference/](reference/dependencies.md)|Living inventories that track the code, such as the direct dependency list|
+|[maintenance/](maintenance/docs-structure.md)|Operational runbooks — documentation structure, local environment, DB worktree pool, upgrades|
+|[deployment/](deployment/github-page.md)|Deployment procedures|
+
+Japanese translations live under `ja/` mirroring this structure, and the remaining
+subdirectories (`openapi/`, `godoc/`, `coverage/`, `db-schema/`, `portal/`) hold generated
+output rather than documents to read. The rules that keep this layout generatable are in
+[maintenance/docs-structure.md](maintenance/docs-structure.md).
 
 ## Recommended Reading Order
 
@@ -23,21 +45,21 @@ The documentation is intended for both **human developers** and **AI agents**.
 
 ```mermaid
 flowchart TB
-    A["architecture.md"] --> B["development-flow.md"] --> C["rules.md"] --> D["adr/"]
+    A["get-started/"] --> B["architecture.md"] --> C["development-flow.md"] --> D["tutorial/"] --> E["rules.md"] --> F["adr/"]
 ```
 
 ### Maintainers / Contributors
 
 ```mermaid
 flowchart TB
-    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["adr/"]
+    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["design/"] --> E["adr/"]
 ```
 
 ### AI Agents
 
 ```mermaid
 flowchart TB
-    A["rules.md"] --> B["architecture.md"] --> C["development-flow.md"]
+    A["AGENTS.md"] --> B["rules.md"] --> C["architecture.md"] --> D["development-flow.md"] --> E["owning README"]
 ```
 
 ## Key Concepts
@@ -95,8 +117,13 @@ Constraints are intentionally introduced to prevent architectural violations.
 
 Before generating code, AI agents must refer to:
 
-- `rules.md`
-- `architecture.md`
+- [`AGENTS.md`](../AGENTS.md) — the operational contract: what may be touched and how to behave
+- [`rules.md`](rules.md)
+- [`architecture.md`](architecture.md)
+- the `README.md` nearest to the code being changed
+
+How those instructions, the mechanical gates, and independent review fit together is described in
+[design/agent-environment.md](design/agent-environment.md).
 
 ## Relationship with Other Documents
 
@@ -104,11 +131,15 @@ The overall structure of the documentation is as follows:
 
 ```mermaid
 flowchart TB
-    Readme["README.md"] --> Index["docs/index.md"] --> Docs["architecture.md / rules.md / development-flow.md"]
+    Readme["README.md"] --> Index["docs/index.md"]
+    Index --> Core["architecture.md / rules.md / development-flow.md"]
+    Index --> Adr["adr/ — why a decision was taken"]
+    Index --> Design["design/ — how a subsystem behaves"]
+    Core --> Pkg["the README owning each package"]
 ```
 
-`README.md` explains the project overview,  
-while the `docs/` directory contains detailed design documents.
+`README.md` explains the project overview, while `docs/` holds the detailed design documents and
+each package `README.md` holds the contract local to that package.
 
 ## Contribution Guide
 
