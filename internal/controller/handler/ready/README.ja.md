@@ -13,14 +13,9 @@ readiness プローブは「このインスタンスは今トラフィックを�
 
 ## 確認する内容
 
-`GetReady` は `healthcheck` usecase の `CheckHealth` に委譲します。この処理は次を
-行います。
-
-1. 注入された `clock` boundary からアプリケーションの現在時刻を取得します
-   （`applicationTime` として返却）。
-2. RDB システムクエリ経由で軽量な DB ヘルスチェッククエリ
-   （`SELECT 1`、`GetDBHealthCheck`）を実行し、往復のレイテンシと DB が最後に
-   正常応答した時刻を計測します。
+`GetReady` は `healthcheck` usecase の `CheckHealth` に委譲します。何を確認するかは
+[`internal/usecase/healthcheck/README.ja.md`](../../../usecase/healthcheck/README.ja.md)
+を参照してください。
 
 DB クエリが失敗した場合、`CheckHealth` はエラーを返し、ハンドラはそれを伝搬します
 （レスポンスボディなし）。エラーは共有の [apperror](../../../apperror/README.md)

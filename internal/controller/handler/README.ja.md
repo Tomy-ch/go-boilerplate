@@ -10,8 +10,6 @@
 - router - ルーティングの登録とHTTPサーバーの起動を担います。
 - middleware - ロギング/リクエストID/トレーシングなど、HTTPリクエストの前後で共通処理を行います。
 
-HTTPリクエストを受け取り、Usecase層へ処理を委譲する責務を持ちます。
-
 Controllerは **アプリケーションの入出力境界** です。
 
 ## このプロジェクトでの役割
@@ -496,26 +494,11 @@ type server struct {
 
 ### 依存関係ポリシー
 
-Controller層は次の依存のみ許可されます。
-
-これらのルールは **Controller → Usecase → Domain/Infra** の一方向で、Controller層が下位層を直接呼び出すことはできません。
+許可される依存・禁止される依存の一覧は上記の[依存関係ルール](#依存関係ルール)を参照してください。
 `make lint` で依存関係のルール違反を検出できます。
 
-Allowed:
-
-Controller → Usecase
-Controller → Presenter
-Controller → apperror
-
-- **Controller → Usecase のみ**（＋生成物`gen`、DTO/Presenter、`apperror`/`errorresponse`）。  
+- **Controller → Usecase のみ**（＋生成物`gen`、DTO/Presenter、`apperror`/`errorresponse`）。
 - DI（`fx`）で `handler` は `usecase.Service` を受け取る。
-
-Forbidden:
-
-Controller → Domain
-Controller → Infrastructure
-Controller → Database
-
 - **Infra / Domain を直接呼ばない**。
 
 ### やっていいこと / いけないこと(まとめ)

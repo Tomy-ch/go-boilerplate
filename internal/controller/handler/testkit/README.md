@@ -16,3 +16,4 @@ Controller-layer tests repeatedly need the same scaffolding: a configured HTTP t
 |`testauth`|Test authentication context setup|
 |`testecho`|Echo test client builder|
 |`testspan`|Test span injection for Echo context|
+|`testuuid`|Valid UUID path / query parameter values for tests|

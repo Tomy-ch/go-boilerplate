@@ -93,7 +93,6 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			view := shipViewFixture(t)
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID) (purchaseuc.ShipPurchaseView, error) {
-					// 認可は usecase が行うため、handler は認証主体をそのまま渡す（内部 UserID の解決は行わない）。
 					require.NotNil(t, authn)
 					resolved, uerr := authn.UserID()
 					require.NoError(t, uerr)
@@ -122,7 +121,6 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			// 内部 UserID の解決可否は認可（usecase 側）の判断材料であり、handler は素通しする。
 			ctx := ctxhelper.WithAuthn(context.Background())
 			authn, err := auth.New("subject", "issuer", nil, nil)
 			require.NoError(t, err)
@@ -140,7 +138,6 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			// 内部 UserID が未解決でも認証主体そのものは usecase へ渡る（解決可否の判断は認可側の責務）。
 			require.NotNil(t, captured)
 			_, uerr := captured.UserID()
 			require.ErrorIs(t, uerr, auth.ErrUserIDUnresolved)
