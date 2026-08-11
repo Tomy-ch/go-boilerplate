@@ -19,8 +19,7 @@ INSERT INTO products (
     stock_warning_threshold,
     status_id,
     category_id,
-    published_at,
-    image_path
+    published_at
 ) VALUES
 (
     sqlc.arg('id'),
@@ -31,18 +30,37 @@ INSERT INTO products (
     sqlc.arg('stock_warning_threshold'),
     sqlc.arg('status_id'),
     sqlc.arg('category_id'),
-    sqlc.arg('published_at'),
-    sqlc.arg('image_path')
+    sqlc.arg('published_at')
+);
+
+-- === source: database/dml/repository/product/insert_product_image.sql ===
+-- name: CreateProductImage :exec
+-- 商品画像を 1 件登録する。生存行の (product_id, sort_key) は部分 UNIQUE インデックスが一意に保つため、
+-- 同一商品の同じ表示順へ二重に登録すると 23505 で失敗する。
+INSERT INTO product_images (
+    id,
+    product_id,
+    image_path,
+    sort_key
+) VALUES
+(
+    sqlc.arg('id'),
+    sqlc.arg('product_id'),
+    sqlc.arg('image_path'),
+    sqlc.arg('sort_key')
 );
 
 -- === source: database/dml/repository/product/select_existing_image_paths.sql ===
 -- name: ListExistingProductImagePaths :many
 -- 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。
 -- 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
--- ここに現れなかったパスが孤児にあたる。商品は論理削除を持たないため、生存行だけが参照元になる。
-SELECT DISTINCT image_path
-FROM products
-WHERE image_path = ANY(sqlc.arg('image_paths')::TEXT []);
+-- ここに現れなかったパスが孤児にあたる。
+-- 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
+-- 結果として、差し替えで落ちた画像は猶予期間の経過後に回収され、履歴行は実体を伴わないパスを指したまま残る。
+SELECT DISTINCT pi.image_path
+FROM product_images AS pi
+WHERE pi.image_path = ANY(sqlc.arg('image_paths')::TEXT [])
+    AND pi.deleted_at IS NULL;
 
 -- === source: database/dml/repository/product/select_low_stock_products.sql ===
 -- name: ListLowStockProducts :many
@@ -94,6 +112,17 @@ INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.id = sqlc.arg('product_id_param')
 FOR UPDATE OF p;
+
+-- === source: database/dml/repository/product/select_product_images.sql ===
+-- name: ListProductImagesByProductIDs :many
+-- 複数の商品 ID から画像をまとめて取得する。商品 1 件ずつの取得を件数分繰り返さないための一括版で、
+-- 並びは商品 ID 昇順・同一商品内は表示順（sort_key）昇順。product_ids が空の場合は 0 行。
+-- 論理削除された画像は差し替え履歴であって現在の画像ではないため、生存行だけを返す。
+SELECT sqlc.embed(pi)
+FROM product_images AS pi
+WHERE pi.product_id = ANY(sqlc.arg('product_ids')::UUID [])
+    AND pi.deleted_at IS NULL
+ORDER BY pi.product_id, pi.sort_key;
 
 -- === source: database/dml/repository/product/select_products.sql ===
 -- name: ListPublishedProductsDescFirst :many
@@ -239,6 +268,18 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.id = sqlc.arg('product_id_param')
     AND p.published_at IS NOT NULL;
 
+-- === source: database/dml/repository/product/soft_delete_product_images.sql ===
+-- name: SoftDeleteProductImages :exec
+-- 商品が現在参照している画像をまとめて論理削除する。差し替えは「生存行を落として新しい行を入れる」形で
+-- 行うため、置換の前段としてここを通る。既に論理削除済みの行は削除日時を上書きしない。
+-- 生存行が無い商品に対しては 0 行更新となり、成功として返る。
+UPDATE product_images
+SET
+    deleted_at = NOW(),
+    updated_at = NOW()
+WHERE product_images.product_id = sqlc.arg('product_id')
+    AND product_images.deleted_at IS NULL;
+
 -- === source: database/dml/repository/product/update_product.sql ===
 -- name: UpdateProduct :one
 -- 楽観ロック条件付きで商品を更新し、採番後のバージョンを返します。
@@ -255,7 +296,6 @@ SET
     status_id = sqlc.arg('status_id'),
     category_id = sqlc.arg('category_id'),
     published_at = sqlc.arg('published_at'),
-    image_path = sqlc.arg('image_path'),
     lock_version = products.lock_version + 1,
     updated_at = NOW()
 WHERE products.id = sqlc.arg('id')
