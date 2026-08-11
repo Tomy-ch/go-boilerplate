@@ -42,7 +42,6 @@ var ErrTooManyAttributes = xerrors.Wrap(apperror.ErrInvalidArgument, "too many m
 // ErrMissingEventType は、イベント種別を持たないメッセージを publish しようとしたことを示すエラーです。
 var ErrMissingEventType = xerrors.Wrap(apperror.ErrInvalidArgument, "missing event type")
 
-// 実装漏れをコンパイル時に検出します。
 var _ boundary.Publisher = (*publisher)(nil)
 
 // PublisherConfig は、SQS publisher の adapter 固有設定です。
@@ -64,11 +63,9 @@ func NewPublisher(api API, cfg PublisherConfig, tf observability.TracerFactory) 
 }
 
 // Publish は、メッセージを SendMessage でキューへ送ります。
-// outbox の message_id と伝搬対象ヘッダは MessageAttributes へ載せます。本文は payload そのままで、
-// 受信側が本文を解釈せずに冪等キーを取り出せるようにするためです。
-// 上限超過は送信前に ErrTooManyAttributes として返します。超過分を落とすと、どのヘッダが残るかが
-// map の反復順に左右され、traceparent を失ったことにも気付けないためです。
-// 送信失敗は apperror へ正規化して返し、再送は relay の次 poll が担います（at-least-once）。
+// outbox の message_id と伝搬対象ヘッダは MessageAttributes へ、本文は payload そのまま送ります。
+// 属性の上限超過は送信前に ErrTooManyAttributes を返します（理由は README.md の Publishing side）。
+// 送信失敗は apperror へ正規化して返します。
 func (p *publisher) Publish(ctx context.Context, m boundary.Message) error {
 	ctx, endSpan := p.tracer.Start(ctx)
 	defer endSpan()
@@ -107,7 +104,7 @@ func (p *publisher) messageAttributes(m boundary.Message) map[string]types.Messa
 	}
 
 	for k, v := range m.Headers {
-		// emit 側でも同じ判定を行いますが、emit を経由せず INSERT された行に対する egress 境界での防御です。
+		// emit 側と同じ判定だが、emit を経由しない行への防御として必要。
 		if httpheader.IsSensitive(k) {
 			continue
 		}

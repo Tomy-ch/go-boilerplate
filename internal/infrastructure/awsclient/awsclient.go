@@ -39,27 +39,10 @@ type Config struct {
 }
 
 // Resolve は、資格情報を解決した aws.Config を返します。
-//
-// 資格情報は「明示注入か chain か」を設定で選ばせません。SDK 既定の chain は静的資格情報
-// （環境変数プロバイダ）を自身の一部として含むため、static / chain の二者択一は SDK の標準形に
-// 存在せず、判別子を足すのは標準が決めている所へノブを置くことになるためです。明示注入は
-// chain の上書きとして扱います。
-//
-// 解決可否は起動時に一度だけ確かめます。誤設定のまま起動すると、最初の API 呼び出しまで
-// 認証エラーが顕在化しません。確認には resolveTimeout の締切を与え、応答しない解決先で
-// 起動が止まったままにならないようにします。
-//
-// cfg.HTTPClient（SSRF ガード付き）はサービス API の呼び出しにだけ割り当て、資格情報の解決は
-// SDK 既定のトランスポートで行います。IMDS（169.254.169.254）と ECS の
-// task metadata（169.254.170.2）は link-local にあり、ガードは link-local を常に拒否するため、
-// 同じクライアントを共有すると EC2 / ECS のロール運用だけが解決不能になります。守る対象が
-// 違う — ガードが防ぐのは外部サービスへの egress であって、自身の実行基盤への資格情報の
-// 問い合わせではありません。
-//
-// 適用外になるのは metadata 経由だけではなく、STS の web identity 交換や SSO も含む credential
-// chain の通信すべてです。宛先 IP の検査も、ガードが行う proxy 環境変数の無効化も効きません。
-// chain の接続先を差し替えられる（AWS_EC2_METADATA_SERVICE_ENDPOINT / HTTPS_PROXY 等）のは
-// プロセスの環境変数を書ける主体だけで、その主体は資格情報そのものにも手が届きます。
+// 明示注入は chain の上書きとして扱います。解決可否は起動時に resolveTimeout 以内で一度だけ
+// 確かめ、誤設定を起動時に検出します。cfg.HTTPClient（SSRF ガード付き）はサービス API の呼び出しに
+// だけ割り当て、資格情報の解決（IMDS / ECS task metadata / STS / SSO を含む）は SDK 既定の
+// トランスポートで行います。これらの設計判断の理由は README.md を参照してください。
 func Resolve(ctx context.Context, cfg Config) (aws.Config, error) {
 	if err := ctx.Err(); err != nil {
 		return aws.Config{}, xerrors.Wrap(ErrInvalidCredentials, err.Error())
