@@ -61,7 +61,6 @@ func TestNewBasicAuthValidator(t *testing.T) {
 
 		t.Run("正しい資格情報と長さが大きく異なる資格情報でも一致せずfalseを返す", func(t *testing.T) {
 			t.Parallel()
-			// 長さが極端に異なる資格情報でも、値が異なる以上は一致しない。
 			longUser := strings.Repeat("a", 1024)
 			longPass := strings.Repeat("b", 4096)
 

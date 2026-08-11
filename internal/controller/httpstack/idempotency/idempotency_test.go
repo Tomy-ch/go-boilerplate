@@ -28,8 +28,7 @@ import (
 
 const (
 	fingerprintLen = 32
-	// testPath は、ミドルウェア検証用の POST パスです。spy ハンドラに渡す任意値であり、
-	// 特定のサンプルエンドポイント（/v1/users 等）には依存しません。
+	// testPath は、ミドルウェア検証用の POST パスです。spy ハンドラに渡す任意値です。
 	testPath = "/v1/resources"
 	// sentinel は、後段ハンドラが呼ばれたことを示す戻り値です。
 	sentinel = "SENTINEL"
@@ -84,7 +83,6 @@ func TestStrictMiddleware(t *testing.T) {
 				called = true
 				return sentinel, nil
 			})
-			// ヘッダ無しは素通しするため、アダプタ越しでも後段がそのまま呼ばれる。
 			ec := newEcho(t, "", true, "user-1")
 
 			res, err := StrictMiddleware[strictHandlerFunc]()(h, "PostUsers")(ec, spyRequest{})
