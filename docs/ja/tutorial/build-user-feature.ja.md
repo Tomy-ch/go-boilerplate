@@ -89,8 +89,7 @@ make setup-remove-sample-api
 ```
 
 **何を削除するか**（このマニフェストが本チュートリアル残り全体の目次になる）:
-`internal/domain/user`、`internal/usecase/user`、`repository/user` と `query_service/user` 配下の
-2 つの infra パッケージ、`internal/controller/handler/v1/users`、`internal/controller/job/usercount`、
+`internal/domain/user`、`internal/usecase/user`、`repository/user` 配下の infra パッケージ、`internal/controller/handler/v1/users`、`internal/controller/job/usercount`、
 3 つの `internal/integration/v1_users*_test.go`、User の OpenAPI paths/components、User の DML +
 migration + seed、そして `docs/spec/user`。
 
@@ -165,12 +164,12 @@ provider に委譲され、トークンの `(issuer, subject)` から内部ユ�
 - `database/migrations/000004_create_users.up.sql` / `.down.sql` —— `users` テーブル
   （`id` UUID PK、`email` UNIQUE、`prefecture_id` FK、住所カラム、論理削除用の `created_at` /
   `updated_at` / `deleted_at`）。
-- `database/migrations/000011_users_table_search_text_column.up.sql` / `.down.sql` ——
+- `database/migrations/000014_add_users_table_search_text_column.up.sql` / `.down.sql` ——
   `GENERATED ALWAYS` の `search_text` カラム + キーワード検索用の GIN トライグラム索引。
 - `database/dml/repository/user/*.sql` —— 集約の CRUD クエリ
-  （`insert_user`、`select_user_by_id`、`select_users`、`update_user`、`count_user`）。
-- `database/dml/query_service/user/*.sql` —— 読み取り側クエリ
-  （`select_users_by_keyword`、`count_user_by_keyword`）。
+  （`insert_user`、`select_user_by_id`、`select_users`、`update_user`、`count_user`）と
+  キーワード検索（`select_users_by_keyword`、`count_users_by_keyword`）。User は QueryService を
+  分離せず Repository に両方を持たせており、読み取り側も射影ではなくエンティティを返す。
 - `database/seed/000001_users.sql` —— サンプル行（論理削除済みの 1 件を含む）。
 
 **なぜ:** **マイグレーションは追記専用** —— 既存のマイグレーションを編集してはならない。新しい連番の
@@ -201,8 +200,7 @@ make gen-query   # スキーマをダンプ → DML をマージ → sqlc genera
 
 - `internal/controller/handler/v1/users/gen/server.gen.go` + `type.gen.go`（および `detail/gen`・
   `search/gen` 下の同種）—— `ServerInterface` とリクエスト/レスポンス型。
-- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` +
-  `user_query_service.gen.sql.go` —— 型安全なクエリメソッド。
+- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` —— 型安全なクエリメソッド。
 - `//go:generate mockgen` ディレクティブを持つインターフェースの `*_mock.go`（次のステップで宣言する。
   宣言後に `make gen-api` を再実行する）。
 
@@ -274,8 +272,6 @@ sqlc gen から導出される。
 
 - `internal/infrastructure/rdb/repository/user/user_repository.go` —— domain の `user.Repository`
   を実装（Create / FindByID / Update / アクティブ一覧 / 件数）。
-- `internal/infrastructure/rdb/query_service/user/user_query_service.go` —— usecase 側の
-  QueryService を実装（キーワード検索 / 件数）。エンティティではなく **DTO** を返す。
 - `*_test.go` —— トランザクションロールバックを伴う **実 DB** に対する結合テスト（rdb の `testkit`
   経由）。
 
@@ -309,8 +305,7 @@ func (r *repository) Create(ctx context.Context, u *user.User) error {
 **検証:** テスト DB のマイグレーションが必要（Step 2b）:
 
 ```bash
-go test ./internal/infrastructure/rdb/repository/user/... \
-        ./internal/infrastructure/rdb/query_service/user/...
+go test ./internal/infrastructure/rdb/repository/user/...
 ```
 
 ---
@@ -524,7 +519,7 @@ of Done の一部であり、任意の仕上げではない。
 |2|contracts|`openapi/**`、`database/migrations/**`、`database/dml/**`|OpenAPI-first + 追記専用マイグレーション|`make db-*-migrate-up`|
 |3|generate|`make gen-api` / `make gen-query`|契約を変え、生成物は変えない|`gen/` 下にファイルが現れる|
 |4|domain|`internal/domain/user/**`|非公開フィールド + `ptr.Copy` + sentinel エラー + 純粋性|`go test ./internal/domain/user/...`|
-|5|infra|`internal/infrastructure/rdb/{repository,query_service}/user/**`|`pgerror.NormalizeError` + tracer span + 型漏洩なし|`go test ./…/user/...`（DB）|
+|5|infra|`internal/infrastructure/rdb/repository/user/**`|`pgerror.NormalizeError` + tracer span + 型漏洩なし|`go test ./…/user/...`（DB）|
 |6|usecase|`internal/usecase/user/**`|DTO を返す。時刻/tx は boundary 経由。調整のみ|`go test ./internal/usecase/user/...`|
 |7|controller|`internal/controller/handler/v1/users/**`、`job/usercount/**`|operationId ごとに 1 メソッド。ハンドラーは純粋テンプレート|`go test ./…/users/...`|
 |8|DI|`internal/di/module/*.go`|レイヤーが出会う唯一の場所。マーカーブロックで削除可能に保つ|`make lint`|

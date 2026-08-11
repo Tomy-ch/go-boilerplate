@@ -238,7 +238,7 @@ flowchart LR
 | # | 必要な実装 | 箇所 / やり方 | 参照 |
 | --- | --- | --- | --- |
 | ① | ドメイン書き込みと同じ `tx.Manager.Do` の中で `EmitUsecase.Emit` を呼ぶ | 集約を変更する usecase | `emit.go` `EmitInput` |
-| ② | `EventType`（`+version`）を選び、**自己完結 snapshot** payload を marshal。`Headers` に `Authorization`/`Cookie` を入れない（そのまま外部送出される） | `Emit` の呼び出し側 | `EmitInput.Payload` / `.Headers` doc |
+| ② | `EventType`（`+version`）を選び、**自己完結 snapshot** payload を marshal。`Headers` に `Authorization`/`Cookie` を入れない（既知の機微ヘッダ名は送出前に denylist で落とすが、それは defense-in-depth であって契約ではない） | `Emit` の呼び出し側 | `EmitInput.Payload` / `.Headers` doc |
 | ③ | **`Idempotency-Key`（= `message_id`）で dedup** し、永続受理時のみ 2xx を返す受信エンドポイント | 外部サービス | `httpPublisher.Publish` |
 | ④ | `OUTBOX_ENDPOINT`（必須。空/不正 URL は relay が起動拒否）+ 任意の `OUTBOX_POLL_INTERVAL` / `OUTBOX_ERROR_BACKOFF` / `OUTBOX_BATCH_SIZE` | `env/` & IaC | `OutboxConfig` 既定値 |
 | ⑤ | `cmd outbox-relay` を常駐プロセスとして起動（SIGTERM まで常駐・stop で drain） | デプロイ / IaC | `cmd/outbox_relay.go` |

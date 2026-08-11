@@ -154,6 +154,8 @@ Main tools installed (versions pinned in `mise.toml`):
 - lefthook
 - gotests
 - impl
+- zizmor
+- shellcheck
 
 ## 7. Docker images pick up the new Go base via sync
 

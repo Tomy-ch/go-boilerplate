@@ -15,12 +15,12 @@ REST は **「request-in driving adapter」、Usecase 層への同期 HTTP 入�
 | 構成要素 | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
 | **HTTP サーバ**（`server.NewAppServer` / `server.NewHTTPServer`） | controller | Echo インスタンスとそれを配信する `http.Server`：read·write·idle タイムアウト / 生成 `RegisterHandlers` によるルート表 | 業務ロジック・middleware 方針 |
-| **middleware チェーン**（`httpstack/*`） | controller | 固定順の横断関心事：uri(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | 業務ロジック |
+| **middleware チェーン**（`httpstack/*`） | controller | 固定順の横断関心事：uri(pre) → timeout(pre) → bodyLimit(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | 業務ロジック |
 | **handler**（`controller/handler/**`） | controller | 型付きリクエスト解釈（`StrictHandler`）→ usecase を**1 メソッド**呼ぶ → DTO → `gen` 応答へ変換 | 業務ロジック・永続化・tx |
 | **error handler**（`httpstack/errorhandler`） | controller | `apperror` / Echo / OpenAPI エラー → HTTP ステータス＋コード、統一エラーボディ | 業務方針 |
 | **usecase** | usecase | **すべての**業務ロジック・トランザクション境界・ドメインオーケストレーション・エラー方針 | HTTP・フレームワーク・表現 |
 | **DI server ＋ hook**（`di/server`） | di | Echo ＋ 順序付き middleware（priority）＋ lifecycle（listen / graceful shutdown）の合成 | 業務ロジック |
-| **ServerConfig** | config | host / port / read-header·read·write·idle タイムアウト | 業務ロジック |
+| **ServerConfig** | config | host / port / read-header·read·write·idle タイムアウト、リクエスト期限（`SERVER_REQUEST_TIMEOUT`）、ボディサイズ上限（`SERVER_BODY_LIMIT_MB`） | 業務ロジック |
 
 設計原則（不変）:
 
@@ -57,8 +57,10 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pre: e.Pre — uri（パス正規化）
-    Pre --> RequestID: 1 requestID（X-Request-ID）
+    [*] --> Pre: e.Pre 1 — uri（パス正規化）
+    Pre --> TimeoutPre: e.Pre 2 — timeout（SERVER_REQUEST_TIMEOUT）
+    TimeoutPre --> BodyLimitPre: e.Pre 3 — bodyLimit（SERVER_BODY_LIMIT_MB）
+    BodyLimitPre --> RequestID: 1 requestID（X-Request-ID）
     RequestID --> Observability: 2 observability（OTel span, traceparent）
     Observability --> Recovery: 3 recovery（defer/recover → 500）
     Recovery --> CORS: 4 cors（origin / preflight）
@@ -239,8 +241,8 @@ flowchart LR
 | **BindHandler** | handler パッケージのコンストラクタ：`server{}`（tracer ＋ usecase）を作り `RegisterHandlers(e, NewStrictHandler(...))` を呼ぶ。`fx.Invoke` で配線。 |
 | **handler / `server{}`** | `operationId` ごと 1 メソッドの薄い controller 型：tracer span → リクエスト解釈 → usecase 1 メソッド → DTO → `gen` 応答へ変換。 |
 | **presenter** | DTO → `gen.<Op><Status>JSONResponse` 変換。handler メソッド内にインラインで実装。 |
-| **middleware (Use) / Pre** | priority 順に適用される per-request 横断関数（`Use`）と、ルーティング前に走る `Pre`（パス正規化）。 |
-| **priority** | 各 middleware の `*_di.go` の整数で extension エンジンがソート（uri-pre 1; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10）。 |
+| **middleware (Use) / Pre** | priority 順に適用される per-request 横断関数（`Use`）と、ルーティング前に走る `Pre`（パス正規化・リクエスト期限・ボディサイズ上限）。 |
+| **priority** | 各 middleware の `*_di.go` の整数で extension エンジンがソート（uri-pre 1, timeout-pre 2, bodyLimit-pre 3; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10）。 |
 | **extension エンジン**（`ApplyExtends`） | `Pre`/`Use`/`SrvCfg` provider を集約し priority でソートして Echo に適用。非 middleware の構成器（IP extractor, error handler）も適用。 |
 | **error handler** | Echo に設定する `HTTPErrorHandler`。`apperror` と、ステータスを持つエラー（`echo.HTTPError` / OpenAPI 検証エラー）を統一 `HTTPErrorResponse`（status ＋ code 写像付き）へ正規化。 |
 | **apperror** | フレームワーク非依存のエラー分類。error handler が HTTP ステータスへ写像（例 `ErrConflict`→409, `ErrValidation`→422, `ErrInvalidArgument`→400）。 |

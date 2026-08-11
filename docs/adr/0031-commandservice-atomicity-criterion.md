@@ -82,27 +82,14 @@ both:
 
 ### Decision procedure
 
-When an operation crosses an aggregate boundary:
+The default is decomposition. A guard that must hold until commit takes a synchronous row lock and
+stays a regular usecase; CommandService is reached only when single-transaction atomicity of the
+multi-aggregate *write* remains as a requirement. Two justifications are not acceptable: "it spans
+multiple aggregates, therefore CommandService", and — the failure mode branch 2 exists to close —
+"it is only a read, therefore nothing is needed".
 
-1. **Decomposition (default).** Ask the requirements two things: whether the consequence for the
-   other aggregate may be eventually consistent (a cascade via outbox events,
-   [ADR-0051](0051-transactional-outbox.md)), and whether a condition read from another aggregate
-   may go stale after it has been checked. When both answers are yes, implement it as a regular
-   usecase, propagating any consequence as an outbox event. The condition is read without a lock and
-   no other aggregate is held inside the transaction.
-2. **Guard (synchronous row lock; still a regular usecase).** Does a **guard** need to hold for the
-   duration of the transaction — i.e. can a concurrent operation invalidate the checked condition
-   between the check and the commit? If so, a synchronous row lock is required, and the operation
-   stays a normal usecase. Take the lock before evaluating the condition and in the global lock
-   order ([ADR-0033](0033-ordered-pessimistic-row-locks.md)); where the rule spans aggregates it
-   lives in a Domain Service. This branch buys immediate consistency for a *read*. It does not make
-   any write atomic, and is never on its own a reason to introduce a CommandService.
-3. **Atomicity (CommandService; exception, must be justified).** Only when single-transaction
-   atomicity of the multi-aggregate *write* remains as a requirement.
-
-The default is decomposition; CommandService is a justified exception. Two justifications are not
-acceptable: "it spans multiple aggregates, therefore CommandService", and — the failure mode branch
-2 exists to close — "it is only a read, therefore nothing is needed".
+The procedure itself, and the eligibility gate it composes with, are stated once in
+[`docs/design/data-access-pattern.md`](../design/data-access-pattern.md).
 
 ### Departure from "1 Aggregate = 1 Transaction Boundary"
 

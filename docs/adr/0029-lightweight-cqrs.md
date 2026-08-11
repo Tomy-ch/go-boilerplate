@@ -58,40 +58,10 @@ three responsibilities:
   full-text search, or return a read-model projection that would be wasteful to reconstruct
   as a full aggregate (a subset/reshape of a heavy aggregate, or a joined view).
 - Returns DTOs, not full domain entities.
-- A read is *not* a QueryService case merely because its result is returned as a DTO — every
-  read is eventually mapped to a response DTO. Simple single-aggregate reads (fetch by ID, and
-  filter / list / count by the aggregate's own attributes, including an unfiltered full list)
-  stay in Repository. Returning many rows is not "crossing aggregates"; crossing means spanning
-  *different* aggregates.
-- The split is **storage-agnostic**: what decides Repository vs QueryService is whether the read
-  targets the aggregate's system-of-record state (the full aggregate is reconstructable →
-  Repository) or a derived projection / read model — a search index, a separate search store, a
-  denormalized / generated search column, or a cross-aggregate JOIN view (the aggregate cannot be
-  reconstructed → QueryService). Full-text search is a *typical* QueryService case because it
-  usually rides on a derived search projection, not because "search" is inherently a read-side
-  concern; a plain filter on the aggregate's own columns stays in Repository.
-- Field resolution across *independent* aggregates (e.g. attaching a separate top-level aggregate's
-  name — a prefecture — to a list) is done in the **usecase layer** by batch-fetching the related
-  aggregate through its own Repository (`FindByIDs`) and merging by key — keeping each read a
-  single-aggregate Repository read — rather than via a QueryService SQL JOIN.
-- **Reference-master clarification**: a *reference master* — fixed / standing lookup data with no
-  independent write / transactional lifecycle, reached through a mandatory, uniquely-determined FK
-  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
-       目的: 「参照マスタ」だけでは読者が自分のテーブルを当てはめられない。
-       意義: 判定は独立した書き込みライフサイクルの有無で決まり、テーブルの名前や規模ではない。
-       書き方: 列挙型に相当する固定テーブルを 1〜2 個挙げる。 -->
-  <!-- sample-api:begin -->
-  （サンプルでの例は `purchase_statuses` / `product_statuses`）
-  <!-- sample-api:end -->
-  — is part of the
-  owning aggregate's semantic set, not a foreign aggregate. Projecting its display attribute (e.g. a
-  status *name*) by JOINing it into the owner's read is a single-aggregate **Repository** read, not a
-  cross-aggregate JOIN, and needs neither a QueryService nor a usecase merge. The criterion is the
-  joined data's *nature*, not its Go modeling: a master resolved purely by JOIN with no domain type
-  of its own qualifies just as one that also has a sub-package (`internal/domain/product/status`
-  exists only for a master-list endpoint). The cross-aggregate merge rule above applies only to
-  *independent* aggregates (own transactional lifecycle). See `docs/rules.md` § "Repository /
-  QueryService Rules" for the discriminator.
+- Which reads are forbidden from decomposing into per-aggregate Repository reads — and the
+  clarifications that decide the common cases (DTO shape, storage engine, full-text search,
+  cross-aggregate field resolution, reference masters) — is stated once in
+  [`docs/design/data-access-pattern.md`](../design/data-access-pattern.md).
 - Implementation lives in `internal/infrastructure/rdb/query_service/<aggregate>/`.
 
 ### Command Service (command/write path)
@@ -146,9 +116,11 @@ day-to-day boundary enforcement rules.
   methods, preserving domain purity per [ADR-0002](0002-onion-architecture.md).
 - QueryService can freely optimize queries (joins, pagination, full-text search) without
   touching domain logic or exposing domain entities to the read path.
-- Both Service interfaces are owned on the same axis — the workflow that opens the transaction and
-  shapes the read model — so they live together in the usecase layer, and the domain layer keeps
-  exactly one persistence contract: the Repository.
+- Both Service interfaces live in the usecase layer, though they are owned on **different** axes:
+  QueryService on the aggregate axis (`<aggregate>/query/`), because a read model is shaped by the
+  aggregate whose state it projects; CommandService on the workflow axis (`<workflow>/command/`),
+  because a transaction has exactly one initiator and no single aggregate owns a cross-aggregate
+  write. Either way the domain layer keeps exactly one persistence contract: the Repository.
 - CommandService can freely optimize flexible updates, deletes, and other write operations
   without touching domain logic. Routing back through the Repository at the end prevents
   domain integrity from being compromised.
