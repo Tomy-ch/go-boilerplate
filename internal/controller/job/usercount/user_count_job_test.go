@@ -27,7 +27,6 @@ func TestNew(t *testing.T) {
 	job := New(logging, tf, mockApp)
 	require.NotNil(t, job)
 
-	// New が job.Job 実装を生成し、Name() が規定値を返すことまで検証する。
 	assert.Equal(t, jobName, job.Name())
 }
 

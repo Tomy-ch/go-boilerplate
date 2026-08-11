@@ -1149,10 +1149,9 @@ func Test_run_triggerFatal(t *testing.T) {
 func Test_run_loop(t *testing.T) {
 	t.Parallel()
 
-	// poll loop の基本振り分け（ctx cancel / Ack / Nack / Fatal 等）は engine 統合テスト TestEngine_Run で
-	// カバーする。ここでは Fake が空スライスを返せず到達不能な「Half-open の probe Receive が 0 件 →
-	// abortProbe → 次周で再 probe」の配線を、生成 mock で決定的に固定する（abortProbe を外すと probing が
-	// 解除されず tryBeginProbe が false のまま新規 Receive が止まり、成功メッセージが永久に届かない半開デッドロック）。
+	// Fake は空スライスを返せないため、「Half-open の probe Receive が 0 件 → abortProbe → 次周で再 probe」の
+	// 配線を生成 mock で固定する（abortProbe を外すと probing が解除されず、成功メッセージが永久に届かない
+	// 半開デッドロックになる）。
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -1423,9 +1422,7 @@ func Test_run_safeHandle(t *testing.T) {
 func Test_run_startHeartbeat(t *testing.T) {
 	t.Parallel()
 
-	// Extend の周期発火（ticker.C 経路）と done 停止経路は engine 統合テスト
-	// TestEngine_Run/engineRunExtendCalledPeriodically・engineRunExtendErrorHeartbeatContinues でカバーする。
-	// ここでは engine 経由では done と競合して非決定になる ctx.Done() 停止経路を、ticker を実質無効化して
+	// ctx.Done() 停止経路は engine 経由だと done と競合し非決定になるため、ticker を実質無効化して
 	// 決定的に検証する（停止クロージャが goroutine 終了を待つ契約も併せて確認する）。
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -1467,9 +1464,8 @@ func Test_run_startHeartbeat(t *testing.T) {
 func Test_run_handleResult(t *testing.T) {
 	t.Parallel()
 
-	// Ack/Nack/Fatal の基本振り分けは engine 統合テスト（engineRunAcksOnSuccess 等）でカバーする。
-	// ここでは Fake が Fail エラーを注入できず circuit 状態も engine から観測しにくい
-	// 「Permanent の dead-letter 退避成否による circuit / Ack 分岐」に絞って検証する。
+	// Fake は Fail エラーを注入できず circuit 状態も engine から観測しにくいため、
+	// 「Permanent の dead-letter 退避成否による circuit / Ack 分岐」に絞って mock で検証する。
 	permErr := xerrors.Wrap(apperror.ErrPermanent, "bad message")
 
 	t.Run("正常系", func(t *testing.T) {

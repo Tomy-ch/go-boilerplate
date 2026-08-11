@@ -252,8 +252,6 @@ func Test_jobImpl_Execute(t *testing.T) {
 		t.Run("削除が失敗しても中断までに確定した件数はログへ出力する", func(t *testing.T) {
 			t.Parallel()
 
-			// コミット済みの物理削除は取り消せない。エラーだけを返して件数を落とすと、
-			// 実際に消えたユーザーの数が運用者から見えなくなる。
 			ctrl := gomock.NewController(t)
 			purge := mock_user.NewMockPurgeUsecase(ctrl)
 			purge.EXPECT().PurgeDeleted(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
