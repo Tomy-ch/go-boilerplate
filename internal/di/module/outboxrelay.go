@@ -29,7 +29,6 @@ func OutboxRelayModule() fx.Option {
 	return fx.Module("outbox-relay",
 		outboxPublisherModule(),
 		fx.Provide(
-			// 具象 OutboxMetrics を usecase 境界の Metrics interface として供給する。
 			fx.Annotate(
 				observability.NewOutboxMetrics,
 				fx.As(new(outboxuc.Metrics)),

@@ -76,8 +76,7 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 func TestObservabilityModule(t *testing.T) {
 	t.Parallel()
 
-	// ObservabilityModule は config / logging / BuildInfo を外から受け取るため、
-	// 依存だけを供給した最小構成に対象モジュールを重ねて検証する。
+	// ObservabilityModule は config / logging / BuildInfo を外から受け取る。
 	obsDeps := func(t *testing.T) []fx.Option {
 		t.Helper()
 
