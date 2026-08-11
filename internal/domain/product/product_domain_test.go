@@ -109,7 +109,6 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, attrs.ImagePath, actual.ImagePath())
 			assert.Equal(t, initialVersion, actual.Version())
 
-			// ポインタ getter は防御的コピーを返し、返り値を書き換えてもエンティティ内部は不変。
 			mutatedDescription := actual.Description()
 			*mutatedDescription = "mutated"
 			require.NotNil(t, actual.Description())

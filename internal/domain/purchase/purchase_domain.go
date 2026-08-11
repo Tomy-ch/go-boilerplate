@@ -413,16 +413,14 @@ func (p *Purchase) IsShippable() bool { return p.status.CanTransitionTo(StatusSh
 // Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /
 // 支払い済み）からのみ遷移でき、statusCode をキャンセル（6）へ、canceledAt を now へ同時に更新します。
 // 既にキャンセル済みなら ErrAlreadyCanceled、完了・配達済み・発送済み（shippedAt）なら
-// ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
-// 遷移に成功したときだけキャンセルの事実（Event）を返します。起きたことを知っているのは遷移を起こした
-// この集約だけなので、事実の宣言も集約が行います。
+// ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。
+// 遷移に成功したときだけキャンセルの事実（Event）を返します。
 func (p *Purchase) Cancel(now time.Time) (Event, error) {
 	if p.IsCanceled() {
 		return Event{}, ErrAlreadyCanceled
 	}
 	// 配達済みも deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも
 	// 遷移不可であり続けるため、status ではなく残り続ける shippedAt で判定する。
-	// 発送済みは status が配達済みへ進んでも遷移不可であり続けるため、残り続ける shippedAt で判定する。
 	if !p.status.CanTransitionTo(StatusCanceled) || p.shippedAt != nil {
 		return Event{}, ErrCancelNotAllowed
 	}
@@ -434,18 +432,14 @@ func (p *Purchase) Cancel(now time.Time) (Event, error) {
 // Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
 // statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。既に支払い済みなら ErrAlreadyPaid、
 // キャンセル済み・完了・配達済み・発送済み（shippedAt）なら ErrPayNotAllowed をそれぞれ返します
-// （いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です
-// （決済 seam の除外は nextjs-boilerplate 側の設計判断）。
-// now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
-// 遷移に成功したときだけ支払いの事実（Event）を返します。起きたことを知っているのは遷移を起こした
-// この集約だけなので、事実の宣言も集約が行います。
+// （いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です。
+// 遷移に成功したときだけ支払いの事実（Event）を返します。
 func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if p.status == StatusPaid {
 		return Event{}, ErrAlreadyPaid
 	}
 	// 配達済みは deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも
 	// 遷移不可であり続けるため、status ではなく残り続ける shippedAt で判定する。
-	// 発送済みは status が配達済みへ進んでも遷移不可であり続けるため、残り続ける shippedAt で判定する。
 	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
 		return Event{}, ErrPayNotAllowed
 	}
@@ -458,9 +452,7 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 // shippedAt を now へ同時に更新します。既に発送済みなら ErrAlreadyShipped、それ以外の状態
 // （未払い相当・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
 // 配送追跡（追跡番号 / 配送業者）は扱わず、shippedAt とステータスの記録のみを担います。
-// now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
-// 遷移に成功したときだけ発送の事実（Event）を返します。起きたことを知っているのは遷移を起こした
-// この集約だけなので、事実の宣言も集約が行います。
+// 遷移に成功したときだけ発送の事実（Event）を返します。
 func (p *Purchase) Ship(now time.Time) (Event, error) {
 	if p.status == StatusShipped {
 		return Event{}, ErrAlreadyShipped
@@ -477,9 +469,7 @@ func (p *Purchase) Ship(now time.Time) (Event, error) {
 // deliveredAt を now へ同時に更新します。既に配達済みなら ErrAlreadyDelivered、それ以外の状態
 // （未払い相当・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。
 // 配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担います。
-// now は時刻境界から供給します（ドメインの時刻直依存を避けるため）。
-// 遷移に成功したときだけ配達の事実（Event）を返します。起きたことを知っているのは遷移を起こした
-// この集約だけなので、事実の宣言も集約が行います。
+// 遷移に成功したときだけ配達の事実（Event）を返します。
 func (p *Purchase) Deliver(now time.Time) (Event, error) {
 	if p.status == StatusDelivered {
 		return Event{}, ErrAlreadyDelivered
