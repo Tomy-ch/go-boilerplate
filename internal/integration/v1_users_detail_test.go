@@ -72,7 +72,6 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
-			// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
 			AssertJSONResponseType[detailgen.UserResponse](t, actual)
 		})
 
@@ -96,7 +95,6 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
-			// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
 			AssertJSONResponseType[detailgen.UserResponse](t, actual)
 		})
 

@@ -57,7 +57,6 @@ func TestV1UsersMe_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// Authn を注入しない（MakeAvailableUserID を呼ばない）ため、handler が ctxhelper.ErrUnauthenticatedUser を返す。
 			mockApp := mock_user.NewMockUsecase(ctrl)
 
 			detail.BindHandler(e, tf, mockApp)

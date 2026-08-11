@@ -68,15 +68,9 @@ type routeIndex struct {
 }
 
 // TestRouteSpecParity は、Echo に登録されるルートと OpenAPI spec の operation が 1:1 で対応することを
-// 機械検証する。OpenAPI リクエストバリデーション・details の opt-in ゲート・404/405 の判定はいずれも
-// 「登録されたルート = spec の operation」を暗黙の前提にしており、spec に無いルートを足すとテストは
-// 緑のまま実行時の挙動だけが変わるため、その前提をここで明示的な契約に変える。
+// 機械検証する。この契約と許可リストを持たない理由は docs/rules.md の OpenAPI-first Rules が定める。
 //
-// 意図的な spec 外ルートのための許可リストは持たない。許可リスト自体がドリフト源になるため、
-// spec 外のルートは常に失敗させる。
-//
-// ルートの列挙は実 DI グラフではなくソースの静的走査で行う（depguard が go/ast を禁じるため、
-// 既存 architest と同じく gofmt 済みソースのテキスト走査を採る）。ソースを見る以上、
+// ルートの列挙は実 DI グラフではなくソースの静的走査で行う。ソースを見る以上、
 // di へ BindHandler を登録し忘れて実行時にルートが生えない配線漏れは本テストでは見えない。
 // その配線漏れは TestBindHandlerDIParity が「BindHandler の宣言 = fx.Invoke の列挙」および
 // 「RegisterHandlers を持つ生成物あり ⇒ BindHandler の実装あり」として補完する。

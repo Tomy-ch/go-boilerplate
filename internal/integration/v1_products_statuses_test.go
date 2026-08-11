@@ -40,7 +40,6 @@ func TestV1ProductStatuses_Integration(t *testing.T) {
 
 			productstatuseshandler.BindHandler(e, tf, mockUC)
 
-			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/statuses", nil, nil)
 			AssertJSONResponseType[[]gen.ProductStatusResponse](t, actual)
 		})

@@ -76,7 +76,6 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// 参考換算のレート取得だけが失敗し reference=nil の degrade を模擬する。本体は 503 でなく 200。
 			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
 				Convert(gomock.Any(), gomock.Any()).
@@ -103,7 +102,6 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// 本体換算のレート取得が外部為替サービス不通で失敗する実挙動を模擬する。
 			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
 				Convert(gomock.Any(), gomock.Any()).

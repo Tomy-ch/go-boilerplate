@@ -99,7 +99,7 @@ func TestV1Users_Integration(t *testing.T) {
 				Return(user.UserView{Email: "idem@example.com"}, nil)
 
 			// 実 Deps を組んだ BindHandler に Idempotency-Key 付きリクエストを通し、
-			// middleware→Run 配線（claim→complete）が実スタックで動くことを検証する。
+			// middleware→Run 配線が実スタックで動くことを検証する。
 			store := mock_idempotency.NewMockStore(ctrl)
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
 			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)

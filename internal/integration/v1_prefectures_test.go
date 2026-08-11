@@ -41,7 +41,6 @@ func TestV1Prefectures_Integration(t *testing.T) {
 
 			prefectureshandler.BindHandler(e, tf, mockUC)
 
-			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/prefectures", nil, nil)
 			AssertJSONResponseType[[]gen.PrefectureResponse](t, actual)
 		})
