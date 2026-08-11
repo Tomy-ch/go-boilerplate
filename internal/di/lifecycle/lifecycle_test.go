@@ -67,7 +67,6 @@ func Test_lifecycleRegistrar_RegisterStop(t *testing.T) {
 		fx.NopLogger,
 	)
 
-	// start and then stop to trigger OnStop hooks
 	require.NoError(t, app.Start(context.Background()))
 	require.NoError(t, app.Stop(context.Background()))
 

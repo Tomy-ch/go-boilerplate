@@ -28,7 +28,7 @@ type SupervisedRunner struct {
 
 // Register は、SupervisedRunner を reg のライフサイクルへ登録します。
 func (s SupervisedRunner) Register(reg Registrar) {
-	// 実行 context は OnStop でのみキャンセルする（OnStart 完了後の startCtx キャンセルに巻き込まれない）。
+	// 実行 context は startCtx に紐づけない（[SupervisedRunner] の detached 契約）。
 	runCtx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 

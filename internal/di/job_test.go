@@ -21,16 +21,13 @@ import (
 func TestNewJobCore(t *testing.T) {
 	t.Parallel()
 
-	// ジョブ用 fx グラフの結線が欠落なく成立することを検証する（コンストラクタの実体実行は伴わない）。
 	// 本番と同じ fx.WithLogger(NewFxEventLogger) を渡し、ロガー構成子の依存解決も併せて検証する。
 	require.NoError(t, fx.ValidateApp(NewJobCore(), fx.WithLogger(NewFxEventLogger)))
 }
 
 //nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func TestNewJobCore_BootsWithMockedDB(t *testing.T) {
-	// 実 DB を避けつつ、ジョブ用 fx グラフの全コンストラクタ実行とライフサイクル(OnStart/OnStop)を検証する。
 	// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避する（ジョブは HTTP サーバを起動しないためポート上書きは不要）。
-	// EnsureRepoRootAndEnv が cwd を変更するため t.Parallel() は付けない。
 	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 
 	ctrl := gomock.NewController(t)

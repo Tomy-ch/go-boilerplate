@@ -34,9 +34,7 @@ func RegisterJobHooks(
 
 // runJobAndShutdown は、スナップショットしたジョブを実行し done に結果を送って停止を要求する。
 // ジョブ未設定時（done==nil）はログ出力のみ行って停止する。
-//
-// jobCtx は [lifecycle.SupervisedRunner] が供給する実行 context で、Background 由来かつ
-// OnStop でのみキャンセルされる。よって起動 ctx のキャンセルには巻き込まれず、停止時のみ中断される。
+// jobCtx は [lifecycle.SupervisedRunner] が供給する実行 context。
 func runJobAndShutdown(
 	jobCtx context.Context,
 	sd shutdowner.Shutdowner,
@@ -68,7 +66,6 @@ func runJobAndShutdown(
 }
 
 // shutdown は、ジョブ完了後のアプリ停止を要求し、失敗時はジョブ系のログ様式に合わせて記録します。
-// エラーは黙殺せずログ記録する。
 func shutdown(ctx context.Context, sd shutdowner.Shutdowner, logger logging.Logger) {
 	if err := sd.Shutdown(); err != nil {
 		logger.Named(loggerName).Error(

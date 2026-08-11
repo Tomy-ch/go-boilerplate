@@ -54,11 +54,9 @@ func TestSupervisedRunner_Register(t *testing.T) {
 			require.NotNil(t, start)
 			require.NotNil(t, stop)
 
-			// OnStart: aux 起動 → Body goroutine 起動。
 			require.NoError(t, start(context.Background()))
 			assert.True(t, auxStarted)
 
-			// OnStop: cancel → Body 完了待ち → aux 停止。
 			require.NoError(t, stop(context.Background()))
 			<-bodyCtxDone
 			require.ErrorIs(t, bodyCtxErr, context.Canceled)
@@ -73,13 +71,11 @@ func TestSupervisedRunner_Register(t *testing.T) {
 
 			start, stop := captureHooks(t, SupervisedRunner{
 				Body: func(ctx context.Context) {
-					// Body 起動時点で起動 ctx のキャンセルに巻き込まれていないこと（Background 由来）。
 					bodyCtxErr = ctx.Err()
 					close(bodyRan)
 				},
 			})
 
-			// 既にキャンセル済みの起動 ctx を渡しても Body の ctx は無傷であること。
 			startCtx, cancel := context.WithCancel(context.Background())
 			cancel()
 			require.NoError(t, start(startCtx))
@@ -116,7 +112,6 @@ func TestSupervisedRunner_Register(t *testing.T) {
 
 			require.NoError(t, start(context.Background()))
 
-			// 既に満了した stopCtx を渡すと drain を待たず即座に返る。
 			stopCtx, cancel := context.WithCancel(context.Background())
 			cancel()
 			require.NoError(t, stop(stopCtx))
