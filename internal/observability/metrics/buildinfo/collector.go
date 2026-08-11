@@ -58,8 +58,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 }
 
 // Register は、Collector を Prometheus のデフォルトレジストリに登録します。
-//
-// 重複登録は AlreadyRegisteredError を無視して安全にスキップします。
 func Register(c *Collector) error {
 	return register(prometheus.DefaultRegisterer, c)
 }

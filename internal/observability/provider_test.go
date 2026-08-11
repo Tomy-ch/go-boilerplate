@@ -119,7 +119,6 @@ func TestNewTracerProvider(t *testing.T) {
 			require.NotNil(t, tp)
 			assert.Same(t, tp, otel.GetTracerProvider())
 
-			// W3C TraceContext + Baggage の伝播器が登録されていること。
 			fields := otel.GetTextMapPropagator().Fields()
 			assert.Contains(t, fields, "traceparent")
 			assert.Contains(t, fields, "baggage")
