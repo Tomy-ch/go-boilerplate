@@ -202,48 +202,28 @@ Infrastructure コンポーネントは
 
 ## Repository / QueryService ルール
 
-- Repository は Aggregate の永続化と、単一 Aggregate の単純な読み取りを扱う
-  （ID 取得、および Aggregate 自身の属性による単純なフィルタ・一覧・件数取得）。
-- QueryService は Aggregate を横断する読み取り、または高い検索複雑性を要する読み取りを扱う
-  （複数テーブル結合・集計・キーワード/全文検索・専用 read model）＝CQRS の読み取り側。
+> 判定基準: [`docs/design/data-access-pattern.md`](ja/design/data-access-pattern.ja.md) —— ある操作が
+> どの構築物に属するのか、そしてなぜか。決定:
+> [ADR-0029 (lightweight-cqrs)](ja/adr/0029-lightweight-cqrs.ja.md)、
+> [ADR-0030 (system-cqrs-dml-category)](ja/adr/0030-system-cqrs-dml-category.ja.md)、
+> [ADR-0031 (commandservice-atomicity-criterion)](ja/adr/0031-commandservice-atomicity-criterion.ja.md)。
 
-禁止：
+Repository は読み・書きの両方向で既定である。QueryService と CommandService は、非機能要件が操作を集約単位の
+作業へ分解することを禁じるときに残る残余であり、`system_cqrs` は分割の外側にある。**判定基準をここにも、ADR にも、
+パッケージ README にも書き写さないこと** —— 写しは必ず乖離し、誰も読み返さない写しこそが古くなる。判定基準の文書へ
+リンクすること。
 
-- Repository に Aggregate 横断や集計・結合のクエリを書くこと
+禁止:
+
+- Repository に *独立した* Aggregate を跨ぐ結合 / 集計クエリを書くこと —— **例外**: 一意に定まる、文脈に入れ子の
+  参照マスタへの JOIN
 - QueryService にドメインロジックを書くこと
-- 業務語彙で名前を持つ条件をクエリで著作すること — `WHERE` 句はその条件の**実行**であって定義ではない
+- 集約を読み込み・変更し・保存する形で表現できる書き込みを CommandService に置くこと
+- ドメイン不変条件から導出されていない条件を CommandService で強制すること
+- インフラ運用のクエリ（ヘルス検証・冪等性・outbox 配信）を `repository/` へ置くこと。`repository/` は
+  ドメイン集約との 1:1 対応を保つ
+- 業務語彙で名前を持つ条件をクエリで著作すること —— `WHERE` 句はその条件の**実行**であって定義ではない
   （[Domain レイヤ制約](#domain-レイヤ制約)を参照）
-
-境界の明確化（よくある誤読）：
-
-- **「多数の行を返す」ことは「Aggregate 横断」ではない。** 1 つのテーブルの全行を列挙することは
-  単一 Aggregate の `一覧` であり Repository に留まる。
-  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
-       目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
-       意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
-       書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
-  <!-- sample-api:begin -->
-  例: `SELECT * FROM prefectures ORDER BY code`。
-  <!-- sample-api:end -->
-  「Aggregate 横断」とは *異なる* Aggregate を結合・またぐことであり、1 つの Aggregate の複数行を返すことではない。
-- **「レスポンスが DTO である」ことは QueryService のトリガではない。** あらゆる読み取りは最終的にレスポンス
-  DTO へ写像される。読み取りを QueryService へ移すのは、full Aggregate として再構築するのが無駄になる
-  自然な形（重い Aggregate・結合・ページング）であって、API が DTO を返すという事実そのものではない。
-- Repository の読み取りは **ID 取得に限定されない**：Aggregate 自身の属性による単純なフィルタ・一覧・件数取得
-  （無フィルタの全件一覧を含む）は Repository に属する。
-- **Repository / QueryService の判別はストレージ非依存。** 基準はエンジン（RDB か NoSQL か）でも手法
-  （全文検索か）でもなく、*読み取り先が何か*：Aggregate 自身の正本（system of record）の状態で full Aggregate を
-  再構成できるなら Repository、正本から派生した写像 / read model（検索インデックス・別の検索ストア・非正規化 /
-  生成された検索列・Aggregate 横断の JOIN view）で Aggregate を再構成できないなら QueryService。document ストアを
-  Aggregate の正本として使う場合は全文検索を備えていても Repository、その正本から構築した Elasticsearch
-  インデックスは派生写像なので QueryService。
-- **「keyword / 全文検索 = QueryService」は典型例であって規則ではない。** Aggregate *自身* の列への素の `ILIKE`
-  は単一 Aggregate の Repository フィルタ。全文検索が QueryService になるのは、派生した検索射影（検索インデックス・
-  検索ストア・非正規化 / 生成された検索列）を読む場合に限る。
-- **別 Aggregate のフィールド解決は JOIN ではなく Usecase で行う。** 一覧に関連 Aggregate のデータ（例: 名称）を
-  付与するには、その Aggregate 自身の Repository（`FindByIDs`）で一括取得し Usecase 層でキー突合する。各読み取りは
-  単一 Aggregate の Repository read のまま保つ。平坦化した view を返す Aggregate 横断 SQL JOIN は Repository read
-  ではなく QueryService の read model。
 
 ## DTO / 型境界ルール
 
