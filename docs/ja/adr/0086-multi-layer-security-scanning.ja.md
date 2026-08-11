@@ -93,7 +93,7 @@ advisory 自身の評価を第一とし、無ければ osv-scanner がグルー�
 | ワークフロー定義 | zizmor | Actions 関連 PR / protected push / 週次 | 同一ワークフロー |
 | コンテナイメージ | Trivy image + SBOM | デプロイ先ブランチ宛 PR / 週次 | 同一ワークフロー |
 | リポジトリの姿勢 | OpenSSF Scorecard | 既定ブランチ / 週次 | — |
-| cooldown より新しい依存バージョン | npm cooldown audit | lockfile / `.npmrc` の変更 / 週次 | —（設計上、決してブロックしない） |
+| cooldown より新しい依存バージョン | Go cooldown + tool cooldown（[ADR-0088](0088-malicious-package-detection-via-cooldown.ja.md)。pnpm は依存解決の時点で自前の窓を課す） | `go.mod` / `mise.toml` / `python/*.in` の変更 / 週次 | 同一ワークフロー（direct な Go の require とツール宣言） |
 | Dockerfile の設定不備 | Trivy config | Dockerfile 変更の PR / protected push | 同一ワークフロー（HIGH 以上） |
 | 依存のライセンス | Trivy licence | Trivy FS と同一トリガー / 週次 | —（ポリシー未定） |
 | 新規に導入される advisory（GHAS 非依存） | OSV diff | 依存変更の PR | 同一ワークフロー（閾値なし） |

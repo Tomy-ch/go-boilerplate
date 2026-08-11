@@ -287,6 +287,6 @@ Four walls to restate in the report whenever they apply:
 - [ ] Exposure reported as a separate line, not folded into the score
 - [ ] Artifact never executed (no `npm install`, no `docker run`, no downloaded binary, no build of the candidate); extracted outside the repo tree
 - [ ] Japanese report printed with band, recommendation, and the explicit statement that nothing was changed
-- [ ] npm `min-release-age` / pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 walls restated when they apply
+- [ ] pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 walls restated when they apply
 - [ ] No file modified, no window lowered, no upgrade applied
 - [ ] After updating `SKILL.md`, re-sync `SKILL.ja.md`

@@ -104,7 +104,7 @@ PR *adds*, so it can block on an ordinary PR without punishing anyone for inheri
 | Workflow definitions | zizmor | Actions-file PRs / protected push / weekly | same workflow |
 | Container image | Trivy image + SBOM | deploy-branch PRs / weekly | same workflow |
 | Repository posture | OpenSSF Scorecard | default branch / weekly | — |
-| Dependency versions younger than the cooldown | npm cooldown audit | lockfile / `.npmrc` changes / weekly | — (never blocks by design) |
+| Dependency versions younger than the cooldown | Go cooldown + tool cooldown ([ADR-0088](0088-malicious-package-detection-via-cooldown.md); pnpm enforces its own at resolution time) | `go.mod` / `mise.toml` / `python/*.in` changes / weekly | same workflow (direct Go requirements and tool declarations) |
 | Dockerfile misconfiguration | Trivy config | Dockerfile-change PRs / protected push | same workflow (HIGH+) |
 | Dependency licences | Trivy licence | same trigger as Trivy FS / weekly | — (no policy yet) |
 | Newly introduced advisories, GHAS-independent | OSV diff | dependency-change PRs | same workflow (no threshold) |

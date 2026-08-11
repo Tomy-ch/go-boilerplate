@@ -190,6 +190,6 @@ baseline が決められない場合（初回のピン、`images-pin` rule 3）�
 - [ ] 暴露面をスコアに混ぜず別行で報告した
 - [ ] artifact を一切実行していない（`npm install` なし、`docker run` なし、ダウンロードしたバイナリの実行なし、候補の build なし）。展開先はリポジトリのツリー外
 - [ ] バンド・推奨・何も変更していない旨を含む日本語の報告を出力した
-- [ ] 該当する場合に npm `min-release-age` / pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 の壁を再掲した
+- [ ] 該当する場合に pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 の壁を再掲した
 - [ ] ファイルを一切変更せず、窓を下げず、更新を適用していない
 - [ ] `SKILL.md` を更新したら `SKILL.ja.md` を再同期した
