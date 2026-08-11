@@ -85,4 +85,4 @@ requirement.
 
 - Vendor-neutral OTLP-only export and the official-semconv stance are recorded separately (see the observability ADRs in [the ADR log](README.md)).
 - Design reference: `docs/design/observability.md`. The ctx-native `Logger` and the injected `TraceExtractor` that carries the per-log trace gate are described in `internal/logging/README.md`.
-- Migrated from `docs/decisions.md` (§ "Why config-driven observability gating").
+- Migrated from the former `docs/decisions.md`.

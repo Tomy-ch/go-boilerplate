@@ -56,4 +56,4 @@ without a matching benefit here.
 
 - The concrete type-safe generation mechanism is [ADR-0024](0024-sqlc-type-safe-sql.md) (sqlc).
 - Enforced in part by the Repository / QueryService rules in [`docs/rules.md`](../rules.md#repository--queryservice-rules).
-- Migrated from `docs/decisions.md` (§ "Why SQL-first").
+- Migrated from the former `docs/decisions.md`.

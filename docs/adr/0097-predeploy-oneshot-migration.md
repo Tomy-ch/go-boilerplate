@@ -80,7 +80,7 @@ achieves the same result without the overhead (see [ADR-0094](0094-single-runtim
 
 ## Notes
 
-- `.github/workflows/deploy-app.yaml` `Run migration (one-time job)` step (lines 192-204)
+- `.github/workflows/deploy-app.yaml` `Run migration (one-time job)` step
   is the authoritative placeholder to implement for the target environment.
 - The workflow comment "Must NOT be executed in container startup (entrypoint)" is the
   explicit guard against the rejected alternative.

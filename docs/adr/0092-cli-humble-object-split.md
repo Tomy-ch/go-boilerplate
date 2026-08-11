@@ -19,7 +19,7 @@ Cobra handler function that both defines the command and contains the logic conf
 concerns — testability and wiring — making the decision logic impossible to unit-test in
 isolation.
 
-The coverage gate (90%+ branch coverage) must apply to command logic, but `cmd/` shell files
+The coverage gate ([ADR-0083](0083-coverage-hard-gate.md), 90%+ branch coverage) must apply to command logic, but `cmd/` shell files
 that import Cobra, `internal/di`, and OS signals cannot be unit-tested cheaply; their runtime
 correctness is instead verified by CI boot checks (`app-di-startup-check`, `job-boot-check`,
 `worker-boot-check`, `migration-check`, and `gen-*-artifacts-check`) against a real Postgres

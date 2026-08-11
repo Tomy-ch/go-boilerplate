@@ -58,5 +58,5 @@ accepted
 ## 補足
 
 - 親原則: [ADR-0001](0001-avoid-lock-in.ja.md)。例外: [ADR-0075](0075-bridge-instrumentation-exceptions.ja.md)。
-- 依存関係の*リスト*は決定ではなくインベントリ — `docs/reference/dependencies.md`（Phase 5）に移動する。この ADR は*ポリシー*のみを記録する。
-- 移行元: `docs/decisions.md`（§「Library Selection Policy」）。
+- 依存関係の*リスト*は決定ではなくインベントリ — `docs/reference/dependencies.md` にある。この ADR は*ポリシー*のみを記録する。
+- 移行元: かつての `docs/decisions.md`。

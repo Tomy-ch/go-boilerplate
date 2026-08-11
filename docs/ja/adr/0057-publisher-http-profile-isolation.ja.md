@@ -65,5 +65,6 @@ OutboxRelayModule
   - `internal/di/module/outboxpublisher.go`（`outboxPublisherModule`、`NewDownstreamProfile`）
   - `internal/di/module/outboxrelay.go`（`OutboxRelayModule`）
   - `internal/infrastructure/publisher/http_publisher.go`（`NewDownstreamProfile`）
-- 耐障害性と SSRF クライアントポリシー: ADR-0021、ADR-0022（プレーンテキスト — 未公開）。
+- 耐障害性と SSRF クライアントポリシー: [ADR-0021](0021-outbound-http-resilience.ja.md)、
+  [ADR-0022](0022-egress-ssrf-guard.ja.md)。
 - 関連 ADR: [ADR-0052](0052-at-least-once-outbox-poll.ja.md)、[ADR-0058](0058-relay-resident-gc-oneshot.ja.md)。

@@ -61,4 +61,4 @@ management, which this application needs.
 ## Notes
 
 - fx is confined behind neutral DI abstractions (Registrar / Shutdowner) — recorded separately (see the DI ADRs in [the ADR log](README.md)).
-- Migrated from `docs/decisions.md` (§ "Why Fx").
+- Migrated from the former `docs/decisions.md`.

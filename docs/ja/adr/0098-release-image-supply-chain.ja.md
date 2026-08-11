@@ -59,6 +59,7 @@ accepted
 
 ## 補足
 
-- `.github/workflows/deploy-app.yaml` 131-168 行が 3 つの完全性ステップを実装する。
+- `.github/workflows/deploy-app.yaml` が 3 つの完全性ステップ
+  （`Attest build provenance` / `Sign image (cosign keyless)` / `Attest SBOM`）を実装する。
 - ここで生成される SBOM はプッシュ後のアテストアタッチされた SBOM であり、`image-scan.yaml` のスキャン時 SBOM は異なる目的（脆弱性スキャン）を果たし共存しなければならない。
 - ソース: `.github/workflows/deploy-app.yaml`。

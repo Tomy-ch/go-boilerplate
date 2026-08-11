@@ -33,14 +33,14 @@ Mermaid ダイアグラムリント、GitHub Actions ピン留め、初期プロ
 Makefile ヘルプ出力、バージョニング、リポジトリのゲート——に使用する:
 
 - `portal/gen-portal-docs.ts`、`portal/gen-docs-json.ts` — ポータル生成。
-- `make-help.ts` — `.makefiles/*.mk` をパースしてヘルプ出力を描画する。
-- `semver.ts` — セマンティックバージョンバンプ。
-- `stamp-openapi-version.ts` — ブランチ名からバージョンを導出して `openapi.yaml` に書き込む。
-- `mermaid-lint.ts`、`skill-lint.ts`、`pr-comment-secret-lint.ts`、`pr-comment-fence-lint.ts`、
+- `make-help/` — `.makefiles/*.mk` をパースしてヘルプ出力を描画する。
+- `semver/` — セマンティックバージョンバンプ。
+- `stamp-openapi-version/` — ブランチ名からバージョンを導出して `openapi.yaml` に書き込む。
+- `mermaid-lint/`、`skill-lint/`、`pr-comment-secret-lint/`、`pr-comment-fence-lint/`、
   `actions-cutoff-lint.ts` — Markdown とワークフロー YAML に対するリポジトリのゲート。
 - `setup/replace-*.ts` — Go モジュールパス、アプリのメタデータ、リポジトリ参照、LICENSE の権利者、
   CODEOWNERS の所有者欄を 1 回限りで書き換える。
-- `setup/remove-sample-api.ts`、`setup/verify-sample-removal.ts` — サンプル API の削除と、
+- `setup/remove-sample-api/`、`setup/verify-sample-removal/` — サンプル API の削除と、
   それが過不足なく行われたことの検証。
 
 各スクリプトは判定ロジックを `scripts/lib/`（または `scripts/portal/`）配下の純粋なモジュールに置き、

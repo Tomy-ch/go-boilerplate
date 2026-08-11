@@ -57,5 +57,5 @@ these are admitted as bounded, documented exceptions instead.
 ## Notes
 
 - Parent principle: [ADR-0001](0001-avoid-lock-in.md). Exceptions: [ADR-0075](0075-bridge-instrumentation-exceptions.md).
-- The *list* of dependencies is an inventory, not a decision — it moves to `docs/reference/dependencies.md` (Phase 5); this ADR records the *policy* only.
-- Migrated from `docs/decisions.md` (§ "Library Selection Policy").
+- The *list* of dependencies is an inventory, not a decision — it lives in `docs/reference/dependencies.md`; this ADR records the *policy* only.
+- Migrated from the former `docs/decisions.md`.

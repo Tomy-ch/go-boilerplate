@@ -30,17 +30,17 @@ Set the total coverage threshold at **90%** and enforce it as a hard CI gate.
 
 The gate is implemented in `.makefiles/go/test.mk`:
 
-- `COVERAGE_THRESHOLD := 90` (line 12) is the single source of truth for the floor.
-- Excluded packages (`GO_TEST_EXCLUDE`, line 9) are `gen`, `cmd`, `mock`, `apperror`,
+- `COVERAGE_THRESHOLD := 90` is the single source of truth for the floor.
+- Excluded packages (`GO_TEST_EXCLUDE`) are `gen`, `cmd`, `mock`, `apperror`,
   and `scripts` — packages that are either generated, DI wiring, or utilities that
   cannot meaningfully be unit-tested in isolation.
 - `make test-cover-ci` runs tests with `-coverpkg` set to the same filtered package list
   and writes `coverage.out`.
 - `make cover-gate` reads `coverage.out`, extracts the total line from
   `go tool cover -func`, and exits non-zero if the total falls below the threshold
-  (lines 44–51).
+  (the `cover-gate` target).
 
-In the CI workflow (`go-test.yaml` lines 79–80), the gate runs after the coverage report
+In the CI workflow (`go-test.yaml`, the `Coverage gate` step), the gate runs after the coverage report
 is uploaded to octocov:
 
 ```yaml
@@ -51,7 +51,7 @@ is uploaded to octocov:
 **Exception governance.** Branches that are structurally unreachable or cannot be
 triggered deterministically (e.g. runtime-internal error paths, no-op provider failures)
 may be formally exempted. Exemptions are recorded in the affected package's `README.md`
-under a designated section (example: `internal/observability/README.md` lines 504–523),
+under a designated section (example: `internal/observability/README.md`),
 require architect-level sign-off, and are governed by the rule that no contrived tests
 or extra production code are added solely to reach them.
 
@@ -94,8 +94,9 @@ evidence that the total-line gate is insufficient.
 
 ## Notes
 
-- Source: `.makefiles/go/test.mk` lines 11–12 and 44–51; `.github/workflows/go-test.yaml`
-  lines 79–80; `internal/observability/README.md` lines 504–523.
+- Source: `.makefiles/go/test.mk` (`COVERAGE_THRESHOLD` / `GO_TEST_EXCLUDE` / the `cover-gate`
+  target); `.github/workflows/go-test.yaml` (the `Coverage gate` step);
+  `internal/observability/README.md` (the coverage-exception section).
 - Coverage testing conventions (test structure, `require` vs `assert`, mocks) are in
   [`docs/testing-conventions.md`](../testing-conventions.md).
 - The DoD requiring coverage is in [`docs/rules.md`](../rules.md).

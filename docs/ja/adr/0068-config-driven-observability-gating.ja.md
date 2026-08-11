@@ -86,4 +86,4 @@ accepted
 
 - ベンダー中立の OTLP 専用エクスポートと公式 semconv に関する方針は別途記録されている。
 - 設計参照: `docs/design/observability.md`。ctx-native な `Logger` と、ログごとの trace ゲートを担う注入型 `TraceExtractor` は `internal/logging/README.md` に記載。
-- 移行元: `docs/decisions.md`（§「Why config-driven observability gating」）。
+- 移行元: かつての `docs/decisions.md`。

@@ -68,4 +68,4 @@ insufficient. Not importing an adapter from `cmd` achieves isolation without tag
 
 - Push / streaming exclusion: ADR-0048 (Phase 4). SQS adapter opt-in isolation: [ADR-0049](0049-sqs-adapter-opt-in.md).
 - Design reference: `docs/design/worker.md`.
-- Migrated from `docs/decisions.md` (§ "Why a broker-agnostic worker scaffold").
+- Migrated from the former `docs/decisions.md`.

@@ -88,6 +88,7 @@ Breaks shared observability (RED metrics, tracing) and bypasses the policy enfor
   - `internal/di/module/outboxpublisher.go` (`outboxPublisherModule`, `NewDownstreamProfile`)
   - `internal/di/module/outboxrelay.go` (`OutboxRelayModule`)
   - `internal/infrastructure/publisher/http_publisher.go` (`NewDownstreamProfile`)
-- Resilience and SSRF client policies: ADR-0021, ADR-0022 (plain text — not yet published).
+- Resilience and SSRF client policies: [ADR-0021](0021-outbound-http-resilience.md),
+  [ADR-0022](0022-egress-ssrf-guard.md).
 - Related ADRs: [ADR-0052](0052-at-least-once-outbox-poll.md),
   [ADR-0058](0058-relay-resident-gc-oneshot.md).

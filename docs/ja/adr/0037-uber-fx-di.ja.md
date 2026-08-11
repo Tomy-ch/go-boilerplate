@@ -50,4 +50,4 @@ accepted
 
 ## 補足
 
-- `docs/decisions.md`（§ "Why Fx"）から移行。
+- かつての `docs/decisions.md` から移行。

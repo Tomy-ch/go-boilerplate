@@ -78,6 +78,6 @@ coordination for every documentation change. Rejected.
 
 ## Notes
 
-- `.github/workflows/deploy-docs.yaml` lines 1-44 are the complete workflow definition.
+- `.github/workflows/deploy-docs.yaml` is the complete workflow definition.
 - The canonical-source documentation principle is ADR-0010.
 - Source: `.github/workflows/deploy-docs.yaml`.

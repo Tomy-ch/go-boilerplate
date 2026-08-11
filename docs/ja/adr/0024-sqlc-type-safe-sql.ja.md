@@ -48,4 +48,4 @@ SQLファーストの方針（[ADR-0023](0023-sql-first-data-access.ja.md)）を
 
 - [ADR-0023](0023-sql-first-data-access.ja.md)（SQLファースト）を前提とする。
 - 生成コードは手動編集不可 — [`docs/rules.md`](../rules.ja.md#生成コードルール)の生成コードルール参照。
-- `docs/decisions.md`（§ "Why sqlc"）から移行。
+- かつての `docs/decisions.md` から移行。

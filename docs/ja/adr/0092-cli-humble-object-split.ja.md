@@ -17,7 +17,7 @@ accepted
 
 CLI コマンドは、本番環境でリアルな依存関係をワイヤリングしながら、リアルなデータベース、外部プロセス、またはファイルシステムを起動せずにテスト可能なビジネスロジックを必要とする。コマンドを定義しロジックを含む単一の Cobra ハンドラー関数は、テスタビリティとワイヤリングという 2 つの関心事を混在させ、決定ロジックを独立してユニットテストすることを不可能にする。
 
-カバレッジゲート（90%+ ブランチカバレッジ）はコマンドロジックに適用されなければならないが、Cobra、`internal/di`、OS シグナルをインポートする `cmd/` シェルファイルは安価にユニットテストできない。これらのランタイム正確性は CI ブートチェック（`app-di-startup-check`、`job-boot-check`、`worker-boot-check`、`migration-check`、`gen-*-artifacts-check`）によってリアルの Postgres サービスに対して検証される。
+カバレッジゲート（[ADR-0083](0083-coverage-hard-gate.ja.md)、90%+ ブランチカバレッジ）はコマンドロジックに適用されなければならないが、Cobra、`internal/di`、OS シグナルをインポートする `cmd/` シェルファイルは安価にユニットテストできない。これらのランタイム正確性は CI ブートチェック（`app-di-startup-check`、`job-boot-check`、`worker-boot-check`、`migration-check`、`gen-*-artifacts-check`）によってリアルの Postgres サービスに対して検証される。
 
 ## 決定
 

@@ -34,14 +34,14 @@ repository gates — work that involves text manipulation, file I/O, and Markdow
 processing:
 
 - `portal/gen-portal-docs.ts`, `portal/gen-docs-json.ts` — portal generation.
-- `make-help.ts` — parse `.makefiles/*.mk` and render the help output.
-- `semver.ts` — semantic-version bumping.
-- `stamp-openapi-version.ts` — derive version from branch name and write it to `openapi.yaml`.
-- `mermaid-lint.ts`, `skill-lint.ts`, `pr-comment-secret-lint.ts`, `pr-comment-fence-lint.ts`,
-  `actions-cutoff-lint.ts` — repository gates over Markdown and workflow YAML.
+- `make-help/` — parse `.makefiles/*.mk` and render the help output.
+- `semver/` — semantic-version bumping.
+- `stamp-openapi-version/` — derive version from branch name and write it to `openapi.yaml`.
+- `mermaid-lint/`, `skill-lint/`, `pr-comment-secret-lint/`, `pr-comment-fence-lint/`,
+  `actions-cutoff-lint/` — repository gates over Markdown and workflow YAML.
 - `setup/replace-*.ts` — one-time rewrites of the Go module path, app metadata, repository
   references, the LICENSE holder and the CODEOWNERS owner field.
-- `setup/remove-sample-api.ts`, `setup/verify-sample-removal.ts` — sample-API removal and the
+- `setup/remove-sample-api/`, `setup/verify-sample-removal/` — sample-API removal and the
   check that it was exact.
 
 Each script keeps its decision logic in a pure module under `scripts/lib/` (or

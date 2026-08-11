@@ -58,5 +58,5 @@ template where REST resources are the expected shape.
 ## Notes
 
 - Enforced by the OpenAPI-first rules in [`docs/rules.md`](../rules.md#openapi-first) (spec defined before implementation; generated code not edited by hand), which are the day-to-day *consequences* of this decision.
-- Migrated from `docs/decisions.md` (§ "Why OpenAPI-first").
+- Migrated from the former `docs/decisions.md`.
 - The spec build pipeline (Redocly modular split → bundle → generate) and per-tag generation are recorded separately (see the API-contract ADRs in [the ADR log](README.md)).

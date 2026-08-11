@@ -93,4 +93,4 @@ metric cardinality follows. Kept as an escape hatch, not as the default.
 ## Notes
 
 - The middleware chain design (priority-ordered, data-driven) and the HTTP-stack layering are recorded separately (see the HTTP-layer ADRs in [the ADR log](README.md)).
-- Migrated from `docs/decisions.md` (§ "Why Echo").
+- Migrated from the former `docs/decisions.md`.

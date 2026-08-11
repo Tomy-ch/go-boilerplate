@@ -53,4 +53,4 @@ accepted
 
 - プッシュ/ストリーミング除外: ADR-0048（Phase 4）。SQS アダプターのオプトイン分離: [ADR-0049](0049-sqs-adapter-opt-in.ja.md)。
 - 設計参考: `docs/design/worker.md`。
-- `docs/decisions.md`（§「Why a broker-agnostic worker scaffold」）から移行。
+- かつての `docs/decisions.md` から移行。
