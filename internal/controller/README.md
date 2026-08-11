@@ -34,7 +34,7 @@ internal/controller/
 |`handler/`|Handlers that receive HTTP requests and delegate to Usecase|[README](handler/README.md)|
 |`job/`|Job controllers invoked from CLI|[README](job/README.md)|
 |`worker/`|Worker engine consuming a pull-ack message queue and dispatching to Usecase|[README](worker/README.md)|
-|`outbox/`|Relay engine that periodically polls the outbox and publishes pending messages|—|
+|`outbox/`|Relay engine that periodically polls the outbox and publishes pending messages|[README](outbox/README.md)|
 |`server/`|Echo instance initialization and DI lifecycle integration|[README](server/README.md)|
 |`httpstack/`|Middleware stack (CORS, security, logging, auth, etc.)|[README](httpstack/README.md)|
 |`error/response/`|Unified HTTP error response generation and apperror mapping|[README](error/response/README.md)|
