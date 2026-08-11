@@ -22,7 +22,7 @@ type Rate struct {
 	Base string
 	// Quote は、換算先の通貨コードです。
 	Quote string
-	// Value は、Base 1 単位あたりの Quote 換算値です。源泉は正確な十進量であり、float は取込時点で値を破壊するため Decimal で保持します。
+	// Value は、Base 1 単位あたりの Quote 換算値です。
 	Value decimal.Decimal
 	// Date は、レートの基準日（外部レートサービスの公表日、例 "2026-07-21"）です。
 	// 外部レスポンスに date が含まれない場合は空文字になります。

@@ -67,6 +67,7 @@ Provides interfaces and value objects for authentication.
 |`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved (a zero-value UUID returns `ErrUserIDZero`)|
 |`Credential`|Value object holding the auth scheme + token|
 |`NewCredential(scheme, token)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
+|`IdentityResolver`|Interface to resolve an authenticated external identity (issuer + subject) to an internal user; applied after authentication succeeds|
 
 Errors:
 
@@ -76,6 +77,8 @@ Errors:
 |`ErrUserIDUnresolved`|Internal UserID is unresolved|
 |`ErrUserIDZero`|`WithUserID()` was given a zero-value UUID|
 |`ErrTokenMissing`|Token is empty|
+|`ErrIdentityNotFound`|No internal user corresponds to the authenticated identity|
+|`ErrUserUnavailable`|The corresponding internal user exists but is unusable (e.g. deleted)|
 
 ### authz
 
@@ -104,9 +107,13 @@ Passing `ownerID = nil` to `NewResource` declares an **ownerless** resource — 
 type Clock interface {
     Now() time.Time
 }
+
+type Sleeper interface {
+    Sleep(ctx context.Context, d time.Duration) error
+}
 ```
 
-Abstraction to prevent Domain / Usecase from depending directly on `time.Now()`. Allows mock substitution in tests.
+Abstraction to prevent Domain / Usecase from depending directly on `time.Now()`. Allows mock substitution in tests. `Sleeper` does the same for waiting, so backoff and retry can be exercised without real sleeping.
 
 ### exchangerate
 
@@ -147,7 +154,7 @@ Substrate-agnostic object-storage boundary. Usecase depends only on this port; t
 |---|---|
 |`Storage`|`Put(ctx, PutObject) (Path, error)` stores an object under its key. `List(ctx, ListQuery) (ListResult, error)` enumerates one page of matching objects. `Delete(ctx, keys []string) error` removes objects in bulk — an empty slice is a no-op, absent keys are not an error, and re-running with the same keys changes nothing. Failures return an `apperror` sentinel (e.g. `ErrUnavailable`)|
 |`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `products/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
-|`ListQuery`|Input DTO (`Prefix` / `Cursor`); an empty `Prefix` enumerates everything, and `Cursor` is the opaque, adapter-defined boundary taken from a previous `ListResult.NextCursor`|
+|`ListQuery`|Input DTO (`Prefix` / `Cursor` / `Limit`); an empty `Prefix` enumerates everything, `Cursor` is the opaque, adapter-defined boundary taken from a previous `ListResult.NextCursor`, and a `Limit` of zero or less leaves the page size to the adapter's default|
 |`ListResult`|One page of objects plus `NextCursor`; a non-empty `NextCursor` means more remain and is fed back as the next `ListQuery.Cursor`|
 |`Object`|A single enumerated object as the boundary describes it|
 |`Path`|The stored object path (key); the display URL is composed separately by the caller|

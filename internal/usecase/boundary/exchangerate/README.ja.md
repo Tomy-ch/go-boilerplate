@@ -13,6 +13,7 @@ type Rate struct {
     Base  string
     Quote string
     Value decimal.Decimal
+    Date  string
 }
 ```
 
@@ -22,9 +23,9 @@ float は取込時点で値を破壊するためです（[ADR-0035 (two-scale-qu
 ## なぜ抽象化するのか
 
 - 外部レートプロバイダに依存する usecase を、実 HTTP 呼び出しなしでテスト可能にする
-- Usecase が `net/http` やベンダー SDK ではなく意味的 port に依存するようにする
 - テストでモック差し替えにより決定論的な挙動を実現
-- 境界でトランスポート失敗を `apperror` sentinel（`ErrUnavailable` / `ErrNotFound` 等）へ変換する
+
+port を `net/http` / SDK の形ではなく意味的にする理由は [`internal/usecase/boundary/README.ja.md`](../README.ja.md#exchangerate) を参照してください。
 
 ## 実装
 

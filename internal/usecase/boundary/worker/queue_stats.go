@@ -6,9 +6,8 @@ import "context"
 
 // QueueStatsProvider は、broker queue の滞留量（depth / DLQ count）を取得する任意 capability seam です。
 //
-// Consumer の必須 interface には含めません。queue depth は broker ごとに意味・取得方法が異なり、
-// SQS の値も approximate（強整合でない）ためです。engine はこの capability を知らないまま動作し、
-// observability collector だけがこの capability を実装する adapter から滞留量を収集します。
+// Consumer の必須 interface には含めません（理由は README の Optional capabilities）。
+// SQS の値は approximate（強整合でない）ため、そのまま公開します。
 type QueueStatsProvider interface {
 	// QueueStats は、source queue と（あれば）DLQ の現在の滞留量を返します。
 	QueueStats(ctx context.Context) (QueueStats, error)

@@ -14,6 +14,7 @@ type Rate struct {
     Base  string
     Quote string
     Value decimal.Decimal
+    Date  string
 }
 ```
 
@@ -23,9 +24,9 @@ money path and a float would corrupt it at ingest ([ADR-0035 (two-scale-quantity
 ## Why Abstract?
 
 - Ensure testability of usecases that depend on an external rate provider without real HTTP calls
-- Keep Usecase depending on a semantic port, not on `net/http` or a vendor SDK
 - Allow mock substitution in tests for deterministic behavior
-- Translate transport failures into `apperror` sentinels (`ErrUnavailable` / `ErrNotFound`, etc.) at the boundary
+
+See [`internal/usecase/boundary/README.md`](../README.md#exchangerate) for why the port is semantic rather than `net/http` / SDK-shaped.
 
 ## Implementation
 
