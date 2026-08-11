@@ -24,6 +24,7 @@ internal/logging
 ├── field.go
 ├── field_builder.go
 ├── const.go
+├── level.go
 ├── test_kit.go
 └── mock/
 ```
@@ -59,7 +60,7 @@ type Logger interface {
 
 Each output method takes a `context.Context` and auto-injects `trace_id` / `span_id` extracted from it. Where no request-scoped span exists (DI startup, fx events, CLI bootstrap), pass `context.Background()`; injection is simply skipped. Callers never pass `trace_id` / `span_id` as explicit fields.
 
-`Named` returns a child logger with the given name appended, and `CallerSkip` returns a logger whose caller reporting skips the given number of stack frames (useful when logging through a wrapper). Conversion of `*Field` to `zap.Field` is done internally by the unexported `convertFields` and is not part of the public interface.
+`Named` returns a child logger with the given name appended, and `CallerSkip` returns a logger whose caller reporting skips the given number of stack frames (useful when logging through a wrapper). `CallerSkip` **adds to** the existing skip count rather than setting it, so calling it again on an already-skipped logger stacks. Conversion of `*Field` to `zap.Field` is done internally by the unexported `convertFields` and is not part of the public interface.
 
 This design provides:
 
@@ -156,7 +157,7 @@ Purpose of this design
 
 ## LogFieldBuilder
 
-A component that consolidates log field generation for HTTP / SQL / Observability.
+A component that consolidates log field generation for HTTP / SQL logs.
 
 ```go
 type LogFieldBuilder interface {
@@ -176,13 +177,12 @@ Creation
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-Accepts `config.ObservabilityConfig` and `config.OperatingSystemConfig` to control trace/span field attachment and timezone information.
+Accepts `config.ObservabilityConfig`, which gates `parent_span_id`, and `config.OperatingSystemConfig`, which supplies the timezone stamped on every event header.
 
 Use cases
 
 - HTTP access logs
 - SQL logs
-- trace/span logs
 
 Automatically generates **structured logs**.
 
@@ -196,9 +196,8 @@ Each Build method receives a dedicated input struct.
 |`HTTPResponseLogInput`|HTTP response log|Method, Path, URI, Status, Latency, RequestID|
 |`SQLFieldsEndInput`|SQL end log|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
 
-All input structs carry `EventAt` (event timestamp). Trace information (`trace_id` /
-`span_id`) is no longer carried here — the `Logger` injects it from `ctx`.
-`SQLFieldsEndInput` additionally carries `ParentSpanID`, which cannot be derived from `ctx`.
+All input structs carry `EventAt` (event timestamp). Trace information is not carried here;
+see the note under [LogFieldBuilder](#logfieldbuilder) above.
 
 ## HTTP Logging
 
@@ -228,6 +227,8 @@ SQL logs are emitted at the **end** of a query via `BuildSQLEndFields`.
 ### SQL End
 
 - `event_type=end`
+- `event_at=...`
+- `event_tz=...`
 - `layer=repository`
 - `package=...`
 - `function=...`
@@ -286,32 +287,12 @@ logging.NewTestLogFieldBuilder(t)
 
 ## Design Policy
 
-This logging package is designed based on the following policies.
+Four policies shape this package. Each is detailed in the section named alongside it.
 
-### 1 Do not use zap directly
-
-Application code does not depend on `zap.Logger`, `zap.Field`.
-
-### 2 Wrap Field
-
-Log fields use the `Field` type.
-
-Reason
-
-- Fix the field generation API
-- Hide zap dependency
-
-### 3 Integrate Observability
-
-trace / span information is integrated at the logging layer.
-
-- `trace_id`
-- `span_id`
-- `parent_span_id`
-
-### 4 Testability
-
-Since Logger is an interface, it can be mocked using `mockgen`.
+1. **Do not use zap directly** — application code depends on neither `zap.Logger` nor `zap.Field` (Logger Interface).
+2. **Wrap Field** — log fields go through the `Field` type (Field).
+3. **Integrate observability** — trace correlation is resolved at the logging layer, not by callers (Observability Fields).
+4. **Testability** — `Logger` is an interface, so it can be mocked with `mockgen` (Test Kit).
 
 ## Log Key Constants
 
