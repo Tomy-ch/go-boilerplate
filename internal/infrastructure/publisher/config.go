@@ -12,8 +12,7 @@ import (
 var ErrInvalidEndpoint = xerrors.Wrap(apperror.ErrInvalidArgument, "invalid outbox endpoint")
 
 // NewEndpoint は、config からメッセージ送信先エンドポイント URL を解決して返します。
-// 空・不正な URL は relay 起動時点で弾きます（未設定のまま起動すると全 publish が失敗し
-// 気付かぬうちに全メッセージが dead 化するため、サイレント障害を防ぐ）。
+// 空・不正な URL は relay 起動時点で弾きます（理由は README.md の Choosing an implementation）。
 func NewEndpoint(cfg *config.OutboxConfig) (Endpoint, error) {
 	return parseEndpoint(cfg.Endpoint())
 }

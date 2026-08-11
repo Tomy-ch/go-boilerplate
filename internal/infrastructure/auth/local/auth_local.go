@@ -39,8 +39,6 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 		return nil, ErrLocalMockAuthenticatorInvalidToken
 	}
 
-	// 内部 UserID の解決は IdentityResolver（issuer + subject → 内部ユーザー）の責務であり、
-	// ここでは subject / issuer のみを持つ未解決の Authn を返す。
 	return authbd.New(sub, authbd.IssuerMock, nil, nil)
 }
 

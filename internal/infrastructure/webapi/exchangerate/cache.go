@@ -32,7 +32,7 @@ type cacheEntry struct {
 }
 
 // cacheGateway は、boundary.Gateway を包む TTL キャッシュ decorator です。
-// Echo はリクエスト毎に goroutine を割り当てるため、内部状態は sync.RWMutex で並行安全にします。
+// 内部状態は sync.RWMutex で並行安全にします。
 type cacheGateway struct {
 	inner boundary.Gateway
 	clk   clock.Clock
