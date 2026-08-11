@@ -15,7 +15,7 @@ type StartFunc func(ctx context.Context, name string, args []string) <-chan erro
 type StopFunc func(ctx context.Context) error
 
 // RunJobWith は、provide が返す開始・停止関数でジョブを実行します。
-// grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。
+// grace は停止 context の deadline に用います。
 func RunJobWith(
 	ctx context.Context,
 	name string,
@@ -59,7 +59,7 @@ func runJob(
 }
 
 // gracefulStop は、親キャンセルから切り離した grace の猶予を停止処理に与え、その結果を返します。
-// SIGINT 伝播や親 ctx タイムアウト後でも grace の全猶予が停止処理に保証されます。停止失敗を
+// 親 ctx が --timeout で期限切れになった後でも grace の全猶予が停止処理に保証されます。停止失敗を
 // 呼び出し元のエラーチェーン（＝exit code）に反映できるよう、エラーは破棄せず返します。
 func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) error {
 	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)

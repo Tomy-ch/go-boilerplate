@@ -235,7 +235,6 @@ func TestLayerTracer_startSpan(t *testing.T) {
 
 			spanCtx, end := lt.startSpan(context.Background(), "optional")
 
-			// end を呼ぶまで span は終了せず exporter へ出ない。
 			assert.Empty(t, exp.recorded())
 			end()
 
@@ -263,7 +262,6 @@ func TestLayerTracer_startSpan(t *testing.T) {
 			childSC := trace.SpanFromContext(spanCtx).SpanContext()
 			assert.Equal(t, parentSpan.SpanContext().TraceID(), childSC.TraceID())
 			assert.NotEqual(t, parentSpan.SpanContext().SpanID(), childSC.SpanID())
-			// optionalName が空ならサフィックスは付かない。
 			assert.Equal(t, []string{"infrastructure.pkg.func"}, exp.recorded())
 		})
 	})

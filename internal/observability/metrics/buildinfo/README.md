@@ -41,7 +41,7 @@ It complements the `/version` HTTP endpoint by making the running version observ
 
 ## Notes
 
-- The following labels are intentionally **excluded** to avoid high cardinality and leaking secret / environment information: `hostname`, `pod_name`, `container_id`, `instance_id`, `git_branch`, `build_url`, `image_digest`, `full_image`, `token`, `registry`.
+- The following labels are intentionally **excluded** to avoid high cardinality and leaking secret / environment information: `hostname`, `pod_name`, `container_id`, `instance_id`, `git_branch`, `build_url`, `image_digest`, `full_image`, `token`, `registry`, `commit`.
 - This package does not call `os.Getenv` directly; the environment value comes from the immutable `config.ApplicationConfig`.
 - Build info is never carried into the domain / usecase layers.
 - Safely skips duplicate registration by ignoring `prometheus.AlreadyRegisteredError`.

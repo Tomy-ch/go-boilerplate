@@ -133,7 +133,6 @@ type WorkerConfig struct {
 }
 
 // ConsumerQueueConfig は、worker が consume する broker（SQS 互換）の adapter 設定を保持します。
-// engine-core の WorkerConfig は broker 非依存のため、broker 語彙を持つ設定は別に保持します。
 type ConsumerQueueConfig struct {
 	endpoint          string
 	region            string
@@ -161,7 +160,7 @@ type OutboxConfig struct {
 }
 
 // AuthConfig は、access token（JWT）検証の設定を保持します。
-// Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator を配線せずスタブが使われます（配線判断は DI）。
+// Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator ではなくスタブが使われます。
 type AuthConfig struct {
 	issuer             string
 	audience           string
@@ -197,7 +196,7 @@ func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &cfg.app }
 // Env は、デプロイ環境ラベルを返します（自由値）。例: "local" / "staging" / "production"。
 func (a *ApplicationConfig) Env() string { return a.env }
 
-// Mode は、アプリの動作モードを返します（"development" / "production" のみ。挙動切替に使用。Env とは別軸）。
+// Mode は、アプリの動作モードを返します（"development" / "production" のみ）。
 func (a *ApplicationConfig) Mode() string { return a.mode }
 
 // LogLevel は、ログ出力レベル（"debug" / "info" / "warn" / "error"）を返します。
@@ -525,7 +524,7 @@ func (o *OutboxConfig) BatchSize() int { return o.batchSize }
 // NewAuthConfig は、認証（JWT 検証）の設定を返します。
 func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
 
-// Issuer は、検証する iss クレームの期待値を返します（空なら実 JWT authenticator を配線しない）。
+// Issuer は、検証する iss クレームの期待値を返します。
 func (a *AuthConfig) Issuer() string { return a.issuer }
 
 // Audience は、検証する aud クレームの期待値を返します。
@@ -575,5 +574,4 @@ func (o *ObjectStorageConfig) UsePathStyle() bool { return o.usePathStyle }
 // MaxUploadBytes は、アップロード可能な最大バイト数を返します。
 // ServerConfig.BodyLimitMB（マルチパートのオーバーヘッドを含む）を上回る値を設定すると、
 // グローバルな body limit が先に 413 を返すためこの上限は到達不能になります。
-// この関係は server グラフの起動時に ValidateUploadBodyLimit が検証します。
 func (o *ObjectStorageConfig) MaxUploadBytes() int64 { return o.maxUploadBytes }

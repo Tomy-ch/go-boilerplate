@@ -137,7 +137,6 @@ func TestCollector_Collect(t *testing.T) {
 
 			labels, value := gatherLabels(t, NewCollector(appCfg, bi))
 
-			// float 値の比較は testifylint(float-compare)が InDelta/InEpsilon を要求するため Equal は使わない。
 			assert.InDelta(t, 1.0, value, 0)
 			assert.Equal(t, "TestApp", labels[labelService])
 			assert.Equal(t, "test", labels[labelEnvironment])
@@ -161,7 +160,6 @@ func TestCollector_Collect(t *testing.T) {
 
 			labels, value := gatherLabels(t, NewCollector(appCfg, bi))
 
-			// float 値の比較は testifylint(float-compare)が InDelta/InEpsilon を要求するため Equal は使わない。
 			assert.InDelta(t, 1.0, value, 0)
 			assert.Equal(t, unknownValue, labels[labelEnvironment])
 			assert.Equal(t, unknownValue, labels[labelVersion])

@@ -52,8 +52,7 @@ type Auth struct {
 
 // Outbox は transactional outbox relay の設定を保持する。
 type Outbox struct {
-	// Publisher は publish 先の種別（"http" / "sqs"）です。publish 先は環境ティアではなく
-	// デプロイ先の判断で決まるため、ENV 分岐ではなく明示の判別子で切り替える。
+	// Publisher は publish 先の種別（"http" / "sqs"）です。ENV ではなくこの判別子で切り替え、
 	// 未知の値は DI で起動エラーにする（fail-closed）。
 	Publisher    string        `env:"PUBLISHER"     envDefault:"http"`
 	Endpoint     string        `env:"ENDPOINT"      envDefault:""`

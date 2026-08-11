@@ -157,7 +157,6 @@ func TestHTTPClientMetrics_RecordRequest(t *testing.T) {
 			hm.RecordRequest(ctx, "outbox", "5xx")
 
 			rm := collectHTTPClientMetrics(t, reader)
-			// status_class ごとに系列が分かれる（合計 2、データ点も 2）。
 			assert.Equal(t, int64(2), counterValueOf(t, rm, "httpclient.requests"))
 			sum, ok := metricByName(t, rm, "httpclient.requests").Data.(metricdata.Sum[int64])
 			require.True(t, ok)

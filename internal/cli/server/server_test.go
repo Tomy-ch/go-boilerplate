@@ -118,10 +118,8 @@ func TestRunServer(t *testing.T) {
 			assert.True(t, startCalled, "startApp が呼ばれること")
 			assert.True(t, stopMetricsCalled, "stopMetrics が呼ばれること")
 			require.True(t, stopHasDeadline, "stopApp は期限付き context を受け取ること")
-			// 停止用 context の deadline が「停止開始時点 + ShutdownTimeout」付近であること
-			// （= 稼働時間に消費されていないこと。b0a8e21 の回帰防止）。
+			// deadline が「停止開始時点 + ShutdownTimeout」付近＝稼働時間に消費されていないこと。
 			assert.WithinDuration(t, stopStart.Add(shutdownTimeout), stopDeadline, 60*time.Millisecond)
-			// メトリクス停止とアプリ停止は同一の停止用 context を共有すること。
 			assert.Equal(t, stopCtx, stopMetricsCtx)
 		})
 

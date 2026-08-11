@@ -18,6 +18,8 @@ const (
 	// EventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
 	EventTzKey = "event_tz"
 
+	// HTTP 系ログのキー
+
 	// StatusKey は、HTTPステータスコードを表すログフィールドのキーです。
 	StatusKey = "status"
 	// MethodKey は、HTTPメソッドを表すログフィールドのキーです。

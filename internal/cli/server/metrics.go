@@ -22,7 +22,6 @@ const (
 // metricsServer は、メトリクス/pprof（DefaultServeMux）を公開する補助 HTTP サーバーを生成します。
 func metricsServer(mtcCfg *config.MetricsConfig) *http.Server {
 	return &http.Server{
-		// pprof / metrics は DefaultServeMux に登録される前提で補助サーバーとして公開します。
 		Addr:              mtcCfg.Host() + ":" + strconv.Itoa(mtcCfg.Port()),
 		Handler:           http.DefaultServeMux,
 		ReadHeaderTimeout: readHeaderTimeout,

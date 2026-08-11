@@ -259,8 +259,6 @@ func Test_runSeeds(t *testing.T) {
 			fsys := mock_fs.NewMockFS(ctrl)
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
 
-			// 内部 sort.Strings の昇順実行を gomock.InOrder で固定し、
-			// a.sql → b.sql の順で ReadFile と Exec が走ることを検証する。
 			gomock.InOrder(
 				fsys.EXPECT().ReadFile("a.sql").Return([]byte("SELECT a;"), nil),
 				db.EXPECT().Exec(gomock.Any(), "SELECT a;").Return(pgconn.CommandTag{}, nil),

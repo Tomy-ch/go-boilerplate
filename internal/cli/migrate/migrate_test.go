@@ -388,8 +388,6 @@ func Test_executeMigrateFullDown(t *testing.T) {
 		t.Run("dirty時にForce後のDownがErrNoChangeでも成功扱いとする", func(t *testing.T) {
 			t.Parallel()
 
-			// dirty=true → Force 成功 → Down(ErrNoChange) の経路で
-			// ErrNoChange 握りつぶしが Force 後にも効くことを検証する。
 			ctrl := gomock.NewController(t)
 			m := mock_migrate.NewMockMigrator(ctrl)
 			m.EXPECT().Version().Return(uint(3), true, nil)
