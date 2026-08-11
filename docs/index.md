@@ -26,10 +26,11 @@ The documentation is intended for both **human developers** and **AI agents**.
 |--------|--------|
 |[adr/](adr/README.md)|Architecture Decision Records — one record per decision, with the technology rationale|
 |[design/](design/README.md)|Subsystem design references — rest / worker / job / outbox / idempotency / observability / auth / security / context-map / agent-environment|
-|[get-started/](get-started/setup-repository.md)|Setup performed once, before development starts|
+|[get-started/](get-started/setup-repository.md)|Setup performed once before development starts, and the troubleshooting index for when it does not go smoothly|
 |[tutorial/](tutorial/build-user-feature.md)|Worked example — one feature built end to end|
 |[spec/](spec/glossary.md)|Feature specifications and the business-vocabulary glossary|
-|[project/](project/scope.md)|Scope, out-of-scope, maintenance policy, versioning|
+|[project/](project/scope.md)|Scope, out-of-scope, maintenance policy, versioning, direction|
+|[plan/](plan/distributed-ready-architecture.md)|Requirements for a release line that has not been built yet <!-- boilerplate-only:line -->|
 |[reference/](reference/dependencies.md)|Living inventories that track the code, such as the direct dependency list|
 |[maintenance/](maintenance/docs-structure.md)|Operational runbooks — documentation structure, local environment, DB worktree pool, upgrades|
 |[deployment/](deployment/github-page.md)|Deployment procedures|

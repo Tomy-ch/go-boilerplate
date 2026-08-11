@@ -26,10 +26,11 @@
 |--------|--------|
 |[adr/](adr/README.ja.md)|アーキテクチャ決定記録（ADR）— 1 決定 1 レコード。技術選定の根拠|
 |[design/](design/README.ja.md)|サブシステム設計リファレンス — rest / worker / job / outbox / idempotency / observability / auth / security / context-map / agent-environment|
-|[get-started/](get-started/setup-repository.ja.md)|開発を始める前に一度だけ行うセットアップ|
+|[get-started/](get-started/setup-repository.ja.md)|開発を始める前に一度だけ行うセットアップと、うまくいかないときのトラブルシューティング索引|
 |[tutorial/](tutorial/build-user-feature.ja.md)|実例 — 1 つの機能を端から端まで作る|
 |[spec/](../spec/glossary.md)|機能仕様と業務語彙の用語集|
-|[project/](project/scope.ja.md)|スコープ・対象外・メンテナンス方針・バージョニング|
+|[project/](project/scope.ja.md)|スコープ・対象外・メンテナンス方針・バージョニング・方向性|
+|[plan/](plan/distributed-ready-architecture.ja.md)|まだ着手していないリリース線の要件 <!-- boilerplate-only:line -->|
 |[reference/](reference/dependencies.ja.md)|コードに追随する目録（直接依存の一覧など）|
 |[maintenance/](maintenance/docs-structure.ja.md)|運用 runbook — ドキュメント構造・ローカル環境・DB worktree プール・アップグレード|
 |[deployment/](deployment/github-page.ja.md)|デプロイ手順|
