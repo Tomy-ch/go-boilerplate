@@ -75,7 +75,6 @@ func Test_archiveUsecase_ArchiveWithdrawal(t *testing.T) {
 
 		t.Run("表記が揺れたユーザー ID でも正準形のキーへ保存する", func(t *testing.T) {
 			t.Parallel()
-			// キーは受け取った文字列ではなく parse 結果から組み立てる。生の入力をそのまま連結する形に
 			// 戻すと、同じユーザーの証跡が表記ごとに別オブジェクトへ散る。
 			uc, storage := newArchiveUsecase(t)
 			payload := []byte(`{"userId":"` + testWithdrawnUserID + `"}`)
@@ -98,7 +97,6 @@ func Test_archiveUsecase_ArchiveWithdrawal(t *testing.T) {
 
 		t.Run("同じ入力で繰り返し実行しても同じ保存内容になる", func(t *testing.T) {
 			t.Parallel()
-			// at-least-once 配信で複数回実行されうるため、操作自体が冪等であることを固定する。
 			uc, storage := newArchiveUsecase(t)
 			payload := []byte(`{"userId":"` + testWithdrawnUserID + `","deletedAt":"2026-07-29T12:00:00Z"}`)
 			storage.EXPECT().
@@ -135,7 +133,6 @@ func Test_archiveUsecase_ArchiveWithdrawal(t *testing.T) {
 
 		t.Run("ユーザー ID が UUID でなければ保存しない", func(t *testing.T) {
 			t.Parallel()
-			// キーの一部になる値なので、区切り文字を含む値で接頭辞配下の別キーを指せないことを固定する。
 			uc, _ := newArchiveUsecase(t)
 
 			_, err := uc.ArchiveWithdrawal(t.Context(), ArchiveWithdrawalParams{

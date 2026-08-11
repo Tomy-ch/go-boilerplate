@@ -20,8 +20,7 @@ const (
 // GCUsecase は、published 済みの outbox エントリを刈り取るユースケースです。
 type GCUsecase interface {
 	// SweepPublished は、retention より古い published エントリを batchSize 件ずつ削除し、合計削除件数を返します。
-	// エラーを返す場合も、失敗したバッチより前にコミット済みの件数を返します。
-	// コミット済みの削除は取り消せないため、呼び手が実績を失わないようにするためです。
+	// エラーを返す場合もコミット済みの件数を返します（README の GC / batch sweeps）。
 	SweepPublished(ctx context.Context, batchSize int32) (int64, error)
 }
 
@@ -49,7 +48,6 @@ func (g *gcUsecase) SweepPublished(ctx context.Context, batchSize int32) (int64,
 			return total, err
 		}
 		total += deleted
-		// バッチが満たなかった = もう対象のエントリは無い。
 		if deleted < int64(batchSize) {
 			return total, nil
 		}

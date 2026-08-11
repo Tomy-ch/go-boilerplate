@@ -155,7 +155,7 @@ type DeliverPurchaseView struct {
 // Usecase は、購入の作成ユースケースを定義します。
 type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫の引当・購入の成立・イベント発行は単一 tx で
-	// 原子的に成立し、売り越しは 409 で成立させません。DisplayCurrency 指定時は参考換算額を付与します。
+	// 原子的に成立し、売り越しは 409 で成立させません。
 	CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
 	// GetPurchases は、認証主体（userID）の購入履歴を注文日時降順（cursor ページネーション）で取得します。
 	// 一覧は概要（code / totalAmount / status / orderedAt）のみを返し、他ユーザーの購入は返しません。
@@ -313,7 +313,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return eerr
 		}
 
-		// 書き込み後、Repository 経由でドメイン整合を再検証しレスポンスの取得元とする（ADR-0029 (lightweight-cqrs) / ADR-0031 (commandservice-atomicity-criterion)）。
+		// 書き込み後、Repository 経由で再検証する（README の Verifying infrastructure against the domain）。
 		reread, rerr := u.repo.FindByID(ctx, draft.purchaseID)
 		if rerr != nil {
 			return rerr
@@ -342,7 +342,7 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return lerr
 		}
 
-		// 他人の購入は存在を秘匿するため、不一致・不存在いずれも NotFound（404）へ畳む。
+		// 他人の購入は存在秘匿のため NotFound へ畳む（docs/spec/purchase/usecase.md）。
 		if locked.UserID() != params.UserID {
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
@@ -373,7 +373,6 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 (lightweight-cqrs) / ADR-0031 (commandservice-atomicity-criterion)）。
 		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
 		if rerr != nil {
 			return rerr
@@ -394,8 +393,8 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。擬似決済は購入集約の
-	// 状態更新のみで在庫に触れないため CommandService ではなく Repository で完結する。
+	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
+	// Repository で完結する（ADR-0031 (commandservice-atomicity-criterion)）。
 	// 二重支払いは購入のロック + 状態チェック（ErrAlreadyPaid）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByID(ctx, params.PurchaseID)
@@ -403,7 +402,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 			return lerr
 		}
 
-		// 他人の購入は存在を秘匿するため、不一致・不存在いずれも NotFound（404）へ畳む。
+		// 他人の購入は存在秘匿のため NotFound へ畳む（docs/spec/purchase/usecase.md）。
 		if locked.UserID() != params.UserID {
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
@@ -434,7 +433,6 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 (lightweight-cqrs) / ADR-0031 (commandservice-atomicity-criterion)）。
 		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
 		if rerr != nil {
 			return rerr
@@ -457,8 +455,7 @@ func (u *usecase) ShipPurchase(
 	if authn == nil {
 		return ShipPurchaseView{}, apperror.ErrUnauthenticated
 	}
-	// 発送は運用（admin）の操作で所有者概念を持たないため、所有者なしリソースとして認可する。
-	// 所有者を渡さないことで Authorizer の所有者フォールバックが働かず、admin だけが通る。
+	// 運用（admin）専用操作。所有者なしリソースとして認可する（docs/spec/purchase/usecase.md）。
 	if err := u.authorizer.Authorize(
 		ctx, authn, authz.ActionPurchaseShip, authz.NewResource("purchase", nil),
 	); err != nil {
@@ -468,8 +465,8 @@ func (u *usecase) ShipPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。配送追跡を扱わず単一集約
-	// （purchases）の状態更新のみのため CommandService ではなく Repository で完結する。
+	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
+	// Repository で完結する（ADR-0031 (commandservice-atomicity-criterion)）。
 	// 二重発送は購入行ロック + 状態チェック（ErrAlreadyShipped）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByID(ctx, purchaseID)
@@ -503,7 +500,6 @@ func (u *usecase) ShipPurchase(
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 (lightweight-cqrs) / ADR-0031 (commandservice-atomicity-criterion)）。
 		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
 		if rerr != nil {
 			return rerr
@@ -526,8 +522,7 @@ func (u *usecase) DeliverPurchase(
 	if authn == nil {
 		return DeliverPurchaseView{}, apperror.ErrUnauthenticated
 	}
-	// 配達完了は運用（admin）の操作で所有者概念を持たないため、所有者なしリソースとして認可する。
-	// 所有者を渡さないことで Authorizer の所有者フォールバックが働かず、admin だけが通る。
+	// 運用（admin）専用操作。所有者なしリソースとして認可する（docs/spec/purchase/usecase.md）。
 	if err := u.authorizer.Authorize(
 		ctx, authn, authz.ActionPurchaseDeliver, authz.NewResource("purchase", nil),
 	); err != nil {
@@ -537,8 +532,8 @@ func (u *usecase) DeliverPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。配達確認の証跡を扱わず
-	// 単一集約（purchases）の状態更新のみのため CommandService ではなく Repository で完結する。
+	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
+	// Repository で完結する（ADR-0031 (commandservice-atomicity-criterion)）。
 	// 二重配達は購入行ロック + 状態チェック（ErrAlreadyDelivered）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByID(ctx, purchaseID)
@@ -572,7 +567,6 @@ func (u *usecase) DeliverPurchase(
 			return eerr
 		}
 
-		// 書き込み後、Repository の読み取りモデル経由でステータス名を解決しレスポンスの取得元とする（ADR-0029 (lightweight-cqrs) / ADR-0031 (commandservice-atomicity-criterion)）。
 		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
 		if rerr != nil {
 			return rerr
@@ -588,11 +582,7 @@ func (u *usecase) DeliverPurchase(
 
 // ensurePurchaserActive は、購入者を共有ロック付きで読み出し、購入してよい状態かの判定を
 // ドメインサービスへ委ねます。退会（排他ロック）と直列化されるため、確認を通った購入者は
-// tx の終了まで退会できません。
-// 退会が確定済みの主体は認証の時点で弾かれるため、ここが拒否に転じるのは受付から成立までの間に
-// 退会が確定した場合に限られます。その衝突は主体の状態と操作の衝突として ErrConflict を返します
-// （退会が進行中購入を ErrConflict で拒む鏡像。購入対象の不存在ではないため NotFound へは畳みません）。
-// それ以外のエラーは、障害を退会済みと区別できなくしないためそのまま返します。
+// tx の終了まで退会できません。エラー方針は docs/spec/purchase/usecase.md の Workflow を参照。
 func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) error {
 	purchaser, err := u.userLock.LockShareByID(ctx, userID)
 	if err != nil {

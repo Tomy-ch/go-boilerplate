@@ -408,26 +408,10 @@ Use DTO / VO instead (Page / Filters / Actor).
 
 ### Error Policy
 
-Semantic input errors:
-
-- `apperror.ErrValidation` → 422
-- `apperror.ErrInvalidArgument` → 400
-
-Not found:
-
-- `apperror.ErrNotFound` → 404
-
-Conflict:
-
-- `apperror.ErrConflict` → 409
-
-Temporary unavailable:
-
-- `apperror.ErrUnavailable` → 503
-
-Unexpected errors:
-
-- return as-is or wrap with `apperror.ErrInternal` → 500
+Wrap sentinel errors from `internal/apperror` per operation outcome; see
+[`internal/apperror/README.md`](../apperror/README.md) § Mapping Table for the full
+`ErrXXX` → HTTP status table. Unexpected errors are returned as-is or wrapped with
+`apperror.ErrInternal`.
 
 When wrapping an `apperror.ErrXXX` sentinel, use `pkg/xerrors.Wrap(apperror.ErrXXX, "context")`
 (not the standard `fmt.Errorf("%w", ...)`) so the stack trace is preserved while `xerrors.Is`

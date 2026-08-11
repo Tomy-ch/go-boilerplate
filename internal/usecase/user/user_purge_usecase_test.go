@@ -116,9 +116,6 @@ func Test_purgeUsecase_PurgeDeleted(t *testing.T) {
 		t.Run("1バッチが全件スキップでも境界を進めて次バッチへ移り無限ループしない", func(t *testing.T) {
 			t.Parallel()
 
-			// 先頭バッチの候補がすべて購入保持（削除 0 件）でも、境界を候補末尾まで進めることで
-			// 同じ候補を取り直さずに前進することを固定する。境界を進めない実装は 1 バッチ目と
-			// 同じ引数（afterID=nil）で再取得するため、以下の InOrder 期待に一致せず失敗する。
 			ctrl := gomock.NewController(t)
 			uc, userRepo, purchaseRepo := newUsecase(t, ctrl, now)
 			// 打ち切り時刻はバッチ数によらず 1 度だけ決める。反復中に取り直すと保持期間の境界が
@@ -291,8 +288,6 @@ func Test_purgeUsecase_PurgeDeleted(t *testing.T) {
 		t.Run("2バッチ目が失敗しても1バッチ目のコミット済み件数はエラーと併せて返す", func(t *testing.T) {
 			t.Parallel()
 
-			// 失敗したバッチは巻き戻るが、コミット済みのバッチの物理削除は取り消せない。
-			// 累計を捨てると、実際に消えた件数が呼び手から見えなくなる。
 			ctrl := gomock.NewController(t)
 			uc, userRepo, purchaseRepo := newUsecase(t, ctrl, now)
 
@@ -315,7 +310,6 @@ func Test_purgeUsecase_PurgeDeleted(t *testing.T) {
 		t.Run("2バッチ目が失敗しても1バッチ目のスキップ件数はエラーと併せて返す", func(t *testing.T) {
 			t.Parallel()
 
-			// スキップは削除の副産物ではなく「消せなかった対象」の報告なので、削除件数と同じく失っては困る。
 			ctrl := gomock.NewController(t)
 			uc, userRepo, purchaseRepo := newUsecase(t, ctrl, now)
 

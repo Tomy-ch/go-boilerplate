@@ -52,7 +52,6 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("noop tracer 環境で Headers が無い場合は headers を nil で INSERT し message_id を返す", func(t *testing.T) {
 			t.Parallel()
-			// noop tracer は有効なスパンを持たないため traceparent が注入されず、headers は nil のままになる。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			want := uuidtestkit.NewTestFromSalt(t, "msg")
@@ -81,7 +80,6 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("noop tracer 環境で Headers がある場合はユーザ値をそのまま JSON へ marshal して INSERT する", func(t *testing.T) {
 			t.Parallel()
-			// noop tracer は有効なスパンを持たないため traceparent の上書きが起きず、ユーザ提供値がそのまま残る。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			want := uuidtestkit.NewTestFromSalt(t, "msg2")
@@ -108,7 +106,6 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("機微ヘッダ（Authorization/Cookie 等）は大文字小文字と前後空白を問わず除外し、他ヘッダは保持する", func(t *testing.T) {
 			t.Parallel()
-			// egress 起点として、誤って混入した既知の機微ヘッダは denylist で落とし外部へ送出しない。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			want := uuidtestkit.NewTestFromSalt(t, "msg_denylist")
@@ -144,7 +141,6 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("有効スパン環境では Headers が無くても traceparent を注入して INSERT する", func(t *testing.T) {
 			t.Parallel()
-			// 有効なスパンを持つ ctx では InjectTraceContextToCarrier が traceparent を headers へ載せる。
 			ctx, end := observability.NewStubSpanContext(t)
 			defer end()
 			wantTraceID := observability.ExtractTraceContext(ctx).TraceID()
@@ -176,7 +172,6 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("有効スパン環境ではユーザ提供の traceparent を有効スパンの値で上書きしつつ他ヘッダは保持する", func(t *testing.T) {
 			t.Parallel()
-			// 有効なスパンがある場合、ユーザが渡した traceparent はアクティブスパンの値で上書きされ、他のヘッダは残る。
 			ctx, end := observability.NewStubSpanContext(t)
 			defer end()
 			wantTraceID := observability.ExtractTraceContext(ctx).TraceID()

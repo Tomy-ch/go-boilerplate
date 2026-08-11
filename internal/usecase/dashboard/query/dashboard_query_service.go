@@ -22,8 +22,8 @@ const (
 // PeriodKind は、集計対象期間の区分です。
 type PeriodKind string
 
-// Period は、集計対象期間の指定です。today / month の境界はインフラ層が現在時刻から算出し、
-// range の境界はインフラ層が From / To の暦日から算出します。
+// Period は、集計対象期間の指定です。today / month の境界は現在時刻から、range の境界は
+// From / To の暦日から算出します。他の区分では From / To を参照しません。
 type Period struct {
 	// Kind は、集計対象期間の区分です。
 	Kind PeriodKind

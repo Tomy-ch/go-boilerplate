@@ -92,7 +92,6 @@ type PatchParamsDTO struct {
 	Building       *string
 }
 
-// usecase は、ユーザーに関するユースケースを提供します。
 type usecase struct {
 	tracer       observability.LayerTracer
 	txm          tx.Manager
@@ -128,8 +127,7 @@ type Usecase interface {
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
 	// DeleteUser は、認可を確認したうえでユーザーを退会させます。ユーザーを論理削除し、
-	// 同一トランザクションで退会イベントを発行します。退会に伴う関連データの後始末は、
-	// このイベントを受け取る側の結果整合に委ねます。
+	// 同一トランザクションで退会イベントを発行します（配信は非同期・結果整合。ADR-0051 (transactional-outbox)）。
 	// 進行中の購入が残っている場合は apperror.ErrConflict を返し、退会させません。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error
@@ -383,7 +381,6 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, 
 		prefectureID = pftDomain.ID()
 		pftName = pftDomain.Name()
 
-		// provided なフィールドのみ現在値に上書きしたフルセットを構築
 		building := userEntity.Building()
 		if dto.Building != nil {
 			building = dto.Building

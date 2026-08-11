@@ -29,7 +29,6 @@ type DTO struct {
 	DBHealthCheck   query.DBHealth
 }
 
-// usecase は、システムの健全性チェックに関するユースケースを提供します。
 type usecase struct {
 	tracer       observability.LayerTracer
 	clock        clock.Clock
