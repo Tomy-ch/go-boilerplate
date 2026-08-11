@@ -59,8 +59,7 @@ func dbSeedRun(database string) error {
 }
 
 // seedVars は、seed ファイルのプレースホルダへ渡す環境固有の値を設定から組み立てます。
-// issuer は mock 認証サーバーの公開ポート（worktree のスロットでずれる）に追従するため、
-// seed ファイルへ直書きせず投入時の設定値から解決します。
+// issuer は seed ファイルへ直書きせず、投入時の設定値から解決します。
 func seedVars(logger logging.Logger, database string) (map[string]string, error) {
 	cfg, err := newConfigForSeed(logger, database)
 	if err != nil {
@@ -80,8 +79,7 @@ func openSeedObjectStorage(logger logging.Logger, database string) (string, seed
 		return "", nil, err
 	}
 	osCfg := config.NewObjectStorageConfig(cfg)
-	// private 網の可否はサーバ本体と同じ env 基準で決める。seed は staging でも実行されうるため、
-	// ローカル前提で常時許可にするとその環境だけ SSRF ガードが緩くなる。
+	// seed は staging でも実行されうるため、ローカル前提で常時許可にせず env で判定する。
 	appEnv := config.NewApplicationConfig(cfg).Env()
 	storage, err := objectstorageinfra.New(
 		context.Background(),
