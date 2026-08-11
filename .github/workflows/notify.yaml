@@ -47,8 +47,8 @@ on:
         default: ''
       detected:
         description: >-
-          One-line description of what was detected, e.g. "Go cooldown bypass
-          detected (2 findings)". Selects detection mode. Mutually exclusive with
+          One-line description of what was detected, e.g. "DevSkim found 2
+          findings". Selects detection mode. Mutually exclusive with
           `failed-job`.
         required: false
         type: string

@@ -164,8 +164,8 @@ jobs:
           details-summary: '📄 Summary'
 
       # release-gate is the strict gate for PRs targeting a deploy branch. It fails on every finding,
-      # including unfixed ones (osv-scanner.yaml justifies dropping unfixed by relying on this
-      # "everything counts" view). It also fails when summarize did not run and count is empty, so a
+      # including unfixed ones — osv-release-gate.yaml applies the same policy to its own HIGH /
+      # CRITICAL verdict. It also fails when summarize did not run and count is empty, so a
       # failed scan / aggregation is never mistaken for a pass.
       - name: Fail if any vulnerability was found
         if: always() && steps.summarize.outputs.count != '0'

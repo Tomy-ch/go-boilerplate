@@ -1,7 +1,7 @@
 name: Markdown Lint
 
 # `make md-lint` is wired into the lefthook pre-commit hook only, so `--no-verify` and edits
-# made through the GitHub web UI reach a merge unchecked. All three stages run here.
+# made through the GitHub web UI reach a merge unchecked. Every stage runs here.
 #
 # Neither stage needs the node_tool_runner container: markdownlint-cli2 is a mise npm-backend
 # tool like any other, and the script tree `scripts/pnpm-lock.yaml` pins costs a few seconds
@@ -103,7 +103,7 @@ jobs:
       - name: Install node, pnpm and markdownlint
         run: mise install node npm:pnpm npm:markdownlint-cli2
 
-      # Both Markdown checks are TypeScript now and run through `tsx`, so `scripts/node_modules`
+      # The TypeScript-based checks run through `tsx`, so `scripts/node_modules`
       # is what makes this job able to run them at all. `mermaid-lint.ts` additionally resolves
       # linkedom through createRequire and mermaid through a dynamic import; both walk up from
       # `scripts/`, so the same tree satisfies them.
