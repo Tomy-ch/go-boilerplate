@@ -83,6 +83,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `observability` | infra | `grafana/otel-lgtm` | `3000` (Grafana UI) / `4317` (OTLP gRPC) / `4318` (OTLP HTTP) / `3200` (Tempo API) | Sink for traces / metrics / logs of every checkout. profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key / website access |
+| `elasticmq` | infra | `softwaremill/elasticmq-native` | `9324` (SQS API) | SQS-compatible broker for local development (tests use an in-process fake). Shared across checkouts and **cannot** be isolated per slot — see [`db-worktree-pool.md`](db-worktree-pool.md) |
 | `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | Serves `docs/` for local development |
 | `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | Browser DB client |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER diagram generation |

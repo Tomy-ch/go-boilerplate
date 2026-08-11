@@ -113,15 +113,16 @@ Project (Japanese)
 
 ## 5. 予約ディレクトリ
 
-以下のディレクトリは **generator で予約されており、通常のセクションとしては扱われません。**
+generator が非セクションとして扱うのは次の 2 つだけです。
 
 ```txt
 docs/portal
-docs/openapi
-docs/coverage
-docs/er-diagram
 docs/ja
 ```
+
+`docs/openapi`・`docs/coverage`・`docs/db-schema`・`docs/godoc` は通常のセクションとして走査され、
+`meta.reference_links` 経由でクイックリンクとして現れます。契約の詳細は
+[`portal-manifest.ja.md`](portal-manifest.ja.md) を参照してください。
 
 ## 6. ポータル関連ファイル
 

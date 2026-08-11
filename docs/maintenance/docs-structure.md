@@ -112,15 +112,16 @@ Project (Japanese)
 
 ## 5. Reserved Directories
 
-The following directories are **reserved by the generator and are not treated as normal sections.**
+The generator treats only these two as non-sections:
 
 ```txt
 docs/portal
-docs/openapi
-docs/coverage
-docs/er-diagram
 docs/ja
 ```
+
+`docs/openapi`, `docs/coverage`, `docs/db-schema` and `docs/godoc` are scanned as ordinary
+sections and surface as quick links through `meta.reference_links` — see
+[`portal-manifest.md`](portal-manifest.md), which is the reference for that contract.
 
 ## 6. Portal Related Files
 

@@ -225,7 +225,7 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   `docker/elasticmq/elasticmq.conf` and expands no environment variables, so a name nothing declared
   is simply absent. Two checkouts running `make outbox-relay` at once therefore publish into the same
   queue, and whichever consumer reads first takes the message. Nothing consumes it today
-  (`provideWorkers()` is empty), so the overlap is invisible until a worker is wired. To isolate a
+  (the sample ships a withdrawal-archive worker), so two checkouts running the relay do contend. To isolate a
   branch, declare an extra queue in `elasticmq.conf` and point `OUTBOX_QUEUE_URL` at it — the conf is
   read at start-up, so the change needs `make infra-down && make infra-up`, which interrupts every
   checkout. Per-slot queues are not pre-declared because the pool size is configurable

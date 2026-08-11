@@ -158,6 +158,8 @@ make install-tools
 - lefthook
 - gotests
 - impl
+- zizmor
+- shellcheck
 
 ## 7. Docker イメージは sync で自動反映
 

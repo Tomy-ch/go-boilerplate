@@ -77,7 +77,7 @@ stateDiagram-v2
     Get --> FpCheck: レコードあり
     FpCheck --> Mismatch: fingerprint ≠ → IncFingerprintMismatch → 422 (ErrValidation)
     FpCheck --> StillClaimed: status≠completed → IncConflict → 409 (ErrConflict)
-    FpCheck --> Replay: status=completed → Unmarshal → IncReplay → (result, replayed=true, nil)
+    FpCheck --> Replay: status=completed → Unmarshal → IncHit → (result, replayed=true, nil)
 
     CommitOK --> [*]
     Conflict --> [*]
@@ -242,7 +242,7 @@ flowchart LR
 | **Claim** | `SET LOCAL lock_timeout='3s'` 下の `INSERT ... ON CONFLICT DO NOTHING`。`claimed=true`（新規）/ `false`（既存）/ `ErrLockTimeout` を返す。業務 tx 内で実行。 |
 | **claimed / completed** | 2 つの `status` 値。`claimed` ＝ 予約済み・結果未保存、`completed` ＝ `businessFn` 成功・応答保存済み。 |
 | **Complete** | `UPDATE claimed→completed` し `response_status` ＋ `response_payload`（`T` の JSON）を同一 tx で保存。 |
-| **replay** | 同一 `(scope,key,fingerprint)` の完了済み操作へ保存済み応答を返す。`businessFn` は走らない。`Run` は `replayed=true`。カウンタ `IncReplay`。 |
+| **replay** | 同一 `(scope,key,fingerprint)` の完了済み操作へ保存済み応答を返す。`businessFn` は走らない。`Run` は `replayed=true`。カウンタ `IncHit`。 |
 | **409 `ErrConflict`** | 並行／in-flight claim——ロックタイムアウト・`status='claimed'`・claim 衝突後に消えた行。後で再試行。カウンタ `IncConflict`。 |
 | **422 `ErrValidation`** | 同一キーを別ボディで再利用（fingerprint 不一致）。クライアントのバグ。カウンタ `IncFingerprintMismatch`。 |
 | **ErrLockTimeout** | 3s 以内に行ロックを取れなかったときの `Claim` の境界 sentinel。usecase が 409 へマップ。 |
@@ -252,4 +252,4 @@ flowchart LR
 | **ttl** | `24 * time.Hour`。`expires_at = now + ttl`。経過後はリトライを新規操作として扱う。 |
 | **GCUsecase / idempotencygc** | `SweepExpired(batchSize)` が短いバッチまで `Store.DeleteExpired` をループ。同梱 [job](job.ja.md) から実行。既定バッチ 10,000。 |
 | **Store** | 永続化 seam（`internal/usecase/boundary/idempotency`）：`Claim` / `Get` / `Complete` / `DeleteExpired`、すべて scope 必須。 |
-| **Metrics** | `operationID` ラベルの任意 o11y カウンタ：`IncReplay` / `IncConflict` / `IncFingerprintMismatch`。既定 no-op。 |
+| **Metrics** | `operationID` ラベルの任意 o11y カウンタ：`IncHit` / `IncMiss` / `IncConflict` / `IncFingerprintMismatch` / `IncClaimFailure` / `IncCompleteFailure`。既定 no-op。 |

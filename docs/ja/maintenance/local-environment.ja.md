@@ -80,6 +80,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | `observability` | infra | `grafana/otel-lgtm` | `3000`（Grafana UI）/ `4317`（OTLP gRPC）/ `4318`（OTLP HTTP）/ `3200`（Tempo API） | 全 checkout の traces / metrics / logs の受け皿。profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900`（S3 API）/ `3902`（Web API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う）。Web API はオブジェクトを匿名配信する — [`docker/README.md`](../../../docker/README.md) 参照 |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキー / 公開配信の許可の冪等プロビジョニング |
+| `elasticmq` | infra | `softwaremill/elasticmq-native` | `9324`（SQS API） | 開発用の SQS 互換ブローカー（テストは in-process の fake）。全 checkout で共有され、スロット単位に隔離**できない** — [`db-worktree-pool.ja.md`](db-worktree-pool.ja.md) 参照 |
 | `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | 開発時に `docs/` を配信する |
 | `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | ブラウザ DB クライアント |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER 図生成 |
