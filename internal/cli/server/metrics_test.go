@@ -38,11 +38,8 @@ func Test_metricsServer(t *testing.T) {
 
 			srv := metricsServer(mtcCfg)
 			require.NotNil(t, srv)
-			// Addr が host:port 形式で組み立てられること。
 			assert.Equal(t, mtcCfg.Host()+":"+strconv.Itoa(mtcCfg.Port()), srv.Addr)
-			// 補助サーバーは DefaultServeMux（pprof）を公開する。
 			assert.Equal(t, http.DefaultServeMux, srv.Handler)
-			// タイムアウトが固定値で設定されること（4 値全て）。
 			assert.Equal(t, readHeaderTimeout, srv.ReadHeaderTimeout)
 			assert.Equal(t, readTimeout, srv.ReadTimeout)
 			assert.Equal(t, writeTimeout, srv.WriteTimeout)
@@ -60,7 +57,6 @@ func Test_logListenError(t *testing.T) {
 		t.Run("nilは何もログしない", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
-			// Named/Error への呼び出しが起きれば gomock が想定外呼び出しとして失敗させる。
 			logger := mock_logging.NewMockLogger(ctrl)
 
 			logListenError(logger, nil)
@@ -151,7 +147,6 @@ func TestNewMetricsServer(t *testing.T) {
 
 			driveInFlight(t, "http://"+mtcCfg.Host()+":"+strconv.Itoa(port)+blockPath, entered, release)
 
-			// 非アイドル接続が残る状態へ、期限切れの ctx で Shutdown を当てる。
 			end(canceledContext())
 			close(release)
 

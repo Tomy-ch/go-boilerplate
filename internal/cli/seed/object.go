@@ -48,8 +48,7 @@ func RunObjectSeed(logger logging.Logger, fsys fs.FS, endpoint string, put PutOb
 	ctx := context.Background()
 	log := logger.Named("objectSeedRun")
 
-	// endpoint が空は SDK 既定のエンドポイント解決、すなわち実在の AWS S3 を指す。シード用の
-	// ファイルを実環境のバケットへ流し込まないよう、互換エンドポイントを明示している場合だけ投入する。
+	// endpoint が空だと SDK 既定の解決先（実 AWS S3）へ流し込むため、明示時だけ投入する。
 	if endpoint == "" {
 		log.Info(ctx, "object storage endpoint is empty, skipping object seed")
 		return nil

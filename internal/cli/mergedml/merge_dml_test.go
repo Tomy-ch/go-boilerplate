@@ -506,8 +506,6 @@ func TestRunMerge(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fs := mock_mergedml.NewMockFileSystem(ctrl)
 
-			// カテゴリは存在するが、ctx が先にキャンセルされているため sem.Acquire が失敗し、
-			// 各カテゴリの走査(FindSQLFiles)へは進まない。
 			fs.EXPECT().ListSubDirNames(typeRoot).Return([]string{"user"}, nil)
 
 			ctx, cancel := context.WithCancel(context.Background())

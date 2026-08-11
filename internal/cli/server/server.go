@@ -41,13 +41,9 @@ func RunServer(
 
 	<-ctx.Done()
 
-	// 停止処理は無期限に待たず、シャットダウン開始時点から設定タイムアウト内で完了させます。
 	stopCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
-	// メトリクスサーバーとアプリ本体を、同じシャットダウン用 context で順に停止します。
-	// 停止用 context は ctx を継承しない（ctx は既にキャンセル済みのため、継承すると即時に
-	// 期限切れになり停止猶予が無くなる）。これは意図した設計なので contextcheck を抑制する。
 	if stopMetrics != nil {
 		stopMetrics(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 	}
