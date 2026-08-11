@@ -226,10 +226,14 @@ make setup-remove-boilerplate-identity
 ```
 
 リポジトリを走査して `boilerplate-only` マーカーをすべて解決し、
-[boilerplate-only-conventions.ja.md](boilerplate-only-conventions.ja.md) とその正本を削除し、
-自身の make ターゲットの登録も外したうえで、ツール自身を撤去する。対象ファイルの一覧ではなく
-走査にしているのは、一覧というものはその外側にマーカーを書けてしまうからで、誰も剥がさない
-マーカーは、何も告げないままあなたのプロジェクトへ生き残る前提になる。
+[boilerplate-only-conventions.ja.md](boilerplate-only-conventions.ja.md) とその正本、および
+`docs/plan/**`（上流がまだ着手していないリリース線の要件）を削除し、自身の make ターゲットの
+登録も外したうえで、ツール自身を撤去する。対象ファイルの一覧ではなく走査にしているのは、
+一覧というものはその外側にマーカーを書けてしまうからで、誰も剥がさないマーカーは、何も告げない
+ままあなたのプロジェクトへ生き残る前提になる。
+
+`docs/project/roadmap.md` は**削除しない**。導入部が fork 向けの文面へ差し替わるよう書かれており、
+自分たちの方向を記録する場所として引き継げる。
 
 **触らないもの**: リポジトリ名・モジュール名（Phase 5 で置換済み）と、運用中も読み返す部分
 ——後述の clamp 設定レビューと除外 ADR。これらは複数のパッケージ README から参照されている。

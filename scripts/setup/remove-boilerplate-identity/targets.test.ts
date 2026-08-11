@@ -150,6 +150,8 @@ describe("BOILERPLATE_DELETE_PATHS", () => {
       expect(BOILERPLATE_DELETE_PATHS).toContain(
         "docs/ja/get-started/boilerplate-only-conventions.ja.md",
       );
+      expect(BOILERPLATE_DELETE_PATHS).toContain("docs/plan");
+      expect(BOILERPLATE_DELETE_PATHS).toContain("docs/ja/plan");
     });
 
     // premise-lint が守る規則は fork が継承するが、検査が探す言い回しは上流固有の実例でしかない。
