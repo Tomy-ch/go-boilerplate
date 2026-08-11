@@ -7,7 +7,7 @@ name: OpenAPI Security
 # body fields, unused components, explicit security on every operation), while
 # this workflow asks OWASP's questions (unbounded input, weak auth declarations,
 # undeclared server inventory). redocly stays the linter of record because it is
-# also the bundler and docs generator (ADR-0010 (docs-as-canonical-source)); Spectral is additive.
+# also the bundler and docs generator (ADR-0012 (redocly-modular-spec-pipeline)); Spectral is additive.
 #
 # Rule dispositions live in .spectral.yaml, each with the ADR or implementation
 # that justifies it. Nothing is disabled in bulk.

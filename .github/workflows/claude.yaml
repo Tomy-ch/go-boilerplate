@@ -17,12 +17,9 @@ concurrency:
 
 jobs:
   claude:
-    # Cheap pre-gate on the github context only, so unrelated comments never
-    # start a runner. Authorization itself is delegated to the action's built-in
-    # write-permission requirement: it resolves against whichever repository the
-    # workflow runs in, so a fork inherits the correct member set with no
-    # configuration. An allowlist hardcoded here would lock a fork owner out of
-    # their own repository instead.
+    # Pre-gate on the github context only, so unrelated comments never start a runner. It
+    # grants no authority — that is the action's own write-permission check.
+    # See README.md Notes ("`claude.yaml` authorization").
     if: >-
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request != null &&
@@ -34,9 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      # Read-only on contents: Claude answers and comments but does not push.
-      # Raise to write only when committing from the action is actually wanted —
-      # it is also the blast radius of a prompt injection carried in a fork PR.
+      # contents stays read-only: it is the blast radius of a prompt injection carried in a
+      # fork PR. See README.md Notes ("`claude.yaml` authorization").
       contents: read
       pull-requests: write
       issues: write

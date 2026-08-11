@@ -134,8 +134,7 @@ jobs:
         with:
           version: 2026.6.0
           install: false
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -259,10 +258,7 @@ jobs:
           sarif_file: eslint.sarif
           category: eslint-${{ matrix.workspace }}
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: eslint
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.eslint.result) }}

@@ -135,10 +135,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, needed
-          # here for the step summary alone: the PR comment goes through the action's
-          # details-summary path, but GITHUB_STEP_SUMMARY renders the same file with nothing
-          # wrapping it.
+          # fence_for mirrors upsert-pr-comment's fenceFor: needed for GITHUB_STEP_SUMMARY, which renders the file unwrapped. See README.md § PR comment fencing.
           # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
           # collapsing the fence back to three backticks.
           fence_for() {

@@ -1,10 +1,9 @@
 name: Dependency Review
 
-# Blocks a PR before merge when it introduces a dependency with a known
-# vulnerability. Scoped to the files that can change the dependency graph
-# (Go modules + vendored sources + the npm lockfiles of the tooling images +
-# the GitHub Actions referenced by `uses:` under .github/), which matches the
-# ecosystems declared in .github/dependabot.yml.
+# Blocks a PR before merge when it introduces a dependency with a known vulnerability. Scoped to
+# the files that can change the dependency graph: Go modules and their vendored sources, the pnpm
+# lockfiles of the three Node workspaces, and the GitHub Actions referenced by `uses:` under
+# `.github/`.
 on:
   pull_request:
     paths:

@@ -183,9 +183,7 @@ jobs:
             echo "title=## ⚠️ Drift in mock-auth OpenAPI generated output detected (source unchanged)" >> "$GITHUB_OUTPUT"
             printf '%s\n' "This PR does not modify anything under \`mock-auth-server/\`, so this may be generator-side drift (non-deterministic output, dependency version differences, etc.). Run \`make gen-mock-auth-oapi\` locally and commit the changes." > "$out"
           fi
-          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, repeated
-          # because that helper only wraps a body on the details-summary path and this call passes
-          # the body through untouched.
+          # fence_for mirrors upsert-pr-comment's fenceFor: this call passes the body through untouched, so it sizes its own fence. See README.md § PR comment fencing.
           # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
           # collapsing the fence back to three backticks.
           fence_for() {
@@ -196,10 +194,7 @@ jobs:
             printf '%*s' "$len" '' | tr ' ' '\140'
           }
 
-          # A path may hold any byte but NUL and `/`, so a name carrying a backtick closes an inline
-          # code span early and renders the rest as live Markdown under the bot's name — a mention
-          # notifying third parties, a fabricated heading or link. Fencing the list instead, at a
-          # length taken from the list itself, leaves no run able to close it.
+          # The list is fenced, never put in an inline span: a path may carry a backtick. See README.md § PR comment fencing.
           list=/tmp/gen-mock-auth-oapi-filelist.txt
           # The action's length cap slices a body without regard for fences and does not re-fence on
           # this path, so a list trimmed there would lose the closing fence. Trimming here, before

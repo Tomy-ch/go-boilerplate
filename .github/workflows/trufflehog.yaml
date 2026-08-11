@@ -22,19 +22,9 @@ jobs:
       pull-requests: write
 
     steps:
-      # The only job here left on `audit`, and the exception is deliberate.
-      # --results=verified means TruffleHog proves a candidate credential live by
-      # calling the service that issued it, and the set of issuers is open-ended, so
-      # no allowlist can be complete. A detector for a provider outside the list
-      # cannot reach it, the credential is downgraded to unverified, and this
-      # workflow — which reports verified results only — stays green over a real
-      # leak. Everywhere else a missing endpoint produces a red run that gets fixed;
-      # here it produces a false pass that nobody sees.
-      #
-      # Egress control exists to keep a compromised dependency from reaching the
-      # trunk, and this scanner is one of the things doing that work on the branch
-      # side. Hardening it into silence trades a detection away for a control that
-      # was never the point. Detection wins; this job stays on `audit`.
+      # The only job here left on `audit`: --results=verified reaches the issuing service to
+      # prove a credential, and that set is open-ended, so blocking egress would downgrade a
+      # real leak to unverified instead of failing loud. See README.md § Runner Hardening.
       - name: Harden the runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
@@ -155,11 +145,7 @@ jobs:
         shell: bash
         run: exit 1
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure, and that is precisely the silent breakage this
-  # notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: trufflehog
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.trufflehog.result) }}

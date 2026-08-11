@@ -1,9 +1,7 @@
 name: Grype Scan
 
-# Grype over the same dependency manifests trivy-fs.yaml reads. The point is not more
-# coverage but a second opinion: Grype matches against Anchore's own vulnerability
-# database with its own matching logic, so a package the Trivy DB has not yet
-# associated with an advisory can still surface here, and vice versa.
+# Grype over the same dependency manifests trivy-fs.yaml reads, against Anchore's own database
+# and matcher. See README.md § Overlapping surfaces for why that redundancy is bought.
 #
 # It scans the directory rather than an image. Scanning an image would re-examine what
 # image-scan.yaml already sends through Trivy — the same artifact, one layer removed
@@ -111,8 +109,7 @@ jobs:
         with:
           version: 2026.6.0
           install: false
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -222,9 +219,7 @@ jobs:
     secrets:
       slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: grype
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.grype.result) }}
