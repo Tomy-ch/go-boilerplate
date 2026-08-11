@@ -106,7 +106,7 @@ advisory 自身の評価を第一とし、無ければ osv-scanner がグルー�
 PR はその変更が持ち込むリスクを surface し、protected branch への push はブランチ保護が
 判断材料にする code scanning のベースラインを残す。週次実行は「コードが変わらなくても結果が
 変わる」場合にだけ設ける。新規公表 CVE、新しい CodeQL クエリ、アーカイブ化されたアクションなどで
-ある。週次実行は 1 時間ごとにずらし、単一の cron 分に全スキャナが並ばないようにする。
+ある。週次実行は 15 分刻みでずらし、単一の cron 分に全スキャナが並ばないようにする。
 
 CLI ベースのスキャナ（`govulncheck` / zizmor / OSV-Scanner / TruffleHog / gitleaks / Trivy）は
 バージョンを `mise.toml` で宣言する。これによりサプライチェーン面の拡大が「1 箇所で固定された

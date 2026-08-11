@@ -52,7 +52,7 @@ on:
       - '**/*.mjs'
       - '**/*.cjs'
   schedule:
-    - cron: '0 5 * * 1'
+    - cron: '15 1 * * 1'
   workflow_dispatch:
 
 permissions:

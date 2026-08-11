@@ -167,13 +167,24 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 | trustabl (agent config) | — | — | weekly |
 
-Weekly runs are staggered across Monday, **one scanner per hour**, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` Go cooldown, `0 10` Opengrep, `0 11` fuzz, `0 12` ZAP (DAST), `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 18` trustabl, `0 19` SonarQube Cloud, `0 20` tool cooldown. A new scheduled workflow takes the next free hour; two sharing one is a defect, not a preference.
+Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once:
 
-DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
+| | :00 | :15 | :30 | :45 |
+| --- | --- | --- | --- | --- |
+| **00** | Trivy FS | govulncheck | TruffleHog | OSV-Scanner |
+| **01** | Scorecard | CodeQL | Image Scan | gitleaks (full-history) |
+| **02** | zizmor (online audits) | Go cooldown | Opengrep | fuzz |
+| **03** | ZAP (DAST) | Grype | DevSkim | ESLint |
+| **04** | Bearer | Checkov | trustabl | tool cooldown |
+| **05** | SonarQube Cloud | | | |
 
-The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 18` trustabl, `0 19` SonarQube Cloud.
+The step is 15 minutes rather than an hour because the set has grown to 21: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
 
-The last one is the scanner whose analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
+GitHub does not honour a scheduled time exactly — a run can start well after its slot under load — so the stagger reduces the pile-up rather than eliminating it. Spacing that no scheduler guarantees is not something to tune finely.
+
+DAST takes `03:00`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
+
+SonarQube Cloud takes the last slot. Its analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
 
 Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
 

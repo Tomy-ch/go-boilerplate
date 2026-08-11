@@ -3,7 +3,7 @@ name: Secret Scan (TruffleHog)
 on:
   pull_request:
   schedule:
-    - cron: '0 2 * * 1'
+    - cron: '30 0 * * 1'
   workflow_dispatch:
 
 permissions:

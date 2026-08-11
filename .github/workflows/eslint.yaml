@@ -56,9 +56,9 @@ on:
       - 'scripts/**'
       - 'mock-auth-server/**'
   schedule:
-    # Monday 15:00 UTC — the slot after DevSkim. A preset update turns unchanged code
-    # into a finding, which is what the weekly run is for.
-    - cron: '0 15 * * 1'
+    # A preset update turns unchanged code into a finding, which is what the weekly run
+    # is for.
+    - cron: '45 3 * * 1'
   workflow_dispatch:
 
 permissions:

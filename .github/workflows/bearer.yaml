@@ -59,9 +59,9 @@ on:
       - 'mock-auth-server/**'
       - 'docs-viewer/**'
   schedule:
-    # Monday 16:00 UTC — the slot after ESLint. Rule updates change the verdict on code
-    # that stood still, which is what the weekly run is for.
-    - cron: '0 16 * * 1'
+    # Rule updates change the verdict on code that stood still, which is what the weekly
+    # run is for.
+    - cron: '0 4 * * 1'
   workflow_dispatch:
 
 permissions:

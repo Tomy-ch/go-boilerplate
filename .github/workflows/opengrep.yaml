@@ -61,10 +61,9 @@ on:
       - 'docs-viewer/**'
       - 'scripts/**'
   schedule:
-    # Monday 10:00 UTC — the next free slot after the scanners staggered by #677
-    # (00:00 through 09:00). New rules can turn existing code into a finding, so a
-    # scheduled run earns its place even when nothing changed.
-    - cron: '0 10 * * 1'
+    # New rules can turn existing code into a finding, so a scheduled run earns its place
+    # even when nothing changed.
+    - cron: '30 2 * * 1'
   workflow_dispatch:
 
 permissions:

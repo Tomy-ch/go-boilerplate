@@ -35,9 +35,7 @@ on:
       - '.github/tool-cooldown-bypass.toml'
       - '.github/workflows/tool-cooldown.yaml'
   schedule:
-    # Monday 20:00 UTC — the next free slot after sonarqube.yaml (19:00), continuing the
-    # one-scanner-per-hour stagger that #677 established.
-    - cron: '0 20 * * 1'
+    - cron: '45 4 * * 1'
   workflow_dispatch:
 
 permissions:
