@@ -134,8 +134,6 @@ func newJWKSResolver(
 
 // ResolveKey は、kid に対応する署名検証用公開鍵を返します（KeyResolver 実装）。
 // キャッシュに無い / 期限切れの場合は JWKS を再取得します。
-// 返すエラーは keyFunc → ParseWithClaims 経由で Authenticate の境界へ伝播し、そこで
-// ErrJWTAuthenticatorInvalidToken へ一括正規化するため、ここでは原因のみを持つ素の error を返します。
 func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.PublicKey, error) {
 	if key := r.lookup(kid); key != nil {
 		return key, nil
