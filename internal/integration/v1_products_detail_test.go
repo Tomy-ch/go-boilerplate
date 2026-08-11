@@ -83,7 +83,6 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 
 			productsdetail.BindHandler(e, tf, mockUC)
 
-			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productDetailExistingPath, nil, nil)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			AssertJSONResponseType[productsdetailgen.ProductResponse](t, actual)
@@ -318,7 +317,6 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			// 認証情報が無い場合はハンドラで打ち切られ、Usecase へは到達しない。
 			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			productsdetail.BindHandler(e, tf, mockUC)

@@ -40,7 +40,6 @@ func TestV1ProductCategories_Integration(t *testing.T) {
 
 			productcategorieshandler.BindHandler(e, tf, mockUC)
 
-			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/categories", nil, nil)
 			AssertJSONResponseType[[]gen.ProductCategoryResponse](t, actual)
 		})

@@ -6,7 +6,10 @@ This directory is a place to organize **integration tests**.
 
 It starts an Echo server and verifies through the **actual HTTP communication path**, which cannot be fully covered by unit tests.
 
-These tests are **not integration tests that include DB or Infrastructure, but integration tests aimed at verifying the HTTP boundary**.
+These tests target the **HTTP boundary**: no DB, no SQL, no Repository. The one deliberate exception is the
+authentication boundary — `jwt_auth_test.go` and `jwks_rotation_test.go` drive the real
+`internal/infrastructure/auth/jwt` implementation, because a hand-rolled mock of JWKS resolution would
+drift from the provider in silence. See [`docs/design/auth.md`](../../docs/design/auth.md).
 
 ## Test Strategy
 
@@ -139,12 +142,7 @@ flowchart TB
     Router["Echo Router"] --> Middleware --> Handler --> Response
 ```
 
-Usecase uses **mock**.
-
-Reason:
-
-The purpose of integration tests is **verification of HTTP boundary**,  
-and not validation of application logic.
+Usecase uses **mock** (see [Why Usecase is mocked](#why-usecase-is-mocked)).
 
 Example
 
@@ -309,7 +307,22 @@ actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
 AssertErrorResponse(t, actual, http.StatusNotFound)
 ```
 
+### `AssertErrorResponseBody(t, actual, wantStatus)`
+
+Same boundary checks as `AssertErrorResponse`, but returns the decoded
+`ErrorResponseWithDetails` so a test can go on to assert on `details` — the one
+error-path field whose contents are a boundary concern (`apperror` decides which
+identifiers surface). Use it when the test needs the body; use
+`AssertErrorResponse` when it only needs the status and shape.
+
 ## Auth Test Helper
+
+In `EnvTest` the Authorizer is fixed to `allowall`, so an admin / non-admin difference is expressed
+through the usecase's return value rather than through the authorizer.
+
+These helpers cover the debug-bypass path. Tests that exercise real JWT / JWKS verification build their
+own server instead — see `jwt_auth_test.go` / `jwks_rotation_test.go` and
+[`docs/design/auth.md`](../../docs/design/auth.md).
 
 ### `MakeAvailableUserID`
 
@@ -331,15 +344,10 @@ srv.DoJSON(http.MethodPost, "/v1/<resource>", body, headers)
 
 Integration tests follow the following principles.
 
-### 1 Do not use Infrastructure
+### 1 Do not use DB / SQL / Repository
 
-In integration tests:
-
-- DB
-- SQL
-- Repository
-
-are not used.
+Integration tests use none of them. The authentication boundary is the documented exception — see the
+note at the top of this file.
 
 ### 2 Mock Usecase
 

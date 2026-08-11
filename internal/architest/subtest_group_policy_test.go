@@ -15,7 +15,7 @@ import (
 )
 
 // subtestGroupSelfFile は、本ファイル自身の名前です。走査対象から外すために使います。
-// 判定ロジックのテストは違反そのものを合成入力として書くため、自己走査すると自分のテストデータを違反として拾います。
+// 合成入力として書いた違反を自己走査で拾わないよう除外します。
 const subtestGroupSelfFile = "subtest_group_policy_test.go"
 
 var (
@@ -39,7 +39,6 @@ var (
 // 挙動文の直置き・正常系_xxx のプレフィックス形式・境界ケースのような第 3 のグループはいずれも違反になる。
 // 単一シナリオの TestXxx はグループを省略してよいため、t.Run を 1 つも持たない関数は対象外。
 //
-// 検出は depguard が go/ast を禁じるためテキスト走査で行う（既存 architest と同方針）。
 // gofmt 済みであることを前提に、インデント段数でネスト深さを判定する。
 // どちら側のグループへ属すべきかは意味の判断であり機械検証できないため、構造のみを対象とし、
 // 帰属は testing-conventions.md §10 とレビューが担う。構造違反を許す allowlist は持たない。
@@ -68,7 +67,6 @@ func TestSubtestGroupPolicy(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// 走査対象が 0 件だと検証が常に成功してしまうため、ルート解決の破綻を空振りとして検出する。
 	require.NotZero(t, scanned, "走査対象のテストファイルが 0 件（moduleSubdirs のルート解決を疑う）")
 
 	sort.Strings(violations)

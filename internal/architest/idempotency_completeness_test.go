@@ -30,8 +30,7 @@ var handlerMethodRe = regexp.MustCompile(`^func \([^)]*\) (\w+)\(`)
 // OpenAPI のヘッダ宣言を source of truth とし、Run 呼び忘れのような silent な dedup 欠落を loud な失敗に変える。
 //
 // 対象操作は 0 件でも許容する（サンプル API 削除後は該当が無くなり得る）が、検出ロジックの空振りを
-// 防ぐため、param 検出用の正規表現が既知の生成形にマッチすることを別途 assert する。depguard が
-// go/ast を禁止するため、AST ではなく gofmt 済みソースのテキスト走査で検出する。
+// 防ぐため、param 検出用の正規表現が既知の生成形にマッチすることを別途 assert する。
 func TestIdempotencyCompleteness(t *testing.T) {
 	t.Parallel()
 
@@ -101,7 +100,6 @@ func handlerRoot(t *testing.T) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	// internal/architest/<file> から internal/controller/handler を辿る。
 	return filepath.Join(filepath.Dir(thisFile), "..", "controller", "handler")
 }
 

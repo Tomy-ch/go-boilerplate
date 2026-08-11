@@ -26,12 +26,9 @@ var (
 )
 
 // TestNoInlineXerrorsNew は、production code が関数本体内で xerrors.New を直接生成していないことを
-// 機械検証する。関数本体で生成したエラーは呼び出し側から errors.Is で識別できず、テストが
-// メッセージ文字列一致でしか検証できない脆いアサーションに退行するため、package-level の
-// sentinel（`var errXxx = xerrors.New(...)`）として宣言し、動的な文脈は xerrors.Wrap で付与する。
+// 機械検証する。規則そのものは docs/rules.md の Error Handling Rules が定める。
 //
-// 検出は depguard が go/ast を禁じるためテキスト走査で行う（既存 architest と同方針）。
-// allowlist は持たない。_test.go はテストが注入用のアドホックなエラーを作る正当な用法のため対象外。
+// _test.go はテストが注入用のアドホックなエラーを作る正当な用法のため対象外。
 func TestNoInlineXerrorsNew(t *testing.T) {
 	t.Parallel()
 
@@ -64,7 +61,6 @@ func TestNoInlineXerrorsNew(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// 走査対象が 0 件だと検証が常に成功してしまうため、ルート解決の破綻を空振りとして検出する。
 	require.NotZero(t, scanned, "走査対象の production code の Go ファイルが 0 件（moduleSubdirs のルート解決を疑う）")
 
 	sort.Strings(violations)

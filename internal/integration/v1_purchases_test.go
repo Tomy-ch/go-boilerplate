@@ -158,7 +158,6 @@ func TestV1Purchases_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// degrade: usecase が ReferenceAmount=nil のビューを返す
 			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
 			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Return(checkoutuc.PurchaseView{Purchase: purchaseViewFixture(t)}, nil)
 

@@ -6,7 +6,10 @@
 
 ユニットテストでは拾いきれない、Echo サーバを立ち上げて **実際の HTTP 通信経路** を通した検証を行います。
 
-このテストは **DB や Infrastructure を含む統合テストではなく、HTTP 境界の検証を目的とした結合テスト**です。
+このテストは **HTTP 境界**を対象とし、DB・SQL・Repository は使いません。唯一の意図的な例外が認証境界で、
+`jwt_auth_test.go` と `jwks_rotation_test.go` は実物の `internal/infrastructure/auth/jwt` を動かします。
+JWKS 解決を手組み mock で置くと provider と黙って乖離するためです。詳細は
+[`docs/design/auth.md`](../../docs/ja/design/auth.ja.md) を参照してください。
 
 ## テスト戦略
 
@@ -298,7 +301,21 @@ actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
 AssertErrorResponse(t, actual, http.StatusNotFound)
 ```
 
+### `AssertErrorResponseBody(t, actual, wantStatus)`
+
+境界の検査内容は `AssertErrorResponse` と同じで、デコード済みの
+`ErrorResponseWithDetails` を返します。`details`（`apperror` がどの識別子を露出させるかを決める、
+異常系で唯一境界の関心事となるフィールド）まで検証したいときに使います。
+ステータスと形だけでよいときは `AssertErrorResponse` を使います。
+
 ## Auth テストヘルパー
+
+`EnvTest` の Authorizer は `allowall` 固定のため、admin / 非 admin の差は authorizer ではなく
+usecase の戻り値で表現します。
+
+以下のヘルパーは debug bypass 経路を扱います。実物の JWT / JWKS 検証を通すテストは自前でサーバーを
+組み立てます（`jwt_auth_test.go` / `jwks_rotation_test.go` と
+[`docs/design/auth.md`](../../docs/ja/design/auth.ja.md)）。
 
 ### `MakeAvailableUserID`
 
@@ -319,15 +336,10 @@ srv.DoJSON(http.MethodPost, "/v1/<resource>", body, headers)
 
 integration テストでは以下の原則を守ります。
 
-### 1 Infrastructure を使用しない
+### 1 DB / SQL / Repository を使用しない
 
-integration テストでは
-
-- DB
-- SQL
-- Repository
-
-を使用しません。
+integration テストではいずれも使用しません。認証境界だけが文書化された例外です。
+本ファイル冒頭の注記を参照してください。
 
 ### 2 Usecase は mock する
 
