@@ -341,7 +341,6 @@ WHERE pi.image_path = ANY($1::TEXT [])
 // 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
 // ここに現れなかったパスが孤児にあたる。
 // 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
-// 結果として、差し替えで落ちた画像は猶予期間の経過後に回収され、履歴行は実体を伴わないパスを指したまま残る。
 //
 //	SELECT DISTINCT pi.image_path
 //	FROM product_images AS pi
@@ -984,8 +983,7 @@ WHERE product_images.product_id = $1
 `
 
 // === source: database/dml/repository/product/soft_delete_product_images.sql ===
-// 商品が現在参照している画像をまとめて論理削除する。差し替えは「生存行を落として新しい行を入れる」形で
-// 行うため、置換の前段としてここを通る。既に論理削除済みの行は削除日時を上書きしない。
+// 商品が現在参照している画像をまとめて論理削除する。既に論理削除済みの行は削除日時を上書きしない。
 // 生存行が無い商品に対しては 0 行更新となり、成功として返る。
 //
 //	UPDATE product_images

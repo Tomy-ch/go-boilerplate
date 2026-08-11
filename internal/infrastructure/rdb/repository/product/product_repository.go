@@ -261,6 +261,8 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 
 // ReplaceImages は、商品が現在参照している画像を p が保持する画像で置き換えます。
 // 置き換え前の画像は論理削除として残ります。
+//
+// 同一商品への置換が直列化されるのは、先行する Update の条件付き UPDATE が商品行のロックを取るためです。
 func (r *repository) ReplaceImages(ctx context.Context, p *product.Product) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

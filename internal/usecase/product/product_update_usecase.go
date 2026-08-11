@@ -106,8 +106,8 @@ func (u *usecase) UpdateProduct(
 			return err
 		}
 
-		// 画像が指定されなかった更新で置き換えを走らせると、変えていない画像まで論理削除されて
-		// 別の行として入り直し、差し替え履歴が実際には起きていない差し替えで埋まります。
+		// images が未指定なら現在の画像を据え置き、置き換えは行いません
+		// （理由は docs/spec/product/usecase.md の UpdateProduct）。
 		if !params.Images.IsSpecified() {
 			return nil
 		}

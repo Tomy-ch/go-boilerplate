@@ -273,6 +273,27 @@ func TestNew(t *testing.T) {
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCategoryID)
 		})
+
+		t.Run("画像の表示順が重複する場合、ErrDuplicateImageSortKeyを返す", func(t *testing.T) {
+			t.Parallel()
+			invalid := attrs
+			invalid.Images = []Image{
+				mustImage(t, "duplicated_image_1", "products/a.png", 1),
+				mustImage(t, "duplicated_image_2", "products/b.png", 1),
+			}
+			actual, err := New(id, invalid)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrDuplicateImageSortKey)
+		})
+
+		t.Run("画像パスが空の場合、ErrInvalidImagePathを返す", func(t *testing.T) {
+			t.Parallel()
+			invalid := attrs
+			invalid.Images = []Image{mustImage(t, "empty_path_image", "", 1)}
+			actual, err := New(id, invalid)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidImagePath)
+		})
 	})
 }
 
@@ -512,6 +533,13 @@ func Test_validateAttributes(t *testing.T) {
 			attrs := valid
 			attrs.Category = CategoryRef{}
 			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidCategoryID)
+		})
+
+		t.Run("画像の不変条件違反を伝播する", func(t *testing.T) {
+			t.Parallel()
+			attrs := valid
+			attrs.Images = []Image{mustImage(t, "out_of_range_image", "products/a.png", maxImageSortKey+1)}
+			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidImageSortKey)
 		})
 	})
 }
