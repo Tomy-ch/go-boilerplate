@@ -1,30 +1,30 @@
 # ProductStatus — Usecase Spec
 
 > 全件一覧は単一集約・無フィルタ・無ページングの simple list であり、QueryService ではなく
-> domain `product_status.Repository` の `FindAll` に委譲する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の
+> domain `status.Repository` の `FindAll` に委譲する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の
 > Repository 境界に準拠）。
 
 ## Overview
 
-商品ステータス一覧ユースケースは、商品ステータスマスタの全件を `sortKey` 昇順で返す read-only なユースケース。`product_status.Repository`（domain Repository）の `FindAll` に委譲し、取得した `ProductStatus` エンティティ一覧を usecase DTO（`ProductStatusDTO`）へ写像して返す thin orchestrator。少量（10 件）のため全件返却し、ページング・トランザクションは不要。認証不要の公開エンドポイント（`GET /v1/product-statuses`）の read source となる。
+商品ステータス一覧ユースケースは、商品ステータスマスタの全件を `sortKey` 昇順で返す read-only なユースケース。`status.Repository`（domain Repository）の `FindAll` に委譲し、取得した `Status` エンティティ一覧を usecase DTO（`StatusDTO`）へ写像して返す thin orchestrator。少量（10 件）のため全件返却し、ページング・トランザクションは不要。認証不要の公開エンドポイント（`GET /v1/products/statuses`）の read source となる。
 
-ドメイン集約を outer 層へ露出させないため、`ProductStatus` エンティティは usecase 内で `ProductStatusDTO` へ写像してから返す（DTO Boundary）。
+ドメイン集約を outer 層へ露出させないため、`Status` エンティティは usecase 内で `StatusDTO` へ写像してから返す（DTO Boundary）。
 
 ## Interface
 
 ```yaml
-package: internal/usecase/product_status
+package: internal/usecase/product/status
 name: Usecase
 methods:
-  - name: ListProductStatuses
-    signature: ListProductStatuses(ctx context.Context) (ProductStatusDTOs, error)
+  - name: ListStatuses
+    signature: ListStatuses(ctx context.Context) (StatusDTOs, error)
 ```
 
 ## DTOs
 
 ```yaml
-- name: ProductStatusDTO
-  description: 商品ステータス 1 件分の usecase 出力 DTO。domain エンティティ ProductStatus から写像する。
+- name: StatusDTO
+  description: 商品ステータス 1 件分の usecase 出力 DTO。domain エンティティ Status から写像する。
   fields:
     - name: ID
       type: uuid.UUID
@@ -34,29 +34,29 @@ methods:
       type: string
     - name: SortKey
       type: int
-- name: ProductStatusDTOs
-  description: ProductStatusDTO の一覧（sortKey 昇順）。
-  type: "[]ProductStatusDTO"
+- name: StatusDTOs
+  description: StatusDTO の一覧（sortKey 昇順）。
+  type: "[]StatusDTO"
 ```
 
 ## Dependencies
 
 ```yaml
-- tracer                      # observability.TracerFactory -> LayerTracer
-- product_status_repository   # domain/product_status.Repository（FindAll で全件取得）
+- tracer              # observability.TracerFactory -> LayerTracer
+- status_repository   # domain/product/status.Repository（FindAll で全件取得）
 ```
 
 ## Workflow
 
-### ListProductStatuses
+### ListStatuses
 
 ```yaml
 tx_required: false
 steps:
-  - product_status_repository.FindAll で全商品ステータスを sortKey 昇順で取得する
-  - 取得した ProductStatus エンティティ一覧を ProductStatusDTO（ID / Code / Name / SortKey）へ写像して返す
+  - status_repository.FindAll で全商品ステータスを sortKey 昇順で取得する
+  - 取得した Status エンティティ一覧を StatusDTO（ID / Code / Name / SortKey）へ写像して返す
 calls:
-  - product_status_repository.FindAll
+  - status_repository.FindAll
 errors:
-  - product_status_repository.FindAll のエラーをそのまま伝播する
+  - status_repository.FindAll のエラーをそのまま伝播する
 ```
