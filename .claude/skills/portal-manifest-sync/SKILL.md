@@ -54,12 +54,14 @@ Do NOT use this skill for:
 - Mass-adding undocumented READMEs to the manifest — that defeats the manual's curation intent. Treat additions as a deliberate per-file editorial decision.
 - Creating the missing translation file — chain into `canonicalize-doc` (this skill only flags the drift).
 - Rewriting individual README contents — use `sync-readme`.
+- A **deep-dive review** of a single README (strengths / gaps / improvement suggestions) — use `/readme-review <path>`.
 
 ## What This Skill Reads / Writes
 
 **Reads (always)**:
 
 - `docs/portal/manifest.yaml` — source of truth for which READMEs are exposed.
+- `.claude/skills/readme-review/SKILL.md` — source of truth for the evaluation criteria; re-read on every run.
 - All `README.md` / `README.ja.md` files in the repo, with these always excluded:
   - `docs/portal/guides/**` (generated copies of the originals)
   - `vendor/**`, `node_modules/**`

@@ -229,6 +229,8 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 - [ ] Layer + per-layer ファイルリスト解決（changed files / full repo / specific layer）
 - [ ] touched layer の `drift-detector-*` を **1メッセージ内で並列起動**（scope / files / baseRef / categories を渡す）
 - [ ] (D) 選択かつコーパス変更ありなら `drift-detector-ddd` を同じメッセージで並列起動
+- [ ] (E) 選択かつ散文変更ありなら `drift-detector-glossary` を同じメッセージで並列起動（用語表が無ければスキップして理由を述べる）
+- [ ] (E) の E2 は承認対象に載せず報告のみ
 - [ ] 各 detector が README + 実装 + skill を読み (A)(B)(C) を read-only 検出
 - [ ] 集約サマリ出力（決定前のチェックポイント）
 - [ ] integrator が per-item で reasoning + user 承認 + draft + 最終確認 + 書き込み（README / skill のみ）
