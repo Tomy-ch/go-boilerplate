@@ -125,6 +125,7 @@ All three rules live in one check rather than three, because they are not three 
 |Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
 |DAST|`zap-api-scan.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast))|
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
+|Agent Config Scan|`trustabl.yaml`|trustabl scan of the AI-agent configuration — subagent and skill declarations under `.claude/`, and MCP server declarations (report-only; see [Agent Config Scan](#agent-config-scan))|
 |Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
 
 Every scanner writes SARIF to GitHub code scanning where it can, and reports a finding on the PR through the shared `upsert-pr-comment` action (see [Result Comments](#result-comments) for when a comment is written at all).
@@ -164,12 +165,13 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | capslock | `go.mod`-change PRs | — | — |
 | Go fuzzing | — | — | weekly |
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
+| trustabl (agent config) | — | — | weekly |
 
 Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
 
 DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
 
-The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 19` SonarQube Cloud.
+The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 18` trustabl, `0 19` SonarQube Cloud.
 
 The last one is the scanner whose analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
 
@@ -189,7 +191,7 @@ Which trigger a detection notification fires on follows from who the right recip
 
 The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Four are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. Checkov joins them on the same terms: its baseline over this repository is twenty findings, most of them one rule reported once per workflow file. Dockle and `trivy sbom` need no wiring of their own: they run inside `image-scan.yaml`, whose scheduled failure already reaches a human.
 
-ESLint and Bearer are left unconnected for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud joins them on that reason: it reports maintainability alongside security, so its baseline over an existing codebase is never zero.
+ESLint, Bearer and trustabl are left unconnected for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer, and for trustabl one high finding per read-only subagent under `.claude/agents/` — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud joins them on that reason: it reports maintainability alongside security, so its baseline over an existing codebase is never zero.
 
 #### Overlapping surfaces
 
@@ -210,6 +212,7 @@ Every other tool on a shared surface is report-only, and the verdict on that sur
 | Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) — all report-only | — |
 | First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)** | — |
 | Any file, whatever its language | `devskim.yaml` (DevSkim) | — |
+| AI-agent configuration (`.claude/**`, MCP declarations) | `trustabl.yaml` (trustabl) — report-only | — (no other scanner here parses a tool grant) |
 | Sensitive values reaching a sink | `bearer.yaml` (Bearer) — report-only, over application code only (`/scripts` is excluded: repository tooling handles no user data, which is the whole of what this question asks) | — |
 | Runtime image | `image-scan.yaml` (Trivy) **(gate)** + Dockle (practice rules, report-only) + `trivy sbom` (report-only — the same database as the gate, reading syft's package list instead of Trivy's own) | — |
 
@@ -324,6 +327,16 @@ That shape is what decided the tool. Of the six DAST products in GitHub's code-s
 **It is report-only by design, not by omission.** The alert thresholds in [`.github/zap/rules.tsv`](../zap/rules.tsv) are derived from what this API happens to answer today; gating a merge on them would fail pull requests over findings they were never calibrated for. Alerts go to code scanning under the `zap-dast` category and to an artifact, and only a scan that could not run fails the job. ZAP emits no SARIF of its own, so the JSON report is mapped to it in the workflow; every alert is anchored to the OpenAPI bundle, because that file is what describes the surface the finding is about and pointing at a file that exists is what makes the alert navigable.
 
 The thresholds and the scanned surface are expected to be re-derived against the API they are pointed at — see [Phase 17 of the setup guide](../../docs/get-started/setup-repository.md).
+
+#### Agent Config Scan
+
+`trustabl.yaml` scans a surface no other check here reads: the AI-agent configuration itself. zizmor and Checkov read the workflow definitions, CodeQL and the Go linters read the source, and none of them parse a subagent's `tools:` grant or a skill's `allowed-tools:`. The rule packs that matter for this repository are the Claude subagent and skill ones; the engine also ships packs for the OpenAI, Google ADK, LangChain, CrewAI and MCP ecosystems, which find nothing here.
+
+**Three separately-versioned artifacts run in that one step, and only the first is pinned by pinning the action.** The action downloads the engine binary from the vendor's releases at run time, and the engine clones its rule pack from a second repository — both defaulting to a moving target. Left at their defaults they would put unreviewed third-party code on the runner every week, outside the cooldown window every other pin in this repository observes. The workflow therefore names all three: the action by SHA through [`.github/actions-pin.toml`](../actions-pin.toml), the engine by release tag, and the rule pack by tag. The rule pack is the weak link — the engine resolves that input against branches and tags but never a commit, so a re-pointed tag would be adopted silently. The engine logs the SHA it actually cloned, which is where a re-point would show.
+
+**It is report-only, and the baseline is the reason.** The subagent rules flag any grant of `Bash`, and every read-only reviewer under `.claude/agents/` holds one — the grant is what lets a reviewer run `git diff` or `go build`, so the finding describes the design rather than a defect in it. A severity gate would fail on that baseline from the first run. The useful half is the skill pack, which catches a bare `Bash` in a skill's `allowed-tools:` where the narrow `Bash(git status:*)` form was meant; `allowed-tools` is an auto-approval list rather than a sandbox, so the difference is real. Findings reach a human through the step summary and the `trustabl` artifact.
+
+SARIF upload and the sticky PR comment are both switched off. Each costs a write scope — `security-events: write` and `pull-requests: write` respectively — handed to a third-party binary, and a report-only scanner has no claim on either. That also keeps the job at `contents: read`.
 
 #### Runner Hardening
 
