@@ -127,6 +127,8 @@ meta:
           - 0032-transaction-retry-idempotent-callers
           - 0033-ordered-pessimistic-row-locks
           - 0034-uuidv7-identifiers
+          - 0035-two-scale-quantity-model
+          - 0036-domain-lexicon
       - title: DI / Config / Errors
         items:
           - 0037-uber-fx-di
@@ -138,6 +140,7 @@ meta:
           - 0043-embedded-self-contained-binary
           - 0044-apperror-protocol-agnostic-errors
           - 0045-error-metadata-code-message-details
+          - 0046-error-details-opt-in-gate
       - title: Async Subsystems (worker / outbox / idempotency / job)
         items:
           - 0047-broker-agnostic-worker-scaffold
@@ -180,6 +183,7 @@ meta:
           - 0078-make-single-entrypoint
           - 0079-scripts-in-node-go
           - 0080-docker-compose-dev-environment
+          - 0105-pnpm-as-the-only-node-resolver
       - title: CI / Quality Gates
         items:
           - 0081-two-layer-golangci-config
@@ -189,6 +193,7 @@ meta:
           - 0085-generated-artifact-drift-gate
           - 0086-multi-layer-security-scanning
           - 0087-sha-pinned-actions
+          - 0088-malicious-package-detection-via-cooldown
       - title: Development Process
         items:
           - 0089-rollback-integration-tests
@@ -210,6 +215,7 @@ meta:
           - 0101-no-in-app-rate-limiter
           - 0102-scheduled-job-concurrency-delegated
           - 0103-no-generic-cache-abstraction
+          - 0104-outbox-relay-hardening-delegated
 
   # auto-Title-Case で汚くなる id の表示名を上書きする (略語 / 改名のみ用途)。
   section_titles:
