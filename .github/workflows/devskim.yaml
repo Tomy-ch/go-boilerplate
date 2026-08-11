@@ -190,9 +190,7 @@ jobs:
     secrets:
       slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: devskim
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.devskim.result) }}

@@ -126,9 +126,7 @@ jobs:
           out=/tmp/sql-lint-comment.md
           : > "$out"
 
-          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, repeated
-          # because that helper only wraps a body on the details-summary path and this body stays
-          # live Markdown so the checklist and the per-category blocks render.
+          # fence_for mirrors upsert-pr-comment's fenceFor: this body stays live Markdown, so it sizes its own fence. See README.md § PR comment fencing.
           # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
           # collapsing the fence back to three backticks.
           fence_for() {

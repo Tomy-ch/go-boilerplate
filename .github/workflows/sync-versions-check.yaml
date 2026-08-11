@@ -110,9 +110,7 @@ jobs:
           fi
           echo "status=drift" >> "$GITHUB_OUTPUT"
 
-          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, repeated
-          # because that helper only wraps a body on the details-summary path and this call passes
-          # the body through untouched.
+          # fence_for mirrors upsert-pr-comment's fenceFor: this call passes the body through untouched, so it sizes its own fence. See README.md § PR comment fencing.
           # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
           # collapsing the fence back to three backticks.
           fence_for() {

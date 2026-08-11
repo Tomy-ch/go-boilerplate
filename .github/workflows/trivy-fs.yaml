@@ -115,8 +115,7 @@ jobs:
         with:
           version: 2026.6.0
           install: false
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -209,9 +208,8 @@ jobs:
   # same files, but it is a separate job so that its exit code, PR comment and
   # artifact never mix with the vulnerability verdict above.
   #
-  # Report-only, permanently so until a prohibited-license policy exists. It writes
-  # no SARIF either: every dependency carries a license, so code scanning would fill
-  # with hundreds of alerts that nobody has agreed are problems yet.
+  # Report-only until a prohibited-license policy exists, and it writes no SARIF for the same
+  # reason — see README.md § Notification triggers.
   trivy-license:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -380,11 +378,7 @@ jobs:
     secrets:
       slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure, and that is precisely the silent breakage this
-  # notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: trivy-fs
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.trivy-fs.result) }}
