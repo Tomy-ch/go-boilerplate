@@ -30,6 +30,17 @@ var shippableProductIDs = []string{
 	"5266f905-1af4-477a-bc7c-e69729e22a2b",
 }
 
+// clearSeededPurchases は、呼び出したトランザクション内で購入と購入明細を空にします。
+// FindShippable はテーブル全体を走査するため、seed が投入する購入履歴が残っていると件数と
+// 並び順の期待値が崩れます。削除はロールバックされるので、コミット済みの seed は失われません。
+func clearSeededPurchases(ctx context.Context, t *testing.T, db driver.DBTX) {
+	t.Helper()
+	_, err := db.Exec(ctx, "DELETE FROM purchase_details")
+	require.NoError(t, err)
+	_, err = db.Exec(ctx, "DELETE FROM purchases")
+	require.NoError(t, err)
+}
+
 // insertShippableUser は、購入の FK 制約（user_id → users.id）を満たすためのユーザーを挿入します。
 func insertShippableUser(ctx context.Context, t *testing.T, db driver.DBTX, id string) {
 	t.Helper()
@@ -115,6 +126,7 @@ func Test_repository_FindShippable(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				insertShippableUser(ctx, t, drv, buyer)
 				insertShippablePurchase(ctx, t, drv, newer, buyer, statusPaidID, base.Add(time.Hour),
 					"eeeeeeee-3333-4000-8000-000000000021")
@@ -144,6 +156,7 @@ func Test_repository_FindShippable(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				insertShippableUser(ctx, t, drv, buyer)
 				insertShippablePurchase(ctx, t, drv, older, buyer, statusPaidID, base,
 					"eeeeeeee-3333-4000-8000-000000000011")
@@ -163,6 +176,7 @@ func Test_repository_FindShippable(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				insertShippableUser(ctx, t, drv, buyer)
 				// 同時刻の 2 件。SQL のタイブレークが崩れると limit 境界で拾う 1 件が入れ替わる。
 				insertShippablePurchase(ctx, t, drv, older, buyer, statusPaidID, base,
@@ -183,6 +197,7 @@ func Test_repository_FindShippable(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				insertShippableUser(ctx, t, drv, buyer)
 				insertShippablePurchase(ctx, t, drv, shipped, buyer, statusShippedID, base,
 					"eeeeeeee-3333-4000-8000-000000000031")
@@ -225,6 +240,7 @@ func Test_repository_FindShippable(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				insertShippableUser(ctx, t, drv, buyer)
 				// 支払い済み status は paidAt を必須とする。paid_at を欠く行は Reconstruct の
 				// 不変条件に違反する破損行で、再構築の失敗が ErrInternal へ写像される。

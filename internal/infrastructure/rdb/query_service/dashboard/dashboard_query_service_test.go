@@ -57,6 +57,17 @@ func newService(t *testing.T, db driver.DatabaseDriver) *service {
 	}
 }
 
+// clearSeededPurchases は、呼び出したトランザクション内で購入と購入明細を空にします。
+// 売上集計は購入テーブル全体を期間で切って集計するため、seed が投入する購入履歴が期間に入ると
+// 金額と件数の期待値が崩れます。削除はロールバックされるので、コミット済みの seed は失われません。
+func clearSeededPurchases(ctx context.Context, t *testing.T, db driver.DBTX) {
+	t.Helper()
+	_, err := db.Exec(ctx, "DELETE FROM purchase_details")
+	require.NoError(t, err)
+	_, err = db.Exec(ctx, "DELETE FROM purchases")
+	require.NoError(t, err)
+}
+
 // insertPurchase は、集計対象となる購入を注文日時・合計金額・ステータス・キャンセル日時（nil 可）指定で挿入します。
 func insertPurchase(
 	ctx context.Context, t *testing.T, db driver.DBTX,
@@ -119,6 +130,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				insertPurchase(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-000000000001"),
 					fixedNow, 1500, seedUnprocessedSID, nil)
 				insertPurchase(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-000000000002"),
@@ -137,6 +149,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				canceledAt := fixedNow
 				insertPurchase(ctx, t, drv, mustParse(t, "b2000000-0000-4000-8000-000000000001"),
 					fixedNow, 1000, seedUnprocessedSID, nil)
@@ -156,6 +169,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				startOfToday := startOfDay(fixedNow.In(testLoc), testLoc)
 				insertPurchase(ctx, t, drv, mustParse(t, "b3000000-0000-4000-8000-000000000001"),
 					startOfToday, 100, seedUnprocessedSID, nil)
@@ -177,6 +191,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				from := time.Date(2026, time.June, 1, 0, 0, 0, 0, testLoc)
 				to := time.Date(2026, time.June, 3, 0, 0, 0, 0, testLoc)
 				insertPurchase(ctx, t, drv, mustParse(t, "b4000000-0000-4000-8000-000000000001"),
@@ -198,6 +213,8 @@ func Test_service_SummarizeSales(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
+
 				got, err := svc.SummarizeSales(ctx, todayPeriod())
 				require.NoError(t, err)
 
@@ -235,6 +252,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				// 表示順は 未処理(1) < 完了(5) のため、挿入順と逆になる。
 				insertPurchase(ctx, t, drv, mustParse(t, "c1000000-0000-4000-8000-000000000001"),
 					fixedNow, 100, seedCompletedSID, nil)
@@ -261,6 +279,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				canceledAt := fixedNow
 				insertPurchase(ctx, t, drv, mustParse(t, "c2000000-0000-4000-8000-000000000001"),
 					fixedNow, 100, seedCanceledSID, &canceledAt)
@@ -280,6 +299,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				insertPurchase(ctx, t, drv, mustParse(t, "c3000000-0000-4000-8000-000000000001"),
 					fixedNow.AddDate(0, 0, -1), 100, seedUnprocessedSID, nil)
 
@@ -294,6 +314,8 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
+
 				got, err := svc.CountPurchasesByStatus(ctx, todayPeriod())
 				require.NoError(t, err)
 
