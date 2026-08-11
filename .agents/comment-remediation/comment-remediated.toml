@@ -42,6 +42,7 @@
 ".github/workflows/image-scan.yaml" = "2026-08-09"
 ".github/workflows/licensed-scanners-removal-check.yaml" = "2026-08-09"
 ".github/workflows/sonarqube.yaml" = "2026-08-10"
+".github/workflows/trustabl.yaml" = "2026-08-11"
 ".makefiles/github/operation/setup-repository.mk" = "2026-08-09"
 ".makefiles/security/trivy.mk" = "2026-08-09"
 "mise.toml" = "2026-08-09"

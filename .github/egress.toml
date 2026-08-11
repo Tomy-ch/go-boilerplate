@@ -373,6 +373,11 @@ extra = [
   "pkg-containers.githubusercontent.com:443",
 ]
 
+# base のみ。エンジンバイナリは GitHub Releases から、ルールパックは
+# github.com への shallow clone で取るため、どちらも base のホストで足りる。
+[job."trustabl.yaml:trustabl"]
+classes = []
+
 [job."vulnerability-check.yaml:govulncheck"]
 classes = ["mise"]
 extra = [
