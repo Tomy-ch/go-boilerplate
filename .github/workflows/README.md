@@ -167,16 +167,7 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 | trustabl (agent config) | — | — | weekly |
 
-Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once:
-
-| | :00 | :15 | :30 | :45 |
-| --- | --- | --- | --- | --- |
-| **00** | Trivy FS | govulncheck | TruffleHog | OSV-Scanner |
-| **01** | Scorecard | CodeQL | Image Scan | gitleaks (full-history) |
-| **02** | zizmor (online audits) | Go cooldown | Opengrep | fuzz |
-| **03** | ZAP (DAST) | Grype | DevSkim | ESLint |
-| **04** | Bearer | Checkov | trustabl | tool cooldown |
-| **05** | SonarQube Cloud | | | |
+Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:00` SonarQube Cloud.
 
 The step is 15 minutes rather than an hour because the set has grown to 21: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
 

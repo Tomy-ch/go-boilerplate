@@ -167,16 +167,7 @@
 | OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
 | trustabl（エージェント設定） | — | — | 週次 |
 
-週次実行は月曜未明（UTC）に **15 分刻み**で 1 スロット 1 本ずつずらしています。同一時刻に全スキャナが並ぶのを避けるためです。
-
-| | :00 | :15 | :30 | :45 |
-| --- | --- | --- | --- | --- |
-| **00** | Trivy FS | govulncheck | TruffleHog | OSV-Scanner |
-| **01** | Scorecard | CodeQL | Image Scan | gitleaks（全履歴） |
-| **02** | zizmor（オンライン監査） | Go cooldown | Opengrep | fuzz |
-| **03** | ZAP（DAST） | Grype | DevSkim | ESLint |
-| **04** | Bearer | Checkov | trustabl | tool cooldown |
-| **05** | SonarQube Cloud | | | |
+週次実行は月曜未明（UTC）に **15 分刻み**で 1 スロット 1 本ずつずらしています。同一時刻に全スキャナが並ぶのを避けるためです。スロットの割り当ては `00:00` Trivy FS、`00:15` govulncheck、`00:30` TruffleHog、`00:45` OSV-Scanner、`01:00` Scorecard、`01:15` CodeQL、`01:30` Image Scan、`01:45` gitleaks（全履歴）、`02:00` zizmor（オンライン監査）、`02:15` Go cooldown、`02:30` Opengrep、`02:45` fuzz、`03:00` ZAP（DAST）、`03:15` Grype、`03:30` DevSkim、`03:45` ESLint、`04:00` Bearer、`04:15` Checkov、`04:30` trustabl、`04:45` tool cooldown、`05:00` SonarQube Cloud。
 
 刻みが 1 時間でなく 15 分なのは、対象が 21 本まで増えたためです。1 時間刻みだと最後の 1 本が翌日の夜まで始まらず、並べて読むべき検出どうしが 1 日離れてしまいます。定期実行のワークフローを追加するときは次の空きスロットを取ります。2 本が同じスロットを共有しているのは好みの問題ではなく欠陥です。順序には意図があるので、追加は末尾ではなく相応しい位置へ入れます。
 
