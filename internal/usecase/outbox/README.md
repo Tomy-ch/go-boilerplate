@@ -51,8 +51,9 @@ touches `dead`, and replay never touches `published`.
 - `EmitInput` fields: `AggregateType`, `AggregateID` (observation only),
   `EventType` (type + version), `Payload` (caller-marshaled event body JSON),
   and `Headers` (propagated to the external endpoint). Do **not** put sensitive
-  headers (`Authorization` / `Cookie`) in `Headers` — they are sent verbatim
-  to the external endpoint.
+  headers in `Headers` — unnamed secrets are sent verbatim, and named ones
+  (`Authorization` / `Cookie` / `Proxy-Authorization` / `Set-Cookie`) are stripped
+  as a defense-in-depth backstop, not a substitute for keeping them out.
 - **Where to build `Payload` — keep it out of the usecase body.** The caller owns
   the marshaling, but the versioned event contract (its struct, JSON field names,
   and `EventType` constant) must live in a **dedicated event unit** (its own package

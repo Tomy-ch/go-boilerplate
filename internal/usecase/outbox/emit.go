@@ -26,7 +26,8 @@ type EmitInput struct {
 	// Payload は呼び出し側が snapshot + version で marshal 済みのイベント本文 JSON です。
 	Payload []byte
 	// Headers は publish 時に外部エンドポイントへ伝搬するヘッダ（traceparent 等）です。nil 可。
-	// ここに入れた値はそのまま外部へ送出されるため、Authorization / Cookie 等の機微ヘッダを含めてはならない。
+	// 既知の機微ヘッダ名（Authorization / Cookie 等）は送出前に落としますが、それは defense-in-depth で
+	// あって主契約ではありません。機微情報は入れないこと。
 	Headers map[string]string
 }
 
