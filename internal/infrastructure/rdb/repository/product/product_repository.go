@@ -48,8 +48,6 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	db := gen.New(driver.New(ctx, r.db))
 	hasAfter := params.AfterPublishedAt != nil && params.AfterID != nil
 
-	// keyset は並び順ごとに「先頭ページ用」「カーソル以降用」の 2 本の固定クエリへ分ける。
-	// 1 本へ畳んでオプショナル述語にすると、実行計画が入力に依存する単一のステートメントになる。
 	toRow := func(p gen.Products, statusName, categoryName string) productRow {
 		return productRow{p: p, statusName: statusName, categoryName: categoryName}
 	}
@@ -350,7 +348,6 @@ func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []strin
 }
 
 // rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）をドメインエンティティへ変換します。
-// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToProduct(row productRow) (*product.Product, error) {
 	price, err := money.NewPrice(row.p.Price)
 	if err != nil {

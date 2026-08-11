@@ -141,7 +141,6 @@ func buildLikeTokens(keywords []string) []string {
 }
 
 // rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
-// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToUser(u gen.Users) (*user.User, error) {
 	entity, err := user.New(u.ID, user.Attributes{
 		Profile: user.Profile{
@@ -311,8 +310,6 @@ func (r *repository) FindDeletedBefore(ctx context.Context, cutoff time.Time, af
 
 	db := gen.New(driver.New(ctx, r.db))
 
-	// keyset は「先頭ページ用」「カーソル以降用」の 2 本の固定クエリへ分ける。1 本へ畳んで
-	// オプショナル述語にすると、実行計画が入力に依存する単一のステートメントになる。
 	var (
 		ids []uuid.UUID
 		err error

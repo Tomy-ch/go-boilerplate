@@ -50,8 +50,6 @@ func NewQueryRecorder(reg prometheus.Registerer) driver.QueryRecorder {
 }
 
 // Observe は、1 クエリの duration を記録し、エラー時のみ error counter を増分します。
-// QueryAttrs には SQL 本文・bind 値・テーブル名などの高カーディナリティ／秘匿情報が含まれないため、
-// ラベルへ秘匿情報が漏れることはありません。
 func (m *queryMetrics) Observe(_ context.Context, attrs driver.QueryAttrs) {
 	m.duration.
 		WithLabelValues(attrs.QueryName, attrs.Operation, attrs.Status).

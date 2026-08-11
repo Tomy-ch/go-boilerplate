@@ -69,7 +69,7 @@ func (s *service) ListRanking(ctx context.Context, params query.RankingQueryPara
 }
 
 // resolvePeriod は、集計期間区分を SQL パラメータ（期間フィルタ有無と境界時刻）へ変換します。
-// period=30d のときのみ now を基準に直近30日の境界を算出し、現在時刻への依存をインフラ層へ閉じ込めます。
+// period=30d のときのみ now を基準に直近30日の境界を算出します。
 func resolvePeriod(period query.Period, now time.Time) (bool, *time.Time) {
 	if period != query.Period30d {
 		return false, nil
