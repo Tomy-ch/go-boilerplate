@@ -113,8 +113,6 @@ func TestWithCore(t *testing.T) {
 		t.Run("logger以外のLogger実装はゲートできず受け取った値をそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
-			// *logger 以外（ここでは nil interface）は core を内包しないため、
-			// ゲートせず受け取った Logger をそのまま返す。
 			var other Logger
 			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
 			extra := zapcore.NewCore(enc, zapcore.AddSync(&bytes.Buffer{}), zapcore.DebugLevel)
