@@ -1640,3 +1640,6 @@
 ".github/workflows/worker-boot-check.yaml" = "2026-08-12"
 ".github/workflows/zap-api-scan.yaml" = "2026-08-12"
 ".github/workflows/zizmor.yaml" = "2026-08-12"
+"docs/spec/cart/domain.md" = "2026-08-12"
+"docs/spec/cart/usecase.md" = "2026-08-12"
+"scripts/setup/remove-sample-api/sample-manifest.ts" = "2026-08-12"
