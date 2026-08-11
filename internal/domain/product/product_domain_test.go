@@ -1,6 +1,7 @@
 package product
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -40,8 +41,14 @@ func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 	return ref
 }
 
+// mustImage は、テスト用に商品画像を構築します。
+func mustImage(t *testing.T, salt, path string, sortKey int) Image {
+	t.Helper()
+	return NewImage(uuidtestkit.NewTestFromSalt(t, salt), ImageAttributes{ImagePath: path, SortKey: sortKey})
+}
+
 // validProductArgs は、テスト用に有効な商品 ID と属性一式を構築します。
-// Description と ImagePath は取り違えを検出できるよう異なる値にします。
+// Description と画像パスは取り違えを検出できるよう異なる値にします。
 func validProductArgs(t *testing.T) (uuid.UUID, Attributes) {
 	t.Helper()
 	publishedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
@@ -54,7 +61,10 @@ func validProductArgs(t *testing.T) (uuid.UUID, Attributes) {
 		Status:                mustStatusRef(t, "product_status_id", "在庫あり"),
 		Category:              mustCategoryRef(t, "product_category_id", "電子機器"),
 		PublishedAt:           ptr.To(publishedAt),
-		ImagePath:             ptr.To("products/earphone.png"),
+		Images: []Image{
+			mustImage(t, "product_image_id_1", "products/earphone.png", 1),
+			mustImage(t, "product_image_id_2", "products/earphone-sub.png", 2),
+		},
 	}
 }
 
@@ -71,7 +81,9 @@ func updatedProductAttributes(t *testing.T) Attributes {
 		Status:                mustStatusRef(t, "updated_product_status_id", "在庫切れ"),
 		Category:              mustCategoryRef(t, "updated_product_category_id", "オーディオ"),
 		PublishedAt:           ptr.To(publishedAt),
-		ImagePath:             ptr.To("products/earphone-pro.png"),
+		Images: []Image{
+			mustImage(t, "updated_product_image_id_1", "products/earphone-pro.png", 1),
+		},
 	}
 }
 
@@ -106,7 +118,7 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, attrs.Status, actual.Status())
 			assert.Equal(t, attrs.Category, actual.Category())
 			assert.Equal(t, attrs.PublishedAt, actual.PublishedAt())
-			assert.Equal(t, attrs.ImagePath, actual.ImagePath())
+			assert.Equal(t, attrs.Images, actual.Images())
 			assert.Equal(t, initialVersion, actual.Version())
 
 			mutatedDescription := actual.Description()
@@ -124,10 +136,9 @@ func TestNew(t *testing.T) {
 			require.NotNil(t, actual.PublishedAt())
 			assert.Equal(t, *attrs.PublishedAt, *actual.PublishedAt())
 
-			mutatedImagePath := actual.ImagePath()
-			*mutatedImagePath = "mutated"
-			require.NotNil(t, actual.ImagePath())
-			assert.Equal(t, *attrs.ImagePath, *actual.ImagePath())
+			mutatedImages := actual.Images()
+			mutatedImages[0] = mustImage(t, "mutated_image_id", "products/mutated.png", 9)
+			assert.Equal(t, attrs.Images, actual.Images())
 		})
 
 		t.Run("生成後に引数のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
@@ -140,12 +151,13 @@ func TestNew(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedDescription, expectedThreshold := *localAttrs.Description, *localAttrs.StockWarningThreshold
-			expectedPublishedAt, expectedImagePath := *localAttrs.PublishedAt, *localAttrs.ImagePath
+			expectedPublishedAt := *localAttrs.PublishedAt
+			expectedImages := slices.Clone(localAttrs.Images)
 
 			*localAttrs.Description = "書き換え後の説明"
 			*localAttrs.StockWarningThreshold = minThreshold
 			*localAttrs.PublishedAt = time.Time{}
-			*localAttrs.ImagePath = "mutated"
+			localAttrs.Images[0] = mustImage(t, "mutated_image_id", "products/mutated.png", 9)
 
 			require.NotNil(t, actual.Description())
 			assert.Equal(t, expectedDescription, *actual.Description())
@@ -153,25 +165,24 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, expectedThreshold, *actual.StockWarningThreshold())
 			require.NotNil(t, actual.PublishedAt())
 			assert.Equal(t, expectedPublishedAt, *actual.PublishedAt())
-			require.NotNil(t, actual.ImagePath())
-			assert.Equal(t, expectedImagePath, *actual.ImagePath())
+			assert.Equal(t, expectedImages, actual.Images())
 		})
 
-		t.Run("description・stockWarningThreshold・publishedAt・imagePathがnilでも生成される", func(t *testing.T) {
+		t.Run("description・stockWarningThreshold・publishedAtがnilで画像が空でも生成される", func(t *testing.T) {
 			t.Parallel()
 
 			cleared := attrs
 			cleared.Description = nil
 			cleared.StockWarningThreshold = nil
 			cleared.PublishedAt = nil
-			cleared.ImagePath = nil
+			cleared.Images = nil
 
 			actual, err := New(id, cleared)
 			require.NoError(t, err)
 			assert.Nil(t, actual.Description())
 			assert.Nil(t, actual.StockWarningThreshold())
 			assert.Nil(t, actual.PublishedAt())
-			assert.Nil(t, actual.ImagePath())
+			assert.Empty(t, actual.Images())
 		})
 
 		t.Run("priceとquantityが0でも生成される", func(t *testing.T) {
@@ -288,7 +299,7 @@ func TestReconstruct(t *testing.T) {
 			assert.Equal(t, attrs.Status, actual.Status())
 			assert.Equal(t, attrs.Category, actual.Category())
 			assert.Equal(t, attrs.PublishedAt, actual.PublishedAt())
-			assert.Equal(t, attrs.ImagePath, actual.ImagePath())
+			assert.Equal(t, attrs.Images, actual.Images())
 			assert.Equal(t, version, actual.Version())
 		})
 	})
@@ -526,11 +537,11 @@ func TestProduct_Update(t *testing.T) {
 			assert.Equal(t, attrs.Status, p.Status())
 			assert.Equal(t, attrs.Category, p.Category())
 			assert.Equal(t, attrs.PublishedAt, p.PublishedAt())
-			assert.Equal(t, attrs.ImagePath, p.ImagePath())
+			assert.Equal(t, attrs.Images, p.Images())
 			assert.Equal(t, initialVersion, p.Version())
 		})
 
-		t.Run("description・stockWarningThreshold・publishedAt・imagePathをnilで更新した場合、未設定になる", func(t *testing.T) {
+		t.Run("description・stockWarningThreshold・publishedAtをnil、画像を空で更新した場合、未設定になる", func(t *testing.T) {
 			t.Parallel()
 
 			p := newTestProduct(t)
@@ -538,13 +549,13 @@ func TestProduct_Update(t *testing.T) {
 			attrs.Description = nil
 			attrs.StockWarningThreshold = nil
 			attrs.PublishedAt = nil
-			attrs.ImagePath = nil
+			attrs.Images = nil
 
 			require.NoError(t, p.Update(attrs))
 			assert.Nil(t, p.Description())
 			assert.Nil(t, p.StockWarningThreshold())
 			assert.Nil(t, p.PublishedAt())
-			assert.Nil(t, p.ImagePath())
+			assert.Empty(t, p.Images())
 		})
 
 		t.Run("更新後に引数のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
@@ -556,12 +567,13 @@ func TestProduct_Update(t *testing.T) {
 			require.NoError(t, p.Update(attrs))
 
 			expectedDescription, expectedThreshold := *attrs.Description, *attrs.StockWarningThreshold
-			expectedPublishedAt, expectedImagePath := *attrs.PublishedAt, *attrs.ImagePath
+			expectedPublishedAt := *attrs.PublishedAt
+			expectedImages := slices.Clone(attrs.Images)
 
 			*attrs.Description = "書き換え後の説明"
 			*attrs.StockWarningThreshold = minThreshold
 			*attrs.PublishedAt = time.Time{}
-			*attrs.ImagePath = "mutated"
+			attrs.Images[0] = mustImage(t, "mutated_image_id", "products/mutated.png", 9)
 
 			require.NotNil(t, p.Description())
 			assert.Equal(t, expectedDescription, *p.Description())
@@ -569,8 +581,7 @@ func TestProduct_Update(t *testing.T) {
 			assert.Equal(t, expectedThreshold, *p.StockWarningThreshold())
 			require.NotNil(t, p.PublishedAt())
 			assert.Equal(t, expectedPublishedAt, *p.PublishedAt())
-			require.NotNil(t, p.ImagePath())
-			assert.Equal(t, expectedImagePath, *p.ImagePath())
+			assert.Equal(t, expectedImages, p.Images())
 		})
 	})
 
@@ -849,47 +860,67 @@ func TestProduct_ID(t *testing.T) {
 	})
 }
 
-func TestProduct_ImagePath(t *testing.T) {
+func TestProduct_Images(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("生成時の画像パスを返す", func(t *testing.T) {
+		t.Run("生成時の画像を表示順の昇順で返す", func(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
 			p, err := New(id, attrs)
 			require.NoError(t, err)
 
-			require.NotNil(t, p.ImagePath())
-			assert.Equal(t, "products/earphone.png", *p.ImagePath())
+			images := p.Images()
+			require.Len(t, images, 2)
+			assert.Equal(t, "products/earphone.png", images[0].ImagePath())
+			assert.Equal(t, 1, images[0].SortKey())
+			assert.Equal(t, "products/earphone-sub.png", images[1].ImagePath())
+			assert.Equal(t, 2, images[1].SortKey())
 		})
 
-		t.Run("未設定の場合、nilを返す", func(t *testing.T) {
+		t.Run("表示順が降順で渡された場合でも昇順に並べ替えて返す", func(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			attrs.ImagePath = nil
+			attrs.Images = []Image{
+				mustImage(t, "product_image_id_2", "products/earphone-sub.png", 2),
+				mustImage(t, "product_image_id_1", "products/earphone.png", 1),
+			}
 			p, err := New(id, attrs)
 			require.NoError(t, err)
 
-			assert.Nil(t, p.ImagePath())
+			images := p.Images()
+			require.Len(t, images, 2)
+			assert.Equal(t, 1, images[0].SortKey())
+			assert.Equal(t, 2, images[1].SortKey())
 		})
 
-		t.Run("返り値のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
+		t.Run("未設定の場合、空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.Images = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			assert.Empty(t, p.Images())
+		})
+
+		t.Run("返り値のスライスを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
 			p, err := New(id, attrs)
 			require.NoError(t, err)
 
-			got := p.ImagePath()
-			*got = "products/mutated.png"
+			got := p.Images()
+			got[0] = mustImage(t, "mutated_image_id", "products/mutated.png", 9)
 
-			require.NotNil(t, p.ImagePath())
-			assert.NotEqual(t, *got, *p.ImagePath())
-			assert.Equal(t, "products/earphone.png", *p.ImagePath())
+			require.Len(t, p.Images(), 2)
+			assert.Equal(t, "products/earphone.png", p.Images()[0].ImagePath())
 		})
 	})
 }

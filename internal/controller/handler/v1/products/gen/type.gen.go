@@ -94,6 +94,25 @@ type ProductCategoryRef struct {
 	Name string `json:"name"`
 }
 
+// ProductImageInput 商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+type ProductImageInput struct {
+	// ImagePath 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
+	ImagePath string `json:"imagePath"`
+
+	// SortKey 同一商品内での表示順。1 から数えます。同じ商品の中で重複する値を送ると業務不変条件違反として 422 を返します。 欠番は許容し、送られた値をそのまま保持します。
+	SortKey int32 `json:"sortKey"`
+}
+
+// ProductImageItem 商品画像 1 件。表示 URL はフロントが配信ベース URL と imagePath から組み立てます
+// （backend はフル URL を保持しません）。
+type ProductImageItem struct {
+	// ImagePath 格納されたオブジェクトのパス（オブジェクトキー）。
+	ImagePath string `json:"imagePath"`
+
+	// SortKey 同一商品内での表示順。images は sortKey の昇順で返します。
+	SortKey int32 `json:"sortKey"`
+}
+
 // ProductImagePostRequest 商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
 // 対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
 type ProductImagePostRequest struct {
@@ -129,8 +148,8 @@ type ProductResponse struct {
 	// Id 商品ID
 	Id openapi_types.UUID `json:"id"`
 
-	// ImagePath 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
-	ImagePath *string `json:"imagePath"`
+	// Images 商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
+	Images []ProductImageItem `json:"images"`
 
 	// Name 商品名
 	Name string `json:"name"`
@@ -165,7 +184,7 @@ type ProductStatusRef struct {
 
 // ProductsPostRequest 商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
 // price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
-// imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。表示 URL はフロントが組み立てます。
+// images には画像アップロード（POST /v1/products/images）で得たパスと表示順を渡します。表示 URL はフロントが組み立てます。
 type ProductsPostRequest struct {
 	// CategoryId 商品カテゴリ ID
 	CategoryId openapi_types.UUID `json:"categoryId"`
@@ -173,8 +192,8 @@ type ProductsPostRequest struct {
 	// Description 商品説明（リッチテキスト HTML を許容）。未設定の場合は null です。
 	Description *string `json:"description,omitempty"`
 
-	// ImagePath 画像パス。未設定の場合は null です。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
-	ImagePath *string `json:"imagePath,omitempty"`
+	// Images 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。
+	Images *[]ProductImageInput `json:"images,omitempty"`
 
 	// Name 商品名
 	Name string `json:"name"`

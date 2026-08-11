@@ -61,18 +61,27 @@ type Repository interface {
 	// 不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得ます
 	// （不存在の検証は呼び出し側の責務です）。
 	LockByIDs(ctx context.Context, ids []uuid.UUID) (Products, error)
-	// Create は、商品を新規登録します。
+	// Create は、商品を新規登録します。p が保持する画像も併せて登録します。
 	Create(ctx context.Context, p *Product) error
 	// Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
+	// 画像は対象に含みません（置換は ReplaceImages が担います）。
 	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。
 	Update(ctx context.Context, p *Product) (int, error)
+	// ReplaceImages は、商品が現在参照している画像を p が保持する画像で置き換えます。
+	// 置き換え前の画像は論理削除として残り、現在の参照からは外れます。
+	//
+	// Update が成功した後、同じトランザクションの中で呼び出す必要があります。Update の条件付き更新が
+	// 商品行のロックを取ることで同一商品への置換が直列化され、バージョンが一致しない場合は画像に触れる前に
+	// 中断できます。順序を入れ替えると、後から弾かれる更新の画像だけが先に入れ替わります。
+	ReplaceImages(ctx context.Context, p *Product) error
 	// UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。
 	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。
 	UpdateStock(ctx context.Context, p *Product) (int, error)
 	// Count は、登録商品の総数と、そのうち公開済みの件数を返します。商品が 1 件もない場合はゼロ値を返します。
 	Count(ctx context.Context) (Counts, error)
-	// FilterExistingImagePaths は、paths のうち、いずれかの商品が画像パスとして参照しているものを返します。
+	// FilterExistingImagePaths は、paths のうち、いずれかの商品が現在の画像として参照しているものを返します。
 	// 重複は取り除き、順序は保証しません。paths が空の場合は空を返します。
 	// 返らなかったパスは、どの商品からも参照されていないことを意味します。
+	// 置き換えで論理削除された画像は現在の参照ではないため、参照元として数えません。
 	FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error)
 }

@@ -15,6 +15,12 @@ var (
 	ErrInvalidQuantity = xerrors.Wrap(errInvalid, "quantity failed")
 	// ErrInvalidStockWarningThreshold は、在庫警告閾値の検証に失敗した場合のエラーです。
 	ErrInvalidStockWarningThreshold = xerrors.Wrap(errInvalid, "stockWarningThreshold failed")
+	// ErrInvalidImagePath は、商品画像の画像パスの検証に失敗した場合のエラーです。
+	ErrInvalidImagePath = xerrors.Wrap(errInvalid, "imagePath failed")
+	// ErrInvalidImageSortKey は、商品画像の表示順の検証に失敗した場合のエラーです。
+	ErrInvalidImageSortKey = xerrors.Wrap(errInvalid, "imageSortKey failed")
+	// ErrDuplicateImageSortKey は、同一商品内で商品画像の表示順が重複している場合のエラーです。
+	ErrDuplicateImageSortKey = xerrors.Wrap(errInvalid, "duplicate imageSortKey")
 	// ErrInvalidStatusID は、商品ステータス ID の検証に失敗した場合のエラーです。
 	ErrInvalidStatusID = xerrors.Wrap(errInvalid, "statusID failed")
 	// ErrInvalidStatusName は、商品ステータス名の検証に失敗した場合のエラーです。

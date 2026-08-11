@@ -5,6 +5,7 @@ package product
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"go-boilerplate/internal/domain/lexicon/money"
@@ -19,7 +20,7 @@ type Products []*Product
 
 // Product は、商品を表すドメインエンティティです。price はサブセント精度を保持する money.Price で保持します。
 // status / category はそれぞれ ID と名称を持つ参照で、呼び出し側での名称の別解決は不要です。
-// publishedAt は未公開の場合 nil、imagePath は画像未設定の場合 nil です。
+// publishedAt は未公開の場合 nil、images は画像未設定の場合は空で、表示順の昇順で保持します。
 // version は並行更新による上書き（lost update）を防ぐ楽観ロックのバージョンです。
 type Product struct {
 	id                    uuid.UUID
@@ -31,7 +32,7 @@ type Product struct {
 	status                StatusRef
 	category              CategoryRef
 	publishedAt           *time.Time
-	imagePath             *string
+	images                []Image
 	version               int
 }
 
@@ -46,12 +47,12 @@ type Attributes struct {
 	Status                StatusRef
 	Category              CategoryRef
 	PublishedAt           *time.Time
-	ImagePath             *string
+	Images                []Image
 }
 
 // New は、商品エンティティの検証と生成を行います。Price は非負の money.Price（非負検証は Price VO が担保）、
 // Quantity と StockWarningThreshold（指定時）は、いずれも在庫が保持できる範囲に収まる必要があります。
-// PublishedAt は nil（未公開）を許容し、ImagePath は無検証で保持します。
+// PublishedAt は nil（未公開）を許容し、Images は空（画像未設定）を許容します。
 // id が nil、Name が長さ制約外、Status / Category がゼロ値の場合はそれぞれ検証エラーを返します。
 // 生成直後のバージョンは initialVersion です。
 func New(id uuid.UUID, attrs Attributes) (*Product, error) {
@@ -90,7 +91,7 @@ func newProduct(id uuid.UUID, attrs Attributes, version int) (*Product, error) {
 		status:                attrs.Status,
 		category:              attrs.Category,
 		publishedAt:           ptr.Copy(attrs.PublishedAt),
-		imagePath:             ptr.Copy(attrs.ImagePath),
+		images:                sortImagesBySortKey(attrs.Images),
 		version:               version,
 	}, nil
 }
@@ -112,7 +113,7 @@ func validateAttributes(attrs Attributes) error {
 	if attrs.Category.id.IsNil() {
 		return xerrors.Wrap(ErrInvalidCategoryID, "category is required")
 	}
-	return nil
+	return validateImages(attrs.Images)
 }
 
 // Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
@@ -131,7 +132,7 @@ func (p *Product) Update(attrs Attributes) error {
 	p.status = attrs.Status
 	p.category = attrs.Category
 	p.publishedAt = ptr.Copy(attrs.PublishedAt)
-	p.imagePath = ptr.Copy(attrs.ImagePath)
+	p.images = sortImagesBySortKey(attrs.Images)
 
 	return nil
 }
@@ -217,8 +218,8 @@ func (p *Product) Category() CategoryRef { return p.category }
 // PublishedAt は、公開日時を返します。未公開の場合は nil です。
 func (p *Product) PublishedAt() *time.Time { return ptr.Copy(p.publishedAt) }
 
-// ImagePath は、画像パスを返します。未設定の場合は nil です。
-func (p *Product) ImagePath() *string { return ptr.Copy(p.imagePath) }
+// Images は、商品画像を表示順の昇順で返します。画像未設定の場合は空です。
+func (p *Product) Images() []Image { return slices.Clone(p.images) }
 
 // Version は、楽観ロックのバージョンを返します。
 func (p *Product) Version() int { return p.version }
