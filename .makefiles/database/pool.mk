@@ -6,17 +6,9 @@
 .PHONY: require-db-owner ## 自分が所有するデータベースがあることを検証する（DB を触るターゲットの前提）
 
 # ---- 不変条件: データベース : worktree = 1 : 0..1 --------------------------------
-# 1 つのデータベースを 2 箇所から触らせない。worktree 側はスロットを取っても取らなくてもよいが、
-# 取らなかったときの所有データベースは「既定の local / test」ではなく「無し」である。
-#
-#   主 checkout               local / test / gen_schema
-#   スロット取得済み worktree    wt<N>_local / wt<N>_test / gen_schema_wt<N>
-#   スロット未取得の worktree    無し（DB を触るターゲットは require-db-owner で失敗する）
-#
-# 未取得の worktree を既定値へフォールバックさせると、主 checkout のデータベースを 2 箇所から
-# 触ることになる。しかもフォールバックは黙って成功するため、別ブランチの migration が混ざった
-# データベースでテストが緑になる・生成物が壊れる、という気づけない壊れ方をする。所有者が居ない
-# なら既定値へ落とさず止める。
+# 所有表と、未取得の worktree を既定値へフォールバックさせない理由は
+# docs/maintenance/db-worktree-pool.md「The invariant」参照。所有者が居なければ
+# 既定値へ落とさず require-db-owner で止める。
 # ------------------------------------------------------------------------------
 
 # スロット定義（db-slot が書き出す KEY=VALUE）。取得時だけ生成され、DB 名・ホスト公開ポート・
@@ -62,11 +54,9 @@ slot-acquire:
 slot-free:
 	@go run ./cmd/ db-slot release
 
-# 撤収は docker → slot → git の順で行う。slot-free は .gobp-db-slot を消し、そこで
-# SERVE_PROJECT が失われて APP_PROJECT が gobp-app-<dir> へフォールバックするため、
-# app の停止・イメージ削除より先に解放すると別プロジェクトを対象にしてしまう。
-# git worktree remove は cwd ごと消すので必ず最後に置く（後続レシピは cwd 消失で失敗する）。
-# 未コミット・未追跡ファイルがあれば git 自身が拒否するため --force は付けない。
+# 撤収は docker → slot → git の順。入れ替えられない理由は
+# docs/maintenance/db-worktree-pool.md「The order cannot be rearranged」参照。
+# --force は付けない（未コミット・未追跡があれば git 自身に拒否させる）。
 slot-release:
 	@test "$$(git rev-parse --git-dir)" != "$$(git rev-parse --git-common-dir)" \
 		|| { echo "❌ 主 checkout では実行できません（撤収対象の worktree で実行してください）"; exit 1; }

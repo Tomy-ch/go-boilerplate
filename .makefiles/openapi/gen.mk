@@ -40,12 +40,9 @@ lint-oapi-ci:
 stamp-openapi-version-ci:
 	$(TSX) scripts/stamp-openapi-version $(REF)
 
-# OWASP API Security ルールセットによる検証。redocly lint（規約・命名・メタデータ）とは担当が
-# 異なり、指摘は重複しない。
-#
-# spec だけを見る検査のためにツールランナーのイメージを起こさない。コンテナを介さず直接実行する
-# スキャナ（zizmor / osv-scanner / trufflehog）と同じ方式に寄せている。
-#
-# 事前に `pnpm install --dir scripts --frozen-lockfile` が必要。
+# OWASP API Security ルールセット（Spectral）による検証。redocly lint との棲み分けは
+# .github/workflows/README.md の Overlapping surfaces 表。コンテナを介さず直接実行する理由と
+# 事前準備（pnpm install --dir scripts --frozen-lockfile）は
+# .makefiles/README.md の lint-oapi-security-ci 行。
 lint-oapi-security-ci:
 	$(PNPM_SCRIPTS) lint:openapi-security

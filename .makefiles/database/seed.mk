@@ -9,9 +9,9 @@
 .PHONY: db-test-seed ## TestDBに対してシードデータを投入
 
 # -----Dockerコンテナ内で実行するコマンド群-----
-# seed の ${AUTH_ISSUER} は投入先で発行されるトークンの iss と一致していなければならない。ツールランナーは
-# env/.env（2010 固定）を読むため、db-slot が導いた AUTH_ISSUER を渡し、
-# スロットの有無に関わらず実機で認証済み経路を叩ける identity を投入する。
+# seed の ${AUTH_ISSUER} をトークンの iss と一致させる理由は
+# docs/maintenance/db-worktree-pool.md「persisted data that follows the shifted ports」参照。
+# ツールランナーは env/.env（2010 固定）を読むため、db-slot が導いた値を明示的に渡す。
 db-seed: require-db-owner
 	@echo "🌱 データベースにシードデータを投入します... (database=$(DB))"
 	@$(DB_SLOT_ENV); docker compose run --rm \

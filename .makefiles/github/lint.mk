@@ -41,8 +41,8 @@ required-check-lint:
 # -----CI内で実行するコマンド群-----
 actions-lint-ci: actions-actionlint-ci actions-shellcheck-ci actions-node-lint-ci
 
-# 桁でワークフローを読む検査は、ブロックスカラーが親より深いという YAML の規約に乗っている。
-# actionlint を先に通すことでその前提を担保するため、この順序は入れ替えない。
+# actionlint → shellcheck → node の順序は入れ替えない
+# （理由は .makefiles/README.md の actions-lint-ci 行）。
 actions-node-lint-ci: actions-comment-secret-lint-ci actions-comment-fence-lint-ci actions-cutoff-lint-ci
 
 actions-actionlint-ci:
