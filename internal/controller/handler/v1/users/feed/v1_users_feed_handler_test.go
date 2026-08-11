@@ -54,7 +54,6 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	// /v1/users/feed (GET) が登録される。
 	routes := e.Router().Routes()
 
 	require.Len(t, routes, 1)

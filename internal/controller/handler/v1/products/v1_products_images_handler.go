@@ -16,7 +16,7 @@ import (
 const formFieldImage = "image"
 
 // PostProductsImages は、admin が商品画像をアップロードし、格納先パスを返します。認証必須です。
-// Content-Type は実バイトから判定（sniff）してユースケースへ渡し、形式・サイズ検証はユースケースが行います。
+// Content-Type は実バイトから判定（sniff）してユースケースへ渡します。
 func (s *server) PostProductsImages(ctx context.Context, request gen.PostProductsImagesRequestObject) (gen.PostProductsImagesResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
