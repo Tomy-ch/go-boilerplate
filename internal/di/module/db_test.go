@@ -56,8 +56,7 @@ func TestDatabaseModule_Composes(t *testing.T) {
 func TestDatabaseModule(t *testing.T) {
 	t.Parallel()
 
-	// DatabaseModule は config / logging / pgx tracer を外から受け取るため、
-	// 依存だけを供給した最小構成に対象モジュールを重ねて検証する。
+	// DatabaseModule は config / logging / pgx tracer を外から受け取る。
 	dbDeps := func(t *testing.T) []fx.Option {
 		t.Helper()
 

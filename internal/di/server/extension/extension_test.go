@@ -47,7 +47,6 @@ func TestApplyPreMiddlewares(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			// Priority を逆順で渡し、昇順ソートされて A → B の順で適用されることを確認する。
 			mws := []PreMiddleware{
 				{Name: "B", Priority: 2, Middleware: orderTagMiddleware("B")},
 				{Name: "A", Priority: 1, Middleware: orderTagMiddleware("A")},
@@ -238,14 +237,12 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	// ensure calling with nil/empty slices does not panic
 	err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), nil)
 	require.NoError(t, err)
 	err = ApplyUseMiddlewares(e, logging.NewTestLogger(t), nil)
 	require.NoError(t, err)
 	ApplyConfigurators(e, logging.NewTestLogger(t), nil)
 
-	// still able to register and serve a route
 	e.GET("/ok", func(c *echo.Context) error { return c.String(http.StatusOK, "ok") })
 	ctx := context.Background()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ok", nil)
