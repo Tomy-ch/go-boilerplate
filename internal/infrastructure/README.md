@@ -127,6 +127,7 @@ flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
     Authz["authz/"]
+    AwsClient["awsclient/"]
     HTTP["httpclient/"]
     ObjStorage["objectstorage/"]
     Pub["publisher/"]
@@ -137,6 +138,7 @@ flowchart TB
 
     Root --> Auth
     Root --> Authz
+    Root --> AwsClient
     Root --> HTTP
     Root --> ObjStorage
     Root --> Pub
@@ -152,13 +154,14 @@ flowchart TB
 |---|---|---|---|
 |`auth/`|Authentication infrastructure (environment-specific Authenticator impl)|Usecase boundary|[README](auth/README.md)|
 |`authz/`|Authorization infrastructure (Authorizer impl; default `allowall` for non-production)|Usecase boundary|[README](authz/README.md)|
-|`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|—|
+|`awsclient/`|AWS credential resolution shared by `objectstorage/s3` and `queue/sqs`|— (substrate, no domain/usecase IF)|[README](awsclient/README.md)|
+|`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|[README](httpclient/README.md)|
 |`objectstorage/`|Object storage adapter (impl of `boundary.Storage`; endpoint / credential swap connects to Garage / MinIO / production S3)|Usecase boundary|[README](objectstorage/README.md)|
-|`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|—|
+|`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|[README](publisher/README.md)|
 |`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
 |`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
-|`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|—|
+|`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|[README](webapi/README.md)|
 
 ## Test Strategy
 
