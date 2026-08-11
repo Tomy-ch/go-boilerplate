@@ -20,12 +20,8 @@ var errDeclRe = regexp.MustCompile(`^\tErr(\w+)\s*=\s*xerrors\.New\(`)
 
 // TestAppErrorsCompleteness は、apperror パッケージで宣言された全 Err* センチネルが、
 // worker 分類センチネル（appErrors から意図的に除外）を除いて漏れなく appErrors に列挙されて
-// いることを機械検証する完全性テストです。
-//
-// HTTP taxonomy センチネルは apperror.go の var ブロックと appErrors スライスの 2 箇所へ二重列挙
-// されており、片方への追加漏れは IsAppError が false を返し HTTP ステータスの誤分類（413/415 が
-// 500 化）を招く。この silent な同期漏れを loud な失敗へ変えるため、ソースを走査して宣言総数を数え、
-// `len(appErrors) == 宣言総数 - worker センチネル数` を件数で検証する。
+// いることを機械検証します。HTTP taxonomy センチネルは var ブロックと appErrors スライスの
+// 2 箇所へ二重列挙されており、片方への追加漏れを検出する手段が他にないためです。
 func TestAppErrorsCompleteness(t *testing.T) {
 	t.Parallel()
 

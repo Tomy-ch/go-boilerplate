@@ -846,7 +846,6 @@ func TestUser_Building(t *testing.T) {
 
 				original := *building
 
-				// buildingの値を変更
 				*building = "Building B"
 
 				assert.NotEqual(t, *building, *user.Building())
@@ -858,7 +857,6 @@ func TestUser_Building(t *testing.T) {
 
 				original := *user.Building()
 
-				// Buildingメソッドの返り値のポインタを変更
 				actualBuilding := user.Building()
 				*actualBuilding = "Building B"
 
@@ -947,7 +945,6 @@ func TestUser_DeletedAt(t *testing.T) {
 
 				original := *deletedAt
 
-				// deletedAtの値を変更
 				*deletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 				assert.NotEqual(t, *deletedAt, *user.DeletedAt())
@@ -959,7 +956,6 @@ func TestUser_DeletedAt(t *testing.T) {
 
 				original := *user.DeletedAt()
 
-				// DeletedAtメソッドの返り値のポインタを変更
 				actualDeletedAt := user.DeletedAt()
 				*actualDeletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 

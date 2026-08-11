@@ -66,14 +66,19 @@ Example
 
 ```go
 // Translate database error to application error
-if xerrors.As(err, &sql.ErrNoRows) {
+if xerrors.Is(err, pgx.ErrNoRows) {
+    return xerrors.Join(apperror.ErrNotFound, err)
+}
+
+var pgErr *pgconn.PgError
+if xerrors.As(err, &pgErr) {
     switch pgErr.Code {
-        case "23505": // unique constraint violation
-            return xerrors.Wrap(apperror.ErrConflict, err.Error())
-    default:
-        return xerrors.Wrap(apperror.ErrInternal, err.Error())
+    case "23505": // unique constraint violation
+        return xerrors.Join(apperror.ErrConflict, err)
     }
 }
+
+return xerrors.Join(apperror.ErrInternal, err)
 ```
 
 This conversion is typically performed in:
