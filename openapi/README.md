@@ -132,6 +132,37 @@ Rules:
 - `x-go-type-import` always points at the `nullable` package — even when `T` needs another import (e.g. `time.Time`); oapi-codegen resolves `time` on its own, and declaring it here duplicates the import in the generated file.
 - Per "Do not pass OpenAPI generated types to Usecase": convert `nullable.Nullable[T]` to the framework-agnostic three-state value (`pkg/patch.Field[T]`) at the controller boundary. Inner layers never see the generated type; the domain receives only resolved concrete values.
 
+#### Collections as a three-state field
+
+`T` may be a slice. A collection that is replaced as a whole — rather than merged element by element —
+takes the same three states, with `null` meaning "remove every element":
+
+```yaml
+items:
+  type: array
+  nullable: true
+  description: 送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると全て取り除きます。
+  items:
+    $ref: './ItemInput.yaml'
+  x-go-type: nullable.Nullable[[]ItemInput]
+  x-go-type-import:
+    path: github.com/oapi-codegen/nullable
+  x-go-type-skip-optional-pointer: true
+```
+
+The element type is referenced by its generated name, so the `$ref` target must land in the same
+generated package as the field that uses it.
+
+Two things this shape is easy to get wrong:
+
+- **State the replacement semantics in `description`.** `[]` and `null` both end up removing
+  everything, so a caller cannot infer from the schema alone whether sending a shorter array deletes
+  the missing elements or leaves them. Say it.
+- **Do not act on an unspecified collection.** Resolving three states with `Resolve` alone cannot
+  separate "not sent" from "sent as null" — both yield no value. Branch on
+  `pkg/patch.Field.IsSpecified()` before touching the stored collection; otherwise every unrelated
+  PATCH rewrites rows the request never mentioned.
+
 ### Versioning
 
 URL path versioning: `/v1/users`

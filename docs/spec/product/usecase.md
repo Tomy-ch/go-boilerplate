@@ -87,12 +87,12 @@ methods:
       type: uuid.UUID
     - name: PublishedAt
       type: "*time.Time"     # 未公開は nil
-    - name: ImagePath
-      type: "*string"        # 画像未設定は nil
+    - name: Images
+      type: "[]ProductImageItemView"  # 表示順の昇順。画像未設定は空
     - name: Version
       type: int              # 楽観ロックのバージョン。部分更新の要求へそのまま渡す
 - name: CreateProductParams
-  description: 商品作成の入力。price は十進文字列で受け取り usecase で decimal へ解釈する（負値は 422）。publishedAt / imagePath は nil 許容。
+  description: 商品作成の入力。price は十進文字列で受け取り usecase で decimal へ解釈する（負値は 422）。publishedAt は nil 許容、images は空許容。
   fields:
     - name: Name
       type: string
@@ -110,8 +110,22 @@ methods:
       type: uuid.UUID
     - name: PublishedAt
       type: "*time.Time"
+    - name: Images
+      type: "[]ProductImageParams"    # 画像の ID は usecase が採番する
+- name: ProductImageParams
+  description: 商品画像 1 件分の入力。
+  fields:
     - name: ImagePath
-      type: "*string"
+      type: string                    # 画像アップロードで得たオブジェクトのパス
+    - name: SortKey
+      type: int                       # 同一商品内での表示順。重複は集約が 422 で拒否する
+- name: ProductImageItemView
+  description: 商品画像 1 件分の出力 DTO。
+  fields:
+    - name: Path
+      type: string
+    - name: SortKey
+      type: int
 - name: UpdateProductParams
   description: |
     商品部分更新の入力。nil のポインタは未指定（現在値を据え置く）を表す。
@@ -135,8 +149,8 @@ methods:
       type: "patch.Field[int]"        # null 明示でクリア
     - name: PublishedAt
       type: "patch.Field[time.Time]"  # null 明示でクリア（未公開へ戻す）
-    - name: ImagePath
-      type: "patch.Field[string]"     # null 明示でクリア
+    - name: Images
+      type: "patch.Field[[]ProductImageParams]"  # 指定で集合ごと置換、null 明示で全て取り除く
 - name: UpdateProductStockParams
   description: 在庫の増減の入力。
   fields:
@@ -220,7 +234,7 @@ steps:
       - status_repository.FindByID / category_repository.FindByID で名称を解決する（未存在は整合性異常として ErrInternal=500）
       - product.New で商品エンティティを構築する（負在庫・名称長超過は 422）
       - product_repository.Create で登録する（DB の FK 制約は多層防御の保険。正典の 500 は上のマスタ確認）
-  - 生成した Product を ProductView（ImagePath / PublishedAt を含む）へ写像して返す
+  - 生成した Product を ProductView（Images / PublishedAt を含む）へ写像して返す
 calls:
   - status_repository.FindByID
   - category_repository.FindByID
@@ -246,12 +260,14 @@ steps:
       - statusId / categoryId のいずれかが指定された場合、status / category の参照をペアで再解決する（未指定側も現在の ID でマスタと突合し参照整合を再確認する）。両方とも未指定の場合のみ現在値を据え置き、マスタ問い合わせを行わない
       - 未指定は現在値、null 明示は nil へ解決した確定値で product.Update を呼ぶ（不変条件違反は 422）
       - product_repository.Update で読み込み時点のバージョンを条件に更新し、採番後のバージョンを受け取る（0 行は 409）
+      - images が指定された場合のみ product_repository.ReplaceImages で画像を置き換える（未指定なら現在の画像を据え置く）
   - Product を ProductView へ写像し、Version を採番後の値で上書きして返す
 calls:
   - product_repository.FindByID
   - status_repository.FindByID
   - category_repository.FindByID
   - product_repository.Update
+  - product_repository.ReplaceImages
 errors:
   - authn が nil の場合は apperror.ErrUnauthenticated（401）
   - 認可拒否は authz 由来の apperror.ErrPermissionDenied（403）
@@ -266,6 +282,14 @@ errors:
 >
 > 409（バージョン不一致）は、`tx.Manager` が透過的にリトライする serialization_failure（ADR-0031 (commandservice-atomicity-criterion)）とは別物で、
 > 同じ内容の再送では解消しない。クライアントは最新を取得し直してからやり直す必要がある。
+>
+> `ReplaceImages` は `Update` の後に呼ぶ。`Update` の条件付き更新が商品行のロックを取ることで同一商品への置換が
+> 直列化され、バージョンが一致しない場合は画像に触れる前に中断できる。順序を入れ替えると、後から弾かれる更新の
+> 画像だけが先に入れ替わる。
+>
+> `images` が未指定の更新で置き換えを走らせないのは、価格だけの部分更新でも全画像が論理削除されて別の行として
+> 入り直し、実際には起きていない差し替えで履歴が埋まるため。画像だけを差し替えた場合も `lock_version` は進む
+> （画像は集約の一部であり、他の編集者が 409 で検出できる必要がある）。
 
 ### UpdateProductStock
 
@@ -336,6 +360,7 @@ steps:
       - 接頭辞が products/ で、かつ ModifiedAt が cutoff より前のキーだけを候補に絞る（検査件数へ計上）
       - 候補が 0 件ならそのページは照合も削除も行わない
       - product_repository.FilterExistingImagePaths で参照済みのパスを特定し、候補から除外する
+        （論理削除された画像は現在の参照ではないため、差し替えで外れた画像はここで孤児になる）
       - dryRun でなければ object_storage.Delete で残りを削除し、削除件数を加算（dryRun では対象件数のみ加算）
       - NextCursor が空なら終了。非空なら次ページへ
   - 累計の ImageGCResult を返す
