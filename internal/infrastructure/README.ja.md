@@ -125,6 +125,7 @@ flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
     Authz["authz/"]
+    AwsClient["awsclient/"]
     HTTP["httpclient/"]
     ObjStorage["objectstorage/"]
     Pub["publisher/"]
@@ -135,6 +136,7 @@ flowchart TB
 
     Root --> Auth
     Root --> Authz
+    Root --> AwsClient
     Root --> HTTP
     Root --> ObjStorage
     Root --> Pub
@@ -150,13 +152,14 @@ flowchart TB
 |---|---|---|---|
 |`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
 |`authz/`|認可基盤（Authorizer 実装。本番以外はデフォルトの `allowall`）|Usecase boundary|[README](authz/README.ja.md)|
-|`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|—|
+|`awsclient/`|`objectstorage/s3` と `queue/sqs` が共用する AWS 資格情報の解決|—（substrate、domain/usecase IF なし）|[README](awsclient/README.ja.md)|
+|`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|[README](httpclient/README.ja.md)|
 |`objectstorage/`|オブジェクトストレージ adapter（`boundary.Storage` 実装。endpoint / 資格情報の差し替えで Garage / MinIO / 本番 S3 に接続）|Usecase boundary|[README](objectstorage/README.md)|
-|`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|—|
+|`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|[README](publisher/README.ja.md)|
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
-|`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|—|
+|`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|[README](webapi/README.ja.md)|
 
 ## テスト戦略
 
