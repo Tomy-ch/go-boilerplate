@@ -22,8 +22,7 @@ func authModule() fx.Option {
 }
 
 // provideJWKSDownstreamProfile は、env に応じた SSRF ガード設定で JWKS/discovery 取得プロファイルを構築します。
-// env→bool の解決を DI で行い（infra は env を知らない）、疑似 provider（private hostname）へ到達する
-// local / CI / Test のみ private 網宛て接続を許可します。
+// private 網宛て接続の許可判定は allowPrivateNetworkForEnv に委ねます。
 func provideJWKSDownstreamProfile(appCfg *config.ApplicationConfig) httpclient.DownstreamProfile {
 	return jwt.NewDownstreamProfile(allowPrivateNetworkForEnv(appCfg.Env()))
 }
