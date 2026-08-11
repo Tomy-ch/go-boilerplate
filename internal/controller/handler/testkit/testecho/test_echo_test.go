@@ -37,7 +37,6 @@ func TestNewEchoTestClient(t *testing.T) {
 			client := NewEchoTestClient(t, e)
 
 			assert.Same(t, e, client.e)
-			// headers は Header()/AuthBearer() が直接 Set できるよう初期化済みであること。
 			require.NotNil(t, client.headers)
 			assert.Empty(t, client.headers)
 			assert.Empty(t, client.method)
@@ -487,7 +486,6 @@ func Test_newTestDetailPolicy(t *testing.T) {
 			policy := newTestDetailPolicy(t)
 
 			require.NotNil(t, policy)
-			// 常に拒否するスタブではなく、実 spec の opt-in 情報を持つポリシーであること。
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/users", nil)
 			assert.True(t, policy.Allows(req))
 		})
@@ -506,7 +504,6 @@ func Test_newTestAllowPolicy(t *testing.T) {
 			policy := newTestAllowPolicy(t)
 
 			require.NotNil(t, policy)
-			// 常に空文字を返すスタブではなく、実 spec のメソッド情報を持つポリシーであること。
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/v1/prefectures", nil)
 			assert.Equal(t, "OPTIONS, GET", policy.Allow(req))
 		})

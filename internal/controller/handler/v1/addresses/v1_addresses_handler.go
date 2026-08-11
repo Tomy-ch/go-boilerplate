@@ -37,7 +37,6 @@ func (s *server) GetAddresses(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// リクエスト形の正規化は controller の責務。ハイフンを除去し、内層へは 7 桁の数字列を渡す。
 	postalCode := strings.ReplaceAll(request.Params.PostalCode, "-", "")
 
 	result, err := s.uc.LookupByPostalCode(ctx, postalCode)

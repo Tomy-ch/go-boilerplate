@@ -54,7 +54,6 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp, idempotency.Deps{})
 
-	// /v1/users (GET, POST) が登録される。
 	routes := e.Router().Routes()
 
 	expectedMethods := []string{
