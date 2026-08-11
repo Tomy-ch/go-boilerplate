@@ -39,7 +39,6 @@ func TestRegisterJobHooks(t *testing.T) {
 				require.True(t, ok)
 				startFn = fn
 			}).Times(1)
-			// SupervisedRunner 化により OnStop（停止時キャンセル）も登録される。
 			reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Times(1)
 
 			doneCh := make(chan error, 1)

@@ -46,6 +46,4 @@ err := <-done
 
 - Start/Stop 配線（detached goroutine・停止時キャンセル・grace 内 drain）は `lifecycle.SupervisedRunner` に委譲し、health listener をその `OnStartAux` / `OnStopAux` として渡す
 - `state.Set(name, args, done)` をアプリケーション起動前に行う必要がある
-- engine は detached goroutine で動作し、実行 context は `OnStop` でのみキャンセルされる（Start 完了後の `startCtx` キャンセルには巻き込まれない）
-- `OnStop` の drain は `stopCtx` で制限され、猶予切れの未完了処理は Ack されず再配送される
-- health listener は `OnStart` で起動し、`OnStop` で停止する
+- drain 期限を超えた未完了処理は Ack されず再配送される
