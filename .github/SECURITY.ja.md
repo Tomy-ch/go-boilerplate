@@ -29,7 +29,7 @@
 
 ## 成果物の検証
 
-`.github/workflows/deploy-app.yaml` は GHCR へ push する各イメージ（`runtime` / `migration`）に対し、
+`.github/workflows/deploy-app.yaml` は GHCR へ push する `runtime` イメージに対し、
 **push 済みイメージの digest を対象に** 次を付与します。
 
 - cosign keyless 署名（OIDC → Fulcio → Rekor）
@@ -42,15 +42,13 @@
 
 ### 0. 対象 digest の取得
 
-runtime / migration は同一リポジトリ `app` の別タグ（`<sha>` / `<sha>-migration`）で push される。
 検証はタグではなく digest 基準で行うため、対象イメージのタグから digest を解決する。
+マイグレーションは別イメージではなく、この同じイメージをコマンド上書き
+（`docker run <image> /app/server migrate-up`）で走らせるため、解決すべき digest は 1 つ。
 
 ```bash
-# runtime イメージ
 docker buildx imagetools inspect ghcr.io/<owner>/app:<tag> --format '{{.Manifest.Digest}}'
 crane digest ghcr.io/<owner>/app:<tag>
-# migration イメージ（タグに -migration suffix が付く）
-crane digest ghcr.io/<owner>/app:<tag>-migration
 ```
 
 ### 1. cosign 署名の検証
