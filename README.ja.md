@@ -30,6 +30,26 @@
 - **オブジェクトストレージ**（S3 互換アダプタの背後にある中立な境界。ローカルコンテナ・シード投入・匿名 read の公開配信を同梱） — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **自己完結の単一バイナリ**（env とマイグレーションを埋め込み → 単一イメージ） — [docker/README.md](docker/README.md)
 
+## スコープと非目標
+
+このアーキテクチャが*誰の・何のため*かは [docs/project/scope.md](docs/project/scope.md)（および後述の
+「想定するシステム種別」）に記載しています。この節が扱うのはもう一方 — バックエンドがいずれ必要と
+するもののうち、本プロジェクトが**意図的に同梱しない**ものです。いずれも未完成ではありません。
+
+- **デプロイと IaC** — ワークフローの骨組みのみ。プラットフォームは採用側の選択
+- **レートリミット** — インスタンス単位のインメモリカウンタでは全体の上限を強制できないため、インフラのエッジに属する
+- **キャッシュ層** — 既存の Repository インターフェースの背後にデコレータとして足す。TTL 付きマップへ退化する専用の抽象は置かない
+- **RBAC / 監査ログ / 保持ポリシー / PII 暗号化** — ドメインが決めるものであり、テンプレートが推測できない
+- **定期ジョブの多重起動制御** — スケジューラに委ねる。同梱ジョブは設計上多重実行に耐える
+
+理由付きの全一覧は [docs/project/out-of-scope.md](docs/project/out-of-scope.md)。アーキテクチャ上の
+非採用は `setup-review` タグ付きの ADR としても記録されており、新規プロジェクトが 1 件ずつ発見する
+のではなく、ひとまとまりとして見直せるようにしてあります。
+
+認証と認可だけは、この欠落が**記述ではなく強制**されています。`local` / `ci` / `test` 以外では DI の
+プロバイダが fail-closed であり、実装を配線するまでアプリケーションは起動を拒否します
+（[docs/design/auth.md](docs/design/auth.md)）。
+
 ## 前提条件
 
 実行前に以下のツールが必要です。
@@ -102,6 +122,54 @@ curl http://localhost:8080/health
 ## はじめに
 
 開発の前にセットアップ手順を実施してください: [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md)。
+
+<!-- boilerplate-only:begin -->
+## テンプレートとして使う
+
+fork して自分のものに置き換えます。セットアップは文字列置換ではなく、**スクリプト化され検証される
+一連の手順**です。順序は [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md)
+が示しており、以下はそれがどういう性質の作業かを示すための要約に過ぎません。
+
+- **識別子の置き換えは信用ではなく検証で担保する。** `make setup-replace-*` がモジュールパス・
+  リポジトリ参照・アプリメタデータ・ライセンス保持者・CODEOWNERS を書き換え、`make setup-verify` は
+  上流の識別子が 1 つでも残っている限り落ちます。通ったときにだけ使い捨てのツールを削除するので、
+  やり残した置換が見過ごされることはありません。
+- **除去は 2 パスに分かれており、それは意図的。** `make setup-remove-boilerplate-identity` は
+  「これが上流のテンプレートである間だけ成り立つ記述」を、`make setup-remove-sample-api` はサンプル
+  機能一式を落とします。片方だけ実行するのは正当です。サンプルを残すことは、レイヤリング規則が散文
+  ではなく動くコードとして存在する唯一の場所を残すことでもあります。
+- **テンプレートが代わりに決めないこと**は、コードに残された TODO ではなく番号付きの Phase です。
+  認証 / 認可の実装、デプロイ先、依存ライセンスの閾値、DAST と資格情報を要するスキャナを残すかどうか、
+  そして再設定すべき非採用 ADR 群。
+
+fork した瞬間に成り立たなくなる記述と、それをスクリプトが除去できるようにするマーカーの規約は
+[docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md)
+にあります。
+
+<!-- boilerplate-only:end -->
+## 開発フロー
+
+ローカルのループと CI は同じゲートを走らせます。手元で緑であることは、プルリクエストで緑であること
+と同じ意味を持ちます。
+
+| ステップ | コマンド | 補足 |
+| --- | --- | --- |
+| 生成 | `make gen` | OpenAPI → サーバコード / モック、SQL → 型安全な Go、続いてドキュメント。生成ファイルは手編集せず、CI が再生成して差分で落とします。 |
+| 自動修正 | `make fix` | Go の整形と lint 自動修正。Markdown / SQL は `make md-fix` / `make sql-fix`。 |
+| 静的解析 | `make lint` | golangci-lint。レイヤ境界をビルドエラーにする depguard ルールを含みます。 |
+| テスト | `make test` | カバレッジ付きの Go テスト。先に `make db-init` が必要です（マイグレーション**とシード**を前提とします）。 |
+
+レビューに頼らず機械的に検査されるもの:
+
+- **レイヤ境界** — depguard が禁止インポートを弾き、`internal/architest` が構造上の規則を通常のテストとして表明します
+- **契約優先** — 入力は OpenAPI 定義と SQL ファイルであり、コミットされた生成物が再生成結果と食い違えば CI が落ちます
+- **コミットの衛生** — lefthook が `pre-commit` / `commit-msg` / `pre-push` でゲートを走らせ、ローカルでどこまで走らせるかは開いている worktree の数から決まります。繰り延べたものは CI で同一に再実行されます（[負荷帯域](.makefiles/README.ja.md)）
+
+規約: [docs/development-flow.md](docs/development-flow.md) ·
+[docs/testing-conventions.md](docs/testing-conventions.md) ·
+[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)。全ターゲットは
+[.makefiles/README.ja.md](.makefiles/README.ja.md)、全ワークフローは
+[.github/workflows/README.ja.md](.github/workflows/README.ja.md) にあります。
 
 ## アーキテクチャ概要
 
@@ -191,9 +259,14 @@ model）と `CommandService`（読み込み・変更・保存の形では表現�
 - [docs/testing-conventions.md](docs/testing-conventions.md) — テスト規約
 - [docs/tutorial/build-user-feature.md](docs/tutorial/build-user-feature.md) — 実例: 1 つの機能を端から端まで作る
 - [docs/spec/glossary.md](docs/spec/glossary.md) — 業務語彙（ユビキタス言語）
-- [docs/project/policy.md](docs/project/policy.md) · [docs/project/versioning.md](docs/project/versioning.md) — メンテナンス方針とバージョニング方針
+- [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) — 変更の提案から着地まで（ブランチ・コミット・ゲート・レビュー）
+- [docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) — セットアップとローカル実行の失敗、およびそれが実際に意味するもの
+- [docs/project/scope.md](docs/project/scope.md) · [docs/project/out-of-scope.md](docs/project/out-of-scope.md) — 想定スコープと、意図的に除外したもの
+- [docs/project/policy.md](docs/project/policy.md) · [docs/project/versioning.md](docs/project/versioning.md) · [docs/project/roadmap.md](docs/project/roadmap.md) — メンテナンス・バージョニング・方向性
 - [docs/reference/dependencies.md](docs/reference/dependencies.md) — 直接依存の目録。1 エントリ = 1 責務
 - [docs/maintenance/](docs/maintenance/db-worktree-pool.md) — 運用 runbook（worktree DB プール・ドキュメント構造・アップグレード）
+- [docs/deployment/](docs/deployment/github-page.md) — デプロイ手順（GitHub Pages によるドキュメントポータル）
+- [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md) — これが上流テンプレートである間だけ成り立つ記述 <!-- boilerplate-only:line -->
 
 ### サブシステム設計
 
@@ -283,6 +356,33 @@ model）と `CommandService`（読み込み・変更・保存の形では表現�
 本リポジトリは**リリース中心のブランチモデル**を採用します。フィーチャーブランチは `release/*` から
 切り、保護ブランチ（`develop` / `staging` / `production`）へはリリースブランチ経由でのみ反映し、
 すべての変更は Pull Request を通します。ルール: [docs/rules.md](docs/rules.md)。
+
+## セキュリティ
+
+**脆弱性の報告** — 公開 issue を立てないでください。[.github/SECURITY.ja.md](.github/SECURITY.ja.md)
+の非公開の窓口を使ってください。同じ文書には、デプロイ前にリリース済みイメージを検証する手順
+（cosign 署名・ビルド provenance・SBOM attestation）と、その検証をデプロイのゲートにする方法も
+記載しています。
+
+姿勢と、それを形づくる脅威モデル、そして**明示された限界**は
+[docs/design/security.md](docs/design/security.md) にあります。統制は 4 か所に置かれ、各機構は
+*強制* / *検知* / *抑止* のいずれか 1 つであることを意図しています（3 つを混ぜないこと自体が方針です）:
+
+- **CI が実行するもの** — Actions は SHA、ベースイメージはダイジェストで固定し、その解決は単一の
+  出所であるロックファイルを通します。加えてジョブ単位の egress 許可リスト。いずれも fail-closed。
+- **コードがリンクするもの** — 公開直後のバージョンが一定期間採用されないクールダウン窓と、
+  互いに独立した複数の脆弱性データベースによるスキャン。
+- **サービスがリクエストに対して行うこと** — 境界ごとの deny-by-default（送信先ガード、エラー詳細の
+  露出）。リクエスト検証と認証は OpenAPI 定義から駆動されるため、spec の差分を読むことが
+  セキュリティ姿勢のレビューそのものになります。
+- **決してコミットしてはならないもの** — 異なる失敗の仕方を狙って選んだ 2 つのシークレットスキャナと、
+  利便性に優先する 1 つの規則: 検出されたシークレットの値がログ・PR コメント・成果物に出ることはない。
+
+報告とゲートは意図的に分けています。通常のプルリクエストは**報告**し（無関係な変更を赤くせずに
+code scanning へ届く）、`develop` / `staging` / `production` への昇格は固定の必須チェック群で
+**ゲート**します。どちらがどれかは [.github/workflows/README.ja.md](.github/workflows/README.ja.md)。
+
+守備範囲外: 開発者自身のマシンで動くもの — 後述の「守備範囲外: 開発者マシンの衛生」を参照。
 
 ## 設計思想
 
@@ -390,7 +490,8 @@ status check を宣言しています。本リポジトリでは単独メンテ�
 ありません。セットアップ時に README を書き換える際、この小節を置き換えるか削除してください。
 
 <!-- boilerplate-only:begin -->
-今後のリリース予定: フロントエンド / インフラ / 可観測性の各ボイラープレート。
+今後のリリース予定: フロントエンド / インフラ / 可観測性の各ボイラープレート —
+[docs/project/roadmap.md](docs/project/roadmap.md) を参照。
 
 <!-- boilerplate-only:end -->
 ## ライセンス

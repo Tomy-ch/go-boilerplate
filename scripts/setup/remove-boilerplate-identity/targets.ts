@@ -89,10 +89,17 @@ export const SELF_DIR = "scripts/setup/remove-boilerplate-identity";
  *
  * `marker-baseline` も同じです。あれが守るのは撤去マーカーを**書く側**で、書く場面は上流に
  * しかありません。fork が受け取るのはマーカーが解決し終えたツリーなので、見張る対象が居ません。
+ *
+ * `docs/plan` は上流が着手していないリリース線の要件です。ロードマップ本体と違い fork 側で
+ * 書き換えて使える形をしておらず、中身は「このボイラープレートが次に何を作るか」でしかないので、
+ * 領域を囲うのではなくディレクトリごと消します。ロードマップは残します——あちらは導入部の
+ * 置換マーカーが fork 向けの文面を持っており、方向を記録する場所として引き継げます。
  */
 export const BOILERPLATE_DELETE_PATHS: readonly string[] = [
   "docs/get-started/boilerplate-only-conventions.md",
   "docs/ja/get-started/boilerplate-only-conventions.ja.md",
+  "docs/plan",
+  "docs/ja/plan",
   "scripts/premise-lint",
   "scripts/marker-baseline",
 ];

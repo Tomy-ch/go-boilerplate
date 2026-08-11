@@ -38,6 +38,17 @@ func canceledContext(t *testing.T) context.Context {
 	return ctx
 }
 
+// clearSeededPurchases は、呼び出したトランザクション内で購入と購入明細を空にします。
+// seed が投入する購入履歴が残っていると、対象ユーザーの集計件数が期待値とずれます。
+// 削除はロールバックされるので、コミット済みの seed は失われません。
+func clearSeededPurchases(ctx context.Context, t *testing.T, db driver.DBTX) {
+	t.Helper()
+	_, err := db.Exec(ctx, "DELETE FROM purchase_details")
+	require.NoError(t, err)
+	_, err = db.Exec(ctx, "DELETE FROM purchases")
+	require.NoError(t, err)
+}
+
 // insertPurchase は、指定ユーザー・ステータス・合計金額の購入を 1 件挿入します。
 func insertPurchase(ctx context.Context, t *testing.T, db driver.DBTX, userID, statusID uuid.UUID, code string, totalAmount int64) {
 	t.Helper()
@@ -67,6 +78,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				userA := mustParse(t, seedUserA)
 				// 表示順（sort_key）が後のステータスから挿入し、挿入順ではなくマスタ順で並ぶことを確認する。
 				insertPurchase(ctx, t, drv, userA, mustParse(t, seedPaidSID), "sm-paid-1", 300)
@@ -94,6 +106,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				userA := mustParse(t, seedUserA)
 				userB := mustParse(t, seedUserB)
 				insertPurchase(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), "sm-own-1", 100)
@@ -113,6 +126,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				userA := mustParse(t, seedUserA)
 				insertPurchase(ctx, t, drv, userA, mustParse(t, seedCanceledSID), "sm-canceled-1", 400)
 
@@ -129,6 +143,8 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
+
 				got, err := svc.SummarizeByUserID(ctx, mustParse(t, seedUserB))
 				require.NoError(t, err)
 				assert.Empty(t, got)
