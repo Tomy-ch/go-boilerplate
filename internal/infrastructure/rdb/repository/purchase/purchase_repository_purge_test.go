@@ -44,6 +44,7 @@ func Test_repository_FindUserIDsWithPurchases(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				withPurchase := mustParse(t, seedUserID)
 				withoutPurchase := mustParse(t, seedUserWithoutPurchaseID)
 				insertPurchaseForUser(ctx, t, drv, withPurchase, "dd000000-0000-4000-8000-000000000001")
@@ -60,6 +61,7 @@ func Test_repository_FindUserIDsWithPurchases(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				withPurchase := mustParse(t, seedUserID)
 				insertPurchaseForUser(ctx, t, drv, withPurchase, "dd000000-0000-4000-8000-000000000002")
 				insertPurchaseForUser(ctx, t, drv, withPurchase, "dd000000-0000-4000-8000-000000000003")
@@ -75,6 +77,8 @@ func Test_repository_FindUserIDsWithPurchases(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
+
 				got, err := repo.FindUserIDsWithPurchases(ctx, []uuid.UUID{mustParse(t, seedUserWithoutPurchaseID)})
 				require.NoError(t, err)
 

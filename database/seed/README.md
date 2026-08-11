@@ -36,11 +36,13 @@ Example:
 
 ```text
 000001_users.sql
-000002_products_electronic_equipment.sql
+000002_users_additional.sql
+000007_products_electronic_equipment_01.sql
 ```
 
 - Executed in ascending order of sequence number
-- Control order via sequence numbers when dependencies exist (e.g., users → products)
+- Control order via sequence numbers when dependencies exist (e.g., users → products → purchases)
+- A group that does not fit in one file is split with a two-digit suffix (`_01`, `_02`, …)
 
 ## Placeholders
 
@@ -76,5 +78,7 @@ so a value that can escape its string literal would run as a statement of its ow
 - **Not intended for production execution** — seed data is for development and testing
 - Master data (prefectures, status definitions, etc.) should be managed via migrations
 - When tables have foreign key constraints, pay attention to insertion order (sequence numbers)
-- For large datasets, split into multiple files and manage with sequence numbers
+- For large datasets, split into multiple files and manage with sequence numbers. Keep each file
+  under 20000 bytes: `make sql-lint` skips a larger file instead of parsing it, so the whole file
+  silently loses lint coverage
 - Make idempotent where possible (`INSERT ... ON CONFLICT DO NOTHING`, etc.)

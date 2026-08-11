@@ -7,7 +7,11 @@ meta:
     - title: Get Started
       sections: [overview, get-started, make_commands, environment_variables, tutorial]
     - title: Architecture
-      sections: [architecture, project, reference]
+      # boilerplate-only:replace-begin
+      sections: [architecture, project, reference, plan]
+      # boilerplate-only:replace-with
+      # = sections: [architecture, project, reference]
+      # boilerplate-only:replace-end
     - title: Decisions (ADR)
       sections: [adr]
     - title: Application Layers

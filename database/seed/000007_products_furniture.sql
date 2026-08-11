@@ -1,6 +1,0 @@
-INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at, created_at, updated_at)
-VALUES ('cd7f72a1-6989-451d-8d1c-85c8221b29ec', '机', '木製のシンプルな机です。', 15000, 10, 2, '093170fb-83a2-4864-a2b3-53236eaf3597', '93e544f8-0815-4b62-bbcd-c02cfc305818', NOW() - INTERVAL '1 month', NOW() - INTERVAL '2 months', NOW() - INTERVAL '10 days') ON CONFLICT (id) DO NOTHING;
-INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at, created_at, updated_at)
-VALUES ('70852d2a-7e03-4c4c-baec-4689c44d678f', '椅子', '木製の快適な椅子です。', 8000, 20, 5, '093170fb-83a2-4864-a2b3-53236eaf3597', '93e544f8-0815-4b62-bbcd-c02cfc305818', NOW() - INTERVAL '1 month', NOW() - INTERVAL '2 months', NOW() - INTERVAL '10 days') ON CONFLICT (id) DO NOTHING;
-INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at, created_at, updated_at)
-VALUES ('11ffb83b-a5ad-4c12-b563-4048109870bd', 'ソファ', '快適な2人掛けソファです。', 30000, 5, 1, '093170fb-83a2-4864-a2b3-53236eaf3597', '93e544f8-0815-4b62-bbcd-c02cfc305818', NOW() - INTERVAL '1 month', NOW() - INTERVAL '2 months', NOW() - INTERVAL '10 days') ON CONFLICT (id) DO NOTHING;
