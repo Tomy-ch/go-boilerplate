@@ -293,15 +293,15 @@ output:
 
 dependencies:
   - clock.Clock                     # Cancel(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
-  - tx.Manager                      # nested で最外 idempotency tx に乗る
+  - tx.Manager                      # 最外 tx（本経路は Idempotency-Key 冪等化を配線しない）
   - command.CommandService          # LockPurchase（FOR UPDATE）/ CancelPurchase（在庫加算 + status/canceled_at 更新）
   - purchase.Repository             # FindDetailByID（書き込み後の状態名解決・DTO 取得元）
   - outbox.EmitUsecase              # purchase.canceled.v1 の emit（同一 tx）
 
 workflow:
-  tx_required: true                 # nested（最外は idempotency.Run が所有）
+  tx_required: true
   steps:
-    - "txm.Do(nested) 内で:"
+    - "txm.Do 内で:"
     - "  ① cmd.LockPurchase で購入行を FOR UPDATE ロックし明細込みで再構築（並行キャンセルを直列化）"
     - "  ② purchase.UserID() != params.UserID なら NotFound へ畳む（存在秘匿）"
     - "  ③ purchase.Cancel(now) で遷移可否検証 + status/canceled_at を同時更新（ドメイン不変条件）"

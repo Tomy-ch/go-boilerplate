@@ -97,10 +97,10 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
     docFragments: [
       { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**" },
       { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**" },
-      { file: README_EN, fragment: ", `0 19` SonarQube Cloud" },
+      { file: README_EN, fragment: ", `05:00` SonarQube Cloud" },
       { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**" },
       { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**" },
-      { file: README_JA, fragment: "、`0 19` SonarQube Cloud" },
+      { file: README_JA, fragment: "、`05:00` SonarQube Cloud" },
     ],
     docSections: [],
   },
@@ -139,7 +139,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_EN,
         block:
-          "\nThe last one is the scanner whose analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.\n",
+          "\nSonarQube Cloud takes the last slot. Its analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.\n",
       },
       {
         file: README_EN,
@@ -154,7 +154,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       {
         file: README_JA,
         block:
-          "\n末尾の 1 つは解析がベンダーのサーバ側で走るスキャナで、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\n",
+          "\n最後のスロットは SonarQube Cloud です。解析がベンダーのサーバ側で走るため、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\n",
       },
       {
         file: README_JA,
@@ -181,6 +181,8 @@ setup-remove-licensed-scanners:
       },
     ],
     docFragments: [
+      { file: README_EN, fragment: ", `01:15` CodeQL" },
+      { file: README_JA, fragment: "、`01:15` CodeQL" },
       { file: README_EN, fragment: "`code-ql.yaml` (`javascript-typescript` leg) + " },
       { file: README_EN, fragment: " + `code-ql.yaml` (`actions` leg)" },
       { file: README_JA, fragment: "`code-ql.yaml`（`javascript-typescript` レグ）+ " },

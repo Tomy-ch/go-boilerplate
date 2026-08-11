@@ -2,12 +2,12 @@
 
 > `GET /v1/products`（公開商品一覧・cursor + フィルタ + keyword + sort）の read source、および
 > `POST /v1/products`（admin 商品作成）/ `PATCH /v1/products/{productId}`（admin 商品部分更新）/
-> `PATCH /v1/products/{productId}/stock`（admin 在庫の増減）の write target となる商品集約の spec。`statusID` / `categoryID` は ID と名称の参照（`StatusRef` / `CategoryRef`）で保持し、
+> `PATCH /v1/products/{productId}/stock`（admin 在庫の増減）の write target となる商品集約の spec。分類は `StatusRef` / `CategoryRef`（ID と名称の組）で保持し、
 > 名称は作成・更新時に usecase が別集約（商品ステータス / 商品カテゴリのマスタ）から解決して埋める。
 
 ## Overview
 
-商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の ID 参照（ステータス ID・カテゴリ ID）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負は VO が担保。2 スケールモデルは ADR-0035 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
+商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の参照（`StatusRef` / `CategoryRef`。いずれも ID と名称の組）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負は VO が担保。2 スケールモデルは ADR-0035 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
 
 一覧取得は「公開済み（`publishedAt` 非 NULL）の商品を `(publishedAt, id)` の keyset ページネーションで返す」read-only な集約読み取りであり、すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
 
@@ -42,12 +42,12 @@ fields:
     type: "*int"
     required: false         # nil 許容。非 nil の場合のみ 0 以上を検証（ErrInvalidStockWarningThreshold）
     min: 0
-  - name: statusID
-    type: uuid.UUID
-    required: true          # IsNil の場合は ErrInvalidStatusID
-  - name: categoryID
-    type: uuid.UUID
-    required: true          # IsNil の場合は ErrInvalidCategoryID
+  - name: status
+    type: StatusRef         # ID と名称の組。ID が nil の場合は ErrInvalidStatusID
+    required: true
+  - name: category
+    type: CategoryRef       # ID と名称の組。ID が nil の場合は ErrInvalidCategoryID
+    required: true
   - name: publishedAt
     type: "*time.Time"
     required: false         # nil 許容（未公開）。一覧取得は published_at 非 NULL のみを返すため一覧経由では常に非 nil
@@ -98,10 +98,10 @@ fields:
 
 ```yaml
 - name: Update
-  signature: |
-    Update(attrs Attributes) error
+  signature: Update(attrs Attributes) error
   behavior: |
-    商品属性を更新する。引数は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡る
+    商品属性を更新する。生成・再構築と同じ Attributes を受け取る。渡す値は部分更新を解決した後の
+    確定値であり、据え置く属性には現在値が入る
     （未送信と null 明示の区別は usecase が解決する。domain は 3 状態を知らない）。
     生成時と同一の不変条件を課し、違反時はエンティティを変更せず ErrValidation 系（422）を返す。
     version はここでは進めない（採番は Repository.Update の条件付き UPDATE が行う）。
@@ -129,7 +129,9 @@ fields:
 ```yaml
 # price は money.Price VO（internal/domain/lexicon/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
 # 内包し、決済スケール（最小単位整数）への変換 policy（ToMinorUnit）を所有する。器の正確な十進量は
-# pkg/decimal.Decimal（ADR-0035 (two-scale-quantity-model)）。分類は ID 参照のまま VO を持たない。
+# pkg/decimal.Decimal（ADR-0035 (two-scale-quantity-model)）。
+# StatusRef / CategoryRef は分類の ID と名称の組を保持する VO。名称は作成・更新時に usecase が
+# マスタ集約から解決して埋め、商品エンティティ自身は再解決しない。
 ```
 
 ## Repository Methods

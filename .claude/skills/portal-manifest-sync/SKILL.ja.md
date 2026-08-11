@@ -10,9 +10,8 @@
 
 portal は **キュレートされた読み物としての manual** です。全 README の完全な辞書ではありません:
 
-- 全サブパッケージ README を網羅するとノイズに埋もれる
-- manifest の `dst` 命名はキュレートされている（例: `database/dml/README.md` → `sqlc-query-guide.md`）
-- 一括追加するとこのキュレーション規律が壊れる
+- 全サブパッケージの README を網羅的に並べると、概念の流れがノイズに埋もれる（`di/server/extension/decoration/README.md` 級のエントリは、アーキテクチャを理解しようとする読者にほとんど寄与しない）。
+- `manifest.yaml` 内の `dst` ファイル名は人が辿りやすいようキュレートされている（例: 機械的な `database-dml.md` ではなく `database/dml/README.md` → `sqlc-query-guide.md`）。一括追加はこのキュレーション規律を壊す。
 
 manifest 未登録のディスク README は **drift ではなく** 人間の判断待ち候補。
 
@@ -55,21 +54,32 @@ manifest 未登録のディスク README は **drift ではなく** 人間の判
 
 - `docs/portal/manifest.yaml`
 - `.claude/skills/readme-review/SKILL.md`（評価基準の source of truth、実行ごとに再読込）
-- リポジトリ全体の `*README*.md`。常に除外: `docs/portal/guides/**`, `vendor/**`, `node_modules/**`, `.git/**`, `.claude/**`, `.gitignore` 反映
+- リポジトリ全体の `README.md` / `README.ja.md`。次は常に除外する:
+  - `docs/portal/guides/**`（原本の生成コピー）
+  - `vendor/**`、`node_modules/**`
+  - `.git/**`、`.claude/**`（スキル / 設定ファイル。portal のコンテンツではない）
+  - `.gitignore` に一致するパス
 - `scripts/portal/gen-portal-docs.ts`
 
 **書き込み（承認後のみ）**:
 
 - `docs/portal/manifest.yaml` — `stale` 削除 / 明示的なキュレーション要求での追加
 
-**触らない**: `docs/portal/guides/**`、`docs/portal/docs.json`、ソース README、その他
+**触らない**:
+
+- `docs/portal/guides/**`（`make gen-portal-docs` が毎回再生成する）
+- ソースの README そのもの
+- `docs/` 配下の生成物
 
 ## 最初のステップ: スコープ確認
 
 `AskUserQuestion`:
 
 - 「manifest 同期のモードを選んでください」
-- 選択肢: 「検出 + 適用（stale 削除のみ承認後に書き込み）」/「検出のみ（dry-run）」/「キャンセル」
+- 選択肢:
+  - 「検出 + 適用（差分を提示して、承認後に manifest.yaml を更新）」
+  - 「検出のみ（dry-run、書き込みなし）」
+  - 「キャンセル」
 
 ## Step 1. ソース列挙
 
@@ -165,6 +175,12 @@ manifest のパス → グループ対応は **実行時に既存 manifest か�
 
 - 英語: `docs/portal/guides/<flat-hyphenated-name>.md`
 - 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`
+
+`<flat-hyphenated-name>` は src パスからレイヤー接頭辞を落とし `/` を `-` に置換したもの。既存 manifest の例:
+
+- `internal/controller/handler/README.md` → `docs/portal/guides/controller-handler.md`
+- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md`（仮に追加するなら） <!-- skill-lint-ignore -->
+- `internal/controller/README.md` → `docs/portal/guides/controller.md`
 
 bespoke 命名（例: `database/dml/README.md` → `sqlc-query-guide.md`）もあるため、機械的置換せずグループ実態に倣う。
 
@@ -264,9 +280,13 @@ Portal Manifest Sync 結果
 削除（承認された stale）:
 
 1. 該当 `src:` / `dst:` 行を特定
-2. 2 行ブロックを削除
+2. 2 行のエントリブロックを削除する（そのコメント配下の唯一のエントリだった場合は、先行するカテゴリマーカーのコメントも削除する）
 
-常に: 2 スペースインデント / 末尾空行 / en+ja 隣接 を維持
+常に:
+
+- インデント（2 スペース）を維持する。
+- 末尾の空行とセクション区切りを維持する。
+- グループ内で en / ja のエントリを隣接させたままにする。
 
 ## Step 9. 検証
 
@@ -301,9 +321,16 @@ git diff docs/portal/manifest.yaml
 
 ## AI 修正スコープ
 
-スキル実行中は AI Modification Scope の制約が以下に限り緩和される: `docs/portal/manifest.yaml` のみ。
+`CLAUDE.md` / `AGENTS.md` の「Exception: Skill Execution」条項により、本スキルの実行中は AI Modification Scope が次に限って緩和される。
 
-保護対象: `docs/portal/guides/**`、`docs/portal/docs.json`、ソース README、manifest 以外のすべて
+- `docs/portal/manifest.yaml` — 本スキルが書き込む唯一のファイル。
+
+保護対象（触らない）:
+
+- `docs/portal/guides/**`（生成物）
+- `docs/portal/docs.json`（`make gen-docs-json` の生成物）
+- ソースの README そのもの
+- manifest 以外のすべて
 
 ## 制約事項
 

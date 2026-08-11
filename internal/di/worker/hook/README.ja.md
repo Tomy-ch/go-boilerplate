@@ -27,9 +27,10 @@ flowchart TB
     Stop --> Cancel --> StopHealth
 ```
 
-- `done` が `nil` の場合：実行する worker なしと判断し、engine を起動しない
-- `done` が存在する場合：detached goroutine で worker を実行し、結果を `done` チャネルに送信
-- `OnStop`：`engineCtx` をキャンセルし、`stopCtx` の範囲で drain 完了を待ってから health listener を停止
+1. Start 時: health listener を起動し、`state.Snapshot()` で worker 名と done チャネルを取得する
+2. `done == nil` の場合: 「実行する worker なし」をログに出し、engine を起動せず戻る
+3. それ以外: detached goroutine で `engine.Run(engineCtx, name)` を実行し、結果を `done` へ送る
+4. Stop 時: `engineCtx` をキャンセルし、`stopCtx` の範囲で engine の drain を待ってから health listener を停止する
 
 ## 使用フロー
 

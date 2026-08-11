@@ -7,7 +7,7 @@ on:
       - staging
       - develop
   schedule:
-    - cron: '0 6 * * 1'
+    - cron: '30 1 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -90,8 +90,7 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
 
       - name: Prepare vendor
@@ -290,8 +289,7 @@ jobs:
         with:
           version: 2026.6.0
           install: false
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -473,11 +471,7 @@ jobs:
             trivy-sbom-scan.txt
             trivy-sbom-scan.sarif
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure, and that is precisely the silent breakage this
-  # notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: build
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.build.result) }}

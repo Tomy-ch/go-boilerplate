@@ -32,7 +32,7 @@ accepted
 
 | 対象 | 窓 | 機構 |
 | --- | --- | --- |
-| npm | 7 日 | 各 `.npmrc` の `min-release-age`（npm 11 ネイティブ） |
+| Node パッケージ | 7 日 | 各 `pnpm-workspace.yaml` の `minimumReleaseAge`。依存解決の時点で拒否される（[ADR-0105](0105-pnpm-as-the-only-node-resolver.ja.md)） |
 | Go モジュール | 7 日 | `scripts/go-cooldown`。変更が追加 / 更新した direct requirement を対象にする |
 | mise が解決する CLI ツール | 14 日（GitHub リリース） / 7 日（パッケージレジストリ） | `scripts/tool-cooldown` が `mise.toml` を読む |
 | PyPI から入れる CLI ツール | 7 日 | `scripts/tool-cooldown` が `python/*.in` の宣言を読む（[ADR-0077](0077-mise-ssot-drift-gate.ja.md)） |
@@ -54,7 +54,7 @@ mise の行が 2 段になっているのは、ツールではなく backend の
 
 ### ネガティブな影響
 
-- **クールダウンが守るのは解決の瞬間であって、インストール済みの状態ではない。** 新しい悪意あるバージョンがロックファイルに入り込む窓を閉じるが、すでに pin されているものには何もせず、窓の経過後に発見された侵害にも何もしない。`@asyncapi` のケースでは、侵害が公になった時点で 7 日の npm 窓はすでに過ぎていた——利用者を守ったのはアップストリームでの削除であって、この統制ではない。
+- **クールダウンが守るのは解決の瞬間であって、インストール済みの状態ではない。** 新しい悪意あるバージョンがロックファイルに入り込む窓を閉じるが、すでに pin されているものには何もせず、窓の経過後に発見された侵害にも何もしない。`@asyncapi` のケースでは、侵害が公になった時点で 7 日の窓はすでに過ぎていた——利用者を守ったのはアップストリームでの削除であって、この統制ではない。
 - セキュリティ更新は、自ら課したのと同じ窓の分だけ遅れる（Dependabot のセキュリティ更新がこの理由で意図的にクールダウンを迂回する）。
 - **言語ランタイム（`go` / `node` / `python`）はどの窓の対象でもない。** ランタイムの配布物が汚染される事態は、供給網の 1 リンクではなく言語の信頼モデルそのものの崩壊であり、遅延では守れない。ランタイムは LTS を待つという別軸の方針が担う。この穴が見落としではなく判断であることを明示しておく。
 - `capslock` は Go のみを対象とするため、グラフの npm 側にはケイパビリティのシグナルが一切ない。
@@ -75,6 +75,6 @@ mise の行が 2 段になっているのは、ツールではなく backend の
 
 ## 補足
 
-- クールダウンの窓とその根拠: `docs/rules.md`、各 npm プロジェクトの `.npmrc`、`.github/dependabot.yml`。
+- クールダウンの窓とその根拠: `docs/rules.md`、各 Node パッケージの `pnpm-workspace.yaml`、`.github/dependabot.yml`。
 - 関連: [ADR-0087](0087-sha-pinned-actions.ja.md)（SHA ピン留め）、[ADR-0086](0086-multi-layer-security-scanning.ja.md)（これが隣り合うスキャンのレイヤー群）、[ADR-0001](0001-avoid-lock-in.ja.md)（SaaS 検出器が対象外である理由）。
 - これが代替とは*ならない*ケイパビリティのシグナル: `.github/workflows/capability-diff.yaml`。

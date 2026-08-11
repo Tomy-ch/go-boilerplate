@@ -14,9 +14,9 @@ name: Fuzz
 
 on:
   schedule:
-    # Monday 11:00 UTC — the slot after opengrep.yaml (10:00), continuing the stagger
-    # that #677 established.
-    - cron: '0 11 * * 1'
+    # The schedule is the only trigger: the cases that break a parser are the ones nobody
+    # imagined, so there is no change that would announce them.
+    - cron: '45 2 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -118,11 +118,7 @@ jobs:
             **/testdata/fuzz/**
           if-no-files-found: warn
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure, and that is precisely the silent breakage this
-  # notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: fuzz
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.fuzz.result) }}

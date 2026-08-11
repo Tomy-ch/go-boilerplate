@@ -197,8 +197,10 @@ Infrastructure が実装する
 
 ### 3. 責務分離
 
+```txt
 永続化 → Repository  
 検索   → QueryService
+```
 
 ### 4. トランザクション管理
 

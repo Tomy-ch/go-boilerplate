@@ -150,11 +150,13 @@ Usecase はこれらの **interface のみ参照**し、実装は Infrastructure
 
 ### 代表的な Boundary
 
-- `Transaction Manager`
-- `Clock`
-- `Auth Context`
-- `Messaging / EventPublisher`
-- `Observability`
+```txt
+Transaction Manager
+Clock
+Auth Context
+Messaging / EventPublisher
+Observability
+```
 
 ### 時刻の扱い
 
@@ -187,8 +189,10 @@ userEntity, err := user.New(..., now, now, nil)
 
 Usecase 層では以下を守ります。
 
-- 禁止: `time.Now()`
-- 許可: `clock.Clock.Now()`
+```txt
+Forbidden: time.Now()
+Allowed:   clock.Clock.Now()
+```
 
 時刻の取得は **Usecase → Domain へ渡す**形で扱い、
 Domain 側では新たに時刻を取得しない設計を推奨します。
@@ -236,9 +240,11 @@ Infrastructure --> BoundaryInterface
 
 例
 
-- `CreateUser`
-- `UpdateUser`
-- `DeleteUser`
+```txt
+CreateUser
+UpdateUser
+DeleteUser
+```
 
 特徴
 
@@ -252,9 +258,11 @@ Infrastructure --> BoundaryInterface
 
 例
 
-- `GetUser`
-- `ListUsers`
-- `SearchUsers`
+```txt
+GetUser
+ListUsers
+SearchUsers
+```
 
 特徴
 
@@ -264,34 +272,23 @@ Infrastructure --> BoundaryInterface
 
 ### Repository に許可する Query
 
-```mermaid
-flowchart TB
-    A["FindAll"]
-    B["FindByID"]
-    C["CountAll"]
-    D["CountByActive"]
+```txt
+FindAll
+FindByID
+FindByKeyword
+CountAll
+CountByActive
 ```
-
-検索や複雑な条件検索（キーワード検索など）は **QueryService** に分離します。
-
-例：
-
-- `FindByKeyword`
-- `SearchUsers`
-- `ListUsersByCondition`
-
-QueryService は **読み取り最適化レイヤー**として扱い、DTO または Domain Entity を返すことを許容します。
 
 JOIN は **ドメイン境界を壊さない範囲で許可**します。
 
 ### Repository に含めないもの
 
-```mermaid
-flowchart TB
-    A["GROUP BY"]
-    B["集計関数"]
-    C["WITH句"]
-    D["複雑な分析クエリ"]
+```txt
+GROUP BY
+集計関数
+WITH 句
+複雑な分析クエリ
 ```
 
 これらは
@@ -331,18 +328,13 @@ flowchart TB
 
 ## このプロジェクトでの役割
 
-```mermaid
-flowchart TB
-    Command["Command (Create/Update/Delete)"]
-    Query["Query (Read)"]
-    Policy["Pagination / Validation"]
-    Error["Error Handling"]
-
-    Command --> Usecase
-    Query --> Usecase
-    Policy --> Usecase
-    Error --> Usecase
-```
+- Command / Query のサービスは `internal/usecase/<feature>/`（例: `user/`）配下に置く。
+  - Command: 作成 / 更新 / 削除（Tx を開始し、Domain の不変条件を担保する）。
+  - Query (QS): 読み取り最適化。DTO を直接返すことを許容する。
+  - ページング / バリデーションなど、プロトコルに依存しないポリシーを集約する。
+    - 例: `paging.NewPageFrom1Based(page, perPage)`
+- エラーは `apperror.ErrXXX` で包み、Controller が HTTP レスポンスへ写像できるようにする。
+- DI (fx) が Repository インターフェース / TxManager / Config などの依存を注入する。
 
 ## サードパーティを最小限に抑える
 
@@ -352,116 +344,6 @@ flowchart TB
 - 型定義やDTOもプロジェクト内型で閉じる。sqlc生成型/driver型やOpenAPI生成型は上位/下位の層に隔離。
 - テストも`testify`/`mock`程度に留め、モックはinterfaceベースで注入。
 - どうしても必要な場合は、[pkg/](../../pkg/)で薄いラッパーを作成する。
-
-## DI（Dependency Injection）の仕組み（Usecase）
-
-Usecase は **Uber Fx による DI** で生成されます。  
-Usecase は **Repository / QueryService / Boundary を interface 経由で受け取る**ことが原則です。
-
-### 全体構成
-
-Usecase は `fx.Provide` により登録され、Controller / Job に注入されます。
-
-```mermaid
-flowchart TB
-    Module["UsecaseModule"]
-    Provide["fx.Provide(user.New)"]
-    Interface["user.Usecase (interface)"]
-    Consumer["Controller / Job"]
-
-    Module --> Provide
-    Provide --> Interface
-    Interface --> Consumer
-```
-
-### internal/di/module/usecase.go の役割
-
-```go
-func UsecaseModule() fx.Option {
-    return fx.Module("usecase",
-        fx.Provide(
-            healthcheck.New,
-            user.New,
-        ),
-    )
-}
-```
-
-- `fx.Provide`
-  - Usecase のコンストラクタを登録
-- 戻り値は **Usecase interface**
-  - 例: `user.Usecase`
-
-### Usecase のコンストラクタ設計
-
-```go
-func New(
-    tf observability.TracerFactory,
-    txm tx.Manager,
-    clock clock.Clock,
-    userRepo user.Repository,
-    userQS query.UserQueryService,
-) Usecase {
-    return &usecase{
-        tracer:    tf.Usecase(),
-        txm:       txm,
-        clock:     clock,
-        userRepo:  userRepo,
-        userQS:    userQS,
-    }
-}
-```
-
-ポイント：
-
-- 戻り値は **interface（Usecase定義）**
-- 依存はすべて引数で受け取る（new禁止）
-- Repository / QueryService は interface 経由で受け取る
-- Boundary（tx / clock 等）も interface で受け取る
-
-### DI の流れ
-
-```mermaid
-flowchart TB
-    Provide["fx.Provide(user.New)"]
-    Interface["user.Usecase"]
-    Consumer["Controller / Job (依存)"]
-
-    Provide --> Interface
-    Interface --> Consumer
-```
-
-### なぜ interface を返すのか
-
-- Controller / Job は Usecase の抽象にのみ依存する
-- 実装の差し替えが可能（mock / feature切替）
-- Onion Architecture の依存逆転を維持する
-
-### Repository / QueryService との関係
-
-```mermaid
-flowchart TB
-    Usecase["Usecase"]
-
-    Repo["Repository（domain interface）"]
-    QS["QueryService（usecase interface）"]
-    Boundary["Boundary（外部依存の抽象）"]
-
-    Usecase --> Repo
-    Usecase --> QS
-    Usecase --> Boundary
-```
-
-- Repository は **永続化**
-- QueryService は **検索**
-- Usecase はそれらを **組み合わせる**
-
-### AI / 開発者向けルール
-
-- Usecase の constructor は必ず `New` で定義すること
-- 戻り値は Usecase interface にすること
-- Usecase 内で依存を new しないこと
-- DI登録は `internal/di/module/usecase.go` に追加すること
 
 ## 実装上の注意点
 
@@ -511,8 +393,16 @@ detail を参照）。
 
 ### HTTP/DBの要素は持ち込まない
 
-- `http.*`, `*echo.Context`, `sqlc` 型、`sql.Null*`、DB列名、OpenAPI生成型…を引数/戻り値に使わない。
-- 代わりに DTO/VO（Page/Filters/Actor） で表現。
+引数 / 戻り値に使ってはいけない型:
+
+- `http.*`
+- `*echo.Context`
+- `sqlc` 生成型
+- `sql.Null*`
+- DB のカラム名
+- OpenAPI 生成型
+
+代わりに DTO / VO（Page / Filters / Actor）で表現する。
 
 ### エラー方針
 
@@ -587,7 +477,10 @@ Usecase D を導入する。D は両者の上位に立って業務操作を繋�
 
 Usecaseは **Infrastructureに依存してはいけません。**
 
-Infrastructureへのアクセスは **Repository interface または Boundary interface** を経由します。
+Infrastructureへのアクセスは次を経由します。
+
+- Repository interface
+- Boundary interface
 
 ## Test戦略
 
@@ -604,7 +497,6 @@ Usecase のテストでは次の依存関係を採用します。
 |---|---|
 |Domain|実装を使用|
 |Repository|mock|
-|QueryService|mock|
 |Boundary|mock|
 |Infrastructure|使用しない|
 
@@ -643,16 +535,14 @@ clock := mock_clock.NewMockClock(ctrl)
 
 ### テスト対象
 
-Usecase テストでは主に次の観点を扱います。
-
-#### 正常系
+正常系:
 
 - 想定通りの DTO が返る
 - Repository が正しく呼ばれる
 - Boundary が正しく呼ばれる
 - Transaction が正しく使われる
 
-#### 異常系
+異常系:
 
 - Boundary のエラーが返る
 - Repository のエラーが返る
@@ -672,14 +562,6 @@ TestListUsers
   ├ 正常系
   └ 異常系
 ```
-
-異常系では、失敗ポイントごとにケースを分けます。
-
-例：
-
-- Repository error
-- Domain validation error
-- Prefecture lookup error
 
 ### Deterministic
 
@@ -716,6 +598,24 @@ Usecase テストでは以下を扱いません。
 
 これらは **Infrastructure / Controller の責務**です。
 
+### まとめ
+
+```txt
+Usecase
+ ├ Domain         -> real
+ ├ Repository     -> mock
+ ├ Boundary       -> mock
+ └ Infrastructure -> not used
+```
+
+これにより、次を高速かつ安定して検証できます。
+
+- ワークフロー
+- アプリケーションポリシー
+- トランザクション境界
+- エラーの伝播
+- DTO 変換
+
 ## やっていいこと / いけないこと(まとめ)
 
 ### Do
@@ -725,7 +625,6 @@ Usecase テストでは以下を扱いません。
 - Usecase層で初出の`apperror`でエラー分類を付与（errors.Is で Controller が判定しやすく）
 - QSはRow→DTOに最短でマップ、CommandはDomainを介す。
 - 表駆動テストでユースケースの分岐とTxの挙動を確認（testify）
-- 読み取り最適化が必要な場合は QueryService を利用する
 
 ### Don’t
 

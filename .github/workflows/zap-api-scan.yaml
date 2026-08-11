@@ -1,15 +1,11 @@
 name: DAST
 
-# OWASP ZAP's OpenAPI-driven API scan against the application started inside this runner.
-# The static scanners read the source; this one exercises the running HTTP surface.
+# OWASP ZAP's OpenAPI-driven API scan against the application started inside this runner — the
+# only check here that exercises the running HTTP surface instead of reading files.
 #
-# ZAP is the only DAST option that scans from inside the job. The alternatives run on the
-# vendor's infrastructure, which cannot reach an API that exists only in a runner.
-#
-# Report-only: alerts go to code scanning and to an artifact, and none of them fails the
-# job. A scan that could not run at all does fail — a silent non-scan is worse than a red
-# one. Tuning the thresholds in .github/zap/rules.tsv is expected; see
-# docs/get-started/setup-repository.md.
+# A scan that could not run at all fails the job; a finding does not. Why ZAP, why report-only,
+# and why the thresholds in .github/zap/rules.tsv must be re-derived against your own API:
+# README.md § DAST.
 
 on:
   workflow_dispatch:
@@ -29,10 +25,9 @@ on:
       - '.github/workflows/zap-api-scan.yaml'
       - '.github/zap/**'
   schedule:
-    # Monday 12:00 UTC — the next free slot after the scanners already staggered one per
-    # hour (00:00 through 11:00). The schedule catches what a push cannot: ZAP's own rules
-    # and add-ons change while the code stands still.
-    - cron: '0 12 * * 1'
+    # The schedule catches what a push cannot: ZAP's own rules and add-ons change while
+    # the code stands still.
+    - cron: '0 3 * * 1'
 
 permissions:
   contents: read
@@ -151,8 +146,7 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          # cache: false — this job holds security-events: write, so it must not restore a
-          # tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
 
       # install_psql: false because the migration that adds the user search column needs
@@ -199,9 +193,7 @@ jobs:
           echo "AUTH_ISSUER=${issuer}" >> "$GITHUB_ENV"
           echo "MOCK_AUTH_PORT=${port}" >> "$GITHUB_ENV"
 
-      # cache: false — this job holds security-events: write, so it must not restore a
-      # tool cache that a less privileged workflow could have written. install: false narrows
-      # the download to the one runtime the provider needs.
+      # cache: false — this job holds security-events: write. See README.md § Cache safety.
       - name: Setup mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
@@ -505,9 +497,7 @@ jobs:
           cat server.log || true
           cat mock-auth-server.log || true
 
-  # A scheduled failure has no author watching it, so it is pushed to a human. cancelled
-  # counts too: a job killed by a timeout or a runner fault reports that rather than
-  # failure, and that is precisely the silent breakage this notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: dast
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.dast.result) }}

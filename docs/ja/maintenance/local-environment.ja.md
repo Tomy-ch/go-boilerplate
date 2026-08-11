@@ -187,6 +187,12 @@ docker compose -p gobp-shared exec garage /garage -c /etc/garage.toml meta snaps
 `git` が触れなくなる等の典型的な詰まりがある。**具体的な復旧コマンドは `repo-ops` スキルを参照**
 （ここでは再掲しない）。ターゲット一覧は [`.makefiles/README.md`](../../../.makefiles/README.ja.md)。
 
+### イメージビルドはホストの GitHub トークンを借りる
+
+tool-runner イメージも `api_server` のツーリングイメージも、ツールの解決に `mise` を使い、`mise` は GitHub Releases API を読む。未認証の呼び出しは **IP あたり毎時 60 回**が上限で、`mise install` は毎回 `mise.toml` 全体を解決し直すため、1 回のビルドにすら足りない。結果としてビルドは `403 Forbidden` で落ち、しかも試行のたびに回復したばかりの割当を使い切るので、リセット時刻が retry のたびに先送りされる。
+
+`make` はトークンを解決し（すでに設定済みの `GITHUB_TOKEN` を優先し、無ければ `gh auth token`）、**BuildKit secret** としてビルドへ渡す。これで上限が毎時 5,000 回に上がる。secret は `mise install` のレイヤにだけマウントされるため、トークンはイメージレイヤにも `docker history` にも実行中のコンテナにも届かない。`gh` も `GITHUB_TOKEN` も無い環境で壊れることはない — 未認証の呼び出しにフォールバックし、レイヤがキャッシュされているか毎時の割当を使い切っていない限りはそれで足りる。
+
 ## server + API スロットリング（worktree 並列）
 
 複数の git worktree（および主 checkout）が **単一の共有インフラ** を衝突なく並列利用するための仕組み。

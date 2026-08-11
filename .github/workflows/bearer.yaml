@@ -13,10 +13,9 @@ name: Bearer Scan
 # baseline is not zero; an alert introduced by the change under review surfaces on the diff
 # instead, which is the same arrangement code-ql.yaml and eslint.yaml already use.
 #
-# `/scripts` is out of scope, and that exclusion is what makes the rest of it readable. Bearer
-# asks what a value *is* when it leaves the process, and repository tooling handles no user data:
-# 216 of the 230 findings measured across this repository sat there, 179 of them `*_logger_leak`
-# — every one a progress line naming a path the tool had just computed. Carrying them costs twice
+# `/scripts` is out of scope — see README.md § Overlapping surfaces. Measured once: 216 of the
+# 230 findings sat there, 179 of them `*_logger_leak`, every one a progress line naming a path
+# the tool had just computed. Carrying them costs twice
 # over, because they bury the surfaces where the question has an answer, and because a red check
 # on every new CLI script is a gate nobody can act on. Excluding them leaves fourteen. Opengrep
 # and ESLint still read `/scripts`: they judge patterns, which does not depend on the data being
@@ -59,9 +58,9 @@ on:
       - 'mock-auth-server/**'
       - 'docs-viewer/**'
   schedule:
-    # Monday 16:00 UTC — the slot after ESLint. Rule updates change the verdict on code
-    # that stood still, which is what the weekly run is for.
-    - cron: '0 16 * * 1'
+    # Rule updates change the verdict on code that stood still, which is what the weekly
+    # run is for.
+    - cron: '0 4 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -128,8 +127,7 @@ jobs:
         with:
           version: 2026.6.0
           install: false
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -207,10 +205,7 @@ jobs:
           sarif_file: bearer.sarif
           category: bearer
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: bearer
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.bearer.result) }}

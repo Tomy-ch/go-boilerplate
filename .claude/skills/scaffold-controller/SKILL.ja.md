@@ -138,18 +138,7 @@ Agent tool を起動して controller 層 test 観点を実装前に列挙:
 実装ファイル規約（`internal/controller/handler/README.md` の reference snippet 準拠 — README が canonical）:
 
 - `package <handler-package>`（lowercase）
-- `type server struct { tracer observability.LayerTracer; <usecase-deps...> }`（struct 名は `server`、README 規約）
-- **Constructor 名**: `BindHandler`（`New` ではない）:
-
-  ```go
-  func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc <pkg>.Usecase) {
-      gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
-          tracer: tf.Controller(),
-          uc:     uc,
-      }, nil))
-  }
-  ```
-
+- `server` 構造体 + `BindHandler(e, tf, uc)` コンストラクタ + `gen.RegisterHandlers(e, gen.NewStrictHandler(&server{...}, nil))` の登録 — 形は `internal/controller/handler/README.md` の reference snippet に厳密に従う（canonical。ここでは再掲しない）。コンストラクタ名は `BindHandler` であり `New` ではない。
 - 各 method:
   - 生成 `ServerInterface` signature と完全一致
   - 冒頭で `ctx, endSpan := s.tracer.Start(ctx); defer endSpan()`（tracer span）

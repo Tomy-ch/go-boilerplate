@@ -27,7 +27,7 @@ on:
       - '**/*.mjs'
       - '**/*.jsx'
   schedule:
-    - cron: '0 19 * * 1'
+    - cron: '0 5 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -636,10 +636,7 @@ jobs:
   # of a notification people learn to ignore. ESLint and Bearer are unwired for the same
   # reason.
   #
-  # A scheduled failure has no author watching it, so it is pushed to a human. cancelled
-  # counts too: a job killed by a timeout or a runner fault reports cancelled rather than
-  # failure. A skipped scan is not a failure — that is the unconfigured-token path, which
-  # is deliberately green.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: sonarqube
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.sonarqube.result) }}

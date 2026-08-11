@@ -17,6 +17,7 @@
 | `config.toml` | sandbox ポリシー、承認ポリシー、有効な機能を記録した Codex の運用方針です。Codex はこれを自動読み込みしないため、`-c`、`--profile`、または `~/.codex/config.toml` で適用します。 |
 | `skills/<name>/` | 再利用可能なワークフローです。各スキルは英語正典の `SKILL.md` を持ち、`agents/openai.yaml` は Codex の UI メタデータを提供します。一部のスキルは `scripts/` や `prompts/` を同梱します。 |
 | `agents/` | 層別監査やレビュー検証のような、読み取り専用の並列作業の役割定義です。統合スキルは委譲可能な場合にこれらを使い、そうでない場合は同じ役割の指示をインラインで実行します。 |
+| `hooks.json` | プロジェクトのフックです。comment-remediation フックは未清掃の `apply_patch` 対象パスを共通チェッカーへ渡します。 |
 | `scaffold-spec/` | `new-spec-*`、`verify-spec`、`scaffold-*` スキルが実行時に読む spec 形式定義です。ここを更新すると、形式をスキルに重複させず共有形式を変更できます。 |
 
 ## 初回セットアップ

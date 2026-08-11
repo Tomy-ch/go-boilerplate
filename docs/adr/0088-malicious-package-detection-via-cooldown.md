@@ -52,7 +52,7 @@ corrects a compromise rather than by blast radius:
 
 | Surface | Window | Mechanism |
 | --- | --- | --- |
-| npm | 7 days | `min-release-age` in each `.npmrc` (npm 11 native) |
+| Node packages | 7 days | `minimumReleaseAge` in each `pnpm-workspace.yaml`, refused at resolution time ([ADR-0105](0105-pnpm-as-the-only-node-resolver.md)) |
 | Go modules | 7 days | `scripts/go-cooldown`, gating the direct requirements a change adds or raises |
 | CLI tools resolved by mise | 14 days (GitHub release) / 7 days (package registry) | `scripts/tool-cooldown`, reading `mise.toml` |
 | CLI tools installed from PyPI | 7 days | `scripts/tool-cooldown`, reading the `python/*.in` declarations ([ADR-0077](0077-mise-ssot-drift-gate.md)) |
@@ -84,7 +84,7 @@ signal on the Go side only. It is report-only and is not treated as a detector.
 - **The cooldown protects the resolution moment, not the installed state.** It closes the
   window in which a fresh malicious version can enter a lockfile; it does nothing about one
   that is already pinned, and nothing about a compromise discovered after the window
-  elapses. In the `@asyncapi` case the 7-day npm window had already passed by the time the
+  elapses. In the `@asyncapi` case the 7-day window had already passed by the time the
   compromise was public — removal upstream is what protected consumers, not this control.
 - Security updates are delayed by the same window they impose (Dependabot's security
   updates deliberately bypass their cooldown for this reason).
@@ -118,8 +118,8 @@ latency, and the residual risk is accepted here explicitly rather than papered o
 
 ## Notes
 
-- Cooldown windows and their rationale: `docs/rules.md`, `.npmrc` in each npm project,
-  `.github/dependabot.yml`.
+- Cooldown windows and their rationale: `docs/rules.md`, `pnpm-workspace.yaml` in each Node
+  package, `.github/dependabot.yml`.
 - Related: [ADR-0087](0087-sha-pinned-actions.md) (SHA pinning),
   [ADR-0086](0086-multi-layer-security-scanning.md) (the scanning layers this sits beside),
   [ADR-0001](0001-avoid-lock-in.md) (why SaaS detectors are out).

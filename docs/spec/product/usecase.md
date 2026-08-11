@@ -197,6 +197,7 @@ steps:
   - decodeProductCursor で不透明カーソルを keyset 境界（publishedAt, id）へ復号する（先頭ページは境界なし）
   - domain の ListParams を組み立てる（Limit=Cursor.Limit32()+1、Ascending、CategoryID/StatusID/Keyword、AfterPublishedAt/AfterID）
   - product_repository.FindPublishedList で公開商品を取得する
+  - 取得した各 Product が Product.IsPublished を満たすことを確かめる（SQL の絞り込みとドメインの定義の乖離検出）
   - 取得件数が Cursor.Limit() を超える場合は次ページありと判定し、末尾を切り詰める
   - 各 Product を ProductView（ID / Name / Description / Price / Quantity / StockWarningThreshold / StatusID / CategoryID / PublishedAt）へ写像する
   - 次ページありの場合、切り詰め後の末尾行から encodeProductCursor で NextCursor を生成する
@@ -206,6 +207,7 @@ errors:
   - Cursor が nil の場合は apperror.ErrInvalidArgument
   - カーソル復号失敗時は apperror.ErrInvalidArgument（decodeProductCursor 由来）
   - product_repository.FindPublishedList のエラーをそのまま伝播する
+  - 取得行に Product.IsPublished を満たさないものが混じっていた場合は apperror.ErrInternal（500。SQL とドメインの乖離）
 ```
 
 ### GetProduct
@@ -214,11 +216,13 @@ errors:
 tx_required: false
 steps:
   - product_repository.FindPublishedByID で公開中の単一商品を取得する（未存在・非公開はいずれも NotFound）
+  - 取得した Product が Product.IsPublished を満たすことを確かめる（SQL の絞り込みとドメインの定義の乖離検出）
   - Product を ProductView（ID / Name / Description / Price / Quantity / StockWarningThreshold / StatusID / CategoryID / PublishedAt）へ写像する
 calls:
   - product_repository.FindPublishedByID
 errors:
   - product_repository.FindPublishedByID のエラーをそのまま伝播する（未存在・非公開は apperror.ErrNotFound → 404）
+  - 取得行が Product.IsPublished を満たさない場合は apperror.ErrInternal（500。SQL とドメインの乖離）
 ```
 
 ### CreateProduct
@@ -334,13 +338,15 @@ steps:
   - authorizer.Authorize（ActionProductListLowStock / resource=product・所有者なし）で admin 認可を確認する（拒否は 403）
   - paging.NewLimit（lowStockLimitPolicy）で取得件数を正規化する（0 以下は既定値 20、上限超過は 100 へクランプ）
   - product_repository.FindAllLowStock で在庫僅少商品を在庫の少ない順に最大 limit 件取得する
-  - 各 Product を ProductView へ写像する（在庫僅少の再判定は行わない。判定は Repository の契約）
+  - 取得した各 Product が Product.IsLowStock を満たすことを確かめる（絞り込みを実行する SQL と、在庫僅少を定義するドメイン述語の乖離検出）
+  - 各 Product を ProductView へ写像する
 calls:
   - product_repository.FindAllLowStock
 errors:
   - authn が nil の場合は apperror.ErrUnauthenticated（401）
   - 認可拒否は authz 由来の apperror.ErrPermissionDenied（403）
   - product_repository.FindAllLowStock のエラーをそのまま伝播する
+  - 取得行が Product.IsLowStock を満たさない場合は apperror.ErrInternal（500。SQL とドメインの乖離）
 ```
 
 > `limit` の既定値は OpenAPI の `default: 20` ではなく usecase の `paging.NewLimit` が与える。

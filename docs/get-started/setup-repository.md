@@ -124,7 +124,13 @@ curl http://localhost:8080/ready
 
 1. Rewrite the contents of README.md and README.ja.md according to your project; replace or remove
    the repository-specific branch-rule exception in the maintainer-policy section.
-2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
+2. If your project keeps its documentation in a single language, you may collapse the pair — for
+   example by replacing README.md with the contents of README.ja.md.
+    - [gen-docs-json.ts](../../scripts/portal/gen-docs-json.ts) and the
+      [manifest.yaml](../../docs/portal/manifest.yaml) it generates from both reference README.md,
+      so a full replacement has to rewrite those scripts as well.
+    - The portal UI carries an En / Jp switch of its own, so it needs the same treatment.
+3. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
     - Rewrite the entire Info section according to your project.
         - title
         - termsOfService

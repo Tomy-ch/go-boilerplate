@@ -50,3 +50,4 @@ API 仕様を **OpenAPI ファースト**で定義する。OpenAPI ドキュメ�
 
 - [`docs/rules.md`](../rules.ja.md#openapi-first) の OpenAPI ファーストルールで強制される（実装前に仕様を定義すること、生成コードを手動で編集しないこと）。これらのルールはこの決定の日常的な*結果*である。
 - かつての `docs/decisions.md` から移行。
+- 仕様のビルドパイプライン（Redocly によるモジュール分割 → bundle → 生成）とタグ単位の生成は別途記録する（[ADR ログ](README.ja.md) の API コントラクト系 ADR を参照）。

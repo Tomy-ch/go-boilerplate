@@ -75,6 +75,7 @@ fields:
 - `updatedAt >= createdAt`（更新日時は作成日時以降）。違反時 `ErrInvalidUpdatedAt`
 - `deletedAt != nil` のとき `deletedAt >= createdAt`。違反時 `ErrInvalidDeletedAt`
 - `deletedAt != nil` のとき `deletedAt >= updatedAt`。違反時 `ErrInvalidDeletedAt`
+- `UpdateProfile` での更新時は `updatedAt >= 現在の updatedAt`（単調非減少）。違反時 `ErrInvalidUpdatedAt`
 
 ## Behavior Methods
 
@@ -88,19 +89,20 @@ fields:
 
 # 状態遷移メソッド（更新・論理削除エンドポイント向け。追記分）
 - name: UpdateProfile
-  signature: |
-    UpdateProfile(firstName, lastName, email, phone string, prefectureID uuid.UUID,
-                  postalCode, city, street string, building *string, updatedAt time.Time) error
+  signature: UpdateProfile(profile Profile, updatedAt time.Time) error
   description: |
     プロフィール（氏名・連絡先・住所・都道府県ID）と updatedAt を一括で置き換える。
     各フィールドは New と同じ不変条件で検証する（長さ範囲 / prefectureID 非 nil /
-    building は非 nil 時のみ検証 / updatedAt >= createdAt）。
+    building は非 nil 時のみ検証）。updatedAt は createdAt 以降かつ現在の updatedAt 以降
+    （単調非減少）でなければならず、違反時は ErrInvalidUpdatedAt を返す。
+    既に論理削除済みの場合は ErrAlreadyDeleted を返し、更新しない。
     PUT は全フィールド指定、PATCH は load した現在値に provided フィールドをマージした
     フルセットを渡して呼ぶ（usecase 側でマージ）。
 - name: MarkAsDeleted
   signature: MarkAsDeleted(deletedAt time.Time) error
   description: |
     論理削除。deletedAt を設定する（deletedAt >= createdAt かつ >= updatedAt を検証）。
+    論理削除は更新操作でもあるため、updatedAt も deletedAt の値へ更新する。
     既に削除済み（deletedAt != nil）の場合は ErrAlreadyDeleted を返す。
 ```
 

@@ -10,17 +10,8 @@ name: Tool Cooldown
 # `go-cooldown` only gates direct requirements. A declaration that has drifted from its lockfile is
 # reported as a violation, since the version cleared here would then not be the version installed.
 #
-# The window has two tiers, taken from the backend rather than from the tool. A version resolved
-# through a GitHub release (aqua / ubi / github) gets 14 days, the same as `pin-actions` and
-# `pin-images`, because a tag can be moved onto a different commit. A version resolved through a
-# package registry (go / npm / PyPI) gets 7 days, the same as pnpm's `minimumReleaseAge` and
-# `go-cooldown`, because a published version there is immutable.
-#
-# **Language runtimes are deliberately not checked.** If the go / node / python distribution
-# itself were compromised, the failure would not be one link of a supply chain but the trust
-# model of the language ecosystem, and a cooldown protects nothing against it. That is an
-# accepted risk, stated here so the gap reads as a decision rather than an oversight; runtimes
-# are governed instead by the separate policy of waiting for an LTS.
+# The window has two tiers (14 days for a GitHub release, 7 for a package registry) and language
+# runtimes are outside every window — both recorded in ADR-0088 (malicious-package-detection-via-cooldown).
 #
 # Short names are resolved by asking `mise registry`, because mise decides which backend a name
 # resolves to and a table kept here would drift silently the next time mise changes.
@@ -35,7 +26,7 @@ on:
       - '.github/tool-cooldown-bypass.toml'
       - '.github/workflows/tool-cooldown.yaml'
   schedule:
-    - cron: '0 11 * * 1'
+    - cron: '45 4 * * 1'
   workflow_dispatch:
 
 permissions:
