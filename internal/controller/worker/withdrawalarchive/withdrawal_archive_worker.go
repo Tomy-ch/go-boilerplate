@@ -12,7 +12,6 @@ import (
 // Name は、この worker の名前です（`worker <name>` の引数で選択され、metric の worker ラベルにもなります）。
 const Name = "withdrawal-archive"
 
-// 実装漏れをコンパイル時に検出します。
 var _ workerbd.Worker = (*workerImpl)(nil)
 
 // workerImpl は、退会証跡 worker の seam 実装です。
@@ -23,8 +22,6 @@ type workerImpl struct {
 }
 
 // New は、退会証跡 worker を初期化します。
-// broker adapter（Consumer / FailureHandler）は呼び出し側が組み立てて渡すため、この worker は
-// どの broker から読んでいるかを知りません。
 // failure に nil を渡した場合、Permanent メッセージの退避は engine 既定の扱いになります。
 func New(
 	consumer workerbd.Consumer,

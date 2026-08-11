@@ -30,7 +30,7 @@
 1. Controller span を開始し（`tracer.Start`）、`defer` で終了します。
 2. args を保持期間・バッチサイズ・dry-run フラグにパースし、`purge.PurgeDeleted(...)` を呼びます。
 3. 成功時は削除件数を `logging.JobResultKey` に、スキップ件数を `logging.JobSkippedKey` に載せて **Info** でログ出力します。`--dry-run` ではメッセージが削除していないことを明示し、削除件数は「削除されるはずだった件数」になります。
-4. 失敗時は、伝播する前に同じ 2 つの件数を **Warn** でログ出力します。usecase は中断までにコミットした件数を返し、コミット済みの物理削除は取り消せないため、件数を捨てると既に消えたユーザーが見えなくなります。エラー自体はそのまま返します（Runner / CLI に伝播し、exit code は呼び出し側が決定します。ジョブは `os.Exit()` を呼びません）。
+4. 失敗時は、伝播する前に同じ 2 つの件数を **Warn** でログ出力します（理由は [job/README.ja.md § GC / バッチジョブ](../README.ja.md) を参照）。エラー自体はそのまま返します（Runner / CLI に伝播し、exit code は呼び出し側が決定します。ジョブは `os.Exit()` を呼びません）。
 
 ## Args
 

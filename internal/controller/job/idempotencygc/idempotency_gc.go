@@ -71,8 +71,6 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 
 	deleted, err := j.gc.SweepExpired(ctx, batchSize)
 	if err != nil {
-		// 中断までにコミットされた削除は取り消せない。エラーだけを返すと消えた件数が運用者に届かないため、
-		// 確定した件数を記録してから伝播する。
 		j.logging.Named(jobName).Warn(ctx, abortedMessage, logging.Int64(logging.JobResultKey, deleted))
 		return err
 	}

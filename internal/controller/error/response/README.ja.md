@@ -66,6 +66,8 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 
 ### apperror → HTTP マッピング
 
+HTTP ステータス列は [`internal/apperror/README.ja.md`](../../../apperror/README.ja.md) の対応表が所有するセンチネル分類を写したものです。エラーコード列は本層独自の追加です。
+
 |apperror|HTTPステータス|エラーコード|
 |---|---|---|
 |`ErrInvalidArgument`|400 Bad Request|`BAD_REQUEST`|

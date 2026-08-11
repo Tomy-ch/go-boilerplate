@@ -66,6 +66,8 @@ at the edge. See the `errorhandler` README and [ADR-0046 (error-details-opt-in-g
 
 ### apperror → HTTP Mapping
 
+The HTTP Status column mirrors the sentinel classification owned by [`internal/apperror/README.md`](../../../apperror/README.md) § Mapping Table; the Error Code column is this layer's own addition.
+
 |apperror|HTTP Status|Error Code|
 |---|---|---|
 |`ErrInvalidArgument`|400 Bad Request|`BAD_REQUEST`|

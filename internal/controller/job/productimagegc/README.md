@@ -30,7 +30,7 @@ English | [日本語](README.ja.md)
 1. Start a controller span (`tracer.Start`) and `defer` its end.
 2. Parse args into a grace window, a page size and a dry-run flag, then call `gc.SweepOrphans(...)`.
 3. On success, log at **Info** with the deleted count under `logging.JobResultKey` and the reconciled count under `logging.JobScannedKey`. Under `--dry-run` the message states explicitly that nothing was deleted, and the deleted count is the number of objects that *would* have been reclaimed.
-4. On failure, log the same two counts at **Warn** before propagating. A deleted object cannot be restored, so dropping the counts would hide the images that are already gone. The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
+4. On failure, log the same two counts at **Warn** before propagating (see [job/README.md § GC / batch jobs](../README.md) for why) The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
 
 ## Args
 

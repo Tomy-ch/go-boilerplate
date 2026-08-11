@@ -325,7 +325,7 @@ func (r *run) ack(ctx context.Context, m worker.Message) {
 }
 
 // nack は、retryable 失敗時に per-message 再配送 backoff（指数 + full jitter）を計算し、
-// その遅延つきで再配送します。policy は engine が持ち、adapter が native 機構で honor します。
+// その遅延つきで再配送します。
 func (r *run) nack(ctx context.Context, m worker.Message) {
 	d := r.nackBackoff(m.ReceiveCount)
 	if err := r.consumer.NackWithBackoff(ctx, m, d); err != nil {
