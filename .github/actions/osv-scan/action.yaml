@@ -56,19 +56,9 @@ runs:
 
         echo "exit-code=${code}" >> "$GITHUB_OUTPUT"
 
-    # Severity policy, single source of truth for both callers.
-    #
-    # A finding is gating when it is rated HIGH or CRITICAL, regardless of whether a
-    # fix exists: at the promotion boundary a known-severe vulnerability is a
-    # deliberate decision, not a background alert (the same "everything counts" view
-    # trivy-release-gate.yaml takes).
-    #
-    # Severity is read from the advisory's own rating and falls back to the CVSS score
-    # osv-scanner aggregates per group. Advisories from the Go vulnerability database
-    # carry neither, so they cannot be measured against a HIGH threshold at all; those
-    # gate only when a fixed version exists, which keeps an unrateable-and-unfixable
-    # advisory from turning every promotion permanently red while still refusing to
-    # ship one that could simply be updated away.
+    # Severity policy, single source of truth for both callers: a finding gates when it is
+    # rated HIGH or CRITICAL (fixed or not), or when it carries no rating but a fixed version
+    # exists. See README.md § Release Gates.
     - name: Normalize findings and build the summary
       id: summarize
       shell: bash
