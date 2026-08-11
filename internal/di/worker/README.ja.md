@@ -65,9 +65,7 @@ fx.Invoke(queuemetrics.RegisterStatsCollector)
 ## 注意点
 
 - `state.Set` はアプリケーション起動前に行う必要がある
-- `done` が `nil` の場合、worker はスキップされる（engine は起動しない）
-- engine は detached goroutine で動作し、その context は `OnStop` でのみキャンセルされる
-- drain タイムアウトを超えた未完了処理は Ack されず再配送される
+- フックのライフサイクル詳細（`done == nil` でのスキップ・detached 実行・drain と再配送）は [`hook/README.ja.md`](hook/README.ja.md) を参照
 - `ValidateShutdownGrace` は `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` のときアプリ起動を失敗させる（drain は停止猶予が尽きる前に完了する必要がある）
 - queue stats 収集器は queue depth / DLQ メトリクスを出力する。対象が 1 つも登録されていなければ何も出力しない
 - worker の追加は `internal/di/module/worker.go` の `provideWorkers(...)` にコンストラクタを追加する（各 worker は `usecase/boundary/worker.Worker` を実装する必要がある）

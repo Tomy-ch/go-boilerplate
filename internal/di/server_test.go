@@ -25,9 +25,7 @@ func TestNewApplicationCore(t *testing.T) {
 		t.Run("依存グラフの結線が検証を通る", func(t *testing.T) {
 			t.Parallel()
 
-			// ValidateApp は依存グラフの結線（型の充足）を検証する。ハンドラ・ユースケース・
-			// リポジトリを追加した際に結線漏れがあればここで検出される。本番と同じ
-			// fx.WithLogger(NewFxEventLogger) を渡し、ロガー構成子の依存解決も併せて検証する。
+			// 本番と同じ fx.WithLogger(NewFxEventLogger) を渡し、ロガー構成子の依存解決も併せて検証する。
 			opts := append(applicationCoreOptions(), fx.WithLogger(NewFxEventLogger))
 			require.NoError(t, fx.ValidateApp(opts...))
 		})
@@ -36,7 +34,6 @@ func TestNewApplicationCore(t *testing.T) {
 		t.Run("モック DB で全コンストラクタとライフサイクルが起動・停止する", func(t *testing.T) {
 			// 実 DB とポート衝突を避けつつ、全コンストラクタの実行とライフサイクル(OnStart/OnStop)を検証する。
 			// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避し、サーバポートは 0（エフェメラル）にする。
-			// EnsureRepoRootAndEnv が cwd を変更するため t.Parallel() は付けない。
 			config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 
 			ctrl := gomock.NewController(t)

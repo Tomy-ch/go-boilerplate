@@ -18,12 +18,10 @@ import (
 func TestNewWorkerCore(t *testing.T) {
 	t.Parallel()
 
-	// worker 用 fx グラフの結線が欠落なく成立することを検証する（コンストラクタの実体実行は伴わない）。
 	require.NoError(t, fx.ValidateApp(NewWorkerCore(), fx.WithLogger(NewFxEventLogger)))
 }
 
 func TestNewWorkerCore_BootsWithMockedDB(t *testing.T) {
-	// 実 DB を避けつつ、worker 用 fx グラフの全コンストラクタ実行とライフサイクル(OnStart/OnStop)を検証する。
 	// worker 未選択(state 未設定)でも起動・停止でき、health listener の起動/停止まで通ることを確認する。
 	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 	// health listener のポート衝突を避けるため OS 割り当ての空きポートを使う。

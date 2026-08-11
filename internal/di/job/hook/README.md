@@ -31,4 +31,3 @@ err := <-done
 - Job execution starts asynchronously in a separate goroutine
 - The `done` channel is closed by the hook side (callers should not close it)
 - `shutdowner.Shutdown()` triggers application stop after job completion
-- On `OnStop` the run context is cancelled, so a job still running (e.g. on `--timeout`) is interrupted rather than detached
