@@ -88,10 +88,11 @@ on_disk() {
   esac
 }
 
-# Nothing outside the sweep's reach: generated output is rewritten by its generator, and
-# vendored code is not ours to restyle. A path that does not exist is a file being created,
-# which has no comment stock to sweep. Takes the repository-relative path and the same file
-# on disk. Prints the reason, empty when the file is in scope.
+# Nothing outside the sweep's reach: generated output is rewritten by its generator, vendored
+# code is not ours to restyle, and a release note is a dated record whose whole content is the
+# change history the sweep exists to delete. A path that does not exist is a file being
+# created, which has no comment stock to sweep. Takes the repository-relative path and the
+# same file on disk. Prints the reason, empty when the file is in scope.
 out_of_scope_reason() {
   case "$1" in
     # Only to_relative leaves a path absolute, and only when it belongs to no checkout of
@@ -110,6 +111,10 @@ out_of_scope_reason() {
       ;;
     docs/portal/* | docs/coverage/* | docs/db-schema/* | docs/godoc/* | docs/openapi/*)
       printf 'generated'
+      return
+      ;;
+    .github/release/*)
+      printf 'release record'
       return
       ;;
     *.lock | *lock.json | *lock.yaml | *.sum)
