@@ -50,4 +50,5 @@ accepted
 
 ## 補足
 
+- fx は中立な DI 抽象（Registrar / Shutdowner）の背後に閉じ込める — 別途記録する（[ADR ログ](README.ja.md) の DI 系 ADR を参照）。
 - かつての `docs/decisions.md` から移行。

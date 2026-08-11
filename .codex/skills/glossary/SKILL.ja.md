@@ -25,7 +25,11 @@ Mechanism vocabulary は抑制チャネルです。**報告前にすべての or
 
 - `docs/spec/*/domain.md` の YAML にある `package:` と `struct:` の宣言（対象を絞る場合は選択された feature のみ）。
 - `_test.go` と `mock/` を除く `internal/domain/**` にある、export された `type X struct` と `type X interface` の宣言。
-- `_test.go` と `mock/` を除く `internal/domain/**` にある export 済みの振る舞い。`^func \(([a-z]* \*\?[A-Z][A-Za-z0-9]*) \)\?[A-Z][A-Za-z0-9]*(` を使って抽出します。
+- `_test.go` と `mock/` を除く `internal/domain/**` にある export 済みの振る舞い。たとえば次で抽出します。
+
+  ```sh
+  grep -rn '^func \(([a-z]* \*\?[A-Z][A-Za-z0-9]*) \)\?[A-Z][A-Za-z0-9]*(' internal/domain --include='*.go'
+  ```
 
   アクセサは差し引きます。レシーバのソースを開いて struct を読みます。フィールドは非公開なので、在庫抽出の grep からは得られません。名前ではなく本体で判定し、コピーして返す、埋め込んだ値へ委譲する、フィールド名を省略する場合も含め、1 つのフィールドに到達してそれを返すメソッドを落とします。残るのは `Cancel`、`IsCanceled`、`IsLowStock`、`UpdateEmail` のような動詞または判断です。
 - `internal/domain/**` の公開パッケージ値。たとえば次で抽出します。

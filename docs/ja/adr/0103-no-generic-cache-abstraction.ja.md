@@ -62,3 +62,4 @@ Redis や Memcached の型をユースケース層に公開することになり
 - ソース: [`docs/project/out-of-scope.md`](../../project/out-of-scope.md) 行 49–57。
 - 関連: [ADR-0001](0001-avoid-lock-in.ja.md)（ロックイン回避——中立的な継ぎ目は技術固有の能力を犠牲にすることがある。これは意図的な例外である）。
 - 関連: [ADR-0002](0002-onion-architecture.ja.md)（オニオンアーキテクチャ——キャッシュデコレーターはインフラ層で組み込まれる）。
+- ADR の全体像と順序: [ADR ログ](README.ja.md)。

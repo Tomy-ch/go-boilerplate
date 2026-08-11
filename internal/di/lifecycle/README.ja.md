@@ -8,25 +8,47 @@
 
 ## なぜ独立パッケージなのか
 
-```mermaid
-flowchart TB
-    subgraph "fx に直接依存（NG）"
-        Server1["HTTP Server"] --> FxLC["fx.Lifecycle"]
-        Tracer1["TracerProvider"] --> FxLC
-        Metrics1["Metrics"] --> FxLC
-    end
+`lifecycle/` パッケージは、**アプリケーション全体の Start / Stop を一元管理する中立なレイヤ**を提供するために独立したディレクトリとして存在します。
 
-    subgraph "Registrar で抽象化（OK）"
-        Server2["HTTP Server"] --> Reg["Registrar"]
-        Tracer2["TracerProvider"] --> Reg
-        Metrics2["Metrics"] --> Reg
-        Reg --> FxLC2["fx.Lifecycle"]
-    end
-```
+`fx.Lifecycle` を直接使うと、以下の問題が生じます。
 
-- **fx 依存を DI 層に閉じ込める** — Onion Architecture の原則を守る
-- **Start / Stop の登録窓口を一元化** — 起動・停止の順序と全体像が把握しやすい
-- **テスト容易性** — テストでは Noop スタブを渡せる
+### 1. fx 依存がアプリケーション全体へ漏れる
+
+`fx.Lifecycle` を直接使うと、すべての層（HTTP サーバー、Observability、メトリクス、ワーカーなど）が fx に依存し、外部の技術詳細を内側の層へ持ち込まないという Onion Architecture の原則に反します。
+
+`lifecycle.Registrar` は **fx 依存を DI 層に閉じ込め**、下位の層は Start / Stop という抽象だけを参照できるようにします。
+
+### 2. Start / Stop 処理が分散する
+
+各パッケージが個別に `fx.Lifecycle.Append()` を呼ぶと、何がどこで起動し、何がどこでどの順に停止するのかを追いにくくなります。
+
+「Start / Stop の登録窓口」を `lifecycle/` に集約することで、**アプリケーション全体のライフサイクルを一箇所で管理できます**。
+
+### 3. fx を直接使うとテストが難しくなる
+
+`fx.Lifecycle` のフック登録は DI 依存のコードであり、`domain` や `usecase` のテストでは不要かつ煩雑です。
+
+`Registrar` へ抽象化することで、以下が可能になります。
+
+- テストでは Noop スタブを渡せる
+- `fx.App.Start/Stop` はフックを発火させたいときだけ使う
+
+### 4. Start / Stop はアプリケーション全体の関心事
+
+ライフサイクルに依存する処理は HTTP サーバーに留まりません。
+
+- Tracer の初期化 / シャットダウン
+- メトリクスエクスポーター
+- DB コネクションのクローズ
+- キューコンシューマー
+- Cron / ワーカー
+- キャッシュクライアントの初期化
+
+これらを `server/` や `controller/` に置くのは責務違反です。**アプリケーション全体のライフサイクル管理は横断的関心事として切り出すのが自然です**。
+
+### 5. DI の制御点として必要
+
+`lifecycle.Module()` を見れば、Start / Stop の仕組みがどこで提供され、fx とアプリケーションの境界がどこにあるのかがすぐに分かります。
 
 ## ファイル構成
 

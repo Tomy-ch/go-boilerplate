@@ -55,8 +55,8 @@
 
 スタンドアロン代替: `--spec=<path>` 引数で規約外パスを指定可能。
 
-- spec ファイル無し → 中断、`/new-spec` 案内
-- `internal/domain/<aggregate>/` 既存 → 中断（手書きコード clobber 防止）
+spec ファイルが無ければ中断し、`/new-spec` を案内する。
+`internal/domain/<aggregate>/` が既にあれば、手書きコードの clobber を避けるため中断する。
 
 ## Step 1. spec + README context 読み込み
 

@@ -57,4 +57,6 @@ ADR は依存関係 / 基礎的な順序で番号付けされ（原則が先）�
 
 ## 補足
 
+- 移行の範囲、順序づけられた ADR の全体一覧、および ADR ごとの出典参照は
+  [ADR ログ](README.ja.md) にある。
 - `docs/decisions.md` にあった依存関係インベントリは `docs/reference/dependencies.md` に移動する。

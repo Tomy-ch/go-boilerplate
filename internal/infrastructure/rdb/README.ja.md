@@ -284,7 +284,7 @@ SQL 実行トレースは driver の接続層に結線した pgx クエリトレ
 
 ### 7. テスト戦略（Integration 前提）
 
-Repository / QueryService テストは
+Repository / QueryService / CommandService テストは
 
 実DB + rollback
 
@@ -297,6 +297,15 @@ Repository / QueryService テストは
 - SQL 実行経路 — メソッドが dispatch する各クエリ / 分岐
 - 全 sqlc 戻り値への `pgerror.NormalizeError` 適用（生 `pg` / 接続エラー → `apperror`）
 - row → entity 変換（カラム → フィールド対応、NULL 処理）
+
+CommandService テストは加えて次を検証します:
+
+- 触れた全テーブルへの atomic な書き込み効果（例: 在庫の減算、purchase / detail 行の挿入、
+  業務コードから解決された `status_id`）を書き込み後の `SELECT` で確認する
+- fail-closed のガード（例: 防御的な `WHERE quantity >= :qty` → 0 行 → `ErrConflict`）を、
+  ドメイン検査は通るが DB 述語が弾くよう stale なロック値を使って確認する
+- 制約違反の正規化（`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`、
+  unique `23505` → `ErrConflict`）
 
 並行 / ロック競合は既定の `testkit` ヘルパでは再現できません: `WithinTx` はトランザクションを直列化します（最後に rollback する単一 tx）。真に並行なコネクションでしか発火しない分岐 — 例: `Claim` の `lock_timeout` `55P03`（lock_not_available）— は、独立した `TransactionManager.Do` を 2 本（2 コネクション / トランザクション）走らせ、片方が行ロックを保持しもう片方をタイムアウトさせる専用の統合テストが要ります。
 

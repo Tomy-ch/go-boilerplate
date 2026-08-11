@@ -20,6 +20,7 @@ ADR は 1 時点における単一の決定を記録する: コンテキスト�
 ## 規約
 
 - **ファイル名**: `NNNN-kebab-title.md`、ゼロパディング 4 桁。supersession では番号は空かない——supersede された ADR は番号もファイルも保持し続ける——ので、退いた決定の番号が別の決定へ渡ることはない。
+- **ファイル名**: `NNNN-kebab-title.md`（4 桁ゼロ埋め）。supersede しても番号は解放されない——superseded な ADR は番号もファイルも保持する——ため、退役した決定の番号が別の決定へ渡ることはない。
 - **順序**: 新しい ADR を次の未使用番号へ末尾追記する。番号は安定した参照であり、対象の決定はタイトル、タグ、ログから探す。これは [AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html) と [Microsoft](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record) が説明する一般的な ADR 運用である。すなわち、採択済みの記録を保ち、テーマ上の整然さのために履歴順を並べ替えるのではなく、後続 ADR によって置換を表現する。
 <!-- boilerplate-only:begin -->
 - **正本の順序例外**: このリポジトリがボイラープレート正本として配布される間は、番号を発見順ではなく依存関係 / 基礎的な順序（原則 → コントラクト → レイヤー → サブシステム → 横断関心事 → exclusion）に従わせる。この順序を保つため、新しい ADR を**テーマ上の位置へ挿入し、後続の全番号を +1 シフト**してよい（純粋なリナンバー: シフトされた各 ADR の内容は不変で、リポジトリ内の全参照は同一変更内で更新する）。セットアップでこの例外は削除される。正本での再採番をまたいでも、kebab タイトルは安定識別子として残る。

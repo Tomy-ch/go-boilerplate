@@ -34,6 +34,15 @@ Go の Web サービスには、それぞれ異なるスキャン手法を要す
 - **ランナー自身の挙動**: 侵害されたアクションやツールの推移的ダウンロードは実行時に外部送信を
   行うため、静的スキャンでは観測できない。
 
+パイプラインの成熟に伴い、さらに次の面が加わった。
+
+- **ワークフローとそのランナーそのもの**: CI 定義は資格情報を伴うコードであり、侵害されたアクションや
+  テンプレートインジェクションを受けた `run:` ブロックは、プロダクトではなくビルドへの攻撃である。
+- **API コントラクトの形**: 入力に上限を宣言していない、あるいは認証を宣言していないエンドポイントは
+  spec 上の欠陥であり、どのコードスキャナも読まない。
+- **誰もテストを書かなかった入力**: パーサは届いたものを何でも受け取り、それを壊すケースは定義上、
+  誰も想像しなかったものである。
+
 これらすべてを十分にカバーする単一のツールは存在しないため、目的適合のツールを組み合わせた
 層構成が必要になる。
 
@@ -84,6 +93,15 @@ advisory 自身の評価を第一とし、無ければ osv-scanner がグルー�
 | ワークフロー定義 | zizmor | Actions 関連 PR / protected push / 週次 | 同一ワークフロー |
 | コンテナイメージ | Trivy image + SBOM | デプロイ先ブランチ宛 PR / 週次 | 同一ワークフロー |
 | リポジトリの姿勢 | OpenSSF Scorecard | 既定ブランチ / 週次 | — |
+| cooldown より新しい依存バージョン | npm cooldown audit | lockfile / `.npmrc` の変更 / 週次 | —（設計上、決してブロックしない） |
+| Dockerfile の設定不備 | Trivy config | Dockerfile 変更の PR / protected push | 同一ワークフロー（HIGH 以上） |
+| 依存のライセンス | Trivy licence | Trivy FS と同一トリガー / 週次 | —（ポリシー未定） |
+| 新規に導入される advisory（GHAS 非依存） | OSV diff | 依存変更の PR | 同一ワークフロー（閾値なし） |
+| 自前ソースのパターン | Opengrep（taint-tracking） | Go / 依存 / spec の PR / 週次 | 同一ワークフロー（ERROR） |
+| lockfile の `resolved` URL | lockfile-lint | lockfile 変更の PR | 同一ワークフロー |
+| API コントラクトの形 | Spectral（OWASP API） | spec 変更の PR / protected push | 同一ワークフロー |
+| 誰もテストしなかった入力 | Go ネイティブ fuzzing | 週次 | 同一ワークフロー |
+| 依存の capability | capslock | `go.mod` 変更の PR | —（報告のみ） |
 
 PR はその変更が持ち込むリスクを surface し、protected branch への push はブランチ保護が
 判断材料にする code scanning のベースラインを残す。週次実行は「コードが変わらなくても結果が
@@ -144,6 +162,7 @@ Dependency Review（GitHub の依存グラフ API）、Scorecard（OIDC によ�
   クレデンシャルは報告されない。
 - スケジュール実行はどの PR にも紐づかない finding を生むため、メンテナによる能動的な
   トリアージが必要になる。
+- 定期実行は open な PR に紐づかない finding を生むことがあり、メンテナが能動的にトリアージする必要がある。
 
 ## 検討した代替案
 
