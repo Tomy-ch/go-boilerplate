@@ -106,7 +106,7 @@ All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for par
 
 ### decimal
 
-An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/lexicon/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice belong to the caller; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
 
 |Symbol|Description|
 |---|---|
@@ -141,8 +141,6 @@ Abstracts external command execution behind an interface so callers can inject a
 ### fnmeta
 
 Decomposes full function names obtained from `runtime` to extract package and function names.
-
-Primarily used for span name generation in `internal/observability`.
 
 |Function|Description|
 |---|---|
@@ -188,7 +186,7 @@ A bounded-retry behavior layer that consumes a failure classification (`classify
 |`Do`|Run a function with bounded retries while a classifier marks the error retryable|
 |`Full`|Full jitter — uniform random duration in `[0, d]`|
 |`Policy`|`MaxAttempts` + `Backoff` (`func(attempt int) time.Duration`)|
-|`Sleeper` (interface)|`Sleep(ctx, d)` wait abstraction (satisfied by `clock.Sleeper`)|
+|`Sleeper` (interface)|`Sleep(ctx, d)` wait abstraction (satisfied structurally by the caller's own sleeper type)|
 
 ### safecast
 
