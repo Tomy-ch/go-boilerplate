@@ -30,7 +30,7 @@ runs:
   using: composite
   steps:
     # `scan source -r .` walks the repo and extracts every supported manifest:
-    # go.mod plus both package-lock.json files. No exclusion is configured because
+    # go.mod plus all three pnpm-lock.yaml files. No exclusion is configured because
     # the walk honours .gitignore, which already excludes vendor/ and node_modules/;
     # and even when vendored, `go mod vendor` emits no nested go.mod, so vendor/
     # cannot produce duplicate findings.

@@ -16,7 +16,8 @@ scripts/portal/*.ts ← 構築       (それをどう組み立てるか)
 | ファイル | 役割 |
 | --- | --- |
 | `docs/portal/manifest.yaml` | ポータル構造の単一源泉 |
-| `docs/portal/index.html` + `main.jsx` + `styles.css` | React SPA ビューアー (`docs.json` を読む) |
+| `docs-viewer/src/**` | React ビューアーのソース（`docs.json` を読む）。Vite でビルドする |
+| `docs/portal/index.html` + `dist/**` | **生成物**。`docs-viewer` のビルド出力（`make gen-portal-build`）。どちらも gitignore 対象で、デプロイのたびに再生成される |
 | `docs/portal/docs.json` | **生成物**。直接編集禁止 (`gen-docs-json.ts` の出力) |
 | `docs/portal/guides/**` | **生成物**。直接編集禁止 (`gen-portal-docs.ts` による README のフラットコピー) |
 | `scripts/portal/gen-portal-docs.ts` | manifest の各エントリ `src` を `docs/portal/guides/` 配下の `dst` へコピー |

@@ -35,7 +35,7 @@ on:
       - '.github/tool-cooldown-bypass.toml'
       - '.github/workflows/tool-cooldown.yaml'
   schedule:
-    - cron: '0 11 * * 1'
+    - cron: '45 4 * * 1'
   workflow_dispatch:
 
 permissions:

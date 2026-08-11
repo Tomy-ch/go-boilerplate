@@ -51,3 +51,4 @@ accepted
 ## 補足
 
 - ソース: [`docs/project/out-of-scope.md`](../../project/out-of-scope.md) 行 11–16。
+- ADR の全体像と順序: [ADR ログ](README.ja.md)。

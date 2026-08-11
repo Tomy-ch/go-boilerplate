@@ -157,7 +157,8 @@ verbose 時は、raw H2 リスト / 散文語数 / Mermaid・テーブル件数 
 完全 read-only。
 
 - 読む: 対象 README、（任意）`*.ja.md` sibling
-- 書かない / stage しない / commit しない / push しない
+- 書く: 何も書かない
+- edit / stage / commit / push はしない
 
 ユーザーが review 結果を踏まえて改善を要求した場合: `sync-readme`（構造 drift）または手動編集を推奨。本スキル内では自動書き換えしない。
 

@@ -22,8 +22,9 @@ flowchart TB
     Check -- no --> RunJob --> Done
 ```
 
-- `done` が `nil` の場合：ジョブなしと判断し、即座にシャットダウン
-- `done` が存在する場合：別ゴルーチンでジョブを実行し、結果を `done` チャネルに送信後シャットダウン
+1. `state.Snapshot()` でジョブ名・引数・done チャネルを取得する
+2. `done == nil` の場合: ログに出して `sd.Shutdown()` を発火する
+3. それ以外: goroutine で `runner.Run(jobCtx, name, args)` を実行し、結果を `done` へ送ってから `sd.Shutdown()` を呼ぶ
 
 ジョブ実行 context（`jobCtx`）は `SupervisedRunner` が供給します。`context.Background()` 由来のため起動 context が `OnStart` 後にキャンセルされても巻き込まれず、かつ **`OnStop` でキャンセル**されます。これが `--timeout` を機能させます——CLI が timeout 超過で `app.Stop` を呼ぶと `OnStop` が `jobCtx` をキャンセルし、実行中のジョブ（長い DB クエリ等）を中断します。詳細は `lifecycle/README.md`（SupervisedRunner）参照。
 

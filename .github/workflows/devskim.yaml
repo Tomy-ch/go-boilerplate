@@ -37,9 +37,8 @@ on:
       - production
   pull_request:
   schedule:
-    # Monday 14:00 UTC — the slot after Grype. Rule updates turn unchanged code into a
-    # finding, which is what the weekly run is for.
-    - cron: '0 14 * * 1'
+    # Rule updates turn unchanged code into a finding, which is what the weekly run is for.
+    - cron: '30 3 * * 1'
   workflow_dispatch:
 
 permissions:

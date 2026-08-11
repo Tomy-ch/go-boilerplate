@@ -20,8 +20,8 @@ on:
       - '.github/actions/**'
       - 'docker/**/Dockerfile'
   schedule:
-    # Monday 17:00 UTC. A rule set the scanner ships can grow without the files changing.
-    - cron: '0 17 * * 1'
+    # A rule set the scanner ships can grow without the files changing.
+    - cron: '15 4 * * 1'
   workflow_dispatch:
 
 permissions:

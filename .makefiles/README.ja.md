@@ -267,6 +267,7 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make trivy-secret-ci` | `trivy fs --scanners secret` を直接実行します。 | CI 用ターゲット。脆弱性側のターゲットは `--scanners vuln` を明示しているため、これは報告の追加ではなく検査そのものの追加です。severity では絞らず、許容する検出は `.trivyignore.yaml` に path 固定で置きます。gitleaks との重複は意図的で、Trivy は誤検知が少なく、gitleaks の正規表現 / エントロピー網は取りこぼしが少ない、という差を残します。 |
 | `make trivy-image-ci` | ビルド済みイメージの脆弱性をスキャンします。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
 | `make trivy-image-gate-ci` | ビルド済みイメージの修正版のある `CRITICAL` / `HIGH` で失敗します。 | CI 用ターゲット。対象イメージは `TRIVY_IMAGE=` で渡します。 |
+| `make trivy-sbom-ci` | 生成済みの SBOM を脆弱性データベースと突き合わせます。 | CI 用ターゲット。対象ファイルは `TRIVY_SBOM_FILE=` で渡します。 |
 | `make secret-scan` | ワーキングツリーのシークレットを gitleaks でスキャンします。 | `go_tool_runner` コンテナ内で `make secret-scan-ci` を呼び出します。 |
 | `make secret-scan-ci` | `gitleaks dir . --redact` を直接実行します。 | CI 用ターゲット。生成ファイルは `.gitleaks.toml` で allowlist。 |
 | `make secret-scan-history-ci` | `gitleaks git . --redact` を直接実行します。 | CI 用ターゲット。週次実行が使用。`dir` は作業ツリーしか見ないためコミット後に消したシークレットを取りこぼすが、`git` は履歴全体を走査する。 |

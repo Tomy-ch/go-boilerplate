@@ -8,6 +8,25 @@ English | [日本語](README.ja.md)
 
 `RegisterWorkerHooks` registers a Start hook and a Stop hook with `lifecycle.Registrar`:
 
+```mermaid
+flowchart TB
+    Start["OnStart hook"]
+    Health["startHealth()"]
+    Snapshot["state.Snapshot()"]
+    Check{"done == nil?"}
+    NoWorker["log → engine not started"]
+    RunWorker["engine.Run() in a goroutine"]
+    Done["done <- err"]
+    Stop["OnStop hook"]
+    Cancel["cancel() → await drain"]
+    StopHealth["stopHealth()"]
+
+    Start --> Health --> Snapshot --> Check
+    Check -- yes --> NoWorker
+    Check -- no --> RunWorker --> Done
+    Stop --> Cancel --> StopHealth
+```
+
 1. On Start: starts the health listener, then calls `state.Snapshot()` to get the worker name and done channel
 2. If `done == nil`: logs "No worker to run" and returns without starting the engine
 3. Otherwise: runs `engine.Run(engineCtx, name)` in a detached goroutine and sends the result to `done`

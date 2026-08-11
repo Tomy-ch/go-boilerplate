@@ -8,6 +8,18 @@ English | [日本語](README.ja.md)
 
 `RegisterRelayHooks` registers a Start hook and a Stop hook with `lifecycle.Registrar`:
 
+```mermaid
+flowchart TB
+    Start["OnStart hook"]
+    Run["engine.Run() in a goroutine"]
+    Stop["OnStop hook"]
+    Cancel["cancel()"]
+    Wait["await engineDone / stopCtx"]
+
+    Start --> Run
+    Stop --> Cancel --> Wait
+```
+
 1. On Start: launches `engine.Run(engineCtx)` (the poll loop) in a detached goroutine and returns immediately (Start does not block)
 2. On Stop: cancels `engineCtx` and waits for the loop to finish within `stopCtx`
 

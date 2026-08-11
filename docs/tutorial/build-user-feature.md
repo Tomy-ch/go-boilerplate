@@ -322,9 +322,8 @@ go test ./internal/infrastructure/rdb/repository/user/...
 
 ## Step 6 — Usecase layer
 
-**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository
-
-- boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
+**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository +
+boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
 
 **Files (in `internal/usecase/user/`):**
 

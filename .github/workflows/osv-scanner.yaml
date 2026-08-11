@@ -32,7 +32,7 @@ on:
       - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   schedule:
-    - cron: '0 3 * * 1'
+    - cron: '45 0 * * 1'
   workflow_dispatch:
 
 permissions:

@@ -20,8 +20,8 @@ flowchart TB
     Stop --> Cancel --> Wait
 ```
 
-- `OnStart`：poll ループ（`engine.Run(engineCtx)`）を detached goroutine で起動し、即座に返す（Start はブロックしない）
-- `OnStop`：`engineCtx` をキャンセルし、`stopCtx` の範囲でループの終了を待つ
+1. Start 時: poll ループ（`engine.Run(engineCtx)`）を detached goroutine で起動し、即座に返す（Start はブロックしない）
+2. Stop 時: `engineCtx` をキャンセルし、`stopCtx` の範囲でループの終了を待つ
 
 ## 使用フロー
 

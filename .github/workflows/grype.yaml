@@ -37,9 +37,9 @@ on:
       - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   schedule:
-    # Monday 13:00 UTC — the next free slot after DAST at 12:00. A newly published
-    # advisory turns unchanged code into a finding, so the weekly run earns its place.
-    - cron: '0 13 * * 1'
+    # A newly published advisory turns unchanged code into a finding, so the weekly run
+    # earns its place.
+    - cron: '15 3 * * 1'
   workflow_dispatch:
 
 permissions:

@@ -167,19 +167,21 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 | trustabl (agent config) | — | — | weekly |
 
-Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` npm cooldown audit, `0 10` Opengrep, `0 11` fuzz.
+Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:00` SonarQube Cloud.
 
-DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
+The step is 15 minutes rather than an hour because the set has grown to 21: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
 
-The rotation then continues with `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 18` trustabl, `0 19` SonarQube Cloud.
+GitHub does not honour a scheduled time exactly — a run can start well after its slot under load — so the stagger reduces the pile-up rather than eliminating it. Spacing that no scheduler guarantees is not something to tune finely.
 
-The last one is the scanner whose analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
+DAST takes `03:00`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
+
+SonarQube Cloud takes the last slot. Its analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
 
 Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
 
 Failure is not the only thing worth pushing. A report-only scanner leaves its job green on a finding, so failure mode can never fire for one; those call `notify.yaml` in detection mode instead, which names the actor, ref, commit and the findings themselves. Both modes skip delivery and leave the run green when no webhook secret is configured, so a fork is never failed by a notification it cannot send.
 
-Which trigger a detection notification fires on follows from who the right recipient is. For the vulnerability scanners it is the scheduled run only — on a PR the finding is already in a comment addressed to the author, who introduced the dependency, whereas a weekly finding is a newly published advisory against code that stood still and reaches nobody. The npm cooldown audit is the exception and fires on every trigger, because the decision to bypass the cooldown belongs to a tech lead / architect who is not necessarily on the PR.
+Which trigger a detection notification fires on follows from who the right recipient is. For the vulnerability scanners it is the scheduled run only — on a PR the finding is already in a comment addressed to the author, who introduced the dependency, whereas a weekly finding is a newly published advisory against code that stood still and reaches nobody.
 
 | Workflow | Fires when | Trigger |
 | --- | --- | --- |
@@ -308,13 +310,9 @@ The window is **7 days**, and the number comes from this repository rather than 
 
 Urgent overrides live in [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml), and every entry carries a deadline. An expired deadline, one reaching further than three months out, or an entry matching nothing in `go.mod` fails the check — and an invalid entry also stops working, so a lapsed bypass cannot quietly keep letting its module through. A deadline arrives without `go.mod` changing, which is why the schedule exists: the pull-request trigger alone would never see one expire.
 
-**It never fails the build**, and that is a design decision rather than a default. Overriding the cooldown is a tech-lead / architect call — reacting to a CRITICAL advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The non-blocking property lives in the tool itself, not in workflow configuration, so it cannot be turned into a gate by editing YAML.
+The scheduled run is the other half: it audits every requirement, never fails on the window, and exists to collect the bypass deadlines the pull-request trigger would never see arrive.
 
-Its scope is honest but narrow: **policy drift** — accidents, convention rot, a change in the resolver's own behaviour. It is not a defence against someone with commit access, who can delete the workflow in the same change. What it provides there is detection and attribution, with deterrence left to the organisation. The enforcement half is [`CODEOWNERS`](../CODEOWNERS), which reserves review of `**/pnpm-lock.yaml`, `**/pnpm-workspace.yaml`, and the pin lockfiles to the owning role.
-
-All three packages resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for it because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its CODEOWNERS entry.
-
-A pull request is audited against its base, so a finding names exactly the entries that change introduces and the PR comment persists as the record even after those versions age out of the window. The scheduled run audits every entry as a second net.
+All three packages resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for it because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its [`CODEOWNERS`](../CODEOWNERS) entry.
 
 #### DAST
 

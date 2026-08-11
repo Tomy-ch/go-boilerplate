@@ -21,7 +21,7 @@ on:
       - '.makefiles/security/zizmor.mk'
       - 'mise.toml'
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '0 2 * * 1'
   workflow_dispatch:
 
 permissions:

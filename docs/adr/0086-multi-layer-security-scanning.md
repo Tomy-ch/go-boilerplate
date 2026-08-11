@@ -104,7 +104,7 @@ PR *adds*, so it can block on an ordinary PR without punishing anyone for inheri
 | Workflow definitions | zizmor | Actions-file PRs / protected push / weekly | same workflow |
 | Container image | Trivy image + SBOM | deploy-branch PRs / weekly | same workflow |
 | Repository posture | OpenSSF Scorecard | default branch / weekly | — |
-| Dependency versions younger than the cooldown | npm cooldown audit | lockfile / `.npmrc` changes / weekly | — (never blocks by design) |
+| Dependency versions younger than the cooldown | Go cooldown + tool cooldown ([ADR-0088](0088-malicious-package-detection-via-cooldown.md); pnpm enforces its own at resolution time) | `go.mod` / `mise.toml` / `python/*.in` changes / weekly | same workflow (direct Go requirements and tool declarations) |
 | Dockerfile misconfiguration | Trivy config | Dockerfile-change PRs / protected push | same workflow (HIGH+) |
 | Dependency licences | Trivy licence | same trigger as Trivy FS / weekly | — (no policy yet) |
 | Newly introduced advisories, GHAS-independent | OSV diff | dependency-change PRs | same workflow (no threshold) |
@@ -117,7 +117,7 @@ PR *adds*, so it can block on an ordinary PR without punishing anyone for inheri
 A PR surfaces the risk the change introduces; a push to a protected branch keeps a
 code-scanning baseline for branch protection to judge; a weekly schedule exists only where
 the result can change while the code stands still — a newly disclosed CVE, a new CodeQL
-query, an action that became archived. Weekly runs are staggered one per hour so a single
+query, an action that became archived. Weekly runs are staggered in 15-minute steps so a single
 cron minute does not queue every scanner at once.
 
 The CLI-based scanners (`govulncheck`, zizmor, OSV-Scanner, TruffleHog, gitleaks, Trivy)

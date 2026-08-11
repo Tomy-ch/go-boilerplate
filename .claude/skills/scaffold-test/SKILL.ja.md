@@ -113,6 +113,8 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 ハードルール:
 
 1. **1 関数 / メソッド = 1 `TestXxx`**。 `Foo` → `func TestFoo(t *testing.T)`、`(*User).UpdateProfile` → `func TestUser_UpdateProfile(t *testing.T)`。 同一 subject に対する複数 `TestXxx` は絶対に作らない。
+   - **逆方向 — 公開関数 / メソッドは各々が自分の `TestXxx` を持ち、1:1 の対応は弱いテストの回避より優先する。** 現時点で誠実に書ける assert が薄い（例: 些末なコンストラクタに対する `assert.NotNil(NewClock())`）というだけで、その subject 専用の `TestXxx` を削ったり作らなかったりしてはならない。将来の意味あるテストの置き場所として 1:1 の枠を残す。他の subject のテストから推移的に実行されていても、自分の `TestXxx` を持たない公開 subject は 1:1 違反である。
+   - **ある subject の検証を別の subject の `TestXxx` に畳み込まない** — 畳み込まれた側のテストの責務が濁る。`NewClock` の契約を `TestClockNow` の中で assert するのが畳み込みであり、コンストラクタ自身の assert は `TestNewClock` に属する。メソッドのテストが SUT を得るための fixture としてコンストラクタを*呼ぶ*のは畳み込みではない（畳み込みとは、コンストラクタ自体についての別の assert をメソッドのテストへ加えることを指す）。
 2. **複数 subject を 1 `TestXxx` に束ねない — 厳密 1:1、例外なし**。 全 getter を `TestEntity_Accessors` / `*_Getters` で一括検証するような統合テストは作らず、getter / accessor ごとに 1 つの `TestXxx` を用意する。 `AskUserQuestion` による束ねの分岐も rationale コメントによる免除も無い。 唯一の免除は、**検証不可能であるために到達できない** subject（例: 失敗経路が `tb.Fatalf` を呼ぶヘルパーは呼び出し側テストの終了を伴う）で、その場合も規約どおりの名前の `TestXxx` を宣言し `t.Skip("<なぜ検証不可能か>")` を呼ぶ — allowlist は持たず、理由は `t.Skip` の文字列に残す。 **「他のテストでカバー済み」は免除にならない**: その skip は subject を別テストの実装に依存させ、カバー元が縮小しても green のまま残るため、呼び出し元 / 統合 / DI グラフテストがたまたま通っていてもテスト可能な subject には実テストを書く。 `docs/testing-conventions.md` §1 に準拠し、`internal/architest`（1:1 枠は `TestUnitTestMappingCompleteness`、skip 理由は `TestSkipReasonDoesNotNameCoveringTest`）が機械的に強制する。
 3. **最外殻 2 つの `t.Run` の name は 必ず literal の `正常系` / `異常系` の 2 文字のみ**。 prefix 形式 (`正常系_xxx` / `異常系_xxx`) は NG。
    - 使うのは `t.Run("正常系", ...)` と `t.Run("異常系", ...)` のみ。group name はリテラルの 2 文字であって、 case 名のプレフィックスではない。

@@ -27,7 +27,7 @@ on:
       - '**/*.mjs'
       - '**/*.jsx'
   schedule:
-    - cron: '0 19 * * 1'
+    - cron: '0 5 * * 1'
   workflow_dispatch:
 
 permissions:
