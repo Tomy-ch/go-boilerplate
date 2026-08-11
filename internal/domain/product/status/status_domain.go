@@ -20,8 +20,8 @@ type Status struct {
 	sortKey int
 }
 
-// Attributes は、商品ステータスの属性一式です。Code と SortKey は同じ int かつ同じ値域（1〜32767）で、
-// 位置引数のままだと取り違えても検証を通過してしまうため構造体で受けます。
+// Attributes は、商品ステータスの属性一式です。Code と SortKey が同型のため構造体で受けます
+// （基準は docs/rules.md の Function Signature Rules）。
 type Attributes struct {
 	Name    string
 	Code    int

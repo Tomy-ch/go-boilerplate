@@ -33,9 +33,7 @@ var (
 )
 
 // worker のメッセージ処理分類センチネル。
-// engine が Handler の返すエラーを分類して挙動を変えるために使用します
-// （Retryable=Nack で再配送 / Permanent=FailureHandler へ退避して Ack / Fatal=engine 停止）。
-// これらは HTTP エラー taxonomy ではないため、appErrors（IsAppError 判定対象）には含めません。
+// HTTP エラー taxonomy ではないため、appErrors（IsAppError 判定対象）には含めません。
 var (
 	// ErrRetryable は一時障害を示します。engine は Nack で再配送します。
 	ErrRetryable = xerrors.New("retryable")

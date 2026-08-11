@@ -56,8 +56,8 @@ type Repository interface {
 	// LockByID は、更新のために ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
 	// 同一商品への並行更新は、先行する更新が終わるまで待機したうえで最新の状態を取得します。
 	LockByID(ctx context.Context, id uuid.UUID) (*Product, error)
-	// LockByIDs は、更新のために ID の集合から公開状態を問わない商品群を、ID 昇順にまとめて取得します。
-	// 順序を固定するのは、複数商品を同時にロックする処理同士がデッドロックしないためです。
+	// LockByIDs は、更新のために ID の集合から公開状態を問わない商品群を、ID 昇順にまとめて取得します
+	// （順序を固定する理由は ADR-0033 (ordered-pessimistic-row-locks)）。
 	// 不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得ます
 	// （不存在の検証は呼び出し側の責務です）。
 	LockByIDs(ctx context.Context, ids []uuid.UUID) (Products, error)
