@@ -38,7 +38,7 @@ Split the generated-artifact CI story into two complementary mechanisms:
 
 ### 1. PR-time drift gate (two workflows)
 
-**`gen-go-artifacts-check.yaml`** (lines 36–111): On every PR that touches `.go`,
+**`gen-go-artifacts-check.yaml`**: On every PR that touches `.go`,
 `go.mod`, `go.sum`, or makefile files, run `make gen-go-code`, then `git add -A` and
 inspect the diff. If generated files changed:
 
@@ -108,9 +108,9 @@ files being present in the tree.
 
 ## Notes
 
-- Sources: `.github/workflows/gen-go-artifacts-check.yaml` lines 36–111,
+- Sources: `.github/workflows/gen-go-artifacts-check.yaml`,
   `.github/workflows/gen-db-artifacts-check.yaml`,
-  `.github/workflows/auto-generate-docs.yaml` lines 90–181.
+  `.github/workflows/auto-generate-docs.yaml` (the `Create PR` step).
 - Related: [ADR-0011](0011-openapi-first.md) — the OpenAPI-first contract that drives Go
   code generation.
 - Related: [ADR-0024](0024-sqlc-type-safe-sql.md) — sqlc, the source of DB artifact

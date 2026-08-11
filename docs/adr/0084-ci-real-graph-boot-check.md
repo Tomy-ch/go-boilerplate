@@ -33,20 +33,20 @@ Introduce three dedicated CI workflow jobs that each boot the real fx graph agai
 real Postgres container and verify that the graph assembled and the entrypoint reached
 its dispatch logic:
 
-**Server boot check** (`app-di-startup-check.yaml`, lines 58–83):
+**Server boot check** (`app-di-startup-check.yaml`):
 Build the server binary, start it in the background, then poll `GET /ready` up to 30
 times with 2-second intervals. A successful readiness response proves that fx completed
 dependency injection, the database connection was established, and the HTTP stack reached
 a serving state.
 
-**Worker boot check** (`worker-boot-check.yaml`, lines 60–82):
+**Worker boot check** (`worker-boot-check.yaml`):
 Pass a deliberately non-existent worker name (`__ci_boot_check_no_such_worker__`) to
 `go run ./cmd/ worker`. Assert that the process exits non-zero AND that the output
 contains the string `"unknown worker"`. A missing `"unknown worker"` message with a
 non-zero exit means DI or database setup failed before the dispatch point — which would
 be a hard failure, not just an unknown worker.
 
-**Job boot check** (`job-boot-check.yaml`, lines 59–81):
+**Job boot check** (`job-boot-check.yaml`):
 Same pattern as the worker check but for the job entrypoint: pass
 `__ci_boot_check_no_such_job__`, expect a non-zero exit containing `"unknown job"`.
 
@@ -93,9 +93,9 @@ are clearly attributed.
 
 ## Notes
 
-- Sources: `.github/workflows/app-di-startup-check.yaml` lines 58–83,
-  `.github/workflows/worker-boot-check.yaml` lines 60–82,
-  `.github/workflows/job-boot-check.yaml` lines 59–81.
+- Sources: `.github/workflows/app-di-startup-check.yaml`,
+  `.github/workflows/worker-boot-check.yaml`,
+  `.github/workflows/job-boot-check.yaml`.
 - Related: [ADR-0037](0037-uber-fx-di.md) — the Uber fx DI container whose graph this
   check exercises.
 - Related: [ADR-0047](0047-broker-agnostic-worker-scaffold.md) — the worker subsystem

@@ -81,7 +81,7 @@ OTLP へプッシュする）か、Prometheus スクレイプエンドポイン�
 
 ## 補足
 
-- 出典: `docs/design/observability.md` §3.2「Two metric exit paths」、146–153 行目のテーブル。
+- 出典: `docs/design/observability.md` §3.2「Two metric exit paths」。
 - 親: [ADR-0068](0068-config-driven-observability-gating.ja.md)（設定駆動ゲーティング）。
 - 実装: `internal/observability/metrics/buildinfo/`（buildinfo コレクター）、
   `internal/observability/metrics/queue/`（キュー深度コレクター）、

@@ -2,7 +2,7 @@
 status: superseded
 date: 2026-07-04
 deciders: [maintainers]
-superseded-by: 0048
+superseded-by: 0050
 tags: [worker, async, dependencies]
 ---
 
@@ -55,4 +55,4 @@ insufficient. Not importing the adapter from `cmd` isolates the dependency witho
 
 - Parent decision: [ADR-0047](0047-broker-agnostic-worker-scaffold.md). Principle: [ADR-0001](0001-avoid-lock-in.md).
 - Reference: `internal/infrastructure/queue/sqs/README.md`.
-- Migrated from `docs/decisions.md` (§ "Why a broker-agnostic worker scaffold" — dependency isolation).
+- Migrated from the former `docs/decisions.md`.

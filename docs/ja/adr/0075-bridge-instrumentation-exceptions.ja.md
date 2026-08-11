@@ -68,5 +68,5 @@ accepted
 ## 補足
 
 - 親ポリシー: [ADR-0074](0074-library-selection-policy.ja.md)。関連ゲーティング決定: [ADR-0068](0068-config-driven-observability-gating.ja.md)。
-- ライブラリごとのバージョンと行数は調査時点（2026-06-25 調査）のインベントリスナップショットであり、この不変の記録ではなく依存関係リファレンス（`docs/reference/dependencies.md`、Phase 5）に属する。
-- 移行元: `docs/decisions.md`（§「Exceptions: instrumentation / bridge libraries」）。
+- ライブラリごとのバージョンと行数は調査時点（2026-06-25 調査）のインベントリスナップショットであり、この不変の記録ではなく依存関係リファレンス（`docs/reference/dependencies.md`）に属する。
+- 移行元: かつての `docs/decisions.md`。

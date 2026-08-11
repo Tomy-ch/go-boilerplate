@@ -66,4 +66,4 @@ HTTP ルーティングとミドルウェアに **Echo v5**（`labstack/echo/v5`
 ## 補足
 
 - ミドルウェアチェーンの設計（優先順位付き・データ駆動）と HTTP スタックの層構成は別途記録している（[ADR ログ](README.ja.md) の HTTP 層 ADR を参照）。
-- `docs/decisions.md`（§ "Why Echo"）から移行。
+- かつての `docs/decisions.md` から移行。

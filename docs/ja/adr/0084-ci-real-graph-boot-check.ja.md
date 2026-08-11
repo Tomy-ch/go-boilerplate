@@ -33,18 +33,18 @@ PR ごとに CI でそれらを検出するには、実行中のブローカー�
 実際の Postgres コンテナに対して実際の fx グラフを起動し、グラフが組み立てられてエントリポイントが
 ディスパッチロジックに到達したことを検証する 3 つの専用 CI ワークフロージョブを導入する:
 
-**サーバー起動チェック**（`app-di-startup-check.yaml`、58〜83 行目）:
+**サーバー起動チェック**（`app-di-startup-check.yaml`）:
 サーバーバイナリをビルドし、バックグラウンドで起動してから、2 秒間隔で最大 30 回 `GET /ready` をポーリングする。
 成功したレディネスレスポンスは、fx が依存性注入を完了し、データベース接続が確立され、HTTP スタックが
 サービング状態に達したことを証明する。
 
-**ワーカー起動チェック**（`worker-boot-check.yaml`、60〜82 行目）:
+**ワーカー起動チェック**（`worker-boot-check.yaml`）:
 意図的に存在しないワーカー名（`__ci_boot_check_no_such_worker__`）を `go run ./cmd/ worker` に渡す。
 プロセスが非ゼロで終了し、かつ出力に `"unknown worker"` という文字列が含まれることをアサートする。
 非ゼロ終了で `"unknown worker"` メッセージがない場合は、ディスパッチポイント到達前に DI または
 データベースセットアップが失敗したことを意味する——これはハード失敗であり、単なる未知のワーカーではない。
 
-**ジョブ起動チェック**（`job-boot-check.yaml`、59〜81 行目）:
+**ジョブ起動チェック**（`job-boot-check.yaml`）:
 ワーカーチェックと同じパターンだがジョブエントリポイント用: `__ci_boot_check_no_such_job__` を渡し、
 `"unknown job"` を含む非ゼロ終了を期待する。
 
@@ -88,8 +88,8 @@ PR ごとに CI でそれらを検出するには、実行中のブローカー�
 
 ## 補足
 
-- ソース: `.github/workflows/app-di-startup-check.yaml` の 58〜83 行目、
-  `.github/workflows/worker-boot-check.yaml` の 60〜82 行目、
-  `.github/workflows/job-boot-check.yaml` の 59〜81 行目。
+- ソース: `.github/workflows/app-di-startup-check.yaml`、
+  `.github/workflows/worker-boot-check.yaml`、
+  `.github/workflows/job-boot-check.yaml`。
 - 関連: [ADR-0037](0037-uber-fx-di.ja.md) — このチェックが実行する Uber fx DI コンテナのグラフ。
 - 関連: [ADR-0047](0047-broker-agnostic-worker-scaffold.ja.md) — エントリポイントが検証されるワーカーサブシステム。

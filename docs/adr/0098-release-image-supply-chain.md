@@ -85,7 +85,8 @@ Rejected as inconsistent with the lock-in avoidance and operability goals
 
 ## Notes
 
-- `.github/workflows/deploy-app.yaml` lines 131-168 implement the three integrity steps.
+- `.github/workflows/deploy-app.yaml` implements the three integrity steps
+  (`Attest build provenance` / `Sign image (cosign keyless)` / `Attest SBOM`).
 - The SBOM generated here is the post-push, attestation-attached SBOM; the scan-time SBOM
   in `image-scan.yaml` serves a different purpose (vulnerability scanning) and must coexist.
 - Source: `.github/workflows/deploy-app.yaml`.

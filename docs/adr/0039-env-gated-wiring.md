@@ -84,7 +84,7 @@ complexity and diverges from the single-binary model.
 
 ## Notes
 
-- Source: `internal/di/module/authz.go` (`provideAuthorizer`, lines 29–47),
+- Source: `internal/di/module/authz.go` (`provideAuthorizer`),
   `internal/di/module/README.md`.
 - The module README documents this pattern as: "environment-gated: wires the allow-all
   stub only for local / CI / test and fails closed (returns an error) elsewhere".

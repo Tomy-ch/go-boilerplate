@@ -84,6 +84,5 @@ concrete over hypothetical abstraction.
 
 - Related: [ADR-0047](0047-broker-agnostic-worker-scaffold.md) (pull-ack worker scaffold,
   the port this ADR qualifies).
-- Source: `docs/decisions.md` (§ "Why a broker-agnostic worker scaffold", Decision bullet 3
-  and Alternatives Considered).
+- Source: the former `docs/decisions.md`.
 - Source: `docs/design/worker.md` (§ 1 Role theory).

@@ -52,4 +52,4 @@ authoring SQL directly.
 
 - Builds on [ADR-0023](0023-sql-first-data-access.md) (SQL-first).
 - Generated code is not edited by hand — see the Generated Code rules in [`docs/rules.md`](../rules.md#generated-code-rules).
-- Migrated from `docs/decisions.md` (§ "Why sqlc").
+- Migrated from the former `docs/decisions.md`.

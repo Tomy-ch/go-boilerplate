@@ -69,4 +69,4 @@ project adopts a more practical, simplified version instead.
 ## Notes
 
 - Enforced by the layer dependency rules in [`docs/rules.md`](../rules.md) (dependencies point inward; domain purity; DTO/type boundary conversion), which are the day-to-day *consequences* of this decision.
-- Migrated from `docs/decisions.md` (§ "Why Onion Architecture").
+- Migrated from the former `docs/decisions.md`.

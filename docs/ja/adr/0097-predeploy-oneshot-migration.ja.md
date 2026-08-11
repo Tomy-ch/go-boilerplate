@@ -62,6 +62,6 @@ docker run <image> /app/server migrate-up
 
 ## 補足
 
-- `.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップ（192-204 行）が、対象環境向けに実装すべき権威ある placeholder である。
+- `.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップが、対象環境向けに実装すべき権威ある placeholder である。
 - ワークフローのコメント "Must NOT be executed in container startup (entrypoint)" が却下された代替案に対する明示的なガードである。
 - ソース: `.github/workflows/deploy-app.yaml`。

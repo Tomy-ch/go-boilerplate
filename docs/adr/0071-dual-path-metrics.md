@@ -81,7 +81,7 @@ Collector configuration.
 
 ## Notes
 
-- Source: `docs/design/observability.md` §3.2 "Two metric exit paths", table at lines 146–153.
+- Source: `docs/design/observability.md` §3.2 "Two metric exit paths".
 - Parent: [ADR-0068](0068-config-driven-observability-gating.md) (config-driven gating).
 - Implementation: `internal/observability/metrics/buildinfo/` (buildinfo collector),
   `internal/observability/metrics/queue/` (queue depth collector),

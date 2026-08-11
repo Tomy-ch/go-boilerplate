@@ -59,7 +59,7 @@ accepted
 
 ## 補足
 
-- `.github/workflows/deploy-app.yaml` の `Define registry` ステップ（行 67-72）と `Login to registry` ステップ（行 96-102）がレジストリのカスタマイズポイントである。
-- `.github/workflows/deploy-app.yaml` 行 181-218（`Configure cloud credentials`、`Run migration`、`Deploy application`）がクラウド CD のスタブである。
+- `.github/workflows/deploy-app.yaml` の `Define registry` ステップと `Login to registry` ステップがレジストリのカスタマイズポイントである。
+- `.github/workflows/deploy-app.yaml`（`Configure cloud credentials`、`Run migration`、`Deploy application`）がクラウド CD のスタブである。
 - ロックイン回避の原則は ADR-0001 に定められている。
 - ソース: `.github/workflows/deploy-app.yaml`。

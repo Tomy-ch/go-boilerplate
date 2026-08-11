@@ -82,9 +82,9 @@ provider-specific in its hosting.
 
 ## Notes
 
-- `.github/workflows/deploy-app.yaml` `Define registry` step (lines 67-72) and `Login to
-  registry` step (lines 96-102) are the registry customization points.
-- `.github/workflows/deploy-app.yaml` lines 181-218 (`Configure cloud credentials`, `Run
+- `.github/workflows/deploy-app.yaml` `Define registry` step and `Login to registry` step
+  are the registry customization points.
+- `.github/workflows/deploy-app.yaml` (`Configure cloud credentials`, `Run
   migration`, `Deploy application`) are the cloud-CD stubs.
 - The lock-in avoidance principle is ADR-0001.
 - Source: `.github/workflows/deploy-app.yaml`.

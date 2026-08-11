@@ -37,7 +37,7 @@ API コンシューマーは未再生成のバージョンを見る。このド�
 
 ### 1. PR 時ドリフトゲート（2 つのワークフロー）
 
-**`gen-go-artifacts-check.yaml`**（36〜111 行目）: `.go`、`go.mod`、`go.sum`、または makefile ファイルに
+**`gen-go-artifacts-check.yaml`**: `.go`、`go.mod`、`go.sum`、または makefile ファイルに
 触れるすべての PR で、`make gen-go-code` を実行し、次に `git add -A` を行って差分を検査する。
 生成ファイルが変更された場合:
 
@@ -98,8 +98,8 @@ OpenAPI バンドル、ドキュメント、ER ダイアグラム、テストカ
 
 ## 補足
 
-- ソース: `.github/workflows/gen-go-artifacts-check.yaml` の 36〜111 行目、
+- ソース: `.github/workflows/gen-go-artifacts-check.yaml`、
   `.github/workflows/gen-db-artifacts-check.yaml`、
-  `.github/workflows/auto-generate-docs.yaml` の 90〜181 行目。
+  `.github/workflows/auto-generate-docs.yaml`（`Create PR` ステップ）。
 - 関連: [ADR-0011](0011-openapi-first.ja.md) — Go コード生成を駆動する OpenAPI ファースト契約。
 - 関連: [ADR-0024](0024-sqlc-type-safe-sql.ja.md) — DB 成果物生成のソースである sqlc。

@@ -57,5 +57,5 @@ accepted
 ## 補足
 
 - 関連: [ADR-0047](0047-broker-agnostic-worker-scaffold.ja.md)（プル・アック型ワーカースキャフォールド — この ADR が限定するポート）。
-- ソース: `docs/decisions.md`（§「Why a broker-agnostic worker scaffold」、Decision 箇条書き 3 および Alternatives Considered）。
+- ソース: かつての `docs/decisions.md`。
 - ソース: `docs/design/worker.md`（§ 1 Role theory）。

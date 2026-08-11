@@ -2,7 +2,7 @@
 status: superseded
 date: 2026-07-04
 deciders: [maintainers]
-superseded-by: 0048
+superseded-by: 0050
 tags: [worker, async, dependencies]
 ---
 
@@ -48,4 +48,4 @@ SQS アダプターを**オプトイン**のままにする。リファレンス
 
 - 親決定: [ADR-0047](0047-broker-agnostic-worker-scaffold.ja.md)。原則: [ADR-0001](0001-avoid-lock-in.ja.md)。
 - 参考: `internal/infrastructure/queue/sqs/README.md`。
-- `docs/decisions.md`（§「Why a broker-agnostic worker scaffold」— dependency isolation）から移行。
+- かつての `docs/decisions.md` から移行。

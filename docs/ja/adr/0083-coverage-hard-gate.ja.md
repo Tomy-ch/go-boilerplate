@@ -30,15 +30,15 @@ accepted
 
 ゲートは `.makefiles/go/test.mk` に実装されている:
 
-- `COVERAGE_THRESHOLD := 90`（12 行目）が下限の単一情報源である。
-- 除外パッケージ（`GO_TEST_EXCLUDE`、9 行目）は `gen`、`cmd`、`mock`、`apperror`、`scripts`——
+- `COVERAGE_THRESHOLD := 90` が下限の単一情報源である。
+- 除外パッケージ（`GO_TEST_EXCLUDE`）は `gen`、`cmd`、`mock`、`apperror`、`scripts`——
   生成済み、DI ワイヤリング、または単独ではユニットテストが意味をなさないユーティリティのパッケージ。
 - `make test-cover-ci` は同じフィルタされたパッケージリストに対して `-coverpkg` を設定してテストを実行し
   `coverage.out` を書き込む。
 - `make cover-gate` は `coverage.out` を読み込み、`go tool cover -func` から合計行を抽出し、
-  合計がしきい値を下回った場合に非ゼロで終了する（44〜51 行目）。
+  合計がしきい値を下回った場合に非ゼロで終了する（`cover-gate` ターゲット）。
 
-CI ワークフロー（`go-test.yaml` の 79〜80 行目）では、ゲートはカバレッジレポートが octocov に
+CI ワークフロー（`go-test.yaml` の `Coverage gate` ステップ）では、ゲートはカバレッジレポートが octocov に
 アップロードされた後に実行される:
 
 ```yaml
@@ -49,7 +49,7 @@ CI ワークフロー（`go-test.yaml` の 79〜80 行目）では、ゲート�
 **例外ガバナンス。** 構造的に到達不能または確定的にトリガーできないブランチ
 （例: ランタイム内部エラーパス、ノーオペレーションプロバイダーの失敗）は正式に免除してよい。
 免除は影響を受けるパッケージの `README.md` の指定されたセクションに記録し
-（例: `internal/observability/README.md` の 504〜523 行目）、アーキテクト レベルの承認を必要とし、
+（例: `internal/observability/README.md`）、アーキテクト レベルの承認を必要とし、
 それらに到達するためだけに作為的なテストや追加のプロダクションコードを加えないというルールのもとに管理される。
 
 ## 影響
@@ -89,7 +89,8 @@ CI ワークフロー（`go-test.yaml` の 79〜80 行目）では、ゲート�
 
 ## 補足
 
-- ソース: `.makefiles/go/test.mk` の 11〜12 行目と 44〜51 行目、`.github/workflows/go-test.yaml`
-  の 79〜80 行目、`internal/observability/README.md` の 504〜523 行目。
+- ソース: `.makefiles/go/test.mk`（`COVERAGE_THRESHOLD` / `GO_TEST_EXCLUDE` / `cover-gate` ターゲット）、
+  `.github/workflows/go-test.yaml`（`Coverage gate` ステップ）、`internal/observability/README.md`
+  （カバレッジ例外の節）。
 - テスト構造（テスト構造、`require` vs `assert`、モック）は [`docs/testing-conventions.md`](../../testing-conventions.md) に記載。
 - カバレッジを要求する DoD は [`docs/rules.md`](../rules.ja.md) に記載。

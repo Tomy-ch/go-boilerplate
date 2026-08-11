@@ -63,6 +63,6 @@ default:
 
 ## 補足
 
-- 出典: `internal/di/module/authz.go`（`provideAuthorizer`、29–47 行）、`internal/di/module/README.md`。
+- 出典: `internal/di/module/authz.go`（`provideAuthorizer`）、`internal/di/module/README.md`。
 - モジュール README はこのパターンを「環境ゲート: ローカル / CI / テストにのみ allow-all スタブを結線し、それ以外ではフェイルクローズ（エラーを返す）する」と記載している。
 - 設定定数（`EnvLocal`、`EnvCI`、`EnvTest`）は `internal/config` で定義されている。

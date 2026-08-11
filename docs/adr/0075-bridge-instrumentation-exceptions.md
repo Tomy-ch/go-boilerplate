@@ -67,5 +67,5 @@ gain, given the bounded worst-case fork cost.
 ## Notes
 
 - Parent policy: [ADR-0074](0074-library-selection-policy.md). Related gating decision: [ADR-0068](0068-config-driven-observability-gating.md).
-- Per-library versions and line counts are an inventory snapshot (as investigated 2026-06-25) and belong with the dependency reference (`docs/reference/dependencies.md`, Phase 5), not in this immutable record.
-- Migrated from `docs/decisions.md` (§ "Exceptions: instrumentation / bridge libraries").
+- Per-library versions and line counts are an inventory snapshot (as investigated 2026-06-25) and belong with the dependency reference (`docs/reference/dependencies.md`), not in this immutable record.
+- Migrated from the former `docs/decisions.md`.
