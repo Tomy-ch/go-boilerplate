@@ -38,7 +38,7 @@ flowchart TB
 ```go
 fx.Provide(
     job.ProvideRunner,
-    job.NewState,
+    jobcontroller.NewState,
 )
 fx.Invoke(hook.RegisterJobHooks)
 ```
@@ -54,6 +54,5 @@ fx.Invoke(hook.RegisterJobHooks)
 ## Notes
 
 - `state.Set` must be called before application startup
-- If `done` is `nil`, shutdown is triggered immediately
-- Job execution runs in a separate goroutine
+- Hook lifecycle details (immediate shutdown on `done == nil`, goroutine execution, cancellation on stop) are in [`hook/README.md`](hook/README.md)
 - To add jobs, add them to `provideJobs(...)` in `internal/di/module/job.go`
