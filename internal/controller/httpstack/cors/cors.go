@@ -18,7 +18,6 @@ func Middleware(secCfg *config.SecurityConfig) echo.MiddlewareFunc {
 	return middleware.CORSWithConfig(buildCORSConfig(secCfg.AllowedOrigins()))
 }
 
-// buildCORSConfig は、CORSミドルウェアの設定を構築します。
 func buildCORSConfig(allowedOrigins []string) middleware.CORSConfig {
 	return middleware.CORSConfig{
 		AllowOrigins: allowedOrigins,

@@ -52,8 +52,7 @@ func handle(ec *echo.Context, request any, operationID string, next NextFunc) (a
 		return nil, err
 	}
 
-	// スコープキーには内部 UserID を使うため、認証済みかつ UserID 解決済みのリクエストのみ対象とする。
-	// 認証プリンシパルが取れない、または UserID 未解決なら冪等性は発動せず素通しする（安全側）。
+	// 未認証、または UserID 未解決なら安全側で素通しする。
 	authn, ok := ctxhelper.GetAuthn(r.Context())
 	if !ok {
 		return next(ec, request)
@@ -81,7 +80,7 @@ func handle(ec *echo.Context, request any, operationID string, next NextFunc) (a
 	return next(ec, request)
 }
 
-// validateKey は、Idempotency-Key の健全性を検証します（非空 / ≤255 / 印字可能 ASCII）。違反は 400。
+// validateKey は、Idempotency-Key の健全性を検証します（≤255 / 印字可能 ASCII）。違反は 400。
 func validateKey(key string) error {
 	if len(key) > maxKeyLength {
 		return xerrors.Wrap(apperror.ErrInvalidArgument, "Idempotency-Key must be 255 characters or fewer")
