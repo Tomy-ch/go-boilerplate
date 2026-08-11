@@ -1,0 +1,267 @@
+# Cart — Domain Spec
+
+> カート（`/v1/carts/me`）のドメイン spec。ゲスト（未認証）でもカートを持てる点が purchase との
+> 最大の違いで、行が作られた時点では所有者が確定しておらず、ログインによって所有者を得る。
+> カートは**在庫を押さえない**（予約機構を持たない）。売り越しの禁止は購入成立時の関心であり、
+> カートは「買うつもりの控え」でしかない（[`docs/spec/purchase/domain.md`](../purchase/domain.md)）。
+> 単価も保持しない。価格の確定は購入明細のスナップショットが担う。
+
+## Overview
+
+カート集約（Cart）は、所有者（確定済みユーザー、または未確定のゲストセッション）と明細（CartItem）の集合、
+および有効期限を保持するドメイン集約。生成・更新時に「同一 productID の重複なし」「数量が 1 以上かつ
+上限以下」「明細数が上限以下」「所有者とセッションが排他」の不変条件を検証し、違反する `Cart` は構築できない。
+
+**所有者は後から決まる。** ゲストは `sessionToken` で追跡され、`ownerID` は nil。ログイン時に `AssignOwner`
+で所有者が確定し、同時に `sessionToken` を破棄する。この破棄は不変条件であって最適化ではない — token を
+知る第三者が認証済みユーザーのカートへ到達できる経路を、状態として存在させないため。認可側では所有者
+未確定のカートが `authz.Resource` の `ownerID = nil`（所有者概念なし）として扱われる唯一の実例になる。
+
+**カートは商品を知らない。** 価格・在庫・公開状態はいずれも保持せず、`productID` の参照のみを持つ。
+表示時にそれらを突き合わせて「在庫不足 / 値上がり / 非公開化」を判定するのは usecase 層の関心であり、
+ドメインは関与しない（[`usecase.md`](./usecase.md) の再評価）。ドメインが商品集約を参照しないため、
+カートの不変条件は商品の状態変化から独立し、商品が変わってもカートが不正にならない。
+
+`id` は UUIDv7（[ADR-0034 (uuidv7-identifiers)]）で、生成は usecase 層が行いドメインへ渡す。有効期限
+`expiresAt` も同様に、時刻境界（clock）から供給された `now` を受け取って算出する（ドメインは時刻へ直接
+依存しない）。
+
+## Entity
+
+```yaml
+package: internal/domain/cart
+struct: Cart
+constructors:
+  - name: NewForGuest    # ゲスト用（sessionToken あり / ownerID なし）
+  - name: NewForOwner    # ログイン済みユーザー用（ownerID あり / sessionToken なし）
+  - name: Reconstruct    # 永続化済みの再構築（Repository の読み出し / 再検証）
+fields:
+  - name: id
+    type: uuid.UUID
+    required: true          # IsNil の場合は ErrInvalidID
+  - name: ownerID
+    type: "*uuid.UUID"      # 確定した所有者。ゲストの間は nil
+  - name: sessionToken
+    type: "*SessionToken"   # ゲスト追跡用。所有者確定時に nil へ破棄される
+  - name: items
+    type: "[]CartItem"      # 空を許す（空カートは正当な状態。ErrEmptyItems は存在しない）
+    max: maxItems           # 超過は ErrTooManyItems
+  - name: expiresAt
+    type: time.Time         # 有効期限。操作のたびに Touch で延長される
+    required: true
+  - name: createdAt
+    type: time.Time         # NewFor* ではゼロ値（DB 既定 NOW()）。Reconstruct で設定
+  - name: updatedAt
+    type: time.Time         # 同上
+```
+
+```yaml
+struct: CartItem   # 値オブジェクト
+fields:
+  - name: id
+    type: uuid.UUID
+    required: true
+  - name: productID
+    type: uuid.UUID
+    required: true          # IsNil の場合は ErrInvalidProductID
+  - name: quantity
+    type: int
+    min: minQuantity        # 1。下回る場合は ErrInvalidQuantity
+    max: maxQuantityPerItem # 超過は ErrInvalidQuantity（Merge のクランプ上限でもある）
+  - name: addedAt
+    type: time.Time         # 明細が最初に入った時刻。Merge の切り捨て順序を決める
+  - name: lastSeenPrice
+    type: "*money.Price"    # 最後に利用者へ提示した価格。未提示は nil
+                            # 確定単価ではなく、値上がりを検出するための比較基準としてのみ存在する
+```
+
+```yaml
+struct: MergeResult   # 値オブジェクト（Merge の報告。永続化しない）
+fields:
+  - name: clamped
+    type: "[]uuid.UUID"     # 数量合算が maxQuantityPerItem を超えクランプされた productID
+  - name: dropped
+    type: "[]uuid.UUID"     # 明細数上限により切り捨てられた productID
+```
+
+## Cross-field Invariants
+
+- `ownerID` と `sessionToken` は**ちょうど一方だけが非 nil**（排他）。両方 nil は到達不能なカート、
+  両方非 nil は token 経由で他人のカートへ到達できる状態であり、どちらも構築を許さない
+- 所有者の確定は**一方向**。`ownerID != nil` になった後に nil へ戻る遷移は存在しない
+- `items` 内に同一 `productID` は 2 件以上現れない（自然キー）
+- `len(items) <= maxItems`
+- `expiresAt > createdAt`
+
+## Behavior Methods
+
+```yaml
+- name: SetItem
+  signature: SetItem(itemID uuid.UUID, productID uuid.UUID, quantity int, now time.Time) error
+  behavior: |
+    明細の数量を設定する（PUT /v1/carts/me/items/{productId} の upsert）。同一 productID の明細が既に
+    あれば数量を置換し（addedAt は保持）、無ければ追加する。追加で明細数が maxItems を超える場合は
+    ErrTooManyItems（422）。quantity が範囲外なら ErrInvalidQuantity（422）。
+    数量 0 は削除ではなくエラーとする — 削除は RemoveItem が担い、1 つの操作に 2 つの意味を持たせない。
+    冪等性は自然キー（productID）と「設定」という意味論から来る。同じ要求を 2 回受けても結果は同じで、
+    冪等キーの発行を要さない（purchase の作成とはここが異なる）。
+  invariants:
+    - 同一 productID の明細は常に高々 1 件
+    - itemID は新規追加時のみ使われ、置換時は既存の id を保つ
+
+- name: RemoveItem
+  signature: RemoveItem(productID uuid.UUID) error
+  behavior: |
+    指定商品の明細を取り除く（DELETE /v1/carts/me/items/{productId}）。該当明細が無い場合もエラーに
+    せず成功を返す（削除の冪等）。呼び出し側が 204 を返すため、「無かった」と「消した」を区別しない。
+
+- name: Clear
+  signature: Clear()
+  behavior: |
+    明細をすべて取り除く（DELETE /v1/carts/me、および購入確定後の空化）。空カートは正当な状態のため
+    エラーを返さず、カート自体は残る（有効期限も維持される）。
+
+- name: Merge
+  signature: Merge(other *Cart, now time.Time) MergeResult
+  behavior: |
+    別のカート（ゲスト側）の明細を自身（ユーザー側）へ取り込む（ログイン時のマージ）。
+      - 同一 productID → 数量を合算し、maxQuantityPerItem を超える場合は上限へクランプして clamped に記録
+      - 自身に無い productID → 追加。maxItems を超える分は addedAt の新しい順に切り捨て dropped に記録
+        （先に入っていたものを優先して残す）
+    **error を返さない。** ログインは認証の成否で決まるべきで、カートの都合で失敗させない。不変条件は
+    クランプと切り捨てによって保たれ、失われた分は MergeResult として呼び出し側へ報告される（利用者に
+    「一部が入りませんでした」と伝える取得元）。
+    other は変更しない（取り込み元の破棄は usecase の責務）。
+  invariants:
+    - マージ後も同一 productID の重複なし / 数量・明細数の上限を満たす
+    - 数量合算の結果が上限を超えても不正状態を作らない（クランプで吸収する）
+
+- name: AssignOwner
+  signature: AssignOwner(userID uuid.UUID, now time.Time) error
+  behavior: |
+    ゲストカートの所有者を確定する（ログイン時）。ownerID を設定すると同時に sessionToken を nil にする。
+      - userID が IsNil → ErrInvalidUserID（422）
+      - 既に ownerID が確定済み → ErrAlreadyOwned（409）
+    所有者確定は一方向であり、二重適用は成功ではなく衝突として扱う（同時ログインで 2 回走ったことが
+    呼び出し側から見える必要があるため）。
+  invariants:
+    - ownerID と sessionToken の同時セット（片方を立て、片方を破棄する）は不可分
+    - 確定後に sessionToken 経由でこのカートへ到達する経路は存在しない
+
+- name: Touch
+  signature: Touch(now time.Time, ttl time.Duration)
+  behavior: |
+    有効期限を now + ttl へ延長する。参照・更新のいずれの操作でも呼ばれ、使われている間のカートが
+    掃除対象にならないようにする。ttl は usecase 層から供給される（ドメインは設定値を持たない）。
+
+- name: MarkSeen
+  signature: MarkSeen(prices map[uuid.UUID]money.Price)
+  behavior: |
+    利用者へ提示した価格を明細へ記録する（カート表示のたびに呼ばれる）。次回表示時の「値上がり」判定は
+    この値との比較で行われ、記録が無い明細（初回表示）は値上がりなしと扱う。
+    prices に現れない productID の明細は変更しない（非公開化などで価格を引けなかった場合）。
+    ここに記録される値は表示の履歴であって約束ではない。請求額を拘束するのは購入明細のスナップショットだけで、
+    値上がりの通知は「気づかせる」ためにあり、旧価格での購入を認めるものではない。
+
+- name: IsExpired
+  signature: IsExpired(now time.Time) bool
+  behavior: |
+    有効期限を過ぎているかを返す（「期限切れ」の定義そのもの）。掃除ジョブの削除条件（SQL の WHERE）は
+    この述語の実行形であって定義ではない。片方だけを変更してはならない。
+
+- name: IsEmpty
+  signature: IsEmpty() bool
+  behavior: |
+    明細を 1 件も持たないかを返す。購入確定へ進めるかの一次判定に用いる（空カートからの checkout は
+    usecase が拒否する）。
+
+- name: IsOwnedBy
+  signature: IsOwnedBy(userID uuid.UUID) bool
+  behavior: |
+    指定ユーザーが所有者かを返す。所有者未確定（ゲスト）のカートは常に false。認可判断そのものは
+    usecase 層の Authorizer が担い、本述語はその入力となる所有関係を定義する。
+```
+
+## Value Objects
+
+```yaml
+- name: SessionToken
+  underlying_type: string
+  validation: |
+    長さが sessionTokenLength に一致し、URL-safe な文字のみで構成されること。
+    値の生成（乱数）は usecase 層の境界が行い、ドメインは受け取った値の形式のみを検証する
+    （ドメインは乱数へ直接依存しない）。不正な場合は ErrInvalidSessionToken（422）。
+  factory: NewSessionToken
+  methods:
+    - name: Value
+      returns: string
+```
+
+## Repository Methods
+
+```yaml
+- name: FindBySessionToken
+  signature: FindBySessionToken(ctx context.Context, token SessionToken) (*Cart, error)
+  behavior: |
+    セッショントークンからゲストカートを明細込みで取得する。存在しない場合は NotFound。
+    所有者確定済みのカートは token を持たないため、本メソッドで引くことはできない。
+
+- name: FindByOwnerID
+  signature: FindByOwnerID(ctx context.Context, userID uuid.UUID) (*Cart, error)
+  behavior: |
+    所有者からカートを明細込みで取得する（GET /v1/carts/me の取得元）。存在しない場合は NotFound。
+    ユーザー 1 人につきカートは高々 1 件（carts.user_id の一意制約）。
+
+- name: LockByID
+  signature: LockByID(ctx context.Context, id uuid.UUID) (*Cart, error)
+  behavior: |
+    更新のためにカートを悲観ロック（FOR UPDATE）して取得する。マージで 2 件を同時にロックする場合は
+    id 昇順で取得し、ロック順序を全 tx で固定する（ADR-0033 (ordered-pessimistic-row-locks)）。
+
+- name: Create
+  signature: Create(ctx context.Context, c *Cart) error
+  behavior: |
+    カートを明細込みで新規登録する。user_id / session_token の一意制約違反は Conflict へ正規化する。
+
+- name: SaveItems
+  signature: SaveItems(ctx context.Context, c *Cart) error
+  behavior: |
+    カートの明細集合を渡された ctx の tx 内で現在の状態へ一致させる（差分ではなく集約単位の書き込み）。
+    明細はカート集約に属する子であり単独では存在しないため、明細単位の Repository は設けない。
+
+- name: UpdateOwner
+  signature: UpdateOwner(ctx context.Context, c *Cart) error
+  behavior: |
+    所有者確定（user_id のセットと session_token の NULL 化）を渡された ctx の tx 内で反映する。
+    対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
+
+- name: Delete
+  signature: Delete(ctx context.Context, id uuid.UUID) error
+  behavior: |
+    カートを明細ごと削除する（マージ後のゲストカート破棄）。存在しない場合もエラーとしない。
+
+- name: DeleteExpired
+  signature: DeleteExpired(ctx context.Context, now time.Time, limit int32) (int, error)
+  behavior: |
+    有効期限を過ぎたカートを最大 limit 件削除し、削除件数を返す（期限切れ掃除ジョブの実行本体）。
+    1 回の呼び出しで消し切ることを意図せず、件数上限で区切って繰り返し呼ばれる前提。
+    削除条件は Cart.IsExpired の実行形であり、述語と WHERE の片方だけを変更してはならない。
+```
+
+## Notes
+
+- **在庫を押さえない。** カートへの投入は引き当てではなく、在庫の検証は購入成立時に商品行を悲観ロック
+  したうえで行われる（[`docs/spec/purchase/domain.md`](../purchase/domain.md)）。カート表示時の在庫判定は
+  参考情報であって拘束力を持たない。予約（TTL 付き引き当て）を導入する場合は在庫台帳という別の機構が
+  必要になり、本 spec の範囲外。
+- **確定単価を持たない。** 表示価格は毎回商品の現在値を引き、確定は購入明細のスナップショットが担う。
+  カートに確定単価を持たせると値上げに追随できず「表示と請求が違う」状態を作る。`lastSeenPrice` は
+  その例外ではなく、値上がりを検出するための比較基準であって金額の根拠ではない — この 2 つを混同した
+  瞬間にカートが価格を約束し始めるため、型と名前で区別する。
+- 定数（sample の placeholder。実要件が立った時点で config へ移す）: `minQuantity = 1` /
+  `maxQuantityPerItem = 99` / `maxItems = 50` / `sessionTokenLength = 43`（256bit を base64url で表現した長さ）。
+- エラー写像: `ErrAlreadyOwned` → `apperror.ErrConflict`（409）、その他検証系（`ErrInvalidID` /
+  `ErrInvalidUserID` / `ErrInvalidProductID` / `ErrInvalidQuantity` / `ErrTooManyItems` /
+  `ErrInvalidSessionToken`）→ `apperror.ErrValidation`（422）。
+
+[ADR-0034 (uuidv7-identifiers)]: ../../adr/0034-uuidv7-identifiers.md
