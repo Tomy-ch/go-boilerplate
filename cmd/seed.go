@@ -59,8 +59,7 @@ func dbSeedRun(database string) error {
 }
 
 // seedVars は、seed ファイルのプレースホルダへ渡す環境固有の値を設定から組み立てます。
-// issuer は mock 認証サーバーの公開ポート（worktree のスロットでずれる）に追従するため、
-// seed ファイルへ直書きせず投入時の設定値から解決します。
+// issuer は seed ファイルへ直書きせず、投入時の設定値から解決します。
 func seedVars(logger logging.Logger, database string) (map[string]string, error) {
 	cfg, err := newConfigForSeed(logger, database)
 	if err != nil {
