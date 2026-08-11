@@ -40,7 +40,7 @@ flowchart TB
 ```go
 fx.Provide(
     job.ProvideRunner,
-    job.NewState,
+    jobcontroller.NewState,
 )
 fx.Invoke(hook.RegisterJobHooks)
 ```
@@ -56,6 +56,5 @@ fx.Invoke(hook.RegisterJobHooks)
 ## 注意点
 
 - `state.Set` はアプリケーション起動前に行う必要がある
-- `done` が `nil` の場合は即座にシャットダウンされる
-- ジョブ実行は別ゴルーチンで行われる
+- フックのライフサイクル詳細（`done == nil` での即時シャットダウン・ゴルーチン実行・停止時キャンセル）は [`hook/README.ja.md`](hook/README.ja.md) を参照
 - ジョブの追加は `internal/di/module/job.go` の `provideJobs(...)` に追加する

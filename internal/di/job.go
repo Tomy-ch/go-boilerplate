@@ -14,13 +14,14 @@ import (
 	"go.uber.org/fx"
 )
 
-// callSkip は Named().CallerSkip() で飛ばすフレーム数。RunJob/RunWorker の匿名クロージャ + CallerSkip ラッパの計 2 段を補正する。関数構造を変えると見直しが必要。
+// callSkip は Named().CallerSkip() で飛ばすフレーム数。RunJob / RunWorker のクロージャと
+// [NewFxEventLogger] が同じ値を共有するため、いずれかの呼び出し段数を変えると見直しが必要。
 const callSkip = 2
 
 type (
-	// StartFunc は、ジョブを起動して完了通知チャネルを返す関数の型です。返却チャネルはジョブ終了時に error（成功時 nil）を送信した後クローズされます。DI グラフの構築失敗および起動失敗のときは専用の閉じ済みチャネルで直接エラーを返します。
+	// StartFunc は、実行対象を起動して完了通知チャネルを返す関数の型です。返却チャネルは実行終了時に error（成功時 nil）を送信した後クローズされます。DI グラフの構築失敗および起動失敗のときは専用の閉じ済みチャネルで直接エラーを返します。
 	StartFunc func(ctx context.Context, name string, args []string) <-chan error
-	// StopFunc は、ジョブの停止関数の型を表します。
+	// StopFunc は、実行対象の停止関数の型を表します。
 	StopFunc func(ctx context.Context) error
 )
 
