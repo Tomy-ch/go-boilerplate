@@ -1,37 +1,38 @@
 # ProductStatus — Domain Spec
 
-> `products`（#563）が `statusID` で参照する商品ステータスマスタ集約。`GET /v1/product-statuses`
-> （一覧取得 usecase は `usecase.md`）の全件一覧は QueryService ではなく Repository の simple list
-> （`FindAll`）として提供する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
+> `products`（#563）が商品ステータス参照（`StatusRef`。ID と名称の組の値オブジェクト）で保持する
+> 商品ステータスマスタ集約。`GET /v1/products/statuses`（一覧取得 usecase は `usecase.md`）の全件一覧は
+> QueryService ではなく Repository の simple list（`FindAll`）として提供する
+> （ADR-0029 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 
-商品ステータス集約は、商品ステータスの ID・名称・コード・表示順（`sortKey`）を保持する参照系のエンティティ。`products` 集約は商品ステータスを ID 参照（`statusID`）で保持し、表示名はこの集約から解決する。一覧の表示順は `code` ではなく `sortKey` 昇順で管理する（seed の `sortKey` は `code` と非連動）。生成時に ID・名称長・コード範囲・表示順範囲を検証する。マスタは migration で seed され、書き込み API を持たない。状態遷移可否（状態機械）はこの集約の責務外。
+商品ステータス集約は、商品ステータスの ID・名称・コード・表示順（`sortKey`）を保持する参照系のエンティティ。`products` 集約は商品ステータスを `StatusRef`（ID と名称の組）で保持し、名称は生成・更新の時点で `FindByID` からこの集約を引いて埋め込む。一覧の表示順は `code` ではなく `sortKey` 昇順で管理する（seed の `sortKey` は `code` と非連動）。生成時に ID・名称長・コード範囲・表示順範囲を検証する。マスタは migration で seed され、書き込み API を持たない。状態遷移可否（状態機械）はこの集約の責務外。
 
 ## Entity
 
 ```yaml
-package: internal/domain/product_status
-struct: ProductStatus
+package: internal/domain/product/status
+struct: Status
 fields:
   - name: id
     type: uuid.UUID
-    required: true        # IsNil の場合は ErrInvalidID
+    required: true
   - name: name
     type: string
     required: true
-    min_length: 1         # MinProductStatusNameLength
-    max_length: 100       # MaxProductStatusNameLength（VARCHAR(100)）
+    min_length: 1
+    max_length: 100       # VARCHAR(100)
   - name: code
     type: int
     required: true
-    min: 1                # MinCode（正の SMALLINT）
-    max: 32767            # MaxCode（SMALLINT 上限）
+    min: 1                # 正の SMALLINT
+    max: 32767            # SMALLINT 上限
   - name: sortKey
     type: int
     required: true
-    min: 1                # MinSortKey（正の SMALLINT）
-    max: 32767            # MaxSortKey（SMALLINT 上限）
+    min: 1                # 正の SMALLINT
+    max: 32767            # SMALLINT 上限
 ```
 
 ## Cross-field Invariants
@@ -54,6 +55,9 @@ fields:
 
 ```yaml
 - name: FindAll
-  signature: FindAll(ctx context.Context) (ProductStatuses, error)
-  behavior: 全商品ステータスを sortKey 昇順で取得する（GET /v1/product-statuses の全件一覧。単一集約・無フィルタ・無ページングの simple list）。
+  signature: FindAll(ctx context.Context) (Statuses, error)
+  behavior: 全商品ステータスを sortKey 昇順で取得する（GET /v1/products/statuses の全件一覧。単一集約・無フィルタ・無ページングの simple list）。
+- name: FindByID
+  signature: FindByID(ctx context.Context, id uuid.UUID) (*Status, error)
+  behavior: ID から単一の商品ステータスを取得する。未存在は NotFound を返す（products 集約が生成・更新時に StatusRef を解決するために使う）。
 ```

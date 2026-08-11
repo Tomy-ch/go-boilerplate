@@ -68,9 +68,11 @@ steps:
   - period を集計区分へ正規化する（"30d" のみ直近30日、それ以外は全期間）
   - limit を正規化する（0 以下は既定 10、範囲外は [1, 100] にクランプ）
   - product_ranking_query_service.ListRanking で販売数量降順の集計結果を取得する
+  - 取得した各行が product.IsPublished を満たすことを確かめる（集計が公開中の商品に絞られている前提の乖離検出）
   - 取得した RankingResult 一覧を RankingItemView（ProductID / Name / Price / SoldQuantity）へ写像し RankingView として返す
 calls:
   - product_ranking_query_service.ListRanking
 errors:
   - product_ranking_query_service.ListRanking のエラーをそのまま伝播する
+  - 取得行が product.IsPublished を満たさない場合は apperror.ErrInternal（500。集計と公開判定の乖離）
 ```

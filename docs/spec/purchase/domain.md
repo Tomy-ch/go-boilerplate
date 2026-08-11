@@ -49,8 +49,9 @@ fields:
     type: "[]PurchaseDetail" # 空は ErrEmptyDetails
   - name: orderedAt
     type: time.Time         # New ではゼロ値（DB 既定 NOW()）。Reconstruct で設定
-  - name: statusCode
-    type: int               # 現在状態の業務キー（status_id を JOIN で解決）。状態機械の source of truth
+  - name: status
+    type: Status            # 現在状態（status_id を JOIN で解決した業務キーから NewStatus で構築）。状態機械の source of truth
+                            # StatusCode() は status.Code() の導出
   - name: paidAt
     type: "*time.Time"      # 支払い日時（未支払いは nil）。支払い後も残る sticky な監査記録
   - name: canceledAt
@@ -99,7 +100,7 @@ fields:
 
 ```yaml
 - name: Cancel
-  signature: Cancel(now time.Time) error
+  signature: Cancel(now time.Time) (Event, error)
   behavior: |
     購入をキャンセル状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/cancel の状態遷移）。
     遷移可否は statusCode の許可遷移表を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
@@ -108,12 +109,13 @@ fields:
       - それ以外（未処理 / 受付中 / 確認中 / 処理中 / 支払い済み）→ 許可
     許可時は statusCode をキャンセル（6）へ、canceledAt を now へ同時にセットする（status と timestamp の同時セット・
     既存 timestamps は不変という不変条件）。now は時刻境界（clock）から供給し、ドメインは時刻へ直接依存しない。
+    遷移に成功したときだけキャンセルの事実（Event）を返す。
   invariants:
     - status（statusCode）と対応 timestamp（canceledAt）は必ず同時セット
     - 既にセット済みの timestamps は不変（NULL → 値 の単調セットのみ）
 
 - name: Pay
-  signature: Pay(now time.Time) error
+  signature: Pay(now time.Time) (Event, error)
   behavior: |
     購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0082 (local-hooks-mirror-ci)）。
     遷移可否は statusCode を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
@@ -122,11 +124,12 @@ fields:
       - それ以外（未処理 / 受付中 / 確認中 / 処理中）→ 許可
     許可時は statusCode を支払い済み（7）へ、paidAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
     決済 SDK / PSP 連携・金額検証は行わず、paidAt とステータスの記録のみを担う。
+    遷移に成功したときだけ支払いの事実（Event）を返す。
   invariants:
     - 支払い済み status（statusCode == 7）は paidAt を必須とする（一方向。paidAt は支払い後も残り、以降の遷移で status が変わっても保持されるためキャンセルのような双条件にはしない）
 
 - name: Ship
-  signature: Ship(now time.Time) error
+  signature: Ship(now time.Time) (Event, error)
   behavior: |
     購入を発送済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/ship の状態遷移）。遷移可否は statusCode の等値比較のみで判定する:
       - 既に発送済み（statusCode == 8）→ ErrAlreadyShipped（409。二重発送）
@@ -134,13 +137,14 @@ fields:
       - それ以外（未払い相当 / 完了 / キャンセル済み / 配達済み）→ ErrShipNotAllowed（409）
     許可時は statusCode を発送済み（8）へ、shippedAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
     配送追跡（追跡番号 / 配送業者 / 追跡 URL）は扱わず、shippedAt とステータスの記録のみを担う。
+    遷移に成功したときだけ発送の事実（Event）を返す。
     Cancel / Pay と違い timestamps ガードを併用しないのは、遷移元が支払い済みの 1 状態に限られ statusCode の等値比較だけで
     判別できるため（配達済みは statusCode != 7 として不正遷移側に落ちる）。
   invariants:
     - 発送済み status（statusCode == 8）は shippedAt を必須とする（一方向。shippedAt は発送後も残り、以降の配達済み等の遷移で status が変わっても保持されるためキャンセルのような双条件にはしない）
 
 - name: Deliver
-  signature: Deliver(now time.Time) error
+  signature: Deliver(now time.Time) (Event, error)
   behavior: |
     購入を配達済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/deliver の状態遷移）。遷移可否は statusCode の等値比較のみで判定する:
       - 既に配達済み（statusCode == 9）→ ErrAlreadyDelivered（409。二重配達）
@@ -148,6 +152,7 @@ fields:
       - それ以外（未払い相当 / 支払い済み / 完了 / キャンセル済み）→ ErrDeliverNotAllowed（409）
     許可時は statusCode を配達済み（9）へ、deliveredAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
     配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担う。
+    遷移に成功したときだけ配達の事実（Event）を返す。
     Ship と同じく timestamps ガードを併用しないのは、遷移元が発送済みの 1 状態に限られ statusCode の等値比較だけで判別できるため。
   invariants:
     - 配達済み status（statusCode == 9）と deliveredAt は必ず同時セット（双条件。配達済みは終端状態であり配達後に別 status へ遷移して deliveredAt だけが残ることがないため、paidAt / shippedAt のような一方向にはしない）

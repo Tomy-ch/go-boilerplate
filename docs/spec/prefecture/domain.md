@@ -20,13 +20,13 @@ fields:
   - name: name
     type: string
     required: true
-    min_length: 1         # MinPrefectureNameLength
-    max_length: 100       # MaxPrefectureNameLength
+    min_length: 1
+    max_length: 100
   - name: code
     type: int
     required: true
-    min: 1                # MinCode
-    max: 47               # MaxCode（都道府県数）
+    min: 1
+    max: 47               # 都道府県数
 ```
 
 ## Cross-field Invariants
