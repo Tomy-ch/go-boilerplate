@@ -95,7 +95,10 @@ The following must not be done in the Infrastructure layer.
 ## Implementation Rules
 
 - Use sqlc for SQL execution
-- Do not write search logic in Repository (use QueryService)
+- Split Repository vs QueryService by what the read targets, not by whether it is a "search":
+  the aggregate's system-of-record state (full aggregate reconstructable) stays in Repository, a
+  derived projection / read model goes to QueryService. See
+  [ADR-0029 (lightweight-cqrs)](../../docs/adr/0029-lightweight-cqrs.md)
 - Acquire the DBTX via `driver.New(ctx, db)` (logging / tracing is applied at the driver connection level)
 - Always propagate context
 - Always normalize external errors
