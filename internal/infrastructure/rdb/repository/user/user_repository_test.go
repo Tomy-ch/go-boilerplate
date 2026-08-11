@@ -93,12 +93,12 @@ func Test_repository_FindByActive(t *testing.T) {
 				})
 			})
 
-			t.Run("limit=1でoffset=9の場合、末尾のユーザーが取得できる", func(t *testing.T) {
+			t.Run("limit=1でoffset=49の場合、末尾のユーザーが取得できる", func(t *testing.T) {
 				t.Parallel()
 
 				txm.WithinTx(func(ctx context.Context) {
 					limit := int32(1)
-					offset := int32(9)
+					offset := int32(49)
 
 					all, getAllUsersErr := repo.FindByActive(ctx, nil, limit, offset)
 					require.NoError(t, getAllUsersErr)
@@ -428,7 +428,7 @@ func Test_repository_CountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, new(true))
 				require.NoError(t, err)
-				assert.Equal(t, int64(8), got)
+				assert.Equal(t, int64(45), got)
 			})
 		})
 		t.Run("active=falseの場合、非アクティブなユーザーの件数が取得できる", func(t *testing.T) {
@@ -436,7 +436,7 @@ func Test_repository_CountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, new(false))
 				require.NoError(t, err)
-				assert.Equal(t, int64(2), got)
+				assert.Equal(t, int64(5), got)
 			})
 		})
 		t.Run("active=nilの場合、全ユーザーの件数が取得できる", func(t *testing.T) {
@@ -444,7 +444,7 @@ func Test_repository_CountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, nil)
 				require.NoError(t, err)
-				assert.Equal(t, int64(10), got)
+				assert.Equal(t, int64(50), got)
 			})
 		})
 	})

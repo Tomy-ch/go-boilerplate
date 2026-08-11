@@ -42,6 +42,17 @@ func mustParse(t *testing.T, s string) uuid.UUID {
 	return id
 }
 
+// clearSeededPurchases は、呼び出したトランザクション内で購入と購入明細を空にします。
+// ランキングは購入明細テーブル全体を商品単位に集計するため、seed が投入する購入履歴が残っていると
+// 上位に別の商品が並びます。削除はロールバックされるので、コミット済みの seed は失われません。
+func clearSeededPurchases(ctx context.Context, t *testing.T, db driver.DBTX) {
+	t.Helper()
+	_, err := db.Exec(ctx, "DELETE FROM purchase_details")
+	require.NoError(t, err)
+	_, err = db.Exec(ctx, "DELETE FROM purchases")
+	require.NoError(t, err)
+}
+
 // insertProduct は、FK を満たす公開商品を price（十進文字列）と name 指定で挿入します。
 func insertProduct(ctx context.Context, t *testing.T, db driver.DBTX, id uuid.UUID, price, name string) {
 	t.Helper()
@@ -106,6 +117,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				productA := mustParse(t, "a1000000-0000-4000-8000-000000000001")
 				productB := mustParse(t, "a1000000-0000-4000-8000-000000000002")
 				insertProduct(ctx, t, drv, productA, "19.99", "商品A")
@@ -138,6 +150,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				productC := mustParse(t, "b1000000-0000-4000-8000-000000000001")
 				productD := mustParse(t, "b1000000-0000-4000-8000-000000000002")
 				insertProduct(ctx, t, drv, productC, "10", "商品C")
@@ -170,6 +183,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				productLow := mustParse(t, "c1000000-0000-4000-8000-000000000001")
 				productHigh := mustParse(t, "c1000000-0000-4000-8000-000000000002")
 				insertProduct(ctx, t, drv, productLow, "10", "商品Low")
@@ -194,6 +208,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				product := mustParse(t, "d1000000-0000-4000-8000-000000000001")
 				insertProduct(ctx, t, drv, product, "10", "商品E")
 
@@ -221,6 +236,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				product := mustParse(t, "aa100000-0000-4000-8000-000000000001")
 				insertProduct(ctx, t, drv, product, "10", "境界商品")
 
@@ -246,6 +262,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				productTop := mustParse(t, "e1000000-0000-4000-8000-000000000001")
 				productMid := mustParse(t, "e1000000-0000-4000-8000-000000000002")
 				productLow := mustParse(t, "e1000000-0000-4000-8000-000000000003")
@@ -273,6 +290,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
 				publishedProduct := mustParse(t, "f1000000-0000-4000-8000-000000000001")
 				unpublishedProduct := mustParse(t, "f1000000-0000-4000-8000-000000000002")
 				insertProduct(ctx, t, drv, publishedProduct, "10", "公開商品")
@@ -296,6 +314,8 @@ func Test_service_ListRanking(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
+
 				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
 				require.NoError(t, err)
 				assert.Empty(t, got)
