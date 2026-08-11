@@ -29,8 +29,7 @@ func splitFuncName(full string) (string, string) {
 	return full, ""
 }
 
-// ExtractFunctionName は、runtime.Func のフルネームから span 名として使いやすい
-// メソッド名のみを抽出します。
+// ExtractFunctionName は、runtime.Func のフルネームからメソッド名のみを抽出します。
 // 例:
 //
 //	"github.com/org/proj/foo/bar.(*Baz).Do"
@@ -44,8 +43,7 @@ func ExtractFunctionName(full string) string {
 }
 
 // ExtractPackageName は、runtime.Func のフルネームからパッケージ名を抽出します。
-// パッケージ名は lhs の先頭セグメント（最初の "." より前）なので、ポインタ／値
-// レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。
+// ポインタ／値レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できます。
 // 例:
 //
 //	"github.com/org/proj/foo/bar.(*Baz).Do" → "bar"

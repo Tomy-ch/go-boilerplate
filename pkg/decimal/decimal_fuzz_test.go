@@ -36,7 +36,6 @@ func FuzzParse(f *testing.F) {
 		}
 
 		// 受理された値は自身の文字列表現から同じ値へ戻る（往復の安定性）。
-		// ここが破れると、永続化して読み直した金額が元と一致しなくなる。
 		again, err := Parse(d.String())
 		require.NoError(t, err)
 		require.Equal(t, d.String(), again.String())

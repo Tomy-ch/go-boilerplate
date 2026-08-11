@@ -19,7 +19,7 @@
 - production コードでの `New` は **package-level の `var` 宣言**に限る（関数本体では使わない）。
   センチネルを一度だけ宣言し（`var errXxx = New("...")`）、動的な文脈は発生箇所で `Wrap(errXxx, ctx)` として付与する。
   これにより呼び出し側とテストはメッセージ一致ではなく `Is` でエラーを識別できる。
-  `internal/architest`（`TestNoInlineXerrorsNew`）が機械検証する。`_test.go` は対象外で、
+  本リポジトリの静的検査がこの規約を強制する。`_test.go` は対象外で、
   注入用のアドホックなエラーを作るのは正当な用法。
 - apperror センチネルを元エラーに付与する場合は、`Wrap(sentinel, err.Error())` で潰さず
   `Join(sentinel, err)`（文脈が要る場合は `Join(sentinel, Wrap(err, "文脈"))`）を優先すること。

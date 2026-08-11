@@ -102,7 +102,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 
 ### decimal
 
-`github.com/shopspring/decimal` をラップした exact-decimal 型です。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は `internal/domain/lexicon/money` が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
+`github.com/shopspring/decimal` をラップした exact-decimal 型です。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は呼び出し側が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
 
 |シンボル|説明|
 |---|---|
@@ -136,8 +136,6 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 ### fnmeta
 
 `runtime` から取得したフル関数名を分解し、パッケージ名や関数名を抽出します。
-
-主に `internal/observability` の span 名生成で使用されます。
 
 |関数|説明|
 |---|---|
@@ -183,7 +181,7 @@ retry」ではなく「リトライ可能性を分類する任意の呼び出し
 |`Do`|分類関数がリトライ可能と判定する間、関数を有限リトライで実行|
 |`Full`|full jitter（`[0, d]` の一様乱数）|
 |`Policy`|`MaxAttempts` ＋ `Backoff`（`func(attempt int) time.Duration`）|
-|`Sleeper`（インターフェース）|`Sleep(ctx, d)` 待機抽象（`clock.Sleeper` が充足）|
+|`Sleeper`（インターフェース）|`Sleep(ctx, d)` 待機抽象（呼び出し側が持つ sleeper 型が構造的に充足）|
 
 ### safecast
 
