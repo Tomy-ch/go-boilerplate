@@ -78,7 +78,7 @@ LayerTracer --> ApplicationCode
 |`ProvideTracerProvider` / `ProvideMeterProvider`|具象プロバイダを `trace.TracerProvider` / `metric.MeterProvider` IF として公開するアダプタ（`provider.go` 内）|
 |`NewPgxTracer`|接続情報を抑止した `otelpgx` トレーサ（DB span + metric、`pgx_tracer.go` 内）|
 |`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF ガード付き・計装済み外向き HTTP トランスポート + その RED メトリクス（`http_client_transport.go` / `http_client_metrics.go` 内）|
-|`propagation.go`|サービス跨ぎ / キャリア跨ぎのトレース伝播（`ExtractFromCarrier` / `InjectTraceContextToCarrier`）+ `NewTextMapPropagator`|
+|`propagation.go`|サービス跨ぎ / キャリア跨ぎのトレース伝播（`ExtractFromCarrier` / `InjectTraceContextToCarrier`）|
 |`TracerFactory`|レイヤー別トレーサ生成|
 |`LayerTracer`|レイヤー別 span 生成（span のみ。ログ行自体は出力しない）|
 |`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -123,8 +123,7 @@ func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource
   periodic な `MetricReader` 構築を `MetricsEnabled()` のときのみ行います。Go **ランタイム
   メトリクス**計装もそのときのみ開始します（no-op フォールバック時はスキップ）。これも
   ライフサイクル非依存で、具象 `*sdkmetric.MeterProvider` を返し `Shutdown` 登録は di の hook が担う。
-  シャットダウン hook が具象プロバイダに依存するため、DI モジュール側に別途の force-start invoke は
-  不要で、hook を構築することでプロバイダが構築される。
+  シャットダウン hook が具象プロバイダに依存するため、hook を構築することでプロバイダが構築される。
 
 ### 1.2 NewLoggerProvider / NewLogCore（OTLP ログ）
 
@@ -170,6 +169,9 @@ usecaseTracer := tf.Usecase()
 infraTracer := tf.Infra()
 ```
 
+`NewDisabledTracerFactory()` は何も送出しない tracer を返すファクトリです。DI グラフを経由せず
+infra 実装を直接組み立てる CLI 経路のために存在し、`otel` パッケージをこの層に閉じ込めます。
+
 ### 3. LayerTracer
 
 `LayerTracer` は **レイヤー単位の span 管理**を行うコンポーネントです。
@@ -212,7 +214,7 @@ defer end()
 
 任意の処理は `RunWithSpan` で簡単に span 計測できます。
 
-この関数はレイヤに依存せず、任意の処理を span + observability logging とともに実行するためのユーティリティです。
+この関数はレイヤに依存せず、任意の処理を span の中で実行するためのユーティリティです。
 
 ```go
 ctx, result, err := observability.RunWithSpan(
@@ -262,6 +264,10 @@ name := observability.BuildSpanName("usecase", "user", "CreateUser")
 ログ ↔ トレース相関は `otelzap` の `LogCore`（§1.2）が担います。`LogsEnabled()` のとき、
 アプリの `zap` ログはアクティブな trace context を付与して OTLP 送出されるため、バックエンド
 では同一 `trace_id` でログと span が揃います。
+
+各ログ行の `trace_id` / `span_id` は `NewTraceExtractor(obsCfg)` が返す `logging.TraceExtractor`
+クロージャ由来で、これを DI が `Logger` へ注入します。有効・無効の判定はこのクロージャ 1 箇所に
+閉じており、呼び出し側が trace フィールドの付与を決めることはありません。
 
 ## TraceContext
 
@@ -320,12 +326,7 @@ defer end()
 getCallerFullName()
 ```
 
-この情報は
-
-- span名生成
-- observabilityログ
-
-で使用されます。
+この情報は span 名の生成に使用されます。
 
 ## テストサポート
 
@@ -375,6 +376,8 @@ defer cleanup()
 |`NewNoopHTTPClientMetrics`|no-op meter 上の `HTTPClientMetrics`|
 |`NewNoopOutboxMetrics`|no-op meter 上の `OutboxMetrics`|
 |`NewNoopHTTPClientTransport`|SSRF ガードを無効化した `HTTPClientTransport`（loopback / httptest 宛てを許可）|
+|`NewGuardedHTTPClientTransport`|SSRF ガードを**有効のまま**残した `HTTPClientTransport`（ガード自体を検証するテスト用）|
+|`NewObservedHTTPClientMetrics`|計上値を `LabelValues` で読み出せる `HTTPClientMetrics`|
 
 ## 設計ポリシー
 
@@ -391,13 +394,8 @@ span名は必ず `layer.package.function` 形式になります。
 
 ### 2 logging と統合
 
-ログ ↔ トレース相関は `otelzap` の `LogCore`（§1.2）が担います。アプリのログはアクティブな
-trace context を付与して OTLP 送出されるため、バックエンドではログと span が同一の識別子を
-共有します。span context が公開するのは以下です。
-
-- `trace_id`
-- `span_id`
-- `parent_span_id`
+ログ ↔ トレース相関は呼び出し側ではなくロギング層で解決されます。
+[Span / ログ相関](#span--ログ相関) を参照してください。
 
 ### 3 アプリケーションコードはOTelに依存しない
 
@@ -438,7 +436,7 @@ layer span は controller / usecase / infra の全層で `LayerTracer.Start` に
 `propagation.go` は W3C トレースコンテキストをサービス跨ぎ・キャリア跨ぎで運び、
 producer → relay → consumer の連鎖を 1 つの trace にまとめます。
 
-- `NewTextMapPropagator` — `NewTracerProvider` が `otel.SetTextMapPropagator` でグローバル
+- `NewTextMapPropagator`（`provider.go`）— `NewTracerProvider` が `otel.SetTextMapPropagator` でグローバル
   登録する、W3C `TraceContext` + `Baggage` の複合 propagator。
 - `ExtractFromCarrier(ctx, attrs)` — `map[string]string` キャリア（メッセージ属性 / ヘッダ等）
   から **グローバル** propagator で trace を継続します。キャリアが空なら `ctx` をそのまま返します。
