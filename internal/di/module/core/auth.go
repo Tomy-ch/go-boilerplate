@@ -94,10 +94,6 @@ func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
 
 // allowInsecureJWKSURL は、指定環境で JWKS URL に非 https を許すかを返します。
 // local と dast だけが疑似 provider（http）へ接続するため許容され、それ以外の環境では https を強制します。
-// 検証されるのは override した JWKS URL と、issuer から導出する discovery URL の両方です。
-//
-// 許容の可否は https 経由の構築成否に現れないため、呼び出し元から観測できるのは http を渡した
-// ときだけです。環境ごとの対応を直接固定できるよう、判定を独立した関数として切り出しています。
 func allowInsecureJWKSURL(env string) bool {
 	switch env {
 	case config.EnvLocal, config.EnvDast:

@@ -53,4 +53,4 @@ refusal cases are the point.
 
 ## Notes
 
-- Adding or removing modules requires updating references from the parent module in `internal/di/module`
+- Adding or removing modules requires updating references from `applicationCoreOptions` in `internal/di/server.go`

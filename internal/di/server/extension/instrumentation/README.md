@@ -23,8 +23,7 @@ HTTPRedMetrics (Priority 8) runs after Observability so a trace context already 
 
 ## Notes
 
-- RequestID / Observability / HTTPRedMetrics are applied as **UseMiddleware with Priority**
-- Observability depends on `ApplicationConfig` — **behavior may differ between production and non-production**
-- Observability responsibility stays within the controller layer — **must not leak into domain/usecase**
+- RequestID / Observability / HTTPRedMetrics / Logging are applied as **UseMiddleware with Priority**
+- Observability depends on `ObservabilityConfig` — **behavior may differ between production and non-production**
 - `HTTPRedMetricsModule()` registers the recorder against the `prometheus.Registerer` provided by the DB module, so the metrics are exposed on the same `/metrics` endpoint; ops paths (`/metrics`, `/health`, etc.) are excluded from measurement
 - When adding middleware or changing priorities, watch for Priority conflicts with other UseMiddleware

@@ -14,7 +14,7 @@ import (
 func TestJobModule_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
-	// ジョブ層はジョブ追加で増える領域。個々のジョブの振る舞いは controller/job 層のテストに任せ、
+	// 個々のジョブの振る舞いは controller/job 層のテストに任せ、
 	// ここではジョブ群・ランナー・フックが依存と正しく結線されることを確認する。
 	opts := append(commonDeps(),
 		shutdowner.Module(),
