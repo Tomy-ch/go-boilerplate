@@ -7,3 +7,5 @@ Provides Basic authentication validator for metrics endpoints.
 ## Role
 
 The metrics endpoint exposes internal operational data, so it must sit behind an access gate even though it is not part of the business API. This package isolates that credential check as a single reusable validator using a constant-time comparison, keeping the gate policy in one place and out of the endpoint wiring.
+
+Hashing the credentials with SHA-256 before comparison would also close the length-based timing leak, but that leak is minor against static metrics credentials, and fast password hashing is itself a finding class security scanners flag — so this validator does not hash.
