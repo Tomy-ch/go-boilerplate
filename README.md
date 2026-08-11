@@ -31,6 +31,27 @@ Each item is a thin seam you extend; follow the link for the design and rules.
 - **Object storage** (vendor-neutral boundary behind an S3-compatible adapter; local container, seeding and public read delivery included) — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **Single self-contained binary** (env + migrations embedded → one image) — [docker/README.md](docker/README.md)
 
+## Scope & Non-goals
+
+Who and what this architecture is *for* is stated in
+[docs/project/scope.md](docs/project/scope.md) (and in *Intended system types* below). This section
+covers the other half — what a backend eventually needs and this project **deliberately does not
+ship**. None of it is unfinished work:
+
+- **Deployment and IaC** — only a workflow skeleton; the platform is the adopter's choice
+- **Rate limiting** — belongs at the infrastructure edge, because per-instance in-memory counters cannot enforce a global limit
+- **Caching layer** — added as a decorator behind the existing Repository interface, so no separate cache abstraction exists to degrade into a TTL map
+- **RBAC / audit logging / retention policy / PII encryption** — determined by the domain, not guessable by a template
+- **Scheduled-job concurrency control** — left to the scheduler; the bundled jobs are concurrency-safe by design
+
+Full list with the reasoning: [docs/project/out-of-scope.md](docs/project/out-of-scope.md). The
+architectural non-choices are additionally recorded as ADRs tagged `setup-review`, so a new project
+reviews them as one set rather than discovering them one at a time.
+
+Authentication and authorization are the one gap that is **enforced rather than documented**:
+outside `local` / `ci` / `test` the DI providers are fail-closed, so the application refuses to
+start until real implementations are wired ([docs/design/auth.md](docs/design/auth.md)).
+
 ## Prerequisites
 
 The following tools must be installed before running:
@@ -103,6 +124,54 @@ curl http://localhost:8080/health
 ## Getting Started
 
 Before development, follow the setup steps: [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md).
+
+<!-- boilerplate-only:begin -->
+## Using This as a Template
+
+Fork it and localize it. The setup is a **scripted, gated sequence** rather than a search and
+replace — [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) walks the
+phases in order, and the summary below is only there to show what kind of work it is.
+
+- **Localizing identity is verified, not trusted.** The `make setup-replace-*` targets rewrite the
+  module path, repository references, app metadata, licence holder and CODEOWNERS; `make
+  setup-verify` fails while any upstream identifier survives, and deletes the one-shot tooling only
+  once it passes — so a half-finished localization cannot go unnoticed.
+- **Two removal passes, deliberately separate.** `make setup-remove-boilerplate-identity` strips
+  what holds only while this *is* the upstream template, and `make setup-remove-sample-api` strips
+  the sample feature set. A fork may reasonably do one without the other: keeping the sample keeps
+  the one place where the layering rules exist as working code rather than prose.
+- **The decisions the template refuses to make for you** are numbered phases, not TODOs left in the
+  code — authn / authz implementations, the deployment target, the dependency-licence threshold,
+  whether to keep the DAST and credential-bearing scanners, and the exclusion ADRs to re-baseline.
+
+Which statements stop being true the moment you fork, and how they are marked so a script can
+remove them, is documented in
+[docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md).
+
+<!-- boilerplate-only:end -->
+## Development Workflow
+
+The local loop and CI run the same gates, so a green run locally means the same thing it means in
+a pull request.
+
+| Step | Command | Notes |
+| --- | --- | --- |
+| Generate | `make gen` | OpenAPI → server code / mocks, SQL → type-safe Go, then the docs. Generated files are never hand-edited; CI regenerates and fails on a diff. |
+| Auto-fix | `make fix` | Go formatting and lint auto-fix. `make md-fix` / `make sql-fix` for Markdown and SQL. |
+| Static analysis | `make lint` | golangci-lint, including the depguard rules that make the layer boundaries a build error. |
+| Test | `make test` | Go tests with coverage. Run `make db-init` first — the suite expects a DB that is migrated **and** seeded. |
+
+What is checked mechanically, so review does not have to:
+
+- **Layer boundaries** — depguard rejects a forbidden import, and `internal/architest` asserts the structural rules as ordinary tests
+- **Contract-first** — the OpenAPI document and the SQL files are the inputs; CI fails when a committed generated artifact differs from what regeneration produces
+- **Commit hygiene** — lefthook runs the gates on `pre-commit` / `commit-msg` / `pre-push`, and how much runs locally is sized from the number of open worktrees, with everything deferred re-run identically in CI ([load bands](.makefiles/README.md))
+
+Conventions: [docs/development-flow.md](docs/development-flow.md) ·
+[docs/testing-conventions.md](docs/testing-conventions.md) ·
+[CONTRIBUTING.md](CONTRIBUTING.md). Every target is in
+[.makefiles/README.md](.makefiles/README.md); every workflow in
+[.github/workflows/README.md](.github/workflows/README.md).
 
 ## Architecture Overview
 
@@ -195,9 +264,14 @@ The source of truth lives close to the code. Start here and follow the link that
 - [docs/testing-conventions.md](docs/testing-conventions.md) — testing conventions
 - [docs/tutorial/build-user-feature.md](docs/tutorial/build-user-feature.md) — worked example: one feature end to end
 - [docs/spec/glossary.md](docs/spec/glossary.md) — business vocabulary (ubiquitous language)
-- [docs/project/policy.md](docs/project/policy.md) · [docs/project/versioning.md](docs/project/versioning.md) — maintenance & versioning policy
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to propose and land a change (branch, commit, gates, review)
+- [docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) — setup & local-run failures, and what each one actually means
+- [docs/project/scope.md](docs/project/scope.md) · [docs/project/out-of-scope.md](docs/project/out-of-scope.md) — intended scope, and what is deliberately excluded
+- [docs/project/policy.md](docs/project/policy.md) · [docs/project/versioning.md](docs/project/versioning.md) · [docs/project/roadmap.md](docs/project/roadmap.md) — maintenance, versioning, direction
 - [docs/reference/dependencies.md](docs/reference/dependencies.md) — direct dependency inventory, one responsibility per entry
 - [docs/maintenance/](docs/maintenance/db-worktree-pool.md) — operational runbooks (worktree DB pool, doc structure, upgrades)
+- [docs/deployment/](docs/deployment/github-page.md) — deployment procedures (documentation portal via GitHub Pages)
+- [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md) — the statements that hold only while this is the upstream template <!-- boilerplate-only:line -->
 
 ### Subsystem design
 
@@ -287,6 +361,36 @@ The source of truth lives close to the code. Start here and follow the link that
 This repository uses a **release-centric branching model**: feature branches are cut from
 `release/*`, protected branches (`develop` / `staging` / `production`) accept changes only via
 release branches, and all changes go through Pull Requests. Rules: [docs/rules.md](docs/rules.md).
+
+## Security
+
+**Reporting a vulnerability** — do not open a public issue. Use the private advisory route in
+[.github/SECURITY.md](.github/SECURITY.md), which also documents how to verify a released image
+before deploying it (cosign signature, build provenance, SBOM attestation) and how to make that
+verification a deploy gate.
+
+The posture, the threat model it is shaped by, and its **stated limits** are in
+[docs/design/security.md](docs/design/security.md). Controls sit at four places, and each mechanism
+is deliberately one of *enforcement* / *detection* / *deterrence* rather than a blur of all three:
+
+- **What CI executes** — Actions pinned to a SHA and base images to a digest, resolved through
+  lockfiles that are the single source of truth, plus a per-job egress allowlist. Fail-closed.
+- **What the code links** — cooldown windows that keep a freshly published version out of reach
+  until it has aged, and vulnerability scanning across several independent databases.
+- **What the service does with a request** — deny-by-default at each boundary (outbound dial guard,
+  error-detail exposure), with request validation and authentication driven from the OpenAPI
+  document, which makes reviewing the spec diff part of reviewing the security posture.
+- **What must never be committed** — two secret scanners chosen for different failure modes, and
+  one rule above convenience: a detected secret's value never reaches a log, a PR comment, or an
+  artifact.
+
+Reporting and gating are split on purpose. An ordinary pull request **reports** — findings reach
+code scanning without turning an unrelated change red — while promotion into `develop` / `staging`
+/ `production` is **gated** by a fixed set of required checks. Which mechanism does which:
+[.github/workflows/README.md](.github/workflows/README.md).
+
+Out of reach: what runs on a developer's own machine — see *Out of scope: developer-machine
+hygiene* below.
 
 ## Design Intent
 
@@ -407,7 +511,8 @@ required. This is this repository's operational state, not a recommendation for 
 replace or remove this subsection when rewriting this README during setup.
 
 <!-- boilerplate-only:begin -->
-Planned future releases: Frontend / Infrastructure / Observability boilerplates.
+Planned future releases: Frontend / Infrastructure / Observability boilerplates — see
+[docs/project/roadmap.md](docs/project/roadmap.md).
 
 <!-- boilerplate-only:end -->
 ## License

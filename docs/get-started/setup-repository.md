@@ -234,8 +234,12 @@ make setup-remove-boilerplate-identity
 ```
 
 It scans the repository for `boilerplate-only` markers and resolves each one, deletes
-[boilerplate-only-conventions.md](boilerplate-only-conventions.md) and its Japanese mirror, drops
-its own make target from the registry, and then removes itself. It scans rather than working from
+[boilerplate-only-conventions.md](boilerplate-only-conventions.md) and its Japanese mirror along
+with `docs/plan/**` (the upstream's requirements for a release line it has not built yet), drops
+its own make target from the registry, and then removes itself.
+
+`docs/project/roadmap.md` is **not** deleted: its opening is written so the pass swaps in a
+fork-appropriate replacement, leaving you a place to record your own direction. It scans rather than working from
 a list of files, because a list is something a marker can be written outside of — and a marker
 nobody strips is a premise that survives into your project with nothing to announce it.
 
