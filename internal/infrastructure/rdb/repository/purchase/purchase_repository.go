@@ -125,7 +125,6 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 }
 
 // UpdatePaid は、購入の状態更新（status_id / paid_at）を渡された tx 内で実行します。
-// 擬似決済のため単一集約（purchases）のみを更新し、在庫操作は伴いません。
 func (r *repository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -147,7 +146,6 @@ func (r *repository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error
 }
 
 // UpdateShipped は、購入の状態更新（status_id / shipped_at）を渡された tx 内で実行します。
-// 配送追跡を扱わないため単一集約（purchases）のみを更新し、在庫操作は伴いません。
 // status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します。遷移可否のガードは持たず、
 // 対象行が呼び出し側で FOR UPDATE 取得・検証済みであること（ドメインが遷移の source of truth）に依存します。
 func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) error {
@@ -171,7 +169,6 @@ func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) er
 }
 
 // UpdateDelivered は、購入の状態更新（status_id / delivered_at）を渡された tx 内で実行します。
-// 配達確認の証跡を扱わないため単一集約（purchases）のみを更新し、在庫操作は伴いません。
 // status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します。遷移可否のガードは持たず、
 // 対象行が呼び出し側で FOR UPDATE 取得・検証済みであること（ドメインが遷移の source of truth）に依存します。
 func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) error {
@@ -197,7 +194,6 @@ func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) 
 // FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で最大 limit 件、
 // 明細込みで再構築して返します。
 //
-// 明細は購入 1 件ずつではなく取得した購入 ID をまとめて 1 クエリで引きます（件数分の往復を避けるため）。
 // status_id は seed の UUID を焼き込まず purchase_statuses.code で絞り込みます。
 func (r *repository) FindShippable(ctx context.Context, limit int32) (purchase.Purchases, error) {
 	ctx, endSpan := r.tracer.Start(ctx)

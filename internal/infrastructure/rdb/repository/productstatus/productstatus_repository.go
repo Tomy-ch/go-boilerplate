@@ -66,7 +66,6 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*status.Status
 }
 
 // rowToProductStatus は、DB 行の値からドメインエンティティを再構築します。
-// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToProductStatus(id uuid.UUID, name string, code, sortKey int16) (*status.Status, error) {
 	entity, err := status.New(id, status.Attributes{Name: name, Code: int(code), SortKey: int(sortKey)})
 	if err != nil {

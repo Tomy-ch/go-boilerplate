@@ -51,7 +51,6 @@ func (r *roleRepository) FindRolesByUserID(ctx context.Context, userID uuid.UUID
 }
 
 // rowToRole は、sqlc が返す user_roles/roles 結合行をロールエンティティへ変換します。
-// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します。
 func rowToRole(row *gen.GetUserRolesByUserIDRow) (*user.Role, error) {
 	entity, err := user.NewRole(row.ID, row.Name, int(row.Code))
 	if err != nil {

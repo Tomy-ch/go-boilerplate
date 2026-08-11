@@ -76,9 +76,8 @@ func NewTransactionManager(
 // Do は、トランザクションを開始し、引数で渡された fn を実行します。
 //
 // serialization failure / deadlock を検出した場合、有限回（maxAttempts）まで tx 全体を
-// 再試行します（指数 backoff + full jitter、pkg/retry）。**fn は最大 N 回再実行されうる**ため、
-// DB 副作用以外について冪等であること（呼出側責務）。外部副作用は同一 tx 内で outbox row 化すれば
-// rollback と共に巻き戻り retry-safe になります。nested（既存 tx 再利用）経路はリトライ対象外（1 回）。
+// 再試行します（指数 backoff + full jitter、pkg/retry）。fn の冪等性契約は tx.Manager
+// （internal/usecase/boundary/tx）の doc を参照。nested（既存 tx 再利用）経路はリトライ対象外（1 回）。
 func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
 	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
 		return fn(ctx) // nested: savepoint 相当・リトライしない（最外の Do が正規化する）

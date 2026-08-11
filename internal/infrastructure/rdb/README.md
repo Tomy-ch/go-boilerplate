@@ -32,6 +32,7 @@ The responsibilities of each layer are as follows.
 |---|---|
 |Repository|Aggregate persistence (implementation of Domain Repository Interface)|
 |QueryService|Provides search-specific queries (implementation of Usecase Interface)|
+|CommandService|Multi-aggregate atomic writes (write-side counterpart of QueryService)|
 |driver|DB connection / transaction management, and SQL logging / tracing via a pgx query tracer|
 |PostgreSQL|Actual DB|
 
@@ -41,7 +42,7 @@ The following exist as supporting components.
 |---|---|
 |sqlc|Type-safe query execution code generated from SQL|
 |pgerror|PostgreSQL error → application error conversion|
-|metrics|Connection pool statistics as Prometheus metrics|
+|metrics|Connection pool + query duration/error statistics as Prometheus metrics|
 |system_cqrs|System operational queries (health check, etc.)|
 |testkit|RDB test utilities (real DB + rollback)|
 
@@ -51,11 +52,12 @@ The following exist as supporting components.
 internal/infrastructure/rdb
  ├ repository/        Repository implementation
  ├ query_service/     QueryService implementation
+ ├ command_service/   CommandService implementation (write-side counterpart of QueryService)
  ├ system_cqrs/      System operational queries (health check, etc.)
  ├ driver/            DB connection / transaction + pgx query tracer (logging / tracing)
  ├ sqlc/              sqlc generated code + SQL helper
  ├ pgerror/           PostgreSQL error normalization
- ├ metrics/           Connection pool Prometheus metrics
+ ├ metrics/           Connection pool + query duration/error Prometheus metrics
  └ testkit/           RDB test utilities
 ```
 
@@ -182,7 +184,7 @@ See details below.
 
 ## metrics
 
-`metrics` is a package that **exposes pgxpool connection pool statistics as Prometheus metrics**.
+`metrics` is a package that **exposes pgxpool connection pool statistics and per-query duration / error statistics as Prometheus metrics**.
 
 Provides Gauge (connection counts) and Counter (acquire counts, destroy counts, etc.).
 

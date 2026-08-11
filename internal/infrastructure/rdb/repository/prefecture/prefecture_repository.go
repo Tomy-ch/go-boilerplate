@@ -103,7 +103,6 @@ func (r *repository) FindAll(ctx context.Context) (prefecture.Prefectures, error
 }
 
 // rowToPrefecture は、DB 行の値からドメインエンティティを再構築します。
-// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
 func rowToPrefecture(id uuid.UUID, name string, code int16) (*prefecture.Prefecture, error) {
 	entity, err := prefecture.New(id, name, int(code))
 	if err != nil {

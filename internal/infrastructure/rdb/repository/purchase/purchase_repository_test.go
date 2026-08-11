@@ -466,7 +466,6 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				require.NoError(t, err)
 
 				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
-				// status_id のサブクエリが NULL になる経路は Status VO の導入で到達不能になった。
 				_, err = domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
 					Code:           locked.Code(),
 					UserID:         locked.UserID(),
@@ -581,7 +580,6 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				require.NoError(t, err)
 
 				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
-				// status_id のサブクエリが NULL になる経路は Status VO の導入で到達不能になった。
 				_, err = domainpurchase.Reconstruct(locked.ID(), domainpurchase.Attributes{
 					Code:           locked.Code(),
 					UserID:         locked.UserID(),
