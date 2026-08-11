@@ -11,7 +11,7 @@ func ParseRFC3339(s string) (time.Time, error) {
 }
 
 // ParseRFC3339UTC は、末尾が Z（UTC 表記）の RFC3339 文字列のみを解析します。
-// レイアウト末尾はリテラル Z 固定のため、オフセット付き入力（例 +09:00）は受理しません。
+// オフセット付き入力（例 +09:00）は受理しません。
 func ParseRFC3339UTC(s string) (time.Time, error) {
 	return ParseCustomLayout("2006-01-02T15:04:05Z", s)
 }

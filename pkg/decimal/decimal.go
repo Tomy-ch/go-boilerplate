@@ -14,8 +14,7 @@ import (
 )
 
 // 受理する十進値の桁数上限です。PostgreSQL の NUMERIC が保持できる桁数（小数点前 131072 桁 /
-// 小数点後 16383 桁）に合わせています。ADR-0035 (two-scale-quantity-model) のとおり価格列は精度指定なしの NUMERIC であり、
-// これを超える値はそもそも永続化できません。
+// 小数点後 16383 桁）に合わせています。
 //
 // 上限が要るのは、指数表記が「解析は一瞬・文字列化は爆発」という非対称性を持つためです。
 // 例えば "1E100000000" は係数と指数だけを保持するため即座に解析できますが、String() は
@@ -43,8 +42,6 @@ func Parse(s string) (Decimal, error) {
 }
 
 // checkMagnitude は、値の桁数が受理範囲に収まるかを検証します。
-//
-//	係数と指数だけを見るため、巨大な値でも文字列化せずに判定できます。
 func checkMagnitude(d decimal.Decimal) error {
 	exp := int(d.Exponent())
 	if exp < 0 {

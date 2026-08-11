@@ -31,8 +31,7 @@ func FuzzParse(f *testing.F) {
 			return
 		}
 
-		// 受理された ID は自身の文字列表現から同じ値へ戻る。ここが破れると、
-		// URL に載せた ID を読み直したときに別のレコードを指しうる。
+		// 受理された ID は自身の文字列表現から同じ値へ戻る。
 		again, err := Parse(u.String())
 		require.NoError(t, err)
 		require.Equal(t, u.String(), again.String())

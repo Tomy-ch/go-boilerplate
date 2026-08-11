@@ -18,8 +18,6 @@ import (
 
 // Sleeper は、リトライ間の待機を抽象化するインターフェースです。
 // ctx のキャンセル / deadline を尊重し、待機が打ち切られた場合は error を返します。
-//
-// 本パッケージは internal 非依存のため独自に定義します。Sleep(ctx context.Context, d time.Duration) error を持つ任意の型を注入できます。
 type Sleeper interface {
 	// Sleep は、d 経過まで待機します。ctx 打ち切り時は error を返します。
 	Sleep(ctx context.Context, d time.Duration) error
