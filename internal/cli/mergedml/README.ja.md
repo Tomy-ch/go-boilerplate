@@ -14,7 +14,7 @@ merge-dml --type <type> [flags]
 
 |フラグ|デフォルト|説明|
 |---|---|---|
-|`--type`|*(必須)*|対象の DML タイプ（例: `repository`, `query_service`）|
+|`--type`|*(必須)*|対象の DML タイプ。`repository` / `query_service` / `system_cqrs` / `command_service` のいずれか|
 |`--work-dir`|`/app`|作業ディレクトリ（プロジェクトルート）|
 
 ## 使い方

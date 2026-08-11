@@ -158,23 +158,25 @@ The following describes importance and expected impact in real-world operations.
     ```go
     func New() (*Config, error) {
         cfg, err := env.ParseAs[Loader]()
-        
+        if err != nil {
+            return nil, xerrors.Join(ErrFailedToParseConfig, err)
+        }
+
         if err := validateConfig(cfg); err != nil { // perform validation here
             return nil, err
         }
 
         return &Config{
-            server: server{
-                host:           cfg.Server.Host,
-                port:           cfg.Server.Port,
-                allowedOrigins: cfg.Server.AllowedOrigins,
+            server: ServerConfig{
+                host: cfg.Server.Host,
+                port: cfg.Server.Port,
             },
-            aws: aws{
+            aws: AWSConfig{
                 accessKey: cfg.AWS.AccessKey,
                 secretKey: cfg.AWS.SecretKey,
                 region:    cfg.AWS.Region,
             },
-    }, nil
+        }, nil
     }
     ```
 
@@ -288,6 +290,12 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |`SetOutboxEndpoint`|`OutboxConfig`|
 |`SetOutboxPollInterval`|`OutboxConfig`|
 |`SetOutboxErrorBackoff`|`OutboxConfig`|
+|`SetOutboxPublisher`|`OutboxConfig`|
+|`SetOutboxQueue`|`OutboxConfig`|
+|`SetConsumerQueue`|`ConsumerQueueConfig`|
+|`SetAuthIssuer`|`AuthConfig`|
+|`SetAuthAudience`|`AuthConfig`|
+|`SetAuthJWKSURL`|`AuthConfig`|
 |`SetSameSite`|`SecureCookieConfig`|
 |`SetDomain`|`SecureCookieConfig`|
 

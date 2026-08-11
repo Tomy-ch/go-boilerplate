@@ -22,6 +22,7 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|DML ディレクトリの SQL ファイルを種別ごとにマージ|
 |`worker`|`worker/`|`cmd/worker.go`|登録済み worker を起動（`worker <worker-name> [args...]`）|
 |`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|outbox relay を起動。`replay` サブコマンドは dead 行を pending へ戻す|
+|`db-slot`|`dbslot/`|`cmd/db-slot.go`|共有 worktree プールから DB スロットをリースする（`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`）|
 
 ## 構造
 
@@ -41,7 +42,8 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
 ├── dumpschema/          # RunDump / NewGenerator
 ├── mergedml/            # RunMerge / NewGenerator
 ├── worker/              # RunWorkerWith / NewHealthServer
-└── outbox/              # RunRelay / RunReplayWith
+├── outbox/              # RunRelay / RunReplayWith
+└── dbslot/              # Pool / Registry / DBAdmin / Compose / Resolver
 ```
 
 `cmd/commands.go` の `registerCommands` で全サブコマンドを Cobra のルートコマンドに登録します。

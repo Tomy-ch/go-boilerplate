@@ -22,6 +22,7 @@ live in `cmd/` (package `main`). This split keeps the core unit-testable and the
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|Merge DML directory SQL files by type|
 |`worker`|`worker/`|`cmd/worker.go`|Run a registered worker (`worker <worker-name> [args...]`)|
 |`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|Run the outbox relay; `replay` subcommand returns dead rows to pending|
+|`db-slot`|`dbslot/`|`cmd/db-slot.go`|Lease a database slot from the shared worktree pool (`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`)|
 
 ## Structure
 
@@ -41,7 +42,8 @@ internal/cli/            # pure testable core (covered by unit tests, 90%+)
 ├── dumpschema/          # RunDump / NewGenerator
 ├── mergedml/            # RunMerge / NewGenerator
 ├── worker/              # RunWorkerWith / NewHealthServer
-└── outbox/              # RunRelay / RunReplayWith
+├── outbox/              # RunRelay / RunReplayWith
+└── dbslot/              # Pool / Registry / DBAdmin / Compose / Resolver
 ```
 
 `registerCommands` in `cmd/commands.go` registers all subcommands to the Cobra root command.

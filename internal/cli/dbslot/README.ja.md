@@ -24,11 +24,11 @@ db-slot require-owner  # この checkout がデータベースを所有してい
 - **リース**（`Registry`）— `~/.cache/gobp-db-pool`（`GOBP_DB_POOL_DIR` で上書き可）配下のスロット毎ロックディレクトリ。`os.Mkdir` の原子性で新規取得、stale 回収は `rename` で原子的に占有権を奪い、`flock` の走査ロックで acquire ループ全体を直列化して 2 worktree が同一スロットを二重リースしないようにする。symlink を向いた pool dir は拒否（先読み攻撃対策）、meta は `0600`。
 - **DB 管理**（`DBAdmin` / `PgxAdmin`）— 各 `wt<N>` DB への `CREATE DATABASE` ＋ `pg_trgm` 拡張設定、および stale スロットを reclaim してよいかの判断に使う `pg_stat_activity` の接続確認。timezone は含まない: `database` コンテナの `TZ` がクラスタ既定であり、後から作った DB もそれを継承する。
 - **使用中判定** — stale スロットを reclaim する前に、app プロジェクト（`gobp-wt-N`）の稼働中コンテナと、その DB への接続の両方を確認する。接続プールはアイドルで空になるため接続確認だけでは serve 中の worktree を見落とし、コンテナ確認だけではホスト実行の `go test` を捉えられない。
-- **Compose**（`Compose` / `ExecCompose`）— 共有 DB を固定 infra プロジェクトで起動（`--wait --no-recreate`）し、release 時にスロットの app プロジェクト（`gobp-wt-N`）を `docker-compose.yaml` + `docker-compose.attach.yaml` で停止する。`--no-recreate` は、他の checkout が使っているコンテナを `acquire` が置き換えないためのもの。compose の config ハッシュは bind mount の絶対パスを含むため、同じコミットでも worktree が違えば一致しない。make 側の `INFRA_NO_RECREATE` と違いここでは条件を持たない。スロットを取ること自体が、共有インフラを他の checkout と分け合うという宣言だからである。
+- **Compose**（`Compose` / `ExecCompose`）— 共有 DB を固定 infra プロジェクトで起動（`--wait --no-recreate`）し、release 時にスロットの app プロジェクト（`gobp-wt-N`）を `docker-compose.yaml` + `docker-compose.attach.yaml` で停止する。`--no-recreate` は、他の checkout が使っているコンテナを `acquire` が置き換えないためのもの。ここで条件を持たない理由は [`docs/maintenance/db-worktree-pool.md`](../../../docs/maintenance/db-worktree-pool.md) を参照。
 - **スロットファイル** — `acquire` が `.gobp-db-slot`（gitignore・`make` が `-include` で読む `KEY=VALUE`）を書き出し、`.makefiles/docker/compose.mk` の既定値を上書きする。内容は `SLOT`、`DB_NAME_LOCAL` / `DB_NAME_TEST`、スロット相対のホスト公開ポート `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` / `DLV_HOST_PORT` / `PPROF_HOST_PORT`、`COMPOSE_PROJECT_NAME`（共有 infra プロジェクト）、`SERVE_PROJECT`（`gobp-wt-N`＝app 層プロジェクト）。
 - **解決済み値**（`Resolver`）— *スロットの関数*であるものは `make` ではなくここで導出する: `DB_LOCAL` / `DB_TEST`、app 層の compose プロジェクト、mock-auth の issuer URL、そして `INFRA_NO_RECREATE`。1 つの導出が `db-slot env`（`make` が eval する値）と `db-slot status`（人間が読む値）の両方を賄うため、表示される値と実際に使われる値が食い違うことはない。`DB_LOCAL` / `DB_TEST` だけは `.gobp-db-slot` を読む `make` 変数としても保持する。target-specific な代入（`db-local-migrate-up: DB=$(DB_LOCAL)`）はパース時に評価され、どのレシピよりも先に決まるからである。
-- **所有権ガード**（`RequireOwner`）— `make require-db-owner` の実体で、「スロットを持たないリンク worktree」を検出する。依拠する区別は 2 値ではなく 3 値である。**git が無い**（ツールランナーのコンテナ）と**リポジトリでない**は素通りし、**リポジトリではあるのに構成を読み取れない**場合は失敗する。最後の 1 つを「git が無い＝worktree ではない」へ畳み込むことが、リンク worktree を黙って共有 `local` / `test` へフォールバックさせる原因になる。リポジトリか否かは、ローカライズされる git のエラーテキストではなく `.git` を遡って探すことで判定する。
-- **env ガード** — `APP_ENV` が deploy 系（`dev` / `stg` / `prd`）のときは実行を拒否する。pool は DB を作成/破棄するため dev/test 専用ツールに留める（`config.IsLocalClassEnv`）。
+- **所有権ガード**（`RequireOwner`）— `make require-db-owner` の実体で、「スロットを持たないリンク worktree」を検出する。依拠する区別は 2 値ではなく 3 値である。**git が無い**（ツールランナーのコンテナ）と**リポジトリでない**は素通りし、**リポジトリではあるのに構成を読み取れない**場合は失敗する。理由は [`docs/maintenance/db-worktree-pool.md`](../../../docs/maintenance/db-worktree-pool.md) を参照。
+- **env ガード** — `APP_ENV` が空、または `local` / `ci` / `test` のいずれかでなければ実行を拒否する（`config.IsLocalClassEnv`）。pool は DB を作成/破棄するため dev/test 専用ツールに留める。許可リスト方式なので `dast` や未知の値も拒否される。
 
 ## Test Strategy
 
@@ -52,8 +52,10 @@ db-slot require-owner  # この checkout がデータベースを所有してい
 |`GOBP_DB_POOL_TTL`|`1800`|heartbeat stale 判定の猶予（秒）|
 |`GOBP_API_POOL_BASE` / `GOBP_MOCK_AUTH_POOL_BASE`|`8080` / `2010`|API / mock 認証サーバーのホストポートのベース（スロット N = ベース + N）|
 |`GOBP_DLV_POOL_BASE` / `GOBP_PPROF_POOL_BASE`|`2345` / `6060`|dlv デバッグ / pprof のホストポートのベース（スロット N = ベース + N）|
+|`GOBP_DB_POOL_PGHOST` / `GOBP_DB_POOL_PGPORT`|`localhost` / `5432`|pool が管理する Postgres の接続先|
+|`GOBP_DB_POOL_PGUSER` / `GOBP_DB_POOL_PGPASSWORD`|`postgres` / `postgres-password`|`CREATE DATABASE` に使う資格情報|
+|`GOBP_DB_POOL_PGMAINTDB`|`postgres`|作成 / 破棄の際に接続する保守用データベース|
 
 ## 注意
 
-- **dev/test 専用。** `dev` / `stg` / `prd` では実行を拒否する。
 - スロットを取らない checkout も同じ共有インフラへ繋がる（既定の `local` / `test` データベースと既定のホスト公開ポートを使うだけ）。衝突なく並列作業したいときにだけスロットを取る。
