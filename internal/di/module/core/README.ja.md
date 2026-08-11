@@ -35,4 +35,4 @@
 
 ## 注意点
 
-- モジュールの追加・削除は `internal/di/module` の上位モジュールから参照を変更する必要がある
+- モジュールの追加・削除は `internal/di/server.go` の `applicationCoreOptions` から参照を変更する必要がある
