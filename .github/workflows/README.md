@@ -167,7 +167,7 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 | trustabl (agent config) | — | — | weekly |
 
-Weekly runs are staggered across Monday, one scanner per hour, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 10` Opengrep, `0 11` fuzz.
+Weekly runs are staggered across Monday, **one scanner per hour**, so a single hour does not queue every scanner at once: `0 0` Trivy FS, `0 1` govulncheck, `0 2` TruffleHog, `0 3` OSV-Scanner, `0 4` Scorecard, `0 5` CodeQL, `0 6` Image Scan, `0 7` gitleaks (full-history), `0 8` zizmor (online audits), `0 9` Go cooldown, `0 10` Opengrep, `0 11` fuzz, `0 12` ZAP (DAST), `0 13` Grype, `0 14` DevSkim, `0 15` ESLint, `0 16` Bearer, `0 17` Checkov, `0 18` trustabl, `0 19` SonarQube Cloud, `0 20` tool cooldown. A new scheduled workflow takes the next free hour; two sharing one is a defect, not a preference.
 
 DAST takes `0 12`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
 

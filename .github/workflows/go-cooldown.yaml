@@ -26,7 +26,10 @@ on:
       - '.github/go-cooldown-bypass.toml'
       - '.github/workflows/go-cooldown.yaml'
   schedule:
-    - cron: '0 10 * * 1'
+    # Monday 09:00 UTC — one scanner per hour, so no two share an hour. This slot came
+    # free when the npm cooldown audit was removed with the move to pnpm
+    # (ADR-0105 (pnpm-as-the-only-node-resolver)).
+    - cron: '0 9 * * 1'
   workflow_dispatch:
 
 permissions:

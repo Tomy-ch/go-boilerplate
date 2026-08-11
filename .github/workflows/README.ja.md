@@ -167,7 +167,7 @@
 | OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
 | trustabl（エージェント設定） | — | — | 週次 |
 
-週次実行は月曜内で 1 時間ごとにずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査）、`0 10` Opengrep、`0 11` fuzz）。同一時刻に全スキャナが並ぶのを避けるためです。
+週次実行は月曜内で **1 時間に 1 スキャナ**ずつずらしています（`0 0` Trivy FS、`0 1` govulncheck、`0 2` TruffleHog、`0 3` OSV-Scanner、`0 4` Scorecard、`0 5` CodeQL、`0 6` Image Scan、`0 7` gitleaks（全履歴）、`0 8` zizmor（オンライン監査）、`0 9` Go cooldown、`0 10` Opengrep、`0 11` fuzz、`0 12` ZAP（DAST）、`0 13` Grype、`0 14` DevSkim、`0 15` ESLint、`0 16` Bearer、`0 17` Checkov、`0 18` trustabl、`0 19` SonarQube Cloud、`0 20` tool cooldown）。同一時刻に全スキャナが並ぶのを避けるためです。定期実行のワークフローを追加するときは次の空き時刻を取ります。2 本が同じ時刻を共有しているのは好みの問題ではなく欠陥です。
 
 DAST は `0 12` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
 
