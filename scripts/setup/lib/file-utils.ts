@@ -16,10 +16,12 @@ export type ListFilesOptions = {
   shouldIncludeFile?: (entryPath: string) => boolean;
 };
 
+/** リポジトリルート（`ROOT_DIR`）起点の相対パスを絶対パスへ変換する。 */
 export function toAbsolutePath(relativePath: string): string {
   return path.join(ROOT_DIR, relativePath);
 }
 
+/** 絶対パスをリポジトリルート（`ROOT_DIR`）起点の相対パスへ変換する。 */
 export function toRelativePath(filePath: string): string {
   return path.relative(ROOT_DIR, filePath);
 }

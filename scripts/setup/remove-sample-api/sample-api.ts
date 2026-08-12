@@ -42,7 +42,7 @@ export function isScanTarget(relativePath: string): boolean {
   return !EXCLUDED_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
-/** `<comment> sample-api:` を含むか。literal 宣言の陳腐化を検査する側が使う。 */
+/** `<comment> sample-api:` を含むか。 */
 export function containsSampleMarker(content: string): boolean {
   return new RegExp(`(?:\\/\\/|#|<!--)\\s*${SAMPLE_MARKER}:`).test(content);
 }

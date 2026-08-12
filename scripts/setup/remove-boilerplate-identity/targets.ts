@@ -9,16 +9,7 @@
 // 決まっていない。共有モジュールへ寄せると、先に走ったほうがもう一方の足元を持って行きうる
 // 依存が増える。判定は数行なので、重複を許して各ツールが自分の分を抱える。
 
-/**
- * 上流のボイラープレートである間だけ成り立つ記述の在否を切り替えるマーカー名。
- *
- * @remarks
- * かつては素の `boilerplate` と `boilerplate-only` が併存していました。前者はリポジトリが自分を
- * ボイラープレートと名乗る散文を、後者はボイラープレートでのみ成り立つ規約を指す、という
- * 分け方でしたが、境界は書き手の主観にしかなく、どちらの名前で書いても除去は同じ契機
- * （セットアップ）で起きます。2 つあること自体が「どちらで書くべきか」という誤りうる判断を
- * 毎回作っていたため、`boilerplate-only` へ寄せました。
- */
+/** 上流のボイラープレートである間だけ成り立つ記述の在否を切り替えるマーカー名。 */
 export const BOILERPLATE_MARKER = "boilerplate-only";
 
 /**
@@ -121,7 +112,7 @@ function isDeletedWhole(normalizedPath: string): boolean {
  * @remarks
  * 丸ごと消えるパスを外すのは、除去が削除より先に走るためです。順序を入れ替えても `dryRun` では
  * 何も消えないので、走査には現れ続けます。`premise-lint` のテストはマーカーの形を入力として
- * 持つので、外さないと対応の取れない片割れとして除去全体が止まります（実際に止まりました）。
+ * 持つので、外さないと対応の取れない片割れとして除去全体が止まります。
  */
 export function isScanTarget(relativePath: string): boolean {
   const normalized = relativePath.split("\\").join("/");
@@ -137,7 +128,7 @@ export function isScanTarget(relativePath: string): boolean {
   return !EXCLUDED_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
-/** `<comment> boilerplate-only:` を含むか。宣言の陳腐化を検査する側が使う。 */
+/** `<comment> boilerplate-only:` を含むか。 */
 export function containsBoilerplateMarker(content: string): boolean {
   return new RegExp(`(?:\\/\\/|#|<!--)\\s*${BOILERPLATE_MARKER}:`).test(content);
 }

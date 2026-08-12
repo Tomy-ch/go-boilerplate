@@ -1,7 +1,4 @@
 #!/usr/bin/env -S tsx
-// ボイラープレートのサンプルAPIを一括削除する。削除対象の宣言は lib/sample-manifest.ts、
-// マーカー除去規則は lib/sample-api.ts が持ち、ここは削除・書き込み・出力だけを担う。
-//
 // 再生成・整形・検証（make gen-api / gen-query / fix / lint）は Go ツールチェーンが要るため
 // ここでは行わず、ホスト側の make ターゲット（setup-remove-sample-api）が担当する。
 
@@ -39,13 +36,11 @@ type StrippedFile = {
   removedLines: number;
 };
 
-// 全ドメインの登録パスを列挙して照合用スナップショットへ書き出す。
 function writeSnapshot(): void {
   const registeredPaths = Object.values(SAMPLE_DOMAINS).flatMap((def) => def.paths);
   fs.writeFileSync(SNAPSHOT_PATH, `${JSON.stringify({ registeredPaths }, null, 2)}\n`);
 }
 
-// 判定は lib/sample-api.ts が持つ。ここは違反を例外へ変えるだけ。
 function assertWithinRoot(absolutePath: string, relativePath: string): void {
   if (!isWithinRoot(absolutePath, ROOT_DIR, path.sep)) {
     throw new Error(

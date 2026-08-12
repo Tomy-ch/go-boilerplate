@@ -71,7 +71,6 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string
 		return err
 	}
 
-	// import handling with qualifier alignment
 	alias, err := resolveImportAlias(typ, importPath, importAlias)
 	if err != nil {
 		return err
@@ -179,7 +178,6 @@ func toIdentifierLower(s string) (string, error) {
 	if out == "" {
 		return "", xerrors.Wrap(errInvalidName, s)
 	}
-	// ensure starts with a letter or '_'
 	runes := []rune(out)
 	if !unicode.IsLetter(runes[0]) && runes[0] != '_' {
 		out = "x" + out
@@ -230,7 +228,6 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 	qualifier := extractQualifier(typ)
 
-	// No alias provided: prefer qualifier, fallback to last segment
 	if importAlias == "" {
 		if qualifier != "" {
 			return qualifier, nil
@@ -238,7 +235,6 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 		return sanitizeAlias(lastSegment(importPath)), nil
 	}
 
-	// Alias provided: validate against qualifier when present
 	if qualifier != "" && qualifier != importAlias {
 		return "", xerrors.Wrap(errQualifierAliasMismatch, fmt.Sprintf("qualifier=%s alias=%s", qualifier, importAlias))
 	}

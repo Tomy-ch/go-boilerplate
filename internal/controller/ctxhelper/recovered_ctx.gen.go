@@ -27,7 +27,7 @@ func GetRecovered(ctx context.Context) (bool, bool) {
 	return zero, false
 }
 
-// --- echo.Context wrapper（std lib 版へ委譲） ---
+// --- echo.Context wrapper ---
 
 func SetRecoveredToEcho(c *echo.Context, val bool) {
 	ctx := SetRecovered(c.Request().Context(), val)

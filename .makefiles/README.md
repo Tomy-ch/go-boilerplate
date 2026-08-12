@@ -343,7 +343,7 @@ have nothing to do with the change under test — an untouched test times out, `
 being evidence about the code.
 
 `.makefiles/load.mk` sizes the heavy gates from the number of open windows (`git worktree list`), so the
-throttling happens without anyone remembering to ask for it. Three bands, resolved at parse time:
+throttling happens without anyone remembering to ask for it. Three bands:
 
 | Band | Trigger (default) | Behaviour |
 | --- | --- | --- |

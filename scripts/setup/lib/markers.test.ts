@@ -93,8 +93,6 @@ describe("stripMarkers", () => {
       expect(stripMarkers(content, "m").content).toBe("  nested");
     });
 
-    // Markdown の行末 2 スペースは hard line break なので、閉じ記号を剥がす処理が
-    // `//` / `#` 側の行末まで触ると意味が変わる。枝を分けている理由がこれ。
     it("`//` の退避行は行末の空白を保つ", () => {
       const content = doc("# m:replace-begin", "# m:replace-with", "// = break here  ", "# m:replace-end");
 
@@ -107,8 +105,6 @@ describe("stripMarkers", () => {
       expect(stripMarkers(content, "m").content).toBe(doc("keep", "", "keep2"));
     });
 
-    // 空行 1 つで隔てられた 2 つの引用は「途中に空行のある 1 つの引用」と読まれて壊れる。
-    // 引用内の段落区切り `>` を置くことで、両側を独立した注記のまま残す。
     it("引用の間のブロックを抜いたら空行でなく引用の段落区切りを置く", () => {
       const content = doc("> A", "", "# m:begin", "> sample", "# m:end", "", "> B");
 
