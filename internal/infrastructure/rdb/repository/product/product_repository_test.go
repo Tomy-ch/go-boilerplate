@@ -362,10 +362,15 @@ func Test_rowToProduct(t *testing.T) {
 				StatusID:              statusID,
 				CategoryID:            categoryID,
 				PublishedAt:           ptr.To(publishedAt),
-				ImagePath:             ptr.To("products/earphone.png"),
 				LockVersion:           3,
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
+			images := []domainproduct.Image{
+				domainproduct.NewImage(
+					uuidtestkit.NewTestFromSalt(t, "row_image"),
+					domainproduct.ImageAttributes{ImagePath: "products/earphone.png", SortKey: 1},
+				),
+			}
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"}, images)
 			require.NoError(t, err)
 			assert.Equal(t, id, got.ID())
 			assert.Equal(t, "商品", got.Name())
@@ -379,11 +384,10 @@ func Test_rowToProduct(t *testing.T) {
 			assert.Equal(t, "電子機器", got.Category().Name())
 			require.NotNil(t, got.PublishedAt())
 			assert.Equal(t, publishedAt, *got.PublishedAt())
-			// 同型の description / image_path は、取り違えを検出できるよう異なる値で対応を固定する。
 			require.NotNil(t, got.Description())
 			assert.Equal(t, "説明", *got.Description())
-			require.NotNil(t, got.ImagePath())
-			assert.Equal(t, "products/earphone.png", *got.ImagePath())
+			require.Len(t, got.Images(), 1)
+			assert.Equal(t, "products/earphone.png", got.Images()[0].ImagePath())
 			assert.Equal(t, 3, got.Version())
 		})
 	})
@@ -402,7 +406,7 @@ func Test_rowToProduct(t *testing.T) {
 				CategoryID:  categoryID,
 				PublishedAt: ptr.To(publishedAt),
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"}, nil)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -418,7 +422,7 @@ func Test_rowToProduct(t *testing.T) {
 				CategoryID:  categoryID,
 				PublishedAt: ptr.To(publishedAt),
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "", categoryName: "電子機器"})
+			got, err := rowToProduct(productRow{p: row, statusName: "", categoryName: "電子機器"}, nil)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -434,7 +438,7 @@ func Test_rowToProduct(t *testing.T) {
 				CategoryID:  categoryID,
 				PublishedAt: ptr.To(publishedAt),
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: ""})
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: ""}, nil)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -451,7 +455,7 @@ func Test_rowToProduct(t *testing.T) {
 				PublishedAt: ptr.To(publishedAt),
 				LockVersion: 0,
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"}, nil)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			require.NotErrorIs(t, err, domainproduct.ErrInvalidVersion)
@@ -492,7 +496,16 @@ func Test_repository_Create(t *testing.T) {
 					Status:                statusRef,
 					Category:              categoryRef,
 					PublishedAt:           ptr.To(publishedAt),
-					ImagePath:             ptr.To("products/created.png"),
+					Images: []domainproduct.Image{
+						domainproduct.NewImage(
+							uuidtestkit.NewTestFromSalt(t, "create_image_1"),
+							domainproduct.ImageAttributes{ImagePath: "products/created.png", SortKey: 1},
+						),
+						domainproduct.NewImage(
+							uuidtestkit.NewTestFromSalt(t, "create_image_2"),
+							domainproduct.ImageAttributes{ImagePath: "products/created-sub.png", SortKey: 2},
+						),
+					},
 				})
 				require.NoError(t, err)
 
@@ -503,14 +516,17 @@ func Test_repository_Create(t *testing.T) {
 				assert.Equal(t, "作成商品", got.Name())
 				require.NotNil(t, got.Description())
 				assert.Equal(t, "<p>リッチテキスト説明</p>", *got.Description())
-				require.NotNil(t, got.ImagePath())
-				assert.Equal(t, "products/created.png", *got.ImagePath())
+				require.Len(t, got.Images(), 2)
+				assert.Equal(t, "products/created.png", got.Images()[0].ImagePath())
+				assert.Equal(t, 1, got.Images()[0].SortKey())
+				assert.Equal(t, "products/created-sub.png", got.Images()[1].ImagePath())
+				assert.Equal(t, 2, got.Images()[1].SortKey())
 				require.NotNil(t, got.PublishedAt())
 				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
 			})
 		})
 
-		t.Run("image_path / published_at が nil の場合、DB へ NULL として登録される", func(t *testing.T) {
+		t.Run("published_at が nil・画像が空の場合、DB へ NULL と 0 件として登録される", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -535,13 +551,18 @@ func Test_repository_Create(t *testing.T) {
 				// 公開述語(published_at IS NOT NULL)で除外されるため FindPublishedByID では読み戻せない。
 				// 実際に NULL 列として書き込まれたことを生 SQL で直接検証する。
 				var publishedAt *time.Time
-				var imagePath *string
 				err = driver.New(ctx, testDB).
-					QueryRow(ctx, "SELECT published_at, image_path FROM products WHERE id = $1", id).
-					Scan(&publishedAt, &imagePath)
+					QueryRow(ctx, "SELECT published_at FROM products WHERE id = $1", id).
+					Scan(&publishedAt)
 				require.NoError(t, err)
 				assert.Nil(t, publishedAt)
-				assert.Nil(t, imagePath)
+
+				var imageCount int
+				err = driver.New(ctx, testDB).
+					QueryRow(ctx, "SELECT COUNT(*) FROM product_images WHERE product_id = $1", id).
+					Scan(&imageCount)
+				require.NoError(t, err)
+				assert.Equal(t, 0, imageCount)
 			})
 		})
 	})
@@ -686,7 +707,6 @@ func Test_repository_Update(t *testing.T) {
 					Status:                statusRef,
 					Category:              categoryRef,
 					PublishedAt:           ptr.To(publishedAt),
-					ImagePath:             ptr.To("products/updated.png"),
 				}))
 
 				version, err := repo.Update(ctx, entity)
@@ -706,13 +726,11 @@ func Test_repository_Update(t *testing.T) {
 				assert.Equal(t, mustParse(t, categoryBooks), got.Category().ID())
 				require.NotNil(t, got.PublishedAt())
 				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
-				require.NotNil(t, got.ImagePath())
-				assert.Equal(t, "products/updated.png", *got.ImagePath())
 				assert.Equal(t, 2, got.Version())
 			})
 		})
 
-		t.Run("description / stock_warning_threshold / published_at / image_path を nil で更新するとDBへNULLとして書き込まれる", func(t *testing.T) {
+		t.Run("description / stock_warning_threshold / published_at を nil で更新するとDBへNULLとして書き込まれる", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -732,7 +750,6 @@ func Test_repository_Update(t *testing.T) {
 					Status:                statusRef,
 					Category:              categoryRef,
 					PublishedAt:           ptr.To(base),
-					ImagePath:             ptr.To("products/cleared.png"),
 				})
 				require.NoError(t, err)
 				require.NoError(t, repo.Create(ctx, entity))
@@ -743,7 +760,6 @@ func Test_repository_Update(t *testing.T) {
 				require.NotNil(t, loaded.Description())
 				require.NotNil(t, loaded.StockWarningThreshold())
 				require.NotNil(t, loaded.PublishedAt())
-				require.NotNil(t, loaded.ImagePath())
 
 				require.NoError(t, loaded.Update(domainproduct.Attributes{
 					Name:     loaded.Name(),
@@ -763,7 +779,6 @@ func Test_repository_Update(t *testing.T) {
 				assert.Nil(t, got.Description())
 				assert.Nil(t, got.StockWarningThreshold())
 				assert.Nil(t, got.PublishedAt())
-				assert.Nil(t, got.ImagePath())
 			})
 		})
 	})
@@ -797,7 +812,7 @@ func Test_repository_Update(t *testing.T) {
 					Status:                stale.Status(),
 					Category:              stale.Category(),
 					PublishedAt:           stale.PublishedAt(),
-					ImagePath:             stale.ImagePath(),
+					Images:                stale.Images(),
 				}))
 
 				version, err := repo.Update(ctx, stale)
@@ -1296,7 +1311,7 @@ func Test_repository_UpdateStock_concurrentRowLock(t *testing.T) {
 	assert.Equal(t, 3, got.Version(), "在庫更新のたびにバージョンが進む")
 }
 
-func Test_rowsToProducts(t *testing.T) {
+func Test_toProductRows(t *testing.T) {
 	t.Parallel()
 
 	newRow := func(t *testing.T, salt string) productRow {
@@ -1321,43 +1336,23 @@ func Test_rowsToProducts(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("行スライスを順序を保ってエンティティ列へ変換する", func(t *testing.T) {
+		t.Run("行スライスを順序を保って共通の変換元へ揃える", func(t *testing.T) {
 			t.Parallel()
 
 			r1 := newRow(t, "rows_a")
 			r2 := newRow(t, "rows_b")
 
-			got, err := rowsToProducts([]productRow{r1, r2}, identity)
+			got := toProductRows([]productRow{r1, r2}, identity)
 
-			require.NoError(t, err)
 			require.Len(t, got, 2)
-			assert.Equal(t, r1.p.ID, got[0].ID())
-			assert.Equal(t, r2.p.ID, got[1].ID())
+			assert.Equal(t, r1.p.ID, got[0].p.ID)
+			assert.Equal(t, r2.p.ID, got[1].p.ID)
 		})
 
 		t.Run("空スライスは空の列を返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := rowsToProducts([]productRow{}, identity)
-
-			require.NoError(t, err)
-			assert.Empty(t, got)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("変換失敗があれば先頭で打ち切り nil とエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			invalid := newRow(t, "rows_invalid")
-			invalid.statusName = "" // status 名が空だと rowToProduct が検証失敗する
-
-			got, err := rowsToProducts([]productRow{invalid, newRow(t, "rows_valid")}, identity)
-
-			require.Error(t, err)
-			assert.Nil(t, got)
+			assert.Empty(t, toProductRows([]productRow{}, identity))
 		})
 	})
 }

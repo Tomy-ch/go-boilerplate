@@ -13,7 +13,6 @@ SET
     status_id = sqlc.arg('status_id'),
     category_id = sqlc.arg('category_id'),
     published_at = sqlc.arg('published_at'),
-    image_path = sqlc.arg('image_path'),
     lock_version = products.lock_version + 1,
     updated_at = NOW()
 WHERE products.id = sqlc.arg('id')

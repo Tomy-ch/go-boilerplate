@@ -61,7 +61,12 @@ func newLowStockProduct(t *testing.T, salt string, quantity int) *domainproduct.
 		Status:                statusRef,
 		Category:              categoryRef,
 		PublishedAt:           nil,
-		ImagePath:             ptr.To("products/" + salt + ".png"),
+		Images: []domainproduct.Image{
+			domainproduct.NewImage(
+				uuidtestkit.NewTestFromSalt(t, salt+"_image"),
+				domainproduct.ImageAttributes{ImagePath: "products/" + salt + ".png", SortKey: 1},
+			),
+		},
 	}, 1)
 	require.NoError(t, err)
 

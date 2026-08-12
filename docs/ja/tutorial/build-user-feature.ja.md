@@ -164,7 +164,7 @@ provider に委譲され、トークンの `(issuer, subject)` から内部ユ�
 - `database/migrations/000004_create_users.up.sql` / `.down.sql` —— `users` テーブル
   （`id` UUID PK、`email` UNIQUE、`prefecture_id` FK、住所カラム、論理削除用の `created_at` /
   `updated_at` / `deleted_at`）。
-- `database/migrations/000016_add_users_table_search_text_column.up.sql` / `.down.sql` ——
+- `database/migrations/000015_add_users_table_search_text_column.up.sql` / `.down.sql` ——
   `GENERATED ALWAYS` の `search_text` カラム + キーワード検索用の GIN トライグラム索引。
 - `database/dml/repository/user/*.sql` —— 集約の CRUD クエリ
   （`insert_user`、`select_user_by_id`、`select_users`、`update_user`、`count_user`）と

@@ -2,7 +2,7 @@ type: object
 description: |
   商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
   price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
-  imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。表示 URL はフロントが組み立てます。
+  images には画像アップロード（POST /v1/products/images）で得たパスと表示順を渡します。表示 URL はフロントが組み立てます。
 required:
   - name
   - price
@@ -58,11 +58,10 @@ properties:
     nullable: true
     description: 公開日時。未公開の場合は null です。
     example: "2026-01-01T00:00:00Z"
-  imagePath:
-    type: string
-    nullable: true
+  images:
+    type: array
     description: >-
-      画像パス。未設定の場合は null です。画像アップロード（POST /v1/products/images）で得たパスを渡します。
-      アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
-    pattern: '^products/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$'
-    example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"
+      商品画像。未指定の場合は画像を持たない商品として作成します。
+      同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。
+    items:
+      $ref: './ProductImageInput.yaml'

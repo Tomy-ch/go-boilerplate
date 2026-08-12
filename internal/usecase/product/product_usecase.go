@@ -40,9 +40,18 @@ type ProductView struct {
 	CategoryID            uuid.UUID
 	CategoryName          string
 	PublishedAt           *time.Time
-	ImagePath             *string
+	// Images は、商品画像を表示順の昇順で並べたものです。画像未設定の場合は空です。
+	Images []ProductImageItemView
 	// Version は、楽観ロックのバージョンです。部分更新の要求へそのまま渡すことで競合を検出できます。
 	Version int
+}
+
+// ProductImageItemView は、商品画像 1 件分のユースケース出力 DTO です。
+type ProductImageItemView struct {
+	// Path は、格納されたオブジェクトのパス（キー）です。表示 URL は上位が組み立てます。
+	Path string
+	// SortKey は、同一商品内での表示順です。
+	SortKey int
 }
 
 // ProductListView は、公開商品一覧（cursor ページネーション）の取得結果を表します。
@@ -228,7 +237,16 @@ func toProductView(p *product.Product) ProductView {
 		CategoryID:            p.Category().ID(),
 		CategoryName:          p.Category().Name(),
 		PublishedAt:           p.PublishedAt(),
-		ImagePath:             p.ImagePath(),
+		Images:                toProductImageItemViews(p.Images()),
 		Version:               p.Version(),
 	}
+}
+
+// toProductImageItemViews は、商品画像を出力 DTO へ変換します。並びは集約が保持する表示順のままです。
+func toProductImageItemViews(images []product.Image) []ProductImageItemView {
+	views := make([]ProductImageItemView, len(images))
+	for i, img := range images {
+		views[i] = ProductImageItemView{Path: img.ImagePath(), SortKey: img.SortKey()}
+	}
+	return views
 }

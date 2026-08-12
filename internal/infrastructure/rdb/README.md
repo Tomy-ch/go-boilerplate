@@ -326,6 +326,7 @@ than covered with a contrived test.
 |`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` error|同上|
 |`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|同上|
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` error|`product` validates `sortKey` into `[1, math.MaxInt16]`|
 
 The `version` conversions in the same methods are **not** exempt: the domain only requires
 `version >= 1`, so an out-of-range version is reachable and is covered by a test. The same applies

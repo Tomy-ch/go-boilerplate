@@ -10,7 +10,7 @@ required:
   - status
   - category
   - publishedAt
-  - imagePath
+  - images
   - version
 properties:
   id:
@@ -56,11 +56,13 @@ properties:
     nullable: true
     description: 公開日時。未公開の場合は null です。
     example: "2026-01-01T00:00:00Z"
-  imagePath:
-    type: string
-    nullable: true
-    description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
-    example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"
+  images:
+    type: array
+    description: >-
+      商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。
+      表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
+    items:
+      $ref: './products/ProductImageItem.yaml'
   version:
     type: integer
     format: int32
