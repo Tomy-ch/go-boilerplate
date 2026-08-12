@@ -2002,3 +2002,4 @@
 "database/dml/system_cqrs/outbox/mark_outbox_published.sql" = "2026-08-12"
 "database/dml/system_cqrs/outbox/oldest_pending_outbox.sql" = "2026-08-12"
 "database/dml/system_cqrs/outbox/replay_dead_outbox.sql" = "2026-08-12"
+"mock-auth-server/vitest.config.ts" = "2026-08-13"

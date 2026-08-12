@@ -55,7 +55,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
 | `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
-| `sonarqube.yaml` `sonarqube` | 40 | no completed run yet measures the added Go and TypeScript coverage generation; the provisional limit reserves time for that work and Sonar's 10-minute analysis wait, then must be re-derived from the first completed run |
+| `sonarqube.yaml` `sonarqube` | 15 | vendor-side analysis can queue for up to 10 minutes; test and coverage gates run in their owning workflows |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
 
@@ -220,7 +220,7 @@ Every other tool on a shared surface is report-only, and the verdict on that sur
 | Sensitive values reaching a sink | `bearer.yaml` (Bearer) — report-only, over application code only (`/scripts` is excluded: repository tooling handles no user data, which is the whole of what this question asks) | — |
 | Runtime image | `image-scan.yaml` (Trivy) **(gate)** + Dockle (practice rules, report-only) + `trivy sbom` (report-only — the same database as the gate, reading syft's package list instead of Trivy's own) | — |
 
-The `First-party Go source` and `First-party TypeScript source` rows carry the vendor-hosted scanner as well. Sonar is the one deliberate departure from "one owner per rule" in this table. Its quality gate judges the analysis as a whole — new-code coverage and duplication alongside its own issue taxonomy — so it cannot be narrowed to the rules Opengrep and gosec do not claim, and a finding both engines recognize can turn a pull request red twice. That is accepted here because the alternative was discarding the vendor's verdict entirely, which left the scan reporting into a run that merged regardless.
+The `First-party Go source` and `First-party TypeScript source` rows carry the vendor-hosted scanner as well. Sonar is the one deliberate departure from "one owner per rule" in this table. Its quality gate judges static analysis and duplication alongside its own issue taxonomy, while the Go and TypeScript test workflows own coverage thresholds. A finding both engines recognize can still turn a pull request red twice; that is accepted because discarding the vendor's verdict entirely would leave the scan reporting into a run that merged regardless.
 
 #### Bearer's licence and removal
 
