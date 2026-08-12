@@ -21,7 +21,7 @@ graphify-out/
 # worktree 自身を含めて除外する。
 .codex/worktrees/
 
-# vitest のカバレッジ出力。各 vitest.config は reporter を text へ絞っているが、
+# vitest のカバレッジ出力。各 vitest.config は reporter に html を含めていないが、
 # --coverage.reporter=html を直に指定した実行が生む書き出しをコミット対象から外す。
 # 裸の coverage/ は追跡・公開している docs/coverage/（Go 側）にも一致してしまうため、
 # パッケージごとに列挙する。
@@ -38,5 +38,5 @@ docs/portal/index.html
 # ディレクトリの表示管理ファイル
 .DS_Store
 
-# DB スロットプールがworktree毎に書き出す占有情報（scripts/db-pool）
+# DB スロットプールがworktree毎に書き出す占有情報（internal/cli/dbslot）
 .gobp-db-slot

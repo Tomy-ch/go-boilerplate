@@ -26,14 +26,9 @@ gen-db-schema-ci:
 		-configFile /schemaspy.properties
 
 # dump-schema(ローカル) は作業用データベースを避け、当該ブランチの migration だけから再構築した
-# 使い捨て DB($(SCHEMA_GEN_DB)) をダンプする。決定的な出力には「ダンプ直前の無条件な
-# drop → migrate-up」が要るが、それを作業用データベースへ打つと seed が毎回消え、serve 中の
-# 接続も壊れる。だから使い捨て DB を別に持つ。
-# その使い捨て DB も不変条件（データベース : worktree = 1 : 0..1、pool.mk 参照）に従い所有者ごとに
-# 1 つ持つ。固定名 1 個を全 checkout で共有すると、同時に gen-query を回した 2 つの checkout が
-# 同じデータベースを drop / migrate し合い、生成物が黙って壊れる。
-# ローカル専用のガードであり、CI は fresh な postgres service を migrate 済みで dump-schema-ci を
-# 直接呼ぶため本経路は通らない。
+# 使い捨て DB($(SCHEMA_GEN_DB)) をダンプする。所有者ごとに 1 つ持つ理由まで含め
+# docs/maintenance/db-worktree-pool.md「schema-generation isolation」参照。
+# ローカル専用のガードで、CI は fresh な postgres service に対し dump-schema-ci を直接呼ぶ。
 SCHEMA_GEN_DB ?= $(if $(SLOT),gen_schema_wt$(SLOT),gen_schema)
 
 dump-schema: require-db-owner
@@ -44,7 +39,6 @@ dump-schema: require-db-owner
 	@docker compose run --rm -e DB_NAME=$(SCHEMA_GEN_DB) go_tool_runner make dump-schema-ci work-dir="$(work-dir)"
 	@echo "✅ スキーマのダンプが完了しました。"
 
-# db-ensure: 指定 DB を無ければ作成し、拡張(pg_trgm)を初期化する。
 # compose 初期化 SQL(docker/database/sql) と同じ拡張で使い捨てスキーマ DB をブートストラップする
 # （dbslot の PgxAdmin.SetupDatabase と等価）。timezone は DB コンテナの TZ 由来のクラスタ既定を
 # そのまま継承するため、ここでは設定しない。DB コンテナが起動している前提（gen-query と同じ）。

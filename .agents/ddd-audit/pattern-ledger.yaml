@@ -448,7 +448,7 @@ patterns:
       ガードと、原子性を要する複数集約書き込みである。Evans の議論は変更についてのものであり、
       前者で他集約は観測されるだけで変更されずルートが権威を保つため。後者でも、1 トランザクションが
       触れる集約のうち書き込まれるのは一部で、残りは観測されるだけという形を保つ。宣言は
-      docs/adr/0029-commandservice-atomicity-criterion.md の Departure 節と
+      docs/adr/0031-commandservice-atomicity-criterion.md の Departure 節と
       internal/domain/README.md の Aggregate Boundary 節。
     enforced_by:
       - kind: depguard
@@ -552,7 +552,7 @@ patterns:
       一本化するが、本リポジトリは集約の読み込み-保存で表現できない書き込み（相対更新・集合演算・
       ロックを取らずに原子性を得る操作）に限り CommandService を許す。相対更新はロックを取らずに済み、
       集約経由へ寄せると現状無い競合とデッドロック面を持ち込むため。適格基準と導出規則で
-      一般的な逃げ道化を防いでいる。宣言は docs/adr/0027-lightweight-cqrs.md の Alternatives Considered
+      一般的な逃げ道化を防いでいる。宣言は docs/adr/0029-lightweight-cqrs.md の Alternatives Considered
       節「Route every write through the aggregate Repository (abolish CommandService)」、
       適格基準の背景は ADR-0029 (lightweight-cqrs)。
     enforced_by: []
