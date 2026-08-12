@@ -141,6 +141,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/paths/v1/products/statuses.yaml",
       "openapi/components/responses/products/status",
       "openapi/components/schemas/ProductStatusResponse.yaml",
+      "openapi/components/schemas/ProductStatusRef.yaml",
 
       "docs/spec/product-status/domain.md",
       "docs/spec/product-status/usecase.md",
@@ -158,6 +159,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/paths/v1/products/categories.yaml",
       "openapi/components/responses/products/category",
       "openapi/components/schemas/ProductCategoryResponse.yaml",
+      "openapi/components/schemas/ProductCategoryRef.yaml",
 
       "docs/spec/product-category/domain.md",
       "docs/spec/product-category/usecase.md",
