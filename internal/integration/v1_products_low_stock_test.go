@@ -44,7 +44,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 				CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 				CategoryName:          "電子機器",
 				PublishedAt:           nil,
-				ImagePath:             nil,
+				Images:                nil,
 				Version:               1,
 			}
 		}

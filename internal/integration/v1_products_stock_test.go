@@ -49,8 +49,10 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			CategoryID:            uuidtestkit.NewTestFromSalt(t, "integration_stock_category"),
 			CategoryName:          "電子機器",
 			PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
-			ImagePath:             ptr.To("products/integration_stock.png"),
-			Version:               version,
+			Images: []productuc.ProductImageItemView{
+				{Path: "products/integration_stock.png", SortKey: 1},
+			},
+			Version: version,
 		}
 	}
 

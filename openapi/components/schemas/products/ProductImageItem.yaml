@@ -1,0 +1,19 @@
+type: object
+description: |
+  商品画像 1 件。表示 URL はフロントが配信ベース URL と imagePath から組み立てます
+  （backend はフル URL を保持しません）。
+required:
+  - imagePath
+  - sortKey
+properties:
+  imagePath:
+    type: string
+    description: 格納されたオブジェクトのパス（オブジェクトキー）。
+    example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"
+  sortKey:
+    type: integer
+    format: int32
+    minimum: 1
+    maximum: 32767
+    description: 同一商品内での表示順。images は sortKey の昇順で返します。
+    example: 1

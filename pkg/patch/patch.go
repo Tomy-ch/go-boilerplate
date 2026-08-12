@@ -18,6 +18,11 @@ func Null[T any]() Field[T] { return Field[T]{specified: true} }
 // Value は、値指定（v へ更新する）のフィールドを返します。
 func Value[T any](v T) Field[T] { return Field[T]{specified: true, value: &v} }
 
+// IsSpecified は、フィールドが指定されたかどうかを返します。null 指定も指定に含みます。
+// Resolve は未指定と null 指定のどちらでも現在値を持たない結果になり得るため、
+// 「指定されたときだけ処理する」判断にはこちらを使います。
+func (f Field[T]) IsSpecified() bool { return f.specified }
+
 // Resolve は、現在値 current へ部分更新を適用した結果を返します。
 // 未指定なら current をそのまま、null 指定なら nil、値指定ならその値の新しいポインタを返します。
 func (f Field[T]) Resolve(current *T) *T {
