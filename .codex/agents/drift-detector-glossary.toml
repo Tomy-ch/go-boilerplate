@@ -5,7 +5,7 @@ developer_instructions = """
 
 Terms 表の日本語の語や、各行に記録された修飾済みコードシンボルを主 probe にしてはならない。いずれも英語正本の prose にほぼ現れない。Terms 表の Owner 列の集約識別子を、必ず表の行へ対応付けられる次の優先順で探す。(1) パスの一部: `internal/domain/<agg>`、`internal/usecase/<agg>`、`docs/spec/<agg>/`、`repository/<agg>`、`command_service/<agg>`。(2) パッケージ修飾子: `<agg>.`。(3) 語境界つきの大文字 Public 名。(4) バッククォート内の裸の語。`collisions` の各 identifier は probe から丸ごと除外せず、`usable_forms` にある形だけを使う。一般語との衝突や長い単語の一部によるノイズは周辺文脈を読んで報告しない。
 
-`<!-- sample-api:begin -->` から `<!-- sample-api:end -->` までと HTML コメント内は除外する。sample manifest の `SAMPLE_DOMAINS` の宣言パス配下は丸ごとスキップする。一方、`MARKER_FILES` は丸ごとスキップせず、マーカー規則だけを適用する。この二つを混同しない。マニフェストにあるパスを finding にせず、その内容を本文や exclusions へ書き写さない。コードフェンスも prose として扱い、未マークの例に業務語があれば finding に含める。
+`<!-- sample-api:begin -->` から `<!-- sample-api:end -->` までと HTML コメント内は除外する。sample manifest の `SAMPLE_DOMAINS` の宣言パス配下は丸ごとスキップする。一方、`MARKER_LITERAL_FILES` は丸ごとスキップせず、マーカー規則だけを適用する。この二つを混同しない。マニフェストにあるパスを finding にせず、その内容を本文や exclusions へ書き写さない。コードフェンスも prose として扱い、未マークの例に業務語があれば finding に含める。
 
 corpus は固定の二 lane に分ける。E1 は `internal/**/README.md` と `pkg/**/README.md` であり、file:line、文脈、「削除」または「構造の語への言い換え」の候補を返す。E2 は `docs/adr/*.md`、`docs/rules.md`、`docs/architecture.md` であり、ADR は maintainer の意思決定記録、rules と architecture は統べる文書なので報告のみとする。finding ごとに lane を決めない。E2 に修正提案や承認依頼をせず、ファイル単位で件数・ファイル・代表行 1 本だけを要約する。全行列挙は求められたときだけ行う。結果は観測として述べ、「違反」「修正してください」とは書かない。
 

@@ -1,6 +1,6 @@
 ---
 name: supply-chain-triage
-description: Determine whether one quarantined supply-chain artifact version has direct evidence of a compromised publish, without changing anything. Use when `dep-vuln-upgrade`, `tools-upgrade`, `actions-pin`, or `images-pin` holds, defers, quarantines, or labels a candidate `too-new`/`pending`; when `make npm-cooldown-audit` finds a lockfile entry younger than `.npmrc` `min-release-age`; when `make tool-cooldown-gate` blocks `mise.toml` or `python/*.in`; before a deliberate cooldown override (`days=0`, `--min-release-age=0`, pnpm `minimumReleaseAgeExclude`, PyPI bypass entry, or fresh `overrides` pin); or when a user asks whether a release is safe to take. Score publisher, source attestation, diff, and dependency/capability surface with cited evidence, then report in Japanese. Do NOT use to perform an upgrade, triage a CVE already adopted in the tree, scan first-party code, or routinely revisit an `images-pin` rule 2 hold.
+description: Determine whether one quarantined supply-chain artifact version has direct evidence of a compromised publish, without changing anything. Use when `dep-vuln-upgrade`, `tools-upgrade`, `actions-pin`, or `images-pin` holds, defers, quarantines, or labels a candidate `too-new`/`pending`; when `make tool-cooldown-gate` blocks `mise.toml` or `python/*.in`; before a deliberate cooldown override (`days=0`, `--min-release-age=0`, pnpm `minimumReleaseAgeExclude`, PyPI bypass entry, or fresh `overrides` pin); or when a user asks whether a release is safe to take. Score publisher, source attestation, diff, and dependency/capability surface with cited evidence, then report in Japanese. Do NOT use to perform an upgrade, triage a CVE already adopted in the tree, scan first-party code, or routinely revisit an `images-pin` rule 2 hold.
 ---
 
 # Supply-chain Triage
@@ -130,9 +130,6 @@ Report exposure separately; never fold it into the score:
 
 Restate these walls whenever applicable. Never suggest lowering any window.
 
-- npm `.npmrc` `min-release-age`: the version remains uninstallable regardless of score; npm has no
-  per-version exemption. Wait, use an aged fix, or leave any deliberate role-level override to its
-  decision-maker; `make npm-cooldown-audit` surfaces it.
 - pnpm `minimumReleaseAge`: the block also reaches `--frozen-lockfile` replay. A per-version
   `minimumReleaseAgeExclude` exists, but the score merely informs the caller's real choice.
 - PyPI `scripts/tool-cooldown`: the repository gate fails the build. Its only escape hatch is a

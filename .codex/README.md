@@ -56,7 +56,7 @@ This repo officially recommends `graphify` (`/graphify`); see
 [`.claude/README.md`](../.claude/README.md) for what it does. It installs into user scope
 (`~/.codex/skills/graphify/`), so a trusted clone does not carry it.
 
-One bootstrap covers both Codex and Claude Code, and reads the pinned version from `mise.toml`:
+One bootstrap covers both Codex and Claude Code, and reads the pinned version from `python/graphify.in`:
 
 ```bash
 bash .claude/scripts/bootstrap-external-skills.sh
