@@ -82,6 +82,6 @@ authoritative unless this file states a Codex-specific execution detail.
   as the work's required starting point, not as a later synchronization step.
 - Never implement directly on a release branch. Create the task feature branch from the updated
   release branch.
-- Perform every implementation task in a Git worktree beneath `./codex/worktree/`. Do not use the
+- Perform every implementation task in a Git worktree beneath `.codex/worktrees/`. Do not use the
   primary checkout as the implementation location. When a task already has an assigned worktree,
   continue there rather than creating or modifying another checkout.
