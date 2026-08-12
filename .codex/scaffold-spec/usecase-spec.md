@@ -13,8 +13,7 @@
 | Workflow | メソッドごとの呼び出し手順（YAML: tx_required / steps / calls / errors） |
 | Notes | 上の節に収まらない補足（定数の出自・索引の判断など）。無ければ節ごと省略 |
 
-節構成表にない `##` 節を足してよい。ただし足せるのは **usecase の語彙で書かれた補足**に限る
-（例: [`docs/spec/exchange-rate/usecase.md`](../../docs/spec/exchange-rate/usecase.md) の `## Caching`）。
+節構成表にない `##` 節を足してよい。ただし足せるのは **usecase の語彙で書かれた補足**に限る。
 HTTP のワイヤ契約（クエリパラメータ・ステータスコードの一覧）は usecase が知ってよいものではないので
 ここには置かない — 正本は `openapi/openapi.yaml` であり、依存方向の理由は
 [`verify-rules.md`](verify-rules.md) が述べている。
@@ -33,8 +32,7 @@ HTTP のワイヤ契約（クエリパラメータ・ステータスコードの
 そのメソッドに、`steps:` の 1 行に収まらない散文（配置判断の根拠・他の経路との切り分け・ADR 参照）が
 要る場合は、メソッドごとに独立した `##` 節を立て、散文と YAML を並べる。YAML は 1 ブロックにまとめ、
 `input` / `output` / `dependencies` / `workflow`（`tx_required` / `steps` / `errors`）を持つ。
-cursor ページネーションを持つ経路は `cursor`（`boundary` / `keys`）を足す。実例は
-[`docs/spec/purchase/usecase.md`](../../docs/spec/purchase/usecase.md)。
+cursor ページネーションを持つ経路は `cursor`（`boundary` / `keys`）を足す。
 
 どちらの形式でも次の 2 つは崩さない。
 

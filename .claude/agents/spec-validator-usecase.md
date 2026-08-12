@@ -57,7 +57,7 @@ For a **展開形** section there is no `calls:`, so resolve its section-scoped 
 Every method in `## Interface` must have its procedure somewhere — a Workflow entry (`### <Method>` heading, or a `method:` key when the entries are one YAML list) or a 展開形 H2 section. Match on the method name appearing in the heading, the `method:` key, or the section's prose.
 
 - Interface method with no procedure anywhere → `violation` (this is the gap that lets a method escape every other check here).
-- 展開形 section describing a method absent from `## Interface` → `suggestion`: it may legitimately document a **separate package** for the same feature (e.g. `internal/usecase/purchase/summary`), which has its own interface. Say which reading you took.
+- 展開形 section describing a method absent from `## Interface` → `suggestion`: it may legitimately document a **separate package** for the same feature — a read-only aggregation split out under `internal/usecase/<feature>/<name>/` has its own interface, so it does not belong in this one. Say which reading you took.
 
 ## Step 3. Naming Convention Check (lean A — suggestion only)
 

@@ -18,16 +18,14 @@
 `behavior` は自由記述のブロックスカラー（`|`）で、`invariants` はその規則が保証する条件を箇条書きにする。
 古い spec は `behavior` を `description` と書いている（同義。新規は `behavior` に揃える）。
 
-節構成表にない `##` 節を足してよい。ただし足せるのは**ドメインの語彙で書かれた補足**に限る
-（例: `docs/spec/exchange-rate/usecase.md` の `## Caching` は usecase 側の補足節）。HTTP のワイヤ契約は
-依存方向に反するのでドメイン spec には置かない。
+節構成表にない `##` 節を足してよい。ただし足せるのは**ドメインの語彙で書かれた補足**に限る。
+HTTP のワイヤ契約は依存方向に反するのでドメイン spec には置かない。
 
 ### Domain Service を置く条件
 
 置いてよいのは、**どのエンティティ 1 件のメソッドにもなり得ない規則**だけである。「この 1 件はどうか」は
 エンティティのメソッドで、「この集合をどう分けるか」がドメインサービスにあたる。配置先とその admission は
-[`internal/domain/README.md`](../../internal/domain/README.md) が正本で、この spec は形だけを定める
-（実例は [`docs/spec/purchase/domain.md`](../../docs/spec/purchase/domain.md) の `GroupForDispatch`）。
+[`internal/domain/README.md`](../../internal/domain/README.md) が正本で、この spec は形だけを定める。
 
 ## 自動派生ルール（spec に書かない）
 

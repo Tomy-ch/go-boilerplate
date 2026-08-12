@@ -32,13 +32,13 @@ lean A では controller / infra に spec を持たないため、`verify-spec` 
 | `usecase.md` `## Interface` の各メソッド | 集約形 Workflow entry か展開形 `##` 節のいずれかに手順がある |
 
 **展開形の `dependencies:` は節スコープで完結する。** spec 全体の `## Dependencies` は集約形 Workflow の
-ためのものなので、展開形節の依存がそこに載っていなくても違反ではない（`docs/spec/purchase/usecase.md` の
-読み取り経路がその形）。逆に、展開形は `calls:` を持たないため cross-spec の解決は依存名までで止まる —
-メソッド名の突き合わせは効かない。
+ためのものなので、展開形節の依存がそこに載っていなくても違反ではない。逆に、展開形は `calls:` を
+持たないため cross-spec の解決は依存名までで止まる — メソッド名の突き合わせは効かない。
 
 **網羅チェックの向きで扱いが違う。** Interface に載っているのに手順が無いのは `violation`。手順があるのに
-Interface に無いのは `suggestion` — その節が同じ feature の別パッケージ usecase（例:
-`internal/usecase/purchase/summary`）を記述していることがあり、その場合は Interface に載らないのが正しい。
+Interface に無いのは `suggestion` — その節が同じ feature の**別パッケージ**の usecase（読み取り専用の
+集計など、`internal/usecase/<feature>/<name>/` に分けたもの）を記述していることがあり、その場合は
+そちらが自分の Interface を持つため、ここに載らないのが正しい。
 
 ## 派生元との整合性ルール
 
