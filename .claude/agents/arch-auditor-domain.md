@@ -60,7 +60,7 @@ For each in-scope domain Go file:
    - `go.uber.org/zap`, `go.uber.org/fx` — logging / DI frameworks → `violation`
    - `github.com/labstack/echo`, `database/sql`, `gorm`, pgx — framework / infra → `violation`
    - `time.Now()` / `uuid.New()` calls — time / ID generation must happen outside Domain (value types `time.Time` / `uuid.UUID` are allowed) → `violation`
-   - `context.Context` — allowed **only** in Repository interface method signatures (README carve-out, which wins over CLAUDE.md's broad ban per README > Code > SKILL priority). Any other use → `suggestion`.
+   - `context.Context` — allowed **only** in Repository interface method signatures, where it may be declared for propagation. Any other use → `suggestion`.
 2. For entity files (Aggregate Root structs), cross-check fields against the matching SQL migration as a **soft check** — auto-infer legitimate divergences, introduce no annotations:
    - Find `database/migrations/*.sql` with `CREATE TABLE <aggregate_plural>` (use the latest migration defining the table; later ones alter columns).
    - Map `snake_case` columns ↔ `camelCase` fields.

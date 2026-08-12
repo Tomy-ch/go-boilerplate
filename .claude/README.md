@@ -61,8 +61,8 @@ Three properties differ from the plugins above and are worth knowing before runn
 
 - **User scope, not project scope.** The skill is written to `~/.claude/skills/graphify/` (and
   `~/.codex/skills/graphify/`), so a trusted clone does *not* carry it — every machine runs the
-  bootstrap once. The version is pinned at project scope in `mise.toml`, and the script reads that
-  pin rather than choosing one.
+  bootstrap once. The version is pinned at project scope in `python/graphify.in`, and the script
+  reads that pin rather than choosing one.
 - **The installer also writes `~/.claude/CLAUDE.md`** (user-global memory) to register the
   `/graphify` trigger. It does not touch this repository's `CLAUDE.md`.
 - **`graphify uninstall` leaves the Codex copy behind** — remove
@@ -73,7 +73,8 @@ similarly named `<name> install` subcommands are a different thing: `graphify cl
 writes this repository's `CLAUDE.md`, `graphify codex install` (also `opencode` / `aider` /
 `kilo`) writes `AGENTS.md`, and `graphify hook install` adds git hooks and a merge driver — all
 project scope, and `AGENTS.md` / `CLAUDE.md` are hard-protected by `AGENTS.md`. Those forms are
-in `settings.json`'s `deny` list so an agent reading `graphify --help` cannot reach them.
+routed to `ask` in `settings.json`, so an agent reading `graphify --help` surfaces them for a human
+decision instead of running them.
 
 The graph is a derived artifact and is gitignored, so build it locally. `update` and the query
 commands are AST-only and need no API key; the docs / PDF / image extraction, `--mode deep`

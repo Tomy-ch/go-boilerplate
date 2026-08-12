@@ -37,15 +37,13 @@ tooling that maintains them looks.
 
 One subdirectory per artifact domain, named after the skill family that owns it.
 
-```txt
-.agents/
-├── comment-remediation/
-│   ├── comment-remediated.toml   # files whose comment stock has been swept
-│   ├── comment-remediated.sh     # the lookup, run by a PreToolUse hook before an edit
-│   └── …sweep_on_touch.prompt    # what to do about a miss, read on demand
-└── ddd-audit/
-    └── pattern-ledger.yaml       # DDD pattern ledger — see .claude/skills/ddd-audit/SKILL.md
-```
+- `comment-remediation/` — which files have had their comment stock swept, and what to do when an
+  edit lands on one that has not. Read by a `PreToolUse` hook before an edit.
+- `ddd-audit/` — the DDD pattern ledger: which Evans pattern this repository has interpreted, and
+  where. Owned by `.claude/skills/ddd-audit/SKILL.md`.
+- `glossary-drift/` — the exclusions the glossary-drift detector honors: where a business term
+  appearing outside `docs/spec/` is knowingly not a finding yet. Owned by
+  `.claude/agents/drift-detector-glossary.md`.
 
 `comment-remediation/` is the one domain here with a finite life. It records progress through a
 migration to the comment policy, so it stops meaning anything once the tree is fully swept; deleting
