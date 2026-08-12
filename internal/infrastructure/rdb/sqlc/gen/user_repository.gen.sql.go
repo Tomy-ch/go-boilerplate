@@ -817,7 +817,8 @@ type LockUserShareByIDRow struct {
 // === source: database/dml/repository/user/lock_user_share_by_id.sql ===
 // ID からユーザーを 1 件、悲観ロック（FOR SHARE）して取得する。不存在は 0 行（NotFound）。
 // 退会済みを除外しないこと — ロックは機構で、在籍かどうかの判定はドメイン（User.IsActive）が持つ。
-// 退会との直列化は docs/spec/purchase/usecase.md の CreatePurchase を参照（ADR-0033 (ordered-pessimistic-row-locks)）。
+// 退会との直列化は docs/spec/purchase/usecase.md の CreatePurchase を参照。
+// ADR-0033 (ordered-pessimistic-row-locks)。
 //
 //	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
