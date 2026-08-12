@@ -63,14 +63,17 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			CategoryID:            categoryID,
 			StatusID:              statusID,
 			PublishedAt:           ptr.To(publishedAt),
-			ImagePath:             ptr.To("products/earphone.png"),
+			Images: []ProductImageParams{
+				{ImagePath: "products/earphone.png", SortKey: 1},
+				{ImagePath: "products/earphone-sub.png", SortKey: 2},
+			},
 		}, statusID, categoryID
 	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("adminが商品を作成し、imagePath・publishedAt・リッチテキスト説明を保持したViewを返す", func(t *testing.T) {
+		t.Run("adminが商品を作成し、images・publishedAt・リッチテキスト説明を保持したViewを返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
@@ -104,10 +107,14 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			assert.Equal(t, "電子機器", actual.CategoryName)
 			require.NotNil(t, actual.PublishedAt)
 			assert.Equal(t, *params.PublishedAt, *actual.PublishedAt)
-			assert.Equal(t, params.ImagePath, actual.ImagePath)
+			require.Len(t, actual.Images, 2)
+			assert.Equal(t, "products/earphone.png", actual.Images[0].Path)
+			assert.Equal(t, 1, actual.Images[0].SortKey)
+			assert.Equal(t, "products/earphone-sub.png", actual.Images[1].Path)
+			assert.Equal(t, 2, actual.Images[1].SortKey)
 		})
 
-		t.Run("publishedAt・imagePathがnil（未公開・画像未設定）でも作成できる", func(t *testing.T) {
+		t.Run("publishedAtがnil・画像が空（未公開・画像未設定）でも作成できる", func(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
@@ -116,7 +123,7 @@ func Test_usecase_CreateProduct(t *testing.T) {
 
 			params, statusID, categoryID := validParams(t)
 			params.PublishedAt = nil
-			params.ImagePath = nil
+			params.Images = nil
 
 			txm := mock_tx.NewMockManager(ctrl)
 			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
@@ -133,7 +140,7 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			actual, err := u.CreateProduct(ctx, &auth.Authn{}, params)
 			require.NoError(t, err)
 			assert.Nil(t, actual.PublishedAt)
-			assert.Nil(t, actual.ImagePath)
+			assert.Empty(t, actual.Images)
 		})
 
 		t.Run("商品作成を所有者なしリソースとして認可する", func(t *testing.T) {
@@ -410,6 +417,52 @@ func Test_usecase_resolveRefs(t *testing.T) {
 			u := &usecase{statusRepo: statusRepo, categoryRepo: categoryRepo}
 			_, _, err := u.resolveRefs(context.Background(), sid, cid)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_buildImages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("入力の順序と値を保ったままIDを採番する", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := buildImages([]ProductImageParams{
+				{ImagePath: "products/a.png", SortKey: 1},
+				{ImagePath: "products/b.png", SortKey: 2},
+			})
+
+			require.NoError(t, err)
+			require.Len(t, actual, 2)
+			assert.Equal(t, "products/a.png", actual[0].ImagePath())
+			assert.Equal(t, 1, actual[0].SortKey())
+			assert.Equal(t, "products/b.png", actual[1].ImagePath())
+			assert.Equal(t, 2, actual[1].SortKey())
+		})
+
+		t.Run("採番したIDは画像ごとに異なる", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := buildImages([]ProductImageParams{
+				{ImagePath: "products/a.png", SortKey: 1},
+				{ImagePath: "products/b.png", SortKey: 2},
+			})
+
+			require.NoError(t, err)
+			require.Len(t, actual, 2)
+			assert.NotEqual(t, actual[0].ID(), actual[1].ID())
+		})
+
+		t.Run("入力が空の場合、空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := buildImages(nil)
+
+			require.NoError(t, err)
+			assert.Empty(t, actual)
 		})
 	})
 }

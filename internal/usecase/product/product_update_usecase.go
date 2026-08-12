@@ -37,8 +37,9 @@ type UpdateProductParams struct {
 	StockWarningThreshold patch.Field[int]
 	// PublishedAt は、公開日時です。null 指定でクリア（未公開へ戻す）します。
 	PublishedAt patch.Field[time.Time]
-	// ImagePath は、画像パスです。null 指定でクリアします。
-	ImagePath patch.Field[string]
+	// Images は、商品画像の集合です。指定するとその内容へ丸ごと置き換え、null 指定で全て取り除きます。
+	// 未指定の場合は現在の画像を据え置き、置き換え自体を行いません。
+	Images patch.Field[[]ProductImageParams]
 }
 
 // UpdateProduct は、admin 認可のうえ、送られたフィールドのみを反映して商品を部分更新します。
@@ -60,6 +61,11 @@ func (u *usecase) UpdateProduct(
 	}
 
 	price, err := parseOptionalPrice(params.Price)
+	if err != nil {
+		return ProductView{}, err
+	}
+
+	images, err := resolveUpdatedImages(params.Images)
 	if err != nil {
 		return ProductView{}, err
 	}
@@ -91,13 +97,22 @@ func (u *usecase) UpdateProduct(
 			Status:                statusRef,
 			Category:              categoryRef,
 			PublishedAt:           params.PublishedAt.Resolve(entity.PublishedAt()),
-			ImagePath:             params.ImagePath.Resolve(entity.ImagePath()),
+			Images:                ptr.Deref(images, entity.Images()),
 		}); err != nil {
 			return err
 		}
 
-		updatedVersion, err = u.repo.Update(ctx, entity)
-		return err
+		if updatedVersion, err = u.repo.Update(ctx, entity); err != nil {
+			return err
+		}
+
+		// images が未指定なら現在の画像を据え置き、置き換えは行いません
+		// （理由は docs/spec/product/usecase.md の UpdateProduct）。
+		if !params.Images.IsSpecified() {
+			return nil
+		}
+
+		return u.repo.ReplaceImages(ctx, entity)
 	})
 	if err != nil {
 		return ProductView{}, err
@@ -130,6 +145,27 @@ func (u *usecase) resolveUpdatedRefs(
 	}
 
 	return statusRef, categoryRef, nil
+}
+
+// resolveUpdatedImages は、部分更新の指定から置き換え後の商品画像を解決します。
+// 未指定の場合は nil を返し、呼び出し側が現在の画像を据え置きます。null 指定は空の集合として扱い、
+// 画像を全て取り除きます。
+func resolveUpdatedImages(field patch.Field[[]ProductImageParams]) (*[]product.Image, error) {
+	if !field.IsSpecified() {
+		return nil, nil //nolint:nilnil // 未指定は「画像の指定なし」を表すため nil, nil が妥当です
+	}
+
+	specified := field.Resolve(nil)
+	if specified == nil {
+		return &[]product.Image{}, nil
+	}
+
+	images, err := buildImages(*specified)
+	if err != nil {
+		return nil, err
+	}
+
+	return &images, nil
 }
 
 // parseOptionalPrice は、指定された場合のみ十進文字列を価格へ解釈します。

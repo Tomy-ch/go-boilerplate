@@ -97,6 +97,24 @@ type ProductCategories struct {
 	UpdatedAt time.Time
 }
 
+// 商品画像
+type ProductImages struct {
+	// ID
+	ID uuid.UUID
+	// 商品ID
+	ProductID uuid.UUID
+	// 画像パス
+	ImagePath string
+	// 順序
+	SortKey int16
+	// 削除日時
+	DeletedAt *time.Time
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 // 商品ステータス
 type ProductStatuses struct {
 	// ID
@@ -133,8 +151,6 @@ type Products struct {
 	CategoryID uuid.UUID
 	// 公開日時
 	PublishedAt *time.Time
-	// 画像パス
-	ImagePath *string
 	// 楽観ロックバージョン
 	LockVersion int32
 	// 作成日時

@@ -51,9 +51,9 @@ fields:
   - name: publishedAt
     type: "*time.Time"
     required: false         # nil 許容（未公開）。一覧取得は published_at 非 NULL のみを返すため一覧経由では常に非 nil
-  - name: imagePath
-    type: "*string"
-    required: false         # nil 許容（画像未設定）。無検証で保持（サニタイズは表示側の責務）
+  - name: images
+    type: "[]Image"
+    required: false         # 空許容（画像未設定）。表示順の昇順で保持し、構築時に並べ替える
   - name: version
     type: int
     required: true          # initialVersion(=1) 未満は ErrInvalidVersion。生成時は initialVersion から始まる
@@ -64,6 +64,31 @@ fields:
 > `createdAt` / `updatedAt`（監査列）は本 read model のドメイン不変条件に不要なため保持しない。
 > DB カラム `published_at` は NULL 許容で、未公開商品を作成できる。一覧クエリは `published_at IS NOT NULL` で
 > 絞り込むため、一覧経由で再構築されるエンティティの `publishedAt` は常に値を持つ。
+
+### Image（子の値オブジェクト）
+
+```yaml
+package: internal/domain/product
+struct: Image
+fields:
+  - name: id
+    type: uuid.UUID
+    required: true          # IsNil の場合は ErrInvalidID。採番は usecase が行う
+  - name: imagePath
+    type: string
+    required: true          # 空文字は ErrInvalidImagePath。無検証で保持（サニタイズは表示側の責務）
+  - name: sortKey
+    type: int
+    required: true
+    min: 1                  # 範囲外は ErrInvalidImageSortKey
+    max: 32767              # 表示順は 16bit 整数幅で表現する
+```
+
+> `NewImage` は組み立てのみを行い検証しない。表示順の重複は兄弟を見なければ判定できず、
+> 子 1 件では答えが出ないため、不変条件は集約の入口（`validateImages`）が集合として検証する。
+>
+> このサンプルでは `product_images` に `deleted_at` を持たせ、差し替えられた画像を論理削除として残している。
+> 論理削除か物理削除か、`deleted_at` か `is_deleted` かといった選択は本 boilerplate が規定するものではない。
 
 ## Cross-field Invariants
 
@@ -171,7 +196,7 @@ fields:
 - name: Create
   signature: Create(ctx context.Context, p *Product) error
   behavior: |
-    商品を新規登録する。image_path を含む全列を INSERT する。
+    商品を新規登録する。products の行に加え、保持する画像を product_images へ INSERT する。
     マスタ存在は usecase が作成前に確認し、不在は整合性異常として ErrInternal（500）に落とす（正典の 500 経路）。
     テーブルの status_id / category_id の FK 制約は多層防御の保険であり、通常経路では到達しない。
 
@@ -179,6 +204,7 @@ fields:
   signature: Update(ctx context.Context, p *Product) (int, error)
   behavior: |
     p が保持するバージョンを条件に商品を更新し（WHERE id = ... AND version = ...）、採番後のバージョンを返す。
+    画像は対象に含まない（置換は ReplaceImages が担う）。
     version の加算は SQL 側（version = version + 1）で行い、採番の権威を DB に一本化する。
     条件に一致する行が無い場合は、読み込み後に他トランザクションが更新したものとして ErrVersionConflict（409）を返す
     （存在は同一トランザクション内の FindByID で確認済みのため、0 行はバージョン不一致のみを意味する）。
@@ -194,10 +220,21 @@ fields:
     ロックを取らずに呼ばれた場合の 0 行は ErrVersionConflict（409）として返し、在庫の上書きを防ぐ。
 
 # 未参照画像の回収ジョブ向け（追記分）
+- name: ReplaceImages
+  signature: ReplaceImages(ctx context.Context, p *Product) error
+  behavior: |
+    商品が現在参照している画像を p が保持する画像で置き換える。
+    生存している行を一括で論理削除したうえで、p の画像を INSERT する。置き換え前の行は履歴として残る。
+
+    Update が成功した後、同じトランザクションの中で呼び出す必要がある。Update の条件付き更新が商品行の
+    ロックを取ることで同一商品への置換が直列化され、バージョンが一致しない場合は画像に触れる前に中断できる。
+    順序を入れ替えると、後から弾かれる更新の画像だけが先に入れ替わる。
+
 - name: FilterExistingImagePaths
   signature: FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error)
   behavior: |
-    paths のうち、いずれかの商品が image_path として参照しているものを重複排除して返す。
+    paths のうち、いずれかの商品が現在の画像として参照しているものを重複排除して返す。
+    論理削除された画像は現在の参照ではないため、生存行だけを参照元として数える。
     順序は保証せず、paths が空なら問い合わせずに空を返す。返らなかったパスは
     「どの商品からも参照されていない」＝孤児であることを意味する。
     products は論理削除列を持たないため、生存行だけが参照元になる。

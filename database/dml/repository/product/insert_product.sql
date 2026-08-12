@@ -8,8 +8,7 @@ INSERT INTO products (
     stock_warning_threshold,
     status_id,
     category_id,
-    published_at,
-    image_path
+    published_at
 ) VALUES
 (
     sqlc.arg('id'),
@@ -20,6 +19,5 @@ INSERT INTO products (
     sqlc.arg('stock_warning_threshold'),
     sqlc.arg('status_id'),
     sqlc.arg('category_id'),
-    sqlc.arg('published_at'),
-    sqlc.arg('image_path')
+    sqlc.arg('published_at')
 );

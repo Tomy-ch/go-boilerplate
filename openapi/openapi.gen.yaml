@@ -1938,7 +1938,7 @@ components:
         - status
         - category
         - publishedAt
-        - imagePath
+        - images
         - version
       properties:
         id:
@@ -1982,11 +1982,11 @@ components:
           nullable: true
           description: 公開日時。未公開の場合は null です。
           example: '2026-01-01T00:00:00Z'
-        imagePath:
-          type: string
-          nullable: true
-          description: 画像パス。未設定の場合は null です。表示 URL はフロントが配信ベース URL と組み立てます。
-          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+        images:
+          type: array
+          description: 商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
+          items:
+            $ref: '#/components/schemas/ProductImageItem'
         version:
           type: integer
           format: int32
@@ -2756,12 +2756,52 @@ components:
       description: 商品カテゴリマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
+    ProductImageItem:
+      type: object
+      description: |
+        商品画像 1 件。表示 URL はフロントが配信ベース URL と imagePath から組み立てます
+        （backend はフル URL を保持しません）。
+      required:
+        - imagePath
+        - sortKey
+      properties:
+        imagePath:
+          type: string
+          description: 格納されたオブジェクトのパス（オブジェクトキー）。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+        sortKey:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 32767
+          description: 同一商品内での表示順。images は sortKey の昇順で返します。
+          example: 1
+    ProductImageInput:
+      type: object
+      description: |
+        商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+      required:
+        - imagePath
+        - sortKey
+      properties:
+        imagePath:
+          type: string
+          description: 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
+          pattern: ^products/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+        sortKey:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 32767
+          description: 同一商品内での表示順。1 から数えます。同じ商品の中で重複する値を送ると業務不変条件違反として 422 を返します。 欠番は許容し、送られた値をそのまま保持します。
+          example: 1
     ProductsPostRequest:
       type: object
       description: |
         商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
         price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
-        imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。表示 URL はフロントが組み立てます。
+        images には画像アップロード（POST /v1/products/images）で得たパスと表示順を渡します。表示 URL はフロントが組み立てます。
       required:
         - name
         - price
@@ -2815,19 +2855,19 @@ components:
           nullable: true
           description: 公開日時。未公開の場合は null です。
           example: '2026-01-01T00:00:00Z'
-        imagePath:
-          type: string
-          nullable: true
-          description: 画像パス。未設定の場合は null です。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
-          pattern: ^products/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$
-          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
+        images:
+          type: array
+          description: 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。
+          items:
+            $ref: '#/components/schemas/ProductImageInput'
     ProductPatchRequest:
       type: object
       description: |
         商品部分更新リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
         送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
-        description / stockWarningThreshold / publishedAt / imagePath は null を明示すると値をクリアします
+        description / stockWarningThreshold / publishedAt / images は null を明示すると値をクリアします
         （未送信＝据え置きと null＝クリアは区別されます）。
+        images は送ると集合ごと置き換えます（差分更新ではありません）。null を送ると画像を全て取り除きます。
         version には更新対象を読み込んだ時点の値を渡します。DB の現在値と一致しない場合は他者の更新と競合した
         ものとして 409 を返します（再取得したうえで送り直してください）。
         負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
@@ -2897,13 +2937,13 @@ components:
           x-go-type-import:
             path: github.com/oapi-codegen/nullable
           x-go-type-skip-optional-pointer: true
-        imagePath:
-          type: string
+        images:
+          type: array
           nullable: true
-          description: 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 null を指定すると画像をクリアします。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
-          pattern: ^products/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$
-          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
-          x-go-type: nullable.Nullable[string]
+          description: 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
+          items:
+            $ref: '#/components/schemas/ProductImageInput'
+          x-go-type: nullable.Nullable[[]ProductImageInput]
           x-go-type-import:
             path: github.com/oapi-codegen/nullable
           x-go-type-skip-optional-pointer: true
