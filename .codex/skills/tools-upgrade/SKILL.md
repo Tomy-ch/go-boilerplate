@@ -10,7 +10,7 @@ This skill audits every pinned tool version against upstream latest, with a **su
 The audit surface is **both** declaration sites, because a tool that is not read is a tool that never gets upgraded:
 
 - `mise.toml` `[tools]` — everything mise resolves.
-- `python/*.in` — the PyPI tools, whose resolved trees are hash-pinned in `python/*.txt` ([ADR-0075 (bridge-instrumentation-exceptions)](../../../docs/adr/0075-mise-ssot-drift-gate.md)). Bumping one of these is a two-file change: the pin, then `make py-lock`.
+- `python/*.in` — the PyPI tools, whose resolved trees are hash-pinned in `python/*.txt` ([ADR-0077 (mise-ssot-drift-gate)](../../../docs/adr/0077-mise-ssot-drift-gate.md)). Bumping one of these is a two-file change: the pin, then `make py-lock`.
 
 ## When to Use
 

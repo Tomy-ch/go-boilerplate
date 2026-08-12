@@ -1,11 +1,9 @@
-# Dependabot 設定
+# Dependabot configuration.
 #
-# 対象エコシステム: Go modules / Docker / GitHub Actions の3種。
-# cooldown: バージョン公開から指定日数が経過するまで更新 PR を作成しない。
-#           - gomod: patch=5 / minor=7 / major=30 日。
-#           - docker / github-actions: default-days=5 日。
-# groups : 1 エコシステムあたり 1 PR にまとめる。
-# 注意: セキュリティアップデートは cooldown をスキップして即時 PR が作成される。
+# `cooldown` withholds an update PR until the stated number of days has passed since the version
+# was published — the supply-chain window ADR-0088 (malicious-package-detection-via-cooldown)
+# records. A security update skips it and opens immediately, which is Dependabot's own behaviour
+# and not configurable here.
 version: 2
 updates:
   # ---- Go modules ----
@@ -25,7 +23,6 @@ updates:
           - "*"
 
   # ---- Docker ----
-  # docker/ 配下の3イメージを個別にスキャンする。
   - package-ecosystem: "docker"
     directories:
       - "/docker/tools"
@@ -42,7 +39,6 @@ updates:
           - "*"
 
   # ---- GitHub Actions ----
-  # .github/workflows と .github/actions の Actions 依存を更新する。
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

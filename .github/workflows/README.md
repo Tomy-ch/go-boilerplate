@@ -310,7 +310,7 @@ The deadlock is structural. A context named in [`branch-protection.json`](../set
 
 Each guard therefore runs on the complementary set (`paths-ignore` / `branches-ignore` mirroring the filter it complements) and reports the same context as an immediate success. Both can run on one pull request — `paths` fires when *any* changed file matches, `paths-ignore` when *any* does not — and that is safe: GitHub requires every check reporting a given name to pass, so the no-op cannot stand in for a real verdict.
 
-**The mirroring is the whole correctness argument, and nothing checks it.** A `paths` entry added to a scanner without the matching `paths-ignore` entry in its guard reopens the deadlock on exactly the pull requests that change that path — the class of change least likely to be tested against it. Edit the pair together.
+`make required-check-lint` verifies that every required context has exactly one main job and one guard job, and that a guard's job id is a context the ruleset actually requires. **What it cannot see is the mirroring, and that is the whole correctness argument.** A `paths` entry added to a scanner without the matching `paths-ignore` entry in its guard reopens the deadlock on exactly the pull requests that change that path — the class of change least likely to be tested against it. Edit the pair together.
 
 #### Go Cooldown
 

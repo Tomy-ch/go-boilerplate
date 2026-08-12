@@ -15,7 +15,7 @@ rules:
   # Composite-action findings cannot be ignored per file (zizmor limitation), so
   # the severity is remapped instead of listing the file.
   # .github/actions/setup-postgres appends to $GITHUB_PATH using its own
-  # `pg-version` input, which is supplied by the calling workflow and never by
+  # `pg_version` input, which is supplied by the calling workflow and never by
   # untrusted event data — zizmor itself rates this detection "low confidence".
   github-env:
     remap:
@@ -32,8 +32,9 @@ rules:
       severity: medium
 
   # The cooldown windows in .github/dependabot.yml are a deliberate, documented
-  # supply-chain policy (patch 5 / minor 7 / major 30 days, and security updates
-  # bypass the cooldown by design), not an oversight.
+  # supply-chain policy (Go modules: patch 5 / minor 7 / major 30 days; Docker and
+  # GitHub Actions: a flat 5 days; security updates bypass the cooldown by design),
+  # not an oversight.
   dependabot-cooldown:
     ignore:
       - dependabot.yml

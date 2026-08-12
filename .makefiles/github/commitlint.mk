@@ -6,9 +6,8 @@
 .PHONY: commitlint-range-ci ## COMMITLINT_FROM..COMMITLINT_TO のコミット範囲を commitlint で検証(CI用)
 
 # -----Dockerコンテナ内で実行するコマンド群-----
-# worktree の .git はファイルでありメインの checkout 側を指すため、git が渡すメッセージファイル
-# （COMMIT_EDITMSG / MERGE_MSG）は node_tool_runner のマウント範囲（.:/app）の外にある。
-# 作業ツリー内へ写して相対パスで渡すことで、worktree でも通常の checkout でも同じ経路で検証する。
+# メッセージファイルを tmp/ へ写して相対パスで渡す理由（worktree ではマウント範囲 .:/app の外に
+# あるため）は .makefiles/README.md の commitlint 行を参照。
 commitlint:
 	@set -e; \
 	src='$(COMMIT_MSG_FILE)'; \
@@ -23,12 +22,9 @@ commitlint:
 commitlint-ci:
 	commitlint --edit $(COMMIT_MSG_FILE)
 
-# コミット範囲を検証する。commit-msg フックは分割コミット時にバイパスされ、最後に回す
-# lefthook run pre-commit にも含まれない（フック名が違う）ため、そこを通り抜けたメッセージは
-# この経路でしか検査されない。範囲が空なら参照解決が壊れているとみなして落とす。黙って
-# 0 件を検査して緑を返すと、ゲートが外れたことと合格したことが見分けられなくなる。
-# ローカル向けの node_tool_runner ラッパーは無い。コンテナのマウントは .:/app だけで
-# worktree の gitdir はその外にあり、履歴はメッセージファイルのように写して渡せない。
+# commit-msg フックがバイパスされたメッセージに唯一届く検査経路。空範囲は落とす
+# （0 件を緑で返すと、ゲートが外れたことと合格したことが区別できなくなる）。
+# node_tool_runner ラッパーを持たない理由は .makefiles/README.md の commitlint-range-ci 行。
 commitlint-range-ci:
 	@set -eu; \
 	[ -n '$(COMMITLINT_FROM)' ] && [ -n '$(COMMITLINT_TO)' ] || \

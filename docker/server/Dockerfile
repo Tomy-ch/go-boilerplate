@@ -21,7 +21,7 @@ ARG REVISION=none
 # version handler が RFC3339 として厳格 parse し不正値は /version を 500 にするため、有効な RFC3339 を維持すること。
 ARG BUILD_DATE=2024-12-31T21:00:00Z
 
-# デプロイ対象環境（prd/stg/dev/ci）。当該 env を埋め込み対象 env/.env へ焼き直す。
+# デプロイ対象環境（prd/stg/dev）。当該 env を埋め込み対象 env/.env へ焼き直す。
 ARG APP_ENV=prd
 
 COPY . .
@@ -59,8 +59,8 @@ WORKDIR /app
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=10s \
   CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
 
-# 既定はサーバ常駐。マイグレーションは同一イメージを command override で実行する
-# （例: 起動コマンドを ["/app/server", "migrate-up"] に差し替えてジョブ実行）。
+# マイグレーションは専用イメージを持たず、この同一イメージを command override で実行する
+# （["/app/server", "migrate-up"]）。詳細は docker/server/README.md の runtime 節。
 CMD ["/app/server", "serve"]
 
 # ------------------------------

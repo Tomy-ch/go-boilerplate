@@ -117,7 +117,7 @@ fields:
 - name: Pay
   signature: Pay(now time.Time) (Event, error)
   behavior: |
-    購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済。決済 seam の除外は nextjs-boilerplate ADR-0082 (local-hooks-mirror-ci)）。
+    購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済）。
     遷移可否は statusCode を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
       - 既に支払い済み（statusCode == 7）→ ErrAlreadyPaid（409。二重支払い）
       - キャンセル済み（statusCode == 6）・完了（statusCode == 5）・配達済み（statusCode == 9）・発送済み（shippedAt != nil）→ ErrPayNotAllowed（409）

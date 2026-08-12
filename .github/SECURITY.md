@@ -32,8 +32,8 @@ A Japanese translation of this document is available at [SECURITY.ja.md](SECURIT
 
 ## Verifying release artifacts
 
-`.github/workflows/deploy-app.yaml` attaches the following to each image pushed to GHCR
-(`runtime` / `migration`), **targeting the digest of the pushed image**:
+`.github/workflows/deploy-app.yaml` attaches the following to the `runtime` image pushed to
+GHCR, **targeting the digest of the pushed image**:
 
 - cosign keyless signature (OIDC → Fulcio → Rekor)
 - SLSA provenance attestation (`actions/attest-build-provenance`)
@@ -45,16 +45,14 @@ environment (if you moved off GHCR, also reinterpret the `ghcr.io/<owner>` porti
 
 ### 0. Resolve the target digest
 
-`runtime` and `migration` are pushed under the same `app` repository with different tags
-(`<sha>` / `<sha>-migration`). Because verification is digest-based rather than tag-based,
-resolve the digest from the target image's tag.
+Because verification is digest-based rather than tag-based, resolve the digest from the
+target image's tag. Migrations run from this same image through a command override
+(`docker run <image> /app/server migrate-up`), not from a separate one, so there is a
+single digest to resolve.
 
 ```bash
-# runtime image
 docker buildx imagetools inspect ghcr.io/<owner>/app:<tag> --format '{{.Manifest.Digest}}'
 crane digest ghcr.io/<owner>/app:<tag>
-# migration image (tag carries a -migration suffix)
-crane digest ghcr.io/<owner>/app:<tag>-migration
 ```
 
 ### 1. Verify the cosign signature

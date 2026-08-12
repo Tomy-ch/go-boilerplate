@@ -1,10 +1,8 @@
 # docker compose のプロジェクト構成（infra 層 / app 層）
 #
-# 固定ポートでしか動けないサービス（database 5432 / observability 3000・4317・4318・3200 /
-# garage 3900・3902 / elasticmq 9324）は全 checkout で 1 インスタンスだけを共有し、
-# INFRA_PROJECT に置く。
-# checkout 毎に必要な api_server / mock_auth_server だけを per-checkout のプロジェクトへ分離し、
-# docker-compose.attach.yaml で共有インフラへ host-gateway 経由で接続する。
+# 固定ポートでしか動けないサービスは全 checkout で 1 インスタンスを共有して INFRA_PROJECT に置き、
+# checkout 毎に要る api_server / mock_auth_server だけを per-checkout のプロジェクトへ分ける。
+# 各変数の役割は .makefiles/README.md「Compose project definitions (compose.mk)」参照。
 INFRA_PROJECT ?= $(if $(GOBP_DB_SHARED_PROJECT),$(GOBP_DB_SHARED_PROJECT),gobp-shared)
 INFRA_SERVICES ?= database observability garage elasticmq
 APP_SERVICES ?= api_server mock_auth_server
@@ -19,8 +17,8 @@ export COMPOSE_PROJECT_NAME
 # `make slot-acquire serve` が既定ポート・既定 DB のままサイレントに起動してしまう。
 LOAD_SLOT = set -a; if [ -f .gobp-db-slot ]; then . ./.gobp-db-slot; fi; set +a
 
-# イメージビルド時、mise は GitHub Releases API でツールを解決する。未認証 60 req/hour（IP 単位）は
-# ビルド 1 回分に足りず 403 で落ちるため、ホストの gh からトークンを借りる。
+# ホストの gh からトークンを借りる理由は
+# docs/maintenance/local-environment.md「Image builds borrow the host's GitHub token」参照。
 LOAD_GH_TOKEN = export GITHUB_TOKEN="$${GITHUB_TOKEN:-$$(gh auth token 2>/dev/null || true)}"
 
 # 起動対象は常にサービス名で明示するため、profile 指定は対象を絞る用途ではなく有効化のためだけに置く
@@ -39,11 +37,8 @@ COMPOSE_APP = $(LOAD_SLOT); $(DB_SLOT_ENV); $(LOAD_GH_TOKEN); docker compose -p 
 # 検出が黙って外れたまま共有インフラを触ることになる。
 DB_SLOT_ENV = eval "$$(go run ./cmd/ db-slot env || echo 'exit 1')"
 
-# 共有インフラの稼働中コンテナを作り直させないフラグ。compose の config-hash は bind mount の source と
-# build context を解決後の絶対パスで含むため、同一コミットの checkout 同士でもハッシュは一致せず、
-# 既定のままだと共有インフラを触るたびに他 checkout の稼働ごと作り直してしまう。
-# 渡すのは worktree のときだけ（判定は db-slot が持つ）。単一 checkout には奪い合う相手が居らず、
-# compose 本来の「up は定義変更へ再収束する」契約を捨てる理由がないため空になる。独立した clone を
-# 複数持つなどこの判定で拾えない構成では、`make infra-up INFRA_NO_RECREATE=--no-recreate` のように
-# 明示する（明示された値は無条件に優先し、db-slot の判定へは落とさない）。
+# 共有インフラの稼働中コンテナを作り直させないフラグ。config-hash が checkout ごとに一致しない
+# 理由は docs/maintenance/db-worktree-pool.md「Re-creation of the infra layer」参照。
+# 渡すのは worktree のときだけで（判定は db-slot）、単一 checkout では空。この判定で拾えない構成は
+# `make infra-up INFRA_NO_RECREATE=--no-recreate` と明示する（明示値は db-slot の判定へ落とさない）。
 INFRA_NO_RECREATE_SH = $(if $(filter undefined,$(origin INFRA_NO_RECREATE)),$${INFRA_NO_RECREATE},$(INFRA_NO_RECREATE))

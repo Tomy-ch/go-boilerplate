@@ -12,7 +12,7 @@
 *.md
 
 # -------------------------
-# Docs生成物
+# Docs（Docker ビルドコンテキストには不要）
 # -------------------------
 docs/
 
@@ -23,7 +23,7 @@ docs/
 .air.toml
 .lefthook.yaml
 .golangci*.yaml
-.markdownlint.yaml
+.markdownlint-cli2.yaml
 .octocov.yaml
 
 # -------------------------

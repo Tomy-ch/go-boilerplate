@@ -13,7 +13,7 @@
 |ターゲット|ベースイメージ|用途|
 |---|---|---|
 |`builder`|`golang:1.26.5-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
-|`runtime`|`alpine:3.23`|本番実行用コンテナ（非 root ユーザー `app`）。command override でマイグレーションも実行|
+|`runtime`|`alpine:3.24`|本番実行用コンテナ（非 root ユーザー `app`）。command override でマイグレーションも実行|
 |`tooling`|`golang:1.26.5-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
 
 ## runtime
@@ -53,6 +53,5 @@ api_server:
 
 ## 注意点
 
-- 本番イメージはベースイメージのダイジェストを固定して再現性を確保すること
 - `tooling` ターゲットはツールを `mise.toml`（バージョンの SSOT）で pin されたバージョンで install し、ローカルと CI のバージョンを揃える
 - すべてのターゲットで作業ディレクトリは `/app`

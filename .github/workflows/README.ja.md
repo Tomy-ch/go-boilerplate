@@ -308,7 +308,7 @@ OSV ゲートの深刻度は advisory 自身の評価を使い、無ければ os
 
 そこで各 guard は補集合側（補完するフィルタを写した `paths-ignore` / `branches-ignore`）で走り、同じ context を即時 success として報告します。1 つの pull request で両方が走ることはあります（`paths` は変更ファイルの**いずれか**が一致すれば発火し、`paths-ignore` は**いずれか**が一致しなければ発火するため）。それでも安全なのは、GitHub が同じ名前で報告する全チェックの通過を要求するからで、空振りが本物の判定を代替することはありません。
 
-**この写しが正しさの根拠のすべてであり、それを検査する仕組みはありません。** スキャナ側に `paths` を足して guard 側の `paths-ignore` を足し忘れると、まさにそのパスを変更した pull request でデッドロックが再発します。対で編集してください。
+`make required-check-lint` は、required context ごとに本体のジョブと guard のジョブがちょうど 1 件ずつあること、および guard の job id が ruleset の要求する context であることを検査します。**見えないのは写しのほうで、そこが正しさの根拠のすべてです。** スキャナ側に `paths` を足して guard 側の `paths-ignore` を足し忘れると、まさにそのパスを変更した pull request でデッドロックが再発します。対で編集してください。
 
 #### Go モジュールの cooldown
 

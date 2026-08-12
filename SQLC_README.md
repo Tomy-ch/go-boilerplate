@@ -26,7 +26,7 @@ sql:
 
 In `version: "2"`, definitions are placed under **`sql:` instead of `packages:`**.
 
-## SQL Section
+## [SQL Section](https://docs.sqlc.dev/en/latest/reference/config.html#sql)
 
 ### engine
 
@@ -54,7 +54,7 @@ You can specify one of the following:
 
 ### queries
 
-Used to **parse SQL queries and generate Go code**.
+Used to **parse SQL queries and generate Go code**. Points at the DML path.
 
 - Can point to a single SQL file or a directory
 
@@ -204,7 +204,7 @@ gen:
 
 ### `output_batch_file_name`
 
-Customizes the filename for batch-related generated code (default: `batch.go`).
+Customizes the filename for batch-related generated code (default: `batch.go`). Emitted only when a query carries a batch annotation (`:batchexec` / `:batchmany` / `:batchone`).
 
 ## 10. Build Tags & JSON Case Style
 
