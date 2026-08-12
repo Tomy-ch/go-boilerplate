@@ -124,8 +124,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     paths: [
       // ドメイン語彙の唯一の占有者。product と order の双方から使われるが撤去は一括なので、
       // 最初の利用者である product 側に置けば足りる。非サンプルの import 元は存在しない。
-      // `internal/domain/lexicon` 自体は入場基準を述べる README ごと残し、占有者ゼロで次の語を待つ
-      // 器になる（器を消すと、複数集約から使われる業務値オブジェクトの置き場が規約ごと失われる）。
+      // `internal/domain/lexicon` 自体は入場基準を述べる README ごと残り、占有者ゼロになる。
       "internal/domain/lexicon/money",
       "internal/controller/job/productimagegc",
       "internal/domain/product/status",
@@ -233,7 +232,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
   order: {
     description: "サンプル 購入 API（POST /v1/purchases・CommandService 正例 / GET /v1/purchases/shippable・単一集約 Domain Service 正例。フルスタック）",
     paths: [
-      // DB スキーマ（既存スタブ）
+      // DB スキーマ
       "database/migrations/000012_create_purchase_statuses.up.sql",
       "database/migrations/000012_create_purchase_statuses.down.sql",
       "database/migrations/000013_create_purchases.up.sql",
@@ -310,6 +309,20 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/PurchaseStatusBreakdownResponse.yaml",
       // spec
       "docs/spec/purchase",
+    ],
+  },
+
+  cart: {
+    description:
+      "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）。現時点は spec のみで、実装が入るたびに paths を追記する",
+    paths: [
+      "database/migrations/000016_create_carts.up.sql",
+      "database/migrations/000016_create_carts.down.sql",
+      "database/migrations/000017_create_cart_items.up.sql",
+      "database/migrations/000017_create_cart_items.down.sql",
+
+      // spec
+      "docs/spec/cart",
     ],
   },
 

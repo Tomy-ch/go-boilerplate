@@ -1782,6 +1782,8 @@
 "storage/README.md" = "2026-08-12"
 "storage/seed/.gitkeep" = "2026-08-12"
 "storage/seed/products/.gitkeep" = "2026-08-12"
+"docs/spec/cart/domain.md" = "2026-08-12"
+"docs/spec/cart/usecase.md" = "2026-08-12"
 "database/migrations/000010_create_products.up.sql" = "2026-08-12"
 "database/dml/repository/product/insert_product.sql" = "2026-08-12"
 "database/dml/repository/product/update_product.sql" = "2026-08-12"
