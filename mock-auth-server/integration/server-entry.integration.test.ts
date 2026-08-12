@@ -1,7 +1,5 @@
-// server-entry.integration.test.ts は、コンテナが実際に起動するエントリポイント（src/server.ts）を
-// 子プロセスとして走らせて検証する。src/**.test.ts は app.fetch を直接叩くため、エントリ自身
-// （本番拒否ガード・待ち受け開始）は一度も実行されない。カバレッジ計測の対象外に置いている代わりに、
-// 落ちてはならない振る舞いをここで固定する。
+// server-entry.integration.test.ts は src/server.ts を子プロセスとして起動し、本番拒否ガードと
+// 通常起動時の応答を検証する（カバレッジ対象外にしている理由は README の Tests 節）。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

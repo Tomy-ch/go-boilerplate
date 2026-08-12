@@ -143,6 +143,8 @@ These are technically OpenAPI **response objects** (they carry `description` + `
 |`Forbidden403`|403|`ErrPermissionDenied`|auth middleware|
 |`NotFound404`|404|`ErrNotFound`|missing resource|
 |`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted` (delete) or unique-violation `23505` (create/update, e.g. duplicate email)|
+|`PayloadTooLarge413`|413|`ErrPayloadTooLarge`|usecase validation of an upload that exceeds the size limit|
+|`UnsupportedMediaType415`|415|`ErrUnsupportedMediaType`|usecase validation of a disallowed `Content-Type`|
 |`UnprocessableEntity422`|422|`ErrValidation`|domain validation the OpenAPI schema does not catch (e.g. email format)|
 |`TooManyRequests429`|429|`ErrTooManyRequests`|rate limiting|
 |`ClientClosedRequest499`|499|`ErrCanceled`|client disconnect mid-request|

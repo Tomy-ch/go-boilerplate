@@ -24,8 +24,7 @@ export type MermaidDiagramProps = {
  * 要素として組み込む経路を持ちません。`securityLevel: "strict"` により、図の定義に書かれた
  * HTML と script は実行されません。
  *
- * 描画できない図は定義をそのまま出します。mermaid の文法誤りは書き手にしか直せず、図が
- * 消えるだけでは何が起きたのか読み手にも書き手にも伝わりません。
+ * 描画できない図は定義をそのまま出す（README 参照）。文法誤りは書き手にしか直せないため。
  */
 export function MermaidDiagram({ code }: MermaidDiagramProps) {
   const id = toElementId(useId());

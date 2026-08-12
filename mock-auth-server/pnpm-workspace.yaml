@@ -6,9 +6,9 @@ packages:
   - "."
 
 # ----- 時間差防御 -----
-# 公開直後の版を解決対象から外す。scripts / docs-viewer と窓を揃える（pnpm は分指定。7 日 = 10080 分）。
+# 公開直後の版を解決対象から外す（pnpm は分指定。7 日 = 10080 分）。窓の設計は docs/design/security.md。
 minimumReleaseAge: 10080
-# 緊急のセキュリティ修正は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+# 緊急のセキュリティ修正は特定バージョンだけを一時的に例外化する（package@version 必須。パッケージ名だけの例外は禁止）。
 minimumReleaseAgeExclude: []
 # 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
@@ -37,7 +37,7 @@ blockExoticSubdeps: true
 trustPolicy: no-downgrade
 # 公開から180日を過ぎた版は provenance 情報不足だけでは拒否しない。
 trustPolicyIgnoreAfter: 259200
-# provenance の後退は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+# provenance の後退も特定バージョンだけを一時的に例外化する（package@version 必須。パッケージ名だけの例外は禁止）。
 trustPolicyExclude: []
 
 # ----- 依存の差し替え -----

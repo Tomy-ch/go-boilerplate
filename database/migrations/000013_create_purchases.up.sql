@@ -37,7 +37,7 @@ COMMENT ON COLUMN purchases.delivered_at IS '配達日時';
 COMMENT ON COLUMN purchases.created_at IS '作成日時';
 COMMENT ON COLUMN purchases.updated_at IS '更新日時';
 
--- 購入履歴一覧（GET /v1/purchases）のユーザー別 keyset ページネーション用複合インデックス。
+-- ユーザー別の購入履歴一覧を keyset ページネーションするための複合インデックス。
 -- WHERE user_id = $1 ORDER BY ordered_at DESC, id DESC を index range scan で処理する
 -- （FK 制約は参照列に索引を張らないため明示的に追加する）。
 CREATE INDEX purchases_user_id_ordered_at_id_idx

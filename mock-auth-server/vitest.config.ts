@@ -20,9 +20,8 @@ export default defineConfig({
         "src/server.ts",
       ],
       // text だけに絞る。HTML を出すとディスクへ書き出したものを .gitignore で面倒見る話に
-      // なるが、公開する consumer がまだ無い。scripts / docs-viewer と同じ判断。
+      // なるが、公開する consumer がまだ無い。
       reporter: ["text"],
-      // node --test --experimental-test-coverage 時代の閾値をそのまま引き継ぐ。
       // 母数を判定モジュールへ絞ってあるぶん、100% は「網羅せよ」ではなく「検査されない分岐を
       // 残さない」を意味する。
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },

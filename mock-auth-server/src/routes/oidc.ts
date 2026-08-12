@@ -1,6 +1,4 @@
-// oidc.ts は OAuth2 / OIDC 標準エンドポイント（/oidc/*）を提供する。
-// authorize（Authorization Code Flow + PKCE S256）・token（code 単回消費 + PKCE 検証で access/id token 発行）。
-// userinfo（Bearer access token 必須・whitelist claim）・logout（RP-Initiated）を実装する。
+// oidc.ts は OAuth2 / OIDC 標準エンドポイント（/oidc/*: authorize・token・userinfo・logout）を提供する。
 import { Hono } from "hono";
 import * as zod from "zod";
 import { randomBytes } from "node:crypto";
@@ -86,7 +84,7 @@ oidcRoutes.get("/oidc/authorize", (c) => {
   return c.redirect(url.toString(), 302);
 });
 
-// tokenBodySchema は /oidc/token の form-urlencoded 入力を runtime 検証する（zod I/O 検証）。
+// tokenBodySchema は /oidc/token の form-urlencoded 入力を検証する。
 const tokenBodySchema = zod.object({
   grant_type: zod.string(),
   code: zod.string(),
@@ -124,8 +122,7 @@ oidcRoutes.post("/oidc/token", async (c) => {
   }
 
   const accessToken = await issueAccessToken(config, record.subject, record.scope);
-  // ID Token は openid スコープを要求された認可にだけ返す。openid を含まない認可は OAuth2 の
-  // 認可であって認証ではないため、要求されていない本人性の主張を渡すことになる。
+  // openid を含まない認可は認証でなく認可のため、id_token（本人性の主張）は返さない。
   const idToken = record.scope.split(" ").includes("openid")
     ? await issueIdToken(config, record.subject, record.nonce, record.clientId)
     : undefined;

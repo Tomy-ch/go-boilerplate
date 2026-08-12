@@ -1,5 +1,5 @@
 -- 一覧・検索・ページネーションの動作を確認できる程度の母数を持たせるための一般ユーザー。
--- 作成日時は既存 10 件の最古（2022-01-01）と最新（2025-06-01）の内側に収める。並び順を
+-- 作成日時は既存 10 件の最古（2022-01-01）と最新（2025-04-01）の内側に収める。並び順を
 -- created_at の降順で見るため、外側へ出ると先頭・末尾に来るユーザーが入れ替わる。
 INSERT INTO users (id, first_name, last_name, email, phone, prefecture_id, city, street, building, postal_code, deleted_at, created_at, updated_at) VALUES
 ('c23845a3-1bd6-5cc9-9aec-c6e824c65a17', 'Taro', 'Yamada', 'taro.yamada@example.com', '090-1111-2233', '101caa1e-84e7-4ceb-9108-50d40b6be1a3', '渋谷区', '1-2-3', '渋谷第一ビル 5F', '150-0002', NULL, '2022-02-01T00:00:00', '2024-05-01T00:00:00') ON CONFLICT (id) DO NOTHING;

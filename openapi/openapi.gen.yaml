@@ -7,15 +7,12 @@ info:
     url: https://x.com/TomyC258460
   version: 2.2.0
   description: |
-    This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
-    It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
+    Reference specification for the sample API (users, products, purchases). It exercises every layer
+    of the Onion Architecture end to end: cursor and offset pagination, creation and partial update,
+    soft delete, idempotency keys, and role-based authorization.
 
-    The project is structured around domain-driven principles, with clean separation between interfaces,
-    use cases, domain entities, and infrastructure. All handlers are generated from the OpenAPI specification
-    using oapi-codegen, and strict typing is enforced across the system.
-
-    This API is intended as a production-ready boilerplate that balances performance,
-    flexibility, and developer experience.
+    Handlers (oapi-codegen) and the published reference documentation are both generated from this
+    file, so every endpoint change starts here.
   license:
     name: MIT License
     url: https://opensource.org/licenses/MIT
@@ -719,7 +716,7 @@ paths:
       description: |
         指定された UUID に該当する商品の属性を部分更新します。admin のみ実行できます（非 admin は 403）。
         送信されたフィールドのみを更新し、未送信のフィールドは現在値を据え置きます。
-        description / stockWarningThreshold / publishedAt / imagePath は null を明示するとクリアします。
+        description / stockWarningThreshold / publishedAt / images は null を明示するとクリアします。
         公開日時そのものを更新対象とするため、取得系と異なり未公開商品も更新できます。
         version が DB の現在値と一致しない場合は他者の更新と競合したものとして 409 を返します。
         409 は再送では解消しないため、クライアントは再取得してから送り直してください。

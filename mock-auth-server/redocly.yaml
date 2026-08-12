@@ -1,4 +1,4 @@
-# Redocly 設定 / lint ルールセット（mock-auth-server ローカル）。`npm run lint:oapi` で openapi/openapi.yaml を検証する。
+# Redocly 設定 / lint ルールセット（mock-auth-server ローカル）。`pnpm run lint:oapi` で openapi/openapi.yaml を検証する。
 # ルートの redocly.yaml を踏襲しつつ、OAuth2 / OIDC の実ワイヤ形式に合わせて 3 点だけ調整している。
 extends:
   - recommended
@@ -9,7 +9,7 @@ rules:
   operation-operationId-unique: error
   operation-summary: error
   operation-description: off
-  # OAuth の authorize / logout は 302 リダイレクト、keys/rotate は 501 スタブで 2xx を持たないため解除する。
+  # OidcAuthorize は 302 リダイレクトのみで 2xx を持たないため解除する。
   operation-2xx-response: off
   operation-4xx-response: off
   no-unused-components: error
