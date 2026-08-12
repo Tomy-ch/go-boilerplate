@@ -20,6 +20,7 @@ import (
 )
 
 // newProductWithImages は、指定した画像を持つ商品エンティティを構築します。
+// 画像以外の属性は固定値で、画像の入れ替えだけを差分にできます。
 func newProductWithImages(t *testing.T, id uuid.UUID, images []domainproduct.Image) *domainproduct.Product {
 	t.Helper()
 
@@ -43,7 +44,6 @@ func newProductWithImages(t *testing.T, id uuid.UUID, images []domainproduct.Ima
 	return entity
 }
 
-// newImage は、テスト用に商品画像を構築します。
 func newImage(t *testing.T, salt, path string, sortKey int) domainproduct.Image {
 	t.Helper()
 	return domainproduct.NewImage(
