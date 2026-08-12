@@ -141,11 +141,7 @@ For each entry in `uncurated_raw`:
 
 1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).
 2. Apply the P1–P7 positive criteria and N1–N4 negative criteria from `readme-review`.
-3. Compute the verdict using `readme-review`'s thresholds:
-   - **`manual-worthy`** — positive ≥ 3 AND no negative trigger
-   - **`borderline`** — positive 1–2 AND no negative trigger
-   - **`not-yet-manual-grade`** — N2 (Stub) or N3 (Index-only) triggered
-   - **`out-of-scope-for-portal`** — N1 (Pure API ref) or N4 (Operational ref) triggered
+3. Compute the verdict using `readme-review`'s thresholds, into one of the four result classes listed under *Key Assumptions* above.
 
 4. For each file, record:
    - The verdict

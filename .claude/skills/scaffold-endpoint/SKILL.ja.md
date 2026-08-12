@@ -23,9 +23,9 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 | モード | トリガ | 上流フェーズ (Phase 1–4) | コア (Phase 5–7) |
 | --- | --- | --- | --- |
 | **A. idea-first** | アイデア / 要件から開始。`docs/spec/<feature>/` が無い、または `domain.md`/`usecase.md` を欠く | **実行** — 明確化 → 探索 → 設計 → 入力ドラフト | 実行 |
-| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path — 従来 scaffold-endpoint と後方互換） | 実行 |
+| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path） | 実行 |
 
-モード B は従来の挙動そのもの。有効な入力を既に持つユーザーに上流フェーズを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこが上流フェーズの埋める穴。
+有効な入力を既に持つユーザーに上流フェーズを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこが上流フェーズの埋める穴。
 
 ## 読み書き範囲
 

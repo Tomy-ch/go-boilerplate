@@ -322,11 +322,9 @@ the path you expect** (controller → usecase → infrastructure, with the SQL y
 code alone does not prove the request reached the layer you changed; a wrong-but-plausible route
 produces the right status for the wrong reason.
 
-**Green CI is not a substitute for this.** A previous run merged a change whose documented API
-contract was wrong — it claimed 409 where the running system returns 401, because authentication
-rejects the caller before the usecase is ever reached. Five review lenses and 29 CI checks passed,
-because every one of them was static analysis or a test that stopped at the database layer. One real
-HTTP request exposed it immediately.
+**Green CI is not a substitute for this.** Review lenses and CI checks are static analysis or tests
+that stop at the database layer, so a documented status code that the middleware never lets the
+request reach passes all of them. One real HTTP request settles it.
 
 When runtime verification cannot run at all, there are two honest options and no third:
 
@@ -364,9 +362,8 @@ a follow-up comment on an existing issue over a new one — the issue count is i
 duplicate buries the original.
 
 **Verify a finding against the running system before filing it.** A finding derived purely from
-reading code can be wrong in a way static review cannot catch: an earlier run filed an issue claiming
-withdrawn users could still call several endpoints, when middleware in fact rejected them all long
-before the code that had been inspected. That issue had to be closed as not-planned. Step 8's runtime
+reading code can be wrong in a way static review cannot catch — most often because a layer outside
+the one being read (middleware, DI wiring, the database) already handles the case. Step 8's runtime
 stage is usually enough to check.
 
 Finally, record in a PR comment any call not already visible in a commit message or the PR

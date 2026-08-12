@@ -23,12 +23,12 @@
 - `internal/config/model.go` — Config サブシステム一覧（private フィールド命名）
 - `internal/config/config.go` — `New()` 本体（マッピングパターン）、既存 getter（命名規約）
 - `internal/config/config_testing_mock.go` — expected 値変数 + mock setter パターン
-- `env/.env`（local 既定）, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd` — 環境別値の配置
+- `env/.env`（local 既定）, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast` — 環境別値の配置
 - `env/README.md`, `env/README.ja.md` — テーブル形式とサブシステム節名
 
 **書き込み（承認後のみ）**:
 
-- 上記 9 ファイル。各ファイル最小編集（1 箇所追加）
+- 上記のファイル。各ファイル最小編集（1 箇所追加）
 
 **触らない**:
 
@@ -133,7 +133,7 @@
 
 | テストファイル | 更新内容 |
 | --- | --- |
-| `internal/config/config_test.go` | `TestNewConfig` の期待値 `&Config{...}` リテラルに該当 sub-struct で 1 行追加。値は `config_testing_mock.go` で定義した `expected*` 変数を使用 |
+| `internal/config/config_test.go` | `TestNew` の期待値 `&Config{...}` リテラルに該当 sub-struct で 1 行追加。値は `config_testing_mock.go` で定義した `expected*` 変数を使用 |
 | `internal/config/model_test.go` | `TestGetterMethods` の該当サブシステム `t.Run` 配下に `t.Run("FieldName", func(t *testing.T) { t.Parallel(); require.Equal(t, expectedValue, sub.FieldName()) })` を追加 |
 | `internal/config/config_testing_mock_test.go` | `TestMockConfigForTest` の期待値 `&Config{...}` リテラルに該当 sub-struct で 1 行追加 |
 
@@ -141,7 +141,7 @@
 
 ### env ファイル
 
-`env/.env`（local 既定）, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd` それぞれで:
+`env/.env`（local 既定）, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast` それぞれで:
 
 - セクションコメント（例: `# Application`）を見つける
 - 該当セクション下に新変数行を追記（整列を維持）
@@ -172,15 +172,15 @@
   per-env 値: local=true / ci=true / dev=false / stg=false / prd=false
   テストヘルパー: mock のみ
 
-修正対象 (12 ファイル):
+修正対象:
   - internal/config/envspec.go (Application 構造体に 1 行追加)
   - internal/config/model.go (ApplicationConfig 構造体に 1 行追加)
   - internal/config/config.go (New() マッピング + Getter 追加)
   - internal/config/config_testing_mock.go (expected 値 + setter 追加)
-  - internal/config/config_test.go (TestNewConfig 期待値構造体に 1 行追加)
+  - internal/config/config_test.go (TestNew 期待値構造体に 1 行追加)
   - internal/config/model_test.go (TestGetterMethods に t.Run 追加)
   - internal/config/config_testing_mock_test.go (TestMockConfigForTest 期待値構造体に 1 行追加)
-  - env/.env, .env.ci, .env.dev, .env.stg, .env.prd (各 1 行追加)
+  - env/.env, .env.ci, .env.dev, .env.stg, .env.prd, .env.dast (各 1 行追加)
   - env/README.md, env/README.ja.md (Application 表に行追加)
 
 説明の補完:
@@ -201,10 +201,10 @@
 2. `model.go`
 3. `config.go`（マッピング + getter）
 4. `config_testing_mock.go`（expected 値変数 + mock setter）
-5. `config_test.go`（TestNewConfig リテラル — カバレッジ維持）
+5. `config_test.go`（TestNew リテラル — カバレッジ維持）
 6. `model_test.go`（TestGetterMethods t.Run — カバレッジ維持）
 7. `config_testing_mock_test.go`（TestMockConfigForTest リテラル — カバレッジ維持）
-8. env ファイル（各 1 Edit: `env/.env`（local 既定）, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`）
+8. env ファイル（各 1 Edit: `env/.env`（local 既定）, `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast`）
 9. `env/README.md` → `env/README.ja.md`
 
 各 edit 後に成功確認（`Edit` ツールが成否を返す。失敗時は停止して報告）。
@@ -240,7 +240,7 @@ mock + テスト更新を opt-out した場合を除き、カバレッジ低下�
 
 CLAUDE.md / AGENTS.md の "Exception: Skill Execution" により、本スキル実行中は AI Modification Scope の制約が緩和される。スコープ:
 
-- 上記 9 ファイル（またはユーザーが確認したサブセット）
+- 上記のファイル（またはユーザーが確認したサブセット）
 
 保護対象:
 

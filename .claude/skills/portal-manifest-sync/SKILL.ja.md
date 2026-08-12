@@ -121,11 +121,8 @@ pair_drift を残したまま entry を登録すると portal navigation が壊�
 
 1. 英語 README を読み込む（`*.ja.md` sibling は Step 2 プリフライトで存在保証済み）
 2. `readme-review` の P1〜P7（positive）/ N1〜N4（negative）を適用
-3. `readme-review` の閾値で判定:
-   - **`manual-worthy`** — positive ≥ 3、negative トリガなし
-   - **`borderline`** — positive 1〜2、negative トリガなし
-   - **`not-yet-manual-grade`** — N2（Stub）/ N3（Index-only）トリガ
-   - **`out-of-scope-for-portal`** — N1（Pure API ref）/ N4（Operational ref）トリガ
+3. `readme-review` の閾値で判定し、上記「重要な前提」に列挙した 4 クラスのいずれかに分類する。
+
 4. 各ファイルに対して記録:
    - 判定
    - 1 行の根拠（manual-worthy / borderline では満たした positive 基準、それ以外ではトリガした negative）

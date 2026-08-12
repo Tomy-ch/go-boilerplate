@@ -260,9 +260,10 @@ Go changes at minimum build and vuln-scan clean (`go build ./...` + `govulncheck
 npm changes — confirm the advisory is actually resolved and the lockfile is clean:
 
 ```sh
+cd <dir> && npm audit            # the patched CVE is no longer reported
 ```
 
-`pnpm audit` is the source of truth for the **real fix floor**, and it can differ from the user's list. Two cases to surface rather than silently resolve:
+`npm audit` is the source of truth for the **real fix floor**, and it can differ from the user's list. Two cases to surface rather than silently resolve:
 
 - **A higher fix floor than the advisory named.** The package may carry a *second* advisory whose first-fixed version is higher than the one the user pasted (e.g. the list says "fixed in 2.0.5", but `npm audit` still flags a separate moderate advisory affecting `2.0.0 - 2.0.9`, fixed only in `2.0.10`). Do not silently jump to that higher version if it is `too-new` — surface the conflict and whether the vulnerable path is even reachable (e.g. a WebSocket-only DoS on a server that registers no WS handler is likely non-applicable), and let the user opt into the too-new full fix or accept the partial one.
 - **A residual advisory on a deferred/skipped package** — expected; report it as still-open with the reason (deferred by cooldown / skipped by the user), not as a failure.

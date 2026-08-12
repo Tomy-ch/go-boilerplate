@@ -29,21 +29,10 @@ Do NOT use it to work an issue that already exists (`impl-issue`), to review a d
 
 ## Why this exists
 
-Three claims in a recent issue were wrong at the moment it was written, and every one of them was
-statically checkable:
-
-| Claim | Reality |
-| --- | --- |
-| "Authentication passes, so this is not a 401" | Middleware rejects the caller with 401 well before the layer the issue discussed |
-| "That event has no consumer yet" | A consumer had been merged already |
-| "Option B costs one extra read on the hot path" | Both options cost exactly one read; there was no difference to trade off |
-
-Nobody had looked outside the layer they were thinking about. A second issue was later filed on the
-same mistake — it claimed several endpoints were unguarded when middleware rejected them all — and had
-to be closed as not-planned.
-
-That is the failure this skill is shaped around. Reading "the relevant layer" is not the same as
-tracing the path.
+An issue's factual claims are usually wrong for one reason: nobody looked outside the layer they were
+thinking about. A status code, an event's consumer, the cost of an option on the hot path — each is
+statically checkable, and each is decided somewhere the author never opened. That is the failure this
+skill is shaped around. Reading "the relevant layer" is not the same as tracing the path.
 
 ## Step 0 — Confirm two things (one `AskUserQuestion`)
 
@@ -172,9 +161,9 @@ This is the same stage `impl-issue` runs before merging, for the same reason: a 
 by an unexpected path looks identical to the right one.
 
 ```bash
-make slot-acquire && make serve            # API on 8080+N, mock-auth on 4000+N
+make slot-acquire && make serve            # API on 8080+N, mock-auth on 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')

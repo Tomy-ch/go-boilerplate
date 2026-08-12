@@ -15,7 +15,7 @@
 - 各外部参照は `uses: owner/repo[/sub]@<40桁hex sha> # <tag>` で固定される。**バージョンの正は末尾コメントの tag** であり、`@<sha>` 側ではない。
 - `.github/actions-pin.toml` が lockfile: `"owner/repo@<tag>" = "<sha>"`（`apply` の SSOT・`resolve` が再生成）。
 - `make pin-actions-resolve` — 各 `uses:` のコメント tag を読み、`git ls-remote` で commit SHA へ解決（annotated tag は commit へ deref）し、隔離を適用して lockfile を再生成。env `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14）でゲートを制御。moving タグの最新 SHA が除外期間内のときは**既存ピンを維持**する（moving タグに対する組み込みのステップバック）。
-- **`resolve` がゲートに使う経過日数は、リリースの `published_at` と解決先 commit の日時のうち新しい方**（理由は `docs/design/security.md` の Build inputs 節）。本スキルへの影響: **`published_at` が古いことは、候補が aged であることを意味しなくなった。** 2026-07-31 時点では `anthropics/claude-code-action@v1` がこれに当たる — `v1` のリリース公開は 2025-08-26 だが tag の head commit は 2026-07-25 なので、リリースが 1 年近く前でも `resolve` は隔離する。
+- **`resolve` がゲートに使う経過日数は、リリースの `published_at` と解決先 commit の日時のうち新しい方**（理由は `docs/design/security.md` の Build inputs 節）。本スキルへの影響: **`published_at` が古いことは、候補が aged であることを意味しなくなった** — リリース日は古くても head commit が新しい moving タグは、それでも隔離される。
 - `make pin-actions-apply` — lockfile を元に各 `uses:` の `@<sha>` を書き換え（`# <tag>` は保持）。全対象ファイルを読み切って可否を確定させて**から**書き込むため、中断しても作業ツリーは変更されない。
 - `make pin-actions-check` — 書き換えなしで lockfile と一致するか検証（CI / hook 用）。drift 以外にも fail-closed で落ちる: lockfile の解釈できない行、キーの重複、孤児エントリ、pin できない記法で書かれた `uses:` はいずれもエラー（手順 7 参照）。
 - 走査対象は `.github/workflows/*.{yml,yaml}` に加え `.github/actions/**/action.{yml,yaml}` を**再帰的に**辿るため、通常の配置より 1 階層深く置かれた composite action も他と同様に固定される。

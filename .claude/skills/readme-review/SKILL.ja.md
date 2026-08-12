@@ -37,18 +37,12 @@
 
 ### キーワード更新ログ
 
-Step 2 のキーワード集合は、`portal-manifest-sync` の実行で false-negative を観測するたびに拡張します。追加基準:
+Step 2 のキーワード集合は、`portal-manifest-sync` の実行で false-negative が観測されるたびに拡張する常設ルールです。追加基準:
 
 - 本当に manual 品質の README が、当初リストにない言い換えを使っている（例: `Conventions` は実質的に Rules セクション）
 - その言い換えが既存 manifest 登録エントリの少なくとも 1 件、またはユーザーが明示的に manual-worthy と判断した README に使われている
 
 低品質 README を通すためのキーワード追加はしない。正当な言い換えのスペクトルを取りこぼさないことが目的。
-
-追加済みの例:
-
-- P2: `How It Works`, `Strategy`, `Trigger Strategy`, `Test Strategy`, `Application Policy`
-- P3: `Conventions`, `Naming Convention`, `Naming`, `Policy`
-- P5: `Workflow List`, `Command List`, `File List`, `Module List`
 
 ## 最初のステップ: ターゲット確認
 
