@@ -9,9 +9,25 @@
 | Overview | purpose を 1〜2 段落 |
 | Entity | フィールド一覧（YAML: name / type / required / min/max など） |
 | Cross-field Invariants | 複数フィールドの整合条件（箇条書き） |
-| Behavior Methods | 状態遷移メソッド（YAML: signature / description） |
+| Behavior Methods | 状態遷移メソッド（YAML: signature / behavior、任意で invariants） |
+| Domain Service | エンティティにも値オブジェクトにも属さない規則（YAML: signature / behavior、任意で invariants）。無ければ節ごと省略 |
 | Value Objects | VO 定義（YAML: underlying_type / validation / factory / methods、無ければ省略） |
 | Repository Methods | IF メソッド（YAML: signature / behavior） |
+| Notes | 上の節に収まらない補足（placeholder 定数・エラー写像など）。無ければ節ごと省略 |
+
+`behavior` は自由記述のブロックスカラー（`|`）で、`invariants` はその規則が保証する条件を箇条書きにする。
+古い spec は `behavior` を `description` と書いている（同義。新規は `behavior` に揃える）。
+
+節構成表にない `##` 節を足してよい。ただし足せるのは**ドメインの語彙で書かれた補足**に限る
+（例: `docs/spec/exchange-rate/usecase.md` の `## Caching` は usecase 側の補足節）。HTTP のワイヤ契約は
+依存方向に反するのでドメイン spec には置かない。
+
+### Domain Service を置く条件
+
+置いてよいのは、**どのエンティティ 1 件のメソッドにもなり得ない規則**だけである。「この 1 件はどうか」は
+エンティティのメソッドで、「この集合をどう分けるか」がドメインサービスにあたる。配置先とその admission は
+[`internal/domain/README.md`](../../internal/domain/README.md) が正本で、この spec は形だけを定める
+（実例は [`docs/spec/purchase/domain.md`](../../docs/spec/purchase/domain.md) の `GroupForDispatch`）。
 
 ## 自動派生ルール（spec に書かない）
 
@@ -54,7 +70,23 @@ fields:
 \`\`\`yaml
 - name: TODO
   signature: TODO(arg Type) error
-  description: TODO
+  behavior: |
+    TODO
+  invariants:      # 任意
+    - TODO
+\`\`\`
+
+## Domain Service
+
+\`\`\`yaml
+# 集合についての問いなど、エンティティ 1 件のメソッドになり得ない規則だけを置く。
+# 無ければ節ごと削除。配置規約は internal/domain/README.md。
+- name: TODO
+  signature: TODO(items TODOs) []TODOs
+  behavior: |
+    TODO
+  invariants:
+    - TODO
 \`\`\`
 
 ## Value Objects
@@ -77,4 +109,8 @@ fields:
   signature: TODO(ctx context.Context, ...) (TODO, error)
   behavior: TODO
 \`\`\`
+
+## Notes
+
+- TODO: 上の節に収まらない補足。無ければ節ごと削除
 ```
