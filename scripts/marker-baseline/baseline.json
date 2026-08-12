@@ -72,7 +72,7 @@
   "internal/infrastructure/rdb/repository/README.md": 2,
   "internal/usecase/outbox/README.ja.md": 2,
   "internal/usecase/outbox/README.md": 2,
-  "openapi/openapi.yaml": 9,
+  "openapi/openapi.yaml": 11,
   "README.ja.md": 7,
   "README.md": 7,
   "scripts/premise-lint/rules.test.ts": 20,

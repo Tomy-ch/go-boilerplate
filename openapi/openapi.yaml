@@ -48,6 +48,8 @@ tags:
     description: アプリケーションのバージョン情報。
   - name: metrics
     description: Prometheus メトリクス。
+  # sample-api:begin
+  # サンプルAPI用のタグ
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
@@ -92,6 +94,7 @@ tags:
     description: 購入の配達完了（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
   - name: v1/dashboard
     description: admin ダッシュボードの横断集計（admin のみ・backend 合成/1画面1API・非 admin は 403）。
+  # sample-api:end
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 # ここで設定した認証が全体で適用される。
