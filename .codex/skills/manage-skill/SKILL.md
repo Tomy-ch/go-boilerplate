@@ -1,7 +1,7 @@
 ---
 name: manage-skill
 description: >-
-  Create, update, evaluate, and optimize skills under this repository's `.codex/skills/`, wrapping Anthropic's official `skill-creator` methodology and layering this repo's conventions on top (English-canonical SKILL.md + mandatory `SKILL.ja.md` translation pair, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.codex/skills/`; ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `canonicalize-doc` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
+  Create, update, evaluate, and optimize skills under this repository's `.codex/skills/`, carrying this repo's conventions for them (English-canonical SKILL.md + mandatory `SKILL.ja.md` translation pair, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.codex/skills/`; ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `canonicalize-doc` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
 argument-hint: '[skill-name] [--update|--new|--optimize]'
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, ask the user explicitly, Skill, Agent
 ---
@@ -10,11 +10,11 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, ask the user explicitly, Ski
 
 You have been invoked via `/manage-skill`. Argument string: `$ARGUMENTS`.
 
-This skill authors and maintains skills under `.codex/skills/` for **this** repository. It is a
-thin wrapper: the *methodology* (draft → test → review → improve → optionally optimize the
-description) comes from Anthropic's official `skill-creator` skill, and this file layers the
-repository's own conventions on top so the produced skill fits in alongside `commit`, `new-env`,
-`canonicalize-doc`, and the rest.
+This skill authors and maintains skills under `.codex/skills/` for **this** repository. It carries
+both halves of the job: the methodology (draft → test → review → improve → optionally optimize the
+description) and the repository's own conventions, so the produced skill fits in alongside `commit`,
+`new-env`, `canonicalize-doc`, and the rest. An external methodology plugin, when one is installed,
+supplements it — see Step 0; nothing here depends on that.
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
@@ -83,13 +83,13 @@ Apply the following repository rules whether or not an optional external methodo
   frontmatter. Look at neighbors first (`commit`, `new-env`, `canonicalize-doc`, the `scaffold-*`
   family, the integrator `arch-check` / `back-prop`) and prefer editing/extending an existing skill
   over adding a near-duplicate.
-- Bundled resources (`scripts/`, `references/`, `assets/`) follow the official anatomy when needed.
+- Bundled resources (`scripts/`, `references/`, `assets/`) follow the same layout the existing skills use.
   Keep `SKILL.md` under ~500 lines and push detail into `references/` with clear pointers.
 
 ### 2. Frontmatter conventions (match the existing skills)
 
 - `name`: kebab-case, equal to the directory name.
-- `description`: **one dense paragraph**, English, following the official "pushy" triggering guidance
+- `description`: **one dense paragraph**, English, written to trigger reliably
   (state what it does AND concrete when-to-use contexts, plus explicit *when NOT* to trigger). Study
   the descriptions of `commit` / `new-env` for the density and tone this repo uses — match it.
 - Optional: `argument-hint` and `allowed-tools` when the skill is a `/command` that takes args or runs
@@ -114,8 +114,8 @@ optional here. After the canonical `SKILL.md` is finalized (create) or changed (
 
 ### 5. Eval artifacts stay out of version control
 
-The official process writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and
-viewer output. A sibling of the skill directory would land inside the tracked `.codex/skills/**`.
+Evaluation writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and viewer
+output. A sibling of the skill directory would land inside the tracked `.codex/skills/**`.
 **Override the location**: put the workspace under the repo's gitignored `tmp/` (e.g.
 `tmp/manage-skill/<skill-name>-workspace/`), consistent with this repo's work-artifact convention
 (plans/artifacts live outside git; `tmp/` is ignored). Never commit eval runs, benchmarks, feedback
@@ -164,7 +164,7 @@ workflow, it may supplement this review.
 - `SKILL.ja.md` generated/synced from the canonical `SKILL.md` and in sync.
 - No eval artifacts committed (workspace under gitignored `tmp/`).
 - No hard-protected path touched; only `.codex/skills/**` modified.
-- The user has reviewed outputs (viewer or inline) and is satisfied, per the official loop.
+- The user has reviewed outputs (viewer or inline) and is satisfied.
 - For every new or materially changed skill that is not platform-only, invoke `sync-ai` after local
   validation with this environment as the source. Pass the transfer contract to the receiving
   environment's `manage-skill`. When this invocation is itself the receiving child operation, do
