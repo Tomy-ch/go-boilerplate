@@ -13,7 +13,7 @@ sanitizer 済みの Markdown / HTML を一定の組版 rhythm で表示します
 | `.not-typeset` / `[data-not-typeset]` | 配下を Typeset の適用対象から外す escape hatch です。 |
 | `.typeset-scroll` | 横に収まらない table などを横スクロール可能にする wrapper です。 |
 
-`typeset.css` がこれらを定義する CSS foundation で、Story は `Foundation/Typeset` に置きます。
+`typeset.css` がこれらを定義する CSS foundation です。
 
 ## 利用ケース
 
