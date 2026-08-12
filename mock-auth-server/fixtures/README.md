@@ -8,11 +8,11 @@ Fixed example users for the mock OIDC provider.
 
 An array of example users. It is used only for:
 
-- `GET /test/users` (listing, for a future Login UI)
-- the fallback `subject` when `POST /test/token` is called without one
+- `GET /admin/users` (listing, for a future Login UI)
+- the fallback `subject` when `POST /bypass/token` is called without one
 - the startup log count
 
-`POST /test/token` issues a token for **any** `subject` you pass, so the mock still
+`POST /bypass/token` issues a token for **any** `subject` you pass, so the mock still
 works even if this file is missing or empty (users are treated as `[]`).
 
 ### Schema
