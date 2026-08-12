@@ -2073,3 +2073,4 @@
 "database/seed/000040_purchase_details_09.sql" = "2026-08-12"
 "database/seed/README.ja.md" = "2026-08-12"
 "database/seed/README.md" = "2026-08-12"
+"database/migrations/000013_create_purchases.up.sql" = "2026-08-12"
