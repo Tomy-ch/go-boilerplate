@@ -1,7 +1,6 @@
 /*
- * デザイントークン。nextjs-boilerplate のトークン定義（`tokens/` の生成物）を移植したもので、
- * このリポジトリには生成元が無いため手で保守する。design-system の部品はここで定義した
- * semantic token だけを参照し、部品側に色の直値を持たない。
+ * デザイントークン。design-system の部品はここで定義した semantic token だけを参照し、
+ * 部品側に色の直値を持たない。
  */
 
 @theme {
@@ -34,8 +33,7 @@
   --radius-sm: 0.125rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
-  /* 移植元は Next.js の font loader が注入する Geist を先頭に置く。ここには loader が無いため
-     OS 標準の UI フォントへ寄せる。 */
+  /* font loader を持たないため OS 標準の UI フォントを使う。 */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }

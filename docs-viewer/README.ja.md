@@ -6,7 +6,7 @@
 `docs/portal/docs.json` を読んでカードと本文を描くだけの役割を持ち、内容の SSOT は持ちません。
 
 ビルド成果物は `docs/portal/` 配下にコミットし、GitHub Pages が `docs/` をサイトルートとして
-配信します（ADR 0098）。ビューアーのソースを `docs/` の外へ置くのは、パッケージ定義・lockfile・
+配信します（ADR 0100）。ビューアーのソースを `docs/` の外へ置くのは、パッケージ定義・lockfile・
 `node_modules` を配信ツリーへ混ぜないためです。
 
 ## なぜ別パッケージなのか

@@ -35,7 +35,6 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
           setHighlighted(html);
         }
       })
-      // 強調表示は読みやすさのためのもので、失敗しても本文は素のテキストで読める。
       .catch(() => undefined);
 
     return () => {
