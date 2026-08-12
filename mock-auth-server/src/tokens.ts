@@ -1,5 +1,4 @@
 // tokens.ts は、固定 Profile 方式で access token / id token を発行する。
-// 任意 Claim 注入 API にはせず、再現性のため異常系を固定 Profile として提供する。
 // 署名鍵は keyStore（現署名鍵）から都度取得するため、鍵ローテーション後は新署名鍵で発行される。
 import { SignJWT, jwtVerify, decodeJwt, createLocalJWKSet } from "jose";
 import { generateKeyPairSync, randomUUID } from "node:crypto";

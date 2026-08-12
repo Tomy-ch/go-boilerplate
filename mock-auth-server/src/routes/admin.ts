@@ -8,8 +8,7 @@ import { logEvent } from "../log.ts";
 
 export const adminRoutes = new Hono();
 
-// rotationFailure は rotation 操作の例外を 400 応答ボディへ写像する。RotationError は不正な操作要求
-// なので呼び出し側の誤りとして返し、それ以外は mock 自身の不具合なので握り潰さず投げ返す。
+// rotationFailure は RotationError を 400 応答ボディへ写像し、それ以外は握り潰さず再送出する。
 export function rotationFailure(err: unknown): { error: string; error_description: string } {
   if (err instanceof RotationError) {
     return { error: "invalid_request", error_description: err.message };
@@ -17,11 +16,9 @@ export function rotationFailure(err: unknown): { error: string; error_descriptio
   throw err;
 }
 
-// GET /admin/users は固定 User Fixture の一覧を返す。
 adminRoutes.get("/admin/users", (c) => c.json({ users }));
 
-// POST /admin/reset は揮発ストア（code / session）と鍵ストア（Phase1）を初期化する。
-// fixture は対象外（再起動で初期化）。鍵素材は固定のまま、公開集合・署名鍵の状態のみ Phase1 へ戻す。
+// POST /admin/reset は揮発ストアと鍵ストアを Phase1 へ戻す。fixture は対象外（詳細は README）。
 adminRoutes.post("/admin/reset", (c) => {
   resetAll();
   keyStore.reset();
@@ -29,8 +26,7 @@ adminRoutes.post("/admin/reset", (c) => {
   return c.json({ status: "reset" });
 });
 
-// POST /admin/keys/rotate は宣言的操作（add-key / promote / retire）で署名鍵状態を遷移する。
-// 操作後の鍵状態を返す。不正な操作（未知 / 退役不能 kid・不正遷移）は 400。
+// POST /admin/keys/rotate は宣言的操作で鍵状態を遷移し、結果を返す。不正な操作は 400（詳細は README）。
 adminRoutes.post("/admin/keys/rotate", async (c) => {
   const raw = await c.req.text();
   let json: unknown = {};

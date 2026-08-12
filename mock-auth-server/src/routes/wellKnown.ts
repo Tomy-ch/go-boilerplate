@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { config } from "../config.ts";
 import { keyStore, ALG } from "../keys.ts";
 
-// discoveryDocument は OIDC Discovery 文書を組み立てる。
 // issuer / jwks_uri は Go 側認証が依存する契約のため不変（バイト等価）に保つ。
 function discoveryDocument() {
   return {

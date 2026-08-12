@@ -1,6 +1,4 @@
-// keys.ts は署名鍵ストアを担う。複数の固定 RSA 鍵（kid 付き）を保持し、
-// 「JWKS で公開する集合」と「現署名鍵 1 つ」を分離管理する（鍵ローテーションの再現）。
-// 鍵は keys/*.pem に固定配置され、再起動しても不変（= 発行 Token の再現性）。状態のみ揮発する。
+// keys.ts は署名鍵ストアを担う。複数の固定 RSA 鍵（kid 付き）を保持する。
 import { readFileSync } from "node:fs";
 import { createPublicKey, type KeyObject } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -43,7 +41,7 @@ const materials = new Map<string, KeyMaterial>(
 );
 
 // KeyStore は公開集合と署名鍵の可変状態を管理する。鍵素材そのものは不変で、状態（どれを公開 / 署名するか）だけが動く。
-// 状態遷移は宣言的操作（addKey / promote / retire）で表し、テストが Phase を組み立てる。
+// 状態遷移は宣言的操作（addKey / promote / retire）で表す。
 class KeyStore {
   // publishedKids は JWKS で公開する kid の順序集合。
   private publishedKids: string[] = [PRIMARY_KID];

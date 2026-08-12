@@ -1,10 +1,8 @@
 // middleware.test.ts は dev endpoint を保護する devGate を、最小の Hono アプリへ載せて検証する。
-// 無効時に返すのが 403 ではなく 404 であること（存在そのものを秘匿する）が守りたい契約。
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { devGate } from "./middleware.ts";
 
-// appWithGate は devGate 配下に 1 本だけルートを持つアプリを組み立てる。
 function appWithGate(enabled: boolean): Hono {
   const app = new Hono();
   app.use("/dev/*", devGate(enabled));
