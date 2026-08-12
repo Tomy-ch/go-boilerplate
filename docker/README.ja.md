@@ -12,6 +12,7 @@ docker/
 ├── tools/              # コード生成・ツールランナー用 Dockerfile
 ├── document/           # ドキュメントビューア用 Dockerfile + nginx設定
 ├── garage/             # オブジェクトストレージ用 Dockerfile + 設定 + プロビジョニングスクリプト
+├── elasticmq/          # SQS 互換ブローカーの設定
 ├── mock-auth-server/   # 疑似 OIDC 認証サーバー用 Dockerfile
 └── database/
     ├── sql/            # DB初期化SQL
@@ -25,7 +26,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 
 |層|compose プロジェクト|サービス|
 |---|---|---|
-|**infra**|`gobp-shared`（固定名）— **全 checkout で 1 インスタンス**|`database` / `observability` / `garage`（+ `garage_init`）。補助サービスとツールランナーも `COMPOSE_PROJECT_NAME` の既定により同じプロジェクトで動く|
+|**infra**|`gobp-shared`（固定名）— **全 checkout で 1 インスタンス**|`database` / `observability` / `garage`（+ `garage_init`）/ `elasticmq`。補助サービスとツールランナーも `COMPOSE_PROJECT_NAME` の既定により同じプロジェクトで動く|
 |**app**|`APP_PROJECT` — checkout 毎（`gobp-app-<ディレクトリ名>`、DB スロット保持時は `gobp-wt-N`）|`api_server` / `mock_auth_server`|
 
 infra 層には固定ポートでしか動けないサービスだけが属し、そのためホスト上に 1 つだけ存在します。
@@ -57,6 +58,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
 |`garage`|infra|`dxflrs/garage`|3900, 3902|S3 互換オブジェクトストレージ（S3 API / Web API）|
 |`garage_init`|infra|`docker/garage/Dockerfile`|-|garage のレイアウト / バケット / アクセスキー / 公開配信の許可を one-shot でプロビジョニング（冪等）|
+|`elasticmq`|infra|`softwaremill/elasticmq-native`|9324|SQS 互換のメッセージブローカー（ローカル開発用。テストは in-process の fake を使う）|
 
 DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` / `2010+N` / `2345+N` / `6060+N`）だけで、コンテナ内部のポートは常に固定です。
 
@@ -71,55 +73,24 @@ DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` 
 
 |サービス|Dockerfile / Image|説明|
 |---|---|---|
-|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|redocly-cli|
-|`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|sqlfluff|
+|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|Go のコード生成 / lint / セキュリティ / ドキュメント生成ツール（[一覧](tools/README.ja.md#go_tools)）|
+|`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|OpenAPI バンドル、Markdown / コミットの lint、ポータルのビルド（[一覧](tools/README.ja.md#node_tools)）|
+|`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|SQL の lint（[一覧](tools/README.ja.md#python_tools)）|
 |`er_diagram_generator`|`schemaspy/schemaspy`|ER図生成（SchemaSpy）|
 
 ## server
 
-アプリケーションサーバの Dockerfile です。マルチステージビルドで以下のターゲットを提供します。
-
-|ターゲット|用途|ベースイメージ|
-|---|---|---|
-|`builder`|Goバイナリのビルド|`golang:1.26.5-alpine`|
-|`runtime`|本番実行用コンテナ|`alpine:3.23`|
-|`tooling`|ローカル開発環境|`golang:1.26.5-alpine`|
-
-### runtime
-
-- 非rootユーザー（`app`）で実行
-- `ldflags` でバージョン / リビジョン / ビルド日時を埋め込み
-- `vendor` モードでビルド（`GOPROXY=off`）
-- マイグレーションは同一イメージの command override で実行（`./server migrate-up`）。専用イメージは持たない
-
-### tooling
-
-ローカル開発用に以下のツールを含みます。
-
-|ツール|用途|
-|---|---|
-|`air`|ホットリロード|
-|`dlv`|デバッガ|
-|`golines`|行長制限付き整形|
-|`gofumpt`|gofmt 強化版|
-|`golangci-lint`|Go リンター|
+アプリケーションサーバのイメージです。1 つのマルチステージ Dockerfile が 3 つのターゲットを作ります。`builder`（Go バイナリ）、`runtime`（本番用・非 root。マイグレーションもこの同一イメージを command override で実行するため専用イメージは持たない）、`tooling`（ローカルのホットリロード開発）。ベースイメージと各ターゲットが持つツールは [`server/README.ja.md`](server/README.ja.md) を参照してください。
 
 ## tools
 
-コード生成・バンドル用のツールコンテナです。3つのステージに分かれています。
-
-|ステージ|ベース|含まれるツール|
-|---|---|---|
-|`go_tools`|`golang:1.26.5-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.18.0-alpine`|redocly-cli, js-yaml|
-|`python_tools`|`python:3.14.6-slim`|sqlfluff|
+コード生成と lint 用のツールコンテナです。言語ごとに `go_tools` / `node_tools` / `python_tools` の 3 ステージに分かれています。各ステージが持つツールと用途は [`tools/README.ja.md`](tools/README.ja.md) を参照してください。
 
 ## document
 
 ドキュメントポータル用のコンテナです。
 
-- ベースイメージ: `nginx:1.29-otel`
+- ベースイメージ: `nginx:1.31-alpine`
 - `docs/` ディレクトリ全体をボリュームマウント
 - ポータルアプリは `/portal/` で提供
 - `http://localhost:2001/` にアクセスすると `/portal/` にリダイレクト
@@ -140,6 +111,10 @@ Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクト�
 - **virtual-host 形式のみ。** Garage の web エンドポイントは `Host` ヘッダ（`<bucket>.<root_domain>` または `<bucket>`）からバケットを解決するため、パス形式（`localhost:3902/<bucket>/<key>`）は動きません。macOS と主要ブラウザは `*.localhost` を自前で `127.0.0.1` に解決するので `/etc/hosts` への追記は不要です。解決しない glibc の Linux コンテナ内からは、ヘッダを明示するか（`curl -H 'Host: gobp-local' http://<host>:3902/products/...`）、`/etc/hosts` へ `127.0.0.1 gobp-local.web.garage.localhost` を追記してください
 - 一覧は閉じたままです。web エンドポイントは一覧を返さず、S3 API への匿名 `ListObjects` は署名が無いため拒否されます。オブジェクトキーは UUIDv7 で、ランダムな約 74 ビットにより列挙は非現実的です。ただし残りのビットはミリ秒精度のタイムスタンプであり、キーは opaque ではあっても secret ではありません。このバケットの中身は、キーを知る者に対しては誰でも読めるものとして扱ってください
 - **公開配信の許可はバケット単位であってオブジェクト単位ではありません。** `gobp-local` のすべてのオブジェクトが匿名で読めるようになります。このバケットは商品画像しか持たないため許容していますが、非公開のオブジェクトを置くならバケットを分ける必要があります
+
+## elasticmq
+
+ローカル開発用の SQS 互換ブローカーです（テストは in-process の fake を使います）。ここにあるのは `elasticmq.conf` だけで、キューと DLQ の redrive 設定は起動時にそこから読まれるため、初期化用の one-shot コンテナは持ちません。ElasticMQ は環境変数を展開しないためキュー名は設定ファイルに直書きで、どの `*_QUEUE_URL` と対になるかは [`env/README.ja.md`](../env/README.ja.md) に記載しています。
 
 ## mock-auth-server
 
@@ -184,3 +159,6 @@ SQLリンター（sqlfluff）の設定ファイルです。対象ごとに異な
 - キーワード: 大文字
 - 識別子: 小文字
 - 関数 / リテラル / 型: 大文字
+- 3 ファイルとも `processes = 1`。並列実行すると CPython の `resource_tracker` のバグを踏み、
+  `leaked semaphore` の警告や異常終了が起きるため（[python/cpython#131788](https://github.com/python/cpython/issues/131788)、
+  [#142206](https://github.com/python/cpython/issues/142206)）。pin しているインタプリタで修正されたら見直す

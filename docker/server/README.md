@@ -13,7 +13,7 @@ This Dockerfile defines the application server images. It uses multi-stage build
 |Target|Base Image|Purpose|
 |---|---|---|
 |`builder`|`golang:1.26.5-alpine`|Build the Go binary with `ldflags` (version/revision/build date)|
-|`runtime`|`alpine:3.23`|Production runtime container (non-root `app` user); also runs migrations via command override|
+|`runtime`|`alpine:3.24`|Production runtime container (non-root `app` user); also runs migrations via command override|
 |`tooling`|`golang:1.26.5-alpine`|Local development environment (hot reload + debugging)|
 
 ## runtime
@@ -53,6 +53,5 @@ api_server:
 
 ## Notes
 
-- Production images should pin base image digests for reproducibility
 - `tooling` target installs tools at the versions pinned in `mise.toml` (the version SSOT), keeping local and CI parity
 - Working directory is `/app` for all targets
