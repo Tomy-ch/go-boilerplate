@@ -77,9 +77,7 @@ type fileState struct {
 	applied  []string
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("")
@@ -89,8 +87,7 @@ func main() {
 	}
 }
 
-// run は、mise.toml の version を各種ファイルへ反映します。
-// 基点となるディレクトリの取得手段は、差し替えられるよう引数で受けます。
+// run は、mise.toml の version を各種ファイルへ反映します。getwd は走査の基点の取得手段です。
 func run(getwd func() (string, error)) error {
 	root, err := getwd()
 	if err != nil {
@@ -197,10 +194,8 @@ func dockerfileRule(file, label string, re *regexp.Regexp, version string, count
 	}
 }
 
-// readmeRule は README 中のイメージ記載を書き換える rule を返す。件数の下限は設けない。
-// README は読み物であり、同じイメージを何回書くか・そもそも書くかは記述側の裁量で、
-// 派生プロジェクトが構成を書き換えれば件数は当然変わる。件数を固定すると、実装が
-// mise.toml と揃っていても文章の書き方が変わっただけで abort することになる。
+// readmeRule は README 中のイメージ記載を書き換える rule を返す。件数の下限は設けない —
+// README の記載量は書き手の裁量で変わるため、固定すると文章の書き方が変わっただけで abort する。
 func readmeRule(file, label string, re *regexp.Regexp, version string) rule {
 	return rule{
 		label:   label,

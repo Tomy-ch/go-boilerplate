@@ -5,12 +5,9 @@
 //	bootstrap           タグを作り直し、develop / staging / production を用意してデフォルトブランチを移す
 //	prune-release-notes v0.0.0.md 以外のリリースノートを削除する
 //
-// ラベル・ルールセット・ワークフローの初期化は他の make ターゲットが持つため、
-// 全体の連鎖は setup-repository.mk に残る。ここが持つのは git / gh の手順だけ。
-//
-// 実体が make のレシピではなくここに在るのは、タグの一括削除やデフォルトブランチの
-// 移動を含み、分岐を実地で確かめようとすると本当にリポジトリを壊すしかないため。
-// 手順の組み立てを純粋関数へ寄せ、実行層を runner として差し替え可能にして、テストで固定する。
+// ラベル・ルールセット・ワークフローの初期化と全体の連鎖は setup-repository.mk が持ち、
+// ここが持つのは git / gh の手順だけ。取り消しの効かない操作（タグの一括削除 / デフォルト
+// ブランチの移動）を含むため make のレシピにしない。理由は scripts/README.md の repo-setup 行。
 //
 // git / gh はホストの認証情報を使うため、ツールランナーではなくホストで実行する
 // （cmd/db-slot と同じ扱い）。
@@ -60,8 +57,8 @@ type step struct {
 	allowFail bool
 }
 
-// runner は、手順を実際に走らせる実行層。タグの一括削除や origin への push を伴う
-// bootstrap の手順を、実リポジトリを壊さずに検証できるよう関数値で保持する。
+// runner は、手順を実際に走らせる実行層。中止条件と手順の順序を実リポジトリを壊さずに
+// 検証するための seam（scripts/README.md の Test Strategy「An irreversible step…」）。
 type runner struct {
 	// run は、手順を 1 つ実行する。
 	run func(s step) error
@@ -71,10 +68,8 @@ type runner struct {
 	branchExists func(branch string) bool
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は execute が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。名前が run でないのは、1 コマンドを起動する run が
-// 同じパッケージに既に在るため。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は execute に置きます
+// （run は 1 手順を実行する関数として既に在るため名前を譲る）。
 func main() {
 	log.SetFlags(0)
 

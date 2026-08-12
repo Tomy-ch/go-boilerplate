@@ -4,27 +4,12 @@
 //	       ものを違反として報告し、非ゼロで終了する。
 //	audit: go.mod 全件を棚卸しし、窓内のものを報告する。常に 0 で終了する。
 //
-// **2 分割の理由は npm 側との性格の違いにある。** npm は `.npmrc` の `min-release-age` が
-// 依存解決そのものを拒否するため、窓内エントリが lockfile に載ること自体が「防御を外した
-// 証拠」になり、CI ツールは検知器で足りる。Go には解決時に窓を強制する機構が無く、`go get` に
-// 「新しすぎるから採るな」と言わせる手段が存在しない。したがって gate は検知器ではなく
-// **防御の本体**であり、報告に留めれば窓はどこにも存在しないままになる。audit は既存依存の
-// 棚卸し用で、gate が grandfather する範囲を可視化するためだけに 0 で終える。
+// Go には解決時に窓を強制する機構が無いため、gate は検知器ではなく防御の本体にあたる。npm との
+// 対比は docs/design/security.md、窓の値は ADR-0088、挙動は scripts/README.md の go-cooldown の
+// 行が持つ。
 //
-// **gate が direct だけを落とすのは MVS の帰結。** indirect の版は direct が要求する下限に
-// 縛られ、自分では下げられないことがある。打つ手の無い違反を作らないため indirect は報告に
-// 留めるが、攻撃面としては indirect こそ本番なので黙らせはしない。
-//
-// **窓は 7 日。** Go モジュールには install script が無く `go mod download` は任意コードを
-// 実行しないため、npm の「publish 直後に install で即マシン奪取」というクラスは成立しない。
-// ここで守るのは「悪意あるコードを気づかず取り込んで出荷する」窓である。値は本リポジトリの
-// 実績から採った。過去に `go.mod` を触った 47 コミットのうち窓 7 日で止まるのは 12 件、
-// 14 日にしても 15 件で、7 と 14 の間に崖が無い。加えて「cooldown を満たす最新版へ更新する」
-// と明示して人間が選んだ実績が 7.4 日であり、既存の運用判断が 7 日相当で回っていた。
-//
-// **緊急のバイパスは .github/go-cooldown-bypass.toml が受ける。** エントリは期限を必ず持ち、
-// 期限切れ・期限過長・対象不在は gate / audit のどちらでも失敗になる。期限は go.mod が
-// 変わらなくても訪れるので、このツールはスケジュール実行にも載せる必要がある。
+// バイパスは .github/go-cooldown-bypass.toml が受ける。期限は go.mod が変わらなくても訪れるので、
+// このツールはスケジュール実行にも載せる必要がある。
 package main
 
 import (
@@ -118,9 +103,7 @@ type options struct {
 
 func (r requirement) key() string { return r.module + "@" + r.version }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 
@@ -161,8 +144,6 @@ func run(args []string, now time.Time) error {
 		return xerrors.Wrap(err, "❌ "+bypassFile)
 	}
 
-	// バイパスの規約違反は gate / audit のどちらでも失敗させる。期限切れは go.mod が
-	// 変わらなくても訪れるため、差分の有無で検査を止めると永久に検出されない。
 	policyViolations, invalidBypasses := validateBypasses(bypasses, current, today)
 
 	targets := current
@@ -487,6 +468,8 @@ func sortedKeys(m map[string]bypass) []string {
 
 // classify は finding を「バイパス済み」「gate を落とすもの」「報告に留めるもの」へ振り分ける。
 // バイパスの有効性は validateBypasses が別途見ているので、ここでは存在するかどうかだけを見る。
+// gate が direct だけを落とすのは、indirect の版が MVS で direct の要求下限に縛られ、
+// 自分では下げられないことがあるため。
 func classify(sub string, findings []finding, bypasses map[string]bypass, invalid map[string]struct{}) ([]finding, []finding, []finding) {
 	var bypassed, blocking, reported []finding
 	for _, f := range findings {

@@ -605,8 +605,6 @@ func Test_resolveNext(t *testing.T) {
 func Test_runTag(t *testing.T) {
 	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		// タグは production HEAD に打つ。production へ合わせる前にノートを見ると、
-		// 切り替え前の作業ツリーにあるノートで判定してしまう。
 		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("production へ合わせ、ノートを確かめてからタグ・push・Release の順に進む", func(t *testing.T) {
 			writeNote(t)

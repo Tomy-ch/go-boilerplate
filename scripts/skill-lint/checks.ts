@@ -66,12 +66,6 @@ export function expandBraces(text: string): string[] {
 }
 
 /**
- * ドキュメント中のプレースホルダ表記を正規表現へ変換する。
- *
- * @remarks
- * `<name>` は書き手が埋める任意の 1 セグメント、`**` は任意階層、`*` は 1 セグメント内の任意文字列。
- */
-/**
  * プレースホルダを含むパスの、ワイルドカードが現れる前までの実在すべき親ディレクトリ。
  *
  * @remarks
@@ -94,6 +88,12 @@ export function literalParentDir(text: string): string | null {
   return segments.slice(0, wildcardAt).join("/");
 }
 
+/**
+ * ドキュメント中のプレースホルダ表記を正規表現へ変換する。
+ *
+ * @remarks
+ * `<name>` は書き手が埋める任意の 1 セグメント、`**` は任意階層、`*` は 1 セグメント内の任意文字列。
+ */
 export function placeholderToRegExp(
   text: string,
   { segmentSeparator }: { segmentSeparator: boolean },
@@ -402,13 +402,9 @@ export function extractMakeTargets(span: string): string[] {
  * インラインコードが検査可能なパス参照かどうかを判定する。
  *
  * @remarks
- * 相対ファイル名（`SKILL.md` など文脈依存の記述）は解決先が一意に決まらないため対象外にし、
- * 先頭セグメントが実在するルート直下エントリであるものだけを検査します。さらに、パスと同形だが
- * 実体がファイルではない記述を次の規則で除外します。
- *
- * - 末尾セグメントに `.` も末尾 `/` も無いもの — Go の import パス（`database/sql`）と区別できない
- * - `...` を含むもの — 「以下同様」を表す省略記法
- * - `pkg/ptr.Copy` 形式 — パッケージパス + Go シンボル
+ * 先頭セグメントが実在するルート直下エントリであるものだけを検査します。除外する記法
+ *（Go の import パス / 省略記法 / パッケージパス + Go シンボル / 文脈依存のファイル名）と
+ * その理由は scripts/README.md の Skill Lint 節が持ちます。
  *
  * @param rootEntries - リポジトリルート直下に実在するエントリ名。
  * @param exists - リポジトリルート相対のパスが実在するかを返す関数。

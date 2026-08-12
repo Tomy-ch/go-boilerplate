@@ -22,9 +22,7 @@ describe("DEFAULT_USERS", () => {
   });
 
   describe("異常系", () => {
-    // このスクリプトは `make setup-remove-sample-api` から呼ばれ、デモの固定ユーザーを
-    // 消すのが目的である。既定値そのものにデモ由来の値が残っていれば、撤去は成功したのに
-    // サンプルが残る。
+    // 既定値そのものにデモ由来の値が残っていれば、撤去は成功したのにサンプルが残る。
     it("デモ由来の人名・ドメインを含まない", () => {
       const serialized = JSON.stringify(DEFAULT_USERS).toLowerCase();
 

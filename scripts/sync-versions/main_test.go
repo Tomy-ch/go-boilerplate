@@ -511,9 +511,6 @@ func Test_computeChanges(t *testing.T) {
 				"ENV MISE_VERSION=v2099.1.1\n", states["Dockerfile"].current)
 		})
 
-		// 文字クラスは改行にもマッチするため、行頭からの除外を `[^#]` で書くとマッチが行をまたぐ。
-		// 間にコメントを持たない 2 つの FROM があると、その間の行まで巻き込んで置換で消える。
-		// マッチ件数は変わらないので件数ゲートでは捕まらない。
 		t.Run("FROM の間にコメントが無くても行を巻き込まずに置換する", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
@@ -759,7 +756,6 @@ func Test_run(t *testing.T) {
 			assert.Contains(t, err.Error(), "mise.toml のパースに失敗")
 		})
 
-		// 事前 validate を通さずに書き始めると、途中まで書き換えた状態が残る。
 		t.Run("対象ファイルが 1 つでも欠ければ 1 件も書き換えずに中止する", func(t *testing.T) {
 			root := t.TempDir()
 			writeSyncTargets(t, root)

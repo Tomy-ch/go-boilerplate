@@ -235,8 +235,6 @@ func Test_escapePath(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 未エスケープの大文字は proxy が 404 を返し「存在しないバージョン」に化けるため、
-		// この変換は取得可否そのものを決める。
 		t.Run("大文字を ! + 小文字へ変換する", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "github.com/!burnt!sushi/toml", escapePath("github.com/BurntSushi/toml"))
@@ -267,7 +265,6 @@ func Test_diffAdded(t *testing.T) {
 			assert.Equal(t, "c@v0.1.0", got[0].key())
 		})
 
-		// 版を上げたモジュールは別のキーとして現れるので、追加と更新を 1 つの判定で拾える。
 		t.Run("バージョンを上げたモジュールも対象にする", func(t *testing.T) {
 			t.Parallel()
 			got := diffAdded(before, []requirement{
@@ -316,7 +313,6 @@ func Test_readBypasses(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 読み飛ばしを許すと、書き損じたエントリが「存在しない」状態を警告なく作る。
 		t.Run("解釈できない行はエラーにする", func(t *testing.T) {
 			t.Parallel()
 			_, err := readBypasses(writeBypass(t, "これは TOML ではない\n"))
@@ -332,7 +328,6 @@ func Test_readBypasses(t *testing.T) {
 			assert.ErrorIs(t, err, errBypassInvalidLine)
 		})
 
-		// 後勝ちの上書きを許すと、どちらのエントリが効くかが行順で決まる。
 		t.Run("キーの重複はエラーにする", func(t *testing.T) {
 			t.Parallel()
 			line := `"github.com/x/y@v1.2.3" = { expires = 2026-11-06, issue = 931, reason = "r" }` + "\n"
@@ -412,7 +407,6 @@ func Test_validateBypasses(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 放置されたバイパスは恒久 allowlist と区別が付かなくなるので、期限で必ず回収する。
 		t.Run("期限切れは違反にし効力も失わせる", func(t *testing.T) {
 			t.Parallel()
 			violations, invalid := validateBypasses(map[string]bypass{
@@ -423,7 +417,6 @@ func Test_validateBypasses(t *testing.T) {
 			assert.Contains(t, invalid, "github.com/x/y@v1.2.3")
 		})
 
-		// 期限を遠い未来へ置くだけで、期限切れ検査を素通りする恒久 allowlist を作れてしまう。
 		t.Run("上限を越えた期限は違反にし効力も失わせる", func(t *testing.T) {
 			t.Parallel()
 			violations, invalid := validateBypasses(map[string]bypass{
@@ -455,7 +448,6 @@ func Test_classify(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// indirect の版は MVS で direct の要求下限に縛られ、落としても打つ手が無いことがある。
 		t.Run("gate は direct だけを落とし indirect は報告に留める", func(t *testing.T) {
 			t.Parallel()
 			bypassed, blocked, reported := classify("gate", findings, nil, nil)
@@ -610,7 +602,6 @@ func Test_requirement_key(t *testing.T) {
 			assert.Equal(t, "github.com/x/y@v1.2.3", requirement{module: "github.com/x/y", version: "v1.2.3"}.key())
 		})
 
-		// 版ごとに別のキーになることが、更新を新規追加として拾える根拠になっている。
 		t.Run("同じ module でも版が違えば別のキーになる", func(t *testing.T) {
 			t.Parallel()
 			a := requirement{module: "github.com/x/y", version: "v1.2.3"}
@@ -918,7 +909,6 @@ func Test_report(t *testing.T) {
 			assert.Equal(t, 0, got)
 		})
 
-		// 期限切れの回収はスケジュール実行に懸かっているため、audit でも失敗させる。
 		//nolint:paralleltest // 親が log の出力先を差し替えるため並列化不可
 		t.Run("バイパス設定の違反は audit でも数える", func(t *testing.T) {
 			buf := captureLog(t)
@@ -988,7 +978,6 @@ func Test_added(t *testing.T) {
 
 	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		// 版を上げたモジュールも新しい組として現れるので、追加と更新を 1 つの判定で拾える。
 		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("base に無い組だけを対象にする", func(t *testing.T) {
 			dir := t.TempDir()
@@ -1121,7 +1110,6 @@ func Test_run(t *testing.T) {
 
 	//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		// audit は既存依存の棚卸しで、窓内であること自体は誰の違反でもない。
 		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("audit は窓内の require を報告しつつ正常終了する", func(t *testing.T) {
 			out := captureLog(t)
@@ -1217,7 +1205,6 @@ func Test_run(t *testing.T) {
 			assert.Contains(t, out.String(), "窓明けを待つか")
 		})
 
-		// 期限切れの回収はスケジュール実行に懸かっているため、audit でも失敗させる必要がある。
 		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("期限切れのバイパスは audit でも失敗にする", func(t *testing.T) {
 			captureLog(t)
