@@ -1640,6 +1640,8 @@
 ".github/workflows/worker-boot-check.yaml" = "2026-08-12"
 ".github/workflows/zap-api-scan.yaml" = "2026-08-12"
 ".github/workflows/zizmor.yaml" = "2026-08-12"
+"docs/spec/cart/domain.md" = "2026-08-12"
+"docs/spec/cart/usecase.md" = "2026-08-12"
 "database/migrations/000010_create_products.up.sql" = "2026-08-12"
 "database/dml/repository/product/insert_product.sql" = "2026-08-12"
 "database/dml/repository/product/update_product.sql" = "2026-08-12"
