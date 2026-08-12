@@ -46,8 +46,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/dml/repository/user",
       "database/migrations/000004_create_users.up.sql",
       "database/migrations/000004_create_users.down.sql",
-      "database/migrations/000014_add_users_table_search_text_column.up.sql",
-      "database/migrations/000014_add_users_table_search_text_column.down.sql",
+      "database/migrations/000016_add_users_table_search_text_column.up.sql",
+      "database/migrations/000016_add_users_table_search_text_column.down.sql",
       "database/seed/000001_users.sql",
       "database/seed/000002_users_additional.sql",
 
@@ -314,6 +314,11 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     description:
       "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）。現時点は spec のみで、実装が入るたびに paths を追記する",
     paths: [
+      "database/migrations/000014_create_carts.up.sql",
+      "database/migrations/000014_create_carts.down.sql",
+      "database/migrations/000015_create_cart_items.up.sql",
+      "database/migrations/000015_create_cart_items.down.sql",
+
       // spec
       "docs/spec/cart",
     ],
