@@ -175,7 +175,7 @@ Each child skill independently:
 - Runs `make fix` + `make test` after its writes
 - Surfaces TODO + FB on failure
 
-If you want a "fully unattended" mode, the user can add `--auto-approve` (future flag) — but the default is to confirm each layer to keep human-in-the-loop on judgment-heavy steps.
+Each layer is confirmed with the user, so the human stays in the loop on the judgment-heavy steps.
 
 ### Phase 7. Integration Verification (make test + runtime curl + o11y)
 

@@ -126,12 +126,9 @@ make docker-lint          # docker/*/Dockerfile に hadolint
 
 ## 補足
 
-- **tag は対象外。** 本スキルは digest のみ動かす。バージョン bump は `go-upgrade` / `tools-upgrade` + `make sync-versions`。
-- **ルール 2 の quarantine は正常だがルール 3 は失敗。** 公式 base image は頻繁に再ビルドされるため現在 digest が新しいことは普通で、前回の古い pin があればゲートはそれを維持する（ルール 2）——想定内。だが前回 pin の*無い*新しい image（ルール 3）は検証済みの退行先が無いため、`resolve` は tag 出荷も採用もせず fail-closed で失敗させる。
 - **速く動く tag は停滞しうる。** tag が `N` 日より短い周期で再ビルドされると現在 digest が常に新しく、pin が最後の古い digest から進まない。これは cooldown の受容コスト。セキュリティパッチを早く採る必要があるときだけ意図的に `N` を下げる（リスクを明示）——その際は緊急性だけで override せず、先に digest をトリアージする（手順 2.5）。
 - **証拠が薄いのはエコシステムの性質であってトリアージの不足ではない。** 再ビルドには読むべき source 差分が存在しないため、ここでの `/supply-chain-triage` は SBOM のパッケージ差分と image config に頼り、しばしば INSUFFICIENT-EVIDENCE を返す。ルール 2・3 が存在するのはまさにこのエコシステムが直接答えられないからであり、cooldown が 7 日ではなく 14 日である理由もそれである。
 - **マルチアーキ digest。** `resolve` は最上位の image-index digest を pin し（Docker がそこから各プラットフォームの manifest を解決）、経過日数判定には各プラットフォームで最も古い `created` を読む（最も保守的）。
-- **`check` は network 不要。** lockfile・Dockerfile・compose ファイルのみ読むため、レジストリアクセス無しでも CI / pre-commit gate として安全。
 - **強制のレベル。** ローカルゲートは lefthook の `pin-images` pre-commit フック（glob は `docker/**/Dockerfile` + `docker-compose*.yaml` + `docker/images-pin.toml`）＋ `pin-images-check.yaml` の CI workflow（paths フィルタも同様に `docker-compose*.yaml` を含む）——いずれも `pin-actions` と対称。branch ruleset の *required* status check（マージのハードブロック）まで強めるかは**意図的に template 利用者（downstream）の判断に委ねる**：boilerplate は check を提供するが強制はしない。なお paths フィルタ付き workflow を required 化すると、当該 paths を触らない PR がブロックされるため always-run 化の調整も要る——これも利用者へ委ねる理由。
 - **冪等性**: 2 回目の `apply` は no-op で `pin-images-check` は通る。
 - スキルは自動 push しない。

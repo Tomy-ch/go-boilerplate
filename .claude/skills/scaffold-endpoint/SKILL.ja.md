@@ -169,7 +169,7 @@ child skill 間で成否ステータスを伝播:
 - 書き込み後 `make fix` + `make test` 実行
 - 失敗時 TODO + FB を surface
 
-将来 "完全 unattended モード" が必要なら `--auto-approve` フラグを追加可能 — ただし既定は layer ごと確認で human-in-the-loop を維持。
+layer ごとにユーザー確認を挟むので、判断を要する箇所で human-in-the-loop が保たれる。
 
 ### Phase 7. 統合検証（make test + ランタイム curl + o11y）
 

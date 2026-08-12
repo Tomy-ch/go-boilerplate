@@ -70,7 +70,7 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 
 このスキル実行中に変更可:
 
-- `**/package.json` — 承認済み package の `dependencies` version、もしくは（npm パッケージに限り）`overrides` エントリの追加/調整に限る。
+- `**/package.json` — 承認済み package の `dependencies` version の追加/調整に限る。
 - `**/pnpm-lock.yaml` — 承認済み変更に対する当該 package ディレクトリでの `pnpm install --lockfile-only` の決定的出力。
 - `**/pnpm-workspace.yaml` — `overrides` と `minimumReleaseAgeExclude` キー **のみ**。例外エントリは **Step 4 でユーザーがその版を承認した後にのみ** 書く。`minimumReleaseAge` / `minimumReleaseAgeStrict` / `minimumReleaseAgeIgnoreMissingTime` / `trustPolicy*` / `allowBuilds` / `blockExoticSubdeps` / `engineStrict` には決して触れない — それらはパッチではなくポリシーそのもの。
 - `go.mod` / `go.sum` — 承認済み Go モジュールに対する `go get <module>@<version>` + `go mod tidy` の出力。
@@ -94,10 +94,6 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 # そもそもどの lockfile が存在するか — エコシステムを決めるのは package 名ではなくこれ
 find . -name pnpm-lock.yaml -not -path '*/node_modules/*'
 
-# npm: 存在 + インストール済み version、次に直接 vs 推移的
-grep -n "\"node_modules/<pkg>\"" <lockfile>
-grep -n "\"<pkg>\"" <dir>/package.json
-
 # pnpm: 存在 + インストール済み version。冒頭付近の `importers:` ブロックが specifier 付きで
 # 直接依存を列挙する。`snapshots:` / `packages:` 配下に裸で並ぶ `<pkg>@<ver>:` は推移的。
 grep -n "^  <pkg>@" <dir>/pnpm-lock.yaml            # 解決された version
@@ -115,10 +111,10 @@ grep -n '<module-path>' go.mod
 
 | 項目 | 方法 |
 | --- | --- |
-| ecosystem | `npm` / `pnpm` / `pypi` / `go` |
+| ecosystem | `pnpm` / `pypi` / `go` |
 | location | `pnpm-lock.yaml` のディレクトリ、`python/<tool>.in` + `.txt`、または `go.mod` |
 | installed version | lockfile / `go.mod` から |
-| direct / transitive | その `package.json` の `dependencies`/`devDependencies` に宣言がある（npm / pnpm）／`// indirect` が無い（go）→ direct、そうでなければ transitive/indirect |
+| direct / transitive | その `package.json` の `dependencies`/`devDependencies` に宣言がある（pnpm）／`// indirect` が無い（go）→ direct、そうでなければ transitive/indirect |
 
 1 つの package が **複数の lockfile** に載ることがある（本リポジトリでは `mermaid` / `zod` / `js-yaml` が該当）。所在ごとに 1 エントリを記録すること — それぞれ独立に動き、それぞれ自分の cooldown を持つ。
 
@@ -251,13 +247,7 @@ go mod vendor        # リポジトリが vendoring するとき（vendor/module
 
 実際に変わったものに合わせてチェックを走らせる — 依存パッチが一次ソースに触れることは稀なので、常にフルスイートを回すのではなく、動いたエコシステムに検証をスコープする。各々を OK / FAIL で報告し、失敗しても自動ロールバックしない — ユーザーが判断する。
 
-Go 変更は最低限ビルド + vuln スキャンが clean であること（`go build ./...` + `govulncheck ./...`）。Go 変更がフルスイートに値するほど広ければ `make lint` / `make test` を回す。**major な npm バンプ** はより入念に検証する — その package 自身の `typecheck` + テスト（例 `mock-auth-server/` で `npm run typecheck` + `npm test`）を回す。major は呼び出す API を変え得るため。
-
-npm 変更 — 勧告が実際に解消されたか / lockfile が clean かを確認:
-
-```sh
-cd <dir> && npm audit            # パッチ対象 CVE が出なくなること
-```
+Go 変更は最低限ビルド + vuln スキャンが clean であること（`go build ./...` + `govulncheck ./...`）。Go 変更がフルスイートに値するほど広ければ `make lint` / `make test` を回す。**pnpm パッケージの major バンプ** はより入念に検証する — その package 自身の `typecheck` + テスト（例 `mock-auth-server/` で `pnpm typecheck` + `pnpm test`）を回す。major は呼び出す API を変え得るため。
 
 pnpm 変更 — 意図は同じで、変更した各 package ディレクトリで `pnpm audit`。加えて npm には不要な手順が 1 つある:
 
@@ -268,11 +258,11 @@ cd <dir> && pnpm audit                       # パッチ対象 CVE が出なく�
 
 ここでの実質的なゲートは frozen install のほうである。pnpm は再生時にも lockfile 全体をポリシーで再検証するので、これが「CI と他の全チェックアウトで install できる」ことの証明になる — `--lockfile-only` だけでは示せない。`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` で落ちたら、覆われていない窓内エントリがある。そのパッケージに例外が無いか、2 つのうち片方にしか入れていないかのどちらか。
 
-`pnpm audit` は `npm audit` より情報が少ない。真の fix floor や勧告ごとの影響版域が要るときは、要約から推測せず勧告データベースを直接引く（`gh api "/advisories?ecosystem=npm&affects=<pkg>"`）。
+`pnpm audit` が返す情報は薄い。真の fix floor や勧告ごとの影響版域が要るときは、要約から推測せず勧告データベースを直接引く（`gh api "/advisories?ecosystem=npm&affects=<pkg>"`）。
 
-`npm audit` は **真の fix floor** の source of truth であり、ユーザーのリストと食い違い得る。黙って解決せず提示すべき 2 ケース:
+勧告データベースが **真の fix floor** の source of truth であり、ユーザーのリストと食い違い得る。黙って解決せず提示すべき 2 ケース:
 
-- **勧告が挙げた版より高い fix floor。** その package が *別の* 勧告を抱え、初修正版がユーザーの貼った版より高いことがある（例: リストは「2.0.5 で修正」だが、`npm audit` は `2.0.0 - 2.0.9` に影響し `2.0.10` でのみ修正される別の moderate 勧告をなお指摘）。その高い版が `too-new` なら黙って飛びつかない — 衝突と、そもそも脆弱経路が到達可能か（例: WS ハンドラ未登録のサーバに対する WebSocket 限定の DoS は非該当の可能性が高い）を提示し、too-new な完全修正への opt-in か部分修正の受容かをユーザーに委ねる。
+- **勧告が挙げた版より高い fix floor。** その package が *別の* 勧告を抱え、初修正版がユーザーの貼った版より高いことがある（例: リストは「2.0.5 で修正」だが、`2.0.0 - 2.0.9` に影響し `2.0.10` でのみ修正される別の moderate 勧告が残っている）。その高い版が `too-new` なら黙って飛びつかない — 衝突と、そもそも脆弱経路が到達可能か（例: WS ハンドラ未登録のサーバに対する WebSocket 限定の DoS は非該当の可能性が高い）を提示し、too-new な完全修正への opt-in か部分修正の受容かをユーザーに委ねる。
 - **deferred/スキップした package に残る勧告** — 想定内。失敗ではなく、理由（cooldown で deferred / ユーザーがスキップ）付きで未解消と報告する。
 
 Go 変更:
