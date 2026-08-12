@@ -87,7 +87,7 @@ type CompleteIdempotencyKeyParams struct {
 }
 
 // === source: database/dml/system_cqrs/idempotency/complete_idempotency_key.sql ===
-// 同一 tx 内で claimed → completed へ遷移し、結果 DTO(JSON) と HTTP ステータスを保存する。scope 必須（越境防止）。
+// 同一 tx 内で claimed → completed へ遷移し、結果 DTO(JSON) と HTTP ステータスを保存する。scope 必須。
 //
 //	UPDATE idempotency_keys
 //	SET
@@ -170,7 +170,7 @@ type GetIdempotencyKeyRow struct {
 }
 
 // === source: database/dml/system_cqrs/idempotency/get_idempotency_key.sql ===
-// scope 必須（越境防止）。scope と idempotency_key で一致する行を返す。
+// scope 必須。scope と idempotency_key で一致する行を返す。
 //
 //	SELECT
 //	    status,
