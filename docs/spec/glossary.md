@@ -92,6 +92,7 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 購入可能 | 在籍しているユーザーにだけ認められる、購入を受け付けてよい状態 | membership | `membership.EnsurePurchasable` | — |
 | 退会可能 | 進行中の購入を残していないユーザーにだけ認められる、退会してよい状態 | membership | `membership.EnsureWithdrawable` | — |
 | 在庫の増減 | 購入の成立や取り消しによらず、補充または差し引きとして商品の在庫数を増減させること | product / Product | `product.Product.AdjustStock` | — |
+| カート | 顧客が買うつもりの商品を、購入を確定させるまで入れておく控え。入れても商品は取り置かれない | cart / Cart | `cart.Cart` | `CartResponse` |
 <!-- sample-api:end -->
 
 ## Mechanism vocabulary
