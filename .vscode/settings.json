@@ -50,7 +50,6 @@
     "integration": "test",
     "observability": "meta",
     "usecase": "tasks",
-    "support": "tools",
     "tx": "taskfile",
     "openapi": "api",
     "paths": "routes",
