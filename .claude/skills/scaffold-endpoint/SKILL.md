@@ -1,7 +1,7 @@
 ---
 name: scaffold-endpoint
 description: >-
-  End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev-style upstream design phases that turn that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (AskUserQuestion) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + domain.md + usecase.md for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** (backward-compatible fast path) — jump straight to the core when `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`impl-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the upstream design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`impl-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
+  End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev-style upstream design phases that turn that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (AskUserQuestion) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + domain.md + usecase.md for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** — jump straight to the core when `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`impl-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the upstream design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`impl-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
 ---
 
 # Scaffold Endpoint
@@ -29,9 +29,9 @@ Do NOT use this skill for:
 | Mode | Trigger | Upstream phases (1–4) | Core (Phases 5–7) |
 | --- | --- | --- | --- |
 | **A. idea-first** | User starts from an idea / requirement; `docs/spec/<feature>/` is missing or lacks `domain.md`/`usecase.md` | **runs** — clarify → explore → design → draft inputs | runs |
-| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen already exist | **skipped** (fast path — backward compatible with the original scaffold-endpoint) | runs |
+| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen already exist | **skipped** (fast path) | runs |
 
-Mode B is exactly the original behavior. Never force the upstream phases on a user who already has valid inputs; detect and skip. Conversely, never skip straight to `verify-spec` when the specs don't exist yet — that is the gap the upstream phases fill.
+Never force the upstream phases on a user who already has valid inputs; detect and skip. Conversely, never skip straight to `verify-spec` when the specs don't exist yet — that is the gap the upstream phases fill.
 
 ## What This Skill Reads / Writes
 
@@ -175,7 +175,7 @@ Each child skill independently:
 - Runs `make fix` + `make test` after its writes
 - Surfaces TODO + FB on failure
 
-If you want a "fully unattended" mode, the user can add `--auto-approve` (future flag) — but the default is to confirm each layer to keep human-in-the-loop on judgment-heavy steps.
+Each layer is confirmed with the user, so the human stays in the loop on the judgment-heavy steps.
 
 ### Phase 7. Integration Verification (make test + runtime curl + o11y)
 

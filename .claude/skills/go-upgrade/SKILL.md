@@ -235,7 +235,5 @@ Confirm the following before reporting completion:
 ## Notes
 
 - Do NOT manually edit `go.mod` / Dockerfile / `docker/**/README.md` — `make sync-versions` owns those files. Edit `mise.toml` and re-run sync.
-- Do NOT manually edit generated code (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, etc.).
-- Commit on the working branch. Direct commits to `production` / `develop` / `staging` / `release/*` are prohibited.
 - Push to a PR only when the user has explicitly instructed you to do so.
 - After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync.

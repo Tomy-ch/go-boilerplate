@@ -16,17 +16,7 @@
 
 ## なぜ必要か
 
-直近の issue で、書かれた時点から誤っていた主張が 3 つあった。いずれも静的に確認できたものだった。
-
-| 主張 | 実際 |
-| --- | --- |
-| 「認証は通っているので 401 ではない」 | issue が論じていた層のはるか手前で、middleware が 401 で弾いていた |
-| 「そのイベントにはまだ consumer が無い」 | 既に consumer がマージされていた |
-| 「案 B はホットパスに read を 1 本足す」 | 両案とも read は 1 本。トレードオフする差が存在しなかった |
-
-誰も、自分が考えている層の外を見ていなかった。同じ誤りで後にもう 1 件 issue が起票され —— 複数のエンドポイントが無防備だと主張したが、実際は middleware が全て弾いていた —— NOT_PLANNED でクローズすることになった。
-
-このスキルはその失敗を形にしたもの。「関係する層を読む」ことは「経路を辿る」ことではない。
+issue の事実主張が誤っている理由はたいてい 1 つ —— 誰も、自分が考えている層の外を見ていなかったこと。ステータスコード、あるイベントの consumer、ホットパス上の選択肢のコスト —— どれも静的に確認できるのに、著者が一度も開いていない場所で決まっている。このスキルはその失敗を形にしたもの。「関係する層を読む」ことは「経路を辿る」ことではない。
 
 ## Step 0 — 2 つを確認する（`AskUserQuestion` 1 回）
 
@@ -129,9 +119,9 @@ middleware は最も飛ばされやすく、最も決定的な区間である。
 `--verify=runtime` では、起票前に挙動の主張を動いているシステムで確認する。`impl-issue` がマージ前に走らせるのと同じ段階で、理由も同じ: 想定外の経路が返したステータスコードは、正しいものと見分けがつかない。
 
 ```bash
-make slot-acquire && make serve            # API は 8080+N、mock-auth は 4000+N
+make slot-acquire && make serve            # API は 8080+N、mock-auth は 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')

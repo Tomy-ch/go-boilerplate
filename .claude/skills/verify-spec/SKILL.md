@@ -35,7 +35,7 @@ Validation is delegated to two **read-only worker subagents** under `.claude/age
 
 lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check`（controller / infra 監査）が implementation 側で実施）。
 
-The validators are the per-spec validation workers and are **strictly read-only** (no auto-fix, no writes). The two validators read independently — `spec-validator-usecase` reads `domain.md` itself for cross-spec `calls:` resolution — so there is **no write dependency** between them and they can run in parallel (the old domain-first ordering was a read reference, not a barrier).
+The validators are the per-spec validation workers and are **strictly read-only** (no auto-fix, no writes). The two validators read independently — `spec-validator-usecase` reads `domain.md` itself for cross-spec `calls:` resolution — so there is **no write dependency** between them and they can run in parallel.
 
 ## First Step: Confirm Target Feature
 

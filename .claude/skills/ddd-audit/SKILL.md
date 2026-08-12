@@ -63,7 +63,7 @@ Call `AskUserQuestion` immediately after invocation, with two batched questions.
 選択肢:
   - 全パターン（台帳の全エントリ。初回 / 定期棚卸し向け）
   - 未解釈のパターンのみ（status が unexamined / examining / uninterpreted のもの）
-  - 中核パターンのみ（scope: core。Evans 第2-3部の構築ブロック）
+  - 中核パターンのみ（scope: core。Evans 第1-3部）
   - 変更文書に関係するパターンのみ（quick。ADR / README を触った直後向け）
 
 質問 2: 検出後に台帳を更新しますか？
