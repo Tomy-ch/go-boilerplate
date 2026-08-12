@@ -443,6 +443,11 @@ The distinction is worth keeping because the two have different failure semantic
 returned or not. A `Result` is meaningful **even when the method also returns an error** — a batch
 that failed partway still has to report the work it committed before it stopped.
 
+`healthcheck.CheckHealth` is the one exception: it returns a bare `DTO`. Health is neither a
+projection of an aggregate nor the outcome of a change — it is the probe's own reading, and the type
+has no concept to prefix. Adding a suffix there would name something the package does not have. Do
+not treat it as licence to skip the suffix elsewhere.
+
 ### Pagination
 
 - Use `NewPageFrom1Based(page, perPage)` to unify defaults, limits, and conversions.

@@ -16,16 +16,7 @@
 - 表示通貨・ランキング期間のような、form として送る排他選択
 - 表示する列のような、form として送る複数選択
 
-URL にも form にも載せない即時の表示切替には `ToggleGroupClient` を使います。
-
-## ToggleGroupClient との使い分け
-
-| | `ToggleGroupNative` | `ToggleGroupClient` |
-| --- | --- | --- |
-| 実体 | native の radio / checkbox | button（Radix） |
-| form の値 | **そのまま送信される** | 持たない |
-| hydration | 不要 | 必要 |
-| 項目間の移動 | browser 標準（radio は矢印キー） | roving tabindex（Radix） |
+URL にも form にも載せない即時の表示切替には使いません。
 
 ## 責務境界
 

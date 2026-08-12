@@ -73,6 +73,8 @@ properties:
       - openid
       - profile
       - email
+      - api.read
+      - api.write
   token_endpoint_auth_methods_supported:
     type: array
     description: public client（PKCE）のみを許可するため none。

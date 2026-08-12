@@ -10,11 +10,11 @@
 
 例示ユーザーの配列。用途は次の3つのみ:
 
-- `GET /test/users`（一覧。将来の Login UI 用）
-- `POST /test/token` を `subject` 省略で呼んだ際のフォールバック
+- `GET /admin/users`（一覧。将来の Login UI 用）
+- `POST /bypass/token` を `subject` 省略で呼んだ際のフォールバック
 - 起動ログの件数
 
-`POST /test/token` は渡した `subject` を**そのまま**トークンにするため、このファイルが
+`POST /bypass/token` は渡した `subject` を**そのまま**トークンにするため、このファイルが
 無い/空でも mock は動作する（users は `[]` 扱い）。
 
 ### スキーマ

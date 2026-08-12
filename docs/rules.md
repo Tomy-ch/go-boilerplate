@@ -404,6 +404,13 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
   its owning README or `docs/` reference. Do not accumulate per-run progress as repository state;
   its skill-owned `tmp/` artifact is the only appropriate resume state. A conflict with a governing
   document is raised, not rewritten. Rationale: [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md).
+- **A README lists its child directories, never a file tree.** A tree that enumerates files restates
+  what the editor already shows, and it rots: this repository has repeatedly carried trees missing
+  real directories, and ones naming directories that do not exist. What the editor cannot show is
+  *why* a directory is there, so a parent README carries **one line per child directory** — its name
+  and what it is for — and nothing below that level. To learn what is inside, open that directory's
+  own README. **Adding a directory therefore carries one obligation: check that the parent README
+  names it.** Files change constantly and are not enumerated anywhere.
 - **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 

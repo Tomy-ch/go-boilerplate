@@ -19,7 +19,6 @@ COMMENT ON COLUMN purchase_statuses.sort_key IS '順序';
 COMMENT ON COLUMN purchase_statuses.created_at IS '作成日時';
 COMMENT ON COLUMN purchase_statuses.updated_at IS '更新日時';
 
--- Insert initial purchase statuses data
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
 ('a66c996c-86b2-41d8-9bdd-9b685fb7c47d', '未処理', 1, 1) ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES

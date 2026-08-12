@@ -15,6 +15,12 @@ reliability, observability) already wired.
 > This README is intentionally minimal. Each topic links out to the README / design doc that
 > owns it — see the [Documentation Map](#documentation-map). Those documents are the source of
 > truth; this page is only the entry point.
+>
+> **Almost every directory carries its own README.** Read the one that owns the area before
+> implementing in it or investigating it — it states the responsibilities and the prohibitions that
+> bound a change. A README names its child directories and what each is for; it does not list files,
+> because an editor already shows those. **When you add a directory, check that the parent README
+> names it.**
 
 ## Capabilities
 

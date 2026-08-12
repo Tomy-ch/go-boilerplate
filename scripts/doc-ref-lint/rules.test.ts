@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adrIndex, checkReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
+import { adrIndex, checkPathReferences, checkReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
 
 const ADR = ["ADR", "-0006"].join("");
 const ADRS = adrIndex(["docs/adr/0006-structural-safety-via-tooling.md"]);
@@ -50,6 +50,27 @@ describe("checkReferences", () => {
     });
     it("参照の直後にない slug 注釈を一致とみなさない", () => {
       expect(checkReferences("a.md", `${ADR} と無関係な (structural-safety-via-tooling)`, ADRS)[0].message).toContain("must include");
+    });
+  });
+});
+
+describe("checkPathReferences", () => {
+  describe("正常系", () => {
+    it("番号どおりの slug を綴ったパス参照を通す", () => {
+      expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.md", ADRS)).toEqual([]);
+      expect(checkPathReferences("a.md", "docs/ja/adr/0006-structural-safety-via-tooling.ja.md", ADRS)).toEqual([]);
+    });
+    it("ADR を指さないパスは見ない", () => {
+      expect(checkPathReferences("a.md", "docs/design/0006-other.md", ADRS)).toEqual([]);
+    });
+  });
+  describe("異常系", () => {
+    it("番号と slug が食い違うリンク先を報告する", () => {
+      const source = `[${ADR} (structural-safety-via-tooling)](../docs/adr/0006-something-else.md)`;
+      expect(checkPathReferences("a.md", source, ADRS)[0].message).toContain("must be 0006-structural-safety-via-tooling.md");
+    });
+    it("存在しない番号のパス参照を報告する", () => {
+      expect(checkPathReferences("a.md", "docs/adr/9999-nope.md", ADRS)[0].message).toContain("does not exist");
     });
   });
 });

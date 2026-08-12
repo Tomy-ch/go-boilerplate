@@ -40,8 +40,8 @@ make new-migrate-create_orders
 
 |コマンド|説明|
 |---|---|
-|`make migrate-up`|すべての未適用マイグレーションを適用|
-|`make migrate-down`|直前のマイグレーションをロールバック|
+|`make db-migrate-up DB=<name>`|すべての未適用マイグレーションを適用|
+|`make db-migrate-down DB=<name>`|直前のマイグレーションをロールバック|
 
 CLI からも実行可能です。
 

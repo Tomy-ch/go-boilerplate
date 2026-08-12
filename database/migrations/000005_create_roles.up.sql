@@ -16,7 +16,6 @@ COMMENT ON COLUMN roles.code IS 'コード';
 COMMENT ON COLUMN roles.created_at IS '作成日時';
 COMMENT ON COLUMN roles.updated_at IS '更新日時';
 
--- Insert initial roles data
 INSERT INTO roles (id, name, code) VALUES
 ('a1b2c3d4-0000-4000-8000-000000000001', '管理者', 1) ON CONFLICT (id) DO NOTHING;
 INSERT INTO roles (id, name, code) VALUES
