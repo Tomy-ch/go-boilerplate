@@ -7,6 +7,8 @@ const GENERATED_DOC_PREFIXES = ["docs/openapi/", "docs/coverage/", "docs/db-sche
 const GENERATED_SUFFIXES = [".gen.go", ".gen.sql", ".sql.go", ".gen.yaml"];
 export const ADR_FILE = /^docs\/adr\/(\d{4})-(.+)\.md$/;
 const REFERENCE = /ADR-(\d{4})/g;
+// パス形式の参照。`docs/adr/NNNN-slug.md` も `](../docs/adr/NNNN-slug.md)` も同じ形で拾う。
+const PATH_REFERENCE = /adr\/(\d{4})-([a-z0-9-]+)(\.ja)?\.md/g;
 // slug 注釈は参照の直後にしか現れない。
 const ANNOTATION = /\s*\(([-a-z0-9]+)\)/y;
 
@@ -41,6 +43,21 @@ export function checkReferences(file: string, source: string, adrs: ADRIndex): F
     if (slug === undefined) return [{ file, message: `ADR-${match[1]} does not exist` }];
     ANNOTATION.lastIndex = match.index + match[0].length;
     return ANNOTATION.exec(source)?.[1] === slug ? [] : [{ file, message: `ADR-${match[1]} must include (${slug})` }];
+  });
+}
+
+/**
+ * ADR をパスで指した参照が、番号どおりの slug を綴っているかを検査する。
+ *
+ * `ADR-NNNN (slug)` 形式は checkReferences が見るが、リンク先やパス表記は素通りしていた。
+ * 番号と slug が整合していてもリンク先だけ別の ADR を指す形（注釈は正しいのにリンク先の slug が違う）は
+ * この検査でしか捕まらない。
+ */
+export function checkPathReferences(file: string, source: string, adrs: ADRIndex): Finding[] {
+  return [...source.matchAll(PATH_REFERENCE)].flatMap((match) => {
+    const slug = adrs.get(match[1]);
+    if (slug === undefined) return [{ file, message: `ADR-${match[1]} does not exist (referenced as ${match[0]})` }];
+    return slug === match[2] ? [] : [{ file, message: `${match[0]} must be ${match[1]}-${slug}${match[3] ?? ""}.md` }];
   });
 }
 

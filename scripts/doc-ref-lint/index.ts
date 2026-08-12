@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { ADR_FILE, adrIndex, checkReferences, checkTranslationExclusions, checkTranslations, isEligible, normalizeReferences } from "./rules";
+import { ADR_FILE, adrIndex, checkPathReferences, checkReferences, checkTranslationExclusions, checkTranslations, isEligible, normalizeReferences } from "./rules";
 
 const root = process.cwd();
 const write = process.argv.includes("--write");
@@ -35,7 +35,10 @@ for (const file of files.filter(isEligible).filter((file) => !file.startsWith("d
   // repositoryPath がリポジトリ配下だと検証した絶対パスだけを取る。
   // eslint-disable-next-line security/detect-non-literal-fs-filename
   if (write && normalized !== source) fs.writeFileSync(repositoryPath(file), normalized);
-  findings.push(...checkReferences(file, normalized, adr).map((finding) => `${finding.file}: ${finding.message}`));
+  findings.push(
+    ...checkReferences(file, normalized, adr).map((finding) => `${finding.file}: ${finding.message}`),
+    ...checkPathReferences(file, normalized, adr).map((finding) => `${finding.file}: ${finding.message}`),
+  );
 }
 for (const file of files.filter((file) => ADR_FILE.test(file))) {
   const number = path.basename(file).slice(0, 4);
