@@ -1,8 +1,3 @@
-/*
- * ビューアーの stylesheet。移植元ではアプリ本体の globals.css を取り込んでいたが、このリポジトリ
- * にはアプリ本体が無いため、トークンと foundation をここで直接束ねる。
- */
-
 @import "tailwindcss";
 @import "./tokens/tokens.css";
 @import "./components/design-system/foundation/scrollbar/scrollbar.css";

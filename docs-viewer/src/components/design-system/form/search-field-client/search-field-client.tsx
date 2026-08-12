@@ -58,7 +58,6 @@ export type SearchFieldClientProps = {
  * 検索の実行、結果の取得、URL の組み立ては持たない。入力が止まると `onSearch` を呼ぶだけで、
  * router の操作も行わない。この分担は `Pagination` と同じで、`components` は URL を解釈しない。
  * 呼び出し元は受け取った検索語を `searchParams` へ載せ、結果は Server Component で描画する。
- * 結果まで client 側で取得すると、共有・履歴・戻る操作が URL と一致しなくなる。
  *
  * `onSearch` は入力が止まってから呼ばれる。参照が変わるたびに待ち時間が測り直されるため、
  * 呼び出し元は `useCallback` などで安定した関数を渡す。

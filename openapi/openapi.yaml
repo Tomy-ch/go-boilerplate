@@ -49,7 +49,6 @@ tags:
   - name: metrics
     description: Prometheus メトリクス。
   # sample-api:begin
-  # サンプルAPI用のタグ
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
@@ -97,10 +96,8 @@ tags:
   # sample-api:end
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
-# ここで設定した認証が全体で適用される。
 security: []
 paths:
-  # Operation handlers
   /health:
     $ref: './paths/health.yaml'
   /healthz:
@@ -111,11 +108,9 @@ paths:
     $ref: './paths/ready.yaml'
   /version:
     $ref: './paths/version.yaml'
-  # For error type generation
   /_internal/types/error-response:
     $ref: './paths/internal/types/error_response.yaml'
   # sample-api:begin
-  # サンプルAPI用のパス
   /v1/users:
     $ref: './paths/v1/users.yaml'
   /v1/users/{userId}:
@@ -180,7 +175,6 @@ components:
     IdempotencyKeyParam:
       $ref: './components/parameters/idempotency/IdempotencyKeyParam.yaml'
     # sample-api:begin
-    # サンプルAPI用のパラメーター定義
     KeywordParam:
       $ref: './components/parameters/search/KeywordParam.yaml'
     ActiveParam:
@@ -219,7 +213,6 @@ components:
     ResponseVersion:
       $ref: './components/responses/version/VersionResponse.yaml'
     # sample-api:begin
-    # サンプルAPI用の型定義
     UserBaseInputRequest:
       $ref: './components/schemas/UserBaseInputRequest.yaml'
     UserResponse:

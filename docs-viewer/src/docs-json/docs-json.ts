@@ -57,8 +57,7 @@ export type DocsJson = z.infer<typeof docsJsonSchema>;
 /**
  * 生成物 `docs.json` を検証して読み取る。
  *
- * 生成側と閲覧側が同じリポジトリで動くため、形の不一致は配信事故であって利用者の
- * 入力エラーではない。回復を試みず例外にする。
+ * 形が合わなければ回復を試みず例外にする（理由は README 参照）。
  */
 export function parseDocsJson(input: unknown): DocsJson {
   return docsJsonSchema.parse(input);

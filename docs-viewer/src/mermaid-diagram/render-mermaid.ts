@@ -10,12 +10,10 @@ function loadMermaid() {
 }
 
 /**
- * 図の配色を、面の配色と同じ 2 経路から決めます。
+ * 図の配色を、面の配色と同じ 2 経路（OS の設定と `data-theme`）から決めます（README 参照）。
  *
  * @remarks
- * mermaid は自前の配色を持ち、既定では明るい面を前提にした色で描きます。暗い面にそのまま
- * 置くと図だけが白く浮くため、tokens.css が semantic token を切り替えるのと同じ条件
- * （OS の設定と `data-theme`）で図側の配色も選びます。
+ * mermaid は既定で明るい面を前提にした配色を持つため、暗い面ではそのままだと図だけが白く浮く。
  *
  * @param prefersDark - OS の設定が暗い配色を求めているか
  * @param dataTheme - `data-theme` の宣言値。宣言が無ければ `null`
@@ -43,8 +41,7 @@ function currentTheme(): "dark" | "default" {
  * mermaid を遅延読み込みして、図の定義を SVG へ変換します。
  *
  * @remarks
- * mermaid は初期表示に要りません。図を含む文書を開いて初めて必要になるため、動的 import で
- * 分割し、ポータルの一覧表示までの読み込みから外します。
+ * 遅延読み込みの理由は README（Rendering documents）参照。
  *
  * 設定は図ごとに与えます。読み込み時に 1 度だけ与えると、配色を切り替えた後に開いた図が
  * 切り替え前の配色のまま描かれます。

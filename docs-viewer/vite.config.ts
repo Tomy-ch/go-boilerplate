@@ -15,8 +15,8 @@ export default defineConfig({
     },
   },
   build: {
-    // GitHub Pages は docs/ をそのままサイトルートとして配信するため、成果物は配信ツリーへ
-    // 直接書き出してコミットする。index.html は docs/portal/ 直下、資産は dist/ 配下へ置く。
+    // 成果物を配信ツリーへ直接コミットする理由は README.md を参照。
+    // index.html は docs/portal/ 直下、資産は dist/ 配下へ置く。
     outDir: "../docs/portal",
     assetsDir: "dist",
     // docs.json / guides/ / manifest.yaml と同じディレクトリへ出すため、outDir は空にできない。
