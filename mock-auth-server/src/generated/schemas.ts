@@ -5,8 +5,6 @@
  * A mock OIDC Provider for local development.
 It offers the Authorization Code Flow + PKCE (S256) in a minimal form.
 
-This is a service separate from go-boilerplate itself, so it keeps its own OpenAPI document here
-and leaves the primary API contract in `openapi/` untouched.
 The endpoints fall into three groups:
 
 - `/oidc/*` — standard OAuth2 / OIDC endpoints (authorize / token / userinfo / logout).
@@ -120,7 +118,7 @@ export const oidcLogoutResponse = zod.object({
 
 
 /**
- * Authorization Code Flow を経ずに、subject と固定 Profile から access token を直接発行する。 異常系 Profile（expired / wrong-issuer 等）で Go 側検証を試験する。dev-gate 限定。旧 POST /test/token の移行先。
+ * Authorization Code Flow を経ずに、subject と固定 Profile から access token を直接発行する。 異常系 Profile（expired / wrong-issuer 等）で Go 側検証を試験する。dev-gate 限定。
 
  * @summary 固定 Profile での access token 発行（テスト用）
  */
@@ -154,7 +152,7 @@ export const bypassSessionResponse = zod.object({
 
 
 /**
- * 登録済みの疑似ユーザー一覧を返す。dev-gate 限定。旧 GET /test/users の移行先。
+ * 登録済みの疑似ユーザー一覧を返す。dev-gate 限定。
  * @summary 固定 User Fixture の一覧取得
  */
 export const adminListUsersResponse = zod.object({

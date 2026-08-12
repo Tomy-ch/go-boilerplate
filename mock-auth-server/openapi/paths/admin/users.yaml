@@ -3,7 +3,7 @@ get:
   tags:
     - admin
   summary: 固定 User Fixture の一覧取得
-  description: 登録済みの疑似ユーザー一覧を返す。dev-gate 限定。旧 GET /test/users の移行先。
+  description: 登録済みの疑似ユーザー一覧を返す。dev-gate 限定。
   security: []
   responses:
     '200':

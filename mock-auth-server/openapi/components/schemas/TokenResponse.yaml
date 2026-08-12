@@ -23,7 +23,7 @@ properties:
     type: integer
     format: int32
     description: access_token の有効期間（秒）。
-    example: 300
+    example: 3600
   scope:
     type: string
     description: 付与されたスコープ（スペース区切り）。

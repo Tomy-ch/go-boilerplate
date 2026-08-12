@@ -2393,3 +2393,6 @@
 "database/migrations/000012_create_purchase_statuses.up.sql" = "2026-08-13"
 "database/migrations/README.md" = "2026-08-13"
 "database/migrations/README.ja.md" = "2026-08-13"
+"mock-auth-server/openapi/openapi.yaml" = "2026-08-13"
+"mock-auth-server/openapi/paths/admin/users.yaml" = "2026-08-13"
+"mock-auth-server/openapi/paths/bypass/token.yaml" = "2026-08-13"
