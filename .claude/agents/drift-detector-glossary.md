@@ -90,10 +90,12 @@ the prose.
 is then business vocabulary from the first line, and nobody wraps a marker around an entire file. Read
 `scripts/setup/remove-sample-api/sample-manifest.ts` and skip anything under a declared path. <!-- skill-lint-ignore -->
 
-The manifest declares two different things and they are not interchangeable. A path that leaves
-whole is skipped whole. A file listed as marker-bearing keeps most of its content and loses only the
-marked regions — **skipping one of those entirely would hide every leak in the part that stays**, so
-treat it by the marker rule above and nothing more.
+The manifest declares two different things and they are not interchangeable. `SAMPLE_DOMAINS` names
+paths that leave whole — skip those whole. `MARKER_LITERAL_FILES` names files that carry the marker
+strings as *data or prose* rather than as markers, so the removal tool excludes them from its scan;
+that is not a list of partially-removed files. Marker regions are stripped from any file in the tree,
+so a file being absent from the manifest tells you nothing — **skipping a file because it is listed
+would hide every leak in the part that stays**, so apply the marker rule above and nothing more.
 
 Read the manifest rather than restating its contents here or in the exclusions file. **Two lists of
 the same fact drift apart, and the one nobody edits is the one that goes wrong** — which is the exact

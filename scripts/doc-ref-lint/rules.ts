@@ -11,6 +11,8 @@ const REFERENCE = /ADR-(\d{4})/g;
 const PATH_REFERENCE = /adr\/(\d{4})-([a-z0-9-]+)(\.ja)?\.md/g;
 // slug 注釈は参照の直後にしか現れない。
 const ANNOTATION = /\s*\(([-a-z0-9]+)\)/y;
+// `kind: adr` に属する id / slug を探す行数。次の `kind:` に当たった時点でも打ち切る。
+const ENTRY_SPAN = 6;
 
 export const TRANSLATION_EXCLUSIONS = [
   { prefix: "docs/spec/", reason: "feature specifications are intentionally English-only" },
@@ -58,6 +60,34 @@ export function checkPathReferences(file: string, source: string, adrs: ADRIndex
     const slug = adrs.get(match[1]);
     if (slug === undefined) return [{ file, message: `ADR-${match[1]} does not exist (referenced as ${match[0]})` }];
     return slug === match[2] ? [] : [{ file, message: `${match[0]} must be ${match[1]}-${slug}${match[3] ?? ""}.md` }];
+  });
+}
+
+/**
+ * `kind: adr` の構造化エントリが、番号と slug の両方を持ち、その 2 つが一致しているかを検査する。
+ *
+ * 番号と slug が別フィールドに分かれているため `ADR-NNNN (slug)` の正規表現には一致せず、
+ * checkReferences も checkPathReferences も素通りする。ADR は途中に挿入されると以降の番号が
+ * ずれるため、食い違ったときに正しいのは slug の側で、番号を引き直す。
+ */
+export function checkStructuredReferences(file: string, source: string, adrs: ADRIndex): Finding[] {
+  const numbers = new Map([...adrs].map(([number, slug]) => [slug, number] as const));
+  const lines = source.split("\n");
+  return lines.flatMap((line, index) => {
+    if (!/^\s*(-\s+)?kind:\s*["']?adr["']?\s*$/.test(line)) return [];
+    const indent = line.replace(/^(\s*)(-\s+)?.*$/, "$1$2").length;
+    const window = lines.slice(index + 1, index + 1 + ENTRY_SPAN);
+    // 次の要素（`- ` 始まり）か、この要素より浅い行に当たったらそこで打ち切る。
+    const stop = window.findIndex((next) => /^\s*-\s/.test(next) || next.search(/\S/) < indent);
+    const entry = stop === -1 ? window : window.slice(0, stop);
+    const id = entry.map((next) => /^\s*id:\s*["']?(\d{4})["']?\s*$/.exec(next)?.[1]).find((value) => value !== undefined);
+    const slug = entry.map((next) => /^\s*slug:\s*["']?([a-z0-9-]+)["']?\s*$/.exec(next)?.[1]).find((value) => value !== undefined);
+    const at = `L${index + 1}`;
+    if (id === undefined || slug === undefined) return [{ file, message: `${at}: kind: adr entry must carry both id and slug` }];
+    if (adrs.get(id) === slug) return [];
+    const expected = numbers.get(slug);
+    if (expected !== undefined) return [{ file, message: `${at}: slug ${slug} is id "${expected}", not "${id}"` }];
+    return [{ file, message: adrs.has(id) ? `${at}: id "${id}" is slug ${adrs.get(id)}, not ${slug}` : `${at}: id "${id}" and slug ${slug} both name no ADR` }];
   });
 }
 

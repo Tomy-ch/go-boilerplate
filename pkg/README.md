@@ -255,6 +255,23 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 |`Join`|Combine multiple errors|
 |`StackTrace`|Get stack trace string|
 
+## What a sub-package `README.md` carries
+
+Every `pkg/<name>/` has its own `README.md`, and it is the file a reader opens to decide whether the
+package does what they need. It carries these sections, in this order; omit one only when the package
+genuinely has nothing to say under it.
+
+| Section | What goes in it |
+| --- | --- |
+| `Role` | One paragraph: what this package is for, and where the boundary of its responsibility sits. |
+| `Public API` | Every exported symbol, with its signature and a one-line contract. This is the section drift is checked against, so an exported symbol missing here reads as undocumented. |
+| `Wraps` | The external package being wrapped, and what this package adds or hides. Omit when the package wraps nothing. |
+| `Notes` | Pitfalls a caller cannot see from the signature — allocation behavior, precision limits, goroutine safety, what happens on a zero value. |
+
+Anything beyond those four is the package's own call. What is **not** optional is `Public API`:
+`drift-detector-pkg` compares it against the package's exported symbols, so a package that names the
+section something else, or drops it, cannot be checked.
+
 ## Checklist for Adding a New Package
 
 - [ ] Referenced from multiple locations, or wraps an external package
@@ -264,3 +281,4 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 - [ ] Tests are written
 - [ ] Documentation is written
 - [ ] Package summary is added to this README
+- [ ] The sub-package `README.md` carries `Role` / `Public API` (+ `Wraps` / `Notes` when they apply)

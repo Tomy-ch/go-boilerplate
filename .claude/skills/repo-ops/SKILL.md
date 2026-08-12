@@ -518,6 +518,8 @@ because nobody runs it in a loop.
 CI log and apply the single formatter or linter it named (§9 has the config choice); a full local run
 costs minutes of saturated host to rediscover what CI already printed.
 
+For a hook already red for an outside reason, §11 covers the `--no-verify` carve-out.
+
 ## Constraints
 
 - ✅ Read-only knowledge: surface the exact command; run it only when the user asked you to perform

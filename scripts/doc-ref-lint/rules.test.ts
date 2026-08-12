@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adrIndex, checkPathReferences, checkReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
+import { adrIndex, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
 
 const ADR = ["ADR", "-0006"].join("");
 const ADRS = adrIndex(["docs/adr/0006-structural-safety-via-tooling.md"]);
@@ -71,6 +71,45 @@ describe("checkPathReferences", () => {
     });
     it("存在しない番号のパス参照を報告する", () => {
       expect(checkPathReferences("a.md", "docs/adr/9999-nope.md", ADRS)[0].message).toContain("does not exist");
+    });
+  });
+});
+
+describe("checkStructuredReferences", () => {
+  const entry = (id: string, slug: string): string => `    interpreted_by:\n      - kind: adr\n        id: "${id}"\n        slug: ${slug}\n`;
+
+  describe("正常系", () => {
+    it("番号と slug が一致する構造化エントリを通す", () => {
+      expect(checkStructuredReferences("a.yaml", entry("0006", "structural-safety-via-tooling"), ADRS)).toEqual([]);
+    });
+    it("adr 以外の kind を見ない", () => {
+      const source = '      - kind: readme\n        path: internal/domain/README.md\n        section: "Entity"\n';
+      expect(checkStructuredReferences("a.yaml", source, ADRS)).toEqual([]);
+    });
+    it("ファイル末尾で途切れる構造化エントリを読み切る", () => {
+      const source = '      - kind: adr\n        id: "0006"\n        slug: structural-safety-via-tooling';
+      expect(checkStructuredReferences("a.yaml", source, ADRS)).toEqual([]);
+    });
+    it("隣の要素のフィールドを自分のものとして拾わない", () => {
+      const source = `${entry("0006", "structural-safety-via-tooling")}      - kind: readme\n        path: docs/rules.md\n`;
+      expect(checkStructuredReferences("a.yaml", source, ADRS)).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("slug が別の番号のものである場合に番号側を直すよう報告する", () => {
+      const source = entry("0009", "structural-safety-via-tooling");
+      expect(checkStructuredReferences("a.yaml", source, ADRS)[0].message).toContain('is id "0006", not "0009"');
+    });
+    it("番号が実在し slug だけ食い違う場合を報告する", () => {
+      expect(checkStructuredReferences("a.yaml", entry("0006", "other-slug"), ADRS)[0].message).toContain("not other-slug");
+    });
+    it("番号も slug も実在しない場合を報告する", () => {
+      expect(checkStructuredReferences("a.yaml", entry("9999", "other-slug"), ADRS)[0].message).toContain("name no ADR");
+    });
+    it("slug を欠いた構造化エントリを報告する", () => {
+      const source = '      - kind: adr\n        id: "0006"\n';
+      expect(checkStructuredReferences("a.yaml", source, ADRS)[0].message).toContain("must carry both id and slug");
     });
   });
 });

@@ -1,4 +1,9 @@
-# GitHub への通信は、ここで列挙した非破壊的な操作だけを明示許可する。
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease", "-f", "+"]],
+    decision = "forbidden",
+    justification = "AGENTS.md の Git Rules 2 により、ユーザーの明示的な要求なしに force push は実行しない",
+)
+
 prefix_rule(
     pattern = ["git", "push"],
     decision = "allow",
@@ -36,7 +41,6 @@ prefix_rule(
     justification = "Release の非破壊的な操作は開発フロー中に自動実行する",
 )
 
-# 任意 API・認証設定・拡張は、許可範囲を固定できないため拒否する。
 prefix_rule(
     pattern = ["gh", ["api", "auth", "config", "extension"]],
     decision = "forbidden",
