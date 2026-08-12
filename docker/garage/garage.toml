@@ -1,5 +1,5 @@
 # ローカル開発用 Garage（S3 互換オブジェクトストレージ）単一ノード設定。
-# 本番設定ではなく make serve の S3 バックエンド。テストは gofakes3（in-process）を使う。
+# 本番設定ではなく make serve の S3 バックエンド（テストが使うものは docker/README.md の garage 節）。
 metadata_dir = "/var/lib/garage/meta"
 data_dir = "/var/lib/garage/data"
 db_engine = "sqlite"

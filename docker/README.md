@@ -12,6 +12,7 @@ docker/
 ├── tools/              # Code generation / tool runner Dockerfile
 ├── document/           # Documentation viewer Dockerfile + nginx config
 ├── garage/             # Object storage Dockerfile + config + provisioning script
+├── elasticmq/          # SQS-compatible broker config
 ├── mock-auth-server/   # Mock OIDC auth server Dockerfile
 └── database/
     ├── sql/            # DB initialization SQL
@@ -25,7 +26,7 @@ Compose services are split into two layers, so the main checkout and any number 
 
 |Layer|compose project|Services|
 |---|---|---|
-|**infra**|`gobp-shared` (fixed name) — **one instance for every checkout**|`database` / `observability` / `garage` (+ `garage_init`). The auxiliary services and tool runners default to the same project via `COMPOSE_PROJECT_NAME`|
+|**infra**|`gobp-shared` (fixed name) — **one instance for every checkout**|`database` / `observability` / `garage` (+ `garage_init`) / `elasticmq`. The auxiliary services and tool runners default to the same project via `COMPOSE_PROJECT_NAME`|
 |**app**|`APP_PROJECT` — one per checkout (`gobp-app-<directory name>`, or `gobp-wt-N` while a DB slot is held)|`api_server` / `mock_auth_server`|
 
 The infra layer holds every service that can only run on a fixed host port, which is why it exists exactly once on the host.
@@ -57,6 +58,7 @@ The following table maps services defined in docker-compose.yaml to their corres
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|Local observability stack (OTLP endpoint / Grafana) for o11y verification|
 |`garage`|infra|`dxflrs/garage`|3900, 3902|S3-compatible object storage (S3 API / Web API)|
 |`garage_init`|infra|`docker/garage/Dockerfile`|-|One-shot provisioning of the garage layout / bucket / access key / website access (idempotent)|
+|`elasticmq`|infra|`softwaremill/elasticmq-native`|9324|SQS-compatible message broker (local development; tests use an in-process fake)|
 
 The app layer host ports are the ones a DB slot shifts (`8080+N` / `2010+N` / `2345+N` / `6060+N`); the container-internal ports never move.
 
@@ -71,55 +73,24 @@ The app layer host ports are the ones a DB slot shifts (`8080+N` / `2010+N` / `2
 
 |Service|Dockerfile / Image|Description|
 |---|---|---|
-|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|redocly-cli|
-|`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|sqlfluff|
+|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|Go code generation / linting / security / documentation tools ([list](tools/README.md#go_tools))|
+|`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|OpenAPI bundling, Markdown / commit linting, portal build ([list](tools/README.md#node_tools))|
+|`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|SQL linting ([list](tools/README.md#python_tools))|
 |`er_diagram_generator`|`schemaspy/schemaspy`|ER diagram generation (SchemaSpy)|
 
 ## server
 
-The Dockerfile for the application server. Provides the following targets via multi-stage build.
-
-|Target|Purpose|Base Image|
-|---|---|---|
-|`builder`|Go binary build|`golang:1.26.5-alpine`|
-|`runtime`|Production runtime container|`alpine:3.23`|
-|`tooling`|Local development environment|`golang:1.26.5-alpine`|
-
-### runtime
-
-- Runs as non-root user (`app`)
-- Embeds version / revision / build date via `ldflags`
-- Builds in `vendor` mode (`GOPROXY=off`)
-- Migrations run via a command override on the same image (`./server migrate-up`); there is no dedicated migration image
-
-### tooling
-
-Includes the following tools for local development.
-
-|Tool|Purpose|
-|---|---|
-|`air`|Hot reload|
-|`dlv`|Debugger|
-|`golines`|Line-length-limited formatting|
-|`gofumpt`|Enhanced gofmt|
-|`golangci-lint`|Go linter|
+Application server images. One multi-stage Dockerfile produces three targets: `builder` (Go binary), `runtime` (production, non-root; migrations run from this same image via command override, so there is no dedicated migration image), and `tooling` (local hot-reload development). Base images and the tools each target carries: [`server/README.md`](server/README.md).
 
 ## tools
 
-Tool containers for code generation and bundling. Split into three stages.
-
-|Stage|Base|Included Tools|
-|---|---|---|
-|`go_tools`|`golang:1.26.5-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.18.0-alpine`|redocly-cli, js-yaml|
-|`python_tools`|`python:3.14.6-slim`|sqlfluff|
+Tool containers for code generation and linting, split into three stages by language: `go_tools` / `node_tools` / `python_tools`. Which tools each stage carries and what each is for: [`tools/README.md`](tools/README.md).
 
 ## document
 
 Container for the documentation portal.
 
-- Base image: `nginx:1.29-otel`
+- Base image: `nginx:1.31-alpine`
 - Volume mounts the entire `docs/` directory
 - Portal app is served at `/portal/`
 - Accessing `http://localhost:2001/` redirects to `/portal/`
@@ -153,6 +124,10 @@ product images straight from the object storage, the way a CDN fronts S3 in prod
   anything in this bucket as world-readable to whoever holds the key
 - **Website permission is per bucket, not per object** — every object in `gobp-local` becomes anonymously
   readable. The bucket holds nothing but product images; storing non-public objects would require a second bucket
+
+## elasticmq
+
+SQS-compatible broker for local development (tests use an in-process fake instead). Only `elasticmq.conf` lives here; the queues and their DLQ redrive policy are read from it at startup, so there is no one-shot provisioning container. ElasticMQ does not expand environment variables, so the queue names are literal in that file — [`env/README.md`](../env/README.md) records which `*_QUEUE_URL` they pair with.
 
 ## mock-auth-server
 
@@ -197,3 +172,6 @@ Common rules
 - Keywords: uppercase
 - Identifiers: lowercase
 - Functions / literals / types: uppercase
+- `processes = 1` in all three. Parallel execution trips a CPython `resource_tracker` bug that surfaces as a
+  `leaked semaphore` warning or an outright crash ([python/cpython#131788](https://github.com/python/cpython/issues/131788),
+  [#142206](https://github.com/python/cpython/issues/142206)); revisit once those are fixed in the pinned interpreter
