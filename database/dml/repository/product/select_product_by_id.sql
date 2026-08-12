@@ -1,9 +1,9 @@
 -- name: GetProductByID :one
 -- ID から公開状態を問わない単一商品を取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 公開中のみを返す GetPublishedProductByID とは可視範囲が異なり、未公開商品も返します
--- （公開日時の設定そのものを更新対象とする管理用途の read-modify-write に用います）。
+-- （用途は docs/spec/product/domain.md の Product.FindByID を参照）。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,

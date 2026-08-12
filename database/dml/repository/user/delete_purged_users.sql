@@ -1,7 +1,6 @@
 -- name: DeleteUserIdentitiesByUserIDs :exec
--- 物理削除するユーザーに従属する認証アイデンティティを削除する。users より先に消して FK 違反を避ける。
--- 対象は論理削除済みのユーザーに限る。users 側のガードと条件を揃えないと、
--- 削除されないユーザーの従属行だけが失われ、ログインできない生存アカウントが残る。
+-- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る条件は DeleteUsersByIDs の
+-- WHERE と揃えること — ずれると、削除されないユーザーの従属行だけが失われる。
 DELETE FROM user_identities
 WHERE user_id IN (
         SELECT u.id
@@ -11,8 +10,8 @@ WHERE user_id IN (
     );
 
 -- name: DeleteUserRolesByUserIDs :exec
--- 物理削除するユーザーに従属するロール割り当てを削除する。users より先に消して FK 違反を避ける。
--- 対象を論理削除済みのユーザーに限る理由は DeleteUserIdentitiesByUserIDs と同じ。
+-- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
+-- DeleteUserIdentitiesByUserIDs と同じ。
 DELETE FROM user_roles
 WHERE user_id IN (
         SELECT u.id
@@ -22,9 +21,8 @@ WHERE user_id IN (
     );
 
 -- name: DeleteUsersByIDs :execrows
--- 物理削除の対象ユーザーを削除し、削除件数を返す。従属行の削除後に呼ばれる前提で、参照の残存はここでは検査しない。
--- 論理削除済みであることは、呼び手が候補列挙を誤っても現役ユーザーを不可逆に消さないための最終防壁として、
--- 保持期間の判定（Usecase の責務）とは別にここでも検査する。
+-- 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
+-- 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
 DELETE FROM users
 WHERE id = ANY(sqlc.arg('ids')::UUID [])
     AND deleted_at IS NOT NULL;

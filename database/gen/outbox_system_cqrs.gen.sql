@@ -21,7 +21,6 @@ FOR UPDATE SKIP LOCKED;
 -- === source: database/dml/system_cqrs/outbox/delete_published_outbox.sql ===
 -- name: DeletePublishedOutbox :execrows
 -- retention 用 GC。published_at が cutoff より古い行を最大 $2 件削除し、削除件数を返す。
--- 長時間稼働で outbox が単調増加しないようにする。
 DELETE FROM outbox
 WHERE id IN (
         SELECT o.id
@@ -48,7 +47,7 @@ RETURNING id, message_id;
 
 -- === source: database/dml/system_cqrs/outbox/mark_outbox_dead.sql ===
 -- name: MarkOutboxDead :execrows
--- attempts が max に達した恒久失敗行を dead へ遷移する。無限リトライを止め、手動 replay 対象として残置する。
+-- attempts が max に達した行を dead へ遷移する（dead の意味は docs/design/outbox.md）。
 UPDATE outbox
 SET status = 'dead'
 WHERE id = $1
@@ -57,7 +56,7 @@ WHERE id = $1
 -- === source: database/dml/system_cqrs/outbox/mark_outbox_failed.sql ===
 -- name: MarkOutboxFailed :one
 -- publish 失敗時に attempts を加算し last_error を記録する。加算後の attempts を返し、
--- 呼び出し側が max 到達判定（dead 化）に用いる。次 poll で自然に再送される。
+-- 呼び出し側が max 到達判定（dead 化）に用いる。
 UPDATE outbox
 SET
     attempts = attempts + 1,
@@ -87,7 +86,7 @@ LIMIT 1;
 
 -- === source: database/dml/system_cqrs/outbox/replay_dead_outbox.sql ===
 -- name: ReplayDeadOutbox :execrows
--- dead 行を pending へ戻し再 publish 対象に復帰させる（運用 replay）。attempts/last_error をリセットする。
+-- dead 行を pending へ戻し再 publish 対象に復帰させる（運用 replay）。
 -- $1 が NULL の場合は全 dead 行、指定時は当該 message_id のみを対象とする。
 UPDATE outbox
 SET

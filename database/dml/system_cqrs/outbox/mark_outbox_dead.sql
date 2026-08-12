@@ -1,5 +1,5 @@
 -- name: MarkOutboxDead :execrows
--- attempts が max に達した恒久失敗行を dead へ遷移する。無限リトライを止め、手動 replay 対象として残置する。
+-- attempts が max に達した行を dead へ遷移する（dead の意味は docs/design/outbox.md）。
 UPDATE outbox
 SET status = 'dead'
 WHERE id = $1

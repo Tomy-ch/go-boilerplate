@@ -99,7 +99,8 @@ type GetPurchaseDetailByIDRow struct {
 }
 
 // ID から購入詳細（読み取りモデル）を 1 件取得する。ステータス名は購入ステータスマスタとの結合で
-// 解決済み（購入集約に属する固定参照マスタへの一意な等結合であり、単一集約の read）。
+// 解決済み（JOIN の許容範囲は internal/infrastructure/rdb/repository/README.md の
+// Reference-master exception）。
 // 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL、
 // 発送日時（shipped_at）は未発送なら NULL、配達日時（delivered_at）は未配達なら NULL。
 // 存在しない場合は 0 行（NotFound）。
@@ -352,8 +353,9 @@ type ListPurchasesFeedFirstRow struct {
 
 // === source: database/dml/repository/purchase/select_purchases_feed.sql ===
 // 指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する。
-// ステータス名は購入ステータスマスタとの結合で解決する（購入集約に属する固定参照マスタへの
-// 一意な等結合であり、単一集約の read）。一覧は概要のみで明細は含まない。
+// ステータス名は購入ステータスマスタとの結合で解決する（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+// 一覧は概要のみで明細は含まない。
 //
 //	SELECT
 //	    p.id,
@@ -418,9 +420,10 @@ type ListShippablePurchasesRow struct {
 // === source: database/dml/repository/purchase/select_shippable_purchases.sql ===
 // 発送可能な購入を、注文日時の古い順（同時刻は ID 昇順）で最大 limit 件取得する。
 // 現在状態は購入ステータスマスタとの結合で code を解決する（status_id は SoT、code は集約が
-// 状態機械の判定に用いる業務キー）。固定参照マスタのみを結合し、集約境界をまたがない単一集約 read。
+// 状態機械の判定に用いる業務キー。JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // 「発送可能」を定義するのは Purchase.IsShippable で、以下の条件はその実行形です。片方だけ変更しないこと。
-// 支払い済みを表す code は seed UUID を焼き込まないよう呼び出し側がドメイン定数から渡す。
+// 支払い済みを表す code は呼び出し側がドメイン定数から渡す。
 //
 //	SELECT
 //	    ps.code AS status_code,
@@ -562,8 +565,8 @@ WHERE p.user_id = $1
 // 指定ユーザーの購入が取っているステータス code を重複なく返す。
 // 進行中かどうかの判定はドメイン（Status.IsTerminal の否定）が行うため、ここでは業務条件で絞り込まない。
 // 重複を除くため行数はステータスの種類数で頭打ちになり、購入件数には比例しない。
-// ステータスは購入ステータスマスタとの結合で解決する（購入集約に属する固定参照マスタへの一意な
-// 等結合であり、単一集約の read）。
+// ステータスは購入ステータスマスタとの結合で解決する（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 //
 //	SELECT DISTINCT ps.code
 //	FROM purchases AS p
@@ -608,10 +611,9 @@ type UpdatePurchaseDeliveredParams struct {
 }
 
 // === source: database/dml/repository/purchase/update_purchase_delivered.sql ===
-// 購入を配達済み状態へ更新する。配達確認の証跡は扱わないため単一集約（purchases）のみを更新し、在庫操作は伴わない。
-// status_id は code から解決し（seed UUID を焼き込まない）、delivered_at はドメインが決定した時刻（引数）を書き込み、
-// イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
-// 遷移可否ガードは付けない（ドメインが SoT）。
+// 購入を配達済み状態へ更新する。status_id は code から解決する。delivered_at はドメインが決定した時刻（引数）を
+// 書き込み、イベント payload・レスポンスと同一時刻に揃える。
+// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
 //
 //	UPDATE purchases
 //	SET
@@ -646,10 +648,9 @@ type UpdatePurchasePaidParams struct {
 }
 
 // === source: database/dml/repository/purchase/update_purchase_paid.sql ===
-// 購入を支払い済み状態へ更新する。擬似決済のため単一集約（purchases）のみを更新し、在庫操作は伴わない。
-// status_id は code から解決し（seed UUID を焼き込まない）、paid_at はドメインが決定した時刻（引数）を書き込み、
-// イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
-// 遷移可否ガードは付けない（ドメインが SoT）。
+// 購入を支払い済み状態へ更新する。status_id は code から解決する。paid_at はドメインが決定した時刻（引数）を
+// 書き込み、イベント payload・レスポンスと同一時刻に揃える。
+// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
 //
 //	UPDATE purchases
 //	SET
@@ -684,10 +685,9 @@ type UpdatePurchaseShippedParams struct {
 }
 
 // === source: database/dml/repository/purchase/update_purchase_shipped.sql ===
-// 購入を発送済み状態へ更新する。配送追跡は扱わないため単一集約（purchases）のみを更新し、在庫操作は伴わない。
-// status_id は code から解決し（seed UUID を焼き込まない）、shipped_at はドメインが決定した時刻（引数）を書き込み、
-// イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
-// 遷移可否ガードは付けない（ドメインが SoT）。
+// 購入を発送済み状態へ更新する。status_id は code から解決する。shipped_at はドメインが決定した時刻（引数）を
+// 書き込み、イベント payload・レスポンスと同一時刻に揃える。
+// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
 //
 //	UPDATE purchases
 //	SET

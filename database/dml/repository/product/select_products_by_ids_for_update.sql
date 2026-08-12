@@ -3,7 +3,8 @@
 -- ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0033 (ordered-pessimistic-row-locks)）。
 -- 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
 -- ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
--- status_name / category_name は商品の付随表示値。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,

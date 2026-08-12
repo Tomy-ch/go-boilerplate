@@ -64,9 +64,10 @@ WHERE pi.image_path = ANY(sqlc.arg('image_paths')::TEXT [])
 -- === source: database/dml/repository/product/select_low_stock_products.sql ===
 -- name: ListLowStockProducts :many
 -- 在庫が警告閾値以下の商品を、在庫の少ない順（同数は ID 昇順）で最大 limit 件取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+-- 閾値未設定（NULL）の商品は WHERE で明示的に除外する（意味は docs/spec/product/domain.md の
+-- Product.FindAllLowStock を参照）。
 -- 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
 SELECT
     ps.name AS status_name,
@@ -83,10 +84,10 @@ LIMIT sqlc.arg('limit_param');
 -- === source: database/dml/repository/product/select_product_by_id.sql ===
 -- name: GetProductByID :one
 -- ID から公開状態を問わない単一商品を取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 公開中のみを返す GetPublishedProductByID とは可視範囲が異なり、未公開商品も返します
--- （公開日時の設定そのものを更新対象とする管理用途の read-modify-write に用います）。
+-- （用途は docs/spec/product/domain.md の Product.FindByID を参照）。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -101,7 +102,8 @@ WHERE p.id = sqlc.arg('product_id_param');
 -- ID から公開状態を問わない単一商品を、更新のために悲観ロック（FOR UPDATE）して取得します。
 -- 同一商品への並行書き込み（購入の在庫減算・在庫補充）を行ロックで直列化します。
 -- ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
--- status_name / category_name は商品の付随表示値。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -116,7 +118,7 @@ FOR UPDATE OF p;
 -- name: ListProductImagesByProductIDs :many
 -- 複数の商品 ID から画像をまとめて取得する。商品 1 件ずつの取得を件数分繰り返さないための一括版で、
 -- 並びは商品 ID 昇順・同一商品内は表示順（sort_key）昇順。product_ids が空の場合は 0 行。
--- 論理削除された画像は差し替え履歴であって現在の画像ではないため、生存行だけを返す。
+-- 生存行だけを返す（論理削除の意味は docs/spec/product/domain.md の Image 節を参照）。
 SELECT sqlc.embed(pi)
 FROM product_images AS pi
 WHERE pi.product_id = ANY(sqlc.arg('product_ids')::UUID [])
@@ -126,9 +128,8 @@ ORDER BY pi.product_id, pi.sort_key;
 -- === source: database/dml/repository/product/select_products.sql ===
 -- name: ListPublishedProductsDescFirst :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
@@ -151,9 +152,8 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsDescAfter :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
@@ -180,9 +180,8 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscFirst :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
@@ -205,9 +204,8 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscAfter :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
@@ -238,7 +236,8 @@ LIMIT sqlc.arg('limit_param');
 -- ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0033 (ordered-pessimistic-row-locks)）。
 -- 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
 -- ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
--- status_name / category_name は商品の付随表示値。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -253,8 +252,8 @@ FOR UPDATE OF p;
 -- === source: database/dml/repository/product/select_published_product_by_id.sql ===
 -- name: GetPublishedProductByID :one
 -- ID から公開中の単一商品を取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、以下の条件はその実行形です。片方だけ変更しないこと。
 -- 非公開・未存在はいずれも該当行なし（0 行）で返ります。
 SELECT
@@ -303,7 +302,8 @@ RETURNING products.lock_version;
 -- === source: database/dml/repository/product/update_product_stock.sql ===
 -- name: UpdateProductStock :one
 -- 在庫数を更新し、採番後のバージョンを返します。
--- lock_version の加算は DB が行い、採番の権威を単一箇所に置きます。
+-- lock_version の加算は SQL 側で行う（採番の権威の置き場所は docs/spec/product/domain.md の
+-- Product.Update を参照）。
 -- 在庫更新でもバージョンを進めることで、更新前のバージョンを条件とする部分更新（UpdateProduct）が
 -- 在庫の変化を上書きせずに 0 行で弾かれます。
 -- WHERE の lock_version 一致は、行ロックを取らずに呼ばれた場合に備える二重防御で、
