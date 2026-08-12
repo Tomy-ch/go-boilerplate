@@ -7,7 +7,7 @@ The viewer for the documentation portal. It is a standalone static site: it read
 its own.
 
 Its build output is committed under `docs/portal/`, which GitHub Pages serves as the site root
-(ADR 0098). The viewer sources live outside `docs/` so that a package manifest, a lockfile, and
+(ADR 0100). The viewer sources live outside `docs/` so that a package manifest, a lockfile, and
 `node_modules` never end up inside the published tree.
 
 ## Why a separate package
