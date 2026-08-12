@@ -7,15 +7,12 @@ info:
     url: https://x.com/TomyC258460
   version: 2.2.0
   description: |
-    This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
-    It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
+    Reference specification for the sample API (users, products, purchases). It exercises every layer
+    of the Onion Architecture end to end: cursor and offset pagination, creation and partial update,
+    soft delete, idempotency keys, and role-based authorization.
 
-    The project is structured around domain-driven principles, with clean separation between interfaces,
-    use cases, domain entities, and infrastructure. All handlers are generated from the OpenAPI specification
-    using oapi-codegen, and strict typing is enforced across the system.
-
-    This API is intended as a production-ready boilerplate that balances performance,
-    flexibility, and developer experience.
+    Handlers (oapi-codegen) and the published reference documentation are both generated from this
+    file, so every endpoint change starts here.
   license:
     name: MIT License
     url: https://opensource.org/licenses/MIT
