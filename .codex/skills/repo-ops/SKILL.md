@@ -38,6 +38,8 @@ Three facts explain almost everything below:
 | `env/.env` is dirty and you did not edit it | §8 |
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §9 |
 | `commitlint: not found`, `orval: not found`, stale tool version | §10 |
+| `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §10 |
+| A containerized gate reports missing dependencies for a package you never touched, or `make` fails where a bare `docker compose run` passes | §10 |
 | A hook fails for something outside your change | §11 |
 | A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §21 |
 | Want to know why `make lint` skipped, throttled, or deferred itself to CI | §21 |
@@ -259,17 +261,62 @@ golangci-lint run --config .golangci-full.yaml     # equivalent, when you need e
 
 Always reproduce CI failures with the full config.
 
-## 10. `commitlint: not found` / `orval: not found` / a stale tool version
+## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / a stale tool version
 
-The tool-runner images are **build artifacts of `mise.toml` and `scripts/package.json` + `scripts/pnpm-lock.yaml`**. Tools
+The tool-runner images are **build artifacts of `docker/tools/Dockerfile`, `mise.toml`, and the
+`package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` triple of every package the node runner
+installs in-tree — `scripts/`, `mock-auth-server/`, and `docs-viewer/`**. Tools
 are resolved inside the runners, never on the host (the same reproducibility rule as codegen — see
-`docs/rules.md`). After changing either file — or on a fresh clone whose images predate them — the
-runner is missing the tool or ships an old version.
+`docs/rules.md`). After changing any of those files — or on a fresh clone whose images predate them —
+the runner is missing the tool, ships an old version, or refuses to run anything at all.
+
+The three-package span is the part that surprises: a change confined to `mock-auth-server/` or
+`docs-viewer/` still stales the image that `scripts/`-based gates run in, because all three are
+installed into the one node runner.
+
+That last symptom is the one that reads as unrelated to the edit. `scripts/pnpm-workspace.yaml` sets
+`verifyDepsBeforeRun: error`, so once its settings no longer match what the image's
+`scripts/node_modules` was installed under, every `pnpm run` inside the runner fails with
+`[ERR_PNPM_VERIFY_DEPS_BEFORE_RUN] The value of the <setting> setting has changed`. It takes down
+gates with no visible connection to the change — `make md-lint`, `make actions-lint`, `make
+lint-oapi` — while the host-side `-ci` targets stay green, because the host tree was re-installed
+when the file changed. Adding a `minimumReleaseAgeExclude` or `overrides` entry is enough to trigger
+it. Green on the host is therefore **not** evidence that the containerized gate passes: rebuild
+first, then re-run whichever gate you intend to report.
+
+A stale image also shows up as **a containerized gate reporting missing dependencies for a package
+you never touched**. The 1:1 test gate (`scripts/one-to-one.gate.test.ts`) type-checks all three
+packages, so an image built before `mock-auth-server/` gained its current manifests answers with a
+column of TS2307 `Cannot find module 'hono' / 'jose' / 'zod'` against `mock-auth-server/src/**`. It
+reads as a dependency the repository forgot to declare, which is the wrong tree to search.
+
+**The tell is that `make` fails while the same command through a bare `docker compose run` passes.**
+`.makefiles/docker/compose.mk` exports `COMPOSE_PROJECT_NAME` as the shared infra project (§1), so
+`make` always reaches the `gobp-shared` image; a bare invocation takes the project from the directory
+name and therefore hits a different — usually newer — one. Read that asymmetry as an image-age
+difference, never as evidence about the code.
+
+**Across worktrees this is a shared resource, and it holds one branch's settings at a time.** The
+runner images belong to the single `gobp-shared` compose project (§1), so a rebuild in one worktree
+re-points every other worktree's containerized gates at *that* branch's `scripts/pnpm-workspace.yaml`.
+Two windows whose branches disagree — one adding a `minimumReleaseAgeExclude` entry, one not — will
+take turns failing, and the direction flips with whoever rebuilt last. The failure is the same
+`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in both directions, so read it as "the image matches someone
+else's branch", not as a defect in yours. Rebuild before the gates you are about to report, and
+expect the other window to need the same.
 
 ```bash
 make tool-runners-build           # rebuild go / node / python runners (cached)
 make tool-runners-build-clean     # --no-cache --pull, when the cached layer is the problem
 ```
+
+**While the cause of a containerized failure is still unidentified, rebuild clean before concluding
+anything about it.** "Unrelated to my change" and "a pre-existing failure on the base branch" are
+conclusions, and a stale image produces evidence for both. So spend the rebuild first: run
+`make tool-runners-build-clean`, restart whatever is already up (`make serve` and the tool stack, not
+only the runner that failed), then re-run the gate. It costs minutes and it is the cheapest way to
+eliminate the one explanation that mimics every other one. Reaching for `--no-verify` while the cause
+is unknown skips that check rather than passing it.
 
 The node runner also carries `/app/scripts/node_modules` as an anonymous volume (so the bind mount
 does not shadow it); helper scripts and `gen-mock-auth-oapi` resolve their binaries from there, which
@@ -290,14 +337,16 @@ enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are i
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
 | pre-push | `make secret-scan`; `*.go` → `make gate-go-push` (bundles `test` + `test-scripts`); `*.go` / `openapi/**` → regenerate and `git diff --exit-code` on `*.gen.go` / mocks / `openapi.gen.yaml`; `go.mod` / `go.sum` → `go mod tidy` + diff |
 
-The Go gates are bundled because lefthook runs commands within a hook in parallel: separate entries
-would multiply heavy work by both the command count and the number of open worktrees. See §21 for
-how the bundled gates scale under host load.
+The Go gates are **bundled** into `gate-go` / `gate-go-push` rather than listed one per command,
+because lefthook runs a hook's commands in parallel and a per-gate entry multiplies host load by the
+number of gates on top of the number of open windows. How hard they run is decided by §21.
 
 The pre-push `gen-go-check` regenerates in Docker and fails on any diff — the fix is to commit the
 regenerated output (§2, §4), not to re-run it. When a hook is red for a reason unrelated to your
 change (a pre-existing failure on the base branch, an environment problem), push with `--no-verify`
-and fix the cause separately rather than reshaping your change around it.
+and fix the cause separately rather than reshaping your change around it. Rule out a stale
+tool-runner image (§10) before calling it pre-existing — the failure text alone does not tell the two
+apart.
 
 ## 12. `pin-images-check` / `pin-actions-check` — fail-closed lockfiles
 
@@ -428,42 +477,44 @@ which drives the vendor-mode `Dockerfile` directly.
 
 ## 21. A gate failed for a reason unrelated to the change — check how many windows are open
 
-Several active worktrees can saturate the host when every window runs a whole-host lint or test gate.
-The resulting timeout, crawl, or Docker failure is not merely slow: it makes a red gate stop being
-evidence about the change under test.
+When several worktrees each run a gate sized for the whole host, the host saturates and gates start
+failing in ways that look like defects in the change: a test you did not touch times out, `make lint`
+takes 17 minutes, `docker` stops answering (see also the shared-DB and CPU-saturation traps this
+manifests as). The loss is not the wall time — it is that **a gate failure stops being evidence about
+the code**.
 
-Before diagnosing anything else, ask the make layer what it decided:
+`.makefiles/load.mk` sizes the heavy gates from `git worktree list` at make parse time, so nobody has
+to remember to throttle. Ask it what it decided before diagnosing anything else:
 
 ```bash
-make load-status
+make load-status     # band, window count, CPU share, and the flags each tool will receive
 ```
 
-| Band | Trigger (default) | Behaviour |
+| Band | Trigger (default) | What changes |
 | --- | --- | --- |
-| `full` | fewer than 3 worktrees | Nothing changes — tool defaults, whole host |
+| `full` | fewer than 3 worktrees | Nothing — tool defaults, whole host |
 | `low` | 3 or more | `CPU / windows` parallelism, `nice -n 10`, heavy gates run one at a time |
 | `ci-first` | 5 or more | Heavy gates do not run locally; the push carries them to CI |
 
-`ci-first` retains gates that are cheap and unrecoverable after a push (`commitlint`, `secret-scan`,
-pin lockfile checks, migration numbering). It defers only work that CI re-runs identically, so this
-is not a verification hole: the verification moves to CI.
+`ci-first` keeps every gate that is cheap **and** unrecoverable after a push — `commitlint`,
+`secret-scan`, pin lockfile checks, migration numbering. It drops only what CI re-runs identically,
+so nothing goes unverified; the verification moves.
 
-Override the automatic band for one invocation when needed:
+Override per invocation when you need one heavy gate by hand while the rest stays deferred:
 
 ```bash
-make lint GOBP_LOAD=low
-make lint GOBP_LOAD=full
-make test GOBP_LOAD=ci-first
+make lint GOBP_LOAD=low       # run this one throttled
+make test GOBP_LOAD=full      # ignore the band entirely (single-window machines)
 ```
 
-The default thresholds are `GOBP_LOW_THRESHOLD` (3) and `GOBP_CI_FIRST_THRESHOLD` (5); set either
-for the invocation if the host needs different limits. Throttling applies only to gates that run on
-every commit and push. One-shot heavy work such as image builds, code generation, and Trivy remains
-unchanged because it is not repeatedly multiplied across windows.
+Thresholds are `GOBP_LOW_THRESHOLD` / `GOBP_CI_FIRST_THRESHOLD`. Only gates that run on **every**
+commit and push are throttled — one-shot heavy work (image builds, codegen, Trivy) is left alone,
+because nobody runs it in a loop.
 
-With many windows open, do **not** run `make lint` locally just to reproduce a CI lint failure. Read
-the CI log and run the single tool it identifies; §9 covers choosing the matching golangci config.
-A full local lint can spend minutes saturating the host only to rediscover what CI already printed.
+**Do not reach for `make lint` locally to reproduce a CI lint failure when windows are many.** Read the
+CI log and apply the single formatter or linter it named (§9 has the config choice); a full local run
+costs minutes of saturated host to rediscover what CI already printed.
+
 For a hook already red for an outside reason, §11 covers the `--no-verify` carve-out.
 
 ## Constraints

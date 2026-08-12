@@ -65,7 +65,7 @@ Per the "Exception: Skill Execution" clause in AGENTS.md, the normal AI Modifica
 
 The following remain protected even during skill execution:
 
-- `AGENTS.md` / `AGENTS.md`
+- `AGENTS.md`
 - Existing release notes under `.github/release/` (this skill never modifies or overwrites an existing file — if `.github/release/<NEW_VERSION>.md` already exists, stop and ask the user)
 - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
 - Everything outside `.github/release/`

@@ -36,15 +36,12 @@ Gemini なら `.gemini/`。中身の指示が 1 つのツールの契約に対�
 
 成果物のドメインごとに 1 つのサブディレクトリを切り、所有するスキルファミリの名前を付けます。
 
-```txt
-.agents/
-├── comment-remediation/
-│   ├── comment-remediated.toml   # コメントの在庫を掃き終えたファイル
-│   ├── comment-remediated.sh     # その照会。編集前に PreToolUse フックが実行する
-│   └── …sweep_on_touch.prompt    # 未是正だったときの手順。必要時のみ読む
-└── ddd-audit/
-    └── pattern-ledger.yaml       # DDD パターン台帳 — .claude/skills/ddd-audit/SKILL.md を参照
-```
+- `comment-remediation/` — コメントの在庫を掃き終えたファイルの記録と、未是正のファイルに編集が
+  当たったときの手順。編集前に `PreToolUse` フックが読みます。
+- `ddd-audit/` — DDD パターン台帳。このリポジトリがどの Evans パターンをどこで解釈したかを持ちます。
+  所有は `.claude/skills/ddd-audit/SKILL.md`。
+- `glossary-drift/` — glossary ドリフト検出器が尊重する除外の宣言。`docs/spec/` の外に業務語が
+  現れていても、まだ指摘としない箇所を記録します。所有は `.claude/agents/drift-detector-glossary.md`。
 
 `comment-remediation/` はここで唯一、寿命のあるドメインです。コメント方針への移行がどこまで進んだ
 かを記録するものなので、ツリーを掃き終えれば意味を失います。ディレクトリと `.claude/settings.json`

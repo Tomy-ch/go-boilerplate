@@ -30,7 +30,7 @@ You are **read-only**. Never edit, write, or mutate anything. Return findings as
 
 ## Key Rules (re-read `pkg/README.md` Constraints each run — don't hardcode)
 
-Apply the `pkg/README.md` "Constraints" list as the canonical rule set — no `internal/` deps; framework-agnostic unless a sub-`pkg/<name>/README.md` allows; no business logic; no `pkg/` → `pkg/` deps except `pkg/xerrors` (enforced by depguard `independent_pkg`). Not restated here so it cannot drift from the README.
+Apply the `pkg/README.md` "Constraints" list as the canonical rule set — no `internal/` deps; framework-agnostic unless a sub-`pkg/<name>/README.md` allows; no business logic; no `pkg/` → `pkg/` deps beyond the exceptions the README currently lists (enforced by depguard `independent_pkg`). Not restated here so it cannot drift from the README.
 
 ## Step 1. Resolve File Scope (only if `files` not supplied)
 

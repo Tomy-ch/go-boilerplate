@@ -17,7 +17,7 @@ subagent、scaffolding が読むスペックテンプレート、補助スクリ
 
 | パス | 内容 |
 | --- | --- |
-| `settings.json` | project スコープの権限（`allow` / `ask` / `deny`）、有効化プラグイン、既知マーケットプレイス。リポジトリを信頼した全員と共有されます。 |
+| `settings.json` | project スコープの権限（`allow` / `ask` / `deny`）、有効化プラグイン、既知マーケットプレイス。リポジトリを信頼した全員と共有されます。生成物は `Edit` / `Write` を deny、`AGENTS.md` とその `CLAUDE.md` シンボリックリンクは確認を要します。 |
 | `skills/<name>/` | 再利用可能な skill。英語 canonical の `SKILL.md`（+ 参考訳 `SKILL.ja.md`）と、任意の同梱 `scripts/` / `references/` を持ちます。`/<name>` で起動。 |
 | `agents/` | skill が使う subagent 定義（例: integrator skill が並列でファンアウトする読み取り専用のレイヤー別ワーカー `arch-auditor-*` / `drift-detector-*`）。 |
 | `scaffold-spec/` | スペック形式定義（`domain-spec.md`・`usecase-spec.md`・`verify-rules.md` など）。`scaffold-*` / `verify-spec` / `new-spec-*` skill が **実行時に** 読むため、形式変更が skill を編集せずに伝播します。 |
@@ -59,8 +59,8 @@ bash .claude/scripts/bootstrap-external-skills.sh
 
 - **project スコープではなく user スコープ。** skill は `~/.claude/skills/graphify/`（および
   `~/.codex/skills/graphify/`）へ書かれるため、信頼済みの clone には**入らず**、マシンごとに一度
-  bootstrap を実行します。バージョンは project スコープの `mise.toml` に固定し、スクリプトは自分で
-  選ばずその pin を読みます。
+  bootstrap を実行します。バージョンは project スコープの `python/graphify.in` に固定し、スクリプトは
+  自分で選ばずその pin を読みます。
 - **インストーラは `~/.claude/CLAUDE.md`（user global のメモリ）も書き換え**、`/graphify` の
   トリガーを登録します。本リポジトリの `CLAUDE.md` には触りません。
 - **`graphify uninstall` は Codex 側の複製を消し残します** — `~/.codex/skills/graphify/` は手で
@@ -71,7 +71,8 @@ bash .claude/scripts/bootstrap-external-skills.sh
 `graphify codex install`（`opencode` / `aider` / `kilo` も同様）は `AGENTS.md` を書き換え、
 `graphify hook install` は git hook と merge driver を追加します。いずれも project スコープで、
 `AGENTS.md` / `CLAUDE.md` は `AGENTS.md` が hard-protected と定めている対象です。これらの形は
-`settings.json` の `deny` に入れており、`graphify --help` を読んだエージェントが到達できません。
+`settings.json` の `ask` に振ってあり、`graphify --help` を読んだエージェントが実行するのではなく、
+人の判断を仰ぐ形で表に出ます。
 
 グラフは派生物なので gitignore してあり、手元で生成します。`update` と問い合わせ系のコマンドは
 AST のみで API キーを要しません。docs / PDF / 画像の抽出、`--mode deep` の推論、`--wiki`、

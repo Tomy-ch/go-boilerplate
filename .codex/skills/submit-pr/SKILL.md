@@ -214,7 +214,7 @@ EOF
 
 ## Step 8. Report
 
-Print the PR URL and a brief summary in Japanese.
+Print the PR URL and a brief summary in Japanese. Run `make -s load-status`. When its resolved band is `ci-first`, the heavy gates were delegated by the push hook, so wait for their CI result with `gh pr checks --watch` and include the final check status in this report. If checks fail, report the failure and do not describe the PR as verified. Do not wait for CI in `full` or `low`: this step follows delegated verification, not every CI-only check.
 
 For the create path:
 
@@ -223,6 +223,7 @@ PR を作成しました: <url>
 ベース: <base-branch>
 タイトル: <title>
 コミット数: N
+CI 委譲: <なし / ci-first。gh pr checks の最終結果>
 ```
 
 For the update path:
@@ -230,6 +231,7 @@ For the update path:
 ```text
 PR を更新しました: <url>
 追加コミット数: N
+CI 委譲: <なし / ci-first。gh pr checks の最終結果>
 ```
 
 ## Step 9. Post-PR Review (confirm)

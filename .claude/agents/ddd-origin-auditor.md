@@ -146,7 +146,7 @@ verdict: <差異なし|差異あり|逸脱宣言あり>
 gap: "<Evans との差異を 1 行で。差異なしなら空>"
 interpreted_by:
   - kind: <adr|readme|doc>
-    <id: "NNNN" | path: <path>, section: "<見出し>">
+    <id: "NNNN", slug: <adr-slug> | path: <path>, section: "<見出し>">
 deviation_declared: <true|false>
 deviation_note: "<逸脱宣言 / 不採用の理由。無ければ空>"
 ```
