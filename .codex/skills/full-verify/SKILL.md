@@ -116,7 +116,7 @@ situation and confirms with the user where the basis lives. Using Read/Grep/Glob
   - A monorepo's `package.json` (workspaces), Go's `go.mod`, Cargo workspace members,
     Maven modules (`pom.xml`), etc. If none, enumerate the directories directly under the analysis
     root to the depth of `--module-depth`.
-- **Presence of design documents**: detect `README*`, `docs/`, ADR, `AGENTS.md`/`AGENTS.md`,
+- **Presence of design documents**: detect `README*`, `docs/`, ADR, `AGENTS.md`,
   `INTENT.md`, design Markdown.
 
 ### 2. Fixing the Basis (Source of Truth) — Pass 0

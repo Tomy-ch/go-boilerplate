@@ -34,6 +34,6 @@ Update `working.md` and place a concise HTML status comment at the top of the ma
 
 Default to stopping after one directory. For `--pace=file`, stop after each file; for `--pace=all`, continue through the approved severity range.
 
-Use the `$commit` skill for any commit. Add a `Refs: <reviews-dir>/mod_*.md (<severity>)` footer. Do not push. At a stop point, report completed and deferred findings plus the next planned directory.
+Use the `/commit` skill for any commit. Add a `Refs: <reviews-dir>/mod_*.md (<severity>)` footer. Do not push. At a stop point, report completed and deferred findings plus the next planned directory.
 
 With `--dry-run`, make no source or Git changes; record only the proposed fix/defer judgments in the response, not the ledger.

@@ -24,12 +24,7 @@ Do NOT use this skill for:
 
 ## Why only 2 specs (lean A)
 
-controller / infra layers are not spec-driven — they are derived at scaffold time from:
-
-- OpenAPI gen + naming convention → controller
-- domain Repository IF + sqlc gen function names → infra
-
-The convention itself is enforced by `arch-check` (controller / infra audit) (handler/Repository body purity, name correspondence). See `.codex/scaffold-spec/lifecycle.md` for the full rationale.
+controller / infra layers are not spec-driven — they are derived at scaffold time from OpenAPI gen and sqlc gen, and the convention is enforced by `arch-check`. Full rationale: `.codex/scaffold-spec/lifecycle.md`.
 
 ## What This Skill Reads / Writes
 

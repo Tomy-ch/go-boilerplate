@@ -21,7 +21,7 @@ Mechanism vocabulary は抑制チャネルです。**報告前にすべての or
 
 ## 実行時インベントリの抽出
 
-ドメイン spec YAML の形は `.claude/scaffold-spec/domain-spec.md` を実行時に読んで把握し、節が固定であると仮定しません。次の 5 つのインベントリを抽出します。
+ドメイン spec YAML の形は `.codex/scaffold-spec/domain-spec.md` を実行時に読んで把握し、節が固定であると仮定しません。次の 5 つのインベントリを抽出します。
 
 - `docs/spec/*/domain.md` の YAML にある `package:` と `struct:` の宣言（対象を絞る場合は選択された feature のみ）。
 - `_test.go` と `mock/` を除く `internal/domain/**` にある、export された `type X struct` と `type X interface` の宣言。
