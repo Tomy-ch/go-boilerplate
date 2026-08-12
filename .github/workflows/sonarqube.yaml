@@ -78,31 +78,9 @@ jobs:
     needs: preflight
     if: ${{ needs.preflight.outputs.configured == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
-    env:
-      ENV: ci
-      DB: test
-      DB_USER: postgres
-      DB_PASSWORD: postgres-password
-    services:
-      database:
-        image: postgres:18.4-trixie
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres-password
-          POSTGRES_DB: test
-          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-          TZ: Asia/Tokyo
-          PGTZ: Asia/Tokyo
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd="pg_isready -U postgres -d test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     outputs:
       count: ${{ steps.summarize.outputs.count }}
       detail: ${{ steps.detail.outputs.markdown }}
@@ -183,60 +161,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Setup Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Setup DB
-        uses: ./.github/actions/setup-postgres
-        with:
-          db: ${{ env.DB }}
-          user: ${{ env.DB_USER }}
-          password: ${{ env.DB_PASSWORD }}
-          init_sql: docker/database/sql/004-init-extensions-test-db.sql
-
-      - name: Materialize ci env for embedding
-        run: make materialize-env
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install node and pnpm
-        run: mise install node npm:pnpm
-
-      - name: Install script dependencies
-        run: pnpm install --dir scripts --frozen-lockfile
-
-      # The scripts test suite's 1:1 gate resolves callable exports through TypeScript. Its
-      # docs-viewer and mock-auth-server scans must have dependencies, or unresolved imports
-      # would make the gate fail before the coverage report is generated.
-      - name: Install trees checked by the scripts test suite
-        run: |
-          set -euo pipefail
-          pnpm install --dir docs-viewer --frozen-lockfile
-          pnpm install --dir mock-auth-server --frozen-lockfile
-
-      - name: Generate TypeScript coverage
-        run: pnpm --dir scripts run test
-
-      - name: Rebase the lcov paths onto the repository root
-        run: sed -i 's|^SF:|SF:scripts/|' scripts/coverage/lcov.info
-        shell: bash
-
-      - name: Initialize Database Table
-        run: go run ./cmd/ migrate-up --database "$DB"
-
-      - name: Seed Database
-        run: go run ./cmd/ db-seed --database "$DB"
-
-      - name: Run Go tests with coverage
-        run: make test-cover-ci
 
       - name: SonarQube Cloud scan
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1

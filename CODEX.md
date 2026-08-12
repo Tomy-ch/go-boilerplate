@@ -57,6 +57,24 @@ authoritative unless this file states a Codex-specific execution detail.
   authorization or a governing repository policy. Do not modify another agent's worktree or branch
   unless the task explicitly requires it.
 
+<!-- boilerplate-only:begin -->
+## CI-first validation
+
+- Unless the user explicitly asks for local verification, run test and lint workloads in CI. Do
+  not consume the host machine's resources by running `make test`, `make lint`, `make sql-lint`,
+  or their equivalent local commands; push the scoped change and use the resulting CI checks as
+  the validation record.
+
+## Generated SQL artifacts
+
+- Generate DML and sqlc artifacts from the assigned Git worktree, never from the primary checkout.
+  From the worktree root, run `make merge-dml-ci work-dir=.` followed by `make sqlc-generate-ci`.
+  Passing `work-dir=.` is required: the CI target otherwise defaults to `/app`, which exists in
+  the tool-runner container but not on the host and makes the merge command fail before it can
+  read `database/dml`.
+
+<!-- boilerplate-only:end -->
+
 ## Worktree and release synchronization
 
 - Before investigating or changing an implementation request, fetch `origin`, resolve the latest

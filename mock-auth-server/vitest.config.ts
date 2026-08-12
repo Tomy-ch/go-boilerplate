@@ -24,7 +24,7 @@ export default defineConfig({
       reporter: ["text"],
       // 母数を判定モジュールへ絞ってあるぶん、100% は「網羅せよ」ではなく「検査されない分岐を
       // 残さない」を意味する。
-      thresholds: { branches: 100, functions: 100, lines: 100 },
+      thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },
 });
