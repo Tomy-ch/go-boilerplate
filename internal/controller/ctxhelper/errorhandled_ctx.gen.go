@@ -27,7 +27,7 @@ func GetErrorHandled(ctx context.Context) (bool, bool) {
 	return zero, false
 }
 
-// --- echo.Context wrapper（std lib 版へ委譲） ---
+// --- echo.Context wrapper ---
 
 func SetErrorHandledToEcho(c *echo.Context, val bool) {
 	ctx := SetErrorHandled(c.Request().Context(), val)
