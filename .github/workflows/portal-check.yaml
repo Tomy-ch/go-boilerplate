@@ -79,22 +79,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The versions are pinned in mise.toml (SSOT) — never duplicated here. This is the same
       # pair the node_tool_runner image installs, so CI and the container run the same toolchain.
-      - name: Install node and pnpm
-        run: mise install node npm:pnpm
 
-      # The `-ci` targets run the tools directly; the non-suffixed ones would start the container,
-      # which on a runner means building the whole tool image to reach a package that needs none
-      # of it. Both targets install with `--frozen-lockfile`, so a lockfile that does not match
-      # `package.json` fails here rather than resolving something else.
       - name: Run portal checks
         id: portal-check
         shell: bash

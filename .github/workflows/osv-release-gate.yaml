@@ -85,16 +85,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The scanner version is declared in mise.toml (SSOT) — never pinned here.
-      - name: Install osv-scanner
-        run: mise install aqua:google/osv-scanner
 
       - name: Scan with osv-scanner
         id: scan

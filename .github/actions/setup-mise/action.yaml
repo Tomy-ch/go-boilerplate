@@ -1,0 +1,83 @@
+name: Setup mise
+description: Install the pinned mise binary and the tools it manages after verifying the binary digest
+
+inputs:
+  tools:
+    required: false
+    default: ""
+    description: Space-separated mise tool specifications to install; empty installs nothing
+  github-token:
+    required: true
+    description: Token used while mise resolves tools from GitHub
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve mise paths
+      id: paths
+      shell: bash
+      run: |
+        echo "bin=${HOME}/.local/bin" >> "$GITHUB_OUTPUT"
+        echo "binary=${HOME}/.local/bin/mise" >> "$GITHUB_OUTPUT"
+
+    - name: Restore mise binary
+      id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.paths.outputs.binary }}
+        key: mise-${{ runner.os }}-${{ runner.arch }}-2026.7.12-dad54e0b
+
+    - name: Install and verify mise binary
+      shell: bash
+      env:
+        MISE_VERSION: 2026.7.12
+        MISE_SHA256: dad54e0b843908324282b8673f9c0ebc3a4da0c49ad2da309a49bfbc918ba180
+        BIN_DIR: ${{ steps.paths.outputs.bin }}
+        BINARY: ${{ steps.paths.outputs.binary }}
+      run: |
+        set -euo pipefail
+
+        verify() {
+          [ -f "$BINARY" ] || return 1
+          echo "${MISE_SHA256}  ${BINARY}" | sha256sum --check --status
+        }
+
+        if verify; then
+          echo "cached mise matches the pinned digest"
+        else
+          if [ -f "$BINARY" ]; then
+            echo "cached mise does not match the pinned digest; discarding it"
+            rm -f "$BINARY"
+          fi
+
+          mkdir -p "$BIN_DIR"
+          url="https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/mise-v${MISE_VERSION}-linux-x64"
+          curl --fail --location --silent --show-error \
+            --retry 5 --retry-delay 3 --retry-all-errors \
+            --output "$BINARY" "$url"
+
+          if ! verify; then
+            echo "downloaded mise does not match the pinned digest (expected ${MISE_SHA256})"
+            sha256sum "$BINARY" || true
+            exit 1
+          fi
+          echo "downloaded mise matches the pinned digest"
+        fi
+
+        chmod +x "$BINARY"
+        echo "$BIN_DIR" >> "$GITHUB_PATH"
+        echo "${HOME}/.local/share/mise/shims" >> "$GITHUB_PATH"
+
+    - name: Install requested tools
+      if: inputs.tools != ''
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        TOOLS: ${{ inputs.tools }}
+      run: |
+        set -euo pipefail
+
+        mise --version
+        # tools は空白区切りの tool specification として受け取る。
+        # shellcheck disable=SC2086
+        mise install $TOOLS

@@ -95,15 +95,14 @@ jobs:
       # `mise registry` is what resolves a short name to its backend, so mise has to be present
       # even though no tool is installed here.
       - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The default checkout is shallow, so the base commit is absent and `git show
       # <base>:mise.toml` fails. Fetching the base ref explicitly is what makes the diff
       # resolvable; without it the gate cannot tell an added pin from an existing one.
+
       - name: Resolve gate base
         id: base
         shell: bash

@@ -122,32 +122,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write. See README.md § Cache safety.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:Bearer/bearer
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml (SSOT) — never duplicated here.
-      - name: Install bearer
-        run: mise install aqua:Bearer/bearer
 
-      # --disable-version-check keeps the scan from calling home for a release check. It
-      # does not silence every outbound attempt: the binary also reports usage telemetry to
-      # api.cycode.com, which harden-runner blocks and which the scan completes without.
-      # The skip list mirrors opengrep.yaml's exclusions — generated and vendored trees are
-      # not editable, so a finding there is not actionable — and departs from it on one entry:
-      # `/scripts/**`, which Opengrep does scan. The reason is at the top of this file, and it is
-      # about what Bearer asks rather than about whether the code is editable.
-      #
-      # That entry is the only one written with a leading slash, and it has to be. A pattern
-      # matches a path segment anywhere unless anchored, so a bare `scripts/**` would also take
-      # `mock-auth-server/scripts` and `docs-viewer/scripts` — two trees this workflow is
-      # deliberately pointed at. `./scripts/**` is not the fix: it matches nothing at all, and
-      # silently scans everything.
       - name: Bearer scan
         run: |
           bearer scan . \

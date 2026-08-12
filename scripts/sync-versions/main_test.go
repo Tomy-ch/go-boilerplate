@@ -32,8 +32,6 @@ const (
 		"FROM node:0.0.0-alpine AS node-tools\n" +
 		"FROM python:0.0.0-slim AS python-tools\n" +
 		"ARG MISE_VERSION=v0.0.0\n"
-	// miseActionWorkflow は、mise-action の版を 1 件持つワークフロー。
-	miseActionWorkflow = "jobs:\n  check:\n    steps:\n      - uses: jdx/mise-action\n        with:\n          version: 0.0.0\n"
 	// composeYAML は、otel-lgtm のイメージタグを 1 件持つ compose 定義。
 	composeYAML = "services:\n  otel_lgtm:\n    image: grafana/otel-lgtm:0.0.0\n"
 	// imageReadme は、件数の下限が無い README。存在だけを満たします。
@@ -355,9 +353,6 @@ func Test_buildRules(t *testing.T) {
 				"docker/tools/README.ja.md (python image)":          v.Python,
 				"docker/tools/Dockerfile (mise version)":            v.Mise,
 				"docker/server/Dockerfile (mise version)":           v.Mise,
-				"go-lint.yaml (mise-action version)":                v.Mise,
-				"gen-db-artifacts-check.yaml (mise-action version)": v.Mise,
-				"vulnerability-check.yaml (mise-action version)":    v.Mise,
 				"docker-compose.yaml (otel-lgtm image)":             v.OtelLgtm,
 			}
 
@@ -692,10 +687,6 @@ func writeSyncTargets(t *testing.T, root string) {
 	writeFile(t, root, "docker/server/Dockerfile", serverDockerfile)
 	writeFile(t, root, "docker/tools/Dockerfile", toolsDockerfile)
 	writeFile(t, root, "docker-compose.yaml", composeYAML)
-
-	for _, workflow := range []string{"go-lint", "gen-db-artifacts-check", "vulnerability-check"} {
-		writeFile(t, root, ".github/workflows/"+workflow+".yaml", miseActionWorkflow)
-	}
 
 	for _, readme := range []string{
 		"docker/README.md", "docker/README.ja.md",

@@ -80,20 +80,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:aquasecurity/trivy
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install trivy
-        run: mise install aqua:aquasecurity/trivy
-
-      # trivy-fs-release-ci differs from trivy-fs-ci only in dropping
-      # --ignore-unfixed; both live in .makefiles/security/trivy.mk so the gate and
-      # the reporting scan cannot drift apart. -s keeps make from echoing the recipe
-      # into the JSON.
       - name: Trivy FS scan (JSON, include unfixed)
         run: make -s trivy-fs-release-ci TRIVY_FORMAT=json > trivy-fs-release.json
         shell: bash

@@ -69,23 +69,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The versions are pinned in mise.toml (SSOT) — never duplicated here. Same pair the
       # node_tool_runner image installs, so CI and the container run the same toolchain.
-      - name: Install node and pnpm
-        run: mise install node npm:pnpm
 
-      # `docs/portal/index.html` and `docs/portal/dist/` are both gitignored: the viewer's build
-      # output is produced here rather than committed. Publishing without this step would upload a
-      # `docs/portal/` with no entry point at all. The `-ci` target runs the tools directly;
-      # the non-suffixed one would build the whole tool image to reach a package that needs none
-      # of it. `--frozen-lockfile` keeps the build from resolving anything the lockfile does not name.
       - name: Build the portal viewer
         run: make gen-portal-build-ci
 

@@ -131,26 +131,15 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: shellcheck
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # actions-shellcheck's tests shell out to the real shellcheck. The runner ships one of its
       # own, but mise.toml holds the pinned version the tool is checked against.
-      - name: Install shellcheck
-        run: mise install shellcheck
 
-      # scripts/ is excluded from the coverage targets, so its tests need their own step. It runs
-      # before the DB-backed steps because these tools need neither a database nor the coverage gate.
-      # REQUIRE_SHELLCHECK turns the tests that need shellcheck from self-skipping into failing: a
-      # skip is invisible in the default output, so a failed install would leave this step green
-      # while checking less than it reports.
-      # The exit code is recorded instead of ending the job, so a failure here and one in the
-      # DB-backed run reach the same comment: a step that aborts the job hides every test that
-      # never got to run, and the author pays a round trip per failing group.
       - name: Run scripts tool tests
         id: scripts-test
         shell: bash
