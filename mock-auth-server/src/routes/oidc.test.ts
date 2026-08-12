@@ -81,7 +81,6 @@ async function issueTokens(
   return (await res.json()) as { access_token: string; id_token: string };
 }
 
-// bypassToken は /bypass/token で指定 subject / profile の access token を取得する。
 async function bypassToken(
   app: ReturnType<typeof createApp>,
   subject: string,

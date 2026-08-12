@@ -5,7 +5,6 @@ import { createApp } from "../router.ts";
 import { defaultSubject } from "../users.ts";
 import { sessionStore } from "../store.ts";
 
-// post は指定パスへ生のボディ文字列を POST し、[status, body] を返す。
 async function post(path: string, body: string): Promise<[number, Record<string, unknown>]> {
   const res = await createApp().request(path, {
     method: "POST",

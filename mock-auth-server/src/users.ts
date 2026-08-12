@@ -14,7 +14,7 @@ export function loadUsers(path: string): User[] {
 
 const usersPath = fileURLToPath(new URL("../fixtures/users.json", import.meta.url));
 
-// users は読み込み済みの固定 User 一覧。fixture が無くても mock は動作する。
+// users は読み込み済みの固定 User 一覧。
 export const users = loadUsers(usersPath);
 
 // firstSubject は User 一覧の先頭 subject を返す。空（fixture 不在・破損）のときは、
@@ -23,7 +23,7 @@ export function firstSubject(list: User[]): string {
   return list[0]?.subject ?? "user-example";
 }
 
-// defaultSubject は subject 省略時のフォールバック。サンプル固有名を焼き込まないためデータ側から導出する。
+// defaultSubject は subject 省略時のフォールバック（firstSubject の結果）。
 export const defaultSubject = firstSubject(users);
 
 // findUser は subject に一致する User を返す（無ければ undefined）。
