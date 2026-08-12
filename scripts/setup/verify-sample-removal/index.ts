@@ -1,10 +1,9 @@
 #!/usr/bin/env -S tsx
 // サンプル削除が「過不足なく」完了したことを検証し、最後に自身と付随ファイルを自爆削除する。
-// remove-sample-api.ts は manifest ごと自消滅するため、削除確認は manifest ではなく
-// remove-sample-api.ts が書き出した .sample-removal-snapshot.json を唯一の入力として行う（bootstrap 対策）。
-// このスクリプト自体はサンプル削除ツールの最終地点なので、検証成功後に自消滅してコアのみの状態を残す。
+// remove-sample-api は manifest ごと自消滅するため、削除確認は manifest ではなく
+// remove-sample-api が書き出した .sample-removal-snapshot.json を唯一の入力として行う（bootstrap 対策）。
 //
-// 判定は lib/sample-removal-verify.ts が持ち、ここは git / make / grep の起動と終了コードだけを担う。
+// 判定は ./verify.ts が持ち、ここは git / make / grep の起動と終了コードだけを担う。
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";

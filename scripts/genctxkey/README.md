@@ -30,7 +30,7 @@ This tool automatically generates helper functions to solve these problems.
 ```go
 package ctxhelper
 
-//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import go-boilerplate/internal/usecase/boundary/auth --out .
+//go:generate go run ../../../scripts/genctxkey --name ErrorHandled --type bool --out .
 ```
 
 ### 2. Generate code
@@ -61,6 +61,8 @@ make gen-go-code
 - specify Go type format in `--type`
 - explicitly specify package with `--import`
 - `--alias` is optional (auto-generated if not specified)
+- `--test-value` is optional: a Go expression the generated test uses as its success value. A
+  non-primitive type has no usable zero value to assert against, so supply one there
 
 ### Complex types (supported)
 
@@ -84,9 +86,9 @@ make gen-go-code
 ## Output Specification
 
 - file names are all lowercase
-  - example: `authn_ctx.gen.go`
+  - example: `errorhandled_ctx.gen.go`
 - test files are also automatically generated
-  - example: `authn_ctx_test.go`
+  - example: `errorhandled_ctx_test.go`
 
 ## Design Policy
 
@@ -127,8 +129,9 @@ However:
 
 ## Relationship with CI
 
-- `ctxhelper` generation is not executed in CI
-- generation is performed locally, and results are committed
+- generation is performed locally, and the results are committed
+- CI re-runs `make gen-go-code` and fails the pull request when the committed output differs
+  (`.github/workflows/gen-go-artifacts-check.yaml`), so a forgotten regeneration is caught
 
 ## Notes
 

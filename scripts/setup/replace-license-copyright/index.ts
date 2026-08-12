@@ -1,6 +1,4 @@
 #!/usr/bin/env -S tsx
-// LICENSE の著作権表示（年・権利者）を更新する。置換規則は lib/license-copyright.ts が
-// 持ち、ここは存在確認・書き込み・出力だけを担う。
 
 import fs from "node:fs";
 

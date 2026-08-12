@@ -1,6 +1,4 @@
 #!/usr/bin/env -S tsx
-// env ファイル・OpenAPI・Copilot 指示書のアプリ名/タイトルを置換する。置換規則は
-// lib/app-metadata.ts が持ち、ここは対象ファイルの列挙・書き込み・出力だけを担う。
 
 import {
   isEnvFile,

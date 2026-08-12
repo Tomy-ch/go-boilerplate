@@ -13,7 +13,7 @@ import ts from "typescript";
  * ここは「読み取り済みの構文木と、呼べるかどうかの判定」から違反を導くところだけを持つ。
  */
 
-/** グループ名。ここに無い名前が export 名 describe の直下に来たら違反にする。 */
+/** グループ名。export 名 describe の直下にこの名前が 1 つも無いと missing-group 違反になる。 */
 export const GROUP_NAMES = ["正常系", "異常系"] as const;
 
 export type GroupName = (typeof GROUP_NAMES)[number];

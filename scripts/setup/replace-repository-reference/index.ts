@@ -1,6 +1,4 @@
 #!/usr/bin/env -S tsx
-// README / OpenAPI / SonarQube 設定の GitHub リポジトリ参照を <owner>/<repo> へ置換する。
-// 置換規則は lib/repository-reference.ts が持ち、ここは書き込み・出力だけを担う。
 
 import { updateFile } from "../lib/file-utils";
 import {
@@ -65,7 +63,7 @@ function run(repository: string, dryRun: boolean): void {
 
 const program = newSetupCommand("replace-repository-reference");
 program
-  .description("README と OpenAPI の GitHub リポジトリ参照を <owner>/<repo> へ置換する")
+  .description("README / OpenAPI / SonarQube 設定の GitHub リポジトリ参照を <owner>/<repo> へ置換する")
   .argument("<owner/repo>", "置換後のリポジトリ参照（例: example-org/example-api）")
   .action((repository: string, options: SetupOptions) => {
     try {

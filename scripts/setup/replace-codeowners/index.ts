@@ -1,6 +1,4 @@
 #!/usr/bin/env -S tsx
-// .github/CODEOWNERS の全ルールの所有者を一括で置換する。行の解釈は lib/codeowners.ts が
-// 持ち、ここは存在確認・書き込み・出力だけを担う。
 
 import fs from "node:fs";
 

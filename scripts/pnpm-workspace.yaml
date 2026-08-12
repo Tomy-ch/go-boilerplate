@@ -1,13 +1,13 @@
 # リポジトリ補助スクリプト（scripts/）とドキュメント系ツールの依存解決設定。
-# このディレクトリで閉じた 1 パッケージとして宣言し、tool-runner イメージも CI もここを install 先に指す。
+# このディレクトリで閉じた 1 パッケージとして宣言する。
 
 packages:
   - "."
 
 # ----- 時間差防御 -----
-# 公開直後の版を解決対象から外す。docs-viewer と窓を揃える（pnpm は分指定。7 日 = 10080 分）。
+# 公開直後の版を解決対象から外す（pnpm は分指定。7 日 = 10080 分）。窓の設計は docs/design/security.md。
 minimumReleaseAge: 10080
-# 緊急のセキュリティ修正は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+# 緊急のセキュリティ修正は特定バージョンだけを一時的に例外化する（package@version 必須。パッケージ名だけの例外は禁止）。
 minimumReleaseAgeExclude:
   - js-yaml@4.3.1 # 2026-08-08 02:40 JST 以降に削除する。GHSA-5p4m-2wfm-xmqj の修正版で、tool-runner 内のビルド時にのみ動く。
   - mermaid@11.16.1 # 2026-08-12 00:09 JST 以降に削除する。CVE-2026-50159 / 71436 / 71437 / 71438 / 71439 の修正版で、tool-runner 内のビルド時にのみ動く。
@@ -39,7 +39,7 @@ blockExoticSubdeps: true
 trustPolicy: no-downgrade
 # 公開から180日を過ぎた版は provenance 情報不足だけでは拒否しない。
 trustPolicyIgnoreAfter: 259200
-# provenance の後退は、影響を受ける特定バージョンだけを一時的に例外化する。(パッケージ名だけの例外は禁止)
+# provenance の後退も特定バージョンだけを一時的に例外化する（package@version 必須。パッケージ名だけの例外は禁止）。
 trustPolicyExclude:
   - rollup@2.80.0 # 2026-08-21 以降に削除する。spectral が引く v2 系の保守リリースで、npm 時代の lockfile が解決していた版と同一。
 

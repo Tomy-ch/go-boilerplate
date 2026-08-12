@@ -47,8 +47,9 @@ export function assertCleanWorktree(): void {
 /**
  * 指定パスだけをステージし、差分があればコミットして true を返す。
  *
- * ステージを列挙したパスに限る（`git add -A` を使わない）のは、プリフライトを抜けた想定外の
- * 変更を撤去コミットへ混ぜないため。差分が無ければ空コミットを作らずに false を返す。
+ * ステージを列挙したパスに限る（`git add -A` へパスを渡し、作業ツリー全体は対象にしない）のは、
+ * プリフライトを抜けた想定外の変更を撤去コミットへ混ぜないため。差分が無ければ空コミットを
+ * 作らずに false を返す。
  */
 export function commitPaths(paths: readonly string[], subject: string): boolean {
   if (paths.length === 0) {

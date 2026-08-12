@@ -1,6 +1,4 @@
 #!/usr/bin/env -S tsx
-// Go モジュール名をプロジェクト全体で一括置換する。判定（対象ファイル種別・置換規則）は
-// lib/module-replace.ts が持ち、ここは走査・書き込み・出力だけを担う。
 
 import path from "node:path";
 

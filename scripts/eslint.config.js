@@ -1,7 +1,6 @@
-// ESLint はセキュリティ規則の実行だけを担う。型検査は tsc、整形は golines 相当の経路を
-// 持たないこのワークスペースでは行わず、責務を 1 つに絞っている。typescript-eslint は
-// パーサとしてのみ読み込み、その推奨規則は入れない。規則を足すのは初回導入の検出件数を
-// 見てからで、最初から広げると全件が「見なかったことにする対象」になる。
+// ESLint はセキュリティ規則の実行だけを担う。型検査は tsc が持ち、整形はこのワークスペースでは
+// 行わない。typescript-eslint はパーサとしてのみ読み込み、その推奨規則は入れない
+// （規則を足すかの判断基準は .github/workflows/eslint.yaml が持つ）。
 import security from "eslint-plugin-security";
 import tseslint from "typescript-eslint";
 

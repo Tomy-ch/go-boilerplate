@@ -1,6 +1,6 @@
 import path from "node:path";
 
-// Go モジュール名が現れうるファイル種別。ここに載らない拡張子は走査しても書き換えない。
+// Go モジュール名が現れうるファイル種別。
 const TARGET_EXTENSIONS: ReadonlySet<string> = new Set([
   ".go",
   ".yaml",
@@ -25,7 +25,6 @@ export const EXCLUDED_DIRECTORIES: ReadonlySet<string> = new Set([
 
 const EXCLUDED_PATH_PREFIXES = [`docs${path.sep}`, `scripts${path.sep}setup${path.sep}`];
 const EXCLUDED_PATH_SUFFIXES = [".gen.go", ".sql.go", `${path.sep}openapi.gen.yaml`];
-// mockgen 生成物（make gen-api で再生成されるため対象外）
 const EXCLUDED_BASENAME_PATTERNS = [/^mock_.*\.go$/, /_mock\.go$/];
 
 /**
