@@ -232,7 +232,5 @@ make tool-runners-build-clean
 ## 注意事項
 
 - `go.mod` / Dockerfile / `docker/**/README.md` を手動編集しないこと — これらは `make sync-versions` の管轄。`mise.toml` を編集してから sync を再実行する。
-- 生成コード（`**/*.gen.go`、`*.sql.go`、`*_mock.go` など）は手動で編集しないこと
-- コミットは作業ブランチで行い、`production` / `develop` / `staging` / `release/*` への直接コミットは禁止
 - PR への push は明示的にユーザーから指示があった場合のみ実行すること
 - `SKILL.md` を更新したら、日本語訳を同期するため `SKILL.ja.md` も更新すること

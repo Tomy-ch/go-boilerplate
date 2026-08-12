@@ -1,6 +1,6 @@
 ---
 name: dep-vuln-upgrade
-description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's dependency resolvers — the three pnpm-resolved packages (`scripts/`, `mock-auth-server/` and `docs-viewer/`, each with its own `pnpm-lock.yaml` / `pnpm-workspace.yaml`), the Go module graph (`go.mod` / `go.sum`), and the PyPI tools declared in `python/*.in` and hash-locked in `python/*.txt` (located here, but bumped by `/tools-upgrade`) — targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the cooldown that governs that lockfile (pnpm's `pnpm-workspace.yaml` `minimumReleaseAge`, which hard-rejects an in-window version at resolution time and on every frozen replay), chains `/supply-chain-triage` on every entry the cooldown catches so the decision rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps, too-new opt-ins, and pnpm's per-version `minimumReleaseAgeExclude` escape hatch — which it surfaces but never takes on its own. It updates lockfiles with `pnpm install --lockfile-only`, runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `pnpm audit` / `govulncheck` / build plus generated-artifact and tool-runner-image drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), or fa general `go.mod` dependency refresh (`make tidy-lib`), or raising a PyPI tool's pin (`/tools-upgrade`, which owns `python/*.in` and the `make py-lock` regeneration).
+description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's dependency resolvers — the three pnpm-resolved packages (`scripts/`, `mock-auth-server/` and `docs-viewer/`, each with its own `pnpm-lock.yaml` / `pnpm-workspace.yaml`), the Go module graph (`go.mod` / `go.sum`), and the PyPI tools declared in `python/*.in` and hash-locked in `python/*.txt` (located here, but bumped by `/tools-upgrade`) — targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the cooldown that governs that lockfile (pnpm's `pnpm-workspace.yaml` `minimumReleaseAge`, which hard-rejects an in-window version at resolution time and on every frozen replay), chains `/supply-chain-triage` on every entry the cooldown catches so the decision rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps, too-new opt-ins, and pnpm's per-version `minimumReleaseAgeExclude` escape hatch — which it surfaces but never takes on its own. It updates lockfiles with `pnpm install --lockfile-only`, runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `pnpm audit` / `govulncheck` / build plus generated-artifact and tool-runner-image drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), for a general `go.mod` dependency refresh (`make tidy-lib`), or raising a PyPI tool's pin (`/tools-upgrade`, which owns `python/*.in` and the `make py-lock` regeneration).
 argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" per line] [min_age_days]'
 ---
 
@@ -98,10 +98,6 @@ For every advisory entry, find where the package actually lives and classify it.
 # which lockfile(s) exist at all — this is what decides the ecosystem, not the package name
 find . -name pnpm-lock.yaml -not -path '*/node_modules/*'
 
-# npm: presence + installed version, then direct vs transitive
-grep -n "\"node_modules/<pkg>\"" <lockfile>
-grep -n "\"<pkg>\"" <dir>/package.json
-
 # pnpm: presence + installed version. The `importers:` block near the top lists the DIRECT deps
 # with their specifier; a bare `<pkg>@<ver>:` under `snapshots:` / `packages:` is transitive.
 grep -n "^  <pkg>@" <dir>/pnpm-lock.yaml            # resolved version(s)
@@ -119,10 +115,10 @@ Record per entry:
 
 | Field | How |
 | --- | --- |
-| ecosystem | `npm`, `pnpm`, `pypi`, or `go` |
+| ecosystem | `pnpm`, `pypi`, or `go` |
 | location | the `pnpm-lock.yaml` dir, `python/<tool>.in` + `.txt`, or `go.mod` |
 | installed version | from the lockfile / `go.mod` |
-| direct / transitive | declared in that `package.json`'s `dependencies`/`devDependencies` (npm / pnpm) or without `// indirect` (go) → direct; else transitive/indirect |
+| direct / transitive | declared in that `package.json`'s `dependencies`/`devDependencies` (pnpm) or without `// indirect` (go) → direct; else transitive/indirect |
 
 A package can appear in **more than one** lockfile (this repo resolves `mermaid`, `zod`, and `js-yaml` in several). Record one entry per location — they move independently and each has its own cooldown.
 
@@ -255,17 +251,11 @@ Batch all approved Go modules into one `go get` (multiple `module@version` args)
 
 Run the checks that match what actually changed — a dependency patch rarely touches first-party source, so scope the verification to the ecosystems that moved rather than always running the full suite. Report each as OK / FAIL; do NOT auto-roll-back on failure — the user decides.
 
-Go changes at minimum build and vuln-scan clean (`go build ./...` + `govulncheck ./...`); run `make lint` / `make test` when a Go change is broad enough to warrant the full suite. A **major npm bump** must be verified more closely — run that package's own `typecheck` + tests (e.g. `npm run typecheck` + `npm test` in `mock-auth-server/`), since a major can change the API the code calls.
+Go changes at minimum build and vuln-scan clean (`go build ./...` + `govulncheck ./...`); run `make lint` / `make test` when a Go change is broad enough to warrant the full suite. A **major bump of a pnpm package** must be verified more closely — run that package's own `typecheck` + tests (e.g. `pnpm typecheck` + `pnpm test` in `mock-auth-server/`), since a major can change the API the code calls.
 
-npm changes — confirm the advisory is actually resolved and the lockfile is clean:
+The advisory database is the source of truth for the **real fix floor**, and it can differ from the user's list. Two cases to surface rather than silently resolve:
 
-```sh
-cd <dir> && npm audit            # the patched CVE is no longer reported
-```
-
-`npm audit` is the source of truth for the **real fix floor**, and it can differ from the user's list. Two cases to surface rather than silently resolve:
-
-- **A higher fix floor than the advisory named.** The package may carry a *second* advisory whose first-fixed version is higher than the one the user pasted (e.g. the list says "fixed in 2.0.5", but `npm audit` still flags a separate moderate advisory affecting `2.0.0 - 2.0.9`, fixed only in `2.0.10`). Do not silently jump to that higher version if it is `too-new` — surface the conflict and whether the vulnerable path is even reachable (e.g. a WebSocket-only DoS on a server that registers no WS handler is likely non-applicable), and let the user opt into the too-new full fix or accept the partial one.
+- **A higher fix floor than the advisory named.** The package may carry a *second* advisory whose first-fixed version is higher than the one the user pasted (e.g. the list says "fixed in 2.0.5", but a separate moderate advisory still affects `2.0.0 - 2.0.9` and is fixed only in `2.0.10`). Do not silently jump to that higher version if it is `too-new` — surface the conflict and whether the vulnerable path is even reachable (e.g. a WebSocket-only DoS on a server that registers no WS handler is likely non-applicable), and let the user opt into the too-new full fix or accept the partial one.
 - **A residual advisory on a deferred/skipped package** — expected; report it as still-open with the reason (deferred by cooldown / skipped by the user), not as a failure.
 
 In each changed package dir:
