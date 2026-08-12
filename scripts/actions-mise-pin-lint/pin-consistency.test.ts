@@ -21,56 +21,64 @@ describe("DIGEST_PREFIX_LENGTH", () => {
 });
 
 describe("readPin", () => {
-  it("版 / digest / キャッシュキーを読み取る", () => {
-    const source = [
-      "        key: mise-Linux-X64-2026.7.12-dad54e0b",
-      "      env:",
-      `        MISE_VERSION: ${VERSION}`,
-      `        MISE_SHA256: ${DIGEST}`,
-    ].join("\n");
+  describe("正常系", () => {
+    it("版 / digest / キャッシュキーを読み取る", () => {
+      const source = [
+        "        key: mise-Linux-X64-2026.7.12-dad54e0b",
+        "      env:",
+        `        MISE_VERSION: ${VERSION}`,
+        `        MISE_SHA256: ${DIGEST}`,
+      ].join("\n");
 
-    expect(readPin(source)).toEqual({
-      version: VERSION,
-      digest: DIGEST,
-      cacheKey: "mise-Linux-X64-2026.7.12-dad54e0b",
+      expect(readPin(source)).toEqual({
+        version: VERSION,
+        digest: DIGEST,
+        cacheKey: "mise-Linux-X64-2026.7.12-dad54e0b",
+      });
     });
   });
 
-  it("読み取れない値を null で返す", () => {
-    expect(readPin("name: Setup mise")).toEqual({
-      version: null,
-      digest: null,
-      cacheKey: null,
+  describe("異常系", () => {
+    it("読み取れない値を null で返す", () => {
+      expect(readPin("name: Setup mise")).toEqual({
+        version: null,
+        digest: null,
+        cacheKey: null,
+      });
     });
-  });
 
-  it("空の値を null で返す", () => {
-    expect(readPin("MISE_VERSION:   \nMISE_SHA256:\nkey: \t")).toEqual({
-      version: null,
-      digest: null,
-      cacheKey: null,
+    it("空の値を null で返す", () => {
+      expect(readPin("MISE_VERSION:   \nMISE_SHA256:\nkey: \t")).toEqual({
+        version: null,
+        digest: null,
+        cacheKey: null,
+      });
     });
   });
 });
 
 describe("findViolations", () => {
-  it("揃っていれば違反を報告しない", () => {
-    expect(findViolations(pin())).toEqual([]);
+  describe("正常系", () => {
+    it("揃っていれば違反を報告しない", () => {
+      expect(findViolations(pin())).toEqual([]);
+    });
   });
 
-  it("キャッシュキーが版を含まなければ落とす", () => {
-    expect(findViolations(pin({ cacheKey: "mise-Linux-X64-2026.6.0-dad54e0b" }))).toHaveLength(1);
-  });
+  describe("異常系", () => {
+    it("キャッシュキーが版を含まなければ落とす", () => {
+      expect(findViolations(pin({ cacheKey: "mise-Linux-X64-2026.6.0-dad54e0b" }))).toHaveLength(1);
+    });
 
-  it("キャッシュキーが digest の先頭を含まなければ落とす", () => {
-    expect(findViolations(pin({ cacheKey: `mise-Linux-X64-${VERSION}-00000000` }))).toHaveLength(1);
-  });
+    it("キャッシュキーが digest の先頭を含まなければ落とす", () => {
+      expect(findViolations(pin({ cacheKey: `mise-Linux-X64-${VERSION}-00000000` }))).toHaveLength(1);
+    });
 
-  it("読み取れない値をそれぞれ違反として報告する", () => {
-    expect(findViolations({ version: null, digest: null, cacheKey: null })).toEqual([
-      "MISE_VERSION を読み取れません",
-      "MISE_SHA256 を読み取れません",
-      "キャッシュの key を読み取れません",
-    ]);
+    it("読み取れない値をそれぞれ違反として報告する", () => {
+      expect(findViolations({ version: null, digest: null, cacheKey: null })).toEqual([
+        "MISE_VERSION を読み取れません",
+        "MISE_SHA256 を読み取れません",
+        "キャッシュの key を読み取れません",
+      ]);
+    });
   });
 });
