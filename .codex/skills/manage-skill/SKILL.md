@@ -42,48 +42,40 @@ Do NOT use it for:
 `AGENTS.md` normally treats `.codex/**` as out of scope. **Invoking this skill is the explicit user
 instruction that relaxes that** — but only for `.codex/skills/**`, and only for the duration of this
 run. The hard-protected paths from `AGENTS.md` stay protected even here: never touch `AGENTS.md`,
-generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`), generated `docs/`
-content, or anything under `permissions.deny`.
+generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`), or generated
+`docs/` content.
 
-## Step 0 — Ensure and load the official methodology (do this first)
+## Step 0 — Resolve optional external methodology (do this first)
 
-The official `skill-creator` is the source of truth for the *how*. Operate on the assumption that it
-is present: it is declared at **project scope** in this repo's `.codex/config.toml`, so a trusted
-clone already has it. If it is missing, ensure it via the repo-level plugin bootstrap:
+Codex CLI can manage plugins through `codex plugin marketplace` and `codex plugin add`, but this
+repository does not declare a marketplace or install `skill-creator` at project scope. Do not assume
+that an external methodology is available, and do not run a bootstrap script.
 
-```bash
-bash .codex/scripts/bootstrap-plugins.sh
-```
-
-The bootstrap declares the `claude-plugins-official` marketplace and enables the official plugins this
-repo depends on (`skill-creator`, `feature-dev`) at project scope. It is idempotent; re-running is a
-no-op. Newly enabled plugins load on the next session, when `skill-creator` also becomes invocable as
-`/skill-creator` — but this wrapper does not depend on that; it reads the file by path so it works in
-the same session.
-
-Read that `SKILL.md` in full (the path the script prints; discover it with the glob below if needed):
+Inspect the installed and available plugin entries first:
 
 ```bash
-ls ~/.codex/plugins/marketplaces/*/plugins/skill-creator/skills/skill-creator/SKILL.md
+codex plugin list
 ```
 
-Everything it says about **Creating a skill**, **Running and evaluating test cases**, **Improving the
-skill**, **Description Optimization**, blind comparison, and packaging applies verbatim. Its bundled
-resources live next to it and are used as-is:
+If the output identifies an installed `skill-creator` plugin, read the `SKILL.md` from the exact path
+reported in its `PATH` column and use its methodology as an optional supplement. Repository rules in
+this skill remain authoritative on conflict.
 
-- `scripts/` — `aggregate_benchmark`, `run_loop` (description optimizer), `package_skill`, etc. Run
-  them from the official skill's directory; do not reimplement them.
-- `eval-viewer/generate_review.py` — the review viewer. Always use it; never hand-write review HTML.
-- `agents/` (`grader.md`, `comparator.md`, `analyzer.md`) and `references/schemas.md`.
+If `skill-creator` is listed but not installed, ask the user before installing anything. After explicit
+approval, install the exact plugin selector that `codex plugin list` reported:
 
-If the bootstrap fails (e.g. no network, `claude` CLI missing), report the failure to the user and ask
-whether to proceed with the methodology summarized inline (draft → test → review → improve) instead of
-aborting.
+```bash
+codex plugin add <plugin@marketplace>
+```
 
-## The repository overlay (this is what the wrapper adds)
+If no installed `skill-creator` is available, continue with this skill's self-contained workflow:
+capture the intent, inspect comparable repository skills, write or revise the canonical skill, review
+it against concrete invocation cases, and improve it before final validation. Do not add a marketplace
+or install a plugin as an implicit prerequisite.
 
-Follow the official process, but apply these repo-specific rules wherever they differ. On conflict,
-these win, because a skill that ignores them won't fit this repo.
+## The repository workflow
+
+Apply the following repository rules whether or not an optional external methodology is available.
 
 ### 1. Placement and structure
 
@@ -142,31 +134,32 @@ JSON, or viewer HTML.
 
 ## Creating a new skill
 
-Run the official **Creating a skill** flow (Capture Intent → Interview → Write SKILL.md → Test Cases),
-then apply the overlay: correct placement, matching frontmatter/description density, English-canonical
-body, and the eval workspace under `tmp/`. When the draft stabilizes, generate `SKILL.ja.md` via
-`canonicalize-doc`.
+Capture the intent, identify concrete invocation cases, write `SKILL.md`, and review the draft against
+those cases. Then apply the repository workflow: correct placement, matching frontmatter/description
+density, English-canonical body, and the eval workspace under `tmp/`. When the draft stabilizes,
+generate `SKILL.ja.md` via `canonicalize-doc`.
 
 ## Updating an existing skill
 
 - Confirm which skill (`.codex/skills/<name>/`). Preserve its `name` and directory unchanged.
 - Unlike an *installed* plugin skill, repo skills are writeable in place — **edit them directly** under
   `.codex/skills/<name>/`; there is no read-only copy-to-`/tmp` dance.
-- For the eval baseline, snapshot the pre-edit skill per the official guidance (into `tmp/`), so
-  before/after can be compared.
+- For a material behavior change, snapshot the pre-edit skill into `tmp/` and compare representative
+  invocation cases before and after the update.
 - After editing, re-sync `SKILL.ja.md` via `canonicalize-doc` — an updated `SKILL.md` with a stale
   Japanese pair is drift.
 
 ## Evaluating / optimizing
 
-Use the official test-run, benchmark, viewer, and **Description Optimization** flows unchanged, with
-two adaptations: workspaces go under `tmp/` (§5), and for the description optimizer pass the model ID
-powering this session (see the environment/system prompt) so triggering matches production.
+Evaluate the revised skill against representative invocation cases and review whether its description
+triggers for intended requests without capturing excluded requests. Keep any comparison artifacts under
+`tmp/` (§5). If an installed `skill-creator` provides a compatible evaluation or description-optimization
+workflow, it may supplement this review.
 
 ## Definition of Done
 
-- The official `skill-creator` resolved (project-scope plugin; ensured via the plugin bootstrap if
-  missing) and its methodology is loaded.
+- The self-contained workflow was followed: intent captured, representative invocation cases reviewed,
+  and the draft improved before validation.
 - `.codex/skills/<name>/SKILL.md` present, kebab `name` = dir, dense English "pushy" `description`.
 - `SKILL.ja.md` generated/synced from the canonical `SKILL.md` and in sync.
 - No eval artifacts committed (workspace under gitignored `tmp/`).
