@@ -1,6 +1,6 @@
--- 外部ID連携（issuer + subject → 内部ユーザー）。IdentityResolver が (issuer, subject) で解決する。
+-- 外部ID連携: issuer と subject の組で内部ユーザーを一意に指す。
 -- mock 系: ローカル開発用（issuer=mock）。subject は内部ユーザーの UUID と一致させる。
--- jwt 系: JWT 認証向け。`${AUTH_ISSUER}` は投入時に seed ランナーがその環境の issuer へ展開する（worktree のスロットでポートがずれるため直書きしない）。
+-- jwt 系: JWT 認証向け。`${AUTH_ISSUER}` の展開は database/seed/README.md の Placeholders 節を参照。
 -- subject は mock-auth-server の fixtures（mock-auth-server/fixtures/users.json）と一致させる。
 -- jwt 系だけ再投入で issuer を更新する。DO NOTHING だと別環境で投入済みの DB に古い issuer が残り、認証だけが通らない状態になる。
 -- 削除済みユーザー（Charlie / Frank）も登録し、状態検証で認証失敗することを確認できるようにする。unknown-user は行を作らず未登録失敗を表す。

@@ -1,7 +1,6 @@
--- 購入履歴。論理削除されていないユーザーにだけ持たせる。削除済みユーザーは userpurge の
--- 削除対象で、購入から参照されていると外部キーで物理削除できなくなる。
--- 金額は USD セントの整数。小計は明細（単価 × 数量）の合計をセントへ切り捨て、税は小計の
--- 10 パーセント（整数除算）、送料は 500 セント固定で、合計はその和。ドメインの計算式と一致させる。
+-- 購入履歴。論理削除されていないユーザーにだけ持たせる（購入を持つユーザーは userpurge が
+-- 物理削除しない。internal/controller/job/userpurge/README.md）。
+-- 金額は USD セントの整数で、ドメインの計算式（docs/spec/purchase/domain.md）に一致させる。
 INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, ordered_at, paid_at, canceled_at, shipped_at, delivered_at, created_at, updated_at) VALUES
 ('b6636865-c8e4-5c65-ba03-f372e0f020c9', 'fbc59a03-c426-51d8-bb2d-de4f9eb7b016', '550e8400-e29b-41d4-a716-446655440000', '1904bf76-7d37-4288-bc15-359d2512ac91', 11000, 1100, 500, 12600, NOW() - INTERVAL '428 days', NOW() - INTERVAL '427 days', NULL, NOW() - INTERVAL '425 days', NOW() - INTERVAL '423 days', NOW() - INTERVAL '428 days', NOW() - INTERVAL '423 days') ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, ordered_at, paid_at, canceled_at, shipped_at, delivered_at, created_at, updated_at) VALUES
