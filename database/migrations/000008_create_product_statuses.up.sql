@@ -19,7 +19,6 @@ COMMENT ON COLUMN product_statuses.sort_key IS '順序';
 COMMENT ON COLUMN product_statuses.created_at IS '作成日時';
 COMMENT ON COLUMN product_statuses.updated_at IS '更新日時';
 
--- Insert initial product statuses data
 INSERT INTO product_statuses (id, name, code, sort_key) VALUES
 ('093170fb-83a2-4864-a2b3-53236eaf3597', '在庫あり', 1, 5) ON CONFLICT (id) DO NOTHING;
 INSERT INTO product_statuses (id, name, code, sort_key) VALUES
