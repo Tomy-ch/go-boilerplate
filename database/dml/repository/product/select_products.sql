@@ -1,8 +1,7 @@
 -- name: ListPublishedProductsDescFirst :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
@@ -25,9 +24,8 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsDescAfter :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
@@ -54,9 +52,8 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscFirst :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
@@ -79,9 +76,8 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscAfter :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT

@@ -1,8 +1,7 @@
 -- name: UpdatePurchasePaid :exec
--- 購入を支払い済み状態へ更新する。擬似決済のため単一集約（purchases）のみを更新し、在庫操作は伴わない。
--- status_id は code から解決し（seed UUID を焼き込まない）、paid_at はドメインが決定した時刻（引数）を書き込み、
--- イベント payload・レスポンスと同一時刻に揃える。対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、
--- 遷移可否ガードは付けない（ドメインが SoT）。
+-- 購入を支払い済み状態へ更新する。status_id は code から解決する。paid_at はドメインが決定した時刻（引数）を
+-- 書き込み、イベント payload・レスポンスと同一時刻に揃える。
+-- 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
 UPDATE purchases
 SET
     status_id = (

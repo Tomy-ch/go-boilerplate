@@ -1,8 +1,9 @@
 -- name: ListLowStockProducts :many
 -- 在庫が警告閾値以下の商品を、在庫の少ない順（同数は ID 昇順）で最大 limit 件取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+-- 閾値未設定（NULL）の商品は WHERE で明示的に除外する（意味は docs/spec/product/domain.md の
+-- Product.FindAllLowStock を参照）。
 -- 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
 SELECT
     ps.name AS status_name,
