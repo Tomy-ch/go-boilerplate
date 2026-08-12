@@ -5,10 +5,8 @@
 //
 // どちらも `git tag` の最新セマンティックバージョンを起点に次バージョンを決める。
 //
-// 実体が make のレシピではなくここに在るのは、いずれも取り消しの効かない操作
-// （タグの push / GitHub Release の作成 / デフォルトブランチの切り替え）を含み、
-// 分岐を実地で確かめようとすると本当にリリースするしかないため。手順の組み立てと
-// 中止条件を純粋関数へ寄せて、テストで固定する。
+// 取り消しの効かない操作（タグの push / Release の作成 / デフォルトブランチの切り替え）を
+// 含むため、make のレシピではなくここに在る。理由は scripts/README.md の release 行。
 //
 // git / gh はホストの認証情報を使うため、ツールランナーではなくホストで実行する
 // （cmd/db-slot と同じ扱い）。
@@ -72,9 +70,8 @@ type step struct {
 	args []string
 }
 
-// runner は、手順を実際に走らせる実行層。タグの push と GitHub Release の作成は
-// 取り消しが効かないため、中止条件と手順の順序を実リポジトリへ触れずに検証できるよう
-// 関数値で保持する。
+// runner は、手順を実際に走らせる実行層。中止条件と手順の順序を実リポジトリへ触れずに
+// 検証するための seam（scripts/README.md の Test Strategy「An irreversible step…」）。
 type runner struct {
 	// run は、手順を 1 つ実行する。
 	run func(s step) error
@@ -84,10 +81,8 @@ type runner struct {
 	remoteBranchExists func(branch string) bool
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は execute が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。名前が run でないのは、1 コマンドを起動する run が
-// 同じパッケージに既に在るため。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は execute に置きます
+// （run は 1 手順を実行する関数として既に在るため名前を譲る）。
 func main() {
 	log.SetFlags(0)
 
@@ -249,8 +244,7 @@ func resolveNext(r runner, bumpKind string) (version, version, error) {
 }
 
 // parseFlags は、サブコマンドのフラグを解釈します。ヘルプ要求は失敗ではないため、通常のエラーと
-// 区別できるよう errHelpRequested を返します。ここを一括りにすると `-h` が異常終了になり、
-// 同じリポジトリの他ツール（tool-cooldown / go-cooldown）と終了コードが食い違います。
+// 区別できるよう errHelpRequested を返します。
 func parseFlags(fs *flag.FlagSet, args []string) error {
 	err := fs.Parse(args)
 	switch {

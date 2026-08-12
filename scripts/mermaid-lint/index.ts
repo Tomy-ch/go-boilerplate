@@ -1,7 +1,6 @@
 #!/usr/bin/env -S tsx
-// Mermaid のコードフェンス（```mermaid）を実際の mermaid パーサで構文検証する lint スクリプト。
-// markdownlint-cli2 は Markdown の体裁しか見ず mermaid 図の文法は素通りするため、その穴を塞ぐ。
-// node_tool_runner コンテナ内で `make md-lint-ci` から呼ばれる前提（mermaid / linkedom は scripts/node_modules）。
+// Mermaid のコードフェンス（```mermaid）を実際の mermaid パーサで構文検証する lint スクリプト
+//（塞いでいる穴は scripts/README.md の mermaid-lint の行）。
 //
 // mermaid.parse は DOMPurify サニタイズで DOM を要求するため、mermaid のロードには DOM 環境が要る。
 // 1 つでも壊れた図があれば非 0 で終了する。

@@ -64,9 +64,7 @@ type releaseLine struct {
 	major, minor, patch int
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 
@@ -77,9 +75,6 @@ func main() {
 
 // run は、最新のリリースラインのブランチ名を out へ 1 行で書き出します。
 // list は origin の参照一覧の取得手段で、差し替えられるよう引数で受けます。
-//
-// 出力を装飾しないのは、呼び出し側がコマンド置換でそのまま変数へ受けるためです。
-// 進捗やエラーは log（標準エラー）側へ出るので、標準出力に混ざることはありません。
 func run(args []string, list func() (string, error), out io.Writer) error {
 	fs := flag.NewFlagSet("base-branch", flag.ContinueOnError)
 

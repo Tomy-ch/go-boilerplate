@@ -124,9 +124,8 @@ func testFS(files map[string]string) fstest.MapFS {
 	return fsys
 }
 
-// requireShellcheck は実物の shellcheck を要求する。手元に無い環境では skip するが、skip は既定の
-// 出力に現れないため、CI のように検査されたことを保証したい実行では REQUIRE_SHELLCHECK を立てて
-// 落とす。緑と「検査していない」が見分けられない状態こそ、このツール自身が塞いでいる欠陥にあたる。
+// requireShellcheck は実物の shellcheck を要求する。手元に無い環境では skip するが、
+// REQUIRE_SHELLCHECK を立てた実行では skip せず落とす（根拠は scripts/README.md の Notes）。
 func requireShellcheck(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath(shellcheckBin); err == nil {

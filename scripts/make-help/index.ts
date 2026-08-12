@@ -8,7 +8,7 @@ import { type MakefileSource, isMakefileSource, renderHelp } from "./help";
 
 const MAKEFILES_DIR = ".makefiles";
 
-// `.makefiles` 配下の *.mk をフルパス昇順で列挙する。
+// `.makefiles` 配下の *.mk を再帰的に列挙する（順序は呼び出し元の main が揃える）。
 function collectMakefiles(dir: string): string[] {
   const files: string[] = [];
 

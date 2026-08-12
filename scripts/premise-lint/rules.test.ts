@@ -10,7 +10,6 @@ describe("survivingText", () => {
       expect(survivingText(content)).toBe("keep\nkeep2");
     });
 
-    // 2 つの名前空間はどちらも fork へ届かないので、検査の前にどちらも落とす。
     it("sample-api の領域も同じく落とす", () => {
       const content = ["keep", "// sample-api:begin", "drop", "// sample-api:end"].join("\n");
 
@@ -36,7 +35,6 @@ describe("survivingText", () => {
       expect(survivingText(content)).toBe("keep\nkeep2");
     });
 
-    // replace は前後で扱いが逆になる。上流版は落ちるが、退避側は fork 先に実際に残る本文である。
     it("replace の上流側を落とし退避側をアンコメントして残す", () => {
       const content = [
         "<!-- boilerplate-only:replace-begin -->",
@@ -83,7 +81,6 @@ describe("survivingText", () => {
       expect(hasPremisePhrase(survivingText(content))).toBe(true);
     });
 
-    // 退避コメントの形をしていない行を落とすと、fork 先の本文が黙って検査から消える。
     it("退避側の形をしていない行も落とさない", () => {
       const content = [
         "# sample-api:replace-begin",
@@ -198,7 +195,6 @@ describe("inspect", () => {
       expect(inspect("docs/rules.md", "# Title\n\nNormal.", [])).toEqual([]);
     });
 
-    // 宣言は本文の一部で綴じる。行が動いても効き続け、どの記述を許したかが宣言だけで読める。
     it("宣言された行を除外する", () => {
       const content = "CREATE DATABASE ... TEMPLATE template1 while the template is stale";
       const allowances = [

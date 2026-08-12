@@ -62,7 +62,6 @@ describe("literalParentDir", () => {
   });
 
   describe("異常系", () => {
-    // 確かめられる親が無い。ここで実在を主張すると、根拠の無い通過になる。
     it("先頭セグメントがワイルドカードなら null", () => {
       expect(literalParentDir("<layer>/domain/x.go")).toBeNull();
     });

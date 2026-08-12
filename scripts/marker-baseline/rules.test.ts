@@ -22,8 +22,6 @@ describe("countMarkerLines", () => {
       expect(countMarkerLines(content)).toBe(6);
     });
 
-    // フェンスの中でも数える。フェンス内のマーカーは本物であることも例示であることもあり、
-    // 位置では区別できない。数えないと、例示が増えても差分に出ない。
     it("コードフェンスの中でも数える", () => {
       const content = ["```go", "usercount.New, // sample-api:line", "```"].join("\n");
 
@@ -67,7 +65,6 @@ describe("isBaselineTarget", () => {
       }
     });
 
-    // 宣言もテストもマーカーの形を入力として持つ。外さないと自分を数えて自分と食い違う。
     it("自分自身のディレクトリを対象から外す", () => {
       expect(isBaselineTarget("scripts/marker-baseline/rules.test.ts")).toBe(false);
     });
@@ -86,7 +83,6 @@ describe("diffBaseline", () => {
   });
 
   describe("異常系", () => {
-    // 本題。規約の例示を書けばマーカー行が増える。増えたことだけが唯一の手がかり。
     it("マーカーを持つファイルが増えたら落とす", () => {
       const failures = diffBaseline({ "a.md": 2, "new.md": 2 }, { "a.md": 2 });
 
@@ -103,7 +99,6 @@ describe("diffBaseline", () => {
       expect(failures[0]).toContain("2 → 4");
     });
 
-    // 減った側を放置すると次に増えたときの基準がずれ、検査は在るのに何も守らなくなる。
     it("マーカーが無くなったら落とす", () => {
       const failures = diffBaseline({}, { "a.md": 2 });
 

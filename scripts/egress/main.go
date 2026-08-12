@@ -106,7 +106,7 @@ type block struct {
 	hosts   []string
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持つ。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 
@@ -409,8 +409,8 @@ func workflowJobs(lines []string) []string {
 }
 
 // readBlock は keyLine から始まる折り畳みスカラーのホスト行を読む。
-// ホスト 1 個以外の行（コメント・複数トークン）は握り潰さず fail-close する。
-// 黙って落とすと、生成物がそのコメントを消したことに誰も気づけない。
+// ホスト 1 個以外の行（コメント・複数トークン）は握り潰さず fail-close する
+// （fail-closed の範囲は scripts/README.md の egress 行）。
 func readBlock(name string, lines []string, keyLine, indent int) (block, error) {
 	b := block{keyLine: keyLine, endLine: keyLine + 1, indent: indent}
 	for j := keyLine + 1; j < len(lines); j++ {
@@ -468,7 +468,7 @@ func applyOrCheck(root string, dryRun bool) error {
 }
 
 // planFiles は全 workflow を読み切り、書き換え後の内容と参照済みジョブキーを確定させる。
-// 1 ファイルずつ書きながら進むと、後半の不整合で中断したときに書き換え済みの中途半端な作業ツリーが残る。
+// 書き出す前に全て確定させる方針は scripts/README.md の Test Strategy が持つ。
 func (s *ssot) planFiles(files []string) (map[string]string, map[string]bool, error) {
 	changes := map[string]string{}
 	used := map[string]bool{}
@@ -535,7 +535,7 @@ func (s *ssot) checkPolicy(key, policy string, hasBlock bool) error {
 }
 
 // orphanJobs は SSOT にあるがどの workflow にも現れないジョブキーを返す。
-// 孤児を残すと SSOT が現用インベントリの鏡でなくなる。
+// これをエラーにするのは fail-closed の一環（scripts/README.md の egress 行）。
 func orphanJobs(s *ssot, used map[string]bool) []string {
 	var orphans []string
 	for _, key := range s.jobOrder {

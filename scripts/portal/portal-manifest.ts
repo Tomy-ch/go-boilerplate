@@ -59,8 +59,7 @@ export function resolveCopyEntries(manifest: unknown): ResolvedCopyEntry[] {
  *
  * @remarks
  * 複製は `dst` へ上書きするため、2 つの section が同じ `dst` を指すと後勝ちで一方の内容が
- * 消えます。生成物は feature PR に含めず release ブランチへの push で同期されるので、
- * 取りこぼすと公開サイト上で初めて表面化します。他の検査と同じく複製の前に弾きます。
+ * 消えます。取りこぼすと公開サイト上で初めて表面化するため、他の検査と同じく複製の前に弾きます。
  */
 export function assertUniqueDestinations(entries: readonly ResolvedCopyEntry[]): void {
   const seen = new Map<string, ResolvedCopyEntry>();

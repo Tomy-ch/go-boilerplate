@@ -207,8 +207,6 @@ func Test_renderEnv(t *testing.T) {
 		t.Run("git が使えなくても窓数は整数 1 として出力する", func(t *testing.T) {
 			t.Parallel()
 
-			// シェル版は `git worktree list | grep -c . || echo 1` が "0 1" を返し、
-			// 以降の数値比較を毎回エラーにしながら黙って full へ縮退していた。
 			b := mustResolve(t, bandAuto, countWindows(""), 8)
 
 			assert.Contains(t, renderEnv(b), "GOBP_WINDOWS='1'\n")

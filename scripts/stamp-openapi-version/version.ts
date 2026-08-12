@@ -42,6 +42,12 @@ export function replaceVersion(content: string, version: string): string {
   return content.replace(VERSION_LINE, () => `  version: ${version}`);
 }
 
+export type StampPlan =
+  | { kind: "skip"; ref: string }
+  | { kind: "unchanged"; version: string }
+  | { kind: "missing" }
+  | { kind: "write"; from: string; to: string; content: string };
+
 /**
  * ref と現在のファイル内容から、書き換えるべきかどうかを決める。
  *
@@ -53,12 +59,6 @@ export function replaceVersion(content: string, version: string): string {
  * 内容は `readContent` から遅延で受け取ります。対象外の ref では spec を読まずに終える必要があり
  * （spec が無い文脈からも呼ばれる）、その順序は呼び出し側の書き方ではなくここが持ちます。
  */
-export type StampPlan =
-  | { kind: "skip"; ref: string }
-  | { kind: "unchanged"; version: string }
-  | { kind: "missing" }
-  | { kind: "write"; from: string; to: string; content: string };
-
 export function planStamp(ref: string, readContent: () => string): StampPlan {
   const version = deriveVersion(ref);
 

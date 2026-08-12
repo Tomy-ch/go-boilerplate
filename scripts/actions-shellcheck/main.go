@@ -90,9 +90,7 @@ type result struct {
 	findings []string
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 
@@ -102,8 +100,7 @@ func main() {
 }
 
 // run は composite action の run ステップを shellcheck に掛け、結果を報告します。
-// wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段で、
-// どちらも差し替えられるよう引数で受けます。
+// wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段です。
 func run(ctx context.Context, wd func() (string, error), lookPath func(string) (string, error)) error {
 	if _, err := lookPath(shellcheckBin); err != nil {
 		return xerrors.Wrap(errShellcheckMissing, err.Error())
@@ -272,7 +269,7 @@ func countRunSteps(file string, data []byte) (int, error) {
 	if steps == nil {
 		return 0, nil
 	}
-	// リストとして読めない形を「対象外」に寄せると、検査範囲が黙って縮んだまま緑になる。
+	// ここも同じ理由で「対象外」に寄せずエラーにする。
 	list, ok := steps.([]any)
 	if !ok {
 		return 0, xerrors.Wrap(errStepsNotSequence, file)

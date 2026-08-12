@@ -1,8 +1,7 @@
 #!/usr/bin/env -S tsx
-// mock-auth-server の固定 User Fixture（mock-auth-server/fixtures/users.json）を
-// 中立な既定内容へリセット（上書き）する。users.json 自体は削除しないため mock は常に起動可能。
+// mock-auth-server の User Fixture（mock-auth-server/fixtures/users.json）を中立な既定内容へ
+// 上書きする。詳細は scripts/README.md の reset-mock-auth-users の行を参照。
 //
-// 用途: `make setup-remove-sample-api` がこのスクリプトを呼び、デモの固定ユーザー（John Doe 等）を中立な既定ユーザー 1 件へ上書きする。
 //
 // 実行例:
 //   make reset-mock-auth-users
