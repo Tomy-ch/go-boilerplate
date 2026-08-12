@@ -58,6 +58,7 @@
 ".claude/skills/commit/SKILL.ja.md" = "2026-08-10"
 ".claude/skills/submit-pr/SKILL.md" = "2026-08-10"
 ".claude/skills/submit-pr/SKILL.ja.md" = "2026-08-10"
+"database/dml/repository/user/lock_user_share_by_id.sql" = "2026-08-12"
 ".makefiles/markdown/lint.mk" = "2026-08-10"
 "scripts/doc-ref-lint/index.ts" = "2026-08-10"
 "scripts/doc-ref-lint/rules.ts" = "2026-08-10"
