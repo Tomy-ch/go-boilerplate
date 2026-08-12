@@ -119,6 +119,11 @@ the single canonical transport used by all outbound calls (see
 - Testing outbound calls against local test servers requires either the permissive dial
   control (`permissiveDialControl`, available only in test builds) or setting
   `AllowPrivateNetwork = true` in the test profile.
+- **The guard disables the environment-derived proxy** (`base.Proxy = nil`), because a proxy would
+  make the dial land on the proxy's IP rather than the final destination and the check would inspect
+  the wrong address. In an environment that blocks direct egress and mandates a forward proxy, this
+  means outbound HTTP stops working altogether — injecting `HTTP_PROXY` does not restore it, so the
+  proxy has to be absorbed at the network layer instead.
 
 ## Alternatives Considered
 
