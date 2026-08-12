@@ -55,11 +55,8 @@ const DOCUMENT_COMPONENTS: Partial<Components> = { pre: DocumentPre };
  * sanitize 済みのドキュメントを本文として表示する。
  *
  * @remarks
- * 描画は HTML 文字列を経由せず、木から React 要素を直接作ります。組版は `typeset` の CSS 基盤が
- * 持ち、ドキュメント用の preset を既定で当てます。
- *
- * コードフェンスだけは `pre` を差し替えて扱います。mermaid は図として、それ以外は強調表示付きの
- * コードとして描き、いずれも本文の表示より後で読み込みます。
+ * 組版は `typeset` の CSS 基盤が持ち、ドキュメント用の preset を既定で当てる。描画方式と
+ * コードフェンスの振り分けは README（Rendering documents）参照。
  */
 export function DocumentContent({ content, className, ...props }: DocumentContentProps) {
   return (
