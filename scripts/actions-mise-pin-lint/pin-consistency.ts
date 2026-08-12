@@ -4,17 +4,25 @@ export type MisePin = {
   cacheKey: string | null;
 };
 
-const VERSION_PATTERN = /^\s*MISE_VERSION:\s*(\S+)\s*$/m;
-const DIGEST_PATTERN = /^\s*MISE_SHA256:\s*(\S+)\s*$/m;
-const CACHE_KEY_PATTERN = /^\s*key:\s*(\S.*?)\s*$/m;
-
 export const DIGEST_PREFIX_LENGTH = 8;
+
+function readYamlValue(source: string, key: string): string | null {
+  const prefix = `${key}:`;
+  for (const line of source.split("\n")) {
+    const value = line.trim();
+    if (!value.startsWith(prefix)) continue;
+
+    const parsed = value.slice(prefix.length).trim();
+    return parsed === "" ? null : parsed;
+  }
+  return null;
+}
 
 export function readPin(source: string): MisePin {
   return {
-    version: VERSION_PATTERN.exec(source)?.[1] ?? null,
-    digest: DIGEST_PATTERN.exec(source)?.[1] ?? null,
-    cacheKey: CACHE_KEY_PATTERN.exec(source)?.[1] ?? null,
+    version: readYamlValue(source, "MISE_VERSION"),
+    digest: readYamlValue(source, "MISE_SHA256"),
+    cacheKey: readYamlValue(source, "key"),
   };
 }
 

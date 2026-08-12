@@ -52,7 +52,7 @@ runs:
 
           mkdir -p "$BIN_DIR"
           url="https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/mise-v${MISE_VERSION}-linux-x64"
-          curl --fail --location --silent --show-error \
+          curl --fail --proto '=https' --proto-redir '=https' --location --silent --show-error \
             --retry 5 --retry-delay 3 --retry-all-errors \
             --output "$BINARY" "$url"
 
@@ -78,6 +78,5 @@ runs:
         set -euo pipefail
 
         mise --version
-        # tools は空白区切りの tool specification として受け取る。
         # shellcheck disable=SC2086
         mise install $TOOLS

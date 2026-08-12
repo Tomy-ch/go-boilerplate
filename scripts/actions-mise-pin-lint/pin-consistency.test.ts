@@ -43,6 +43,14 @@ describe("readPin", () => {
       cacheKey: null,
     });
   });
+
+  it("空の値を null で返す", () => {
+    expect(readPin("MISE_VERSION:   \nMISE_SHA256:\nkey: \t")).toEqual({
+      version: null,
+      digest: null,
+      cacheKey: null,
+    });
+  });
 });
 
 describe("findViolations", () => {
