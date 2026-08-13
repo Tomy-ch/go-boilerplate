@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$PWD\"/.agents/comment-remediation/comment-remediated.sh --hook"
+            "command": "\"$PWD\"/.agents/doc-router/doc-router.sh --hook"
           }
         ]
       }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adrIndex, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
+import { adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
 
 const ADR = ["ADR", "-0006"].join("");
 const ADRS = adrIndex(["docs/adr/0006-structural-safety-via-tooling.md"]);
@@ -110,6 +110,39 @@ describe("checkStructuredReferences", () => {
     it("slug を欠いた構造化エントリを報告する", () => {
       const source = '      - kind: adr\n        id: "0006"\n';
       expect(checkStructuredReferences("a.yaml", source, ADRS)[0].message).toContain("must carry both id and slug");
+    });
+  });
+});
+
+describe("checkDocRoutes", () => {
+  const present = new Set(["docs/design/rest.md", "docs/design/auth.md"]);
+
+  describe("正常系", () => {
+    it("実在する文書へ経路を張った行を通す", () => {
+      expect(checkDocRoutes("internal/controller/handler/* = docs/design/rest.md # why\n", present)).toEqual([]);
+    });
+    it("1 行に複数の文書を並べた経路を通す", () => {
+      const source = "internal/x/* = docs/design/rest.md, docs/design/auth.md # why\n";
+      expect(checkDocRoutes(source, present)).toEqual([]);
+    });
+    it("コメント行と空行を経路として読まない", () => {
+      expect(checkDocRoutes("# a = docs/nope.md\n\n", present)).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("存在しない文書を指した経路を行番号付きで報告する", () => {
+      const findings = checkDocRoutes("a/* = docs/design/rest.md\nb/* = docs/design/gone.md # why\n", present);
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].message).toContain("L2");
+      expect(findings[0].message).toContain("docs/design/gone.md");
+    });
+    it("複数並べたうちの存在しない側だけを報告する", () => {
+      const findings = checkDocRoutes("a/* = docs/design/rest.md, docs/design/gone.md\n", present);
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].message).toContain("docs/design/gone.md");
     });
   });
 });
