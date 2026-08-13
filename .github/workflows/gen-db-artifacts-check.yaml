@@ -138,15 +138,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: sqlc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install sqlc
-        run: mise install sqlc
       - name: Setup DB
         uses: ./.github/actions/setup-postgres
         with:

@@ -127,27 +127,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write. See README.md § Cache safety.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:opengrep/opengrep
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml (SSOT) — never duplicated here.
-      - name: Install opengrep
-        run: mise install aqua:opengrep/opengrep
 
-      # Rulesets are fetched from the Semgrep registry at scan time, so this step
-      # needs network access. --taint-intrafile turns on inter-procedural taint
-      # tracking within a file, which is what makes the injection rules able to
-      # follow a value from source to sink instead of matching a single line.
-      #
-      # opengrep exits 0 whether or not it finds anything (--error would change
-      # that, but it keys off WARNING rather than the ERROR threshold we gate on),
-      # so the verdict is computed from the JSON below.
       - name: Opengrep scan (JSON)
         run: |
           opengrep scan \

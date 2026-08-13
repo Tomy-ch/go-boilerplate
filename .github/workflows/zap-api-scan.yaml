@@ -194,21 +194,14 @@ jobs:
           echo "MOCK_AUTH_PORT=${port}" >> "$GITHUB_ENV"
 
       # cache: false — this job holds security-events: write. See README.md § Cache safety.
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml, so it is never duplicated here.
-      - name: Install node and pnpm
-        run: mise install node npm:pnpm
 
-      # The provider runs from source: it is TypeScript executed by Node's native type
-      # stripping, which is also how docker/mock-auth-server/Dockerfile runs it, so there is
-      # no build step to keep in sync.
       - name: Install mock-auth-server dependencies
         working-directory: mock-auth-server
         run: pnpm install --frozen-lockfile

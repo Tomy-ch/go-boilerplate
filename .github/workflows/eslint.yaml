@@ -129,20 +129,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write. See README.md § Cache safety.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install node and pnpm
-        run: mise install node npm:pnpm
-
-      # The tree is the one the workspace's own lockfile pins, so CI resolves exactly
-      # what a developer's container does.
       - name: Install the workspace tree
         env:
           WORKSPACE: ${{ matrix.workspace }}

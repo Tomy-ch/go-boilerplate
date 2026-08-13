@@ -101,18 +101,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write. See README.md § Cache safety.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The scanner version is declared in mise.toml (SSOT) — never pinned here.
-      - name: Install osv-scanner
-        run: mise install aqua:google/osv-scanner
 
       - name: Scan with osv-scanner
         id: scan
@@ -278,18 +273,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install osv-scanner
-        run: mise install aqua:google/osv-scanner
-
-      # Exit code 1 means "vulnerabilities found" and is expected on both sides, so
-      # only other codes are treated as a tool failure.
       - name: Scan both trees
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
