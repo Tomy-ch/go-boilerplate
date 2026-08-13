@@ -404,13 +404,20 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
   its owning README or `docs/` reference. Do not accumulate per-run progress as repository state;
   its skill-owned `tmp/` artifact is the only appropriate resume state. A conflict with a governing
   document is raised, not rewritten. Rationale: [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md).
-- **A README lists its child directories, never a file tree.** A tree that enumerates files restates
-  what the editor already shows, and it rots: this repository has repeatedly carried trees missing
-  real directories, and ones naming directories that do not exist. What the editor cannot show is
-  *why* a directory is there, so a parent README carries **one line per child directory** — its name
-  and what it is for — and nothing below that level. To learn what is inside, open that directory's
-  own README. **Adding a directory therefore carries one obligation: check that the parent README
-  names it.** Files change constantly and are not enumerated anywhere.
+- **A README does not inventory what is on disk.** What is there, the editor shows. A file tree or a
+  per-directory list restates it and then rots — this repository has repeatedly carried trees missing
+  real directories, and ones naming directories that do not exist. Reformatting a tree into a bullet
+  list changes nothing: it is still an inventory, and it goes stale for the same reason. Write only
+  what the name cannot carry:
+  - **A closed, designed set** — its members and why the set is drawn that way. `database/dml/` has
+    exactly four categories because the design says so, and adding a fifth is a decision that should
+    move this text. Enumerating those four is a contract, not an inventory.
+  - **A directory whose reason for existing is not in its name** — say the reason, and only for that
+    directory.
+  - **A naming convention that explains the structure** — state the convention in one line and list
+    nothing. "One directory per aggregate, named after it" outlives every aggregate anyone adds.
+
+  To learn what is inside a directory, open its own README. Files are never enumerated anywhere.
 - **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 

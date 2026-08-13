@@ -16,11 +16,7 @@ Implementation: `internal/infrastructure/rdb/system_cqrs/`
 
 ## Directory Structure
 
-One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
-
-- `health_check/` — Liveness and readiness probes
-- `idempotency/` — Idempotency key lifecycle (claim, complete, expiry sweep)
-- `outbox/` — Transactional outbox lifecycle (claim, publish, retry, dead-letter)
+One directory per operational concern, named after it — none of them is a business aggregate.
 
 ## Naming Convention
 

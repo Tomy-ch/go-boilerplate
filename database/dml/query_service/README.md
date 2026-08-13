@@ -16,11 +16,7 @@ Implementation: `internal/infrastructure/rdb/query_service/`
 
 ## Directory Structure
 
-One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
-
-- `dashboard/` — Sales totals and purchase-status counts for the operational dashboard
-- `product/` — Product ranking projection
-- `purchase/` — Purchase detail and summary projections across aggregates
+One directory per read model, named after the aggregate the projection is read from.
 
 ## Naming Convention
 

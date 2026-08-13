@@ -16,15 +16,7 @@ Implementation: `internal/infrastructure/rdb/repository/`
 
 ## Directory Structure
 
-One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
-
-- `prefecture/` — Prefecture master reads
-- `product/` — Product CRUD, stock updates, and image rows
-- `product_category/` — Product category master reads
-- `product_status/` — Product status master reads
-- `purchase/` — Purchase reads, row locks, and lifecycle status updates
-- `user/` — User CRUD, keyword search, row locks, and purge candidates
-- `user_identity/` — Resolving a user from an external identity
+One directory per aggregate, named after it; each holds that aggregate's `.sql` files.
 
 ## Naming Convention
 

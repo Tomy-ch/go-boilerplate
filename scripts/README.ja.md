@@ -6,65 +6,9 @@
 
 ## ディレクトリ構成
 
-```text
-scripts/
-├── portal/                     # ポータル用ドキュメント生成（TypeScript）
-│   ├── gen-docs-json.ts        # ポータルのナビゲーション用 docs.json を生成
-│   ├── gen-portal-docs.ts      # manifest.yaml に従いドキュメントをポータルへ複製
-│   ├── docs-json.ts            # docs.json の構造を組み立てる（純粋・テスト有り）
-│   └── portal-manifest.ts      # manifest.yaml の読み取りと境界検査（純粋・テスト有り）
-├── lib/                        # ツール間で共有する判定（純粋・テスト有り）
-│   ├── workflow.ts             # ワークフロー定義を桁で読む
-│   ├── lint-report.ts          # 違反の型と失敗出力の書式
-│   ├── one-to-one.ts           # 1:1 テスト対応の判定
-│   └── untested-modules.ts     # カバレッジと 1:1 ゲートが共に外す対象とその理由
-├── semver/                     # セマンティックバージョニングヘルパー（patch/minor/major）
-├── stamp-openapi-version/      # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
-├── reset-mock-auth-users/      # mock-auth の固定ユーザー fixture を中立な既定へリセット
-├── make-help/                  # Make ターゲットのヘルプ出力生成
-├── marker-baseline/             # 撤去マーカー行の本数をファイルごとに固定し、増えたら判断を要求する <!-- boilerplate-only:line -->
-├── premise-lint/               # fork とともに失効する前提が、fork 後も残る文書に無いことを検査 <!-- boilerplate-only:line -->
-├── mermaid-lint/               # Markdown 内の ```mermaid フェンスを mermaid パーサで構文検証
-├── skill-lint/                 # .claude/** のスキル / エージェント定義を実態および .codex/** の対応と突き合わせて検証
-├── pr-comment-secret-lint/     # PR コメントを投稿するワークフロージョブへの secret 混入を検出
-├── pr-comment-fence-lint/      # PR コメント本文を囲む固定長 Markdown フェンスを検出
-├── actions-cutoff-lint/        # ジョブの timeout 設定と、打ち切りに耐える PR コメントを強制
-├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile の FROM へ反映（Go）
-├── package.json                # TypeScript スクリプトの Node 依存とスクリプト入口の宣言
-├── pnpm-lock.yaml              # 解決済み依存ツリー（固定）
-├── pnpm-workspace.yaml         # pnpm install の挙動と供給網ポリシー（CODEOWNERS レビュー対象）
-├── tsconfig.json               # TypeScript スクリプトの型検査設定
-├── vitest.config.mts           # TypeScript スクリプトのテスト設定
-├── one-to-one.gate.test.ts     # TypeScript 全パッケージの 1:1 テスト対応ゲート
-├── genctxkey/                  # コンテキストキーのコード生成（Go）
-├── actions-shellcheck/         # composite action の `run:` を shellcheck で検査（Go）
-├── pin-actions/                # GitHub Actions の `uses:` を commit SHA へ固定（Go）
-├── pin-images/                 # Dockerfile の `FROM` を digest へ固定（Go）
-├── egress/                     # harden-runner の `allowed-endpoints` を SSOT から生成・検証（Go）
-├── go-cooldown/                # go.mod を供給網クールダウン窓に照らして検査 / 監査（Go）
-├── tool-cooldown/              # ツール固定（mise.toml / python/*.in）をクールダウン窓に照らして検査 / 監査（Go）
-├── migration-lint/             # マイグレーション連番の重複と欠番を検査（Go）
-├── cover-gate/                 # `go tool cover -func` の総カバレッジをしきい値に照らす（Go）
-├── load-band/                  # ローカルゲートの負荷帯と CPU シェアを解決（Go）
-├── release/                    # リリースタグ / リリースブランチを切る（Go）
-├── base-branch/                # origin の実状態から分岐元の最新リリースラインを解決（Go）
-├── repo-setup/                 # boilerplate を自分のリポジトリとして初期化する git / gh 手順（Go）
-└── setup/                     # 初期セットアップスクリプト（上と同じくツール 1 つ 1 ディレクトリ）
-    ├── replace-module/ <!-- setup-localize:line -->
-    ├── replace-app-metadata/ <!-- setup-localize:line -->
-    ├── replace-license-copyright/ <!-- setup-localize:line -->
-    ├── replace-repository-reference/ <!-- setup-localize:line -->
-    ├── replace-codeowners/ <!-- setup-localize:line -->
-    ├── remove-sample-api/     # サンプル API（user/product/order）を削除 <!-- sample-api:line -->
-    ├── verify-sample-removal/ # 削除が過不足ないことを検証し自己削除 <!-- sample-api:line -->
-    └── lib/                   # setup ツール間で共有（file-utils / runtime / validators）
-```
-
-**TypeScript のツールはすべてディレクトリ**で、隣に並ぶ Go のツールと同じ形をとる。`index.ts` が入口
-（引数の受け取り・ファイル入出力・終了コード）で、判定モジュールとそのテストが同じディレクトリに並ぶ。
-呼び出しもディレクトリ指定で揃えてある（`go run ./scripts/load-band` / `tsx scripts/mermaid-lint`）ため、
-呼び出し側からはどちらの言語で書かれているか見えない。入口が持ってはいけないものとその理由は
-[`lib/untested-modules.ts`](lib/untested-modules.ts) が宣言する。
+ツールごとに 1 つのディレクトリを置き、その働きを名前にする。複数のツールが必要とするものは `lib/` に置く。
+Node の設定とパッケージ横断のゲートは直下に置く。各ツールが何のためにあるかは下の *スクリプトカテゴリ* にある
+— 名前が運べないのはそこだからである。
 
 ## スクリプトカテゴリ
 

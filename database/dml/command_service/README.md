@@ -16,9 +16,7 @@ Implementation: `internal/infrastructure/rdb/command_service/`
 
 ## Directory Structure
 
-One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
-
-- `purchase/` — Purchase writes that must be atomic with stock movement (create, cancel)
+One directory per aggregate whose writes need this category, named after it.
 
 ## Naming Convention
 
