@@ -13,10 +13,21 @@ import (
 // keyset 境界は (AfterPublishedAt, AfterID) の組で表し、先頭ページは両方 nil、継続ページは両方が
 // 直前ページ末尾の値になります。
 type ListParams struct {
+	SearchFilter
+
 	// Limit は、取得件数の上限です。
 	Limit int32
 	// Ascending は、公開日時の昇順で取得する場合に true、降順の場合に false です。
 	Ascending bool
+	// AfterPublishedAt は、keyset 境界となる公開日時です。先頭ページでは nil です。
+	AfterPublishedAt *time.Time
+	// AfterID は、keyset 境界となる商品 ID です。先頭ページでは nil です。
+	AfterID *uuid.UUID
+}
+
+// SearchFilter は、公開商品の絞り込み条件です。一覧と一致件数は同じ母集団を指すため双方がこれを
+// 共有します。片方にだけ条件が増えた状態は、この型を経由する限り表現できません。
+type SearchFilter struct {
 	// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。
 	CategoryID *uuid.UUID
 	// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。
@@ -27,21 +38,6 @@ type ListParams struct {
 	MinPrice *money.Price
 	MaxPrice *money.Price
 	// MinQuantity / MaxQuantity は、在庫数の包含下限／包含上限です。nil の側は制限しません。
-	MinQuantity *int32
-	MaxQuantity *int32
-	// AfterPublishedAt は、keyset 境界となる公開日時です。先頭ページでは nil です。
-	AfterPublishedAt *time.Time
-	// AfterID は、keyset 境界となる商品 ID です。先頭ページでは nil です。
-	AfterID *uuid.UUID
-}
-
-// CountPublishedParams は、公開商品検索の一致件数を取得する条件です。
-type CountPublishedParams struct {
-	CategoryID  *uuid.UUID
-	StatusID    *uuid.UUID
-	Keyword     *string
-	MinPrice    *money.Price
-	MaxPrice    *money.Price
 	MinQuantity *int32
 	MaxQuantity *int32
 }
@@ -62,7 +58,8 @@ type Repository interface {
 	// params.CategoryID / StatusID / Keyword / price・quantity の上下限が指定された場合は該当条件で絞り込みます。
 	FindPublishedList(ctx context.Context, params ListParams) (Products, error)
 	// CountPublished は、公開済み商品のうち指定された検索条件に一致する件数を返します。
-	CountPublished(ctx context.Context, params CountPublishedParams) (int64, error)
+	// filter は FindPublishedList と同じ条件で、両者は同じ母集団を指します。
+	CountPublished(ctx context.Context, filter SearchFilter) (int64, error)
 	// FindAllLowStock は、在庫が在庫警告閾値以下まで減った商品を、在庫の少ない順（同数は ID の昇順）で
 	// 最大 limit 件返します。在庫警告閾値が未設定の商品は警告対象を持たないため含みません。
 	// 補充の要否は公開状態に依存しないため、未公開の商品も含めます。

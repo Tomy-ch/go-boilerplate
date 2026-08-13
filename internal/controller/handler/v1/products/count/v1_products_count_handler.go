@@ -32,7 +32,7 @@ func (s *server) GetProductsCount(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	view, err := s.uc.CountProducts(ctx, productuc.CountProductsParams{
+	view, err := s.uc.CountProducts(ctx, productuc.SearchFilter{
 		CategoryID:  conv.UUIDPtr(request.Params.CategoryId),
 		StatusID:    conv.UUIDPtr(request.Params.StatusId),
 		Keyword:     request.Params.Keyword,

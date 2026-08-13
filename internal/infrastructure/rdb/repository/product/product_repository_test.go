@@ -107,8 +107,15 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				// 先頭ページ(limit=2): 公開日時降順・id降順で tieHigh, tieLow。
 				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
-					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:     ptr.To(probeKeyword),
+						MinPrice:    &price,
+						MaxPrice:    &price,
+						MinQuantity: &quantity,
+						MaxQuantity: &quantity,
+					},
+					Limit:     2,
+					Ascending: false,
 				})
 				require.NoError(t, err)
 				require.Len(t, firstPage, 2)
@@ -118,9 +125,17 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				// 次ページ: 末尾行(tieLow)を境界に keyset を進めると mid → old。
 				last := firstPage[len(firstPage)-1]
 				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
-					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
-					AfterPublishedAt: last.PublishedAt(), AfterID: ptr.To(last.ID()),
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:     ptr.To(probeKeyword),
+						MinPrice:    &price,
+						MaxPrice:    &price,
+						MinQuantity: &quantity,
+						MaxQuantity: &quantity,
+					},
+					Limit:            2,
+					Ascending:        false,
+					AfterPublishedAt: last.PublishedAt(),
+					AfterID:          ptr.To(last.ID()),
 				})
 				require.NoError(t, err)
 				require.Len(t, secondPage, 2)
@@ -129,7 +144,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				// 未公開(NULL)行はどのページにも現れない。
 				all, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 100, Ascending: false, Keyword: ptr.To(probeKeyword),
+					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword)},
+					Limit:        100,
+					Ascending:    false,
 				})
 				require.NoError(t, err)
 				for _, p := range all {
@@ -148,8 +165,15 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				quantity := int32(10)
 
 				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 2, Ascending: true, Keyword: ptr.To(probeKeyword),
-					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:     ptr.To(probeKeyword),
+						MinPrice:    &price,
+						MaxPrice:    &price,
+						MinQuantity: &quantity,
+						MaxQuantity: &quantity,
+					},
+					Limit:     2,
+					Ascending: true,
 				})
 				require.NoError(t, err)
 				require.Len(t, firstPage, 2)
@@ -158,9 +182,17 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				last := firstPage[len(firstPage)-1]
 				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 2, Ascending: true, Keyword: ptr.To(probeKeyword),
-					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
-					AfterPublishedAt: last.PublishedAt(), AfterID: ptr.To(last.ID()),
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:     ptr.To(probeKeyword),
+						MinPrice:    &price,
+						MaxPrice:    &price,
+						MinQuantity: &quantity,
+						MaxQuantity: &quantity,
+					},
+					Limit:            2,
+					Ascending:        true,
+					AfterPublishedAt: last.PublishedAt(),
+					AfterID:          ptr.To(last.ID()),
 				})
 				require.NoError(t, err)
 				require.Len(t, secondPage, 2)
@@ -180,7 +212,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				categoryID := mustParse(t, categoryBooks)
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword), CategoryID: &categoryID,
+					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword), CategoryID: &categoryID},
+					Limit:        10,
+					Ascending:    false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -199,7 +233,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				statusID := mustParse(t, statusOutOfStock)
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword), StatusID: &statusID,
+					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword), StatusID: &statusID},
+					Limit:        10,
+					Ascending:    false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -231,7 +267,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				)
 
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword),
+					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword)},
+					Limit:        10,
+					Ascending:    false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 2)
@@ -274,8 +312,15 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				price := mustPriceFilter(t)
 				quantity := int32(10)
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword + "-RANGE"),
-					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:     ptr.To(probeKeyword + "-RANGE"),
+						MinPrice:    &price,
+						MaxPrice:    &price,
+						MinQuantity: &quantity,
+						MaxQuantity: &quantity,
+					},
+					Limit:     10,
+					Ascending: false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -307,7 +352,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				insertProduct(ctx, t, drv, invalidID, probeKeyword+"-BADPRICE", nil, -1, statusInStock, categoryElectronics, ptr.To(base))
 
 				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword),
+					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword)},
+					Limit:        10,
+					Ascending:    false,
 				})
 				assert.Nil(t, actual)
 				require.ErrorIs(t, err, apperror.ErrInternal)
@@ -348,7 +395,7 @@ func Test_repository_CountPublished(t *testing.T) {
 				)
 
 				price := mustPriceFilter(t)
-				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
 					CategoryID: ptr.To(mustParse(t, categoryElectronics)),
 					StatusID:   ptr.To(mustParse(t, statusInStock)), Keyword: &keyword,
 					MinPrice: &price, MaxPrice: &price,
@@ -375,7 +422,7 @@ func Test_repository_CountPublished(t *testing.T) {
 					keyword+"-books", nil, 1000, statusInStock, categoryBooks, &publishedAt,
 				)
 
-				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
 					CategoryID: ptr.To(mustParse(t, categoryElectronics)), Keyword: &keyword,
 				})
 				require.NoError(t, err)
@@ -399,7 +446,7 @@ func Test_repository_CountPublished(t *testing.T) {
 					keyword+"-out-of-stock", nil, 1000, statusOutOfStock, categoryElectronics, &publishedAt,
 				)
 
-				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
 					StatusID: ptr.To(mustParse(t, statusInStock)), Keyword: &keyword,
 				})
 				require.NoError(t, err)
@@ -428,7 +475,7 @@ func Test_repository_CountPublished(t *testing.T) {
 					"unrelated-other", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
 				)
 
-				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{Keyword: &keyword})
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{Keyword: &keyword})
 				require.NoError(t, err)
 				assert.Equal(t, int64(2), count)
 			})
@@ -471,7 +518,7 @@ func Test_repository_CountPublished(t *testing.T) {
 
 				price := mustPriceFilter(t)
 				quantity := int32(10)
-				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
 					Keyword: &keyword, MinPrice: &price, MaxPrice: &price,
 					MinQuantity: &quantity, MaxQuantity: &quantity,
 				})
@@ -484,7 +531,7 @@ func Test_repository_CountPublished(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
 					Keyword: ptr.To("COUNTPROBENOMATCH"),
 				})
 				require.NoError(t, err)
@@ -514,10 +561,12 @@ func Test_repository_CountPublished(t *testing.T) {
 
 				categoryID := ptr.To(mustParse(t, categoryElectronics))
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 100, Ascending: false, CategoryID: categoryID, Keyword: &keyword,
+					SearchFilter: domainproduct.SearchFilter{CategoryID: categoryID, Keyword: &keyword},
+					Limit:        100,
+					Ascending:    false,
 				})
 				require.NoError(t, err)
-				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
 					CategoryID: categoryID, Keyword: &keyword,
 				})
 				require.NoError(t, err)
@@ -535,7 +584,7 @@ func Test_repository_CountPublished(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{})
+			count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{})
 			assert.Zero(t, count)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
