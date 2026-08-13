@@ -484,6 +484,83 @@ func Test_parseProductListRange(t *testing.T) {
 	})
 }
 
+func Test_usecase_CountProducts(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("検索条件を検証してRepositoryへ渡し一致件数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			categoryID := uuidtestkit.NewTestFromSalt(t, "count_category")
+			statusID := uuidtestkit.NewTestFromSalt(t, "count_status")
+			repo.EXPECT().CountPublished(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params domainproduct.CountPublishedParams) (int64, error) {
+					require.NotNil(t, params.CategoryID)
+					assert.Equal(t, categoryID, *params.CategoryID)
+					require.NotNil(t, params.StatusID)
+					assert.Equal(t, statusID, *params.StatusID)
+					require.NotNil(t, params.Keyword)
+					assert.Equal(t, "イヤホン", *params.Keyword)
+					require.NotNil(t, params.MinPrice)
+					assert.True(t, params.MinPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.50")))
+					require.NotNil(t, params.MaxPrice)
+					assert.True(t, params.MaxPrice.Decimal().Equal(decimaltestkit.MustParse(t, "99.99")))
+					require.NotNil(t, params.MinQuantity)
+					assert.Equal(t, int32(2), *params.MinQuantity)
+					require.NotNil(t, params.MaxQuantity)
+					assert.Equal(t, int32(20), *params.MaxQuantity)
+					return 7, nil
+				})
+
+			u := &usecase{tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo}
+			actual, err := u.CountProducts(context.Background(), CountProductsParams{
+				CategoryID: &categoryID, StatusID: &statusID, Keyword: ptr.To("イヤホン"),
+				MinPrice: ptr.To("10.50"), MaxPrice: ptr.To("99.99"),
+				MinQuantity: ptr.To[int32](2), MaxQuantity: ptr.To[int32](20),
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, ProductCountView{Count: 7}, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("範囲が不正な場合はRepositoryを呼ばずErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t),
+				repo:   mock_product.NewMockRepository(gomock.NewController(t)),
+			}
+			actual, err := u.CountProducts(context.Background(), CountProductsParams{
+				MinPrice: ptr.To("20"), MaxPrice: ptr.To("10"),
+			})
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Empty(t, actual)
+		})
+
+		t.Run("Repositoryのエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			expectedErr := testkit.ExpectedDBError()
+			repo.EXPECT().CountPublished(gomock.Any(), gomock.Any()).Return(int64(0), expectedErr)
+			u := &usecase{tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo}
+
+			actual, err := u.CountProducts(context.Background(), CountProductsParams{})
+
+			require.ErrorIs(t, err, expectedErr)
+			assert.Empty(t, actual)
+		})
+	})
+}
+
 func Test_usecase_ListProducts(t *testing.T) {
 	t.Parallel()
 

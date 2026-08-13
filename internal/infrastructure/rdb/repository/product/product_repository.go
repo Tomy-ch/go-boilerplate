@@ -128,6 +128,27 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	}
 }
 
+// CountPublished は、公開済み商品のうち指定された検索条件に一致する件数を返します。
+func (r *repository) CountPublished(ctx context.Context, params product.CountPublishedParams) (int64, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	count, err := db.CountPublishedProductsByFilter(ctx, &gen.CountPublishedProductsByFilterParams{
+		CategoryID:  params.CategoryID,
+		StatusID:    params.StatusID,
+		MinPrice:    ptr.Map(params.MinPrice, money.Price.Decimal),
+		MaxPrice:    ptr.Map(params.MaxPrice, money.Price.Decimal),
+		MinQuantity: params.MinQuantity,
+		MaxQuantity: params.MaxQuantity,
+		Keyword:     params.Keyword,
+	})
+	if err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+	return count, nil
+}
+
 // FindAllLowStock は、在庫警告閾値以下の商品を在庫数と ID の昇順で最大 limit 件取得します。
 // 在庫警告閾値が未設定の商品は除外し、公開状態では絞り込みません。
 func (r *repository) FindAllLowStock(ctx context.Context, limit int32) (product.Products, error) {

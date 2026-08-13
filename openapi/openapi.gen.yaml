@@ -55,6 +55,8 @@ tags:
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/count
+    description: 公開商品検索の一致件数（認証不要・商品一覧と同じ検索条件）。
   - name: v1/products/statuses
     description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/categories
@@ -680,6 +682,40 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed405'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/count:
+    get:
+      operationId: GetProductsCount
+      tags:
+        - v1/products/count
+      summary: 商品検索の一致件数の取得
+      description: |
+        公開済み商品のうち、指定した検索条件に一致する件数のみを返します。認証不要の公開エンドポイントです。
+        categoryId / statusId / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味は
+        GET /v1/products と同一です。検索条件を指定しない場合は公開済み商品の総数を返します。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryIdParam'
+        - $ref: '#/components/parameters/StatusIdParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/MinPriceParam'
+        - $ref: '#/components/parameters/MaxPriceParam'
+        - $ref: '#/components/parameters/MinQuantityParam'
+        - $ref: '#/components/parameters/MaxQuantityParam'
+      responses:
+        '200':
+          description: 検索条件に一致する公開商品の件数
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -2047,6 +2083,18 @@ components:
               items:
                 $ref: '#/components/schemas/ProductResponse'
         - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    ProductCountResponse:
+      description: 商品検索の一致件数レスポンス
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 検索条件に一致する公開商品の件数。対象がない場合は 0 です。
+          example: 42
     ProductRankingItem:
       type: object
       description: 売上ランキング 1 商品分の項目です。

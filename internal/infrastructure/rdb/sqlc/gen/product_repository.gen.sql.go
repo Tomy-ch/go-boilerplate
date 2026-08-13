@@ -40,6 +40,64 @@ func (q *Queries) CountProducts(ctx context.Context) (*CountProductsRow, error) 
 	return &i, err
 }
 
+const countPublishedProductsByFilter = `-- name: CountPublishedProductsByFilter :one
+SELECT COUNT(*)::BIGINT AS count
+FROM products AS p
+WHERE p.published_at IS NOT NULL
+    AND ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
+    AND (
+        $7::TEXT IS NULL
+        OR p.name ILIKE '%' || $7 || '%'
+        OR p.description ILIKE '%' || $7 || '%'
+    )
+`
+
+type CountPublishedProductsByFilterParams struct {
+	CategoryID  *uuid.UUID
+	StatusID    *uuid.UUID
+	MinPrice    *decimal.Decimal
+	MaxPrice    *decimal.Decimal
+	MinQuantity *int32
+	MaxQuantity *int32
+	Keyword     *string
+}
+
+// 公開済み商品のうち、商品一覧と同じ検索条件に一致する件数を返します。
+//
+//	SELECT COUNT(*)::BIGINT AS count
+//	FROM products AS p
+//	WHERE p.published_at IS NOT NULL
+//	    AND ($1::UUID IS NULL OR p.category_id = $1)
+//	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
+//	    AND (
+//	        $7::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $7 || '%'
+//	        OR p.description ILIKE '%' || $7 || '%'
+//	    )
+func (q *Queries) CountPublishedProductsByFilter(ctx context.Context, arg *CountPublishedProductsByFilterParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPublishedProductsByFilter,
+		arg.CategoryID,
+		arg.StatusID,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.MinQuantity,
+		arg.MaxQuantity,
+		arg.Keyword,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createProduct = `-- name: CreateProduct :exec
 INSERT INTO products (
     id,

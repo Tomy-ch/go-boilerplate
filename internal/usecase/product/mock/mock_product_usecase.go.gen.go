@@ -43,6 +43,21 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
 }
 
+// CountProducts mocks base method.
+func (m *MockUsecase) CountProducts(ctx context.Context, params product.CountProductsParams) (product.ProductCountView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountProducts", ctx, params)
+	ret0, _ := ret[0].(product.ProductCountView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountProducts indicates an expected call of CountProducts.
+func (mr *MockUsecaseMockRecorder) CountProducts(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountProducts", reflect.TypeOf((*MockUsecase)(nil).CountProducts), ctx, params)
+}
+
 // CreateProduct mocks base method.
 func (m *MockUsecase) CreateProduct(ctx context.Context, authn *auth.Authn, params product.CreateProductParams) (product.ProductView, error) {
 	m.ctrl.T.Helper()
