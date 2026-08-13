@@ -10,11 +10,8 @@
 
 ## 構成
 
-```text
-internal/di/worker/
-├── runner.go   # Engine DI provider
-└── hook/       # Lifecycle hook (worker execution / health listener)
-```
+`runner.go` が Engine を提供し、`hook/` が起動時にそれとヘルスリスナを開始する。job プロファイルが
+両者を分けているのと同じ理由による。
 
 ## アーキテクチャ
 

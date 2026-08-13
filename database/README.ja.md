@@ -6,16 +6,6 @@
 
 マイグレーション、sqlc 用 DML、シードデータ、および生成物を管理します。
 
-## ディレクトリ構成
-
-```text
-database/
-├── migrations/   # DDL マイグレーションファイル（golang-migrate）
-├── dml/          # sqlc コード生成の元となる SQL ファイル
-├── seed/         # 非本番環境向けシードデータ（トランザクション系）
-└── gen/          # 自動生成された SQL（編集禁止）
-```
-
 ## サブディレクトリの役割
 
 |ディレクトリ|内容|生成コマンド|編集|
@@ -24,6 +14,7 @@ database/
 |`dml/`|sqlc 用クエリ（SELECT / INSERT 等）|—|手動作成|
 |`seed/`|開発・テスト用の初期データ|—|手動作成|
 |`gen/`|`dml/` から merge-dml で生成された SQL + スキーマダンプ|`make gen-query`|**編集禁止**|
+|`maintenance/`|migration の系列外で手動実行する運用 SQL|—|手動|
 
 ## データのライフサイクル
 

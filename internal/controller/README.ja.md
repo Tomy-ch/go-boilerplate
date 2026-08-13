@@ -13,18 +13,17 @@
 
 ## ディレクトリ構成
 
-```text
-internal/controller/
-├── handler/        # HTTP ハンドラ（サーバーのエントリポイント）
-├── job/            # ジョブコントローラ（CLI のエントリポイント）
-├── worker/         # ワーカーエンジン（メッセージキューのエントリポイント）
-├── outbox/         # outbox リレーエンジン（outbox を poll して publish）
-├── server/         # Echo インスタンス生成・サーバー起動
-├── httpstack/      # HTTP ミドルウェア群
-├── error/response/ # エラーレスポンス生成
-├── conv/           # OpenAPI 生成型 → ドメイン型への境界ヘルパー
-└── ctxhelper/      # Echo コンテキストヘルパー
-```
+この層は**外部がどこからアプリケーションへ入ってくるか**で分かれる。入口は次の 4 種であり、
+これ以外が入口になることはない。
+
+- `handler/` — HTTP リクエスト
+- `job/` — CLI からの起動
+- `worker/` — キューのメッセージ
+- `outbox/` — outbox を polling して publish する relay
+
+残りのディレクトリはこの 4 つに奉仕する。`server/` は Echo インスタンスの構築、`httpstack/` は
+ミドルウェアスタック、`error/response/` はエラーボディ、`conv/` は生成型とドメイン型の境界、
+`ctxhelper/` は Echo context のアクセサである。
 
 ## サブディレクトリの役割
 

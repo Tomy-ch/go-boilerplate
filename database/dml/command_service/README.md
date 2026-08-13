@@ -16,17 +16,7 @@ Implementation: `internal/infrastructure/rdb/command_service/`
 
 ## Directory Structure
 
-```text
-command_service/
-├── user/
-│   ├── insert_user.sql
-│   ├── update_user_email.sql
-│   └── ...
-├── product/
-│   ├── publish_product.sql
-│   └── ...
-└── ...
-```
+One directory per aggregate whose writes need this category, named after it.
 
 ## Naming Convention
 

@@ -39,15 +39,6 @@ These are used as **Infrastructure-layer utilities**.
 
 ## Directory Structure
 
-```text
-internal/infrastructure/rdb/sqlc/
-├── like.go         # LIKE search helpers
-└── gen/               # sqlc auto-generated code (do not edit)
-    ├── desc.go         # Package description
-    ├── *.gen.sql.go    # Query execution code (auto-generated)
-    └── *.gen.go        # Type definitions / DBTX wiring (auto-generated: models.gen.go, db.gen.go)
-```
-
 ## LIKE Search Helpers
 
 Provides functions to assist in generating patterns used in PostgreSQL `LIKE` / `ILIKE` searches.

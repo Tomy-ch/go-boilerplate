@@ -16,13 +16,7 @@ Implementation: `internal/infrastructure/rdb/query_service/`
 
 ## Directory Structure
 
-```text
-query_service/
-├── user/
-│   ├── select_active_users.sql
-│   └── ...
-└── ...
-```
+One directory per read model, named after the aggregate the projection is read from.
 
 ## Naming Convention
 

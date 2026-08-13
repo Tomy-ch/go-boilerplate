@@ -18,9 +18,9 @@ reliability, observability) already wired.
 >
 > **Almost every directory carries its own README.** Read the one that owns the area before
 > implementing in it or investigating it — it states the responsibilities and the prohibitions that
-> bound a change. A README names its child directories and what each is for; it does not list files,
-> because an editor already shows those. **When you add a directory, check that the parent README
-> names it.**
+> bound a change. **A README does not inventory what is on disk** — an editor already shows that. It
+> carries what a name cannot: why a set of directories is drawn the way it is, and the convention that
+> explains the rest.
 
 ## Capabilities
 
@@ -306,41 +306,25 @@ The source of truth lives close to the code. Start here and follow the link that
 
 ## Directory Structure
 
-```txt
-.
-├── cmd/            # Application entrypoint (Cobra subcommands)
-├── internal/       # Application code (Onion Architecture)
-│   ├── domain/
-│   ├── usecase/
-│   ├── controller/
-│   ├── infrastructure/
-│   ├── di/
-│   ├── apperror/       # Application error type shared across layers
-│   ├── architest/      # Architecture tests that assert the layer rules
-│   ├── cli/            # Testable core of each cmd/ subcommand
-│   ├── config/         # Environment-variable binding
-│   ├── integration/    # Integration tests spanning layers
-│   ├── logging/        # Logger construction & context propagation
-│   ├── observability/  # OpenTelemetry traces / metrics / logs substrate
-│   └── system/         # Process-level concerns (build info, signals)
-├── pkg/            # Shared, framework-agnostic utilities
-├── openapi/        # API contracts
-├── database/       # Migrations & SQL (sqlc)
-├── storage/        # Objects seeded into the bucket (directory layout = key layout)
-├── env/            # Per-environment variables (embedded into the binary)
-├── mock-auth-server/ # Development OIDC provider (TypeScript, not shipped)
-├── python/         # PyPI-published CLI tools, declared and hash-locked
-├── docker/
-├── docs/
-├── docs-viewer/    # Documentation portal frontend (build output is committed under docs/portal/)
-├── scripts/        # Utility scripts & repository gates
-├── .github/        # Workflows, composite actions, repository settings
-├── .makefiles/     # make target registry
-├── .agents/        # Agent-facing contract assets shared by every AI tool
-├── .claude/        # Claude Code configuration (skills, settings)
-├── .codex/         # OpenAI Codex CLI configuration (skills)
-└── makefile
-```
+The top level is split by **what a directory is answerable for**, not by file type.
+
+- `cmd/` — the entrypoint, and nothing else; each subcommand is a thin Cobra shell over `internal/cli/`
+- `internal/` — the application, laid out by onion layer. Its own README states the layers and their dependency direction
+- `pkg/` — utilities that do not know this application exists, so they stay framework-agnostic and reusable
+- `openapi/` — the API contract, written before the code that serves it
+- `database/` — migrations and the SQL that code generation reads
+- `storage/` — objects seeded into the bucket; the directory layout is the key layout
+- `env/` — per-environment variables, embedded into the binary
+- `docker/` — one image or service per directory
+- `docs/` — the canonical documentation, including ADRs and the design reference
+- `scripts/` — repository tooling and the gates that enforce these rules
+- `.github/` — workflows, composite actions, and repository settings
+- `.makefiles/` — the make target registry; `makefile` only includes it
+- `.agents/` — machine-readable artifacts shared by every AI tool, so no assistant owns them
+- `.claude/` / `.codex/` — configuration for one assistant each
+
+`mock-auth-server/`, `docs-viewer/`, and `python/` are supporting projects with their own toolchains:
+a development OIDC provider, the documentation portal frontend, and the hash-locked PyPI CLI tools.
 
 ## Stack
 

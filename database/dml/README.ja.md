@@ -8,17 +8,12 @@
 
 ## ディレクトリ構成
 
-```text
-database/dml/
-├── repository/       # Aggregate 永続化用 DML（CRUD）
-│   ├── user/
-│   └── prefecture/
-├── query_service/    # 検索専用 DML（読み取り最適化）
-│   └── user/
-├── command_service/  # コマンド専用 DML（将来拡張用）
-└── system_cqrs/     # システム運用クエリ（ヘルスチェック等）
-    └── health_check/
-```
+DML の区分ごとに 1 つのサブディレクトリを置き、それぞれが自分の README で受け持ちを述べる。
+
+- `repository/` — 集約の永続化と単一集約の読み取り（CRUD）
+- `query_service/` — 集約を跨ぐ読み取り投影と集計
+- `command_service/` — 他の集約の状態と原子的に行う必要のある書き込み
+- `system_cqrs/` — 業務ではなくシステム自身の運用のためのクエリ
 
 ## サブディレクトリとオニオンアーキテクチャの対応
 
