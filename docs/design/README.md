@@ -1,6 +1,6 @@
 # Design References
 
-日本語: [README.ja.md](../ja/design/README.ja.md)
+日本語: [README.ja.md](README.ja.md)
 
 This directory holds the **per-subsystem design references**. Each one consolidates a single subsystem's *role theory, state transitions / lifecycles, implementation locations, what an integrator must implement, and glossary* into one page, **derived from a close reading of the implementation**.
 
@@ -33,6 +33,7 @@ Two invariants underpin all of them:
 | [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider (`mock-auth-server`) | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
 | [security.md](security.md) | Security posture | the threat model, what each control is for (enforcement / detection / deterrence), and where it fires | [workflows](../../.github/workflows/README.md) |
 | [context-map.md](context-map.md) | Context Map | how this system relates to the systems around it, edge by edge | [boundary](../../internal/usecase/boundary/README.md) |
+| [data-access-pattern.md](data-access-pattern.md) | Data access placement | which of Repository / QueryService / CommandService owns a given read or write, and why | [rdb](../../internal/infrastructure/rdb/README.md) |
 | [agent-environment.md](agent-environment.md) | Agent environment | how instructions, mechanical gates, independent review, and load-aware verification work together | [AGENTS.md](../../AGENTS.md) |
 
 ## Reading order
