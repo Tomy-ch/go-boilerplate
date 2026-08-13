@@ -34,7 +34,7 @@ a decision (an ADR); the *list* of them is a living reference.
 - **Who may change a decision record**: superseding or deprecating an `accepted` ADR is a decision for this repository's architect or tech lead, taken per change. Finding that an accepted ADR is contradicted by the implementation is a reason to raise it with them, not a licence to change it — the implementation is as likely to be the error. A previous change is not standing authorization for the next.
 - **Template**: copy [`template.md`](template.md).
 - **Meta**: [`0000-record-architecture-decisions.md`](0000-record-architecture-decisions.md) records the decision to use ADRs and this classification.
-- **Translation**: each ADR mirrors to `docs/ja/adr/` (via the `canonicalize-doc` flow).
+- **Translation**: each ADR has a `<name>.ja.md` beside it (via the `canonicalize-doc` flow).
 - **Upstream deviations**: while this repository is distributed as a boilerplate it operates under exceptions to the above, recorded in [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md). They do not apply to a project built from it. <!-- boilerplate-only:line -->
 
 ## Log

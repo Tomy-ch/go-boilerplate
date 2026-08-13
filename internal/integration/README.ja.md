@@ -9,7 +9,7 @@
 このテストは **HTTP 境界**を対象とし、DB・SQL・Repository は使いません。唯一の意図的な例外が認証境界で、
 `jwt_auth_test.go` と `jwks_rotation_test.go` は実物の `internal/infrastructure/auth/jwt` を動かします。
 JWKS 解決を手組み mock で置くと provider と黙って乖離するためです。詳細は
-[`docs/design/auth.md`](../../docs/ja/design/auth.ja.md) を参照してください。
+[`docs/design/auth.md`](../../docs/design/auth.ja.md) を参照してください。
 
 ## テスト戦略
 
@@ -315,7 +315,7 @@ usecase の戻り値で表現します。
 
 以下のヘルパーは debug bypass 経路を扱います。実物の JWT / JWKS 検証を通すテストは自前でサーバーを
 組み立てます（`jwt_auth_test.go` / `jwks_rotation_test.go` と
-[`docs/design/auth.md`](../../docs/ja/design/auth.ja.md)）。
+[`docs/design/auth.md`](../../docs/design/auth.ja.md)）。
 
 ### `MakeAvailableUserID`
 

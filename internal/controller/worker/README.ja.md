@@ -47,7 +47,7 @@ engine は **in-memory fake**（`internal/usecase/boundary/worker/testkit` の `
 - `runner.go`（`Engine`：registry / `Run` / `Healthy`）、`run.go`（1 Run 単位の poll loop / dispatch / drain）。
 - `circuit.go`（3 状態ブレーカ、cooldown は `pkg/backoff`）、`classify.go`（error→分類）、`settings.go`（engine-core `Settings`）、`dispatch.go`（`PartitionKey` 直列化）、`state.go`（`worker.State` 実装）、`errors.go`（registry sentinel）、`telemetry.go`（O11Y。traceparent 継続／構造化ログのフィールド生成。engine 所有の metric 実体は `observability.WorkerMetrics`）。
 
-SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は**削除可能なサンプル群**の一部として配線してよい。broker SDK の分離はリンクではなく**結合**で測る。具体的な broker を名指すのは、その adapter のパッケージとそれを選ぶ配線だけである — E3（[ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../docs/ja/adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md)）を参照。
+SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は**削除可能なサンプル群**の一部として配線してよい。broker SDK の分離はリンクではなく**結合**で測る。具体的な broker を名指すのは、その adapter のパッケージとそれを選ぶ配線だけである — E3（[ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md)）を参照。
 
 <!-- sample-api:begin -->
 [`withdrawalarchive/`](withdrawalarchive/README.ja.md) が同梱のサンプル worker であり、`docs/design/worker.md` §4 が integrator に求めるもの一式の実例にあたる。outbox が emit する退会イベントを消費し、サンプル一式と一緒に削除される。
@@ -57,4 +57,4 @@ SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は**削除可能な�
 
 `Settings.normalize()`（`settings.go`）は、engine-core の範囲外値を起動失敗にするのではなく安全な既定値へ **clamp** する — 設定を誤った worker でも crash-loop せず動き続けるという回復性重視の選択。clamp されるフィールド：`Concurrency` / `MaxInFlight` / `BatchSize`（`Concurrency <= MaxInFlight` かつ `1 <= BatchSize <= MaxInFlight` へ矯正）、`DrainTimeout`、`CircuitHalfOpenProbe`、`CircuitOpenBackoffInitial` / `CircuitOpenBackoffMax`（有効化したブレーカが cooldown ゼロへ退化しないように）、`ProgressStaleAfter`、`NackBackoffInitial` / `NackBackoffMax`。`WORKER_*` env var は非ゼロの `envDefault` を持つため、clamp が発動するのは運用者が明示的に `0` / 負値を設定したときだけ。ここ（およびセットアップレビュー、[`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md) 参照）に記すことで、clamp を silent にせずレビュー可能に保つ。
 
-> 詳細設計（状態遷移 / 実装箇所マップ / 用語集）: [docs/ja/design/worker.ja.md](../../../docs/ja/design/worker.ja.md)。
+> 詳細設計（状態遷移 / 実装箇所マップ / 用語集）: [docs/design/worker.ja.md](../../../docs/design/worker.ja.md)。

@@ -22,7 +22,7 @@ Supported document types:
 - Claude Code skill files: `SKILL.md` / `SKILL.ja.md` (under `.claude/skills/<name>/`)
 - READMEs: `README.md` / `README.ja.md` (co-located in the same directory, e.g. `docker/server/`)
 - Generic Markdown docs with the `*.ja.md` suffix convention (co-located).
-- `docs/**` documents using the parallel directory convention (`docs/**/<name>.md` and `docs/ja/**/<name>.ja.md`).
+- `docs/**` documents, which follow the same co-located convention (`docs/**/<name>.md` and `docs/**/<name>.ja.md`).
 
 ## First Step: Confirm Input
 
@@ -37,7 +37,7 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** to confi
 Procedure:
 
 1. If the user supplied a file path in skill arguments or the most recent message, include it as a candidate.
-2. Inspect the surrounding directory to detect the counterpart file (if any) and the convention being used (co-located `*.ja.md` vs `docs/ja/**` parallel tree).
+2. Inspect the surrounding directory to detect the counterpart file (if any) and the convention being used (co-located `*.ja.md`).
 3. Call `AskUserQuestion` with:
     - Question 1: "Confirm the source file path." (include the detected candidate)
     - Question 2: "Which direction? (canonical-from-translation / translation-from-canonical / sync-both)" — include the recommended option based on what files already exist.
@@ -74,7 +74,7 @@ Apply these rules when producing each side of the pair.
 ### `docs/**` parallel-tree docs
 
 - Canonical: `docs/<path>/<name>.md`
-- Translation: `docs/ja/<path>/<name>.ja.md`
+- Translation: `docs/<path>/<name>.ja.md`
 - Keep section structure, headings, and link targets 1:1 between the two files.
 
 ## AI Modification Scope
@@ -103,10 +103,10 @@ Read the confirmed source file in full. If the direction is `sync-both`, read bo
 
 - `canonical-from-translation`:
   - `foo.ja.md` → `foo.md` in the same directory.
-  - `docs/ja/<path>/<name>.ja.md` → `docs/<path>/<name>.md`.
+  - `docs/<path>/<name>.ja.md` → `docs/<path>/<name>.md`.
 - `translation-from-canonical`:
   - `foo.md` → `foo.ja.md` in the same directory.
-  - `docs/<path>/<name>.md` → `docs/ja/<path>/<name>.ja.md`.
+  - `docs/<path>/<name>.md` → `docs/<path>/<name>.ja.md`.
 - `sync-both`:
   - Rewrite the non-source-of-truth side.
 

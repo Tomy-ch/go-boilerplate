@@ -35,27 +35,8 @@ These files are displayed in the **Architecture (English)** section.
 
 ## 2. Japanese Documents
 
-Japanese documentation is placed in the following directory.
-
-```txt
-docs/ja
-```
-
-File naming rules:
-
-```txt
-<name>.ja.md
-```
-
-Example:
-
-```txt
-docs/ja
-├ architecture.ja.md
-├ development-flow.ja.md
-├ decisions.ja.md
-└ rules.ja.md
-```
+A Japanese document sits **beside its English canonical**, named `<name>.ja.md`. The suffix is what
+separates the languages; there is no separate directory, and the generator splits them by suffix.
 
 These files are displayed in the **Architecture (Japanese)** section.
 
@@ -89,22 +70,8 @@ Project (English)
 
 ## 4. Japanese Section Documents
 
-For the Japanese version, create the same directory structure in the following location.
-
-```txt
-docs/ja/<section>
-```
-
-Example:
-
-```txt
-docs/ja/project
-├ policy.ja.md
-├ scope.ja.md
-└ versioning.ja.md
-```
-
-Generated section:
+A section's Japanese documents live in that same section directory, as `<name>.ja.md`. Nothing else
+is needed — the generator finds them by suffix and files them under:
 
 ```txt
 Project (Japanese)
@@ -112,11 +79,10 @@ Project (Japanese)
 
 ## 5. Reserved Directories
 
-The generator treats only these two as non-sections:
+The generator treats only this one as a non-section:
 
 ```txt
 docs/portal
-docs/ja
 ```
 
 `docs/openapi`, `docs/coverage`, `docs/db-schema` and `docs/godoc` are scanned as ordinary
@@ -143,14 +109,13 @@ When adding a new section:
 
 ```txt
 docs/security
-docs/ja/security
 ```
 
 Example:
 
 ```txt
 docs/security/auth.md
-docs/ja/security/auth.ja.md
+docs/security/auth.ja.md
 ```
 
 The portal will automatically add the following.
@@ -173,8 +138,8 @@ make gen-docs-json
 |配置場所|言語|
 |--------|--------|
 |docs/*.md|English|
-|docs/ja/*.ja.md|Japanese|
-|docs/<section>|English セクション|
-|docs/ja/<section>|Japanese セクション|
+|docs/*.ja.md|Japanese|
+|docs/<section>/*.md|English セクション|
+|docs/<section>/*.ja.md|Japanese セクション|
 
 By following these rules, the documentation portal can be maintained with a consistent structure.

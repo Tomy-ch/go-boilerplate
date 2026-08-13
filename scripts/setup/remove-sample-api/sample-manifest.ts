@@ -464,11 +464,11 @@ export const MARKER_LITERAL_FILES: readonly string[] = [
   "internal/architest/bindhandler_di_parity_test.go",
   // 教材。マーカーの書き方をコード例として示している。
   "docs/tutorial/build-user-feature.md",
-  "docs/ja/tutorial/build-user-feature.ja.md",
+  "docs/tutorial/build-user-feature.ja.md",
   // マーカーの書き方を説明している散文。1 行に begin と end が同居するため、
   // 素通しすると「閉じられていない begin」として除去が中断する。
   "docs/get-started/setup-repository.md",
-  "docs/ja/get-started/setup-repository.ja.md",
+  "docs/get-started/setup-repository.ja.md",
   // マーカー規約を説明している散文。
   ".claude/agents/drift-detector-glossary.md",
   ".codex/agents/drift-detector-glossary.toml",

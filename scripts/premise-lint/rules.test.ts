@@ -128,8 +128,8 @@ describe("isChecked", () => {
 
     // ミラーは正本と同じ内容を運ぶので、正本が対象ならミラーも対象。
     it("日本語ミラーを正本と同じ扱いにする", () => {
-      expect(isChecked("docs/ja/adr/0001-avoid-lock-in.ja.md")).toBe(true);
-      expect(isChecked("docs/ja/rules.ja.md")).toBe(true);
+      expect(isChecked("docs/adr/0001-avoid-lock-in.ja.md")).toBe(true);
+      expect(isChecked("docs/rules.ja.md")).toBe(true);
     });
   });
 
@@ -139,7 +139,7 @@ describe("isChecked", () => {
       expect(isChecked("README.md")).toBe(false);
       expect(isChecked("README.ja.md")).toBe(false);
       expect(isChecked("docs/get-started/setup-repository.md")).toBe(false);
-      expect(isChecked("docs/ja/get-started/setup-repository.ja.md")).toBe(false);
+      expect(isChecked("docs/get-started/setup-repository.ja.md")).toBe(false);
     });
 
     it("Markdown 以外を対象にしない", () => {

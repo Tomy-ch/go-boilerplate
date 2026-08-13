@@ -22,23 +22,31 @@ function markdownIn(directory: string): string[] {
   return existsSync(directory) ? readdirSync(directory).filter(isMarkdownFile).sort() : [];
 }
 
+/** 対訳は正本と同じディレクトリに居る。分けるのは接尾辞であって置き場所ではない。 */
+function markdownByLanguage(directory: string): { en: string[]; ja: string[] } {
+  const files = markdownIn(directory);
+
+  return { en: files.filter((file) => !file.endsWith(".ja.md")), ja: files.filter((file) => file.endsWith(".ja.md")) };
+}
+
 function discover(): DiscoveredDocs {
   const sectionNames = readdirSync(DOCS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && isSectionDirectory(entry.name))
     .map((entry) => entry.name);
 
-  const directories: DiscoveredDirectory[] = sortSectionNames(sectionNames).map((name) => ({
-    name,
-    hasIndexHtml: existsSync(join(DOCS_DIR, name, "index.html")),
-    enFiles: markdownIn(join(DOCS_DIR, name)),
-    jaFiles: markdownIn(join(DOCS_DIR, "ja", name)),
-  }));
+  const directories: DiscoveredDirectory[] = sortSectionNames(sectionNames).map((name) => {
+    const byLanguage = markdownByLanguage(join(DOCS_DIR, name));
 
-  return {
-    directories,
-    rootEnFiles: markdownIn(DOCS_DIR),
-    rootJaFiles: markdownIn(join(DOCS_DIR, "ja")),
-  };
+    return {
+      name,
+      hasIndexHtml: existsSync(join(DOCS_DIR, name, "index.html")),
+      enFiles: byLanguage.en,
+      jaFiles: byLanguage.ja,
+    };
+  });
+  const root = markdownByLanguage(DOCS_DIR);
+
+  return { directories, rootEnFiles: root.en, rootJaFiles: root.ja };
 }
 
 function main(): void {

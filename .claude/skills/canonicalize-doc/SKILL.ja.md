@@ -19,7 +19,7 @@
 - Claude Code スキルファイル: `SKILL.md` / `SKILL.ja.md`（`.claude/skills/<name>/` 配下）
 - README: `README.md` / `README.ja.md`（同一ディレクトリ配置。例: `docker/server/`）
 - 一般的な `*.ja.md` サフィックス規約の Markdown（同一ディレクトリ配置）
-- `docs/**` のパラレルツリー規約のドキュメント（`docs/**/<name>.md` と `docs/ja/**/<name>.ja.md`）
+- `docs/**` のドキュメント（同じ同居規約。`docs/**/<name>.md` と `docs/**/<name>.ja.md`）
 
 ## 最初に行うこと: 入力の確認
 
@@ -34,7 +34,7 @@
 手順:
 
 1. スキル引数や直近メッセージにファイルパスが含まれていれば候補として提示する。
-2. 周辺ディレクトリを調査し、対となるファイルの有無と採用されている規約（同居 `*.ja.md` vs `docs/ja/**` パラレルツリー）を検出する。
+2. 周辺ディレクトリを調査し、対となるファイルの有無と同居する `*.ja.md` の規約を確認する。
 3. `AskUserQuestion` を呼び出す:
     - 質問 1: 「対象ファイルパスを確認してください。」（検出した候補を併記）
     - 質問 2: 「方向は？（canonical-from-translation / translation-from-canonical / sync-both）」 — 既存ファイル状況から推奨オプションを併記。
@@ -71,7 +71,7 @@
 ### `docs/**` パラレルツリー規約
 
 - Canonical: `docs/<path>/<name>.md`
-- 翻訳: `docs/ja/<path>/<name>.ja.md`
+- 翻訳: `docs/<path>/<name>.ja.md`
 - セクション構造、見出し、リンク先を両ファイル間で 1:1 で揃える。
 
 ## AI Modification Scope
@@ -100,10 +100,10 @@ AGENTS.md の "Exception: Skill Execution" 節に基づき、このスキル実�
 
 - `canonical-from-translation`:
   - `foo.ja.md` → 同一ディレクトリの `foo.md`。
-  - `docs/ja/<path>/<name>.ja.md` → `docs/<path>/<name>.md`。
+  - `docs/<path>/<name>.ja.md` → `docs/<path>/<name>.md`。
 - `translation-from-canonical`:
   - `foo.md` → 同一ディレクトリの `foo.ja.md`。
-  - `docs/<path>/<name>.md` → `docs/ja/<path>/<name>.ja.md`。
+  - `docs/<path>/<name>.md` → `docs/<path>/<name>.ja.md`。
 - `sync-both`:
   - source of truth ではない側を書き換える。
 

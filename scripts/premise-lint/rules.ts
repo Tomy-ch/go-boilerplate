@@ -148,13 +148,13 @@ export function isChecked(relativePath: string): boolean {
   if (!rel.endsWith(".md")) return false;
   if (ALLOWED_PREFIXES.some((prefix) => rel === prefix || rel.startsWith(prefix))) return false;
 
-  if (rel.startsWith("docs/ja/")) {
-    // ミラーは `docs/ja/` 配下に居て `.ja.md` で終わる。正本の綴りへ戻してから領域を見る。
-    const canonical = `docs/${rel.slice("docs/ja/".length)}`.replace(/\.ja\.md$/, ".md");
+  if (rel.endsWith(".ja.md")) {
+    // 対訳は正本の隣に居る。正本の綴りへ戻してから領域を見る。
+    const canonical = rel.replace(/\.ja\.md$/, ".md");
 
     if (ALLOWED_PREFIXES.some((prefix) => canonical.startsWith(prefix))) return false;
 
-    return CHECKED_PREFIXES.some((prefix) => canonical.startsWith(prefix));
+    return CHECKED_PREFIXES.some((prefix) => canonical.startsWith(prefix)) || LAYER_README_RE.test(canonical);
   }
 
   return CHECKED_PREFIXES.some((prefix) => rel.startsWith(prefix)) || LAYER_README_RE.test(rel);

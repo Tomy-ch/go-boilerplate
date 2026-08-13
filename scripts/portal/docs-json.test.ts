@@ -97,7 +97,7 @@ describe("buildDocsJson", () => {
       const { docs } = build({
         meta: { groups: [{ title: "G", sections: ["adr"] }] },
         adr: [
-          { src: "docs/ja/adr/b.md", dst: "docs/portal/guides/b.ja.md" },
+          { src: "docs/adr/b.md", dst: "docs/portal/guides/b.ja.md" },
           { src: "docs/adr/a.md", dst: "docs/portal/guides/a.md" },
         ],
       });
@@ -119,7 +119,7 @@ describe("buildDocsJson", () => {
 
       expect(docs.groups[0].sections[0].items).toEqual([
         { name: "A", path: "../adr/a.md", lang: "en", source: "docs/adr/a.md", guideId: "a" },
-        { name: "A", path: "../ja/adr/a.md", lang: "ja", source: "docs/ja/adr/a.md", guideId: "a" },
+        { name: "A", path: "../ja/adr/a.md", lang: "ja", source: "docs/adr/a.md", guideId: "a" },
       ]);
     });
 
@@ -169,7 +169,7 @@ describe("buildDocsJson", () => {
       });
     });
 
-    it("docs/ja 直下の Markdown も同じ architecture セクションへ集約する", () => {
+    it("docs 直下の対訳も同じ architecture セクションへ集約する", () => {
       const { docs } = build(
         { meta: { groups: [{ title: "G", sections: ["architecture"] }] } },
         { directories: [], rootEnFiles: [], rootJaFiles: ["rules.ja.md"] },
@@ -180,7 +180,7 @@ describe("buildDocsJson", () => {
           name: "Rules",
           path: "../ja/rules.ja.md",
           lang: "ja",
-          source: "docs/ja/rules.ja.md",
+          source: "docs/rules.ja.md",
           guideId: "rules",
         },
       ]);

@@ -171,8 +171,8 @@ For each non-`維持` finding, in descending impact order:
    declares accepted ADRs immutable, so a new rationale can land either as a new record or as a
    rewrite of an existing one, and which is right is a repository-policy call, not a code-cleanup
    call. Ask: 「既存 ADR-NNNN を書き換える」 / 「新規 ADR を起こす」 / 「ADR ではなく docs/design か README へ」 / 「今回は移設しない」.
-   Whichever is chosen, the English canonical file and its `docs/ja/` mirror — plus the log table in
-   `docs/adr/README.md` and `docs/ja/adr/README.ja.md` — are updated in the same change.
+   Whichever is chosen, the English canonical file and its `.ja.md` translation — plus the log table in
+   `docs/adr/README.md` and `docs/adr/README.ja.md` — are updated in the same change.
 5. If the destination is a package README, and the addition materially changes what that README
    claims, mention that `back-prop` is the right follow-up to check the README against code reality.
 

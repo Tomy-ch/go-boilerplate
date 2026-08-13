@@ -10,7 +10,7 @@ docs/openapi/
 
 # 日本語ミラー。正本（英語）の複製で、AGENTS.md がエージェントに読ませない側と定めている。
 *.ja.md
-docs/ja/
+**/*.ja.md
 
 # 生成コード。
 **/*.gen.go
