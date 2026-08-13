@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/domain/product/category"
 	"go-boilerplate/internal/domain/product/status"
@@ -21,6 +22,8 @@ import (
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
+
+const maxProductPriceFilterLength = 40
 
 // errUnpublishedInPublishedRead は、公開中として取得した読み取りに未公開の商品が混じっていた場合のエラーです。
 // 絞り込みを実行する SQL と、公開中を定義する Product.IsPublished が食い違ったことを意味します。
@@ -72,11 +75,26 @@ type ListProductsParams struct {
 	StatusID *uuid.UUID
 	// Keyword は、商品名・説明への部分一致検索キーワードです。nil の場合は絞り込みません。
 	Keyword *string
+	// MinPrice / MaxPrice は、価格の包含下限／包含上限を表す十進文字列です。nil の側は制限しません。
+	MinPrice *string
+	MaxPrice *string
+	// MinQuantity / MaxQuantity は、在庫数の包含下限／包含上限です。nil の側は制限しません。
+	MinQuantity *int32
+	MaxQuantity *int32
 	// Ascending は、公開日時の昇順で取得する場合に true、降順の場合に false です。
 	Ascending bool
 }
 
-// Usecase は、商品の参照ユースケースと画像アップロードユースケースを定義します。
+// productListRange は、検証済みの価格・在庫数の範囲フィルタです。各値は非負で、下限は上限を超えません。
+// nil のフィールドは対応する境界を課しません。
+type productListRange struct {
+	minPrice    *money.Price
+	maxPrice    *money.Price
+	minQuantity *int32
+	maxQuantity *int32
+}
+
+// Usecase は、商品に関するアプリケーションユースケースを定義します。
 type Usecase interface {
 	// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。
 	ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
@@ -103,7 +121,6 @@ type Usecase interface {
 	) (ProductLowStockListView, error)
 }
 
-// usecase は、Usecase の実装です。
 type usecase struct {
 	tracer         observability.LayerTracer
 	txm            tx.Manager
@@ -115,7 +132,7 @@ type usecase struct {
 	maxUploadBytes int64
 }
 
-// New は、商品の参照・作成・画像アップロードユースケースを生成します。
+// New は、商品に関するユースケース実装を生成します。
 func New(
 	txm tx.Manager,
 	repo product.Repository,
@@ -138,9 +155,61 @@ func New(
 	}
 }
 
+func parseProductPriceFilter(name, value string) (*money.Price, error) {
+	if len(value) > maxProductPriceFilterLength {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, name+" is too long")
+	}
+	parsed, err := decimal.Parse(value)
+	if err != nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, name+" must be a non-negative decimal")
+	}
+	price, err := money.NewPrice(parsed)
+	if err != nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, name+" must be a non-negative decimal")
+	}
+	return &price, nil
+}
+
+func parseProductListRange(params ListProductsParams) (productListRange, error) {
+	result := productListRange{minQuantity: params.MinQuantity, maxQuantity: params.MaxQuantity}
+	if params.MinPrice != nil {
+		minPrice, err := parseProductPriceFilter("minPrice", *params.MinPrice)
+		if err != nil {
+			return productListRange{}, err
+		}
+		result.minPrice = minPrice
+	}
+	if params.MaxPrice != nil {
+		maxPrice, err := parseProductPriceFilter("maxPrice", *params.MaxPrice)
+		if err != nil {
+			return productListRange{}, err
+		}
+		result.maxPrice = maxPrice
+	}
+	if result.minPrice != nil && result.maxPrice != nil &&
+		result.minPrice.Decimal().Cmp(result.maxPrice.Decimal()) > 0 {
+		return productListRange{}, xerrors.Wrap(apperror.ErrInvalidArgument, "minPrice must not exceed maxPrice")
+	}
+	if result.minQuantity != nil && *result.minQuantity < 0 {
+		return productListRange{}, xerrors.Wrap(apperror.ErrInvalidArgument, "minQuantity must be non-negative")
+	}
+	if result.maxQuantity != nil && *result.maxQuantity < 0 {
+		return productListRange{}, xerrors.Wrap(apperror.ErrInvalidArgument, "maxQuantity must be non-negative")
+	}
+	if result.minQuantity != nil && result.maxQuantity != nil && *result.minQuantity > *result.maxQuantity {
+		return productListRange{}, xerrors.Wrap(apperror.ErrInvalidArgument, "minQuantity must not exceed maxQuantity")
+	}
+	return result, nil
+}
+
 func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error) {
 	if params.Cursor == nil {
 		return ProductListView{}, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
+	}
+
+	rangeFilter, err := parseProductListRange(params)
+	if err != nil {
+		return ProductListView{}, err
 	}
 
 	ctx, endSpan := u.tracer.Start(ctx)
@@ -152,11 +221,15 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	}
 
 	domainParams := product.ListParams{
-		Limit:      params.Cursor.Limit32() + 1,
-		Ascending:  params.Ascending,
-		CategoryID: params.CategoryID,
-		StatusID:   params.StatusID,
-		Keyword:    params.Keyword,
+		Limit:       params.Cursor.Limit32() + 1,
+		Ascending:   params.Ascending,
+		CategoryID:  params.CategoryID,
+		StatusID:    params.StatusID,
+		Keyword:     params.Keyword,
+		MinPrice:    rangeFilter.minPrice,
+		MaxPrice:    rangeFilter.maxPrice,
+		MinQuantity: rangeFilter.minQuantity,
+		MaxQuantity: rangeFilter.maxQuantity,
 	}
 	if after != nil {
 		publishedAt := after.publishedAt
@@ -212,8 +285,8 @@ func (u *usecase) GetProduct(ctx context.Context, id uuid.UUID) (ProductView, er
 	return toProductView(p), nil
 }
 
-// ensurePublished は、Repository が公開中として返した商品が、ドメインの定義（Product.IsPublished）でも
-// 公開中であることを確かめます。乖離時の扱いは README の Verifying infrastructure against the domain を参照。
+// ensurePublished は、Repository が公開中として返した商品がドメイン定義でも公開中であることを確かめます。
+// 背景: internal/usecase/README.md § Verifying infrastructure against the domain.
 func ensurePublished(products product.Products) error {
 	for _, p := range products {
 		if !p.IsPublished() {
@@ -223,7 +296,6 @@ func ensurePublished(products product.Products) error {
 	return nil
 }
 
-// toProductView は、商品エンティティを出力 DTO へ変換します。
 func toProductView(p *product.Product) ProductView {
 	return ProductView{
 		ID:                    p.ID(),

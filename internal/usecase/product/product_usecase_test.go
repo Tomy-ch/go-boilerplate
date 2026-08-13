@@ -98,6 +98,46 @@ func TestNew(t *testing.T) {
 	})
 }
 
+func Test_parseProductPriceFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("十進文字列をPriceへ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := parseProductPriceFilter("minPrice", "10.50")
+
+			require.NoError(t, err)
+			require.NotNil(t, actual)
+			assert.True(t, actual.Decimal().Equal(decimaltestkit.MustParse(t, "10.50")))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("負数の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := parseProductPriceFilter("maxPrice", "-1")
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Nil(t, actual)
+		})
+
+		t.Run("長すぎる場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := parseProductPriceFilter("minPrice", strings.Repeat("1", 41))
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Nil(t, actual)
+		})
+	})
+}
+
 func Test_usecase_UploadProductImage(t *testing.T) {
 	t.Parallel()
 
@@ -125,7 +165,8 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 					assert.Equal(t, "public, max-age=31536000, immutable", obj.CacheControl)
 					assert.Equal(t, pngData, obj.Body)
 					return objectstorage.Path(obj.Key), nil
-				})
+				},
+			)
 
 			u := &usecase{tracer: lt, authorizer: authorizer, storage: storage, maxUploadBytes: 1024}
 			view, err := u.UploadProductImage(context.Background(), &auth.Authn{},
@@ -150,7 +191,8 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 			storage.EXPECT().Put(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, obj objectstorage.PutObject) (objectstorage.Path, error) {
 					return objectstorage.Path(obj.Key), nil
-				})
+				},
+			)
 
 			u := &usecase{
 				tracer: lt, authorizer: authorizer, storage: storage,
@@ -177,7 +219,8 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 			storage.EXPECT().Put(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, obj objectstorage.PutObject) (objectstorage.Path, error) {
 					return objectstorage.Path(obj.Key), nil
-				})
+				},
+			)
 
 			u := &usecase{tracer: lt, authorizer: authorizer, storage: storage, maxUploadBytes: 1024}
 			_, err := u.UploadProductImage(context.Background(), &auth.Authn{},
@@ -286,6 +329,161 @@ func Test_usecase_UploadProductImage(t *testing.T) {
 	})
 }
 
+func Test_parseProductListRange(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("価格と在庫数の上下限を変換する", func(t *testing.T) {
+			t.Parallel()
+			params := ListProductsParams{
+				MinPrice: ptr.To("10.50"), MaxPrice: ptr.To("99.99"),
+				MinQuantity: ptr.To[int32](2), MaxQuantity: ptr.To[int32](20),
+			}
+			actual, err := parseProductListRange(params)
+			require.NoError(t, err)
+			require.NotNil(t, actual.minPrice)
+			assert.True(t, actual.minPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.50")))
+			require.NotNil(t, actual.maxPrice)
+			assert.True(t, actual.maxPrice.Decimal().Equal(decimaltestkit.MustParse(t, "99.99")))
+			assert.Equal(t, int32(2), *actual.minQuantity)
+			assert.Equal(t, int32(20), *actual.maxQuantity)
+		})
+
+		t.Run("価格の下限と上限が等しい場合、単一価格の絞り込みとして受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{
+				MinPrice: ptr.To("10.00"), MaxPrice: ptr.To("10.00"),
+			})
+			require.NoError(t, err)
+			require.NotNil(t, actual.minPrice)
+			assert.True(t, actual.minPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.00")))
+			require.NotNil(t, actual.maxPrice)
+			assert.True(t, actual.maxPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.00")))
+		})
+
+		t.Run("在庫数の下限と上限が等しい場合、単一在庫数の絞り込みとして受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{
+				MinQuantity: ptr.To[int32](10), MaxQuantity: ptr.To[int32](10),
+			})
+			require.NoError(t, err)
+			assert.Equal(t, int32(10), *actual.minQuantity)
+			assert.Equal(t, int32(10), *actual.maxQuantity)
+		})
+
+		t.Run("在庫数の下限が0の場合、非負の境界として受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinQuantity: ptr.To[int32](0)})
+			require.NoError(t, err)
+			assert.Equal(t, int32(0), *actual.minQuantity)
+		})
+
+		t.Run("在庫数の上限が0の場合、非負の境界として受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxQuantity: ptr.To[int32](0)})
+			require.NoError(t, err)
+			assert.Equal(t, int32(0), *actual.maxQuantity)
+		})
+
+		t.Run("最低価格のみを指定した場合、上限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinPrice: ptr.To("10.50")})
+			require.NoError(t, err)
+			require.NotNil(t, actual.minPrice)
+			assert.True(t, actual.minPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.50")))
+			assert.Nil(t, actual.maxPrice)
+		})
+
+		t.Run("最高価格のみを指定した場合、下限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxPrice: ptr.To("99.99")})
+			require.NoError(t, err)
+			assert.Nil(t, actual.minPrice)
+			require.NotNil(t, actual.maxPrice)
+			assert.True(t, actual.maxPrice.Decimal().Equal(decimaltestkit.MustParse(t, "99.99")))
+		})
+
+		t.Run("最低在庫数のみを指定した場合、上限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinQuantity: ptr.To[int32](2)})
+			require.NoError(t, err)
+			assert.Equal(t, int32(2), *actual.minQuantity)
+			assert.Nil(t, actual.maxQuantity)
+		})
+
+		t.Run("最高在庫数のみを指定した場合、下限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxQuantity: ptr.To[int32](20)})
+			require.NoError(t, err)
+			assert.Nil(t, actual.minQuantity)
+			assert.Equal(t, int32(20), *actual.maxQuantity)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("最低価格が非数値の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinPrice: ptr.To("invalid")})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("最低価格が長すぎる場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinPrice: ptr.To(strings.Repeat("1", 41))})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("最高価格が負数の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxPrice: ptr.To("-1")})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("最高価格が長すぎる場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxPrice: ptr.To(strings.Repeat("1", 41))})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("最低価格が最高価格を超える場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinPrice: ptr.To("20"), MaxPrice: ptr.To("10")})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("最低在庫数が負数の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinQuantity: ptr.To[int32](-1)})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("最高在庫数が負数の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxQuantity: ptr.To[int32](-1)})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("最低在庫数が最高在庫数を超える場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{
+				MinQuantity: ptr.To[int32](20), MaxQuantity: ptr.To[int32](10),
+			})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+	})
+}
+
 func Test_usecase_ListProducts(t *testing.T) {
 	t.Parallel()
 
@@ -373,7 +571,8 @@ func Test_usecase_ListProducts(t *testing.T) {
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			repo := mock_product.NewMockRepository(gomock.NewController(t))
 			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Return(
-				domainproduct.Products{newTestProduct(t, "zero_cursor", base)}, nil)
+				domainproduct.Products{newTestProduct(t, "zero_cursor", base)}, nil,
+			)
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(ctx, ListProductsParams{Cursor: &paging.Cursor{}})
@@ -392,6 +591,10 @@ func Test_usecase_ListProducts(t *testing.T) {
 			categoryID := uuidtestkit.NewTestFromSalt(t, "filter_category")
 			statusID := uuidtestkit.NewTestFromSalt(t, "filter_status")
 			keyword := "イヤホン"
+			minPrice := "10.50"
+			maxPrice := "99.99"
+			minQuantity := int32(2)
+			maxQuantity := int32(20)
 
 			afterID := uuidtestkit.NewTestFromSalt(t, "after_id")
 			afterAt := base.Add(-3 * time.Hour)
@@ -410,11 +613,15 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			u := &usecase{tracer: lt, repo: repo}
 			_, err = u.ListProducts(ctx, ListProductsParams{
-				Cursor:     cursor,
-				CategoryID: &categoryID,
-				StatusID:   &statusID,
-				Keyword:    &keyword,
-				Ascending:  true,
+				Cursor:      cursor,
+				CategoryID:  &categoryID,
+				StatusID:    &statusID,
+				Keyword:     &keyword,
+				MinPrice:    &minPrice,
+				MaxPrice:    &maxPrice,
+				MinQuantity: &minQuantity,
+				MaxQuantity: &maxQuantity,
+				Ascending:   true,
 			})
 			require.NoError(t, err)
 
@@ -425,6 +632,14 @@ func Test_usecase_ListProducts(t *testing.T) {
 			assert.Equal(t, statusID, *captured.StatusID)
 			require.NotNil(t, captured.Keyword)
 			assert.Equal(t, keyword, *captured.Keyword)
+			require.NotNil(t, captured.MinPrice)
+			assert.True(t, captured.MinPrice.Decimal().Equal(decimaltestkit.MustParse(t, minPrice)))
+			require.NotNil(t, captured.MaxPrice)
+			assert.True(t, captured.MaxPrice.Decimal().Equal(decimaltestkit.MustParse(t, maxPrice)))
+			require.NotNil(t, captured.MinQuantity)
+			assert.Equal(t, minQuantity, *captured.MinQuantity)
+			require.NotNil(t, captured.MaxQuantity)
+			assert.Equal(t, maxQuantity, *captured.MaxQuantity)
 			require.NotNil(t, captured.AfterPublishedAt)
 			assert.Equal(t, afterAt, *captured.AfterPublishedAt)
 			require.NotNil(t, captured.AfterID)
@@ -443,6 +658,20 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: nil})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("価格範囲が不正な場合、Repositoryを呼ばずErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t),
+				repo:   mock_product.NewMockRepository(gomock.NewController(t)),
+			}
+			actual, err := u.ListProducts(context.Background(), ListProductsParams{
+				Cursor: newDefaultCursor(t), MinPrice: ptr.To("20"), MaxPrice: ptr.To("10"),
+			})
 			assert.Empty(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})

@@ -144,6 +144,8 @@ fields:
     params.Ascending により昇順（publishedAt ASC, id ASC）／降順（publishedAt DESC, id DESC）を切り替える。
     params.CategoryID / StatusID が非 nil の場合は該当 ID で絞り込む。
     params.Keyword が非 nil の場合は name / description への部分一致（ILIKE）で絞り込む。
+    params.MinPrice / MaxPrice が非 nil の場合は、それぞれ価格の包含下限／包含上限として絞り込む。
+    params.MinQuantity / MaxQuantity が非 nil の場合は、それぞれ在庫数の包含下限／包含上限として絞り込む。
     params.AfterPublishedAt / AfterID が非 nil の場合、その keyset 境界より次ページ側の行のみを返す。
     取得件数は params.Limit で上限を課す（hasNext 判定のため usecase は limit+1 を渡す）。
 
@@ -248,6 +250,10 @@ fields:
     - CategoryID *uuid.UUID    # nil=絞り込まない
     - StatusID *uuid.UUID      # nil=絞り込まない
     - Keyword *string          # nil=絞り込まない（name / description への ILIKE）
+    - MinPrice *money.Price    # nil=下限なし。指定値以上を対象とする
+    - MaxPrice *money.Price    # nil=上限なし。指定値以下を対象とする
+    - MinQuantity *int32       # nil=下限なし。指定値以上を対象とする
+    - MaxQuantity *int32       # nil=上限なし。指定値以下を対象とする
     - AfterPublishedAt *time.Time  # keyset 境界（先頭ページは nil）
     - AfterID *uuid.UUID           # keyset 境界（先頭ページは nil）
 ```
