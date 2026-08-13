@@ -29,7 +29,7 @@ func TestV1ProductsCount_Integration(t *testing.T) {
 			e := echo.New()
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
 			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.CountProductsParams) (productuc.ProductCountView, error) {
+				func(_ context.Context, params productuc.SearchFilter) (productuc.ProductCountView, error) {
 					assert.Equal(t, "10.50", *params.MinPrice)
 					assert.Equal(t, int32(2), *params.MinQuantity)
 					return productuc.ProductCountView{Count: 3}, nil

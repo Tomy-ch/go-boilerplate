@@ -47,7 +47,7 @@ func Test_server_GetProductsCount(t *testing.T) {
 			statusID, err := uuid.Parse("093170fb-83a2-4864-a2b3-53236eaf3597")
 			require.NoError(t, err)
 			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.CountProductsParams) (productuc.ProductCountView, error) {
+				func(_ context.Context, params productuc.SearchFilter) (productuc.ProductCountView, error) {
 					require.NotNil(t, params.CategoryID)
 					assert.Equal(t, categoryID, *params.CategoryID)
 					require.NotNil(t, params.StatusID)

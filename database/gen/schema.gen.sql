@@ -1067,9 +1067,17 @@ CREATE UNIQUE INDEX product_images_product_id_sort_key_unique ON public.product_
 --
 CREATE INDEX products_category_id_idx ON public.products USING btree (category_id);
 --
+-- Name: products_description_trgm_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_description_trgm_idx ON public.products USING gin (description public.gin_trgm_ops);
+--
 -- Name: products_low_stock_quantity_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX products_low_stock_quantity_id_idx ON public.products USING btree (quantity, id) WHERE (stock_warning_threshold IS NOT NULL);
+--
+-- Name: products_name_trgm_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_name_trgm_idx ON public.products USING gin (name public.gin_trgm_ops);
 --
 -- Name: products_published_at_id_idx; Type: INDEX; Schema: public; Owner: -
 --

@@ -44,15 +44,17 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 	}
 
 	list, err := s.uc.ListProducts(ctx, productuc.ListProductsParams{
-		Cursor:      cursor,
-		CategoryID:  conv.UUIDPtr(request.Params.CategoryId),
-		StatusID:    conv.UUIDPtr(request.Params.StatusId),
-		Keyword:     request.Params.Keyword,
-		MinPrice:    request.Params.MinPrice,
-		MaxPrice:    request.Params.MaxPrice,
-		MinQuantity: request.Params.MinQuantity,
-		MaxQuantity: request.Params.MaxQuantity,
-		Ascending:   isAscending(request.Params.Sort),
+		SearchFilter: productuc.SearchFilter{
+			CategoryID:  conv.UUIDPtr(request.Params.CategoryId),
+			StatusID:    conv.UUIDPtr(request.Params.StatusId),
+			Keyword:     request.Params.Keyword,
+			MinPrice:    request.Params.MinPrice,
+			MaxPrice:    request.Params.MaxPrice,
+			MinQuantity: request.Params.MinQuantity,
+			MaxQuantity: request.Params.MaxQuantity,
+		},
+		Cursor:    cursor,
+		Ascending: isAscending(request.Params.Sort),
 	})
 	if err != nil {
 		return nil, err

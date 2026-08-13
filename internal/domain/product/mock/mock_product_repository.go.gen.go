@@ -58,18 +58,18 @@ func (mr *MockRepositoryMockRecorder) Count(ctx any) *gomock.Call {
 }
 
 // CountPublished mocks base method.
-func (m *MockRepository) CountPublished(ctx context.Context, params product.CountPublishedParams) (int64, error) {
+func (m *MockRepository) CountPublished(ctx context.Context, filter product.SearchFilter) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountPublished", ctx, params)
+	ret := m.ctrl.Call(m, "CountPublished", ctx, filter)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CountPublished indicates an expected call of CountPublished.
-func (mr *MockRepositoryMockRecorder) CountPublished(ctx, params any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) CountPublished(ctx, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountPublished", reflect.TypeOf((*MockRepository)(nil).CountPublished), ctx, params)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountPublished", reflect.TypeOf((*MockRepository)(nil).CountPublished), ctx, filter)
 }
 
 // Create mocks base method.

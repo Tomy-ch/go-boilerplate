@@ -149,7 +149,7 @@ fields:
     取得件数は params.Limit で上限を課す（hasNext 判定のため usecase は limit+1 を渡す）。
 
 - name: CountPublished
-  signature: CountPublished(ctx context.Context, params CountPublishedParams) (int64, error)
+  signature: CountPublished(ctx context.Context, filter SearchFilter) (int64, error)
   behavior: |
     公開済み（published_at 非 NULL）の商品のうち、params に一致する件数を返す。
     CategoryID / StatusID / Keyword / 価格・在庫数の包含上下限は FindPublishedList と同じ意味で適用する。
@@ -248,8 +248,8 @@ fields:
     products は論理削除列を持たないため、生存行だけが参照元になる。
     エンティティを再構築せずパス文字列だけを返すのは、後続がオブジェクトの削除可否しか見ないため。
 
-# CountPublishedParams（一致件数取得に必要な検索条件。ページング・並び順は持たない）
-- struct: CountPublishedParams
+# SearchFilter（一覧と一致件数が共有する検索条件。ページング・並び順は持たない）
+- struct: SearchFilter
   fields:
     - CategoryID *uuid.UUID    # nil=絞り込まない
     - StatusID *uuid.UUID      # nil=絞り込まない
@@ -262,15 +262,9 @@ fields:
 # ListParams（一覧取得の検索条件とページング・並び順条件）
 - struct: ListParams
   fields:
+    - SearchFilter             # 埋め込み。一致件数と共有する検索条件
     - Limit int32              # 取得件数の上限
     - Ascending bool           # true=公開日時昇順 / false=降順
-    - CategoryID *uuid.UUID    # nil=絞り込まない
-    - StatusID *uuid.UUID      # nil=絞り込まない
-    - Keyword *string          # nil=絞り込まない（name / description への ILIKE）
-    - MinPrice *money.Price    # nil=下限なし。指定値以上を対象とする
-    - MaxPrice *money.Price    # nil=上限なし。指定値以下を対象とする
-    - MinQuantity *int32       # nil=下限なし。指定値以上を対象とする
-    - MaxQuantity *int32       # nil=上限なし。指定値以下を対象とする
     - AfterPublishedAt *time.Time  # keyset 境界（先頭ページは nil）
     - AfterID *uuid.UUID           # keyset 境界（先頭ページは nil）
 ```

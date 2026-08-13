@@ -67,8 +67,17 @@ type ProductListView struct {
 
 // ListProductsParams は、公開商品一覧取得の入力パラメータです。
 type ListProductsParams struct {
+	SearchFilter
+
 	// Cursor は、cursor ページネーションの取得件数と境界を表します。
 	Cursor *paging.Cursor
+	// Ascending は、公開日時の昇順で取得する場合に true、降順の場合に false です。
+	Ascending bool
+}
+
+// SearchFilter は、公開商品の絞り込み条件です。一覧と一致件数は同じ母集団を指すため双方がこれを
+// 共有します。片方にだけ条件が増えた状態は、この型を経由する限り表現できません。
+type SearchFilter struct {
 	// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。
 	CategoryID *uuid.UUID
 	// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。
@@ -79,19 +88,6 @@ type ListProductsParams struct {
 	MinPrice *string
 	MaxPrice *string
 	// MinQuantity / MaxQuantity は、在庫数の包含下限／包含上限です。nil の側は制限しません。
-	MinQuantity *int32
-	MaxQuantity *int32
-	// Ascending は、公開日時の昇順で取得する場合に true、降順の場合に false です。
-	Ascending bool
-}
-
-// CountProductsParams は、公開商品検索の一致件数を取得する入力です。
-type CountProductsParams struct {
-	CategoryID  *uuid.UUID
-	StatusID    *uuid.UUID
-	Keyword     *string
-	MinPrice    *string
-	MaxPrice    *string
 	MinQuantity *int32
 	MaxQuantity *int32
 }
@@ -115,7 +111,7 @@ type Usecase interface {
 	// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。
 	ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
 	// CountProducts は、公開済み商品のうち検索条件に一致する件数を取得します。
-	CountProducts(ctx context.Context, params CountProductsParams) (ProductCountView, error)
+	CountProducts(ctx context.Context, filter SearchFilter) (ProductCountView, error)
 	// GetProduct は、ID から公開中の単一商品を取得します。未存在・非公開はいずれも NotFound を返します（存在秘匿）。
 	GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
 	// UploadProductImage は、admin が商品画像をアップロードし、格納先のオブジェクトパスを返します。
@@ -188,17 +184,17 @@ func parseProductPriceFilter(name, value string) (*money.Price, error) {
 	return &price, nil
 }
 
-func parseProductListRange(params ListProductsParams) (productListRange, error) {
-	result := productListRange{minQuantity: params.MinQuantity, maxQuantity: params.MaxQuantity}
-	if params.MinPrice != nil {
-		minPrice, err := parseProductPriceFilter("minPrice", *params.MinPrice)
+func parseProductListRange(filter SearchFilter) (productListRange, error) {
+	result := productListRange{minQuantity: filter.MinQuantity, maxQuantity: filter.MaxQuantity}
+	if filter.MinPrice != nil {
+		minPrice, err := parseProductPriceFilter("minPrice", *filter.MinPrice)
 		if err != nil {
 			return productListRange{}, err
 		}
 		result.minPrice = minPrice
 	}
-	if params.MaxPrice != nil {
-		maxPrice, err := parseProductPriceFilter("maxPrice", *params.MaxPrice)
+	if filter.MaxPrice != nil {
+		maxPrice, err := parseProductPriceFilter("maxPrice", *filter.MaxPrice)
 		if err != nil {
 			return productListRange{}, err
 		}
@@ -225,7 +221,7 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 		return ProductListView{}, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
 	}
 
-	rangeFilter, err := parseProductListRange(params)
+	rangeFilter, err := parseProductListRange(params.SearchFilter)
 	if err != nil {
 		return ProductListView{}, err
 	}
@@ -239,15 +235,17 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	}
 
 	domainParams := product.ListParams{
-		Limit:       params.Cursor.Limit32() + 1,
-		Ascending:   params.Ascending,
-		CategoryID:  params.CategoryID,
-		StatusID:    params.StatusID,
-		Keyword:     params.Keyword,
-		MinPrice:    rangeFilter.minPrice,
-		MaxPrice:    rangeFilter.maxPrice,
-		MinQuantity: rangeFilter.minQuantity,
-		MaxQuantity: rangeFilter.maxQuantity,
+		SearchFilter: product.SearchFilter{
+			CategoryID:  params.CategoryID,
+			StatusID:    params.StatusID,
+			Keyword:     params.Keyword,
+			MinPrice:    rangeFilter.minPrice,
+			MaxPrice:    rangeFilter.maxPrice,
+			MinQuantity: rangeFilter.minQuantity,
+			MaxQuantity: rangeFilter.maxQuantity,
+		},
+		Limit:     params.Cursor.Limit32() + 1,
+		Ascending: params.Ascending,
 	}
 	if after != nil {
 		publishedAt := after.publishedAt
@@ -286,12 +284,8 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	return ProductListView{Items: items, NextCursor: nextCursor}, nil
 }
 
-func (u *usecase) CountProducts(ctx context.Context, params CountProductsParams) (ProductCountView, error) {
-	rangeFilter, err := parseProductListRange(ListProductsParams{
-		CategoryID: params.CategoryID, StatusID: params.StatusID, Keyword: params.Keyword,
-		MinPrice: params.MinPrice, MaxPrice: params.MaxPrice,
-		MinQuantity: params.MinQuantity, MaxQuantity: params.MaxQuantity,
-	})
+func (u *usecase) CountProducts(ctx context.Context, filter SearchFilter) (ProductCountView, error) {
+	rangeFilter, err := parseProductListRange(filter)
 	if err != nil {
 		return ProductCountView{}, err
 	}
@@ -299,8 +293,8 @@ func (u *usecase) CountProducts(ctx context.Context, params CountProductsParams)
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	count, err := u.repo.CountPublished(ctx, product.CountPublishedParams{
-		CategoryID: params.CategoryID, StatusID: params.StatusID, Keyword: params.Keyword,
+	count, err := u.repo.CountPublished(ctx, product.SearchFilter{
+		CategoryID: filter.CategoryID, StatusID: filter.StatusID, Keyword: filter.Keyword,
 		MinPrice: rangeFilter.minPrice, MaxPrice: rangeFilter.maxPrice,
 		MinQuantity: rangeFilter.minQuantity, MaxQuantity: rangeFilter.maxQuantity,
 	})

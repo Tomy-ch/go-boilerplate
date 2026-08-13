@@ -28,7 +28,7 @@ methods:
   - name: ListProducts
     signature: ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
   - name: CountProducts
-    signature: CountProducts(ctx context.Context, params CountProductsParams) (ProductCountView, error)
+    signature: CountProducts(ctx context.Context, filter SearchFilter) (ProductCountView, error)
   - name: GetProduct
     signature: GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
   - name: CreateProduct
@@ -56,28 +56,16 @@ methods:
 
 ```yaml
 - name: ListProductsParams
-  description: 公開商品一覧取得の入力。cursor（取得件数 + 境界）とフィルタ・並び順を保持する。
+  description: 公開商品一覧取得の入力。cursor（取得件数 + 境界）と並び順を持ち、検索条件は SearchFilter を埋め込む。
   fields:
+    - name: SearchFilter
+      type: SearchFilter    # 埋め込み。一致件数と共有する検索条件
     - name: Cursor
       type: "*paging.Cursor"
-    - name: CategoryID
-      type: "*uuid.UUID"
-    - name: StatusID
-      type: "*uuid.UUID"
-    - name: Keyword
-      type: "*string"
-    - name: MinPrice
-      type: "*string"       # nil=下限なし。非負の decimal 文字列
-    - name: MaxPrice
-      type: "*string"       # nil=上限なし。非負の decimal 文字列
-    - name: MinQuantity
-      type: "*int32"        # nil=下限なし。0 以上
-    - name: MaxQuantity
-      type: "*int32"        # nil=上限なし。0 以上
     - name: Ascending
       type: bool
-- name: CountProductsParams
-  description: 公開商品検索の一致件数取得の入力。一覧と同じ検索条件を持ち、cursor と並び順は持たない。
+- name: SearchFilter
+  description: 一覧と一致件数が共有する検索条件。cursor と並び順は持たない。
   fields:
     - name: CategoryID
       type: "*uuid.UUID"
@@ -252,7 +240,7 @@ errors:
 tx_required: false
 steps:
   - 一覧と共通の検索入力検証を行い、価格を money.Price へ変換する
-  - domain の CountPublishedParams を組み立てる
+  - domain の SearchFilter を組み立てる
   - product_repository.CountPublished で一致件数を取得する
   - ProductCountView へ写像して返す
 calls:
