@@ -150,6 +150,23 @@ Changes to the database schema must follow strict migration rules.
 - Migration is **append-only**
 - Schema changes must always start from **migration**
 
+<!-- boilerplate-only:begin -->
+**Upstream exception — renumbering is allowed, on instruction.** While this repository is
+distributed as the boilerplate source, an existing migration may be renumbered or rewritten when
+a human explicitly approves or instructs it, decided per change. What upstream ships is a worked
+example, and the clarity and consistency of that example outweigh the schema history of a
+repository nobody runs in production.
+
+The cost is real, and it falls on anyone holding a partially migrated database: the migration
+tool records the version number, not the filename, so a database stopped between the old and the
+new numbering applies the wrong file next. Rebuild such a database (`make db-local-reinit` /
+`make db-test-reinit`) rather than migrating it forward.
+
+This exception is removed when setup creates a project. From then on the append-only rule above
+admits no exception, because a project's migration history is the only record of how its
+production schema came to be.
+<!-- boilerplate-only:end -->
+
 ### Typical Flow
 
 ```mermaid
