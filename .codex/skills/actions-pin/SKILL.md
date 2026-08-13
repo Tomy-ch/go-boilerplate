@@ -5,6 +5,8 @@ description: Audit and update SHA-pinned GitHub Actions in `.github/workflows/**
 
 # GitHub Actions Pin Update
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Use the trailing tag comment in each external `uses:` reference as the intended version and `.github/actions-pin.toml` as the resolved SHA lockfile.
 
 ```yaml

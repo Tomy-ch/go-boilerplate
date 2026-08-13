@@ -5,6 +5,8 @@ description: Analyze working-tree changes, propose coherent Japanese Git commits
 
 # Scoped Git Commit
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Parse `--dry-run` and `--scope=staged|all` (`all` is default). Never commit without first presenting the proposed grouping and receiving explicit approval.
 
 ## Preflight

@@ -24,23 +24,7 @@ allOf:
 
 ## Directory Contents
 
-```text
-responses/
-├── users/
-│   ├── UsersResponse.yaml          # User list (UserResponse[] + offset pagination)
-│   ├── UsersFeedResponse.yaml      # User feed   (UserResponse[] + cursor pagination)
-│   ├── UsersSearchResponse.yaml    # Search result list
-│   └── UsersSearchResponseItem.yaml # One search-result item (UserResponse + registeredAt)
-├── health-check/
-│   ├── HealthResponse.yaml
-│   └── ReadyResponse.yaml
-└── version/
-    └── VersionResponse.yaml
-```
-
-> `users/` is a **sample implementation**. Mirror its structure for your own resources.
->
-> Reusable **error** response objects (shared `400/401/403/404/500`) live next to `ErrorResponse` under [`schemas/errors/`](../schemas/README.md), not here.
+One directory per resource or concern, named after it; each holds that unit's response bodies.
 
 ## Naming Convention
 

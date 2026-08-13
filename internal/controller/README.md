@@ -14,18 +14,17 @@ English | [日本語](README.ja.md)
 
 ## Directory Structure
 
-```text
-internal/controller/
-├── handler/        # HTTP handlers (server entry points)
-├── job/            # Job controllers (CLI entry points)
-├── worker/         # Worker engine (message-queue entry points)
-├── outbox/         # Outbox relay engine (polls the outbox and publishes)
-├── server/         # Echo instance creation and server startup
-├── httpstack/      # HTTP middleware stack
-├── error/response/ # Error response generation
-├── conv/           # OpenAPI-generated type → domain type boundary helpers
-└── ctxhelper/      # Echo context helpers
-```
+The layer is split by **how the outside reaches the application** — four entry-point kinds, and
+nothing else may be one:
+
+- `handler/` — HTTP requests
+- `job/` — a CLI invocation
+- `worker/` — a message on a queue
+- `outbox/` — the relay that polls the outbox and publishes
+
+The remaining directories exist to serve those four: `server/` builds the Echo instance,
+`httpstack/` the middleware stack, `error/response/` the error body, `conv/` the
+generated-type ↔ domain-type boundary, and `ctxhelper/` the Echo context accessors.
 
 ## Subdirectory Roles
 

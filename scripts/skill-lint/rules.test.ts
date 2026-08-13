@@ -256,17 +256,7 @@ describe("checkPlatformOnlyAllowlist", () => {
 
 describe("checkCodexSkillStructure", () => {
   describe("正常系", () => {
-    it("SKILL.md と openai.yaml が揃い対訳が無ければ違反にしない", () => {
-      expect(
-        checkCodexSkillStructure(".codex/skills/a", {
-          canonical: canonical(),
-          hasMetadata: true,
-          translation: null,
-        }),
-      ).toEqual([]);
-    });
-
-    it("対訳が在れば構造まで検査して通す", () => {
+    it("SKILL.md と openai.yaml と対訳が揃えば違反にしない", () => {
       expect(
         checkCodexSkillStructure(".codex/skills/a", {
           canonical: canonical(),
@@ -293,11 +283,22 @@ describe("checkCodexSkillStructure", () => {
       const findings = checkCodexSkillStructure(".codex/skills/a", {
         canonical: canonical(),
         hasMetadata: false,
-        translation: null,
+        translation: translation(),
       });
 
       expect(findings).toHaveLength(1);
       expect(findings[0].message).toContain("openai.yaml");
+    });
+
+    it("対訳が無ければ報告する", () => {
+      const findings = checkCodexSkillStructure(".codex/skills/a", {
+        canonical: canonical(),
+        hasMetadata: true,
+        translation: null,
+      });
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].message).toContain("SKILL.ja.md");
     });
 
     it("在る対訳の構造が崩れていれば報告する", () => {
