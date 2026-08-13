@@ -1,7 +1,7 @@
 ---
 name: scaffold-infra-db
 description: >-
-  Implement the infrastructure (RDB) layer Repository for one feature, derived from domain Repository IF + sqlc gen functions (lean A — no spec file). Reads the domain Repository Interface at `internal/domain/<aggregate>/<aggregate>_repository.go` for method list, the sqlc gen functions at `internal/infrastructure/rdb/sqlc/gen/*.gen.go` for available DB calls, and `internal/infrastructure/rdb/README.md` for naming convention. Derives the mapping Repository method → sqlc gen function via name-match heuristic. For methods without a derivable mapping, **leaves TODO at the impl location + reports** (user resolves: add SQL + re-run `make gen-query`, or accept hand-write). Wraps each method with tracer span + `pgerror.NormalizeError` + row→entity conversion per the sibling pattern. Reads `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` + an existing `repository/<sibling>/` as structural template, invokes a test-perspective subagent (real DB + rollback via testkit, sqlc gen wrap correctness, pgerror normalization paths, observability spans), writes Go impl + integration-style test, updates `internal/di/module/infrastructure.go` with `fx.Provide`. Verifies with `make fix` + `make test`. Prerequisites: (1) domain Repository IF exists; (2) `make gen-query` has run. Does NOT generate SQL or run `make gen-query` itself.
+  Implement the infrastructure (RDB) layer Repository for one feature, derived from domain Repository IF + sqlc gen functions (lean A — no spec file). Reads the domain Repository Interface at `internal/domain/<aggregate>/<aggregate>_repository.go` for method list, the sqlc gen functions at `internal/infrastructure/rdb/sqlc/gen/*.gen.go` for available DB calls, and `internal/infrastructure/rdb/README.md` for naming convention. Derives the mapping Repository method → sqlc gen function via name-match heuristic. For methods without a derivable mapping, **leaves TODO at the impl location + reports** (user resolves: add SQL + re-run `make gen-query`, or accept hand-write). Wraps each method with tracer span + `pgerror.NormalizeError` + row→entity conversion per the sibling pattern. Reads `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` + an existing `repository/<sibling>/` as structural template, invokes a test-perspective subagent (real DB + rollback via testkit, sqlc gen wrap correctness, pgerror normalization paths, observability spans), writes Go impl + integration-style test, updates `internal/di/module/persistence.go` with `fx.Provide`. Verifies with `make fix` + `make test`. Prerequisites: (1) domain Repository IF exists; (2) `make gen-query` has run. Does NOT generate SQL or run `make gen-query` itself.
 ---
 
 # Scaffold Infra DB
@@ -32,13 +32,13 @@ Do NOT use for:
 - `internal/infrastructure/README.md` — infra-layer convention
 - `internal/infrastructure/rdb/pgerror/README.md` — error normalization rules (SQLSTATE mapping, single-normalization-point principle)
 - `internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` — **de facto reference implementation** (infra READMEs describe principles textually but do not carry full impl snippets, so sibling code is the closest reference; still, if it drifts from README rules the README wins)
-- `internal/di/module/infrastructure.go` — DI registration target
+- `internal/di/module/persistence.go` — DI registration target
 
 **Writes (with confirmation)**:
 
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository.go`
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository_test.go`
-- `internal/di/module/infrastructure.go` (append `fx.Provide(<aggregate>.New)`)
+- `internal/di/module/persistence.go` (append `fx.Provide(<aggregate>.New)`)
 
 **Triggers (via `make`)**:
 
@@ -141,7 +141,7 @@ Order:
 
 1. `<aggregate>_repository.go` — main implementation
 2. `<aggregate>_repository_test.go` — testkit-backed integration tests
-3. Update `internal/di/module/infrastructure.go` — append `<aggregate>.New` under `repository` module
+3. Update `internal/di/module/persistence.go` — append `<aggregate>.New` under `repository` module
 
 Implementation file conventions:
 
@@ -191,7 +191,7 @@ Do NOT commit.
 
 Per the "Exception: Skill Execution" clause:
 
-- Write scope: `internal/infrastructure/rdb/repository/<aggregate>/` (new directory) + `internal/di/module/infrastructure.go` (1 entry append).
+- Write scope: `internal/infrastructure/rdb/repository/<aggregate>/` (new directory) + `internal/di/module/persistence.go` (1 entry append).
 - Aborts if the aggregate directory already exists.
 
 Remains protected:
@@ -202,7 +202,7 @@ Remains protected:
 
 ## Constraints
 
-- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols). **Volume counts too**: what this skill scaffolds is idiomatic by construction, so a multi-line explanation of a constructor / Params struct / row-to-entity mapping / handler template is noise. State the contract in one line and stop; never restate a repo-wide rule `docs/rules.md` already carries. Suppression, not elimination — a genuinely non-obvious Why still stays.
 - ❌ Invent business logic in Repository (data orchestration only)
 - ❌ Generate SQL or run `make gen-query` (out of scope)
 - ❌ Hand-edit sqlc generated files
@@ -230,7 +230,7 @@ Remains protected:
 - [ ] Plan displayed (mapped + unmapped clearly distinguished) and confirmed
 - [ ] Implementation file written; mapped methods call sqlc gen, unmapped methods have TODO stub
 - [ ] Test file written; tests only for mapped methods
-- [ ] `internal/di/module/infrastructure.go` updated with new `fx.Provide`
+- [ ] `internal/di/module/persistence.go` updated with new `fx.Provide`
 - [ ] `make fix` + `make test` run; coverage reported (or failure surfaced)
 - [ ] Final summary clearly lists mapped count + unmapped count + next-step guidance
 - [ ] No commits / pushes

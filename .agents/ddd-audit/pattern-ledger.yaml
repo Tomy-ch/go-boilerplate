@@ -38,7 +38,7 @@
 #                      instead of re-deriving it.
 #   interpreted_by     layer-2 sources; kind: adr (id + slug) | readme (path + section) | doc (path + section)
 #   slug               required on every `kind: adr` entry — the ADR filename's kebab title with the
-#                      number stripped (`id: "0032"` / `slug: uuidv7-identifiers`).
+#                      number stripped (`id: "0034"` / `slug: uuidv7-identifiers`).
 #                      docs/adr/README.md declares that kebab title the stable identifier: a new ADR
 #                      may be inserted at its thematic position by shifting every later number +1,
 #                      and a consolidation pass renumbers the whole set. A number alone therefore
@@ -227,7 +227,7 @@ patterns:
         path: docs/rules.md
         section: "Allowed in Domain"
       - kind: adr
-        id: "0032"
+        id: "0034"
         slug: uuidv7-identifiers
     deviation_declared: false
     deviation_note: ""
@@ -252,10 +252,10 @@ patterns:
         path: internal/domain/README.md
         section: "Entity or Value Object"
       - kind: adr
-        id: "0034"
+        id: "0036"
         slug: domain-lexicon
       - kind: adr
-        id: "0033"
+        id: "0035"
         slug: two-scale-quantity-model
       - kind: readme
         path: internal/domain/lexicon/README.md
@@ -344,7 +344,7 @@ patterns:
         id: "0002"
         slug: onion-architecture
       - kind: adr
-        id: "0089"
+        id: "0091"
         slug: lean-a-spec-scaffold
     deviation_declared: false
     deviation_note: ""
@@ -377,7 +377,7 @@ patterns:
         path: pkg/README.md
         section: "Constraints"
       - kind: adr
-        id: "0034"
+        id: "0036"
         slug: domain-lexicon
     deviation_declared: true
     deviation_note: >-
@@ -429,13 +429,13 @@ patterns:
         path: docs/rules.md
         section: "Repository / QueryService Rules"
       - kind: adr
-        id: "0027"
+        id: "0029"
         slug: lightweight-cqrs
       - kind: adr
-        id: "0029"
+        id: "0031"
         slug: commandservice-atomicity-criterion
       - kind: adr
-        id: "0031"
+        id: "0033"
         slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
@@ -516,7 +516,7 @@ patterns:
     verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       Aggregate Root 限定・ドメイン語彙の契約・トランザクション制御はクライアント側、と原義とよく一致する。
-      CommandService という「集約の書き込みが Repository seam を通らない経路」の存在は、ADR-0027 (sequential-migration-ids) の
+      CommandService という「集約の書き込みが Repository seam を通らない経路」の存在は、ADR-0029 (lightweight-cqrs) の
       Alternatives「Route every write through the aggregate Repository (abolish CommandService)」で
       Evans の形（load-aggregate-mutate-save 一本化）を名指しし、ロックを取らない相対更新の並行性を理由に
       却下、Eligibility / Derivation で範囲を絞って宣言済み。読み取り側の絞り込み（QueryService 分離）も
@@ -526,16 +526,16 @@ patterns:
       （サンプル撤去後は宣言が 0 本になる）。所有をワークフロー軸で決める（CommandService は
       トランザクションの道具であり、所有者はトランザクションを開く側である）ため usecase 層に置かれ、
       「ドメイン層に第二の永続化契約が並ぶ」という差異は無い。残る差異は seam の存在そのもので、
-      これは上記のとおり ADR-0027 (sequential-migration-ids) の Alternatives で宣言済み。
+      これは上記のとおり ADR-0029 (lightweight-cqrs) の Alternatives で宣言済み。
     interpreted_by:
       - kind: adr
-        id: "0027"
+        id: "0029"
         slug: lightweight-cqrs
       - kind: adr
         id: "0003"
         slug: interface-based-decoupling
       - kind: adr
-        id: "0029"
+        id: "0031"
         slug: commandservice-atomicity-criterion
       - kind: doc
         path: docs/rules.md
@@ -611,7 +611,7 @@ patterns:
         path: docs/rules.md
         section: "Domain Layer Constraints"
       - kind: adr
-        id: "0031"
+        id: "0033"
         slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
@@ -660,13 +660,13 @@ patterns:
         path: internal/usecase/boundary/README.md
         section: "publisher"
       - kind: adr
-        id: "0045"
+        id: "0047"
         slug: broker-agnostic-worker-scaffold
       - kind: adr
-        id: "0029"
+        id: "0031"
         slug: commandservice-atomicity-criterion
       - kind: adr
-        id: "0031"
+        id: "0033"
         slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
@@ -685,7 +685,7 @@ patterns:
     status: rejected
     verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      複数コンテキストへの明示的分割という意味では採用していない。ADR-0034 (uuidv7-identifiers) の Alternatives
+      複数コンテキストへの明示的分割という意味では採用していない。ADR-0036 (domain-lexicon) の Alternatives
       （internal/domain/kernel 節）が Evans の Bounded Context / Context Map を名指しし、
       「Shared Kernel は 2 つの Bounded Context の共同所有物で複数コンテキストの存在を前提とするが、
       本リポジトリは単一モデルである」と明示している。ADR-0004 (modular-monolith)（modular monolith, microservices は
@@ -694,7 +694,7 @@ patterns:
       docs/rules.md の Context nesting 節は bounded context をパッケージ命名規約の語として流用している。
     interpreted_by:
       - kind: adr
-        id: "0034"
+        id: "0036"
         slug: domain-lexicon
       - kind: adr
         id: "0004"
@@ -709,7 +709,7 @@ patterns:
       単一モデル・単一デプロイのモジュラーモノリスであり（ADR-0004 (modular-monolith): マイクロサービスは non-goal）、
       複数の Bounded Context への明示的分割を行っていない。共有が必要な箇所は集約間の共有
       （internal/domain/lexicon）として扱い、Shared Kernel の語は実際に複数コンテキストを導入する者の
-      ために予約している。宣言は ADR-0034 (uuidv7-identifiers) の Alternatives Considered 節、および
+      ために予約している。宣言は ADR-0036 (domain-lexicon) の Alternatives Considered 節、および
       internal/domain/lexicon/README.md 冒頭の注記。
     enforced_by: []
     last_audited: "2026-08-05"
@@ -739,7 +739,7 @@ patterns:
         path: docs/design/context-map.md
         section: "An undecided edge is an entry, not a blank / Edges / The open questions / What this map does not cover"
       - kind: adr
-        id: "0034"
+        id: "0036"
         slug: domain-lexicon
       - kind: adr
         id: "0004"
@@ -771,7 +771,7 @@ patterns:
       共同所有の判断）は語に依存しない形で lexicon 側に保持している。
     interpreted_by:
       - kind: adr
-        id: "0034"
+        id: "0036"
         slug: domain-lexicon
       - kind: doc
         path: docs/rules.md
@@ -783,7 +783,7 @@ patterns:
     deviation_note: >-
       Evans の Shared Kernel は 2 つの Bounded Context が共同所有するモデルの部分集合を指し、
       複数コンテキストの存在を前提とする。本リポジトリは単一モデルで、共有は集約間に起きる。
-      前提が成り立たないため語を採用せず internal/domain/lexicon と呼ぶ。ADR-0034 (uuidv7-identifiers) の
+      前提が成り立たないため語を採用せず internal/domain/lexicon と呼ぶ。ADR-0036 (domain-lexicon) の
       Alternatives に「internal/domain/kernel, naming the DDD Shared Kernel」として却下理由を記載。
     enforced_by:
       - kind: depguard
@@ -822,10 +822,10 @@ patterns:
         id: "0001"
         slug: avoid-lock-in
       - kind: adr
-        id: "0042"
+        id: "0044"
         slug: apperror-protocol-agnostic-errors
       - kind: adr
-        id: "0101"
+        id: "0103"
         slug: no-generic-cache-abstraction
     deviation_declared: true
     deviation_note: >-
@@ -858,13 +858,13 @@ patterns:
         path: docs/design/context-map.md
         section: "Edges / The open questions"
       - kind: adr
-        id: "0009"
+        id: "0011"
         slug: openapi-first
       - kind: adr
-        id: "0012"
+        id: "0014"
         slug: retain-generated-openapi
       - kind: adr
-        id: "0015"
+        id: "0017"
         slug: boundary-value-ownership
       - kind: doc
         path: docs/rules.md

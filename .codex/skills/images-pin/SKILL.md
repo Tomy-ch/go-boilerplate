@@ -70,7 +70,7 @@ Per the "Exception: Skill Execution" clause in `AGENTS.md`, the following paths 
 
 The following remain protected even during skill execution:
 
-- `AGENTS.md` / `AGENTS.md`
+- `AGENTS.md`
 - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
 - Any file unrelated to the digest pin. Do NOT change a `FROM` / compose `image:` **tag**, `RUN`/`COPY` steps or other compose keys, or `scripts/pin-images` (the tool itself — it already scans both file kinds; extending it is a separate dev task, not part of a pin run) — if a tag bump is needed, surface it and stop.
 

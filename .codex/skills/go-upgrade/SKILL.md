@@ -47,7 +47,7 @@ Per the "Exception: Skill Execution" clause in AGENTS.md, the normal AI Modifica
 
 The following remain protected even during skill execution:
 
-- `AGENTS.md` / `AGENTS.md`
+- `AGENTS.md`
 - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
 
 ## Execution Steps

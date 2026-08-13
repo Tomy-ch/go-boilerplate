@@ -1,7 +1,7 @@
 ---
 name: spec-validator-usecase
 description: >-
-  Read-only usecase-spec validator. Validates `docs/spec/<feature>/usecase.md` for format correctness, cross-spec references to `domain.md`, naming convention, and internal consistency — reading `.claude/scaffold-spec/usecase-spec.md` (required section list + YAML schema) + `.claude/scaffold-spec/verify-rules.md` + `docs/spec/<feature>/domain.md` + `internal/usecase/README.md` (naming convention) at runtime as the source of truth (hardcodes no rules). Performs: (1) format check, (2) cross-spec `calls:` resolution to domain Repository / Behavior methods + boundary in Dependencies, (3) naming-convention check (lean A, verb-prefix; suggestion only), (4) Workflow internal consistency (tx_required + boundary calls). Does NOT check OpenAPI operationId coverage (dependency direction — usecase doesn't know HTTP; that's `scaffold-controller`'s job). Per-layer worker for the `verify-spec` integrator, invoked once by the `verify-spec` integrator (or standalone via the Agent tool) so per-spec validation fans out in parallel. STRICTLY read-only — no auto-fix. Default model `sonnet`; the orchestrator may override.
+  Read-only usecase-spec validator. Validates `docs/spec/<feature>/usecase.md` for format correctness, cross-spec references to `domain.md`, naming convention, and internal consistency — reading `.claude/scaffold-spec/usecase-spec.md` (required section list + YAML schema) + `.claude/scaffold-spec/verify-rules.md` + `docs/spec/<feature>/domain.md` + `internal/usecase/README.md` (naming convention) at runtime as the source of truth (hardcodes no rules). Performs: (1) format check across both method forms — the 集約形 `## Workflow` entry and the 展開形 per-method H2 section, (2) cross-spec resolution of `calls:` (集約形) or section-scoped `dependencies:` (展開形, dependency granularity only) to domain Repository / Behavior / Domain Service methods + boundary in Dependencies, (2.5) Interface coverage — every `## Interface` method must have a procedure somewhere, the gap that otherwise lets a method escape every check, (3) naming-convention check (lean A, verb-prefix; suggestion only), (4) Workflow internal consistency (tx_required + boundary calls). Does NOT check OpenAPI operationId coverage (dependency direction — usecase doesn't know HTTP; that's `scaffold-controller`'s job). Per-layer worker for the `verify-spec` integrator, invoked once by the `verify-spec` integrator (or standalone via the Agent tool) so per-spec validation fans out in parallel. STRICTLY read-only — no auto-fix. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob
 model: sonnet
 ---
@@ -35,15 +35,29 @@ If `docs/spec/<feature>/usecase.md` is missing, say so and return cleanly. If `d
 1. Read `.claude/scaffold-spec/usecase-spec.md` for the required H2 section list; verify all present (missing → `violation`).
 2. Parse every fenced YAML block (parse error → `violation`).
 3. Interface method YAML: required keys (`name`, `signature`). Workflow entry YAML: (`tx_required`, `steps`, `calls`, `errors`). Dependency YAML: entry must be a recognized boundary or Repository reference.
+4. A method may instead be written in the **展開形** — its own H2 section carrying prose plus one YAML block with `input` / `output` / `dependencies` / `workflow` (`tx_required`, `steps`, `errors`), optionally `cursor` (`boundary`, `keys`). Check those keys for such sections; `calls:` is **not** required there. `.claude/scaffold-spec/usecase-spec.md` defines both forms — read it rather than assuming one.
 
 ## Step 2. Cross-Spec Reference Check
 
-Read `docs/spec/<feature>/domain.md` and build the inventory: `domain.repository_methods`, `domain.behavior_methods`, `domain.factory` (Entity struct + VO factory names), `usecase.dependencies` (boundary AND Repository dependency names from `usecase.md` `Dependencies`). Then for each Workflow `calls:` entry, classify by its prefix form (specs use either `<aggregate>.Xxx` or a Dependencies-declared **dependency-name prefix** like `user_repository.Xxx` — accept both):
+Read `docs/spec/<feature>/domain.md` and build the inventory: `domain.repository_methods`, `domain.behavior_methods`, `domain.domain_services` (`## Domain Service`, absent in most features), `domain.factory` (Entity struct + VO factory names), `usecase.dependencies` (boundary AND Repository dependency names from `usecase.md` `Dependencies`). Then for each Workflow `calls:` entry, classify by its prefix form (specs use either `<aggregate>.Xxx` or a Dependencies-declared **dependency-name prefix** like `user_repository.Xxx` — accept both):
 
 - `<thisFeatureAggregate>.Repository.<Method>` **or** `<thisFeature>_repository.<Method>` → must exist in `domain.repository_methods` → else `violation`
 - `<thisFeatureAggregate>.<BehaviorMethod>` or `<thisFeatureAggregate>.New` → must exist in `domain.behavior_methods` or `domain.factory` → else `violation`
 - `<boundary>.<Method>` (e.g. `clock.Now`, `tx_manager.Do`) → the boundary must appear in `usecase.dependencies` → else `violation` (the method itself is compile-time).
 - **Cross-aggregate** call (e.g. `prefecture_repository.<Method>` when the feature is `user`) → resolve like a boundary: the dependency name must be declared in `usecase.dependencies` → else `violation`. Do **not** flag the method as missing — it belongs to another aggregate's domain spec that is out of scope here (compile-time / cross-aggregate). Only the in-scope feature's `domain.md` is loaded.
+
+For a **展開形** section there is no `calls:`, so resolve its section-scoped `dependencies:` instead — at dependency granularity only, never method granularity:
+
+- `domain/service/<name>` → must have a matching definition in `domain.domain_services` → else `violation`.
+- Every other entry must parse as a dependency name (`<aggregate>.Repository`, a boundary, a QueryService, a `pkg` / `tools` path) → else `violation`.
+- A 展開形 dependency **need not** appear in the spec-level `## Dependencies`; that section serves the 集約形 Workflow. Do not report it as missing.
+
+## Step 2.5. Interface Coverage Check
+
+Every method in `## Interface` must have its procedure somewhere — a Workflow entry (`### <Method>` heading, or a `method:` key when the entries are one YAML list) or a 展開形 H2 section. Match on the method name appearing in the heading, the `method:` key, or the section's prose.
+
+- Interface method with no procedure anywhere → `violation` (this is the gap that lets a method escape every other check here).
+- 展開形 section describing a method absent from `## Interface` → `suggestion`: it may legitimately document a **separate package** for the same feature — a read-only aggregation split out under `internal/usecase/<feature>/<name>/` has its own interface, so it does not belong in this one. Say which reading you took.
 
 ## Step 3. Naming Convention Check (lean A — suggestion only)
 
@@ -76,6 +90,11 @@ spec-validator-usecase 結果（feature: <feature>）
 [cross-spec] M 件
   - usecase.md CreateUser calls 'user.Repository.Save' が domain.md Repository Methods に存在しない
   - usecase.md ActivateUser calls 'clock.Now' だが Dependencies に clock 無し
+  - usecase.md 展開形節「GET 発送待ち一覧」dependencies 'domain/service/dispatch' が domain.md Domain Service に存在しない
+
+[interface coverage] J 件
+  - Interface の `ShipPurchase` に対応する手順が Workflow にも展開形節にも無い
+  - 展開形節「GET 集計」が記述するメソッドが Interface に無い（suggestion / 別パッケージ usecase の可能性）
 
 [naming convention] K 件（suggestion）
   - usecase Interface method `PostUser` は HTTP verb 由来命名
@@ -85,7 +104,7 @@ spec-validator-usecase 結果（feature: <feature>）
 [internal] L 件
   - Workflow `Register` の tx_required:true だが calls に tx.Manager 無し
 
-総計: violations <N+M+tx>, suggestions <K+errors>
+総計: violations <N+M+J+tx>, suggestions <K+errors>
 ```
 
 If clean: `usecase.md の違反は検出されませんでした（suggestions: 0）。` End your message with a trailing machine-readable line:
@@ -100,6 +119,7 @@ SUMMARY violations=<v> suggestions=<s>
 - ❌ Hardcode the section list (always read `.claude/scaffold-spec/usecase-spec.md`)
 - ❌ Check OpenAPI operationId coverage (dependency direction — that's `scaffold-controller`'s job)
 - ❌ Treat naming-convention findings as hard `violation` (always `suggestion`)
+- ❌ Demand `calls:` from a 展開形 section, or demand that its `dependencies:` also appear in the spec-level `## Dependencies`
 - ✅ Japanese output, citing source-of-truth document + line
 - ✅ Run all checks in one pass (no fail-fast)
 - ✅ Final message is the data + trailing `SUMMARY` line — no narration

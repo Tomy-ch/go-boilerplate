@@ -107,7 +107,7 @@ git fetch origin "$BASE"
 mkdir -p .codex/worktrees
 git worktree add -b feature/<n>-<slug> .codex/worktrees/<n>-<slug> "origin/$BASE"
 
-# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
+# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 2010+N。
 cd .codex/worktrees/<n>-<slug> && make slot-acquire
 
 # 4. 新規 worktree には vendor/ が無く、air は --mod=vendor でビルドするため、これが無いと serve が失敗する。
@@ -214,9 +214,9 @@ runtime 検証は意図的にここに置いていない。PR ができた後（
 動いているシステムに対して実 HTTP 経路を通す。どのモードでも緩められない。
 
 ```bash
-make serve                                    # API は 8080+N、mock-auth は 4000+N
+make serve                                    # API は 8080+N、mock-auth は 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
@@ -231,12 +231,12 @@ docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
   "select ui.subject, r.name from user_identities ui
      left join user_roles ur on ur.user_id = ui.user_id
      left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:400N';"
+   where ui.issuer = 'http://localhost:201N';"
 ```
 
 正常系、変更が持ち込むエラー経路、そして保護された操作ならトークン無しで 401 になることを確認する。その上で **LGTM スタックのトレースを読み、リクエストが想定どおりの経路（controller → usecase → infrastructure、意図した SQL）を通ったことを確認する**。ステータスコードだけでは、そのリクエストが変更した層に届いたことの証明にならない — 間違ったが尤もらしい経路は、間違った理由で正しいステータスを返す。
 
-**CI 緑はこの代替にならない。** 過去の実行で、ドキュメント上の API 契約が誤ったままマージされたことがある — 動いているシステムが 401 を返すところを 409 と書いていた。認証が usecase より手前で呼出元を弾いていたためである。5 つのレビューレンズと 29 の CI チェックが全て通っていた。どれもが静的解析か、DB 層で止まるテストだったから。実 HTTP リクエスト 1 本で即座に露見した。
+**CI 緑はこの代替にならない。** レビューレンズも CI チェックも、DB 層で止まる静的解析やテストにすぎない。middleware がそもそもリクエストを届かせない層で、記載されたステータスコードが正しいとされてしまう。実 HTTP リクエスト 1 本で即座に決着する。
 
 runtime 検証がどうしても実行できないときの正直な選択肢は 2 つで、第三はない。
 
@@ -268,7 +268,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 
 変更範囲の外にある指摘は issue モードに従って追跡へ回す。`search` では、新規起票より既存 issue への申し送りコメントを優先する — issue 数それ自体がコストで、重複は元の issue を埋もれさせる。
 
-**起票の前に、その指摘を動いているシステムで検証する。** コードを読んだだけで導いた指摘は、静的レビューでは捕まえられない形で誤りうる: ある実行で「退会済みユーザーが複数のエンドポイントを呼べる」という issue を起票したが、実際には middleware が、調べていたコードよりずっと手前で全て弾いていた。その issue は NOT_PLANNED でクローズする羽目になった。Step 8 の runtime 段階があれば大抵は確認できる。
+**起票の前に、その指摘を動いているシステムで検証する。** コードを読んだだけで導いた指摘は、静的レビューでは捕まえられない形で誤りうる — 多くの場合、読んでいた層の外側（middleware、DI 配線、DB）が既にそのケースを処理しているためである。Step 8 の runtime 段階があれば大抵は確認できる。
 
 最後に、コミットメッセージにも PR 本文にも現れていない自己判断を PR コメントへ記録する。`delegated` モードでは、記録した trip-wire がここに落ちる。
 
