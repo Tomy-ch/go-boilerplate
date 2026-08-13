@@ -30,7 +30,7 @@ const (
 
 var (
 	// ErrMissing は shellcheck が PATH に無いことを表す。
-	ErrMissing = xerrors.New("shellcheck が見つかりません")
+	ErrMissing = xerrors.New("shellcheck が PATH にありません（mise install shellcheck）")
 
 	// ErrRun は shellcheck を起動できなかった、または指摘以外の理由で終了したことを表す。
 	ErrRun = xerrors.New("shellcheck の実行に失敗しました")

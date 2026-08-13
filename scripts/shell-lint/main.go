@@ -28,9 +28,7 @@ const shellSuffix = ".sh"
 // 走査から外すディレクトリ名。依存の取得物と VCS の内部で、いずれも我々が書いたものではない。
 var skippedDirs = []string{".git", "node_modules", "vendor", "tmp"}
 
-var (
-	errFindings = xerrors.New("shellcheck が指摘を検出しました")
-)
+var errFindings = xerrors.New("shellcheck が指摘を検出しました")
 
 func main() {
 	log.SetFlags(0)

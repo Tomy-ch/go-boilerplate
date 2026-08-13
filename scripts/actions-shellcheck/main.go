@@ -63,7 +63,6 @@ var (
 	errStepCountMismatch = xerrors.New("run ステップの抽出数が YAML のデコード結果と一致しません")
 	errStepsNotSequence  = xerrors.New("runs.steps がリストとして読めません")
 	errFoldedRun         = xerrors.New("run にブロック折り畳み（>）は使えません。リテラル（|）で書いてください")
-	errShellcheckMissing = xerrors.New("shellcheck が PATH にありません（mise install shellcheck）")
 	errFindings          = xerrors.New("composite action の run に指摘があります")
 
 	errActionSymlinkDir        = xerrors.New("ディレクトリへのシンボリックリンクは走査できません。実体を置くか、リンクを外してください")
