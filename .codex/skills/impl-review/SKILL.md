@@ -1,7 +1,7 @@
 ---
 name: impl-review
 description: >-
-  Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `ask the user explicitly` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap / test-gap, where `test-gap` is a code-origin pass that reads the changed production source and flags reachable branches / whole changed symbols left untested or vacuously asserted — a high-signal subset that defers exhaustive per-symbol enumeration to `/test-review`) — plus the dedicated `comment-reviewer` subagent for comment quality, each on a user-selected model (fable / sonnet / opus / haiku; default auto = a model ≠ the implementer) so reviewer ≠ implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Phase 7), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other five lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Step 0 additionally asks — default yes — whether to delegate the test viewpoint to `/test-review`: when the diff touches non-generated production `.go` under `internal/**` / `pkg/**` or any `*_test.go`, Step 4.5 chains that skill inline with a `scope` / `base_ref` / `reviewer_model` / `skip_verifier` payload for the exhaustive two-axis audit (Lens 4 branch × meaning + Lens 5 symbol completeness) and SUPPRESSES the `test-gap` lens for that run so the two never double-report; the report's mandatory `テスト観点:` line always states which of the three states applied (委譲実施 / test-gap subset only / not run), so an unaudited test viewpoint can never read as covered. Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
+  Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `ask the user explicitly` (changed files vs branch-vs-base diff vs specific paths), ranks every finding by a fixed tier order (1 architecture / ddd-modeling, 2 security / correctness, 3 runtime-gap / type-design, 4 test-gap, 5 comment quality) so a higher tier's decision propagates down while a lower one never silently outranks it, fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap / test-gap, where `test-gap` is a code-origin pass that reads the changed production source and flags reachable branches / whole changed symbols left untested or vacuously asserted — a high-signal subset that defers exhaustive per-symbol enumeration to `/test-review`) — plus the dedicated `ddd-modeling-reviewer` (tier 1; asks whether the change models the domain well by this repo's own written DDD interpretation — aggregate boundary vs transaction boundary, where a rule belongs, cross-aggregate references, ubiquitous language — never against Evans directly, which is `ddd-origin-auditor`'s subject) and `comment-reviewer` subagent for comment quality, each on a user-selected model (fable / sonnet / opus / haiku; default auto = a model ≠ the implementer) so reviewer ≠ implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Phase 7), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other five lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Step 0 additionally asks — default yes — whether to delegate the test viewpoint to `/test-review`: when the diff touches non-generated production `.go` under `internal/**` / `pkg/**` or any `*_test.go`, Step 4.5 chains that skill inline with a `scope` / `base_ref` / `reviewer_model` / `skip_verifier` payload for the exhaustive two-axis audit (Lens 4 branch × meaning + Lens 5 symbol completeness) and SUPPRESSES the `test-gap` lens for that run so the two never double-report; the report's mandatory `テスト観点:` line always states which of the three states applied (委譲実施 / test-gap subset only / not run), so an unaudited test viewpoint can never read as covered. Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
 ---
 
 # Impl Review
@@ -31,6 +31,49 @@ Bias reduction is the design constraint, not a nicety. Reviewers therefore run a
 - **The reviewer model is chosen by the user in Step 0.** The options are `fable` (Fable 5) / `sonnet` / `opus` / `haiku`, plus an *auto* default that resolves to a model ≠ the session's implementer. Pass the chosen model to every reviewer subagent via the `Agent` tool's `model` parameter (it takes precedence over the agent file's `sonnet` default) — e.g. `opus` for depth, `haiku` for a cheap divergent pass, `fable` for a fresh independent perspective.
 - **The orchestrator MUST guarantee reviewer ≠ implementer.** If the user selects the same model as the session's implementer, warn that it undermines the different-model bias reduction and confirm before proceeding. Never silently let reviewer and implementer be the same model.
 - Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings. The single place this skill mutates source is Step 5.5, where the **orchestrator** (not a subagent) applies the verified comment-style fixes after user confirmation. The five code lenses are never auto-fixed.
+
+## Precedence — findings are ranked, not just collected
+
+Reviewers disagree, overlap, and report the same fact in two vocabularies. Without a ranking the
+report is a flat list in which a comment nit outranks a wrong aggregate boundary because its finder
+called it "high". The tiers in the Step 2 table are that ranking:
+
+| Tier | Lenses | What it decides |
+| --- | --- | --- |
+| 1 | `architecture`, `ddd-modeling` | what the code should *be* |
+| 2 | `security`, `correctness` | whether what it is, works |
+| 3 | `runtime-gap`, type design | whether it holds up in the real system and in its types |
+| 4 | `test-gap` | whether it is pinned down |
+| 5 | comment quality | how it reads |
+
+**A change at a higher tier propagates downward; a lower tier does not, as a rule, act on a higher
+one.** Rewriting an aggregate boundary invalidates the tests written against it and the comments
+describing it; a comment finding never justifies changing a boundary. Five consequences follow, and
+each of them is a rule, not a suggestion:
+
+1. **Order the report by tier, then by severity within a tier** — never by severity alone. A
+   comment-quality `high` sits below an architecture `medium`, because the architecture finding may
+   delete the code the comment is on.
+2. **Mark a lower-tier finding 保留 while a higher-tier finding it depends on is unresolved.** Report
+   it, say what it is waiting on, and do not present it as actionable. Re-check it after the
+   higher-tier decision lands; it often disappears.
+3. **Suppress the Step 5.5 comment auto-fix for any file a tier 1–2 finding is likely to rewrite.**
+   Polishing prose on code that is about to change is work done twice, and it buries the real finding
+   under a diff of comment edits. Say in the report which files were held back and why.
+4. **When two tiers report the same fact, keep the higher tier's framing and fold the lower one in as
+   corroboration** — one finding, not two. Two entries for one fact reads as two problems and
+   double-counts the change's apparent risk.
+5. **Agreement among lenses at the same tier raises confidence; agreement from a lower tier does
+   not raise a higher finding's severity.** Two tier-2 lenses independently reaching the same defect
+   is strong evidence — say so. A tier-5 lens agreeing with a tier-1 finding adds nothing to its
+   severity, though it may be cited as support.
+
+**The exception is criticality, and it is yours to notice, not to resolve.** A lower-tier finding
+can be the more urgent one — an exploitable hole surfaced by the `test-gap` lens does not wait for an
+architecture debate. When a lower-tier finding looks critical enough to outrank the tier above it,
+**do not silently reorder: present both and ask the user.** The ranking exists so that ordinary
+disagreements resolve without a human; a finding that breaks the ranking is exactly the case a human
+should see.
 
 ## Step 0 — Confirm Scope
 
@@ -120,17 +163,19 @@ Spawn all finders concurrently (issue every `Agent` call in a single message). A
 
 - The four **code lenses** run `adversarial-reviewer` — one per lens, `agentType: "adversarial-reviewer"`, `label` like `find:security`.
 - The **comment dimension** runs the dedicated `comment-reviewer` — `agentType: "comment-reviewer"`, `label: "find:comment"`. This is the stronger, comment-focused agent (a richer taxonomy than a one-paragraph lens), and its findings feed the Step 5.5 auto-fix.
+- The **DDD modeling dimension** runs the dedicated `ddd-modeling-reviewer` — `agentType: "ddd-modeling-reviewer"`, `label: "find:ddd"` — when the diff touches `internal/domain/**` or `internal/usecase/**`. It asks whether the change models the domain well by this repository's own written interpretation (aggregate boundary vs transaction boundary, where a rule belongs, cross-aggregate reference discipline, ubiquitous language, Factory / Repository semantics). It is a **tier 1** lens: its findings decide what the code should be, so they are settled before the lower tiers act. Do NOT point it at Evans directly — that is `ddd-origin-auditor`'s subject, and its subject is the repo's documents rather than code.
 - The **type-design dimension** runs the dedicated `type-design-reviewer` — `agentType: "type-design-reviewer"`, `label: "find:type-design"` — ONLY when the diff touches domain types (`internal/domain/**/*.go`). It scores each type on the four-axis rubric (Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement); its findings are suggestion-level (not auto-fixed).
 
-| Finder | Agent | Run when |
-| --- | --- | --- |
-| `correctness` | adversarial-reviewer | always |
-| `security` | adversarial-reviewer | always (especially when a handler / auth / DTO / `openapi/**` is touched) |
-| `architecture` | adversarial-reviewer | always |
-| `runtime-gap` | adversarial-reviewer | when a controller / DI / `openapi/**` / `database/**` is touched |
-| `test-gap` | adversarial-reviewer | when the diff touches non-generated production `.go` under `internal/**` / `pkg/**` **and** the Step 0 test-viewpoint delegation was declined — suppressed while Step 4.5 runs |
-| comment quality | **comment-reviewer** | when the diff adds / changes any code comment (almost always) |
-| type design | **type-design-reviewer** | when the diff touches domain types (`internal/domain/**/*.go`) |
+| Finder | Tier | Agent | Run when |
+| --- | --- | --- | --- |
+| `architecture` | 1 | adversarial-reviewer | always |
+| `ddd-modeling` | 1 | **ddd-modeling-reviewer** | when the diff touches `internal/domain/**` or `internal/usecase/**` |
+| `correctness` | 2 | adversarial-reviewer | always |
+| `security` | 2 | adversarial-reviewer | always (especially when a handler / auth / DTO / `openapi/**` is touched) |
+| `runtime-gap` | 3 | adversarial-reviewer | when a controller / DI / `openapi/**` / `database/**` is touched |
+| `test-gap` | 4 | adversarial-reviewer | when the diff touches non-generated production `.go` under `internal/**` / `pkg/**` **and** the Step 0 test-viewpoint delegation was declined — suppressed while Step 4.5 runs |
+| comment quality | 5 | **comment-reviewer** | when the diff adds / changes any code comment (almost always) |
+| type design | 3 | **type-design-reviewer** | when the diff touches domain types (`internal/domain/**/*.go`) |
 
 Each `adversarial-reviewer` prompt MUST include: the lens name + its definition, the base ref + changed-file list + the diff, and pointers to `AGENTS.md` / the relevant `README.md` / OpenAPI spec / migrations.
 
@@ -142,7 +187,7 @@ The `comment-reviewer` prompt MUST include: the base ref + changed-file list + t
 
 ## Step 3 — Adversarial Verify
 
-Collect all findings and **dedup** by (file, line, claim). For each surviving finding, spawn one `review-verifier` subagent (concurrently), handing it the single finding + the base ref. Use `agentType: "review-verifier"`, `label` like `verify:<file>`, and the Step 0 user-selected reviewer `model` (same reviewer ≠ implementer rule).
+Collect all findings and **dedup** by (file, line, claim) — and when two lenses report the same fact, apply Precedence rule 4: keep the higher tier's framing, fold the lower one in as corroboration, and carry ONE finding forward. For each surviving finding, spawn one `review-verifier` subagent (concurrently), handing it the single finding + the base ref. Use `agentType: "review-verifier"`, `label` like `verify:<file>`, and the Step 0 user-selected reviewer `model` (same reviewer ≠ implementer rule).
 
 - Keep **CONFIRMED** and **PLAUSIBLE** findings. Drop **REFUTED** (but keep a count for the report).
 - For a critical/high finding where a single verdict feels shaky, spawn 2–3 verifiers and go by majority — diversity beats one opinion on the findings that matter.
@@ -228,11 +273,13 @@ The **`テスト観点:` line is mandatory** and takes exactly one of three valu
 
 It exists for the same reason the runtime line does: without it, a `lens:` list containing `test-gap` reads as "the tests were audited" when only a subset of the changed symbols was looked at, and a run with no test analysis at all leaves no trace. State the weaker case plainly rather than letting the omission pass for coverage.
 
-Order by severity, CONFIRMED before PLAUSIBLE. Always state what runtime checks ran and what was skipped — silent omission reads as "covered everything" when it was not. In the report, keep the **comment quality** findings in their own subsection — they are *processed* in Step 5.5, not posted to the PR. Likewise keep the delegated test findings in their own section with their own severity vocabulary; omit the section entirely when Step 4.5 did not run (the `テスト観点:` line already carries that fact).
+Order by **tier first, then severity within the tier**, CONFIRMED before PLAUSIBLE (Precedence rule 1). Mark every finding that is waiting on a higher-tier decision as `保留` and name what it waits on (rule 2). Always state what runtime checks ran and what was skipped — silent omission reads as "covered everything" when it was not. In the report, keep the **comment quality** findings in their own subsection — they are *processed* in Step 5.5, not posted to the PR. Likewise keep the delegated test findings in their own section with their own severity vocabulary; omit the section entirely when Step 4.5 did not run (the `テスト観点:` line already carries that fact).
 
 ## Step 5.5 — Apply Comment Fixes (default; skip with `--no-apply`)
 
 This is the one place the skill mutates source. Apply the verified **comment quality** findings (CONFIRMED, plus any PLAUSIBLE the user opts in) yourself — the `comment-reviewer` subagent never edits. The five code lenses are NOT auto-fixed here; they go to Step 6.
+
+**First apply Precedence rule 3.** List the files a surviving tier 1–2 finding is likely to rewrite, and exclude them from this step — a comment polished onto code that is about to change is work done twice. State the held-back files and the reason in the report.
 
 Confirm once before editing:
 
@@ -317,6 +364,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 ## Do / Do NOT
 
 - ✅ Guarantee reviewer model ≠ implementer model (user selects it in Step 0; warn + confirm if they pick the implementer's model).
+- ✅ Rank findings by tier (Precedence): order the report by tier, hold lower-tier findings that wait on a higher one, fold duplicate facts into the higher tier's framing, and ask the user when a lower-tier finding looks critical enough to outrank the tier above it.
 - ✅ Run finders concurrently (one message, multiple `Agent` calls): the five code lenses via `adversarial-reviewer`, comment quality via `comment-reviewer`.
 - ✅ Independently verify every finding before reporting; drop REFUTED.
 - ✅ Run the runtime stage for touched endpoints; widen to all consumers on a shared-schema edit.
@@ -331,6 +379,8 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - ❌ In Step 5.5, delete a functional directive (`//go:generate` etc.) or an exported-decl doc comment (rewrite it); touch generated files / Markdown / the deny list; or auto-commit.
 - ❌ Run `test-gap` and `/test-review` on the same review — one owner per gap, never two reports of it.
 - ❌ Remap the delegated findings' severities onto CONFIRMED / PLAUSIBLE × 重大度, or post an off-diff test finding to the PR.
+- ❌ Order the report by severity alone, report one fact as two findings from two tiers, let a lower-tier lens raise a higher finding's severity, or silently reorder the tiers when a lower finding looks critical — present both and ask.
+- ❌ Auto-apply comment fixes to a file a surviving tier 1–2 finding is likely to rewrite.
 - ❌ Let a reviewer run on the same model as the implementer.
 - ❌ Report speculative style nits as findings, or pad the list to look thorough.
 
@@ -340,6 +390,8 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - [ ] Reviewer model selected in Step 0 and verified ≠ implementer model (warn + confirm if same).
 - [ ] Test-viewpoint delegation asked in Step 0; predicate resolved in Step 1; the resulting state recorded.
 - [ ] Finders fanned out concurrently: the code lenses (`adversarial-reviewer`) + comment quality (`comment-reviewer`) — `test-gap` among them only when the delegation was declined **and** production `.go` was touched.
+- [ ] Duplicate facts folded into the higher tier; report ordered by tier then severity; lower-tier findings waiting on a higher one marked `保留`.
+- [ ] Comment auto-fix skipped for files a surviving tier 1–2 finding is likely to rewrite.
 - [ ] Every finding independently verified; REFUTED dropped (count kept).
 - [ ] Runtime curl + o11y done for touched endpoints (shared-schema → all consumers); destructive curls confirmed.
 - [ ] Step 4.5 ran when delegated, with `scope` / `base_ref` / `reviewer_model` / `skip_verifier: false` passed and `test-gap` not spawned.

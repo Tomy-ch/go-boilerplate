@@ -26,6 +26,42 @@
 - **オーケストレーターは reviewer ≠ implementer を必ず保証する。** ユーザーが本セッションの実装者と同一モデルを選んだ場合は、別モデルによるバイアス低減が損なわれる旨を警告し、確認してから進める。reviewer と implementer を無言で同一モデルにしない。
 - reviewer は **read-only**（エージェント定義に Edit/Write 権限なし）。本スキルが修正を当てることはない。
 
+## 評価順 — 指摘は集めるだけでなく順位を付ける
+
+レビュアーは食い違い、重なり、同じ事実を別の語彙で報告する。順位が無ければレポートは平坦な一覧に
+なり、finder が「high」と呼んだだけのコメント指摘が、誤った集約境界より上に出る。Step 2 の表の
+階層がその順位である。
+
+| 階層 | lens | 何を決めるか |
+| --- | --- | --- |
+| 1 | `architecture` / `ddd-modeling` | コードが何で**あるべきか** |
+| 2 | `security` / `correctness` | それが**動くか** |
+| 3 | `runtime-gap` / 型設計 | 実システムと型の上で**保つか** |
+| 4 | `test-gap` | **固定されているか** |
+| 5 | コメント品質 | **どう読めるか** |
+
+**上位の変更は下位へ伝播するが、下位が上位に働きかけることは原則としてない。** 集約境界を書き直せば、
+それに対して書いたテストも、それを説明するコメントも前提ごと消える。逆にコメントの指摘が境界の変更を
+正当化することはない。帰結は 5 つあり、いずれも提案ではなく規則である。
+
+1. **レポートは階層順に並べ、階層内で重大度順にする** — 重大度だけで並べない。コメント品質の `high` は
+   architecture の `medium` より下に置く。後者がそのコメントの乗るコードごと消すかもしれないため。
+2. **上位の未決な指摘に依存する下位の指摘は `保留` として出す。** 報告はするが、何を待っているかを書き、
+   着手可能なものとして提示しない。上位の決着後に見直すと、多くは消えている。
+3. **階層 1〜2 の指摘が書き換えそうなファイルについては、Step 5.5 のコメント自動適用を抑止する。**
+   これから変わるコードの文章を磨くのは二度手間であり、しかもコメント修正の diff が本題の指摘を埋める。
+   抑止したファイルとその理由をレポートに書く。
+4. **同じ事実を 2 階層が報告したら、上位の枠組みを残し、下位はその裏付けとして畳む** — 指摘は 1 件。
+   1 つの事実に 2 エントリは 2 つの問題に見え、変更のリスクを二重に数える。
+5. **同一階層どうしの合致は確度を上げてよいが、下位からの合致は上位の重大度を引き上げない。** 階層 2 の
+   2 つの lens が独立に同じ欠陥へ到達したなら、それは強い証拠なので明記する。階層 5 が階層 1 に同意しても
+   重大度は動かない（裏付けとして引用するのは構わない）。
+
+**例外はクリティカルさであり、気づくのは担当だが裁定は担当ではない。** 下位の指摘のほうが緊急なことは
+ある — `test-gap` が露呈させた悪用可能な穴は、アーキテクチャの議論を待たない。下位の指摘が上の階層を
+outrank しそうなときは、**黙って並べ替えず、両方を提示してユーザーに問う。** 順位は普通の食い違いを
+人間なしで解くために在るのであって、順位を破る指摘こそ人間が見るべき場面である。
+
 ## Step 0 — スコープ確認
 
 即座に `AskUserQuestion`。未マージのコミットがあれば「変更ファイルのみ」を既定、なければ作業ツリー / 指定パスを既定。
@@ -115,17 +151,19 @@ Step 4.5 では `/test-review` へ `reviewer_model` payload として渡す。
 
 - 4 つの **コード lens** は `adversarial-reviewer` を使う。lens ごとに1体、`agentType: "adversarial-reviewer"`、`label` は `find:security` のように。
 - **コメント次元**は専用の `comment-reviewer` を使う（`agentType: "comment-reviewer"`, `label: "find:comment"`）。1 段落の lens より豊かな分類を持つコメント特化の強いエージェントであり、その指摘が Step 5.5 の自動修正へ流れる。
+- **DDD モデリング次元**は専用の `ddd-modeling-reviewer` を使う（`agentType: "ddd-modeling-reviewer"`, `label: "find:ddd"`）。diff が `internal/domain/**` または `internal/usecase/**` に触れた時。この変更がドメインをうまくモデル化できているかを、このリポジトリ自身が書き残した解釈で問う（集約境界とトランザクション境界の一致、規則の配置先、集約間参照の規律、ユビキタス言語、Factory / Repository の意味論）。**階層 1** の lens であり、その指摘は「コードが何であるべきか」を決めるため、下位の階層が動く前に決着させる。Evans の原典を直接の基準にしないこと — それは `ddd-origin-auditor` の担当で、対象も文書でありコードではない。
 - **型設計次元**は専用の `type-design-reviewer` を使う（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）。diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4 軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で各型を採点し、指摘は suggestion 級（自動修正しない）。
 
-| Finder | エージェント | 起動条件 |
-| --- | --- | --- |
-| `correctness` | adversarial-reviewer | 常時 |
-| `security` | adversarial-reviewer | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
-| `architecture` | adversarial-reviewer | 常時 |
-| `runtime-gap` | adversarial-reviewer | controller / DI / `openapi/**` / `database/**` が触られた時 |
-| `test-gap` | adversarial-reviewer | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られ、**かつ** Step 0 のテスト観点委譲を辞退した時 — Step 4.5 実行中は停止 |
-| コメント品質 | **comment-reviewer** | diff がコメントを追加 / 変更した時（ほぼ常時） |
-| 型設計 | **type-design-reviewer** | diff が domain 型（`internal/domain/**/*.go`）に触れた時 |
+| Finder | 階層 | エージェント | 起動条件 |
+| --- | --- | --- | --- |
+| `architecture` | 1 | adversarial-reviewer | 常時 |
+| `ddd-modeling` | 1 | **ddd-modeling-reviewer** | diff が `internal/domain/**` または `internal/usecase/**` に触れた時 |
+| `security` | 2 | adversarial-reviewer | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
+| `correctness` | 2 | adversarial-reviewer | 常時 |
+| `runtime-gap` | 3 | adversarial-reviewer | controller / DI / `openapi/**` / `database/**` が触られた時 |
+| 型設計 | 3 | **type-design-reviewer** | diff が domain 型（`internal/domain/**/*.go`）に触れた時 |
+| `test-gap` | 4 | adversarial-reviewer | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られ、**かつ** Step 0 のテスト観点委譲を辞退した時 — Step 4.5 実行中は停止 |
+| コメント品質 | 5 | **comment-reviewer** | diff がコメントを追加 / 変更した時（ほぼ常時） |
 
 各 `adversarial-reviewer` プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`CLAUDE.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。
 
@@ -137,7 +175,7 @@ Step 4.5 では `/test-review` へ `reviewer_model` payload として渡す。
 
 ## Step 3 — 敵対的 verify
 
-全 finding を集め、(file, line, claim) で **dedup**。残った finding ごとに `review-verifier` subagent を1体（並列）起動し、単一 finding + ベース ref を渡す。`agentType: "review-verifier"`、`label` は `verify:<file>`、Step 0 で選んだ reviewer `model`（reviewer ≠ implementer は同様に維持）。
+全 finding を集め、(file, line, claim) で **dedup**。加えて 2 つの lens が同じ事実を報告した場合は評価順の規則 4 を適用する — 上位の枠組みを残し、下位はその裏付けとして畳み、指摘は 1 件だけ先へ送る。文言一致の dedup ではこれを捕まえられない（同じ欠陥が architecture の違反と型設計の suggestion という別の言葉で届き、両方を通すと二重に数える）。残った finding ごとに `review-verifier` subagent を1体（並列）起動し、単一 finding + ベース ref を渡す。`agentType: "review-verifier"`、`label` は `verify:<file>`、Step 0 で選んだ reviewer `model`（reviewer ≠ implementer は同様に維持）。
 
 - **CONFIRMED** と **PLAUSIBLE** を残す。**REFUTED** は落とす（件数はレポート用に保持）。
 - critical/high で単一判定が頼りないときは verifier を 2〜3 体立て多数決。重要な finding ほど単一意見より多様性。
@@ -207,13 +245,17 @@ Step 1 のテスト観点判定式が真 **かつ** Step 0 でユーザーが委
 
 存在理由はランタイム行と同じ。これが無いと、`test-gap` を含む `lens:` の羅列が「テストを監査した」と読めてしまうのに実際は変更シンボルのサブセットしか見ていないし、テスト解析を一切していない実行は痕跡すら残らない。弱いほうのケースこそ明記し、省略をカバレッジと取り違えさせない。
 
-重大度順、CONFIRMED を PLAUSIBLE より先に。ランタイムで何を検査し何をスキップしたかは必ず明記（黙って省くと「全部見た」と誤読される）。委譲したテスト指摘も同様に、独自の severity 語彙のまま専用節に置く。Step 4.5 を実行しなかったときはその節ごと省く（`テスト観点:` 行が既にその事実を伝えている）。
+**階層順に並べ、階層内で重大度順**、CONFIRMED を PLAUSIBLE より先に（評価順の規則 1）。上位の決着を待っている指摘は `保留` と明記し、何を待っているかを書く（規則 2）。ランタイムで何を検査し何をスキップしたかは必ず明記（黙って省くと「全部見た」と誤読される）。委譲したテスト指摘も同様に、独自の severity 語彙のまま専用節に置く。Step 4.5 を実行しなかったときはその節ごと省く（`テスト観点:` 行が既にその事実を伝えている）。
 
 ## Step 5.5 — コメント指摘の適用（既定。`--no-apply` でスキップ）
 
 本スキルがソースを書き換えるのはここだけ。verify を通った**コメント品質**の指摘（CONFIRMED、およびユーザーがオプトインした PLAUSIBLE）は自分で適用する — `comment-reviewer` サブエージェントは決して編集しない。コード 5 lens はここでは自動修正せず、Step 6 へ回す。
 
 編集前に 1 度だけ確認する:
+
+**先に評価順の規則 3 を適用する。** 生き残っている階層 1〜2 の指摘が書き換えそうなファイルを列挙し、この
+ステップの対象から外す — これから変わるコードに文章を磨いても二度手間で、しかもコメント修正の diff が
+本題の指摘を埋める。外したファイルと理由をレポートに書き、上位が決着したら改めて提示する。
 
 - `AskUserQuestion`: 「コメント指摘 <N> 件をライフサイクル内で修正適用しますか？」 — 選択肢: 「すべて適用」 / 「1件ずつ確認」 / 「適用しない（レポートのみ／PR コメント化）」。
 
@@ -296,6 +338,7 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 ## やる / やらない
 
 - ✅ reviewer モデル ≠ implementer モデルを保証（Step 0 でユーザーが選択。実装者と同一を選んだ場合は警告して確認）。
+- ✅ 指摘を階層で順位づける（評価順）: レポートを階層順に並べ、上位待ちの下位指摘は保留にし、同じ事実は上位の枠組みへ畳み、下位がクリティカルで上位を outrank しそうなときはユーザーに問う。
 - ✅ finder は並列（1メッセージ・複数 `Agent` 呼び出し）、lens ごとに1体。
 - ✅ レポート前に全 finding を独立 verify、REFUTED は落とす。
 - ✅ 触られたエンドポイントはランタイム検証、共有スキーマ編集なら全 consumer に拡大。
@@ -310,6 +353,8 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 - ❌ Step 5.5 で機能的ディレクティブ（`//go:generate` など）や export 宣言の doc コメントを削除する（doc コメントは書き直す）、生成ファイル / Markdown / deny リスト対象に触れる、自動コミットする。
 - ❌ 同じレビューで `test-gap` と `/test-review` の両方を回す — ギャップの所管は1つ、報告も1つ。
 - ❌ 委譲した指摘の severity を CONFIRMED / PLAUSIBLE × 重大度 に写像し直す / diff 外のテスト指摘を PR に投稿する。
+- ❌ 重大度だけでレポートを並べる / 1 つの事実を 2 階層から 2 件として出す / 下位の合致で上位の重大度を上げる / 下位がクリティカルに見えるときに黙って階層を並べ替える（両方を出してユーザーに問う）。
+- ❌ 階層 1〜2 の指摘が書き換えそうなファイルへコメント修正を自動適用する。
 - ❌ reviewer を implementer と同一モデルで回す。
 - ❌ 思いつきの style nit を finding として出す / 網羅に見せるための水増し。
 
@@ -319,6 +364,8 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 - [ ] reviewer モデル ≠ implementer モデルを確認。
 - [ ] Step 0 でテスト観点の委譲を確認、Step 1 で判定式を解決、結果の状態を記録。
 - [ ] lens ごとに finder を fan-out（並列）。`test-gap` は委譲を辞退したときのみ含める。
+- [ ] 同じ事実を上位の階層へ畳んだ。レポートは階層順→重大度順。上位待ちの下位指摘は `保留` と明記。
+- [ ] 階層 1〜2 の指摘が書き換えそうなファイルはコメント自動適用から外し、外したファイルを明記。
 - [ ] 全 finding を独立 verify、REFUTED は除外（件数は保持）。
 - [ ] 触られたエンドポイントの curl + o11y 実施（共有スキーマ → 全 consumer）、破壊系は確認済み。
 - [ ] 委譲したときは Step 4.5 を実行（`scope` / `base_ref` / `reviewer_model` / `skip_verifier: false` を渡し、`test-gap` は起動しない）。
