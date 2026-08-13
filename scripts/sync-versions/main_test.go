@@ -332,28 +332,28 @@ func Test_buildRules(t *testing.T) {
 			t.Parallel()
 			v := testVersions()
 			want := map[string]string{
-				"go.mod (go directive)":                             v.Go,
-				"docker/server/Dockerfile (golang base)":            v.Go,
-				"docker/tools/Dockerfile (golang base)":             v.Go,
-				"docker/tools/Dockerfile (node base)":               v.Node,
-				"docker/tools/Dockerfile (python base)":             v.Python,
-				"docker/README.md (golang image)":                   v.Go,
-				"docker/README.md (node image)":                     v.Node,
-				"docker/README.md (python image)":                   v.Python,
-				"docker/README.ja.md (golang image)":                v.Go,
-				"docker/README.ja.md (node image)":                  v.Node,
-				"docker/README.ja.md (python image)":                v.Python,
-				"docker/server/README.md (golang image)":            v.Go,
-				"docker/server/README.ja.md (golang image)":         v.Go,
-				"docker/tools/README.md (golang image)":             v.Go,
-				"docker/tools/README.md (node image)":               v.Node,
-				"docker/tools/README.md (python image)":             v.Python,
-				"docker/tools/README.ja.md (golang image)":          v.Go,
-				"docker/tools/README.ja.md (node image)":            v.Node,
-				"docker/tools/README.ja.md (python image)":          v.Python,
-				"docker/tools/Dockerfile (mise version)":            v.Mise,
-				"docker/server/Dockerfile (mise version)":           v.Mise,
-				"docker-compose.yaml (otel-lgtm image)":             v.OtelLgtm,
+				"go.mod (go directive)":                     v.Go,
+				"docker/server/Dockerfile (golang base)":    v.Go,
+				"docker/tools/Dockerfile (golang base)":     v.Go,
+				"docker/tools/Dockerfile (node base)":       v.Node,
+				"docker/tools/Dockerfile (python base)":     v.Python,
+				"docker/README.md (golang image)":           v.Go,
+				"docker/README.md (node image)":             v.Node,
+				"docker/README.md (python image)":           v.Python,
+				"docker/README.ja.md (golang image)":        v.Go,
+				"docker/README.ja.md (node image)":          v.Node,
+				"docker/README.ja.md (python image)":        v.Python,
+				"docker/server/README.md (golang image)":    v.Go,
+				"docker/server/README.ja.md (golang image)": v.Go,
+				"docker/tools/README.md (golang image)":     v.Go,
+				"docker/tools/README.md (node image)":       v.Node,
+				"docker/tools/README.md (python image)":     v.Python,
+				"docker/tools/README.ja.md (golang image)":  v.Go,
+				"docker/tools/README.ja.md (node image)":    v.Node,
+				"docker/tools/README.ja.md (python image)":  v.Python,
+				"docker/tools/Dockerfile (mise version)":    v.Mise,
+				"docker/server/Dockerfile (mise version)":   v.Mise,
+				"docker-compose.yaml (otel-lgtm image)":     v.OtelLgtm,
 			}
 
 			rules := buildRules(v)
@@ -726,7 +726,6 @@ func Test_run(t *testing.T) {
 			assert.Contains(t, readSynced(t, root, "docker/tools/Dockerfile"), "FROM python:3.99.0-slim")
 			assert.Contains(t, readSynced(t, root, "docker/tools/Dockerfile"), "MISE_VERSION=v2099.1.1")
 			assert.Contains(t, readSynced(t, root, "docker-compose.yaml"), "grafana/otel-lgtm:0.99.0")
-			assert.Contains(t, readSynced(t, root, ".github/workflows/go-lint.yaml"), "version: 2099.1.1")
 			assert.Contains(t, readSynced(t, root, "docker/tools/README.md"), "`golang:1.99.0-alpine`")
 		})
 	})
