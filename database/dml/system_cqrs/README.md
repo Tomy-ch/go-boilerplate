@@ -16,16 +16,7 @@ Implementation: `internal/infrastructure/rdb/system_cqrs/`
 
 ## Directory Structure
 
-```text
-system_cqrs/
-├── health_check/
-│   ├── select_system_health.sql
-│   └── ...
-├── metrics/
-│   ├── select_system_metrics.sql
-│   └── ...
-└── ...
-```
+One directory per operational concern, named after it — none of them is a business aggregate.
 
 ## Naming Convention
 

@@ -8,12 +8,9 @@ Echo サーバーの初期化・起動・DI 管理を担う **サーバーモジ
 
 ## 構成
 
-```text
-internal/di/server/
-├── server.go       # Module / HookModule / MiddlewareModule
-├── extension/      # ミドルウェア・Configurator の DI 登録
-└── hook/           # サーバーライフサイクルフック（HTTP 起動/停止、DB クローズ）
-```
+`server.go` がモジュールを提供し、`extension/` がミドルウェアとコンフィギュレータを、`hook/` が
+ライフサイクルフックを登録する。この分割があるのは、hook が「ある時点で走るもの」であるのに対し、
+module は配線の記述にすぎないからである。
 
 ## アプリケーション起動順序
 

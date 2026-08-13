@@ -6,6 +6,8 @@ description: >-
 
 # Context Map
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Create `docs/design/context-map.md`, the English-canonical relationship map for every place this
 system exchanges a model with a context it does not own. Maintain
 `docs/design/context-map.ja.md` as its Japanese translation.

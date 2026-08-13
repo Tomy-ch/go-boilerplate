@@ -48,18 +48,13 @@ The following exist as supporting components.
 
 ## Directory Structure
 
-```txt
-internal/infrastructure/rdb
- ├ repository/        Repository implementation
- ├ query_service/     QueryService implementation
- ├ command_service/   CommandService implementation (write-side counterpart of QueryService)
- ├ system_cqrs/      System operational queries (health check, etc.)
- ├ driver/            DB connection / transaction + pgx query tracer (logging / tracing)
- ├ sqlc/              sqlc generated code + SQL helper
- ├ pgerror/           PostgreSQL error normalization
- ├ metrics/           Connection pool + query duration/error Prometheus metrics
- └ testkit/           RDB test utilities
-```
+The data-access directories mirror the DML categories under `database/dml/`, one for one —
+`repository/`, `query_service/`, `command_service/`, `system_cqrs/` — because a category that
+exists in SQL and not in Go (or the reverse) is a category nobody decided on.
+
+The rest are what those four need: `driver/` for connections, transactions and the pgx tracer,
+`sqlc/` for generated code, `pgerror/` for normalizing PostgreSQL errors, `metrics/` for pool and
+query instrumentation, and `testkit/` for the test harness.
 
 ## Repository
 

@@ -5,6 +5,8 @@ description: Determine whether one quarantined supply-chain artifact version has
 
 # Supply-chain Triage
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Answer one question about one artifact version: **is there direct evidence that this release is a
 compromised publish?** Produce a scored, cited Japanese verdict and change nothing.
 

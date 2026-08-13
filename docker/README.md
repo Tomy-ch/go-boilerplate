@@ -6,19 +6,8 @@ English | [日本語](README.ja.md)
 
 ## Directory Structure
 
-```text
-docker/
-├── server/             # Application server Dockerfile
-├── tools/              # Code generation / tool runner Dockerfile
-├── document/           # Documentation viewer Dockerfile + nginx config
-├── garage/             # Object storage Dockerfile + config + provisioning script
-├── elasticmq/          # SQS-compatible broker config
-├── mock-auth-server/   # Mock OIDC auth server Dockerfile
-└── database/
-    ├── sql/            # DB initialization SQL
-    ├── schemaspy/      # ER diagram generation config
-    └── sqlfluff/       # SQL linter config
-```
+One directory per image or service, named after it; each holds that unit's Dockerfile and any
+configuration it needs at build or run time.
 
 ## Compose Layering (infra / app)
 

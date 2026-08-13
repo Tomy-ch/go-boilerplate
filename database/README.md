@@ -6,16 +6,6 @@ English | [日本語](README.ja.md)
 
 It manages migrations, sqlc DML sources, seed data, and generated outputs.
 
-## Directory Structure
-
-```text
-database/
-├── migrations/   # DDL migration files (golang-migrate)
-├── dml/          # SQL source files for sqlc code generation
-├── seed/         # Seed data for non-production environments (transactional)
-└── gen/          # Auto-generated SQL (do not edit)
-```
-
 ## Subdirectory Roles
 
 |Directory|Content|Generation Command|Editing|
@@ -24,6 +14,7 @@ database/
 |`dml/`|sqlc queries (SELECT / INSERT, etc.)|—|Manual|
 |`seed/`|Initial data for development and testing|—|Manual|
 |`gen/`|SQL merged from `dml/` via merge-dml + schema dump|`make gen-query`|**Do not edit**|
+|`maintenance/`|Operational SQL run by hand, outside the migration line|—|Manual|
 
 ## Data Lifecycle
 

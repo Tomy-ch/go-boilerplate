@@ -5,6 +5,8 @@ description: Sweep the existing stock of source-code comments to decide whether 
 
 # Comment Sweep
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Treat this as a relocation workflow, not a comment-deletion workflow. Do not re-argue comment
 volume: a non-obvious, verifiable Why has a concrete case for remaining. Instead, ask the
 jurisdiction question from the runtime authority: if this decision were reversed, which document

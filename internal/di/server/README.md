@@ -8,12 +8,9 @@ Built around three `fx.Module` functions, it provides HTTP server creation, midd
 
 ## Structure
 
-```text
-internal/di/server/
-├── server.go       # Module / HookModule / MiddlewareModule
-├── extension/      # Middleware and configurator DI registration
-└── hook/           # Server lifecycle hooks (HTTP start/stop, DB close)
-```
+`server.go` provides the modules; `extension/` registers the middleware and configurators, and
+`hook/` the lifecycle hooks. The split exists because a hook runs at a point in time while a
+module is only a description of wiring.
 
 ## Application Startup Order
 

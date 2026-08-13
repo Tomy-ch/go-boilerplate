@@ -20,21 +20,6 @@
 
 このパッケージは **ビジネスロジックを持ちません。**
 
-## パッケージ構成
-
-```txt
-internal/system
-├── buildinfo.go
-├── version.go
-└── mock/
-```
-
-|ファイル|役割|
-|---|---|
-|`buildinfo.go`|BuildInfo インターフェースと実装|
-|`version.go`|ビルド時に埋め込まれるメタ情報|
-|`mock/`|テスト用 mock|
-
 ## BuildInfo インターフェース
 
 アプリケーションコードは **BuildInfo interface** を通してビルド情報を取得します。

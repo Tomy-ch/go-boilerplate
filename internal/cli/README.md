@@ -26,25 +26,9 @@ live in `cmd/` (package `main`). This split keeps the core unit-testable and the
 
 ## Structure
 
-```text
-cmd/                     # package main: Cobra defs + composition root (excluded from coverage)
-├── commands.go          # registerCommands (subcommand registration)
-├── serve.go             # newServeCommand + serveRun wiring
-├── migrate.go           # newMigrate{Up,Down}Command + buildMigrateInstance
-└── ...                  # one file per command
-
-internal/cli/            # pure testable core (covered by unit tests, 90%+)
-├── server/              # RunServer / ResolveMetricsStop / NewMetricsServer
-├── migrate/             # MigrateUpRun / MigrateDownRun / Migrator
-├── seed/                # RunDBSeed
-├── job/                 # RunJobWith
-├── fixcollation/        # RunFix
-├── dumpschema/          # RunDump / NewGenerator
-├── mergedml/            # RunMerge / NewGenerator
-├── worker/              # RunWorkerWith / NewHealthServer
-├── outbox/              # RunRelay / RunReplayWith
-└── dbslot/              # Pool / Registry / DBAdmin / Compose / Resolver
-```
+One directory per subcommand, named after it, paired with the `cmd/<name>.go` that wires it.
+The pairing is the point: `cmd/` stays a Cobra shell with a composition root and is excluded from
+coverage, while the testable core lives here and is covered like any other package.
 
 `registerCommands` in `cmd/commands.go` registers all subcommands to the Cobra root command.
 

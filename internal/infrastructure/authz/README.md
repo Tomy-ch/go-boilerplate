@@ -40,13 +40,6 @@ A real deployment replaces these with its own RBAC / external policy-engine impl
 
 Suggested layout (mirrors `internal/infrastructure/auth/`):
 
-```txt
-internal/infrastructure/authz
-├── allowall   # local / ci / test stub (grants everything)
-├── stg        # staging Authorizer
-└── prd        # production Authorizer
-```
-
 A real `Authorizer` typically decides via:
 
 - ownership (subject == `Resource.OwnerID()`) — object-level authorization

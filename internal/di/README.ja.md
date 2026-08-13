@@ -167,27 +167,10 @@ case config.EnvLocal:
 
 ## DI レイヤの構造
 
-```txt
-internal/di
-├── server.go            # Server プロファイルの entrypoint（NewApplicationCore）
-├── job.go               # Job プロファイルの entrypoint（NewJobCore / RunJob）
-├── worker.go            # Worker プロファイルの entrypoint（NewWorkerCore / RunWorker）
-├── outboxrelay.go       # Outbox-relay の entrypoint（NewOutboxRelayApp / RunOutboxReplay）
-├── fx_event_logger.go   # fxevent.Logger → 構造化ロガー の橋渡し（NewFxEventLogger）
-│
-├── module/              # レイヤ別の fx.Module 部品群（module/README.md 参照）
-│   └── core/            # HTTP スタック共通コンポーネント（authn / basicauth / validator / …）
-├── server/              # Echo サーバーモジュール（Module / MiddlewareModule / HookModule）
-│   ├── extension/       # ミドルウェア & configurator の DI（inbound / outbound / security /
-│   │                    #   instrumentation / testkit）
-│   └── hook/            # サーバーのライフサイクルフック（HTTP 起動/停止・DB close・o11y shutdown）
-├── lifecycle/           # Registrar（fx.Lifecycle の抽象化）+ SupervisedRunner
-├── shutdowner/          # fx.Shutdowner のラッパー（ワンショット系の自己停止）
-├── job/                 # Job Runner provider + job/hook（ライフサイクル結線）
-├── worker/              # Worker Engine provider + ValidateShutdownGrace + worker/hook
-└── outboxrelay/
-    └── hook/            # Relay engine のライフサイクルフック
-```
+**実行プロファイル**ごとに 1 ファイルを置く（server / job / worker / outbox relay）。各ファイルが
+そのプロファイルのエントリポイントを公開する。配線がコンストラクタ 1 つに収まらないプロファイルは、
+自身のファイルと並べて同名のディレクトリを持つ。`module/` には、どのプロファイルも参照する層ごとの
+`fx.Module` の部品を置く。
 
 ## Core / Optional / Adapter モジュール
 

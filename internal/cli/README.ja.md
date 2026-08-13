@@ -26,25 +26,9 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 
 ## 構造
 
-```text
-cmd/                     # package main: Cobra 定義 + composition root（カバレッジ除外）
-├── commands.go          # registerCommands（サブコマンド登録）
-├── serve.go             # newServeCommand + serveRun 結線
-├── migrate.go           # newMigrate{Up,Down}Command + buildMigrateInstance
-└── ...                  # 1 コマンド 1 ファイル
-
-internal/cli/            # 純粋なテスト可能コア（ユニットテスト対象, 90%+）
-├── server/              # RunServer / ResolveMetricsStop / NewMetricsServer
-├── migrate/             # MigrateUpRun / MigrateDownRun / Migrator
-├── seed/                # RunDBSeed
-├── job/                 # RunJobWith
-├── fixcollation/        # RunFix
-├── dumpschema/          # RunDump / NewGenerator
-├── mergedml/            # RunMerge / NewGenerator
-├── worker/              # RunWorkerWith / NewHealthServer
-├── outbox/              # RunRelay / RunReplayWith
-└── dbslot/              # Pool / Registry / DBAdmin / Compose / Resolver
-```
+サブコマンドごとに 1 つのディレクトリを置き、その名前を付ける。配線する `cmd/<name>.go` と対になる。
+この対応こそが要点である。`cmd/` は Cobra の殻と合成ルートに留めてカバレッジ対象から外し、テスト可能な
+中身はこちらに置いて他のパッケージと同様に計測する。
 
 `cmd/commands.go` の `registerCommands` で全サブコマンドを Cobra のルートコマンドに登録します。
 

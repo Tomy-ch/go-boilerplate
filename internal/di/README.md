@@ -161,27 +161,9 @@ This allows handling differences between:
 
 ## Structure of the DI Layer
 
-```txt
-internal/di
-├── server.go            # Server profile entrypoint (NewApplicationCore)
-├── job.go               # Job profile entrypoint (NewJobCore / RunJob)
-├── worker.go            # Worker profile entrypoint (NewWorkerCore / RunWorker)
-├── outboxrelay.go       # Outbox-relay entrypoint (NewOutboxRelayApp / RunOutboxReplay)
-├── fx_event_logger.go   # fxevent.Logger → structured logger bridge (NewFxEventLogger)
-│
-├── module/              # Per-layer fx.Module building blocks (see module/README.md)
-│   └── core/            # HTTP-stack common components (authn / basicauth / validator / …)
-├── server/              # Echo server module (Module / MiddlewareModule / HookModule)
-│   ├── extension/       # Middleware & configurator DI (inbound / outbound / security /
-│   │                    #   instrumentation / testkit)
-│   └── hook/            # Server lifecycle hooks (HTTP start/stop, DB close, o11y shutdown)
-├── lifecycle/           # Registrar (fx.Lifecycle abstraction) + SupervisedRunner
-├── shutdowner/          # fx.Shutdowner wrapper (self-stop for one-shot profiles)
-├── job/                 # Job Runner provider + job/hook (lifecycle wiring)
-├── worker/              # Worker Engine provider + ValidateShutdownGrace + worker/hook
-└── outboxrelay/
-    └── hook/            # Relay engine lifecycle hooks
-```
+One file per **run profile** — server, job, worker, outbox relay — each exposing that profile's
+entrypoint. A profile whose wiring is more than a constructor gets a directory of the same name
+beside its file. `module/` holds the per-layer `fx.Module` building blocks every profile draws from.
 
 ## Core / Optional / Adapter Modules
 
