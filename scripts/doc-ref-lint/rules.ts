@@ -91,6 +91,32 @@ export function checkStructuredReferences(file: string, source: string, adrs: AD
   });
 }
 
+export const DOC_ROUTES_FILE = ".agents/doc-router/routes.conf";
+
+/**
+ * doc-router の経路表が指す文書が実在するかを検査する。
+ *
+ * @remarks
+ * この表は不完全でよく、載っていないパスは今日どおりエージェントが索引を辿ります。欠落は
+ * 欠陥にならないので検査しません。欠陥になるのは**間違った**行だけで、それがここで止まります。
+ */
+export function checkDocRoutes(source: string, present: ReadonlySet<string>): Finding[] {
+  return source.split("\n").flatMap((line, index) => {
+    // `<glob> = <doc>[, <doc>...] # <why>`。理由を先に落とすので、コメント行は空になって脱落する。
+    // 正規表現ではなく添字で切るのは、遅延量指定子と `\s*` の組み合わせが後戻りを生むため。
+    const [body] = line.split("#", 1);
+    const separator = body.indexOf("=");
+    if (separator < 0 || body.slice(0, separator).trim() === "") return [];
+
+    return body
+      .slice(separator + 1)
+      .split(",")
+      .map((doc) => doc.trim())
+      .filter((doc) => doc !== "" && !present.has(doc))
+      .map((doc) => ({ file: DOC_ROUTES_FILE, message: `L${index + 1}: routes to ${doc}, which does not exist` }));
+  });
+}
+
 export function expectedTranslation(file: string): string | null {
   if (!file.startsWith("docs/") || !file.endsWith(".md") || file.startsWith("docs/ja/") || file.startsWith("docs/adr/") || isGenerated(file) || translationExclusion(file) !== null) return null;
   return path.join("docs/ja", path.relative("docs", path.dirname(file)), `${path.basename(file, ".md")}.ja.md`);
