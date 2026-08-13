@@ -714,7 +714,6 @@ import (
     // それぞれ実装で使うパッケージをimport
 )
 
-
 // 入力と出力が共有する可変属性一式。
 type UserMutableFields struct {
     FirstName      string
@@ -741,7 +740,6 @@ type UserView struct {
 
     UserMutableFields
 }
-
 
 // usecaseという名称は固定
 type usecase struct {
@@ -803,7 +801,6 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
     if err != nil {
         return nil, err
     }
-
 
     // オプション: observability.RunWithSpanで処理単位のspanを作成
     // 可観測性を高めるために、Domain層の処理もspanとして切り出すことができます。
@@ -925,6 +922,5 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (Use
       Building:       userEntity.Building(),
     }, nil
 }
-
 
 ```

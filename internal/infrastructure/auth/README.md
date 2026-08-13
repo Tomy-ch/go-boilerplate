@@ -45,20 +45,6 @@ Implementations are separated by **verification method**, and the DI layer choos
 - `local` — no signature verification; extracts the subject from the token string. A CI / test stub only.
 - `jwt` — JWT verification (de-facto standard core) with the signing key from either a fixed public key or a JWKS endpoint. The production-oriented method.
 
-```txt
-internal/infrastructure/auth
-├── README.md
-├── local
-│   └── auth_local.go
-└── jwt
-    └── auth_jwt.go
-```
-
-|Directory|Verification method|
-|---|---|
-|`local`|Development stub — no signature verification|
-|`jwt`|JWT verification (standard core); key from fixed public key or JWKS|
-
 The environment → method mapping is applied in DI (see "Registration to DI"): CI / test use the `local` stub, while `jwt` handles local development (verifying real JWTs from the mock auth server) and the environments that wire real token verification.
 
 ## local Implementation

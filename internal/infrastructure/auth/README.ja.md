@@ -48,20 +48,6 @@ Infrastructure は **Boundary を実装するのみ** であり、Usecase から
 - `local` — 署名検証を行わず、トークン文字列から subject を抽出する。CI / test 用のスタブのみ。
 - `jwt` — JWT 検証（デファクト標準のコア）。署名鍵は固定公開鍵か JWKS エンドポイントのいずれかから解決する。本番向けの方式。
 
-```txt
-internal/infrastructure/auth
-├── README.md
-├── local
-│   └── auth_local.go
-└── jwt
-    └── auth_jwt.go
-```
-
-|ディレクトリ|検証方式|
-|---|---|
-|`local`|開発用スタブ — 署名検証なし|
-|`jwt`|JWT 検証（標準コア）。鍵は固定公開鍵または JWKS から取得|
-
 環境 → 方式の対応付けは DI で適用されます（「DI への登録」を参照）。CI / test は `local` スタブを使い、`jwt` はローカル開発（mock 認証サーバーの実 JWT を検証）と、実トークン検証を配線する環境を担当します。
 
 ## local 実装

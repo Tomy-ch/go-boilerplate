@@ -14,34 +14,6 @@ The main purposes are as follows.
 - Ensuring testability
 - Providing a framework-independent logging API
 
-## Package Structure
-
-```txt
-internal/logging
-├── logger.go
-├── logger_core.go
-├── stacktrace_core.go
-├── field.go
-├── field_builder.go
-├── const.go
-├── level.go
-├── test_kit.go
-└── mock/
-```
-
-The role of each file is as follows.
-
-|File|Role|
-|---|---|
-|`logger.go`|`Logger` interface, its `*logger` implementation, and `WithCore` (Tee an additional `LogCore`)|
-|`logger_core.go`|zap-based Logger construction (`NewJSONLogger` / `NewConsoleLogger`, encoder config)|
-|`level.go`|`Level` type and `LevelDebug/Info/Warn/Error` / `ParseLevel`|
-|`stacktrace_core.go`|zapcore.Core wrapper that converts the auto-attached `Entry.Stack` into a line array for JSON output|
-|`field.go`|Type of log fields and field constructors|
-|`field_builder.go`|Generation of HTTP / SQL log fields|
-|`const.go`|Log key definitions|
-|`test_kit.go`|Logger / FieldBuilder for testing|
-
 ## Logger Interface
 
 Application code uses only the **Logger interface**.
