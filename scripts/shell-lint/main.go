@@ -29,8 +29,7 @@ const shellSuffix = ".sh"
 var skippedDirs = []string{".git", "node_modules", "vendor", "tmp"}
 
 var (
-	errShellcheckMissing = xerrors.New("shellcheck が見つかりません")
-	errFindings          = xerrors.New("shellcheck が指摘を検出しました")
+	errFindings = xerrors.New("shellcheck が指摘を検出しました")
 )
 
 func main() {
@@ -44,13 +43,9 @@ func main() {
 // run はリポジトリ内のシェルスクリプトを shellcheck に掛け、結果を報告します。
 // wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段です。
 func run(ctx context.Context, wd func() (string, error), lookPath func(string) (string, error)) error {
-	if _, err := lookPath(shellcheck.Binary); err != nil {
-		return xerrors.Wrap(errShellcheckMissing, err.Error())
-	}
-
-	root, err := wd()
+	root, err := shellcheck.Setup(wd, lookPath)
 	if err != nil {
-		return xerrors.Wrap(err, "getwd")
+		return err
 	}
 
 	scripts, err := shellScripts(root)

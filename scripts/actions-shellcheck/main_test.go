@@ -1733,7 +1733,7 @@ func Test_run(t *testing.T) {
 
 			err := run(t.Context(), stubWD(writeActionRoot(t, compositeAction)), stubLookPath(errLookPath))
 
-			require.ErrorIs(t, err, errShellcheckMissing)
+			require.ErrorIs(t, err, shellcheck.ErrMissing)
 			assert.ErrorContains(t, err, errLookPath.Error())
 		})
 

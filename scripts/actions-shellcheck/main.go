@@ -97,13 +97,9 @@ func main() {
 // run は composite action の run ステップを shellcheck に掛け、結果を報告します。
 // wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段です。
 func run(ctx context.Context, wd func() (string, error), lookPath func(string) (string, error)) error {
-	if _, err := lookPath(shellcheck.Binary); err != nil {
-		return xerrors.Wrap(errShellcheckMissing, err.Error())
-	}
-
-	root, err := wd()
+	root, err := shellcheck.Setup(wd, lookPath)
 	if err != nil {
-		return xerrors.Wrap(err, "getwd")
+		return err
 	}
 
 	files, steps, err := collectSteps(os.DirFS(root))

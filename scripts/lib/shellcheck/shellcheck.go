@@ -28,8 +28,30 @@ const (
 	timeout = 30 * time.Second
 )
 
-// ErrRun は shellcheck を起動できなかった、または指摘以外の理由で終了したことを表す。
-var ErrRun = xerrors.New("shellcheck の実行に失敗しました")
+var (
+	// ErrMissing は shellcheck が PATH に無いことを表す。
+	ErrMissing = xerrors.New("shellcheck が見つかりません")
+
+	// ErrRun は shellcheck を起動できなかった、または指摘以外の理由で終了したことを表す。
+	ErrRun = xerrors.New("shellcheck の実行に失敗しました")
+)
+
+// Setup は shellcheck の所在を確かめ、走査の基点を返します。
+//
+// 順序に意味があります。基点が取れても shellcheck が無ければ 1 件も検査できないので、走査を始める
+// 前に落とします。両ツールが同じ前提で始まることを、この 1 箇所が保証します。
+func Setup(wd func() (string, error), lookPath func(string) (string, error)) (string, error) {
+	if _, err := lookPath(Binary); err != nil {
+		return "", xerrors.Wrap(ErrMissing, err.Error())
+	}
+
+	root, err := wd()
+	if err != nil {
+		return "", xerrors.Wrap(err, "getwd")
+	}
+
+	return root, nil
+}
 
 // Run は script を shellcheck に掛け、gcc 形式の出力を返します。
 //

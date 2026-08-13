@@ -71,7 +71,7 @@ func Test_run(t *testing.T) {
 
 			missing := func(string) (string, error) { return "", os.ErrNotExist }
 
-			require.ErrorIs(t, run(t.Context(), rootAt(t.TempDir()), missing), errShellcheckMissing)
+			require.ErrorIs(t, run(t.Context(), rootAt(t.TempDir()), missing), shellcheck.ErrMissing)
 		})
 
 		t.Run("基点ディレクトリを解決できなければ報告する", func(t *testing.T) {

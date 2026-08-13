@@ -20,6 +20,47 @@ const cleanScript = "#!/bin/sh\nset -eu\necho hello\n"
 // SC2086: 引用符の無い展開。方言に依存せず必ず指摘される。
 const dirtyScript = "#!/bin/sh\nset -eu\nx=$1\necho $x\n"
 
+func TestSetup(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("shellcheck があれば基点を返す", func(t *testing.T) {
+			t.Parallel()
+
+			root, err := shellcheck.Setup(func() (string, error) { return "/repo", nil }, exec.LookPath)
+
+			require.NoError(t, err)
+			assert.Equal(t, "/repo", root)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("shellcheck が無ければ基点を取らずに報告する", func(t *testing.T) {
+			t.Parallel()
+
+			called := false
+			wd := func() (string, error) { called = true; return "/repo", nil }
+
+			_, err := shellcheck.Setup(wd, func(string) (string, error) { return "", os.ErrNotExist })
+
+			require.ErrorIs(t, err, shellcheck.ErrMissing)
+			assert.False(t, called, "所在確認より先に基点を取ってはならない")
+		})
+
+		t.Run("基点を解決できなければ報告する", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := shellcheck.Setup(func() (string, error) { return "", os.ErrPermission }, exec.LookPath)
+
+			require.ErrorIs(t, err, os.ErrPermission)
+		})
+	})
+}
+
 func TestRun(t *testing.T) {
 	t.Parallel()
 
