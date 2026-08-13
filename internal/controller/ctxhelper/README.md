@@ -21,6 +21,14 @@ Hand-written (`authn.go`) — the `Authn` slot:
 - `WithAuthn(ctx) context.Context` — install an empty `Authn` slot (call before authentication)
 - `SetAuthn(ctx, authn) bool` — write into the slot; returns `false` when no slot is present
 - `GetAuthn(ctx) (auth.Authn, bool)` — read from the slot; `ok=false` when unset
+- `RequireAuthn(ctx) (auth.Authn, error)` — read from the slot, returning `ErrUnauthenticatedUser` when unset
+- `RequireUserID(ctx) (uuid.UUID, error)` — read the resolved internal user ID out of the slot's `Authn`
+- `SetAuthnFailure(ctx, err) bool` — record an authentication failure; returns `false` when no slot is present
+- `AuthnFailure(ctx) error` — read the recorded failure; `nil` when authentication did not fail
+
+The slot carries failures as well as successes because a spec may declare authentication
+optional, and validation of such an operation succeeds even when a presented credential was
+rejected. The failure survives in the slot, so a later stage can still deny the request.
 
 Generated (`genctxkey`, defined in `generate.go`) — boolean request-scoped flags. Each name exposes a `context.Context` pair plus an `*echo.Context` pair:
 

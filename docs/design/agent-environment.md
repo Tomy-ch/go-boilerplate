@@ -1,6 +1,6 @@
 # Agent Environment
 
-日本語: [agent-environment.ja.md](../ja/design/agent-environment.ja.md)
+日本語: [agent-environment.ja.md](agent-environment.ja.md)
 
 This document explains how the repository's agent environment turns its declared properties into daily practice. It is an interpretation of [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md), not a checklist or a second source of rules.
 
@@ -23,7 +23,7 @@ flowchart TD
 
 ## Correct after action
 
-Decidable properties fail mechanically: `depguard` and architecture tests protect layer boundaries; generators and drift checks protect derived artifacts; focused linters protect workflow and documentation conventions. Reading-comprehension judgments remain independent review, using the finder-to-verifier shape in [ADR-0090 (multi-model-adversarial-review)](../adr/0090-multi-model-adversarial-review.md).
+Decidable properties fail mechanically: `depguard` and architecture tests protect layer boundaries; generators and drift checks protect derived artifacts; focused linters protect workflow and documentation conventions. Reading-comprehension judgments remain independent review, using the finder-to-verifier shape in [ADR-0091 (multi-model-adversarial-review)](../adr/0091-multi-model-adversarial-review.md).
 
 ## Escalation and load-aware verification
 

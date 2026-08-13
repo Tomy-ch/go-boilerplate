@@ -21,6 +21,14 @@ ctxhelperは「contextの利用を制御する境界レイヤ」です。
 - `WithAuthn(ctx) context.Context` — 空の `Authn` スロットを仕込む（認証前に呼ぶ）
 - `SetAuthn(ctx, authn) bool` — スロットへ書き込む。スロットが無ければ `false`
 - `GetAuthn(ctx) (auth.Authn, bool)` — スロットから読む。未設定なら `ok=false`
+- `RequireAuthn(ctx) (auth.Authn, error)` — スロットから読む。未設定なら `ErrUnauthenticatedUser` を返す
+- `RequireUserID(ctx) (uuid.UUID, error)` — スロットの `Authn` から解決済みの内部ユーザー ID を取り出す
+- `SetAuthnFailure(ctx, err) bool` — 認証の失敗を記録する。スロットが無ければ `false`
+- `AuthnFailure(ctx) error` — 記録された失敗を読む。認証が失敗していなければ `nil`
+
+スロットが成功だけでなく失敗も運ぶのは、spec が認証を任意と宣言することがあり、その operation の
+バリデーションは提示された資格情報が拒否されても成功してしまうためです。失敗がスロットに残ることで、
+後段がリクエストを拒否できます。
 
 生成（`genctxkey`、`generate.go` に定義）— リクエストスコープの真偽値フラグ。各名前は `context.Context` 用と `*echo.Context` 用のペアを提供します:
 

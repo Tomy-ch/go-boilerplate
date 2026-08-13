@@ -29,7 +29,7 @@ Implements the `publisher.Publisher` interface (`internal/usecase/boundary/publi
 Each branch resolves its own settings, so a deployment that publishes to a queue is never asked for `OUTBOX_ENDPOINT`, and vice versa. Both resolutions fail at relay startup rather than at the first publish — an unset target would otherwise dead-letter every message silently.
 
 <!-- sample-api:begin -->
-The `sqs` branch — the only branch besides `http` — is wiring from the removable sample set (see [ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0050-broker-sdk-isolation-measured-as-coupling.md)); after `make setup-remove-sample-api` only the HTTP branch remains, while the SQS adapter itself stays as an unwired reference implementation.
+The `sqs` branch — the only branch besides `http` — is wiring from the removable sample set (see [ADR-0051 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0051-broker-sdk-isolation-measured-as-coupling.md)); after `make setup-remove-sample-api` only the HTTP branch remains, while the SQS adapter itself stays as an unwired reference implementation.
 <!-- sample-api:end -->
 
 ## Design Policy

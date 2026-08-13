@@ -35,29 +35,10 @@ package as an Echo middleware, passing the parsed spec and an `openapi3filter.Au
 Before the validator runs, an authn context slot is injected so the `AuthenticationFunc`
 can write authentication results into the request context.
 
-```go
-func Middleware(
-    spec *openapi3.T,
-    skipper echomw.Skipper,
-    authFunc openapi3filter.AuthenticationFunc,
-) echo.MiddlewareFunc {
-    oapiValidator := oapimw.OapiRequestValidatorWithOptions(spec, &oapimw.Options{
-        SilenceServersWarning: true,
-        Skipper:               skipper,
-        Options: openapi3filter.Options{
-            AuthenticationFunc: authFunc,
-        },
-    })
-    return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c *echo.Context) error {
-            req := c.Request()
-            req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
-            c.SetRequest(req)
-            return oapiValidator(next)(c)
-        }
-    }
-}
-```
+The slot is carried on the request's own context rather than returned as a value, because the
+`AuthenticationFunc` is invoked with a context the validation library builds independently of
+the request and has no other route back to the handler. The middleware lives at
+[`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go).
 
 The middleware is configured with a skipper that bypasses validation for ops paths
 (`internal/controller/httpstack/oapi/skipper`). The `security:` declarations in the spec

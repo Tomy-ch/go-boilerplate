@@ -30,7 +30,7 @@ property is decidable, or an independently reviewable signal where it is not.
 
 Existing mechanisms remain the source of their individual rules. In particular, deterministic
 properties gate through tooling; reading-comprehension judgments use the finder-to-verifier review
-shape of ADR-0090. The `ci-first` load band deliberately delegates heavy local gates to CI when a
+shape of ADR-0091. The `ci-first` load band deliberately delegates heavy local gates to CI when a
 saturated host would make their failures untrustworthy. Signals that reliably reappear through an
 existing mechanism need not be escalated as durable human work items.
 
@@ -60,5 +60,5 @@ Rejected because the existing mechanisms would remain difficult to evaluate as o
 
 ## Notes
 
-- Related mechanisms: ADR-0006, ADR-0007, ADR-0086, and ADR-0090.
+- Related mechanisms: ADR-0006, ADR-0007, ADR-0087, and ADR-0091.
 - The repository's interpretation is documented separately under `docs/design/`.

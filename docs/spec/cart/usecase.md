@@ -78,7 +78,7 @@ output:
   struct: CartView
   fields:
     - name: SessionToken
-      type: "*string"      # ゲストのとき、controller が Set-Cookie する値。確定済みなら nil
+      type: "*string"      # ゲストのとき、controller が X-Cart-Session ヘッダで返す値。確定済みなら nil
     - name: Items
       type: "[]CartItemView"
     - name: SubtotalAmount
@@ -143,12 +143,12 @@ steps:
   - 見つからない、または IsExpired の場合は空の CartView を 200 で返して終了（GET では行を作らない）
   - 明細の productID を集めて product.Repository.FindByIDs で現在値を取得する（ロックしない）
   - 明細ごとに issues を判定する（存在 / 公開状態 / 在庫 / lastSeenPrice との比較）
-  - MarkSeen で提示価格を更新し、Touch で有効期限を延長して SaveItems
+  - MarkSeen で提示価格を更新し、Touch で有効期限を延長して Update
   - 買える明細のみを合算した SubtotalAmount を添えて CartView を返す
 calls:
   - cart_repository.FindByOwnerID
   - cart_repository.FindBySessionToken
-  - cart_repository.SaveItems
+  - cart_repository.Update
   - product_repository.FindByIDs
   - clock.Now
 errors:
@@ -170,10 +170,10 @@ steps:
   - product_repository.FindByID で商品の存在と公開状態を確認する
       （非公開・不存在の商品はカートへ入れさせない。再評価と違い、投入は要求そのものが不正なため 422）
   - cart.SetItem（数量の設定。上限超過は ErrTooManyItems）
-  - Touch して SaveItems
+  - Touch して Update
   - GetCart と同じ再評価を行って CartView を返す
 calls:
-  - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / Create / SaveItems
+  - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / Create / Update
   - product_repository.FindByID / FindByIDs
   - token_generator.Generate
   - clock.Now
@@ -189,10 +189,10 @@ errors:
 tx_required: true
 steps:
   - subject からカートを解決する。無ければ空の CartView を返して終了（削除の冪等）
-  - LockByID → cart.RemoveItem → Touch → SaveItems
+  - LockByID → cart.RemoveItem → Touch → Update
   - 再評価つき CartView を返す
 calls:
-  - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / SaveItems
+  - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / Update
   - product_repository.FindByIDs
 errors:
   - なし（対象が無くても成功）
@@ -204,9 +204,9 @@ errors:
 tx_required: true
 steps:
   - subject からカートを解決する。無ければ何もせず終了
-  - LockByID → cart.Clear → SaveItems（カート自体は残す）
+  - LockByID → cart.Clear → Update（カート自体は残す）
 calls:
-  - cart_repository.LockByID / SaveItems
+  - cart_repository.LockByID / Update
 errors:
   - なし
 ```
@@ -219,12 +219,12 @@ steps:
   - SessionToken からゲストカートを取得する。無ければ空の MergeCartView を返して終了
   - UserID からユーザーカートを取得する
   - ユーザーカートが無い場合（高速路）:
-      ゲストカートに AssignOwner して UpdateOwner する。明細は 1 行も書き換えない
+      ゲストカートに AssignOwner して Update する。所有者の確定は明細の内容を変えない
   - ユーザーカートがある場合:
-      2 件を id 昇順で LockByID し（ロック順序の固定）、user.Merge(guest) → SaveItems → guest を Delete
+      2 件を id 昇順で LockByID し（ロック順序の固定）、user.Merge(guest) → Update → guest を Delete
   - Merge が報告した clamped / dropped を MergeCartView として返す
 calls:
-  - cart_repository.FindBySessionToken / FindByOwnerID / LockByID / UpdateOwner / SaveItems / Delete
+  - cart_repository.FindBySessionToken / FindByOwnerID / LockByID / Update / Delete
   - clock.Now
 errors:
   - ErrAlreadyOwned -> 409（同一セッションのマージが並行して 2 回走った場合）

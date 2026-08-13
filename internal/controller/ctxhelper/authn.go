@@ -15,9 +15,11 @@ var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires
 type authnSlotKey struct{}
 
 // authnSlot は、認証前に仕込んで後段ハンドラと共有する Authn の可変スロット。
+// 認証の成功と失敗の両方を運ぶ。
 type authnSlot struct {
-	authn auth.Authn
-	set   bool
+	authn   auth.Authn
+	set     bool
+	failure error
 }
 
 // WithAuthn は、空の Authn スロットを ctx に仕込む。
@@ -42,6 +44,27 @@ func GetAuthn(ctx context.Context) (auth.Authn, bool) {
 		return auth.Authn{}, false
 	}
 	return slot.authn, true
+}
+
+// SetAuthnFailure は、ctx のスロットへ認証の失敗を書き込む。スロットが無ければ false。
+// 記録された失敗を拒否へ結びつけるのは後段であり、その必要性は oapi.Middleware の failClosed が述べる。
+func SetAuthnFailure(ctx context.Context, err error) bool {
+	slot, ok := ctx.Value(authnSlotKey{}).(*authnSlot)
+	if !ok {
+		return false
+	}
+	slot.failure = err
+	return true
+}
+
+// AuthnFailure は、ctx のスロットから認証の失敗を読む。失敗していなければ nil。
+// 資格情報が提示されなかった場合は失敗ではないため nil を返す。
+func AuthnFailure(ctx context.Context) error {
+	slot, ok := ctx.Value(authnSlotKey{}).(*authnSlot)
+	if !ok {
+		return nil
+	}
+	return slot.failure
 }
 
 // RequireAuthn は、ctx のスロットから Authn を読みます。未設定の場合は ErrUnauthenticatedUser を返します。

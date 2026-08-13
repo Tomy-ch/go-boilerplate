@@ -1,7 +1,7 @@
 # Prefecture — Usecase Spec
 
 > 全件一覧は単一集約・無フィルタ・無ページングの simple list であり、QueryService ではなく
-> domain `prefecture.Repository` の `FindAll` に委譲する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
+> domain `prefecture.Repository` の `FindAll` に委譲する（ADR-0030 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 

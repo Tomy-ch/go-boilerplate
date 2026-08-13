@@ -62,7 +62,7 @@ SQL リンティングツール：
 他の 2 つのステージと違い、ツール本体は `mise.toml` 由来ではありません。mise が入れるのは `uv` だけで、
 `sqlfluff` はその `uv` が [`python/sqlfluff.txt`](../../python/sqlfluff.txt) から `--require-hashes` 付きで
 install します。これにより推移依存まで含めてバージョンとハッシュが固定されます
-（[ADR-0077 (mise-ssot-drift-gate)](../../docs/adr/0077-mise-ssot-drift-gate.ja.md)）。
+（[ADR-0078 (mise-ssot-drift-gate)](../../docs/adr/0078-mise-ssot-drift-gate.ja.md)）。
 
 ## docker-compose サービス
 

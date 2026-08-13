@@ -2,7 +2,7 @@
 
 [Worker README（日本語）](../../internal/controller/worker/README.ja.md) | English: [worker.md](worker.md)
 
-本書は worker scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、採用判断は worker ADR（[ADR-0047](../adr/0047-broker-agnostic-worker-scaffold.ja.md) 以降）を参照。
+本書は worker scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、採用判断は worker ADR（[ADR-0048](../adr/0048-broker-agnostic-worker-scaffold.ja.md) 以降）を参照。
 
 ---
 
@@ -226,7 +226,7 @@ flowchart LR
 > ①〜⑥ すべての実例が、削除可能なサンプル群の一部として同梱されている。`internal/controller/worker/withdrawalarchive` が outbox の emit する退会イベントを消費し、オブジェクトストレージへ証跡を書き出す。`make setup-remove-sample-api` はそれを削除し、`provideWorkers()` を再び空へ戻す。
 <!-- sample-api:end -->
 
-> ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、リンクをキューを消費する役割へ絞ることはできない。したがって分離は**結合**で定義する。具体的なブローカーを名指すのは、その adapter のパッケージと、それを選ぶ配線だけである（E3、[ADR-0050](../adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md)）。
+> ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、リンクをキューを消費する役割へ絞ることはできない。したがって分離は**結合**で定義する。具体的なブローカーを名指すのは、その adapter のパッケージと、それを選ぶ配線だけである（E3、[ADR-0051](../adr/0051-broker-sdk-isolation-measured-as-coupling.ja.md)）。
 
 ---
 
@@ -257,4 +257,4 @@ flowchart LR
 | **Settings** | engine-core の挙動設定（engine-local struct）。`config.WorkerConfig` から DI でマッピング。 |
 | **WorkerConfig** | engine-core 設定（broker 非依存、`WORKER_*`・`default` タグ付き）。broker 固有は adapter `Config`。 |
 | **traceparent / 継続** | W3C trace context。`Message.Attributes` から `Extract` して span を継続（D1）。 |
-| **E1/E2/E3** | engine が infra を import しない / fake のみで engine green / 具体的なブローカーの知識が、その adapter のパッケージとそれを選ぶ配線だけに閉じている（core の `*.go` も core のドキュメントも broker adapter を名指さない。[ADR-0050](../adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md)）。 |
+| **E1/E2/E3** | engine が infra を import しない / fake のみで engine green / 具体的なブローカーの知識が、その adapter のパッケージとそれを選ぶ配線だけに閉じている（core の `*.go` も core のドキュメントも broker adapter を名指さない。[ADR-0051](../adr/0051-broker-sdk-isolation-measured-as-coupling.ja.md)）。 |

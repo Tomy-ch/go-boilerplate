@@ -27,7 +27,11 @@ func NewAuthenticator(
 
 		authn, err := authExtractor(ctx, req, authenticator, resolver)
 		if err != nil {
-			return withHTTPStatus(err)
+			failure := withHTTPStatus(err)
+			// 記録するのは資格情報が提示されたうえでの失敗だけ。未提示は失敗ではない。
+			//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
+			ctxhelper.SetAuthnFailure(req.Context(), failure)
+			return failure
 		}
 		if authn == nil {
 			return withHTTPStatus(ErrUnauthorizedTokenNotProvided)
@@ -35,7 +39,11 @@ func NewAuthenticator(
 
 		//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
 		if !ctxhelper.SetAuthn(req.Context(), *authn) {
-			return withHTTPStatus(ErrAuthnSlotNotFound)
+			failure := withHTTPStatus(ErrAuthnSlotNotFound)
+			// 認証は成立したが結果を運べていない。記録しなければ、認証済みの主体が匿名として通る。
+			//nolint:contextcheck // 同上
+			ctxhelper.SetAuthnFailure(req.Context(), failure)
+			return failure
 		}
 		return nil
 	}

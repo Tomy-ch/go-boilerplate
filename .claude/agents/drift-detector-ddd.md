@@ -90,7 +90,7 @@ drift-detector-ddd 結果（scope: <scope>, 対象パターン <N> 件）
 [D2] 意味のずれ  M 件
   pattern: repository
   pointer: adr 0029
-  reasoning: ADR-0029 (lightweight-cqrs) は現在 CQRS の読み書き分離のみを述べ、Repository の責務規定は
+  reasoning: ADR-0030 (lightweight-cqrs) は現在 CQRS の読み書き分離のみを述べ、Repository の責務規定は
              internal/domain/README.md §"Methods allowed in Repository" へ移動している
   options: 1) ポインタを README 側へ付け替え 2) 両方を interpreted_by に併記 3) 今回は触らない
 
