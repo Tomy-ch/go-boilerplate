@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { ADR_FILE, adrIndex, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, isEligible, normalizeReferences } from "./rules";
+import { ADR_FILE, DOC_ROUTES_FILE, adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, isEligible, normalizeReferences } from "./rules";
 
 const root = process.cwd();
 const write = process.argv.includes("--write");
@@ -54,6 +54,13 @@ for (const file of files.filter((file) => ADR_FILE.test(file))) {
 // `file` は walk がこのリポジトリ内を辿って返した相対パスだけを取る。
 // eslint-disable-next-line security/detect-non-literal-fs-filename
 for (const file of files.filter((file) => /^(internal|pkg)\/.*\/README\.md$/.test(file))) if (!fs.existsSync(path.join(root, path.dirname(file), "README.ja.md"))) findings.push(`${file}: missing README.ja.md`);
+if (files.includes(DOC_ROUTES_FILE)) {
+  findings.push(
+    ...checkDocRoutes(readRepositoryFile(DOC_ROUTES_FILE), new Set(files)).map(
+      (finding) => `${finding.file}: ${finding.message}`,
+    ),
+  );
+}
 findings.push(
   ...checkTranslations(files).map((finding) => `${finding.file}: ${finding.message}`),
   ...checkTranslationExclusions(files).map((finding) => `${finding.file}: ${finding.message}`),

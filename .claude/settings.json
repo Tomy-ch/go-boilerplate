@@ -253,7 +253,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/comment-remediation/comment-remediated.sh --hook"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/doc-router/doc-router.sh --hook"
           }
         ]
       }
