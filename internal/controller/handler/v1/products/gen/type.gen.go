@@ -207,6 +207,18 @@ type CursorFirstParam = int
 // KeywordParam defines model for KeywordParam.
 type KeywordParam = string
 
+// MaxPriceParam defines model for MaxPriceParam.
+type MaxPriceParam = string
+
+// MaxQuantityParam defines model for MaxQuantityParam.
+type MaxQuantityParam = int32
+
+// MinPriceParam defines model for MinPriceParam.
+type MinPriceParam = string
+
+// MinQuantityParam defines model for MinQuantityParam.
+type MinQuantityParam = int32
+
 // SortParam defines model for SortParam.
 type SortParam string
 
@@ -262,6 +274,18 @@ type GetProductsParams struct {
 
 	// Keyword 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
 	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`
+
+	// MinPrice 最低価格（この値以上）。負でない十進文字列で指定します。
+	MinPrice *MinPriceParam `form:"minPrice,omitempty" json:"minPrice,omitempty"`
+
+	// MaxPrice 最高価格（この値以下）。負でない十進文字列で指定します。
+	MaxPrice *MaxPriceParam `form:"maxPrice,omitempty" json:"maxPrice,omitempty"`
+
+	// MinQuantity 最低在庫数（この値以上）。
+	MinQuantity *MinQuantityParam `form:"minQuantity,omitempty" json:"minQuantity,omitempty"`
+
+	// MaxQuantity 最高在庫数（この値以下）。
+	MaxQuantity *MaxQuantityParam `form:"maxQuantity,omitempty" json:"maxQuantity,omitempty"`
 
 	// Sort 並び順。`-publishedAt`（既定）は公開日時の降順、`publishedAt` は公開日時の昇順です。
 	// いずれも同一公開日時の商品は ID で安定ソートします。

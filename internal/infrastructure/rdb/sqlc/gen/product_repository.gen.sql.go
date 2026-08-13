@@ -481,22 +481,30 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $3::TEXT IS NULL
-        OR p.name ILIKE '%' || $3 || '%'
-        OR p.description ILIKE '%' || $3 || '%'
+        $7::TEXT IS NULL
+        OR p.name ILIKE '%' || $7 || '%'
+        OR p.description ILIKE '%' || $7 || '%'
     )
     AND (
-        p.published_at > $4
-        OR (p.published_at = $4 AND p.id > $5)
+        p.published_at > $8
+        OR (p.published_at = $8 AND p.id > $9)
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $6
+LIMIT $10
 `
 
 type ListPublishedProductsAscAfterParams struct {
 	CategoryID       *uuid.UUID
 	StatusID         *uuid.UUID
+	MinPrice         *decimal.Decimal
+	MaxPrice         *decimal.Decimal
+	MinQuantity      *int32
+	MaxQuantity      *int32
 	Keyword          *string
 	AfterPublishedAt *time.Time
 	AfterID          uuid.UUID
@@ -510,11 +518,9 @@ type ListPublishedProductsAscAfterRow struct {
 }
 
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// category_id / status_id / keyword は指定時のみ絞り込みます。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
-// カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -526,21 +532,29 @@ type ListPublishedProductsAscAfterRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $3::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $3 || '%'
-//	        OR p.description ILIKE '%' || $3 || '%'
+//	        $7::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $7 || '%'
+//	        OR p.description ILIKE '%' || $7 || '%'
 //	    )
 //	    AND (
-//	        p.published_at > $4
-//	        OR (p.published_at = $4 AND p.id > $5)
+//	        p.published_at > $8
+//	        OR (p.published_at = $8 AND p.id > $9)
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $6
+//	LIMIT $10
 func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPublishedProductsAscAfterParams) ([]*ListPublishedProductsAscAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscAfter,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.MinQuantity,
+		arg.MaxQuantity,
 		arg.Keyword,
 		arg.AfterPublishedAt,
 		arg.AfterID,
@@ -591,20 +605,28 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $3::TEXT IS NULL
-        OR p.name ILIKE '%' || $3 || '%'
-        OR p.description ILIKE '%' || $3 || '%'
+        $7::TEXT IS NULL
+        OR p.name ILIKE '%' || $7 || '%'
+        OR p.description ILIKE '%' || $7 || '%'
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $4
+LIMIT $8
 `
 
 type ListPublishedProductsAscFirstParams struct {
-	CategoryID *uuid.UUID
-	StatusID   *uuid.UUID
-	Keyword    *string
-	LimitParam int32
+	CategoryID  *uuid.UUID
+	StatusID    *uuid.UUID
+	MinPrice    *decimal.Decimal
+	MaxPrice    *decimal.Decimal
+	MinQuantity *int32
+	MaxQuantity *int32
+	Keyword     *string
+	LimitParam  int32
 }
 
 type ListPublishedProductsAscFirstRow struct {
@@ -614,11 +636,9 @@ type ListPublishedProductsAscFirstRow struct {
 }
 
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// category_id / status_id / keyword は指定時のみ絞り込みます。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
-// 先頭ページを返します。カーソル以降は対の After クエリが担います。
+// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -630,17 +650,25 @@ type ListPublishedProductsAscFirstRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $3::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $3 || '%'
-//	        OR p.description ILIKE '%' || $3 || '%'
+//	        $7::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $7 || '%'
+//	        OR p.description ILIKE '%' || $7 || '%'
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $4
+//	LIMIT $8
 func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPublishedProductsAscFirstParams) ([]*ListPublishedProductsAscFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscFirst,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.MinQuantity,
+		arg.MaxQuantity,
 		arg.Keyword,
 		arg.LimitParam,
 	)
@@ -689,22 +717,30 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $3::TEXT IS NULL
-        OR p.name ILIKE '%' || $3 || '%'
-        OR p.description ILIKE '%' || $3 || '%'
+        $7::TEXT IS NULL
+        OR p.name ILIKE '%' || $7 || '%'
+        OR p.description ILIKE '%' || $7 || '%'
     )
     AND (
-        p.published_at < $4
-        OR (p.published_at = $4 AND p.id < $5)
+        p.published_at < $8
+        OR (p.published_at = $8 AND p.id < $9)
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $6
+LIMIT $10
 `
 
 type ListPublishedProductsDescAfterParams struct {
 	CategoryID       *uuid.UUID
 	StatusID         *uuid.UUID
+	MinPrice         *decimal.Decimal
+	MaxPrice         *decimal.Decimal
+	MinQuantity      *int32
+	MaxQuantity      *int32
 	Keyword          *string
 	AfterPublishedAt *time.Time
 	AfterID          uuid.UUID
@@ -718,11 +754,9 @@ type ListPublishedProductsDescAfterRow struct {
 }
 
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// category_id / status_id / keyword は指定時のみ絞り込みます。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
-// カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -734,21 +768,29 @@ type ListPublishedProductsDescAfterRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $3::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $3 || '%'
-//	        OR p.description ILIKE '%' || $3 || '%'
+//	        $7::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $7 || '%'
+//	        OR p.description ILIKE '%' || $7 || '%'
 //	    )
 //	    AND (
-//	        p.published_at < $4
-//	        OR (p.published_at = $4 AND p.id < $5)
+//	        p.published_at < $8
+//	        OR (p.published_at = $8 AND p.id < $9)
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $6
+//	LIMIT $10
 func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListPublishedProductsDescAfterParams) ([]*ListPublishedProductsDescAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescAfter,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.MinQuantity,
+		arg.MaxQuantity,
 		arg.Keyword,
 		arg.AfterPublishedAt,
 		arg.AfterID,
@@ -799,20 +841,28 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $3::TEXT IS NULL
-        OR p.name ILIKE '%' || $3 || '%'
-        OR p.description ILIKE '%' || $3 || '%'
+        $7::TEXT IS NULL
+        OR p.name ILIKE '%' || $7 || '%'
+        OR p.description ILIKE '%' || $7 || '%'
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $4
+LIMIT $8
 `
 
 type ListPublishedProductsDescFirstParams struct {
-	CategoryID *uuid.UUID
-	StatusID   *uuid.UUID
-	Keyword    *string
-	LimitParam int32
+	CategoryID  *uuid.UUID
+	StatusID    *uuid.UUID
+	MinPrice    *decimal.Decimal
+	MaxPrice    *decimal.Decimal
+	MinQuantity *int32
+	MaxQuantity *int32
+	Keyword     *string
+	LimitParam  int32
 }
 
 type ListPublishedProductsDescFirstRow struct {
@@ -823,11 +873,9 @@ type ListPublishedProductsDescFirstRow struct {
 
 // === source: database/dml/repository/product/select_products.sql ===
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// category_id / status_id / keyword は指定時のみ絞り込みます。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
-// 先頭ページを返します。カーソル以降は対の After クエリが担います。
+// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -839,17 +887,25 @@ type ListPublishedProductsDescFirstRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
+//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
+//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
+//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
+//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $3::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $3 || '%'
-//	        OR p.description ILIKE '%' || $3 || '%'
+//	        $7::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $7 || '%'
+//	        OR p.description ILIKE '%' || $7 || '%'
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $4
+//	LIMIT $8
 func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListPublishedProductsDescFirstParams) ([]*ListPublishedProductsDescFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescFirst,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.MinQuantity,
+		arg.MaxQuantity,
 		arg.Keyword,
 		arg.LimitParam,
 	)

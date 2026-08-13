@@ -98,11 +98,9 @@ FOR UPDATE OF p;
 -- === source: database/dml/repository/product/select_products.sql ===
 -- name: ListPublishedProductsDescFirst :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
--- 先頭ページを返します。カーソル以降は対の After クエリが担います。
+-- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -113,6 +111,10 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
+    AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
+    AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
+    AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -123,11 +125,9 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsDescAfter :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
--- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+-- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -138,6 +138,10 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
+    AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
+    AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
+    AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -152,11 +156,9 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscFirst :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
--- 先頭ページを返します。カーソル以降は対の After クエリが担います。
+-- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -167,6 +169,10 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
+    AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
+    AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
+    AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -177,11 +183,9 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscAfter :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は商品の付随表示値。
--- 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
--- category_id / status_id / keyword は指定時のみ絞り込みます。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
--- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+-- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -192,6 +196,10 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
+    AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
+    AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
+    AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'

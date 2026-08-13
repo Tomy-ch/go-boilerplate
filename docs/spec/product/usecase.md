@@ -64,6 +64,14 @@ methods:
       type: "*uuid.UUID"
     - name: Keyword
       type: "*string"
+    - name: MinPrice
+      type: "*string"       # nil=下限なし。非負の decimal 文字列
+    - name: MaxPrice
+      type: "*string"       # nil=上限なし。非負の decimal 文字列
+    - name: MinQuantity
+      type: "*int32"        # nil=下限なし。0 以上
+    - name: MaxQuantity
+      type: "*int32"        # nil=上限なし。0 以上
     - name: Ascending
       type: bool
 - name: ProductView
@@ -180,8 +188,11 @@ methods:
 tx_required: false
 steps:
   - Cursor が nil の場合は apperror.ErrInvalidArgument を返す
+  - MinPrice / MaxPrice を money.Price へ変換する。非数値・負値・40 文字超過は apperror.ErrInvalidArgument を返す
+  - MinQuantity / MaxQuantity が負値の場合は apperror.ErrInvalidArgument を返す
+  - 価格または在庫数の両境界が指定され、下限が上限を超える場合は apperror.ErrInvalidArgument を返す
   - decodeProductCursor で不透明カーソルを keyset 境界（publishedAt, id）へ復号する（先頭ページは境界なし）
-  - domain の ListParams を組み立てる（Limit=Cursor.Limit32()+1、Ascending、CategoryID/StatusID/Keyword、AfterPublishedAt/AfterID）
+  - domain の ListParams を組み立てる（Limit=Cursor.Limit32()+1、Ascending、CategoryID/StatusID/Keyword、価格・在庫数の包含上下限、AfterPublishedAt/AfterID）
   - product_repository.FindPublishedList で公開商品を取得する
   - 取得件数が Cursor.Limit() を超える場合は次ページありと判定し、末尾を切り詰める
   - 各 Product を ProductView（ID / Name / Description / Price / Quantity / StockWarningThreshold / StatusID / CategoryID / PublishedAt）へ写像する
@@ -190,6 +201,7 @@ calls:
   - product_repository.FindPublishedList
 errors:
   - Cursor が nil の場合は apperror.ErrInvalidArgument
+  - 価格の非数値・負値・40 文字超過、在庫数の負値、または上下限の逆転は apperror.ErrInvalidArgument
   - カーソル復号失敗時は apperror.ErrInvalidArgument（decodeProductCursor 由来）
   - product_repository.FindPublishedList のエラーをそのまま伝播する
 ```

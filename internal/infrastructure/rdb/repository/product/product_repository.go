@@ -40,7 +40,7 @@ func New(
 }
 
 // FindPublishedList は、公開済み商品を (published_at, id) の keyset ページネーションで取得します。
-// params.Ascending により昇順／降順を切り替え、CategoryID / StatusID / Keyword で絞り込みます。
+// params.Ascending により昇順／降順を切り替え、CategoryID / StatusID / Keyword / price・quantity の範囲で絞り込みます。
 func (r *repository) FindPublishedList(ctx context.Context, params product.ListParams) (product.Products, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -48,8 +48,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	db := gen.New(driver.New(ctx, r.db))
 	hasAfter := params.AfterPublishedAt != nil && params.AfterID != nil
 
-	// keyset は並び順ごとに「先頭ページ用」「カーソル以降用」の 2 本の固定クエリへ分ける。
-	// 1 本へ畳んでオプショナル述語にすると、実行計画が入力に依存する単一のステートメントになる。
+	// keyset は Repository README の方針どおり、並び順ごとに first/after の固定クエリへ分ける。
+	// 参照: internal/infrastructure/rdb/repository/README.md#keyset-pagination
 	toRow := func(p gen.Products, statusName, categoryName string) productRow {
 		return productRow{p: p, statusName: statusName, categoryName: categoryName}
 	}
@@ -60,6 +60,10 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 			CategoryID:       params.CategoryID,
 			StatusID:         params.StatusID,
 			Keyword:          params.Keyword,
+			MinPrice:         ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:      params.MinQuantity,
+			MaxQuantity:      params.MaxQuantity,
 			AfterPublishedAt: params.AfterPublishedAt,
 			AfterID:          *params.AfterID,
 			LimitParam:       params.Limit,
@@ -72,10 +76,14 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		})
 	case params.Ascending:
 		rows, err := db.ListPublishedProductsAscFirst(ctx, &gen.ListPublishedProductsAscFirstParams{
-			CategoryID: params.CategoryID,
-			StatusID:   params.StatusID,
-			Keyword:    params.Keyword,
-			LimitParam: params.Limit,
+			CategoryID:  params.CategoryID,
+			StatusID:    params.StatusID,
+			Keyword:     params.Keyword,
+			MinPrice:    ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:    ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity: params.MinQuantity,
+			MaxQuantity: params.MaxQuantity,
+			LimitParam:  params.Limit,
 		})
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
@@ -88,6 +96,10 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 			CategoryID:       params.CategoryID,
 			StatusID:         params.StatusID,
 			Keyword:          params.Keyword,
+			MinPrice:         ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:      params.MinQuantity,
+			MaxQuantity:      params.MaxQuantity,
 			AfterPublishedAt: params.AfterPublishedAt,
 			AfterID:          *params.AfterID,
 			LimitParam:       params.Limit,
@@ -100,10 +112,14 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		})
 	default:
 		rows, err := db.ListPublishedProductsDescFirst(ctx, &gen.ListPublishedProductsDescFirstParams{
-			CategoryID: params.CategoryID,
-			StatusID:   params.StatusID,
-			Keyword:    params.Keyword,
-			LimitParam: params.Limit,
+			CategoryID:  params.CategoryID,
+			StatusID:    params.StatusID,
+			Keyword:     params.Keyword,
+			MinPrice:    ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:    ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity: params.MinQuantity,
+			MaxQuantity: params.MaxQuantity,
+			LimitParam:  params.Limit,
 		})
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
@@ -114,9 +130,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	}
 }
 
-// FindAllLowStock は、ListLowStockProducts で quantity <= stock_warning_threshold の商品を
-// (quantity, id) の昇順で最大 limit 件取得します。stock_warning_threshold が NULL の行は除外し、
-// published_at では絞りません。
+// FindAllLowStock は、在庫警告閾値以下の商品を在庫数と ID の昇順で最大 limit 件取得します。
+// 在庫警告閾値が未設定の商品は除外し、公開状態では絞り込みません。
 func (r *repository) FindAllLowStock(ctx context.Context, limit int32) (product.Products, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -147,8 +162,8 @@ func (r *repository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*prod
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
-// FindByID は、GetProductByID で published_at を絞らずに単一商品を取得します
-// （公開中のみを返す FindPublishedByID との対で、未公開商品も返します）。未存在は NotFound を返します。
+// FindByID は、公開状態を問わず ID から単一商品を取得します。未存在は NotFound を返します。
+// 公開日時の設定を更新対象にするため、未公開商品も返します。
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -162,7 +177,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*product.Produ
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
-// LockByID は、GetProductByIDForUpdate で対象行を悲観ロック（FOR UPDATE）したうえで取得します。
+// LockByID は、更新のため ID から公開状態を問わない単一商品を悲観ロックして取得します。
 // 未存在は NotFound を返します。
 func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
@@ -177,7 +192,7 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*product.Produ
 	return rowToProduct(productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
-// LockByIDs は、ListProductsByIDsForUpdate で対象行を ID 昇順に悲観ロック（FOR UPDATE）したうえで取得します。
+// LockByIDs は、更新のため ID の集合から公開状態を問わない商品群を ID 昇順に悲観ロックして取得します。
 // 不存在の ID は結果に現れないため、要素数は ids より少なくなり得ます。
 func (r *repository) LockByIDs(ctx context.Context, ids []uuid.UUID) (product.Products, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
@@ -307,7 +322,7 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 	return int(lockVersion), nil
 }
 
-// Count は、products の COUNT 集計から登録商品の総数と、published_at が非 NULL の公開済み件数を返します。
+// Count は、登録商品の総数と公開済み件数を返します。商品が 1 件もない場合はゼロ値を返します。
 func (r *repository) Count(ctx context.Context) (product.Counts, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -349,8 +364,7 @@ func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []strin
 	return existing, nil
 }
 
-// rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）をドメインエンティティへ変換します。
-// 再構築時の検証失敗はデータ不整合として ErrInternal へ正規化します（422 / details にしない）。
+// rowToProduct は、再構築時の検証失敗を ErrInternal へ正規化します（422 / details にしません）。
 func rowToProduct(row productRow) (*product.Product, error) {
 	price, err := money.NewPrice(row.p.Price)
 	if err != nil {
@@ -382,7 +396,6 @@ func rowToProduct(row productRow) (*product.Product, error) {
 	return entity, nil
 }
 
-// rowsToProducts は、行スライスをドメインエンティティ列へ変換します。
 func rowsToProducts[T any](rows []T, extract func(T) productRow) (product.Products, error) {
 	products := make(product.Products, len(rows))
 	for i, row := range rows {

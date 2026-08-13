@@ -617,8 +617,9 @@ paths:
         公開済みの商品を cursor ページネーションで取得します。認証不要の公開エンドポイントです。
         既定では公開日時の降順（publishedAt DESC, id DESC）で並び、sort=publishedAt で昇順に切り替えられます。
         categoryId / statusId でフィルタ、keyword で商品名・説明の部分一致検索ができます。
+        minPrice / maxPrice で価格、minQuantity / maxQuantity で在庫数を境界値を含めて範囲検索できます。
         公開日時が未設定（未公開）の商品は返しません。ステータスによる可視範囲の絞り込みは今後対応予定です。
-        price は USD セント単位の整数です。
+        price は USD ドル建ての decimal 文字列です。
       security: []
       parameters:
         - $ref: '#/components/parameters/CursorAfterParam'
@@ -626,6 +627,10 @@ paths:
         - $ref: '#/components/parameters/CategoryIdParam'
         - $ref: '#/components/parameters/StatusIdParam'
         - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/MinPriceParam'
+        - $ref: '#/components/parameters/MaxPriceParam'
+        - $ref: '#/components/parameters/MinQuantityParam'
+        - $ref: '#/components/parameters/MaxQuantityParam'
         - $ref: '#/components/parameters/SortParam'
       responses:
         '200':
@@ -1545,6 +1550,46 @@ components:
         type: string
         format: date
         example: '2026-07-31'
+    MinPriceParam:
+      name: minPrice
+      in: query
+      required: false
+      description: 最低価格（この値以上）。負でない十進文字列で指定します。
+      schema:
+        type: string
+        maxLength: 40
+        pattern: ^\d{1,20}(\.\d{1,18})?$
+      example: '10.00'
+    MaxPriceParam:
+      name: maxPrice
+      in: query
+      required: false
+      description: 最高価格（この値以下）。負でない十進文字列で指定します。
+      schema:
+        type: string
+        maxLength: 40
+        pattern: ^\d{1,20}(\.\d{1,18})?$
+      example: '100.00'
+    MinQuantityParam:
+      name: minQuantity
+      in: query
+      required: false
+      description: 最低在庫数（この値以上）。
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+      example: 1
+    MaxQuantityParam:
+      name: maxQuantity
+      in: query
+      required: false
+      description: 最高在庫数（この値以下）。
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+      example: 100
     ProductIdParam:
       name: productId
       in: path

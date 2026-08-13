@@ -74,6 +74,34 @@ func (w *ServerInterfaceWrapper) GetProducts(ctx *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter keyword: %s", err))
 	}
 
+	// ------------- Optional query parameter "minPrice" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "minPrice", ctx.QueryParams(), &params.MinPrice, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter minPrice: %s", err))
+	}
+
+	// ------------- Optional query parameter "maxPrice" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "maxPrice", ctx.QueryParams(), &params.MaxPrice, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter maxPrice: %s", err))
+	}
+
+	// ------------- Optional query parameter "minQuantity" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "minQuantity", ctx.QueryParams(), &params.MinQuantity, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter minQuantity: %s", err))
+	}
+
+	// ------------- Optional query parameter "maxQuantity" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "maxQuantity", ctx.QueryParams(), &params.MaxQuantity, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter maxQuantity: %s", err))
+	}
+
 	// ------------- Optional query parameter "sort" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", ctx.QueryParams(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})

@@ -165,6 +165,10 @@ func Test_server_GetProducts(t *testing.T) {
 			categoryID := uuidtestkit.NewTestFromSalt(t, "handler_filter_category")
 			statusID := uuidtestkit.NewTestFromSalt(t, "handler_filter_status")
 			keyword := "イヤホン"
+			minPrice := "10.50"
+			maxPrice := "99.99"
+			minQuantity := int32(2)
+			maxQuantity := int32(20)
 			cid := categoryID.ToPrimitive()
 			sid := statusID.ToPrimitive()
 			sort := gen.GetProductsParamsSortPublishedAt
@@ -178,7 +182,10 @@ func Test_server_GetProducts(t *testing.T) {
 				})
 
 			_, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{
-				Params: gen.GetProductsParams{CategoryId: &cid, StatusId: &sid, Keyword: &keyword, Sort: &sort},
+				Params: gen.GetProductsParams{
+					CategoryId: &cid, StatusId: &sid, Keyword: &keyword, Sort: &sort,
+					MinPrice: &minPrice, MaxPrice: &maxPrice, MinQuantity: &minQuantity, MaxQuantity: &maxQuantity,
+				},
 			})
 			require.NoError(t, err)
 
@@ -189,6 +196,14 @@ func Test_server_GetProducts(t *testing.T) {
 			assert.Equal(t, statusID, *captured.StatusID)
 			require.NotNil(t, captured.Keyword)
 			assert.Equal(t, keyword, *captured.Keyword)
+			require.NotNil(t, captured.MinPrice)
+			assert.Equal(t, minPrice, *captured.MinPrice)
+			require.NotNil(t, captured.MaxPrice)
+			assert.Equal(t, maxPrice, *captured.MaxPrice)
+			require.NotNil(t, captured.MinQuantity)
+			assert.Equal(t, minQuantity, *captured.MinQuantity)
+			require.NotNil(t, captured.MaxQuantity)
+			assert.Equal(t, maxQuantity, *captured.MaxQuantity)
 		})
 
 		t.Run("sort未指定の場合、Ascendingはfalse(降順)になる", func(t *testing.T) {

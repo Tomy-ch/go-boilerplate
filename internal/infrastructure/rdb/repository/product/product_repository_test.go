@@ -59,6 +59,13 @@ func mustParse(t *testing.T, s string) uuid.UUID {
 	return id
 }
 
+func mustPriceFilter(t *testing.T, value int64) money.Price {
+	t.Helper()
+	price, err := money.NewPrice(decimal.FromInt(value))
+	require.NoError(t, err)
+	return price
+}
+
 func Test_repository_FindPublishedList(t *testing.T) {
 	t.Parallel()
 
@@ -95,10 +102,13 @@ func Test_repository_FindPublishedList(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				insertProbeSet(ctx, t, drv)
+				price := mustPriceFilter(t, 1000)
+				quantity := int32(10)
 
 				// 先頭ページ(limit=2): 公開日時降順・id降順で tieHigh, tieLow。
 				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
 					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
+					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
 				})
 				require.NoError(t, err)
 				require.Len(t, firstPage, 2)
@@ -109,6 +119,7 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				last := firstPage[len(firstPage)-1]
 				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
 					Limit: 2, Ascending: false, Keyword: ptr.To(probeKeyword),
+					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
 					AfterPublishedAt: last.PublishedAt(), AfterID: ptr.To(last.ID()),
 				})
 				require.NoError(t, err)
@@ -127,22 +138,34 @@ func Test_repository_FindPublishedList(t *testing.T) {
 			})
 		})
 
-		t.Run("昇順では公開日時の古い順に返る", func(t *testing.T) {
+		t.Run("範囲条件付きの昇順で先頭ページとafter境界がkeyset安定順に次ページを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				insertProbeSet(ctx, t, drv)
+				price := mustPriceFilter(t, 1000)
+				quantity := int32(10)
 
-				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					Limit: 10, Ascending: true, Keyword: ptr.To(probeKeyword),
+				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					Limit: 2, Ascending: true, Keyword: ptr.To(probeKeyword),
+					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
 				})
 				require.NoError(t, err)
-				require.Len(t, page, 4)
-				assert.Equal(t, mustParse(t, old), page[0].ID())
-				assert.Equal(t, mustParse(t, mid), page[1].ID())
-				assert.Equal(t, mustParse(t, tieLow), page[2].ID())
-				assert.Equal(t, mustParse(t, tieHigh), page[3].ID())
+				require.Len(t, firstPage, 2)
+				assert.Equal(t, mustParse(t, old), firstPage[0].ID())
+				assert.Equal(t, mustParse(t, mid), firstPage[1].ID())
+
+				last := firstPage[len(firstPage)-1]
+				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					Limit: 2, Ascending: true, Keyword: ptr.To(probeKeyword),
+					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
+					AfterPublishedAt: last.PublishedAt(), AfterID: ptr.To(last.ID()),
+				})
+				require.NoError(t, err)
+				require.Len(t, secondPage, 2)
+				assert.Equal(t, mustParse(t, tieLow), secondPage[0].ID())
+				assert.Equal(t, mustParse(t, tieHigh), secondPage[1].ID())
 			})
 		})
 
@@ -212,6 +235,51 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 2)
+			})
+		})
+
+		t.Run("価格と在庫数は境界値を含む範囲で絞り込まれる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				lowID := "eeeeeeee-0000-4000-8000-0000000000f1"
+				matchID := "eeeeeeee-0000-4000-8000-0000000000f2"
+				highID := "eeeeeeee-0000-4000-8000-0000000000f3"
+				priceInQuantityOutID := "eeeeeeee-0000-4000-8000-0000000000f4"
+				priceOutQuantityInID := "eeeeeeee-0000-4000-8000-0000000000f5"
+				insertProduct(ctx, t, drv, lowID, probeKeyword+"-RANGE-LOW", nil, 999, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, matchID, probeKeyword+"-RANGE-MATCH", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, highID, probeKeyword+"-RANGE-HIGH", nil, 1001, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(
+					ctx, t, drv, priceInQuantityOutID, probeKeyword+"-RANGE-QUANTITY-OUT", nil,
+					1000, statusInStock, categoryElectronics, ptr.To(base),
+				)
+				insertProduct(
+					ctx, t, drv, priceOutQuantityInID, probeKeyword+"-RANGE-PRICE-OUT", nil,
+					1001, statusInStock, categoryElectronics, ptr.To(base),
+				)
+				_, err := drv.Exec(
+					ctx,
+					"UPDATE products SET quantity = CASE id WHEN $1 THEN 9 WHEN $2 THEN 10 ELSE 11 END "+
+						"WHERE id = ANY($3::uuid[])",
+					lowID,
+					matchID,
+					[]string{lowID, matchID, highID, priceInQuantityOutID, priceOutQuantityInID},
+				)
+				require.NoError(t, err)
+				_, err = drv.Exec(ctx, "UPDATE products SET quantity = 10 WHERE id = $1", priceOutQuantityInID)
+				require.NoError(t, err)
+
+				price := mustPriceFilter(t, 1000)
+				quantity := int32(10)
+				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword + "-RANGE"),
+					MinPrice: &price, MaxPrice: &price, MinQuantity: &quantity, MaxQuantity: &quantity,
+				})
+				require.NoError(t, err)
+				require.Len(t, page, 1)
+				assert.Equal(t, mustParse(t, matchID), page[0].ID())
 			})
 		})
 	})

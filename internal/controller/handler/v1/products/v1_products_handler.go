@@ -18,7 +18,6 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// sortPublishedAtAsc は、公開日時の昇順を表す sort パラメータ値です。これ以外（未指定を含む）は降順として扱います。
 const sortPublishedAtAsc = "publishedAt"
 
 type server struct {
@@ -45,11 +44,15 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 	}
 
 	list, err := s.uc.ListProducts(ctx, productuc.ListProductsParams{
-		Cursor:     cursor,
-		CategoryID: conv.UUIDPtr(request.Params.CategoryId),
-		StatusID:   conv.UUIDPtr(request.Params.StatusId),
-		Keyword:    request.Params.Keyword,
-		Ascending:  isAscending(request.Params.Sort),
+		Cursor:      cursor,
+		CategoryID:  conv.UUIDPtr(request.Params.CategoryId),
+		StatusID:    conv.UUIDPtr(request.Params.StatusId),
+		Keyword:     request.Params.Keyword,
+		MinPrice:    request.Params.MinPrice,
+		MaxPrice:    request.Params.MaxPrice,
+		MinQuantity: request.Params.MinQuantity,
+		MaxQuantity: request.Params.MaxQuantity,
+		Ascending:   isAscending(request.Params.Sort),
 	})
 	if err != nil {
 		return nil, err
