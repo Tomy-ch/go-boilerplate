@@ -44,20 +44,34 @@ func Test_server_GetProductsCount(t *testing.T) {
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
 			categoryID, err := uuid.Parse("5dd52d84-78eb-4a52-ba0b-2e11c95c2af2")
 			require.NoError(t, err)
+			statusID, err := uuid.Parse("093170fb-83a2-4864-a2b3-53236eaf3597")
+			require.NoError(t, err)
 			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, params productuc.CountProductsParams) (productuc.ProductCountView, error) {
+					require.NotNil(t, params.CategoryID)
 					assert.Equal(t, categoryID, *params.CategoryID)
+					require.NotNil(t, params.StatusID)
+					assert.Equal(t, statusID, *params.StatusID)
+					require.NotNil(t, params.Keyword)
 					assert.Equal(t, "phone", *params.Keyword)
+					require.NotNil(t, params.MinPrice)
 					assert.Equal(t, "10.50", *params.MinPrice)
+					require.NotNil(t, params.MaxPrice)
+					assert.Equal(t, "99.99", *params.MaxPrice)
+					require.NotNil(t, params.MinQuantity)
 					assert.Equal(t, int32(2), *params.MinQuantity)
+					require.NotNil(t, params.MaxQuantity)
+					assert.Equal(t, int32(20), *params.MaxQuantity)
 					return productuc.ProductCountView{Count: 4}, nil
 				})
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
 
 			resp, err := s.GetProductsCount(context.Background(), gen.GetProductsCountRequestObject{
 				Params: gen.GetProductsCountParams{
-					CategoryId: ptr.To(categoryID.ToPrimitive()), Keyword: ptr.To("phone"),
-					MinPrice: ptr.To("10.50"), MinQuantity: ptr.To[int32](2),
+					CategoryId: ptr.To(categoryID.ToPrimitive()), StatusId: ptr.To(statusID.ToPrimitive()),
+					Keyword:  ptr.To("phone"),
+					MinPrice: ptr.To("10.50"), MaxPrice: ptr.To("99.99"),
+					MinQuantity: ptr.To[int32](2), MaxQuantity: ptr.To[int32](20),
 				},
 			})
 

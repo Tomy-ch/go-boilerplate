@@ -498,12 +498,19 @@ func Test_usecase_CountProducts(t *testing.T) {
 			statusID := uuidtestkit.NewTestFromSalt(t, "count_status")
 			repo.EXPECT().CountPublished(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, params domainproduct.CountPublishedParams) (int64, error) {
+					require.NotNil(t, params.CategoryID)
 					assert.Equal(t, categoryID, *params.CategoryID)
+					require.NotNil(t, params.StatusID)
 					assert.Equal(t, statusID, *params.StatusID)
+					require.NotNil(t, params.Keyword)
 					assert.Equal(t, "イヤホン", *params.Keyword)
+					require.NotNil(t, params.MinPrice)
 					assert.True(t, params.MinPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.50")))
+					require.NotNil(t, params.MaxPrice)
 					assert.True(t, params.MaxPrice.Decimal().Equal(decimaltestkit.MustParse(t, "99.99")))
+					require.NotNil(t, params.MinQuantity)
 					assert.Equal(t, int32(2), *params.MinQuantity)
+					require.NotNil(t, params.MaxQuantity)
 					assert.Equal(t, int32(20), *params.MaxQuantity)
 					return 7, nil
 				})
