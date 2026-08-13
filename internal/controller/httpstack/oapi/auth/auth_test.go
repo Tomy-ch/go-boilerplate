@@ -122,6 +122,70 @@ func TestNewAuthenticator(t *testing.T) {
 			err := fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 		})
+
+		t.Run("トークンが無効な場合、返すエラーと同じものをスロットへ記録する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
+
+			fn := NewAuthenticator(m, mr)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer tok")
+			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
+			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+			err := fn(context.Background(), in)
+			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
+			assert.Equal(t, err, ctxhelper.AuthnFailure(req.Context()))
+		})
+
+		t.Run("identity解決がinfra障害の場合、503を持つエラーをスロットへ記録する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			authn, _ := authbd.New("user123", "mock", nil, nil)
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(authn, nil)
+			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).
+				Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "database is down"))
+
+			fn := NewAuthenticator(m, mr)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer tok")
+			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
+			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+			err := fn(context.Background(), in)
+			require.Error(t, err)
+
+			recorded := ctxhelper.AuthnFailure(req.Context())
+			require.Equal(t, err, recorded)
+
+			var he *echo.HTTPError
+			require.True(t, xerrors.As(recorded, &he))
+			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
+		})
+
+		t.Run("トークン未提示は失敗として記録しない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+
+			fn := NewAuthenticator(m, mr)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
+			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+			err := fn(context.Background(), in)
+			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
+			assert.NoError(t, ctxhelper.AuthnFailure(req.Context()))
+		})
 	})
 }
 
