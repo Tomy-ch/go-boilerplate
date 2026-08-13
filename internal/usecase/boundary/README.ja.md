@@ -50,6 +50,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`objectstorage`|`Storage`|実体非依存のオブジェクトストレージ境界（キー指定でオブジェクトを `Put` / `List` / `Delete` する）|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
+|`token`|`Generator`|推測できない不透明なトークン文字列を生成する|`internal/infrastructure/token/`|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|broker 非依存の worker seam（pull-ack）|`internal/infrastructure/queue/sqs/`|
 
@@ -186,6 +187,18 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |`Publisher`|メッセージを publish 先へ送る境界|
 |`Publish(ctx, m)`|`m` を publish 先へ送る。失敗時はエラーを返し relay の次 poll で再送（at-least-once）|
 |`Message`|outbox 行から構築する publish 先非依存のメッセージ封筒（`net/http` 等の型を露出しない）|
+
+### token
+
+```go
+type Generator interface {
+    Generate() (string, error)
+}
+```
+
+推測できない不透明なトークン文字列を生成します。乱数は副作用であり、直接手を伸ばした呼び出し元は
+再現性を失います（時刻に対して `clock` が存在するのと同じ理由）。値の長さと文字集合は実装のもので、
+ある文字列が特定の種類のトークンとして妥当かどうかは、それを保持する型が持つ規則です。
 
 ### tx
 

@@ -50,6 +50,7 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` / `List` / `Delete` objects by key)|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
+|`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|
 
@@ -186,6 +187,19 @@ Outbound publish boundary for domain events plus a substrate-agnostic message en
 |`Publisher`|Boundary that sends a message to its destination|
 |`Publish(ctx, m)`|Send `m` to the destination; on failure returns an error and the relay re-sends on its next poll (at-least-once)|
 |`Message`|Substrate-agnostic message envelope built from an outbox row (exposes no `net/http` types)|
+
+### token
+
+```go
+type Generator interface {
+    Generate() (string, error)
+}
+```
+
+Produces an unguessable, opaque token string. Randomness is an effect, so a caller that reaches
+for it directly stops being reproducible — the same reason `clock` exists for time. The value's
+length and alphabet belong to the implementation; whether a string is acceptable as a particular
+kind of token is a rule of the type that holds it.
 
 ### tx
 
