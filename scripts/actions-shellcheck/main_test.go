@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"go-boilerplate/scripts/lib/shellcheck"
 )
 
 const requireShellcheckEnv = "REQUIRE_SHELLCHECK"
@@ -128,7 +130,7 @@ func testFS(files map[string]string) fstest.MapFS {
 // REQUIRE_SHELLCHECK を立てた実行では skip せず落とす（根拠は scripts/README.md の Notes）。
 func requireShellcheck(t *testing.T) {
 	t.Helper()
-	if _, err := exec.LookPath(shellcheckBin); err == nil {
+	if _, err := exec.LookPath(shellcheck.Binary); err == nil {
 		return
 	}
 	if os.Getenv(requireShellcheckEnv) != "" {
@@ -958,58 +960,6 @@ func Test_remapFindings(t *testing.T) {
 	})
 }
 
-func Test_runShellcheck(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("問題のない本文では指摘を返さない", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-			out, err := runShellcheck(t.Context(), shebangs["bash"], "echo \"${HOME}\"\n")
-			require.NoError(t, err)
-			assert.Empty(t, strings.TrimSpace(out))
-		})
-
-		t.Run("クォート漏れを SC2086 として検出する", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-			out, err := runShellcheck(t.Context(), shebangs["bash"], "x=\"a b\"\necho $x\n")
-			require.NoError(t, err)
-			assert.Contains(t, out, "SC2086")
-		})
-
-		t.Run("shebang 行を除いた本文の行番号で報告する", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-			out, err := runShellcheck(t.Context(), shebangs["bash"], "x=\"a b\"\necho $x\n")
-			require.NoError(t, err)
-			assert.Contains(t, out, "-:3:")
-		})
-
-		t.Run("sh 方言では bash 専用構文を指摘する", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-			out, err := runShellcheck(t.Context(), shebangs["sh"], "echo \"${BASH_SOURCE[0]}\"\n")
-			require.NoError(t, err)
-			assert.Contains(t, out, "[SC3028]")
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("指摘以外の失敗は握り潰さずエラーにする", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-			_, err := runShellcheck(canceledContext(t), shebangs["bash"], "echo ok\n")
-			require.Error(t, err)
-			require.ErrorIs(t, err, errShellcheck)
-		})
-	})
-}
-
 func Test_check(t *testing.T) {
 	t.Parallel()
 
@@ -1105,7 +1055,7 @@ func Test_check(t *testing.T) {
 			steps := []step{{file: "action.yaml", shell: "bash", script: "echo ok\n", firstLine: 1}}
 			res, err := check(canceledContext(t), steps)
 			require.Error(t, err)
-			require.ErrorIs(t, err, errShellcheck)
+			require.ErrorIs(t, err, shellcheck.ErrRun)
 			assert.Zero(t, res.checked)
 			assert.Empty(t, res.findings)
 		})
@@ -1783,7 +1733,7 @@ func Test_run(t *testing.T) {
 
 			err := run(t.Context(), stubWD(writeActionRoot(t, compositeAction)), stubLookPath(errLookPath))
 
-			require.ErrorIs(t, err, errShellcheckMissing)
+			require.ErrorIs(t, err, shellcheck.ErrMissing)
 			assert.ErrorContains(t, err, errLookPath.Error())
 		})
 

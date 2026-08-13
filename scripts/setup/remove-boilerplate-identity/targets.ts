@@ -88,9 +88,8 @@ export const SELF_DIR = "scripts/setup/remove-boilerplate-identity";
  */
 export const BOILERPLATE_DELETE_PATHS: readonly string[] = [
   "docs/get-started/boilerplate-only-conventions.md",
-  "docs/ja/get-started/boilerplate-only-conventions.ja.md",
+  "docs/get-started/boilerplate-only-conventions.ja.md",
   "docs/plan",
-  "docs/ja/plan",
   "scripts/premise-lint",
   "scripts/marker-baseline",
 ];

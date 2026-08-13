@@ -2,6 +2,7 @@
 # -----Dockerコンテナ内で実行するコマンド群-----
 .PHONY: actions-lint ## GitHub Actions 定義(ワークフロー)のLintを実行（actionlint + composite action の run シェル検査 + Node 検査群）
 .PHONY: actions-shellcheck ## composite action の run シェルを shellcheck で検査
+.PHONY: shell-lint ## リポジトリ内の *.sh を shellcheck で検査
 .PHONY: actions-comment-secret-lint ## upsert-pr-comment を使うジョブへの secret 混入検査のみを実行
 .PHONY: actions-comment-fence-lint ## PRコメント本文のフェンス検査(固定長フェンス/実装一致/補間span)のみを実行
 .PHONY: actions-cutoff-lint ## ジョブ打ち切り時の振る舞い(timeout-minutes / PRコメントの always())検査のみを実行
@@ -11,6 +12,7 @@
 .PHONY: actions-lint-ci ## GitHub Actions 定義のLintを実行(CI用)
 .PHONY: actions-actionlint-ci ## actionlint でワークフロー定義をLint(CI用)
 .PHONY: actions-shellcheck-ci ## composite action の run シェルを shellcheck で検査(CI用)
+.PHONY: shell-lint-ci ## リポジトリ内の *.sh を shellcheck で検査(CI用)
 .PHONY: actions-comment-secret-lint-ci ## upsert-pr-comment を使うジョブへの secret 混入を検査(CI用)
 .PHONY: actions-comment-fence-lint-ci ## PRコメント本文のフェンス(固定長フェンス/実装一致/補間span)を検査(CI用)
 .PHONY: actions-node-lint-ci ## node で書かれた検査 4 種をまとめて実行(CI用)
@@ -22,11 +24,14 @@
 # actionlint は Go ツール、secret / フェンス検査は node スクリプトなので tool-runner を跨ぐ。
 actions-lint:
 	@docker compose run --rm go_tool_runner make actions-actionlint-ci
-	@docker compose run --rm go_tool_runner make actions-shellcheck-ci
+	@docker compose run --rm go_tool_runner make actions-shellcheck-ci shell-lint-ci
 	@docker compose run --rm node_tool_runner make actions-node-lint-ci
 
 actions-shellcheck:
 	@docker compose run --rm go_tool_runner make actions-shellcheck-ci
+
+shell-lint:
+	@docker compose run --rm go_tool_runner make shell-lint-ci
 
 actions-comment-secret-lint:
 	@docker compose run --rm node_tool_runner make actions-comment-secret-lint-ci
@@ -44,7 +49,7 @@ required-check-lint:
 	@docker compose run --rm node_tool_runner make required-check-lint-ci
 
 # -----CI内で実行するコマンド群-----
-actions-lint-ci: actions-actionlint-ci actions-shellcheck-ci actions-node-lint-ci
+actions-lint-ci: actions-actionlint-ci actions-shellcheck-ci shell-lint-ci actions-node-lint-ci
 
 # actionlint → shellcheck → node の順序は入れ替えない
 # （理由は .makefiles/README.md の actions-lint-ci 行）。
@@ -55,6 +60,11 @@ actions-actionlint-ci:
 
 actions-shellcheck-ci:
 	go run ./scripts/actions-shellcheck
+
+# composite action の中の run は actions-shellcheck が見るが、ファイルとして置かれたシェル
+# （フック・セットアップ・スキル同梱・コンテナの init）はどのゲートにも掛かっていなかった。
+shell-lint-ci:
+	go run ./scripts/shell-lint
 
 # actionlint は「upsert-pr-comment を使うジョブに secret を渡すな」という規約を表現できない。
 actions-comment-secret-lint-ci:

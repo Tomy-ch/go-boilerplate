@@ -96,10 +96,12 @@ add_notice() {
 # air builds with `--mod=vendor`, so the failure this warns about is `make serve` reporting
 # success and then dying with `inconsistent vendoring`.
 if [ "${vendor}" = 'missing' ]; then
+  # shellcheck disable=SC2016 # バッククォートは Markdown のコードスパン。展開させない
   add_notice 'vendor/ がありません。`make serve` の air は `--mod=vendor` 固定のため、起動前に `go mod vendor` が必要です（このフックは実行しません）。'
 fi
 
 if [ -z "${slot_id}" ] && [ "${kind}" = 'worktree' ]; then
+  # shellcheck disable=SC2016 # 同上
   add_notice 'DB スロットは未取得です。DB を使う作業（`make test` / `make db-init` / `make serve`）を始める直前に `make slot-acquire` を実行してください。スロット取得は DB を作り直すため、このフックは実行しません。'
 fi
 

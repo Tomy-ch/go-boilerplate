@@ -6,65 +6,9 @@ English | [日本語](README.ja.md)
 
 ## Directory Structure
 
-```text
-scripts/
-├── portal/                     # Portal documentation generation (TypeScript)
-│   ├── gen-docs-json.ts        # Generate docs.json for portal navigation
-│   ├── gen-portal-docs.ts      # Copy docs to portal based on manifest.yaml
-│   ├── docs-json.ts            # Build the docs.json structure (pure, tested)
-│   └── portal-manifest.ts      # Read and bound-check manifest.yaml (pure, tested)
-├── lib/                        # Shared across tools (pure, tested)
-│   ├── workflow.ts             # Read a workflow definition by column
-│   ├── lint-report.ts          # Finding type and the failure output format
-│   ├── one-to-one.ts           # The 1:1 test-mapping check
-│   └── untested-modules.ts     # What coverage and the 1:1 gate both exclude, and why
-├── semver/                     # Semantic versioning helper (patch/minor/major)
-├── stamp-openapi-version/      # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
-├── reset-mock-auth-users/      # Reset the mock-auth user fixture to a neutral default
-├── make-help/                  # Generate Make target help output
-├── marker-baseline/             # Pin how many removal-marker lines each file has, so an added one is a decision <!-- boilerplate-only:line -->
-├── premise-lint/               # Refuse a premise that lapses with the fork in a document that survives it <!-- boilerplate-only:line -->
-├── mermaid-lint/               # Validate ```mermaid fences in Markdown with the real mermaid parser
-├── skill-lint/                 # Validate .claude/** skill / agent definitions against reality and their .codex/** counterparts
-├── pr-comment-secret-lint/     # Reject a secret in a workflow job that posts a PR comment
-├── pr-comment-fence-lint/      # Reject a fixed-length Markdown fence around a PR comment body
-├── actions-cutoff-lint/        # Require a job timeout and a PR comment that survives a cut-off
-├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
-├── package.json                # Node dependency and script-entry declarations for the TypeScript scripts
-├── pnpm-lock.yaml              # Resolved dependency tree (pinned)
-├── pnpm-workspace.yaml         # pnpm install behaviour and the supply-chain policy (CODEOWNERS-reviewed)
-├── tsconfig.json               # Type-check settings for the TypeScript scripts
-├── vitest.config.mts           # Test settings for the TypeScript scripts
-├── one-to-one.gate.test.ts     # 1:1 test-mapping gate for every TypeScript package
-├── genctxkey/                  # Context key code generator (Go)
-├── actions-shellcheck/         # Check the `run:` scripts of composite actions with shellcheck (Go)
-├── pin-actions/                # Pin GitHub Actions `uses:` references to commit SHAs (Go)
-├── pin-images/                 # Pin Dockerfile `FROM` base images to digests (Go)
-├── egress/                     # Generate / verify harden-runner `allowed-endpoints` from the SSOT (Go)
-├── go-cooldown/                # Gate / audit go.mod against the supply-chain cooldown window (Go)
-├── tool-cooldown/              # Gate / audit tool pins (mise.toml / python/*.in) against the cooldown window (Go)
-├── migration-lint/             # Check migration sequence numbers for duplicates and gaps (Go)
-├── cover-gate/                 # Gate total coverage from `go tool cover -func` against a threshold (Go)
-├── load-band/                  # Resolve the host load band and CPU share for the local gates (Go)
-├── release/                    # Cut a release tag / release branch (Go)
-├── base-branch/                # Resolve the latest release line to branch from, off origin's live state (Go)
-├── repo-setup/                 # git / gh steps that initialise the boilerplate as your own repository (Go)
-└── setup/                     # Initial project setup scripts (one directory per tool, as above)
-    ├── replace-module/ <!-- setup-localize:line -->
-    ├── replace-app-metadata/ <!-- setup-localize:line -->
-    ├── replace-license-copyright/ <!-- setup-localize:line -->
-    ├── replace-repository-reference/ <!-- setup-localize:line -->
-    ├── replace-codeowners/ <!-- setup-localize:line -->
-    ├── remove-sample-api/     # Remove the sample API (user/product/order) <!-- sample-api:line -->
-    ├── verify-sample-removal/ # Verify that removal was exact, then self-destruct <!-- sample-api:line -->
-    └── lib/                   # Shared across the setup tools (file-utils / runtime / validators)
-```
-
-**Every TypeScript tool is a directory**, matching the Go tools next to it: `index.ts` is the entry
-(argument handling, file I/O, exit code) and the decision modules sit beside it with their tests. Both
-are invoked by directory — `go run ./scripts/load-band`, `tsx scripts/mermaid-lint` — so the call site
-does not reveal which language a tool is written in. What each entry may not hold, and why, is declared
-in [`lib/untested-modules.ts`](lib/untested-modules.ts).
+One directory per tool, named after what it does; `lib/` holds what more than one of them needs.
+Node configuration and the cross-package gates sit at the top level. What each tool is for is in
+*Script Categories* below — that is the part a name cannot carry.
 
 ## Script Categories
 

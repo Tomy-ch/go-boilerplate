@@ -318,7 +318,7 @@ data-access-pattern-design:
   - src: docs/design/data-access-pattern.md
     dst: docs/portal/guides/data-access-pattern-design.md
   # Japanese
-  - src: docs/ja/design/data-access-pattern.ja.md
+  - src: docs/design/data-access-pattern.ja.md
     dst: docs/portal/guides/ja/data-access-pattern-design.ja.md
 
 context-map-design:
@@ -326,7 +326,7 @@ context-map-design:
   - src: docs/design/context-map.md
     dst: docs/portal/guides/context-map-design.md
   # Japanese
-  - src: docs/ja/design/context-map.ja.md
+  - src: docs/design/context-map.ja.md
     dst: docs/portal/guides/ja/context-map-design.ja.md
 
 worker-design:
@@ -334,7 +334,7 @@ worker-design:
   - src: docs/design/worker.md
     dst: docs/portal/guides/worker-design.md
   # Japanese
-  - src: docs/ja/design/worker.ja.md
+  - src: docs/design/worker.ja.md
     dst: docs/portal/guides/ja/worker-design.ja.md
 
 job-design:
@@ -342,7 +342,7 @@ job-design:
   - src: docs/design/job.md
     dst: docs/portal/guides/job-design.md
   # Japanese
-  - src: docs/ja/design/job.ja.md
+  - src: docs/design/job.ja.md
     dst: docs/portal/guides/ja/job-design.ja.md
 
 idempotency-design:
@@ -350,7 +350,7 @@ idempotency-design:
   - src: docs/design/idempotency.md
     dst: docs/portal/guides/idempotency-design.md
   # Japanese
-  - src: docs/ja/design/idempotency.ja.md
+  - src: docs/design/idempotency.ja.md
     dst: docs/portal/guides/ja/idempotency-design.ja.md
 
 rest-design:
@@ -358,7 +358,7 @@ rest-design:
   - src: docs/design/rest.md
     dst: docs/portal/guides/rest-design.md
   # Japanese
-  - src: docs/ja/design/rest.ja.md
+  - src: docs/design/rest.ja.md
     dst: docs/portal/guides/ja/rest-design.ja.md
 
 outbox-design:
@@ -366,7 +366,7 @@ outbox-design:
   - src: docs/design/outbox.md
     dst: docs/portal/guides/outbox-design.md
   # Japanese
-  - src: docs/ja/design/outbox.ja.md
+  - src: docs/design/outbox.ja.md
     dst: docs/portal/guides/ja/outbox-design.ja.md
 
 observability-design:
@@ -374,7 +374,7 @@ observability-design:
   - src: docs/design/observability.md
     dst: docs/portal/guides/observability-design.md
   # Japanese
-  - src: docs/ja/design/observability.ja.md
+  - src: docs/design/observability.ja.md
     dst: docs/portal/guides/ja/observability-design.ja.md
 
 domain:

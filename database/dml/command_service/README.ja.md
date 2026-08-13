@@ -16,17 +16,7 @@ Repository の load-mutate-save の形に収まらない状態変更（INSERT / 
 
 ## ディレクトリ構成
 
-```text
-command_service/
-├── user/
-│   ├── insert_user.sql
-│   ├── update_user_email.sql
-│   └── ...
-├── product/
-│   ├── publish_product.sql
-│   └── ...
-└── ...
-```
+この区分の書き込みを必要とする集約ごとに 1 つのディレクトリを置き、集約名を付ける。
 
 ## 命名規則
 

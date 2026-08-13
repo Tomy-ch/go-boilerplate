@@ -39,15 +39,6 @@
 
 ## ディレクトリ構成
 
-```text
-internal/infrastructure/rdb/sqlc/
-├── like.go         # LIKE 検索ヘルパー
-└── gen/               # sqlc 自動生成コード（編集禁止）
-    ├── desc.go         # パッケージ記述
-    ├── *.gen.sql.go    # クエリ実行コード（自動生成）
-    └── *.gen.go        # 型定義 / DBTX 配線（自動生成: models.gen.go, db.gen.go）
-```
-
 ## LIKE 検索ヘルパー
 
 PostgreSQL の `LIKE` / `ILIKE` 検索で利用するパターン生成を補助する関数を提供します。

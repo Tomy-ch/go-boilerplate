@@ -6,9 +6,11 @@ description: >-
 
 # Context Map
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Create `docs/design/context-map.md`, the English-canonical relationship map for every place this
 system exchanges a model with a context it does not own. Maintain
-`docs/ja/design/context-map.ja.md` as its Japanese translation.
+`docs/design/context-map.ja.md` as its Japanese translation.
 
 ## Non-negotiable rule
 
@@ -106,7 +108,7 @@ the edge.
 Write only these two documentation files:
 
 - `docs/design/context-map.md` — English canonical
-- `docs/ja/design/context-map.ja.md` — Japanese translation
+- `docs/design/context-map.ja.md` — Japanese translation
 
 Use this structure:
 
@@ -131,7 +133,7 @@ recommendation to rerun `/ddd-audit` for `context-map`. Do not commit or push.
 
 - Read only the relevant boundary, infrastructure, controller, OpenAPI, design, ADR, and package
   documentation needed to establish an edge.
-- Write only `docs/design/context-map.md` and `docs/ja/design/context-map.ja.md` while this skill
+- Write only `docs/design/context-map.md` and `docs/design/context-map.ja.md` while this skill
   executes. Never edit the DDD ledger, ADRs, source code, generated files, or `AGENTS.md`.
 - Do not hardcode the contact-point list; resolve it from boundary and infrastructure at runtime.
 - Do not turn structural evidence into a relationship decision.

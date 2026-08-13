@@ -148,11 +148,12 @@ export function isChecked(relativePath: string): boolean {
   if (!rel.endsWith(".md")) return false;
   if (ALLOWED_PREFIXES.some((prefix) => rel === prefix || rel.startsWith(prefix))) return false;
 
-  if (rel.startsWith("docs/ja/")) {
-    // ミラーは `docs/ja/` 配下に居て `.ja.md` で終わる。正本の綴りへ戻してから領域を見る。
-    const canonical = `docs/${rel.slice("docs/ja/".length)}`.replace(/\.ja\.md$/, ".md");
-
-    if (ALLOWED_PREFIXES.some((prefix) => canonical.startsWith(prefix))) return false;
+  if (rel.startsWith("docs/") && rel.endsWith(".ja.md")) {
+    // CHECKED_PREFIXES はディレクトリだけでなく `docs/rules.md` のようなファイル名も持つため、
+    // 対訳は正本の綴りへ戻してから領域を見る。許可域の再判定は要らない —— 対訳は正本の隣に
+    // 居るので、許可域に入るなら上の検査が既に落としている。
+    // 層 README の対訳は LAYER_README_RE が `.ja.md` ごと拾うので、最後の行に任せる。
+    const canonical = rel.replace(/\.ja\.md$/, ".md");
 
     return CHECKED_PREFIXES.some((prefix) => canonical.startsWith(prefix));
   }

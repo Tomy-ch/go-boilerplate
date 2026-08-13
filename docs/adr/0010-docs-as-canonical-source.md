@@ -38,13 +38,14 @@ Three structural concerns arise:
 
 Adopt a three-layer documentation strategy:
 
-1. **English canonical** — `docs/**/*.md` (excluding `docs/ja/**` and `docs/portal/**`) is
+1. **English canonical** — `docs/**/*.md` (excluding `*.ja.md` and `docs/portal/**`) is
    the authoritative source. These are what agents read, what rules reference, and what the
    portal renders.
-2. **Japanese mirror** — `docs/ja/**/*.ja.md` files are human-maintained translations of the
-   English canonical docs. They are never read by agents (per `AGENTS.md`: agents must not
-   read `*.ja.md` files). Naming convention: `<name>.ja.md` in a parallel directory structure
-   under `docs/ja/`.
+2. **Japanese translation** — `<name>.ja.md` beside its canonical `<name>.md`, human-maintained.
+   Agents never read it (per `AGENTS.md`: agents must not read `*.ja.md` files). **The suffix is
+   what excludes it, not its location**, so no parallel directory is needed and none is used —
+   the same co-located form every other translation pair in this repository takes
+   (`README.ja.md`, `SKILL.ja.md`).
 3. **Generated portal** — `docs/portal/docs.json` and `docs/portal/guides/**` are generated
    by `scripts/portal/gen-docs-json.ts` from the canonical sources, driven by
    `docs/portal/manifest.yaml`. Portal content must not be edited manually.
@@ -54,8 +55,7 @@ files to portal destinations, defines the navigation hierarchy (groups, sections
 subgroups), and controls section display titles. It is human-maintained.
 
 The following directories are reserved by the generator and cannot be used as normal
-documentation sections: `docs/portal`, `docs/openapi`, `docs/coverage`, `docs/er-diagram`,
-`docs/ja`.
+documentation sections: `docs/portal`, `docs/openapi`, `docs/coverage`, `docs/er-diagram`.
 
 ## Consequences
 
@@ -67,9 +67,8 @@ documentation sections: `docs/portal`, `docs/openapi`, `docs/coverage`, `docs/er
   English canonical is always authoritative.
 - Portal content is always reproducible from source; `docs/portal/docs.json` is a generated
   artifact and can be regenerated on any machine or CI runner.
-- Adding a new documentation section follows a clear convention: an English `docs/<section>/`
-  directory, a parallel `docs/ja/<section>/` directory, and an entry in
-  `docs/portal/manifest.yaml`.
+- Adding a new documentation section follows a clear convention: a `docs/<section>/` directory
+  holding both languages, and an entry in `docs/portal/manifest.yaml`.
 
 ### Negative Consequences
 

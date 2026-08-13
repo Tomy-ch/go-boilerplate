@@ -53,4 +53,4 @@
 ## 関連
 
 - Store 境界（relay が usecase 経由で駆動する永続化 port）: [`internal/usecase/boundary/outbox/README.ja.md`](../../usecase/boundary/outbox/README.ja.md)
-- 詳細設計（役割論 / 状態遷移 / 実装箇所マップ / 用語集）: [docs/ja/design/outbox.ja.md](../../../docs/ja/design/outbox.ja.md)
+- 詳細設計（役割論 / 状態遷移 / 実装箇所マップ / 用語集）: [docs/design/outbox.ja.md](../../../docs/design/outbox.ja.md)

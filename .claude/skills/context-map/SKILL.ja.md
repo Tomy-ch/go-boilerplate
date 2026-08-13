@@ -127,7 +127,7 @@ ls internal/infrastructure/            # アダプタ: 何が、誰に対して�
 
 - 読み込み: `internal/usecase/boundary/**`、`internal/infrastructure/**`、`docs/design/**`、
   `docs/adr/**`、パッケージごとの `README.md`
-- 書き込み: `docs/design/context-map.md` と `docs/ja/` 側のペアのみ
+- 書き込み: `docs/design/context-map.md` と隣の `.ja.md` のみ
 - 触らない: DDD 台帳、ADR、実装コード、生成物、`AGENTS.md`
 
 ## Constraints
@@ -138,7 +138,7 @@ ls internal/infrastructure/            # アダプタ: 何が、誰に対して�
 - ❌ 連携の仕組みを地図へ書き写す（関係だけを書き、機構は既存の design doc へリンク）
 - ❌ 台帳の書き換え、commit / push
 - ✅ 辺ごとに `file:line` の根拠と、構造からは判別できないことの明示
-- ✅ 出力・地図本文の日本語ミラーは日本語（英語正本 + `docs/ja/` ペア）
+- ✅ 出力・地図本文の日本語ミラーは日本語（英語正本 + 隣の `.ja.md`）
 
 ## チェックリスト
 

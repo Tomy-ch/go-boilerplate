@@ -349,6 +349,76 @@ func Test_parseProductListRange(t *testing.T) {
 			assert.Equal(t, int32(2), *actual.minQuantity)
 			assert.Equal(t, int32(20), *actual.maxQuantity)
 		})
+
+		t.Run("価格の下限と上限が等しい場合、単一価格の絞り込みとして受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{
+				MinPrice: ptr.To("10.00"), MaxPrice: ptr.To("10.00"),
+			})
+			require.NoError(t, err)
+			require.NotNil(t, actual.minPrice)
+			assert.True(t, actual.minPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.00")))
+			require.NotNil(t, actual.maxPrice)
+			assert.True(t, actual.maxPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.00")))
+		})
+
+		t.Run("在庫数の下限と上限が等しい場合、単一在庫数の絞り込みとして受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{
+				MinQuantity: ptr.To[int32](10), MaxQuantity: ptr.To[int32](10),
+			})
+			require.NoError(t, err)
+			assert.Equal(t, int32(10), *actual.minQuantity)
+			assert.Equal(t, int32(10), *actual.maxQuantity)
+		})
+
+		t.Run("在庫数の下限が0の場合、非負の境界として受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinQuantity: ptr.To[int32](0)})
+			require.NoError(t, err)
+			assert.Equal(t, int32(0), *actual.minQuantity)
+		})
+
+		t.Run("在庫数の上限が0の場合、非負の境界として受理する", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxQuantity: ptr.To[int32](0)})
+			require.NoError(t, err)
+			assert.Equal(t, int32(0), *actual.maxQuantity)
+		})
+
+		t.Run("最低価格のみを指定した場合、上限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinPrice: ptr.To("10.50")})
+			require.NoError(t, err)
+			require.NotNil(t, actual.minPrice)
+			assert.True(t, actual.minPrice.Decimal().Equal(decimaltestkit.MustParse(t, "10.50")))
+			assert.Nil(t, actual.maxPrice)
+		})
+
+		t.Run("最高価格のみを指定した場合、下限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxPrice: ptr.To("99.99")})
+			require.NoError(t, err)
+			assert.Nil(t, actual.minPrice)
+			require.NotNil(t, actual.maxPrice)
+			assert.True(t, actual.maxPrice.Decimal().Equal(decimaltestkit.MustParse(t, "99.99")))
+		})
+
+		t.Run("最低在庫数のみを指定した場合、上限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MinQuantity: ptr.To[int32](2)})
+			require.NoError(t, err)
+			assert.Equal(t, int32(2), *actual.minQuantity)
+			assert.Nil(t, actual.maxQuantity)
+		})
+
+		t.Run("最高在庫数のみを指定した場合、下限を課さない", func(t *testing.T) {
+			t.Parallel()
+			actual, err := parseProductListRange(ListProductsParams{MaxQuantity: ptr.To[int32](20)})
+			require.NoError(t, err)
+			assert.Nil(t, actual.minQuantity)
+			assert.Equal(t, int32(20), *actual.maxQuantity)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

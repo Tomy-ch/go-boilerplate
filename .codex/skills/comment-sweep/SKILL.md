@@ -5,6 +5,8 @@ description: Sweep the existing stock of source-code comments to decide whether 
 
 # Comment Sweep
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Treat this as a relocation workflow, not a comment-deletion workflow. Do not re-argue comment
 volume: a non-obvious, verifiable Why has a concrete case for remaining. Instead, ask the
 jurisdiction question from the runtime authority: if this decision were reversed, which document
@@ -86,7 +88,7 @@ When the auditor reported `追記なし`, do not write the destination document:
 
 For an ADR destination, do not choose its record shape. Ask the user to choose one of: rewrite the
 existing ADR-NNNN, create a new ADR, use `docs/design` or a README instead, or do not relocate now.
-If approved, update the English canonical document, its `docs/ja/` mirror, and the English/Japanese
+If approved, update the English canonical document, its `.ja.md` translation, and the English/Japanese
 ADR log tables together. If a package README addition materially changes its claims, mention
 `back-prop` as the appropriate follow-up.
 

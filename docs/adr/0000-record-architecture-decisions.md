@@ -50,7 +50,7 @@ editing its body.
 
 ### Negative Consequences
 
-- More files and cross-references to maintain (each ADR also needs a `docs/ja/adr/` mirror).
+- More files and cross-references to maintain (each ADR also needs its `.ja.md` translation).
 - Contributors must classify (decision vs rule vs inventory) before writing — a small upfront judgment cost.
 
 ## Alternatives Considered

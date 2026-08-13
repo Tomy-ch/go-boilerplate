@@ -6,19 +6,8 @@
 
 ## ディレクトリ構成
 
-```text
-docker/
-├── server/             # アプリケーションサーバ用 Dockerfile
-├── tools/              # コード生成・ツールランナー用 Dockerfile
-├── document/           # ドキュメントビューア用 Dockerfile + nginx設定
-├── garage/             # オブジェクトストレージ用 Dockerfile + 設定 + プロビジョニングスクリプト
-├── elasticmq/          # SQS 互換ブローカーの設定
-├── mock-auth-server/   # 疑似 OIDC 認証サーバー用 Dockerfile
-└── database/
-    ├── sql/            # DB初期化SQL
-    ├── schemaspy/      # ER図生成設定
-    └── sqlfluff/       # SQLリンター設定
-```
+イメージまたはサービスごとに 1 つのディレクトリを置き、その名前を付ける。そのユニットの Dockerfile と、
+ビルド時・実行時に必要な設定を収める。
 
 ## compose の階層構成（infra / app）
 

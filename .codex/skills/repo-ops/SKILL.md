@@ -6,6 +6,8 @@ description: >-
 
 # Repo Ops Runbook
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Concrete recovery steps for the operational gotchas that recur in this repo. This is a lookup
 table, not a workflow: find the symptom, run the fix. When a step is destructive (drops DB data,
 `chown`s a tree, stops containers other checkouts rely on) say so to the user first per `AGENTS.md`.
@@ -83,7 +85,7 @@ Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **7
 
 ```bash
 rg "<pattern>" \
-  -g '!**/*.ja.md' -g '!docs/ja/**' -g '!docs/portal/**' \
+  -g '!**/*.ja.md' -g '!docs/portal/**' \
   -g '!docs/godoc/**' -g '!docs/db-schema/**' -g '!docs/openapi/**' -g '!docs/coverage/**'
 ```
 

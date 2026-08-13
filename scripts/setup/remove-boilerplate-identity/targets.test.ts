@@ -145,13 +145,17 @@ describe("BOILERPLATE_DELETE_PATHS", () => {
       }
     });
 
-    it("正本と日本語ミラーを対にして挙げている", () => {
+    it("ファイル指定では正本と対訳を対にして挙げている", () => {
       expect(BOILERPLATE_DELETE_PATHS).toContain("docs/get-started/boilerplate-only-conventions.md");
       expect(BOILERPLATE_DELETE_PATHS).toContain(
-        "docs/ja/get-started/boilerplate-only-conventions.ja.md",
+        "docs/get-started/boilerplate-only-conventions.ja.md",
       );
+    });
+
+    // 対訳は正本と同じディレクトリに居るので、ディレクトリ指定は 1 つで両方を連れて行く。
+    it("ディレクトリ指定は対訳の分を重ねて挙げない", () => {
       expect(BOILERPLATE_DELETE_PATHS).toContain("docs/plan");
-      expect(BOILERPLATE_DELETE_PATHS).toContain("docs/ja/plan");
+      expect(BOILERPLATE_DELETE_PATHS).not.toContain("docs/ja/plan");
     });
 
     // premise-lint が守る規則は fork が継承するが、検査が探す言い回しは上流固有の実例でしかない。

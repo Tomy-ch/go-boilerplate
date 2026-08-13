@@ -42,13 +42,6 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 
 推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
 
-```txt
-internal/infrastructure/authz
-├── allowall   # local / ci / test 用スタブ（すべて許可）
-├── stg        # staging 用 Authorizer
-└── prd        # production 用 Authorizer
-```
-
 実運用の `Authorizer` は通常、次のいずれかで判定します。
 
 - 所有権（subject == `Resource.OwnerID()`）— オブジェクトレベル認可

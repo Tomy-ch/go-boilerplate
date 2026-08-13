@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adrIndex, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
+import { adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
 
 const ADR = ["ADR", "-0006"].join("");
 const ADRS = adrIndex(["docs/adr/0006-structural-safety-via-tooling.md"]);
@@ -58,7 +58,7 @@ describe("checkPathReferences", () => {
   describe("正常系", () => {
     it("番号どおりの slug を綴ったパス参照を通す", () => {
       expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.md", ADRS)).toEqual([]);
-      expect(checkPathReferences("a.md", "docs/ja/adr/0006-structural-safety-via-tooling.ja.md", ADRS)).toEqual([]);
+      expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.ja.md", ADRS)).toEqual([]);
     });
     it("ADR を指さないパスは見ない", () => {
       expect(checkPathReferences("a.md", "docs/design/0006-other.md", ADRS)).toEqual([]);
@@ -114,9 +114,42 @@ describe("checkStructuredReferences", () => {
   });
 });
 
+describe("checkDocRoutes", () => {
+  const present = new Set(["docs/design/rest.md", "docs/design/auth.md"]);
+
+  describe("正常系", () => {
+    it("実在する文書へ経路を張った行を通す", () => {
+      expect(checkDocRoutes("internal/controller/handler/* = docs/design/rest.md # why\n", present)).toEqual([]);
+    });
+    it("1 行に複数の文書を並べた経路を通す", () => {
+      const source = "internal/x/* = docs/design/rest.md, docs/design/auth.md # why\n";
+      expect(checkDocRoutes(source, present)).toEqual([]);
+    });
+    it("コメント行と空行を経路として読まない", () => {
+      expect(checkDocRoutes("# a = docs/nope.md\n\n", present)).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("存在しない文書を指した経路を行番号付きで報告する", () => {
+      const findings = checkDocRoutes("a/* = docs/design/rest.md\nb/* = docs/design/gone.md # why\n", present);
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].message).toContain("L2");
+      expect(findings[0].message).toContain("docs/design/gone.md");
+    });
+    it("複数並べたうちの存在しない側だけを報告する", () => {
+      const findings = checkDocRoutes("a/* = docs/design/rest.md, docs/design/gone.md\n", present);
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].message).toContain("docs/design/gone.md");
+    });
+  });
+});
+
 describe("expectedTranslation", () => {
   describe("正常系", () => {
-    it("通常の docs を日本語ミラーへ対応付ける", () => expect(expectedTranslation("docs/design/worker.md")).toBe("docs/ja/design/worker.ja.md"));
+    it("通常の docs を日本語ミラーへ対応付ける", () => expect(expectedTranslation("docs/design/worker.md")).toBe("docs/design/worker.ja.md"));
   });
   describe("異常系", () => {
     it("対象外の領域と形式を除外する", () => {
@@ -140,15 +173,15 @@ describe("translationExclusion", () => {
 
 describe("checkTranslations", () => {
   describe("正常系", () => {
-    it("正本と翻訳が一対一なら通す", () => expect(checkTranslations(["docs/design/worker.md", "docs/ja/design/worker.ja.md"])).toEqual([]));
+    it("正本と翻訳が一対一なら通す", () => expect(checkTranslations(["docs/design/worker.md", "docs/design/worker.ja.md"])).toEqual([]));
   });
   describe("異常系", () => {
     it("欠落と孤立した翻訳を報告する", () => {
-      const findings = checkTranslations(["docs/design/worker.md", "docs/ja/design/orphan.ja.md"]);
-      expect(findings.map(({ message }) => message)).toContain("missing docs/ja/design/worker.ja.md");
+      const findings = checkTranslations(["docs/design/worker.md", "docs/design/orphan.ja.md"]);
+      expect(findings.map(({ message }) => message)).toContain("missing docs/design/worker.ja.md");
       expect(findings.map(({ message }) => message)).toContain("orphan translation for docs/design/orphan.md");
     });
-    it("対象外の ADR 翻訳を孤立として扱わない", () => expect(checkTranslations(["docs/ja/adr/0001-a.ja.md"])).toEqual([]));
+    it("対象外の ADR 翻訳を孤立として扱わない", () => expect(checkTranslations(["docs/adr/0001-a.ja.md"])).toEqual([]));
   });
 });
 

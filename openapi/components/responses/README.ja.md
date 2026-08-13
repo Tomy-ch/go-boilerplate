@@ -24,23 +24,7 @@ allOf:
 
 ## ディレクトリ内容
 
-```text
-responses/
-├── users/
-│   ├── UsersResponse.yaml          # ユーザー一覧（UserResponse[] ＋ オフセットページネーション）
-│   ├── UsersFeedResponse.yaml      # ユーザーフィード（UserResponse[] ＋ カーソルページネーション）
-│   ├── UsersSearchResponse.yaml    # 検索結果一覧
-│   └── UsersSearchResponseItem.yaml # 検索結果1件（UserResponse ＋ registeredAt）
-├── health-check/
-│   ├── HealthResponse.yaml
-│   └── ReadyResponse.yaml
-└── version/
-    └── VersionResponse.yaml
-```
-
-> `users/` は**サンプル実装**です。独自リソースでも同じ構造に倣ってください。
->
-> 再利用する**エラー**レスポンスオブジェクト（共通の `400/401/403/404/500`）は、`ErrorResponse` と同じ [`schemas/errors/`](../schemas/README.ja.md) に置きます（ここではありません）。
+リソースまたは関心事ごとに 1 つのディレクトリを置き、その名前を付ける。その単位のレスポンスボディを収める。
 
 ## 命名規則
 
