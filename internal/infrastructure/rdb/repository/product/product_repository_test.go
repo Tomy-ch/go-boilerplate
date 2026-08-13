@@ -358,6 +358,187 @@ func Test_repository_CountPublished(t *testing.T) {
 				assert.Equal(t, int64(1), count)
 			})
 		})
+
+		t.Run("category_idフィルタは該当カテゴリの件数のみを数える", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 2, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBECAT"
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000000a",
+					keyword+"-electronics", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000000b",
+					keyword+"-books", nil, 1000, statusInStock, categoryBooks, &publishedAt,
+				)
+
+				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+					CategoryID: ptr.To(mustParse(t, categoryElectronics)), Keyword: &keyword,
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), count)
+			})
+		})
+
+		t.Run("status_idフィルタは該当ステータスの件数のみを数える", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 3, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBESTATUS"
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000000c",
+					keyword+"-in-stock", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000000d",
+					keyword+"-out-of-stock", nil, 1000, statusOutOfStock, categoryElectronics, &publishedAt,
+				)
+
+				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+					StatusID: ptr.To(mustParse(t, statusInStock)), Keyword: &keyword,
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), count)
+			})
+		})
+
+		t.Run("keywordは名称と説明の両方に部分一致する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 4, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBEKEYWORD"
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000000e",
+					keyword+"-in-name", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000000f",
+					"unrelated-name", ptr.To("説明に"+keyword+"を含む"),
+					1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-000000000010",
+					"unrelated-other", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+
+				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{Keyword: &keyword})
+				require.NoError(t, err)
+				assert.Equal(t, int64(2), count)
+			})
+		})
+
+		t.Run("価格と在庫数は境界値を含む範囲で絞り込まれる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 5, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBERANGE"
+				lowID := "dddddddd-0000-4000-8000-000000000011"
+				matchID := "dddddddd-0000-4000-8000-000000000012"
+				highID := "dddddddd-0000-4000-8000-000000000013"
+				quantityLowID := "dddddddd-0000-4000-8000-000000000018"
+				quantityOutID := "dddddddd-0000-4000-8000-000000000014"
+				insertProduct(
+					ctx, t, drv, lowID, keyword+"-low", nil, 999, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, matchID, keyword+"-match", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, highID, keyword+"-high", nil, 1001, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, quantityOutID,
+					keyword+"-quantity-high", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, quantityLowID,
+					keyword+"-quantity-low", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				_, err := drv.Exec(
+					ctx, "UPDATE products SET quantity = CASE id WHEN $1 THEN 11 ELSE 9 END WHERE id = ANY($2::uuid[])",
+					quantityOutID, []string{quantityOutID, quantityLowID},
+				)
+				require.NoError(t, err)
+
+				price := mustPriceFilter(t)
+				quantity := int32(10)
+				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+					Keyword: &keyword, MinPrice: &price, MaxPrice: &price,
+					MinQuantity: &quantity, MaxQuantity: &quantity,
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), count)
+			})
+		})
+
+		t.Run("一致する公開商品が無い場合は0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+					Keyword: ptr.To("COUNTPROBENOMATCH"),
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(0), count)
+			})
+		})
+
+		t.Run("同一条件では一覧の件数と一致する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 6, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBEPARITY"
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-000000000015",
+					keyword+"-match", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-000000000016",
+					keyword+"-other-category", nil, 1000, statusInStock, categoryBooks, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-000000000017",
+					keyword+"-unpublished", nil, 1000, statusInStock, categoryElectronics, nil,
+				)
+
+				categoryID := ptr.To(mustParse(t, categoryElectronics))
+				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					Limit: 100, Ascending: false, CategoryID: categoryID, Keyword: &keyword,
+				})
+				require.NoError(t, err)
+				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+					CategoryID: categoryID, Keyword: &keyword,
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(len(page)), count)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{})
+			assert.Zero(t, count)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
 	})
 }
 
