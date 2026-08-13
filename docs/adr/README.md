@@ -73,6 +73,7 @@ can enumerate them. The tag has no reader once setup is done.
 | [0016](0016-validation-value-authority.md) | Designate the domain layer as the sole authority for business-validity rules | accepted |
 | [0017](0017-boundary-value-ownership.md) | OpenAPI is the wire contract, not the domain rule; request is subset of domain, domain is subset of response | accepted |
 | [0018](0018-metrics-endpoint-auth-exception.md) | /metrics is an auth exception — outside OpenAPI validation, protected by a separate BasicAuth middleware | accepted |
+| [0019](0019-optional-authentication-fail-closed.md) | Optional authentication is allowed, and a failed authentication still denies the request | accepted |
 | [0020](0020-echo-http-framework.md) | Adopt Echo as the HTTP framework | accepted |
 | [0021](0021-priority-ordered-middleware-chain.md) | Build the middleware chain as a priority-ordered, data-driven list | accepted |
 | [0022](0022-outbound-http-resilience.md) | Provide an outbound-HTTP resilience foundation (retry / circuit breaker / retry budget / dual timeout) | accepted |

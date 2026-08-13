@@ -64,6 +64,7 @@ Exclusion ADR（意図的な「X はしない」）は、リポジトリセッ�
 | [0016](0016-validation-value-authority.ja.md) | バリデーションのビジネス有効性における唯一の権威をドメイン層に定める | accepted |
 | [0017](0017-boundary-value-ownership.ja.md) | OpenAPI はワイヤー契約であってドメインルールではない。リクエストはドメインのサブセット、ドメインはレスポンスのサブセット | accepted |
 | [0018](0018-metrics-endpoint-auth-exception.ja.md) | /metrics は認証例外 — OpenAPI 検証の外に置き、独立した BasicAuth ミドルウェアで保護する | accepted |
+| [0019](0019-optional-authentication-fail-closed.ja.md) | 任意認証を許し、認証に失敗したリクエストは通さない | accepted |
 | [0020](0020-echo-http-framework.ja.md) | HTTP フレームワークとして Echo を採用する | accepted |
 | [0021](0021-priority-ordered-middleware-chain.ja.md) | ミドルウェアチェーンを優先順位付きのデータ駆動リストとして構築する | accepted |
 | [0022](0022-outbound-http-resilience.ja.md) | アウトバウンドHTTPレジリエンス基盤の提供（リトライ / サーキットブレーカー / リトライバジェット / デュアルタイムアウト） | accepted |
