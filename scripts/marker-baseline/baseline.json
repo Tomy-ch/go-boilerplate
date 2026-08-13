@@ -7,6 +7,7 @@
   ".makefiles/markdown/lint.mk": 10,
   ".makefiles/README.ja.md": 4,
   ".makefiles/README.md": 4,
+  "AGENTS.md": 2,
   "CODEX.md": 2,
   "docker-compose.yaml": 2,
   "docs/adr/0030-lightweight-cqrs.ja.md": 2,
