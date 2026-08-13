@@ -283,7 +283,7 @@ grep -rl "setup-review" docs/adr/
 1. 許容する集合を Trivy 自身の分類（`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`）で決め、**出荷物とビルド専用ツールに同じ基準を当てるか**を判断する。同じでなくてよい：本リポジトリで `notice` / `unencumbered` 以外に分類される依存は、出荷されないビルド専用の `docker/tools/` 由来です。
 2. Trivy の分類は出発点であり権威ではないものとして扱う。`BlueOak-1.0.0` は OSI 承認の permissive ライセンスでありながら `unknown` に落ちるため、この種のケースは分類任せにせず明示的に決める。
 3. [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../.trivyignore.yaml) へ記録する。
-4. [.github/workflows/README.md](../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0086](../adr/0086-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
+4. [.github/workflows/README.md](../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0087](../adr/0087-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
 
 ## Phase 15: サンプルAPIの削除
 

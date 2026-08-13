@@ -1,6 +1,6 @@
 # Data Access Pattern
 
-English | [日本語](../ja/design/data-access-pattern.ja.md)
+English | [日本語](data-access-pattern.ja.md)
 
 ## Role
 
@@ -8,11 +8,11 @@ This document is the single place the **placement criterion** for a data access 
 operation, which construct does it belong to, and why.
 
 The decisions are recorded in the ADRs —
-[ADR-0029 (lightweight-cqrs)](../adr/0029-lightweight-cqrs.md) (the constructs, their structure, the
+[ADR-0030 (lightweight-cqrs)](../adr/0030-lightweight-cqrs.md) (the constructs, their structure, the
 CommandService eligibility and derivation rules),
-[ADR-0030 (system-cqrs-dml-category)](../adr/0030-system-cqrs-dml-category.md) (the fourth category
+[ADR-0031 (system-cqrs-dml-category)](../adr/0031-system-cqrs-dml-category.md) (the fourth category
 outside the split), and
-[ADR-0031 (commandservice-atomicity-criterion)](../adr/0031-commandservice-atomicity-criterion.md)
+[ADR-0032 (commandservice-atomicity-criterion)](../adr/0032-commandservice-atomicity-criterion.md)
 (the cross-aggregate decision procedure). Those record *what was decided and what was rejected*; this
 document states *how to decide a given case*, and is the one that grows as the criterion is sharpened.
 `docs/rules.md` § Repository / QueryService Rules carries only the enforceable prohibitions and links
@@ -48,7 +48,7 @@ calls — see §5, which is a branch of its own.
 outbox delivery are infrastructure-operational queries: not driven by a user-facing use case, with no
 aggregate owner and no usecase interface. They are not a harder case of the read/write question — they
 are not in the question. Placing them in `repository/` would break its 1:1 correspondence with domain
-aggregates. See [ADR-0030](../adr/0030-system-cqrs-dml-category.md); DML lives in
+aggregates. See [ADR-0031](../adr/0031-system-cqrs-dml-category.md); DML lives in
 `database/dml/system_cqrs/` and implementations in `internal/infrastructure/rdb/system_cqrs/`.
 
 ## 3. Read side: when is decomposition forbidden
@@ -148,7 +148,7 @@ The procedure:
 
 1. **Decomposition (default).** If the consequence for the other aggregate may be eventually consistent
    and a condition read from it may go stale, implement it as a regular usecase and propagate the
-   consequence as an outbox event ([ADR-0051](../adr/0051-transactional-outbox.md)). No other aggregate
+   consequence as an outbox event ([ADR-0052](../adr/0052-transactional-outbox.md)). No other aggregate
    is held inside the transaction.
 2. **Guard (synchronous row lock; still a regular usecase).** See §5.
 3. **Atomicity (CommandService; exception, must be justified).** Only when single-transaction atomicity
@@ -163,7 +163,7 @@ Branch 2 above is the one shape that does not appear in the §2 table. It crosse
 it is decided by a non-functional requirement, and it still lands on a regular usecase.
 
 If a condition read from another aggregate must hold until commit, take a row lock before evaluating it,
-in the global lock order ([ADR-0033](../adr/0033-ordered-pessimistic-row-locks.md)). Where the rule
+in the global lock order ([ADR-0034](../adr/0034-ordered-pessimistic-row-locks.md)). Where the rule
 spans aggregates it lives in a Domain Service. This buys immediate consistency for a **read**; it makes
 no write atomic and is **never on its own a reason to introduce a CommandService**.
 
@@ -245,5 +245,5 @@ The guard branch (§5) and CommandService (§4 gate 2, branch 3) both put rows b
 aggregate inside a single transaction, departing from the principle
 [`internal/domain/README.md`](../../internal/domain/README.md) (§ Aggregate Boundary) states. Exactly
 those two widenings are admitted, and no others; the reasoning is recorded in
-[ADR-0031](../adr/0031-commandservice-atomicity-criterion.md) § Departure from "1 Aggregate = 1
+[ADR-0032](../adr/0032-commandservice-atomicity-criterion.md) § Departure from "1 Aggregate = 1
 Transaction Boundary".

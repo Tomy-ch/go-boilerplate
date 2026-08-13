@@ -1,6 +1,6 @@
 # Roadmap
 
-English | [日本語](../ja/project/roadmap.ja.md)
+English | [日本語](roadmap.ja.md)
 
 <!-- boilerplate-only:replace-begin -->
 This page records the **direction** this project is being maintained in — the standing commitments

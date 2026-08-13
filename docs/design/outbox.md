@@ -1,8 +1,8 @@
 # Outbox Subsystem Design Reference
 
-[Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](../ja/design/outbox.ja.md)
+[Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](outbox.ja.md)
 
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0051 (transactional-outbox)](../adr/0051-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0104 (outbox-relay-hardening-delegated)](../adr/0104-outbox-relay-hardening-delegated.md).
+This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0052 (transactional-outbox)](../adr/0052-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0105 (outbox-relay-hardening-delegated)](../adr/0105-outbox-relay-hardening-delegated.md).
 
 ---
 
@@ -218,7 +218,7 @@ The subsystem ships the **full machinery**: emit/relay/gc/replay usecases, the R
 > **Departure from Evans — no Published Language on this side.** The synchronous HTTP surface has one:
 > OpenAPI is committed as a resolved contract that a consumer in another repository can read without
 > this repository's toolchain, and a drift gate keeps it honest. The asynchronous surface has none.
-> [ADR-0054 (message-id-idempotency-propagation)](../adr/0054-message-id-idempotency-propagation.md) fixes a *transport* convention
+> [ADR-0055 (message-id-idempotency-propagation)](../adr/0055-message-id-idempotency-propagation.md) fixes a *transport* convention
 > (`Idempotency-Key`), not a language: nothing here defines or publishes the schema of the event
 > payloads or the vocabulary of `event_type`, so a receiver learns both by reading this repository's
 > source. The asymmetry is deliberate to the extent that item ② below hands payload and `event_type`

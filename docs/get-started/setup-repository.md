@@ -1,6 +1,6 @@
 # Post-Repository Clone Task List
 
-English | [日本語](../ja/get-started/setup-repository.ja.md)
+English | [日本語](setup-repository.ja.md)
 
 For details of Make commands, refer to [Make Target List](../../.makefiles/README.md).
 
@@ -291,7 +291,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 1. Decide the acceptable set in terms of Trivy's own classification (`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`), and decide whether shipped artifacts and build-only tooling get the same bar. They may not: the classifications outside `notice` / `unencumbered` in this repository come from `docker/tools/`, which is build-only and never shipped.
 2. Treat Trivy's classification as a starting point, not an authority. `BlueOak-1.0.0` lands in `unknown` even though it is OSI-approved and permissive, so decide such cases explicitly instead of letting the bucket decide for you.
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
-4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0086 (multi-layer-security-scanning)](../adr/0086-multi-layer-security-scanning.md), which both currently state that no policy exists.
+4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0087 (multi-layer-security-scanning)](../adr/0087-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
 ## Phase 15: Remove Sample APIs
 

@@ -1,6 +1,6 @@
 # REST Subsystem Design Reference
 
-[Controller README](../../internal/controller/README.md) | 日本語: [rest.ja.md](../ja/design/rest.ja.md)
+[Controller README](../../internal/controller/README.md) | 日本語: [rest.ja.md](rest.ja.md)
 
 This document consolidates the REST (HTTP) scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the handler-authoring detail see the [handler README](../../internal/controller/handler/README.md); the worker and job are its async / CLI siblings — see [worker.md](worker.md) and [job.md](job.md).
 
