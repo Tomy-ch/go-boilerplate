@@ -42,9 +42,10 @@ USAGE
 # The checkout holding an absolute path: REPO_ROOT itself, or one of its worktrees, which lives
 # beside REPO_ROOT rather than under it. Empty for a path in another repository or in none.
 checkout_root() {
+  target=$1
   [ -n "${REPO_COMMON}" ] || return 0
 
-  dir=$(dirname -- "$1")
+  dir=$(dirname -- "${target}")
   while [ ! -d "${dir}" ]; do
     parent=$(dirname -- "${dir}")
     [ "${parent}" != "${dir}" ] || return 0
@@ -59,25 +60,27 @@ checkout_root() {
 # Repository-relative, so an absolute path from a hook and a relative one from a shell reach the
 # same entry, whichever checkout the file lives in.
 to_relative() {
-  case "$1" in
-    "${REPO_ROOT}/"*) printf '%s' "${1#"${REPO_ROOT}"/}" ;;
+  target=$1
+  case "${target}" in
+    "${REPO_ROOT}/"*) printf '%s' "${target#"${REPO_ROOT}"/}" ;;
     /*)
-      root=$(checkout_root "$1")
-      if [ -n "${root}" ] && [ "$1" != "${1#"${root}"/}" ]; then
-        printf '%s' "${1#"${root}"/}"
+      root=$(checkout_root "${target}")
+      if [ -n "${root}" ] && [ "${target}" != "${target#"${root}"/}" ]; then
+        printf '%s' "${target#"${root}"/}"
       else
-        printf '%s' "$1"
+        printf '%s' "${target}"
       fi
       ;;
-    ./*) printf '%s' "${1#./}" ;;
-    *) printf '%s' "$1" ;;
+    ./*) printf '%s' "${target#./}" ;;
+    *) printf '%s' "${target}" ;;
   esac
 }
 
 # Where the path is on disk, which for a worktree file is not under REPO_ROOT.
 checkout_for() {
-  case "$1" in
-    /*) checkout_root "$1" || : ;;
+  target=$1
+  case "${target}" in
+    /*) checkout_root "${target}" || : ;;
     *) printf '%s' "${REPO_ROOT}" ;;
   esac
 }
@@ -136,6 +139,7 @@ match_route() {
         printf '%s\t%s' "${docs}" "${why}"
         break
         ;;
+      *) ;;
     esac
   done
 }

@@ -92,8 +92,6 @@ export function checkStructuredReferences(file: string, source: string, adrs: AD
 }
 
 export const DOC_ROUTES_FILE = ".agents/doc-router/routes.conf";
-// `<glob> = <doc>[, <doc>...] # <why>`。`#` 以降は理由なので参照から外す。
-const DOC_ROUTE = /^\s*([^#=\s][^=]*?)\s*=\s*([^#]+?)\s*(?:#.*)?$/;
 
 /**
  * doc-router の経路表が指す文書が実在するかを検査する。
@@ -104,10 +102,14 @@ const DOC_ROUTE = /^\s*([^#=\s][^=]*?)\s*=\s*([^#]+?)\s*(?:#.*)?$/;
  */
 export function checkDocRoutes(source: string, present: ReadonlySet<string>): Finding[] {
   return source.split("\n").flatMap((line, index) => {
-    const matched = DOC_ROUTE.exec(line);
-    if (matched === null) return [];
+    // `<glob> = <doc>[, <doc>...] # <why>`。理由を先に落とすので、コメント行は空になって脱落する。
+    // 正規表現ではなく添字で切るのは、遅延量指定子と `\s*` の組み合わせが後戻りを生むため。
+    const [body] = line.split("#", 1);
+    const separator = body.indexOf("=");
+    if (separator < 0 || body.slice(0, separator).trim() === "") return [];
 
-    return matched[2]
+    return body
+      .slice(separator + 1)
       .split(",")
       .map((doc) => doc.trim())
       .filter((doc) => doc !== "" && !present.has(doc))
