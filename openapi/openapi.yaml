@@ -63,6 +63,8 @@ tags:
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/count
+    description: 公開商品検索の一致件数（認証不要・商品一覧と同じ検索条件）。
   - name: v1/products/statuses
     description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/categories
@@ -131,6 +133,8 @@ paths:
     $ref: './paths/v1/products/categories.yaml'
   /v1/products:
     $ref: './paths/v1/products.yaml'
+  /v1/products/count:
+    $ref: './paths/v1/products/count.yaml'
   /v1/products/{productId}:
     $ref: './paths/v1/products/productId.yaml'
   /v1/products/{productId}/stock:
@@ -257,6 +261,8 @@ components:
       $ref: './components/schemas/ProductResponse.yaml'
     ProductListResponse:
       $ref: './components/responses/products/ProductListResponse.yaml'
+    ProductCountResponse:
+      $ref: './components/responses/products/ProductCountResponse.yaml'
     ProductRankingItem:
       $ref: './components/schemas/products/ProductRankingItem.yaml'
     ProductRankingResponse:

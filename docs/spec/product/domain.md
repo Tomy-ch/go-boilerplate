@@ -1,15 +1,14 @@
 # Product — Domain Spec
 
-> `GET /v1/products`（公開商品一覧・cursor + フィルタ + keyword + sort）の read source、および
-> `POST /v1/products`（admin 商品作成）/ `PATCH /v1/products/{productId}`（admin 商品部分更新）/
-> `PATCH /v1/products/{productId}/stock`（admin 在庫の増減）の write target となる商品集約の spec。分類は `StatusRef` / `CategoryRef`（ID と名称の組）で保持し、
+> 公開商品一覧と同じ検索条件による一致件数取得の read source、および商品作成・部分更新・在庫増減の
+> write target となる商品集約の spec。分類は `StatusRef` / `CategoryRef`（ID と名称の組）で保持し、
 > 名称は作成・更新時に usecase が別集約（商品ステータス / 商品カテゴリのマスタ）から解決して埋める。
 
 ## Overview
 
 商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の参照（`StatusRef` / `CategoryRef`。いずれも ID と名称の組）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負は VO が担保。2 スケールモデルは ADR-0035 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
 
-一覧取得は「公開済み（`publishedAt` 非 NULL）の商品を `(publishedAt, id)` の keyset ページネーションで返す」read-only な集約読み取りであり、すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
+一覧取得と一致件数取得は、公開済み（`publishedAt` 非 NULL）の商品へ同じ意味の検索条件を適用する read-only な集約読み取りである。すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0029 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。検索条件は再利用可能な domain 概念へ昇格させず、各 Repository 操作の引数型が必要な項目だけを保持する。一覧だけが `(publishedAt, id)` の keyset ページネーションと並び順を持ち、件数取得はページング条件を持たない。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
 
 不透明カーソル（cursor）の符号化・復号は usecase 層の責務であり、domain の Repository は keyset 境界を primitive（`AfterPublishedAt` / `AfterID`）で受け取る。
 
@@ -149,6 +148,13 @@ fields:
     params.AfterPublishedAt / AfterID が非 nil の場合、その keyset 境界より次ページ側の行のみを返す。
     取得件数は params.Limit で上限を課す（hasNext 判定のため usecase は limit+1 を渡す）。
 
+- name: CountPublished
+  signature: CountPublished(ctx context.Context, params CountPublishedParams) (int64, error)
+  behavior: |
+    公開済み（published_at 非 NULL）の商品のうち、params に一致する件数を返す。
+    CategoryID / StatusID / Keyword / 価格・在庫数の包含上下限は FindPublishedList と同じ意味で適用する。
+    対象がない場合は 0 を返す。ページング境界・取得上限・並び順は受け取らない。
+
 - name: FindAllLowStock
   signature: FindAllLowStock(ctx context.Context, limit int32) (Products, error)
   behavior: |
@@ -242,7 +248,18 @@ fields:
     products は論理削除列を持たないため、生存行だけが参照元になる。
     エンティティを再構築せずパス文字列だけを返すのは、後続がオブジェクトの削除可否しか見ないため。
 
-# ListParams（domain の read クエリ条件。不透明カーソルは持たず、境界を primitive で受け取る）
+# CountPublishedParams（一致件数取得に必要な検索条件。ページング・並び順は持たない）
+- struct: CountPublishedParams
+  fields:
+    - CategoryID *uuid.UUID    # nil=絞り込まない
+    - StatusID *uuid.UUID      # nil=絞り込まない
+    - Keyword *string          # nil=絞り込まない（name / description への ILIKE）
+    - MinPrice *money.Price    # nil=下限なし。指定値以上を対象とする
+    - MaxPrice *money.Price    # nil=上限なし。指定値以下を対象とする
+    - MinQuantity *int32       # nil=下限なし。指定値以上を対象とする
+    - MaxQuantity *int32       # nil=上限なし。指定値以下を対象とする
+
+# ListParams（一覧取得の検索条件とページング・並び順条件）
 - struct: ListParams
   fields:
     - Limit int32              # 取得件数の上限

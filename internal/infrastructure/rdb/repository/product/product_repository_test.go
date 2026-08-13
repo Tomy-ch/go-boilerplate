@@ -59,9 +59,9 @@ func mustParse(t *testing.T, s string) uuid.UUID {
 	return id
 }
 
-func mustPriceFilter(t *testing.T, value int64) money.Price {
+func mustPriceFilter(t *testing.T) money.Price {
 	t.Helper()
-	price, err := money.NewPrice(decimal.FromInt(value))
+	price, err := money.NewPrice(decimal.FromInt(1000))
 	require.NoError(t, err)
 	return price
 }
@@ -102,7 +102,7 @@ func Test_repository_FindPublishedList(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				insertProbeSet(ctx, t, drv)
-				price := mustPriceFilter(t, 1000)
+				price := mustPriceFilter(t)
 				quantity := int32(10)
 
 				// 先頭ページ(limit=2): 公開日時降順・id降順で tieHigh, tieLow。
@@ -144,7 +144,7 @@ func Test_repository_FindPublishedList(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				insertProbeSet(ctx, t, drv)
-				price := mustPriceFilter(t, 1000)
+				price := mustPriceFilter(t)
 				quantity := int32(10)
 
 				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
@@ -271,7 +271,7 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				_, err = drv.Exec(ctx, "UPDATE products SET quantity = 10 WHERE id = $1", priceOutQuantityInID)
 				require.NoError(t, err)
 
-				price := mustPriceFilter(t, 1000)
+				price := mustPriceFilter(t)
 				quantity := int32(10)
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
 					Limit: 10, Ascending: false, Keyword: ptr.To(probeKeyword + "-RANGE"),
@@ -312,6 +312,50 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				assert.Nil(t, actual)
 				require.ErrorIs(t, err, apperror.ErrInternal)
 				require.NotErrorIs(t, err, money.ErrNegativePrice)
+			})
+		})
+	})
+}
+
+func Test_repository_CountPublished(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+	txm := testkit.NewTestTransactionRunner(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("公開済み商品のうち全検索条件に一致する件数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 1, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBE721"
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-000000000001",
+					keyword+"-match", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-000000000002",
+					keyword+"-price-out", nil, 2000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-000000000003",
+					keyword+"-unpublished", nil, 1000, statusInStock, categoryElectronics, nil,
+				)
+
+				price := mustPriceFilter(t)
+				count, err := repo.CountPublished(ctx, domainproduct.CountPublishedParams{
+					CategoryID: ptr.To(mustParse(t, categoryElectronics)),
+					StatusID:   ptr.To(mustParse(t, statusInStock)), Keyword: &keyword,
+					MinPrice: &price, MaxPrice: &price,
+					MinQuantity: ptr.To[int32](10), MaxQuantity: ptr.To[int32](10),
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), count)
 			})
 		})
 	})

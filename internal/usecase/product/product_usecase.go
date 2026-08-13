@@ -85,6 +85,22 @@ type ListProductsParams struct {
 	Ascending bool
 }
 
+// CountProductsParams は、公開商品検索の一致件数を取得する入力です。
+type CountProductsParams struct {
+	CategoryID  *uuid.UUID
+	StatusID    *uuid.UUID
+	Keyword     *string
+	MinPrice    *string
+	MaxPrice    *string
+	MinQuantity *int32
+	MaxQuantity *int32
+}
+
+// ProductCountView は、公開商品検索の一致件数です。
+type ProductCountView struct {
+	Count int64
+}
+
 type productListRange struct {
 	minPrice    *money.Price
 	maxPrice    *money.Price
@@ -96,6 +112,8 @@ type productListRange struct {
 type Usecase interface {
 	// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。
 	ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
+	// CountProducts は、公開済み商品のうち検索条件に一致する件数を取得します。
+	CountProducts(ctx context.Context, params CountProductsParams) (ProductCountView, error)
 	// GetProduct は、ID から公開中の単一商品を取得します。未存在・非公開はいずれも NotFound を返します（存在秘匿）。
 	GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
 	// UploadProductImage は、admin が商品画像をアップロードし、格納先のオブジェクトパスを返します。
@@ -264,6 +282,30 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	}
 
 	return ProductListView{Items: items, NextCursor: nextCursor}, nil
+}
+
+func (u *usecase) CountProducts(ctx context.Context, params CountProductsParams) (ProductCountView, error) {
+	rangeFilter, err := parseProductListRange(ListProductsParams{
+		CategoryID: params.CategoryID, StatusID: params.StatusID, Keyword: params.Keyword,
+		MinPrice: params.MinPrice, MaxPrice: params.MaxPrice,
+		MinQuantity: params.MinQuantity, MaxQuantity: params.MaxQuantity,
+	})
+	if err != nil {
+		return ProductCountView{}, err
+	}
+
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	count, err := u.repo.CountPublished(ctx, product.CountPublishedParams{
+		CategoryID: params.CategoryID, StatusID: params.StatusID, Keyword: params.Keyword,
+		MinPrice: rangeFilter.minPrice, MaxPrice: rangeFilter.maxPrice,
+		MinQuantity: rangeFilter.minQuantity, MaxQuantity: rangeFilter.maxQuantity,
+	})
+	if err != nil {
+		return ProductCountView{}, err
+	}
+	return ProductCountView{Count: count}, nil
 }
 
 // GetProduct は、存在秘匿を Repository が返す NotFound に委ね、usecase 側では公開判定を再実装しません。
