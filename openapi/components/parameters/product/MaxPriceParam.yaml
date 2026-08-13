@@ -1,0 +1,9 @@
+name: maxPrice
+in: query
+required: false
+description: 最高価格（この値以下）。負でない十進文字列で指定します。
+schema:
+  type: string
+  maxLength: 40
+  pattern: '^\d{1,20}(\.\d{1,18})?$'
+example: "100.00"

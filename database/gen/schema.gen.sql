@@ -1063,6 +1063,22 @@ CREATE INDEX outbox_published_gc_idx ON public.outbox USING btree (published_at)
 --
 CREATE UNIQUE INDEX product_images_product_id_sort_key_unique ON public.product_images USING btree (product_id, sort_key) WHERE (deleted_at IS NULL);
 --
+-- Name: products_category_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_category_id_idx ON public.products USING btree (category_id);
+--
+-- Name: products_low_stock_quantity_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_low_stock_quantity_id_idx ON public.products USING btree (quantity, id) WHERE (stock_warning_threshold IS NOT NULL);
+--
+-- Name: products_published_at_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_published_at_id_idx ON public.products USING btree (published_at DESC, id DESC) INCLUDE (price, quantity) WHERE (published_at IS NOT NULL);
+--
+-- Name: products_status_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_status_id_idx ON public.products USING btree (status_id);
+--
 -- Name: purchases_user_id_ordered_at_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree (user_id, ordered_at DESC, id DESC);

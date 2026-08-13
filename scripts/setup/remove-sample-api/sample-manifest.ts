@@ -173,6 +173,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/infrastructure/rdb/query_service/product",
       "internal/controller/handler/v1/products",
       "internal/integration/v1_products_test.go",
+      "internal/integration/v1_products_count_test.go",
       "internal/integration/v1_products_detail_test.go",
       "internal/integration/v1_products_stock_test.go",
       "internal/integration/v1_products_ranking_test.go",
@@ -186,6 +187,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/gen/product_query_service.gen.sql",
 
       "openapi/paths/v1/products.yaml",
+      "openapi/paths/v1/products/count.yaml",
       "openapi/paths/v1/products/productId.yaml",
       "openapi/paths/v1/products/productId/stock.yaml",
       "openapi/paths/v1/products/images.yaml",

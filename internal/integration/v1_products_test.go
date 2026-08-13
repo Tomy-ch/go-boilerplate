@@ -148,7 +148,7 @@ func TestV1Products_Integration(t *testing.T) {
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 		})
 
-		t.Run("categoryId/statusId/keyword/sort クエリがハンドラのパラメータへバインドされる", func(t *testing.T) {
+		t.Run("検索・範囲・sortクエリがハンドラのパラメータへバインドされる", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -170,7 +170,8 @@ func TestV1Products_Integration(t *testing.T) {
 			productshandler.BindHandler(e, tf, mockUC)
 
 			path := "/v1/products?categoryId=" + categoryID.String() +
-				"&statusId=" + statusID.String() + "&keyword=%E5%95%86%E5%93%81&sort=publishedAt"
+				"&statusId=" + statusID.String() + "&keyword=%E5%95%86%E5%93%81&minPrice=10.50&maxPrice=99.99" +
+				"&minQuantity=2&maxQuantity=20&sort=publishedAt"
 			actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, nil)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 
@@ -181,6 +182,14 @@ func TestV1Products_Integration(t *testing.T) {
 			assert.Equal(t, statusID, *captured.StatusID)
 			require.NotNil(t, captured.Keyword)
 			assert.Equal(t, "商品", *captured.Keyword)
+			require.NotNil(t, captured.MinPrice)
+			assert.Equal(t, "10.50", *captured.MinPrice)
+			require.NotNil(t, captured.MaxPrice)
+			assert.Equal(t, "99.99", *captured.MaxPrice)
+			require.NotNil(t, captured.MinQuantity)
+			assert.Equal(t, int32(2), *captured.MinQuantity)
+			require.NotNil(t, captured.MaxQuantity)
+			assert.Equal(t, int32(20), *captured.MaxQuantity)
 		})
 	})
 

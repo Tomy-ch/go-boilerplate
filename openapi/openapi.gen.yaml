@@ -55,6 +55,8 @@ tags:
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
     description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
+  - name: v1/products/count
+    description: 公開商品検索の一致件数（認証不要・商品一覧と同じ検索条件）。
   - name: v1/products/statuses
     description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products/categories
@@ -614,8 +616,10 @@ paths:
         公開済みの商品を cursor ページネーションで取得します。認証不要の公開エンドポイントです。
         既定では公開日時の降順（publishedAt DESC, id DESC）で並び、sort=publishedAt で昇順に切り替えられます。
         categoryId / statusId でフィルタ、keyword で商品名・説明の部分一致検索ができます。
+        minPrice / maxPrice で価格、minQuantity / maxQuantity で在庫数を境界値を含めて範囲検索できます。
+        いずれの範囲も下限が上限を超える場合は 400 を返します。
         公開日時が未設定（未公開）の商品は返しません。ステータスによる可視範囲の絞り込みは今後対応予定です。
-        price は USD セント単位の整数です。
+        price は USD ドル建ての decimal 文字列です。
       security: []
       parameters:
         - $ref: '#/components/parameters/CursorAfterParam'
@@ -623,6 +627,10 @@ paths:
         - $ref: '#/components/parameters/CategoryIdParam'
         - $ref: '#/components/parameters/StatusIdParam'
         - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/MinPriceParam'
+        - $ref: '#/components/parameters/MaxPriceParam'
+        - $ref: '#/components/parameters/MinQuantityParam'
+        - $ref: '#/components/parameters/MaxQuantityParam'
         - $ref: '#/components/parameters/SortParam'
       responses:
         '200':
@@ -674,6 +682,40 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed405'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/count:
+    get:
+      operationId: GetProductsCount
+      tags:
+        - v1/products/count
+      summary: 商品検索の一致件数の取得
+      description: |
+        公開済み商品のうち、指定した検索条件に一致する件数のみを返します。認証不要の公開エンドポイントです。
+        categoryId / statusId / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味は
+        GET /v1/products と同一です。検索条件を指定しない場合は公開済み商品の総数を返します。
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryIdParam'
+        - $ref: '#/components/parameters/StatusIdParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/MinPriceParam'
+        - $ref: '#/components/parameters/MaxPriceParam'
+        - $ref: '#/components/parameters/MinQuantityParam'
+        - $ref: '#/components/parameters/MaxQuantityParam'
+      responses:
+        '200':
+          description: 検索条件に一致する公開商品の件数
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -1542,6 +1584,46 @@ components:
         type: string
         format: date
         example: '2026-07-31'
+    MinPriceParam:
+      name: minPrice
+      in: query
+      required: false
+      description: 最低価格（この値以上）。負でない十進文字列で指定します。
+      schema:
+        type: string
+        maxLength: 40
+        pattern: ^\d{1,20}(\.\d{1,18})?$
+      example: '10.00'
+    MaxPriceParam:
+      name: maxPrice
+      in: query
+      required: false
+      description: 最高価格（この値以下）。負でない十進文字列で指定します。
+      schema:
+        type: string
+        maxLength: 40
+        pattern: ^\d{1,20}(\.\d{1,18})?$
+      example: '100.00'
+    MinQuantityParam:
+      name: minQuantity
+      in: query
+      required: false
+      description: 最低在庫数（この値以上）。
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+      example: 1
+    MaxQuantityParam:
+      name: maxQuantity
+      in: query
+      required: false
+      description: 最高在庫数（この値以下）。
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+      example: 100
     ProductIdParam:
       name: productId
       in: path
@@ -2001,6 +2083,18 @@ components:
               items:
                 $ref: '#/components/schemas/ProductResponse'
         - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    ProductCountResponse:
+      description: 商品検索の一致件数レスポンス
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 検索条件に一致する公開商品の件数。対象がない場合は 0 です。
+          example: 42
     ProductRankingItem:
       type: object
       description: 売上ランキング 1 商品分の項目です。

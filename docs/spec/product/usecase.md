@@ -1,11 +1,11 @@
 # Product — Usecase Spec
 
-> 公開商品一覧（`GET /v1/products`）は単一集約・products 自身の列へのフィルタ / keyword / sort・cursor ページングであり、
-> QueryService ではなく domain `product.Repository` の `FindPublishedList` に委譲する（ADR-0030 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
+> 公開商品一覧（`GET /v1/products`）と一致件数（`GET /v1/products/count`）は、単一集約・products 自身の列への検索であり、
+> QueryService ではなく domain `product.Repository` の `FindPublishedList` / `CountPublished` に委譲する（ADR-0030 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 
-商品一覧ユースケースは、公開済み商品を公開日時順（cursor ページネーション）で取得する read-only な thin orchestrator。`product.Repository`（domain Repository）の `FindPublishedList` に委譲し、取得した `Product` エンティティ一覧を usecase DTO（`ProductView`）へ写像して返す。
+商品一覧ユースケースは、公開済み商品を公開日時順（cursor ページネーション）で取得する read-only な thin orchestrator。商品一致件数ユースケースは同じ検索入力の検証・正規化を共有し、ページングや並び順を持たず一致件数のみを返す。前者は `product.Repository.FindPublishedList`、後者は `product.Repository.CountPublished` に委譲する。
 
 cursor ページングは「直前ページ末尾行のソートキー `(publishedAt, id)` を不透明トークン化して次ページを取得する」keyset 方式。usecase は不透明カーソルの符号化・復号（`encodeProductCursor` / `decodeProductCursor`）を担い、domain へは境界を primitive（`AfterPublishedAt` / `AfterID`）で渡す。次ページ有無は `limit + 1` 件取得して超過分で判定し（`hasNext`）、超過時のみ末尾行から `NextCursor` を生成する。
 
@@ -26,7 +26,9 @@ package: internal/usecase/product
 name: Usecase
 methods:
   - name: ListProducts
-    signature: ListProducts(ctx context.Context, params ListProductsParams) (*ProductListView, error)
+    signature: ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
+  - name: CountProducts
+    signature: CountProducts(ctx context.Context, params CountProductsParams) (ProductCountView, error)
   - name: GetProduct
     signature: GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
   - name: CreateProduct
@@ -64,8 +66,38 @@ methods:
       type: "*uuid.UUID"
     - name: Keyword
       type: "*string"
+    - name: MinPrice
+      type: "*string"       # nil=下限なし。非負の decimal 文字列
+    - name: MaxPrice
+      type: "*string"       # nil=上限なし。非負の decimal 文字列
+    - name: MinQuantity
+      type: "*int32"        # nil=下限なし。0 以上
+    - name: MaxQuantity
+      type: "*int32"        # nil=上限なし。0 以上
     - name: Ascending
       type: bool
+- name: CountProductsParams
+  description: 公開商品検索の一致件数取得の入力。一覧と同じ検索条件を持ち、cursor と並び順は持たない。
+  fields:
+    - name: CategoryID
+      type: "*uuid.UUID"
+    - name: StatusID
+      type: "*uuid.UUID"
+    - name: Keyword
+      type: "*string"
+    - name: MinPrice
+      type: "*string"
+    - name: MaxPrice
+      type: "*string"
+    - name: MinQuantity
+      type: "*int32"
+    - name: MaxQuantity
+      type: "*int32"
+- name: ProductCountView
+  description: 公開商品検索の一致件数。
+  fields:
+    - name: Count
+      type: int64
 - name: ProductView
   description: 商品 1 件分の usecase 出力 DTO。domain エンティティ Product から写像する。Price は価格スケールの十進量（pkg/decimal.Decimal）で、controller が decimal 文字列へ整形する。
   fields:
@@ -194,8 +226,11 @@ methods:
 tx_required: false
 steps:
   - Cursor が nil の場合は apperror.ErrInvalidArgument を返す
+  - MinPrice / MaxPrice を money.Price へ変換する。非数値・負値・40 文字超過は apperror.ErrInvalidArgument を返す
+  - MinQuantity / MaxQuantity が負値の場合は apperror.ErrInvalidArgument を返す
+  - 価格または在庫数の両境界が指定され、下限が上限を超える場合は apperror.ErrInvalidArgument を返す
   - decodeProductCursor で不透明カーソルを keyset 境界（publishedAt, id）へ復号する（先頭ページは境界なし）
-  - domain の ListParams を組み立てる（Limit=Cursor.Limit32()+1、Ascending、CategoryID/StatusID/Keyword、AfterPublishedAt/AfterID）
+  - domain の ListParams を組み立てる（Limit=Cursor.Limit32()+1、Ascending、CategoryID/StatusID/Keyword、価格・在庫数の包含上下限、AfterPublishedAt/AfterID）
   - product_repository.FindPublishedList で公開商品を取得する
   - 取得した各 Product が Product.IsPublished を満たすことを確かめる（SQL の絞り込みとドメインの定義の乖離検出）
   - 取得件数が Cursor.Limit() を超える場合は次ページありと判定し、末尾を切り詰める
@@ -205,9 +240,26 @@ calls:
   - product_repository.FindPublishedList
 errors:
   - Cursor が nil の場合は apperror.ErrInvalidArgument
+  - 価格の非数値・負値・40 文字超過、在庫数の負値、または上下限の逆転は apperror.ErrInvalidArgument
   - カーソル復号失敗時は apperror.ErrInvalidArgument（decodeProductCursor 由来）
   - product_repository.FindPublishedList のエラーをそのまま伝播する
   - 取得行に Product.IsPublished を満たさないものが混じっていた場合は apperror.ErrInternal（500。SQL とドメインの乖離）
+```
+
+### CountProducts
+
+```yaml
+tx_required: false
+steps:
+  - 一覧と共通の検索入力検証を行い、価格を money.Price へ変換する
+  - domain の CountPublishedParams を組み立てる
+  - product_repository.CountPublished で一致件数を取得する
+  - ProductCountView へ写像して返す
+calls:
+  - product_repository.CountPublished
+errors:
+  - 価格の非数値・負値・40 文字超過、在庫数の負値、または上下限の逆転は apperror.ErrInvalidArgument
+  - product_repository.CountPublished のエラーをそのまま伝播する
 ```
 
 ### GetProduct
