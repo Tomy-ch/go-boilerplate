@@ -5,11 +5,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/scripts/lib/shellcheck"
 )
 
 const requireShellcheckEnv = "REQUIRE_SHELLCHECK"
@@ -88,7 +89,7 @@ func Test_run(t *testing.T) {
 
 			root := writeScripts(t, map[string]string{"ok.sh": cleanScript})
 
-			require.ErrorIs(t, run(canceledContext(t), rootAt(root), exec.LookPath), errShellcheck)
+			require.ErrorIs(t, run(canceledContext(t), rootAt(root), exec.LookPath), shellcheck.ErrRun)
 		})
 	})
 }
@@ -182,7 +183,7 @@ func rootAt(root string) func() (string, error) {
 func requireShellcheck(t *testing.T) {
 	t.Helper()
 
-	if _, err := exec.LookPath(shellcheckBin); err == nil {
+	if _, err := exec.LookPath(shellcheck.Binary); err == nil {
 		return
 	}
 	if os.Getenv(requireShellcheckEnv) != "" {
@@ -198,45 +199,4 @@ func canceledContext(t *testing.T) context.Context {
 	cancel()
 
 	return ctx
-}
-
-func Test_runShellcheck(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("指摘の無い内容には何も返さない", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-
-			out, err := runShellcheck(t.Context(), cleanScript)
-
-			require.NoError(t, err)
-			assert.Empty(t, strings.TrimSpace(out))
-		})
-
-		t.Run("指摘のある内容を gcc 形式で返す", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-
-			out, err := runShellcheck(t.Context(), dirtyScript)
-
-			require.NoError(t, err)
-			assert.Contains(t, out, "SC2086")
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("起動できなければ報告する", func(t *testing.T) {
-			t.Parallel()
-			requireShellcheck(t)
-
-			_, err := runShellcheck(canceledContext(t), cleanScript)
-
-			require.ErrorIs(t, err, errShellcheck)
-		})
-	})
 }

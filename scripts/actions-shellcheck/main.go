@@ -22,10 +22,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
 	"go-boilerplate/pkg/xerrors"
+	"go-boilerplate/scripts/lib/shellcheck"
 
 	"gopkg.in/yaml.v3"
 )
@@ -35,10 +35,6 @@ const (
 	compositeUsing = "composite"
 	mergeKey       = "<<"
 	envCommand     = "env"
-
-	shellcheckBin     = "shellcheck"
-	findingsExitCode  = 1
-	shellcheckTimeout = 30 * time.Second
 
 	shebangLines        = 1
 	blockScalarKeyLines = 1
@@ -63,7 +59,6 @@ var (
 
 var (
 	errNoShell           = xerrors.New("composite の run ステップに shell 指定がありません")
-	errShellcheck        = xerrors.New("shellcheck の実行に失敗しました")
 	errUnterminatedExpr  = xerrors.New("閉じていない ${{ があります")
 	errStepCountMismatch = xerrors.New("run ステップの抽出数が YAML のデコード結果と一致しません")
 	errStepsNotSequence  = xerrors.New("runs.steps がリストとして読めません")
@@ -102,7 +97,7 @@ func main() {
 // run は composite action の run ステップを shellcheck に掛け、結果を報告します。
 // wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段です。
 func run(ctx context.Context, wd func() (string, error), lookPath func(string) (string, error)) error {
-	if _, err := lookPath(shellcheckBin); err != nil {
+	if _, err := lookPath(shellcheck.Binary); err != nil {
 		return xerrors.Wrap(errShellcheckMissing, err.Error())
 	}
 
@@ -440,7 +435,7 @@ func check(ctx context.Context, steps []step) (result, error) {
 		if err != nil {
 			return result{}, xerrors.Wrap(err, fmt.Sprintf("%s:%d", s.file, s.firstLine))
 		}
-		out, err := runShellcheck(ctx, shebang, script)
+		out, err := shellcheck.Run(ctx, shebang+"\n"+script)
 		if err != nil {
 			return result{}, err
 		}
@@ -527,25 +522,6 @@ func exprEnd(expr string) int {
 		}
 	}
 	return -1
-}
-
-func runShellcheck(ctx context.Context, shebang, script string) (string, error) {
-	cctx, cancel := context.WithTimeout(ctx, shellcheckTimeout)
-	defer cancel()
-	cmd := exec.CommandContext(cctx, shellcheckBin, "--norc", "--format=gcc", "-")
-	cmd.Stdin = strings.NewReader(shebang + "\n" + script)
-	var stdout, stderr strings.Builder
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err == nil {
-		return stdout.String(), nil
-	}
-	var exitErr *exec.ExitError
-	if xerrors.As(err, &exitErr) && exitErr.ExitCode() == findingsExitCode {
-		return stdout.String(), nil
-	}
-	return "", xerrors.Wrap(errShellcheck, fmt.Sprintf("%v: %s", err, strings.TrimSpace(stderr.String())))
 }
 
 func remapFindings(s step, out string) []string {

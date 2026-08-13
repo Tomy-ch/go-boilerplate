@@ -270,9 +270,10 @@ is_test_file() { # $1=path
 # 常に除外する生成物ディレクトリ（doc ポータル/各種ビルド出力）と無価値ファイル
 GEN_DIRS=( docs/portal docs/openapi docs/coverage docs/db-schema )
 is_generated_path() { # $1=path（REPO_ROOT 相対 or 絶対）
-  local rel="${1#"$REPO_ROOT"/}" d
-  for d in "${GEN_DIRS[@]}"; do case "$rel" in "$d"/*|"$d") return 0 ;; esac; done
-  case "$1" in *.gen.*|*.sql.go|*_mock.go) return 0 ;; esac
+  local path=$1
+  local rel="${path#"$REPO_ROOT"/}" d
+  for d in "${GEN_DIRS[@]}"; do case "$rel" in "$d"/*|"$d") return 0 ;; *) ;; esac; done
+  case "$path" in *.gen.*|*.sql.go|*_mock.go) return 0 ;; *) ;; esac
   return 1
 }
 is_junk_file() { # レビュー価値の無いメタ/ロック/バイナリ
@@ -325,7 +326,7 @@ enumerate_files() {
     e="$(ext_of "$f")"
     if [ "$mode" = "exclude" ]; then
       # 拡張子なしファイル(Dockerfile/makefile 等)は残す。除外 csv に該当する拡張子のみ捨てる
-      [ -n "$e" ] && in_csv "$(echo "$EXCLUDE_EXT"|tr -d ' '|tr '[:upper:]' '[:lower:]')" "$(echo "$e"|tr '[:upper:]' '[:lower:]')" && continue
+      [[ -n "$e" ]] && in_csv "$(echo "$EXCLUDE_EXT"|tr -d ' '|tr '[:upper:]' '[:lower:]')" "$(echo "$e"|tr '[:upper:]' '[:lower:]')" && continue
     fi
     if is_test_file "$f"; then
       [ "$INCLUDE_TESTS" -eq 1 ] && tests+=("$f")
