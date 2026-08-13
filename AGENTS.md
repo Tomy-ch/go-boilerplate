@@ -29,9 +29,9 @@ The source of truth for design, rules, and flows is under `docs/` and the per-pa
 | Non-negotiable rules (layer deps, generated code, domain constraints, DTO boundary, tx, errors, comments) | `docs/rules.md` |
 | How to perform a change (API / DB / business-logic flows, finding related code) | `docs/development-flow.md` |
 | Testing conventions (structure, naming, `require`/`assert`, mocks, coverage exceptions) | `docs/testing-conventions.md` (DoD in `docs/rules.md`) |
-| Technology rationale (per-file ADR: onion / OpenAPI-first / sqlc / echo / fx / worker / o11y) | `docs/adr/` (log: `docs/adr/README.md`) |
+| Technology rationale (per-file ADR: onion / OpenAPI-first / sqlc / echo / fx / worker / o11y) | `docs/adr/` (log: `docs/adr/README.md`). An ADR records what was decided and what was rejected; the criterion for deciding a given case may live in `docs/design/` instead |
 | Per-layer / per-package detail | `internal/**/README.md`, `pkg/**/README.md` |
-| Subsystem design references (rest / worker / job / outbox / idempotency / observability) | `docs/design/README.md` |
+| Where a cross-cutting or subsystem decision lives (data-access placement, auth, security posture, async subsystems, …) | `docs/design/README.md` — open the index; this list is not the inventory |
 
 **Documentation scope for agents** — the canonical sources are the English `README.md` and
 `docs/**/*.md`. **Never read `*.ja.md` files: they are human-facing Japanese translations of
@@ -51,7 +51,8 @@ Before implementing any change:
 1. Identify the change type (API / DB / Business Logic) and follow the matching flow in `docs/development-flow.md`.
 2. Locate related code (onion flow: OpenAPI → handler → usecase → domain → infrastructure → SQL; see `docs/development-flow.md` / `docs/architecture.md`).
 3. Read the `README.md` that owns every package you are about to touch (walk to the nearest ancestor when the package has none) — its declared responsibilities and prohibitions bound the change.
-4. Verify no existing implementation already covers it — search the same layer first; prefer editing an existing file over creating a new one.
+4. Open the `docs/design/README.md` and `docs/adr/README.md` indexes and read the entries that own the decisions your change touches. A document is named for the concern it owns, not for your feature, and an ADR may delegate its criterion to a `docs/design/` page — so scanning either list for your feature's words misses them.
+5. Verify no existing implementation already covers it — search the same layer first; prefer editing an existing file over creating a new one.
 
 For API changes: OpenAPI is defined first. For DB changes: the migration + SQL exist first.
 
