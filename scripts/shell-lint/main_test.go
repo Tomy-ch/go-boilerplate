@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ const cleanScript = "#!/bin/sh\nset -eu\necho hello\n"
 // SC2086: 引用符の無い展開。方言に依存せず必ず指摘される。
 const dirtyScript = "#!/bin/sh\nset -eu\nx=$1\necho $x\n"
 
-func TestRun(t *testing.T) {
+func Test_run(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -92,7 +93,7 @@ func TestRun(t *testing.T) {
 	})
 }
 
-func TestShellScripts(t *testing.T) {
+func Test_shellScripts(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -127,7 +128,7 @@ func TestShellScripts(t *testing.T) {
 	})
 }
 
-func TestPrefixFindings(t *testing.T) {
+func Test_prefixFindings(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -197,4 +198,45 @@ func canceledContext(t *testing.T) context.Context {
 	cancel()
 
 	return ctx
+}
+
+func Test_runShellcheck(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指摘の無い内容には何も返さない", func(t *testing.T) {
+			t.Parallel()
+			requireShellcheck(t)
+
+			out, err := runShellcheck(t.Context(), cleanScript)
+
+			require.NoError(t, err)
+			assert.Empty(t, strings.TrimSpace(out))
+		})
+
+		t.Run("指摘のある内容を gcc 形式で返す", func(t *testing.T) {
+			t.Parallel()
+			requireShellcheck(t)
+
+			out, err := runShellcheck(t.Context(), dirtyScript)
+
+			require.NoError(t, err)
+			assert.Contains(t, out, "SC2086")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("起動できなければ報告する", func(t *testing.T) {
+			t.Parallel()
+			requireShellcheck(t)
+
+			_, err := runShellcheck(canceledContext(t), cleanScript)
+
+			require.ErrorIs(t, err, errShellcheck)
+		})
+	})
 }

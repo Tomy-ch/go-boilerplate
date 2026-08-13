@@ -5,8 +5,8 @@
 // SessionStart フック、スキル同梱スクリプト、コンテナの init。いずれも編集のたび、あるいは
 // セッションのたびに走るのに、壊れても CI は緑を返していた。
 //
-// shellcheck はファイルを直接読めるので、指摘の位置は写し戻さずそのまま使える。方言は shebang から
-// 決まる（shellcheck 自身が読む）ため、こちらでは指定しない。
+// 内容をそのまま渡すので、指摘の行・列は写し戻さずに使える。方言も内容の shebang から shellcheck
+// 自身が決めるため、こちらでは指定しない。
 package main
 
 import (
@@ -68,7 +68,13 @@ func run(ctx context.Context, wd func() (string, error), lookPath func(string) (
 
 	var findings []string
 	for _, script := range scripts {
-		out, err := runShellcheck(ctx, filepath.Join(root, script))
+		// script は shellScripts が root 配下を walk して得た相対パスだけを取る。
+		body, err := os.ReadFile(filepath.Join(root, script)) //nolint:gosec // G304: 走査結果のみ
+		if err != nil {
+			return xerrors.Wrap(err, "read")
+		}
+
+		out, err := runShellcheck(ctx, string(body))
 		if err != nil {
 			return err
 		}
@@ -121,13 +127,17 @@ func shellScripts(root string) ([]string, error) {
 	return scripts, nil
 }
 
-// runShellcheck は 1 ファイルを検査し、gcc 形式の出力を返します。
+// runShellcheck は 1 ファイルの内容を検査し、gcc 形式の出力を返します。
 // 指摘があるときの終了コード 1 は失敗ではなく結果なので、そのまま出力を返します。
-func runShellcheck(ctx context.Context, path string) (string, error) {
+//
+// ファイル名ではなく stdin で渡すのは、コマンドの引数を定数に保つためです（可変引数は gosec の
+// G204 に当たる）。方言は内容の shebang から shellcheck 自身が決めるので、渡し方は結果を変えません。
+func runShellcheck(ctx context.Context, script string) (string, error) {
 	cctx, cancel := context.WithTimeout(ctx, shellcheckTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(cctx, shellcheckBin, "--norc", "--format=gcc", path)
+	cmd := exec.CommandContext(cctx, shellcheckBin, "--norc", "--format=gcc", "-")
+	cmd.Stdin = strings.NewReader(script)
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -145,8 +155,8 @@ func runShellcheck(ctx context.Context, path string) (string, error) {
 	return "", xerrors.Wrap(errShellcheck, fmt.Sprintf("%v: %s", err, strings.TrimSpace(stderr.String())))
 }
 
-// prefixFindings は shellcheck の出力を 1 行 1 指摘へ整え、パスをリポジトリ相対へ揃えます。
-// shellcheck は渡した絶対パスをそのまま返すため、そのままでは実行環境ごとに出力が変わります。
+// prefixFindings は shellcheck の出力を 1 行 1 指摘へ整え、先頭をリポジトリ相対パスへ差し替えます。
+// stdin で渡しているため shellcheck 自身は入力を `-` としか呼べず、どのファイルの指摘か言えません。
 func prefixFindings(script, out string) []string {
 	trimmed := strings.TrimSpace(out)
 	if trimmed == "" {
