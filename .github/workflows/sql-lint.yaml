@@ -68,21 +68,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: uv
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install uv
-        run: mise install uv
-
-      # sqlfluff is pinned by python/sqlfluff.txt, not by mise. `--require-hashes` refuses a
-      # lockfile entry that is missing a version or a hash, so a tampered lockfile fails here
-      # rather than installing. The interpreter is read from mise.toml so this job cannot drift
-      # from the runtime the lockfile was resolved against; uv downloads that version itself
-      # instead of paying for a mise Python install.
       - name: Install sqlfluff
         run: |
           set -euo pipefail

@@ -110,21 +110,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write. See README.md § Cache safety.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:aquasecurity/trivy
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install trivy
-        run: mise install aqua:aquasecurity/trivy
-
-      # Scan flags live in .makefiles/security/trivy.mk so that the local
-      # `make trivy-fs` and this job cannot drift apart. -s keeps make from echoing
-      # the recipe into the JSON.
       - name: Trivy FS scan (JSON)
         run: make -s trivy-fs-ci TRIVY_FORMAT=json > trivy-fs.json
         shell: bash
@@ -276,15 +267,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install trivy
-        run: mise install aqua:aquasecurity/trivy
+          tools: aqua:aquasecurity/trivy
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trivy license scan (JSON)
         run: make -s trivy-license-ci TRIVY_FORMAT=json > trivy-license.json

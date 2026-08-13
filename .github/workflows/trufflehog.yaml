@@ -38,16 +38,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install trufflehog
-        shell: bash
-        run: mise install aqua:trufflesecurity/trufflehog
+          tools: aqua:trufflesecurity/trufflehog
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run TruffleHog
         id: trufflehog

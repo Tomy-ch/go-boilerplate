@@ -104,26 +104,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write. See README.md § Cache safety.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:anchore/grype
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml (SSOT) — never duplicated here.
-      - name: Install grype
-        run: mise install aqua:anchore/grype
 
-      # One invocation writes both reports, so the gate below and the code-scanning
-      # alert list can never describe two different scans.
-      #
-      # vendor/ and node_modules/ are excluded because the manifests already name every
-      # package they hold: cataloguing the unpacked copies as well reports each finding
-      # a second time under a path nobody edits. docs/ carries the generated portal
-      # bundle, which is a build output of docs-viewer's own lockfile.
       - name: Grype scan
         env:
           # Grype checks for a newer release of itself on every run, and that check goes to

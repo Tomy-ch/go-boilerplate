@@ -45,7 +45,6 @@ var (
 	nodeImageRe      = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	pythonImageRe    = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	miseDockerfileRe = regexp.MustCompile(`(MISE_VERSION=v)\d+(?:\.\d+){0,2}()`)
-	miseActionRe     = regexp.MustCompile(`(?m)^([ \t]+version: )\d+(?:\.\d+){0,2}([ \t]*)$`)
 	// docker-compose.yaml の otel-lgtm image タグ。suffix は空 capture でタグ末尾を保持する。
 	otelLgtmImageRe = regexp.MustCompile("(grafana/otel-lgtm:)" + `\d+(?:\.\d+){0,2}` + "()")
 )
@@ -256,12 +255,6 @@ func buildRules(v runtimeVersions) []rule {
 			"docker/tools/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
 		dockerfileRule("docker/server/Dockerfile",
 			"docker/server/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/go-lint.yaml",
-			"go-lint.yaml (mise-action version)", miseActionRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/gen-db-artifacts-check.yaml",
-			"gen-db-artifacts-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/vulnerability-check.yaml",
-			"vulnerability-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
 		dockerfileRule("docker-compose.yaml",
 			"docker-compose.yaml (otel-lgtm image)", otelLgtmImageRe, v.OtelLgtm, 1),
 	}

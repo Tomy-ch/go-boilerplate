@@ -92,20 +92,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: go:github.com/google/capslock/cmd/capslock
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml (SSOT) — never duplicated here.
-      - name: Install capslock
-        run: mise install go:github.com/google/capslock/cmd/capslock
 
-      # Package granularity keeps the report readable: function granularity emits
-      # thousands of rows for a graph this size, which is the opposite of something
-      # a reviewer will read.
       - name: Capture the base capability set
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

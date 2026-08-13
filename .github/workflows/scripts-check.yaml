@@ -107,18 +107,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install node and pnpm
-        run: mise install node npm:pnpm
-
-      # The tree is the one `scripts/pnpm-lock.yaml` pins, so CI and the container resolve the
-      # same versions.
       - name: Install the script tree for scripts/
         run: pnpm install --dir scripts --frozen-lockfile
 

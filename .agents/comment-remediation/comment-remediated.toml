@@ -1,5 +1,8 @@
 ".agents/comment-remediation/comment-remediated.sh" = "2026-08-09"
 ".agents/comment-remediation/comment-remediated.toml" = "2026-08-13"
+".github/actions/setup-mise/action.yaml" = "2026-08-13"
+"scripts/actions-mise-pin-lint/pin-consistency.ts" = "2026-08-13"
+"scripts/actions-mise-pin-lint/pin-consistency.test.ts" = "2026-08-13"
 ".github/CODEOWNERS" = "2026-08-09"
 "AGENTS.md" = "2026-08-09"
 "CODEX.md" = "2026-08-10"
@@ -2671,3 +2674,4 @@
 ".codex/skills/tool-map/SKILL.ja.md" = "2026-08-13"
 ".codex/skills/tools-upgrade/SKILL.ja.md" = "2026-08-13"
 ".codex/skills/verify-spec/SKILL.ja.md" = "2026-08-13"
+"scripts/actions-mise-pin-lint/index.ts" = "2026-08-13"
