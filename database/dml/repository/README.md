@@ -16,17 +16,15 @@ Implementation: `internal/infrastructure/rdb/repository/`
 
 ## Directory Structure
 
-```text
-repository/
-├── user/
-│   ├── insert_user.sql
-│   ├── select_user_by_id.sql
-│   └── ...
-├── prefecture/
-│   ├── ...
-│   └── ...
-└── ...
-```
+One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
+
+- `prefecture/` — Prefecture master reads
+- `product/` — Product CRUD, stock updates, and image rows
+- `product_category/` — Product category master reads
+- `product_status/` — Product status master reads
+- `purchase/` — Purchase reads, row locks, and lifecycle status updates
+- `user/` — User CRUD, keyword search, row locks, and purge candidates
+- `user_identity/` — Resolving a user from an external identity
 
 ## Naming Convention
 

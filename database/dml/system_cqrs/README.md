@@ -16,16 +16,11 @@ Implementation: `internal/infrastructure/rdb/system_cqrs/`
 
 ## Directory Structure
 
-```text
-system_cqrs/
-├── health_check/
-│   ├── select_system_health.sql
-│   └── ...
-├── metrics/
-│   ├── select_system_metrics.sql
-│   └── ...
-└── ...
-```
+One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
+
+- `health_check/` — Liveness and readiness probes
+- `idempotency/` — Idempotency key lifecycle (claim, complete, expiry sweep)
+- `outbox/` — Transactional outbox lifecycle (claim, publish, retry, dead-letter)
 
 ## Naming Convention
 

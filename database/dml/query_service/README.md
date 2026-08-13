@@ -16,13 +16,11 @@ Implementation: `internal/infrastructure/rdb/query_service/`
 
 ## Directory Structure
 
-```text
-query_service/
-├── user/
-│   ├── select_active_users.sql
-│   └── ...
-└── ...
-```
+One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
+
+- `dashboard/` — Sales totals and purchase-status counts for the operational dashboard
+- `product/` — Product ranking projection
+- `purchase/` — Purchase detail and summary projections across aggregates
 
 ## Naming Convention
 

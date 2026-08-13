@@ -16,17 +16,9 @@ Implementation: `internal/infrastructure/rdb/command_service/`
 
 ## Directory Structure
 
-```text
-command_service/
-├── user/
-│   ├── insert_user.sql
-│   ├── update_user_email.sql
-│   └── ...
-├── product/
-│   ├── publish_product.sql
-│   └── ...
-└── ...
-```
+One subdirectory per aggregate or concern; each holds that unit's `.sql` files.
+
+- `purchase/` — Purchase writes that must be atomic with stock movement (create, cancel)
 
 ## Naming Convention
 

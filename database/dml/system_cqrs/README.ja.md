@@ -16,16 +16,11 @@
 
 ## ディレクトリ構成
 
-```text
-system_cqrs/
-├── health_check/
-│   ├── select_system_health.sql
-│   └── ...
-├── metrics/
-│   ├── select_system_metrics.sql
-│   └── ...
-└── ...
-```
+集約または関心事ごとに 1 つのサブディレクトリを置き、その単位の `.sql` を収める。
+
+- `health_check/` — 死活・受付可否の確認
+- `idempotency/` — 冪等キーのライフサイクル（確保・完了・期限切れの掃除）
+- `outbox/` — トランザクショナル outbox のライフサイクル（確保・publish・再試行・dead-letter）
 
 ## 命名規則
 

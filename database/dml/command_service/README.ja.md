@@ -16,17 +16,9 @@ Repository の load-mutate-save の形に収まらない状態変更（INSERT / 
 
 ## ディレクトリ構成
 
-```text
-command_service/
-├── user/
-│   ├── insert_user.sql
-│   ├── update_user_email.sql
-│   └── ...
-├── product/
-│   ├── publish_product.sql
-│   └── ...
-└── ...
-```
+集約または関心事ごとに 1 つのサブディレクトリを置き、その単位の `.sql` を収める。
+
+- `purchase/` — 在庫の増減と原子的に行う必要のある購入の書き込み（作成・キャンセル）
 
 ## 命名規則
 
