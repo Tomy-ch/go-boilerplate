@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/domain/lexicon/money"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
@@ -26,7 +27,8 @@ func newTestGuestCart(t *testing.T) *Cart {
 func newTestOwnedCart(t *testing.T) *Cart {
 	t.Helper()
 	c, err := NewForOwner(
-		uuidtestkit.NewTestFromSalt(t, "cart"), uuidtestkit.NewTestFromSalt(t, "owner"), defaultExpiry,
+		uuidtestkit.NewTestFromSalt(t, "cart"),
+		Attributes{OwnerID: ptr.To(uuidtestkit.NewTestFromSalt(t, "owner")), ExpiresAt: defaultExpiry},
 	)
 	require.NoError(t, err)
 	return c
@@ -92,7 +94,7 @@ func TestNewForOwner(t *testing.T) {
 			id := uuidtestkit.NewTestFromSalt(t, "cart")
 			ownerID := uuidtestkit.NewTestFromSalt(t, "owner")
 
-			c, err := NewForOwner(id, ownerID, defaultExpiry)
+			c, err := NewForOwner(id, Attributes{OwnerID: &ownerID, ExpiresAt: defaultExpiry})
 
 			require.NoError(t, err)
 			assert.Equal(t, id, c.ID())
@@ -108,20 +110,21 @@ func TestNewForOwner(t *testing.T) {
 
 		t.Run("IDが未設定ならErrInvalidIDを返す", func(t *testing.T) {
 			t.Parallel()
-			_, err := NewForOwner(uuid.UUID{}, uuidtestkit.NewTestFromSalt(t, "owner"), defaultExpiry)
+			_, err := NewForOwner(uuid.UUID{}, Attributes{OwnerID: ptr.To(uuidtestkit.NewTestFromSalt(t, "owner")), ExpiresAt: defaultExpiry})
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
 		t.Run("所有者IDが未設定ならErrInvalidUserIDを返す", func(t *testing.T) {
 			t.Parallel()
-			_, err := NewForOwner(uuidtestkit.NewTestFromSalt(t, "cart"), uuid.UUID{}, defaultExpiry)
+			_, err := NewForOwner(uuidtestkit.NewTestFromSalt(t, "cart"), Attributes{OwnerID: &uuid.UUID{}, ExpiresAt: defaultExpiry})
 			require.ErrorIs(t, err, ErrInvalidUserID)
 		})
 
 		t.Run("有効期限がゼロ値ならErrInvalidExpiresAtを返す", func(t *testing.T) {
 			t.Parallel()
 			_, err := NewForOwner(
-				uuidtestkit.NewTestFromSalt(t, "cart"), uuidtestkit.NewTestFromSalt(t, "owner"), time.Time{},
+				uuidtestkit.NewTestFromSalt(t, "cart"),
+				Attributes{OwnerID: ptr.To(uuidtestkit.NewTestFromSalt(t, "owner")), ExpiresAt: time.Time{}},
 			)
 			require.ErrorIs(t, err, ErrInvalidExpiresAt)
 		})
@@ -348,7 +351,7 @@ func Test_newCart(t *testing.T) {
 		t.Run("3つの入口が同じ検証を通る", func(t *testing.T) {
 			t.Parallel()
 			_, guestErr := NewForGuest(uuid.UUID{}, newTestSessionToken(t), defaultExpiry)
-			_, ownerErr := NewForOwner(uuid.UUID{}, uuidtestkit.NewTestFromSalt(t, "owner"), defaultExpiry)
+			_, ownerErr := NewForOwner(uuid.UUID{}, Attributes{OwnerID: ptr.To(uuidtestkit.NewTestFromSalt(t, "owner")), ExpiresAt: defaultExpiry})
 			_, reconstructErr := Reconstruct(uuid.UUID{}, Attributes{ExpiresAt: defaultExpiry})
 
 			require.ErrorIs(t, guestErr, ErrInvalidID)
@@ -880,19 +883,56 @@ func TestCart_Clear(t *testing.T) {
 	})
 }
 
+// newMergeSource は、指定した明細を持つゲストカートを作ります。
+func newMergeSource(t *testing.T, items []CartItem) *Cart {
+	t.Helper()
+	token := newTestSessionToken(t)
+	c, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "source"), Attributes{
+		SessionToken: &token, Items: items, ExpiresAt: defaultExpiry,
+	})
+	require.NoError(t, err)
+	return c
+}
+
+// fillItems は、カートを指定件数の明細で満たします。
+func fillItems(t *testing.T, c *Cart, count int) {
+	t.Helper()
+	for i := range count {
+		require.NoError(t, c.SetItem(SetItemAttributes{
+			ItemID:    uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("item_%d", i)),
+			ProductID: uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("product_%d", i)),
+			Quantity:  1,
+		}, baseTime))
+	}
+}
+
+// mergeIntoNearFullCart は、上限の 1 つ手前まで埋めたカートへ items を取り込みます。
+func mergeIntoNearFullCart(t *testing.T, items []CartItem) MergeResult {
+	t.Helper()
+	c := newTestOwnedCart(t)
+	fillItems(t, c, maxItems-1)
+	return c.Merge(newMergeSource(t, items), baseTime)
+}
+
+// newDatedItems は、指定した追加時刻の差で並ぶ明細を count 件作ります。
+func newDatedItems(t *testing.T, prefix string, count int, step time.Duration) []CartItem {
+	t.Helper()
+	items := make([]CartItem, 0, count)
+	for i := range count {
+		items = append(items, NewCartItem(
+			uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("item_%s_%d", prefix, i)),
+			CartItemAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("product_%s_%d", prefix, i)),
+				Quantity:  1,
+				AddedAt:   baseTime.Add(time.Duration(i) * step),
+			},
+		))
+	}
+	return items
+}
+
 func TestCart_Merge(t *testing.T) {
 	t.Parallel()
-
-	// newMergeSource は、指定した商品と数量・追加時刻を持つゲストカートを作ります。
-	newMergeSource := func(t *testing.T, items []CartItem) *Cart {
-		t.Helper()
-		token := newTestSessionToken(t)
-		c, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "source"), Attributes{
-			SessionToken: &token, Items: items, ExpiresAt: defaultExpiry,
-		})
-		require.NoError(t, err)
-		return c
-	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -950,19 +990,7 @@ func TestCart_Merge(t *testing.T) {
 		t.Run("明細数の上限を超える分は追加が新しいものから切り捨てる", func(t *testing.T) {
 			t.Parallel()
 			c := newTestOwnedCart(t)
-			for i := range maxItems - 1 {
-				require.NoError(
-					t,
-					c.SetItem(
-						SetItemAttributes{
-							ItemID:    uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("item_%d", i)),
-							ProductID: uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("product_%d", i)),
-							Quantity:  1,
-						},
-						baseTime,
-					),
-				)
-			}
+			fillItems(t, c, maxItems-1)
 			older := NewCartItem(uuidtestkit.NewTestFromSalt(t, "item_older"), CartItemAttributes{
 				ProductID: uuidtestkit.NewTestFromSalt(t, "product_older"), Quantity: 1, AddedAt: baseTime,
 			})
@@ -1004,76 +1032,20 @@ func TestCart_Merge(t *testing.T) {
 
 		t.Run("入力の並び順を変えても結果が変わらない", func(t *testing.T) {
 			t.Parallel()
-			build := func(t *testing.T, items []CartItem) MergeResult {
-				t.Helper()
-				c := newTestOwnedCart(t)
-				for i := range maxItems - 1 {
-					require.NoError(
-						t,
-						c.SetItem(
-							SetItemAttributes{
-								ItemID:    uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("item_%d", i)),
-								ProductID: uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("product_%d", i)),
-								Quantity:  1,
-							},
-							baseTime,
-						),
-					)
-				}
-				return c.Merge(newMergeSource(t, items), baseTime)
-			}
 
-			candidates := make([]CartItem, 0, 5)
-			for i := range 5 {
-				candidates = append(candidates, NewCartItem(
-					uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("item_x_%d", i)),
-					CartItemAttributes{
-						ProductID: uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("product_x_%d", i)),
-						Quantity:  1,
-						AddedAt:   baseTime.Add(time.Duration(i) * time.Hour),
-					},
-				))
-			}
+			candidates := newDatedItems(t, "x", 5, time.Hour)
 			shuffled := []CartItem{candidates[3], candidates[0], candidates[4], candidates[2], candidates[1]}
 
-			assert.Equal(t, build(t, candidates).Dropped(), build(t, shuffled).Dropped())
+			assert.Equal(t, mergeIntoNearFullCart(t, candidates).Dropped(), mergeIntoNearFullCart(t, shuffled).Dropped())
 		})
 
 		t.Run("追加時刻が同時刻でも切り捨ての結果が一意に決まる", func(t *testing.T) {
 			t.Parallel()
-			build := func(t *testing.T, items []CartItem) []uuid.UUID {
-				t.Helper()
-				c := newTestOwnedCart(t)
-				for i := range maxItems - 1 {
-					require.NoError(
-						t,
-						c.SetItem(
-							SetItemAttributes{
-								ItemID:    uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("item_%d", i)),
-								ProductID: uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("product_%d", i)),
-								Quantity:  1,
-							},
-							baseTime,
-						),
-					)
-				}
-				return c.Merge(newMergeSource(t, items), baseTime).Dropped()
-			}
 
-			same := make([]CartItem, 0, 4)
-			for i := range 4 {
-				same = append(same, NewCartItem(
-					uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("item_same_%d", i)),
-					CartItemAttributes{
-						ProductID: uuidtestkit.NewTestFromSalt(t, fmt.Sprintf("product_same_%d", i)),
-						Quantity:  1,
-						AddedAt:   baseTime,
-					},
-				))
-			}
+			same := newDatedItems(t, "same", 4, 0)
 			reversed := []CartItem{same[3], same[2], same[1], same[0]}
 
-			assert.Equal(t, build(t, same), build(t, reversed))
+			assert.Equal(t, mergeIntoNearFullCart(t, same).Dropped(), mergeIntoNearFullCart(t, reversed).Dropped())
 		})
 
 		t.Run("nilを渡しても状態を変えず空の結果を返す", func(t *testing.T) {

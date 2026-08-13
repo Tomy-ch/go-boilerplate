@@ -33,7 +33,7 @@ package: internal/domain/cart
 struct: Cart
 constructors:
   - name: NewForGuest    # ゲスト用（sessionToken あり / ownerID なし）
-  - name: NewForOwner    # ログイン済みユーザー用（ownerID あり / sessionToken なし）
+  - name: NewForOwner    # ログイン済みユーザー用（Attributes で受ける。ownerID あり / sessionToken なし）
   - name: Reconstruct    # 永続化済みの再構築（Repository の読み出し / 再検証）
 fields:
   - name: id

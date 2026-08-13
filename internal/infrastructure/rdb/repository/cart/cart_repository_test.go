@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/decimal"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -124,7 +125,7 @@ func Test_repository_Create(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				ownerID := mustParse(t, seedUserID)
-				c, err := domaincart.NewForOwner(mustNewUUID(t), ownerID, baseTime.Add(24*time.Hour))
+				c, err := domaincart.NewForOwner(mustNewUUID(t), domaincart.Attributes{OwnerID: &ownerID, ExpiresAt: baseTime.Add(24 * time.Hour)})
 				require.NoError(t, err)
 
 				require.NoError(t, repo.Create(ctx, c))
@@ -182,11 +183,17 @@ func Test_repository_Create(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				ownerID := mustParse(t, seedUserID)
-				first, err := domaincart.NewForOwner(mustNewUUID(t), ownerID, baseTime.Add(24*time.Hour))
+				first, err := domaincart.NewForOwner(
+					mustNewUUID(t),
+					domaincart.Attributes{OwnerID: &ownerID, ExpiresAt: baseTime.Add(24 * time.Hour)},
+				)
 				require.NoError(t, err)
 				require.NoError(t, repo.Create(ctx, first))
 
-				second, nerr := domaincart.NewForOwner(mustNewUUID(t), ownerID, baseTime.Add(24*time.Hour))
+				second, nerr := domaincart.NewForOwner(
+					mustNewUUID(t),
+					domaincart.Attributes{OwnerID: &ownerID, ExpiresAt: baseTime.Add(24 * time.Hour)},
+				)
 				require.NoError(t, nerr)
 
 				require.ErrorIs(t, repo.Create(ctx, second), apperror.ErrConflict)
@@ -301,7 +308,7 @@ func Test_repository_FindByOwnerID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				productID := insertProduct(ctx, t, driver.New(ctx, testDB), "c3000000-0000-4000-8000-000000000001")
 				ownerID := mustParse(t, seedUserID)
-				c, err := domaincart.NewForOwner(mustNewUUID(t), ownerID, baseTime.Add(24*time.Hour))
+				c, err := domaincart.NewForOwner(mustNewUUID(t), domaincart.Attributes{OwnerID: &ownerID, ExpiresAt: baseTime.Add(24 * time.Hour)})
 				require.NoError(t, err)
 				require.NoError(t, c.SetItem(domaincart.SetItemAttributes{ItemID: mustNewUUID(t), ProductID: productID, Quantity: 2}, baseTime))
 				require.NoError(t, repo.Create(ctx, c))
@@ -862,7 +869,10 @@ func Test_sessionTokenValue(t *testing.T) {
 
 		t.Run("トークンを持たないカートはnilを返す", func(t *testing.T) {
 			t.Parallel()
-			c, err := domaincart.NewForOwner(mustNewUUID(t), mustNewUUID(t), baseTime.Add(time.Hour))
+			c, err := domaincart.NewForOwner(
+				mustNewUUID(t),
+				domaincart.Attributes{OwnerID: ptr.To(mustNewUUID(t)), ExpiresAt: baseTime.Add(time.Hour)},
+			)
 			require.NoError(t, err)
 
 			assert.Nil(t, sessionTokenValue(c))

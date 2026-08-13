@@ -80,11 +80,12 @@ func NewForGuest(id uuid.UUID, token SessionToken, expiresAt time.Time) (*Cart, 
 	return newCart(id, Attributes{SessionToken: &token, ExpiresAt: expiresAt})
 }
 
-// NewForOwner は、所有者が確定したカートを生成します。明細は空で始まります。
-// id または ownerID が未設定なら ErrInvalidID / ErrInvalidUserID を、expiresAt がゼロ値なら
+// NewForOwner は、所有者が確定したカートを生成します。
+// OwnerID の設定は必須で、SessionToken を併せて設定した場合は ErrInvalidOwner を返します。
+// id または OwnerID が未設定なら ErrInvalidID / ErrInvalidUserID を、ExpiresAt がゼロ値なら
 // ErrInvalidExpiresAt を返します。
-func NewForOwner(id, ownerID uuid.UUID, expiresAt time.Time) (*Cart, error) {
-	return newCart(id, Attributes{OwnerID: &ownerID, ExpiresAt: expiresAt})
+func NewForOwner(id uuid.UUID, attrs Attributes) (*Cart, error) {
+	return newCart(id, attrs)
 }
 
 // Reconstruct は、永続化済みのカートを再構築します（Repository の読み出しで使用）。

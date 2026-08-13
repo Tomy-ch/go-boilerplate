@@ -7,8 +7,6 @@ WHERE carts.id = sqlc.arg('id');
 
 -- === source: database/dml/repository/cart/delete_expired_carts.sql ===
 -- name: DeleteExpiredCarts :execrows
--- 有効期限を過ぎたカートを最大 limit 件削除し、削除件数を返す。1 回で消し切ることを意図せず、
--- 件数上限で区切って繰り返し呼ばれる。
 -- 削除の対象を決める述語の定義はドメインの Cart.IsExpired が持ち、この WHERE はその実行形である。
 -- 有効期限ちょうどの時点は期限切れではない（< であって <= ではない）。片方だけを変更してはならない。
 DELETE FROM carts
@@ -87,8 +85,7 @@ WHERE c.session_token = sqlc.arg('session_token');
 -- === source: database/dml/repository/cart/select_cart_items_by_cart_id.sql ===
 -- name: ListCartItemsByCartID :many
 -- カート ID から明細を取得する。並びは追加日時の昇順、同時刻は ID 昇順で決着させる。
--- 明示するのは表示の決定性とテストの再現性のためで、切り捨ての順序をこの並びに依存させてはならない
--- （その判定は追加日時の値から集約が行う）。
+-- 切り捨ての順序をこの並びに依存させてはならない（その判定は追加日時の値から集約が行う）。
 SELECT sqlc.embed(ci)
 FROM cart_items AS ci
 WHERE ci.cart_id = sqlc.arg('cart_id')

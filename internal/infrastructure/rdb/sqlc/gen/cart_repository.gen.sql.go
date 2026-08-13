@@ -172,8 +172,6 @@ type DeleteExpiredCartsParams struct {
 }
 
 // === source: database/dml/repository/cart/delete_expired_carts.sql ===
-// 有効期限を過ぎたカートを最大 limit 件削除し、削除件数を返す。1 回で消し切ることを意図せず、
-// 件数上限で区切って繰り返し呼ばれる。
 // 削除の対象を決める述語の定義はドメインの Cart.IsExpired が持ち、この WHERE はその実行形である。
 // 有効期限ちょうどの時点は期限切れではない（< であって <= ではない）。片方だけを変更してはならない。
 //
@@ -271,8 +269,7 @@ type ListCartItemsByCartIDRow struct {
 
 // === source: database/dml/repository/cart/select_cart_items_by_cart_id.sql ===
 // カート ID から明細を取得する。並びは追加日時の昇順、同時刻は ID 昇順で決着させる。
-// 明示するのは表示の決定性とテストの再現性のためで、切り捨ての順序をこの並びに依存させてはならない
-// （その判定は追加日時の値から集約が行う）。
+// 切り捨ての順序をこの並びに依存させてはならない（その判定は追加日時の値から集約が行う）。
 //
 //	SELECT ci.id, ci.cart_id, ci.product_id, ci.quantity, ci.last_seen_price, ci.added_at, ci.created_at, ci.updated_at
 //	FROM cart_items AS ci
