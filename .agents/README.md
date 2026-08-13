@@ -39,6 +39,9 @@ One subdirectory per artifact domain, named after the skill family that owns it.
 
 - `comment-remediation/` — which files have had their comment stock swept, and what to do when an
   edit lands on one that has not. Read by a `PreToolUse` hook before an edit.
+- `doc-router/` — which documents govern an edit, keyed by where the edit lands. Read by a
+  `PreToolUse` hook so the answer arrives at the moment of writing rather than being looked up
+  again each time. Deliberately incomplete: a path with no entry falls back to the protocol.
 - `ddd-audit/` — the DDD pattern ledger: which Evans pattern this repository has interpreted, and
   where. Owned by `.claude/skills/ddd-audit/SKILL.md`.
 - `glossary-drift/` — the exclusions the glossary-drift detector honors: where a business term

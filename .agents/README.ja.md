@@ -38,6 +38,9 @@ Gemini なら `.gemini/`。中身の指示が 1 つのツールの契約に対�
 
 - `comment-remediation/` — コメントの在庫を掃き終えたファイルの記録と、未是正のファイルに編集が
   当たったときの手順。編集前に `PreToolUse` フックが読みます。
+- `doc-router/` — 編集がどこへ着地するかで、その編集を統べる文書を引く経路表。編集の瞬間に答えが
+  届くよう `PreToolUse` フックが読みます。毎回引き直さずに済ませるためのもので、**意図的に不完全**
+  です。経路の無いパスでは何も出さず、Task Execution Protocol の手順へ落ちます。
 - `ddd-audit/` — DDD パターン台帳。このリポジトリがどの Evans パターンをどこで解釈したかを持ちます。
   所有は `.claude/skills/ddd-audit/SKILL.md`。
 - `glossary-drift/` — glossary ドリフト検出器が尊重する除外の宣言。`docs/spec/` の外に業務語が
