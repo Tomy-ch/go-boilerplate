@@ -32,8 +32,6 @@ const (
 		"FROM node:0.0.0-alpine AS node-tools\n" +
 		"FROM python:0.0.0-slim AS python-tools\n" +
 		"ARG MISE_VERSION=v0.0.0\n"
-	// miseActionWorkflow は、mise-action の版を 1 件持つワークフロー。
-	miseActionWorkflow = "jobs:\n  check:\n    steps:\n      - uses: jdx/mise-action\n        with:\n          version: 0.0.0\n"
 	// composeYAML は、otel-lgtm のイメージタグを 1 件持つ compose 定義。
 	composeYAML = "services:\n  otel_lgtm:\n    image: grafana/otel-lgtm:0.0.0\n"
 	// imageReadme は、件数の下限が無い README。存在だけを満たします。
@@ -334,31 +332,28 @@ func Test_buildRules(t *testing.T) {
 			t.Parallel()
 			v := testVersions()
 			want := map[string]string{
-				"go.mod (go directive)":                             v.Go,
-				"docker/server/Dockerfile (golang base)":            v.Go,
-				"docker/tools/Dockerfile (golang base)":             v.Go,
-				"docker/tools/Dockerfile (node base)":               v.Node,
-				"docker/tools/Dockerfile (python base)":             v.Python,
-				"docker/README.md (golang image)":                   v.Go,
-				"docker/README.md (node image)":                     v.Node,
-				"docker/README.md (python image)":                   v.Python,
-				"docker/README.ja.md (golang image)":                v.Go,
-				"docker/README.ja.md (node image)":                  v.Node,
-				"docker/README.ja.md (python image)":                v.Python,
-				"docker/server/README.md (golang image)":            v.Go,
-				"docker/server/README.ja.md (golang image)":         v.Go,
-				"docker/tools/README.md (golang image)":             v.Go,
-				"docker/tools/README.md (node image)":               v.Node,
-				"docker/tools/README.md (python image)":             v.Python,
-				"docker/tools/README.ja.md (golang image)":          v.Go,
-				"docker/tools/README.ja.md (node image)":            v.Node,
-				"docker/tools/README.ja.md (python image)":          v.Python,
-				"docker/tools/Dockerfile (mise version)":            v.Mise,
-				"docker/server/Dockerfile (mise version)":           v.Mise,
-				"go-lint.yaml (mise-action version)":                v.Mise,
-				"gen-db-artifacts-check.yaml (mise-action version)": v.Mise,
-				"vulnerability-check.yaml (mise-action version)":    v.Mise,
-				"docker-compose.yaml (otel-lgtm image)":             v.OtelLgtm,
+				"go.mod (go directive)":                     v.Go,
+				"docker/server/Dockerfile (golang base)":    v.Go,
+				"docker/tools/Dockerfile (golang base)":     v.Go,
+				"docker/tools/Dockerfile (node base)":       v.Node,
+				"docker/tools/Dockerfile (python base)":     v.Python,
+				"docker/README.md (golang image)":           v.Go,
+				"docker/README.md (node image)":             v.Node,
+				"docker/README.md (python image)":           v.Python,
+				"docker/README.ja.md (golang image)":        v.Go,
+				"docker/README.ja.md (node image)":          v.Node,
+				"docker/README.ja.md (python image)":        v.Python,
+				"docker/server/README.md (golang image)":    v.Go,
+				"docker/server/README.ja.md (golang image)": v.Go,
+				"docker/tools/README.md (golang image)":     v.Go,
+				"docker/tools/README.md (node image)":       v.Node,
+				"docker/tools/README.md (python image)":     v.Python,
+				"docker/tools/README.ja.md (golang image)":  v.Go,
+				"docker/tools/README.ja.md (node image)":    v.Node,
+				"docker/tools/README.ja.md (python image)":  v.Python,
+				"docker/tools/Dockerfile (mise version)":    v.Mise,
+				"docker/server/Dockerfile (mise version)":   v.Mise,
+				"docker-compose.yaml (otel-lgtm image)":     v.OtelLgtm,
 			}
 
 			rules := buildRules(v)
@@ -511,9 +506,6 @@ func Test_computeChanges(t *testing.T) {
 				"ENV MISE_VERSION=v2099.1.1\n", states["Dockerfile"].current)
 		})
 
-		// 文字クラスは改行にもマッチするため、行頭からの除外を `[^#]` で書くとマッチが行をまたぐ。
-		// 間にコメントを持たない 2 つの FROM があると、その間の行まで巻き込んで置換で消える。
-		// マッチ件数は変わらないので件数ゲートでは捕まらない。
 		t.Run("FROM の間にコメントが無くても行を巻き込まずに置換する", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
@@ -696,10 +688,6 @@ func writeSyncTargets(t *testing.T, root string) {
 	writeFile(t, root, "docker/tools/Dockerfile", toolsDockerfile)
 	writeFile(t, root, "docker-compose.yaml", composeYAML)
 
-	for _, workflow := range []string{"go-lint", "gen-db-artifacts-check", "vulnerability-check"} {
-		writeFile(t, root, ".github/workflows/"+workflow+".yaml", miseActionWorkflow)
-	}
-
 	for _, readme := range []string{
 		"docker/README.md", "docker/README.ja.md",
 		"docker/server/README.md", "docker/server/README.ja.md",
@@ -738,7 +726,6 @@ func Test_run(t *testing.T) {
 			assert.Contains(t, readSynced(t, root, "docker/tools/Dockerfile"), "FROM python:3.99.0-slim")
 			assert.Contains(t, readSynced(t, root, "docker/tools/Dockerfile"), "MISE_VERSION=v2099.1.1")
 			assert.Contains(t, readSynced(t, root, "docker-compose.yaml"), "grafana/otel-lgtm:0.99.0")
-			assert.Contains(t, readSynced(t, root, ".github/workflows/go-lint.yaml"), "version: 2099.1.1")
 			assert.Contains(t, readSynced(t, root, "docker/tools/README.md"), "`golang:1.99.0-alpine`")
 		})
 	})
@@ -759,7 +746,6 @@ func Test_run(t *testing.T) {
 			assert.Contains(t, err.Error(), "mise.toml のパースに失敗")
 		})
 
-		// 事前 validate を通さずに書き始めると、途中まで書き換えた状態が残る。
 		t.Run("対象ファイルが 1 つでも欠ければ 1 件も書き換えずに中止する", func(t *testing.T) {
 			root := t.TempDir()
 			writeSyncTargets(t, root)

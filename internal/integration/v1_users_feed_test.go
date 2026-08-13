@@ -57,7 +57,6 @@ func TestV1UsersFeed_Integration(t *testing.T) {
 
 			feed.BindHandler(e, tf, mockApp)
 
-			// first クエリパラメータがハンドラまで届き、200 が返ることを確認する。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed?first=10", nil, nil)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 		})

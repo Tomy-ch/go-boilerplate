@@ -20,7 +20,7 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
@@ -29,10 +29,10 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   schedule:
-    - cron: '0 3 * * 1'
+    - cron: '45 0 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -72,42 +72,42 @@ jobs:
             *.blob.core.windows.net:443
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
             aquaproj.github.io:443
-            api.osv.dev:443
-            api.deps.dev:443
-            osv-vulnerabilities.storage.googleapis.com:443
-            storage.googleapis.com:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
             proxy.golang.org:443
             sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
             dl.google.com:443
             go.dev:443
             golang.org:443
+            downloads.sqlc.dev:443
             nodejs.org:443
             registry.npmjs.org:443
-            downloads.sqlc.dev:443
+            get.pnpm.io:443
             astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.osv.dev:443
+            api.deps.dev:443
+            osv-vulnerabilities.storage.googleapis.com:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The scanner version is declared in mise.toml (SSOT) — never pinned here.
-      - name: Install osv-scanner
-        run: mise install aqua:google/osv-scanner
 
       - name: Scan with osv-scanner
         id: scan
@@ -192,11 +192,7 @@ jobs:
     secrets:
       slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure, and that is precisely the silent breakage this
-  # notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: osv-scanner
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.osv-scanner.result) }}
@@ -244,23 +240,29 @@ jobs:
             *.blob.core.windows.net:443
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
             aquaproj.github.io:443
-            api.osv.dev:443
-            api.deps.dev:443
-            osv-vulnerabilities.storage.googleapis.com:443
-            storage.googleapis.com:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
             proxy.golang.org:443
             sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
             dl.google.com:443
             go.dev:443
             golang.org:443
+            downloads.sqlc.dev:443
             nodejs.org:443
             registry.npmjs.org:443
-            downloads.sqlc.dev:443
+            get.pnpm.io:443
             astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.osv.dev:443
+            api.deps.dev:443
+            osv-vulnerabilities.storage.googleapis.com:443
 
       # fetch-depth: 0 so the base commit is present locally; the base tree is then
       # materialized with git worktree rather than a second actions/checkout, which
@@ -271,18 +273,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install osv-scanner
-        run: mise install aqua:google/osv-scanner
-
-      # Exit code 1 means "vulnerabilities found" and is expected on both sides, so
-      # only other codes are treated as a tool failure.
       - name: Scan both trees
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

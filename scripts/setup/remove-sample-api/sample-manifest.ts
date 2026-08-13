@@ -46,9 +46,10 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/dml/repository/user",
       "database/migrations/000004_create_users.up.sql",
       "database/migrations/000004_create_users.down.sql",
-      "database/migrations/000014_add_users_table_search_text_column.up.sql",
-      "database/migrations/000014_add_users_table_search_text_column.down.sql",
+      "database/migrations/000015_add_users_table_search_text_column.up.sql",
+      "database/migrations/000015_add_users_table_search_text_column.down.sql",
       "database/seed/000001_users.sql",
+      "database/seed/000002_users_additional.sql",
 
       "docs/spec/user",
       "docs/spec/user-search",
@@ -66,7 +67,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000005_create_roles.down.sql",
       "database/migrations/000006_create_user_roles.up.sql",
       "database/migrations/000006_create_user_roles.down.sql",
-      "database/seed/000008_user_roles.sql",
+      "database/seed/000003_user_roles.sql",
+      "database/seed/000004_user_roles_additional.sql",
 
       // domain(role.go 等) / infra repository(user_role_repository.go) / dml(select_roles_by_user_id.sql)
       // は user ドメインのディレクトリ配下にあり、user エントリの削除で同時に消えるため個別指定は不要。
@@ -83,7 +85,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/dml/repository/user_identity",
       "database/migrations/000007_create_user_identities.up.sql",
       "database/migrations/000007_create_user_identities.down.sql",
-      "database/seed/000009_user_identities.sql",
+      "database/seed/000005_user_identities.sql",
+      "database/seed/000006_user_identities_additional.sql",
 
       // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/user_identity_repository.gen.sql.go",
@@ -121,8 +124,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     paths: [
       // ドメイン語彙の唯一の占有者。product と order の双方から使われるが撤去は一括なので、
       // 最初の利用者である product 側に置けば足りる。非サンプルの import 元は存在しない。
-      // `internal/domain/lexicon` 自体は入場基準を述べる README ごと残し、占有者ゼロで次の語を待つ
-      // 器になる（器を消すと、複数集約から使われる業務値オブジェクトの置き場が規約ごと失われる）。
+      // `internal/domain/lexicon` 自体は入場基準を述べる README ごと残り、占有者ゼロになる。
       "internal/domain/lexicon/money",
       "internal/controller/job/productimagegc",
       "internal/domain/product/status",
@@ -139,6 +141,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/paths/v1/products/statuses.yaml",
       "openapi/components/responses/products/status",
       "openapi/components/schemas/ProductStatusResponse.yaml",
+      "openapi/components/schemas/ProductStatusRef.yaml",
 
       "docs/spec/product-status/domain.md",
       "docs/spec/product-status/usecase.md",
@@ -156,6 +159,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/paths/v1/products/categories.yaml",
       "openapi/components/responses/products/category",
       "openapi/components/schemas/ProductCategoryResponse.yaml",
+      "openapi/components/schemas/ProductCategoryRef.yaml",
 
       "docs/spec/product-category/domain.md",
       "docs/spec/product-category/usecase.md",
@@ -203,25 +207,55 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000009_create_product_categories.down.sql",
       "database/migrations/000010_create_products.up.sql",
       "database/migrations/000010_create_products.down.sql",
-      "database/seed/000002_products_electronic_equipment.sql",
-      "database/seed/000003_products_books.sql",
-      "database/seed/000004_products_clothing.sql",
-      "database/seed/000005_products_food_first.sql",
-      "database/seed/000006_products_food_latter.sql",
-      "database/seed/000007_products_furniture.sql",
+      "database/migrations/000011_create_product_images.up.sql",
+      "database/migrations/000011_create_product_images.down.sql",
+      "database/seed/000007_products_electronic_equipment_01.sql",
+      "database/seed/000008_products_electronic_equipment_02.sql",
+      "database/seed/000009_products_electronic_equipment_03.sql",
+      "database/seed/000010_products_books_01.sql",
+      "database/seed/000011_products_books_02.sql",
+      "database/seed/000012_products_clothing_01.sql",
+      "database/seed/000013_products_clothing_02.sql",
+      "database/seed/000014_products_clothing_03.sql",
+      "database/seed/000015_products_clothing_04.sql",
+      "database/seed/000016_products_food_01.sql",
+      "database/seed/000017_products_food_02.sql",
+      "database/seed/000018_products_food_03.sql",
+      "database/seed/000019_products_food_04.sql",
+      "database/seed/000020_products_food_05.sql",
+      "database/seed/000021_products_food_06.sql",
+      "database/seed/000022_products_food_07.sql",
+      "database/seed/000023_products_food_08.sql",
+      "database/seed/000024_products_food_09.sql",
+      "database/seed/000025_products_furniture.sql",
     ],
   },
 
   order: {
     description: "サンプル 購入 API（POST /v1/purchases・CommandService 正例 / GET /v1/purchases/shippable・単一集約 Domain Service 正例。フルスタック）",
     paths: [
-      // DB スキーマ（既存スタブ）
-      "database/migrations/000011_create_purchase_statuses.up.sql",
-      "database/migrations/000011_create_purchase_statuses.down.sql",
-      "database/migrations/000012_create_purchases.up.sql",
-      "database/migrations/000012_create_purchases.down.sql",
-      "database/migrations/000013_create_purchase_details.up.sql",
-      "database/migrations/000013_create_purchase_details.down.sql",
+      // DB スキーマ
+      "database/migrations/000012_create_purchase_statuses.up.sql",
+      "database/migrations/000012_create_purchase_statuses.down.sql",
+      "database/migrations/000013_create_purchases.up.sql",
+      "database/migrations/000013_create_purchases.down.sql",
+      "database/migrations/000014_create_purchase_details.up.sql",
+      "database/migrations/000014_create_purchase_details.down.sql",
+      "database/seed/000026_purchases_01.sql",
+      "database/seed/000027_purchases_02.sql",
+      "database/seed/000028_purchases_03.sql",
+      "database/seed/000029_purchases_04.sql",
+      "database/seed/000030_purchases_05.sql",
+      "database/seed/000031_purchases_06.sql",
+      "database/seed/000032_purchase_details_01.sql",
+      "database/seed/000033_purchase_details_02.sql",
+      "database/seed/000034_purchase_details_03.sql",
+      "database/seed/000035_purchase_details_04.sql",
+      "database/seed/000036_purchase_details_05.sql",
+      "database/seed/000037_purchase_details_06.sql",
+      "database/seed/000038_purchase_details_07.sql",
+      "database/seed/000039_purchase_details_08.sql",
+      "database/seed/000040_purchase_details_09.sql",
       // Go 各層
       "internal/domain/purchase",
       // 在籍と購入の進行状態にまたがる規則を持つドメインサービス。purchase 集約を参照するため
@@ -277,6 +311,20 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/PurchaseStatusBreakdownResponse.yaml",
       // spec
       "docs/spec/purchase",
+    ],
+  },
+
+  cart: {
+    description:
+      "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）。現時点は spec のみで、実装が入るたびに paths を追記する",
+    paths: [
+      "database/migrations/000016_create_carts.up.sql",
+      "database/migrations/000016_create_carts.down.sql",
+      "database/migrations/000017_create_cart_items.up.sql",
+      "database/migrations/000017_create_cart_items.down.sql",
+
+      // spec
+      "docs/spec/cart",
     ],
   },
 
@@ -348,7 +396,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "outbox を SQS 互換 broker へ向ける配線。engine / seam / SQS adapter は送受信とも core、" +
       "ローカル broker も object storage の Garage と同じくローカルインフラとして残し、" +
       "core から adapter を参照する配線だけを削除対象にする" +
-      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0048 が broker SDK の隔離を" +
+      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0050 (broker-sdk-isolation-measured-as-coupling) が broker SDK の隔離を" +
       "リンクではなく結合で測る、と述べているのがこれ）。" +
       "object storage と揃うのは adapter / ローカルインフラ / config を core に置く点までで、" +
       "判別子の 1 分岐として配線する構造は queue 側だけのもの（object storage に選択肢は無い）。",

@@ -199,6 +199,9 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 - ❌ recurring threshold 3 未満の (B) pattern を surface（detector 側で抑止、integrator も respect）
 - ❌ (D) の解消として ADR / README 本文を書き換える（台帳側を直す。正本の変更は user 作業）
 - ❌ (D) で Evans 原義への忠実性を判定する（`ddd-audit` の担当）
+- ❌ (E) の E2（ADR / `docs/rules.md` への漏れ）を承認対象に載せる / 書き換える
+- ❌ (E) の解消として `docs/spec/glossary.md` を編集する（用語表は `glossary` の担当）
+- ❌ (E) を `.agents/glossary-drift/exclusions.yaml` へ追記して黙らせる（除外の宣言は user の判断）
 - ✅ Japanese aggregated report
 - ✅ touched layer のみ fan-out（changed-files mode）
 - ✅ per-layer detector / skill が独立 standalone 動作可能であることを維持

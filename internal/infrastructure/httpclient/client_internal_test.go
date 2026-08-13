@@ -354,11 +354,8 @@ func Test_client_attempt(t *testing.T) {
 	})
 }
 
-// Test_client_doWithRetry は、retry ループの分岐網羅（backoff / deadline / breaker / budget / minimum-attempt）を
-// client_test.go の Test_client_Do_Retry/Backoff/Deadline/Breaker/Budget/MinimumAttempt が httptest サーバ経由で
-// 担う一方、外部テストからは観測しにくい内部状態（client.budget.tokens）を直接固定する。ここでは deadline で
-// 打ち切られる retry が budget を消費しない会計整合を pin する。budget 消費を canRetryWithin より先に行う旧実装
-// では、打ち切られた分まで消費して残量が 1 少なくなる回帰を検出する。
+// Test_client_doWithRetry は、deadline で打ち切られた retry が budget を消費しないことを、外部から
+// 観測しにくい内部状態（client.budget.tokens）を直接検査して固定します。
 func Test_client_doWithRetry(t *testing.T) {
 	t.Parallel()
 

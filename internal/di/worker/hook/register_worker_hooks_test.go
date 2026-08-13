@@ -77,7 +77,6 @@ func TestRegisterWorkerHooks(t *testing.T) {
 
 			require.NoError(t, start(context.Background()))
 
-			// Body goroutine が engine.Run の結果を done へ送って close する。
 			err := <-done
 			require.ErrorIs(t, err, workerengine.ErrUnknownWorker)
 			_, ok := <-done

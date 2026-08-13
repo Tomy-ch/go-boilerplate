@@ -1,13 +1,16 @@
 ---
 name: tools-upgrade
-description: Audit `mise.toml` `[tools]` entries against upstream latest versions, with a configurable supply-chain quarantine. For each tool the latest release is fetched from its backend (GitHub Releases for `aqua:` / `go:` tagged modules, npm registry for `npm:`, PyPI for `pipx:`, language download manifests for `go` / `node` / `python`). Releases newer than `min_age_days` are reported as informational only — never applied automatically — to avoid pulling in newly-published malicious versions before upstream has time to detect and revoke them. Confirms `min_age_days` and the per-tool update set via `ask the user explicitly`, rewrites approved entries in `mise.toml` atomically, runs `make sync-versions` if `go` / `node` / `python` changed, and verifies with `make lint` + `make test`. Use this skill on a routine cadence (monthly / quarterly) or after a security advisory.
+description: Audit this repository's pinned tool versions against upstream latest, with a configurable supply-chain quarantine. The audit surface is both declaration sites — `mise.toml` `[tools]` for everything mise resolves, and `python/*.in` for the PyPI tools that install from the hash-pinned lockfiles `python/*.txt` (ADR-0077 (mise-ssot-drift-gate)). For each tool the latest release is fetched from its backend (GitHub Releases for `aqua:` / `go:` tagged modules, npm registry for `npm:`, PyPI for `python/*.in` and any `pipx:`, language download manifests for `go` / `node` / `python`). Releases newer than `min_age_days` are reported as informational only — never applied automatically — to avoid pulling in newly-published malicious versions before upstream has time to detect and revoke them; when an advisory drove the run, each quarantined release is handed to `supply-chain-triage` for a scored evidence verdict instead of only a day count. Confirms `min_age_days` and the per-tool update set via `ask the user explicitly`, rewrites approved entries atomically, regenerates the affected lockfiles with `make py-lock` when a `python/*.in` pin changed, runs `make sync-versions` if `go` / `node` / `python` changed, and verifies with `make lint` + `make test`. Use this skill on a routine cadence (monthly / quarterly) or after a security advisory.
 ---
 
 # Tool Version Upgrade
 
-This skill audits `mise.toml` against upstream latest versions for every tool in the `[tools]` table, with a **supply-chain quarantine gate**: releases newer than `min_age_days` are surfaced as informational only and are never applied automatically. The gate exists because malicious uploads to npm / PyPI / Go module proxies are typically detected and revoked within hours to days; waiting reduces exposure.
+This skill audits every pinned tool version against upstream latest, with a **supply-chain quarantine gate**: releases newer than `min_age_days` are surfaced as informational only and are never applied automatically. The gate exists because malicious uploads to npm / PyPI / Go module proxies are typically detected and revoked within hours to days; waiting reduces exposure.
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+The audit surface is **both** declaration sites, because a tool that is not read is a tool that never gets upgraded:
+
+- `mise.toml` `[tools]` — everything mise resolves.
+- `python/*.in` — the PyPI tools, whose resolved trees are hash-pinned in `python/*.txt` ([ADR-0077 (mise-ssot-drift-gate)](../../../docs/adr/0077-mise-ssot-drift-gate.md)). Bumping one of these is a two-file change: the pin, then `make py-lock`.
 
 ## When to Use
 
@@ -19,9 +22,9 @@ Use this skill when:
 
 Do NOT use this skill for:
 
-- Upgrading Go itself — use `/go-upgrade` (different downstream sync via `make sync-versions`)
+- Upgrading Go itself — use the `go-upgrade` skill (different downstream sync via `make sync-versions`)
 - Updating Go module dependencies (`go.mod` `require` block) — use `make tidy-lib` directly
-- One-off ad-hoc version bumps — just edit `mise.toml` and run `make sync-versions`
+- One-off ad-hoc version bumps — just edit the declaration (`mise.toml` + `make sync-versions`, or a `python/*.in` pin + `make py-lock`)
 
 ## First Step: Confirm `min_age_days`
 
@@ -35,38 +38,40 @@ Procedure:
     - Default candidate: `7`
 3. Validate the answer is a non-negative integer. Use it as `<MIN_AGE_DAYS>` throughout the rest of the procedure.
 
-Do NOT fetch any upstream API or read `mise.toml` until `<MIN_AGE_DAYS>` is confirmed.
+Do NOT fetch any upstream API or read the declarations until `<MIN_AGE_DAYS>` is confirmed.
 
 ## AI Modification Scope
 
 Per the "Exception: Skill Execution" clause in `AGENTS.md`, the following paths are permitted to be modified while this skill is running:
 
 - `mise.toml` (the `[tools]` table — write only entries the user explicitly approved)
+- `python/*.in` (the version pin — only entries the user explicitly approved) and `python/*.txt` — the latter only as the output of `make py-lock`, never hand-edited
 - `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md`, `docker/**/README.ja.md` — only as the downstream output of `make sync-versions` (the script handles these atomically)
 - `docker/**/Dockerfile` `FROM` `@sha256:...` digests + `docker/images-pin.toml` — only via `make pin-images-apply` / `pin-images-resolve`, when a `go` / `node` / `python` runtime bump changed a base-image tag
 
 The following remain protected even during skill execution:
 
-- `AGENTS.md` / `AGENTS.md`
+- `AGENTS.md`
 - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
 - Any file unrelated to the version bump
 
 ## Execution Steps
 
-### 1. Parse `mise.toml`
+### 1. Parse the Declarations
 
-Read `mise.toml` and enumerate every key under `[tools]`. For each key, determine the backend:
+Read `mise.toml` and enumerate every key under `[tools]`, then read every `python/*.in` and enumerate its `==` pins. For each entry, determine the backend:
 
-| Key format | Backend | Latest-version source |
-| --- | --- | --- |
-| `aqua:owner/repo` | aqua (GitHub Releases) | `gh api repos/owner/repo/releases/latest` |
-| `go:path/to/module` | go install | GitHub Releases (if hosted there) or `go list -m -versions path/to/module` |
-| `npm:package` | npm | `https://registry.npmjs.org/{package}` |
-| `pipx:package` | pipx (PyPI) | `https://pypi.org/pypi/{package}/json` |
-| Short name (e.g., `golangci-lint`) | mise registry default | Resolve via `mise registry`, then query the resolved backend |
-| `go` (runtime) | language download manifest | `https://go.dev/dl/?mode=json` |
-| `node` (runtime) | language download manifest | `https://nodejs.org/dist/index.json` |
-| `python` (runtime) | language download manifest | `https://www.python.org/api/v2/downloads/release/` |
+| Key format | Declared in | Backend | Latest-version source |
+| --- | --- | --- | --- |
+| `aqua:owner/repo` | `mise.toml` | aqua (GitHub Releases) | `gh api repos/owner/repo/releases/latest` |
+| `go:path/to/module` | `mise.toml` | go install | GitHub Releases (if hosted there) or `go list -m -versions path/to/module` |
+| `npm:package` | `mise.toml` | npm | `https://registry.npmjs.org/{package}` |
+| `pipx:package` | `mise.toml` | pipx (PyPI) | `https://pypi.org/pypi/{package}/json` |
+| `package[extras]==X.Y.Z` | `python/<tool>.in` | PyPI (installed by `uv` from `python/<tool>.txt`) | `https://pypi.org/pypi/{package}/json` (strip the extras) |
+| Short name (e.g., `golangci-lint`) | `mise.toml` | mise registry default | Resolve via `mise registry`, then query the resolved backend |
+| `go` (runtime) | `mise.toml` | language download manifest | `https://go.dev/dl/?mode=json` |
+| `node` (runtime) | `mise.toml` | language download manifest | `https://nodejs.org/dist/index.json` |
+| `python` (runtime) | `mise.toml` | language download manifest | `https://www.python.org/api/v2/downloads/release/` |
 
 For each tool, fetch:
 
@@ -101,6 +106,7 @@ Print a Japanese-language summary grouped by class. Example:
 
 ⚠️ supply-chain quarantine（公開から 7 日未満、通知のみ）:
   - air: 1.65.3 → 1.66.0 （公開 2026-06-02, 2 日前）
+      ※ 直接証拠での評価が必要なら /supply-chain-triage を実行できます（既定では未実行）
 
 ✓ 既に最新:
   - oapi-codegen 2.7.0
@@ -108,26 +114,53 @@ Print a Japanese-language summary grouped by class. Example:
   ... (省略可)
 
 ❌ 取得失敗:
-  - pipx:sqlfluff: PyPI への接続失敗
+  - sqlfluff（python/sqlfluff.in）: PyPI への接続失敗
 ```
+
+Show the declaration file for a `python/*.in` entry, as above. Which file holds the pin decides what applying the bump involves, and the user is about to approve that in step 4.
+
+### 3.5. Triage Pending Releases the Quarantine Caught
+
+A `pending` classification means the quarantine is holding a release back purely on age. That is a proxy for four questions — did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear — and the proxy can be discharged by answering them directly (`docs/design/security.md` → "Dependencies"). Chain the `supply-chain-triage` skill per pending tool when the answer would change what the user does:
+
+- Always, when the pending release is the reason the skill was invoked (a security advisory naming that tool).
+- Otherwise only on request. A routine monthly audit that reports three pending tools does not need three triages — nobody is deciding anything yet, and next month they will simply be eligible. Say the triage is available rather than spending the run on it.
+
+Pass the backend, tool key, candidate version, the **version currently pinned in the declarations** (the diff's other end), `<MIN_AGE_DAYS>`, and the release date. Triage is report-only: it reads the release artifact without executing it, returns a 0–12 score with a band and citations, and never edits a declaration or applies anything. A pending tool stays pending — the score is what the user weighs, and adoption remains a separate, explicit decision (step 4).
 
 ### 4. Confirm Per-tool Update Set
 
-If **eligible** is empty, skip to step 6 with no writes.
+If **eligible** is empty and nothing pending was triaged into a decision, skip to step 6 with no writes.
 
 Otherwise invoke `ask the user explicitly` with `multiSelect: true`. Each option corresponds to one eligible tool, with the version diff and release date as the description. Default state: all selected.
 
 The user may deselect individual entries (e.g., if a specific bump is known-broken).
 
-### 5. Update `mise.toml`
+A **pending** tool may appear in this question only when it was triaged in step 3.5 and the user is explicitly deciding whether to adopt it early — in that case it is listed separately, **deselected by default**, with its band in the description. Never fold a pending tool into the default-selected eligible set: the quarantine's whole value is that age-based eligibility is the default and early adoption is a deliberate act.
 
-For each approved tool:
+### 5. Update the Declarations
+
+For each approved tool declared in `mise.toml`:
 
 - Locate the exact line in `mise.toml`
 - Replace the version literal only — preserve the original key (`aqua:owner/repo` / `go:path/to/module` / short name) and the original `v`-prefix convention if any
 - Do not reorder keys, do not touch unrelated keys, do not touch the `[settings]` table
 
 After computing all approved changes, write `mise.toml` **once** (atomic single-pass write). Read the file → apply all replacements in memory → write.
+
+For each approved tool declared in `python/*.in`:
+
+- Replace the version after `==` only — preserve the package name and its extras (`graphifyy[sql]`)
+- If the comment above the pin explains why the tool is held below latest (a quarantine note from an earlier run), rewrite or drop that comment to match reality. A stale "held back because it is too new" note outlives the condition it describes and reads as policy on the next run.
+- Then regenerate the lockfiles:
+
+  ```sh
+  make py-lock
+  ```
+
+  The `.in` and its `.txt` are one change. `make tool-cooldown-gate` fails on a pin whose lockfile still names the old version, precisely so that a forgotten regeneration cannot leave the quarantine clearing a version that is never installed. Commit both files together; never hand-edit a `.txt`.
+
+  `py-lock` regenerates **every** `python/*.txt`, so an untouched tool can still show a diff when one of its transitive dependencies published a new release. That diff is real and is part of the change — review it, do not discard it. It is also not covered by this run's quarantine decision, which was made per direct pin: say so in the final report.
 
 ### 6. Run `make sync-versions` if Necessary
 
@@ -145,7 +178,13 @@ make pin-images-apply
 make pin-images-check
 ```
 
-The just-published runtime image is normally inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown, so `pin-images-apply` strips the stale digest and leaves the `FROM` on the tag only (quarantined) — `pin-images-check` accepts that. Report it and note that `/pin-images` should be re-run once the image ages. Skip this step entirely when step 6 was skipped (no runtime change → no tag change → digests still valid).
+`sync-versions` rewrites only the version portion of the tag; the trailing `@sha256:...` is left untouched and now names the *old* image. Docker honors the digest, so the tree sits in a tag/digest mismatch that must not be committed.
+
+Resolving that lands on `images-pin`'s **rule 3**: the new tag has no prior lockfile entry and its image was just published, so there is no aged digest to step back to. `pin-images-resolve` **fails closed** (`❌ 退行先の無い出来立て image は採用できません`) rather than adopting the fresh digest or stripping the pin to tag-only, `apply` never runs, and `pin-images-check` rejects the stale digest as `未登録`.
+
+The consequence worth stating plainly: **a runtime bump and its digest pin are coupled.** Unless the new image has already aged past `PIN_IMAGES_MIN_AGE_DAYS`, the run cannot be finished cleanly, and the choice belongs to the user — bootstrap deliberately with `days=0` (which `images-pin` step 2.5 gates behind a `supply-chain-triage` evidence check), or hold the runtime bump itself until the image ages. Do not force `resolve` through, and do not leave the mismatched digest in the tree.
+
+Skip this step entirely when step 6 was skipped (no runtime change → no tag change → digests still valid).
 
 ### 8. Verify
 
@@ -154,18 +193,28 @@ make lint
 make test
 ```
 
+If a `python/*.in` pin changed, also run:
+
+```sh
+make tool-cooldown-audit
+```
+
+It is the check that the pin and its lockfile agree, and it re-measures the window against the version now declared — the same gate the pull request will run.
+
 Report the result table to the user (OK / FAIL per command). Do NOT automatically roll back on failure — the user decides whether to amend, revert, or proceed.
 
 ### 9. Final Report
 
 Summarize:
 
-- Number of tools updated
-- Number quarantined (pending, not applied)
+- Number of tools updated, and for PyPI tools whether the lockfile was regenerated
+- Any transitive-dependency movement `make py-lock` pulled in, stated as outside this run's per-pin quarantine decision
+- Number quarantined (pending, not applied), and when each clears the window
+- For any pending tool that was triaged: its band and the axis that drove it (including any axis that came back unanswerable), plus whether the user adopted it early or left it pending
 - Verification result
 - Any failures to surface
 
-Do NOT commit, stage, or push. The user reviews the resulting working tree and runs `/commit` (or similar) manually.
+Do NOT commit, stage, or push. The user reviews the resulting working tree and runs the `commit` skill (or similar) manually.
 
 ## Notes
 
@@ -181,14 +230,17 @@ Do NOT commit, stage, or push. The user reviews the resulting working tree and r
 Confirm the following before reporting completion:
 
 - [ ] `<MIN_AGE_DAYS>` confirmed via `ask the user explicitly`
-- [ ] Every `[tools]` entry's backend was resolved (or surfaced as resolution_failed with a reason)
+- [ ] Both declaration sites enumerated: `mise.toml` `[tools]` and every `python/*.in`
+- [ ] Every entry's backend was resolved (or surfaced as resolution_failed with a reason)
 - [ ] Each tool was classified (up-to-date / eligible / pending / resolution_failed)
 - [ ] Classification table presented to the user
-- [ ] If eligible set non-empty: user confirmed per-tool update set via `ask the user explicitly`
+- [ ] Pending releases triaged via `supply-chain-triage` when an advisory drove the run (baseline = the version currently pinned in the declarations); otherwise offered, not spent
+- [ ] If eligible set non-empty: user confirmed per-tool update set via `ask the user explicitly`; any early-adopted pending tool listed separately and deselected by default with its band
 - [ ] `mise.toml` rewritten atomically with only approved changes, preserving key formats and `v`-prefix convention
+- [ ] Approved `python/*.in` pins rewritten (package name and extras preserved, stale quarantine comments corrected), `make py-lock` run, and both files left in the tree; no `.txt` hand-edited
+- [ ] `make tool-cooldown-audit` run if a `python/*.in` pin changed
 - [ ] `make sync-versions` run if go / node / python was updated
-- [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`); quarantined-until-aged images reported for a later `/pin-images` re-run
+- [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`). A rule 3 fail-closed on the new tag is the expected outcome for a just-published image — surfaced with the coupling (bootstrap via `days=0` after triage, or hold the bump), never forced through, and never left as a tag/digest mismatch
 - [ ] `make lint` + `make test` run after writes
 - [ ] Final result table reported to the user
-- [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync
 - [ ] No commit / stage / push performed

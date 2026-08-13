@@ -15,8 +15,7 @@ import (
 )
 
 // 命名規約: メソッドは `Test<Type>_<Method>`（Type が非公開なら `Test_<type>_<Method>`）、
-// 自由関数は `Test<Func>`（非公開なら `Test_<func>`）。depguard が go/ast を禁じるため、
-// gofmt 済みソースのテキスト走査で検出する（既存 architest と同方針）。
+// 自由関数は `Test<Func>`（非公開なら `Test_<func>`）。
 var (
 	// 型パラメータ節（`[T any]` 等）を許容する。レシーバ型・自由関数名の直後に挟まりうるため、
 	// 省略可能な `(?:\[.*\])?` を挟んでからメソッド引数の `(` を要求する。
@@ -46,11 +45,8 @@ type prodSubject struct {
 //
 // 候補名が複数あるのは非公開シンボルの命名揺れを許容するためであって、両方を並べてよい
 // という意味ではないため、候補名の TestXxx を 2 つ以上持つ subject も違反とする。
-// 逆方向の検査はここまでで、候補名に一致しない TestXxx が同じ subject を対象にしている
-// 状態（1 シンボルが規約外の名前のテストと分業している状態）は検知できない。テスト名から
-// subject を逆引きする手段が無く、production code に対応シンボルを持たない TestXxx は
-// docs/testing-conventions.md §1 が by construction 正当と認めているため、そこまで踏み込むと
-// 検出のほとんどが誤検知になる。その形は test-review のレビューが受け持つ。
+// 逆方向（候補名に一致しない TestXxx が同じ subject を分担している形）は検知しない。
+// 理由と、その形を誰が受け持つかは docs/testing-conventions.md §1 が定める。
 func TestUnitTestMappingCompleteness(t *testing.T) {
 	t.Parallel()
 
@@ -84,6 +80,9 @@ func scanPackages(t *testing.T) (map[string][]prodSubject, map[string]map[string
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, werr error) error {
 			if werr != nil {
 				return werr
+			}
+			if serr := skipDependencyTree(d); serr != nil {
+				return serr
 			}
 			if d.IsDir() || !strings.HasSuffix(path, ".go") {
 				return nil
@@ -484,6 +483,17 @@ func Test_collectViolations(t *testing.T) {
 			assert.Equal(t, "server.go: newServer → 候補名の TestXxx が重複: TestnewServer / Test_newServer", violations[0])
 		})
 	})
+}
+
+// skipDependencyTree は node_modules 配下を走査から外す。npm / pnpm が展開する依存には Go 実装を
+// 同梱するパッケージがあり（ESLint が引く flatted の golang/）、第三者のコードをこのリポジトリの
+// production code として数えてしまう。go の走査系は node_modules を特別扱いしないため、
+// .golangci.yaml と GO_TEST_EXCLUDE が持つのと同じ除外を、ファイルを直に歩く側にも置く。
+func skipDependencyTree(d fs.DirEntry) error {
+	if d.IsDir() && d.Name() == "node_modules" {
+		return fs.SkipDir
+	}
+	return nil
 }
 
 // moduleSubdirs は、モジュールルート配下の指定サブディレクトリの絶対パス群を返す。

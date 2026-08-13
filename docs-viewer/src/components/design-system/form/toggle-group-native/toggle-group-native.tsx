@@ -13,8 +13,8 @@ export type ToggleGroupNativeProps = ComponentProps<"fieldset">;
  *
  * @remarks
  * 項目は native の radio / checkbox なので、選択は form の値としてそのまま送信される。初期表示も
- * Server 側で確定し、client runtime を必要としない。URL にも form にも載せない即時の表示切替が
- * 必要な場合だけ、対になる `ToggleGroupClient` を使う。
+ * Server 側で確定し、client runtime を必要としない。URL にも form にも載せない即時の表示切替には
+ * 使わない。
  *
  * `fieldset` として公開されるため、`aria-label` か `aria-labelledby` で**何の切り替えかを必ず
  * 示す**。`legend` を置く場合はそちらが名前になる。

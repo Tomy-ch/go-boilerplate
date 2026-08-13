@@ -12,6 +12,7 @@
 .PHONY: trivy-secret-ci ## ワーキングツリーのシークレットをスキャン(CI用)
 .PHONY: trivy-image-ci ## ビルド済みイメージの脆弱性をスキャン(CI用)
 .PHONY: trivy-image-gate-ci ## ビルド済みイメージを修正版のあるCRITICAL/HIGHでゲート(CI用)
+.PHONY: trivy-sbom-ci ## 生成済みSBOMに対して脆弱性を照合(CI用)
 
 # 出力形式。既定の table は人がローカルで読むためのもの。CI は json / sarif を渡して
 # stdout をリダイレクトする。trivy は診断ログを stderr に出すため、stdout は純粋な
@@ -45,13 +46,11 @@ trivy-secret:
 	@docker compose run --rm go_tool_runner make trivy-secret-ci
 
 # -----CI内で実行するコマンド群-----
-# 通常の依存スキャンは報告専用。修正版のない脆弱性は、その PR が持ち込んだもので
-# ない以上ここでは落とさず、trivy-fs-release-ci が昇格時にまとめて判定する。
+# 報告専用。ブロック判定は trivy-fs-release-ci が持つ。
 trivy-fs-ci:
 	trivy fs $(TRIVY_VULN_FLAGS) --ignore-unfixed $(TRIVY_SKIP_FLAGS) --format $(TRIVY_FORMAT) .
 
-# デプロイ先ブランチ宛 PR の厳格ゲート。--ignore-unfixed を外し、修正版のない脆弱性も
-# 含めた「今まさに昇格しようとしている依存の全体像」を返す。
+# 昇格ゲート。--ignore-unfixed を外すため、修正版のない脆弱性もここでは落とす。
 trivy-fs-release-ci:
 	trivy fs $(TRIVY_VULN_FLAGS) $(TRIVY_SKIP_FLAGS) --format $(TRIVY_FORMAT) .
 
@@ -62,23 +61,17 @@ trivy-fs-release-ci:
 trivy-config-ci:
 	trivy config --severity CRITICAL,HIGH --ignorefile .trivyignore.yaml $(TRIVY_SKIP_FLAGS) --format $(TRIVY_FORMAT) .
 
-# ライセンススキャン。禁止ライセンス方針が未策定のため報告専用とし、severity では
-# 絞らない（方針策定前に閾値を決めると、その閾値自体が根拠のない既成事実になる）。
+# 報告専用。禁止ライセンスの方針が無いため severity でも絞らない。
 trivy-license-ci:
 	trivy fs --scanners license $(TRIVY_SKIP_FLAGS) --format $(TRIVY_FORMAT) .
 
-# シークレットスキャン。trivy fs の既定 --scanners は vuln,secret だが、上の脆弱性
-# ターゲット群は --scanners vuln を明示して secret を落としているため、これは報告先が
-# 増えるだけの変更ではなく検査そのものの追加にあたる。
-#
-# gitleaks（secret-scan.yaml）との重複は意図的。gitleaks は正規表現とエントロピーで広く
-# 拾い、trivy は誤検知の少ない固定ルール集で拾う。実際、公開鍵を private-key として挙げる
-# gitleaks の誤検知は trivy 側には出ない。検出漏れが致命的な対象なので二重化を残す。
+# trivy fs の既定 --scanners は vuln,secret だが、上の脆弱性ターゲット群は
+# --scanners vuln を明示して secret を落としているため、これは検査そのものの追加になる。
 #
 # node_modules は依存が同梱するテスト用の鍵素材を拾うだけで、本リポジトリが管理する
-# シークレットではない。severity では絞らない（シークレットは「軽微な漏洩」が無い）。
-# 許容済みの検出は .trivyignore.yaml に path 固定で載せる。config スキャンと同じく
-# --ignorefile の明示が必須。
+# シークレットではない。severity では絞らない（シークレットに「軽微な漏洩」は無い）。
+# 許容済みの検出は .trivyignore.yaml に path 固定で載せる。
+# config スキャンと同じく --ignorefile の明示が必須。
 TRIVY_SECRET_SKIP_FLAGS := $(TRIVY_SKIP_FLAGS) --skip-dirs '**/node_modules'
 
 trivy-secret-ci:
@@ -94,7 +87,14 @@ TRIVY_IMAGE_FLAGS := --scanners vuln --pkg-types os,library
 trivy-image-ci:
 	trivy image $(TRIVY_IMAGE_FLAGS) --severity CRITICAL,HIGH,MEDIUM --skip-version-check --format $(TRIVY_FORMAT) $(TRIVY_IMAGE)
 
-# ゲート用。修正版のある CRITICAL/HIGH だけで落とす。報告用と閾値が違うのは意図的で、
-# 「直せるのに直していない」ものだけをマージブロックの理由にする。
+# ゲート用。閾値が報告用と違うのは意図的で、修正版のある CRITICAL/HIGH だけで落とす。
 trivy-image-gate-ci:
 	trivy image $(TRIVY_IMAGE_FLAGS) --severity CRITICAL,HIGH --ignore-unfixed --skip-version-check --exit-code 1 --format table $(TRIVY_IMAGE)
+
+# 生成済み SBOM への脆弱性照合。対象イメージは trivy-image-ci と同じだが、パッケージを
+# 数え上げたのは syft であり、同定器が違えば照合に載る対象も変わる。SBOM が実際に消費
+# できることの確認も兼ねるため、読めない SBOM はステップの失敗として扱ってよい。
+TRIVY_SBOM_FILE ?=
+
+trivy-sbom-ci:
+	trivy sbom --severity CRITICAL,HIGH,MEDIUM --skip-version-check --format $(TRIVY_FORMAT) $(TRIVY_SBOM_FILE)

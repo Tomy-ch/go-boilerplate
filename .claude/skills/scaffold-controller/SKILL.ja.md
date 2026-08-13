@@ -138,18 +138,7 @@ Agent tool を起動して controller 層 test 観点を実装前に列挙:
 実装ファイル規約（`internal/controller/handler/README.md` の reference snippet 準拠 — README が canonical）:
 
 - `package <handler-package>`（lowercase）
-- `type server struct { tracer observability.LayerTracer; <usecase-deps...> }`（struct 名は `server`、README 規約）
-- **Constructor 名**: `BindHandler`（`New` ではない）:
-
-  ```go
-  func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc <pkg>.Usecase) {
-      gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
-          tracer: tf.Controller(),
-          uc:     uc,
-      }, nil))
-  }
-  ```
-
+- `server` 構造体 + `BindHandler(e, tf, uc)` コンストラクタ + `gen.RegisterHandlers(e, gen.NewStrictHandler(&server{...}, nil))` の登録 — 形は `internal/controller/handler/README.md` の reference snippet に厳密に従う（canonical。ここでは再掲しない）。コンストラクタ名は `BindHandler` であり `New` ではない。
 - 各 method:
   - 生成 `ServerInterface` signature と完全一致
   - 冒頭で `ctx, endSpan := s.tracer.Start(ctx); defer endSpan()`（tracer span）
@@ -193,7 +182,7 @@ HTTP 境界 integration テストも internal/integration/<feature>_test.go に�
 全層が揃いました — `make serve` + curl での実機ランタイム確認に進めます。
 ```
 
-> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Runtime Verification（Step 3.5）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
+> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Phase 7（Integration Verification）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
 
 commit しない。
 

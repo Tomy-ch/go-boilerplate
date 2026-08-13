@@ -19,7 +19,7 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 - In production code, `New` belongs in a **package-level `var` declaration** — never in a function
   body. Declare the sentinel once (`var errXxx = New("...")`) and attach the dynamic context at the
   raising site with `Wrap(errXxx, ctx)`, so callers and tests identify the error with `Is` instead of
-  matching its message. `internal/architest` (`TestNoInlineXerrorsNew`) enforces this; `_test.go`
+  matching its message. A static check in this repository enforces this convention; `_test.go`
   is out of scope, where an ad-hoc error to inject is a legitimate use.
 - When attaching an apperror sentinel to an underlying error, prefer `Join(sentinel, err)`
   (or `Join(sentinel, Wrap(err, "context"))` when context is needed) so the original error stays

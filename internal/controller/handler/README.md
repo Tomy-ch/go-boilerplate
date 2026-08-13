@@ -10,8 +10,6 @@ In this project, the following are defined as the **Controller Layer**:
 - router - Responsible for route registration and HTTP server startup.
 - middleware - Performs common processing before/after HTTP requests such as logging, request ID, and tracing.
 
-Responsible for receiving HTTP requests and delegating processing to the Usecase layer.
-
 The Controller is the **input/output boundary of the application**.
 
 ## Role in This Project
@@ -498,17 +496,7 @@ Exception: an operational endpoint whose response is produced by a third-party h
 
 ### Dependency Policy
 
-Allowed:
-
-- Controller → Usecase
-- Controller → Presenter
-- Controller → apperror
-
-Forbidden:
-
-- Controller → Domain
-- Controller → Infrastructure
-- Controller → Database
+See [Dependency Rules](#dependency-rules) above.
 
 ## Do / Don’t
 

@@ -44,7 +44,7 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 				CategoryID:            uuidtestkit.NewTestFromSalt(t, salt+"_category"),
 				CategoryName:          "電子機器",
 				PublishedAt:           nil,
-				ImagePath:             nil,
+				Images:                nil,
 				Version:               1,
 			}
 		}
@@ -135,7 +135,6 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_lowstock_empty"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productsLowStockPath, nil, headers)
-			// 対象が空でも products は null ではなく [] でシリアライズされる（AssertJSONResponseType が検査）。
 			AssertJSONResponseType[gen.ProductLowStockResponse](t, actual)
 		})
 	})

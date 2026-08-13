@@ -39,7 +39,7 @@
 
 3 つとも必要である。1 つ目を外すとアプリがクラスタ既定に従ってしまい、2 つ目を外すと DB へ直接繋いだセッションが全て UTC 表示になり、3 つ目を外すとコンテナ内のシェルとログ行が全て UTC 表示になる。次を全て揃えて変更する。
 
-1. `env/.env` と全ての `env/.env.<env>` — `OS_TZ` のエントリ（セッションの timezone。`required` なので 5 ファイル全てに存在する）。
+1. `env/.env` と全ての `env/.env.<env>` — `OS_TZ` のエントリ（セッションの timezone。`required` なので 6 ファイル全てに存在する）。
 2. `docker-compose.yaml` の `database` サービス — `TZ` と `PGTZ`。`TZ` は `initdb` 時にしか効かないため、volume を作り直すまで既存 volume は旧クラスタ既定を保持する。その手順と worktree 特有の注意は `docs/maintenance/db-worktree-pool.md` が所有する。`PGTZ` は `psql` セッション単位で効くため、古い volume でも即座に反映される。
 3. `.github/workflows/` 配下で DB を用意する各 workflow の PostgreSQL サービス定義 — `TZ` と `PGTZ`。GitHub Actions はサービス定義を workflow 間で共有できないため、値は全ファイルに重複して書かれている。列挙は変数ではなくサービスの image で行うこと（`grep -rl 'image: postgres' .github/workflows/`）— `PGTZ` で grep すると既に設定済みの workflow しか見つからず、まだ設定が要る workflow を黙って取りこぼす。
 4. `docker/server/Dockerfile` — `runtime` / `tooling` の両ステージの `ENV TZ`。両方を挙げているのは別のイメージだからである。`runtime` はデプロイ先が動かすもの、`tooling` は `make serve` が動かすものである。デプロイ先は再ビルドせず実行時に値を上書きできるため、`ENV` は唯一の供給元ではなく既定値として扱うこと。`ENV` はビルド時に焼かれるため、項目 2 の `initdb` と同じく、変更前にビルドしたイメージは旧い値を保持する。`make serve` はキャッシュ済みの `gobp-wt-<N>-api_server` イメージを再利用し、コンテナが旧いタイムゾーンを返したまま成功を報告するので、変更を反映するには `make serve-build` を実行すること。
@@ -62,7 +62,7 @@
 |APP_MODE|実行モード（`development` または `production`）|string|development|ログや挙動切り替え。Per-environment value — `stg` 以降は `production` とし、本番前の環境を本番と同じログ形式・挙動で動かす。local / ci / dev は `development`|
 |APP_LOG_LEVEL|ログ出力レベル（`debug` / `info` / `warn` / `error`）|string|debug|出力方式は Mode が決定。Per-environment value — `stg` までは本番前の調査のため `debug`、`prd` は本番のログ量を抑えるため `info`|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
-|APP_ENV|環境識別子（`local` / `ci` / `dev` / `stg` / `prd`）|string|local|環境区別用。埋め込み env の出所ガードにも使う（補足を参照）。Per-environment value — 環境識別子そのものであり、定義上すべて異なる|
+|APP_ENV|環境識別子（`local` / `ci` / `dast` / `dev` / `stg` / `prd`）|string|local|環境区別用。埋め込み env の出所ガードにも使う（補足を参照）。Per-environment value — 環境識別子そのものであり、定義上すべて異なる。`dast` は DAST スキャンの実行文脈で、`ci` と違い JWKS backed の実 authenticator を配線して mock 認証サーバーが実際に署名したトークンを検証する。また worktree の DB スロットプールには参加しない（`IsLocalClassEnv` は false を返す）|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。HTTP サーバーでは `SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だとサーバー起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 
 ### Server
@@ -84,8 +84,8 @@
 |---|---|---|---|---|
 |METRICS_HOST|metrics bind host|string|0.0.0.0|Per-environment value — 各環境が metrics を公開するホスト|
 |METRICS_PORT|metrics port|int|6060||
-|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。`local` / `ci` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
-|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。`local` / `ci` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。`local` / `ci` / `dast` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。`local` / `ci` / `dast` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 
 ### Observability
 
@@ -96,21 +96,21 @@
 |OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
 |OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|`http://observability:4318`|exporter 有効時に使用。Per-environment value — 各環境の collector。exporter が無効な環境では空|
 |OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
-|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|false|セキュリティ重要。Per-environment value — local / ci だけ `false`。クエリやテスト失敗の調査では生の SQL 引数が見えること自体が目的のため。`dev` 以降は `true` とし、実データがトレースバックエンドへ届かないようにする。上位環境をローカル側の値に揃えてはならない|
-|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。Per-environment value — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
+|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|false|セキュリティ重要。Per-environment value — local / ci / dast だけ `false`。クエリやテスト失敗、スキャン結果の調査では生の SQL 引数が見えること自体が目的のため。`dev` 以降は `true` とし、実データがトレースバックエンドへ届かないようにする。上位環境をローカル側の値に揃えてはならない|
+|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。Per-environment value — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` / `dast` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
 
 ### Database
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |DB_DRIVER|DBドライバ|string|pgx|Code default `pgx`。固定推奨|
-|DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）。Per-environment value — `local` は compose のサービス名、`ci` は `localhost`。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）。Per-environment value — `local` は compose のサービス名、`ci` / `dast` は `localhost`。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 |DB_PORT|DBポート|int|5432|Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 |DB_USER|ユーザー|string|postgres|シークレット管理推奨。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 |DB_PASSWORD|パスワード|string|postgres-password|シークレット管理必須。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
-|DB_NAME|DB名|string|local|シークレット管理推奨。Per-environment value — `local` は開発用、`ci` はテスト用のデータベースを指す。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_NAME|DB名|string|local|シークレット管理推奨。Per-environment value — `local` は開発用、`ci` / `dast` はテスト用のデータベースを指す。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 |DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
-|DB_PING_TIMEOUT|接続確認タイムアウト|duration|5s|Per-environment value — `local` は DB が同一の compose サービスにあり、ping が遅いことは起動不全を意味するため、早く落として顕在化させる `5s`。`ci` は 1 つのインスタンスへ多数のテストプロセスが同時にプールを張るため、順番待ちしているだけの接続を「DB が落ちている」と読み違えないよう、その競合を吸収するマージンとして意図的に置いた `30s`（他のタイムアウトから導出した値ではない）。`dev` 以降はネットワーク越しのマネージド DB で一時的な遅延がありうるため `10s`|
+|DB_PING_TIMEOUT|接続確認タイムアウト|duration|5s|Per-environment value — `local` は DB が同一の compose サービスにあり、ping が遅いことは起動不全を意味するため、早く落として顕在化させる `5s`。`ci` / `dast` は 1 つのインスタンスへ多数のテストプロセスが同時にプールを張るため、順番待ちしているだけの接続を「DB が落ちている」と読み違えないよう、その競合を吸収するマージンとして意図的に置いた `30s`（他のタイムアウトから導出した値ではない）。`dev` 以降はネットワーク越しのマネージド DB で一時的な遅延がありうるため `10s`|
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|Code default `500ms`。observability連携|
 |DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|Code default `30s`。ctx を無視する query への SQL 層 backstop。0 で無効|
 |DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|Code default `10s`。長時間ロック待ちへの backstop。0 で無効|
@@ -123,7 +123,7 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |DBCONN_MAX_CONNS|最大接続数|int|10|Code default `10`|
-|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。Per-environment value — pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` だけ `0` へ上書きし他は既定値のまま。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
+|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。Per-environment value — pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` / `dast` だけ `0` へ上書きし他は既定値のまま。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
 |DBCONN_MAX_LIFETIME|接続寿命|duration|30m|Code default `30m`|
 |DBCONN_MAX_IDLE_TIME|アイドル時間|duration|10m|Code default `10m`|
 
@@ -135,7 +135,7 @@
 |SECURITY_CIDR|許可IPレンジ|string|127.0.0.0/8||
 |SECURITY_CONTENT_TYPE_NOSNIFF|X-Content-Type-Options|string|nosniff||
 |SECURITY_X_FRAME_OPTIONS|clickjacking対策|string|DENY||
-|SECURITY_HSTS_MAX_AGE|HSTS期間|duration|0|Per-environment value — local / ci は平文 http で提供するため `0` で HSTS を無効化する（一度ヘッダをキャッシュしたブラウザは以降ロードを拒否するため）。`dev` 以降は前段で TLS を終端するため `8760h`（1 年）。上位環境をローカル側の値に揃えてはならない（本番の HSTS が消える）|
+|SECURITY_HSTS_MAX_AGE|HSTS期間|duration|0|Per-environment value — local / ci / dast は平文 http で提供するため `0` で HSTS を無効化する（一度ヘッダをキャッシュしたブラウザは以降ロードを拒否するため）。`dev` 以降は前段で TLS を終端するため `8760h`（1 年）。上位環境をローカル側の値に揃えてはならない（本番の HSTS が消える）|
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|サブドメイン除外|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|preload有効|bool|false||
 |SECURITY_REFERRER_POLICY|referrer制御|string|no-referrer||
@@ -176,7 +176,7 @@ worker が consume する broker の adapter 設定。`WORKER_*` は engine-core
 
 全項目に code default があるため、これらを読むのは `worker` プロセスだけで、`serve` / `outbox-relay` /
 `job` は consumer をそもそも組み立てない。worker を登録した時点からは、不完全な設定を起動時に弾く
-（受信が一度も成立しない consumer を起動させないため）。`ci` に疎通しないプレースホルダを置いて
+（受信が一度も成立しない consumer を起動させないため）。`ci` / `dast` に疎通しないプレースホルダを置いて
 あるのはそのためで、worker の DI グラフを起動するテストが無ければ起動時検査で落ちる。
 
 |変数名|説明|型|例|備考|
@@ -210,12 +210,12 @@ transactional outbox relay の設定。
 
 ### Auth (JWT)
 
-access token（JWT）検証の設定。CI / test は署名検証なしのスタブを配線し、`local` / `development` は JWKS backed の実 JWT authenticator を配線する（ローカル開発は mock 認証サーバーを検証）。後者は `AUTH_ISSUER` / `AUTH_AUDIENCE` が欠けていると起動時に fail-closed になる。配線判断は DI（`internal/di/module/core/auth.go`）が担う。`AUTH_JWKS_URL` は override で、空の場合は `AUTH_ISSUER` から OIDC discovery 経由で `jwks_uri` を導出する（issuer 厳密一致 + https + 同一オリジン。`local` は mock provider への平文 http を許容）。JWKS / discovery 取得は `httpclient` substrate を通すため、HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、env 変数では持たない。同プロファイルは `local` / `ci` / `test` 以外では private 網宛て SSRF も遮断する。
+access token（JWT）検証の設定。CI / test は署名検証なしのスタブを配線し、`local` / `dast` / `development` は JWKS backed の実 JWT authenticator を配線する（`local` と `dast` は mock 認証サーバーを検証）。後者は `AUTH_ISSUER` / `AUTH_AUDIENCE` が欠けていると起動時に fail-closed になる。配線判断は DI（`internal/di/module/core/auth.go`）が担う。`AUTH_JWKS_URL` は override で、空の場合は `AUTH_ISSUER` から OIDC discovery 経由で `jwks_uri` を導出する（issuer 厳密一致 + https + 同一オリジン。`local` / `dast` は mock provider への平文 http を許容）。JWKS / discovery 取得は `httpclient` substrate を通すため、HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、env 変数では持たない。同プロファイルは `local` / `ci` / `test` / `dast` 以外では private 網宛て SSRF も遮断する。
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:2010`|Code default は空。Per-environment value — `local` / `ci` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
-|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須。Per-environment value — mock の audience を宣言するのは `local` だけで、他は authenticator を配線するまで既定の空のまま|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:2010`|Code default は空。Per-environment value — `local` / `ci` / `dast` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
+|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須。Per-environment value — mock の audience を宣言するのは `local` / `dast` だけで、他は authenticator を配線するまで既定の空のまま|
 |AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/.well-known/jwks.json`|Code default は空。Per-environment value — compose 内部のサービス URL で上書きするのは `local` だけで、他は既定の空のまま `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出する|
 |AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|csv|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
 |AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
@@ -230,11 +230,11 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
-|OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`。Per-environment value — local / ci は Garage 用のサンプルリージョン、`dev` 以降は各環境の AWS リージョン|
+|OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`。Per-environment value — local / ci / dast は Garage 用のサンプルリージョン、`dev` 以降は各環境の AWS リージョン|
 |OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`。Per-environment value — 環境ごとに 1 バケット|
 |OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる — ロール運用のデプロイはここへ何も注入しない。明示的に設定する場合はシークレット管理必須。例欄はプレースホルダ: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う|
 |OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|Code default は空。アクセスキー ID とセットで設定すること — 片方だけの指定は起動時に落ちる。明示注入とも chain への委譲とも読めないため。例欄はプレースホルダ: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える|
-|OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`。Per-environment value — local / ci は Garage が path-style を要求するため `true`、`dev` 以降は AWS S3 のため `false`|
+|OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`。Per-environment value — local / ci / dast は Garage が path-style を要求するため `true`、`dev` 以降は AWS S3 のため `false`|
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
 
 配信はこれらの変数の管轄外です。API はオブジェクトキー（`imagePath`）だけを返しフル URL を返さないため、フロントが `<配信オリジン>/<オブジェクトキー>` を組み立てます。したがって配信オリジンの変数はこちら側に存在せず、フロントが持ちます（`local` は `http://gobp-local.web.garage.localhost:3902`、デプロイ環境では CDN のドメイン）。ローカルの配信エンドポイントを匿名 read で開く方法は [`docker/README.md`](../docker/README.md) を参照してください。
@@ -246,4 +246,4 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 - `duration` 型は Go `time.ParseDuration` 構文（`500ms`, `1h30m`）。素の数値は不可
 - 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
 - env ファイルはビルド時にバイナリへ埋め込まれる（`embed.go`）。`env/.env` がローカル既定かつ唯一の埋め込み対象で、`env/.env.<env>` は各環境のソース。Docker の `builder` ステージが `APP_ENV` ビルド引数で対象を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）。Docker 以外（`go run` / `go test`）はコミット済みの local `env/.env` を埋め込むため、別環境が必要な CI は同様に焼き直す（例: `cp env/.env.ci env/.env`）。実行時の環境変数は埋め込み値より優先される
-- 埋め込み env の素性ガード: ローカルの `env/.env`（`APP_ENV=local`）が既定の埋め込み対象であるため、本番ビルド前に材料化し忘れるとローカル既定が黙ってバイナリへ焼き込まれる。これを捕捉するため、config の検証はランタイム env のマージ前に埋め込み値の `APP_ENV` を確保し、実効 `APP_MODE` が `production` のときに非本番の素性を拒否する（deny-list: `local` / `ci` / `test` / `dev` / 空）。deny 方式なので新しい環境ラベルは既定で許容され、`development` モードは無条件で通す（そこではランタイム注入を信頼する）。環境別の `APP_ENV` の値（`local` / `ci` / `dev` / `stg` / `prd`）が正であり、`internal/config/constant.go` の `Env*` 定数はそれを写したもので乖離させてはならない。このガードはランタイムが `APP_MODE=production` を注入したときにのみ発火する。本番デプロイで注入し損ねると実効モードは `development` のままガードは沈黙するため、本番ランタイムでは必ず `APP_MODE=production` を設定すること
+- 埋め込み env の素性ガード: ローカルの `env/.env`（`APP_ENV=local`）が既定の埋め込み対象であるため、本番ビルド前に材料化し忘れるとローカル既定が黙ってバイナリへ焼き込まれる。これを捕捉するため、config の検証はランタイム env のマージ前に埋め込み値の `APP_ENV` を確保し、実効 `APP_MODE` が `production` のときに非本番の素性を拒否する（deny-list: `local` / `ci` / `test` / `dast` / `dev` / 空）。deny 方式なので新しい環境ラベルは既定で許容され、`development` モードは無条件で通す（そこではランタイム注入を信頼する）。環境別の `APP_ENV` の値（`local` / `ci` / `dast` / `dev` / `stg` / `prd`）が正であり、`internal/config/constant.go` の `Env*` 定数はそれを写したもので乖離させてはならない。このガードはランタイムが `APP_MODE=production` を注入したときにのみ発火する。本番デプロイで注入し損ねると実効モードは `development` のままガードは沈黙するため、本番ランタイムでは必ず `APP_MODE=production` を設定すること

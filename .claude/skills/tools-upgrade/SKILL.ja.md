@@ -11,7 +11,7 @@
 監査対象は宣言の **2 か所どちらも**である。読まれないツールは永久に更新されないためである。
 
 - `mise.toml` の `[tools]` — mise が解決するもの全部。
-- `python/*.in` — PyPI のツール。解決結果は `python/*.txt` にハッシュ付きで固定される（[ADR-0075](../../../docs/adr/0075-mise-ssot-drift-gate.ja.md)）。こちらの bump は 2 ファイルの変更になる（pin を書き換えてから `make py-lock`）。
+- `python/*.in` — PyPI のツール。解決結果は `python/*.txt` にハッシュ付きで固定される（[ADR-0077 (mise-ssot-drift-gate)](../../../docs/ja/adr/0077-mise-ssot-drift-gate.ja.md)）。こちらの bump は 2 ファイルの変更になる（pin を書き換えてから `make py-lock`）。
 
 ## 使用タイミング
 

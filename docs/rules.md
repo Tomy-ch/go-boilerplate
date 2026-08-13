@@ -8,7 +8,7 @@ Violating these rules may compromise the architectural integrity of the system.
 
 ## Layer Dependency Rules
 
-> Rationale: [ADR-0002](adr/0002-onion-architecture.md), [ADR-0003](adr/0003-interface-based-decoupling.md); enforced via [ADR-0006](adr/0006-structural-safety-via-tooling.md).
+> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md), [ADR-0003 (interface-based-decoupling)](adr/0003-interface-based-decoupling.md); enforced via [ADR-0006 (structural-safety-via-tooling)](adr/0006-structural-safety-via-tooling.md).
 
 Dependencies must always point **toward the inner layers**.
 
@@ -44,7 +44,7 @@ prose bar cannot push a type across a boundary a linter draws. Failing `pkg/` is
 the lexicon; a type that clears neither stays in its aggregate. Admission is deliberately narrow
 (value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README), and the
 name states the question asked at the door: is this a word of the business?
-Rationale: [ADR-0034](adr/0034-domain-lexicon.md).
+Rationale: [ADR-0036 (domain-lexicon)](adr/0036-domain-lexicon.md).
 
 ### Domain services
 
@@ -76,7 +76,7 @@ These boundaries are **enforced in CI by `golangci-lint` depguard**, not by docu
 
 ## Usecase Dependency Rules
 
-> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
+> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md).
 
 Usecase must not directly depend on Infrastructure.
 
@@ -89,7 +89,7 @@ Usecase → Boundary(interface) → Infrastructure
 
 ## Generated Code Rules
 
-> Rationale: [ADR-0011](adr/0011-oapi-codegen-strict-server.md), [ADR-0022](adr/0022-sqlc-type-safe-sql.md), [ADR-0023](adr/0023-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0083](adr/0083-generated-artifact-drift-gate.md).
+> Rationale: [ADR-0013 (oapi-codegen-strict-server)](adr/0013-oapi-codegen-strict-server.md), [ADR-0024 (sqlc-type-safe-sql)](adr/0024-sqlc-type-safe-sql.md), [ADR-0025 (merged-dml-schema-as-sqlc-input)](adr/0025-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0085 (generated-artifact-drift-gate)](adr/0085-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -120,7 +120,7 @@ Examples:
 
 ## OpenAPI-first
 
-> Rationale: [ADR-0009](adr/0009-openapi-first.md).
+> Rationale: [ADR-0011 (openapi-first)](adr/0011-openapi-first.md).
 
 Changes to APIs must always start from the **OpenAPI definition**.
 
@@ -140,7 +140,7 @@ OpenAPI definition is the **single source of truth of API**.
 
 ## Database Migration
 
-> Rationale: [ADR-0024](adr/0024-append-only-immutable-migrations.md), [ADR-0025](adr/0025-sequential-migration-ids.md).
+> Rationale: [ADR-0026 (append-only-immutable-migrations)](adr/0026-append-only-immutable-migrations.md), [ADR-0027 (sequential-migration-ids)](adr/0027-sequential-migration-ids.md).
 
 Changes to the database schema must follow strict migration rules.
 
@@ -161,7 +161,7 @@ This ensures that database history is always reproducible.
 
 ## Domain Layer Constraints
 
-> Rationale: [ADR-0002](adr/0002-onion-architecture.md).
+> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md).
 
 The Domain layer must maintain a **pure and independent state**.
 
@@ -217,83 +217,30 @@ Examples:
 
 ## Repository / QueryService Rules
 
-> Rationale: [ADR-0027](adr/0027-lightweight-cqrs.md), [ADR-0028](adr/0028-system-cqrs-dml-category.md).
+> Criterion: [`docs/design/data-access-pattern.md`](design/data-access-pattern.md) — which construct a
+> given operation belongs to, and why. Decisions:
+> [ADR-0029 (lightweight-cqrs)](adr/0029-lightweight-cqrs.md),
+> [ADR-0030 (system-cqrs-dml-category)](adr/0030-system-cqrs-dml-category.md),
+> [ADR-0031 (commandservice-atomicity-criterion)](adr/0031-commandservice-atomicity-criterion.md).
 
-- Repository handles Aggregate persistence and simple reads of a single Aggregate
-  (fetch by ID, and simple filter / list / count by the Aggregate's own attributes), **including a
-  uniquely-determined JOIN to a context-nested reference master** (see boundary clarifications).
-- QueryService handles reads that cross *independent* Aggregates or require high query complexity
-  (multi-table joins across independent Aggregates, aggregation, keyword/full-text search, dedicated
-  read models) -- CQRS read side.
+Repository is the default for both reads and writes. QueryService and CommandService are the residue
+that remains where a non-functional requirement forbids decomposing an operation into per-aggregate
+work; `system_cqrs` sits outside the split entirely. **Do not restate the criterion here, in an ADR, or
+in a package README** — every copy drifts, and the copy nobody re-reads is the one that goes stale.
+Link to the criterion document instead.
 
 Forbidden:
 
 - Writing join / aggregation queries across *independent* Aggregates in Repository — **exempt**: a
-  uniquely-determined JOIN to a context-nested reference master (a child sub-domain lookup, see below)
+  uniquely-determined JOIN to a context-nested reference master
 - Writing domain logic in QueryService
+- Placing a write on CommandService that can be expressed as loading an Aggregate, mutating it, and
+  saving it
+- Enforcing a condition in CommandService that is not derived from a domain invariant
+- Placing an infrastructure-operational query (health verification, idempotency, outbox delivery) in
+  `repository/`, which keeps a 1:1 correspondence with domain Aggregates
 - Authoring a named business condition in a query — the `WHERE` clause is that condition's
   *execution*, not its definition (see [Domain Layer Constraints](#domain-layer-constraints))
-
-Boundary clarifications (common misreads):
-
-- **"Returns many rows" is not "crosses Aggregates."** Listing every row of one table is a
-  single-Aggregate `list` and stays in Repository.
-  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
-       目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
-       意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
-       書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
-  <!-- sample-api:begin -->
-  例: `SELECT * FROM prefectures ORDER BY code`。
-  <!-- sample-api:end -->
-   "Cross-Aggregate" means joining or spanning *different* Aggregates, not returning
-  multiple rows of one.
-- **"The response is a DTO" is not a QueryService trigger.** Every read is eventually mapped to
-  a response DTO. What moves a read to QueryService is a natural shape that would be wasteful to
-  reconstruct as a full Aggregate (heavy Aggregate, joins, pagination) — not the mere fact that
-  the API returns a DTO.
-- Repository reads are **not limited to fetch-by-ID**: simple filter / list / count by the
-  Aggregate's own attributes — including an unfiltered full list — belong to Repository.
-- **The Repository / QueryService split is storage-agnostic.** The discriminator is not the
-  engine (RDB vs NoSQL) or the technique (full-text search), but *what the read targets*: the
-  Aggregate's own system-of-record state, from which the full Aggregate is reconstructable
-  (→ Repository), versus a derived projection / read model — a search index, a separate search
-  store, a denormalized / generated search column, or a cross-Aggregate JOIN view — from which
-  the Aggregate cannot be reconstructed (→ QueryService). A document store used as the
-  Aggregate's system of record stays Repository even when it offers full-text search; an
-  Elasticsearch index built from that store is QueryService because it is a derived projection.
-- **"Keyword / full-text search" is a typical QueryService instance, not the rule.** A plain
-  `ILIKE` on the Aggregate's *own* columns is a single-Aggregate Repository filter. Full-text
-  search becomes QueryService only when it reads a derived search projection (a search index, a
-  search store, or a denormalized / generated search column).
-- **Independent Aggregates: resolve their fields in the Usecase, not via a JOIN.** To attach a
-  *separate* Aggregate's data — one with its own top-level domain and an independent transactional
-  lifecycle (e.g. a prefecture name; `internal/domain/prefecture`) — to a list, batch-fetch it
-  through its own Repository (`FindByIDs`) and merge by key in the Usecase layer, keeping each read
-  a single-Aggregate Repository read. A JOIN spanning two *independent* Aggregates returns a
-  flattened view and is a QueryService read model, not a Repository read.
-- **A reference-master JOIN stays a single-Aggregate Repository read.** A *reference master* —
-  fixed / standing lookup data with no independent write / transactional lifecycle, reached through
-  a mandatory, uniquely-determined FK — is part of the owning Aggregate's semantic set, not a
-  foreign Aggregate.
-  <!-- 撤去後にこの箇所へ自分の例を置くための指針。
-       目的: 「参照マスタ」は抽象語のままだと読者が自分のテーブルを当てはめられない。
-       意義: 判定に効くのは「独立した書き込み・トランザクションのライフサイクルを持たないこと」で、
-             テーブルの名前や規模ではない。ここを外すと例が規則を誤解させる。
-       書き方: 列挙型に相当する固定テーブルを 1〜2 個、次の行と同じ 1 文の形で挙げる。 -->
-  <!-- sample-api:begin -->
-  サンプルでの該当例は `purchase_statuses` / `product_statuses`（取扱状態の列挙）。
-  <!-- sample-api:end -->
-  Projecting such a master's display attribute (e.g. the status *name*) by JOINing it into the
-  owner's list / read is a single-Aggregate Repository read — **not** a cross-Aggregate JOIN — and
-  does **not** require a QueryService or a usecase-layer merge. **The criterion is the joined data's
-  *nature*, not how it is modeled in Go.** Whether the master also has its own domain sub-package is
-  irrelevant: `internal/domain/product/status` exists only because products expose a master-list
-  endpoint, whereas `purchases` resolves its status purely by JOIN into a `StatusName string` with no
-  Go type of its own — both qualify equally. Discriminator: an *independent* Aggregate (its own
-  transactional lifecycle, typically its own top-level domain, e.g. `internal/domain/prefecture`)
-  MUST be resolved by a usecase-layer `FindByIDs` merge, never a Repository JOIN; a *fixed reference
-  master* reached by a mandatory uniquely-determined FK MAY be JOINed in the owner's Repository. The
-  merge form remains valid for a reference master too; the JOIN is simply not forbidden.
 
 ## DTO / Type Boundary Rules
 
@@ -400,22 +347,22 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ### Transaction Rules
 
-> Rationale: [ADR-0030](adr/0030-transaction-retry-idempotent-callers.md).
+> Rationale: [ADR-0032 (transaction-retry-idempotent-callers)](adr/0032-transaction-retry-idempotent-callers.md).
 
 - Transactions must be started only in the Usecase layer
 - Infrastructure / Repository must not start transactions
 
 ## Error Handling Rules
 
-> Rationale: [ADR-0042](adr/0042-apperror-protocol-agnostic-errors.md).
+> Rationale: [ADR-0044 (apperror-protocol-agnostic-errors)](adr/0044-apperror-protocol-agnostic-errors.md).
 
 - Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
 - **Never return a `xerrors.New(...)` built inside a function body.** Declare the error as a package-level sentinel (`var errXxx = xerrors.New("...")`) and attach the dynamic context with `xerrors.Wrap(errXxx, ctx)`. An error created in place is unreachable to `errors.Is`, so callers cannot branch on it and tests are forced onto message-string matching — a one-word wording change then breaks the test, and a different error passes it. Enforced mechanically by `internal/architest` (`TestNoInlineXerrorsNew`); there is no allowlist. `_test.go` is out of scope — building an ad-hoc error to inject is a legitimate use there.
 - When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
-- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0043](adr/0043-error-metadata-code-message-details.md).
-- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0044](adr/0044-error-details-opt-in-gate.md).
+- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0045 (error-metadata-code-message-details)](adr/0045-error-metadata-code-message-details.md).
+- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0046 (error-details-opt-in-gate)](adr/0046-error-details-opt-in-gate.md).
 
 ## Comment Rules
 
@@ -431,15 +378,16 @@ upstream <https://go.dev/doc/comment>).
   - **Change history / development 経緯** — migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため` — these rot and belong in the PR / commit log.
   - **Restatement / tautology** — `// 内部表現は [16]byte`, `// User は User です`; or a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (an unresolved, legitimate TODO is not flagged).
 - **Volume is itself a cost.** A comment is re-read every time the code is, so length raises cognitive load even when each line is individually defensible. State the contract in as few words as it takes and stop. Two habits produce most of the bloat: spelling out a **repo-wide rationale** at every declaration that follows it (state it once here and let the code stay silent — link, do not repeat), and **narrating the mechanism** of a language feature the reader already knows. A comment the reader must work through to reach a fact the signature already gave them is a net loss.
-- **Idiomatic code needs no explanation.** The routine surface of building an API — an entity constructor, a Params / attribute struct, a Repository's row-to-entity conversion, a handler's bind → usecase → response, a table of validated fields — is conventional, and a reader fluent in this codebase already knows what it is for. Comment only what **departs** from the convention, or what the convention cannot express. This is **suppression, not elimination**: an exported declaration still carries its `Name`-prefixed contract, and a genuinely non-obvious Why still stays. Conversely, the further code sits from the idiom (a workaround, a deliberate deviation, a constraint imposed from outside), the more a comment earns its space.
+- **A change earns its comments; it does not arrive with them.** The default for any edit is **zero new comment lines**, and editing an existing declaration must not raise its comment count. Adding one requires that the edit *itself* introduced something the reader cannot get otherwise: a constraint whose premise sits at this call site, a deliberate departure from the codebase's idiom, or a contract detail the signature cannot carry. Absent a trigger, the change is complete without a comment. This has to be a **default rather than advice**, because inside a single edit every incentive points one way — the cost of an added comment is global and invisible from the diff, while the cost of an omitted one is local and visible — so each comment judged on its own merits resolves toward keeping, and the total grows without any individual judgment being wrong. The operative test: **is the comment justifiable to a reader who never saw the edit?** One written *about the change* (what it used to do, why it was adjusted, what the author weighed) fails immediately — the reader sees only the result, never the diff. Note that this is not caution: a warning works **because its neighbours are silent**, so a file where every declaration carries four lines can no longer show which one is load-bearing. Uniform explicitness does not add safety, it spends the only mechanism that conveys it.
+- **Idiomatic code needs no explanation.** The routine surface of building an API — an entity constructor, a Params / attribute struct, a Repository's row-to-entity conversion, a handler's bind → usecase → response, a table of validated fields — is conventional, and a reader fluent in this codebase already knows what it is for. Comment only what **departs** from the convention, or what the convention cannot express. This is **suppression, not elimination**: an exported declaration still carries its `Name`-prefixed contract, and a constraint whose premise sits there still stays. Conversely, the further code sits from the idiom (a workaround, a deliberate deviation, a constraint imposed from outside), the more a comment earns its space.
 - **Correct outranks everything.** A doc comment that lies about or has drifted from the actual behavior is worse than no comment — the highest-priority finding.
-- **A non-obvious Why is the one addition godoc does not mandate but this repo keeps** — the reason behind a decision the code cannot convey (a load-bearing constraint / intent). OK: `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"). Include it only when genuinely non-obvious.
-- **Never invent a Why.** A Why is kept only when it is non-obvious **and** verifiable — derivable from the code, a design document, or the configuration. A rationale you cannot establish is a guess, and a plausible guess is worse than silence: a comment reads as authoritative, so a wrong Why misleads every later reader and survives longer than the code it explains. When a defensive branch or a magic value looks like it needs a reason you cannot pin down, leave the comment out and raise the gap in review instead of writing something that sounds right. Restating only the part you can verify is not a fix either — that lands back on **restatement**.
+- **What the code keeps is a constraint, not a rationale.** This is the one addition godoc does not mandate and this repo keeps — but the admission test is **not** whether the reason is non-obvious. It nearly always is, so that test admits everything and decides nothing (the jurisdiction bullet below says the same). The test is whether **the premise sits at this call site**: could someone make this statement false without editing this declaration? If they could not, the comment cannot go stale unseen, and it earns its place — a `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"), "these two calls must not be reordered", "this adds to the existing value, so calling it twice accumulates". If they could — the premise is an upstream service's behavior, an operational policy, a business rule — then nobody can verify the comment and nothing will flag it when it turns false; route it by the jurisdiction bullet below, or leave it out. Write what the next editor must not violate, not why someone once decided it.
+- **Never invent a Why.** Whatever passes the gates above must also be **verifiable** — derivable from the code, a design document, or the configuration. This is the same property from another angle: a premise that sits at the call site is one a reader can check, which is why the co-located constraint is the form that survives. A rationale you cannot establish is a guess, and a plausible guess is worse than silence: a comment reads as authoritative, so a wrong Why misleads every later reader and survives longer than the code it explains. When a defensive branch or a magic value looks like it needs a reason you cannot pin down, leave the comment out and raise the gap in review instead of writing something that sounds right. Restating only the part you can verify is not a fix either — that lands back on **restatement**.
 - **A Why has a jurisdiction, and the code is not always it.** Deciding a Why is worth keeping is a separate question from deciding it belongs *here*. godoc's surface is the **API consumer's** contract, not a venue for arguing a design decision — so the rationale for a **rejected alternative**, a **threat-model analysis**, or an **architecture-wide policy** is owned by `docs/adr/` / `docs/design/**` / the package README, and the code keeps only the **operative residue**: the one or two sentences someone editing *this* declaration must not violate, plus a link to the owning document. Getting this wrong fails twice over — design prose parked in a comment is invisible from the document that owns the decision, so it drifts unnoticed, and every caller reading for the contract must first read past the argument. The deciding test is therefore **not** "is this Why non-obvious?" (it usually is, which is why volume alone never wins the argument) but: **if someone reversed this decision, which document would they be obliged to update?** Write it there and link to it. When the honest answer is "no document — the constraint exists only at this call site" (a `runtime.Caller` skip depth, a workaround for an upstream bug), the code **is** the jurisdiction and the comment stays in full.
 - **Relocating is not dumping — each destination has an entry bar, and the code is a legitimate destination.** Moving prose out of a comment only helps if it lands where that *kind* of knowledge is owned; a document that accepts everything answers nothing. Two misroutes are worth naming because both look like "design rationale" from inside a comment: **a library's or an API's specific behavior** (this driver returns X on Y, this SDK reads that env var) is not a decision among alternatives — it is a property of the thing being called, it changes when the dependency is upgraded, and its home is the comment at the call site; and **business / domain knowledge** (what a rule means, why a status transitions this way) belongs to `docs/spec/**`, which is where the behavior is specified and kept current. `docs/adr/` takes only a **choice among alternatives with lasting consequences** or a deliberate exclusion — see the *What belongs here* table in [`docs/adr/README.md`](adr/README.md), which governs. If a candidate fits none of the destinations, that is evidence the code was the right place all along; keep it there rather than forcing a home.
-- **In-function comments are outside godoc's purview.** Write one only when it is **non-obvious AND unclear without it**. The noise list above still applies; a non-obvious Why is the main legitimate case.
-- **Language scope**: godoc governs Go only, but this content standard is **language-agnostic** — it applies to non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). Non-Go is **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same bar — no How narration, no 経緯, no restatement; a non-obvious Why stays.
-- **Enforcement split**: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of doc comments on exported declarations. This **content** rule (godoc-conformant contract + non-obvious Why + no noise) is semantic and cannot be linted — it is enforced by review: `impl-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments and **flags** noise, then auto-fixes the confirmed findings. That gate is **diff-scoped**, so it never re-examines what is already in the tree — an inflow check with no outflow. The accumulated stock is swept separately by the `comment-sweep` skill, which applies the jurisdiction test above over a package / layer / repo scope and relocates content a document owns.
+- **In-function comments are outside godoc's purview, but not outside this gate.** They are admitted on the same triggers as any other added comment (*A change earns its comments*) and by the same premise test — in practice almost always a constraint whose premise sits right there. There is one gate, stated once above; this bullet adds no separate bar of its own. The noise list applies unchanged.
+- **Language scope**: godoc governs Go only, but this content standard is **language-agnostic** — it applies to non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). Non-Go is **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same bar — no How narration, no 経緯, no restatement; a constraint whose premise sits at that site stays.
+- **Enforcement split**: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of doc comments on exported declarations. This **content** rule (godoc-conformant contract + co-located constraint + no noise) is semantic and cannot be linted — it is enforced by review: `impl-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments and **flags** noise, then auto-fixes the confirmed findings. That gate is **diff-scoped**, so it never re-examines what is already in the tree — an inflow check with no outflow. The accumulated stock is swept separately by the `comment-sweep` skill, which applies the jurisdiction test above over a package / layer / repo scope and relocates content a document owns.
 
 ## Documentation Rules
 
@@ -447,10 +395,22 @@ Applies to standalone **documentation prose** — `README*` / `docs/**` / guides
 
 - **Accurate** — the prose must match reality: the code, files, commands, flags, and APIs it describes. A doc that has **drifted** from the code (a removed symbol, a renamed file, a changed flag) is the **highest-priority** finding — a confidently wrong doc misleads more than a missing one. Verify claims against the actual code / files, do not trust the prose.
 - **Which side is the error depends on what the document does.** A doc that *describes* — a package README, a command reference, a guide — is corrected to match the code. A doc that *governs* — `docs/rules.md`, `docs/architecture.md`, `docs/adr/**` — is not: it states the intent the code is meant to satisfy, so a disagreement is as likely to be a defect in the code. Report the disagreement; changing a governing document to match what was built is a decision for this repository's architect or tech lead, not a drift fix.
+- **`docs/design/**` splits by statement, not by file.** A design document carries both kinds at once: the **mechanism it defines** — a protocol, a state machine, a placement criterion — *governs*, so a disagreement with the code is reported, not fixed; the **particulars it cites** — a symbol name, a default value, a step order, a line reference — *describe*, so drift there is corrected. Classifying by filename is what lets a governing criterion sit on the describing side and get quietly rewritten to match whatever was built.
 - **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
 - **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
 - **No premise the document will outlive** — the mirror image of *No rot*: rot is a past that stopped mattering, this is a present that will stop holding. Do not rest a statement in an evergreen document on a premise that is scheduled to lapse — the repository's current positioning, its distribution form, the lifecycle stage it is in ("we are still in PoC", "the demo data is present"). Such a statement is correct when written and no later review catches it, because the document never changes — reality does. Keep the **general form** of the rule in the evergreen document, and put the premise-bound part where the premise dies: a document that is discarded or rewritten at the moment it lapses. **Collect those parts into one document rather than marking them where they stand** — a region cut out of prose leaves the text on either side to be repaired, and every later edit near the cut is a fresh chance to break it unnoticed. Cross-references into that document must each be a single self-contained line, removable on its own.
 - **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
+- **Durable knowledge, not activity logs** — return a finding that changes a describing document to
+  its owning README or `docs/` reference. Do not accumulate per-run progress as repository state;
+  its skill-owned `tmp/` artifact is the only appropriate resume state. A conflict with a governing
+  document is raised, not rewritten. Rationale: [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md).
+- **A README lists its child directories, never a file tree.** A tree that enumerates files restates
+  what the editor already shows, and it rots: this repository has repeatedly carried trees missing
+  real directories, and ones naming directories that do not exist. What the editor cannot show is
+  *why* a directory is there, so a parent README carries **one line per child directory** — its name
+  and what it is for — and nothing below that level. To learn what is inside, open that directory's
+  own README. **Adding a directory therefore carries one obligation: check that the parent README
+  names it.** Files change constantly and are not enumerated anywhere.
 - **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
 - Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 
@@ -484,13 +444,13 @@ Before generating code, AI agents must refer to the following documents.
 
 ## Toolchain Execution Rules
 
-> Rationale: [ADR-0074](adr/0074-containerized-pinned-toolchain.md), [ADR-0075](adr/0075-mise-ssot-drift-gate.md).
+> Rationale: [ADR-0076 (containerized-pinned-toolchain)](adr/0076-containerized-pinned-toolchain.md), [ADR-0077 (mise-ssot-drift-gate)](adr/0077-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth for everything mise resolves)
 and executed in the containerized tool-runners so they stay reproducible across machines. Tools
 installed from PyPI are declared in `python/*.in` and locked with per-package hashes in
 `python/*.txt` instead, because a mise pin leaves their transitive dependencies floating
-([ADR-0075](adr/0075-mise-ssot-drift-gate.md)).
+([ADR-0077 (mise-ssot-drift-gate)](adr/0077-mise-ssot-drift-gate.md)).
 
 - Tool execution — lint / format / codegen / doc generation / commit-message lint / etc. — runs
   through the `make` targets that execute inside the tool-runners (`go_tool_runner` /

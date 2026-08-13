@@ -35,7 +35,7 @@ The package holds two kinds of subject, tested differently.
 ## Notes
 
 - The Echo instance created by `NewAppServer` receives middleware from subsequent extensions -- this package **does not define middleware directly**
-- Echo v5 concentrates server start / stop in `echo.StartConfig`, whose blocking model does not fit the DI container's separate start / stop hooks; this project therefore owns an `http.Server` (`NewHTTPServer`) and that is also where the request timeouts live (see [ADR-0017](../../../docs/adr/0017-echo-http-framework.md))
+- Echo v5 concentrates server start / stop in `echo.StartConfig`, whose blocking model does not fit the DI container's separate start / stop hooks; this project therefore owns an `http.Server` (`NewHTTPServer`) and that is also where the request timeouts live (see [ADR-0019 (echo-http-framework)](../../../docs/adr/0019-echo-http-framework.md))
 - `Context.Response()` returns an `http.ResponseWriter` in Echo v5; use `ResponseOf` when the Echo-specific status or `Before` / `After` hooks are needed
 - Use `logging.Logger` for logging; direct use of zap is prohibited (sealed layer)
 - Graceful shutdown timeout follows `ServerConfig` -- ensure the configuration is correct

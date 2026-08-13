@@ -12,7 +12,7 @@
 
 - `Middleware()` は StrictMiddleware の構造的シグネチャ `func(next NextFunc, operationID string) NextFunc` で入り口を返します（`NextFunc` は `func(ctx *echo.Context, request any) (any, error)`）。`StrictMiddleware[H]()` はそれをパッケージ固有の oapi-codegen `StrictMiddlewareFunc` 型（例: `gen.StrictHandlerFunc`）へ適合させるため、生成された strict handler のミドルウェアスロットに登録されます。`e.Use` 経由では登録しません。
 - `Idempotency-Key` ヘッダが無い場合、リクエストはそのまま素通しされます（非冪等として扱います）。
-- 冪等性は認証済みリクエストに対してのみ発動します。スコープキーに認証済みの `Subject` を用いるため、リクエストコンテキストに認証プリンシパルが存在しない場合は素通しされます。
-- キー検証は違反キーを `400`（`apperror.ErrInvalidArgument`）で拒否します。キーは非空・255 バイト以下・印字可能 ASCII のみで構成されている必要があります。
+- 冪等性は、認証済みプリンシパルの内部 `UserID` が解決済みの場合にのみ発動します。スコープキーにその `UserID` を用いるため、認証プリンシパルが存在しない場合、または `UserID` が未解決の場合は素通しされます。
+- `Idempotency-Key` が無い、または空白のみの場合は素通しされます。値がある場合は検証され、違反キーは `400`（`apperror.ErrInvalidArgument`）で拒否されます。キーは 255 バイト以下・印字可能 ASCII のみで構成されている必要があります。
 - リクエスト指紋は `method + path + JSON(型付き request)` の SHA-256 です。request の marshal は fail-closed とし、失敗時は弱い指紋で処理を続行せず内部エラー（`apperror.ErrInternal`）を返します。
 - 成功時、ミドルウェアは usecase の `WithRequest` を介して `idempotency.Request`（scope・key・fingerprint・method・path・operationID）をリクエストコンテキストへ格納し、次のハンドラへ委譲します。以降の処理は usecase 層が消費します。

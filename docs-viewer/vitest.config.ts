@@ -17,7 +17,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       // text だけに絞る。HTML を出すとディスクへ書き出したものを .gitignore で面倒見る話に
-      // なるが、Go 側の docs/coverage/ と違って公開する consumer がまだ無い。scripts 側と同じ判断。
+      // なるが、Go 側の docs/coverage/ と違って公開する consumer がまだ無い。
       reporter: ["text"],
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
@@ -29,7 +29,6 @@ export default defineConfig({
       // 母数を判定モジュールへ絞ってあるぶん、100% は「網羅せよ」ではなく「検査されない分岐を
       // 残さない」を意味する。ここが下がるのは新しい分岐を足して踏まないまま置いた場合で、
       // それは検査が黙る方向の変更そのものなので、率ではなく不変条件として止める。
-      // scripts / mock-auth-server と同じ判断。
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },

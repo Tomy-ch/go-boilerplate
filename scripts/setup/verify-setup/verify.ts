@@ -1,10 +1,7 @@
 // 初期化（`docs/get-started/setup-repository.md` の Phase 5）が過不足なく終わったかを判定する規則。
 // 入口はファイル読み込みと終了コードだけを担う。
 //
-// このモジュールは検証の成功後に verify-setup 自身と一緒に消える。初期化ツールは一度きりの
-// インスタンス化ツールで、利用者のリポジトリに残しても「もう当ててはいけない」ものにしかならない
-// （`replace-codeowners` は全ルールの所有者を一括で同じ値に書き換えるため、パスごとに所有者が
-// 分かれた後の CODEOWNERS に当てると壊す）。
+// このモジュールは検証成功後、verify-setup 自身と一緒に消える（理由は同 Phase 5）。
 
 /** ボイラープレート由来の名残。置換し損ねると利用者のリポジトリに残る。 */
 export const BOILERPLATE_MODULE = "go-boilerplate";
@@ -165,7 +162,7 @@ export const LOCALIZATION_TOOL_DIRS: readonly string[] = [
  *
  * @remarks
  * `setup/lib` は共有なので、使う側が全て消えたときにだけ道連れにします。サンプル削除は
- * 初期化と独立した任意手順（`setup-repository.md` の最終 Phase）なので、サンプルを残した
+ * 初期化と独立した任意手順（`setup-repository.md` の Phase 15）なので、サンプルを残した
  * 利用者では削除ツールが生き残り、`lib` もまだ要ります。逆順のときは削除ツール側が同じ規則で
  * `lib` を持っていくため、どちらの順序でも残骸が出ません。
  *

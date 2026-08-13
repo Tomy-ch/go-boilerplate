@@ -25,6 +25,23 @@ GitHub issue を、環境確保からマージ済み PR まで進める半自動
 | テスト品質レビュー | `test-review`（`impl-review` が連鎖） |
 | 実装そのもの | 承認された計画に従うあなた |
 
+## AI の変更範囲
+
+`AGENTS.md` は AI の編集対象を `internal/` / `pkg/` / `database/` / `openapi/` に限り、それ以外 — `.github/workflows/`、`docker/`、`scripts/`、`docs/`、`.makefiles/`、ルートのドットファイル — をスコープ外としている。**このスキルの起動は、その制限を緩めるユーザーの明示指示にあたる。** このスキルは issue 汎用のドライバであり、対象面を決めるのは issue の側だからである。CI・ツールチェーン・コンテナイメージ・ドキュメントについての issue は、既定の 4 ディレクトリの中では解決できない。これは `AGENTS.md` の「Skills must not be a loophole」条項に対する、明示された抜け穴でない例外である。
+
+緩和には境界があり、その境界は計画である:
+
+- Step 3 の計画の **触るファイル一覧** が許可された対象面。既定の 4 ディレクトリの外にあるセンシティブなパスは、編集する**前**にそこへ現れていなければならない。glob で暗に含めるのではなく、明示的に名前を書く。
+- 計画を提示するときにそれを言う。ユーザーは diff で気づくのではなく、承知のうえでセンシティブなパスを承認する — 黙ってスコープが広がる計画こそ、この条項が防ごうとしている失敗である。
+- 計画に無いセンシティブなパスへ到達したら Step 4 の trip-wire 1。止まって聞く。対象面を広げてから事後報告しない。
+
+このスキルの実行中も保護されるもの（issue が何を要求しても触らない）:
+
+- `AGENTS.md` / `CLAUDE.md`
+- 生成物: `**/*.gen.go`、`*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、および `docs/` 配下の生成物（`docs/openapi/**`、`docs/coverage/**`、`docs/db-schema/**`、`docs/godoc/**`、`docs/portal/docs.json`、`docs/portal/guides/**`）。`make` ターゲット経由での再生成はよい。手編集は駄目。
+- `.claude/settings.json` の `permissions.deny` 配下
+- `database/migrations/**` の既存ファイル（新規 migration ファイルのみ）
+
 ## Step 0 — 3 つのモードを確認する（`AskUserQuestion` 1 回）
 
 何より先に、1 回の呼び出しで聞く。既定は明示するが、ユーザーの選択が常に優先。
@@ -72,7 +89,9 @@ gh issue comment <n> --body-file <file>
 
 ## Step 2 — 実行環境を確保する
 
-コードに触れる前に済ませる。共有 checkout に何も落とさないため。
+コードに触れる前に済ませる。共有 checkout に何も落とさないため。どちらの半分を実行するかは worktree が既にあるかで決まる。新規に用意することと既存へ再開することは別の操作で、動いている worktree に前者を当てると作業が壊れる。
+
+### 初期セットアップ — worktree がまだ無い
 
 ```bash
 # 1. 現行のリリース線を origin の実状態から解決する。
@@ -83,7 +102,7 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 git fetch origin "$BASE"
 git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
-# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
+# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 2010+N。
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 
 # 4. 新規 worktree には vendor/ が無く、air は --mod=vendor でビルドするため、これが無いと serve が失敗する。
@@ -97,6 +116,24 @@ go mod vendor
 **スロットは自分から解放しない。片付けフェーズで解放を聞きもしない。** 握ったままのコストはほぼゼロ（リースは stale になれば自動回収される）だが、作業途中で失うと DB とポートを失う。本当に終わったかを知っているのはユーザーだけ。
 
 ユーザーの指示が解決結果と違うリリースバージョンを指していた場合は、切る前に聞く。意図的な backport 先だけは解決器に知りようがない。
+
+### 既存 worktree へ再開する
+
+セットアップは済んでいる。観測して結果を報告するだけにし、どれ一つ再実行しない。
+
+session-start の環境行（`[agent-env] checkout=… branch=… vendor=… db-slot=…`）が、重要な 3 つの事実 — どの checkout か、`vendor/` があるか、どの DB スロットを保持しているか — を既に運んでいる。存在するなら、導出し直さずそのまま報告してから先へ進む。
+
+ただしそれがある前提に寄りかからない。hook は無いことも、無効化されていることも、そもそも実行しないハーネスに繋がっていることもある。その場合のフォールバックは修復ではなく確認である。以下はいずれも読むだけ:
+
+```bash
+git rev-parse --show-toplevel
+test -d vendor && echo 'vendor: present' || echo 'vendor: absent'
+cat .gobp-db-slot 2>/dev/null || echo 'slot: none'
+```
+
+スロットが無い・壊れているのは報告すべき事実であって、その場で直すべき障害ではない。`make slot-acquire` は DB 作業が実際に始まる直前 — 最初の `make test` / `make serve` / `psql` — に実行し、それより前には実行しない。`go mod vendor` も同じで、`vendor/` が無く、かつビルドが目前に迫っているときに走らせる。再開の儀式として走らせるものではない。
+
+**セッションを再開したというだけの理由でスロットを取得したり DB を再初期化したりしない。** `slot-acquire` と `db-*-reinit` はスロットの `wt<N>_local` / `wt<N>_test` を作り直すため、反射的な再開時取得は、まさに再開しようとしている実行の状態 — 投入済みのシード、途中まで当てた migration、障害の診断に使うはずだったデータ — を破壊する。
 
 ## Step 3 — 計画を立て、そこで待つ
 
@@ -183,9 +220,9 @@ runtime 検証は意図的にここに置いていない。PR ができた後（
 動いているシステムに対して実 HTTP 経路を通す。どのモードでも緩められない。
 
 ```bash
-make serve                                    # API は 8080+N、mock-auth は 4000+N
+make serve                                    # API は 8080+N、mock-auth は 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
@@ -200,12 +237,12 @@ docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
   "select ui.subject, r.name from user_identities ui
      left join user_roles ur on ur.user_id = ui.user_id
      left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:400N';"
+   where ui.issuer = 'http://localhost:201N';"
 ```
 
 正常系、変更が持ち込むエラー経路、そして保護された操作ならトークン無しで 401 になることを確認する。その上で **LGTM スタックのトレースを読み、リクエストが想定どおりの経路（controller → usecase → infrastructure、意図した SQL）を通ったことを確認する**。ステータスコードだけでは、そのリクエストが変更した層に届いたことの証明にならない — 間違ったが尤もらしい経路は、間違った理由で正しいステータスを返す。
 
-**CI 緑はこの代替にならない。** 過去の実行で、ドキュメント上の API 契約が誤ったままマージされたことがある — 動いているシステムが 401 を返すところを 409 と書いていた。認証が usecase より手前で呼出元を弾いていたためである。5 つのレビューレンズと 29 の CI チェックが全て通っていた。どれもが静的解析か、DB 層で止まるテストだったから。実 HTTP リクエスト 1 本で即座に露見した。
+**CI 緑はこの代替にならない。** レビューレンズも CI チェックも、DB 層で止まる静的解析やテストにすぎない。middleware がそもそもリクエストを届かせない層で、記載されたステータスコードが正しいとされてしまう。実 HTTP リクエスト 1 本で即座に決着する。
 
 runtime 検証がどうしても実行できないときの正直な選択肢は 2 つで、第三はない。
 
@@ -237,7 +274,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 
 変更範囲の外にある指摘は issue モードに従って追跡へ回す。`search` では、新規起票より既存 issue への申し送りコメントを優先する — issue 数それ自体がコストで、重複は元の issue を埋もれさせる。
 
-**起票の前に、その指摘を動いているシステムで検証する。** コードを読んだだけで導いた指摘は、静的レビューでは捕まえられない形で誤りうる: ある実行で「退会済みユーザーが複数のエンドポイントを呼べる」という issue を起票したが、実際には middleware が、調べていたコードよりずっと手前で全て弾いていた。その issue は NOT_PLANNED でクローズする羽目になった。Step 8 の runtime 段階があれば大抵は確認できる。
+**起票の前に、その指摘を動いているシステムで検証する。** コードを読んだだけで導いた指摘は、静的レビューでは捕まえられない形で誤りうる — 多くの場合、読んでいた層の外側（middleware、DI 配線、DB）が既にそのケースを処理しているためである。Step 8 の runtime 段階があれば大抵は確認できる。
 
 最後に、コミットメッセージにも PR 本文にも現れていない自己判断を PR コメントへ記録する。`delegated` モードでは、記録した trip-wire がここに落ちる。
 
@@ -256,6 +293,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 ## やること / やらないこと
 
 - ✅ コードに触れる前に worktree とスロットを確保する。
+- ✅ 再開時は worktree を観測し、見えたもの — パス・`vendor/`・スロット — を報告する。
 - ✅ issue の主張をベース実物で検証し、食い違いを着手コメントに書く。
 - ✅ 実装前に計画の承認を取り、Step 5 が突合できるようファイルとして残す。
 - ✅ 5 つの trip-wire を「気づくもの」ではなく機械的トリガーとして扱う。
@@ -267,13 +305,14 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 - ❌ 設計を変える修正を、どのモードであれ自動適用する。
 - ❌ issue モードが指示しない限り、既存を確認せず起票する。
 - ❌ 頼まれてもいないのに DB スロットを解放する、または解放を聞く。
+- ❌ セッションを再開したというだけの理由でスロットを取得する、または DB を再初期化する。
 - ❌ foreground の sleep ループで CI をポーリングする。
 
 ## チェックリスト
 
 - [ ] `AskUserQuestion` 1 回で 3 モードを確認した。
 - [ ] 着手コメントを投稿した（issue ↔ ベースの食い違いを含む）。
-- [ ] fetch 済みのベースから worktree を作成、スロットをリース、`go mod vendor` 実行。
+- [ ] Step 2 の正しい半分で実行環境を確保した: 新規なら fetch 済みのベースから worktree を作成し、スロットをリースし `go mod vendor` を実行 — 既存なら観測して報告し、再開しただけでスロットを取得も DB を再初期化もしていない。
 - [ ] 別モデルが計画を作成、必須 4 セクションが揃い、実装前に承認された。
 - [ ] trip-wire を進行モードどおりに処理した。黙って吸収したものが無い。
 - [ ] 計画と実差分を突合した。

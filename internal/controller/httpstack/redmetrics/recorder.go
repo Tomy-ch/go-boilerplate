@@ -20,7 +20,6 @@ const (
 )
 
 // labelNames は、RED メトリクスに付与する label 名の一覧です。
-// 高カーディナリティ・秘匿情報になりうる値（raw path / query / user id 等）は含めません。
 var labelNames = []string{"method", "route", "status_code", "status_class"}
 
 // Recorder は、1 リクエスト分の計測値を記録するためのインターフェースです。

@@ -50,8 +50,7 @@ INSERT INTO products (
     stock_warning_threshold,
     status_id,
     category_id,
-    published_at,
-    image_path
+    published_at
 ) VALUES
 (
     $1,
@@ -62,8 +61,7 @@ INSERT INTO products (
     $6,
     $7,
     $8,
-    $9,
-    $10
+    $9
 )
 `
 
@@ -77,7 +75,6 @@ type CreateProductParams struct {
 	StatusID              uuid.UUID
 	CategoryID            uuid.UUID
 	PublishedAt           *time.Time
-	ImagePath             *string
 }
 
 // === source: database/dml/repository/product/insert_product.sql ===
@@ -91,8 +88,7 @@ type CreateProductParams struct {
 //	    stock_warning_threshold,
 //	    status_id,
 //	    category_id,
-//	    published_at,
-//	    image_path
+//	    published_at
 //	) VALUES
 //	(
 //	    $1,
@@ -103,8 +99,7 @@ type CreateProductParams struct {
 //	    $6,
 //	    $7,
 //	    $8,
-//	    $9,
-//	    $10
+//	    $9
 //	)
 func (q *Queries) CreateProduct(ctx context.Context, arg *CreateProductParams) error {
 	_, err := q.db.Exec(ctx, createProduct,
@@ -117,7 +112,54 @@ func (q *Queries) CreateProduct(ctx context.Context, arg *CreateProductParams) e
 		arg.StatusID,
 		arg.CategoryID,
 		arg.PublishedAt,
+	)
+	return err
+}
+
+const createProductImage = `-- name: CreateProductImage :exec
+INSERT INTO product_images (
+    id,
+    product_id,
+    image_path,
+    sort_key
+) VALUES
+(
+    $1,
+    $2,
+    $3,
+    $4
+)
+`
+
+type CreateProductImageParams struct {
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	ImagePath string
+	SortKey   int16
+}
+
+// === source: database/dml/repository/product/insert_product_image.sql ===
+// 商品画像を 1 件登録する。生存行の (product_id, sort_key) は部分 UNIQUE インデックスが一意に保つため、
+// 同一商品の同じ表示順へ二重に登録すると 23505 で失敗する。
+//
+//	INSERT INTO product_images (
+//	    id,
+//	    product_id,
+//	    image_path,
+//	    sort_key
+//	) VALUES
+//	(
+//	    $1,
+//	    $2,
+//	    $3,
+//	    $4
+//	)
+func (q *Queries) CreateProductImage(ctx context.Context, arg *CreateProductImageParams) error {
+	_, err := q.db.Exec(ctx, createProductImage,
+		arg.ID,
+		arg.ProductID,
 		arg.ImagePath,
+		arg.SortKey,
 	)
 	return err
 }
@@ -126,7 +168,7 @@ const getProductByID = `-- name: GetProductByID :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -141,15 +183,15 @@ type GetProductByIDRow struct {
 
 // === source: database/dml/repository/product/select_product_by_id.sql ===
 // ID から公開状態を問わない単一商品を取得します。
-// status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // 公開中のみを返す GetPublishedProductByID とは可視範囲が異なり、未公開商品も返します
-// （公開日時の設定そのものを更新対象とする管理用途の read-modify-write に用います）。
+// （用途は docs/spec/product/domain.md の Product.FindByID を参照）。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -169,7 +211,6 @@ func (q *Queries) GetProductByID(ctx context.Context, productIDParam uuid.UUID) 
 		&i.Products.StatusID,
 		&i.Products.CategoryID,
 		&i.Products.PublishedAt,
-		&i.Products.ImagePath,
 		&i.Products.LockVersion,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
@@ -181,7 +222,7 @@ const getProductByIDForUpdate = `-- name: GetProductByIDForUpdate :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -199,12 +240,13 @@ type GetProductByIDForUpdateRow struct {
 // ID から公開状態を問わない単一商品を、更新のために悲観ロック（FOR UPDATE）して取得します。
 // 同一商品への並行書き込み（購入の在庫減算・在庫補充）を行ロックで直列化します。
 // ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
-// status_name / category_name は商品の付随表示値。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -225,7 +267,6 @@ func (q *Queries) GetProductByIDForUpdate(ctx context.Context, productIDParam uu
 		&i.Products.StatusID,
 		&i.Products.CategoryID,
 		&i.Products.PublishedAt,
-		&i.Products.ImagePath,
 		&i.Products.LockVersion,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
@@ -237,7 +278,7 @@ const getPublishedProductByID = `-- name: GetPublishedProductByID :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -253,15 +294,15 @@ type GetPublishedProductByIDRow struct {
 
 // === source: database/dml/repository/product/select_published_product_by_id.sql ===
 // ID から公開中の単一商品を取得します。
-// status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // 「公開中」を定義するのは Product.IsPublished で、以下の条件はその実行形です。片方だけ変更しないこと。
 // 非公開・未存在はいずれも該当行なし（0 行）で返ります。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -282,7 +323,6 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 		&i.Products.StatusID,
 		&i.Products.CategoryID,
 		&i.Products.PublishedAt,
-		&i.Products.ImagePath,
 		&i.Products.LockVersion,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
@@ -291,28 +331,31 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 }
 
 const listExistingProductImagePaths = `-- name: ListExistingProductImagePaths :many
-SELECT DISTINCT image_path
-FROM products
-WHERE image_path = ANY($1::TEXT [])
+SELECT DISTINCT pi.image_path
+FROM product_images AS pi
+WHERE pi.image_path = ANY($1::TEXT [])
+    AND pi.deleted_at IS NULL
 `
 
 // === source: database/dml/repository/product/select_existing_image_paths.sql ===
 // 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。
 // 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
-// ここに現れなかったパスが孤児にあたる。商品は論理削除を持たないため、生存行だけが参照元になる。
+// ここに現れなかったパスが孤児にあたる。
+// 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
 //
-//	SELECT DISTINCT image_path
-//	FROM products
-//	WHERE image_path = ANY($1::TEXT [])
-func (q *Queries) ListExistingProductImagePaths(ctx context.Context, imagePaths []string) ([]*string, error) {
+//	SELECT DISTINCT pi.image_path
+//	FROM product_images AS pi
+//	WHERE pi.image_path = ANY($1::TEXT [])
+//	    AND pi.deleted_at IS NULL
+func (q *Queries) ListExistingProductImagePaths(ctx context.Context, imagePaths []string) ([]string, error) {
 	rows, err := q.db.Query(ctx, listExistingProductImagePaths, imagePaths)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*string
+	var items []string
 	for rows.Next() {
-		var image_path *string
+		var image_path string
 		if err := rows.Scan(&image_path); err != nil {
 			return nil, err
 		}
@@ -328,7 +371,7 @@ const listLowStockProducts = `-- name: ListLowStockProducts :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -346,15 +389,16 @@ type ListLowStockProductsRow struct {
 
 // === source: database/dml/repository/product/select_low_stock_products.sql ===
 // 在庫が警告閾値以下の商品を、在庫の少ない順（同数は ID 昇順）で最大 limit 件取得します。
-// status_name / category_name は商品の付随表示値。
-// 固定参照マスタのみを結合し、集約境界をまたがない単一集約 Repository read です。
-// stock_warning_threshold が NULL（閾値未設定）の商品は警告対象外として明示的に除外します。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+// 閾値未設定（NULL）の商品は WHERE で明示的に除外する（意味は docs/spec/product/domain.md の
+// Product.FindAllLowStock を参照）。
 // 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -383,10 +427,59 @@ func (q *Queries) ListLowStockProducts(ctx context.Context, limitParam int32) ([
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
-			&i.Products.ImagePath,
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductImagesByProductIDs = `-- name: ListProductImagesByProductIDs :many
+SELECT pi.id, pi.product_id, pi.image_path, pi.sort_key, pi.deleted_at, pi.created_at, pi.updated_at
+FROM product_images AS pi
+WHERE pi.product_id = ANY($1::UUID [])
+    AND pi.deleted_at IS NULL
+ORDER BY pi.product_id, pi.sort_key
+`
+
+type ListProductImagesByProductIDsRow struct {
+	ProductImages ProductImages
+}
+
+// === source: database/dml/repository/product/select_product_images.sql ===
+// 複数の商品 ID から画像をまとめて取得する。商品 1 件ずつの取得を件数分繰り返さないための一括版で、
+// 並びは商品 ID 昇順・同一商品内は表示順（sort_key）昇順。product_ids が空の場合は 0 行。
+// 生存行だけを返す（論理削除の意味は docs/spec/product/domain.md の Image 節を参照）。
+//
+//	SELECT pi.id, pi.product_id, pi.image_path, pi.sort_key, pi.deleted_at, pi.created_at, pi.updated_at
+//	FROM product_images AS pi
+//	WHERE pi.product_id = ANY($1::UUID [])
+//	    AND pi.deleted_at IS NULL
+//	ORDER BY pi.product_id, pi.sort_key
+func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]*ListProductImagesByProductIDsRow, error) {
+	rows, err := q.db.Query(ctx, listProductImagesByProductIDs, productIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListProductImagesByProductIDsRow
+	for rows.Next() {
+		var i ListProductImagesByProductIDsRow
+		if err := rows.Scan(
+			&i.ProductImages.ID,
+			&i.ProductImages.ProductID,
+			&i.ProductImages.ImagePath,
+			&i.ProductImages.SortKey,
+			&i.ProductImages.DeletedAt,
+			&i.ProductImages.CreatedAt,
+			&i.ProductImages.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -402,7 +495,7 @@ const listProductsByIDsForUpdate = `-- name: ListProductsByIDsForUpdate :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -419,15 +512,16 @@ type ListProductsByIDsForUpdateRow struct {
 
 // === source: database/dml/repository/product/select_products_by_ids_for_update.sql ===
 // ID の集合から公開状態を問わない商品群を、更新のために悲観ロック（FOR UPDATE）して取得します。
-// ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0031）。
+// ロック順序を id 昇順に固定することで、複数商品を同時にロックする処理同士のデッドロックを構造的に避けます（ADR-0033 (ordered-pessimistic-row-locks)）。
 // 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
 // ロック対象は products のみで、結合する固定参照マスタはロックしません（FOR UPDATE OF p）。
-// status_name / category_name は商品の付随表示値。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -455,7 +549,6 @@ func (q *Queries) ListProductsByIDsForUpdate(ctx context.Context, productIdsPara
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
-			&i.Products.ImagePath,
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
@@ -474,7 +567,7 @@ const listPublishedProductsAscAfter = `-- name: ListPublishedProductsAscAfter :m
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -518,14 +611,16 @@ type ListPublishedProductsAscAfterRow struct {
 }
 
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
-// published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -579,7 +674,6 @@ func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPu
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
-			&i.Products.ImagePath,
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
@@ -598,7 +692,7 @@ const listPublishedProductsAscFirst = `-- name: ListPublishedProductsAscFirst :m
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -636,14 +730,16 @@ type ListPublishedProductsAscFirstRow struct {
 }
 
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
-// published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -691,7 +787,6 @@ func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPu
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
-			&i.Products.ImagePath,
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
@@ -710,7 +805,7 @@ const listPublishedProductsDescAfter = `-- name: ListPublishedProductsDescAfter 
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -754,14 +849,16 @@ type ListPublishedProductsDescAfterRow struct {
 }
 
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
-// published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -815,7 +912,6 @@ func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListP
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
-			&i.Products.ImagePath,
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
@@ -834,7 +930,7 @@ const listPublishedProductsDescFirst = `-- name: ListPublishedProductsDescFirst 
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -873,14 +969,16 @@ type ListPublishedProductsDescFirstRow struct {
 
 // === source: database/dml/repository/product/select_products.sql ===
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタから解決する付随表示値です。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
-// published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
+// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.image_path, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -928,7 +1026,6 @@ func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListP
 			&i.Products.StatusID,
 			&i.Products.CategoryID,
 			&i.Products.PublishedAt,
-			&i.Products.ImagePath,
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
@@ -943,6 +1040,30 @@ func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListP
 	return items, nil
 }
 
+const softDeleteProductImages = `-- name: SoftDeleteProductImages :exec
+UPDATE product_images
+SET
+    deleted_at = NOW(),
+    updated_at = NOW()
+WHERE product_images.product_id = $1
+    AND product_images.deleted_at IS NULL
+`
+
+// === source: database/dml/repository/product/soft_delete_product_images.sql ===
+// 商品が現在参照している画像をまとめて論理削除する。既に論理削除済みの行は削除日時を上書きしない。
+// 生存行が無い商品に対しては 0 行更新となり、成功として返る。
+//
+//	UPDATE product_images
+//	SET
+//	    deleted_at = NOW(),
+//	    updated_at = NOW()
+//	WHERE product_images.product_id = $1
+//	    AND product_images.deleted_at IS NULL
+func (q *Queries) SoftDeleteProductImages(ctx context.Context, productID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteProductImages, productID)
+	return err
+}
+
 const updateProduct = `-- name: UpdateProduct :one
 UPDATE products
 SET
@@ -954,11 +1075,10 @@ SET
     status_id = $6,
     category_id = $7,
     published_at = $8,
-    image_path = $9,
     lock_version = products.lock_version + 1,
     updated_at = NOW()
-WHERE products.id = $10
-    AND products.lock_version = $11
+WHERE products.id = $9
+    AND products.lock_version = $10
 RETURNING products.lock_version
 `
 
@@ -971,7 +1091,6 @@ type UpdateProductParams struct {
 	StatusID              uuid.UUID
 	CategoryID            uuid.UUID
 	PublishedAt           *time.Time
-	ImagePath             *string
 	ID                    uuid.UUID
 	CurrentVersion        int32
 }
@@ -992,11 +1111,10 @@ type UpdateProductParams struct {
 //	    status_id = $6,
 //	    category_id = $7,
 //	    published_at = $8,
-//	    image_path = $9,
 //	    lock_version = products.lock_version + 1,
 //	    updated_at = NOW()
-//	WHERE products.id = $10
-//	    AND products.lock_version = $11
+//	WHERE products.id = $9
+//	    AND products.lock_version = $10
 //	RETURNING products.lock_version
 func (q *Queries) UpdateProduct(ctx context.Context, arg *UpdateProductParams) (int32, error) {
 	row := q.db.QueryRow(ctx, updateProduct,
@@ -1008,7 +1126,6 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg *UpdateProductParams) (
 		arg.StatusID,
 		arg.CategoryID,
 		arg.PublishedAt,
-		arg.ImagePath,
 		arg.ID,
 		arg.CurrentVersion,
 	)
@@ -1036,7 +1153,8 @@ type UpdateProductStockParams struct {
 
 // === source: database/dml/repository/product/update_product_stock.sql ===
 // 在庫数を更新し、採番後のバージョンを返します。
-// lock_version の加算は DB が行い、採番の権威を単一箇所に置きます。
+// lock_version の加算は SQL 側で行う（採番の権威の置き場所は docs/spec/product/domain.md の
+// Product.Update を参照）。
 // 在庫更新でもバージョンを進めることで、更新前のバージョンを条件とする部分更新（UpdateProduct）が
 // 在庫の変化を上書きせずに 0 行で弾かれます。
 // WHERE の lock_version 一致は、行ロックを取らずに呼ばれた場合に備える二重防御で、

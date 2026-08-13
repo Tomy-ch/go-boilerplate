@@ -6,9 +6,8 @@ export type PortalLang = "EN" | "JA";
 /**
  * section に実際に適用する言語を決める。
  *
- * JA を選んでいても JA の項目が 1 件も無い section は EN へ落とす。section 単位で
- * 決めた言語を配下の subgroup へ共有させることで、同じ section の中で subgroup ごとに
- * 言語が混ざる状態を防ぐ。
+ * JA の項目が 1 件も無い section は EN へ落とす（README 参照）。決めた言語は配下の subgroup へ
+ * 共有し、同じ section の中で subgroup ごとに言語が混ざらないようにする。
  */
 export function effectiveLangFor(items: readonly PortalItem[], lang: PortalLang): PortalLang {
   if (lang !== "JA") {

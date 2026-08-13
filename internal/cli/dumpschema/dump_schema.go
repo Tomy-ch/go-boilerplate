@@ -13,7 +13,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-const schemaFilePerm = 0o644 // rw-r--r--
+const schemaFilePerm = 0o644
 
 // dumpSchemaLoggerName は dumpSchema のログ発生元名です（<package>.<method> 規約）。
 const dumpSchemaLoggerName = "dumpschema.dumpSchema"

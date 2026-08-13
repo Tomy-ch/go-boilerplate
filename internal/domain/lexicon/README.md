@@ -27,7 +27,7 @@ A value object that more than one aggregate speaks in belongs here.
 <!-- sample-api:end -->
 It cannot live in one aggregate (the
 others would have to reach in), and it cannot live in `pkg/` (which forbids business logic). So it
-lives here — see [ADR-0034](../../../docs/adr/0034-domain-lexicon.md).
+lives here — see [ADR-0036 (domain-lexicon)](../../../docs/adr/0036-domain-lexicon.md).
 
 ## Where a type goes
 
@@ -72,7 +72,7 @@ domain→other-aggregate is forbidden.
      書き方: `- <package> — <型> 値オブジェクト（<保証する不変条件>）。` の形で 1 語 1 行。 -->
 <!-- sample-api:begin -->
 - `money` — `Price` value object (non-negative price-scale decimal; owns minor-unit conversion).
-  The exact decimal container is `pkg/decimal` ([ADR-0033](../../../docs/adr/0033-two-scale-quantity-model.md)).
+  The exact decimal container is `pkg/decimal` ([ADR-0035 (two-scale-quantity-model)](../../../docs/adr/0035-two-scale-quantity-model.md)).
 <!-- sample-api:end -->
 
 **サンプル撤去後、この節は空になります。** 器と入場基準だけが残り、最初の語を待ちます。

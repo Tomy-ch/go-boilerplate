@@ -1,29 +1,47 @@
 name: Lockfile Integrity
 
-# Guards against lockfile poisoning: an attacker who can edit package-lock.json
-# does not need to touch package.json at all, because npm installs whatever the
-# lockfile's `resolved` URL points at. The version and the integrity hash can look
-# untouched while the tarball comes from somewhere else entirely.
+# Guards against lockfile poisoning: an attacker who can edit a lockfile does not need to
+# touch package.json at all, because the resolver fetches whatever the lockfile points at.
+# The version and the integrity hash can look untouched while the tarball comes from
+# somewhere else entirely.
 #
-# Both resolvers in the repository are covered. npm (mock-auth-server/) is
-# checked with lockfile-lint; pnpm (scripts/, docs-viewer/) states the same
-# requirement differently and is checked in its own step below.
+# All three packages in the repository resolve with pnpm — `scripts/`, `mock-auth-server/`
+# and `docs-viewer/`, each with its own lockfile — so one check covers them.
 #
 # This is a different question from the vulnerability scanners. OSV and Trivy ask
 # "is this package known-bad"; a poisoned lockfile names a package that is not
 # known-bad at all, because the malicious artifact was never published to the
 # registry under that name.
 #
-# PR-only and gating on purpose. There is no scheduled run: the lockfiles in the
-# repository cannot change without a commit, so re-checking an unchanged tree
-# weekly would only ever restate the previous answer.
+# Gating on purpose. There is no scheduled run: the lockfiles in the repository
+# cannot change without a commit, so re-checking an unchanged tree weekly would
+# only ever restate the previous answer.
+#
+# The `push` trigger is what keeps that reasoning honest. "A commit" is not the
+# same set as "a pull request": a commit landing on a protected branch directly —
+# because the ruleset does not require a PR, or because someone bypasses it —
+# changes a lockfile without any pull_request event ever firing. Reviewing only
+# the reviewed path is the blind spot a poisoned lockfile would be pushed through,
+# so the same check runs on the push itself. It cannot block what has already
+# landed; it makes the landing visible instead of silent.
 
 on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/lockfile-integrity.yaml'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/pnpm-lock.yaml'
+      - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
       - '.github/workflows/lockfile-integrity.yaml'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   workflow_dispatch:
 
@@ -57,80 +75,17 @@ jobs:
             release-assets.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
-            mise.jdx.dev:443
-            mise-versions.jdx.dev:443
-            aquaproj.github.io:443
-            nodejs.org:443
-            registry.npmjs.org:443
-            get.pnpm.io:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
-            proxy.golang.org:443
-            sum.golang.org:443
-            storage.googleapis.com:443
-            dl.google.com:443
-            go.dev:443
-            golang.org:443
-            downloads.sqlc.dev:443
-            astral.sh:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
-        with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      # The version is pinned in mise.toml (SSOT) — never duplicated here.
-      - name: Install lockfile-lint
-        run: mise install npm:lockfile-lint
-
-      # lockfile-lint exits 1 on a finding and 0 when clean, so the status is
-      # captured rather than allowed to abort the step: the PR comment has to be
-      # produced either way. The final step turns the captured status into the
-      # verdict.
-      #
-      # --allowed-hosts npm expands to registry.npmjs.org; --validate-https rejects
-      # a plain-HTTP resolved URL, which would let an on-path attacker swap the
-      # tarball regardless of which host it names.
-      - name: Lint lockfiles
-        id: lint
-        run: |
-          set -uo pipefail
-
-          : > lockfile-lint.log
-          status=success
-
-          for lockfile in mock-auth-server/package-lock.json; do
-            echo "### ${lockfile}" >> lockfile-lint.log
-            if lockfile-lint \
-                 --path "${lockfile}" \
-                 --type npm \
-                 --validate-https \
-                 --allowed-hosts npm >> lockfile-lint.log 2>&1; then
-              echo "ok" >> lockfile-lint.log
-            else
-              status=failure
-            fi
-            echo >> lockfile-lint.log
-          done
-
-          echo "status=${status}" >> "$GITHUB_OUTPUT"
-        shell: bash
-
-      # scripts and docs-viewer resolve with pnpm, and lockfile-lint does not read
-      # pnpm-lock.yaml. The poisoning vector is the same question in a different shape:
-      # pnpm-lock.yaml names no URL at all for a registry package — the entry is
-      # `resolution: {integrity: ...}` and the host comes from the resolver's configuration.
-      # An entry that carries any other key (`tarball`, `directory`, a git reference) is
-      # fetching from somewhere the registry settings never approved, which is exactly what
-      # the npm check above rejects.
+      # The poisoning vector takes a particular shape here: pnpm-lock.yaml names no URL at
+      # all for a registry package — the entry is `resolution: {integrity: ...}` and the host
+      # comes from the resolver's configuration. An entry that carries any other key
+      # (`tarball`, `directory`, a git reference) is fetching from somewhere the registry
+      # settings never approved.
       #
       # `blockExoticSubdeps` in pnpm-workspace.yaml refuses those at install time. This step is
       # the committed-state counterpart: the setting protects the machine that runs install,
@@ -140,9 +95,10 @@ jobs:
         run: |
           set -uo pipefail
 
+          : > lockfile-lint.log
           status=success
 
-          for lockfile in scripts/pnpm-lock.yaml docs-viewer/pnpm-lock.yaml; do
+          for lockfile in scripts/pnpm-lock.yaml mock-auth-server/pnpm-lock.yaml docs-viewer/pnpm-lock.yaml; do
             echo "### ${lockfile}" >> lockfile-lint.log
 
             if exotic=$(grep -n 'resolution: {' "${lockfile}" | grep -v 'resolution: {integrity:'); then
@@ -159,18 +115,18 @@ jobs:
           echo "status=${status}" >> "$GITHUB_OUTPUT"
         shell: bash
 
-      # The verdict covers both resolvers. Computing it here rather than inside either lint
-      # step keeps a green npm result from reporting PASS while the pnpm lockfile is failing.
+      # Computing the verdict here rather than inside the lint step keeps the PR comment
+      # reachable: the lint step captures its status instead of aborting, so a finding still
+      # produces a comment.
       - name: Summarize lockfile verdict
         id: verdict
         if: always()
         env:
-          NPM_STATUS: ${{ steps.lint.outputs.status }}
           PNPM_STATUS: ${{ steps.pnpm-lint.outputs.status }}
         run: |
           set -uo pipefail
 
-          if [ "${NPM_STATUS}" = "success" ] && [ "${PNPM_STATUS}" = "success" ]; then
+          if [ "${PNPM_STATUS}" = "success" ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
             echo "title=## ✅ Lockfile Integrity: PASS" >> "$GITHUB_OUTPUT"
           else

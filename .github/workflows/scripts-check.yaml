@@ -1,13 +1,13 @@
 name: Scripts Check
 
-# Type check and unit tests for the repository's TypeScript helper scripts (`scripts/**/*.ts`).
+# Type check and unit tests for the repository's TypeScript helper scripts (`scripts/**/*.ts`),
+# plus the 1:1 test gate, which walks `docs-viewer` and `mock-auth-server` as well.
 #
-# Four of them are gates — `skill-lint`, `mermaid-lint`, `pr-comment-secret-lint`,
-# `pr-comment-fence-lint`, `actions-cutoff-lint` — and they all fail in the same direction when
-# broken: they stop finding things and report a clean run. Nothing downstream notices, because a
-# gate that inspects nothing looks exactly like a repository with no violations. The decision
-# logic lives in `scripts/lib/**` precisely so it can be exercised here without a repository to
-# scan, and these tests are what keeps a silent no-op from passing for a pass.
+# Many of those scripts are gates, and they all fail in the same direction when broken: they stop
+# finding things and report a clean run. Nothing downstream notices, because a gate that inspects
+# nothing looks exactly like a repository with no violations. The decision logic sits beside each
+# entry point, and in `scripts/lib/**` where it is shared, precisely so it can be exercised here
+# without a repository to scan; these tests are what keeps a silent no-op from passing for a pass.
 #
 # `make lint` does not cover this: golangci-lint reads Go, and the Markdown / Actions lint jobs
 # run these scripts rather than checking them.
@@ -25,6 +25,12 @@ on:
       - 'scripts/package.json'
       - 'scripts/pnpm-lock.yaml'
       - 'scripts/pnpm-workspace.yaml'
+      # The 1:1 gate walks two packages beyond `scripts/`, so their sources have to reach this
+      # workflow too — otherwise a new callable export lands untested and the PR adding it never
+      # runs the gate that would have said so. These entries track the gate's own package list,
+      # and `one-to-one.gate.test.ts` fails when they stop tracking it.
+      - 'mock-auth-server/src/**'
+      - 'docs-viewer/src/**'
       - '.makefiles/node/**'
   workflow_dispatch:
 
@@ -59,56 +65,54 @@ jobs:
             *.blob.core.windows.net:443
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
             aquaproj.github.io:443
-            nodejs.org:443
-            registry.npmjs.org:443
-            get.pnpm.io:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
             proxy.golang.org:443
             sum.golang.org:443
+            index.golang.org:443
             storage.googleapis.com:443
             dl.google.com:443
             go.dev:443
             golang.org:443
             downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
             astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
             docker.io:443
             index.docker.io:443
             registry-1.docker.io:443
             auth.docker.io:443
+            *.docker.io:443
             production.cloudflare.docker.com:443
             production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
             dl-cdn.alpinelinux.org:443
             dl-cdn.alpinelinux.org:80
-            mise.run:443
             deb.debian.org:443
             deb.debian.org:80
             security.debian.org:443
             security.debian.org:80
-            pypi.org:443
-            files.pythonhosted.org:443
-            *.docker.io:443
-            mise.en.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install node and pnpm
-        run: mise install node npm:pnpm
-
-      # The tree is the one `scripts/pnpm-lock.yaml` pins, so CI and the container resolve the
-      # same versions.
       - name: Install the script tree for scripts/
         run: pnpm install --dir scripts --frozen-lockfile
 
@@ -120,7 +124,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm install --dir docs-viewer --frozen-lockfile
-          npm ci --prefix mock-auth-server --ignore-scripts
+          pnpm install --dir mock-auth-server --frozen-lockfile
 
       - name: Typecheck
         run: make scripts-typecheck-ci

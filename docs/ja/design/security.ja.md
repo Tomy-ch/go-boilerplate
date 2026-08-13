@@ -4,7 +4,7 @@ English canonical: [security.md](../../design/security.md)
 
 このドキュメントは、**このリポジトリのセキュリティ制御をどう考えているか**——何を前提にし、各制御が実際には何のためにあり、どこで発火するのか——を記録します。ツールの一覧ではありません。それは [`.github/workflows/README.md`](../../../.github/workflows/README.md) にあり、コードとともに変化します。ここに記すのは、**変化してはいけない側**です。
 
-扱う面は 3 つで、リスクが到達する順に並べています。CI が**実行するもの**（ビルド入力）、アプリケーションが**リンクするもの**（依存ライブラリ）、動いているサービスが**リクエストに対して行うこと**（アプリケーション実行時）。本人確認の機構そのものは別の関心事で専用のリファレンスがあります（[auth.ja.md](auth.ja.md)）。ここに現れるのは、認証が強制モデルのどこに位置するかだけです。
+扱う面は 3 つで、リスクが到達する順に並べています。CI が**実行するもの**（ビルド入力）、アプリケーションが**リンクするもの**（依存ライブラリ）、動いているサービスが**リクエストに対して行うこと**（アプリケーション実行時）。4 つ目——開発者自身のマシン——はこの 3 つの外側に意図的に置いてあり、その境界がどこに落ちるかは後述の *開発者エンドポイント* に記録してあります。再発見させないためです。本人確認の機構そのものは別の関心事で専用のリファレンスがあります（[auth.ja.md](auth.ja.md)）。ここに現れるのは、認証が強制モデルのどこに位置するかだけです。
 
 ## 脅威モデル
 
@@ -33,13 +33,13 @@ English canonical: [security.md](../../design/security.md)
 | 機構 | 種別 | 備考 |
 | --- | --- | --- |
 | `pin-actions-check` / `pin-images-check` | 強制 | fail-closed。未固定・未登録はいずれもエラー |
+| `egress-check` | 強制 | fail-closed。インラインの `allowed-endpoints` が `.github/egress.toml` からずれていればエラー |
 | リリースゲート（`trivy-release-gate` / `osv-release-gate`） | 強制 | デプロイ先ブランチ宛 PR でのみ |
 | `dependency-review` | 強制 | PR が**追加する**分だけを評価 |
 | シークレットスキャン（gitleaks / TruffleHog） | 強制 | コミットされたシークレットは許容可能な取引ではない |
 | `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で。pre-commit でもオフライン監査のみでゲートする |
 | 報告系スキャナ（`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL） | 検知 | code scanning と PR には届くが、ブロックしない |
-| `npm-cooldown-audit` | 検知 | 構造としてブロックしない（後述） |
-| `harden-runner`（`egress-policy: audit`） | 検知 | egress を記録する。制限はしない |
+| `harden-runner`（`egress-policy: block`） | 強制 | ジョブの `allowed-endpoints` の外への egress を拒否する。`trufflehog` だけが `audit` |
 | `CODEOWNERS` | 強制 | 「この判断はこのロールのもの」を支えるレビュー要求 |
 | OpenSSF Scorecard | 検知 | 姿勢の計測であり判定ではない |
 
@@ -58,7 +58,7 @@ English canonical: [security.md](../../design/security.md)
 
 ### なぜ報告とゲートを分けるのか
 
-通常の PR は報告し、昇格 PR がゲートします。論拠は [ADR-0084](../adr/0084-multi-layer-security-scanning.ja.md) にありますが、要点はこうです。既存の依存ツリーから受け継いだ脆弱性は、その PR が持ち込んだものではなく、その PR の作者に直せるものでもありません。そこでブロックすれば、上流の修正が別のどこかで入るまで無関係な変更がすべて赤くなります。予想される帰結は、チェックの無効化か、赤いまま merge する習慣の定着です。どちらもゲートの価値を上回るコストです。
+通常の PR は報告し、昇格 PR がゲートします。論拠は [ADR-0086](../adr/0086-multi-layer-security-scanning.ja.md) にありますが、要点はこうです。既存の依存ツリーから受け継いだ脆弱性は、その PR が持ち込んだものではなく、その PR の作者に直せるものでもありません。そこでブロックすれば、上流の修正が別のどこかで入るまで無関係な変更がすべて赤くなります。予想される帰結は、チェックの無効化か、赤いまま merge する習慣の定着です。どちらもゲートの価値を上回るコストです。
 
 代わりに検出を抑止する（`ignore-unfixed`、ID の allowlist）のは、別の失敗との交換にすぎません。本当に問題になる昇格の瞬間にも黙らせてしまうためです。分離は両方の場所でシグナルを保ち、**判定**を対処できる人のいる場所へ置きます。
 
@@ -66,7 +66,7 @@ English canonical: [security.md](../../design/security.md)
 
 CI が**実行するもの**と、アプリケーションが**リンクするもの**はリスクが異なります。Actions と base image は我々のコードより先に、ジョブの資格情報を持って動くため、より強く固定します。
 
-**バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0085](../adr/0085-sha-pinned-actions.ja.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
+**バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0087](../adr/0087-sha-pinned-actions.ja.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
 
 **検疫は時間を稼ぐ仕組みであり、日付を検証する仕組みではない。** アクションの経過日数は、リリースの公開日時と解決先 commit の日時のうち**新しい方**を採ります。どちらも単独では信用できません——リリースオブジェクトはタグの*名前*に紐づくため、タグが付け替えられても公開日時は据え置かれます（検疫が想定する脅威そのものです）。一方 commit の日時は committer が任意の過去時点へ設定できます。新しい方を採ることで、どちらか一方でも「新しい」と言う限り検疫が掛かりますが、これは自動化された乗っ取りに対する遅延であって、偽装された日付への防御ではありません。付け替えそのものの検知は lockfile の役割です——解決先の digest が変わり、差分は小さく、人間がそれを読みます。
 
@@ -101,38 +101,18 @@ Go のエコシステムは完全性をほぼ無償で与え、新しさにつ�
 | --- | --- | --- |
 | ツールチェーンによる cooldown 強制 | あり（解決時） | **なし** |
 | バイパスできるか | できる（フラグ） | バイパスすべき対象が無い |
-| バイパスを検知できるか | できる（`npm-cooldown-audit`） | **検知すべき対象が無い** |
+| バイパスが可視か | 可視（レビューされる差分に残る） | **検知すべき対象が無い** |
 | 残る制御 | レビュー + 検知 | **レビューのみ** |
 
 レビューが唯一の制御であるため、`go.mod` と `go.sum` を [`CODEOWNERS`](../../../.github/CODEOWNERS) の対象にしています。これは対称性のための記帳ではなく実効を担うエントリです。npm なら取りこぼしても事後に捕まりますが、Go では捕まりません。
 
 **到達可能性フィルタは諸刃。** `govulncheck` はアプリケーションが実際に呼び出す脆弱性だけを報告し、それが「対処するに値する」信頼性を生みます。代償は網羅性です。Go 脆弱性データベースがまだ取り込んでいない advisory は検出そのものが出ないため、`govulncheck` が緑であることは今週公開された GHSA について何も語りません。網羅側は、呼び出しグラフではなくバージョンで照合する Trivy FS と OSV-Scanner が担います。
 
-### npm
-
-cooldown は実在しますが、見た目より適用範囲が狭い。`min-release-age` は npm が**解決する**あいだだけ効き、`npm ci` は解決しません——lockfile を再生するだけです。本リポジトリの CI とイメージビルドはすべて `npm ci` を使います。
-
-推測ではなく実測した挙動:
-
-| 操作 | 結果 |
-| --- | --- |
-| 窓内バージョンを解決する | 拒否（`ETARGET`） |
-| 最新一致が窓内である範囲を解決する | エラーにならず、**枯れた最新**へ黙って解決。exit 0 |
-| `--min-release-age=0` を付けて解決する | 成功。窓内バージョンが lockfile に入る |
-| 窓内エントリを含む lockfile で `npm ci` | 成功。警告も出ない |
-| そのエントリがある状態で `npm install` / パッケージ追加 | 成功。当該エントリは保持される |
-
-帰結が 2 つ。意図的な解除はチームに何のコストも課しません（誰も詰まらず、回避策も不要）。そして解除はどこにも痕跡を残しません——イメージビルドにも CI にも現れず、窓を過ぎれば通常解決されたエントリと区別がつかなくなります。
-
-`npm-cooldown-audit` が存在するのはこのためです。現在のツリーを走査するだけでなく **PR を base と比較して**監査するのも同じ理由で（エントリは窓から出ていきますが、PR コメントは残ります）、そして**決してビルドを落とさない**のもこのためです。cooldown の解除はロールの判断であり——CRITICAL advisory への即応こそがその存在理由です——ハードゲートは正当な行使をこそ塞ぎます。ブロックしない性質はワークフロー設定ではなくツール自身に実装されており、YAML の編集ではゲートに変えられません。
-
-**推移的な pin は暫定債務。** `overrides` で修正版を強制する際は、exact な版ではなく same-major の floor（`">=<fixed> <<next-major>"`）として書きます。exact pin は依存をその場で凍結するため、固定した版自身が後に advisory を受けたとき、pin が脆弱な版を強制し続けることになるからです。すべての override は、親が修正版を自力で引く release を出した時点で回収する前提のものです。
-
 ### pnpm
 
-pnpm で解決するパッケージは 2 つ——`scripts/` と `docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は npm と同じ 7 日で、導出のしかたも同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
+Node のパッケージはすべて pnpm で解決します——`scripts/`・`mock-auth-server/`・`docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は 7 日で、導出のしかたは他のエコシステムと同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
 
-異なるのは窓が**どこで**効くかで、それが npm の弱点を裏返します。npm は解決のあいだしか見ないため、一度 lockfile に入った窓内エントリはそれ以降どこからも見えません。pnpm は install のたびに **lockfile 全体**を現行ポリシーで再検証します——`npm ci` が素通りさせる再生経路である `--frozen-lockfile` も含めてです。
+窓は解決時だけでなく **install のたび**に効きます。pnpm は毎回 lockfile 全体を現行ポリシーで再検証します——CI とイメージビルドが使う再生経路である `--frozen-lockfile` も含めてです。窓内のエントリが lockfile に入ったあと見えなくなる、ということが起こりません。
 
 推測ではなく実測した挙動:
 
@@ -144,7 +124,7 @@ pnpm で解決するパッケージは 2 つ——`scripts/` と `docs-viewer/`�
 | どの例外にも該当しない窓内エントリを `--frozen-lockfile` で再生する | 拒否（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`） |
 | ポリシー設定を変えたあとの `pnpm run` | 拒否（`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`）。`pnpm install` が設定を記録し直すまで通らない |
 
-帰結が 3 つあり、それらを合わせると pnpm に `npm-cooldown-audit` の対応物が要らない理由になります。記録されずに通るものが無いので、事後に検知すべき対象がそもそも存在しません。
+帰結が 3 つあり、それらを合わせると事後監査が要らない理由になります。記録されずに通るものが無いので、検知すべき対象がそもそも存在しません。
 
 **解除は不可視にできません。** 窓内バージョンを採るには `minimumReleaseAgeExclude` のエントリが要り、無ければ以降の install がすべて落ちます——CI の install は frozen な再生なので CI も含みます。エントリの置き場である `pnpm-workspace.yaml` は追跡対象で [`CODEOWNERS`](../../../.github/CODEOWNERS) に載っているため、解除は事後に bot が報告するのではなく構造上レビューを通ります。
 
@@ -158,7 +138,7 @@ pnpm で解決するパッケージは 2 つ——`scripts/` と `docs-viewer/`�
 
 ### PyPI
 
-Python のツールは、`mise.toml` が全ツールのバージョンを持つという原則に対する唯一の例外で、その理由は供給網側にあります。PyPI ツールはバージョンを固定してもほとんど何も固定できません——依存ツリーが install 時に解決されるため、同じ pin でも日によって別のツリーが入ります。そこで各ツールは、バージョンを `python/<tool>.in` で宣言し、解決結果——推移依存すべてと sha256 ハッシュ——を `python/<tool>.txt` が持ちます（[ADR-0075](../../adr/0075-mise-ssot-drift-gate.md)。仕組みは `python/README.md`）。install は常に `uv pip install --require-hashes -r <tool>.txt` で、バージョンかハッシュを欠く要求は拒否されるため、完全性の検証は install の一部であり、飛ばせる別工程ではありません。
+Python のツールは、`mise.toml` が全ツールのバージョンを持つという原則に対する唯一の例外で、その理由は供給網側にあります。PyPI ツールはバージョンを固定してもほとんど何も固定できません——依存ツリーが install 時に解決されるため、同じ pin でも日によって別のツリーが入ります。そこで各ツールは、バージョンを `python/<tool>.in` で宣言し、解決結果——推移依存すべてと sha256 ハッシュ——を `python/<tool>.txt` が持ちます（[ADR-0077](../adr/0077-mise-ssot-drift-gate.ja.md)。仕組みは `python/README.md`）。install は常に `uv pip install --require-hashes -r <tool>.txt` で、バージョンかハッシュを欠く要求は拒否されるため、完全性の検証は install の一部であり、飛ばせる別工程ではありません。
 
 **窓は 7 日**で、導出は npm と同じです。PyPI は悪性の publish を素早く検知して yank するため、やり過ごすべき区間は短い。したがってバージョンの引き上げは、最新のリリースではなく、既に窓を越えて枯れた最新のリリースを採ります。pin が意図的に遅れているときはコメントでそう述べ、`python/graphify.in` がその PyPI 側の実例です。
 
@@ -196,13 +176,13 @@ Python のツールは、`mise.toml` が全ツールのバージョンを持つ�
 
 ここまでの制御はリポジトリに**入ってくるもの**を守ります。以下は、動いているサービスがリクエストに対して**何をするか**を守ります。3 つのパターンが繰り返し現れ、これが再発見ではなく持ち越す価値のある部分です。
 
-**すべての境界で既定は拒否。** 外向きの dial ガード（`internal/observability/http_client_transport.go`、[ADR-0020](../adr/0020-egress-ssrf-guard.ja.md)）は link-local / multicast / unspecified / bogon を無条件に拒否し、loopback / private / CGNAT は呼び出し側が context で明示 opt-in しない限り拒否します。未設定は安全側の `false` に解決されます。エラー詳細の露出（`internal/controller/httpstack/errorhandler/detail_exposure.go`）も同じ形で、route 不一致・operation 未解決・`operationId` 空・未 opt-in がすべて**拒否**に評価されます。どちらの制御にも「書き忘れると開く」状態がありません。
+**すべての境界で既定は拒否。** 外向きの dial ガード（`internal/observability/http_client_transport.go`、[ADR-0022](../adr/0022-egress-ssrf-guard.ja.md)）は link-local / multicast / unspecified / bogon を無条件に拒否し、loopback / private / CGNAT は呼び出し側が context で明示 opt-in しない限り拒否します。未設定は安全側の `false` に解決されます。エラー詳細の露出（`internal/controller/httpstack/errorhandler/detail_exposure.go`）も同じ形で、route 不一致・operation 未解決・`operationId` 空・未 opt-in がすべて**拒否**に評価されます。どちらの制御にも「書き忘れると開く」状態がありません。
 
-**リクエスト境界の権威は spec。** リクエスト検証と認証は、ハンドラに手書きしたチェックではなく OpenAPI ドキュメントから実行時に強制されます（[ADR-0013](../adr/0013-spec-driven-request-validation.ja.md)）。直接の帰結として、**spec の差分をレビューすることがセキュリティ姿勢をレビューすること**になります。`security` 要求を書き忘れた operation はハンドラをどう書こうと無防備で、Go のレビューをいくら重ねても表に出ません。業務妥当性のルールは意図的にここに置きません。判定権限は domain 層が単独で持ちます（[ADR-0014](../adr/0014-validation-value-authority.ja.md)）ので、両者が互いへ滲み出しません。
+**リクエスト境界の権威は spec。** リクエスト検証と認証は、ハンドラに手書きしたチェックではなく OpenAPI ドキュメントから実行時に強制されます（[ADR-0015](../adr/0015-spec-driven-request-validation.ja.md)）。直接の帰結として、**spec の差分をレビューすることがセキュリティ姿勢をレビューすること**になります。`security` 要求を書き忘れた operation はハンドラをどう書こうと無防備で、Go のレビューをいくら重ねても表に出ません。業務妥当性のルールは意図的にここに置きません。判定権限は domain 層が単独で持ちます（[ADR-0016](../adr/0016-validation-value-authority.ja.md)）ので、両者が互いへ滲み出しません。
 
-**逃げ道は名前付きで狭く、grep できる。** `ContextWithAllowPrivateNetwork`、エラースキーマを詳細露出へ opt-in させる `details` プロパティ、宣言された認証例外としての `/metrics`（[ADR-0016](../adr/0016-metrics-endpoint-auth-exception.ja.md)）は、いずれも検索して列挙できる具体的な seam です。汎用フラグは 1 つもありません。汎用フラグは「全員が立てるもの」になるからです。
+**逃げ道は名前付きで狭く、grep できる。** `ContextWithAllowPrivateNetwork`、エラースキーマを詳細露出へ opt-in させる `details` プロパティ、宣言された認証例外としての `/metrics`（[ADR-0018](../adr/0018-metrics-endpoint-auth-exception.ja.md)）は、いずれも検索して列挙できる具体的な seam です。汎用フラグは 1 つもありません。汎用フラグは「全員が立てるもの」になるからです。
 
-2 つの不在は保留ではなく意図です。アプリ内 rate limiter は持たず（[ADR-0099](../adr/0099-no-in-app-rate-limiter.ja.md)）、レスポンスは spec に対して検証しません（[ADR-0013](../adr/0013-spec-driven-request-validation.ja.md)）。SQL インジェクションはレビューではなく構造で扱い、クエリは sqlc 生成のためパラメータ化されます（[ADR-0022](../adr/0022-sqlc-type-safe-sql.ja.md)）。`gosec` は権威ある golangci gate で動きます（[ADR-0079](../adr/0079-two-layer-golangci-config.ja.md)）。
+2 つの不在は保留ではなく意図です。アプリ内 rate limiter は持たず（[ADR-0101](../adr/0101-no-in-app-rate-limiter.ja.md)）、レスポンスは spec に対して検証しません（[ADR-0015](../adr/0015-spec-driven-request-validation.ja.md)）。SQL インジェクションはレビューではなく構造で扱い、クエリは sqlc 生成のためパラメータ化されます（[ADR-0024](../adr/0024-sqlc-type-safe-sql.ja.md)）。`gosec` は権威ある golangci gate で動きます（[ADR-0081](../adr/0081-two-layer-golangci-config.ja.md)）。
 
 再発見ではなくコピーする価値のある具体を 1 つ。Go の `netip.Addr.IsPrivate` は RFC1918 と ULA を覆いますが **CGNAT（`100.64.0.0/10`）を含みません**。そのためガードは自前の prefix チェックを持っています。標準ライブラリだけで dial ガードを再実装すると、この穴をそのまま引き継ぎます。
 
@@ -212,19 +192,31 @@ Python のツールは、`mise.toml` が全ツールのバージョンを持つ�
 
 利便性より優先される規則が 1 つあります。**検出されたシークレットの値は、ジョブログ・PR コメント・artifact のいずれにも到達しない。** サマリが載せるのは detector 名・パス・行・commit であって、一致した文字列そのものではありません。漏らす漏洩レポートは、レポートが無いより悪い。コミットよりも広い聴衆へクレデンシャルを公開するからです。
 
+## 開発者エンドポイント
+
+ここまでの制御はすべて、リポジトリへ*入ってくる*経路の上にあります。CI が実行するもの、アプリケーションがリンクするもの、リクエストが到達するもの。開発者の手元に**すでに入っているもの**を見ている制御は 1 つもありません。これは別の面であり、意図的に対象外です。ただし覆われていると誤読しやすい。この穴を開けたまま残している制御が、いちばん万全に見える制御だからです。
+
+**クールダウン窓が守るのは解決済みのツリーであって、マシンではありません。** 窓はここにある lockfile から汚染された公開版を締め出します——npm は解決時に拒否し、pnpm は install のたびに lockfile 全体を再検証します。どちらも、開発者が別のどこかで実行した install には届きません。使い捨てのプロジェクト、グローバルに入れた CLI、試すために一度だけ引いたパッケージ。そのマシンは露出しており、ここのどの lockfile もそれを語りません。そもそも lockfile に到達しないものについては、これがより鋭く効きます。エディタ拡張・ブラウザ拡張・エージェントスキル・MCP サーバー設定は構造上ユーザースコープにあり（`~/.claude.json` / `~/.gemini/settings.json` / `~/.agents/.skill-lock.json`）、これは前述したツールのユーザースコープ installer と同じ形を、その経路で入るすべてに一般化したものです。
+
+**問いは振る舞いではなく状態を問うています。** アドバイザリがパッケージとバージョンを名指ししたとき、知りたいのは**いまどのマシンが一致するか**です。SBOM は何を出荷したかに、エンドポイントテレメトリは何が動いたかに答えますが、ディスク上に何が置かれているかにはどちらも答えません。答えるにはエンドポイントから収集したインベントリと、照合対象のカタログが要ります。カタログが無ければ、それは露出照合ではなく単なる棚卸しです。
+
+**これはリポジトリの制御ではなく、制御にすることもできません。** 守る対象は開発者のマシンであってこのリポジトリではないため、マシンを棚卸しするかどうかの判断はそのマシンの持ち主に属します。収集ツールを `mise.toml` と `install-tools` へ配線すれば、棚卸しされることを選んでいない持ち主のマシンを含め、すべての開発者のホストにそれが入ります。Toolchain Execution Rules にも載りません。tool-runner のコンテナからは、主題そのものであるホストの状態が見えないからです。リポジトリの担当は穴を記録することまでで、塞ぐかどうかは運用組織の判断です。
+
+**塞ぐ場合の候補として検討したのは `perplexityai/bumblebee`** です。Apache-2.0、非 stdlib 依存ゼロの単一静的 Go バイナリ。lockfile・パッケージマネージャの install メタデータ・拡張機能の manifest・MCP の JSON 設定を読むだけで、パッケージマネージャを一切実行しないため、スキャンそのものが探すはずだったインシデントに化けることがありません。設定ファイルは持たず、プロファイル・走査ルート・exposure catalog・実行周期（`launchd` / `cron`）・出力先はすべて実行のたびに与えるもので、リポジトリの外に置かれます。つまり採否はアドバイザリが出たときの実行 1 回ごとの判断であって、このリポジトリのツールチェーンの判断ではありません。
+
 ## 正直な限界
 
 制御が支えられる以上に強い前提を誰かが置かないよう、明記します。
 
-- `harden-runner` は `audit` モードで動きます。egress を**記録**しますが、制限はしません。`block` への移行には許可エンドポイントの確定が必要で、監査データが溜まるまで意図的に見送っています。
+- `harden-runner` は `block` モードで動きます。allowlist の価値はその正確さ以上にはなりません。各一覧は実測ではなく各ジョブの動作から導いたもので、`.github/egress.toml` の SSOT から能力クラス単位で生成されるため、クラスはその中で最も狭いジョブより広くなります。`trufflehog` の 1 ジョブだけは意図的に `audit` のままです。上限のない発行元集合へ候補資格情報を問い合わせて検証するため、ここでのエンドポイント漏れはビルドを赤くせず、本物の漏洩を「未検証」に変えてしまうからです。
 - リリースゲートは **required status check** として登録されて初めてブロックします。そのブランチ保護規則が無ければ報告するだけで、報告／ゲートの分離はどこでも報告のみに退化します。
 - `CODEOWNERS` は **「Require review from Code Owners」** 規則の下でのみ強制されます。無ければレビュアーの自動要求に留まります。
 - 検知が届くのは PR コメントと run のアノテーションです。どちらも受動的で、アノテーションは run の保持期限とともに消えます。所管ロールが実際に見ているチャンネルへ流すことは別途追跡しています。
 
 ## 関連
 
-- [ADR-0084](../adr/0084-multi-layer-security-scanning.ja.md) — 層構成スキャン、報告／ゲートの分離、ランナーのハードニング
-- [ADR-0085](../adr/0085-sha-pinned-actions.ja.md) — Actions の SHA 固定と供給網の隔離期間
-- [ADR-0096](../adr/0096-release-image-supply-chain.ja.md) — リリースイメージの完全性（署名・provenance・SBOM）
-- [ADR-0079](../adr/0079-two-layer-golangci-config.ja.md) — 静的解析時のインプロセスチェックとしての `gosec`
+- [ADR-0086](../adr/0086-multi-layer-security-scanning.ja.md) — 層構成スキャン、報告／ゲートの分離、ランナーのハードニング
+- [ADR-0087](../adr/0087-sha-pinned-actions.ja.md) — Actions の SHA 固定と供給網の隔離期間
+- [ADR-0098](../adr/0098-release-image-supply-chain.ja.md) — リリースイメージの完全性（署名・provenance・SBOM）
+- [ADR-0081](../adr/0081-two-layer-golangci-config.ja.md) — 静的解析時のインプロセスチェックとしての `gosec`
 - [`.github/workflows/README.md`](../../../.github/workflows/README.md) — ワークフロー一覧と完全なトリガーマトリクス

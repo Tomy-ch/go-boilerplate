@@ -34,7 +34,6 @@ func TestV1PurchasesDeliver_Integration(t *testing.T) {
 	deliveredAt := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
 
 	// availableDeliverAdmin は、配達完了を要求する admin の認証ヘッダを返すローカルヘルパーです。
-	// EnvTest の Authorizer は allowall 固定のため、非 admin との差は usecase の戻り値で表現します。
 	availableDeliverAdmin := func(t *testing.T, e *echo.Echo) http.Header {
 		t.Helper()
 		return MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "deliver_int_admin"))

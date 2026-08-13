@@ -19,7 +19,6 @@ import (
 // maxSQSBatch は、ReceiveMessage の最大取得件数（SQS の仕様上限）です。
 const maxSQSBatch = 10
 
-// 実装漏れをコンパイル時に検出します。
 var _ worker.Consumer = (*consumer)(nil)
 
 // API は、Consumer が利用する SQS の操作のみを抽象化したものです（*sqs.Client が満たします）。

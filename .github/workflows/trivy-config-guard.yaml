@@ -1,14 +1,8 @@
 name: Config Scan (required-check guard)
 
-# Skip-guard companion for trivy-config.yaml. The `trivy-config` job is registered
-# as a required status check, but trivy-config.yaml only triggers when the PR
-# touches its `paths`; a PR that changes no Dockerfile would never report the
-# `trivy-config` context and would block merging forever.
-#
-# This workflow runs on the complementary set (`paths-ignore` mirrors
-# trivy-config.yaml's pull_request `paths`) and reports the same `trivy-config`
-# context as an immediate success. When both run, GitHub requires every same-named
-# check to pass, so this no-op can never mask a real trivy-config failure.
+# Skip-guard companion for trivy-config.yaml: reports the `trivy-config` required check as an immediate
+# success on the complementary set (`paths-ignore` mirrors the filter on trivy-config.yaml).
+# Both files' filters must be edited together — see README.md § Required-check guard companions.
 
 on:
   pull_request:

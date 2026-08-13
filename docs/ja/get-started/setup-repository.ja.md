@@ -120,10 +120,10 @@ curl http://localhost:8080/ready
 
 ## Phase 7: 手動書き換え
 
-1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
-2. [README.md](../../../README.md) は英語で書かれているので、必要に応じて [README.ja.md](../../../README.ja.md) を [README.md](../../../README.md) に置換しても構いません。
-    - ただし、[gen-docs-json.ts](../../../scripts/portal/gen-docs-json.ts) やその生成元になる [manifest.yaml](../../../docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
-    - また、portal表示のReactも EnとJp切り替えを持つので、README.mdを日本語にする場合は、portal表示のReactも書き換える必要があります。
+1. [README.md](../../../README.md), [README.ja.md](../../../README.ja.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。
+2. ドキュメントを 1 言語に絞るなら、対を畳んでも構いません（例えば [README.md](../../../README.md) を [README.ja.md](../../../README.ja.md) の内容で置き換える）。
+    - [gen-docs-json.ts](../../../scripts/portal/gen-docs-json.ts) と、それが生成元にする [manifest.yaml](../../../docs/portal/manifest.yaml) はどちらも README.md を参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
+    - portal の UI も En / Jp の切り替えを持つので、同じ手当てが要ります。
 3. [openapi.yaml](../../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。
     - Infoセクション全体をプロジェクトに合わせて書き換えてください。
         - title
@@ -140,9 +140,21 @@ curl http://localhost:8080/ready
 
 設定値の意味については、[env/README.ja.md](../../../env/README.ja.md) を参照してください。
 
+### clamp される設定値を確認する
+
+いくつかのサブシステムは、範囲外の値を起動失敗にせず安全な既定値へ **clamp** します。設定を誤ったプロセスでも走り続けられるようにする回復性のための選択です。clamp が働くのは `0` / 負値 / 不正値を明示的に設定したときだけで（同梱の env 変数は妥当な `envDefault` を持ちます）、それでも補正は実行時に黙って適用されるため、対応する `WORKER_*` / `OUTBOX_*` / `SECURE_COOKIE_*` を調整する際は以下を確認してください。
+
+- **ワーカーエンジン**（`WORKER_*`）— `Settings.normalize()`。[internal/controller/worker/README.ja.md](../../../internal/controller/worker/README.ja.md)（設定値の clamp）を参照。
+- **Outbox relay**（`OUTBOX_*`）— `provideRelaySettings`。[internal/controller/outbox/README.ja.md](../../../internal/controller/outbox/README.ja.md)（Settings → clamp）を参照。
+- **セキュアクッキー**（`SECURE_COOKIE_SAME_SITE`）— `normalizeSameSite` が `Lax` / `Strict` / `None` 以外の値を「上書きしない」へ clamp します。[internal/controller/httpstack/cookie/README.ja.md](../../../internal/controller/httpstack/cookie/README.ja.md) を参照。
+
 ## Phase 9: リポジトリの初期化
 
 ここまでの手順を完了したら、ファーストプッシュ後にリポジトリの初期化を行います。
+
+`setup-repo` は workflow を有効化してから ruleset を適用します。既存リポジトリへ required status
+check を適用する前に、宣言した各 context が PR で正常に報告されたことを確認してください。未報告の
+context を GitHub が待ち続けるとマージが止まります。
 
 ### GitHubテンプレートから始めた場合
 
@@ -222,10 +234,14 @@ make setup-remove-boilerplate-identity
 ```
 
 リポジトリを走査して `boilerplate-only` マーカーをすべて解決し、
-[boilerplate-only-conventions.ja.md](boilerplate-only-conventions.ja.md) とその正本を削除し、
-自身の make ターゲットの登録も外したうえで、ツール自身を撤去する。対象ファイルの一覧ではなく
-走査にしているのは、一覧というものはその外側にマーカーを書けてしまうからで、誰も剥がさない
-マーカーは、何も告げないままあなたのプロジェクトへ生き残る前提になる。
+[boilerplate-only-conventions.ja.md](boilerplate-only-conventions.ja.md) とその正本、および
+`docs/plan/**`（上流がまだ着手していないリリース線の要件）を削除し、自身の make ターゲットの
+登録も外したうえで、ツール自身を撤去する。対象ファイルの一覧ではなく走査にしているのは、
+一覧というものはその外側にマーカーを書けてしまうからで、誰も剥がさないマーカーは、何も告げない
+ままあなたのプロジェクトへ生き残る前提になる。
+
+`docs/project/roadmap.md` は**削除しない**。導入部が fork 向けの文面へ差し替わるよう書かれており、
+自分たちの方向を記録する場所として引き継げる。
 
 **触らないもの**: リポジトリ名・モジュール名（Phase 5 で置換済み）と、運用中も読み返す部分
 ——後述の clamp 設定レビューと除外 ADR。これらは複数のパッケージ README から参照されている。
@@ -267,7 +283,7 @@ grep -rl "setup-review" docs/adr/
 1. 許容する集合を Trivy 自身の分類（`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`）で決め、**出荷物とビルド専用ツールに同じ基準を当てるか**を判断する。同じでなくてよい：本リポジトリで `notice` / `unencumbered` 以外に分類される依存は、出荷されないビルド専用の `docker/tools/` 由来です。
 2. Trivy の分類は出発点であり権威ではないものとして扱う。`BlueOak-1.0.0` は OSI 承認の permissive ライセンスでありながら `unknown` に落ちるため、この種のケースは分類任せにせず明示的に決める。
 3. [.makefiles/security/trivy.mk](../../../.makefiles/security/trivy.mk) の `trivy-license-ci` へ閾値を追加し、`trivy-license` ジョブへ失敗させるステップを足す。パッケージ単位の例外は [.trivyignore.yaml](../../../.trivyignore.yaml) へ記録する。
-4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0084](../../../docs/adr/0084-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
+4. [.github/workflows/README.md](../../../.github/workflows/README.md) のトリガーマトリクスと [ADR-0086](../../../docs/adr/0086-multi-layer-security-scanning.md) のライセンス行を更新する（いずれも現状「方針なし」と記載しています）。
 
 ## Phase 15: サンプルAPIの削除
 
@@ -359,30 +375,54 @@ grep -rn "撤去後にこの箇所へ自分の例を置くための指針" docs/
 
 その場改訂を望むなら——生きられるのではなく出荷される設計文書にとっては正当な選択です——それはあなた自身の決定として、あなた自身の ADR に記録してください。上流がそうしていたという事実から導かないでください。
 
-<!-- dast:begin -->
 ## Phase 17: DAST のセットアップを残すかを決める
 
 DAST のセットアップだけ済ませてあります。[`.github/workflows/zap-api-scan.yaml`](../../../.github/workflows/zap-api-scan.yaml) は GitHub-hosted runner の中でこのアプリケーションを起動し、OpenAPI 定義から得たエンドポイント一覧をもとに、認証済みの [OWASP ZAP](https://www.zaproxy.org/) API スキャンを当てます。週次と手動で走り、結果は code scanning へ上がり、検出でビルドを落とすことはありません。動的スキャンが要るならそのまま使ってください。追加で配線するものはありません。
 
-**設定値は、このリポジトリに同梱されていた API を記述したものであって、あなたの API のものではありません。** [`.github/zap/rules.tsv`](../../../.github/zap/rules.tsv) のしきい値、スキャンが名乗るアイデンティティ、そのスキャンが到達する面は、いずれもその API が `ci` 環境プロファイルで何を返すかから導いた値です。あなたの API について何かを主張するものではありません。エンドポイントが違えば、受容してよい検出も違います。最初の週次実行の前にワークフロー冒頭のコメントを読み、実際の API に対して両方のファイルを導き直してください。引き継いだままの `IGNORE` は、二度と誰の目にも触れない検出になります。
+**設定値は、このリポジトリに同梱されていた API を記述したものであって、あなたの API のものではありません。** [`.github/zap/rules.tsv`](../../../.github/zap/rules.tsv) のしきい値、スキャンが名乗るアイデンティティ、そのスキャンが到達する面は、いずれもその API が `dast` 環境プロファイルで何を返すかから導いた値です（`ci` と違い、スタブの bearer トークンを受理するのではなく mock 認証サーバーが署名した実 JWT を検証します）。あなたの API について何かを主張するものではありません。エンドポイントが違えば、受容してよい検出も違います。最初の週次実行の前にワークフロー冒頭のコメントを読み、実際の API に対して両方のファイルを導き直してください。引き継いだままの `IGNORE` は、二度と誰の目にも触れない検出になります。
 
 **スキャンの到達先を指す値が 2 つあり、Phase 15 は両方をリセットします。** ワークフローは ZAP を起動する前に、保護されたオペレーション 1 つ（`PROBE_PATH`）を 1 つのアイデンティティ（`SCAN_SUBJECT`）で叩き、資格情報が受理されることを確かめます。資格情報が拒否されたスキャンは全ての保護オペレーションで 401 を集め、それでも「完了したスキャン」として報告されるからです。どちらの値もこのリポジトリに同梱されていた API を指しているため、その削除とともに撤去されます — `PROBE_PATH` は `/health` に、`SCAN_SUBJECT` は空になります。
 
 `/health` は資格情報なしで応答します。保護されたオペレーションがまだ 1 つも無い状態でもワークフローを動かせる代わりに、**何も証明しません。スキャンが未認証面しか見ていなくても実行は緑のままです。** ステップは黙って通さず毎回 warning を出しますが、読まれない warning は無いのと同じです。**保護されたオペレーションができ次第 `PROBE_PATH` をそこへ、シードに実在するアイデンティティへ `SCAN_SUBJECT` を向けてください。** それまでの DAST は、動いてはいても、存在意義である検査をしていません。
 
-要らなければ、丸ごと撤去してください。
+要らなければ、[`.github/workflows/zap-api-scan.yaml`](../../../.github/workflows/zap-api-scan.yaml) と [`.github/zap`](../../../.github/zap) を削除し、[`.github/actions-pin.toml`](../../../.github/actions-pin.toml) からスキャナ用 action のエントリを、[`.github/egress.toml`](../../../.github/egress.toml) から `zap-api-scan.yaml:dast` のジョブセクションを落としてください。`make pin-actions-check` と `make egress-check` はどちらも「どの workflow からも参照されないエントリ」で落ちるため、片方だけ忘れて黙って通ることはありません。有効/無効を切り替えるスイッチはありませんし、今後も設けません。残すとは残すことであり、設定されたまま無効なスキャナは、誰も読まず誰も保守しないものになります。
 
-```sh
-# 撤去対象のプレビュー（何も変更しません）
-docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
-  scripts/setup/remove-dast-setting --dry-run
+`dast` の環境プロファイルはこの削除の対象ではありません。スキャナではなく実行文脈を指す名前なので、mock された provider に対して実 authenticator を通したい他の用途にも `env/.env.dast` と `EnvDast` の分岐はそのまま使えます。
 
-# 撤去
-docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
-  scripts/setup/remove-dast-setting
+## Phase 18: 資格情報を要するスキャナを残すかを決める
+
+ここには、このリポジトリだけでは供給できないものを必要とするスキャナが 2 つあります。1 つはベンダーのサービス用トークンを要求する [`sonarqube.yaml`](../../../.github/workflows/sonarqube.yaml)、もう 1 つは GitHub Advanced Security を要する [`code-ql.yaml`](../../../.github/workflows/code-ql.yaml) で、後者は public リポジトリでは無料、private では課金されます。このリポジトリは public なのでどちらも無料です。あなたのリポジトリは public とは限らず、支払う意思があるとも限りません。
+
+決めるまでの間、壊れるものはありません。どちらもスキャン前に必要なものが揃っているかを確認し、無ければ自分をスキップして実行を緑のまま残します — 資格情報の欠如はスキャン結果ではなくセットアップの未了だからです。同じ経路が fork からの pull request も覆います。fork にはリポジトリの secret が一切渡らないためです。
+
+### 残す場合
+
+リポジトリへ secret を登録し、ベンダー側に対応するプロジェクトを作成してください。
+
+| Secret | ベンダー側のセットアップ |
+| --- | --- |
+| `SONAR_TOKEN` | [SonarQube Cloud](https://sonarcloud.io) で組織とプロジェクトを作成し、**Automatic Analysis を off** にする — on のままだとサーバー側がリポジトリを自分で解析し、CI の解析と衝突する |
+
+`sonar-project.properties` は SonarQube Cloud 上のプロジェクトを identify するものなので、設定というよりボイラープレート由来のアイデンティティです。Phase 5 の `make setup-replace-repository-reference` が README や OpenAPI の参照と併せて書き換えます。その Phase を飛ばした場合は、最初のスキャンの前に `sonar.projectKey` と `sonar.organization` を手で書き換えてください。さもないと解析結果が雛形側のプロジェクトへ送られます。
+
+### 撤去する場合
+
+```bash
+# プレビュー: 何も書かず、何もコミットしない。
+DRY_RUN=1 make setup-remove-licensed-scanners
+
+# 撤去。スクリプトは進行に応じてコミットするため、作業ツリーはクリーンである必要がある。
+make setup-remove-licensed-scanners
 ```
 
-ワークフロー本体・ZAP のルールファイル・[.github/workflows/README.md](../../../.github/workflows/README.md) とその日本語ミラーの該当行・この節・pin lockfile に残るスキャナ用 action のエントリ、そして最後にツール自身を削除します。有効/無効を切り替えるスイッチはありませんし、今後も設けません。残すとは残すことであり、設定されたまま無効なスキャナは、誰も読まず誰も保守しないものになります。
+スクリプトは両方を削除し、**製品ごとに別のコミットへ分けます**。すでに保有しているライセンスがあれば `git revert` 1 回で戻せます。
 
-撤去後に中身を参照したくなったら git の履歴から辿れます。撤去はコミット 1 つで、`git log -- .github/workflows/zap-api-scan.yaml` で見つかります。
-<!-- dast:end -->
+```bash
+git revert <「CI: SonarQube Cloud のワークフローを撤去する」のコミット>
+```
+
+この取り消しについて 2 点あります。README の行は製品ごとではなく最後の 1 コミットでまとめて外れます。2 製品が同じ表の隣り合う行を占めており、製品ごとに文書を編集すると最後の 1 つを除く全ての revert が衝突するためです — つまり復活させたスキャナは動きますが、文書には載らないままになります。もう 1 点、スキャナ間で共有される lockfile のエントリは、その最後の利用者を消したコミットが削除するため、revert すると未登録の参照で `make pin-actions-check` が赤くなることがあります。`make pin-actions-resolve` で戻り、どのエントリかは check が名指しします。
+
+ワークフローを消しても secret は消えません。`SONAR_TOKEN` はリポジトリ設定から自分で削除してください — 何にも使われていないトークンも、盗まれうるトークンであることに変わりはありません。
+
+有効/無効を切り替えるスイッチはありません。理由は Phase 17 と同じで、設定されたまま無効なスキャナは誰も読まず誰も保守しないものになるからです。`bearer.yaml` は意図的にこの集合の外です。Elastic License 2.0 は CI で走らせる分には何のコストも生まず、制約するのはサービスとしての再配布だけであり、それは別の問いとして [workflows の README](../../../.github/workflows/README.ja.md#bearer-のライセンスと撤去) に自分の答えを持っています。

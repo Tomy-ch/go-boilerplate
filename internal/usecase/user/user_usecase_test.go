@@ -284,8 +284,6 @@ func Test_usecase_CreateUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 
-			// 都道府県解決 → ユーザー永続化の呼出順序を固定する。
-			// Create に渡るエンティティが DTO と解決済み都道府県 ID・clock の現在時刻から構築されていることを検証する。
 			gomock.InOrder(
 				pftRepo.EXPECT().FindByName(
 					gomock.Any(),

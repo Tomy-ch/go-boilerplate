@@ -152,7 +152,7 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 5. 成功 → commit
 6. error → rollback
 
-※ pgx.Tx を利用したトランザクション管理です。
+- pgx.Tx を利用したトランザクション管理です。
 
 これにより **ネストトランザクションを安全に扱うことができます。**
 
@@ -175,12 +175,10 @@ context.WithTimeout(
 
 cleanup は **リクエストライフサイクルに依存してはいけません**。
 
-もし元の `ctx` をそのまま使うと:
-
-- request timeout / client cancel により
-- rollback / commit がキャンセルされ
-- トランザクションが開いたまま残り
-- connection pool が枯渇する可能性があります
+- リクエストがキャンセル（timeout / client 切断）された場合、元の `ctx` をそのまま使うと次が起きます:
+  - rollback / commit がキャンセルされる
+  - トランザクションが開いたまま残る
+  - connection が pool へ返らない
 
 `context.WithoutCancel(ctx)` を使うことで:
 
@@ -203,26 +201,6 @@ cleanup は **リクエストライフサイクルに依存してはいけませ
   - cleanup 未完了
 
 そのため、環境変数ではなく driver 内の定数として管理しています。
-
-ポイント:
-
-- `context.WithoutCancel(ctx)`
-  - リクエストキャンセルの影響を受けずに cleanup を実行
-  - trace / logger / correlation ID は維持される
-
-- `cleanupTimeout`
-  - cleanup（rollback / commit）に対する最大待機時間
-  - 現在は `5秒` に固定
-
-この値は**ビジネス設定ではなくインフラ保護のためのセーフティ値**です。
-
-- 長くしすぎると:
-  - goroutine 詰まり
-  - connection pool 枯渇
-- 短すぎると:
-  - cleanup 未完了
-
-そのため、通常は driver 内の定数として管理し、環境変数などで外部化しない方針としています。
 
 ### Context を必ず伝搬する
 

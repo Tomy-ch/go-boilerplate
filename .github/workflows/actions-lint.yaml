@@ -12,6 +12,7 @@ on:
       - 'scripts/pr-comment-secret-lint/index.ts'
       - 'scripts/pr-comment-fence-lint/index.ts'
       - 'scripts/actions-cutoff-lint/index.ts'
+      - 'scripts/actions-mise-pin-lint/**'
       # The decision logic lives in lib/; filtering on the entry points alone would miss it.
       - 'scripts/lib/workflow.ts'
       - 'scripts/pr-comment-secret-lint/secret.ts'
@@ -53,6 +54,11 @@ jobs:
             release-assets.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
             proxy.golang.org:443
             sum.golang.org:443
             index.golang.org:443
@@ -60,17 +66,16 @@ jobs:
             dl.google.com:443
             go.dev:443
             golang.org:443
-            mise.jdx.dev:443
-            mise-versions.jdx.dev:443
-            aquaproj.github.io:443
+            downloads.sqlc.dev:443
             nodejs.org:443
             registry.npmjs.org:443
             get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
-            downloads.sqlc.dev:443
-            astral.sh:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -83,17 +88,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: actionlint shellcheck node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # node runs the three checks actionlint cannot express (PR-comment secrets, fences,
-      # cut-off behaviour). They are TypeScript and run through `tsx`, hence pnpm as well.
-      - name: Install actionlint, shellcheck, node and pnpm
-        run: mise install actionlint shellcheck node npm:pnpm
+      # actionlint で表現できない Node 検査群は TypeScript で実行するため、pnpm も導入する。
 
       # The tree is the one `scripts/pnpm-lock.yaml` pins, so CI and the container resolve the
       # same versions.
@@ -112,10 +113,10 @@ jobs:
 
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
-            echo "title=## ✅ Actions lint: PASS (actionlint + composite-action shellcheck + pr-comment-secret-lint + pr-comment-fence-lint + actions-cutoff-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Actions lint: PASS (actionlint + composite-action shellcheck + Node 検査群)" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
-            echo "title=## ❌ Actions lint: FAIL (actionlint + composite-action shellcheck + pr-comment-secret-lint + pr-comment-fence-lint + actions-cutoff-lint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Actions lint: FAIL (actionlint + composite-action shellcheck + Node 検査群)" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0

@@ -23,6 +23,96 @@ COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 --
+-- Name: cart_items; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.cart_items (
+    id uuid NOT NULL,
+    cart_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    quantity integer NOT NULL,
+    last_seen_price numeric,
+    added_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT cart_items_quantity_positive CHECK ((quantity >= 1))
+);
+--
+-- Name: TABLE cart_items; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.cart_items IS 'カート明細';
+--
+-- Name: COLUMN cart_items.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.id IS 'ID';
+--
+-- Name: COLUMN cart_items.cart_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.cart_id IS 'カートID';
+--
+-- Name: COLUMN cart_items.product_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.product_id IS '商品ID';
+--
+-- Name: COLUMN cart_items.quantity; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.quantity IS '数量';
+--
+-- Name: COLUMN cart_items.last_seen_price; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.last_seen_price IS '最後に提示した価格';
+--
+-- Name: COLUMN cart_items.added_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.added_at IS '追加日時';
+--
+-- Name: COLUMN cart_items.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.created_at IS '作成日時';
+--
+-- Name: COLUMN cart_items.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.cart_items.updated_at IS '更新日時';
+--
+-- Name: carts; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.carts (
+    id uuid NOT NULL,
+    user_id uuid,
+    session_token text,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT carts_owner_exclusive CHECK (((user_id IS NULL) <> (session_token IS NULL)))
+);
+--
+-- Name: TABLE carts; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.carts IS 'カート';
+--
+-- Name: COLUMN carts.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.carts.id IS 'ID';
+--
+-- Name: COLUMN carts.user_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.carts.user_id IS '所有者のユーザーID';
+--
+-- Name: COLUMN carts.session_token; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.carts.session_token IS 'ゲストセッショントークン';
+--
+-- Name: COLUMN carts.expires_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.carts.expires_at IS '有効期限';
+--
+-- Name: COLUMN carts.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.carts.created_at IS '作成日時';
+--
+-- Name: COLUMN carts.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.carts.updated_at IS '更新日時';
+--
 -- Name: idempotency_keys; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.idempotency_keys (
@@ -247,6 +337,50 @@ COMMENT ON COLUMN public.product_categories.created_at IS '作成日時';
 --
 COMMENT ON COLUMN public.product_categories.updated_at IS '更新日時';
 --
+-- Name: product_images; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.product_images (
+    id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    image_path text NOT NULL,
+    sort_key smallint NOT NULL,
+    deleted_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+--
+-- Name: TABLE product_images; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.product_images IS '商品画像';
+--
+-- Name: COLUMN product_images.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.product_images.id IS 'ID';
+--
+-- Name: COLUMN product_images.product_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.product_images.product_id IS '商品ID';
+--
+-- Name: COLUMN product_images.image_path; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.product_images.image_path IS '画像パス';
+--
+-- Name: COLUMN product_images.sort_key; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.product_images.sort_key IS '順序';
+--
+-- Name: COLUMN product_images.deleted_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.product_images.deleted_at IS '削除日時';
+--
+-- Name: COLUMN product_images.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.product_images.created_at IS '作成日時';
+--
+-- Name: COLUMN product_images.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.product_images.updated_at IS '更新日時';
+--
 -- Name: product_statuses; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.product_statuses (
@@ -298,7 +432,6 @@ CREATE TABLE public.products (
     status_id uuid NOT NULL,
     category_id uuid NOT NULL,
     published_at timestamp with time zone,
-    image_path text,
     lock_version integer DEFAULT 1 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
@@ -343,10 +476,6 @@ COMMENT ON COLUMN public.products.category_id IS '商品カテゴリID';
 -- Name: COLUMN products.published_at; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.products.published_at IS '公開日時';
---
--- Name: COLUMN products.image_path; Type: COMMENT; Schema: public; Owner: -
---
-COMMENT ON COLUMN public.products.image_path IS '画像パス';
 --
 -- Name: COLUMN products.lock_version; Type: COMMENT; Schema: public; Owner: -
 --
@@ -715,6 +844,31 @@ COMMENT ON COLUMN public.users.updated_at IS '更新日時';
 --
 COMMENT ON COLUMN public.users.search_text IS '全文検索用テキスト';
 --
+-- Name: cart_items cart_items_cart_id_product_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.cart_items
+    ADD CONSTRAINT cart_items_cart_id_product_id_unique UNIQUE (cart_id, product_id);
+--
+-- Name: cart_items cart_items_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.cart_items
+    ADD CONSTRAINT cart_items_id_primary PRIMARY KEY (id);
+--
+-- Name: carts carts_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.carts
+    ADD CONSTRAINT carts_id_primary PRIMARY KEY (id);
+--
+-- Name: carts carts_session_token_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.carts
+    ADD CONSTRAINT carts_session_token_unique UNIQUE (session_token);
+--
+-- Name: carts carts_user_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.carts
+    ADD CONSTRAINT carts_user_id_unique UNIQUE (user_id);
+--
 -- Name: idempotency_keys idempotency_keys_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.idempotency_keys
@@ -769,6 +923,11 @@ ALTER TABLE ONLY public.product_categories
 --
 ALTER TABLE ONLY public.product_categories
     ADD CONSTRAINT product_categories_sort_key_unique UNIQUE (sort_key);
+--
+-- Name: product_images product_images_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.product_images
+    ADD CONSTRAINT product_images_id_primary PRIMARY KEY (id);
 --
 -- Name: product_statuses product_statuses_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -880,6 +1039,10 @@ ALTER TABLE ONLY public.users
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_id_primary PRIMARY KEY (id);
 --
+-- Name: carts_expires_at_index; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX carts_expires_at_index ON public.carts USING btree (expires_at);
+--
 -- Name: idempotency_keys_expires_at_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX idempotency_keys_expires_at_idx ON public.idempotency_keys USING btree (expires_at);
@@ -896,6 +1059,10 @@ CREATE INDEX outbox_pending_idx ON public.outbox USING btree (id) WHERE (status 
 --
 CREATE INDEX outbox_published_gc_idx ON public.outbox USING btree (published_at) WHERE (status = 'published'::text);
 --
+-- Name: product_images_product_id_sort_key_unique; Type: INDEX; Schema: public; Owner: -
+--
+CREATE UNIQUE INDEX product_images_product_id_sort_key_unique ON public.product_images USING btree (product_id, sort_key) WHERE (deleted_at IS NULL);
+--
 -- Name: purchases_user_id_ordered_at_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree (user_id, ordered_at DESC, id DESC);
@@ -903,6 +1070,26 @@ CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree
 -- Name: users_search_text_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX users_search_text_trgm_idx ON public.users USING gin (search_text public.gin_trgm_ops);
+--
+-- Name: cart_items cart_items_cart_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.cart_items
+    ADD CONSTRAINT cart_items_cart_id_foreign FOREIGN KEY (cart_id) REFERENCES public.carts(id) ON DELETE CASCADE;
+--
+-- Name: cart_items cart_items_product_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.cart_items
+    ADD CONSTRAINT cart_items_product_id_foreign FOREIGN KEY (product_id) REFERENCES public.products(id);
+--
+-- Name: carts carts_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.carts
+    ADD CONSTRAINT carts_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+--
+-- Name: product_images product_images_product_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.product_images
+    ADD CONSTRAINT product_images_product_id_foreign FOREIGN KEY (product_id) REFERENCES public.products(id);
 --
 -- Name: products products_category_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

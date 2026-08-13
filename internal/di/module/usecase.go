@@ -34,7 +34,6 @@ func UsecaseModule() fx.Option {
 	return fx.Module("usecase",
 		fx.Provide(
 			healthcheck.New,
-			// 具象 IdempotencyMetrics を usecase 境界の Metrics / GCMetrics の双方として供給する。
 			fx.Annotate(
 				observability.NewIdempotencyMetrics,
 				fx.As(new(idempotency.Metrics)),

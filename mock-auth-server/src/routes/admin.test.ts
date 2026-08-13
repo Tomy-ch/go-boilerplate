@@ -10,7 +10,6 @@ beforeEach(() => {
   keyStore.reset();
 });
 
-// rotate は /admin/keys/rotate を叩き、[status, body] を返す。
 async function rotate(app: ReturnType<typeof createApp>, action: string, kid: string): Promise<[number, Record<string, unknown>]> {
   const res = await app.request("/admin/keys/rotate", {
     method: "POST",

@@ -37,8 +37,7 @@ func EnsurePurchasable(purchaser *user.User) error {
 // 購入が取っているステータスです（重複の有無は問いません）。進行中の購入が 1 件でも残っている
 // 場合は ErrInProgressPurchaseExists を返します。
 //
-// 進行中かどうかの定義は購入集約が持つため（Status.IsTerminal の否定）ここでは再掲しません。
-// 終端でない新しいステータスが増えた場合も、既定で進行中として扱われます。
+// 進行中かどうかの定義は購入集約が持ちます（purchase.Status.IsTerminal の否定）。
 // 既に退会しているユーザーは退会の対象になり得ないため、user.ErrAlreadyDeleted を返します。
 func EnsureWithdrawable(withdrawing *user.User, statuses []purchase.Status) error {
 	if !withdrawing.IsActive() {

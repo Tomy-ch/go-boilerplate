@@ -76,7 +76,7 @@
    - 実際に使われている assertion スタイルと import セット。
 3. `docs/testing-conventions.md` を 1 回読み、parallel 必須・命名・require vs assert・mock 方針・層構造制約として扱う。
 
-sibling と README が矛盾する場合、**README 優先**（[[feedback-readme-priority]]）。
+sibling と README が矛盾する場合、**README 優先**。
 
 ## Step 2. テスト観点 subagent
 
@@ -113,6 +113,8 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 ハードルール:
 
 1. **1 関数 / メソッド = 1 `TestXxx`**。 `Foo` → `func TestFoo(t *testing.T)`、`(*User).UpdateProfile` → `func TestUser_UpdateProfile(t *testing.T)`。 同一 subject に対する複数 `TestXxx` は絶対に作らない。
+   - **逆方向 — 公開関数 / メソッドは各々が自分の `TestXxx` を持ち、1:1 の対応は弱いテストの回避より優先する。** 現時点で誠実に書ける assert が薄い（例: 些末なコンストラクタに対する `assert.NotNil(NewClock())`）というだけで、その subject 専用の `TestXxx` を削ったり作らなかったりしてはならない。将来の意味あるテストの置き場所として 1:1 の枠を残す。他の subject のテストから推移的に実行されていても、自分の `TestXxx` を持たない公開 subject は 1:1 違反である。
+   - **ある subject の検証を別の subject の `TestXxx` に畳み込まない** — 畳み込まれた側のテストの責務が濁る。`NewClock` の契約を `TestClockNow` の中で assert するのが畳み込みであり、コンストラクタ自身の assert は `TestNewClock` に属する。メソッドのテストが SUT を得るための fixture としてコンストラクタを*呼ぶ*のは畳み込みではない（畳み込みとは、コンストラクタ自体についての別の assert をメソッドのテストへ加えることを指す）。
 2. **複数 subject を 1 `TestXxx` に束ねない — 厳密 1:1、例外なし**。 全 getter を `TestEntity_Accessors` / `*_Getters` で一括検証するような統合テストは作らず、getter / accessor ごとに 1 つの `TestXxx` を用意する。 `AskUserQuestion` による束ねの分岐も rationale コメントによる免除も無い。 唯一の免除は、**検証不可能であるために到達できない** subject（例: 失敗経路が `tb.Fatalf` を呼ぶヘルパーは呼び出し側テストの終了を伴う）で、その場合も規約どおりの名前の `TestXxx` を宣言し `t.Skip("<なぜ検証不可能か>")` を呼ぶ — allowlist は持たず、理由は `t.Skip` の文字列に残す。 **「他のテストでカバー済み」は免除にならない**: その skip は subject を別テストの実装に依存させ、カバー元が縮小しても green のまま残るため、呼び出し元 / 統合 / DI グラフテストがたまたま通っていてもテスト可能な subject には実テストを書く。 `docs/testing-conventions.md` §1 に準拠し、`internal/architest`（1:1 枠は `TestUnitTestMappingCompleteness`、skip 理由は `TestSkipReasonDoesNotNameCoveringTest`）が機械的に強制する。
 3. **最外殻 2 つの `t.Run` の name は 必ず literal の `正常系` / `異常系` の 2 文字のみ**。 prefix 形式 (`正常系_xxx` / `異常系_xxx`) は NG。
    - 使うのは `t.Run("正常系", ...)` と `t.Run("異常系", ...)` のみ。group name はリテラルの 2 文字であって、 case 名のプレフィックスではない。
@@ -133,7 +135,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 
    - 両 group の直後に `t.Parallel()` を呼ぶ。 さらに細分化のためのネストグループ（例: `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) は可読性が上がるなら推奨で、 正常系 / 異常系 group の **内側に** 置く。
    - 1 つの `TestXxx` には `正常系` group が最大 1 個、 `異常系` group が最大 1 個。 正常系のみで構成されるなら `異常系` group は作らない（逆も同様）。 空のグループは作らない。
-4. **全ての `t.Run` の冒頭で `t.Parallel()` を呼ぶ**。例外: sibling ブロックと共有しているポインタを mutate する場合（`TestImmutableAccessors` の `building` / `deletedAt` ブロック等）は外側の `t.Run` を逐次にする。**ブロック直上にコメント必須**（`-race` で検出される競合を意図的に避けている旨を書く）。内部 case は引き続き `t.Parallel()`。
+4. **全ての `t.Run` の冒頭で `t.Parallel()` を呼ぶ**。例外: sibling ブロックと共有しているポインタを mutate する場合は外側の `t.Run` を逐次にする。**ブロック直上にコメント必須**（`-race` で検出される競合を意図的に避けている旨を書く）。内部 case は引き続き `t.Parallel()`。
 5. **table-driven `for` ループは禁止 — 常に逐次 `t.Run` sibling で書く**。 各ケースをそれぞれ独立した `t.Run` にする（`user_domain_test.go` のパターン）。`(input, expected)` の構造体スライスを `for _, tc := range cases` で回さない。個別に書き出すことで、失敗時に該当ケース名が出て、各ケースが `t.Parallel()` を呼べ、共有ループ本体でケース同士が結合しない。ゲッター/境界の似たアサーションが長く並ぶ場合でも同様（重複は許容し、table へ畳み込まない）。ケース単位の例外は無い — 尋ねず、逐次 `t.Run` で書く。
 6. **ケース名は日本語。 サブケース名に `正常系_` / `異常系_` プレフィックスは付けない**。 最外殻 group の name はリテラルの `正常系` / `異常系`。 サブケースは入力クラスと期待結果を 1 文で表す自由記述（`「<入力クラス>の場合、<結果>」`）。 そのまま読める文章になるように。サブケースは既に 正常系 / 異常系 group の下にいるため、 名前に `正常系_` / `異常系_` を付けると `正常系 > 正常系_xxx` のような二重ラベルになり冗長 → 禁止。 prefix は剥がす。
 7. **`require` vs `assert`**（`docs/testing-conventions.md` 準拠）:

@@ -16,3 +16,4 @@ Controller 層のテストは、設定済みの HTTP テストクライアント
 |`testauth`|テスト用認証コンテキストのセットアップ|
 |`testecho`|Echo テストクライアントビルダー|
 |`testspan`|Echo コンテキストへのテストスパン注入|
+|`testuuid`|テスト用の有効な UUID パス / クエリパラメータ値|

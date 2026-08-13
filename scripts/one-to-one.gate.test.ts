@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
+import yaml from "js-yaml";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
@@ -24,9 +25,16 @@ import { EXCLUDED_FROM_CHECKS } from "./lib/untested-modules";
  * Node の解決は import 元のファイル位置から始まるので、他パッケージから
  * `../../scripts/lib/one-to-one` を読むと `typescript` を `scripts/node_modules` に探しに行き、
  * 自分の依存しか入れない CI では解決できない。走査する側をここへ置けばその問題自体が消える。
+ *
+ * 走査対象は `PACKAGES` が持つ一方、このゲートを起こす条件は CI の `scripts-check.yaml` と
+ * 手元の `.lefthook.yaml` が別々に持つ。走査対象だけが増えるとゲートは起動しないまま緑を返すため、
+ * 末尾の describe が両者の整合も検査する。
  */
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, "..");
+
+const WORKFLOW_PATH = resolve(REPOSITORY_ROOT, ".github/workflows/scripts-check.yaml");
+const LEFTHOOK_PATH = resolve(REPOSITORY_ROOT, ".lefthook.yaml");
 
 /** 検査対象のパッケージ 1 件。 */
 type TargetPackage = {
@@ -209,5 +217,58 @@ describe.each(PACKAGES)("$name の 1:1 テスト対応", (target) => {
       },
       TIMEOUT_MS,
     );
+  });
+});
+
+/**
+ * `scripts-check.yaml` が `pull_request` で監視しているパス。
+ *
+ * @remarks
+ * `on.pull_request.paths` の形が変わった場合は空配列になり、呼び出し側が全パッケージを未カバーと
+ * して挙げます。ファイルを読めない場合は例外になり、どちらにしても緑では終わりません。
+ */
+function triggerPaths(): readonly string[] {
+  const workflow = yaml.load(readFileSync(WORKFLOW_PATH, "utf8")) as {
+    on?: { pull_request?: { paths?: string[] } };
+  };
+
+  return workflow.on?.pull_request?.paths ?? [];
+}
+
+/** `.lefthook.yaml` の `pre-push` でこのスイートを起こす glob。読めない場合は {@link triggerPaths} と同じ。 */
+function pushGlobs(): readonly string[] {
+  const lefthook = yaml.load(readFileSync(LEFTHOOK_PATH, "utf8")) as {
+    "pre-push"?: { commands?: { "scripts-test"?: { glob?: string[] } } };
+  };
+
+  return lefthook["pre-push"]?.commands?.["scripts-test"]?.glob ?? [];
+}
+
+/**
+ * `PACKAGES` のうち、与えられた起動条件に覆われていないソースルートを挙げる。
+ *
+ * @remarks
+ * 覆っていると認めるのは、ソースルートで始まり、その先にワイルドカードを持つエントリだけです。
+ * 単一ファイルを名指しするエントリは、ソースルートで始まっていても配下の他のファイルを起こさないため
+ * 覆っているとは扱いません。逆に、ワイルドカードの及ぶ範囲が配下の全ファイルかどうかまでは見ません。
+ */
+function uncoveredSourceRoots(entries: readonly string[]): string[] {
+  const covers = (sourceRoot: string) => (entry: string) =>
+    entry.startsWith(sourceRoot) && entry.slice(sourceRoot.length).includes("*");
+
+  return PACKAGES.map((target) => `${target.dir}/${target.sourcePrefix}`).filter(
+    (sourceRoot) => !entries.some(covers(sourceRoot)),
+  );
+}
+
+describe("ゲートを起動する条件の追従", () => {
+  describe("正常系", () => {
+    it("走査対象パッケージのソースは scripts-check.yaml の paths に覆われている", () => {
+      expect(uncoveredSourceRoots(triggerPaths()).join("\n")).toBe("");
+    });
+
+    it("走査対象パッケージのソースは .lefthook.yaml の pre-push glob に覆われている", () => {
+      expect(uncoveredSourceRoots(pushGlobs()).join("\n")).toBe("");
+    });
   });
 });

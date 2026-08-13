@@ -5,11 +5,9 @@
 .PHONY: actions-zizmor-sarif-ci ## zizmor の全所見を SARIF で標準出力へ書き出す(CI用)
 .PHONY: actions-zizmor-gate-ci ## zizmor の high 所見でゲート(CI用・オンライン監査込み)
 
-# tool-runner コンテナではなくホストで実行する。docs/rules.md「Toolchain Execution Rules」の
-# 既定はコンテナ経由だが、zizmor は上流が musl ビルドを配布しておらず（リリース資産は
-# unknown-linux-gnu / apple-darwin / pc-windows-msvc のみ）、alpine ベースの go_tool_runner に
-# は載せられない。専用の glibc ランナーを増やすほどの検査ではないため、golangci-lint と同じく
-# ホストの mise で解決し、provisioning を make install-tools が担う形に揃える。
+# ホスト実行の理由は docs/rules.md「Toolchain Execution Rules」（golangci-lint と同じ扱い）。
+# zizmor の上流リリース資産は unknown-linux-gnu / apple-darwin / pc-windows-msvc のみで
+# alpine の go_tool_runner に載らず、専用の glibc ランナーを増やすほどの検査ではない。
 # バージョンの正本は mise.toml。
 ZIZMOR := $(shell mise which zizmor 2>/dev/null || command -v zizmor 2>/dev/null || echo zizmor)
 

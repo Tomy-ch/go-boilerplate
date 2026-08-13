@@ -10,17 +10,8 @@ name: Tool Cooldown
 # `go-cooldown` only gates direct requirements. A declaration that has drifted from its lockfile is
 # reported as a violation, since the version cleared here would then not be the version installed.
 #
-# The window has two tiers, taken from the backend rather than from the tool. A version resolved
-# through a GitHub release (aqua / ubi / github) gets 14 days, the same as `pin-actions` and
-# `pin-images`, because a tag can be moved onto a different commit. A version resolved through a
-# package registry (go / npm / PyPI) gets 7 days, the same as `npm-cooldown-audit` and
-# `go-cooldown`, because a published version there is immutable.
-#
-# **Language runtimes are deliberately not checked.** If the go / node / python distribution
-# itself were compromised, the failure would not be one link of a supply chain but the trust
-# model of the language ecosystem, and a cooldown protects nothing against it. That is an
-# accepted risk, stated here so the gap reads as a decision rather than an oversight; runtimes
-# are governed instead by the separate policy of waiting for an LTS.
+# The window has two tiers (14 days for a GitHub release, 7 for a package registry) and language
+# runtimes are outside every window — both recorded in ADR-0088 (malicious-package-detection-via-cooldown).
 #
 # Short names are resolved by asking `mise registry`, because mise decides which backend a name
 # resolves to and a table kept here would drift silently the next time mise changes.
@@ -35,7 +26,7 @@ on:
       - '.github/tool-cooldown-bypass.toml'
       - '.github/workflows/tool-cooldown.yaml'
   schedule:
-    - cron: '0 11 * * 1'
+    - cron: '45 4 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -67,6 +58,11 @@ jobs:
             release-assets.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
             proxy.golang.org:443
             sum.golang.org:443
             index.golang.org:443
@@ -74,16 +70,16 @@ jobs:
             dl.google.com:443
             go.dev:443
             golang.org:443
-            mise.jdx.dev:443
-            mise-versions.jdx.dev:443
-            aquaproj.github.io:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
-            nodejs.org:443
-            registry.npmjs.org:443
-            downloads.sqlc.dev:443
-            astral.sh:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -99,15 +95,14 @@ jobs:
       # `mise registry` is what resolves a short name to its backend, so mise has to be present
       # even though no tool is installed here.
       - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The default checkout is shallow, so the base commit is absent and `git show
       # <base>:mise.toml` fails. Fetching the base ref explicitly is what makes the diff
       # resolvable; without it the gate cannot tell an added pin from an existing one.
+
       - name: Resolve gate base
         id: base
         shell: bash

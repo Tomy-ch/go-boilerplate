@@ -34,9 +34,8 @@ WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
 
 -- === source: database/dml/repository/user/delete_purged_users.sql ===
 -- name: DeleteUserIdentitiesByUserIDs :exec
--- 物理削除するユーザーに従属する認証アイデンティティを削除する。users より先に消して FK 違反を避ける。
--- 対象は論理削除済みのユーザーに限る。users 側のガードと条件を揃えないと、
--- 削除されないユーザーの従属行だけが失われ、ログインできない生存アカウントが残る。
+-- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る条件は DeleteUsersByIDs の
+-- WHERE と揃えること — ずれると、削除されないユーザーの従属行だけが失われる。
 DELETE FROM user_identities
 WHERE user_id IN (
         SELECT u.id
@@ -46,8 +45,8 @@ WHERE user_id IN (
     );
 
 -- name: DeleteUserRolesByUserIDs :exec
--- 物理削除するユーザーに従属するロール割り当てを削除する。users より先に消して FK 違反を避ける。
--- 対象を論理削除済みのユーザーに限る理由は DeleteUserIdentitiesByUserIDs と同じ。
+-- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
+-- DeleteUserIdentitiesByUserIDs と同じ。
 DELETE FROM user_roles
 WHERE user_id IN (
         SELECT u.id
@@ -57,9 +56,8 @@ WHERE user_id IN (
     );
 
 -- name: DeleteUsersByIDs :execrows
--- 物理削除の対象ユーザーを削除し、削除件数を返す。従属行の削除後に呼ばれる前提で、参照の残存はここでは検査しない。
--- 論理削除済みであることは、呼び手が候補列挙を誤っても現役ユーザーを不可逆に消さないための最終防壁として、
--- 保持期間の判定（Usecase の責務）とは別にここでも検査する。
+-- 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
+-- 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
 DELETE FROM users
 WHERE id = ANY(sqlc.arg('ids')::UUID [])
     AND deleted_at IS NOT NULL;
@@ -98,8 +96,8 @@ INSERT INTO users (
 -- === source: database/dml/repository/user/lock_user_by_id.sql ===
 -- name: LockUserByID :one
 -- ID から未削除のユーザーを 1 件、悲観ロック（FOR UPDATE）して取得する。
--- 退会は、この排他ロックを進行中購入の判定より前に取ることで購入作成（FOR SHARE）と直列化する。
 -- 論理削除済み・不存在はいずれも 0 行（NotFound）。
+-- 取得位置の不変条件は docs/spec/user/usecase.md の DeleteUser を参照（ADR-0033 (ordered-pessimistic-row-locks)）。
 SELECT sqlc.embed(u)
 FROM users AS u
 WHERE u.id = sqlc.arg('user_id_param')
@@ -108,12 +106,10 @@ FOR UPDATE;
 
 -- === source: database/dml/repository/user/lock_user_share_by_id.sql ===
 -- name: LockUserShareByID :one
--- ID からユーザーを 1 件、悲観ロック（FOR SHARE）して取得する。
--- ロックは機構であり、取得した状態が在籍かどうかの判定はドメイン（User.IsActive）が行うため、
--- ここでは退会済みを除外しない。
--- 共有ロック同士は両立するため同一ユーザーの並行取得は直列化されず、退会が取る FOR UPDATE とだけ
--- 衝突する。これにより「退会の判定通過 → 購入の成立 → 退会の確定」の順序が成立しなくなる。
--- 不存在は 0 行（NotFound）。
+-- ID からユーザーを 1 件、悲観ロック（FOR SHARE）して取得する。不存在は 0 行（NotFound）。
+-- 退会済みを除外しないこと — ロックは機構で、在籍かどうかの判定はドメイン（User.IsActive）が持つ。
+-- 退会との直列化は docs/spec/purchase/usecase.md の CreatePurchase を参照。
+-- ADR-0033 (ordered-pessimistic-row-locks)。
 SELECT sqlc.embed(u)
 FROM users AS u
 WHERE u.id = sqlc.arg('user_id_param')
@@ -121,8 +117,7 @@ FOR SHARE;
 
 -- === source: database/dml/repository/user/select_purge_candidate_users.sql ===
 -- name: ListPurgeCandidateUserIDsFirst :many
--- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する。
--- 先頭ページを返す。カーソル以降は対の After クエリが担う。
+-- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する（先頭ページ）。
 SELECT id
 FROM users
 WHERE deleted_at IS NOT NULL
@@ -131,9 +126,8 @@ ORDER BY id ASC
 LIMIT sqlc.arg('limit_param');
 
 -- name: ListPurgeCandidateUserIDsAfter :many
--- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する。
--- 物理削除の対象にならない行（購入を持つユーザー）を挟んでも前進できるよう、境界を after_id で受け取る。
--- 先頭ページは対の First クエリが担う。
+-- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する（after_id 以降）。
+-- 境界を offset でなく ID で受け取る理由は docs/spec/user/domain.md の FindDeletedBefore を参照。
 SELECT id
 FROM users
 WHERE deleted_at IS NOT NULL

@@ -111,7 +111,6 @@ func (u *relayUsecase) RelayBatch(ctx context.Context, batchSize int32) (RelayRe
 		batchSize = DefaultBatchSize
 	}
 
-	// claim〜mark を同一 tx 内で完結させることで、多インスタンス間での二重 publish を防ぐ。
 	return tx.DoWithResult(ctx, u.txm, func(ctx context.Context) (RelayResult, error) {
 		msgs, err := u.store.ClaimPending(ctx, batchSize)
 		if err != nil {

@@ -26,13 +26,13 @@
 - `internal/infrastructure/README.md` — infra 層規約
 - `internal/infrastructure/rdb/pgerror/README.md` — エラー正規化規則（SQLSTATE mapping、single-normalization-point 原則）
 - `internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` — **de facto reference 実装**（infra READMEs は principles を文章で記述するが完全な impl snippet はないため、sibling コードが最も近い具体例。ただし README ルールと衝突した場合は README が勝つ）
-- `internal/di/module/infrastructure.go` — DI 登録対象
+- `internal/di/module/persistence.go` — DI 登録対象
 
 **書き込み（承認後）**:
 
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository.go`
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository_test.go`
-- `internal/di/module/infrastructure.go`（`fx.Provide(<aggregate>.New)` 追加）
+- `internal/di/module/persistence.go`（`fx.Provide(<aggregate>.New)` 追加）
 
 **Triggers (via `make`)**:
 
@@ -135,7 +135,7 @@ Agent tool を起動して infra 層 test 観点を実装前に列挙:
 
 1. `<aggregate>_repository.go` — 主実装
 2. `<aggregate>_repository_test.go` — testkit backed integration test
-3. `internal/di/module/infrastructure.go` 更新 — `repository` module に `<aggregate>.New` 追加
+3. `internal/di/module/persistence.go` 更新 — `repository` module に `<aggregate>.New` 追加
 
 実装ファイル規約:
 
@@ -185,7 +185,7 @@ commit しない。
 
 「Exception: Skill Execution」clause により:
 
-- 書き込み scope: `internal/infrastructure/rdb/repository/<aggregate>/`（新規 dir）+ `internal/di/module/infrastructure.go`（1 行追加）
+- 書き込み scope: `internal/infrastructure/rdb/repository/<aggregate>/`（新規 dir）+ `internal/di/module/persistence.go`（1 行追加）
 - aggregate ディレクトリ既存時は中断
 
 触らない:
@@ -224,7 +224,7 @@ commit しない。
 - [ ] 計画表示（mapped + unmapped 明確に区別）し承認
 - [ ] 実装ファイル書き込み; mapped method は sqlc gen 呼び出し、unmapped method は TODO stub
 - [ ] テストファイル書き込み; mapped method のみテスト
-- [ ] `internal/di/module/infrastructure.go` 更新（新 `fx.Provide`）
+- [ ] `internal/di/module/persistence.go` 更新（新 `fx.Provide`）
 - [ ] `make fix` + `make test` 実行; coverage 報告（or 失敗 surface）
 - [ ] 最終サマリで mapped count + unmapped count + 次手順案内を明示
 - [ ] commit / push なし

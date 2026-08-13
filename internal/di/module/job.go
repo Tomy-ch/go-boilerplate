@@ -17,7 +17,6 @@ import (
 func JobModule() fx.Option {
 	return fx.Module("job",
 		provideJobs(
-			// ここにジョブのコンストラクタを追加します。
 			idempotencygc.New,
 			outboxgc.New,
 			productimagegc.New, // sample-api:line

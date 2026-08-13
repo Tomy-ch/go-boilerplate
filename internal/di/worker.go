@@ -47,8 +47,7 @@ func RunWorker(grace time.Duration) (StartFunc, StopFunc) {
 	)
 
 	start := func(ctx context.Context, name string, args []string) <-chan error {
-		// fx.Populate は fx.New 時点の invoke なので、グラフ構築が失敗すると対象は nil のまま残る。
-		// logger を触る前に構築エラーを返し、nil 参照ではなく DI エラーをオペレータへ届ける。
+		// RunJob と同じく、fx.Populate が nil を残す構築失敗を logger 参照より先に返す。
 		if err := app.Err(); err != nil {
 			return failClosedChan(err)
 		}

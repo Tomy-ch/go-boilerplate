@@ -103,9 +103,9 @@ func (u *usecase) GetProductsRanking(ctx context.Context, params GetRankingParam
 	return RankingView{Rankings: items}, nil
 }
 
-// ensurePublished は、集計結果の各行が「公開中」の定義を満たすことをドメインの述語で確かめます。
-// 集約を再構築しない経路のため突き合わせるのは公開日時だけですが、定義の所在はドメインに保たれます。
-// 外れた行はドリフトなので、黙って落とさずエラーにします。
+// ensurePublished は、集計結果の各行が product.IsPublished を満たすことを確かめます。
+// 集約を再構築しない経路のため突き合わせるのは公開日時のみです。乖離時の扱いは README の
+// Verifying infrastructure against the domain を参照。
 func ensurePublished(results []query.RankingResult) error {
 	for _, r := range results {
 		if !product.IsPublished(r.PublishedAt) {

@@ -23,12 +23,9 @@ import (
 const (
 	// ▼ カテゴリ単位のファイル連結ジョブの並列数チューニング定数（値の由来は README に記載）
 
-	// maxSQLCConcurrency:
-	//   占有してよい並列の上限。runtime.NumCPU() と組み合わせて Docker の CPU を極端に占有しないようにする。
+	// maxSQLCConcurrency は、並列数の上限です。
 	maxSQLCConcurrency = 4
-
-	// minSQLCConcurrency:
-	//   並列の下限。I/O 待ちが多く 1 だと非効率なので最低 2 を確保する。
+	// minSQLCConcurrency は、並列数の下限です。
 	minSQLCConcurrency = 2
 
 	genFilePerm = 0o644
@@ -294,7 +291,6 @@ func (g *Generator) buildCategorySQLFile(ctx context.Context, category, targetTy
 
 // ensureUnderDir は path が baseDir 配下かを検証します。
 func (g *Generator) ensureUnderDir(path string) error {
-	// 誤ったパス解決や path traversal により、想定外の場所を操作しないようにします。
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err

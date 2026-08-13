@@ -531,9 +531,6 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// ResolveKey は原因のみを持つ素の error を返し、ErrJWTAuthenticatorInvalidToken への
-		// 正規化は Authenticate の境界一箇所に集約する。内側でセンチネルを付けない契約を固定する
-		// （境界での正規化は TestNewJWKS の Authenticate 経由ケースで担保）。
 		t.Run("fetch がエラーの場合、正規化せず原因を素の error として伝播する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)

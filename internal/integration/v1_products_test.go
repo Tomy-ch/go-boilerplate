@@ -38,7 +38,9 @@ func TestV1Products_Integration(t *testing.T) {
 			StatusID:    uuidtestkit.NewTestFromSalt(t, "integration_status"),
 			CategoryID:  uuidtestkit.NewTestFromSalt(t, "integration_category"),
 			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
-			ImagePath:   ptr.To("products/integration_product.png"),
+			Images: []productuc.ProductImageItemView{
+				{Path: "products/integration_product.png", SortKey: 1},
+			},
 		}
 	}
 
@@ -51,7 +53,9 @@ func TestV1Products_Integration(t *testing.T) {
 			Quantity:    100,
 			CategoryId:  uuidtestkit.NewTestFromSalt(t, "integration_category").ToPrimitive(),
 			StatusId:    uuidtestkit.NewTestFromSalt(t, "integration_status").ToPrimitive(),
-			ImagePath:   ptr.To("products/integration_product.png"),
+			Images: ptr.To([]gen.ProductImageInput{
+				{ImagePath: "products/integration_product.png", SortKey: 1},
+			}),
 		}
 	}
 
@@ -63,7 +67,7 @@ func TestV1Products_Integration(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("POST /v1/products が admin で 201 を返し imagePath を往復する", func(t *testing.T) {
+		t.Run("POST /v1/products が admin で 201 を返し images を往復する", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -81,8 +85,9 @@ func TestV1Products_Integration(t *testing.T) {
 
 			var body gen.ProductResponse
 			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
-			require.NotNil(t, body.ImagePath)
-			assert.Equal(t, "products/integration_product.png", *body.ImagePath)
+			require.Len(t, body.Images, 1)
+			assert.Equal(t, "products/integration_product.png", body.Images[0].ImagePath)
+			assert.Equal(t, int32(1), body.Images[0].SortKey)
 			require.NotNil(t, body.Description)
 			assert.Equal(t, "説明", *body.Description)
 		})
@@ -102,7 +107,6 @@ func TestV1Products_Integration(t *testing.T) {
 
 			productshandler.BindHandler(e, tf, mockUC)
 
-			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products", nil, nil)
 			AssertJSONResponseType[gen.ProductListResponse](t, actual)
 		})
@@ -258,7 +262,6 @@ func TestV1Products_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			// NewCursor が失敗するため Usecase は呼ばれない。
 			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Times(0)
 
 			productshandler.BindHandler(e, tf, mockUC)

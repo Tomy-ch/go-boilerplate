@@ -78,14 +78,12 @@ func TestAuthn_WithUserID(t *testing.T) {
 			resolved, err := authn.WithUserID(id)
 			require.NoError(t, err)
 
-			// 元の Authn は未解決のまま、複製のみ解決済み。
 			assert.False(t, authn.HasUserID())
 			require.True(t, resolved.HasUserID())
 			gotID, err := resolved.UserID()
 			require.NoError(t, err)
 			assert.Equal(t, id, gotID)
 
-			// 複製は userID 以外のフィールドを引き継ぐ。
 			assert.Equal(t, authn.Subject(), resolved.Subject())
 			assert.Equal(t, authn.Issuer(), resolved.Issuer())
 			assert.Equal(t, authn.Scopes(), resolved.Scopes())

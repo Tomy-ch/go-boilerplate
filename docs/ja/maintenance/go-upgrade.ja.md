@@ -158,6 +158,8 @@ make install-tools
 - lefthook
 - gotests
 - impl
+- zizmor
+- shellcheck
 
 ## 7. Docker イメージは sync で自動反映
 
@@ -167,6 +169,31 @@ make install-tools
 
 Dockerfile 内の Go 以外のツール（air / dlv / golangci-lint 等）も `mise install <tool>` で導入されており、
 バージョンは `mise.toml` から解決されます。
+
+## 7.5. base image の digest pin を貼り直す
+
+`make sync-versions` が書き換えるのは `FROM golang:` の**タグ**であり、その隣に固定されている
+`@sha256:...` digest は古い Go イメージを指したままです。Docker は digest を優先するため、
+放置するとビルドは黙って古いイメージを使い続けます。digest がタグに追随するよう、レジストリから
+解決し直してください。
+
+```sh
+make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`
+make pin-images-apply
+make pin-images-check
+```
+
+**Go のリリース当日にこの手順を完了できることは通常ありません。** 新しい `golang:` タグは
+lockfile に前回のエントリを持たず、イメージは `PIN_IMAGES_MIN_AGE_DAYS`（既定 14 日）の
+クールダウン期間内にあります。退行先となる枯れた digest が無いため、`pin-images-resolve` は
+出来立ての digest を採用したりタグのみへ緩めたりせず fail-closed し、続く `pin-images-check` は
+残った古い digest を `未登録` として弾きます。lockfile は `docker/images-pin.toml`、ターゲットと
+クールダウンの設定値は `.makefiles/README.md` にあります。
+
+つまり Go の更新と base image の pin は連動しています。片付くのは、新しい Go イメージが
+クールダウンを抜けたときか、人が意図して `days=0` で bootstrap したときのいずれかです。これは
+提起すべき判断であって自分で決めるものではありません。どちらにせよ、タグと digest が食い違った
+状態をツリーに残してはいけません。
 
 ## 8. Docker コンテナ再ビルド
 
@@ -216,6 +243,8 @@ make lint
 以下のコマンドがすべて成功することを確認してください。
 
 ```sh
+make sync-versions
+make pin-images-check
 make tidy-lib
 make install-tools
 make gen
@@ -224,6 +253,8 @@ make lint
 make serve-build-clean
 make tool-runners-build-clean
 ```
+
+`make sync-versions` をここで再度回すのは、`mise.toml` とそこから導出されるファイルの間に取りこぼしたずれが残っていないかを、完了を報告する前に検出するためです。
 
 ## Upgrade Checklist
 
@@ -236,6 +267,7 @@ Go version を更新する際は以下を確認してください。
 - [ ] `make tidy-lib` 実行
 - [ ] （任意）Go モジュール依存を更新するか判断。更新する場合は `go get -u[=patch] ./...` + `make tidy-lib` 実行（`go` directive は据え置き）
 - [ ] `make install-tools` 実行
+- [ ] base image の digest pin を貼り直す（`make pin-images-resolve` → `apply` → `check`）。クールダウンで `resolve` が fail-closed した場合は押し通さずに判断を提起する
 - [ ] Docker コンテナ再ビルド（`make serve-build-clean`, `make tool-runners-build-clean`）
 - [ ] code generation 再実行
 - [ ] test 実行

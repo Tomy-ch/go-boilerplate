@@ -48,7 +48,6 @@ type stripState struct {
 // コンパイラも lint も守らない。参照より前に構築エラーを検査する形を構造として固定し、
 // 呼び出し箇所ごとに防御の有無が割れないようにする。
 //
-// 検出は depguard が go/ast を禁じるためテキスト走査で行う（既存 architest と同方針）。
 // 走査前にコメントと raw string の中身を落とし、字面の一致で誤検出しないようにしている。
 // 解析できるのは populate 対象が `&識別子` の直接形で、かつ fx.New の戻り値を変数で受けている
 // 呼び出しに限る。それ以外（`fx.Annotate` 等で包んだ形）は対象を一意に特定できないため検査せず、
@@ -85,7 +84,6 @@ func TestFxPopulateHasConstructionErrorGuard(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// 走査対象が 0 件だと検証が常に成功してしまうため、ルート解決の破綻を空振りとして検出する。
 	require.NotZero(t, analyzed, "解析できた fx.Populate が 0 件（moduleSubdirs のルート解決を疑う）")
 
 	sort.Strings(violations)

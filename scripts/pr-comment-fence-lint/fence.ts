@@ -181,10 +181,7 @@ export function scanWorkflow(
  * 複製された `fence_for` 実装が互いに一致するかを検査する。
  *
  * @remarks
- * 実装を composite action へ集約できないため複製が残ります。フェンス文字列を output 経由で
- * 受け取るとバッククォートがシェルの二重引用符文脈でコマンド置換になるからです。複製は意図した
- * 選択で、そのぶん片方だけが直る事故をここで止めます。先頭を基準にするのは、ずれた側だけを
- * 挙げるためです。
+ * 複製が残る理由は `extractFenceFor` を参照。先頭を基準にするのは、ずれた側だけを挙げるためです。
  */
 export function compareImplementations(
   implementations: ReadonlyArray<readonly [string, string]>,

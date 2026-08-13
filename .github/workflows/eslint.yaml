@@ -1,0 +1,261 @@
+name: ESLint Scan
+
+# ESLint with eslint-plugin-security over the three TypeScript workspaces. What it adds
+# over CodeQL's javascript-typescript leg and Opengrep's p/typescript rules is
+# ecosystem-specific knowledge those two do not encode: a RegExp built from a
+# non-literal, a comparison that leaks timing, `child_process` reached from application
+# code, a Buffer constructed without assertions.
+#
+# One workflow with a leg per workspace rather than three workflows, mirroring
+# code-ql.yaml. The three trees resolve independently — docs-viewer and scripts each own
+# a pnpm-workspace.yaml and its own lockfile — so a shared install is not
+# available, but a shared verdict is not wanted either: `fail-fast: false` keeps one
+# leg's failure from cancelling the others and leaving their categories stale.
+#
+# **Report-only, and every rule in the preset is a warning.** The initial baseline is
+# non-zero (scripts is repository tooling that reads paths it computes, which
+# detect-non-literal-fs-filename flags on sight), so gating on it would fail unrelated
+# pull requests over findings nobody has triaged. Tightening the preset, or suppressing
+# a rule that only ever fires on build tooling, is a decision to take against a measured
+# baseline rather than at adoption time.
+#
+# There is no pull-request comment. The baseline is over a hundred warnings, and a
+# comment reproducing them on every pull request would bury the checks that do have
+# something to say. The findings go to code scanning, where an alert introduced by the
+# change under review surfaces on the diff — the same arrangement code-ql.yaml uses.
+#
+# ESLint ships no SARIF formatter and @microsoft/eslint-formatter-sarif is not usable
+# here: it declares `eslint: ^8.9.0` and `jschardet: latest`, so adopting it would nest
+# an end-of-life ESLint 8 in all three lockfiles and leave one dependency unbounded. The
+# JSON report is mapped below instead, as zap-api-scan.yaml already does for ZAP.
+#
+# **This job executes code the pull request controls, which the other scanners do not.** A
+# flat config is a module ESLint imports, so `eslint.config.js` — a file any pull request
+# may edit — runs inside this job; Grype and DevSkim are compiled binaries that only read.
+# The permissions below are the whole containment: no `pull-requests: write` (nothing here
+# comments), no `id-token`, no secret reaching any step, and harden-runner refusing egress.
+# Adding a permission to this job means deciding first whether a pull-request author
+# should have it.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/eslint.yaml'
+      - 'docs-viewer/**'
+      - 'scripts/**'
+      - 'mock-auth-server/**'
+  pull_request:
+    paths:
+      - '.github/workflows/eslint.yaml'
+      - 'docs-viewer/**'
+      - 'scripts/**'
+      - 'mock-auth-server/**'
+  schedule:
+    # A preset update turns unchanged code into a finding, which is what the weekly run
+    # is for.
+    - cron: '45 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      # One workspace failing must not cancel the others: their SARIF uploads are
+      # independent, and a cancelled leg leaves its category's alerts stale.
+      fail-fast: false
+      matrix:
+        workspace:
+          - docs-viewer
+          - scripts
+          - mock-auth-server
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install the workspace tree
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run: pnpm install --dir "${WORKSPACE}" --frozen-lockfile
+        shell: bash
+
+      # Invoked through the package script rather than the binary, so the scanned target
+      # is declared once in package.json and the local run and this job cannot drift.
+      # Going through `run` also keeps pnpm-workspace.yaml's verifyDepsBeforeRun active,
+      # which reaching into node_modules/.bin would bypass.
+      #
+      # That script writes into `node_modules/`, which is not squeamishness about a
+      # stray file: several of this repository's own checks walk the source tree, and a
+      # report left in the workspace root gets read as source. It embeds excerpts of
+      # every file it flagged, so the removal markers quoted inside it register as real
+      # ones and `marker-baseline` and the sample-removal manifests all fail. Everything
+      # already skips `node_modules`, which makes it the one place the report is inert.
+      #
+      # Exit code 1 means ESLint found problems and 2 means ESLint itself could not run —
+      # a broken config, an unparsable file. Only the second is this job's failure.
+      - name: ESLint scan
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run: |
+          set -uo pipefail
+          pnpm --dir "${WORKSPACE}" run lint:security:json
+          code=$?
+          if [ "${code}" -ge 2 ]; then
+            echo "::error::ESLint could not complete in ${WORKSPACE} (exit ${code})"
+            exit "${code}"
+          fi
+        shell: bash
+
+      # ESLint reports absolute paths; code scanning anchors an alert only to a
+      # repository-relative one.
+      - name: Convert the ESLint report to SARIF
+        if: always()
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run: |
+          set -euo pipefail
+
+          report="${WORKSPACE}/node_modules/.eslint-report.json"
+          if [ ! -f "${report}" ]; then
+            echo "::error::ESLint produced no JSON report; the scan did not complete"
+            exit 1
+          fi
+
+          jq --arg root "${GITHUB_WORKSPACE}/" --arg ws "${WORKSPACE}" '
+            def level: {"2": "error", "1": "warning"}[(.severity | tostring)] // "note";
+
+            [ .[] as $f | ($f.messages // [])[] | . + { uri: ($f.filePath | ltrimstr($root)) } ] as $msgs
+            | {
+                "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+                version: "2.1.0",
+                runs: [
+                  {
+                    tool: {
+                      driver: {
+                        name: ("ESLint (" + $ws + ")"),
+                        informationUri: "https://eslint.org/",
+                        rules: (
+                          $msgs
+                          | map(.ruleId // "eslint/fatal")
+                          | unique
+                          | map({ id: ., properties: { tags: ["security"] } })
+                        )
+                      }
+                    },
+                    results: (
+                      $msgs
+                      | map({
+                          ruleId: (.ruleId // "eslint/fatal"),
+                          level: level,
+                          message: { text: .message },
+                          locations: [
+                            {
+                              physicalLocation: {
+                                artifactLocation: { uri: .uri },
+                                region: {
+                                  startLine: (.line // 1),
+                                  startColumn: (.column // 1)
+                                }
+                              }
+                            }
+                          ]
+                        })
+                    )
+                  }
+                ]
+              }
+          ' "${report}" > eslint.sarif
+
+          echo "${WORKSPACE}: $(jq '.runs[0].results | length' eslint.sarif) finding(s)" >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload ESLint report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: eslint-${{ matrix.workspace }}
+          path: |
+            ${{ matrix.workspace }}/node_modules/.eslint-report.json
+            eslint.sarif
+
+      # Per-workspace category: code scanning keys a SARIF upload by it, so a shared
+      # category would make each leg overwrite the previous one's alerts.
+      - name: Upload ESLint SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: eslint.sarif
+          category: eslint-${{ matrix.workspace }}
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: eslint
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.eslint.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: eslint
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

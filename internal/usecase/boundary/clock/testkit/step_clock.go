@@ -13,10 +13,8 @@ var (
 	_ clock.Sleeper = (*StepClock)(nil)
 )
 
-// StepClock は、Sleep のたびに固定 step だけ現在時刻を進める、決定的なテスト用の
-// clock.Clock 兼 clock.Sleeper です。retry / deadline 規律を実時間や backoff の乱数
-// (jitter) に依存させず決定的に検証するために用います。Sleep は要求された待機時間 d では
-// なく固定 step だけ時刻を進めるため、jitter で d がばらついても時刻の進みは一定です。
+// StepClock は、Sleep のたびに要求された待機時間 d ではなく固定 step だけ現在時刻を進める、
+// 決定的なテスト用の clock.Clock 兼 clock.Sleeper です。
 type StepClock struct {
 	mu   sync.Mutex
 	now  time.Time

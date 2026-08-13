@@ -196,8 +196,6 @@ func TestRunFix(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			runner := mock_exec.NewMockRunner(ctrl)
 
-			// REINDEX DATABASE は接続中のデータベースしか対象にできないため、設定が local を指していても
-			// 指定した template1 へ接続し直すことを、psql へ渡す接続 URL で固定する。
 			const targetURL = "postgres://user@localhost:5432/template1?sslmode=disable"
 			gomock.InOrder(
 				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand,

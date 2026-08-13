@@ -27,11 +27,8 @@ type Compose interface {
 type ExecCompose struct{}
 
 // UpSharedDB は `docker compose --profile database up -d --wait --no-recreate database` を実行します。
-// --no-recreate は、稼働中のコンテナを他の checkout が使っている前提に立つものです。compose の
-// config-hash は bind mount と build context の解決後の絶対パスを含むため、同一コミットでも
-// 呼び出す worktree が違えば差分ありと判定され、既定では毎回作り直しになります。
-// make 側（INFRA_NO_RECREATE）と違い条件を持ちません。スロットを取ること自体が共有インフラを
-// 他の checkout と分け合うという宣言であり、その状況でだけこの経路が走るためです。
+// --no-recreate を外すと、他の checkout が使っている稼働中コンテナを作り直します
+// （経緯と config-hash の仕組みは docs/maintenance/db-worktree-pool.md）。
 func (c ExecCompose) UpSharedDB(ctx context.Context, project string) error {
 	return c.run(ctx, project, "--profile", "database", "up", "-d", "--wait", "--no-recreate", "database")
 }

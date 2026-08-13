@@ -31,7 +31,7 @@ func Get{{.NameCamel}}(ctx context.Context) ({{.Type}}, bool) {
 	return zero, false
 }
 
-// --- echo.Context wrapper（std lib 版へ委譲） ---
+// --- echo.Context wrapper ---
 
 func Set{{.NameCamel}}ToEcho(c *echo.Context, val {{.Type}}) {
 	ctx := Set{{.NameCamel}}(c.Request().Context(), val)

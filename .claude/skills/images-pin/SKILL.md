@@ -130,12 +130,9 @@ Summarize in Japanese: images newly pinned / digest-refreshed (with the digest a
 
 ## Notes
 
-- **The tag is off-limits.** This skill only moves digests. A version bump is `go-upgrade` / `tools-upgrade` + `make sync-versions`.
-- **Rule 2 quarantine is normal, not a failure; rule 3 is.** Official base images rebuild frequently, so a fresh current digest is common; when a prior aged pin exists the gate keeps it (rule 2) — expected. But a fresh image with *no* prior pin (rule 3) has no vetted step-back target, so `resolve` fails closed rather than shipping it tag-only or adopting it.
 - **A fast-moving tag can stall.** If a tag is rebuilt more often than every `N` days, the current digest is always fresh and the pin never advances past the last aged one. That is the accepted cooldown cost; lower `N` deliberately (and note the risk) only if a security patch must be adopted sooner — and when you do, triage the digest first (step 2.5) rather than overriding on urgency alone.
 - **Thin evidence is a property of the ecosystem, not a gap in the triage.** A rebuild has no source diff to read, so `/supply-chain-triage` here leans on the SBOM package diff and the image config and frequently returns INSUFFICIENT-EVIDENCE. Rule 2 and rule 3 exist precisely because this ecosystem cannot answer directly; that is why the cooldown is 14 days rather than 7.
 - **Multi-arch digest.** `resolve` pins the top-level image-index digest (Docker resolves the per-platform manifest from it), and reads the earliest per-platform `created` for the age check (most conservative).
-- **`check` is network-free.** It reads the lockfile + Dockerfiles + compose files only, so it is safe as a CI / pre-commit gate even without registry access.
 - **Enforcement.** The local gate is the lefthook `pin-images` pre-commit hook (glob-filtered to `docker/**/Dockerfile` + `docker-compose*.yaml` + `docker/images-pin.toml`) plus the `pin-images-check.yaml` CI workflow (paths filter likewise includes `docker-compose*.yaml`) — both mirror `pin-actions`. Escalating to a *required* status check (a hard merge block via the branch ruleset) is intentionally **left to the downstream template consumer**: the boilerplate ships the check, not the mandate. Note a path-filtered workflow made a required check blocks PRs that do not touch those paths, so that escalation also needs an always-run adjustment — another reason it is deferred to the consumer.
 - **Idempotency**: a second `apply` is a no-op and `pin-images-check` passes.
 - The skill never auto-pushes.

@@ -225,8 +225,6 @@ func Test_logFieldBuilder_BuildSQLEndFields(t *testing.T) {
 				ParentSpanID: "px",
 			}
 
-			// trace_id / span_id は Logger が ctx から注入するため builder 出力には含まれない。
-			// parent_span_id のみ builder が付与する（obs 有効時）。
 			expected := []*Field{
 				String(EventTypeKey, EventTypeEnd),
 				Time(EventAtKey, s.EventAt),

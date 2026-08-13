@@ -11,6 +11,42 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
+// カート明細
+type CartItems struct {
+	// ID
+	ID uuid.UUID
+	// カートID
+	CartID uuid.UUID
+	// 商品ID
+	ProductID uuid.UUID
+	// 数量
+	Quantity int32
+	// 最後に提示した価格
+	LastSeenPrice *decimal.Decimal
+	// 追加日時
+	AddedAt time.Time
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
+// カート
+type Carts struct {
+	// ID
+	ID uuid.UUID
+	// 所有者のユーザーID
+	UserID *uuid.UUID
+	// ゲストセッショントークン
+	SessionToken *string
+	// 有効期限
+	ExpiresAt time.Time
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 // 冪等性キー
 type IdempotencyKeys struct {
 	// ID
@@ -97,6 +133,24 @@ type ProductCategories struct {
 	UpdatedAt time.Time
 }
 
+// 商品画像
+type ProductImages struct {
+	// ID
+	ID uuid.UUID
+	// 商品ID
+	ProductID uuid.UUID
+	// 画像パス
+	ImagePath string
+	// 順序
+	SortKey int16
+	// 削除日時
+	DeletedAt *time.Time
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 // 商品ステータス
 type ProductStatuses struct {
 	// ID
@@ -133,8 +187,6 @@ type Products struct {
 	CategoryID uuid.UUID
 	// 公開日時
 	PublishedAt *time.Time
-	// 画像パス
-	ImagePath *string
 	// 楽観ロックバージョン
 	LockVersion int32
 	// 作成日時

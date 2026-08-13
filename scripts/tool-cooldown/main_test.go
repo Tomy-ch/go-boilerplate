@@ -284,8 +284,6 @@ func Test_parsePyRequirements(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// キーを mise の宣言と同じ backend 付きへ揃えないと、窓の判定もバイパスのキーも
-		// 宣言の経路ごとに分かれてしまう。
 		t.Run("extras 込みの名前を backend 付きのキーとして読む", func(t *testing.T) {
 			t.Parallel()
 			got, err := parsePyRequirements([]byte(pyRequirementsFixture))
@@ -294,7 +292,6 @@ func Test_parsePyRequirements(t *testing.T) {
 			assert.Equal(t, "pypi:graphifyy[sql]@0.9.25", got[0].id())
 		})
 
-		// 範囲指定は版を決めていないので、cooldown を測る対象そのものが無い。
 		t.Run("== で固定されていない行は読まない", func(t *testing.T) {
 			t.Parallel()
 			got, err := parsePyRequirements([]byte("sqlfluff>=4.0\n-r other.in\n"))
@@ -342,7 +339,6 @@ func Test_parseDeclarations(t *testing.T) {
 			assert.Equal(t, "pypi:graphifyy[sql]@0.9.25", got[1].id())
 		})
 
-		// 注釈を宣言した場所へ付けられないと、指摘を読んでも直す先が分からない。
 		t.Run("宣言元のパスをツールに持たせる", func(t *testing.T) {
 			t.Parallel()
 			got, err := parseDeclarations([]declaration{
@@ -616,7 +612,6 @@ func Test_readBypasses(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 読み飛ばしを許すと、書き損じたエントリが「存在しない」状態を警告なく作る。
 		t.Run("解釈できない行はエラーにする", func(t *testing.T) {
 			t.Parallel()
 			_, err := readBypasses(writeBypass(t, "これは TOML ではない\n"))
@@ -631,7 +626,6 @@ func Test_readBypasses(t *testing.T) {
 			assert.ErrorIs(t, err, errBypassInvalidLine)
 		})
 
-		// 後勝ちの上書きを許すと、どちらのエントリが効くかが行順で決まる。
 		t.Run("キーの重複はエラーにする", func(t *testing.T) {
 			t.Parallel()
 			line := `"a@1" = { expires = 2026-11-06, issue = 1, reason = "r" }` + "\n"
@@ -709,7 +703,6 @@ func Test_validateBypasses(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 放置されたバイパスは恒久 allowlist と区別が付かなくなるので、期限で必ず回収する。
 		t.Run("期限切れは違反にし効力も失わせる", func(t *testing.T) {
 			t.Parallel()
 			violations, invalid := validateBypasses(map[string]bypass{
@@ -720,7 +713,6 @@ func Test_validateBypasses(t *testing.T) {
 			assert.Contains(t, invalid, "aqua:owner/repo@1.2.3")
 		})
 
-		// 期限を遠い未来へ置くだけで、期限切れ検査を素通りする恒久 allowlist を作れてしまう。
 		t.Run("上限を越えた期限は違反にし効力も失わせる", func(t *testing.T) {
 			t.Parallel()
 			violations, invalid := validateBypasses(map[string]bypass{
@@ -777,7 +769,6 @@ func Test_verifyLocks(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 宣言だけ上げて再生成し忘れると、cooldown を通した版と実際に入る版が別物になる。
 		t.Run("lockfile が別の版を固定していれば違反にする", func(t *testing.T) {
 			t.Parallel()
 			req := writePair(t, strings.Replace(pyLockFixture, "graphifyy==0.9.25", "graphifyy==0.9.24", 1))
@@ -944,7 +935,6 @@ func Test_summary(t *testing.T) {
 			assert.Contains(t, got, "npm:@redocly/cli@2.31.4")
 		})
 
-		// 取得できなかったものがサマリから消えると、「見た結果 OK」と「見ていない」が読み分けられない。
 		t.Run("公開時刻を取得できなかったものを見出し付きで並べる", func(t *testing.T) {
 			t.Parallel()
 			got := summary("gate", nil, []tool{{key: "asdf:x", version: "1.0.0", backend: "asdf:x"}}, nil, nil, nil, nil, nil)
@@ -1042,8 +1032,6 @@ func Test_added(t *testing.T) {
 			assert.Equal(t, "aqua:fake/tool@9.9.9", got[0].id())
 		})
 
-		// 宣言ファイルを増やした pull request では、そのファイルが base に存在しない。これを
-		// エラーにすると gate が新しい宣言を検査できないまま落ち続ける。
 		t.Run("base に無い宣言ファイルはその時点で空だったものとして扱う", func(t *testing.T) {
 			t.Parallel()
 
@@ -1058,7 +1046,6 @@ func Test_added(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// base を取れないまま空の差分を返すと、gate は何も検査せずに通ってしまう。
 		t.Run("base の ref を解決できなければエラーにする", func(t *testing.T) {
 			t.Parallel()
 
@@ -1082,7 +1069,6 @@ func Test_baseDeclarations(t *testing.T) {
 			assert.Contains(t, string(got[0].content), "[tools]")
 		})
 
-		// 宣言ファイルを増やした pull request では、そのファイルが base に存在しない。
 		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("base に無い宣言ファイルは飛ばす", func(t *testing.T) {
 			got, err := baseDeclarations("HEAD", []string{"python/no-such-file-for-cooldown-test.in"})
@@ -1101,7 +1087,6 @@ func Test_baseDeclarations(t *testing.T) {
 			assert.Contains(t, err.Error(), "base を取得できていない可能性があります")
 		})
 
-		// mise.toml はどの base にもあるはずのファイルで、不在は base の取り違えを意味する。
 		// 新しい宣言ファイルと同じく空として扱うと、gate は全件を差分として検査し始める。
 		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("base に mise.toml が無ければエラーにする", func(t *testing.T) {
@@ -1157,7 +1142,6 @@ func Test_addedFrom(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 解析できなかった base を空の宣言として扱うと、gate は差分を取れないまま素通りする。
 		t.Run("base を解析できなければエラーにする", func(t *testing.T) {
 			t.Parallel()
 			unreadable := "[tools]\n" + strings.Repeat("a", bufio.MaxScanTokenSize+1) + "\n"
@@ -1176,7 +1160,6 @@ func Test_miseRegistry(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 出力全体を採ると backend が空白を含み、以降の種別判定がすべて空振りする。
 		t.Run("候補が複数あっても先頭だけを backend にする", func(t *testing.T) {
 			t.Parallel()
 			got, err := miseRegistry(t.Context(), "sqlc")
@@ -1210,7 +1193,6 @@ func Test_firstBackend(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 出力全体を採ると backend が空白を含み、以降の種別判定がすべて空振りする。
 		t.Run("候補が複数あっても先頭だけを採る", func(t *testing.T) {
 			t.Parallel()
 			got, err := firstBackend([]byte("aqua:sqlc/sqlc ubi:sqlc/sqlc\n"), "sqlc")
@@ -1293,7 +1275,6 @@ func Test_inspect(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 取得できなかったものを黙って落とすと、「見た結果 OK」と「見ていない」を区別できなくなる。
 		t.Run("公開時刻を取得できない backend は unresolved として返す", func(t *testing.T) {
 			t.Parallel()
 			findings, unresolved := inspect(t.Context(), offlineClient(),
@@ -1501,7 +1482,6 @@ func Test_goModuleAt(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// mise の go backend はパッケージパスを受けるが、proxy が知るのはモジュールパスだけ。
 		t.Run("パッケージパスから遡ってモジュールパスで解決する", func(t *testing.T) {
 			t.Parallel()
 			client := fakeUpstream(t, respondJSON("/go.uber.org/mock/@v/v0.6.0.info", `{"Time":"2026-07-20T00:00:00Z"}`))
@@ -1523,8 +1503,6 @@ func Test_goModuleAt(t *testing.T) {
 			require.ErrorIs(t, err, errNotFound)
 		})
 
-		// スラッシュが無いと遡る先が無く一度も問い合わせられない。ここで nil を返すと、呼び出し側は
-		// ゼロ値の時刻を公開から数十年経った版と読み、そのツールが窓を無条件に通過する。
 		t.Run("遡れるモジュールパスが無ければ問い合わせずにエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			client := fakeUpstream(t, respondStatus(http.StatusNotFound))
@@ -1763,7 +1741,6 @@ func Test_report(t *testing.T) {
 			assert.Contains(t, out, "cooldown 14 日を満たしていません")
 		})
 
-		// audit は棚卸しなので、窓内のツールが見つかっても定期実行を落とさない。
 		t.Run("audit は窓内のツールをブロック件数に数えない", func(t *testing.T) {
 			var count int
 			out := captureLog(t, func() {
@@ -1773,7 +1750,6 @@ func Test_report(t *testing.T) {
 			assert.Contains(t, out, "⚠️")
 		})
 
-		// 期限切れの回収はスケジュール実行に懸かっているため、audit でも落とす必要がある。
 		t.Run("バイパス設定の違反は audit でもブロックする", func(t *testing.T) {
 			var count int
 			out := captureLog(t, func() {
@@ -1929,7 +1905,6 @@ func Test_run(t *testing.T) {
 
 	//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		// audit は棚卸しなので、窓内のツールが見つかっても定期実行を落とさない。
 		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("audit は窓内のツールを報告しつつ正常終了する", func(t *testing.T) {
 			useMiseWorkTree(t, miseOneAquaTool)
@@ -2010,7 +1985,6 @@ func Test_run(t *testing.T) {
 			assert.Contains(t, out, "::error file="+miseFile+"::aqua:owner/repo@1.2.3")
 		})
 
-		// 期限切れの回収はスケジュール実行に懸かっているため、audit でも失敗させる必要がある。
 		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("期限切れのバイパスは audit でも失敗にする", func(t *testing.T) {
 			dir := useMiseWorkTree(t, miseOneAquaTool)

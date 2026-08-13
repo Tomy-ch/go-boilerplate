@@ -6,7 +6,7 @@
 
 ローカル開発用の**疑似 OIDC 認証サーバー**。実 IdP なしに、Go API（Resource Server）が **JWT の署名・Claim 検証と Authorization Code Flow（+ PKCE S256）**を E2E で検証できるようにする。Login UI / consent / refresh token / Role は対象外。
 
-Token 発行側と検証側が同一ライブラリ由来の誤りを共有しないよう、**Go API とは異なるランタイム（Node.js 上の TypeScript）**で実装している。`.ts` は Node 24 のネイティブ型ストリッピングで直接実行するため `tsc` ビルドは不要で、HTTP 層は [Hono](https://hono.dev/)。`typescript` は `npm run typecheck` と 1:1 テスト対応ゲート用の dev 依存で、ユニットは `vitest`、統合は
+Token 発行側と検証側が同一ライブラリ由来の誤りを共有しないよう、**Go API とは異なるランタイム（Node.js 上の TypeScript）**で実装している。`.ts` は Node 24 のネイティブ型ストリッピングで直接実行するため `tsc` ビルドは不要で、HTTP 層は [Hono](https://hono.dev/)。`typescript` は `pnpm run typecheck` と 1:1 テスト対応ゲート用の dev 依存で、ユニットは `vitest`、統合は
 `node --test` で実行する。
 
 ## エンドポイント
@@ -88,7 +88,7 @@ sequenceDiagram
 ## 鍵 & Fixture
 
 - `keys/*.pem` — **固定 RSA 秘密鍵**（再起動しても不変。発行トークンが再現可能）。`mock-key-1`（初期署名鍵）と `mock-key-2` が回転プールを構成し、`mock-key-retired` は `old-key` profile 用で JWKS には一度も載らない。鍵ストアは起動時にこれらをロードし、揮発するのは状態（どの鍵を公開 / 署名するか）のみ。
-- `fixtures/jwks/phase{1,2,3}.json` — 各ローテーション Phase で鍵ストアが公開する **golden JWKS**。Go 側のローテーション統合テストと共有し、双方が同一バイトをパースする。`npm run gen:jwks` で再生成する。
+- `fixtures/jwks/phase{1,2,3}.json` — 各ローテーション Phase で鍵ストアが公開する **golden JWKS**。Go 側のローテーション統合テストと共有し、双方が同一バイトをパースする。`pnpm run gen:jwks` で再生成し、`mock-auth-server-check` ワークフローが drift を検知する。
 - `fixtures/users.json` — サンプルユーザー（Subject / Email / 名前。`status` は未使用）。ファイルが無くても mock は動作する（`/bypass/token` は任意の `subject` を受理）。`fixtures/README.md` を参照。
 - `fixtures/clients.json` — 登録済み OAuth クライアント（public client・PKCE 必須・許可する `redirect_uris` / `post_logout_redirect_uris`）。
 
@@ -128,8 +128,8 @@ Go API は `AUTH_ISSUER` をホスト URL（`http://localhost:4000`）に、`AUT
 
 | コマンド | 対象 |
 | --- | --- |
-| `npm test` | ユニット（`src/**/*.test.ts`）。`app.fetch` をプロセス内で叩く。**行 / 分岐 / 関数すべて 100% をゲートにしている** |
-| `npm run test:integration` | 統合（`integration/**/*.test.ts`）。実 HTTP と、エントリポイントの子プロセス起動 |
+| `pnpm test` | ユニット（`src/**/*.test.ts`）。`app.fetch` をプロセス内で叩く。**行 / 分岐 / 関数すべて 100% をゲートにしている** |
+| `pnpm run test:integration` | 統合（`integration/**/*.test.ts`）。実 HTTP と、エントリポイントの子プロセス起動 |
 
 カバレッジゲートは `vitest` 自身のしきい値（`vitest.config.ts`）。統合テストだけは `node --test` のままで、
 import ではなく実プロセスを起動するため。カバレッジの対象外は 2 つ:
@@ -166,7 +166,7 @@ production のシンボルに対応しない契約テストは違反ではない
 
 HTTP 表面は `openapi/` で OpenAPI-first に定義し（`openapi/openapi.gen.yaml` にバンドル）、`src/generated/schemas.ts` に [orval](https://orval.dev/) 生成の zod スキーマを持つ。両者は `make gen-mock-auth-oapi` で再生成し、commit・CI で drift 検知する。
 
-golden JWKS（`fixtures/jwks/phase{1,2,3}.json` と `internal/integration/testdata/jwks/` 配下のコピー）は `npm run gen:jwks` で別途再生成する（鍵ストアを import するため `node_modules` を要し、コンテナで走る `gen` ステップからは外している）。PEM が固定のためほとんど変化せず、正しさは drift 検知ではなくテストで担保する — provider の `keys.test.ts` が各 Phase を `keyStore.jwks()` と一致検証し、Go のローテーション統合テストが埋め込みコピーを共有 PEM で署名検証する。
+golden JWKS（`fixtures/jwks/phase{1,2,3}.json` と `internal/integration/testdata/jwks/` 配下のコピー）は `pnpm run gen:jwks` で別途再生成する（鍵ストアを import するため `node_modules` を要し、コンテナで走る `gen` ステップからは外している）。PEM が固定のためほとんど変化しない。drift は `mock-auth-server-check` ワークフローが `gen:jwks` を回し直して両方のコピーを diff して捕まえる（npm script の `gen:check` が見るのは `openapi/openapi.gen.yaml` と `src/generated` だけ）。その上で正しさをテストが担保する — provider の `keys.test.ts` が各 Phase を `keyStore.jwks()` と一致検証し、Go のローテーション統合テストが埋め込みコピーを共有 PEM で署名検証する。
 
 ## 未実装
 

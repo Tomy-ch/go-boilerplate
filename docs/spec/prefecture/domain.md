@@ -1,7 +1,7 @@
 # Prefecture — Domain Spec
 
 > `user` usecase 等の依存集約として参照される。`GET /v1/prefectures`（一覧取得 usecase は `usecase.md`）の
-> 全件一覧は QueryService ではなく Repository の simple list（`FindAll`）として提供する（ADR-0027 /
+> 全件一覧は QueryService ではなく Repository の simple list（`FindAll`）として提供する（ADR-0029 (lightweight-cqrs) /
 > `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
@@ -20,13 +20,13 @@ fields:
   - name: name
     type: string
     required: true
-    min_length: 1         # MinPrefectureNameLength
-    max_length: 100       # MaxPrefectureNameLength
+    min_length: 1
+    max_length: 100
   - name: code
     type: int
     required: true
-    min: 1                # MinCode
-    max: 47               # MaxCode（都道府県数）
+    min: 1
+    max: 47               # 都道府県数
 ```
 
 ## Cross-field Invariants

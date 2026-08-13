@@ -26,7 +26,7 @@
 <!-- sample-api:end -->
 どれか 1 つの集約には置けず（他が手を伸ばす
 ことになる）、`pkg/` にも置けません（業務ロジックを禁じているため）。だからここに置きます。
-[ADR-0034](../../../docs/adr/0034-domain-lexicon.md) を参照。
+[ADR-0036 (domain-lexicon)](../../../docs/adr/0036-domain-lexicon.md) を参照。
 
 ## 型をどこに置くか
 
@@ -67,7 +67,7 @@ depguard（`.golangci-full.yaml` の `maintain_a_sound_domain`）は domain フ�
      書き方: `- <package> — <型> 値オブジェクト（<保証する不変条件>）。` の形で 1 語 1 行。 -->
 <!-- sample-api:begin -->
 - `money` — `Price` 値オブジェクト（非負の価格スケール十進数。最小単位変換を所有）。
-  正確な十進の器は `pkg/decimal`（[ADR-0033](../../../docs/adr/0033-two-scale-quantity-model.md)）。
+  正確な十進の器は `pkg/decimal`（[ADR-0035 (two-scale-quantity-model)](../../../docs/adr/0035-two-scale-quantity-model.md)）。
 <!-- sample-api:end -->
 
 **サンプル撤去後、この節は空になります。** 器と入場基準だけが残り、最初の語を待ちます。

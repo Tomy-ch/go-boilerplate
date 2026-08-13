@@ -131,7 +131,6 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			// NewCursor が失敗するため Usecase は呼ばれない。
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
@@ -150,12 +149,10 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			// 認証情報が無いためハンドラが早期に 401 で返し、Usecase は呼ばれない。
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
 
-			// 認証ヘッダー（Authn）を張らずに呼び出す。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/purchases", nil, nil)
 			AssertErrorResponse(t, actual, http.StatusUnauthorized)
 		})

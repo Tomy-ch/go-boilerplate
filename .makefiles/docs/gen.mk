@@ -14,7 +14,7 @@
 
 GODOC_OUT := docs/godoc
 # --disable-filter なしだと internal/ 配下が全て除外されるため必須。exclude は index からのみ除外される。
-GODOC_EXCLUDE = $(shell go list ./... | grep -E '/(gen|mock)$$|^[^/]+/(cmd|scripts)(/|$$)' | tr '\n' ' ')
+GODOC_EXCLUDE = $(shell go list ./... | grep -E '/(gen|mock|node_modules)$$|^[^/]+/(cmd|scripts)(/|$$)|/node_modules/' | tr '\n' ' ')
 
 gen-docs-json:
 	@echo "🔍 Portal用のドキュメントリンクのJSONを生成します..."

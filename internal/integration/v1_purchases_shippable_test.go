@@ -139,7 +139,6 @@ func TestV1PurchasesShippable_Integration(t *testing.T) {
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_shippable_empty"))
 			actual := StartServer(t, e).DoJSON(http.MethodGet, purchasesShippablePath, nil, headers)
-			// 対象が空でも groups は null ではなく [] でシリアライズされる（AssertJSONResponseType が検査）。
 			AssertJSONResponseType[gen.PurchaseShippableResponse](t, actual)
 		})
 	})

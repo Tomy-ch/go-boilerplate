@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS products (
     status_id UUID NOT NULL,
     category_id UUID NOT NULL,
     published_at TIMESTAMPTZ,
-    image_path TEXT,
     lock_version INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -27,7 +26,6 @@ COMMENT ON COLUMN products.stock_warning_threshold IS '在庫警告閾値';
 COMMENT ON COLUMN products.status_id IS '商品ステータスID';
 COMMENT ON COLUMN products.category_id IS '商品カテゴリID';
 COMMENT ON COLUMN products.published_at IS '公開日時';
-COMMENT ON COLUMN products.image_path IS '画像パス';
 COMMENT ON COLUMN products.lock_version IS '楽観ロックバージョン';
 COMMENT ON COLUMN products.created_at IS '作成日時';
 COMMENT ON COLUMN products.updated_at IS '更新日時';

@@ -24,18 +24,18 @@ controller / infra の "規約通り" は `arch-check`（controller / infra 監�
 
 | skill | 責務 |
 | --- | --- |
-| `new-spec-{domain,usecase}` | layer 別 spec を AskUserQuestion でインタラクティブに作成 |
+| `new-spec-{domain,usecase}` | layer 別 spec をユーザーへの明示的な質問でインタラクティブに作成 |
 | `new-spec` | 上記 2 つを multi-select で chain する統合 spec 作成 skill |
-| `verify-spec-{domain,usecase}` | 各 spec ファイルを format / 派生元（SQL / OpenAPI / sqlc gen） / cross-layer 参照整合性で検証 |
+| `spec-validator-{domain,usecase}`（`verify-spec` が fan-out する subagent） | 各 spec ファイルを format / 派生元（SQL / OpenAPI / sqlc gen） / cross-layer 参照整合性で検証 |
 | `verify-spec` | 存在する spec を検出して上記を chain |
-| `arch-check-{domain,usecase,controller,infra,pkg}` | layer ごとに depguard + semantic check + 規約強制 |
+| `arch-auditor-{domain,usecase,controller,infra,pkg}`（`arch-check` が fan-out する subagent） | layer ごとに depguard + semantic check + 規約強制 |
 | `arch-check` | 変更ファイル or 全 layer で上記を chain |
 | `scaffold-domain` | entity + Repository IF + constant + error の全部を生成 |
 | `scaffold-usecase` | application service + boundary + DTO を生成 |
 | `scaffold-controller` | OpenAPI 生成 interface + usecase IF から handler 実装を導出（spec なし） |
 | `scaffold-infra-db` | domain Repository IF + sqlc gen 関数から Repository 実装を導出（spec なし） |
 | `scaffold-endpoint` | 起動時に自動で `verify-spec` を走らせ、scaffold-* 4 つを順番に呼ぶ統合 skill |
-| `back-prop-{domain,usecase,controller,infra,pkg}` | layer ごとに README ↔ コード ↔ skill の 3 方向 drift を検出（A: README→Code、B: 未文書化 pattern、C: Skill↔README 重複）。実装コード書き込みなし、README/skill のみ user 承認 + 理由明示後に編集 |
+| `drift-detector-{domain,usecase,controller,infra,pkg}`（`back-prop` が fan-out する subagent） | layer ごとに README ↔ コード ↔ skill の 3 方向 drift を検出（A: README→Code、B: 未文書化 pattern、C: Skill↔README 重複）。検出のみで read-only、README / skill の編集は統合 skill `back-prop` が user 承認 + 理由明示後に行う |
 | `back-prop` | 変更ファイル or 全 layer で上記を chain |
 
 ## 統合 skill の実行順序
@@ -54,7 +54,7 @@ controller / infra の "規約通り" は `arch-check`（controller / infra 監�
 
 `back-prop` は scaffold-endpoint の chain には含まれない。実装フローの **後段** に位置する独立 hygiene skill で、推奨 trigger は次の通り:
 
-- 該当 layer のコードを触った直後 / commit 前（layer 単位で `back-prop-<layer>`）
+- 該当 layer のコードを触った直後 / commit 前（`back-prop` を起動し scope 質問で対象 layer だけを選ぶ）
 - 大規模 PR review 前 / multi-layer refactor 後（`back-prop` 統合）
 - 定期 hygiene sweep（README / skill が実態と sync しているか確認）
 

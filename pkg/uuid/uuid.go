@@ -55,7 +55,6 @@ func Parse(s string) (UUID, error) {
 }
 
 // MarshalJSON は、UUIDを正準文字列表現の JSON 文字列（例 "0190a1b2-..."）へ符号化します。
-// 非公開フィールドのみを持つ値オブジェクトのため、既定の構造体符号化では値が失われます。
 func (u UUID) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + toGoogle(u).String() + `"`), nil
 }

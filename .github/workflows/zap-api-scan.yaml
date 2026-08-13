@@ -1,15 +1,11 @@
 name: DAST
 
-# OWASP ZAP's OpenAPI-driven API scan against the application started inside this runner.
-# The static scanners read the source; this one exercises the running HTTP surface.
+# OWASP ZAP's OpenAPI-driven API scan against the application started inside this runner — the
+# only check here that exercises the running HTTP surface instead of reading files.
 #
-# ZAP is the only DAST option that scans from inside the job. The alternatives run on the
-# vendor's infrastructure, which cannot reach an API that exists only in a runner.
-#
-# Report-only: alerts go to code scanning and to an artifact, and none of them fails the
-# job. A scan that could not run at all does fail — a silent non-scan is worse than a red
-# one. Tuning the thresholds in .github/zap/rules.tsv is expected; see
-# docs/get-started/setup-repository.md.
+# A scan that could not run at all fails the job; a finding does not. Why ZAP, why report-only,
+# and why the thresholds in .github/zap/rules.tsv must be re-derived against your own API:
+# README.md § DAST.
 
 on:
   workflow_dispatch:
@@ -29,10 +25,9 @@ on:
       - '.github/workflows/zap-api-scan.yaml'
       - '.github/zap/**'
   schedule:
-    # Monday 12:00 UTC — the next free slot after the scanners already staggered one per
-    # hour (00:00 through 11:00). The schedule catches what a push cannot: ZAP's own rules
-    # and add-ons change while the code stands still.
-    - cron: '0 12 * * 1'
+    # The schedule catches what a push cannot: ZAP's own rules and add-ons change while
+    # the code stands still.
+    - cron: '0 3 * * 1'
 
 permissions:
   contents: read
@@ -53,13 +48,17 @@ jobs:
       DB_USER: postgres
       DB_PASSWORD: postgres-password
       PORT: 8080
-      # The identity the scan authenticates as. The `ci` profile wires the dev-only stub
-      # authenticator (docs/design/auth.md), which reads the subject from a
-      # `debug:<subject>` bearer token and reports the issuer as `mock`. Seeded
-      # `user_identities` rows for that issuer key on the internal user UUID, so a
-      # `user-<name>` subject resolves to no identity and the whole scan sees 401.
+      # The `dast` profile wires the real JWKS-backed authenticator (docs/design/auth.md), so
+      # the scan drives signature verification, `typ` checking and `kid` resolution the way a
+      # deployed environment does. `ci` cannot: it wires the stub, which accepts any
+      # `debug:<subject>` bearer token without a signature and never reaches that code.
+      APP_ENV: dast
+      # The identity the scan authenticates as. Under a real issuer the seeded
+      # `user_identities` rows are the `${AUTH_ISSUER}` ones, whose subjects come from
+      # mock-auth-server/fixtures/users.json — so this is a `user-<name>` subject, not the
+      # internal user UUID that only the stub issuer keys on.
       # sample-api:replace-begin
-      SCAN_SUBJECT: 550e8400-e29b-41d4-a716-446655440000
+      SCAN_SUBJECT: user-john-doe
       # sample-api:replace-with
       # = SCAN_SUBJECT: ''
       # sample-api:replace-end
@@ -97,6 +96,11 @@ jobs:
             release-assets.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
             proxy.golang.org:443
             sum.golang.org:443
             index.golang.org:443
@@ -104,38 +108,34 @@ jobs:
             dl.google.com:443
             go.dev:443
             golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
             docker.io:443
             index.docker.io:443
             registry-1.docker.io:443
             auth.docker.io:443
+            *.docker.io:443
             production.cloudflare.docker.com:443
             production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
             dl-cdn.alpinelinux.org:443
             dl-cdn.alpinelinux.org:80
-            mise.run:443
             deb.debian.org:443
             deb.debian.org:80
             security.debian.org:443
             security.debian.org:80
-            pypi.org:443
-            files.pythonhosted.org:443
-            *.docker.io:443
-            mirror.gcr.io:443
-            ghcr.io:443
-            pkg-containers.githubusercontent.com:443
             zaproxy.org:443
             *.zaproxy.org:443
-            mise.jdx.dev:443
-            mise-versions.jdx.dev:443
-            mise.en.dev:443
-            aquaproj.github.io:443
-            nodejs.org:443
-            registry.npmjs.org:443
-            downloads.sqlc.dev:443
-            astral.sh:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -146,8 +146,7 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          # cache: false — this job holds security-events: write, so it must not restore a
-          # tool cache that a less privileged workflow could have written.
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
           cache: false
 
       # install_psql: false because the migration that adds the user search column needs
@@ -164,8 +163,76 @@ jobs:
           install_psql: "false"
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
-      - name: Materialize ci env for embedding
+      - name: Materialize the dast env for embedding
         run: make materialize-env
+
+      # env/.env.dast is the single source of truth for the issuer, so both the value and the
+      # port the provider must listen on are read back out of the materialized env rather than
+      # restated here. The issuer has to match in three places at once — the `iss` the tokens
+      # carry, the issuer the seed expands into user_identities, and the issuer the server
+      # verifies against — and any pair of those drifting apart shows up only as a uniform 401,
+      # which is indistinguishable from a scan that was never authenticated.
+      - name: Resolve the issuer and the provider port from the materialized env
+        run: |
+          set -euo pipefail
+
+          issuer="$(grep '^AUTH_ISSUER=' env/.env | cut -d= -f2-)"
+          if [ -z "${issuer}" ]; then
+            echo "::error::AUTH_ISSUER is empty in the materialized env; the scan cannot authenticate"
+            exit 1
+          fi
+
+          # The provider has to listen on whatever the issuer addresses, so the port is derived
+          # rather than declared. Hardcoding it would reintroduce exactly the drift above.
+          port="$(printf '%s' "${issuer}" | sed -n 's#^https\{0,1\}://[^/:]*:\([0-9]\{1,\}\).*#\1#p')"
+          if [ -z "${port}" ]; then
+            echo "::error::AUTH_ISSUER (${issuer}) carries no explicit port; mock-auth-server cannot be pointed at it"
+            exit 1
+          fi
+
+          echo "AUTH_ISSUER=${issuer}" >> "$GITHUB_ENV"
+          echo "MOCK_AUTH_PORT=${port}" >> "$GITHUB_ENV"
+
+      # cache: false — this job holds security-events: write. See README.md § Cache safety.
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml, so it is never duplicated here.
+
+      - name: Install mock-auth-server dependencies
+        working-directory: mock-auth-server
+        run: pnpm install --frozen-lockfile
+
+      - name: Start mock-auth-server
+        working-directory: mock-auth-server
+        env:
+          OIDC_PORT: ${{ env.MOCK_AUTH_PORT }}
+          OIDC_ISSUER: ${{ env.AUTH_ISSUER }}
+        run: |
+          set -euo pipefail
+
+          node src/server.ts > ../mock-auth-server.log 2>&1 &
+          echo $! > ../mock-auth-server.pid
+
+      - name: Wait for mock-auth-server
+        run: |
+          set -euo pipefail
+
+          for i in {1..30}; do
+            if curl -fsS "http://localhost:${MOCK_AUTH_PORT}/health" > /dev/null; then
+              echo "mock-auth-server is up"
+              exit 0
+            fi
+            echo "Waiting for mock-auth-server... ($i)"
+            sleep 2
+          done
+
+          echo "::error::mock-auth-server did not become ready"
+          cat mock-auth-server.log || true
+          exit 1
 
       # A scan against an empty database only ever reaches the empty-collection branch of
       # every read endpoint, so the seed is what gives the scan something to find.
@@ -200,16 +267,35 @@ jobs:
           cat server.log || true
           exit 1
 
+      # The `valid` profile is the ordinary well-formed token. The anomaly profiles exist to
+      # drive the RS's 401 branches deterministically in tests and would defeat the scan here.
+      - name: Mint the scan credential
+        run: |
+          set -euo pipefail
+
+          token="$(curl -fsS -X POST "http://localhost:${MOCK_AUTH_PORT}/bypass/token" \
+            -H 'Content-Type: application/json' \
+            -d "{\"subject\":\"${SCAN_SUBJECT}\",\"profile\":\"valid\"}" \
+            | jq -r '.access_token')"
+
+          if [ -z "${token}" ] || [ "${token}" = "null" ]; then
+            echo "::error::mock-auth-server issued no access token for subject ${SCAN_SUBJECT}"
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+          echo "SCAN_TOKEN=${token}" >> "$GITHUB_ENV"
+
       # An unauthenticated scan sees 401 on every protected operation and stops at the
       # surface, so this asserts the token resolves to an identity before ZAP spends twenty
-      # minutes proving it does not.
+      # minutes proving it does not. Under the real authenticator a 401 here also covers the
+      # ways a correctly-signed token can still be refused — a mismatched issuer, an audience
+      # the server does not accept, an identity the seed never created.
       #
       # A 404 fails here too: once PROBE_PATH stops existing, the assertion stops asserting
       # anything while still reporting green — the exact failure this step exists to catch.
       # Re-point it at a protected operation that does exist.
       - name: Verify the scan credential authenticates
         env:
-          SCAN_TOKEN: debug:${{ env.SCAN_SUBJECT }}
           # sample-api:replace-begin
           PROBE_PATH: /v1/users/me
           # sample-api:replace-with
@@ -266,7 +352,7 @@ jobs:
         continue-on-error: true
         env:
           ZAP_AUTH_HEADER: Authorization
-          ZAP_AUTH_HEADER_VALUE: Bearer debug:${{ env.SCAN_SUBJECT }}
+          ZAP_AUTH_HEADER_VALUE: Bearer ${{ env.SCAN_TOKEN }}
           ZAP_AUTH_HEADER_SITE: localhost
         uses: zaproxy/action-api-scan@5158fe4d9d8fcc75ea204db81317cce7f9e5453d # v0.10.0
         with:
@@ -391,13 +477,20 @@ jobs:
             kill "$(cat server.pid)" || true
           fi
 
-      - name: Dump server log on failure
-        if: failure()
-        run: cat server.log || true
+      - name: Stop mock-auth-server
+        if: always()
+        run: |
+          if [ -f mock-auth-server.pid ]; then
+            kill "$(cat mock-auth-server.pid)" || true
+          fi
 
-  # A scheduled failure has no author watching it, so it is pushed to a human. cancelled
-  # counts too: a job killed by a timeout or a runner fault reports that rather than
-  # failure, and that is precisely the silent breakage this notification exists to surface.
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          cat server.log || true
+          cat mock-auth-server.log || true
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: dast
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.dast.result) }}

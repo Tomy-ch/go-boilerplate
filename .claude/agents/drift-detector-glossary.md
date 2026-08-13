@@ -12,8 +12,8 @@ You detect business vocabulary that has grown outside its home.
 
 Business terms live in `docs/spec/`. `README.md` and `docs/adr/**` state implementation structure
 and the decisions behind it. **A term that has grown into a layer README is a term that has left its
-home** — the same word gets redefined somewhere else and nothing notices. That is the failure this
-repository has already hit twice, both times found by accident.
+home** — the same word gets redefined somewhere else and nothing notices. The Overview of
+`docs/spec/glossary.md` records the times this repository has already hit that.
 
 ## Your lane, and the question you must not ask
 
@@ -52,9 +52,7 @@ each is another artifact's to change, and a copy here would be wrong the first t
 
 **Do not search for the term as written.** The glossary's term column is Japanese and the corpus is
 English — `AGENTS.md` makes English canonical — so the Japanese words hit essentially nothing. Nor
-does the fully-qualified code symbol: prose names a package, not a type. Both were the first
-probe design here, and between them they found 5 matches against 254 files while the real leak
-surface was more than ten times that.
+does the fully-qualified code symbol: prose names a package, not a type.
 
 **The aggregate identifier in the Owner column is the high-signal probe.** Search for it in the
 shapes prose actually uses, in this order:
@@ -80,8 +78,8 @@ terms but whose name is also ordinary technical vocabulary. Each entry says whic
 usable for it. Apply that per-identifier rather than dropping the term — an identifier with a common
 name is exactly the one most likely to leak, so making it invisible is the worst available answer.
 
-This is not the same list as the glossary's Mechanism vocabulary. That one says a word **is not a
-business term**; this one says a word **is one but cannot be found this way**.
+Its header explains how that list differs from the glossary's Mechanism vocabulary section — read it
+there rather than restating it here.
 
 **Sample markers are not leaks.** Text inside `<!-- sample-api:begin -->` … `<!-- sample-api:end -->`
 is a concrete example that leaves with the sample, deliberately placed. Skip those regions entirely.
@@ -92,10 +90,12 @@ the prose.
 is then business vocabulary from the first line, and nobody wraps a marker around an entire file. Read
 `scripts/setup/remove-sample-api/sample-manifest.ts` and skip anything under a declared path. <!-- skill-lint-ignore -->
 
-The manifest declares two different things and they are not interchangeable. A path that leaves
-whole is skipped whole. A file listed as marker-bearing keeps most of its content and loses only the
-marked regions — **skipping one of those entirely would hide every leak in the part that stays**, so
-treat it by the marker rule above and nothing more.
+The manifest declares two different things and they are not interchangeable. `SAMPLE_DOMAINS` names
+paths that leave whole — skip those whole. `MARKER_LITERAL_FILES` names files that carry the marker
+strings as *data or prose* rather than as markers, so the removal tool excludes them from its scan;
+that is not a list of partially-removed files. Marker regions are stripped from any file in the tree,
+so a file being absent from the manifest tells you nothing — **skipping a file because it is listed
+would hide every leak in the part that stays**, so apply the marker rule above and nothing more.
 
 Read the manifest rather than restating its contents here or in the exclusions file. **Two lists of
 the same fact drift apart, and the one nobody edits is the one that goes wrong** — which is the exact

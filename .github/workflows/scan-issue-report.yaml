@@ -1,0 +1,231 @@
+name: Scan Issue Report
+
+on:
+  # zizmor: ignore[dangerous-triggers]
+  # This privileged run streams known report files only; it never checks out or executes
+  # content from the completed workflow.
+  workflow_run:
+    workflows:
+      - CodeQL Scan
+      - SonarQube Cloud Scan
+      - ESLint Scan
+      - Actions Static Analysis
+      - SAST
+      - Bearer Scan
+      - DevSkim Scan
+      - Checkov Scan
+      - Config Scan
+      - OpenAPI Security
+      - Dependency Scan
+      - OSV Scan
+      - Grype Scan
+      - Vulnerability Scan
+      - Secret Scan
+      - Secret Scan (TruffleHog)
+      - Image Scan
+      - DAST
+      - Fuzz
+      - OpenSSF Scorecard
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  security-events: read
+
+jobs:
+  report:
+    if: >-
+      ${{ github.event.workflow_run.event == 'schedule' ||
+          github.event.workflow_run.event == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: scan-issue-report-${{ github.event.workflow_run.id }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Create or update scan issues
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const os = require('os');
+            const path = require('path');
+            const { execFileSync } = require('child_process');
+
+            const run = context.payload.workflow_run;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issuePrefix = 'Code Scan Report: ';
+            const reportUrl = run.html_url;
+            const commitUrl = `${context.serverUrl}/${owner}/${repo}/commit/${run.head_sha}`;
+
+            const targets = {
+              'Bearer Scan': [{ name: 'Bearer Scan', artifact: 'bearer', files: ['bearer-summary.md', 'bearer.sarif'] }],
+              'Checkov Scan': [{ name: 'Checkov Scan', artifact: 'checkov', files: ['checkov-summary.md', 'results_sarif.sarif'] }],
+              'Config Scan': [{ name: 'Config Scan', artifact: 'trivy-config', files: ['trivy-config-summary.md', 'trivy-config.sarif'] }],
+              'DAST': [{ name: 'DAST', artifact: 'zap-dast-sarif', files: ['zap.sarif'] }],
+              'Dependency Scan': [{ name: 'Dependency Scan', artifact: 'trivy-fs', files: ['trivy-fs-summary.md', 'trivy-fs.sarif'] }],
+              'DevSkim Scan': [{ name: 'DevSkim Scan', artifact: 'devskim', files: ['devskim-summary.md', 'devskim.sarif'] }],
+              'Grype Scan': [{ name: 'Grype Scan', artifact: 'grype', files: ['grype-summary.md', 'grype.sarif'] }],
+              'Image Scan': [
+                { name: 'Image Scan / Trivy', artifact: 'trivy-image-scan.txt', files: ['trivy-image-scan.txt'] },
+                { name: 'Image Scan / Dockle', artifact: 'image-practice-scan', files: ['dockle-summary.md', 'dockle.sarif'] },
+                { name: 'Image Scan / Trivy SBOM', artifact: 'image-practice-scan', files: ['trivy-sbom-scan.txt', 'trivy-sbom-scan.sarif'] },
+              ],
+              'OSV Scan': [{ name: 'OSV Scan', artifact: 'osv-scanner', files: ['osv-scanner-summary.md', 'osv-scanner.sarif'] }],
+              'OpenAPI Security': [{ name: 'OpenAPI Security', artifact: 'spectral', files: ['spectral.log'] }],
+              'OpenSSF Scorecard': [{ name: 'OpenSSF Scorecard', artifact: 'scorecard', files: ['scorecard.sarif'] }],
+              'SAST': [{ name: 'SAST', artifact: 'opengrep', files: ['opengrep-summary.md', 'opengrep.sarif'] }],
+              'Secret Scan': [{ name: 'Secret Scan', artifact: 'trivy-secret', files: ['trivy-secret-summary.md', 'trivy-secret.sarif'] }],
+              'Secret Scan (TruffleHog)': [{ name: 'Secret Scan (TruffleHog)', artifact: 'trufflehog', files: ['trufflehog-summary.md'] }],
+              'SonarQube Cloud Scan': [{ name: 'SonarQube Cloud Scan', artifact: 'sonarqube', files: ['sonarqube-summary.md', 'sonarqube.sarif'] }],
+              'Vulnerability Scan': [{ name: 'Vulnerability Scan', artifact: 'govulncheck', files: ['govulncheck-summary.md', 'govulncheck.json'] }],
+              'Actions Static Analysis': [{ name: 'Actions Static Analysis', artifact: 'zizmor', files: ['zizmor.sarif'] }],
+            };
+
+            const codeScanningTargets = {
+              'CodeQL Scan': [{ name: 'CodeQL Scan', category: 'codeql' }],
+              'ESLint Scan': [{ name: 'ESLint Scan', category: 'eslint-' }],
+              'Image Scan': [
+                { name: 'Image Scan / Trivy', category: 'trivy-image' },
+                { name: 'Image Scan / Dockle', category: 'dockle' },
+                { name: 'Image Scan / Trivy SBOM', category: 'trivy-sbom' },
+              ],
+              'Fuzz': [{ name: 'Fuzz', category: null }],
+            };
+
+            const artifactList = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner, repo, run_id: run.id, per_page: 100,
+            });
+            const artifacts = new Map(artifactList.map(artifact => [artifact.name, artifact]));
+            const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-issue-report-'));
+
+            const readArtifactFiles = (artifact, wantedFiles) => {
+              const archive = path.join(tempDir, `${artifact.id}.zip`);
+              const zip = execFileSync('gh', ['api', `repos/${owner}/${repo}/actions/artifacts/${artifact.id}/zip`]);
+              fs.writeFileSync(archive, zip);
+              const entries = execFileSync('unzip', ['-Z1', archive], { encoding: 'utf8' }).split('\n');
+              return wantedFiles.flatMap(wanted => {
+                const entry = entries.find(name => name === wanted || name.endsWith(`/${wanted}`));
+                if (!entry) return [];
+                return [{ name: wanted, text: execFileSync('unzip', ['-p', archive, entry], { encoding: 'utf8' }) }];
+              });
+            };
+
+            const summarizeFindings = files => {
+              const sarifFiles = files.filter(file => file.name.endsWith('.sarif'));
+              if (sarifFiles.length > 0) {
+                const findings = sarifFiles.flatMap(file => {
+                  const sarif = JSON.parse(file.text);
+                  return (sarif.runs || []).flatMap(run => run.results || []);
+                }).filter(result => result.level === 'error' || result.level === 'warning');
+                const errors = findings.filter(result => result.level === 'error');
+                const warnings = findings.filter(result => result.level === 'warning');
+                const format = result => {
+                  const message = (result.message?.text || result.message?.markdown || '詳細なし').replace(/\s+/g, ' ').trim();
+                  return `[${result.ruleId || 'unknown'}] ${message}`;
+                };
+                return { errors, warnings, detail: [...errors, ...warnings].map(format).join('\n') };
+              }
+
+              const count = files.reduce((total, file) => {
+                if (file.name.endsWith('.json')) {
+                  const json = JSON.parse(file.text);
+                  if (Array.isArray(json.vulnerable)) return total + json.vulnerable.length;
+                  if (typeof json.num_vulnerable === 'number') return total + json.num_vulnerable;
+                }
+                const match = file.text.match(/(?:^|\D)(\d+)\s+(?:finding|vulnerabilit|alert|issue|failed check)/im);
+                return total + (match ? Number(match[1]) : 0);
+              }, 0);
+              return { errors: [], warnings: Array.from({ length: count }), detail: '' };
+            };
+
+            const upsert = async (name, summary) => {
+              const title = `${issuePrefix}${name}`;
+              const issues = await github.paginate(github.rest.issues.listForRepo, {
+                owner, repo, state: 'open', per_page: 100,
+              });
+              const existing = issues.find(issue => issue.title === title);
+              const findings = summary.errors.length + summary.warnings.length;
+              if (findings === 0) {
+                if (existing) await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+                return;
+              }
+              const fence = '`'.repeat(Math.max(3, ...Array.from(summary.detail.matchAll(/`+/g), match => match[0].length)) + 1);
+              const body = [
+                '<!-- scan-issue-report -->',
+                `## ${name}`,
+                '',
+                `エラー: **${summary.errors.length}**`,
+                `警告: **${summary.warnings.length}**`,
+                `対象ブランチ: \`${run.head_branch}\``,
+                `コミット: [\`${run.head_sha.slice(0, 7)}\`](${commitUrl})`,
+                `実行: [${run.name} #${run.run_number}](${reportUrl})`,
+                '',
+                ...(summary.detail ? [`${fence}text`, summary.detail, fence] : []),
+              ].join('\n');
+              if (existing) {
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, body });
+              }
+            };
+
+            try {
+              for (const target of targets[run.name] || []) {
+                const artifact = artifacts.get(target.artifact);
+                if (!artifact) {
+                  if (run.conclusion === 'success') await upsert(target.name, { errors: [], warnings: [], detail: '' });
+                  continue;
+                }
+                const files = readArtifactFiles(artifact, target.files);
+                const summary = summarizeFindings(files);
+                if (summary.errors.length === 0 && summary.warnings.length === 0 && files.length === 0) {
+                  summary.errors.push({});
+                  summary.detail = 'スキャン結果を取得できませんでした。実行ログを確認してください。';
+                }
+                await upsert(target.name, summary);
+              }
+
+              for (const target of codeScanningTargets[run.name] || []) {
+                if (!target.category) {
+                  await upsert(target.name, run.conclusion === 'success'
+                    ? { errors: [], warnings: [], detail: '' }
+                    : { errors: [{}], warnings: [], detail: `スキャンは ${run.conclusion} で終了しました。実行ログを確認してください。` });
+                  continue;
+                }
+                const alerts = await github.paginate(github.rest.codeScanning.listAlertsForRepo, {
+                  owner, repo, ref: run.head_branch, state: 'open', per_page: 100,
+                });
+                const matched = alerts.filter(alert => (alert.most_recent_instance?.analysis_key || '').includes(target.category));
+                const errors = matched.filter(alert => alert.rule.severity === 'error');
+                const warnings = matched.filter(alert => alert.rule.severity === 'warning');
+                const detail = [...errors, ...warnings]
+                  .map(alert => `[${alert.rule.id}] ${alert.rule.description || alert.rule.name || '詳細なし'}`)
+                  .join('\n');
+                await upsert(target.name, { errors, warnings, detail });
+              }
+            } finally {
+              fs.rmSync(tempDir, { recursive: true, force: true });
+            }

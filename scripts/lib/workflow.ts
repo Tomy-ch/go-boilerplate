@@ -1,8 +1,5 @@
-// ワークフロー定義を「桁」で読むための共通の切り出し。
-//
-// YAML パーサを持ち込まないのは、検査対象が値ではなく記述そのものだから。ブロックスカラーの
-// 中身は必ず親より深い桁に来るという YAML の規約に乗っており、その前提は同じ `actions-lint` の
-// 中で先に走る actionlint が担保する。
+// ワークフロー定義を「桁」で読むための共通の切り出し。YAML パーサを使わない前提は
+// scripts/README.md の actions-cutoff-lint 節が持つ。
 
 /** 行番号（1 始まり）付きの 1 行。 */
 export type WorkflowLine = {
@@ -54,7 +51,7 @@ export function selectWorkflowFiles(names: readonly string[], dir: string): stri
 
 /** `uses:` にこのローカルアクションを指定している行へ当たる正規表現を組み立てる。 */
 export function usesActionPattern(actionPath: string, anchored: boolean): RegExp {
-  const escaped = actionPath.replace(/[.\/]/g, "\\$&");
+  const escaped = actionPath.replace(/[.*+?^${}()|[\]\\\/]/g, "\\$&");
 
   return anchored
     ? new RegExp(`^(?: {6}- | {8})uses:\\s*["']?${escaped}["']?\\s*(#.*)?$`)

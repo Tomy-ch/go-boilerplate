@@ -1,11 +1,11 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package command は、購入の書き込み操作（CommandService）のインターフェースを定義します（ADR-0027）。
+// Package command は、購入の書き込み操作（CommandService）のインターフェースを定義します（ADR-0029 (lightweight-cqrs)）。
 // 実装は infra 層に置き、渡された ctx のトランザクションに参加します。outbox 発行は含めません（usecase 責務）。
 //
 // 所在が usecase 層なのは、CommandService がトランザクションの道具であり、所有者はトランザクションを
 // 開く側だからです。パッケージ名 command はワークフローの名であって集約の名ではありません。この配置を
-// 動かす判断は docs/adr/0027-lightweight-cqrs.md § Command Service の更新を伴います。
+// 動かす判断は docs/adr/0029-lightweight-cqrs.md § Command Service の更新を伴います。
 package command
 
 import (
@@ -19,12 +19,8 @@ import (
 // 原子的な書き込みを定義します。金額計算・売り越し判定・スナップショットはドメインが持ち、本サービスは
 // 「決定済みの書き込みの実行」のみを担います（QueryService の write 側対称物）。
 //
-// ここに載せてよいのは、集約を読み込んで保存する形では表現できない書き込みだけです。すなわち相対更新・
-// 集合演算・ロックを取らずに原子性を得る操作。集約を読んで変更して保存できるものは Repository に載ります。
-// この線引きが無いと、CommandService は SQL を直接書きたいときの抜け道に劣化します。
-//
-// 本サービスが強制する条件は、ドメインの不変条件から導出されたものでなければならず、独立に書き起こしては
-// いけません。同じ規則が 2 箇所に別々に書かれると、片方だけ変わっても誰も気づけなくなります。
+// 載せてよい書き込みの基準と、強制する条件がドメイン不変条件からの導出でなければならない規律は
+// ADR-0031 (commandservice-atomicity-criterion) の Eligibility / Derivation を参照。
 type CommandService interface {
 	// CreatePurchase は、在庫の減算・購入の作成・明細の作成を、渡された ctx のトランザクション内で
 	// 原子的に実行します。在庫減算は防御的に売り越しを弾きます。

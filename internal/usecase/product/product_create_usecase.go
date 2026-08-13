@@ -30,7 +30,15 @@ type CreateProductParams struct {
 	CategoryID            uuid.UUID
 	StatusID              uuid.UUID
 	PublishedAt           *time.Time
-	ImagePath             *string
+	Images                []ProductImageParams
+}
+
+// ProductImageParams は、商品画像 1 件分の入力です。
+type ProductImageParams struct {
+	// ImagePath は、画像アップロード（POST /v1/products/images）で得たオブジェクトのパス（キー）です。
+	ImagePath string
+	// SortKey は、同一商品内での表示順です。
+	SortKey int
 }
 
 func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error) {
@@ -57,6 +65,10 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 	if err != nil {
 		return ProductView{}, xerrors.Wrap(err, "failed to generate product id")
 	}
+	images, err := buildImages(params.Images)
+	if err != nil {
+		return ProductView{}, err
+	}
 
 	var entity *product.Product
 	err = u.txm.Do(ctx, func(ctx context.Context) error {
@@ -74,7 +86,7 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 			Status:                statusRef,
 			Category:              categoryRef,
 			PublishedAt:           params.PublishedAt,
-			ImagePath:             params.ImagePath,
+			Images:                images,
 		})
 		if err != nil {
 			return err
@@ -87,6 +99,21 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 	}
 
 	return toProductView(entity), nil
+}
+
+// buildImages は、入力の商品画像へ ID を採番してドメインの値へ変換します。
+// 表示順の重複や範囲外は集約の構築時に検証されるため、ここでは検証しません。
+func buildImages(params []ProductImageParams) ([]product.Image, error) {
+	images := make([]product.Image, len(params))
+	for i, p := range params {
+		id, err := uuid.New()
+		if err != nil {
+			return nil, xerrors.Wrap(err, "failed to generate product image id")
+		}
+		images[i] = product.NewImage(id, product.ImageAttributes{ImagePath: p.ImagePath, SortKey: p.SortKey})
+	}
+
+	return images, nil
 }
 
 // resolveRefs は、status / category の ID から名称を解決し、商品ステータス参照・カテゴリ参照を構築します。

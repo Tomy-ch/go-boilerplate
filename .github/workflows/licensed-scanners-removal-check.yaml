@@ -1,0 +1,224 @@
+name: Licensed Scanners Removal Check
+
+# `make setup-remove-licensed-scanners` が主張どおりに動くことを検証する。
+#
+# 撤去は template の利用者側で一度きり走るもので、失敗しても壊れるのは利用者のリポジトリであり
+# こちらでは何も赤くならない。だからここで走らせる。検証するのは 4 点で、どれも撤去した側でしか
+# 現れないものである。dry run が何も書かないこと、実行が製品ごとのコミットを積むこと、撤去済みの
+# リポジトリで再実行しても何も起きないこと、そして撤去後のリポジトリで pin / egress / markdown の
+# 検査が緑であること。
+#
+# 最後のひとつが本命である。`make pin-actions-check` と `make egress-check` は「どの workflow も
+# 参照しないエントリ」で落ちるので、撤去の取りこぼしは撤去した人の手元で初めて赤くなる。ここで
+# 先に踏んでおく。
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/licensed-scanners-removal-check.yaml'
+      - 'scripts/setup/remove-licensed-scanners/**'
+      - '.makefiles/github/operation/setup-repository.mk'
+      - '.github/workflows/README.md'
+      - '.github/workflows/README.ja.md'
+      - '.github/actions-pin.toml'
+      - '.github/egress.toml'
+      - '.github/workflows/sonarqube.yaml'
+      - '.github/workflows/code-ql.yaml'
+      - 'mise.toml'
+  pull_request:
+    paths:
+      - '.github/workflows/licensed-scanners-removal-check.yaml'
+      - 'scripts/setup/remove-licensed-scanners/**'
+      - '.makefiles/github/operation/setup-repository.mk'
+      - '.github/workflows/README.md'
+      - '.github/workflows/README.ja.md'
+      - '.github/actions-pin.toml'
+      - '.github/egress.toml'
+      - '.github/workflows/sonarqube.yaml'
+      - '.github/workflows/code-ql.yaml'
+      - 'mise.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  licensed-scanners-removal-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: node npm:pnpm npm:markdownlint-cli2
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install script node deps
+        run: pnpm install --dir scripts --frozen-lockfile
+        shell: bash
+
+      # 撤去はコミットを積むので、コミッターの身元が要る。ローカル実行では利用者自身の
+      # 身元をそのまま使うため、make ターゲット側には持たせずここで設定する。
+      - name: Configure the committer
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+        shell: bash
+
+      - name: Dry run writes nothing
+        run: |
+          set -euo pipefail
+          DRY_RUN=1 make setup-remove-licensed-scanners
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::DRY_RUN の実行が作業ツリーを変更しました"
+            git status --porcelain
+            exit 1
+          fi
+          echo "dry run: no writes"
+        shell: bash
+
+      - name: Remove the licensed scanners
+        run: |
+          set -euo pipefail
+          BEFORE=$(git rev-parse HEAD)
+          make setup-remove-licensed-scanners
+          echo "before=${BEFORE}" >> "${GITHUB_ENV}"
+        shell: bash
+
+      # 製品ごとに 1 つ + README で 1 つ。数が変わったら撤去の分割が壊れている。
+      - name: Three commits were stacked
+        run: |
+          set -euo pipefail
+          COUNT=$(git rev-list --count "${before}..HEAD")
+          if [ "${COUNT}" -ne 3 ]; then
+            echo "::error::expected 3 commits (2 scanners + 1 docs), got ${COUNT}"
+            git log --oneline "${before}..HEAD"
+            exit 1
+          fi
+          git log --oneline "${before}..HEAD"
+        shell: bash
+
+      - name: The scanners are gone
+        run: |
+          set -euo pipefail
+          for path in \
+            .github/workflows/sonarqube.yaml \
+            .github/workflows/code-ql.yaml \
+            .github/codeql \
+            sonar-project.properties
+          do
+            if [ -e "${path}" ]; then
+              echo "::error::${path} survived the removal"
+              exit 1
+            fi
+          done
+          echo "removal: every declared path is gone"
+        shell: bash
+
+      # SARIF をアップロードする他のワークフローが使うので、CodeQL を消してもこの pin は残る。
+      # 消えていれば残った workflow が実行時に壊れる。
+      - name: The shared codeql-action pin survived
+        run: |
+          set -euo pipefail
+          if ! grep -q 'github/codeql-action@' .github/actions-pin.toml; then
+            echo "::error::github/codeql-action の pin が消えました（残る workflow の upload-sarif が壊れます）"
+            exit 1
+          fi
+          echo "pin: github/codeql-action retained"
+        shell: bash
+
+      - name: The removed repository is green
+        run: |
+          set -euo pipefail
+          make pin-actions-check
+          make egress-check
+          make md-markdownlint-ci
+        shell: bash
+
+      # 撤去はスクリプト自身と make ターゲットも道連れにするので、撤去し終えたリポジトリでは
+      # 2 回目をそもそも起動できない。べき等性が守るのは製品を 1 つ `git revert` した利用者が
+      # 再実行する状態のほうで、そこではスクリプトが戻っている。ここではそれだけを戻して
+      # 同じ状態を作り、撤去済みの製品に手を付けないことを確かめる。
+      - name: A second run changes nothing
+        run: |
+          set -euo pipefail
+          git restore --source="${before}" --staged --worktree -- \
+            scripts/setup/remove-licensed-scanners \
+            .makefiles/github/operation/setup-repository.mk
+          git commit --quiet -m 'Chore: 再実行のため撤去スクリプトだけ戻す'
+          HEAD_BEFORE=$(git rev-parse HEAD)
+          make setup-remove-licensed-scanners
+          if [ "$(git rev-parse HEAD)" != "${HEAD_BEFORE}" ]; then
+            echo "::error::2 回目の実行がコミットを積みました（べき等ではありません）"
+            git log --oneline "${HEAD_BEFORE}..HEAD"
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::2 回目の実行が作業ツリーを変更しました"
+            git status --porcelain
+            exit 1
+          fi
+          echo "second run: no further changes"
+        shell: bash

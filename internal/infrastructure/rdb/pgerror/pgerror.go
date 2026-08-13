@@ -63,10 +63,8 @@ func NormalizeError(err error) error {
 
 // NormalizeReconstructError は、DB 行からのエンティティ再構築（ドメインコンストラクタ）が
 // 返したエラーをデータ不整合として ErrInternal へ平坦化します。
-// 保存済みデータがドメイン不変条件を満たさないのはサーバ内部障害であり、入力検証エラー
-// （422 / details 付き）としてクライアントへ露出させないため、元エラーの分類センチネルと
-// apperror.Meta を意図的にチェーンから消します（load-bearing flatten）。理由文はメッセージに
-// 残るためログには出ます。err が nil の場合は nil を返します。
+// 元エラーの分類センチネルと apperror.Meta を意図的にチェーンから消します（load-bearing flatten）。
+// 理由文はメッセージに残るためログには出ます。背景は README を参照。err が nil の場合は nil を返します。
 func NormalizeReconstructError(err error) error {
 	if err == nil {
 		return nil

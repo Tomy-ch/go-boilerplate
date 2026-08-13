@@ -6,8 +6,7 @@
 -- キャンセル済み（canceled_at 設定済み）の購入は除外し、未払いの購入は含みます。
 -- 「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
 -- 述語が見るのは status ですが、両者は再構築時の不変条件で等価に縛られています。
--- 除外は減算的な基準で、落とした行は結果に現れないため呼び出し側では照合できません。退行はテストが固定します。
--- filter_by_period=true の場合は注文日時が ordered_after 以降の購入のみを集計対象にします（period=30d 用）。
+-- filter_by_period=true の場合は注文日時が ordered_after 以降の購入のみを集計対象にします。
 -- 同一販売数量は商品 ID の昇順で安定的に並べます。
 SELECT
     p.id AS product_id,

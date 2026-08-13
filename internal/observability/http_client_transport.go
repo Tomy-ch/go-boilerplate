@@ -78,9 +78,8 @@ type redactedURLParts struct {
 	rawFragment string
 }
 
-// spanURLRedactingRoundTripper は、otelhttp が span の url.full へ記録する URL からクエリ・フラグメントを除去します。
-// otelhttp は url.full を req.URL.String() から算出するため、otelhttp へ渡す直前にこれらを ctx へ退避して URL から
-// 取り除き（span には現れなくなる）、実送信直前に urlSecretRestoringRoundTripper が復元します。
+// spanURLRedactingRoundTripper は、otelhttp が span の url.full へ記録する URL からクエリ・フラグメントを
+// ctx へ退避して取り除きます（チェーン全体の順序は newHTTPClientTransport を参照）。
 // クエリ・フラグメントは機密になり得るため既定で全除去します（httpclient のエラーメッセージ redaction＝redactURL と同方針）。
 // userinfo は otelhttp が url.full 算出時に別途除去するため、ここでは扱いません。
 type spanURLRedactingRoundTripper struct {
@@ -194,7 +193,7 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 	base.DialContext = dialer.DialContext
 	// 不変条件: proxy 経由では dial 先が宛先ではなく proxy になり、guardedDialControl の宛先 IP 検査が
 	// 素通りする（SSRF ガードの無効化）。DefaultTransport から継承した環境変数由来の Proxy を無効化し、
-	// 宛先へ直結してガードを常に宛先 IP に効かせる（ADR-0020 の最終宛先 IP 検査と整合）。
+	// 宛先へ直結してガードを常に宛先 IP に効かせる（ADR-0022 (egress-ssrf-guard) の最終宛先 IP 検査と整合）。
 	// 運用注意: 直接 egress を遮断し forward proxy 必須にした環境では outbound HTTP が全断する
 	// （HTTP_PROXY 注入では復活せず、ネットワーク層での吸収が必要）。
 	base.Proxy = nil

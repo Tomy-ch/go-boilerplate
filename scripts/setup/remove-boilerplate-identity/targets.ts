@@ -9,16 +9,7 @@
 // 決まっていない。共有モジュールへ寄せると、先に走ったほうがもう一方の足元を持って行きうる
 // 依存が増える。判定は数行なので、重複を許して各ツールが自分の分を抱える。
 
-/**
- * 上流のボイラープレートである間だけ成り立つ記述の在否を切り替えるマーカー名。
- *
- * @remarks
- * かつては素の `boilerplate` と `boilerplate-only` が併存していました。前者はリポジトリが自分を
- * ボイラープレートと名乗る散文を、後者はボイラープレートでのみ成り立つ規約を指す、という
- * 分け方でしたが、境界は書き手の主観にしかなく、どちらの名前で書いても除去は同じ契機
- * （セットアップ）で起きます。2 つあること自体が「どちらで書くべきか」という誤りうる判断を
- * 毎回作っていたため、`boilerplate-only` へ寄せました。
- */
+/** 上流のボイラープレートである間だけ成り立つ記述の在否を切り替えるマーカー名。 */
 export const BOILERPLATE_MARKER = "boilerplate-only";
 
 /**
@@ -89,10 +80,17 @@ export const SELF_DIR = "scripts/setup/remove-boilerplate-identity";
  *
  * `marker-baseline` も同じです。あれが守るのは撤去マーカーを**書く側**で、書く場面は上流に
  * しかありません。fork が受け取るのはマーカーが解決し終えたツリーなので、見張る対象が居ません。
+ *
+ * `docs/plan` は上流が着手していないリリース線の要件です。ロードマップ本体と違い fork 側で
+ * 書き換えて使える形をしておらず、中身は「このボイラープレートが次に何を作るか」でしかないので、
+ * 領域を囲うのではなくディレクトリごと消します。ロードマップは残します——あちらは導入部の
+ * 置換マーカーが fork 向けの文面を持っており、方向を記録する場所として引き継げます。
  */
 export const BOILERPLATE_DELETE_PATHS: readonly string[] = [
   "docs/get-started/boilerplate-only-conventions.md",
   "docs/ja/get-started/boilerplate-only-conventions.ja.md",
+  "docs/plan",
+  "docs/ja/plan",
   "scripts/premise-lint",
   "scripts/marker-baseline",
 ];
@@ -114,7 +112,7 @@ function isDeletedWhole(normalizedPath: string): boolean {
  * @remarks
  * 丸ごと消えるパスを外すのは、除去が削除より先に走るためです。順序を入れ替えても `dryRun` では
  * 何も消えないので、走査には現れ続けます。`premise-lint` のテストはマーカーの形を入力として
- * 持つので、外さないと対応の取れない片割れとして除去全体が止まります（実際に止まりました）。
+ * 持つので、外さないと対応の取れない片割れとして除去全体が止まります。
  */
 export function isScanTarget(relativePath: string): boolean {
   const normalized = relativePath.split("\\").join("/");
@@ -130,7 +128,7 @@ export function isScanTarget(relativePath: string): boolean {
   return !EXCLUDED_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
-/** `<comment> boilerplate-only:` を含むか。宣言の陳腐化を検査する側が使う。 */
+/** `<comment> boilerplate-only:` を含むか。 */
 export function containsBoilerplateMarker(content: string): boolean {
   return new RegExp(`(?:\\/\\/|#|<!--)\\s*${BOILERPLATE_MARKER}:`).test(content);
 }

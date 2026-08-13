@@ -95,7 +95,6 @@ func TestRegistry_WriteMeta(t *testing.T) {
 		t.Run("ロックディレクトリが無ければ書き込みエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// TryAcquireFresh を呼ばず lock dir が無い状態で WriteMeta → 親が無く WriteFile 失敗。
 			r := newTestRegistry(t, "/w/a", time.Unix(1000, 0))
 			require.Error(t, r.WriteMeta(9))
 		})

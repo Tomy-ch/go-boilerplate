@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel)\"/.codex/hooks/load-codex-instructions.sh",
+            "statusMessage": "Loading Codex instructions",
+            "additionalContextLimit": 5000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$PWD\"/.agents/comment-remediation/comment-remediated.sh --hook"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -4,7 +4,7 @@ import path from "node:path";
 import { ROOT_DIR } from "../lib/runtime";
 import { describe, expect, it } from "vitest";
 
-import { replaceOpenapiTermsOfService, replaceReadmeReferences, REPOSITORY_REFERENCE_TARGETS } from "./repository-reference";
+import { replaceOpenapiTermsOfService, replaceReadmeReferences, replaceSonarProject, REPOSITORY_REFERENCE_TARGETS } from "./repository-reference";
 
 const README = [
   "# go-boilerplate",
@@ -128,17 +128,55 @@ describe("replaceOpenapiTermsOfService", () => {
   });
 });
 
+describe("replaceSonarProject", () => {
+  const content = [
+    "sonar.projectKey=Tomy-ch_go-boilerplate",
+    "sonar.organization=tomy-ch",
+    "sonar.projectName=go-boilerplate",
+    "sonar.sources=.",
+    "",
+  ].join("\n");
+
+  describe("正常系", () => {
+    it("projectKey を <owner>_<repo>、organization を小文字 owner へ置き換える", () => {
+      expect(replaceSonarProject(content, "Example-Org/example-api")).toBe(
+        [
+          "sonar.projectKey=Example-Org_example-api",
+          "sonar.organization=example-org",
+          "sonar.projectName=example-api",
+          "sonar.sources=.",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    it("`$&` を含むリポジトリ名を置換パターンとして解釈しない", () => {
+      expect(replaceSonarProject(content, "org/a$&b")).toContain("sonar.projectKey=org_a$&b");
+    });
+  });
+
+  describe("異常系", () => {
+    it("対象キーが無ければ本文を変えない", () => {
+      const other = "sonar.sources=.\n";
+
+      expect(replaceSonarProject(other, "org/api")).toBe(other);
+    });
+  });
+});
+
 describe("REPOSITORY_REFERENCE_TARGETS", () => {
   describe("正常系", () => {
-    it("README の英日対と OpenAPI を対象にする", () => {
+    it("README の英日対と OpenAPI と Sonar 設定を対象にする", () => {
       expect(REPOSITORY_REFERENCE_TARGETS.readmeFiles).toEqual(["README.md", "README.ja.md"]);
       expect(REPOSITORY_REFERENCE_TARGETS.openapiFile).toBe("openapi/openapi.yaml");
+      expect(REPOSITORY_REFERENCE_TARGETS.sonarFile).toBe("sonar-project.properties");
     });
 
     it("挙げた対象がすべて実在する", () => {
       const targets = [
         ...REPOSITORY_REFERENCE_TARGETS.readmeFiles,
         REPOSITORY_REFERENCE_TARGETS.openapiFile,
+        REPOSITORY_REFERENCE_TARGETS.sonarFile,
       ];
 
       for (const target of targets) {

@@ -54,12 +54,14 @@ Do NOT use this skill for:
 - Mass-adding undocumented READMEs to the manifest — that defeats the manual's curation intent. Treat additions as a deliberate per-file editorial decision.
 - Creating the missing translation file — chain into `canonicalize-doc` (this skill only flags the drift).
 - Rewriting individual README contents — use `sync-readme`.
+- A **deep-dive review** of a single README (strengths / gaps / improvement suggestions) — use `/readme-review <path>`.
 
 ## What This Skill Reads / Writes
 
 **Reads (always)**:
 
 - `docs/portal/manifest.yaml` — source of truth for which READMEs are exposed.
+- `.claude/skills/readme-review/SKILL.md` — source of truth for the evaluation criteria; re-read on every run.
 - All `README.md` / `README.ja.md` files in the repo, with these always excluded:
   - `docs/portal/guides/**` (generated copies of the originals)
   - `vendor/**`, `node_modules/**`
@@ -139,11 +141,7 @@ For each entry in `uncurated_raw`:
 
 1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).
 2. Apply the P1–P7 positive criteria and N1–N4 negative criteria from `readme-review`.
-3. Compute the verdict using `readme-review`'s thresholds:
-   - **`manual-worthy`** — positive ≥ 3 AND no negative trigger
-   - **`borderline`** — positive 1–2 AND no negative trigger
-   - **`not-yet-manual-grade`** — N2 (Stub) or N3 (Index-only) triggered
-   - **`out-of-scope-for-portal`** — N1 (Pure API ref) or N4 (Operational ref) triggered
+3. Compute the verdict using `readme-review`'s thresholds, into one of the four result classes listed under *Key Assumptions* above.
 
 4. For each file, record:
    - The verdict

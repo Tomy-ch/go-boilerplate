@@ -112,10 +112,7 @@ export type CutOffScan = {
 
 /**
  * ワークフロー 1 本を走査し、打ち切り時の振る舞いが定義されていない箇所を違反として返す。
- *
- * @remarks
- * ジョブの `timeout-minutes` と、コメント投稿ステップの `if:` / `title:` をまとめて見ます。
- * 3 つは別々の欠落ですが、打ち切りを不可視にするという 1 つの結果へ集まるため 1 本の走査に置きます。
+ * 3 点を 1 本の走査にまとめる理由は .github/workflows/README.md の Job Cut-off を参照。
  */
 export function scanWorkflow(file: string, source: string): CutOffScan {
   const { jobs, found } = splitJobs(source);

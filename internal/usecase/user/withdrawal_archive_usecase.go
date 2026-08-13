@@ -38,7 +38,6 @@ type ArchiveUsecase interface {
 	ArchiveWithdrawal(ctx context.Context, params ArchiveWithdrawalParams) (string, error)
 }
 
-// archiveUsecase は、退会証跡の保存ユースケースを提供します。
 type archiveUsecase struct {
 	tracer  observability.LayerTracer
 	storage objectstorage.Storage

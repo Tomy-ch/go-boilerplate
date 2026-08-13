@@ -4,6 +4,8 @@ vendor/
 
 # Node ライブラリの依存解決ディレクトリ（docker ビルド時/ローカルとも生成物）
 node_modules/
+# pnpm がコンテナ実行時にリポジトリ直下へ作る内容アドレス store。
+.pnpm-store/
 
 # ビルド済みのバイナリファイル
 tmp/
@@ -15,7 +17,11 @@ scripts/bin/
 # graphify の出力（graph.json / GRAPH_REPORT.md 等）。コード変更ごとに動く派生物
 graphify-out/
 
-# vitest のカバレッジ出力。各 vitest.config は reporter を text へ絞っているが、
+# Codex が issue ごとに作成する linked worktree。親 checkout から未追跡に見えるため、
+# worktree 自身を含めて除外する。
+.codex/worktrees/
+
+# vitest のカバレッジ出力。各 vitest.config は reporter に html を含めていないが、
 # --coverage.reporter=html を直に指定した実行が生む書き出しをコミット対象から外す。
 # 裸の coverage/ は追跡・公開している docs/coverage/（Go 側）にも一致してしまうため、
 # パッケージごとに列挙する。
@@ -32,5 +38,5 @@ docs/portal/index.html
 # ディレクトリの表示管理ファイル
 .DS_Store
 
-# DB スロットプールがworktree毎に書き出す占有情報（scripts/db-pool）
+# DB スロットプールがworktree毎に書き出す占有情報（internal/cli/dbslot）
 .gobp-db-slot

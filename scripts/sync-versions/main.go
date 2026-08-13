@@ -45,7 +45,6 @@ var (
 	nodeImageRe      = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	pythonImageRe    = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	miseDockerfileRe = regexp.MustCompile(`(MISE_VERSION=v)\d+(?:\.\d+){0,2}()`)
-	miseActionRe     = regexp.MustCompile(`(?m)^([ \t]+version: )\d+(?:\.\d+){0,2}([ \t]*)$`)
 	// docker-compose.yaml の otel-lgtm image タグ。suffix は空 capture でタグ末尾を保持する。
 	otelLgtmImageRe = regexp.MustCompile("(grafana/otel-lgtm:)" + `\d+(?:\.\d+){0,2}` + "()")
 )
@@ -77,9 +76,7 @@ type fileState struct {
 	applied  []string
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("")
@@ -89,8 +86,7 @@ func main() {
 	}
 }
 
-// run は、mise.toml の version を各種ファイルへ反映します。
-// 基点となるディレクトリの取得手段は、差し替えられるよう引数で受けます。
+// run は、mise.toml の version を各種ファイルへ反映します。getwd は走査の基点の取得手段です。
 func run(getwd func() (string, error)) error {
 	root, err := getwd()
 	if err != nil {
@@ -197,10 +193,8 @@ func dockerfileRule(file, label string, re *regexp.Regexp, version string, count
 	}
 }
 
-// readmeRule は README 中のイメージ記載を書き換える rule を返す。件数の下限は設けない。
-// README は読み物であり、同じイメージを何回書くか・そもそも書くかは記述側の裁量で、
-// 派生プロジェクトが構成を書き換えれば件数は当然変わる。件数を固定すると、実装が
-// mise.toml と揃っていても文章の書き方が変わっただけで abort することになる。
+// readmeRule は README 中のイメージ記載を書き換える rule を返す。件数の下限は設けない —
+// README の記載量は書き手の裁量で変わるため、固定すると文章の書き方が変わっただけで abort する。
 func readmeRule(file, label string, re *regexp.Regexp, version string) rule {
 	return rule{
 		label:   label,
@@ -261,12 +255,6 @@ func buildRules(v runtimeVersions) []rule {
 			"docker/tools/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
 		dockerfileRule("docker/server/Dockerfile",
 			"docker/server/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/go-lint.yaml",
-			"go-lint.yaml (mise-action version)", miseActionRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/gen-db-artifacts-check.yaml",
-			"gen-db-artifacts-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/vulnerability-check.yaml",
-			"vulnerability-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
 		dockerfileRule("docker-compose.yaml",
 			"docker-compose.yaml (otel-lgtm image)", otelLgtmImageRe, v.OtelLgtm, 1),
 	}

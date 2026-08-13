@@ -23,7 +23,7 @@ TIMEOUT_MIN="30"        # 1 呼び出しタイムアウト（分）
 # ---- 内部定数（フラグでは変更不可）------------------------------------------
 SRC=""                  # 解析起点。常にリポジトリルート（後段で設定）
 MAX_TURNS="120"         # claude -p の上限ターン（暴走抑止）。内部固定
-LIMIT_WAIT=18000        # 5h。サブスクのローリング窓を丸ごと抜ける長さ
+LIMIT_WAIT=18000        # 5h。値の根拠は README.md「Timeout / Limit Handling」
 # 上限検知パターン（stdout/stderr 両方を対象に grep する）。文言は claude の出力に追従して拡張。
 LIMIT_RE='usage limit|rate limit|rate-limit|too many requests|429|overloaded|quota exceeded|limit reached|usage cap|reached your limit'
 # サーキットブレーカ: 「即失敗（=API即拒否）」が連続したら、上限の見逃し等とみなし停止する。
@@ -55,7 +55,7 @@ while [ $# -gt 0 ]; do
     --no-index)      NO_INDEX=1; shift ;;
     --detect-only)   DETECT_ONLY=1; shift ;;
     -h|--help)
-      sed -n '2,16p' "$0"; exit 0 ;;
+      sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "未知の引数: $1" >&2; exit 2 ;;
   esac
 done
@@ -276,7 +276,7 @@ is_generated_path() { # $1=path（REPO_ROOT 相対 or 絶対）
 }
 is_junk_file() { # レビュー価値の無いメタ/ロック/バイナリ
   case "$(basename "$1")" in
-    LICENSE|go.sum|go.mod|*.lock|package-lock.json|yarn.lock|pnpm-lock.yaml|\
+    LICENSE|go.sum|go.mod|*.lock|pnpm-lock.yaml|\
     .gitignore|.gitattributes|.gitkeep|.dockerignore|.editorconfig|.DS_Store) return 0 ;;
   esac
   case "$1" in
@@ -689,9 +689,7 @@ cb_reset   # 前回の即失敗カウントを掃除
 
 if [ "$PARALLEL" -gt 1 ]; then
   # --- キャッシュ温機（warm-up）---
-  # 並列同時起動だと共有プレフィックス（システム+テンプレ）のプロンプトキャッシュが
-  # 書き込み前に各ワーカーで読めず全員フルプライスになる。先頭の未完1件を単独実行して
-  # キャッシュを温めてから fan out する（公式の回避策: 1本投げ→完了→残りを並列）。
+  # 先頭の未完1件を単独実行してから fan out する。根拠は README.md「Notes on Parallel Execution」。
   warmup_dir=""
   for d in "${MODULES[@]}"; do
     id="$(mod_id "$d")"

@@ -372,8 +372,7 @@ describe("buildDocsJson", () => {
       expect(docs.referenceLinks).toEqual([]);
     });
 
-    // 複製側（resolveCopyEntries）はこれを拒否する。docs.json 側は生成を止めず、
-    // 「カードが出ない」形で現れる。止める判断は複製側に一本化してある。
+    // 複製側（resolveCopyEntries）は同じ入力を拒否する。止める判断はそちらに一本化してある。
     it("meta 以外に map を置いた section をカードにしない", () => {
       const { docs } = build({ adr: { src: "a.md" } });
 

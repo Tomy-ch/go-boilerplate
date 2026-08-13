@@ -1,7 +1,7 @@
 ---
 name: release-notes
 description: >-
-  Generate a Japanese release note Markdown file under `.github/release/` summarizing changes between a specified `origin` git tag and `HEAD`. Confirms both the FROM tag and the new release version with the user via `ask the user explicitly`, gathers commit history / diff statistics, categorizes changes, and writes the document in the project's canonical `v1.1.0`-style sectioned format. Triggers: "リリースノートを作成", "release notes", "v1.x.y のリリースノート".
+  Generate a Japanese release note Markdown file under `.github/release/` summarizing changes between a specified `origin` git tag and `HEAD`. Confirms both the FROM tag and the new release version with the user via `ask the user explicitly`, gathers commit history / diff statistics, categorizes changes, and writes the document in the project's canonical `v2.1.0`-style sectioned format. Triggers: "リリースノートを作成", "release notes", "v1.x.y のリリースノート".
 ---
 
 # Release Notes Generation Procedure
@@ -10,8 +10,8 @@ This skill defines the work procedure for generating a Japanese release note tha
 
 The canonical examples of the target format are:
 
-- `.github/release/v1.1.0.md`
-- `.github/release/v1.0.0.md`
+- `.github/release/v2.1.0.md`
+- `.github/release/v2.0.0.md`
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
@@ -38,15 +38,15 @@ This skill **MUST call `ask the user explicitly` immediately after invocation** 
 1. Compute candidate bumps using the in-repo helper:
 
     ```sh
-    node scripts/semver.mjs <FROM_TAG> patch
-    node scripts/semver.mjs <FROM_TAG> minor
-    node scripts/semver.mjs <FROM_TAG> major
+    tsx scripts/semver <FROM_TAG> patch
+    tsx scripts/semver <FROM_TAG> minor
+    tsx scripts/semver <FROM_TAG> major
     ```
 
 2. Also detect a hint from the current branch (`git rev-parse --abbrev-ref HEAD`). If it matches `release/v[0-9]+\.[0-9]+\.[0-9]+`, surface that value as an additional candidate.
 3. Invoke `ask the user explicitly`:
     - Question: "新しいリリースのバージョン (NEW_VERSION) を指定してください。"
-    - Options: patch / minor / major candidates from `scripts/semver.mjs`, plus the branch-derived candidate if present.
+    - Options: patch / minor / major candidates from `scripts/semver/index.ts`, plus the branch-derived candidate if present.
 4. Validate the answer matches `^v[0-9]+\.[0-9]+\.[0-9]+$`. Use it as `<NEW_VERSION>`.
 
 Do NOT read git history, run diffs, or write any file until both values are confirmed.
@@ -65,7 +65,7 @@ Per the "Exception: Skill Execution" clause in AGENTS.md, the normal AI Modifica
 
 The following remain protected even during skill execution:
 
-- `AGENTS.md` / `AGENTS.md`
+- `AGENTS.md`
 - Existing release notes under `.github/release/` (this skill never modifies or overwrites an existing file — if `.github/release/<NEW_VERSION>.md` already exists, stop and ask the user)
 - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
 - Everything outside `.github/release/`
@@ -123,7 +123,7 @@ When the bucket is ambiguous, inspect the changed file paths from step 2 to infe
 
 ### 4. Compose the Release Note
 
-Write `.github/release/<NEW_VERSION>.md` in **Japanese**, following the canonical `v1.1.0` format. The required top-level structure is:
+Write `.github/release/<NEW_VERSION>.md` in **Japanese**, following the canonical `v2.1.0` format. The required top-level structure is:
 
 ```markdown
 <!-- markdownlint-disable MD041 -->
@@ -173,9 +173,9 @@ Rules for the content:
 
 - **Do not paste raw commit subjects.** Summarize them in human-readable Japanese sentences.
 - **Group by theme**, not by chronology.
-- **Reference concrete file paths or component names** when they help readers locate the change (e.g., `scripts/semver.mjs`, `internal/controller/handler/...`).
+- **Reference concrete file paths or component names** when they help readers locate the change (e.g., `scripts/semver/index.ts`, `internal/controller/handler/...`).
 - **Be honest about scope.** If a section has no content (e.g., no bug fixes), write `- 該当なし` rather than fabricating items.
-- **Match existing tone.** Compare to `.github/release/v1.1.0.md` for sentence style.
+- **Match existing tone.** Compare to `.github/release/v2.1.0.md` for sentence style.
 
 ### 5. Show a Preview Before Writing
 
@@ -222,7 +222,7 @@ Confirm the following before reporting completion:
 - [ ] `<NEW_VERSION>` confirmed with the user via `ask the user explicitly` and validated against SemVer
 - [ ] `.github/release/<NEW_VERSION>.md` does not already exist
 - [ ] Diff metadata (commit count / file count / +/- lines) collected from `git`
-- [ ] Commits categorized into the v1.1.0 sections
+- [ ] Commits categorized into the v2.1.0 sections
 - [ ] Release note drafted in Japanese, matching the canonical format
 - [ ] Preview confirmed by the user
 - [ ] `.github/release/<NEW_VERSION>.md` written

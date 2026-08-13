@@ -8,6 +8,18 @@ English | [日本語](README.ja.md)
 
 `RegisterRelayHooks` registers a Start hook and a Stop hook with `lifecycle.Registrar`:
 
+```mermaid
+flowchart TB
+    Start["OnStart hook"]
+    Run["engine.Run() in a goroutine"]
+    Stop["OnStop hook"]
+    Cancel["cancel()"]
+    Wait["await engineDone / stopCtx"]
+
+    Start --> Run
+    Stop --> Cancel --> Wait
+```
+
 1. On Start: launches `engine.Run(engineCtx)` (the poll loop) in a detached goroutine and returns immediately (Start does not block)
 2. On Stop: cancels `engineCtx` and waits for the loop to finish within `stopCtx`
 
@@ -20,8 +32,5 @@ English | [日本語](README.ja.md)
 ## Notes
 
 - The Start/Stop plumbing (detached goroutine, cancel-on-stop, grace-bounded drain) is delegated to `lifecycle.SupervisedRunner`
-- The run context is cancelled only on `OnStop`, so it is not affected by `startCtx` cancellation after Start completes
 - The return value of `engine.Run` is intentionally ignored; the loop owns its own retry / backoff
-- Used only in the relay-dedicated process (`cmd outbox-relay`), not in the main server
-- On Stop, loop termination is bounded by `stopCtx`
 - This hook is wired by `OutboxRelayModule` in `internal/di/module/outboxrelay.go`

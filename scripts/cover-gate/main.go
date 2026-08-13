@@ -41,9 +41,7 @@ var (
 	errBelowThreshold = xerrors.New("coverage below threshold")
 )
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 
@@ -86,9 +84,7 @@ func run(args []string, total func(profile string) (float64, error)) error {
 		return nil
 	}
 
-	// 警告モードは、下限割れを報告しつつ 0 で終わる。守る対象が違うゲートを 1 本の
-	// 合否へ束ねると、片方の劣化がもう片方をブロックする。どちらを警告に留めるかは
-	// 呼び出し側の関心なので、判断はフラグで受けてここには方針を持たない。
+	// 下限割れを失敗にするか警告に留めるかの理由は package doc を参照。ここはフラグの指示に従う。
 	if *warn {
 		log.Print(annotate(message, *github))
 

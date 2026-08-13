@@ -14,8 +14,7 @@ import { cn } from "@/components/cn";
  * Server Component からは直接 render できない。内容自体に client runtime が要らない場合は、
  * Server Component で組み立てた要素を `children` として渡す。
  *
- * 退会・削除のような取り消せない操作の確認には使わない。その用途は専用の意味論
- * (`role="alertdialog"`) を持つ `AlertDialog` を使う。
+ * 取り消せない操作の確認には使わない。その用途は `role="alertdialog"` の意味論を持つ別部品が要る。
  *
  * @param props - Radix `Dialog.Root` の props。`open` / `defaultOpen` / `onOpenChange` で
  *   開閉を制御でき、省略時は trigger と close の操作だけで開閉する。

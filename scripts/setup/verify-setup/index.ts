@@ -1,13 +1,6 @@
 #!/usr/bin/env -S tsx
 // 初期化（`docs/get-started/setup-repository.md` の Phase 5）が過不足なく終わったことを検証し、
-// 通ったら初期化ツール一式と自身を撤去する。
-//
-// 撤去するのは、`replace-*` が一度きりのインスタンス化ツールで、残しても「もう当ててはいけない」
-// ものにしかならないため。特に `replace-codeowners` は全ルールの所有者を一括で同じ値へ書き換えるので、
-// パスごとに所有者が分かれた後の CODEOWNERS に当てると壊す。
-//
-// 撤去を実行直後ではなく検証成功後に置くのは、Phase 5 が 5 本の連続実行だから。1 本目の引数を
-// 打ち間違えた利用者が、直すためのツールを既に失っている状態を作らない。
+// 通ったら初期化ツール一式と自身を撤去する。撤去の理由とタイミングは同 Phase 5 が持つ。
 //
 // この入口はファイル入出力と終了コードだけを担う。判定は verify.ts にある。
 
@@ -42,8 +35,8 @@ function read(relativePath: string): string {
  * ボイラープレート名が残っている置換対象ファイルを列挙する。
  *
  * @remarks
- * 走査範囲と対象判定は `replace-module` のものをそのまま使います。検証側が独自の除外を持つと、
- * 置換器が対象を変えたときに片方だけ古い規則で見続け、取りこぼしを見逃します。
+ * 走査範囲と対象判定は `replace-module` のものをそのまま使います
+ * （理由は verify.ts の `VerificationInput.boilerplateReferences`）。
  */
 function boilerplateReferences(): string[] {
   const files = listFilesRecursive(ROOT_DIR, {
@@ -88,9 +81,15 @@ function stripDeclarations(): void {
   for (const relativePath of LOCALIZATION_MARKER_FILES) {
     const absolute = path.join(ROOT_DIR, relativePath);
 
-    if (!fs.existsSync(absolute)) continue;
+    // 存在確認と読み出しを分けると、その間に消えたファイルで例外になる。読めなければ対象外とする。
+    let source: string;
+    try {
+      source = fs.readFileSync(absolute, "utf8");
+    } catch {
+      continue;
+    }
 
-    const result = stripMarkers(fs.readFileSync(absolute, "utf8"), LOCALIZATION_MARKER);
+    const result = stripMarkers(source, LOCALIZATION_MARKER);
 
     if (result.removed === 0) continue;
 

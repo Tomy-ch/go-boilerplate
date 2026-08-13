@@ -25,6 +25,23 @@ GitHub issue を、環境確保からマージ済み PR まで進める半自動
 | テスト品質レビュー | `test-review`（`impl-review` が連鎖） |
 | 実装そのもの | 承認された計画に従うあなた |
 
+## AI の変更範囲
+
+`AGENTS.md` は AI の編集対象を `internal/` / `pkg/` / `database/` / `openapi/` に限り、それ以外 — `.github/workflows/`、`docker/`、`scripts/`、`docs/`、`.makefiles/`、ルートのドットファイル — をスコープ外としている。**このスキルの起動は、その制限を緩めるユーザーの明示指示にあたる。** このスキルは issue 汎用のドライバであり、対象面を決めるのは issue の側だからである。CI・ツールチェーン・コンテナイメージ・ドキュメントについての issue は、既定の 4 ディレクトリの中では解決できない。これは `AGENTS.md` の「Skills must not be a loophole」条項に対する、明示された抜け穴でない例外である。
+
+緩和には境界があり、その境界は計画である:
+
+- Step 3 の計画の **触るファイル一覧** が許可された対象面。既定の 4 ディレクトリの外にあるセンシティブなパスは、編集する**前**にそこへ現れていなければならない。glob で暗に含めるのではなく、明示的に名前を書く。
+- 計画を提示するときにそれを言う。ユーザーは diff で気づくのではなく、承知のうえでセンシティブなパスを承認する — 黙ってスコープが広がる計画こそ、この条項が防ごうとしている失敗である。
+- 計画に無いセンシティブなパスへ到達したら Step 4 の trip-wire 1。止まって聞く。対象面を広げてから事後報告しない。
+
+このスキルの実行中も保護されるもの（issue が何を要求しても触らない）:
+
+- `AGENTS.md` / `CLAUDE.md`
+- 生成物: `**/*.gen.go`、`*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、および `docs/` 配下の生成物（`docs/openapi/**`、`docs/coverage/**`、`docs/db-schema/**`、`docs/godoc/**`、`docs/portal/docs.json`、`docs/portal/guides/**`）。`make` ターゲット経由での再生成はよい。手編集は駄目。
+- エージェント自身の権限設定の `permissions.deny` 配下
+- `database/migrations/**` の既存ファイル（新規 migration ファイルのみ）
+
 ## Step 0 — 3 つのモードを確認する（`ask the user explicitly` の対話 1 回）
 
 何より先に、3 問すべてを含む 1 回の `ask the user explicitly` 対話で聞く。既定は明示するが、ユーザーの選択が常に優先。別々の質問を連続して投げる形にしてはならない。
@@ -74,26 +91,43 @@ gh issue comment <n> --body-file <file>
 
 コードに触れる前に済ませる。共有 checkout に何も落とさないため。
 
+既存 worktree を再開する場合は、まず状態を変えずに確認する。worktree のパス、`vendor/` の有無、`.gobp-db-slot` の有無を確認する。slot が無い場合、DB 作業を始める直前に `make slot-acquire` を実行する必要がある。会話を再開するだけで取得してはならない。再開時の無条件な slot 取得や DB 再初期化は禁止する。
+
+### [Codex側の差分]
+
+このリポジトリでは Codex の session-start hook 契約を検証できていない。そのため再開確認は `.codex/hooks.json` ではなく Step 2 に置く。skill を同期するときもこの位置を保つこと。Claude 側の session hook が同じ観測を行っても、Codex 側で再開時の DB slot 取得や DB 再初期化を起こしてはならない。
+
 ```bash
-# 1. 現行のリリース線を特定する。GitHub の default branch は遅れているが、直近のマージ済み PR は正確。
-gh pr list --state merged --limit 10 --json baseRefName -q '.[].baseRefName' | sort | uniq -c
+# 1. origin の live state から現行のリリース線を解決する。
+BASE=$(make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 
 # 2. 古いローカル ref ではなく、今の origin から切る。
-git fetch origin release/vX.Y.0
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> origin/release/vX.Y.0
+git fetch origin "$BASE"
+mkdir -p .codex/worktrees
+git worktree add -b feature/<n>-<slug> .codex/worktrees/<n>-<slug> "origin/$BASE"
 
-# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 4000+N。
-cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
+# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 2010+N。
+cd .codex/worktrees/<n>-<slug> && make slot-acquire
 
 # 4. 新規 worktree には vendor/ が無く、air は --mod=vendor でビルドするため、これが無いと serve が失敗する。
 go mod vendor
 ```
 
+`.codex/worktrees/` は trusted workspace の内側に置く linked worktree のコンテナである。通常作業は sandbox の書込み境界をまたがない。親 checkout からは各 linked worktree が未追跡に見えるため、このディレクトリは ignore する。親 checkout で `git clean -fdx` を実行してはならない。これらの worktree を削除し得るためである。リポジトリの local-safety rule は `git clean` を禁止している。このディレクトリを掃除するための例外を求めてはならない。
+
+`make base-branch` は `origin` の live state を読む。この用途で他の情報は使わない。ローカルの
+`refs/remotes/origin/HEAD` は clone 時に一度だけ設定され、`git fetch` では更新されない。GitHub の
+default branch は以前のリリース線に留まり、エージェントまたは環境が渡す「main branch」ヒントも、その古い
+ローカル symref を報告しうる。いずれも警告なしに答えを返すため、世代の古いベースから分岐しても、期待される
+ファイルが無いとエージェントが報告するまで見えない。その時点ではそのブランチ上の作業は無駄になっている。
+
 `slot-acquire` が失敗を報告したら、再試行の前に `make slot-status` を見る — コマンドがエラーでもリースだけ成功していることが多い。
 
 **スロットは自分から解放しない。片付けフェーズで解放を聞きもしない。** 握ったままのコストはほぼゼロ（リースは stale になれば自動回収される）だが、作業途中で失うと DB とポートを失う。本当に終わったかを知っているのはユーザーだけ。
 
-ユーザーの指示がリリースバージョンを含まず、マージ済み PR の傾向も割れる場合は聞く。
+ユーザーの指示が解決結果とは**異なる**リリースバージョンを指定した場合は、分岐前に聞く。意図的な
+バックポート先だけは resolver には分からない。
 
 ## Step 3 — 計画を立て、そこで待つ
 
@@ -180,9 +214,9 @@ runtime 検証は意図的にここに置いていない。PR ができた後（
 動いているシステムに対して実 HTTP 経路を通す。どのモードでも緩められない。
 
 ```bash
-make serve                                    # API は 8080+N、mock-auth は 4000+N
+make serve                                    # API は 8080+N、mock-auth は 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
@@ -197,12 +231,12 @@ docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
   "select ui.subject, r.name from user_identities ui
      left join user_roles ur on ur.user_id = ui.user_id
      left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:400N';"
+   where ui.issuer = 'http://localhost:201N';"
 ```
 
 正常系、変更が持ち込むエラー経路、そして保護された操作ならトークン無しで 401 になることを確認する。その上で **LGTM スタックのトレースを読み、リクエストが想定どおりの経路（controller → usecase → infrastructure、意図した SQL）を通ったことを確認する**。ステータスコードだけでは、そのリクエストが変更した層に届いたことの証明にならない — 間違ったが尤もらしい経路は、間違った理由で正しいステータスを返す。
 
-**CI 緑はこの代替にならない。** 過去の実行で、ドキュメント上の API 契約が誤ったままマージされたことがある — 動いているシステムが 401 を返すところを 409 と書いていた。認証が usecase より手前で呼出元を弾いていたためである。5 つのレビューレンズと 29 の CI チェックが全て通っていた。どれもが静的解析か、DB 層で止まるテストだったから。実 HTTP リクエスト 1 本で即座に露見した。
+**CI 緑はこの代替にならない。** レビューレンズも CI チェックも、DB 層で止まる静的解析やテストにすぎない。middleware がそもそもリクエストを届かせない層で、記載されたステータスコードが正しいとされてしまう。実 HTTP リクエスト 1 本で即座に決着する。
 
 runtime 検証がどうしても実行できないときの正直な選択肢は 2 つで、第三はない。
 
@@ -234,7 +268,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 
 変更範囲の外にある指摘は issue モードに従って追跡へ回す。`search` では、新規起票より既存 issue への申し送りコメントを優先する — issue 数それ自体がコストで、重複は元の issue を埋もれさせる。
 
-**起票の前に、その指摘を動いているシステムで検証する。** コードを読んだだけで導いた指摘は、静的レビューでは捕まえられない形で誤りうる: ある実行で「退会済みユーザーが複数のエンドポイントを呼べる」という issue を起票したが、実際には middleware が、調べていたコードよりずっと手前で全て弾いていた。その issue は NOT_PLANNED でクローズする羽目になった。Step 8 の runtime 段階があれば大抵は確認できる。
+**起票の前に、その指摘を動いているシステムで検証する。** コードを読んだだけで導いた指摘は、静的レビューでは捕まえられない形で誤りうる — 多くの場合、読んでいた層の外側（middleware、DI 配線、DB）が既にそのケースを処理しているためである。Step 8 の runtime 段階があれば大抵は確認できる。
 
 最後に、コミットメッセージにも PR 本文にも現れていない自己判断を PR コメントへ記録する。`delegated` モードでは、記録した trip-wire がここに落ちる。
 
@@ -270,7 +304,7 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 
 - [ ] `ask the user explicitly` の対話 1 回で 3 モードを確認した。
 - [ ] 着手コメントを投稿した（issue ↔ ベースの食い違いを含む）。
-- [ ] fetch 済みのベースから worktree を作成、スロットをリース、`go mod vendor` 実行。
+- [ ] fetch 済みのベースから worktree を作成。DB slot は DB 作業開始時にのみリースし、必要なら `go mod vendor` を実行した。
 - [ ] 別モデルが計画を作成、必須 4 セクションが揃い、実装前に承認された。
 - [ ] trip-wire を進行モードどおりに処理した。黙って吸収したものが無い。
 - [ ] 計画と実差分を突合した。

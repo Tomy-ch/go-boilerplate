@@ -67,7 +67,6 @@ func TestV1ProductsRanking_Integration(t *testing.T) {
 
 			productsrankinghandler.BindHandler(e, tf, mockUC)
 
-			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/ranking?period=all&limit=10", nil, nil)
 			AssertJSONResponseType[gen.ProductRankingResponse](t, actual)
 		})

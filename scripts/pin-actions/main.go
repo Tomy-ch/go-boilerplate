@@ -104,9 +104,7 @@ type rewritePlan struct {
 
 func (r ref) key() string { return r.repo + "@" + r.tag }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 
@@ -433,12 +431,9 @@ func refAgeDays(ctx context.Context, apiBase, repo, tag, sha string) (int, error
 
 // pickRefTime は Release の公開日時と commit の日時のうち新しい方を返す。どちらも不明ならエラー。
 //
-// Release は tag 名にしか紐づかず、tag が別の commit へ付け替えられても published_at は据え置かれる。
-// published_at だけを見ると、この機構が想定する脅威そのもの（侵害されたアカウントによる moving tag の
-// 付け替え）に対して何年も前の日付が返り、検疫が常に素通りする。逆に commit の committer date は
-// GIT_COMMITTER_DATE で任意の過去日時へ設定できる。どちらか一方でも「新しい」と言う限り検疫が掛かる
-// よう新しい方を採る。日付偽装そのものに耐える保証ではなく、付け替えの検知は lockfile の差分レビューが
-// 担う（docs/design/security.md）。
+// 新しい方を採るのは、published_at が tag の付け替えで据え置かれ、committer date は任意の過去へ
+// 設定できるため。日付偽装そのものには耐えず、付け替えの検知は lockfile の差分レビューが担う
+// （docs/design/security.md の "The quarantine buys time; it does not verify a date"）。
 func pickRefTime(published, committed time.Time) (time.Time, error) {
 	switch {
 	case published.IsZero() && committed.IsZero():

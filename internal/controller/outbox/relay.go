@@ -51,12 +51,8 @@ func NewEngine(
 }
 
 // Run は、poll ループ本体です。ctx 完了まで常駐し、完了時に nil を返します。
-//   - 満杯（claim 件数 == BatchSize）かつ publish 進捗あり（published > 0）の間は、まだ pending が
-//     残る可能性が高いため待機せず連続して捌きます。
-//   - 空振り・部分消化・「満杯だが全件 publish 失敗」なら PollInterval、エラー時は ErrorBackoff 待機します。
-//     全件 publish 失敗の満杯バッチを待機ゼロで再 claim すると、下流停止時にホットループして即時 dead 化
-//     するため、進捗が無い満杯バッチは必ず待機へ落とします。
-//   - 待機は clock.Sleeper 経由で行い、ctx 完了で即座に抜けます。
+// 待機判断（連続消化 / PollInterval / ErrorBackoff）の表と根拠は README の Loop semantics を参照。
+// 待機は clock.Sleeper 経由で行い、ctx 完了で即座に抜けます。
 func (e *Engine) Run(ctx context.Context) error {
 	ctx, endSpan := e.tracer.Start(ctx)
 	defer endSpan()
@@ -79,11 +75,9 @@ func (e *Engine) Run(ctx context.Context) error {
 			continue
 		}
 
-		// lag 記録はバッチ成功時のみ行う。エラー時は同一原因（DB 障害等）で二重にエラーログが出るのを避ける。
 		e.observeLag(ctx, log)
 
 		if res.Claimed >= int(e.set.BatchSize) && res.Published > 0 {
-			// 満杯かつ進捗あり。まだ pending が残る可能性が高いため待機せず次 poll を即実行する。
 			continue
 		}
 		if e.waitDone(ctx, e.set.PollInterval) {

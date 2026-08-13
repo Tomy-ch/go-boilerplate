@@ -42,6 +42,35 @@ right, or whether a finding deserves an issue. It routes those to the user and r
 | Test-quality review | `test-review` (chained by `impl-review`) |
 | The implementation itself | you, following the approved plan |
 
+## AI Modification Scope
+
+`AGENTS.md` confines AI edits to `internal/` / `pkg/` / `database/` / `openapi/` and treats everything
+else — `.github/workflows/`, `docker/`, `scripts/`, `docs/`, `.makefiles/`, root dotfiles — as out of
+scope. **Invoking this skill is the explicit user instruction that relaxes that**, because this skill
+is issue-generic: the issue decides the surface, and an issue about CI, tooling, container images, or
+documentation cannot be resolved inside the four default directories. This is a documented,
+non-loophole exception per the "Skills must not be a loophole" clause in `AGENTS.md`.
+
+The relaxation is bounded, and the bound is the plan:
+
+- The Step 3 plan's **Files to touch** section is the permitted surface. A sensitive path outside the
+  four default directories must appear there **before** it is edited, named explicitly rather than
+  implied by a glob.
+- Say so when presenting the plan. The user approves the sensitive paths knowingly, not by discovering
+  them in the diff — a plan that quietly widens the scope is the failure this clause exists to prevent.
+- Reaching a sensitive path the plan does not list is trip-wire 1 (Step 4). Stop and ask; do not widen
+  the surface and report it afterwards.
+
+Hard-protected even during this skill (never touch, regardless of what the issue asks):
+
+- `AGENTS.md` / `CLAUDE.md`
+- Generated files: `**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, and generated content
+  under `docs/` (`docs/openapi/**`, `docs/coverage/**`, `docs/db-schema/**`, `docs/godoc/**`,
+  `docs/portal/docs.json`, `docs/portal/guides/**`). Regenerating through a `make` target is fine;
+  hand-editing is not.
+- Anything under `permissions.deny` in the agent's own permission configuration
+- Existing files under `database/migrations/**` (new migration files only)
+
 ## Step 0 — Confirm the three modes (one `ask the user explicitly` interaction)
 
 Ask once, before anything else, in one `ask the user explicitly` interaction containing all three
@@ -99,20 +128,47 @@ gh issue comment <n> --body-file <file>
 
 Do this before any code is touched, so nothing lands in a shared checkout.
 
+When resuming an existing worktree, first inspect it without changing state: confirm the worktree
+path, whether `vendor/` exists, and whether `.gobp-db-slot` exists. A missing slot means that DB work
+must run `make slot-acquire` immediately before it begins; do **not** acquire it merely to resume the
+conversation. Never run slot acquisition or DB reinitialization as an unconditional resume action.
+
+### [Codex-side difference]
+
+Codex has no verified session-start hook contract in this repository. This resume check therefore
+lives in Step 2 rather than in `.codex/hooks.json`. Keep it here when synchronizing the skill: a
+Claude-side session hook may provide the same observation, but must not cause Codex to acquire a DB
+slot or reinitialize a database on resume.
+
 ```bash
-# 1. Find the active release line. The GitHub default branch lags behind it; recent merged PRs do not.
-gh pr list --state merged --limit 10 --json baseRefName -q '.[].baseRefName' | sort | uniq -c
+# 1. Resolve the active release line off origin's live state.
+BASE=$(make -s base-branch)
+test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 
 # 2. Branch from current origin, not a stale local ref.
-git fetch origin release/vX.Y.0
-git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> origin/release/vX.Y.0
+git fetch origin "$BASE"
+mkdir -p .codex/worktrees
+git worktree add -b feature/<n>-<slug> .codex/worktrees/<n>-<slug> "origin/$BASE"
 
-# 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 4000+N.
-cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
+# 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 2010+N.
+cd .codex/worktrees/<n>-<slug> && make slot-acquire
 
 # 4. A fresh worktree has no vendor/ and air builds with --mod=vendor, so serve would fail without this.
 go mod vendor
 ```
+
+`.codex/worktrees/` is a linked-worktree container inside the trusted workspace, so ordinary work
+does not cross the sandbox write boundary. It is ignored because the parent checkout otherwise sees
+each linked worktree as untracked. Never run `git clean -fdx` in the parent checkout: it can delete
+these worktrees. The repository's local-safety rule forbids `git clean`; do not request an exception
+to clean this directory.
+
+`make base-branch` reads `origin`'s live state. Use nothing else for this: the local
+`refs/remotes/origin/HEAD` is set once at clone time and `git fetch` never updates it, the GitHub
+default branch stays on an earlier release line, and an agent- or environment-supplied “main branch”
+hint can report that stale local symref. All three answer without warning, and branching from a
+generation-old base is not visible until an agent reports that files everyone expects are missing —
+by which point the work on that branch is wasted.
 
 If `slot-acquire` reports failure, run `make slot-status` before retrying — the lease often succeeded
 even when the command errored.
@@ -121,7 +177,8 @@ even when the command errored.
 (the lease is reclaimed automatically once stale) and expensive to lose mid-task; only the user knows
 when the work is really over.
 
-If the user's instruction did not name a release version and the merged-PR signal is ambiguous, ask.
+If the user's instruction named a release version **other than the resolved one**, ask before branching
+— a deliberate backport target is the one case the resolver cannot know about.
 
 ## Step 3 — Plan, then wait
 
@@ -230,9 +287,9 @@ Open the PR first via `submit-pr`, so CI starts while you verify locally.
 Exercise the real HTTP path against the running system. No mode relaxes this.
 
 ```bash
-make serve                                    # API on 8080+N, mock-auth on 4000+N
+make serve                                    # API on 8080+N, mock-auth on 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:400N/bypass/token \
+TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
   -d '{"subject":"user-john-doe","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
@@ -249,7 +306,7 @@ docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
   "select ui.subject, r.name from user_identities ui
      left join user_roles ur on ur.user_id = ui.user_id
      left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:400N';"
+   where ui.issuer = 'http://localhost:201N';"
 ```
 
 Check the happy path, the error paths the change introduces, and — for a protected operation — that
@@ -258,11 +315,9 @@ the path you expect** (controller → usecase → infrastructure, with the SQL y
 code alone does not prove the request reached the layer you changed; a wrong-but-plausible route
 produces the right status for the wrong reason.
 
-**Green CI is not a substitute for this.** A previous run merged a change whose documented API
-contract was wrong — it claimed 409 where the running system returns 401, because authentication
-rejects the caller before the usecase is ever reached. Five review lenses and 29 CI checks passed,
-because every one of them was static analysis or a test that stopped at the database layer. One real
-HTTP request exposed it immediately.
+**Green CI is not a substitute for this.** Review lenses and CI checks are static analysis or tests
+that stop at the database layer, so a documented status code that the middleware never lets the
+request reach passes all of them. One real HTTP request settles it.
 
 When runtime verification cannot run at all, there are two honest options and no third:
 
@@ -302,9 +357,8 @@ a follow-up comment on an existing issue over a new one — the issue count is i
 duplicate buries the original.
 
 **Verify a finding against the running system before filing it.** A finding derived purely from
-reading code can be wrong in a way static review cannot catch: an earlier run filed an issue claiming
-withdrawn users could still call several endpoints, when middleware in fact rejected them all long
-before the code that had been inspected. That issue had to be closed as not-planned. Step 8's runtime
+reading code can be wrong in a way static review cannot catch — most often because a layer outside
+the one being read (middleware, DI wiring, the database) already handles the case. Step 8's runtime
 stage is usually enough to check.
 
 Finally, record in a PR comment any call not already visible in a commit message or the PR
@@ -345,7 +399,7 @@ decision points this skill exists to create.
 
 - [ ] Modes confirmed in one `ask the user explicitly` interaction.
 - [ ] Kickoff comment posted, including issue-vs-base discrepancies.
-- [ ] Worktree created from a freshly fetched base; slot leased; `go mod vendor` run.
+- [ ] Worktree created from a freshly fetched base; DB slot leased only when DB work begins; `go mod vendor` run when needed.
 - [ ] Plan drafted by a different model, all four sections present, approved before implementation.
 - [ ] Trip-wires handled per flow mode; nothing silently absorbed.
 - [ ] Plan reconciled against the actual diff.

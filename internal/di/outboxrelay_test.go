@@ -18,7 +18,6 @@ import (
 func TestNewOutboxRelayCore(t *testing.T) {
 	t.Parallel()
 
-	// relay 用 fx グラフの結線が欠落なく成立することを検証する（コンストラクタの実体実行は伴わない）。
 	require.NoError(t, fx.ValidateApp(NewOutboxRelayCore(), fx.WithLogger(NewFxEventLogger)))
 }
 

@@ -19,7 +19,6 @@ func Test_nopGCMetrics_IncExpiredCleanup(t *testing.T) {
 		t.Run("GCMetrics 未配線時の no-op 実装を panic せず呼べる", func(t *testing.T) {
 			t.Parallel()
 
-			// GCMetrics 未配線 → dispatcher が返す no-op 実装を呼べることを固定する。
 			assert.NotPanics(t, func() { (&gcUsecase{}).metrics().IncExpiredCleanup(context.Background(), 3) })
 		})
 	})

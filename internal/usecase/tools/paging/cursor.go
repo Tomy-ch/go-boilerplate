@@ -15,8 +15,7 @@ import (
 //	Cursor は「直前ページ末尾行のソートキー」を不透明トークンとして受け取り、
 //	そのキーより後ろを次ページとして取得するための境界情報を保持します。
 //
-//	keys はソートキーのタプルを文字列化したものです。型の解釈（RFC3339 → time、UUID 文字列 → uuid 等）は
-//	Cursor を受け取る呼び出し元（usecase 等）の責務であり、本パッケージは輸送（エンコード/デコード）と件数ポリシーのみを担います。
+//	keys はソートキーのタプルを文字列化したもので、型の解釈は呼び出し元の責務です（詳細: README）。
 type Cursor struct {
 	limit int
 	keys  []string
@@ -26,8 +25,7 @@ type Cursor struct {
 //
 //	after が nil または空文字の場合は先頭ページとして扱い、keys は空になります。
 //	after の形式が不正な場合は apperror.ErrInvalidArgument を返します。
-//	first[limit] の補完・クランプ規約は offset 版（NewPageFrom1Based）と共通で、
-//	0以下または nil の場合は defaultPerPage、maxPerPage を超える場合は maxPerPage を使用します。
+//	first[limit] の補完・クランプ規約は NewLimit と共通です（offset 版の NewPageFrom1Based も同様）。
 //	keyset はページ番号を持たないため、offset 版のような最大ページ数エラーは発生しません。
 func NewCursor(after *string, first *int) (*Cursor, error) {
 	keys, err := decodeCursor(after)

@@ -92,6 +92,7 @@ Step 4.5 では `/test-review` へ `reviewer_model` payload として渡す。
 ### フラグ
 
 - `--no-comment` — Step 6 を抑止（PR に投稿せず）ローカルレポートのみ。**既定はオプトアウト**: ブランチに open な PR があれば、このフラグが無い限り Step 6 が残った指摘をインラインコメントとして投稿する。
+- `--no-apply` — Step 5.5 を抑止（コメント指摘を自動修正しない）。代わりに報告し、他のレンズと同様に Step 6（PR 投稿）へ流す。**既定は適用する**: コメント品質の指摘は 1 回の確認のうえで作業ツリーへ自動修正される。
 
 ## Step 1 — コンテキスト収集
 
@@ -108,25 +109,31 @@ Step 4.5 では `/test-review` へ `reviewer_model` payload として渡す。
 
   この4状態のどれかを記録する — Step 5 の `テスト観点:` 行に出す（後ろ2つはどちらも `未実施` に落ち、理由で区別する）。
 
-## Step 2 — Finder の fan-out（別モデル、lens ごとに1体）
+## Step 2 — Finder の fan-out（別モデル、並列）
 
-`adversarial-reviewer` subagent を **lens ごとに1体** 並列起動（`Agent` 呼び出しを1メッセージにまとめる）。中核アイデアのモデル規則を適用し、Step 0 で選んだ reviewer モデルを各 `Agent` 呼び出しの `model` 引数で渡す（*自動* がエージェント定義の既定に解決するときのみ省略可）。
+全 finder を並列起動する（`Agent` 呼び出しを1メッセージにまとめる）。中核アイデアのモデル規則を適用し、Step 0 で選んだ reviewer モデルを各 `Agent` 呼び出しの `model` 引数で渡す（*自動* がエージェント定義の既定に解決するときのみ省略可）。エージェント種別は 2 つ。
 
-| Lens | 起動条件 |
-| --- | --- |
-| `correctness` | 常時 |
-| `security` | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
-| `architecture` | 常時 |
-| `runtime-gap` | controller / DI / `openapi/**` / `database/**` が触られた時 |
-| `test-gap` | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られ、**かつ** Step 0 のテスト観点委譲を辞退した時 — Step 4.5 実行中は停止 |
+- 4 つの **コード lens** は `adversarial-reviewer` を使う。lens ごとに1体、`agentType: "adversarial-reviewer"`、`label` は `find:security` のように。
+- **コメント次元**は専用の `comment-reviewer` を使う（`agentType: "comment-reviewer"`, `label: "find:comment"`）。1 段落の lens より豊かな分類を持つコメント特化の強いエージェントであり、その指摘が Step 5.5 の自動修正へ流れる。
+- **型設計次元**は専用の `type-design-reviewer` を使う（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）。diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4 軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で各型を採点し、指摘は suggestion 級（自動修正しない）。
 
-各 subagent プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`CLAUDE.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。`agentType: "adversarial-reviewer"`、`model:` は規則どおり、`label` は `find:security` のように。
+| Finder | エージェント | 起動条件 |
+| --- | --- | --- |
+| `correctness` | adversarial-reviewer | 常時 |
+| `security` | adversarial-reviewer | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
+| `architecture` | adversarial-reviewer | 常時 |
+| `runtime-gap` | adversarial-reviewer | controller / DI / `openapi/**` / `database/**` が触られた時 |
+| `test-gap` | adversarial-reviewer | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られ、**かつ** Step 0 のテスト観点委譲を辞退した時 — Step 4.5 実行中は停止 |
+| コメント品質 | **comment-reviewer** | diff がコメントを追加 / 変更した時（ほぼ常時） |
+| 型設計 | **type-design-reviewer** | diff が domain 型（`internal/domain/**/*.go`）に触れた時 |
+
+各 `adversarial-reviewer` プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`CLAUDE.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。
 
 **`test-gap` lens 定義**（本 lens は *コード起点* — test ファイルではなく変更された本番ソースを読む）: diff で追加/変更された各本番シンボルについて、その論理分岐 / error sentinel / 境界条件 / zero 値防御を列挙し、ペアの `*_test.go` が各々を到達し*固有に* assert しているか（`require.ErrorIs` で固有 sentinel、区別される値/state — `require.Error` / `NoError` 止まりでない）を確認する。2 形を報告: diff で変更された本番シンボルに **テストが全く無い**、および変更シンボルの到達可能分岐が **未テスト or 空虚 assert**。 これは **high-signal サブセット** — impl-review は *変更された* コードで test ファイル起点の読みが見落とす到達ギャップを挙げるだけで、パッケージ全体の網羅的なシンボル列挙はしない。 全 subject に対する完全な 2 軸マトリクス（Lens 4 分岐×意味 + Lens 5 シンボル網羅）は `/test-review` の担当であり、実際に引き渡すのが Step 4.5。 指摘は read-only の提案（自動修正しない）で、diff 内の subject 行にアンカーするため他のコード lens 同様インライン投稿される。
 
 **所管は1つ。** 本 lens と `/test-review` は重なる領域を監査するため、走るのは常にどちらか一方。Step 4.5 で委譲したときは `test-gap` を **起動しない**: `/test-review` の Lens 5 が「テストが1つも無いシンボル」を、Lens 4 が分岐×意味を所管しており、その上に本 lens を重ねると同じギャップを2つの severity 語彙で二重報告することになる。`test-gap` は委譲を辞退したときに残るもの — 変更コード上の最悪のギャップを低コストで拾うサブセットであって、冗長なセカンドオピニオンではない。
 
-専用 finder を追加で並列起動する: (1) **comment-reviewer**（`agentType: "comment-reviewer"`, `label: "find:comment"`）— diff がコメントを追加/変更した時（ほぼ常時）、指摘は Step 5.5 で自動修正。(2) **type-design-reviewer**（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）— diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で採点し、指摘は suggestion 級（自動修正しない）。
+`comment-reviewer` プロンプトに必ず含める: ベース ref + 変更ファイル一覧 + diff、**行ポリシー**（diff スコープでは変更行上のコメントだけを判定する）、および実行時に読む権威として `docs/rules.md`（"Comment Rules"）へのポインタ。全言語一律の基準（Go も非 Go も同じ — shell / `.mjs` / Dockerfile / Makefile / SQL / YAML。非 Go は免除ではなくむしろ高リスク）と、機能的ディレクティブ / export doc コメントのガードはエージェント側が既に内蔵しているため、ここで再指定も緩和もしない。エージェントに見せるファイル一覧はコメントを持つソースに絞る: 生成物（`**/*.gen.go`、`*_mock.go`、`**/openapi.gen.yaml`、`// Code generated ... DO NOT EDIT`）、`vendor/**`、deny リスト、Markdown / docs の散文（Comment Rules が統べるのはソースコメントであって独立した文書ではない）を除外する。
 
 ## Step 3 — 敵対的 verify
 
@@ -137,7 +144,7 @@ Step 4.5 では `/test-review` へ `reviewer_model` payload として渡す。
 
 ## Step 4 — ランタイム検証（curl + o11y）— エンドポイント時のみ
 
-**Step 1 でエンドポイントが触られた場合のみ** 実行し、subagent ではなく **オーケストレーター（メインセッション）** が行う（対話的 bash・実 DB/状態・ログ読み・ユーザー確認が要るため）。`scaffold-endpoint` Step 3.5 に倣う:
+**Step 1 でエンドポイントが触られた場合のみ** 実行し、subagent ではなく **オーケストレーター（メインセッション）** が行う（対話的 bash・実 DB/状態・ログ読み・ユーザー確認が要るため）。`scaffold-endpoint` Phase 7 に倣う:
 
 1. `make test`（モック）は実 Fx グラフを組まず、auth/OpenAPI middleware も DB も通らない。だから本ステージは Step 2 の `runtime-gap` lens が *予測* したものを実地で拾う場。
 2. 既知状態の対象行を用意/seed。認証/状態依存の検査は平文/状態を自分で握る行を作る。
@@ -295,15 +302,16 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 - ✅ Step 0 でテスト観点の委譲を聞き（既定: 委譲する）、委譲したら `test-gap` を停止して Step 4.5 を実行。
 - ✅ どのレポートでもテスト観点の状態を `テスト観点:` 行に明記 — 何も監査しなかった実行を含めて。
 - ✅ 復旧手段が `make db-init` しかない破壊系 curl は事前にユーザー確認。
+- ✅ コメント品質の指摘は Step 5.5 で 1 回の確認のうえ適用（削除 / 振る舞いへの書き直し）し、その後 `make fix` + `make lint`。`--no-apply` で省略。
 - ✅ 既定で CONFIRMED + PLAUSIBLE をブランチの PR にインラインコメント投稿（Step 6）。`--no-comment` か PR 無しのとき抑止。
 - ✅ PR 投稿前に一度だけ確認（外向きアクション）。各コメントは `path:行` にアンカーし、diff 外の **コード lens** 指摘はレビュー要約にまとめる（diff 外の *テスト* 指摘は対象外 — Step 6 のとおりローカルに留める）。
 - ❌ REFUTED を投稿する / `REQUEST_CHANGES`・`APPROVE` を使う — 投稿レビューは助言的 `COMMENT` のみ。
-- ❌ 修正を当てる — 本スキルは指摘まで（reviewer は構造的に read-only）。
+- ❌ 5 つのコード lens を自動修正する — これらは指摘までで、直すのはユーザー。自動適用されるのはコメント品質だけ（Step 5.5）。
+- ❌ Step 5.5 で機能的ディレクティブ（`//go:generate` など）や export 宣言の doc コメントを削除する（doc コメントは書き直す）、生成ファイル / Markdown / deny リスト対象に触れる、自動コミットする。
 - ❌ 同じレビューで `test-gap` と `/test-review` の両方を回す — ギャップの所管は1つ、報告も1つ。
 - ❌ 委譲した指摘の severity を CONFIRMED / PLAUSIBLE × 重大度 に写像し直す / diff 外のテスト指摘を PR に投稿する。
 - ❌ reviewer を implementer と同一モデルで回す。
 - ❌ 思いつきの style nit を finding として出す / 網羅に見せるための水増し。
-- ❌ verify 中に生成ファイルや deny リスト対象を編集する。
 
 ## チェックリスト
 
@@ -315,5 +323,6 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 - [ ] 触られたエンドポイントの curl + o11y 実施（共有スキーマ → 全 consumer）、破壊系は確認済み。
 - [ ] 委譲したときは Step 4.5 を実行（`scope` / `base_ref` / `reviewer_model` / `skip_verifier: false` を渡し、`test-gap` は起動しない）。
 - [ ] 1つの日本語レポート: CONFIRMED → PLAUSIBLE、ランタイムのカバー範囲を明記、`テスト観点:` 行が3状態のいずれかで存在。
+- [ ] `--no-apply` 以外: コメント指摘を Step 5.5 で適用（機能的ディレクティブは不可侵、export doc コメントは削除でなく書き直し）、その後 `make fix` + `make lint`。自動コミットはしない。
 - [ ] `--no-comment` / PR 無し以外: 一度確認のうえ CONFIRMED + PLAUSIBLE をインライン PR コメント投稿（diff 外 → 要約 body）、REFUTED は除外、`event: COMMENT`。
 - [ ] 委譲したテスト指摘は diff ハンク内にアンカーできるものだけ投稿（severity 4種すべて）、diff 外はローカルに留め伏せた件数を明記。

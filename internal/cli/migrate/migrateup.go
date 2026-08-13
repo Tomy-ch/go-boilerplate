@@ -53,7 +53,6 @@ func executeMigrateUp(m Migrator, steps int) error {
 	} else {
 		err = m.Steps(steps)
 	}
-	// 既に最新であれば ErrNoChange になるため、両経路とも成功扱いとして握りつぶします。
 	if err != nil && !xerrors.Is(err, migrate.ErrNoChange) {
 		return err
 	}

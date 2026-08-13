@@ -1,7 +1,8 @@
 -- name: ListPurchasesFeedFirst :many
 -- 指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する。
--- ステータス名は購入ステータスマスタとの結合で解決する（購入集約に属する固定参照マスタへの
--- 一意な等結合であり、単一集約の read）。一覧は概要のみで明細は含まない。
+-- ステータス名は購入ステータスマスタとの結合で解決する（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+-- 一覧は概要のみで明細は含まない。
 SELECT
     p.id,
     p.code,

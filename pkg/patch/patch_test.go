@@ -61,6 +61,40 @@ func TestValue(t *testing.T) {
 	})
 }
 
+func TestField_IsSpecified(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未指定の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, Unspecified[string]().IsSpecified())
+		})
+
+		t.Run("null指定の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, Null[string]().IsSpecified())
+		})
+
+		t.Run("値指定の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, Value("value").IsSpecified())
+		})
+
+		t.Run("ゼロ値は未指定として扱う", func(t *testing.T) {
+			t.Parallel()
+
+			var f Field[string]
+
+			assert.False(t, f.IsSpecified())
+		})
+	})
+}
+
 func TestField_Resolve(t *testing.T) {
 	t.Parallel()
 

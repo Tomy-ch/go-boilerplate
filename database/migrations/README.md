@@ -40,8 +40,8 @@ This auto-generates a numbered up / down pair:
 
 |Command|Description|
 |---|---|
-|`make migrate-up`|Apply all pending migrations|
-|`make migrate-down`|Rollback the last migration|
+|`make db-migrate-up DB=<name>`|Apply all pending migrations|
+|`make db-migrate-down DB=<name>`|Rollback the last migration|
 
 Also available via CLI:
 

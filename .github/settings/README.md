@@ -28,9 +28,10 @@ Both are readable with the repository's ordinary read access — on a public rep
 | --- | --- |
 | `deletion` | A targeted branch cannot be deleted. |
 | `non_fast_forward` | Force-push to a targeted branch is rejected. |
-| `pull_request` | Changes reach a targeted branch only through a pull request: one approving review, approvals dismissed on push, re-approval required after the last push, every review thread resolved, and merge restricted to merge commit or squash (rebase merge excluded). |
+| `pull_request` | Changes reach a targeted branch only through a pull request: one approving review, approvals dismissed on push, re-approval required after the last push, every review thread resolved, code-owner review, and merge restricted to merge commit or squash (rebase merge excluded). |
 | `copilot_code_review` | Copilot reviews each pull request automatically, on every push and on drafts as well. |
 | `code_quality` | GitHub's code quality rule blocks at `errors` severity. |
+| `required_status_checks` | Seven guard-backed checks must report success before merging. |
 
 ### Applying `pull_request` to a single-maintainer repository
 
@@ -40,11 +41,12 @@ GitHub does not let an author approve their own pull request. With `required_app
 
 GitHub's own guidance is to confirm that the Code Quality workflow is running and reporting results back to pull requests **before** a ruleset declares a Code Quality threshold, because otherwise the rule can block every pull request from merging. Enabling the feature is a repository-level action outside this directory, so check it before applying rather than assuming the rule is inert where the feature is off.
 
-### CI results do not block merge
+### Required status checks need a reporting path on every PR
 
-No `required_status_checks` rule is declared, so no workflow result gates a merge; a pull request can be merged over a red check.
-
-Adding one is not just a matter of listing check contexts. A required check whose workflow is `paths`-filtered never reports on a pull request that skips it, which blocks the merge forever — so each gate registered as required needs a `*-guard.yaml` companion reporting the same check context on the complementary path set. `docs/adr/0084-multi-layer-security-scanning.md` records that design.
+The declared required contexts are `trivy-fs-release`, `osv-release`, `trivy-config`, `sast`,
+`lockfile-lint`, `openapi-security`, and `osv-diff`. Each has a `*-guard.yaml` companion that
+reports the same context when the main workflow is skipped by a path or branch filter; without it,
+a PR could wait forever for a check that never starts. See `docs/adr/0086-multi-layer-security-scanning.md`.
 
 ## labels.json
 

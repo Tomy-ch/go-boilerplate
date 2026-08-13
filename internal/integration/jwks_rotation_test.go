@@ -20,19 +20,11 @@ import (
 	"go-boilerplate/internal/infrastructure/httpclient"
 )
 
-// JWKS Rotation E2E（#605 / #585-C）。
-//
-// provider（mock-auth-server）が各 Phase で公開する golden JWKS と署名 PEM を //go:embed で取り込み、
-// 同じ provider の PEM 秘密鍵で署名した Token を、保護付き Echo（GET /protected）へ Bearer で送って
-// HTTP 境界（Bearer 抽出 → Authenticate → JWKS 解決 → 検証 → 200/401）ごと検証する。golden と PEM を
-// provider と共有することで、手組み mock の silent 乖離を排除する。testdata 配下のコピーは provider の
-// gen-jwks-fixtures スクリプトが同一バイトで生成する（depguard が integration からの os 直読みを禁止するため、
-// embed 可能な package 配下に置く）。時刻は注入 clock で決定的に前進させる。
-//
-// | Phase | JWKS 公開 | 署名鍵 |
-// | 1 | mock-key-1 | mock-key-1 |
-// | 2 | mock-key-1, mock-key-2 | mock-key-2 |
-// | 3 | mock-key-2 | mock-key-2 |
+// JWKS Rotation の E2E。provider（mock-auth-server）の golden JWKS と署名 PEM を //go:embed で取り込み、
+// HTTP 境界（Bearer 抽出 → Authenticate → JWKS 解決 → 検証 → 200/401）ごと検証する。
+// Phase の定義とリゾルバの契約は docs/design/auth.md §3.5 が持つ。
+// testdata のコピーを package 配下へ置いているのは、depguard が integration からの os 直読みを
+// 禁じており embed 以外に読み込む手段が無いため。時刻は注入 clock で決定的に前進させる。
 
 const (
 	rotKIDPrimary  = "mock-key-1"
@@ -178,22 +170,18 @@ func TestJWKSRotationIntegration(t *testing.T) {
 			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
 			require.Equal(t, 1, src.count())
 
-			// 通常リクエスト（既知 kid）では JWKS を再取得しない（受入条件 1）。
 			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
 			require.Equal(t, 1, src.count(), "既知 kid の通常リクエストで再取得しない")
 
-			// Phase2: 新鍵 key-b を公開集合へ追加。未知 kid の初回で 1 度だけ再取得する（受入条件 2）。
 			clk.advance(rotCooldown + time.Second)
 			src.setPhase(phase2)
 			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
 			require.Equal(t, 2, src.count(), "未知 kid の初回のみ再取得する")
 
-			// 移行期は新旧両署名 Token を受理し、追加の再取得は起きない（受入条件 3）。
 			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)).StatusCode)
 			require.Equal(t, http.StatusOK, get(srv, mintRotToken(t, keyB, rotKIDRotation, clk)).StatusCode)
 			require.Equal(t, 2, src.count(), "移行期の新旧受理で再取得しない")
 
-			// Phase3: 旧鍵 key-a を退役。cacheTTL 経過で再取得し、退役 kid の Token を拒否する（受入条件 4）。
 			clk.advance(time.Hour + time.Minute)
 			src.setPhase(phase3)
 			AssertErrorResponse(t, get(srv, mintRotToken(t, keyA, rotKIDPrimary, clk)), http.StatusUnauthorized)

@@ -81,7 +81,7 @@ func (s *server) PatchProductsDetail(
 		Description:           toPatchField(request.Body.Description),
 		StockWarningThreshold: toPatchFieldInt(request.Body.StockWarningThreshold),
 		PublishedAt:           toPatchField(request.Body.PublishedAt),
-		ImagePath:             toPatchField(request.Body.ImagePath),
+		Images:                toPatchFieldImages(request.Body.Images),
 	}
 
 	dto, err := s.uc.UpdateProduct(ctx, &authn, id, params)
@@ -150,6 +150,38 @@ func toPatchFieldInt(v nullable.Nullable[int32]) patch.Field[int] {
 	return patch.Value(int(v.MustGet()))
 }
 
+// toPatchFieldImages は、リクエストの 3 状態の商品画像をユースケースの DTO へ変換します。
+func toPatchFieldImages(v nullable.Nullable[[]gen.ProductImageInput]) patch.Field[[]productuc.ProductImageParams] {
+	if !v.IsSpecified() {
+		return patch.Unspecified[[]productuc.ProductImageParams]()
+	}
+	if v.IsNull() {
+		return patch.Null[[]productuc.ProductImageParams]()
+	}
+
+	inputs := v.MustGet()
+	params := make([]productuc.ProductImageParams, len(inputs))
+	for i, in := range inputs {
+		params[i] = productuc.ProductImageParams{ImagePath: in.ImagePath, SortKey: int(in.SortKey)}
+	}
+
+	return patch.Value(params)
+}
+
+// toProductImageItems は、商品画像の DTO を HTTP レスポンスへ変換します。
+// 表示順が int32 に収まらない場合はエラーを返します。
+func toProductImageItems(dtos []productuc.ProductImageItemView) ([]gen.ProductImageItem, error) {
+	items := make([]gen.ProductImageItem, len(dtos))
+	for i, dto := range dtos {
+		sortKey, err := safecast.IntToInt32(dto.SortKey)
+		if err != nil {
+			return nil, xerrors.Wrap(err, "invalid product image sort key")
+		}
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: sortKey}
+	}
+	return items, nil
+}
+
 // toProductResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
 // 在庫数・在庫警告閾値・バージョンが int32 に収まらない場合はエラーを返します。
 func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
@@ -168,6 +200,11 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 		return gen.ProductResponse{}, xerrors.Wrap(err, "invalid product version")
 	}
 
+	images, err := toProductImageItems(dto.Images)
+	if err != nil {
+		return gen.ProductResponse{}, err
+	}
+
 	return gen.ProductResponse{
 		Id:                    dto.ID.ToPrimitive(),
 		Name:                  dto.Name,
@@ -184,7 +221,7 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 			Name: dto.CategoryName,
 		},
 		PublishedAt: dto.PublishedAt,
-		ImagePath:   dto.ImagePath,
+		Images:      images,
 		Version:     version,
 	}, nil
 }

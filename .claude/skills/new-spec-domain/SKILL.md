@@ -122,11 +122,9 @@ DTOs and a Workflow — application-layer names like `CreatePurchase` or `Purcha
 pass the glossary's bar (would someone who knows the business recognise it as a word of the
 business?). The domain layer introduces terms; the usecase layer uses them.
 
-That holds **while a domain layer exists to do the introducing.** A projection-only feature — no
-aggregate, no `domain.md`, a QueryService and nothing else — has no such layer, and its words
-(sales, ranking, a postal-code lookup) would otherwise be introduced by nobody. `/glossary` covers
-that case from the read side. It is not this skill's, because this skill runs precisely when an
-aggregate is being created.
+That holds **while a domain layer exists to do the introducing.** A projection-only feature has none;
+`/glossary` covers that case from the read side — not this skill's, because this skill runs precisely
+when an aggregate is being created.
 
 ## AI Modification Scope
 

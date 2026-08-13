@@ -31,7 +31,6 @@ bypassRoutes.post("/bypass/token", async (c) => {
   return c.json({ access_token: accessToken, token_type: "Bearer", expires_in: ACCESS_TTL_SECONDS });
 });
 
-// POST /bypass/session は subject のログイン済み session を UI を経ずに直接作成する（テスト用）。
 bypassRoutes.post("/bypass/session", async (c) => {
   const raw = await c.req.text();
   let body: Record<string, unknown> = {};

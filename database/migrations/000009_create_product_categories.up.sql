@@ -19,7 +19,6 @@ COMMENT ON COLUMN product_categories.sort_key IS '順序';
 COMMENT ON COLUMN product_categories.created_at IS '作成日時';
 COMMENT ON COLUMN product_categories.updated_at IS '更新日時';
 
--- Insert initial product categories data
 INSERT INTO product_categories (id, name, code, sort_key) VALUES
 ('5dd52d84-78eb-4a52-ba0b-2e11c95c2af2', '電子機器', 1, 1) ON CONFLICT (id) DO NOTHING;
 INSERT INTO product_categories (id, name, code, sort_key) VALUES

@@ -30,7 +30,7 @@ English | [日本語](README.ja.md)
 1. Start a controller span (`tracer.Start`) and `defer` its end.
 2. Parse args into a retention window, a batch size and a dry-run flag, then call `purge.PurgeDeleted(...)`.
 3. On success, log at **Info** with the purged count under `logging.JobResultKey` and the skipped count under `logging.JobSkippedKey`. Under `--dry-run` the message states explicitly that nothing was deleted, and the purged count is the number of users that *would* have been erased.
-4. On failure, log the same two counts at **Warn** before propagating. The usecase reports what it committed before it stopped, and a committed physical delete cannot be undone, so dropping the counts would hide users that are already gone. The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
+4. On failure, log the same two counts at **Warn** before propagating (see [job/README.md § GC / batch jobs](../README.md) for why) The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
 
 ## Args
 
@@ -49,6 +49,6 @@ Three independent flags are accepted, in any order:
 
 ## Notes
 
-- Idempotent by design: the target set is defined by an age predicate, so re-running only erases users that are already eligible and retries are safe. There is no exclusive locking — concurrency is the scheduler's concern ([ADR-0100](../../../../docs/adr/0100-scheduled-job-concurrency-delegated.md)).
+- Idempotent by design: the target set is defined by an age predicate, so re-running only erases users that are already eligible and retries are safe. There is no exclusive locking — concurrency is the scheduler's concern ([ADR-0102 (scheduled-job-concurrency-delegated)](../../../../docs/adr/0102-scheduled-job-concurrency-delegated.md)).
 - A user who still holds purchases is **not** erased; it is counted under `logging.JobSkippedKey` instead. Deciding that is the usecase's concern, not this job's.
 - The retention window, batching, and the skip rule are the usecase's concern; this job only converts CLI syntax into typed values.

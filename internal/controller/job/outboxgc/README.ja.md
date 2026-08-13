@@ -30,7 +30,7 @@
 1. Controller span を開始し（`tracer.Start`）、`defer` で終了します。
 2. args をバッチサイズにパースし、`gc.SweepPublished(ctx, batchSize)` を呼びます。
 3. 成功時は削除件数を `logging.JobResultKey` に載せて **Info** でログ出力します。
-4. 失敗時は、伝播する前に削除件数を **Warn** でログ出力します。usecase は中断までにコミットした件数を返し、コミット済みの削除は取り消せないため、件数を捨てると既に消えた行が見えなくなります。エラー自体はそのまま返します（Runner / CLI に伝播し、exit code は呼び出し側が決定します。ジョブは `os.Exit()` を呼びません）。
+4. 失敗時は、伝播する前に削除件数を **Warn** でログ出力します（理由は [job/README.ja.md § GC / バッチジョブ](../README.ja.md) を参照）。エラー自体はそのまま返します（Runner / CLI に伝播し、exit code は呼び出し側が決定します。ジョブは `os.Exit()` を呼びません）。
 
 ## Args
 

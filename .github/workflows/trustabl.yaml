@@ -1,0 +1,68 @@
+name: Agent Config Scan
+
+# Scans the AI-agent configuration — `.claude/agents/*.md` and
+# `.claude/skills/*/SKILL.md` frontmatter and body, plus MCP server declarations.
+# Report-only; the reason it does not gate is in README.md's Agent Config Scan
+# section.
+on:
+  schedule:
+    - cron: '30 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trustabl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      # persist-credentials: false — nothing after checkout talks to git, and the
+      # step below hands the checkout to a third-party binary.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # Pinning the action pins only the action. It downloads the engine binary
+      # from the trustabl/trustabl releases at run time (`version` defaults to
+      # `latest`), and the engine then clones the rule pack (`rules-ref` defaults
+      # to the rules repository's default branch), so both float unless named
+      # here. `rules-ref` resolves against branches and tags but never a commit,
+      # so a re-pointed tag passes unseen; the engine logs the SHA it cloned.
+      #
+      # upload-sarif and comment-on-pr each cost a write scope — `security-events`
+      # and `pull-requests` — handed to that binary, so both stay off and the
+      # findings ride the step summary and the artifact instead.
+      - name: Scan agent configuration
+        uses: trustabl/trustabl-action@973f666d20b5fbb2e6a4511bd3846e965a08c28b # v0.4.1
+        with:
+          version: v0.1.6
+          rules-ref: v0.2.0
+          upload-sarif: 'false'
+          comment-on-pr: 'false'
+          annotations: 'false'
+          upload-artifact: 'true'
+          artifact-name: trustabl
+          severity-threshold: none
+          risk-score-threshold: '0'

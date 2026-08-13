@@ -85,9 +85,8 @@ export type ButtonProps = ComponentProps<"button"> &
  * 一貫した操作状態と focus-visible 表現を提供する基礎ボタン。
  *
  * @remarks
- * `variant` は操作の優先度を表す。既定の `default` は主要操作、`outline` は副次操作、
- * `ghost` は周囲の情報量を増やさない補助操作に使う。画面固有の配色を直接指定せず、
- * variant の追加または design token の見直しで扱う。
+ * 画面固有の配色を `variant` へ直接指定せず、variant の追加または design token の見直しで扱う
+ * （各 variant の意味は {@link ButtonProps.variant}）。
  *
  * disabled 状態は native `disabled` 属性で指定する。`asChild` でリンクを使う場合、
  * HTML の link には `disabled` が存在しないため、遷移禁止の状態を表す別の UI を選ぶ。

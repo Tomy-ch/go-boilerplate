@@ -26,6 +26,7 @@ internal/logging
 ├── field.go
 ├── field_builder.go
 ├── const.go
+├── level.go
 ├── test_kit.go
 └── mock/
 ```
@@ -61,7 +62,7 @@ type Logger interface {
 
 各出力メソッドは `context.Context` を受け取り、そこから抽出した `trace_id` / `span_id` を自動注入します。リクエストスコープの span が存在しない箇所（DI 起動時、fx イベント、CLI ブートストラップ）では `context.Background()` を渡します。その場合、注入は単にスキップされます。呼び出し側が `trace_id` / `span_id` を明示的なフィールドとして渡すことはありません。
 
-`Named` は指定した名前を付与した子ロガーを返し、`CallerSkip` は caller 情報の出力時に指定した段数のスタックフレームをスキップするロガーを返します（ラッパー経由でログを出す場合に有用）。`*Field` から `zap.Field` への変換は、非公開の `convertFields` が内部で行い、公開インターフェースには含まれません。
+`Named` は指定した名前を付与した子ロガーを返し、`CallerSkip` は caller 情報の出力時に指定した段数のスタックフレームをスキップするロガーを返します（ラッパー経由でログを出す場合に有用）。`CallerSkip` は既存のスキップ数へ**加算**するもので絶対値の設定ではないため、スキップ済みのロガーへ重ねて呼ぶと積み上がります。`*Field` から `zap.Field` への変換は、非公開の `convertFields` が内部で行い、公開インターフェースには含まれません。
 
 この設計により、以下を実現します。
 
@@ -149,7 +150,7 @@ logger.Info(ctx,
 
 ## LogFieldBuilder
 
-HTTP / SQL / オブザーバビリティ向けのログフィールド生成を集約するコンポーネントです。
+HTTP / SQL ログのフィールド生成を集約するコンポーネントです。
 
 ```go
 type LogFieldBuilder interface {
@@ -167,13 +168,12 @@ type LogFieldBuilder interface {
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-`config.ObservabilityConfig` と `config.OperatingSystemConfig` を受け取り、trace/span フィールドの付与とタイムゾーン情報を制御します。
+`config.ObservabilityConfig`（`parent_span_id` の付与を制御）と `config.OperatingSystemConfig`（全イベントヘッダに刻むタイムゾーンを供給）を受け取ります。
 
 ユースケース
 
 - HTTP アクセスログ
 - SQL ログ
-- trace/span ログ
 
 **構造化ログ**を自動生成します。
 
@@ -187,7 +187,7 @@ lf := logging.NewLogFields(obsCfg, osCfg)
 |`HTTPResponseLogInput`|HTTP レスポンスログ|Method, Path, URI, Status, Latency, RequestID|
 |`SQLFieldsEndInput`|SQL 終了ログ|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
 
-すべての入力構造体は `EventAt`（イベント発生時刻）を持ちます。trace 情報（`trace_id` / `span_id`）はここでは保持しません。`Logger` が `ctx` から注入します。`SQLFieldsEndInput` は追加で `ParentSpanID` を持ちますが、これは `ctx` から導出できません。
+すべての入力構造体は `EventAt`（イベント発生時刻）を持ちます。trace 情報はここでは保持しません。上の [LogFieldBuilder](#logfieldbuilder) の注記を参照してください。
 
 ## HTTP Logging
 
@@ -217,6 +217,8 @@ SQL ログは、クエリの**終了時点**に `BuildSQLEndFields` を通じて
 ### SQL End
 
 - `event_type=end`
+- `event_at=...`
+- `event_tz=...`
 - `layer=repository`
 - `package=...`
 - `function=...`
@@ -268,32 +270,12 @@ logging.NewTestLogFieldBuilder(t)
 
 ## Design Policy
 
-本ロギングパッケージは、以下の方針に基づいて設計されています。
+本パッケージを形づくる方針は 4 つです。詳細はそれぞれ併記した節にあります。
 
-### 1 zap を直接使わない
-
-アプリケーションコードは `zap.Logger`、`zap.Field` に依存しません。
-
-### 2 Field をラップする
-
-ログフィールドは `Field` 型を使用します。
-
-理由
-
-- フィールド生成 API を固定する
-- zap 依存を隠蔽する
-
-### 3 オブザーバビリティを統合する
-
-trace / span 情報をロギング層で統合します。
-
-- `trace_id`
-- `span_id`
-- `parent_span_id`
-
-### 4 テスタビリティ
-
-Logger はインターフェースであるため、`mockgen` でモック化できます。
+1. **zap を直接使わない** — アプリケーションコードは `zap.Logger` にも `zap.Field` にも依存しない（Logger Interface）
+2. **Field をラップする** — ログフィールドは `Field` 型を経由する（Field）
+3. **オブザーバビリティを統合する** — trace の相関はロギング層で解決し、呼び出し側には持たせない（Observability Fields）
+4. **テスタビリティ** — `Logger` はインターフェースなので `mockgen` でモック化できる（Test Kit）
 
 ## Log Key Constants
 

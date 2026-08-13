@@ -16,7 +16,6 @@ COMMENT ON COLUMN prefectures.code IS '都道府県コード';
 COMMENT ON COLUMN prefectures.created_at IS '作成日時';
 COMMENT ON COLUMN prefectures.updated_at IS '更新日時';
 
--- Insert initial prefectures data
 INSERT INTO prefectures (id, name, code) VALUES (
     'faba7bb2-f5a0-4a51-adae-1564929077b2', '北海道', 1
 ) ON CONFLICT (id) DO NOTHING;

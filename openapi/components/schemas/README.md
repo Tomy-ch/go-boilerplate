@@ -93,7 +93,7 @@ Two error envelopes. `ErrorResponse` is the base (no `details`) used by most err
 `ErrorResponseWithDetails` adds `details` and is referenced **only** by responses that
 intentionally expose it. Which operations reference `ErrorResponseWithDetails` is the
 **per-endpoint opt-in switch** for detail exposure (enforced fail-closed at the edge — see
-[ADR-0044](../../../docs/adr/0044-error-details-opt-in-gate.md)).
+[ADR-0046 (error-details-opt-in-gate)](../../../docs/adr/0046-error-details-opt-in-gate.md)).
 
 ```yaml
 # ErrorResponse.yaml (base)
@@ -143,6 +143,8 @@ These are technically OpenAPI **response objects** (they carry `description` + `
 |`Forbidden403`|403|`ErrPermissionDenied`|auth middleware|
 |`NotFound404`|404|`ErrNotFound`|missing resource|
 |`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted` (delete) or unique-violation `23505` (create/update, e.g. duplicate email)|
+|`PayloadTooLarge413`|413|`ErrPayloadTooLarge`|usecase validation of an upload that exceeds the size limit|
+|`UnsupportedMediaType415`|415|`ErrUnsupportedMediaType`|usecase validation of a disallowed `Content-Type`|
 |`UnprocessableEntity422`|422|`ErrValidation`|domain validation the OpenAPI schema does not catch (e.g. email format)|
 |`TooManyRequests429`|429|`ErrTooManyRequests`|rate limiting|
 |`ClientClosedRequest499`|499|`ErrCanceled`|client disconnect mid-request|

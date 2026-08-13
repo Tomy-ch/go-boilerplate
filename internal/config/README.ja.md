@@ -158,23 +158,25 @@ flowchart TB
     ```go
     func New() (*Config, error) {
         cfg, err := env.ParseAs[Loader]()
-        
+        if err != nil {
+            return nil, xerrors.Join(ErrFailedToParseConfig, err)
+        }
+
         if err := validateConfig(cfg); err != nil { // バリデーション処理を追加はこの関数内で行います
             return nil, err
         }
 
         return &Config{
-            server: server{
-                host:           cfg.Server.Host,
-                port:           cfg.Server.Port,
-                allowedOrigins: cfg.Server.AllowedOrigins,
+            server: ServerConfig{
+                host: cfg.Server.Host,
+                port: cfg.Server.Port,
             },
-            aws: aws{
+            aws: AWSConfig{
                 accessKey: cfg.AWS.AccessKey,
                 secretKey: cfg.AWS.SecretKey,
                 region:    cfg.AWS.Region,
             },
-    }, nil
+        }, nil
     }
     ```
 
@@ -287,6 +289,14 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |`SetCIDR`|`SecurityConfig`|
 |`SetOutboxBatchSize`|`OutboxConfig`|
 |`SetOutboxEndpoint`|`OutboxConfig`|
+|`SetOutboxPollInterval`|`OutboxConfig`|
+|`SetOutboxErrorBackoff`|`OutboxConfig`|
+|`SetOutboxPublisher`|`OutboxConfig`|
+|`SetOutboxQueue`|`OutboxConfig`|
+|`SetConsumerQueue`|`ConsumerQueueConfig`|
+|`SetAuthIssuer`|`AuthConfig`|
+|`SetAuthAudience`|`AuthConfig`|
+|`SetAuthJWKSURL`|`AuthConfig`|
 |`SetSameSite`|`SecureCookieConfig`|
 |`SetDomain`|`SecureCookieConfig`|
 

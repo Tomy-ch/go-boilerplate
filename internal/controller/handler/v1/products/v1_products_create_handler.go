@@ -11,7 +11,6 @@ import (
 )
 
 // PostProducts は、admin が商品を作成し、作成した商品を返します。認証必須です。
-// リクエストの詰め替えのみを行い、価格・在庫・マスタ整合性などの検証はユースケースが担います。
 func (s *server) PostProducts(ctx context.Context, request gen.PostProductsRequestObject) (gen.PostProductsResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -30,7 +29,7 @@ func (s *server) PostProducts(ctx context.Context, request gen.PostProductsReque
 		CategoryID:            conv.UUID(request.Body.CategoryId),
 		StatusID:              conv.UUID(request.Body.StatusId),
 		PublishedAt:           request.Body.PublishedAt,
-		ImagePath:             request.Body.ImagePath,
+		Images:                toProductImageParams(ptr.Deref(request.Body.Images, nil)),
 	})
 	if err != nil {
 		return nil, err

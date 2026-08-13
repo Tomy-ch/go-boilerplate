@@ -81,7 +81,7 @@ func (s *store) ClaimPending(ctx context.Context, limit int32) ([]outboxbndry.Pe
 	return messages, nil
 }
 
-// MarkPublished は、publish 成功行を published へ遷移します（既に pending でなければ no-op）。
+// MarkPublished は、publish 成功行を published へ遷移します。
 func (s *store) MarkPublished(ctx context.Context, id int64) error {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -113,7 +113,7 @@ func (s *store) MarkFailed(ctx context.Context, id int64, lastErr string) (int32
 	return attempts, nil
 }
 
-// MarkDead は、行を dead へ遷移します（既に pending でなければ no-op）。
+// MarkDead は、行を dead へ遷移します。
 func (s *store) MarkDead(ctx context.Context, id int64) error {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

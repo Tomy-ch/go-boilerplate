@@ -10,7 +10,7 @@ import (
 
 // PurchaseSummaryQueryService は、購入の集計 read 投影を提供する QueryService です。
 // 件数・合計金額・ステータス別内訳は購入集約を再構成できない派生投影であるため、Repository ではなく
-// 読み取り側に置きます（ADR-0027）。
+// 読み取り側に置きます（ADR-0029 (lightweight-cqrs)）。
 type PurchaseSummaryQueryService interface {
 	// SummarizeByUserID は、認証主体（userID）の購入をステータス単位に集計し、購入ステータスマスタの表示順で返します。
 	// 他の主体の購入が集計に混入しないことは本メソッドが担保します（呼び出し側での追加の所有権検査は不要です）。

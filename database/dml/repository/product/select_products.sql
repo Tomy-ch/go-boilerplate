@@ -1,8 +1,10 @@
 -- name: ListPublishedProductsDescFirst :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
--- published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -27,9 +29,11 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsDescAfter :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
--- published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -58,9 +62,11 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscFirst :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
--- published_at の公開条件は Product.IsPublished の実行形です。先頭ページを返します。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
@@ -85,9 +91,11 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscAfter :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタから解決する付随表示値です。
+-- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
--- published_at の公開条件は Product.IsPublished の実行形です。カーソル以降のページを返します。
+-- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,

@@ -44,18 +44,12 @@ The 6 `Public API`-bearing entries that ARE in the manifest are all hybrid — t
 
 ### Keyword evolution log
 
-The keyword sets in Step 2 were extended after observing false-negatives during runs of `portal-manifest-sync`. Add to a P-criterion's keyword list when:
+The keyword sets in Step 2 are extended in response to false-negatives observed during runs of `portal-manifest-sync`. Add to a P-criterion's keyword list when:
 
 - A genuinely manual-quality README uses a synonym that wasn't in the original list (e.g., `Conventions` is functionally a Rules section).
 - The synonym appears in at least one currently-registered manifest entry, OR in a README that the user explicitly judges manual-worthy.
 
 Do NOT expand keywords to admit clearly low-quality READMEs; the goal is to capture the spectrum of legitimate phrasings, not to inflate scores.
-
-Examples already added:
-
-- P2: `How It Works`, `Strategy`, `Trigger Strategy`, `Test Strategy`, `Application Policy`
-- P3: `Conventions`, `Naming Convention`, `Naming`, `Policy`
-- P5: `Workflow List`, `Command List`, `File List`, `Module List`
 
 ## First Step: Confirm Target
 

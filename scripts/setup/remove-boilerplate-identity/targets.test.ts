@@ -62,7 +62,7 @@ describe("isScanTarget", () => {
     });
 
     // 撤去の最後に丸ごと消えるうえ、宣言もテストもマーカーの形を本文に持つ。走査すると
-    // 対応の取れない片割れとして除去全体が止まる（実際に一度止まった）。
+    // 対応の取れない片割れとして除去全体が止まる。
     it("自分自身のディレクトリを対象から外す", () => {
       expect(isScanTarget(`${SELF_DIR}/targets.ts`)).toBe(false);
       expect(isScanTarget(`${SELF_DIR}/targets.test.ts`)).toBe(false);
@@ -150,6 +150,8 @@ describe("BOILERPLATE_DELETE_PATHS", () => {
       expect(BOILERPLATE_DELETE_PATHS).toContain(
         "docs/ja/get-started/boilerplate-only-conventions.ja.md",
       );
+      expect(BOILERPLATE_DELETE_PATHS).toContain("docs/plan");
+      expect(BOILERPLATE_DELETE_PATHS).toContain("docs/ja/plan");
     });
 
     // premise-lint が守る規則は fork が継承するが、検査が探す言い回しは上流固有の実例でしかない。

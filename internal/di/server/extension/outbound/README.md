@@ -21,7 +21,5 @@ This package isolates the **response (output) side** of the composable server pi
 ## Notes
 
 - Priority follows `extension.UseMiddleware` rules — adjusted to avoid order conflicts with other middleware
-- Recovery should be **one of the first middleware to execute**
 - ErrorHandler replaces Echo's `HTTPErrorHandler` and is provided as ServeCfg
-- Outbound middleware belongs to the controller layer — **must not depend on domain/usecase**
 - To add response processing, add new outbound middleware to this directory

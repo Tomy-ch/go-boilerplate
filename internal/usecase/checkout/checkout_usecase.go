@@ -77,7 +77,7 @@ func New(
 }
 
 // CreatePurchase は、購入の作成を購入ユースケースへ委ね、その後に参考換算額を添えます。
-// 参考換算は購入成立後の表示上の付加情報なので、取得に失敗しても購入は成立したまま nil で degrade します。
+// 参考換算の取得に失敗しても購入は成立したまま nil で degrade します。
 func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -98,7 +98,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 }
 
 // referenceAmount は、合計金額（基軸通貨のセント）の表示通貨での参考換算額を算出します。
-// 為替 gateway の障害時は nil を返して degrade します（購入は既に成立している）。
+// 為替 gateway の障害時は nil を返します。
 func (u *usecase) referenceAmount(ctx context.Context, totalCents int, displayCurrency string) *ReferenceAmountView {
 	// 決済スケール（整数セント）の合計を価格スケール（基軸通貨の decimal）へ戻して換算入力にする。
 	amount := decimal.FromInt(int64(totalCents)).DivRound(decimal.FromInt(centsPerBaseUnit), minorUnitDigits)

@@ -3,7 +3,7 @@
 //	env:    解決結果を KEY=VALUE で出力する。make のレシピが eval して読む。
 //	status: 解決結果と帯ごとの助言を人間向けに表示する（make load-status）。
 //
-// 帯の意味と閾値の意図は .makefiles/load.mk の冒頭コメントが持つ。ここが持つのは
+// 帯の意味と閾値の意図は .makefiles/README.md の `.makefiles/load` group が持つ。ここが持つのは
 // 「窓の数と CPU 数から帯・シェア・フラグを導く」計算だけ。
 //
 // このツールはコミット毎・push 毎に走るゲートの並列度を決める。壊れ方が「黙って
@@ -78,9 +78,7 @@ func (b band) throttled() bool {
 	return b.resolved == bandLow || b.resolved == bandCIFirst
 }
 
-// main はエラーを終了コードへ変換するだけに留め、判断は run が持ちます。
-// main は 1:1 の対象外でテストを書けないため、ここに分岐を置くと検査されない
-// コードがそのぶん増える。
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 
@@ -143,6 +141,9 @@ func worktreeList() string {
 // countWindows は、`git worktree list` の出力から窓（worktree）の数を数えます。
 // 数えられない場合は 1 を返します。0 を返すと「窓が無い」という有り得ない状態が
 // 帯の判定へ流れ込むため、下限は常に 1 です。
+//
+// スロットのリースではなく worktree を数えるのは、スロット取得が opt-in で「窓はあるが
+// スロットは取っていない」状態が普通にあるため。CPU を食うのは窓のほうです。
 func countWindows(gitOutput string) int {
 	count := 0
 

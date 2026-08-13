@@ -1,0 +1,201 @@
+name: DevSkim Scan
+
+# DevSkim is a regex linter that carries no language front-end, so it reads every file
+# in the tree — Go, TypeScript, SQL, YAML, shell, Dockerfiles, Markdown — with one rule
+# set. That is the whole reason it is here: Opengrep and CodeQL both go deeper, and both
+# only reach the languages they can parse, so a weak cipher name or a hardcoded
+# credential in a file neither of them opens is currently seen by nothing.
+#
+# There is deliberately no `paths` filter. A language-agnostic scanner's verdict can
+# change with any file, and narrowing the trigger to a language list would contradict
+# the reason for adopting it.
+#
+# The CLI is installed from NuGet rather than run through microsoft/DevSkim-Action. The
+# action is a Docker action whose Dockerfile builds from the floating
+# `mcr.microsoft.com/dotnet/sdk:8.0` tag and then runs an unversioned
+# `dotnet tool install`, so pinning the action to a SHA would pin the recipe and not the
+# code it executes. Installing the tool here keeps the version an explicit, reviewable
+# literal.
+#
+# The version does not live in mise.toml, and the reason is not that mise cannot reach
+# NuGet — its `dotnet:` backend can. It is that the backend needs the .NET runtime itself
+# to become a mise-managed tool, which puts a whole language runtime into the version SSOT
+# for one linter, and that `scripts/tool-cooldown` has no publish-time source for a
+# `dotnet:` backend, so such an entry is reported as unresolved rather than gated. Either
+# way `make tool-cooldown-gate` does not cover this version, and the `env:` block below is
+# its only pin.
+#
+# Report-only: DevSkim exits 0 unless `-E` is passed, and the findings go to code
+# scanning and the pull-request comment.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+  pull_request:
+  schedule:
+    # Rule updates turn unchanged code into a finding, which is what the weekly run is for.
+    - cron: '30 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # DevSkim ships no aqua / mise package, so the version lives here. Bump it together
+  # with a look at the release notes; nothing else in the repository guards it.
+  DEVSKIM_VERSION: 1.0.90
+
+jobs:
+  devskim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            api.nuget.org:443
+            globalcdn.nuget.org:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # The .NET SDK is preinstalled on GitHub-hosted runners, so nothing sets one up
+      # here. A self-hosted runner would need actions/setup-dotnet before this step.
+      - name: Install DevSkim CLI
+        run: |
+          set -euo pipefail
+          dotnet tool install --global Microsoft.CST.DevSkim.CLI --version "${DEVSKIM_VERSION}"
+          echo "${HOME}/.dotnet/tools" >> "${GITHUB_PATH}"
+        shell: bash
+
+      # Generated, vendored, test-only, and local-development-only files are outside
+      # the deployed application. --base-path keeps SARIF locations repository-relative.
+      - name: DevSkim scan
+        run: |
+          devskim analyze \
+            --source-code . \
+            --output-file devskim.sarif \
+            --file-format sarif \
+            --base-path . \
+            --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/*_test.go,**/*.test.ts,**/*.spec.ts,**/pnpm-lock.yaml,**/package-lock.json,**/openapi.gen.yaml,**/.agents/**,**/docs/openapi/**,**/docs/coverage/**,**/docs/db-schema/**,**/docs/godoc/**,**/docs/portal/docs.json,**/docs/portal/guides/**,**/docker-compose.attach.yaml,**/mock-auth-server/**'
+        shell: bash
+
+      - name: Create DevSkim summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '[(.runs // [])[] | (.results // [])[] | select((.level // "warning") != "note")] | length' devskim.sarif)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ DevSkim: PASS (no error or warning findings)" >> "$GITHUB_OUTPUT"
+            echo "No error or warning findings." > devskim-summary.md
+            exit 0
+          fi
+
+          echo "status=findings" >> "$GITHUB_OUTPUT"
+          echo "title=## ⚠️ DevSkim: ${COUNT} finding(s)" >> "$GITHUB_OUTPUT"
+
+          # `level` is defaulted before the lookup, not after: SARIF allows a result to omit it
+          # (meaning "take the rule's default"), and indexing an object with null is a jq
+          # runtime error that `//` cannot catch. DevSkim always emits one today, so this
+          # guards a version bump rather than a present bug.
+          jq -r '
+            [(.runs // [])[] | (.results // [])[]]
+            | map(select((.level // "warning") != "note"))
+            | map(.level //= "warning")
+            | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
+            | .[]
+            | "- [\(.level)] `\(.locations[0].physicalLocation.artifactLocation.uri // "?"):\(.locations[0].physicalLocation.region.startLine // 0)` \(.ruleId // "?")\n  - \((.message.text // "") | gsub("\n"; " "))"
+          ' devskim.sarif > devskim-summary.md
+        shell: bash
+
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: devskim-summary.md
+
+      - name: Upload DevSkim report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: devskim
+          path: |
+            devskim.sarif
+            devskim-summary.md
+
+      - name: Comment DevSkim result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- devskim-result -->'
+          status: ${{ steps.summarize.outputs.status }}
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ DevSkim Scan: CUT OFF (no result produced)' }}"
+          body-file: devskim-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload DevSkim SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: devskim.sarif
+          category: devskim
+
+  # Report-only, so failure mode can never fire for a finding. The weekly run has no
+  # author, which is the case nothing else surfaces.
+  notify-detection:
+    needs: devskim
+    if: ${{ github.event_name == 'schedule' && needs.devskim.outputs.count != '' && needs.devskim.outputs.count != '0' }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      detected: DevSkim found ${{ needs.devskim.outputs.count }} findings
+      details: ${{ needs.devskim.outputs.detail }}
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: devskim
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.devskim.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: devskim
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,9 +1,10 @@
 -- name: ListShippablePurchases :many
 -- 発送可能な購入を、注文日時の古い順（同時刻は ID 昇順）で最大 limit 件取得する。
 -- 現在状態は購入ステータスマスタとの結合で code を解決する（status_id は SoT、code は集約が
--- 状態機械の判定に用いる業務キー）。固定参照マスタのみを結合し、集約境界をまたがない単一集約 read。
+-- 状態機械の判定に用いる業務キー。JOIN の許容範囲は
+-- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 「発送可能」を定義するのは Purchase.IsShippable で、以下の条件はその実行形です。片方だけ変更しないこと。
--- 支払い済みを表す code は seed UUID を焼き込まないよう呼び出し側がドメイン定数から渡す。
+-- 支払い済みを表す code は呼び出し側がドメイン定数から渡す。
 SELECT
     ps.code AS status_code,
     sqlc.embed(p)

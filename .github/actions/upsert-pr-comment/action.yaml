@@ -56,14 +56,10 @@ runs:
             core.setFailed('Not a PR context');
             return;
           }
-          // A cut-off job can stop before the step that writes the body file runs, so a missing
-          // file is the normal shape of the very case this comment has to stay visible for.
-          // Failing the step instead would leave the pull request with no trace of the cut-off at
-          // all, which is exactly what the `always()` guard on every calling step exists to
-          // prevent. The cost is that a miswired path surfaces as a cut-off notice on a green run
-          // rather than as a step failure; that is loud enough to catch, and silence is not.
-          // A step that was cut off *while* writing the file leaves one behind, so absence is not
-          // the whole test — the caller's `title` carries the other half (see below).
+          // Absence means cut-off, not step failure: a cut-off job never reaches the step that
+          // writes the body. It is not the whole test — a job cut off *while* writing leaves a
+          // file behind, and the caller's `title` carries that half (see below).
+          // See README.md § Job Cut-off.
           const cutOff = !fs.existsSync(bodyFile);
           if (cutOff) {
             core.warning(`${bodyFile} not found; reporting the job as cut off`);
@@ -76,12 +72,9 @@ runs:
             content = content.slice(0, maxLength) + '\n... (truncated)';
           }
 
-          // With no body there is nothing the caller's heading can still be describing, so the
-          // cut-off heading replaces it rather than filling in for a missing one — a literal
-          // title like "Trivy Image Scan" over a cut-off notice reads as a scan that ran. The
-          // wording names no cause: a body can also be missing because an earlier step failed
-          // outright, and only the run log distinguishes that from a timeout. Folding one line
-          // behind a details block would hide the only thing left to say.
+          // The cut-off heading replaces the caller's title: no title can still describe a body
+          // saying the job never ran, and it names no cause (only the run log tells a timeout from
+          // an earlier failure). See README.md § Job Cut-off.
           const heading = cutOff
             ? '## ⚠️ CUT OFF (no result produced)'
             : title;
@@ -108,12 +101,9 @@ runs:
           const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
           const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
-          // A body reproduced verbatim inside a fixed three-backtick fence can close that
-          // fence itself: a linter or compiler echoes source lines, so a pull request author
-          // controls what lands here, and everything after a ``` line would render as live
-          // Markdown — mentions notifying third parties, fabricated headings and links posted
-          // under the CI bot's name. Fencing with one more backtick than the longest run in
-          // the body leaves no run able to close it.
+          // One backtick longer than the longest run in the body, so no run in the body can
+          // close the fence early. Callers that fence their own body duplicate this exactly.
+          // See README.md § PR comment fencing.
           const fenceFor = (text) => {
             const longestRun = (text.match(/`+/g) || [])
               .reduce((max, run) => Math.max(max, run.length), 0);
@@ -137,21 +127,15 @@ runs:
             per_page: 100,
           });
 
-          // Anyone can post a comment carrying the marker on a public repository, and every
-          // workflow here comments under the same bot, so a marker found anywhere in a body
-          // identifies nothing: a pull request author who gets one workflow to echo another's
-          // marker into its log steers that other workflow onto the wrong comment. A body this
-          // action wrote always opens with the marker, which the planted one never does.
+          // Matched on the marker AND a Bot author, and only as a prefix — a marker anywhere in a
+          // body can be planted by a pull-request author. See README.md § Notes.
           const existing = comments.find(
             c => (c.body || '').startsWith(marker) && c.user?.type === 'Bot',
           );
 
-          // A pull request here runs some thirty checks, so a comment per passing one buries the
-          // one that did not pass under the ones that need nothing. What gets suppressed is
-          // *creating* a comment, not updating one: a check that failed and was then fixed still
-          // overwrites its own red comment with the green result, in place, so the pull request
-          // never keeps a failure that no longer holds — and never states a pass no one asked for.
-          // A cut-off produces no status at all, which is not `success` and therefore still posts.
+          // `success` suppresses *creating* a comment, never updating one, so a fixed check
+          // overwrites its own red comment in place. A cut-off has no status and always posts.
+          // See README.md § Result Comments.
           const quiet = !cutOff && status === 'success';
 
           if (!existing && quiet) {
@@ -159,17 +143,10 @@ runs:
             return;
           }
 
-          // The one comment that is removed rather than overwritten. A cut-off notice records no
-          // verdict — only that a run ended without reaching one — so a later `success` does not
-          // supersede a finding, it answers a question that was left open, and overwriting would
-          // leave a permanent green comment on the pull request for a cancellation. That is not a
-          // rare case: `cancel-in-progress` cancels the previous run on every quick second push,
-          // and each cancelled job that pipes its output leaves a half-written body behind, so the
-          // notice is created and then frozen green. The cancellation stays in the run history
-          // either way. Recognition is by heading, because a job cut off mid-write has a body and
-          // reaches the action's own notice only when it has none; every caller's heading carries
-          // this phrase, which `make actions-cutoff-lint` is what keeps true. A refused delete
-          // falls back to the overwrite rather than leaving a stale cut-off standing on a green run.
+          // The one comment deleted rather than overwritten: a cut-off records no verdict, so a
+          // later success answers it rather than superseding a finding. Recognized by its heading,
+          // since a mid-write cut-off has a body. A refused delete falls back to the overwrite.
+          // See README.md § Result Comments.
           const headingLine = (existing?.body || '').split('\n')[1] || '';
           const staleCutOff = quiet
             && headingLine.startsWith('## ')

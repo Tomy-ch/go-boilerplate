@@ -23,7 +23,7 @@ const metaSchema = z.object({
   subgroups: z.record(z.string(), z.array(subgroupConfigSchema)).default({}),
 });
 
-/** `docs/` を走査して得た内容。FS へ触るのは呼び出し元の責務にする。 */
+/** `docs/` を走査して得た内容。 */
 export type DiscoveredDirectory = {
   name: string;
   hasIndexHtml: boolean;

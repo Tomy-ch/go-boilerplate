@@ -30,7 +30,7 @@ get:
         JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。
       schema:
         type: string
-        # 桁数を有界にし、巨大入力による big.Int 十進解析（O(n^2)）を用いた未認証 DoS を防ぐ。
+        # 未認証エンドポイントの DoS 対策として桁数を有界にする（根拠: docs/spec/exchange-rate/usecase.md）。
         maxLength: 40
         pattern: '^\d{1,20}(\.\d{1,18})?$'
         example: "100"

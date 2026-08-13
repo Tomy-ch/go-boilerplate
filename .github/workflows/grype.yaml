@@ -1,0 +1,218 @@
+name: Grype Scan
+
+# Grype over the same dependency manifests trivy-fs.yaml reads, against Anchore's own database
+# and matcher. See README.md § Overlapping surfaces for why that redundancy is bought.
+#
+# It scans the directory rather than an image. Scanning an image would re-examine what
+# image-scan.yaml already sends through Trivy — the same artifact, one layer removed
+# from the manifests a pull request actually edits.
+#
+# Report-only, like trivy-fs.yaml: `--fail-on` is deliberately unset, and the blocking
+# verdict on a dependency state stays with the release gates.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/grype.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/pnpm-lock.yaml'
+      - 'docs-viewer/pnpm-lock.yaml'
+  pull_request:
+    paths:
+      - '.github/workflows/grype.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/pnpm-lock.yaml'
+      - 'mock-auth-server/pnpm-lock.yaml'
+      - 'docs-viewer/pnpm-lock.yaml'
+  schedule:
+    # A newly published advisory turns unchanged code into a finding, so the weekly run
+    # earns its place.
+    - cron: '15 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  grype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+    outputs:
+      count: ${{ steps.summarize.outputs.count }}
+      detail: ${{ steps.detail.outputs.markdown }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            grype.anchore.io:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: aqua:anchore/grype
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml (SSOT) — never duplicated here.
+
+      - name: Grype scan
+        env:
+          # Grype checks for a newer release of itself on every run, and that check goes to
+          # toolbox-data.anchore.io — a different host from the vulnerability database at
+          # grype.anchore.io. The version is pinned in mise.toml, so the answer could not be
+          # acted on; switching the check off is cheaper than allow-listing a second host to
+          # carry a reply nobody reads, and it keeps the run summary free of a denied
+          # connection that would train a reader to ignore denied connections.
+          GRYPE_CHECK_FOR_APP_UPDATE: 'false'
+        run: |
+          grype dir:. \
+            --exclude './vendor/**' \
+            --exclude './**/node_modules/**' \
+            --exclude './docs/**' \
+            -o json=grype.json \
+            -o sarif=grype.sarif
+        shell: bash
+
+      - name: Create Grype summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '(.matches // []) | length' grype.json)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Grype: PASS (no vulnerabilities)" >> "$GITHUB_OUTPUT"
+            echo "No vulnerabilities found." > grype-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Grype: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          # The severity is defaulted before the lookup, not after: indexing an object with
+          # null is a jq runtime error, which `//` cannot catch.
+          jq -r '
+            (.matches // [])
+            | sort_by({Critical:0,High:1,Medium:2,Low:3,Negligible:4,Unknown:5}[.vulnerability.severity // "Unknown"] // 6)
+            | .[]
+            | "- [\(.vulnerability.severity)] \(.artifact.name) `\(.artifact.version)` → `\((.vulnerability.fix.versions // []) | join(", ") | if . == "" then "none" else . end)` (\(.vulnerability.id))"
+          ' grype.json > grype-summary.md
+        shell: bash
+
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.summarize.outputs.count != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: grype-summary.md
+
+      - name: Upload Grype report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: grype
+          path: |
+            grype.json
+            grype.sarif
+            grype-summary.md
+
+      - name: Comment Grype result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- grype-result -->'
+          status: "${{ steps.summarize.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Grype Scan: CUT OFF (no result produced)' }}"
+          body-file: grype-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload Grype SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: grype.sarif
+          category: grype
+
+  # Report-only, so a finding leaves the job green and failure mode can never fire for
+  # one. On a pull request the finding is already in a comment addressed to the author;
+  # on the weekly run there is no author and no change, which is the case nothing else
+  # surfaces.
+  notify-detection:
+    needs: grype
+    if: ${{ github.event_name == 'schedule' && needs.grype.outputs.count != '' && needs.grype.outputs.count != '0' }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      detected: Grype found ${{ needs.grype.outputs.count }} vulnerabilities
+      details: ${{ needs.grype.outputs.detail }}
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: grype
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.grype.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: grype
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

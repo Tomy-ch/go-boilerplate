@@ -26,7 +26,7 @@ across packages; a prefix match would suppress `DetailInput` merely because `Det
 
 ## Extract the runtime inventory
 
-Read `.claude/scaffold-spec/domain-spec.md` at runtime to learn the domain-spec YAML shape; do not assume its sections stay fixed. Extract five inventories:
+Read `.codex/scaffold-spec/domain-spec.md` at runtime to learn the domain-spec YAML shape; do not assume its sections stay fixed. Extract five inventories:
 
 - `package:` and `struct:` declarations from the YAML in `docs/spec/*/domain.md`, restricted to the selected feature when applicable;
 - exported `type X struct` and `type X interface` declarations in `internal/domain/**`, excluding `_test.go` and `mock/`;

@@ -151,6 +151,25 @@ flowchart TD
     U1 -- はい --> UOK["200 whitelist claim"]
 ```
 
+### 3.5 鍵ローテーション（JWKS のフェーズ）
+
+Provider は **公開鍵セット**（JWKS で配る鍵）と **署名鍵 1 本**を分けて保持するため、ローテーションを再現して RS 側を検証できます。`POST /admin/keys/rotate` は宣言的な `{action, kid}`（`add-key` / `promote` / `retire`）を受け取り、`POST /admin/reset` で Phase 1 へ戻ります。アクションを連ねると古典的な 3 フェーズを再現できます。
+
+```text
+Phase 1  JWKS: [key-a]         Signing: key-a   (initial)
+Phase 2  JWKS: [key-a, key-b]  Signing: key-b   (add-key + promote key-b)
+Phase 3  JWKS: [key-b]         Signing: key-b   (retire key-a)
+```
+
+RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこれを乗り切ります。
+
+- **既知の `kid` → キャッシュヒット**で取得なし（ローテーションがリクエストごとのコストを増やさない）。
+- **未知の `kid` → 1 回だけ再取得**（cooldown で抑制し、同時取得は 1 本にまとまる）。ローテーション途中で発行された `key-b` の token もこれで拾える。
+- **ネガティブキャッシュ**: 現在のキャッシュ世代で*実際に取得した結果*として不在が確認された `kid` を記憶し、でたらめな `kid` の連打が毎回再取得を起こさないようにする。取得成功で公開鍵セットが変われば破棄され、stale なキャッシュや（取得せず）抑制されただけの `kid` には適用されない — ローテーションで追加された `kid` は次回の取得（キャッシュ TTL の範囲）で解決され、恒久的に拒否されることはない。
+- **撤去済みの鍵 → `401`**: キャッシュ世代が更新されて公開鍵セットから `key-a` が消えると、その鍵で署名された token は「`kid` を解決できるか」の分岐で落ちる。
+
+状態遷移の end-to-end は `internal/integration/jwks_rotation_test.go` が決定的に押さえており、Provider とバイト単位で共有した JWKS / PEM に対して、実際の HTTP 境界越しに各フェーズを駆動します。
+
 ---
 
 ## 4. 実装配置
@@ -161,11 +180,12 @@ flowchart TD
 | Authenticator 境界インタフェース | `internal/usecase/boundary/auth/{authenticator,credential,auth,resolver}.go` |
 | JWT 検証コア | `internal/infrastructure/auth/jwt/auth_jwt.go` |
 | JWKS 解決（`kid` lookup・TTL キャッシュ・refresh cooldown） | `internal/infrastructure/auth/jwt/jwks.go` |
-| dev 限定スタブ（`Bearer debug:<subject>`、CI/test env） | `internal/infrastructure/auth/local/auth_local.go` |
+| dev 限定スタブ（`Bearer debug:<subject>`、`ci` / `test` env） | `internal/infrastructure/auth/local/auth_local.go` |
 | identity 解決（`sub` → 内部 `userID`） | `internal/infrastructure/auth/useridentity/` |
 | DI 配線（env 駆動の authenticator 選択・JWKS downstream profile） | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
+| スキャン用の実 JWT 実行文脈（`dast` env: mock provider へ http で JWKS backed authenticator を配線） | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | config（`AUTH_*`） | `internal/config/envspec.go`, `internal/config/model.go` |
-| ops-path / metrics の auth 例外 | `internal/controller/httpstack/oapi/skipper/`, ADR [0016](../../adr/0016-metrics-endpoint-auth-exception.md) |
+| ops-path / metrics の auth 例外 | `internal/controller/httpstack/oapi/skipper/`, ADR [0018](../../adr/0018-metrics-endpoint-auth-exception.md) |
 | 開発用 OIDC provider | `mock-auth-server/`（`src/routes/oidc.ts`, `tokens.ts`, `pkce.ts`, `keys.ts`, `store.ts`） |
 
 ---

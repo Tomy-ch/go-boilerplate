@@ -1,5 +1,5 @@
 -- name: GetIdempotencyKey :one
--- scope 必須（越境防止）。scope と idempotency_key で一致する行を返す。
+-- scope 必須。scope と idempotency_key で一致する行を返す。
 SELECT
     status,
     response_status,

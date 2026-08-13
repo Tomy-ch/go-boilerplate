@@ -26,7 +26,7 @@ itself. So artifacts live here, one level up from any single tool.
 | Belongs | Does not belong |
 | --- | --- |
 | Machine-readable state a skill writes and reads back (ledgers, indexes, resolved caches) | Instructions to an assistant — those are tool configuration (`.claude/`, `.codex/skills/`, …) |
-| Data whose audience is the next run of a skill | Prose meant to be read by a person — that is `docs/` or a package `README.md` |
+| Committed, shared machine-readable state whose audience is the next run of a skill | Per-run resume state — keep it in the owning skill's ignored `tmp/` artifact |
 | Output that is the same regardless of which assistant produced it | Anything tied to one vendor's contract |
 
 Lockfiles for pinned toolchains (`.github/actions-pin.toml`, `docker/images-pin.toml`) are the same
@@ -37,11 +37,18 @@ tooling that maintains them looks.
 
 One subdirectory per artifact domain, named after the skill family that owns it.
 
-```txt
-.agents/
-└── ddd-audit/
-    └── pattern-ledger.yaml   # DDD pattern ledger — see .claude/skills/ddd-audit/SKILL.md
-```
+- `comment-remediation/` — which files have had their comment stock swept, and what to do when an
+  edit lands on one that has not. Read by a `PreToolUse` hook before an edit.
+- `ddd-audit/` — the DDD pattern ledger: which Evans pattern this repository has interpreted, and
+  where. Owned by `.claude/skills/ddd-audit/SKILL.md`.
+- `glossary-drift/` — the exclusions the glossary-drift detector honors: where a business term
+  appearing outside `docs/spec/` is knowingly not a finding yet. Owned by
+  `.claude/agents/drift-detector-glossary.md`.
+
+`comment-remediation/` is the one domain here with a finite life. It records progress through a
+migration to the comment policy, so it stops meaning anything once the tree is fully swept; deleting
+the directory and the hook entry in `.claude/settings.json` is then the intended end state, not
+neglect.
 
 Each file documents its own schema in a header comment. The schema is not repeated here: a reader who
 needs it is already opening the file, and a second copy would drift.
@@ -55,6 +62,11 @@ change the artifact.
 
 Hand-editing is reasonable for one case: repairing a file that a failed run left malformed. Re-run
 the owning skill afterwards so the content matches what the tooling would produce.
+
+The distinction between durable knowledge and per-run state is decided in
+[ADR-0009 (long-running-agent-state)](../docs/adr/0009-long-running-agent-state.md). A finding belongs in its owning canonical
+document only when it changes that document's described relationship; do not turn activity logs into
+another durable artifact domain.
 
 ## Scope for AI agents
 

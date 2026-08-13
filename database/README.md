@@ -50,8 +50,8 @@ flowchart LR
 
 |Command|Description|
 |---|---|
-|`make migrate-up`|Apply migrations|
-|`make migrate-down`|Rollback migrations|
+|`make db-migrate-up DB=<name>`|Apply migrations|
+|`make db-migrate-down DB=<name>`|Rollback migrations|
 |`make new-migrate-<name>`|Generate new migration files|
 |`make gen-query`|Merge DML + sqlc code generation|
 |`make db-seed`|Insert seed data|

@@ -130,10 +130,7 @@ func (s *Server) DoJSON(
 
 // AssertJSONResponseType は、200 / JSON Content-Type を確認したうえで、
 // レスポンスボディが型 T にデコード可能であることを検証する到達確認ユーティリティ。
-//
-// integration テストは HTTP 境界（router → middleware → handler → シリアライズ）の到達と
-// レスポンスの型整合のみを検証する。フィールド値の正しさは controller のユニットテストが
-// 独立オラクルで担保するため、ここでは値比較を行わない。
+// 値比較は行わない（境界と値の切り分けは README を参照）。
 //
 // 加えてシリアライズの形の検査として、T にスライスとして宣言されたフィールドが
 // JSON で null になっていないこと（空でも [] を返す API 契約）を検証する。
@@ -265,9 +262,7 @@ func isJSONNull(raw json.RawMessage) bool {
 // 既定の echo.New() は標準のエラーハンドラを持つため、異常系で apperror → HTTP ステータスの
 // マッピングを実経路で検証するには、production と同じハンドラを配線する必要がある。
 //
-// ハンドラは requestId を、requestid ミドルウェアがレスポンスヘッダへ書いた値を読み戻して
-// 埋める。ハンドラだけを配線しても requestId は常に空になり、[AssertErrorResponseBody] が
-// 守る契約が成立しないため、両者をここで一体に配線する。
+// ハンドラだけを配線すると requestId が常に空になるため、requestid ミドルウェアと一体に配線する。
 //
 // extra には、この契約に相乗りさせたい本番ミドルウェアを DI provider から渡す。適用順は
 // 本番と同じ Priority ソートが決めるので、呼び出し側は順序を書かない。
@@ -293,9 +288,7 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo, extra ...extension.UseMiddle
 
 // AssertErrorResponse は、異常系レスポンスの HTTP ステータスが wantStatus と一致し、
 // ボディが JSON のエラーレスポンス（ErrorResponse）としてシリアライズされていることを検証する。
-//
-// integration テストは HTTP 境界の関心事である「apperror → ステータスコードのマッピング」と
-// エラーボディの形のみを検証する。Code/Message の値の正しさは controller のユニットテストが担う。
+// [AssertJSONResponseType] と同じく境界のみを見て、Code/Message の値は比較しない。
 func AssertErrorResponse(t *testing.T, actualResponse *http.Response, wantStatus int) {
 	t.Helper()
 

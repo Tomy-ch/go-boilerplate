@@ -5,7 +5,7 @@
 
 ## Overview
 
-ヘルスチェックユースケースは、アプリケーションとデータベースの健全性を確認する。アプリケーション時刻（`clock`）と DB 死活情報（system query）を取得し、健全性ステータス（`ok` / `unhealthy`、将来的に `degraded`）を含む DTO を返す。DB チェックに失敗した場合は `unhealthy` とエラーを返す。
+ヘルスチェックユースケースは、アプリケーションとデータベースの健全性を確認する。アプリケーション時刻（`clock`）と DB 死活情報（system query）を取得し、健全性ステータス（`ok` / `unhealthy`、将来的に `degraded`）を含む DTO を返す。DB チェックに失敗した場合は nil の DTO とエラーを返す（DTO は参照しない）。
 
 ドメイン集約を介さず system query を直接参照する点で通常の集約系 usecase と異なる（read-only・トランザクション不要）。
 
@@ -16,7 +16,7 @@ package: internal/usecase/healthcheck
 name: Usecase
 methods:
   - name: CheckHealth
-    signature: CheckHealth(ctx context.Context) (DTO, error)
+    signature: CheckHealth(ctx context.Context) (*DTO, error)
 ```
 
 ## DTOs
@@ -47,7 +47,7 @@ methods:
 ```yaml
 - tracer            # observability.TracerFactory -> LayerTracer
 - clock             # boundary/clock.Clock
-- db_system_cqrs   # healthcheck/query.DBSystemQuery（DB 死活を確認する system query）
+- db_system_cqrs   # healthcheck/query.DBSystemCqrs（DB 死活を確認する system query）
 ```
 
 ## Workflow
@@ -59,11 +59,11 @@ tx_required: false
 steps:
   - clock.Now でアプリケーション時刻を取得
   - db_system_cqrs.CheckDBHealth で DB 死活情報を取得
-  - エラー時は Status=Unhealthy + ApplicationTime のみ設定した DTO とエラーを返す
+  - エラー時は nil の DTO とエラーを返す（DTO は参照しない）
   - 正常時は Status=Ok + ApplicationTime + DBHealthCheck を設定した DTO を返す
 calls:
   - clock.Now
   - db_system_cqrs.CheckDBHealth
 errors:
-  - db_system_cqrs.CheckDBHealth のエラーをそのまま伝播（DTO は Unhealthy）
+  - db_system_cqrs.CheckDBHealth のエラーをそのまま伝播（DTO は nil）
 ```

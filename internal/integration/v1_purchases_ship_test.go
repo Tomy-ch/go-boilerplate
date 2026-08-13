@@ -31,7 +31,6 @@ func TestV1PurchasesShip_Integration(t *testing.T) {
 	const purchasePath = "/v1/purchases/0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60/ship"
 
 	// availableShipAdmin は、発送を要求する admin の認証ヘッダを返すローカルヘルパーです。
-	// EnvTest の Authorizer は allowall 固定のため、非 admin との差は usecase の戻り値で表現します。
 	availableShipAdmin := func(t *testing.T, e *echo.Echo) http.Header {
 		t.Helper()
 		return MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "ship_int_admin"))

@@ -16,10 +16,12 @@ export type ListFilesOptions = {
   shouldIncludeFile?: (entryPath: string) => boolean;
 };
 
+/** リポジトリルート（`ROOT_DIR`）起点の相対パスを絶対パスへ変換する。 */
 export function toAbsolutePath(relativePath: string): string {
   return path.join(ROOT_DIR, relativePath);
 }
 
+/** 絶対パスをリポジトリルート（`ROOT_DIR`）起点の相対パスへ変換する。 */
 export function toRelativePath(filePath: string): string {
   return path.relative(ROOT_DIR, filePath);
 }
@@ -44,11 +46,14 @@ export function updateAbsoluteFile(
   transformer: Transformer,
   dryRun: boolean,
 ): string | null {
-  if (!fs.existsSync(filePath)) {
+  // 存在確認と読み出しを分けると、その間に消えたファイルで例外になる。読めなければ不在として扱う。
+  let original: string;
+  try {
+    original = fs.readFileSync(filePath, "utf8");
+  } catch {
     return null;
   }
 
-  const original = fs.readFileSync(filePath, "utf8");
   const updated = transformer(original);
 
   if (updated === null || updated === original) {

@@ -13,7 +13,7 @@ uses: owner/repo@<40-hex-sha> # <tag>
 
 `make pin-actions-resolve` resolves eligible tags into the lockfile, and `make pin-actions-apply` updates only the SHAs. Never update an Action release newer than the exclusion window unless the user explicitly passes `days=0`.
 
-Quarantine age is the newer of the release `published_at` and the resolved commit date, so an old release object does not make a freshly re-pointed moving tag appear aged. On 2026-07-31, `anthropics/claude-code-action@v1` had `published_at` 2025-08-26 but a head commit dated 2026-07-25, so it is quarantined rather than adopted. The quarantine buys time against automated takeover; reviewing lockfile diffs remains the way to detect a re-point itself. Reasoning: `docs/design/security.md`, Build inputs.
+Quarantine age is the newer of the release `published_at` and the resolved commit date, so an old release object does not make a freshly re-pointed moving tag appear aged — a moving tag whose release date is old but whose head commit is recent is still quarantined. The quarantine buys time against automated takeover; reviewing lockfile diffs remains the way to detect a re-point itself. Reasoning: `docs/design/security.md`, Build inputs.
 
 ## Inputs
 

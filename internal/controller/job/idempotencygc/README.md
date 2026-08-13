@@ -29,7 +29,7 @@ English | [日本語](README.ja.md)
 1. Start a controller span (`tracer.Start`) and `defer` its end.
 2. Parse args into a batch size, then call `gc.SweepExpired(ctx, batchSize)`.
 3. On success, log at **Info** with the deleted count under `logging.JobResultKey`.
-4. On failure, log the deleted count at **Warn** before propagating. The usecase reports what it committed before it stopped, and a committed delete cannot be undone, so dropping the count would hide rows that are already gone. The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
+4. On failure, log the deleted count at **Warn** before propagating (see [job/README.md § GC / batch jobs](../README.md) for why) The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
 
 ## Args
 

@@ -719,7 +719,12 @@ func Test_toProductView(t *testing.T) {
 				Status:                status,
 				Category:              category,
 				PublishedAt:           ptr.To(published),
-				ImagePath:             ptr.To("products/to_view.png"),
+				Images: []domainproduct.Image{
+					domainproduct.NewImage(
+						uuidtestkit.NewTestFromSalt(t, "to_view_image"),
+						domainproduct.ImageAttributes{ImagePath: "products/to_view.png", SortKey: 1},
+					),
+				},
 			}, 7)
 			require.NoError(t, err)
 
@@ -739,8 +744,9 @@ func Test_toProductView(t *testing.T) {
 			assert.Equal(t, "電子機器", actual.CategoryName)
 			require.NotNil(t, actual.PublishedAt)
 			assert.Equal(t, published, *actual.PublishedAt)
-			require.NotNil(t, actual.ImagePath)
-			assert.Equal(t, "products/to_view.png", *actual.ImagePath)
+			require.Len(t, actual.Images, 1)
+			assert.Equal(t, "products/to_view.png", actual.Images[0].Path)
+			assert.Equal(t, 1, actual.Images[0].SortKey)
 			assert.Equal(t, 7, actual.Version)
 		})
 
@@ -765,7 +771,7 @@ func Test_toProductView(t *testing.T) {
 			assert.Nil(t, actual.Description)
 			assert.Nil(t, actual.StockWarningThreshold)
 			assert.Nil(t, actual.PublishedAt)
-			assert.Nil(t, actual.ImagePath)
+			assert.Empty(t, actual.Images)
 			assert.Equal(t, "在庫なし", actual.StatusName)
 		})
 	})
@@ -832,6 +838,41 @@ func Test_ensurePublished(t *testing.T) {
 			err := ensurePublished(products)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Contains(t, err.Error(), uuidtestkit.NewTestFromSalt(t, "drifted").String())
+		})
+	})
+}
+
+func Test_toProductImageItemViews(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("集約が保持する並びのまま出力DTOへ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			images := []domainproduct.Image{
+				domainproduct.NewImage(
+					uuidtestkit.NewTestFromSalt(t, "item_view_1"),
+					domainproduct.ImageAttributes{ImagePath: "products/a.png", SortKey: 1},
+				),
+				domainproduct.NewImage(
+					uuidtestkit.NewTestFromSalt(t, "item_view_2"),
+					domainproduct.ImageAttributes{ImagePath: "products/b.png", SortKey: 5},
+				),
+			}
+
+			actual := toProductImageItemViews(images)
+
+			require.Len(t, actual, 2)
+			assert.Equal(t, ProductImageItemView{Path: "products/a.png", SortKey: 1}, actual[0])
+			assert.Equal(t, ProductImageItemView{Path: "products/b.png", SortKey: 5}, actual[1])
+		})
+
+		t.Run("画像が空の場合、空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, toProductImageItemViews(nil))
 		})
 	})
 }

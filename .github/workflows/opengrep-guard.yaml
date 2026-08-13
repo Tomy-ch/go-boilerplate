@@ -1,15 +1,8 @@
 name: SAST (required-check guard)
 
-# Skip-guard companion for opengrep.yaml. The `sast` job is registered as a required
-# status check, but opengrep.yaml only triggers when the PR touches its `paths`; a PR
-# that changes nothing under them would never report the `sast` context and would
-# block merging forever ("Expected — Waiting for status to be reported").
-#
-# This workflow runs on the complementary set (`paths-ignore` mirrors opengrep.yaml's
-# pull_request `paths`) and reports the same `sast` context as an immediate
-# success, so exactly one of the two always reports it. When both run — a PR
-# touching a scanned path and an unscanned one — GitHub requires every same-named
-# check to pass, so this no-op can never mask a real sast failure.
+# Skip-guard companion for opengrep.yaml: reports the `sast` required check as an immediate
+# success on the complementary set (`paths-ignore` mirrors the filter on opengrep.yaml).
+# Both files' filters must be edited together — see README.md § Required-check guard companions.
 
 on:
   pull_request:
@@ -20,6 +13,9 @@ on:
       - 'go.sum'
       - 'openapi/**'
       - 'database/**'
+      - 'mock-auth-server/**'
+      - 'docs-viewer/**'
+      - 'scripts/**'
 
 permissions:
   contents: read

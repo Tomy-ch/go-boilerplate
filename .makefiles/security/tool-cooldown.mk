@@ -8,13 +8,11 @@
 # GitHub API は未認証だと 60 req/hour（IP 単位）で 1 回の実行を賄えないため、GITHUB_TOKEN を
 # 渡す。CI はワークフローが渡し、手元では gh auth token を使う。
 #
-# base に既定を置かないのは、リリース線が進んだときに古い base を黙って使い、gate が実際には
-# 何も見ていない状態へ縮退するため。
+# base に既定を置かない理由は go-cooldown-gate と同じ（.makefiles/README.md 参照）。
 tool-cooldown-gate:
 	@test -n "$(BASE)" || { echo "❌ BASE が要ります: make tool-cooldown-gate BASE=origin/release/vX.Y.0"; exit 1; }
 	@GITHUB_TOKEN="$${GITHUB_TOKEN:-$$(gh auth token 2>/dev/null)}" go run ./scripts/tool-cooldown gate --base=$(BASE)
 
-# 棚卸しなので finding があっても正常終了する。ただしバイパスの期限切れだけは失敗させる
-# （期限は宣言が変わらなくても訪れるため、回収はこの経路が担う）。
+# 棚卸しのみ。バイパスの期限切れだけ失敗させる扱いは go-cooldown-audit と同じ。
 tool-cooldown-audit:
 	@GITHUB_TOKEN="$${GITHUB_TOKEN:-$$(gh auth token 2>/dev/null)}" go run ./scripts/tool-cooldown audit

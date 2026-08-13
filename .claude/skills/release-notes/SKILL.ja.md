@@ -8,8 +8,8 @@
 
 正式な書式の参照例は以下を参照すること。
 
-- `.github/release/v1.1.0.md`
-- `.github/release/v1.0.0.md`
+- `.github/release/v2.1.0.md`
+- `.github/release/v2.0.0.md`
 
 ## 最初に行うこと: FROM タグと新バージョンの確認
 
@@ -120,7 +120,7 @@ git log --no-merges --pretty=format:'%h%n%s%n%b%n---' <FROM_TAG>..HEAD
 
 ### 4. リリースノートを作成する
 
-`.github/release/<NEW_VERSION>.md` を**日本語で**、`v1.1.0` 形式に従って書き出す。必須のトップレベル構造は以下:
+`.github/release/<NEW_VERSION>.md` を**日本語で**、`v2.1.0` 形式に従って書き出す。必須のトップレベル構造は以下:
 
 ```markdown
 <!-- markdownlint-disable MD041 -->
@@ -172,7 +172,7 @@ git log --no-merges --pretty=format:'%h%n%s%n%b%n---' <FROM_TAG>..HEAD
 - **時系列ではなくテーマでグルーピングする。**
 - **具体のファイルパス／コンポーネント名を引用する**と、読者が変更箇所に辿りやすい（例: `scripts/semver/index.ts`、`internal/controller/handler/...`）。
 - **空セクションを捏造しない。** 該当する変更がなければ `- 該当なし` と書く。
-- **既存のトーンに合わせる。** `.github/release/v1.1.0.md` の文体を比較対象として参考にする。
+- **既存のトーンに合わせる。** `.github/release/v2.1.0.md` の文体を比較対象として参考にする。
 
 ### 5. 書き込み前にプレビューを提示する
 
@@ -219,7 +219,7 @@ make md-lint
 - [ ] `<NEW_VERSION>` を `AskUserQuestion` で確認し、SemVer に対して検証した
 - [ ] `.github/release/<NEW_VERSION>.md` がまだ存在しない
 - [ ] 差分メタデータ（コミット数 / ファイル数 / +/- 行数）を `git` から取得した
-- [ ] コミットを `v1.1.0` 形式のセクションに分類した
+- [ ] コミットを `v2.1.0` 形式のセクションに分類した
 - [ ] リリースノートを日本語で、正規フォーマットに沿って起草した
 - [ ] プレビューをユーザーが承認した
 - [ ] `.github/release/<NEW_VERSION>.md` を書き出した

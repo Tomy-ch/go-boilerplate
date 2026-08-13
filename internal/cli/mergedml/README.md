@@ -14,7 +14,7 @@ merge-dml --type <type> [flags]
 
 |Flag|Default|Description|
 |---|---|---|
-|`--type`|*(required)*|Target DML type (e.g. `repository`, `query_service`)|
+|`--type`|*(required)*|Target DML type. One of `repository`, `query_service`, `system_cqrs`, `command_service`|
 |`--work-dir`|`/app`|Working directory (project root)|
 
 ## Usage

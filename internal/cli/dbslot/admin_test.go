@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// PgxAdmin は実 Postgres への pgx アダプタ。共有 DB（localhost:5432）へ実接続して検証する統合テスト。
+// 共有 DB（localhost:5432）へ実接続する。
 func testAdmin() *PgxAdmin {
 	return NewPgxAdmin("localhost", 5432, "postgres", "postgres-password", "postgres")
 }

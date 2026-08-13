@@ -25,10 +25,8 @@ type httpPublisher struct {
 }
 
 // NewDownstreamProfile は、outbox publish 向けの resilient プロファイルを返します。
-// relay の poll ループ自体が at-least-once の retry 本体であるため、transport 層 retry は
-// 二重になる。これを避けるため MaxAttempts=1 で transport retry を無効化する（D10）。
-// traceparent は emit 時に capture した値を headers で明示伝搬するため、ここでの自動 inject は抑止する。
-// 送信先はクラスター外部の受信エンドポイントを想定するため、private/loopback 宛てを拒否する（SSRF 抑止）。
+// transport retry の無効化・trace 自動 inject の抑止・private/loopback 宛ての拒否は、いずれも
+// README.md の Design Policy（D10）に理由があります。
 func NewDownstreamProfile() httpclient.DownstreamProfile {
 	p := httpclient.DefaultProfile()
 	p.MaxAttempts = 1
@@ -58,23 +56,21 @@ func NewHTTP(
 }
 
 // Publish は、メッセージを受信エンドポイントへ POST します。
-// message_id を Idempotency-Key として伝搬し、非冪等メソッドだが retry は明示的に無効化します
-// （再送は relay の次 poll が担う）。非 2xx / transport 失敗は substrate が apperror へ写像して返します。
+// message_id を Idempotency-Key として伝搬します。非 2xx / transport 失敗は substrate が
+// apperror へ写像して返します。
 func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 	ctx, endSpan := p.tracer.Start(ctx)
 	defer endSpan()
 
 	header := httpclient.Header{"Content-Type": {"application/json"}}
 	for k, v := range m.Headers {
-		// emit 側でも同じ判定を行うが、emit を経由せず INSERT された行に対する真の egress 境界での防御。
+		// emit 側と同じ判定だが、emit を経由しない行への防御として必要。
 		if httpheader.IsSensitive(k) {
 			continue
 		}
 		header[k] = []string{v}
 	}
 
-	// AllowRetry は付与しない（at-least-once は relay の poll ループが担う）。
-	// 受信側 dedup 用に IdempotencyKey（message_id）のみ伝搬する。
 	_, err := p.client.Do(ctx, httpclient.NewRequest(
 		httpclient.MethodPost(), downstream, string(p.endpoint),
 		httpclient.WithHeader(header),

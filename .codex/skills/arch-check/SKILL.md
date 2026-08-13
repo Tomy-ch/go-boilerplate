@@ -9,7 +9,7 @@ Use this skill for an architecture-focused review, not for formatting, general c
 
 ## Scope and write permission
 
-Default to changed production Go files against the PR base or repository default branch. Exclude generated files, mocks, and tests. If there are no changed production Go files, report that and stop.
+Default to changed production Go files, excluding generated files, mocks, and tests. For an existing pull request, its `baseRefName` is authoritative; otherwise resolve the base with `make base-branch` (the latest `release/*` from `origin`'s live state), never `gh repo view --json defaultBranchRef`; if the base cannot be resolved, stop and report that failure in Japanese, separately from the no-changed-production-files case.
 
 Use the full repository only when requested. A request naming one or more layers limits the audit to those layers:
 
@@ -20,6 +20,7 @@ Use the full repository only when requested. A request naming one or more layers
 | `internal/controller/` | controller | `.codex/agents/arch-auditor-controller.toml` |
 | `internal/infrastructure/` | infrastructure | `.codex/agents/arch-auditor-infra.toml` |
 | `pkg/` | shared package | `.codex/agents/arch-auditor-pkg.toml` |
+| `internal/domain/`, ADR, or README corpus | DDD interpretation | `.codex/agents/ddd-origin-auditor.toml` (`ddd-audit`, preset `quick` scope) |
 
 This skill is read-only by default. Do not add `TODO` comments merely because the source skill offered that option. Add them only after explicit user approval, and never add one for a violation that should be fixed.
 
@@ -36,7 +37,7 @@ This skill is read-only by default. Do not add `TODO` comments merely because th
    - **infrastructure:** implementation of domain interfaces; data orchestration only; generated-query use and error normalization according to the RDB and `pgerror` READMEs. Treat one-to-one repository/query correspondence as advisory because joins, multi-query operations, and dispatch are valid.
    - **pkg:** no `internal/` dependency; framework-agnostic and reusable; no feature-specific business logic. Honor an explicit subpackage README exception when present.
 
-5. Delegate independent layers to the agent roles named in the scope table above when delegation is available. Otherwise execute their instructions inline. Never run `make lint` more than once.
+5. Delegate independent layers to the agent roles named in the scope table above when delegation is available. Otherwise execute their instructions inline. Never run `make lint` more than once. When the audited change touches domain code or the ADR / README corpus, also run `ddd-audit` with its `quick` scope preset through `.codex/agents/ddd-origin-auditor.toml`; it must not ask for scope again. Keep this separate from the per-layer audits: it compares the repository's documented DDD interpretation with Evans, flags divergences for a human, and never arbitrates or fixes them.
 6. Report in Japanese using this form:
 
    ```text

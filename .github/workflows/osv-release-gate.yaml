@@ -8,7 +8,18 @@ name: Release OSV Scan
 # Deliberately carries no `paths` filter: a promotion PR often changes nothing under
 # go.mod or the npm lockfiles, yet it is exactly the moment the dependency state has to
 # be re-judged — and a required check must run to be able to block.
+#
+# The `push` trigger covers the same boundary crossed the other way. A commit landing
+# on a deploy branch directly is a promotion that skipped its promotion PR, which is
+# precisely the case this gate exists to judge and the one case it would otherwise
+# never see. It cannot block a commit that has already landed, so on push the failing
+# job is a record rather than a gate — but a silent landing is the worse of the two.
 on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
   pull_request:
     branches:
       - develop
@@ -21,7 +32,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -45,39 +56,42 @@ jobs:
             *.blob.core.windows.net:443
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
             aquaproj.github.io:443
-            api.osv.dev:443
-            api.deps.dev:443
-            osv-vulnerabilities.storage.googleapis.com:443
-            storage.googleapis.com:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
             proxy.golang.org:443
             sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
             dl.google.com:443
             go.dev:443
             golang.org:443
+            downloads.sqlc.dev:443
             nodejs.org:443
             registry.npmjs.org:443
-            downloads.sqlc.dev:443
+            get.pnpm.io:443
             astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.osv.dev:443
+            api.deps.dev:443
+            osv-vulnerabilities.storage.googleapis.com:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The scanner version is declared in mise.toml (SSOT) — never pinned here.
-      - name: Install osv-scanner
-        run: mise install aqua:google/osv-scanner
 
       - name: Scan with osv-scanner
         id: scan

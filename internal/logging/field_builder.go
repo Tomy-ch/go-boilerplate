@@ -151,7 +151,6 @@ func (l *logFieldBuilder) BuildSQLEndFields(sql SQLFieldsEndInput) []*Field {
 		fields = append(fields, Error(InternalErrorKey, sql.Err))
 	}
 
-	// parent_span_id は obs 有効時のみ付与する（trace_id / span_id は Logger 側で注入）。
 	if l.obsCfg.Enabled() && sql.ParentSpanID != "" {
 		fields = append(fields, String(ParentSpanIDKey, sql.ParentSpanID))
 	}

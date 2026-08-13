@@ -1,10 +1,9 @@
 name: Dependency Review
 
-# Blocks a PR before merge when it introduces a dependency with a known
-# vulnerability. Scoped to the files that can change the dependency graph
-# (Go modules + vendored sources + the npm lockfiles of the tooling images +
-# the GitHub Actions referenced by `uses:` under .github/), which matches the
-# ecosystems declared in .github/dependabot.yml.
+# Blocks a PR before merge when it introduces a dependency with a known vulnerability. Scoped to
+# the files that can change the dependency graph: Go modules and their vendored sources, the pnpm
+# lockfiles of the three Node workspaces, and the GitHub Actions referenced by `uses:` under
+# `.github/`.
 on:
   pull_request:
     paths:
@@ -14,7 +13,7 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   workflow_dispatch:
 
@@ -53,6 +52,8 @@ jobs:
             release-assets.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
+            api.securityscorecards.dev:443
+            api.deps.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

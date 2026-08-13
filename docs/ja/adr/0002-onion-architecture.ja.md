@@ -60,4 +60,4 @@ flowchart LR
 ## 補足
 
 - [`docs/rules.md`](../rules.ja.md) のレイヤー依存関係ルール（依存関係は内側を向く; ドメインの純粋性; DTO/型境界変換）によって強制される。これらはこの決定の日々の *帰結* である。
-- `docs/decisions.md`（§「なぜオニオンアーキテクチャか」）から移行。
+- かつての `docs/decisions.md` から移行。

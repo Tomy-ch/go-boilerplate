@@ -68,13 +68,11 @@ describe("replaceCodeowners", () => {
   });
 
   describe("異常系", () => {
-    // ヘッダーは所有者の記載例を含む。コメント行を書き換えると、使い方の説明が
-    // 利用者自身の所有者に化けて例として読めなくなる。
-    it("コメント行を書き換えない", () => {
-      const content = "#   make setup-replace-codeowners OWNERS='@example-org/tech-leads'\ngo.mod @a\n";
+    it("所有者を含むコメント行を書き換えない", () => {
+      const content = "# 例: @example-org/tech-leads\ngo.mod @a\n";
 
       expect(replaceCodeowners(content, "@org/team").content).toBe(
-        "#   make setup-replace-codeowners OWNERS='@example-org/tech-leads'\ngo.mod @org/team\n",
+        "# 例: @example-org/tech-leads\ngo.mod @org/team\n",
       );
     });
 

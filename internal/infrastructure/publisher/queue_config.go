@@ -11,8 +11,7 @@ import (
 var ErrInvalidQueue = xerrors.Wrap(apperror.ErrInvalidArgument, "invalid outbox queue")
 
 // newQueueConfig は、config から SQS publisher の設定を解決して返します。
-// 未設定のまま起動すると全 publish が失敗し、気付かぬうちに全メッセージが dead 化するため、
-// HTTP 側の NewEndpoint と同じく relay 起動時点で弾きます（サイレント障害の防止）。
+// 未設定のまま起動すると relay 起動時点で弾きます（NewEndpoint と同じ理由。README.md 参照）。
 func newQueueConfig(cfg *config.OutboxConfig) (sqs.PublisherConfig, error) {
 	if cfg.QueueURL() == "" {
 		return sqs.PublisherConfig{}, xerrors.Wrap(ErrInvalidQueue, "OUTBOX_QUEUE_URL must not be empty")

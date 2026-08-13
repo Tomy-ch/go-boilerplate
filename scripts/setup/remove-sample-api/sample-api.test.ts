@@ -225,7 +225,6 @@ describe("SETUP_SHARED_DIR_USERS", () => {
     // 初期化ツール群（Phase 5）は検証器と一緒に消えるため、検証器 1 つで代表できる。
     it("サンプル削除と独立して残りうるツールを挙げている", () => {
       expect(SETUP_SHARED_DIR_USERS).toContain(SETUP_VERIFIER_DIR);
-      expect(SETUP_SHARED_DIR_USERS).toContain("remove-dast-setting");
     });
 
     it("挙げたツールが実在する", () => {

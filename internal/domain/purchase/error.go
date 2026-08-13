@@ -10,7 +10,6 @@ var (
 	// ErrEmptyDetails は、明細が空の場合のエラーです（422）。
 	ErrEmptyDetails = xerrors.Wrap(errInvalid, "details must not be empty")
 	// ErrDuplicateProductID は、明細に同一 productID が重複した場合のエラーです（422）。
-	// 在庫のロック順序を固定するため、重複は入力段階で弾きます。
 	ErrDuplicateProductID = xerrors.Wrap(errInvalid, "duplicate product id in details")
 	// ErrInvalidQuantity は、購入数量が最小値未満の場合のエラーです（422）。
 	ErrInvalidQuantity = xerrors.Wrap(errInvalid, "quantity must be positive")
@@ -27,39 +26,35 @@ var (
 	// ErrInvalidAmount は、金額の検証に失敗した場合のエラーです（再構築時）。
 	ErrInvalidAmount = xerrors.Wrap(errInvalid, "amount failed")
 
+	// 以下は状態の衝突であってリクエストの不正ではないため、apperror.ErrConflict を基底に持ちます
+	// （HTTP ステータスへの写像は internal/apperror/README.md の Mapping Table）。
+
 	// ErrInsufficientStock は、在庫不足（売り越し）の場合のエラーです。
-	// 在庫は時間依存の外部状態でありリクエスト自体は妥当なため、409（ErrConflict）へ写像します（ADR-0042）。
 	ErrInsufficientStock = xerrors.Wrap(apperror.ErrConflict, "insufficient stock")
 
 	// ErrAlreadyCanceled は、既にキャンセル済みの購入を再度キャンセルしようとした場合のエラーです。
-	// 冪等でない状態遷移の衝突であり、409（ErrConflict）へ写像します（ADR-0042）。
 	ErrAlreadyCanceled = xerrors.Wrap(apperror.ErrConflict, "purchase already canceled")
 
 	// ErrCancelNotAllowed は、キャンセル不可の状態（完了・発送済み・配達済み）からキャンセルしようとした場合のエラーです。
-	// 状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0042）。
 	ErrCancelNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be canceled in the current state")
 
 	// ErrAlreadyPaid は、既に支払い済みの購入を再度支払おうとした場合のエラーです（二重支払い）。
-	// 冪等でない状態遷移の衝突であり、409（ErrConflict）へ写像します（ADR-0042）。
 	ErrAlreadyPaid = xerrors.Wrap(apperror.ErrConflict, "purchase already paid")
 
 	// ErrPayNotAllowed は、支払い不可の状態（キャンセル済み・完了・発送済み・配達済み）から支払おうとした場合のエラーです。
-	// 状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0042）。
 	ErrPayNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be paid in the current state")
 
 	// ErrAlreadyShipped は、既に発送済みの購入を再度発送しようとした場合のエラーです（二重発送）。
-	// 冪等でない状態遷移の衝突であり、409（ErrConflict）へ写像します（ADR-0042）。
 	ErrAlreadyShipped = xerrors.Wrap(apperror.ErrConflict, "purchase already shipped")
 
 	// ErrShipNotAllowed は、発送不可の状態（未払い相当・完了・キャンセル済み・配達済み）から発送しようとした
-	// 場合のエラーです。状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0042）。
+	// 場合のエラーです。
 	ErrShipNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be shipped in the current state")
 
 	// ErrAlreadyDelivered は、既に配達済みの購入を再度配達完了にしようとした場合のエラーです（二重配達）。
-	// 冪等でない状態遷移の衝突であり、409（ErrConflict）へ写像します（ADR-0042）。
 	ErrAlreadyDelivered = xerrors.Wrap(apperror.ErrConflict, "purchase already delivered")
 
 	// ErrDeliverNotAllowed は、配達不可の状態（未払い相当・支払い済み・完了・キャンセル済み）から配達完了に
-	// しようとした場合のエラーです。状態機械上の不正遷移であり、409（ErrConflict）へ写像します（ADR-0042）。
+	// しようとした場合のエラーです。
 	ErrDeliverNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be delivered in the current state")
 )

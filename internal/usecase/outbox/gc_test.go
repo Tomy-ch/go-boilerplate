@@ -99,8 +99,6 @@ func Test_gcUsecase_SweepPublished(t *testing.T) {
 			store := mock_outbox.NewMockStore(ctrl)
 			wantErr := xerrors.New("delete failed")
 
-			// 1バッチ目は batchSize 件削除（=満杯なので反復継続）、2バッチ目でエラー。
-			// total には1バッチ目の件数が累積保持される。
 			gomock.InOrder(
 				store.EXPECT().DeletePublished(gomock.Any(), gomock.Any(), int32(2)).Return(int64(2), nil),
 				store.EXPECT().DeletePublished(gomock.Any(), gomock.Any(), int32(2)).Return(int64(0), wantErr),

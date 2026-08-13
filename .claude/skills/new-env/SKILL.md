@@ -1,6 +1,6 @@
 ---
 name: new-env
-description: Add a new environment variable to the project end-to-end, keeping the typed config struct, env file samples, and documentation in sync. Touches `internal/config/envspec.go` (Loader field), `internal/config/model.go` (Config struct + private field), `internal/config/config.go` (New() mapping + getter method), `internal/config/config_testing_mock.go` (expected value + mock setter), `env/.env` (the local default) and `env/.env.{ci,dev,stg,prd}` for per-environment values, and `env/README.{md,ja.md}` (table row in the matching subsystem). The subsystem (envPrefix → struct), Go type mapping, and naming conventions are derived from the existing `envspec.go` / `model.go` at runtime — the skill hardcodes no subsystem list. Confirms variable name, type, description (en + ja), required vs default, and per-environment values via `AskUserQuestion` before writing. Does NOT auto-add a testing setter helper in `config_testing_setter.go` (the file explicitly limits additions); offers it only on explicit request. Verifies with `make fix` + `make test` at the end.
+description: Add a new environment variable to the project end-to-end, keeping the typed config struct, env file samples, and documentation in sync. Touches `internal/config/envspec.go` (Loader field), `internal/config/model.go` (Config struct + private field), `internal/config/config.go` (New() mapping + getter method), `internal/config/config_testing_mock.go` (expected value), `env/.env` (the local default) and `env/.env.{ci,dev,stg,prd,dast}` for per-environment values, and `env/README.{md,ja.md}` (table row in the matching subsystem). The subsystem (envPrefix → struct), Go type mapping, and naming conventions are derived from the existing `envspec.go` / `model.go` at runtime — the skill hardcodes no subsystem list. Confirms variable name, type, description (en + ja), required vs default, and per-environment values via `AskUserQuestion` before writing. Does NOT auto-add a testing setter helper in `config_testing_setter.go` — that file is reserved for tests that genuinely need to mutate config, so a setter is added only on explicit request. Verifies with `make fix` + `make test` at the end.
 ---
 
 # New Env
@@ -29,17 +29,17 @@ Do NOT use this skill for:
 - `internal/config/envspec.go` — Loader subsystem inventory (envPrefix → struct mapping).
 - `internal/config/model.go` — Config subsystem inventory (private field naming).
 - `internal/config/config.go` — `New()` body for mapping pattern; existing getters for naming convention.
-- `internal/config/config_testing_mock.go` — expected value variables and mock setter patterns.
-- `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd` — per-environment value placement.
+- `internal/config/config_testing_mock.go` — the `expected*` variable block and the mock's field initialisation.
+- `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast` — per-environment value placement.
 - `env/README.md`, `env/README.ja.md` — table format and subsystem section names.
 
 **Writes (only with confirmation)**:
 
-- The 9 files listed above. Per-file edits are minimal (one insertion in the correct location each).
+- The files listed above. Per-file edits are minimal (one insertion in the correct location each).
 
 **Never touches**:
 
-- `config_testing_setter.go` unless the user explicitly asks (file is intentionally curated).
+- `config_testing_setter.go` unless the user explicitly asks.
 - Any code under `internal/` outside `config/`.
 - Generated files.
 
@@ -100,7 +100,7 @@ Based on choice, collect per-env values. For prd-specific, surface that the valu
 
 - Question: 「テストヘルパーをどこまで追加しますか？」
 - Options:
-  - 「mock のみ（config_testing_mock.go の expected 値 + mock setter）」（推奨）
+  - 「mock のみ（config_testing_mock.go の expected 値）」（推奨）
   - 「mock + setter（config_testing_setter.go にも追加）」 — only when the user has a clear testing need
   - 「テストヘルパーは追加しない」
 
@@ -130,9 +130,10 @@ Two changes:
 
 ### `config_testing_mock.go`
 
-1. Append an expected value variable (`expectedSubsystemFieldName = ...`).
-2. Append a setter on the mock sub-struct (`func (a *ApplicationConfig) SetFeatureX(...)`).
-3. Update the mock initializer if there is one to include the new field.
+1. Append an expected value variable to the `expected*` block (`expectedApplicationFeatureX = ...`).
+2. Add the field to the sub-struct literal that `MockConfigForTest` builds, using that variable.
+
+Setters live in `config_testing_setter.go`, not here — add one only under the Question-5 opt-in.
 
 ### Test updates (mandatory — coverage must not regress)
 
@@ -140,15 +141,15 @@ The `internal/config` package is currently 100% covered. Adding a field without 
 
 | Test file | What to update |
 | --- | --- |
-| `internal/config/config_test.go` | In `TestNewConfig`, add the new field to the expected `&Config{...}` literal under the matching sub-struct, using the `expected*` variable defined in `config_testing_mock.go`. |
-| `internal/config/model_test.go` | In `TestGetterMethods`, add a `t.Run("FieldName", func(t *testing.T) { t.Parallel(); require.Equal(t, expectedValue, sub.FieldName()) })` block under the matching subsystem `t.Run`. |
+| `internal/config/config_test.go` | In `TestNew`, add the new field to the expected `&Config{...}` literal under the matching sub-struct, using the `expected*` variable defined in `config_testing_mock.go`. |
+| `internal/config/model_test.go` | Add a new `Test<SubStruct>_<Field>` function — one per getter, strictly 1:1, following the sibling functions (`t.Parallel()` at every level, `正常系` group, `MockConfigForTest(t).<sub>`, `assert.Equal(t, expected<...>, sub.<Field>())`). Do NOT bundle it into an existing test. |
 | `internal/config/config_testing_mock_test.go` | In `TestMockConfigForTest`, add the new field to the expected `&Config{...}` literal under the matching sub-struct. |
 
 The `expected*` variable comes from the `config_testing_mock.go` addition (Question-5 mock scope). If the user opted out of mock additions, the test updates also must be skipped — surface this trade-off explicitly in Step 2 plan: "テストヘルパー追加なし → カバレッジ維持テストもスキップ。100% から下がる可能性あり".
 
 ### env files
 
-For each of `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`:
+For each of `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast`:
 
 - Locate the section comment (e.g., `# Application`).
 - Append the new var line under the matching section, preserving alignment.
@@ -179,15 +180,15 @@ Display the full set of proposed changes as a Japanese summary:
   per-env 値: local=true / ci=true / dev=false / stg=false / prd=false
   テストヘルパー: mock のみ
 
-修正対象 (12 ファイル):
+修正対象:
   - internal/config/envspec.go (Application 構造体に 1 行追加)
   - internal/config/model.go (ApplicationConfig 構造体に 1 行追加)
   - internal/config/config.go (New() マッピング + Getter 追加)
   - internal/config/config_testing_mock.go (expected 値 + setter 追加)
-  - internal/config/config_test.go (TestNewConfig 期待値構造体に 1 行追加)
-  - internal/config/model_test.go (TestGetterMethods に t.Run 追加)
+  - internal/config/config_test.go (TestNew 期待値構造体に 1 行追加)
+  - internal/config/model_test.go (Test<SubStruct>_<Field> を 1 つ追加)
   - internal/config/config_testing_mock_test.go (TestMockConfigForTest 期待値構造体に 1 行追加)
-  - env/.env, .env.ci, .env.dev, .env.stg, .env.prd (各 1 行追加)
+  - env/.env, .env.ci, .env.dev, .env.stg, .env.prd, .env.dast (各 1 行追加)
   - env/README.md, env/README.ja.md (Application 表に行追加)
 
 説明の補完:
@@ -207,11 +208,11 @@ For each file, use the `Edit` tool with exact anchor strings derived from the re
 1. `envspec.go`
 2. `model.go`
 3. `config.go` (mapping + getter)
-4. `config_testing_mock.go` (expected value variable + mock setter)
-5. `config_test.go` (TestNewConfig literal — coverage maintenance)
-6. `model_test.go` (TestGetterMethods t.Run — coverage maintenance)
+4. `config_testing_mock.go` (expected value variable + mock literal)
+5. `config_test.go` (TestNew literal — coverage maintenance)
+6. `model_test.go` (getter ごとの `Test<SubStruct>_<Field>` — coverage maintenance)
 7. `config_testing_mock_test.go` (TestMockConfigForTest literal — coverage maintenance)
-8. env files (one Edit per file: `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`)
+8. env files (one Edit per file: `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast`)
 9. `env/README.md` then `env/README.ja.md`
 
 After each file edit, verify the edit landed (the `Edit` tool reports success or failure — if any fails, stop and report).
@@ -249,11 +250,11 @@ Do NOT mark the skill complete with reduced coverage unless the user explicitly 
 
 Per the "Exception: Skill Execution" clause in `CLAUDE.md` / `AGENTS.md`, the AI modification scope is relaxed during this skill's run, scoped to:
 
-- The 9 files listed above (or the subset the user confirmed).
+- The files listed above (or the subset the user confirmed).
 
 Remains protected:
 
-- `internal/config/config_testing_setter.go` unless the user explicitly opts in (file comment intentionally limits additions).
+- `internal/config/config_testing_setter.go` unless the user explicitly opts in.
 - All other code outside `internal/config/`.
 - Generated files.
 

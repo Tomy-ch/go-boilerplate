@@ -149,6 +149,11 @@
       "Edit(.makefiles/github/pin.mk)",
       "Write(.makefiles/github/pin.mk)",
 
+      "Edit(AGENTS.md)",
+      "Write(AGENTS.md)",
+      "Edit(CLAUDE.md)",
+      "Write(CLAUDE.md)",
+
       "Bash(graphify * install*)",
       "Bash(graphify * uninstall*)",
       "Bash(graphify uninstall*)"
@@ -209,7 +214,49 @@
       "Edit(.makefiles/github/setting/**)",
       "Write(.makefiles/github/setting/**)",
       "Edit(.makefiles/app/env.mk)",
-      "Write(.makefiles/app/env.mk)"
+      "Write(.makefiles/app/env.mk)",
+
+      "Edit(**/*.gen.go)",
+      "Write(**/*.gen.go)",
+      "Edit(**/*.sql.go)",
+      "Write(**/*.sql.go)",
+      "Edit(**/openapi.gen.yaml)",
+      "Write(**/openapi.gen.yaml)",
+      "Edit(docs/openapi/**)",
+      "Write(docs/openapi/**)",
+      "Edit(docs/coverage/**)",
+      "Write(docs/coverage/**)",
+      "Edit(docs/db-schema/**)",
+      "Write(docs/db-schema/**)",
+      "Edit(docs/godoc/**)",
+      "Write(docs/godoc/**)",
+      "Edit(docs/portal/docs.json)",
+      "Write(docs/portal/docs.json)",
+      "Edit(docs/portal/guides/**)",
+      "Write(docs/portal/guides/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/scripts/session-start-env.sh --hook"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/comment-remediation/comment-remediated.sh --hook"
+          }
+        ]
+      }
     ]
   }
 }

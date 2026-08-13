@@ -9,7 +9,9 @@ and drifts with the code. What is recorded here is the part that should *not* dr
 
 It covers three surfaces, in the order a risk reaches them: what CI **executes** (build
 inputs), what the application **links** (dependencies), and what the running service **does
-with a request** (application runtime). The mechanics of identity verification are a separate
+with a request** (application runtime). A fourth — the developer's own machine — sits outside
+all three on purpose, and *The developer endpoint* below records where that boundary falls
+rather than leaving it to be rediscovered. The mechanics of identity verification are a separate
 concern with their own reference — see [auth.md](auth.md); what appears here is only where
 authentication sits in the enforcement model.
 
@@ -52,13 +54,13 @@ Where each mechanism sits:
 | Mechanism | Kind | Note |
 | --- | --- | --- |
 | `pin-actions-check` / `pin-images-check` | Enforcement | Fail-closed: an unpinned or unregistered reference is an error |
+| `egress-check` | Enforcement | Fail-closed: an inline `allowed-endpoints` that has drifted from `.github/egress.toml` is an error |
 | Release gates (`trivy-release-gate` / `osv-release-gate`) | Enforcement | Only on PRs into a deploy branch |
 | `dependency-review` | Enforcement | Evaluates only what the PR *adds* |
 | Secret scans (gitleaks / TruffleHog) | Enforcement | A committed secret is never an acceptable trade |
 | `zizmor` | Enforcement | High severity only; exceptions are file-scoped in `.github/zizmor.yml`. Also gates pre-commit, offline audits only |
 | Reporting scanners (`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL) | Detection | Findings reach code scanning and the PR, but do not block |
-| `npm-cooldown-audit` | Detection | Non-blocking by construction — see below |
-| `harden-runner` (`egress-policy: audit`) | Detection | Records egress; does not restrict it |
+| `harden-runner` (`egress-policy: block`) | Enforcement | Refuses any egress outside the job's `allowed-endpoints`; `trufflehog` alone stays on `audit` |
 | `CODEOWNERS` | Enforcement | The review requirement behind "this decision belongs to a role" |
 | OpenSSF Scorecard | Detection | Posture measurement, no verdict |
 
@@ -80,7 +82,7 @@ change without the code changing.** Everything else is noise on a timer.
 ### Why reporting and gating are split
 
 An ordinary PR reports; a promotion PR gates. The reasoning is in
-[ADR-0084](../adr/0084-multi-layer-security-scanning.md), and reduces to this: a vulnerability
+[ADR-0086 (multi-layer-security-scanning)](../adr/0086-multi-layer-security-scanning.md), and reduces to this: a vulnerability
 inherited from the existing dependency tree is not something the current PR introduced, and
 not something its author can fix. Blocking there turns every unrelated change red until an
 upstream fix lands elsewhere. The predictable outcome is that the check gets disabled or
@@ -98,7 +100,7 @@ images run with the job's credentials before any of our code does, so they are p
 **A version reference is not an identity.** A tag can be re-pointed and a mutable image tag can
 be rebuilt, so the version stays in the source as human-readable intent while an immutable
 digest lives in a lockfile that is the single source of truth —
-`.github/actions-pin.toml` ([ADR-0085](../adr/0085-sha-pinned-actions.md)) and
+`.github/actions-pin.toml` ([ADR-0087 (sha-pinned-actions)](../adr/0087-sha-pinned-actions.md)) and
 `docker/images-pin.toml`. Both checks are fail-closed, and unpinned versus unregistered are
 distinct errors so neither degrades into the other.
 
@@ -164,16 +166,16 @@ than trusted from the tree.
 will take a version published minutes ago without complaint. This inverts the npm situation in a
 way worth internalising:
 
-| | npm | Go modules |
+| | pnpm | Go modules |
 | --- | --- | --- |
-| Cooldown enforced by the toolchain | Yes, at resolution | **No** |
-| Can be bypassed | Yes, with a flag | Nothing to bypass |
-| Bypass is detectable | Yes (`npm-cooldown-audit`) | **Nothing to detect** |
-| Remaining control | Review + detection | **Review only** |
+| Cooldown enforced by the toolchain | Yes, on every install | **No** |
+| Can be bypassed | Only by a recorded exclusion | Nothing to bypass |
+| Bypass is visible | Yes, in the reviewed diff | **Nothing to detect** |
+| Remaining control | Review + toolchain refusal | **Review only** |
 
 Because review is the only control here, `go.mod` and `go.sum` are in
 [`CODEOWNERS`](../../.github/CODEOWNERS). That entry is load-bearing rather than symmetrical
-bookkeeping: for npm a slip is caught after the fact, for Go it is not caught at all.
+bookkeeping: under pnpm a slip cannot reach an install unrecorded, for Go it is not caught at all.
 
 **Reachability filtering cuts both ways.** `govulncheck` reports only vulnerabilities the
 application actually calls, which is what makes it trustworthy enough to act on. The cost is
@@ -181,49 +183,16 @@ coverage: an advisory the Go vulnerability database has not ingested yet produce
 all, so a clean `govulncheck` says nothing about a GHSA published this week. Breadth is covered
 separately by Trivy FS and OSV-Scanner, which match on version rather than call graph.
 
-### npm
-
-The cooldown is real but narrower than it looks: `min-release-age` is enforced while npm
-**resolves**, and `npm ci` does not resolve — it replays the lockfile. Every CI job and image
-build here uses `npm ci`.
-
-Verified behaviour, not inference:
-
-| Action | Result |
-| --- | --- |
-| Resolving an in-window version | Rejected (`ETARGET`) |
-| Resolving a range whose newest match is in-window | Silently resolves to the newest *aged* version, exit 0 |
-| Resolving with `--min-release-age=0` | Succeeds; the in-window version enters the lockfile |
-| `npm ci` with an in-window entry already in the lockfile | Succeeds, no warning |
-| `npm install` / adding a package, with that entry present | Succeeds; the entry is kept |
-
-Two consequences. A deliberate override costs the team nothing — no member is blocked and no
-workaround is needed. And it leaves no trace anywhere: not at image build, not in CI, and once
-the window passes the entry is indistinguishable from a normally resolved one.
-
-That is why `npm-cooldown-audit` exists, why it audits a **PR against its base** rather than only
-scanning the current tree (an entry ages out of the window; the PR comment does not), and why it
-**never fails the build**. Overriding the cooldown is a role's call — reacting to a CRITICAL
-advisory is the case it exists for — so a hard gate would block precisely the legitimate use. The
-non-blocking property is implemented in the tool itself rather than in workflow configuration, so
-it cannot be turned into a gate by editing YAML.
-
-**A transitive pin is provisional debt.** Forcing a patched version through `overrides` is
-written as a same-major floor (`">=<fixed> <<next-major>"`), never an exact version: an exact pin
-freezes the dependency where it is, so when the pinned version later gets its own advisory the
-pin keeps forcing the now-vulnerable one. Every override is meant to be reclaimed once the parent
-ships a release that pulls the fix natively.
-
 ### pnpm
 
-Two packages resolve with pnpm — `scripts/` and `docs-viewer/` — each carrying its own
-`pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is the same 7 days as npm and derived the
-same way; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
+Every Node package resolves with pnpm — `scripts/`, `mock-auth-server/` and `docs-viewer/` —
+each carrying its own `pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is 7 days, derived
+the same way as the other ecosystems; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
 
-What differs is **where** the window is enforced, and it inverts npm's weakness. npm checks only
-while it resolves, so an in-window entry that once reached the lockfile is invisible from then on.
-pnpm re-verifies the **entire lockfile** against the active policies on every install — including
-`--frozen-lockfile`, the replay path that `npm ci` leaves unchecked.
+The window is enforced on **every install**, not only while resolving: pnpm re-verifies the
+entire lockfile against the active policies each time — including `--frozen-lockfile`, the
+replay path CI and image builds use. An in-window entry cannot reach the lockfile and then
+become invisible.
 
 Verified behaviour, not inference:
 
@@ -235,8 +204,8 @@ Verified behaviour, not inference:
 | `--frozen-lockfile` replaying an in-window entry that no exclusion covers | Rejected (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) |
 | Any `pnpm run` after a policy setting changed | Rejected (`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`) until `pnpm install` re-records the settings |
 
-Three consequences follow, and together they are why pnpm needs no `npm-cooldown-audit`
-counterpart: there is nothing to detect after the fact, because nothing gets through unrecorded.
+Three consequences follow, and together they are why no after-the-fact audit exists: there is
+nothing to detect, because nothing gets through unrecorded.
 
 **An override cannot be silent.** Taking an in-window version requires a
 `minimumReleaseAgeExclude` entry, and without one every later install fails — CI included, since
@@ -269,7 +238,7 @@ supply-chain one: pinning a PyPI tool's version pins almost nothing, because its
 resolved at install time, so the same pin installs a different tree on different days. Each tool
 therefore declares its version in `python/<tool>.in` and carries the resolved tree — every
 transitive package, with sha256 hashes — in `python/<tool>.txt`
-([ADR-0075](../adr/0075-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
+([ADR-0077 (mise-ssot-drift-gate)](../adr/0077-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
 are `uv pip install --require-hashes -r <tool>.txt`, which refuses any requirement lacking a version
 or a hash, so integrity verification is part of installing rather than a step that can be skipped.
 
@@ -352,7 +321,7 @@ does with a request. Three patterns repeat, and they are the part worth carrying
 than rediscovering.
 
 **Deny by default, at every boundary.** The outbound dial guard
-(`internal/observability/http_client_transport.go`, [ADR-0020](../adr/0020-egress-ssrf-guard.md))
+(`internal/observability/http_client_transport.go`, [ADR-0022 (egress-ssrf-guard)](../adr/0022-egress-ssrf-guard.md))
 refuses link-local, multicast, unspecified, and bogon destinations unconditionally, and refuses
 loopback / private / CGNAT unless the caller opted in through the context — with the unset case
 resolving to the safe `false`. Error-detail exposure
@@ -361,25 +330,25 @@ mismatch, unresolved operation, empty `operationId`, and not-opted-in all evalua
 Neither control has a state where forgetting something opens it.
 
 **The spec is the authority for the request boundary.** Request validation and authentication are
-enforced at runtime from the OpenAPI document ([ADR-0013](../adr/0013-spec-driven-request-validation.md)),
+enforced at runtime from the OpenAPI document ([ADR-0015 (spec-driven-request-validation)](../adr/0015-spec-driven-request-validation.md)),
 not from hand-written checks in handlers. The direct consequence is that **reviewing the spec
 diff is reviewing the security posture** — an operation that omits its `security` requirement is
 unprotected no matter how the handler is written, and no amount of Go review will surface it.
 Business-validity rules are deliberately *not* here: the domain layer is their sole authority
-([ADR-0014](../adr/0014-validation-value-authority.md)), so the two never drift into each other.
+([ADR-0016 (validation-value-authority)](../adr/0016-validation-value-authority.md)), so the two never drift into each other.
 
 **Escape hatches are named, narrow, and greppable.** `ContextWithAllowPrivateNetwork`, the
 `details` property that opts an error schema into detail exposure, and `/metrics` as a declared
-auth exception ([ADR-0016](../adr/0016-metrics-endpoint-auth-exception.md)) are each a specific
+auth exception ([ADR-0018 (metrics-endpoint-auth-exception)](../adr/0018-metrics-endpoint-auth-exception.md)) are each a specific
 seam you can search for and enumerate. None of them is a general-purpose flag, because a general
 flag becomes the thing everyone sets.
 
 Two absences are deliberate rather than pending: there is no in-application rate limiter
-([ADR-0099](../adr/0099-no-in-app-rate-limiter.md)), and responses are not validated against the
-spec ([ADR-0013](../adr/0013-spec-driven-request-validation.md)). SQL injection is handled
+([ADR-0101 (no-in-app-rate-limiter)](../adr/0101-no-in-app-rate-limiter.md)), and responses are not validated against the
+spec ([ADR-0015 (spec-driven-request-validation)](../adr/0015-spec-driven-request-validation.md)). SQL injection is handled
 structurally instead of by review — queries are generated by sqlc and therefore parameterised
-([ADR-0022](../adr/0022-sqlc-type-safe-sql.md)) — and `gosec` runs in the authoritative
-golangci gate ([ADR-0079](../adr/0079-two-layer-golangci-config.md)).
+([ADR-0024 (sqlc-type-safe-sql)](../adr/0024-sqlc-type-safe-sql.md)) — and `gosec` runs in the authoritative
+golangci gate ([ADR-0081 (two-layer-golangci-config)](../adr/0081-two-layer-golangci-config.md)).
 
 A detail worth copying rather than rediscovering: Go's `netip.Addr.IsPrivate` covers RFC1918 and
 ULA but **not** CGNAT (`100.64.0.0/10`), so the guard carries its own prefix check. Reimplementing
@@ -397,13 +366,54 @@ a PR comment, or an artifact.** Summaries carry detector name, path, line, and c
 the match itself. A leak report that leaks is worse than no report, because it publishes the
 credential to a wider audience than the commit did.
 
+## The developer endpoint
+
+Every control above sits on a path *into* the repository: what CI executes, what the application
+links, what a request reaches. None of them observes a machine a developer already has. That is a
+separate surface, deliberately out of scope — but it is easy to mistake for covered, because the
+controls that leave it open are the ones that look most complete.
+
+**A cooldown window protects a resolved tree, not a machine.** The window keeps a compromised publish
+out of the lockfiles here — npm refuses it while resolving, pnpm re-checks the whole lockfile on
+every install. Neither reaches an install a developer ran somewhere else: a scratch project, a global
+CLI, a package pulled once to try it. That machine is exposed, and no lockfile here says so. The same
+holds, more sharply, for everything that never reaches a lockfile
+at all: editor and browser extensions, agent skills, and MCP server configs are user-scope by
+construction (`~/.claude.json`, `~/.gemini/settings.json`, `~/.agents/.skill-lock.json`) — the shape
+already noted above for a tool's user-scope installer, generalised to everything installed that way.
+
+**The question is about state, not behaviour.** When an advisory names a package and a version, what
+matters is which machines match *right now*. An SBOM answers what shipped and endpoint telemetry
+answers what ran; neither answers what is sitting on disk. Answering it takes an inventory collected
+from the endpoint plus a catalog of what to match against — and without the catalog, an inventory is
+a census rather than an exposure check.
+
+**It is not a repository control, and could not be made into one.** What is protected is the
+developer's machine, not this repository, so the decision to inventory one belongs to whoever owns
+it. Wiring a collector into `mise.toml` and `install-tools` would put it on every developer's host,
+on machines whose owner never chose to be inventoried, and the Toolchain Execution Rules could not
+carry it either: the
+tool-runner containers cannot see the host state that is the entire subject. The repository's part
+is to record the gap; closing it is the operating organisation's call.
+
+**If it is closed, `perplexityai/bumblebee` is the candidate examined** — Apache-2.0, a single static
+Go binary with no non-stdlib dependencies. It reads lockfiles, package-manager install metadata,
+extension manifests and MCP JSON configs, and executes no package manager, so a scan cannot become
+the incident it was meant to find. It has no configuration file: profile, roots, exposure catalog,
+cadence (`launchd` / `cron`) and output are supplied per run and live outside the repository — so
+taking it is a decision about a run, made when an advisory lands, rather than a decision about this
+repository's toolchain.
+
 ## Honest limits
 
 Worth stating so nobody builds on a stronger assumption than the controls support:
 
-- `harden-runner` runs in `audit` mode. It **records** egress; it does not restrict it. Moving
-  to `block` requires a settled endpoint allowlist, which is deliberately deferred until the
-  audit data exists.
+- `harden-runner` runs in `block` mode, and an allowlist is only as good as its accuracy. The
+  lists are inferred from what each job does rather than measured, and they are generated from
+  the SSOT in `.github/egress.toml` by capability class, so a class is wider than the narrowest
+  job in it. One job — `trufflehog` — stays on `audit` deliberately: it verifies a candidate
+  credential against an open-ended set of issuers, so a missing endpoint there would turn a real
+  leak into an unverified result instead of a red build.
 - Release gates only block if registered as **required status checks**. Without that branch
   protection rule they report and nothing more, and the reporting/gating split degrades to
   reporting everywhere.
@@ -415,8 +425,8 @@ Worth stating so nobody builds on a stronger assumption than the controls suppor
 
 ## Related
 
-- [ADR-0084](../adr/0084-multi-layer-security-scanning.md) — layered scanning, reporting/gating split, runner hardening
-- [ADR-0085](../adr/0085-sha-pinned-actions.md) — SHA-pinned Actions and the supply-chain quarantine
-- [ADR-0096](../adr/0096-release-image-supply-chain.md) — release-image integrity (signing, provenance, SBOM)
-- [ADR-0079](../adr/0079-two-layer-golangci-config.md) — `gosec` as an in-process check during static analysis
+- [ADR-0086 (multi-layer-security-scanning)](../adr/0086-multi-layer-security-scanning.md) — layered scanning, reporting/gating split, runner hardening
+- [ADR-0087 (sha-pinned-actions)](../adr/0087-sha-pinned-actions.md) — SHA-pinned Actions and the supply-chain quarantine
+- [ADR-0098 (release-image-supply-chain)](../adr/0098-release-image-supply-chain.md) — release-image integrity (signing, provenance, SBOM)
+- [ADR-0081 (two-layer-golangci-config)](../adr/0081-two-layer-golangci-config.md) — `gosec` as an in-process check during static analysis
 - [`.github/workflows/README.md`](../../.github/workflows/README.md) — the workflow inventory and full trigger matrix

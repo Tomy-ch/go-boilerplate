@@ -85,8 +85,6 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 		logging.Int64(logging.JobScannedKey, result.Scanned),
 	}
 	if err != nil {
-		// 削除済みのオブジェクトは復元できない。エラーだけを返すと消えた件数が運用者に届かないため、
-		// 確定した件数を記録してから伝播する。
 		j.logging.Named(jobName).Warn(ctx, abortedMessage(opts.dryRun), fields...)
 		return err
 	}

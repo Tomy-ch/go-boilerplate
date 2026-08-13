@@ -21,7 +21,7 @@ on:
       - '.makefiles/security/zizmor.mk'
       - 'mise.toml'
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '0 2 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -57,37 +57,42 @@ jobs:
             *.blob.core.windows.net:443
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
             aquaproj.github.io:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
             proxy.golang.org:443
             sum.golang.org:443
+            index.golang.org:443
             storage.googleapis.com:443
             dl.google.com:443
             go.dev:443
             golang.org:443
+            downloads.sqlc.dev:443
             nodejs.org:443
             registry.npmjs.org:443
-            downloads.sqlc.dev:443
+            get.pnpm.io:443
             astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
             docker.io:443
             index.docker.io:443
             registry-1.docker.io:443
             auth.docker.io:443
+            *.docker.io:443
             production.cloudflare.docker.com:443
             production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
             dl-cdn.alpinelinux.org:443
             dl-cdn.alpinelinux.org:80
-            mise.run:443
             deb.debian.org:443
             deb.debian.org:80
             security.debian.org:443
             security.debian.org:80
-            pypi.org:443
-            files.pythonhosted.org:443
-            *.docker.io:443
-            mise.en.dev:443
 
       # persist-credentials: false — nothing after checkout talks to git, and this
       # job holds security-events: write, so the job token must not be left behind
@@ -97,40 +102,15 @@ jobs:
         with:
           persist-credentials: false
 
-      # cache: false — this job holds security-events: write, so it must not
-      # restore a tool cache that a less privileged workflow could have written.
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      # cache: false — this job holds security-events: write. See README.md § Cache safety.
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:zizmorcore/zizmor
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml, so it is never duplicated here.
-      - name: Install zizmor
-        run: mise install aqua:zizmorcore/zizmor
 
-      # zizmor exits non-zero when it reports findings, so the exit codes are
-      # captured instead of failing the step: the SARIF upload and the PR comment
-      # must still run. The final gate step turns the captured status into a
-      # workflow failure.
-      #
-      # Two passes on purpose:
-      #   - SARIF keeps every finding so code scanning holds the full picture.
-      #   - The gate/PR comment is limited to high severity, so CI fails on
-      #     high-signal findings only. Exceptions live in .github/zizmor.yml.
-      #
-      # Both passes go through make so the gate definition lives in one place and
-      # cannot drift from the pre-commit hook (.makefiles/security/zizmor.mk).
-      # Going through make costs the tool's own exit code — make reports its own 2
-      # for any failed recipe — so both captures below are read as "zero or not",
-      # never for a specific value. -s guards the SARIF redirect against a recipe
-      # that loses its @ prefix.
-      #
-      # GH_TOKEN enables the online audits (unpinned / stale / archived action
-      # lookups), which need API access. The hook runs --offline and therefore
-      # covers the offline audits only.
       - name: Run zizmor
         id: zizmor
         shell: bash
@@ -200,11 +180,7 @@ jobs:
         if: always() && steps.zizmor.outputs.status != 'success'
         run: exit 1
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure, and that is precisely the silent breakage this
-  # notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: zizmor
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.zizmor.result) }}

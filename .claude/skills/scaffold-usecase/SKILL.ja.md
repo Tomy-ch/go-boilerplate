@@ -75,7 +75,7 @@
    - `dtos`: (name, fields) リスト
    - `dependencies`: (name, type) リスト — boundary + Repository IF
    - `workflow`: メソッドごと `(tx_required, steps, calls, errors)`
-2. `internal/usecase/README.md` を読み layer 規約取得（特に "Application Service Pattern"、"Time Handling Policy"、"Boundary Concept"、"Allowed dependencies"、"Forbidden dependencies"）
+2. `internal/usecase/README.md` を読み layer 規約取得（特に "Application Service Design Policy"、"Time Handling Policy"、"Boundary Concept"、"Allowed dependencies"、"Forbidden dependencies"）
 3. `internal/usecase/boundary/README.md` を読み boundary 規約取得
 4. 既存 usecase パッケージ（例: `internal/usecase/<sibling>/<sibling>_usecase.go`）は **二次参照のみ** — observability tracer 配線、Tx wrap パターン、DTO 変換、error wrap などは README の Implementation Example が canonical。既存コードと README が衝突した場合 README が勝つ（README から drift したコードに skill が黙って従わない方針）
 5. 各 `calls:` 参照を実コード（domain Repository IF、domain entity factory/methods、boundary 型）に対して検証
@@ -104,8 +104,10 @@ subagent が観点を返さない場合は最小デフォルトで継続、警�
 - 各メソッド: signature + workflow 概要（calls、tx_required）
 - subagent のテストメソッドリスト
 
-質問: 「以下の構成で usecase 層を生成しますか？」  
-選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
+質問:
+
+- 「以下の構成で usecase 層を生成しますか？」
+- 選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
 
 ## Step 4. ファイル書き込み
 

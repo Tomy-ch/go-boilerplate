@@ -85,8 +85,8 @@ const ESCROW = /^\s*(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
  * 落とすと、fork 先へ実際に残る文面が検査から消えます。そこに前提が書かれていても、この検査は
  * 「0 件」と報告します——この検査が塞ごうとしている無言の失敗と、同じ形の穴になります。
  *
- * 除去ツール側の `stripMarkers` を呼ばないのは、あちらが一度きりの撤去と一緒に自消滅するためです。
- * この検査は消えずに残るので、消える側へ依存させられません。
+ * マーカー除去のロジックを独自に持つ理由（`stripMarkers` を呼ばない理由）は
+ * `scripts/setup/lib/markers.ts` 冒頭が持ちます。
  */
 export function survivingText(content: string): string {
   const out: string[] = [];

@@ -85,8 +85,6 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 		logging.Int64(logging.JobSkippedKey, result.SkippedWithPurchases),
 	}
 	if err != nil {
-		// 中断までにコミットされた物理削除は取り消せない。エラーだけを返すと消えた件数が運用者に届かないため、
-		// 確定した件数を記録してから伝播する。
 		j.logging.Named(jobName).Warn(ctx, abortedMessage(opts.dryRun), fields...)
 		return err
 	}

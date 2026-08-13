@@ -30,7 +30,7 @@ context に対する値の格納・取得を、以下のような問題を避け
 ```go
 package ctxhelper
 
-//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import go-boilerplate/internal/usecase/boundary/auth --out .
+//go:generate go run ../../../scripts/genctxkey --name ErrorHandled --type bool --out .
 ```
 
 ### 2. コード生成
@@ -61,6 +61,8 @@ make gen-go-code
 - `--type` には Goの型式を指定します
 - `--import` でパッケージを明示します
 - `--alias` は省略可能（未指定時は自動生成）
+- `--test-value` は省略可能で、生成されるテストが成功値として使う Go の式を渡します。基本型でない型は
+  アサーションに使えるゼロ値が無いため、ここで与えます
 
 ### 複雑な型（対応）
 
@@ -84,9 +86,9 @@ make gen-go-code
 ## 出力仕様
 
 - ファイル名はすべて小文字
-  - 例: `authn_ctx.gen.go`
+  - 例: `errorhandled_ctx.gen.go`
 - テストファイルも自動生成
-  - 例: `authn_ctx_test.go`
+  - 例: `errorhandled_ctx_test.go`
 
 ## 設計方針
 
@@ -127,8 +129,9 @@ make gen-go-code
 
 ## CIとの関係
 
-- `ctxhelper` の generate は CIでは実行されません
 - 生成はローカルで実施し、結果をコミットする前提です
+- CI は `make gen-go-code` を回し直し、コミット済みの出力と差があればプルリクエストを失敗させます
+  （`.github/workflows/gen-go-artifacts-check.yaml`）。再生成の忘れはここで捕まります
 
 ## 補足
 

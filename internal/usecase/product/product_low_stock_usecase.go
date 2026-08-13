@@ -61,7 +61,7 @@ func (u *usecase) ListLowStockProducts(
 	if err != nil {
 		return ProductLowStockListView{}, err
 	}
-	// 絞り込みを実行するのは SQL だが、在庫僅少を定義するのは Product.IsLowStock。両者の乖離を表に出す。
+	// SQL と Product.IsLowStock の乖離を検出する（README の Verifying infrastructure against the domain）。
 	for _, p := range products {
 		if !p.IsLowStock() {
 			return ProductLowStockListView{}, xerrors.Wrap(errNotLowStockInLowStockRead, p.ID().String())

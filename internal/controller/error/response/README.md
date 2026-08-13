@@ -60,11 +60,13 @@ This builder is **request-agnostic**: it always constructs the superset envelope
 (`gen.ErrorResponseWithDetails`) and attaches whatever `details` the error holds. Whether
 those `details` actually reach the client is decided downstream by the `errorhandler`'s
 per-endpoint opt-in gate (fail-closed), the same way `requestId` is left empty here and filled
-at the edge. See the `errorhandler` README and [ADR-0044](../../../../docs/adr/0044-error-details-opt-in-gate.md).
+at the edge. See the `errorhandler` README and [ADR-0046 (error-details-opt-in-gate)](../../../../docs/adr/0046-error-details-opt-in-gate.md).
 
 ## Error Code and HTTP Status Mapping
 
 ### apperror → HTTP Mapping
+
+The HTTP Status column mirrors the sentinel classification owned by [`internal/apperror/README.md`](../../../apperror/README.md) § Mapping Table; the Error Code column is this layer's own addition.
 
 |apperror|HTTP Status|Error Code|
 |---|---|---|

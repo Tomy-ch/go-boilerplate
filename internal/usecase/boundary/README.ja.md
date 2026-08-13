@@ -67,6 +67,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`WithUserID(userID)`|内部 UserID を解決した `Authn` の複製を返す（ゼロ値 UUID は `ErrUserIDZero`）|
 |`Credential`|認証スキームとトークンを保持する値オブジェクト|
 |`NewCredential(scheme, token)`|`Credential` を生成（空トークンは `ErrTokenMissing`）|
+|`IdentityResolver`|認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決するインターフェース。認証成功後に適用|
 
 エラー：
 
@@ -76,6 +77,8 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`ErrUserIDUnresolved`|内部 UserID が未解決|
 |`ErrUserIDZero`|`WithUserID()` にゼロ値 UUID が渡された|
 |`ErrTokenMissing`|トークンが空|
+|`ErrIdentityNotFound`|認証されたアイデンティティに対応する内部ユーザーが存在しない|
+|`ErrUserUnavailable`|対応する内部ユーザーは存在するが利用できない状態（削除済み等）|
 
 ### authz
 
@@ -104,9 +107,13 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 type Clock interface {
     Now() time.Time
 }
+
+type Sleeper interface {
+    Sleep(ctx context.Context, d time.Duration) error
+}
 ```
 
-Domain / Usecase が `time.Now()` に直接依存しないための抽象。テスト時にモック差し替え可能。
+Domain / Usecase が `time.Now()` に直接依存しないための抽象。テスト時にモック差し替え可能。`Sleeper` は待機について同じ役割を果たし、実時間 sleep なしで backoff とリトライを検証できます。
 
 ### exchangerate
 
@@ -147,7 +154,7 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |---|---|
 |`Storage`|`Put(ctx, PutObject) (Path, error)` でオブジェクトをキー配下へ保存する。`List(ctx, ListQuery) (ListResult, error)` で条件に一致するオブジェクトを 1 ページ分列挙する。`Delete(ctx, keys []string) error` でまとめて削除する（空スライスは何もせず、存在しないキーもエラーにならず、同じキーで再実行しても結果は変わらない）。失敗時は `apperror` sentinel（例 `ErrUnavailable`）を返す|
 |`PutObject`|入力 DTO（`Key` / `Body` / `ContentType` / `CacheControl`）。`Key` は呼び出し側が採番し（例 `products/{uuid}.png`）、`CacheControl` も呼び出し側が決める。キャッシュ可否はキーの採番方針から導かれるため（空なら未設定）|
-|`ListQuery`|入力 DTO（`Prefix` / `Cursor`）。`Prefix` が空なら全件が対象。`Cursor` は直前の `ListResult.NextCursor` をそのまま渡す、adapter 依存の不透明な境界|
+|`ListQuery`|入力 DTO（`Prefix` / `Cursor` / `Limit`）。`Prefix` が空なら全件が対象。`Cursor` は直前の `ListResult.NextCursor` をそのまま渡す adapter 依存の不透明な境界で、`Limit` が 0 以下ならページサイズは adapter の既定値に委ねられる|
 |`ListResult`|1 ページ分のオブジェクトと `NextCursor`。`NextCursor` が非空なら続きがあり、次の `ListQuery.Cursor` に渡す|
 |`Object`|列挙されたオブジェクト 1 件を境界の語彙で表したもの|
 |`Path`|保存されたオブジェクトのパス（キー）。表示 URL は上位が別途組み立てる|

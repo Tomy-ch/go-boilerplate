@@ -1,0 +1,198 @@
+name: Bearer Scan
+
+# Bearer follows data flow to the point where a value leaves the process — a log line, an
+# outbound request, a third-party client — and reports it against a classification of what
+# the value is. That question is not asked anywhere else here: Opengrep and CodeQL judge a
+# pattern or a taint path on its own terms, and neither of them knows that the string
+# reaching a logger happens to be an email address.
+#
+# Wired the way code-ql.yaml is: the job itself never fails (`--exit-code 0`), findings go to
+# code scanning, and there is no pull-request comment. What turns a pull request red is
+# GitHub's own check over the alerts the diff introduces, so a new finding blocks even though
+# this workflow reports green. A weekly "any finding" notification is left unwired because the
+# baseline is not zero; an alert introduced by the change under review surfaces on the diff
+# instead, which is the same arrangement code-ql.yaml and eslint.yaml already use.
+#
+# `/scripts` is out of scope — see README.md § Overlapping surfaces. Measured once: 216 of the
+# 230 findings sat there, 179 of them `*_logger_leak`, every one a progress line naming a path
+# the tool had just computed. Carrying them costs twice
+# over, because they bury the surfaces where the question has an answer, and because a red check
+# on every new CLI script is a gate nobody can act on. Excluding them leaves fourteen. Opengrep
+# and ESLint still read `/scripts`: they judge patterns, which does not depend on the data being
+# user data.
+#
+# Its licence is Elastic License 2.0, which is not OSI-approved; scanning this repository's
+# own code inside CI engages neither restriction it imposes. That is a fact about the tool
+# rather than a deviation from what is already here — CodeQL is not OSI-approved either.
+# `Bearer's licence and removal` in README.md carries the detail, and the list of what a
+# removal has to take out with it.
+#
+# The CLI comes from mise rather than bearer/bearer-action: the action wrapper has not been
+# touched since 2024-04, while the CLI itself is actively released, and every other scanner
+# here already installs through mise.
+#
+# `--scanner sast` is the default and is written out anyway, because the alternative value
+# turns on Bearer's own secret detection, which gitleaks / Trivy / TruffleHog already own
+# three ways over. `--exit-code 0` makes the job report-only.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/bearer.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'mock-auth-server/**'
+      - 'docs-viewer/**'
+  pull_request:
+    paths:
+      - '.github/workflows/bearer.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'mock-auth-server/**'
+      - 'docs-viewer/**'
+  schedule:
+    # Rule updates change the verdict on code that stood still, which is what the weekly
+    # run is for.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bearer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: aqua:Bearer/bearer
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The version is pinned in mise.toml (SSOT) — never duplicated here.
+
+      - name: Bearer scan
+        run: |
+          bearer scan . \
+            --scanner sast \
+            --report security \
+            --format sarif \
+            --output bearer.sarif \
+            --exit-code 0 \
+            --disable-version-check \
+            --hide-progress-bar \
+            --no-color \
+            --skip-path 'vendor/**,**/node_modules/**,**/dist/**,**/coverage/**,**/src/generated/**,docs/**,/scripts/**,**/*.gen.go,**/*.sql.go,**/*_mock.go'
+        shell: bash
+
+      - name: Create Bearer summary (Markdown)
+        run: |
+          set -euo pipefail
+
+          COUNT=$(jq '[(.runs // [])[] | (.results // [])[]] | length' bearer.sarif)
+          echo "Bearer: ${COUNT} finding(s)" >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No findings." > bearer-summary.md
+            exit 0
+          fi
+
+          # Bearer omits `level` from every result, which in SARIF means "take the rule's
+          # default" — `warning`. The default is applied before the lookup rather than after,
+          # because indexing an object with null is a jq runtime error and `//` cannot catch
+          # one: the step would fail, and a report-only scan would page someone through
+          # notify-failure on its weekly run.
+          jq -r '
+            [(.runs // [])[] | (.results // [])[]]
+            | map(.level //= "warning")
+            | sort_by({error: 0, warning: 1, note: 2}[.level] // 3)
+            | .[]
+            | "- [\(.level)] `\(.locations[0].physicalLocation.artifactLocation.uri // "?"):\(.locations[0].physicalLocation.region.startLine // 0)` \(.ruleId // "?")\n  - \((.message.text // "") | gsub("\n"; " "))"
+          ' bearer.sarif > bearer-summary.md
+        shell: bash
+
+      - name: Upload Bearer report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: bearer
+          path: |
+            bearer.sarif
+            bearer-summary.md
+
+      - name: Upload Bearer SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        with:
+          sarif_file: bearer.sarif
+          category: bearer
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: bearer
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.bearer.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: bearer
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

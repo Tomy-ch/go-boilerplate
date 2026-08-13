@@ -53,20 +53,20 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 | 用語 | 定義 | 所有 | コードシンボル | 公開名 |
 | --- | --- | --- | --- | --- |
-| 商品 | 顧客が購入できる品目。売値と在庫を持ち、公開されている間だけ顧客の目に触れる | product / Product | `product.Product` | `Product` |
-| 商品カテゴリ | 顧客が商品を探すときの分類。商品はちょうど 1 つに属する | product-category / ProductCategory | `category.Category` | `ProductCategory` |
-| 商品ステータス | 商品を今どう取り扱っているかの区分 | product-status / ProductStatus | `status.Status` | `ProductStatus` |
+| 商品 | 顧客が購入できる品目。売値と在庫を持ち、公開されている間だけ顧客の目に触れる | product / Product | `product.Product` | `ProductResponse` |
+| 商品カテゴリ | 顧客が商品を探すときの分類。商品はちょうど 1 つに属する | product-category / ProductCategory | `category.Category` | `ProductCategoryResponse` |
+| 商品ステータス | 商品を今どう取り扱っているかの区分 | product-status / ProductStatus | `status.Status` | `ProductStatusResponse` |
 | 公開中 | 顧客がその商品を見つけて購入できる状態 | product / Product | `product.IsPublished` | — |
 | 在庫僅少 | 補充しなければ品切れが近い水準まで在庫が減っている状態 | product / Product | `product.Product.IsLowStock` | — |
-| 購入 | 顧客が商品を買った事実。何をいくらで買ったかが確定している | purchase / Purchase | `purchase.Purchase` | `Purchase` |
-| 購入明細 | 購入 1 件に含まれる商品ごとの行。単価は買った時点の値で確定し、後の値上げに追随しない | purchase / Purchase | `purchase.PurchaseDetail` | `PurchaseDetail` |
+| 購入 | 顧客が商品を買った事実。何をいくらで買ったかが確定している | purchase / Purchase | `purchase.Purchase` | `PurchaseResponse` |
+| 購入明細 | 購入 1 件に含まれる商品ごとの行。単価は買った時点の値で確定し、後の値上げに追随しない | purchase / Purchase | `purchase.PurchaseDetail` | `PurchaseDetailResponse` |
 | 購入コード | 顧客との問い合わせでその購入を指し示すための符号 | purchase / Purchase | `purchase.Purchase.Code` | `code` |
 | キャンセル済み | 購入が取り消され、履行されないことが確定した状態 | purchase / Purchase | `purchase.Purchase.IsCanceled` | — |
 | 発送可能 | 購入が発送してよい状態。支払いを終え、まだ発送していないことを指す | purchase / Purchase | `purchase.Purchase.IsShippable` | — |
 | まとめ発送 | 発送待ちの購入のうち、1 便にまとめて発送してよい組 | purchase / Purchase | `dispatch.GroupForDispatch` | — |
-| ユーザー | このサービスで商品を購入する人 | user / User | `user.User` | `User` |
+| ユーザー | このサービスで商品を購入する人 | user / User | `user.User` | `UserResponse` |
 | 在籍 | ユーザーがこのサービスの利用を続けている状態 | user / User | `user.User.IsActive` | — |
-| 都道府県 | 住所を広域で区分する単位 | prefecture / Prefecture | `prefecture.Prefecture` | `Prefecture` |
+| 都道府県 | 住所を広域で区分する単位 | prefecture / Prefecture | `prefecture.Prefecture` | `PrefectureResponse` |
 | メールアドレス | このサービスがそのユーザーへ連絡を届けるための宛先。1 人に 1 つ | user / User | `user.Email` | `email` |
 | 郵便番号 | 住所を配達の区域まで絞り込む符号 | user / User | `user.PostalCode` | `postalCode` |
 | 金額 | 売り買いでやり取りされる貨幣の量。商品の売値も購入明細の単価もこれで表す | lexicon | `money.Price` | — |
@@ -92,6 +92,7 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 購入可能 | 在籍しているユーザーにだけ認められる、購入を受け付けてよい状態 | membership | `membership.EnsurePurchasable` | — |
 | 退会可能 | 進行中の購入を残していないユーザーにだけ認められる、退会してよい状態 | membership | `membership.EnsureWithdrawable` | — |
 | 在庫の増減 | 購入の成立や取り消しによらず、補充または差し引きとして商品の在庫数を増減させること | product / Product | `product.Product.AdjustStock` | — |
+| カート | 顧客が買うつもりの商品を、購入を確定させるまで入れておく控え。入れても商品は取り置かれない | cart / Cart | `cart.Cart` | `CartResponse` |
 <!-- sample-api:end -->
 
 ## Mechanism vocabulary

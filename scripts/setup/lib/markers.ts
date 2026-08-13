@@ -35,7 +35,6 @@ function markerPattern(marker: string, suffix: string): RegExp {
 /**
  * `<marker>:begin`〜`<marker>:end` で囲まれた行と、行末に `<marker>:line` を持つ行を除去する。
  * さらに `<marker>:replace-begin`/`replace-with`/`replace-end` による置換にも対応する。
- * ネストにも対応するため depth カウンターで管理する。
  *
  * @remarks
  * replace マーカーは `replace-begin`〜`replace-with` の有効行（対象が在るときに生きるコード）を除去し、

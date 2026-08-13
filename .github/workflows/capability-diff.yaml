@@ -14,7 +14,7 @@ name: Capability Diff
 #
 # Go-only by construction: capslock analyses Go call graphs, so the npm side of
 # this repository is not covered. That asymmetry, and why no equivalent tool is
-# adopted for npm, is recorded in ADR-0086.
+# adopted for npm, is recorded in ADR-0086 (multi-layer-security-scanning).
 
 on:
   pull_request:
@@ -54,6 +54,11 @@ jobs:
             release-assets.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
             proxy.golang.org:443
             sum.golang.org:443
             index.golang.org:443
@@ -61,16 +66,16 @@ jobs:
             dl.google.com:443
             go.dev:443
             golang.org:443
-            mise.jdx.dev:443
-            mise-versions.jdx.dev:443
-            aquaproj.github.io:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
-            nodejs.org:443
-            registry.npmjs.org:443
-            downloads.sqlc.dev:443
-            astral.sh:443
 
       # fetch-depth: 0 so the base commit is available for git worktree. The base
       # tree is materialized outside the workspace so the head analysis cannot walk
@@ -87,20 +92,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: go:github.com/google/capslock/cmd/capslock
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml (SSOT) — never duplicated here.
-      - name: Install capslock
-        run: mise install go:github.com/google/capslock/cmd/capslock
 
-      # Package granularity keeps the report readable: function granularity emits
-      # thousands of rows for a graph this size, which is the opposite of something
-      # a reviewer will read.
       - name: Capture the base capability set
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -130,10 +129,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Same computation as fenceFor in .github/actions/upsert-pr-comment/action.yaml, needed
-          # here for the step summary alone: the PR comment goes through the action's
-          # details-summary path, but GITHUB_STEP_SUMMARY renders the same file with nothing
-          # wrapping it.
+          # fence_for mirrors upsert-pr-comment's fenceFor: needed for GITHUB_STEP_SUMMARY, which renders the file unwrapped. See README.md § PR comment fencing.
           # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
           # collapsing the fence back to three backticks.
           fence_for() {

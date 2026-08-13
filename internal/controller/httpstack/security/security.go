@@ -13,7 +13,6 @@ func Middleware(secCfg *config.SecurityConfig) echo.MiddlewareFunc {
 	return middleware.SecureWithConfig(buildSecureConfig(secCfg))
 }
 
-// buildSecureConfig は、セキュリティ設定を構築します。
 func buildSecureConfig(secCfg *config.SecurityConfig) middleware.SecureConfig {
 	return middleware.SecureConfig{
 		ContentTypeNosniff:    secCfg.ContentTypeNosniff(),

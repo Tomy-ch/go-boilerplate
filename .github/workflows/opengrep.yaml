@@ -61,10 +61,9 @@ on:
       - 'docs-viewer/**'
       - 'scripts/**'
   schedule:
-    # Monday 10:00 UTC — the next free slot after the scanners staggered by #677
-    # (00:00 through 09:00). New rules can turn existing code into a finding, so a
-    # scheduled run earns its place even when nothing changed.
-    - cron: '0 10 * * 1'
+    # New rules can turn existing code into a finding, so a scheduled run earns its place
+    # even when nothing changed.
+    - cron: '30 2 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -100,50 +99,42 @@ jobs:
             *.blob.core.windows.net:443
             mise.jdx.dev:443
             mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
             aquaproj.github.io:443
-            semgrep.dev:443
-            *.semgrep.dev:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
             proxy.golang.org:443
             sum.golang.org:443
+            index.golang.org:443
             storage.googleapis.com:443
             dl.google.com:443
             go.dev:443
             golang.org:443
+            downloads.sqlc.dev:443
             nodejs.org:443
             registry.npmjs.org:443
-            downloads.sqlc.dev:443
+            get.pnpm.io:443
             astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            semgrep.dev:443
+            *.semgrep.dev:443
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          # cache: false — this job holds security-events: write, so it must not
-          # restore a tool cache that a less privileged workflow could have written.
-          cache: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: aqua:opengrep/opengrep
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # The version is pinned in mise.toml (SSOT) — never duplicated here.
-      - name: Install opengrep
-        run: mise install aqua:opengrep/opengrep
 
-      # Rulesets are fetched from the Semgrep registry at scan time, so this step
-      # needs network access. --taint-intrafile turns on inter-procedural taint
-      # tracking within a file, which is what makes the injection rules able to
-      # follow a value from source to sink instead of matching a single line.
-      #
-      # opengrep exits 0 whether or not it finds anything (--error would change
-      # that, but it keys off WARNING rather than the ERROR threshold we gate on),
-      # so the verdict is computed from the JSON below.
       - name: Opengrep scan (JSON)
         run: |
           opengrep scan \
@@ -276,11 +267,7 @@ jobs:
         if: always() && steps.summarize.outputs.gating != '0'
         run: exit 1
 
-  # A scheduled failure has no author watching it, so it is pushed to a human.
-  # PR / push failures are deliberately excluded: they are already visible.
-  # cancelled counts too: a job killed by a timeout or a runner fault reports
-  # cancelled rather than failure, and that is precisely the silent breakage this
-  # notification exists to surface.
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:
     needs: sast
     if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.sast.result) }}

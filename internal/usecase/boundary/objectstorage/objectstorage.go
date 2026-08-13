@@ -12,19 +12,17 @@ import (
 )
 
 // Storage は、オブジェクトを保存・列挙・削除する中立な境界です。
+// 各メソッドは失敗時に apperror sentinel（ErrUnavailable 等）を返します。
 type Storage interface {
 	// Put は、obj をそのキー配下へ保存し、保存されたパス（オブジェクトキー）を返します。
 	// 返された Path は上位が永続化する対象であり、表示 URL は上位（フロント）が
 	// 配信ベース URL と組み合わせて別途組み立てます。
-	// 失敗時は apperror sentinel（ErrUnavailable 等）を返します。
 	Put(ctx context.Context, obj PutObject) (Path, error)
 	// List は、query に一致するオブジェクトを 1 ページ分列挙します。
 	// 続きがある場合は ListResult.NextCursor が非空になり、それを次の ListQuery.Cursor に渡すと続きを取得できます。
-	// 失敗時は apperror sentinel（ErrUnavailable 等）を返します。
 	List(ctx context.Context, query ListQuery) (ListResult, error)
 	// Delete は、keys のオブジェクトをまとめて削除します。keys が空の場合は何もしません。
 	// 存在しないキーはエラーにならず、同じ keys で再実行しても結果は変わりません。
-	// 失敗時は apperror sentinel（ErrUnavailable 等）を返します。
 	Delete(ctx context.Context, keys []string) error
 }
 

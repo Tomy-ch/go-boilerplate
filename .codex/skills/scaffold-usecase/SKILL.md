@@ -81,7 +81,7 @@ Standalone alternative: `--spec=<path>`.
    - `dtos`: list of (name, fields)
    - `dependencies`: list of (name, type) — boundaries + Repository IFs
    - `workflow`: per method `(tx_required, steps, calls, errors)`
-2. Read `internal/usecase/README.md` as the **authoritative source** for layer rules + reference implementation (especially "Application Service Pattern", "Time Handling Policy", "Boundary Concept", "Allowed dependencies", "Forbidden dependencies", "Observability (Tracing)", and the "Implementation Example" section at the bottom which carries the canonical struct / constructor / per-method template).
+2. Read `internal/usecase/README.md` as the **authoritative source** for layer rules + reference implementation (especially "Application Service Design Policy", "Time Handling Policy", "Boundary Concept", "Allowed dependencies", "Forbidden dependencies", "Observability (Tracing)", and the "Implementation Example" section at the bottom which carries the canonical struct / constructor / per-method template).
 3. Read `internal/usecase/boundary/README.md` for boundary conventions.
 4. Existing usecase packages (e.g., `internal/usecase/<sibling>/<sibling>_usecase.go`) are a **secondary** reference only — observe but never silently follow if they diverge from the README's reference implementation; README wins.
 5. Verify each `calls:` reference against the actual source (domain Repository IF, domain entity factory/methods, boundary types).
@@ -191,7 +191,7 @@ Remains protected:
 
 ## Constraints
 
-- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols). **Volume counts too**: what this skill scaffolds is idiomatic by construction, so a multi-line explanation of a constructor / Params struct / row-to-entity mapping / handler template is noise. State the contract in one line and stop; never restate a repo-wide rule `docs/rules.md` already carries. Suppression, not elimination — a genuinely non-obvious Why still stays.
 - ❌ Invent methods, DTOs, dependencies, or workflow steps not in the spec
 - ❌ Implement business rules (those belong in domain entity)
 - ❌ Access infrastructure directly (only via Repository / Boundary interfaces)

@@ -83,7 +83,7 @@ operation を解決し、opt-in していない限り**クライアント wire �
 （`writeErrorResponse` が body をコピー。`resp` 本体とログには完全な `details` が残る）。ルート
 不一致・未 opt-in はいずれも **fail-closed**（details なし）。policy 用 router は servers を除去した
 spec 複製から作るため Host 非依存で、proxy / test の Host でもパス + メソッドで解決できる。
-理由: [ADR-0044](../../../../docs/adr/0044-error-details-opt-in-gate.md)。
+理由: [ADR-0046 (error-details-opt-in-gate)](../../../../docs/adr/0046-error-details-opt-in-gate.md)。
 
 ### 405 の `Allow` ヘッダー
 
@@ -164,7 +164,7 @@ spec 由来のポリシーは `Policies` 一つにまとめてハンドラへ渡
 
 ### ポリシーは fail-closed に倒れる
 
-opt-in を解決 *できない* 経路はすべて「details なし」に着地しなければならない。実 spec と実 router で到達できるのは 2 つで、それぞれにケースが要る — どのルートにも一致しないリクエストと、operation は解決したが opt-in していないリクエストである。default-allow へ緩んだゲートも全リクエストに正常応答を返すため、この異常系ケースだけが検知できる。根拠: [ADR-0044](../../../../docs/adr/0044-error-details-opt-in-gate.md)。
+opt-in を解決 *できない* 経路はすべて「details なし」に着地しなければならない。実 spec と実 router で到達できるのは 2 つで、それぞれにケースが要る — どのルートにも一致しないリクエストと、operation は解決したが opt-in していないリクエストである。default-allow へ緩んだゲートも全リクエストに正常応答を返すため、この異常系ケースだけが検知できる。根拠: [ADR-0046 (error-details-opt-in-gate)](../../../../docs/adr/0046-error-details-opt-in-gate.md)。
 
 `DetailPolicy.Allows` の doc コメントが挙げる残りの拒否理由は独立したケースにはならない。`OperationID` が空の場合は未 opt-in と同じ map 参照で落ちる（`buildDetailExposureMap` が空 ID を登録しないため）。そもそも `redocly.yaml` が `operationId` 欠落を spec lint で落とすので、実 spec からは生じない。error が nil のまま route が nil、あるいは `Operation` が nil になる経路は gorillamux の router が作り得ない防御的ガードである（マッチのたびに `Operation` を設定し、メソッド集合を path item の operation から構築するため）。到達させるには `routers.Router` を自作してコンストラクタを迂回して注入するしかないので、作為的に作らず `docs/testing-conventions.md` §9 に従って未カバーのまま残す。
 

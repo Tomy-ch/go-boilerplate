@@ -15,7 +15,6 @@ import (
 // skippedMessage は、処理対象外のイベントを読み飛ばしたときのログメッセージです。
 const skippedMessage = "skipped a message of another event type"
 
-// 実装漏れをコンパイル時に検出します。
 var _ workerbd.Handler = (*handler)(nil)
 
 // handler は、退会イベントを退会証跡の保存へ写す worker.Handler です。
@@ -35,14 +34,9 @@ func newHandler(archive user.ArchiveUsecase, tf observability.TracerFactory, log
 }
 
 // Handle は、user.withdrawn.v1 の payload を退会証跡として保存します。
-//
-// キューには outbox が publish する全種別が流れるため、種別が一致しないメッセージは保存せず成功を返します
-// （engine が Ack して取り除きます）。再配送しても種別は変わらず、DLQ へ送っても運用者の対処が無いためです。
-// 種別属性を持たないメッセージも同じ扱いにします。属性を載せる前に publish された残留メッセージが
-// DLQ を埋めないようにするためです。
-//
-// 復元できない payload はリトライで直らないため Permanent として分類し、engine の退避経路へ渡します。
-// 保存の失敗は分類せずそのまま返し、engine 既定の Retryable として再配送させます。
+// 種別が一致しないメッセージと種別属性を持たないメッセージは保存せず成功を返します。
+// 復元できない payload は Permanent、保存の失敗は分類せずそのまま返します。
+// これらの選別・分類の根拠は README（Message selection / Error classification）を参照。
 func (h *handler) Handle(ctx context.Context, m workerbd.Message) error {
 	ctx, endSpan := h.tracer.Start(ctx)
 	defer endSpan()

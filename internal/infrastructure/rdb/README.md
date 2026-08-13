@@ -32,6 +32,7 @@ The responsibilities of each layer are as follows.
 |---|---|
 |Repository|Aggregate persistence (implementation of Domain Repository Interface)|
 |QueryService|Provides search-specific queries (implementation of Usecase Interface)|
+|CommandService|Multi-aggregate atomic writes (write-side counterpart of QueryService)|
 |driver|DB connection / transaction management, and SQL logging / tracing via a pgx query tracer|
 |PostgreSQL|Actual DB|
 
@@ -41,7 +42,7 @@ The following exist as supporting components.
 |---|---|
 |sqlc|Type-safe query execution code generated from SQL|
 |pgerror|PostgreSQL error → application error conversion|
-|metrics|Connection pool statistics as Prometheus metrics|
+|metrics|Connection pool + query duration/error statistics as Prometheus metrics|
 |system_cqrs|System operational queries (health check, etc.)|
 |testkit|RDB test utilities (real DB + rollback)|
 
@@ -51,11 +52,12 @@ The following exist as supporting components.
 internal/infrastructure/rdb
  ├ repository/        Repository implementation
  ├ query_service/     QueryService implementation
+ ├ command_service/   CommandService implementation (write-side counterpart of QueryService)
  ├ system_cqrs/      System operational queries (health check, etc.)
  ├ driver/            DB connection / transaction + pgx query tracer (logging / tracing)
  ├ sqlc/              sqlc generated code + SQL helper
  ├ pgerror/           PostgreSQL error normalization
- ├ metrics/           Connection pool Prometheus metrics
+ ├ metrics/           Connection pool + query duration/error Prometheus metrics
  └ testkit/           RDB test utilities
 ```
 
@@ -182,7 +184,7 @@ See details below.
 
 ## metrics
 
-`metrics` is a package that **exposes pgxpool connection pool statistics as Prometheus metrics**.
+`metrics` is a package that **exposes pgxpool connection pool statistics and per-query duration / error statistics as Prometheus metrics**.
 
 Provides Gauge (connection counts) and Counter (acquire counts, destroy counts, etc.).
 
@@ -204,10 +206,10 @@ See details below.
 
 `command_service` implements a **CommandService** — the write-side counterpart of QueryService
 (interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
-that require single-transaction atomicity (see [ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md)
-/ [ADR-0029](../../../docs/adr/0029-commandservice-atomicity-criterion.md)); the first implementation
+that require single-transaction atomicity (see [ADR-0029 (lightweight-cqrs)](../../../docs/adr/0029-lightweight-cqrs.md)
+/ [ADR-0031 (commandservice-atomicity-criterion)](../../../docs/adr/0031-commandservice-atomicity-criterion.md)); the first implementation
 is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
-[ADR-0031](../../../docs/adr/0031-ordered-pessimistic-row-locks.md)).
+[ADR-0033 (ordered-pessimistic-row-locks)](../../../docs/adr/0033-ordered-pessimistic-row-locks.md)).
 
 A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
 the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events
@@ -224,7 +226,7 @@ invariant that already exists — the stock guard in the decrement statement res
 insufficient-stock rule, and returns that same domain sentinel. It is downstream: a change to the
 domain rule obliges a change here, never the reverse. Two independently written copies of one rule
 diverge silently the first time only one of them moves. See
-[ADR-0027](../../../docs/adr/0027-lightweight-cqrs.md) § Derivation.
+[ADR-0029 (lightweight-cqrs)](../../../docs/adr/0029-lightweight-cqrs.md) § Derivation.
 
 ## testkit
 
@@ -324,6 +326,7 @@ than covered with a contrived test.
 |`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` error|同上|
 |`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|同上|
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` error|`product` validates `sortKey` into `[1, math.MaxInt16]`|
 
 The `version` conversions in the same methods are **not** exempt: the domain only requires
 `version >= 1`, so an out-of-range version is reachable and is covered by a test. The same applies

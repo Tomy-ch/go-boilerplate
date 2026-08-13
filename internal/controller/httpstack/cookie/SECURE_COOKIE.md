@@ -139,7 +139,7 @@ Set-Cookie: __Host-access_token=rawtoken; Path=/; SameSite=Strict; Secure; HttpO
 `NewSecurityCookie()` は以下を `SecureCookieConfig` から取り込みます。
 
 - `cfg.forceSecure = p.Secure()`
-- `cfg.forceSameSite = p.SameSite()`（空なら上書きしない）
+- `cfg.forceSameSite`: `p.SameSite()` を `normalizeSameSite` で `Lax` / `Strict` / `None`（大文字小文字を無視）へ正規化した値。空文字と非許容値（タイポ含む）はいずれも正規化後に空文字となり、上書きしない
 - `cfg.forceDomain = p.Domain()`（空なら上書きしない）
 
 つまり **環境ごとに**（例: local/staging/prod）ポリシーを切り替えたい場合は、`SecureCookieConfig` を config 層で分岐させるのが自然です。

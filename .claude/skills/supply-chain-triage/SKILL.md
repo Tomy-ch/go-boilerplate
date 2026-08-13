@@ -1,7 +1,7 @@
 ---
 name: supply-chain-triage
 description: >-
-  Gather direct supply-chain evidence about ONE artifact version that a cooldown / quarantine window has caught, and score how likely it is to be a compromised publish (0–12 over four evidence axes) so a human can decide adopt-now vs wait from evidence rather than from a day count alone. Use this whenever a version is held / deferred / blocked / quarantined or classified `too-new` / `pending` by `/dep-vuln-upgrade`, `/tools-upgrade`, `/actions-pin`, or `/images-pin`; whenever `make npm-cooldown-audit` reports a lockfile entry younger than its own `.npmrc` `min-release-age`, or `make tool-cooldown-gate` blocks a `mise.toml` / `python/*.in` declaration, and someone must judge whether waiting is protective or merely inconvenient; whenever the user asks to "analyze the implementation" of a release, "is this version safe / malicious", or "why is this quarantined and can we take it anyway"; and before any deliberate window override (`days=0`, `--min-release-age=0`, a pnpm `minimumReleaseAgeExclude` entry, a `.github/tool-cooldown-bypass.toml` entry, an `overrides` pin onto a fresh version). It reads the artifact — npm / pnpm tarball, PyPI wheel or sdist, Go module zip, Actions commit range, image config / SBOM — and never executes it, answers the four questions recorded in `docs/design/security.md` (did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear), reports an axis as unanswerable rather than as a pass when the evidence cannot be obtained, and is strictly report-only: it never edits a lockfile, pin, `package.json`, `.npmrc`, `pnpm-workspace.yaml`, `python/*.in`, or a cooldown bypass file, never lowers a window, and never applies an upgrade — the calling skill or the user makes that call. Do NOT use it to perform the upgrade itself (that is the four skills above), to triage a CVE in an already-adopted dependency (`/dep-vuln-upgrade`), or as a malware scanner for first-party code.
+  Gather direct supply-chain evidence about ONE artifact version that a cooldown / quarantine window has caught, and score how likely it is to be a compromised publish (0–12 over four evidence axes) so a human can decide adopt-now vs wait from evidence rather than from a day count alone. Use this whenever a version is held / deferred / blocked / quarantined or classified `too-new` / `pending` by `/dep-vuln-upgrade`, `/tools-upgrade`, `/actions-pin`, or `/images-pin`; whenever `make tool-cooldown-gate` blocks a `mise.toml` / `python/*.in` declaration, and someone must judge whether waiting is protective or merely inconvenient; whenever the user asks to "analyze the implementation" of a release, "is this version safe / malicious", or "why is this quarantined and can we take it anyway"; and before any deliberate window override (`days=0`, `--min-release-age=0`, a pnpm `minimumReleaseAgeExclude` entry, a `.github/tool-cooldown-bypass.toml` entry, an `overrides` pin onto a fresh version). It reads the artifact — npm / pnpm tarball, PyPI wheel or sdist, Go module zip, Actions commit range, image config / SBOM — and never executes it, answers the four questions recorded in `docs/design/security.md` (did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear), reports an axis as unanswerable rather than as a pass when the evidence cannot be obtained, and is strictly report-only: it never edits a lockfile, pin, `package.json`, `.npmrc`, `pnpm-workspace.yaml`, `python/*.in`, or a cooldown bypass file, never lowers a window, and never applies an upgrade — the calling skill or the user makes that call. Do NOT use it to perform the upgrade itself (that is the four skills above), to triage a CVE in an already-adopted dependency (`/dep-vuln-upgrade`), or as a malware scanner for first-party code.
 argument-hint: '[<ecosystem>:<name>@<candidate-version>] [baseline=<version>] [days=<N>]'
 ---
 
@@ -36,7 +36,6 @@ only — they are command recipes, not prose for human readers.
 - A cooldown window caught a candidate and someone must decide whether to wait: `/dep-vuln-upgrade`
   marked a fix `too-new` or `blocked`, `/tools-upgrade` classified a release `pending`,
   `/actions-pin` had to step back or hold, `/images-pin` hit rule 2 / rule 3.
-- `make npm-cooldown-audit` reports a lockfile entry younger than its `.npmrc` `min-release-age`.
   That audit is detection-only by design — it says an override happened, not whether it was safe.
   This skill supplies the missing half.
 - `make tool-cooldown-gate` blocks a `mise.toml` or `python/*.in` declaration. That gate *does* fail
@@ -244,10 +243,6 @@ not make a blocked install possible:
 
 Four walls to restate in the report whenever they apply:
 
-- **npm under a `.npmrc` `min-release-age`**: the version cannot be installed at all, whatever the
-  score, and npm offers no per-version exemption. The options are to wait, or for a role to override
-  deliberately — which `make npm-cooldown-audit` will then surface on the PR. Never suggest lowering
-  `min-release-age`.
 - **pnpm under a `pnpm-workspace.yaml` `minimumReleaseAge`**: likewise uninstallable, and the block
   extends to `--frozen-lockfile` replay, so it reaches CI and every other checkout rather than only
   the machine doing the resolve. pnpm *does* have a per-version exemption
@@ -292,6 +287,6 @@ Four walls to restate in the report whenever they apply:
 - [ ] Exposure reported as a separate line, not folded into the score
 - [ ] Artifact never executed (no `npm install`, no `docker run`, no downloaded binary, no build of the candidate); extracted outside the repo tree
 - [ ] Japanese report printed with band, recommendation, and the explicit statement that nothing was changed
-- [ ] npm `min-release-age` / pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 walls restated when they apply
+- [ ] pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 walls restated when they apply
 - [ ] No file modified, no window lowered, no upgrade applied
 - [ ] After updating `SKILL.md`, re-sync `SKILL.ja.md`

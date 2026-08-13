@@ -55,7 +55,7 @@ while [ $# -gt 0 ]; do
     --no-index)      NO_INDEX=1; shift ;;
     --detect-only)   DETECT_ONLY=1; shift ;;
     -h|--help)
-      sed -n '2,16p' "$0"; exit 0 ;;
+      sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "未知の引数: $1" >&2; exit 2 ;;
   esac
 done

@@ -112,9 +112,9 @@ func Test_repository_SearchByKeyword(t *testing.T) {
 
 			ctx := context.Background()
 
-			actual, err := repo.SearchByKeyword(ctx, []string{}, nil, 20, 0)
+			actual, err := repo.SearchByKeyword(ctx, []string{}, nil, 100, 0)
 			require.NoError(t, err)
-			assert.Len(t, actual, 10)
+			assert.Len(t, actual, 50)
 		})
 
 		t.Run("keywordsが空かつactive=trueの場合、アクティブのみが対象になる", func(t *testing.T) {
@@ -122,9 +122,9 @@ func Test_repository_SearchByKeyword(t *testing.T) {
 
 			ctx := context.Background()
 
-			actual, err := repo.SearchByKeyword(ctx, []string{}, new(true), 20, 0)
+			actual, err := repo.SearchByKeyword(ctx, []string{}, new(true), 100, 0)
 			require.NoError(t, err)
-			assert.Len(t, actual, 8)
+			assert.Len(t, actual, 45)
 		})
 
 		t.Run("keywordsが空かつactive=falseの場合、削除済みのみが対象になる", func(t *testing.T) {
@@ -132,9 +132,9 @@ func Test_repository_SearchByKeyword(t *testing.T) {
 
 			ctx := context.Background()
 
-			actual, err := repo.SearchByKeyword(ctx, []string{}, new(false), 20, 0)
+			actual, err := repo.SearchByKeyword(ctx, []string{}, new(false), 100, 0)
 			require.NoError(t, err)
-			assert.Len(t, actual, 2)
+			assert.Len(t, actual, 5)
 		})
 	})
 
@@ -173,13 +173,7 @@ func Test_repository_SearchByKeyword(t *testing.T) {
 func Test_repository_CountByKeyword(t *testing.T) {
 	testDB := testkit.NewTestDB(t)
 
-	// 期待値をシードの総件数で固定しているため、コミット済みの行を足し引きする他テスト
-	// （user_repository_lock_race_test.go は検証用ユーザーを実コミットする）と重なると件数がずれる。
-	// 読み取り専用だが直列化スイートを占有して重なりを防ぐ。
-	//
-	// このテスト関数だけ t.Parallel() を呼ばないのは、直列化ロックを保持したまま並列テストとして
-	// 待たされると、並列スロットを占有したまま自分のサブテストを開始できず停止するため。
-	// 逐次フェーズで走らせれば、他の並列テストが再開する前にロックを解放して終えられる。
+	// 直列化・非並列化の理由は Test_repository_SearchByKeyword のコメントと同じ。
 	testkit.HoldSuiteSerialization(t, testDB)
 
 	lt := observability.NewMockInfraLayerTracer(t)
@@ -196,7 +190,7 @@ func Test_repository_CountByKeyword(t *testing.T) {
 
 			actual, err := repo.CountByKeyword(ctx, []string{}, nil)
 			require.NoError(t, err)
-			assert.Equal(t, int64(10), actual)
+			assert.Equal(t, int64(50), actual)
 		})
 
 		t.Run("activeがtrueかつkeywordsが空の場合、アクティブなユーザーの件数が返る", func(t *testing.T) {
@@ -206,7 +200,7 @@ func Test_repository_CountByKeyword(t *testing.T) {
 
 			actual, err := repo.CountByKeyword(ctx, []string{}, new(true))
 			require.NoError(t, err)
-			assert.Equal(t, int64(8), actual)
+			assert.Equal(t, int64(45), actual)
 		})
 
 		t.Run("activeがfalseかつkeywordsが空の場合、削除済みユーザーの件数が返る", func(t *testing.T) {
@@ -216,7 +210,7 @@ func Test_repository_CountByKeyword(t *testing.T) {
 
 			actual, err := repo.CountByKeyword(ctx, []string{}, new(false))
 			require.NoError(t, err)
-			assert.Equal(t, int64(2), actual)
+			assert.Equal(t, int64(5), actual)
 		})
 
 		t.Run("キーワードにマッチするユーザーの件数が返る", func(t *testing.T) {

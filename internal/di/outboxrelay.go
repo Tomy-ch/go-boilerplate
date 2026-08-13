@@ -42,7 +42,7 @@ func NewOutboxRelayApp(grace time.Duration) *fx.App {
 
 // RunOutboxReplay は、dead 状態の outbox 行を pending へ戻すワンショット実行を行い、
 // 書き換えた行数と発生したエラーを返します。messageID が nil の場合は全 dead 行を対象とします。
-// 停止処理のエラーは runErr と errors.Join で結合して返します。
+// 停止処理のエラーは runErr と xerrors.Join で結合して返します。
 // DI グラフの構築に失敗した場合、replay を実行せずその構築エラーを返します。
 func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	var (
@@ -54,8 +54,7 @@ func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 		fx.Populate(&replay, &appCfg), fx.WithLogger(NewFxEventLogger))
 	app := fx.New(opts...)
 
-	// fx.Populate は fx.New 時点の invoke なので、グラフ構築が失敗すると対象は nil のまま残る。
-	// replay / appCfg を触る前に構築エラーを返し、nil 参照ではなく DI エラーをオペレータへ届ける。
+	// RunJob と同じく、fx.Populate が nil を残す構築失敗を replay / appCfg 参照より先に返す。
 	if err := app.Err(); err != nil {
 		return 0, err
 	}

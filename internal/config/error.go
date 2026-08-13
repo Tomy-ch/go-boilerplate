@@ -80,7 +80,7 @@ var (
 	// ErrShutdownTimeoutBelowRequestTimeout は、graceful shutdown 猶予（APP_SHUTDOWN_TIMEOUT）が
 	// per-request deadline budget（SERVER_REQUEST_TIMEOUT）を下回っていることを示すエラーです。
 	// SHUTDOWN_TIMEOUT < REQUEST_TIMEOUT だと、SIGTERM 受信時に drain がまだ予算内のリクエストを
-	// 猶予切れで切断します。server グラフの起動時に検証されます（ValidateServerShutdown）。
+	// 猶予切れで切断します。
 	ErrShutdownTimeoutBelowRequestTimeout = xerrors.Wrap(
 		errInvalidConfig,
 		"shutdown timeout must be greater than or equal to request timeout",
@@ -89,7 +89,7 @@ var (
 	// アップロード上限（OBJECT_STORAGE_MAX_UPLOAD_BYTES）以下であることを示すエラーです。
 	// ボディ上限は Pre ミドルウェアとして全リクエストへ先に適用されるため、これを下回るとアップロード
 	// 上限に達する前に 413 が返り、エンドポイント側の上限が到達不能になります。マルチパートの
-	// オーバーヘッド分の余裕も必要です。server グラフの起動時に検証されます（ValidateUploadBodyLimit）。
+	// オーバーヘッド分の余裕も必要です。
 	ErrBodyLimitBelowMaxUploadBytes = xerrors.Wrap(
 		errInvalidConfig,
 		"server body limit must be greater than object storage max upload bytes",

@@ -300,7 +300,7 @@ other.** This holds in both directions and is the same rule stated twice.
 
 - **Write** — infrastructure performs the write, then the usecase re-reads the affected aggregate
   through its Repository so the aggregate re-validates the result
-  ([ADR-0027](../../docs/adr/0027-lightweight-cqrs.md)).
+  ([ADR-0029 (lightweight-cqrs)](../../docs/adr/0029-lightweight-cqrs.md)).
 - **Read** — infrastructure applies the filter, then the usecase checks the returned entities
   against the domain predicate that defines the criterion. Infrastructure *executes* a criterion; it
   does not *author* one (see [`internal/domain/README.md`](../domain/README.md) § Query and
@@ -408,26 +408,10 @@ Use DTO / VO instead (Page / Filters / Actor).
 
 ### Error Policy
 
-Semantic input errors:
-
-- `apperror.ErrValidation` → 422
-- `apperror.ErrInvalidArgument` → 400
-
-Not found:
-
-- `apperror.ErrNotFound` → 404
-
-Conflict:
-
-- `apperror.ErrConflict` → 409
-
-Temporary unavailable:
-
-- `apperror.ErrUnavailable` → 503
-
-Unexpected errors:
-
-- return as-is or wrap with `apperror.ErrInternal` → 500
+Wrap sentinel errors from `internal/apperror` per operation outcome; see
+[`internal/apperror/README.md`](../apperror/README.md) § Mapping Table for the full
+`ErrXXX` → HTTP status table. Unexpected errors are returned as-is or wrapped with
+`apperror.ErrInternal`.
 
 When wrapping an `apperror.ErrXXX` sentinel, use `pkg/xerrors.Wrap(apperror.ErrXXX, "context")`
 (not the standard `fmt.Errorf("%w", ...)`) so the stack trace is preserved while `xerrors.Is`
@@ -458,6 +442,11 @@ A Usecase's return DTO takes one of two suffixes, chosen by what the method retu
 The distinction is worth keeping because the two have different failure semantics. A `View` is either
 returned or not. A `Result` is meaningful **even when the method also returns an error** — a batch
 that failed partway still has to report the work it committed before it stopped.
+
+`healthcheck.CheckHealth` is the one exception: it returns a bare `DTO`. Health is neither a
+projection of an aggregate nor the outcome of a change — it is the probe's own reading, and the type
+has no concept to prefix. Adding a suffix there would name something the package does not have. Do
+not treat it as licence to skip the suffix elsewhere.
 
 ### Pagination
 

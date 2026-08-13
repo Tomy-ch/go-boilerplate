@@ -126,8 +126,7 @@ func (r *Resolver) Resolve(ctx context.Context) (Values, error) {
 		AuthIssuer: "http://localhost:" + orDefault(slot["MOCK_AUTH_HOST_PORT"], strconv.Itoa(r.cfg.MockAuthBase)),
 	}
 
-	// 共有インフラを奪い合う相手が居るのはリンク worktree のときだけ。単一 checkout では
-	// compose 本来の「up は定義変更へ再収束する」契約を捨てる理由がないため空にします。
+	// 共有インフラを奪い合う相手が居るのはリンク worktree のときだけなので、単一 checkout では空にします。
 	if gitCtx == GitLinkedWorktree {
 		values.InfraNoRecreate = noRecreateFlag
 	}
@@ -138,11 +137,8 @@ func (r *Resolver) Resolve(ctx context.Context) (Values, error) {
 // RequireOwner は、所有データベースを持たない状態（リンク worktree かつスロット未取得）を
 // 検出してエラーにします。主 checkout・ツールランナー内・CI は素通りします。
 //
-// 素通りさせる 3 つのうち、ツールランナー内と CI は「git 文脈を確かめられない」側に属します。
-// git を引けないことを一律に素通りの理由にすると、リンク worktree で git が失敗したときまで
-// 素通りし、1 つのデータベースを 2 箇所から触る状態へ黙って落ちます（pool.mk の不変条件）。
-// そのため「git 実行ファイルが無い」「リポジトリでない」は素通り、「リポジトリなのに読めない」は
-// 失敗として扱います。
+// 判定は三値です。「git 実行ファイルが無い」「リポジトリでない」は素通り、
+// 「リポジトリなのに読めない」は失敗（理由は docs/maintenance/db-worktree-pool.md）。
 func (r *Resolver) RequireOwner(ctx context.Context) error {
 	values, err := r.Resolve(ctx)
 	if err != nil {
@@ -279,8 +275,7 @@ func realGitProbe() GitProbe {
 }
 
 // hasGitEntry は、dir か その祖先に .git（ディレクトリ、またはリンク worktree の .git ファイル）が
-// あるかを返します。git の失敗が「リポジトリでない」ためか「読み取れなかった」ためかを、
-// git のエラーメッセージに頼らず区別するために使います（メッセージはロケールで変わります）。
+// あるかを返します。
 func hasGitEntry(dir string) bool {
 	for {
 		if _, err := os.Lstat(filepath.Join(dir, ".git")); err == nil {

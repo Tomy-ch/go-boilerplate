@@ -14,13 +14,9 @@ reporting ready.
 
 ## What it checks
 
-`GetReady` delegates to the `healthcheck` usecase's `CheckHealth`, which:
-
-1. Reads the application's current time from the injected `clock` boundary
-   (returned as `applicationTime`).
-2. Runs a lightweight database health-check query
-   (`SELECT 1`, `GetDBHealthCheck`) via the RDB system query, measuring the
-   round-trip latency and the time the DB last responded successfully.
+`GetReady` delegates to the `healthcheck` usecase's `CheckHealth` — see
+[`internal/usecase/healthcheck/README.md`](../../../usecase/healthcheck/README.md)
+for what it probes.
 
 If the database query fails, `CheckHealth` returns an error and the handler
 propagates it (no response body); the error is translated to an HTTP status by

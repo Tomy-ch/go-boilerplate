@@ -1,21 +1,15 @@
 name: Lockfile Integrity (required-check guard)
 
-# Skip-guard companion for lockfile-integrity.yaml. The `lockfile-lint` job is
-# registered as a required status check, but lockfile-integrity.yaml only triggers
-# when the PR touches its `paths`; a PR that changes no lockfile would never report
-# the `lockfile-lint` context and would block merging forever.
-#
-# This workflow runs on the complementary set (`paths-ignore` mirrors
-# lockfile-integrity.yaml's pull_request `paths`) and reports the same
-# `lockfile-lint` context as an immediate success. When both run, GitHub requires
-# every same-named check to pass, so this no-op can never mask a real failure.
+# Skip-guard companion for lockfile-integrity.yaml: reports the `lockfile-lint` required check as an immediate
+# success on the complementary set (`paths-ignore` mirrors the filter on lockfile-integrity.yaml).
+# Both files' filters must be edited together — see README.md § Required-check guard companions.
 
 on:
   pull_request:
     paths-ignore:
       - '.github/workflows/lockfile-integrity.yaml'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
 
 permissions:

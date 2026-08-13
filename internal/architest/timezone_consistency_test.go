@@ -278,7 +278,6 @@ func readDockerfileStages(t *testing.T, root, file string) []dockerfileStage {
 
 // parseDockerfileStages は、Dockerfile の内容を FROM 単位のステージへ分け、ローカルタイムに
 // 関わる宣言を取り出して返します。継続行は前の行へ畳んでから解釈します。
-// depguard が go/ast を禁じるためテキスト走査で行います（既存 architest と同方針）。
 func parseDockerfileStages(content string) []dockerfileStage {
 	var stages []dockerfileStage
 	for _, line := range joinDockerfileContinuations(content) {

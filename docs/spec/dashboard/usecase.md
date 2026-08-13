@@ -2,7 +2,7 @@
 
 > ダッシュボードの横断集計は購入・商品の複数集約にまたがる派生投影であり、domain Repository では
 > なく QueryService 経路（`internal/usecase/dashboard/query.DashboardQueryService`）に委譲する
-> （ADR-0027 軽量CQRS / `docs/rules.md` の Repository / QueryService 境界に準拠）。既存の判断基準で
+> （ADR-0029 (lightweight-cqrs) 軽量CQRS / `docs/rules.md` の Repository / QueryService 境界に準拠）。既存の判断基準で
 > 経路が確定するため**新規 ADR は発行しない**。
 > ただし**商品の登録件数は products 集約の属性による単純な COUNT** であり、`docs/rules.md` の
 > 「simple filter / list / count by the Aggregate's own attributes は Repository」に該当するため

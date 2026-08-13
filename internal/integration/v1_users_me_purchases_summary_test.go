@@ -111,12 +111,10 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
-			// 認証情報が無いためハンドラが早期に 401 で返し、Usecase は呼ばれない。
 			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).Times(0)
 
 			usersmepurchases.BindHandler(e, tf, uc)
 
-			// 認証ヘッダー（Authn）を張らずに呼び出す。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, purchaseSummaryPath, nil, nil)
 			AssertErrorResponse(t, actual, http.StatusUnauthorized)
 		})

@@ -1,15 +1,8 @@
 name: OSV Scan (required-check guard)
 
-# Skip-guard companion for osv-scanner.yaml's `osv-diff` job. That job is
-# registered as a required status check, but osv-scanner.yaml only triggers on a
-# pull_request when it touches the dependency `paths`; a PR that changes no
-# dependency manifest would never report the `osv-diff` context and would block
-# merging forever.
-#
-# This workflow runs on the complementary set (`paths-ignore` mirrors
-# osv-scanner.yaml's pull_request `paths`) and reports the same `osv-diff` context
-# as an immediate success. When both run, GitHub requires every same-named check to
-# pass, so this no-op can never mask a real osv-diff failure.
+# Skip-guard companion for osv-scanner.yaml: reports the `osv-diff` required check as an immediate
+# success on the complementary set (`paths-ignore` mirrors the filter on osv-scanner.yaml).
+# Both files' filters must be edited together — see README.md § Required-check guard companions.
 
 on:
   pull_request:
@@ -19,7 +12,7 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/package-lock.json'
+      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
 
 permissions:

@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-状態変更（INSERT / UPDATE / DELETE）のための書き込みSQLを管理します。将来の拡張ポイントとして設計されています。
+Repository の load-mutate-save の形に収まらない状態変更（INSERT / UPDATE / DELETE）のための書き込み SQL を管理します。
 
 ## 目的
 
@@ -12,7 +12,7 @@
 
 ## インフラストラクチャマッピング
 
-実装: `internal/infrastructure/rdb/command_service/`（将来）
+実装: `internal/infrastructure/rdb/command_service/`
 
 ## ディレクトリ構成
 

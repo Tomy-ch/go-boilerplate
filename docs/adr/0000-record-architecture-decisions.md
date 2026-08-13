@@ -67,6 +67,6 @@ unbounded and merge-conflicts.
 
 ## Notes
 
-- Migration scope, the full ordered ADR list (~92), and per-ADR source references live in
+- Migration scope, the full ordered ADR list, and per-ADR source references live in
   [the ADR log](README.md).
 - The dependency inventory that lived in `docs/decisions.md` moves to `docs/reference/dependencies.md`.

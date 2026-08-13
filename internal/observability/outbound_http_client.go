@@ -47,7 +47,6 @@ func NewOutboundHTTPClient(t *HTTPClientTransport, allowPrivateNetwork bool) *Ou
 
 // RoundTrip は、方針を ctx へ積んだ clone を内側へ委譲します。
 func (rt policyStampingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// http.RoundTripper は呼び出し元の Request を変更してはならないため clone する。
 	return rt.inner.RoundTrip(
 		req.Clone(ContextWithAllowPrivateNetwork(req.Context(), rt.allowPrivateNetwork)),
 	)

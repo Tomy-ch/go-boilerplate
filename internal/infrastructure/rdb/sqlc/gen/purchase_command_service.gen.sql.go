@@ -29,9 +29,8 @@ type DecrementProductStockParams struct {
 
 // === source: database/dml/command_service/purchase/decrement_product_stock.sql ===
 // 在庫を数量分減算する。防御的に quantity >= 減算数を併用し、売り越しをアトミックに弾く（更新 0 行なら在庫不足）。
-// ロック取得後に検証済みのため通常は 0 行にならないが、fail-closed の二重防御として残す（ADR-0031）。
-// この条件は domain の売り越し判定（purchase.New が返す ErrInsufficientStock）を言い換えたもので、
-// 独立した規則ではない。判定が変わったらこちらも追随させること（逆は無い。ADR-0027 § Derivation）。
+// この条件は domain の売り越し判定を言い換えた実行形で、独立した規則ではない。判定が変わったら
+// こちらも追随させること（逆は無い。internal/infrastructure/rdb/README.md の command_service 節）。
 //
 //	UPDATE products
 //	SET
@@ -112,8 +111,8 @@ type IncrementProductStockParams struct {
 }
 
 // === source: database/dml/command_service/purchase/increment_product_stock.sql ===
-// 在庫を数量分復元（加算）する。相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要
-// （購入行ロック下で実行）。対象行が不存在の場合は影響 0 行として呼び出し側で NotFound へ fail-closed 検出する。
+// 在庫を数量分復元（加算）する。相対更新（quantity + 数量）のため売り越しを生まず在庫不足ガードは不要。
+// 対象行が不存在の場合は影響 0 行として呼び出し側で NotFound へ fail-closed 検出する。
 //
 //	UPDATE products
 //	SET
@@ -165,7 +164,7 @@ type InsertPurchaseParams struct {
 }
 
 // === source: database/dml/command_service/purchase/insert_purchase.sql ===
-// 購入を 1 行 INSERT する。status_id は code から解決する（seed UUID をアプリに焼き込まない）。
+// 購入を 1 行 INSERT する。status_id は code から解決する（理由は docs/spec/purchase/domain.md の Notes）。
 // ordered_at / created_at / updated_at は DB 既定（NOW()）に委ねる。
 //
 //	INSERT INTO purchases (
@@ -274,9 +273,9 @@ type UpdatePurchaseCanceledParams struct {
 }
 
 // === source: database/dml/command_service/purchase/update_purchase_canceled.sql ===
-// 購入をキャンセル状態へ更新する。status_id は code から解決し（seed UUID を焼き込まない）、
-// canceled_at はドメインが決定した時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
-// 対象行は呼び出し側が FOR UPDATE で取得・検証済みのため、遷移可否ガードは付けない（ドメインが SoT）。
+// 購入をキャンセル状態へ更新する。status_id は code から解決する。canceled_at はドメインが決定した
+// 時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
+// 遷移可否ガードは付けない（理由は internal/infrastructure/rdb/README.md の command_service 節）。
 //
 //	UPDATE purchases
 //	SET

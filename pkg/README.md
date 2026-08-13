@@ -106,7 +106,7 @@ All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for par
 
 ### decimal
 
-An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice live in `internal/domain/lexicon/money`; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice belong to the caller; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
 
 |Symbol|Description|
 |---|---|
@@ -141,8 +141,6 @@ Abstracts external command execution behind an interface so callers can inject a
 ### fnmeta
 
 Decomposes full function names obtained from `runtime` to extract package and function names.
-
-Primarily used for span name generation in `internal/observability`.
 
 |Function|Description|
 |---|---|
@@ -188,7 +186,7 @@ A bounded-retry behavior layer that consumes a failure classification (`classify
 |`Do`|Run a function with bounded retries while a classifier marks the error retryable|
 |`Full`|Full jitter — uniform random duration in `[0, d]`|
 |`Policy`|`MaxAttempts` + `Backoff` (`func(attempt int) time.Duration`)|
-|`Sleeper` (interface)|`Sleep(ctx, d)` wait abstraction (satisfied by `clock.Sleeper`)|
+|`Sleeper` (interface)|`Sleep(ctx, d)` wait abstraction (satisfied structurally by the caller's own sleeper type)|
 
 ### safecast
 
@@ -257,6 +255,23 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 |`Join`|Combine multiple errors|
 |`StackTrace`|Get stack trace string|
 
+## What a sub-package `README.md` carries
+
+Every `pkg/<name>/` has its own `README.md`, and it is the file a reader opens to decide whether the
+package does what they need. It carries these sections, in this order; omit one only when the package
+genuinely has nothing to say under it.
+
+| Section | What goes in it |
+| --- | --- |
+| `Role` | One paragraph: what this package is for, and where the boundary of its responsibility sits. |
+| `Public API` | Every exported symbol, with its signature and a one-line contract. This is the section drift is checked against, so an exported symbol missing here reads as undocumented. |
+| `Wraps` | The external package being wrapped, and what this package adds or hides. Omit when the package wraps nothing. |
+| `Notes` | Pitfalls a caller cannot see from the signature — allocation behavior, precision limits, goroutine safety, what happens on a zero value. |
+
+Anything beyond those four is the package's own call. What is **not** optional is `Public API`:
+`drift-detector-pkg` compares it against the package's exported symbols, so a package that names the
+section something else, or drops it, cannot be checked.
+
 ## Checklist for Adding a New Package
 
 - [ ] Referenced from multiple locations, or wraps an external package
@@ -266,3 +281,4 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 - [ ] Tests are written
 - [ ] Documentation is written
 - [ ] Package summary is added to this README
+- [ ] The sub-package `README.md` carries `Role` / `Public API` (+ `Wraps` / `Notes` when they apply)

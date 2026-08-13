@@ -1,8 +1,7 @@
 // スキル / エージェント定義に対する個々の検査。
 //
-// ファイルシステムへは触らず、読み込み済みの内容と存在の可否だけを受け取る。入口が担うのは
-// 「どのファイルを読むか」までで、読んだ結果から違反を導くのはここ。検査そのものが
-// ファイル入出力と混ざっていると、検査が的を外して 0 件になった状態を検査できない。
+// ファイルシステムへは触らず、読み込み済みの内容と存在の可否だけを受け取る
+//（この分割の理由は scripts/README.md の Test Strategy が持つ）。
 import path from "node:path";
 
 import {
@@ -152,9 +151,7 @@ export type EnvLayout = {
  * スキルが両環境に揃っているかを検査する。
  *
  * @remarks
- * 見るのは存在だけで、本文の追随は見ません。`sync-ai` は逐語コピーではなく意味ポートであり、
- * `CLAUDE.md` ↔ `AGENTS.md` の言い換えや Claude 固有機構の適応といった意図的な差分が常に残ります。
- * 存在の対応だけなら例外は宣言可能な件数に収まり、片側だけをマージする事故は確実に捕まります。
+ * 見るのは存在だけ。本文の追随を見ない理由は scripts/README.md の Skill Lint 節が持ちます。
  */
 export function checkSkillParity(
   claudeSkills: readonly string[],
@@ -189,8 +186,7 @@ export function checkSkillParity(
  *
  * @remarks
  * 拡張子は環境ごとに違う（Claude: `.md` / Codex: `.toml`）ため、拡張子を落とした名前で
- * 突き合わせます。スキルと違って例外の仕組みは持ちません。片側だけに置いた実例が無いので、
- * 空のまま置く例外リストは腐るだけです。
+ * 突き合わせます。例外の仕組みを持たない理由は scripts/README.md の Skill Lint 節が持ちます。
  */
 export function checkAgentParity(
   claudeAgents: readonly string[],
@@ -224,8 +220,8 @@ export function checkAgentParity(
  * 例外リスト自体の腐りを検査する。
  *
  * @remarks
- * 理由の無い登録を認めず、移植が済んだ登録と、どちらの環境からも消えた登録は削除させます。
- * これが無いと例外リストが例外より長生きし、いつの間にか検査を素通りさせる面になります。
+ * 理由の無い登録・移植が済んだ登録・どちらの環境からも消えた登録を削除させます
+ *（理由は scripts/README.md の Skill Lint 節）。
  */
 export function checkPlatformOnlyAllowlist(
   claudeSkills: readonly string[],
@@ -315,8 +311,8 @@ export type ReferenceResolvers = {
  * Markdown 本文が参照する make ターゲット / パスの実在性を検査する。
  *
  * @remarks
- * 読むのはコードフェンス外のインラインコードスパンだけです。フェンスの中は例示や出力サンプルで、
- * 実在を保証しません。ignore ディレクティブのある行は、意図的に不在な参照として飛ばします。
+ * 読む範囲（フェンス外のみ）と ignore ディレクティブの扱いは scripts/README.md の
+ * Skill Lint 節が持ちます。
  */
 export function checkReferences(
   rel: string,

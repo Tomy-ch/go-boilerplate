@@ -80,7 +80,7 @@ Roles of each component:
 |`ProvideTracerProvider` / `ProvideMeterProvider`|Adapters exposing the concrete providers as the `trace.TracerProvider` / `metric.MeterProvider` interfaces (in `provider.go`)|
 |`NewPgxTracer`|`otelpgx` tracer for DB spans + metrics, with connection details suppressed (in `pgx_tracer.go`)|
 |`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF-guarded, instrumented outbound HTTP transport + its RED metrics (in `http_client_transport.go` / `http_client_metrics.go`)|
-|`propagation.go`|Cross-service / cross-carrier trace propagation (`ExtractFromCarrier` / `InjectTraceContextToCarrier`) + `NewTextMapPropagator`|
+|`propagation.go`|Cross-service / cross-carrier trace propagation (`ExtractFromCarrier` / `InjectTraceContextToCarrier`)|
 |`TracerFactory`|Generate tracers per layer|
 |`LayerTracer`|Per-layer span emission (spans only — it does not write log lines itself)|
 |`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -126,8 +126,7 @@ func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource
   Go **runtime metrics** instrumentation starts only in that case (the no-op fallback skips
   it). It is likewise lifecycle-agnostic — it returns the concrete `*sdkmetric.MeterProvider`
   and the DI hook registers its `Shutdown`. Because the shutdown hook depends on the concrete
-  provider, the DI module no longer needs a separate force-start invoke; constructing the
-  hook forces the providers to be built.
+  provider, constructing the hook forces the providers to be built.
 
 ### 1.2 NewLoggerProvider / NewLogCore (OTLP logs)
 
@@ -173,6 +172,10 @@ usecaseTracer := tf.Usecase()
 infraTracer := tf.Infra()
 ```
 
+`NewDisabledTracerFactory()` returns a factory whose tracers emit nothing. It exists for CLI
+paths that assemble infrastructure implementations directly instead of going through the DI
+graph, so that the `otel` packages stay confined to this layer.
+
 ### 3. LayerTracer
 
 `LayerTracer` is a component that manages **span at the layer level**.
@@ -215,7 +218,7 @@ Use this when you need to distinguish multiple spans within the same function.
 
 You can easily measure spans for arbitrary processing using `RunWithSpan`.
 
-This function is a utility that executes arbitrary processing along with span + observability logging, without depending on any specific layer.
+This function is a utility that executes arbitrary processing inside a span, without depending on any specific layer.
 
 ```go
 ctx, result, err := observability.RunWithSpan(
@@ -265,6 +268,10 @@ name encodes `layer.package.function`.
 Log ↔ trace correlation is provided by the `otelzap` `LogCore` (§1.2): when `LogsEnabled()`,
 the application's `zap` logs are exported over OTLP with the active trace context attached, so
 logs and spans line up in the backend under the same `trace_id`.
+
+The `trace_id` / `span_id` fields on each log line come from `NewTraceExtractor(obsCfg)`, which
+returns the `logging.TraceExtractor` closure that DI injects into the `Logger`. Gating lives in
+that one closure, so callers never decide whether trace fields are attached.
 
 ## TraceContext
 
@@ -323,10 +330,7 @@ Return values
 getCallerFullName()
 ```
 
-This information is used for:
-
-- span name generation
-- observability logging
+This information is used for span name generation.
 
 ## Test Support
 
@@ -376,6 +380,8 @@ a no-op `MeterProvider` / `TracerProvider` are provided.
 |`NewNoopHTTPClientMetrics`|`HTTPClientMetrics` on a no-op meter|
 |`NewNoopOutboxMetrics`|`OutboxMetrics` on a no-op meter|
 |`NewNoopHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard disabled (allows loopback / httptest targets)|
+|`NewGuardedHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard left **enabled**, for tests that assert the guard itself|
+|`NewObservedHTTPClientMetrics`|`HTTPClientMetrics` whose recorded values can be read back via `LabelValues`|
 
 ## Design Policy
 
@@ -392,13 +398,8 @@ Reason
 
 ### 2 Integration with logging
 
-Log ↔ trace correlation is provided by the `otelzap` `LogCore` (§1.2): application logs are
-exported over OTLP with the active trace context, so logs and spans share the same identifiers
-in the backend. The span context exposes:
-
-- `trace_id`
-- `span_id`
-- `parent_span_id`
+Log ↔ trace correlation happens at the logging layer, not in the caller. See
+[Span / Log Correlation](#span--log-correlation).
 
 ### 3 Application code does not depend on OTel
 
@@ -443,8 +444,8 @@ the first candidate** to drop, while the **usecase / infra spans are worth retai
 `propagation.go` carries the W3C trace context across service and carrier boundaries so a
 producer → relay → consumer chain forms a single trace.
 
-- `NewTextMapPropagator` — the composite W3C `TraceContext` + `Baggage` propagator that
-  `NewTracerProvider` registers globally via `otel.SetTextMapPropagator`.
+- `NewTextMapPropagator` (in `provider.go`) — the composite W3C `TraceContext` + `Baggage`
+  propagator that `NewTracerProvider` registers globally via `otel.SetTextMapPropagator`.
 - `ExtractFromCarrier(ctx, attrs)` — continues a trace from a `map[string]string` carrier
   (e.g. message attributes / headers) using the **global** propagator. Returns `ctx`
   unchanged when the carrier is empty.

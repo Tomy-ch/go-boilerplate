@@ -211,7 +211,7 @@ func validateEmbeddedEnv(appCfg Application) error {
 	}
 
 	switch embeddedAppEnv {
-	case EnvLocal, EnvCI, EnvTest, EnvDevelopment, "":
+	case EnvLocal, EnvCI, EnvTest, EnvDast, EnvDevelopment, "":
 		return ErrEmbeddedEnvMismatch
 	default:
 		return nil
@@ -278,7 +278,7 @@ func validateMetricsConfig(metricsCfg Metrics) error {
 
 // ValidateServerShutdown は、graceful shutdown 猶予が処理中リクエストの予算を下回らないことを検証します。
 // 値の妥当性ルールは config の責務だが、この制約は HTTP サーバーを組むプロセスにのみ意味を持つため、
-// New() では全プロファイル共通に走らせず、server グラフの DI から適用する（di/server が結線する）。
+// New() では全プロファイル共通に走らせない。
 func ValidateServerShutdown(appCfg *ApplicationConfig, srvCfg *ServerConfig) error {
 	return validateServerShutdown(appCfg.ShutdownTimeout(), srvCfg.RequestTimeout())
 }
@@ -292,8 +292,7 @@ func validateServerShutdown(shutdown, request time.Duration) error {
 }
 
 // ValidateUploadBodyLimit は、リクエストボディ上限がアップロード上限を上回ることを検証します。
-// ValidateServerShutdown と同じ理由で、この制約は HTTP サーバーを組むプロセスにのみ意味を持つため
-// New() では走らせず、server グラフの DI から適用する。
+// ValidateServerShutdown と同じ理由で、New() では走らせない。
 func ValidateUploadBodyLimit(srvCfg *ServerConfig, objCfg *ObjectStorageConfig) error {
 	return validateUploadBodyLimit(srvCfg.BodyLimitMB(), objCfg.MaxUploadBytes())
 }

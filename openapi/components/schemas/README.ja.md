@@ -92,7 +92,7 @@ additionalProperties: false
 2 つのエラーエンベロープ。`ErrorResponse` は base（`details` なし）で大半のエラーステータスが
 使う。`ErrorResponseWithDetails` は `details` を追加し、意図的に露出するレスポンスだけが参照する。
 どの operation が `ErrorResponseWithDetails` を参照するかが、details 露出の**エンドポイントごとの
-opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0044](../../../docs/adr/0044-error-details-opt-in-gate.md) 参照）。
+opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0046 (error-details-opt-in-gate)](../../../docs/adr/0046-error-details-opt-in-gate.md) 参照）。
 
 ```yaml
 # ErrorResponse.yaml (base)
@@ -144,6 +144,8 @@ content:
 |`Forbidden403`|403|`ErrPermissionDenied`|認証ミドルウェア|
 |`NotFound404`|404|`ErrNotFound`|リソース不在|
 |`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted`（削除）または unique 違反 `23505`（作成・更新、例：email 重複）|
+|`PayloadTooLarge413`|413|`ErrPayloadTooLarge`|アップロードサイズ上限を超えた場合の usecase 検証|
+|`UnsupportedMediaType415`|415|`ErrUnsupportedMediaType`|許可しない `Content-Type` に対する usecase 検証|
 |`UnprocessableEntity422`|422|`ErrValidation`|OpenAPI スキーマで捕まらない domain 検証（例：email 形式）|
 |`TooManyRequests429`|429|`ErrTooManyRequests`|レートリミット|
 |`ClientClosedRequest499`|499|`ErrCanceled`|リクエスト中のクライアント切断|

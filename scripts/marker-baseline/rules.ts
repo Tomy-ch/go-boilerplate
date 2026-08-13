@@ -33,8 +33,7 @@ export const EXCLUDED_DIRECTORIES: ReadonlySet<string> = new Set([
  *
  * @remarks
  * 生成物は再生成で戻るので、固定しても差分が出るだけです。この判定自身のディレクトリを外すのは、
- * 宣言とテストがマーカーの形を入力として持つためです——外さないと、自分を数えて自分と食い違い
- * ます。各撤去ツールが `MARKER_LITERAL_FILES` や `SELF_DIR` で同じことをしています。
+ * 宣言とテストがマーカーの形を入力として持つためです——外さないと、自分を数えて自分と食い違います。
  */
 export const EXCLUDED_PATH_PREFIXES: readonly string[] = [
   "docs/portal/guides/",

@@ -86,6 +86,8 @@ services:
     build:
       context: .
       dockerfile: docker/mock-auth-server/Dockerfile
+      secrets:
+        - github_token
     ports:
       # 独自サービスの帯（2000 番台）。ホスト公開ポートはスロット毎に割り当てる（既定 2010、内部は常に 4000）。
       - "${MOCK_AUTH_HOST_PORT:-2010}:4000"
@@ -249,6 +251,7 @@ services:
       - .:/app
       # node_modules を匿名ボリュームで保持（バインドマウントの shadow 回避）
       - /app/scripts/node_modules
+      - /app/mock-auth-server/node_modules
       # docs-viewer も同様。host（darwin）が解決した vite / rolldown のバイナリは
       # コンテナ（linux）では実行できないため、バインドマウント越しに見せない
       - /app/docs-viewer/node_modules

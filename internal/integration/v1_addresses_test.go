@@ -79,9 +79,6 @@ func TestV1AddressesIntegration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// 外部 lookup 障害を usecase の degrade（error を返さず IsFallback:true）として模擬する。
-			// HTTP 境界では「503 でなく 200 へ倒れる（登録を止めない）」ことを検証し、is_fallback 値の
-			// 正しさは controller 単体テストが担保する。
 			mockUC := mock_address.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
 				LookupByPostalCode(gomock.Any(), gomock.Any()).
@@ -107,8 +104,6 @@ func TestV1AddressesIntegration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			// 外部 lookup 障害の degrade とは異なり、prefecture 解決の非NotFoundエラーは
-			// usecase がそのまま伝播する。実配線の errorhandler で 500 へ写像されることを検証する。
 			mockUC := mock_address.NewMockUsecase(ctrl)
 			mockUC.EXPECT().
 				LookupByPostalCode(gomock.Any(), gomock.Any()).

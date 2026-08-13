@@ -11,7 +11,7 @@ The authority order is **README > code > skill**. This skill discovers drift; it
 
 ## Scope and categories
 
-Default to changed production Go files against the PR base or default branch. Allow a requested full scan or named layers. Exclude generated files, mocks, and tests. Ask once for scope and a multi-select of categories; default to all five.
+Default to changed production Go files against an existing PR's `baseRefName`; without a PR, resolve the base with `make base-branch`, which reads `origin`'s live state and returns the latest release line. Never fall back to `gh repo view --json defaultBranchRef`, because the GitHub default branch may name an earlier release line. If the base cannot be resolved, stop and report that in Japanese rather than continuing: an empty file list fans out zero detectors and would be indistinguishable from a clean no-drift result. Allow a requested full scan or named layers. Exclude generated files, mocks, and tests. Ask once for scope and a multi-select of categories; default to all five.
 
 Audit only the requested categories:
 

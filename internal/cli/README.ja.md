@@ -22,6 +22,7 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|DML ディレクトリの SQL ファイルを種別ごとにマージ|
 |`worker`|`worker/`|`cmd/worker.go`|登録済み worker を起動（`worker <worker-name> [args...]`）|
 |`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|outbox relay を起動。`replay` サブコマンドは dead 行を pending へ戻す|
+|`db-slot`|`dbslot/`|`cmd/db-slot.go`|共有 worktree プールから DB スロットをリースする（`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`）|
 
 ## 構造
 
@@ -41,7 +42,8 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
 ├── dumpschema/          # RunDump / NewGenerator
 ├── mergedml/            # RunMerge / NewGenerator
 ├── worker/              # RunWorkerWith / NewHealthServer
-└── outbox/              # RunRelay / RunReplayWith
+├── outbox/              # RunRelay / RunReplayWith
+└── dbslot/              # Pool / Registry / DBAdmin / Compose / Resolver
 ```
 
 `cmd/commands.go` の `registerCommands` で全サブコマンドを Cobra のルートコマンドに登録します。
@@ -49,8 +51,10 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
 ## 設計方針
 
 - 各コマンドは `internal/cli/` 配下の1コアパッケージ + `cmd/` 配下の1薄殻ファイルで構成。
-- コアは Cobra・`internal/di`・`internal/config`・OS シグナル・infrastructure（`infrastructure/rdb/driver`
-  の型を除く）を import してはならない。注入された interface / 関数シームに対して動作する。
+- コアは Cobra・`internal/di`・OS シグナル・infrastructure（`infrastructure/rdb/driver` の型を除く）を
+  import してはならない。注入された interface / 関数シームに対して動作する。
+  `internal/config` は許可される。強制されている境界は `.golangci-full.yaml` の `independent_cli`
+  depguard ルールであり、上位の層は deny するが `config` は deny しない。
 - CLI 層は feature のビジネスロジックを持たない（それは usecase / domain の責務）。
 - コマンド追加手順: `cmd/<command>.go`（Cobra 定義 + 実依存の結線）を追加し、コアロジックを
   `internal/cli/<command>/` に追加し、`registerCommands` に登録する。

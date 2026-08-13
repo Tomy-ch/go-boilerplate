@@ -15,8 +15,7 @@ secret-scan:
 secret-scan-ci:
 	gitleaks dir . --no-banner --redact --no-color
 
-# dir モードは作業ツリーのスナップショットしか見ないため、コミットして後で消した
-# シークレットを取りこぼす。git モードはコミット履歴全体を走査するので、マージ済みの
-# 履歴に埋もれたシークレットを定期実行で検知できる（secret-scan.yaml の週次実行が使用）。
+# git モードは履歴全体を走査する（dir との違いは .makefiles/README.md の
+# secret-scan-history-ci 行）。secret-scan.yaml の週次実行が使う。
 secret-scan-history-ci:
 	gitleaks git . --no-banner --redact --no-color

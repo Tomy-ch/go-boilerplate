@@ -49,7 +49,9 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			StatusID:    uuidtestkit.NewTestFromSalt(t, "integration_detail_status"),
 			CategoryID:  uuidtestkit.NewTestFromSalt(t, "integration_detail_category"),
 			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
-			ImagePath:   ptr.To("products/integration_detail.png"),
+			Images: []productuc.ProductImageItemView{
+				{Path: "products/integration_detail.png", SortKey: 1},
+			},
 		}
 	}
 
@@ -83,7 +85,6 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 
 			productsdetail.BindHandler(e, tf, mockUC)
 
-			// security: [] の公開エンドポイントのため、Authorization ヘッダー無しでも 200 が返る。
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productDetailExistingPath, nil, nil)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			AssertJSONResponseType[productsdetailgen.ProductResponse](t, actual)
@@ -164,7 +165,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			assert.Equal(t, patch.Unspecified[string](), captured.Description)
 			assert.Equal(t, patch.Unspecified[int](), captured.StockWarningThreshold)
 			assert.Equal(t, patch.Unspecified[time.Time](), captured.PublishedAt)
-			assert.Equal(t, patch.Unspecified[string](), captured.ImagePath)
+			assert.Equal(t, patch.Unspecified[[]productuc.ProductImageParams](), captured.Images)
 		})
 
 		t.Run("PATCH /v1/products/{productId} の null 指定がクリアとして渡り null で返る", func(t *testing.T) {
@@ -178,7 +179,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			cleared.Description = nil
 			cleared.StockWarningThreshold = nil
 			cleared.PublishedAt = nil
-			cleared.ImagePath = nil
+			cleared.Images = nil
 
 			var captured productuc.UpdateProductParams
 			mockUC := mock_product.NewMockUsecase(ctrl)
@@ -197,7 +198,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 				Description:           nullable.NewNullNullable[string](),
 				StockWarningThreshold: nullable.NewNullNullable[int32](),
 				PublishedAt:           nullable.NewNullNullable[time.Time](),
-				ImagePath:             nullable.NewNullNullable[string](),
+				Images:                nullable.NewNullNullable[[]productsdetailgen.ProductImageInput](),
 			}
 
 			actual := StartServer(t, e).DoJSON(http.MethodPatch, productDetailExistingPath, body, headers)
@@ -206,14 +207,14 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			assert.Equal(t, patch.Null[string](), captured.Description)
 			assert.Equal(t, patch.Null[int](), captured.StockWarningThreshold)
 			assert.Equal(t, patch.Null[time.Time](), captured.PublishedAt)
-			assert.Equal(t, patch.Null[string](), captured.ImagePath)
+			assert.Equal(t, patch.Null[[]productuc.ProductImageParams](), captured.Images)
 
 			var res productsdetailgen.ProductResponse
 			require.NoError(t, json.NewDecoder(actual.Body).Decode(&res))
 			assert.Nil(t, res.Description)
 			assert.Nil(t, res.StockWarningThreshold)
 			assert.Nil(t, res.PublishedAt)
-			assert.Nil(t, res.ImagePath)
+			assert.Empty(t, res.Images)
 		})
 
 		t.Run("PATCH /v1/products/{productId} は未公開商品へ publishedAt を指定して公開状態にできる", func(t *testing.T) {
@@ -318,7 +319,6 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			// 認証情報が無い場合はハンドラで打ち切られ、Usecase へは到達しない。
 			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			productsdetail.BindHandler(e, tf, mockUC)

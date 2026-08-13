@@ -122,8 +122,15 @@ curl http://localhost:8080/ready
 
 ## Phase 7: Manual Rewrites
 
-1. Rewrite the contents of README.md according to your project.
-2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
+1. Rewrite the contents of README.md and README.ja.md according to your project; replace or remove
+   the repository-specific branch-rule exception in the maintainer-policy section.
+2. If your project keeps its documentation in a single language, you may collapse the pair — for
+   example by replacing README.md with the contents of README.ja.md.
+    - [gen-docs-json.ts](../../scripts/portal/gen-docs-json.ts) and the
+      [manifest.yaml](../../docs/portal/manifest.yaml) it generates from both reference README.md,
+      so a full replacement has to rewrite those scripts as well.
+    - The portal UI carries an En / Jp switch of its own, so it needs the same treatment.
+3. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
     - Rewrite the entire Info section according to your project.
         - title
         - termsOfService
@@ -150,6 +157,10 @@ A few subsystems **clamp** out-of-range values to safe defaults instead of faili
 ## Phase 9: Repository Initialization
 
 After completing the above steps, initialize the repository after the first push.
+
+`setup-repo` enables workflows before it applies the ruleset. Before applying required status
+checks to an existing repository, confirm that each declared context has reported successfully on
+a pull request; otherwise GitHub can block merges while waiting for a context it has never seen.
 
 ### When starting from a GitHub template
 
@@ -229,8 +240,12 @@ make setup-remove-boilerplate-identity
 ```
 
 It scans the repository for `boilerplate-only` markers and resolves each one, deletes
-[boilerplate-only-conventions.md](boilerplate-only-conventions.md) and its Japanese mirror, drops
-its own make target from the registry, and then removes itself. It scans rather than working from
+[boilerplate-only-conventions.md](boilerplate-only-conventions.md) and its Japanese mirror along
+with `docs/plan/**` (the upstream's requirements for a release line it has not built yet), drops
+its own make target from the registry, and then removes itself.
+
+`docs/project/roadmap.md` is **not** deleted: its opening is written so the pass swaps in a
+fork-appropriate replacement, leaving you a place to record your own direction. It scans rather than working from
 a list of files, because a list is something a marker can be written outside of — and a marker
 nobody strips is a premise that survives into your project with nothing to announce it.
 
@@ -276,7 +291,7 @@ If your organization has (or needs) a prohibited-license policy, gate it yoursel
 1. Decide the acceptable set in terms of Trivy's own classification (`notice` / `unencumbered` / `permissive` / `reciprocal` / `restricted` / `forbidden` / `unknown`), and decide whether shipped artifacts and build-only tooling get the same bar. They may not: the classifications outside `notice` / `unencumbered` in this repository come from `docker/tools/`, which is build-only and never shipped.
 2. Treat Trivy's classification as a starting point, not an authority. `BlueOak-1.0.0` lands in `unknown` even though it is OSI-approved and permissive, so decide such cases explicitly instead of letting the bucket decide for you.
 3. Add the threshold to `trivy-license-ci` in [.makefiles/security/trivy.mk](../../.makefiles/security/trivy.mk) and a failing step to the `trivy-license` job, recording per-package exceptions in [.trivyignore.yaml](../../.trivyignore.yaml).
-4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0084](../adr/0084-multi-layer-security-scanning.md), which both currently state that no policy exists.
+4. Update the trigger matrix in [.github/workflows/README.md](../../.github/workflows/README.md) and the license row of [ADR-0086 (multi-layer-security-scanning)](../adr/0086-multi-layer-security-scanning.md), which both currently state that no policy exists.
 
 ## Phase 15: Remove Sample APIs
 
@@ -372,13 +387,12 @@ how your project records its own history rather than how this one shipped.
 What you inherit is [docs/adr/README.md](../adr/README.md) as written: an ADR is an immutable
 record, and a decision that changes is replaced by a new `accepted` ADR while the old one is marked
 `superseded`. That is the ADR form as [MADR](https://adr.github.io/madr/) defines it, and what
-[ADR-0000](../adr/0000-record-architecture-decisions.md) decided.
+[ADR-0000 (record-architecture-decisions)](../adr/0000-record-architecture-decisions.md) decided.
 
 If you want in-place amendment instead — a legitimate choice for a design document that is shipped
 rather than lived — record that as a decision of your own, in your own ADR. Do not infer it from
 the fact that the upstream did it.
 
-<!-- dast:begin -->
 ## Phase 17: Decide whether to keep the DAST setup
 
 The DAST setup is already done. [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
@@ -390,7 +404,8 @@ finding. If you want dynamic scanning, you can use it as it stands — nothing e
 **The configuration values describe the API that shipped with this repository, not yours.** The
 alert thresholds in [`.github/zap/rules.tsv`](../../.github/zap/rules.tsv), the identity the scan
 authenticates as, and the surface the scan reaches were all derived from what that API answers under
-the `ci` environment profile. None of it is a claim about your API: your endpoints differ, and so
+the `dast` environment profile — which, unlike `ci`, verifies a real JWT signed by the mock auth
+server instead of accepting a stub bearer token. None of it is a claim about your API: your endpoints differ, and so
 does what counts as an accepted finding. Read the workflow header before the first scheduled run and
 re-derive both files against the API you actually have — an inherited `IGNORE` is a finding nobody
 will ever see again.
@@ -408,23 +423,72 @@ silence, but a warning nobody reads is the same as no warning. **Point `PROBE_PA
 operation of yours and `SCAN_SUBJECT` at an identity your seed data actually has, as soon as you
 have either.** Until you do, DAST is running but not testing what it exists to test.
 
-If you do not want it, remove the whole thing:
+If you do not want it, delete [`.github/workflows/zap-api-scan.yaml`](../../.github/workflows/zap-api-scan.yaml)
+and [`.github/zap`](../../.github/zap), then drop the scanner action's entry from
+[`.github/actions-pin.toml`](../../.github/actions-pin.toml) and the `zap-api-scan.yaml:dast` job
+section from [`.github/egress.toml`](../../.github/egress.toml) — `make pin-actions-check` and
+`make egress-check` both fail on an entry no workflow claims, so neither one can be forgotten
+silently. There is no enable / disable switch and there will not be one: keeping it means keeping
+it, and a scanner left configured-but-off is one nobody reads and nobody maintains.
 
-```sh
-# Preview what will be removed (no changes are made)
-docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
-  scripts/setup/remove-dast-setting --dry-run
+The `dast` environment profile is not part of that deletion. It names an execution context rather
+than a scanner, so `env/.env.dast` and the `EnvDast` branches stay useful to anything else that
+needs the real authenticator against a mocked provider.
 
-# Remove it
-docker compose run --rm node_tool_runner pnpm --dir scripts run tsx \
-  scripts/setup/remove-dast-setting
+## Phase 18: Decide whether to keep the credential-bearing scanners
+
+Two scanners here need something this repository cannot supply on its own. One wants a token for
+a vendor's service — [`sonarqube.yaml`](../../.github/workflows/sonarqube.yaml) —
+and [`code-ql.yaml`](../../.github/workflows/code-ql.yaml) needs GitHub Advanced Security, which is
+free for a public repository and billed for a private one. Both are free here because this
+repository is public. Yours may be neither public nor willing to pay.
+
+Nothing is broken while you decide. Each checks for what it needs before it scans and skips
+itself when it is absent, leaving the run green — a missing credential is a setup gap, not a scan
+result. The same path covers pull requests from forks, which never receive repository secrets at all.
+
+### To keep them
+
+Register the secret on the repository, and create the matching project on the vendor's side:
+
+| Secret | Vendor-side setup |
+| --- | --- |
+| `SONAR_TOKEN` | Create the organization and project on [SonarQube Cloud](https://sonarcloud.io), then turn **Automatic Analysis off** — leaving it on makes the server analyse the repository itself and collide with the CI analysis |
+
+`sonar-project.properties` identifies a project on SonarQube Cloud, so it is boilerplate identity
+rather than configuration. Phase 5's `make setup-replace-repository-reference` rewrites it along with
+the README and OpenAPI references; if you skipped that phase, rewrite `sonar.projectKey` and
+`sonar.organization` by hand before the first scan, or the analysis is sent to the template's project.
+
+### To remove them
+
+```bash
+# Preview: writes nothing and commits nothing.
+DRY_RUN=1 make setup-remove-licensed-scanners
+
+# Remove. The working tree must be clean — the script commits as it goes.
+make setup-remove-licensed-scanners
 ```
 
-It deletes the workflow, the ZAP rules file, the rows describing DAST in
-[.github/workflows/README.md](../../.github/workflows/README.md) and its Japanese mirror, this
-section, the scanner action's entry in the pin lockfile, and finally itself. There is no enable / disable switch and there will not be one: keeping
-it means keeping it, and a scanner left configured-but-off is one nobody reads and nobody maintains.
+The script deletes both and **commits each product separately**, so a licence you already hold
+is one `git revert` away:
 
-If you later want to see what was there, it is in the git history — the removal is one commit, and
-`git log -- .github/workflows/zap-api-scan.yaml` finds it.
-<!-- dast:end -->
+```bash
+git revert <the "CI: SonarQube Cloud のワークフローを撤去する" commit>
+```
+
+Two things to know about that undo. The README rows come off in a single final commit rather than
+with each product, because the two occupy adjacent rows of the same tables and a per-product doc
+edit would make every revert but the last one conflict — so a restored scanner works but is no longer
+documented. And a lockfile entry shared between scanners is deleted by whichever commit removed its
+last user, so a revert can leave `make pin-actions-check` red on an unregistered reference;
+`make pin-actions-resolve` puts it back and the check names the entry.
+
+Removing the workflows does not remove the secret. Delete `SONAR_TOKEN` from the repository
+settings yourself — a token nothing uses is still a token someone can steal.
+
+There is no enable / disable switch, for the reason Phase 17 gives: a scanner left configured-but-off
+is one nobody reads and nobody maintains. `bearer.yaml` is deliberately outside this set — its
+Elastic License 2.0 costs nothing to run in CI and constrains only redistribution as a service, which
+is a different question with its own answer in
+[the workflows README](../../.github/workflows/README.md#bearers-licence-and-removal).

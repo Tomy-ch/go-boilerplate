@@ -313,7 +313,6 @@ func Test_productionConfig(t *testing.T) {
 
 			var pse *middleware.PanicStackError
 			require.ErrorAs(t, handler(c), &pse)
-			// 本番設定(DisablePrintStack=false)でも runtime スタックが捕捉される。
 			assert.Contains(t, string(pse.Stack), "goroutine")
 		})
 	})

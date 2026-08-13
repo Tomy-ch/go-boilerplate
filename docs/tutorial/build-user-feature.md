@@ -89,8 +89,8 @@ make setup-remove-sample-api
 ```
 
 **What it removes** (the manifest is your table of contents for the rest of this tutorial):
-`internal/domain/user`, `internal/usecase/user`, the two infra packages under
-`repository/user` and `query_service/user`, `internal/controller/handler/v1/users`,
+`internal/domain/user`, `internal/usecase/user`, the infra package under
+`repository/user`, `internal/controller/handler/v1/users`,
 `internal/controller/job/usercount`, the three `internal/integration/v1_users*_test.go`
 files, the User OpenAPI paths/components, the User DML + migrations + seed, and
 `docs/spec/user`.
@@ -168,12 +168,13 @@ endpoint that has no contract. Each `operationId` (`GetUsers`, `PostUsers`, `Get
 - `database/migrations/000004_create_users.up.sql` / `.down.sql` — the `users` table
   (`id` UUID PK, `email` UNIQUE, `prefecture_id` FK, address columns, `created_at` /
   `updated_at` / `deleted_at` for soft delete).
-- `database/migrations/000011_users_table_search_text_column.up.sql` / `.down.sql` — a
+- `database/migrations/000015_add_users_table_search_text_column.up.sql` / `.down.sql` — a
   `GENERATED ALWAYS` `search_text` column + a GIN trigram index for keyword search.
 - `database/dml/repository/user/*.sql` — the aggregate's CRUD queries
-  (`insert_user`, `select_user_by_id`, `select_users`, `update_user`, `count_user`).
-- `database/dml/query_service/user/*.sql` — read-side queries
-  (`select_users_by_keyword`, `count_user_by_keyword`).
+  (`insert_user`, `select_user_by_id`, `select_users`, `update_user`, `count_user`) and its
+  keyword search (`select_users_by_keyword`, `count_users_by_keyword`). User keeps both on the
+  Repository rather than splitting a QueryService — the read side returns entities, not a
+  separate projection.
 - `database/seed/000001_users.sql` — sample rows (including a soft-deleted one).
 
 **Why:** **migrations are append-only** — never edit an existing migration; add a new
@@ -204,8 +205,7 @@ make gen-query   # dumps schema → merges DML → sqlc generate → fmt
 
 - `internal/controller/handler/v1/users/gen/server.gen.go` + `type.gen.go` (and the same
   under `detail/gen`, `search/gen`) — the `ServerInterface` and request/response types.
-- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` +
-  `user_query_service.gen.sql.go` — type-safe query methods.
+- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` — type-safe query methods.
 - `*_mock.go` for any interface carrying a `//go:generate mockgen` directive (added in the
   next steps; re-run `make gen-api` after you declare them).
 
@@ -280,8 +280,6 @@ from the interface + sqlc gen.
 
 - `internal/infrastructure/rdb/repository/user/user_repository.go` — implements the domain
   `user.Repository` (Create / FindByID / Update / active listing / count).
-- `internal/infrastructure/rdb/query_service/user/user_query_service.go` — implements the
-  usecase-side QueryService (keyword find / count), returning **DTOs**, not entities.
 - `*_test.go` — integration tests against a **real DB** with transaction rollback (via the
   rdb `testkit`).
 
@@ -317,17 +315,15 @@ Register the implementations with `fx.Provide` in
 **Verify:** needs the test DB migrated (Step 2b):
 
 ```bash
-go test ./internal/infrastructure/rdb/repository/user/... \
-        ./internal/infrastructure/rdb/query_service/user/...
+go test ./internal/infrastructure/rdb/repository/user/...
 ```
 
 ---
 
 ## Step 6 — Usecase layer
 
-**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository
-
-- boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
+**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository +
+boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
 
 **Files (in `internal/usecase/user/`):**
 
@@ -539,7 +535,7 @@ the Definition of Done, not an optional polish.
 |2|contracts|`openapi/**`, `database/migrations/**`, `database/dml/**`|OpenAPI-first + append-only migrations|`make db-*-migrate-up`|
 |3|generate|`make gen-api` / `make gen-query`|Change the contract, never the generated output|files appear under `gen/`|
 |4|domain|`internal/domain/user/**`|Unexported fields + `ptr.Copy` + sentinel errors + purity|`go test ./internal/domain/user/...`|
-|5|infra|`internal/infrastructure/rdb/{repository,query_service}/user/**`|`pgerror.NormalizeError` + tracer span + no type leak|`go test ./…/user/...` (DB)|
+|5|infra|`internal/infrastructure/rdb/repository/user/**`|`pgerror.NormalizeError` + tracer span + no type leak|`go test ./…/user/...` (DB)|
 |6|usecase|`internal/usecase/user/**`|DTOs out; time/tx via boundaries; orchestrate only|`go test ./internal/usecase/user/...`|
 |7|controller|`internal/controller/handler/v1/users/**`, `job/usercount/**`|One method per operationId; handler is a pure template|`go test ./…/users/...`|
 |8|DI|`internal/di/module/*.go`|The only place layers meet; marker blocks keep it removable|`make lint`|
