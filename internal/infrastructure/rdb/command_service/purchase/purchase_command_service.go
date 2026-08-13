@@ -36,7 +36,7 @@ func New(
 // CreatePurchase は、在庫減算・purchases INSERT・purchase_details INSERT を渡された tx 内で原子的に実行します。
 // 在庫減算は防御的に売り越しを弾き、更新 0 行の場合は ErrInsufficientStock（409）を返します。
 // この防御は domain の売り越し判定を言い換えた fail-closed の二重防御であり、独立した規則ではありません
-// （ADR-0029 (lightweight-cqrs) § Derivation）。返すエラーも domain の sentinel をそのまま用います。
+// （ADR-0030 (lightweight-cqrs) § Derivation）。返すエラーも domain の sentinel をそのまま用います。
 func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()

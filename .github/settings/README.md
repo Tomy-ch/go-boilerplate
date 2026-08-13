@@ -46,7 +46,7 @@ GitHub's own guidance is to confirm that the Code Quality workflow is running an
 The declared required contexts are `trivy-fs-release`, `osv-release`, `trivy-config`, `sast`,
 `lockfile-lint`, `openapi-security`, and `osv-diff`. Each has a `*-guard.yaml` companion that
 reports the same context when the main workflow is skipped by a path or branch filter; without it,
-a PR could wait forever for a check that never starts. See `docs/adr/0086-multi-layer-security-scanning.md`.
+a PR could wait forever for a check that never starts. See `docs/adr/0087-multi-layer-security-scanning.md`.
 
 ## labels.json
 

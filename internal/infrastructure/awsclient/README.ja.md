@@ -67,7 +67,7 @@ ECS / EKS アドレスに制限しています。そもそも chain を覆うこ
 IMDS・STS・SSO には届いてもその経路には届きません。
 
 link-local を許す variant を退けた理由を含む判断の全文は
-[ADR-0022 (egress-ssrf-guard)](../../../docs/adr/0022-egress-ssrf-guard.ja.md#aws-の-credential-chain-をガードする)
+[ADR-0023 (egress-ssrf-guard)](../../../docs/adr/0023-egress-ssrf-guard.ja.md#aws-の-credential-chain-をガードする)
 に記録しています。
 
 ## 注記
