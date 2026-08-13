@@ -469,6 +469,29 @@ foundation itself depend on a particular model, vendor or agent.
 See [docs/design/agent-environment.md](docs/design/agent-environment.md) /
 [docs/rules.md](docs/rules.md).
 
+#### Agent compatibility
+
+Agent-specific configuration is treated as part of the repository's maintained development
+system, not as disposable local state. Repository-owned skills, hooks and automation may therefore
+need to evolve together with the code and the constraints they enforce.
+
+**Codex CLI currently has a limitation for fully autonomous harness maintenance.** Under its
+`workspace-write` sandbox, repository-local `.agents/` and `.codex/` directories are protected as
+read-only paths, and there is currently no supported per-repository override that keeps the
+workspace sandbox enabled while allowing those paths to be maintained by the agent.
+
+Codex remains usable for ordinary implementation, review and other changes within the writable
+workspace. However, workflows that must update repository-owned skills, Codex hooks or other
+automation under `.agents/` / `.codex/` cannot currently complete end to end without additional
+user intervention or broader sandbox permissions. For that reason, Codex CLI is **therefore
+considered partially supported for agent-driven development: ordinary implementation workflows are
+supported, while fully autonomous workflows that maintain the repository's own agent harness are
+not**.
+
+This is an agent-runtime limitation rather than an architectural dependency of this project; the
+repository does not require Codex, and the restriction can be removed from this documentation once
+Codex provides a safe repository-scoped mechanism for explicitly trusted writable paths.
+
 ### Intended system types
 
 Designed for new backend products, PoC → early-scale phases, strict layered team development,

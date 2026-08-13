@@ -6,6 +6,8 @@ description: >-
 
 # Repo Ops Runbook
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Concrete recovery steps for the operational gotchas that recur in this repo. This is a lookup
 table, not a workflow: find the symptom, run the fix. When a step is destructive (drops DB data,
 `chown`s a tree, stops containers other checkouts rely on) say so to the user first per `AGENTS.md`.
