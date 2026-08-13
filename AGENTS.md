@@ -124,6 +124,28 @@ Note the asymmetry the *Documentation Rules* in `docs/rules.md` draw between a d
 describes and one that governs. Correcting the first to match the code is routine. Correcting the
 second is not yours to start.
 
+<!-- boilerplate-only:begin -->
+## What to Recommend
+
+This section governs what you **recommend**, never what you may change. Authority to act is
+untouched: *Conflicting Authority* above, `docs/rules.md`, and the modification scope below still
+decide that.
+
+While this repository is distributed as the boilerplate source, its product is **the state a project
+receives at `useTemplate` time** — not the history that produced it. So when you weigh options and
+state a preference, weigh them for that snapshot: what reads as coherent to someone who has never
+seen this repository and will never read its git log.
+
+**On that axis, quality and consistency outrank the cost of reaching them.** A numbering that
+contradicts the order it teaches, a convention followed everywhere but here, a name that survives
+only because renaming it is work — recommend fixing them. State the cost plainly instead of letting
+the cost pick the answer; "it already shipped" carries little weight while nobody has instantiated
+from this in production.
+
+Give the cost with the recommendation — files touched, what breaks for whom, what must be rebuilt —
+so a human can decline the scope while keeping the direction.
+<!-- boilerplate-only:end -->
+
 ## YAGNI vs Regression Safeguards
 
 - **Functional YAGNI applies to production code**: do NOT add speculative features, config, or code
