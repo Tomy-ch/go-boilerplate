@@ -5,6 +5,8 @@ description: Patch only advisory-named vulnerable dependencies across this repos
 
 # Targeted Dependency Vulnerability Upgrade
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Accept an advisory list from the user message. It may contain one line per package
 (`package current → fixed (CVE/GHSA)`) or pasted audit output. Parse package, installed version if
 given, fixed candidates, advisory IDs, and severity; deduplicate a package with several
