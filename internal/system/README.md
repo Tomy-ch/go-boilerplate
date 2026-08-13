@@ -20,21 +20,6 @@ The responsibilities of this package are as follows.
 
 This package **does not contain business logic.**
 
-## Package Structure
-
-```txt
-internal/system
-├── buildinfo.go
-├── version.go
-└── mock/
-```
-
-|File|Role|
-|---|---|
-|`buildinfo.go`|BuildInfo interface and implementation|
-|`version.go`|Metadata embedded at build time|
-|`mock/`|Mocks for testing|
-
 ## BuildInfo Interface
 
 Application code retrieves build information through the **BuildInfo interface**.

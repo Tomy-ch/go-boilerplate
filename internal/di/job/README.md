@@ -8,11 +8,8 @@ This directory is the DI seam between the application's job framework and `fx`. 
 
 ## Structure
 
-```text
-internal/di/job/
-├── runner.go   # Runner DI provider
-└── hook/       # Lifecycle hook (job execution at startup)
-```
+`runner.go` provides the Runner; `hook/` runs it at startup. The hook is separate because running
+is a lifecycle event, not part of describing the graph.
 
 ## Architecture
 

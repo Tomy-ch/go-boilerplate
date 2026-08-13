@@ -8,17 +8,12 @@ SQL files placed here are converted to Go code (`internal/infrastructure/rdb/sql
 
 ## Directory Structure
 
-```text
-database/dml/
-├── repository/       # Aggregate persistence DML (CRUD)
-│   ├── user/
-│   └── prefecture/
-├── query_service/    # Search-specific DML (read optimization)
-│   └── user/
-├── command_service/  # Command-specific DML (future extension)
-└── system_cqrs/     # System operational queries (health check, etc.)
-    └── health_check/
-```
+One subdirectory per DML category; each has its own README stating what belongs in it.
+
+- `repository/` — Aggregate persistence and single-aggregate reads (CRUD)
+- `query_service/` — Read projections that span aggregates, and aggregation
+- `command_service/` — Writes that must be atomic with another aggregate's state
+- `system_cqrs/` — Queries for the system's own operation rather than the business
 
 ## Subdirectory Mapping to Onion Architecture
 

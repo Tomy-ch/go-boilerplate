@@ -8,11 +8,8 @@ This directory is the DI seam between the application's worker framework and `fx
 
 ## Structure
 
-```text
-internal/di/worker/
-├── runner.go   # Engine DI provider
-└── hook/       # Lifecycle hook (worker execution / health listener)
-```
+`runner.go` provides the Engine; `hook/` starts it and its health listener at startup, for the
+same reason the job profile separates the two.
 
 ## Architecture
 

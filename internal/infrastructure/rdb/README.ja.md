@@ -48,18 +48,13 @@ flowchart TB
 
 ## ディレクトリ構成
 
-```txt
-internal/infrastructure/rdb
- ├ repository/        Repository 実装
- ├ query_service/     QueryService 実装
- ├ command_service/   CommandService 実装（QueryService の write 側対称物）
- ├ system_cqrs/      システム運用クエリ（ヘルスチェック等）
- ├ driver/            DB 接続 / トランザクション + pgx クエリトレーサー（ログ / トレース）
- ├ sqlc/              sqlc 生成コード + SQL helper
- ├ pgerror/           PostgreSQL エラー正規化
- ├ metrics/           コネクションプール + クエリ duration/error の Prometheus メトリクス
- └ testkit/           RDB テストユーティリティ
-```
+データアクセスのディレクトリは `database/dml/` の DML 区分と 1 対 1 で対応する
+（`repository/` / `query_service/` / `command_service/` / `system_cqrs/`）。SQL 側にあって Go 側に
+無い区分（またはその逆）は、誰も決めていない区分だからである。
+
+残りはこの 4 つが必要とするものである。`driver/` は接続・トランザクション・pgx のトレーサ、
+`sqlc/` は生成コード、`pgerror/` は PostgreSQL エラーの正規化、`metrics/` はプールとクエリの計装、
+`testkit/` はテスト用の足場を担う。
 
 ## Repository
 

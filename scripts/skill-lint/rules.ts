@@ -265,7 +265,8 @@ export type CodexSkillFiles = {
  * Codex の 1 スキルの必須ファイルを検査する（`.codex/README.md` の Layout 表が正）。
  *
  * @remarks
- * 対訳は Codex 側では任意なので、欠落は報告せず、在るときだけ構造を検査します。
+ * 対訳は Claude 側と同じく必須で、欠落そのものを報告します。任意だった頃は 24 スキルが
+ * 「対訳は `SKILL.ja.md` にある」と書きながらファイルを持たない状態で緑を返し続けました。
  */
 export function checkCodexSkillStructure(
   skillDir: string,
@@ -285,7 +286,7 @@ export function checkCodexSkillStructure(
     });
   }
 
-  if (files.canonical !== null && files.translation !== null) {
+  if (files.canonical !== null) {
     findings.push(
       ...checkTranslationPair(
         path.join(skillDir, "SKILL.md"),

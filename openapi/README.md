@@ -10,20 +10,14 @@ This directory contains the **OpenAPI definitions** used in this project.
 
 ## Directory Structure
 
-```text
-openapi/
-├── openapi.yaml              # Entry point (split file references)
-├── openapi.gen.yaml          # Bundled file (generated, used for code generation)
-├── paths/                    # Endpoint definitions
-├── components/
-│   ├── schemas/              # Data structures (request / response / security)
-│   ├── parameters/           # Query and path parameters
-│   ├── requests/             # Request semantics (content / required)
-│   └── responses/            # Response semantics (status / description)
-├── parameter-guide.md        # Parameter definition reference
-├── secure-uuid.md            # UUID exposure security evaluation
-└── boundary-ownership.md     # Who owns min/max/length constraints (wire contract vs domain rule)
-```
+The split is fixed by how the spec is assembled, not by convenience:
+
+- `openapi.yaml` — the entry point; every other file is reached from here by `$ref`
+- `openapi.gen.yaml` — the bundled result, generated and read by code generation (do not edit)
+- `paths/` — endpoint definitions, laid out to mirror the URL structure
+- `components/` — the reusable halves of a definition: `schemas/`, `parameters/`, `requests/`, `responses/`
+
+Reference documents sit beside them as ordinary Markdown; each states its own subject.
 
 ## File Responsibilities
 

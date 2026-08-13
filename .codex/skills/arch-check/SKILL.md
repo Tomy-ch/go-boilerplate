@@ -5,6 +5,8 @@ description: Audit this repository's architectural compliance before review or m
 
 # Architecture Compliance Check
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Use this skill for an architecture-focused review, not for formatting, general code review, or specification validation.
 
 ## Scope and write permission

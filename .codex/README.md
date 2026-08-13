@@ -27,7 +27,7 @@ modification scope are not duplicated here.
 | Path | Purpose |
 | --- | --- |
 | `config.toml` | Recorded Codex posture: sandbox policy, approval policy, and enabled capabilities. Codex does not auto-load it; apply it with `-c`, `--profile`, or `~/.codex/config.toml`. |
-| `hooks.json` | Project hooks. The comment-remediation hook sends unswept `apply_patch` paths to the shared checker. |
+| `hooks.json` | Project hooks. The doc-router hook sends `apply_patch` paths to the shared router, which names the documents governing them. |
 | `skills/<name>/` | Reusable workflows. Each skill has an English-canonical `SKILL.md`; `agents/openai.yaml` provides Codex UI metadata. Some skills bundle `scripts/` or `prompts/`. |
 | `agents/` | Role definitions for read-only parallel work, such as layer auditors and review verifiers. Integrator skills use them when delegation is available and otherwise execute the same role instructions inline. |
 | `scaffold-spec/` | Runtime spec-format definitions used by `new-spec-*`, `verify-spec`, and `scaffold-*` skills. Updating these files changes the shared format without duplicating it into skills. |

@@ -21,15 +21,7 @@ allOf:
 
 ## Directory Contents
 
-```text
-requests/
-└── users/
-    ├── UsersPostRequest.yaml      # Create user (base + required fields)
-    ├── UserPutRequest.yaml        # Full update (all fields required)
-    └── UserPatchRequest.yaml      # Partial update (base, fields optional)
-```
-
-> `users/` is a **sample implementation**. Mirror its structure for your own resources.
+One directory per resource, named after it; each holds that resource's request bodies.
 
 ## Naming Convention
 

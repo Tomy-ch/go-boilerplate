@@ -16,34 +16,6 @@
 - テスタビリティの確保
 - フレームワーク非依存なロギング API の提供
 
-## Package Structure
-
-```txt
-internal/logging
-├── logger.go
-├── logger_core.go
-├── stacktrace_core.go
-├── field.go
-├── field_builder.go
-├── const.go
-├── level.go
-├── test_kit.go
-└── mock/
-```
-
-各ファイルの役割は以下のとおりです。
-
-|ファイル|役割|
-|---|---|
-|`logger.go`|`Logger` インターフェース、その `*logger` 実装、および `WithCore`（追加の `LogCore` を Tee）|
-|`logger_core.go`|zap ベースの Logger 構築（`NewJSONLogger` / `NewConsoleLogger`、エンコーダ設定）|
-|`level.go`|`Level` 型と `LevelDebug/Info/Warn/Error` / `ParseLevel`|
-|`stacktrace_core.go`|自動付与される `Entry.Stack` を JSON 出力向けに行配列へ変換する zapcore.Core ラッパー|
-|`field.go`|ログフィールドの型とフィールドコンストラクタ|
-|`field_builder.go`|HTTP / SQL ログフィールドの生成|
-|`const.go`|ログキー定義|
-|`test_kit.go`|テスト用の Logger / FieldBuilder|
-
 ## Logger Interface
 
 アプリケーションコードは **Logger インターフェース**のみを使用します。

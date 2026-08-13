@@ -6,6 +6,8 @@ description: >-
 
 # Glossary
 
+A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+
 Maintain `docs/spec/glossary.md` as the single source of truth for this system's business vocabulary.
 
 ## Decision boundary

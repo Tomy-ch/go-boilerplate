@@ -10,20 +10,14 @@
 
 ## ディレクトリ構成
 
-```text
-openapi/
-├── openapi.yaml              # エントリーポイント（分割ファイル参照）
-├── openapi.gen.yaml          # バンドル済みファイル（生成物、コード生成用）
-├── paths/                    # エンドポイント定義
-├── components/
-│   ├── schemas/              # データ構造（リクエスト / レスポンス / セキュリティ）
-│   ├── parameters/           # クエリ・パスパラメータ
-│   ├── requests/             # リクエストのセマンティクス（content / required）
-│   └── responses/            # レスポンスのセマンティクス（status / description）
-├── parameter-guide.md        # パラメータ定義リファレンス
-├── secure-uuid.md            # UUID 公開のセキュリティ評価
-└── boundary-ownership.md     # min/max/長さ制約のオーナーシップ（ワイヤー契約 vs domain ルール）
-```
+この分割は利便ではなく、spec の組み立て方によって決まっている。
+
+- `openapi.yaml` — エントリポイント。他のファイルはすべてここから `$ref` で辿られる
+- `openapi.gen.yaml` — バンドル結果。生成物でありコード生成が読む（編集しない）
+- `paths/` — エンドポイント定義。URL の構造を写すように配置する
+- `components/` — 定義の再利用される側: `schemas/` / `parameters/` / `requests/` / `responses/`
+
+参考資料はそれらと並ぶ通常の Markdown として置く。主題は各ファイルが自分で述べる。
 
 ## ファイルの役割
 
