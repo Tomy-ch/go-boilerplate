@@ -142,7 +142,7 @@ recommendation to re-run `/ddd-audit`. No commit, no push.
 
 - Read: `internal/usecase/boundary/**`, `internal/infrastructure/**`, `docs/design/**`,
   `docs/adr/**`, per-package `README.md`
-- Write: `docs/design/context-map.md` and its `docs/ja/` pair only
+- Write: `docs/design/context-map.md` and its `.ja.md` pair only
 - Never touch: the DDD ledger, ADRs, source code, generated files, `AGENTS.md`
 
 ## Constraints
@@ -153,7 +153,7 @@ recommendation to re-run `/ddd-audit`. No commit, no push.
 - ❌ 連携の仕組みを地図へ書き写す（関係だけを書き、機構は既存の design doc へリンク）
 - ❌ 台帳の書き換え、commit / push
 - ✅ 辺ごとに `file:line` の根拠と、構造からは判別できないことの明示
-- ✅ 出力・地図本文の日本語ミラーは日本語（英語正本 + `docs/ja/` ペア）
+- ✅ 出力・地図本文の日本語ミラーは日本語（英語正本 + 隣の `.ja.md`）
 
 ## Checklist
 

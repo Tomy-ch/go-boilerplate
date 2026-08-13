@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | 同一ディレクトリの README / 一般 Markdown | `foo.md` | `foo.ja.md` |
 | skill | `SKILL.md` | `SKILL.ja.md` |
-| ドキュメントツリー | `docs/<path>/foo.md` | `docs/ja/<path>/foo.ja.md` |
+| ドキュメントツリー | `docs/<path>/foo.md` | `docs/<path>/foo.ja.md` |
 
 ペアを安全に確定できない場合は、先へ進まないこと。
 

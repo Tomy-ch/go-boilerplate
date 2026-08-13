@@ -98,7 +98,7 @@ curl -X DELETE "http://localhost:${API_HOST_PORT:-8080}/v1/users/<userId>" \
 本文を送ります。`failure_reason=permanent` 付きで `gobp-events-dlq` に入ります。
 
 > キューは全 checkout で共有され、worktree 単位では分離できません
-> （[`docs/ja/maintenance/db-worktree-pool.ja.md`](../../../../docs/ja/maintenance/db-worktree-pool.ja.md) を参照）。
+> （[`docs/maintenance/db-worktree-pool.ja.md`](../../../../docs/maintenance/db-worktree-pool.ja.md) を参照）。
 > 2 つの worktree で同時にこの worker を動かすと、どちらがメッセージを取るかは決まりません。
 
 ## 構成

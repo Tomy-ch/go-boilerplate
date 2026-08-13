@@ -86,9 +86,9 @@ For documentation that lives under `docs/` directly (rather than as `**/README.m
 | Filesystem location | Becomes section | Notes |
 | --- | --- | --- |
 | `docs/*.md` | section id `architecture` | Root-level architecture docs (rules / decisions / development-flow / ...) |
-| `docs/ja/*.md` | items of section `architecture` (lang: ja) | Japanese counterparts |
+| `docs/*.ja.md` | items of section `architecture` (lang: ja) | Japanese counterparts |
 | `docs/<dir>/*.md` | section id `<dir>` | Auto for any subdir; e.g. `docs/maintenance/*.md` → section `maintenance` |
-| `docs/ja/<dir>/*.md` | items of section `<dir>` (lang: ja) | Japanese counterparts |
+| `docs/<dir>/*.ja.md` | items of section `<dir>` (lang: ja) | Japanese counterparts |
 | `docs/<dir>/index.html` | section id `<dir>`, single HTML item (lang: all) | For generated reference sites (godoc, coverage, ...) |
 
 To control where an auto-discovered section appears in the portal, reference its id from `meta.groups` (for placement) and optionally `meta.section_titles` (for display name) / `meta.subgroups` (for subdivision) / `meta.reference_links` (to pull it out as a quick link).

@@ -47,7 +47,7 @@ SDK の失敗は各呼び出し箇所（`Put` / `List` / `Delete`）で `apperro
 
 ## 既定で配線される — SQS adapter との違い
 
-この adapter は既定の DI グラフに**入っています**。したがって `aws-sdk-go-v2/service/s3` と SDK コアは出荷バイナリにリンクされます。[`queue/sqs`](../queue/sqs/README.ja.md) は削除可能なサンプル群からのみ配線されるため、サンプルを削除すれば `service/sqs` はバイナリから外れます（[ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../docs/ja/adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md)）。
+この adapter は既定の DI グラフに**入っています**。したがって `aws-sdk-go-v2/service/s3` と SDK コアは出荷バイナリにリンクされます。[`queue/sqs`](../queue/sqs/README.ja.md) は削除可能なサンプル群からのみ配線されるため、サンプルを削除すれば `service/sqs` はバイナリから外れます（[ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0050-broker-sdk-isolation-measured-as-coupling.ja.md)）。
 
 この非対称性は意図的です。worker はブローカーが選ばれるまでブローカーを持ちませんが、オブジェクトストレージのポートは最初から使われており、宣言以上のものであるためには動く実装が要ります。何も保存しない構成は `InfrastructureModule()` から `objectStorageModule()` を外せます。
 

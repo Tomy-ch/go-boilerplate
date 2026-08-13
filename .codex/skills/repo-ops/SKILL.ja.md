@@ -66,7 +66,7 @@
 
 ```bash
 rg "<pattern>" \
-  -g '!**/*.ja.md' -g '!docs/ja/**' -g '!docs/portal/**' \
+  -g '!**/*.ja.md' -g '!docs/portal/**' \
   -g '!docs/godoc/**' -g '!docs/db-schema/**' -g '!docs/openapi/**' -g '!docs/coverage/**'
 ```
 

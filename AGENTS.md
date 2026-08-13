@@ -40,7 +40,6 @@ documentation-portal UI assets:
 
 ```txt
 **/*.ja.md
-docs/ja/**
 docs/portal/**
 ```
 

@@ -85,7 +85,7 @@ Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **7
 
 ```bash
 rg "<pattern>" \
-  -g '!**/*.ja.md' -g '!docs/ja/**' -g '!docs/portal/**' \
+  -g '!**/*.ja.md' -g '!docs/portal/**' \
   -g '!docs/godoc/**' -g '!docs/db-schema/**' -g '!docs/openapi/**' -g '!docs/coverage/**'
 ```
 

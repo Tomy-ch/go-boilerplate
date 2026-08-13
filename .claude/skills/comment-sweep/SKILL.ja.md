@@ -153,8 +153,8 @@ comment-sweep 検出結果（scope: <X>, 対象 <n> ファイル / <m> パッケ
    immutable と定めており、新規レコードとして起こすことも既存を書き換えることもあり得る。どちらが
    正しいかはリポジトリ方針の判断であって、コード整理の判断ではない。
    「既存 ADR-NNNN を書き換える」/「新規 ADR を起こす」/「ADR ではなく docs/design か README へ」/
-   「今回は移設しない」を問う。いずれの場合も、英語正本と `docs/ja/` ミラー、さらに
-   `docs/adr/README.md` と `docs/ja/adr/README.ja.md` のログ表を同一変更内で更新する。
+   「今回は移設しない」を問う。いずれの場合も、英語正本と隣の `.ja.md`、さらに
+   `docs/adr/README.md` と `docs/adr/README.ja.md` のログ表を同一変更内で更新する。
 5. 移設先がパッケージ README で、その追記が README の主張を実質的に変えるなら、README をコードの実態と
    突き合わせる後続として `back-prop` が適切であることを伝える。
 

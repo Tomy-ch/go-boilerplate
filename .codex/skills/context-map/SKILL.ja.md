@@ -4,7 +4,7 @@
 
 システムが所有しないコンテキストとモデルを交換するすべての場所について、英語正本の関係マップ
 `docs/design/context-map.md` を作成します。日本語訳として
-`docs/ja/design/context-map.ja.md` を維持します。
+`docs/design/context-map.ja.md` を維持します。
 
 ## 絶対に守る規則
 
@@ -98,7 +98,7 @@ Codex の明示的なユーザー質問を、辺ごとに一回使います。�
 このスキルの実行中に書く文書は次の二つだけです。
 
 - `docs/design/context-map.md` — 英語正本
-- `docs/ja/design/context-map.ja.md` — 日本語訳
+- `docs/design/context-map.ja.md` — 日本語訳
 
 次の構成を使用します。
 
@@ -124,7 +124,7 @@ Codex の明示的なユーザー質問を、辺ごとに一回使います。�
 - 辺を確立するのに必要な、boundary、infrastructure、controller、OpenAPI、design、ADR、パッケージ文書
   だけを読みます。
 - このスキルの実行中に書くのは `docs/design/context-map.md` と
-  `docs/ja/design/context-map.ja.md` だけです。DDD 台帳、ADR、ソースコード、生成ファイル、`AGENTS.md` は
+  `docs/design/context-map.ja.md` だけです。DDD 台帳、ADR、ソースコード、生成ファイル、`AGENTS.md` は
   決して編集しません。
 - 接触点の一覧をハードコードせず、実行時に boundary と infrastructure から解決します。
 - 構造的な根拠を関係の決定へすり替えません。

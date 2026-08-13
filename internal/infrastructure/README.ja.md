@@ -97,7 +97,7 @@ Infrastructure 層では以下を行ってはいけません。
 - SQL 実行は sqlc を使用する
 - Repository と QueryService の分割は「検索かどうか」ではなく、その読み取りが何を対象にするかで決める。
   集約の system-of-record（完全な集約を再構成できる）は Repository、派生した射影 / リードモデルは
-  QueryService。[ADR-0029 (lightweight-cqrs)](../../docs/ja/adr/0029-lightweight-cqrs.ja.md) を参照
+  QueryService。[ADR-0029 (lightweight-cqrs)](../../docs/adr/0029-lightweight-cqrs.ja.md) を参照
 - DBTX は `driver.New(ctx, db)` で取得する（ログ / トレースは driver の接続層で付与される）
 - context を必ず伝搬する
 - 外部エラーは必ず正規化する

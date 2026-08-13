@@ -88,7 +88,7 @@ When the auditor reported `追記なし`, do not write the destination document:
 
 For an ADR destination, do not choose its record shape. Ask the user to choose one of: rewrite the
 existing ADR-NNNN, create a new ADR, use `docs/design` or a README instead, or do not relocate now.
-If approved, update the English canonical document, its `docs/ja/` mirror, and the English/Japanese
+If approved, update the English canonical document, its `.ja.md` translation, and the English/Japanese
 ADR log tables together. If a package README addition materially changes its claims, mention
 `back-prop` as the appropriate follow-up.
 

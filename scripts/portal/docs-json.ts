@@ -193,7 +193,7 @@ export function buildDocsJson(
   }
 
   // (b) auto-discovered: docs/<dir>/index.html（静的 HTML）
-  // (c) auto-discovered: docs/<dir>/*.md + docs/ja/<dir>/*.md
+  // (c) auto-discovered: docs/<dir>/*.md（正本と `.ja.md` の対訳は同じディレクトリに居る）
   for (const directory of discovered.directories) {
     if (!directory.hasIndexHtml && !directory.enFiles.length && !directory.jaFiles.length) continue;
 
@@ -222,13 +222,13 @@ export function buildDocsJson(
         name: autoTitle(file),
         path: `../ja/${directory.name}/${file}`,
         lang: "ja",
-        source: `docs/ja/${directory.name}/${file}`,
+        source: `docs/${directory.name}/${file}`,
         guideId: guideIdOf(file),
       });
     }
   }
 
-  // (d) auto-discovered: docs/*.md と docs/ja/*.md を 1 つの section へ集約
+  // (d) auto-discovered: docs 直下の正本と対訳を 1 つの section へ集約
   if (discovered.rootEnFiles.length || discovered.rootJaFiles.length) {
     const section = ensureSection(ROOT_MD_SECTION_ID, "Architecture Docs");
 
@@ -246,7 +246,7 @@ export function buildDocsJson(
         name: autoTitle(file),
         path: `../ja/${file}`,
         lang: "ja",
-        source: `docs/ja/${file}`,
+        source: `docs/${file}`,
         guideId: guideIdOf(file),
       });
     }

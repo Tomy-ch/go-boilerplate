@@ -117,9 +117,10 @@ export function checkDocRoutes(source: string, present: ReadonlySet<string>): Fi
   });
 }
 
+/** 対訳は正本の隣に `<name>.ja.md` として置く。リポジトリの他のすべての対訳と同じ形である。 */
 export function expectedTranslation(file: string): string | null {
-  if (!file.startsWith("docs/") || !file.endsWith(".md") || file.startsWith("docs/ja/") || file.startsWith("docs/adr/") || isGenerated(file) || translationExclusion(file) !== null) return null;
-  return path.join("docs/ja", path.relative("docs", path.dirname(file)), `${path.basename(file, ".md")}.ja.md`);
+  if (!file.startsWith("docs/") || !file.endsWith(".md") || file.endsWith(".ja.md") || file.startsWith("docs/adr/") || isGenerated(file) || translationExclusion(file) !== null) return null;
+  return path.join(path.dirname(file), `${path.basename(file, ".md")}.ja.md`);
 }
 
 export function translationExclusion(file: string): string | null {
@@ -133,8 +134,8 @@ export function checkTranslations(files: readonly string[]): Finding[] {
     return translation !== null && !present.has(translation) ? [{ file, message: `missing ${translation}` }] : [];
   });
   const orphans = files.flatMap((file) => {
-    if (!file.startsWith("docs/ja/") || file.startsWith("docs/ja/adr/") || !file.endsWith(".ja.md")) return [];
-    const canonical = path.join("docs", path.relative("docs/ja", file).replace(/\.ja\.md$/, ".md"));
+    if (!file.startsWith("docs/") || file.startsWith("docs/adr/") || !file.endsWith(".ja.md") || isGenerated(file)) return [];
+    const canonical = file.replace(/\.ja\.md$/, ".md");
     return expectedTranslation(canonical) !== file || !present.has(canonical) ? [{ file, message: `orphan translation for ${canonical}` }] : [];
   });
   return [...missing, ...orphans];

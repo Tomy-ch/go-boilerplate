@@ -229,7 +229,7 @@ case config.EnvLocal:
   `core.provideAuthenticator` はこれとは独立にゲートされ、CI / test はスタブ、
   local / development は JWKS authenticator、staging / production は fail-closed です。
   共通の境界を前提とせず `switch` を読んでください。
-- 本リポジトリがボイラープレートとして頒布されている間は、認可ゲートがどの環境を名前で挙げるかはサンプル API の撤去でも動きます。[`docs/ja/get-started/boilerplate-only-conventions.ja.md`](../../docs/ja/get-started/boilerplate-only-conventions.ja.md) を参照してください。ここから作られたプロジェクトには当てはまりません。 <!-- boilerplate-only:line -->
+- 本リポジトリがボイラープレートとして頒布されている間は、認可ゲートがどの環境を名前で挙げるかはサンプル API の撤去でも動きます。[`docs/get-started/boilerplate-only-conventions.ja.md`](../../docs/get-started/boilerplate-only-conventions.ja.md) を参照してください。ここから作られたプロジェクトには当てはまりません。 <!-- boilerplate-only:line -->
 
 ## Do / Don't
 
