@@ -85,6 +85,8 @@ type ListProductsParams struct {
 	Ascending bool
 }
 
+// productListRange は、検証済みの価格・在庫数の範囲フィルタです。各値は非負で、下限は上限を超えません。
+// nil のフィールドは対応する境界を課しません。
 type productListRange struct {
 	minPrice    *money.Price
 	maxPrice    *money.Price

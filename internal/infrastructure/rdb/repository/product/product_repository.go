@@ -48,8 +48,6 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 	db := gen.New(driver.New(ctx, r.db))
 	hasAfter := params.AfterPublishedAt != nil && params.AfterID != nil
 
-	// keyset は Repository README の方針どおり、並び順ごとに first/after の固定クエリへ分ける。
-	// 参照: internal/infrastructure/rdb/repository/README.md#keyset-pagination
 	toRow := func(p gen.Products, statusName, categoryName string) productRow {
 		return productRow{p: p, statusName: statusName, categoryName: categoryName}
 	}
