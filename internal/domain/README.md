@@ -13,14 +13,14 @@
   responsibility of no entity and no value object, so no aggregate package owns it — see
   [Where a Domain Service lives](#where-a-domain-service-lives).
 
-Example: `internal/domain/user/`
+One package per aggregate, named after it, holding these files:
 
 ```mermaid
 flowchart TB
-    Root["Aggregate: user"]
-    A["user_domain.go (Aggregate Root)"]
+    Root["Aggregate: &lt;name&gt;"]
+    A["&lt;name&gt;_domain.go (Aggregate Root)"]
     B["value.go (ValueObject)"]
-    D["user_repository.go (Repository IF)"]
+    D["&lt;name&gt;_repository.go (Repository IF)"]
     E["error.go (Domain Error)"]
     F["constant.go (Validation Const)"]
 
@@ -33,6 +33,13 @@ flowchart TB
 
 - As a principle, describe rules using **functions without side effects (pure functions)**.  
   I/O, time retrieval, and random generation should depend on **values injected via arguments**.
+
+- **No `context.Context` in domain logic.** A Repository interface signature may declare one, because
+  the seam it describes is crossed by an implementation that needs it for propagation. Nothing else
+  here takes one: a rule that accepts a deadline or a cancellation signal is a rule that expects to
+  perform I/O, and this layer performs none. Note that depguard cannot catch this — `context` is a
+  standard-library package that outer layers legitimately use, so the rule holds by review rather than
+  by lint.
 
 - State changes must be performed through **entity methods**, and must not access external resources.
 
@@ -380,7 +387,7 @@ maxEmailLength
 The OpenAPI request-validation middleware and this layer are **not redundant** — they have different owners and different scopes:
 
 - **Different owner.** OpenAPI constraints are the *wire contract* (what the HTTP API accepts); the domain constants are the *business rule* (what the business considers valid). They may legitimately differ — see [Input Boundary Value Ownership](../../openapi/boundary-ownership.md).
-- **The only universal chokepoint — both inbound and from persistence.** Every entity is built through `New(...)`. Not only do non-HTTP write paths (seed, CLI, batch jobs, tests, any future entrypoint) bypass the request middleware entirely — reconstruction from the database also goes through the same validating constructor (`rowToUser` rebuilds every row via `user.New(...)`). So `New(...)` also guards against invalid data coming *from* infra: a corrupt, manually-inserted, or legacy row that violates a domain invariant fails at reconstruction instead of surfacing as a valid-looking entity. The middleware cannot protect this read path at all; only the domain can.
+- **The only universal chokepoint — both inbound and from persistence.** Every entity is built through `New(...)`. Not only do non-HTTP write paths (seed, CLI, batch jobs, tests, any future entrypoint) bypass the request middleware entirely — reconstruction from the database goes through the same validating constructor, because the Repository rebuilds every row through it rather than assigning fields directly. So `New(...)` also guards against invalid data coming *from* infra: a corrupt, manually-inserted, or legacy row that violates a domain invariant fails at reconstruction instead of surfacing as a valid-looking entity. The middleware cannot protect this read path at all; only the domain can.
 - **Framework-agnostic self-protection.** The domain must be correct independent of its caller. Delegating validation to the transport layer would couple the domain's correctness to Echo / the middleware, violating the layer's framework-agnostic rule.
 
 In short: the middleware protects the HTTP boundary; the domain protects the *business rule itself*, for all callers.
@@ -515,15 +522,20 @@ the branch this principle describes without exception.
 
 > **Departure from Evans.** Evans makes the aggregate the boundary of *immediate* consistency — one
 > transaction changes one aggregate, and anything beyond it is reconciled afterwards. This model
-> widens that boundary in the two situations above, and the widening is real: creating a purchase
-> holds rows from three aggregates in one transaction — the purchaser (locked to guard membership),
-> the products (locked to reserve stock), and the purchase being written. That is accepted because
-> Evans's argument is about *change*, and the three roles are not alike. Only the purchase and the
-> product are written, and their writes must be atomic or overselling becomes observable; the user is
-> read and held, never mutated, so its root keeps sole authority over its own state. What the
-> principle protects — no mutating several aggregates through one loaded graph until nobody can say
-> which invariant belongs to which root — still holds. What it would otherwise permit by default, and
-> what this model refuses, is deciding a cross-aggregate question from a read that nothing holds.
+> widens that boundary in the two situations above, and the widening is real: a single transaction may
+> hold rows from three aggregates at once — one locked purely as a guard, one locked because it is
+> about to be written, and the one being created. That is accepted because Evans's argument is about
+> *change*, and the roles are not alike. Only the written aggregates need atomicity, or the
+> intermediate state becomes observable; the guarded one is read and held, never mutated, so its root
+> keeps sole authority over its own state. What the principle protects — no mutating several
+> aggregates through one loaded graph until nobody can say which invariant belongs to which root —
+> still holds. What it would otherwise permit by default, and what this model refuses, is deciding a
+> cross-aggregate question from a read that nothing holds.
+>
+> <!-- sample-api:begin -->
+> The worked instance is purchase creation: the purchaser is locked to guard membership, the products
+> are locked to reserve stock, and the purchase is written.
+> <!-- sample-api:end -->
 
 ### Cross-aggregate reference
 
@@ -585,30 +597,80 @@ Reference masters exist for two distinct reasons; do not conflate them.
 data is part of the owning aggregate's semantic set — no independent transactional lifecycle, and
 reached through a mandatory, uniquely-determined foreign key. A table that is standing lookup data
 but is queried and listed on its own terms is an *independent aggregate*: it stays identity-only, and
-its attributes are resolved by a usecase-layer batch fetch rather than carried across the seam.
-`internal/domain/prefecture` is the case to compare against — externally given and never written by
-the application, yet an independent aggregate, not a reference master. See
+its attributes are resolved by a usecase-layer batch fetch rather than carried across the seam. Being
+externally given and never written by the application does not settle it either — that describes the
+data's origin, not its place in another aggregate's semantic set. See
 [`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules for the read-path
 consequences of the same distinction.
 
-### Rules that belong to no entity
+<!-- sample-api:begin -->
+`internal/domain/prefecture` is the case to compare against — externally given and never written by
+the application, yet queried and listed on its own terms, so an independent aggregate rather than a
+reference master.
+<!-- sample-api:end -->
 
-A rule that is the natural responsibility of no entity and no value object belongs to a **Domain
-Service** — not to Usecase.
+### Where a rule goes
 
-```text
-Withdrawal        ← in-progress purchase
-Dispatch grouping ← purchases awaiting shipment
-```
+Three questions, asked in this order. **The first one that answers, decides** — a later question
+never overrules an earlier one. They are not three views of one judgement; each separates a different
+pair of destinations, and reading them as competing tests is what makes the placement look ambiguous
+when it is not.
 
-#### Domain Service or Usecase
+1. **Is the question about one thing, or about a set?** — separates an entity or value object from a
+   Domain Service.
+2. **Does the rule fit on one entity or value object?** — separates an entity or value object from a
+   Domain Service, once question 1 admits either.
+3. **Does it derive, or does it map?** — separates a Domain Service from Usecase.
 
-The line is **derivation**.
+#### 1. One thing or a set
+
+**A question about one thing is the entity's; a question about a set is the Domain Service's.**
+
+A question decided from one instance's own state is a method on that instance. A question whose
+answer for any one member depends on which others are in the set has no single instance that can host
+it, so it goes to a Domain Service. What separates them is how many things the question is about, not
+how many aggregates it reaches.
+
+This is why the admission bar below asks about responsibility and never about aggregate count. A bar
+that required spanning aggregates would send a set-shaped rule back to an instance method that cannot
+be written, or into Usecase, where [`../usecase/README.md`](../usecase/README.md) forbids it —
+leaving an operation that is plainly a business rule with nowhere in the layer to go.
+
+<!-- sample-api:begin -->
+Worked pair: `Purchase.IsShippable` answers *is this purchase ready to ship*, decided from one
+purchase's own state, so it is a method on `Purchase`. `dispatch.GroupForDispatch` answers *which of
+these purchases may go out together*, and the answer for any one of them depends on which others are
+in the set, so no single `Purchase` can host it. Both speak only of the purchase aggregate.
+<!-- sample-api:end -->
+
+#### 2. Not reaching another aggregate is not a reason to leave the domain
+
+A rule frequently needs values that live in another aggregate: a quantity, a price, a status. Because
+an aggregate package may not import another aggregate, this looks like a wall that forces the rule
+outward into Usecase. **It is not.**
+
+**The aggregate that owns the rule takes those values as a snapshot it does not keep** — a value type
+declared in its own package, carrying only the attributes the rule reads, passed in by the Usecase
+that loaded them. The rule stays where it belongs; only the loading moves. The aggregate still holds
+no reference to the other aggregate, so its invariants remain independent of that aggregate's state.
+
+Reach for this before concluding that a rule cannot live in the domain. Moving a business judgement
+into Usecase because the values came from elsewhere puts it where
+[`../usecase/README.md`](../usecase/README.md) says business rules must not be defined, and splits
+one rule across two layers the first time a second caller needs it.
+
+A snapshot is a value, not a view of a live aggregate: it is read once, passed in, and discarded. It
+carries no behavior and no identity beyond what the rule reads, so it cannot become a back door into
+the other aggregate.
+
+#### 3. Derivation or mapping
+
+Once the rule does not fit on any entity or value object, this question separates a Domain Service
+from Usecase.
 
 - **Domain Service** derives something: it computes a business-meaningful value from more than one
-  entity. What quantity can actually be allocated, given stock and reservations. It is stateless, and
-  it exists only because the operation is not the natural responsibility of any one entity or value
-  object — if it fits on one of them, put it there instead.
+  entity. It is stateless, and it exists only because the operation is the natural responsibility of
+  no one entity and no value object.
 - **Usecase** coordinates and maps. It orders the calls, owns the transaction, and turns domain
   models into DTOs.
 
@@ -620,23 +682,24 @@ When a value is derived and then shipped outward, the two split: the derivation 
 Service's, the copying into the DTO is the Usecase's.
 
 The test, when it is unclear: **if that calculation changed, would the reason be a business decision
-or a presentation decision?** A business decision means it is a domain rule and belongs to a Domain
-Service.
+or a presentation decision?** A business decision means it is a domain rule. Note what this test does
+*not* decide: whether the derived value binds anything. A business judgement that is advisory —
+produced for display, stale the moment it is returned, and depended on by no invariant — is still a
+business judgement, and still belongs in the domain. Whether a value must stay true until commit is a
+transaction-boundary question, answered by
+[ADR-0032](../../docs/adr/0032-commandservice-atomicity-criterion.md), not a placement question.
 
-#### One thing or a set
+#### Rules that belong to no entity
 
-**A question about one thing is the entity's; a question about a set is the Domain Service's.**
+A rule that is the natural responsibility of no entity and no value object belongs to a **Domain
+Service** — not to Usecase.
 
-`Purchase.IsShippable` answers *is this purchase ready to ship* — decided from one purchase's own
-state, so it is a method on `Purchase`. `dispatch.GroupForDispatch` answers *which of these purchases
-may go out together* — the answer for any one of them depends on which others are in the set, so no
-single `Purchase` can host it. Both speak only of the purchase aggregate. What separates them is how
-many things the question is about, not how many aggregates it reaches.
-
-This is why the admission bar below asks about responsibility and never about aggregate count. A bar
-that required spanning aggregates would send `GroupForDispatch` back to a `Purchase` method that
-cannot be written, or into Usecase, where [`../usecase/README.md`](../usecase/README.md) forbids it —
-leaving an operation that is plainly a business rule with nowhere in the layer to go.
+<!-- sample-api:begin -->
+```text
+Withdrawal        ← in-progress purchase
+Dispatch grouping ← purchases awaiting shipment
+```
+<!-- sample-api:end -->
 
 #### Where a Domain Service lives
 
@@ -664,13 +727,14 @@ when both hold:
 
 1. The operation is the natural responsibility of no entity and no value object. If it fits on one of
    them, it goes there.
-2. It is stateless, and it derives (see *Domain Service or Usecase* above). Reading two aggregates to
+2. It is stateless, and it derives (see *3. Derivation or mapping* above). Reading two aggregates to
    place them side by side is mapping, and mapping stays in Usecase.
 
 A service here holds no I/O: no Repository, no `context.Context`. It receives state the Usecase has
 already loaded, and returns a derived value or a domain error. Acquiring that state, ordering the
 calls, and owning the transaction remain the Usecase's job.
 
+<!-- sample-api:begin -->
 **[`service/membership`](service/membership) spans two aggregates.** It carries one invariant seen
 from both sides — a user and their in-progress purchases must not be separated. `EnsurePurchasable`
 refuses a purchase by a user who is no longer active; `EnsureWithdrawable` refuses a withdrawal while
@@ -681,11 +745,15 @@ knows nothing about purchases, and the purchase aggregate knows nothing about me
 awaiting shipment into the sets that may go out together, by buyer. It imports `domain/purchase` and
 nothing else, and it is here for the reason above: the answer is about the set, so the purchase
 aggregate has no place to put it.
+<!-- sample-api:end -->
 
 ### Query and Aggregate
 
-Aggregate is a **Write Model**. The *execution* of aggregation, reporting, complex search, and
-`GROUP BY` belongs to QueryService / ReadModel, and so does the projection those return.
+Aggregate is a **Write Model**. Which construct executes a given aggregation, report, or complex
+search — Repository, QueryService, or CommandService — is decided by
+[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.md) and is not restated
+here. What this section owns is the question that criterion does not answer: **who authors the
+business condition** such a query executes.
 
 **What moves out is the implementation, never the criterion.** "Which products count as low on
 stock", "which users count as inactive" — the rule that decides membership is domain vocabulary and
@@ -781,10 +849,14 @@ Mapping to Domain is done by `sqlc`.
 
 ### Methods allowed in Repository
 
-- `FindByActive`
-- `FindByXXX`
-- `CountByXXX`
-- `Create` / `Update` (aggregate persistence — writes; logical delete is an `Update` of `deletedAt`)
+- `FindByXXX` / `CountByXXX` — fetch by identity, or filter / list / count by the aggregate's own
+  attributes
+- `LockByXXX` — the same read taken under a pessimistic lock, for a caller that must hold the row
+  until commit. The lock and the ordering it requires are stated in the doc comment
+  ([ADR-0034 (ordered-pessimistic-row-locks)](../../docs/adr/0034-ordered-pessimistic-row-locks.md))
+- `Create` / `Update` — aggregate persistence. A logical delete is an `Update` of `deletedAt`
+- `Delete` / `Purge` — physical removal, where the data has no reason to outlive its use and no
+  audit trail is owed. Do not add one to an aggregate that keeps history
 
 Assumed operations:
 
@@ -797,13 +869,15 @@ SELECT / WHERE / JOIN
 - GROUP BY
 - SUM / AVG
 - WITH clause
-- cross-boundary JOIN
+- cross-boundary JOIN — **except** a uniquely-determined JOIN to a reference master nested in this
+  aggregate's context, which is part of its semantic set rather than a separate boundary
+  (see *Reference master aggregates* above, and
+  [`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules)
 
-Place them in:
-
-- Usecase
-- QueryService
-- ReadModel
+Place them in the read side — QueryService and its ReadModel — with the Usecase ordering the call.
+Where each belongs is decided by
+[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.md); that criterion is
+not restated here.
 
 ### Doc comments stay in domain vocabulary
 
@@ -881,7 +955,7 @@ require.ErrorIs(t, err, ErrInvalidEmail)
 
 ### Getter contract test
 
-One `TestXxx` **per getter** (`TestUser_ID`, `TestUser_Email`, …). Do **not** bundle getters into a single `*_Accessors` / `*_Getters` test (1:1 rule — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md) §1, enforced by `internal/architest`).
+One `TestXxx` **per getter** (`Test<Type>_<Getter>`, one per accessor). Do **not** bundle getters into a single `*_Accessors` / `*_Getters` test (1:1 rule — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md) §1, enforced by `internal/architest`).
 
 Target (one dedicated test each):
 
@@ -895,7 +969,7 @@ func (u *User) UpdatedAt() time.Time
 
 ### Immutable guarantee test
 
-For pointer / reference-returning getters, assert immutability **inside that getter's own `TestXxx`** (folded into e.g. `TestUser_Building`) — not as a separate bundled `TestImmutableAccessors`.
+For pointer / reference-returning getters, assert immutability **inside that getter's own `TestXxx`** — not as a separate bundled `TestImmutableAccessors`.
 
 Target:
 
@@ -1044,6 +1118,13 @@ Forbidden:
 - DB-driven design
 - time.Now() in Domain
 
+<!-- sample-api:begin -->
+## Worked aggregate
+
+The files below are one aggregate written out end to end, so the rules above can be read against
+something concrete. They are a **sample** and are removed with the sample APIs; nothing above depends
+on them.
+
 ```go
 // constant.go
 package user
@@ -1058,6 +1139,14 @@ const (
     maxStreetLength     = 255
     maxBuildingLength   = 255
     maxPostalCodeLength = 8
+)
+
+// 項目識別子。API のリクエストプロパティ名と一致させ、どの項目が不正かを呼び出し側へ返す。
+const (
+    FieldFirstName    = "firstName"
+    FieldPrefectureID = "prefectureId"
+    FieldBuilding     = "building"
+    // lastName / email / phone / city / street / postalCode も同様
 )
 ```
 
@@ -1107,17 +1196,19 @@ import (
 type Users []*User
 
 // エンティティ（集約ルート）
+// 形式そのものが不変条件になる値（email / postalCode）は値オブジェクトとして持つ。
+// 素の string で持つと、その形式を守る責任が呼び出し側へ散る（Value Object 節を参照）。
 type User struct {
     id           uuid.UUID
     firstName    string
     lastName     string
-    email        string
+    email        Email
     phone        string
     prefectureID uuid.UUID
     city         string
     street       string
     building     *string
-    postalCode   string
+    postalCode   PostalCode
     createdAt    time.Time
     updatedAt    time.Time
     deletedAt    *time.Time
@@ -1211,19 +1302,32 @@ func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 }
 func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
 
-// バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
+// バリデーション（例示・New / UpdateProfile で共有）
+// 利用者が直せる入力項目なので、最初の失敗で止めず全項目を検証し、項目識別子を添えて結合する
+// （Errors 節を参照）。1 往復で全部の誤りを返せないと、利用者は 1 項目ずつ直しに来ることになる。
 func validateProfileFields(profile Profile) error {
+    var (
+        errs   []error
+        fields []string
+    )
     if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
-        return xerrors.Wrap(ErrInvalidFirstName, msg)
+        errs = append(errs, xerrors.Wrap(ErrInvalidFirstName, msg))
+        fields = append(fields, FieldFirstName)
     }
-    // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
+    // lastName / email / phone / city / street / postalCode も同様に検証し、
+    // 対応する ErrInvalidXxx と Field 定数を積む
     if profile.PrefectureID.IsNil() {
-        return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
+        errs = append(errs, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required"))
+        fields = append(fields, FieldPrefectureID)
     }
-    if building != nil { // building は任意
-        if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok {
-            return xerrors.Wrap(ErrInvalidBuilding, msg)
+    if profile.Building != nil { // building は任意
+        if ok, msg := stringkit.ValidateInRange(*profile.Building, minLength, maxBuildingLength); !ok {
+            errs = append(errs, xerrors.Wrap(ErrInvalidBuilding, msg))
+            fields = append(fields, FieldBuilding)
         }
+    }
+    if len(errs) > 0 {
+        return apperror.WithDetails(xerrors.Join(errs...), fields...)
     }
     return nil
 }
@@ -1251,3 +1355,4 @@ type Repository interface {
     CountByActive(ctx context.Context, active *bool) (int64, error)
 }
 ```
+<!-- sample-api:end -->
