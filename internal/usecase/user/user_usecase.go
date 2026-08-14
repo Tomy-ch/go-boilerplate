@@ -119,7 +119,7 @@ type Usecase interface {
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
 	// CountUsers は、ユーザーの総件数を返します。件数のみを返し個々のユーザーを開示しないため、
-	// 認証主体を持たないジョブ（usercount）からの利用を許して認可を要求しません。
+	// 認可を要求しません。
 	CountUsers(ctx context.Context, active *bool) (int64, error)
 	// GetUser は、認可を確認したうえで ID から単一ユーザーを取得します。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
