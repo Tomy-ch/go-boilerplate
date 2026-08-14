@@ -1,0 +1,41 @@
+description: |
+  カートのレスポンススキーマ。カート参照・投入・削除の各操作で共有します。
+  カートは在庫を押さえず、確定単価も持ちません。買うつもりの控えであって、
+  売り越しの禁止も請求額の確定も購入成立時の関心です。
+type: object
+required:
+  - items
+  - subtotalAmount
+properties:
+  sessionToken:
+    type: string
+    nullable: true
+    description: |
+      ゲストカートのセッショントークン。以降のリクエストで X-Cart-Session ヘッダに載せます。
+      所有者が確定済みのカート、および新規発行が起きなかった操作では null です。
+      **取得（GET）ではカート行を作らないため、この操作では常に null です。**
+    example: "b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE"
+  items:
+    type: array
+    description: |
+      カートの明細。1 件も入っていない場合、およびカートがまだ無い場合は空配列です。
+    items:
+      $ref: '../../schemas/carts/CartItemResponse.yaml'
+  subtotalAmount:
+    type: integer
+    format: int64
+    description: |
+      小計。issues が空の明細（現時点で購入可能なもの）だけを単価×数量で合算した参考値で、
+      USD セント単位の整数です。請求額ではありません。
+      合算は decimal のまま行い、最後に一度だけ最小単位へ丸めます。
+      合算対象が 1 件も無い場合は 0 です。
+    example: 3998
+  expiresAt:
+    type: string
+    format: date-time
+    nullable: true
+    description: |
+      カートの有効期限。操作のたびに延長されます。
+      カートがまだ無い場合は行そのものが存在しないため null です
+      （明細を空にしただけの場合はカート行が残るため null になりません）。
+    example: "2026-09-13T00:00:00Z"
