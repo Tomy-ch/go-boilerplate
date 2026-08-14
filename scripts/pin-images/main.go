@@ -29,7 +29,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -40,6 +39,7 @@ import (
 	"time"
 
 	"go-boilerplate/pkg/xerrors"
+	"go-boilerplate/scripts/lib/ghfiles"
 )
 
 const (
@@ -165,9 +165,8 @@ func run(args []string, wd func() (string, error)) error {
 // よらずこの機構が固定する（docs/design/security.md）。
 //
 // workflow を含めるのは uses: docker:// を拾うためだけで、uses: owner/repo@<sha> は pin-actions
-// の担当。同じファイルを 2 つの機構が走査するが、掴む行は重ならない。走査対象の決め方は
-// pin-actions の targetFiles と揃える必要がある——片方だけが見るディレクトリができると、
-// そこに置かれた参照がどちらの網からも外れる。
+// の担当。同じファイルを 2 つの機構が走査するが、掴む行は重ならない。ファイル集合そのものは
+// ghfiles が両者へ与える。
 func targetFiles(root string) ([]target, error) {
 	dockerfiles, err := globFiles(root, "docker/*/Dockerfile")
 	if err != nil {
@@ -177,7 +176,7 @@ func targetFiles(root string) ([]target, error) {
 	if err != nil {
 		return nil, err
 	}
-	workflows, err := workflowFiles(root)
+	workflows, err := ghfiles.Collect(root)
 	if err != nil {
 		return nil, err
 	}
@@ -193,36 +192,6 @@ func targetFiles(root string) ([]target, error) {
 	}
 	sort.Slice(targets, func(i, j int) bool { return targets[i].path < targets[j].path })
 	return targets, nil
-}
-
-// workflowFiles は workflow 定義とリポジトリ内 composite action 定義を返す。
-// composite action は `uses: ./.github/actions/<group>/<name>` のように入れ子へ置けるため走査は
-// 再帰する。1 階層で打ち切ると入れ子の定義が検査されないまま通る。
-func workflowFiles(root string) ([]string, error) {
-	var files []string
-	for _, pat := range []string{".github/workflows/*.yaml", ".github/workflows/*.yml"} {
-		m, err := globFiles(root, pat)
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, m...)
-	}
-
-	actionsDir := filepath.Join(root, ".github", "actions")
-	err := filepath.WalkDir(actionsDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && (d.Name() == "action.yml" || d.Name() == "action.yaml") {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if err != nil && !xerrors.Is(err, os.ErrNotExist) {
-		return nil, xerrors.Wrap(err, "walk .github/actions")
-	}
-
-	return files, nil
 }
 
 // detectLooseDockerUses は固定対象として解釈できない docker:// の uses: の行番号を返す。
