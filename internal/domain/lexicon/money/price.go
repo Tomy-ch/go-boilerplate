@@ -22,8 +22,8 @@ type Price struct {
 // NewPrice は、非負の Decimal から Price を構築します。
 // 負値の場合は ErrNegativePrice を、決済スケールの整数へ落とせない大きさの場合は ErrPriceOutOfRange を返します。
 //
-// 大きさをここで拒むのは、決済スケールへ落とせない単価が金額として成立しないためです。構築を許すと、
-// 変換を試みる時点まで不正が持ち越され、その時点にいる呼び出し元（取得や集計）は拒否する術を持ちません。
+// 構築時に拒むのは、ここで許すと変換を試みる時点まで不正が持ち越され、その時点の呼び出し元
+// （取得や集計）が拒否する術を持たないためです。
 func NewPrice(amount decimal.Decimal) (Price, error) {
 	if amount.IsNegative() {
 		return Price{}, ErrNegativePrice

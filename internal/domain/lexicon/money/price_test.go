@@ -42,8 +42,6 @@ func TestNewPrice(t *testing.T) {
 
 		t.Run("決済スケールへ落とせない大きさは ErrPriceOutOfRange を返す", func(t *testing.T) {
 			t.Parallel()
-			// 決済スケール（最小単位整数）の幅を 1 だけ超える値。構築を許すと、変換を試みる時点まで
-			// 不正が持ち越され、その時点の呼び出し元は拒否する術を持たない。
 			_, err := NewPrice(decimaltestkit.MustParse(t, "92233720368547758.08"))
 			require.ErrorIs(t, err, ErrPriceOutOfRange)
 		})
@@ -108,8 +106,6 @@ func TestPrice_ToMinorUnit(t *testing.T) {
 
 		t.Run("構築時の想定より細かい最小単位では ErrOverflow を返す", func(t *testing.T) {
 			t.Parallel()
-			// 構築時に保証されるのは maxMinorUnitDigits までの変換であり、それより細かい桁を要求すれば
-			// 範囲外になり得る。この経路が残っていることが、構築時の検証が桁数 policy を奪っていない証拠。
 			p, err := NewPrice(decimaltestkit.MustParse(t, "92233720368547758.07"))
 			require.NoError(t, err)
 			_, err = p.ToMinorUnit(maxMinorUnitDigits + 1)
