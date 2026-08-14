@@ -325,7 +325,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
 
   cart: {
     description:
-      "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）。現時点は spec のみで、実装が入るたびに paths を追記する",
+      "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）。API が 1 本ずつ入るたびに paths を追記する",
     paths: [
       "database/migrations/000015_create_carts.up.sql",
       "database/migrations/000015_create_carts.down.sql",
@@ -342,6 +342,18 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       // 2 人目の利用者が現れた時点でここから外す。
       "internal/usecase/boundary/token",
       "internal/infrastructure/token",
+      "internal/di/module/token.go",
+      "internal/di/module/token_test.go",
+
+      // OpenAPI（components/ 直下はディレクトリ指定では消えないため個別に挙げる）
+      "openapi/paths/v1/carts",
+      "openapi/components/parameters/cart",
+      "openapi/components/responses/carts",
+      "openapi/components/schemas/carts",
+
+      "internal/usecase/cart",
+      "internal/controller/handler/v1/carts",
+      "internal/integration/v1_carts_me_test.go",
 
       // spec
       "docs/spec/cart",

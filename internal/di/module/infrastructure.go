@@ -11,6 +11,7 @@ func InfrastructureModule() fx.Option {
 	return fx.Module("infrastructure",
 		persistenceModule(),
 		clockModule(),
+		tokenModule(), // sample-api:line
 		httpClientModule(),
 		webapiModule(),
 		objectStorageModule(),

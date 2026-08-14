@@ -196,6 +196,23 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*product.Produ
 	return r.buildProduct(ctx, productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName})
 }
 
+// FindByIDs は、ID の集合から公開状態を問わない商品群を ID 昇順に取得します。行はロックしません。
+// 不存在の ID は結果に現れないため、要素数は ids より少なくなり得ます。
+func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (product.Products, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	rows, err := db.ListProductsByIDs(ctx, ids)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListProductsByIDsRow) productRow {
+		return productRow{p: row.Products, statusName: row.StatusName, categoryName: row.CategoryName}
+	}))
+}
+
 // LockByID は、更新のため ID から公開状態を問わない単一商品を悲観ロックして取得します。
 // 未存在は NotFound を返します。
 func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {

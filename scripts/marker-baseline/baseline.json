@@ -49,12 +49,12 @@
   "internal/controller/worker/README.md": 2,
   "internal/di/module/authz_test.go": 17,
   "internal/di/module/authz.go": 9,
-  "internal/di/module/controller.go": 26,
+  "internal/di/module/controller.go": 27,
   "internal/di/module/core/auth.go": 6,
   "internal/di/module/job.go": 6,
-  "internal/di/module/persistence.go": 17,
+  "internal/di/module/persistence.go": 18,
   "internal/di/module/usecase_test.go": 13,
-  "internal/di/module/usecase.go": 25,
+  "internal/di/module/usecase.go": 26,
   "internal/di/module/webapi_test.go": 9,
   "internal/di/module/webapi.go": 16,
   "internal/di/module/worker.go": 3,
@@ -87,5 +87,6 @@
   "scripts/setup/lib/markers.test.ts": 1,
   "scripts/setup/remove-boilerplate-identity/targets.test.ts": 2,
   "scripts/setup/remove-sample-api/sample-api.test.ts": 28,
-  "scripts/setup/remove-sample-api/sample-manifest.ts": 2
+  "scripts/setup/remove-sample-api/sample-manifest.ts": 2,
+  "internal/di/module/infrastructure.go": 1
 }
