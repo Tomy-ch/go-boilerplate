@@ -63,8 +63,12 @@ type jwksResolver struct {
 	allowedAlgs []string
 	clk         clock.Clock
 
-	// fetchMu は取得を直列化し、同時に高々 1 回だけ HTTP させます（stampede 防止）。
-	fetchMu sync.Mutex
+	// fetchSem は取得を直列化し、同時に高々 1 回だけ HTTP させます（stampede 防止）。
+	// 送信で獲得し受信で解放します。獲得を待つ側が自分の ctx で離脱できるよう、mutex ではなくチャネルで持ちます。
+	fetchSem chan struct{}
+
+	// inFlight は切り離して走っている取得の本数です（停止時の待ち合わせに使います）。
+	inFlight sync.WaitGroup
 
 	// mu は keys / fetchedAt / lastAttempt / lastErr / negative を保護します（取得の HTTP I/O 中は保持しません）。
 	mu          sync.RWMutex
@@ -130,6 +134,7 @@ func newJWKSResolver(
 		cooldown:    cooldown,
 		allowedAlgs: allowedAlgs,
 		clk:         clk,
+		fetchSem:    make(chan struct{}, 1),
 		keys:        map[string]crypto.PublicKey{},
 	}
 }
@@ -157,6 +162,23 @@ func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.Publi
 		r.recordAbsent(kid)
 	}
 	return nil, errJWKSNoMatchingKID
+}
+
+// Drain は、切り離して走っている取得の完了を待ちます（Drainer 実装）。停止時に取得を途中で失わせないための待ち合わせで、
+// ctx が先に終わった場合はその時点で待つのをやめます（取得側の上限は substrate のタイムアウトが持つ）。
+func (r *jwksResolver) Drain(ctx context.Context) error {
+	waited := make(chan struct{})
+	go func() {
+		defer close(waited)
+		r.inFlight.Wait()
+	}()
+
+	select {
+	case <-waited:
+		return nil
+	case <-ctx.Done():
+		return xerrors.Wrap(apperror.ErrUnavailable, "jwks: gave up waiting for the in-flight refresh")
+	}
 }
 
 // negativelyCached は、現世代（鮮度内）で kid が不在確定として記録済みかを返します。
@@ -197,44 +219,79 @@ func (r *jwksResolver) lookup(kid string) crypto.PublicKey {
 }
 
 // refresh は、cooldown を尊重して JWKS を再取得します。HTTP I/O 中は mu を保持しません。
-// 第 1 戻り値は実際に HTTP 取得を行ったかを表し、cooldown 中の throttle・ctx キャンセルでは false になります
+// 第 1 戻り値は実際に HTTP 取得を行ったかを表し、cooldown 中の throttle・呼び出し元の離脱では false になります
 // （呼び出し元が「取得済み世代での不在確定」と「未取得」を区別し、後者を negative へ誤記録しないため）。
+//
+// 取得そのものは呼び出し元のキャンセルから切り離して走ります。鍵集合の更新は全リクエスト共通の作業であり、
+// たまたまそれを引き当てた 1 リクエストの寿命に支配させると、切断のたびに cooldown を消費しない再取得が起き、
+// 未知 kid による再取得を絞るという cooldown の目的が失われます。
 func (r *jwksResolver) refresh(ctx context.Context) (bool, error) {
-	r.fetchMu.Lock()
-	defer r.fetchMu.Unlock()
+	// 取得権の獲得も呼び出し元の予算に従わせる。先行する取得は切り離されて走るため、
+	// 待機を中断不能にすると、待つ側だけが自分の deadline を超えてブロックされる。
+	select {
+	case r.fetchSem <- struct{}{}:
+	case <-ctx.Done():
+		return false, detachedErr(ctx)
+	}
 
 	r.mu.RLock()
 	throttled := !r.lastAttempt.IsZero() && r.clk.Now().Sub(r.lastAttempt) < r.cooldown
 	lastErr := r.lastErr
 	r.mu.RUnlock()
 	if throttled {
+		<-r.fetchSem
 		// cooldown 中は再取得せず直近取得の結果を伝播する。
 		// 直近が失敗なら原因を返し（インフラ障害を「無効トークン」と誤認させない）、成功なら nil。
 		return false, lastErr
 	}
 
-	keys, err := r.fetch(ctx)
+	// バッファ付き。呼び出し元が離脱した後も取得 goroutine が送信でブロックしない。
+	done := make(chan error, 1)
+	r.inFlight.Go(func() {
+		defer func() { <-r.fetchSem }()
+		done <- r.fetchAndRecord(context.WithoutCancel(ctx))
+	})
 
-	// 呼び出し元 ctx のキャンセルは共有キャッシュ（lastErr/lastAttempt）へ載せない。
-	// 1 リクエストの切断が cooldown 中の全リクエストへ「無効トークン」として波及するのを防ぐ。
-	if err != nil && xerrors.Is(err, apperror.ErrCanceled) {
-		return false, err
+	select {
+	case err := <-done:
+		return true, err
+	case <-ctx.Done():
+		return false, detachedErr(ctx)
 	}
+}
+
+// fetchAndRecord は、JWKS を取得して結果を共有キャッシュへ記録します。
+// 記録は fetchMu を解放する前に完了するため、待機していた次の呼び出し元は必ず更新後の lastAttempt を観測します。
+func (r *jwksResolver) fetchAndRecord(ctx context.Context) error {
+	keys, err := r.fetch(ctx)
 
 	now := r.clk.Now()
 	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.lastAttempt = now
 	r.lastErr = err
-	if err == nil {
-		if !sameKeySet(r.keys, keys) {
-			r.negative = nil
-		}
-		r.keys = keys
-		r.fetchedAt = now
+	if err != nil {
+		return err
 	}
-	r.mu.Unlock()
 
-	return true, err
+	// 公開鍵集合が変わった取得成功では、不在確定（negative）を破棄して再評価する。
+	if !sameKeySet(r.keys, keys) {
+		r.negative = nil
+	}
+	r.keys = keys
+	r.fetchedAt = now
+
+	return nil
+}
+
+// detachedErr は、取得の完了を待たずに離脱した呼び出し元へ返すエラーを、離脱の理由に応じて分類します。
+// 切断（499）と予算切れ（503）を取り違えないよう、httpclient の transport エラーと同じ写像に揃えます。
+func detachedErr(ctx context.Context) error {
+	if xerrors.Is(ctx.Err(), context.Canceled) {
+		return xerrors.Wrap(apperror.ErrCanceled, "jwks: caller left the in-flight refresh")
+	}
+	return xerrors.Wrap(apperror.ErrUnavailable, "jwks: caller budget exhausted during refresh")
 }
 
 // sameKeySet は、2 つの鍵マップが同一の kid 集合を持つかを返します。
