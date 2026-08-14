@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
@@ -29,6 +28,7 @@ import (
 	"time"
 
 	"go-boilerplate/pkg/xerrors"
+	"go-boilerplate/scripts/lib/ghfiles"
 )
 
 const (
@@ -181,37 +181,9 @@ func parseUses(path, refStr, comment string) (ref, bool) {
 }
 
 // targetFiles は走査対象の workflow / composite action ファイルを返す。
-// composite action は `uses: ./.github/actions/<group>/<name>` のように入れ子へ置けるため再帰的に集める。
-// 1 階層の glob では入れ子のファイルが警告なく走査から消え、そこに書かれた外部参照が
-// 検疫・固定・drift 検査のいずれの対象からも外れる。
+// 集合そのものは ghfiles が pin-images と共通に与える。
 func targetFiles(root string) ([]string, error) {
-	var files []string
-	for _, pat := range []string{
-		".github/workflows/*.yml", ".github/workflows/*.yaml",
-	} {
-		m, err := globFiles(root, pat)
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, m...)
-	}
-
-	actionsDir := filepath.Join(root, ".github", "actions")
-	err := filepath.WalkDir(actionsDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && (d.Name() == "action.yml" || d.Name() == "action.yaml") {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if err != nil && !xerrors.Is(err, os.ErrNotExist) {
-		return nil, xerrors.Wrap(err, "walk .github/actions")
-	}
-
-	sort.Strings(files)
-	return files, nil
+	return ghfiles.Collect(root)
 }
 
 // globFiles は root からの相対パターン pat に一致するパスを返す。

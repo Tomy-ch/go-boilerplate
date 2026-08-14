@@ -245,6 +245,215 @@ func Test_targetFiles(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, targets)
 		})
+
+		t.Run("workflow には uses: docker:// の正規表現を割り当てる", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, ".github", "workflows", "ci.yaml"), "jobs:\n")
+
+			targets, err := targetFiles(root)
+			require.NoError(t, err)
+			require.Len(t, targets, 1)
+			assert.Same(t, usesDockerRe, targets[0].re)
+			assert.Same(t, looseDockerUsesRe, targets[0].loose)
+		})
+
+		t.Run("workflow 定義と入れ子の composite action 定義を集める", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, ".github", "workflows", "ci.yaml"), "jobs:\n")
+			writeFile(t, filepath.Join(root, ".github", "workflows", "lint.yml"), "jobs:\n")
+			writeFile(t, filepath.Join(root, ".github", "actions", "g", "setup", "action.yml"), "runs:\n")
+
+			targets, err := targetFiles(root)
+			require.NoError(t, err)
+
+			paths := make([]string, 0, len(targets))
+			for _, tg := range targets {
+				paths = append(paths, tg.path)
+			}
+			assert.Equal(t, []string{
+				filepath.Join(root, ".github", "actions", "g", "setup", "action.yml"),
+				filepath.Join(root, ".github", "workflows", "ci.yaml"),
+				filepath.Join(root, ".github", "workflows", "lint.yml"),
+			}, paths)
+		})
+
+		t.Run("Dockerfile と compose の対象には loose を持たせない", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
+			writeFile(t, filepath.Join(root, "docker-compose.yaml"), "services:\n")
+
+			targets, err := targetFiles(root)
+			require.NoError(t, err)
+			for _, tg := range targets {
+				assert.Nil(t, tg.loose, tg.path)
+			}
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("workflow ディレクトリの YAML 以外は含めない", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, ".github", "workflows", "README.md"), "\n")
+			writeFile(t, filepath.Join(root, ".github", "actions", "setup", "README.md"), "\n")
+
+			targets, err := targetFiles(root)
+			require.NoError(t, err)
+			assert.Empty(t, targets)
+		})
+	})
+}
+
+func Test_usesDockerRe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("uses 行を接頭辞・参照・接尾辞へ割る", func(t *testing.T) {
+			t.Parallel()
+			m := usesDockerRe.FindStringSubmatch("      - uses: docker://alpine:3.24 # 補助\n")
+			require.NotNil(t, m)
+			assert.Equal(t, "      - uses: docker://", m[1])
+			assert.Equal(t, "alpine:3.24", m[2])
+			assert.Equal(t, " # 補助", m[3])
+		})
+
+		t.Run("digest を参照側へ取り込み接尾辞へ残さない", func(t *testing.T) {
+			t.Parallel()
+			m := usesDockerRe.FindStringSubmatch("      - uses: docker://alpine:3.24@" + digestUnreg + "\n")
+			require.NotNil(t, m)
+			assert.Equal(t, "alpine:3.24@"+digestUnreg, m[2])
+		})
+
+		t.Run("registry を含む参照をそのまま取り出す", func(t *testing.T) {
+			t.Parallel()
+			m := usesDockerRe.FindStringSubmatch("      - uses: docker://ghcr.io/owner/app:1.0.0\n")
+			require.NotNil(t, m)
+			assert.Equal(t, "ghcr.io/owner/app:1.0.0", m[2])
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("tag を持たない参照に一致しない", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, usesDockerRe.FindStringSubmatch("      - uses: docker://alpine\n"))
+		})
+
+		t.Run("registry ポートだけで tag を持たない参照に一致しない", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, usesDockerRe.FindStringSubmatch("      - uses: docker://localhost:5000/app\n"))
+		})
+
+		t.Run("owner/repo 形式の uses に一致しない", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, usesDockerRe.FindStringSubmatch("      - uses: actions/checkout@v7\n"))
+		})
+	})
+}
+
+func Test_detectLooseDockerUses(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("解釈できたブロック記法を取りこぼしとして数えない", func(t *testing.T) {
+			t.Parallel()
+			got := detectLooseDockerUses("      - uses: docker://alpine:3.24\n", usesDockerRe, looseDockerUsesRe)
+			assert.Empty(t, got)
+		})
+
+		t.Run("owner/repo 形式の uses を取りこぼしとして数えない", func(t *testing.T) {
+			t.Parallel()
+			got := detectLooseDockerUses("      - uses: actions/checkout@v7\n", usesDockerRe, looseDockerUsesRe)
+			assert.Empty(t, got)
+		})
+
+		t.Run("行全体がコメントなら反応しない", func(t *testing.T) {
+			t.Parallel()
+			got := detectLooseDockerUses("  # uses: docker://alpine\n", usesDockerRe, looseDockerUsesRe)
+			assert.Empty(t, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("tag を持たない参照を行番号で返す", func(t *testing.T) {
+			t.Parallel()
+			data := "jobs:\n      - uses: docker://alpine\n"
+			assert.Equal(t, []int{2}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+		})
+
+		t.Run("引用符付きの参照を行番号で返す", func(t *testing.T) {
+			t.Parallel()
+			data := "      - uses: \"docker://alpine:3.24\"\n"
+			assert.Equal(t, []int{1}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+		})
+
+		t.Run("flow mapping で書かれた参照を行番号で返す", func(t *testing.T) {
+			t.Parallel()
+			data := "      - {name: X, uses: docker://alpine:3.24}\n"
+			assert.Equal(t, []int{1}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+		})
+	})
+}
+
+func Test_validateLoose(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("解釈できる参照だけなら通す", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, ".github", "workflows", "ci.yaml"),
+				"      - uses: docker://alpine:3.24\n")
+
+			assert.NoError(t, validateLoose(root, testTargets(t, root)))
+		})
+
+		t.Run("loose を持たない対象は検査しない", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine\n")
+
+			assert.NoError(t, validateLoose(root, testTargets(t, root)))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("tag を持たない参照を位置付きで報告する", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, ".github", "workflows", "ci.yaml"),
+				"jobs:\n      - uses: docker://alpine\n")
+
+			err := validateLoose(root, testTargets(t, root))
+			require.ErrorIs(t, err, errLooseDockerUses)
+			assert.Contains(t, err.Error(), filepath.Join(".github", "workflows", "ci.yaml")+":2")
+		})
+
+		t.Run("読めないファイルはエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			path := filepath.Join(root, ".github", "workflows", "ci.yaml")
+
+			assert.Error(t, validateLoose(root, []target{
+				{path: path, re: usesDockerRe, loose: looseDockerUsesRe},
+			}))
+		})
 	})
 }
 
@@ -887,6 +1096,15 @@ func Test_resolve(t *testing.T) { //nolint:paralleltest // useDockerStub が t.S
 			require.ErrorIs(t, err, os.ErrNotExist)
 		})
 
+		t.Run("解釈できない uses: docker:// があれば registry へ問い合わせる前に落ちる", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, ".github", "workflows", "ci.yaml"), "      - uses: docker://alpine\n")
+
+			err := resolve(root, testTargets(t, root), 0)
+
+			require.ErrorIs(t, err, errLooseDockerUses)
+		})
+
 		t.Run("digest を解決できなければどのキーで失敗したか示すエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
 			root := t.TempDir()
 			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
@@ -946,6 +1164,21 @@ func Test_applyOrCheck(t *testing.T) {
 			assert.Equal(t, "  db:\n    image: alpine:3.24@"+digestAlpine+"\n", readAll(t, cf))
 		})
 
+		t.Run("lockfile の digest で uses: docker:// を固定する", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			wf := filepath.Join(root, ".github", "workflows", "ci.yaml")
+			writeFile(t, wf, "      - uses: actions/checkout@v7\n      - uses: docker://alpine:3.24\n")
+			require.NoError(t, os.MkdirAll(filepath.Join(root, "docker"), 0o750))
+			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
+
+			require.NoError(t, applyOrCheck(root, testTargets(t, root), false))
+
+			assert.Equal(t,
+				"      - uses: actions/checkout@v7\n      - uses: docker://alpine:3.24@"+digestAlpine+"\n",
+				readAll(t, wf))
+		})
+
 		t.Run("固定済みなら check は失敗せずファイルも書き換えない", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
@@ -962,6 +1195,21 @@ func Test_applyOrCheck(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("解釈できない uses: docker:// があると apply しても書き換えない", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			wf := filepath.Join(root, ".github", "workflows", "ci.yaml")
+			body := "      - uses: docker://alpine\n"
+			writeFile(t, wf, body)
+			require.NoError(t, os.MkdirAll(filepath.Join(root, "docker"), 0o750))
+			require.NoError(t, writeLock(filepath.Join(root, lockFile), testLock()))
+
+			err := applyOrCheck(root, testTargets(t, root), false)
+
+			require.ErrorIs(t, err, errLooseDockerUses)
+			assert.Equal(t, body, readAll(t, wf))
+		})
 
 		t.Run("未固定のまま check すると書き換えずにエラーを返す", func(t *testing.T) {
 			t.Parallel()
