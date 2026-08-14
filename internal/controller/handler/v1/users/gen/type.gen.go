@@ -102,6 +102,9 @@ type UserResponse struct {
 	// FirstName 名前
 	FirstName string `json:"firstName"`
 
+	// Id ユーザーID
+	Id openapi_types.UUID `json:"id"`
+
 	// LastName 苗字
 	LastName string `json:"lastName"`
 

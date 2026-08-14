@@ -123,6 +123,15 @@ fields:
   methods:
     - name: Value
       returns: string
+- name: FeedCursor
+  underlying_type: struct   # createdAt time.Time + id uuid.UUID
+  validation: なし（境界キーの組を保持するだけで、値の妥当性はカーソルの復号側が担う）
+  factory: NewFeedCursor
+  methods:
+    - name: CreatedAt
+      returns: time.Time
+    - name: ID
+      returns: uuid.UUID
 ```
 
 ## Repository Methods
@@ -139,6 +148,23 @@ fields:
 - name: CountByActive
   signature: CountByActive(ctx context.Context, active *bool) (int64, error)
   behavior: アクティブ状態（active）に基づきユーザーの総件数を返す。
+# フィード（cursor ページネーション）向け
+- name: FindFeed
+  signature: FindFeed(ctx context.Context, after *FeedCursor, limit int32) (Users, error)
+  behavior: |
+    未削除ユーザーを作成日時の降順（同時刻は ID 降順）の安定順で keyset ページネーション取得する。
+    after=nil は先頭ページ、それ以外は after が表す境界より後ろ（より過去）を返す。
+# キーワード検索向け
+- name: SearchByKeyword
+  signature: SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (Users, error)
+  behavior: |
+    検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得する。
+    active の意味は FindByActive と同じ。keywords が空の場合は全ユーザーを対象とする。
+- name: CountByKeyword
+  signature: CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error)
+  behavior: |
+    検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返す。
+    active / keywords の意味は SearchByKeyword と同じ。
 # 詳細系エンドポイント向け（追記分）
 - name: FindByID
   signature: FindByID(ctx context.Context, id uuid.UUID) (*User, error)
@@ -169,3 +195,10 @@ fields:
     件数を下回ることがある。保持期間の判定は usecase の責務だが、「生きているユーザーを不可逆に
     消さない」ことは呼び手を問わない不変条件なので、永続化側の最終防壁として持つ。
 ```
+
+## Notes
+
+`users.search_text` は Entity に現れない。プロフィール列（氏名・メール・電話・住所）を連結した
+`GENERATED ALWAYS AS ... STORED` の生成列であり、`SearchByKeyword` / `CountByKeyword` が部分一致検索の
+索引として引くだけの永続化都合の派生値だからである。値はドメインが決めず DB が既存列から導出するため、
+Entity に持たせると同じ情報を二重に持つことになる。

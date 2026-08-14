@@ -104,48 +104,48 @@ func (mr *MockUsecaseMockRecorder) GetUser(ctx, authn, id any) *gomock.Call {
 }
 
 // ListUsers mocks base method.
-func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]user.UserView, error) {
+func (m *MockUsecase) ListUsers(ctx context.Context, authn *auth.Authn, active *bool, page *paging.Page) ([]user.UserView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListUsers", ctx, active, page)
+	ret := m.ctrl.Call(m, "ListUsers", ctx, authn, active, page)
 	ret0, _ := ret[0].([]user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListUsers indicates an expected call of ListUsers.
-func (mr *MockUsecaseMockRecorder) ListUsers(ctx, active, page any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) ListUsers(ctx, authn, active, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsers", reflect.TypeOf((*MockUsecase)(nil).ListUsers), ctx, active, page)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsers", reflect.TypeOf((*MockUsecase)(nil).ListUsers), ctx, authn, active, page)
 }
 
 // ListUsersFeed mocks base method.
-func (m *MockUsecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*user.UserFeedView, error) {
+func (m *MockUsecase) ListUsersFeed(ctx context.Context, authn *auth.Authn, cursor *paging.Cursor) (*user.UserFeedView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListUsersFeed", ctx, cursor)
+	ret := m.ctrl.Call(m, "ListUsersFeed", ctx, authn, cursor)
 	ret0, _ := ret[0].(*user.UserFeedView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListUsersFeed indicates an expected call of ListUsersFeed.
-func (mr *MockUsecaseMockRecorder) ListUsersFeed(ctx, cursor any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) ListUsersFeed(ctx, authn, cursor any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersFeed", reflect.TypeOf((*MockUsecase)(nil).ListUsersFeed), ctx, cursor)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersFeed", reflect.TypeOf((*MockUsecase)(nil).ListUsersFeed), ctx, authn, cursor)
 }
 
 // ListUsersWithTotal mocks base method.
-func (m *MockUsecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*user.UserListView, error) {
+func (m *MockUsecase) ListUsersWithTotal(ctx context.Context, authn *auth.Authn, active *bool, page *paging.Page) (*user.UserListView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListUsersWithTotal", ctx, active, page)
+	ret := m.ctrl.Call(m, "ListUsersWithTotal", ctx, authn, active, page)
 	ret0, _ := ret[0].(*user.UserListView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListUsersWithTotal indicates an expected call of ListUsersWithTotal.
-func (mr *MockUsecaseMockRecorder) ListUsersWithTotal(ctx, active, page any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) ListUsersWithTotal(ctx, authn, active, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersWithTotal", reflect.TypeOf((*MockUsecase)(nil).ListUsersWithTotal), ctx, active, page)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersWithTotal", reflect.TypeOf((*MockUsecase)(nil).ListUsersWithTotal), ctx, authn, active, page)
 }
 
 // UpdateUser mocks base method.

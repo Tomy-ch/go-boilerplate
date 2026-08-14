@@ -11,6 +11,7 @@ package mock_search
 
 import (
 	context "context"
+	auth "go-boilerplate/internal/usecase/boundary/auth"
 	paging "go-boilerplate/internal/usecase/tools/paging"
 	search "go-boilerplate/internal/usecase/user/search"
 	reflect "reflect"
@@ -43,46 +44,46 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 }
 
 // CountUsersByKeyword mocks base method.
-func (m *MockUsecase) CountUsersByKeyword(ctx context.Context, filter *search.SearchParams) (int64, error) {
+func (m *MockUsecase) CountUsersByKeyword(ctx context.Context, authn *auth.Authn, filter *search.SearchParams) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountUsersByKeyword", ctx, filter)
+	ret := m.ctrl.Call(m, "CountUsersByKeyword", ctx, authn, filter)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CountUsersByKeyword indicates an expected call of CountUsersByKeyword.
-func (mr *MockUsecaseMockRecorder) CountUsersByKeyword(ctx, filter any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) CountUsersByKeyword(ctx, authn, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountUsersByKeyword", reflect.TypeOf((*MockUsecase)(nil).CountUsersByKeyword), ctx, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountUsersByKeyword", reflect.TypeOf((*MockUsecase)(nil).CountUsersByKeyword), ctx, authn, filter)
 }
 
 // ListUsersByKeyword mocks base method.
-func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Page) (search.UserSearchResults, error) {
+func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, authn *auth.Authn, filter *search.SearchParams, page *paging.Page) (search.UserSearchResults, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListUsersByKeyword", ctx, filter, page)
+	ret := m.ctrl.Call(m, "ListUsersByKeyword", ctx, authn, filter, page)
 	ret0, _ := ret[0].(search.UserSearchResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListUsersByKeyword indicates an expected call of ListUsersByKeyword.
-func (mr *MockUsecaseMockRecorder) ListUsersByKeyword(ctx, filter, page any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) ListUsersByKeyword(ctx, authn, filter, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeyword", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeyword), ctx, filter, page)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeyword", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeyword), ctx, authn, filter, page)
 }
 
 // ListUsersByKeywordWithTotal mocks base method.
-func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Page) (*search.UserSearchListView, error) {
+func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, authn *auth.Authn, filter *search.SearchParams, page *paging.Page) (*search.UserSearchListView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListUsersByKeywordWithTotal", ctx, filter, page)
+	ret := m.ctrl.Call(m, "ListUsersByKeywordWithTotal", ctx, authn, filter, page)
 	ret0, _ := ret[0].(*search.UserSearchListView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListUsersByKeywordWithTotal indicates an expected call of ListUsersByKeywordWithTotal.
-func (mr *MockUsecaseMockRecorder) ListUsersByKeywordWithTotal(ctx, filter, page any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) ListUsersByKeywordWithTotal(ctx, authn, filter, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeywordWithTotal", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeywordWithTotal), ctx, filter, page)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeywordWithTotal", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeywordWithTotal), ctx, authn, filter, page)
 }

@@ -12,6 +12,12 @@ func TestAction_String(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("Actionの文字列表現を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "resource:operation", Action("resource:operation").String())
+		})
+
+		// sample-api:begin
 		t.Run("ActionUserGetの文字列表現を返す", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "user:get", ActionUserGet.String())
@@ -36,5 +42,6 @@ func TestAction_String(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "purchase:ship", ActionPurchaseShip.String())
 		})
+		// sample-api:end
 	})
 }
