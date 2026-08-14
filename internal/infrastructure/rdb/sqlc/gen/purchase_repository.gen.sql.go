@@ -251,14 +251,24 @@ WHERE p.user_id = $1
         p.ordered_at < $2
         OR (p.ordered_at = $2 AND p.id < $3)
     )
+    AND (
+        NOT $4::BOOLEAN
+        OR (
+            p.ordered_at >= $5
+            AND p.ordered_at < $6
+        )
+    )
 ORDER BY p.ordered_at DESC, p.id DESC
-LIMIT $4
+LIMIT $7
 `
 
 type ListPurchasesFeedAfterParams struct {
 	UserID         uuid.UUID
 	AfterOrderedAt time.Time
 	AfterID        uuid.UUID
+	FilterByPeriod bool
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
 	LimitParam     int32
 }
 
@@ -273,6 +283,7 @@ type ListPurchasesFeedAfterRow struct {
 
 // (ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す。境界は直前ページ末尾行の
 // (ordered_at, id) で、ordered_at 同値は id で安定にタイブレークする。
+// 期間の絞り込みは先頭ページと同一条件で、ページ送りの間も呼び出し側が同じ期間を渡す前提である。
 //
 //	SELECT
 //	    p.id,
@@ -288,13 +299,23 @@ type ListPurchasesFeedAfterRow struct {
 //	        p.ordered_at < $2
 //	        OR (p.ordered_at = $2 AND p.id < $3)
 //	    )
+//	    AND (
+//	        NOT $4::BOOLEAN
+//	        OR (
+//	            p.ordered_at >= $5
+//	            AND p.ordered_at < $6
+//	        )
+//	    )
 //	ORDER BY p.ordered_at DESC, p.id DESC
-//	LIMIT $4
+//	LIMIT $7
 func (q *Queries) ListPurchasesFeedAfter(ctx context.Context, arg *ListPurchasesFeedAfterParams) ([]*ListPurchasesFeedAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPurchasesFeedAfter,
 		arg.UserID,
 		arg.AfterOrderedAt,
 		arg.AfterID,
+		arg.FilterByPeriod,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
 		arg.LimitParam,
 	)
 	if err != nil {
@@ -333,13 +354,23 @@ SELECT
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.user_id = $1
+    AND (
+        NOT $2::BOOLEAN
+        OR (
+            p.ordered_at >= $3
+            AND p.ordered_at < $4
+        )
+    )
 ORDER BY p.ordered_at DESC, p.id DESC
-LIMIT $2
+LIMIT $5
 `
 
 type ListPurchasesFeedFirstParams struct {
-	UserID     uuid.UUID
-	LimitParam int32
+	UserID         uuid.UUID
+	FilterByPeriod bool
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
+	LimitParam     int32
 }
 
 type ListPurchasesFeedFirstRow struct {
@@ -356,6 +387,7 @@ type ListPurchasesFeedFirstRow struct {
 // ステータス名は購入ステータスマスタとの結合で解決する（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // 一覧は概要のみで明細は含まない。
+// filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを返す。
 //
 //	SELECT
 //	    p.id,
@@ -367,10 +399,23 @@ type ListPurchasesFeedFirstRow struct {
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE p.user_id = $1
+//	    AND (
+//	        NOT $2::BOOLEAN
+//	        OR (
+//	            p.ordered_at >= $3
+//	            AND p.ordered_at < $4
+//	        )
+//	    )
 //	ORDER BY p.ordered_at DESC, p.id DESC
-//	LIMIT $2
+//	LIMIT $5
 func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchasesFeedFirstParams) ([]*ListPurchasesFeedFirstRow, error) {
-	rows, err := q.db.Query(ctx, listPurchasesFeedFirst, arg.UserID, arg.LimitParam)
+	rows, err := q.db.Query(ctx, listPurchasesFeedFirst,
+		arg.UserID,
+		arg.FilterByPeriod,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+		arg.LimitParam,
+	)
 	if err != nil {
 		return nil, err
 	}

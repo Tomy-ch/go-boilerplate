@@ -33,4 +33,9 @@ type ListFeedParams struct {
 	AfterOrderedAt *time.Time
 	// AfterID は、keyset 境界となる購入 ID です。先頭ページでは nil です。
 	AfterID *uuid.UUID
+	// OrderedAfter / OrderedBefore は、注文日時で絞り込む半開区間 [OrderedAfter, OrderedBefore) です。
+	// 期間で絞り込まない場合はいずれも nil で、片方だけを指定した場合も絞り込みません
+	// （暦日から半開区間への解決は usecase 層の責務です）。
+	OrderedAfter  *time.Time
+	OrderedBefore *time.Time
 }

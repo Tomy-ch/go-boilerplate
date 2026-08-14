@@ -37,6 +37,7 @@ type Repository interface {
 	// keyset ページネーション取得します。ステータス名は購入ステータスマスタで解決します
 	// （購入ステータスは購入集約に属する固定参照マスタのため、単一集約の Repository read です）。
 	// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。
+	// params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返します。
 	FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
 	// FindStatusesByUserID は、指定ユーザーの購入が取っているステータスを重複なく返します。
 	// 進行中かどうかで絞り込まないため、その判定（Status.IsTerminal の否定）は呼び出し側が行います。

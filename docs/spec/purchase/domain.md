@@ -236,6 +236,9 @@ fields:
     （GET /v1/purchases 一覧の取得元）。ステータス名は購入ステータスマスタとの JOIN で解決する
     （購入ステータスは購入集約に属する固定参照マスタで、[ADR-0030 (lightweight-cqrs)] の子参照マスタ例外により単一集約の
     Repository read。QS ではない）。params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返す。
+    params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返す
+    （注文日時は購入集約自身の属性であり、単純な絞り込みは Repository に残る）。暦日から半開区間への解決は
+    usecase 層の責務で、片方だけの指定は絞り込みなしとして扱う。
     返す FeedItem は書き込み集約 Purchase とは別の読み取りモデル（Code / TotalAmount(USD セント) /
     StatusName / OrderedAt / ID）。不透明カーソルの符号化・復号は usecase 層の責務。
 - name: FindDetailByID
