@@ -466,7 +466,7 @@ go test ./internal/integration/...
 
 ---
 
-## Step 9.5 — The event-driven side (optional)
+## Step 10 — The event-driven side (optional)
 
 **Goal:** see the other entry point into the usecase layer. Everything so far was driven by an HTTP
 request; withdrawal additionally emits a domain event that a **worker** consumes.
@@ -507,7 +507,7 @@ in
 
 ---
 
-## Step 10 — Full verification
+## Step 11 — Full verification
 
 **Goal:** prove the rebuilt feature is correct, formatted, and meets the coverage gate.
 
