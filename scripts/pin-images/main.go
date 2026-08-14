@@ -40,6 +40,7 @@ import (
 
 	"go-boilerplate/pkg/xerrors"
 	"go-boilerplate/scripts/lib/ghfiles"
+	"go-boilerplate/scripts/lib/yamlblock"
 )
 
 const (
@@ -52,10 +53,18 @@ const (
 
 var (
 	// FROM [--platform=...] <ref> [AS <stage>]
-	fromRe = regexp.MustCompile(`(?m)^(FROM[ \t]+)(?:--platform=\S+[ \t]+)?(\S+)([ \t]+(?i:AS)[ \t]+\S+)?[ \t]*$`)
+	// クオートを ref から締め出すのは、含めると `FROM "alpine:3.24"` がクオートごと一致し、
+	// `"alpine` を image 名として固定対象に載せてしまうため。締め出せば一致しなくなり、
+	// detectLooseRefs が対応記法の外として拾う。
+	fromRe      = regexp.MustCompile(`(?m)^(FROM[ \t]+)(?:--platform=\S+[ \t]+)?([^\s'"]+)([ \t]+(?i:AS)[ \t]+\S+)?[ \t]*$`)
+	fromLooseRe = regexp.MustCompile(`(?i)^[ \t]*FROM[ \t]+\S`)
 	// docker compose service の `image: <ref>`。FROM と同じ prefix/ref/suffix の 3 グループ構成に
 	// して rewritePins を共用する。suffix は末尾空白と行末コメントを取り込み保持する。
-	composeImageRe = regexp.MustCompile(`(?m)^([ \t]+image:[ \t]+)(\S+)([ \t]*(?:#.*)?)$`)
+	// クオートを締め出す理由は fromRe と同じ。
+	composeImageRe    = regexp.MustCompile(`(?m)^([ \t]+image:[ \t]+)([^\s'"]+)([ \t]*(?:#.*)?)$`)
+	composeImageLoose = regexp.MustCompile(`^[ \t]+image[ \t]*:[ \t]*\S`)
+	// `FROM <ref> AS <stage>` の接尾辞から宣言されたステージ名を取り出す。
+	fromStageNameRe = regexp.MustCompile(`[ \t]+(?i:AS)[ \t]+(\S+)`)
 	// workflow / composite action の `uses: [-] docker://<ref>`。GitHub Actions が registry の
 	// image を直接実行するステップの記法で、参照先は GitHub のリポジトリではない。pin-actions は
 	// tag を git ls-remote で commit へ解決する機構なので registry には効かず、digest を扱う
@@ -63,7 +72,7 @@ var (
 	//
 	// ref に tag を必須とするのは、省略が :latest を意味するため。tag 無しを通すと parseRef が
 	// false を返して固定対象から静かに外れ、可動タグのまま CI で走る。一致しない形は
-	// detectLooseDockerUses が拾って fail-close する。
+	// detectLooseRefs が拾って fail-close する。
 	usesDockerRe = regexp.MustCompile(
 		`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*docker://)((?:[^\s@]+/)?[^\s@/:]+:[^\s@/]+(?:@\S+)?)([ \t]*(?:#.*)?)$`)
 	// usesDockerRe の取りこぼしを拾う緩いパターン。引用符付き・flow mapping・tag 無しのいずれも
@@ -91,16 +100,22 @@ var (
 	errPinDrift = xerrors.New("image 参照が未固定か lockfile と不一致です")
 	// errNoStepBack は、退行先の無い出来立て digest しか無く採用を見送った場合のエラー。
 	errNoStepBack = xerrors.New("退行先の無い出来立て image は採用できません")
-	// errLooseDockerUses は、固定対象として解釈できない docker:// の uses: を検出した場合のエラー。
-	errLooseDockerUses = xerrors.New("固定対象として解釈できない uses: docker:// があります")
+	// errLooseRef は、固定対象として解釈できない image 参照を検出した場合のエラー。
+	errLooseRef = xerrors.New("固定対象として解釈できない image 参照があります")
 )
 
 // target は走査対象のファイルと、その参照行を捕捉する正規表現（prefix/ref/suffix の 3 グループ）。
-// loose は厳格な re が取りこぼした参照行を検出する正規表現で、持たない対象では nil。
+// loose は厳格な re が取りこぼした参照行を検出する正規表現。
+//
+// exemptTagless は tag を持たなくても固定対象外として正当な参照値を返す。tag の省略は :latest を
+// 意味するため原則は取りこぼしとして落とすが、Dockerfile だけは registry の image を指さない FROM が
+// 正当に存在する——先行する AS で宣言したビルドステージと scratch で、どちらも固定のしようがない。
+// 持たない対象では nil。
 type target struct {
-	path  string
-	re    *regexp.Regexp
-	loose *regexp.Regexp
+	path          string
+	re            *regexp.Regexp
+	loose         *regexp.Regexp
+	exemptTagless func(data string) map[string]bool
 }
 
 // imageRef は FROM が参照する registry image 1 件。key は image:tag。
@@ -182,10 +197,12 @@ func targetFiles(root string) ([]target, error) {
 	}
 	var targets []target
 	for _, f := range dockerfiles {
-		targets = append(targets, target{path: f, re: fromRe})
+		targets = append(targets, target{
+			path: f, re: fromRe, loose: fromLooseRe, exemptTagless: dockerfileExemptTagless,
+		})
 	}
 	for _, f := range compose {
-		targets = append(targets, target{path: f, re: composeImageRe})
+		targets = append(targets, target{path: f, re: composeImageRe, loose: composeImageLoose})
 	}
 	for _, f := range workflows {
 		targets = append(targets, target{path: f, re: usesDockerRe, loose: looseDockerUsesRe})
@@ -194,25 +211,35 @@ func targetFiles(root string) ([]target, error) {
 	return targets, nil
 }
 
-// detectLooseDockerUses は固定対象として解釈できない docker:// の uses: の行番号を返す。
+// detectLooseRefs は固定対象として解釈できない参照の行番号を返す。
 //
 // usesDockerRe は行頭にアンカーした 1 行 1 ステップのブロック記法かつ tag 付きにしか一致しない
 // が、YAML は同じ内容を flow mapping や引用符でも書けるし、tag を省いた形も書ける。いずれも
 // 一致ゼロになり、その状態は「固定漏れ無し」と区別が付かない。緩いパターンで補い、残った行は
 // 呼び出し元が fail-close する。
-func detectLooseDockerUses(data string, strict, loose *regexp.Regexp) []int {
-	blanked := strict.ReplaceAllStringFunc(data, func(line string) string {
+//
+// ブロックスカラーの中身は YAML の構造ではなく単なるテキストなので走査から外す。外さないと
+// `run:` スクリプトが uses: を含む文字列を出力するだけで検出が誤爆する。
+func detectLooseRefs(data string, t target) []int {
+	blanked := t.re.ReplaceAllStringFunc(data, func(line string) string {
 		return strings.Repeat(" ", len(line))
 	})
+	// 範囲の判定は潰す前の内容で行う。潰した行は字下げごと空白になり、ブロックの終わりに見える。
+	inBlockScalar := yamlblock.ContentLines(data)
 	var lines []int
 	for i, line := range strings.Split(blanked, "\n") {
+		if inBlockScalar[i+1] {
+			continue
+		}
 		if strings.HasPrefix(strings.TrimSpace(line), "#") {
 			continue
 		}
-		if loose.MatchString(line) {
+		if t.loose.MatchString(line) {
 			lines = append(lines, i+1)
 		}
 	}
+	lines = append(lines, taglessLines(data, t)...)
+	sort.Ints(lines)
 
 	return lines
 }
@@ -222,14 +249,11 @@ func detectLooseDockerUses(data string, strict, loose *regexp.Regexp) []int {
 func validateLoose(root string, targets []target) error {
 	var found []string
 	for _, t := range targets {
-		if t.loose == nil {
-			continue
-		}
 		data, err := os.ReadFile(t.path)
 		if err != nil {
 			return xerrors.Wrap(err, "read "+rel(root, t.path))
 		}
-		for _, line := range detectLooseDockerUses(string(data), t.re, t.loose) {
+		for _, line := range detectLooseRefs(string(data), t) {
 			found = append(found, fmt.Sprintf("%s:%d", rel(root, t.path), line))
 		}
 	}
@@ -238,8 +262,43 @@ func validateLoose(root string, targets []target) error {
 	}
 	sort.Strings(found)
 
-	return xerrors.Wrap(errLooseDockerUses,
+	return xerrors.Wrap(errLooseRef,
 		strings.Join(found, ", ")+"（引用符を外し、1 行 1 参照・tag 明示の形へ直してください）")
+}
+
+// dockerfileExemptTagless は registry の image を指さない FROM の値を返す。ビルドステージ参照は
+// Docker が大文字小文字を区別しないため、比較は小文字へ揃える。
+func dockerfileExemptTagless(data string) map[string]bool {
+	exempt := map[string]bool{"scratch": true}
+	for _, m := range fromRe.FindAllStringSubmatch(data, -1) {
+		if stage := fromStageNameRe.FindStringSubmatch(m[3]); stage != nil {
+			exempt[strings.ToLower(stage[1])] = true
+		}
+	}
+
+	return exempt
+}
+
+// taglessLines は厳格なパターンには一致したが tag を持たない参照の行番号を返す。
+//
+// この形は detectLooseRefs の走査では拾えない——厳格なパターンに一致した時点で空白へ潰され、
+// 残らないためである。一方 parseRef は tag が無ければ false を返すので固定対象にも載らず、
+// どの報告にも現れないまま :latest が実行される。固定の網から参照が黙って消える向きの穴。
+func taglessLines(data string, t target) []int {
+	var exempt map[string]bool
+	if t.exemptTagless != nil {
+		exempt = t.exemptTagless(data)
+	}
+	var lines []int
+	for _, loc := range t.re.FindAllStringSubmatchIndex(data, -1) {
+		ref := data[loc[4]:loc[5]]
+		if _, ok := parseRef(ref); ok || exempt[strings.ToLower(ref)] {
+			continue
+		}
+		lines = append(lines, strings.Count(data[:loc[0]], "\n")+1)
+	}
+
+	return lines
 }
 
 // globFiles は root からの相対パターン pat に一致するパスを返す。

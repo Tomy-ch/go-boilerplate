@@ -29,6 +29,7 @@ import (
 
 	"go-boilerplate/pkg/xerrors"
 	"go-boilerplate/scripts/lib/ghfiles"
+	"go-boilerplate/scripts/lib/yamlblock"
 )
 
 const (
@@ -56,8 +57,6 @@ var (
 	// 拾い、値は行末までまとめて捉えて呼び出し元が解釈する。直前の文字を見るのは `disuses:` のような
 	// 語末一致を弾くため。
 	looseUsesRe = regexp.MustCompile(`(?:^|[^A-Za-z0-9_-])["']?uses["']?[ \t]*:(.*)$`)
-	// 値がブロックスカラー（`|` / `>`）で始まる行。以降の深い字下げの行はその中身。
-	blockScalarRe = regexp.MustCompile(`:[ \t]*[|>][+-]?[0-9]*[ \t]*(?:#.*)?$`)
 )
 
 var (
@@ -220,16 +219,12 @@ func fileRefs(data string) []ref {
 // `run:` スクリプトが uses: を含む文字列を出力するだけで検出が誤爆する。
 func detectLooseUses(data string) []string {
 	var found []string
-	blockIndent := -1
-	for line := range strings.SplitSeq(data, "\n") {
-		trimmed := strings.TrimSpace(line)
-		indent := len(line) - len(strings.TrimLeft(line, " \t"))
-		if blockIndent >= 0 {
-			if trimmed == "" || indent > blockIndent {
-				continue
-			}
-			blockIndent = -1
+	inBlockScalar := yamlblock.ContentLines(data)
+	for i, line := range strings.Split(data, "\n") {
+		if inBlockScalar[i+1] {
+			continue
 		}
+		trimmed := strings.TrimSpace(line)
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") || usesRe.MatchString(line) {
 			continue
 		}
@@ -237,9 +232,6 @@ func detectLooseUses(data string) []string {
 			if note, loose := looseUsesValue(m[1]); loose {
 				found = append(found, note)
 			}
-		}
-		if blockScalarRe.MatchString(line) {
-			blockIndent = indent
 		}
 	}
 	sort.Strings(found)
