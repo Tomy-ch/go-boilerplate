@@ -207,7 +207,7 @@ sequenceDiagram
 
 ## 4. What an integrator implements (adoption is opt-in, two steps)
 
-This project provides the **middleware, `Run[T]` orchestrator, `Store` seam + RDB impl, schema, GC usecase/job, and a reference adoption** (`POST /v1/users`). A handler is idempotent **only if both steps are done** — otherwise it behaves normally.
+This project provides the **middleware, `Run[T]` orchestrator, `Store` seam + RDB impl, schema, GC usecase/job, and a reference adoption** on one sample resource-creating endpoint. A handler is idempotent **only if both steps are done** — otherwise it behaves normally.
 
 ```mermaid
 flowchart LR
@@ -220,8 +220,8 @@ flowchart LR
 
 | # | Required implementation | Location | Reference |
 | --- | --- | --- | --- |
-| ① | add `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` to the handler's `NewStrictHandler` middleware slice; take `idempotency.Deps` in `BindHandler` | `internal/controller/handler/<path>/*_handler.go` | `v1/users` handler |
-| ② | wrap the usecase call: `idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | same handler method | `v1/users` `PostUsers` |
+| ① | add `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` to the handler's `NewStrictHandler` middleware slice; take `idempotency.Deps` in `BindHandler` | `internal/controller/handler/<path>/*_handler.go` | the sample POST handler |
+| ② | wrap the usecase call: `idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | same handler method | its `Post<Resource>` method |
 | ③ (opt) | inject `Deps.Metrics` when an o11y backend exists; widen `Scope` (e.g. `subject:operationID`) in the middleware if per-endpoint isolation is wanted | DI / middleware | `NewDeps`, `WithRequest` |
 
 Operational notes (no per-route config flags — these are coded constants):
