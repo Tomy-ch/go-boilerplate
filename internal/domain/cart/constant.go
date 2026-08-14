@@ -10,6 +10,9 @@ const (
 	// maxItems は、1 カートが保持できる明細数の上限です。
 	maxItems = 50
 
+	// subtotalMinorUnitDigits は、小計を決済スケール（USD セント）へ落とすときの小数桁数です。
+	subtotalMinorUnitDigits = 2
+
 	// sessionTokenLength は、ゲストセッショントークンの長さです。
 	// 256 ビットを base64url（パディング無し）で表現した長さに一致します。
 	sessionTokenLength = 43

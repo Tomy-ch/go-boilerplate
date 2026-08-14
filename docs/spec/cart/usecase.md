@@ -150,19 +150,20 @@ steps:
   - 商品から ProductSnapshot を切り出し、明細ごとに CartItem.Evaluate へ渡して結果を受け取る
       （引けなかった明細には nil を渡す。判定の中身はドメインが持つ）
   - MarkSeen で提示価格を更新し、Touch で有効期限を延長して Update
-  - 買える明細のみを合算した SubtotalAmount を添えて CartView を返す
-      （合算が決済スケールへ落とせない場合のみ、分類済みの内部エラーを返す）
+  - 購入可能な明細を PurchasableLine としてドメインへ渡し、cart.Subtotal が返した値を
+      SubtotalAmount として CartView に添える（合算も丸めもドメインが持つ）
 calls:
   - cart_repository.FindByOwnerID
   - cart_repository.FindBySessionToken
   - cart_repository.Update
   - product_repository.FindByIDs
   - cart_item.Evaluate
+  - cart.Subtotal
   - clock.Now
 errors:
   - 業務的な失敗は無い（カート未作成・期限切れ・明細の問題はいずれも 200 で表現する）
-  - 合算が決済スケールへ落とせない場合のみ内部エラー。単価 1 件は money.Price の構築時に検証されるため
-    明細が積み上がった結果に限られ、合計を偽らずに返す術が無いので分類済みのエラーとして返す
+  - ErrSubtotalOutOfRange: 合算が決済スケールへ落とせない場合（422）。単価 1 件は money.Price の
+    構築時に検証されるため、明細が積み上がった結果に限られる
 ```
 
 **在庫をロックしない。** 再評価は参考情報であり、返した瞬間から古くなる。ここで `FOR UPDATE` を取ると

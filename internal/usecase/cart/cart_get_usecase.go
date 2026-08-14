@@ -3,6 +3,7 @@ package cart
 import (
 	"context"
 
+	"go-boilerplate/internal/domain/cart"
 	"go-boilerplate/internal/usecase/boundary/tx"
 )
 
@@ -36,7 +37,7 @@ func (u *usecase) GetCart(ctx context.Context, subject Subject) (CartView, error
 		}
 
 		// 判定は提示価格を書き換える前に済ませる。書き換えた後では、値上がりが常に「差が無い」になる。
-		views, seen := evaluateItems(items, products)
+		views, seen, lines := evaluateItems(items, products)
 
 		c.MarkSeen(seen)
 		c.Touch(now, cartTTL)
@@ -44,7 +45,7 @@ func (u *usecase) GetCart(ctx context.Context, subject Subject) (CartView, error
 			return CartView{}, uerr
 		}
 
-		subtotal, serr := subtotalAmount(views)
+		subtotal, serr := cart.Subtotal(lines)
 		if serr != nil {
 			return CartView{}, serr
 		}
