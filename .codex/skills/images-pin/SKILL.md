@@ -97,7 +97,7 @@ make pin-images-resolve PIN_IMAGES_MIN_AGE_DAYS=<N>   # the parsed exclusion day
 
 `resolve` re-resolves every `image:tag`. Rule 2 prints `⚠️ ... のため既存ピンを維持` and keeps the prior aged pin — expected, not a failure. Rule 3 (fresh + no prior lock) is now a **hard failure**: `resolve` exits non-zero with `❌ 退行先の無い出来立て image は採用できません ...`, listing the offending `image:tag`. Note each quarantined (rule 2) image; for a rule 3 failure, surface it to the user with its adoptable date (`created + N days`) and stop — do NOT force it through. The user either waits for it to age and re-runs, or, if the adoption is intentional and the risk accepted, re-runs with `days=0`.
 
-### 2.5. Triage a Rule 3 Refusal (only when a decision needs it)
+### 3. Triage a Rule 3 Refusal (only when a decision needs it)
 
 A **rule 2** hold needs no triage: the gate kept an aged, already-vetted digest, nothing is pending, and re-running once the image ages is the whole answer. Do not spend a triage there.
 
@@ -105,7 +105,7 @@ A **rule 3** refusal is different. There is no aged digest to fall back to, so t
 
 Triage is report-only. It never runs `resolve` / `apply`, edits neither the lockfile nor a `FROM` / `image:` line, and never passes `days=0` on the user's behalf.
 
-### 3. Apply
+### 4. Apply
 
 ```sh
 make pin-images-apply
@@ -113,7 +113,7 @@ make pin-images-apply
 
 Pins every `FROM` / compose `image:` from the lockfile (aged images gain / refresh `@sha256:...`). fail-closed: an image not registered in the lockfile is NOT stripped to tag-only — `apply` reports it as `未登録` and exits non-zero. If this fires, an image reached a `FROM` / `image:` without going through `resolve`; re-run resolve (or remove the stray reference).
 
-### 4. Verify
+### 5. Verify
 
 ```sh
 make pin-images-check     # FROM + compose image: match lockfile (network-free)
@@ -122,15 +122,15 @@ make docker-lint          # hadolint over docker/*/Dockerfile
 
 Report OK / FAIL per command. Do NOT auto-roll-back on failure — the user decides.
 
-### 5. Final Report
+### 6. Final Report
 
-Summarize in Japanese: images newly pinned / digest-refreshed (with the digest age), images kept on their prior aged pin (rule 2, with reason), any rule 3 hard failure (fresh + no prior lock — reported with its adoptable date, its triage band if step 2.5 ran, and whether the user chose to wait or bootstrap with `days=0`), and the verification result. List rule 2 held images so the user knows to re-run once they age. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`- or `Build:`-prefixed) manually.
+Summarize in Japanese: images newly pinned / digest-refreshed (with the digest age), images kept on their prior aged pin (rule 2, with reason), any rule 3 hard failure (fresh + no prior lock — reported with its adoptable date, its triage band if step 3 ran, and whether the user chose to wait or bootstrap with `days=0`), and the verification result. List rule 2 held images so the user knows to re-run once they age. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`- or `Build:`-prefixed) manually.
 
 ## Notes
 
 - **The tag is off-limits.** This skill only moves digests. A version bump is `go-upgrade` / `tools-upgrade` + `make sync-versions`.
 - **Rule 2 quarantine is normal, not a failure; rule 3 is.** Official base images rebuild frequently, so a fresh current digest is common; when a prior aged pin exists the gate keeps it (rule 2) — expected. But a fresh image with *no* prior pin (rule 3) has no vetted step-back target, so `resolve` fails closed rather than shipping it tag-only or adopting it.
-- **A fast-moving tag can stall.** If a tag is rebuilt more often than every `N` days, the current digest is always fresh and the pin never advances past the last aged one. That is the accepted cooldown cost; lower `N` deliberately (and note the risk) only if a security patch must be adopted sooner — triage the digest first (step 2.5), rather than overriding on urgency alone.
+- **A fast-moving tag can stall.** If a tag is rebuilt more often than every `N` days, the current digest is always fresh and the pin never advances past the last aged one. That is the accepted cooldown cost; lower `N` deliberately (and note the risk) only if a security patch must be adopted sooner — triage the digest first (step 3), rather than overriding on urgency alone.
 - **Thin evidence is a property of the ecosystem, not a gap in the triage.** A rebuild has no source diff to read, so `supply-chain-triage` here leans on the SBOM package diff and image config and frequently returns INSUFFICIENT-EVIDENCE. Rule 2 and rule 3 exist precisely because this ecosystem cannot answer directly; that is why the cooldown is 14 days rather than 7.
 - **Multi-arch digest.** `resolve` pins the top-level image-index digest (Docker resolves the per-platform manifest from it), and reads the earliest per-platform `created` for the age check (most conservative).
 - **`check` is network-free.** It reads the lockfile + Dockerfiles + compose files only, so it is safe as a CI / pre-commit gate even without registry access.

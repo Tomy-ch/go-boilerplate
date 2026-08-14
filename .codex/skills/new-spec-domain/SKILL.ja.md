@@ -79,7 +79,7 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 
 承認時は `mkdir -p docs/spec/<feature>` + `Write`。
 
-## Step 3.5. 集約を用語表へ登録する
+## Step 4. 集約を用語表へ登録する
 
 **この時点で用語なのは集約名だけである。** このスキルが書くのは TODO のテンプレートであり、フィールド・値オブジェクト・振る舞いはまだ決まっていない。登録できるものが他に無い。1 行、あるいはゼロ行である。
 
@@ -96,7 +96,7 @@ feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` 
 この責務は、domain 層が用語を導入する場合にだけ成り立つ。aggregate も `domain.md` もなく、QueryService
 だけの projection-only feature では、read-side の語を導入する者がいなくなるため、その場合は `/glossary` が担う。このスキルは aggregate を作るときにだけ動くので、projection まで対象を広げると `/glossary` の責務と重複する。
 
-## Step 4. クロージング
+## Step 5. クロージング
 
 ```text
 docs/spec/<feature>/domain.md を作成しました。次は editor で TODO を埋めてください。

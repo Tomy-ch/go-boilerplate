@@ -154,7 +154,7 @@ Implementation file conventions:
   - Map domain params → sqlc params via heuristic (1:1 by name, types adjusted)
   - Call `db.<SqlcFunc>(ctx, params)`
   - Convert sqlc rows → domain entity per sibling pattern
-  - Wrap every sqlc-call error with `pgerror.NormalizeError(err)` (single-normalization principle — see Step 1.5 / `pgerror/README.md`)
+  - Wrap every sqlc-call error with `pgerror.NormalizeError(err)` (single-normalization principle — see Step 1 / `pgerror/README.md`)
 - Each method (unmapped): TODO stub as in Step 2
 - Complex helpers (multi-row → slice): follow sibling pattern (helper function in same file)
 

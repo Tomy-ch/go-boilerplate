@@ -63,7 +63,7 @@ Procedure:
 
 The threshold plays two different roles depending on ecosystem:
 
-- **pnpm under `minimumReleaseAge`**: a **hard block**, and a wide one — pnpm re-verifies the **whole lockfile** against the policy on every install, `--frozen-lockfile` included, so an in-window entry fails the replay path too (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) and not merely fresh resolution (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`). pnpm offers a first-class per-version escape hatch (`minimumReleaseAgeExclude`); it is a decision to surface at Step 4, never one to take here. The behavioural detail is recorded in [`docs/design/security.md`](../../../docs/design/security.md) → "Dependencies → pnpm" — read it rather than trusting this summary.
+- **pnpm under `minimumReleaseAge`**: a **hard block**, and a wide one — pnpm re-verifies the **whole lockfile** against the policy on every install, `--frozen-lockfile` included, so an in-window entry fails the replay path too (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) and not merely fresh resolution (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`). pnpm offers a first-class per-version escape hatch (`minimumReleaseAgeExclude`); it is a decision to surface at Step 5, never one to take here. The behavioural detail is recorded in [`docs/design/security.md`](../../../docs/design/security.md) → "Dependencies → pnpm" — read it rather than trusting this summary.
 - **everywhere else (Go, a lockfile with no cooldown)**: a **caution flag, not a hard block** — because the point is to fix a known vulnerability, a too-new fixed version is surfaced and confirmed, not silently withheld.
 
 Do NOT fetch registries or edit any file until `<MIN_AGE_DAYS>` is resolved.
@@ -76,10 +76,10 @@ Permitted to modify while this skill runs:
 
 - `**/package.json` — only to add/adjust a `dependencies` version for an approved package.
 - `**/pnpm-lock.yaml` — the deterministic output of `pnpm install --lockfile-only` in that package directory for approved changes.
-- `**/pnpm-workspace.yaml` — **only** the `overrides` and `minimumReleaseAgeExclude` keys, and the exclusion **only after the user has approved that specific version** at Step 4. Never touch `minimumReleaseAge`, `minimumReleaseAgeStrict`, `minimumReleaseAgeIgnoreMissingTime`, `trustPolicy*`, `allowBuilds`, `blockExoticSubdeps`, or `engineStrict` — those are the policy itself, not the patch.
+- `**/pnpm-workspace.yaml` — **only** the `overrides` and `minimumReleaseAgeExclude` keys, and the exclusion **only after the user has approved that specific version** at Step 5. Never touch `minimumReleaseAge`, `minimumReleaseAgeStrict`, `minimumReleaseAgeIgnoreMissingTime`, `trustPolicy*`, `allowBuilds`, `blockExoticSubdeps`, or `engineStrict` — those are the policy itself, not the patch.
 - `go.mod` / `go.sum` — the output of `go get <module>@<version>` + `go mod tidy` for approved Go modules.
 - `vendor/**` — **only** as the mechanical output of `go mod vendor`, and **only if the repo vendors** (a `vendor/modules.txt` exists). A `go.mod` bump leaves `vendor/modules.txt` out of sync; the build then fails with `inconsistent vendoring`, so re-vendoring is a required downstream step, not an edit of taste. Never hand-edit vendored files.
-- Regenerated artifacts that these dependencies drive, **only** when a drift check (Step 6) shows they moved — e.g. `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**` via `make gen-mock-auth-oapi`. Regenerate with the repo's `make` target; never hand-edit a generated file.
+- Regenerated artifacts that these dependencies drive, **only** when a drift check (Step 7) shows they moved — e.g. `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**` via `make gen-mock-auth-oapi`. Regenerate with the repo's `make` target; never hand-edit a generated file.
 
 Hard-protected even during this skill (never touch):
 
@@ -129,9 +129,9 @@ If a package cannot be found in any lockfile or `go.mod`, report it as **not-pre
 For each present package, choose the target version:
 
 - **Default: the minimal fixed version that stays on the currently-installed major line.** From a multi-candidate advisory (`brace-expansion 1.1.15 → 5.0.7 / 1.1.16 / 2.1.2`), pick the one matching the installed major (`1.1.15` → `1.1.16`). This minimizes breaking risk.
-- **Major bump required** (the only fix is a higher major, or the installed line has no patched release — e.g. `@hono/node-server 1.19.14 → 2.0.5`): flag it explicitly as **potentially breaking**. It will need per-package confirmation (Step 4) and closer verification (Step 6).
+- **Major bump required** (the only fix is a higher major, or the installed line has no patched release — e.g. `@hono/node-server 1.19.14 → 2.0.5`): flag it explicitly as **potentially breaking**. It will need per-package confirmation (Step 5) and closer verification (Step 7).
 - **Downgrade guard**: never select a version strictly lower than installed. If the only "fix" parses lower, mark it `needs-manual` and surface it rather than applying.
-- **Gate the version that actually resolves, not just the advisory's number.** A `^`/`~` range in `package.json` floats to the newest matching patch, which may be far newer than the advisory's fixed version and thus `too-new`. Compute the date on the version the lockfile will land on (Step 5 re-checks this), and when a range would resolve to a too-new / unvetted version in a dir with **no cooldown** to hold it back, **pin the exact approved fixed version** instead of leaving the caret to float. Under a cooldown the range case is benign in both ecosystems — it silently lands on the newest *aged* match rather than the newest one — but that also means a range can quietly fail to reach the advisory's fixed version, so re-read what the lockfile actually pinned.
+- **Gate the version that actually resolves, not just the advisory's number.** A `^`/`~` range in `package.json` floats to the newest matching patch, which may be far newer than the advisory's fixed version and thus `too-new`. Compute the date on the version the lockfile will land on (Step 6 re-checks this), and when a range would resolve to a too-new / unvetted version in a dir with **no cooldown** to hold it back, **pin the exact approved fixed version** instead of leaving the caret to float. Under a cooldown the range case is benign in both ecosystems — it silently lands on the newest *aged* match rather than the newest one — but that also means a range can quietly fail to reach the advisory's fixed version, so re-read what the lockfile actually pinned.
 
 Fetch each chosen version's **publish date** to feed the caution gate (Step 3):
 
@@ -148,25 +148,25 @@ For each chosen version, compute `now - publish_date` and set a disposition:
 
 | Flag | Condition | Effect |
 | --- | --- | --- |
-| **clear** | `>= MIN_AGE_DAYS`, or already named in `minimumReleaseAgeExclude` | eligible — apply by default (see Step 4) |
+| **clear** | `>= MIN_AGE_DAYS`, or already named in `minimumReleaseAgeExclude` | eligible — apply by default (see Step 5) |
 | **too-new** | `< MIN_AGE_DAYS`, in a dir with **no** cooldown, or Go | eligible but flagged; ⚠️ surfaced and NOT applied by default — the user must opt in |
-| **blocked** | `< MIN_AGE_DAYS` under a pnpm `minimumReleaseAge` | **cannot be installed as-is** — the repo's own cooldown hard-rejects it. Do not apply on your own; mark **deferred**, report when it will clear (`publish_date + N days`), and for pnpm also present the exclusion option at Step 4 |
+| **blocked** | `< MIN_AGE_DAYS` under a pnpm `minimumReleaseAge` | **cannot be installed as-is** — the repo's own cooldown hard-rejects it. Do not apply on your own; mark **deferred**, report when it will clear (`publish_date + N days`), and for pnpm also present the exclusion option at Step 5 |
 
 The caution exists because malicious uploads to npm / the Go proxy are typically detected and revoked within hours to days. A security fix is urgent, so `too-new` is a warning the user can override — but `blocked` is the repo's own policy enforced by the package manager itself, and the skill never disables that policy. Note the boundary is real: a version published even a few minutes inside an N-day window is `blocked` until the window rolls past its exact publish timestamp.
 
 **The two ecosystems differ in what `blocked` leaves you.** npm has no per-version escape hatch, so a blocked npm entry really is "wait, or take an older aged fixed version". pnpm has one — `minimumReleaseAgeExclude` — which this repo's `pnpm-workspace.yaml` files describe as the path for an urgent security fix, and which `minimumReleaseAgeStrict: true` deliberately keeps out of the resolver's hands. **That difference changes the options you present, not who decides.** Adding an exclusion is a human's call every time; a precedent in the file is not an authorization to add the next one (`AGENTS.md`, *Conflicting Authority*).
 
-### 3.5. Triage What the Gate Caught
+### 4. Triage What the Gate Caught
 
-For every entry dispositioned `too-new` or `blocked`, chain **`/supply-chain-triage`** (one invocation per entry) before Step 4 presents the decision.
+For every entry dispositioned `too-new` or `blocked`, chain **`/supply-chain-triage`** (one invocation per entry) before Step 5 presents the decision.
 
 The window is a proxy for four questions — did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear — and those can be answered directly instead of waited out (`docs/design/security.md` → "Dependencies"). This step is where that happens: a `too-new` opt-in is precisely the decision that should rest on evidence rather than on the user's tolerance for a day count, and a `blocked` entry needs to know whether waiting is merely inconvenient or actually protective.
 
-Pass the ecosystem, package, candidate version, the **baseline the lockfile currently holds** (the diff's other end), `<MIN_AGE_DAYS>`, the disposition, and the CVE forcing the move. Triage is report-only — it reads the tarball / module zip without executing it and returns a 0–12 score, a band, and citations. It changes nothing and never adopts anything; the decision stays in Step 4.
+Pass the ecosystem, package, candidate version, the **baseline the lockfile currently holds** (the diff's other end), `<MIN_AGE_DAYS>`, the disposition, and the CVE forcing the move. Triage is report-only — it reads the tarball / module zip without executing it and returns a 0–12 score, a band, and citations. It changes nothing and never adopts anything; the decision stays in Step 5.
 
-Skip it when there is nothing flagged (all `clear`), and skip it for an entry the user has already declined this run. Carry each entry's band into Step 4's summary and option descriptions so the choice is made with the evidence attached.
+Skip it when there is nothing flagged (all `clear`), and skip it for an entry the user has already declined this run. Carry each entry's band into Step 5's summary and option descriptions so the choice is made with the evidence attached.
 
-### 4. Display Summary; Auto-apply Clear, Confirm Only the Flagged
+### 5. Display Summary; Auto-apply Clear, Confirm Only the Flagged
 
 Print a Japanese summary grouped by disposition. Example:
 
@@ -197,13 +197,13 @@ Print a Japanese summary grouped by disposition. Example:
 The confirmation policy is deliberately asymmetric — a clear patch is the whole point of running the skill, so do not make the user click through it:
 
 - **clear AND not a major bump → apply without asking.** These are default patches; confirming each one is friction the user has already implicitly authorized by invoking the skill on the advisory.
-- **major-bump (a higher major than installed) → always report separately and confirm**, even when the version itself is `clear`. A major bump can break the code that imports it, so the user decides knowingly. Verify it more closely in Step 6.
+- **major-bump (a higher major than installed) → always report separately and confirm**, even when the version itself is `clear`. A major bump can break the code that imports it, so the user decides knowingly. Verify it more closely in Step 7.
 - **too-new (caution, no repo cooldown) → report and confirm (opt-in)**, default not applied.
 - **blocked / deferred → never applied on your own.** Report it and when it will clear, and offer the `minimumReleaseAgeExclude` option so the user can decide between waiting and opening the window for that one version — offer it, never assume it.
 
-Only call `AskUserQuestion` when there is a **major-bump**, a **too-new**, and/or a **blocked pnpm** entry to decide (a single `multiSelect: true` question listing just those, all deselected by default). Give each flagged option its Step 3.5 triage band in the description (`1/12 LOW` / `7/12 HIGH` / `INSUFFICIENT-EVIDENCE`) — that band is the reason to opt in or wait, so it belongs where the click happens rather than only in the summary above. For a pnpm exclusion option, state in the description what the entry buys and what it costs: the version installs now, and every checkout carries a policy exemption until someone deletes the line. If every eligible entry is `clear`-and-non-major, apply them straight away with no question. If nothing is eligible, skip to Step 7 with no writes.
+Only call `AskUserQuestion` when there is a **major-bump**, a **too-new**, and/or a **blocked pnpm** entry to decide (a single `multiSelect: true` question listing just those, all deselected by default). Give each flagged option its Step 4 triage band in the description (`1/12 LOW` / `7/12 HIGH` / `INSUFFICIENT-EVIDENCE`) — that band is the reason to opt in or wait, so it belongs where the click happens rather than only in the summary above. For a pnpm exclusion option, state in the description what the entry buys and what it costs: the version installs now, and every checkout carries a policy exemption until someone deletes the line. If every eligible entry is `clear`-and-non-major, apply them straight away with no question. If nothing is eligible, skip to Step 8 with no writes.
 
-### 5. Apply the Updates
+### 6. Apply the Updates
 
 Group approved packages by location and apply per group. Never edit a `pnpm-lock.yaml` by hand — let `pnpm` regenerate it.
 
@@ -221,7 +221,7 @@ pnpm install --lockfile-only
 
 **pnpm — transitive dependency**: add an `overrides` entry to `<dir>/pnpm-workspace.yaml` (not `package.json`), written as a resolution range per the caution at the top of this file, then `pnpm install --lockfile-only`. The same-major-floor rule and the provisional-debt rule stated above apply unchanged.
 
-**pnpm — a version the cooldown blocks, after the user approved the exclusion at Step 4**: add the entry to `minimumReleaseAgeExclude` in that package's `pnpm-workspace.yaml`, matching the form of the entries already there.
+**pnpm — a version the cooldown blocks, after the user approved the exclusion at Step 5**: add the entry to `minimumReleaseAgeExclude` in that package's `pnpm-workspace.yaml`, matching the form of the entries already there.
 
 ```yaml
 minimumReleaseAgeExclude:
@@ -247,7 +247,7 @@ go mod vendor        # ONLY if the repo vendors (vendor/modules.txt exists)
 
 Batch all approved Go modules into one `go get` (multiple `module@version` args) + a single `go mod tidy`, so `go.sum` settles once. If `vendor/modules.txt` exists, run `go mod vendor` afterwards — without it the build fails with `inconsistent vendoring` because `go.mod` and `vendor/modules.txt` disagree.
 
-### 6. Verify
+### 7. Verify
 
 Run the checks that match what actually changed — a dependency patch rarely touches first-party source, so scope the verification to the ecosystems that moved rather than always running the full suite. Report each as OK / FAIL; do NOT auto-roll-back on failure — the user decides.
 
@@ -290,7 +290,7 @@ make tool-runners-build
 
 Host-side runs (`make md-lint-ci` and friends, which CI uses) are green before this and are **not** evidence the containerized gates are. Rebuild, then re-run whichever gate you intend to report as passing. `repo-ops` §10 covers the same failure from the other direction.
 
-### 7. Final Report
+### 8. Final Report
 
 Summarize in Japanese:
 

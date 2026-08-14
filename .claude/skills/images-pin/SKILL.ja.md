@@ -93,7 +93,7 @@ make pin-images-resolve PIN_IMAGES_MIN_AGE_DAYS=<N>   # 解析した除外日数
 
 `resolve` は全 `image:tag` を再解決する。ルール 2 は `⚠️ ... のため既存ピンを維持` を出力し前回の古い pin を維持する——想定内でありエラーではない。ルール 3（新しすぎる・前回 lock なし）は今や**ハード失敗**：`resolve` は `❌ 退行先の無い出来立て image は採用できません ...` を出力し、該当 `image:tag` を列挙して非ゼロ終了する。ルール 2 の quarantine 対象は記録し、ルール 3 の失敗は採用可能日（`created + N 日`）とともにユーザーへ提示して止まる——無理に通さない。ユーザーは古くなるのを待って再実行するか、採用が意図的でリスクを受容するなら `days=0` で再実行する。
 
-### 2.5. ルール 3 の拒否をトリアージする（判断が必要なときのみ）
+### 3. ルール 3 の拒否をトリアージする（判断が必要なときのみ）
 
 **ルール 2** の維持にトリアージは不要である。ゲートは aged で既に検証済みの digest を維持しており、保留中のものは何も無く、image が古くなってから再実行することが答えのすべてである。ここでトリアージを費やしてはならない。
 
@@ -103,7 +103,7 @@ make pin-images-resolve PIN_IMAGES_MIN_AGE_DAYS=<N>   # 解析した除外日数
 
 トリアージは報告のみ。`resolve` / `apply` を実行せず、lockfile も `FROM` / `image:` 行も編集せず、ユーザーに代わって `days=0` を渡すこともしない。
 
-### 3. Apply
+### 4. Apply
 
 ```sh
 make pin-images-apply
@@ -111,7 +111,7 @@ make pin-images-apply
 
 lockfile を元に全 `FROM` / compose `image:` を固定する（古い image は `@sha256:...` を付与/更新）。fail-closed：lockfile 未登録の image は tag のみへ剥がさず、`未登録` として報告し非ゼロ終了する。これが出たら、`resolve` を通さずに `FROM` / `image:` へ image が到達した状態——resolve を再実行する（または不要な参照を除く）。
 
-### 4. 検証
+### 5. 検証
 
 ```sh
 make pin-images-check     # FROM + compose image: が lockfile と一致（network 不要）
@@ -120,7 +120,7 @@ make docker-lint          # docker/*/Dockerfile に hadolint
 
 各コマンドの OK / FAIL を報告する。失敗時に自動ロールバックしない——ユーザーが判断する。
 
-### 5. 最終報告
+### 6. 最終報告
 
 日本語で要約する：新規 pin / digest 更新した image（digest の経過日数つき）、前回の古い pin を維持した image（ルール 2、理由つき）、ルール 3 のハード失敗があればそれ（新しすぎる・前回 lock なし——採用可能日、手順 2.5 を実行した場合はトリアージのバンド、そしてユーザーが待機を選んだか `days=0` でブートストラップしたか）、検証結果。ルール 2 で維持した image を列挙し、古くなったら再実行すべきことを示す。commit / stage / push はしない——ユーザーが `/commit`（これらは `CI:` または `Build:` 接頭辞）を手動実行する。
 

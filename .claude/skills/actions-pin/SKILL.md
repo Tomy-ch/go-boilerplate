@@ -21,7 +21,7 @@ Read this before doing anything — the mechanism determines every step below.
 - `make pin-actions-resolve` — reads the comment tag of every `uses:`, resolves it to a commit SHA via `git ls-remote` (annotated tags are dereferenced to the commit), applies the quarantine, and rewrites the lockfile. Env `PIN_ACTIONS_MIN_AGE_DAYS` (default 14) controls the gate; when a moving-tag's latest SHA is inside the window it **keeps the existing pin** (its own built-in step-back for moving tags).
 - **The age `resolve` gates on is the newer of the release `published_at` and the resolved commit's date** (why, in `docs/design/security.md`, Build inputs). Consequence for this skill: **an old `published_at` no longer implies the candidate is aged** — a moving tag whose release date is old but whose head commit is recent is still quarantined.
 - `make pin-actions-apply` — rewrites each `uses:` `@<sha>` from the lockfile, keeping `# <tag>`. It reads every target file and settles the verdict **before writing anything**, so an abort leaves the working tree untouched.
-- `make pin-actions-check` — verifies pins match the lockfile without writing (CI / hook). It is fail-closed on more than drift: an unreadable lockfile line, a duplicate key, an orphan lockfile entry, and a `uses:` written in a notation the pinner cannot rewrite are all errors (see step 7).
+- `make pin-actions-check` — verifies pins match the lockfile without writing (CI / hook). It is fail-closed on more than drift: an unreadable lockfile line, a duplicate key, an orphan lockfile entry, and a `uses:` written in a notation the pinner cannot rewrite are all errors (see step 8).
 - The scan covers `.github/workflows/*.{yml,yaml}` plus `.github/actions/**/action.{yml,yaml}` **recursively**, so a composite action placed one directory deeper than the usual layout is pinned like any other.
 - **A moving major tag (`# v6`) auto-advances to the latest within-major release** on the next `resolve`. A same-major refresh is therefore just `resolve` + `apply`. A **major bump requires editing the comment tag** (`# v6` → `# v7`) first. An **exact-version comment (`# 0.35.0`) never moves** on `resolve`; bumping it requires editing the comment.
 
@@ -107,7 +107,7 @@ For each distinct external action, fetch its release list with dates (`gh api re
 
 `resolve` / `apply` / `actionlint` catch syntax, NOT semantic input changes. For every action whose **major changes**, read its release notes / `action.yml` and compare against every `with:` block this repo uses. Examples seen: `peter-evans/create-pull-request` renamed `git-token`→`branch-token` (v8); `actions/upload-pages-artifact` v5 excludes dotfiles and requires `deploy-pages@v4+`. If the repo's actual inputs remain compatible → keep the bump. If a breaking input change applies → **hold the action and report the required change**; do not auto-apply. (Minor-only refreshes within a major skip this check.) <!-- skill-lint-ignore -->
 
-### 3.5. Triage Where Step-back Is Not Available
+### 4. Triage Where Step-back Is Not Available
 
 The quarantine's normal answer here is the **step-back** (rule 2): pin the newest already-aged exact version. That needs no evidence gathering — it adopts something the window has already cleared. Triage belongs to the cases where stepping back is not an option:
 
@@ -117,17 +117,17 @@ The quarantine's normal answer here is the **step-back** (rule 2): pin the newes
 
 For those, chain **`/supply-chain-triage`** with `github-actions` as the ecosystem, the action, the candidate tag, and the **SHA currently recorded in `.github/actions-pin.toml`** as the baseline — the lockfile SHA is what the workflows run today, so it is the correct other end of the diff. Actions triage is the strongest of the four ecosystems: the artifact is a real commit range, so publisher, tag-to-commit correspondence, the diff, and the input surface are all directly answerable.
 
-Triage is report-only. It never edits a comment tag, the lockfile, or a `uses:` line, and never runs `resolve` / `apply`. Carry the band into step 4's plan so the hold-versus-adopt choice is visible with its evidence; the decision stays with `AskUserQuestion`.
+Triage is report-only. It never edits a comment tag, the lockfile, or a `uses:` line, and never runs `resolve` / `apply`. Carry the band into step 5's plan so the hold-versus-adopt choice is visible with its evidence; the decision stays with `AskUserQuestion`.
 
-### 4. Display Plan and Confirm
+### 5. Display Plan and Confirm
 
 Print a Japanese summary: bumps to apply (moving `# vM` / exact step-back `# vM.x.y`, each with the chosen version + its age), held items (with reason: still-fresh new major / breaking `with:` / no aged release), and unchanged. Then confirm the concrete set via `AskUserQuestion` (`multiSelect: true` when several independent bumps are offered) so the step-back and hold decisions are visible before any write.
 
-### 5. Edit Comment Tags
+### 6. Edit Comment Tags
 
 For each approved bump, edit the trailing comment tag of the relevant `uses:` line(s) to the computed target (`# v7`, or exact `# v4.1.0`). Leave the `@<sha>` as-is (`apply` rewrites it). When an action appears in multiple files with an identical `uses:` line, a per-file replace-all is appropriate; when several distinct actions share the same old comment in one file (e.g. three `# v3` lines), match the full unique `uses:` line so only the intended one changes. Leave held / unchanged actions untouched.
 
-### 6. Resolve → Apply
+### 7. Resolve → Apply
 
 ```sh
 export GITHUB_TOKEN="$(gh auth token)"
@@ -139,7 +139,7 @@ make pin-actions-apply
 
 **Watch the lockfile diff for a re-pointed tag.** A moving major tag (`# v6`) legitimately advances to a new SHA. An **exact** comment tag (`# v4.1.0`) must not: if `resolve` gives an exact tag a different SHA than the lockfile already recorded, the version reference stayed the same while the code underneath it changed. That is tag re-pointing, the shape of the `tj-actions/changed-files` compromise, and it is a security event rather than a pin refresh. Stop, do not `apply`, and triage it (`/supply-chain-triage`, baseline = the lockfile's previous SHA) before anything is written — the old and new SHAs are what make an upstream report actionable. If `resolve` aborts with `ref "vN" が見つかりません`, the moving-major tag does not exist — that action should have been a step-2 exact pin; fix and re-run. If it aborts on vendor inconsistency, run step 0's `go mod vendor`.
 
-### 7. Verify
+### 8. Verify
 
 ```sh
 make pin-actions-check     # pins match lockfile
@@ -159,19 +159,19 @@ Report OK / FAIL per command. Do NOT auto-roll-back on failure — the user deci
 
 Text inside a block scalar is exempt, so a `run:` script that merely prints the string `uses: owner/repo@ref` does not trip the check.
 
-### 8. Final Report
+### 9. Final Report
 
-Summarize: actions bumped (moving / exact step-back), actions SHA-refreshed, actions held (with reason, plus any triage band and the axis that drove it), any re-pointed exact tag found in step 6, verification result. List any exact-version pins introduced so the user knows to revisit them once aged. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`-prefixed) manually.
+Summarize: actions bumped (moving / exact step-back), actions SHA-refreshed, actions held (with reason, plus any triage band and the axis that drove it), any re-pointed exact tag found in step 7, verification result. List any exact-version pins introduced so the user knows to revisit them once aged. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`-prefixed) manually.
 
 ## Notes
 
 - **Step-back is the default response to the quarantine, not a hold.** Holding happens only when no aged release exists in the target major. This is the behavior the arguments are designed around. It is also why triage is the exception here rather than the rule: an aged exact version is evidence the window has already supplied, and gathering more about the fresh head buys nothing when a vetted alternative is one comment-tag edit away.
-- **A tag is a name, not an identity.** The lockfile exists because a tag can be re-pointed; an exact tag whose SHA moves is the case it was built to catch (step 6). Treat it as a security event, not a refresh.
+- **A tag is a name, not an identity.** The lockfile exists because a tag can be re-pointed; an exact tag whose SHA moves is the case it was built to catch (step 7). Treat it as a security event, not a refresh.
 - **Quarantine vs new majors**: the gate keys off SHA age, and a new major has no prior lockfile entry, so a fresh major's moving tag is skipped by `resolve` until it ages — which is exactly why step 2 pins an aged exact version instead.
 - **Not every action has a moving major tag.** Always `git ls-remote` the `vM` tag before assuming `# vM` resolves (`sigstore/cosign-installer` is the known exception → permanent exact pin).
 - **`actionlint` ≠ semantic safety.** It validates workflow syntax, not whether a bumped action's inputs/behavior still match usage. The `with:` review (step 3) is mandatory for major bumps.
 - **annotated-tag deref**: `resolve` returns the dereferenced commit SHA (`refs/tags/vM^{}`), so the lockfile SHA can differ from a naive `git ls-remote vM` line.
-- **A release date is not the age of the code it names.** The quarantine takes the newer of `published_at` and the resolved commit date; it buys time against automated takeover rather than proving a date honest. Catching the re-point itself is still step 6's job. Reasoning: `docs/design/security.md`.
+- **A release date is not the age of the code it names.** The quarantine takes the newer of `published_at` and the resolved commit date; it buys time against automated takeover rather than proving a date honest. Catching the re-point itself is still step 7's job. Reasoning: `docs/design/security.md`.
 - **`GITHUB_TOKEN`**: `resolve` queries the GitHub API for release dates; without a token it hits the 60 req/h anonymous limit. Export `gh auth token`.
 - **Idempotency**: a second run shows everything pinned; `pin-actions-check` passes.
 - The skill never auto-pushes.

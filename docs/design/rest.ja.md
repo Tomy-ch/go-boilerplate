@@ -222,7 +222,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | ① | OpenAPI ソースにパス / operation / スキーマを定義し再 bundle | `openapi/**/*.yaml` → `openapi/openapi.gen.yaml` | 既存パス |
 | ② | サーバ interface ＋ 型を再生成 | `make gen-api` → `internal/controller/handler/<path>/gen/` | — |
-| ③ | `BindHandler(echo, tracerFactory, usecase, …)` ＋ `operationId` ごと 1 メソッド（tracer span → 解釈 → usecase → 応答）を実装 | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, `v1/users` |
+| ③ | `BindHandler(echo, tracerFactory, usecase, …)` ＋ `operationId` ごと 1 メソッド（tracer span → 解釈 → usecase → 応答）を実装 | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, 既存のハンドラ |
 | ④ | usecase メソッドを実装（無ければ）、domain → DTO へ写像 | `internal/usecase/<feature>/` | `scaffold-usecase` |
 | ⑤ | handler を配線：`fx.Invoke(<pkg>.BindHandler)` | `internal/di/module/controller.go` | 既存の invoke |
 

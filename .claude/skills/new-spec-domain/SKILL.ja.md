@@ -79,7 +79,7 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 
 承認時は `mkdir -p docs/spec/<feature>` + `Write`。
 
-## Step 3.5. 集約を用語表へ登録する
+## Step 4. 集約を用語表へ登録する
 
 **この時点で用語なのは集約名だけである。** このスキルが書くのは TODO のテンプレートであり、
 フィールド・値オブジェクト・振る舞いはまだ決まっていない。登録できるものが他に無い。1 行、
@@ -100,7 +100,7 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` の内側へ、そうでなければ外側へ
 置く。マーカーの反対側に置かれた行は、サンプルと共に消えるか、サンプルより長生きするかのどちらかになる。
 
-## Step 4. クロージング
+## Step 5. クロージング
 
 ```text
 docs/spec/<feature>/domain.md を作成しました。次は editor で TODO を埋めてください。

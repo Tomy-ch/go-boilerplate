@@ -84,7 +84,7 @@ Display proposed path + first ~20 lines of template, then ask:
 
 If approved, `mkdir -p docs/spec/<feature>` and `Write` the file.
 
-## Step 3.5. Register the aggregate in the glossary
+## Step 4. Register the aggregate in the glossary
 
 **Only the aggregate name is a term at this point.** This skill writes a template of TODOs; the
 fields, value objects and behaviours are not decided yet, so there is nothing else to register. One
@@ -107,7 +107,7 @@ Place the row inside the `sample-api:begin` / `sample-api:end` markers when the 
 sample-derived, outside them otherwise. A row on the wrong side of a marker either vanishes with the
 sample or outlives it.
 
-## Step 4. Closing
+## Step 5. Closing
 
 ```text
 docs/spec/<feature>/domain.md を作成しました。次は editor で TODO を埋めてください。

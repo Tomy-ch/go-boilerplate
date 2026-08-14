@@ -52,14 +52,14 @@ For a **展開形** section there is no `calls:`, so resolve its section-scoped 
 - Every other entry must parse as a dependency name (`<aggregate>.Repository`, a boundary, a QueryService, a `pkg` / `tools` path) → else `violation`.
 - A 展開形 dependency **need not** appear in the spec-level `## Dependencies`; that section serves the 集約形 Workflow. Do not report it as missing.
 
-## Step 2.5. Interface Coverage Check
+## Step 3. Interface Coverage Check
 
 Every method in `## Interface` must have its procedure somewhere — a Workflow entry (`### <Method>` heading, or a `method:` key when the entries are one YAML list) or a 展開形 H2 section. Match on the method name appearing in the heading, the `method:` key, or the section's prose.
 
 - Interface method with no procedure anywhere → `violation` (this is the gap that lets a method escape every other check here).
 - 展開形 section describing a method absent from `## Interface` → `suggestion`: it may legitimately document a **separate package** for the same feature — a read-only aggregation split out under `internal/usecase/<feature>/<name>/` has its own interface, so it does not belong in this one. Say which reading you took.
 
-## Step 3. Naming Convention Check (lean A — suggestion only)
+## Step 4. Naming Convention Check (lean A — suggestion only)
 
 So scaffold-controller can mechanically derive operationId → usecase-method mappings, usecase methods must follow a consistent convention. Verify the spec **without** referencing OpenAPI (dependency direction). Source order: (1) `internal/usecase/README.md` if documented; (2) existing `internal/usecase/<sibling>/*.go` patterns as fallback. Then for the `usecase.md` Interface:
 
@@ -69,7 +69,7 @@ So scaffold-controller can mechanically derive operationId → usecase-method ma
 
 Each finding → `suggestion` (準拠は推奨、blocker ではない；命名違反は scaffold-controller 側で mapping 失敗として最終的に surface される).
 
-## Step 4. Workflow Internal Consistency
+## Step 5. Workflow Internal Consistency
 
 - `tx_required: true` の Workflow entry が `tx.Manager` boundary を `calls` に含むか。
 - `errors` リストが domain で定義された error 型を参照しているか（部分一致で可、命名規則チェック）。

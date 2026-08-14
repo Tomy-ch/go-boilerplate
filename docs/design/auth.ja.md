@@ -40,7 +40,7 @@
 
 認証（IdP が呼び出し元が *誰か* を表明）と、**この系での有効性**（そのユーザーがここで今も有効なメンバーか）は**別の軸**である。リクエストが通るのは**両方**成立するときのみ — RS が**毎リクエスト**評価する論理 AND:
 
-> **実効アクセス = ( トークン検証 — IdP 側 ) AND ( この系で有効: `deleted_at IS NULL` + roles 許可 — RS 側 )**
+> **実効アクセス = ( トークン検証 — IdP 側 ) AND ( この系で有効: soft-delete されていない + roles 許可 — RS 側 )**
 
 構造的に妥当な JWT でも十分でない理由がこれ。Provider の削除済みユーザー fixture（Charlie / Frank）は完全に妥当・正しく署名されたトークンを持つが拒否される — **「JWT 有効 ≠ この系で利用可能」**。
 
@@ -49,8 +49,8 @@
 | 無効化 | 所有者 | 効果 | 配置（本リポジトリ） |
 | --- | --- | --- | --- |
 | **アカウント無効化**（もう認証できない） | IdP | *新規*トークンの発行を止める。既発行 JWT は `exp` まで有効なまま | 外部 IdP — mock には**無い**（アカウント lifecycle を持たないトークン stub） |
-| **メンバーシップ無効化**（`deleted_at`: 退会 / BAN） | この RS | トークンに関係なく毎リクエスト拒否 | `useridentity` resolver → `401` |
-| **認可**（roles） | この RS | アクションごとに許可 / 拒否 | `user_roles` + authorizer |
+| **メンバーシップ無効化**（soft-delete: 退会 / BAN） | この RS | トークンに関係なく毎リクエスト拒否 | `IdentityResolver` の実装 → `401` |
+| **認可**（roles） | この RS | アクションごとに許可 / 拒否 | ロールストア + `Authorizer` の実装 |
 
 誤解されやすい点:
 
@@ -60,8 +60,8 @@
 
 無効性を *立てる* provisioning の 2 経路 — 上記の enforcement（*読む*だけ）とは別:
 
-- **アプリ主導**（退会 / BAN）: このサービスが自分の `deleted_at` を立てる（soft-delete、`update_user.sql`）。これが主たる実行時経路。これを駆動する退会エンドポイントは別 PBI。
-- **IdP 主導**（deprovisioning）: 実 IdP がユーザーを無効化し、それをここへ反映したい場合は、このサービスの deactivate 経路を呼ぶ**薄い ingress アダプタ**（SCIM / webhook 受け口、またはイベント consumer）を足す。mock はそのイベントを発行せず、伝播プロトコルは IdP 依存のため、**この seam は意図的に未実装**のまま — enforcement 側（`deleted_at` を尊重する `useridentity` resolver）は、何がそれを立てても消費できる状態にある。IdP が *トリガ* し、RS が *enforce* する。
+- **アプリ主導**（退会 / BAN）: このサービスが自分のユーザーレコードを soft-delete する。これが主たる実行時経路。これを駆動する退会エンドポイントは別 PBI。
+- **IdP 主導**（deprovisioning）: 実 IdP がユーザーを無効化し、それをここへ反映したい場合は、このサービスの deactivate 経路を呼ぶ**薄い ingress アダプタ**（SCIM / webhook 受け口、またはイベント consumer）を足す。mock はそのイベントを発行せず、伝播プロトコルは IdP 依存のため、**この seam は意図的に未実装**のまま — enforcement 側（soft-delete を尊重する `IdentityResolver` の実装）は、何がそれを立てても消費できる状態にある。IdP が *トリガ* し、RS が *enforce* する。
 
 ---
 
@@ -182,7 +182,7 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 | JWT 検証コア | `internal/infrastructure/auth/jwt/auth_jwt.go` |
 | JWKS 解決（`kid` lookup・TTL キャッシュ・refresh cooldown） | `internal/infrastructure/auth/jwt/jwks.go` |
 | dev 限定スタブ（`Bearer debug:<subject>`、`ci` / `test` env） | `internal/infrastructure/auth/local/auth_local.go` |
-| identity 解決（`sub` → 内部 `userID`） | `internal/infrastructure/auth/useridentity/` |
+| identity 解決（`sub` → 内部 `userID`） | `internal/infrastructure/auth/` 配下のプロジェクト固有の `IdentityResolver`。基盤の既定は `internal/infrastructure/auth/identity/` の passthrough |
 | DI 配線（env 駆動の authenticator 選択・JWKS downstream profile） | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
 | スキャン用の実 JWT 実行文脈（`dast` env: mock provider へ http で JWKS backed authenticator を配線） | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | config（`AUTH_*`） | `internal/config/envspec.go`, `internal/config/model.go` |
@@ -196,7 +196,7 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 1. **config で RS を IdP に向ける。** `AUTH_ISSUER`（token の `iss` と一致必須）・`AUTH_AUDIENCE`・`AUTH_JWKS_URL`（IdP の `jwks_uri`）。ローカルでは `env/.env` がこれらを `mock-auth-server` に向け、`AUTH_JWKS_URL` は split-horizon でコンテナ内部ホストを指す。任意: `AUTH_ALLOWED_ALGORITHMS`（既定 `RS256`）・`AUTH_CLOCK_SKEW`（`60s`）・`AUTH_JWKS_CACHE_TTL`（`5m`）。
 2. **mock を実 IdP に差し替える**のは上記 env 値の変更のみ — JWKS + claim 契約はバイト等価なので Go 変更は不要。`iss` はホスト解決可能に、`AUTH_JWKS_URL` は API コンテナから到達可能に保つ。
 3. **IdP 方言を追加**する（標準コアから外れる場合）— Cognito `token_use` / `aud`→`client_id`、Azure `scp` / `roles`、EC 鍵、opaque token — は [jwt README](../../internal/infrastructure/auth/jwt/README.ja.md) の拡張ポイントで。
-4. **identity 解決**は `(issuer, subject)` を内部ユーザーに対応づける。自前のユーザーストア向け resolver を用意する（サンプルは `useridentity`）。
+4. **identity 解決**は `(issuer, subject)` を内部ユーザーに対応づける。自前のユーザーストア向けに `IdentityResolver` の実装を用意する。用意しない場合 DI は passthrough 既定を配線し、内部 UserID は未解決のまま通る — つまりここでは未知・無効化された subject を拒否しない。
 
 > **前方注記（`#584` / PR #618・本ブランチ未収録）:** RS 側の OIDC *discovery* — `AUTH_JWKS_URL` を空にして issuer の `/.well-known/openid-configuration` から `jwks_uri` を導出（issuer 厳密一致 + same-origin + https）し、`AUTH_JWKS_DISCOVERY_TTL` / `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` を伴う — は別途着地する。本ブランチでは RS は `AUTH_JWKS_URL` から JWKS URL を**静的**に解決する。`mock-auth-server` はその将来の消費者と標準準拠のため discovery 文書を既に提供している。
 
