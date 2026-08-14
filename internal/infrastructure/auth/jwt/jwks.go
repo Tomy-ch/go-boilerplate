@@ -39,11 +39,13 @@ const (
 
 var (
 	// errJWKSMalformed は、JWKS(JSON) の解釈に失敗した場合のエラーです。
-	errJWKSMalformed = xerrors.New("jwks: malformed key set")
+	// 文書ごと使えない失敗は、どのトークンについても検証を遂行できないことを意味するため、
+	// 特定 kid の不在（errJWKSKIDKnownAbsent / errJWKSNoMatchingKID）と違い利用不能として分類します。
+	errJWKSMalformed = xerrors.Wrap(apperror.ErrUnavailable, "jwks: malformed key set")
 	// errJWKSNoKeys は、JWKS に利用可能な鍵（kid 付き）が無い場合のエラーです。
-	errJWKSNoKeys = xerrors.New("jwks: no usable keys with kid")
+	errJWKSNoKeys = xerrors.Wrap(apperror.ErrUnavailable, "jwks: no usable keys with kid")
 	// errJWKSDuplicateKID は、JWKS に重複した kid が含まれる場合のエラーです（文書ごと不採用）。
-	errJWKSDuplicateKID = xerrors.New("jwks: duplicate kid")
+	errJWKSDuplicateKID = xerrors.Wrap(apperror.ErrUnavailable, "jwks: duplicate kid")
 	// errJWKSKIDKnownAbsent は、現世代の JWKS で不在が確定済みの kid を要求された場合のエラーです。
 	errJWKSKIDKnownAbsent = xerrors.New("jwks: kid known-absent in current key set")
 	// errJWKSNoMatchingKID は、取得した JWKS に kid に対応する鍵が無い場合のエラーです。
@@ -159,7 +161,7 @@ func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.Publi
 
 // negativelyCached は、現世代（鮮度内）で kid が不在確定として記録済みかを返します。
 // キャッシュが空 / 期限切れのとき、および kid が negative に未記録のときも false を返します。
-// false は「再取得で解決を試みるべき」を意味し kid の存在は保証しません（退役後の再評価・回転追加の取りこぼし防止）。
+// false は「再取得で解決を試みるべき」を意味し、kid の存在は保証しません。
 func (r *jwksResolver) negativelyCached(kid string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -171,8 +173,7 @@ func (r *jwksResolver) negativelyCached(kid string) bool {
 }
 
 // recordAbsent は、現世代で不在が確定した kid を negative へ記録します。
-// 鮮度外（fetchedAt ゼロ / cacheTTL 超過）では記録しません — 次の世代交代で negative がクリアされるまで残り、
-// その間に回転追加された kid を誤って拒否し続けるためです。
+// 鮮度外（fetchedAt ゼロ / cacheTTL 超過）では記録しません。
 func (r *jwksResolver) recordAbsent(kid string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -225,8 +226,6 @@ func (r *jwksResolver) refresh(ctx context.Context) (bool, error) {
 	r.lastAttempt = now
 	r.lastErr = err
 	if err == nil {
-		// 公開鍵集合が変わった取得成功では、不在確定（negative）を破棄して再評価する（回転追加の取りこぼし防止）。
-		// 集合が不変なら negative は現世代の判断として保持する（同一 bogus kid の再取得抑止を維持）。
 		if !sameKeySet(r.keys, keys) {
 			r.negative = nil
 		}
@@ -285,7 +284,6 @@ func parseJWKSKeys(data []byte, allowedAlgs []string) (map[string]crypto.PublicK
 		if k.Use != "" && k.Use != "sig" {
 			continue
 		}
-		// JWK が alg を宣言している場合は許可アルゴリズムに限定する（未宣言は許容）。
 		if k.Algorithm != "" && !slices.Contains(allowedAlgs, k.Algorithm) {
 			continue
 		}

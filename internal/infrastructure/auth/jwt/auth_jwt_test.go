@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,6 +17,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/clock/testkit"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -26,6 +28,11 @@ const (
 
 // fixedNow はテストで exp / nbf クレームの基準に使う固定時刻です。
 var fixedNow = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+// errKeyResolver は鍵解決に失敗する KeyResolver です。
+type errKeyResolver struct {
+	err error
+}
 
 // newRSAKey はテスト用の RSA 鍵ペアを生成します。
 func newRSAKey(t *testing.T) *rsa.PrivateKey {
@@ -287,6 +294,40 @@ func Test_authenticator_Authenticate(t *testing.T) {
 			assert.Nil(t, authn)
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("署名鍵を取得できない場合は401へ正規化せず取得不能のまま返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			a, err := NewWithKeyResolver(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, errKeyResolver{err: xerrors.Wrap(apperror.ErrUnavailable, "jwks unavailable")})
+			require.NoError(t, err)
+			token := signToken(t, key, jwtlib.SigningMethodRS256, "", validClaims())
+
+			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
+			assert.Nil(t, authn)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("鍵取得がキャンセルされた場合は401へ正規化せずキャンセルのまま返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			a, err := NewWithKeyResolver(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, errKeyResolver{err: xerrors.Wrap(apperror.ErrCanceled, "context canceled")})
+			require.NoError(t, err)
+			token := signToken(t, key, jwtlib.SigningMethodRS256, "", validClaims())
+
+			authn, err := a.Authenticate(context.Background(), newCredential(t, token))
+			assert.Nil(t, authn)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			require.NotErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
 		t.Run("別の鍵で署名されたトークンは署名不一致で拒否される", func(t *testing.T) {
@@ -559,6 +600,11 @@ func TestNewWithKeyResolver(t *testing.T) {
 // newKeyResolver は固定のダミー鍵を返す KeyResolver です（buildAuthenticator 検証用）。
 func newKeyResolver() KeyResolver {
 	return fixedKeyResolver{key: "dummy-key"}
+}
+
+// ResolveKey は保持するエラーを返します。
+func (r errKeyResolver) ResolveKey(context.Context, string) (crypto.PublicKey, error) {
+	return nil, r.err
 }
 
 func Test_buildJWKSURLProvider(t *testing.T) {

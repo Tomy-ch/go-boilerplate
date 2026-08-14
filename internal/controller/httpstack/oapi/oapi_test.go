@@ -172,7 +172,7 @@ func TestMiddleware(t *testing.T) {
 		t.Run("完全公開のoperationは無効なトークンを付けても素通りする", func(t *testing.T) {
 			t.Parallel()
 
-			stub := authnStub{authenticateErr: xerrors.New("expired")}
+			stub := authnStub{authenticateErr: xerrors.Wrap(apperror.ErrUnauthenticated, "expired")}
 			status, reached := serveTestSpec(t, stub, "/public", "Bearer broken")
 			assert.Equal(t, http.StatusOK, status)
 			assert.True(t, reached)
@@ -209,7 +209,7 @@ func TestMiddleware(t *testing.T) {
 		t.Run("完全保護のoperationは無効なトークンを401で拒否する", func(t *testing.T) {
 			t.Parallel()
 
-			stub := authnStub{authenticateErr: xerrors.New("expired")}
+			stub := authnStub{authenticateErr: xerrors.Wrap(apperror.ErrUnauthenticated, "expired")}
 			status, reached := serveTestSpec(t, stub, "/protected", "Bearer broken")
 			assert.Equal(t, http.StatusUnauthorized, status)
 			assert.False(t, reached)
@@ -218,7 +218,7 @@ func TestMiddleware(t *testing.T) {
 		t.Run("任意認証のoperationは無効なトークンを401で拒否する", func(t *testing.T) {
 			t.Parallel()
 
-			stub := authnStub{authenticateErr: xerrors.New("expired")}
+			stub := authnStub{authenticateErr: xerrors.Wrap(apperror.ErrUnauthenticated, "expired")}
 			status, reached := serveTestSpec(t, stub, "/optional", "Bearer broken")
 			assert.Equal(t, http.StatusUnauthorized, status)
 			assert.False(t, reached)

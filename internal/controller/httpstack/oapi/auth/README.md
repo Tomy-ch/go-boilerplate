@@ -32,7 +32,10 @@ flowchart TB
 
 1. Extract the Bearer token from the `Authorization` header (rules above)
 2. Create `boundary/auth.Credential` from the scheme and token
-3. Call `authenticator.Authenticate(ctx, credential)` to obtain `Authn`
+3. Call `authenticator.Authenticate(ctx, credential)` to obtain `Authn`, passing the **request's**
+   context rather than the one the validator supplies — the validator builds its context from
+   `context.Background()`, so the span, deadline and cancellation would all be lost, and
+   authentication would run outside the request's budget and outside its trace
 4. Store `Authn` into the request context via `ctxhelper.SetAuthn()` (the slot is seeded upstream by `ctxhelper.WithAuthn` in `oapi.Middleware`); returns `ErrAuthnSlotNotFound` if the slot is missing
 
 Handler code can then retrieve `Authn` using `ctxhelper.GetAuthn()`.
@@ -51,14 +54,23 @@ callers still admits them.
 |`ErrUnauthorizedInvalidToken`|`ErrUnauthenticated`|Token validation failed by `Authenticator`|
 |`ErrUnauthorizedTokenNotProvided`|`ErrUnauthenticated`|No token found in the `Authorization` header|
 |`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|Authorization token is missing (**reserved** — not currently returned; see Notes)|
-|`ErrAuthnSlotNotFound`|`ErrUnauthenticated`|Authn slot not found in the request context (slot not seeded by `oapi.Middleware`)|
+|`ErrAuthnSlotNotFound`|`ErrInternal`|Authn slot not found in the request context (slot not seeded by `oapi.Middleware`) — a wiring defect, unrelated to the credential|
 |`ErrInvalidAuthDefaultMode`|`ErrInternal`|Default auth policy not found (**reserved** — not currently returned; see Notes)|
 
-Every error leaving the authFunc is wrapped so that it carries an HTTP status: 401 for the
-authentication failures above, and the status `infraErrorToHTTP` picked (500 / 503) for an
-infrastructure failure during identity resolution. This is not cosmetic — the validation
-middleware only propagates a status it can read off the error and otherwise collapses the
-failure to 403, so an unwrapped authentication error would surface as 403.
+Every error leaving the authFunc is wrapped so that it carries an HTTP status, and that status
+comes from the central `apperror` mapping in `controller/error/response` — the authentication
+phase keeps no table of its own. Authentication verdicts land on 401; cancellation on 499; an
+unreachable dependency on 503; anything unclassified on 500.
+
+This is not cosmetic. The validation middleware only propagates a status it can read off the
+error and otherwise collapses the failure to **403** — an authorization verdict for a request
+whose authorization was never evaluated. Assigning the status here is what keeps that from
+happening.
+
+The distinction is what the caller acts on. 401 says the credential was rejected, so re-authenticate;
+499 / 503 say no verdict was reached, so retry; 403 would say the identity is known and the
+operation is refused. Reporting a dependency failure as 401 sends a client to fix a token nobody
+examined, and buries a server-side defect inside the one status that is expected background noise.
 
 ## Authn Slot Integration
 

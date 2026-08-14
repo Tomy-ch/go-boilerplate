@@ -8,7 +8,8 @@ This directory contains an `Authenticator` implementation that verifies an acces
 
 - Verify the signature and standard claims of an access token presented as a JWT
 - Generate a verified `Authn` (subject + scopes + raw claims) on success
-- Normalize every verification failure to `apperror.ErrUnauthenticated` (fail-closed)
+- Normalize every verification failure to `apperror.ErrUnauthenticated` (fail-closed), and leave an
+  inability to verify classified as the infrastructure failure it is
 
 ## Verification Scope (Standard Core)
 
@@ -36,6 +37,10 @@ Construction fails when a required parameter (clock / issuer / audience) is miss
 ## Error Handling
 
 All verification failures are normalized to the `ErrJWTAuthenticatorInvalidToken` sentinel, which wraps `apperror.ErrUnauthenticated` (fail-closed). The underlying cause (signature mismatch / `exp` / `iss` / `aud` / `typ` etc.) is preserved in the error chain so operators can distinguish the failure reason from logs and traces, while callers only ever see a normalized `401`. This mirrors the `pgerror.NormalizeError` convention in `internal/infrastructure/rdb/pgerror`.
+
+A failure to *carry out* the verification is not normalized. When the signing key cannot be fetched, when the fetched key set is unusable as a whole (malformed JSON, no usable signing key, a duplicate `kid` that disqualifies the document), or when the caller's context ends, the error keeps its `apperror.ErrUnavailable` / `apperror.ErrCanceled` classification and is returned as-is, because it says nothing about the token: reporting it as `401` would tell the client to fix a credential that was never examined. Fail-closed is unaffected — no such error grants access.
+
+The line runs between the document and the `kid`. A `kid` that is simply absent from a valid key set is a verdict about *that* token and stays a `401`; a key set that cannot be used at all blocks every token equally and is a service failure.
 
 ## Extension Points
 

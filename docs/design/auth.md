@@ -19,7 +19,7 @@ Responsibility split (who owns what):
 
 | Component | Side | Responsibility | Does NOT hold |
 | --- | --- | --- | --- |
-| **auth middleware** (`httpstack/oapi` + `oapi/auth`) | RS / controller | enforce `security:` on protected routes: extract `Bearer`, call Authenticator → IdentityResolver, put `Authn` in context, `401` on failure | verification logic, business logic |
+| **auth middleware** (`httpstack/oapi` + `oapi/auth`) | RS / controller | enforce `security:` on protected routes: extract `Bearer`, call Authenticator → IdentityResolver under the **request's** context, put `Authn` in context, `401` on a rejected credential and the classified status when verification could not be carried out | verification logic, business logic |
 | **Authenticator** (`infrastructure/auth/jwt`) | RS / infrastructure | verify signature (RS256 allowlist) + claims (`iss`/`aud`/`exp`/`nbf`/`sub`) + `typ=at+jwt`; resolve the key by `kid` | key issuance, identity, HTTP policy |
 | **JWKS resolver** (`jwt/jwks.go`) | RS / infrastructure | fetch the JWK Set via the resilient `httpclient` substrate, cache `kid → RSA key` (TTL), refresh on unknown `kid` under a cooldown, suppress re-fetch of confirmed-absent `kid`s (negative cache), tolerate key rotation | claim verification |
 | **IdentityResolver** (`usecase/boundary/auth`) | RS / usecase boundary | map `(issuer, subject)` → internal `userID`; `401` on unknown / deleted | token verification |
@@ -28,7 +28,7 @@ Responsibility split (who owns what):
 
 Design principles (invariants):
 
-- **Fail-closed.** Every verification failure normalizes to `apperror.ErrUnauthenticated` (`401`). The underlying cause is preserved in the error chain for logs/traces; callers only ever see a normalized `401`.
+- **Fail-closed.** No error ever grants access. Every verification *failure* — a verdict reached about the credential — normalizes to `apperror.ErrUnauthenticated` (`401`), with the underlying cause preserved in the error chain for logs/traces. An *inability to verify* is a different fact and keeps its own classification: when the signing key cannot be fetched or the request's context ends, the error stays `apperror.ErrUnavailable` (`503`) or `apperror.ErrCanceled` (`499`), because it says nothing about the token and a `401` would tell the client to fix a credential nobody examined. Both are denials; only the reason reported differs.
 - **Standard core only.** RS256 allowlist (`alg=none` and `HS256` always rejected — key-confusion defense); `iss` / `aud` / `exp` / `nbf` / `sub`; `typ=at+jwt` (RFC 9068) to reject ID-Token misuse. IdP dialects (Cognito `token_use`, Azure `scp`) are **extension points**, not built in.
 - **Split-horizon.** The `issuer` (the token's `iss`, host/browser-resolvable) is separated from the **JWKS fetch URL** (container-internal). `AUTH_JWKS_URL` is set to the internal URL so `iss` stays host-resolvable while key fetching uses the container hostname.
 - **Provider is dev-only.** `/bypass/*` · `/admin/*` are dev-gated; the mock refuses to start when `NODE_ENV=production`.
@@ -93,13 +93,14 @@ sequenceDiagram
     MW-->>C: → handler (business logic)
 ```
 
-### 3.2 RS token verification — error paths (all normalize to `401`)
+### 3.2 RS token verification — error paths (every verdict reached normalizes to `401`)
 
 ```mermaid
 flowchart TD
     S["incoming request"] --> H{"Bearer present?"}
     H -- no --> E1["401 token not provided"]
     H -- yes --> K{"kid resolvable?"}
+    K -- "JWKS unreachable / context ended" --> E7["503 or 499 — no verdict reached"]
     K -- "unknown kid (after cooldown-throttled refetch)" --> E2["401 invalid token"]
     K -- yes --> V{"sig + iss/aud/exp/nbf valid?"}
     V -- no --> E3["401 invalid token"]
@@ -218,5 +219,5 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 | **Authn** | The verified-but-optionally-unresolved result (`subject`, `issuer`, `scopes`, `claims`, and — after identity resolution — internal `userID`). |
 | **Identity resolution** | Mapping `(issuer, subject)` to an internal application `userID`; a concern separate from token verification. |
 | **dev-gate** | The `MOCK_AUTH_DEV_ENDPOINTS` switch that hides `/bypass/*` · `/admin/*` behind a `404` when disabled. |
-| **Fail-closed** | Any verification error results in denial (`401`), never a default-allow. |
+| **Fail-closed** | Any verification error results in denial, never a default-allow — `401` when the credential was rejected, `503` / `499` when no verdict could be reached. |
 | **Algorithm allowlist** | The set of accepted signature algorithms (default `RS256`); `alg=none` / `HS256` are always rejected to prevent key-confusion. |

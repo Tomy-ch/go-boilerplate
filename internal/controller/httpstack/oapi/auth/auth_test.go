@@ -20,6 +20,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// ctxKeyForTest は、バリデータが渡す context を識別するためのテスト用キーです。
+type ctxKeyForTest struct{}
+
 func TestNewAuthenticator(t *testing.T) {
 	t.Parallel()
 
@@ -50,6 +53,39 @@ func TestNewAuthenticator(t *testing.T) {
 			assert.True(t, ok)
 			assert.Equal(t, want.Subject(), got.Subject())
 		})
+
+		t.Run("AuthenticateとResolveがバリデータの引数ではなくリクエストのcontextを受け取る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			want, _ := authbd.New("user123", "mock", nil, nil)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer user123")
+			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
+
+			validatorCtx := context.WithValue(context.Background(), ctxKeyForTest{}, "validator")
+
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, _ *authbd.Credential) (*authbd.Authn, error) {
+					assert.Equal(t, req.Context(), ctx)
+					assert.NotEqual(t, validatorCtx, ctx)
+					return want, nil
+				})
+			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, _ *authbd.Authn) (*authbd.Authn, error) {
+					assert.Equal(t, req.Context(), ctx)
+					return want, nil
+				})
+
+			fn := NewAuthenticator(m, mr)
+
+			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+			err := fn(validatorCtx, in)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -72,9 +108,74 @@ func TestNewAuthenticator(t *testing.T) {
 
 			err := fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrAuthnSlotNotFound)
+			var he *echo.HTTPError
+			require.ErrorAs(t, err, &he)
+			assert.Equal(t, http.StatusInternalServerError, he.Code)
 		})
 
-		t.Run("authenticatorがエラーを返すとErrUnauthorizedInvalidTokenを返す", func(t *testing.T) {
+		t.Run("authenticatorが認証失敗を返すと401のErrUnauthorizedInvalidTokenを返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "invalid token"))
+
+			fn := NewAuthenticator(m, mr)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer tok")
+			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+			err := fn(context.Background(), in)
+			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
+			var he *echo.HTTPError
+			require.ErrorAs(t, err, &he)
+			assert.Equal(t, http.StatusUnauthorized, he.Code)
+		})
+
+		t.Run("authenticatorが検証不能(鍵の取得不能)を返すと503を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "jwks unavailable"))
+
+			fn := NewAuthenticator(m, mr)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer tok")
+			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+			err := fn(context.Background(), in)
+			var he *echo.HTTPError
+			require.ErrorAs(t, err, &he)
+			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("resolverがキャンセルを返すと499を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			want, _ := authbd.New("user123", "mock", nil, nil)
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
+			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrCanceled, "client gone"))
+
+			fn := NewAuthenticator(m, mr)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer tok")
+			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+			err := fn(context.Background(), in)
+			var he *echo.HTTPError
+			require.ErrorAs(t, err, &he)
+			assert.Equal(t, 499, he.Code)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("分類の無いエラーは401に潰さず500を返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
@@ -88,7 +189,9 @@ func TestNewAuthenticator(t *testing.T) {
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 			err := fn(context.Background(), in)
-			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
+			var he *echo.HTTPError
+			require.ErrorAs(t, err, &he)
+			assert.Equal(t, http.StatusInternalServerError, he.Code)
 		})
 
 		t.Run("認証情報が取得できない場合はErrUnauthorizedTokenNotProvidedを返す", func(t *testing.T) {
@@ -128,7 +231,7 @@ func TestNewAuthenticator(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "bad"))
 
 			fn := NewAuthenticator(m, mr)
 
@@ -230,12 +333,12 @@ func Test_authExtractor(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("AuthenticateがエラーならErrUnauthorizedInvalidTokenを返す", func(t *testing.T) {
+		t.Run("Authenticateが認証失敗を返すとErrUnauthorizedInvalidTokenへ差し替える", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "invalid token"))
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -245,7 +348,38 @@ func Test_authExtractor(t *testing.T) {
 			assert.Nil(t, authn)
 		})
 
-		t.Run("resolverがinfra障害(ErrInternal)を返すと500の*echo.HTTPErrorを返す", func(t *testing.T) {
+		t.Run("Authenticateが検証不能を返すと認証失敗へ寄せず分類を保つ", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "jwks unavailable"))
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer tok")
+
+			authn, err := authExtractor(context.Background(), req, m, mr)
+			assert.Nil(t, authn)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("Authenticateが分類の無いエラーを返すと認証失敗へ寄せずそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			bad := xerrors.New("bad")
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, bad)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+			req.Header.Set("Authorization", "Bearer tok")
+
+			authn, err := authExtractor(context.Background(), req, m, mr)
+			assert.Nil(t, authn)
+			require.ErrorIs(t, err, bad)
+			require.NotErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("resolverがinfra障害を返すと分類を保ったまま返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
@@ -258,30 +392,7 @@ func Test_authExtractor(t *testing.T) {
 
 			authn, err := authExtractor(context.Background(), req, m, mr)
 			assert.Nil(t, authn)
-			var he *echo.HTTPError
-			require.ErrorAs(t, err, &he)
-			assert.Equal(t, http.StatusInternalServerError, he.Code)
-			// 元エラーが Internal に保持され、分類（ErrInternal）が透過することを確認する。
 			require.ErrorIs(t, err, apperror.ErrInternal)
-		})
-
-		t.Run("resolverがErrUnavailableを返すと503の*echo.HTTPErrorを返す", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			m := mock_auth.NewMockAuthenticator(ctrl)
-			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			want, _ := authbd.New("subj", "mock", nil, nil)
-			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
-			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "db unavailable"))
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-			req.Header.Set("Authorization", "Bearer tok")
-
-			authn, err := authExtractor(context.Background(), req, m, mr)
-			assert.Nil(t, authn)
-			var he *echo.HTTPError
-			require.ErrorAs(t, err, &he)
-			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
-			require.ErrorIs(t, err, apperror.ErrUnavailable)
 		})
 
 		t.Run("resolverが認証失敗(ErrUnauthenticated系)を返すと*echo.HTTPErrorにせずそのまま返す", func(t *testing.T) {
@@ -320,45 +431,13 @@ func Test_authExtractor(t *testing.T) {
 	})
 }
 
-func Test_infraErrorToHTTP(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("ErrUnavailableは503の*echo.HTTPErrorへ変換され元エラーを保持する", func(t *testing.T) {
-			t.Parallel()
-			orig := xerrors.Wrap(apperror.ErrUnavailable, "db unavailable")
-
-			err := infraErrorToHTTP(orig)
-
-			var he *echo.HTTPError
-			require.ErrorAs(t, err, &he)
-			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
-			require.ErrorIs(t, err, apperror.ErrUnavailable)
-		})
-
-		t.Run("ErrUnavailable以外は500の*echo.HTTPErrorへ変換され元エラーを保持する", func(t *testing.T) {
-			t.Parallel()
-			orig := xerrors.Wrap(apperror.ErrInternal, "db down")
-
-			err := infraErrorToHTTP(orig)
-
-			var he *echo.HTTPError
-			require.ErrorAs(t, err, &he)
-			assert.Equal(t, http.StatusInternalServerError, he.Code)
-			require.ErrorIs(t, err, apperror.ErrInternal)
-		})
-	})
-}
-
 func Test_withHTTPStatus(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("ステータスを持たないエラーは401を付与し元エラーを保持する", func(t *testing.T) {
+		t.Run("認証失敗は401を付与し元エラーを保持する", func(t *testing.T) {
 			t.Parallel()
 
 			err := withHTTPStatus(ErrUnauthorizedInvalidToken)
@@ -367,10 +446,38 @@ func Test_withHTTPStatus(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
+		t.Run("キャンセルは499を付与し元エラーを保持する", func(t *testing.T) {
+			t.Parallel()
+
+			err := withHTTPStatus(xerrors.Wrap(apperror.ErrCanceled, "client gone"))
+
+			assert.Equal(t, 499, echo.StatusCode(err))
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("取得不能は503を付与し元エラーを保持する", func(t *testing.T) {
+			t.Parallel()
+
+			err := withHTTPStatus(xerrors.Wrap(apperror.ErrUnavailable, "jwks unavailable"))
+
+			assert.Equal(t, http.StatusServiceUnavailable, echo.StatusCode(err))
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("分類の無いエラーは401へ寄せず500を付与する", func(t *testing.T) {
+			t.Parallel()
+			orig := xerrors.New("bad")
+
+			err := withHTTPStatus(orig)
+
+			assert.Equal(t, http.StatusInternalServerError, echo.StatusCode(err))
+			require.ErrorIs(t, err, orig)
+		})
+
 		t.Run("既にステータスを持つエラーは変換せずそのまま返る", func(t *testing.T) {
 			t.Parallel()
 
-			orig := infraErrorToHTTP(xerrors.Wrap(apperror.ErrUnavailable, "db unavailable"))
+			orig := echo.NewHTTPError(http.StatusServiceUnavailable, "").Wrap(xerrors.Wrap(apperror.ErrUnavailable, "db unavailable"))
 
 			err := withHTTPStatus(orig)
 
