@@ -37,6 +37,9 @@ const (
 	probeKeyword = "KEYSETPROBE563"
 )
 
+// batchProductFetch は、ID 集合から商品をまとめて取得する Repository メソッドの形です。
+type batchProductFetch func(ctx context.Context, ids []uuid.UUID) (domainproduct.Products, error)
+
 // insertProduct は、keyset 検証用に published_at / id を明示した商品を挿入するヘルパーです。
 func insertProduct(
 	ctx context.Context, t *testing.T, db driver.DBTX,
@@ -1297,18 +1300,18 @@ func Test_repository_LockByID(t *testing.T) {
 	})
 }
 
-func Test_repository_LockByIDs(t *testing.T) {
-	t.Parallel()
+// assertBatchProductFetchContract は、ID 集合でまとめて取得するメソッドが共通して満たす契約を検証します。
+// LockByIDs と FindByIDs は行を排他ロックするかどうかだけが異なり、返す内容の契約は同一のため、
+// 表明を 1 箇所へ集めて片方だけが緩む状態を作らないようにします。
+// ロックの有無そのものは、この契約では表現できないため各メソッド側のテストが担います。
+func assertBatchProductFetchContract(
+	t *testing.T, testDB driver.DatabaseDriver, txm testkit.TransactionRunner,
+	idPrefix, nameTag string, fetch batchProductFetch,
+) {
+	t.Helper()
 
-	testDB := testkit.NewTestDB(t)
-	lt := observability.NewMockInfraLayerTracer(t)
-	txm := testkit.NewTestTransactionRunner(t)
-
-	repo := &repository{tracer: lt, db: testDB}
-
-	lowID := "cccccccc-0000-4000-8001-000000000001"
-	highID := "cccccccc-0000-4000-8001-000000000002"
-	negativeID := "cccccccc-0000-4000-8001-0000000000bb"
+	lowID := idPrefix + "000000000001"
+	highID := idPrefix + "000000000002"
 	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -1320,10 +1323,10 @@ func Test_repository_LockByIDs(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				// 挿入順を id 降順にし、戻り値が挿入順ではなく id 昇順であることを検証する。
-				insertProduct(ctx, t, drv, highID, probeKeyword+"-LOCKS-PUB", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
-				insertProduct(ctx, t, drv, lowID, probeKeyword+"-LOCKS-UNPUB", nil, 2999, statusInStock, categoryElectronics, nil)
+				insertProduct(ctx, t, drv, highID, probeKeyword+"-"+nameTag+"-PUB", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, lowID, probeKeyword+"-"+nameTag+"-UNPUB", nil, 2999, statusInStock, categoryElectronics, nil)
 
-				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, highID), mustParse(t, lowID)})
+				got, err := fetch(ctx, []uuid.UUID{mustParse(t, highID), mustParse(t, lowID)})
 				require.NoError(t, err)
 				require.Len(t, got, 2)
 				assert.Equal(t, mustParse(t, lowID), got[0].ID())
@@ -1339,11 +1342,11 @@ func Test_repository_LockByIDs(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				existing := "cccccccc-0000-4000-8001-000000000003"
-				insertProduct(ctx, t, drv, existing, probeKeyword+"-LOCKS-PARTIAL", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
+				existing := idPrefix + "000000000003"
+				insertProduct(ctx, t, drv, existing, probeKeyword+"-"+nameTag+"-PARTIAL", nil, 1999, statusInStock, categoryElectronics, ptr.To(base))
 
-				ids := []uuid.UUID{mustParse(t, existing), uuidtestkit.NewTestFromSalt(t, "lock_by_ids_missing")}
-				got, err := repo.LockByIDs(ctx, ids)
+				ids := []uuid.UUID{mustParse(t, existing), uuidtestkit.NewTestFromSalt(t, nameTag+"_missing")}
+				got, err := fetch(ctx, ids)
 				require.NoError(t, err)
 				require.Len(t, got, 1)
 				assert.Equal(t, mustParse(t, existing), got[0].ID())
@@ -1354,7 +1357,7 @@ func Test_repository_LockByIDs(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.LockByIDs(ctx, []uuid.UUID{})
+				got, err := fetch(ctx, []uuid.UUID{})
 				require.NoError(t, err)
 				assert.Empty(t, got)
 			})
@@ -1365,17 +1368,17 @@ func Test_repository_LockByIDs(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				subcentID := "cccccccc-0000-4000-8001-0000000000aa"
+				subcentID := idPrefix + "0000000000aa"
 				// price=19.995（サブセント）を NUMERIC 列へ直接挿入し、価格スケールの往復を検証する。
 				_, err := drv.Exec(ctx,
 					"INSERT INTO products "+
 						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
 						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9)",
-					subcentID, probeKeyword+"-LOCKS-SUBCENT", nil, "19.995", 10, nil, statusInStock, categoryElectronics, base,
+					subcentID, probeKeyword+"-"+nameTag+"-SUBCENT", nil, "19.995", 10, nil, statusInStock, categoryElectronics, base,
 				)
 				require.NoError(t, err)
 
-				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, subcentID)})
+				got, err := fetch(ctx, []uuid.UUID{mustParse(t, subcentID)})
 				require.NoError(t, err)
 				require.Len(t, got, 1)
 				assert.Equal(t, "19.995", got[0].Price().String())
@@ -1391,21 +1394,44 @@ func Test_repository_LockByIDs(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
+				negativeID := idPrefix + "0000000000bb"
 				// NUMERIC 列は負値を格納できるが、money.Price は非負不変条件を持つ。
 				_, err := drv.Exec(ctx,
 					"INSERT INTO products "+
 						"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
 						"VALUES ($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9)",
-					negativeID, probeKeyword+"-LOCKS-NEG", nil, "-1", 10, nil, statusInStock, categoryElectronics, base,
+					negativeID, probeKeyword+"-"+nameTag+"-NEG", nil, "-1", 10, nil, statusInStock, categoryElectronics, base,
 				)
 				require.NoError(t, err)
 
-				got, err := repo.LockByIDs(ctx, []uuid.UUID{mustParse(t, negativeID)})
-				assert.Nil(t, got)
+				_, err = fetch(ctx, []uuid.UUID{mustParse(t, negativeID)})
 				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			actual, err := fetch(ctx, []uuid.UUID{mustParse(t, lowID)})
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
 	})
+}
+
+func Test_repository_LockByIDs(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+
+	assertBatchProductFetchContract(
+		t, testDB, testkit.NewTestTransactionRunner(t),
+		"cccccccc-0000-4000-8001-", "LOCKS", repo.LockByIDs,
+	)
 }
 
 func Test_repository_UpdateStock(t *testing.T) {
@@ -1956,4 +1982,17 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, &repository{db: testDB, tracer: tf.Infra()}, actual)
 		})
 	})
+}
+
+func Test_repository_FindByIDs(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+
+	// ロックを取らないことは同一 tx では観測できないため、Test_findByIDsDoesNotWaitForRowLocks が担う。
+	assertBatchProductFetchContract(
+		t, testDB, testkit.NewTestTransactionRunner(t),
+		"cccccccc-0000-4000-8002-", "FINDS", repo.FindByIDs,
+	)
 }

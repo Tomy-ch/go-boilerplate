@@ -549,6 +549,76 @@ func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, productIds 
 	return items, nil
 }
 
+const listProductsByIDs = `-- name: ListProductsByIDs :many
+SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE p.id = ANY($1::UUID [])
+ORDER BY p.id
+`
+
+type ListProductsByIDsRow struct {
+	StatusName   string
+	CategoryName string
+	Products     Products
+}
+
+// === source: database/dml/repository/product/select_products_by_ids.sql ===
+// ID の集合から公開状態を問わない商品群を取得します。
+// 行はロックしません（カートは在庫を押さえない — docs/spec/cart/domain.md の Notes）。
+// 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
+// 公開状態で絞らないのは、非公開化された明細に unpublished を立てる判定材料が要るためです。
+// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+//
+//	SELECT
+//	    ps.name AS status_name,
+//	    pc.name AS category_name,
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	FROM products AS p
+//	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+//	INNER JOIN product_categories AS pc ON p.category_id = pc.id
+//	WHERE p.id = ANY($1::UUID [])
+//	ORDER BY p.id
+func (q *Queries) ListProductsByIDs(ctx context.Context, productIdsParam []uuid.UUID) ([]*ListProductsByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listProductsByIDs, productIdsParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListProductsByIDsRow
+	for rows.Next() {
+		var i ListProductsByIDsRow
+		if err := rows.Scan(
+			&i.StatusName,
+			&i.CategoryName,
+			&i.Products.ID,
+			&i.Products.Name,
+			&i.Products.Description,
+			&i.Products.Price,
+			&i.Products.Quantity,
+			&i.Products.StockWarningThreshold,
+			&i.Products.StatusID,
+			&i.Products.CategoryID,
+			&i.Products.PublishedAt,
+			&i.Products.LockVersion,
+			&i.Products.CreatedAt,
+			&i.Products.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProductsByIDsForUpdate = `-- name: ListProductsByIDsForUpdate :many
 SELECT
     ps.name AS status_name,

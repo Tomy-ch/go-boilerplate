@@ -70,6 +70,11 @@ type Repository interface {
 	// FindByID は、ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
 	// 公開日時の設定そのものを更新対象とするため、FindPublishedByID と異なり未公開商品も返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Product, error)
+	// FindByIDs は、ID の集合から公開状態を問わない商品群を、ID 昇順にまとめて取得します。
+	// 不存在の ID は結果に現れないため、要素数は ids より少なくなり得ます
+	// （不存在の検証は呼び出し側の責務です）。
+	// 行はロックしないため、取得後に他者が更新することを妨げません。
+	FindByIDs(ctx context.Context, ids []uuid.UUID) (Products, error)
 	// LockByID は、更新のために ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。
 	// 同一商品への並行更新は、先行する更新が終わるまで待機したうえで最新の状態を取得します。
 	LockByID(ctx context.Context, id uuid.UUID) (*Product, error)
