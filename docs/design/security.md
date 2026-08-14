@@ -118,9 +118,19 @@ run a container directly (`uses: docker://<image>[:<tag>|@<digest>]`), which is 
 reference rather than a GitHub repository. `pin-actions` resolves a ref to a commit SHA through
 `git ls-remote`, an operation that has no meaning for a registry, so it treats `docker://` as out
 of scope the same way it treats a local `./` reference — forcing it through would either fabricate
-a repository name or duplicate the digest resolution `docker/images-pin.toml` already owns. No
-`docker://` reference exists under `.github/**` today; pinning one means widening the image
-lockfile's scan to `.github/**`, never widening `pin-actions`.
+a repository name or duplicate the digest resolution `docker/images-pin.toml` already owns. So
+`pin-images` scans `.github/workflows/**` and `.github/actions/**` for those steps: a registry
+reference is pinned by the mechanism that resolves digests, wherever it is written. Both tools
+read some of the same files and never the same lines.
+
+**Out of scope is not the same as unwatched.** Excluding `docker://` from `pin-actions` answers
+only who owns it; on its own it drops the reference out of every net, and a mutable tag nothing
+reports is worse than one nothing pins — the pinning exists precisely to stop a tag from being
+re-pointed under a name that already passed review. A local `./` reference may be dropped
+silently because it resolves inside the repository and no third party can re-point it; a registry
+reference may not. Hence the scan above, and hence a `docker://` reference must carry a tag:
+omitting one means `:latest`, so a reference the strict pattern cannot read fails the check
+instead of passing unpinned.
 
 ## Dependencies
 
