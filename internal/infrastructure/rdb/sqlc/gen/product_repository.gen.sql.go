@@ -222,6 +222,66 @@ func (q *Queries) CreateProductImage(ctx context.Context, arg *CreateProductImag
 	return err
 }
 
+const createProductImagesIfAbsent = `-- name: CreateProductImagesIfAbsent :exec
+INSERT INTO product_images (
+    id,
+    product_id,
+    image_path,
+    sort_key
+)
+SELECT
+    src.id,
+    $1,
+    src.image_path,
+    src.sort_key
+FROM (
+    SELECT
+        UNNEST($2::UUID []) AS id,
+        UNNEST($3::TEXT []) AS image_path,
+        UNNEST($4::SMALLINT []) AS sort_key
+) AS src
+ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING
+`
+
+type CreateProductImagesIfAbsentParams struct {
+	ProductID  uuid.UUID
+	Ids        []uuid.UUID
+	ImagePaths []string
+	SortKeys   []int16
+}
+
+// 商品画像をまとめて登録する。同じ ID が既にある場合は何もしない（集合に残り続ける画像がこれにあたる）。
+// 衝突判定を主キーに限定しているため、生存行の (product_id, sort_key) の重複は従来どおり 23505 で失敗する。
+// 画像 1 枚ごとに 1 文を発行すると、更新のたびに枚数分の往復が商品行のロックを保持したまま積み上がる。
+//
+//	INSERT INTO product_images (
+//	    id,
+//	    product_id,
+//	    image_path,
+//	    sort_key
+//	)
+//	SELECT
+//	    src.id,
+//	    $1,
+//	    src.image_path,
+//	    src.sort_key
+//	FROM (
+//	    SELECT
+//	        UNNEST($2::UUID []) AS id,
+//	        UNNEST($3::TEXT []) AS image_path,
+//	        UNNEST($4::SMALLINT []) AS sort_key
+//	) AS src
+//	ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING
+func (q *Queries) CreateProductImagesIfAbsent(ctx context.Context, arg *CreateProductImagesIfAbsentParams) error {
+	_, err := q.db.Exec(ctx, createProductImagesIfAbsent,
+		arg.ProductID,
+		arg.Ids,
+		arg.ImagePaths,
+		arg.SortKeys,
+	)
+	return err
+}
+
 const getProductByID = `-- name: GetProductByID :one
 SELECT
     ps.name AS status_name,
@@ -1168,18 +1228,26 @@ func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListP
 	return items, nil
 }
 
-const softDeleteProductImages = `-- name: SoftDeleteProductImages :exec
+const softDeleteProductImagesNotIn = `-- name: SoftDeleteProductImagesNotIn :exec
+
 UPDATE product_images
 SET
     deleted_at = NOW(),
     updated_at = NOW()
 WHERE product_images.product_id = $1
     AND product_images.deleted_at IS NULL
+    AND NOT (product_images.id = ANY($2::UUID []))
 `
 
-// === source: database/dml/repository/product/soft_delete_product_images.sql ===
-// 商品が現在参照している画像をまとめて論理削除する。既に論理削除済みの行は削除日時を上書きしない。
-// 生存行が無い商品に対しては 0 行更新となり、成功として返る。
+type SoftDeleteProductImagesNotInParams struct {
+	ProductID uuid.UUID
+	ImageIds  []uuid.UUID
+}
+
+// === source: database/dml/repository/product/sync_product_images.sql ===
+// 商品画像を、商品が保持する集合へ一致させる 2 本。実行順は呼び出し側（syncImages）が決める。
+// 商品が現在参照している画像のうち、指定した ID の集合に含まれないものを論理削除する。
+// 既に論理削除済みの行は削除日時を上書きしない。空の集合を渡した場合は生存行をすべて論理削除する。
 //
 //	UPDATE product_images
 //	SET
@@ -1187,8 +1255,9 @@ WHERE product_images.product_id = $1
 //	    updated_at = NOW()
 //	WHERE product_images.product_id = $1
 //	    AND product_images.deleted_at IS NULL
-func (q *Queries) SoftDeleteProductImages(ctx context.Context, productID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, softDeleteProductImages, productID)
+//	    AND NOT (product_images.id = ANY($2::UUID []))
+func (q *Queries) SoftDeleteProductImagesNotIn(ctx context.Context, arg *SoftDeleteProductImagesNotInParams) error {
+	_, err := q.db.Exec(ctx, softDeleteProductImagesNotIn, arg.ProductID, arg.ImageIds)
 	return err
 }
 
