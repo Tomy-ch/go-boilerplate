@@ -1,6 +1,5 @@
 // サンプルAPI削除の対象を宣言する manifest（データ定義）。マーカー除去ロジックは sample-api.ts を参照。
-// 拡張時は該当ドメインの paths にパスを追記し、共有ファイルの混在行を
-// sample-api マーカーで囲めば、同じコマンドの削除対象に含まれる。
+// 拡張手順は scripts/README.md（sample-api マーカーブロック）を参照。
 // core 基盤の idempotency_keys（migration 000001）と outbox（migration 000002）はこのマニフェストの削除対象に含まれない。
 
 /** 1 ドメイン分の削除宣言。`paths` はリポジトリルートからの相対パス。 */
@@ -19,8 +18,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/controller/handler/v1/users",
       "internal/controller/job/usercount",
       "internal/controller/job/userpurge",
-      // 退会イベントの consuming 端（worker 実例）と、その broker adapter を組み立てる DI。
-      // adapter の生成が di 側にあるのは、controller 層が infrastructure を import できないため。
+      // 退会イベントの consuming 端（worker 実例）と、その broker adapter を組み立てる DI
+      // （理由は internal/controller/worker/withdrawalarchive/README.md 参照）。
       "internal/controller/worker/withdrawalarchive",
       "internal/di/module/withdrawalarchive.go",
       "internal/di/module/withdrawalarchive_test.go",
@@ -61,7 +60,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     description:
       "サンプル 認可基盤（user_roles テーブル + user_roles ベース Authorizer）。user サンプルに同梱削除される",
     paths: [
-      // Authorizer 実装（本番相当環境に配線。削除時は provideAuthorizer の dev/stg/prd case ごと除去され、以後それらの環境は fail-closed 既定に戻る）
+      // 本番相当環境の Authorizer 実装（詳細は internal/infrastructure/authz/userrole/README.md 参照）
       "internal/infrastructure/authz/userrole",
 
       // schemas/ 直下はディレクトリ指定で消えないため個別に挙げる（参照元の
@@ -93,7 +92,6 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/seed/000005_user_identities.sql",
       "database/seed/000006_user_identities_additional.sql",
 
-      // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/user_identity_repository.gen.sql.go",
       "database/gen/user_identity_repository.gen.sql",
     ],
@@ -109,7 +107,6 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_prefectures_test.go",
       "database/dml/repository/prefecture",
 
-      // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go",
       "database/gen/prefecture_repository.gen.sql",
 
@@ -129,7 +126,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     paths: [
       // ドメイン語彙の唯一の占有者。product と order の双方から使われるが撤去は一括なので、
       // 最初の利用者である product 側に置けば足りる。非サンプルの import 元は存在しない。
-      // `internal/domain/lexicon` 自体は入場基準を述べる README ごと残り、占有者ゼロになる。
+      // 撤去後の `internal/domain/lexicon` 自体の扱いは同 README 参照。
       "internal/domain/lexicon/money",
       "internal/controller/job/productimagegc",
       "internal/domain/product/status",
@@ -139,7 +136,6 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_products_statuses_test.go",
       "database/dml/repository/product_status",
 
-      // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/product_status_repository.gen.sql.go",
       "database/gen/product_status_repository.gen.sql",
 
@@ -325,7 +321,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
 
   cart: {
     description:
-      "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）。API が 1 本ずつ入るたびに paths を追記する",
+      "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）",
     paths: [
       "database/migrations/000015_create_carts.up.sql",
       "database/migrations/000015_create_carts.down.sql",
@@ -348,12 +344,14 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       // OpenAPI（components/ 直下はディレクトリ指定では消えないため個別に挙げる）
       "openapi/paths/v1/carts",
       "openapi/components/parameters/cart",
+      "openapi/components/requests/carts",
       "openapi/components/responses/carts",
       "openapi/components/schemas/carts",
 
       "internal/usecase/cart",
       "internal/controller/handler/v1/carts",
       "internal/integration/v1_carts_me_test.go",
+      "internal/integration/v1_carts_items_test.go",
 
       // spec
       "docs/spec/cart",
@@ -425,13 +423,9 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
 
   outboxBroker: {
     description:
-      "outbox を SQS 互換 broker へ向ける配線。engine / seam / SQS adapter は送受信とも core、" +
-      "ローカル broker も object storage の Garage と同じくローカルインフラとして残し、" +
-      "core から adapter を参照する配線だけを削除対象にする" +
-      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0051 (broker-sdk-isolation-measured-as-coupling) が broker SDK の隔離を" +
-      "リンクではなく結合で測る、と述べているのがこれ）。" +
-      "object storage と揃うのは adapter / ローカルインフラ / config を core に置く点までで、" +
-      "判別子の 1 分岐として配線する構造は queue 側だけのもの（object storage に選択肢は無い）。",
+      "outbox を SQS 互換 broker へ向ける配線のみ削除する（engine / seam / SQS adapter 本体・" +
+      "ローカル broker・config は object storage と同様に core に残す）。詳細と ADR 根拠は " +
+      "internal/infrastructure/publisher/README.md と ADR-0051 (broker-sdk-isolation-measured-as-coupling) を参照。",
     paths: [
       "internal/infrastructure/publisher/queue_config.go",
       "internal/infrastructure/publisher/queue_config_test.go",
@@ -476,15 +470,12 @@ export const EXCLUDED_PATH_PREFIXES: readonly string[] = [
  * マーカー文字列を「データ・散文」として持つファイル。走査の対象から外す。
  *
  * @remarks
- * 除去はリポジトリを走査するので、対象ファイルの一覧は要りません（一覧はその外側にマーカーを
- * 書けてしまい、しかも取りこぼしが無言だったため廃しました）。代わりに要るのがこの逆向きの
- * 宣言です。`sample-api` は、`boilerplate-only` と違って**マーカーの形そのものを教材・
- * フィクスチャ・規約説明が本文に持っている**ため、素朴に走査すると、マーカーではないものを
- * マーカーとして刈り取ってしまいます。
+ * `sample-api` は、`boilerplate-only` と違って**マーカーの形そのものを教材・フィクスチャ・
+ * 規約説明が本文に持っている**ため、素朴に走査すると、マーカーではないものをマーカーとして
+ * 刈り取ってしまいます。そのため対象ファイルの一覧ではなく、この逆向きの除外宣言を使います。
  *
- * 一覧の取りこぼしが無言だったのに対し、こちらの取りこぼしは声を出します。宣言し忘れた
- * ファイルは内容が壊れ、`sample-removal-check.yaml` の `make test` / `md-markdownlint-ci` /
- * `go build` が落ちます。
+ * 宣言し忘れたファイルは内容が壊れ、`sample-removal-check.yaml` の `make test` /
+ * `md-markdownlint-ci` / `go build` が落ちます。
  */
 export const MARKER_LITERAL_FILES: readonly string[] = [
   // マーカー除去そのもののテスト。入力として `# sample-api:begin` を持つ。
