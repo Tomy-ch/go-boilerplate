@@ -66,8 +66,8 @@ type Purchase struct {
 	deliveredAt    *time.Time
 }
 
-// PurchaseDetailAttributes は、明細の再構築に必要な属性一式です。id と productID は隣接する
-// 同じ uuid.UUID で、位置引数のままだと取り違えてもコンパイルも検証も通ってしまうため構造体で受けます。
+// PurchaseDetailAttributes は、明細の再構築に必要な属性一式です。id と productID は同型で隣接するため
+// 構造体で受けます（docs/rules.md Function Signature Rules）。
 type PurchaseDetailAttributes struct {
 	ProductID uuid.UUID
 	Quantity  int
@@ -75,9 +75,8 @@ type PurchaseDetailAttributes struct {
 	UnitPrice money.Price
 }
 
-// Attributes は、購入の再構築に必要な属性一式です。金額 4 つは同じ int、イベント日時 4 つは
-// 同じ *time.Time で、位置引数のままだと取り違えても検証の大半を通過してしまうため構造体で受けます。
-// DB 行からの再構築はこの層で最も晒された呼び出し元です。
+// Attributes は、購入の再構築に必要な属性一式です。金額 4 つ（int）とイベント日時 4 つ（*time.Time）が
+// 同型のため構造体で受けます（docs/rules.md Function Signature Rules）。
 type Attributes struct {
 	Code           string
 	UserID         uuid.UUID
@@ -101,9 +100,8 @@ func NewLockedProduct(id uuid.UUID, price money.Price, quantity int) LockedProdu
 }
 
 // NewPurchaseDetail は、永続化済みの明細を組み立てます（Repository の読み出しで使用）。
-// 明細は購入集約に属する部品であり単独では成立しないため、不変条件は集約へ入る時点——
-// Reconstruct——で判定します。同一商品 ID の重複のように明細 1 件では判定できないものがあり、
-// 検証を明細側と集約側へ分けると 1 つの規則が 2 箇所に分かれるためです。
+// 不変条件は集約へ入る時点（Reconstruct）で判定します
+// （internal/domain/README.md § Do not set outside constructor）。
 func NewPurchaseDetail(id uuid.UUID, attrs PurchaseDetailAttributes) PurchaseDetail {
 	return PurchaseDetail{
 		id:        id,
@@ -172,7 +170,6 @@ func New(
 
 	seen := make(map[uuid.UUID]struct{}, len(inputs))
 	details := make([]PurchaseDetail, 0, len(inputs))
-	// 小計は価格スケール（ドル decimal）で正確に積算し、最後に決済スケール（整数セント）へ切り捨てる。
 	subtotalDollars := decimal.FromInt(0)
 	for _, in := range inputs {
 		if in.ID.IsNil() {
@@ -206,13 +203,11 @@ func New(
 		subtotalDollars = subtotalDollars.Add(l.price.Decimal().Mul(decimal.FromInt(int64(in.Quantity))))
 	}
 
-	// 決済スケールへの丸め（切り捨て）はこの 1 箇所のみ。以降の税・合計は整数セントで計算する。
+	// 価格スケール→決済スケールの丸め（切り捨て）。以降は整数セントで計算する（ADR-0036 (two-scale-quantity-model)）。
 	subtotalCents, err := subtotalDollars.Truncate(minorUnitDigits).ToScaledInt64(minorUnitDigits)
 	if err != nil {
-		return nil, xerrors.Wrap(ErrInvalidAmount, "subtotal exceeds the settlement range: "+err.Error())
+		return nil, xerrors.Join(ErrInvalidAmount, xerrors.Wrap(err, "subtotal exceeds the settlement range"))
 	}
-	// 小計が決済スケールに収まっても、税と送料を足した合計まで収まるとは限らない。整数演算は溢れても
-	// エラーにならないため、ここで拒まなければ壊れた金額がそのまま購入として確定する。
 	if subtotalCents > maxSubtotalCents {
 		return nil, xerrors.Wrap(
 			ErrInvalidAmount,
@@ -300,17 +295,15 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 // validateStatusTimestamps は、statusCode と各イベント日時の組み合わせが状態遷移で到達し得るかを検証します。
 // 到達し得ない組み合わせ（発送後のキャンセル、発送を伴わない配達 等）の場合は ErrInvalidStatusID を返します。
 func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) error {
-	// キャンセル status と canceledAt は同時セットの不変条件を持つ。片方のみの矛盾した永続化状態を弾く。
+	// キャンセルと canceledAt は同時セット（双条件。docs/spec/purchase/domain.md Cancel invariants）。
 	if (status == StatusCanceled) != (canceledAt != nil) {
 		return xerrors.Wrap(ErrInvalidStatusID, "canceled status and canceledAt must be consistent")
 	}
-	// 支払い済み status は paidAt を必須とする（一方向）。paidAt は支払い後に残り続け、以降のキャンセル
-	// 等の遷移で status が変わっても保持されるため、キャンセルのような双条件にはしない。
+	// 支払い済みは paidAt 必須（一方向。docs/spec/purchase/domain.md Pay invariants）。
 	if status == StatusPaid && paidAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "paid status requires paidAt")
 	}
-	// 発送済み status は shippedAt を必須とする（一方向）。shippedAt は発送後に残り続け、以降の
-	// 配達済み等の遷移で status が変わっても保持されるため、キャンセルのような双条件にはしない。
+	// 発送済みは shippedAt 必須（一方向。docs/spec/purchase/domain.md Ship invariants）。
 	if status == StatusShipped && shippedAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "shipped status requires shippedAt")
 	}
@@ -328,9 +321,7 @@ func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deli
 	if deliveredAt != nil && shippedAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "deliveredAt requires shippedAt")
 	}
-	// 配達済み status と deliveredAt は同時セットの不変条件を持つ。配達済みは終端状態（IsTerminal）で
-	// あり、配達後に別の status へ遷移して deliveredAt だけが残ることがないため、paidAt / shippedAt のような
-	// 一方向ではなくキャンセルと同じ双条件になる。
+	// 配達済みと deliveredAt は同時セット（双条件。docs/spec/purchase/domain.md Deliver invariants）。
 	if (status == StatusDelivered) != (deliveredAt != nil) {
 		return xerrors.Wrap(ErrInvalidStatusID, "delivered status and deliveredAt must be consistent")
 	}
@@ -400,9 +391,8 @@ func (p *Purchase) CanceledAt() *time.Time { return ptr.Copy(p.canceledAt) }
 
 // IsCanceled は、購入がキャンセル済みかどうかを返します。
 //
-// 「キャンセル済み」の定義はこのメソッドが持ちます。判定に用いるのは source of truth である statusCode
-// だけで、canceledAt は見ません。両者は再構築時の不変条件（キャンセル状態と canceledAt の有無が一致
-// すること）で等価に縛られており、読み取り経路の SQL が canceled_at で絞るのはその等価に乗った実行形です。
+// 判定に用いるのは source of truth である statusCode のみで、canceledAt は見ません（読み取り経路の
+// SQL 述語との関係は internal/domain/README.md § Query and Aggregate）。
 func (p *Purchase) IsCanceled() bool { return p.status == StatusCanceled }
 
 // ShippedAt は、発送日時を返します。未発送の場合は nil です。
@@ -413,9 +403,8 @@ func (p *Purchase) DeliveredAt() *time.Time { return ptr.Copy(p.deliveredAt) }
 
 // IsShippable は、購入が発送可能な状態にあるかどうかを返します。
 //
-// 「発送可能」の定義はこのメソッドが持ちます。可否そのものは Status.CanTransitionTo が既に持っている
-// ため、条件を書き下さずそこから導出します。発送可能なステータスが増減しても定義は 1 箇所のままです。
-// 発送待ちを絞り込む読み取り経路の SQL は、この定義に乗った実行形です。
+// 可否は Status.CanTransitionTo から導出します（読み取り経路の SQL 述語との関係は
+// internal/domain/README.md § Query and Aggregate）。
 func (p *Purchase) IsShippable() bool { return p.status.CanTransitionTo(StatusShipped) }
 
 // Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /
@@ -446,8 +435,7 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if p.status == StatusPaid {
 		return Event{}, ErrAlreadyPaid
 	}
-	// 配達済みは deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも
-	// 遷移不可であり続けるため、status ではなく残り続ける shippedAt で判定する。
+	// status と shippedAt を併用する理由は Cancel を参照。
 	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
 		return Event{}, ErrPayNotAllowed
 	}

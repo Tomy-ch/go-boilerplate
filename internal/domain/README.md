@@ -643,25 +643,17 @@ these purchases may go out together*, and the answer for any one of them depends
 in the set, so no single `Purchase` can host it. Both speak only of the purchase aggregate.
 <!-- sample-api:end -->
 
-#### 2. Not reaching another aggregate is not a reason to leave the domain
+#### 2. On one entity, or on none
 
-A rule frequently needs values that live in another aggregate: a quantity, a price, a status. Because
-an aggregate package may not import another aggregate, this looks like a wall that forces the rule
-outward into Usecase. **It is not.**
+A rule that is the natural responsibility of no entity and no value object belongs to a **Domain
+Service** — not to Usecase.
 
-**The aggregate that owns the rule takes those values as a snapshot it does not keep** — a value type
-declared in its own package, carrying only the attributes the rule reads, passed in by the Usecase
-that loaded them. The rule stays where it belongs; only the loading moves. The aggregate still holds
-no reference to the other aggregate, so its invariants remain independent of that aggregate's state.
-
-Reach for this before concluding that a rule cannot live in the domain. Moving a business judgement
-into Usecase because the values came from elsewhere puts it where
-[`../usecase/README.md`](../usecase/README.md) says business rules must not be defined, and splits
-one rule across two layers the first time a second caller needs it.
-
-A snapshot is a value, not a view of a live aggregate: it is read once, passed in, and discarded. It
-carries no behavior and no identity beyond what the rule reads, so it cannot become a back door into
-the other aggregate.
+<!-- sample-api:begin -->
+```text
+Withdrawal        ← in-progress purchase
+Dispatch grouping ← purchases awaiting shipment
+```
+<!-- sample-api:end -->
 
 #### 3. Derivation or mapping
 
@@ -689,17 +681,28 @@ business judgement, and still belongs in the domain. Whether a value must stay t
 transaction-boundary question, answered by
 [ADR-0032](../../docs/adr/0032-commandservice-atomicity-criterion.md), not a placement question.
 
-#### Rules that belong to no entity
+#### Not reaching another aggregate is not a reason to leave the domain
 
-A rule that is the natural responsibility of no entity and no value object belongs to a **Domain
-Service** — not to Usecase.
+The three questions above decide the placement. This is not a fourth one — it removes the
+objection that most often stops the first three from being asked at all.
 
-<!-- sample-api:begin -->
-```text
-Withdrawal        ← in-progress purchase
-Dispatch grouping ← purchases awaiting shipment
-```
-<!-- sample-api:end -->
+A rule frequently needs values that live in another aggregate: a quantity, a price, a status. Because
+an aggregate package may not import another aggregate, this looks like a wall that forces the rule
+outward into Usecase. **It is not.**
+
+**The aggregate that owns the rule takes those values as a snapshot it does not keep** — a value type
+declared in its own package, carrying only the attributes the rule reads, passed in by the Usecase
+that loaded them. The rule stays where it belongs; only the loading moves. The aggregate still holds
+no reference to the other aggregate, so its invariants remain independent of that aggregate's state.
+
+Reach for this before concluding that a rule cannot live in the domain. Moving a business judgement
+into Usecase because the values came from elsewhere puts it where
+[`../usecase/README.md`](../usecase/README.md) says business rules must not be defined, and splits
+one rule across two layers the first time a second caller needs it.
+
+A snapshot is a value, not a view of a live aggregate: it is read once, passed in, and discarded. It
+carries no behavior and no identity beyond what the rule reads, so it cannot become a back door into
+the other aggregate.
 
 #### Where a Domain Service lives
 

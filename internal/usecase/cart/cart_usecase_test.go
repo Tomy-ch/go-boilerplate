@@ -38,7 +38,6 @@ func newPrice(t *testing.T, amount string) money.Price {
 }
 
 // newTestProduct は、公開中の商品を組み立てるテストヘルパーです。
-// 公開状態による判定はドメインが持つため、この層のテストで非公開を作り分ける必要はありません。
 func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int) *product.Product {
 	t.Helper()
 
@@ -149,13 +148,12 @@ func Test_evaluateItem(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("商品の観測値をドメインへ渡し結果を DTO へ写す", func(t *testing.T) {
+		t.Run("在庫不足かつ値上がりの観測値を渡すと判定結果がそのまま DTO へ写る", func(t *testing.T) {
 			t.Parallel()
 
 			seen := newPrice(t, "10.00")
 			item := newTestCartItem(t, "cart_eval_delegate", productID, 3, &seen)
 
-			// 在庫不足かつ値上がりになる観測値を渡し、判定結果がそのまま写っていることを確かめる。
 			actual := evaluateItem(item, newTestProduct(t, productID, "12.00", 1))
 
 			assert.Equal(t, []ItemIssue{ItemIssueInsufficientStock, ItemIssuePriceIncreased}, actual.Issues)
@@ -182,16 +180,46 @@ func Test_evaluateItem(t *testing.T) {
 			assert.Nil(t, actual.AvailableQuantity)
 		})
 
-		t.Run("問題が無ければ issue は空スライスになる", func(t *testing.T) {
+		t.Run("問題が無ければ issue は null ではなく空スライスになる", func(t *testing.T) {
 			t.Parallel()
 
 			item := newTestCartItem(t, "cart_eval_ok", productID, 1, nil)
 
 			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
 
-			// nil ではなく空スライスであることが、JSON で null ではなく [] になる条件。
 			assert.NotNil(t, actual.Issues)
 			assert.Empty(t, actual.Issues)
+		})
+	})
+}
+
+func Test_toSnapshots(t *testing.T) {
+	t.Parallel()
+
+	productID := uuidtestkit.NewTestFromSalt(t, "cart_snapshot_product")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("商品から判定に要る観測値だけを切り出す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := toSnapshots(map[uuid.UUID]*product.Product{
+				productID: newTestProduct(t, productID, "12.50", 7),
+			})
+
+			require.Len(t, actual, 1)
+			require.Contains(t, actual, productID)
+			assert.Equal(t, "12.5", actual[productID].Price().String())
+		})
+
+		t.Run("商品が無ければ空の表を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := toSnapshots(nil)
+
+			assert.NotNil(t, actual)
+			assert.Empty(t, actual)
 		})
 	})
 }
@@ -230,7 +258,6 @@ func Test_toItemIssue(t *testing.T) {
 		t.Run("すべての値が DTO の語彙へ対応する", func(t *testing.T) {
 			t.Parallel()
 
-			// 対応が 1 つでも欠けると panic するため、全値を通すことが写像の網羅性の担保になる。
 			assert.Equal(t, ItemIssueNotFound, toItemIssue(cart.IssueNotFound))
 			assert.Equal(t, ItemIssueUnpublished, toItemIssue(cart.IssueUnpublished))
 			assert.Equal(t, ItemIssueOutOfStock, toItemIssue(cart.IssueOutOfStock))
@@ -246,7 +273,6 @@ func Test_toItemIssue(t *testing.T) {
 		t.Run("対応を持たない値は panic する", func(t *testing.T) {
 			t.Parallel()
 
-			// 黙って既定値へ倒すと、ドメインに値が増えたとき応答だけが静かに嘘になる。
 			assert.Panics(t, func() { _ = toItemIssue(cart.Issue("unknown")) })
 		})
 	})
@@ -289,91 +315,6 @@ func Test_evaluateItems(t *testing.T) {
 			assert.NotNil(t, views)
 			assert.Empty(t, views)
 			assert.Empty(t, seen)
-		})
-	})
-}
-
-func Test_subtotalAmount(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("購入可能な明細のみを合算する", func(t *testing.T) {
-			t.Parallel()
-
-			views := []CartItemView{
-				{UnitPrice: ptr.To(decimal.FromInt(10)), Quantity: 2},
-				{UnitPrice: ptr.To(decimal.FromInt(50)), Quantity: 1, Issues: []ItemIssue{ItemIssueOutOfStock}},
-			}
-
-			actual, err := subtotalAmount(views)
-			require.NoError(t, err)
-
-			assert.Equal(t, int64(2000), actual)
-		})
-
-		t.Run("合算してから丸めるため明細ごとの丸め誤差が積み上がらない", func(t *testing.T) {
-			t.Parallel()
-
-			price, err := decimal.Parse("0.005")
-			require.NoError(t, err)
-			views := []CartItemView{
-				{UnitPrice: &price, Quantity: 1},
-				{UnitPrice: &price, Quantity: 1},
-			}
-
-			actual, err := subtotalAmount(views)
-			require.NoError(t, err)
-
-			// 明細ごとに丸めると 1 + 1 = 2 セントになる。合算してから丸めれば 0.01 ドル = 1 セント。
-			assert.Equal(t, int64(1), actual)
-		})
-
-		t.Run("合算対象が無ければ0を返す", func(t *testing.T) {
-			t.Parallel()
-
-			actual, err := subtotalAmount(nil)
-			require.NoError(t, err)
-
-			assert.Zero(t, actual)
-		})
-
-		t.Run("単価を持たない明細は合算しない", func(t *testing.T) {
-			t.Parallel()
-
-			// issues が空でも単価が無ければ掛ける値が無い。nil 参照を避ける防御が効いていることを固定する。
-			views := []CartItemView{
-				{UnitPrice: nil, Quantity: 3},
-				{UnitPrice: ptr.To(decimal.FromInt(7)), Quantity: 1},
-			}
-
-			actual, err := subtotalAmount(views)
-			require.NoError(t, err)
-
-			assert.Equal(t, int64(700), actual)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("決済スケールへ落とせない大きさなら分類済みエラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			// 単価 1 件は money.Price の構築時に検証されるため、幅を超えるのは合算の結果に限られる。
-			// 上限ちょうどの単価を 2 明細ぶん積み、黙って壊れた値を返さないことを固定する。
-			price, err := decimal.Parse("92233720368547758.07")
-			require.NoError(t, err)
-
-			_, err = subtotalAmount([]CartItemView{
-				{UnitPrice: &price, Quantity: 1},
-				{UnitPrice: &price, Quantity: 1},
-			})
-
-			// 未分類のまま外へ出ると 500 の理由が追えないため、apperror へ分類されていることを固定する。
-			require.ErrorIs(t, err, apperror.ErrInternal)
-			require.ErrorIs(t, err, decimal.ErrOverflow)
 		})
 	})
 }

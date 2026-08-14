@@ -199,6 +199,17 @@ fields:
     価格差を判定しない。
     結果は表示のための参考情報であり、カートの不変条件を左右しない。拘束力を持たないことは配置の理由に
     ならず、業務上の判断である以上ドメインが持つ。
+
+- name: Cart.Subtotal
+  signature: Subtotal(snapshots map[uuid.UUID]ProductSnapshot) (int64, error)
+  behavior: |
+    自分の明細のうち購入可能なものだけを合算し、決済スケール（USD セント）の整数へ落とす。
+    丸めは合算の後に一度だけ行い、明細ごとの丸め誤差が積み上がらないようにする。snapshots に
+    含まれない明細と、突き合わせで issue が立った明細は入らない。幅に収まらない場合は
+    ErrSubtotalOutOfRange（422）。
+    自分の明細集合から決まる問いなので、集約ルート自身が答える（同 § One thing or a set）。
+    **提示価格を書き換える前に呼ぶこと。** MarkSeen の後では値上がりが常に「差が無い」になり、
+    除外されるはずの明細が入る。
 ```
 
 ## Value Objects
@@ -237,6 +248,10 @@ fields:
     - name: AvailableQuantity
       returns: "*int"
 ```
+
+`Evaluate` は必ず非 nil の `issues` を返す。`Evaluation` のゼロ値は「まだ突き合わせていない」を
+表し、「問題が無い」ではない。合算へ入れるかの判定（パッケージ内の `hasNoIssue`）はこれを区別し、
+判らないものを問題無しへ倒さない。
 
 ```yaml
 enum: Issue                  # 明細を商品の観測値と突き合わせた結果
@@ -313,6 +328,6 @@ values:
   `maxQuantityPerItem = 99` / `maxItems = 50` / `sessionTokenLength = 43`（256bit を base64url で表現した長さ）。
 - エラー写像: `ErrAlreadyOwned` → `apperror.ErrConflict`（409）、その他検証系（`ErrInvalidID` /
   `ErrInvalidUserID` / `ErrInvalidProductID` / `ErrInvalidQuantity` / `ErrTooManyItems` /
-  `ErrInvalidSessionToken`）→ `apperror.ErrValidation`（422）。
+  `ErrInvalidSessionToken` / `ErrSubtotalOutOfRange`）→ `apperror.ErrValidation`（422）。
 
 [ADR-0035 (uuidv7-identifiers)]: ../../adr/0035-uuidv7-identifiers.md

@@ -28,9 +28,6 @@ const (
 	// ドメインは設定値を持たないため、この層が供給します（docs/spec/cart/domain.md の Touch）。
 	cartTTL = 30 * 24 * time.Hour
 
-	// subtotalMinorUnitDigits は、小計を決済スケール（USD セント）へ落とすときの小数桁数です。
-	subtotalMinorUnitDigits = 2
-
 	// ItemIssueNotFound は、商品を引けなかったことを表します。在庫も価格も判定材料が無いため、
 	// この issue は単独で立ちます。
 	ItemIssueNotFound ItemIssue = "notFound"
@@ -45,10 +42,6 @@ const (
 	// ItemIssuePriceDecreased は、前回提示した価格より安いことを表します。
 	ItemIssuePriceDecreased ItemIssue = "priceDecreased"
 )
-
-// errSubtotalOutOfRange は、購入可能な明細の合計が決済スケールの整数幅に収まらない場合のエラーです。
-// 呼び出し側が是正できる入力の誤りではないため、検証エラーではなく内部エラーとして扱います。
-var errSubtotalOutOfRange = xerrors.Wrap(apperror.ErrInternal, "cart subtotal exceeds the settlement range")
 
 // ItemIssue は、明細ごとの再評価結果です。値は外部向けの安定コードで、表示ではなく分岐に用います。
 type ItemIssue string
@@ -199,7 +192,19 @@ func evaluateItems(
 			seen[p.ID()] = p.Price()
 		}
 	}
+
 	return views, seen
+}
+
+// toSnapshots は、引けた商品を再評価用の観測値へ切り出します。
+// 引けなかった商品は含めません。カートはこの表に無い明細を合算に入れません。
+func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.ProductSnapshot {
+	snapshots := make(map[uuid.UUID]cart.ProductSnapshot, len(products))
+	for id, p := range products {
+		snapshots[id] = cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
+	}
+
+	return snapshots
 }
 
 // evaluateItem は、明細 1 件の再評価をドメインへ委ね、結果を出力 DTO へ写します。
@@ -251,27 +256,6 @@ func toItemIssue(issue cart.Issue) ItemIssue {
 	default:
 		panic(fmt.Sprintf("cart: unknown item issue: %q", issue))
 	}
-}
-
-// subtotalAmount は、購入可能な明細だけを合算して決済スケールの整数へ落とします。
-// 丸めは合算の後に一度だけ行い、明細ごとの丸め誤差が積み上がらないようにします。
-//
-// 単価 1 件が決済スケールへ落とせることは money.Price の構築時に保証されるため、ここで幅を超えるのは
-// 明細が積み上がった結果に限られます。合計を偽らずに返す術が無いため、分類済みのエラーとして返します。
-func subtotalAmount(views []CartItemView) (int64, error) {
-	sum := decimal.FromInt(0)
-	for _, v := range views {
-		if len(v.Issues) > 0 || v.UnitPrice == nil {
-			continue
-		}
-		sum = sum.Add(v.UnitPrice.Mul(decimal.FromInt(int64(v.Quantity))))
-	}
-
-	subtotal, err := sum.ToScaledInt64(subtotalMinorUnitDigits)
-	if err != nil {
-		return 0, xerrors.Join(errSubtotalOutOfRange, err)
-	}
-	return subtotal, nil
 }
 
 // emptyCartView は、表示するカートが無いときの応答です。
