@@ -176,23 +176,45 @@ errors:
 tx_required: true
 steps:
   - subject からカートを解決する。無ければ作成する
-      （UserID あり → NewForOwner / SessionToken なし → token.Generator で採番して NewForGuest）
+      （UserID あり → NewForOwner / ゲスト → token.Generator で採番して NewForGuest）
   - 既存カートは LockByID で悲観ロックする
-  - product_repository.FindByID で商品の存在と公開状態を確認する
-      （非公開・不存在の商品はカートへ入れさせない。再評価と違い、投入は要求そのものが不正なため 422）
+  - product_repository.FindPublishedByID で商品を引く
+      （非公開・不存在の商品はカートへ入れさせない。再評価と違い、投入は要求そのものが不正なため 422。
+        両者を区別しないのは、未ログインの呼び出し元へ非公開商品の存在を漏らさないため）
   - cart.SetItem（数量の設定。上限超過は ErrTooManyItems）
-  - Touch して Update
-  - GetCart と同じ再評価を行って CartView を返す
+  - GetCart と同じ再評価を行い、その後 Update する
 calls:
   - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / Create / Update
-  - product_repository.FindByID / FindByIDs
+  - product_repository.FindPublishedByID / FindByIDs
   - token_generator.Generate
   - clock.Now
 errors:
-  - ErrInvalidQuantity     -> 422
-  - ErrTooManyItems        -> 422
-  - product NotFound / 非公開 -> 422
+  - ErrInvalidQuantity      -> 422
+  - ErrTooManyItems         -> 422
+  - ErrUnavailableProduct   -> 422   # 不存在・非公開のいずれも
+  - ErrSubtotalOutOfRange   -> 422   # 合計が決済スケールに収まらない
+  - 作成の衝突が解消しない -> 409
 ```
+
+**期限切れのカートは空から始まる。** 所有者の確定したカートは行を作り直せない（1 ユーザー 1 カート）ため、
+行を保ったまま明細を捨てる。ゲストは提示されたトークンを使わず新しいカートを採番する。行の扱いは
+非対称だが、観測される意味論は一致し、`GetCart` が期限切れを空のカートとして見せる契約とも食い違わない。
+
+**提示されたセッショントークンでカートを作らない。** 未知・期限切れのいずれも採番し直し、新しい値を
+`SessionToken` に載せて返す。ゲストカートへ到達できるかはトークンの秘匿だけが決めているため、その値を
+クライアントに選ばせると、推測できないことの保証が丸ごと迂回される。
+
+**作成の衝突はトランザクションごとやり直す。** カートを持たない同一主体からの並行要求は、片方が
+一意制約に当たる。一意制約違反はトランザクション自体を中断させるため、同じトランザクションの中では
+解決からやり直せない。やり直しは 1 回で、そこでは勝った側の行が見える（READ COMMITTED）。
+やり直しても作れなかった場合だけ 409 を返す。
+
+**数量の範囲外は 400 であって 422 ではない。** OpenAPI が `minimum` / `maximum` を宣言しているため、
+範囲外はミドルウェアがドメインより手前で落とす（ADR-0015・リクエスト境界の権威は spec）。
+`ErrInvalidQuantity` は第 2 の網として残り、HTTP 以外の経路から呼ばれたときに効く。
+
+**冪等キーを使わない。** 冪等性は明細の自然キー `(cart_id, product_id)` と「設定」という意味論から
+来るため、`docs/design/idempotency.md` § 1 の適用条件（自然キーを持たない書き込み）に当たらない。
 
 ### RemoveItem
 
