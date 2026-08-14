@@ -169,6 +169,15 @@ type basicAuthContextKey string
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
 
+// DeleteCartsMeItemParams defines parameters for DeleteCartsMeItem.
+type DeleteCartsMeItemParams struct {
+	// XCartSession ゲストカートのセッショントークン。所有者が未確定のカートへ到達する唯一の手段で、
+	// 未認証の呼び出し側はこのヘッダで自分のカートを指定する。
+	// 認証済みの呼び出し側では無視される（カートは内部 UserID から解決されるため）。
+	// 値は 256 ビットを base64url（パディング無し）で表現した 43 文字。
+	XCartSession *CartSessionParam `json:"X-Cart-Session,omitempty"`
+}
+
 // PutCartsMeItemParams defines parameters for PutCartsMeItem.
 type PutCartsMeItemParams struct {
 	// XCartSession ゲストカートのセッショントークン。所有者が未確定のカートへ到達する唯一の手段で、

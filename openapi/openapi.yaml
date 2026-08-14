@@ -100,7 +100,7 @@ tags:
   - name: v1/carts
     description: 自分のカート（任意認証サンプル・ゲストと認証済みの双方が主体になれる / 明細ごとの再評価）。
   - name: v1/carts/items
-    description: カート明細の設定（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
+    description: カート明細の設定と削除（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
   # sample-api:end
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。

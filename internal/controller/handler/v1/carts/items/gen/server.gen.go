@@ -16,6 +16,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// 自分のカートからの明細の削除
+	// (DELETE /v1/carts/me/items/{productId})
+	DeleteCartsMeItem(ctx *echo.Context, productId ProductIdParam, params DeleteCartsMeItemParams) error
 	// 自分のカートへの明細の設定（数量の upsert）
 	// (PUT /v1/carts/me/items/{productId})
 	PutCartsMeItem(ctx *echo.Context, productId ProductIdParam, params PutCartsMeItemParams) error
@@ -24,6 +27,44 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// DeleteCartsMeItem converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCartsMeItem(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteCartsMeItemParams
+
+	headers := ctx.Request().Header
+	// ------------- Optional header parameter "X-Cart-Session" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Cart-Session")]; found {
+		var XCartSession CartSessionParam
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Cart-Session, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Cart-Session", valueList[0], &XCartSession, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Cart-Session: %s", err))
+		}
+
+		params.XCartSession = &XCartSession
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCartsMeItem(ctx, productId, params)
+	return err
 }
 
 // PutCartsMeItem converts echo context to params.
@@ -111,6 +152,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
+	router.DELETE(options.BaseURL+"/v1/carts/me/items/:productId", wrapper.DeleteCartsMeItem, options.OperationMiddlewares["DeleteCartsMeItem"]...)
 	router.PUT(options.BaseURL+"/v1/carts/me/items/:productId", wrapper.PutCartsMeItem, options.OperationMiddlewares["PutCartsMeItem"]...)
 
 }
@@ -128,6 +170,99 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 type Unauthorized401JSONResponse ErrorResponse
 
 type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
+
+type DeleteCartsMeItemRequestObject struct {
+	ProductId ProductIdParam `json:"productId"`
+	Params    DeleteCartsMeItemParams
+}
+
+type DeleteCartsMeItemResponseObject interface {
+	VisitDeleteCartsMeItemResponse(w http.ResponseWriter) error
+}
+
+type DeleteCartsMeItem204Response struct {
+}
+
+func (response DeleteCartsMeItem204Response) VisitDeleteCartsMeItemResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteCartsMeItem400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response DeleteCartsMeItem400JSONResponse) VisitDeleteCartsMeItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMeItem401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response DeleteCartsMeItem401JSONResponse) VisitDeleteCartsMeItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMeItem405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response DeleteCartsMeItem405JSONResponse) VisitDeleteCartsMeItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMeItem500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response DeleteCartsMeItem500JSONResponse) VisitDeleteCartsMeItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMeItem503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response DeleteCartsMeItem503JSONResponse) VisitDeleteCartsMeItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type PutCartsMeItemRequestObject struct {
 	ProductId ProductIdParam `json:"productId"`
@@ -261,6 +396,9 @@ func (response PutCartsMeItem503JSONResponse) VisitPutCartsMeItemResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// 自分のカートからの明細の削除
+	// (DELETE /v1/carts/me/items/{productId})
+	DeleteCartsMeItem(ctx context.Context, request DeleteCartsMeItemRequestObject) (DeleteCartsMeItemResponseObject, error)
 	// 自分のカートへの明細の設定（数量の upsert）
 	// (PUT /v1/carts/me/items/{productId})
 	PutCartsMeItem(ctx context.Context, request PutCartsMeItemRequestObject) (PutCartsMeItemResponseObject, error)
@@ -276,6 +414,32 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// DeleteCartsMeItem operation middleware
+func (sh *strictHandler) DeleteCartsMeItem(ctx *echo.Context, productId ProductIdParam, params DeleteCartsMeItemParams) error {
+	var request DeleteCartsMeItemRequestObject
+
+	request.ProductId = productId
+	request.Params = params
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteCartsMeItem(ctx.Request().Context(), request.(DeleteCartsMeItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteCartsMeItem")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(DeleteCartsMeItemResponseObject); ok {
+		return validResponse.VisitDeleteCartsMeItemResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // PutCartsMeItem operation middleware

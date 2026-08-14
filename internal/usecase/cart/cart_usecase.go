@@ -69,6 +69,14 @@ type SetItemParams struct {
 	Quantity int
 }
 
+// RemoveItemParams は、明細の削除の入力 DTO です。
+type RemoveItemParams struct {
+	// Subject は、カートの主体です。
+	Subject Subject
+	// ProductID は、取り除く明細が指す商品です。
+	ProductID uuid.UUID
+}
+
 // CartItemView は、明細 1 件の出力 DTO です。
 type CartItemView struct {
 	// ProductID は、対象の商品です。カート内で明細を一意に指す自然キーでもあります。
@@ -108,6 +116,12 @@ type Usecase interface {
 	// カートを持たない主体にはこの操作がカートを作ります（ゲストにはトークンを発行します）。
 	// カートへ入れられない商品（不存在・非公開）は ErrUnavailableProduct を返します。
 	SetItem(ctx context.Context, params SetItemParams) (CartView, error)
+
+	// RemoveItem は、主体のカートから指定商品の明細を取り除きます。
+	// 対象の明細が無い場合も、カートを持たない主体が呼んだ場合も成功します（削除は冪等です）。
+	// カートは作らず、商品の存在も公開状態も確かめません。
+	// カートを持つ主体には有効期限の延長だけが起きます。
+	RemoveItem(ctx context.Context, params RemoveItemParams) error
 }
 
 type usecase struct {
