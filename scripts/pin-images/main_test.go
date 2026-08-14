@@ -382,6 +382,18 @@ func Test_detectLooseDockerUses(t *testing.T) {
 			got := detectLooseDockerUses("  # uses: docker://alpine\n", usesDockerRe, looseDockerUsesRe)
 			assert.Empty(t, got)
 		})
+
+		t.Run("run スクリプトが出力する uses: docker:// を取りこぼしとして数えない", func(t *testing.T) {
+			t.Parallel()
+			data := "steps:\n  - run: |\n      echo \"- uses: docker://alpine:3.24\"\n"
+			assert.Empty(t, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+		})
+
+		t.Run("ブロックスカラーを抜けた後の行は再び走査対象に戻る", func(t *testing.T) {
+			t.Parallel()
+			data := "steps:\n  - run: |\n      echo \"- uses: docker://alpine:3.24\"\n  - uses: docker://busybox\n"
+			assert.Equal(t, []int{4}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

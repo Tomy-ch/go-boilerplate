@@ -40,6 +40,7 @@ import (
 
 	"go-boilerplate/pkg/xerrors"
 	"go-boilerplate/scripts/lib/ghfiles"
+	"go-boilerplate/scripts/lib/yamlblock"
 )
 
 const (
@@ -200,12 +201,20 @@ func targetFiles(root string) ([]target, error) {
 // が、YAML は同じ内容を flow mapping や引用符でも書けるし、tag を省いた形も書ける。いずれも
 // 一致ゼロになり、その状態は「固定漏れ無し」と区別が付かない。緩いパターンで補い、残った行は
 // 呼び出し元が fail-close する。
+//
+// ブロックスカラーの中身は YAML の構造ではなく単なるテキストなので走査から外す。外さないと
+// `run:` スクリプトが uses: を含む文字列を出力するだけで検出が誤爆する。
 func detectLooseDockerUses(data string, strict, loose *regexp.Regexp) []int {
 	blanked := strict.ReplaceAllStringFunc(data, func(line string) string {
 		return strings.Repeat(" ", len(line))
 	})
+	// 範囲の判定は潰す前の内容で行う。潰した行は字下げごと空白になり、ブロックの終わりに見える。
+	inBlockScalar := yamlblock.ContentLines(data)
 	var lines []int
 	for i, line := range strings.Split(blanked, "\n") {
+		if inBlockScalar[i+1] {
+			continue
+		}
 		if strings.HasPrefix(strings.TrimSpace(line), "#") {
 			continue
 		}
