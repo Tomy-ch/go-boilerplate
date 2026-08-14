@@ -200,13 +200,16 @@ fields:
     結果は表示のための参考情報であり、カートの不変条件を左右しない。拘束力を持たないことは配置の理由に
     ならず、業務上の判断である以上ドメインが持つ。
 
-- name: Subtotal
-  signature: Subtotal(lines []PurchasableLine) (int64, error)
+- name: Cart.Subtotal
+  signature: Subtotal(snapshots map[uuid.UUID]ProductSnapshot) (int64, error)
   behavior: |
-    購入可能な明細を合算し、決済スケール（USD セント）の整数へ落とす。丸めは合算の後に一度だけ行い、
-    明細ごとの丸め誤差が積み上がらないようにする。どの明細が購入可能かは Evaluate が既に答えており、
-    ここは合算と丸めだけを持つ。幅に収まらない場合は ErrSubtotalOutOfRange（422）。
-    集約に属さず、どの明細 1 件の責務でもないためパッケージ関数として置く。
+    自分の明細のうち購入可能なものだけを合算し、決済スケール（USD セント）の整数へ落とす。
+    丸めは合算の後に一度だけ行い、明細ごとの丸め誤差が積み上がらないようにする。snapshots に
+    含まれない明細と、突き合わせで issue が立った明細は入らない。幅に収まらない場合は
+    ErrSubtotalOutOfRange（422）。
+    自分の明細集合から決まる問いなので、集約ルート自身が答える（同 § One thing or a set）。
+    **提示価格を書き換える前に呼ぶこと。** MarkSeen の後では値上がりが常に「差が無い」になり、
+    除外されるはずの明細が入る。
 ```
 
 ## Value Objects
@@ -244,14 +247,8 @@ fields:
       returns: "[]Issue"
     - name: AvailableQuantity
       returns: "*int"
-    - name: Purchasable
+    - name: HasNoIssue
       returns: bool          # issue が 1 つも立っていなければ true
-
-- name: PurchasableLine
-  underlying_type: struct    # quantity int / price money.Price
-  validation: |
-    検証しない。購入可能と判定済みの明細の観測値であり、判定は Evaluate が済ませている。
-  factory: NewPurchasableLine
 ```
 
 ```yaml

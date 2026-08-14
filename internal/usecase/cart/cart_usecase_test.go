@@ -154,9 +154,8 @@ func Test_evaluateItem(t *testing.T) {
 			seen := newPrice(t, "10.00")
 			item := newTestCartItem(t, "cart_eval_delegate", productID, 3, &seen)
 
-			actual, line := evaluateItem(item, newTestProduct(t, productID, "12.00", 1))
+			actual := evaluateItem(item, newTestProduct(t, productID, "12.00", 1))
 
-			assert.Nil(t, line)
 			assert.Equal(t, []ItemIssue{ItemIssueInsufficientStock, ItemIssuePriceIncreased}, actual.Issues)
 			require.NotNil(t, actual.AvailableQuantity)
 			assert.Equal(t, 1, *actual.AvailableQuantity)
@@ -173,9 +172,8 @@ func Test_evaluateItem(t *testing.T) {
 
 			item := newTestCartItem(t, "cart_eval_notfound", productID, 2, nil)
 
-			actual, line := evaluateItem(item, nil)
+			actual := evaluateItem(item, nil)
 
-			assert.Nil(t, line)
 			assert.Equal(t, []ItemIssue{ItemIssueNotFound}, actual.Issues)
 			assert.Nil(t, actual.ProductName)
 			assert.Nil(t, actual.UnitPrice)
@@ -187,21 +185,41 @@ func Test_evaluateItem(t *testing.T) {
 
 			item := newTestCartItem(t, "cart_eval_ok", productID, 1, nil)
 
-			actual, _ := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
+			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
 
 			assert.NotNil(t, actual.Issues)
 			assert.Empty(t, actual.Issues)
 		})
+	})
+}
 
-		t.Run("購入可能なら小計へ入る明細を返す", func(t *testing.T) {
+func Test_toSnapshots(t *testing.T) {
+	t.Parallel()
+
+	productID := uuidtestkit.NewTestFromSalt(t, "cart_snapshot_product")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("商品から判定に要る観測値だけを切り出す", func(t *testing.T) {
 			t.Parallel()
 
-			item := newTestCartItem(t, "cart_eval_line", productID, 2, nil)
+			actual := toSnapshots(map[uuid.UUID]*product.Product{
+				productID: newTestProduct(t, productID, "12.50", 7),
+			})
 
-			_, line := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
+			require.Len(t, actual, 1)
+			require.Contains(t, actual, productID)
+			assert.Equal(t, "12.5", actual[productID].Price().String())
+		})
 
-			require.NotNil(t, line)
-			assert.Equal(t, cart.NewPurchasableLine(2, newPrice(t, "10.00")), *line)
+		t.Run("商品が無ければ空の表を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := toSnapshots(nil)
+
+			assert.NotNil(t, actual)
+			assert.Empty(t, actual)
 		})
 	})
 }
@@ -280,26 +298,23 @@ func Test_evaluateItems(t *testing.T) {
 				foundID: newTestProduct(t, foundID, "10.00", 5),
 			}
 
-			views, seen, lines := evaluateItems(items, products)
+			views, seen := evaluateItems(items, products)
 
 			assert.Len(t, views, 2)
 			// 引けなかった明細を表へ入れると、その明細の提示価格が MarkSeen で消される。
 			assert.Len(t, seen, 1)
 			assert.Contains(t, seen, foundID)
 			assert.NotContains(t, seen, missingID)
-			// 引けなかった明細は購入可能ではないため小計へ入らない。
-			assert.Len(t, lines, 1)
 		})
 
 		t.Run("明細が無い場合は空のViewと空の表を返す", func(t *testing.T) {
 			t.Parallel()
 
-			views, seen, lines := evaluateItems(nil, nil)
+			views, seen := evaluateItems(nil, nil)
 
 			assert.NotNil(t, views)
 			assert.Empty(t, views)
 			assert.Empty(t, seen)
-			assert.Empty(t, lines)
 		})
 	})
 }

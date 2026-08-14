@@ -60,8 +60,9 @@ func (e Evaluation) Issues() []Issue {
 // AvailableQuantity は、IssueInsufficientStock のときの今買える上限を返します。それ以外は nil です。
 func (e Evaluation) AvailableQuantity() *int { return ptr.Copy(e.availableQuantity) }
 
-// Purchasable は、現時点で購入可能かどうかを返します。
-func (e Evaluation) Purchasable() bool { return len(e.issues) == 0 }
+// HasNoIssue は、突き合わせで issue が 1 つも立たなかったかどうかを返します。
+// 「購入可能」は在籍に基づく別の判定を指す語なので用いません（docs/spec/glossary.md）。
+func (e Evaluation) HasNoIssue() bool { return len(e.issues) == 0 }
 
 // Evaluate は、明細を商品の観測値と突き合わせて再評価結果を返します。
 // snapshot が nil の場合は商品を引けなかったことを表し、IssueNotFound だけが立ちます。

@@ -2,34 +2,46 @@ package cart
 
 import (
 	"testing"
+	"time"
 
 	"go-boilerplate/pkg/decimal"
+	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewPurchasableLine(t *testing.T) {
-	t.Parallel()
+// newSubtotalCart は、指定した明細を持つゲストカートを作ります。
+func newSubtotalCart(t *testing.T, items ...CartItem) *Cart {
+	t.Helper()
+	token := newTestSessionToken(t)
+	c, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "subtotal_cart"), Attributes{
+		SessionToken: &token,
+		Items:        items,
+		ExpiresAt:    time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC),
+	})
+	require.NoError(t, err)
 
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
+	return c
+}
 
-		t.Run("渡した数量と単価を保持する", func(t *testing.T) {
-			t.Parallel()
+// newSubtotalItem は、商品 ID を指定した明細を作ります。
+func newSubtotalItem(t *testing.T, salt string, productID uuid.UUID, quantity int) CartItem {
+	t.Helper()
 
-			price := newEvalPrice(t, "12.50")
-
-			actual := NewPurchasableLine(3, price)
-
-			assert.Equal(t, 3, actual.quantity)
-			assert.Equal(t, price, actual.price)
-		})
+	return NewCartItem(uuidtestkit.NewTestFromSalt(t, salt), CartItemAttributes{
+		ProductID: productID,
+		Quantity:  quantity,
+		AddedAt:   time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC),
 	})
 }
 
-func TestSubtotal(t *testing.T) {
+func TestCart_Subtotal(t *testing.T) {
 	t.Parallel()
+
+	productA := uuidtestkit.NewTestFromSalt(t, "subtotal_a")
+	productB := uuidtestkit.NewTestFromSalt(t, "subtotal_b")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -37,9 +49,14 @@ func TestSubtotal(t *testing.T) {
 		t.Run("数量を掛けた明細を合算する", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := Subtotal([]PurchasableLine{
-				NewPurchasableLine(2, newEvalPrice(t, "10.00")),
-				NewPurchasableLine(1, newEvalPrice(t, "5.00")),
+			c := newSubtotalCart(t,
+				newSubtotalItem(t, "sub_a", productA, 2),
+				newSubtotalItem(t, "sub_b", productB, 1),
+			)
+
+			actual, err := c.Subtotal(map[uuid.UUID]ProductSnapshot{
+				productA: *newEvalSnapshot(t, "10.00", 5, true),
+				productB: *newEvalSnapshot(t, "5.00", 5, true),
 			})
 			require.NoError(t, err)
 
@@ -49,9 +66,14 @@ func TestSubtotal(t *testing.T) {
 		t.Run("合算してから丸めるため明細ごとの丸め誤差が積み上がらない", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := Subtotal([]PurchasableLine{
-				NewPurchasableLine(1, newEvalPrice(t, "0.005")),
-				NewPurchasableLine(1, newEvalPrice(t, "0.005")),
+			c := newSubtotalCart(t,
+				newSubtotalItem(t, "sub_round_a", productA, 1),
+				newSubtotalItem(t, "sub_round_b", productB, 1),
+			)
+
+			actual, err := c.Subtotal(map[uuid.UUID]ProductSnapshot{
+				productA: *newEvalSnapshot(t, "0.005", 5, true),
+				productB: *newEvalSnapshot(t, "0.005", 5, true),
 			})
 			require.NoError(t, err)
 
@@ -59,10 +81,44 @@ func TestSubtotal(t *testing.T) {
 			assert.Equal(t, int64(1), actual)
 		})
 
-		t.Run("合算対象が無ければ0を返す", func(t *testing.T) {
+		t.Run("issue が立った明細は合算に入らない", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := Subtotal(nil)
+			c := newSubtotalCart(t,
+				newSubtotalItem(t, "sub_ok", productA, 1),
+				newSubtotalItem(t, "sub_ng", productB, 3),
+			)
+
+			actual, err := c.Subtotal(map[uuid.UUID]ProductSnapshot{
+				productA: *newEvalSnapshot(t, "10.00", 5, true),
+				// 在庫不足で IssueInsufficientStock が立つため、この明細は入らない。
+				productB: *newEvalSnapshot(t, "50.00", 1, true),
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, int64(1000), actual)
+		})
+
+		t.Run("観測値を引けなかった明細は合算に入らない", func(t *testing.T) {
+			t.Parallel()
+
+			c := newSubtotalCart(t,
+				newSubtotalItem(t, "sub_found", productA, 1),
+				newSubtotalItem(t, "sub_missing", productB, 1),
+			)
+
+			actual, err := c.Subtotal(map[uuid.UUID]ProductSnapshot{
+				productA: *newEvalSnapshot(t, "7.00", 5, true),
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, int64(700), actual)
+		})
+
+		t.Run("明細が無ければ0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := newSubtotalCart(t).Subtotal(nil)
 			require.NoError(t, err)
 
 			assert.Zero(t, actual)
@@ -75,11 +131,14 @@ func TestSubtotal(t *testing.T) {
 		t.Run("決済スケールへ落とせない大きさならErrSubtotalOutOfRangeを返す", func(t *testing.T) {
 			t.Parallel()
 
-			price := newEvalPrice(t, "92233720368547758.07")
+			c := newSubtotalCart(t,
+				newSubtotalItem(t, "sub_over_a", productA, 1),
+				newSubtotalItem(t, "sub_over_b", productB, 1),
+			)
 
-			actual, err := Subtotal([]PurchasableLine{
-				NewPurchasableLine(1, price),
-				NewPurchasableLine(1, price),
+			actual, err := c.Subtotal(map[uuid.UUID]ProductSnapshot{
+				productA: *newEvalSnapshot(t, "92233720368547758.07", 5, true),
+				productB: *newEvalSnapshot(t, "92233720368547758.07", 5, true),
 			})
 
 			require.ErrorIs(t, err, ErrSubtotalOutOfRange)

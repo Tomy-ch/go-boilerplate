@@ -181,32 +181,36 @@ func (u *usecase) findProducts(
 // 価格の表には引けた商品のぶんだけが入ります（引けなかった明細の提示価格は据え置かれます）。
 func evaluateItems(
 	items []cart.CartItem, products map[uuid.UUID]*product.Product,
-) ([]CartItemView, map[uuid.UUID]money.Price, []cart.PurchasableLine) {
+) ([]CartItemView, map[uuid.UUID]money.Price) {
 	views := make([]CartItemView, 0, len(items))
 	seen := make(map[uuid.UUID]money.Price, len(items))
-	lines := make([]cart.PurchasableLine, 0, len(items))
 
 	for _, item := range items {
 		p := products[item.ProductID()]
-		view, line := evaluateItem(item, p)
-		views = append(views, view)
-		if line != nil {
-			lines = append(lines, *line)
-		}
+		views = append(views, evaluateItem(item, p))
 		if p != nil {
 			seen[p.ID()] = p.Price()
 		}
 	}
 
-	return views, seen, lines
+	return views, seen
+}
+
+// toSnapshots は、引けた商品を再評価用の観測値へ切り出します。
+// 引けなかった商品は含めません。カートはこの表に無い明細を合算に入れません。
+func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.ProductSnapshot {
+	snapshots := make(map[uuid.UUID]cart.ProductSnapshot, len(products))
+	for id, p := range products {
+		snapshots[id] = cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
+	}
+
+	return snapshots
 }
 
 // evaluateItem は、明細 1 件の再評価をドメインへ委ね、結果を出力 DTO へ写します。
 // 判定そのものは cart.CartItem.Evaluate が持ちます。この層が持つのは、商品エンティティから
 // 観測値を切り出すことと、結果を DTO の語彙へ移すことだけです。
-//
-// 第 2 返り値は小計へ入る明細で、購入可能でない場合は nil です。
-func evaluateItem(item cart.CartItem, p *product.Product) (CartItemView, *cart.PurchasableLine) {
+func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
 	view := CartItemView{ProductID: item.ProductID(), Quantity: item.Quantity()}
 
 	var snapshot *cart.ProductSnapshot
@@ -221,13 +225,7 @@ func evaluateItem(item cart.CartItem, p *product.Product) (CartItemView, *cart.P
 	view.Issues = toItemIssues(evaluation.Issues())
 	view.AvailableQuantity = evaluation.AvailableQuantity()
 
-	if !evaluation.Purchasable() || p == nil {
-		return view, nil
-	}
-
-	line := cart.NewPurchasableLine(item.Quantity(), p.Price())
-
-	return view, &line
+	return view
 }
 
 // toItemIssues は、ドメインの再評価結果を出力 DTO の語彙へ写します。

@@ -1,31 +1,28 @@
 package cart
 
 import (
-	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/pkg/decimal"
+	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
 
-// PurchasableLine は、小計に入る明細 1 件の観測値です。
-type PurchasableLine struct {
-	quantity int
-	price    money.Price
-}
-
-// NewPurchasableLine は、小計に入る明細の観測値を組み立てます。
-func NewPurchasableLine(quantity int, price money.Price) PurchasableLine {
-	return PurchasableLine{quantity: quantity, price: price}
-}
-
-// Subtotal は、購入可能な明細を合算して決済スケールの整数へ落とします。
+// Subtotal は、購入可能な明細だけを合算して決済スケールの整数へ落とします。
 // 丸めは合算の後に一度だけ行い、明細ごとの丸め誤差が積み上がらないようにします。
+//
+// snapshots は商品 ID ごとの観測値で、引けなかった商品は含みません。含まれない明細と、
+// 突き合わせで issue が立った明細は合算に入りません。
 //
 // 幅を超えるのは明細が積み上がった結果に限られます（単価 1 件が決済スケールへ落とせることは
 // money.Price の構築時に保証されるため）。合計を偽らずに返す術が無いため、エラーを返します。
-func Subtotal(lines []PurchasableLine) (int64, error) {
+func (c *Cart) Subtotal(snapshots map[uuid.UUID]ProductSnapshot) (int64, error) {
 	sum := decimal.FromInt(0)
-	for _, l := range lines {
-		sum = sum.Add(l.price.Decimal().Mul(decimal.FromInt(int64(l.quantity))))
+
+	for _, item := range c.items {
+		snapshot, ok := snapshots[item.ProductID()]
+		if !ok || !item.Evaluate(&snapshot).HasNoIssue() {
+			continue
+		}
+		sum = sum.Add(snapshot.Price().Decimal().Mul(decimal.FromInt(int64(item.Quantity()))))
 	}
 
 	subtotal, err := sum.ToScaledInt64(subtotalMinorUnitDigits)

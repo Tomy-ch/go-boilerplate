@@ -150,15 +150,15 @@ steps:
   - 商品から ProductSnapshot を切り出し、明細ごとに CartItem.Evaluate へ渡して結果を受け取る
       （引けなかった明細には nil を渡す。判定の中身はドメインが持つ）
   - MarkSeen で提示価格を更新し、Touch で有効期限を延長して Update
-  - 購入可能な明細を PurchasableLine としてドメインへ渡し、cart.Subtotal が返した値を
-      SubtotalAmount として CartView に添える（合算も丸めもドメインが持つ）
+  - 商品の観測値を Cart.Subtotal へ渡し、返った値を SubtotalAmount として CartView に添える
+      （合算も丸めもドメインが持つ。提示価格を書き換える前に呼ぶ）
 calls:
   - cart_repository.FindByOwnerID
   - cart_repository.FindBySessionToken
   - cart_repository.Update
   - product_repository.FindByIDs
   - cart_item.Evaluate
-  - cart.Subtotal
+  - cart.Cart.Subtotal
   - clock.Now
 errors:
   - 業務的な失敗は無い（カート未作成・期限切れ・明細の問題はいずれも 200 で表現する）

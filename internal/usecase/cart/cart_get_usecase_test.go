@@ -324,7 +324,8 @@ func Test_usecase_GetCart(t *testing.T) {
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
-			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			// 合算に失敗する経路では書き込みへ進まない。
+			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(product.Products{
