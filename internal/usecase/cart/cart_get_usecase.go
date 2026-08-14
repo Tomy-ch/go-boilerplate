@@ -3,7 +3,9 @@ package cart
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // GetCart は、取得が書き込みを伴います。値上がりの判定には前回提示した価格が要るため提示のたびに
@@ -26,11 +28,22 @@ func (u *usecase) GetCart(ctx context.Context, subject Subject) (CartView, error
 			return emptyCartView(), nil
 		}
 
-		view, verr := u.buildView(ctx, c, now)
+		// 解決はロックを取らないため、その結果をそのまま書き戻してはなりません。書き込みは集約単位で
+		// 明細集合を丸ごと反映するため、解決から書き戻しまでの間に他の操作が明細を消していた場合、
+		// 古い集約を書き戻すとそれが復活します。書き込む対象はロックで取り直したものだけです。
+		locked, lerr := u.cartRepo.LockByID(ctx, c.ID())
+		if lerr != nil {
+			if xerrors.Is(lerr, apperror.ErrNotFound) {
+				return emptyCartView(), nil
+			}
+			return CartView{}, lerr
+		}
+
+		view, verr := u.buildView(ctx, locked, now)
 		if verr != nil {
 			return CartView{}, verr
 		}
-		if uerr := u.cartRepo.Update(ctx, c); uerr != nil {
+		if uerr := u.cartRepo.Update(ctx, locked); uerr != nil {
 			return CartView{}, uerr
 		}
 
