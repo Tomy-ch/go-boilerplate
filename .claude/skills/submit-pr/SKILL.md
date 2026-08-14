@@ -49,7 +49,7 @@ The four valid working states going into Step 2:
 
 ### Step 1. Pre-push Local Review Gate (confirm)
 
-Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask whether to run a pre-push `/impl-review`. This is the single decision point for local review: a local review inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss, and it belongs before the change leaves the machine. Do NOT auto-run it.
+Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask whether to run a pre-push `/impl-review`. This is the single decision point for local review: a local review inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss, and it belongs before the change leaves the machine. It also offers, defaulting to yes, to chain `/test-review` (test viewpoint) and `/comment-sweep` (comment stock of the touched files), so one run can cover all three. Do NOT auto-run it.
 
 `AskUserQuestion`:
 
@@ -244,7 +244,7 @@ After the PR URL is reported, **always ask the user whether to run a PR-based re
 - Options (offer the ones that apply):
   - 「`/code-review <PR#>` を実行」 — PR-based review (can post inline comments with `--comment`)
   - 「ultrareview を案内」 — cloud multi-agent review; **user-triggered and billed**, so the skill cannot launch it — only surface the command for the user to run
-  - 「`/impl-review` を実行」 — offer this only if the user skipped the pre-push gate at Step 1 and now wants the local different-model adversarial pass (auth / IDOR / DI / SQL / shared-schema gaps that mocked tests miss)
+  - 「`/impl-review` を実行」 — offer this only if the user skipped the pre-push gate at Step 1 and now wants the local different-model adversarial pass (auth / IDOR / DI / SQL / shared-schema gaps that mocked tests miss); it offers to chain `/test-review` and `/comment-sweep`, so one run can cover the code, the test viewpoint, and the comment stock
   - 「レビューしない」
 
 Scale the default recommendation to what changed, using the **Depth by change type** guidance in Step 1 (behavior-affecting code → recommend by default; docs / tooling-dominant → note the lower ROI). The user's choice always wins.
