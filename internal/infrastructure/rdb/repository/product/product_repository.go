@@ -312,24 +312,8 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 	return r.insertImages(ctx, db, p)
 }
 
-// ReplaceImages は、商品が現在参照している画像を p が保持する画像で置き換えます。
-// 置き換え前の画像は論理削除として残ります。
-//
-// 同一商品への置換が直列化されるのは、先行する Update の条件付き UPDATE が商品行のロックを取るためです。
-func (r *repository) ReplaceImages(ctx context.Context, p *product.Product) error {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	db := gen.New(driver.New(ctx, r.db))
-	if err := db.SoftDeleteProductImages(ctx, p.ID()); err != nil {
-		return pgerror.NormalizeError(err)
-	}
-
-	return r.insertImages(ctx, db, p)
-}
-
 // Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
-// 画像は対象に含みません（置換は ReplaceImages が担います）。
+// 画像も p が保持する集合へ一致させます。
 func (r *repository) Update(ctx context.Context, p *product.Product) (int, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -369,6 +353,10 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
 		}
 		return 0, pgerror.NormalizeError(err)
+	}
+
+	if err = r.syncImages(ctx, db, p); err != nil {
+		return 0, err
 	}
 
 	return int(lockVersion), nil
@@ -423,6 +411,44 @@ func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *produ
 		}); err != nil {
 			return pgerror.NormalizeError(err)
 		}
+	}
+
+	return nil
+}
+
+// syncImages は、商品が現在参照している画像を p が保持する集合へ一致させます。
+// 集合から外れた行を論理削除してから、まだ無い行を登録します。生存行の (product_id, sort_key) は部分
+// UNIQUE インデックスが一意に保つため、この順序でなければ表示順を使い回した登録が 23505 で失敗します。
+func (r *repository) syncImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
+	images := p.Images()
+	ids := make([]uuid.UUID, len(images))
+	paths := make([]string, len(images))
+	sortKeys := make([]int16, len(images))
+	for i, img := range images {
+		sortKey, err := safecast.IntToInt16(img.SortKey())
+		if err != nil {
+			return xerrors.Wrap(err, "invalid product image sortKey")
+		}
+
+		ids[i] = img.ID()
+		paths[i] = img.ImagePath()
+		sortKeys[i] = sortKey
+	}
+
+	if err := db.SoftDeleteProductImagesNotIn(ctx, &gen.SoftDeleteProductImagesNotInParams{
+		ProductID: p.ID(),
+		ImageIds:  ids,
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	if err := db.CreateProductImagesIfAbsent(ctx, &gen.CreateProductImagesIfAbsentParams{
+		ProductID:  p.ID(),
+		Ids:        ids,
+		ImagePaths: paths,
+		SortKeys:   sortKeys,
+	}); err != nil {
+		return pgerror.NormalizeError(err)
 	}
 
 	return nil

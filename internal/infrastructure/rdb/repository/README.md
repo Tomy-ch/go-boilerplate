@@ -28,7 +28,7 @@ flowchart TB
 |Principle|How Repository Achieves It|
 |---|---|
 |Dependency Inversion|Domain defines the interface, Infrastructure implements it|
-|Aggregate Boundary Protection|Persistence is performed per Aggregate unit|
+|Aggregate Boundary Protection|Persistence is performed per Aggregate unit — what each write method must guarantee is decided by [data-access-pattern](../../../../docs/design/data-access-pattern.md) § Write side|
 |Domain Purity|Domain has no knowledge of DB / SQL / frameworks|
 |Invariant Validation|Entities are reconstructed only through Domain constructors|
 

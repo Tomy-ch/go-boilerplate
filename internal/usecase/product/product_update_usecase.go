@@ -102,17 +102,9 @@ func (u *usecase) UpdateProduct(
 			return err
 		}
 
-		if updatedVersion, err = u.repo.Update(ctx, entity); err != nil {
-			return err
-		}
+		updatedVersion, err = u.repo.Update(ctx, entity)
 
-		// images が未指定なら現在の画像を据え置き、置き換えは行いません
-		// （理由は docs/spec/product/usecase.md の UpdateProduct）。
-		if !params.Images.IsSpecified() {
-			return nil
-		}
-
-		return u.repo.ReplaceImages(ctx, entity)
+		return err
 	})
 	if err != nil {
 		return ProductView{}, err

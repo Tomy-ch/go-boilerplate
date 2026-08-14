@@ -119,15 +119,6 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			})
 	}
 
-	// captureReplaceImages は、repo.ReplaceImages へ渡されたエンティティを捕捉します。
-	captureReplaceImages := func(deps *updateTestDeps, captured **domainproduct.Product) {
-		deps.repo.EXPECT().ReplaceImages(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(_ context.Context, p *domainproduct.Product) error {
-				*captured = p
-				return nil
-			})
-	}
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -174,9 +165,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
 
-			var captured, replaced *domainproduct.Product
+			var captured *domainproduct.Product
 			captureUpdate(deps, &captured)
-			captureReplaceImages(deps, &replaced)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version:               currentVersion,
@@ -192,8 +182,6 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Nil(t, captured.StockWarningThreshold())
 			assert.Nil(t, captured.PublishedAt())
 			assert.Empty(t, captured.Images())
-			require.NotNil(t, replaced)
-			assert.Empty(t, replaced.Images())
 
 			assert.Nil(t, actual.Description)
 			assert.Nil(t, actual.PublishedAt)
@@ -207,9 +195,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
 
-			var captured, replaced *domainproduct.Product
+			var captured *domainproduct.Product
 			captureUpdate(deps, &captured)
-			captureReplaceImages(deps, &replaced)
 
 			publishedAt := updateBasePublishedAt.Add(24 * time.Hour)
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
@@ -234,14 +221,11 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Equal(t, publishedAt, *captured.PublishedAt())
 			require.Len(t, captured.Images(), 1)
 			assert.Equal(t, "products/updated.png", captured.Images()[0].ImagePath())
-			require.NotNil(t, replaced)
-			require.Len(t, replaced.Images(), 1)
-			assert.Equal(t, "products/updated.png", replaced.Images()[0].ImagePath())
 
 			assert.Equal(t, "29.95", actual.Price.String())
 		})
 
-		t.Run("imagesが未指定の場合、画像の置き換えを行わない", func(t *testing.T) {
+		t.Run("imagesが未指定の場合、現在の画像を保持したエンティティで更新する", func(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
@@ -250,7 +234,6 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 
 			var captured *domainproduct.Product
 			captureUpdate(deps, &captured)
-			deps.repo.EXPECT().ReplaceImages(gomock.Any(), gomock.Any()).Times(0)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version: currentVersion,
