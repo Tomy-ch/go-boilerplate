@@ -22,6 +22,11 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// recordingLifecycle は、登録されたフックを記録するテスト用の fx.Lifecycle です。
+type recordingLifecycle struct {
+	hooks []fx.Hook
+}
+
 // newAuthParams は、指定した環境で provideAuthenticator を呼ぶための依存を組み立てます。
 func newAuthParams(t *testing.T, env string, logger logging.Logger) authenticatorParams {
 	t.Helper()
@@ -30,11 +35,17 @@ func newAuthParams(t *testing.T, env string, logger logging.Logger) authenticato
 	appCfg.SetApplicationEnv(t, env)
 
 	return authenticatorParams{
-		AppCfg:  appCfg,
-		AuthCfg: config.NewAuthConfig(cfg),
-		Clock:   system.NewClock(),
-		Logger:  logger,
+		AppCfg:    appCfg,
+		AuthCfg:   config.NewAuthConfig(cfg),
+		Clock:     system.NewClock(),
+		Logger:    logger,
+		Lifecycle: &recordingLifecycle{},
 	}
+}
+
+// Append は、フックを記録します。
+func (l *recordingLifecycle) Append(h fx.Hook) {
+	l.hooks = append(l.hooks, h)
 }
 
 // authnDeps は、AuthnModule の解決に必要な設定・時刻・ログ・HTTPClient の依存を返します。

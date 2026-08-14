@@ -97,6 +97,13 @@ type KeyResolver interface {
 	ResolveKey(ctx context.Context, kid string) (crypto.PublicKey, error)
 }
 
+// Drainer は、リクエストから切り離して走っている作業の完了を待てることを表します。
+// 停止手順がその完了を待てるようにするための口で、そうした作業を持たない実装は満たしません。
+type Drainer interface {
+	// Drain は、切り離して走っている作業の完了を待ちます。ctx が先に終わったらその時点で待つのをやめます。
+	Drain(ctx context.Context) error
+}
+
 // fixedKeyResolver は、kid を無視して固定の公開鍵を返す KeyResolver です。
 type fixedKeyResolver struct {
 	key crypto.PublicKey
@@ -244,6 +251,16 @@ func (a *authenticator) Authenticate(ctx context.Context, cred *authbd.Credentia
 
 	// issuer は parser が iss クレームを params.Issuer と一致検証済みのため、その期待値を採用する。
 	return authbd.New(subject, a.issuer, extractScopes(claims), map[string]any(claims))
+}
+
+// Drain は、鍵解決が切り離して走らせている作業の完了を待ちます（Drainer 実装）。
+// 固定公開鍵のように待つ対象を持たない鍵解決では何もしません。
+func (a *authenticator) Drain(ctx context.Context) error {
+	d, ok := a.keyResolver.(Drainer)
+	if !ok {
+		return nil
+	}
+	return d.Drain(ctx)
 }
 
 // keyFunc は、ctx を捕捉した jwtlib.Keyfunc を返します。署名検証に用いる公開鍵を KeyResolver 経由で解決します。
