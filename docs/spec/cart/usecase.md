@@ -82,24 +82,24 @@ output:
     - name: Items
       type: "[]CartItemView"
     - name: SubtotalAmount
-      type: int            # 買える明細のみを合算した参考値（USD セント）。請求額ではない
+      type: int64          # 買える明細のみを合算した参考値（USD セント）。請求額ではない
     - name: ExpiresAt
-      type: time.Time
+      type: "*time.Time"   # カートが存在しない場合は nil（GET は行を作らないため）
 
   struct: CartItemView
   fields:
     - name: ProductID
       type: uuid.UUID
     - name: ProductName
-      type: string
+      type: "*string"      # 商品の現在値。引けなかった場合は nil
     - name: Quantity
       type: int
     - name: UnitPrice
-      type: "*money.Price" # 商品の現在値。引けなかった場合は nil
+      type: "*decimal.Decimal" # 商品の現在値。引けなかった場合は nil（DTO は decimal で持つ）
     - name: Issues
       type: "[]ItemIssue"  # 空なら購入可能
     - name: AvailableQuantity
-      type: "*int"         # insufficient_stock のとき、今買える上限
+      type: "*int"         # insufficientStock のとき、今買える上限
 
   struct: MergeCartView
   fields:
@@ -112,12 +112,12 @@ output:
 ```yaml
 enum: ItemIssue            # 明細ごとの再評価結果。複数同時に立ちうる
 values:
-  - not_found              # 商品が存在しない（削除された）
+  - notFound               # 商品が存在しない（削除された）。単独で立ち、他の issue は併記しない
   - unpublished            # 非公開化された
-  - out_of_stock           # 在庫 0
-  - insufficient_stock     # 在庫 < 要求数量（AvailableQuantity に上限を添える）
-  - price_increased        # lastSeenPrice より高い
-  - price_decreased        # lastSeenPrice より安い（値下がりも知らせる。買い時の情報であり、隠す理由がない）
+  - outOfStock             # 在庫 0。insufficientStock とは排他
+  - insufficientStock      # 在庫 < 要求数量（AvailableQuantity に上限を添える）
+  - priceIncreased         # lastSeenPrice より高い
+  - priceDecreased         # lastSeenPrice より安い（値下がりも知らせる。買い時の情報であり、隠す理由がない）
 ```
 
 ## Dependencies
