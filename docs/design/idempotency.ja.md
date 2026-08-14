@@ -207,7 +207,7 @@ sequenceDiagram
 
 ## 4. integrator が実装する箇所（採用はオプトイン・2 ステップ）
 
-本プロジェクトは **middleware・`Run[T]` オーケストレータ・`Store` seam ＋ RDB 実装・スキーマ・GC usecase/job・参考採用例**（`POST /v1/users`）を提供する。handler が冪等になるのは**両ステップを行ったときのみ**——でなければ通常動作のまま。
+本プロジェクトは **middleware・`Run[T]` オーケストレータ・`Store` seam ＋ RDB 実装・スキーマ・GC usecase/job・参考採用例**をサンプルのリソース作成エンドポイント 1 本に対して提供する。handler が冪等になるのは**両ステップを行ったときのみ**——でなければ通常動作のまま。
 
 ```mermaid
 flowchart LR
@@ -220,8 +220,8 @@ flowchart LR
 
 | # | 必要な実装 | 置き場 | 参考 |
 | --- | --- | --- | --- |
-| ① | handler の `NewStrictHandler` の middleware スライスへ `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` を追加、`BindHandler` で `idempotency.Deps` を受け取る | `internal/controller/handler/<path>/*_handler.go` | `v1/users` handler |
-| ② | usecase 呼び出しを包む：`idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | 同 handler メソッド | `v1/users` `PostUsers` |
+| ① | handler の `NewStrictHandler` の middleware スライスへ `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` を追加、`BindHandler` で `idempotency.Deps` を受け取る | `internal/controller/handler/<path>/*_handler.go` | サンプルの POST handler |
+| ② | usecase 呼び出しを包む：`idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | 同 handler メソッド | その `Post<Resource>` メソッド |
 | ③（任意） | o11y バックエンドがあれば `Deps.Metrics` を注入、エンドポイント単位で隔離したければ middleware で `Scope` を拡張（例 `subject:operationID`） | DI / middleware | `NewDeps`, `WithRequest` |
 
 運用上の注意（ルート単位の設定フラグは無く、すべてコード定数）:
