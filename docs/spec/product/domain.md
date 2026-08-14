@@ -6,7 +6,7 @@
 
 ## Overview
 
-商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の参照（`StatusRef` / `CategoryRef`。いずれも ID と名称の組）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負は VO が担保。2 スケールモデルは ADR-0036 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
+商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の参照（`StatusRef` / `CategoryRef`。いずれも ID と名称の組）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負であることと決済スケールの整数へ落とせることは VO が担保。2 スケールモデルは ADR-0036 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
 
 一覧取得と一致件数取得は、公開済み（`publishedAt` 非 NULL）の商品へ同じ意味の検索条件を適用する read-only な集約読み取りである。すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0030 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。検索条件は再利用可能な domain 概念へ昇格させず、各 Repository 操作の引数型が必要な項目だけを保持する。一覧だけが `(publishedAt, id)` の keyset ページネーションと並び順を持ち、件数取得はページング条件を持たない。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
 
@@ -31,7 +31,8 @@ fields:
     required: false         # nil 許容（説明未設定）
   - name: price
     type: money.Price       # 価格スケール（サブセント可の Decimal）を内包する VO。DB は無指定 NUMERIC
-    required: true          # 非負は money.NewPrice が担保（負値は money.ErrNegativePrice）
+    required: true          # 非負と決済スケールへの変換可能性は money.NewPrice が担保
+                            # （負値は money.ErrNegativePrice / 幅超過は money.ErrPriceOutOfRange）
   - name: quantity
     type: int
     required: true
@@ -129,6 +130,9 @@ fields:
 # price は money.Price VO（internal/domain/lexicon/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
 # 内包し、決済スケール（最小単位整数）への変換 policy（ToMinorUnit）を所有する。器の正確な十進量は
 # pkg/decimal.Decimal（ADR-0036 (two-scale-quantity-model)）。
+# 決済スケールへ落とせない大きさは構築時に拒む。変換できない単価は金額として成立せず、構築を許すと
+# 変換を試みる時点まで不正が持ち越されて、その時点の呼び出し元（取得や集計）は拒否する術を持たない。
+# 単価 1 件の上限は合算の溢れまでは防がないため、合算する側がそれぞれ自分の合計を守る。
 # StatusRef / CategoryRef は分類の ID と名称の組を保持する VO。名称は作成・更新時に usecase が
 # マスタ集約から解決して埋め、商品エンティティ自身は再解決しない。
 ```
