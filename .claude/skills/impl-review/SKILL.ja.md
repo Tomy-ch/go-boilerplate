@@ -15,7 +15,7 @@
 - formatting / style — `make fix` / `make lint`
 - 網羅的なレイヤ適合監査 — `arch-check`（本スキルの `architecture` lens は高シグナルな違反のみ）
 - spec 検証 — `verify-spec`
-- 修正の適用 — 本スキルはソースに対し read-only。指摘するだけで直すのはユーザー。
+- コメント以外の修正の適用 — コード 5 lens については本スキルは read-only。指摘するだけで直すのはユーザー。（例外: **コメント品質の指摘は Step 8 で自動適用される** — 冗長な / 処理を実況するコメントは報告だけでなく実際に修正される。）
 
 ## 中核アイデア — reviewer ≠ implementer
 
