@@ -8,8 +8,9 @@
 ## Overview
 
 カートユースケースは、主体（確定済みユーザー ID またはゲストのセッショントークン）からカートを解決し、
-明細の設定・削除・マージ・期限切れ回収を行う。ドメインが商品を知らないため、**表示のたびに商品の現在値を
-突き合わせて明細ごとの状態を判定するのはこの層の責務**である。
+明細の設定・削除・マージ・期限切れ回収を行う。表示のたびに商品の現在値を突き合わせる再評価で
+**この層が担うのは、商品の取得・観測値の切り出し・結果の DTO への写像だけ**であり、判定そのものは
+ドメインの `CartItem.Evaluate` が持つ（[`domain.md`](./domain.md)）。
 
 **再評価は失敗ではない。** 在庫不足・非公開化・値上がりのいずれも、カート取得を 4xx にはしない。カートを
 見る操作は成功しており、問題があるのは明細であって要求ではないため、200 のまま明細ごとに `issues` を添えて
@@ -110,7 +111,7 @@ output:
 ```
 
 ```yaml
-enum: ItemIssue            # 明細ごとの再評価結果。複数同時に立ちうる
+enum: ItemIssue            # 出力 DTO 側の再評価結果。ドメインの cart.Issue と 1:1 に対応する
 values:
   - notFound               # 商品が存在しない（削除された）。単独で立ち、他の issue は併記しない
   - unpublished            # 非公開化された
@@ -119,6 +120,10 @@ values:
   - priceIncreased         # lastSeenPrice より高い
   - priceDecreased         # lastSeenPrice より安い（値下がりも知らせる。買い時の情報であり、隠す理由がない）
 ```
+
+判定の意味は [`domain.md`](./domain.md) の `Issue` が定義する。ここに別の型を置くのは DTO 境界の
+規約であり、ドメインの値をそのまま外へ出さないため。写像は網羅的で、対応を持たない値は写像せず
+panic する（黙って既定値へ倒すと、ドメインに値が増えたとき応答だけが静かに嘘になる）。
 
 ## Dependencies
 
@@ -142,17 +147,22 @@ steps:
   - subject からカートを解決する（UserID → FindByOwnerID / SessionToken → FindBySessionToken）
   - 見つからない、または IsExpired の場合は空の CartView を 200 で返して終了（GET では行を作らない）
   - 明細の productID を集めて product.Repository.FindByIDs で現在値を取得する（ロックしない）
-  - 明細ごとに issues を判定する（存在 / 公開状態 / 在庫 / lastSeenPrice との比較）
+  - 商品から ProductSnapshot を切り出し、明細ごとに CartItem.Evaluate へ渡して結果を受け取る
+      （引けなかった明細には nil を渡す。判定の中身はドメインが持つ）
   - MarkSeen で提示価格を更新し、Touch で有効期限を延長して Update
   - 買える明細のみを合算した SubtotalAmount を添えて CartView を返す
+      （合算が決済スケールへ落とせない場合のみ、分類済みの内部エラーを返す）
 calls:
   - cart_repository.FindByOwnerID
   - cart_repository.FindBySessionToken
   - cart_repository.Update
   - product_repository.FindByIDs
+  - cart_item.Evaluate
   - clock.Now
 errors:
-  - なし（カート未作成・期限切れ・明細の問題はいずれも 200 で表現する）
+  - 業務的な失敗は無い（カート未作成・期限切れ・明細の問題はいずれも 200 で表現する）
+  - 合算が決済スケールへ落とせない場合のみ内部エラー。単価 1 件は money.Price の構築時に検証されるため
+    明細が積み上がった結果に限られ、合計を偽らずに返す術が無いので分類済みのエラーとして返す
 ```
 
 **在庫をロックしない。** 再評価は参考情報であり、返した瞬間から古くなる。ここで `FOR UPDATE` を取ると

@@ -95,6 +95,9 @@ fields:
 - 各明細の `quantity <= ロック済み在庫`（超過は `ErrInsufficientStock` → 409）。
 - `unitPrice` は対応するロック済み商品の `price` スナップショット。
 - `subtotal = Σ unitPrice × quantity` / `tax = subtotal × taxRatePercent / 100`（切り捨て）/ `total = subtotal + tax + shippingFee`。
+- `subtotal` は決済スケールの整数幅に収まり、かつ **税と送料を加えても収まる**こと（超過は `ErrInvalidAmount`）。
+  単価 1 件が幅に収まることは `money.Price` の構築時に保証されるため、超えるのは明細が積み上がった結果に限られる。
+  整数演算は溢れてもエラーを返さないため、算術に入る前に拒まなければ壊れた合計がそのまま購入として確定する。
 
 ## Behavior Methods
 

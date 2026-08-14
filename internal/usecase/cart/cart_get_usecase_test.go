@@ -75,7 +75,7 @@ func Test_usecase_GetCart(t *testing.T) {
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
-				Return(product.Products{newTestProduct(t, productID, "12.50", 5, true)}, nil)
+				Return(product.Products{newTestProduct(t, productID, "12.50", 5)}, nil)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo, productRepo, clocktestkit.NewMockClock(t, now))
 
@@ -98,7 +98,7 @@ func Test_usecase_GetCart(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			seen := newPrice(t, "10.00")
 			c := newGuestCart(t, now.Add(time.Hour), newTestCartItem(t, "cart_get_marked", productID, 1, &seen))
-			p := newTestProduct(t, productID, "12.50", 5, true)
+			p := newTestProduct(t, productID, "12.50", 5)
 
 			var saved *cart.Cart
 			cartRepo := mock_cart.NewMockRepository(ctrl)
@@ -312,24 +312,34 @@ func Test_usecase_GetCart(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 		})
 
-		t.Run("小計が決済スケールへ落とせない大きさならエラーを返す", func(t *testing.T) {
+		t.Run("明細が積み上がり小計が決済スケールへ落とせない場合は分類済みエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			c := newGuestCart(t, now.Add(time.Hour), newTestCartItem(t, "cart_get_overflow", productID, 1, nil))
+			// 単価 1 件が決済スケールへ落とせることは money.Price の構築時に保証されるため、
+			// 幅を超えるのは明細が積み上がった結果に限られる。上限ちょうどの単価を 2 明細で合算する。
+			otherID := uuidtestkit.NewTestFromSalt(t, "cart_get_overflow_other")
+			c := newGuestCart(t, now.Add(time.Hour),
+				newTestCartItem(t, "cart_get_overflow_a", productID, 1, nil),
+				newTestCartItem(t, "cart_get_overflow_b", otherID, 1, nil),
+			)
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
-			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).
-				Return(product.Products{newTestProduct(t, productID, "100000000000000000000", 5, true)}, nil)
+			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(product.Products{
+				newTestProduct(t, productID, "92233720368547758.07", 5),
+				newTestProduct(t, otherID, "92233720368547758.07", 5),
+			}, nil)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo, productRepo, clocktestkit.NewMockClock(t, now))
 
 			_, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 
+			// 未分類のまま外へ出ると 500 の理由が追えないため、apperror へ分類されていることを固定する。
+			require.ErrorIs(t, err, apperror.ErrInternal)
 			require.ErrorIs(t, err, decimal.ErrOverflow)
 		})
 

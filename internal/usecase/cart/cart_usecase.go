@@ -8,6 +8,7 @@ package cart
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go-boilerplate/internal/apperror"
@@ -30,10 +31,6 @@ const (
 	// subtotalMinorUnitDigits は、小計を決済スケール（USD セント）へ落とすときの小数桁数です。
 	subtotalMinorUnitDigits = 2
 
-	// maxIssuesPerItem は、1 明細に同時に立ちうる issue の最大数です。
-	// 非公開・在庫・価格差はそれぞれ独立に判定されるため 3 つまで重なります。
-	maxIssuesPerItem = 3
-
 	// ItemIssueNotFound は、商品を引けなかったことを表します。在庫も価格も判定材料が無いため、
 	// この issue は単独で立ちます。
 	ItemIssueNotFound ItemIssue = "notFound"
@@ -48,6 +45,10 @@ const (
 	// ItemIssuePriceDecreased は、前回提示した価格より安いことを表します。
 	ItemIssuePriceDecreased ItemIssue = "priceDecreased"
 )
+
+// errSubtotalOutOfRange は、購入可能な明細の合計が決済スケールの整数幅に収まらない場合のエラーです。
+// 呼び出し側が是正できる入力の誤りではないため、検証エラーではなく内部エラーとして扱います。
+var errSubtotalOutOfRange = xerrors.Wrap(apperror.ErrInternal, "cart subtotal exceeds the settlement range")
 
 // ItemIssue は、明細ごとの再評価結果です。値は外部向けの安定コードで、表示ではなく分岐に用います。
 type ItemIssue string
@@ -201,51 +202,62 @@ func evaluateItems(
 	return views, seen
 }
 
-// evaluateItem は、明細 1 件を商品の現在値と突き合わせます。
-// 商品を引けなかった場合は notFound だけを立てます。それ以外では、公開状態・在庫・価格差を
-// それぞれ独立に判定し、成立したものを併記します。在庫 0 は「不足」ではなく「無い」であるため、
-// outOfStock と insufficientStock は同時に立ちません。
+// evaluateItem は、明細 1 件の再評価をドメインへ委ね、結果を出力 DTO へ写します。
+// 判定そのものは cart.CartItem.Evaluate が持ちます。この層が持つのは、商品エンティティから
+// 観測値を切り出すことと、結果を DTO の語彙へ移すことだけです。
 func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
-	view := CartItemView{
-		ProductID: item.ProductID(),
-		Quantity:  item.Quantity(),
-		Issues:    make([]ItemIssue, 0, maxIssuesPerItem),
+	view := CartItemView{ProductID: item.ProductID(), Quantity: item.Quantity()}
+
+	var snapshot *cart.ProductSnapshot
+	if p != nil {
+		name, price := p.Name(), p.Price().Decimal()
+		view.ProductName, view.UnitPrice = &name, &price
+		s := cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
+		snapshot = &s
 	}
 
-	if p == nil {
-		view.Issues = append(view.Issues, ItemIssueNotFound)
-		return view
-	}
-
-	name, price := p.Name(), p.Price().Decimal()
-	view.ProductName, view.UnitPrice = &name, &price
-
-	if !p.IsPublished() {
-		view.Issues = append(view.Issues, ItemIssueUnpublished)
-	}
-
-	switch stock := p.Quantity(); {
-	case stock <= 0:
-		view.Issues = append(view.Issues, ItemIssueOutOfStock)
-	case stock < item.Quantity():
-		view.Issues = append(view.Issues, ItemIssueInsufficientStock)
-		view.AvailableQuantity = &stock
-	}
-
-	if lastSeen := item.LastSeenPrice(); lastSeen != nil {
-		switch price.Cmp(lastSeen.Decimal()) {
-		case 1:
-			view.Issues = append(view.Issues, ItemIssuePriceIncreased)
-		case -1:
-			view.Issues = append(view.Issues, ItemIssuePriceDecreased)
-		}
-	}
+	evaluation := item.Evaluate(snapshot)
+	view.Issues = toItemIssues(evaluation.Issues())
+	view.AvailableQuantity = evaluation.AvailableQuantity()
 
 	return view
 }
 
+// toItemIssues は、ドメインの再評価結果を出力 DTO の語彙へ写します。
+func toItemIssues(issues []cart.Issue) []ItemIssue {
+	converted := make([]ItemIssue, len(issues))
+	for i, issue := range issues {
+		converted[i] = toItemIssue(issue)
+	}
+	return converted
+}
+
+// toItemIssue は、再評価結果 1 件を出力 DTO の語彙へ写します。
+// 対応を持たない値は写像できないため、黙って既定値へ倒さず panic で異常を知らせます。
+func toItemIssue(issue cart.Issue) ItemIssue {
+	switch issue {
+	case cart.IssueNotFound:
+		return ItemIssueNotFound
+	case cart.IssueUnpublished:
+		return ItemIssueUnpublished
+	case cart.IssueOutOfStock:
+		return ItemIssueOutOfStock
+	case cart.IssueInsufficientStock:
+		return ItemIssueInsufficientStock
+	case cart.IssuePriceIncreased:
+		return ItemIssuePriceIncreased
+	case cart.IssuePriceDecreased:
+		return ItemIssuePriceDecreased
+	default:
+		panic(fmt.Sprintf("cart: unknown item issue: %q", issue))
+	}
+}
+
 // subtotalAmount は、購入可能な明細だけを合算して決済スケールの整数へ落とします。
 // 丸めは合算の後に一度だけ行い、明細ごとの丸め誤差が積み上がらないようにします。
+//
+// 単価 1 件が決済スケールへ落とせることは money.Price の構築時に保証されるため、ここで幅を超えるのは
+// 明細が積み上がった結果に限られます。合計を偽らずに返す術が無いため、分類済みのエラーとして返します。
 func subtotalAmount(views []CartItemView) (int64, error) {
 	sum := decimal.FromInt(0)
 	for _, v := range views {
@@ -254,7 +266,12 @@ func subtotalAmount(views []CartItemView) (int64, error) {
 		}
 		sum = sum.Add(v.UnitPrice.Mul(decimal.FromInt(int64(v.Quantity))))
 	}
-	return sum.ToScaledInt64(subtotalMinorUnitDigits)
+
+	subtotal, err := sum.ToScaledInt64(subtotalMinorUnitDigits)
+	if err != nil {
+		return 0, xerrors.Join(errSubtotalOutOfRange, err)
+	}
+	return subtotal, nil
 }
 
 // emptyCartView は、表示するカートが無いときの応答です。

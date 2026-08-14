@@ -211,6 +211,14 @@ func New(
 	if err != nil {
 		return nil, xerrors.Wrap(ErrInvalidAmount, "subtotal exceeds the settlement range: "+err.Error())
 	}
+	// 小計が決済スケールに収まっても、税と送料を足した合計まで収まるとは限らない。整数演算は溢れても
+	// エラーにならないため、ここで拒まなければ壊れた金額がそのまま購入として確定する。
+	if subtotalCents > maxSubtotalCents {
+		return nil, xerrors.Wrap(
+			ErrInvalidAmount,
+			fmt.Sprintf("subtotal %d exceeds the maximum that can carry tax and shipping (%d)", subtotalCents, maxSubtotalCents),
+		)
+	}
 	subtotal := int(subtotalCents)
 	tax := subtotal * taxRatePercent / percentDivisor
 	shipping := shippingFeeCents
