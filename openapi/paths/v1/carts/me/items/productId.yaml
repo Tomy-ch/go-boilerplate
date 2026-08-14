@@ -1,0 +1,56 @@
+put:
+  operationId: PutCartsMeItem
+  tags:
+    - v1/carts/items
+  summary: 自分のカートへの明細の設定（数量の upsert）
+  description: |
+    呼び出し主体のカートに、指定した商品の数量を設定します。加算ではなく設定なので、
+    同じ要求を何回送っても結果は変わりません。**冪等性は明細の自然キー (cart_id, product_id) から
+    来るため、Idempotency-Key を必要としません**（自然キーを持たない POST /v1/purchases との対比）。
+    主体は認証済みユーザー（Bearer トークンの内部 UserID）か、ゲスト（X-Cart-Session ヘッダ）の
+    いずれかで、両方が提示された場合は認証済みユーザーが優先されます。
+    認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+    （ADR-0019 (optional-authentication-fail-closed)）。
+    **カートがまだ無い主体にはこの操作がカートを作ります**。ゲストの場合はセッショントークンを
+    発行して sessionToken に載せて返すので、以降のリクエストで X-Cart-Session に載せてください。
+    提示されたトークンでカートを引けなかった場合、その値では作らず新しい値を発行します
+    （トークンの秘匿だけがゲストカートへの到達を守っているため、値をクライアントに選ばせません）。
+    **有効期限を過ぎたカートは空から始まります**。所有者が確定したカートは行を保ったまま明細を捨て、
+    ゲストは新しいカートを作ります。いずれも取得（GET）が期限切れを空のカートとして見せる契約と一致します。
+    設定後、応答はカート全体を明細ごとの再評価つきで返します（GET と同じ内容です）。
+    在庫は押さえません。在庫不足は投入を拒む理由ではなく、明細の issues として現れます。
+    本 op 自体は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段
+    （外部 IdP の JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+    - {}
+  parameters:
+    - $ref: '../../../../../components/parameters/product/ProductIdParam.yaml'
+    - $ref: '../../../../../components/parameters/cart/CartSessionParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../../components/requests/carts/CartItemPutRequest.yaml'
+  responses:
+    '200':
+      description: 明細の設定に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../../components/responses/carts/CartResponse.yaml'
+    '400':
+      $ref: '../../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../../components/schemas/errors/Unauthorized401.yaml'
+    '405':
+      $ref: '../../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '409':
+      $ref: '../../../../../components/schemas/errors/Conflict409.yaml'
+    '422':
+      $ref: '../../../../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../../components/schemas/errors/ServiceUnavailable503.yaml'

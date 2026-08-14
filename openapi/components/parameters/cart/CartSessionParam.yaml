@@ -11,4 +11,4 @@ schema:
   pattern: '^[A-Za-z0-9_-]{43}$'
   minLength: 43
   maxLength: 43
-  example: "b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE"
+  example: "b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGU"

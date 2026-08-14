@@ -55,3 +55,18 @@ func (mr *MockUsecaseMockRecorder) GetCart(ctx, subject any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCart", reflect.TypeOf((*MockUsecase)(nil).GetCart), ctx, subject)
 }
+
+// SetItem mocks base method.
+func (m *MockUsecase) SetItem(ctx context.Context, params cart.SetItemParams) (cart.CartView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetItem", ctx, params)
+	ret0, _ := ret[0].(cart.CartView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetItem indicates an expected call of SetItem.
+func (mr *MockUsecaseMockRecorder) SetItem(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetItem", reflect.TypeOf((*MockUsecase)(nil).SetItem), ctx, params)
+}

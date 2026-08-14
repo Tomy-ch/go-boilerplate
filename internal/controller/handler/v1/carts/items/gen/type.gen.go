@@ -49,6 +49,14 @@ func (e CartItemIssue) Valid() bool {
 // いずれの値もカートの取得を失敗にしない。買えない明細があることは要求の不正ではないため。
 type CartItemIssue string
 
+// CartItemPutRequest カート明細の数量設定リクエスト（application/json）。対象の商品はパスで指定します。
+// 数量は加算ではなく設定です。同じ要求を 2 回送っても結果は変わりません。
+// 0 は削除ではなく範囲外として 400 を返します（削除は DELETE が担い、1 つの操作に 2 つの意味を持たせません）。
+type CartItemPutRequest struct {
+	// Quantity 設定する数量。現在の数量に加算するのではなく、この値で置き換えます。 範囲外の値はドメインに届く前に 400 で拒否されます。
+	Quantity int32 `json:"quantity"`
+}
+
 // CartItemResponse カート明細 1 件。商品の現在値との突き合わせ結果を issues に添える。
 // カートは商品の名前も価格も保持しないため、productName / unitPrice は取得時点の商品の値であり、
 // 購入時の金額を拘束しない（請求額を確定するのは購入明細のスナップショット）。
@@ -113,11 +121,32 @@ type ErrorResponse struct {
 	RequestId string `json:"requestId"`
 }
 
+// ErrorResponseWithDetails 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type ErrorResponseWithDetails struct {
+	// Code 機械的に処理可能なエラーコード
+	Code string `json:"code"`
+
+	// Details エラー詳細を示す公開可能な識別子(任意)。検証エラーでは不正なフィールド名が入る
+	Details *[]string `json:"details,omitempty"`
+
+	// Message 人間が読めるエラーメッセージ
+	Message string `json:"message"`
+
+	// RequestId リクエストID
+	RequestId string `json:"requestId"`
+}
+
 // CartSessionParam defines model for CartSessionParam.
 type CartSessionParam = string
 
+// ProductIdParam defines model for ProductIdParam.
+type ProductIdParam = openapi_types.UUID
+
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
+
+// Conflict409 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Conflict409 = ErrorResponse
 
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
@@ -131,17 +160,23 @@ type ServiceUnavailable503 = ErrorResponse
 // Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type Unauthorized401 = ErrorResponse
 
+// UnprocessableEntity422 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
+type UnprocessableEntity422 = ErrorResponseWithDetails
+
 // basicAuthContextKey is the context key for BasicAuth security scheme
 type basicAuthContextKey string
 
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
 
-// GetCartsMeParams defines parameters for GetCartsMe.
-type GetCartsMeParams struct {
+// PutCartsMeItemParams defines parameters for PutCartsMeItem.
+type PutCartsMeItemParams struct {
 	// XCartSession ゲストカートのセッショントークン。所有者が未確定のカートへ到達する唯一の手段で、
 	// 未認証の呼び出し側はこのヘッダで自分のカートを指定する。
 	// 認証済みの呼び出し側では無視される（カートは内部 UserID から解決されるため）。
 	// 値は 256 ビットを base64url（パディング無し）で表現した 43 文字。
 	XCartSession *CartSessionParam `json:"X-Cart-Session,omitempty"`
 }
+
+// PutCartsMeItemJSONRequestBody defines body for PutCartsMeItem for application/json ContentType.
+type PutCartsMeItemJSONRequestBody = CartItemPutRequest

@@ -17,6 +17,7 @@ import (
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
+	"go-boilerplate/internal/usecase/boundary/token"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
@@ -24,12 +25,10 @@ import (
 )
 
 const (
-	// cartTTL は、カートの有効期限の長さです。参照・更新のたびに現在時刻からこの長さだけ先へ延長されます。
-	// ドメインは設定値を持たないため、この層が供給します（docs/spec/cart/domain.md の Touch）。
+	// cartTTL は、Cart.Touch へ供給する有効期限の長さです（docs/spec/cart/domain.md の Touch）。
 	cartTTL = 30 * 24 * time.Hour
 
-	// ItemIssueNotFound は、商品を引けなかったことを表します。在庫も価格も判定材料が無いため、
-	// この issue は単独で立ちます。
+	// ItemIssueNotFound は、商品を引けなかったことを表します。
 	ItemIssueNotFound ItemIssue = "notFound"
 	// ItemIssueUnpublished は、商品が非公開であることを表します。
 	ItemIssueUnpublished ItemIssue = "unpublished"
@@ -43,6 +42,11 @@ const (
 	ItemIssuePriceDecreased ItemIssue = "priceDecreased"
 )
 
+// ErrUnavailableProduct は、カートへ入れられない商品を指定した場合のエラーです（422）。
+// 不存在の商品と非公開の商品のどちらもこれになります（区別しない理由と、明細に立つ issue との
+// 違いは docs/spec/cart/usecase.md の SetItem）。
+var ErrUnavailableProduct = xerrors.Wrap(apperror.ErrValidation, "product is unavailable for the cart")
+
 // ItemIssue は、明細ごとの再評価結果です。値は外部向けの安定コードで、表示ではなく分岐に用います。
 type ItemIssue string
 
@@ -53,6 +57,16 @@ type Subject struct {
 	UserID *uuid.UUID
 	// SessionToken は、ゲスト追跡用のトークンです。
 	SessionToken *string
+}
+
+// SetItemParams は、明細の数量設定の入力 DTO です。
+type SetItemParams struct {
+	// Subject は、カートの主体です。
+	Subject Subject
+	// ProductID は、対象の商品です。
+	ProductID uuid.UUID
+	// Quantity は、設定する数量です。現在の数量への加算ではありません。
+	Quantity int
 }
 
 // CartItemView は、明細 1 件の出力 DTO です。
@@ -88,6 +102,12 @@ type Usecase interface {
 	// カートが無い、または有効期限を過ぎている場合は空のカートを返し、行は作りません。
 	// 明細の問題（在庫・非公開・価格差）はエラーではなく、各明細の Issues として返されます。
 	GetCart(ctx context.Context, subject Subject) (CartView, error)
+
+	// SetItem は、主体のカートに指定商品の数量を設定し、再評価つきのカートを返します。
+	// 現在の数量への加算ではないため、同じ入力を何回与えても結果は変わりません。
+	// カートを持たない主体にはこの操作がカートを作ります（ゲストにはトークンを発行します）。
+	// カートへ入れられない商品（不存在・非公開）は ErrUnavailableProduct を返します。
+	SetItem(ctx context.Context, params SetItemParams) (CartView, error)
 }
 
 type usecase struct {
@@ -95,6 +115,7 @@ type usecase struct {
 	txm         tx.Manager
 	cartRepo    cart.Repository
 	productRepo product.Repository
+	tokenGen    token.Generator
 	clock       clock.Clock
 }
 
@@ -103,6 +124,7 @@ func New(
 	txm tx.Manager,
 	cartRepo cart.Repository,
 	productRepo product.Repository,
+	tokenGen token.Generator,
 	clk clock.Clock,
 	tf observability.TracerFactory,
 ) Usecase {
@@ -111,6 +133,7 @@ func New(
 		txm:         txm,
 		cartRepo:    cartRepo,
 		productRepo: productRepo,
+		tokenGen:    tokenGen,
 		clock:       clk,
 	}
 }
@@ -175,6 +198,32 @@ func (u *usecase) findProducts(
 		found[p.ID()] = p
 	}
 	return found, nil
+}
+
+// buildView は、明細を再評価して出力 DTO を組み立て、あわせてカートの状態を進めます。
+// 提示した価格の記録と有効期限の延長までを含むため、呼び出し側は戻り値を返す前にカートを保存します。
+//
+// 判定も合算も提示価格を書き換える前に済ませます（docs/spec/cart/domain.md の Cart.Subtotal）。
+//
+// SessionToken は埋めません。トークンを新しく発行したかどうかを知るのはカートを解決した側だけです。
+func (u *usecase) buildView(ctx context.Context, c *cart.Cart, now time.Time) (CartView, error) {
+	items := c.Items()
+	products, err := u.findProducts(ctx, items)
+	if err != nil {
+		return CartView{}, err
+	}
+
+	views, seen := evaluateItems(items, products)
+	subtotal, serr := c.Subtotal(toSnapshots(products))
+	if serr != nil {
+		return CartView{}, serr
+	}
+
+	c.MarkSeen(seen)
+	c.Touch(now, cartTTL)
+
+	expiresAt := c.ExpiresAt()
+	return CartView{Items: views, SubtotalAmount: subtotal, ExpiresAt: &expiresAt}, nil
 }
 
 // evaluateItems は、明細を商品の現在値と突き合わせ、明細ごとの View と、提示した価格の表を返します。
