@@ -347,16 +347,21 @@ func toPurchaseDetails(detailRows []*gen.ListPurchaseDetailsByPurchaseIDRow) ([]
 // FindFeedByUserID は、指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で
 // keyset ページネーション取得します。ステータス名は購入ステータスマスタとの結合で解決します。
 // params.AfterOrderedAt / AfterID が nil の場合は先頭ページを、それ以外は境界より過去の行を返します。
+// params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返します。
 func (r *repository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params purchase.ListFeedParams) ([]purchase.FeedItem, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, r.db))
+	filterByPeriod := params.OrderedAfter != nil && params.OrderedBefore != nil
 
 	if params.AfterOrderedAt == nil || params.AfterID == nil {
 		rows, err := db.ListPurchasesFeedFirst(ctx, &gen.ListPurchasesFeedFirstParams{
-			UserID:     userID,
-			LimitParam: params.Limit,
+			UserID:         userID,
+			FilterByPeriod: filterByPeriod,
+			OrderedAfter:   params.OrderedAfter,
+			OrderedBefore:  params.OrderedBefore,
+			LimitParam:     params.Limit,
 		})
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
@@ -372,6 +377,9 @@ func (r *repository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, par
 		UserID:         userID,
 		AfterOrderedAt: *params.AfterOrderedAt,
 		AfterID:        *params.AfterID,
+		FilterByPeriod: filterByPeriod,
+		OrderedAfter:   params.OrderedAfter,
+		OrderedBefore:  params.OrderedBefore,
 		LimitParam:     params.Limit,
 	})
 	if err != nil {

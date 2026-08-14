@@ -2,6 +2,7 @@ package cart
 
 import (
 	"go-boilerplate/internal/domain/lexicon/money"
+	"go-boilerplate/pkg/ptr"
 )
 
 // maxIssuesPerItem は、1 明細に同時に立ちうる issue の最大数です。
@@ -9,7 +10,7 @@ import (
 const maxIssuesPerItem = 3
 
 const (
-	// IssueNotFound は、商品が引けなかったことを表します。在庫も価格も判定材料が無いため、単独で立ちます。
+	// IssueNotFound は、商品が引けなかったことを表します。
 	IssueNotFound Issue = "notFound"
 	// IssueUnpublished は、商品が非公開であることを表します。
 	IssueUnpublished Issue = "unpublished"
@@ -26,10 +27,8 @@ const (
 // Issue は、明細を商品の観測値と突き合わせた結果です。
 type Issue string
 
-// ProductSnapshot は、再評価した時点で観測した商品の値です。
-//
-// カートは商品集約を参照しないため、判定に要る属性だけを値として受け取ります。カートの不変条件が
-// 商品の状態変化から独立している性質は、この形でも保たれます（保持せず、判定のたびに渡されます）。
+// ProductSnapshot は、再評価した時点で観測した商品の値です（設計意図は
+// docs/spec/cart/domain.md の Overview を参照）。
 type ProductSnapshot struct {
 	quantity  int
 	price     money.Price
@@ -51,16 +50,26 @@ func NewProductSnapshot(quantity int, price money.Price, published bool) Product
 func (s ProductSnapshot) Price() money.Price { return s.price }
 
 // Issues は、立った issue を返します。空なら現時点で購入可能です。
-func (e Evaluation) Issues() []Issue { return e.issues }
+func (e Evaluation) Issues() []Issue {
+	copied := make([]Issue, len(e.issues))
+	copy(copied, e.issues)
+
+	return copied
+}
 
 // AvailableQuantity は、IssueInsufficientStock のときの今買える上限を返します。それ以外は nil です。
-func (e Evaluation) AvailableQuantity() *int { return e.availableQuantity }
+func (e Evaluation) AvailableQuantity() *int { return ptr.Copy(e.availableQuantity) }
+
+// hasNoIssue は、突き合わせで issue が 1 つも立たなかったかどうかを返します。
+// 「購入可能」は在籍に基づく別の判定を指す語なので用いません（docs/spec/glossary.md）。
+//
+// ゼロ値は「まだ突き合わせていない」であって「問題が無い」ではないため false を返します。
+// Evaluate は必ず非 nil の issues を返すので、nil であることがゼロ値の印になります。
+// 合算に入れるかどうかがこれで決まるため、判らないものを問題無しへ倒しません。
+func (e Evaluation) hasNoIssue() bool { return e.issues != nil && len(e.issues) == 0 }
 
 // Evaluate は、明細を商品の観測値と突き合わせて再評価結果を返します。
 // snapshot が nil の場合は商品を引けなかったことを表し、IssueNotFound だけが立ちます。
-//
-// 判定はこの明細 1 件についての問いであり、集合を見る必要も他の明細を知る必要もないため、
-// 明細自身が答えます。結果は表示のための参考情報であって、カートの不変条件には影響しません。
 func (i CartItem) Evaluate(snapshot *ProductSnapshot) Evaluation {
 	if snapshot == nil {
 		return Evaluation{issues: []Issue{IssueNotFound}}

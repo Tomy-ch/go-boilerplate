@@ -149,6 +149,153 @@ func (q *Queries) ListPurchaseDetailItemsForUser(ctx context.Context, purchaseID
 	return items, nil
 }
 
+const sumPurchaseItemsByUserID = `-- name: SumPurchaseItemsByUserID :one
+SELECT COALESCE(SUM(pd.unit_price * pd.quantity), 0)::NUMERIC AS items_total
+FROM purchase_details AS pd
+INNER JOIN purchases AS p ON pd.purchase_id = p.id
+WHERE p.user_id = $1
+    AND p.canceled_at IS NULL
+    AND (
+        NOT $2::BOOLEAN
+        OR (
+            p.ordered_at >= $3
+            AND p.ordered_at < $4
+        )
+    )
+`
+
+type SumPurchaseItemsByUserIDParams struct {
+	UserID         uuid.UUID
+	FilterByPeriod bool
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
+}
+
+// 指定ユーザーの購入明細の金額合計（単価 × 数量の総和）を価格スケールの正確な decimal で返します。
+// 決済スケール（セント整数）へは丸めません（丸めは決済確定の 1 箇所のみ・ADR-0036）。
+// 母集団は SummarizePurchasesByUserID と同一（所有権・キャンセル除外・期間）です。
+// グループ化を要求されない既定の呼び出しはこのクエリだけで済み、商品単位の行を読みません。
+// 対象が 0 件のとき SUM は NULL を返すため、COALESCE でゼロ値へ畳み込みます。
+//
+//	SELECT COALESCE(SUM(pd.unit_price * pd.quantity), 0)::NUMERIC AS items_total
+//	FROM purchase_details AS pd
+//	INNER JOIN purchases AS p ON pd.purchase_id = p.id
+//	WHERE p.user_id = $1
+//	    AND p.canceled_at IS NULL
+//	    AND (
+//	        NOT $2::BOOLEAN
+//	        OR (
+//	            p.ordered_at >= $3
+//	            AND p.ordered_at < $4
+//	        )
+//	    )
+func (q *Queries) SumPurchaseItemsByUserID(ctx context.Context, arg *SumPurchaseItemsByUserIDParams) (decimal.Decimal, error) {
+	row := q.db.QueryRow(ctx, sumPurchaseItemsByUserID,
+		arg.UserID,
+		arg.FilterByPeriod,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+	)
+	var items_total decimal.Decimal
+	err := row.Scan(&items_total)
+	return items_total, err
+}
+
+const summarizePurchaseItemsByProductByUserID = `-- name: SummarizePurchaseItemsByProductByUserID :many
+SELECT
+    pc.name AS category_name,
+    pr.id AS product_id,
+    pr.name AS product_name,
+    SUM(pd.unit_price * pd.quantity)::NUMERIC AS items_total
+FROM purchase_details AS pd
+INNER JOIN purchases AS p ON pd.purchase_id = p.id
+INNER JOIN products AS pr ON pd.product_id = pr.id
+INNER JOIN product_categories AS pc ON pr.category_id = pc.id
+WHERE p.user_id = $1
+    AND p.canceled_at IS NULL
+    AND (
+        NOT $2::BOOLEAN
+        OR (
+            p.ordered_at >= $3
+            AND p.ordered_at < $4
+        )
+    )
+GROUP BY pc.id, pc.name, pc.sort_key, pr.id, pr.name
+ORDER BY pc.sort_key ASC, pr.name ASC, pr.id ASC
+`
+
+type SummarizePurchaseItemsByProductByUserIDParams struct {
+	UserID         uuid.UUID
+	FilterByPeriod bool
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
+}
+
+type SummarizePurchaseItemsByProductByUserIDRow struct {
+	CategoryName string
+	ProductID    uuid.UUID
+	ProductName  string
+	ItemsTotal   decimal.Decimal
+}
+
+// 指定ユーザーの購入明細を商品単位に集計し、商品が属するカテゴリを添えて返します。
+// 商品は必ず 1 カテゴリに属する（products.category_id は NOT NULL）ため、行は商品単位で一意です。
+// カテゴリ単位だけを要求された場合も、呼び出し側はこの行をカテゴリで畳み込めば得られます。
+// 金額は価格スケールの正確な decimal で、決済スケールへは丸めません（ADR-0036）。
+// 母集団は SummarizePurchasesByUserID と同一（所有権・キャンセル除外・期間）です。
+// ランキングと異なり非公開商品も除外しません（購入時点の実績であり、現在の公開状態には依存しないため）。
+// 並びはカテゴリの表示順・商品名の昇順で安定させます（同名商品は商品 ID で分かれます）。
+//
+//	SELECT
+//	    pc.name AS category_name,
+//	    pr.id AS product_id,
+//	    pr.name AS product_name,
+//	    SUM(pd.unit_price * pd.quantity)::NUMERIC AS items_total
+//	FROM purchase_details AS pd
+//	INNER JOIN purchases AS p ON pd.purchase_id = p.id
+//	INNER JOIN products AS pr ON pd.product_id = pr.id
+//	INNER JOIN product_categories AS pc ON pr.category_id = pc.id
+//	WHERE p.user_id = $1
+//	    AND p.canceled_at IS NULL
+//	    AND (
+//	        NOT $2::BOOLEAN
+//	        OR (
+//	            p.ordered_at >= $3
+//	            AND p.ordered_at < $4
+//	        )
+//	    )
+//	GROUP BY pc.id, pc.name, pc.sort_key, pr.id, pr.name
+//	ORDER BY pc.sort_key ASC, pr.name ASC, pr.id ASC
+func (q *Queries) SummarizePurchaseItemsByProductByUserID(ctx context.Context, arg *SummarizePurchaseItemsByProductByUserIDParams) ([]*SummarizePurchaseItemsByProductByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, summarizePurchaseItemsByProductByUserID,
+		arg.UserID,
+		arg.FilterByPeriod,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*SummarizePurchaseItemsByProductByUserIDRow
+	for rows.Next() {
+		var i SummarizePurchaseItemsByProductByUserIDRow
+		if err := rows.Scan(
+			&i.CategoryName,
+			&i.ProductID,
+			&i.ProductName,
+			&i.ItemsTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const summarizePurchasesByUserID = `-- name: SummarizePurchasesByUserID :many
 SELECT
     ps.id AS status_id,
@@ -158,9 +305,24 @@ SELECT
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.user_id = $1
+    AND p.canceled_at IS NULL
+    AND (
+        NOT $2::BOOLEAN
+        OR (
+            p.ordered_at >= $3
+            AND p.ordered_at < $4
+        )
+    )
 GROUP BY ps.id, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC
 `
+
+type SummarizePurchasesByUserIDParams struct {
+	UserID         uuid.UUID
+	FilterByPeriod bool
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
+}
 
 type SummarizePurchasesByUserIDRow struct {
 	StatusID      uuid.UUID
@@ -172,9 +334,11 @@ type SummarizePurchasesByUserIDRow struct {
 // === source: database/dml/query_service/purchase/select_purchase_summary.sql ===
 // 指定ユーザーの購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
 // 所有権は user_id の等値条件で閉じるため、他ユーザーの購入は集計に混入しません。
-// 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) の先頭列で絞り込みます。
-// キャンセル済み（canceled_at 設定済み）の購入も対象に含めます。キャンセルはステータス別内訳の
-// 1 要素として返るため、除外すると内訳と総計が食い違います。
+// 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) の先頭 2 列で絞り込みます。
+// キャンセル済み（canceled_at 設定済み）の購入は除外します。
+// 「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
+// 述語が見るのは canceled_at ですが、両者は再構築時の不変条件で等価に縛られています。
+// filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを集計します。
 // 総件数・合計金額はこの結果行を畳み込んで算出します（単一スナップショットで整合させるため）。
 // ステータス名は購入ステータスマスタとの結合で解決します。
 //
@@ -186,10 +350,23 @@ type SummarizePurchasesByUserIDRow struct {
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE p.user_id = $1
+//	    AND p.canceled_at IS NULL
+//	    AND (
+//	        NOT $2::BOOLEAN
+//	        OR (
+//	            p.ordered_at >= $3
+//	            AND p.ordered_at < $4
+//	        )
+//	    )
 //	GROUP BY ps.id, ps.name, ps.sort_key
 //	ORDER BY ps.sort_key ASC
-func (q *Queries) SummarizePurchasesByUserID(ctx context.Context, userID uuid.UUID) ([]*SummarizePurchasesByUserIDRow, error) {
-	rows, err := q.db.Query(ctx, summarizePurchasesByUserID, userID)
+func (q *Queries) SummarizePurchasesByUserID(ctx context.Context, arg *SummarizePurchasesByUserIDParams) ([]*SummarizePurchasesByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, summarizePurchasesByUserID,
+		arg.UserID,
+		arg.FilterByPeriod,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+	)
 	if err != nil {
 		return nil, err
 	}

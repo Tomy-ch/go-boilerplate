@@ -43,16 +43,16 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 }
 
 // GetPurchaseSummary mocks base method.
-func (m *MockUsecase) GetPurchaseSummary(ctx context.Context, authn *auth.Authn) (summary.SummaryView, error) {
+func (m *MockUsecase) GetPurchaseSummary(ctx context.Context, authn *auth.Authn, params summary.GetSummaryParams) (summary.SummaryView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPurchaseSummary", ctx, authn)
+	ret := m.ctrl.Call(m, "GetPurchaseSummary", ctx, authn, params)
 	ret0, _ := ret[0].(summary.SummaryView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPurchaseSummary indicates an expected call of GetPurchaseSummary.
-func (mr *MockUsecaseMockRecorder) GetPurchaseSummary(ctx, authn any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) GetPurchaseSummary(ctx, authn, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPurchaseSummary", reflect.TypeOf((*MockUsecase)(nil).GetPurchaseSummary), ctx, authn)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPurchaseSummary", reflect.TypeOf((*MockUsecase)(nil).GetPurchaseSummary), ctx, authn, params)
 }

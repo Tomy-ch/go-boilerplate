@@ -452,16 +452,28 @@ paths:
       summary: 認証ユーザー自身の購入集計の取得
       description: |
         認証コンテキスト（Bearer トークン）の内部 UserID に該当するユーザー自身の購入を集計して取得します。
-        マイページの集計カード表示を想定した最小集計で、購入一覧そのものは返しません（履歴は購入履歴一覧 API）。
+        マイページの集計カード表示を想定した集計で、購入一覧そのものは返しません（履歴は購入履歴一覧 API）。
         パスに他者の識別子を持たないため、他ユーザーの集計は取得できません。
-        合計金額は USD セント単位の整数です。キャンセル済みの購入も総件数・合計金額に含めます
-        （キャンセルはステータス別内訳の 1 要素として件数・金額とも返るため、キャンセルを除いた値が必要な
-        クライアントは内訳から差し引けます）。
-        購入が 1 件もない場合はエラーではなくゼロ値（件数 0・合計 0・内訳は空配列）を返します。
+        集計対象期間は period で切り替えます（既定は全期間）。month / range / recent の境界はサーバの
+        タイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。実際に用いた期間は要求した区分に
+        関わらず period として返すため、クライアントは相対指定を自前で解決する必要がありません。
+        区分ごとの必須パラメータ（month / from と to / days）の欠落、および to が from より前の場合は 400 を返します。
+        キャンセル済みの購入はすべての集計値から除外します（ステータス別内訳にもキャンセルは現れません）。
+        金額は 2 種類返します。totalAmount は支払金額（小計 + 税額 + 送料）の合計、itemsTotal は明細金額
+        （単価 × 数量）の合計で、税額・送料は明細に按分できないため両者は一致しません。
+        groupBy を指定すると itemsTotal をその単位へ分解した groups を返します（未指定なら groups を返しません）。
+        対象の購入が 1 件もない場合はエラーではなくゼロ値（件数 0・合計 0・内訳は空配列）を返します。
         本 op 自体は DB の集計 SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
         一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PurchasePeriodParam'
+        - $ref: '#/components/parameters/PurchaseFromParam'
+        - $ref: '#/components/parameters/PurchaseToParam'
+        - $ref: '#/components/parameters/PurchaseMonthParam'
+        - $ref: '#/components/parameters/PurchaseRecentDaysParam'
+        - $ref: '#/components/parameters/PurchaseGroupByParam'
       responses:
         '200':
           description: 認証ユーザー自身の購入集計の取得に成功しました
@@ -469,6 +481,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PurchaseAggregateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
         '401':
           $ref: '#/components/responses/Unauthorized401'
         '405':
@@ -1100,12 +1114,21 @@ paths:
         nextCursor を after に渡して次ページを取得します（無限スクロール）。
         一覧は概要（code / totalAmount / status / orderedAt）のみを返し、明細は含みません。
         他ユーザーの購入は返しません（所有権フィルタで閉じるため、対象がなければ空一覧です）。
+        period で注文日時の対象期間を絞り込めます（既定は全期間）。month / range / recent の境界は
+        サーバのタイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。区分ごとの必須
+        パラメータ（month / from と to / days）の欠落、および to が from より前の場合は 400 を返します。
+        ページ送りの間は同じ絞り込み条件を渡してください（条件が変わると keyset の連続性は保証されません）。
         totalAmount は USD セント単位の整数です。
       security:
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/CursorAfterParam'
         - $ref: '#/components/parameters/CursorFirstParam'
+        - $ref: '#/components/parameters/PurchasePeriodParam'
+        - $ref: '#/components/parameters/PurchaseFromParam'
+        - $ref: '#/components/parameters/PurchaseToParam'
+        - $ref: '#/components/parameters/PurchaseMonthParam'
+        - $ref: '#/components/parameters/PurchaseRecentDaysParam'
       responses:
         '200':
           description: cursor ページネーションで取得した自分の購入履歴一覧
@@ -1679,6 +1702,93 @@ components:
         minLength: 43
         maxLength: 43
         example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE
+    PurchasePeriodParam:
+      name: period
+      in: query
+      description: |
+        集計・絞り込み対象期間の区分。`all`（既定）は全期間、`month` は `month` で指定した暦月、
+        `range` は `from` / `to` で指定した期間、`recent` は今日から `days` 日前までを対象とします。
+        各区分の境界はサーバのタイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。
+        区分ごとの必須パラメータ（`month` / `from` と `to` / `days`）が欠落している場合は 400 を返します。
+      required: false
+      schema:
+        type: string
+        enum:
+          - all
+          - month
+          - range
+          - recent
+        default: all
+        example: recent
+    PurchaseFromParam:
+      name: from
+      in: query
+      description: |
+        対象期間の開始日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+        日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。
+      required: false
+      schema:
+        type: string
+        format: date
+        example: '2026-01-21'
+    PurchaseToParam:
+      name: to
+      in: query
+      description: |
+        対象期間の終了日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+        日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。`from` より前の日付を指定した場合は 400 を返します。
+      required: false
+      schema:
+        type: string
+        format: date
+        example: '2026-01-31'
+    PurchaseMonthParam:
+      name: month
+      in: query
+      description: |
+        対象とする暦月（`YYYY-MM`）。`period=month` のときのみ必須で、それ以外の区分では無視します。
+        月初日から月末日までを、サーバのタイムゾーン（Asia/Tokyo）の暦日基準で対象とします。
+      required: false
+      schema:
+        type: string
+        pattern: ^\d{4}-(0[1-9]|1[0-2])$
+        example: 2026-01
+    PurchaseRecentDaysParam:
+      name: days
+      in: query
+      description: |
+        今日から遡る日数。`period=recent` のときのみ必須で、それ以外の区分では無視します。
+        今日を終了日、今日の `days` 日前を開始日とし、両端の暦日を含みます
+        （2026-01-31 に `days=10` を指定した場合の対象は 2026-01-21 〜 2026-01-31 です）。
+        暦日はサーバのタイムゾーン（Asia/Tokyo）基準です。
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 365
+        example: 10
+    PurchaseGroupByParam:
+      name: groupBy
+      in: query
+      description: |
+        集計のグループ化単位（カンマ区切り）。指定順がそのままネストの階層順になります
+        （`category,product` ならカテゴリで分け、その中を商品で分けます）。
+        未指定の場合はグループ化せず、レスポンスに groups を含めません。同じ単位を 2 回指定した場合は 400 を返します。
+      required: false
+      explode: false
+      schema:
+        type: array
+        uniqueItems: true
+        maxItems: 2
+        items:
+          type: string
+          enum:
+            - category
+            - product
+        example:
+          - category
+          - product
     MinPriceParam:
       name: minPrice
       in: query
@@ -2668,33 +2778,56 @@ components:
           example: 706000
     PurchaseAggregateResponse:
       description: |
-        認証ユーザー自身の購入集計のレスポンススキーマ。件数・合計金額・ステータス別内訳のみを返し、
-        購入一覧・明細は含みません。金額は USD セント単位の整数です。
+        認証ユーザー自身の購入集計のレスポンススキーマ。対象期間・件数・合計金額・ステータス別内訳と、
+        グループ化を指定した場合はその内訳のみを返し、購入一覧・明細は含みません。金額は USD セント単位の整数です。
+        すべての集計値はキャンセル済みを除外した同一の母集団から算出します。
       type: object
       required:
+        - period
         - totalCount
         - totalAmount
+        - itemsTotal
         - statusBreakdown
       properties:
+        period:
+          $ref: '#/components/schemas/PurchasePeriodResponse'
         totalCount:
           type: integer
           format: int64
-          description: 購入総件数（キャンセル済みを含む）。statusBreakdown の count の総和と一致します。購入がない場合は 0 です。
+          description: |
+            対象期間の購入件数（キャンセル済みを除く）。statusBreakdown の count の総和と一致します。
+            対象がない場合は 0 です。
           example: 12
         totalAmount:
           type: integer
           format: int64
           description: |
-            購入金額の合計（キャンセル済みを含む）。statusBreakdown の totalAmount の総和と一致します。
-            USD セント単位の整数です。購入がない場合は 0 です。
+            対象期間の支払金額の合計（小計 + 税額 + 送料、キャンセル済みを除く）。
+            statusBreakdown の totalAmount の総和と一致します。USD セント単位の整数です。対象がない場合は 0 です。
           example: 2118000
+        itemsTotal:
+          type: string
+          description: |
+            対象期間の明細金額の合計（単価 × 数量の総和、キャンセル済みを除く）。税額・送料は明細に按分できない
+            ため含まず、totalAmount とは一致しません。groups の itemsTotal の総和と正確に一致します。
+            価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）の
+            totalAmount とは尺度が異なる点に注意してください。対象がない場合は "0" です。
+          example: '19200.00'
         statusBreakdown:
           type: array
           description: |
-            ステータス別の内訳（購入ステータスマスタの表示順）。購入に出現したステータスのみを含むため、
-            購入がない場合は空配列です。
+            ステータス別の内訳（購入ステータスマスタの表示順）。対象期間に出現したステータスのみを含むため、
+            対象がない場合は空配列です。キャンセル済みは集計対象外のため、キャンセルのステータスは現れません。
           items:
             $ref: '#/components/schemas/PurchaseStatusBreakdownResponse'
+        groups:
+          type: object
+          description: |
+            groupBy で指定した最上位のグループ化単位ごとのノード。groupBy 未指定の場合は含みません。
+            キーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）です。
+            対象がない場合は空オブジェクトです。
+          additionalProperties:
+            $ref: '#/components/schemas/PurchaseGroupResponse'
     DashboardPurchaseStatusCountResponse:
       type: object
       description: |
@@ -3028,6 +3161,79 @@ components:
             - city
             - street
             - building
+    PurchasePeriodResponse:
+      type: object
+      description: |
+        集計に実際に用いた対象期間。両端の暦日を含みます（サーバのタイムゾーン Asia/Tokyo 基準）。
+        相対指定（period=recent）や暦月指定（period=month）を解決した後の値なので、
+        クライアントは要求した区分に関わらずこの 2 日付で対象期間を確定できます。
+        period=all（全期間）のときは期間で絞り込んでいないため、いずれも null です。
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          format: date
+          nullable: true
+          description: 対象期間の開始日（この日を含みます）。全期間の場合は null です。
+          example: '2026-01-21'
+        to:
+          type: string
+          format: date
+          nullable: true
+          description: 対象期間の終了日（この日を含みます）。全期間の場合は null です。
+          example: '2026-01-31'
+    PurchaseSubGroupResponse:
+      type: object
+      description: |
+        グループ化した購入集計の下位ノード（groupBy の 2 番目の単位）。これ以上の階層は持ちません。
+        マップのキーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）で、
+        表示名は常に name で返すため、キーの形に関わらず name をそのまま表示できます。
+      required:
+        - name
+        - itemsTotal
+      properties:
+        name:
+          type: string
+          description: グループの表示名（カテゴリ名称・商品名称）
+          example: ASUS Zenbook 14 OLED
+        itemsTotal:
+          type: string
+          description: |
+            当該グループの明細金額の合計（単価 × 数量の総和）。税額・送料は明細に按分できないため含みません。
+            価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）へは
+            丸めません（丸めは決済確定の 1 箇所のみ）。
+          example: '800.00'
+    PurchaseGroupResponse:
+      type: object
+      description: |
+        グループ化した購入集計の最上位ノード（groupBy の 1 番目の単位）。groupBy に 2 番目の単位が
+        指定されている場合のみ groups に下位ノードを持ちます。階層はグループ化単位の上限（2）と同じ深さで、
+        再帰はしません。マップのキーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）で、
+        表示名は常に name で返すため、キーの形に関わらず name をそのまま表示できます。
+      required:
+        - name
+        - itemsTotal
+      properties:
+        name:
+          type: string
+          description: グループの表示名（カテゴリ名称・商品名称）
+          example: 電子機器
+        itemsTotal:
+          type: string
+          description: |
+            当該グループの明細金額の合計（単価 × 数量の総和）。税額・送料は明細に按分できないため含みません。
+            価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）へは
+            丸めません（丸めは決済確定の 1 箇所のみ）。下位グループを持つ場合、その itemsTotal の総和と正確に一致します。
+          example: '1200.50'
+        groups:
+          type: object
+          description: |
+            下位のグループ化単位ごとのノード。groupBy に 2 番目の単位が指定されている場合のみ含みます。
+            キーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）です。
+          additionalProperties:
+            $ref: '#/components/schemas/PurchaseSubGroupResponse'
     RoleRef:
       type: object
       description: |

@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
+	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -49,7 +50,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 
 			nextCursor := "next-opaque-cursor"
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{summaryFixture()}, NextCursor: &nextCursor}, nil,
 			)
 
@@ -70,8 +71,8 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			var capturedUserID uuid.UUID
 			var capturedCursor *paging.Cursor
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, userID uuid.UUID, cursor *paging.Cursor) (*purchaseuc.PurchaseListView, error) {
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, userID uuid.UUID, cursor *paging.Cursor, _ period.Spec) (*purchaseuc.PurchaseListView, error) {
 					capturedUserID = userID
 					capturedCursor = cursor
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
@@ -93,6 +94,36 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			assert.True(t, capturedCursor.HasCursor())
 		})
 
+		t.Run("期間指定のクエリがUsecaseの期間指定へバインドされる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var captured period.Spec
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, _ *paging.Cursor, spec period.Spec) (*purchaseuc.PurchaseListView, error) {
+					captured = spec
+					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
+				},
+			)
+
+			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
+
+			headers := availablePurchaseUser(t, e)
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, "/v1/purchases?period=range&from=2026-01-21&to=2026-01-31", nil, headers)
+			require.Equal(t, http.StatusOK, actual.StatusCode)
+
+			assert.Equal(t, period.KindRange, captured.Kind)
+			require.NotNil(t, captured.From)
+			require.NotNil(t, captured.To)
+			assert.Equal(t, "2026-01-21", captured.From.Format(time.DateOnly))
+			assert.Equal(t, "2026-01-31", captured.To.Format(time.DateOnly))
+		})
+
 		t.Run("購入ゼロで200かつitemsが空配列でnextCursorがnull", func(t *testing.T) {
 			t.Parallel()
 
@@ -101,7 +132,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil,
 			)
 
@@ -131,7 +162,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
 
@@ -149,7 +180,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
 
@@ -166,7 +197,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
 

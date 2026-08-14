@@ -25,6 +25,8 @@ var (
 	ErrInvalidOwner = xerrors.Wrap(errInvalid, "exactly one of ownerID and sessionToken must be set")
 	// ErrInvalidExpiresAt は、有効期限の検証に失敗した場合のエラーです（422）。
 	ErrInvalidExpiresAt = xerrors.Wrap(errInvalid, "expiresAt failed")
+	// ErrSubtotalOutOfRange は、購入可能な明細の合計が決済スケールの整数幅に収まらない場合のエラーです（422）。
+	ErrSubtotalOutOfRange = xerrors.Wrap(errInvalid, "subtotal exceeds the settlement range")
 
 	// 以下は状態の衝突であってリクエストの不正ではないため、apperror.ErrConflict を基底に持ちます
 	// （HTTP ステータスへの写像は internal/apperror/README.md の Mapping Table）。

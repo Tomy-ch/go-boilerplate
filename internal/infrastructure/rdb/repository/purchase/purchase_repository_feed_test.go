@@ -171,6 +171,97 @@ func Test_repository_FindFeedByUserID(t *testing.T) {
 			})
 		})
 
+		t.Run("先頭ページで期間外に注文された購入は返らない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, owner)
+				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-24*time.Hour))
+
+				// 半開区間 [base-1h, base+1h) は base の 1 件だけを含む。
+				after := base.Add(-time.Hour)
+				before := base.Add(time.Hour)
+				got, err := repo.FindFeedByUserID(ctx, mustParse(owner), purchase.ListFeedParams{
+					Limit:         10,
+					OrderedAfter:  &after,
+					OrderedBefore: &before,
+				})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(tieHigh), got[0].ID)
+			})
+		})
+
+		t.Run("afterページでも期間の絞り込みが効く", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, owner)
+				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-time.Hour))
+				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
+
+				// keyset 境界は tieHigh。期間を [base-2h, base+1h) に絞ると old は範囲外で mid だけが残る。
+				orderedAt := base
+				id := mustParse(tieHigh)
+				after := base.Add(-2 * time.Hour)
+				before := base.Add(time.Hour)
+				got, err := repo.FindFeedByUserID(ctx, mustParse(owner), purchase.ListFeedParams{
+					Limit:          10,
+					AfterOrderedAt: &orderedAt,
+					AfterID:        &id,
+					OrderedAfter:   &after,
+					OrderedBefore:  &before,
+				})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(mid), got[0].ID)
+			})
+		})
+
+		t.Run("開始日だけを指定した場合は絞り込まない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, owner)
+				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
+
+				// 片側だけの指定は絞り込みなしとして扱う契約。境界が NULL のまま述語へ入ると全件が消える。
+				after := base.Add(-time.Hour)
+				got, err := repo.FindFeedByUserID(ctx, mustParse(owner), purchase.ListFeedParams{
+					Limit:        10,
+					OrderedAfter: &after,
+				})
+				require.NoError(t, err)
+				assert.Len(t, got, 2)
+			})
+		})
+
+		t.Run("終了日だけを指定した場合も絞り込まない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, owner)
+				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
+
+				// 開始日側と対称であることを固定する。片側判定が非対称に壊れてもここが赤くなる。
+				before := base.Add(-time.Hour)
+				got, err := repo.FindFeedByUserID(ctx, mustParse(owner), purchase.ListFeedParams{
+					Limit:         10,
+					OrderedBefore: &before,
+				})
+				require.NoError(t, err)
+				assert.Len(t, got, 2)
+			})
+		})
+
 		t.Run("statusが購入ごとにマスタ名称で解決され金額とコードも一致して返る", func(t *testing.T) {
 			t.Parallel()
 

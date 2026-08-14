@@ -11,6 +11,72 @@ const (
 	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
 )
 
+// Defines values for PurchasePeriodParam.
+const (
+	PurchasePeriodParamAll    PurchasePeriodParam = "all"
+	PurchasePeriodParamMonth  PurchasePeriodParam = "month"
+	PurchasePeriodParamRange  PurchasePeriodParam = "range"
+	PurchasePeriodParamRecent PurchasePeriodParam = "recent"
+)
+
+// Valid indicates whether the value is a known member of the PurchasePeriodParam enum.
+func (e PurchasePeriodParam) Valid() bool {
+	switch e {
+	case PurchasePeriodParamAll:
+		return true
+	case PurchasePeriodParamMonth:
+		return true
+	case PurchasePeriodParamRange:
+		return true
+	case PurchasePeriodParamRecent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetUsersMePurchasesSummaryParamsPeriod.
+const (
+	GetUsersMePurchasesSummaryParamsPeriodAll    GetUsersMePurchasesSummaryParamsPeriod = "all"
+	GetUsersMePurchasesSummaryParamsPeriodMonth  GetUsersMePurchasesSummaryParamsPeriod = "month"
+	GetUsersMePurchasesSummaryParamsPeriodRange  GetUsersMePurchasesSummaryParamsPeriod = "range"
+	GetUsersMePurchasesSummaryParamsPeriodRecent GetUsersMePurchasesSummaryParamsPeriod = "recent"
+)
+
+// Valid indicates whether the value is a known member of the GetUsersMePurchasesSummaryParamsPeriod enum.
+func (e GetUsersMePurchasesSummaryParamsPeriod) Valid() bool {
+	switch e {
+	case GetUsersMePurchasesSummaryParamsPeriodAll:
+		return true
+	case GetUsersMePurchasesSummaryParamsPeriodMonth:
+		return true
+	case GetUsersMePurchasesSummaryParamsPeriodRange:
+		return true
+	case GetUsersMePurchasesSummaryParamsPeriodRecent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetUsersMePurchasesSummaryParamsGroupBy.
+const (
+	Category GetUsersMePurchasesSummaryParamsGroupBy = "category"
+	Product  GetUsersMePurchasesSummaryParamsGroupBy = "product"
+)
+
+// Valid indicates whether the value is a known member of the GetUsersMePurchasesSummaryParamsGroupBy enum.
+func (e GetUsersMePurchasesSummaryParamsGroupBy) Valid() bool {
+	switch e {
+	case Category:
+		return true
+	case Product:
+		return true
+	default:
+		return false
+	}
+}
+
 // ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
@@ -23,19 +89,68 @@ type ErrorResponse struct {
 	RequestId string `json:"requestId"`
 }
 
-// PurchaseAggregateResponse 認証ユーザー自身の購入集計のレスポンススキーマ。件数・合計金額・ステータス別内訳のみを返し、
-// 購入一覧・明細は含みません。金額は USD セント単位の整数です。
+// PurchaseAggregateResponse 認証ユーザー自身の購入集計のレスポンススキーマ。対象期間・件数・合計金額・ステータス別内訳と、
+// グループ化を指定した場合はその内訳のみを返し、購入一覧・明細は含みません。金額は USD セント単位の整数です。
+// すべての集計値はキャンセル済みを除外した同一の母集団から算出します。
 type PurchaseAggregateResponse struct {
-	// StatusBreakdown ステータス別の内訳（購入ステータスマスタの表示順）。購入に出現したステータスのみを含むため、
-	// 購入がない場合は空配列です。
+	// Groups groupBy で指定した最上位のグループ化単位ごとのノード。groupBy 未指定の場合は含みません。
+	// キーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）です。
+	// 対象がない場合は空オブジェクトです。
+	Groups *map[string]PurchaseGroupResponse `json:"groups,omitempty"`
+
+	// ItemsTotal 対象期間の明細金額の合計（単価 × 数量の総和、キャンセル済みを除く）。税額・送料は明細に按分できない
+	// ため含まず、totalAmount とは一致しません。groups の itemsTotal の総和と正確に一致します。
+	// 価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）の
+	// totalAmount とは尺度が異なる点に注意してください。対象がない場合は "0" です。
+	ItemsTotal string `json:"itemsTotal"`
+
+	// Period 集計に実際に用いた対象期間。両端の暦日を含みます（サーバのタイムゾーン Asia/Tokyo 基準）。
+	// 相対指定（period=recent）や暦月指定（period=month）を解決した後の値なので、
+	// クライアントは要求した区分に関わらずこの 2 日付で対象期間を確定できます。
+	// period=all（全期間）のときは期間で絞り込んでいないため、いずれも null です。
+	Period PurchasePeriodResponse `json:"period"`
+
+	// StatusBreakdown ステータス別の内訳（購入ステータスマスタの表示順）。対象期間に出現したステータスのみを含むため、
+	// 対象がない場合は空配列です。キャンセル済みは集計対象外のため、キャンセルのステータスは現れません。
 	StatusBreakdown []PurchaseStatusBreakdownResponse `json:"statusBreakdown"`
 
-	// TotalAmount 購入金額の合計（キャンセル済みを含む）。statusBreakdown の totalAmount の総和と一致します。
-	// USD セント単位の整数です。購入がない場合は 0 です。
+	// TotalAmount 対象期間の支払金額の合計（小計 + 税額 + 送料、キャンセル済みを除く）。
+	// statusBreakdown の totalAmount の総和と一致します。USD セント単位の整数です。対象がない場合は 0 です。
 	TotalAmount int64 `json:"totalAmount"`
 
-	// TotalCount 購入総件数（キャンセル済みを含む）。statusBreakdown の count の総和と一致します。購入がない場合は 0 です。
+	// TotalCount 対象期間の購入件数（キャンセル済みを除く）。statusBreakdown の count の総和と一致します。
+	// 対象がない場合は 0 です。
 	TotalCount int64 `json:"totalCount"`
+}
+
+// PurchaseGroupResponse グループ化した購入集計の最上位ノード（groupBy の 1 番目の単位）。groupBy に 2 番目の単位が
+// 指定されている場合のみ groups に下位ノードを持ちます。階層はグループ化単位の上限（2）と同じ深さで、
+// 再帰はしません。マップのキーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）で、
+// 表示名は常に name で返すため、キーの形に関わらず name をそのまま表示できます。
+type PurchaseGroupResponse struct {
+	// Groups 下位のグループ化単位ごとのノード。groupBy に 2 番目の単位が指定されている場合のみ含みます。
+	// キーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）です。
+	Groups *map[string]PurchaseSubGroupResponse `json:"groups,omitempty"`
+
+	// ItemsTotal 当該グループの明細金額の合計（単価 × 数量の総和）。税額・送料は明細に按分できないため含みません。
+	// 価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）へは
+	// 丸めません（丸めは決済確定の 1 箇所のみ）。下位グループを持つ場合、その itemsTotal の総和と正確に一致します。
+	ItemsTotal string `json:"itemsTotal"`
+
+	// Name グループの表示名（カテゴリ名称・商品名称）
+	Name string `json:"name"`
+}
+
+// PurchasePeriodResponse 集計に実際に用いた対象期間。両端の暦日を含みます（サーバのタイムゾーン Asia/Tokyo 基準）。
+// 相対指定（period=recent）や暦月指定（period=month）を解決した後の値なので、
+// クライアントは要求した区分に関わらずこの 2 日付で対象期間を確定できます。
+// period=all（全期間）のときは期間で絞り込んでいないため、いずれも null です。
+type PurchasePeriodResponse struct {
+	// From 対象期間の開始日（この日を含みます）。全期間の場合は null です。
+	From *openapi_types.Date `json:"from"`
+
+	// To 対象期間の終了日（この日を含みます）。全期間の場合は null です。
+	To *openapi_types.Date `json:"to"`
 }
 
 // PurchaseStatusBreakdownResponse 購入集計のステータス別内訳の 1 要素。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
@@ -59,6 +174,40 @@ type PurchaseStatusRef struct {
 	Name string `json:"name"`
 }
 
+// PurchaseSubGroupResponse グループ化した購入集計の下位ノード（groupBy の 2 番目の単位）。これ以上の階層は持ちません。
+// マップのキーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）で、
+// 表示名は常に name で返すため、キーの形に関わらず name をそのまま表示できます。
+type PurchaseSubGroupResponse struct {
+	// ItemsTotal 当該グループの明細金額の合計（単価 × 数量の総和）。税額・送料は明細に按分できないため含みません。
+	// 価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）へは
+	// 丸めません（丸めは決済確定の 1 箇所のみ）。
+	ItemsTotal string `json:"itemsTotal"`
+
+	// Name グループの表示名（カテゴリ名称・商品名称）
+	Name string `json:"name"`
+}
+
+// PurchaseFromParam defines model for PurchaseFromParam.
+type PurchaseFromParam = openapi_types.Date
+
+// PurchaseGroupByParam defines model for PurchaseGroupByParam.
+type PurchaseGroupByParam = []string
+
+// PurchaseMonthParam defines model for PurchaseMonthParam.
+type PurchaseMonthParam = string
+
+// PurchasePeriodParam defines model for PurchasePeriodParam.
+type PurchasePeriodParam string
+
+// PurchaseRecentDaysParam defines model for PurchaseRecentDaysParam.
+type PurchaseRecentDaysParam = int32
+
+// PurchaseToParam defines model for PurchaseToParam.
+type PurchaseToParam = openapi_types.Date
+
+// BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type BadRequest400 = ErrorResponse
+
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
 
@@ -76,3 +225,41 @@ type basicAuthContextKey string
 
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
+
+// GetUsersMePurchasesSummaryParams defines parameters for GetUsersMePurchasesSummary.
+type GetUsersMePurchasesSummaryParams struct {
+	// Period 集計・絞り込み対象期間の区分。`all`（既定）は全期間、`month` は `month` で指定した暦月、
+	// `range` は `from` / `to` で指定した期間、`recent` は今日から `days` 日前までを対象とします。
+	// 各区分の境界はサーバのタイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。
+	// 区分ごとの必須パラメータ（`month` / `from` と `to` / `days`）が欠落している場合は 400 を返します。
+	Period *GetUsersMePurchasesSummaryParamsPeriod `form:"period,omitempty" json:"period,omitempty"`
+
+	// From 対象期間の開始日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+	// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。
+	From *PurchaseFromParam `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 対象期間の終了日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+	// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。`from` より前の日付を指定した場合は 400 を返します。
+	To *PurchaseToParam `form:"to,omitempty" json:"to,omitempty"`
+
+	// Month 対象とする暦月（`YYYY-MM`）。`period=month` のときのみ必須で、それ以外の区分では無視します。
+	// 月初日から月末日までを、サーバのタイムゾーン（Asia/Tokyo）の暦日基準で対象とします。
+	Month *PurchaseMonthParam `form:"month,omitempty" json:"month,omitempty"`
+
+	// Days 今日から遡る日数。`period=recent` のときのみ必須で、それ以外の区分では無視します。
+	// 今日を終了日、今日の `days` 日前を開始日とし、両端の暦日を含みます
+	// （2026-01-31 に `days=10` を指定した場合の対象は 2026-01-21 〜 2026-01-31 です）。
+	// 暦日はサーバのタイムゾーン（Asia/Tokyo）基準です。
+	Days *PurchaseRecentDaysParam `form:"days,omitempty" json:"days,omitempty"`
+
+	// GroupBy 集計のグループ化単位（カンマ区切り）。指定順がそのままネストの階層順になります
+	// （`category,product` ならカテゴリで分け、その中を商品で分けます）。
+	// 未指定の場合はグループ化せず、レスポンスに groups を含めません。同じ単位を 2 回指定した場合は 400 を返します。
+	GroupBy *PurchaseGroupByParam `form:"groupBy,omitempty" json:"groupBy,omitempty"`
+}
+
+// GetUsersMePurchasesSummaryParamsPeriod defines parameters for GetUsersMePurchasesSummary.
+type GetUsersMePurchasesSummaryParamsPeriod string
+
+// GetUsersMePurchasesSummaryParamsGroupBy defines parameters for GetUsersMePurchasesSummary.
+type GetUsersMePurchasesSummaryParamsGroupBy string

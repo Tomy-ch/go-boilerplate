@@ -90,6 +90,26 @@ func TestEvaluation_Issues(t *testing.T) {
 
 			assert.Empty(t, actual.Issues())
 		})
+
+		t.Run("問題が無くても nil ではない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_issues_non_nil", 1, nil).Evaluate(newEvalSnapshot(t, "10.00", 5, true))
+
+			// nil はゼロ値（未突き合わせ）の印なので、突き合わせ済みなら必ず非 nil になる。
+			assert.NotNil(t, actual.Issues())
+		})
+
+		t.Run("戻り値を書き換えても内部状態は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_issues_immutable", 1, nil).Evaluate(nil)
+
+			got := actual.Issues()
+			got[0] = IssueOutOfStock
+
+			assert.Equal(t, []Issue{IssueNotFound}, actual.Issues())
+		})
 	})
 }
 
@@ -114,6 +134,53 @@ func TestEvaluation_AvailableQuantity(t *testing.T) {
 			actual := newEvalItem(t, "eval_avail_none", 1, nil).Evaluate(newEvalSnapshot(t, "10.00", 5, true))
 
 			assert.Nil(t, actual.AvailableQuantity())
+		})
+
+		t.Run("戻り値を書き換えても内部状態は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_avail_immutable", 3, nil).Evaluate(newEvalSnapshot(t, "10.00", 1, true))
+
+			got := actual.AvailableQuantity()
+			require.NotNil(t, got)
+			*got = 999
+
+			require.NotNil(t, actual.AvailableQuantity())
+			assert.Equal(t, 1, *actual.AvailableQuantity())
+		})
+	})
+}
+
+func TestEvaluation_hasNoIssue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("issue が立っていなければ true を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_no_issue", 1, nil).Evaluate(newEvalSnapshot(t, "10.00", 5, true))
+
+			assert.True(t, actual.hasNoIssue())
+		})
+
+		t.Run("issue が 1 つでも立っていれば false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_has_issue", 1, nil).Evaluate(newEvalSnapshot(t, "10.00", 0, true))
+
+			assert.False(t, actual.hasNoIssue())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("突き合わせていないゼロ値は false を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, Evaluation{}.hasNoIssue())
 		})
 	})
 }

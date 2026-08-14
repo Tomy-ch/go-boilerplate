@@ -312,12 +312,10 @@ func Test_usecase_GetCart(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 		})
 
-		t.Run("明細が積み上がり小計が決済スケールへ落とせない場合は分類済みエラーを返す", func(t *testing.T) {
+		t.Run("明細が積み上がり小計が決済スケールへ落とせない場合はErrSubtotalOutOfRangeを返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			// 単価 1 件が決済スケールへ落とせることは money.Price の構築時に保証されるため、
-			// 幅を超えるのは明細が積み上がった結果に限られる。上限ちょうどの単価を 2 明細で合算する。
 			otherID := uuidtestkit.NewTestFromSalt(t, "cart_get_overflow_other")
 			c := newGuestCart(t, now.Add(time.Hour),
 				newTestCartItem(t, "cart_get_overflow_a", productID, 1, nil),
@@ -326,7 +324,8 @@ func Test_usecase_GetCart(t *testing.T) {
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
-			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			// 合算に失敗する経路では書き込みへ進まない。
+			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(product.Products{
@@ -338,8 +337,8 @@ func Test_usecase_GetCart(t *testing.T) {
 
 			_, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 
-			// 未分類のまま外へ出ると 500 の理由が追えないため、apperror へ分類されていることを固定する。
-			require.ErrorIs(t, err, apperror.ErrInternal)
+			require.ErrorIs(t, err, cart.ErrSubtotalOutOfRange)
+			require.ErrorIs(t, err, apperror.ErrValidation)
 			require.ErrorIs(t, err, decimal.ErrOverflow)
 		})
 

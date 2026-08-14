@@ -9,12 +9,21 @@ get:
     nextCursor を after に渡して次ページを取得します（無限スクロール）。
     一覧は概要（code / totalAmount / status / orderedAt）のみを返し、明細は含みません。
     他ユーザーの購入は返しません（所有権フィルタで閉じるため、対象がなければ空一覧です）。
+    period で注文日時の対象期間を絞り込めます（既定は全期間）。month / range / recent の境界は
+    サーバのタイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。区分ごとの必須
+    パラメータ（month / from と to / days）の欠落、および to が from より前の場合は 400 を返します。
+    ページ送りの間は同じ絞り込み条件を渡してください（条件が変わると keyset の連続性は保証されません）。
     totalAmount は USD セント単位の整数です。
   security:
     - BearerAuth: []
   parameters:
     - $ref: '../../components/parameters/pagination/CursorAfterParam.yaml'
     - $ref: '../../components/parameters/pagination/CursorFirstParam.yaml'
+    - $ref: '../../components/parameters/purchase/PurchasePeriodParam.yaml'
+    - $ref: '../../components/parameters/purchase/PurchaseFromParam.yaml'
+    - $ref: '../../components/parameters/purchase/PurchaseToParam.yaml'
+    - $ref: '../../components/parameters/purchase/PurchaseMonthParam.yaml'
+    - $ref: '../../components/parameters/purchase/PurchaseRecentDaysParam.yaml'
   responses:
     '200':
       description: cursor ページネーションで取得した自分の購入履歴一覧

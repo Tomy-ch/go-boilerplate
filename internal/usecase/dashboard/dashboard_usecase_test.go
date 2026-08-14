@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
+	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/dashboard/query"
 	mock_query "go-boilerplate/internal/usecase/dashboard/query/mock"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -23,6 +24,14 @@ import (
 )
 
 // 取得元ごとに一意なエラー。伝播先を取り違えたり一律のエラーへ潰したりする実装を検出するために分けます。
+// testLoc は、集計期間の暦日境界を解釈するロケーションです。実行環境の time.Local に依存させないため、
+// 本番設定と同じ Asia/Tokyo を明示的に固定します。
+var testLoc = time.FixedZone("Asia/Tokyo", 9*60*60)
+
+// fixedNow は、集計期間の境界算出の基準として用いる固定の現在時刻です。
+// UTC で保持し、実装側が loc へ変換することを検証できるようにします。
+var fixedNow = time.Date(2026, time.July, 15, 12, 0, 0, 0, testLoc).UTC()
+
 var (
 	errSalesProbe   = xerrors.New("sales probe")
 	errStatusProbe  = xerrors.New("status probe")
@@ -49,6 +58,8 @@ func newUsecase(t *testing.T) (*usecase, deps) {
 		authorizer:  d.authorizer,
 		qs:          d.qs,
 		productRepo: d.productRepo,
+		clk:         clocktestkit.NewMockClock(t, fixedNow),
+		loc:         testLoc,
 	}, d
 }
 
@@ -81,13 +92,17 @@ func TestNew(t *testing.T) {
 			productRepo := mock_product.NewMockRepository(ctrl)
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 
+			clk := clocktestkit.NewMockClock(t, fixedNow)
+
 			expected := &usecase{
 				tracer:      tf.Usecase(),
 				authorizer:  authorizer,
 				qs:          qs,
 				productRepo: productRepo,
+				clk:         clk,
+				loc:         testLoc,
 			}
-			actual := New(qs, productRepo, authorizer, tf)
+			actual := New(qs, productRepo, authorizer, clk, testLoc, tf)
 
 			assert.Equal(t, expected, actual)
 		})
@@ -140,15 +155,15 @@ func Test_usecase_GetDashboardSummary(t *testing.T) {
 			u, d := newUsecase(t)
 			d.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-			var salesPeriod, statusPeriod query.Period
+			var salesWindow, statusWindow query.Window
 			d.qs.EXPECT().SummarizeSales(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, p query.Period) (query.SalesResult, error) {
-					salesPeriod = p
+				func(_ context.Context, w query.Window) (query.SalesResult, error) {
+					salesWindow = w
 					return query.SalesResult{}, nil
 				})
 			d.qs.EXPECT().CountPurchasesByStatus(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, p query.Period) ([]query.PurchaseStatusCountResult, error) {
-					statusPeriod = p
+				func(_ context.Context, w query.Window) ([]query.PurchaseStatusCountResult, error) {
+					statusWindow = w
 					return nil, nil
 				})
 			d.productRepo.EXPECT().Count(gomock.Any()).Return(product.Counts{}, nil)
@@ -158,8 +173,12 @@ func Test_usecase_GetDashboardSummary(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			assert.Equal(t, query.Period{Kind: query.PeriodRange, From: from, To: to}, salesPeriod)
-			assert.Equal(t, salesPeriod, statusPeriod)
+			// QS へは解決済みの半開区間が渡る。上限は終了日の翌日で、終了日当日の注文を取りこぼさない。
+			assert.Equal(t, query.Window{
+				After:  time.Date(2026, time.July, 1, 0, 0, 0, 0, testLoc),
+				Before: time.Date(2026, time.August, 1, 0, 0, 0, 0, testLoc),
+			}, salesWindow)
+			assert.Equal(t, salesWindow, statusWindow)
 		})
 
 		t.Run("集計対象が無い場合ゼロ値とnilでない空スライスを返す", func(t *testing.T) {
@@ -259,63 +278,102 @@ func Test_usecase_GetDashboardSummary(t *testing.T) {
 	})
 }
 
-func Test_normalizePeriod(t *testing.T) {
+func Test_resolveWindow(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("monthは今月区分へ、未知値・空はtoday区分へ正規化する", func(t *testing.T) {
+		t.Run("monthは当月の月初から翌月の月初までを対象にする", func(t *testing.T) {
 			t.Parallel()
 
-			month, err := normalizePeriod(GetSummaryParams{Period: "month"})
+			got, err := resolveWindow(GetSummaryParams{Period: "month"}, fixedNow, testLoc)
 			require.NoError(t, err)
-			assert.Equal(t, query.Period{Kind: query.PeriodMonth}, month)
 
-			today, err := normalizePeriod(GetSummaryParams{Period: "today"})
-			require.NoError(t, err)
-			assert.Equal(t, query.Period{Kind: query.PeriodToday}, today)
-
-			empty, err := normalizePeriod(GetSummaryParams{Period: ""})
-			require.NoError(t, err)
-			assert.Equal(t, query.Period{Kind: query.PeriodToday}, empty)
-
-			unknown, err := normalizePeriod(GetSummaryParams{Period: "weekly"})
-			require.NoError(t, err)
-			assert.Equal(t, query.Period{Kind: query.PeriodToday}, unknown)
+			assert.Equal(t, query.Window{
+				After:  time.Date(2026, time.July, 1, 0, 0, 0, 0, testLoc),
+				Before: time.Date(2026, time.August, 1, 0, 0, 0, 0, testLoc),
+			}, got)
 		})
 
-		t.Run("rangeはfrom/toを保持したrange区分へ正規化する", func(t *testing.T) {
+		t.Run("todayは当日1日分を対象にする", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := resolveWindow(GetSummaryParams{Period: "today"}, fixedNow, testLoc)
+			require.NoError(t, err)
+
+			assert.Equal(t, query.Window{
+				After:  time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc),
+				Before: time.Date(2026, time.July, 16, 0, 0, 0, 0, testLoc),
+			}, got)
+		})
+
+		t.Run("空文字はtodayとして扱う", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := resolveWindow(GetSummaryParams{Period: ""}, fixedNow, testLoc)
+			require.NoError(t, err)
+			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc), got.After)
+		})
+
+		t.Run("未知の区分はtodayとして扱う", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := resolveWindow(GetSummaryParams{Period: "weekly"}, fixedNow, testLoc)
+			require.NoError(t, err)
+			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc), got.After)
+		})
+
+		t.Run("rangeは指定された暦日の両端を含み上限は終了日の翌日になる", func(t *testing.T) {
 			t.Parallel()
 
 			from := mustDate(t, "2026-07-01")
 			to := mustDate(t, "2026-07-31")
 
-			got, err := normalizePeriod(GetSummaryParams{Period: "range", From: &from, To: &to})
+			got, err := resolveWindow(GetSummaryParams{Period: "range", From: &from, To: &to}, fixedNow, testLoc)
 			require.NoError(t, err)
-			assert.Equal(t, query.Period{Kind: query.PeriodRange, From: from, To: to}, got)
+
+			assert.Equal(t, query.Window{
+				After:  time.Date(2026, time.July, 1, 0, 0, 0, 0, testLoc),
+				Before: time.Date(2026, time.August, 1, 0, 0, 0, 0, testLoc),
+			}, got)
 		})
 
-		t.Run("rangeでfromとtoが同一日の場合も許容する", func(t *testing.T) {
+		t.Run("rangeはfromとtoが同一日の単日指定も受理する", func(t *testing.T) {
 			t.Parallel()
 
 			day := mustDate(t, "2026-07-15")
 
-			got, err := normalizePeriod(GetSummaryParams{Period: "range", From: &day, To: &day})
+			got, err := resolveWindow(GetSummaryParams{Period: "range", From: &day, To: &day}, fixedNow, testLoc)
 			require.NoError(t, err)
-			assert.Equal(t, query.Period{Kind: query.PeriodRange, From: day, To: day}, got)
+
+			assert.Equal(t, query.Window{
+				After:  time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc),
+				Before: time.Date(2026, time.July, 16, 0, 0, 0, 0, testLoc),
+			}, got)
 		})
 
-		t.Run("同一暦日で時刻成分だけtoがfromより前でも暦日として許容し時刻を落とす", func(t *testing.T) {
+		t.Run("rangeは時刻成分を落として暦日の境界へ揃える", func(t *testing.T) {
 			t.Parallel()
 
-			from := time.Date(2026, time.July, 15, 23, 0, 0, 0, time.UTC)
+			from := time.Date(2026, time.July, 15, 23, 59, 59, 0, time.UTC)
 			to := time.Date(2026, time.July, 15, 1, 0, 0, 0, time.UTC)
-			day := mustDate(t, "2026-07-15")
 
-			got, err := normalizePeriod(GetSummaryParams{Period: "range", From: &from, To: &to})
+			got, err := resolveWindow(GetSummaryParams{Period: "range", From: &from, To: &to}, fixedNow, testLoc)
 			require.NoError(t, err)
-			assert.Equal(t, query.Period{Kind: query.PeriodRange, From: day, To: day}, got)
+
+			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc), got.After)
+		})
+
+		t.Run("todayの当日はUTCではなく指定ロケーションの暦日で決まる", func(t *testing.T) {
+			t.Parallel()
+
+			// UTC では 2026-07-15 22:00 だが testLoc では 2026-07-16。ロケーションを無視すると前日を集計する。
+			crossing := time.Date(2026, time.July, 15, 22, 0, 0, 0, time.UTC)
+
+			got, err := resolveWindow(GetSummaryParams{Period: "today"}, crossing, testLoc)
+			require.NoError(t, err)
+			assert.Equal(t, time.Date(2026, time.July, 16, 0, 0, 0, 0, testLoc), got.After)
 		})
 	})
 
@@ -327,7 +385,7 @@ func Test_normalizePeriod(t *testing.T) {
 
 			to := mustDate(t, "2026-07-31")
 
-			_, err := normalizePeriod(GetSummaryParams{Period: "range", To: &to})
+			_, err := resolveWindow(GetSummaryParams{Period: "range", To: &to}, fixedNow, testLoc)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
@@ -336,7 +394,7 @@ func Test_normalizePeriod(t *testing.T) {
 
 			from := mustDate(t, "2026-07-01")
 
-			_, err := normalizePeriod(GetSummaryParams{Period: "range", From: &from})
+			_, err := resolveWindow(GetSummaryParams{Period: "range", From: &from}, fixedNow, testLoc)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
@@ -346,34 +404,59 @@ func Test_normalizePeriod(t *testing.T) {
 			from := mustDate(t, "2026-07-31")
 			to := mustDate(t, "2026-07-01")
 
-			_, err := normalizePeriod(GetSummaryParams{Period: "range", From: &from, To: &to})
+			_, err := resolveWindow(GetSummaryParams{Period: "range", From: &from, To: &to}, fixedNow, testLoc)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 	})
 }
 
-func Test_dateOnly(t *testing.T) {
+func Test_startOfDay(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("時刻成分を落としロケーションは保つ", func(t *testing.T) {
+		t.Run("時刻成分を落として暦日の開始時刻をlocのゾーンで返す", func(t *testing.T) {
 			t.Parallel()
 
-			loc := time.FixedZone("Asia/Tokyo", 9*60*60)
+			got := startOfDay(time.Date(2026, time.July, 15, 23, 59, 59, 999, time.UTC), testLoc)
 
-			got := dateOnly(time.Date(2026, time.July, 15, 23, 59, 59, 999, loc))
-
-			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, loc), got)
+			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc), got)
 		})
 
-		t.Run("既に暦日のみの値はそのまま返す", func(t *testing.T) {
+		t.Run("年月日は引数のロケーションのまま解釈しlocへ変換し直さない", func(t *testing.T) {
 			t.Parallel()
 
-			day := time.Date(2026, time.July, 15, 0, 0, 0, 0, time.UTC)
+			// 西経ゾーンへ変換してしまうと前日へずれる。利用者が指定した暦日を保つ契約。
+			west := time.FixedZone("TEST-08", -8*60*60)
 
-			assert.Equal(t, day, dateOnly(day))
+			got := startOfDay(time.Date(2026, time.July, 15, 2, 0, 0, 0, time.UTC), west)
+
+			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, west), got)
+		})
+	})
+}
+
+func Test_startOfMonth(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("月の初日の開始時刻をlocのゾーンで返す", func(t *testing.T) {
+			t.Parallel()
+
+			got := startOfMonth(time.Date(2026, time.July, 15, 12, 0, 0, 0, testLoc), testLoc)
+
+			assert.Equal(t, time.Date(2026, time.July, 1, 0, 0, 0, 0, testLoc), got)
+		})
+
+		t.Run("月初日そのものを渡しても同じ値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			first := time.Date(2026, time.July, 1, 0, 0, 0, 0, testLoc)
+
+			assert.Equal(t, first, startOfMonth(first, testLoc))
 		})
 	})
 }

@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/lexicon/money"
+	"go-boilerplate/pkg/decimal"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -142,6 +143,23 @@ func TestNew(t *testing.T) {
 			// 返却スライスへの破壊的変更が内部へ波及しないこと。
 			assert.Equal(t, inputs[0].ProductID, actual.Details()[0].ProductID())
 		})
+
+		t.Run("小計が上限ちょうどなら税と送料を載せて成立する", func(t *testing.T) {
+			t.Parallel()
+
+			id := uuidtestkit.NewTestFromSalt(t, "p_bound_exact")
+			userID := uuidtestkit.NewTestFromSalt(t, "u_bound_exact")
+			productID := uuidtestkit.NewTestFromSalt(t, "prod_bound_exact")
+			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_bound_exact"), ProductID: productID, Quantity: 1}}
+			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "9223372036854775.80"), 5)}
+
+			actual, err := New(id, "code-bound-exact", userID, inputs, locked)
+			require.NoError(t, err)
+
+			require.NotNil(t, actual)
+			assert.Equal(t, maxSubtotalCents, actual.SubtotalAmount())
+			assert.Equal(t, maxSubtotalCents*taxRatePercent/100, actual.TaxAmount())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -236,8 +254,6 @@ func TestNew(t *testing.T) {
 			userID := uuidtestkit.NewTestFromSalt(t, "u_overflow")
 			productA := uuidtestkit.NewTestFromSalt(t, "prod_overflow_a")
 			productB := uuidtestkit.NewTestFromSalt(t, "prod_overflow_b")
-			// 単価 1 件が決済スケールへ落とせることは money.Price の構築時に保証されるため、
-			// 幅を超えるのは明細が積み上がった結果に限られる。上限ちょうどの単価を 2 明細で合算する。
 			inputs := []DetailInput{
 				{ID: uuidtestkit.NewTestFromSalt(t, "d_overflow_a"), ProductID: productA, Quantity: 1},
 				{ID: uuidtestkit.NewTestFromSalt(t, "d_overflow_b"), ProductID: productB, Quantity: 1},
@@ -250,19 +266,18 @@ func TestNew(t *testing.T) {
 			actual, err := New(id, "code-overflow", userID, inputs, locked)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
+			require.ErrorIs(t, err, decimal.ErrOverflow)
 		})
 
-		t.Run("小計が決済スケールに収まっても税を加えると幅を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
+		t.Run("小計が上限をちょうど1セット超えるとErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
-			id := uuidtestkit.NewTestFromSalt(t, "p_tax_overflow")
-			userID := uuidtestkit.NewTestFromSalt(t, "u_tax_overflow")
-			productID := uuidtestkit.NewTestFromSalt(t, "prod_tax_overflow")
-			// $1e16 × 1 = 1e18 セント。int64 には収まるが、税額の算出で 10 倍すると幅を超える。
-			// 整数演算は溢れてもエラーを返さないため、ここで拒まなければ壊れた合計がそのまま確定する。
-			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_tax_overflow"), ProductID: productID, Quantity: 1}}
-			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "10000000000000000"), 5)}
+			id := uuidtestkit.NewTestFromSalt(t, "p_bound_over")
+			userID := uuidtestkit.NewTestFromSalt(t, "u_bound_over")
+			productID := uuidtestkit.NewTestFromSalt(t, "prod_bound_over")
+			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_bound_over"), ProductID: productID, Quantity: 1}}
+			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "9223372036854775.81"), 5)}
 
-			actual, err := New(id, "code-tax-overflow", userID, inputs, locked)
+			actual, err := New(id, "code-bound-over", userID, inputs, locked)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})

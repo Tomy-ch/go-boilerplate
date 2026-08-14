@@ -1,0 +1,14 @@
+name: days
+in: query
+description: |
+  今日から遡る日数。`period=recent` のときのみ必須で、それ以外の区分では無視します。
+  今日を終了日、今日の `days` 日前を開始日とし、両端の暦日を含みます
+  （2026-01-31 に `days=10` を指定した場合の対象は 2026-01-21 〜 2026-01-31 です）。
+  暦日はサーバのタイムゾーン（Asia/Tokyo）基準です。
+required: false
+schema:
+  type: integer
+  format: int32
+  minimum: 1
+  maximum: 365
+  example: 10

@@ -10,27 +10,14 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-const (
-	// PeriodToday は、今日を集計対象とする区分です。
-	PeriodToday PeriodKind = "today"
-	// PeriodMonth は、今月を集計対象とする区分です。
-	PeriodMonth PeriodKind = "month"
-	// PeriodRange は、Period の From / To で指定した期間を集計対象とする区分です。
-	PeriodRange PeriodKind = "range"
-)
-
-// PeriodKind は、集計対象期間の区分です。
-type PeriodKind string
-
-// Period は、集計対象期間の指定です。today / month の境界は現在時刻から、range の境界は
-// From / To の暦日から算出します。他の区分では From / To を参照しません。
-type Period struct {
-	// Kind は、集計対象期間の区分です。
-	Kind PeriodKind
-	// From / To は、Kind が PeriodRange のときの開始日・終了日です（両端を含みます）。
-	// 暦日としての年月日のみが意味を持ち、時刻部分は解釈しません。他の区分では参照しません。
-	From time.Time
-	To   time.Time
+// Window は、解決済みの集計対象期間です。半開区間 [After, Before) で表し、Before は終了日の翌日です。
+// 相対指定や暦月指定から暦日への解決は usecase 層が済ませているため、クエリサービスは境界をそのまま
+// SQL の述語へ渡します。
+type Window struct {
+	// After は、集計対象に含める最初の時刻です（この時刻を含みます）。
+	After time.Time
+	// Before は、集計対象に含めない最初の時刻です（この時刻を含みません）。
+	Before time.Time
 }
 
 // DashboardQueryService は、購入・商品を横断した admin ダッシュボード向け集計の参照を提供するクエリサービスです。
@@ -38,11 +25,11 @@ type Period struct {
 type DashboardQueryService interface {
 	// SummarizeSales は、指定期間に注文された購入の売上合計と件数を返します。
 	// キャンセル済みの購入は除外し、未払いの購入は含みます。対象がない場合はゼロ値を返します。
-	SummarizeSales(ctx context.Context, period Period) (SalesResult, error)
+	SummarizeSales(ctx context.Context, window Window) (SalesResult, error)
 	// CountPurchasesByStatus は、指定期間に注文された購入のステータス別件数を購入ステータスマスタの表示順で返します。
 	// SummarizeSales と異なりキャンセル済みも 1 ステータスとして含みます。
 	// 期間内に購入が存在しない場合は空スライスを返します（エラーとしません）。
-	CountPurchasesByStatus(ctx context.Context, period Period) ([]PurchaseStatusCountResult, error)
+	CountPurchasesByStatus(ctx context.Context, window Window) ([]PurchaseStatusCountResult, error)
 }
 
 // SalesResult は、売上集計の結果です。Amount は決済スケールの整数（USD セント）です。

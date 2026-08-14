@@ -2,6 +2,8 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -10,8 +12,10 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/users/me/purchases/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/purchase/period"
 	summaryuc "go-boilerplate/internal/usecase/purchase/summary"
 	mock_summaryuc "go-boilerplate/internal/usecase/purchase/summary/mock"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
@@ -37,12 +41,12 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).Return(summaryuc.SummaryView{
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).Return(summaryuc.SummaryView{
 				TotalCount:  3,
 				TotalAmount: 450,
 				StatusBreakdown: []summaryuc.StatusCountView{
 					{StatusID: uuidtestkit.NewTestFromSalt(t, "int_sm_unprocessed"), StatusName: "未処理", Count: 2, TotalAmount: 300},
-					{StatusID: uuidtestkit.NewTestFromSalt(t, "int_sm_canceled"), StatusName: "キャンセル", Count: 1, TotalAmount: 150},
+					{StatusID: uuidtestkit.NewTestFromSalt(t, "int_sm_paid"), StatusName: "支払い済み", Count: 1, TotalAmount: 150},
 				},
 			}, nil)
 
@@ -64,8 +68,8 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			userID := uuidtestkit.NewTestFromSalt(t, "int_sm_owner")
 			var capturedUserID uuid.UUID
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, authn *auth.Authn) (summaryuc.SummaryView, error) {
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, authn *auth.Authn, _ summaryuc.GetSummaryParams) (summaryuc.SummaryView, error) {
 					id, err := authn.UserID()
 					require.NoError(t, err)
 					capturedUserID = id
@@ -81,6 +85,79 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			assert.Equal(t, userID, capturedUserID)
 		})
 
+		t.Run("期間とグループ化のクエリがユースケースの入力へ届く", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var captured summaryuc.GetSummaryParams
+			uc := mock_summaryuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, params summaryuc.GetSummaryParams) (summaryuc.SummaryView, error) {
+					captured = params
+					return summaryuc.SummaryView{}, nil
+				},
+			)
+
+			usersmepurchases.BindHandler(e, tf, uc)
+
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_query"))
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, purchaseSummaryPath+"?period=recent&days=10&groupBy=category,product", nil, headers)
+			assert.Equal(t, http.StatusOK, actual.StatusCode)
+
+			assert.Equal(t, period.KindRecent, captured.Period.Kind)
+			require.NotNil(t, captured.Period.Days)
+			assert.Equal(t, 10, *captured.Period.Days)
+			// カンマ区切りの配列がその順序のまま bind されることを HTTP 経路で固定する。
+			assert.Equal(t, []summaryuc.GroupKind{summaryuc.GroupByCategory, summaryuc.GroupByProduct}, captured.GroupBy)
+		})
+
+		t.Run("グループ化した集計が入れ子のオブジェクトで直列化される", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			productID := uuidtestkit.NewTestFromSalt(t, "int_sm_product").String()
+			itemsTotal, err := decimal.Parse("980.00")
+			require.NoError(t, err)
+
+			uc := mock_summaryuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).Return(summaryuc.SummaryView{
+				ItemsTotal: itemsTotal,
+				Groups: map[string]summaryuc.GroupNodeView{
+					"電子機器": {
+						Name:       "電子機器",
+						ItemsTotal: itemsTotal,
+						Groups:     map[string]summaryuc.GroupNodeView{productID: {Name: "ノートPC", ItemsTotal: itemsTotal}},
+					},
+				},
+			}, nil)
+
+			usersmepurchases.BindHandler(e, tf, uc)
+
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_groups"))
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, purchaseSummaryPath+"?groupBy=category,product", nil, headers)
+			assert.Equal(t, http.StatusOK, actual.StatusCode)
+
+			resBody, err := io.ReadAll(actual.Body)
+			require.NoError(t, err)
+			var body gen.PurchaseAggregateResponse
+			require.NoError(t, json.Unmarshal(resBody, &body))
+
+			require.NotNil(t, body.Groups)
+			groups := *body.Groups
+			require.Contains(t, groups, "電子機器")
+			require.NotNil(t, groups["電子機器"].Groups)
+			require.Contains(t, *groups["電子機器"].Groups, productID)
+			assert.Equal(t, "ノートPC", (*groups["電子機器"].Groups)[productID].Name)
+		})
+
 		t.Run("購入が0件でもゼロ値の集計を200で返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -89,7 +166,7 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).Return(summaryuc.SummaryView{}, nil)
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).Return(summaryuc.SummaryView{}, nil)
 
 			usersmepurchases.BindHandler(e, tf, uc)
 
@@ -111,7 +188,7 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			usersmepurchases.BindHandler(e, tf, uc)
 
@@ -128,7 +205,7 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any()).Return(summaryuc.SummaryView{}, apperror.ErrInternal)
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).Return(summaryuc.SummaryView{}, apperror.ErrInternal)
 
 			usersmepurchases.BindHandler(e, tf, uc)
 

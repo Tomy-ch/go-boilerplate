@@ -17,7 +17,7 @@ methods:
   - name: CreatePurchase
     signature: CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
   - name: GetPurchases   # GET /v1/purchases（購入履歴一覧・cursor）。詳細は「## GET 一覧（購入履歴）」
-    signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error)
+    signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec) (*PurchaseListView, error)
   - name: GetPurchaseDetail # GET /v1/purchases/{purchaseId}（購入詳細・集約跨ぎ QS）。詳細は「## GET 詳細（購入詳細）」
     signature: GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
   - name: CancelPurchase # PATCH /v1/purchases/{purchaseId}/cancel。詳細は「## PATCH キャンセル」
@@ -139,6 +139,7 @@ output:
 input:
   - userID: uuid.UUID          # #583 が解決する認証主体の内部ユーザー ID（所有権フィルタ）
   - cursor: "*paging.Cursor"   # first（件数上限）+ after（不透明カーソル）
+  - spec: period.Spec          # 注文日時の対象期間（all / month / range / recent）。ゼロ値は全期間
 
 output:
   struct: PurchaseListView
@@ -153,20 +154,27 @@ cursor:
   keys: [ordered_at(RFC3339Nano), id(UUID)]
 
 dependencies:
-  - purchase.Repository            # FindFeedByUserID（所有権フィルタ + 子マスタ JOIN、[]FeedItem を返す）
+  - purchase.Repository            # FindFeedByUserID（所有権フィルタ + 期間絞り込み + 子マスタ JOIN、[]FeedItem を返す）
+  - purchase/period                # Spec の暦日境界への解決（clock + *time.Location に依存）
   - tools/paging                   # Cursor（decode/encode・件数ポリシー）
 
 workflow:
   tx_required: false               # read-only
   steps:
     - cursor を decode し keyset 境界（ordered_at, id）へ解釈（不正は ErrInvalidArgument → 400）
+    - period.Resolve(spec, clock.Now(), loc) で対象期間を暦日へ解決し、半開区間 [after, before) を params へ載せる
     - repo.FindFeedByUserID(userID, Limit+1) で所有者の購入を注文日時降順に取得
     - 取得件数 > limit なら hasNext=true とし末尾を切り詰め、末尾行から nextCursor を encode
     - PurchaseSummaryView へ写像（他ユーザーの購入は SQL の所有権フィルタで空扱い）
   errors:
-    - ErrInvalidArgument → 400（不正 cursor）
+    - ErrInvalidArgument → 400（不正 cursor / 区分ごとの必須指定の欠落 / to < from）
     - 未認証は controller で 401（Authn 不在）
 ```
+
+期間の絞り込みは keyset ページネーションと直交する。絞り込み条件はページ間で不変である前提で、
+呼び出し側はページ送りの間も同じ期間を渡す（条件が変われば keyset 境界の意味も変わるため連続性は保証しない）。
+一覧は対象期間をレスポンスに含めない（相対指定の解決結果を必要とするのは集計側だけで、一覧はカーソルが継続の
+責務を負っているため）。
 
 ## GET 詳細（購入詳細・集約跨ぎ QS）
 
@@ -216,8 +224,9 @@ workflow:
 
 ## GET 集計（購入サマリ・me）
 
-`GET /v1/users/me/purchases/summary`。認証主体自身の購入の総件数・合計金額・ステータス別内訳を返す集計読み取り経路
-（マイページの集計カード用。一覧・明細は返さない）。`COUNT` / `SUM` / `GROUP BY` の結果は購入集約を再構成できない
+`GET /v1/users/me/purchases/summary`。認証主体自身の購入の件数・支払金額・明細金額・ステータス別内訳と、
+要求されたグループ化単位の内訳を返す集計読み取り経路（マイページの集計カード用。一覧・明細は返さない）。
+`COUNT` / `SUM` / `GROUP BY` の結果は購入集約を再構成できない
 **派生投影**であり、[ADR-0030 (lightweight-cqrs)] が Repository から集計を明示除外しているため **QueryService**（`internal/usecase/purchase/query`）に置く
 （ステータス名解決だけで済む一覧の Repository read とは経路を分ける。集計は購入集約側に置き、user 配下には置かない）。
 配置判断は ADR-0030 (lightweight-cqrs) + `docs/rules.md` § Repository / QueryService Rules で既に固定化されているため**新規 ADR は発行しない**。
@@ -230,17 +239,25 @@ workflow:
 ```yaml
 input:
   - authn: "*auth.Authn"       # 認証主体。nil は Unauthenticated（401）。UserID() を QS の所有権述語へ渡す
+  - params: GetSummaryParams   # { Period period.Spec; GroupBy []GroupKind }
 
 output:
   struct: SummaryView          # package summary
   fields:
+    - name: Period
+      type: period.Window      # 集計に実際に用いた対象期間（解決済みの暦日）。全期間なら絞り込みなしを表す
     - name: TotalCount / TotalAmount
-      type: int64              # 総件数 / 合計金額（USD セント整数）。購入 0 件でも 0 を返しエラーにしない
+      type: int64              # 購入件数 / 支払金額（小計 + 税額 + 送料、USD セント整数）。対象 0 件でも 0 を返しエラーにしない
+    - name: ItemsTotal
+      type: decimal.Decimal    # 明細金額（単価 × 数量）の合計。価格スケールの正確な decimal（丸めない）
     - name: StatusBreakdown
-      type: "[]StatusCountView"  # { StatusID, StatusName, Count, TotalAmount }。購入に出現したステータスのみ・マスタ表示順（sort_key 昇順）
+      type: "[]StatusCountView"  # { StatusID, StatusName, Count, TotalAmount }。対象期間に出現したステータスのみ・マスタ表示順（sort_key 昇順）
+    - name: Groups
+      type: "map[string]GroupNodeView"  # GroupBy 指定時のみ。{ Name; ItemsTotal; Groups }（再帰）。未指定なら nil
 
 dependencies:
-  - query.PurchaseSummaryQueryService   # SummarizeByUserID（ステータス単位の COUNT / SUM・所有権 SQL 述語）
+  - query.PurchaseSummaryQueryService   # SummarizeByUserID / SumItemsByUserID / SummarizeItemsByProductByUserID
+  - purchase/period                     # Spec の暦日境界への解決（clock + *time.Location に依存）
   - observability.TracerFactory
 
 workflow:
@@ -248,16 +265,38 @@ workflow:
   steps:
     - authn == nil なら ErrUnauthenticated（401）
     - authn.UserID() を取得（未解決はエラー伝播）
-    - qs.SummarizeByUserID(userID) でステータス別の件数・金額を 1 クエリで取得
-    - ステータス別の集計値を総件数・合計金額へ畳み込み SummaryView へ写像（総計と内訳が同一スナップショットで整合する）
+    - period.Resolve(params.Period, clock.Now(), loc) で対象期間を暦日へ解決（レスポンスにも載せるため usecase で確定させる）
+    - GroupBy を検証（未知の単位・同一単位の重複は ErrInvalidArgument → 400）
+    - qs.SummarizeByUserID(userID, window) でステータス別の件数・金額を 1 クエリで取得
+    - GroupBy が空なら qs.SumItemsByUserID で明細金額の合計だけを取得（商品単位の行は読まない）
+    - GroupBy があれば qs.SummarizeItemsByProductByUserID の行を GroupBy の順に入れ子へ畳み込み、同じ行から合計も導く
+    - ステータス別の集計値を購入件数・支払金額へ畳み込み SummaryView へ写像（総計と内訳が同一スナップショットで整合する）
   errors:
     - ErrUnauthenticated → 401（Authn 不在）
+    - ErrInvalidArgument → 400（区分ごとの必須指定の欠落 / to < from / 不正な GroupBy）
 ```
 
-キャンセル済みの購入も総件数・合計金額に含める。キャンセルはステータス別内訳の 1 要素として件数・金額とも返るため、
-キャンセルを除いた値が必要なクライアントは内訳から差し引ける。総計から除外する設計は、内訳の母数と総計が食い違ううえ、
-「何を純額とするか」という業務方針を API に焼き込むことになるため採らない（会計・決済 API の慣行どおり、
-キャンセルを負値で表現することもしない。金額は非負のまま状態で区別する）。
+**キャンセル済みの購入はすべての集計値から除外する。** ステータス別内訳も同じ母集団に揃えるため、内訳に
+キャンセルのステータスは現れない。母集団を 1 つに保つことで `totalCount = Σ statusBreakdown.count` が常に成立する。
+代償として「内訳からキャンセル分を差し引く」使い方はできなくなるが、期間を指定した集計の主用途は支出額の把握であり、
+成立しなかった取引を含む合計は支出として読めない（会計・決済 API の慣行どおり、キャンセルを負値で表現することもしない。
+金額は非負のまま状態で区別する）。
+
+**金額は 2 つの尺度で返す。** `TotalAmount` は購入の支払金額（小計 + 税額 + 送料）の合計で決済スケールの整数セント、
+`ItemsTotal` は明細金額（単価 × 数量）の合計で価格スケールの正確な decimal。税額・送料は明細へ按分できないため
+両者は一致しない。`ItemsTotal` を決済スケールへ丸めないのは、[ADR-0036 (two-scale-quantity-model)] が丸めを
+「正確な量が決済確定値になる 1 箇所」に限っているためで、参照系の集計はその 1 箇所ではない。丸めをグループごとに
+行えば `Σ groups ≠ ItemsTotal` となり、内訳が合計を説明しなくなる。
+
+**グループ化のキーは単位ごとに異なる。** カテゴリは `product_categories.name` が UNIQUE なので名称をそのままキーにでき、
+商品は `products.name` に一意制約が無いため ID をキーにする（同名の別商品を 1 グループへ畳み込まないため）。
+どちらのノードも表示名は `Name` で返すので、クライアントはキーの形を意識せず表示できる。
+
+**ユースケースの `GroupNodeView` は再帰型だが、wire の応答スキーマは階層 2 段を別の型で表す**
+（`PurchaseGroupResponse` → `PurchaseSubGroupResponse`）。グループ化単位の上限が 2 である以上、
+再帰は契約として過剰なうえ、自己参照する component は `oapi-codegen` の tag 絞り込みで刈り取れず、
+購入と無関係な全ハンドラの生成物へ同じ型が複製される（実測 20 パッケージ超）。単位を 3 つに増やすときは
+スキーマを 1 段足す。
 
 ## PATCH キャンセル (purchase cancel)
 

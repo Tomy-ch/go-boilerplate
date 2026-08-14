@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
+	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/dashboard/query"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -19,6 +20,15 @@ import (
 
 // resourceKindDashboard は、認可対象リソースの種別です。
 const resourceKindDashboard = "dashboard"
+
+const (
+	// periodToday は、今日を集計対象とする区分です。
+	periodToday = "today"
+	// periodMonth は、今月を集計対象とする区分です。
+	periodMonth = "month"
+	// periodRange は、GetSummaryParams の From / To で指定した期間を集計対象とする区分です。
+	periodRange = "range"
+)
 
 // GetSummaryParams は、ダッシュボード集計取得ユースケースの入力パラメータです。
 type GetSummaryParams struct {
@@ -64,6 +74,8 @@ type usecase struct {
 	authorizer  authz.Authorizer
 	qs          query.DashboardQueryService
 	productRepo product.Repository
+	clk         clock.Clock
+	loc         *time.Location
 }
 
 // New は、admin ダッシュボードの横断集計の参照ユースケースを生成します。
@@ -71,6 +83,8 @@ func New(
 	qs query.DashboardQueryService,
 	productRepo product.Repository,
 	authorizer authz.Authorizer,
+	clk clock.Clock,
+	loc *time.Location,
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
@@ -78,6 +92,8 @@ func New(
 		authorizer:  authorizer,
 		qs:          qs,
 		productRepo: productRepo,
+		clk:         clk,
+		loc:         loc,
 	}
 }
 
@@ -98,16 +114,18 @@ func (u *usecase) GetDashboardSummary(
 		return SummaryView{}, err
 	}
 
-	period, err := normalizePeriod(params)
+	// 集計対象期間はここで暦日まで確定させる。現在時刻とタイムゾーンへの依存を usecase 層に集約し、
+	// クエリサービスへは解決済みの半開区間だけを渡す。
+	window, err := resolveWindow(params, u.clk.Now(), u.loc)
 	if err != nil {
 		return SummaryView{}, err
 	}
 
-	sales, err := u.qs.SummarizeSales(ctx, period)
+	sales, err := u.qs.SummarizeSales(ctx, window)
 	if err != nil {
 		return SummaryView{}, err
 	}
-	statusCounts, err := u.qs.CountPurchasesByStatus(ctx, period)
+	statusCounts, err := u.qs.CountPurchasesByStatus(ctx, window)
 	if err != nil {
 		return SummaryView{}, err
 	}
@@ -126,31 +144,46 @@ func (u *usecase) GetDashboardSummary(
 	}, nil
 }
 
-// normalizePeriod は、入力期間を集計区分へ正規化します。"month" / "range" のみ該当区分とし、それ以外は today として扱います。
-// range のときだけ開始日・終了日の相関を検証し、QueryService へは検証済みの指定だけが渡ります。
-func normalizePeriod(params GetSummaryParams) (query.Period, error) {
+// resolveWindow は、入力期間を集計対象の半開区間 [After, Before) へ解決します。
+// "month" / "range" のみ該当区分とし、それ以外は today として扱います。
+// range のときだけ開始日・終了日の相関を検証するため、QueryService へは検証済みの区間だけが渡ります。
+// 暦日の境界は loc で解釈します。loc は設定のタイムゾーンから構築された値であり、実行環境の time.Local には
+// 依存しません（コンテナの既定は UTC のため、依存させると設定と異なる暦日で集計してしまいます）。
+func resolveWindow(params GetSummaryParams, now time.Time, loc *time.Location) (query.Window, error) {
 	switch params.Period {
-	case string(query.PeriodMonth):
-		return query.Period{Kind: query.PeriodMonth}, nil
-	case string(query.PeriodRange):
+	case periodMonth:
+		// 呼出側の変換有無に依存せず loc 基準の暦日を得るため、ここで現在時刻を loc へ移す。
+		start := startOfMonth(now.In(loc), loc)
+		return query.Window{After: start, Before: start.AddDate(0, 1, 0)}, nil
+	case periodRange:
 		if params.From == nil || params.To == nil {
-			return query.Period{}, xerrors.Wrap(apperror.ErrInvalidArgument, "period=range requires both from and to")
+			return query.Window{}, xerrors.Wrap(apperror.ErrInvalidArgument, "period=range requires both from and to")
 		}
-		// 開始日・終了日は暦日のみが意味を持つため、比較も QueryService へ渡す値も暦日へ揃える。
-		from, to := dateOnly(*params.From), dateOnly(*params.To)
+		// From / To は利用者が指定した暦日そのものを表すため、now と違い loc へ変換してはならない
+		// （UTC より西のロケーションでは前日へずれる）。
+		from, to := startOfDay(*params.From, loc), startOfDay(*params.To, loc)
 		if to.Before(from) {
-			return query.Period{}, xerrors.Wrap(apperror.ErrInvalidArgument, "to must not be before from")
+			return query.Window{}, xerrors.Wrap(apperror.ErrInvalidArgument, "to must not be before from")
 		}
-		return query.Period{Kind: query.PeriodRange, From: from, To: to}, nil
+		return query.Window{After: from, Before: to.AddDate(0, 0, 1)}, nil
+	case periodToday:
+		start := startOfDay(now.In(loc), loc)
+		return query.Window{After: start, Before: start.AddDate(0, 0, 1)}, nil
 	default:
-		return query.Period{Kind: query.PeriodToday}, nil
+		start := startOfDay(now.In(loc), loc)
+		return query.Window{After: start, Before: start.AddDate(0, 0, 1)}, nil
 	}
 }
 
-// dateOnly は、時刻成分を落として t の暦日だけを表す時刻を返します。ロケーションは t のものを保ちます。
-func dateOnly(t time.Time) time.Time {
-	y, m, d := t.Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+// startOfDay は、t が表す年月日の開始時刻を loc のゾーンで返します。年月日は t 自身のロケーションで解釈し、
+// loc は返り値のゾーンとしてのみ用います（t を loc へ変換し直しません）。
+func startOfDay(t time.Time, loc *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
+}
+
+// startOfMonth は、t が表す年月の初日の開始時刻を loc のゾーンで返します。
+func startOfMonth(t time.Time, loc *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, loc)
 }
 
 // toStatusCountViews は、ステータス別件数の集計結果を出力 DTO へ写像します。
