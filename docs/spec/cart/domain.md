@@ -17,10 +17,18 @@
 知る第三者が認証済みユーザーのカートへ到達できる経路を、状態として存在させないため。認可側では所有者
 未確定のカートが `authz.Resource` の `ownerID = nil`（所有者概念なし）として扱われる唯一の実例になる。
 
-**カートは商品を知らない。** 価格・在庫・公開状態はいずれも保持せず、`productID` の参照のみを持つ。
-表示時にそれらを突き合わせて「在庫不足 / 値上がり / 非公開化」を判定するのは usecase 層の関心であり、
-ドメインは関与しない（[`usecase.md`](./usecase.md) の再評価）。ドメインが商品集約を参照しないため、
-カートの不変条件は商品の状態変化から独立し、商品が変わってもカートが不正にならない。
+**カートは商品を保持しない。** 価格・在庫・公開状態はいずれも持たず、`productID` の参照のみを持つ。
+ドメインが商品集約を参照しないため、カートの不変条件は商品の状態変化から独立し、商品が変わっても
+カートが不正にならない。
+
+**ただし「在庫不足 / 値上がり / 非公開化」の判定はドメインが行う。** 商品を参照できないことは、判定を
+ドメインの外へ出す理由にはならない（[`internal/domain/README.md`](../../../internal/domain/README.md)
+§ Not reaching another aggregate is not a reason to leave the domain）。判定に要る属性だけを持つ
+`ProductSnapshot` を usecase から受け取り、`CartItem.Evaluate` が答える。スナップショットは保持せず
+判定のたびに渡されるため、上の独立性はそのまま保たれる。
+
+これは「この 1 明細とこの 1 商品で在庫は足りるか」という 1 つの物についての問いなので、明細自身が
+答える（同 § One thing or a set）。結果は表示のための参考情報であり、カートの不変条件を左右しない。
 
 `id` は UUIDv7（[ADR-0035 (uuidv7-identifiers)]）で、生成は usecase 層が行いドメインへ渡す。有効期限
 `expiresAt` も同様に、時刻境界（clock）から供給された `now` を受け取って算出する（ドメインは時刻へ直接
@@ -180,6 +188,17 @@ fields:
   behavior: |
     指定ユーザーが所有者かを返す。所有者未確定（ゲスト）のカートは常に false。認可判断そのものは
     usecase 層の Authorizer が担い、本述語はその入力となる所有関係を定義する。
+
+- name: CartItem.Evaluate
+  signature: Evaluate(snapshot *ProductSnapshot) Evaluation
+  behavior: |
+    明細 1 件を商品の観測値と突き合わせ、再評価結果を返す。snapshot が nil は商品を引けなかったことを
+    表し、IssueNotFound だけが立つ（在庫も価格も判定材料が無いため）。それ以外では公開状態・在庫・
+    価格差をそれぞれ独立に判定し、成立したものを併記する。在庫 0 は「不足」ではなく「無い」であるため
+    IssueOutOfStock と IssueInsufficientStock は同時に立たない。lastSeenPrice が無い（初回表示）明細は
+    価格差を判定しない。
+    結果は表示のための参考情報であり、カートの不変条件を左右しない。拘束力を持たないことは配置の理由に
+    ならず、業務上の判断である以上ドメインが持つ。
 ```
 
 ## Value Objects
@@ -195,6 +214,39 @@ fields:
   methods:
     - name: Value
       returns: string
+
+- name: ProductSnapshot
+  underlying_type: struct    # quantity int / price money.Price / published bool
+  validation: |
+    検証しない。再評価した時点で観測した商品の値をそのまま運ぶ値であり、正しさは観測元（商品集約）が
+    既に保証している。カートはこれを保持せず、判定のたびに受け取って捨てる。
+    商品集約を import できないカートが、判定に要る属性だけを値として受け取るための型
+    （purchase の LockedProduct と同型）。
+  factory: NewProductSnapshot
+  methods:
+    - name: Price
+      returns: money.Price
+
+- name: Evaluation
+  underlying_type: struct    # issues []Issue / availableQuantity *int
+  validation: |
+    検証しない。CartItem.Evaluate の戻り値であり、外から組み立てない。
+  methods:
+    - name: Issues
+      returns: "[]Issue"
+    - name: AvailableQuantity
+      returns: "*int"
+```
+
+```yaml
+enum: Issue                  # 明細を商品の観測値と突き合わせた結果
+values:
+  - notFound                 # 商品が引けない。単独で立ち、他の issue は併記しない
+  - unpublished              # 非公開化された
+  - outOfStock               # 在庫 0。insufficientStock とは排他
+  - insufficientStock        # 在庫 < 要求数量（AvailableQuantity に上限を添える）
+  - priceIncreased           # lastSeenPrice より高い
+  - priceDecreased           # lastSeenPrice より安い
 ```
 
 ## Repository Methods

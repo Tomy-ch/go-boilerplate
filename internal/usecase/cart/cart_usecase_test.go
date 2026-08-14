@@ -37,7 +37,9 @@ func newPrice(t *testing.T, amount string) money.Price {
 	return p
 }
 
-func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int, published bool) *product.Product {
+// newTestProduct は、公開中の商品を組み立てるテストヘルパーです。
+// 公開状態による判定はドメインが持つため、この層のテストで非公開を作り分ける必要はありません。
+func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int) *product.Product {
 	t.Helper()
 
 	status, err := product.NewStatusRef(uuidtestkit.NewTestFromSalt(t, "cart_status"), "販売中")
@@ -45,18 +47,13 @@ func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int, pub
 	category, err := product.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "cart_category"), "家具")
 	require.NoError(t, err)
 
-	var publishedAt *time.Time
-	if published {
-		publishedAt = ptr.To(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
-	}
-
 	p, err := product.New(id, product.Attributes{
 		Name:        "テスト商品",
 		Price:       newPrice(t, amount),
 		Quantity:    quantity,
 		Status:      status,
 		Category:    category,
-		PublishedAt: publishedAt,
+		PublishedAt: ptr.To(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)),
 	})
 	require.NoError(t, err)
 	return p
@@ -152,118 +149,105 @@ func Test_evaluateItem(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("在庫も価格も問題なければissuesは空で商品の現在値を載せる", func(t *testing.T) {
+		t.Run("商品の観測値をドメインへ渡し結果を DTO へ写す", func(t *testing.T) {
 			t.Parallel()
 
-			seen := newPrice(t, "19.99")
-			item := newTestCartItem(t, "cart_eval_ok", productID, 2, &seen)
+			seen := newPrice(t, "10.00")
+			item := newTestCartItem(t, "cart_eval_delegate", productID, 3, &seen)
 
-			actual := evaluateItem(item, newTestProduct(t, productID, "19.99", 5, true))
+			// 在庫不足かつ値上がりになる観測値を渡し、判定結果がそのまま写っていることを確かめる。
+			actual := evaluateItem(item, newTestProduct(t, productID, "12.00", 1))
 
-			assert.Empty(t, actual.Issues)
+			assert.Equal(t, []ItemIssue{ItemIssueInsufficientStock, ItemIssuePriceIncreased}, actual.Issues)
+			require.NotNil(t, actual.AvailableQuantity)
+			assert.Equal(t, 1, *actual.AvailableQuantity)
 			assert.Equal(t, productID, actual.ProductID)
-			assert.Equal(t, 2, actual.Quantity)
+			assert.Equal(t, 3, actual.Quantity)
 			require.NotNil(t, actual.ProductName)
 			assert.Equal(t, "テスト商品", *actual.ProductName)
 			require.NotNil(t, actual.UnitPrice)
-			assert.Equal(t, "19.99", actual.UnitPrice.String())
-			assert.Nil(t, actual.AvailableQuantity)
+			assert.Equal(t, "12", actual.UnitPrice.String())
 		})
 
-		t.Run("商品を引けない場合はnotFoundだけを立て単価と商品名を持たない", func(t *testing.T) {
+		t.Run("商品を引けない場合は商品名と単価を持たない", func(t *testing.T) {
 			t.Parallel()
 
-			seen := newPrice(t, "19.99")
-			item := newTestCartItem(t, "cart_eval_notfound", productID, 2, &seen)
+			item := newTestCartItem(t, "cart_eval_notfound", productID, 2, nil)
 
 			actual := evaluateItem(item, nil)
 
-			// 在庫も価格も判定材料が無いため、他の issue は立てられない。
 			assert.Equal(t, []ItemIssue{ItemIssueNotFound}, actual.Issues)
 			assert.Nil(t, actual.ProductName)
 			assert.Nil(t, actual.UnitPrice)
 			assert.Nil(t, actual.AvailableQuantity)
 		})
 
-		t.Run("非公開の商品はunpublishedを立てつつ在庫と価格も判定する", func(t *testing.T) {
+		t.Run("問題が無ければ issue は空スライスになる", func(t *testing.T) {
 			t.Parallel()
 
-			seen := newPrice(t, "10.00")
-			item := newTestCartItem(t, "cart_eval_unpublished", productID, 2, &seen)
+			item := newTestCartItem(t, "cart_eval_ok", productID, 1, nil)
 
-			actual := evaluateItem(item, newTestProduct(t, productID, "12.00", 0, false))
+			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
 
-			assert.Equal(
-				t,
-				[]ItemIssue{ItemIssueUnpublished, ItemIssueOutOfStock, ItemIssuePriceIncreased},
-				actual.Issues,
-			)
-		})
-
-		t.Run("在庫0はoutOfStockのみでinsufficientStockを立てない", func(t *testing.T) {
-			t.Parallel()
-
-			item := newTestCartItem(t, "cart_eval_oos", productID, 3, nil)
-
-			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 0, true))
-
-			assert.Equal(t, []ItemIssue{ItemIssueOutOfStock}, actual.Issues)
-			assert.Nil(t, actual.AvailableQuantity)
-		})
-
-		t.Run("在庫が数量に満たない場合はinsufficientStockと購入可能上限を返す", func(t *testing.T) {
-			t.Parallel()
-
-			item := newTestCartItem(t, "cart_eval_insufficient", productID, 3, nil)
-
-			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 1, true))
-
-			assert.Equal(t, []ItemIssue{ItemIssueInsufficientStock}, actual.Issues)
-			require.NotNil(t, actual.AvailableQuantity)
-			assert.Equal(t, 1, *actual.AvailableQuantity)
-		})
-
-		t.Run("在庫が数量ちょうどの場合は在庫のissueを立てない", func(t *testing.T) {
-			t.Parallel()
-
-			item := newTestCartItem(t, "cart_eval_exact", productID, 3, nil)
-
-			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 3, true))
-
+			// nil ではなく空スライスであることが、JSON で null ではなく [] になる条件。
+			assert.NotNil(t, actual.Issues)
 			assert.Empty(t, actual.Issues)
 		})
+	})
+}
 
-		t.Run("提示済み価格より安ければpriceDecreasedを立てる", func(t *testing.T) {
+func Test_toItemIssues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ドメインの値を DTO の語彙へ写す", func(t *testing.T) {
 			t.Parallel()
 
-			seen := newPrice(t, "20.00")
-			item := newTestCartItem(t, "cart_eval_down", productID, 1, &seen)
+			actual := toItemIssues([]cart.Issue{cart.IssueOutOfStock, cart.IssuePriceDecreased})
 
-			actual := evaluateItem(item, newTestProduct(t, productID, "18.00", 5, true))
-
-			assert.Equal(t, []ItemIssue{ItemIssuePriceDecreased}, actual.Issues)
+			assert.Equal(t, []ItemIssue{ItemIssueOutOfStock, ItemIssuePriceDecreased}, actual)
 		})
 
-		t.Run("提示済み価格と同額なら価格のissueを立てない", func(t *testing.T) {
+		t.Run("空の場合は nil ではない空スライスを返す", func(t *testing.T) {
 			t.Parallel()
 
-			seen := newPrice(t, "20.00")
-			item := newTestCartItem(t, "cart_eval_same", productID, 1, &seen)
+			actual := toItemIssues(nil)
 
-			actual := evaluateItem(item, newTestProduct(t, productID, "20.00", 5, true))
-
-			assert.Empty(t, actual.Issues)
+			assert.NotNil(t, actual)
+			assert.Empty(t, actual)
 		})
+	})
+}
 
-		t.Run("初回表示は価格差を判定しない", func(t *testing.T) {
+func Test_toItemIssue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("すべての値が DTO の語彙へ対応する", func(t *testing.T) {
 			t.Parallel()
 
-			item := newTestCartItem(t, "cart_eval_first", productID, 1, nil)
+			// 対応が 1 つでも欠けると panic するため、全値を通すことが写像の網羅性の担保になる。
+			assert.Equal(t, ItemIssueNotFound, toItemIssue(cart.IssueNotFound))
+			assert.Equal(t, ItemIssueUnpublished, toItemIssue(cart.IssueUnpublished))
+			assert.Equal(t, ItemIssueOutOfStock, toItemIssue(cart.IssueOutOfStock))
+			assert.Equal(t, ItemIssueInsufficientStock, toItemIssue(cart.IssueInsufficientStock))
+			assert.Equal(t, ItemIssuePriceIncreased, toItemIssue(cart.IssuePriceIncreased))
+			assert.Equal(t, ItemIssuePriceDecreased, toItemIssue(cart.IssuePriceDecreased))
+		})
+	})
 
-			// 比較の基準が無い状態で「値上がり」と言えないため、提示済み価格が無ければ判定しない。
-			actual := evaluateItem(item, newTestProduct(t, productID, "999.00", 5, true))
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
-			assert.Empty(t, actual.Issues)
+		t.Run("対応を持たない値は panic する", func(t *testing.T) {
+			t.Parallel()
+
+			// 黙って既定値へ倒すと、ドメインに値が増えたとき応答だけが静かに嘘になる。
+			assert.Panics(t, func() { _ = toItemIssue(cart.Issue("unknown")) })
 		})
 	})
 }
@@ -285,7 +269,7 @@ func Test_evaluateItems(t *testing.T) {
 				newTestCartItem(t, "cart_items_b", missingID, 1, nil),
 			}
 			products := map[uuid.UUID]*product.Product{
-				foundID: newTestProduct(t, foundID, "10.00", 5, true),
+				foundID: newTestProduct(t, foundID, "10.00", 5),
 			}
 
 			views, seen := evaluateItems(items, products)
@@ -374,16 +358,21 @@ func Test_subtotalAmount(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("決済スケールへ落とせない大きさならエラーを返す", func(t *testing.T) {
+		t.Run("決済スケールへ落とせない大きさなら分類済みエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// 商品価格に上限が無いため、桁数の大きい単価が合算に混ざり得る。
-			// 黙って壊れた値を返さないことを固定する。
-			price, err := decimal.Parse("100000000000000000000")
+			// 単価 1 件は money.Price の構築時に検証されるため、幅を超えるのは合算の結果に限られる。
+			// 上限ちょうどの単価を 2 明細ぶん積み、黙って壊れた値を返さないことを固定する。
+			price, err := decimal.Parse("92233720368547758.07")
 			require.NoError(t, err)
 
-			_, err = subtotalAmount([]CartItemView{{UnitPrice: &price, Quantity: 1}})
+			_, err = subtotalAmount([]CartItemView{
+				{UnitPrice: &price, Quantity: 1},
+				{UnitPrice: &price, Quantity: 1},
+			})
 
+			// 未分類のまま外へ出ると 500 の理由が追えないため、apperror へ分類されていることを固定する。
+			require.ErrorIs(t, err, apperror.ErrInternal)
 			require.ErrorIs(t, err, decimal.ErrOverflow)
 		})
 	})
@@ -499,7 +488,7 @@ func Test_usecase_findProducts(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			expected := newTestProduct(t, productID, "10.00", 5, true)
+			expected := newTestProduct(t, productID, "10.00", 5)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
