@@ -206,7 +206,7 @@ func New(
 	// 価格スケール→決済スケールの丸め（切り捨て）。以降は整数セントで計算する（ADR-0036 (two-scale-quantity-model)）。
 	subtotalCents, err := subtotalDollars.Truncate(minorUnitDigits).ToScaledInt64(minorUnitDigits)
 	if err != nil {
-		return nil, xerrors.Wrap(ErrInvalidAmount, "subtotal exceeds the settlement range: "+err.Error())
+		return nil, xerrors.Join(ErrInvalidAmount, xerrors.Wrap(err, "subtotal exceeds the settlement range"))
 	}
 	if subtotalCents > maxSubtotalCents {
 		return nil, xerrors.Wrap(

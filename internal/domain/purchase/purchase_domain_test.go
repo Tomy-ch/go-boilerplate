@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/lexicon/money"
+	"go-boilerplate/pkg/decimal"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -265,6 +266,7 @@ func TestNew(t *testing.T) {
 			actual, err := New(id, "code-overflow", userID, inputs, locked)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
+			require.ErrorIs(t, err, decimal.ErrOverflow)
 		})
 
 		t.Run("小計が上限をちょうど1セット超えるとErrInvalidAmountを返す", func(t *testing.T) {
