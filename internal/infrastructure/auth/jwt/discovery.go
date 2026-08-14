@@ -42,7 +42,7 @@ type openidConfiguration struct {
 }
 
 // discoveryResolver は、issuer から OIDC discovery 経由で jwks_uri を解決します。
-// 取得結果を discovery TTL でキャッシュし、issuer 厳密一致・https・同一オリジンを検証します（信頼境界外の応答として）。
+// 取得結果は discovery TTL でキャッシュし、応答は信頼境界外として検証します（検証項目は README 参照）。
 type discoveryResolver struct {
 	client        httpclient.Client
 	tracer        observability.LayerTracer

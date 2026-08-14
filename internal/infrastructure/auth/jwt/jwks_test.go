@@ -309,16 +309,18 @@ func Test_parseJWKSKeys(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("JSON が不正な場合はエラーになる", func(t *testing.T) {
+		t.Run("JSON が不正な場合は文書ごと利用不能として分類される", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseJWKSKeys([]byte("{"), testAllowedAlgs)
 			require.ErrorIs(t, err, errJWKSMalformed)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 		})
 
-		t.Run("利用可能な鍵が無い場合はエラーになる", func(t *testing.T) {
+		t.Run("利用可能な鍵が無い場合は文書ごと利用不能として分類される", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseJWKSKeys([]byte(`{"keys":[]}`), testAllowedAlgs)
 			require.ErrorIs(t, err, errJWKSNoKeys)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 		})
 
 		t.Run("重複する kid を含む場合は文書ごと不採用になる", func(t *testing.T) {
@@ -335,6 +337,7 @@ func Test_parseJWKSKeys(t *testing.T) {
 
 			_, err = parseJWKSKeys(raw, testAllowedAlgs)
 			require.ErrorIs(t, err, errJWKSDuplicateKID)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 		})
 	})
 }
@@ -597,6 +600,8 @@ func Test_jwksResolver_ResolveKey(t *testing.T) {
 			_, err := r.ResolveKey(context.Background(), "absent-kid")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 			require.ErrorIs(t, err, errJWKSNoMatchingKID)
+			// 特定 kid の不在は文書が使えないことを意味しないため、利用不能へは分類しない。
+			require.NotErrorIs(t, err, apperror.ErrUnavailable)
 		})
 
 		t.Run("直近取得が成功なら cooldown 中の未知 kid は再取得せず拒否する", func(t *testing.T) {
@@ -643,6 +648,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			_, err = r.ResolveKey(context.Background(), "absent-kid")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 			require.ErrorIs(t, err, errJWKSKIDKnownAbsent)
+			require.NotErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Equal(t, 1, cc.count(), "不在確定 kid は cooldown 経過後も再取得しない")
 		})
 
@@ -725,6 +731,7 @@ func Test_jwksResolver_negativeCache(t *testing.T) {
 			_, err = r.ResolveKey(context.Background(), "bogus")
 			require.NotErrorIs(t, err, ErrJWTAuthenticatorInvalidToken)
 			require.ErrorIs(t, err, errJWKSKIDKnownAbsent)
+			require.NotErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Equal(t, 2, cc.count(), "集合不変なら bogus kid の negative を保持し再取得しない")
 		})
 
