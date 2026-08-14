@@ -19,7 +19,7 @@
 
 | コンポーネント | 側 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
-| **auth ミドルウェア**（`httpstack/oapi` + `oapi/auth`） | RS / controller | 保護ルートで `security:` を強制: `Bearer` 抽出→Authenticator→IdentityResolver、`Authn` を context へ、失敗は `401` | 検証ロジック・業務ロジック |
+| **auth ミドルウェア**（`httpstack/oapi` + `oapi/auth`） | RS / controller | 保護ルートで `security:` を強制: `Bearer` 抽出→Authenticator→IdentityResolver を**リクエストの** context 下で実行、`Authn` を context へ、資格情報を拒否した場合は `401`、検証を遂行できなかった場合は分類に応じたステータス | 検証ロジック・業務ロジック |
 | **Authenticator**（`infrastructure/auth/jwt`） | RS / infrastructure | 署名（RS256 allowlist）+ claim（`iss`/`aud`/`exp`/`nbf`/`sub`）+ `typ=at+jwt` を検証、`kid` で鍵解決 | 鍵発行・identity・HTTP ポリシー |
 | **JWKS resolver**（`jwt/jwks.go`） | RS / infrastructure | 回復力のある `httpclient` 経由で JWK Set を取得、`kid → RSA 鍵` を TTL キャッシュ、miss 時に cooldown 下で再取得 | claim 検証 |
 | **IdentityResolver**（`usecase/boundary/auth`） | RS / usecase 境界 | `(issuer, subject)` → 内部 `userID`、未知/削除は `401` | トークン検証 |
@@ -28,7 +28,7 @@
 
 設計原則（不変条件）:
 
-- **Fail-closed。** すべての検証失敗を `apperror.ErrUnauthenticated`（`401`）に正規化する。原因はログ/トレース用にエラーチェーンへ保持し、呼び出し側は正規化された `401` のみを見る。
+- **Fail-closed。** どのエラーもアクセスを許可しない。資格情報について結論を出した検証*失敗*は `apperror.ErrUnauthenticated`（`401`）へ正規化し、原因はログ/トレース用にエラーチェーンへ保持する。検証を*遂行できなかった*ことは別の事実であり、分類を保つ —— 署名鍵を取得できない場合やリクエストの context が終了した場合、エラーは `apperror.ErrUnavailable`（`503`）/ `apperror.ErrCanceled`（`499`）のまま返る。トークンについて何も述べていないためで、`401` にすると誰も検査していない資格情報を直すようクライアントへ伝えることになる。いずれも拒否であり、違うのは報告する理由だけ。
 - **標準コアのみ。** RS256 allowlist（`alg=none` と `HS256` は常に拒否 — 鍵混同攻撃対策）、`iss`/`aud`/`exp`/`nbf`/`sub`、`typ=at+jwt`（RFC 9068）で ID Token 誤用を拒否。IdP 方言（Cognito `token_use`、Azure `scp`）は**拡張ポイント**で組み込まない。
 - **Split-horizon。** `issuer`（token の `iss`、ホスト/ブラウザ解決可能）と **JWKS 取得 URL**（コンテナ内部）を分離する。`AUTH_JWKS_URL` を内部 URL に設定し、`iss` はホスト解決可能なまま鍵取得はコンテナ名を使う。
 - **Provider は dev 限定。** `/bypass/*` ・ `/admin/*` は dev-gate、`NODE_ENV=production` では起動拒否。
@@ -93,13 +93,14 @@ sequenceDiagram
     MW-->>C: → handler（業務ロジック）
 ```
 
-### 3.2 RS のトークン検証 — 異常パス（すべて `401` に正規化）
+### 3.2 RS のトークン検証 — 異常パス（結論を出した失敗はすべて `401` に正規化）
 
 ```mermaid
 flowchart TD
     S["受信リクエスト"] --> H{"Bearer あり?"}
     H -- なし --> E1["401 token not provided"]
     H -- あり --> K{"kid 解決可能?"}
+    K -- "JWKS へ到達不能 / context 終了" --> E7["503 または 499 — 結論に至らない"]
     K -- "未知 kid（cooldown 抑制の再取得後）" --> E2["401 invalid token"]
     K -- はい --> V{"署名 + iss/aud/exp/nbf 妥当?"}
     V -- いいえ --> E3["401 invalid token"]
@@ -218,5 +219,5 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 | **Authn** | 検証済み（identity は任意で未解決）の結果（`subject`・`issuer`・`scopes`・`claims`、identity 解決後は内部 `userID`）。 |
 | **identity 解決** | `(issuer, subject)` を内部アプリの `userID` に対応づけること。トークン検証とは別の関心事。 |
 | **dev-gate** | `MOCK_AUTH_DEV_ENDPOINTS` スイッチ。無効時に `/bypass/*` ・ `/admin/*` を `404` で隠す。 |
-| **Fail-closed** | 検証エラーは常に拒否（`401`）に倒す。default-allow にしない。 |
+| **Fail-closed** | 検証エラーは常に拒否に倒し、default-allow にしない。資格情報を拒否した場合は `401`、結論に至らなかった場合は `503` / `499`。 |
 | **アルゴリズム allowlist** | 受理する署名アルゴリズム集合（既定 `RS256`）。`alg=none` / `HS256` は鍵混同防止のため常に拒否。 |
