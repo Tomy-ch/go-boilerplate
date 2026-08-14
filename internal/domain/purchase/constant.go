@@ -1,5 +1,7 @@
 package purchase
 
+import "math"
+
 const (
 	// taxRatePercent は、国内消費税率（パーセント）です。
 	taxRatePercent = 10
@@ -16,4 +18,10 @@ const (
 
 	// minQuantity は、明細 1 件あたりの最小購入数量です。
 	minQuantity = 1
+
+	// maxSubtotalCents は、税と送料を加えても決済スケールの整数幅に収まる小計の上限です。
+	// 税額の算出が小計に taxRatePercent を掛けるため、その積が幅に収まる範囲がそのまま上限になります
+	// （合計はこの上限の下では常に収まります）。整数演算は溢れてもエラーを返さないため、
+	// 幅に収まらない小計は算術に入る前に拒む必要があります。
+	maxSubtotalCents = math.MaxInt64 / taxRatePercent
 )
