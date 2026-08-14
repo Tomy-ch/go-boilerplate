@@ -24,7 +24,7 @@ import (
 )
 
 // issuedSessionToken は、採番し直したときに返す想定の 43 文字トークン。
-const issuedSessionToken = "ZYXWVUTSRQPONMLKJIHGFEDCBA9876543210_-abcde"
+const issuedSessionToken = "issued-session-token-for-tests-000000000000"
 
 // maxUnitPrice は、money.Price が受理する上限の単価。2 件積むと決済スケールを超える。
 const maxUnitPrice = "92233720368547758.07"
