@@ -527,6 +527,10 @@ patterns:
       トランザクションの道具であり、所有者はトランザクションを開く側である）ため usecase 層に置かれ、
       「ドメイン層に第二の永続化契約が並ぶ」という差異は無い。残る差異は seam の存在そのもので、
       これは上記のとおり ADR-0030 (lightweight-cqrs) の Alternatives で宣言済み。
+      書き込みメソッドの契約は docs/design/data-access-pattern.md § Write side が定める。1 メソッドが
+      単独で集約を整合させ、別の Repository 呼び出しを順序付きで要求しないこと（子の集合は同一性を鍵に
+      同期する）を要求し、単独で整合する複数メソッド（1 列更新・状態遷移ごとの 1 本）は適法とする。
+      Evans が集約単位の save を語る粒度をメソッド本数ではなく契約の保証内容で読んだもので、差異は無い。
     interpreted_by:
       - kind: adr
         id: "0030"
@@ -540,6 +544,9 @@ patterns:
       - kind: doc
         path: docs/rules.md
         section: "Repository / QueryService Rules / Transaction Rules"
+      - kind: doc
+        path: docs/design/data-access-pattern.md
+        section: "Write side / The Repository write contract"
       - kind: readme
         path: internal/domain/README.md
         section: "Dependency inversion for Infrastructure layer / Doc comments stay in domain vocabulary / The constructor is the Factory"

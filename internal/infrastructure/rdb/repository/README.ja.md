@@ -28,7 +28,7 @@ flowchart TB
 |原則|Repository での実現|
 |---|---|
 |依存性逆転|Domain が interface を定義し、Infrastructure が実装する|
-|Aggregate 境界の保護|永続化の単位は Aggregate 単位で行う|
+|Aggregate 境界の保護|永続化の単位は Aggregate 単位で行う。各書き込みメソッドが何を保証すべきかは [data-access-pattern](../../../../docs/design/data-access-pattern.ja.md) § 書き側 が決める|
 |Domain の純粋性維持|Domain は DB / SQL / フレームワークを知らない|
 |不変条件の検証|Domain constructor 経由でのみ Entity を再構成する|
 
