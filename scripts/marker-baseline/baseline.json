@@ -51,6 +51,7 @@
   "internal/di/module/authz.go": 9,
   "internal/di/module/controller.go": 27,
   "internal/di/module/core/auth.go": 6,
+  "internal/di/module/infrastructure.go": 1,
   "internal/di/module/job.go": 6,
   "internal/di/module/persistence.go": 18,
   "internal/di/module/usecase_test.go": 13,
@@ -62,8 +63,8 @@
   "internal/di/README.md": 1,
   "internal/domain/lexicon/README.ja.md": 4,
   "internal/domain/lexicon/README.md": 4,
-  "internal/domain/README.ja.md": 3,
-  "internal/domain/README.md": 3,
+  "internal/domain/README.ja.md": 13,
+  "internal/domain/README.md": 15,
   "internal/infrastructure/publisher/publisher_test.go": 8,
   "internal/infrastructure/publisher/publisher.go": 12,
   "internal/infrastructure/publisher/README.ja.md": 2,
@@ -87,6 +88,5 @@
   "scripts/setup/lib/markers.test.ts": 1,
   "scripts/setup/remove-boilerplate-identity/targets.test.ts": 2,
   "scripts/setup/remove-sample-api/sample-api.test.ts": 28,
-  "scripts/setup/remove-sample-api/sample-manifest.ts": 2,
-  "internal/di/module/infrastructure.go": 1
+  "scripts/setup/remove-sample-api/sample-manifest.ts": 2
 }
