@@ -1,7 +1,12 @@
-// Package main は Dockerfile の `FROM` base image と docker compose の `image:` を
-// 不変の digest へ固定するツール。
+// Package main は Dockerfile の `FROM` base image、docker compose の `image:`、そして
+// workflow / composite action の `uses: docker://` を不変の digest へ固定するツール。
 //
-//	resolve: docker/*/Dockerfile の FROM と docker-compose*.yaml の image: を走査し、
+// registry の image を指す参照は、書かれた場所によらずこの機構が持つ。`uses:` の行であっても
+// 参照先は GitHub のリポジトリではないため、tag を git ls-remote で commit へ解決する
+// pin-actions では扱えない（docs/design/security.md）。
+//
+//	resolve: docker/*/Dockerfile の FROM、docker-compose*.yaml の image:、.github の
+//	         uses: docker:// を走査し、
 //	         image:tag を registry の現在 digest へ解決して lockfile (docker/images-pin.toml) へ書き出す。
 //	apply:   lockfile を SSOT に各参照を `image:tag@sha256:...` へ固定する（FROM は AS stage を保持）。
 //	check:   apply と同じ判定を書き換えなしで行い、未固定/未登録/drift があれば非ゼロ終了する（CI / hook 用）。
@@ -24,6 +29,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -50,6 +56,19 @@ var (
 	// docker compose service の `image: <ref>`。FROM と同じ prefix/ref/suffix の 3 グループ構成に
 	// して rewritePins を共用する。suffix は末尾空白と行末コメントを取り込み保持する。
 	composeImageRe = regexp.MustCompile(`(?m)^([ \t]+image:[ \t]+)(\S+)([ \t]*(?:#.*)?)$`)
+	// workflow / composite action の `uses: [-] docker://<ref>`。GitHub Actions が registry の
+	// image を直接実行するステップの記法で、参照先は GitHub のリポジトリではない。pin-actions は
+	// tag を git ls-remote で commit へ解決する機構なので registry には効かず、digest を扱う
+	// こちらが持つ（docs/design/security.md）。
+	//
+	// ref に tag を必須とするのは、省略が :latest を意味するため。tag 無しを通すと parseRef が
+	// false を返して固定対象から静かに外れ、可動タグのまま CI で走る。一致しない形は
+	// detectLooseDockerUses が拾って fail-close する。
+	usesDockerRe = regexp.MustCompile(
+		`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*docker://)((?:[^\s@]+/)?[^\s@/:]+:[^\s@/]+(?:@\S+)?)([ \t]*(?:#.*)?)$`)
+	// usesDockerRe の取りこぼしを拾う緩いパターン。引用符付き・flow mapping・tag 無しのいずれも
+	// ここへ落ちる。owner/repo 形式の uses: には反応しない（pin-actions の担当）。
+	looseDockerUsesRe = regexp.MustCompile(`\buses[ \t]*:[ \t]*["']?docker://`)
 	// lockfile 行: "image:tag" = "sha256:..."
 	lockRe   = regexp.MustCompile(`^"([^"]+)"\s*=\s*"(sha256:[0-9a-f]+)"`)
 	digestRe = regexp.MustCompile(`(?m)^Digest:[ \t]+(sha256:[0-9a-f]+)`)
@@ -72,12 +91,16 @@ var (
 	errPinDrift = xerrors.New("image 参照が未固定か lockfile と不一致です")
 	// errNoStepBack は、退行先の無い出来立て digest しか無く採用を見送った場合のエラー。
 	errNoStepBack = xerrors.New("退行先の無い出来立て image は採用できません")
+	// errLooseDockerUses は、固定対象として解釈できない docker:// の uses: を検出した場合のエラー。
+	errLooseDockerUses = xerrors.New("固定対象として解釈できない uses: docker:// があります")
 )
 
 // target は走査対象のファイルと、その参照行を捕捉する正規表現（prefix/ref/suffix の 3 グループ）。
+// loose は厳格な re が取りこぼした参照行を検出する正規表現で、持たない対象では nil。
 type target struct {
-	path string
-	re   *regexp.Regexp
+	path  string
+	re    *regexp.Regexp
+	loose *regexp.Regexp
 }
 
 // imageRef は FROM が参照する registry image 1 件。key は image:tag。
@@ -137,12 +160,24 @@ func run(args []string, wd func() (string, error)) error {
 	}
 }
 
+// targetFiles は走査対象を返す。Dockerfile の FROM、compose の image:、そして workflow /
+// composite action の uses: docker:// の 3 種で、registry の image を指す参照は書かれた場所に
+// よらずこの機構が固定する（docs/design/security.md）。
+//
+// workflow を含めるのは uses: docker:// を拾うためだけで、uses: owner/repo@<sha> は pin-actions
+// の担当。同じファイルを 2 つの機構が走査するが、掴む行は重ならない。走査対象の決め方は
+// pin-actions の targetFiles と揃える必要がある——片方だけが見るディレクトリができると、
+// そこに置かれた参照がどちらの網からも外れる。
 func targetFiles(root string) ([]target, error) {
 	dockerfiles, err := globFiles(root, "docker/*/Dockerfile")
 	if err != nil {
 		return nil, err
 	}
 	compose, err := globFiles(root, "docker-compose*.yaml")
+	if err != nil {
+		return nil, err
+	}
+	workflows, err := workflowFiles(root)
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +188,89 @@ func targetFiles(root string) ([]target, error) {
 	for _, f := range compose {
 		targets = append(targets, target{path: f, re: composeImageRe})
 	}
+	for _, f := range workflows {
+		targets = append(targets, target{path: f, re: usesDockerRe, loose: looseDockerUsesRe})
+	}
 	sort.Slice(targets, func(i, j int) bool { return targets[i].path < targets[j].path })
 	return targets, nil
+}
+
+// workflowFiles は workflow 定義とリポジトリ内 composite action 定義を返す。
+// composite action は `uses: ./.github/actions/<group>/<name>` のように入れ子へ置けるため走査は
+// 再帰する。1 階層で打ち切ると入れ子の定義が検査されないまま通る。
+func workflowFiles(root string) ([]string, error) {
+	var files []string
+	for _, pat := range []string{".github/workflows/*.yaml", ".github/workflows/*.yml"} {
+		m, err := globFiles(root, pat)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, m...)
+	}
+
+	actionsDir := filepath.Join(root, ".github", "actions")
+	err := filepath.WalkDir(actionsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && (d.Name() == "action.yml" || d.Name() == "action.yaml") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil && !xerrors.Is(err, os.ErrNotExist) {
+		return nil, xerrors.Wrap(err, "walk .github/actions")
+	}
+
+	return files, nil
+}
+
+// detectLooseDockerUses は固定対象として解釈できない docker:// の uses: の行番号を返す。
+//
+// usesDockerRe は行頭にアンカーした 1 行 1 ステップのブロック記法かつ tag 付きにしか一致しない
+// が、YAML は同じ内容を flow mapping や引用符でも書けるし、tag を省いた形も書ける。いずれも
+// 一致ゼロになり、その状態は「固定漏れ無し」と区別が付かない。緩いパターンで補い、残った行は
+// 呼び出し元が fail-close する。
+func detectLooseDockerUses(data string, strict, loose *regexp.Regexp) []int {
+	blanked := strict.ReplaceAllStringFunc(data, func(line string) string {
+		return strings.Repeat(" ", len(line))
+	})
+	var lines []int
+	for i, line := range strings.Split(blanked, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		if loose.MatchString(line) {
+			lines = append(lines, i+1)
+		}
+	}
+
+	return lines
+}
+
+// validateLoose は全対象を走査し、解釈できない参照行があれば fail-close する。resolve と
+// applyOrCheck の両方から呼ぶ——lockfile へ載らない参照を作らないため、走査の前に検査する。
+func validateLoose(root string, targets []target) error {
+	var found []string
+	for _, t := range targets {
+		if t.loose == nil {
+			continue
+		}
+		data, err := os.ReadFile(t.path)
+		if err != nil {
+			return xerrors.Wrap(err, "read "+rel(root, t.path))
+		}
+		for _, line := range detectLooseDockerUses(string(data), t.re, t.loose) {
+			found = append(found, fmt.Sprintf("%s:%d", rel(root, t.path), line))
+		}
+	}
+	if len(found) == 0 {
+		return nil
+	}
+	sort.Strings(found)
+
+	return xerrors.Wrap(errLooseDockerUses,
+		strings.Join(found, ", ")+"（引用符を外し、1 行 1 参照・tag 明示の形へ直してください）")
 }
 
 // globFiles は root からの相対パターン pat に一致するパスを返す。
@@ -189,6 +305,9 @@ func lastColonSplit(s string) (string, string, bool) {
 }
 
 func resolve(root string, targets []target, minAgeDays int) error {
+	if err := validateLoose(root, targets); err != nil {
+		return err
+	}
 	keys, err := collectKeys(targets)
 	if err != nil {
 		return err
@@ -390,6 +509,9 @@ func rewritePins(data string, re *regexp.Regexp, lock map[string]string) (string
 // 後続ファイルの未登録参照で中断したときに「exit 1 なのに作業ツリーは書き換え済み」という
 // 中途半端な状態が残る。
 func applyOrCheck(root string, targets []target, dryRun bool) error {
+	if err := validateLoose(root, targets); err != nil {
+		return err
+	}
 	lock, err := readLock(filepath.Join(root, lockFile))
 	if err != nil {
 		return xerrors.Wrap(err, "read lockfile（先に make pin-images-resolve を実行してください）")
