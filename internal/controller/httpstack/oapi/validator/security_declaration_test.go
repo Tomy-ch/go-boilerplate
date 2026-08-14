@@ -62,6 +62,7 @@ var optionalAuthOperations = map[string]string{
 		"（未認証でも 200、無効な資格情報は 401）",
 	"DELETE /v1/carts/me/items/{productId}": "ゲストも自分の明細を取り除ける" +
 		"（未認証でも 204、無効な資格情報は 401）",
+	"DELETE /v1/carts/me": "ゲストも自分のカートを空にできる（未認証でも 204、無効な資格情報は 401）",
 }
 
 // securityKind は、security 要件が表す認証の姿勢。

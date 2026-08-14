@@ -1503,6 +1503,45 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+    delete:
+      operationId: DeleteCartsMe
+      tags:
+        - v1/carts
+      summary: 自分のカートを空にする
+      description: |
+        呼び出し主体のカートから、明細をすべて取り除きます。カート画面の「カートを空にする」に当たります。
+        **カートの行と有効期限は残ります**。空のカートは正当な状態であり、行ごと消すと直後の操作で
+        セッショントークンが発行し直され、利用者の同一性が切れます。カート行そのものの削除は
+        期限切れの掃除とログイン時のマージ後の破棄に限り、API としては公開しません。
+        主体の決まり方は取得（GET）と同じで、両方が提示された場合は認証済みユーザーが優先されます。
+        認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+        （ADR-0019 (optional-authentication-fail-closed)）。
+        **既に空のカートを空にしても、カートを持たない主体が呼んでも成功します**。カートを持たない
+        主体にカートを作ることはなく、提示されたセッショントークンでカートを引けなかった場合も
+        採番し直しません（応答が本文を持たないため、新しいトークンを返す場所がありません）。
+        **明細ごとの再評価を行いません**。この応答は本文を持たず価格を 1 つも提示していないため、
+        提示価格を記録すると次の取得で立つはずの priceIncreased を消してしまいます。
+        有効期限は延びます（空にするのも利用のため）。
+        本 op 自体は DB の SELECT / UPDATE / DELETE のみで外部依存を持ちませんが、認証段
+        （外部 IdP の JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/CartSessionParam'
+      responses:
+        '204':
+          description: カートを空にしました（既に空だった場合とカートが無い場合を含みます）
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/carts/me/items/{productId}:
     put:
       operationId: PutCartsMeItem

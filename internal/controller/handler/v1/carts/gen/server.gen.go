@@ -16,6 +16,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// 自分のカートを空にする
+	// (DELETE /v1/carts/me)
+	DeleteCartsMe(ctx *echo.Context, params DeleteCartsMeParams) error
 	// 自分のカートの取得（明細ごとの再評価つき）
 	// (GET /v1/carts/me)
 	GetCartsMe(ctx *echo.Context, params GetCartsMeParams) error
@@ -24,6 +27,37 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// DeleteCartsMe converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCartsMe(ctx *echo.Context) error {
+	var err error
+
+	ctx.Set(string(BearerAuthScopes), []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteCartsMeParams
+
+	headers := ctx.Request().Header
+	// ------------- Optional header parameter "X-Cart-Session" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Cart-Session")]; found {
+		var XCartSession CartSessionParam
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Cart-Session, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Cart-Session", valueList[0], &XCartSession, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Cart-Session: %s", err))
+		}
+
+		params.XCartSession = &XCartSession
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCartsMe(ctx, params)
+	return err
 }
 
 // GetCartsMe converts echo context to params.
@@ -104,6 +138,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
+	router.DELETE(options.BaseURL+"/v1/carts/me", wrapper.DeleteCartsMe, options.OperationMiddlewares["DeleteCartsMe"]...)
 	router.GET(options.BaseURL+"/v1/carts/me", wrapper.GetCartsMe, options.OperationMiddlewares["GetCartsMe"]...)
 
 }
@@ -117,6 +152,98 @@ type MethodNotAllowed405JSONResponse ErrorResponse
 type ServiceUnavailable503JSONResponse ErrorResponse
 
 type Unauthorized401JSONResponse ErrorResponse
+
+type DeleteCartsMeRequestObject struct {
+	Params DeleteCartsMeParams
+}
+
+type DeleteCartsMeResponseObject interface {
+	VisitDeleteCartsMeResponse(w http.ResponseWriter) error
+}
+
+type DeleteCartsMe204Response struct {
+}
+
+func (response DeleteCartsMe204Response) VisitDeleteCartsMeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteCartsMe400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response DeleteCartsMe400JSONResponse) VisitDeleteCartsMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMe401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response DeleteCartsMe401JSONResponse) VisitDeleteCartsMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMe405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response DeleteCartsMe405JSONResponse) VisitDeleteCartsMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMe500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response DeleteCartsMe500JSONResponse) VisitDeleteCartsMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCartsMe503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response DeleteCartsMe503JSONResponse) VisitDeleteCartsMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type GetCartsMeRequestObject struct {
 	Params GetCartsMeParams
@@ -218,6 +345,9 @@ func (response GetCartsMe503JSONResponse) VisitGetCartsMeResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// 自分のカートを空にする
+	// (DELETE /v1/carts/me)
+	DeleteCartsMe(ctx context.Context, request DeleteCartsMeRequestObject) (DeleteCartsMeResponseObject, error)
 	// 自分のカートの取得（明細ごとの再評価つき）
 	// (GET /v1/carts/me)
 	GetCartsMe(ctx context.Context, request GetCartsMeRequestObject) (GetCartsMeResponseObject, error)
@@ -233,6 +363,31 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// DeleteCartsMe operation middleware
+func (sh *strictHandler) DeleteCartsMe(ctx *echo.Context, params DeleteCartsMeParams) error {
+	var request DeleteCartsMeRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteCartsMe(ctx.Request().Context(), request.(DeleteCartsMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteCartsMe")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(DeleteCartsMeResponseObject); ok {
+		return validResponse.VisitDeleteCartsMeResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // GetCartsMe operation middleware
