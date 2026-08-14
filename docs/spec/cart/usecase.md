@@ -146,6 +146,7 @@ tx_required: true            # MarkSeen / Touch の書き込みを伴う
 steps:
   - subject からカートを解決する（UserID → FindByOwnerID / SessionToken → FindBySessionToken）
   - 見つからない、または IsExpired の場合は空の CartView を 200 で返して終了（GET では行を作らない）
+  - LockByID で取り直す。解決との間にカート行が消えていた場合も空の CartView を返して終了
   - 明細の productID を集めて product.Repository.FindByIDs で現在値を取得する（ロックしない）
   - 商品から ProductSnapshot を切り出し、明細ごとに CartItem.Evaluate へ渡して結果を受け取る
       （引けなかった明細には nil を渡す。判定の中身はドメインが持つ）
@@ -155,6 +156,7 @@ steps:
 calls:
   - cart_repository.FindByOwnerID
   - cart_repository.FindBySessionToken
+  - cart_repository.LockByID
   - cart_repository.Update
   - product_repository.FindByIDs
   - cart_item.Evaluate
@@ -165,6 +167,11 @@ errors:
   - ErrSubtotalOutOfRange: 合算が決済スケールへ落とせない場合（422）。単価 1 件は money.Price の
     構築時に検証されるため、明細が積み上がった結果に限られる
 ```
+
+**書き戻す対象はロックで取り直した集約に限る。** 解決は行ロックを取らないため、その結果は既に古く
+なっている可能性がある。書き込みは集約単位で明細集合を丸ごと反映するので、解決から書き戻しまでの
+間に他の操作が明細を消していた場合、古い集約を書き戻すとそれが復活する。取得は「提示価格と有効期限
+だけを更新する」操作に見えるが、その永続化は集約全体の書き込みであり、他の操作と同じ規律が要る。
 
 **在庫をロックしない。** 再評価は参考情報であり、返した瞬間から古くなる。ここで `FOR UPDATE` を取ると
 カート表示が購入と在庫行を奪い合い、表示のたびに購入が待たされる。正確さは購入成立時にのみ必要で、
@@ -254,13 +261,24 @@ errors:
 ```yaml
 tx_required: true
 steps:
-  - subject からカートを解決する。無ければ何もせず終了
-  - LockByID → cart.Clear → Update（カート自体は残す）
+  - subject からカートを解決する。無ければ何もせず終了（カートは作らない）
+  - LockByID。解決との間にカート行が消えていた場合も何もせず終了
+  - cart.Clear → Touch → Update（カート自体は残す）
 calls:
-  - cart_repository.LockByID / Update
+  - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / Update
 errors:
   - なし
 ```
+
+**カートの行は消さない。** 消すと直後の操作でセッショントークンが発行し直され、利用者の同一性が
+切れる。`Delete` はログイン時のマージ後のゲストカート破棄と期限切れの掃除に限り、この op は呼ばない。
+
+**明細ごとの再評価を行わない。** 204 は本文を持たず価格を 1 つも提示していないため、`MarkSeen` を
+走らせると次の `GetCart` で立つはずの `priceIncreased` を消してしまう（`RemoveItem` と同じ理由）。
+
+**有効期限は延ばす。** 空にするのも利用であり、いま空にした利用者は戻ってきている。TTL は
+「持ち主が二度と戻らないカート」を回収するために在るので、`RemoveItem` と揃えて延ばす。
+明細が既に空でも延ばす（そうしないと「1 件消すと延びるのに、全部消すと延びない」が生じる）。
 
 ### MergeOnLogin
 
