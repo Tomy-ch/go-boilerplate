@@ -65,7 +65,7 @@ fields:
 > DB カラム `published_at` は NULL 許容で、未公開商品を作成できる。一覧クエリは `published_at IS NOT NULL` で
 > 絞り込むため、一覧経由で再構築されるエンティティの `publishedAt` は常に値を持つ。
 
-### Image（子の値オブジェクト）
+### Image（子エンティティ）
 
 ```yaml
 package: internal/domain/product
@@ -74,6 +74,7 @@ fields:
   - name: id
     type: uuid.UUID
     required: true          # IsNil の場合は ErrInvalidID。採番は usecase が行う
+                            # 更新をまたいで同じ画像を指す同一性。Update の同期はこの id を鍵にする
   - name: imagePath
     type: string
     required: true          # 空文字は ErrInvalidImagePath。無検証で保持（サニタイズは表示側の責務）
@@ -216,7 +217,10 @@ fields:
   signature: Update(ctx context.Context, p *Product) (int, error)
   behavior: |
     p が保持するバージョンを条件に商品を更新し（WHERE id = ... AND version = ...）、採番後のバージョンを返す。
-    画像は対象に含まない（置換は ReplaceImages が担う）。
+    画像も p が保持する集合へ ID を鍵に一致させる。集合から外れた行は論理削除として残り（履歴）、集合に
+    あってまだ無い行を INSERT する。同じ ID の画像はそのまま生存し続けるため、内容の差し替えは新しい ID の
+    画像として表現する。生存行の (product_id, sort_key) は部分 UNIQUE のため、論理削除 → INSERT の順序が
+    メソッド内部の不変条件になる。バージョンが一致しない場合は画像に触れない。
     version の加算は SQL 側（version = version + 1）で行い、採番の権威を DB に一本化する。
     条件に一致する行が無い場合は、読み込み後に他トランザクションが更新したものとして ErrVersionConflict（409）を返す
     （存在は同一トランザクション内の FindByID で確認済みのため、0 行はバージョン不一致のみを意味する）。
@@ -232,16 +236,6 @@ fields:
     ロックを取らずに呼ばれた場合の 0 行は ErrVersionConflict（409）として返し、在庫の上書きを防ぐ。
 
 # 未参照画像の回収ジョブ向け（追記分）
-- name: ReplaceImages
-  signature: ReplaceImages(ctx context.Context, p *Product) error
-  behavior: |
-    商品が現在参照している画像を p が保持する画像で置き換える。
-    生存している行を一括で論理削除したうえで、p の画像を INSERT する。置き換え前の行は履歴として残る。
-
-    Update が成功した後、同じトランザクションの中で呼び出す必要がある。Update の条件付き更新が商品行の
-    ロックを取ることで同一商品への置換が直列化され、バージョンが一致しない場合は画像に触れる前に中断できる。
-    順序を入れ替えると、後から弾かれる更新の画像だけが先に入れ替わる。
-
 - name: FilterExistingImagePaths
   signature: FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error)
   behavior: |

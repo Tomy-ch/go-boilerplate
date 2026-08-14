@@ -8,8 +8,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// Image は、商品画像を表す値オブジェクトです。imagePath はオブジェクトストレージ上のキーで、
-// 表示 URL は上位が配信ベース URL と組み立てます。sortKey は同一商品内での表示順です。
+// Image は、商品画像を表す商品集約の子エンティティです。id は更新をまたいで同じ画像を指し続けるため、
+// 内容の差し替えは新しい id の画像として表現します。imagePath はオブジェクトストレージ上のキーで、
+// 表示 URL は上位が配信ベース URL と組み立てます。sortKey は同一商品内での表示順であり、表示順の
+// 入れ替えで使い回されるため同一性を担いません。
 type Image struct {
 	id        uuid.UUID
 	imagePath string
