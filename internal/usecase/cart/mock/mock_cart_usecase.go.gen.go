@@ -41,6 +41,20 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
 }
 
+// ClearCart mocks base method.
+func (m *MockUsecase) ClearCart(ctx context.Context, subject cart.Subject) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClearCart", ctx, subject)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClearCart indicates an expected call of ClearCart.
+func (mr *MockUsecaseMockRecorder) ClearCart(ctx, subject any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearCart", reflect.TypeOf((*MockUsecase)(nil).ClearCart), ctx, subject)
+}
+
 // GetCart mocks base method.
 func (m *MockUsecase) GetCart(ctx context.Context, subject cart.Subject) (cart.CartView, error) {
 	m.ctrl.T.Helper()

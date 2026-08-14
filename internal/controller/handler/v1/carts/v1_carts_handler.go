@@ -38,7 +38,7 @@ func (s *server) GetCartsMe(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	subject, err := toSubject(ctx, request.Params)
+	subject, err := toSubject(ctx, request.Params.XCartSession)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +56,31 @@ func (s *server) GetCartsMe(
 	return gen.GetCartsMe200JSONResponse(response), nil
 }
 
-// toSubject は、認証結果とヘッダからカートの主体を組み立てます。
-// 認証はこの operation では任意で、認証済みの呼び出し元はゲストセッションより優先されます。
+// DeleteCartsMe は、呼び出し主体のカートから明細をすべて取り除きます。
+func (s *server) DeleteCartsMe(
+	ctx context.Context, request gen.DeleteCartsMeRequestObject,
+) (gen.DeleteCartsMeResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	subject, err := toSubject(ctx, request.Params.XCartSession)
+	if err != nil {
+		return nil, err
+	}
+
+	if cerr := s.uc.ClearCart(ctx, subject); cerr != nil {
+		return nil, cerr
+	}
+
+	return gen.DeleteCartsMe204Response{}, nil
+}
+
+// toSubject は、認証結果とヘッダのセッショントークンからカートの主体を組み立てます。
+// 認証はこのパッケージの operation では任意で、認証済みの呼び出し元はゲストセッションより優先されます。
 // どちらも無い呼び出し元は主体を持ちません（表示するカートが無いことの表現は usecase が持ちます）。
-func toSubject(ctx context.Context, params gen.GetCartsMeParams) (cartuc.Subject, error) {
+//
+// 生成される params は operation ごとに別の型になるため、双方で意味の変わらないセッショントークンだけを受けます。
+func toSubject(ctx context.Context, sessionToken *string) (cartuc.Subject, error) {
 	if authn, ok := ctxhelper.GetAuthn(ctx); ok {
 		userID, err := authn.UserID()
 		if err != nil {
@@ -67,7 +88,7 @@ func toSubject(ctx context.Context, params gen.GetCartsMeParams) (cartuc.Subject
 		}
 		return cartuc.Subject{UserID: &userID}, nil
 	}
-	return cartuc.Subject{SessionToken: params.XCartSession}, nil
+	return cartuc.Subject{SessionToken: sessionToken}, nil
 }
 
 // toCartResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。

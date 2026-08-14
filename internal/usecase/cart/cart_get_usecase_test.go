@@ -71,6 +71,7 @@ func Test_usecase_GetCart(t *testing.T) {
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), c).Return(nil)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
@@ -103,6 +104,7 @@ func Test_usecase_GetCart(t *testing.T) {
 			var saved *cart.Cart
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
@@ -133,6 +135,7 @@ func Test_usecase_GetCart(t *testing.T) {
 			var saved *cart.Cart
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
@@ -150,6 +153,62 @@ func Test_usecase_GetCart(t *testing.T) {
 			require.NotNil(t, saved)
 			assert.Equal(t, now.Add(cartTTL), saved.ExpiresAt())
 			assert.Empty(t, actual.Items)
+		})
+
+		t.Run("書き戻す対象は解決した集約ではなくロックで取り直したものになる", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			// 解決は行ロックを取らないため、その結果は既に古くなっている可能性がある。
+			// 解決時点では明細があり、ロックを取った時点では空、という並行削除の後の状態を模す。
+			resolved := newGuestCart(t, now.Add(time.Hour),
+				newTestCartItem(t, "cart_get_stale", productID, 1, nil))
+			locked := newGuestCart(t, now.Add(time.Hour))
+
+			var saved *cart.Cart
+			cartRepo := mock_cart.NewMockRepository(ctrl)
+			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(resolved, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), resolved.ID()).Return(locked, nil)
+			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, updated *cart.Cart) error {
+					saved = updated
+					return nil
+				})
+
+			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Times(0)
+
+			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo, productRepo, clocktestkit.NewMockClock(t, now))
+
+			actual, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
+			require.NoError(t, err)
+
+			// 古い集約を書き戻すと、他の操作が消した明細が復活する。
+			require.NotNil(t, saved)
+			assert.Empty(t, saved.Items())
+			assert.Empty(t, actual.Items)
+		})
+
+		t.Run("解決とロックの間にカートが消えていれば空のカートを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			resolved := newGuestCart(t, now.Add(time.Hour))
+
+			cartRepo := mock_cart.NewMockRepository(ctrl)
+			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(resolved, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), resolved.ID()).
+				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "cart not found"))
+			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
+
+			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
+
+			actual, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
+			require.NoError(t, err)
+
+			assert.Empty(t, actual.Items)
+			assert.Nil(t, actual.ExpiresAt)
 		})
 
 		t.Run("主体を持たない場合は空のカートを返し行を作らない", func(t *testing.T) {
@@ -219,7 +278,9 @@ func Test_usecase_GetCart(t *testing.T) {
 			require.NoError(t, err)
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
-			cartRepo.EXPECT().FindBySessionToken(gomock.Any(), token).Return(newGuestCart(t, now.Add(time.Hour)), nil)
+			c := newGuestCart(t, now.Add(time.Hour))
+			cartRepo.EXPECT().FindBySessionToken(gomock.Any(), token).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
@@ -262,6 +323,7 @@ func Test_usecase_GetCart(t *testing.T) {
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
@@ -281,7 +343,9 @@ func Test_usecase_GetCart(t *testing.T) {
 			expectedErr := xerrors.New("failed to update cart")
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
-			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(newGuestCart(t, now.Add(time.Hour)), nil)
+			c := newGuestCart(t, now.Add(time.Hour))
+			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
@@ -324,6 +388,7 @@ func Test_usecase_GetCart(t *testing.T) {
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			// 合算に失敗する経路では書き込みへ進まない。
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 

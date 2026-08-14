@@ -122,6 +122,11 @@ type Usecase interface {
 	// カートは作らず、商品の存在も公開状態も確かめません。
 	// カートを持つ主体には有効期限の延長だけが起きます。
 	RemoveItem(ctx context.Context, params RemoveItemParams) error
+
+	// ClearCart は、主体のカートから明細をすべて取り除きます。
+	// カートの行は残り、有効期限は延長されます（空のカートは正当な状態です）。
+	// 既に空の場合も、カートを持たない主体が呼んだ場合も成功します。カートは作りません。
+	ClearCart(ctx context.Context, subject Subject) error
 }
 
 type usecase struct {
