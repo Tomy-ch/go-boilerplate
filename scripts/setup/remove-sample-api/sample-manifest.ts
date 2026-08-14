@@ -314,6 +314,9 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/PurchaseDetailInput.yaml",
       "openapi/components/schemas/PurchaseStatusRef.yaml",
       "openapi/components/schemas/PurchaseStatusBreakdownResponse.yaml",
+      "openapi/components/schemas/PurchasePeriodResponse.yaml",
+      "openapi/components/schemas/PurchaseGroupResponse.yaml",
+      "openapi/components/schemas/PurchaseSubGroupResponse.yaml",
       // spec
       "docs/spec/purchase",
     ],

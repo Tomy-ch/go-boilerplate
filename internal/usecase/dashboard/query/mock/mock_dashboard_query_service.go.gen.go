@@ -42,31 +42,31 @@ func (m *MockDashboardQueryService) EXPECT() *MockDashboardQueryServiceMockRecor
 }
 
 // CountPurchasesByStatus mocks base method.
-func (m *MockDashboardQueryService) CountPurchasesByStatus(ctx context.Context, period query.Period) ([]query.PurchaseStatusCountResult, error) {
+func (m *MockDashboardQueryService) CountPurchasesByStatus(ctx context.Context, window query.Window) ([]query.PurchaseStatusCountResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountPurchasesByStatus", ctx, period)
+	ret := m.ctrl.Call(m, "CountPurchasesByStatus", ctx, window)
 	ret0, _ := ret[0].([]query.PurchaseStatusCountResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CountPurchasesByStatus indicates an expected call of CountPurchasesByStatus.
-func (mr *MockDashboardQueryServiceMockRecorder) CountPurchasesByStatus(ctx, period any) *gomock.Call {
+func (mr *MockDashboardQueryServiceMockRecorder) CountPurchasesByStatus(ctx, window any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountPurchasesByStatus", reflect.TypeOf((*MockDashboardQueryService)(nil).CountPurchasesByStatus), ctx, period)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountPurchasesByStatus", reflect.TypeOf((*MockDashboardQueryService)(nil).CountPurchasesByStatus), ctx, window)
 }
 
 // SummarizeSales mocks base method.
-func (m *MockDashboardQueryService) SummarizeSales(ctx context.Context, period query.Period) (query.SalesResult, error) {
+func (m *MockDashboardQueryService) SummarizeSales(ctx context.Context, window query.Window) (query.SalesResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SummarizeSales", ctx, period)
+	ret := m.ctrl.Call(m, "SummarizeSales", ctx, window)
 	ret0, _ := ret[0].(query.SalesResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SummarizeSales indicates an expected call of SummarizeSales.
-func (mr *MockDashboardQueryServiceMockRecorder) SummarizeSales(ctx, period any) *gomock.Call {
+func (mr *MockDashboardQueryServiceMockRecorder) SummarizeSales(ctx, window any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SummarizeSales", reflect.TypeOf((*MockDashboardQueryService)(nil).SummarizeSales), ctx, period)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SummarizeSales", reflect.TypeOf((*MockDashboardQueryService)(nil).SummarizeSales), ctx, window)
 }

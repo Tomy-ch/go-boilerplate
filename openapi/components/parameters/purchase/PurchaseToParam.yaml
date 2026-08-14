@@ -1,0 +1,10 @@
+name: to
+in: query
+description: |
+  対象期間の終了日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
+  日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。`from` より前の日付を指定した場合は 400 を返します。
+required: false
+schema:
+  type: string
+  format: date
+  example: "2026-01-31"

@@ -11,7 +11,9 @@ package mock_query
 
 import (
 	context "context"
+	period "go-boilerplate/internal/usecase/purchase/period"
 	query "go-boilerplate/internal/usecase/purchase/query"
+	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
@@ -42,17 +44,47 @@ func (m *MockPurchaseSummaryQueryService) EXPECT() *MockPurchaseSummaryQueryServ
 	return m.recorder
 }
 
-// SummarizeByUserID mocks base method.
-func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID) ([]query.PurchaseStatusSummaryReadModel, error) {
+// SumItemsByUserID mocks base method.
+func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SummarizeByUserID", ctx, userID)
+	ret := m.ctrl.Call(m, "SumItemsByUserID", ctx, userID, window)
+	ret0, _ := ret[0].(decimal.Decimal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SumItemsByUserID indicates an expected call of SumItemsByUserID.
+func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SumItemsByUserID(ctx, userID, window any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SumItemsByUserID", reflect.TypeOf((*MockPurchaseSummaryQueryService)(nil).SumItemsByUserID), ctx, userID, window)
+}
+
+// SummarizeByUserID mocks base method.
+func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SummarizeByUserID", ctx, userID, window)
 	ret0, _ := ret[0].([]query.PurchaseStatusSummaryReadModel)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SummarizeByUserID indicates an expected call of SummarizeByUserID.
-func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SummarizeByUserID(ctx, userID any) *gomock.Call {
+func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SummarizeByUserID(ctx, userID, window any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SummarizeByUserID", reflect.TypeOf((*MockPurchaseSummaryQueryService)(nil).SummarizeByUserID), ctx, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SummarizeByUserID", reflect.TypeOf((*MockPurchaseSummaryQueryService)(nil).SummarizeByUserID), ctx, userID, window)
+}
+
+// SummarizeItemsByProductByUserID mocks base method.
+func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseItemSummaryReadModel, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SummarizeItemsByProductByUserID", ctx, userID, window)
+	ret0, _ := ret[0].([]query.PurchaseItemSummaryReadModel)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SummarizeItemsByProductByUserID indicates an expected call of SummarizeItemsByProductByUserID.
+func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SummarizeItemsByProductByUserID(ctx, userID, window any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SummarizeItemsByProductByUserID", reflect.TypeOf((*MockPurchaseSummaryQueryService)(nil).SummarizeItemsByProductByUserID), ctx, userID, window)
 }

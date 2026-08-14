@@ -1,6 +1,10 @@
 package authz
 
+// sample-api:begin
+// サンプル EC の操作。Action 型と String は基盤として残す。
 const (
+	// ActionUserList は、ユーザーの列挙操作（一覧・フィード・検索、admin）を表します。
+	ActionUserList Action = "user:list"
 	// ActionUserGet は、ユーザー取得操作を表します。
 	ActionUserGet Action = "user:get"
 	// ActionUserUpdate は、ユーザー更新操作（全更新・部分更新）を表します。
@@ -26,6 +30,8 @@ const (
 	// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。
 	ActionDashboardRead Action = "dashboard:read"
 )
+
+// sample-api:end
 
 // Action は、認可対象の操作を表す値オブジェクトです（例: "user:delete"）。
 type Action string

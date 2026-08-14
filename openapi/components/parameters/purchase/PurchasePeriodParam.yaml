@@ -1,0 +1,17 @@
+name: period
+in: query
+description: |
+  集計・絞り込み対象期間の区分。`all`（既定）は全期間、`month` は `month` で指定した暦月、
+  `range` は `from` / `to` で指定した期間、`recent` は今日から `days` 日前までを対象とします。
+  各区分の境界はサーバのタイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。
+  区分ごとの必須パラメータ（`month` / `from` と `to` / `days`）が欠落している場合は 400 を返します。
+required: false
+schema:
+  type: string
+  enum:
+    - all
+    - month
+    - range
+    - recent
+  default: all
+  example: recent

@@ -266,10 +266,8 @@ func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, 
 		CurrentVersion: currentVersion,
 	})
 	if err != nil {
-		// 対象行なしは、取得後に他トランザクションが更新しバージョンが進んだことを意味します
-		// （存在は同一トランザクション内の取得で確認済みです）。
-		// 行ロックを取っている経路では起こりませんが、ロックなしで呼ばれた場合に在庫を上書きしないための
-		// 二重防御として衝突を返します。
+		// 対象行なしは衝突として返します。行ロックを取っている経路では起こりませんが、ロックなしで
+		// 呼ばれた場合に在庫を上書きしないための二重防御なので、到達しないからと外してはなりません。
 		if pgerror.IsNoRows(err) {
 			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
 		}
@@ -312,24 +310,8 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 	return r.insertImages(ctx, db, p)
 }
 
-// ReplaceImages は、商品が現在参照している画像を p が保持する画像で置き換えます。
-// 置き換え前の画像は論理削除として残ります。
-//
-// 同一商品への置換が直列化されるのは、先行する Update の条件付き UPDATE が商品行のロックを取るためです。
-func (r *repository) ReplaceImages(ctx context.Context, p *product.Product) error {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	db := gen.New(driver.New(ctx, r.db))
-	if err := db.SoftDeleteProductImages(ctx, p.ID()); err != nil {
-		return pgerror.NormalizeError(err)
-	}
-
-	return r.insertImages(ctx, db, p)
-}
-
 // Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
-// 画像は対象に含みません（置換は ReplaceImages が担います）。
+// 画像も p が保持する集合へ一致させます。
 func (r *repository) Update(ctx context.Context, p *product.Product) (int, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -361,14 +343,16 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 		CurrentVersion:        currentVersion,
 	})
 	if err != nil {
-		// 対象行なしは、読み込み後に他トランザクションが更新しバージョンが進んだことを意味します
-		// （存在は同一トランザクション内の読み込みで確認済みです）。
-		// tx.Manager が透過リトライする一時障害（serialization_failure）と異なり同じ内容の再送では
-		// 解消しないため、リトライ対象と混同されないよう衝突として返します。
+		// 対象行なしは衝突として返します。tx.Manager が透過リトライする一時障害と異なり同じ内容の
+		// 再送では解消しないため、リトライ対象と混同されてはなりません。
 		if pgerror.IsNoRows(err) {
 			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
 		}
 		return 0, pgerror.NormalizeError(err)
+	}
+
+	if err = r.syncImages(ctx, db, p); err != nil {
+		return 0, err
 	}
 
 	return int(lockVersion), nil
@@ -389,7 +373,7 @@ func (r *repository) Count(ctx context.Context) (product.Counts, error) {
 }
 
 // FilterExistingImagePaths は、paths のうち商品が現在の画像として参照しているものを重複排除して返します。
-// 未参照オブジェクトの回収で「消してよいか」を判定するための照会で、返らなかったパスが孤児にあたります。
+// 返らなかったパスは、どの商品からも参照されていないことを意味します。
 func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -428,8 +412,46 @@ func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *produ
 	return nil
 }
 
+// syncImages は、商品が現在参照している画像を p が保持する集合へ一致させます。
+// 集合から外れた行を論理削除してから、まだ無い行を登録します。生存行の (product_id, sort_key) は部分
+// UNIQUE インデックスが一意に保つため、この順序でなければ表示順を使い回した登録が 23505 で失敗します。
+func (r *repository) syncImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
+	images := p.Images()
+	ids := make([]uuid.UUID, len(images))
+	paths := make([]string, len(images))
+	sortKeys := make([]int16, len(images))
+	for i, img := range images {
+		sortKey, err := safecast.IntToInt16(img.SortKey())
+		if err != nil {
+			return xerrors.Wrap(err, "invalid product image sortKey")
+		}
+
+		ids[i] = img.ID()
+		paths[i] = img.ImagePath()
+		sortKeys[i] = sortKey
+	}
+
+	if err := db.SoftDeleteProductImagesNotIn(ctx, &gen.SoftDeleteProductImagesNotInParams{
+		ProductID: p.ID(),
+		ImageIds:  ids,
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	if err := db.CreateProductImagesIfAbsent(ctx, &gen.CreateProductImagesIfAbsentParams{
+		ProductID:  p.ID(),
+		Ids:        ids,
+		ImagePaths: paths,
+		SortKeys:   sortKeys,
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	return nil
+}
+
 // findImagesByProductIDs は、商品 ID ごとの画像を表示順の昇順で返します。
-// 置き換えで論理削除された画像は現在の参照ではないため、SQL 側で除いています。
+// 置き換えで論理削除された画像は含みません。
 func (r *repository) findImagesByProductIDs(
 	ctx context.Context, ids []uuid.UUID,
 ) (map[uuid.UUID][]product.Image, error) {

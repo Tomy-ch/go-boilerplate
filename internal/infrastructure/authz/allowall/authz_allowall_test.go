@@ -67,31 +67,34 @@ func Test_authorizer_Authorize(t *testing.T) {
 	}
 
 	ownerID := uuidtestkit.NewTestFromSalt(t, "owner")
+	ownedResource := authzbd.NewResource("user", &ownerID)
 
+	// Action の具体値は判定に影響しないため、サンプル API とともに消える Action 定数ではなく
+	// 基盤として残る Action 型のリテラルで固定する（サンプル撤去後もこのテストは成立する）。
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("取得操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserGet, authzbd.NewResource("user", &ownerID))
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.Action("resource:get"), ownedResource)
 			require.NoError(t, err)
 		})
 
 		t.Run("更新操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserUpdate, authzbd.NewResource("user", &ownerID))
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.Action("resource:update"), ownedResource)
 			require.NoError(t, err)
 		})
 
 		t.Run("削除操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, authzbd.NewResource("user", &ownerID))
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.Action("resource:delete"), ownedResource)
 			require.NoError(t, err)
 		})
 
 		t.Run("resourceがnilでも許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, nil)
+			err := (&authorizer{}).Authorize(context.Background(), newAuthn(t), authzbd.Action("resource:delete"), nil)
 			require.NoError(t, err)
 		})
 	})

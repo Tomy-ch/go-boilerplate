@@ -7,6 +7,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -43,7 +44,10 @@ type purchaseCursor struct {
 
 // GetPurchases は、所有権の絞り込みを Repository に委ね、usecase 側では所有者を再判定しません。
 // 対象が無い場合は Repository が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません。
-func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor) (*PurchaseListView, error) {
+// 注文日時の対象期間は spec から解決し、絞り込まない指定では期間条件を付けません。
+func (u *usecase) GetPurchases(
+	ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec,
+) (*PurchaseListView, error) {
 	if cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
 	}
@@ -56,10 +60,20 @@ func (u *usecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *pa
 		return nil, err
 	}
 
+	window, err := period.Resolve(spec, u.clock.Now(), u.loc)
+	if err != nil {
+		return nil, err
+	}
+
 	params := purchase.ListFeedParams{Limit: cursor.Limit32() + 1}
 	if after != nil {
 		params.AfterOrderedAt = &after.orderedAt
 		params.AfterID = &after.id
+	}
+	if window.Filtered() {
+		orderedAfter, orderedBefore := window.Bounds()
+		params.OrderedAfter = &orderedAfter
+		params.OrderedBefore = &orderedBefore
 	}
 
 	feed, err := u.repo.FindFeedByUserID(ctx, userID, params)

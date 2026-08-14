@@ -16,7 +16,9 @@ import (
 	checkoutuc "go-boilerplate/internal/usecase/checkout"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
+	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
@@ -61,7 +63,7 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 		return nil, err
 	}
 
-	list, err := s.uc.GetPurchases(ctx, userID, cursor)
+	list, err := s.uc.GetPurchases(ctx, userID, cursor, toPeriodSpec(request.Params))
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +78,21 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 		NextCursor: list.NextCursor,
 		HasNext:    list.NextCursor != nil,
 	}), nil
+}
+
+// toPeriodSpec は、期間絞り込みのクエリパラメータをユースケースの期間指定へ変換します。
+// 区分名の妥当性は OpenAPI の enum が、区分ごとの必須指定の有無はユースケースが判定します。
+func toPeriodSpec(params gen.GetPurchasesParams) period.Spec {
+	spec := period.Spec{
+		From:  conv.DatePtr(params.From),
+		To:    conv.DatePtr(params.To),
+		Month: params.Month,
+		Days:  ptr.Map(params.Days, func(v int32) int { return int(v) }),
+	}
+	if params.Period != nil {
+		spec.Kind = period.Kind(*params.Period)
+	}
+	return spec
 }
 
 // toPurchaseSummaryResponse は、購入履歴一覧のユースケース DTO を HTTP レスポンスへ変換します。

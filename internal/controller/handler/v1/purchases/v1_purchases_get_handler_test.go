@@ -13,10 +13,12 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
+	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -49,8 +51,8 @@ func Test_server_GetPurchases(t *testing.T) {
 			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
 			view := newTestSummaryView(t)
 			nextCursor := "next-opaque-cursor"
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, uid uuid.UUID, _ *paging.Cursor) (*purchaseuc.PurchaseListView, error) {
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, uid uuid.UUID, _ *paging.Cursor, _ period.Spec) (*purchaseuc.PurchaseListView, error) {
 					assert.Equal(t, userID, uid)
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{view}, NextCursor: &nextCursor}, nil
 				})
@@ -80,7 +82,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil)
 
 			resp, err := s.GetPurchases(authnContext(t, userID), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
@@ -104,7 +106,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			// 認証情報を仕込まない context のため GetAuthn が false を返す。
 			resp, err := s.GetPurchases(context.Background(), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
@@ -119,7 +121,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			// WithUserID を呼ばず内部 UserID を未解決のまま Authn を載せる（JWT 検証済みだが DB ユーザー未解決の状態）。
 			ctx := ctxhelper.WithAuthn(context.Background())
@@ -139,7 +141,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			bad := "!!!"
 			resp, err := s.GetPurchases(authnContext(t, uuidtestkit.NewTestFromSalt(t, "get_user")), gen.GetPurchasesRequestObject{
@@ -157,11 +159,53 @@ func Test_server_GetPurchases(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetPurchases(authnContext(t, userID), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
 			assert.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}
+
+func Test_toPeriodSpec(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("期間パラメータが漏れなくユースケースの期間指定へ写像される", func(t *testing.T) {
+			t.Parallel()
+
+			kind := gen.GetPurchasesParamsPeriod(period.KindRange)
+			from := openapi_types.Date{Time: time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)}
+			to := openapi_types.Date{Time: time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC)}
+			month := "2026-01"
+			days := int32(10)
+
+			actual := toPeriodSpec(gen.GetPurchasesParams{
+				Period: &kind,
+				From:   &from,
+				To:     &to,
+				Month:  &month,
+				Days:   &days,
+			})
+
+			assert.Equal(t, period.KindRange, actual.Kind)
+			require.NotNil(t, actual.From)
+			require.NotNil(t, actual.To)
+			assert.True(t, from.Equal(*actual.From))
+			assert.True(t, to.Equal(*actual.To))
+			assert.Equal(t, &month, actual.Month)
+			require.NotNil(t, actual.Days)
+			assert.Equal(t, 10, *actual.Days)
+		})
+
+		t.Run("パラメータ未指定のときゼロ値の期間指定になる", func(t *testing.T) {
+			t.Parallel()
+
+			// ゼロ値は全期間を意味するため、既定の呼び出しが期間で絞り込まれないことを固定する。
+			assert.Equal(t, period.Spec{}, toPeriodSpec(gen.GetPurchasesParams{}))
 		})
 	})
 }

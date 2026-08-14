@@ -1,0 +1,20 @@
+name: groupBy
+in: query
+description: |
+  集計のグループ化単位（カンマ区切り）。指定順がそのままネストの階層順になります
+  （`category,product` ならカテゴリで分け、その中を商品で分けます）。
+  未指定の場合はグループ化せず、レスポンスに groups を含めません。同じ単位を 2 回指定した場合は 400 を返します。
+required: false
+explode: false
+schema:
+  type: array
+  uniqueItems: true
+  maxItems: 2
+  items:
+    type: string
+    enum:
+      - category
+      - product
+  example:
+    - category
+    - product

@@ -1087,6 +1087,10 @@ CREATE INDEX products_published_at_id_idx ON public.products USING btree (publis
 --
 CREATE INDEX products_status_id_idx ON public.products USING btree (status_id);
 --
+-- Name: purchase_details_purchase_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX purchase_details_purchase_id_idx ON public.purchase_details USING btree (purchase_id);
+--
 -- Name: purchases_user_id_ordered_at_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree (user_id, ordered_at DESC, id DESC);

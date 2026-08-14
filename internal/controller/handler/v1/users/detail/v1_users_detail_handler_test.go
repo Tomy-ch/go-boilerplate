@@ -16,6 +16,7 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
@@ -38,6 +39,7 @@ func newServer(t *testing.T) (*server, *mock_user.MockUsecase) {
 // wantUserResponse は、本番 toUserResponse とは独立な検証用オラクル（フィールド取り違え検出）。
 func wantUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
+		Id:         dto.ID.ToPrimitive(),
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),
@@ -425,6 +427,7 @@ func Test_toUserResponse(t *testing.T) {
 
 			deletedAt := time.Date(2026, time.March, 4, 5, 6, 7, 0, time.UTC)
 			dto := user.UserView{
+				ID:        uuidtestkit.NewTestFromSalt(t, "user_view"),
 				FirstName: "太郎", LastName: "山田", Email: "taro@example.com", Phone: "1234567890",
 				PostalCode: "100-0001", PrefectureName: "東京都", City: "千代田区", Street: "1-1",
 				Building: new("ビルA"), DeletedAt: &deletedAt,

@@ -11,13 +11,14 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
+	"github.com/oapi-codegen/runtime"
 )
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// 認証ユーザー自身の購入集計の取得
 	// (GET /v1/users/me/purchases/summary)
-	GetUsersMePurchasesSummary(ctx *echo.Context) error
+	GetUsersMePurchasesSummary(ctx *echo.Context, params GetUsersMePurchasesSummaryParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -31,8 +32,52 @@ func (w *ServerInterfaceWrapper) GetUsersMePurchasesSummary(ctx *echo.Context) e
 
 	ctx.Set(string(BearerAuthScopes), []string{})
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetUsersMePurchasesSummaryParams
+	// ------------- Optional query parameter "period" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "period", ctx.QueryParams(), &params.Period, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter period: %s", err))
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", ctx.QueryParams(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", ctx.QueryParams(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+	}
+
+	// ------------- Optional query parameter "month" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "month", ctx.QueryParams(), &params.Month, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter month: %s", err))
+	}
+
+	// ------------- Optional query parameter "days" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "days", ctx.QueryParams(), &params.Days, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter days: %s", err))
+	}
+
+	// ------------- Optional query parameter "groupBy" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "groupBy", ctx.QueryParams(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter groupBy: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetUsersMePurchasesSummary(ctx)
+	err = w.Handler.GetUsersMePurchasesSummary(ctx, params)
 	return err
 }
 
@@ -87,6 +132,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 }
 
+type BadRequest400JSONResponse ErrorResponse
+
 type InternalServerError500JSONResponse ErrorResponse
 
 type MethodNotAllowed405JSONResponse ErrorResponse
@@ -96,6 +143,7 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 type Unauthorized401JSONResponse ErrorResponse
 
 type GetUsersMePurchasesSummaryRequestObject struct {
+	Params GetUsersMePurchasesSummaryParams
 }
 
 type GetUsersMePurchasesSummaryResponseObject interface {
@@ -112,6 +160,20 @@ func (response GetUsersMePurchasesSummary200JSONResponse) VisitGetUsersMePurchas
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersMePurchasesSummary400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetUsersMePurchasesSummary400JSONResponse) VisitGetUsersMePurchasesSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -198,8 +260,10 @@ type strictHandler struct {
 }
 
 // GetUsersMePurchasesSummary operation middleware
-func (sh *strictHandler) GetUsersMePurchasesSummary(ctx *echo.Context) error {
+func (sh *strictHandler) GetUsersMePurchasesSummary(ctx *echo.Context, params GetUsersMePurchasesSummaryParams) error {
 	var request GetUsersMePurchasesSummaryRequestObject
+
+	request.Params = params
 
 	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetUsersMePurchasesSummary(ctx.Request().Context(), request.(GetUsersMePurchasesSummaryRequestObject))

@@ -10,19 +10,27 @@
 
 都道府県は ID 参照のみを保持する設計のため、一覧・作成ともに `prefecture.Repository` から都道府県名を解決して DTO に詰める。作成時はトランザクション境界内で都道府県解決・エンティティ生成・永続化を行う。
 
+認可は 2 通りに分かれる。詳細系（GetUser / UpdateUser / UpdateUserPartially / DeleteUser）は対象ユーザーを所有者とするリソースとして問い合わせるため admin または本人が通る。列挙系（ListUsers / ListUsersWithTotal / ListUsersFeed）は他ユーザーを開示する操作であり、所有者を持たないリソース（`ownerID = nil`）として問い合わせて所有者フォールバックを成立させないことで admin 限定にする。いずれも認可はリポジトリ呼び出しより前に置き、拒否された呼出元がデータへ到達しないようにする。
+
 ## Interface
 
 ```yaml
 package: internal/usecase/user
 name: Usecase
 methods:
+  # 列挙系（他ユーザーを開示するため admin 限定。認可判定のため認証主体 authn を受け取る）
   - name: ListUsers
-    signature: ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error)
+    signature: ListUsers(ctx context.Context, authn *auth.Authn, active *bool, page *paging.Page) ([]UserView, error)
+  - name: ListUsersWithTotal
+    signature: ListUsersWithTotal(ctx context.Context, authn *auth.Authn, active *bool, page *paging.Page) (*UserListView, error)
+  - name: ListUsersFeed
+    signature: ListUsersFeed(ctx context.Context, authn *auth.Authn, cursor *paging.Cursor) (*UserFeedView, error)
   - name: CreateUser
     signature: CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
+  # 件数のみを返し個々のユーザーを開示しないため、認証主体を持たないジョブ（usercount）からの利用を許して認可を要求しない
   - name: CountUsers
     signature: CountUsers(ctx context.Context, active *bool) (int64, error)
-  # 詳細系エンドポイント向け（追記分。いずれも認可判定のため認証主体 authn を受け取る）
+  # 詳細系エンドポイント向け（いずれも認可判定のため認証主体 authn を受け取る。admin または対象ユーザー本人）
   - name: GetUser
     signature: GetUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) (UserView, error)
   - name: UpdateUser
@@ -141,11 +149,12 @@ methods:
 - tracer            # observability.TracerFactory -> LayerTracer（メソッドごとに span）
 - tx_manager        # boundary/tx.Manager
 - clock             # boundary/clock.Clock
-- authorizer        # boundary/authz.Authorizer（詳細系の認可判定。admin または対象ユーザー本人）
+- authorizer        # boundary/authz.Authorizer（詳細系は admin または対象ユーザー本人、列挙系は admin 限定）
 - user_repository   # domain/user.Repository
 - user_lock_repository   # domain/user.LockRepository（退会時の対象行の排他ロック。[ADR-0034 (ordered-pessimistic-row-locks)]）
 - prefecture_repository  # domain/prefecture.Repository
 - purchase_repository    # domain/purchase.Repository（退会時の進行中購入の確認）
+- domain/service/membership        # EnsureWithdrawable（退会可否の判定）
 - outbox_emit       # usecase/outbox.EmitUsecase（退会イベントの発行）
 ```
 
@@ -156,15 +165,57 @@ methods:
 ```yaml
 tx_required: false
 steps:
+  - authorizer.Authorize で列挙の認可を確認（所有者を持たないリソースとして問い合わせるため所有者フォールバックが成立せず admin のみ許可。authn が nil なら ErrUnauthenticated）
   - userRepo.FindByActive で active / ページング条件に基づきユーザー一覧を取得
   - 取得した各ユーザーの prefectureID を集約し、pftRepo.FindByIDs で都道府県をまとめて解決（N+1 回避、子 span で計測）
   - prefectureID -> Prefecture のマップを構築
   - 各ユーザーを UserView へ変換し、都道府県名を埋める
 calls:
+  - authorizer.Authorize
   - user_repository.FindByActive
   - prefecture_repository.FindByIDs
 errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）。認可判定そのものを行わない
+  - 認可が拒否された場合は authz.ErrForbidden（403）。リポジトリには到達しない
   - userRepo / pftRepo のエラーを伝播。ユーザーが参照する都道府県を FindByIDs で解決できない場合は参照整合性破れとして ErrInternal(500)
+```
+
+### ListUsersWithTotal
+
+```yaml
+tx_required: false
+steps:
+  - authorizer.Authorize で列挙の認可を確認（ListUsers と同じ admin 限定の判定。authn が nil なら ErrUnauthenticated）
+  - 認可済みの内部処理として一覧と総件数を取得し、UserListView へまとめる（認可はこの入口で 1 度だけ行い、内部処理では繰り返さない）
+calls:
+  - authorizer.Authorize
+  - user_repository.FindByActive
+  - prefecture_repository.FindByIDs
+  - user_repository.CountByActive
+errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）。認可判定そのものを行わない
+  - 認可が拒否された場合は authz.ErrForbidden（403）。リポジトリには到達しない
+  - 一覧取得・件数取得のエラーをそのまま伝播
+```
+
+### ListUsersFeed
+
+```yaml
+tx_required: false
+steps:
+  - authorizer.Authorize で列挙の認可を確認（ListUsers と同じ admin 限定の判定。authn が nil なら ErrUnauthenticated）
+  - cursor を復号し、userRepo.FindFeed で未削除ユーザーを作成日時の降順に limit+1 件取得
+  - limit を超えた分を切り落として次ページの有無を判定し、最終要素から次カーソルを構築
+  - 各ユーザーを UserView へ変換し、UserFeedView へまとめる
+calls:
+  - authorizer.Authorize
+  - user_repository.FindFeed
+  - prefecture_repository.FindByIDs
+errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）。認可判定そのものを行わない
+  - 認可が拒否された場合は authz.ErrForbidden（403）。cursor の復号にもリポジトリにも到達しない
+  - cursor が nil または復号できない場合は ErrInvalidArgument（400）
+  - userRepo / pftRepo のエラーを伝播。都道府県を解決できない場合は参照整合性破れとして ErrInternal(500)
 ```
 
 ### CreateUser
@@ -189,6 +240,10 @@ errors:
 ```
 
 ### CountUsers
+
+列挙系で唯一 `authn` を取らない。件数のみを返し個々のユーザーを開示しないため、認証主体を持たない
+`usercount` ジョブ（`internal/controller/job/usercount`）からの利用を許している。HTTP 経路から件数を返す
+`ListUsersWithTotal` は authn を取り、この入口で admin 判定を通してから内部処理として件数を数える。
 
 ```yaml
 tx_required: false

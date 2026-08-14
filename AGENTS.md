@@ -55,6 +55,33 @@ Before implementing any change:
 
 For API changes: OpenAPI is defined first. For DB changes: the migration + SQL exist first.
 
+<!-- boilerplate-only:begin -->
+## Review Phase Protocol
+
+A request to review work that has already been implemented — 「レビューして」 or any equivalent —
+names **three** subjects this repository ships a skill for, not one:
+
+| Skill | Subject |
+| --- | --- |
+| `/impl-review` | the change itself — architecture / DDD modeling / security / correctness / runtime gap |
+| `/test-review` | the tests that pin the change down |
+| `/comment-sweep` | the comment stock carried by the files the change touched |
+
+Do not silently pick one. **Estimate each skill's return from the context you already hold** — which
+layers the change touched, whether tests or comments moved at all, what an earlier skill in this
+session already covered — then **ask the user per skill whether to run it, stating that estimate and
+its reason**, and run what they approve.
+
+The estimate is the work. 「三つとも回しますか」 is not a question; it hands the cost back to the user
+unpriced. Say which pass you expect to pay off, which you expect to return nothing, and why.
+
+Two of the three are normally decided **inside** `/impl-review` rather than beside it: its scope step
+asks whether to delegate the test viewpoint and the comment stock, and answering there is what keeps
+one subject to one owner. Invoke `/test-review` or `/comment-sweep` directly only when `/impl-review`
+is not being run, or when its delegation was declined and the user later changes their mind — never
+so that the same subject is audited twice.
+<!-- boilerplate-only:end -->
+
 ## Layer Rules (hard constraints — enforced by `golangci-lint` depguard)
 
 Boundaries are enforced in CI, not just documented. Full table + rationale: `docs/rules.md`.

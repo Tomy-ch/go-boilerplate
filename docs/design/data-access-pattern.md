@@ -115,7 +115,7 @@ What it does fix is the axis you weigh on and the default:
 Stating the default matters: without one, every judgment call resolves toward adding a QueryService,
 because adding a path is always the nearer move.
 
-## 4. Write side: two gates
+## 4. Write side
 
 A write reaches CommandService only by passing **both**. They ask different questions and neither
 implies the other.
@@ -157,6 +157,49 @@ The procedure:
 
 Two justifications are not acceptable: "it spans multiple aggregates, therefore CommandService", and
 "it is only a read, therefore nothing is needed".
+
+### The Repository write contract
+
+The gates decide *where* a write goes. This decides what a write method that landed on the Repository
+has to guarantee.
+
+> **A Repository write method must leave the aggregate consistent on its own. It must not require
+> another Repository call.**
+
+Concretely: if a doc comment says "call B after A, in the same transaction", then **A and B are one
+method**. The criterion is not how many methods an aggregate has — it is what each method's contract
+guarantees. An ordering obligation written in prose does not stop the next caller; only a method that
+cannot be half-invoked does.
+
+That makes the rule mechanically checkable: search write-method doc comments for an ordering
+obligation imposed on the caller. Each one is a split that has to be folded back.
+
+Three consequences follow, and the third is where the rule is most often misread.
+
+1. **A child collection is synchronized inside the parent's write**, keyed by identity — remove the
+   rows the aggregate no longer holds, add the ones it does not have yet. Any ordering the storage
+   engine forces (a partial unique index that must be cleared before a key is reused, for instance) is
+   an invariant *of the method*, not an instruction for the caller.
+2. **Delete-everything-then-reinsert is not synchronization.** It changes the identity of every child
+   on every write, so an update that touched nothing else still rewrites the whole collection.
+3. **Several write methods per aggregate are fine** when each is consistent on its own — a
+   single-column update, or one method per state transition. Folding those together buys no
+   guarantee and costs write amplification, which is the opposite of what this rule is for. What is
+   forbidden is a split that hands the caller an ordering obligation, not a split as such.
+
+<!-- 撤去後にこの箇所へ自分の例を置くための指針。
+     目的: 「単独で整合させる」だけでは、どの分割が適法でどれが違反なのか読者が自分の Repository を
+     当てはめられない。適合と違反の両方が要る。
+     書き方: 適合例は「単独で完結する部分更新」と「状態遷移ごとのメソッド」を 1 つずつ、違反例は
+     「doc コメントが呼び出し順序を課していた分割」を 1 つ、いずれもメソッド名で挙げる。 -->
+<!-- sample-api:begin -->
+Examples in the sample set: `product.UpdateStock` (a single-column update that is consistent on its
+own) and `purchase.UpdatePaid` / `UpdateShipped` / `UpdateDelivered` (one method per state transition)
+are compliant. `product.Update` writes its images in the same call, and `cart.Update` its items —
+both by keyed synchronization. The shape this rule rejects would be splitting that product write in
+two: an `Update` that excludes the images, plus a separate `ReplaceImages` the caller has to invoke
+afterwards in the same transaction.
+<!-- sample-api:end -->
 
 ## 5. The guard branch
 

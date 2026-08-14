@@ -7,6 +7,7 @@ package search
 import (
 	"context"
 
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/search/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -34,6 +35,11 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
 		return nil, err
@@ -43,7 +49,7 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 		Keyword: request.Params.Keyword,
 		Active:  request.Params.Active,
 	}
-	list, err := s.uc.ListUsersByKeywordWithTotal(ctx, filter, page)
+	list, err := s.uc.ListUsersByKeywordWithTotal(ctx, &authn, filter, page)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +57,7 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 	users := make([]gen.UsersSearchResponseItem, len(list.Items))
 	for i, dto := range list.Items {
 		users[i] = gen.UsersSearchResponseItem{
+			Id:           dto.ID.ToPrimitive(),
 			FirstName:    dto.FirstName,
 			LastName:     dto.LastName,
 			Email:        types.Email(dto.Email),

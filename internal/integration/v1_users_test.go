@@ -17,6 +17,7 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
@@ -42,12 +43,13 @@ func TestV1Users_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&user.UserListView{Items: []user.UserView{expectedDTO}, Total: 1}, nil)
 
 			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, headers)
 			AssertJSONResponseType[gen.UsersResponse](t, actual)
 		})
 
@@ -146,12 +148,13 @@ func TestV1Users_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil, apperror.ErrInternal)
 
 			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
 	})

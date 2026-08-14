@@ -122,7 +122,8 @@ func Test_repository_findImagesByProductIDs(t *testing.T) {
 					newImage(t, "find_images_deleted", "products/old.png", 1),
 				})
 				require.NoError(t, repo.Create(ctx, entity))
-				require.NoError(t, repo.ReplaceImages(ctx, newProductWithImages(t, id, nil)))
+				db := gen.New(driver.New(ctx, repo.db))
+				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, nil)))
 
 				got, err := repo.findImagesByProductIDs(ctx, []uuid.UUID{id})
 
@@ -160,7 +161,7 @@ func Test_repository_findImagesByProductIDs(t *testing.T) {
 	})
 }
 
-func Test_repository_ReplaceImages(t *testing.T) {
+func Test_repository_syncImages(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -170,17 +171,18 @@ func Test_repository_ReplaceImages(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("現在の画像を論理削除し、渡された画像で置き換える", func(t *testing.T) {
+		t.Run("集合から外れた画像を論理削除し、集合の新しい画像を登録する", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "replace_images_product")
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_product")
 				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
-					newImage(t, "replace_before", "products/before.png", 1),
+					newImage(t, "sync_before", "products/before.png", 1),
 				})))
 
-				require.NoError(t, repo.ReplaceImages(ctx, newProductWithImages(t, id, []domainproduct.Image{
-					newImage(t, "replace_after", "products/after.png", 1),
+				db := gen.New(driver.New(ctx, repo.db))
+				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_after", "products/after.png", 1),
 				})))
 
 				got, err := repo.FindByID(ctx, id)
@@ -188,23 +190,24 @@ func Test_repository_ReplaceImages(t *testing.T) {
 				require.Len(t, got.Images(), 1)
 				assert.Equal(t, "products/after.png", got.Images()[0].ImagePath())
 
-				// 置き換え前の行は消えず、論理削除として残る（差し替え履歴）。
+				// 外れた行は消えず、論理削除として残る（差し替え履歴）。
 				live, deleted := countProductImages(ctx, t, driver.New(ctx, testDB), id)
 				assert.Equal(t, 1, live)
 				assert.Equal(t, 1, deleted)
 			})
 		})
 
-		t.Run("空の画像で置き換えると現在の画像がすべて外れる", func(t *testing.T) {
+		t.Run("空の集合を渡すと現在の画像がすべて外れる", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "replace_images_clear_product")
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_clear_product")
 				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
-					newImage(t, "replace_clear", "products/clear.png", 1),
+					newImage(t, "sync_clear", "products/clear.png", 1),
 				})))
 
-				require.NoError(t, repo.ReplaceImages(ctx, newProductWithImages(t, id, nil)))
+				db := gen.New(driver.New(ctx, repo.db))
+				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, nil)))
 
 				got, err := repo.FindByID(ctx, id)
 				require.NoError(t, err)
@@ -212,21 +215,78 @@ func Test_repository_ReplaceImages(t *testing.T) {
 			})
 		})
 
-		t.Run("同じ表示順へ置き換えても部分UNIQUEに衝突しない", func(t *testing.T) {
+		t.Run("現在の画像と同じ集合を渡すと行が一切変化しない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_noop_product")
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_noop_1", "products/keep1.png", 1),
+					newImage(t, "sync_noop_2", "products/keep2.png", 2),
+				})))
+
+				loaded, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+
+				db := gen.New(driver.New(ctx, repo.db))
+				require.NoError(t, repo.syncImages(ctx, db, loaded))
+
+				live, deleted := countProductImages(ctx, t, driver.New(ctx, testDB), id)
+				assert.Equal(t, 2, live)
+				assert.Equal(t, 0, deleted)
+
+				got, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				require.Len(t, got.Images(), 2)
+				assert.Equal(t, loaded.Images()[0].ID(), got.Images()[0].ID())
+				assert.Equal(t, loaded.Images()[1].ID(), got.Images()[1].ID())
+			})
+		})
+
+		t.Run("集合から外れた画像を論理削除し、複数の新しい画像をまとめて登録する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_multi_product")
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_multi_before", "products/before.png", 1),
+				})))
+
+				db := gen.New(driver.New(ctx, repo.db))
+				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_multi_a", "products/a.png", 1),
+					newImage(t, "sync_multi_b", "products/b.png", 2),
+					newImage(t, "sync_multi_c", "products/c.png", 3),
+				})))
+
+				got, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				require.Len(t, got.Images(), 3)
+				assert.Equal(t, "products/a.png", got.Images()[0].ImagePath())
+				assert.Equal(t, 1, got.Images()[0].SortKey())
+				assert.Equal(t, "products/b.png", got.Images()[1].ImagePath())
+				assert.Equal(t, 2, got.Images()[1].SortKey())
+				assert.Equal(t, "products/c.png", got.Images()[2].ImagePath())
+				assert.Equal(t, 3, got.Images()[2].SortKey())
+			})
+		})
+
+		t.Run("同じ表示順へ差し替えても部分UNIQUEに衝突しない", func(t *testing.T) {
 			t.Parallel()
 
 			// 論理削除行を残したまま同じ (product_id, sort_key) を入れ直すのが差し替えの通常経路なので、
 			// ここが衝突すると 2 回目以降の差し替えが一切できなくなる。
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "replace_images_same_sort_key_product")
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_same_sort_key_product")
 				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
 					newImage(t, "same_sort_key_1", "products/first.png", 1),
 				})))
 
-				require.NoError(t, repo.ReplaceImages(ctx, newProductWithImages(t, id, []domainproduct.Image{
+				db := gen.New(driver.New(ctx, repo.db))
+				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
 					newImage(t, "same_sort_key_2", "products/second.png", 1),
 				})))
-				require.NoError(t, repo.ReplaceImages(ctx, newProductWithImages(t, id, []domainproduct.Image{
+				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
 					newImage(t, "same_sort_key_3", "products/third.png", 1),
 				})))
 
@@ -241,13 +301,36 @@ func Test_repository_ReplaceImages(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("生存し続ける画像の表示順を別の画像が奪う場合は衝突として返す", func(t *testing.T) {
+			t.Parallel()
+
+			// 同じ ID の画像は生存したまま表示順も据え置かれるため、その表示順を新しい画像へ回すと
+			// 生存行どうしが部分 UNIQUE で衝突する。衝突判定を主キーに限定していることの裏返しで、
+			// 内容の差し替えを新しい ID で表現するという契約はここが最後の砦になる。
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_steal_sort_key_product")
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_steal_kept", "products/kept.png", 1),
+				})))
+
+				db := gen.New(driver.New(ctx, repo.db))
+				err := repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_steal_kept", "products/kept.png", 2),
+					newImage(t, "sync_steal_new", "products/new.png", 1),
+				}))
+
+				require.ErrorIs(t, err, apperror.ErrConflict)
+			})
+		})
+
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
 
-			err := repo.ReplaceImages(ctx, newProductWithImages(t, uuidtestkit.NewTestFromSalt(t, "canceled"), nil))
+			db := gen.New(driver.New(ctx, repo.db))
+			err := repo.syncImages(ctx, db, newProductWithImages(t, uuidtestkit.NewTestFromSalt(t, "canceled"), nil))
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})

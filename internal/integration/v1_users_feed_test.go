@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -34,12 +35,13 @@ func TestV1UsersFeed_Integration(t *testing.T) {
 			nextCursor := "next-opaque-cursor"
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersFeed(gomock.Any(), gomock.Any()).
+				ListUsersFeed(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&user.UserFeedView{Items: []user.UserView{expectedDTO}, NextCursor: &nextCursor}, nil)
 
 			feed.BindHandler(e, tf, mockApp)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed", nil, headers)
 			AssertJSONResponseType[gen.UsersFeedResponse](t, actual)
 		})
 
@@ -52,12 +54,13 @@ func TestV1UsersFeed_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersFeed(gomock.Any(), gomock.Any()).
+				ListUsersFeed(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&user.UserFeedView{Items: []user.UserView{expectedDTO}, NextCursor: nil}, nil)
 
 			feed.BindHandler(e, tf, mockApp)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed?first=10", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed?first=10", nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 		})
 	})
@@ -75,12 +78,13 @@ func TestV1UsersFeed_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersFeed(gomock.Any(), gomock.Any()).
+				ListUsersFeed(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil, apperror.ErrInvalidArgument)
 
 			feed.BindHandler(e, tf, mockApp)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/feed", nil, headers)
 			AssertErrorResponse(t, actual, http.StatusBadRequest)
 		})
 	})

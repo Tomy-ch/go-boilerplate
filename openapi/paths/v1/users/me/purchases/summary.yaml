@@ -5,16 +5,28 @@ get:
   summary: 認証ユーザー自身の購入集計の取得
   description: |
     認証コンテキスト（Bearer トークン）の内部 UserID に該当するユーザー自身の購入を集計して取得します。
-    マイページの集計カード表示を想定した最小集計で、購入一覧そのものは返しません（履歴は購入履歴一覧 API）。
+    マイページの集計カード表示を想定した集計で、購入一覧そのものは返しません（履歴は購入履歴一覧 API）。
     パスに他者の識別子を持たないため、他ユーザーの集計は取得できません。
-    合計金額は USD セント単位の整数です。キャンセル済みの購入も総件数・合計金額に含めます
-    （キャンセルはステータス別内訳の 1 要素として件数・金額とも返るため、キャンセルを除いた値が必要な
-    クライアントは内訳から差し引けます）。
-    購入が 1 件もない場合はエラーではなくゼロ値（件数 0・合計 0・内訳は空配列）を返します。
+    集計対象期間は period で切り替えます（既定は全期間）。month / range / recent の境界はサーバの
+    タイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。実際に用いた期間は要求した区分に
+    関わらず period として返すため、クライアントは相対指定を自前で解決する必要がありません。
+    区分ごとの必須パラメータ（month / from と to / days）の欠落、および to が from より前の場合は 400 を返します。
+    キャンセル済みの購入はすべての集計値から除外します（ステータス別内訳にもキャンセルは現れません）。
+    金額は 2 種類返します。totalAmount は支払金額（小計 + 税額 + 送料）の合計、itemsTotal は明細金額
+    （単価 × 数量）の合計で、税額・送料は明細に按分できないため両者は一致しません。
+    groupBy を指定すると itemsTotal をその単位へ分解した groups を返します（未指定なら groups を返しません）。
+    対象の購入が 1 件もない場合はエラーではなくゼロ値（件数 0・合計 0・内訳は空配列）を返します。
     本 op 自体は DB の集計 SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
     一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
   security:
     - BearerAuth: []
+  parameters:
+    - $ref: '../../../../../components/parameters/purchase/PurchasePeriodParam.yaml'
+    - $ref: '../../../../../components/parameters/purchase/PurchaseFromParam.yaml'
+    - $ref: '../../../../../components/parameters/purchase/PurchaseToParam.yaml'
+    - $ref: '../../../../../components/parameters/purchase/PurchaseMonthParam.yaml'
+    - $ref: '../../../../../components/parameters/purchase/PurchaseRecentDaysParam.yaml'
+    - $ref: '../../../../../components/parameters/purchase/PurchaseGroupByParam.yaml'
   responses:
     '200':
       description: 認証ユーザー自身の購入集計の取得に成功しました
@@ -22,6 +34,8 @@ get:
         application/json:
           schema:
             $ref: '../../../../../components/responses/purchases/PurchaseAggregateResponse.yaml'
+    '400':
+      $ref: '../../../../../components/schemas/errors/BadRequest400.yaml'
     '401':
       $ref: '../../../../../components/schemas/errors/Unauthorized401.yaml'
     '405':

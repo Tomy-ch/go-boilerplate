@@ -1126,10 +1126,84 @@ func Test_repository_Update(t *testing.T) {
 				assert.Nil(t, got.PublishedAt())
 			})
 		})
+
+		t.Run("画像もエンティティが保持する集合へ一致する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuidtestkit.NewTestFromSalt(t, "update_images_id")
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "update_images_before", "products/before.png", 1),
+				})))
+
+				loaded, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				require.NoError(t, loaded.Update(domainproduct.Attributes{
+					Name:     loaded.Name(),
+					Price:    loaded.Price(),
+					Quantity: loaded.Quantity(),
+					Status:   loaded.Status(),
+					Category: loaded.Category(),
+					Images: []domainproduct.Image{
+						newImage(t, "update_images_after", "products/after.png", 1),
+					},
+				}))
+
+				version, err := repo.Update(ctx, loaded)
+				require.NoError(t, err)
+				assert.Equal(t, 2, version)
+
+				got, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				require.Len(t, got.Images(), 1)
+				assert.Equal(t, "products/after.png", got.Images()[0].ImagePath())
+			})
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("バージョンが一致しない場合は画像に触れない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuidtestkit.NewTestFromSalt(t, "update_images_conflict_id")
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "update_images_conflict", "products/kept.png", 1),
+				})))
+
+				stale, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+
+				drv := driver.New(ctx, testDB)
+				_, err = drv.Exec(ctx, "UPDATE products SET lock_version = lock_version + 1 WHERE id = $1", id)
+				require.NoError(t, err)
+
+				require.NoError(t, stale.Update(domainproduct.Attributes{
+					Name:     stale.Name(),
+					Price:    stale.Price(),
+					Quantity: stale.Quantity(),
+					Status:   stale.Status(),
+					Category: stale.Category(),
+					Images: []domainproduct.Image{
+						newImage(t, "update_images_conflict_new", "products/rejected.png", 1),
+					},
+				}))
+
+				_, err = repo.Update(ctx, stale)
+				require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+
+				live, deleted := countProductImages(ctx, t, drv, id)
+				assert.Equal(t, 1, live)
+				assert.Equal(t, 0, deleted)
+
+				got, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				require.Len(t, got.Images(), 1)
+				assert.Equal(t, "products/kept.png", got.Images()[0].ImagePath())
+			})
+		})
 
 		t.Run("古いversionを持つエンティティの更新はErrVersionConflictを返しDBの行を変更しない", func(t *testing.T) {
 			t.Parallel()
