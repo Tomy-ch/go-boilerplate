@@ -64,11 +64,21 @@ return oapiValidator(failClosed(next))(c)
 
 任意認証の形を使うオペレーションは「すべてのエンドポイントは保護か公開のどちらかである」に対する
 例外を宣言していることになるため、`/metrics` と同じく名前を付けて範囲を狭める。すなわち
-`internal/controller/httpstack/oapi/validator/security_declaration_test.go` の `publicOperations`
-許可リストへ理由付きで載せ、集合が grep でき、レビューできる状態を保つ。
+`internal/controller/httpstack/oapi/validator/security_declaration_test.go` の許可リストへ理由付きで
+載せ、集合が grep でき、レビューできる状態を保つ。
+
+その許可リストは専用の `optionalAuthOperations` であり、完全公開のエンドポイントが使う
+`publicOperations` とは分ける。2 つの宣言は失敗の仕方が違う — 公開エンドポイントは資格情報を受け取らず
+拒否すべき無効な資格情報がそもそも存在しないのに対し、任意認証のエンドポイントは受け取った資格情報を
+拒否する — 一方で `docs/design/security.md` は `security` の宣言を読めば姿勢が分かることを求めている。
+1 つのリストに両方を入れると「認証は必須ではない」と答えて終わり、肝心の残り半分が答えられない。
+分けることで、テストが登録の有無だけでなく形まで検査できるようにもなる。`publicOperations` の各
+エントリは要件を 1 つも宣言していないこと、`optionalAuthOperations` の各エントリは `BearerAuth` と
+空の要件の両方を宣言していることを、それぞれ表明できる。
 
 `BearerAuth` は空の要件より前に書かなければならない。評価には順序があり、空の要件は必ず成功するため、
-その後ろに書いたものへは到達しない。
+その後ろに書いたものへは到達しない。`TestSecurityRequirementOrder` が spec に対してこれを強制するため、
+`security` ブロックの編集でこの順序が失われることはない。
 
 ## 結果
 
@@ -116,7 +126,7 @@ URL に載るため、クライアントはパスを選ぶ前に自分がどち�
 - 失敗の記録: [`internal/controller/httpstack/oapi/auth/auth.go`](../../internal/controller/httpstack/oapi/auth/auth.go)。
 - スロット本体: [`internal/controller/ctxhelper/authn.go`](../../internal/controller/ctxhelper/authn.go)。
 - 挙動は、3 つのセキュリティ形をすべて宣言した合成 spec を駆動するミドルウェアテストで固定している。
-  出荷される spec に任意認証の形を使う operation はまだ 1 本も無い。
+  出荷される spec で任意認証の形を最初に使う operation は `GET /v1/carts/me`。
 - 関連する決定: [ADR-0015](0015-spec-driven-request-validation.ja.md)（spec 駆動のリクエスト検証）。
 - 関連する決定: [ADR-0018](0018-metrics-endpoint-auth-exception.ja.md)（もう 1 つの、名前を付けた認証の例外）。
 - 支えている姿勢: `docs/design/auth.md`（fail-closed）、`docs/design/security.md`（deny by default）。

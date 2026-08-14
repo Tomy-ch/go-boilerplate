@@ -1,0 +1,49 @@
+type: object
+description: |
+  カート明細 1 件。商品の現在値との突き合わせ結果を issues に添える。
+  カートは商品の名前も価格も保持しないため、productName / unitPrice は取得時点の商品の値であり、
+  購入時の金額を拘束しない（請求額を確定するのは購入明細のスナップショット）。
+required:
+  - productId
+  - quantity
+  - issues
+properties:
+  productId:
+    type: string
+    format: uuid
+    description: 商品 ID。カート内で明細を一意に指す自然キー。
+    example: "0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+  productName:
+    type: string
+    nullable: true
+    description: 商品名。商品を引けなかった場合（issues に notFound）は null です。
+    example: "エルゴノミクスチェア"
+  quantity:
+    type: integer
+    format: int32
+    description: カートに入れた数量。
+    example: 2
+  unitPrice:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    nullable: true
+    description: |
+      取得時点の商品の単価。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "19.99"）。
+      商品を引けなかった場合（issues に notFound）は null です。
+      JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+    example: "19.99"
+  issues:
+    type: array
+    description: |
+      この明細の再評価結果。空配列なら現時点で購入可能です。
+      subtotalAmount の合算対象になるのは、この配列が空の明細だけです。
+    items:
+      $ref: './CartItemIssue.yaml'
+  availableQuantity:
+    type: integer
+    format: int32
+    nullable: true
+    description: |
+      issues に insufficientStock がある場合の、今買える上限（商品の在庫数）。
+      それ以外の場合は null です。
+    example: 1

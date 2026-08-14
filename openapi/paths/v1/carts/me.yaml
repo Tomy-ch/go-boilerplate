@@ -1,0 +1,43 @@
+get:
+  operationId: GetCartsMe
+  tags:
+    - v1/carts
+  summary: 自分のカートの取得（明細ごとの再評価つき）
+  description: |
+    呼び出し主体のカートを、明細ごとの再評価つきで取得します。
+    主体は認証済みユーザー（Bearer トークンの内部 UserID）か、ゲスト（X-Cart-Session ヘッダ）の
+    いずれかで、両方が提示された場合は認証済みユーザーが優先されます。
+    パスに他者の識別子を持たないため、他人のカートは取得できません。
+    認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+    （ADR-0019 (optional-authentication-fail-closed)）。
+    明細ごとに商品の現在値を突き合わせ、買えないもの・値の変わったものに issues を立てます。
+    問題のある明細があっても 200 で返します。取得は成功しており、問題があるのは明細であって
+    要求ではないためで、エラーにすると買える明細が何であったかを利用者に見せられなくなります。
+    在庫は押さえず、商品行もロックしません。再評価は参考情報であり、返した瞬間から古くなります。
+    カートがまだ無い主体、および有効期限を過ぎたカートの主体には、空のカートを 200 で返します。
+    **この操作はカート行を作りません**（したがって sessionToken は常に null、expiresAt は
+    カートが無ければ null です）。
+    本 op 自体は DB の SELECT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+    - {}
+  parameters:
+    - $ref: '../../../components/parameters/cart/CartSessionParam.yaml'
+  responses:
+    '200':
+      description: 自分のカートの取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/carts/CartResponse.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

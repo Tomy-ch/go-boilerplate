@@ -230,16 +230,39 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
 
-		t.Run("単価が巨大で小計が決済スケール(int64)を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
+		t.Run("明細が積み上がり小計が決済スケール(int64)を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
 			t.Parallel()
 			id := uuidtestkit.NewTestFromSalt(t, "p_overflow")
 			userID := uuidtestkit.NewTestFromSalt(t, "u_overflow")
-			productID := uuidtestkit.NewTestFromSalt(t, "prod_overflow")
-			// $92233720368547758.08 × 100 = 9223372036854775808 セント（MaxInt64 超）
-			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_overflow"), ProductID: productID, Quantity: 1}}
-			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "92233720368547758.08"), 5)}
+			productA := uuidtestkit.NewTestFromSalt(t, "prod_overflow_a")
+			productB := uuidtestkit.NewTestFromSalt(t, "prod_overflow_b")
+			// 単価 1 件が決済スケールへ落とせることは money.Price の構築時に保証されるため、
+			// 幅を超えるのは明細が積み上がった結果に限られる。上限ちょうどの単価を 2 明細で合算する。
+			inputs := []DetailInput{
+				{ID: uuidtestkit.NewTestFromSalt(t, "d_overflow_a"), ProductID: productA, Quantity: 1},
+				{ID: uuidtestkit.NewTestFromSalt(t, "d_overflow_b"), ProductID: productB, Quantity: 1},
+			}
+			locked := []LockedProduct{
+				NewLockedProduct(productA, mustPrice(t, "92233720368547758.07"), 5),
+				NewLockedProduct(productB, mustPrice(t, "92233720368547758.07"), 5),
+			}
 
 			actual, err := New(id, "code-overflow", userID, inputs, locked)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidAmount)
+		})
+
+		t.Run("小計が決済スケールに収まっても税を加えると幅を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
+			t.Parallel()
+			id := uuidtestkit.NewTestFromSalt(t, "p_tax_overflow")
+			userID := uuidtestkit.NewTestFromSalt(t, "u_tax_overflow")
+			productID := uuidtestkit.NewTestFromSalt(t, "prod_tax_overflow")
+			// $1e16 × 1 = 1e18 セント。int64 には収まるが、税額の算出で 10 倍すると幅を超える。
+			// 整数演算は溢れてもエラーを返さないため、ここで拒まなければ壊れた合計がそのまま確定する。
+			inputs := []DetailInput{{ID: uuidtestkit.NewTestFromSalt(t, "d_tax_overflow"), ProductID: productID, Quantity: 1}}
+			locked := []LockedProduct{NewLockedProduct(productID, mustPrice(t, "10000000000000000"), 5)}
+
+			actual, err := New(id, "code-tax-overflow", userID, inputs, locked)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAmount)
 		})

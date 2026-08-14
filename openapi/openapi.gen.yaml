@@ -89,6 +89,8 @@ tags:
     description: 購入の配達完了（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
   - name: v1/dashboard
     description: admin ダッシュボードの横断集計（admin のみ・backend 合成/1画面1API・非 admin は 403）。
+  - name: v1/carts
+    description: 自分のカート（任意認証サンプル・ゲストと認証済みの双方が主体になれる / 明細ごとの再評価）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -1432,6 +1434,50 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/carts/me:
+    get:
+      operationId: GetCartsMe
+      tags:
+        - v1/carts
+      summary: 自分のカートの取得（明細ごとの再評価つき）
+      description: |
+        呼び出し主体のカートを、明細ごとの再評価つきで取得します。
+        主体は認証済みユーザー（Bearer トークンの内部 UserID）か、ゲスト（X-Cart-Session ヘッダ）の
+        いずれかで、両方が提示された場合は認証済みユーザーが優先されます。
+        パスに他者の識別子を持たないため、他人のカートは取得できません。
+        認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+        （ADR-0019 (optional-authentication-fail-closed)）。
+        明細ごとに商品の現在値を突き合わせ、買えないもの・値の変わったものに issues を立てます。
+        問題のある明細があっても 200 で返します。取得は成功しており、問題があるのは明細であって
+        要求ではないためで、エラーにすると買える明細が何であったかを利用者に見せられなくなります。
+        在庫は押さえず、商品行もロックしません。再評価は参考情報であり、返した瞬間から古くなります。
+        カートがまだ無い主体、および有効期限を過ぎたカートの主体には、空のカートを 200 で返します。
+        **この操作はカート行を作りません**（したがって sessionToken は常に null、expiresAt は
+        カートが無ければ null です）。
+        本 op 自体は DB の SELECT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/CartSessionParam'
+      responses:
+        '200':
+          description: 自分のカートの取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
 components:
   parameters:
     PageParam:
@@ -1618,6 +1664,21 @@ components:
         type: string
         format: date
         example: '2026-07-31'
+    CartSessionParam:
+      name: X-Cart-Session
+      in: header
+      description: |
+        ゲストカートのセッショントークン。所有者が未確定のカートへ到達する唯一の手段で、
+        未認証の呼び出し側はこのヘッダで自分のカートを指定する。
+        認証済みの呼び出し側では無視される（カートは内部 UserID から解決されるため）。
+        値は 256 ビットを base64url（パディング無し）で表現した 43 文字。
+      required: false
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{43}$
+        minLength: 43
+        maxLength: 43
+        example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE
     MinPriceParam:
       name: minPrice
       in: query
@@ -2694,6 +2755,113 @@ components:
           format: int64
           description: 公開済みの商品数。マスタの現在値であり集計対象期間の影響を受けません。
           example: 98
+    CartItemIssue:
+      type: string
+      description: |
+        カート明細の再評価結果。取得のたびに商品の現在値と突き合わせて判定される。
+        1 つの明細に複数同時に立ちうるが、notFound は単独で立ち（商品が引けない以上、在庫も価格も
+        判定材料が無い）、outOfStock と insufficientStock は排他（在庫 0 は「不足」ではなく「無い」）。
+        いずれの値もカートの取得を失敗にしない。買えない明細があることは要求の不正ではないため。
+      enum:
+        - notFound
+        - unpublished
+        - outOfStock
+        - insufficientStock
+        - priceIncreased
+        - priceDecreased
+      example: outOfStock
+    CartItemResponse:
+      type: object
+      description: |
+        カート明細 1 件。商品の現在値との突き合わせ結果を issues に添える。
+        カートは商品の名前も価格も保持しないため、productName / unitPrice は取得時点の商品の値であり、
+        購入時の金額を拘束しない（請求額を確定するのは購入明細のスナップショット）。
+      required:
+        - productId
+        - quantity
+        - issues
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品 ID。カート内で明細を一意に指す自然キー。
+          example: 0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b
+        productName:
+          type: string
+          nullable: true
+          description: 商品名。商品を引けなかった場合（issues に notFound）は null です。
+          example: エルゴノミクスチェア
+        quantity:
+          type: integer
+          format: int32
+          description: カートに入れた数量。
+          example: 2
+        unitPrice:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          nullable: true
+          description: |
+            取得時点の商品の単価。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "19.99"）。
+            商品を引けなかった場合（issues に notFound）は null です。
+            JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+          example: '19.99'
+        issues:
+          type: array
+          description: |
+            この明細の再評価結果。空配列なら現時点で購入可能です。
+            subtotalAmount の合算対象になるのは、この配列が空の明細だけです。
+          items:
+            $ref: '#/components/schemas/CartItemIssue'
+        availableQuantity:
+          type: integer
+          format: int32
+          nullable: true
+          description: |
+            issues に insufficientStock がある場合の、今買える上限（商品の在庫数）。
+            それ以外の場合は null です。
+          example: 1
+    CartResponse:
+      description: |
+        カートのレスポンススキーマ。カート参照・投入・削除の各操作で共有します。
+        カートは在庫を押さえず、確定単価も持ちません。買うつもりの控えであって、
+        売り越しの禁止も請求額の確定も購入成立時の関心です。
+      type: object
+      required:
+        - items
+        - subtotalAmount
+      properties:
+        sessionToken:
+          type: string
+          nullable: true
+          description: |
+            ゲストカートのセッショントークン。以降のリクエストで X-Cart-Session ヘッダに載せます。
+            所有者が確定済みのカート、および新規発行が起きなかった操作では null です。
+            **取得（GET）ではカート行を作らないため、この操作では常に null です。**
+          example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE
+        items:
+          type: array
+          description: |
+            カートの明細。1 件も入っていない場合、およびカートがまだ無い場合は空配列です。
+          items:
+            $ref: '#/components/schemas/CartItemResponse'
+        subtotalAmount:
+          type: integer
+          format: int64
+          description: |
+            小計。issues が空の明細（現時点で購入可能なもの）だけを単価×数量で合算した参考値で、
+            USD セント単位の整数です。請求額ではありません。
+            合算は decimal のまま行い、最後に一度だけ最小単位へ丸めます。
+            合算対象が 1 件も無い場合は 0 です。
+          example: 3998
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            カートの有効期限。操作のたびに延長されます。
+            カートがまだ無い場合は行そのものが存在しないため null です
+            （明細を空にしただけの場合はカート行が残るため null になりません）。
+          example: '2026-09-13T00:00:00Z'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。

@@ -73,12 +73,22 @@ anonymous callers keeps admitting them. The resulting behavior, by declaration:
 
 An operation that uses the optional form is declaring an exception to "every endpoint is either
 protected or public", so it is named and kept narrow the same way `/metrics` is: it is listed in
-the `publicOperations` allow-list of
-`internal/controller/httpstack/oapi/validator/security_declaration_test.go` with a reason, which
-keeps the set greppable and reviewable.
+an allow-list in `internal/controller/httpstack/oapi/validator/security_declaration_test.go` with
+a reason, which keeps the set greppable and reviewable.
+
+That allow-list is its own, `optionalAuthOperations`, and not the `publicOperations` list the fully
+public endpoints use. The two declarations fail differently — a public endpoint receives no
+credential and so has no invalid one to reject, while an optional-auth endpoint rejects a
+credential it was given — and `docs/design/security.md` asks that reading the `security` block be
+enough to know the posture. One list holding both readings answers "authentication is not
+required" and stops there, which is the half of the answer that does not matter. Splitting them
+also lets the test check the shape rather than just the membership: every `publicOperations` entry
+must declare no requirement at all, and every `optionalAuthOperations` entry must declare both
+`BearerAuth` and the empty requirement.
 
 `BearerAuth` must be written before the empty requirement. Evaluation is ordered, and the empty
-requirement always succeeds, so anything after it is never reached.
+requirement always succeeds, so anything after it is never reached. `TestSecurityRequirementOrder`
+enforces this against the spec, so the ordering cannot be lost by editing a `security` block.
 
 ## Consequences
 
@@ -133,7 +143,8 @@ four things the cart sample exists to demonstrate.
 - Failure recording: [`internal/controller/httpstack/oapi/auth/auth.go`](../../internal/controller/httpstack/oapi/auth/auth.go).
 - The slot itself: [`internal/controller/ctxhelper/authn.go`](../../internal/controller/ctxhelper/authn.go).
 - The behavior is fixed by a middleware test driving a synthetic spec that declares all three
-  security forms; no operation in the shipped spec uses the optional form yet.
+  security forms. `GET /v1/carts/me` is the first operation in the shipped spec to use the optional
+  form.
 - Related decision: [ADR-0015](0015-spec-driven-request-validation.md) (spec-driven request validation).
 - Related decision: [ADR-0018](0018-metrics-endpoint-auth-exception.md) (the other named authentication exception).
 - Posture this upholds: `docs/design/auth.md` (fail-closed), `docs/design/security.md` (deny by default).

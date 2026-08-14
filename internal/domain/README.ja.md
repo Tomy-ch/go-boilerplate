@@ -13,14 +13,14 @@
   ものであり、それを所有する集約パッケージが無いためである
   （[Domain Service をどこに置くか](#domain-service-をどこに置くか)を参照）。
 
-例）`internal/domain/user/`
+集約 1 つにつき 1 パッケージ。集約の名前を付け、以下のファイルを持つ。
 
 ```mermaid
 flowchart TB
-    Root["Aggregate: user"]
-    A["user_domain.go (Aggregate Root)"]
+    Root["Aggregate: &lt;name&gt;"]
+    A["&lt;name&gt;_domain.go (Aggregate Root)"]
     B["value.go (ValueObject)"]
-    D["user_repository.go (Repository IF)"]
+    D["&lt;name&gt;_repository.go (Repository IF)"]
     E["error.go (Domain Error)"]
     F["constant.go (Validation Const)"]
 
@@ -33,6 +33,12 @@ flowchart TB
 
 - **副作用を持たない関数（純関数）** でルールを記述するのが原則。  
   I/O・時刻取得・乱数生成などは **引数で注入された値** に依存させる。
+
+- **ドメインロジックに `context.Context` を持ち込まない。** Repository インターフェースのシグネチャは
+  宣言してよい。その継ぎ目を越える実装が伝播のために必要とするからである。それ以外はここでは受け取らない。
+  deadline やキャンセルを受け取るルールは I/O を行うつもりのルールであり、この層は I/O を行わない。
+  なお depguard はこれを捕まえられない — `context` は外側の層が正当に使う標準ライブラリなので、
+  この規則は lint ではなくレビューで保たれる。
 
 - 状態変更は **エンティティのメソッド** で行い、外部リソースへのアクセスはしない。
 
@@ -362,7 +368,7 @@ maxEmailLength
 OpenAPI のリクエスト検証ミドルウェアとこのレイヤは **冗長ではありません**。オーナーもスコープも異なります。
 
 - **オーナーが違う。** OpenAPI の制約は *ワイヤー契約*（HTTP API が受け入れる形）、domain の定数は *業務ルール*（業務が valid と認める値）。両者は正当に食い違える — [入力境界値のオーナーシップ](../../openapi/boundary-ownership.ja.md) を参照。
-- **唯一の共通チョークポイント — 入力側と永続化側の両方。** すべてのエンティティは `New(...)` を通って構築される。非HTTPの書き込み経路（seed・CLI・バッチ・テスト・将来の入口）がリクエストミドルウェアを完全に迂回するだけでなく、**DB からの再構築も同じ検証付きコンストラクタを通る**（`rowToUser` が全行を `user.New(...)` で組み立てる）。したがって `New(...)` は **infra 側から来る不正データ**も弾く：破損・手動 INSERT・レガシーなど、ドメイン不変条件に違反する行は、valid に見えるエンティティとして上がってくるのではなく再構築時にエラーになる。この読み取り経路はミドルウェアでは一切守れず、domain だけが守れる。
+- **唯一の共通チョークポイント — 入力側と永続化側の両方。** すべてのエンティティは `New(...)` を通って構築される。非HTTPの書き込み経路（seed・CLI・バッチ・テスト・将来の入口）がリクエストミドルウェアを完全に迂回するだけでなく、**DB からの再構築も同じ検証付きコンストラクタを通る**（Repository がフィールドを直接代入せず、全行をそれ経由で組み立てる）。したがって `New(...)` は **infra 側から来る不正データ**も弾く：破損・手動 INSERT・レガシーなど、ドメイン不変条件に違反する行は、valid に見えるエンティティとして上がってくるのではなく再構築時にエラーになる。この読み取り経路はミドルウェアでは一切守れず、domain だけが守れる。
 - **framework-agnostic な自己防衛。** domain は呼び出し元に依存せず常に正しくある必要がある。検証をトランスポート層に委ねると domain の正しさが Echo／ミドルウェアに結合し、レイヤの framework-agnostic 規約に反する。
 
 要するに：ミドルウェアは HTTP 境界を守り、domain は *業務ルールそのもの* を全呼び出し元に対して守る。
@@ -497,11 +503,11 @@ flowchart TB
 
 > **Evans からの逸脱。** Evans は集約を *即時* 整合の境界とする — 1 トランザクションは 1 集約を
 > 変更し、その外側は後から調停される。このモデルは上記 2 つの状況でその境界を広げており、その
-> 拡張は実在する。購入の作成は 3 つの集約の行を 1 トランザクションで保持する — 購入者（在籍を
-> ガードするためにロック）、商品（在庫を引き当てるためにロック）、そして書き込まれる購入である。
+> 拡張は実在する。1 トランザクションが 3 つの集約の行を同時に保持することがある — 純粋にガードとして
+> ロックされるもの、書き込まれるためにロックされるもの、そして生成されるものである。
 > これを受け入れるのは、Evans の議論が *変更* についてのものであり、3 者の役割が同じではないから
-> である。書き込まれるのは購入と商品だけで、その書き込みは原子的でなければ売り越しが観測可能に
-> なる。ユーザーは読まれ保持されるだけで変更されず、そのルートは自身の状態に対する唯一の権威で
+> である。原子性が要るのは書き込まれる集約だけで、そうでなければ中間状態が観測可能に
+> なる。ガードされる集約は読まれ保持されるだけで変更されず、そのルートは自身の状態に対する唯一の権威で
 > あり続ける。原則が守ろうとしているもの — 読み込んだ 1 つのグラフ越しに複数の集約を変更し続けた
 > 結果どの不変条件がどのルートのものか誰にも言えなくなること、を起こさない — は成立したままで
 > ある。原則が既定として許してしまい、このモデルが拒むのは、何にも保持されていない読み取りから
@@ -564,27 +570,71 @@ Order {
 そのデータが参照元集約の意味的なまとまりの一部かどうか（独立したトランザクションライフサイクルを
 持たず、必須で一意に定まる外部キーで到達できるか）です。固定的な参照データであっても、それ自体の
 条件で問い合わせ・一覧されるものは**独立した集約**であり、identity のみで保持し、その属性は
-usecase 層のバッチ取得で解決します。`internal/domain/prefecture` が対比すべき事例です — 外部から
-与えられアプリケーションが書き込むことはありませんが、参照マスタではなく独立した集約です。
-同じ区別が読み取り経路に及ぼす帰結は [`docs/rules.md`](../../docs/rules.md) の
+usecase 層のバッチ取得で解決します。外部から与えられアプリケーションが書き込まないことも決め手には
+なりません — それはデータの出自を述べているだけで、別の集約の意味的なまとまりにおける位置ではないからです。
+同じ区別が読み取り経路に及ぼす帰結は [`docs/rules.md`](../../docs/rules.ja.md) の
 Repository / QueryService Rules を参照してください。
 
-### どのエンティティにも属さないルール
+<!-- sample-api:begin -->
+`internal/domain/prefecture` が対比すべき事例です — 外部から与えられアプリケーションが書き込むことは
+ありませんが、それ自体の条件で問い合わせ・一覧されるため、参照マスタではなく独立した集約です。
+<!-- sample-api:end -->
 
-どのエンティティ・値オブジェクトの自然な責務でもないルールは **Domain Service** に属する。Usecase ではない。
+### ルールをどこに置くか
 
-```text
-退会       ← 進行中の購入
-まとめ発送 ← 発送待ちの購入
-```
+3 つの問いを、この順で。**最初に答えが出た問いが決める** — 後の問いが前の問いを覆すことはない。
+3 つは 1 つの判断を別の角度から見たものではなく、それぞれ**別の宛先の対**を分ける。競合する試金石として
+読むと、実際には曖昧でない配置が曖昧に見える。
 
-#### Domain Service か Usecase か
+1. **その問いは 1 つについてか、集合についてか** — エンティティ／値オブジェクトと Domain Service を分ける。
+2. **そのルールはどれか 1 つのエンティティ／値オブジェクトに収まるか** — 問い 1 がどちらも許すとき、
+   同じ 2 つを分ける。
+3. **導出か、写像か** — Domain Service と Usecase を分ける。
 
-境目は**導出**である。
+#### 1. 1 つについての問いか、集合についての問いか
 
-- **Domain Service** は導出する。複数のエンティティから業務的に意味のある値を算出する。在庫と予約から
-  実際に引き当てられる数量を出す、といったもの。ステートレスであり、その操作がどのエンティティにも
-  値オブジェクトにも自然な責務として収まらないからこそ存在する。どれかに収まるならそちらに置く。
+**1 つについての問いはエンティティのもの、集合についての問いは Domain Service のものである。**
+
+1 つのインスタンス自身の状態だけで決まる問いは、そのインスタンスのメソッドになる。ある 1 件についての
+答えが集合に他のどれが含まれるかに依存する問いは、置ける単一のインスタンスが存在しないので Domain Service
+へ行く。両者を分けているのは、問いがいくつのものについてのものかであって、いくつの集約に届くかではない。
+
+だから下の入場基準は責務を問い、集約の数を問わない。集約に跨ることを要求する基準は、集合の形をした
+ルールを書きようのないインスタンスのメソッドへ差し戻すか、
+[`../usecase/README.md`](../usecase/README.ja.md) がそれを禁じている Usecase へ押し込むかのどちらかになり、
+明らかに業務ルールである操作をこの層のどこにも置けなくしてしまう。
+
+<!-- sample-api:begin -->
+対になる実例: `Purchase.IsShippable` が答えるのは*この購入は発送可能か*で、1 件の購入自身の状態だけで
+決まるので `Purchase` のメソッドである。`dispatch.GroupForDispatch` が答えるのは*これらのうちどれとどれを
+1 便にまとめてよいか*で、ある 1 件についての答えが集合に他のどれが含まれるかに依存するので、どの
+`Purchase` 1 件にも置けない。どちらも購入集約だけを語っている。
+<!-- sample-api:end -->
+
+#### 2. 別の集約に届かないことは、ドメインを出る理由にならない
+
+ルールが別の集約にある値——数量・価格・状態——を必要とすることは頻繁にある。集約パッケージは他の集約を
+import できないため、これはルールを Usecase へ押し出す壁のように見える。**そうではない。**
+
+**ルールを所有する集約が、それらの値を保持しないスナップショットとして受け取る** — 自パッケージに宣言した
+値型で、そのルールが読む属性だけを運び、それらを読み込んだ Usecase が渡す。ルールは属すべき場所に留まり、
+移るのは読み込みだけである。集約は依然として他の集約への参照を持たないので、その不変条件は相手の状態から
+独立したままになる。
+
+ルールがドメインに置けないと結論する前に、まずこの形を検討すること。値が他所から来たという理由で業務上の
+判断を Usecase へ移すと、[`../usecase/README.md`](../usecase/README.ja.md) が「業務ルールを定義してはならない」
+と定めている場所にそれを置くことになり、2 人目の呼び出し元が現れた時点で 1 つのルールが 2 層に割れる。
+
+スナップショットは生きた集約のビューではなく値である。一度読まれ、渡され、捨てられる。振る舞いも、
+ルールが読む以上の同一性も持たないので、相手の集約への裏口にはなり得ない。
+
+#### 3. 導出か写像か
+
+そのルールがどのエンティティにも値オブジェクトにも収まらないと分かったうえで、この問いが Domain Service と
+Usecase を分ける。
+
+- **Domain Service** は導出する。複数のエンティティから業務的に意味のある値を算出する。ステートレスであり、
+  その操作がどのエンティティにも値オブジェクトにも自然な責務として収まらないからこそ存在する。
 - **Usecase** は調整し写像する。呼び出しの順序を決め、トランザクションを所有し、ドメインモデルを
   DTO へ変換する。
 
@@ -596,22 +646,22 @@ Usecase に留まる。これを Domain Service 経由にすると、2 エンテ
 Usecase のものである。
 
 判断がつかないときの試金石: **その計算が変わるとき、理由は業務上の判断か、表示上の判断か。** 業務上の
-判断ならそれはドメインのルールであり、Domain Service に属する。
+判断ならそれはドメインのルールである。この試金石が決め*ない*ことに注意: 導出された値が何かを拘束するか
+どうかは決めない。表示のために作られ、返した瞬間に古くなり、どの不変条件も依存しない——そうした
+「拘束力を持たない」業務判断も、業務判断であることに変わりはなく、ドメインに属する。ある値が commit まで
+真であり続けなければならないかどうかはトランザクション境界の問いで、
+[ADR-0032](../../docs/adr/0032-commandservice-atomicity-criterion.ja.md) が答える。配置の問いではない。
 
-#### 1 つについての問いか、集合についての問いか
+#### どのエンティティにも属さないルール
 
-**1 つについての問いはエンティティのもの、集合についての問いは Domain Service のものである。**
+どのエンティティ・値オブジェクトの自然な責務でもないルールは **Domain Service** に属する。Usecase ではない。
 
-`Purchase.IsShippable` が答えるのは*この購入は発送可能か*であり、1 件の購入自身の状態だけで決まる。
-だから `Purchase` のメソッドである。`dispatch.GroupForDispatch` が答えるのは*これらのうちどれとどれを
-1 便にまとめてよいか*であり、ある 1 件についての答えが集合に他のどれが含まれるかに依存する。だから
-どの `Purchase` 1 件にも置けない。どちらも購入集約だけを語っており、両者を分けているのは、問いが
-いくつのものについてのものかであって、いくつの集約に届くかではない。
-
-だから下の入場基準は責務を問い、集約の数を問わない。集約に跨ることを要求する基準は、
-`GroupForDispatch` を書きようのない `Purchase` のメソッドへ差し戻すか、
-[`../usecase/README.md`](../usecase/README.ja.md) がそれを禁じている Usecase へ押し込むかのどちらかになり、
-明らかに業務ルールである操作をこの層のどこにも置けなくしてしまう。
+<!-- sample-api:begin -->
+```text
+退会       ← 進行中の購入
+まとめ発送 ← 発送待ちの購入
+```
+<!-- sample-api:end -->
 
 #### Domain Service をどこに置くか
 
@@ -635,13 +685,14 @@ Usecase のものである。
 **入場基準は狭く、depguard の例外は招待状ではない。** 次の 2 つがともに成り立つときにだけここへ置く。
 
 1. どのエンティティ・値オブジェクトの自然な責務でもない。どれかに収まるならそちらへ置く。
-2. ステートレスで、かつ導出である（上の *Domain Service か Usecase か* を参照）。2 つの集約を読んで
+2. ステートレスで、かつ導出である（上の *3. 導出か写像か* を参照）。2 つの集約を読んで
    並べるだけなら写像であり、写像は Usecase に留まる。
 
 ここのサービスは I/O を持たない。Repository も `context.Context` も受け取らず、Usecase が読み込み済みの
 状態を受け取って、導出した値またはドメインのエラーを返す。その状態の取得・呼び出し順序・
 トランザクションの所有は Usecase の責務のままである。
 
+<!-- sample-api:begin -->
 **[`service/membership`](service/membership) は 2 つの集約に跨る。** 一つの不変条件を両側から
 表している——ユーザーと進行中の購入を切り離してはならない。`EnsurePurchasable` は在籍していない
 ユーザーの購入を拒み、`EnsureWithdrawable` は進行中の購入が残っている間の退会を拒む。どちらの集約にも
@@ -650,11 +701,15 @@ Usecase のものである。
 **[`service/dispatch`](service/dispatch) は 1 つの集約に閉じている。** `GroupForDispatch` は発送待ちの
 購入を、購入者ごとに、まとめて発送してよい組へ分ける。import するのは `domain/purchase` だけであり、
 ここに置く理由は上のとおりである。答えが集合についてのものなので、購入集約にはその置き場が無い。
+<!-- sample-api:end -->
 
 ### Query と Aggregate
 
-Aggregate は **Write Model**。集計・レポート・複雑検索・`GROUP BY` の*実行*は QueryService /
-ReadModel に属し、それらが返す射影も同様である。
+Aggregate は **Write Model**。ある集計・レポート・複雑検索をどの構成要素が実行するか——Repository か
+QueryService か CommandService か——は
+[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.ja.md) が決めるもので、
+ここでは再掲しない。この節が所有するのは、その基準が答えない問いのほうである。すなわち
+**そうしたクエリが実行する業務条件を、誰が著すか**。
 
 **外へ出すのは実装であって、基準ではない。** 「どの商品を在庫僅少とみなすか」「どのユーザーを
 非アクティブとみなすか」——所属を決めるその規則はドメインの語彙であり、ドメイン定数とドメインの
@@ -741,10 +796,13 @@ internal/infrastructure/rdb/repository/<aggregate>/
 
 ### Repository に許容するメソッド
 
-- `FindByActive`
-- `FindByXXX`
-- `CountByXXX`
-- `Create` / `Update`（集約の永続化＝write。論理削除は `deletedAt` を更新する `Update`）
+- `FindByXXX` / `CountByXXX` — 同一性による取得、または集約自身の属性による絞り込み・一覧・件数
+- `LockByXXX` — 同じ読み取りを悲観ロック付きで行う。commit まで行を保持しなければならない呼び出し元の
+  ため。ロックと、それが要求する順序は doc コメントに書く
+  （[ADR-0034 (ordered-pessimistic-row-locks)](../../docs/adr/0034-ordered-pessimistic-row-locks.ja.md)）
+- `Create` / `Update` — 集約の永続化。論理削除は `deletedAt` を更新する `Update`
+- `Delete` / `Purge` — 物理削除。データが用途を越えて残る理由が無く、監査記録の義務も無い場合。
+  履歴を保つ集約に足してはならない
 
 想定：
 
@@ -757,13 +815,15 @@ SELECT / WHERE / JOIN
 - GROUP BY
 - SUM / AVG
 - WITH句
-- 境界越JOIN
+- 境界越 JOIN — **例外**: この集約の文脈に入れ子になった参照マスタへの一意に定まる JOIN。
+  別の境界ではなくこの集約の意味的な集合の一部であるため
+  （上の *参照マスタ集約* と
+  [`docs/rules.md`](../../docs/rules.ja.md) § Repository / QueryService Rules を参照）
 
-配置先：
-
-- Usecase
-- QueryService
-- ReadModel
+配置先は読み取り側——QueryService とその ReadModel——で、呼び出しの順序は Usecase が決める。
+どちらに属するかは
+[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.ja.md) が決めるもので、
+その基準はここでは再掲しない。
 
 ### doc コメントはドメイン語彙で書く
 
@@ -997,6 +1057,12 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 - DB主導設計
 - Domainでtime.Now()
 
+<!-- sample-api:begin -->
+## 実例としての集約
+
+以下のファイルは 1 つの集約を端から端まで書き出したもので、上の規則を具体物に当てて読めるようにしている。
+**サンプル**であり、サンプル API と共に撤去される。上の記述はこれに依存しない。
+
 ```go
 // constant.go
 package user
@@ -1011,6 +1077,14 @@ const (
     maxStreetLength     = 255
     maxBuildingLength   = 255
     maxPostalCodeLength = 8
+)
+
+// 項目識別子。API のリクエストプロパティ名と一致させ、どの項目が不正かを呼び出し側へ返す。
+const (
+    FieldFirstName    = "firstName"
+    FieldPrefectureID = "prefectureId"
+    FieldBuilding     = "building"
+    // lastName / email / phone / city / street / postalCode も同様
 )
 ```
 
@@ -1060,17 +1134,19 @@ import (
 type Users []*User
 
 // エンティティ（集約ルート）
+// 形式そのものが不変条件になる値（email / postalCode）は値オブジェクトとして持つ。
+// 素の string で持つと、その形式を守る責任が呼び出し側へ散る（Value Object の節を参照）。
 type User struct {
     id           uuid.UUID
     firstName    string
     lastName     string
-    email        string
+    email        Email
     phone        string
     prefectureID uuid.UUID
     city         string
     street       string
     building     *string
-    postalCode   string
+    postalCode   PostalCode
     createdAt    time.Time
     updatedAt    time.Time
     deletedAt    *time.Time
@@ -1164,19 +1240,32 @@ func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 }
 func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
 
-// バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
+// バリデーション（例示・New / UpdateProfile で共有）
+// 利用者が直せる入力項目なので、最初の失敗で止めず全項目を検証し、項目識別子を添えて結合する
+// （エラーの節を参照）。1 往復で全部の誤りを返せないと、利用者は 1 項目ずつ直しに来ることになる。
 func validateProfileFields(profile Profile) error {
+    var (
+        errs   []error
+        fields []string
+    )
     if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
-        return xerrors.Wrap(ErrInvalidFirstName, msg)
+        errs = append(errs, xerrors.Wrap(ErrInvalidFirstName, msg))
+        fields = append(fields, FieldFirstName)
     }
-    // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
+    // lastName / email / phone / city / street / postalCode も同様に検証し、
+    // 対応する ErrInvalidXxx と Field 定数を積む
     if profile.PrefectureID.IsNil() {
-        return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
+        errs = append(errs, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required"))
+        fields = append(fields, FieldPrefectureID)
     }
-    if building != nil { // building は任意
-        if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok {
-            return xerrors.Wrap(ErrInvalidBuilding, msg)
+    if profile.Building != nil { // building は任意
+        if ok, msg := stringkit.ValidateInRange(*profile.Building, minLength, maxBuildingLength); !ok {
+            errs = append(errs, xerrors.Wrap(ErrInvalidBuilding, msg))
+            fields = append(fields, FieldBuilding)
         }
+    }
+    if len(errs) > 0 {
+        return apperror.WithDetails(xerrors.Join(errs...), fields...)
     }
     return nil
 }
@@ -1204,3 +1293,4 @@ type Repository interface {
     CountByActive(ctx context.Context, active *bool) (int64, error)
 }
 ```
+<!-- sample-api:end -->

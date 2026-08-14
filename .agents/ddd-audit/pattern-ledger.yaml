@@ -631,6 +631,19 @@ patterns:
     last_audited: "2026-08-06"
     last_audited_commit: "cd254c46a1c2"
 
+  - id: side-effect-free-functions
+    name: Side-Effect-Free Functions
+    part: 3
+    scope: core
+    status: unexamined
+    verdict: null
+    gap: ""
+    interpreted_by: []
+    deviation_declared: false
+    enforced_by: []
+    last_audited: null
+    last_audited_commit: null
+
   - id: domain-event
     name: Domain Event
     part: 3

@@ -6,6 +6,7 @@ import (
 	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking"   // sample-api:line
 	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"          // sample-api:line
 	purchasesummaryqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/summary" // sample-api:line
+	cartrepo "go-boilerplate/internal/infrastructure/rdb/repository/cart"                         // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                            // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/product"                               // sample-api:line
 	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category"      // sample-api:line
@@ -36,6 +37,7 @@ func persistenceModule() fx.Option {
 				productcategory.New,
 				product.New,
 				purchaserepo.New,
+				cartrepo.New,
 				// sample-api:end
 			),
 		),

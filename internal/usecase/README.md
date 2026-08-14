@@ -266,32 +266,20 @@ Characteristics:
 - Domain conversion may be skipped
 - Transactions are not required
 
-### Queries allowed in Repository
+### What a Repository may be asked for
 
-```txt
-FindAll
-FindByID
-FindByKeyword
-CountAll
-CountByActive
-```
+The Repository interface is declared in the domain layer, so its shape is that layer's contract
+rather than this one's. **The permitted methods and the SQL shapes behind them are listed in
+[`../domain/README.md`](../domain/README.md)** (§ Methods allowed in Repository / § What must not be
+in Repository). This section keeps no copy: two lists drift, and the copy nobody re-reads is the one
+that goes stale.
 
-JOIN is allowed **as long as domain boundaries are not violated**.
+Which construct a given operation belongs to — Repository, QueryService, or CommandService — is
+decided by [`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.md).
 
-### Queries not allowed in Repository
-
-```txt
-GROUP BY
-Aggregation functions
-WITH clauses
-Complex analytical queries
-```
-
-These belong to:
-
-- Analytics
-- Reporting
-- Data pipelines
+What this layer owns is the consequence. A Usecase orders those calls and owns the transaction; when
+an operation does not fit the Repository, it reaches for the construct that does rather than widening
+the Repository until it fits.
 
 ### Verifying infrastructure against the domain
 

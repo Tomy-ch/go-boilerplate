@@ -10,6 +10,7 @@ import (
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"                 // sample-api:line
 	objectstoragebd "go-boilerplate/internal/usecase/boundary/objectstorage" // sample-api:line
 	txbd "go-boilerplate/internal/usecase/boundary/tx"                       // sample-api:line
+	cartuc "go-boilerplate/internal/usecase/cart"                            // sample-api:line
 	checkoutuc "go-boilerplate/internal/usecase/checkout"                    // sample-api:line
 	dashboarduc "go-boilerplate/internal/usecase/dashboard"                  // sample-api:line
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate"            // sample-api:line
@@ -61,6 +62,7 @@ func UsecaseModule() fx.Option {
 			provideProductUsecase,
 			productuc.NewImageGC,
 			purchaseuc.New,
+			cartuc.New,
 			checkoutuc.New,
 			purchasesummaryuc.New,
 			dashboarduc.New,
