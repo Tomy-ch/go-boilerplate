@@ -99,6 +99,8 @@ tags:
     description: admin ダッシュボードの横断集計（admin のみ・backend 合成/1画面1API・非 admin は 403）。
   - name: v1/carts
     description: 自分のカート（任意認証サンプル・ゲストと認証済みの双方が主体になれる / 明細ごとの再評価）。
+  - name: v1/carts/items
+    description: カート明細の設定（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
   # sample-api:end
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
@@ -173,6 +175,8 @@ paths:
     $ref: './paths/v1/dashboard/summary.yaml'
   /v1/carts/me:
     $ref: './paths/v1/carts/me.yaml'
+  /v1/carts/me/items/{productId}:
+    $ref: './paths/v1/carts/me/items/productId.yaml'
   # sample-api:end
 components:
   parameters:

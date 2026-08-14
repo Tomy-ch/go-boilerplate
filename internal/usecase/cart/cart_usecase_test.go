@@ -13,6 +13,7 @@ import (
 	mock_product "go-boilerplate/internal/domain/product/mock"
 	"go-boilerplate/internal/observability"
 	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
+	mock_token "go-boilerplate/internal/usecase/boundary/token/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
@@ -105,14 +106,18 @@ func TestNew(t *testing.T) {
 			txm := mock_tx.NewMockManager(ctrl)
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			productRepo := mock_product.NewMockRepository(ctrl)
+			tokenGen := mock_token.NewMockGenerator(ctrl)
 			clk := clocktestkit.NewMockClock(t, time.Time{})
 
-			actual, ok := New(txm, cartRepo, productRepo, clk, observability.NewNoopTracerFactory(t)).(*usecase)
+			actual, ok := New(
+				txm, cartRepo, productRepo, tokenGen, clk, observability.NewNoopTracerFactory(t),
+			).(*usecase)
 			require.True(t, ok)
 
 			assert.Equal(t, txm, actual.txm)
 			assert.Equal(t, cartRepo, actual.cartRepo)
 			assert.Equal(t, productRepo, actual.productRepo)
+			assert.Equal(t, tokenGen, actual.tokenGen)
 			assert.Equal(t, clk, actual.clock)
 			assert.NotNil(t, actual.tracer)
 		})
@@ -567,6 +572,83 @@ func Test_usecase_resolveCart(t *testing.T) {
 			_, _, err := newTestUsecase(t, cartRepo, nil).resolveCart(t.Context(), Subject{UserID: &userID}, now)
 
 			require.ErrorIs(t, err, expectedErr)
+		})
+	})
+}
+
+func Test_usecase_buildView(t *testing.T) {
+	t.Parallel()
+
+	var (
+		productID = uuidtestkit.NewTestFromSalt(t, "build_view_product")
+		now       = time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC)
+	)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("小計は提示価格を書き換える前の判定で決まる", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			seen := newPrice(t, "10.00")
+			c := newGuestCart(t, now.Add(time.Hour),
+				newTestCartItem(t, "build_view_item", productID, 2, &seen))
+
+			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
+				Return(product.Products{newTestProduct(t, productID, "12.50", 5)}, nil)
+
+			actual, err := newTestUsecase(t, nil, productRepo).buildView(t.Context(), c, now)
+			require.NoError(t, err)
+
+			// 提示価格を先に書き換えると値上がりが消え、この明細が小計へ入ってしまう。
+			assert.Equal(t, []ItemIssue{ItemIssuePriceIncreased}, actual.Items[0].Issues)
+			assert.Zero(t, actual.SubtotalAmount)
+			// 書き換えと延長は判定の後に行われる。
+			assert.Equal(t, newPrice(t, "12.50"), *c.Items()[0].LastSeenPrice())
+			assert.Equal(t, now.Add(cartTTL), c.ExpiresAt())
+		})
+
+		t.Run("問題の無い明細だけを合算する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			seen := newPrice(t, "10.00")
+			c := newGuestCart(t, now.Add(time.Hour),
+				newTestCartItem(t, "build_view_ok", productID, 3, &seen))
+
+			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
+				Return(product.Products{newTestProduct(t, productID, "10.00", 5)}, nil)
+
+			actual, err := newTestUsecase(t, nil, productRepo).buildView(t.Context(), c, now)
+			require.NoError(t, err)
+
+			assert.Empty(t, actual.Items[0].Issues)
+			assert.Equal(t, int64(3000), actual.SubtotalAmount)
+			assert.Nil(t, actual.SessionToken)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("商品の取得に失敗した場合はカートを進めない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			expectedErr := xerrors.New("connection refused")
+			c := newGuestCart(t, now.Add(time.Hour),
+				newTestCartItem(t, "build_view_fail", productID, 1, nil))
+
+			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(nil, expectedErr)
+
+			_, err := newTestUsecase(t, nil, productRepo).buildView(t.Context(), c, now)
+
+			require.ErrorIs(t, err, expectedErr)
+			assert.Equal(t, now.Add(time.Hour), c.ExpiresAt())
 		})
 	})
 }

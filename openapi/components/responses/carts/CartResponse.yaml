@@ -13,8 +13,9 @@ properties:
     description: |
       ゲストカートのセッショントークン。以降のリクエストで X-Cart-Session ヘッダに載せます。
       所有者が確定済みのカート、および新規発行が起きなかった操作では null です。
-      **取得（GET）ではカート行を作らないため、この操作では常に null です。**
-    example: "b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE"
+      値が入るのは、その操作がゲストカートを新しく作った場合だけです
+      （取得はカート行を作らないため、常に null になります）。
+    example: "b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGU"
   items:
     type: array
     description: |

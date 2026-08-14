@@ -91,6 +91,8 @@ tags:
     description: admin ダッシュボードの横断集計（admin のみ・backend 合成/1画面1API・非 admin は 403）。
   - name: v1/carts
     description: 自分のカート（任意認証サンプル・ゲストと認証済みの双方が主体になれる / 明細ごとの再評価）。
+  - name: v1/carts/items
+    description: カート明細の設定（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -1501,6 +1503,63 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/carts/me/items/{productId}:
+    put:
+      operationId: PutCartsMeItem
+      tags:
+        - v1/carts/items
+      summary: 自分のカートへの明細の設定（数量の upsert）
+      description: |
+        呼び出し主体のカートに、指定した商品の数量を設定します。加算ではなく設定なので、
+        同じ要求を何回送っても結果は変わりません。**冪等性は明細の自然キー (cart_id, product_id) から
+        来るため、Idempotency-Key を必要としません**（自然キーを持たない POST /v1/purchases との対比）。
+        主体は認証済みユーザー（Bearer トークンの内部 UserID）か、ゲスト（X-Cart-Session ヘッダ）の
+        いずれかで、両方が提示された場合は認証済みユーザーが優先されます。
+        認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+        （ADR-0019 (optional-authentication-fail-closed)）。
+        **カートがまだ無い主体にはこの操作がカートを作ります**。ゲストの場合はセッショントークンを
+        発行して sessionToken に載せて返すので、以降のリクエストで X-Cart-Session に載せてください。
+        提示されたトークンでカートを引けなかった場合、その値では作らず新しい値を発行します
+        （トークンの秘匿だけがゲストカートへの到達を守っているため、値をクライアントに選ばせません）。
+        **有効期限を過ぎたカートは空から始まります**。所有者が確定したカートは行を保ったまま明細を捨て、
+        ゲストは新しいカートを作ります。いずれも取得（GET）が期限切れを空のカートとして見せる契約と一致します。
+        設定後、応答はカート全体を明細ごとの再評価つきで返します（GET と同じ内容です）。
+        在庫は押さえません。在庫不足は投入を拒む理由ではなく、明細の issues として現れます。
+        本 op 自体は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段
+        （外部 IdP の JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+        - $ref: '#/components/parameters/CartSessionParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemPutRequest'
+      responses:
+        '200':
+          description: 明細の設定に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
 components:
   parameters:
     PageParam:
@@ -1701,7 +1760,7 @@ components:
         pattern: ^[A-Za-z0-9_-]{43}$
         minLength: 43
         maxLength: 43
-        example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE
+        example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGU
     PurchasePeriodParam:
       name: period
       in: query
@@ -2969,8 +3028,9 @@ components:
           description: |
             ゲストカートのセッショントークン。以降のリクエストで X-Cart-Session ヘッダに載せます。
             所有者が確定済みのカート、および新規発行が起きなかった操作では null です。
-            **取得（GET）ではカート行を作らないため、この操作では常に null です。**
-          example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGUtMDE
+            値が入るのは、その操作がゲストカートを新しく作った場合だけです
+            （取得はカート行を作らないため、常に null になります）。
+          example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGU
         items:
           type: array
           description: |
@@ -3888,6 +3948,23 @@ components:
           format: date-time
           description: 配達日時
           example: '2026-07-28T00:00:00Z'
+    CartItemPutRequest:
+      type: object
+      description: |
+        カート明細の数量設定リクエスト（application/json）。対象の商品はパスで指定します。
+        数量は加算ではなく設定です。同じ要求を 2 回送っても結果は変わりません。
+        0 は削除ではなく範囲外として 400 を返します（削除は DELETE が担い、1 つの操作に 2 つの意味を持たせません）。
+      additionalProperties: false
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 99
+          description: 設定する数量。現在の数量に加算するのではなく、この値で置き換えます。 範囲外の値はドメインに届く前に 400 で拒否されます。
+          example: 2
   responses:
     MethodNotAllowed405:
       description: 許可されていないリクエスト方法です。

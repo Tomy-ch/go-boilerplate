@@ -1,0 +1,18 @@
+type: object
+description: |
+  カート明細の数量設定リクエスト（application/json）。対象の商品はパスで指定します。
+  数量は加算ではなく設定です。同じ要求を 2 回送っても結果は変わりません。
+  0 は削除ではなく範囲外として 400 を返します（削除は DELETE が担い、1 つの操作に 2 つの意味を持たせません）。
+additionalProperties: false
+required:
+  - quantity
+properties:
+  quantity:
+    type: integer
+    format: int32
+    minimum: 1
+    maximum: 99
+    description: >-
+      設定する数量。現在の数量に加算するのではなく、この値で置き換えます。
+      範囲外の値はドメインに届く前に 400 で拒否されます。
+    example: 2
