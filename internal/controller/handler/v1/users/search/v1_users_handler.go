@@ -57,6 +57,7 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 	users := make([]gen.UsersSearchResponseItem, len(list.Items))
 	for i, dto := range list.Items {
 		users[i] = gen.UsersSearchResponseItem{
+			Id:           dto.ID.ToPrimitive(),
 			FirstName:    dto.FirstName,
 			LastName:     dto.LastName,
 			Email:        types.Email(dto.Email),

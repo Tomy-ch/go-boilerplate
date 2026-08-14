@@ -136,6 +136,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			expected := UserSearchResults{
 				{
+					ID:             userDomain.ID(),
 					FirstName:      userDomain.FirstName(),
 					LastName:       userDomain.LastName(),
 					Email:          userDomain.Email(),
@@ -470,6 +471,7 @@ func Test_usecase_toSearchResults(t *testing.T) {
 
 			expected := UserSearchResults{
 				{
+					ID:             userDomain.ID(),
 					FirstName:      userDomain.FirstName(),
 					LastName:       userDomain.LastName(),
 					Email:          userDomain.Email(),

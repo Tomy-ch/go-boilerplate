@@ -33,6 +33,7 @@ var errOrphanPrefecture = xerrors.Wrap(apperror.ErrInternal, "prefecture not fou
 
 // UserView は、ユーザー取得結果の出力 DTO を表します。
 type UserView struct {
+	ID             uuid.UUID
 	FirstName      string
 	LastName       string
 	Email          string
@@ -555,6 +556,7 @@ func (u *usecase) resolvePatchPrefecture(ctx context.Context, name *string, curr
 // toUserView は、ユーザーエンティティと都道府県名から DTO を構築します。
 func toUserView(u *user.User, prefectureName string) UserView {
 	return UserView{
+		ID:             u.ID(),
 		FirstName:      u.FirstName(),
 		LastName:       u.LastName(),
 		Email:          u.Email(),

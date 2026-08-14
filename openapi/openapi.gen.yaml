@@ -1828,6 +1828,7 @@ components:
       type: object
       description: ユーザー情報の基本レスポンススキーマ
       required:
+        - id
         - firstName
         - lastName
         - phone
@@ -1838,6 +1839,11 @@ components:
         - street
         - deletedAt
       properties:
+        id:
+          type: string
+          format: uuid
+          description: ユーザーID
+          example: 123e4567-e89b-12d3-a456-426614174000
         firstName:
           description: 名前
           type: string

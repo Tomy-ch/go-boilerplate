@@ -109,6 +109,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 // toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
 func toUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
+		Id:         dto.ID.ToPrimitive(),
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),

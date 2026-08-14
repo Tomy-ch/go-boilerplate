@@ -67,6 +67,7 @@ func (s *server) GetUsersFeed(ctx context.Context, request gen.GetUsersFeedReque
 // toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
 func toUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
+		Id:         dto.ID.ToPrimitive(),
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),

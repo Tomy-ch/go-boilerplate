@@ -104,6 +104,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 		expected := []UserView{
 			{
+				ID:             userDomain.ID(),
 				FirstName:      userDomain.FirstName(),
 				LastName:       userDomain.LastName(),
 				PostalCode:     userDomain.PostalCode(),
@@ -273,6 +274,7 @@ func Test_usecase_CreateUser(t *testing.T) {
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 			expected := UserView{
+				ID:             createDTO.UserID,
 				FirstName:      createDTO.FirstName,
 				LastName:       createDTO.LastName,
 				Email:          createDTO.Email,

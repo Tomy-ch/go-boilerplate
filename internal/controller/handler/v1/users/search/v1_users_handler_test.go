@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_query "go-boilerplate/internal/usecase/user/search/mock"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
@@ -37,6 +38,7 @@ func newServer(t *testing.T) (*server, *mock_query.MockUsecase) {
 // wantSearchItem は、本番の変換とは独立な検証用オラクル（フィールド取り違え検出）。
 func wantSearchItem(r *usecase_search.UserSearchResult) gen.UsersSearchResponseItem {
 	return gen.UsersSearchResponseItem{
+		Id:           r.ID.ToPrimitive(),
 		FirstName:    r.FirstName,
 		LastName:     r.LastName,
 		Email:        types.Email(r.Email),
@@ -126,11 +128,13 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			t.Parallel()
 			dtos := usecase_search.UserSearchResults{
 				&usecase_search.UserSearchResult{
+					ID:        uuidtestkit.NewTestFromSalt(t, "user_search_result_1"),
 					FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "090-0000-0001",
 					PostalCode: "123-0001", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1",
 					Building: new("B1"), RegisteredAt: t1,
 				},
 				&usecase_search.UserSearchResult{
+					ID:        uuidtestkit.NewTestFromSalt(t, "user_search_result_2"),
 					FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "090-0000-0002",
 					PostalCode: "123-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2-2",
 					RegisteredAt: t2,

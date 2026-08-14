@@ -33,6 +33,7 @@ type UserSearchResults []*UserSearchResult
 
 // UserSearchResult は、ユーザー検索結果1件を表します。
 type UserSearchResult struct {
+	ID             uuid.UUID
 	FirstName      string
 	LastName       string
 	Email          string
@@ -206,6 +207,7 @@ func (u *usecase) toSearchResults(ctx context.Context, us user.Users) (UserSearc
 // toSearchResult は、ユーザーエンティティと都道府県名から検索結果 DTO を構築します。
 func toSearchResult(u *user.User, prefectureName string) *UserSearchResult {
 	return &UserSearchResult{
+		ID:             u.ID(),
 		FirstName:      u.FirstName(),
 		LastName:       u.LastName(),
 		Email:          u.Email(),
