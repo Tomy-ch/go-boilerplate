@@ -24,6 +24,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"                // sample-api:line
 	purchasesummaryuc "go-boilerplate/internal/usecase/purchase/summary" // sample-api:line
 	"go-boilerplate/internal/usecase/user"                               // sample-api:line
+	userroleuc "go-boilerplate/internal/usecase/user/role"               // sample-api:line
 	"go-boilerplate/internal/usecase/user/search"                        // sample-api:line
 
 	"go.uber.org/fx"
@@ -49,6 +50,7 @@ func UsecaseModule() fx.Option {
 			user.New,
 			user.NewPurge,
 			user.NewArchive,
+			userroleuc.New,
 			search.New,
 			exchangerateuc.New,
 			addressuc.New,
