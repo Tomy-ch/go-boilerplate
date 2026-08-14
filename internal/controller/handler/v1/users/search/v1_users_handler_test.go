@@ -8,8 +8,10 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
+	"go-boilerplate/internal/controller/handler/testkit/testauth"
 	gen "go-boilerplate/internal/controller/handler/v1/users/search/gen"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/tools/paging"
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_query "go-boilerplate/internal/usecase/user/search/mock"
@@ -22,6 +24,9 @@ import (
 )
 
 const targetPath = "/v1/users/search"
+
+// searchSubject は、検索テストで使う認証主体の subject です。
+const searchSubject = "11111111-1111-1111-1111-111111111111"
 
 func newServer(t *testing.T) (*server, *mock_query.MockUsecase) {
 	t.Helper()
@@ -101,13 +106,13 @@ func Test_server_GetUsersSearch(t *testing.T) {
 
 			var gotFilter *usecase_search.SearchParams
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
-				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), mockPage).
+				DoAndReturn(func(_ context.Context, _ *authbd.Authn, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
 					gotFilter = f
 					return &usecase_search.UserSearchListView{Items: dtos, Total: total}, nil
 				})
 
-			resp, err := s.GetUsersSearch(context.Background(), mockParams)
+			resp, err := s.GetUsersSearch(testauth.MakeAvailableAuthn(context.Background(), t, searchSubject), mockParams)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantFilter, gotFilter)
@@ -151,13 +156,13 @@ func Test_server_GetUsersSearch(t *testing.T) {
 
 			var gotFilter *usecase_search.SearchParams
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
-				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), mockPage).
+				DoAndReturn(func(_ context.Context, _ *authbd.Authn, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
 					gotFilter = f
 					return &usecase_search.UserSearchListView{Items: usecase_search.UserSearchResults{}, Total: 0}, nil
 				})
 
-			resp, err := s.GetUsersSearch(context.Background(), noFilterParams)
+			resp, err := s.GetUsersSearch(testauth.MakeAvailableAuthn(context.Background(), t, searchSubject), noFilterParams)
 			require.NoError(t, err)
 
 			// フィルタ未指定でも nil ではなく Keyword/Active が共に nil の空 SearchParams が渡る。
@@ -182,7 +187,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			}
 
 			s, _ := newServer(t)
-			resp, err := s.GetUsersSearch(context.Background(), invalidParams)
+			resp, err := s.GetUsersSearch(testauth.MakeAvailableAuthn(context.Background(), t, searchSubject), invalidParams)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -191,10 +196,10 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			t.Parallel()
 
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), mockPage).
 				Return(nil, apperror.ErrInternal)
 
-			resp, err := s.GetUsersSearch(context.Background(), mockParams)
+			resp, err := s.GetUsersSearch(testauth.MakeAvailableAuthn(context.Background(), t, searchSubject), mockParams)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})

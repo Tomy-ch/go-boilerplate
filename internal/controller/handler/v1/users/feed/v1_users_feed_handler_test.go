@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/handler/testkit/testauth"
 	"go-boilerplate/internal/controller/handler/v1/users/feed/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -22,6 +23,9 @@ import (
 )
 
 const targetPath = "/v1/users/feed"
+
+// feedSubject は、フィード取得テストで使う認証主体の subject です。
+const feedSubject = "11111111-1111-1111-1111-111111111111"
 
 func newServer(t *testing.T) (*server, *mock_user.MockUsecase) {
 	t.Helper()
@@ -84,10 +88,10 @@ func Test_server_GetUsersFeed(t *testing.T) {
 
 			dtos := []user.UserView{expectedDTO1, expectedDTO2}
 			mockApp.EXPECT().
-				ListUsersFeed(gomock.Any(), gomock.AssignableToTypeOf(&paging.Cursor{})).
+				ListUsersFeed(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&paging.Cursor{})).
 				Return(&user.UserFeedView{Items: dtos, NextCursor: nil}, nil)
 
-			resp, err := s.GetUsersFeed(context.Background(), req)
+			resp, err := s.GetUsersFeed(testauth.MakeAvailableAuthn(context.Background(), t, feedSubject), req)
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetUsersFeed200JSONResponse)
@@ -115,10 +119,10 @@ func Test_server_GetUsersFeed(t *testing.T) {
 			nextCursor := "next-opaque-cursor"
 			dtos := []user.UserView{expectedDTO1}
 			mockApp.EXPECT().
-				ListUsersFeed(gomock.Any(), gomock.AssignableToTypeOf(&paging.Cursor{})).
+				ListUsersFeed(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&paging.Cursor{})).
 				Return(&user.UserFeedView{Items: dtos, NextCursor: &nextCursor}, nil)
 
-			resp, err := s.GetUsersFeed(context.Background(), req)
+			resp, err := s.GetUsersFeed(testauth.MakeAvailableAuthn(context.Background(), t, feedSubject), req)
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetUsersFeed200JSONResponse)
@@ -146,7 +150,7 @@ func Test_server_GetUsersFeed(t *testing.T) {
 				Params: gen.GetUsersFeedParams{After: &invalidAfter},
 			}
 
-			resp, err := s.GetUsersFeed(context.Background(), req)
+			resp, err := s.GetUsersFeed(testauth.MakeAvailableAuthn(context.Background(), t, feedSubject), req)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -159,10 +163,10 @@ func Test_server_GetUsersFeed(t *testing.T) {
 
 			expectedErr := apperror.ErrInternal
 			mockApp.EXPECT().
-				ListUsersFeed(gomock.Any(), gomock.AssignableToTypeOf(&paging.Cursor{})).
+				ListUsersFeed(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&paging.Cursor{})).
 				Return(nil, expectedErr)
 
-			resp, err := s.GetUsersFeed(context.Background(), req)
+			resp, err := s.GetUsersFeed(testauth.MakeAvailableAuthn(context.Background(), t, feedSubject), req)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, expectedErr)
 		})

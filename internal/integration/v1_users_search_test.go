@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_search "go-boilerplate/internal/usecase/user/search/mock"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
 	"go.uber.org/mock/gomock"
@@ -47,12 +48,13 @@ func TestV1UsersSearch_Integration(t *testing.T) {
 
 			mockApp := mock_search.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&usecase_search.UserSearchListView{Items: expectedDTO, Total: 1}, nil)
 
 			searchhandler.BindHandler(e, tf, mockApp)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, headers)
 			AssertJSONResponseType[gen.UsersSearchResponse](t, actual)
 		})
 	})
@@ -70,12 +72,13 @@ func TestV1UsersSearch_Integration(t *testing.T) {
 
 			mockApp := mock_search.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil, apperror.ErrInternal)
 
 			searchhandler.BindHandler(e, tf, mockApp)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
 	})

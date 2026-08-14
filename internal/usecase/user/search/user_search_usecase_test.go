@@ -11,6 +11,9 @@ import (
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
+	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
@@ -20,6 +23,28 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+// newAllowAuthorizer は、Authorize が常に許可（nil）を返す Authorizer モックを返します。
+func newAllowAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
+	a := mock_authz.NewMockAuthorizer(ctrl)
+	a.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	return a
+}
+
+// newDenyAuthorizer は、Authorize が常に拒否（ErrForbidden）を返す Authorizer モックを返します。
+func newDenyAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
+	a := mock_authz.NewMockAuthorizer(ctrl)
+	a.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(authz.ErrForbidden)
+	return a
+}
+
+// newTestAuthn は、テスト用の認証主体（Authn）を返します。
+func newTestAuthn(t *testing.T) *authbd.Authn {
+	t.Helper()
+	authn, err := authbd.New(uuidtestkit.NewTestFromSalt(t, "caller").String(), authbd.IssuerMock, nil, nil)
+	require.NoError(t, err)
+	return authn
+}
 
 // newSearchTestUser は、検索テスト用のユーザーエンティティを生成するヘルパーです。
 func newSearchTestUser(t *testing.T, prefectureID uuid.UUID, createdAt time.Time) *user.User {
@@ -52,13 +77,15 @@ func TestNew(t *testing.T) {
 		tf := observability.NewNoopTracerFactory(t)
 		userRepo := mock_user.NewMockRepository(ctrl)
 		pftRepo := mock_prefecture.NewMockRepository(ctrl)
+		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 
 		expected := &usecase{
-			tracer:   tf.Usecase(),
-			userRepo: userRepo,
-			pftRepo:  pftRepo,
+			tracer:     tf.Usecase(),
+			userRepo:   userRepo,
+			pftRepo:    pftRepo,
+			authorizer: authorizer,
 		}
-		actual := New(tf, userRepo, pftRepo)
+		actual := New(tf, userRepo, pftRepo, authorizer)
 
 		assert.Equal(t, expected, actual)
 	})
@@ -101,10 +128,10 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
 				Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
 			filter := &SearchParams{Keyword: new(keyword), Active: active}
-			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
+			actual, err := uc.ListUsersByKeyword(ctx, newTestAuthn(t), filter, p)
 			require.NoError(t, err)
 
 			expected := UserSearchResults{
@@ -144,10 +171,10 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
 				Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
 			filter := &SearchParams{Keyword: new(keyword), Active: active}
-			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
+			actual, err := uc.ListUsersByKeyword(ctx, newTestAuthn(t), filter, p)
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
@@ -173,10 +200,10 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
 				Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
 			filter := &SearchParams{Keyword: new(keyword), Active: active}
-			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
+			actual, err := uc.ListUsersByKeyword(ctx, newTestAuthn(t), filter, p)
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
@@ -201,10 +228,10 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
 				Return(prefecture.Prefectures{}, nil)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
 			filter := &SearchParams{Keyword: new(keyword), Active: active}
-			actual, err := uc.ListUsersByKeyword(ctx, filter, p)
+			actual, err := uc.ListUsersByKeyword(ctx, newTestAuthn(t), filter, p)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			require.Nil(t, actual)
 		})
@@ -217,8 +244,8 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
-			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
-			actual, err := uc.ListUsersByKeyword(ctx, nil, p)
+			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), authorizer: newAllowAuthorizer(gomock.NewController(t))}
+			actual, err := uc.ListUsersByKeyword(ctx, newTestAuthn(t), nil, p)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
 		})
@@ -226,8 +253,8 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 		t.Run("page が nil の場合、ErrInvalidArgument エラーになる", func(t *testing.T) {
 			t.Parallel()
 
-			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
-			actual, err := uc.ListUsersByKeyword(ctx, &SearchParams{}, nil)
+			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), authorizer: newAllowAuthorizer(gomock.NewController(t))}
+			actual, err := uc.ListUsersByKeyword(ctx, newTestAuthn(t), &SearchParams{}, nil)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
 		})
@@ -257,10 +284,10 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 				CountByKeyword(gomock.Any(), keywords, active).
 				Return(expectedCount, nil)
 
-			u := &usecase{tracer: tf.Usecase(), userRepo: userRepo}
+			u := &usecase{tracer: tf.Usecase(), userRepo: userRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
 			filter := &SearchParams{Active: active, Keyword: new(keyword)}
-			actualCount, err := u.CountUsersByKeyword(ctx, filter)
+			actualCount, err := u.CountUsersByKeyword(ctx, newTestAuthn(t), filter)
 			require.NoError(t, err)
 			assert.Equal(t, expectedCount, actualCount)
 		})
@@ -281,10 +308,10 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 				CountByKeyword(gomock.Any(), keywords, active).
 				Return(int64(0), expectedErr)
 
-			u := &usecase{tracer: tf.Usecase(), userRepo: userRepo}
+			u := &usecase{tracer: tf.Usecase(), userRepo: userRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
 			filter := &SearchParams{Active: active, Keyword: new(keyword)}
-			actualCount, err := u.CountUsersByKeyword(ctx, filter)
+			actualCount, err := u.CountUsersByKeyword(ctx, newTestAuthn(t), filter)
 			require.ErrorIs(t, err, expectedErr)
 			assert.Equal(t, int64(0), actualCount)
 		})
@@ -292,8 +319,8 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 		t.Run("filter が nil の場合、ErrInvalidArgument エラーになる", func(t *testing.T) {
 			t.Parallel()
 
-			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
-			actualCount, err := u.CountUsersByKeyword(context.Background(), nil)
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), authorizer: newAllowAuthorizer(gomock.NewController(t))}
+			actualCount, err := u.CountUsersByKeyword(context.Background(), newTestAuthn(t), nil)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			assert.Equal(t, int64(0), actualCount)
 		})
@@ -342,9 +369,9 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
 				Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			u := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			u := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
-			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, newTestAuthn(t), filter, p)
 			require.NoError(t, err)
 			require.NotNil(t, actual)
 			require.Len(t, actual.Items, 1)
@@ -366,9 +393,9 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 				SearchByKeyword(gomock.Any(), keywords, active, p.Limit32(), p.Offset32()).
 				Return(nil, expectedErr)
 
-			u := &usecase{tracer: lt, userRepo: userRepo}
+			u := &usecase{tracer: lt, userRepo: userRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
-			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, newTestAuthn(t), filter, p)
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
@@ -394,17 +421,17 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 				FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).
 				Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			u := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			u := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(gomock.NewController(t))}
 
-			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, newTestAuthn(t), filter, p)
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
 
 		t.Run("filter が nil の場合、ErrInvalidArgument が返る", func(t *testing.T) {
 			t.Parallel()
-			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
-			actual, err := u.ListUsersByKeywordWithTotal(ctx, nil, p)
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), authorizer: newAllowAuthorizer(gomock.NewController(t))}
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, newTestAuthn(t), nil, p)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
 		})
@@ -576,6 +603,109 @@ func Test_toSearchResult(t *testing.T) {
 			assert.Nil(t, actual.Building)
 			require.NotNil(t, actual.DeletedAt)
 			assert.Equal(t, deletedAt, *actual.DeletedAt)
+		})
+	})
+}
+
+func Test_usecase_authorizeUserCollection(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	authn, err := authbd.New("subject", "mock", nil, nil)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("所有者を持たないリソースとして問い合わせ、許可された場合はnilが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().
+				Authorize(gomock.Any(), authn, authz.ActionUserList, authz.NewResource("user", nil)).
+				Return(nil)
+
+			u := &usecase{authorizer: authorizer}
+
+			require.NoError(t, u.authorizeUserCollection(ctx, authn))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnがnilの場合、ErrUnauthenticatedが返り認可判定は行われない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			u := &usecase{authorizer: mock_authz.NewMockAuthorizer(ctrl)}
+
+			require.ErrorIs(t, u.authorizeUserCollection(ctx, nil), apperror.ErrUnauthenticated)
+		})
+
+		t.Run("認可が拒否された場合、認可エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			u := &usecase{authorizer: newDenyAuthorizer(ctrl)}
+
+			require.ErrorIs(t, u.authorizeUserCollection(ctx, authn), authz.ErrForbidden)
+		})
+	})
+}
+
+func Test_usecase_collectionAuthorizationGuard(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+
+	page := 1
+	perPage := 100
+	p, err := paging.NewPageFrom1Based(&page, &perPage)
+	require.NoError(t, err)
+
+	filter := &SearchParams{}
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// userRepo は EXPECT を持たないため、認可より先にリポジトリを呼ぶ実装に戻ると失敗する。
+		newDeniedUsecase := func(t *testing.T) *usecase {
+			t.Helper()
+			ctrl := gomock.NewController(t)
+			return &usecase{
+				tracer:     lt,
+				authorizer: newDenyAuthorizer(ctrl),
+				userRepo:   mock_user.NewMockRepository(ctrl),
+				pftRepo:    mock_prefecture.NewMockRepository(ctrl),
+			}
+		}
+
+		t.Run("ListUsersByKeywordがForbiddenを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := newDeniedUsecase(t).ListUsersByKeyword(ctx, newTestAuthn(t), filter, p)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, authz.ErrForbidden)
+		})
+
+		t.Run("CountUsersByKeywordがForbiddenを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := newDeniedUsecase(t).CountUsersByKeyword(ctx, newTestAuthn(t), filter)
+			assert.Equal(t, int64(0), actual)
+			require.ErrorIs(t, err, authz.ErrForbidden)
+		})
+
+		t.Run("ListUsersByKeywordWithTotalがForbiddenを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := newDeniedUsecase(t).ListUsersByKeywordWithTotal(ctx, newTestAuthn(t), filter, p)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, authz.ErrForbidden)
 		})
 	})
 }

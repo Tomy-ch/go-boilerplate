@@ -106,15 +106,19 @@ type usecase struct {
 
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
-	// ListUsers は、ユーザー一覧を取得します。
-	ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error)
-	// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
-	ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error)
-	// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
-	ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error)
+	// ListUsers は、認可を確認したうえでユーザー一覧を取得します。他ユーザーを列挙する操作のため
+	// admin ロールを持つ主体のみ許可し、拒否された場合は authz.ErrForbidden を返します。
+	ListUsers(ctx context.Context, authn *authbd.Authn, active *bool, page *paging.Page) ([]UserView, error)
+	// ListUsersWithTotal は、認可を確認したうえでユーザー一覧と総件数をまとめて取得します。
+	// 認可条件は ListUsers と同じく admin 限定です。
+	ListUsersWithTotal(ctx context.Context, authn *authbd.Authn, active *bool, page *paging.Page) (*UserListView, error)
+	// ListUsersFeed は、認可を確認したうえで未削除ユーザーを作成日時の降順（cursor ページネーション）で
+	// 取得します。認可条件は ListUsers と同じく admin 限定です。
+	ListUsersFeed(ctx context.Context, authn *authbd.Authn, cursor *paging.Cursor) (*UserFeedView, error)
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
-	// CountUsers は、ユーザーの総件数を返します。
+	// CountUsers は、ユーザーの総件数を返します。件数のみを返し個々のユーザーを開示しないため、
+	// 認証主体を持たないジョブ（usercount）からの利用を許して認可を要求しません。
 	CountUsers(ctx context.Context, active *bool) (int64, error)
 	// GetUser は、認可を確認したうえで ID から単一ユーザーを取得します。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
@@ -158,13 +162,22 @@ func New(
 	}
 }
 
-func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error) {
+func (u *usecase) ListUsers(ctx context.Context, authn *authbd.Authn, active *bool, page *paging.Page) ([]UserView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	if err := u.authorizeUserCollection(ctx, authn, authz.ActionUserList); err != nil {
+		return nil, err
+	}
+
+	return u.listUsers(ctx, active, page)
+}
+
+// listUsers は、認可済みの呼出元に対してユーザー一覧を取得します。
+func (u *usecase) listUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error) {
 	if page == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "page must not be nil")
 	}
-
-	ctx, endSpan := u.tracer.Start(ctx)
-	defer endSpan()
 
 	us, err := u.userRepo.FindByActive(ctx, active, page.Limit32(), page.Offset32())
 	if err != nil {
@@ -225,11 +238,15 @@ func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 	return u.userRepo.CountByActive(ctx, active)
 }
 
-func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error) {
+func (u *usecase) ListUsersWithTotal(ctx context.Context, authn *authbd.Authn, active *bool, page *paging.Page) (*UserListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	items, err := u.ListUsers(ctx, active, page)
+	if err := u.authorizeUserCollection(ctx, authn, authz.ActionUserList); err != nil {
+		return nil, err
+	}
+
+	items, err := u.listUsers(ctx, active, page)
 	if err != nil {
 		return nil, err
 	}
@@ -240,13 +257,17 @@ func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *pa
 	return &UserListView{Items: items, Total: total}, nil
 }
 
-func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error) {
+func (u *usecase) ListUsersFeed(ctx context.Context, authn *authbd.Authn, cursor *paging.Cursor) (*UserFeedView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	if err := u.authorizeUserCollection(ctx, authn, authz.ActionUserList); err != nil {
+		return nil, err
+	}
+
 	if cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
 	}
-
-	ctx, endSpan := u.tracer.Start(ctx)
-	defer endSpan()
 
 	after, err := decodeFeedCursor(cursor)
 	if err != nil {
@@ -464,6 +485,17 @@ func (u *usecase) authorizeUserAccess(ctx context.Context, authn *authbd.Authn, 
 		return apperror.ErrUnauthenticated
 	}
 	return u.authorizer.Authorize(ctx, authn, action, authz.NewResource("user", &id))
+}
+
+// authorizeUserCollection は、認証主体 authn がユーザーの集合に対する action を実行してよいか判定します。
+// 所有者を持たないリソース（ownerID = nil）として問い合わせるため所有者フォールバックが成立せず、
+// admin ロールを持つ主体だけが許可されます。
+// authn が nil の場合は、認可判定以前に呼出元を特定できないため apperror.ErrUnauthenticated を返します。
+func (u *usecase) authorizeUserCollection(ctx context.Context, authn *authbd.Authn, action authz.Action) error {
+	if authn == nil {
+		return apperror.ErrUnauthenticated
+	}
+	return u.authorizer.Authorize(ctx, authn, action, authz.NewResource("user", nil))
 }
 
 // toUserViews は、ユーザーエンティティ列を UserView の DTO 列へ変換します。

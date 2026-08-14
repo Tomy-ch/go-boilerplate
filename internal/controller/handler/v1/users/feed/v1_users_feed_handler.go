@@ -7,6 +7,7 @@ package feed
 import (
 	"context"
 
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/feed/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -34,13 +35,17 @@ func (s *server) GetUsersFeed(ctx context.Context, request gen.GetUsersFeedReque
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// WARN: このエンドポイントは認可チェックを実施していません。
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	cursor, err := paging.NewCursor(request.Params.After, request.Params.First)
 	if err != nil {
 		return nil, err
 	}
 
-	feed, err := s.uc.ListUsersFeed(ctx, cursor)
+	feed, err := s.uc.ListUsersFeed(ctx, &authn, cursor)
 	if err != nil {
 		return nil, err
 	}

@@ -27,6 +27,9 @@ import (
 
 const targetPath = "/v1/users"
 
+// listSubject は、一覧取得テストで使う認証主体の subject です。
+const listSubject = "11111111-1111-1111-1111-111111111111"
+
 // wantUserResponse は、本番 toUserResponse とは独立な検証用オラクル（フィールド取り違え検出）。
 func wantUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
@@ -103,7 +106,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		exec := func(t *testing.T, dtos []user.UserView, total int64) {
 			t.Helper()
-			ctx := context.Background()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, listSubject)
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
@@ -120,7 +123,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(&user.UserListView{Items: dtos, Total: total}, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
@@ -154,7 +157,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, listSubject)
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
@@ -177,7 +180,7 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, listSubject)
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
@@ -185,7 +188,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(nil, expectedError)
 
 			s := &server{tracer: lt, uc: mockApp}

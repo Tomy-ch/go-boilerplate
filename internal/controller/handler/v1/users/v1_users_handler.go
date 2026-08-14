@@ -41,13 +41,17 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// WARN: 本来はここで認可を行うべきですが、今回は省略します。
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
 		return nil, err
 	}
 
-	list, err := s.uc.ListUsersWithTotal(ctx, request.Params.Active, page)
+	list, err := s.uc.ListUsersWithTotal(ctx, &authn, request.Params.Active, page)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 package authz
 
 const (
+	// ActionUserList は、ユーザーの列挙操作（一覧・フィード・検索、admin）を表します。
+	ActionUserList Action = "user:list"
 	// ActionUserGet は、ユーザー取得操作を表します。
 	ActionUserGet Action = "user:get"
 	// ActionUserUpdate は、ユーザー更新操作（全更新・部分更新）を表します。
