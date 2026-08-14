@@ -73,6 +73,7 @@
   "internal/infrastructure/queue/sqs/README.md": 3,
   "internal/infrastructure/rdb/query_service/README.md": 2,
   "internal/infrastructure/rdb/repository/README.md": 2,
+  "internal/usecase/boundary/authz/action_test.go": 2,
   "internal/usecase/boundary/authz/action.go": 2,
   "internal/usecase/outbox/README.ja.md": 2,
   "internal/usecase/outbox/README.md": 2,
