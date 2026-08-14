@@ -199,6 +199,14 @@ fields:
     価格差を判定しない。
     結果は表示のための参考情報であり、カートの不変条件を左右しない。拘束力を持たないことは配置の理由に
     ならず、業務上の判断である以上ドメインが持つ。
+
+- name: Subtotal
+  signature: Subtotal(lines []PurchasableLine) (int64, error)
+  behavior: |
+    購入可能な明細を合算し、決済スケール（USD セント）の整数へ落とす。丸めは合算の後に一度だけ行い、
+    明細ごとの丸め誤差が積み上がらないようにする。どの明細が購入可能かは Evaluate が既に答えており、
+    ここは合算と丸めだけを持つ。幅に収まらない場合は ErrSubtotalOutOfRange（422）。
+    集約に属さず、どの明細 1 件の責務でもないためパッケージ関数として置く。
 ```
 
 ## Value Objects
@@ -236,6 +244,14 @@ fields:
       returns: "[]Issue"
     - name: AvailableQuantity
       returns: "*int"
+    - name: Purchasable
+      returns: bool          # issue が 1 つも立っていなければ true
+
+- name: PurchasableLine
+  underlying_type: struct    # quantity int / price money.Price
+  validation: |
+    検証しない。購入可能と判定済みの明細の観測値であり、判定は Evaluate が済ませている。
+  factory: NewPurchasableLine
 ```
 
 ```yaml
@@ -313,6 +329,6 @@ values:
   `maxQuantityPerItem = 99` / `maxItems = 50` / `sessionTokenLength = 43`（256bit を base64url で表現した長さ）。
 - エラー写像: `ErrAlreadyOwned` → `apperror.ErrConflict`（409）、その他検証系（`ErrInvalidID` /
   `ErrInvalidUserID` / `ErrInvalidProductID` / `ErrInvalidQuantity` / `ErrTooManyItems` /
-  `ErrInvalidSessionToken`）→ `apperror.ErrValidation`（422）。
+  `ErrInvalidSessionToken` / `ErrSubtotalOutOfRange`）→ `apperror.ErrValidation`（422）。
 
 [ADR-0035 (uuidv7-identifiers)]: ../../adr/0035-uuidv7-identifiers.md

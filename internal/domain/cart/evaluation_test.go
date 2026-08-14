@@ -90,6 +90,17 @@ func TestEvaluation_Issues(t *testing.T) {
 
 			assert.Empty(t, actual.Issues())
 		})
+
+		t.Run("戻り値を書き換えても内部状態は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_issues_immutable", 1, nil).Evaluate(nil)
+
+			got := actual.Issues()
+			got[0] = IssueOutOfStock
+
+			assert.Equal(t, []Issue{IssueNotFound}, actual.Issues())
+		})
 	})
 }
 
@@ -114,6 +125,43 @@ func TestEvaluation_AvailableQuantity(t *testing.T) {
 			actual := newEvalItem(t, "eval_avail_none", 1, nil).Evaluate(newEvalSnapshot(t, "10.00", 5, true))
 
 			assert.Nil(t, actual.AvailableQuantity())
+		})
+
+		t.Run("戻り値を書き換えても内部状態は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_avail_immutable", 3, nil).Evaluate(newEvalSnapshot(t, "10.00", 1, true))
+
+			got := actual.AvailableQuantity()
+			require.NotNil(t, got)
+			*got = 999
+
+			require.NotNil(t, actual.AvailableQuantity())
+			assert.Equal(t, 1, *actual.AvailableQuantity())
+		})
+	})
+}
+
+func TestEvaluation_Purchasable(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("issue が立っていなければ購入可能", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_purchasable", 1, nil).Evaluate(newEvalSnapshot(t, "10.00", 5, true))
+
+			assert.True(t, actual.Purchasable())
+		})
+
+		t.Run("issue が 1 つでも立っていれば購入可能ではない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "eval_not_purchasable", 1, nil).Evaluate(newEvalSnapshot(t, "10.00", 0, true))
+
+			assert.False(t, actual.Purchasable())
 		})
 	})
 }
