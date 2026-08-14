@@ -119,28 +119,28 @@ Print a Japanese-language summary grouped by class. Example:
   - sqlfluff（python/sqlfluff.in）: PyPI への接続失敗
 ```
 
-Show the declaration file for a `python/*.in` entry, as above. Which file holds the pin decides what applying the bump involves, and the user is about to approve that in step 4.
+Show the declaration file for a `python/*.in` entry, as above. Which file holds the pin decides what applying the bump involves, and the user is about to approve that in step 5.
 
-### 3.5. Triage Pending Releases the Quarantine Caught
+### 4. Triage Pending Releases the Quarantine Caught
 
 A `pending` classification means the quarantine is holding a release back purely on age. That is a proxy for four questions — did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear — and the proxy can be discharged by answering them directly (`docs/design/security.md` → "Dependencies"). Chain the `supply-chain-triage` skill per pending tool when the answer would change what the user does:
 
 - Always, when the pending release is the reason the skill was invoked (a security advisory naming that tool).
 - Otherwise only on request. A routine monthly audit that reports three pending tools does not need three triages — nobody is deciding anything yet, and next month they will simply be eligible. Say the triage is available rather than spending the run on it.
 
-Pass the backend, tool key, candidate version, the **version currently pinned in the declarations** (the diff's other end), `<MIN_AGE_DAYS>`, and the release date. Triage is report-only: it reads the release artifact without executing it, returns a 0–12 score with a band and citations, and never edits a declaration or applies anything. A pending tool stays pending — the score is what the user weighs, and adoption remains a separate, explicit decision (step 4).
+Pass the backend, tool key, candidate version, the **version currently pinned in the declarations** (the diff's other end), `<MIN_AGE_DAYS>`, and the release date. Triage is report-only: it reads the release artifact without executing it, returns a 0–12 score with a band and citations, and never edits a declaration or applies anything. A pending tool stays pending — the score is what the user weighs, and adoption remains a separate, explicit decision (step 5).
 
-### 4. Confirm Per-tool Update Set
+### 5. Confirm Per-tool Update Set
 
-If **eligible** is empty and nothing pending was triaged into a decision, skip to step 6 with no writes.
+If **eligible** is empty and nothing pending was triaged into a decision, skip to step 7 with no writes.
 
 Otherwise invoke `ask the user explicitly` with `multiSelect: true`. Each option corresponds to one eligible tool, with the version diff and release date as the description. Default state: all selected.
 
 The user may deselect individual entries (e.g., if a specific bump is known-broken).
 
-A **pending** tool may appear in this question only when it was triaged in step 3.5 and the user is explicitly deciding whether to adopt it early — in that case it is listed separately, **deselected by default**, with its band in the description. Never fold a pending tool into the default-selected eligible set: the quarantine's whole value is that age-based eligibility is the default and early adoption is a deliberate act.
+A **pending** tool may appear in this question only when it was triaged in step 4 and the user is explicitly deciding whether to adopt it early — in that case it is listed separately, **deselected by default**, with its band in the description. Never fold a pending tool into the default-selected eligible set: the quarantine's whole value is that age-based eligibility is the default and early adoption is a deliberate act.
 
-### 5. Update the Declarations
+### 6. Update the Declarations
 
 For each approved tool declared in `mise.toml`:
 
@@ -164,15 +164,15 @@ For each approved tool declared in `python/*.in`:
 
   `py-lock` regenerates **every** `python/*.txt`, so an untouched tool can still show a diff when one of its transitive dependencies published a new release. That diff is real and is part of the change — review it, do not discard it. It is also not covered by this run's quarantine decision, which was made per direct pin: say so in the final report.
 
-### 6. Run `make sync-versions` if Necessary
+### 7. Run `make sync-versions` if Necessary
 
 If any of `go` / `node` / `python` was updated, run `make sync-versions`. This propagates the new runtime version to `go.mod` and the hardcoded `FROM golang:` / `FROM node:` / `FROM python:` references in the Dockerfile and `docker/**/README.md` files.
 
 If only non-runtime tools were updated, skip `make sync-versions`.
 
-### 7. Re-pin Base Image Digests if a Runtime Changed
+### 8. Re-pin Base Image Digests if a Runtime Changed
 
-If step 6 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `images-pin` skill's job, chained here):
+If step 7 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `images-pin` skill's job, chained here):
 
 ```sh
 make pin-images-resolve   # run `docker login` first if Docker Hub returns 429
@@ -184,11 +184,11 @@ make pin-images-check
 
 Resolving that lands on `images-pin`'s **rule 3**: the new tag has no prior lockfile entry and its image was just published, so there is no aged digest to step back to. `pin-images-resolve` **fails closed** (`❌ 退行先の無い出来立て image は採用できません`) rather than adopting the fresh digest or stripping the pin to tag-only, `apply` never runs, and `pin-images-check` rejects the stale digest as `未登録`.
 
-The consequence worth stating plainly: **a runtime bump and its digest pin are coupled.** Unless the new image has already aged past `PIN_IMAGES_MIN_AGE_DAYS`, the run cannot be finished cleanly, and the choice belongs to the user — bootstrap deliberately with `days=0` (which `images-pin` step 2.5 gates behind a `supply-chain-triage` evidence check), or hold the runtime bump itself until the image ages. Do not force `resolve` through, and do not leave the mismatched digest in the tree.
+The consequence worth stating plainly: **a runtime bump and its digest pin are coupled.** Unless the new image has already aged past `PIN_IMAGES_MIN_AGE_DAYS`, the run cannot be finished cleanly, and the choice belongs to the user — bootstrap deliberately with `days=0` (which `images-pin` step 3 gates behind a `supply-chain-triage` evidence check), or hold the runtime bump itself until the image ages. Do not force `resolve` through, and do not leave the mismatched digest in the tree.
 
-Skip this step entirely when step 6 was skipped (no runtime change → no tag change → digests still valid).
+Skip this step entirely when step 7 was skipped (no runtime change → no tag change → digests still valid).
 
-### 8. Verify
+### 9. Verify
 
 ```sh
 make lint
@@ -205,7 +205,7 @@ It is the check that the pin and its lockfile agree, and it re-measures the wind
 
 Report the result table to the user (OK / FAIL per command). Do NOT automatically roll back on failure — the user decides whether to amend, revert, or proceed.
 
-### 9. Final Report
+### 10. Final Report
 
 Summarize:
 

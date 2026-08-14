@@ -59,7 +59,7 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 
 しきい値はエコシステムにより 2 つの異なる役割を持つ:
 
-- **`minimumReleaseAge` 下の pnpm**: **ハードブロック**で、しかも範囲が広い。pnpm は install のたびに **lockfile 全体**をポリシーで再検証し、それは `--frozen-lockfile` にも及ぶ。よって窓内エントリは新規解決（`ERR_PNPM_NO_MATURE_MATCHING_VERSION`）だけでなく再生経路でも落ちる（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`）。npm と違い pnpm には版指定の正式な例外経路（`minimumReleaseAgeExclude`）がある。それは Step 4 で提示する選択肢であって、ここで取る判断ではない。挙動の詳細は [`docs/design/security.md`](../../../docs/design/security.md) の「Dependencies → pnpm」が持つ — この要約を信用せず、そちらを読むこと。
+- **`minimumReleaseAge` 下の pnpm**: **ハードブロック**で、しかも範囲が広い。pnpm は install のたびに **lockfile 全体**をポリシーで再検証し、それは `--frozen-lockfile` にも及ぶ。よって窓内エントリは新規解決（`ERR_PNPM_NO_MATURE_MATCHING_VERSION`）だけでなく再生経路でも落ちる（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`）。npm と違い pnpm には版指定の正式な例外経路（`minimumReleaseAgeExclude`）がある。それは Step 5 で提示する選択肢であって、ここで取る判断ではない。挙動の詳細は [`docs/design/security.md`](../../../docs/design/security.md) の「Dependencies → pnpm」が持つ — この要約を信用せず、そちらを読むこと。
 - **それ以外（Go、cooldown 無しの lockfile）**: **caution フラグでありハードブロックではない** — 既知脆弱性を直すのが目的なので、新しすぎる修正版は握り潰さず提示・確認する。
 
 `<MIN_AGE_DAYS>` が解決するまでレジストリ取得やファイル編集を行わない。
@@ -72,10 +72,10 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 
 - `**/package.json` — 承認済み package の `dependencies` version の追加/調整に限る。
 - `**/pnpm-lock.yaml` — 承認済み変更に対する当該 package ディレクトリでの `pnpm install --lockfile-only` の決定的出力。
-- `**/pnpm-workspace.yaml` — `overrides` と `minimumReleaseAgeExclude` キー **のみ**。例外エントリは **Step 4 でユーザーがその版を承認した後にのみ** 書く。`minimumReleaseAge` / `minimumReleaseAgeStrict` / `minimumReleaseAgeIgnoreMissingTime` / `trustPolicy*` / `allowBuilds` / `blockExoticSubdeps` / `engineStrict` には決して触れない — それらはパッチではなくポリシーそのもの。
+- `**/pnpm-workspace.yaml` — `overrides` と `minimumReleaseAgeExclude` キー **のみ**。例外エントリは **Step 5 でユーザーがその版を承認した後にのみ** 書く。`minimumReleaseAge` / `minimumReleaseAgeStrict` / `minimumReleaseAgeIgnoreMissingTime` / `trustPolicy*` / `allowBuilds` / `blockExoticSubdeps` / `engineStrict` には決して触れない — それらはパッチではなくポリシーそのもの。
 - `go.mod` / `go.sum` — 承認済み Go モジュールに対する `go get <module>@<version>` + `go mod tidy` の出力。
 - `vendor/**` — `go mod vendor` の機械的出力として **のみ**、かつ **リポジトリが vendoring するとき（`vendor/modules.txt` が存在）のみ**。`go.mod` バンプは `vendor/modules.txt` を不整合のまま残し、ビルドが `inconsistent vendoring` で落ちる。よって再 vendoring は好みの編集ではなく必須の downstream 手順。vendored ファイルは手編集しない。
-- これら依存が駆動する再生成物 — Step 6 の drift チェックで動いた場合 **のみ**（例: `make gen-mock-auth-oapi` 経由の `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**`）。リポジトリの `make` ターゲットで再生成する。生成物を手編集しない。
+- これら依存が駆動する再生成物 — Step 7 の drift チェックで動いた場合 **のみ**（例: `make gen-mock-auth-oapi` 経由の `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**`）。リポジトリの `make` ターゲットで再生成する。生成物を手編集しない。
 
 このスキル実行中でも保護（触れない）:
 
@@ -125,9 +125,9 @@ grep -n '<module-path>' go.mod
 存在する package ごとに対象 version を選ぶ:
 
 - **既定: 現在インストール済みの major 系列に留まる最小の修正版。** 複数候補の勧告（`brace-expansion 1.1.15 → 5.0.7 / 1.1.16 / 2.1.2`）からは、インストール済み major に一致するもの（`1.1.15` → `1.1.16`）を選ぶ。breaking リスクを最小化する。
-- **major 跨ぎが必要**（修正が上位 major にしか無い、またはインストール系列に patch 版が無い — 例 `@hono/node-server 1.19.14 → 2.0.5`）: **breaking の可能性** として明示的にフラグする。per-package 確認（Step 4）とより入念な検証（Step 6）を要する。
+- **major 跨ぎが必要**（修正が上位 major にしか無い、またはインストール系列に patch 版が無い — 例 `@hono/node-server 1.19.14 → 2.0.5`）: **breaking の可能性** として明示的にフラグする。per-package 確認（Step 5）とより入念な検証（Step 7）を要する。
 - **downgrade ガード**: インストール済みより厳密に低い version は決して選ばない。唯一の「修正」がより低くパースされる場合は適用せず `needs-manual` として提示する。
-- **勧告の番号ではなく、実際に解決される version をゲートする。** `package.json` の `^`/`~` レンジは一致する最新 patch へ浮くため、勧告の修正版よりずっと新しく `too-new` になり得る。lockfile が landing する version の日付を計算し（Step 5 で再確認）、レンジが too-new/未検証版へ解決してしまう（かつ **cooldown で抑えられない**ディレクトリ）場合は、caret を浮かせず **承認済みの exact 版を pin** する。cooldown 下ならレンジのケースは両エコシステムとも無害で、最新ではなく **枯れた最新**へ静かに着地する。ただし裏を返せば、レンジが勧告の修正版に届かないまま黙って通ることもあるので、lockfile が実際に何を pin したか読み直すこと。
+- **勧告の番号ではなく、実際に解決される version をゲートする。** `package.json` の `^`/`~` レンジは一致する最新 patch へ浮くため、勧告の修正版よりずっと新しく `too-new` になり得る。lockfile が landing する version の日付を計算し（Step 6 で再確認）、レンジが too-new/未検証版へ解決してしまう（かつ **cooldown で抑えられない**ディレクトリ）場合は、caret を浮かせず **承認済みの exact 版を pin** する。cooldown 下ならレンジのケースは両エコシステムとも無害で、最新ではなく **枯れた最新**へ静かに着地する。ただし裏を返せば、レンジが勧告の修正版に届かないまま黙って通ることもあるので、lockfile が実際に何を pin したか読み直すこと。
 
 caution ゲート（Step 3）用に、選定各版の **公開日** を取得:
 
@@ -144,25 +144,25 @@ curl -fsSL "https://proxy.golang.org/<module>/@v/<version>.info" | jq -r '.Time'
 
 | フラグ | 条件 | 効果 |
 | --- | --- | --- |
-| **clear** | `>= MIN_AGE_DAYS`、または既に `minimumReleaseAgeExclude` に名指しされている | eligible — 既定で適用（Step 4） |
+| **clear** | `>= MIN_AGE_DAYS`、または既に `minimumReleaseAgeExclude` に名指しされている | eligible — 既定で適用（Step 5） |
 | **too-new** | `< MIN_AGE_DAYS` で、cooldown **無し**のディレクトリ、または Go | eligible だがフラグ付き。⚠️ 提示・既定では未適用 — ユーザーが opt-in する必要 |
-| **blocked** | pnpm `minimumReleaseAge` 下で `< MIN_AGE_DAYS` | **そのままでは install 不可** — リポジトリ自身の cooldown がハード拒否。独断で適用せず **deferred** とし、解除時期（`publish_date + N 日`）を報告。pnpm なら Step 4 で例外の選択肢も併せて提示する |
+| **blocked** | pnpm `minimumReleaseAge` 下で `< MIN_AGE_DAYS` | **そのままでは install 不可** — リポジトリ自身の cooldown がハード拒否。独断で適用せず **deferred** とし、解除時期（`publish_date + N 日`）を報告。pnpm なら Step 5 で例外の選択肢も併せて提示する |
 
 npm / Go proxy への悪意ある publish は通常、数時間〜数日で検知・撤回されるため caution を設ける。セキュリティ修正は急ぐので `too-new` はユーザーが override できる警告だが、`blocked` はリポジトリ自身のポリシーをパッケージマネージャ自体が強制するものであり、スキルはそのポリシーを決して無効化しない。境界は現実的である点に注意: N 日窓の内側に数分でも入って公開された版は、窓がその正確な publish 時刻を跨ぐまで `blocked`。
 
 **`blocked` のあと何が残るかは 2 つのエコシステムで違う。** npm には版指定の逃げ道が無いので、blocked な npm エントリは文字どおり「待つか、より古い熟成済みの修正版を採るか」になる。pnpm には `minimumReleaseAgeExclude` があり、本リポジトリの `pnpm-workspace.yaml` はそれを緊急のセキュリティ修正のための経路と説明し、`minimumReleaseAgeStrict: true` が意図的にそれを解決器の手から取り上げている。**この違いが変えるのは提示する選択肢であって、誰が決めるかではない。** 例外の追加は毎回人間の判断であり、ファイルに前例があることは次の 1 件を足してよい根拠にならない（`AGENTS.md` *Conflicting Authority*）。
 
-### 3.5. ゲートが捕捉したものをトリアージする
+### 4. ゲートが捕捉したものをトリアージする
 
-disposition が `too-new` または `blocked` になった全エントリについて、Step 4 が判断を提示する前に **`/supply-chain-triage`** を chain する（エントリごとに 1 回）。
+disposition が `too-new` または `blocked` になった全エントリについて、Step 5 が判断を提示する前に **`/supply-chain-triage`** を chain する（エントリごとに 1 回）。
 
 窓は四つの問い——発行者は変わったか、artifact は source と一致するか、実際に何が変わったか、新しい依存が増えたか——の代理指標であり、待つ代わりに直接答えることができる（`docs/design/security.md` → 「Dependencies」）。この Step がその実行場所である。`too-new` の opt-in はまさに、ユーザーの日数に対する許容度ではなく証拠に基づくべき判断であり、`blocked` エントリについては、待つことが単に不便なのか実際に防御的なのかを知る必要がある。
 
-エコシステム、パッケージ、候補バージョン、**lockfile が現在保持している baseline**（差分のもう一方の端）、`<MIN_AGE_DAYS>`、disposition、移動を強いている CVE を渡す。トリアージは報告のみ——tarball / module zip を実行せずに読み、0–12 のスコア・バンド・根拠を返す。何も変更せず、何も採用しない。判断は Step 4 に残る。
+エコシステム、パッケージ、候補バージョン、**lockfile が現在保持している baseline**（差分のもう一方の端）、`<MIN_AGE_DAYS>`、disposition、移動を強いている CVE を渡す。トリアージは報告のみ——tarball / module zip を実行せずに読み、0–12 のスコア・バンド・根拠を返す。何も変更せず、何も採用しない。判断は Step 5 に残る。
 
-フラグ付きが何も無い（全て `clear`）ときは飛ばす。この run でユーザーが既に見送ったエントリも飛ばす。各エントリのバンドは Step 4 のサマリと選択肢の説明へ引き継ぎ、証拠を添えたうえで選択させる。
+フラグ付きが何も無い（全て `clear`）ときは飛ばす。この run でユーザーが既に見送ったエントリも飛ばす。各エントリのバンドは Step 5 のサマリと選択肢の説明へ引き継ぎ、証拠を添えたうえで選択させる。
 
-### 4. サマリ表示・clear は自動適用・フラグ付きのみ確認
+### 5. サマリ表示・clear は自動適用・フラグ付きのみ確認
 
 日本語サマリを disposition ごとに出す。例:
 
@@ -193,13 +193,13 @@ disposition が `too-new` または `blocked` になった全エントリにつ�
 確認ポリシーは意図的に非対称にする — clear なパッチはスキルを回す目的そのものなので、ユーザーにクリックさせない:
 
 - **clear かつ非 major → 確認なしで適用。** これは既定パッチであり、1 件ずつ確認するのは、勧告に対しスキルを起動した時点でユーザーが既に暗黙承認している摩擦にすぎない。
-- **major 跨ぎ（インストール済みより上位 major）→ 常に別途報告・確認**。version 自体が `clear` でも同様。major はそれを import するコードを壊し得るので、ユーザーが承知のうえ判断する。Step 6 でより入念に検証。
+- **major 跨ぎ（インストール済みより上位 major）→ 常に別途報告・確認**。version 自体が `clear` でも同様。major はそれを import するコードを壊し得るので、ユーザーが承知のうえ判断する。Step 7 でより入念に検証。
 - **too-new（cooldown 無しの caution）→ 報告・確認（opt-in）**、既定は未適用。
 - **blocked / deferred → 独断では決して適用しない。** 報告と解除時期を示す。**npm** エントリはそこで終わり。**pnpm** エントリはさらに `minimumReleaseAgeExclude` の選択肢を提示し、待つか・その 1 版だけ窓を開けるかをユーザーが選べるようにする — 提示はするが、前提にはしない。
 
-`AskUserQuestion` を呼ぶのは、判断すべき **major 跨ぎ** / **too-new** / **blocked な pnpm** エントリがあるときだけ（それらだけを並べた 1 回の `multiSelect: true`、既定は全て未選択）。フラグ付き選択肢には Step 3.5 のトリアージ・バンド（`1/12 LOW` / `7/12 HIGH` / `INSUFFICIENT-EVIDENCE`）を説明として付ける。opt-in するか待つかの理由はそのバンドなのだから、上のサマリだけでなくクリックする場所に置くべきである。pnpm の例外の選択肢では、何を買い何を払うかを説明に書く: その版が今 install できるようになる代わりに、誰かがその行を消すまで全チェックアウトがポリシー例外を抱える。eligible が全て `clear` かつ非 major なら、質問せず即適用する。eligible が無ければ書き込みなしで Step 7 へ。
+`AskUserQuestion` を呼ぶのは、判断すべき **major 跨ぎ** / **too-new** / **blocked な pnpm** エントリがあるときだけ（それらだけを並べた 1 回の `multiSelect: true`、既定は全て未選択）。フラグ付き選択肢には Step 4 のトリアージ・バンド（`1/12 LOW` / `7/12 HIGH` / `INSUFFICIENT-EVIDENCE`）を説明として付ける。opt-in するか待つかの理由はそのバンドなのだから、上のサマリだけでなくクリックする場所に置くべきである。pnpm の例外の選択肢では、何を買い何を払うかを説明に書く: その版が今 install できるようになる代わりに、誰かがその行を消すまで全チェックアウトがポリシー例外を抱える。eligible が全て `clear` かつ非 major なら、質問せず即適用する。eligible が無ければ書き込みなしで Step 8 へ。
 
-### 5. 更新の適用
+### 6. 更新の適用
 
 承認 package を location ごとにまとめて適用する。`pnpm-lock.yaml` は決して手編集せず、`pnpm` に再生成させる。
 
@@ -217,7 +217,7 @@ pnpm install --lockfile-only
 
 **pnpm — 推移的依存**: `<dir>/pnpm-workspace.yaml`（`package.json` ではない）に `overrides` エントリを追加し、本ファイル冒頭の注意に従って解決版域として書いてから `pnpm install --lockfile-only`。同一 major フロアの原則と暫定債務の原則は npm 節のまま適用する。
 
-**pnpm — cooldown が阻む版を、Step 4 でユーザーが例外を承認した後に入れる場合**: そのパッケージの `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` へ、既存エントリと同じ形式で追加する。
+**pnpm — cooldown が阻む版を、Step 5 でユーザーが例外を承認した後に入れる場合**: そのパッケージの `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` へ、既存エントリと同じ形式で追加する。
 
 ```yaml
 minimumReleaseAgeExclude:
@@ -243,7 +243,7 @@ go mod vendor        # リポジトリが vendoring するとき（vendor/module
 
 承認済み Go モジュールは 1 回の `go get`（複数 `module@version` 引数）+ 1 回の `go mod tidy` にまとめ、`go.sum` を一度で収束させる。`vendor/modules.txt` が存在するなら後で `go mod vendor` を走らせる — これが無いと `go.mod` と `vendor/modules.txt` が食い違い、ビルドが `inconsistent vendoring` で落ちる。
 
-### 6. 検証
+### 7. 検証
 
 実際に変わったものに合わせてチェックを走らせる — 依存パッチが一次ソースに触れることは稀なので、常にフルスイートを回すのではなく、動いたエコシステムに検証をスコープする。各々を OK / FAIL で報告し、失敗しても自動ロールバックしない — ユーザーが判断する。
 
@@ -286,7 +286,7 @@ make tool-runners-build
 
 ホスト側の実行（CI が使う `make md-lint-ci` 等）は再ビルド前でも緑になるが、それはコンテナ側のゲートが通る証拠に **ならない**。再ビルドしてから、通ったと報告するつもりのゲートを回し直すこと。`repo-ops` §10 が同じ事象を逆方向から扱っている。
 
-### 7. 最終報告
+### 8. 最終報告
 
 日本語で要約:
 

@@ -103,7 +103,7 @@ export GITHUB_TOKEN="$(gh auth token)"
 
 `resolve` / `apply` / `actionlint` は構文を見るが**入力のセマンティクス変更は見ない**。**メジャーが変わる**全アクションについて、リリースノート / `action.yml` を読み、当repo が使う全 `with:` ブロックと突き合わせる。実例: `peter-evans/create-pull-request` は v8 で `git-token`→`branch-token` 改名、`actions/upload-pages-artifact` v5 は dotfile 除外 + `deploy-pages@v4+` 要求。実入力が互換なら更新を維持。破壊的な入力変更があれば**そのアクションは保留し、必要な変更を報告**する（自動適用しない）。（メジャー内のマイナーリフレッシュはこの検証を省略。） <!-- skill-lint-ignore -->
 
-### 3.5. ステップバックが使えない場合のトリアージ
+### 4. ステップバックが使えない場合のトリアージ
 
 ここでの隔離への通常の応答は**ステップバック**（手順 2）——既に aged な最新の exact 版を固定する。これは証拠収集を要さない。窓が既に通したものを採用するだけである。トリアージが受け持つのは、ステップバックが選択肢にならない場合である。
 
@@ -115,15 +115,15 @@ export GITHUB_TOKEN="$(gh auth token)"
 
 トリアージは報告のみ。コメント tag・lockfile・`uses:` 行を編集せず、`resolve` / `apply` も実行しない。バンドは手順 4 の計画へ引き継ぎ、保留か採用かの選択を証拠とともに可視化する。判断は `AskUserQuestion` に残る。
 
-### 4. 計画の提示と確認
+### 5. 計画の提示と確認
 
 日本語サマリを表示する: 適用する更新（moving `# vM` / exact ステップバック `# vM.x.y`・各々の選定版と経過日数）、保留（理由: 新メジャーがまだ新しい / `with:` 破壊的 / aged 版なし）、変更なし。その上で具体的なセットを `AskUserQuestion` で確認する（独立した複数更新がある場合は `multiSelect: true`）。書き込み前にステップバックと保留の判断を可視化する。
 
-### 5. コメント tag の編集
+### 6. コメント tag の編集
 
 承認された更新ごとに、該当 `uses:` 行の末尾コメント tag を算出ターゲット（`# v7` または exact `# v4.1.0`）へ編集する。`@<sha>` はそのまま（`apply` が書き換える）。同一の `uses:` 行が複数ファイルに現れる場合はファイル単位の replace-all が適切。1ファイル内で別アクションが同じ旧コメントを共有する場合（例: 3つの `# v3`）は、意図した行だけが変わるよう完全な一意 `uses:` 行でマッチする。保留 / 変更なしのアクションは触らない。
 
-### 6. resolve → apply
+### 7. resolve → apply
 
 ```sh
 export GITHUB_TOKEN="$(gh auth token)"
@@ -135,7 +135,7 @@ make pin-actions-apply
 
 **lockfile の diff で tag の付け替えを見張る。** moving major タグ（`# v6`）が新しい SHA へ進むのは正当である。**exact** 版コメント tag（`# v4.1.0`）はそうではない。exact tag に対して `resolve` が lockfile 記録済みと異なる SHA を返したなら、バージョン参照は同じままで下のコードが変わったということである。これは tag の付け替えであり、`tj-actions/changed-files` 侵害の形であり、pin のリフレッシュではなくセキュリティ事象である。止まり、`apply` せず、書き込みの前にトリアージする（`/supply-chain-triage`、baseline = lockfile の従前 SHA）——上流への通報を実行可能にするのは旧新の SHA である。
 
-### 7. 検証
+### 8. 検証
 
 ```sh
 make pin-actions-check     # pin が lockfile と一致
@@ -155,7 +155,7 @@ make actions-lint          # actionlint で workflow 検証
 
 ブロックスカラーの中身は対象外なので、`run:` スクリプトが `uses: owner/repo@ref` という文字列を出力するだけでは検査に引っかからない。
 
-### 8. 最終報告
+### 9. 最終報告
 
 更新したアクション（moving / exact ステップバック）、SHA リフレッシュしたアクション、保留（理由付き・トリアージのバンドとそれを決めた軸があればそれも）、手順 6 で見つかった付け替え済み exact tag、検証結果をまとめる。導入した exact 版 pin は、aged 後に見直せるよう一覧化する。commit / stage / push は行わない — ユーザーが手動で `/commit`（`CI:` プレフィックス）を実行する。
 

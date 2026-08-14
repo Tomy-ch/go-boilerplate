@@ -95,7 +95,7 @@ accepted
 
 - ソース: `.claude/skills/impl-review/SKILL.md`、`.claude/agents/adversarial-reviewer.md`、`.claude/agents/review-verifier.md`。
 - `adversarial-reviewer` と `review-verifier` エージェントファイルはフロントマターで `model: sonnet` を宣言する。セッションモデルも `sonnet` の場合、オーケストレーターは `Agent` ツールの `model` パラメーターを通じてこれをオーバーライドする。
-- コメント品質の指摘は Step 5.5 で自動適用される唯一の指摘であり、4 つのコードレンズはレポートのみ（スキルによる自動修正は適用されない）。
+- コメント品質の指摘は Step 8 で自動適用される唯一の指摘であり、4 つのコードレンズはレポートのみ（スキルによる自動修正は適用されない）。
 - 指摘はデフォルトでブランチ PR にインラインレビューコメントとして投稿される。`--no-comment` で抑制、または `--no-apply` でコメント自動修正を抑制できる。
 - DDD 監査のソース: `.claude/skills/ddd-audit/SKILL.md`、`.claude/agents/ddd-origin-auditor.md`、`.claude/agents/drift-detector-ddd.md`、台帳は `.agents/ddd-audit/pattern-ledger.yaml`。`arch-check` は domain コードまたは ADR / README コーパスがタッチされたとき quick モードで auditor を起動し、`back-prop` の種別 (D) が台帳とそのコーパスの整合を検査する。
 - 台帳を `.claude/` ではなく `.agents/` 配下に置いているのは、これが他のアシスタント（Codex、Cursor）も生成・消費しうるスキル成果物であり、Claude 固有の要素を何も持たないためである。

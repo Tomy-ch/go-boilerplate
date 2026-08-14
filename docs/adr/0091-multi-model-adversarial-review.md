@@ -165,7 +165,7 @@ unbounded, invisible one.
 - The `adversarial-reviewer` and `review-verifier` agent files declare `model: sonnet`
   in their frontmatter; the orchestrator overrides this via the `Agent` tool `model`
   parameter when the session model is also `sonnet`.
-- Comment quality findings are the only findings auto-applied in Step 5.5; the four code
+- Comment quality findings are the only findings auto-applied in Step 8; the four code
   lenses are reported-only (no auto-fix applied by the skill).
 - Findings are posted to the branch PR as inline review comments by default; suppress with
   `--no-comment`, or pass `--no-apply` to suppress the comment auto-fix.

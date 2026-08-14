@@ -167,7 +167,7 @@ make pin-images-check
 
 The new Go image was just published, so re-pinning normally hits `images-pin`'s **rule 3**: the new `golang:` tag has no prior lockfile entry and its image is inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown (default 14 days), so there is no aged digest to step back to. `pin-images-resolve` **fails closed** (`❌ 退行先の無い出来立て image は採用できません`) rather than adopting the fresh digest or stripping the pin to tag-only; `apply` never runs, and `pin-images-check` rejects the surviving stale digest as `未登録`.
 
-So a Go upgrade and its base-image pin are coupled, and the upgrade cannot be landed cleanly until one of two things holds: the new Go image has aged past the window, or the user deliberately bootstraps it with `days=0` — which `images-pin` step 2.5 gates behind a `supply-chain-triage` evidence check. Surface that choice rather than deciding it; do not force `resolve` through, and do not leave the tag/digest mismatch in the tree. See the `images-pin` skill for detail.
+So a Go upgrade and its base-image pin are coupled, and the upgrade cannot be landed cleanly until one of two things holds: the new Go image has aged past the window, or the user deliberately bootstraps it with `days=0` — which `images-pin` step 3 gates behind a `supply-chain-triage` evidence check. Surface that choice rather than deciding it; do not force `resolve` through, and do not leave the tag/digest mismatch in the tree. See the `images-pin` skill for detail.
 
 ### 11. Rebuild Docker Containers
 
