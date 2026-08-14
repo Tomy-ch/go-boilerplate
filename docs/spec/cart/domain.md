@@ -247,9 +247,11 @@ fields:
       returns: "[]Issue"
     - name: AvailableQuantity
       returns: "*int"
-    - name: HasNoIssue
-      returns: bool          # issue が 1 つも立っていなければ true
 ```
+
+`Evaluate` は必ず非 nil の `issues` を返す。`Evaluation` のゼロ値は「まだ突き合わせていない」を
+表し、「問題が無い」ではない。合算へ入れるかの判定（パッケージ内の `hasNoIssue`）はこれを区別し、
+判らないものを問題無しへ倒さない。
 
 ```yaml
 enum: Issue                  # 明細を商品の観測値と突き合わせた結果

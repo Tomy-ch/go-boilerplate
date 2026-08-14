@@ -19,7 +19,7 @@ func (c *Cart) Subtotal(snapshots map[uuid.UUID]ProductSnapshot) (int64, error) 
 
 	for _, item := range c.items {
 		snapshot, ok := snapshots[item.ProductID()]
-		if !ok || !item.Evaluate(&snapshot).HasNoIssue() {
+		if !ok || !item.Evaluate(&snapshot).hasNoIssue() {
 			continue
 		}
 		sum = sum.Add(snapshot.Price().Decimal().Mul(decimal.FromInt(int64(item.Quantity()))))
