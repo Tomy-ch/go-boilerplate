@@ -29,7 +29,7 @@ accepted
 提供しなければならない。
 
 個別規則の正本は既存機構に残す。決定可能な性質は tooling で gate し、読解を要する判断は
-ADR-0090 の finder-to-verifier review で扱う。`ci-first` は、飽和した host の失敗を信頼できる
+ADR-0091 の finder-to-verifier review で扱う。`ci-first` は、飽和した host の失敗を信頼できる
 signal と誤認しないため、重い local gate を CI へ委譲する。既存機構が確実に再浮上させる signal
 は、永続的な人間作業として escalation しなくてよい。
 
@@ -58,5 +58,5 @@ signal と誤認しないため、重い local gate を CI へ委譲する。既
 
 ## 注記
 
-- 関連機構: ADR-0006、ADR-0007、ADR-0086、ADR-0090。
+- 関連機構: ADR-0006、ADR-0007、ADR-0087、ADR-0091。
 - リポジトリでの解釈は `docs/design/` に別途記す。

@@ -25,7 +25,7 @@ seam はブローカー非依存ですが、背後に何も無いまま出され
 |Azure|Queue Storage|`mcr.microsoft.com/azure-storage/azurite`|MIT|Microsoft|
 |GCP|Pub/Sub|`gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators`|Google Cloud SDK の条項|Google|
 
-選定基準はここでの他の依存と同じく「1 コンポーネント 1 責務」（[ADR-0074 (library-selection-policy)](../../../docs/adr/0074-library-selection-policy.md)）です。したがって、クラウド一式をエミュレートするスイートよりも単機能のエミュレータを優先します。各選択の補足は次のとおりです。
+選定基準はここでの他の依存と同じく「1 コンポーネント 1 責務」（[ADR-0075 (library-selection-policy)](../../../docs/adr/0075-library-selection-policy.md)）です。したがって、クラウド一式をエミュレートするスイートよりも単機能のエミュレータを優先します。各選択の補足は次のとおりです。
 
 - **ElasticMQ** は SQS だけをエミュレートし、native イメージはテスト実行ごとに起動できる程度に小さい。多サービス対応の AWS エミュレータはより広い範囲を賄いますが、その代償として 1 コンテナに多数の責務を抱えた依存と、商用ゲートのある機能ラインを持ち込みます
 - **Azurite** は Microsoft 自身のエミュレータで、Blob と Queue の**両方**を賄います。したがって Azure は 2 つの seam に対して 1 コンテナで済みます。Service Bus のセマンティクス（トピック / サブスクリプション / セッション）が必要な場合はファーストパーティのエミュレータが別にありますが、proprietary な EULA で配布され SQL Server を同伴するため、Queue Storage では本当に足りない場合にのみ選んでください

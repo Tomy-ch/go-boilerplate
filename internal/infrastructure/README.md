@@ -98,7 +98,7 @@ The following must not be done in the Infrastructure layer.
 - Split Repository vs QueryService by what the read targets, not by whether it is a "search":
   the aggregate's system-of-record state (full aggregate reconstructable) stays in Repository, a
   derived projection / read model goes to QueryService. See
-  [ADR-0029 (lightweight-cqrs)](../../docs/adr/0029-lightweight-cqrs.md)
+  [ADR-0030 (lightweight-cqrs)](../../docs/adr/0030-lightweight-cqrs.md)
 - Acquire the DBTX via `driver.New(ctx, db)` (logging / tracing is applied at the driver connection level)
 - Always propagate context
 - Always normalize external errors
@@ -137,6 +137,7 @@ flowchart TB
     Queue["queue/"]
     RDB["rdb/"]
     Sys["system/"]
+    Token["token/"]
     Web["webapi/"]
 
     Root --> Auth
@@ -148,6 +149,7 @@ flowchart TB
     Root --> Queue
     Root --> RDB
     Root --> Sys
+    Root --> Token
     Root --> Web
 ```
 
@@ -164,6 +166,7 @@ flowchart TB
 |`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
 |`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
+|`token/`|Opaque token generation from the OS randomness source (impl of `boundary/token.Generator`)|Usecase boundary|[README](token/README.md)|
 |`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|[README](webapi/README.md)|
 
 ## Test Strategy

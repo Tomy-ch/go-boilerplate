@@ -59,6 +59,17 @@ func requiresAuth(reqs openapi3.SecurityRequirements) bool {
 	return true
 }
 
+// emptyRequirementIndex は、匿名アクセスを許す空の要件が要件リストの何番目にあるかを返す。
+// 空の要件が無い場合は -1。
+func emptyRequirementIndex(reqs openapi3.SecurityRequirements) int {
+	for i, req := range reqs {
+		if len(req) == 0 {
+			return i
+		}
+	}
+	return -1
+}
+
 func TestSecurityDeclaration(t *testing.T) {
 	t.Parallel()
 
@@ -101,6 +112,38 @@ func TestSecurityDeclaration(t *testing.T) {
 			sort.Strings(staleEntries)
 			assert.Empty(t, staleEntries,
 				"許可リストに spec に存在しない operation があります。publicOperations から削除してください")
+		})
+	})
+}
+
+func TestSecurityRequirementOrder(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("任意認証のoperationは空のsecurity要件を末尾に置いている", func(t *testing.T) {
+			t.Parallel()
+
+			// 要件は先頭から順に試され、空の要件は必ず満たされてそこで評価が止まる。空を先に置くと
+			// 認証関数が一度も呼ばれず、提示された資格情報の検証失敗が拒否へ結びつかない
+			// （ADR-0019 (optional-authentication-fail-closed)）。
+			spec, err := gen.GetSpec()
+			require.NoError(t, err)
+			require.NotNil(t, spec.Paths)
+
+			for path, item := range spec.Paths.Map() {
+				for method, op := range item.Operations() {
+					reqs := effectiveSecurity(spec, op)
+					idx := emptyRequirementIndex(reqs)
+					if idx < 0 || len(reqs) == 1 {
+						continue
+					}
+					assert.Equal(t, len(reqs)-1, idx,
+						"%s %s: 空の security 要件は末尾に置いてください。先に置くと認証関数が呼ばれず、"+
+							"無効な資格情報が匿名として通ります", method, path)
+				}
+			}
 		})
 	})
 }

@@ -60,7 +60,7 @@ For API changes: OpenAPI is defined first. For DB changes: the migration + SQL e
 Boundaries are enforced in CI, not just documented. Full table + rationale: `docs/rules.md`.
 
 - **Dependencies point inward.** `controller → usecase → domain`; `infrastructure` implements domain interfaces; never bypass a layer.
-- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain lexicon `internal/domain/lexicon` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow, and failing `pkg/`'s entry bar is not an argument for admission here — see `docs/rules.md` / ADR-0036 (domain-lexicon)); a domain package must not import another aggregate. The one exception is `internal/domain/service/<name>/`, where a rule that is the natural responsibility of no entity and no value object lives — whether it spans aggregates or stays inside one: that path has its own depguard rule permitting aggregate imports while repeating every other domain deny, and admission is narrow (see `internal/domain/README.md`). Otherwise use `pkg/`.
+- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain lexicon `internal/domain/lexicon` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow, and failing `pkg/`'s entry bar is not an argument for admission here — see `docs/rules.md` / ADR-0037 (domain-lexicon)); a domain package must not import another aggregate. The one exception is `internal/domain/service/<name>/`, where a rule that is the natural responsibility of no entity and no value object lives — whether it spans aggregates or stays inside one: that path has its own depguard rule permitting aggregate imports while repeating every other domain deny, and admission is narrow (see `internal/domain/README.md`). Otherwise use `pkg/`.
 - **`pkg/`** must not depend on infrastructure or framework-specific packages, must stay framework-agnostic, must not import `internal/**`, and holds no feature-specific business logic.
 - **Usecase** depends only on domain interfaces (never infrastructure), owns transaction boundaries, and maps domain models to DTOs — never exposes domain entities to outer layers.
 - **Controller** handlers stay lightweight: request/response only, no business logic, no infrastructure imports.
@@ -123,6 +123,28 @@ transfer this: the point of an override is that a human chose it.
 Note the asymmetry the *Documentation Rules* in `docs/rules.md` draw between a document that
 describes and one that governs. Correcting the first to match the code is routine. Correcting the
 second is not yours to start.
+
+<!-- boilerplate-only:begin -->
+## What to Recommend
+
+This section governs what you **recommend**, never what you may change. Authority to act is
+untouched: *Conflicting Authority* above, `docs/rules.md`, and the modification scope below still
+decide that.
+
+While this repository is distributed as the boilerplate source, its product is **the state a project
+receives at `useTemplate` time** — not the history that produced it. So when you weigh options and
+state a preference, weigh them for that snapshot: what reads as coherent to someone who has never
+seen this repository and will never read its git log.
+
+**On that axis, quality and consistency outrank the cost of reaching them.** A numbering that
+contradicts the order it teaches, a convention followed everywhere but here, a name that survives
+only because renaming it is work — recommend fixing them. State the cost plainly instead of letting
+the cost pick the answer; "it already shipped" carries little weight while nobody has instantiated
+from this in production.
+
+Give the cost with the recommendation — files touched, what breaks for whom, what must be rebuilt —
+so a human can decline the scope while keeping the direction.
+<!-- boilerplate-only:end -->
 
 ## YAGNI vs Regression Safeguards
 

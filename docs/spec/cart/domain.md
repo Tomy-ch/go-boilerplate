@@ -22,7 +22,7 @@
 ドメインは関与しない（[`usecase.md`](./usecase.md) の再評価）。ドメインが商品集約を参照しないため、
 カートの不変条件は商品の状態変化から独立し、商品が変わってもカートが不正にならない。
 
-`id` は UUIDv7（[ADR-0034 (uuidv7-identifiers)]）で、生成は usecase 層が行いドメインへ渡す。有効期限
+`id` は UUIDv7（[ADR-0035 (uuidv7-identifiers)]）で、生成は usecase 層が行いドメインへ渡す。有効期限
 `expiresAt` も同様に、時刻境界（clock）から供給された `now` を受け取って算出する（ドメインは時刻へ直接
 依存しない）。
 
@@ -33,7 +33,7 @@ package: internal/domain/cart
 struct: Cart
 constructors:
   - name: NewForGuest    # ゲスト用（sessionToken あり / ownerID なし）
-  - name: NewForOwner    # ログイン済みユーザー用（ownerID あり / sessionToken なし）
+  - name: NewForOwner    # ログイン済みユーザー用（Attributes で受ける。ownerID あり / sessionToken なし）
   - name: Reconstruct    # 永続化済みの再構築（Repository の読み出し / 再検証）
 fields:
   - name: id
@@ -97,7 +97,7 @@ fields:
 
 ```yaml
 - name: SetItem
-  signature: SetItem(itemID uuid.UUID, productID uuid.UUID, quantity int, now time.Time) error
+  signature: SetItem(attrs SetItemAttributes, now time.Time) error   # itemID / productID は同型のため構造体で受ける
   behavior: |
     明細の数量を設定する（PUT /v1/carts/me/items/{productId} の upsert）。同一 productID の明細が既に
     あれば数量を置換し（addedAt は保持）、無ければ追加する。追加で明細数が maxItems を超える場合は
@@ -216,24 +216,23 @@ fields:
   signature: LockByID(ctx context.Context, id uuid.UUID) (*Cart, error)
   behavior: |
     更新のためにカートを悲観ロック（FOR UPDATE）して取得する。マージで 2 件を同時にロックする場合は
-    id 昇順で取得し、ロック順序を全 tx で固定する（ADR-0033 (ordered-pessimistic-row-locks)）。
+    id 昇順で取得し、ロック順序を全 tx で固定する（ADR-0034 (ordered-pessimistic-row-locks)）。
 
 - name: Create
   signature: Create(ctx context.Context, c *Cart) error
   behavior: |
     カートを明細込みで新規登録する。user_id / session_token の一意制約違反は Conflict へ正規化する。
 
-- name: SaveItems
-  signature: SaveItems(ctx context.Context, c *Cart) error
+- name: Update
+  signature: Update(ctx context.Context, c *Cart) error
   behavior: |
-    カートの明細集合を渡された ctx の tx 内で現在の状態へ一致させる（差分ではなく集約単位の書き込み）。
+    カートを渡された ctx の tx 内で現在の状態へ一致させる（差分ではなく集約単位の書き込み）。
+    所有者・セッショントークン・有効期限といった親行の状態と、明細の集合の両方が対象。
     明細はカート集約に属する子であり単独では存在しないため、明細単位の Repository は設けない。
-
-- name: UpdateOwner
-  signature: UpdateOwner(ctx context.Context, c *Cart) error
-  behavior: |
-    所有者確定（user_id のセットと session_token の NULL 化）を渡された ctx の tx 内で反映する。
-    対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
+    所有者の確定（user_id のセットと session_token の NULL 化）もこの 1 本で反映される。
+    明細は自然キー（productID）で置き換えられ、addedAt は保持される。集合から消えた明細は取り除かれる。
+    対象が存在しない場合は NotFound。
+    親行と明細の書き込み順序は実装内部の不変条件であり、呼び出し側の義務ではない。
 
 - name: Delete
   signature: Delete(ctx context.Context, id uuid.UUID) error
@@ -264,4 +263,4 @@ fields:
   `ErrInvalidUserID` / `ErrInvalidProductID` / `ErrInvalidQuantity` / `ErrTooManyItems` /
   `ErrInvalidSessionToken`）→ `apperror.ErrValidation`（422）。
 
-[ADR-0034 (uuidv7-identifiers)]: ../../adr/0034-uuidv7-identifiers.md
+[ADR-0035 (uuidv7-identifiers)]: ../../adr/0035-uuidv7-identifiers.md

@@ -15,7 +15,7 @@ func NewAppServer() *echo.Echo {
 }
 
 // NewHTTPServer は、Echo をハンドラとする HTTP サーバーを作成します。
-// Echo v5 の [echo.StartConfig] を使わない理由は ADR-0019 (echo-http-framework) を参照。
+// Echo v5 の [echo.StartConfig] を使わない理由は ADR-0020 (echo-http-framework) を参照。
 func NewHTTPServer(e *echo.Echo, srvCfg *config.ServerConfig) *http.Server {
 	return &http.Server{
 		Handler:           e,

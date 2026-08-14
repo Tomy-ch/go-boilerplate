@@ -1,6 +1,6 @@
 # Observability Subsystem Design Reference
 
-[Observability README](../../internal/observability/README.md) | 日本語: [observability.ja.md](../ja/design/observability.ja.md)
+[Observability README](../../internal/observability/README.md) | 日本語: [observability.ja.md](observability.ja.md)
 
 This document consolidates the observability subsystem's **role theory, signal lifecycles, implementation locations, provided capabilities, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the package-level API overview see the README; for the subsystems it instruments see [worker.md](worker.md), [outbox.md](outbox.md), [idempotency.md](idempotency.md), and [rest.md](rest.md).
 

@@ -1,7 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package purchase は、購入の作成ユースケースを提供します。単価は価格スケール（ドル decimal）、
-// 決済額は決済スケール（整数セント）で扱います（ADR-0035 (two-scale-quantity-model)）。
+// 決済額は決済スケール（整数セント）で扱います（ADR-0036 (two-scale-quantity-model)）。
 package purchase
 
 import (
@@ -394,7 +394,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 
 	var detail *purchase.Detail
 	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
-	// Repository で完結する（ADR-0031 (commandservice-atomicity-criterion)）。
+	// Repository で完結する（ADR-0032 (commandservice-atomicity-criterion)）。
 	// 二重支払いは購入のロック + 状態チェック（ErrAlreadyPaid）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByID(ctx, params.PurchaseID)
@@ -466,7 +466,7 @@ func (u *usecase) ShipPurchase(
 
 	var detail *purchase.Detail
 	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
-	// Repository で完結する（ADR-0031 (commandservice-atomicity-criterion)）。
+	// Repository で完結する（ADR-0032 (commandservice-atomicity-criterion)）。
 	// 二重発送は購入行ロック + 状態チェック（ErrAlreadyShipped）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByID(ctx, purchaseID)
@@ -533,7 +533,7 @@ func (u *usecase) DeliverPurchase(
 
 	var detail *purchase.Detail
 	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
-	// Repository で完結する（ADR-0031 (commandservice-atomicity-criterion)）。
+	// Repository で完結する（ADR-0032 (commandservice-atomicity-criterion)）。
 	// 二重配達は購入行ロック + 状態チェック（ErrAlreadyDelivered）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByID(ctx, purchaseID)

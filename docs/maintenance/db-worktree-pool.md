@@ -1,6 +1,6 @@
 # Shared Infra and the DB Slot Pool (parallel worktree development)
 
-日本語: [db-worktree-pool.ja.md](../ja/maintenance/db-worktree-pool.ja.md)
+日本語: [db-worktree-pool.ja.md](db-worktree-pool.ja.md)
 
 The mechanism that lets several git worktrees (and the main checkout) use a **single shared infra**
 in parallel without colliding. Compose services are split into two layers:

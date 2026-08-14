@@ -97,7 +97,7 @@ Infrastructure 層では以下を行ってはいけません。
 - SQL 実行は sqlc を使用する
 - Repository と QueryService の分割は「検索かどうか」ではなく、その読み取りが何を対象にするかで決める。
   集約の system-of-record（完全な集約を再構成できる）は Repository、派生した射影 / リードモデルは
-  QueryService。[ADR-0029 (lightweight-cqrs)](../../docs/adr/0029-lightweight-cqrs.ja.md) を参照
+  QueryService。[ADR-0030 (lightweight-cqrs)](../../docs/adr/0030-lightweight-cqrs.ja.md) を参照
 - DBTX は `driver.New(ctx, db)` で取得する（ログ / トレースは driver の接続層で付与される）
 - context を必ず伝搬する
 - 外部エラーは必ず正規化する
@@ -134,6 +134,7 @@ flowchart TB
     Queue["queue/"]
     RDB["rdb/"]
     Sys["system/"]
+    Token["token/"]
     Web["webapi/"]
 
     Root --> Auth
@@ -145,6 +146,7 @@ flowchart TB
     Root --> Queue
     Root --> RDB
     Root --> Sys
+    Root --> Token
     Root --> Web
 ```
 
@@ -161,6 +163,7 @@ flowchart TB
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
+|`token/`|OS の乱数源による不透明なトークン生成（`boundary/token.Generator` の実装）|Usecase boundary|[README](token/README.ja.md)|
 |`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|[README](webapi/README.ja.md)|
 
 ## テスト戦略

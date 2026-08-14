@@ -47,7 +47,7 @@ The engine is **completed against the in-memory fake** (`internal/usecase/bounda
 - `runner.go` — `Engine` (registry, `Run`, `Healthy`), `run.go` — per-run poll loop / dispatch / drain.
 - `circuit.go` — 3-state breaker (cooldown via `pkg/backoff`). `classify.go` — error → category. `settings.go` — engine-core `Settings`. `dispatch.go` — `PartitionKey` keyed serialization. `state.go` — `worker.State` impl. `errors.go` — registry sentinels. `telemetry.go` — O11Y (traceparent continuation / structured-log fields; the engine-owned metrics themselves live in `observability.WorkerMetrics`).
 
-The SQS reference adapter (`internal/infrastructure/queue/sqs`) may be wired as part of the **removable sample set**. Broker-SDK isolation is measured as **coupling** rather than as linkage — a concrete broker is named only by its adapter package and the wiring that selects it — see E3 in [ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0050-broker-sdk-isolation-measured-as-coupling.md).
+The SQS reference adapter (`internal/infrastructure/queue/sqs`) may be wired as part of the **removable sample set**. Broker-SDK isolation is measured as **coupling** rather than as linkage — a concrete broker is named only by its adapter package and the wiring that selects it — see E3 in [ADR-0051 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0051-broker-sdk-isolation-measured-as-coupling.md).
 
 <!-- sample-api:begin -->
 [`withdrawalarchive/`](withdrawalarchive/README.md) is the bundled sample worker — the worked example of everything `docs/design/worker.md` §4 asks an integrator to supply. It consumes the withdrawal event the outbox emits, and is removed with the rest of the sample set.

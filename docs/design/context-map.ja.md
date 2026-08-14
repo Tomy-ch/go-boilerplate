@@ -36,7 +36,7 @@ Customer-Supplier を他と分けるのは、上流がこちらの要件を通�
 | HTTP API の消費者 | このシステムが上流 | **Open Host Service + Published Language** | `openapi/openapi.gen.yaml` を消費可能な成果物としてコミットし drift gate で鮮度を保つ。面は消費者ごとの endpoint ではなく全員に対する一律のプロトコル | 公開された契約が変わったときにだけ消費者が壊れ、その変更は gate によってレビューで可視になる |
 | 外部 IdP | このシステムが下流 | `未確定` | アダプタがトークンをこのシステム自身の `Authn` へ変換し（`internal/infrastructure/auth/jwt/auth_jwt.go:243`）、subject / issuer / scopes をこのシステムの語で導出する。生の claim マップは不透明な積荷として持ち込まれるが production の読み手が無く、外部の語彙は越えてくるが消費されない——変換する境界が置かれている | issuer や claim の変更はアダプタが吸収する。プロトコルの変更は吸収しない |
 | オブジェクトストレージ（S3 互換） | このシステムが下流 | `未確定` | ポートはこのシステムの語彙で述べられ、`internal/usecase/boundary/README.md`（`objectstorage` 節）が vendor の語彙（bucket / region / etag）は境界を越えないと明言している | ベンダの差し替えはアダプタに閉じ、ポートは影響を受けない |
-| outbox の受信者 | このシステムが上流 | `未確定` | publish 境界は substrate-agnostic な envelope を持つが、payload のスキーマは公開されていない。[ADR-0054](../adr/0054-message-id-idempotency-propagation.ja.md) が定めるのは転送規約のみ。[`outbox.ja.md`](outbox.ja.md) を参照 | 受信者の期待は、このシステムが公開するどの成果物にも守られていない |
+| outbox の受信者 | このシステムが上流 | `未確定` | publish 境界は substrate-agnostic な envelope を持つが、payload のスキーマは公開されていない。[ADR-0055](../adr/0055-message-id-idempotency-propagation.ja.md) が定めるのは転送規約のみ。[`outbox.ja.md`](outbox.ja.md) を参照 | 受信者の期待は、このシステムが公開するどの成果物にも守られていない |
 
 ## 未解決の問い
 

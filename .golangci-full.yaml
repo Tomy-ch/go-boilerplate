@@ -317,7 +317,7 @@ linters:
           allow:
             # 集約横断で共有する業務 VO の置き場。ここだけは domain 間の import を許可する。
             # 器としての正確な十進量は pkg/decimal だが、通貨・非負・最小単位といった業務意味論は
-            # pkg に置けないため domain に置く（ADR-0036 (domain-lexicon)）。
+            # pkg に置けないため domain に置く（ADR-0037 (domain-lexicon)）。
             - go-boilerplate/internal/domain/lexicon
           deny:
             # 集約間の直接結合を禁止する。集約横断で共有したい業務 VO は internal/domain/lexicon

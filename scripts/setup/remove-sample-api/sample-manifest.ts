@@ -46,8 +46,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/dml/repository/user",
       "database/migrations/000004_create_users.up.sql",
       "database/migrations/000004_create_users.down.sql",
-      "database/migrations/000015_add_users_table_search_text_column.up.sql",
-      "database/migrations/000015_add_users_table_search_text_column.down.sql",
+      "database/migrations/000017_add_users_table_search_text_column.up.sql",
+      "database/migrations/000017_add_users_table_search_text_column.down.sql",
       "database/seed/000001_users.sql",
       "database/seed/000002_users_additional.sql",
 
@@ -322,10 +322,21 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     description:
       "サンプル カート API（/v1/carts/me・ゲストカートの所有者確定 / 明細ごとの再評価 / 期限切れ掃除ジョブ）。現時点は spec のみで、実装が入るたびに paths を追記する",
     paths: [
-      "database/migrations/000016_create_carts.up.sql",
-      "database/migrations/000016_create_carts.down.sql",
-      "database/migrations/000017_create_cart_items.up.sql",
-      "database/migrations/000017_create_cart_items.down.sql",
+      "database/migrations/000015_create_carts.up.sql",
+      "database/migrations/000015_create_carts.down.sql",
+      "database/migrations/000016_create_cart_items.up.sql",
+      "database/migrations/000016_create_cart_items.down.sql",
+
+      "internal/domain/cart",
+      "internal/infrastructure/rdb/repository/cart",
+      "database/dml/repository/cart",
+      "database/gen/cart_repository.gen.sql",
+      "internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go",
+
+      // token 境界はカートのセッション追跡のためだけに存在するため、カートと生死を共にする。
+      // 2 人目の利用者が現れた時点でここから外す。
+      "internal/usecase/boundary/token",
+      "internal/infrastructure/token",
 
       // spec
       "docs/spec/cart",
@@ -400,7 +411,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "outbox を SQS 互換 broker へ向ける配線。engine / seam / SQS adapter は送受信とも core、" +
       "ローカル broker も object storage の Garage と同じくローカルインフラとして残し、" +
       "core から adapter を参照する配線だけを削除対象にする" +
-      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0050 (broker-sdk-isolation-measured-as-coupling) が broker SDK の隔離を" +
+      "（削除後の結合をサンプル追加前と同一に保つ。ADR-0051 (broker-sdk-isolation-measured-as-coupling) が broker SDK の隔離を" +
       "リンクではなく結合で測る、と述べているのがこれ）。" +
       "object storage と揃うのは adapter / ローカルインフラ / config を core に置く点までで、" +
       "判別子の 1 分岐として配線する構造は queue 側だけのもの（object storage に選択肢は無い）。",

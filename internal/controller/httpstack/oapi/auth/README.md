@@ -40,6 +40,13 @@ flowchart TB
 
 Handler code can then retrieve `Authn` using `ctxhelper.GetAuthn()`.
 
+When a credential was presented and rejected, the resulting error is also recorded into the
+slot via `ctxhelper.SetAuthnFailure()` before it is returned. A rejected credential must deny
+the request even where the spec declares authentication optional, and the return value alone
+cannot carry that — see the fail-closed section in [`../README.md`](../README.md). Absence of a
+credential is not a failure and is never recorded, so an operation that admits anonymous
+callers still admits them.
+
 ## Errors
 
 |Error|Base Error|Description|

@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/usecase/boundary/auth"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,6 +80,64 @@ func TestGetAuthn(t *testing.T) {
 			ctx := WithAuthn(context.Background())
 			_, ok := GetAuthn(ctx)
 			assert.False(t, ok)
+		})
+	})
+}
+
+func TestSetAuthnFailure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロットがあれば書き込めAuthnFailureで読める", func(t *testing.T) {
+			t.Parallel()
+			want := xerrors.New("authentication failed")
+			ctx := WithAuthn(context.Background())
+
+			require.True(t, SetAuthnFailure(ctx, want))
+
+			assert.Equal(t, want, AuthnFailure(ctx))
+		})
+
+		t.Run("Authnの書き込みとは独立して共存する", func(t *testing.T) {
+			t.Parallel()
+			ctx := WithAuthn(context.Background())
+			failure := xerrors.New("authentication failed")
+
+			require.True(t, SetAuthn(ctx, newTestAuthn(t, "u1")))
+			require.True(t, SetAuthnFailure(ctx, failure))
+
+			_, ok := GetAuthn(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, failure, AuthnFailure(ctx))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロット未仕込みなら書き込めずfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, SetAuthnFailure(context.Background(), xerrors.New("authentication failed")))
+		})
+	})
+}
+
+func TestAuthnFailure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロットはあるが失敗が無ければnil", func(t *testing.T) {
+			t.Parallel()
+			assert.NoError(t, AuthnFailure(WithAuthn(context.Background())))
+		})
+
+		t.Run("スロット未仕込みならnil", func(t *testing.T) {
+			t.Parallel()
+			assert.NoError(t, AuthnFailure(context.Background()))
 		})
 	})
 }

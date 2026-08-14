@@ -23,29 +23,7 @@ accepted
 
 `oapi-codegen/echo-v5-middleware` パッケージの `oapimw.OapiRequestValidatorWithOptions` を Echo ミドルウェアとしてワイヤリングし、解析済みの仕様と `openapi3filter.AuthenticationFunc` を渡す。バリデーターが実行される前に、authn コンテキストスロットを注入して `AuthenticationFunc` がリクエストコンテキストに認証結果を書き込めるようにする。
 
-```go
-func Middleware(
-    spec *openapi3.T,
-    skipper echomw.Skipper,
-    authFunc openapi3filter.AuthenticationFunc,
-) echo.MiddlewareFunc {
-    oapiValidator := oapimw.OapiRequestValidatorWithOptions(spec, &oapimw.Options{
-        SilenceServersWarning: true,
-        Skipper:               skipper,
-        Options: openapi3filter.Options{
-            AuthenticationFunc: authFunc,
-        },
-    })
-    return func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c *echo.Context) error {
-            req := c.Request()
-            req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
-            c.SetRequest(req)
-            return oapiValidator(next)(c)
-        }
-    }
-}
-```
+スロットを戻り値ではなくリクエスト自身のコンテキストに載せているのは、`AuthenticationFunc` がリクエストとは独立に検証ライブラリ側で組み立てられたコンテキストで呼ばれ、他にハンドラへ値を戻す経路が無いためである。ミドルウェアの実体は [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go)。
 
 ミドルウェアはオペレーションパスの検証をバイパスするスキッパー（`internal/controller/httpstack/oapi/skipper`）で設定される。仕様内の `security:` 宣言が `AuthenticationFunc` を駆動する。この関数はセキュリティ要件を宣言したオペレーションに対してのみ発火するため、パブリックエンドポイント（例: `GET /health`）は認証を要求されない。
 

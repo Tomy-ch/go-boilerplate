@@ -1,6 +1,6 @@
 # Troubleshooting
 
-English | [日本語](../ja/get-started/troubleshooting.ja.md)
+English | [日本語](troubleshooting.ja.md)
 
 Failures you are likely to meet while setting the repository up and running it locally, indexed by
 **the symptom you actually see**. Each entry names the cause and hands off to the document that
@@ -104,7 +104,7 @@ By design. `golangci-lint` picks up `.golangci.yaml` implicitly, which is a deli
 tuned for editor responsiveness; the authoritative gate is `.golangci-full.yaml`, which `make lint`
 and `make fix` pass explicitly and which carries the depguard layer rules. An editor that stays quiet
 is not evidence. Rationale:
-[ADR-0081 (two-layer-golangci-config)](../adr/0081-two-layer-golangci-config.md).
+[ADR-0082 (two-layer-golangci-config)](../adr/0082-two-layer-golangci-config.md).
 
 ### Local gates seem to have stopped running
 

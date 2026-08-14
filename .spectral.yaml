@@ -11,8 +11,8 @@
 extends: ["./scripts/node_modules/@stoplight/spectral-owasp-ruleset/dist/ruleset.js"]
 
 rules:
-  # --- レート制限系: ADR-0099 (vendor-neutral-deploy-skeleton) と衝突するため無効化 ---
-  # ADR-0099 (vendor-neutral-deploy-skeleton) は「レート制限をアプリケーションに実装せず、API Gateway / LB / service mesh へ委譲する」
+  # --- レート制限系: ADR-0100 (vendor-neutral-deploy-skeleton) と衝突するため無効化 ---
+  # ADR-0100 (vendor-neutral-deploy-skeleton) は「レート制限をアプリケーションに実装せず、API Gateway / LB / service mesh へ委譲する」
   # ことを決定として明記している。これらのルールは 429 レスポンスと RateLimit-* ヘッダを
   # spec に宣言することを要求するが、本アプリはレート制限を一切知らないため、宣言すれば
   # 実装が保証しない契約を spec が約束することになる。

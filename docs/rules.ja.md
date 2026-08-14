@@ -41,7 +41,7 @@ domain パッケージは他の集約を import してはなりません（depgu
 基準がリンタの引く境界を越えて型を押し込むことはできないためです。`pkg/` で落ちたことは lexicon の
 根拠になりません。どちらも満たさない型は所有する集約に残します。入場基準は意図的に狭く（値オブジェクト /
 2 集約以上で使用 / 業務意味論を持つ / 共同所有の判断。詳細はその README）、名前が入場時の問いを
-表しています——これは業務の語か。根拠: [ADR-0036](adr/0036-domain-lexicon.ja.md)。
+表しています——これは業務の語か。根拠: [ADR-0037](adr/0037-domain-lexicon.ja.md)。
 
 ### ドメインサービス
 
@@ -138,6 +138,21 @@ OpenAPI 定義は **APIの唯一のソース（Single Source of Truth）** で�
 - migration は **append-only（追記のみ）** です
 - スキーマ変更は必ず **migration から開始**します
 
+<!-- boilerplate-only:begin -->
+**上流の例外 — 指示があれば採番のし直しを許します。** このリポジトリが boilerplate の正本として
+配布されている間に限り、既存の migration は、人間が明示的に承認または指示したときに採番し直したり
+書き換えたりできます（変更ごとに判断します）。上流が配布しているのは手本であり、**その手本としての
+明瞭さと一貫性を、誰も本番で動かしていないリポジトリのスキーマ履歴より優先します**。
+
+代償は実在し、途中まで適用されたデータベースを持つ人に降りかかります。migration ツールが記録するのは
+ファイル名ではなく番号なので、旧番号と新番号の間で止まっているデータベースは次に誤ったファイルを
+適用します。そうしたデータベースは前へ進めるのではなく、作り直してください
+（`make db-local-reinit` / `make db-test-reinit`）。
+
+この例外は setup がプロジェクトを作成した時点で外れます。以降、上記の append-only 規則に例外はありません。
+プロジェクトの migration 履歴は、その本番スキーマがどう出来上がったかを示す唯一の記録だからです。
+<!-- boilerplate-only:end -->
+
 ### 典型的なフロー
 
 ```mermaid
@@ -204,9 +219,9 @@ Infrastructure コンポーネントは
 
 > 判定基準: [`docs/design/data-access-pattern.md`](design/data-access-pattern.ja.md) —— ある操作が
 > どの構築物に属するのか、そしてなぜか。決定:
-> [ADR-0029 (lightweight-cqrs)](adr/0029-lightweight-cqrs.ja.md)、
-> [ADR-0030 (system-cqrs-dml-category)](adr/0030-system-cqrs-dml-category.ja.md)、
-> [ADR-0031 (commandservice-atomicity-criterion)](adr/0031-commandservice-atomicity-criterion.ja.md)。
+> [ADR-0030 (lightweight-cqrs)](adr/0030-lightweight-cqrs.ja.md)、
+> [ADR-0031 (system-cqrs-dml-category)](adr/0031-system-cqrs-dml-category.ja.md)、
+> [ADR-0032 (commandservice-atomicity-criterion)](adr/0032-commandservice-atomicity-criterion.ja.md)。
 
 Repository は読み・書きの両方向で既定である。QueryService と CommandService は、非機能要件が操作を集約単位の
 作業へ分解することを禁じるときに残る残余であり、`system_cqrs` は分割の外側にある。**判定基準をここにも、ADR にも、
@@ -335,8 +350,8 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 - 理由: 到達不能な `if err != nil { return err }` はデッドコードであり、テスト不能・カバレッジ低下・意図の隠蔽を招く。`panic` は不変条件を文書化し、前提が破られたら確実に気づける。
 - **関数本体の中で組み立てた `xerrors.New(...)` を返さない。** package-level のセンチネル（`var errXxx = xerrors.New("...")`）として宣言し、動的な文脈は `xerrors.Wrap(errXxx, ctx)` で付与する。その場で生成したエラーは `errors.Is` から辿れないため、呼び出し側が分岐できず、テストはメッセージ文字列一致に追い込まれる — 一語の文言変更でテストが壊れ、逆に別のエラーでも通ってしまう。`internal/architest`（`TestNoInlineXerrorsNew`）で機械検証しており、allowlist は持たない。`_test.go` は対象外 — テストが注入用のアドホックなエラーを作るのは正当な用法。
 - `apperror` センチネルを元エラーに付与する場合は `pkg/xerrors` を使う。元エラーを文字列へ潰す `Wrap(sentinel, err.Error())` より、型・スタックを chain に残して `Is` / `As` で辿れる `Join(sentinel, err)` を優先する。例外は2つ: 機密（クエリ・userinfo を含む URL 等）を含みうるエラーへの **redact** ルールと、**意図的な型消去** ルール — `Wrap` による潰しは意図的なこともある（元の型を chain から消す）ため、既存の正規化器を `Join` へ変える前に、その型に**マッチしないこと**に依存する下流の `Is` / `As` 述語（例: `*pgconn.PgError` の SQLSTATE を見る tx リトライ述語）をすべて確認する。完全な方針は [`pkg/xerrors/README.md`](../pkg/xerrors/README.ja.md) を参照。
-- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0045](adr/0045-error-metadata-code-message-details.ja.md)。
-- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0046](adr/0046-error-details-opt-in-gate.ja.md)。
+- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0046](adr/0046-error-metadata-code-message-details.ja.md)。
+- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0047](adr/0047-error-details-opt-in-gate.ja.md)。
 
 ## コメントルール
 
@@ -425,7 +440,7 @@ AI エージェントは以下を守る必要があります。
 ツールのバージョンは `mise.toml`（mise が解決するもの全部についての単一の真実源）に固定され、
 コンテナ化された tool-runner 内で実行することで、マシン間の再現性を保ちます。PyPI から入れる
 ツールだけは `python/*.in` で宣言し、`python/*.txt` にパッケージごとのハッシュ付きで固定します。
-mise の pin では推移依存が固定されないためです（[ADR-0077](adr/0077-mise-ssot-drift-gate.ja.md)）。
+mise の pin では推移依存が固定されないためです（[ADR-0078](adr/0078-mise-ssot-drift-gate.ja.md)）。
 
 - ツール実行（lint / format / codegen / doc 生成 / commit-message lint 等）は、tool-runner
   （`go_tool_runner` / `node_tool_runner` / `python_tool_runner`）内で走る `make` ターゲット経由で

@@ -63,7 +63,7 @@ own; failures surface through the normalized error.
 This adapter **is** in the default DI graph, so `aws-sdk-go-v2/service/s3` and the SDK core are
 linked into the shipped binary. [`queue/sqs`](../queue/sqs/README.md) is wired only from the
 removable sample set, so `service/sqs` leaves the binary once the sample is removed
-([ADR-0050 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0050-broker-sdk-isolation-measured-as-coupling.md)).
+([ADR-0051 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0051-broker-sdk-isolation-measured-as-coupling.md)).
 
 The asymmetry is intentional: a worker has no broker until one is chosen, whereas the
 object-storage port is exercised out of the box and needs a working implementation
@@ -98,7 +98,7 @@ after retargeting.
 |GCP|Cloud Storage|`fsouza/fake-gcs-server`|BSD-2-Clause|fsouza (individual maintainer)|
 
 Selection follows the same rule as every other dependency here — one replaceable job per component
-([ADR-0074 (library-selection-policy)](../../../docs/adr/0074-library-selection-policy.md)) — so a single-purpose emulator is
+([ADR-0075 (library-selection-policy)](../../../docs/adr/0075-library-selection-policy.md)) — so a single-purpose emulator is
 preferred over a suite that emulates a whole cloud. Notes per choice:
 
 - **Garage** speaks the S3 API and nothing else, and stays small enough to run per checkout. Its

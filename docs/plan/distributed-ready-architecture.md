@@ -1,6 +1,6 @@
 # Distributed Ready Architecture (v3 requirements)
 
-English | [日本語](../ja/plan/distributed-ready-architecture.ja.md)
+English | [日本語](distributed-ready-architecture.ja.md)
 
 The v3 line is trying to answer one question. **Can a modular monolith stay a modular monolith, and
 still behave as a distributed system the moment a boundary is crossed?**
@@ -71,7 +71,7 @@ Required:
 **Where a boundary may be cut is not a new question this layer decides.** That the aggregate is the
 design unit is settled by the [domain README](../../internal/domain/README.md), and where an
 operation crossing an aggregate boundary belongs is settled by
-[ADR-0031 (commandservice-atomicity-criterion)](../adr/0031-commandservice-atomicity-criterion.md).
+[ADR-0032 (commandservice-atomicity-criterion)](../adr/0032-commandservice-atomicity-criterion.md).
 What this line adds is only what those criteria mean once they are read as an extraction decision.
 
 - **A consistency requirement is a veto, not a selection criterion.** Invariants that must hold at

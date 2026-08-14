@@ -1,6 +1,6 @@
 # Documentation Portal — Manifest Contract
 
-English | [日本語](../ja/maintenance/portal-manifest.ja.md)
+English | [日本語](portal-manifest.ja.md)
 
 The documentation portal at `docs/portal/` is driven by an explicit **contract**: the visible structure (which groups exist, what each section is called, in what order things appear, which links go in the sidebar Reference block) is defined in `docs/portal/manifest.yaml`, and the build scripts under `scripts/` only **construct** the portal data by reading that manifest plus scanning the documentation filesystem.
 

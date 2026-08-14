@@ -5,11 +5,11 @@
 # FROM タグ・関連 README へ伝播する。短い名前で解決できないツールは backend を明示する。
 #
 # PyPI のツールだけはここに書かない。バージョンの宣言は python/*.in、推移依存まで含めた
-# 解決結果と sha256 は python/*.txt が持つ（ADR-0077）。
+# 解決結果と sha256 は python/*.txt が持つ（ADR-0078）。
 min_version = "2026.6.0"
 
 [tools]
-# 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0086）、
+# 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0087）、
 # 昇格の判断は LTS を待つ方針が担う。
 go = "1.26.5"
 node = "24.18.0"
