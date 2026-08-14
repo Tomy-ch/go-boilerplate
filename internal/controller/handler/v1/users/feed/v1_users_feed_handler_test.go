@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/testkit/testauth"
 	"go-boilerplate/internal/controller/handler/v1/users/feed/gen"
 	"go-boilerplate/internal/observability"
@@ -170,6 +171,17 @@ func Test_server_GetUsersFeed(t *testing.T) {
 			resp, err := s.GetUsersFeed(testauth.MakeAvailableAuthn(context.Background(), t, feedSubject), req)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			req := gen.GetUsersFeedRequestObject{Params: gen.GetUsersFeedParams{}}
+
+			resp, err := s.GetUsersFeed(context.Background(), req)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 	})
 }

@@ -198,6 +198,17 @@ func Test_server_GetUsers(t *testing.T) {
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, expectedError)
 		})
+
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
+
+			s := &server{tracer: lt, uc: mock_user.NewMockUsecase(ctrl)}
+			resp, err := s.GetUsers(context.Background(), mockParams)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
+		})
 	})
 }
 

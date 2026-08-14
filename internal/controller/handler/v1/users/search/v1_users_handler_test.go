@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/handler/testkit/testauth"
 	gen "go-boilerplate/internal/controller/handler/v1/users/search/gen"
@@ -206,6 +207,15 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			resp, err := s.GetUsersSearch(testauth.MakeAvailableAuthn(context.Background(), t, searchSubject), mockParams)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.GetUsersSearch(context.Background(), mockParams)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 	})
 }
