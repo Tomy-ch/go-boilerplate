@@ -935,7 +935,7 @@ func Test_usecase_authorizeUserCollection(t *testing.T) {
 
 			uc := &usecase{authorizer: authorizer}
 
-			require.NoError(t, uc.authorizeUserCollection(ctx, authn, authz.ActionUserList))
+			require.NoError(t, uc.authorizeUserCollection(ctx, authn))
 		})
 	})
 
@@ -950,7 +950,7 @@ func Test_usecase_authorizeUserCollection(t *testing.T) {
 
 			uc := &usecase{authorizer: authorizer}
 
-			require.ErrorIs(t, uc.authorizeUserCollection(ctx, nil, authz.ActionUserList), apperror.ErrUnauthenticated)
+			require.ErrorIs(t, uc.authorizeUserCollection(ctx, nil), apperror.ErrUnauthenticated)
 		})
 
 		t.Run("認可が拒否された場合、認可エラーが伝播される", func(t *testing.T) {
@@ -964,7 +964,7 @@ func Test_usecase_authorizeUserCollection(t *testing.T) {
 
 			uc := &usecase{authorizer: authorizer}
 
-			require.ErrorIs(t, uc.authorizeUserCollection(ctx, authn, authz.ActionUserList), authz.ErrForbidden)
+			require.ErrorIs(t, uc.authorizeUserCollection(ctx, authn), authz.ErrForbidden)
 		})
 	})
 }

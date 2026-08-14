@@ -167,25 +167,11 @@ func (u *usecase) ListUsers(ctx context.Context, authn *authbd.Authn, active *bo
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	if err := u.authorizeUserCollection(ctx, authn, authz.ActionUserList); err != nil {
+	if err := u.authorizeUserCollection(ctx, authn); err != nil {
 		return nil, err
 	}
 
 	return u.listUsers(ctx, active, page)
-}
-
-// listUsers は、認可済みの呼出元に対してユーザー一覧を取得します。
-func (u *usecase) listUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error) {
-	if page == nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "page must not be nil")
-	}
-
-	us, err := u.userRepo.FindByActive(ctx, active, page.Limit32(), page.Offset32())
-	if err != nil {
-		return nil, err
-	}
-
-	return u.toUserViews(ctx, us)
 }
 
 func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
@@ -243,7 +229,7 @@ func (u *usecase) ListUsersWithTotal(ctx context.Context, authn *authbd.Authn, a
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	if err := u.authorizeUserCollection(ctx, authn, authz.ActionUserList); err != nil {
+	if err := u.authorizeUserCollection(ctx, authn); err != nil {
 		return nil, err
 	}
 
@@ -262,7 +248,7 @@ func (u *usecase) ListUsersFeed(ctx context.Context, authn *authbd.Authn, cursor
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	if err := u.authorizeUserCollection(ctx, authn, authz.ActionUserList); err != nil {
+	if err := u.authorizeUserCollection(ctx, authn); err != nil {
 		return nil, err
 	}
 
@@ -478,6 +464,20 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 	})
 }
 
+// listUsers は、認可済みの呼出元に対してユーザー一覧を取得します。
+func (u *usecase) listUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error) {
+	if page == nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "page must not be nil")
+	}
+
+	us, err := u.userRepo.FindByActive(ctx, active, page.Limit32(), page.Offset32())
+	if err != nil {
+		return nil, err
+	}
+
+	return u.toUserViews(ctx, us)
+}
+
 // authorizeUserAccess は、認証主体 authn が対象ユーザー（所有者 = id）への action を実行してよいか判定します。
 // リソースの所有者を対象ユーザー（id）とすることで、所有権モデルでは呼出元が自分自身のみを操作できます。
 // authn が nil の場合は、認可判定以前に呼出元を特定できないため apperror.ErrUnauthenticated を返します。
@@ -488,15 +488,15 @@ func (u *usecase) authorizeUserAccess(ctx context.Context, authn *authbd.Authn, 
 	return u.authorizer.Authorize(ctx, authn, action, authz.NewResource("user", &id))
 }
 
-// authorizeUserCollection は、認証主体 authn がユーザーの集合に対する action を実行してよいか判定します。
+// authorizeUserCollection は、認証主体 authn がユーザーの列挙を行ってよいか判定します。
 // 所有者を持たないリソース（ownerID = nil）として問い合わせるため所有者フォールバックが成立せず、
 // admin ロールを持つ主体だけが許可されます。
 // authn が nil の場合は、認可判定以前に呼出元を特定できないため apperror.ErrUnauthenticated を返します。
-func (u *usecase) authorizeUserCollection(ctx context.Context, authn *authbd.Authn, action authz.Action) error {
+func (u *usecase) authorizeUserCollection(ctx context.Context, authn *authbd.Authn) error {
 	if authn == nil {
 		return apperror.ErrUnauthenticated
 	}
-	return u.authorizer.Authorize(ctx, authn, action, authz.NewResource("user", nil))
+	return u.authorizer.Authorize(ctx, authn, authz.ActionUserList, authz.NewResource("user", nil))
 }
 
 // toUserViews は、ユーザーエンティティ列を UserView の DTO 列へ変換します。

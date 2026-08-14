@@ -100,21 +100,6 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, authn *authbd.Authn, f
 	return u.listByKeyword(ctx, filter, page)
 }
 
-// listByKeyword は、認可済みの呼出元に対してキーワード検索の結果一覧を取得します。
-func (u *usecase) listByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (UserSearchResults, error) {
-	if filter == nil || page == nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "filter and page must not be nil")
-	}
-
-	keywords := search.ParseSearchTokens(filter.Keyword, search.DefaultMaxTokens)
-	us, err := u.userRepo.SearchByKeyword(ctx, keywords, filter.Active, page.Limit32(), page.Offset32())
-	if err != nil {
-		return nil, err
-	}
-
-	return u.toSearchResults(ctx, us)
-}
-
 func (u *usecase) CountUsersByKeyword(ctx context.Context, authn *authbd.Authn, filter *SearchParams) (int64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -126,17 +111,12 @@ func (u *usecase) CountUsersByKeyword(ctx context.Context, authn *authbd.Authn, 
 	return u.countByKeyword(ctx, filter)
 }
 
-// countByKeyword は、認可済みの呼出元に対してキーワードに一致する件数を返します。
-func (u *usecase) countByKeyword(ctx context.Context, filter *SearchParams) (int64, error) {
-	if filter == nil {
-		return 0, xerrors.Wrap(apperror.ErrInvalidArgument, "filter must not be nil")
-	}
-
-	keywords := search.ParseSearchTokens(filter.Keyword, search.DefaultMaxTokens)
-	return u.userRepo.CountByKeyword(ctx, keywords, filter.Active)
-}
-
-func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, authn *authbd.Authn, filter *SearchParams, page *paging.Page) (*UserSearchListView, error) {
+func (u *usecase) ListUsersByKeywordWithTotal(
+	ctx context.Context,
+	authn *authbd.Authn,
+	filter *SearchParams,
+	page *paging.Page,
+) (*UserSearchListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
@@ -153,6 +133,31 @@ func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, authn *authbd
 		return nil, err
 	}
 	return &UserSearchListView{Items: items, Total: total}, nil
+}
+
+// countByKeyword は、認可済みの呼出元に対してキーワードに一致する件数を返します。
+func (u *usecase) countByKeyword(ctx context.Context, filter *SearchParams) (int64, error) {
+	if filter == nil {
+		return 0, xerrors.Wrap(apperror.ErrInvalidArgument, "filter must not be nil")
+	}
+
+	keywords := search.ParseSearchTokens(filter.Keyword, search.DefaultMaxTokens)
+	return u.userRepo.CountByKeyword(ctx, keywords, filter.Active)
+}
+
+// listByKeyword は、認可済みの呼出元に対してキーワード検索の結果一覧を取得します。
+func (u *usecase) listByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (UserSearchResults, error) {
+	if filter == nil || page == nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "filter and page must not be nil")
+	}
+
+	keywords := search.ParseSearchTokens(filter.Keyword, search.DefaultMaxTokens)
+	us, err := u.userRepo.SearchByKeyword(ctx, keywords, filter.Active, page.Limit32(), page.Offset32())
+	if err != nil {
+		return nil, err
+	}
+
+	return u.toSearchResults(ctx, us)
 }
 
 // authorizeUserCollection は、認証主体 authn がユーザーの列挙を行ってよいか判定します。
