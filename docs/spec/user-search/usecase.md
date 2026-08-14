@@ -12,18 +12,21 @@
 
 キーワードは `tools/search.ParseSearchTokens` でトークン分割してから `user.Repository` へ渡す（アプリケーションポリシー）。
 
+検索は呼出元以外のユーザーを開示するため、3 メソッドとも admin 限定とする。所有者を持たないリソース（`ownerID = nil`）として `authz.Authorizer` に問い合わせることで所有者フォールバックを成立させず、admin ロールを持つ主体だけを通す。件数を返す `CountUsersByKeyword` も一覧と同格に扱う（件数だけでも特定の人物が登録されているかを推測できるため）。認可は入力検証よりも前に置き、拒否された呼出元が検索条件の妥当性すら観測できないようにする。
+
 ## Interface
 
 ```yaml
 package: internal/usecase/user/search
 name: Usecase
 methods:
+  # いずれも他ユーザーを開示するため admin 限定。認可判定のため認証主体 authn を受け取る
   - name: ListUsersByKeyword
-    signature: ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (UserSearchResults, error)
+    signature: ListUsersByKeyword(ctx context.Context, authn *auth.Authn, filter *SearchParams, page *paging.Page) (UserSearchResults, error)
   - name: CountUsersByKeyword
-    signature: CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error)
+    signature: CountUsersByKeyword(ctx context.Context, authn *auth.Authn, filter *SearchParams) (int64, error)
   - name: ListUsersByKeywordWithTotal
-    signature: ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Page) (*UserSearchListView, error)
+    signature: ListUsersByKeywordWithTotal(ctx context.Context, authn *auth.Authn, filter *SearchParams, page *paging.Page) (*UserSearchListView, error)
 ```
 
 ## DTOs
@@ -79,6 +82,7 @@ methods:
 - tracer                 # observability.TracerFactory -> LayerTracer
 - user_repository        # domain/user.Repository（SearchByKeyword / CountByKeyword）
 - prefecture_repository  # domain/prefecture.Repository（FindByIDs で都道府県名をまとめて解決。N+1 回避）
+- authorizer             # boundary/authz.Authorizer（検索の認可判定。admin 限定）
 ```
 
 ## Workflow
@@ -88,15 +92,19 @@ methods:
 ```yaml
 tx_required: false
 steps:
+  - authorizer.Authorize で検索の認可を確認（所有者を持たないリソースとして問い合わせるため所有者フォールバックが成立せず admin のみ許可。authn が nil なら ErrUnauthenticated）
   - filter / page が nil の場合は apperror.ErrInvalidArgument を返す
   - tools/search.ParseSearchTokens で filter.Keyword をトークン分割する
   - user_repository.SearchByKeyword でキーワード / active 条件とページング（limit/offset）に基づき取得する
   - 取得した各ユーザーの prefectureID を集め、prefecture_repository.FindByIDs で都道府県をまとめて解決する（子 span で計測）
   - 各ユーザーを UserSearchResult へ写像し、都道府県名を埋めて返す
 calls:
+  - authorizer.Authorize
   - user_repository.SearchByKeyword
   - prefecture_repository.FindByIDs
 errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）。認可判定そのものを行わない
+  - 認可が拒否された場合は authz.ErrForbidden（403）。入力検証にもリポジトリにも到達しない
   - filter / page が nil の場合は apperror.ErrInvalidArgument
   - user_repository.SearchByKeyword のエラーをそのまま伝播する
   - ユーザーが参照する都道府県を解決できない場合は参照整合性破れとして apperror.ErrInternal
@@ -107,12 +115,16 @@ errors:
 ```yaml
 tx_required: false
 steps:
+  - authorizer.Authorize で検索の認可を確認（ListUsersByKeyword と同じ admin 限定の判定。authn が nil なら ErrUnauthenticated。件数は特定ユーザーの存在を推測させるため一覧と同格に扱う）
   - filter が nil の場合は apperror.ErrInvalidArgument を返す
   - tools/search.ParseSearchTokens で filter.Keyword をトークン分割する
   - user_repository.CountByKeyword で検索条件に一致する総件数を取得して返す
 calls:
+  - authorizer.Authorize
   - user_repository.CountByKeyword
 errors:
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）。認可判定そのものを行わない
+  - 認可が拒否された場合は authz.ErrForbidden（403）。入力検証にもリポジトリにも到達しない
   - filter が nil の場合は apperror.ErrInvalidArgument
   - user_repository.CountByKeyword のエラーをそのまま伝播する
 ```
@@ -122,13 +134,15 @@ errors:
 ```yaml
 tx_required: false
 steps:
-  - ListUsersByKeyword で検索結果一覧を取得する
-  - CountUsersByKeyword で総件数を取得する
-  - UserSearchListView{Items, Total} を組み立てて返す
+  - authorizer.Authorize で検索の認可を確認（ListUsersByKeyword と同じ admin 限定の判定。authn が nil なら ErrUnauthenticated）
+  - 認可済みの内部処理として検索結果一覧と総件数を取得し、UserSearchListView{Items, Total} を組み立てて返す（認可はこの入口で 1 度だけ行い、内部処理では繰り返さない）
 calls:
+  - authorizer.Authorize
   - user_repository.SearchByKeyword
   - prefecture_repository.FindByIDs
   - user_repository.CountByKeyword
 errors:
-  - ListUsersByKeyword / CountUsersByKeyword のエラーをそのまま伝播する
+  - authn が nil の場合は apperror.ErrUnauthenticated（401）。認可判定そのものを行わない
+  - 認可が拒否された場合は authz.ErrForbidden（403）。入力検証にもリポジトリにも到達しない
+  - 一覧取得・件数取得のエラーをそのまま伝播する
 ```
