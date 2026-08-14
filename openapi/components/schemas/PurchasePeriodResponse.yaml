@@ -1,0 +1,22 @@
+type: object
+description: |
+  集計に実際に用いた対象期間。両端の暦日を含みます（サーバのタイムゾーン Asia/Tokyo 基準）。
+  相対指定（period=recent）や暦月指定（period=month）を解決した後の値なので、
+  クライアントは要求した区分に関わらずこの 2 日付で対象期間を確定できます。
+  period=all（全期間）のときは期間で絞り込んでいないため、いずれも null です。
+required:
+  - from
+  - to
+properties:
+  from:
+    type: string
+    format: date
+    nullable: true
+    description: 対象期間の開始日（この日を含みます）。全期間の場合は null です。
+    example: "2026-01-21"
+  to:
+    type: string
+    format: date
+    nullable: true
+    description: 対象期間の終了日（この日を含みます）。全期間の場合は null です。
+    example: "2026-01-31"

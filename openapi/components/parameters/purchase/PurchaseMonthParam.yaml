@@ -1,0 +1,10 @@
+name: month
+in: query
+description: |
+  対象とする暦月（`YYYY-MM`）。`period=month` のときのみ必須で、それ以外の区分では無視します。
+  月初日から月末日までを、サーバのタイムゾーン（Asia/Tokyo）の暦日基準で対象とします。
+required: false
+schema:
+  type: string
+  pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+  example: "2026-01"

@@ -1,28 +1,51 @@
 description: |
-  認証ユーザー自身の購入集計のレスポンススキーマ。件数・合計金額・ステータス別内訳のみを返し、
-  購入一覧・明細は含みません。金額は USD セント単位の整数です。
+  認証ユーザー自身の購入集計のレスポンススキーマ。対象期間・件数・合計金額・ステータス別内訳と、
+  グループ化を指定した場合はその内訳のみを返し、購入一覧・明細は含みません。金額は USD セント単位の整数です。
+  すべての集計値はキャンセル済みを除外した同一の母集団から算出します。
 type: object
 required:
+  - period
   - totalCount
   - totalAmount
+  - itemsTotal
   - statusBreakdown
 properties:
+  period:
+    $ref: '../../schemas/PurchasePeriodResponse.yaml'
   totalCount:
     type: integer
     format: int64
-    description: 購入総件数（キャンセル済みを含む）。statusBreakdown の count の総和と一致します。購入がない場合は 0 です。
+    description: |
+      対象期間の購入件数（キャンセル済みを除く）。statusBreakdown の count の総和と一致します。
+      対象がない場合は 0 です。
     example: 12
   totalAmount:
     type: integer
     format: int64
     description: |
-      購入金額の合計（キャンセル済みを含む）。statusBreakdown の totalAmount の総和と一致します。
-      USD セント単位の整数です。購入がない場合は 0 です。
+      対象期間の支払金額の合計（小計 + 税額 + 送料、キャンセル済みを除く）。
+      statusBreakdown の totalAmount の総和と一致します。USD セント単位の整数です。対象がない場合は 0 です。
     example: 2118000
+  itemsTotal:
+    type: string
+    description: |
+      対象期間の明細金額の合計（単価 × 数量の総和、キャンセル済みを除く）。税額・送料は明細に按分できない
+      ため含まず、totalAmount とは一致しません。groups の itemsTotal の総和と正確に一致します。
+      価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）の
+      totalAmount とは尺度が異なる点に注意してください。対象がない場合は "0" です。
+    example: "19200.00"
   statusBreakdown:
     type: array
     description: |
-      ステータス別の内訳（購入ステータスマスタの表示順）。購入に出現したステータスのみを含むため、
-      購入がない場合は空配列です。
+      ステータス別の内訳（購入ステータスマスタの表示順）。対象期間に出現したステータスのみを含むため、
+      対象がない場合は空配列です。キャンセル済みは集計対象外のため、キャンセルのステータスは現れません。
     items:
       $ref: '../../schemas/PurchaseStatusBreakdownResponse.yaml'
+  groups:
+    type: object
+    description: |
+      groupBy で指定した最上位のグループ化単位ごとのノード。groupBy 未指定の場合は含みません。
+      キーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）です。
+      対象がない場合は空オブジェクトです。
+    additionalProperties:
+      $ref: '../../schemas/PurchaseGroupResponse.yaml'
