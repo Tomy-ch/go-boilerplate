@@ -441,8 +441,7 @@ func Test_validateLoose(t *testing.T) {
 				"jobs:\n      - uses: docker://alpine\n")
 
 			err := validateLoose(root, testTargets(t, root))
-			require.Error(t, err)
-			assert.ErrorIs(t, err, errLooseDockerUses)
+			require.ErrorIs(t, err, errLooseDockerUses)
 			assert.Contains(t, err.Error(), filepath.Join(".github", "workflows", "ci.yaml")+":2")
 		})
 
