@@ -250,9 +250,8 @@ type CreateProductImagesIfAbsentParams struct {
 	SortKeys   []int16
 }
 
-// 商品画像をまとめて登録する。同じ ID が既にある場合は何もしない（集合に残り続ける画像がこれにあたる）。
+// 商品画像をまとめて登録する。同じ ID が既にある場合は何もしない。
 // 衝突判定を主キーに限定しているため、生存行の (product_id, sort_key) の重複は従来どおり 23505 で失敗する。
-// 画像 1 枚ごとに 1 文を発行すると、更新のたびに枚数分の往復が商品行のロックを保持したまま積み上がる。
 //
 //	INSERT INTO product_images (
 //	    id,

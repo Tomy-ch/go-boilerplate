@@ -8,7 +8,6 @@ import (
 	"go-boilerplate/internal/domain/lexicon/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
-	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -244,6 +243,34 @@ func Test_repository_syncImages(t *testing.T) {
 			})
 		})
 
+		t.Run("集合から外れた画像を論理削除し、複数の新しい画像をまとめて登録する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_multi_product")
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_multi_before", "products/before.png", 1),
+				})))
+
+				db := gen.New(driver.New(ctx, repo.db))
+				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_multi_a", "products/a.png", 1),
+					newImage(t, "sync_multi_b", "products/b.png", 2),
+					newImage(t, "sync_multi_c", "products/c.png", 3),
+				})))
+
+				got, err := repo.FindByID(ctx, id)
+				require.NoError(t, err)
+				require.Len(t, got.Images(), 3)
+				assert.Equal(t, "products/a.png", got.Images()[0].ImagePath())
+				assert.Equal(t, 1, got.Images()[0].SortKey())
+				assert.Equal(t, "products/b.png", got.Images()[1].ImagePath())
+				assert.Equal(t, 2, got.Images()[1].SortKey())
+				assert.Equal(t, "products/c.png", got.Images()[2].ImagePath())
+				assert.Equal(t, 3, got.Images()[2].SortKey())
+			})
+		})
+
 		t.Run("同じ表示順へ差し替えても部分UNIQUEに衝突しない", func(t *testing.T) {
 			t.Parallel()
 
@@ -274,25 +301,25 @@ func Test_repository_syncImages(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("生存行の表示順が重複する場合は衝突として返す", func(t *testing.T) {
+		t.Run("生存し続ける画像の表示順を別の画像が奪う場合は衝突として返す", func(t *testing.T) {
 			t.Parallel()
 
-			// 衝突判定を主キーに限定しているため、表示順の重複は握り潰されず 23505 のまま返る。
+			// 同じ ID の画像は生存したまま表示順も据え置かれるため、その表示順を新しい画像へ回すと
+			// 生存行どうしが部分 UNIQUE で衝突する。衝突判定を主キーに限定していることの裏返しで、
+			// 内容の差し替えを新しい ID で表現するという契約はここが最後の砦になる。
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "sync_images_duplicate_product")
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_steal_sort_key_product")
 				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
-					newImage(t, "sync_duplicate_1", "products/first.png", 1),
+					newImage(t, "sync_steal_kept", "products/kept.png", 1),
 				})))
 
 				db := gen.New(driver.New(ctx, repo.db))
-				err := db.CreateProductImagesIfAbsent(ctx, &gen.CreateProductImagesIfAbsentParams{
-					ProductID:  id,
-					Ids:        []uuid.UUID{uuidtestkit.NewTestFromSalt(t, "sync_duplicate_2")},
-					ImagePaths: []string{"products/second.png"},
-					SortKeys:   []int16{1},
-				})
+				err := repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
+					newImage(t, "sync_steal_kept", "products/kept.png", 2),
+					newImage(t, "sync_steal_new", "products/new.png", 1),
+				}))
 
-				require.ErrorIs(t, pgerror.NormalizeError(err), apperror.ErrConflict)
+				require.ErrorIs(t, err, apperror.ErrConflict)
 			})
 		})
 

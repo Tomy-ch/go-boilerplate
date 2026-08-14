@@ -163,6 +163,10 @@ type GetUsersParams struct {
 }
 ```
 
+Batching rows into arrays instead of issuing one statement per row avoids the round trips that scale
+with the row count. Where the caller holds a row lock for the duration of a transaction, it also
+shortens how long that lock is held.
+
 ## 8. SELECT Column Names = Go Field Names
 
 Column names selected become field names of the `Row` struct as-is.

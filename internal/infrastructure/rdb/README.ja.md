@@ -319,6 +319,8 @@ CommandService テストは加えて次を検証します:
 |`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
 |`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|同上|
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` のエラー|`product` が `sortKey` を `[1, math.MaxInt16]` に検証済み|
+|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` のエラー|同上|
 
 同じメソッド内の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
 範囲外の version は到達可能なため、テストで被覆しています。purchase の `statusCode` / 明細数量の
