@@ -9,7 +9,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
-	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/dashboard/query"
 	"go-boilerplate/pkg/uuid"
 
@@ -25,12 +24,12 @@ const (
 	seedCanceledSID    = "e9d72547-adfe-48d9-9037-bd1f55d4158b"
 )
 
-// testLoc は、集計期間の暦日境界を解釈するロケーションです。実行環境の time.Local に依存させないため、
-// 本番設定と同じ Asia/Tokyo を明示的に固定します。
+// testLoc は、テストが組み立てる集計対象期間の境界を表すロケーションです。期間の解決自体は usecase 層の
+// 責務なので、ここでは解決済みの境界を作るためだけに用います。
 var testLoc = time.FixedZone("Asia/Tokyo", 9*60*60)
 
-// fixedNow は、集計期間の境界算出の基準として用いる固定の現在時刻です。
-// UTC で保持し、実装側が loc へ変換することを検証できるようにします。
+// fixedNow は、テストが投入する購入の注文日時です。testLoc の暦日で 2026-07-15 に落ちる時刻を UTC で保持し、
+// todayWindow が組み立てる区間に必ず含まれるようにします。
 var fixedNow = time.Date(2026, time.July, 15, 12, 0, 0, 0, testLoc).UTC()
 
 func canceledContext(t *testing.T) context.Context {
@@ -51,8 +50,6 @@ func newService(t *testing.T, db driver.DatabaseDriver) *service {
 	t.Helper()
 	return &service{
 		db:     db,
-		clk:    clocktestkit.NewMockClock(t, fixedNow),
-		loc:    testLoc,
 		tracer: observability.NewMockInfraLayerTracer(t),
 	}
 }
@@ -84,9 +81,11 @@ func insertPurchase(
 	require.NoError(t, err)
 }
 
-// todayPeriod は、fixedNow の当日を対象とする期間指定を返します。
-func todayPeriod() query.Period {
-	return query.Period{Kind: query.PeriodToday}
+// todayWindow は、fixedNow が属する暦日 1 日分（testLoc 基準）を表す解決済みの集計対象期間を返します。
+// 期間の解決自体は usecase 層の責務なので、ここでは解決済みの境界を直接組み立てます。
+func todayWindow() query.Window {
+	start := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
+	return query.Window{After: start, Before: start.AddDate(0, 0, 1)}
 }
 
 func TestNew(t *testing.T) {
@@ -95,20 +94,17 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("渡したドライバ・クロック・ロケーションとinfra層トレーサーを保持した実装を返す", func(t *testing.T) {
+		t.Run("渡したドライバとinfra層トレーサーを保持した実装を返す", func(t *testing.T) {
 			t.Parallel()
 
 			testDB := testkit.NewTestDB(t)
 			tf := observability.NewNoopTracerFactory(t)
-			clk := clocktestkit.NewMockClock(t, fixedNow)
 
 			expected := &service{
 				db:     testDB,
-				clk:    clk,
-				loc:    testLoc,
 				tracer: tf.Infra(),
 			}
-			actual := New(testDB, clk, testLoc, tf)
+			actual := New(testDB, tf)
 
 			assert.Equal(t, expected, actual)
 		})
@@ -136,7 +132,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-000000000002"),
 					fixedNow, 2500, seedCompletedSID, nil)
 
-				got, err := svc.SummarizeSales(ctx, todayPeriod())
+				got, err := svc.SummarizeSales(ctx, todayWindow())
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(4000), got.Amount)
@@ -156,7 +152,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b2000000-0000-4000-8000-000000000002"),
 					fixedNow, 9999, seedCanceledSID, &canceledAt)
 
-				got, err := svc.SummarizeSales(ctx, todayPeriod())
+				got, err := svc.SummarizeSales(ctx, todayWindow())
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(1000), got.Amount)
@@ -170,7 +166,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				clearSeededPurchases(ctx, t, drv)
-				startOfToday := startOfDay(fixedNow.In(testLoc), testLoc)
+				startOfToday := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
 				insertPurchase(ctx, t, drv, mustParse(t, "b3000000-0000-4000-8000-000000000001"),
 					startOfToday, 100, seedUnprocessedSID, nil)
 				insertPurchase(ctx, t, drv, mustParse(t, "b3000000-0000-4000-8000-000000000002"),
@@ -178,7 +174,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b3000000-0000-4000-8000-000000000003"),
 					startOfToday.Add(-time.Nanosecond), 400, seedUnprocessedSID, nil)
 
-				got, err := svc.SummarizeSales(ctx, todayPeriod())
+				got, err := svc.SummarizeSales(ctx, todayWindow())
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(100), got.Amount)
@@ -201,7 +197,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b4000000-0000-4000-8000-000000000003"),
 					to.AddDate(0, 0, 1), 400, seedUnprocessedSID, nil)
 
-				got, err := svc.SummarizeSales(ctx, query.Period{Kind: query.PeriodRange, From: from, To: to})
+				got, err := svc.SummarizeSales(ctx, query.Window{After: from, Before: to.AddDate(0, 0, 1)})
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(300), got.Amount)
@@ -215,7 +211,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.SummarizeSales(ctx, todayPeriod())
+				got, err := svc.SummarizeSales(ctx, todayWindow())
 				require.NoError(t, err)
 
 				assert.Zero(t, got.Amount)
@@ -230,7 +226,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.SummarizeSales(canceledContext(t), todayPeriod())
+			got, err := svc.SummarizeSales(canceledContext(t), todayWindow())
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Zero(t, got.Amount)
 		})
@@ -261,7 +257,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "c1000000-0000-4000-8000-000000000003"),
 					fixedNow, 100, seedUnprocessedSID, nil)
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayPeriod())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -284,7 +280,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "c2000000-0000-4000-8000-000000000001"),
 					fixedNow, 100, seedCanceledSID, &canceledAt)
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayPeriod())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
 				require.NoError(t, err)
 
 				require.Len(t, got, 1)
@@ -303,7 +299,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "c3000000-0000-4000-8000-000000000001"),
 					fixedNow.AddDate(0, 0, -1), 100, seedUnprocessedSID, nil)
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayPeriod())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
 				require.NoError(t, err)
 
 				assert.Empty(t, got)
@@ -316,7 +312,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayPeriod())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
 				require.NoError(t, err)
 
 				assert.Empty(t, got)
@@ -330,122 +326,9 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.CountPurchasesByStatus(canceledContext(t), todayPeriod())
+			got, err := svc.CountPurchasesByStatus(canceledContext(t), todayWindow())
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, got)
-		})
-	})
-}
-
-func Test_resolveWindow(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, time.July, 15, 12, 34, 56, 0, testLoc)
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("todayは当日00:00から翌日00:00までの半開区間を返す", func(t *testing.T) {
-			t.Parallel()
-
-			after, before := resolveWindow(query.Period{Kind: query.PeriodToday}, now, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2026, time.July, 16, 0, 0, 0, 0, testLoc), before)
-		})
-
-		t.Run("monthは月初00:00から翌月1日00:00までの半開区間を返す", func(t *testing.T) {
-			t.Parallel()
-
-			after, before := resolveWindow(query.Period{Kind: query.PeriodMonth}, now, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.July, 1, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2026, time.August, 1, 0, 0, 0, 0, testLoc), before)
-		})
-
-		t.Run("12月のmonthは翌年1月1日を上限とする", func(t *testing.T) {
-			t.Parallel()
-
-			december := time.Date(2026, time.December, 31, 23, 0, 0, 0, testLoc)
-
-			after, before := resolveWindow(query.Period{Kind: query.PeriodMonth}, december, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.December, 1, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2027, time.January, 1, 0, 0, 0, 0, testLoc), before)
-		})
-
-		t.Run("rangeは開始日00:00から終了日の翌日00:00までの半開区間を返す", func(t *testing.T) {
-			t.Parallel()
-
-			from := time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC)
-			to := time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC)
-
-			after, before := resolveWindow(query.Period{Kind: query.PeriodRange, From: from, To: to}, now, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.June, 1, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2026, time.July, 1, 0, 0, 0, 0, testLoc), before)
-		})
-
-		t.Run("月末を終了日とするrangeは翌月1日を上限とする", func(t *testing.T) {
-			t.Parallel()
-
-			from := time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC)
-			to := time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC)
-
-			after, before := resolveWindow(query.Period{Kind: query.PeriodRange, From: from, To: to}, now, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.January, 31, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2026, time.February, 1, 0, 0, 0, 0, testLoc), before)
-		})
-
-		t.Run("現在時刻が別ロケーションで渡されても暦日は指定ロケーションで切る", func(t *testing.T) {
-			t.Parallel()
-
-			utcNow := time.Date(2026, time.July, 15, 16, 0, 0, 0, time.UTC)
-
-			after, before := resolveWindow(query.Period{Kind: query.PeriodToday}, utcNow, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.July, 16, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2026, time.July, 17, 0, 0, 0, 0, testLoc), before)
-		})
-
-		t.Run("range指定の開始日と終了日は現在時刻のロケーション変換を受けない", func(t *testing.T) {
-			t.Parallel()
-
-			from := time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC)
-			to := time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC)
-			utcNow := time.Date(2026, time.July, 15, 16, 0, 0, 0, time.UTC)
-
-			after, before := resolveWindow(
-				query.Period{Kind: query.PeriodRange, From: from, To: to}, utcNow, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.June, 1, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2026, time.June, 2, 0, 0, 0, 0, testLoc), before)
-		})
-
-		t.Run("未知の区分はtodayと同じ半開区間を返す", func(t *testing.T) {
-			t.Parallel()
-
-			after, before := resolveWindow(query.Period{Kind: "weekly"}, now, testLoc)
-
-			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc), after)
-			assert.Equal(t, time.Date(2026, time.July, 16, 0, 0, 0, 0, testLoc), before)
-		})
-	})
-}
-
-func Test_startOfDay(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("時刻部分を切り落として指定ロケーションの暦日の開始時刻を返す", func(t *testing.T) {
-			t.Parallel()
-
-			got := startOfDay(time.Date(2026, time.July, 15, 23, 59, 59, 999, time.UTC), testLoc)
-
-			assert.Equal(t, time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc), got)
 		})
 	})
 }
