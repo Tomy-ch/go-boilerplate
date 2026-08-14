@@ -42,11 +42,10 @@ type UpdateProductParams struct {
 	Images patch.Field[[]ProductImageParams]
 }
 
-// UpdateProduct は、admin 認可のうえ、送られたフィールドのみを反映して商品を部分更新します。
-// 読み込みから更新までを 1 つのトランザクションで行い、読み込み時点のバージョンを条件に更新することで
-// 並行編集による上書き（lost update）を防ぎます。バージョンが一致しない場合は 409 を返します。
-// この 409 は tx.Manager が透過的にリトライする一時障害（serialization_failure）とは異なり、
-// 同じ内容の再送では解消しません。クライアントは最新を取得し直したうえでやり直す必要があります。
+// UpdateProduct は、読み込みから更新までを 1 つのトランザクションで行い、読み込み時点のバージョンを
+// 条件に更新することで並行編集による上書き（lost update）を防ぎます。
+// バージョン不一致の 409 は tx.Manager の透過リトライでは解消しないため、リトライ対象と混同されては
+// なりません（クライアントの再試行手順は docs/spec/product/usecase.md の UpdateProduct）。
 func (u *usecase) UpdateProduct(
 	ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams,
 ) (ProductView, error) {

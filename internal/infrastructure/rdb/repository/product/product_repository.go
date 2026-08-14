@@ -266,10 +266,8 @@ func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, 
 		CurrentVersion: currentVersion,
 	})
 	if err != nil {
-		// 対象行なしは、取得後に他トランザクションが更新しバージョンが進んだことを意味します
-		// （存在は同一トランザクション内の取得で確認済みです）。
-		// 行ロックを取っている経路では起こりませんが、ロックなしで呼ばれた場合に在庫を上書きしないための
-		// 二重防御として衝突を返します。
+		// 対象行なしは衝突として返します。行ロックを取っている経路では起こりませんが、ロックなしで
+		// 呼ばれた場合に在庫を上書きしないための二重防御なので、到達しないからと外してはなりません。
 		if pgerror.IsNoRows(err) {
 			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
 		}
@@ -345,10 +343,8 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 		CurrentVersion:        currentVersion,
 	})
 	if err != nil {
-		// 対象行なしは、読み込み後に他トランザクションが更新しバージョンが進んだことを意味します
-		// （存在は同一トランザクション内の読み込みで確認済みです）。
-		// tx.Manager が透過リトライする一時障害（serialization_failure）と異なり同じ内容の再送では
-		// 解消しないため、リトライ対象と混同されないよう衝突として返します。
+		// 対象行なしは衝突として返します。tx.Manager が透過リトライする一時障害と異なり同じ内容の
+		// 再送では解消しないため、リトライ対象と混同されてはなりません。
 		if pgerror.IsNoRows(err) {
 			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
 		}
@@ -377,7 +373,7 @@ func (r *repository) Count(ctx context.Context) (product.Counts, error) {
 }
 
 // FilterExistingImagePaths は、paths のうち商品が現在の画像として参照しているものを重複排除して返します。
-// 未参照オブジェクトの回収で「消してよいか」を判定するための照会で、返らなかったパスが孤児にあたります。
+// 返らなかったパスは、どの商品からも参照されていないことを意味します。
 func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -455,7 +451,7 @@ func (r *repository) syncImages(ctx context.Context, db *gen.Queries, p *product
 }
 
 // findImagesByProductIDs は、商品 ID ごとの画像を表示順の昇順で返します。
-// 置き換えで論理削除された画像は現在の参照ではないため、SQL 側で除いています。
+// 置き換えで論理削除された画像は含みません。
 func (r *repository) findImagesByProductIDs(
 	ctx context.Context, ids []uuid.UUID,
 ) (map[uuid.UUID][]product.Image, error) {
