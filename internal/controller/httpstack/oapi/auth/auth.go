@@ -8,6 +8,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/error/response"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/pkg/xerrors"
 
@@ -22,10 +23,13 @@ func NewAuthenticator(
 	authenticator authbd.Authenticator,
 	resolver authbd.IdentityResolver,
 ) openapi3filter.AuthenticationFunc {
-	return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
+	return func(_ context.Context, input *openapi3filter.AuthenticationInput) error {
 		req := input.RequestValidationInput.Request
 
-		authn, err := authExtractor(ctx, req, authenticator, resolver)
+		// OpenAPI バリデータが渡す context は context.Background() から組み立てられており、
+		// スパン・deadline・キャンセルのいずれも持たない。認証は request の予算の内側で行う。
+		//nolint:contextcheck // 引数の context ではなく input が内包する request の context を用いるため
+		authn, err := authExtractor(req.Context(), req, authenticator, resolver)
 		if err != nil {
 			return withHTTPStatus(err)
 		}
@@ -41,16 +45,16 @@ func NewAuthenticator(
 	}
 }
 
-// withHTTPStatus は、認証フェーズのエラーへ 401 のステータスを持たせます（元のエラーは保持）。
-// OpenAPI バリデータは認証エラーのうち HTTP ステータスを解決できないものを 403 へ丸めるため、
-// 401 として返すにはこの段でステータスを持たせる必要があります。
-// infra 障害は infraErrorToHTTP が先にステータスを付与するため、ここで 401 に潰されません。
+// withHTTPStatus は、認証フェーズのエラーへ apperror の分類に対応するステータスを持たせます（元のエラーは保持）。
+// OpenAPI バリデータはステータスを解決できないエラーを 403 へ丸めるため、この段で持たせないと、
+// 認可の判定を行っていないものが認可の結論として外へ出ます。
+// メッセージは空のまま返します（本文は errorhandler が組み立てる）。
 func withHTTPStatus(err error) error {
 	var he *echo.HTTPError
 	if xerrors.As(err, &he) {
 		return err
 	}
-	return echo.NewHTTPError(http.StatusUnauthorized, "").Wrap(err)
+	return echo.NewHTTPError(response.NewHTTPErrorFromAppError(err).HTTPStatus, "").Wrap(err)
 }
 
 // authExtractor は、Bearer トークンを検証して内部ユーザーを解決した Authn を返します。
@@ -72,24 +76,24 @@ func authExtractor(
 		return nil, err
 	}
 
+	// 資格情報についての結論だけを認証エラーへ寄せ、原因は外へ出さない。
+	// 検証を遂行できなかった場合（鍵が引けない / 予算切れ）は結論ではないため、分類を保ったまま返す。
 	authn, err := authenticator.Authenticate(ctx, cred)
 	if err != nil {
-		return nil, ErrUnauthorizedInvalidToken
+		if xerrors.Is(err, apperror.ErrUnauthenticated) {
+			return nil, ErrUnauthorizedInvalidToken
+		}
+		return nil, err
 	}
 	if authn == nil {
 		//nolint:nilnil // Authenticate が nil,nil を返した場合は未提供として扱い、呼び出し側で ErrUnauthorizedTokenNotProvided へ変換する
 		return nil, nil
 	}
 
-	// 認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する。
-	// 未登録 / 削除済み等の認証失敗（ErrUnauthenticated）は 401となる。
-	// DB 等の infra 障害は認証フェーズで 401 に潰さず、apperror の分類に応じた 5xx として返す。
+	// 認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する。エラーは分類を変えずに返す。
 	resolved, err := resolver.Resolve(ctx, authn)
 	if err != nil {
-		if xerrors.Is(err, apperror.ErrUnauthenticated) {
-			return nil, err
-		}
-		return nil, infraErrorToHTTP(err)
+		return nil, err
 	}
 	if resolved == nil {
 		// resolver は成功時に非 nil の Authn を返す契約。防御的に未認証として扱う。
@@ -99,17 +103,7 @@ func authExtractor(
 	return resolved, nil
 }
 
-// infraErrorToHTTP は、 IdentityResolver が返した非認証エラーを、apperror の分類に応じたエラーへ変換します。
-func infraErrorToHTTP(err error) error {
-	status := http.StatusInternalServerError
-	if xerrors.Is(err, apperror.ErrUnavailable) {
-		status = http.StatusServiceUnavailable
-	}
-	return echo.NewHTTPError(status, "").Wrap(err)
-}
-
-// extractBearerToken は、Authorization ヘッダから Bearer トークンを抽出します。
-// Bearer トークンは RFC 6750 で Authorization ヘッダに固定されるため、ヘッダ名・スキームは可変にしない。
+// extractBearerToken は、Authorization ヘッダから Bearer トークンを抽出します（ヘッダ名・スキームは RFC 6750 により固定）。
 // Authorization: Bearer <token> 形式のときだけ scheme=SchemeBearer と token を返し、
 // それ以外は scheme/token とも空を返します。
 func extractBearerToken(r *http.Request) (string, string) {
