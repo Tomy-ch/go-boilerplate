@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/handler/v1/carts/items/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
@@ -18,6 +19,7 @@ import (
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -59,9 +61,8 @@ func TestBindHandler(t *testing.T) {
 	BindHandler(e, tf, uc)
 
 	routes := e.Router().Routes()
-	require.Len(t, routes, 1)
-	assert.Equal(t, http.MethodPut, routes[0].Method)
-	assert.Equal(t, "/v1/carts/me/items/:productId", routes[0].Path)
+	testassert.AssertEchoRouterPath(t, "/v1/carts/me/items/:productId", routes)
+	testassert.AssertEchoRouterMethods(t, []string{http.MethodPut, http.MethodDelete}, routes)
 }
 
 func Test_server_PutCartsMeItem(t *testing.T) {
@@ -182,6 +183,103 @@ func Test_server_PutCartsMeItem(t *testing.T) {
 	})
 }
 
+func Test_server_DeleteCartsMeItem(t *testing.T) {
+	t.Parallel()
+
+	productID := uuidtestkit.NewTestFromSalt(t, "delete_item_product")
+
+	newDeleteRequest := func() gen.DeleteCartsMeItemRequestObject {
+		return gen.DeleteCartsMeItemRequestObject{ProductId: productID.ToPrimitive()}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("パスの商品をユースケースへ渡し204で返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			userID := uuidtestkit.NewTestFromSalt(t, "delete_item_user")
+			uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, params cartuc.RemoveItemParams) error {
+					require.NotNil(t, params.Subject.UserID)
+					assert.Equal(t, userID, *params.Subject.UserID)
+					assert.Equal(t, productID, params.ProductID)
+					return nil
+				})
+
+			resp, err := s.DeleteCartsMeItem(authnContext(t, userID), newDeleteRequest())
+			require.NoError(t, err)
+
+			assert.IsType(t, gen.DeleteCartsMeItem204Response{}, resp)
+		})
+
+		t.Run("未認証はヘッダのセッショントークンを主体として渡す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, params cartuc.RemoveItemParams) error {
+					assert.Nil(t, params.Subject.UserID)
+					require.NotNil(t, params.Subject.SessionToken)
+					assert.Equal(t, testSessionToken, *params.Subject.SessionToken)
+					return nil
+				})
+
+			request := newDeleteRequest()
+			request.Params = gen.DeleteCartsMeItemParams{XCartSession: ptr.To(testSessionToken)}
+
+			resp, err := s.DeleteCartsMeItem(context.Background(), request)
+			require.NoError(t, err)
+
+			assert.IsType(t, gen.DeleteCartsMeItem204Response{}, resp)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("認証済みだが内部UserIDが未解決の場合はユースケースを呼ばない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).Times(0)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			ctx := ctxhelper.WithAuthn(context.Background())
+			authn, err := auth.New("subject", "issuer", nil, nil)
+			require.NoError(t, err)
+			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
+
+			_, err = s.DeleteCartsMeItem(ctx, newDeleteRequest())
+
+			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
+		})
+
+		t.Run("ユースケースがエラーを返した場合はそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			expected := xerrors.New("remove failed")
+			uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).Return(expected)
+
+			_, err := s.DeleteCartsMeItem(context.Background(), newDeleteRequest())
+
+			require.ErrorIs(t, err, expected)
+		})
+	})
+}
+
 func Test_toSubject(t *testing.T) {
 	t.Parallel()
 
@@ -193,7 +291,7 @@ func Test_toSubject(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "items_sub_user")
 
-			actual, err := toSubject(authnContext(t, userID), gen.PutCartsMeItemParams{})
+			actual, err := toSubject(authnContext(t, userID), nil)
 			require.NoError(t, err)
 
 			require.NotNil(t, actual.UserID)
@@ -206,8 +304,7 @@ func Test_toSubject(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "items_sub_both")
 
-			actual, err := toSubject(authnContext(t, userID),
-				gen.PutCartsMeItemParams{XCartSession: ptr.To(testSessionToken)})
+			actual, err := toSubject(authnContext(t, userID), ptr.To(testSessionToken))
 			require.NoError(t, err)
 
 			// 両方を詰めると、どちらのカートへ入れるのかがユースケース側で決められなくなる。
@@ -218,8 +315,7 @@ func Test_toSubject(t *testing.T) {
 		t.Run("認証コンテキストが無ければヘッダを主体にする", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := toSubject(context.Background(),
-				gen.PutCartsMeItemParams{XCartSession: ptr.To(testSessionToken)})
+			actual, err := toSubject(context.Background(), ptr.To(testSessionToken))
 			require.NoError(t, err)
 
 			assert.Nil(t, actual.UserID)
@@ -230,7 +326,7 @@ func Test_toSubject(t *testing.T) {
 		t.Run("認証もヘッダも無ければ主体を持たない", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := toSubject(context.Background(), gen.PutCartsMeItemParams{})
+			actual, err := toSubject(context.Background(), nil)
 			require.NoError(t, err)
 
 			assert.Equal(t, cartuc.Subject{}, actual)
@@ -248,7 +344,7 @@ func Test_toSubject(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
 
-			_, err = toSubject(ctx, gen.PutCartsMeItemParams{})
+			_, err = toSubject(ctx, nil)
 
 			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})

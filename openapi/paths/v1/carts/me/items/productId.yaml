@@ -54,3 +54,44 @@ put:
       $ref: '../../../../../components/schemas/errors/InternalServerError500.yaml'
     '503':
       $ref: '../../../../../components/schemas/errors/ServiceUnavailable503.yaml'
+delete:
+  operationId: DeleteCartsMeItem
+  tags:
+    - v1/carts/items
+  summary: 自分のカートからの明細の削除
+  description: |
+    呼び出し主体のカートから、指定した商品の明細を取り除きます。
+    **対象の明細が無くても成功します**。「無かった」と「消した」を呼び出し側に区別させないため、
+    404 を持ちません。主体の決まり方は設定（PUT）と同じで、両方が提示された場合は認証済みユーザーが
+    優先されます。認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+    （ADR-0019 (optional-authentication-fail-closed)）。
+    **カートを持たない主体が呼んでもカートは作りません**。提示されたセッショントークンでカートを
+    引けなかった場合も採番し直さず、何もせずに成功を返します（応答が本文を持たないため、新しい
+    トークンを返す場所がありません）。
+    **商品の存在も公開状態も確認しません**。非公開になった商品こそカートから外したいので、ここで
+    拒むと再評価で unpublished が立った明細を利用者が取り除けなくなります（設定は 422 で拒むのに対し、
+    こちらは取り除けます）。
+    **明細ごとの再評価を行いません**。この応答は本文を持たず価格を 1 つも提示していないため、提示価格を
+    記録すると、次の取得で立つはずの priceIncreased を消してしまいます。
+    有効期限は延びます（削除も利用のため）。明細が 0 件になってもカート自体は残ります。
+    本 op 自体は DB の SELECT / UPDATE / DELETE のみで外部依存を持ちませんが、認証段
+    （外部 IdP の JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+    - {}
+  parameters:
+    - $ref: '../../../../../components/parameters/product/ProductIdParam.yaml'
+    - $ref: '../../../../../components/parameters/cart/CartSessionParam.yaml'
+  responses:
+    '204':
+      description: 明細を取り除きました（対象が無かった場合を含みます）
+    '400':
+      $ref: '../../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../../components/schemas/errors/Unauthorized401.yaml'
+    '405':
+      $ref: '../../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../../components/schemas/errors/ServiceUnavailable503.yaml'

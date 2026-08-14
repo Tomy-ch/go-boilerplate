@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"testing"
 
@@ -66,6 +67,62 @@ func TestV1CartsMeItems_Integration(t *testing.T) {
 			require.NotNil(t, captured.Subject.SessionToken)
 			assert.Equal(t, guestSessionToken, *captured.Subject.SessionToken)
 			assert.Equal(t, 2, captured.Quantity)
+		})
+
+		t.Run("認証済みで明細を削除すると204が返り本文を持たない", func(t *testing.T) {
+			t.Parallel()
+
+			var captured cartuc.RemoveItemParams
+			e := echoWithItemsHandler(t, func(uc *mock_cartuc.MockUsecase) {
+				uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).DoAndReturn(
+					func(_ context.Context, params cartuc.RemoveItemParams) error {
+						captured = params
+						return nil
+					},
+				)
+			})
+
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_cd_user"))
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartItemPath, nil, headers)
+
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+			assert.Empty(t, readBody(t, actual))
+			assert.NotNil(t, captured.Subject.UserID)
+		})
+
+		t.Run("未認証でもX-Cart-Sessionヘッダの主体で204を返す", func(t *testing.T) {
+			t.Parallel()
+
+			var captured cartuc.RemoveItemParams
+			e := echoWithItemsHandler(t, func(uc *mock_cartuc.MockUsecase) {
+				uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).DoAndReturn(
+					func(_ context.Context, params cartuc.RemoveItemParams) error {
+						captured = params
+						return nil
+					},
+				)
+			})
+
+			headers := http.Header{cartSessionHeader: []string{guestSessionToken}}
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartItemPath, nil, headers)
+
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+			assert.Nil(t, captured.Subject.UserID)
+			require.NotNil(t, captured.Subject.SessionToken)
+			assert.Equal(t, guestSessionToken, *captured.Subject.SessionToken)
+		})
+
+		t.Run("主体を持たない削除も204を返しトークンを発行しない", func(t *testing.T) {
+			t.Parallel()
+
+			e := echoWithItemsHandler(t, func(uc *mock_cartuc.MockUsecase) {
+				uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).Return(nil)
+			})
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartItemPath, nil, nil)
+
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+			assert.Empty(t, readBody(t, actual))
 		})
 
 		t.Run("主体を持たない呼び出しには発行されたトークンが返る", func(t *testing.T) {
@@ -150,6 +207,21 @@ func TestV1CartsMeItems_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusUnauthorized)
 		})
 
+		t.Run("削除で無効な資格情報は匿名として通さず401を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echoWithItemsHandler(t, func(uc *mock_cartuc.MockUsecase) {
+				uc.EXPECT().RemoveItem(gomock.Any(), gomock.Any()).Times(0)
+			})
+			UseAppErrorHandler(t, e)
+			useOpenAPIValidationWithAuthFailure(t, e)
+
+			headers := http.Header{"Authorization": []string{"Bearer invalid-token"}}
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartItemPath, nil, headers)
+
+			AssertErrorResponse(t, actual, http.StatusUnauthorized)
+		})
+
 		t.Run("GETは405を返しUsecaseは呼ばれない", func(t *testing.T) {
 			t.Parallel()
 
@@ -163,6 +235,16 @@ func TestV1CartsMeItems_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusMethodNotAllowed)
 		})
 	})
+}
+
+// readBody は、応答の本文を読み切って文字列で返します。
+func readBody(t *testing.T, response *http.Response) string {
+	t.Helper()
+	defer func() { require.NoError(t, response.Body.Close()) }()
+
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	return string(body)
 }
 
 // putBody は、数量だけを持つ設定リクエストの本文を組み立てます。

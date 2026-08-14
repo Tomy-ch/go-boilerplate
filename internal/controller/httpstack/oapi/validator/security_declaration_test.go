@@ -60,6 +60,8 @@ var optionalAuthOperations = map[string]string{
 	"GET /v1/carts/me": "カートはゲストと認証済みユーザーの双方が主体になれる（未認証でも 200、無効な資格情報は 401）",
 	"PUT /v1/carts/me/items/{productId}": "ゲストも明細を投入でき、その場でカートとセッショントークンが作られる" +
 		"（未認証でも 200、無効な資格情報は 401）",
+	"DELETE /v1/carts/me/items/{productId}": "ゲストも自分の明細を取り除ける" +
+		"（未認証でも 204、無効な資格情報は 401）",
 }
 
 // securityKind は、security 要件が表す認証の姿勢。
