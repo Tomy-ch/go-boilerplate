@@ -231,7 +231,7 @@ func TestNewAuthenticator(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "bad"))
 
 			fn := NewAuthenticator(m, mr)
 
