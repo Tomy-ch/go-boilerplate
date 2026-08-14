@@ -222,7 +222,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | ① | define the path / operation / schemas in OpenAPI source, re-bundle | `openapi/**/*.yaml` → `openapi/openapi.gen.yaml` | existing paths |
 | ② | regenerate the server interface + types | `make gen-api` → `internal/controller/handler/<path>/gen/` | — |
-| ③ | implement `BindHandler(echo, tracerFactory, usecase, …)` + one method per `operationId` (tracer span → parse → usecase → response) | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, `v1/users` |
+| ③ | implement `BindHandler(echo, tracerFactory, usecase, …)` + one method per `operationId` (tracer span → parse → usecase → response) | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, existing handlers |
 | ④ | implement the usecase method (if it does not exist), mapping domain → DTO | `internal/usecase/<feature>/` | `scaffold-usecase` |
 | ⑤ | wire the handler: `fx.Invoke(<pkg>.BindHandler)` | `internal/di/module/controller.go` | existing invokes |
 

@@ -40,7 +40,7 @@ Design principles (invariants):
 
 Authentication (the IdP asserts *who* the caller is) and **validity in this system** (whether that user is still an active member *here*) are **separate axes**. A request is honored only when **both** hold — a logical AND that the RS evaluates on **every** request:
 
-> **effective access = ( token verifies — IdP side ) AND ( user is valid here: `deleted_at IS NULL` + roles permit — RS side )**
+> **effective access = ( token verifies — IdP side ) AND ( user is valid here: not soft-deleted + roles permit — RS side )**
 
 This is why a structurally valid JWT is not sufficient. The provider's deleted-user fixtures (Charlie / Frank) carry perfectly valid, correctly-signed tokens yet are rejected — **"valid JWT ≠ usable in this system."**
 
@@ -49,8 +49,8 @@ Who owns which invalidation:
 | Invalidation | Owner | Effect | Where (this repo) |
 | --- | --- | --- | --- |
 | **Account deactivation** (can no longer authenticate) | IdP | stops issuing *new* tokens; already-issued JWTs stay valid until `exp` | external IdP — the mock has **none** (it is a token stub with no account lifecycle) |
-| **Membership invalidation** (`deleted_at`: withdrawn / banned) | this RS | rejected per-request regardless of token | `useridentity` resolver → `401` |
-| **Authorization** (roles) | this RS | allow / deny per action | `user_roles` + authorizer |
+| **Membership invalidation** (soft-delete: withdrawn / banned) | this RS | rejected per-request regardless of token | the `IdentityResolver` implementation → `401` |
+| **Authorization** (roles) | this RS | allow / deny per action | the role store + the `Authorizer` implementation |
 
 The parts most often misread:
 
@@ -60,8 +60,8 @@ The parts most often misread:
 
 Two provisioning paths *set* invalidity — distinct from the enforcement above, which only *reads* it:
 
-- **App-initiated** (withdrawal / ban): this service sets its own `deleted_at` (soft-delete, `update_user.sql`). This is the primary runtime path; the withdrawal endpoint that drives it is a separate PBI.
-- **IdP-initiated** (deprovisioning): when a real IdP disables a user and that must be reflected here, add a **thin ingress adapter** (a SCIM / webhook receiver, or an event consumer) that calls this service's deactivate path. The mock emits no such events and the propagation protocol is IdP-specific, so **this seam is intentionally left unbuilt** — the enforcement side (the `useridentity` resolver honoring `deleted_at`) is already ready to consume whatever sets it. The IdP *triggers*; the RS *enforces*.
+- **App-initiated** (withdrawal / ban): this service soft-deletes its own user record. This is the primary runtime path; the withdrawal endpoint that drives it is a separate PBI.
+- **IdP-initiated** (deprovisioning): when a real IdP disables a user and that must be reflected here, add a **thin ingress adapter** (a SCIM / webhook receiver, or an event consumer) that calls this service's deactivate path. The mock emits no such events and the propagation protocol is IdP-specific, so **this seam is intentionally left unbuilt** — the enforcement side (the `IdentityResolver` implementation honoring the soft-delete) is already ready to consume whatever sets it. The IdP *triggers*; the RS *enforces*.
 
 ---
 
@@ -181,7 +181,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 | JWT verification core | `internal/infrastructure/auth/jwt/auth_jwt.go` |
 | JWKS resolution (`kid` lookup, TTL cache, unknown-`kid` refresh cooldown, negative cache, key rotation) | `internal/infrastructure/auth/jwt/jwks.go` |
 | Dev-only stub (`Bearer debug:<subject>`, `ci` / `test` env) | `internal/infrastructure/auth/local/auth_local.go` |
-| Identity resolution (`sub` → internal `userID`) | `internal/infrastructure/auth/useridentity/` |
+| Identity resolution (`sub` → internal `userID`) | the project's `IdentityResolver` under `internal/infrastructure/auth/`; the substrate default is the passthrough in `internal/infrastructure/auth/identity/` |
 | DI wiring (env-driven authenticator selection, JWKS downstream profile) | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
 | Real-JWT execution context for scanning (`dast` env: JWKS-backed authenticator against the mock provider over http) | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | Config (`AUTH_*`) | `internal/config/envspec.go`, `internal/config/model.go` |
@@ -195,7 +195,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 1. **Point the RS at an IdP via config.** `AUTH_ISSUER` (must equal the token's `iss`), `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` (the IdP's `jwks_uri` — optional; leave it empty to derive `jwks_uri` from the issuer via OIDC discovery, see the note below). Locally, `env/.env` sets `AUTH_JWKS_URL` explicitly at the container-internal host per split-horizon. Optional knobs: `AUTH_ALLOWED_ALGORITHMS` (default `RS256`), `AUTH_CLOCK_SKEW` (`60s`), `AUTH_JWKS_CACHE_TTL` (`1h`).
 2. **Swap the mock for a real IdP** by changing only those env values — the JWKS + claim contract is byte-equal, so no Go change is required. Keep `iss` host-resolvable and `AUTH_JWKS_URL` reachable from the API container.
 3. **Add IdP dialects** when your IdP deviates from the standard core — Cognito `token_use` / `aud`→`client_id`, Azure `scp` / `roles`, EC keys, opaque tokens — at the extension points listed in the [jwt README](../../internal/infrastructure/auth/jwt/README.md).
-4. **Identity resolution** maps `(issuer, subject)` to an internal user; provide a resolver for your user store (the sample uses `useridentity`).
+4. **Identity resolution** maps `(issuer, subject)` to an internal user; provide an `IdentityResolver` implementation for your user store. Without one the DI wires the passthrough default, which leaves the internal UserID unresolved — so no unknown or deactivated subject is rejected here.
 
 > **JWKS URL resolution (static vs discovery).** By default the RS resolves the JWKS URL **statically** from `AUTH_JWKS_URL` — this is what `env/.env` sets (split-horizon). Alternatively, leaving `AUTH_JWKS_URL` empty makes the RS derive `jwks_uri` from the issuer's `/.well-known/openid-configuration` via **OIDC discovery** (issuer strict-match + same-origin + https), cached on its own `AUTH_JWKS_DISCOVERY_TTL` (default `24h`). Independently, `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` (default `60s`) is the minimum interval between unknown-`kid` JWKS refetches. `mock-auth-server` serves the discovery document for both modes and for standard-compliance.
 

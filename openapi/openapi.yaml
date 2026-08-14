@@ -59,6 +59,8 @@ tags:
     description: ユーザー検索（キーワード）。
   - name: v1/users/me/purchases
     description: 認証主体自身の購入集計（認証必須・自分絞り込み / query_service サンプル）。
+  - name: v1/users/me/roles
+    description: 認証主体自身のロール（認証必須・自分絞り込み / クライアントの楽観的な権限分岐用）。
   - name: v1/prefectures
     description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
   - name: v1/products
@@ -121,6 +123,8 @@ paths:
     $ref: './paths/v1/users/me.yaml'
   /v1/users/me/purchases/summary:
     $ref: './paths/v1/users/me/purchases/summary.yaml'
+  /v1/users/me/roles:
+    $ref: './paths/v1/users/me/roles.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
   /v1/users/feed:

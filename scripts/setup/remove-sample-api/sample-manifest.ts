@@ -27,6 +27,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_users_test.go",
       "internal/integration/v1_users_detail_test.go",
       "internal/integration/v1_users_me_test.go",
+      "internal/integration/v1_users_me_roles_test.go",
       "internal/integration/v1_users_search_test.go",
       "internal/integration/v1_users_feed_test.go",
 
@@ -62,6 +63,10 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     paths: [
       // Authorizer 実装（本番相当環境に配線。削除時は provideAuthorizer の dev/stg/prd case ごと除去され、以後それらの環境は fail-closed 既定に戻る）
       "internal/infrastructure/authz/userrole",
+
+      // schemas/ 直下はディレクトリ指定で消えないため個別に挙げる（参照元の
+      // responses/users/UserRolesResponse.yaml と usecase / handler は user エントリ側で消える）
+      "openapi/components/schemas/RoleRef.yaml",
 
       "database/migrations/000005_create_roles.up.sql",
       "database/migrations/000005_create_roles.down.sql",

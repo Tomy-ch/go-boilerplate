@@ -1,0 +1,22 @@
+type: object
+description: |
+  ユーザーに割り当てられたロール（コードと名称）。code は分岐に用いる機械可読な安定キー、
+  name は表示用の名称です。ロールの追加は code の enum 拡張として表れます。
+required:
+  - code
+  - name
+properties:
+  code:
+    type: string
+    description: |
+      ロールの安定コード。永続化されたロールコードに 1:1 で対応し、表示名の変更では変わりません。
+      クライアントの権限分岐はこの値で行います。
+    enum:
+      - admin
+      - general
+    example: "admin"
+  name:
+    type: string
+    description: ロール名。表示専用であり、分岐の判定には用いません。
+    example: "管理者"
+    maxLength: 100

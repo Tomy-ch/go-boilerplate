@@ -1,0 +1,12 @@
+description: |
+  認証ユーザー自身に割り当てられたロールのレスポンススキーマ。
+  クライアントの楽観的な権限分岐（導線の出し分け）を用途とし、確定的な認可判断はサーバー側が行います。
+type: object
+required:
+  - roles
+properties:
+  roles:
+    type: array
+    description: 認証ユーザー自身に割り当てられた全ロール。ロールが 1 つも割り当てられていない場合は空配列です。
+    items:
+      $ref: '../../schemas/RoleRef.yaml'

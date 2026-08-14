@@ -87,7 +87,7 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 発送 | 購入された商品を顧客へ向けて送り出すこと。これが起きた購入は発送済みになる | purchase / Purchase | `purchase.Purchase.Ship` | `ship` |
 | 配達 | 購入された商品が顧客の手元に届くこと。これが起きた購入は配達済みになる | purchase / Purchase | `purchase.Purchase.Deliver` | `deliver` |
 | キャンセル | 購入を取り消し、履行しないと決めること。これが起きた購入はキャンセル済みになる | purchase / Purchase | `purchase.Purchase.Cancel` | `cancel` |
-| 管理者 | 一般の利用者には許されない操作を行える役割 | user / User | `user.RoleCodeAdmin` | — |
+| 管理者 | 一般の利用者には許されない操作を行える役割 | user / User | `user.RoleCodeAdmin` | `admin` |
 | 退会 | ユーザーがこのサービスの利用をやめること | user / User | `user.User.MarkAsDeleted` | — |
 | 購入可能 | 在籍しているユーザーにだけ認められる、購入を受け付けてよい状態 | membership | `membership.EnsurePurchasable` | — |
 | 退会可能 | 進行中の購入を残していないユーザーにだけ認められる、退会してよい状態 | membership | `membership.EnsureWithdrawable` | — |

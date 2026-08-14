@@ -332,4 +332,45 @@ notes:
     境界を進めないと同じ候補を取り直し続け、先頭バッチが全件スキップ対象のときに無限ループする。
 ```
 
+## GET ロール（me）
+
+`GET /v1/users/me/roles`。認証主体自身に割り当てられたロールを返す読み取り経路。用途はクライアント側の
+**楽観的な権限分岐**（管理者向け導線を出すかどうか）であり、確定的な認可判断は各操作で `authz.Authorizer` が行う。
+所有権は「パスに他者識別子を持たず `authn.UserID()` のみを引数にする」ことで担保され、認可判定に分岐の余地が
+ないため `authorizer` は経由しない。書き込みを伴わないため tx は不要。
+
+ユースケースは `internal/usecase/user/user_usecase.go`（tx / 認可 / 都道府県解決を持つプロフィール中心の集約）ではなく、
+読み取り専用の別パッケージ `internal/usecase/user/role` に置く（`purchase/summary` と同じ `/me` 配下サブリソースの形）。
+ロールの供給源はトークンの claim ではなく `user_roles` を引く本経路とする。claim は発行時点のスナップショットのため
+`user_roles` の更新と乖離するうえ、`docs/design/auth.md` § 1 が invariant として置く「Standard core only」
+「Byte-equal contract」を崩すため採らない。
+
+```yaml
+input:
+  - authn: "*auth.Authn"       # 認証主体。nil は Unauthenticated（401）。UserID() を Repository へ渡す
+
+output:
+  struct: RolesView            # package role
+  fields:
+    - name: Roles
+      type: "[]RoleView"       # { Code string; Name string }。割り当てが 0 件でも空スライスを返しエラーにしない
+
+dependencies:
+  - user.RoleRepository        # FindRolesByUserID（認可判定と同じ権威ある user_roles を引く）
+  - observability.TracerFactory
+
+workflow:
+  tx_required: false               # read-only
+  steps:
+    - authn == nil なら ErrUnauthenticated（401）
+    - authn.UserID() を取得（未解決はエラー伝播）
+    - roleRepo.FindRolesByUserID(userID) で割り当て済みの全ロールを取得
+    - RoleCode を外部向けの安定コード（admin / general）へ写像し RolesView を構築
+  errors:
+    - ErrUnauthenticated → 401（Authn 不在）
+```
+
+ワイヤには UUID や表示名ではなく安定コードを出す。表示名は変更され得るため、クライアントの分岐を名称一致に
+依存させると表示の都合が権限判定を壊す。ロールの追加は `code` の enum 拡張として現れる。
+
 [ADR-0034 (ordered-pessimistic-row-locks)]: ../../adr/0034-ordered-pessimistic-row-locks.md

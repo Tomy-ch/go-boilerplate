@@ -127,9 +127,10 @@ If the write can be expressed as loading an aggregate, mutating it, and saving i
 
 CommandService exists for the writes that *cannot* be expressed that way without changing their
 concurrency properties: **relative updates, set-based operations, and operations that obtain atomicity
-without taking a lock**. Restoring stock on cancellation is the shape — a relative update that takes no
-lock on the product row at all; expressing it as load-add-save would introduce a lock the cancel path
-does not take, adding contention and a deadlock surface that does not exist today.
+without taking a lock**. Returning a reserved quantity when an order is cancelled is the shape — a
+relative update that takes no lock on the inventory row at all; expressing it as load-add-save would
+introduce a lock the cancel path does not take, adding contention and a deadlock surface that does not
+exist today.
 
 Without this gate the seam degrades into "where I put SQL I want to write directly".
 
@@ -232,8 +233,8 @@ persistence contract, the Repository.
 **CommandService ownership is decided on the workflow axis, not the aggregate axis.** One real write can
 enforce the invariants of several aggregates at once, so "the aggregate whose invariant it enforces" is a
 relation, not a function. A transaction always has exactly one initiator, and the usecase layer already
-owns transaction boundaries — so `internal/usecase/purchase/command/` names a workflow, and "why purchase
-and not product?" does not arise.
+owns transaction boundaries — so `internal/usecase/<workflow>/command/` names a workflow, and "why this
+aggregate and not the other one it also writes?" does not arise.
 
 All of these are registered in `persistenceModule` (`internal/di/module/persistence.go`) and injected via
 Fx. The `command_service` sub-module **may legitimately hold zero providers**: a system with no

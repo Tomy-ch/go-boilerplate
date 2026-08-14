@@ -1,0 +1,31 @@
+get:
+  operationId: GetUsersMeRoles
+  tags:
+    - v1/users/me/roles
+  summary: 認証ユーザー自身のロールの取得
+  description: |
+    認証コンテキスト（Bearer トークン）の内部 UserID に該当するユーザー自身に割り当てられたロールを取得します。
+    パスに他者の識別子を持たないため、他ユーザーのロールは取得できません。
+    用途はクライアント側の楽観的な権限分岐（管理者向け導線を表示するかどうか等）であり、
+    確定的な認可判断はサーバーが各操作で行います。したがって本 op が返すロールは、
+    クライアントが権限のある操作を組み立てるための材料であって、操作の可否そのものではありません。
+    ロールが 1 つも割り当てられていない場合はエラーではなく空配列を返します。
+    本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  responses:
+    '200':
+      description: 認証ユーザー自身のロールの取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/responses/users/UserRolesResponse.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'
