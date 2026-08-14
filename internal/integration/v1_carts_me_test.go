@@ -59,6 +59,77 @@ func TestV1CartsMe_Integration(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("認証済みでカートを空にすると204が返り本文を持たない", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var captured cartuc.Subject
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			uc.EXPECT().ClearCart(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, subject cartuc.Subject) error {
+					captured = subject
+					return nil
+				},
+			)
+
+			carts.BindHandler(e, tf, uc)
+
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_cc_user"))
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartPath, nil, headers)
+
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+			assert.Empty(t, readBody(t, actual))
+			assert.NotNil(t, captured.UserID)
+		})
+
+		t.Run("未認証でもX-Cart-Sessionヘッダの主体でカートを空にできる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var captured cartuc.Subject
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			uc.EXPECT().ClearCart(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, subject cartuc.Subject) error {
+					captured = subject
+					return nil
+				},
+			)
+
+			carts.BindHandler(e, tf, uc)
+
+			headers := http.Header{cartSessionHeader: []string{guestSessionToken}}
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartPath, nil, headers)
+
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+			assert.Nil(t, captured.UserID)
+			require.NotNil(t, captured.SessionToken)
+			assert.Equal(t, guestSessionToken, *captured.SessionToken)
+		})
+
+		t.Run("主体を持たないクリアも204を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			uc.EXPECT().ClearCart(gomock.Any(), gomock.Any()).Return(nil)
+
+			carts.BindHandler(e, tf, uc)
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartPath, nil, nil)
+
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+			assert.Empty(t, readBody(t, actual))
+		})
+
 		t.Run("認証済みで自分のカートがCartResponseで返る", func(t *testing.T) {
 			t.Parallel()
 
@@ -271,6 +342,25 @@ func TestV1CartsMe_Integration(t *testing.T) {
 					AssertErrorResponse(t, actual, http.StatusBadRequest)
 				})
 			}
+		})
+
+		t.Run("クリアで無効な資格情報は匿名として通さず401を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			uc := mock_cartuc.NewMockUsecase(ctrl)
+			uc.EXPECT().ClearCart(gomock.Any(), gomock.Any()).Times(0)
+
+			carts.BindHandler(e, tf, uc)
+			useOpenAPIValidationWithAuthFailure(t, e)
+
+			headers := http.Header{"Authorization": []string{"Bearer invalid-token"}}
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, meCartPath, nil, headers)
+			AssertErrorResponse(t, actual, http.StatusUnauthorized)
 		})
 
 		t.Run("POSTは405を返しUsecaseは呼ばれない", func(t *testing.T) {
