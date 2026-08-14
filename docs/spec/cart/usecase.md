@@ -32,7 +32,7 @@ methods:
   - name: SetItem          # PUT /v1/carts/me/items/{productId}。数量の設定（upsert）
     signature: SetItem(ctx context.Context, params SetItemParams) (CartView, error)
   - name: RemoveItem       # DELETE /v1/carts/me/items/{productId}
-    signature: RemoveItem(ctx context.Context, params RemoveItemParams) (CartView, error)
+    signature: RemoveItem(ctx context.Context, params RemoveItemParams) error
   - name: ClearCart        # DELETE /v1/carts/me
     signature: ClearCart(ctx context.Context, subject Subject) error
   - name: MergeOnLogin     # ログイン直後。ゲストカートをユーザーへ引き継ぐ
@@ -221,15 +221,33 @@ errors:
 ```yaml
 tx_required: true
 steps:
-  - subject からカートを解決する。無ければ空の CartView を返して終了（削除の冪等）
-  - LockByID → cart.RemoveItem → Touch → Update
-  - 再評価つき CartView を返す
+  - productID が nil なら「該当する明細が無い」として何もせず終了（削除の冪等）
+  - subject からカートを解決する。無ければ何もせず終了（カートは作らない）
+  - LockByID。解決との間にカート行が消えていた場合も何もせず終了
+  - cart.RemoveItem → Touch → Update
 calls:
   - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / Update
-  - product_repository.FindByIDs
 errors:
   - なし（対象が無くても成功）
 ```
+
+**明細ごとの再評価を行わない。** 応答は 204 で本文を持たず、価格を 1 つも提示していない。ここで
+`MarkSeen` を走らせると「提示していない価格を提示したことにする」記録が残り、次の `GetCart` で立つ
+はずの `priceIncreased` を消してしまう。`SetItem` が 200 で `unitPrice` を返すのとは前提が違う。
+
+**商品を引かない。** 非公開になった商品こそカートから外したいため、`SetItem` の
+`FindPublishedByID` に当たる確認を持たない。「非公開でも許す」という分岐があるのではなく、
+`product_repository` への呼び出しが 1 つも無い。
+
+**カートを作らない。** 未知・期限切れのセッショントークンでも採番し直さない。本文が無いため
+新しいトークンを返す場所がなく、削除の要求でカートが生まれるのは意味論として倒錯している
+（`SetItem` との意図的な非対称）。
+
+**有効期限は延ばす。** 削除も利用であり、明細が 0 件になってもカート自体は残る。
+
+**カートの不在は 1 つの事実として扱う。** 解決で見つからなかった場合も、解決とロックの間に消えていた場合も
+同じく成功で返す。どちらの読み取りで気づいたかによって応答を変えると、この op が宣言していない 404 が
+競合したときだけ現れることになる。
 
 ### ClearCart
 
