@@ -31,6 +31,19 @@ const createdLayout = "2006-01-02 15:04:05 -0700 MST"
 // errWD は、作業ディレクトリの取得失敗の伝播を検証するためのセンチネルです。
 var errWD = xerrors.New("getwd failed")
 
+// usesTarget / composeTarget / dockerfileTarget は、ファイルを介さず走査対象 1 件を組み立てる。
+func usesTarget() target {
+	return target{re: usesDockerRe, loose: looseDockerUsesRe}
+}
+
+func composeTarget() target {
+	return target{re: composeImageRe, loose: composeImageLoose}
+}
+
+func dockerfileTarget() target {
+	return target{re: fromRe, loose: fromLooseRe, exemptTagless: dockerfileExemptTagless}
+}
+
 // testTargets は root 配下の走査対象を集める。
 func testTargets(t *testing.T, root string) []target {
 	t.Helper()
@@ -279,7 +292,22 @@ func Test_targetFiles(t *testing.T) {
 			}, paths)
 		})
 
-		t.Run("Dockerfile と compose の対象には loose を持たせない", func(t *testing.T) {
+		t.Run("すべての対象が取りこぼし検出のパターンを持つ", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
+			writeFile(t, filepath.Join(root, "docker-compose.yaml"), "services:\n")
+			writeFile(t, filepath.Join(root, ".github", "workflows", "ci.yaml"), "jobs:\n")
+
+			targets, err := targetFiles(root)
+			require.NoError(t, err)
+			require.Len(t, targets, 3)
+			for _, tg := range targets {
+				assert.NotNil(t, tg.loose, tg.path)
+			}
+		})
+
+		t.Run("tag 無しの除外は Dockerfile の対象だけが持つ", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine:3.24\n")
@@ -287,9 +315,15 @@ func Test_targetFiles(t *testing.T) {
 
 			targets, err := targetFiles(root)
 			require.NoError(t, err)
+
+			exempt := map[string]bool{}
 			for _, tg := range targets {
-				assert.Nil(t, tg.loose, tg.path)
+				exempt[tg.path] = tg.exemptTagless != nil
 			}
+			assert.Equal(t, map[string]bool{
+				filepath.Join(root, "docker", "app", "Dockerfile"): true,
+				filepath.Join(root, "docker-compose.yaml"):         false,
+			}, exempt)
 		})
 	})
 
@@ -359,7 +393,7 @@ func Test_usesDockerRe(t *testing.T) {
 	})
 }
 
-func Test_detectLooseDockerUses(t *testing.T) {
+func Test_detectLooseRefs(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -367,32 +401,32 @@ func Test_detectLooseDockerUses(t *testing.T) {
 
 		t.Run("解釈できたブロック記法を取りこぼしとして数えない", func(t *testing.T) {
 			t.Parallel()
-			got := detectLooseDockerUses("      - uses: docker://alpine:3.24\n", usesDockerRe, looseDockerUsesRe)
+			got := detectLooseRefs("      - uses: docker://alpine:3.24\n", usesTarget())
 			assert.Empty(t, got)
 		})
 
 		t.Run("owner/repo 形式の uses を取りこぼしとして数えない", func(t *testing.T) {
 			t.Parallel()
-			got := detectLooseDockerUses("      - uses: actions/checkout@v7\n", usesDockerRe, looseDockerUsesRe)
+			got := detectLooseRefs("      - uses: actions/checkout@v7\n", usesTarget())
 			assert.Empty(t, got)
 		})
 
 		t.Run("行全体がコメントなら反応しない", func(t *testing.T) {
 			t.Parallel()
-			got := detectLooseDockerUses("  # uses: docker://alpine\n", usesDockerRe, looseDockerUsesRe)
+			got := detectLooseRefs("  # uses: docker://alpine\n", usesTarget())
 			assert.Empty(t, got)
 		})
 
 		t.Run("run スクリプトが出力する uses: docker:// を取りこぼしとして数えない", func(t *testing.T) {
 			t.Parallel()
 			data := "steps:\n  - run: |\n      echo \"- uses: docker://alpine:3.24\"\n"
-			assert.Empty(t, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+			assert.Empty(t, detectLooseRefs(data, usesTarget()))
 		})
 
 		t.Run("ブロックスカラーを抜けた後の行は再び走査対象に戻る", func(t *testing.T) {
 			t.Parallel()
 			data := "steps:\n  - run: |\n      echo \"- uses: docker://alpine:3.24\"\n  - uses: docker://busybox\n"
-			assert.Equal(t, []int{4}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+			assert.Equal(t, []int{4}, detectLooseRefs(data, usesTarget()))
 		})
 	})
 
@@ -402,19 +436,93 @@ func Test_detectLooseDockerUses(t *testing.T) {
 		t.Run("tag を持たない参照を行番号で返す", func(t *testing.T) {
 			t.Parallel()
 			data := "jobs:\n      - uses: docker://alpine\n"
-			assert.Equal(t, []int{2}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+			assert.Equal(t, []int{2}, detectLooseRefs(data, usesTarget()))
 		})
 
 		t.Run("引用符付きの参照を行番号で返す", func(t *testing.T) {
 			t.Parallel()
 			data := "      - uses: \"docker://alpine:3.24\"\n"
-			assert.Equal(t, []int{1}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+			assert.Equal(t, []int{1}, detectLooseRefs(data, usesTarget()))
 		})
 
 		t.Run("flow mapping で書かれた参照を行番号で返す", func(t *testing.T) {
 			t.Parallel()
 			data := "      - {name: X, uses: docker://alpine:3.24}\n"
-			assert.Equal(t, []int{1}, detectLooseDockerUses(data, usesDockerRe, looseDockerUsesRe))
+			assert.Equal(t, []int{1}, detectLooseRefs(data, usesTarget()))
+		})
+	})
+}
+
+func Test_dockerfileExemptTagless(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("宣言済みのビルドステージと scratch を返す", func(t *testing.T) {
+			t.Parallel()
+			got := dockerfileExemptTagless("FROM alpine:3.24 AS base\nFROM base AS final\n")
+			assert.Equal(t, map[string]bool{"scratch": true, "base": true, "final": true}, got)
+		})
+
+		t.Run("ステージ名を小文字へ揃える", func(t *testing.T) {
+			t.Parallel()
+			got := dockerfileExemptTagless("FROM alpine:3.24 AS Base\n")
+			assert.True(t, got["base"])
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("AS を持たない FROM だけなら scratch のみを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, map[string]bool{"scratch": true}, dockerfileExemptTagless("FROM alpine:3.24\n"))
+		})
+	})
+}
+
+func Test_taglessLines(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("tag を持つ参照は返さない", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, taglessLines("    image: alpine:3.24\n", composeTarget()))
+		})
+
+		t.Run("宣言済みのビルドステージを参照する FROM は返さない", func(t *testing.T) {
+			t.Parallel()
+			data := "FROM alpine:3.24 AS base\nFROM base AS final\n"
+			assert.Empty(t, taglessLines(data, dockerfileTarget()))
+		})
+
+		t.Run("scratch を参照する FROM は返さない", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, taglessLines("FROM scratch\n", dockerfileTarget()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("tag を持たない compose の image を行番号で返す", func(t *testing.T) {
+			t.Parallel()
+			data := "services:\n  a:\n    image: alpine\n"
+			assert.Equal(t, []int{3}, taglessLines(data, composeTarget()))
+		})
+
+		t.Run("registry ポートを tag と誤認する形も行番号で返す", func(t *testing.T) {
+			t.Parallel()
+			data := "services:\n  a:\n    image: localhost:5000/app\n"
+			assert.Equal(t, []int{3}, taglessLines(data, composeTarget()))
+		})
+
+		t.Run("宣言されていない tag 無しの FROM を行番号で返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, []int{1}, taglessLines("FROM alpine\n", dockerfileTarget()))
 		})
 	})
 }
@@ -434,10 +542,11 @@ func Test_validateLoose(t *testing.T) {
 			assert.NoError(t, validateLoose(root, testTargets(t, root)))
 		})
 
-		t.Run("loose を持たない対象は検査しない", func(t *testing.T) {
+		t.Run("ビルドステージを参照する tag 無しの FROM は通す", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
-			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"), "FROM alpine\n")
+			writeFile(t, filepath.Join(root, "docker", "app", "Dockerfile"),
+				"FROM alpine:3.24 AS base\nFROM base AS final\n")
 
 			assert.NoError(t, validateLoose(root, testTargets(t, root)))
 		})
@@ -453,7 +562,7 @@ func Test_validateLoose(t *testing.T) {
 				"jobs:\n      - uses: docker://alpine\n")
 
 			err := validateLoose(root, testTargets(t, root))
-			require.ErrorIs(t, err, errLooseDockerUses)
+			require.ErrorIs(t, err, errLooseRef)
 			assert.Contains(t, err.Error(), filepath.Join(".github", "workflows", "ci.yaml")+":2")
 		})
 
@@ -1114,7 +1223,7 @@ func Test_resolve(t *testing.T) { //nolint:paralleltest // useDockerStub が t.S
 
 			err := resolve(root, testTargets(t, root), 0)
 
-			require.ErrorIs(t, err, errLooseDockerUses)
+			require.ErrorIs(t, err, errLooseRef)
 		})
 
 		t.Run("digest を解決できなければどのキーで失敗したか示すエラーを返す", func(t *testing.T) { //nolint:paralleltest // t.Setenv 使用
@@ -1219,7 +1328,7 @@ func Test_applyOrCheck(t *testing.T) {
 
 			err := applyOrCheck(root, testTargets(t, root), false)
 
-			require.ErrorIs(t, err, errLooseDockerUses)
+			require.ErrorIs(t, err, errLooseRef)
 			assert.Equal(t, body, readAll(t, wf))
 		})
 
