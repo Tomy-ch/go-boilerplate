@@ -16,8 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go-boilerplate/internal/apperror"
 	authjwt "go-boilerplate/internal/infrastructure/auth/jwt"
 	"go-boilerplate/internal/infrastructure/httpclient"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // JWKS Rotation の E2E。provider（mock-auth-server）の golden JWKS と署名 PEM を //go:embed で取り込み、
@@ -49,6 +51,16 @@ type rotClock struct {
 type rotatingJWKS struct {
 	mu    sync.Mutex
 	body  []byte
+	calls int
+}
+
+// blockingJWKS は、release されるまで応答を返さない JWKS 供給元。取得回数も数える。
+type blockingJWKS struct {
+	body    []byte
+	entered chan struct{}
+	release chan struct{}
+
+	mu    sync.Mutex
 	calls int
 }
 
@@ -219,6 +231,74 @@ func TestJWKSRotationIntegration(t *testing.T) {
 			// 有効な鍵で署名しても、JWKS に無い kid では鍵解決に失敗し 401。
 			token := mintRotToken(t, keyA, "mock-key-retired", clk)
 			AssertErrorResponse(t, get(srv, token), http.StatusUnauthorized)
+		})
+	})
+}
+
+func (s *blockingJWKS) Do(ctx context.Context, _ *httpclient.Request) (*httpclient.Response, error) {
+	s.mu.Lock()
+	s.calls++
+	first := s.calls == 1
+	s.mu.Unlock()
+
+	if first {
+		close(s.entered)
+	}
+	select {
+	case <-ctx.Done():
+		// 実 substrate が返す分類に揃える（httpclient.normalizeTransportError と同じ写像）。
+		return nil, xerrors.Wrap(apperror.ErrCanceled, "canceled")
+	case <-s.release:
+		return &httpclient.Response{StatusCode: 200, Body: s.body}, nil
+	}
+}
+
+func (s *blockingJWKS) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.calls
+}
+
+func TestJWKSRefreshDetachIntegration(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クライアントが切断しても JWKS 取得は完走し cooldown が次の取得を抑える", func(t *testing.T) {
+			t.Parallel()
+			keyA := loadProviderKey(t, rotKIDPrimary)
+			clk := &rotClock{now: time.Now()}
+			src := &blockingJWKS{body: loadGoldenJWKS(t, 1), entered: make(chan struct{}), release: make(chan struct{})}
+			srv := startRotationServer(t, src, clk)
+
+			// 実クライアントが、JWKS 取得の最中に接続を切る。
+			ctx, cancel := context.WithCancel(t.Context())
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.baseURL+"/protected", nil)
+			require.NoError(t, err)
+			req.Header.Set("Authorization", "Bearer "+mintRotToken(t, keyA, rotKIDPrimary, clk))
+
+			aborted := make(chan struct{})
+			go func() {
+				defer close(aborted)
+				res, doErr := srv.client.Do(req)
+				assert.Error(t, doErr, "切断したリクエストは応答を受け取らない")
+				assert.Nil(t, res)
+			}()
+
+			<-src.entered
+			cancel()
+			<-aborted
+
+			// 切断がサーバへ伝わる猶予。取得が呼び出し元の ctx を継いでいれば、この間に打ち切られる。
+			time.Sleep(200 * time.Millisecond)
+			close(src.release)
+
+			// 切断された取得が完走していれば鍵集合はキャッシュ済みで、後続は追加取得なしで検証できる。
+			// このリクエストは取得権の獲得で先行取得の完了を待つため、判定は待ち合わせ済みの状態で行われる。
+			res := srv.DoJSON(http.MethodGet, "/protected", nil, bearerHeader(mintRotToken(t, keyA, rotKIDPrimary, clk)))
+			require.Equal(t, http.StatusOK, res.StatusCode, "切断された取得の結果が次のリクエストで使える")
+			assert.Equal(t, 1, src.count(), "cooldown が起動しており再取得しない")
 		})
 	})
 }

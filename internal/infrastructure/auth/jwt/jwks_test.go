@@ -52,6 +52,19 @@ type countingJWKSClient struct {
 	bodies [][]byte
 }
 
+// blockedFetch は、取得を任意の時点まで足止めするモックの制御口です。
+// entered は取得に入ったことを、release は取得を完了させてよいことを表します。
+type blockedFetch struct {
+	entered chan struct{}
+	release chan struct{}
+}
+
+// refreshResult は、別 goroutine で走らせた refresh の戻り値です。
+type refreshResult struct {
+	fetched bool
+	err     error
+}
+
 // jwksPublicJSON は testKID を持つ公開鍵 1 本の JWKS（公開部のみ）の JSON を go-jose で組み立てます。
 func jwksPublicJSON(t *testing.T, pub *rsa.PublicKey) []byte {
 	t.Helper()
@@ -1020,26 +1033,274 @@ func Test_jwksResolver_refresh(t *testing.T) {
 			assert.False(t, fetched2, "cooldown 中は throttle され fetch しない")
 		})
 
-		t.Run("呼び出し元 ctx のキャンセルは cooldown を汚染せず次回即再取得できる", func(t *testing.T) {
+		t.Run("呼び出し元がキャンセルで離脱しても取得は完走し cooldown が起動する", func(t *testing.T) {
 			t.Parallel()
 			key := newRSAKey(t)
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
-			// 1 回目 ctx キャンセル → 2 回目成功の順で応答する。
-			firstFetch := client.EXPECT().Do(gomock.Any(), gomock.Any()).
-				Return(nil, xerrors.Wrap(apperror.ErrCanceled, "canceled")).Times(1)
-			client.EXPECT().Do(gomock.Any(), gomock.Any()).
-				Return(&httpclient.Response{StatusCode: 200, Body: jwksPublicJSON(t, &key.PublicKey)}, nil).
-				Times(1).After(firstFetch)
+			blocked := newBlockedFetch(t, client, &key.PublicKey)
 			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
 
-			fetchedCanceled, errCanceled := r.refresh(context.Background())
-			require.ErrorIs(t, errCanceled, apperror.ErrCanceled)
-			assert.False(t, fetchedCanceled, "キャンセルは未取得扱い（negative へ載せない）")
-			_, err := r.refresh(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
+			left := goRefresh(r, ctx)
+			<-blocked.entered
+			cancel()
+
+			leftResult := <-left
+			assert.False(t, leftResult.fetched, "離脱は未取得扱い（negative へ載せない）")
+			require.ErrorIs(t, leftResult.err, apperror.ErrCanceled)
+
+			close(blocked.release)
+			fetched, err := r.refresh(context.Background())
 			require.NoError(t, err)
+			assert.False(t, fetched, "離脱した取得が cooldown を起動しているため再取得しない")
+		})
+
+		t.Run("離脱した取得の結果は他の呼び出し元が追加取得なしで使える", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			blocked := newBlockedFetch(t, client, &key.PublicKey)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			left := goRefresh(r, ctx)
+			<-blocked.entered
+			cancel()
+			<-left
+			close(blocked.release)
+
+			got, err := r.ResolveKey(context.Background(), testKID)
+			require.NoError(t, err)
+			assert.Equal(t, &key.PublicKey, got)
+		})
+
+		t.Run("先行取得の完了を待つ側も自分の予算で離脱できる", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			blocked := newBlockedFetch(t, client, &key.PublicKey)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			left := goRefresh(r, ctx)
+			<-blocked.entered
+
+			// 先行取得が走っている間に別の呼び出し元が来る。取得権を待つ間も自分の deadline は効く。
+			waiterCtx, waiterCancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+			defer waiterCancel()
+			fetched, err := r.refresh(waiterCtx)
+			assert.False(t, fetched)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+
+			cancel()
+			<-left
+			close(blocked.release)
+			_, _ = r.refresh(context.Background())
+		})
+
+		t.Run("呼び出し元が予算切れで離脱した場合は利用不能として返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			blocked := newBlockedFetch(t, client, &key.PublicKey)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+			defer cancel()
+			_, err := r.refresh(ctx)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, apperror.ErrCanceled)
+
+			close(blocked.release)
+			_, _ = r.refresh(context.Background())
 		})
 	})
+}
+
+func Test_jwksResolver_fetchAndRecord(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("取得成功を lastAttempt と keys へ記録する", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := newJWKSResolver(
+				stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)),
+				staticURL(jwksTestURL),
+				time.Hour,
+				nil,
+				0,
+				newFakeClock(fixedNow),
+				nil,
+			)
+
+			require.NoError(t, r.fetchAndRecord(context.Background()))
+			assert.Equal(t, fixedNow, r.lastAttempt)
+			assert.Equal(t, fixedNow, r.fetchedAt)
+			assert.Contains(t, r.keys, testKID)
+			require.NoError(t, r.lastErr)
+		})
+
+		t.Run("公開鍵集合が変わる取得成功では不在確定を破棄する", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			r := newJWKSResolver(
+				stubJWKSClient(t, jwksPublicJSON(t, &key.PublicKey)),
+				staticURL(jwksTestURL),
+				time.Hour,
+				nil,
+				0,
+				newFakeClock(fixedNow),
+				nil,
+			)
+			r.negative = map[string]struct{}{"absent-kid": {}}
+
+			require.NoError(t, r.fetchAndRecord(context.Background()))
+			assert.Empty(t, r.negative)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("取得失敗は lastErr へ記録し鍵の世代は進めない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, errBoom).Times(1)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
+
+			require.ErrorIs(t, r.fetchAndRecord(context.Background()), errBoom)
+			assert.Equal(t, fixedNow, r.lastAttempt, "失敗も試行として記録し cooldown を起動する")
+			require.ErrorIs(t, r.lastErr, errBoom)
+			assert.True(t, r.fetchedAt.IsZero())
+		})
+	})
+}
+
+func Test_jwksResolver_Drain(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("切り離して走っている取得の完了を待つ", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			blocked := newBlockedFetch(t, client, &key.PublicKey)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			left := goRefresh(r, ctx)
+			<-blocked.entered
+			cancel()
+			<-left
+
+			close(blocked.release)
+			require.NoError(t, r.Drain(context.Background()))
+			assert.Equal(t, fixedNow, r.lastAttempt, "待ち終えた時点で取得結果が記録されている")
+		})
+
+		t.Run("待つ対象が無ければ即座に返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
+
+			require.NoError(t, r.Drain(context.Background()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("待ちきれずに ctx が終わった場合は利用不能として返す", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			blocked := newBlockedFetch(t, client, &key.PublicKey)
+			r := newJWKSResolver(client, staticURL(jwksTestURL), time.Hour, nil, 0, newFakeClock(fixedNow), nil)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			left := goRefresh(r, ctx)
+			<-blocked.entered
+			cancel()
+			<-left
+
+			drainCtx, drainCancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+			defer drainCancel()
+			require.ErrorIs(t, r.Drain(drainCtx), apperror.ErrUnavailable)
+
+			close(blocked.release)
+			require.NoError(t, r.Drain(context.Background()))
+		})
+	})
+}
+
+func Test_detachedErr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセルでの離脱はキャンセルとして分類する", func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			err := detachedErr(ctx)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			require.NotErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("予算切れでの離脱は利用不能として分類する", func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithDeadline(context.Background(), fixedNow)
+			defer cancel()
+
+			err := detachedErr(ctx)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+// newBlockedFetch は、1 回だけ呼ばれ release まで応答しない Do をモックへ仕込みます。
+// 実際の httpclient と同じく渡された ctx のキャンセルに反応するため、取得へ何の context が渡ったかが結果に現れます。
+func newBlockedFetch(t *testing.T, client *mock_httpclient.MockClient, pub *rsa.PublicKey) blockedFetch {
+	t.Helper()
+	b := blockedFetch{entered: make(chan struct{}), release: make(chan struct{})}
+	body := jwksPublicJSON(t, pub)
+	client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, _ *httpclient.Request) (*httpclient.Response, error) {
+			close(b.entered)
+			select {
+			case <-ctx.Done():
+				return nil, xerrors.Wrap(apperror.ErrCanceled, "canceled")
+			case <-b.release:
+				return &httpclient.Response{StatusCode: 200, Body: body}, nil
+			}
+		}).Times(1)
+	return b
+}
+
+// goRefresh は refresh を別 goroutine で走らせ、その戻り値を 1 度だけ送ります。
+func goRefresh(r *jwksResolver, ctx context.Context) <-chan refreshResult {
+	out := make(chan refreshResult, 1)
+	go func() {
+		fetched, err := r.refresh(ctx)
+		out <- refreshResult{fetched: fetched, err: err}
+	}()
+	return out
 }
 
 func Test_jwksResolver_fetch(t *testing.T) {

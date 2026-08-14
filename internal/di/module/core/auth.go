@@ -46,6 +46,7 @@ type authenticatorParams struct {
 	Logger     logging.Logger
 	HTTPClient httpclient.Client
 	TracerFtry observability.TracerFactory
+	Lifecycle  fx.Lifecycle
 }
 
 // AuthnModule は、認証関連の依存関係（Authenticator・IdentityResolver・Auth コントローラ）を提供するfxモジュールを返します。
@@ -104,7 +105,7 @@ func allowInsecureJWKSURL(env string) bool {
 }
 
 // provideJWKSAuthenticator は、AUTH_* 設定から JWKS backed の JWT authenticator を構築します。
-// JWKS の取得は httpclient substrate に委ねるため、goroutine / lifecycle の管理は不要です（遅延取得）。
+// 取得はリクエストから切り離して走るため、停止時に取り残さないよう完了待ちを lifecycle へ登録します（遅延取得）。
 func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (authbd.Authenticator, error) {
 	authenticator, err := jwt.NewJWKS(jwt.JWKSParams{
 		Params: jwt.Params{
@@ -131,6 +132,10 @@ func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (aut
 		)
 
 		return nil, err
+	}
+
+	if d, ok := authenticator.(jwt.Drainer); ok {
+		p.Lifecycle.Append(fx.Hook{OnStop: d.Drain})
 	}
 
 	logger.Info(

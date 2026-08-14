@@ -34,6 +34,11 @@ type errKeyResolver struct {
 	err error
 }
 
+// drainRecorder は、Drain が呼ばれたことを記録する KeyResolver です。
+type drainRecorder struct {
+	drained bool
+}
+
 // newRSAKey はテスト用の RSA 鍵ペアを生成します。
 func newRSAKey(t *testing.T) *rsa.PrivateKey {
 	t.Helper()
@@ -835,4 +840,54 @@ func Test_extractScopes(t *testing.T) {
 			assert.Empty(t, extractScopes(jwtlib.MapClaims{"scope": "   "}))
 		})
 	})
+}
+
+func Test_authenticator_Drain(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("鍵解決が待つ対象を持つ場合はその完了待ちへ委譲する", func(t *testing.T) {
+			t.Parallel()
+			resolver := &drainRecorder{}
+			a, err := NewWithKeyResolver(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, resolver)
+			require.NoError(t, err)
+
+			d, ok := a.(Drainer)
+			require.True(t, ok, "JWT Authenticator は Drainer を満たす")
+			require.NoError(t, d.Drain(context.Background()))
+			assert.True(t, resolver.drained)
+		})
+
+		t.Run("待つ対象を持たない鍵解決では何もしない", func(t *testing.T) {
+			t.Parallel()
+			key := newRSAKey(t)
+			a, err := NewWithKeyResolver(Params{
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+			}, fixedKeyResolver{key: &key.PublicKey})
+			require.NoError(t, err)
+
+			d, ok := a.(Drainer)
+			require.True(t, ok)
+			require.NoError(t, d.Drain(context.Background()))
+		})
+	})
+}
+
+// ResolveKey は、テストでは使わないため常にエラーを返します。
+func (r *drainRecorder) ResolveKey(context.Context, string) (crypto.PublicKey, error) {
+	return nil, errBoom
+}
+
+// Drain は、呼ばれたことを記録します。
+func (r *drainRecorder) Drain(context.Context) error {
+	r.drained = true
+	return nil
 }
