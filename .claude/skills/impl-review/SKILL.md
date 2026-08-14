@@ -1,7 +1,7 @@
 ---
 name: impl-review
 description: >-
-  Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), ranks every finding by a fixed tier order (1 architecture / ddd-modeling, 2 security / correctness, 3 runtime-gap / type-design, 4 test-gap, 5 comment quality) so a higher tier's decision propagates down while a lower one never silently outranks it, fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap / test-gap, where `test-gap` is a code-origin pass that reads the changed production source and flags reachable branches / whole changed symbols left untested or vacuously asserted — a high-signal subset that defers exhaustive per-symbol enumeration to `/test-review`) — plus the dedicated `ddd-modeling-reviewer` (tier 1; asks whether the change models the domain well by this repo's own written DDD interpretation — aggregate boundary vs transaction boundary, where a rule belongs, cross-aggregate references, ubiquitous language — never against Evans directly, which is `ddd-origin-auditor`'s subject) and `comment-reviewer` subagent for comment quality, each on a user-selected model (fable / sonnet / opus / haiku; default auto = a model ≠ the implementer) so reviewer ≠ implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Phase 7), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology / excess volume / explaining idiomatic scaffolded code). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other five lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Step 0 additionally asks — default yes — whether to delegate the test viewpoint to `/test-review`: when the diff touches non-generated production `.go` under `internal/**` / `pkg/**` or any `*_test.go`, Step 4.5 chains that skill inline with a `scope` / `base_ref` / `reviewer_model` / `skip_verifier` payload for the exhaustive two-axis audit (Lens 4 branch × meaning + Lens 5 symbol completeness) and SUPPRESSES the `test-gap` lens for that run so the two never double-report; the report's mandatory `テスト観点:` line always states which of the three states applied (委譲実施 / test-gap subset only / not run), so an unaudited test viewpoint can never read as covered. Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
+  Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), ranks every finding by a fixed tier order (1 architecture / ddd-modeling, 2 security / correctness, 3 runtime-gap / type-design, 4 test-gap, 5 comment quality) so a higher tier's decision propagates down while a lower one never silently outranks it, fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap / test-gap, where `test-gap` is a code-origin pass that reads the changed production source and flags reachable branches / whole changed symbols left untested or vacuously asserted — a high-signal subset that defers exhaustive per-symbol enumeration to `/test-review`) — plus the dedicated `ddd-modeling-reviewer` (tier 1; asks whether the change models the domain well by this repo's own written DDD interpretation — aggregate boundary vs transaction boundary, where a rule belongs, cross-aggregate references, ubiquitous language — never against Evans directly, which is `ddd-origin-auditor`'s subject) and `comment-reviewer` subagent for comment quality, each on a user-selected model (fable / sonnet / opus / haiku; default auto = a model ≠ the implementer) so reviewer ≠ implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Phase 7), and synthesizes a single Japanese report. The `comment-reviewer` both validates good comments (the What is correct / sufficient / substantive and a non-obvious Why is present) and flags bad ones (How narration / 経緯 / restatement / tautology / excess volume / explaining idiomatic scaffolded code). Comment quality is not just reported but PROCESSED inside the lifecycle: CONFIRMED comment findings are auto-fixed in the working tree after one confirmation (delete / rewrite / enrich, with guards — never remove functional directives like `//go:generate` / `//nolint` / build tags, rewrite-or-enrich rather than delete exported-Go doc comments so `revive exported` stays satisfied, keep good What + non-obvious Why, skip generated files / Markdown prose / the deny list), then `make fix` + `make lint` verify. The other five lenses stay read-only on source (no auto-fix) and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings from the read-only lenses are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; comment-style findings are applied, not posted). Step 0 additionally asks — default yes — whether to delegate the test viewpoint to `/test-review`: when the diff touches non-generated production `.go` under `internal/**` / `pkg/**` or any `*_test.go`, Step 4.5 chains that skill inline with a `scope` / `base_ref` / `reviewer_model` / `skip_verifier` payload for the exhaustive two-axis audit (Lens 4 branch × meaning + Lens 5 symbol completeness) and SUPPRESSES the `test-gap` lens for that run so the two never double-report; the report's mandatory `テスト観点:` line always states which of the three states applied (委譲実施 / test-gap subset only / not run), so an unaudited test viewpoint can never read as covered. Step 0 asks a fourth question — also default yes — about the OTHER half of the comment subject: `comment-reviewer` judges what the diff ADDED, while Step 4.6 chains `/comment-sweep` with a `scope` / `mode` / `base_ref` / `hold` payload over the comment STOCK the touched files carry, in 確認して適用 (default) or 報告のみ but never the unattended 自動適用, and a mandatory `コメント在庫:` line records which of the three states applied so an unswept stock cannot read as a swept one. Use before commit / PR to get an independent second opinion that the implementer's own model would not surface. Flags: `--no-comment` (skip PR posting), `--no-apply` (report comment-style findings instead of auto-fixing).
 ---
 
 # Impl Review
@@ -30,7 +30,7 @@ Bias reduction is the design constraint, not a nicety. Reviewers therefore run a
 - The reviewer agents (`adversarial-reviewer`, `comment-reviewer`, `review-verifier`) default to **`sonnet`** in their frontmatter, which differs from the usual Opus implementer.
 - **The reviewer model is chosen by the user in Step 0.** The options are `fable` (Fable 5) / `sonnet` / `opus` / `haiku`, plus an *auto* default that resolves to a model ≠ the session's implementer. Pass the chosen model to every reviewer subagent via the `Agent` tool's `model` parameter (it takes precedence over the agent file's `sonnet` default) — e.g. `opus` for depth, `haiku` for a cheap divergent pass, `fable` for a fresh independent perspective.
 - **The orchestrator MUST guarantee reviewer ≠ implementer.** If the user selects the same model as the session's implementer, warn that it undermines the different-model bias reduction and confirm before proceeding. Never silently let reviewer and implementer be the same model.
-- Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings. The single place this skill mutates source is Step 5.5, where the **orchestrator** (not a subagent) applies the verified comment-style fixes after user confirmation. The five code lenses are never auto-fixed.
+- Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings. Source is mutated in exactly two places, both by the **orchestrator** (never a subagent) and both gated on explicit confirmation: Step 5.5 applies the verified comment-style fixes, and Step 4.6 writes whatever the user approves item by item inside the delegated `/comment-sweep` run. The five code lenses are never auto-fixed.
 
 ## Precedence — findings are ranked, not just collected
 
@@ -57,9 +57,11 @@ each of them is a rule, not a suggestion:
 2. **Mark a lower-tier finding 保留 while a higher-tier finding it depends on is unresolved.** Report
    it, say what it is waiting on, and do not present it as actionable. Re-check it after the
    higher-tier decision lands; it often disappears.
-3. **Suppress the Step 5.5 comment auto-fix for any file a tier 1–2 finding is likely to rewrite.**
+3. **Hold back any file a tier 1–2 finding is likely to rewrite, from both comment-touching steps.**
    Polishing prose on code that is about to change is work done twice, and it buries the real finding
-   under a diff of comment edits. Say in the report which files were held back and why.
+   under a diff of comment edits. Resolve the list once after Step 3 — it feeds Step 4.6's `hold`
+   payload and Step 5.5's exclusion, and deriving it twice lets the two disagree. Say in the report
+   which files were held back and why.
 4. **When two tiers report the same fact, keep the higher tier's framing and fold the lower one in as
    corroboration** — one finding, not two. Two entries for one fact reads as two problems and
    double-counts the change's apparent risk.
@@ -143,6 +145,31 @@ choice — the full audit roughly doubles the review's cost — which is why it 
 rather than becoming unconditional. Whichever way it goes, Step 5 records it on the
 `テスト観点:` line.
 
+### Comment-stock delegation
+
+In the same `AskUserQuestion` call (a fourth question), ask whether to delegate the comment stock of
+the touched files to `/comment-sweep`. Ask it **unconditionally**, for the reason the test question
+is asked unconditionally — the file-set predicate is resolved in Step 1:
+
+```text
+質問: 触れたファイルのコメント在庫を /comment-sweep へ委譲しますか？（既定: 委譲する（確認して適用））
+選択肢:
+  - 委譲する（確認して適用。Step 4.6 で 1 件ずつ確認して書き換える）  ← 既定
+  - 委譲する（報告のみ。書き込まず検出結果だけ出す）
+  - 委譲しない
+```
+
+`/comment-sweep`'s third mode, 自動適用, is deliberately absent. Every reviewer here is read-only on
+source and every write this skill performs is gated on an explicit per-item confirmation; a delegated
+sweep writing unattended would be the one write nobody agreed to.
+
+What the delegation adds is the other half of one subject:
+
+| | 見るもの |
+| --- | --- |
+| `comment-reviewer` (Step 2, tier 5) | the comments the diff **added** — their quality |
+| `/comment-sweep` (Step 4.6) | the comment stock the touched files **carry** — its jurisdiction |
+
 ### Flags
 
 - `--no-comment` — suppress Step 6 (do not post to the PR); produce the local report only. **Default is opt-out**: when an open PR exists for the current branch, Step 6 posts the surviving findings as inline review comments unless this flag is given.
@@ -162,6 +189,7 @@ rather than becoming unconditional. Whichever way it goes, Step 5 records it on 
   - Predicate false → neither runs; there is no test viewpoint to audit.
 
   Record which of the four applies — Step 5 reports it on the `テスト観点:` line (the last two both map to `未実施`, with the reason distinguishing them).
+- Resolve the **sweep scope** for Step 4.6: the changed comment-bearing source files — non-generated `.go` (excluding `*.gen.go` / `*.sql.go` / `*_mock.go` / `*_test.go`) plus the non-Go sources that carry comments (shell, Dockerfile, Makefile, SQL, YAML, `.mjs`), minus `vendor/**`, the deny list, and Markdown / docs prose. This is the same exclusion set Step 2 applies to `comment-reviewer`, less the tests — `/comment-sweep` does not sweep test files. An empty sweep scope means Step 4.6 does not run whatever was chosen in Step 0, and Step 5 says so on the `コメント在庫:` line.
 
 ## Step 2 — Fan-out Finders (different model, concurrent)
 
@@ -229,6 +257,39 @@ The chain is **sequential and inline** — the orchestrator loads `test-review` 
 
 Keep the returned report's structure and severities as they are (修正必須 / 補完推奨 / 再考 / 追加検討, plus criticality). Step 5 embeds it as a section — do not remap it onto CONFIRMED / PLAUSIBLE × 重大度, which would collapse "the convention is violated" and "this branch is unverified" into one axis.
 
+## Step 4.6 — Delegate the Comment Stock to `/comment-sweep`
+
+Run this when the Step 1 sweep scope is non-empty **and** the user chose to delegate in Step 0. It
+sits here because Step 3 has already settled the tier 1–2 findings it must respect, and because the
+interactive approval loop it may open belongs after the read-only delegation of Step 4.5 rather than
+interleaved with it — and before Step 5, so its result is reported rather than appended.
+
+Invoke the `comment-sweep` skill via the Skill tool with:
+
+- `scope`: the Step 1 sweep scope. The subject is the **whole comment stock of those files**, not the
+  changed lines — the changed lines already had their pass in Step 2.
+- `mode`: `confirm` or `report`, per the Step 0 choice. Never `apply`.
+- `base_ref`: the base resolved in Step 1.
+- `hold`: the files Precedence rule 3 holds back because a surviving tier 1–2 finding is likely to
+  rewrite them. This is the same list Step 5.5 excludes — resolve it once and pass it to both, or the
+  two will hold back different files and the report will contradict itself.
+- `claimed`: the `path:line` of every comment a surviving `comment-reviewer` finding already owns.
+  Without it the fold below is a rule with nothing to execute it: the sweep's auditors read the whole
+  file, so they land on the changed lines too, and the collision is structural rather than rare.
+
+The chain is **sequential and inline**, the shape every chain in this repo uses. In `report` mode the
+delegated run writes nothing; in `confirm` mode it writes only what the user approved item by item,
+including a 移設 into a destination document — the user chose the dialogue, so the sweep's own ADR
+question is not suppressed.
+
+**One comment, one reporter.** A comment on a changed line belongs to `comment-reviewer` (tier 5,
+applied in Step 5.5); the sweep's subject is the stock around it. The `claimed` payload is what makes
+this executable — the delegated run drops those comments before its approval loop opens, so the user
+is never asked about one comment twice and Step 5.5 never edits around a rewrite Step 4.6 just made.
+The one exception runs the other way: when the sweep's verdict is **移設** and `comment-reviewer`'s is
+削除 / 書換, keep the 移設. 移設 already contains the shortening, and dropping it would discard the only
+verdict that can move a rationale to the document that owns it — the whole reason the sweep exists.
+
 ## Step 5 — Synthesize Report (Japanese)
 
 Produce one Japanese report:
@@ -239,6 +300,7 @@ Produce one Japanese report:
 スコープ: <base>...HEAD（<N> files） / lens: <実際に走らせた lens のみを列挙>
 ランタイム検証: 実施（curl/o11y）/ 対象外（エンドポイント変更なし）
 テスト観点: <下記 3 状態のいずれか>
+コメント在庫: <下記 3 状態のいずれか>
 
 ### CONFIRMED（要対応）
 - [重大度] タイトル — path:行
@@ -250,6 +312,9 @@ Produce one Japanese report:
 
 ### テスト観点（/test-review 委譲結果）
 - <委譲したときのみ。/test-review の Step 4 レポートをそのまま埋め込む>
+
+### コメント在庫（/comment-sweep 委譲結果）
+- <委譲したときのみ。確認して適用: Step 3 集計＋適用した内訳・保留したファイル。報告のみ: comment-sweep が返した finding 全文をそのまま埋め込む>
 
 ### 補足
 - REFUTED: <n> 件（finder が挙げたが verifier が否定）
@@ -266,16 +331,29 @@ The **`テスト観点:` line is mandatory** and takes exactly one of three valu
 
 It exists for the same reason the runtime line does: without it, a `lens:` list containing `test-gap` reads as "the tests were audited" when only a subset of the changed symbols was looked at, and a run with no test analysis at all leaves no trace. State the weaker case plainly rather than letting the omission pass for coverage.
 
+The **`コメント在庫:` line is mandatory** on the same terms, and takes exactly one of three values:
+
+- `掃引実施（/comment-sweep <確認して適用|報告のみ> / 維持 <a>・短縮 <b>・削除 <c>・移設 <d>）`
+- `未実施（変更がコメントを持つソースに触れていない）`
+- `未実施（委譲しなかった / 委譲が動かせず、在庫は未判定）`
+
+The third value covers both declining and being unable to delegate — say which inside the same
+parenthesis. Without this line, a review that only ever looked at the added comments reads as one
+that swept the file, which is the exact confusion `comment-reviewer` and `/comment-sweep` split the
+subject to avoid.
+
 Order by **tier first, then severity within the tier**, CONFIRMED before PLAUSIBLE (Precedence rule 1).
 Mark every finding that is waiting on a higher-tier decision as `保留` and name what it waits on
-(rule 2). Always state what runtime checks ran and what was skipped — silent omission reads as "covered everything" when it was not. In the report, keep the **comment quality** findings in their own subsection — they are *processed* in Step 5.5, not posted to the PR. Likewise keep the delegated test findings in their own section with their own severity vocabulary; omit the section entirely when Step 4.5 did not run (the `テスト観点:` line already carries that fact).
+(rule 2). Always state what runtime checks ran and what was skipped — silent omission reads as "covered everything" when it was not. In the report, keep the **comment quality** findings in their own subsection — they are *processed* in Step 5.5, not posted to the PR. Likewise keep the delegated test findings in their own section with their own severity vocabulary; omit the section entirely when Step 4.5 did not run (the `テスト観点:` line already carries that fact). The same holds for the sweep section — its verdicts stay in `/comment-sweep`'s vocabulary (維持 / 短縮 / 削除 / 移設), and the section is omitted when Step 4.6 did not run.
 
 ## Step 5.5 — Apply Comment Fixes (default; skip with `--no-apply`)
 
-This is the one place the skill mutates source. Apply the verified **comment quality** findings (CONFIRMED, plus any PLAUSIBLE the user opts in) yourself — the `comment-reviewer` subagent never edits. The five code lenses are NOT auto-fixed here; they go to Step 6.
+This is the one place the skill mutates source **on its own account**. Apply the verified **comment quality** findings (CONFIRMED, plus any PLAUSIBLE the user opts in) yourself — the `comment-reviewer` subagent never edits. The five code lenses are NOT auto-fixed here; they go to Step 6.
 
-**First apply Precedence rule 3.** List the files a surviving tier 1–2 finding is likely to rewrite,
-and exclude them from this step — a comment polished onto code that is about to change is work done
+Sweep findings are not re-applied here: in `confirm` mode Step 4.6 already wrote what the user approved, and in `report` mode they were deliberately left alone. This step's subject is the tier-5 `comment-reviewer` findings only.
+
+**First apply Precedence rule 3.** Reuse the held-back list resolved after Step 3 (the one Step 4.6
+received as `hold`) and exclude those files from this step — a comment polished onto code that is about to change is work done
 twice, and the resulting diff buries the finding that matters. State the held-back files and the
 reason in the report; they are re-offered once the higher-tier finding is resolved.
 
@@ -303,6 +381,8 @@ If `--no-apply`, skip this step and instead let the comment findings flow into S
 By default, after Step 5.5, post the surviving **CONFIRMED + PLAUSIBLE** findings **from the five code lenses** (correctness / security / architecture / runtime-gap / test-gap) to the branch's PR as **inline review comments** — one per finding, anchored to its `path:line`, instead of a single wall-of-text comment. **Never post REFUTED.** Comment quality findings are NOT posted here — they were applied in Step 5.5 (unless `--no-apply` was given, in which case include them in this post). The Step 5 local report is still produced regardless; this step is additive.
 
 **Delegated test findings (Step 4.5)** join this post under one restriction: **only those whose anchor line falls inside a PR diff hunk**. All four severities qualify (修正必須 / 補完推奨 / 再考 / 追加検討) — narrowing to 修正必須 would drop the branch-gap findings the suppressed `test-gap` lens used to post, i.e. a regression in what the PR shows. Prefix them `🔎 [test-review · <severity>]` so they read apart from the code lenses, and keep the severity word as-is. Append `· crit <n>` only to the findings that actually carry a criticality — `/test-review` assigns it to Lens 4 Axis A and Lens 5 findings and explicitly withholds it from structural-compliance ones, so it is a per-finding attribute, not a per-severity one. Never invent a score to fill the slot.
+
+**Sweep findings (Step 4.6) are never posted.** The stock is not what this change introduced, so the same reasoning that keeps off-diff test findings local applies to all of it, including the parts that sit on changed lines. State the count in the local report so the omission is visible.
 
 Off-diff test findings — typically Lens 5 symbols in files this PR never touched — stay in the **local report only**. Do not fold them into the review summary `body` the way an off-diff code finding is folded: an off-diff code finding is still a defect this change causes, whereas an untested pre-existing symbol is standing coverage debt that this PR neither introduced nor is the place to argue about. Say in the local report how many were withheld and why, so the omission is visible.
 
@@ -368,6 +448,8 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - ✅ Run the runtime stage for touched endpoints; widen to all consumers on a shared-schema edit.
 - ✅ Ask about the test-viewpoint delegation in Step 0 (default: delegate) and, when it is taken, run Step 4.5 with `test-gap` suppressed.
 - ✅ State the test viewpoint's state on the `テスト観点:` line of every report — including the runs where nothing was audited.
+- ✅ Ask about the comment-stock delegation in Step 0 (default: 委譲する（確認して適用）) and, when it is taken, run Step 4.6 with `scope` / `mode` / `base_ref` / `hold`.
+- ✅ State the comment stock's state on the `コメント在庫:` line of every report — including the runs where nothing was swept.
 - ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`.
 - ✅ Apply comment quality findings in Step 5.5 after one confirmation (delete / rewrite-to-behavior), then `make fix` + `make lint`; skip with `--no-apply`.
 - ✅ By default, post the five code lenses' CONFIRMED + PLAUSIBLE findings to the branch's PR as inline review comments (Step 6); suppress with `--no-comment` or when no open PR exists.
@@ -376,6 +458,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - ❌ Auto-fix the five code lenses — those are reported, the user fixes. Only comment quality is auto-applied (Step 5.5).
 - ❌ In Step 5.5, delete a functional directive (`//go:generate` etc.) or an exported-decl doc comment (rewrite it); touch generated files / Markdown / the deny list; or auto-commit.
 - ❌ Run `test-gap` and `/test-review` on the same review — one owner per gap, never two reports of it.
+- ❌ Delegate to `/comment-sweep` in its 自動適用 mode, report one comment from both `comment-reviewer` and the sweep, or post a sweep finding to the PR.
 - ❌ Remap the delegated findings' severities onto CONFIRMED / PLAUSIBLE × 重大度, or post an off-diff test finding to the PR.
 - ❌ Order the report by severity alone, report one fact as two findings from two tiers, let a lower-tier lens raise a higher finding's severity, or silently reorder the tiers when a lower finding looks critical — present both and ask.
 - ❌ Auto-apply comment fixes to a file a surviving tier 1–2 finding is likely to rewrite.
@@ -387,13 +470,15 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - [ ] Scope confirmed via `AskUserQuestion`; base ref resolved.
 - [ ] Reviewer model selected in Step 0 and verified ≠ implementer model (warn + confirm if same).
 - [ ] Test-viewpoint delegation asked in Step 0; predicate resolved in Step 1; the resulting state recorded.
+- [ ] Comment-stock delegation asked in Step 0; sweep scope resolved in Step 1; the resulting state recorded.
 - [ ] Finders fanned out concurrently: the code lenses (`adversarial-reviewer`) + comment quality (`comment-reviewer`) — `test-gap` among them only when the delegation was declined **and** production `.go` was touched.
 - [ ] Duplicate facts folded into the higher tier; report ordered by tier then severity; lower-tier findings waiting on a higher one marked `保留`.
 - [ ] Comment auto-fix skipped for files a surviving tier 1–2 finding is likely to rewrite, and the held-back files stated.
 - [ ] Every finding independently verified; REFUTED dropped (count kept).
 - [ ] Runtime curl + o11y done for touched endpoints (shared-schema → all consumers); destructive curls confirmed.
 - [ ] Step 4.5 ran when delegated, with `scope` / `base_ref` / `reviewer_model` / `skip_verifier: false` passed and `test-gap` not spawned.
-- [ ] Single Japanese report: CONFIRMED → PLAUSIBLE, comment findings in their own subsection, runtime coverage stated, `テスト観点:` line present with one of the three states.
+- [ ] Step 4.6 ran when delegated, with `scope` / `mode` (never `apply`) / `base_ref` / `hold` / `claimed` passed and the `hold` list identical to Step 5.5's.
+- [ ] Single Japanese report: CONFIRMED → PLAUSIBLE, comment findings in their own subsection, runtime coverage stated, `テスト観点:` and `コメント在庫:` lines present with one of their three states each.
 - [ ] Unless `--no-apply`: comment findings applied in Step 5.5 (functional directives untouched, exported doc comments rewritten not deleted), then `make fix` + `make lint`; no auto-commit.
 - [ ] Unless `--no-comment` / no PR: confirmed once, then posted the code lenses' CONFIRMED + PLAUSIBLE as inline PR comments (off-diff → summary body); REFUTED excluded; `event: COMMENT`.
 - [ ] Delegated test findings posted only when their anchor is inside a diff hunk (all 4 severities); off-diff ones kept local with the withheld count stated.
