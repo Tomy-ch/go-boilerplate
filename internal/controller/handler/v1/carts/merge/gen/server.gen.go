@@ -44,26 +44,14 @@ func (w *ServerInterfaceWrapper) PostCartsMeMerge(ctx *echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Cart-Session, got %d", n))
 		}
 
-		err = runtime.BindStyledParameterWithOptions(
-			"simple",
-			"X-Cart-Session",
-			valueList[0],
-			&XCartSession,
-			runtime.BindStyledParameterOptions{
-				ParamLocation: runtime.ParamLocationHeader,
-				Explode:       false,
-				Required:      true,
-				Type:          "string",
-				Format:        "",
-			},
-		)
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Cart-Session", valueList[0], &XCartSession, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Cart-Session: %s", err))
 		}
 
 		params.XCartSession = XCartSession
 	} else {
-		return echo.NewHTTPError(http.StatusBadRequest, "Header parameter X-Cart-Session is required, but not found")
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Header parameter X-Cart-Session is required, but not found"))
 	}
 	// ------------- Optional header parameter "Idempotency-Key" -------------
 	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
@@ -73,19 +61,7 @@ func (w *ServerInterfaceWrapper) PostCartsMeMerge(ctx *echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
 		}
 
-		err = runtime.BindStyledParameterWithOptions(
-			"simple",
-			"Idempotency-Key",
-			valueList[0],
-			&IdempotencyKey,
-			runtime.BindStyledParameterOptions{
-				ParamLocation: runtime.ParamLocationHeader,
-				Explode:       false,
-				Required:      false,
-				Type:          "string",
-				Format:        "",
-			},
-		)
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
 		}
@@ -140,11 +116,13 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // RegisterHandlersWithOptions registers handlers using the supplied options,
 // including any per-operation middleware.
 func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options RegisterHandlersOptions) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.POST(options.BaseURL+"/v1/carts/me/merge", wrapper.PostCartsMeMerge, options.OperationMiddlewares["PostCartsMeMerge"]...)
+
 }
 
 type BadRequest400JSONResponse ErrorResponse
@@ -172,12 +150,13 @@ type PostCartsMeMergeResponseObject interface {
 type PostCartsMeMerge200JSONResponse CartMergeResponse
 
 func (response PostCartsMeMerge200JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -185,12 +164,13 @@ func (response PostCartsMeMerge200JSONResponse) VisitPostCartsMeMergeResponse(w 
 type PostCartsMeMerge400JSONResponse struct{ BadRequest400JSONResponse }
 
 func (response PostCartsMeMerge400JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -198,12 +178,13 @@ func (response PostCartsMeMerge400JSONResponse) VisitPostCartsMeMergeResponse(w 
 type PostCartsMeMerge401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response PostCartsMeMerge401JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -213,12 +194,13 @@ type PostCartsMeMerge405JSONResponse struct {
 }
 
 func (response PostCartsMeMerge405JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusMethodNotAllowed)
+	w.WriteHeader(405)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -226,12 +208,13 @@ func (response PostCartsMeMerge405JSONResponse) VisitPostCartsMeMergeResponse(w 
 type PostCartsMeMerge409JSONResponse struct{ Conflict409JSONResponse }
 
 func (response PostCartsMeMerge409JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusConflict)
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -241,12 +224,13 @@ type PostCartsMeMerge422JSONResponse struct {
 }
 
 func (response PostCartsMeMerge422JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnprocessableEntity)
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -256,12 +240,13 @@ type PostCartsMeMerge500JSONResponse struct {
 }
 
 func (response PostCartsMeMerge500JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -271,12 +256,13 @@ type PostCartsMeMerge503JSONResponse struct {
 }
 
 func (response PostCartsMeMerge503JSONResponse) VisitPostCartsMeMergeResponse(w http.ResponseWriter) error {
+
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -288,10 +274,8 @@ type StrictServerInterface interface {
 	PostCartsMeMerge(ctx context.Context, request PostCartsMeMergeRequestObject) (PostCartsMeMergeResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    func(ctx *echo.Context, request any) (any, error)
-	StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
-)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
+type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
@@ -308,7 +292,7 @@ func (sh *strictHandler) PostCartsMeMerge(ctx *echo.Context, params PostCartsMeM
 
 	request.Params = params
 
-	handler := func(ctx *echo.Context, request any) (any, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PostCartsMeMerge(ctx.Request().Context(), request.(PostCartsMeMergeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
