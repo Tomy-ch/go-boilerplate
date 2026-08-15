@@ -561,6 +561,26 @@ func Test_usecase_resolveOwnerCart(t *testing.T) {
 			assert.Equal(t, userID, *actual.OwnerID())
 			assert.Nil(t, issued)
 		})
+
+		t.Run("解決とロックの間にカートが消えていれば作り直す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			c := newOwnerCart(t, userID, now.Add(time.Hour))
+
+			cartRepo := mock_cart.NewMockRepository(ctrl)
+			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).
+				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
+			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+
+			actual, _, err := newSetItemUsecase(t, cartRepo, nil, nil, now).
+				resolveOwnerCart(t.Context(), userID, now)
+			require.NoError(t, err)
+
+			assert.Equal(t, userID, *actual.OwnerID())
+			assert.NotEqual(t, c.ID(), actual.ID())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -689,6 +709,29 @@ func Test_usecase_resolveGuestCart(t *testing.T) {
 			assert.NotNil(t, issued)
 			assert.NotEqual(t, expired.ID(), actual.ID())
 			assert.Empty(t, actual.Items())
+		})
+
+		t.Run("解決とロックの間にカートが消えていれば採番し直す", func(t *testing.T) {
+			t.Parallel()
+
+			// 引き継ぎ（MergeOnLogin）がゲストカートを行ごと消すため、この窓は実際に開く。
+			ctrl := gomock.NewController(t)
+			c := newGuestCart(t, now.Add(time.Hour))
+
+			cartRepo := mock_cart.NewMockRepository(ctrl)
+			cartRepo.EXPECT().FindBySessionToken(gomock.Any(), gomock.Any()).Return(c, nil)
+			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).
+				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
+			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+
+			presented := testSessionToken
+			actual, issued, err := newSetItemUsecase(t, cartRepo, nil, newIssuingTokenGen(t), now).
+				resolveGuestCart(t.Context(), &presented, now)
+			require.NoError(t, err)
+
+			require.NotNil(t, issued)
+			assert.Equal(t, issuedSessionToken, *issued)
+			assert.NotEqual(t, c.ID(), actual.ID())
 		})
 	})
 
