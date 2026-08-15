@@ -12,10 +12,10 @@
 および有効期限を保持するドメイン集約。生成・更新時に「同一 productID の重複なし」「数量が 1 以上かつ
 上限以下」「明細数が上限以下」「所有者とセッションが排他」の不変条件を検証し、違反する `Cart` は構築できない。
 
-**所有者は後から決まる。** ゲストは `sessionToken` で追跡され、`ownerID` は nil。ログイン時に `AssignOwner`
-で所有者が確定し、同時に `sessionToken` を破棄する。この破棄は不変条件であって最適化ではない — token を
-知る第三者が認証済みユーザーのカートへ到達できる経路を、状態として存在させないため。認可側では所有者
-未確定のカートが `authz.Resource` の `ownerID = nil`（所有者概念なし）として扱われる唯一の実例になる。
+**所有者は後から決まる。** ゲストは `sessionToken` で追跡され、`ownerID` は nil。ログイン時、ゲストカートの
+明細は所有者のカートへ `Merge` で取り込まれ、取り込み元は行ごと破棄される。ゲストカートを再所有する操作は
+持たない — 所有権の移行はこの一本だけで、token を知る第三者が認証済みユーザーのカートへ到達できる経路が
+状態として残らないのは、取り込み元が消えるためである。
 
 **カートは商品を保持しない。** 価格・在庫・公開状態はいずれも持たず、`productID` の参照のみを持つ。
 ドメインが商品集約を参照しないため、カートの不変条件は商品の状態変化から独立し、商品が変わっても
@@ -96,7 +96,7 @@ fields:
 
 - `ownerID` と `sessionToken` は**ちょうど一方だけが非 nil**（排他）。両方 nil は到達不能なカート、
   両方非 nil は token 経由で他人のカートへ到達できる状態であり、どちらも構築を許さない
-- 所有者の確定は**一方向**。`ownerID != nil` になった後に nil へ戻る遷移は存在しない
+- 所有者は構築時に決まり、以後変わらない。`ownerID` を後から書き換える操作は存在しない
 - `items` 内に同一 `productID` は 2 件以上現れない（自然キー）
 - `len(items) <= maxItems`
 - `expiresAt > createdAt`
@@ -143,18 +143,6 @@ fields:
   invariants:
     - マージ後も同一 productID の重複なし / 数量・明細数の上限を満たす
     - 数量合算の結果が上限を超えても不正状態を作らない（クランプで吸収する）
-
-- name: AssignOwner
-  signature: AssignOwner(userID uuid.UUID, now time.Time) error
-  behavior: |
-    ゲストカートの所有者を確定する（ログイン時）。ownerID を設定すると同時に sessionToken を nil にする。
-      - userID が IsNil → ErrInvalidUserID（422）
-      - 既に ownerID が確定済み → ErrAlreadyOwned（409）
-    所有者確定は一方向であり、二重適用は成功ではなく衝突として扱う（同時ログインで 2 回走ったことが
-    呼び出し側から見える必要があるため）。
-  invariants:
-    - ownerID と sessionToken の同時セット（片方を立て、片方を破棄する）は不可分
-    - 確定後に sessionToken 経由でこのカートへ到達する経路は存在しない
 
 - name: Touch
   signature: Touch(now time.Time, ttl time.Duration)
@@ -282,13 +270,29 @@ values:
 - name: LockByID
   signature: LockByID(ctx context.Context, id uuid.UUID) (*Cart, error)
   behavior: |
-    更新のためにカートを悲観ロック（FOR UPDATE）して取得する。マージで 2 件を同時にロックする場合は
-    id 昇順で取得し、ロック順序を全 tx で固定する（ADR-0034 (ordered-pessimistic-row-locks)）。
+    更新のためにカートを 1 件、悲観ロック（FOR UPDATE）して取得する。存在しない場合は NotFound。
+
+- name: LockByIDs
+  signature: LockByIDs(ctx context.Context, ids []uuid.UUID) (Carts, error)
+  behavior: |
+    更新のためにカート群を id 昇順にまとめてロックして取得する。順序を固定するのは、複数カートを
+    同時にロックする処理どうしのデッドロックを構造的に避けるため（ADR-0034
+    (ordered-pessimistic-row-locks)）。順序の義務を呼び出し側へ残さないよう、複数件のロックは
+    このメソッドだけで行う。不存在の id は結果に現れないため、返る件数は引数より少なくなり得る
+    （不存在の検証は呼び出し側の責務）。
 
 - name: Create
   signature: Create(ctx context.Context, c *Cart) error
   behavior: |
     カートを明細込みで新規登録する。user_id / session_token の一意制約違反は Conflict へ正規化する。
+
+- name: CreateOwnerIfAbsent
+  signature: CreateOwnerIfAbsent(ctx context.Context, c *Cart) (*Cart, error)
+  behavior: |
+    所有者のカートが無ければ空のカート（明細なし・session_token は NULL）を作り、確定したカートを返す。
+    既にある場合は衝突として扱わず既存のカートを返す点が Create との違い。並行して作成が競合した
+    場合も、勝ったほうのカートが返る。存在確認と作成を分けると、その間に他の要求が作った場合に
+    一意制約違反でトランザクションごと中断してしまうため、単一文で確保して行を返す。
 
 - name: Update
   signature: Update(ctx context.Context, c *Cart) error
@@ -296,7 +300,6 @@ values:
     カートを渡された ctx の tx 内で現在の状態へ一致させる（差分ではなく集約単位の書き込み）。
     所有者・セッショントークン・有効期限といった親行の状態と、明細の集合の両方が対象。
     明細はカート集約に属する子であり単独では存在しないため、明細単位の Repository は設けない。
-    所有者の確定（user_id のセットと session_token の NULL 化）もこの 1 本で反映される。
     明細は自然キー（productID）で置き換えられ、addedAt は保持される。集合から消えた明細は取り除かれる。
     対象が存在しない場合は NotFound。
     親行と明細の書き込み順序は実装内部の不変条件であり、呼び出し側の義務ではない。
@@ -326,8 +329,8 @@ values:
   瞬間にカートが価格を約束し始めるため、型と名前で区別する。
 - 定数（sample の placeholder。実要件が立った時点で config へ移す）: `minQuantity = 1` /
   `maxQuantityPerItem = 99` / `maxItems = 50` / `sessionTokenLength = 43`（256bit を base64url で表現した長さ）。
-- エラー写像: `ErrAlreadyOwned` → `apperror.ErrConflict`（409）、その他検証系（`ErrInvalidID` /
-  `ErrInvalidUserID` / `ErrInvalidProductID` / `ErrInvalidQuantity` / `ErrTooManyItems` /
-  `ErrInvalidSessionToken` / `ErrSubtotalOutOfRange`）→ `apperror.ErrValidation`（422）。
+- エラー写像: 検証系（`ErrInvalidID` / `ErrInvalidUserID` / `ErrInvalidProductID` /
+  `ErrInvalidQuantity` / `ErrTooManyItems` / `ErrInvalidSessionToken` / `ErrSubtotalOutOfRange`）
+  → `apperror.ErrValidation`（422）。集約は衝突を表すエラーを持たない。
 
 [ADR-0035 (uuidv7-identifiers)]: ../../adr/0035-uuidv7-identifiers.md

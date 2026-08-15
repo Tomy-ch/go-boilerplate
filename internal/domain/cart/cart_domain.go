@@ -33,9 +33,10 @@ type Cart struct {
 	updatedAt    time.Time
 }
 
-// Attributes は、カートの再構築に必要な属性一式です。有効期限と監査時刻は同じ time.Time で、
-// 位置引数のままだと取り違えても検証の大半を通過してしまうため構造体で受けます。
-// DB 行からの再構築はこの層で最も晒された呼び出し元です。
+// Attributes は、カートの再構築に必要な属性一式です。有効期限と監査時刻は同じ time.Time のため、
+// 取り違えを型で防ぐ目的で構造体で受けます
+// （docs/rules.md の Function Signature Rules、internal/domain/README.md の
+// Bundle attributes into a struct when positional arguments can be swapped）。
 type Attributes struct {
 	// OwnerID は、確定した所有者です。ゲストの間は nil です。
 	OwnerID *uuid.UUID
@@ -51,8 +52,8 @@ type Attributes struct {
 	UpdatedAt time.Time
 }
 
-// SetItemAttributes は、明細の数量設定に必要な属性一式です。ItemID と ProductID は同じ uuid.UUID で、
-// 位置引数のままだと取り違えてもコンパイルも検証も通ってしまうため構造体で受けます。
+// SetItemAttributes は、明細の数量設定に必要な属性一式です。ItemID と ProductID は同じ uuid.UUID の
+// ため、取り違えを型で防ぐ目的で構造体で受けます（docs/rules.md の Function Signature Rules）。
 type SetItemAttributes struct {
 	// ItemID は、明細を新たに追加するときに採番済みの ID です。既存商品の置換では使いません。
 	ItemID uuid.UUID
@@ -88,7 +89,7 @@ func NewForOwner(id uuid.UUID, attrs Attributes) (*Cart, error) {
 	return newCart(id, attrs)
 }
 
-// Reconstruct は、永続化済みのカートを再構築します（Repository の読み出しで使用）。
+// Reconstruct は、永続化済みのカートを再構築します。
 // NewForGuest / NewForOwner と同じ不変条件を課します。保存済みデータのための緩和経路はありません。
 // 加えて、監査時刻が設定されている場合は expiresAt が createdAt より後であることを要求します。
 func Reconstruct(id uuid.UUID, attrs Attributes) (*Cart, error) {
@@ -133,8 +134,7 @@ func newCart(id uuid.UUID, attrs Attributes) (*Cart, error) {
 }
 
 // validateOwnership は、所有者とセッショントークンがちょうど一方だけ設定されていることを検証します。
-// 両方 nil は到達不能なカートを、両方非 nil はトークン経由で他人のカートへ到達できる状態を意味するため、
-// どちらも構築を許しません。
+// どちらの側も構築を許しません（排他の理由: docs/spec/cart/domain.md の Cross-field Invariants）。
 func validateOwnership(ownerID *uuid.UUID, token *SessionToken) error {
 	if (ownerID == nil) == (token == nil) {
 		return ErrInvalidOwner
@@ -207,8 +207,8 @@ func (c *Cart) UpdatedAt() time.Time { return c.updatedAt }
 
 // SetItem は、指定商品の数量を設定します。
 // 同一商品の明細が既にあれば数量を置換し（addedAt は保持）、無ければ ItemID で追加します。
-// 数量が範囲外なら ErrInvalidQuantity を、追加により明細数が上限を超えるなら ErrTooManyItems を返します
-// （いずれも 422）。数量 0 は削除ではなくエラーです。削除は RemoveItem が担います。
+// 数量が範囲外なら ErrInvalidQuantity を、追加により明細数が上限を超えるなら ErrTooManyItems を返します。
+// 数量 0 は削除ではなくエラーです。削除は RemoveItem が担います。
 func (c *Cart) SetItem(attrs SetItemAttributes, now time.Time) error {
 	if attrs.ProductID.IsNil() {
 		return xerrors.Wrap(ErrInvalidProductID, "productID is required")
@@ -256,7 +256,7 @@ func (c *Cart) Clear() { c.items = nil }
 // 上限を超える分は追加が新しいものから切り捨てます（先に入っていたものを優先して残す）。
 // 失われた分は戻り値で報告されます。
 //
-// error を返しません。ログインは認証の成否で決まるべきで、カートの都合で失敗させないためです。
+// error を返しません（理由: docs/spec/cart/domain.md の Behavior Methods の Merge）。
 // 取り込み元は変更しません。
 func (c *Cart) Merge(other *Cart, now time.Time) MergeResult {
 	if other == nil {
@@ -295,26 +295,8 @@ func (c *Cart) Merge(other *Cart, now time.Time) MergeResult {
 	return result
 }
 
-// AssignOwner は、ゲストカートの所有者を確定します。
-// ownerID の設定と sessionToken の破棄は不可分に行われます。トークンを知る第三者が認証済みユーザーの
-// カートへ到達できる経路を、状態として残さないためです。
-// userID が未設定なら ErrInvalidUserID（422）を、既に所有者が確定済みなら ErrAlreadyOwned（409）を返します。
-func (c *Cart) AssignOwner(userID uuid.UUID, now time.Time) error {
-	if userID.IsNil() {
-		return xerrors.Wrap(ErrInvalidUserID, "userID is required")
-	}
-	if c.ownerID != nil {
-		return ErrAlreadyOwned
-	}
-
-	c.ownerID = &userID
-	c.sessionToken = nil
-	c.updatedAt = now
-	return nil
-}
-
 // Touch は、有効期限を now から ttl だけ先へ延長します。
-// 参照・更新のいずれの操作でも呼ばれ、使われている間のカートが掃除の対象にならないようにします。
+// 使われている間のカートが掃除の対象にならないようにするためです。
 func (c *Cart) Touch(now time.Time, ttl time.Duration) {
 	c.expiresAt = now.Add(ttl)
 	c.updatedAt = now
@@ -323,8 +305,8 @@ func (c *Cart) Touch(now time.Time, ttl time.Duration) {
 // MarkSeen は、利用者へ提示した価格を明細へ記録します。
 // prices に現れない商品の明細は変更しません（非公開化などで価格を引けなかった場合）。
 //
-// ここに記録される値は表示の履歴であって約束ではありません。値上がりの通知は気づかせるためにあり、
-// 旧価格での購入を認めるものではありません。
+// ここに記録される値は表示の履歴であって約束ではありません
+// （詳細: docs/spec/cart/domain.md の Behavior Methods の MarkSeen）。
 func (c *Cart) MarkSeen(prices map[uuid.UUID]money.Price) {
 	for idx := range c.items {
 		price, ok := prices[c.items[idx].productID]

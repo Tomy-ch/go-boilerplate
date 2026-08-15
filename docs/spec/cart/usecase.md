@@ -36,7 +36,7 @@ methods:
   - name: ClearCart        # DELETE /v1/carts/me
     signature: ClearCart(ctx context.Context, subject Subject) error
   - name: MergeOnLogin     # ログイン直後。ゲストカートをユーザーへ引き継ぐ
-    signature: MergeOnLogin(ctx context.Context, params MergeOnLoginParams) (MergeCartView, error)
+    signature: MergeOnLogin(ctx context.Context, params MergeOnLoginParams) (MergeCartResult, error)
   - name: PurgeExpired     # 期限切れ掃除ジョブの実行本体
     signature: PurgeExpired(ctx context.Context, limit int32) (int, error)
 ```
@@ -102,7 +102,7 @@ output:
     - name: AvailableQuantity
       type: "*int"         # insufficientStock のとき、今買える上限
 
-  struct: MergeCartView
+  struct: MergeCartResult
   fields:
     - name: Clamped
       type: "[]uuid.UUID"  # 数量が上限へ丸められた productID
@@ -129,7 +129,7 @@ panic する（黙って既定値へ倒すと、ドメインに値が増えた�
 
 ```yaml
 - name: tx.Manager                       # 取得も書き込みを伴うため read 系でも要求する
-- name: cart.Repository                  # 解決 / ロック / 明細保存 / 所有者確定 / 期限切れ削除
+- name: cart.Repository                  # 解決 / ロック / 明細保存 / 引き継ぎ先の確保 / 期限切れ削除
 - name: product.Repository               # FindByIDs（再評価の現在値取得。読み取りのみでロックしない）
 - name: clock.Clock                      # now（有効期限の算出・addedAt）
 - name: token.Generator                  # ゲストセッショントークンの採番（新規 boundary。暗号論的乱数）
@@ -185,6 +185,8 @@ steps:
   - subject からカートを解決する。無ければ作成する
       （UserID あり → NewForOwner / ゲスト → token.Generator で採番して NewForGuest）
   - 既存カートは LockByID で悲観ロックする
+      （解決とロックの間に消えていた場合は、引けなかった場合と同じく作成へ倒す。
+        MergeOnLogin がゲストカートを行ごと消すため、この窓は実際に開く）
   - product_repository.FindPublishedByID で商品を引く
       （非公開・不存在の商品はカートへ入れさせない。再評価と違い、投入は要求そのものが不正なため 422。
         両者を区別しないのは、未ログインの呼び出し元へ非公開商品の存在を漏らさないため）
@@ -285,24 +287,38 @@ errors:
 ```yaml
 tx_required: true
 steps:
-  - SessionToken からゲストカートを取得する。無ければ空の MergeCartView を返して終了
-  - UserID からユーザーカートを取得する
-  - ユーザーカートが無い場合（高速路）:
-      ゲストカートに AssignOwner して Update する。所有者の確定は明細の内容を変えない
-  - ユーザーカートがある場合:
-      2 件を id 昇順で LockByID し（ロック順序の固定）、user.Merge(guest) → Update → guest を Delete
-  - Merge が報告した clamped / dropped を MergeCartView として返す
+  - SessionToken からゲストカートを引く。無い、または期限切れなら空の MergeCartResult を返して終了
+  - UserID の引き継ぎ先を CreateOwnerIfAbsent で確保し、返ったカートから id を得る
+  - 2 件を LockByIDs でまとめてロックする（★所有権を評価する前にロックする）
+  - ロック後にどちらかが消えていれば、何もせず空の MergeCartResult を返して終了
+  - owner.Merge(guest) → Touch → Update → guest を Delete（Update が成功したあとに消す）
+  - Merge が報告した clamped / dropped を MergeCartResult として返す
 calls:
-  - cart_repository.FindBySessionToken / FindByOwnerID / LockByID / Update / Delete
+  - cart_repository.FindBySessionToken / CreateOwnerIfAbsent / LockByIDs / Update / Delete
   - clock.Now
 errors:
-  - ErrAlreadyOwned -> 409（同一セッションのマージが並行して 2 回走った場合）
+  - なし（引き継ぐものが無くても成功）
 ```
 
 **ログインをカートの都合で失敗させない。** `Merge` 自体は error を返さず、数量は上限へクランプ、明細数超過は
-古い順に残して切り捨てる。失われた分は握り潰さず `MergeCartView` で呼び出し側へ渡し、利用者に伝える。
-唯一の 409 は所有者確定の二重適用で、これは失われるものが無い代わりに**起きたことを呼び出し側から
-見えなくしてはならない**ため衝突として返す。
+古い順に残して切り捨てる。失われた分は握り潰さず `MergeCartResult` で呼び出し側へ渡し、利用者に伝える。
+
+**引き継ぎ先を「無ければ作る」で確保する。** 存在確認と作成を分けると、その間に同じユーザーのカートが
+並行して作られた場合に一意制約違反でトランザクションごと中断し、同じトランザクションの中では続けられなく
+なる。一意インデックスが単一文の中で裁定する形にすれば競合が構造的に起きず、やり直しの機構をどこにも
+置かずに済む。作成の有無は返さず、直後に所有者で引き直して勝ったほうの行を得る。
+
+**所有権を評価する前にロックする。** 守るべき条件は「この 2 件が引き継ぎの対象である」ことなので、
+その判定より先にロックを取る（ADR-0034 (ordered-pessimistic-row-locks)）。複数件のロックは `LockByIDs`
+だけで行い、順序の義務を呼び出し側へ残さない。
+
+**引き継ぎ元は行ごと消える。** ゲストカートを再所有するのではなく、明細を取り込んでから破棄する。
+元のセッショントークンでそのカートへ到達する経路は、状態として残らない。
+
+**引き継ぎ済みの再送は成功になる。** 引き継ぎ元は消えているので `FindBySessionToken` が引けず、空の
+`MergeCartResult` が返る。状態としても報告としても冪等だが、`clamped` / `dropped` は再送では失われるため、
+それを受け取りたい呼び出し側のために `Idempotency-Key` を受け付ける。カートの 5 operation でこれを採るのは
+ここだけで、他は明細の自然キーが冪等性を供給する。
 
 ### PurgeExpired
 

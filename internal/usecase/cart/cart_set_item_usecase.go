@@ -19,9 +19,7 @@ const maxSetItemAttempts = 2
 // この層の中だけで使い、外へは apperror.ErrConflict として出ます。
 var errCartCreationRace = xerrors.New("cart creation lost a race")
 
-// SetItem は、やり直しをトランザクションの外に置いています。一意制約違反はトランザクション自体を
-// 中断させるため、同じトランザクションの中では解決からやり直せません。やり直しは 1 回だけで、
-// それでも作れなければ衝突として返します。
+// SetItem は、作成の衝突をトランザクションごとやり直します（docs/spec/cart/usecase.md の SetItem）。
 //
 // この本体に外部副作用を足してはなりません。やり直しで二重に実行されます
 // （ADR-0033 (transaction-retry-idempotent-callers)）。
@@ -107,6 +105,9 @@ func (u *usecase) resolveOrCreateCart(
 // resolveOwnerCart は、所有者が確定したカートを解決します。
 // ユーザー 1 人につきカートは高々 1 件のため、期限切れでも作り直せません
 // （docs/spec/cart/usecase.md の SetItem）。
+//
+// 解決とロックの間にカートが消えていた場合は、引けなかった場合と同じく作り直します。
+// この op は 404 を宣言していません。
 func (u *usecase) resolveOwnerCart(
 	ctx context.Context, userID uuid.UUID, now time.Time,
 ) (*cart.Cart, *string, error) {
@@ -120,7 +121,10 @@ func (u *usecase) resolveOwnerCart(
 
 	c, lerr := u.cartRepo.LockByID(ctx, found.ID())
 	if lerr != nil {
-		return nil, nil, lerr
+		if !xerrors.Is(lerr, apperror.ErrNotFound) {
+			return nil, nil, lerr
+		}
+		return u.createOwnerCart(ctx, userID, now)
 	}
 	if c.IsExpired(now) {
 		c.Clear()
@@ -131,6 +135,9 @@ func (u *usecase) resolveOwnerCart(
 // resolveGuestCart は、ゲストのカートを解決します。
 // 提示されたトークンで引けなかった場合と、引けたが期限切れだった場合は、どちらも採番し直します
 // （docs/spec/cart/usecase.md の SetItem）。
+//
+// 解決とロックの間にカートが消えていた場合も同じく採番し直します。引き継ぎ（MergeOnLogin）が
+// ゲストカートを行ごと消すため、この窓は実際に開きます。この op は 404 を宣言していません。
 func (u *usecase) resolveGuestCart(
 	ctx context.Context, presented *string, now time.Time,
 ) (*cart.Cart, *string, error) {
@@ -153,7 +160,10 @@ func (u *usecase) resolveGuestCart(
 
 	c, lerr := u.cartRepo.LockByID(ctx, found.ID())
 	if lerr != nil {
-		return nil, nil, lerr
+		if !xerrors.Is(lerr, apperror.ErrNotFound) {
+			return nil, nil, lerr
+		}
+		return u.createGuestCart(ctx, now)
 	}
 	if c.IsExpired(now) {
 		return u.createGuestCart(ctx, now)

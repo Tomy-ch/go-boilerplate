@@ -93,6 +93,8 @@ tags:
     description: 自分のカート（任意認証サンプル・ゲストと認証済みの双方が主体になれる / 明細ごとの再評価）。
   - name: v1/carts/items
     description: カート明細の設定と削除（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
+  - name: v1/carts/merge
+    description: ログイン時のカート引き継ぎ（認証必須・所有権の遷移サンプル・Idempotency-Key を採る）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -1640,6 +1642,58 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/carts/me/merge:
+    post:
+      operationId: PostCartsMeMerge
+      tags:
+        - v1/carts/merge
+      summary: ゲストカートの引き継ぎ（所有者の確定）
+      description: |
+        ログイン直後に、ゲストカートを認証済みユーザーへ引き継ぎます。
+        引き継ぎ元はヘッダの X-Cart-Session、引き継ぎ先は Bearer トークンの主体で、要求本文を持ちません。
+        **この操作だけが認証必須です**（所有者を確定させる操作のため、匿名では成り立ちません）。
+        **引き継ぎは失敗しません**。同一商品の数量合算が上限を超えたら上限へ丸め、明細数が上限を超えたら
+        先に入っていたものを優先して残し、後から来たものを切り捨てます。ログインは認証の成否で決まるべきで、
+        カートの都合で失敗させません。**失われた分は clamped / dropped として報告します**。
+        ユーザー側にカートが無い場合は所有者を付け替えるだけで、明細の内容は変わりません。
+        引き継ぎ元のゲストカートが引けない場合（既に引き継ぎ済み、期限切れ、未知のトークン）は、
+        clamped と dropped がいずれも空の成功として返します。
+        **引き継ぎ後、元のセッショントークンでそのカートへ到達する経路は状態として残りません**
+        （所有者の確定とトークンの破棄は不可分に行われ、合流時はゲストカートの行ごと消えます）。
+        応答に引き継ぎ後のカートは含めません。カートの中身は取得（GET /v1/carts/me）でいつでも引けますが、
+        clamped / dropped はこの応答でしか得られないためです。
+        **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返し、報告が失われません。
+        同一キーを内容の異なる要求で使い回した場合は 422 で拒否します（冪等性の一般的な扱いであり、
+        引き継ぎそのものの失敗ではありません）。
+        カートの 5 つの操作でこれを採るのはここだけで、他は明細の自然キーが冪等性を供給します。
+        本 op 自体は DB の SELECT / UPDATE / DELETE のみで外部依存を持ちませんが、認証段
+        （外部 IdP の JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CartSessionRequiredParam'
+        - $ref: '#/components/parameters/IdempotencyKeyParam'
+      responses:
+        '200':
+          description: 引き継ぎに成功しました（引き継ぐカートが無かった場合を含みます）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMergeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
 components:
   parameters:
     PageParam:
@@ -2038,6 +2092,24 @@ components:
         pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
         maxLength: 36
         example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+    CartSessionRequiredParam:
+      name: X-Cart-Session
+      in: header
+      description: |
+        引き継ぎ元のゲストカートのセッショントークン。
+        ログイン前に持っていた値をそのまま渡す。
+        値は 256 ビットを base64url（パディング無し）で表現した 43 文字。
+
+        必須である点が CartSessionParam との違い。引き継ぎ元を指定しない引き継ぎは要求として成り立たず、
+        省略を許すと「引き継ぐものが無い」と「引き継ぎ元を書き忘れた」を区別できなくなる。
+        OpenAPI 3.0 は $ref の兄弟キーを無視するため、共有定義に required を上書きすることはできない。
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{43}$
+        minLength: 43
+        maxLength: 43
+        example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGU
   securitySchemes:
     BearerAuth:
       type: http
@@ -4045,6 +4117,35 @@ components:
           maximum: 99
           description: 設定する数量。現在の数量に加算するのではなく、この値で置き換えます。 範囲外の値はドメインに届く前に 400 で拒否されます。
           example: 2
+    CartMergeResponse:
+      description: |
+        ログイン時のカート引き継ぎの結果。**引き継ぎで失われた分だけ**を報告します。
+        引き継ぎ後のカートの中身は含めません。取得（GET /v1/carts/me）でいつでも引ける一方、
+        ここで失われた分はこの応答でしか得られないためです。
+      type: object
+      required:
+        - clamped
+        - dropped
+      properties:
+        clamped:
+          type: array
+          description: |
+            数量を合算した結果が 1 明細あたりの上限を超え、上限へ丸めた商品の ID。
+            引き継ぎは失敗させないため、超過分は捨てて成功として返します。
+          items:
+            type: string
+            format: uuid
+          example:
+            - b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        dropped:
+          type: array
+          description: |
+            明細数が上限を超えたため取り込まれなかった商品の ID。
+            先にカートへ入っていたものを優先して残し、後から来たものを切り捨てます。
+          items:
+            type: string
+            format: uuid
+          example: []
   responses:
     MethodNotAllowed405:
       description: 許可されていないリクエスト方法です。

@@ -1,0 +1,17 @@
+name: X-Cart-Session
+in: header
+description: |
+  引き継ぎ元のゲストカートのセッショントークン。
+  ログイン前に持っていた値をそのまま渡す。
+  値は 256 ビットを base64url（パディング無し）で表現した 43 文字。
+
+  必須である点が CartSessionParam との違い。引き継ぎ元を指定しない引き継ぎは要求として成り立たず、
+  省略を許すと「引き継ぐものが無い」と「引き継ぎ元を書き忘れた」を区別できなくなる。
+  OpenAPI 3.0 は $ref の兄弟キーを無視するため、共有定義に required を上書きすることはできない。
+required: true
+schema:
+  type: string
+  pattern: '^[A-Za-z0-9_-]{43}$'
+  minLength: 43
+  maxLength: 43
+  example: "b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGU"

@@ -79,6 +79,50 @@ func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*cart.Cart, er
 	return r.reconstruct(ctx, db, row.Carts)
 }
 
+// LockByIDs は、カート行を ID 昇順にまとめて悲観ロック（FOR UPDATE）し、明細込みで再構築して返します。
+// 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
+func (r *repository) LockByIDs(ctx context.Context, ids []uuid.UUID) (cart.Carts, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	rows, err := db.LockCartsByIDs(ctx, ids)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	carts := make(cart.Carts, 0, len(rows))
+	for _, row := range rows {
+		entity, rerr := r.reconstruct(ctx, db, row.Carts)
+		if rerr != nil {
+			return nil, rerr
+		}
+		carts = append(carts, entity)
+	}
+	return carts, nil
+}
+
+// CreateOwnerIfAbsent は、所有者のカートが無ければ空のカートを 1 件登録し、確定した行を返します。
+// 一意インデックスが単一文の中で裁定するため、既にある場合も一意制約違反を上げず、既存の行が返ります。
+// 明細は書きません（作るのは空のカートだけです）。
+func (r *repository) CreateOwnerIfAbsent(ctx context.Context, c *cart.Cart) (*cart.Cart, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	row, err := db.CreateOwnerCartIfAbsent(ctx, &gen.CreateOwnerCartIfAbsentParams{
+		ID:        c.ID(),
+		UserID:    c.OwnerID(),
+		ExpiresAt: c.ExpiresAt(),
+	})
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+	return r.reconstruct(ctx, db, row.Carts)
+}
+
 // Create は、カートを明細込みで新規登録します。
 // user_id / session_token の一意制約違反は Conflict へ正規化されます。
 func (r *repository) Create(ctx context.Context, c *cart.Cart) error {
@@ -117,8 +161,9 @@ func (r *repository) Create(ctx context.Context, c *cart.Cart) error {
 
 // Update は、カートを明細込みで現在の状態へ一致させます。存在しない場合は NotFound を返します。
 //
-// 複数の文に分かれるため、呼び出し元は ctx にトランザクションを載せてください。本メソッドは
-// 自らトランザクションを開きません。境界が無いまま呼ぶと、親行だけが確定した状態が残りえます。
+// 複数の文に分かれるため、呼び出し元は ctx にトランザクションを載せてください
+// （internal/infrastructure/rdb/README.md の Centralized Transaction Boundary Management）。
+// 境界が無いまま呼ぶと、親行だけが確定した状態が残りえます。
 func (r *repository) Update(ctx context.Context, c *cart.Cart) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -196,7 +241,6 @@ func (r *repository) DeleteExpired(ctx context.Context, now time.Time, limit int
 }
 
 // reconstruct は、カート行と明細行から集約を再構築します。
-// 明細は親行とは別のクエリで読み出し、Go 側で結合します。
 func (r *repository) reconstruct(ctx context.Context, db *gen.Queries, row gen.Carts) (*cart.Cart, error) {
 	itemRows, err := db.ListCartItemsByCartID(ctx, row.ID)
 	if err != nil {

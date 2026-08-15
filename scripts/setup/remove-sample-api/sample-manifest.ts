@@ -355,6 +355,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/controller/handler/v1/carts",
       "internal/integration/v1_carts_me_test.go",
       "internal/integration/v1_carts_items_test.go",
+      "internal/integration/v1_carts_merge_test.go",
 
       // spec
       "docs/spec/cart",
