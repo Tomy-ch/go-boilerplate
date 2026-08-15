@@ -586,7 +586,7 @@ func Test_usecase_mergeInto(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("取り込んでからゲストカートを消し有効期限を延ばす", func(t *testing.T) {
+		t.Run("ゲストカートを消してから取り込み有効期限を延ばす", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -617,16 +617,16 @@ func Test_usecase_mergeInto(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("保存に失敗した場合はゲストカートを消さない", func(t *testing.T) {
+		t.Run("破棄に失敗した場合は保存しない", func(t *testing.T) {
 			t.Parallel()
 
-			expected := xerrors.New("update failed")
+			expected := xerrors.New("delete failed")
 			guest := newGuestCart(t, now.Add(time.Hour))
 			owner := newOwnerCart(t, userID, now.Add(time.Hour))
 
-			// Delete の期待を置かないため、消せば gomock が失敗させる。
+			// Update の期待を置かないため、保存すれば gomock が失敗させる。
 			cartRepo := mock_cart.NewMockRepository(gomock.NewController(t))
-			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expected)
+			cartRepo.EXPECT().Delete(gomock.Any(), guest.ID()).Return(expected)
 
 			u := newMergeUsecase(t, newPassthroughTx(t), cartRepo, now)
 
@@ -635,16 +635,16 @@ func Test_usecase_mergeInto(t *testing.T) {
 			require.ErrorIs(t, err, expected)
 		})
 
-		t.Run("破棄に失敗した場合はそのまま返す", func(t *testing.T) {
+		t.Run("保存に失敗した場合はそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
-			expected := xerrors.New("delete failed")
+			expected := xerrors.New("update failed")
 			guest := newGuestCart(t, now.Add(time.Hour))
 			owner := newOwnerCart(t, userID, now.Add(time.Hour))
 
 			cartRepo := mock_cart.NewMockRepository(gomock.NewController(t))
-			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-			cartRepo.EXPECT().Delete(gomock.Any(), guest.ID()).Return(expected)
+			cartRepo.EXPECT().Delete(gomock.Any(), guest.ID()).Return(nil)
+			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expected)
 
 			u := newMergeUsecase(t, newPassthroughTx(t), cartRepo, now)
 

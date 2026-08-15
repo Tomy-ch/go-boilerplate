@@ -635,6 +635,36 @@ func Test_repository_Update(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("他カートから移ってきた明細は元の行を消してあれば保存できる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				productID := insertProduct(ctx, t, driver.New(ctx, testDB), "ca000000-0000-4000-8000-000000000001")
+				ownerID := mustParse(t, seedUserID)
+				itemID := mustNewUUID(t)
+
+				source := newGuestCart(t, "mvok")
+				require.NoError(t, source.SetItem(domaincart.SetItemAttributes{
+					ItemID: itemID, ProductID: productID, Quantity: 2,
+				}, baseTime))
+				require.NoError(t, repo.Create(ctx, source))
+
+				target := newOwnerCart(t, ownerID)
+				require.NoError(t, repo.Create(ctx, target))
+				require.NoError(t, target.SetItem(domaincart.SetItemAttributes{
+					ItemID: itemID, ProductID: productID, Quantity: 2,
+				}, baseTime))
+
+				require.NoError(t, repo.Delete(ctx, source.ID()))
+				require.NoError(t, repo.Update(ctx, target))
+
+				got, err := repo.FindByOwnerID(ctx, ownerID)
+				require.NoError(t, err)
+				require.Len(t, got.Items(), 1)
+				assert.Equal(t, itemID, got.Items()[0].ID())
+			})
+		})
+
 		t.Run("明細の置換で追加日時を保持する", func(t *testing.T) {
 			t.Parallel()
 
@@ -727,6 +757,32 @@ func Test_repository_Update(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				c := newGuestCart(t, "nf2")
 				require.ErrorIs(t, repo.Update(ctx, c), apperror.ErrNotFound)
+			})
+		})
+
+		t.Run("移ってきた明細の元の行が残っていればConflictを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				productID := insertProduct(ctx, t, driver.New(ctx, testDB), "ca000000-0000-4000-8000-000000000002")
+				ownerID := mustParse(t, seedUserID)
+				itemID := mustNewUUID(t)
+
+				source := newGuestCart(t, "mvng")
+				require.NoError(t, source.SetItem(domaincart.SetItemAttributes{
+					ItemID: itemID, ProductID: productID, Quantity: 2,
+				}, baseTime))
+				require.NoError(t, repo.Create(ctx, source))
+
+				target := newOwnerCart(t, ownerID)
+				require.NoError(t, repo.Create(ctx, target))
+				require.NoError(t, target.SetItem(domaincart.SetItemAttributes{
+					ItemID: itemID, ProductID: productID, Quantity: 2,
+				}, baseTime))
+
+				// 明細の一意制約は (cart_id, product_id) のため、移動先では衝突せず INSERT 経路に入り、
+				// 主キーが元の行と衝突する。引き継ぎで先に元を消すのはこのため。
+				require.ErrorIs(t, repo.Update(ctx, target), apperror.ErrConflict)
 			})
 		})
 	})

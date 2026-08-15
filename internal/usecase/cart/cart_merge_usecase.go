@@ -99,7 +99,10 @@ func (u *usecase) ensureOwnerCartID(
 }
 
 // mergeInto は、ゲストカートの明細を引き継ぎ先へ取り込み、ゲストカートを破棄します。
-// 破棄は Update の成功後に行います。先に消すと、保存に失敗した場合にゲストカートの明細を失います。
+//
+// 破棄は保存より先に行います。取り込んだ明細は ID を保ったまま引き継ぎ先へ移るため、引き継ぎ元の
+// 行が残ったまま保存すると明細の主キーが衝突します。順序を入れ替えてはなりません。
+// 2 つの書き込みは呼び出し元のトランザクションの中にあり、保存に失敗すれば破棄ごと巻き戻ります。
 //
 // 引き継ぎ元は行ごと消えるため、元のセッショントークンでそのカートへ到達する経路は状態として
 // 残りません。
@@ -109,10 +112,10 @@ func (u *usecase) mergeInto(
 	result := owner.Merge(guest, now)
 	owner.Touch(now, cartTTL)
 
-	if err := u.cartRepo.Update(ctx, owner); err != nil {
+	if err := u.cartRepo.Delete(ctx, guest.ID()); err != nil {
 		return MergeCartResult{}, err
 	}
-	if err := u.cartRepo.Delete(ctx, guest.ID()); err != nil {
+	if err := u.cartRepo.Update(ctx, owner); err != nil {
 		return MergeCartResult{}, err
 	}
 
