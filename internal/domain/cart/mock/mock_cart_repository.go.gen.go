@@ -57,6 +57,21 @@ func (mr *MockRepositoryMockRecorder) Create(ctx, c any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, c)
 }
 
+// CreateOwnerIfAbsent mocks base method.
+func (m *MockRepository) CreateOwnerIfAbsent(ctx context.Context, c *cart.Cart) (*cart.Cart, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOwnerIfAbsent", ctx, c)
+	ret0, _ := ret[0].(*cart.Cart)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateOwnerIfAbsent indicates an expected call of CreateOwnerIfAbsent.
+func (mr *MockRepositoryMockRecorder) CreateOwnerIfAbsent(ctx, c any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOwnerIfAbsent", reflect.TypeOf((*MockRepository)(nil).CreateOwnerIfAbsent), ctx, c)
+}
+
 // Delete mocks base method.
 func (m *MockRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -129,6 +144,21 @@ func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*cart.Cart
 func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
+}
+
+// LockByIDs mocks base method.
+func (m *MockRepository) LockByIDs(ctx context.Context, ids []uuid.UUID) (cart.Carts, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockByIDs", ctx, ids)
+	ret0, _ := ret[0].(cart.Carts)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LockByIDs indicates an expected call of LockByIDs.
+func (mr *MockRepositoryMockRecorder) LockByIDs(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByIDs", reflect.TypeOf((*MockRepository)(nil).LockByIDs), ctx, ids)
 }
 
 // Update mocks base method.

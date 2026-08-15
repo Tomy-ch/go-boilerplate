@@ -27,10 +27,4 @@ var (
 	ErrInvalidExpiresAt = xerrors.Wrap(errInvalid, "expiresAt failed")
 	// ErrSubtotalOutOfRange は、購入可能な明細の合計が決済スケールの整数幅に収まらない場合のエラーです（422）。
 	ErrSubtotalOutOfRange = xerrors.Wrap(errInvalid, "subtotal exceeds the settlement range")
-
-	// 以下は状態の衝突であってリクエストの不正ではないため、apperror.ErrConflict を基底に持ちます
-	// （HTTP ステータスへの写像は internal/apperror/README.md の Mapping Table）。
-
-	// ErrAlreadyOwned は、所有者が確定済みのカートに再度所有者を設定しようとした場合のエラーです（409）。
-	ErrAlreadyOwned = xerrors.Wrap(apperror.ErrConflict, "cart is already owned")
 )

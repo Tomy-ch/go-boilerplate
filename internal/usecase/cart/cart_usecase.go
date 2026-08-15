@@ -77,6 +77,23 @@ type RemoveItemParams struct {
 	ProductID uuid.UUID
 }
 
+// MergeOnLoginParams は、ログイン時のカート引き継ぎの入力 DTO です。
+type MergeOnLoginParams struct {
+	// UserID は、引き継ぎ先の認証済みユーザーです。
+	UserID uuid.UUID
+	// SessionToken は、引き継ぎ元のゲストカートのトークンです。
+	SessionToken string
+}
+
+// MergeCartResult は、引き継ぎで失われた分の出力 DTO です。
+// 引き継ぎ後のカートの中身は持ちません（取得でいつでも引けるため）。
+type MergeCartResult struct {
+	// Clamped は、合算の結果が明細ごとの上限を超え、上限へ丸めた商品です。
+	Clamped []uuid.UUID
+	// Dropped は、明細数の上限を超えたため取り込まれなかった商品です。
+	Dropped []uuid.UUID
+}
+
 // CartItemView は、明細 1 件の出力 DTO です。
 type CartItemView struct {
 	// ProductID は、対象の商品です。カート内で明細を一意に指す自然キーでもあります。
@@ -127,6 +144,12 @@ type Usecase interface {
 	// カートの行は残り、有効期限は延長されます（空のカートは正当な状態です）。
 	// 既に空の場合も、カートを持たない主体が呼んだ場合も成功します。カートは作りません。
 	ClearCart(ctx context.Context, subject Subject) error
+
+	// MergeOnLogin は、ゲストカートを認証済みユーザーへ引き継ぎます。
+	// 引き継ぎ元を引けない場合（引き継ぎ済み・期限切れ・未知のトークン）も成功し、失われた分は空になります。
+	// 形式が不正なトークンはエラーを返しますが、それ以外の理由で引き継ぎが失敗することはありません。
+	// 数量は上限へ丸め、明細数の超過は古い順に残して切り捨て、失われた分を戻り値で報告します。
+	MergeOnLogin(ctx context.Context, params MergeOnLoginParams) (MergeCartResult, error)
 }
 
 type usecase struct {

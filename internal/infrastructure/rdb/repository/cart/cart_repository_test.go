@@ -60,7 +60,8 @@ func newTestToken(t *testing.T, suffix string) domaincart.SessionToken {
 func insertProduct(ctx context.Context, t *testing.T, db driver.DBTX, seed string) uuid.UUID {
 	t.Helper()
 	productID := mustParse(t, seed)
-	_, err := db.Exec(ctx,
+	_, err := db.Exec(
+		ctx,
 		"INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
 		productID, "cart-repo-test-"+seed, nil, 1000, 20, nil, seedStatusInStock, seedCategory,
@@ -72,7 +73,24 @@ func insertProduct(ctx context.Context, t *testing.T, db driver.DBTX, seed strin
 // newGuestCart は、明細を持たないゲストカートを組み立てます（永続化はしません）。
 func newGuestCart(t *testing.T, suffix string) *domaincart.Cart {
 	t.Helper()
-	c, err := domaincart.NewForGuest(mustNewUUID(t), newTestToken(t, suffix), baseTime.Add(24*time.Hour))
+	return newGuestCartWithID(t, mustNewUUID(t), suffix)
+}
+
+// newGuestCartWithID は、id を指定してゲストカートを組み立てるテストヘルパーです。
+func newGuestCartWithID(t *testing.T, id uuid.UUID, suffix string) *domaincart.Cart {
+	t.Helper()
+	c, err := domaincart.NewForGuest(id, newTestToken(t, suffix), baseTime.Add(24*time.Hour))
+	require.NoError(t, err)
+	return c
+}
+
+// newOwnerCart は、所有者が確定した空のカートを組み立てるテストヘルパーです。
+func newOwnerCart(t *testing.T, ownerID uuid.UUID) *domaincart.Cart {
+	t.Helper()
+	c, err := domaincart.NewForOwner(mustNewUUID(t), domaincart.Attributes{
+		OwnerID:   &ownerID,
+		ExpiresAt: baseTime.Add(24 * time.Hour),
+	})
 	require.NoError(t, err)
 	return c
 }
@@ -274,21 +292,6 @@ func Test_repository_FindBySessionToken(t *testing.T) {
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
 		})
-
-		t.Run("所有者が確定したカートはトークンでは引けない", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				token := newTestToken(t, "asn")
-				c := newGuestCart(t, "asn")
-				require.NoError(t, repo.Create(ctx, c))
-				require.NoError(t, c.AssignOwner(mustParse(t, seedUserID), baseTime))
-				require.NoError(t, repo.Update(ctx, c))
-
-				_, err := repo.FindBySessionToken(ctx, token)
-				require.ErrorIs(t, err, apperror.ErrNotFound)
-			})
-		})
 	})
 }
 
@@ -383,7 +386,8 @@ func Test_repository_LockByID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				id := mustNewUUID(t)
 				// 規定長に満たないトークンは値オブジェクトの不変条件に違反する。
-				_, err := driver.New(ctx, testDB).Exec(ctx,
+				_, err := driver.New(ctx, testDB).Exec(
+					ctx,
 					"INSERT INTO carts (id, session_token, expires_at) VALUES ($1,$2,$3)",
 					id, "too-short", baseTime.Add(24*time.Hour),
 				)
@@ -400,7 +404,8 @@ func Test_repository_LockByID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				id := mustNewUUID(t)
 				// created_at は DB が NOW() を刻むため、過去の有効期限は集約の不変条件に違反する。
-				_, err := driver.New(ctx, testDB).Exec(ctx,
+				_, err := driver.New(ctx, testDB).Exec(
+					ctx,
 					"INSERT INTO carts (id, session_token, expires_at) VALUES ($1,$2,$3)",
 					id, newTestToken(t, "brk").Value(), time.Now().UTC().Add(-time.Hour),
 				)
@@ -420,7 +425,8 @@ func Test_repository_LockByID(t *testing.T) {
 				c := newGuestCart(t, "qty")
 				require.NoError(t, repo.Create(ctx, c))
 				// 数量の上限はドメインだけが持ち、DB の CHECK は下限しか見ていない。
-				_, err := drv.Exec(ctx,
+				_, err := drv.Exec(
+					ctx,
 					"INSERT INTO cart_items (id, cart_id, product_id, quantity) VALUES ($1,$2,$3,$4)",
 					mustNewUUID(t), c.ID(), productID, 1000,
 				)
@@ -428,6 +434,192 @@ func Test_repository_LockByID(t *testing.T) {
 
 				_, lerr := repo.LockByID(ctx, c.ID())
 				require.ErrorIs(t, lerr, apperror.ErrInternal)
+			})
+		})
+	})
+}
+
+func Test_repository_LockByIDs(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+	txm := testkit.NewTestTransactionRunner(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("複数のIDをまとめて明細込みで返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				productID := insertProduct(ctx, t, driver.New(ctx, testDB), "c4000000-0000-4000-8000-000000000011")
+				a := newGuestCart(t, "lks1")
+				require.NoError(t, a.SetItem(domaincart.SetItemAttributes{ItemID: mustNewUUID(t), ProductID: productID, Quantity: 1}, baseTime))
+				require.NoError(t, repo.Create(ctx, a))
+				b := newGuestCart(t, "lks2")
+				require.NoError(t, repo.Create(ctx, b))
+
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{a.ID(), b.ID()})
+
+				require.NoError(t, err)
+				require.Len(t, got, 2)
+				byID := map[uuid.UUID]int{}
+				for i, c := range got {
+					byID[c.ID()] = i
+				}
+				require.Contains(t, byID, a.ID())
+				require.Contains(t, byID, b.ID())
+				assert.Len(t, got[byID[a.ID()]].Items(), 1)
+			})
+		})
+
+		t.Run("作成順がid順と逆でもid昇順で返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// UUIDv7 は採番順に増えるため、採番した順に作ると挿入順と id 順が一致し、
+				// ORDER BY を外してもヒープ順が偶然昇順になる。id を固定して逆順に作る。
+				high := newGuestCartWithID(t, mustParse(t, "c9000000-0000-4000-8000-0000000000ff"), "lko1")
+				require.NoError(t, repo.Create(ctx, high))
+				low := newGuestCartWithID(t, mustParse(t, "c9000000-0000-4000-8000-000000000001"), "lko2")
+				require.NoError(t, repo.Create(ctx, low))
+
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{high.ID(), low.ID()})
+
+				require.NoError(t, err)
+				require.Len(t, got, 2)
+				assert.Equal(t, low.ID(), got[0].ID())
+				assert.Equal(t, high.ID(), got[1].ID())
+			})
+		})
+
+		t.Run("不存在のIDは結果に現れず件数が減る", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				a := newGuestCart(t, "lkm")
+				require.NoError(t, repo.Create(ctx, a))
+
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{a.ID(), mustNewUUID(t)})
+
+				require.NoError(t, err)
+				assert.Len(t, got, 1)
+			})
+		})
+
+		t.Run("空のIDでは空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := repo.LockByIDs(ctx, []uuid.UUID{})
+
+				require.NoError(t, err)
+				assert.Empty(t, got)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("1件でも再構築に失敗すれば正常な行も返さない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				ok := newGuestCart(t, "lkerr")
+				require.NoError(t, repo.Create(ctx, ok))
+
+				broken := mustNewUUID(t)
+				_, err := driver.New(ctx, testDB).Exec(
+					ctx,
+					"INSERT INTO carts (id, session_token, expires_at) VALUES ($1,$2,$3)",
+					broken, "too-short", baseTime.Add(24*time.Hour),
+				)
+				require.NoError(t, err)
+
+				got, lerr := repo.LockByIDs(ctx, []uuid.UUID{ok.ID(), broken})
+
+				require.ErrorIs(t, lerr, apperror.ErrInternal)
+				assert.Nil(t, got)
+			})
+		})
+	})
+}
+
+func Test_repository_CreateOwnerIfAbsent(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+	txm := testkit.NewTestTransactionRunner(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("所有者のカートが無ければ作って返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				ownerID := mustParse(t, seedUserID)
+				c := newOwnerCart(t, ownerID)
+
+				got, err := repo.CreateOwnerIfAbsent(ctx, c)
+				require.NoError(t, err)
+				assert.Equal(t, c.ID(), got.ID())
+				assert.Nil(t, got.SessionToken())
+
+				persisted, ferr := repo.FindByOwnerID(ctx, ownerID)
+				require.NoError(t, ferr)
+				assert.Equal(t, c.ID(), persisted.ID())
+			})
+		})
+
+		t.Run("既にある場合は衝突にせず既存を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				ownerID := mustParse(t, seedUserID)
+				existing := newOwnerCart(t, ownerID)
+				require.NoError(t, repo.Create(ctx, existing))
+
+				got, err := repo.CreateOwnerIfAbsent(ctx, newOwnerCart(t, ownerID))
+				require.NoError(t, err)
+				assert.Equal(t, existing.ID(), got.ID())
+			})
+		})
+
+		t.Run("既にあるカートの明細を落とさずに返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				productID := insertProduct(ctx, t, driver.New(ctx, testDB), "c8000000-0000-4000-8000-000000000001")
+				ownerID := mustParse(t, seedUserID)
+				existing := newOwnerCart(t, ownerID)
+				require.NoError(t, existing.SetItem(domaincart.SetItemAttributes{
+					ItemID: mustNewUUID(t), ProductID: productID, Quantity: 3,
+				}, baseTime))
+				require.NoError(t, repo.Create(ctx, existing))
+
+				got, err := repo.CreateOwnerIfAbsent(ctx, newOwnerCart(t, ownerID))
+				require.NoError(t, err)
+				require.Len(t, got.Items(), 1)
+				assert.Equal(t, productID, got.Items()[0].ProductID())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しないユーザーは外部キー違反としてErrInvalidArgumentへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := repo.CreateOwnerIfAbsent(ctx, newOwnerCart(t, mustNewUUID(t)))
+
+				require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+				assert.Nil(t, got)
 			})
 		})
 	})
@@ -505,24 +697,6 @@ func Test_repository_Update(t *testing.T) {
 				got, err := repo.FindBySessionToken(ctx, *c.SessionToken())
 				require.NoError(t, err)
 				assert.True(t, got.IsEmpty())
-			})
-		})
-
-		t.Run("所有者の確定とトークンの破棄を反映する", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				ownerID := mustParse(t, seedUserID)
-				c := newGuestCart(t, "up4")
-				require.NoError(t, repo.Create(ctx, c))
-
-				require.NoError(t, c.AssignOwner(ownerID, baseTime))
-				require.NoError(t, repo.Update(ctx, c))
-
-				got, err := repo.FindByOwnerID(ctx, ownerID)
-				require.NoError(t, err)
-				assert.Equal(t, c.ID(), got.ID())
-				assert.Nil(t, got.SessionToken())
 			})
 		})
 

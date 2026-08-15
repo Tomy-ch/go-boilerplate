@@ -70,6 +70,21 @@ func (mr *MockUsecaseMockRecorder) GetCart(ctx, subject any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCart", reflect.TypeOf((*MockUsecase)(nil).GetCart), ctx, subject)
 }
 
+// MergeOnLogin mocks base method.
+func (m *MockUsecase) MergeOnLogin(ctx context.Context, params cart.MergeOnLoginParams) (cart.MergeCartResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MergeOnLogin", ctx, params)
+	ret0, _ := ret[0].(cart.MergeCartResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MergeOnLogin indicates an expected call of MergeOnLogin.
+func (mr *MockUsecaseMockRecorder) MergeOnLogin(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MergeOnLogin", reflect.TypeOf((*MockUsecase)(nil).MergeOnLogin), ctx, params)
+}
+
 // RemoveItem mocks base method.
 func (m *MockUsecase) RemoveItem(ctx context.Context, params cart.RemoveItemParams) error {
 	m.ctrl.T.Helper()

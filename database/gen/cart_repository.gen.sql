@@ -53,6 +53,30 @@ INSERT INTO cart_items (
     sqlc.arg('added_at')
 );
 
+-- === source: database/dml/repository/cart/insert_owner_cart_if_absent.sql ===
+-- name: CreateOwnerCartIfAbsent :one
+-- 所有者のカートが無ければ空のカートを 1 件登録し、既にあればその行をそのまま返す。
+-- 一意インデックス（carts_user_id_unique）が単一文の中で裁定するため、同一ユーザーへの並行した
+-- 作成が競合しても一意制約違反を上げない。存在確認と作成を分けると、その間に他の要求が作った場合に
+-- 23505 でトランザクションごと中断してしまい、同じトランザクションの中では続けられなくなる。
+-- 衝突時に user_id を同じ値で書き戻すのは、DO NOTHING では RETURNING が行を返さないため。
+INSERT INTO carts (
+    id,
+    user_id,
+    session_token,
+    expires_at
+) VALUES
+(
+    sqlc.arg('id'),
+    sqlc.arg('user_id'),
+    NULL,
+    sqlc.arg('expires_at')
+)
+ON CONFLICT ON CONSTRAINT carts_user_id_unique DO UPDATE
+    SET
+        user_id = excluded.user_id
+RETURNING sqlc.embed(carts);
+
 -- === source: database/dml/repository/cart/lock_cart_by_id.sql ===
 -- name: LockCartByID :one
 -- ID からカートを 1 件、悲観ロック（FOR UPDATE）して取得する。同一カートへの並行更新を、取得から
@@ -61,6 +85,18 @@ INSERT INTO cart_items (
 SELECT sqlc.embed(c)
 FROM carts AS c
 WHERE c.id = sqlc.arg('id')
+FOR UPDATE;
+
+-- === source: database/dml/repository/cart/lock_carts_by_ids.sql ===
+-- name: LockCartsByIDs :many
+-- ID の集合からカート群を、更新のために悲観ロック（FOR UPDATE）して取得する。
+-- id 昇順の ORDER BY を外さないこと。複数件のロックをこの単一文の外へ分割しないこと
+-- （ADR-0034 (ordered-pessimistic-row-locks)）。
+-- 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得る。
+SELECT sqlc.embed(c)
+FROM carts AS c
+WHERE c.id = ANY(@cart_ids_param::UUID [])
+ORDER BY c.id
 FOR UPDATE;
 
 -- === source: database/dml/repository/cart/select_cart_by_owner_id.sql ===

@@ -101,6 +101,8 @@ tags:
     description: 自分のカート（任意認証サンプル・ゲストと認証済みの双方が主体になれる / 明細ごとの再評価）。
   - name: v1/carts/items
     description: カート明細の設定と削除（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
+  - name: v1/carts/merge
+    description: ログイン時のカート引き継ぎ（認証必須・所有権の遷移サンプル・Idempotency-Key を採る）。
   # sample-api:end
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
@@ -177,6 +179,8 @@ paths:
     $ref: './paths/v1/carts/me.yaml'
   /v1/carts/me/items/{productId}:
     $ref: './paths/v1/carts/me/items/productId.yaml'
+  /v1/carts/me/merge:
+    $ref: './paths/v1/carts/me/merge.yaml'
   # sample-api:end
 components:
   parameters:

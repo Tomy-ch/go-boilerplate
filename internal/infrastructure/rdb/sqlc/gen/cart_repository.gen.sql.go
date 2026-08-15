@@ -118,6 +118,72 @@ func (q *Queries) CreateCartItem(ctx context.Context, arg *CreateCartItemParams)
 	return err
 }
 
+const createOwnerCartIfAbsent = `-- name: CreateOwnerCartIfAbsent :one
+INSERT INTO carts (
+    id,
+    user_id,
+    session_token,
+    expires_at
+) VALUES
+(
+    $1,
+    $2,
+    NULL,
+    $3
+)
+ON CONFLICT ON CONSTRAINT carts_user_id_unique DO UPDATE
+    SET
+        user_id = excluded.user_id
+RETURNING carts.id, carts.user_id, carts.session_token, carts.expires_at, carts.created_at, carts.updated_at
+`
+
+type CreateOwnerCartIfAbsentParams struct {
+	ID        uuid.UUID
+	UserID    *uuid.UUID
+	ExpiresAt time.Time
+}
+
+type CreateOwnerCartIfAbsentRow struct {
+	Carts Carts
+}
+
+// === source: database/dml/repository/cart/insert_owner_cart_if_absent.sql ===
+// 所有者のカートが無ければ空のカートを 1 件登録し、既にあればその行をそのまま返す。
+// 一意インデックス（carts_user_id_unique）が単一文の中で裁定するため、同一ユーザーへの並行した
+// 作成が競合しても一意制約違反を上げない。存在確認と作成を分けると、その間に他の要求が作った場合に
+// 23505 でトランザクションごと中断してしまい、同じトランザクションの中では続けられなくなる。
+// 衝突時に user_id を同じ値で書き戻すのは、DO NOTHING では RETURNING が行を返さないため。
+//
+//	INSERT INTO carts (
+//	    id,
+//	    user_id,
+//	    session_token,
+//	    expires_at
+//	) VALUES
+//	(
+//	    $1,
+//	    $2,
+//	    NULL,
+//	    $3
+//	)
+//	ON CONFLICT ON CONSTRAINT carts_user_id_unique DO UPDATE
+//	    SET
+//	        user_id = excluded.user_id
+//	RETURNING carts.id, carts.user_id, carts.session_token, carts.expires_at, carts.created_at, carts.updated_at
+func (q *Queries) CreateOwnerCartIfAbsent(ctx context.Context, arg *CreateOwnerCartIfAbsentParams) (*CreateOwnerCartIfAbsentRow, error) {
+	row := q.db.QueryRow(ctx, createOwnerCartIfAbsent, arg.ID, arg.UserID, arg.ExpiresAt)
+	var i CreateOwnerCartIfAbsentRow
+	err := row.Scan(
+		&i.Carts.ID,
+		&i.Carts.UserID,
+		&i.Carts.SessionToken,
+		&i.Carts.ExpiresAt,
+		&i.Carts.CreatedAt,
+		&i.Carts.UpdatedAt,
+	)
+	return &i, err
+}
+
 const deleteCart = `-- name: DeleteCart :exec
 DELETE FROM carts
 WHERE carts.id = $1
@@ -336,6 +402,56 @@ func (q *Queries) LockCartByID(ctx context.Context, id uuid.UUID) (*LockCartByID
 		&i.Carts.UpdatedAt,
 	)
 	return &i, err
+}
+
+const lockCartsByIDs = `-- name: LockCartsByIDs :many
+SELECT c.id, c.user_id, c.session_token, c.expires_at, c.created_at, c.updated_at
+FROM carts AS c
+WHERE c.id = ANY($1::UUID [])
+ORDER BY c.id
+FOR UPDATE
+`
+
+type LockCartsByIDsRow struct {
+	Carts Carts
+}
+
+// === source: database/dml/repository/cart/lock_carts_by_ids.sql ===
+// ID の集合からカート群を、更新のために悲観ロック（FOR UPDATE）して取得する。
+// id 昇順の ORDER BY を外さないこと。複数件のロックをこの単一文の外へ分割しないこと
+// （ADR-0034 (ordered-pessimistic-row-locks)）。
+// 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得る。
+//
+//	SELECT c.id, c.user_id, c.session_token, c.expires_at, c.created_at, c.updated_at
+//	FROM carts AS c
+//	WHERE c.id = ANY($1::UUID [])
+//	ORDER BY c.id
+//	FOR UPDATE
+func (q *Queries) LockCartsByIDs(ctx context.Context, cartIdsParam []uuid.UUID) ([]*LockCartsByIDsRow, error) {
+	rows, err := q.db.Query(ctx, lockCartsByIDs, cartIdsParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*LockCartsByIDsRow
+	for rows.Next() {
+		var i LockCartsByIDsRow
+		if err := rows.Scan(
+			&i.Carts.ID,
+			&i.Carts.UserID,
+			&i.Carts.SessionToken,
+			&i.Carts.ExpiresAt,
+			&i.Carts.CreatedAt,
+			&i.Carts.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateCart = `-- name: UpdateCart :execrows
