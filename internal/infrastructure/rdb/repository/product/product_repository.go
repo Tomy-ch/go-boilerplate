@@ -58,8 +58,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		rows, err := db.ListPublishedProductsAscAfter(ctx, &gen.ListPublishedProductsAscAfterParams{
 			CategoryID:       params.CategoryID,
 			StatusID:         params.StatusID,
-			CategoryCodes:    params.CategoryCodes,
-			StatusCodes:      params.StatusCodes,
+			CategoryCodes:    nilIfEmpty(params.CategoryCodes),
+			StatusCodes:      nilIfEmpty(params.StatusCodes),
 			Keyword:          params.Keyword,
 			MinPrice:         ptr.Map(params.MinPrice, money.Price.Decimal),
 			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
@@ -79,8 +79,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		rows, err := db.ListPublishedProductsAscFirst(ctx, &gen.ListPublishedProductsAscFirstParams{
 			CategoryID:    params.CategoryID,
 			StatusID:      params.StatusID,
-			CategoryCodes: params.CategoryCodes,
-			StatusCodes:   params.StatusCodes,
+			CategoryCodes: nilIfEmpty(params.CategoryCodes),
+			StatusCodes:   nilIfEmpty(params.StatusCodes),
 			Keyword:       params.Keyword,
 			MinPrice:      ptr.Map(params.MinPrice, money.Price.Decimal),
 			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
@@ -98,8 +98,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		rows, err := db.ListPublishedProductsDescAfter(ctx, &gen.ListPublishedProductsDescAfterParams{
 			CategoryID:       params.CategoryID,
 			StatusID:         params.StatusID,
-			CategoryCodes:    params.CategoryCodes,
-			StatusCodes:      params.StatusCodes,
+			CategoryCodes:    nilIfEmpty(params.CategoryCodes),
+			StatusCodes:      nilIfEmpty(params.StatusCodes),
 			Keyword:          params.Keyword,
 			MinPrice:         ptr.Map(params.MinPrice, money.Price.Decimal),
 			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
@@ -119,8 +119,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		rows, err := db.ListPublishedProductsDescFirst(ctx, &gen.ListPublishedProductsDescFirstParams{
 			CategoryID:    params.CategoryID,
 			StatusID:      params.StatusID,
-			CategoryCodes: params.CategoryCodes,
-			StatusCodes:   params.StatusCodes,
+			CategoryCodes: nilIfEmpty(params.CategoryCodes),
+			StatusCodes:   nilIfEmpty(params.StatusCodes),
 			Keyword:       params.Keyword,
 			MinPrice:      ptr.Map(params.MinPrice, money.Price.Decimal),
 			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
@@ -146,8 +146,8 @@ func (r *repository) CountPublished(ctx context.Context, filter product.SearchFi
 	count, err := db.CountPublishedProductsByFilter(ctx, &gen.CountPublishedProductsByFilterParams{
 		CategoryID:    filter.CategoryID,
 		StatusID:      filter.StatusID,
-		CategoryCodes: filter.CategoryCodes,
-		StatusCodes:   filter.StatusCodes,
+		CategoryCodes: nilIfEmpty(filter.CategoryCodes),
+		StatusCodes:   nilIfEmpty(filter.StatusCodes),
 		MinPrice:      ptr.Map(filter.MinPrice, money.Price.Decimal),
 		MaxPrice:      ptr.Map(filter.MaxPrice, money.Price.Decimal),
 		MinQuantity:   filter.MinQuantity,
@@ -561,4 +561,16 @@ func toProductRows[T any](rows []T, extract func(T) productRow) []productRow {
 		converted[i] = extract(row)
 	}
 	return converted
+}
+
+// nilIfEmpty は、空のスライスを未指定へ正規化します。
+// pgx は nil スライスを SQL の NULL、非 nil の空スライスを空配列リテラルとして送るため、
+// 空のまま渡すと SQL 側の「NULL なら絞り込まない」判定が外れ、絞り込みなしのつもりの条件が
+// 「どの値にも一致しない」へ反転します。SearchFilter は公開型で誰でも組み立てられるので、
+// SQL へ渡す直前のここで揃えます。
+func nilIfEmpty[T any](values []T) []T {
+	if len(values) == 0 {
+		return nil
+	}
+	return values
 }

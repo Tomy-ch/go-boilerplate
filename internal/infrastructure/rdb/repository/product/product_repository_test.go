@@ -37,6 +37,8 @@ const (
 	// 上の ID に対応する code。code 絞り込みは ID ではなくこちらを指定します。
 	categoryCodeElectronics int16 = 1
 	categoryCodeBooks       int16 = 2
+	statusCodeInStock       int16 = 1
+	statusCodeOutOfStock    int16 = 2
 	// maxCategoryCode は、どのマスタ行にも割り当たっていない code です（絞り込みが 0 件になる側の確認用）。
 	maxCategoryCode int16 = 32767
 	// probeKeyword は、seed データと隔離してテスト挿入行のみを対象化するための一意なキーワードです。
@@ -258,6 +260,28 @@ func Test_repository_FindPublishedList(t *testing.T) {
 			})
 		})
 
+		t.Run("空のcategory_codesは絞り込みなしとして扱う", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, tieHigh, probeKeyword+"-CZ", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+
+				// 非 nil の空スライスは「未指定」であり「どのコードにも一致しない」ではない。
+				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:       ptr.To(probeKeyword),
+						CategoryCodes: []int16{},
+					},
+					Limit:     10,
+					Ascending: false,
+				})
+				require.NoError(t, err)
+				require.Len(t, page, 1)
+				assert.Equal(t, mustParse(t, tieHigh), page[0].ID())
+			})
+		})
+
 		t.Run("存在しないcategory_codeを指定した場合、0件を返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -275,6 +299,90 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				})
 				require.NoError(t, err)
 				assert.Empty(t, page)
+			})
+		})
+
+		t.Run("status_codesフィルタは指定したステータスの和集合を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				outID := "eeeeeeee-0000-4000-8000-0000000000c2"
+				insertProduct(ctx, t, drv, tieHigh, probeKeyword+"-SI", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, outID, probeKeyword+"-SO", nil, 1000, statusOutOfStock, categoryElectronics, ptr.To(base))
+
+				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:     ptr.To(probeKeyword),
+						StatusCodes: []int16{statusCodeInStock, statusCodeOutOfStock},
+					},
+					Limit:     10,
+					Ascending: false,
+				})
+				require.NoError(t, err)
+				require.Len(t, page, 2)
+
+				ids := []uuid.UUID{page[0].ID(), page[1].ID()}
+				assert.ElementsMatch(t, []uuid.UUID{mustParse(t, tieHigh), mustParse(t, outID)}, ids)
+			})
+		})
+
+		t.Run("status_codesフィルタは指定しなかったステータスを除く", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				outID := "eeeeeeee-0000-4000-8000-0000000000c3"
+				insertProduct(ctx, t, drv, tieHigh, probeKeyword+"-SX", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, outID, probeKeyword+"-SY", nil, 1000, statusOutOfStock, categoryElectronics, ptr.To(base))
+
+				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:     ptr.To(probeKeyword),
+						StatusCodes: []int16{statusCodeOutOfStock},
+					},
+					Limit:     10,
+					Ascending: false,
+				})
+				require.NoError(t, err)
+				require.Len(t, page, 1)
+				assert.Equal(t, mustParse(t, outID), page[0].ID())
+			})
+		})
+
+		t.Run("昇順・カーソル以降のページでもcode絞り込みが効く", func(t *testing.T) {
+			t.Parallel()
+
+			// code 条件は 4 本のクエリ（昇順／降順 × 先頭／カーソル以降）へ個別に書かれているため、
+			// 既定の降順・先頭ページだけを通しても残る 3 本の書き間違いを検出できない。
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				bookID := "eeeeeeee-0000-4000-8000-0000000000c4"
+				insertProduct(ctx, t, drv, tieHigh, probeKeyword+"-AA", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, bookID, probeKeyword+"-AB", nil, 1000, statusInStock, categoryBooks, ptr.To(base.Add(time.Hour)))
+
+				filter := domainproduct.SearchFilter{
+					Keyword:       ptr.To(probeKeyword),
+					CategoryCodes: []int16{categoryCodeElectronics, categoryCodeBooks},
+				}
+
+				first, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					SearchFilter: filter, Limit: 1, Ascending: true,
+				})
+				require.NoError(t, err)
+				require.Len(t, first, 1)
+				assert.Equal(t, mustParse(t, tieHigh), first[0].ID())
+
+				next, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					SearchFilter:     filter,
+					Limit:            10,
+					Ascending:        true,
+					AfterPublishedAt: first[0].PublishedAt(),
+					AfterID:          ptr.To(first[0].ID()),
+				})
+				require.NoError(t, err)
+				require.Len(t, next, 1)
+				assert.Equal(t, mustParse(t, bookID), next[0].ID())
 			})
 		})
 
@@ -511,6 +619,30 @@ func Test_repository_CountPublished(t *testing.T) {
 				})
 				require.NoError(t, err)
 				assert.Equal(t, int64(2), count)
+			})
+		})
+
+		t.Run("status_codesフィルタは指定したステータスの件数を合算する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 2, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBESTATUS"
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000002a",
+					keyword+"-in", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000002b",
+					keyword+"-out", nil, 1000, statusOutOfStock, categoryElectronics, &publishedAt,
+				)
+
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
+					StatusCodes: []int16{statusCodeOutOfStock}, Keyword: &keyword,
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), count)
 			})
 		})
 
@@ -2150,4 +2282,30 @@ func Test_repository_FindByIDs(t *testing.T) {
 		t, testDB, testkit.NewTestTransactionRunner(t),
 		"cccccccc-0000-4000-8002-", "FINDS", repo.FindByIDs,
 	)
+}
+
+func Test_nilIfEmpty(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("値を持つスライスはそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, []int16{1, 2}, nilIfEmpty([]int16{1, 2}))
+		})
+
+		t.Run("非nilの空スライスはnilへ揃える", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, nilIfEmpty([]int16{}))
+		})
+
+		t.Run("nilはnilのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, nilIfEmpty[int16](nil))
+		})
+	})
 }
