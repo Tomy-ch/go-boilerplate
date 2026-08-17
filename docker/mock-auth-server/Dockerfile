@@ -14,7 +14,7 @@ ARG MISE_VERSION
 # CKV_DOCKER_4 が ADD を避けよと言うのは、暗黙の展開とリモート取得が検証を伴わないため。
 # --checksum はその検証そのものであり、COPY はリモート URL を取れないので代替にならない。
 #checkov:skip=CKV_DOCKER_4:--checksum 付きの ADD が検証付き取得の形。COPY はリモートを扱えない
-ADD --checksum=sha256:b11ef4cdc9bb3d8acdb95ad1cc2905b76d47936e9b8d9e76faded4d44f39f711 \
+ADD --checksum=sha256:18ec854e24388880277a84e73434114eb80cdf2066afcf3671fed2682cb1ea4a \
     https://mise.run /tmp/mise-install.sh
 
 ENV MISE_DATA_DIR=/root/.local/share/mise \

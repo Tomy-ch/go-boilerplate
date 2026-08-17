@@ -11,7 +11,10 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   # バイナリのビルドコマンド（Delve用ビルド）
   # --mod=vendor: vendorディレクトリを優先
   # -gcflags "all=-N -l": 最適化無効でデバッグしやすくする
-  cmd = "go build --mod=vendor -gcflags='all=-N -l' -o tmp/main ./cmd/"
+  # -buildvcs=false: バージョン情報は -ldflags で注入するため VCS スタンプは供給元ではない。
+  #   コンテナは root で動き bind mount した .git はホストユーザー所有のため、
+  #   有効なままだと git が所有者不一致で拒否し go build ごと失敗する
+  cmd = "go build --mod=vendor -buildvcs=false -gcflags='all=-N -l' -o tmp/main ./cmd/"
 
   # ビルド成果物の相対パス（airがここを監視して実行）
   bin = "./tmp/main"
