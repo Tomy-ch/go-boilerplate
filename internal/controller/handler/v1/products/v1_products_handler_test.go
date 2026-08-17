@@ -47,7 +47,7 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		CategoryName:          "電子機器",
 		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
 		Images: []productuc.ProductImageItemView{
-			{Path: "products/" + salt + ".png", SortKey: 1},
+			{Path: "products/" + salt + ".png", DisplaySort: 1},
 		},
 		Version: 3,
 	}
@@ -91,7 +91,7 @@ func expectedImageItems(dtos []productuc.ProductImageItemView) []gen.ProductImag
 	items := make([]gen.ProductImageItem, len(dtos))
 	for i, dto := range dtos {
 		//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
-		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: int32(dto.SortKey)}
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, DisplaySort: int32(dto.DisplaySort)}
 	}
 	return items
 }
@@ -219,6 +219,31 @@ func Test_server_GetProducts(t *testing.T) {
 			assert.Equal(t, maxQuantity, *captured.MaxQuantity)
 		})
 
+		t.Run("categoryCodesとstatusCodesがUsecaseのパラメータへ引き渡される", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+
+			// 2 つは同型なので、取り違えても片方だけの検証では気づけない。値を分けて個別に確かめる。
+			categoryCodes := gen.CategoryCodesParam{1, 2}
+			statusCodes := gen.StatusCodesParam{7}
+
+			var captured productuc.ListProductsParams
+			mockApp.EXPECT().
+				ListProducts(gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
+				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+					captured = params
+					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
+				})
+
+			_, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{
+				Params: gen.GetProductsParams{CategoryCodes: &categoryCodes, StatusCodes: &statusCodes},
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, []int16{1, 2}, captured.CategoryCodes)
+			assert.Equal(t, []int16{7}, captured.StatusCodes)
+		})
+
 		t.Run("sort未指定の場合、Ascendingはfalse(降順)になる", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
@@ -240,6 +265,34 @@ func Test_server_GetProducts(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("categoryCodesがint16の範囲を超える場合、ErrOverflowを返す", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+
+			// spec の maximum が先に弾くため通常は到達しないが、spec を迂回した呼び出しでは
+			// 切り捨てずに落ちることがこの経路の契約。
+			mockApp.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Times(0)
+			codes := gen.CategoryCodesParam{math.MaxInt16 + 1}
+
+			_, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{
+				Params: gen.GetProductsParams{CategoryCodes: &codes},
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
+
+		t.Run("statusCodesがint16の範囲を超える場合、ErrOverflowを返す", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+
+			mockApp.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Times(0)
+			codes := gen.StatusCodesParam{math.MaxInt16 + 1}
+
+			_, err := s.GetProducts(context.Background(), gen.GetProductsRequestObject{
+				Params: gen.GetProductsParams{StatusCodes: &codes},
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 
 		t.Run("カーソル生成が失敗した場合、ErrInvalidArgumentが返る", func(t *testing.T) {
 			t.Parallel()
@@ -384,14 +437,14 @@ func Test_toProductImageItems(t *testing.T) {
 			t.Parallel()
 
 			actual, err := toProductImageItems([]productuc.ProductImageItemView{
-				{Path: "products/a.png", SortKey: 1},
-				{Path: "products/b.png", SortKey: 5},
+				{Path: "products/a.png", DisplaySort: 1},
+				{Path: "products/b.png", DisplaySort: 5},
 			})
 
 			require.NoError(t, err)
 			require.Len(t, actual, 2)
-			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/a.png", SortKey: 1}, actual[0])
-			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/b.png", SortKey: 5}, actual[1])
+			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/a.png", DisplaySort: 1}, actual[0])
+			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/b.png", DisplaySort: 5}, actual[1])
 		})
 
 		t.Run("画像が空の場合、空を返す", func(t *testing.T) {
@@ -411,7 +464,7 @@ func Test_toProductImageItems(t *testing.T) {
 			t.Parallel()
 
 			actual, err := toProductImageItems([]productuc.ProductImageItemView{
-				{Path: "products/a.png", SortKey: math.MaxInt32 + 1},
+				{Path: "products/a.png", DisplaySort: math.MaxInt32 + 1},
 			})
 
 			require.Error(t, err)
@@ -430,13 +483,13 @@ func Test_toProductImageParams(t *testing.T) {
 			t.Parallel()
 
 			actual := toProductImageParams([]gen.ProductImageInput{
-				{ImagePath: "products/a.png", SortKey: 1},
-				{ImagePath: "products/b.png", SortKey: 5},
+				{ImagePath: "products/a.png", DisplaySort: 1},
+				{ImagePath: "products/b.png", DisplaySort: 5},
 			})
 
 			require.Len(t, actual, 2)
-			assert.Equal(t, productuc.ProductImageParams{ImagePath: "products/a.png", SortKey: 1}, actual[0])
-			assert.Equal(t, productuc.ProductImageParams{ImagePath: "products/b.png", SortKey: 5}, actual[1])
+			assert.Equal(t, productuc.ProductImageParams{ImagePath: "products/a.png", DisplaySort: 1}, actual[0])
+			assert.Equal(t, productuc.ProductImageParams{ImagePath: "products/b.png", DisplaySort: 5}, actual[1])
 		})
 
 		t.Run("画像が空の場合、空を返す", func(t *testing.T) {

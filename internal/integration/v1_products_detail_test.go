@@ -50,7 +50,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			CategoryID:  uuidtestkit.NewTestFromSalt(t, "integration_detail_category"),
 			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
 			Images: []productuc.ProductImageItemView{
-				{Path: "products/integration_detail.png", SortKey: 1},
+				{Path: "products/integration_detail.png", DisplaySort: 1},
 			},
 		}
 	}

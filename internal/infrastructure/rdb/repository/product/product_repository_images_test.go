@@ -44,11 +44,11 @@ func newProductWithImages(t *testing.T, id uuid.UUID, images []domainproduct.Ima
 	return entity
 }
 
-func newImage(t *testing.T, salt, path string, sortKey int) domainproduct.Image {
+func newImage(t *testing.T, salt, path string, displaySort int) domainproduct.Image {
 	t.Helper()
 	return domainproduct.NewImage(
 		uuidtestkit.NewTestFromSalt(t, salt),
-		domainproduct.ImageAttributes{ImagePath: path, SortKey: sortKey},
+		domainproduct.ImageAttributes{ImagePath: path, DisplaySort: displaySort},
 	)
 }
 
@@ -263,31 +263,31 @@ func Test_repository_syncImages(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, got.Images(), 3)
 				assert.Equal(t, "products/a.png", got.Images()[0].ImagePath())
-				assert.Equal(t, 1, got.Images()[0].SortKey())
+				assert.Equal(t, 1, got.Images()[0].DisplaySort())
 				assert.Equal(t, "products/b.png", got.Images()[1].ImagePath())
-				assert.Equal(t, 2, got.Images()[1].SortKey())
+				assert.Equal(t, 2, got.Images()[1].DisplaySort())
 				assert.Equal(t, "products/c.png", got.Images()[2].ImagePath())
-				assert.Equal(t, 3, got.Images()[2].SortKey())
+				assert.Equal(t, 3, got.Images()[2].DisplaySort())
 			})
 		})
 
 		t.Run("同じ表示順へ差し替えても部分UNIQUEに衝突しない", func(t *testing.T) {
 			t.Parallel()
 
-			// 論理削除行を残したまま同じ (product_id, sort_key) を入れ直すのが差し替えの通常経路なので、
+			// 論理削除行を残したまま同じ (product_id, display_sort) を入れ直すのが差し替えの通常経路なので、
 			// ここが衝突すると 2 回目以降の差し替えが一切できなくなる。
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "sync_images_same_sort_key_product")
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_same_display_sort_product")
 				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
-					newImage(t, "same_sort_key_1", "products/first.png", 1),
+					newImage(t, "same_display_sort_1", "products/first.png", 1),
 				})))
 
 				db := gen.New(driver.New(ctx, repo.db))
 				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
-					newImage(t, "same_sort_key_2", "products/second.png", 1),
+					newImage(t, "same_display_sort_2", "products/second.png", 1),
 				})))
 				require.NoError(t, repo.syncImages(ctx, db, newProductWithImages(t, id, []domainproduct.Image{
-					newImage(t, "same_sort_key_3", "products/third.png", 1),
+					newImage(t, "same_display_sort_3", "products/third.png", 1),
 				})))
 
 				got, err := repo.FindByID(ctx, id)
@@ -308,7 +308,7 @@ func Test_repository_syncImages(t *testing.T) {
 			// 生存行どうしが部分 UNIQUE で衝突する。衝突判定を主キーに限定していることの裏返しで、
 			// 内容の差し替えを新しい ID で表現するという契約はここが最後の砦になる。
 			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "sync_images_steal_sort_key_product")
+				id := uuidtestkit.NewTestFromSalt(t, "sync_images_steal_display_sort_product")
 				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
 					newImage(t, "sync_steal_kept", "products/kept.png", 1),
 				})))

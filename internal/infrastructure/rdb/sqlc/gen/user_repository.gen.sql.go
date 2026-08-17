@@ -334,7 +334,7 @@ SELECT
 FROM user_roles AS ur
 INNER JOIN roles AS r ON ur.role_id = r.id
 WHERE ur.user_id = $1
-ORDER BY r.code
+ORDER BY r.sort_key
 `
 
 type GetUserRolesByUserIDRow struct {
@@ -344,6 +344,7 @@ type GetUserRolesByUserIDRow struct {
 }
 
 // === source: database/dml/repository/user/select_roles_by_user_id.sql ===
+// 指定ユーザーのロールをマスタの表示順（sort_key 昇順）で返す。並び順の出所は code ではない。
 //
 //	SELECT
 //	    r.id,
@@ -352,7 +353,7 @@ type GetUserRolesByUserIDRow struct {
 //	FROM user_roles AS ur
 //	INNER JOIN roles AS r ON ur.role_id = r.id
 //	WHERE ur.user_id = $1
-//	ORDER BY r.code
+//	ORDER BY r.sort_key
 func (q *Queries) GetUserRolesByUserID(ctx context.Context, userIDParam uuid.UUID) ([]*GetUserRolesByUserIDRow, error) {
 	rows, err := q.db.Query(ctx, getUserRolesByUserID, userIDParam)
 	if err != nil {

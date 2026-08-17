@@ -34,7 +34,7 @@ func insertProductWithImage(
 	}
 
 	_, err = db.Exec(ctx,
-		"INSERT INTO product_images (id, product_id, image_path, sort_key, deleted_at) VALUES ($1,$2,$3,$4,$5)",
+		"INSERT INTO product_images (id, product_id, image_path, display_sort, deleted_at) VALUES ($1,$2,$3,$4,$5)",
 		uuidtestkit.NewTestFromSalt(t, "image_of_"+id), id, *imagePath, 1, deletedAt,
 	)
 	require.NoError(t, err)

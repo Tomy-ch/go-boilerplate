@@ -37,11 +37,11 @@ type ProductCategoryRef struct {
 // ProductImageItem 商品画像 1 件。表示 URL はフロントが配信ベース URL と imagePath から組み立てます
 // （backend はフル URL を保持しません）。
 type ProductImageItem struct {
+	// DisplaySort 同一商品内での表示順。images は displaySort の昇順で返します。
+	DisplaySort int32 `json:"displaySort"`
+
 	// ImagePath 格納されたオブジェクトのパス（オブジェクトキー）。
 	ImagePath string `json:"imagePath"`
-
-	// SortKey 同一商品内での表示順。images は sortKey の昇順で返します。
-	SortKey int32 `json:"sortKey"`
 }
 
 // ProductLowStockResponse 在庫僅少商品一覧のレスポンススキーマ。在庫数の昇順（同数は商品 ID 昇順）で並びます。
@@ -61,7 +61,7 @@ type ProductResponse struct {
 	// Id 商品ID
 	Id openapi_types.UUID `json:"id"`
 
-	// Images 商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
+	// Images 商品画像。displaySort の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
 	Images []ProductImageItem `json:"images"`
 
 	// Name 商品名

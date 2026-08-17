@@ -35,7 +35,7 @@ func TestV1ProductCategories_Integration(t *testing.T) {
 
 			mockUC := mock_category.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListCategories(gomock.Any()).Return(
-				categoryuc.CategoryDTOs{{ID: id, Code: 1, Name: "商品カテゴリ", SortKey: 1}}, nil,
+				categoryuc.CategoryDTOs{{ID: id, Code: 1, Name: "商品カテゴリ"}}, nil,
 			)
 
 			productcategorieshandler.BindHandler(e, tf, mockUC)

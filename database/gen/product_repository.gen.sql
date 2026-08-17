@@ -15,6 +15,20 @@ FROM products AS p
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (
+        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+        )
+    )
+    AND (
+        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+        )
+    )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
@@ -52,19 +66,19 @@ INSERT INTO products (
 
 -- === source: database/dml/repository/product/insert_product_image.sql ===
 -- name: CreateProductImage :exec
--- 商品画像を 1 件登録する。生存行の (product_id, sort_key) は部分 UNIQUE インデックスが一意に保つため、
+-- 商品画像を 1 件登録する。生存行の (product_id, display_sort) は部分 UNIQUE インデックスが一意に保つため、
 -- 同一商品の同じ表示順へ二重に登録すると 23505 で失敗する。
 INSERT INTO product_images (
     id,
     product_id,
     image_path,
-    sort_key
+    display_sort
 ) VALUES
 (
     sqlc.arg('id'),
     sqlc.arg('product_id'),
     sqlc.arg('image_path'),
-    sqlc.arg('sort_key')
+    sqlc.arg('display_sort')
 );
 
 -- === source: database/dml/repository/product/select_existing_image_paths.sql ===
@@ -134,20 +148,22 @@ FOR UPDATE OF p;
 -- === source: database/dml/repository/product/select_product_images.sql ===
 -- name: ListProductImagesByProductIDs :many
 -- 複数の商品 ID から画像をまとめて取得する。商品 1 件ずつの取得を件数分繰り返さないための一括版で、
--- 並びは商品 ID 昇順・同一商品内は表示順（sort_key）昇順。product_ids が空の場合は 0 行。
+-- 並びは商品 ID 昇順・同一商品内は表示順（display_sort）昇順。product_ids が空の場合は 0 行。
 -- 生存行だけを返す（論理削除の意味は docs/spec/product/domain.md の Image 節を参照）。
 SELECT sqlc.embed(pi)
 FROM product_images AS pi
 WHERE pi.product_id = ANY(sqlc.arg('product_ids')::UUID [])
     AND pi.deleted_at IS NULL
-ORDER BY pi.product_id, pi.sort_key;
+ORDER BY pi.product_id, pi.display_sort;
 
 -- === source: database/dml/repository/product/select_products.sql ===
 -- name: ListPublishedProductsDescFirst :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
 -- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 -- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+-- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+-- usecase の validateMasterFilter が拒否します。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
@@ -160,6 +176,20 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (
+        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+        )
+    )
+    AND (
+        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+        )
+    )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
@@ -176,7 +206,9 @@ LIMIT sqlc.arg('limit_param');
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
 -- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 -- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+-- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+-- usecase の validateMasterFilter が拒否します。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
@@ -189,6 +221,20 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (
+        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+        )
+    )
+    AND (
+        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+        )
+    )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
@@ -209,7 +255,9 @@ LIMIT sqlc.arg('limit_param');
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
 -- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 -- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+-- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+-- usecase の validateMasterFilter が拒否します。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
@@ -222,6 +270,20 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (
+        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+        )
+    )
+    AND (
+        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+        )
+    )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
@@ -238,7 +300,9 @@ LIMIT sqlc.arg('limit_param');
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
 -- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 -- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+-- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+-- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+-- usecase の validateMasterFilter が拒否します。
 -- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
@@ -251,6 +315,20 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
+    AND (
+        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+        )
+    )
+    AND (
+        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+        )
+    )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
@@ -337,23 +415,23 @@ WHERE product_images.product_id = sqlc.arg('product_id')
 
 -- name: CreateProductImagesIfAbsent :exec
 -- 商品画像をまとめて登録する。同じ ID が既にある場合は何もしない。
--- 衝突判定を主キーに限定しているため、生存行の (product_id, sort_key) の重複は従来どおり 23505 で失敗する。
+-- 衝突判定を主キーに限定しているため、生存行の (product_id, display_sort) の重複は従来どおり 23505 で失敗する。
 INSERT INTO product_images (
     id,
     product_id,
     image_path,
-    sort_key
+    display_sort
 )
 SELECT
     src.id,
     sqlc.arg('product_id'),
     src.image_path,
-    src.sort_key
+    src.display_sort
 FROM (
     SELECT
         UNNEST(sqlc.arg('ids')::UUID []) AS id,
         UNNEST(sqlc.arg('image_paths')::TEXT []) AS image_path,
-        UNNEST(sqlc.arg('sort_keys')::SMALLINT []) AS sort_key
+        UNNEST(sqlc.arg('display_sorts')::SMALLINT []) AS display_sort
 ) AS src
 ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING;
 

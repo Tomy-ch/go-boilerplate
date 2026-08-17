@@ -13,18 +13,17 @@ import (
 
 // StatusDTO は、商品ステータス 1 件分のユースケース出力 DTO です。
 type StatusDTO struct {
-	ID      uuid.UUID
-	Code    int
-	Name    string
-	SortKey int
+	ID   uuid.UUID
+	Code int
+	Name string
 }
 
-// StatusDTOs は、StatusDTO の一覧（sortKey 昇順）です。
+// StatusDTOs は、StatusDTO の一覧です。並びはマスタの表示順で、順序そのものが表示順を表します。
 type StatusDTOs []StatusDTO
 
 // Usecase は、商品ステータスマスタの参照ユースケースを定義します。
 type Usecase interface {
-	// ListStatuses は、全商品ステータスを sortKey 昇順で返します。
+	// ListStatuses は、全商品ステータスをマスタの表示順で返します。表示順の値は外へ出しません。
 	ListStatuses(ctx context.Context) (StatusDTOs, error)
 }
 
@@ -54,10 +53,9 @@ func (u *usecase) ListStatuses(ctx context.Context) (StatusDTOs, error) {
 	dtos := make(StatusDTOs, len(statuses))
 	for i, p := range statuses {
 		dtos[i] = StatusDTO{
-			ID:      p.ID(),
-			Code:    p.Code(),
-			Name:    p.Name(),
-			SortKey: p.SortKey(),
+			ID:   p.ID(),
+			Code: p.Code(),
+			Name: p.Name(),
 		}
 	}
 

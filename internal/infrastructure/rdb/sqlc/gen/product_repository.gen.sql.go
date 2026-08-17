@@ -46,25 +46,41 @@ FROM products AS p
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
-    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $7::TEXT IS NULL
-        OR p.name ILIKE '%' || $7 || '%'
-        OR p.description ILIKE '%' || $7 || '%'
+        $3::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT [])
+        )
+    )
+    AND (
+        $4::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT [])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE '%' || $9 || '%'
+        OR p.description ILIKE '%' || $9 || '%'
     )
 `
 
 type CountPublishedProductsByFilterParams struct {
-	CategoryID  *uuid.UUID
-	StatusID    *uuid.UUID
-	MinPrice    *decimal.Decimal
-	MaxPrice    *decimal.Decimal
-	MinQuantity *int32
-	MaxQuantity *int32
-	Keyword     *string
+	CategoryID    *uuid.UUID
+	StatusID      *uuid.UUID
+	CategoryCodes []int16
+	StatusCodes   []int16
+	MinPrice      *decimal.Decimal
+	MaxPrice      *decimal.Decimal
+	MinQuantity   *int32
+	MaxQuantity   *int32
+	Keyword       *string
 }
 
 // 公開済み商品のうち、商品一覧と同じ検索条件に一致する件数を返します。
@@ -74,19 +90,35 @@ type CountPublishedProductsByFilterParams struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
-//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $7::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $7 || '%'
-//	        OR p.description ILIKE '%' || $7 || '%'
+//	        $3::SMALLINT [] IS NULL
+//	        OR p.category_id IN (
+//	            SELECT c.id FROM product_categories AS c
+//	            WHERE c.code = ANY($3::SMALLINT [])
+//	        )
+//	    )
+//	    AND (
+//	        $4::SMALLINT [] IS NULL
+//	        OR p.status_id IN (
+//	            SELECT s.id FROM product_statuses AS s
+//	            WHERE s.code = ANY($4::SMALLINT [])
+//	        )
+//	    )
+//	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+//	    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+//	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+//	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+//	    AND (
+//	        $9::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $9 || '%'
+//	        OR p.description ILIKE '%' || $9 || '%'
 //	    )
 func (q *Queries) CountPublishedProductsByFilter(ctx context.Context, arg *CountPublishedProductsByFilterParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countPublishedProductsByFilter,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.CategoryCodes,
+		arg.StatusCodes,
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.MinQuantity,
@@ -179,7 +211,7 @@ INSERT INTO product_images (
     id,
     product_id,
     image_path,
-    sort_key
+    display_sort
 ) VALUES
 (
     $1,
@@ -190,21 +222,21 @@ INSERT INTO product_images (
 `
 
 type CreateProductImageParams struct {
-	ID        uuid.UUID
-	ProductID uuid.UUID
-	ImagePath string
-	SortKey   int16
+	ID          uuid.UUID
+	ProductID   uuid.UUID
+	ImagePath   string
+	DisplaySort int16
 }
 
 // === source: database/dml/repository/product/insert_product_image.sql ===
-// 商品画像を 1 件登録する。生存行の (product_id, sort_key) は部分 UNIQUE インデックスが一意に保つため、
+// 商品画像を 1 件登録する。生存行の (product_id, display_sort) は部分 UNIQUE インデックスが一意に保つため、
 // 同一商品の同じ表示順へ二重に登録すると 23505 で失敗する。
 //
 //	INSERT INTO product_images (
 //	    id,
 //	    product_id,
 //	    image_path,
-//	    sort_key
+//	    display_sort
 //	) VALUES
 //	(
 //	    $1,
@@ -217,7 +249,7 @@ func (q *Queries) CreateProductImage(ctx context.Context, arg *CreateProductImag
 		arg.ID,
 		arg.ProductID,
 		arg.ImagePath,
-		arg.SortKey,
+		arg.DisplaySort,
 	)
 	return err
 }
@@ -227,48 +259,48 @@ INSERT INTO product_images (
     id,
     product_id,
     image_path,
-    sort_key
+    display_sort
 )
 SELECT
     src.id,
     $1,
     src.image_path,
-    src.sort_key
+    src.display_sort
 FROM (
     SELECT
         UNNEST($2::UUID []) AS id,
         UNNEST($3::TEXT []) AS image_path,
-        UNNEST($4::SMALLINT []) AS sort_key
+        UNNEST($4::SMALLINT []) AS display_sort
 ) AS src
 ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING
 `
 
 type CreateProductImagesIfAbsentParams struct {
-	ProductID  uuid.UUID
-	Ids        []uuid.UUID
-	ImagePaths []string
-	SortKeys   []int16
+	ProductID    uuid.UUID
+	Ids          []uuid.UUID
+	ImagePaths   []string
+	DisplaySorts []int16
 }
 
 // 商品画像をまとめて登録する。同じ ID が既にある場合は何もしない。
-// 衝突判定を主キーに限定しているため、生存行の (product_id, sort_key) の重複は従来どおり 23505 で失敗する。
+// 衝突判定を主キーに限定しているため、生存行の (product_id, display_sort) の重複は従来どおり 23505 で失敗する。
 //
 //	INSERT INTO product_images (
 //	    id,
 //	    product_id,
 //	    image_path,
-//	    sort_key
+//	    display_sort
 //	)
 //	SELECT
 //	    src.id,
 //	    $1,
 //	    src.image_path,
-//	    src.sort_key
+//	    src.display_sort
 //	FROM (
 //	    SELECT
 //	        UNNEST($2::UUID []) AS id,
 //	        UNNEST($3::TEXT []) AS image_path,
-//	        UNNEST($4::SMALLINT []) AS sort_key
+//	        UNNEST($4::SMALLINT []) AS display_sort
 //	) AS src
 //	ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING
 func (q *Queries) CreateProductImagesIfAbsent(ctx context.Context, arg *CreateProductImagesIfAbsentParams) error {
@@ -276,7 +308,7 @@ func (q *Queries) CreateProductImagesIfAbsent(ctx context.Context, arg *CreatePr
 		arg.ProductID,
 		arg.Ids,
 		arg.ImagePaths,
-		arg.SortKeys,
+		arg.DisplaySorts,
 	)
 	return err
 }
@@ -559,11 +591,11 @@ func (q *Queries) ListLowStockProducts(ctx context.Context, limitParam int32) ([
 }
 
 const listProductImagesByProductIDs = `-- name: ListProductImagesByProductIDs :many
-SELECT pi.id, pi.product_id, pi.image_path, pi.sort_key, pi.deleted_at, pi.created_at, pi.updated_at
+SELECT pi.id, pi.product_id, pi.image_path, pi.display_sort, pi.deleted_at, pi.created_at, pi.updated_at
 FROM product_images AS pi
 WHERE pi.product_id = ANY($1::UUID [])
     AND pi.deleted_at IS NULL
-ORDER BY pi.product_id, pi.sort_key
+ORDER BY pi.product_id, pi.display_sort
 `
 
 type ListProductImagesByProductIDsRow struct {
@@ -572,14 +604,14 @@ type ListProductImagesByProductIDsRow struct {
 
 // === source: database/dml/repository/product/select_product_images.sql ===
 // 複数の商品 ID から画像をまとめて取得する。商品 1 件ずつの取得を件数分繰り返さないための一括版で、
-// 並びは商品 ID 昇順・同一商品内は表示順（sort_key）昇順。product_ids が空の場合は 0 行。
+// 並びは商品 ID 昇順・同一商品内は表示順（display_sort）昇順。product_ids が空の場合は 0 行。
 // 生存行だけを返す（論理削除の意味は docs/spec/product/domain.md の Image 節を参照）。
 //
-//	SELECT pi.id, pi.product_id, pi.image_path, pi.sort_key, pi.deleted_at, pi.created_at, pi.updated_at
+//	SELECT pi.id, pi.product_id, pi.image_path, pi.display_sort, pi.deleted_at, pi.created_at, pi.updated_at
 //	FROM product_images AS pi
 //	WHERE pi.product_id = ANY($1::UUID [])
 //	    AND pi.deleted_at IS NULL
-//	ORDER BY pi.product_id, pi.sort_key
+//	ORDER BY pi.product_id, pi.display_sort
 func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]*ListProductImagesByProductIDsRow, error) {
 	rows, err := q.db.Query(ctx, listProductImagesByProductIDs, productIds)
 	if err != nil {
@@ -593,7 +625,7 @@ func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, productIds 
 			&i.ProductImages.ID,
 			&i.ProductImages.ProductID,
 			&i.ProductImages.ImagePath,
-			&i.ProductImages.SortKey,
+			&i.ProductImages.DisplaySort,
 			&i.ProductImages.DeletedAt,
 			&i.ProductImages.CreatedAt,
 			&i.ProductImages.UpdatedAt,
@@ -761,26 +793,42 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
-    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $7::TEXT IS NULL
-        OR p.name ILIKE '%' || $7 || '%'
-        OR p.description ILIKE '%' || $7 || '%'
+        $3::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT [])
+        )
     )
     AND (
-        p.published_at > $8
-        OR (p.published_at = $8 AND p.id > $9)
+        $4::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT [])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE '%' || $9 || '%'
+        OR p.description ILIKE '%' || $9 || '%'
+    )
+    AND (
+        p.published_at > $10
+        OR (p.published_at = $10 AND p.id > $11)
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $10
+LIMIT $12
 `
 
 type ListPublishedProductsAscAfterParams struct {
 	CategoryID       *uuid.UUID
 	StatusID         *uuid.UUID
+	CategoryCodes    []int16
+	StatusCodes      []int16
 	MinPrice         *decimal.Decimal
 	MaxPrice         *decimal.Decimal
 	MinQuantity      *int32
@@ -800,7 +848,9 @@ type ListPublishedProductsAscAfterRow struct {
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
@@ -814,25 +864,41 @@ type ListPublishedProductsAscAfterRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
-//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $7::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $7 || '%'
-//	        OR p.description ILIKE '%' || $7 || '%'
+//	        $3::SMALLINT [] IS NULL
+//	        OR p.category_id IN (
+//	            SELECT c.id FROM product_categories AS c
+//	            WHERE c.code = ANY($3::SMALLINT [])
+//	        )
 //	    )
 //	    AND (
-//	        p.published_at > $8
-//	        OR (p.published_at = $8 AND p.id > $9)
+//	        $4::SMALLINT [] IS NULL
+//	        OR p.status_id IN (
+//	            SELECT s.id FROM product_statuses AS s
+//	            WHERE s.code = ANY($4::SMALLINT [])
+//	        )
+//	    )
+//	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+//	    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+//	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+//	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+//	    AND (
+//	        $9::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $9 || '%'
+//	        OR p.description ILIKE '%' || $9 || '%'
+//	    )
+//	    AND (
+//	        p.published_at > $10
+//	        OR (p.published_at = $10 AND p.id > $11)
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $10
+//	LIMIT $12
 func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPublishedProductsAscAfterParams) ([]*ListPublishedProductsAscAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscAfter,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.CategoryCodes,
+		arg.StatusCodes,
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.MinQuantity,
@@ -886,28 +952,44 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
-    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $7::TEXT IS NULL
-        OR p.name ILIKE '%' || $7 || '%'
-        OR p.description ILIKE '%' || $7 || '%'
+        $3::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT [])
+        )
+    )
+    AND (
+        $4::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT [])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE '%' || $9 || '%'
+        OR p.description ILIKE '%' || $9 || '%'
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $8
+LIMIT $10
 `
 
 type ListPublishedProductsAscFirstParams struct {
-	CategoryID  *uuid.UUID
-	StatusID    *uuid.UUID
-	MinPrice    *decimal.Decimal
-	MaxPrice    *decimal.Decimal
-	MinQuantity *int32
-	MaxQuantity *int32
-	Keyword     *string
-	LimitParam  int32
+	CategoryID    *uuid.UUID
+	StatusID      *uuid.UUID
+	CategoryCodes []int16
+	StatusCodes   []int16
+	MinPrice      *decimal.Decimal
+	MaxPrice      *decimal.Decimal
+	MinQuantity   *int32
+	MaxQuantity   *int32
+	Keyword       *string
+	LimitParam    int32
 }
 
 type ListPublishedProductsAscFirstRow struct {
@@ -919,7 +1001,9 @@ type ListPublishedProductsAscFirstRow struct {
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
@@ -933,21 +1017,37 @@ type ListPublishedProductsAscFirstRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
-//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $7::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $7 || '%'
-//	        OR p.description ILIKE '%' || $7 || '%'
+//	        $3::SMALLINT [] IS NULL
+//	        OR p.category_id IN (
+//	            SELECT c.id FROM product_categories AS c
+//	            WHERE c.code = ANY($3::SMALLINT [])
+//	        )
+//	    )
+//	    AND (
+//	        $4::SMALLINT [] IS NULL
+//	        OR p.status_id IN (
+//	            SELECT s.id FROM product_statuses AS s
+//	            WHERE s.code = ANY($4::SMALLINT [])
+//	        )
+//	    )
+//	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+//	    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+//	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+//	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+//	    AND (
+//	        $9::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $9 || '%'
+//	        OR p.description ILIKE '%' || $9 || '%'
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $8
+//	LIMIT $10
 func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPublishedProductsAscFirstParams) ([]*ListPublishedProductsAscFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscFirst,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.CategoryCodes,
+		arg.StatusCodes,
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.MinQuantity,
@@ -999,26 +1099,42 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
-    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $7::TEXT IS NULL
-        OR p.name ILIKE '%' || $7 || '%'
-        OR p.description ILIKE '%' || $7 || '%'
+        $3::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT [])
+        )
     )
     AND (
-        p.published_at < $8
-        OR (p.published_at = $8 AND p.id < $9)
+        $4::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT [])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE '%' || $9 || '%'
+        OR p.description ILIKE '%' || $9 || '%'
+    )
+    AND (
+        p.published_at < $10
+        OR (p.published_at = $10 AND p.id < $11)
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $10
+LIMIT $12
 `
 
 type ListPublishedProductsDescAfterParams struct {
 	CategoryID       *uuid.UUID
 	StatusID         *uuid.UUID
+	CategoryCodes    []int16
+	StatusCodes      []int16
 	MinPrice         *decimal.Decimal
 	MaxPrice         *decimal.Decimal
 	MinQuantity      *int32
@@ -1038,7 +1154,9 @@ type ListPublishedProductsDescAfterRow struct {
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
@@ -1052,25 +1170,41 @@ type ListPublishedProductsDescAfterRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
-//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $7::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $7 || '%'
-//	        OR p.description ILIKE '%' || $7 || '%'
+//	        $3::SMALLINT [] IS NULL
+//	        OR p.category_id IN (
+//	            SELECT c.id FROM product_categories AS c
+//	            WHERE c.code = ANY($3::SMALLINT [])
+//	        )
 //	    )
 //	    AND (
-//	        p.published_at < $8
-//	        OR (p.published_at = $8 AND p.id < $9)
+//	        $4::SMALLINT [] IS NULL
+//	        OR p.status_id IN (
+//	            SELECT s.id FROM product_statuses AS s
+//	            WHERE s.code = ANY($4::SMALLINT [])
+//	        )
+//	    )
+//	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+//	    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+//	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+//	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+//	    AND (
+//	        $9::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $9 || '%'
+//	        OR p.description ILIKE '%' || $9 || '%'
+//	    )
+//	    AND (
+//	        p.published_at < $10
+//	        OR (p.published_at = $10 AND p.id < $11)
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $10
+//	LIMIT $12
 func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListPublishedProductsDescAfterParams) ([]*ListPublishedProductsDescAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescAfter,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.CategoryCodes,
+		arg.StatusCodes,
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.MinQuantity,
@@ -1124,28 +1258,44 @@ INNER JOIN product_categories AS pc ON p.category_id = pc.id
 WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
-    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
     AND (
-        $7::TEXT IS NULL
-        OR p.name ILIKE '%' || $7 || '%'
-        OR p.description ILIKE '%' || $7 || '%'
+        $3::SMALLINT [] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT [])
+        )
+    )
+    AND (
+        $4::SMALLINT [] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT [])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE '%' || $9 || '%'
+        OR p.description ILIKE '%' || $9 || '%'
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $8
+LIMIT $10
 `
 
 type ListPublishedProductsDescFirstParams struct {
-	CategoryID  *uuid.UUID
-	StatusID    *uuid.UUID
-	MinPrice    *decimal.Decimal
-	MaxPrice    *decimal.Decimal
-	MinQuantity *int32
-	MaxQuantity *int32
-	Keyword     *string
-	LimitParam  int32
+	CategoryID    *uuid.UUID
+	StatusID      *uuid.UUID
+	CategoryCodes []int16
+	StatusCodes   []int16
+	MinPrice      *decimal.Decimal
+	MaxPrice      *decimal.Decimal
+	MinQuantity   *int32
+	MaxQuantity   *int32
+	Keyword       *string
+	LimitParam    int32
 }
 
 type ListPublishedProductsDescFirstRow struct {
@@ -1158,7 +1308,9 @@ type ListPublishedProductsDescFirstRow struct {
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / keyword / price・quantity の上下限は指定時のみ絞り込みます。
+// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
@@ -1172,21 +1324,37 @@ type ListPublishedProductsDescFirstRow struct {
 //	WHERE p.published_at IS NOT NULL
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
-//	    AND ($3::NUMERIC IS NULL OR p.price >= $3)
-//	    AND ($4::NUMERIC IS NULL OR p.price <= $4)
-//	    AND ($5::INTEGER IS NULL OR p.quantity >= $5)
-//	    AND ($6::INTEGER IS NULL OR p.quantity <= $6)
 //	    AND (
-//	        $7::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $7 || '%'
-//	        OR p.description ILIKE '%' || $7 || '%'
+//	        $3::SMALLINT [] IS NULL
+//	        OR p.category_id IN (
+//	            SELECT c.id FROM product_categories AS c
+//	            WHERE c.code = ANY($3::SMALLINT [])
+//	        )
+//	    )
+//	    AND (
+//	        $4::SMALLINT [] IS NULL
+//	        OR p.status_id IN (
+//	            SELECT s.id FROM product_statuses AS s
+//	            WHERE s.code = ANY($4::SMALLINT [])
+//	        )
+//	    )
+//	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
+//	    AND ($6::NUMERIC IS NULL OR p.price <= $6)
+//	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
+//	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
+//	    AND (
+//	        $9::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $9 || '%'
+//	        OR p.description ILIKE '%' || $9 || '%'
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $8
+//	LIMIT $10
 func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListPublishedProductsDescFirstParams) ([]*ListPublishedProductsDescFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescFirst,
 		arg.CategoryID,
 		arg.StatusID,
+		arg.CategoryCodes,
+		arg.StatusCodes,
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.MinQuantity,

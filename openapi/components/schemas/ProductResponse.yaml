@@ -59,7 +59,7 @@ properties:
   images:
     type: array
     description: >-
-      商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。
+      商品画像。displaySort の昇順で返します。画像が 1 枚も無い場合は空配列です。
       表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
     items:
       $ref: './products/ProductImageItem.yaml'

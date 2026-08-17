@@ -162,7 +162,7 @@ func toPatchFieldImages(v nullable.Nullable[[]gen.ProductImageInput]) patch.Fiel
 	inputs := v.MustGet()
 	params := make([]productuc.ProductImageParams, len(inputs))
 	for i, in := range inputs {
-		params[i] = productuc.ProductImageParams{ImagePath: in.ImagePath, SortKey: int(in.SortKey)}
+		params[i] = productuc.ProductImageParams{ImagePath: in.ImagePath, DisplaySort: int(in.DisplaySort)}
 	}
 
 	return patch.Value(params)
@@ -173,11 +173,11 @@ func toPatchFieldImages(v nullable.Nullable[[]gen.ProductImageInput]) patch.Fiel
 func toProductImageItems(dtos []productuc.ProductImageItemView) ([]gen.ProductImageItem, error) {
 	items := make([]gen.ProductImageItem, len(dtos))
 	for i, dto := range dtos {
-		sortKey, err := safecast.IntToInt32(dto.SortKey)
+		displaySort, err := safecast.IntToInt32(dto.DisplaySort)
 		if err != nil {
-			return nil, xerrors.Wrap(err, "invalid product image sort key")
+			return nil, xerrors.Wrap(err, "invalid product image display sort")
 		}
-		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: sortKey}
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, DisplaySort: displaySort}
 	}
 	return items, nil
 }

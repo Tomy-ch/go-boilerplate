@@ -5,12 +5,15 @@ get:
   summary: 商品検索の一致件数の取得
   description: |
     公開済み商品のうち、指定した検索条件に一致する件数のみを返します。認証不要の公開エンドポイントです。
-    categoryId / statusId / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味は
+    categoryCodes / statusCodes / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味は
     GET /v1/products と同一です。検索条件を指定しない場合は公開済み商品の総数を返します。
+    categoryId / statusId は非推奨で、後継の categoryCodes / statusCodes と同時に指定すると 400 を返します。
   security: []
   parameters:
     - $ref: '../../../components/parameters/product/CategoryIdParam.yaml'
     - $ref: '../../../components/parameters/product/StatusIdParam.yaml'
+    - $ref: '../../../components/parameters/product/CategoryCodesParam.yaml'
+    - $ref: '../../../components/parameters/product/StatusCodesParam.yaml'
     - $ref: '../../../components/parameters/search/KeywordParam.yaml'
     - $ref: '../../../components/parameters/product/MinPriceParam.yaml'
     - $ref: '../../../components/parameters/product/MaxPriceParam.yaml'

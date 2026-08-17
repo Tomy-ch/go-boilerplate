@@ -25,6 +25,9 @@ type ProductCountResponse struct {
 	Count int64 `json:"count"`
 }
 
+// CategoryCodesParam defines model for CategoryCodesParam.
+type CategoryCodesParam = []int32
+
 // CategoryIdParam defines model for CategoryIdParam.
 type CategoryIdParam = openapi_types.UUID
 
@@ -42,6 +45,9 @@ type MinPriceParam = string
 
 // MinQuantityParam defines model for MinQuantityParam.
 type MinQuantityParam = int32
+
+// StatusCodesParam defines model for StatusCodesParam.
+type StatusCodesParam = []int32
 
 // StatusIdParam defines model for StatusIdParam.
 type StatusIdParam = openapi_types.UUID
@@ -67,10 +73,26 @@ type bearerAuthContextKey string
 // GetProductsCountParams defines parameters for GetProductsCount.
 type GetProductsCountParams struct {
 	// CategoryId 商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+	// 後継は categoryCodes で、マスタ行を指すのは UUID ではなく code です。categoryCodes と
+	// 同時に指定した場合は 400 を返します。
 	CategoryId *CategoryIdParam `form:"categoryId,omitempty" json:"categoryId,omitempty"`
 
 	// StatusId 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+	// 後継は statusCodes で、マスタ行を指すのは UUID ではなく code です。statusCodes と
+	// 同時に指定した場合は 400 を返します。
 	StatusId *StatusIdParam `form:"statusId,omitempty" json:"statusId,omitempty"`
+
+	// CategoryCodes 商品カテゴリコードでフィルタします（カンマ区切り）。指定したコードのいずれかに一致する商品を返します。
+	// 指定しない場合は全カテゴリを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+	// コードは商品カテゴリマスタ（GET /v1/products/categories）が返す code で、マスタ行を指す静的な別名です。
+	// 非推奨の categoryId と同時に指定した場合は 400 を返します。
+	CategoryCodes *CategoryCodesParam `form:"categoryCodes,omitempty" json:"categoryCodes,omitempty"`
+
+	// StatusCodes 商品ステータスコードでフィルタします（カンマ区切り）。指定したコードのいずれかに一致する商品を返します。
+	// 指定しない場合は全ステータスを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+	// コードは商品ステータスマスタ（GET /v1/products/statuses）が返す code で、マスタ行を指す静的な別名です。
+	// 非推奨の statusId と同時に指定した場合は 400 を返します。
+	StatusCodes *StatusCodesParam `form:"statusCodes,omitempty" json:"statusCodes,omitempty"`
 
 	// Keyword 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
 	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`

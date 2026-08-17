@@ -42,9 +42,9 @@ func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 }
 
 // mustImage は、テスト用に商品画像を構築します。
-func mustImage(t *testing.T, salt, path string, sortKey int) Image {
+func mustImage(t *testing.T, salt, path string, displaySort int) Image {
 	t.Helper()
-	return NewImage(uuidtestkit.NewTestFromSalt(t, salt), ImageAttributes{ImagePath: path, SortKey: sortKey})
+	return NewImage(uuidtestkit.NewTestFromSalt(t, salt), ImageAttributes{ImagePath: path, DisplaySort: displaySort})
 }
 
 // validProductArgs は、テスト用に有効な商品 ID と属性一式を構築します。
@@ -274,7 +274,7 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, ErrInvalidCategoryID)
 		})
 
-		t.Run("画像の表示順が重複する場合、ErrDuplicateImageSortKeyを返す", func(t *testing.T) {
+		t.Run("画像の表示順が重複する場合、ErrDuplicateImageDisplaySortを返す", func(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Images = []Image{
@@ -283,7 +283,7 @@ func TestNew(t *testing.T) {
 			}
 			actual, err := New(id, invalid)
 			assert.Nil(t, actual)
-			require.ErrorIs(t, err, ErrDuplicateImageSortKey)
+			require.ErrorIs(t, err, ErrDuplicateImageDisplaySort)
 		})
 
 		t.Run("画像パスが空の場合、ErrInvalidImagePathを返す", func(t *testing.T) {
@@ -538,8 +538,8 @@ func Test_validateAttributes(t *testing.T) {
 		t.Run("画像の不変条件違反を伝播する", func(t *testing.T) {
 			t.Parallel()
 			attrs := valid
-			attrs.Images = []Image{mustImage(t, "out_of_range_image", "products/a.png", maxImageSortKey+1)}
-			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidImageSortKey)
+			attrs.Images = []Image{mustImage(t, "out_of_range_image", "products/a.png", maxImageDisplaySort+1)}
+			require.ErrorIs(t, validateAttributes(attrs), ErrInvalidImageDisplaySort)
 		})
 	})
 }
@@ -904,9 +904,9 @@ func TestProduct_Images(t *testing.T) {
 			images := p.Images()
 			require.Len(t, images, 2)
 			assert.Equal(t, "products/earphone.png", images[0].ImagePath())
-			assert.Equal(t, 1, images[0].SortKey())
+			assert.Equal(t, 1, images[0].DisplaySort())
 			assert.Equal(t, "products/earphone-sub.png", images[1].ImagePath())
-			assert.Equal(t, 2, images[1].SortKey())
+			assert.Equal(t, 2, images[1].DisplaySort())
 		})
 
 		t.Run("表示順が降順で渡された場合でも昇順に並べ替えて返す", func(t *testing.T) {
@@ -922,8 +922,8 @@ func TestProduct_Images(t *testing.T) {
 
 			images := p.Images()
 			require.Len(t, images, 2)
-			assert.Equal(t, 1, images[0].SortKey())
-			assert.Equal(t, 2, images[1].SortKey())
+			assert.Equal(t, 1, images[0].DisplaySort())
+			assert.Equal(t, 2, images[1].DisplaySort())
 		})
 
 		t.Run("未設定の場合、空を返す", func(t *testing.T) {

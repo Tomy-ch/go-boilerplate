@@ -39,7 +39,7 @@ func TestV1Products_Integration(t *testing.T) {
 			CategoryID:  uuidtestkit.NewTestFromSalt(t, "integration_category"),
 			PublishedAt: ptr.To(time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)),
 			Images: []productuc.ProductImageItemView{
-				{Path: "products/integration_product.png", SortKey: 1},
+				{Path: "products/integration_product.png", DisplaySort: 1},
 			},
 		}
 	}
@@ -54,7 +54,7 @@ func TestV1Products_Integration(t *testing.T) {
 			CategoryId:  uuidtestkit.NewTestFromSalt(t, "integration_category").ToPrimitive(),
 			StatusId:    uuidtestkit.NewTestFromSalt(t, "integration_status").ToPrimitive(),
 			Images: ptr.To([]gen.ProductImageInput{
-				{ImagePath: "products/integration_product.png", SortKey: 1},
+				{ImagePath: "products/integration_product.png", DisplaySort: 1},
 			}),
 		}
 	}
@@ -87,7 +87,7 @@ func TestV1Products_Integration(t *testing.T) {
 			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
 			require.Len(t, body.Images, 1)
 			assert.Equal(t, "products/integration_product.png", body.Images[0].ImagePath)
-			assert.Equal(t, int32(1), body.Images[0].SortKey)
+			assert.Equal(t, int32(1), body.Images[0].DisplaySort)
 			require.NotNil(t, body.Description)
 			assert.Equal(t, "説明", *body.Description)
 		})
@@ -191,10 +191,54 @@ func TestV1Products_Integration(t *testing.T) {
 			require.NotNil(t, captured.MaxQuantity)
 			assert.Equal(t, int32(20), *captured.MaxQuantity)
 		})
+
+		t.Run("カンマ区切りのcategoryCodesとstatusCodesがハンドラのパラメータへバインドされる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var captured productuc.ListProductsParams
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+					captured = params
+					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
+				},
+			)
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, "/v1/products?categoryCodes=1,2&statusCodes=5", nil, nil,
+			)
+			require.Equal(t, http.StatusOK, actual.StatusCode)
+
+			assert.Equal(t, []int16{1, 2}, captured.CategoryCodes)
+			assert.Equal(t, []int16{5}, captured.StatusCodes)
+			assert.Nil(t, captured.CategoryID)
+			assert.Nil(t, captured.StatusID)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("範囲外のcategoryCodesはOpenAPIバリデーションが400で弾く", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Times(0)
+			productshandler.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
+			useOpenAPIValidation(t, e)
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products?categoryCodes=0", nil, nil)
+
+			AssertErrorResponse(t, actual, http.StatusBadRequest)
+		})
 
 		t.Run("POST /v1/products が権限エラー(usecase)を403へ変換する", func(t *testing.T) {
 			t.Parallel()

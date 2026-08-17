@@ -2,6 +2,7 @@ package productcount
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v5"
@@ -80,10 +82,62 @@ func Test_server_GetProductsCount(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, int64(4), actual.Count)
 		})
+		t.Run("categoryCodesとstatusCodesがUsecaseへ引き渡される", func(t *testing.T) {
+			t.Parallel()
+
+			// 2 つは同型なので、取り違えても片方だけの検証では気づけない。値を分けて個別に確かめる。
+			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params productuc.SearchFilter) (productuc.ProductCountView, error) {
+					assert.Equal(t, []int16{1, 2}, params.CategoryCodes)
+					assert.Equal(t, []int16{7}, params.StatusCodes)
+					return productuc.ProductCountView{Count: 3}, nil
+				},
+			)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
+			categoryCodes := gen.CategoryCodesParam{1, 2}
+			statusCodes := gen.StatusCodesParam{7}
+
+			actual, err := s.GetProductsCount(context.Background(), gen.GetProductsCountRequestObject{
+				Params: gen.GetProductsCountParams{CategoryCodes: &categoryCodes, StatusCodes: &statusCodes},
+			})
+			require.NoError(t, err)
+			assert.Equal(t, gen.GetProductsCount200JSONResponse(gen.ProductCountResponse{Count: 3}), actual)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("categoryCodesがint16の範囲を超える場合、ErrOverflowを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// spec の maximum が先に弾くため通常は到達しないが、spec を迂回した呼び出しでは
+			// 切り捨てずに落ちることがこの経路の契約。
+			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).Times(0)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
+			codes := gen.CategoryCodesParam{math.MaxInt16 + 1}
+
+			_, err := s.GetProductsCount(context.Background(), gen.GetProductsCountRequestObject{
+				Params: gen.GetProductsCountParams{CategoryCodes: &codes},
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
+
+		t.Run("statusCodesがint16の範囲を超える場合、ErrOverflowを返す", func(t *testing.T) {
+			t.Parallel()
+
+			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).Times(0)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
+			codes := gen.StatusCodesParam{math.MaxInt16 + 1}
+
+			_, err := s.GetProductsCount(context.Background(), gen.GetProductsCountRequestObject{
+				Params: gen.GetProductsCountParams{StatusCodes: &codes},
+			})
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+		})
 
 		t.Run("Usecaseのエラーを伝播する", func(t *testing.T) {
 			t.Parallel()

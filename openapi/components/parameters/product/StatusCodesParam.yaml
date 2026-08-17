@@ -1,0 +1,21 @@
+name: statusCodes
+in: query
+description: |
+  商品ステータスコードでフィルタします（カンマ区切り）。指定したコードのいずれかに一致する商品を返します。
+  指定しない場合は全ステータスを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+  コードは商品ステータスマスタ（GET /v1/products/statuses）が返す code で、マスタ行を指す静的な別名です。
+  非推奨の statusId と同時に指定した場合は 400 を返します。
+required: false
+explode: false
+schema:
+  type: array
+  uniqueItems: true
+  maxItems: 32
+  items:
+    type: integer
+    format: int32
+    minimum: 1
+    maximum: 32767
+  example:
+    - 1
+    - 5

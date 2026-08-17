@@ -137,14 +137,14 @@ methods:
   fields:
     - name: ImagePath
       type: string                    # 画像アップロードで得たオブジェクトのパス
-    - name: SortKey
+    - name: DisplaySort
       type: int                       # 同一商品内での表示順。重複は集約が 422 で拒否する
 - name: ProductImageItemView
   description: 商品画像 1 件分の出力 DTO。
   fields:
     - name: Path
       type: string
-    - name: SortKey
+    - name: DisplaySort
       type: int
 - name: UpdateProductParams
   description: |

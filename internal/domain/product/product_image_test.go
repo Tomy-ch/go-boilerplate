@@ -22,21 +22,21 @@ func TestNewImage(t *testing.T) {
 
 			id := uuidtestkit.NewTestFromSalt(t, "product_image_id")
 
-			img := NewImage(id, ImageAttributes{ImagePath: "products/earphone.png", SortKey: 3})
+			img := NewImage(id, ImageAttributes{ImagePath: "products/earphone.png", DisplaySort: 3})
 
 			assert.Equal(t, id, img.ID())
 			assert.Equal(t, "products/earphone.png", img.ImagePath())
-			assert.Equal(t, 3, img.SortKey())
+			assert.Equal(t, 3, img.DisplaySort())
 		})
 
 		t.Run("不変条件は集約が検証するため、単体では検証せずに構築できる", func(t *testing.T) {
 			t.Parallel()
 
-			img := NewImage(uuid.UUID{}, ImageAttributes{ImagePath: "", SortKey: 0})
+			img := NewImage(uuid.UUID{}, ImageAttributes{ImagePath: "", DisplaySort: 0})
 
 			assert.True(t, img.ID().IsNil())
 			assert.Empty(t, img.ImagePath())
-			assert.Equal(t, 0, img.SortKey())
+			assert.Equal(t, 0, img.DisplaySort())
 		})
 	})
 }
@@ -52,7 +52,7 @@ func TestImage_ID(t *testing.T) {
 
 			id := uuidtestkit.NewTestFromSalt(t, "product_image_id")
 
-			assert.Equal(t, id, NewImage(id, ImageAttributes{ImagePath: "products/a.png", SortKey: 1}).ID())
+			assert.Equal(t, id, NewImage(id, ImageAttributes{ImagePath: "products/a.png", DisplaySort: 1}).ID())
 		})
 	})
 }
@@ -73,7 +73,7 @@ func TestImage_ImagePath(t *testing.T) {
 	})
 }
 
-func TestImage_SortKey(t *testing.T) {
+func TestImage_DisplaySort(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestImage_SortKey(t *testing.T) {
 
 			img := mustImage(t, "product_image_id", "products/earphone.png", 7)
 
-			assert.Equal(t, 7, img.SortKey())
+			assert.Equal(t, 7, img.DisplaySort())
 		})
 	})
 }
@@ -99,8 +99,8 @@ func Test_validateImages(t *testing.T) {
 			t.Parallel()
 
 			images := []Image{
-				mustImage(t, "product_image_id_1", "products/a.png", minImageSortKey),
-				mustImage(t, "product_image_id_2", "products/b.png", maxImageSortKey),
+				mustImage(t, "product_image_id_1", "products/a.png", minImageDisplaySort),
+				mustImage(t, "product_image_id_2", "products/b.png", maxImageDisplaySort),
 			}
 
 			require.NoError(t, validateImages(images))
@@ -119,7 +119,7 @@ func Test_validateImages(t *testing.T) {
 		t.Run("IDが未設定の場合、ErrInvalidIDを返す", func(t *testing.T) {
 			t.Parallel()
 
-			images := []Image{NewImage(uuid.UUID{}, ImageAttributes{ImagePath: "products/a.png", SortKey: 1})}
+			images := []Image{NewImage(uuid.UUID{}, ImageAttributes{ImagePath: "products/a.png", DisplaySort: 1})}
 
 			err := validateImages(images)
 
@@ -138,29 +138,29 @@ func Test_validateImages(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 
-		t.Run("表示順が下限未満の場合、ErrInvalidImageSortKeyを返す", func(t *testing.T) {
+		t.Run("表示順が下限未満の場合、ErrInvalidImageDisplaySortを返す", func(t *testing.T) {
 			t.Parallel()
 
-			images := []Image{mustImage(t, "product_image_id_1", "products/a.png", minImageSortKey-1)}
+			images := []Image{mustImage(t, "product_image_id_1", "products/a.png", minImageDisplaySort-1)}
 
 			err := validateImages(images)
 
-			require.ErrorIs(t, err, ErrInvalidImageSortKey)
+			require.ErrorIs(t, err, ErrInvalidImageDisplaySort)
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 
-		t.Run("表示順が上限超過の場合、ErrInvalidImageSortKeyを返す", func(t *testing.T) {
+		t.Run("表示順が上限超過の場合、ErrInvalidImageDisplaySortを返す", func(t *testing.T) {
 			t.Parallel()
 
-			images := []Image{mustImage(t, "product_image_id_1", "products/a.png", maxImageSortKey+1)}
+			images := []Image{mustImage(t, "product_image_id_1", "products/a.png", maxImageDisplaySort+1)}
 
 			err := validateImages(images)
 
-			require.ErrorIs(t, err, ErrInvalidImageSortKey)
+			require.ErrorIs(t, err, ErrInvalidImageDisplaySort)
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 
-		t.Run("同一商品内で表示順が重複する場合、ErrDuplicateImageSortKeyを返す", func(t *testing.T) {
+		t.Run("同一商品内で表示順が重複する場合、ErrDuplicateImageDisplaySortを返す", func(t *testing.T) {
 			t.Parallel()
 
 			images := []Image{
@@ -170,13 +170,13 @@ func Test_validateImages(t *testing.T) {
 
 			err := validateImages(images)
 
-			require.ErrorIs(t, err, ErrDuplicateImageSortKey)
+			require.ErrorIs(t, err, ErrDuplicateImageDisplaySort)
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
 	})
 }
 
-func Test_sortImagesBySortKey(t *testing.T) {
+func Test_sortImagesByDisplaySort(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -191,14 +191,14 @@ func Test_sortImagesBySortKey(t *testing.T) {
 				mustImage(t, "product_image_id_2", "products/b.png", 2),
 			}
 
-			sorted := sortImagesBySortKey(images)
+			sorted := sortImagesByDisplaySort(images)
 
 			require.Len(t, sorted, 3)
-			assert.Equal(t, 1, sorted[0].SortKey())
-			assert.Equal(t, 2, sorted[1].SortKey())
-			assert.Equal(t, 3, sorted[2].SortKey())
+			assert.Equal(t, 1, sorted[0].DisplaySort())
+			assert.Equal(t, 2, sorted[1].DisplaySort())
+			assert.Equal(t, 3, sorted[2].DisplaySort())
 			// 元のスライスは並べ替えの影響を受けない。
-			assert.Equal(t, 3, images[0].SortKey())
+			assert.Equal(t, 3, images[0].DisplaySort())
 		})
 	})
 }

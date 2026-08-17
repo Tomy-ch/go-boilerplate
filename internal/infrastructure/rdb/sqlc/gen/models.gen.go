@@ -111,6 +111,8 @@ type Prefectures struct {
 	Name string
 	// 都道府県コード
 	Code int16
+	// 順序
+	SortKey int16
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -141,8 +143,8 @@ type ProductImages struct {
 	ProductID uuid.UUID
 	// 画像パス
 	ImagePath string
-	// 順序
-	SortKey int16
+	// 表示順
+	DisplaySort int16
 	// 削除日時
 	DeletedAt *time.Time
 	// 作成日時
@@ -271,6 +273,8 @@ type Roles struct {
 	Name string
 	// コード
 	Code int16
+	// 順序
+	SortKey int16
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時

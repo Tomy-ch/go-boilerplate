@@ -64,8 +64,8 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			StatusID:              statusID,
 			PublishedAt:           ptr.To(publishedAt),
 			Images: []ProductImageParams{
-				{ImagePath: "products/earphone.png", SortKey: 1},
-				{ImagePath: "products/earphone-sub.png", SortKey: 2},
+				{ImagePath: "products/earphone.png", DisplaySort: 1},
+				{ImagePath: "products/earphone-sub.png", DisplaySort: 2},
 			},
 		}, statusID, categoryID
 	}
@@ -109,9 +109,9 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			assert.Equal(t, *params.PublishedAt, *actual.PublishedAt)
 			require.Len(t, actual.Images, 2)
 			assert.Equal(t, "products/earphone.png", actual.Images[0].Path)
-			assert.Equal(t, 1, actual.Images[0].SortKey)
+			assert.Equal(t, 1, actual.Images[0].DisplaySort)
 			assert.Equal(t, "products/earphone-sub.png", actual.Images[1].Path)
-			assert.Equal(t, 2, actual.Images[1].SortKey)
+			assert.Equal(t, 2, actual.Images[1].DisplaySort)
 		})
 
 		t.Run("publishedAtがnil・画像が空（未公開・画像未設定）でも作成できる", func(t *testing.T) {
@@ -431,24 +431,24 @@ func Test_buildImages(t *testing.T) {
 			t.Parallel()
 
 			actual, err := buildImages([]ProductImageParams{
-				{ImagePath: "products/a.png", SortKey: 1},
-				{ImagePath: "products/b.png", SortKey: 2},
+				{ImagePath: "products/a.png", DisplaySort: 1},
+				{ImagePath: "products/b.png", DisplaySort: 2},
 			})
 
 			require.NoError(t, err)
 			require.Len(t, actual, 2)
 			assert.Equal(t, "products/a.png", actual[0].ImagePath())
-			assert.Equal(t, 1, actual[0].SortKey())
+			assert.Equal(t, 1, actual[0].DisplaySort())
 			assert.Equal(t, "products/b.png", actual[1].ImagePath())
-			assert.Equal(t, 2, actual[1].SortKey())
+			assert.Equal(t, 2, actual[1].DisplaySort())
 		})
 
 		t.Run("採番したIDは画像ごとに異なる", func(t *testing.T) {
 			t.Parallel()
 
 			actual, err := buildImages([]ProductImageParams{
-				{ImagePath: "products/a.png", SortKey: 1},
-				{ImagePath: "products/b.png", SortKey: 2},
+				{ImagePath: "products/a.png", DisplaySort: 1},
+				{ImagePath: "products/b.png", DisplaySort: 2},
 			})
 
 			require.NoError(t, err)

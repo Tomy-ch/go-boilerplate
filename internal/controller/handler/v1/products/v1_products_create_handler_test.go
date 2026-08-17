@@ -31,8 +31,8 @@ func newPostProductsRequest(t *testing.T) gen.PostProductsRequestObject {
 			StatusId:              uuidtestkit.NewTestFromSalt(t, "post_status").ToPrimitive(),
 			PublishedAt:           ptr.To(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)),
 			Images: ptr.To([]gen.ProductImageInput{
-				{ImagePath: "products/earphone.png", SortKey: 1},
-				{ImagePath: "products/earphone-sub.png", SortKey: 2},
+				{ImagePath: "products/earphone.png", DisplaySort: 1},
+				{ImagePath: "products/earphone-sub.png", DisplaySort: 2},
 			}),
 		},
 	}
@@ -57,9 +57,9 @@ func Test_server_PostProducts(t *testing.T) {
 					assert.Equal(t, 100, p.Quantity)
 					require.Len(t, p.Images, 2)
 					assert.Equal(t, "products/earphone.png", p.Images[0].ImagePath)
-					assert.Equal(t, 1, p.Images[0].SortKey)
+					assert.Equal(t, 1, p.Images[0].DisplaySort)
 					assert.Equal(t, "products/earphone-sub.png", p.Images[1].ImagePath)
-					assert.Equal(t, 2, p.Images[1].SortKey)
+					assert.Equal(t, 2, p.Images[1].DisplaySort)
 					require.NotNil(t, p.Description)
 					assert.Equal(t, "<p>ノイズキャンセリング対応</p>", *p.Description)
 					require.NotNil(t, p.PublishedAt)

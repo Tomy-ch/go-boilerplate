@@ -60,7 +60,7 @@ func newUpdateTarget(t *testing.T, version int) *domainproduct.Product {
 		Images: []domainproduct.Image{
 			domainproduct.NewImage(
 				uuidtestkit.NewTestFromSalt(t, "update_current_image"),
-				domainproduct.ImageAttributes{ImagePath: "products/current.png", SortKey: 1},
+				domainproduct.ImageAttributes{ImagePath: "products/current.png", DisplaySort: 1},
 			),
 		},
 	}, version)
@@ -206,7 +206,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 				StockWarningThreshold: patch.Value(7),
 				PublishedAt:           patch.Value(publishedAt),
 				Images: patch.Value([]ProductImageParams{
-					{ImagePath: "products/updated.png", SortKey: 1},
+					{ImagePath: "products/updated.png", DisplaySort: 1},
 				}),
 			})
 			require.NoError(t, err)
@@ -641,14 +641,14 @@ func Test_resolveUpdatedImages(t *testing.T) {
 			t.Parallel()
 
 			actual, err := resolveUpdatedImages(patch.Value([]ProductImageParams{
-				{ImagePath: "products/a.png", SortKey: 3},
+				{ImagePath: "products/a.png", DisplaySort: 3},
 			}))
 
 			require.NoError(t, err)
 			require.NotNil(t, actual)
 			require.Len(t, *actual, 1)
 			assert.Equal(t, "products/a.png", (*actual)[0].ImagePath())
-			assert.Equal(t, 3, (*actual)[0].SortKey())
+			assert.Equal(t, 3, (*actual)[0].DisplaySort())
 		})
 	})
 }

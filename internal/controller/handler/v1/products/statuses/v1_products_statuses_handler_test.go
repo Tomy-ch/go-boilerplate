@@ -47,7 +47,7 @@ func Test_server_GetProductStatuses(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("usecaseのDTO一覧をsortKey昇順のレスポンスへ詰め替える", func(t *testing.T) {
+		t.Run("usecaseのDTO一覧を順序を保ってレスポンスへ詰め替える", func(t *testing.T) {
 			t.Parallel()
 
 			reviewingID, err := uuid.Parse("bdf44f06-227c-4549-b2c8-e57b32f06321")
@@ -57,8 +57,8 @@ func Test_server_GetProductStatuses(t *testing.T) {
 
 			s, mockUC := newServer(t)
 			mockUC.EXPECT().ListStatuses(gomock.Any()).Return(statusuc.StatusDTOs{
-				{ID: reviewingID, Code: 8, Name: "検討中", SortKey: 1},
-				{ID: inStockID, Code: 1, Name: "在庫あり", SortKey: 5},
+				{ID: reviewingID, Code: 8, Name: "検討中"},
+				{ID: inStockID, Code: 1, Name: "在庫あり"},
 			}, nil)
 
 			resp, err := s.GetProductStatuses(context.Background(), gen.GetProductStatusesRequestObject{})
@@ -68,8 +68,8 @@ func Test_server_GetProductStatuses(t *testing.T) {
 			require.True(t, ok)
 
 			assert.Equal(t, gen.GetProductStatuses200JSONResponse{
-				{Id: reviewingID.ToPrimitive(), Code: 8, Name: "検討中", SortKey: 1},
-				{Id: inStockID.ToPrimitive(), Code: 1, Name: "在庫あり", SortKey: 5},
+				{Id: reviewingID.ToPrimitive(), Code: 8, Name: "検討中"},
+				{Id: inStockID.ToPrimitive(), Code: 1, Name: "在庫あり"},
 			}, actual)
 		})
 
@@ -115,12 +115,11 @@ func Test_toProductStatusResponse(t *testing.T) {
 			t.Parallel()
 
 			id := uuidtestkit.NewTestFromSalt(t, "status_conv")
-			actual := toProductStatusResponse(statusuc.StatusDTO{ID: id, Code: 8, Name: "検討中", SortKey: 3})
+			actual := toProductStatusResponse(statusuc.StatusDTO{ID: id, Code: 8, Name: "検討中"})
 
 			assert.Equal(t, id.ToPrimitive(), actual.Id)
 			assert.Equal(t, 8, actual.Code)
 			assert.Equal(t, "検討中", actual.Name)
-			assert.Equal(t, 3, actual.SortKey)
 		})
 	})
 }

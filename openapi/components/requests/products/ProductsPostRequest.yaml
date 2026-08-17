@@ -62,6 +62,6 @@ properties:
     type: array
     description: >-
       商品画像。未指定の場合は画像を持たない商品として作成します。
-      同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。
+      同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。
     items:
       $ref: './ProductImageInput.yaml'

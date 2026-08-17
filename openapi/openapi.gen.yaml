@@ -669,7 +669,8 @@ paths:
       description: |
         公開済みの商品を cursor ページネーションで取得します。認証不要の公開エンドポイントです。
         既定では公開日時の降順（publishedAt DESC, id DESC）で並び、sort=publishedAt で昇順に切り替えられます。
-        categoryId / statusId でフィルタ、keyword で商品名・説明の部分一致検索ができます。
+        categoryCodes / statusCodes でフィルタ（カンマ区切りで複数指定可）、keyword で商品名・説明の部分一致検索ができます。
+        categoryId / statusId は非推奨で、後継の categoryCodes / statusCodes と同時に指定すると 400 を返します。
         minPrice / maxPrice で価格、minQuantity / maxQuantity で在庫数を境界値を含めて範囲検索できます。
         いずれの範囲も下限が上限を超える場合は 400 を返します。
         公開日時が未設定（未公開）の商品は返しません。ステータスによる可視範囲の絞り込みは今後対応予定です。
@@ -680,6 +681,8 @@ paths:
         - $ref: '#/components/parameters/CursorFirstParam'
         - $ref: '#/components/parameters/CategoryIdParam'
         - $ref: '#/components/parameters/StatusIdParam'
+        - $ref: '#/components/parameters/CategoryCodesParam'
+        - $ref: '#/components/parameters/StatusCodesParam'
         - $ref: '#/components/parameters/KeywordParam'
         - $ref: '#/components/parameters/MinPriceParam'
         - $ref: '#/components/parameters/MaxPriceParam'
@@ -748,12 +751,15 @@ paths:
       summary: 商品検索の一致件数の取得
       description: |
         公開済み商品のうち、指定した検索条件に一致する件数のみを返します。認証不要の公開エンドポイントです。
-        categoryId / statusId / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味は
+        categoryCodes / statusCodes / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味は
         GET /v1/products と同一です。検索条件を指定しない場合は公開済み商品の総数を返します。
+        categoryId / statusId は非推奨で、後継の categoryCodes / statusCodes と同時に指定すると 400 を返します。
       security: []
       parameters:
         - $ref: '#/components/parameters/CategoryIdParam'
         - $ref: '#/components/parameters/StatusIdParam'
+        - $ref: '#/components/parameters/CategoryCodesParam'
+        - $ref: '#/components/parameters/StatusCodesParam'
         - $ref: '#/components/parameters/KeywordParam'
         - $ref: '#/components/parameters/MinPriceParam'
         - $ref: '#/components/parameters/MaxPriceParam'
@@ -1784,8 +1790,12 @@ components:
     CategoryIdParam:
       name: categoryId
       in: query
-      description: 商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+      description: |
+        商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+        後継は categoryCodes で、マスタ行を指すのは UUID ではなく code です。categoryCodes と
+        同時に指定した場合は 400 を返します。
       required: false
+      deprecated: true
       schema:
         type: string
         format: uuid
@@ -1795,8 +1805,12 @@ components:
     StatusIdParam:
       name: statusId
       in: query
-      description: 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+      description: |
+        商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+        後継は statusCodes で、マスタ行を指すのは UUID ではなく code です。statusCodes と
+        同時に指定した場合は 400 を返します。
       required: false
+      deprecated: true
       schema:
         type: string
         format: uuid
@@ -1982,6 +1996,50 @@ components:
         example:
           - category
           - product
+    CategoryCodesParam:
+      name: categoryCodes
+      in: query
+      description: |
+        商品カテゴリコードでフィルタします（カンマ区切り）。指定したコードのいずれかに一致する商品を返します。
+        指定しない場合は全カテゴリを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+        コードは商品カテゴリマスタ（GET /v1/products/categories）が返す code で、マスタ行を指す静的な別名です。
+        非推奨の categoryId と同時に指定した場合は 400 を返します。
+      required: false
+      explode: false
+      schema:
+        type: array
+        uniqueItems: true
+        maxItems: 32
+        items:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 32767
+        example:
+          - 1
+          - 2
+    StatusCodesParam:
+      name: statusCodes
+      in: query
+      description: |
+        商品ステータスコードでフィルタします（カンマ区切り）。指定したコードのいずれかに一致する商品を返します。
+        指定しない場合は全ステータスを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+        コードは商品ステータスマスタ（GET /v1/products/statuses）が返す code で、マスタ行を指す静的な別名です。
+        非推奨の statusId と同時に指定した場合は 400 を返します。
+      required: false
+      explode: false
+      schema:
+        type: array
+        uniqueItems: true
+        maxItems: 32
+        items:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 32767
+        example:
+          - 1
+          - 5
     MinPriceParam:
       name: minPrice
       in: query
@@ -2377,16 +2435,11 @@ components:
           description: 商品ステータスマスタの詳細情報です。
           required:
             - code
-            - sortKey
           properties:
             code:
               type: integer
               description: 商品ステータスコード（正の SMALLINT）
               example: 1
-            sortKey:
-              type: integer
-              description: 表示順（sortKey 昇順で一覧を並べる。code とは非連動）
-              example: 5
     ResponseV1ProductsStatuses:
       $ref: '#/components/schemas/ProductsStatusesResponse'
     ProductCategoryRef:
@@ -2414,15 +2467,10 @@ components:
           description: 商品カテゴリマスタの詳細情報です。
           required:
             - code
-            - sortKey
           properties:
             code:
               type: integer
               description: 商品カテゴリコード
-              example: 1
-            sortKey:
-              type: integer
-              description: 表示順
               example: 1
     ResponseV1ProductsCategories:
       $ref: '#/components/schemas/ProductsCategoriesResponse'
@@ -2485,7 +2533,7 @@ components:
           example: '2026-01-01T00:00:00Z'
         images:
           type: array
-          description: 商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
+          description: 商品画像。displaySort の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
           items:
             $ref: '#/components/schemas/ProductImageItem'
         version:
@@ -3501,12 +3549,12 @@ components:
         $ref: '#/components/schemas/PrefectureResponse'
     ProductsStatusesResponse:
       type: array
-      description: 商品ステータスマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
+      description: 商品ステータスマスタの一覧。マスタが定める表示順で並べて全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductStatusResponse'
     ProductsCategoriesResponse:
       type: array
-      description: 商品カテゴリマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
+      description: 商品カテゴリマスタの一覧。マスタが定める表示順で並べて全件を返し、ページネーションは行いません。
       items:
         $ref: '#/components/schemas/ProductCategoryResponse'
     ProductImageItem:
@@ -3516,18 +3564,18 @@ components:
         （backend はフル URL を保持しません）。
       required:
         - imagePath
-        - sortKey
+        - displaySort
       properties:
         imagePath:
           type: string
           description: 格納されたオブジェクトのパス（オブジェクトキー）。
           example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
-        sortKey:
+        displaySort:
           type: integer
           format: int32
           minimum: 1
           maximum: 32767
-          description: 同一商品内での表示順。images は sortKey の昇順で返します。
+          description: 同一商品内での表示順。images は displaySort の昇順で返します。
           example: 1
     ProductImageInput:
       type: object
@@ -3535,14 +3583,14 @@ components:
         商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
       required:
         - imagePath
-        - sortKey
+        - displaySort
       properties:
         imagePath:
           type: string
           description: 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
           pattern: ^products/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp)$
           example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
-        sortKey:
+        displaySort:
           type: integer
           format: int32
           minimum: 1
@@ -3610,7 +3658,7 @@ components:
           example: '2026-01-01T00:00:00Z'
         images:
           type: array
-          description: 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。
+          description: 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。
           items:
             $ref: '#/components/schemas/ProductImageInput'
     ProductPatchRequest:
@@ -3693,7 +3741,7 @@ components:
         images:
           type: array
           nullable: true
-          description: 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
+          description: 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
           items:
             $ref: '#/components/schemas/ProductImageInput'
           x-go-type: nullable.Nullable[[]ProductImageInput]

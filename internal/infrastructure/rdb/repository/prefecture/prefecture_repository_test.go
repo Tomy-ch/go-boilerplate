@@ -157,7 +157,7 @@ func Test_repository_FindAll(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("全都道府県が47件code昇順で取得できる", func(t *testing.T) {
+		t.Run("全都道府県が47件、既定seedの順で取得できる", func(t *testing.T) {
 			t.Parallel()
 
 			tokyoID, err := uuid.Parse("101caa1e-84e7-4ceb-9108-50d40b6be1a3")
@@ -171,7 +171,8 @@ func Test_repository_FindAll(t *testing.T) {
 				require.NoError(t, err)
 				assert.Len(t, actual, 47)
 
-				// code は UNIQUE のため厳密昇順が正。
+				// seed は sort_key と code を同じ値で入れているため、既定の並びは code 昇順にも一致する。
+				// 並び順の出所が sort_key であることは、直後のケースが両者を食い違わせて確かめる。
 				for i := 1; i < len(actual); i++ {
 					assert.Less(t, actual[i-1].Code(), actual[i].Code())
 				}
@@ -185,6 +186,29 @@ func Test_repository_FindAll(t *testing.T) {
 				}
 				require.NotNil(t, actualTokyo)
 				assert.Equal(t, expectedTokyo, actualTokyo)
+			})
+		})
+
+		t.Run("並び順はcodeではなくsort_keyが決める", func(t *testing.T) {
+			t.Parallel()
+
+			hokkaidoID, err := uuid.Parse("faba7bb2-f5a0-4a51-adae-1564929077b2")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				// seed では code=1 / sort_key=1 で先頭に来る北海道の sort_key だけを最後尾へ動かす。
+				// code は動かさないため、並びが code に従っていればこの更新では何も変わらない。
+				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+					"UPDATE prefectures SET sort_key = $1 WHERE id = $2", 999, hokkaidoID,
+				)
+				require.NoError(t, execErr)
+
+				actual, err := repo.FindAll(ctx)
+				require.NoError(t, err)
+				require.Len(t, actual, 47)
+
+				assert.Equal(t, hokkaidoID, actual[len(actual)-1].ID())
+				assert.NotEqual(t, hokkaidoID, actual[0].ID())
 			})
 		})
 
@@ -227,8 +251,8 @@ func Test_repository_FindAll(t *testing.T) {
 
 				// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。
 				_, execErr := driver.New(ctx, testDB).Exec(ctx,
-					"INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)",
-					invalidID, "テスト無効県", 99,
+					"INSERT INTO prefectures (id, name, code, sort_key) VALUES ($1,$2,$3,$4)",
+					invalidID, "テスト無効県", 99, 99,
 				)
 				require.NoError(t, execErr)
 
@@ -256,6 +280,31 @@ func Test_repository_FindByIDs(t *testing.T) {
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("並び順はcodeではなくsort_keyが決める", func(t *testing.T) {
+			t.Parallel()
+
+			tokyoID, err := uuid.Parse("101caa1e-84e7-4ceb-9108-50d40b6be1a3")
+			require.NoError(t, err)
+			osakaID, err := uuid.Parse("d647fc85-ff46-4530-88cb-198f4a68a9d7")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				// seed では東京(code=8) が大阪(code=27) より先に来る。東京の sort_key だけを後ろへ動かし、
+				// code を据え置くことで、並びが code に従っていればこの更新で何も変わらない状態を作る。
+				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+					"UPDATE prefectures SET sort_key = $1 WHERE id = $2", 998, tokyoID,
+				)
+				require.NoError(t, execErr)
+
+				actual, err := repo.FindByIDs(ctx, []uuid.UUID{tokyoID, osakaID})
+				require.NoError(t, err)
+				require.Len(t, actual, 2)
+
+				assert.Equal(t, osakaID, actual[0].ID())
+				assert.Equal(t, tokyoID, actual[1].ID())
+			})
+		})
 
 		t.Run("有効な都道府県ID一覧の場合、都道府県エンティティ一覧が取得できる", func(t *testing.T) {
 			t.Parallel()
@@ -326,8 +375,8 @@ func Test_repository_FindByIDs(t *testing.T) {
 
 				// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。
 				_, execErr := driver.New(ctx, testDB).Exec(ctx,
-					"INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)",
-					invalidID, "テスト無効県", 99,
+					"INSERT INTO prefectures (id, name, code, sort_key) VALUES ($1,$2,$3,$4)",
+					invalidID, "テスト無効県", 99, 98,
 				)
 				require.NoError(t, execErr)
 

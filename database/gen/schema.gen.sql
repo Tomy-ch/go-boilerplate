@@ -270,6 +270,7 @@ CREATE TABLE public.prefectures (
     id uuid NOT NULL,
     name character varying(100) NOT NULL,
     code smallint NOT NULL,
+    sort_key smallint NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -289,6 +290,10 @@ COMMENT ON COLUMN public.prefectures.name IS '都道府県名';
 -- Name: COLUMN prefectures.code; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.prefectures.code IS '都道府県コード';
+--
+-- Name: COLUMN prefectures.sort_key; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.prefectures.sort_key IS '順序';
 --
 -- Name: COLUMN prefectures.created_at; Type: COMMENT; Schema: public; Owner: -
 --
@@ -343,7 +348,7 @@ CREATE TABLE public.product_images (
     id uuid NOT NULL,
     product_id uuid NOT NULL,
     image_path text NOT NULL,
-    sort_key smallint NOT NULL,
+    display_sort smallint NOT NULL,
     deleted_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
@@ -365,9 +370,9 @@ COMMENT ON COLUMN public.product_images.product_id IS '商品ID';
 --
 COMMENT ON COLUMN public.product_images.image_path IS '画像パス';
 --
--- Name: COLUMN product_images.sort_key; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN product_images.display_sort; Type: COMMENT; Schema: public; Owner: -
 --
-COMMENT ON COLUMN public.product_images.sort_key IS '順序';
+COMMENT ON COLUMN public.product_images.display_sort IS '表示順';
 --
 -- Name: COLUMN product_images.deleted_at; Type: COMMENT; Schema: public; Owner: -
 --
@@ -662,6 +667,7 @@ CREATE TABLE public.roles (
     id uuid NOT NULL,
     name character varying(100) NOT NULL,
     code smallint NOT NULL,
+    sort_key smallint NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -681,6 +687,10 @@ COMMENT ON COLUMN public.roles.name IS '名称';
 -- Name: COLUMN roles.code; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.roles.code IS 'コード';
+--
+-- Name: COLUMN roles.sort_key; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.roles.sort_key IS '順序';
 --
 -- Name: COLUMN roles.created_at; Type: COMMENT; Schema: public; Owner: -
 --
@@ -904,6 +914,11 @@ ALTER TABLE ONLY public.prefectures
 ALTER TABLE ONLY public.prefectures
     ADD CONSTRAINT prefectures_name_unique UNIQUE (name);
 --
+-- Name: prefectures prefectures_sort_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.prefectures
+    ADD CONSTRAINT prefectures_sort_key_unique UNIQUE (sort_key);
+--
 -- Name: product_categories product_categories_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.product_categories
@@ -1004,6 +1019,11 @@ ALTER TABLE ONLY public.roles
 ALTER TABLE ONLY public.roles
     ADD CONSTRAINT roles_name_unique UNIQUE (name);
 --
+-- Name: roles roles_sort_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_sort_key_unique UNIQUE (sort_key);
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.schema_migrations
@@ -1059,9 +1079,9 @@ CREATE INDEX outbox_pending_idx ON public.outbox USING btree (id) WHERE (status 
 --
 CREATE INDEX outbox_published_gc_idx ON public.outbox USING btree (published_at) WHERE (status = 'published'::text);
 --
--- Name: product_images_product_id_sort_key_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: product_images_product_id_display_sort_unique; Type: INDEX; Schema: public; Owner: -
 --
-CREATE UNIQUE INDEX product_images_product_id_sort_key_unique ON public.product_images USING btree (product_id, sort_key) WHERE (deleted_at IS NULL);
+CREATE UNIQUE INDEX product_images_product_id_display_sort_unique ON public.product_images USING btree (product_id, display_sort) WHERE (deleted_at IS NULL);
 --
 -- Name: products_category_id_idx; Type: INDEX; Schema: public; Owner: -
 --

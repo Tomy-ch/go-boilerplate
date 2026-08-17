@@ -37,8 +37,8 @@ type CreateProductParams struct {
 type ProductImageParams struct {
 	// ImagePath は、画像アップロード（POST /v1/products/images）で得たオブジェクトのパス（キー）です。
 	ImagePath string
-	// SortKey は、同一商品内での表示順です。
-	SortKey int
+	// DisplaySort は、同一商品内での表示順です。
+	DisplaySort int
 }
 
 func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error) {
@@ -110,7 +110,7 @@ func buildImages(params []ProductImageParams) ([]product.Image, error) {
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to generate product image id")
 		}
-		images[i] = product.NewImage(id, product.ImageAttributes{ImagePath: p.ImagePath, SortKey: p.SortKey})
+		images[i] = product.NewImage(id, product.ImageAttributes{ImagePath: p.ImagePath, DisplaySort: p.DisplaySort})
 	}
 
 	return images, nil

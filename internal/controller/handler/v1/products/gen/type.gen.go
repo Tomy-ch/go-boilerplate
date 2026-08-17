@@ -96,21 +96,21 @@ type ProductCategoryRef struct {
 
 // ProductImageInput 商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
 type ProductImageInput struct {
+	// DisplaySort 同一商品内での表示順。1 から数えます。同じ商品の中で重複する値を送ると業務不変条件違反として 422 を返します。 欠番は許容し、送られた値をそのまま保持します。
+	DisplaySort int32 `json:"displaySort"`
+
 	// ImagePath 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
 	ImagePath string `json:"imagePath"`
-
-	// SortKey 同一商品内での表示順。1 から数えます。同じ商品の中で重複する値を送ると業務不変条件違反として 422 を返します。 欠番は許容し、送られた値をそのまま保持します。
-	SortKey int32 `json:"sortKey"`
 }
 
 // ProductImageItem 商品画像 1 件。表示 URL はフロントが配信ベース URL と imagePath から組み立てます
 // （backend はフル URL を保持しません）。
 type ProductImageItem struct {
+	// DisplaySort 同一商品内での表示順。images は displaySort の昇順で返します。
+	DisplaySort int32 `json:"displaySort"`
+
 	// ImagePath 格納されたオブジェクトのパス（オブジェクトキー）。
 	ImagePath string `json:"imagePath"`
-
-	// SortKey 同一商品内での表示順。images は sortKey の昇順で返します。
-	SortKey int32 `json:"sortKey"`
 }
 
 // ProductImagePostRequest 商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
@@ -148,7 +148,7 @@ type ProductResponse struct {
 	// Id 商品ID
 	Id openapi_types.UUID `json:"id"`
 
-	// Images 商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
+	// Images 商品画像。displaySort の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
 	Images []ProductImageItem `json:"images"`
 
 	// Name 商品名
@@ -192,7 +192,7 @@ type ProductsPostRequest struct {
 	// Description 商品説明（リッチテキスト HTML を許容）。未設定の場合は null です。
 	Description *string `json:"description,omitempty"`
 
-	// Images 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。
+	// Images 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。
 	Images *[]ProductImageInput `json:"images,omitempty"`
 
 	// Name 商品名
@@ -213,6 +213,9 @@ type ProductsPostRequest struct {
 	// StockWarningThreshold 在庫警告閾値。未設定の場合は null です。
 	StockWarningThreshold *int32 `json:"stockWarningThreshold,omitempty"`
 }
+
+// CategoryCodesParam defines model for CategoryCodesParam.
+type CategoryCodesParam = []int32
 
 // CategoryIdParam defines model for CategoryIdParam.
 type CategoryIdParam = openapi_types.UUID
@@ -240,6 +243,9 @@ type MinQuantityParam = int32
 
 // SortParam defines model for SortParam.
 type SortParam string
+
+// StatusCodesParam defines model for StatusCodesParam.
+type StatusCodesParam = []int32
 
 // StatusIdParam defines model for StatusIdParam.
 type StatusIdParam = openapi_types.UUID
@@ -286,10 +292,26 @@ type GetProductsParams struct {
 	First *CursorFirstParam `form:"first,omitempty" json:"first,omitempty"`
 
 	// CategoryId 商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+	// 後継は categoryCodes で、マスタ行を指すのは UUID ではなく code です。categoryCodes と
+	// 同時に指定した場合は 400 を返します。
 	CategoryId *CategoryIdParam `form:"categoryId,omitempty" json:"categoryId,omitempty"`
 
 	// StatusId 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+	// 後継は statusCodes で、マスタ行を指すのは UUID ではなく code です。statusCodes と
+	// 同時に指定した場合は 400 を返します。
 	StatusId *StatusIdParam `form:"statusId,omitempty" json:"statusId,omitempty"`
+
+	// CategoryCodes 商品カテゴリコードでフィルタします（カンマ区切り）。指定したコードのいずれかに一致する商品を返します。
+	// 指定しない場合は全カテゴリを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+	// コードは商品カテゴリマスタ（GET /v1/products/categories）が返す code で、マスタ行を指す静的な別名です。
+	// 非推奨の categoryId と同時に指定した場合は 400 を返します。
+	CategoryCodes *CategoryCodesParam `form:"categoryCodes,omitempty" json:"categoryCodes,omitempty"`
+
+	// StatusCodes 商品ステータスコードでフィルタします（カンマ区切り）。指定したコードのいずれかに一致する商品を返します。
+	// 指定しない場合は全ステータスを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+	// コードは商品ステータスマスタ（GET /v1/products/statuses）が返す code で、マスタ行を指す静的な別名です。
+	// 非推奨の statusId と同時に指定した場合は 400 を返します。
+	StatusCodes *StatusCodesParam `form:"statusCodes,omitempty" json:"statusCodes,omitempty"`
 
 	// Keyword 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
 	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`

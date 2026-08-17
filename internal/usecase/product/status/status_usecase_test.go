@@ -69,8 +69,8 @@ func Test_usecase_ListStatuses(t *testing.T) {
 			actual, err := u.ListStatuses(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, StatusDTOs{
-				{ID: reviewingID, Code: 8, Name: "検討中", SortKey: 1},
-				{ID: inStockID, Code: 1, Name: "在庫あり", SortKey: 5},
+				{ID: reviewingID, Code: 8, Name: "検討中"},
+				{ID: inStockID, Code: 1, Name: "在庫あり"},
 			}, actual)
 		})
 

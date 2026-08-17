@@ -38,12 +38,9 @@ type ProductCategoryResponse struct {
 
 	// Name 商品カテゴリ名
 	Name string `json:"name"`
-
-	// SortKey 表示順
-	SortKey int `json:"sortKey"`
 }
 
-// ProductsCategoriesResponse 商品カテゴリマスタの一覧（sortKey 昇順）。全件を返し、ページネーションは行いません。
+// ProductsCategoriesResponse 商品カテゴリマスタの一覧。マスタが定める表示順で並べて全件を返し、ページネーションは行いません。
 type ProductsCategoriesResponse = []ProductCategoryResponse
 
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。

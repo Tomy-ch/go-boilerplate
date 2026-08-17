@@ -8,11 +8,8 @@ FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a
 RUN apk add --no-cache ca-certificates
 
 ARG MISE_VERSION
-# 上流は install スクリプトの checksum を公開しないため、この固定値を ADD に照合させてから
-# 実行する。上流がスクリプトを更新すると取得の時点で落ちる。追随するときは差分を見て値を更新する。
-#
-# CKV_DOCKER_4 が ADD を避けよと言うのは、暗黙の展開とリモート取得が検証を伴わないため。
-# --checksum はその検証そのものであり、COPY はリモート URL を取れないので代替にならない。
+# 上流は install スクリプトの checksum を公開しないため、この固定値と照合してから実行する。
+# 上流がスクリプトを更新すると取得の時点で落ちるので、差分を見て値を追随させる。
 #checkov:skip=CKV_DOCKER_4:--checksum 付きの ADD が検証付き取得の形。COPY はリモートを扱えない
 ADD --checksum=sha256:18ec854e24388880277a84e73434114eb80cdf2066afcf3671fed2682cb1ea4a \
     https://mise.run /tmp/mise-install.sh

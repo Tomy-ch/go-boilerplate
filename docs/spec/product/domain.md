@@ -78,10 +78,10 @@ fields:
   - name: imagePath
     type: string
     required: true          # 空文字は ErrInvalidImagePath。無検証で保持（サニタイズは表示側の責務）
-  - name: sortKey
+  - name: displaySort
     type: int
     required: true
-    min: 1                  # 範囲外は ErrInvalidImageSortKey
+    min: 1                  # 範囲外は ErrInvalidImageDisplaySort
     max: 32767              # 表示順は 16bit 整数幅で表現する
 ```
 
@@ -219,7 +219,7 @@ fields:
     p が保持するバージョンを条件に商品を更新し（WHERE id = ... AND version = ...）、採番後のバージョンを返す。
     画像も p が保持する集合へ ID を鍵に一致させる。集合から外れた行は論理削除として残り（履歴）、集合に
     あってまだ無い行を INSERT する。同じ ID の画像はそのまま生存し続けるため、内容の差し替えは新しい ID の
-    画像として表現する。生存行の (product_id, sort_key) は部分 UNIQUE のため、論理削除 → INSERT の順序が
+    画像として表現する。生存行の (product_id, display_sort) は部分 UNIQUE のため、論理削除 → INSERT の順序が
     メソッド内部の不変条件になる。バージョンが一致しない場合は画像に触れない。
     version の加算は SQL 側（version = version + 1）で行い、採番の権威を DB に一本化する。
     条件に一致する行が無い場合は、読み込み後に他トランザクションが更新したものとして ErrVersionConflict（409）を返す
