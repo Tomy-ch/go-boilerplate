@@ -64,7 +64,7 @@ func newLowStockProduct(t *testing.T, salt string, quantity int) *domainproduct.
 		Images: []domainproduct.Image{
 			domainproduct.NewImage(
 				uuidtestkit.NewTestFromSalt(t, salt+"_image"),
-				domainproduct.ImageAttributes{ImagePath: "products/" + salt + ".png", SortKey: 1},
+				domainproduct.ImageAttributes{ImagePath: "products/" + salt + ".png", DisplaySort: 1},
 			),
 		},
 	}, 1)

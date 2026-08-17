@@ -43,15 +43,27 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 		return nil, err
 	}
 
+	categoryCodes, err := conv.Int16sPtr(request.Params.CategoryCodes)
+	if err != nil {
+		return nil, err
+	}
+
+	statusCodes, err := conv.Int16sPtr(request.Params.StatusCodes)
+	if err != nil {
+		return nil, err
+	}
+
 	list, err := s.uc.ListProducts(ctx, productuc.ListProductsParams{
 		SearchFilter: productuc.SearchFilter{
-			CategoryID:  conv.UUIDPtr(request.Params.CategoryId),
-			StatusID:    conv.UUIDPtr(request.Params.StatusId),
-			Keyword:     request.Params.Keyword,
-			MinPrice:    request.Params.MinPrice,
-			MaxPrice:    request.Params.MaxPrice,
-			MinQuantity: request.Params.MinQuantity,
-			MaxQuantity: request.Params.MaxQuantity,
+			CategoryID:    conv.UUIDPtr(request.Params.CategoryId),
+			StatusID:      conv.UUIDPtr(request.Params.StatusId),
+			CategoryCodes: categoryCodes,
+			StatusCodes:   statusCodes,
+			Keyword:       request.Params.Keyword,
+			MinPrice:      request.Params.MinPrice,
+			MaxPrice:      request.Params.MaxPrice,
+			MinQuantity:   request.Params.MinQuantity,
+			MaxQuantity:   request.Params.MaxQuantity,
 		},
 		Cursor:    cursor,
 		Ascending: isAscending(request.Params.Sort),
@@ -130,11 +142,11 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 func toProductImageItems(dtos []productuc.ProductImageItemView) ([]gen.ProductImageItem, error) {
 	items := make([]gen.ProductImageItem, len(dtos))
 	for i, dto := range dtos {
-		sortKey, err := safecast.IntToInt32(dto.SortKey)
+		displaySort, err := safecast.IntToInt32(dto.DisplaySort)
 		if err != nil {
-			return nil, xerrors.Wrap(err, "invalid product image sort key")
+			return nil, xerrors.Wrap(err, "invalid product image display sort")
 		}
-		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: sortKey}
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, DisplaySort: displaySort}
 	}
 	return items, nil
 }
@@ -143,7 +155,7 @@ func toProductImageItems(dtos []productuc.ProductImageItemView) ([]gen.ProductIm
 func toProductImageParams(inputs []gen.ProductImageInput) []productuc.ProductImageParams {
 	params := make([]productuc.ProductImageParams, len(inputs))
 	for i, in := range inputs {
-		params[i] = productuc.ProductImageParams{ImagePath: in.ImagePath, SortKey: int(in.SortKey)}
+		params[i] = productuc.ProductImageParams{ImagePath: in.ImagePath, DisplaySort: int(in.DisplaySort)}
 	}
 	return params
 }

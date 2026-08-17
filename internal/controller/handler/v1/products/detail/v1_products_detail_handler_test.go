@@ -57,7 +57,7 @@ func newProductView(t *testing.T, salt string) productuc.ProductView {
 		CategoryName:          "電子機器",
 		PublishedAt:           ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)),
 		Images: []productuc.ProductImageItemView{
-			{Path: "products/" + salt + ".png", SortKey: 1},
+			{Path: "products/" + salt + ".png", DisplaySort: 1},
 		},
 		Version: 3,
 	}
@@ -101,7 +101,7 @@ func expectedImageItems(dtos []productuc.ProductImageItemView) []gen.ProductImag
 	items := make([]gen.ProductImageItem, len(dtos))
 	for i, dto := range dtos {
 		//nolint:gosec // G115: テストデータは int32 範囲内の固定値です
-		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: int32(dto.SortKey)}
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, DisplaySort: int32(dto.DisplaySort)}
 	}
 	return items
 }
@@ -195,7 +195,7 @@ func newPatchProductsDetailRequest(t *testing.T, productID uuid.UUID) gen.PatchP
 			StockWarningThreshold: nullable.NewNullableWithValue(int32(5)),
 			PublishedAt:           nullable.NewNullableWithValue(patchPublishedAt),
 			Images: nullable.NewNullableWithValue([]gen.ProductImageInput{
-				{ImagePath: "products/updated.png", SortKey: 1},
+				{ImagePath: "products/updated.png", DisplaySort: 1},
 			}),
 		},
 	}
@@ -237,7 +237,7 @@ func Test_server_PatchProductsDetail(t *testing.T) {
 					assert.Equal(t, patch.Value(5), p.StockWarningThreshold)
 					assert.Equal(t, patch.Value(patchPublishedAt), p.PublishedAt)
 					assert.Equal(t, patch.Value([]productuc.ProductImageParams{
-						{ImagePath: "products/updated.png", SortKey: 1},
+						{ImagePath: "products/updated.png", DisplaySort: 1},
 					}), p.Images)
 
 					return view, nil
@@ -563,14 +563,14 @@ func Test_toProductImageItems(t *testing.T) {
 			t.Parallel()
 
 			actual, err := toProductImageItems([]productuc.ProductImageItemView{
-				{Path: "products/a.png", SortKey: 1},
-				{Path: "products/b.png", SortKey: 5},
+				{Path: "products/a.png", DisplaySort: 1},
+				{Path: "products/b.png", DisplaySort: 5},
 			})
 
 			require.NoError(t, err)
 			require.Len(t, actual, 2)
-			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/a.png", SortKey: 1}, actual[0])
-			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/b.png", SortKey: 5}, actual[1])
+			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/a.png", DisplaySort: 1}, actual[0])
+			assert.Equal(t, gen.ProductImageItem{ImagePath: "products/b.png", DisplaySort: 5}, actual[1])
 		})
 
 		t.Run("画像が空の場合、空を返す", func(t *testing.T) {
@@ -590,7 +590,7 @@ func Test_toProductImageItems(t *testing.T) {
 			t.Parallel()
 
 			actual, err := toProductImageItems([]productuc.ProductImageItemView{
-				{Path: "products/a.png", SortKey: math.MaxInt32 + 1},
+				{Path: "products/a.png", DisplaySort: math.MaxInt32 + 1},
 			})
 
 			require.Error(t, err)
@@ -625,13 +625,13 @@ func Test_toPatchFieldImages(t *testing.T) {
 			t.Parallel()
 
 			v := nullable.NewNullableWithValue([]gen.ProductImageInput{
-				{ImagePath: "products/a.png", SortKey: 1},
-				{ImagePath: "products/b.png", SortKey: 5},
+				{ImagePath: "products/a.png", DisplaySort: 1},
+				{ImagePath: "products/b.png", DisplaySort: 5},
 			})
 
 			assert.Equal(t, patch.Value([]productuc.ProductImageParams{
-				{ImagePath: "products/a.png", SortKey: 1},
-				{ImagePath: "products/b.png", SortKey: 5},
+				{ImagePath: "products/a.png", DisplaySort: 1},
+				{ImagePath: "products/b.png", DisplaySort: 5},
 			}), toPatchFieldImages(v))
 		})
 

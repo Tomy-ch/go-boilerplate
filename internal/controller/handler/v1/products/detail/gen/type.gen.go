@@ -52,21 +52,21 @@ type ProductCategoryRef struct {
 
 // ProductImageInput 商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
 type ProductImageInput struct {
+	// DisplaySort 同一商品内での表示順。1 から数えます。同じ商品の中で重複する値を送ると業務不変条件違反として 422 を返します。 欠番は許容し、送られた値をそのまま保持します。
+	DisplaySort int32 `json:"displaySort"`
+
 	// ImagePath 画像パス。画像アップロード（POST /v1/products/images）で得たパスを渡します。 アップロード API が採番したキーだけを受け付けるよう形式を固定しています。未参照オブジェクトの回収（product-image-gc）は、この値がストレージのキーと完全一致することを前提に孤児を判定するためです。UUID を小文字に限るのは、categoryId / statusId と違いこの値が UUID として解釈されず文字列のまま突き合わされるためで、大文字表記を許すと同じキーを指しながら一致せず、生きている画像を孤児と誤判定します。
 	ImagePath string `json:"imagePath"`
-
-	// SortKey 同一商品内での表示順。1 から数えます。同じ商品の中で重複する値を送ると業務不変条件違反として 422 を返します。 欠番は許容し、送られた値をそのまま保持します。
-	SortKey int32 `json:"sortKey"`
 }
 
 // ProductImageItem 商品画像 1 件。表示 URL はフロントが配信ベース URL と imagePath から組み立てます
 // （backend はフル URL を保持しません）。
 type ProductImageItem struct {
+	// DisplaySort 同一商品内での表示順。images は displaySort の昇順で返します。
+	DisplaySort int32 `json:"displaySort"`
+
 	// ImagePath 格納されたオブジェクトのパス（オブジェクトキー）。
 	ImagePath string `json:"imagePath"`
-
-	// SortKey 同一商品内での表示順。images は sortKey の昇順で返します。
-	SortKey int32 `json:"sortKey"`
 }
 
 // ProductPatchRequest 商品部分更新リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
@@ -84,7 +84,7 @@ type ProductPatchRequest struct {
 	// Description 商品説明（リッチテキスト HTML を許容）。null を指定すると説明をクリアします。
 	Description nullable.Nullable[string] `json:"description,omitempty"`
 
-	// Images 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 同じ商品の中で sortKey が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
+	// Images 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
 	Images nullable.Nullable[[]ProductImageInput] `json:"images,omitempty"`
 
 	// Name 商品名
@@ -120,7 +120,7 @@ type ProductResponse struct {
 	// Id 商品ID
 	Id openapi_types.UUID `json:"id"`
 
-	// Images 商品画像。sortKey の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
+	// Images 商品画像。displaySort の昇順で返します。画像が 1 枚も無い場合は空配列です。 表示 URL はフロントが配信ベース URL と各要素の imagePath から組み立てます。
 	Images []ProductImageItem `json:"images"`
 
 	// Name 商品名

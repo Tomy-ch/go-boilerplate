@@ -74,11 +74,11 @@ func limitParam(limit *int) int {
 func toProductImageItems(dtos []productuc.ProductImageItemView) ([]gen.ProductImageItem, error) {
 	items := make([]gen.ProductImageItem, len(dtos))
 	for i, dto := range dtos {
-		sortKey, err := safecast.IntToInt32(dto.SortKey)
+		displaySort, err := safecast.IntToInt32(dto.DisplaySort)
 		if err != nil {
-			return nil, xerrors.Wrap(err, "invalid product image sort key")
+			return nil, xerrors.Wrap(err, "invalid product image display sort")
 		}
-		items[i] = gen.ProductImageItem{ImagePath: dto.Path, SortKey: sortKey}
+		items[i] = gen.ProductImageItem{ImagePath: dto.Path, DisplaySort: displaySort}
 	}
 	return items, nil
 }

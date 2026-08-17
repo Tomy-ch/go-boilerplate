@@ -31,8 +31,14 @@ import (
 const (
 	categoryElectronics = "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
 	categoryBooks       = "b39be992-fe5a-4b4c-9f98-e695f0f5101e"
+	categoryClothes     = "3a60c501-7049-4a63-bfd3-bf34555f3aec"
 	statusInStock       = "093170fb-83a2-4864-a2b3-53236eaf3597"
 	statusOutOfStock    = "f33654fe-1041-498d-be18-3a1384c10df4"
+	// 上の ID に対応する code。code 絞り込みは ID ではなくこちらを指定します。
+	categoryCodeElectronics int16 = 1
+	categoryCodeBooks       int16 = 2
+	// maxCategoryCode は、どのマスタ行にも割り当たっていない code です（絞り込みが 0 件になる側の確認用）。
+	maxCategoryCode int16 = 32767
 	// probeKeyword は、seed データと隔離してテスト挿入行のみを対象化するための一意なキーワードです。
 	probeKeyword = "KEYSETPROBE563"
 )
@@ -222,6 +228,53 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, page, 1)
 				assert.Equal(t, mustParse(t, bookID), page[0].ID())
+			})
+		})
+
+		t.Run("category_codesフィルタは指定したカテゴリの和集合を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				bookID := "eeeeeeee-0000-4000-8000-0000000000b2"
+				clothesID := "eeeeeeee-0000-4000-8000-0000000000b3"
+				insertProduct(ctx, t, drv, tieHigh, probeKeyword+"-CE", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+				insertProduct(ctx, t, drv, bookID, probeKeyword+"-CB", nil, 1000, statusInStock, categoryBooks, ptr.To(base))
+				insertProduct(ctx, t, drv, clothesID, probeKeyword+"-CC", nil, 1000, statusInStock, categoryClothes, ptr.To(base))
+
+				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:       ptr.To(probeKeyword),
+						CategoryCodes: []int16{categoryCodeElectronics, categoryCodeBooks},
+					},
+					Limit:     10,
+					Ascending: false,
+				})
+				require.NoError(t, err)
+				require.Len(t, page, 2)
+
+				ids := []uuid.UUID{page[0].ID(), page[1].ID()}
+				assert.ElementsMatch(t, []uuid.UUID{mustParse(t, tieHigh), mustParse(t, bookID)}, ids)
+			})
+		})
+
+		t.Run("存在しないcategory_codeを指定した場合、0件を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProduct(ctx, t, drv, tieHigh, probeKeyword+"-CN", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
+
+				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
+					SearchFilter: domainproduct.SearchFilter{
+						Keyword:       ptr.To(probeKeyword),
+						CategoryCodes: []int16{maxCategoryCode},
+					},
+					Limit:     10,
+					Ascending: false,
+				})
+				require.NoError(t, err)
+				assert.Empty(t, page)
 			})
 		})
 
@@ -430,6 +483,34 @@ func Test_repository_CountPublished(t *testing.T) {
 				})
 				require.NoError(t, err)
 				assert.Equal(t, int64(1), count)
+			})
+		})
+
+		t.Run("category_codesフィルタは指定したカテゴリの件数を合算する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				publishedAt := time.Date(2099, time.February, 2, 0, 0, 0, 0, time.UTC)
+				keyword := "COUNTPROBECODES"
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000001a",
+					keyword+"-electronics", nil, 1000, statusInStock, categoryElectronics, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000001b",
+					keyword+"-books", nil, 1000, statusInStock, categoryBooks, &publishedAt,
+				)
+				insertProduct(
+					ctx, t, drv, "dddddddd-0000-4000-8000-00000000001c",
+					keyword+"-clothes", nil, 1000, statusInStock, categoryClothes, &publishedAt,
+				)
+
+				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{
+					CategoryCodes: []int16{categoryCodeElectronics, categoryCodeBooks}, Keyword: &keyword,
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(2), count)
 			})
 		})
 
@@ -712,7 +793,7 @@ func Test_rowToProduct(t *testing.T) {
 			images := []domainproduct.Image{
 				domainproduct.NewImage(
 					uuidtestkit.NewTestFromSalt(t, "row_image"),
-					domainproduct.ImageAttributes{ImagePath: "products/earphone.png", SortKey: 1},
+					domainproduct.ImageAttributes{ImagePath: "products/earphone.png", DisplaySort: 1},
 				),
 			}
 			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"}, images)
@@ -844,11 +925,11 @@ func Test_repository_Create(t *testing.T) {
 					Images: []domainproduct.Image{
 						domainproduct.NewImage(
 							uuidtestkit.NewTestFromSalt(t, "create_image_1"),
-							domainproduct.ImageAttributes{ImagePath: "products/created.png", SortKey: 1},
+							domainproduct.ImageAttributes{ImagePath: "products/created.png", DisplaySort: 1},
 						),
 						domainproduct.NewImage(
 							uuidtestkit.NewTestFromSalt(t, "create_image_2"),
-							domainproduct.ImageAttributes{ImagePath: "products/created-sub.png", SortKey: 2},
+							domainproduct.ImageAttributes{ImagePath: "products/created-sub.png", DisplaySort: 2},
 						),
 					},
 				})
@@ -863,9 +944,9 @@ func Test_repository_Create(t *testing.T) {
 				assert.Equal(t, "<p>リッチテキスト説明</p>", *got.Description())
 				require.Len(t, got.Images(), 2)
 				assert.Equal(t, "products/created.png", got.Images()[0].ImagePath())
-				assert.Equal(t, 1, got.Images()[0].SortKey())
+				assert.Equal(t, 1, got.Images()[0].DisplaySort())
 				assert.Equal(t, "products/created-sub.png", got.Images()[1].ImagePath())
-				assert.Equal(t, 2, got.Images()[1].SortKey())
+				assert.Equal(t, 2, got.Images()[1].DisplaySort())
 				require.NotNil(t, got.PublishedAt())
 				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
 			})

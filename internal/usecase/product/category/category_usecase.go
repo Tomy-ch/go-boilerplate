@@ -13,18 +13,17 @@ import (
 
 // CategoryDTO は、商品カテゴリ 1 件分のユースケース出力 DTO です。
 type CategoryDTO struct {
-	ID      uuid.UUID
-	Code    int
-	Name    string
-	SortKey int
+	ID   uuid.UUID
+	Code int
+	Name string
 }
 
-// CategoryDTOs は、CategoryDTO の一覧（sortKey 昇順）です。
+// CategoryDTOs は、CategoryDTO の一覧です。並びはマスタの表示順で、順序そのものが表示順を表します。
 type CategoryDTOs []CategoryDTO
 
 // Usecase は、商品カテゴリマスタの参照ユースケースを定義します。
 type Usecase interface {
-	// ListCategories は、全商品カテゴリを sortKey 昇順で返します。
+	// ListCategories は、全商品カテゴリをマスタの表示順で返します。表示順の値は外へ出しません。
 	ListCategories(ctx context.Context) (CategoryDTOs, error)
 }
 
@@ -54,10 +53,9 @@ func (u *usecase) ListCategories(ctx context.Context) (CategoryDTOs, error) {
 	dtos := make(CategoryDTOs, len(categories))
 	for i, c := range categories {
 		dtos[i] = CategoryDTO{
-			ID:      c.ID(),
-			Code:    c.Code(),
-			Name:    c.Name(),
-			SortKey: c.SortKey(),
+			ID:   c.ID(),
+			Code: c.Code(),
+			Name: c.Name(),
 		}
 	}
 

@@ -6,13 +6,8 @@ allOf:
     description: 商品カテゴリマスタの詳細情報です。
     required:
       - code
-      - sortKey
     properties:
       code:
         type: integer
         description: 商品カテゴリコード
-        example: 1
-      sortKey:
-        type: integer
-        description: 表示順
         example: 1

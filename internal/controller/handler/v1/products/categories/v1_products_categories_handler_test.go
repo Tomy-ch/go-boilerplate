@@ -47,7 +47,7 @@ func Test_server_GetProductCategories(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("usecaseのDTO一覧をsortKey昇順のレスポンスへ詰め替える", func(t *testing.T) {
+		t.Run("usecaseのDTO一覧を順序を保ってレスポンスへ詰め替える", func(t *testing.T) {
 			t.Parallel()
 
 			electronicsID, err := uuid.Parse("5dd52d84-78eb-4a52-ba0b-2e11c95c2af2")
@@ -57,8 +57,8 @@ func Test_server_GetProductCategories(t *testing.T) {
 
 			s, mockUC := newServer(t)
 			mockUC.EXPECT().ListCategories(gomock.Any()).Return(categoryuc.CategoryDTOs{
-				{ID: electronicsID, Code: 1, Name: "電子機器", SortKey: 1},
-				{ID: booksID, Code: 2, Name: "書籍", SortKey: 2},
+				{ID: electronicsID, Code: 1, Name: "電子機器"},
+				{ID: booksID, Code: 2, Name: "書籍"},
 			}, nil)
 
 			resp, err := s.GetProductCategories(context.Background(), gen.GetProductCategoriesRequestObject{})
@@ -68,8 +68,8 @@ func Test_server_GetProductCategories(t *testing.T) {
 			require.True(t, ok)
 
 			assert.Equal(t, gen.GetProductCategories200JSONResponse{
-				{Id: electronicsID.ToPrimitive(), Code: 1, Name: "電子機器", SortKey: 1},
-				{Id: booksID.ToPrimitive(), Code: 2, Name: "書籍", SortKey: 2},
+				{Id: electronicsID.ToPrimitive(), Code: 1, Name: "電子機器"},
+				{Id: booksID.ToPrimitive(), Code: 2, Name: "書籍"},
 			}, actual)
 		})
 
@@ -115,12 +115,11 @@ func Test_toProductCategoryResponse(t *testing.T) {
 			t.Parallel()
 
 			id := uuidtestkit.NewTestFromSalt(t, "category_conv")
-			actual := toProductCategoryResponse(categoryuc.CategoryDTO{ID: id, Code: 2, Name: "電子機器", SortKey: 7})
+			actual := toProductCategoryResponse(categoryuc.CategoryDTO{ID: id, Code: 2, Name: "電子機器"})
 
 			assert.Equal(t, id.ToPrimitive(), actual.Id)
 			assert.Equal(t, 2, actual.Code)
 			assert.Equal(t, "電子機器", actual.Name)
-			assert.Equal(t, 7, actual.SortKey)
 		})
 	})
 }

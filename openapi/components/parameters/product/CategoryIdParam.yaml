@@ -1,7 +1,11 @@
 name: categoryId
 in: query
-description: 商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+description: |
+  商品カテゴリIDでフィルタします。指定しない場合は全カテゴリを対象とします。
+  後継は categoryCodes で、マスタ行を指すのは UUID ではなく code です。categoryCodes と
+  同時に指定した場合は 400 を返します。
 required: false
+deprecated: true
 schema:
   type: string
   format: uuid

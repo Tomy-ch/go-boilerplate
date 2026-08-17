@@ -17,7 +17,7 @@ SELECT
     p.name,
     p.code
 FROM prefectures AS p
-ORDER BY p.code ASC
+ORDER BY p.sort_key ASC
 `
 
 type GetPrefectureDomainAllRow struct {
@@ -27,13 +27,15 @@ type GetPrefectureDomainAllRow struct {
 }
 
 // === source: database/dml/repository/prefecture/select_all_prefectures.sql ===
+// 全都道府県をマスタの表示順（sort_key 昇順）で返す。code は外部が行を指す静的な別名であり、
+// 並び順の出所ではない。順序を変えるときに動かすのは sort_key の側。
 //
 //	SELECT
 //	    p.id,
 //	    p.name,
 //	    p.code
 //	FROM prefectures AS p
-//	ORDER BY p.code ASC
+//	ORDER BY p.sort_key ASC
 func (q *Queries) GetPrefectureDomainAll(ctx context.Context) ([]*GetPrefectureDomainAllRow, error) {
 	rows, err := q.db.Query(ctx, getPrefectureDomainAll)
 	if err != nil {
@@ -91,7 +93,7 @@ SELECT
     p.code
 FROM prefectures AS p
 WHERE p.id = ANY($1::UUID [])
-ORDER BY p.code
+ORDER BY p.sort_key
 `
 
 type GetPrefectureDomainByIDsRow struct {
@@ -101,6 +103,7 @@ type GetPrefectureDomainByIDsRow struct {
 }
 
 // === source: database/dml/repository/prefecture/select_prefecture_by_ids.sql ===
+// 指定 ID の都道府県をマスタの表示順（sort_key 昇順）で返す。並び順の出所は code ではない。
 //
 //	SELECT
 //	    p.id,
@@ -108,7 +111,7 @@ type GetPrefectureDomainByIDsRow struct {
 //	    p.code
 //	FROM prefectures AS p
 //	WHERE p.id = ANY($1::UUID [])
-//	ORDER BY p.code
+//	ORDER BY p.sort_key
 func (q *Queries) GetPrefectureDomainByIDs(ctx context.Context, idsParam []uuid.UUID) ([]*GetPrefectureDomainByIDsRow, error) {
 	rows, err := q.db.Query(ctx, getPrefectureDomainByIDs, idsParam)
 	if err != nil {

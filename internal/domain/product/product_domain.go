@@ -91,7 +91,7 @@ func newProduct(id uuid.UUID, attrs Attributes, version int) (*Product, error) {
 		status:                attrs.Status,
 		category:              attrs.Category,
 		publishedAt:           ptr.Copy(attrs.PublishedAt),
-		images:                sortImagesBySortKey(attrs.Images),
+		images:                sortImagesByDisplaySort(attrs.Images),
 		version:               version,
 	}, nil
 }
@@ -132,7 +132,7 @@ func (p *Product) Update(attrs Attributes) error {
 	p.status = attrs.Status
 	p.category = attrs.Category
 	p.publishedAt = ptr.Copy(attrs.PublishedAt)
-	p.images = sortImagesBySortKey(attrs.Images)
+	p.images = sortImagesByDisplaySort(attrs.Images)
 
 	return nil
 }

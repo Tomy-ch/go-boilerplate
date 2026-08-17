@@ -40,7 +40,8 @@ func New(
 }
 
 // FindPublishedList は、公開済み商品を (published_at, id) の keyset ページネーションで取得します。
-// params.Ascending により昇順／降順を切り替え、CategoryID / StatusID / Keyword / price・quantity の範囲で絞り込みます。
+// params.Ascending により昇順／降順を切り替え、CategoryID / StatusID / CategoryCodes / StatusCodes /
+// Keyword / price・quantity の範囲で絞り込みます。
 func (r *repository) FindPublishedList(ctx context.Context, params product.ListParams) (product.Products, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -57,6 +58,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		rows, err := db.ListPublishedProductsAscAfter(ctx, &gen.ListPublishedProductsAscAfterParams{
 			CategoryID:       params.CategoryID,
 			StatusID:         params.StatusID,
+			CategoryCodes:    params.CategoryCodes,
+			StatusCodes:      params.StatusCodes,
 			Keyword:          params.Keyword,
 			MinPrice:         ptr.Map(params.MinPrice, money.Price.Decimal),
 			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
@@ -74,14 +77,16 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		}))
 	case params.Ascending:
 		rows, err := db.ListPublishedProductsAscFirst(ctx, &gen.ListPublishedProductsAscFirstParams{
-			CategoryID:  params.CategoryID,
-			StatusID:    params.StatusID,
-			Keyword:     params.Keyword,
-			MinPrice:    ptr.Map(params.MinPrice, money.Price.Decimal),
-			MaxPrice:    ptr.Map(params.MaxPrice, money.Price.Decimal),
-			MinQuantity: params.MinQuantity,
-			MaxQuantity: params.MaxQuantity,
-			LimitParam:  params.Limit,
+			CategoryID:    params.CategoryID,
+			StatusID:      params.StatusID,
+			CategoryCodes: params.CategoryCodes,
+			StatusCodes:   params.StatusCodes,
+			Keyword:       params.Keyword,
+			MinPrice:      ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:   params.MinQuantity,
+			MaxQuantity:   params.MaxQuantity,
+			LimitParam:    params.Limit,
 		})
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
@@ -93,6 +98,8 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		rows, err := db.ListPublishedProductsDescAfter(ctx, &gen.ListPublishedProductsDescAfterParams{
 			CategoryID:       params.CategoryID,
 			StatusID:         params.StatusID,
+			CategoryCodes:    params.CategoryCodes,
+			StatusCodes:      params.StatusCodes,
 			Keyword:          params.Keyword,
 			MinPrice:         ptr.Map(params.MinPrice, money.Price.Decimal),
 			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
@@ -110,14 +117,16 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 		}))
 	default:
 		rows, err := db.ListPublishedProductsDescFirst(ctx, &gen.ListPublishedProductsDescFirstParams{
-			CategoryID:  params.CategoryID,
-			StatusID:    params.StatusID,
-			Keyword:     params.Keyword,
-			MinPrice:    ptr.Map(params.MinPrice, money.Price.Decimal),
-			MaxPrice:    ptr.Map(params.MaxPrice, money.Price.Decimal),
-			MinQuantity: params.MinQuantity,
-			MaxQuantity: params.MaxQuantity,
-			LimitParam:  params.Limit,
+			CategoryID:    params.CategoryID,
+			StatusID:      params.StatusID,
+			CategoryCodes: params.CategoryCodes,
+			StatusCodes:   params.StatusCodes,
+			Keyword:       params.Keyword,
+			MinPrice:      ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:   params.MinQuantity,
+			MaxQuantity:   params.MaxQuantity,
+			LimitParam:    params.Limit,
 		})
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
@@ -135,13 +144,15 @@ func (r *repository) CountPublished(ctx context.Context, filter product.SearchFi
 
 	db := gen.New(driver.New(ctx, r.db))
 	count, err := db.CountPublishedProductsByFilter(ctx, &gen.CountPublishedProductsByFilterParams{
-		CategoryID:  filter.CategoryID,
-		StatusID:    filter.StatusID,
-		MinPrice:    ptr.Map(filter.MinPrice, money.Price.Decimal),
-		MaxPrice:    ptr.Map(filter.MaxPrice, money.Price.Decimal),
-		MinQuantity: filter.MinQuantity,
-		MaxQuantity: filter.MaxQuantity,
-		Keyword:     filter.Keyword,
+		CategoryID:    filter.CategoryID,
+		StatusID:      filter.StatusID,
+		CategoryCodes: filter.CategoryCodes,
+		StatusCodes:   filter.StatusCodes,
+		MinPrice:      ptr.Map(filter.MinPrice, money.Price.Decimal),
+		MaxPrice:      ptr.Map(filter.MaxPrice, money.Price.Decimal),
+		MinQuantity:   filter.MinQuantity,
+		MaxQuantity:   filter.MaxQuantity,
+		Keyword:       filter.Keyword,
 	})
 	if err != nil {
 		return 0, pgerror.NormalizeError(err)
@@ -394,16 +405,16 @@ func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []strin
 // insertImages は、p が保持する画像を登録します。
 func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
 	for _, img := range p.Images() {
-		sortKey, err := safecast.IntToInt16(img.SortKey())
+		displaySort, err := safecast.IntToInt16(img.DisplaySort())
 		if err != nil {
-			return xerrors.Wrap(err, "invalid product image sortKey")
+			return xerrors.Wrap(err, "invalid product image displaySort")
 		}
 
 		if err = db.CreateProductImage(ctx, &gen.CreateProductImageParams{
-			ID:        img.ID(),
-			ProductID: p.ID(),
-			ImagePath: img.ImagePath(),
-			SortKey:   sortKey,
+			ID:          img.ID(),
+			ProductID:   p.ID(),
+			ImagePath:   img.ImagePath(),
+			DisplaySort: displaySort,
 		}); err != nil {
 			return pgerror.NormalizeError(err)
 		}
@@ -413,22 +424,22 @@ func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *produ
 }
 
 // syncImages は、商品が現在参照している画像を p が保持する集合へ一致させます。
-// 集合から外れた行を論理削除してから、まだ無い行を登録します。生存行の (product_id, sort_key) は部分
+// 集合から外れた行を論理削除してから、まだ無い行を登録します。生存行の (product_id, display_sort) は部分
 // UNIQUE インデックスが一意に保つため、この順序でなければ表示順を使い回した登録が 23505 で失敗します。
 func (r *repository) syncImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
 	images := p.Images()
 	ids := make([]uuid.UUID, len(images))
 	paths := make([]string, len(images))
-	sortKeys := make([]int16, len(images))
+	displaySorts := make([]int16, len(images))
 	for i, img := range images {
-		sortKey, err := safecast.IntToInt16(img.SortKey())
+		displaySort, err := safecast.IntToInt16(img.DisplaySort())
 		if err != nil {
-			return xerrors.Wrap(err, "invalid product image sortKey")
+			return xerrors.Wrap(err, "invalid product image displaySort")
 		}
 
 		ids[i] = img.ID()
 		paths[i] = img.ImagePath()
-		sortKeys[i] = sortKey
+		displaySorts[i] = displaySort
 	}
 
 	if err := db.SoftDeleteProductImagesNotIn(ctx, &gen.SoftDeleteProductImagesNotInParams{
@@ -439,10 +450,10 @@ func (r *repository) syncImages(ctx context.Context, db *gen.Queries, p *product
 	}
 
 	if err := db.CreateProductImagesIfAbsent(ctx, &gen.CreateProductImagesIfAbsentParams{
-		ProductID:  p.ID(),
-		Ids:        ids,
-		ImagePaths: paths,
-		SortKeys:   sortKeys,
+		ProductID:    p.ID(),
+		Ids:          ids,
+		ImagePaths:   paths,
+		DisplaySorts: displaySorts,
 	}); err != nil {
 		return pgerror.NormalizeError(err)
 	}
@@ -469,8 +480,8 @@ func (r *repository) findImagesByProductIDs(
 	for _, row := range rows {
 		img := row.ProductImages
 		images[img.ProductID] = append(images[img.ProductID], product.NewImage(img.ID, product.ImageAttributes{
-			ImagePath: img.ImagePath,
-			SortKey:   int(img.SortKey),
+			ImagePath:   img.ImagePath,
+			DisplaySort: int(img.DisplaySort),
 		}))
 	}
 

@@ -133,8 +133,8 @@ func insertInvalidRole(ctx context.Context, t *testing.T, db driver.DBTX, userID
 	t.Helper()
 
 	_, err := db.Exec(ctx,
-		"INSERT INTO roles (id, name, code) VALUES ($1, $2, $3)",
-		roleID, "invalid-role", int16(99), // code=99 は RoleCode.valid() を満たさずドメイン不変条件違反となる。
+		"INSERT INTO roles (id, name, code, sort_key) VALUES ($1, $2, $3, $4)",
+		roleID, "invalid-role", int16(99), int16(99), // code=99 は RoleCode.valid() を満たさずドメイン不変条件違反となる。
 	)
 	require.NoError(t, err)
 

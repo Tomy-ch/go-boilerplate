@@ -35,7 +35,7 @@ func TestV1ProductStatuses_Integration(t *testing.T) {
 
 			mockUC := mock_status.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListStatuses(gomock.Any()).Return(
-				statusuc.StatusDTOs{{ID: id, Code: 8, Name: "検討中", SortKey: 1}}, nil,
+				statusuc.StatusDTOs{{ID: id, Code: 8, Name: "検討中"}}, nil,
 			)
 
 			productstatuseshandler.BindHandler(e, tf, mockUC)

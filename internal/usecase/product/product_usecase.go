@@ -53,8 +53,8 @@ type ProductView struct {
 type ProductImageItemView struct {
 	// Path は、格納されたオブジェクトのパス（キー）です。表示 URL は上位が組み立てます。
 	Path string
-	// SortKey は、同一商品内での表示順です。
-	SortKey int
+	// DisplaySort は、同一商品内での表示順です。
+	DisplaySort int
 }
 
 // ProductListView は、公開商品一覧（cursor ページネーション）の取得結果を表します。
@@ -79,9 +79,17 @@ type ListProductsParams struct {
 // 共有します。片方にだけ条件が増えた状態は、この型を経由する限り表現できません。
 type SearchFilter struct {
 	// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。
+	// CategoryCodes への移行期間中だけ残る旧経路で、両方が同時に埋まることはありません（handler が弾きます）。
 	CategoryID *uuid.UUID
 	// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。
+	// StatusCodes への移行期間中だけ残る旧経路で、両方が同時に埋まることはありません（handler が弾きます）。
 	StatusID *uuid.UUID
+	// CategoryCodes は、商品カテゴリコードによる絞り込みです。いずれかに一致する商品を対象とし、
+	// 空の場合は絞り込みません。存在しないコードは一致 0 件として扱います。
+	CategoryCodes []int16
+	// StatusCodes は、商品ステータスコードによる絞り込みです。いずれかに一致する商品を対象とし、
+	// 空の場合は絞り込みません。存在しないコードは一致 0 件として扱います。
+	StatusCodes []int16
 	// Keyword は、商品名・説明への部分一致検索キーワードです。nil の場合は絞り込みません。
 	Keyword *string
 	// MinPrice / MaxPrice は、価格の包含下限／包含上限を表す十進文字列です。nil の側は制限しません。
@@ -184,7 +192,23 @@ func parseProductPriceFilter(name, value string) (*money.Price, error) {
 	return &price, nil
 }
 
+// validateMasterFilter は、マスタ参照の絞り込みが非推奨の ID と後継のコードで二重に指定されていないことを
+// 検証します。両方が来た場合にどちらかを優先すると、送ったのに無視された側が静かに効かなくなるため拒否します。
+func validateMasterFilter(filter SearchFilter) error {
+	if filter.CategoryID != nil && len(filter.CategoryCodes) > 0 {
+		return xerrors.Wrap(apperror.ErrInvalidArgument, "categoryId and categoryCodes must not be specified together")
+	}
+	if filter.StatusID != nil && len(filter.StatusCodes) > 0 {
+		return xerrors.Wrap(apperror.ErrInvalidArgument, "statusId and statusCodes must not be specified together")
+	}
+	return nil
+}
+
 func parseProductListRange(filter SearchFilter) (productListRange, error) {
+	if err := validateMasterFilter(filter); err != nil {
+		return productListRange{}, err
+	}
+
 	result := productListRange{minQuantity: filter.MinQuantity, maxQuantity: filter.MaxQuantity}
 	if filter.MinPrice != nil {
 		minPrice, err := parseProductPriceFilter("minPrice", *filter.MinPrice)
@@ -235,17 +259,9 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	}
 
 	domainParams := product.ListParams{
-		SearchFilter: product.SearchFilter{
-			CategoryID:  params.CategoryID,
-			StatusID:    params.StatusID,
-			Keyword:     params.Keyword,
-			MinPrice:    rangeFilter.minPrice,
-			MaxPrice:    rangeFilter.maxPrice,
-			MinQuantity: rangeFilter.minQuantity,
-			MaxQuantity: rangeFilter.maxQuantity,
-		},
-		Limit:     params.Cursor.Limit32() + 1,
-		Ascending: params.Ascending,
+		SearchFilter: toDomainSearchFilter(params.SearchFilter, rangeFilter),
+		Limit:        params.Cursor.Limit32() + 1,
+		Ascending:    params.Ascending,
 	}
 	if after != nil {
 		publishedAt := after.publishedAt
@@ -293,15 +309,28 @@ func (u *usecase) CountProducts(ctx context.Context, filter SearchFilter) (Produ
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	count, err := u.repo.CountPublished(ctx, product.SearchFilter{
-		CategoryID: filter.CategoryID, StatusID: filter.StatusID, Keyword: filter.Keyword,
-		MinPrice: rangeFilter.minPrice, MaxPrice: rangeFilter.maxPrice,
-		MinQuantity: rangeFilter.minQuantity, MaxQuantity: rangeFilter.maxQuantity,
-	})
+	count, err := u.repo.CountPublished(ctx, toDomainSearchFilter(filter, rangeFilter))
 	if err != nil {
 		return ProductCountView{}, err
 	}
 	return ProductCountView{Count: count}, nil
+}
+
+// toDomainSearchFilter は、usecase の検索条件を検証済みの範囲条件と合わせてドメインの検索条件へ写像します。
+// 一覧と一致件数が同じ母集団を指す保証はこの 1 箇所に集約します。写像を呼び出し側へ展開すると、
+// 条件を 1 つ足したときに片方だけへ足せてしまいます。
+func toDomainSearchFilter(filter SearchFilter, r productListRange) product.SearchFilter {
+	return product.SearchFilter{
+		CategoryID:    filter.CategoryID,
+		StatusID:      filter.StatusID,
+		CategoryCodes: filter.CategoryCodes,
+		StatusCodes:   filter.StatusCodes,
+		Keyword:       filter.Keyword,
+		MinPrice:      r.minPrice,
+		MaxPrice:      r.maxPrice,
+		MinQuantity:   r.minQuantity,
+		MaxQuantity:   r.maxQuantity,
+	}
 }
 
 // GetProduct は、存在秘匿を Repository が返す NotFound に委ね、usecase 側では公開判定を再実装しません。
@@ -354,7 +383,7 @@ func toProductView(p *product.Product) ProductView {
 func toProductImageItemViews(images []product.Image) []ProductImageItemView {
 	views := make([]ProductImageItemView, len(images))
 	for i, img := range images {
-		views[i] = ProductImageItemView{Path: img.ImagePath(), SortKey: img.SortKey()}
+		views[i] = ProductImageItemView{Path: img.ImagePath(), DisplaySort: img.DisplaySort()}
 	}
 	return views
 }

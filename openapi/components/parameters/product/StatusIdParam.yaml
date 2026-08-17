@@ -1,7 +1,11 @@
 name: statusId
 in: query
-description: 商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+description: |
+  商品ステータスIDでフィルタします。指定しない場合は全ステータスを対象とします。
+  後継は statusCodes で、マスタ行を指すのは UUID ではなく code です。statusCodes と
+  同時に指定した場合は 400 を返します。
 required: false
+deprecated: true
 schema:
   type: string
   format: uuid

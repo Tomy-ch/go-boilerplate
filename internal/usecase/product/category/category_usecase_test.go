@@ -66,8 +66,8 @@ func Test_usecase_ListCategories(t *testing.T) {
 			actual, err := u.ListCategories(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, CategoryDTOs{
-				{ID: electronicsID, Code: 1, Name: "電子機器", SortKey: 1},
-				{ID: booksID, Code: 2, Name: "書籍", SortKey: 2},
+				{ID: electronicsID, Code: 1, Name: "電子機器"},
+				{ID: booksID, Code: 2, Name: "書籍"},
 			}, actual)
 		})
 

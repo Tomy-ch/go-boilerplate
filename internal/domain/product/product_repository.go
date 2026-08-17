@@ -29,9 +29,17 @@ type ListParams struct {
 // 共有します。片方にだけ条件が増えた状態は、この型を経由する限り表現できません。
 type SearchFilter struct {
 	// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。
+	// CategoryCodes への移行期間中だけ残る旧経路で、両方が同時に埋まることはありません（外側で弾きます）。
 	CategoryID *uuid.UUID
 	// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。
+	// StatusCodes への移行期間中だけ残る旧経路で、両方が同時に埋まることはありません（外側で弾きます）。
 	StatusID *uuid.UUID
+	// CategoryCodes は、商品カテゴリコードによる絞り込みです。いずれかに一致する商品を対象とし、
+	// 空の場合は絞り込みません。存在しないコードは一致 0 件として扱います。
+	CategoryCodes []int16
+	// StatusCodes は、商品ステータスコードによる絞り込みです。いずれかに一致する商品を対象とし、
+	// 空の場合は絞り込みません。存在しないコードは一致 0 件として扱います。
+	StatusCodes []int16
 	// Keyword は、商品名・説明への部分一致検索キーワードです。nil の場合は絞り込みません。
 	Keyword *string
 	// MinPrice / MaxPrice は、価格の包含下限／包含上限です。nil の側は制限しません。
@@ -55,7 +63,8 @@ type Counts struct {
 type Repository interface {
 	// FindPublishedList は、公開済みの商品を keyset ページネーションで取得します。
 	// 並び順は公開日時（同時刻は ID）で、params.Ascending により昇順／降順を切り替えます。
-	// params.CategoryID / StatusID / Keyword / price・quantity の上下限が指定された場合は該当条件で絞り込みます。
+	// params.CategoryID / StatusID / CategoryCodes / StatusCodes / Keyword / price・quantity の上下限が
+	// 指定された場合は該当条件で絞り込みます。
 	FindPublishedList(ctx context.Context, params ListParams) (Products, error)
 	// CountPublished は、公開済み商品のうち指定された検索条件に一致する件数を返します。
 	// filter は FindPublishedList と同じ条件で、両者は同じ母集団を指します。

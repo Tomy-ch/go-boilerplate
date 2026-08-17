@@ -4,16 +4,16 @@ description: |
   （backend はフル URL を保持しません）。
 required:
   - imagePath
-  - sortKey
+  - displaySort
 properties:
   imagePath:
     type: string
     description: 格納されたオブジェクトのパス（オブジェクトキー）。
     example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"
-  sortKey:
+  displaySort:
     type: integer
     format: int32
     minimum: 1
     maximum: 32767
-    description: 同一商品内での表示順。images は sortKey の昇順で返します。
+    description: 同一商品内での表示順。images は displaySort の昇順で返します。
     example: 1

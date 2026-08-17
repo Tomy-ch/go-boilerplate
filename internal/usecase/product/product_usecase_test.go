@@ -872,7 +872,7 @@ func Test_toProductView(t *testing.T) {
 				Images: []domainproduct.Image{
 					domainproduct.NewImage(
 						uuidtestkit.NewTestFromSalt(t, "to_view_image"),
-						domainproduct.ImageAttributes{ImagePath: "products/to_view.png", SortKey: 1},
+						domainproduct.ImageAttributes{ImagePath: "products/to_view.png", DisplaySort: 1},
 					),
 				},
 			}, 7)
@@ -896,7 +896,7 @@ func Test_toProductView(t *testing.T) {
 			assert.Equal(t, published, *actual.PublishedAt)
 			require.Len(t, actual.Images, 1)
 			assert.Equal(t, "products/to_view.png", actual.Images[0].Path)
-			assert.Equal(t, 1, actual.Images[0].SortKey)
+			assert.Equal(t, 1, actual.Images[0].DisplaySort)
 			assert.Equal(t, 7, actual.Version)
 		})
 
@@ -1004,25 +1004,134 @@ func Test_toProductImageItemViews(t *testing.T) {
 			images := []domainproduct.Image{
 				domainproduct.NewImage(
 					uuidtestkit.NewTestFromSalt(t, "item_view_1"),
-					domainproduct.ImageAttributes{ImagePath: "products/a.png", SortKey: 1},
+					domainproduct.ImageAttributes{ImagePath: "products/a.png", DisplaySort: 1},
 				),
 				domainproduct.NewImage(
 					uuidtestkit.NewTestFromSalt(t, "item_view_2"),
-					domainproduct.ImageAttributes{ImagePath: "products/b.png", SortKey: 5},
+					domainproduct.ImageAttributes{ImagePath: "products/b.png", DisplaySort: 5},
 				),
 			}
 
 			actual := toProductImageItemViews(images)
 
 			require.Len(t, actual, 2)
-			assert.Equal(t, ProductImageItemView{Path: "products/a.png", SortKey: 1}, actual[0])
-			assert.Equal(t, ProductImageItemView{Path: "products/b.png", SortKey: 5}, actual[1])
+			assert.Equal(t, ProductImageItemView{Path: "products/a.png", DisplaySort: 1}, actual[0])
+			assert.Equal(t, ProductImageItemView{Path: "products/b.png", DisplaySort: 5}, actual[1])
 		})
 
 		t.Run("画像が空の場合、空を返す", func(t *testing.T) {
 			t.Parallel()
 
 			assert.Empty(t, toProductImageItemViews(nil))
+		})
+	})
+}
+
+func Test_validateMasterFilter(t *testing.T) {
+	t.Parallel()
+
+	categoryID := uuidtestkit.NewTestFromSalt(t, "validate_master_filter_category")
+	statusID := uuidtestkit.NewTestFromSalt(t, "validate_master_filter_status")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("何も指定されていない場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateMasterFilter(SearchFilter{}))
+		})
+
+		t.Run("IDだけを指定した場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateMasterFilter(SearchFilter{CategoryID: &categoryID, StatusID: &statusID}))
+		})
+
+		t.Run("コードだけを指定した場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateMasterFilter(SearchFilter{
+				CategoryCodes: []int16{1, 2}, StatusCodes: []int16{3},
+			}))
+		})
+
+		t.Run("片方はID、もう片方はコードという組み合わせは許容する", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateMasterFilter(SearchFilter{CategoryID: &categoryID, StatusCodes: []int16{3}}))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("categoryIdとcategoryCodesを同時に指定した場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateMasterFilter(SearchFilter{CategoryID: &categoryID, CategoryCodes: []int16{1}})
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("statusIdとstatusCodesを同時に指定した場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateMasterFilter(SearchFilter{StatusID: &statusID, StatusCodes: []int16{1}})
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+	})
+}
+
+func Test_toDomainSearchFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("検索条件と検証済みの範囲条件をドメインの検索条件へ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			categoryID := uuidtestkit.NewTestFromSalt(t, "to_domain_filter_category")
+			statusID := uuidtestkit.NewTestFromSalt(t, "to_domain_filter_status")
+			keyword := "イヤホン"
+			minPrice := mustPrice(t, "10.00")
+			maxPrice := mustPrice(t, "20.00")
+
+			actual := toDomainSearchFilter(
+				SearchFilter{
+					CategoryID:    &categoryID,
+					StatusID:      &statusID,
+					CategoryCodes: []int16{1, 2},
+					StatusCodes:   []int16{5},
+					Keyword:       &keyword,
+				},
+				productListRange{
+					minPrice:    &minPrice,
+					maxPrice:    &maxPrice,
+					minQuantity: ptr.To(int32(1)),
+					maxQuantity: ptr.To(int32(9)),
+				},
+			)
+
+			assert.Equal(t, domainproduct.SearchFilter{
+				CategoryID:    &categoryID,
+				StatusID:      &statusID,
+				CategoryCodes: []int16{1, 2},
+				StatusCodes:   []int16{5},
+				Keyword:       &keyword,
+				MinPrice:      &minPrice,
+				MaxPrice:      &maxPrice,
+				MinQuantity:   ptr.To(int32(1)),
+				MaxQuantity:   ptr.To(int32(9)),
+			}, actual)
+		})
+
+		t.Run("未指定の条件はゼロ値のまま写す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, domainproduct.SearchFilter{}, toDomainSearchFilter(SearchFilter{}, productListRange{}))
 		})
 	})
 }

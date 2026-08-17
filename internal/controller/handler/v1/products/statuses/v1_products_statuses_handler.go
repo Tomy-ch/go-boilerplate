@@ -27,7 +27,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc statusuc.Useca
 	}, nil))
 }
 
-// GetProductStatuses は、商品ステータスマスタの全件を sortKey 昇順で返します。
+// GetProductStatuses は、商品ステータスマスタの全件をマスタの表示順で返します。表示順の値は応答に含めません。
 func (s *server) GetProductStatuses(
 	ctx context.Context, _ gen.GetProductStatusesRequestObject,
 ) (gen.GetProductStatusesResponseObject, error) {
@@ -50,9 +50,8 @@ func (s *server) GetProductStatuses(
 // toProductStatusResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
 func toProductStatusResponse(dto statusuc.StatusDTO) gen.ProductStatusResponse {
 	return gen.ProductStatusResponse{
-		Id:      dto.ID.ToPrimitive(),
-		Code:    dto.Code,
-		Name:    dto.Name,
-		SortKey: dto.SortKey,
+		Id:   dto.ID.ToPrimitive(),
+		Code: dto.Code,
+		Name: dto.Name,
 	}
 }
