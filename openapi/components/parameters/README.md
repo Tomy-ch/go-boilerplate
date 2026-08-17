@@ -22,14 +22,15 @@ Renaming the cursor params to `perPage` etc. would be non-idiomatic (cursor trav
 
 These apply to every search endpoint, not only the ones that exist today.
 
-### Multiple values for one condition use an `explode: false` array
+### Multiple values for one condition repeat the parameter name
 
-A condition that can hold several values is **one** parameter carrying a comma-separated array, never the
-same name repeated. Repeating a name is rejected by request validation, so a client cannot express "either
-of these" at all unless the parameter is declared as an array.
+A condition that can hold several values is declared as an array and sent by repeating the name —
+`categoryCodes=1&categoryCodes=2` — which is OpenAPI's default serialization (`style: form`,
+`explode: true`). A parameter that is not declared as an array cannot express "either of these" at all:
+a repeated name is rejected by request validation.
 
 ```yaml
-explode: false
+explode: true
 schema:
   type: array
   uniqueItems: true
@@ -39,13 +40,29 @@ schema:
 
 `uniqueItems` and `maxItems` are wire limits: they bound the URL length and the size of the resulting `IN`
 list. Existing examples: `product/CategoryCodesParam.yaml`, `product/StatusCodesParam.yaml`, and
-`purchase/PurchaseGroupByParam.yaml` (a string `enum` array).
+`purchase/PurchaseGroupByParam.yaml` (a string `enum` array whose order is significant — repetition
+preserves it).
+
+### Free-text input is never an array
+
+A parameter that carries text the user typed is a single `string` with a `maxLength`, never an array —
+`search/KeywordParam.yaml` is the shape to copy. Only a reference to a row (`code`) or a fixed `enum` may
+be multi-valued.
+
+This is what keeps the rule above cheap. Percent-encoded UTF-8 costs up to 9 characters per character, so
+one free-text parameter dominates the URL budget by an order of magnitude over any array-serialization
+choice; and a delimiter-separated array could not carry a value containing the delimiter, because the
+separator is split after percent-decoding and therefore cannot be escaped. Restricting arrays to codes and
+enums removes both problems at once.
+
+A search that outgrows this — many facets, or values too large for a URL — belongs in a `POST` body, not in
+a longer query string. See [ADR-0018 (search-query-parameter-shape)](../../../docs/adr/0018-search-query-parameter-shape.md).
 
 ### Filtering by master data takes `code`, not the row's UUID
 
 The identifier a client sends for a master row is its `code` — a static alias fixed by the migration that
 inserted the row. Which UUID that row carries is decided by the migration, so application code must not
-hold it ([ADR-0029](../../../docs/adr/0029-master-data-via-migration.md)); the same reasoning applies at the
+hold it ([ADR-0030](../../../docs/adr/0030-master-data-via-migration.md)); the same reasoning applies at the
 API boundary. A client can keep `code` as a constant, whereas a UUID has to be resolved by calling the
 master endpoint first, and at 36 characters each it makes a multi-value filter expensive to express.
 

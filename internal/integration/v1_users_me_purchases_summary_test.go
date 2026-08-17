@@ -105,13 +105,13 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_query"))
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, purchaseSummaryPath+"?period=recent&days=10&groupBy=category,product", nil, headers)
+				http.MethodGet, purchaseSummaryPath+"?period=recent&days=10&groupBy=category&groupBy=product", nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 
 			assert.Equal(t, period.KindRecent, captured.Period.Kind)
 			require.NotNil(t, captured.Period.Days)
 			assert.Equal(t, 10, *captured.Period.Days)
-			// カンマ区切りの配列がその順序のまま bind されることを HTTP 経路で固定する。
+			// 繰り返し指定の配列がその順序のまま bind されることを HTTP 経路で固定する。
 			assert.Equal(t, []summaryuc.GroupKind{summaryuc.GroupByCategory, summaryuc.GroupByProduct}, captured.GroupBy)
 		})
 
@@ -142,7 +142,7 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_groups"))
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, purchaseSummaryPath+"?groupBy=category,product", nil, headers)
+				http.MethodGet, purchaseSummaryPath+"?groupBy=category&groupBy=product", nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 
 			resBody, err := io.ReadAll(actual.Body)
