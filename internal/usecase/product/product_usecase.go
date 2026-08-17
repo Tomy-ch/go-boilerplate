@@ -78,11 +78,11 @@ type ListProductsParams struct {
 // SearchFilter は、公開商品の絞り込み条件です。一覧と一致件数は同じ母集団を指すため双方がこれを
 // 共有します。片方にだけ条件が増えた状態は、この型を経由する限り表現できません。
 type SearchFilter struct {
-	// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。
-	// CategoryCodes への移行期間中だけ残る旧経路で、両方が同時に埋まることはありません（handler が弾きます）。
+	// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。非推奨で、
+	// CategoryCodes と同時に指定された場合は validateMasterFilter が拒否します。
 	CategoryID *uuid.UUID
-	// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。
-	// StatusCodes への移行期間中だけ残る旧経路で、両方が同時に埋まることはありません（handler が弾きます）。
+	// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。非推奨で、
+	// StatusCodes と同時に指定された場合は validateMasterFilter が拒否します。
 	StatusID *uuid.UUID
 	// CategoryCodes は、商品カテゴリコードによる絞り込みです。いずれかに一致する商品を対象とし、
 	// 空の場合は絞り込みません。存在しないコードは一致 0 件として扱います。

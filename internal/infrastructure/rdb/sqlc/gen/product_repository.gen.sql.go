@@ -849,7 +849,8 @@ type ListPublishedProductsAscAfterRow struct {
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは handler が弾きます。
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
@@ -1001,7 +1002,8 @@ type ListPublishedProductsAscFirstRow struct {
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは handler が弾きます。
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
@@ -1153,7 +1155,8 @@ type ListPublishedProductsDescAfterRow struct {
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは handler が弾きます。
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
@@ -1306,7 +1309,8 @@ type ListPublishedProductsDescFirstRow struct {
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは handler が弾きます。
+// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+// usecase の validateMasterFilter が拒否します。
 // 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
