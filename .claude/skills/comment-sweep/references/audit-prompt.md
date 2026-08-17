@@ -22,6 +22,11 @@ those files, not only recently-changed ones — re-examining accumulated stock i
 
 ## The question you are answering
 
+Run **both passes** below over the same files. They find different things, and neither substitutes for
+the other.
+
+### Pass 1 — per comment: jurisdiction
+
 For each comment, ask what `docs/rules.md` asks:
 
 > If someone reversed this decision, which document would they be obliged to update?
@@ -30,9 +35,31 @@ Not "is this Why non-obvious?" — it usually is, and that question always resol
 which is exactly why the stock grew. The jurisdiction question is answerable from evidence, so it can
 actually move a judgment.
 
+### Pass 2 — per file: which single site owns this content
+
+Then read each file's comments **as one body** and ask:
+
+> Is this content already carried somewhere else in this file, and if so, which single site owns it?
+
+Pass 1 cannot answer this, and not for lack of care. When one Why is written at three declarations,
+each copy is non-obvious, each sits at the site whose premise it states, and each passes jurisdiction
+on its own — three 維持. The redundancy exists only in the relation between them, so it is visible only
+when the file is judged as a unit.
+
+Three shapes qualify:
+
+- **重複** — one Why restated at several declarations.
+- **分散** — a constraint split so that no single place states it and a reader has to assemble it from
+  pieces. The fix is to make one site whole, never to add another fragment.
+- **総量過多** — each comment is individually correct, yet the file's total commentary costs more to
+  read than the code it explains.
+
+Run this pass on every file, including ones where Pass 1 found nothing: a file whose comments are all
+individually fine is exactly where duplication hides.
+
 ## Verdicts
 
-Return exactly one of four per finding.
+Return exactly one of five per finding.
 
 - **維持** — the content belongs here. This is the correct answer for the ordinary case, and for
   anything whose constraint exists only at this call site: a `runtime.Caller` skip depth, an upstream
@@ -44,9 +71,17 @@ Return exactly one of four per finding.
   or narration of a mechanism the reader already knows. Quote the code that makes it redundant.
 - **移設** — the content is real and worth keeping, but its jurisdiction is a document, not this
   declaration. Name the destination concretely and show the landing form (below).
+- **集約** — the Pass 2 verdict, and the only one whose subject is a **set** of comments in one file
+  rather than a single comment. One site keeps the content; the rest shrink to a pointer. It is one
+  decision, not N: approving the shrinks without the surviving site loses the Why entirely, and
+  approving the survivor without the shrinks changes nothing. Never split it into per-comment findings.
 
 A comment that **contradicts the code** outranks all of this. Report it first, as its own finding,
 regardless of jurisdiction — a doc comment that lies is worse than one in the wrong place.
+
+The two passes must not report the same comment twice. When a comment is both individually shortenable
+and a member of a 集約 set, the **集約 wins** and absorbs the shortening — the integrator would otherwise
+ask the user about the same line under two verdicts that partly contradict each other.
 
 ## What a 移設 finding must contain
 
@@ -68,6 +103,37 @@ finding wastes the reviewer's turn:
    declaration must not violate, plus a link. Write it out in full.
 4. **The residue test** — confirm the residue still stands alone for a reader who does not follow the
    link. A residue that only makes sense after reading the destination has been cut too far.
+
+## What a 集約 finding must contain
+
+Everything here is what makes the set decidable as one unit. A 集約 missing any of it is not
+reviewable, because the reviewer cannot see what they would be agreeing to:
+
+1. **The shape** — 重複 / 分散 / 総量過多. These fail differently, so naming the shape is what tells the
+   reviewer what to check.
+2. **Every member** — each `path:line` and its comment in full. Not just the site you propose to keep:
+   a consolidation cannot be judged from the winner alone.
+3. **The owning site, with evidence** — which declaration keeps the content, and *why that one*. The
+   test is ownership of the concept, not comment length or file order: the site a reader arrives at
+   first when they ask the question the comment answers. State it, because a wrong pick is the
+   expensive failure mode here — the other sites are already shrunk by the time it shows.
+4. **The consolidated wording** — the full text the owning site will carry. It must cover what the
+   shrunk sites gave up; a consolidation that quietly drops one member's distinct fact is a deletion
+   wearing another verdict's name.
+5. **Each pointer** — the exact residue left at every other site. A bare `// 詳細は上記参照` is not a
+   pointer; name the declaration, so a reader who jumped straight to this line can navigate.
+6. **確度: high / medium / low** — this one is load-bearing rather than decorative. The integrator
+   applies a 集約 unattended only at `high`, so rate honestly: `high` means you could point to the
+   sentences that are the same fact and to the declaration that owns the concept. Uncertainty about
+   which site should win is `medium` at best.
+
+A 集約 never writes to a document — it only moves content between comments inside one file. If the
+right home turns out to be prose outside the code, that is a **移設**, and the two must not be mixed
+in one finding.
+
+**Do not consolidate into a package overview.** `// Package …` comments are out of scope in both
+directions: not judged, and not a landing site. When the fragments really do add up to a package-level
+statement, the verdict is 移設 to the package README.
 
 ## Destinations have entry bars — refuse the misroutes
 
@@ -118,7 +184,7 @@ Your final message **is** the data the orchestrator consumes. No preamble.
 ````text
 ## comment-sweep 監査結果: <package path>
 
-対象 <n> ファイル / 判定内訳: 維持 <a> / 短縮 <b> / 削除 <c> / 移設 <d>
+対象 <n> ファイル / 判定内訳: 維持 <a> / 短縮 <b> / 削除 <c> / 移設 <d> / 集約 <e>
 
 ### [判定] 短いタイトル
 - 場所: path/to/file:行
@@ -138,6 +204,29 @@ Your final message **is** the data the orchestrator consumes. No preamble.
 
 - ※ Go の export 宣言は「削除」不可（revive のため 短縮 or 移設）
 - 確度: high / medium / low
+
+### [集約] 短いタイトル
+- 対象ファイル: path/to/file
+- 形: 重複 / 分散 / 総量過多
+- 対象コメント（全件）:
+  - path/to/file:行 — `実際のコメント文言`（全文）
+  - path/to/file:行 — `実際のコメント文言`（全文）
+- 本体を持つ site: path/to/file:行（<宣言名>）
+  - 根拠: なぜこの宣言が概念を所有するのか。読み手がその問いを持って最初に辿り着く場所であること
+- 集約後の文面（本体側の全文）:
+  ```go
+  // 集約後の全文
+  ```
+
+- 各 site に残すポインタ:
+  - path/to/file:行 →
+    ```go
+    // 残すポインタ（宣言名を必ず含める）
+    ```
+
+- ※ 個別の 短縮 として二重に報告しない（集約が吸収する）
+- ※ package overview へは集約しない（該当するなら 移設 → パッケージ README）
+- 確度: high / medium / low ※ high のときだけ自動適用の対象になる
 
 ````
 
