@@ -2,7 +2,7 @@
 
 > 販売数量ランキングは購入明細・購入・商品の複数集約を横断する集計投影であり、domain Repository
 > ではなく QueryService 経路（`internal/usecase/product/ranking/query.ProductRankingQueryService`）
-> に委譲する（ADR-0030 (lightweight-cqrs) 軽量CQRS / `docs/rules.md` の Repository / QueryService 境界に準拠）。
+> に委譲する（ADR-0031 (lightweight-cqrs) 軽量CQRS / `docs/rules.md` の Repository / QueryService 境界に準拠）。
 > 集計の意味論（GROUP BY 合算 / JOIN / キャンセル除外 / tiebreak 安定）は infra QS の実 DB テストで担保する。
 
 ## Overview

@@ -60,7 +60,7 @@ HTTPステータスコードはレスポンスヘッダで返し、スタック�
 組み立て、エラーが持つ `details` を付与します。その `details` が実際にクライアントへ届くかは、
 下流の `errorhandler` のエンドポイントごとの opt-in ゲート（fail-closed）が決めます。`requestId` を
 ここで空にして edge で埋めるのと同じ構図です。`errorhandler` README と
-[ADR-0047 (error-details-opt-in-gate)](../../../../docs/adr/0047-error-details-opt-in-gate.md) を参照。
+[ADR-0048 (error-details-opt-in-gate)](../../../../docs/adr/0048-error-details-opt-in-gate.md) を参照。
 
 ## エラーコードとHTTPステータスの対応
 

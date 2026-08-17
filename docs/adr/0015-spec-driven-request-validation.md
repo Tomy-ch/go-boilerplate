@@ -92,6 +92,6 @@ matches the spec at compile time.
 - Middleware implementation: [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go).
 - Ops-path skipper: [`internal/controller/httpstack/oapi/skipper/skipper.go`](../../internal/controller/httpstack/oapi/skipper/skipper.go).
 - The `/metrics` auth exception (skipped from this pipeline; protected by a separate
-  BasicAuth middleware) is recorded in [ADR-0018](0018-metrics-endpoint-auth-exception.md).
+  BasicAuth middleware) is recorded in [ADR-0019](0019-metrics-endpoint-auth-exception.md).
 - Security and boundary notes: [`openapi/README.md`](../../openapi/README.md) (§ Security) and [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.md).
 - Parent decision: [ADR-0011](0011-openapi-first.md) (OpenAPI-first).

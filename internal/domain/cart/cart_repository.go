@@ -29,7 +29,7 @@ type Repository interface {
 	LockByID(ctx context.Context, id uuid.UUID) (*Cart, error)
 
 	// LockByIDs は、更新のために ID の集合からカート群を、ID 昇順にまとめて悲観ロックして
-	// 明細込みで取得します（順序を固定する理由は ADR-0034 (ordered-pessimistic-row-locks)）。
+	// 明細込みで取得します（順序を固定する理由は ADR-0035 (ordered-pessimistic-row-locks)）。
 	// 複数件はこちらでまとめてロックし、順序の維持を呼び出し側の責務にしません。
 	//
 	// 不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得ます

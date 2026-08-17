@@ -245,7 +245,7 @@ model）と `CommandService`（読み込み・変更・保存の形では表現�
 
 読み側と書き側が非対称なのも意図的で、ドメインへの矢印が片方にしか無いのはそのためです。`QueryService`
 は DTO を返しドメイン型に一切触れませんが、`CommandService` は決定済みの集約を受け取ります。3 者の
-判別基準は [ADR-0030 (lightweight-cqrs)](docs/adr/0030-lightweight-cqrs.md) にあります。
+判別基準は [ADR-0031 (lightweight-cqrs)](docs/adr/0031-lightweight-cqrs.md) にあります。
 
 レイヤ境界は CI（`golangci-lint` depguard）で強制されており、ドキュメント上の約束事に留まりません。
 詳細: [docs/architecture.md](docs/architecture.md) / [docs/rules.md](docs/rules.md)。

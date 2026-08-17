@@ -93,7 +93,7 @@ Two error envelopes. `ErrorResponse` is the base (no `details`) used by most err
 `ErrorResponseWithDetails` adds `details` and is referenced **only** by responses that
 intentionally expose it. Which operations reference `ErrorResponseWithDetails` is the
 **per-endpoint opt-in switch** for detail exposure (enforced fail-closed at the edge — see
-[ADR-0047 (error-details-opt-in-gate)](../../../docs/adr/0047-error-details-opt-in-gate.md)).
+[ADR-0048 (error-details-opt-in-gate)](../../../docs/adr/0048-error-details-opt-in-gate.md)).
 
 ```yaml
 # ErrorResponse.yaml (base)

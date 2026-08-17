@@ -128,10 +128,10 @@ rule, never the illustration.
 The only provider in `internal/infrastructure/rdb/command_service/` belongs to the sample purchase
 feature, and it is the sole registration in the `command_service` sub-module of `persistenceModule`
 (`internal/di/module/persistence.go`). Removing the samples empties the sub-module and leaves
-[ADR-0030 (lightweight-cqrs)](../adr/0030-lightweight-cqrs.md)'s CommandService section describing an intended design
+[ADR-0031 (lightweight-cqrs)](../adr/0031-lightweight-cqrs.md)'s CommandService section describing an intended design
 with no occupant — which is the state a fork starts from.
 
-The upstream keeps that occupant deliberately: the eligibility bar ADR-0030 (lightweight-cqrs) states (which writes
+The upstream keeps that occupant deliberately: the eligibility bar ADR-0031 (lightweight-cqrs) states (which writes
 deserve a CommandService) is only legible against a concrete case that meets it, so the sample
 carries the bar's reading.
 
@@ -181,7 +181,7 @@ exists, so the reason is gone and the stopping point is no longer justified by i
 
 ### Setup scripts: why the pure-module split is a rule, not a convention
 
-[ADR-0080 (scripts-in-node-go)](../adr/0080-scripts-in-node-go.md) states the general form: every script keeps its
+[ADR-0081 (scripts-in-node-go)](../adr/0081-scripts-in-node-go.md) states the general form: every script keeps its
 decision logic in a pure module with a test suite next to it, because a gate whose failure mode is
 to inspect nothing and still exit `0` can be pinned by a type checker and a test and by nothing
 else. The one-time setup scripts under `scripts/setup/` are what turned that from a convention into
@@ -198,7 +198,7 @@ with them, so those tests protect this repository's own CI rather than the one c
 
 **This premise does not transfer.** In a project built from the template the setup scripts have
 already run — there is no stranger holding no context, and no CI whose coverage stops at the moment
-of use. What survives is the general rule in ADR-0080 (scripts-in-node-go), which stands on the gate failure mode alone.
+of use. What survives is the general rule in ADR-0081 (scripts-in-node-go), which stands on the gate failure mode alone.
 
 ### Why the domain Module rules stop at the mechanical floor
 

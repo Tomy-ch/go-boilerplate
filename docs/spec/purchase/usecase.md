@@ -1,12 +1,12 @@
 # Purchase — Usecase Spec
 
-> `POST /v1/purchases`（購入作成）の usecase spec。本リポジトリ初の CommandService（[ADR-0030 (lightweight-cqrs)]）を消費し、
+> `POST /v1/purchases`（購入作成）の usecase spec。本リポジトリ初の CommandService（[ADR-0031 (lightweight-cqrs)]）を消費し、
 > 在庫減算・購入作成・明細作成・outbox 発行を単一トランザクションで原子的に行う。最外 tx は `idempotency.Run` が所有し、
-> 本 usecase は nested（`tx.Manager.Do`）で同一 tx に乗る（[ADR-0032 (commandservice-atomicity-criterion)]）。
+> 本 usecase は nested（`tx.Manager.Do`）で同一 tx に乗る（[ADR-0033 (commandservice-atomicity-criterion)]）。
 
 ## Overview
 
-購入作成ユースケースは、認証済みの内部ユーザー ID と購入明細（`productID` + 数量）を受け取り、購入を作成して DTO を返す。CommandService（infra）は「決定済みの書き込みの実行」のみを担い（Repository の write 側対称物）、outbox 発行（`purchase.created.v1`）は usecase の責務（[ADR-0031 (system-cqrs-dml-category)] の system_cqrs 区分）。`displayCurrency` 指定時のみ合計金額の参考換算額（`referenceAmount`）を tx 外で付与し、為替障害時は null で degrade する。
+購入作成ユースケースは、認証済みの内部ユーザー ID と購入明細（`productID` + 数量）を受け取り、購入を作成して DTO を返す。CommandService（infra）は「決定済みの書き込みの実行」のみを担い（Repository の write 側対称物）、outbox 発行（`purchase.created.v1`）は usecase の責務（[ADR-0032 (system-cqrs-dml-category)] の system_cqrs 区分）。`displayCurrency` 指定時のみ合計金額の参考換算額（`referenceAmount`）を tx 外で付与し、為替障害時は null で degrade する。
 
 ## Interface
 
@@ -69,7 +69,7 @@ output:
 - name: command.CommandService           # CreatePurchase（infra 実装）
 - name: purchase.Repository              # FindByID（書き込み後の再検証・DTO 取得元）
 - name: product.Repository               # LockByIDs（在庫行の悲観ロック）
-- name: user.LockRepository              # LockShareByID（購入者の共有ロック取得。退会との直列化。[ADR-0034 (ordered-pessimistic-row-locks)]）
+- name: user.LockRepository              # LockShareByID（購入者の共有ロック取得。退会との直列化。[ADR-0035 (ordered-pessimistic-row-locks)]）
 - name: domain/service/membership        # EnsurePurchasable（在籍の判定）
 - name: outbox.EmitUsecase               # purchase.created.v1 の emit（同一 tx）
 - name: exchangerate.Usecase             # referenceAmount の換算消費（#562 成果 / half-up）
@@ -85,7 +85,7 @@ output:
   steps:
     - id / code / 各 detail id を UUIDv7 で採番する
     - "txm.Do(nested) 内で:"
-    - "  ⓪ userLock.LockShareByID で購入者を共有ロック付きで読み出し、membership.EnsurePurchasable で在籍を判定する（退会と直列化。[ADR-0034 (ordered-pessimistic-row-locks)]）"
+    - "  ⓪ userLock.LockShareByID で購入者を共有ロック付きで読み出し、membership.EnsurePurchasable で在籍を判定する（退会と直列化。[ADR-0035 (ordered-pessimistic-row-locks)]）"
     - "  ① productRepo.LockByIDs(productID 昇順) で在庫行をロックし price/quantity を得る"
     - "  ② purchase.New で入力検証・売り越し検証・金額計算・snapshot・未処理ステータスを行う"
     - "  ③ cmd.CreatePurchase で在庫減算 + purchases/purchase_details を書き込む"
@@ -101,7 +101,7 @@ output:
 ```
 
 ロックはユーザー行 → 商品行（id 昇順）の順で取る。全 tx で順序を固定することでデッドロックを構造的に
-避ける（順序固定・取得位置・ロックモードの規律は [ADR-0034 (ordered-pessimistic-row-locks)]）。
+避ける（順序固定・取得位置・ロックモードの規律は [ADR-0035 (ordered-pessimistic-row-locks)]）。
 
 購入者の在籍判定は、退会（`DELETE /v1/users/{userId}`）の「進行中の購入が残っていれば拒否」と
 **対になる 1 つの業務ルール**である。片方だけを読んでも全体は分からないため、もう一方は
@@ -121,7 +121,7 @@ output:
 成立済みの購入が誤りになることはなく、この条件は判定後に陳腐化してよい。商品更新は購入行をロックせず、
 進行中の購入の有無も見ない（商品側は自集約の楽観ロックだけで並行編集から守る）。
 
-これは在籍ガードの対照例であり、[ADR-0032 (commandservice-atomicity-criterion)] の判定手順でいえば在籍ガードが分岐 2（同期ロック）、
+これは在籍ガードの対照例であり、[ADR-0033 (commandservice-atomicity-criterion)] の判定手順でいえば在籍ガードが分岐 2（同期ロック）、
 こちらが分岐 1（既定の分解）に当たる。同じ「一方の集約の書き込みと他方の集約の状態」という形から
 答えが分かれるのは、条件が陳腐化したときに業務上の誤りが生じるかどうかが違うためである。
 
@@ -133,7 +133,7 @@ output:
 
 `GET /v1/purchases`。認証主体（`userID`）の購入履歴を注文日時降順で cursor（keyset）ページネーション取得する読み取り経路。
 一覧は概要のみ（明細を含まない）。ステータス名は購入ステータスマスタとの JOIN で解決する（単一集約 Repository read。
-購入ステータスは購入集約に属する固定参照マスタで独立集約ではないため、[ADR-0030 (lightweight-cqrs)] の子参照マスタ例外に該当し QS ではなく Repository で JOIN する）。
+購入ステータスは購入集約に属する固定参照マスタで独立集約ではないため、[ADR-0031 (lightweight-cqrs)] の子参照マスタ例外に該当し QS ではなく Repository で JOIN する）。
 
 ```yaml
 input:
@@ -180,7 +180,7 @@ workflow:
 
 `GET /v1/purchases/{purchaseId}`。本人の購入 1 件を明細（商品名込み）とともに取得する読み取り経路。購入（`purchases` / `purchase_details`）と
 商品（`products`）は独立集約であり、明細に商品名を含む集約跨ぎの read 投影のため **QueryService**（`internal/usecase/purchase/query`）で取得する
-（[ADR-0030 (lightweight-cqrs)]。子参照マスタへの JOIN で済む一覧・cancel/pay の `purchase.Detail`（Repository read）とは経路を分ける）。商品名は `products` との
+（[ADR-0031 (lightweight-cqrs)]。子参照マスタへの JOIN で済む一覧・cancel/pay の `purchase.Detail`（Repository read）とは経路を分ける）。商品名は `products` との
 JOIN でサーバー解決した現在名（live・非スナップショット）、ステータス名は購入ステータスマスタとの JOIN で解決する。所有権は QS 本体クエリの
 `WHERE p.id = @id AND p.user_id = @user_id` で担保し、他人の購入・不存在はいずれも 0 行 → NotFound（404）で存在を秘匿する（403 は用いない）。
 固定 2 クエリ（本体 + 明細 JOIN products）で N+1 を避ける。書き込みを伴わないため tx / authorizer は不要。
@@ -227,9 +227,9 @@ workflow:
 `GET /v1/users/me/purchases/summary`。認証主体自身の購入の件数・支払金額・明細金額・ステータス別内訳と、
 要求されたグループ化単位の内訳を返す集計読み取り経路（マイページの集計カード用。一覧・明細は返さない）。
 `COUNT` / `SUM` / `GROUP BY` の結果は購入集約を再構成できない
-**派生投影**であり、[ADR-0030 (lightweight-cqrs)] が Repository から集計を明示除外しているため **QueryService**（`internal/usecase/purchase/query`）に置く
+**派生投影**であり、[ADR-0031 (lightweight-cqrs)] が Repository から集計を明示除外しているため **QueryService**（`internal/usecase/purchase/query`）に置く
 （ステータス名解決だけで済む一覧の Repository read とは経路を分ける。集計は購入集約側に置き、user 配下には置かない）。
-配置判断は ADR-0030 (lightweight-cqrs) + `docs/rules.md` § Repository / QueryService Rules で既に固定化されているため**新規 ADR は発行しない**。
+配置判断は ADR-0031 (lightweight-cqrs) + `docs/rules.md` § Repository / QueryService Rules で既に固定化されているため**新規 ADR は発行しない**。
 所有権は QS の `WHERE p.user_id = @user_id` で担保し、パスに他者識別子を持たないため所有権チェックは不要。書き込みを伴わないため tx は不要。
 
 ユースケースは `internal/usecase/purchase/purchase_usecase.go`（tx / CommandService / outbox を持つ書き込み中心の集約）ではなく、
@@ -284,7 +284,7 @@ workflow:
 
 **金額は 2 つの尺度で返す。** `TotalAmount` は購入の支払金額（小計 + 税額 + 送料）の合計で決済スケールの整数セント、
 `ItemsTotal` は明細金額（単価 × 数量）の合計で価格スケールの正確な decimal。税額・送料は明細へ按分できないため
-両者は一致しない。`ItemsTotal` を決済スケールへ丸めないのは、[ADR-0036 (two-scale-quantity-model)] が丸めを
+両者は一致しない。`ItemsTotal` を決済スケールへ丸めないのは、[ADR-0037 (two-scale-quantity-model)] が丸めを
 「正確な量が決済確定値になる 1 箇所」に限っているためで、参照系の集計はその 1 箇所ではない。丸めをグループごとに
 行えば `Σ groups ≠ ItemsTotal` となり、内訳が合計を説明しなくなる。
 
@@ -302,7 +302,7 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseId}/cancel`。本人の購入をキャンセルする状態遷移経路。状態機械の source of truth は
 `status_id`（現在状態）で、timestamps（`canceled_at` / `shipped_at` / `delivered_at`）はイベント発生の監査記録として併用する。
-在庫復元は `POST /v1/purchases` の在庫減算と対称な同一 tx 強整合で、[ADR-0030 (lightweight-cqrs)] の CommandService に対称実装する（原子性方式は [ADR-0032 (commandservice-atomicity-criterion)]）。
+在庫復元は `POST /v1/purchases` の在庫減算と対称な同一 tx 強整合で、[ADR-0031 (lightweight-cqrs)] の CommandService に対称実装する（原子性方式は [ADR-0033 (commandservice-atomicity-criterion)]）。
 キャンセル後の状態名解決は詳細読み取りモデル（`purchase.Detail`、GET 詳細で再利用可能な Repository read）で JOIN 解決する。
 
 ```yaml
@@ -359,7 +359,7 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseId}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済）。
 決済 SDK / PSP 連携・金額検証は行わず、`paid_at` のセットと `status_id` の「支払い済み」への更新のみを担う。在庫操作は伴わない。
-**単一集約（`purchases`）のみを更新するため、複数集約の原子性を要する CommandService（[ADR-0032 (commandservice-atomicity-criterion)]）ではなく通常 usecase + Repository で完結する**
+**単一集約（`purchases`）のみを更新するため、複数集約の原子性を要する CommandService（[ADR-0033 (commandservice-atomicity-criterion)]）ではなく通常 usecase + Repository で完結する**
 （cancel は在庫復元を伴う複数集約書き込みのため CommandService を用いる。判定軸は「集約を跨ぐ書き込みの原子性が要るか」）。
 状態機械の source of truth はキャンセルと統一で `status_id`（現在状態）、timestamps は監査記録として併用する。二重支払いは
 購入行ロック（`repo.LockByID` の FOR UPDATE・並行制御であって集約横断ではない）+ ドメインの状態チェック（`ErrAlreadyPaid`）で防ぐ。
@@ -418,7 +418,7 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseId}/ship`。購入を発送済みへ遷移させる状態遷移経路。`shipped_at` のセットと `status_id` の
 「発送済み」への更新のみを担い、配送追跡（追跡番号 / 配送業者 / 追跡 URL）と在庫操作は伴わない。支払いと同じく
-**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0032 (commandservice-atomicity-criterion)] の判定軸）。
+**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0033 (commandservice-atomicity-criterion)] の判定軸）。
 二重発送は購入行ロック（`repo.LockByID` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyShipped`）で防ぐ。
 
 支払い・キャンセルと異なり **admin 専用の運用操作**であり、認可の扱いが 3 点で異なる:
@@ -484,7 +484,7 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseId}/deliver`。購入を配達済みへ遷移させる状態遷移経路。`delivered_at` のセットと `status_id` の
 「配達済み」への更新のみを担い、配達確認の証跡（署名 / 受領写真 / GPS 位置）と在庫操作は伴わない。発送と同じく
-**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0032 (commandservice-atomicity-criterion)] の判定軸）。
+**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0033 (commandservice-atomicity-criterion)] の判定軸）。
 二重配達は購入行ロック（`repo.LockByID` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyDelivered`）で防ぐ。
 
 発送と同じ **admin 専用の運用操作**であり、認可の扱いも同じ 3 点で支払い・キャンセルと異なる:
@@ -598,13 +598,13 @@ workflow:
 - 冪等スコープは内部 UserID（#581 の確定に追随）。middleware が Scope を設定し、本 usecase 側の固有作業はない。
 - `referenceAmount` は非永続・参考表示専用。丸めは half-up で、決済額（切り捨て）とは目的が異なるため規則が分かれる
   （決済額は課金される権威的な値、`referenceAmount` は表示のみの参考値）。丸め方式と最小単位桁数は方式そのものが
-  policy であり、汎用の decimal 機構には焼き込まない（[ADR-0036 (two-scale-quantity-model)]）。換算側の仕様は
+  policy であり、汎用の decimal 機構には焼き込まない（[ADR-0037 (two-scale-quantity-model)]）。換算側の仕様は
   [`docs/spec/exchange-rate/usecase.md`](../exchange-rate/usecase.md)。
 - 購入集計（`GET /v1/users/me/purchases/summary`）の `WHERE user_id = $1` は、購入履歴一覧用の複合インデックス
   `purchases (user_id, ordered_at DESC, id DESC)`（migration 000012）の先頭列で解決できるため、集計専用のインデックス追加は不要。
 
-[ADR-0030 (lightweight-cqrs)]: ../../adr/0030-lightweight-cqrs.md
-[ADR-0031 (system-cqrs-dml-category)]: ../../adr/0031-system-cqrs-dml-category.md
-[ADR-0032 (commandservice-atomicity-criterion)]: ../../adr/0032-commandservice-atomicity-criterion.md
-[ADR-0034 (ordered-pessimistic-row-locks)]: ../../adr/0034-ordered-pessimistic-row-locks.md
-[ADR-0036 (two-scale-quantity-model)]: ../../adr/0036-two-scale-quantity-model.md
+[ADR-0031 (lightweight-cqrs)]: ../../adr/0031-lightweight-cqrs.md
+[ADR-0032 (system-cqrs-dml-category)]: ../../adr/0032-system-cqrs-dml-category.md
+[ADR-0033 (commandservice-atomicity-criterion)]: ../../adr/0033-commandservice-atomicity-criterion.md
+[ADR-0035 (ordered-pessimistic-row-locks)]: ../../adr/0035-ordered-pessimistic-row-locks.md
+[ADR-0037 (two-scale-quantity-model)]: ../../adr/0037-two-scale-quantity-model.md
