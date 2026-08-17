@@ -669,7 +669,7 @@ paths:
       description: |
         公開済みの商品を cursor ページネーションで取得します。認証不要の公開エンドポイントです。
         既定では公開日時の降順（publishedAt DESC, id DESC）で並び、sort=publishedAt で昇順に切り替えられます。
-        categoryCodes / statusCodes でフィルタ（カンマ区切りで複数指定可）、keyword で商品名・説明の部分一致検索ができます。
+        categoryCodes / statusCodes でフィルタ（同じ名前を繰り返して複数指定可）、keyword で商品名・説明の部分一致検索ができます。
         categoryId / statusId は非推奨で、後継の categoryCodes / statusCodes と同時に指定すると 400 を返します。
         minPrice / maxPrice で価格、minQuantity / maxQuantity で在庫数を境界値を含めて範囲検索できます。
         いずれの範囲も下限が上限を超える場合は 400 を返します。
