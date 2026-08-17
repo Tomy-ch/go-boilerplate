@@ -192,7 +192,7 @@ func TestV1Products_Integration(t *testing.T) {
 			assert.Equal(t, int32(20), *captured.MaxQuantity)
 		})
 
-		t.Run("カンマ区切りのcategoryCodesとstatusCodesがハンドラのパラメータへバインドされる", func(t *testing.T) {
+		t.Run("繰り返し指定のcategoryCodesとstatusCodesがハンドラのパラメータへバインドされる", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -211,7 +211,7 @@ func TestV1Products_Integration(t *testing.T) {
 			productshandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/products?categoryCodes=1,2&statusCodes=5", nil, nil,
+				http.MethodGet, "/v1/products?categoryCodes=1&categoryCodes=2&statusCodes=5", nil, nil,
 			)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 

@@ -71,7 +71,7 @@ func (w *ServerInterfaceWrapper) GetUsersMePurchasesSummary(ctx *echo.Context) e
 
 	// ------------- Optional query parameter "groupBy" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", false, false, "groupBy", ctx.QueryParams(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", ctx.QueryParams(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter groupBy: %s", err))
 	}
