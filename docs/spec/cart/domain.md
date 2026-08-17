@@ -30,7 +30,7 @@
 これは「この 1 明細とこの 1 商品で在庫は足りるか」という 1 つの物についての問いなので、明細自身が
 答える（同 § One thing or a set）。結果は表示のための参考情報であり、カートの不変条件を左右しない。
 
-`id` は UUIDv7（[ADR-0035 (uuidv7-identifiers)]）で、生成は usecase 層が行いドメインへ渡す。有効期限
+`id` は UUIDv7（[ADR-0036 (uuidv7-identifiers)]）で、生成は usecase 層が行いドメインへ渡す。有効期限
 `expiresAt` も同様に、時刻境界（clock）から供給された `now` を受け取って算出する（ドメインは時刻へ直接
 依存しない）。
 
@@ -276,7 +276,7 @@ values:
   signature: LockByIDs(ctx context.Context, ids []uuid.UUID) (Carts, error)
   behavior: |
     更新のためにカート群を id 昇順にまとめてロックして取得する。順序を固定するのは、複数カートを
-    同時にロックする処理どうしのデッドロックを構造的に避けるため（ADR-0034
+    同時にロックする処理どうしのデッドロックを構造的に避けるため（ADR-0035
     (ordered-pessimistic-row-locks)）。順序の義務を呼び出し側へ残さないよう、複数件のロックは
     このメソッドだけで行う。不存在の id は結果に現れないため、返る件数は引数より少なくなり得る
     （不存在の検証は呼び出し側の責務）。
@@ -333,4 +333,4 @@ values:
   `ErrInvalidQuantity` / `ErrTooManyItems` / `ErrInvalidSessionToken` / `ErrSubtotalOutOfRange`）
   → `apperror.ErrValidation`（422）。集約は衝突を表すエラーを持たない。
 
-[ADR-0035 (uuidv7-identifiers)]: ../../adr/0035-uuidv7-identifiers.md
+[ADR-0036 (uuidv7-identifiers)]: ../../adr/0036-uuidv7-identifiers.md

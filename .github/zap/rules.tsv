@@ -11,4 +11,4 @@
 10027	IGNORE	Information Disclosure - Suspicious Comments — matches ordinary words in the JSON error vocabulary, on every response
 10035	IGNORE	Strict-Transport-Security Header — the ci profile sets SECURITY_HSTS_MAX_AGE=0 deliberately and the scan target is plaintext http inside the runner
 10096	IGNORE	Timestamp Disclosure — resources carry created_at / updated_at, so this fires across the entire read surface
-10105	IGNORE	Weak Authentication Method — /metrics is protected by a separate BasicAuth middleware by decision (ADR-0018 (metrics-endpoint-auth-exception)), not by omission
+10105	IGNORE	Weak Authentication Method — /metrics is protected by a separate BasicAuth middleware by decision (ADR-0019 (metrics-endpoint-auth-exception)), not by omission

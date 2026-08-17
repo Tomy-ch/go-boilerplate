@@ -186,7 +186,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 | DI wiring (env-driven authenticator selection, JWKS downstream profile) | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
 | Real-JWT execution context for scanning (`dast` env: JWKS-backed authenticator against the mock provider over http) | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | Config (`AUTH_*`) | `internal/config/envspec.go`, `internal/config/model.go` |
-| Ops-path / metrics auth exception | `internal/controller/httpstack/oapi/skipper/`, ADR [0018](../adr/0018-metrics-endpoint-auth-exception.md) |
+| Ops-path / metrics auth exception | `internal/controller/httpstack/oapi/skipper/`, ADR [0018](../adr/0019-metrics-endpoint-auth-exception.md) |
 | Development OIDC provider | `mock-auth-server/` (`src/routes/oidc.ts`, `tokens.ts`, `pkce.ts`, `keys.ts`, `store.ts`) |
 
 ---

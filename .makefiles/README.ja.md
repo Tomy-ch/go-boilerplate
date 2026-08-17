@@ -434,7 +434,7 @@ Trivy スキャン）は放置します。ループで回すものではない�
 
 ## `.makefiles/python` 系
 
-このリポジトリが PyPI から入れる CLI ツールは `python/*.in` で宣言し、パッケージごとの sha256 付きで `python/*.txt` に固定します（[ADR-0078 (mise-ssot-drift-gate)](../docs/adr/0078-mise-ssot-drift-gate.md)）。ここのターゲットはその lockfile を再生成するものです。`.in` から直接 install する経路はありません。
+このリポジトリが PyPI から入れる CLI ツールは `python/*.in` で宣言し、パッケージごとの sha256 付きで `python/*.txt` に固定します（[ADR-0079 (mise-ssot-drift-gate)](../docs/adr/0079-mise-ssot-drift-gate.md)）。ここのターゲットはその lockfile を再生成するものです。`.in` から直接 install する経路はありません。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |

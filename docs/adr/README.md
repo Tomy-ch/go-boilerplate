@@ -72,95 +72,96 @@ can enumerate them. The tag has no reader once setup is done.
 | [0015](0015-spec-driven-request-validation.md) | Validate requests and enforce auth from the spec at runtime; do not validate responses | accepted |
 | [0016](0016-validation-value-authority.md) | Designate the domain layer as the sole authority for business-validity rules | accepted |
 | [0017](0017-boundary-value-ownership.md) | OpenAPI is the wire contract, not the domain rule; request is subset of domain, domain is subset of response | accepted |
-| [0018](0018-metrics-endpoint-auth-exception.md) | /metrics is an auth exception — outside OpenAPI validation, protected by a separate BasicAuth middleware | accepted |
-| [0019](0019-optional-authentication-fail-closed.md) | Optional authentication is allowed, and a failed authentication still denies the request | accepted |
-| [0020](0020-echo-http-framework.md) | Adopt Echo as the HTTP framework | accepted |
-| [0021](0021-priority-ordered-middleware-chain.md) | Build the middleware chain as a priority-ordered, data-driven list | accepted |
-| [0022](0022-outbound-http-resilience.md) | Provide an outbound-HTTP resilience foundation (retry / circuit breaker / retry budget / dual timeout) | accepted |
-| [0023](0023-egress-ssrf-guard.md) | Adopt an egress SSRF / dial-guard security posture for outbound HTTP | accepted |
-| [0024](0024-sql-first-data-access.md) | SQL-first data access | accepted |
-| [0025](0025-sqlc-type-safe-sql.md) | Generate type-safe SQL access with sqlc | accepted |
-| [0026](0026-merged-dml-schema-as-sqlc-input.md) | Use merged DML and a dumped schema as sqlc's single input | accepted |
-| [0027](0027-append-only-immutable-migrations.md) | Treat migrations as append-only and immutable | accepted |
-| [0028](0028-sequential-migration-ids.md) | Use sequential 6-digit migration IDs with CI-enforced gap and pair checks | accepted |
-| [0029](0029-master-data-via-migration.md) | Ship master data via migration; keep transactional seed out of production | accepted |
-| [0030](0030-lightweight-cqrs.md) | Adopt lightweight CQRS — Repository for writes, QueryService for reads | accepted |
-| [0031](0031-system-cqrs-dml-category.md) | Introduce system_cqrs as a fourth DML category outside the CQRS split | accepted |
-| [0032](0032-commandservice-atomicity-criterion.md) | Cross-aggregate operations: usecase + outbox by default, a synchronous lock when a guard must not go stale, CommandService only for single-tx atomicity | accepted |
-| [0033](0033-transaction-retry-idempotent-callers.md) | Retry transactions on serialization conflict; require callers to be idempotent | accepted |
-| [0034](0034-ordered-pessimistic-row-locks.md) | Serialize contended writes with ordered pessimistic row locks taken before the guarded condition | accepted |
-| [0035](0035-uuidv7-identifiers.md) | Use UUIDv7 (time-ordered) identifiers for all entity primary keys | accepted |
-| [0036](0036-two-scale-quantity-model.md) | Hold a quantity in two scales — exact decimal for precision, integer minor unit for settlement | accepted |
-| [0037](0037-domain-lexicon.md) | Cross-aggregate value objects live in a curated domain lexicon (`internal/domain/lexicon`) | accepted |
-| [0038](0038-uber-fx-di.md) | Adopt Uber Fx for dependency injection and lifecycle | accepted |
-| [0039](0039-fx-neutral-di-abstraction.md) | Contain fx behind a neutral DI abstraction (Registrar / Shutdowner) | accepted |
-| [0040](0040-env-gated-wiring.md) | Swap implementations per environment via DI (env-gated wiring) | accepted |
-| [0041](0041-subsystem-typed-config-loaders.md) | Subsystem-scoped envPrefix typed config loaders | accepted |
-| [0042](0042-config-default-vs-required-governance.md) | Governance: default-in-code (immutable) vs required-in-file (variable) | accepted |
-| [0043](0043-immutable-fail-fast-config.md) | Config is immutable, loaded once at startup, fail-fast | accepted |
-| [0044](0044-embedded-self-contained-binary.md) | go:embed bundles config (.env) and migrations for a self-contained binary | accepted |
-| [0045](0045-apperror-protocol-agnostic-errors.md) | Protocol-agnostic aggregated error classification (apperror) | accepted |
-| [0046](0046-error-metadata-code-message-details.md) | Protocol-neutral error metadata (code / message / details) on top of apperror | accepted |
-| [0047](0047-error-details-opt-in-gate.md) | Opt-in gate for error-response details via schema split (refines 0043) | accepted |
-| [0048](0048-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
-| [0049](0049-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
-| [0050](0050-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0051](0051-broker-sdk-isolation-measured-as-coupling.md) |
-| [0051](0051-broker-sdk-isolation-measured-as-coupling.md) | Measure broker-SDK isolation as coupling, not as linkage | accepted |
-| [0052](0052-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
-| [0053](0053-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
-| [0054](0054-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
-| [0055](0055-message-id-idempotency-propagation.md) | Propagate the outbox message_id as the receiver's Idempotency-Key | accepted |
-| [0056](0056-outbox-dead-after-max-attempts.md) | MaxAttempts = 10, then the message is dead (terminal until manual replay) | accepted |
-| [0057](0057-outbox-retention-gc.md) | 7-day retention GC of published rows (batches of 10,000) | accepted |
-| [0058](0058-publisher-http-profile-isolation.md) | Isolate the publisher's non-standard HTTP profile inside the relay | accepted |
-| [0059](0059-relay-resident-gc-oneshot.md) | The relay is a resident process; GC is a one-shot cron job | accepted |
-| [0060](0060-single-tx-at-most-once-idempotency.md) | Run claim, business function, and complete in a single transaction for at-most-once semantics | accepted |
-| [0061](0061-idempotency-scope-required.md) | Every Store call requires an explicit scope to prevent cross-user key collisions | accepted |
-| [0062](0062-idempotency-fixed-ttl.md) | Fix idempotency key TTL at 24 hours with no per-route configuration | accepted |
-| [0063](0063-idempotency-response-persistence.md) | Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff) | accepted |
-| [0064](0064-idempotency-gc-separate-job.md) | Run idempotency key garbage collection as a separate one-shot CLI job | accepted |
-| [0065](0065-idempotency-orthogonal-concerns.md) | Keep idempotency orthogonal to optimistic locking and rate limiting | accepted (exclusion) |
-| [0066](0066-job-fresh-fx-app-per-run.md) | Each job launch constructs a fresh fx.App (one-shot lifecycle) | accepted |
-| [0067](0067-job-no-worker-machinery.md) | Jobs deliberately have no broker, circuit breaker, drain, or health machinery | accepted (exclusion) |
-| [0068](0068-job-explicit-registration.md) | Jobs are explicitly registered (no auto-discovery) | accepted |
-| [0069](0069-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
-| [0070](0070-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
-| [0071](0071-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |
-| [0072](0072-dual-path-metrics.md) | Metrics travel two paths — OTLP push and Prometheus scrape | accepted |
-| [0073](0073-lifecycle-independent-provider.md) | Observability providers are lifecycle-independent (ProviderShutdowner) | accepted |
-| [0074](0074-fixed-default-sampling.md) | Fix the SDK default sampling; do not expose sampling as an env knob | accepted (exclusion) |
-| [0075](0075-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
-| [0076](0076-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
-| [0077](0077-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
-| [0078](0078-mise-ssot-drift-gate.md) | mise.toml is the single source of truth for mise-resolved versions; versions propagate downstream with a CI drift gate | accepted |
-| [0079](0079-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
-| [0080](0080-scripts-in-node-go.md) | Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used | accepted |
-| [0081](0081-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
-| [0082](0082-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
-| [0083](0083-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
-| [0084](0084-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
-| [0085](0085-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
-| [0086](0086-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
-| [0087](0087-multi-layer-security-scanning.md) | Multi-layer security scanning, splitting reporting from gating, on hardened runners | accepted |
-| [0088](0088-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
-| [0089](0089-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
-| [0090](0090-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
-| [0091](0091-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
-| [0092](0092-lean-a-spec-scaffold.md) | Scaffold only domain and usecase from spec files; derive controller and infra from generated code | accepted |
-| [0093](0093-cli-humble-object-split.md) | CLI humble-object split (thin cmd/ shell + testable internal/cli core) | accepted |
-| [0094](0094-single-multi-command-binary.md) | All roles are one multi-command binary | accepted |
-| [0095](0095-single-runtime-image.md) | A single runtime image with command override (no purpose-specific images) | accepted |
-| [0096](0096-hardened-alpine-runtime.md) | Use a hardened-alpine runtime base; do NOT use distroless/scratch | accepted (exclusion) |
-| [0097](0097-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
-| [0098](0098-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
-| [0099](0099-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
-| [0100](0100-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
-| [0101](0101-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
-| [0102](0102-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
-| [0103](0103-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
-| [0104](0104-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
-| [0105](0105-outbox-relay-hardening-delegated.md) | Ship a balanced outbox relay; delegate hardening (multi-layer lease redesign) to operational evidence | accepted (exclusion) |
-| [0106](0106-pnpm-as-the-only-node-resolver.md) | Resolve every Node package with pnpm; do not use npm | accepted |
+| [0018](0018-search-query-parameter-shape.md) | Repeat the parameter name for multi-value filters, and keep free-text input scalar | accepted |
+| [0019](0019-metrics-endpoint-auth-exception.md) | /metrics is an auth exception — outside OpenAPI validation, protected by a separate BasicAuth middleware | accepted |
+| [0020](0020-optional-authentication-fail-closed.md) | Optional authentication is allowed, and a failed authentication still denies the request | accepted |
+| [0021](0021-echo-http-framework.md) | Adopt Echo as the HTTP framework | accepted |
+| [0022](0022-priority-ordered-middleware-chain.md) | Build the middleware chain as a priority-ordered, data-driven list | accepted |
+| [0023](0023-outbound-http-resilience.md) | Provide an outbound-HTTP resilience foundation (retry / circuit breaker / retry budget / dual timeout) | accepted |
+| [0024](0024-egress-ssrf-guard.md) | Adopt an egress SSRF / dial-guard security posture for outbound HTTP | accepted |
+| [0025](0025-sql-first-data-access.md) | SQL-first data access | accepted |
+| [0026](0026-sqlc-type-safe-sql.md) | Generate type-safe SQL access with sqlc | accepted |
+| [0027](0027-merged-dml-schema-as-sqlc-input.md) | Use merged DML and a dumped schema as sqlc's single input | accepted |
+| [0028](0028-append-only-immutable-migrations.md) | Treat migrations as append-only and immutable | accepted |
+| [0029](0029-sequential-migration-ids.md) | Use sequential 6-digit migration IDs with CI-enforced gap and pair checks | accepted |
+| [0030](0030-master-data-via-migration.md) | Ship master data via migration; keep transactional seed out of production | accepted |
+| [0031](0031-lightweight-cqrs.md) | Adopt lightweight CQRS — Repository for writes, QueryService for reads | accepted |
+| [0032](0032-system-cqrs-dml-category.md) | Introduce system_cqrs as a fourth DML category outside the CQRS split | accepted |
+| [0033](0033-commandservice-atomicity-criterion.md) | Cross-aggregate operations: usecase + outbox by default, a synchronous lock when a guard must not go stale, CommandService only for single-tx atomicity | accepted |
+| [0034](0034-transaction-retry-idempotent-callers.md) | Retry transactions on serialization conflict; require callers to be idempotent | accepted |
+| [0035](0035-ordered-pessimistic-row-locks.md) | Serialize contended writes with ordered pessimistic row locks taken before the guarded condition | accepted |
+| [0036](0036-uuidv7-identifiers.md) | Use UUIDv7 (time-ordered) identifiers for all entity primary keys | accepted |
+| [0037](0037-two-scale-quantity-model.md) | Hold a quantity in two scales — exact decimal for precision, integer minor unit for settlement | accepted |
+| [0038](0038-domain-lexicon.md) | Cross-aggregate value objects live in a curated domain lexicon (`internal/domain/lexicon`) | accepted |
+| [0039](0039-uber-fx-di.md) | Adopt Uber Fx for dependency injection and lifecycle | accepted |
+| [0040](0040-fx-neutral-di-abstraction.md) | Contain fx behind a neutral DI abstraction (Registrar / Shutdowner) | accepted |
+| [0041](0041-env-gated-wiring.md) | Swap implementations per environment via DI (env-gated wiring) | accepted |
+| [0042](0042-subsystem-typed-config-loaders.md) | Subsystem-scoped envPrefix typed config loaders | accepted |
+| [0043](0043-config-default-vs-required-governance.md) | Governance: default-in-code (immutable) vs required-in-file (variable) | accepted |
+| [0044](0044-immutable-fail-fast-config.md) | Config is immutable, loaded once at startup, fail-fast | accepted |
+| [0045](0045-embedded-self-contained-binary.md) | go:embed bundles config (.env) and migrations for a self-contained binary | accepted |
+| [0046](0046-apperror-protocol-agnostic-errors.md) | Protocol-agnostic aggregated error classification (apperror) | accepted |
+| [0047](0047-error-metadata-code-message-details.md) | Protocol-neutral error metadata (code / message / details) on top of apperror | accepted |
+| [0048](0048-error-details-opt-in-gate.md) | Opt-in gate for error-response details via schema split (refines 0043) | accepted |
+| [0049](0049-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
+| [0050](0050-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
+| [0051](0051-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0051](0052-broker-sdk-isolation-measured-as-coupling.md) |
+| [0052](0052-broker-sdk-isolation-measured-as-coupling.md) | Measure broker-SDK isolation as coupling, not as linkage | accepted |
+| [0053](0053-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
+| [0054](0054-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
+| [0055](0055-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
+| [0056](0056-message-id-idempotency-propagation.md) | Propagate the outbox message_id as the receiver's Idempotency-Key | accepted |
+| [0057](0057-outbox-dead-after-max-attempts.md) | MaxAttempts = 10, then the message is dead (terminal until manual replay) | accepted |
+| [0058](0058-outbox-retention-gc.md) | 7-day retention GC of published rows (batches of 10,000) | accepted |
+| [0059](0059-publisher-http-profile-isolation.md) | Isolate the publisher's non-standard HTTP profile inside the relay | accepted |
+| [0060](0060-relay-resident-gc-oneshot.md) | The relay is a resident process; GC is a one-shot cron job | accepted |
+| [0061](0061-single-tx-at-most-once-idempotency.md) | Run claim, business function, and complete in a single transaction for at-most-once semantics | accepted |
+| [0062](0062-idempotency-scope-required.md) | Every Store call requires an explicit scope to prevent cross-user key collisions | accepted |
+| [0063](0063-idempotency-fixed-ttl.md) | Fix idempotency key TTL at 24 hours with no per-route configuration | accepted |
+| [0064](0064-idempotency-response-persistence.md) | Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff) | accepted |
+| [0065](0065-idempotency-gc-separate-job.md) | Run idempotency key garbage collection as a separate one-shot CLI job | accepted |
+| [0066](0066-idempotency-orthogonal-concerns.md) | Keep idempotency orthogonal to optimistic locking and rate limiting | accepted (exclusion) |
+| [0067](0067-job-fresh-fx-app-per-run.md) | Each job launch constructs a fresh fx.App (one-shot lifecycle) | accepted |
+| [0068](0068-job-no-worker-machinery.md) | Jobs deliberately have no broker, circuit breaker, drain, or health machinery | accepted (exclusion) |
+| [0069](0069-job-explicit-registration.md) | Jobs are explicitly registered (no auto-discovery) | accepted |
+| [0070](0070-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
+| [0071](0071-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
+| [0072](0072-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |
+| [0073](0073-dual-path-metrics.md) | Metrics travel two paths — OTLP push and Prometheus scrape | accepted |
+| [0074](0074-lifecycle-independent-provider.md) | Observability providers are lifecycle-independent (ProviderShutdowner) | accepted |
+| [0075](0075-fixed-default-sampling.md) | Fix the SDK default sampling; do not expose sampling as an env knob | accepted (exclusion) |
+| [0076](0076-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
+| [0077](0077-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
+| [0078](0078-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
+| [0079](0079-mise-ssot-drift-gate.md) | mise.toml is the single source of truth for mise-resolved versions; versions propagate downstream with a CI drift gate | accepted |
+| [0080](0080-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
+| [0081](0081-scripts-in-node-go.md) | Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used | accepted |
+| [0082](0082-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
+| [0083](0083-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
+| [0084](0084-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
+| [0085](0085-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
+| [0086](0086-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
+| [0087](0087-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
+| [0088](0088-multi-layer-security-scanning.md) | Multi-layer security scanning, splitting reporting from gating, on hardened runners | accepted |
+| [0089](0089-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
+| [0090](0090-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
+| [0091](0091-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
+| [0092](0092-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
+| [0093](0093-lean-a-spec-scaffold.md) | Scaffold only domain and usecase from spec files; derive controller and infra from generated code | accepted |
+| [0094](0094-cli-humble-object-split.md) | CLI humble-object split (thin cmd/ shell + testable internal/cli core) | accepted |
+| [0095](0095-single-multi-command-binary.md) | All roles are one multi-command binary | accepted |
+| [0096](0096-single-runtime-image.md) | A single runtime image with command override (no purpose-specific images) | accepted |
+| [0097](0097-hardened-alpine-runtime.md) | Use a hardened-alpine runtime base; do NOT use distroless/scratch | accepted (exclusion) |
+| [0098](0098-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
+| [0099](0099-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
+| [0100](0100-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
+| [0101](0101-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
+| [0102](0102-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
+| [0103](0103-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
+| [0104](0104-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
+| [0105](0105-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
+| [0106](0106-outbox-relay-hardening-delegated.md) | Ship a balanced outbox relay; delegate hardening (multi-layer lease redesign) to operational evidence | accepted (exclusion) |
+| [0107](0107-pnpm-as-the-only-node-resolver.md) | Resolve every Node package with pnpm; do not use npm | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

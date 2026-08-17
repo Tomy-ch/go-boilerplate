@@ -20,7 +20,7 @@ import (
 // 期待集合は policy とは独立した方法で導出します: 各 operation の error レスポンス JSON スキーマが
 // components.schemas.ErrorResponseWithDetails と同一(kin-openapi は $ref を共有ポインタへ解決する)
 // かをポインタ同一性で判定します。両者が一致することで「details プロパティ有無 ⇔ WithDetails 参照」の
-// 暗黙依存(ADR-0047 (error-details-opt-in-gate))が壊れていないことを保証します。
+// 暗黙依存(ADR-0048 (error-details-opt-in-gate))が壊れていないことを保証します。
 func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
 	t.Parallel()
 

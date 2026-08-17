@@ -83,7 +83,7 @@ request's operation and — unless it opted in — strips `details` from the **c
 (`writeErrorResponse` copies the body; the `resp` object and the logs keep the full `details`).
 An unmatched route or a non-opted-in operation both fail **closed** (no `details`). The policy
 router is host-agnostic (built from a servers-stripped spec copy), so proxied / test hosts still
-resolve by path + method. Rationale: [ADR-0047 (error-details-opt-in-gate)](../../../../docs/adr/0047-error-details-opt-in-gate.md).
+resolve by path + method. Rationale: [ADR-0048 (error-details-opt-in-gate)](../../../../docs/adr/0048-error-details-opt-in-gate.md).
 
 ### `Allow` header on 405
 
@@ -166,7 +166,7 @@ What the client actually receives over a real serving path is pinned by `interna
 
 ### The policy fails closed
 
-Every way of *not* resolving an opt-in must land on "no details". Two of them are reachable through the real spec and router and each needs its own case: a request matching no route, and a request whose operation resolves but has not opted in. A gate loosened to default-allow still answers every request successfully, so only these negative cases can detect it. Rationale: [ADR-0047 (error-details-opt-in-gate)](../../../../docs/adr/0047-error-details-opt-in-gate.md).
+Every way of *not* resolving an opt-in must land on "no details". Two of them are reachable through the real spec and router and each needs its own case: a request matching no route, and a request whose operation resolves but has not opted in. A gate loosened to default-allow still answers every request successfully, so only these negative cases can detect it. Rationale: [ADR-0048 (error-details-opt-in-gate)](../../../../docs/adr/0048-error-details-opt-in-gate.md).
 
 The other rejection reasons listed on `DetailPolicy.Allows` are not separate cases. An empty `OperationID` is rejected by the same map lookup as a non-opted-in one, because `buildDetailExposureMap` never records an empty ID — and `redocly.yaml` fails the spec lint on a missing `operationId`, so the real spec cannot produce one anyway. A nil route or a nil `Operation` alongside a nil error is a defensive guard the gorillamux router cannot produce: it sets `Operation` on every match, and builds its method set from the path item's operations. Reaching either would take a hand-written `routers.Router` injected past the constructor; leave them uncovered per `docs/testing-conventions.md` §9 rather than contriving one.
 

@@ -71,7 +71,7 @@ guarded transport would reach IMDS, STS, and SSO but never that path.
 
 The full reasoning, including why a link-local-permitting variant of the guard was rejected, is
 recorded in
-[ADR-0023 (egress-ssrf-guard)](../../../docs/adr/0023-egress-ssrf-guard.md#guarding-the-aws-credential-chain).
+[ADR-0024 (egress-ssrf-guard)](../../../docs/adr/0024-egress-ssrf-guard.md#guarding-the-aws-credential-chain).
 
 ## Notes
 

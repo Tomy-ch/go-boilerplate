@@ -10,11 +10,11 @@
 どの構築物に属するのか、そしてなぜか。
 
 決定そのものは ADR に記録されている ——
-[ADR-0030 (lightweight-cqrs)](../adr/0030-lightweight-cqrs.ja.md)（構築物とその構造、CommandService の
+[ADR-0031 (lightweight-cqrs)](../adr/0031-lightweight-cqrs.ja.md)（構築物とその構造、CommandService の
 eligibility と derivation の規則）、
-[ADR-0031 (system-cqrs-dml-category)](../adr/0031-system-cqrs-dml-category.ja.md)（分割の外側にある
+[ADR-0032 (system-cqrs-dml-category)](../adr/0032-system-cqrs-dml-category.ja.md)（分割の外側にある
 第 4 のカテゴリ）、
-[ADR-0032 (commandservice-atomicity-criterion)](../adr/0032-commandservice-atomicity-criterion.ja.md)
+[ADR-0033 (commandservice-atomicity-criterion)](../adr/0033-commandservice-atomicity-criterion.ja.md)
 （集約を跨ぐ操作の判定手順）。ADR は*何を決めたか・何を却下したか*を記録する。この文書は*個別のケースを
 どう判定するか*を述べるもので、基準が研がれるたびに育つのはこちらである。`docs/rules.md` の
 § Repository / QueryService Rules は強制可能な禁止形だけを持ち、ここへリンクする。
@@ -47,7 +47,7 @@ Repository は両方向の既定である。集約の system-of-record な状態
 **`system_cqrs` はこの表の外側にある。** ヘルスチェック、冪等性の強制、outbox の配信は
 インフラ運用のクエリであり、ユーザー向けユースケースに駆動されず、集約の所有者も usecase インターフェースも
 持たない。読み / 書きの問いの難しいケースなのではなく、そもそもその問いの中に無い。`repository/` へ置くと
-ドメイン集約との 1:1 対応が壊れる。[ADR-0031](../adr/0031-system-cqrs-dml-category.ja.md) を参照。DML は
+ドメイン集約との 1:1 対応が壊れる。[ADR-0032](../adr/0032-system-cqrs-dml-category.ja.md) を参照。DML は
 `database/dml/system_cqrs/`、実装は `internal/infrastructure/rdb/system_cqrs/` にある。
 
 ## 3. 読み側 —— 分解が禁じられるのはどんなときか
@@ -137,7 +137,7 @@ CommandService が存在するのは、その形では**並行性の性質を変
 
 1. **分解（既定）。** 他集約への帰結が結果整合でよく、そこから読んだ条件が陳腐化してよいなら、通常の
    usecase として実装し、帰結を outbox イベントとして伝播する
-   （[ADR-0052](../adr/0052-transactional-outbox.ja.md)）。他の集約をトランザクション内に保持しない。
+   （[ADR-0053](../adr/0053-transactional-outbox.ja.md)）。他の集約をトランザクション内に保持しない。
 2. **Guard（同期的な行ロック。通常の usecase のまま）。** §5 を参照。
 3. **Atomicity（CommandService。例外であり、正当化を要する）。** 集約跨ぎの*書き込み*の単一
    トランザクション原子性が要求として残る場合にだけ。
@@ -190,7 +190,7 @@ CommandService が存在するのは、その形では**並行性の性質を変
 usecase に着地する。
 
 別の集約から読んだ条件がコミットまで成立している必要があるなら、条件を評価する前に、グローバルなロック順で
-行ロックを取る（[ADR-0034](../adr/0034-ordered-pessimistic-row-locks.ja.md)）。規則が集約を跨ぐ場合は
+行ロックを取る（[ADR-0035](../adr/0035-ordered-pessimistic-row-locks.ja.md)）。規則が集約を跨ぐ場合は
 Domain Service に置く。これが買うのは**読み取り**の即時整合性であって、いかなる書き込みも原子的にしないし、
 **それ単独では CommandService を導入する理由にならない**。
 
@@ -268,5 +268,5 @@ usecase の関心事であって集約の不変条件ではないからである
 Guard の枝（§5）と CommandService（§4 門 2 の枝 3）は、どちらも複数の集約に属する行を単一トランザクション内に
 置くため、[`internal/domain/README.md`](../../internal/domain/README.ja.md)（§ Aggregate Boundary）が
 述べる原則から逸脱する。認めるのはちょうどこの 2 つの拡張だけであり、他は認めない。理由は
-[ADR-0032](../adr/0032-commandservice-atomicity-criterion.ja.md) の § Departure from "1 Aggregate = 1
+[ADR-0033](../adr/0033-commandservice-atomicity-criterion.ja.md) の § Departure from "1 Aggregate = 1
 Transaction Boundary" に記録されている。

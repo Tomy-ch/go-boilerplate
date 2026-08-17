@@ -151,7 +151,7 @@ methods:
 - clock             # boundary/clock.Clock
 - authorizer        # boundary/authz.Authorizer（詳細系は admin または対象ユーザー本人、列挙系は admin 限定）
 - user_repository   # domain/user.Repository
-- user_lock_repository   # domain/user.LockRepository（退会時の対象行の排他ロック。[ADR-0034 (ordered-pessimistic-row-locks)]）
+- user_lock_repository   # domain/user.LockRepository（退会時の対象行の排他ロック。[ADR-0035 (ordered-pessimistic-row-locks)]）
 - prefecture_repository  # domain/prefecture.Repository
 - purchase_repository    # domain/purchase.Repository（退会時の進行中購入の確認）
 - domain/service/membership        # EnsureWithdrawable（退会可否の判定）
@@ -346,7 +346,7 @@ errors:
   - LockByID(NotFound) / FindStatusesByUserID / MarkAsDeleted(ErrAlreadyDeleted) / Update / Emit を伝播
 ```
 
-ロックの取得順が不変条件である（[ADR-0034 (ordered-pessimistic-row-locks)]）。`LockByID` は進行中購入の判定より**前**に置く。判定より後だと
+ロックの取得順が不変条件である（[ADR-0035 (ordered-pessimistic-row-locks)]）。`LockByID` は進行中購入の判定より**前**に置く。判定より後だと
 「退会が判定を通過 → 購入作成が成立 → 退会が確定」の順序を止められず、退会済みユーザーに進行中の購入が
 ぶら下がる。購入作成側は同じ行を共有ロックで押さえるため、この排他ロックとだけ衝突して直列化される。
 
@@ -428,4 +428,4 @@ workflow:
 ワイヤには UUID や表示名ではなく安定コードを出す。表示名は変更され得るため、クライアントの分岐を名称一致に
 依存させると表示の都合が権限判定を壊す。ロールの追加は `code` の enum 拡張として現れる。
 
-[ADR-0034 (ordered-pessimistic-row-locks)]: ../../adr/0034-ordered-pessimistic-row-locks.md
+[ADR-0035 (ordered-pessimistic-row-locks)]: ../../adr/0035-ordered-pessimistic-row-locks.md

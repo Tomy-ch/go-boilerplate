@@ -5,7 +5,7 @@
 //	audit: go.mod 全件を棚卸しし、窓内のものを報告する。常に 0 で終了する。
 //
 // Go には解決時に窓を強制する機構が無いため、gate は検知器ではなく防御の本体にあたる。npm との
-// 対比は docs/design/security.md、窓の値は ADR-0089、挙動は scripts/README.md の go-cooldown の
+// 対比は docs/design/security.md、窓の値は ADR-0090、挙動は scripts/README.md の go-cooldown の
 // 行が持つ。
 //
 // バイパスは .github/go-cooldown-bypass.toml が受ける。期限は go.mod が変わらなくても訪れるので、
