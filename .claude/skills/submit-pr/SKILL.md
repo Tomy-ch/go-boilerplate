@@ -49,7 +49,7 @@ The four valid working states going into Step 2:
 
 ### Step 1. Pre-push Local Review Gate (confirm)
 
-Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask whether to run a pre-push `/impl-review`. This is the single decision point for local review: a local review inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss, and it belongs before the change leaves the machine. It also offers, defaulting to yes, to chain `/test-review` (test viewpoint) and `/comment-sweep` (comment stock of the touched files), so one run can cover all three. Do NOT auto-run it.
+Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask whether to run a pre-push `/impl-review`. This is the single decision point for local review: a local review inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss, and it belongs before the change leaves the machine. It also offers, defaulting to yes, to chain `/test-review` (test viewpoint) and `/comment-sweep` (the comment stock of the touched files, swept a whole file at a time), so one run can cover all three. Do NOT auto-run it.
 
 `AskUserQuestion`:
 

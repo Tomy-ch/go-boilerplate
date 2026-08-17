@@ -327,6 +327,18 @@ change touched, the counterpart to the Step 2 `comment-reviewer` pass that judge
 **added**. The two must never report the same comment — a comment on a changed line is
 `comment-reviewer`'s, and the caller names those comments in the `claimed` payload below.
 
+**A chained run is still file-level.** The caller's interest is a diff, and the sweep's is not; the
+payload carries **whole files** for exactly that reason, and both passes run on them unchanged. Two
+things follow, and they are what keeps the delegation from quietly degrading into a second diff review:
+
+- The auditors always receive each file **entire**. Never narrow what they read to changed regions or
+  to the unclaimed comments — a file delivered in pieces cannot be judged as a body, and the
+  duplication Pass 2 exists to find is precisely what lives between the pieces.
+- `hold` and `claimed` are **integrator-side filters applied to findings**, never to the auditors'
+  input. The auditor reads everything and reports everything; this integrator then drops what the
+  caller owns. Pushing either filter upstream would reintroduce diff scope from the inside, which is
+  the one thing the caller delegated here to avoid.
+
 A caller passes a context payload with:
 
 - `scope` — pre-resolved file list (skips the Step 0 scope question).
