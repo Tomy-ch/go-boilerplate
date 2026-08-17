@@ -424,6 +424,18 @@ func Test_parseProductListRange(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("categoryIdとcategoryCodesが同時指定された場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// 一覧と件数はどちらもこの関数を通るため、ここが排他検証の実行点になる。
+			categoryID := uuidtestkit.NewTestFromSalt(t, "parse_range_conflict_category")
+			actual, err := parseProductListRange(SearchFilter{
+				CategoryID: &categoryID, CategoryCodes: []int16{1},
+			})
+			assert.Empty(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
 		t.Run("最低価格が非数値の場合、ErrInvalidArgumentを返す", func(t *testing.T) {
 			t.Parallel()
 			actual, err := parseProductListRange(SearchFilter{MinPrice: ptr.To("invalid")})
@@ -1128,10 +1140,22 @@ func Test_toDomainSearchFilter(t *testing.T) {
 			}, actual)
 		})
 
-		t.Run("未指定の条件はゼロ値のまま写す", func(t *testing.T) {
+		t.Run("範囲条件のみを持つ場合、検索条件側のフィールドは埋まらない", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, domainproduct.SearchFilter{}, toDomainSearchFilter(SearchFilter{}, productListRange{}))
+			// 2 つの入力（SearchFilter と productListRange）が互いに独立して写ることを、
+			// 片方だけ値を持つ組み合わせで確かめる。両方を埋めたケースだけでは取り違えが隠れる。
+			actual := toDomainSearchFilter(SearchFilter{}, productListRange{minQuantity: ptr.To(int32(3))})
+
+			assert.Equal(t, domainproduct.SearchFilter{MinQuantity: ptr.To(int32(3))}, actual)
+		})
+
+		t.Run("検索条件のみを持つ場合、範囲側のフィールドは埋まらない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := toDomainSearchFilter(SearchFilter{CategoryCodes: []int16{7}}, productListRange{})
+
+			assert.Equal(t, domainproduct.SearchFilter{CategoryCodes: []int16{7}}, actual)
 		})
 	})
 }
