@@ -75,11 +75,18 @@ its reason**, and run what they approve.
 The estimate is the work. 「三つとも回しますか」 is not a question; it hands the cost back to the user
 unpriced. Say which pass you expect to pay off, which you expect to return nothing, and why.
 
-Two of the three are normally decided **inside** `/impl-review` rather than beside it: its scope step
-asks whether to delegate the test viewpoint and the comment stock, and answering there is what keeps
-one subject to one owner. Invoke `/test-review` or `/comment-sweep` directly only when `/impl-review`
-is not being run, or when its delegation was declined and the user later changes their mind — never
-so that the same subject is audited twice.
+The three are **peers, and none of them invokes another.** Each is asked for, decided, and run beside
+the others — one subject to one skill, and that skill is the only place its subject is audited.
+
+A skill that offers to run the next one reads as convenience, and it costs more than it saves: the
+subjects stop being independently answerable, a drift in the entry skill's question silently removes
+the other two from every flow that went through it, and the user's decision about one subject arrives
+buried inside a run they started for another. Keep the coupling in the *asking*, where this protocol
+puts it, and out of the skills.
+
+So `/impl-review` audits the change and nothing else — it owns no test lens and no comment lens, and
+it hands nothing off. `/test-review` and `/comment-sweep` are invoked in their own right, whether or
+not `/impl-review` runs.
 <!-- boilerplate-only:end -->
 
 ## Layer Rules (hard constraints — enforced by `golangci-lint` depguard)
