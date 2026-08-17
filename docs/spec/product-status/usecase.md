@@ -6,7 +6,7 @@
 
 ## Overview
 
-商品ステータス一覧ユースケースは、商品ステータスマスタの全件を `sortKey` 昇順で返す read-only なユースケース。`status.Repository`（domain Repository）の `FindAll` に委譲し、取得した `Status` エンティティ一覧を usecase DTO（`StatusDTO`）へ写像して返す thin orchestrator。少量（10 件）のため全件返却し、ページング・トランザクションは不要。認証不要の公開エンドポイント（`GET /v1/products/statuses`）の read source となる。
+商品ステータス一覧ユースケースは、商品ステータスマスタの全件をマスタの表示順で返す read-only なユースケース。`status.Repository`（domain Repository）の `FindAll` に委譲し、取得した `Status` エンティティ一覧を usecase DTO（`StatusDTO`）へ写像して返す thin orchestrator。少量（10 件）のため全件返却し、ページング・トランザクションは不要。認証不要の公開エンドポイント（`GET /v1/products/statuses`）の read source となる。
 
 ドメイン集約を outer 層へ露出させないため、`Status` エンティティは usecase 内で `StatusDTO` へ写像してから返す（DTO Boundary）。
 
@@ -32,10 +32,8 @@ methods:
       type: int
     - name: Name
       type: string
-    - name: SortKey
-      type: int
 - name: StatusDTOs
-  description: StatusDTO の一覧（sortKey 昇順）。
+  description: StatusDTO の一覧。並びはマスタの表示順で、順序そのものが表示順を表す（値は外へ出さない）。
   type: "[]StatusDTO"
 ```
 
@@ -53,7 +51,7 @@ methods:
 ```yaml
 tx_required: false
 steps:
-  - status_repository.FindAll で全商品ステータスを sortKey 昇順で取得する
+  - status_repository.FindAll で全商品ステータスをマスタの表示順で取得する
   - 取得した Status エンティティ一覧を StatusDTO（ID / Code / Name / SortKey）へ写像して返す
 calls:
   - status_repository.FindAll

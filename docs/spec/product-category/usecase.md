@@ -6,7 +6,7 @@
 
 ## Overview
 
-商品カテゴリ一覧ユースケースは、商品カテゴリマスタの全件を `sortKey` 昇順で返す read-only なユースケース。`category.Repository`（domain Repository）の `FindAll` に委譲し、取得した `Category` エンティティ一覧を usecase DTO（`CategoryDTO`）へ写像して返す thin orchestrator。少量（5 件）のため全件返却し、ページング・トランザクションは不要。認証不要の公開エンドポイント（`GET /v1/products/categories`）の read source となる。
+商品カテゴリ一覧ユースケースは、商品カテゴリマスタの全件をマスタの表示順で返す read-only なユースケース。`category.Repository`（domain Repository）の `FindAll` に委譲し、取得した `Category` エンティティ一覧を usecase DTO（`CategoryDTO`）へ写像して返す thin orchestrator。少量（5 件）のため全件返却し、ページング・トランザクションは不要。認証不要の公開エンドポイント（`GET /v1/products/categories`）の read source となる。
 
 ドメイン集約を outer 層へ露出させないため、`Category` エンティティは usecase 内で `CategoryDTO` へ写像してから返す（DTO Boundary）。
 
@@ -32,10 +32,8 @@ methods:
       type: int
     - name: Name
       type: string
-    - name: SortKey
-      type: int
 - name: CategoryDTOs
-  description: CategoryDTO の一覧（sortKey 昇順）。
+  description: CategoryDTO の一覧。並びはマスタの表示順で、順序そのものが表示順を表す（値は外へ出さない）。
   type: "[]CategoryDTO"
 ```
 
@@ -53,7 +51,7 @@ methods:
 ```yaml
 tx_required: false
 steps:
-  - category_repository.FindAll で全商品カテゴリを sortKey 昇順で取得する
+  - category_repository.FindAll で全商品カテゴリをマスタの表示順で取得する
   - 取得した Category エンティティ一覧を CategoryDTO（ID / Code / Name / SortKey）へ写像して返す
 calls:
   - category_repository.FindAll

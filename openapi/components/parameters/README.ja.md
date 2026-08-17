@@ -18,6 +18,45 @@
 
 カーソル側を `perPage` 等にリネームするのは非慣用的（カーソル走査に「ページ」概念はない）かつ API 破壊変更になるため、この分離は意図的です。
 
+## 絞り込みパラメータの規約
+
+いま存在するエンドポイントだけでなく、検索系すべてに適用します。
+
+### 1 つの条件に複数の値を渡すときは `explode: false` の配列にする
+
+複数の値を取りうる条件は、同じ名前を繰り返すのではなく**1 つ**のパラメータがカンマ区切りの配列を運びます。
+名前の繰り返しはリクエスト検証が弾くため、配列として宣言しない限りクライアントは「いずれかに一致」を
+表現できません。
+
+```yaml
+explode: false
+schema:
+  type: array
+  uniqueItems: true
+  maxItems: 32
+  items: { type: integer, format: int32, minimum: 1, maximum: 32767 }
+```
+
+`uniqueItems` と `maxItems` はワイヤ側の上限で、URL 長と生成される `IN` リストの大きさを抑えます。
+既存の例は `product/CategoryCodesParam.yaml` / `product/StatusCodesParam.yaml` と、
+文字列 enum 配列の `purchase/PurchaseGroupByParam.yaml`。
+
+### マスタでの絞り込みは行の UUID ではなく `code` を受ける
+
+クライアントがマスタ行を指すのに送る識別子は `code`——その行を入れた migration が固定した静的な別名です。
+どの UUID を持つかは migration が決めるので、アプリケーションコードがそれを抱えてはいけません
+（[ADR-0029](../../../docs/adr/0029-master-data-via-migration.md)）。同じ理屈が API 境界にも及びます。
+`code` はクライアントが定数として持てますが、UUID は先にマスタのエンドポイントを叩いて解決する必要があり、
+かつ 1 件 36 文字なので複数値の絞り込みを表現するコストが高くなります。
+
+どのマスタ行にも一致しない code は 404 ではなく**0 件**を返します。取得対象ではなく絞り込み条件だからです。
+
+### `code` は int16 の範囲で表す
+
+`type: integer` / `format: int32` / `minimum: 1` / `maximum: 32767`。OpenAPI に int16 が無いため範囲は
+境界値で表し、Go 側は `pkg/safecast` で絞り込みます。`SMALLINT` 列・sqlc が生成する `int16`・
+ドメインの `minCode` / `maxCode` と一致します。
+
 ## 使い方
 
 エンドポイント定義で `$ref` を使ってパラメータを参照します：

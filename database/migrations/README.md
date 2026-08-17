@@ -59,6 +59,30 @@ Also available via CLI:
 - **Be idempotent where possible** — use `IF NOT EXISTS` / `IF EXISTS`
 - **No gaps in sequence numbers** — CI detects gaps (`migration-check.yaml`)
 
+## Reference-master table shape
+
+A reference master (a table whose rows are fixed by migration and have no write API) carries these columns:
+
+```sql
+id UUID, name VARCHAR(100), code SMALLINT, sort_key SMALLINT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ
+```
+
+`code` and `sort_key` both hold a small integer, which is exactly why the split has to be stated rather than
+inferred. They answer different questions and move for different reasons:
+
+|Column|What it is|Exposed by the API|
+|---|---|---|
+|`code`|A **static alias** for the row. Application code, SQL and API clients refer to the row by this, and its value never moves once assigned.|**Yes** — this is what a client sends and receives|
+|`sort_key`|The **key that makes ordering idempotent**. `ORDER BY sort_key` is what fixes the display order, and it is free to move whenever the intended order changes.|**No** — the response's array order already carries it|
+
+Both are `UNIQUE`. The consequence worth stating: **never order by `code`**. Ordering by `code` fuses the two
+roles, so the only way to change the display order becomes renumbering `code` — which silently breaks every
+client holding it as a constant and every `WHERE ... code = ...` in `database/dml/`.
+
+A column that is not a reference master's ordering, but an order the *user* chooses and the API returns
+(product images, for example), is neither of these — it is named `display_sort` to keep it out of the pair
+above.
+
 ## CI Check
 
 The `migration-check.yaml` workflow automatically verifies:
