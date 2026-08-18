@@ -30,7 +30,7 @@ Two invariants underpin all of them:
 | [outbox.md](outbox.md) | Transactional outbox | reliable event publication via the outbox pattern | [outbox](../../internal/usecase/boundary/outbox/README.md) |
 | [idempotency.md](idempotency.md) | Idempotency | the `Idempotency-Key` subsystem and its GC job | [idempotency](../../internal/usecase/idempotency/README.md) |
 | [observability.md](observability.md) | Observability | the cross-cutting traces / metrics / logs substrate | [observability](../../internal/observability/README.md) |
-| [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider (`mock-auth-server`) | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
+| [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
 | [security.md](security.md) | Security posture | the threat model, what each control is for (enforcement / detection / deterrence), and where it fires | [workflows](../../.github/workflows/README.md) |
 | [context-map.md](context-map.md) | Context Map | how this system relates to the systems around it, edge by edge | [boundary](../../internal/usecase/boundary/README.md) |
 | [data-access-pattern.md](data-access-pattern.md) | Data access placement | which of Repository / QueryService / CommandService owns a given read or write, and why | [rdb](../../internal/infrastructure/rdb/README.md) |

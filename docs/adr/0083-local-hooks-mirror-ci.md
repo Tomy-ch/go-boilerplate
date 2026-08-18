@@ -46,11 +46,11 @@ The stages and their commands are below. The names are the lefthook command name
 what `--command` selects — they are not always the `make` target the command runs (`go-lint`
 runs `make lint`, `go-test` runs `make test-cached`).
 
-- `pre-commit` (parallel, 14): `go-lint` (`.go`), `go-test` (`.go`),
+- `pre-commit` (parallel, 13): `go-lint` (`.go`), `go-test` (`.go`),
   `go-test-scripts` (`scripts/**/*.go`), `sql-lint` (`.sql`), `md-lint` (`.md`),
   `actions-lint` (workflow YAML + action YAML + the node lint scripts),
   `actions-zizmor` (workflow YAML + action YAML + `zizmor.yml`), `oapi-lint` (`openapi/**`),
-  `mock-auth-oapi-lint` (the mock-auth-server spec), `docker-lint` (Dockerfiles),
+  `docker-lint` (Dockerfiles),
   `pin-actions` (workflow YAML + action YAML + `actions-pin.toml`),
   `pin-images` (Dockerfiles + compose + `images-pin.toml`),
   `migration-check-version` (`.sql`), `migration-check-gap` (`.sql`).

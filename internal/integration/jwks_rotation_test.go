@@ -22,10 +22,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// JWKS Rotation の E2E。provider（mock-auth-server）の golden JWKS と署名 PEM を //go:embed で取り込み、
+// JWKS Rotation の E2E。golden JWKS と署名 PEM を //go:embed で取り込み、
 // HTTP 境界（Bearer 抽出 → Authenticate → JWKS 解決 → 検証 → 200/401）ごと検証する。
-// Phase の定義とリゾルバの契約は docs/design/auth.md §3.5 が持つ。
-// testdata のコピーを package 配下へ置いているのは、depguard が integration からの os 直読みを
+// Phase の定義とリゾルバの契約は docs/design/auth.md §3.4 が持つ。
+// testdata を package 配下へ置いているのは、depguard が integration からの os 直読みを
 // 禁じており embed 以外に読み込む手段が無いため。時刻は注入 clock で決定的に前進させる。
 
 const (

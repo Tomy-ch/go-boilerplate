@@ -44,7 +44,7 @@ OpenAPI ドキュメント処理とポータル生成用のツール：
 |`markdownlint-cli2`|ドキュメント用の Markdown リンター（`make md-lint`）|
 |`@commitlint/cli`|コミットメッセージのリンター（`make commitlint`。`commit-msg` フックに配線）|
 |`js-yaml`|ポータルドキュメント生成スクリプト用の YAML 処理|
-|`pnpm`|リポジトリ内の 3 つの Node パッケージを解決する。lockfile も `node_modules` もそれぞれ別で、`scripts/`（`/app/scripts/node_modules` へ install）、`mock-auth-server/`、そしてポータルフロントエンドを `docs/portal/` へビルドする `docs-viewer/`（`make gen-portal-build` / `make portal-test`）。|
+|`pnpm`|リポジトリ内の 2 つの Node パッケージを解決する。lockfile も `node_modules` もそれぞれ別で、`scripts/`（`/app/scripts/node_modules` へ install）と、ポータルフロントエンドを `docs/portal/` へビルドする `docs-viewer/`（`make gen-portal-build` / `make portal-test`）。|
 |`tsx`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）をビルドなしで実行する|
 |`typescript`|その型検査（`make scripts-typecheck`）|
 |`vitest`|補助スクリプトの判定ロジックの単体テスト（`make scripts-test`）|
@@ -93,4 +93,4 @@ make gen-query  # sqlc コード生成
 - すべてのターゲットで作業ディレクトリは `/app`
 - Go ツールはビルダーステージでインストールし、ランタイムステージにコピーしてイメージサイズを最小化（`go_tools`）
 - ツールのバージョンは `mise.toml`（バージョンの SSOT）で固定 — 更新はそこで行い、ローカルと CI のイメージを一致させること。PyPI のツールだけは例外で、詳細は上の [python_tools](#python_tools) を参照
-- このイメージが install する Node 依存を宣言するのは `scripts/` / `mock-auth-server/` / `docs-viewer/` の 3 つ（それぞれ独自の `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml` を持つ）で、ビルドはそれぞれのマニフェストを本来の場所へコピーしてその場で install する。いずれもこのディレクトリには無いため、依存の変更は使う側のコードと並べてレビューされる
+- このイメージが install する Node 依存を宣言するのは `scripts/` / `docs-viewer/` の 2 つ（それぞれ独自の `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml` を持つ）で、ビルドはそれぞれのマニフェストを本来の場所へコピーしてその場で install する。いずれもこのディレクトリには無いため、依存の変更は使う側のコードと並べてレビューされる
