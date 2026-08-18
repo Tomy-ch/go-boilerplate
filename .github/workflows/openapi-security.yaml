@@ -11,9 +11,6 @@ name: OpenAPI Security
 #
 # Rule dispositions live in .spectral.yaml, each with the ADR or implementation
 # that justifies it. Nothing is disabled in bulk.
-#
-# mock-auth-server's spec is deliberately out of scope: it is a test double, so
-# gating it against a production API security ruleset would be noise.
 
 on:
   pull_request:

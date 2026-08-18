@@ -54,9 +54,9 @@ jobs:
       # `debug:<subject>` bearer token without a signature and never reaches that code.
       APP_ENV: dast
       # The identity the scan authenticates as. Under a real issuer the seeded
-      # `user_identities` rows are the `${AUTH_ISSUER}` ones, whose subjects come from
-      # mock-auth-server/fixtures/users.json — so this is a `user-<name>` subject, not the
-      # internal user UUID that only the stub issuer keys on.
+      # `user_identities` rows are the `${AUTH_ISSUER}` ones, and the provider copies whatever
+      # `username` it is handed onto `sub` — so this has to be one of the `user-<name>` subjects
+      # the seed registers, not the internal user UUID that only the stub issuer keys on.
       # sample-api:replace-begin
       SCAN_SUBJECT: user-john-doe
       # sample-api:replace-with
@@ -186,52 +186,48 @@ jobs:
           # rather than declared. Hardcoding it would reintroduce exactly the drift above.
           port="$(printf '%s' "${issuer}" | sed -n 's#^https\{0,1\}://[^/:]*:\([0-9]\{1,\}\).*#\1#p')"
           if [ -z "${port}" ]; then
-            echo "::error::AUTH_ISSUER (${issuer}) carries no explicit port; mock-auth-server cannot be pointed at it"
+            echo "::error::AUTH_ISSUER (${issuer}) carries no explicit port; the mock OIDC provider cannot be pointed at it"
             exit 1
           fi
 
           echo "AUTH_ISSUER=${issuer}" >> "$GITHUB_ENV"
           echo "MOCK_AUTH_PORT=${port}" >> "$GITHUB_ENV"
 
-      # cache: false — this job holds security-events: write. See README.md § Cache safety.
-      - name: Setup mise and required tools
-        uses: ./.github/actions/setup-mise
-        with:
-          tools: node npm:pnpm
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # The version is pinned in mise.toml, so it is never duplicated here.
-
-      - name: Install mock-auth-server dependencies
-        working-directory: mock-auth-server
-        run: pnpm install --frozen-lockfile
-
-      - name: Start mock-auth-server
-        working-directory: mock-auth-server
-        env:
-          OIDC_PORT: ${{ env.MOCK_AUTH_PORT }}
-          OIDC_ISSUER: ${{ env.AUTH_ISSUER }}
+      # The provider runs from the same digest-pinned image and the same config.json that
+      # docker compose uses locally, so the tokens this scan authenticates with are the ones
+      # a developer gets from `make serve`. The digest is kept in docker/images-pin.toml.
+      - name: Start the mock OIDC provider
         run: |
           set -euo pipefail
 
-          node src/server.ts > ../mock-auth-server.log 2>&1 &
-          echo $! > ../mock-auth-server.pid
+          image="$(sed -n 's#^"ghcr.io/navikt/mock-oauth2-server:\([^"]*\)" = "\(sha256:[a-f0-9]*\)"$#ghcr.io/navikt/mock-oauth2-server:\1@\2#p' docker/images-pin.toml)"
+          if [ -z "${image}" ]; then
+            echo "::error::no pinned mock-oauth2-server digest in docker/images-pin.toml"
+            exit 1
+          fi
 
-      - name: Wait for mock-auth-server
+          docker run -d --name mock-auth-server \
+            -p "${MOCK_AUTH_PORT}:4000" \
+            -e SERVER_PORT=4000 \
+            -e JSON_CONFIG_PATH=/etc/mock-oauth2-server/config.json \
+            -v "$PWD/docker/mock-auth-server/config.json:/etc/mock-oauth2-server/config.json:ro" \
+            "${image}"
+
+      - name: Wait for the mock OIDC provider
         run: |
           set -euo pipefail
 
           for i in {1..30}; do
-            if curl -fsS "http://localhost:${MOCK_AUTH_PORT}/health" > /dev/null; then
-              echo "mock-auth-server is up"
+            if curl -fsS "http://localhost:${MOCK_AUTH_PORT}/isalive" > /dev/null; then
+              echo "mock OIDC provider is up"
               exit 0
             fi
-            echo "Waiting for mock-auth-server... ($i)"
+            echo "Waiting for the mock OIDC provider... ($i)"
             sleep 2
           done
 
-          echo "::error::mock-auth-server did not become ready"
-          cat mock-auth-server.log || true
+          echo "::error::the mock OIDC provider did not become ready"
+          docker logs mock-auth-server || true
           exit 1
 
       # A scan against an empty database only ever reaches the empty-collection branch of
@@ -267,19 +263,23 @@ jobs:
           cat server.log || true
           exit 1
 
-      # The `valid` profile is the ordinary well-formed token. The anomaly profiles exist to
-      # drive the RS's 401 branches deterministically in tests and would defeat the scan here.
+      # The token comes off the standard token endpoint rather than a bespoke test hatch, so
+      # the credential the scan carries is minted the same way a real client mints one. The
+      # provider maps `username` onto the `sub` claim, which is what the seed matches on.
+      # `iss` is derived from the Host the token was requested through, hence localhost here.
       - name: Mint the scan credential
         run: |
           set -euo pipefail
 
-          token="$(curl -fsS -X POST "http://localhost:${MOCK_AUTH_PORT}/bypass/token" \
-            -H 'Content-Type: application/json' \
-            -d "{\"subject\":\"${SCAN_SUBJECT}\",\"profile\":\"valid\"}" \
+          token="$(curl -fsS -X POST "http://localhost:${MOCK_AUTH_PORT}/default/token" \
+            -d 'grant_type=password' \
+            -d 'client_id=go-boilerplate-client' \
+            -d 'password=unused' \
+            --data-urlencode "username=${SCAN_SUBJECT}" \
             | jq -r '.access_token')"
 
           if [ -z "${token}" ] || [ "${token}" = "null" ]; then
-            echo "::error::mock-auth-server issued no access token for subject ${SCAN_SUBJECT}"
+            echo "::error::the mock OIDC provider issued no access token for subject ${SCAN_SUBJECT}"
             exit 1
           fi
           echo "::add-mask::${token}"
@@ -477,18 +477,15 @@ jobs:
             kill "$(cat server.pid)" || true
           fi
 
-      - name: Stop mock-auth-server
+      - name: Stop the mock OIDC provider
         if: always()
-        run: |
-          if [ -f mock-auth-server.pid ]; then
-            kill "$(cat mock-auth-server.pid)" || true
-          fi
+        run: docker rm -f mock-auth-server || true
 
       - name: Dump logs on failure
         if: failure()
         run: |
           cat server.log || true
-          cat mock-auth-server.log || true
+          docker logs mock-auth-server || true
 
   # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
   notify-failure:

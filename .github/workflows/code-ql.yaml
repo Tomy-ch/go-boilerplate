@@ -5,7 +5,7 @@ name: CodeQL Scan
 # exclusion list from drifting between them.
 #
 #   go                    — the application itself; the only leg that needs a build.
-#   javascript-typescript — mock-auth-server / docs-viewer / scripts, none of which
+#   javascript-typescript — docs-viewer / scripts, neither of which
 #                           any other SAST reaches (opengrep.yaml covers Go).
 #   actions               — the workflows in this directory. It overlaps zizmor and
 #                           actionlint on purpose: they lint syntax and permissions,

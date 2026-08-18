@@ -168,9 +168,6 @@ classes = ["image", "db"]
 [job."gen-go-artifacts-check.yaml:generate-go-check"]
 classes = ["image"]
 
-[job."gen-mock-auth-oapi-artifacts-check.yaml:generate-mock-auth-oapi-check"]
-classes = ["image"]
-
 [job."gen-oapi-artifacts-check.yaml:generate-oapi-check"]
 classes = ["image"]
 
@@ -209,9 +206,6 @@ classes = ["image"]
 
 [job."migration-check.yaml:migration-check"]
 classes = ["image"]
-
-[job."mock-auth-server-check.yaml:mock-auth-server-check"]
-classes = ["mise"]
 
 [job."notify.yaml:notify"]
 classes = []

@@ -136,9 +136,6 @@ jobs:
       - name: Generate OpenAPI docs
         run: make gen-api-docs
 
-      - name: Generate mock-auth OpenAPI docs
-        run: make gen-mock-auth-oapi-docs
-
       - name: Regenerate embedded spec (Go)
         run: make gen-go-code
 
