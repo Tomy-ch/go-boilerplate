@@ -27,7 +27,6 @@ graphify-out/
 # パッケージごとに列挙する。
 docs-viewer/coverage/
 scripts/coverage/
-mock-auth-server/coverage/
 
 # ビルド済みのドキュメント。docs-viewer(Vite) の出力で、index.html は dist/ のハッシュ付き資産を
 # 参照する対になっているため片方だけ追跡しない。deploy-docs.yaml が公開前に再ビルドする

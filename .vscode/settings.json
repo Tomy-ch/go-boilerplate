@@ -34,7 +34,6 @@
   },
 
   "material-icon-theme.folders.associations": {
-    "mock-auth-server": "secure",
     "actions": "gh-workflows",
     "internal": "private",
     "apperror": "error",

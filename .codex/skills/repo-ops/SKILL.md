@@ -1,7 +1,7 @@
 ---
 name: repo-ops
 description: >-
-  Operational runbook for this repository's recurring, easy-to-trip-on gotchas around the two-layer docker compose setup, the shared Postgres + worktree slot ring, generated artifacts, the dockerized tool runners, and the local/CI gates (lefthook hooks + GitHub Actions). Use when a bare `docker compose` command finds nothing or tries to start a second Postgres on 5432, when a generated file drifts (`schema.gen.sql`, sqlc models, mocks, portal guides), when `git` refuses a generated directory because it became root-owned, when `make gen-query` fails or two checkouts fight over schema generation, when tests hit the wrong database after acquiring a DB slot, when a fresh worktree's `make serve` reports success but the API never comes up because air's `go build --mod=vendor` dies with `go: inconsistent vendoring` (`vendor/` is untracked and not generated yet), when a hook or CI check fails for something you did not touch (gitleaks fingerprints, sample-removal manifest, pin lockfiles, migration numbering, sync-versions, golden JWKS), when `env/.env` is unexpectedly dirty, when local golangci-lint disagrees with CI, when building a per-environment image, or when you need to locate the authoritative document for a question and a repo-wide grep drowns in Japanese mirrors and generated copies. Most of it follows from three facts: codegen runs as root inside Docker tool-runner containers, infra is one shared compose project (`gobp-shared`) for every checkout, and lint/format/test run on the host via mise. Read-only knowledge skill — it names the exact command; it does not silently mutate state. Triggers: "schema.gen.sql が diff る / gen-*-artifacts-check が落ちる", "docker compose ps に何も出ない / 5432 が既に使われている", "git が docs/portal や mock を permission denied", "gen-query が DB に繋がらず落ちる", "slot 取得後にテストが別 DB を見る", "新しい worktree で make serve しても API が上がらない / air が inconsistent vendoring で落ちる", "secret-scan / sample-removal-check / pin-images-check が落ちる", "commitlint / orval が not found", "per-env イメージのビルド", "どのドキュメントが正本か分からない / grep が対訳・生成物に埋もれる".
+  Operational runbook for this repository's recurring, easy-to-trip-on gotchas around the two-layer docker compose setup, the shared Postgres + worktree slot ring, generated artifacts, the dockerized tool runners, and the local/CI gates (lefthook hooks + GitHub Actions). Use when a bare `docker compose` command finds nothing or tries to start a second Postgres on 5432, when a generated file drifts (`schema.gen.sql`, sqlc models, mocks, portal guides), when `git` refuses a generated directory because it became root-owned, when `make gen-query` fails or two checkouts fight over schema generation, when tests hit the wrong database after acquiring a DB slot, when a fresh worktree's `make serve` reports success but the API never comes up because air's `go build --mod=vendor` dies with `go: inconsistent vendoring` (`vendor/` is untracked and not generated yet), when a hook or CI check fails for something you did not touch (gitleaks fingerprints, sample-removal manifest, pin lockfiles, migration numbering, sync-versions), when `env/.env` is unexpectedly dirty, when local golangci-lint disagrees with CI, when building a per-environment image, or when you need to locate the authoritative document for a question and a repo-wide grep drowns in Japanese mirrors and generated copies. Most of it follows from three facts: codegen runs as root inside Docker tool-runner containers, infra is one shared compose project (`gobp-shared`) for every checkout, and lint/format/test run on the host via mise. Read-only knowledge skill — it names the exact command; it does not silently mutate state. Triggers: "schema.gen.sql が diff る / gen-*-artifacts-check が落ちる", "docker compose ps に何も出ない / 5432 が既に使われている", "git が docs/portal や mock を permission denied", "gen-query が DB に繋がらず落ちる", "slot 取得後にテストが別 DB を見る", "新しい worktree で make serve しても API が上がらない / air が inconsistent vendoring で落ちる", "secret-scan / sample-removal-check / pin-images-check が落ちる", "commitlint / orval が not found", "per-env イメージのビルド", "どのドキュメントが正本か分からない / grep が対訳・生成物に埋もれる".
 ---
 
 # Repo Ops Runbook
@@ -43,15 +43,14 @@ Three facts explain almost everything below:
 | `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §10 |
 | A containerized gate reports missing dependencies for a package you never touched, or `make` fails where a bare `docker compose run` passes | §10 |
 | A hook fails for something outside your change | §11 |
-| A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §21 |
-| Want to know why `make lint` skipped, throttled, or deferred itself to CI | §21 |
+| A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §20 |
+| Want to know why `make lint` skipped, throttled, or deferred itself to CI | §20 |
 | `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §12 |
 | "Migration version gap / duplicate" from pre-commit | §13 |
 | S3 calls return 503 locally | §14 |
-| Golden JWKS drift, mock-auth OpenAPI out of date | §15 |
-| Building an image for a specific environment | §16 |
-| `sync-versions` drift in CI | §17 |
-| `go: inconsistent vendoring` from air or the image build in a fresh worktree (`vendor/` absent) | §20 |
+| Building an image for a specific environment | §15 |
+| `sync-versions` drift in CI | §16 |
+| `go: inconsistent vendoring` from air or the image build in a fresh worktree (`vendor/` absent) | §19 |
 | Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 |
 
 ## 0. Finding the authoritative source
@@ -78,7 +77,7 @@ Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **7
 | Per-package detail and design intent | the nearest `internal/**/README.md` / `pkg/**/README.md` (100+ of them) | a skill body — skills follow READMEs, not the reverse |
 | An environment variable | `internal/config/envspec.go` + `model.go`, table in `env/README.md` | a value in `env/.env*` alone |
 | What a CI gate or hook actually checks | `.github/workflows/*.yaml`, `.lefthook.yaml` | — |
-| Tool / runtime versions | `mise.toml` (everything else is derived — §17) | `go.mod`, Dockerfiles, READMEs — all derived |
+| Tool / runtime versions | `mise.toml` (everything else is derived — §16) | `go.mod`, Dockerfiles, READMEs — all derived |
 | Generated artifacts, protected paths, scope | `AGENTS.md` | — |
 
 ### Searching without the noise
@@ -214,7 +213,7 @@ make secret-scan          # reproduce; the output carries the new fingerprint (v
 ```
 
 Then update the matching line in `.gitleaksignore` to the new number, keeping the explanatory comment.
-Only do this for entries already documented there as intentional (mock-auth signing keys, Garage dev
+Only do this for entries already documented there as intentional (the JWKS rotation test's signing keys, Garage dev
 credentials) — a genuinely new finding is a real secret and must be removed from the tree instead.
 
 ## 7. `sample-removal-check` fails in CI
@@ -267,14 +266,14 @@ Always reproduce CI failures with the full config.
 
 The tool-runner images are **build artifacts of `docker/tools/Dockerfile`, `mise.toml`, and the
 `package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` triple of every package the node runner
-installs in-tree — `scripts/`, `mock-auth-server/`, and `docs-viewer/`**. Tools
+installs in-tree — `scripts/` and `docs-viewer/`**. Tools
 are resolved inside the runners, never on the host (the same reproducibility rule as codegen — see
 `docs/rules.md`). After changing any of those files — or on a fresh clone whose images predate them —
 the runner is missing the tool, ships an old version, or refuses to run anything at all.
 
-The three-package span is the part that surprises: a change confined to `mock-auth-server/` or
-`docs-viewer/` still stales the image that `scripts/`-based gates run in, because all three are
-installed into the one node runner.
+The cross-package span is the part that surprises: a change confined to `docs-viewer/` still
+stales the image that `scripts/`-based gates run in, because both are installed into the one node
+runner.
 
 That last symptom is the one that reads as unrelated to the edit. `scripts/pnpm-workspace.yaml` sets
 `verifyDepsBeforeRun: error`, so once its settings no longer match what the image's
@@ -288,8 +287,8 @@ first, then re-run whichever gate you intend to report.
 
 A stale image also shows up as **a containerized gate reporting missing dependencies for a package
 you never touched**. The 1:1 test gate (`scripts/one-to-one.gate.test.ts`) type-checks all three
-packages, so an image built before `mock-auth-server/` gained its current manifests answers with a
-column of TS2307 `Cannot find module 'hono' / 'jose' / 'zod'` against `mock-auth-server/src/**`. It
+packages, so an image built before `docs-viewer/` gained its current manifests answers with a
+column of TS2307 `Cannot find module` against `docs-viewer/src/**`. It
 reads as a dependency the repository forgot to declare, which is the wrong tree to search.
 
 **The tell is that `make` fails while the same command through a bare `docker compose run` passes.**
@@ -321,7 +320,7 @@ eliminate the one explanation that mimics every other one. Reaching for `--no-ve
 is unknown skips that check rather than passing it.
 
 The node runner also carries `/app/scripts/node_modules` as an anonymous volume (so the bind mount
-does not shadow it); helper scripts and `gen-mock-auth-oapi` resolve their binaries from there, which
+does not shadow it); helper scripts resolve their binaries from there, which
 is why a stale image breaks them.
 
 The commit-msg hook runs `make commitlint COMMIT_MSG_FILE={1}` through `node_tool_runner`, so this is
@@ -335,13 +334,13 @@ enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are i
 
 | Hook | Glob → command (abridged) |
 | --- | --- |
-| pre-commit | `*.go` → `make gate-go` (bundles `lint` + `test-cached`); `scripts/**/*.go` → `make test-scripts-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
+| pre-commit | `*.go` → `make gate-go` (bundles `lint` + `test-cached`); `scripts/**/*.go` → `make test-scripts-cached`; `*.sql` → `make sql-lint`; `*.md` → `make md-lint`; `.github/workflows/**` → `make actions-lint`, `make pin-actions-check`; `openapi/**` → `make lint-oapi`; `docker/**/Dockerfile`, `docker-compose*.yaml` → `make docker-lint`, `make pin-images-check`; `database/migrations/*.sql` → migration version + gap checks |
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
 | pre-push | `make secret-scan`; `*.go` → `make gate-go-push` (bundles `test` + `test-scripts`); `*.go` / `openapi/**` → regenerate and `git diff --exit-code` on `*.gen.go` / mocks / `openapi.gen.yaml`; `go.mod` / `go.sum` → `go mod tidy` + diff |
 
 The Go gates are **bundled** into `gate-go` / `gate-go-push` rather than listed one per command,
 because lefthook runs a hook's commands in parallel and a per-gate entry multiplies host load by the
-number of gates on top of the number of open windows. How hard they run is decided by §21.
+number of gates on top of the number of open windows. How hard they run is decided by §20.
 
 The pre-push `gen-go-check` regenerates in Docker and fails on any diff — the fix is to commit the
 regenerated output (§2, §4), not to re-run it. When a hook is red for a reason unrelated to your
@@ -383,28 +382,13 @@ The bucket is shared by every checkout (unlike databases, it has no schema to br
 To isolate a branch, point it at a different `OBJECT_STORAGE_BUCKET`. Go tests do not touch garage —
 they use in-process gofakes3.
 
-## 15. mock-auth-server — a separate npm project with its own generated artifacts
-
-`mock-auth-server/` is a standalone Node project (its own `package.json`, OpenAPI, and tests).
-Two of its outputs are drift-checked in CI:
-
-- **Golden JWKS** — `fixtures/jwks/*.json` and `internal/integration/testdata/jwks/*.json` are written
-  by one generator so the provider and the Go integration tests share a single source. After touching
-  the key store or the keys, run `npm run gen:jwks` in `mock-auth-server` and commit both
-  directories.
-- **OpenAPI bundle + zod schemas** — regenerate with `make gen-mock-auth-oapi` (runs in
-  `node_tool_runner`, resolving `orval` from `/app/scripts/node_modules`; see §10 if it is not found).
-
-`make reset-mock-auth-users` restores the fixed mock users to their neutral defaults after a test run
-has mutated them.
-
-## 16. Per-environment Docker images
+## 15. Per-environment Docker images
 
 The runtime image bakes a single `env/.env.<env>` chosen at build time via `--build-arg APP_ENV=<env>`
 (the deploy workflow injects it). There is no single image switched by a runtime ENV.
 
 ```bash
-go mod vendor   # the builder stage is vendor-mode + GOPROXY=off; skip this and it fails (§20)
+go mod vendor   # the builder stage is vendor-mode + GOPROXY=off; skip this and it fails (§19)
 docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/Dockerfile .
 # verify only .env.stg was baked in
 ```
@@ -412,7 +396,7 @@ docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/
 There is no separate migration image: `env/` and `database/migrations` are embedded in the binary, so
 migrations run from the same `runtime` image via a command override (`./server migrate-up`).
 
-## 17. `sync-versions` drift
+## 16. `sync-versions` drift
 
 `mise.toml` is the source of truth for tool versions; `go.mod`, the Dockerfiles, and the `docker/**`
 READMEs are derived. Editing a derived file directly, or bumping `mise.toml` without propagating,
@@ -424,7 +408,7 @@ make sync-versions                # propagate from mise.toml, then commit the re
 
 For a Go version bump use the `go-upgrade` skill, which owns the full procedure.
 
-## 18. Generated mocks — never hand-write, regenerate via Docker
+## 17. Generated mocks — never hand-write, regenerate via Docker
 
 Each source declares
 `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE`
@@ -437,14 +421,14 @@ interface file), and `make gen-go-code` runs them in `go_tool_runner` with the p
 make gen-go-code
 ```
 
-## 19. The `.makefiles` DRY_RUN convention
+## 18. The `.makefiles` DRY_RUN convention
 
 Setup / teardown targets gate dry-run on `$(if $(DRY_RUN),--dry-run,)` plus `[ -n "$(DRY_RUN)" ]`,
 which treat **any non-empty value as truthy** — `DRY_RUN=0 make <target>` is still a dry-run. To
 actually run, omit the variable entirely; to preview, `DRY_RUN=1 make <target>`. `setup-repo` rejects
 `DRY_RUN` outright because it cannot be previewed.
 
-## 20. `go: inconsistent vendoring` in a fresh worktree — `make serve` reports success but the API never answers
+## 19. `go: inconsistent vendoring` in a fresh worktree — `make serve` reports success but the API never answers
 
 `vendor/` is untracked (`.gitignore`) — deliberately, for the supply-chain reason recorded in
 `docs/design/security.md` — so a fresh worktree or clone starts without it. Exactly two build paths
@@ -474,10 +458,10 @@ make serve
 prefer the bare `go mod vendor` when you only need to populate a missing `vendor/`. Nothing guards
 this state: no hook or CI check inspects `vendor/` (`tidy-check.yaml` says so explicitly), and the
 workflows that build the image regenerate it first, so they never fail on it. Re-run the command
-yourself after a base merge that changes dependencies. The same trap hits a manual image build (§16),
+yourself after a base merge that changes dependencies. The same trap hits a manual image build (§15),
 which drives the vendor-mode `Dockerfile` directly.
 
-## 21. A gate failed for a reason unrelated to the change — check how many windows are open
+## 20. A gate failed for a reason unrelated to the change — check how many windows are open
 
 When several worktrees each run a gate sized for the whole host, the host saturates and gates start
 failing in ways that look like defects in the change: a test you did not touch times out, `make lint`

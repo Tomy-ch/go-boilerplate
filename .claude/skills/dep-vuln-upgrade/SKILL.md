@@ -1,6 +1,6 @@
 ---
 name: dep-vuln-upgrade
-description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's dependency resolvers — the three pnpm-resolved packages (`scripts/`, `mock-auth-server/` and `docs-viewer/`, each with its own `pnpm-lock.yaml` / `pnpm-workspace.yaml`), the Go module graph (`go.mod` / `go.sum`), and the PyPI tools declared in `python/*.in` and hash-locked in `python/*.txt` (located here, but bumped by `/tools-upgrade`) — targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the cooldown that governs that lockfile (pnpm's `pnpm-workspace.yaml` `minimumReleaseAge`, which hard-rejects an in-window version at resolution time and on every frozen replay), chains `/supply-chain-triage` on every entry the cooldown catches so the decision rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps, too-new opt-ins, and pnpm's per-version `minimumReleaseAgeExclude` escape hatch — which it surfaces but never takes on its own. It updates lockfiles with `pnpm install --lockfile-only`, runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `pnpm audit` / `govulncheck` / build plus generated-artifact and tool-runner-image drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), for a general `go.mod` dependency refresh (`make tidy-lib`), or raising a PyPI tool's pin (`/tools-upgrade`, which owns `python/*.in` and the `make py-lock` regeneration).
+description: Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's dependency resolvers — the two pnpm-resolved packages (`scripts/` and `docs-viewer/`, each with its own `pnpm-lock.yaml` / `pnpm-workspace.yaml`), the Go module graph (`go.mod` / `go.sum`), and the PyPI tools declared in `python/*.in` and hash-locked in `python/*.txt` (located here, but bumped by `/tools-upgrade`) — targeting only the named packages rather than a blanket upgrade. Use this skill whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. It locates each package's ecosystem and lockfile, picks the minimal same-major fixed version, aligns its supply-chain age gate to the cooldown that governs that lockfile (pnpm's `pnpm-workspace.yaml` `minimumReleaseAge`, which hard-rejects an in-window version at resolution time and on every frozen replay), chains `/supply-chain-triage` on every entry the cooldown catches so the decision rests on a scored evidence verdict rather than on a day count alone, then auto-applies the safe `clear` patches while asking (via `AskUserQuestion`) only about major-version bumps, too-new opt-ins, and pnpm's per-version `minimumReleaseAgeExclude` escape hatch — which it surfaces but never takes on its own. It updates lockfiles with `pnpm install --lockfile-only`, runs `go get` + `go mod tidy` + `go mod vendor` for Go modules, and verifies with `pnpm audit` / `govulncheck` / build plus generated-artifact and tool-runner-image drift checks. Do NOT use it for routine "bump every tool to latest" audits (that is `/tools-upgrade` for `mise.toml`), for upgrading the Go language version (`/go-upgrade`), for a general `go.mod` dependency refresh (`make tidy-lib`), or raising a PyPI tool's pin (`/tools-upgrade`, which owns `python/*.in` and the `make py-lock` regeneration).
 argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" per line] [min_age_days]'
 ---
 
@@ -8,7 +8,7 @@ argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" pe
 
 This skill takes a **security advisory list** and patches only the named vulnerable dependencies to a fixed version. This repo resolves dependencies three ways, and an advisory can name a package in any of them:
 
-- **pnpm** — dependencies recorded in `scripts/pnpm-lock.yaml`, `mock-auth-server/pnpm-lock.yaml` and `docs-viewer/pnpm-lock.yaml`, each package carrying its own `pnpm-workspace.yaml` that holds both its cooldown policy and its `overrides`.
+- **pnpm** — dependencies recorded in `scripts/pnpm-lock.yaml` and `docs-viewer/pnpm-lock.yaml`, each package carrying its own `pnpm-workspace.yaml` that holds both its cooldown policy and its `overrides`.
 - **Go** — modules in `go.mod` / `go.sum`, including **indirect** dependencies.
 - **PyPI** — the CLI tools declared in `python/*.in` and resolved, with sha256 hashes, into `python/*.txt`. Locating one is in scope; **bumping it is not** — that belongs to `/tools-upgrade`, which owns both declaration sites. See *A PyPI advisory usually is not this skill's* below.
 
@@ -79,7 +79,7 @@ Permitted to modify while this skill runs:
 - `**/pnpm-workspace.yaml` — **only** the `overrides` and `minimumReleaseAgeExclude` keys, and the exclusion **only after the user has approved that specific version** at Step 5. Never touch `minimumReleaseAge`, `minimumReleaseAgeStrict`, `minimumReleaseAgeIgnoreMissingTime`, `trustPolicy*`, `allowBuilds`, `blockExoticSubdeps`, or `engineStrict` — those are the policy itself, not the patch.
 - `go.mod` / `go.sum` — the output of `go get <module>@<version>` + `go mod tidy` for approved Go modules.
 - `vendor/**` — **only** as the mechanical output of `go mod vendor`, and **only if the repo vendors** (a `vendor/modules.txt` exists). A `go.mod` bump leaves `vendor/modules.txt` out of sync; the build then fails with `inconsistent vendoring`, so re-vendoring is a required downstream step, not an edit of taste. Never hand-edit vendored files.
-- Regenerated artifacts that these dependencies drive, **only** when a drift check (Step 7) shows they moved — e.g. `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**` via `make gen-mock-auth-oapi`. Regenerate with the repo's `make` target; never hand-edit a generated file.
+- Regenerated artifacts that these dependencies drive, **only** when a drift check (Step 7) shows they moved — e.g. `openapi/openapi.gen.yaml` via `make gen-bundle-oapi`. Regenerate with the repo's `make` target; never hand-edit a generated file.
 
 Hard-protected even during this skill (never touch):
 
@@ -178,7 +178,7 @@ Print a Japanese summary grouped by disposition. Example:
   - js-yaml 4.2.0 → 4.3.0     [docker/tools, 直接]    (CVE-2026-59869, CVE-2026-53550 / HIGH)
 
 ⚠️ major 跨ぎ（breaking の可能性 / 別途確認）:
-  - @hono/node-server 1.19.14 → 2.0.5  [mock-auth-server, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
+  - vite 7.4.2 → 8.0.1  [docs-viewer, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
 
 ⚠️ too-new（公開が min_age 未満 / 別途 opt-in）:
   - fast-uri 3.1.3 → 3.1.4  [docker/tools]  (公開 3 日 / CVE-2026-16221 / HIGH)
@@ -251,7 +251,7 @@ Batch all approved Go modules into one `go get` (multiple `module@version` args)
 
 Run the checks that match what actually changed — a dependency patch rarely touches first-party source, so scope the verification to the ecosystems that moved rather than always running the full suite. Report each as OK / FAIL; do NOT auto-roll-back on failure — the user decides.
 
-Go changes at minimum build and vuln-scan clean (`go build ./...` + `govulncheck ./...`); run `make lint` / `make test` when a Go change is broad enough to warrant the full suite. A **major bump of a pnpm package** must be verified more closely — run that package's own `typecheck` + tests (e.g. `pnpm typecheck` + `pnpm test` in `mock-auth-server/`), since a major can change the API the code calls.
+Go changes at minimum build and vuln-scan clean (`go build ./...` + `govulncheck ./...`); run `make lint` / `make test` when a Go change is broad enough to warrant the full suite. A **major bump of a pnpm package** must be verified more closely — run that package's own `typecheck` + tests (e.g. `pnpm typecheck` + `pnpm test` in `docs-viewer/`), since a major can change the API the code calls.
 
 The advisory database is the source of truth for the **real fix floor**, and it can differ from the user's list. Two cases to surface rather than silently resolve:
 
@@ -277,7 +277,6 @@ govulncheck ./...                # if available; the GHSA should clear
 
 Generated-artifact drift — these deps drive code generators, so a bump can move generated output. If a changed lockfile belongs to a package that feeds a generator, run its generator and check for drift (the same check CI runs):
 
-- `mock-auth-server/**` deps → `make gen-mock-auth-oapi` (and `make gen-mock-auth-oapi-docs`), then `git status` the generated paths. Commit the regenerated artifacts as part of the patch.
 - `docker/tools/**` deps (the toolbox image: redocly / orval / sqlc-adjacent tooling) → regenerate the artifacts that image produces (`make gen-*-oapi`, `make gen-query`, etc.) only if the tool whose dep changed is one of them, and check for drift.
 
 If regeneration produces changes, include them — a security bump that silently changes generated output must not leave the tree in a state where CI's drift check fails.
