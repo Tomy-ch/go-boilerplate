@@ -134,7 +134,7 @@ type Usecase interface {
 	// SetItem は、主体のカートに指定商品の数量を設定し、再評価つきのカートを返します。
 	// 現在の数量への加算ではないため、同じ入力を何回与えても結果は変わりません。
 	// カートを持たない主体にはこの操作がカートを作ります（ゲストにはトークンを発行します）。
-	// カートへ入れられない商品（不存在・非公開）は ErrUnavailableProduct を返します。
+	// カートへ入れられない商品は ErrUnavailableProduct を返します。
 	SetItem(ctx context.Context, params SetItemParams) (CartView, error)
 
 	// RemoveItem は、主体のカートから指定商品の明細を取り除きます。
@@ -151,7 +151,8 @@ type Usecase interface {
 	// MergeOnLogin は、ゲストカートを認証済みユーザーへ引き継ぎます。
 	// 引き継ぎ元を引けない場合（引き継ぎ済み・期限切れ・未知のトークン）も成功し、失われた分は空になります。
 	// 形式が不正なトークンはエラーを返しますが、それ以外の理由で引き継ぎが失敗することはありません。
-	// 数量は上限へ丸め、明細数の超過は古い順に残して切り捨て、失われた分を戻り値で報告します。
+	// 数量や明細数が上限を超える分は調整され、失われた分は戻り値で報告します
+	// （切り捨ての優先順位は docs/spec/cart/domain.md の Merge）。
 	MergeOnLogin(ctx context.Context, params MergeOnLoginParams) (MergeCartResult, error)
 }
 
@@ -291,7 +292,7 @@ func evaluateItems(
 }
 
 // toSnapshots は、引けた商品を再評価用の観測値へ切り出します。
-// 引けなかった商品は含めません。カートはこの表に無い明細を合算に入れません。
+// 引けなかった商品は含めません（この表に無い明細の扱いは docs/spec/cart/domain.md の Cart.Subtotal）。
 func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.ProductSnapshot {
 	snapshots := make(map[uuid.UUID]cart.ProductSnapshot, len(products))
 	for id, p := range products {
@@ -301,9 +302,7 @@ func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.Pro
 	return snapshots
 }
 
-// evaluateItem は、明細 1 件の再評価をドメインへ委ね、結果を出力 DTO へ写します。
-// 判定そのものは cart.CartItem.Evaluate が持ちます。この層が持つのは、商品エンティティから
-// 観測値を切り出すことと、結果を DTO の語彙へ移すことだけです。
+// evaluateItem は、明細 1 件の再評価を cart.CartItem.Evaluate へ委ね、結果を出力 DTO の語彙へ写します。
 func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
 	view := CartItemView{ProductID: item.ProductID(), Quantity: item.Quantity()}
 
