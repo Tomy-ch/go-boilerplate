@@ -64,7 +64,7 @@ flowchart TB
   そちらへ置けないものは、**ドメイン語彙** [`internal/domain/lexicon`](lexicon/README.ja.md) に置く。
   ここは全ての domain パッケージが import してよい。配置は `pkg/` を先に判定し、入場基準は意図的に
   狭い。名前が入場時の問いを表している——これは業務の語か。その README を参照。
-  根拠: [ADR-0037 (domain-lexicon)](../../docs/adr/0037-domain-lexicon.md)。
+  根拠: [ADR-0038 (domain-lexicon)](../../docs/adr/0038-domain-lexicon.md)。
 
   集約を import してよいもう一つの場所は `internal/domain/service/**` であり、すべての Domain Service が
   そこに住む。専用の depguard ルールを持ち、domain 層の他の deny はすべて再掲されている。この規則は
@@ -486,17 +486,17 @@ flowchart TB
 **この原則から逸脱する状況は 2 つ**あり、その 2 つだけです。どちらも複数の集約に属する行を
 単一のトランザクションに入れるため、用いる前にそれぞれの基準に照らした正当化が必要です。
 その基準と、両者に先立つ既定とは、
-[ADR-0032 (commandservice-atomicity-criterion)](../../docs/adr/0032-commandservice-atomicity-criterion.ja.md) § 判定手順の
+[ADR-0033 (commandservice-atomicity-criterion)](../../docs/adr/0033-commandservice-atomicity-criterion.ja.md) § 判定手順の
 3 つの分岐です。
 
 - **陳腐化してはならないガード**（分岐 2）。操作が、それが許されるかを判断するために他の集約を
   読み、判定と commit の間に並行する書き込みがその条件を無効化し得る場合です。ガード行は条件を
   評価する前にロックし、commit まで保持します
-  （[ADR-0034 (ordered-pessimistic-row-locks)](../../docs/adr/0034-ordered-pessimistic-row-locks.ja.md)）。他の集約は観測する
+  （[ADR-0035 (ordered-pessimistic-row-locks)](../../docs/adr/0035-ordered-pessimistic-row-locks.ja.md)）。他の集約は観測する
   だけで変更せず、操作は通常の usecase のままです。
 - **原子的でなければならない複数集約書き込み**（分岐 3）。中間状態が観測されてはならないと要件が
   述べる場合で、書き込みは CommandService を通して 1 トランザクションで走ります
-  （[ADR-0030 (lightweight-cqrs)](../../docs/adr/0030-lightweight-cqrs.ja.md)）。
+  （[ADR-0031 (lightweight-cqrs)](../../docs/adr/0031-lightweight-cqrs.ja.md)）。
 
 それ以外はすべて分解します。単一集約への書き込みと、結果整合のカスケードです。この原則が例外なく
 記述しているのは、その分岐です。
@@ -644,7 +644,7 @@ Usecase のものである。
 どうかは決めない。表示のために作られ、返した瞬間に古くなり、どの不変条件も依存しない——そうした
 「拘束力を持たない」業務判断も、業務判断であることに変わりはなく、ドメインに属する。ある値が commit まで
 真であり続けなければならないかどうかはトランザクション境界の問いで、
-[ADR-0032](../../docs/adr/0032-commandservice-atomicity-criterion.ja.md) が答える。配置の問いではない。
+[ADR-0033](../../docs/adr/0033-commandservice-atomicity-criterion.ja.md) が答える。配置の問いではない。
 
 #### 別の集約に届かないことは、ドメインを出る理由にならない
 
@@ -740,7 +740,7 @@ QueryService か CommandService か——は
 パッケージだけを読んで答えられるか。答えられないなら作者性が出ていっている。
 
 同じ規律は書き込み側に既に課されている。CommandService が強制してよいのはドメインの不変条件から
-導出された条件だけである（[ADR-0030 (lightweight-cqrs)](../../docs/adr/0030-lightweight-cqrs.ja.md)）。読み取り側
+導出された条件だけである（[ADR-0031 (lightweight-cqrs)](../../docs/adr/0031-lightweight-cqrs.ja.md)）。読み取り側
 だけが例外である理由は無い。
 
 読み取り経路は集約を丸ごと迂回してよい。検索インデックスは正本の写像であり、ヒットした全件を
@@ -764,7 +764,7 @@ QueryService か CommandService か——は
 > 保つものも具体的である。基準をその場で評価する限り、Go の `&&` と `||` が述語を合成し、費用は
 > かからない。合成が欠けているのは、それが移動しなければならなかった場所だけである。変更を守る述語は
 > bool ではなく型付きのエラーを返し、そのエラーの identity から応答ステータスが導かれる
-> （[ADR-0045 (apperror-protocol-agnostic-errors)](../../docs/adr/0045-apperror-protocol-agnostic-errors.ja.md)）。合成された
+> （[ADR-0046 (apperror-protocol-agnostic-errors)](../../docs/adr/0046-apperror-protocol-agnostic-errors.ja.md)）。合成された
 > `isSatisfiedBy` はそれを「満たさない」へ潰してしまい、どこが落ちたかを取り戻そうとすれば
 > エラー返却を作り直すことになる。クエリは静的な SQL のままで、実スキーマに対して型検査された
 > 生成物であり続ける——基準から SQL への変換器はそれを終わらせる。
@@ -802,7 +802,7 @@ internal/infrastructure/rdb/repository/<aggregate>/
 - `FindByXXX` / `CountByXXX` — 同一性による取得、または集約自身の属性による絞り込み・一覧・件数
 - `LockByXXX` — 同じ読み取りを悲観ロック付きで行う。commit まで行を保持しなければならない呼び出し元の
   ため。ロックと、それが要求する順序は doc コメントに書く
-  （[ADR-0034 (ordered-pessimistic-row-locks)](../../docs/adr/0034-ordered-pessimistic-row-locks.ja.md)）
+  （[ADR-0035 (ordered-pessimistic-row-locks)](../../docs/adr/0035-ordered-pessimistic-row-locks.ja.md)）
 - `Create` / `Update` — 集約の永続化。論理削除は `deletedAt` を更新する `Update`
 - `Delete` / `Purge` — 物理削除。データが用途を越えて残る理由が無く、監査記録の義務も無い場合。
   履歴を保つ集約に足してはならない

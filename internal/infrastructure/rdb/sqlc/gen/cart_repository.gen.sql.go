@@ -419,7 +419,7 @@ type LockCartsByIDsRow struct {
 // === source: database/dml/repository/cart/lock_carts_by_ids.sql ===
 // ID の集合からカート群を、更新のために悲観ロック（FOR UPDATE）して取得する。
 // id 昇順の ORDER BY を外さないこと。複数件のロックをこの単一文の外へ分割しないこと
-// （ADR-0034 (ordered-pessimistic-row-locks)）。
+// （ADR-0035 (ordered-pessimistic-row-locks)）。
 // 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得る。
 //
 //	SELECT c.id, c.user_id, c.session_token, c.expires_at, c.created_at, c.updated_at

@@ -227,7 +227,7 @@ patterns:
         path: docs/rules.md
         section: "Allowed in Domain"
       - kind: adr
-        id: "0035"
+        id: "0036"
         slug: uuidv7-identifiers
     deviation_declared: false
     deviation_note: ""
@@ -252,10 +252,10 @@ patterns:
         path: internal/domain/README.md
         section: "Entity or Value Object"
       - kind: adr
-        id: "0037"
+        id: "0038"
         slug: domain-lexicon
       - kind: adr
-        id: "0036"
+        id: "0037"
         slug: two-scale-quantity-model
       - kind: readme
         path: internal/domain/lexicon/README.md
@@ -344,7 +344,7 @@ patterns:
         id: "0002"
         slug: onion-architecture
       - kind: adr
-        id: "0092"
+        id: "0093"
         slug: lean-a-spec-scaffold
     deviation_declared: false
     deviation_note: ""
@@ -377,7 +377,7 @@ patterns:
         path: pkg/README.md
         section: "Constraints"
       - kind: adr
-        id: "0037"
+        id: "0038"
         slug: domain-lexicon
     deviation_declared: true
     deviation_note: >-
@@ -410,11 +410,11 @@ patterns:
       根拠にならず、独立集約は identity のみ）も同節に明記されている。
       2 つ目はトランザクション境界。Aggregate Boundary 節は「1 Aggregate = 1 Transaction Boundary」を
       「既定であって絶対ではない」と限定したうえで、境界を跨ぐ 2 経路（陳腐化してはならないガード＝
-      ADR-0030 (lightweight-cqrs) 分岐 2、原子性を要する複数集約書き込み＝同分岐 3）へ導線を張り、この 2 つに限ると
-      明示している。ADR-0030 (lightweight-cqrs) は Vernon の定式化を経た Evans の主張を名指しし、原義・本リポジトリの
+      ADR-0031 (lightweight-cqrs) 分岐 2、原子性を要する複数集約書き込み＝同分岐 3）へ導線を張り、この 2 つに限ると
+      明示している。ADR-0031 (lightweight-cqrs) は Vernon の定式化を経た Evans の主張を名指しし、原義・本リポジトリの
       選択・理由の三要素を書いた宣言節を持つ。
       残る論点は宣言の外にある。この分類は要件に相対で、要件が変われば同じ操作が分岐を移る
-      （ADR-0030 (lightweight-cqrs) 自身が記録の規律としてそう述べている）。
+      （ADR-0031 (lightweight-cqrs) 自身が記録の規律としてそう述べている）。
       なお Do not set outside constructor 節に「集約は子を含め 1 回の呼び出しで構築し、子をまたぐ
       不変条件はルートでのみ判定する」という記述が加わり、ルートが境界内不変条件を保証する唯一の点で
       あるという中核解釈が生成・再構成の局面へ拡張された。新規の差異ではなく、既存判定の裏付け。
@@ -429,13 +429,13 @@ patterns:
         path: docs/rules.md
         section: "Repository / QueryService Rules"
       - kind: adr
-        id: "0030"
+        id: "0031"
         slug: lightweight-cqrs
       - kind: adr
-        id: "0032"
+        id: "0033"
         slug: commandservice-atomicity-criterion
       - kind: adr
-        id: "0034"
+        id: "0035"
         slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
@@ -448,7 +448,7 @@ patterns:
       ガードと、原子性を要する複数集約書き込みである。Evans の議論は変更についてのものであり、
       前者で他集約は観測されるだけで変更されずルートが権威を保つため。後者でも、1 トランザクションが
       触れる集約のうち書き込まれるのは一部で、残りは観測されるだけという形を保つ。宣言は
-      docs/adr/0032-commandservice-atomicity-criterion.md の Departure 節と
+      docs/adr/0033-commandservice-atomicity-criterion.md の Departure 節と
       internal/domain/README.md の Aggregate Boundary 節。
     enforced_by:
       - kind: depguard
@@ -474,7 +474,7 @@ patterns:
       Evans が挙げる他の 2 条件には明示的に触れていない。取りこぼしではなく、性質が異なる。
       具体クラスの選択は主語が無い。ドメインに多相な型が存在せず（interface は Repository 系のみ、
       生成関数はすべて具象型を返す）、実装の選び分けは DI が別パターンとして担う
-      （ADR-0036 (two-scale-quantity-model) / 0036 / 0037）。変種を型でなく値で表す方針そのものは The constructor is the Factory 節
+      （ADR-0037 (two-scale-quantity-model) / 0036 / 0037）。変種を型でなく値で表す方針そのものは The constructor is the Factory 節
       および How far Value Objects go here 節で宣言済み。
       「クライアントが持つべきでないインフラ知識の隠蔽」は、単独では起動条件にならない。組み立てが
       1 回の呼び出しなら隠すべき手順が存在せず、隠蔽が意味を持つのは組み立てに構造がある——協力者が
@@ -516,7 +516,7 @@ patterns:
     verdict: 逸脱宣言あり(スコープ外)
     gap: >-
       Aggregate Root 限定・ドメイン語彙の契約・トランザクション制御はクライアント側、と原義とよく一致する。
-      CommandService という「集約の書き込みが Repository seam を通らない経路」の存在は、ADR-0030 (lightweight-cqrs) の
+      CommandService という「集約の書き込みが Repository seam を通らない経路」の存在は、ADR-0031 (lightweight-cqrs) の
       Alternatives「Route every write through the aggregate Repository (abolish CommandService)」で
       Evans の形（load-aggregate-mutate-save 一本化）を名指しし、ロックを取らない相対更新の並行性を理由に
       却下、Eligibility / Derivation で範囲を絞って宣言済み。読み取り側の絞り込み（QueryService 分離）も
@@ -526,20 +526,20 @@ patterns:
       （サンプル撤去後は宣言が 0 本になる）。所有をワークフロー軸で決める（CommandService は
       トランザクションの道具であり、所有者はトランザクションを開く側である）ため usecase 層に置かれ、
       「ドメイン層に第二の永続化契約が並ぶ」という差異は無い。残る差異は seam の存在そのもので、
-      これは上記のとおり ADR-0030 (lightweight-cqrs) の Alternatives で宣言済み。
+      これは上記のとおり ADR-0031 (lightweight-cqrs) の Alternatives で宣言済み。
       書き込みメソッドの契約は docs/design/data-access-pattern.md § Write side が定める。1 メソッドが
       単独で集約を整合させ、別の Repository 呼び出しを順序付きで要求しないこと（子の集合は同一性を鍵に
       同期する）を要求し、単独で整合する複数メソッド（1 列更新・状態遷移ごとの 1 本）は適法とする。
       Evans が集約単位の save を語る粒度をメソッド本数ではなく契約の保証内容で読んだもので、差異は無い。
     interpreted_by:
       - kind: adr
-        id: "0030"
+        id: "0031"
         slug: lightweight-cqrs
       - kind: adr
         id: "0003"
         slug: interface-based-decoupling
       - kind: adr
-        id: "0032"
+        id: "0033"
         slug: commandservice-atomicity-criterion
       - kind: doc
         path: docs/rules.md
@@ -559,9 +559,9 @@ patterns:
       一本化するが、本リポジトリは集約の読み込み-保存で表現できない書き込み（相対更新・集合演算・
       ロックを取らずに原子性を得る操作）に限り CommandService を許す。相対更新はロックを取らずに済み、
       集約経由へ寄せると現状無い競合とデッドロック面を持ち込むため。適格基準と導出規則で
-      一般的な逃げ道化を防いでいる。宣言は docs/adr/0030-lightweight-cqrs.md の Alternatives Considered
+      一般的な逃げ道化を防いでいる。宣言は docs/adr/0031-lightweight-cqrs.md の Alternatives Considered
       節「Route every write through the aggregate Repository (abolish CommandService)」、
-      適格基準の背景は ADR-0030 (lightweight-cqrs)。
+      適格基準の背景は ADR-0031 (lightweight-cqrs)。
     enforced_by: []
     last_audited: "2026-08-05"
     last_audited_commit: "8c622f888df8"
@@ -586,7 +586,7 @@ patterns:
       3 用途のうち validation は解釈済みへ変わった。usecase README の Verifying infrastructure against
       the domain 節が双方向の突き合わせを規定し（書き込みは Repository 経由で再読込して集約に再検証させ、
       読み取りは返却エンティティをドメイン述語で検査し、外れた行はドリフトとしてエラーにする。黙って
-      落とすことは禁じる）、ADR-0032 (commandservice-atomicity-criterion) の決定 5 がロック取得後の集約に対してドメイン述語で条件成立を
+      落とすことは禁じる）、ADR-0033 (commandservice-atomicity-criterion) の決定 5 がロック取得後の集約に対してドメイン述語で条件成立を
       判定させる——集約横断ならその述語は Domain Service に置き、ロック用 Repository メソッドは bool でなく
       集約を返す——と定めている。後者は「変更時点でオブジェクトが基準を満たすか判定する」という
       Evans の validation 用途そのもの。集約側の述語も実在し、SQL 側にはそれが実行形である旨の注記が
@@ -618,7 +618,7 @@ patterns:
         path: docs/rules.md
         section: "Domain Layer Constraints"
       - kind: adr
-        id: "0034"
+        id: "0035"
         slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
@@ -630,7 +630,7 @@ patterns:
       Factory か——を前提とするため、具象化なしには到達できない。2 つが揃って欠けているのは根が同じだから。
       理由は 3 つ。基準をその場で評価する限り Go の && と || が結合子として働き、合成が欠けるのは
       基準が移動しなければならなかった場所だけであること。変更を守る述語は bool でなく型付きエラーを返し、
-      その identity から応答ステータスが導かれるため（ADR-0043 (immutable-fail-fast-config)）、合成された isSatisfiedBy はそれを潰すこと。
+      その identity から応答ステータスが導かれるため（ADR-0044 (immutable-fail-fast-config)）、合成された isSatisfiedBy はそれを潰すこと。
       クエリを静的 SQL に保つことで実スキーマに対する型検査が効き続けること。代償として複合的な基準は
       クエリごとに書き直される。
       宣言は internal/domain/README.md の Query and Aggregate 節末尾、Departure from Evans ブロック。
@@ -664,7 +664,7 @@ patterns:
       event_type / payload の語彙の所有も分離済み（名前はドメイン、版と wire 表現は詰め替え層）。
       残る差異は pending events を採らない点で、これは宣言済み。
       前回の監査が立てた「同期ロックと結果整合のどちらを選ぶかの基準が無い」という差異は解消した。
-      ADR-0030 (lightweight-cqrs) の判定手順が 3 分岐（分解＝既定 / 陳腐化してはならないガード / 原子性を要する書き込み）に
+      ADR-0031 (lightweight-cqrs) の判定手順が 3 分岐（分解＝既定 / 陳腐化してはならないガード / 原子性を要する書き込み）に
       拡張され、分岐ごとに名前の付いた占有者が実在する。基準が読み取りの陳腐化と書き込みの原子性という
       2 つの独立した問いに分解され、
       なぜ既存の基準がガードに届かなかったかも同節に書かれている。
@@ -680,13 +680,13 @@ patterns:
         path: internal/usecase/boundary/README.md
         section: "publisher"
       - kind: adr
-        id: "0048"
+        id: "0049"
         slug: broker-agnostic-worker-scaffold
       - kind: adr
-        id: "0032"
+        id: "0033"
         slug: commandservice-atomicity-criterion
       - kind: adr
-        id: "0034"
+        id: "0035"
         slug: ordered-pessimistic-row-locks
     deviation_declared: true
     deviation_note: >-
@@ -705,7 +705,7 @@ patterns:
     status: rejected
     verdict: 逸脱宣言あり(スコープ外)
     gap: >-
-      複数コンテキストへの明示的分割という意味では採用していない。ADR-0037 (domain-lexicon) の Alternatives
+      複数コンテキストへの明示的分割という意味では採用していない。ADR-0038 (domain-lexicon) の Alternatives
       （internal/domain/kernel 節）が Evans の Bounded Context / Context Map を名指しし、
       「Shared Kernel は 2 つの Bounded Context の共同所有物で複数コンテキストの存在を前提とするが、
       本リポジトリは単一モデルである」と明示している。ADR-0004 (modular-monolith)（modular monolith, microservices は
@@ -714,7 +714,7 @@ patterns:
       docs/rules.md の Context nesting 節は bounded context をパッケージ命名規約の語として流用している。
     interpreted_by:
       - kind: adr
-        id: "0037"
+        id: "0038"
         slug: domain-lexicon
       - kind: adr
         id: "0004"
@@ -729,7 +729,7 @@ patterns:
       単一モデル・単一デプロイのモジュラーモノリスであり（ADR-0004 (modular-monolith): マイクロサービスは non-goal）、
       複数の Bounded Context への明示的分割を行っていない。共有が必要な箇所は集約間の共有
       （internal/domain/lexicon）として扱い、Shared Kernel の語は実際に複数コンテキストを導入する者の
-      ために予約している。宣言は ADR-0037 (domain-lexicon) の Alternatives Considered 節、および
+      ために予約している。宣言は ADR-0038 (domain-lexicon) の Alternatives Considered 節、および
       internal/domain/lexicon/README.md 冒頭の注記。
     enforced_by: []
     last_audited: "2026-08-05"
@@ -759,7 +759,7 @@ patterns:
         path: docs/design/context-map.md
         section: "An undecided edge is an entry, not a blank / Edges / The open questions / What this map does not cover"
       - kind: adr
-        id: "0037"
+        id: "0038"
         slug: domain-lexicon
       - kind: adr
         id: "0004"
@@ -791,7 +791,7 @@ patterns:
       共同所有の判断）は語に依存しない形で lexicon 側に保持している。
     interpreted_by:
       - kind: adr
-        id: "0037"
+        id: "0038"
         slug: domain-lexicon
       - kind: doc
         path: docs/rules.md
@@ -803,7 +803,7 @@ patterns:
     deviation_note: >-
       Evans の Shared Kernel は 2 つの Bounded Context が共同所有するモデルの部分集合を指し、
       複数コンテキストの存在を前提とする。本リポジトリは単一モデルで、共有は集約間に起きる。
-      前提が成り立たないため語を採用せず internal/domain/lexicon と呼ぶ。ADR-0037 (domain-lexicon) の
+      前提が成り立たないため語を採用せず internal/domain/lexicon と呼ぶ。ADR-0038 (domain-lexicon) の
       Alternatives に「internal/domain/kernel, naming the DDD Shared Kernel」として却下理由を記載。
     enforced_by:
       - kind: depguard
@@ -842,10 +842,10 @@ patterns:
         id: "0001"
         slug: avoid-lock-in
       - kind: adr
-        id: "0045"
+        id: "0046"
         slug: apperror-protocol-agnostic-errors
       - kind: adr
-        id: "0104"
+        id: "0105"
         slug: no-generic-cache-abstraction
     deviation_declared: true
     deviation_note: >-
@@ -867,7 +867,7 @@ patterns:
     gap: >-
       同期 HTTP 面は OpenAPI が公開言語の役割をほぼ完全に果たしている（別リポジトリの利用者が公開側
       ツールチェーン無しで消費できる解決済み契約を成果物としてコミットし、drift gate で鮮度を保証）。
-      差異は非対称性で、非同期面（outbox → 外部 receiver）には公開言語が無い。ADR-0053 (at-least-once-outbox-poll) が定めるのは
+      差異は非対称性で、非同期面（outbox → 外部 receiver）には公開言語が無い。ADR-0054 (at-least-once-outbox-poll) が定めるのは
       Idempotency-Key という転送規約のみで、公開されるイベント payload のスキーマと事象語彙を定義・
       公開した記述はコーパスに無い。この非対称は docs/design/outbox.md 第 4 節で宣言済み。
     interpreted_by:
@@ -895,7 +895,7 @@ patterns:
     deviation_declared: true
     deviation_note: >-
       同期 HTTP 面は OpenAPI が公開言語として機能する一方、非同期面（outbox → 外部 receiver）には
-      公開言語が無い。ADR-0053 (at-least-once-outbox-poll) が定めるのは Idempotency-Key という転送規約であって言語ではなく、
+      公開言語が無い。ADR-0054 (at-least-once-outbox-poll) が定めるのは Idempotency-Key という転送規約であって言語ではなく、
       イベント payload のスキーマも event_type の語彙も定義・公開されていない。テンプレートは自分が
       所有しないイベントの言語を公開できないため、この非対称は payload と event_type を integrator に
       委ねている限りにおいて意図的である。未提供なのは、integrator が定義した後の公開の型。

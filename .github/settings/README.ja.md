@@ -46,7 +46,7 @@ GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に*
 宣言する required context は `trivy-fs-release`、`osv-release`、`trivy-config`、`sast`、
 `lockfile-lint`、`openapi-security`、`osv-diff` です。それぞれの `*-guard.yaml` が、path または
 branch filter で本体 workflow が skip されたときも同じ context を報告します。これが無いと、開始されない
-check を PR が永久に待つことになります。設計は `docs/adr/0087-multi-layer-security-scanning.md` を参照してください。
+check を PR が永久に待つことになります。設計は `docs/adr/0088-multi-layer-security-scanning.md` を参照してください。
 
 ## labels.json
 

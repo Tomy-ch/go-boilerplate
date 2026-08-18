@@ -14,7 +14,7 @@ name: Capability Diff
 #
 # Go-only by construction: capslock analyses Go call graphs, so the npm side of
 # this repository is not covered. That asymmetry, and why no equivalent tool is
-# adopted for npm, is recorded in ADR-0087 (multi-layer-security-scanning).
+# adopted for npm, is recorded in ADR-0088 (multi-layer-security-scanning).
 
 on:
   pull_request:

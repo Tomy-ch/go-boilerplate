@@ -2,7 +2,7 @@
 
 [Outbox Store README（日本語）](../../internal/usecase/boundary/outbox/README.ja.md) | English: [outbox.md](outbox.md)
 
-本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0052](../adr/0052-transactional-outbox.ja.md) 以降）、バランス型の relay を出荷しハードニングは運用で得た事実に委ねる決定（多層ハードニングの設計図込み）は [ADR-0105](../adr/0105-outbox-relay-hardening-delegated.ja.md) を参照。
+本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0053](../adr/0053-transactional-outbox.ja.md) 以降）、バランス型の relay を出荷しハードニングは運用で得た事実に委ねる決定（多層ハードニングの設計図込み）は [ADR-0106](../adr/0106-outbox-relay-hardening-delegated.ja.md) を参照。
 
 ---
 
@@ -215,7 +215,7 @@ sequenceDiagram
 
 > **Evans からの逸脱 — この面に公開言語が無い。** 同期 HTTP 面には存在する。OpenAPI は、別リポジトリの
 > 利用者がこのリポジトリのツールチェーン無しで読める解決済み契約としてコミットされ、drift gate が
-> 鮮度を保証している。非同期面には無い。[ADR-0055](../adr/0055-message-id-idempotency-propagation.md)
+> 鮮度を保証している。非同期面には無い。[ADR-0056](../adr/0056-message-id-idempotency-propagation.md)
 > が定めているのは*転送*規約（`Idempotency-Key`）であって言語ではない。イベント payload のスキーマも
 > `event_type` の語彙も、ここでは定義も公開もされていないため、受信側は両方をこのリポジトリのソースを
 > 読んで知ることになる。この非対称は、下記②が payload と `event_type` を integrator に委ねている限りに

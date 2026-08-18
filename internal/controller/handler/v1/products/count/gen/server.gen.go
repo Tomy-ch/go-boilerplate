@@ -48,14 +48,14 @@ func (w *ServerInterfaceWrapper) GetProductsCount(ctx *echo.Context) error {
 
 	// ------------- Optional query parameter "categoryCodes" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", false, false, "categoryCodes", ctx.QueryParams(), &params.CategoryCodes, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "categoryCodes", ctx.QueryParams(), &params.CategoryCodes, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter categoryCodes: %s", err))
 	}
 
 	// ------------- Optional query parameter "statusCodes" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", false, false, "statusCodes", ctx.QueryParams(), &params.StatusCodes, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "statusCodes", ctx.QueryParams(), &params.StatusCodes, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter statusCodes: %s", err))
 	}

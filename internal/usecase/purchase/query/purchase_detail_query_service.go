@@ -1,7 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package query は、購入の読み取り専用クエリ（QueryService）のインターフェースと読み取りモデルを提供します。
-// 購入と商品は独立集約であり、明細に商品名を含む集約跨ぎの read 投影のため QueryService として定義します（ADR-0030 (lightweight-cqrs)）。
+// 購入と商品は独立集約であり、明細に商品名を含む集約跨ぎの read 投影のため QueryService として定義します（ADR-0031 (lightweight-cqrs)）。
 package query
 
 import (

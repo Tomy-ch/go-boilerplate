@@ -22,14 +22,15 @@
 
 いま存在するエンドポイントだけでなく、検索系すべてに適用します。
 
-### 1 つの条件に複数の値を渡すときは `explode: false` の配列にする
+### 1 つの条件に複数の値を渡すときはパラメータ名を繰り返す
 
-複数の値を取りうる条件は、同じ名前を繰り返すのではなく**1 つ**のパラメータがカンマ区切りの配列を運びます。
-名前の繰り返しはリクエスト検証が弾くため、配列として宣言しない限りクライアントは「いずれかに一致」を
-表現できません。
+複数の値を取りうる条件は配列として宣言し、`categoryCodes=1&categoryCodes=2` のように同じ名前を
+繰り返して送ります。これは OpenAPI の既定の直列化（`style: form` / `explode: true`）です。
+配列として宣言していないパラメータでは「いずれかに一致」を表現できません。名前の繰り返しは
+リクエスト検証が弾きます。
 
 ```yaml
-explode: false
+explode: true
 schema:
   type: array
   uniqueItems: true
@@ -39,13 +40,27 @@ schema:
 
 `uniqueItems` と `maxItems` はワイヤ側の上限で、URL 長と生成される `IN` リストの大きさを抑えます。
 既存の例は `product/CategoryCodesParam.yaml` / `product/StatusCodesParam.yaml` と、
-文字列 enum 配列の `purchase/PurchaseGroupByParam.yaml`。
+文字列 enum 配列の `purchase/PurchaseGroupByParam.yaml`（指定順に意味があり、繰り返しは順序を保ちます）。
+
+### 自由入力のテキストは配列にしない
+
+利用者が入力したテキストを運ぶパラメータは、配列ではなく `maxLength` を持つ単一の `string` にします。
+`search/KeywordParam.yaml` がその形です。複数値を取ってよいのは、行への参照（`code`）と固定の `enum`
+だけです。
+
+上の規約が安く済むのはこの制限があるからです。percent-encode された UTF-8 は 1 文字あたり最大 9 文字に
+なるため、自由入力パラメータ 1 本が URL 予算に与える影響は、配列の直列化形式の差より一桁大きくなります。
+また区切り文字で連結する配列は、区切りが percent-decode の後に分割されるためエスケープが効かず、区切り
+文字を含む値を運べません。配列を code と enum に限ると、この 2 つが同時に消えます。
+
+これに収まらない検索 —— ファセットが多い、値が URL に載らないほど大きい —— は、クエリ文字列を伸ばすの
+ではなく `POST` のボディへ移します。[ADR-0018 (search-query-parameter-shape)](../../../docs/adr/0018-search-query-parameter-shape.ja.md) を参照してください。
 
 ### マスタでの絞り込みは行の UUID ではなく `code` を受ける
 
 クライアントがマスタ行を指すのに送る識別子は `code`——その行を入れた migration が固定した静的な別名です。
 どの UUID を持つかは migration が決めるので、アプリケーションコードがそれを抱えてはいけません
-（[ADR-0029](../../../docs/adr/0029-master-data-via-migration.md)）。同じ理屈が API 境界にも及びます。
+（[ADR-0030](../../../docs/adr/0030-master-data-via-migration.md)）。同じ理屈が API 境界にも及びます。
 `code` はクライアントが定数として持てますが、UUID は先にマスタのエンドポイントを叩いて解決する必要があり、
 かつ 1 件 36 文字なので複数値の絞り込みを表現するコストが高くなります。
 

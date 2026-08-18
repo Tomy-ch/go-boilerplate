@@ -251,7 +251,7 @@ and live there.
 The read and write sides are asymmetric on purpose, which is why only one of them has an arrow
 into the domain: `QueryService` returns DTOs and never touches a domain type, whereas
 `CommandService` receives the decided aggregate. The discriminator between all three is in
-[ADR-0030 (lightweight-cqrs)](docs/adr/0030-lightweight-cqrs.md).
+[ADR-0031 (lightweight-cqrs)](docs/adr/0031-lightweight-cqrs.md).
 
 Boundaries are enforced in CI (`golangci-lint` depguard), not just documented. Full detail:
 [docs/architecture.md](docs/architecture.md) and [docs/rules.md](docs/rules.md).

@@ -71,7 +71,7 @@ Required:
 **Where a boundary may be cut is not a new question this layer decides.** That the aggregate is the
 design unit is settled by the [domain README](../../internal/domain/README.md), and where an
 operation crossing an aggregate boundary belongs is settled by
-[ADR-0032 (commandservice-atomicity-criterion)](../adr/0032-commandservice-atomicity-criterion.md).
+[ADR-0033 (commandservice-atomicity-criterion)](../adr/0033-commandservice-atomicity-criterion.md).
 What this line adds is only what those criteria mean once they are read as an extraction decision.
 
 - **A consistency requirement is a veto, not a selection criterion.** Invariants that must hold at

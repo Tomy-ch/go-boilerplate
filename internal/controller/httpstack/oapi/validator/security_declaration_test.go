@@ -54,7 +54,7 @@ var publicOperations = map[string]string{
 //
 // ここに載る operation の意図は「資格情報が無ければ匿名として 200、資格情報が提示されて
 // それが無効なら 401」であり、完全公開とは失敗時の意味論が異なる
-// （ADR-0019 (optional-authentication-fail-closed)）。
+// （ADR-0020 (optional-authentication-fail-closed)）。
 // 同じ一覧に並べると security の宣言を読んでも姿勢が読み取れなくなるため、リストを分けている。
 var optionalAuthOperations = map[string]string{
 	"GET /v1/carts/me": "カートはゲストと認証済みユーザーの双方が主体になれる（未認証でも 200、無効な資格情報は 401）",
@@ -146,7 +146,7 @@ func assertAllowListMembership(t *testing.T, key string, kind securityKind) {
 	case optionalAuth:
 		assert.Contains(t, optionalAuthOperations, key,
 			"%s は任意認証（BearerAuth と空要件の両方を宣言）です。意図どおりなら optionalAuthOperations へ "+
-				"理由コメント付きで追加してください（ADR-0019 (optional-authentication-fail-closed)）", key)
+				"理由コメント付きで追加してください（ADR-0020 (optional-authentication-fail-closed)）", key)
 		assert.NotContains(t, publicOperations, key,
 			"%s は無効な資格情報を 401 で拒否するため完全公開ではありません。optionalAuthOperations へ移してください", key)
 	}
@@ -180,7 +180,7 @@ func assertAllowListsCoverSpec(t *testing.T) {
 //
 // 空の要件だけでは資格情報を受け取る経路が無く、無効な資格情報を拒否しようがない。拒否は提示された
 // 資格情報の検証失敗として起きるため、BearerAuth の宣言が前提になる
-// （ADR-0019 (optional-authentication-fail-closed)）。
+// （ADR-0020 (optional-authentication-fail-closed)）。
 func assertOptionalAuthDeclaresBearer(t *testing.T) {
 	t.Helper()
 
@@ -240,7 +240,7 @@ func TestSecurityRequirementOrder(t *testing.T) {
 
 			// 要件は先頭から順に試され、空の要件は必ず満たされてそこで評価が止まる。空を先に置くと
 			// 認証関数が一度も呼ばれず、提示された資格情報の検証失敗が拒否へ結びつかない
-			// （ADR-0019 (optional-authentication-fail-closed)）。
+			// （ADR-0020 (optional-authentication-fail-closed)）。
 			spec, err := gen.GetSpec()
 			require.NoError(t, err)
 			require.NotNil(t, spec.Paths)

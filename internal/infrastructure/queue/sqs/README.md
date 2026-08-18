@@ -16,7 +16,7 @@ Wiring this package links `aws-sdk-go-v2/service/sqs` into the binary. Because `
 the role that consumes a queue — so isolation is defined over **coupling** instead: SQS is named
 only here and in the wiring that selects this package. Any wiring from the sample set therefore
 carries a `sample-api` marker.
-See [ADR-0051 (broker-sdk-isolation-measured-as-coupling)](../../../../docs/adr/0051-broker-sdk-isolation-measured-as-coupling.md).
+See [ADR-0052 (broker-sdk-isolation-measured-as-coupling)](../../../../docs/adr/0052-broker-sdk-isolation-measured-as-coupling.md).
 
 To use it in production, an integrator wires `NewConsumer` / `NewDeadLetter` into a
 `worker.Worker` registered in `WorkerModule`, and selects `NewPublisher` as the outbox

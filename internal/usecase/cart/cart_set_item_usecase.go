@@ -22,7 +22,7 @@ var errCartCreationRace = xerrors.New("cart creation lost a race")
 // SetItem は、作成の衝突をトランザクションごとやり直します（docs/spec/cart/usecase.md の SetItem）。
 //
 // この本体に外部副作用を足してはなりません。やり直しで二重に実行されます
-// （ADR-0033 (transaction-retry-idempotent-callers)）。
+// （ADR-0034 (transaction-retry-idempotent-callers)）。
 func (u *usecase) SetItem(ctx context.Context, params SetItemParams) (CartView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
