@@ -1160,6 +1160,45 @@ func TestIsPublished(t *testing.T) {
 	})
 }
 
+func TestProduct_PrimaryImage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("画像を持つ場合、表示順が最小の画像を代表画像として返す", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.Images = []Image{
+				mustImage(t, "primary_image_second", "products/second.png", 2),
+				mustImage(t, "primary_image_first", "products/first.png", 1),
+			}
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			actual, ok := p.PrimaryImage()
+
+			require.True(t, ok)
+			assert.Equal(t, "products/first.png", actual.ImagePath())
+		})
+
+		t.Run("画像を持たない場合、代表画像を持たない", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.Images = nil
+			p, err := New(id, attrs)
+			require.NoError(t, err)
+
+			actual, ok := p.PrimaryImage()
+
+			assert.False(t, ok)
+			assert.Empty(t, actual.ImagePath())
+		})
+	})
+}
+
 func TestProduct_IsLowStock(t *testing.T) {
 	t.Parallel()
 

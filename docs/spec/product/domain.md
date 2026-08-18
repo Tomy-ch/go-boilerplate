@@ -116,6 +116,14 @@ fields:
     version はここでは進めない（採番は Repository.UpdateStock の条件付き UPDATE が行う）。
     在庫の増減は取得から更新までを直列化したうえで行う前提であり、直列化は Repository.LockByID が担う。
 
+- name: PrimaryImage
+  signature: PrimaryImage() (Image, bool)
+  behavior: |
+    商品を 1 枚で表すときに使う代表画像と、それを持つかどうかを返す。
+    表示順の先頭を代表とする（出品者が並べた順の先頭がその商品を最もよく表す、という業務上の取り決め）。
+    画像を持たない商品は代表画像を持たないため false を返す。
+    表示順の昇順は生成・再構築の時点で確定しているため、ここでは並べ替えを行わない。
+
 - name: EnsureVersion
   signature: EnsureVersion(expected int) error
   behavior: |
