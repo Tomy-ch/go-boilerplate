@@ -96,7 +96,7 @@ describe("placeholderToRegExp", () => {
     it("区切りを持たない文脈では * を任意文字列にする", () => {
       const pattern = placeholderToRegExp("gen-*-oapi", { segmentSeparator: false });
 
-      expect(pattern.test("gen-mock-auth-oapi")).toBe(true);
+      expect(pattern.test("gen-bundle-oapi")).toBe(true);
     });
     it("正規表現の特殊文字を字面として扱う", () => {
       const pattern = placeholderToRegExp("docs/adr/0001.md", { segmentSeparator: true });
@@ -402,7 +402,7 @@ describe("makeTargetExists", () => {
       expect(makeTargetExists("db-migrate-up-local", index)).toBe(true);
     });
     it("参照側のプレースホルダに当てはまる実ターゲットがあれば実在と見なす", () => {
-      const index = collectMakeTargets([".PHONY: gen-mock-auth-oapi"]);
+      const index = collectMakeTargets([".PHONY: gen-bundle-oapi"]);
 
       expect(makeTargetExists("gen-*-oapi", index)).toBe(true);
     });
