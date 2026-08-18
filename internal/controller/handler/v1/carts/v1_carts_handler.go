@@ -77,7 +77,7 @@ func (s *server) DeleteCartsMe(
 
 // toSubject は、認証結果とヘッダのセッショントークンからカートの主体を組み立てます。
 // 認証はこのパッケージの operation では任意で、認証済みの呼び出し元はゲストセッションより優先されます。
-// どちらも無い呼び出し元は主体を持ちません（表示するカートが無いことの表現は usecase が持ちます）。
+// どちらも無い呼び出し元は主体を持ちません。
 //
 // 生成される params は operation ごとに別の型になるため、双方で意味の変わらないセッショントークンだけを受けます。
 func toSubject(ctx context.Context, sessionToken *string) (cartuc.Subject, error) {
@@ -123,6 +123,7 @@ func toCartItemResponses(views []cartuc.CartItemView) ([]gen.CartItemResponse, e
 		items[i] = gen.CartItemResponse{
 			ProductId:         v.ProductID.ToPrimitive(),
 			ProductName:       v.ProductName,
+			ImagePath:         v.ImagePath,
 			Quantity:          quantity,
 			UnitPrice:         toUnitPrice(v.UnitPrice),
 			Issues:            toCartItemIssues(v.Issues),

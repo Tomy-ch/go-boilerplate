@@ -50,12 +50,17 @@ func (e CartItemIssue) Valid() bool {
 type CartItemIssue string
 
 // CartItemResponse カート明細 1 件。商品の現在値との突き合わせ結果を issues に添える。
-// カートは商品の名前も価格も保持しないため、productName / unitPrice は取得時点の商品の値であり、
-// 購入時の金額を拘束しない（請求額を確定するのは購入明細のスナップショット）。
+// カートは商品の名前も価格も画像も保持しないため、productName / unitPrice / imagePath は
+// 取得時点の商品の値であり、購入時の金額を拘束しない（請求額を確定するのは購入明細のスナップショット）。
 type CartItemResponse struct {
 	// AvailableQuantity issues に insufficientStock がある場合の、今買える上限（商品の在庫数）。
 	// それ以外の場合は null です。
 	AvailableQuantity *int32 `json:"availableQuantity,omitempty"`
+
+	// ImagePath 取得時点の商品の代表画像のオブジェクトキー。代表画像とは、出品者が並べた表示順の先頭にある
+	// 画像を指します。表示 URL は呼び出し側が配信ベース URL と組み立てます。
+	// 代表画像を持たない商品と、商品を引けなかった明細（issues に notFound）では null です。
+	ImagePath *string `json:"imagePath,omitempty"`
 
 	// Issues この明細の再評価結果。空配列なら現時点で購入可能です。
 	// subtotalAmount の合算対象になるのは、この配列が空の明細だけです。
