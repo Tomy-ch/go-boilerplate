@@ -9,5 +9,8 @@ internal/integration/testdata/keys/mock-key-1.pem:private-key:1
 internal/integration/testdata/keys/mock-key-2.pem:private-key:1
 docker/garage/garage.toml:generic-api-key:12
 docker-compose.yaml:generic-api-key:136
-env/.env:generic-api-key:64
+# AUTH_JWKS_URL はコンテナ内部の URL で資格情報ではない。ホスト名の auth と
+# ポート以降の文字列が generic-api-key の keyword+entropy 条件に当たる誤検知。
+env/.env:generic-api-key:42
+env/.env:generic-api-key:65
 # boilerplate-only:end
