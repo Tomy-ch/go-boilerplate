@@ -68,7 +68,7 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 			FirstName:    "Race",
 			LastName:     "Target",
 			Email:        "race.target@example.com",
-			Phone:        "777-777-7777",
+			Phone:        "7777777777",
 			PrefectureID: prefectureID,
 			City:         "新宿区",
 			Street:       "9-9-9",

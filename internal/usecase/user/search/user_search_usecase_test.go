@@ -54,7 +54,7 @@ func newSearchTestUser(t *testing.T, prefectureID uuid.UUID, createdAt time.Time
 			FirstName:    "Grace",
 			LastName:     "Lee",
 			Email:        "grace.lee@example.com",
-			Phone:        "090-1234-5678",
+			Phone:        "09012345678",
 			PrefectureID: prefectureID,
 			City:         "city_name",
 			Street:       "town_address",
@@ -613,7 +613,7 @@ func Test_toSearchResult(t *testing.T) {
 					FirstName:    "Grace",
 					LastName:     "Lee",
 					Email:        "grace.lee@example.com",
-					Phone:        "090-1234-5678",
+					Phone:        "09012345678",
 					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
 					City:         "city_name",
 					Street:       "town_address",
@@ -632,7 +632,7 @@ func Test_toSearchResult(t *testing.T) {
 			assert.Equal(t, "Grace", actual.FirstName)
 			assert.Equal(t, "Lee", actual.LastName)
 			assert.Equal(t, "grace.lee@example.com", actual.Email)
-			assert.Equal(t, "090-1234-5678", actual.Phone)
+			assert.Equal(t, "09012345678", actual.Phone)
 			assert.Equal(t, "150-0001", actual.PostalCode)
 			assert.Equal(t, "prefecture_name", actual.PrefectureName)
 			assert.Equal(t, "city_name", actual.City)
@@ -652,7 +652,7 @@ func Test_toSearchResult(t *testing.T) {
 					FirstName:    "Grace",
 					LastName:     "Lee",
 					Email:        "deleted@example.com",
-					Phone:        "090-1234-5678",
+					Phone:        "09012345678",
 					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
 					City:         "city_name",
 					Street:       "town_address",

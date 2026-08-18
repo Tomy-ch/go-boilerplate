@@ -130,13 +130,13 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			dtos := usecase_search.UserSearchResults{
 				&usecase_search.UserSearchResult{
 					ID:        uuidtestkit.NewTestFromSalt(t, "user_search_result_1"),
-					FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "090-0000-0001",
+					FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "09000000001",
 					PostalCode: "123-0001", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1",
 					Building: new("B1"), RegisteredAt: t1,
 				},
 				&usecase_search.UserSearchResult{
 					ID:        uuidtestkit.NewTestFromSalt(t, "user_search_result_2"),
-					FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "090-0000-0002",
+					FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "09000000002",
 					PostalCode: "123-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2-2",
 					RegisteredAt: t2,
 				},
