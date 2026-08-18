@@ -185,7 +185,7 @@ func New(
 
 // resolveCart は、主体から表示すべきカートを解決します。
 // 主体を持たない・カートが無い・有効期限を過ぎているのいずれも「表示するカートが無い」であり、
-// found=false を返します。いずれも失敗ではないため、呼び出し側は空のカートを返して行を作りません。
+// found=false を返します。いずれも呼び出し側の失敗ではありません。
 func (u *usecase) resolveCart(ctx context.Context, subject Subject, now time.Time) (*cart.Cart, bool, error) {
 	c, found, err := u.findCart(ctx, subject)
 	if err != nil {
