@@ -10,8 +10,9 @@
           "match": "*",
           "typeHeader": "at+jwt",
           "claims": {
-            "sub": "${username}",
-            "aud": ["go-boilerplate-api"]
+            "sub": "${subject}",
+            "aud": ["go-boilerplate-api", "go-boilerplate-client"],
+            "azp": "go-boilerplate-client"
           }
         }
       ]

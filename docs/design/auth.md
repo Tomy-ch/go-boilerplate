@@ -129,29 +129,56 @@ sequenceDiagram
     M-->>C: 302 redirect_uri?code&state
     C->>M: POST /default/token (code, code_verifier, redirect_uri, client_id)
     Note over M: consume code once + verify PKCE S256
-    M-->>C: 200 access_token (typ=at+jwt, aud=AUTH_AUDIENCE) + id_token (nonce)
+    M-->>C: 200 access_token (typ=at+jwt) + id_token (nonce)
     C->>M: GET /default/endsession (id_token_hint, post_logout_redirect_uri, state)
     M-->>C: 302 post_logout_redirect_uri?state
 ```
 
 A token can also be minted without a browser, which is what scripted checks and the DAST scan use —
-`POST /default/token` with `grant_type=password` and a `username`, which the provider copies onto `sub`.
-Nothing about that path is privileged: it is the standard token endpoint, and the token it returns is
-byte-identical in shape to the one the login flow produces.
+`POST /default/token` with `grant_type=password` and a `username`, which the provider copies onto `sub`
+just as the login form does. Nothing about that path is privileged: it is the standard token endpoint,
+and the token it returns has the same shape as the one the login flow produces. It is the replacement
+for the bespoke test hatch the previous provider carried.
 
-> **Two consequences of the provider being an upstream image, both accepted deliberately.**
+The `sub` is whatever `username` the login form (or the password grant) was given, so it has to be one
+the seed registered in `user_identities` — otherwise verification succeeds and identity resolution then
+refuses it. **Roles are not carried in the token.** They live in this service's database (`user_roles`)
+and are served by `GET /v1/users/me/roles`; an IdP that happens to know them is a property of one
+deployment, not of the contract, so a client deciding what to show an administrator reads the API.
+
+### 3.3.1 Why `aud` is multi-valued
+
+The provider applies one claim set to *both* tokens it issues, so `aud` cannot be set per token type.
+That forces a choice, because the two tokens want different audiences: an access token's `aud` names the
+resource server, an ID Token's names the client (OIDC Core 3.1.3.7). Leaving `aud` unset gives the ID
+Token the right value and strips the access token of one entirely, which the RS then refuses.
+
+So `docker/mock-auth-server/config.json` sets **both** — `aud: ["go-boilerplate-api",
+"go-boilerplate-client"]` plus `azp: "go-boilerplate-client"`. Each side validates successfully against
+the half it cares about: the RS requires its own audience to be *present* in `aud`, and a client
+requires `aud` to *contain* its `client_id` (§3) and, when `aud` is multi-valued, checks `azp` (§4).
+`AUTH_AUDIENCE` therefore stays the resource-server audience, which is the value a real IdP will be
+configured with.
+
+> **Three consequences of the provider being an upstream image, all accepted deliberately.**
 >
-> 1. **The ID Token is not distinguishable from the access token here.** The provider applies one claim
->    set and one `typ` header to both, so forcing `typ=at+jwt` (which the RS requires, RFC 9068) also
->    stamps it on the ID Token, and `aud` likewise. Locally, presenting the ID Token to the API therefore
->    succeeds where a real IdP's ID Token — carrying `aud=<client_id>` — would be refused. The RS's
->    rejection of that misuse is real and is pinned by `internal/integration/jwt_auth_test.go`; what is
->    lost is only the ability to *demonstrate* it against this provider.
+> 1. **The ID Token is not distinguishable from the access token here.** One claim set and one `typ`
+>    header cover both, so the `typ=at+jwt` the RS requires (RFC 9068) is stamped on the ID Token too,
+>    and the `aud` above is shared. Locally, presenting the ID Token to the API therefore succeeds where
+>    a real IdP's ID Token — carrying only `aud=<client_id>` — would be refused. The RS's rejection of
+>    that misuse is real and is pinned by `internal/integration/jwt_auth_test.go`; what is lost is only
+>    the ability to *demonstrate* it against this provider.
 > 2. **The provider's own `/userinfo` is unusable.** It refuses `at+jwt` as a JOSE type. A client that
 >    needs profile claims locally should read the ID Token rather than call UserInfo — which is what
 >    OIDC client libraries do by default anyway.
 >
-> Neither is worth surrendering the RS's `at+jwt` requirement for: that requirement is production
+> 3. **`redirect_uri` is not registered.** The provider accepts any value, where a real IdP matches it
+>    against a registered list and is the main defence against an open redirect in the code flow. The
+>    permissiveness is what lets several worktrees — each on its own port — drive the flow without
+>    re-registering a client per slot. Treat client registration as something the integrator configures
+>    at the real IdP; nothing in the RS depends on it, since the RS never sees `redirect_uri`.
+>
+> None of these is worth surrendering the RS's `at+jwt` requirement for: that requirement is production
 > behavior, and weakening it locally would mean the environment closest to a developer is the one
 > exercising the least of the verification path.
 

@@ -129,29 +129,55 @@ sequenceDiagram
     M-->>C: 302 redirect_uri?code&state
     C->>M: POST /default/token (code, code_verifier, redirect_uri, client_id)
     Note over M: code 単回 consume + PKCE S256 検証
-    M-->>C: 200 access_token (typ=at+jwt, aud=AUTH_AUDIENCE) + id_token (nonce)
+    M-->>C: 200 access_token (typ=at+jwt) + id_token (nonce)
     C->>M: GET /default/endsession (id_token_hint, post_logout_redirect_uri, state)
     M-->>C: 302 post_logout_redirect_uri?state
 ```
 
 ブラウザを介さずトークンを鋳造することもでき、スクリプトからの確認や DAST スキャンはこちらを使います
-——`POST /default/token` に `grant_type=password` と `username` を渡すと、プロバイダはそれをそのまま
-`sub` へ写します。この経路に特権はありません。標準のトークンエンドポイントそのものであり、返るトークンの
-形はログインフローが出すものとバイト単位で同型です。
+——`POST /default/token` に `grant_type=password` と `username` を渡すと、ログインフォームと同じく
+プロバイダがそれを `sub` へ写します。この経路に特権はありません。標準のトークンエンドポイントそのもの
+であり、返るトークンの形はログインフローが出すものと同じです。旧プロバイダが持っていた専用の試験口は
+これで置き換わります。
 
-> **プロバイダを上流イメージにしたことの帰結が 2 つあり、いずれも意図して受け入れています。**
+`sub` はログインフォーム（または password grant）に渡した `username` そのものなので、seed が
+`user_identities` に登録した値でなければなりません。そうでないと検証は成功し、その先の identity
+解決で拒まれます。**ロールはトークンに載りません。** ロールはこのサービスの DB（`user_roles`）に
+あり `GET /v1/users/me/roles` が返します。IdP がたまたまロールを知っているのは特定デプロイの性質で
+あって契約ではないため、管理者に何を見せるかを決めるクライアントは API を読みます。
+
+### 3.3.1 なぜ `aud` を多値にするか
+
+プロバイダは発行する 2 つのトークンに同じ claim 集合を適用するため、`aud` をトークン種別ごとに
+変えられません。ところが 2 つは異なる audience を求めます——access token の `aud` はリソース
+サーバーを指し、ID Token の `aud` はクライアントを指します（OIDC Core 3.1.3.7）。`aud` を設定
+しなければ ID Token は正しくなりますが、access token からは `aud` が丸ごと消え、RS が拒否します。
+
+そこで `docker/mock-auth-server/config.json` は**両方**を入れます——`aud: ["go-boilerplate-api",
+"go-boilerplate-client"]` と `azp: "go-boilerplate-client"`。双方が自分の関心のある側で検証を
+通せます。RS は自分の audience が `aud` に*含まれる*ことを要求し、クライアントは `aud` が自分の
+`client_id` を*含む*こと（§3）と、`aud` が多値なら `azp`（§4）を検証します。`AUTH_AUDIENCE` は
+リソースサーバーの audience のままで、これは実 IdP に設定することになる値そのものです。
+
+> **プロバイダを上流イメージにしたことの帰結が 3 つあり、いずれも意図して受け入れています。**
 >
-> 1. **ここでは ID Token と access token を区別できません。** プロバイダは両者に同じ claim 集合と同じ
->    `typ` ヘッダを適用するため、RS が要求する `typ=at+jwt`（RFC 9068）を強制すると ID Token にも同じ
->    ものが刻まれ、`aud` も同様になります。したがってローカルでは ID Token を API に提示しても通って
->    しまいます——実 IdP の ID Token は `aud=<client_id>` を持つので拒まれるところです。RS がその誤用を
->    拒む挙動自体は本物で、`internal/integration/jwt_auth_test.go` が固定しています。失われるのは
->    このプロバイダ相手にそれを*実演*できることだけです。
+> 1. **ここでは ID Token と access token を区別できません。** claim 集合も `typ` ヘッダも両者で 1 つ
+>    なので、RS が要求する `typ=at+jwt`（RFC 9068）は ID Token にも刻まれ、上の `aud` も共有されます。
+>    したがってローカルでは ID Token を API に提示しても通ってしまいます——実 IdP の ID Token は
+>    `aud=<client_id>` だけを持つので拒まれるところです。RS がその誤用を拒む挙動自体は本物で、
+>    `internal/integration/jwt_auth_test.go` が固定しています。失われるのはこのプロバイダ相手に
+>    それを*実演*できることだけです。
 > 2. **プロバイダ自身の `/userinfo` は使えません。** JOSE の型として `at+jwt` を拒否するためです。
 >    ローカルでプロフィール claim が要るクライアントは UserInfo を呼ばず ID Token を読むべきで、
 >    OIDC クライアントライブラリの既定の振る舞いもそれです。
 >
-> どちらも RS の `at+jwt` 要求を明け渡すには値しません。あの要求は本番の挙動であり、ローカルだけ緩めると
+> 3. **`redirect_uri` は登録制ではありません。** プロバイダは任意の値を受け付けます。実 IdP は登録済み
+>    リストと照合し、それが code flow におけるオープンリダイレクトの主たる防御になります。この緩さは、
+>    各々別ポートに載る複数の worktree が、スロットごとにクライアントを登録し直さずフローを回せるように
+>    するためのものです。クライアント登録は実 IdP 側でインテグレーターが設定するものと捉えてください。
+>    RS は `redirect_uri` を見ないため、RS 側は何も依存していません。
+>
+> いずれも RS の `at+jwt` 要求を明け渡すには値しません。あの要求は本番の挙動であり、ローカルだけ緩めると
 > 開発者に最も近い環境が検証経路を最も通らない環境になってしまいます。
 
 ### 3.4 鍵ローテーション（JWKS のフェーズ）

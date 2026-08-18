@@ -109,7 +109,7 @@ Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクト�
 
 開発用の OIDC プロバイダです。ここでは何もビルドしません——上流の `ghcr.io/navikt/mock-oauth2-server` イメージを [`images-pin.toml`](images-pin.toml) で digest 固定して起動するため、このディレクトリが持つのは渡す設定だけです。
 
-- `config.json` は `/etc/mock-oauth2-server/config.json` へ read-only でマウントし、`JSON_CONFIG_PATH` で渡します。トークンの契約はすべてここが宣言します——`issuerId`（issuer のパス要素と JWKS の `kid` を兼ねる）、リソースサーバーが要求する `at+jwt` 型ヘッダ（RFC 9068）、期待する `aud`、リクエストの `username` を `sub` へ写す対応
+- `config.json` は `/etc/mock-oauth2-server/config.json` へ read-only でマウントし、`JSON_CONFIG_PATH` で渡します。トークンの契約はすべてここが宣言します——`issuerId`（issuer のパス要素と JWKS の `kid` を兼ねる）、リソースサーバーが要求する `at+jwt` 型ヘッダ（RFC 9068）、1 つの claim 集合でリソースサーバーと OIDC クライアントの双方を満たすための `aud` / `azp`（[`docs/design/auth.ja.md`](../docs/design/auth.ja.md) の 3.3.1 節）、そしてログインフォーム（または password grant）の `username` に解決され `sub` になる `${subject}`
 - コンテナ内部のポートは常に `4000`（`SERVER_PORT`）。プロセスは上流イメージの非 root UID で動く
 - issuer はトークンを取得したリクエストの `Host` から導出されるため、ここで宣言する必要はありません——ホスト公開ポート経由で取ったトークンは `AUTH_ISSUER` と一致する `iss` を持ちます。`docker-compose.attach.yaml` は API 側の `AUTH_ISSUER` をスロットのポートに追従させるだけで済みます
 - 署名鍵は起動時に生成され、コミットしません。したがってトークンは再起動をまたいで再現しません。再現性に依存しているものはありません——リソースサーバーは実行時に JWKS から鍵を解決し、JWKS ローテーションテストが必要とする固定鍵はそのテスト自身が持ちます（`internal/integration/testdata/`）
