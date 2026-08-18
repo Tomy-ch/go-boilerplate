@@ -25,7 +25,6 @@ include .makefiles/database/pool.mk
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk
 include .makefiles/app/worker.mk
-include .makefiles/app/mock-auth.mk
 include .makefiles/app/env.mk
 # GitHub関連
 include .makefiles/github/operation/release-branch.mk
@@ -51,7 +50,6 @@ include .makefiles/go/sqlc.mk
 include .makefiles/docs/gen.mk
 # OpenAPI関連
 include .makefiles/openapi/gen.mk
-include .makefiles/openapi/mock-auth.mk
 # SQL関連
 include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk

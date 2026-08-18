@@ -13,8 +13,7 @@
 #
 # node_modules を外すのは、npm が展開する依存ツリーに Go 実装を同梱するパッケージがあり
 # （`flatted` の golang/）、`go list ./...` がそれを本体のパッケージとして数えてしまうため。
-# 第三者のコードなので母数に入れるとカバレッジが理由なく動く。pnpm 側は `.pnpm` 配下に
-# 置かれ go が自ら飛ばすので、実際に効くのは npm で解決する mock-auth-server だけになる。
+# 第三者のコードなので母数に入れるとカバレッジが理由なく動く。
 GO_TEST_EXCLUDE := /(gen|cmd|mock|apperror|scripts|node_modules)(/|$$)
 
 # カバレッジゲートの下限（docs/rules.md の 90% フロア）。対象は boilerplate 本体
