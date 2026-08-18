@@ -2,6 +2,7 @@
 # make pin-images-resolve で解決・make pin-images-apply で Dockerfile / docker-compose へ反映する。
 "alpine:3.24" = "sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b"
 "dxflrs/garage:v2.3.0" = "sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690"
+"ghcr.io/navikt/mock-oauth2-server:6.0.0" = "sha256:b9fa251aefee22a97c32534d23a1c400f01dbd483ab263b013d89f6d60d96691"
 "golang:1.26.5-alpine" = "sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2"
 "grafana/otel-lgtm:0.28.0" = "sha256:10f48eb2f8670134df542177bb19536c55421b089e43f9dfc2a27d4c078204d8"
 "nginx:1.31-alpine" = "sha256:54f2a904c251d5a34adf545a72d32515a15e08418dae0266e23be2e18c66fefa"

@@ -1,5 +1,5 @@
--- 追加した一般ユーザー分の mock 認証。JWT 用の subject は mock-auth-server の fixtures に
--- 存在しないため、mock 系だけを登録する。
+-- 追加した一般ユーザー分の mock 認証。JWT 用の subject は 000005 が登録する範囲に無いため、
+-- mock 系だけを登録する。
 INSERT INTO user_identities (id, user_id, issuer, subject) VALUES
 ('d1b2c3d4-0000-4000-8000-000000000011', 'c23845a3-1bd6-5cc9-9aec-c6e824c65a17', 'mock', 'c23845a3-1bd6-5cc9-9aec-c6e824c65a17') ON CONFLICT (id) DO NOTHING;
 INSERT INTO user_identities (id, user_id, issuer, subject) VALUES

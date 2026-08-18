@@ -82,26 +82,23 @@ services:
     profiles:
       - development
 
-  mock_auth_server: # 疑似 OIDC 認証サーバー（JWT Test Provider）
-    build:
-      context: .
-      dockerfile: docker/mock-auth-server/Dockerfile
-      secrets:
-        - github_token
+  mock_auth_server: # 疑似 OIDC 認証サーバー（開発用。実 IdP の差し替え先）
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.0@sha256:b9fa251aefee22a97c32534d23a1c400f01dbd483ab263b013d89f6d60d96691
     ports:
       # 独自サービスの帯（2000 番台）。ホスト公開ポートはスロット毎に割り当てる（既定 2010、内部は常に 4000）。
       - "${MOCK_AUTH_HOST_PORT:-2010}:4000"
     environment:
-      # issuer はホスト OS / ブラウザから参照する URL。JWKS 取得はコンテナ名で内部解決する
-      # （Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/.well-known/jwks.json）。
-      OIDC_PORT: "4000"
-      OIDC_ISSUER: "http://localhost:2010"
-      OIDC_AUDIENCE: "go-boilerplate-api"
-      OIDC_CLIENT_ID: "go-boilerplate-client"
-      # /bypass/* ・ /admin/* を有効化（opt-out。無効化は "disabled"）。本番モードでは server が起動を拒否する。
-      MOCK_AUTH_DEV_ENDPOINTS: "enabled"
+      # iss はトークンを取得したリクエストの Host から導出されるため、ホスト公開 URL でトークンを取れば
+      # AUTH_ISSUER と一致する（issuer を env で固定する必要が無い）。JWKS 取得だけはコンテナ名で
+      # 内部解決する（Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/default/jwks）。
+      SERVER_PORT: "4000"
+      JSON_CONFIG_PATH: /etc/mock-oauth2-server/config.json
+      LOG_LEVEL: INFO
+    volumes:
+      # 発行するトークンの契約（issuerId / typ=at+jwt / aud / sub）は config.json が持つ。
+      - ./docker/mock-auth-server/config.json:/etc/mock-oauth2-server/config.json:ro
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/isalive"]
       interval: 2s
       timeout: 2s
       retries: 30
@@ -251,7 +248,6 @@ services:
       - .:/app
       # node_modules を匿名ボリュームで保持（バインドマウントの shadow 回避）
       - /app/scripts/node_modules
-      - /app/mock-auth-server/node_modules
       # docs-viewer も同様。host（darwin）が解決した vite / rolldown のバイナリは
       # コンテナ（linux）では実行できないため、バインドマウント越しに見せない
       - /app/docs-viewer/node_modules

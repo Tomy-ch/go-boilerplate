@@ -1,0 +1,20 @@
+{
+  "interactiveLogin": true,
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "grant_type",
+          "match": "*",
+          "typeHeader": "at+jwt",
+          "claims": {
+            "sub": "${username}",
+            "aud": ["go-boilerplate-api"]
+          }
+        }
+      ]
+    }
+  ]
+}
