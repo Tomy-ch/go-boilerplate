@@ -58,7 +58,7 @@ English canonical: [security.md](security.md)
 
 ### なぜ報告とゲートを分けるのか
 
-通常の PR は報告し、昇格 PR がゲートします。論拠は [ADR-0087](../adr/0087-multi-layer-security-scanning.ja.md) にありますが、要点はこうです。既存の依存ツリーから受け継いだ脆弱性は、その PR が持ち込んだものではなく、その PR の作者に直せるものでもありません。そこでブロックすれば、上流の修正が別のどこかで入るまで無関係な変更がすべて赤くなります。予想される帰結は、チェックの無効化か、赤いまま merge する習慣の定着です。どちらもゲートの価値を上回るコストです。
+通常の PR は報告し、昇格 PR がゲートします。論拠は [ADR-0088](../adr/0088-multi-layer-security-scanning.ja.md) にありますが、要点はこうです。既存の依存ツリーから受け継いだ脆弱性は、その PR が持ち込んだものではなく、その PR の作者に直せるものでもありません。そこでブロックすれば、上流の修正が別のどこかで入るまで無関係な変更がすべて赤くなります。予想される帰結は、チェックの無効化か、赤いまま merge する習慣の定着です。どちらもゲートの価値を上回るコストです。
 
 代わりに検出を抑止する（`ignore-unfixed`、ID の allowlist）のは、別の失敗との交換にすぎません。本当に問題になる昇格の瞬間にも黙らせてしまうためです。分離は両方の場所でシグナルを保ち、**判定**を対処できる人のいる場所へ置きます。
 
@@ -66,7 +66,7 @@ English canonical: [security.md](security.md)
 
 CI が**実行するもの**と、アプリケーションが**リンクするもの**はリスクが異なります。Actions と base image は我々のコードより先に、ジョブの資格情報を持って動くため、より強く固定します。
 
-**バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0088](../adr/0088-sha-pinned-actions.ja.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
+**バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0089](../adr/0089-sha-pinned-actions.ja.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
 
 **検疫は時間を稼ぐ仕組みであり、日付を検証する仕組みではない。** アクションの経過日数は、リリースの公開日時と解決先 commit の日時のうち**新しい方**を採ります。どちらも単独では信用できません——リリースオブジェクトはタグの*名前*に紐づくため、タグが付け替えられても公開日時は据え置かれます（検疫が想定する脅威そのものです）。一方 commit の日時は committer が任意の過去時点へ設定できます。新しい方を採ることで、どちらか一方でも「新しい」と言う限り検疫が掛かりますが、これは自動化された乗っ取りに対する遅延であって、偽装された日付への防御ではありません。付け替えそのものの検知は lockfile の役割です——解決先の digest が変わり、差分は小さく、人間がそれを読みます。
 
@@ -140,7 +140,7 @@ Node のパッケージはすべて pnpm で解決します——`scripts/`・`d
 
 ### PyPI
 
-Python のツールは、`mise.toml` が全ツールのバージョンを持つという原則に対する唯一の例外で、その理由は供給網側にあります。PyPI ツールはバージョンを固定してもほとんど何も固定できません——依存ツリーが install 時に解決されるため、同じ pin でも日によって別のツリーが入ります。そこで各ツールは、バージョンを `python/<tool>.in` で宣言し、解決結果——推移依存すべてと sha256 ハッシュ——を `python/<tool>.txt` が持ちます（[ADR-0078](../adr/0078-mise-ssot-drift-gate.ja.md)。仕組みは `python/README.md`）。install は常に `uv pip install --require-hashes -r <tool>.txt` で、バージョンかハッシュを欠く要求は拒否されるため、完全性の検証は install の一部であり、飛ばせる別工程ではありません。
+Python のツールは、`mise.toml` が全ツールのバージョンを持つという原則に対する唯一の例外で、その理由は供給網側にあります。PyPI ツールはバージョンを固定してもほとんど何も固定できません——依存ツリーが install 時に解決されるため、同じ pin でも日によって別のツリーが入ります。そこで各ツールは、バージョンを `python/<tool>.in` で宣言し、解決結果——推移依存すべてと sha256 ハッシュ——を `python/<tool>.txt` が持ちます（[ADR-0079](../adr/0079-mise-ssot-drift-gate.ja.md)。仕組みは `python/README.md`）。install は常に `uv pip install --require-hashes -r <tool>.txt` で、バージョンかハッシュを欠く要求は拒否されるため、完全性の検証は install の一部であり、飛ばせる別工程ではありません。
 
 **窓は 7 日**で、導出は npm と同じです。PyPI は悪性の publish を素早く検知して yank するため、やり過ごすべき区間は短い。したがってバージョンの引き上げは、最新のリリースではなく、既に窓を越えて枯れた最新のリリースを採ります。pin が意図的に遅れているときはコメントでそう述べ、`python/graphify.in` がその PyPI 側の実例です。
 
@@ -178,13 +178,13 @@ Python のツールは、`mise.toml` が全ツールのバージョンを持つ�
 
 ここまでの制御はリポジトリに**入ってくるもの**を守ります。以下は、動いているサービスがリクエストに対して**何をするか**を守ります。3 つのパターンが繰り返し現れ、これが再発見ではなく持ち越す価値のある部分です。
 
-**すべての境界で既定は拒否。** 外向きの dial ガード（`internal/observability/http_client_transport.go`、[ADR-0023](../adr/0023-egress-ssrf-guard.ja.md)）は link-local / multicast / unspecified / bogon を無条件に拒否し、loopback / private / CGNAT は呼び出し側が context で明示 opt-in しない限り拒否します。未設定は安全側の `false` に解決されます。エラー詳細の露出（`internal/controller/httpstack/errorhandler/detail_exposure.go`）も同じ形で、route 不一致・operation 未解決・`operationId` 空・未 opt-in がすべて**拒否**に評価されます。どちらの制御にも「書き忘れると開く」状態がありません。
+**すべての境界で既定は拒否。** 外向きの dial ガード（`internal/observability/http_client_transport.go`、[ADR-0024](../adr/0024-egress-ssrf-guard.ja.md)）は link-local / multicast / unspecified / bogon を無条件に拒否し、loopback / private / CGNAT は呼び出し側が context で明示 opt-in しない限り拒否します。未設定は安全側の `false` に解決されます。エラー詳細の露出（`internal/controller/httpstack/errorhandler/detail_exposure.go`）も同じ形で、route 不一致・operation 未解決・`operationId` 空・未 opt-in がすべて**拒否**に評価されます。どちらの制御にも「書き忘れると開く」状態がありません。
 
 **リクエスト境界の権威は spec。** リクエスト検証と認証は、ハンドラに手書きしたチェックではなく OpenAPI ドキュメントから実行時に強制されます（[ADR-0015](../adr/0015-spec-driven-request-validation.ja.md)）。直接の帰結として、**spec の差分をレビューすることがセキュリティ姿勢をレビューすること**になります。`security` 要求を書き忘れた operation はハンドラをどう書こうと無防備で、Go のレビューをいくら重ねても表に出ません。業務妥当性のルールは意図的にここに置きません。判定権限は domain 層が単独で持ちます（[ADR-0016](../adr/0016-validation-value-authority.ja.md)）ので、両者が互いへ滲み出しません。
 
-**逃げ道は名前付きで狭く、grep できる。** `ContextWithAllowPrivateNetwork`、エラースキーマを詳細露出へ opt-in させる `details` プロパティ、宣言された認証例外としての `/metrics`（[ADR-0018](../adr/0018-metrics-endpoint-auth-exception.ja.md)）は、いずれも検索して列挙できる具体的な seam です。汎用フラグは 1 つもありません。汎用フラグは「全員が立てるもの」になるからです。
+**逃げ道は名前付きで狭く、grep できる。** `ContextWithAllowPrivateNetwork`、エラースキーマを詳細露出へ opt-in させる `details` プロパティ、宣言された認証例外としての `/metrics`（[ADR-0019](../adr/0019-metrics-endpoint-auth-exception.ja.md)）は、いずれも検索して列挙できる具体的な seam です。汎用フラグは 1 つもありません。汎用フラグは「全員が立てるもの」になるからです。
 
-2 つの不在は保留ではなく意図です。アプリ内 rate limiter は持たず（[ADR-0102](../adr/0102-no-in-app-rate-limiter.ja.md)）、レスポンスは spec に対して検証しません（[ADR-0015](../adr/0015-spec-driven-request-validation.ja.md)）。SQL インジェクションはレビューではなく構造で扱い、クエリは sqlc 生成のためパラメータ化されます（[ADR-0025](../adr/0025-sqlc-type-safe-sql.ja.md)）。`gosec` は権威ある golangci gate で動きます（[ADR-0082](../adr/0082-two-layer-golangci-config.ja.md)）。
+2 つの不在は保留ではなく意図です。アプリ内 rate limiter は持たず（[ADR-0103](../adr/0103-no-in-app-rate-limiter.ja.md)）、レスポンスは spec に対して検証しません（[ADR-0015](../adr/0015-spec-driven-request-validation.ja.md)）。SQL インジェクションはレビューではなく構造で扱い、クエリは sqlc 生成のためパラメータ化されます（[ADR-0026](../adr/0026-sqlc-type-safe-sql.ja.md)）。`gosec` は権威ある golangci gate で動きます（[ADR-0083](../adr/0083-two-layer-golangci-config.ja.md)）。
 
 再発見ではなくコピーする価値のある具体を 1 つ。Go の `netip.Addr.IsPrivate` は RFC1918 と ULA を覆いますが **CGNAT（`100.64.0.0/10`）を含みません**。そのためガードは自前の prefix チェックを持っています。標準ライブラリだけで dial ガードを再実装すると、この穴をそのまま引き継ぎます。
 
@@ -217,8 +217,8 @@ Python のツールは、`mise.toml` が全ツールのバージョンを持つ�
 
 ## 関連
 
-- [ADR-0087](../adr/0087-multi-layer-security-scanning.ja.md) — 層構成スキャン、報告／ゲートの分離、ランナーのハードニング
-- [ADR-0088](../adr/0088-sha-pinned-actions.ja.md) — Actions の SHA 固定と供給網の隔離期間
-- [ADR-0099](../adr/0099-release-image-supply-chain.ja.md) — リリースイメージの完全性（署名・provenance・SBOM）
-- [ADR-0082](../adr/0082-two-layer-golangci-config.ja.md) — 静的解析時のインプロセスチェックとしての `gosec`
+- [ADR-0088](../adr/0088-multi-layer-security-scanning.ja.md) — 層構成スキャン、報告／ゲートの分離、ランナーのハードニング
+- [ADR-0089](../adr/0089-sha-pinned-actions.ja.md) — Actions の SHA 固定と供給網の隔離期間
+- [ADR-0100](../adr/0100-release-image-supply-chain.ja.md) — リリースイメージの完全性（署名・provenance・SBOM）
+- [ADR-0083](../adr/0083-two-layer-golangci-config.ja.md) — 静的解析時のインプロセスチェックとしての `gosec`
 - [`.github/workflows/README.md`](../../.github/workflows/README.md) — ワークフロー一覧と完全なトリガーマトリクス

@@ -432,7 +432,7 @@ several of these scripts are gates, and a broken gate reports a clean run rather
 ## `.makefiles/python` group
 
 The CLI tools this repository installs from PyPI are declared in `python/*.in` and locked, with a
-sha256 hash per package, in `python/*.txt` ([ADR-0078 (mise-ssot-drift-gate)](../docs/adr/0078-mise-ssot-drift-gate.md)).
+sha256 hash per package, in `python/*.txt` ([ADR-0079 (mise-ssot-drift-gate)](../docs/adr/0079-mise-ssot-drift-gate.md)).
 These targets regenerate the lockfiles; nothing installs from a `.in` file directly.
 
 | Command | Description | Notes |

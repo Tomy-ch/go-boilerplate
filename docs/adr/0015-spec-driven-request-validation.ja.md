@@ -57,6 +57,6 @@ accepted
 
 - ミドルウェア実装: [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go)。
 - オペレーションパススキッパー: [`internal/controller/httpstack/oapi/skipper/skipper.go`](../../internal/controller/httpstack/oapi/skipper/skipper.go)。
-- `/metrics` の認証例外（このパイプラインからスキップされ、別の BasicAuth ミドルウェアで保護される）は [ADR-0018](0018-metrics-endpoint-auth-exception.ja.md) に記録されている。
+- `/metrics` の認証例外（このパイプラインからスキップされ、別の BasicAuth ミドルウェアで保護される）は [ADR-0019](0019-metrics-endpoint-auth-exception.ja.md) に記録されている。
 - セキュリティと境界の注記: [`openapi/README.md`](../../openapi/README.ja.md)（§ Security）および [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.ja.md)。
 - 親の決定: [ADR-0011](0011-openapi-first.ja.md)（OpenAPI ファースト）。

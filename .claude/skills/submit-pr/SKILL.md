@@ -49,19 +49,27 @@ The four valid working states going into Step 2:
 
 ### Step 1. Pre-push Local Review Gate (confirm)
 
-Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask whether to run a pre-push `/impl-review`. This is the single decision point for local review: a local review inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss, and it belongs before the change leaves the machine. It also offers, defaulting to yes, to chain `/test-review` (test viewpoint) and `/comment-sweep` (comment stock of the touched files), so one run can cover all three. Do NOT auto-run it.
+Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask which pre-push reviews to run. Review before the change leaves the machine is the point: it inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss.
+
+**Name all three explicitly.** The Review Phase Protocol in `AGENTS.md` gives one subject to each skill — `/impl-review` the change, `/test-review` the tests, `/comment-sweep` the comment stock — and none of them offers to run the others. So this question is the only place all three are visible at once, and listing just one would silently drop the other two from every flow that goes through here. Do NOT auto-run any of them.
+
+Per the same protocol, **estimate each one's return before asking** — which layers the change touched, whether tests or comments moved at all, what an earlier skill in this session already covered — and say which you expect to pay off and which you expect to return nothing. Handing over three unpriced checkboxes is the failure this protocol names.
 
 `AskUserQuestion`:
 
-- Question: 「push 前に `/impl-review`（実装者とは別モデルの独立・敵対レビュー）を実行しますか？」
-- Options:
-  - 「`/impl-review` を実行する（submit-pr はキャンセル）」 — cancel-and-guide, see below.
+- Question: 「push 前にどのレビューを実行しますか？（それぞれの見込みを添えて提示すること）」
+- Options (multi-select; each carries this run's estimate and its reason):
+  - 「`/impl-review`（変更そのもの — 実装者とは別モデルの独立・敵対レビュー）」
+  - 「`/test-review`（テスト — 分岐 × 意味の網羅とシンボル網羅）」
+  - 「`/comment-sweep`（コメント在庫 — 触れたファイルをファイル単位で掃引）」
   - 「実行済み / 不要（このまま進める）」 — continue to Step 2.
   - 「キャンセル」 — abort.
 
-**On the review choice, cancel submit-pr and guide the user to review — do NOT chain `/impl-review` inline and do NOT try to resume this run.** Print:
+Selecting any review cancels submit-pr and guides the user to run them, in the order listed.
 
-> submit-pr をキャンセルします。`/impl-review` を実行し、指摘を修正してから `/commit` で確定し、改めて `/submit-pr` を実行してください。（clean tree でないと push できないため、レビュー修正の commit を先に済ませる必要があります。次回はこの Step 1 で「実行済み」を選べばそのまま進みます。）
+**On any review choice, cancel submit-pr and guide the user to review — do NOT chain a review skill inline and do NOT try to resume this run.** Print:
+
+> submit-pr をキャンセルします。選択したレビュー（<選ばれたスキル名を列挙>）を実行し、指摘を修正してから `/commit` で確定し、改めて `/submit-pr` を実行してください。（clean tree でないと push できないため、レビュー修正の commit を先に済ませる必要があります。次回はこの Step 1 で「実行済み」を選べばそのまま進みます。）
 
 Why a clean cancel rather than a pause-and-resume: a local review commonly produces fixes, which must be committed *before* submit-pr can run at all (the clean-tree precondition in Step 0, and the push in Step 6). Since the working tree will change anyway, there is nothing to "resume" — the next `/submit-pr` is a fresh, cheap run that flows straight through once the fixes are committed. Guiding (not inline-chaining) keeps submit-pr free of a review + fix + commit loop it should not own.
 
@@ -244,7 +252,7 @@ After the PR URL is reported, **always ask the user whether to run a PR-based re
 - Options (offer the ones that apply):
   - 「`/code-review <PR#>` を実行」 — PR-based review (can post inline comments with `--comment`)
   - 「ultrareview を案内」 — cloud multi-agent review; **user-triggered and billed**, so the skill cannot launch it — only surface the command for the user to run
-  - 「`/impl-review` を実行」 — offer this only if the user skipped the pre-push gate at Step 1 and now wants the local different-model adversarial pass (auth / IDOR / DI / SQL / shared-schema gaps that mocked tests miss); it offers to chain `/test-review` and `/comment-sweep`, so one run can cover the code, the test viewpoint, and the comment stock
+  - 「`/impl-review` / `/test-review` / `/comment-sweep` を実行」 — offer these only if the user skipped the pre-push gate at Step 1; list all three the way Step 1 does, each with its estimate, since they are peers and none of them will surface the others
   - 「レビューしない」
 
 Scale the default recommendation to what changed, using the **Depth by change type** guidance in Step 1 (behavior-affecting code → recommend by default; docs / tooling-dominant → note the lower ROI). The user's choice always wins.

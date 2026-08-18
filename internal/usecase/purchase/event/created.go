@@ -1,6 +1,6 @@
 // Package event は、購入ユースケースが発行する outbox イベントの本文（自己完結 snapshot）と
 // その marshal を提供します。版付きのイベント種別と JSON のワイヤ表現を本パッケージへ隔離し、
-// usecase 本体を薄く保ちます（ADR-0052 (transactional-outbox)）。
+// usecase 本体を薄く保ちます（ADR-0053 (transactional-outbox)）。
 package event
 
 import (

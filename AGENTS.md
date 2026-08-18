@@ -75,11 +75,18 @@ its reason**, and run what they approve.
 The estimate is the work. 「三つとも回しますか」 is not a question; it hands the cost back to the user
 unpriced. Say which pass you expect to pay off, which you expect to return nothing, and why.
 
-Two of the three are normally decided **inside** `/impl-review` rather than beside it: its scope step
-asks whether to delegate the test viewpoint and the comment stock, and answering there is what keeps
-one subject to one owner. Invoke `/test-review` or `/comment-sweep` directly only when `/impl-review`
-is not being run, or when its delegation was declined and the user later changes their mind — never
-so that the same subject is audited twice.
+The three are **peers, and none of them invokes another.** Each is asked for, decided, and run beside
+the others — one subject to one skill, and that skill is the only place its subject is audited.
+
+A skill that offers to run the next one reads as convenience, and it costs more than it saves: the
+subjects stop being independently answerable, a drift in the entry skill's question silently removes
+the other two from every flow that went through it, and the user's decision about one subject arrives
+buried inside a run they started for another. Keep the coupling in the *asking*, where this protocol
+puts it, and out of the skills.
+
+So `/impl-review` audits the change and nothing else — it owns no test lens and no comment lens, and
+it hands nothing off. `/test-review` and `/comment-sweep` are invoked in their own right, whether or
+not `/impl-review` runs.
 <!-- boilerplate-only:end -->
 
 ## Layer Rules (hard constraints — enforced by `golangci-lint` depguard)
@@ -87,7 +94,7 @@ so that the same subject is audited twice.
 Boundaries are enforced in CI, not just documented. Full table + rationale: `docs/rules.md`.
 
 - **Dependencies point inward.** `controller → usecase → domain`; `infrastructure` implements domain interfaces; never bypass a layer.
-- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain lexicon `internal/domain/lexicon` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow, and failing `pkg/`'s entry bar is not an argument for admission here — see `docs/rules.md` / ADR-0037 (domain-lexicon)); a domain package must not import another aggregate. The one exception is `internal/domain/service/<name>/`, where a rule that is the natural responsibility of no entity and no value object lives — whether it spans aggregates or stays inside one: that path has its own depguard rule permitting aggregate imports while repeating every other domain deny, and admission is narrow (see `internal/domain/README.md`). Otherwise use `pkg/`.
+- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain lexicon `internal/domain/lexicon` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow, and failing `pkg/`'s entry bar is not an argument for admission here — see `docs/rules.md` / ADR-0038 (domain-lexicon)); a domain package must not import another aggregate. The one exception is `internal/domain/service/<name>/`, where a rule that is the natural responsibility of no entity and no value object lives — whether it spans aggregates or stays inside one: that path has its own depguard rule permitting aggregate imports while repeating every other domain deny, and admission is narrow (see `internal/domain/README.md`). Otherwise use `pkg/`.
 - **`pkg/`** must not depend on infrastructure or framework-specific packages, must stay framework-agnostic, must not import `internal/**`, and holds no feature-specific business logic.
 - **Usecase** depends only on domain interfaces (never infrastructure), owns transaction boundaries, and maps domain models to DTOs — never exposes domain entities to outer layers.
 - **Controller** handlers stay lightweight: request/response only, no business logic, no infrastructure imports.

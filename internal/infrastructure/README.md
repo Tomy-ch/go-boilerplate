@@ -98,7 +98,7 @@ The following must not be done in the Infrastructure layer.
 - Split Repository vs QueryService by what the read targets, not by whether it is a "search":
   the aggregate's system-of-record state (full aggregate reconstructable) stays in Repository, a
   derived projection / read model goes to QueryService. See
-  [ADR-0030 (lightweight-cqrs)](../../docs/adr/0030-lightweight-cqrs.md)
+  [ADR-0031 (lightweight-cqrs)](../../docs/adr/0031-lightweight-cqrs.md)
 - Acquire the DBTX via `driver.New(ctx, db)` (logging / tracing is applied at the driver connection level)
 - Always propagate context
 - Always normalize external errors

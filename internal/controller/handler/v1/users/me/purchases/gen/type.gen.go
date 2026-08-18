@@ -252,8 +252,8 @@ type GetUsersMePurchasesSummaryParams struct {
 	// 暦日はサーバのタイムゾーン（Asia/Tokyo）基準です。
 	Days *PurchaseRecentDaysParam `form:"days,omitempty" json:"days,omitempty"`
 
-	// GroupBy 集計のグループ化単位（カンマ区切り）。指定順がそのままネストの階層順になります
-	// （`category,product` ならカテゴリで分け、その中を商品で分けます）。
+	// GroupBy 集計のグループ化単位（複数指定は同じ名前を繰り返します: `groupBy=category&groupBy=product`）。
+	// 指定順がそのままネストの階層順になります（上の例ならカテゴリで分け、その中を商品で分けます）。
 	// 未指定の場合はグループ化せず、レスポンスに groups を含めません。同じ単位を 2 回指定した場合は 400 を返します。
 	GroupBy *PurchaseGroupByParam `form:"groupBy,omitempty" json:"groupBy,omitempty"`
 }

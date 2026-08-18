@@ -11,8 +11,8 @@
 extends: ["./scripts/node_modules/@stoplight/spectral-owasp-ruleset/dist/ruleset.js"]
 
 rules:
-  # --- レート制限系: ADR-0100 (vendor-neutral-deploy-skeleton) と衝突するため無効化 ---
-  # ADR-0100 (vendor-neutral-deploy-skeleton) は「レート制限をアプリケーションに実装せず、API Gateway / LB / service mesh へ委譲する」
+  # --- レート制限系: ADR-0101 (vendor-neutral-deploy-skeleton) と衝突するため無効化 ---
+  # ADR-0101 (vendor-neutral-deploy-skeleton) は「レート制限をアプリケーションに実装せず、API Gateway / LB / service mesh へ委譲する」
   # ことを決定として明記している。これらのルールは 429 レスポンスと RateLimit-* ヘッダを
   # spec に宣言することを要求するが、本アプリはレート制限を一切知らないため、宣言すれば
   # 実装が保証しない契約を spec が約束することになる。
@@ -57,7 +57,7 @@ rules:
   # 「security の記述漏れ」を落とす require-explicit-security の方が強く、かつ腐らない。
   owasp:api2:2023-read-restricted: off
 
-  # /metrics 専用の Basic 認証。ADR-0018 (metrics-endpoint-auth-exception) が「/metrics を OpenAPI 検証パイプラインの外に置き、
+  # /metrics 専用の Basic 認証。ADR-0019 (metrics-endpoint-auth-exception) が「/metrics を OpenAPI 検証パイプラインの外に置き、
   # 専用の Echo BasicAuth ミドルウェアで保護する」ことを決定として明記している。
   # スクレイプ用の ops エンドポイントであり、利用者向け API の認証方式ではない。
   owasp:api2:2023-no-http-basic: off

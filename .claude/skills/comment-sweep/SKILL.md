@@ -1,7 +1,7 @@
 ---
 name: comment-sweep
 description: >-
-  Sweep the EXISTING STOCK of source-code comments in a chosen scope and decide, per comment, whether its content is in the right place — the jurisdiction question that no other reviewer asks. Where `comment-reviewer` (inside `impl-review`) judges comments on a diff and can only answer 削除 or 書換, this skill runs over accumulated code and adds the missing verdict: 移設 (relocate a design rationale out of the comment and into `docs/adr/` / `docs/design/**` / `docs/spec/**` / a package README, leaving only the operative residue plus a link — while refusing the two classic misroutes, since a library's specific behavior stays in the code and business knowledge goes to spec, never to an ADR). Use it whenever comments feel bloated, verbose, over-explained, or essay-like even though each line is individually true; whenever a doc comment has grown into a design argument, threat-model analysis, or rejected-alternative discussion; for a periodic hygiene sweep of a package / layer / whole repo; before a large PR or a template cut where accumulated commentary would burden downstream readers; and when someone asks 「コメントが長すぎる」「コメントを整理して」「この Why はコードに置くべきか」「コメントを ADR に移したい」. It reads the Comment Rules in `docs/rules.md` and the destination table in `docs/adr/README.md` at runtime as the single source of truth and hardcodes no policy, fans out read-only auditors per package, then applies the result in one of three modes picked in Step 0 or fixed by a flag — 確認して適用 (default; per-item approval, then write), 自動適用 (`--apply`; writes 短縮 / 削除 with no per-item question and withholds any 移設 that needs a document write, because ADR immutability makes new-record-vs-rewrite a repository-policy call that a no-question mode has no way to ask), and 報告のみ (`--report-only`; renders every finding in full and writes nothing) — performing the code + destination-document writes itself so a relocated rationale never loses its home. It is also the delegation target of `impl-review`: its Step 6 chains here with a `scope` / `mode` / `base_ref` / `hold` payload, which skips the Step 0 questions and returns the report for the caller to embed. Do NOT use it to review comments on a change you just wrote (`impl-review` with `comment-reviewer` owns diff scope), to judge README / docs prose quality (`doc-reviewer`), to fix README↔code structural drift (`back-prop` / `sync-readme`), or to delete `// Name は、〜です。` field comments — that repo convention is deliberately preserved and out of scope here.
+  Sweep the EXISTING STOCK of source-code comments in a chosen scope and decide whether each comment's content is in the right place — the jurisdiction question that no other reviewer asks — and, reading each file's comments as one body, which single site owns a Why that has been written in several of them. It is the sole owner of the comment subject — no review skill carries a comment lens — and it runs over accumulated code with two verdicts a diff-scoped reader cannot reach: 移設 (relocate a design rationale out of the comment and into `docs/adr/` / `docs/design/**` / `docs/spec/**` / a package README, leaving only the operative residue plus a link — while refusing the two classic misroutes, since a library's specific behavior stays in the code and business knowledge goes to spec, never to an ADR) and 集約 (a set-valued verdict for scattered duplication, fragmentation, and aggregate over-explanation inside one file: one site keeps the content, the rest shrink to a pointer, approved as a single indivisible decision). Use it whenever comments feel bloated, verbose, over-explained, or essay-like even though each line is individually true; whenever the same reason appears at several declarations and no one place is authoritative; whenever a doc comment has grown into a design argument, threat-model analysis, or rejected-alternative discussion; for a periodic hygiene sweep of a package / layer / whole repo; before a large PR or a template cut where accumulated commentary would burden downstream readers; and when someone asks 「コメントが長すぎる」「コメントを整理して」「この Why はコードに置くべきか」「コメントを ADR に移したい」. It reads the Comment Rules in `docs/rules.md` and the destination table in `docs/adr/README.md` at runtime as the single source of truth and hardcodes no policy, fans out read-only auditors per package, then applies the result in one of three modes picked in Step 0 or fixed by a flag — 確認して適用 (default; per-item approval, then write), 自動適用 (`--apply`; writes 短縮 / 削除 / high-confidence 集約 with no per-item question and withholds any 移設 that needs a document write, because ADR immutability makes new-record-vs-rewrite a repository-policy call that a no-question mode has no way to ask), and 報告のみ (`--report-only`; renders every finding in full and writes nothing) — performing the code + destination-document writes itself so a relocated rationale never loses its home. It is invoked in its own right, never from inside another review skill: `/impl-review` (the change) and `/test-review` (the tests) are its peers under the Review Phase Protocol in `AGENTS.md`, asked for separately and never delegating to one another. Do NOT use it to judge README / docs prose quality (`doc-reviewer`), to fix README↔code structural drift (`back-prop` / `sync-readme`), or to delete `// Name は、〜です。` field comments — that repo convention is deliberately preserved and out of scope here.
 ---
 
 # Comment Sweep
@@ -21,22 +21,20 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 
 Do NOT use for:
 
-- Comments on a change you just wrote — `impl-review` fans out `comment-reviewer` for diff scope.
 - README / `docs/**` prose quality — `doc-reviewer`.
 - README↔code structural drift — `back-prop` / `sync-readme`.
 
 ## Why this skill exists (read this before judging anything)
 
-The repo already forbids How-narration, 経緯, and restatement, and `comment-reviewer` already detects
-them. Comments kept growing anyway. Two structural reasons, and understanding them is what makes this
-skill work:
+The repo already forbids How-narration, 経緯, and restatement. Comments kept growing anyway. Two
+structural reasons, and understanding them is what makes this skill work:
 
 1. **The argument to keep always beats the argument to cut.** "This Why is non-obvious and
    verifiable" is a concrete claim with explicit permission in `docs/rules.md`. "Volume is a cost"
    is an abstract one. Concrete beats abstract every time, so every judgment call resolves toward
    keeping, and the stock only grows. You will not win by re-arguing volume — do not try.
-2. **Review is diff-scoped.** `impl-review` never re-examines what is already there. There is a path
-   in and no path out.
+2. **Review is diff-scoped.** A review of a change never re-examines what is already there. There is a
+   path in and no path out.
 
 So this skill does not re-litigate whether a Why is good. It asks a **different, equally concrete
 question** — one that can actually beat "but it's non-obvious":
@@ -47,6 +45,30 @@ Write it there, link to it from the code, and keep in the comment only the **ope
 one or two sentences a person editing *this* declaration must not violate. When the honest answer is
 "no document — the constraint exists only at this call site", the code **is** the jurisdiction and
 the comment stays in full. This is a relocation skill, not a deletion skill.
+
+### The second question: what one comment at a time cannot see
+
+Jurisdiction is asked of a single comment, and that leaves a blind spot with the same shape as the one
+above. When the same Why is written at three call sites, **each copy passes the jurisdiction test
+independently** — each is non-obvious, each sits at the site whose premise it states, each is
+individually defensible. Judged one at a time they are three 維持. The redundancy is only visible when
+the file is read as a whole, so a per-comment pass cannot find it no matter how carefully it is run.
+
+So every audit asks a second question of the file's comment stock as a unit:
+
+> **Is this content already carried somewhere else in this file, and if so, which single site owns it?**
+
+Three shapes answer to it, and none of them is reachable per comment:
+
+- **Scattered duplication** — one Why restated at several declarations. One site owns the concept; the
+  rest shrink to a pointer.
+- **Fragmentation** — a constraint split across declarations so that no single place states it, and a
+  reader has to assemble it. The fix is to make one site whole, not to add a fourth fragment.
+- **Aggregate over-explanation** — every comment is individually correct, yet the file's total
+  commentary costs more to read than the code it explains.
+
+This is the same trap as the diff-scope one, one level down: the argument to keep each copy wins every
+time it is asked in isolation, so nothing ever consolidates. Ask it of the set instead.
 
 ## Authoritative sources — read at runtime, hardcode nothing
 
@@ -82,7 +104,7 @@ nothing, because a wrong move is much harder to undo than a comment left alone.
 ## Step 0 — Confirm scope and apply mode
 
 One `AskUserQuestion` call carrying **two** questions. Skip whichever question a flag or a caller
-payload (see *Chainability*) has already answered; skip the call entirely when both are fixed.
+already answers it; skip the call entirely when both are fixed.
 
 - 「comment-sweep の対象スコープを選んでください」
   - 「指定パス配下（パッケージ / ディレクトリを続けて指定）」
@@ -94,18 +116,17 @@ payload (see *Chainability*) has already answered; skip the call entirely when b
   - 「そのまま書き換える（1 件ずつの確認をしない。文書書き込みを伴う移設は対象外）」
   - 「報告のみ（書き込まない）」
 
-Stock scope is the point of this skill — diff scope exists only so it can be chained after a large
-refactor, and `comment-reviewer` remains the better tool there. The chain that uses it is
-`impl-review` Step 6, and what it hands over is the **whole comment stock of the files the change
-touched**, not the changed lines; the changed lines are `comment-reviewer`'s, and that split is why
-both exist. If the user picks diff scope interactively, say so in one line and continue.
+Stock scope is the point of this skill. Diff scope exists so a large refactor can be swept without
+naming every package by hand — but even then the subject is the **whole comment stock of the files the
+change touched**, never the changed lines alone. A file judged in pieces cannot answer the second
+question, and the duplication this skill exists to find lives between the pieces.
 
 ### Apply modes
 
 | Mode | Selected by | What Step 4 does |
 | --- | --- | --- |
 | 確認して適用 | the default option, or `mode: confirm` | per-item approval, then write — every verdict is reachable |
-| 自動適用 | `--apply`, or the second option | writes 短縮 / 削除 with no per-item question; a 移設 needing a document write is reported, not applied |
+| 自動適用 | `--apply`, or the second option | writes 短縮 / 削除 / high-confidence 集約 with no per-item question; a 移設 needing a document write is reported, not applied |
 | 報告のみ | `--report-only`, or `mode: report` | Step 3 renders the findings and the run ends; nothing is written |
 
 ### Flags
@@ -151,6 +172,11 @@ all in a **single message with multiple tool calls** so they run concurrently. G
 `references/audit-prompt.md` is the auditors' single source of instructions — do not paraphrase it
 into the spawn prompt, or the two will drift and the auditors will disagree with each other.
 
+Each auditor runs **both passes** described in *Why this skill exists* — the per-comment jurisdiction
+question and the per-file stock question — over the same files it has already read. The second pass
+costs reading no extra material; what it adds is a question, and the findings it produces (verdict
+**集約**) name a *set* of comments rather than one.
+
 Auditors are **strictly read-only**. They surface verdicts with evidence and a proposed landing
 form; they never call `AskUserQuestion` and never write. Approval and every write happen in this
 integrator, single-threaded, so parallel auditors cannot contend.
@@ -166,12 +192,16 @@ walked through unbounded one-by-one questions:
 ```text
 comment-sweep 検出結果（scope: <X>, 対象 <n> ファイル / <m> パッケージ）
 
-[<package>]  維持 <a> / 短縮 <b> / 削除 <c> / 移設 <d>
+[<package>]  維持 <a> / 短縮 <b> / 削除 <c> / 移設 <d> / 集約 <e>
   ...（各 finding: 場所・対象コメント・判定・根拠・着地形）
 
 移設先の内訳: docs/adr/ <p> 件 / docs/design/ <q> 件 / パッケージ README <r> 件
+集約: <e> 件（対象コメント計 <t> 箇所 / 内訳 重複 <u> ・分散 <v> ・総量過多 <w>）
 総 finding: <sum>（うち要判断 <k>）。<確認して適用のときだけ「これから 1 件ずつ確認します。」を続ける>
 ```
+
+Count a 集約 finding **once**, not once per member comment — it is one decision. Report the member
+count alongside it so the size of the edit is visible before anyone approves it.
 
 `維持` findings are reported as a count only — they need no decision, and listing them in full buries
 the ones that do. If nothing needs action, say so plainly and stop.
@@ -179,8 +209,9 @@ the ones that do. If nothing needs action, say so plainly and stop.
 **In 報告のみ mode the run ends here**, and the aggregate above is not enough on its own. Render every
 non-`維持` finding in full — the evidence, the comment before and after, and for a 移設 the exact prose
 proposed for the destination — because no approval loop follows to reveal them one at a time. Close by
-saying how to act on the report: re-run with `--apply` for the 短縮 / 削除, or in 確認して適用 for those
-plus the 移設.
+saying how to act on the report: re-run with `--apply` for the 短縮 / 削除 / 集約, or in 確認して適用 for
+those plus the 移設. For a 集約, render every member comment, not just the site that keeps the content —
+a reader cannot judge a consolidation from the winner alone.
 
 ## Step 4 — Apply (integrator-side)
 
@@ -189,8 +220,8 @@ approves it, and how much of the verdict set is in play.
 
 ### 自動適用 — no per-item question
 
-Apply **短縮** and **削除** as the auditor landed them, in one pass, and report what was applied. Two
-exclusions come off that set first:
+Apply **短縮**, **削除**, and **集約** as the auditor landed them, in one pass, and report what was
+applied. Three exclusions come off that set first:
 
 - **A finding whose comment contradicts the code** (`誤り/陳腐化`) is reported, never applied. Which
   side is wrong — the comment or the code — is not a comment-cleanup call, and deleting the comment
@@ -200,8 +231,15 @@ exclusions come off that set first:
   an auditor that misread a section would strip the rationale from the code and point the residue at
   a document that never says it. When the check fails, report the finding instead of applying it.
 
+- **A 集約 is applied only at `確度: high`.** 短縮 risks the wrong wording at one site; a consolidation
+  additionally picks *which declaration owns the concept*, and it has already shrunk the other sites
+  by the time a wrong pick becomes visible. That is markedly harder to undo, so anything the auditor
+  itself rated `medium` or `low` is reported for 確認して適用 instead of applied.
+
 A `追記なし` 移設 that survives the check is applied: the destination already states the content, so the
-finding is really a 短縮 to the residue plus a link and touches no document.
+finding is really a 短縮 to the residue plus a link and touches no document. A 集約 likewise writes no
+document — it only moves content between comments in one file — which is why it belongs to this mode
+at all.
 
 **Do not apply a 移設 that would write to a destination document.** Report those with their count and
 proposed landing form, and say that 確認して適用 is where they land. The reason is not caution in
@@ -222,6 +260,10 @@ For each non-`維持` finding, in descending impact order:
    and **after** as a diff, and for a 移設 also show the exact prose that will be added to the
    destination document. A verdict the user cannot see the result of is not reviewable.
 2. `AskUserQuestion` with the options the auditor surfaced (typically 移設 / 短縮 / 削除 / 維持 / 判断を保留).
+   A **集約 is one question covering the whole set**, never one question per member. Splitting it
+   produces incoherent outcomes the user never chose — approve the deletions but not the surviving
+   site and the Why is gone; approve the survivor but not the deletions and nothing consolidated.
+   Offer 集約 / 維持（現状のまま） / 別の site を本体にする / 判断を保留, and show every member.
 3. On approval, write in this order — **destination document first, code second**. Reversing it
    creates a window where the rationale exists nowhere, and if the run is interrupted there, the
    reasoning is simply gone. When the auditor found the destination **already states the content**
@@ -237,7 +279,8 @@ For each non-`維持` finding, in descending impact order:
    claims, mention that `back-prop` is the right follow-up to check the README against code reality.
 
 In this mode, never batch-apply without per-item confirmation. The judgments here are close calls by
-construction — the obvious ones were already handled by `comment-reviewer` at diff time.
+construction: an obvious one is caught by `revive` or by reading the diff, and what is left over is
+the stock nobody re-reads.
 
 ## Step 5 — Verify
 
@@ -250,6 +293,10 @@ because no human read the edits one at a time.
 - Re-read each edited comment once: does the residue still stand on its own for someone who does not
   follow the link? A residue that only makes sense after reading the ADR has been cut too far, and
   that failure is invisible to every linter.
+- After a 集約, read the file top to bottom rather than each edited site in isolation — the finding was
+  about the file, so the check has to be too. Two failures show up only this way: the surviving site
+  does not actually carry what the shrunk ones gave up, and a pointer names a declaration a reader
+  cannot find from where they are standing.
 
 ## Explicitly out of scope
 
@@ -261,55 +308,34 @@ because no human read the edits one at a time.
 - **Package overviews** — a `// Package …` comment, wherever it lives. Usage and How belong there and
   `docs/rules.md` exempts them. Note that this repository has **no `doc.go`**: all 300-plus overviews
   sit at the top of an ordinary source file, so an exclusion phrased as a filename excludes nothing.
+  A 集約 does not get to reopen this from the other side: an overview is not a landing site for
+  consolidated content either. When the fragments really do add up to a package-level statement, that
+  is a 移設 to the package README, which is already a supported destination and is where a reader
+  looking for package-level prose goes.
 - **Generated files** (`**/*.gen.go`, `*.sql.go`, `*_mock.go`) and `*_test.go`.
 - **Functional / directive comments** — `//go:generate`, `//nolint`, `//go:build`, `//go:embed`,
   `// Code generated ... DO NOT EDIT`, shebangs, tool directives. These are not prose.
 - **Docs prose quality** — `doc-reviewer` owns it. This skill only *adds* to a destination document;
   it does not audit what is already there.
 
-## Chainability
+## Standalone by design
 
-`impl-review` is this skill's caller: its Step 6 delegates the comment **stock** of the files the
-change touched, the counterpart to the Step 2 `comment-reviewer` pass that judges what the diff
-**added**. The two must never report the same comment — a comment on a changed line is
-`comment-reviewer`'s, and the caller names those comments in the `claimed` payload below.
+This skill is invoked in its own right, never from inside another review skill. `/impl-review` audits the change and `/test-review` the tests; the three are peers under the Review Phase Protocol in `AGENTS.md`, each asked for separately, and none of them delegates to another. A review skill that offers to run the next one makes the three subjects stop being independently answerable and lets one skill's drift silently drop the others from every flow that went through it.
 
-A caller passes a context payload with:
+That independence is also what keeps the sweep file-level. Nothing hands it a diff, nothing filters which comments its auditors may read, and nothing removes a comment from a file before the per-file pass sees it — so the duplication that lives *between* comments stays visible. A sweep that received only changed regions would be a second diff review wearing the word "stock".
 
-- `scope` — pre-resolved file list (skips the Step 0 scope question).
-- `mode` — `report` or `confirm` (skips the Step 0 mode question). `apply` is **not** passed on this
-  path. A review run that mutates the tree without per-item confirmation contradicts the caller's own
-  structure, in which every reviewer is read-only on source and every write is gated on an explicit
-  per-item confirmation.
-- `base_ref` — when the caller resolved the scope as a branch-vs-base diff.
-- `hold` — files the caller is holding back because a higher-tier finding of its own is likely to
-  rewrite them. Exclude them from the approval loop and name them in the returned report: a comment
-  polished onto code that is about to change is work done twice.
-- `claimed` — `path:line` of the comments the caller's own reviewer already owns. Drop them **before**
-  the approval loop opens, so the user is never asked about one comment twice. The single exception:
-  when the verdict here is **移設** and the caller's is 削除 / 書換, keep the 移設 and say so in the
-  report. 移設 contains the shortening the caller wanted, while the reverse is not true — dropping it
-  would discard the only verdict that can move a rationale to the document that owns it.
-
-Under a payload the report is returned for the caller to embed rather than rendered as a standalone
-deliverable, and it keeps this skill's verdict vocabulary (維持 / 短縮 / 削除 / 移設) — the caller does
-not remap it.
-
-The auditors of Step 2 are **mode-independent**: they always produce every finding in full, and the
-whole difference between the three modes lives in this integrator. Do not push a mode down into
-`references/audit-prompt.md`. A report-only auditor and an apply auditor that quietly disagree about
-what counts as a finding is a drift with nothing to detect it.
+The comment subject therefore has exactly one owner. When a diff's newly added comments need judging, they are judged here, as part of the file they now live in.
 
 ## Relationship to the existing reviewers
 
-| | Scope | Verdicts | Owns |
+| | Unit judged | Verdicts | Owns |
 | --- | --- | --- | --- |
-| `comment-reviewer` (via `impl-review`) | diff | 削除 / 書換 / 加筆 | generation-time gate; keeps new noise out |
 | `doc-reviewer` | `README*` / `docs/**` | content findings | quality of docs prose |
-| **`comment-sweep`** (this skill) | **stock** | **維持 / 短縮 / 削除 / 移設** | **jurisdiction — where content belongs** |
+| **`comment-sweep`** (this skill) | **one comment, and the file's whole stock** | **維持 / 短縮 / 削除 / 移設 / 集約** | **jurisdiction — where content belongs, and which single site owns it** |
 
-`comment-reviewer` stays as-is; it is the only thing stopping the inflow, and it is correctly scoped
-to diffs. This skill is the outflow that never existed.
+No review skill carries a comment lens any more, so this is where the whole subject is answered —
+both the comments a change just added and the ones the file was already carrying, judged together as
+the body they now form.
 
 All user-visible output — findings, questions, proposed prose, summaries — is written in **Japanese**
 per `CLAUDE.md`.

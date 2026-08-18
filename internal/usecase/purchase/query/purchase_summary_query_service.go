@@ -12,7 +12,7 @@ import (
 
 // PurchaseSummaryQueryService は、購入の集計 read 投影を提供する QueryService です。
 // 件数・合計金額・ステータス別内訳は購入集約を再構成できない派生投影であるため、Repository ではなく
-// 読み取り側に置きます（ADR-0030 (lightweight-cqrs)）。商品単位の集計は購入・商品・商品カテゴリを
+// 読み取り側に置きます（ADR-0031 (lightweight-cqrs)）。商品単位の集計は購入・商品・商品カテゴリを
 // またぐ結合形そのものを読むため、同じく読み取り側です。
 // いずれのメソッドも母集団は同一（所有権・キャンセル除外・window）で、絞り込まない window を渡した
 // 場合は全期間を対象とします。
@@ -22,7 +22,7 @@ type PurchaseSummaryQueryService interface {
 	// 対象の購入が存在しない場合は空スライスを返します（エラーとしません）。キャンセル済みの購入は集計対象外です。
 	SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]PurchaseStatusSummaryReadModel, error)
 	// SumItemsByUserID は、認証主体（userID）の購入明細の金額合計（単価 × 数量の総和）を返します。
-	// 価格スケールの正確な decimal で、決済スケール（セント整数）へは丸めません（ADR-0036 (two-scale-quantity-model)）。
+	// 価格スケールの正確な decimal で、決済スケール（セント整数）へは丸めません（ADR-0037 (two-scale-quantity-model)）。
 	// 対象の購入が存在しない場合はゼロ値を返します（エラーとしません）。
 	SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error)
 	// SummarizeItemsByProductByUserID は、認証主体（userID）の購入明細を商品単位に集計し、商品が属する

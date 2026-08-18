@@ -216,7 +216,7 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 | DI 配線（env 駆動の authenticator 選択・JWKS downstream profile） | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
 | スキャン用の実 JWT 実行文脈（`dast` env: mock provider へ http で JWKS backed authenticator を配線） | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | config（`AUTH_*`） | `internal/config/envspec.go`, `internal/config/model.go` |
-| ops-path / metrics の auth 例外 | `internal/controller/httpstack/oapi/skipper/`, ADR [0018](../adr/0018-metrics-endpoint-auth-exception.md) |
+| ops-path / metrics の auth 例外 | `internal/controller/httpstack/oapi/skipper/`, ADR [0019](../adr/0019-metrics-endpoint-auth-exception.ja.md) |
 | 開発用 OIDC provider | `docker-compose.yaml`（`mock_auth_server`）+ `docker/mock-auth-server/config.json`。イメージの digest は `docker/images-pin.toml` が固定 |
 
 ---
