@@ -68,7 +68,7 @@ describe("survivingText", () => {
     // 落としすぎる側の失敗は無言である。検査は「0 件」と報告しながら何も見ていない状態になり、
     // この検査が塞ごうとしている失敗と同じ形になる。以下はその向きを塞ぐ。
 
-    // 退避側は fork 先へ残る本文なので、ここに前提を書いたら検出できなければならない。
+    // 退避側は 作成先へ残る本文なので、ここに前提を書いたら検出できなければならない。
     it("退避側に書かれた前提を検査へ通す", () => {
       const content = [
         "<!-- boilerplate-only:replace-begin -->",
@@ -114,7 +114,7 @@ describe("survivingText", () => {
 
 describe("isChecked", () => {
   describe("正常系", () => {
-    it("fork 後も残る文書を対象にする", () => {
+    it("テンプレート作成後も残る文書を対象にする", () => {
       expect(isChecked("docs/adr/0001-avoid-lock-in.md")).toBe(true);
       expect(isChecked("docs/rules.md")).toBe(true);
       expect(isChecked("docs/design/worker.md")).toBe(true);

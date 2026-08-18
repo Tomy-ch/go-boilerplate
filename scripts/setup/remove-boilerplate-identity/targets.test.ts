@@ -158,7 +158,7 @@ describe("BOILERPLATE_DELETE_PATHS", () => {
       expect(BOILERPLATE_DELETE_PATHS).not.toContain("docs/ja/plan");
     });
 
-    // premise-lint が守る規則は fork が継承するが、検査が探す言い回しは上流固有の実例でしかない。
+    // premise-lint が守る規則は作成先が継承するが、検査が探す言い回しは上流固有の実例でしかない。
     // 残すと永久に緑のままの検査が増えるだけなので、撤去と一緒に消す。
     it("上流でのみ意味を持つ検査を挙げている", () => {
       expect(BOILERPLATE_DELETE_PATHS).toContain("scripts/premise-lint");

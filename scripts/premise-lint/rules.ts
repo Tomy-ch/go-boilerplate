@@ -1,7 +1,7 @@
 // 「その文書より先に失効する前提」が、失効後も残る文書に書かれていないかの判定。
 //
 // 規則の出所は docs/rules.md の Documentation Rules「No premise the document will outlive」。
-// 前提を書いてよいのは fork 時に破棄・書き換えされる文書（README / docs/get-started/**）だけで、
+// 前提を書いてよいのは テンプレート作成時に破棄・書き換えされる文書（README / docs/get-started/**）だけで、
 // それ以外へ書くと、前提が偽になった瞬間に文書が自分を偽る。
 
 /**
@@ -17,7 +17,7 @@ export const ALLOWED_PREFIXES: readonly string[] = [
   "docs/get-started/",
 ];
 
-/** 検査対象の領域。ここに挙げた場所の文書は fork 後も残る。 */
+/** 検査対象の領域。ここに挙げた場所の文書はテンプレート作成後も残る。 */
 export const CHECKED_PREFIXES: readonly string[] = [
   "docs/adr/",
   "docs/design/",
@@ -32,7 +32,7 @@ export const CHECKED_PREFIXES: readonly string[] = [
   ".makefiles/README.ja.md",
 ];
 
-/** 層 README も対象。`internal/**` / `pkg/**` の README は fork 後も読まれ続ける。 */
+/** 層 README も対象。`internal/**` / `pkg/**` の README は テンプレート作成後も読まれ続ける。 */
 const LAYER_README_RE = /^(?:internal|pkg)\/.*README(?:\.ja)?\.md$/;
 
 /**
@@ -45,7 +45,7 @@ const LAYER_README_RE = /^(?:internal|pkg)\/.*README(?:\.ja)?\.md$/;
  * 検査より大きくなって信号が死にます。
  *
  * 焼き込みが実際に取る形は **自己参照** です。「この文書が載っているリポジトリは、テンプレート
- * である」と述べる構文だけが、fork した瞬間に偽になります。そこに絞ると 28 件まで落ち、
+ * である」と述べる構文だけが、テンプレートから作成した瞬間に偽になります。そこに絞ると 28 件まで落ち、
  * うち 27 件は本物の焼き込みでした。
  */
 export const PREMISE_PATTERNS: readonly RegExp[] = [
@@ -73,16 +73,16 @@ const REPLACE_END = marker("replace-end");
 const ESCROW = /^\s*(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
 
 /**
- * fork したあとに残る本文。マーカーで囲まれた記述を落とす。
+ * テンプレート作成後に残る本文。マーカーで囲まれた記述を落とす。
  *
  * @remarks
- * マーカーの中は前提を書いてよい場所です。`boilerplate-only` は fork 時の除去で、`sample-api` は
- * サンプル撤去で消えるので、fork した先の文書には届きません。検査の前に落とさないと、正しく
+ * マーカーの中は前提を書いてよい場所です。`boilerplate-only` はテンプレート作成時の除去で、`sample-api` は
+ * サンプル撤去で消えるので、作成先の文書には届きません。検査の前に落とさないと、正しく
  * 囲った記述まで違反として数えます。
  *
  * `replace` は前後で扱いが逆になります。`replace-begin`〜`replace-with` は上流版なので落とし、
  * `replace-with`〜`replace-end` の退避コメントは**アンコメントして残します**。ここを一括で
- * 落とすと、fork 先へ実際に残る文面が検査から消えます。そこに前提が書かれていても、この検査は
+ * 落とすと、作成先へ実際に残る文面が検査から消えます。そこに前提が書かれていても、この検査は
  * 「0 件」と報告します——この検査が塞ごうとしている無言の失敗と、同じ形の穴になります。
  *
  * マーカー除去のロジックを独自に持つ理由（`stripMarkers` を呼ばない理由）は
@@ -114,7 +114,7 @@ export function survivingText(content: string): string {
     if (inEscrowSide) {
       const matched = ESCROW.exec(line);
 
-      // 退避コメントの形をしていない行は、アンコメントの規則が読めない。落とすと fork 先の
+      // 退避コメントの形をしていない行は、アンコメントの規則が読めない。落とすと 作成先の
       // 本文を検査から消すことになるので、そのまま検査へ通す。
       out.push(matched === null ? line : (matched[1] ?? matched[2]));
       continue;
@@ -192,7 +192,7 @@ export type Finding = {
  * 1 ファイル分の判定。
  *
  * @remarks
- * `strip` には呼び出し側がマーカー除去後の本文を渡します。マーカーで囲まれた記述は fork へ
+ * `strip` には呼び出し側がマーカー除去後の本文を渡します。マーカーで囲まれた記述は 作成先へ
  * 届かないので、前提を書いてよい場所です——それを検査すると、正しく囲った記述まで落ちます。
  */
 export function inspect(

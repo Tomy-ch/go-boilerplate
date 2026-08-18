@@ -32,7 +32,7 @@ jobs:
     steps:
       # WARN: this allowlist encodes the same registry assumption the steps below
       #       carry — ghcr.io for push, and Sigstore's public good instance for
-      #       keyless signing. A fork that changes the registry or runs a private
+      #       keyless signing. A project that changes the registry or runs a private
       #       Fulcio / Rekor must add those hosts here as well, or the push and the
       #       signature fail at the network layer with no clue pointing at this step.
       - name: Harden the runner

@@ -131,7 +131,7 @@ curl http://localhost:8080/health
 <!-- boilerplate-only:begin -->
 ## テンプレートとして使う
 
-fork して自分のものに置き換えます。セットアップは文字列置換ではなく、**スクリプト化され検証される
+GitHub の *Use this template* でリポジトリを作成し、自分のものに置き換えます。セットアップは文字列置換ではなく、**スクリプト化され検証される
 一連の手順**です。順序は [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md)
 が示しており、以下はそれがどういう性質の作業かを示すための要約に過ぎません。
 
@@ -147,7 +147,7 @@ fork して自分のものに置き換えます。セットアップは文字列
   認証 / 認可の実装、デプロイ先、依存ライセンスの閾値、DAST と資格情報を要するスキャナを残すかどうか、
   そして再設定すべき非採用 ADR 群。
 
-fork した瞬間に成り立たなくなる記述と、それをスクリプトが除去できるようにするマーカーの規約は
+テンプレートから作成した瞬間に成り立たなくなる記述と、それをスクリプトが除去できるようにするマーカーの規約は
 [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md)
 にあります。
 

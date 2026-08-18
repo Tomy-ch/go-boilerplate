@@ -34,7 +34,7 @@ type StrippedFile = {
  *
  * @remarks
  * 対象を列挙せずリポジトリを走査するのは、列挙が「マーカーを書いたのに一覧へ足し忘れる」を
- * 静かに通すためです。列挙side の取りこぼしは何も出力せず成功するので、fork 先で前提が
+ * 静かに通すためです。列挙side の取りこぼしは何も出力せず成功するので、作成先で前提が
  * 残っていることに誰も気づけません。
  */
 function stripFiles(dryRun: boolean): StrippedFile[] {

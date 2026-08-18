@@ -134,9 +134,10 @@ Before development, follow the setup steps: [docs/get-started/setup-repository.m
 <!-- boilerplate-only:begin -->
 ## Using This as a Template
 
-Fork it and localize it. The setup is a **scripted, gated sequence** rather than a search and
-replace — [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) walks the
-phases in order, and the summary below is only there to show what kind of work it is.
+Create a repository from it with GitHub's *Use this template*, then localize it. The setup is a
+**scripted, gated sequence** rather than a search and replace —
+[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) walks the phases in
+order, and the summary below is only there to show what kind of work it is.
 
 - **Localizing identity is verified, not trusted.** The `make setup-replace-*` targets rewrite the
   module path, repository references, app metadata, licence holder and CODEOWNERS; `make
@@ -144,14 +145,14 @@ phases in order, and the summary below is only there to show what kind of work i
   once it passes — so a half-finished localization cannot go unnoticed.
 - **Two removal passes, deliberately separate.** `make setup-remove-boilerplate-identity` strips
   what holds only while this *is* the upstream template, and `make setup-remove-sample-api` strips
-  the sample feature set. A fork may reasonably do one without the other: keeping the sample keeps
+  the sample feature set. A project may reasonably do one without the other: keeping the sample keeps
   the one place where the layering rules exist as working code rather than prose.
 - **The decisions the template refuses to make for you** are numbered phases, not TODOs left in the
   code — authn / authz implementations, the deployment target, the dependency-licence threshold,
   whether to keep the DAST and credential-bearing scanners, and the exclusion ADRs to re-baseline.
 
-Which statements stop being true the moment you fork, and how they are marked so a script can
-remove them, is documented in
+Which statements stop being true the moment a repository is created from this template, and how they
+are marked so a script can remove them, is documented in
 [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md).
 
 <!-- boilerplate-only:end -->

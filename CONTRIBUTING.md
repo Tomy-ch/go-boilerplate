@@ -53,7 +53,7 @@ Feat | Fix | Refactor | Perf | Docs | Test | Build | CI | Chore | Style | Revert
 Only the prefix and a non-empty subject are enforced mechanically. Everything else is convention:
 one scope per commit, so that a revert is a decision about one thing, and a subject that says what
 changed rather than which files moved. The commit messages in this repository are written in
-Japanese; the enforced part is language-independent, so a fork sets its own.
+Japanese; the enforced part is language-independent, so a project created from this template sets its own.
 
 ## Before pushing
 

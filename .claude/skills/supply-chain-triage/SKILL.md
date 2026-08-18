@@ -20,7 +20,7 @@ It exists because of a property recorded in `docs/design/security.md`:
 `docs/design/security.md` (section "Dependencies → Three principles that hold for every ecosystem")
 is the **source of truth** for that reasoning — read it at runtime rather than trusting this
 paragraph, because the policy lives there and this skill is only its instrument. The four axes
-below are those four questions, made operational. In a fork where that document is absent, the
+below are those four questions, made operational. In a repository created from this template where that document is absent, the
 quoted principle above is the fallback.
 
 The last sentence of the quote is the design constraint that shapes everything here: an axis you
