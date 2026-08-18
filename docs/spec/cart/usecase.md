@@ -97,6 +97,8 @@ output:
       type: int
     - name: UnitPrice
       type: "*decimal.Decimal" # 商品の現在値。引けなかった場合は nil（DTO は decimal で持つ）
+    - name: ImagePath
+      type: "*string"      # 代表画像のオブジェクトキー。引けなかった場合と代表画像が無い場合は nil
     - name: Issues
       type: "[]ItemIssue"  # 空なら購入可能
     - name: AvailableQuantity

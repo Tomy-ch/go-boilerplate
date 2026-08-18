@@ -101,6 +101,9 @@ type CartItemView struct {
 	// ProductName / UnitPrice は、取得時点の商品の値です。商品を引けなかった場合は nil です。
 	ProductName *string
 	UnitPrice   *decimal.Decimal
+	// ImagePath は、取得時点の商品の代表画像のオブジェクトキーです。
+	// 商品を引けなかった場合と、商品が代表画像を持たない場合は nil です。
+	ImagePath *string
 	// Quantity は、カートに入っている数量です。
 	Quantity int
 	// Issues は、この明細の再評価結果です。空なら現時点で購入可能です。
@@ -308,6 +311,10 @@ func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
 	if p != nil {
 		name, price := p.Name(), p.Price().Decimal()
 		view.ProductName, view.UnitPrice = &name, &price
+		if image, ok := p.PrimaryImage(); ok {
+			imagePath := image.ImagePath()
+			view.ImagePath = &imagePath
+		}
 		s := cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
 		snapshot = &s
 	}

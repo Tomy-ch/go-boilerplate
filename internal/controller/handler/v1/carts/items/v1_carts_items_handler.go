@@ -131,6 +131,7 @@ func toCartItemResponses(views []cartuc.CartItemView) ([]gen.CartItemResponse, e
 		items[i] = gen.CartItemResponse{
 			ProductId:         v.ProductID.ToPrimitive(),
 			ProductName:       v.ProductName,
+			ImagePath:         v.ImagePath,
 			Quantity:          quantity,
 			UnitPrice:         toUnitPrice(v.UnitPrice),
 			Issues:            toCartItemIssues(v.Issues),
