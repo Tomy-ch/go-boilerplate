@@ -1,27 +1,36 @@
 # gitleaks が無視する既知・許容済みフィンガープリントの一覧。
 # https://github.com/gitleaks/gitleaks#gitleaksignore
 #
-# boilerplate-only:begin
-# ローカル開発用 fixture の既知検出だけを許可する完全 fingerprint。
-# 履歴スキャンの fingerprint はコミット SHA と docker/ 接頭辞を含む。
-4eb9ea41915735f7d4354a09c28afe0422e404ab:docker-compose.yaml:generic-api-key:133
-internal/integration/testdata/keys/mock-key-1.pem:private-key:1
-internal/integration/testdata/keys/mock-key-2.pem:private-key:1
-docker/garage/garage.toml:generic-api-key:12
-daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-2.pem:private-key:1
-daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-retired.pem:private-key:1
-a77359f8d20ba3797acf260ecfc9c789e34f9e7d:docker/mock-auth-server/keys/mock-key-1.pem:private-key:1
+# マーカーの外に置くものと内側に置くものの境目は「テンプレート作成先にも同じ検出が出るか」。
+# 作成先は履歴を持たないので、コミット SHA を含む fingerprint はそこでは何にも当たらない。
+# 逆に作成先へ残るファイルの分をマーカーの内側へ入れると、セットアップで許可だけが消え、
+# 利用者が最初に secret-scan を回した瞬間に誤検知で落ちる。
+
+# --- 作成先にも残るファイルの検出（マーカー外） ---
+
 # AUTH_JWKS_URL はコンテナ内部の URL で資格情報ではない。ホスト名の auth と
 # ポート以降の文字列が generic-api-key の keyword+entropy 条件に当たる誤検知。
 # env/README の既定値表は同じ URL を載せるため同じ検出になる。
 env/.env:generic-api-key:42
 env/README.md:generic-api-key:221
 env/README.ja.md:generic-api-key:219
-# 64 は履歴（gitleaks git）側、65 は現在のツリー側の OBJECT_STORAGE_SECRET_ACCESS_KEY。
-# SHA 無しの fingerprint は履歴の検出にも当たるため、行がずれた側だけ足すと履歴が落ちる。
-env/.env:generic-api-key:64
+# ローカル開発用の固定値。Garage の開発用資格情報と、JWKS ローテーションテストが所有する署名鍵。
 env/.env:generic-api-key:65
-# 以下は履歴（gitleaks git）だけに残る検出。useTemplate 先は履歴を持たないため利用者には出ない。
+docker/garage/garage.toml:generic-api-key:12
+internal/integration/testdata/keys/mock-key-1.pem:private-key:1
+internal/integration/testdata/keys/mock-key-2.pem:private-key:1
+
+# boilerplate-only:begin
+# --- 上流の履歴にだけ存在する検出（作成先には対象のコミットが無い） ---
+
+# SHA 無しの fingerprint は履歴の検出にも当たる。65 が現在のツリー側で、64 は
+# 4eb9ea41 時点の同じ行。行がずれた側だけ足すと履歴スキャンが落ちる。
+env/.env:generic-api-key:64
+4eb9ea41915735f7d4354a09c28afe0422e404ab:docker-compose.yaml:generic-api-key:133
+# 撤去済みの mock-auth-server が旧 docker/ 配下に置いていた署名鍵。
+daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-2.pem:private-key:1
+daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-retired.pem:private-key:1
+a77359f8d20ba3797acf260ecfc9c789e34f9e7d:docker/mock-auth-server/keys/mock-key-1.pem:private-key:1
 # 0f0157be は pnpm の store（4,858 ファイル）を誤ってコミットした回で、検出はいずれも
 # 依存パッケージ同梱のフィクスチャ。現在 .pnpm-store は gitignore 済みで追跡していない。
 0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/11/41bde8f7fc5e1c7b4da412ee02d3d9c0e4dc9d761c983c2c4bac7f2623ad953422894c214d2fbf2121daec5f64692d4ba4637aef29d95ae4c902314aa70b15:generic-api-key:5
