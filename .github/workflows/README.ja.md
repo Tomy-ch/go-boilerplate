@@ -49,7 +49,7 @@
 | `auto-generate-docs.yaml` `generate-docs` | 25 | 実測 約 7 分 |
 | `go-test.yaml` `go-test` | 20 | 実測 約 5 分 |
 | `image-scan.yaml` `build`、`deploy-app.yaml` `build` | 15 | レイヤキャッシュが冷えたイメージビルドは実測を大きく超えて振れる |
-| `deploy-app.yaml` `deploy` | 30 | 現状はプレースホルダ。フォークが実デプロイを配線したときに 10 分の上限へ当てない |
+| `deploy-app.yaml` `deploy` | 30 | 現状はプレースホルダ。作成先が実デプロイを配線したときに 10 分の上限へ当てない |
 | `fuzz.yaml`、`scorecard.yaml`、`notify.yaml`、`osv-release-gate.yaml`、`checkov.yaml` | 15 | 直近に完了実行が無く実測できない |
 | `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる |
 | `code-ql.yaml` `codeql` | 30 | 上限は matrix の最も遅い leg に掛かるが、`go` 以外の leg には完了実行が無く実測できない。加えて `security-extended` は従前の値を測ったスイートより大きい |
@@ -79,10 +79,8 @@
 |Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|生成済み Go コードとコミット済み成果物の一致検証|
 |Generated Database Artifacts Check|`gen-db-artifacts-check.yaml`|生成済み sqlc コードとコミット済み成果物の一致検証|
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|OpenAPI バンドルとドキュメントの一致検証|
-|Generated Mock-Auth OpenAPI Artifacts Check|`gen-mock-auth-oapi-artifacts-check.yaml`|mock-auth-server の OpenAPI バンドル / zod スキーマ / ドキュメントとコミット済み成果物の一致検証|
-|Mock-Auth Server Check|`mock-auth-server-check.yaml`|mock-auth-server の型検査、ユニット / インテグレーションテスト、golden JWKS フィクスチャのドリフト検出|
 |Portal Check|`portal-check.yaml`|ドキュメントポータルのビューアー（`docs-viewer/`）の型検査とテスト|
-|Scripts Check|`scripts-check.yaml`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）の型検査と、判定ロジックを覆う単体テスト、および `docs-viewer/src/**` と `mock-auth-server/src/**` も走査する 1:1 テスト対応ゲートを実行します|
+|Scripts Check|`scripts-check.yaml`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）の型検査と、判定ロジックを覆う単体テスト、および `docs-viewer/src/**` も走査する 1:1 テスト対応ゲートを実行します|
 |OpenAPI Lint|`oapi-lint.yaml`|OpenAPI 定義を `redocly lint` で検証（命名 / casing / description / 未使用コンポーネント）|
 |App Boot Check|`app-di-startup-check.yaml`|DB 付きでアプリケーションサーバが正常に起動するか検証|
 |Job Boot Check|`job-boot-check.yaml`|ジョブのエントリポイントが起動し、未知のジョブを拒否するか検証|
@@ -98,7 +96,7 @@
 
 |ワークフロー|ファイル|説明|
 |---|---|---|
-|CodeQL Scan|`code-ql.yaml`|`security-extended` スイートでの CodeQL 解析。言語ごとに matrix を分け、`go` / `javascript-typescript`（mock-auth-server / docs-viewer / scripts）/ `actions`（ワークフロー定義そのもの）を対象とする|
+|CodeQL Scan|`code-ql.yaml`|`security-extended` スイートでの CodeQL 解析。言語ごとに matrix を分け、`go` / `javascript-typescript`（docs-viewer / scripts）/ `actions`（ワークフロー定義そのもの）を対象とする|
 |Dependency Scan|`trivy-fs.yaml`|Trivy によるライブラリ脆弱性スキャン(開発者向け)|
 |Release Dependency Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
 |Grype Scan|`grype.yaml`|Trivy と同じ依存マニフェストを、別の脆弱性 DB と別のマッチャで走査する Anchore Grype のファイルシステムスキャン|
@@ -181,7 +179,7 @@ DAST は `03:00` に入ります。スキャンの前にアプリケーション
 
 週次スケジュールを持つスキャナは、ジョブが `failure` または `cancelled` で終わったときに `notify.yaml` を呼び出します。PR の失敗は作成者に見えていますが、定期実行の失敗は誰にも見えないためです。`cancelled` を含めるのは、タイムアウトやランナー障害で打ち切られたジョブが `failure` ではなくこちらになるからです。
 
-押し出す価値があるのは失敗だけではありません。報告専用のスキャナは検出してもジョブが green で終わるため、失敗モードは検出に対して決して発火しません。それらは代わりに `notify.yaml` を検出モードで呼び出し、actor / ref / commit と検出内容そのものを添えて通知します。どちらのモードも webhook secret が未設定なら送信をスキップして run を green のままにするため、送信先を持たない fork が通知のせいで落ちることはありません。
+押し出す価値があるのは失敗だけではありません。報告専用のスキャナは検出してもジョブが green で終わるため、失敗モードは検出に対して決して発火しません。それらは代わりに `notify.yaml` を検出モードで呼び出し、actor / ref / commit と検出内容そのものを添えて通知します。どちらのモードも webhook secret が未設定なら送信をスキップして run を green のままにするため、送信先を持たない作成先が通知のせいで落ちることはありません。
 
 検出通知をどのトリガーで発火させるかは、届けるべき相手が誰かで決まります。脆弱性スキャナは定期実行のみです。PR では検出内容が既に PR コメントとして依存を持ち込んだ作成者宛に出ている一方、週次の検出は「変わっていないコードに対して新たに公開された advisory」であり誰にも届かないからです。
 
@@ -373,7 +371,7 @@ SARIF アップロードと sticky な PR コメントはどちらも切って�
 
 **1 つだけ失敗の出方が逆転しているジョブがあり、その旨は当該ファイルに書いてあります。** `trufflehog.yaml` は候補の資格情報を発行元サービスへ問い合わせて検証しますが、その発行元の集合には上限がありません。ここでのエンドポイント漏れはジョブを赤くせず、本物の漏洩を「未検証」に変えます。このワークフローは検証済みのみを報告するため、結果として黙って緑になります。TruffleHog の検出が消えたときは allowlist の漏れをまず疑ってください。`egress-policy: audit` を持つ唯一のジョブで、SSOT 上もそう宣言してあるため `allowed-endpoints` を一切持ちません。両者が食い違えば `make egress-check` が落ちます。
 
-fork 時に読み直す価値のある前提が 2 つあります。`deploy-app.yaml` の build ジョブは `ghcr.io` と公開 Sigstore インスタンスを前提にしており（その `extra`）、deploy ジョブは placeholder でクラスを 1 つも宣言しないため `base` だけを持ちます。実際のデプロイを結線する際は、その環境の control plane のホストをそのジョブの `extra` へ足す必要があります。`id-token` の交換も外向き通信だからです。
+テンプレート作成時に読み直す価値のある前提が 2 つあります。`deploy-app.yaml` の build ジョブは `ghcr.io` と公開 Sigstore インスタンスを前提にしており（その `extra`）、deploy ジョブは placeholder でクラスを 1 つも宣言しないため `base` だけを持ちます。実際のデプロイを結線する際は、その環境の control plane のホストをそのジョブの `extra` へ足す必要があります。`id-token` の交換も外向き通信だからです。
 
 ### デプロイ（Push）
 
@@ -421,8 +419,8 @@ fork 時に読み直す価値のある前提が 2 つあります。`deploy-app.
 - zizmor の例外設定は `.github/zizmor.yml`。`ignore` はファイル単位であり、同じ audit を踏む新規ワークフローは意図どおり落ちる。恒久的な allowlist ではなく、元の指摘を直したらエントリを消す運用
 - **`run:` 本文へ展開された式はコードであり、それを見ているのは zizmor だけ**。`${{ }}` の置換はシェルが構文を解釈するより前に起きるため、未クオートの `github.event.*` はコマンドを終わらせて攻撃者のコマンドを始められる。shellcheck を通すゲート群は構造的にこれを見られない（理由は [`scripts/README.md`](../../scripts/README.md) の `actions-shellcheck/` の行を参照）。zizmor の `template-injection` は代わりに展開位置そのものを判定し、式の出自が攻撃者制御可能かで重み付けする。`make actions-zizmor` が `make actions-lint` の中ではなくその隣に pre-commit フックへ載っているのはこのため。式を `env:` へ束ねてシェル側では `"$VAR"` を読む形にすれば、値はデータとして届く
 - `auto-generate-docs.yaml` の `Detect changes` ステップはカバレッジ HTML / SchemaSpy のタイムスタンプ揺れを除外し、無意味な PR が発火しないよう設計
-- GitHub は 60 日コミットが無いとスケジュール実行のワークフローを自動的に、しかも黙って無効化する。これを回避し続けることは本テンプレートの責任範囲外であり keepalive ジョブは用意しない。動きが止まった fork では Actions タブから再有効化が必要になる前提で扱う
-- fork / テンプレート由来のリポジトリは全ワークフローが `disabled_fork` 状態で作られ、この状態では何も動かない。`make enable-workflows` が列挙して一括で有効化する（冪等なので再実行して差し支えない）
+- GitHub は 60 日コミットが無いとスケジュール実行のワークフローを自動的に、しかも黙って無効化する。これを回避し続けることは本テンプレートの責任範囲外であり keepalive ジョブは用意しない。動きが止まった作成先では Actions タブから再有効化が必要になる前提で扱う
+- テンプレート由来のリポジトリは全ワークフローが `disabled_fork` 状態で作られ、この状態では何も動かない。`make enable-workflows` が列挙して一括で有効化する（冪等なので再実行して差し支えない）
 - **`claude.yaml` の認可**。誰が Claude を呼べるかはワークフロー側の allowlist ではなく action 自身の書き込み権限チェックで決まる。代替案はいずれも fork で破綻する。アカウントをワークフローに直書きすると fork 先のオーナーが自分のリポジトリで締め出され、リポジトリ変数に持たせても変数は fork に引き継がれないため空に解決されて誰も呼べない。権限チェックはワークフローが動いているリポジトリに対して解決されるので、どこでも設定なしで正しく振る舞う。これを無効化する 2 つの input は意図的に未設定である。`allowed_non_write_users` はチェック自体をバイパスし、`allowed_bots` はインストールも書き込み権限も不要な App を通す。ワークフローの `if:` は `github` コンテキストしか読まず、無関係なコメントで runner を起動させないためのものであって権限を与えない。なお「誰が呼べるか」を絞っても fork PR に仕込まれたプロンプトインジェクションは防げない（呼ぶ人間は信頼できても Claude が読む diff は信頼できない）。`contents` を read のまま据え置いているのはそのためである
 - `.spectral.yaml` と `.trivyignore.yaml` は `.github/zizmor.yml` と同じ方針。一括無効化はせず、各エントリに根拠となる ADR か実装を書き、抑止はパス（または JSON ポインタ）単位に閉じる。これにより同じルールを踏む新規ファイルは引き続き落ちる
 - `fuzz.yaml` は PR ではなく定期実行。fuzz はランダムな corpus を探索するため、マージ可否をそれに賭けさせないための判断。クラッシュの再現入力は `testdata/fuzz/` へコミットされ、通常の回帰テストとして再生される

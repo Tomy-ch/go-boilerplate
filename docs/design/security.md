@@ -195,7 +195,7 @@ separately by Trivy FS and OSV-Scanner, which match on version rather than call 
 
 ### pnpm
 
-Every Node package resolves with pnpm — `scripts/`, `mock-auth-server/` and `docs-viewer/` —
+Every Node package resolves with pnpm — `scripts/` and `docs-viewer/` —
 each carrying its own `pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is 7 days, derived
 the same way as the other ecosystems; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
 

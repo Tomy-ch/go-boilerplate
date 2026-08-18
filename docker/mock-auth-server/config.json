@@ -1,0 +1,21 @@
+{
+  "interactiveLogin": true,
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "grant_type",
+          "match": "*",
+          "typeHeader": "at+jwt",
+          "claims": {
+            "sub": "${subject}",
+            "aud": ["go-boilerplate-api", "go-boilerplate-client"],
+            "azp": "go-boilerplate-client"
+          }
+        }
+      ]
+    }
+  ]
+}

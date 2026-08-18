@@ -1,19 +1,19 @@
 # 認証サブシステム 設計リファレンス
 
-[jwt README](../../internal/infrastructure/auth/jwt/README.ja.md) | [mock-auth-server README](../../mock-auth-server/README.ja.md) | English: [auth.md](auth.md)
+[jwt README](../../internal/infrastructure/auth/jwt/README.ja.md) | [docker README](../../docker/README.ja.md) | English: [auth.md](auth.md)
 
 本ドキュメントは認証サブシステムの **役割理論・状態遷移（通常版 / 異常版）・実装配置・インテグレーターが実装すること・用語解説** を、実装の精読から導いて1ページに統合する。本サブシステムは1つの契約 — **JWKS 鍵セット** と **access token の claim 形状** — で出会う2つの半身から成る:
 
 - **Resource Server 側** — Go API が受け取った access token を *検証* する。発行はしない。
-- **Provider 側** — 別ランタイムの TypeScript サービス `mock-auth-server` がローカル開発用にトークンを *発行* し、OIDC ログインフローを実装する。
+- **Provider 側** — 上流イメージ（`ghcr.io/navikt/mock-oauth2-server`）で動く疑似 OIDC プロバイダがローカル開発用にトークンを *発行* し、OIDC ログインフローを実装する。
 
-検証コアは [jwt README](../../internal/infrastructure/auth/jwt/README.ja.md)、Provider の HTTP 表面とフローは [mock-auth-server README](../../mock-auth-server/README.ja.md) を参照。本ページは両者を結ぶ横断ナラティブである。
+検証コアは [jwt README](../../internal/infrastructure/auth/jwt/README.ja.md)、Provider の配線と設定は [docker README](../../docker/README.ja.md) を参照。その HTTP 表面は素の OIDC Core であり、本リポジトリはその写しを持たない——他人の実装の spec は腐る spec だからである。本ページは両者を結ぶ横断ナラティブである。
 
 ---
 
 ## 1. 役割理論（何を、何のために）
 
-ここでの認証とは、**Resource Server（Go API）は、信頼できる JWKS エンドポイントから取得した公開鍵で署名と標準 claim を検証して初めて access token を信頼する**こと。RS は何も発行しない。本番ではこのエンドポイントは実 IdP（Cognito / Auth0 / Keycloak / Entra ID）、ローカル開発では `mock-auth-server`。発行側と検証側は**意図的に異なるランタイム**（TypeScript vs Go）で、単一ライブラリ由来のバグが相殺し合わないようにしている。
+ここでの認証とは、**Resource Server（Go API）は、信頼できる JWKS エンドポイントから取得した公開鍵で署名と標準 claim を検証して初めて access token を信頼する**こと。RS は何も発行しない。本番ではこのエンドポイントは実 IdP（Cognito / Auth0 / Keycloak / Entra ID）、ローカル開発では疑似プロバイダ。発行側と検証側は**意図的に異なる実装**（Nimbus を使う JVM プロバイダ vs Go）で、単一の JOSE ライブラリ由来のバグが相殺し合わないようにしている。
 
 責務分担（誰が何を持つか）:
 
@@ -23,7 +23,7 @@
 | **Authenticator**（`infrastructure/auth/jwt`） | RS / infrastructure | 署名（RS256 allowlist）+ claim（`iss`/`aud`/`exp`/`nbf`/`sub`）+ `typ=at+jwt` を検証、`kid` で鍵解決 | 鍵発行・identity・HTTP ポリシー |
 | **JWKS resolver**（`jwt/jwks.go`） | RS / infrastructure | 回復力のある `httpclient` 経由で JWK Set を取得、`kid → RSA 鍵` を TTL キャッシュ、miss 時に cooldown 下で再取得 | claim 検証 |
 | **IdentityResolver**（`usecase/boundary/auth`） | RS / usecase 境界 | `(issuer, subject)` → 内部 `userID`、未知/削除は `401` | トークン検証 |
-| **mock-auth-server** | provider（dev） | access/id token 発行、JWKS + discovery 提供、Authorization Code Flow + PKCE、dev-gate、本番拒否 | 本番利用 |
+| **疑似 provider** | provider（dev） | access/id token 発行、JWKS + discovery 提供、Authorization Code Flow + PKCE | 本番利用。RS 自身のテストが決定的に駆動しなければならないもの |
 | **`AUTH_*` config** | config | issuer / audience / JWKS URL / アルゴリズム / clock-skew / cache-TTL | ロジック |
 
 設計原則（不変条件）:
@@ -31,8 +31,8 @@
 - **Fail-closed。** どのエラーもアクセスを許可しない。資格情報について結論を出した検証*失敗*は `apperror.ErrUnauthenticated`（`401`）へ正規化し、原因はログ/トレース用にエラーチェーンへ保持する。検証を*遂行できなかった*ことは別の事実であり、分類を保つ —— 署名鍵を取得できない場合やリクエストの context が終了した場合、エラーは `apperror.ErrUnavailable`（`503`）/ `apperror.ErrCanceled`（`499`）のまま返る。トークンについて何も述べていないためで、`401` にすると誰も検査していない資格情報を直すようクライアントへ伝えることになる。いずれも拒否であり、違うのは報告する理由だけ。
 - **標準コアのみ。** RS256 allowlist（`alg=none` と `HS256` は常に拒否 — 鍵混同攻撃対策）、`iss`/`aud`/`exp`/`nbf`/`sub`、`typ=at+jwt`（RFC 9068）で ID Token 誤用を拒否。IdP 方言（Cognito `token_use`、Azure `scp`）は**拡張ポイント**で組み込まない。
 - **Split-horizon。** `issuer`（token の `iss`、ホスト/ブラウザ解決可能）と **JWKS 取得 URL**（コンテナ内部）を分離する。`AUTH_JWKS_URL` を内部 URL に設定し、`iss` はホスト解決可能なまま鍵取得はコンテナ名を使う。
-- **Provider は dev 限定。** `/bypass/*` ・ `/admin/*` は dev-gate、`NODE_ENV=production` では起動拒否。
-- **バイト等価契約。** mock の JWKS バイト列と access token の claim 形状（`typ=at+jwt` / `iss` / `aud` / `sub` / `exp`）は RS が期待するものと一致するため、mock は **config 変更のみ**で実 IdP に差し替え可能 — Go 変更不要。
+- **Provider は dev 限定。** compose の `development` / `auth` プロファイル経由でしか到達できず、デプロイされる環境には決して含まれない。
+- **契約であって実装ではない。** RS が依存するのは JWKS の形と access token の claim 形状（`typ=at+jwt` / `iss` / `aud` / `sub` / `exp`）で、それを `docker/mock-auth-server/config.json` が固定する。この契約さえ満たせば実 IdP を含め何でも **config 変更のみ**で差し替わる — Go 変更不要。
 
 ---
 
@@ -113,48 +113,76 @@ flowchart TD
     ID -- はい --> OK["認証成功 → handler"]
 ```
 
-Provider の **異常系 bypass Profile**（`expired` / `wrong-issuer` / `wrong-audience` / `missing-subject` / `invalid-signature` / `unsupported-algorithm` / `id-token`）は、まさにこれら RS の各 `401` 分岐をテストで決定的に駆動するために存在する。
+これら `401` 分岐はすべて `internal/integration/jwt_auth_test.go` が決定的に駆動する。同テストはインプロセスで生成した鍵から自分でトークンを鋳造する——期限切れ、有効化前、issuer 不一致、audience 不一致、subject 欠落、未知の `kid`、撤去済みの鍵、非対応アルゴリズム、access token の位置に置かれた ID Token。この網を疑似プロバイダ経由にしないのは意図的である。*正しい*トークンを出すのが仕事のプロバイダは、*不正な*トークンが拒まれることを示す道具としては貧しく、それに頼ると RS の異常系が第三者の機能セットに縛られる。
 
 ### 3.3 Provider の Authorization Code Flow + PKCE — 通常パス
+
+エンドポイントのパスは issuer の discovery 文書が広告するものです。以下の `default` は
+`docker/mock-auth-server/config.json` の `issuerId` で、JWKS の `kid` も兼ねます。
 
 ```mermaid
 sequenceDiagram
     participant C as Client (RP)
-    participant M as mock-auth-server
-    C->>M: GET /oidc/authorize (client_id, redirect_uri, code_challenge=S256, state, nonce)
-    Note over M: client_id/redirect_uri 完全一致・scope 部分集合 → code 発行（単回・TTL 60s）
+    participant M as 疑似 provider
+    C->>M: GET /default/authorize (client_id, redirect_uri, code_challenge=S256, state, nonce)
+    Note over M: ログインフォーム → 入力した username が sub になる
     M-->>C: 302 redirect_uri?code&state
-    C->>M: POST /oidc/token (code, code_verifier, redirect_uri, client_id)
+    C->>M: POST /default/token (code, code_verifier, redirect_uri, client_id)
     Note over M: code 単回 consume + PKCE S256 検証
     M-->>C: 200 access_token (typ=at+jwt) + id_token (nonce)
-    C->>M: GET /oidc/userinfo (Bearer access_token)
-    M-->>C: 200 whitelist claim（ID Token は 401 で拒否）
-    C->>M: POST /oidc/logout (id_token_hint, post_logout_redirect_uri, state)
-    M-->>C: 302 post_logout_redirect_uri?state（session 破棄）
+    C->>M: GET /default/endsession (id_token_hint, post_logout_redirect_uri, state)
+    M-->>C: 302 post_logout_redirect_uri?state
 ```
 
-### 3.4 Provider — 異常 / エラーパス
+ブラウザを介さずトークンを鋳造することもでき、スクリプトからの確認や DAST スキャンはこちらを使います
+——`POST /default/token` に `grant_type=password` と `username` を渡すと、ログインフォームと同じく
+プロバイダがそれを `sub` へ写します。この経路に特権はありません。標準のトークンエンドポイントそのもの
+であり、返るトークンの形はログインフローが出すものと同じです。旧プロバイダが持っていた専用の試験口は
+これで置き換わります。
 
-```mermaid
-flowchart TD
-    AZ["/oidc/authorize"] --> C1{"client_id / redirect_uri 完全一致?"}
-    C1 -- いいえ --> AE1["400（リダイレクト不能）"]
-    C1 -- はい --> C2{"response_type=code, scope⊆client, code_challenge, S256?"}
-    C2 -- いいえ --> AE2["302 error redirect（state 反映）"]
-    C2 -- はい --> AOK["302 with code"]
-    TK["/oidc/token"] --> T1{"code 有効 & 未使用（単回）?"}
-    T1 -- "再利用 / 期限切れ" --> TE1["400 invalid_grant"]
-    T1 -- はい --> T2{"client_id/redirect_uri 一致 & PKCE S256 OK?"}
-    T2 -- いいえ --> TE2["400 invalid_grant"]
-    T2 -- はい --> TOK["200 access + id token"]
-    UI["/oidc/userinfo"] --> U1{"Bearer access token, typ=at+jwt?"}
-    U1 -- "欠如 / ID Token / 不正" --> UE["401 invalid_token"]
-    U1 -- はい --> UOK["200 whitelist claim"]
-```
+`sub` はログインフォーム（または password grant）に渡した `username` そのものなので、seed が
+`user_identities` に登録した値でなければなりません。そうでないと検証は成功し、その先の identity
+解決で拒まれます。**ロールはトークンに載りません。** ロールはこのサービスの DB（`user_roles`）に
+あり `GET /v1/users/me/roles` が返します。IdP がたまたまロールを知っているのは特定デプロイの性質で
+あって契約ではないため、管理者に何を見せるかを決めるクライアントは API を読みます。
 
-### 3.5 鍵ローテーション（JWKS のフェーズ）
+### 3.3.1 なぜ `aud` を多値にするか
 
-Provider は **公開鍵セット**（JWKS で配る鍵）と **署名鍵 1 本**を分けて保持するため、ローテーションを再現して RS 側を検証できます。`POST /admin/keys/rotate` は宣言的な `{action, kid}`（`add-key` / `promote` / `retire`）を受け取り、`POST /admin/reset` で Phase 1 へ戻ります。アクションを連ねると古典的な 3 フェーズを再現できます。
+プロバイダは発行する 2 つのトークンに同じ claim 集合を適用するため、`aud` をトークン種別ごとに
+変えられません。ところが 2 つは異なる audience を求めます——access token の `aud` はリソース
+サーバーを指し、ID Token の `aud` はクライアントを指します（OIDC Core 3.1.3.7）。`aud` を設定
+しなければ ID Token は正しくなりますが、access token からは `aud` が丸ごと消え、RS が拒否します。
+
+そこで `docker/mock-auth-server/config.json` は**両方**を入れます——`aud: ["go-boilerplate-api",
+"go-boilerplate-client"]` と `azp: "go-boilerplate-client"`。双方が自分の関心のある側で検証を
+通せます。RS は自分の audience が `aud` に*含まれる*ことを要求し、クライアントは `aud` が自分の
+`client_id` を*含む*こと（§3）と、`aud` が多値なら `azp`（§4）を検証します。`AUTH_AUDIENCE` は
+リソースサーバーの audience のままで、これは実 IdP に設定することになる値そのものです。
+
+> **プロバイダを上流イメージにしたことの帰結が 3 つあり、いずれも意図して受け入れています。**
+>
+> 1. **ここでは ID Token と access token を区別できません。** claim 集合も `typ` ヘッダも両者で 1 つ
+>    なので、RS が要求する `typ=at+jwt`（RFC 9068）は ID Token にも刻まれ、上の `aud` も共有されます。
+>    したがってローカルでは ID Token を API に提示しても通ってしまいます——実 IdP の ID Token は
+>    `aud=<client_id>` だけを持つので拒まれるところです。RS がその誤用を拒む挙動自体は本物で、
+>    `internal/integration/jwt_auth_test.go` が固定しています。失われるのはこのプロバイダ相手に
+>    それを*実演*できることだけです。
+> 2. **プロバイダ自身の `/userinfo` は使えません。** JOSE の型として `at+jwt` を拒否するためです。
+>    ローカルでプロフィール claim が要るクライアントは UserInfo を呼ばず ID Token を読むべきで、
+>    OIDC クライアントライブラリの既定の振る舞いもそれです。
+>
+> 3. **`redirect_uri` は登録制ではありません。** プロバイダは任意の値を受け付けます。実 IdP は登録済み
+>    リストと照合し、それが code flow におけるオープンリダイレクトの主たる防御になります。この緩さは、
+>    各々別ポートに載る複数の worktree が、スロットごとにクライアントを登録し直さずフローを回せるように
+>    するためのものです。クライアント登録は実 IdP 側でインテグレーターが設定するものと捉えてください。
+>    RS は `redirect_uri` を見ないため、RS 側は何も依存していません。
+>
+> いずれも RS の `at+jwt` 要求を明け渡すには値しません。あの要求は本番の挙動であり、ローカルだけ緩めると
+> 開発者に最も近い環境が検証経路を最も通らない環境になってしまいます。
+
+### 3.4 鍵ローテーション（JWKS のフェーズ）
+
+ローテーションは **公開鍵セット**（JWKS で配る鍵）と **署名鍵 1 本**の分離で定義されます。古典的な 3 フェーズは次のとおりです。
 
 ```text
 Phase 1  JWKS: [key-a]         Signing: key-a   (initial)
@@ -169,7 +197,9 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 - **ネガティブキャッシュ**: 現在のキャッシュ世代で*実際に取得した結果*として不在が確認された `kid` を記憶し、でたらめな `kid` の連打が毎回再取得を起こさないようにする。取得成功で公開鍵セットが変われば破棄され、stale なキャッシュや（取得せず）抑制されただけの `kid` には適用されない — ローテーションで追加された `kid` は次回の取得（キャッシュ TTL の範囲）で解決され、恒久的に拒否されることはない。
 - **撤去済みの鍵 → `401`**: キャッシュ世代が更新されて公開鍵セットから `key-a` が消えると、その鍵で署名された token は「`kid` を解決できるか」の分岐で落ちる。
 
-状態遷移の end-to-end は `internal/integration/jwks_rotation_test.go` が決定的に押さえており、Provider とバイト単位で共有した JWKS / PEM に対して、実際の HTTP 境界越しに各フェーズを駆動します。
+状態遷移の end-to-end は `internal/integration/jwks_rotation_test.go` が決定的に押さえており、`internal/integration/testdata/` 配下の golden JWKS / PEM に対して、実際の HTTP 境界越しに各フェーズを駆動します。
+
+> **疑似プロバイダはローテーションを再現できません。** JWKS の `kid` を `issuerId` から導出し、issuer あたり 1 本だけ公開するため、1 つの JWKS に 2 つの `kid` を載せることも、その間で署名鍵を移すことも、到達可能などの設定でもできません。したがって上のフェーズはテスト自身の fixture だけで駆動され、その fixture はプロバイダと共有せずテストが所有します。これは意図的な取引です——ローテーションは RS 側リゾルバの性質であり、テストが検証しているのはそのリゾルバだからです。
 
 ---
 
@@ -186,19 +216,19 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 | DI 配線（env 駆動の authenticator 選択・JWKS downstream profile） | `internal/di/module/core/auth.go`, `internal/di/module/auth.go` |
 | スキャン用の実 JWT 実行文脈（`dast` env: mock provider へ http で JWKS backed authenticator を配線） | `env/.env.dast`, `.github/workflows/zap-api-scan.yaml` |
 | config（`AUTH_*`） | `internal/config/envspec.go`, `internal/config/model.go` |
-| ops-path / metrics の auth 例外 | `internal/controller/httpstack/oapi/skipper/`, ADR [0018](../adr/0019-metrics-endpoint-auth-exception.md) |
-| 開発用 OIDC provider | `mock-auth-server/`（`src/routes/oidc.ts`, `tokens.ts`, `pkce.ts`, `keys.ts`, `store.ts`） |
+| ops-path / metrics の auth 例外 | `internal/controller/httpstack/oapi/skipper/`, ADR [0019](../adr/0019-metrics-endpoint-auth-exception.ja.md) |
+| 開発用 OIDC provider | `docker-compose.yaml`（`mock_auth_server`）+ `docker/mock-auth-server/config.json`。イメージの digest は `docker/images-pin.toml` が固定 |
 
 ---
 
 ## 5. インテグレーターが実装すること
 
-1. **config で RS を IdP に向ける。** `AUTH_ISSUER`（token の `iss` と一致必須）・`AUTH_AUDIENCE`・`AUTH_JWKS_URL`（IdP の `jwks_uri`）。ローカルでは `env/.env` がこれらを `mock-auth-server` に向け、`AUTH_JWKS_URL` は split-horizon でコンテナ内部ホストを指す。任意: `AUTH_ALLOWED_ALGORITHMS`（既定 `RS256`）・`AUTH_CLOCK_SKEW`（`60s`）・`AUTH_JWKS_CACHE_TTL`（`5m`）。
+1. **config で RS を IdP に向ける。** `AUTH_ISSUER`（token の `iss` と一致必須）・`AUTH_AUDIENCE`・`AUTH_JWKS_URL`（IdP の `jwks_uri`）。ローカルでは `env/.env` がこれらを疑似プロバイダに向け、`AUTH_JWKS_URL` は split-horizon でコンテナ内部ホストを指す。任意: `AUTH_ALLOWED_ALGORITHMS`（既定 `RS256`）・`AUTH_CLOCK_SKEW`（`60s`）・`AUTH_JWKS_CACHE_TTL`（`5m`）。
 2. **mock を実 IdP に差し替える**のは上記 env 値の変更のみ — JWKS + claim 契約はバイト等価なので Go 変更は不要。`iss` はホスト解決可能に、`AUTH_JWKS_URL` は API コンテナから到達可能に保つ。
 3. **IdP 方言を追加**する（標準コアから外れる場合）— Cognito `token_use` / `aud`→`client_id`、Azure `scp` / `roles`、EC 鍵、opaque token — は [jwt README](../../internal/infrastructure/auth/jwt/README.ja.md) の拡張ポイントで。
 4. **identity 解決**は `(issuer, subject)` を内部ユーザーに対応づける。自前のユーザーストア向けに `IdentityResolver` の実装を用意する。用意しない場合 DI は passthrough 既定を配線し、内部 UserID は未解決のまま通る — つまりここでは未知・無効化された subject を拒否しない。
 
-> **前方注記（`#584` / PR #618・本ブランチ未収録）:** RS 側の OIDC *discovery* — `AUTH_JWKS_URL` を空にして issuer の `/.well-known/openid-configuration` から `jwks_uri` を導出（issuer 厳密一致 + same-origin + https）し、`AUTH_JWKS_DISCOVERY_TTL` / `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` を伴う — は別途着地する。本ブランチでは RS は `AUTH_JWKS_URL` から JWKS URL を**静的**に解決する。`mock-auth-server` はその将来の消費者と標準準拠のため discovery 文書を既に提供している。
+> **前方注記（`#584` / PR #618・本ブランチ未収録）:** RS 側の OIDC *discovery* — `AUTH_JWKS_URL` を空にして issuer の `/.well-known/openid-configuration` から `jwks_uri` を導出（issuer 厳密一致 + same-origin + https）し、`AUTH_JWKS_DISCOVERY_TTL` / `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` を伴う — は別途着地する。本ブランチでは RS は `AUTH_JWKS_URL` から JWKS URL を**静的**に解決する。疑似プロバイダは到達された issuer URL で discovery 文書を提供する。
 
 ---
 
@@ -214,10 +244,9 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 | **`issuer` / `iss`** | トークン発行者識別子。RS は厳密一致を要求する。 |
 | **`audience` / `aud`** | 想定受信者。RS は設定の audience を要求する。 |
 | **PKCE (S256)** | Proof Key for Code Exchange（RFC 7636）: `code_challenge = base64url(sha256(code_verifier))`。token endpoint が再計算して照合する。`plain` は受理しない。 |
-| **Authorization code** | `/oidc/authorize` が発行する短命（60s）・単回使用のクレデンシャル。`/oidc/token` で1回だけ交換される。 |
+| **Authorization code** | 認可エンドポイントが発行する短命・単回使用のクレデンシャル。トークンエンドポイントで1回だけ交換される。 |
 | **Split-horizon** | ブラウザ/ホスト向けの `issuer` URL と、コンテナ内部の JWKS 取得 URL を分離すること。`iss` はホスト解決可能なまま鍵取得は内部ホスト名を使う。 |
 | **Authn** | 検証済み（identity は任意で未解決）の結果（`subject`・`issuer`・`scopes`・`claims`、identity 解決後は内部 `userID`）。 |
 | **identity 解決** | `(issuer, subject)` を内部アプリの `userID` に対応づけること。トークン検証とは別の関心事。 |
-| **dev-gate** | `MOCK_AUTH_DEV_ENDPOINTS` スイッチ。無効時に `/bypass/*` ・ `/admin/*` を `404` で隠す。 |
 | **Fail-closed** | 検証エラーは常に拒否に倒し、default-allow にしない。資格情報を拒否した場合は `401`、結論に至らなかった場合は `503` / `499`。 |
 | **アルゴリズム allowlist** | 受理する署名アルゴリズム集合（既定 `RS256`）。`alg=none` / `HS256` は鍵混同防止のため常に拒否。 |

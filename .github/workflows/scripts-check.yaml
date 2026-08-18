@@ -1,7 +1,7 @@
 name: Scripts Check
 
 # Type check and unit tests for the repository's TypeScript helper scripts (`scripts/**/*.ts`),
-# plus the 1:1 test gate, which walks `docs-viewer` and `mock-auth-server` as well.
+# plus the 1:1 test gate, which walks `docs-viewer` as well.
 #
 # Many of those scripts are gates, and they all fail in the same direction when broken: they stop
 # finding things and report a clean run. Nothing downstream notices, because a gate that inspects
@@ -29,7 +29,6 @@ on:
       # workflow too — otherwise a new callable export lands untested and the PR adding it never
       # runs the gate that would have said so. These entries track the gate's own package list,
       # and `one-to-one.gate.test.ts` fails when they stop tracking it.
-      - 'mock-auth-server/src/**'
       - 'docs-viewer/src/**'
       - '.makefiles/node/**'
   workflow_dispatch:
@@ -124,7 +123,6 @@ jobs:
         run: |
           set -euo pipefail
           pnpm install --dir docs-viewer --frozen-lockfile
-          pnpm install --dir mock-auth-server --frozen-lockfile
 
       - name: Typecheck
         run: make scripts-typecheck-ci

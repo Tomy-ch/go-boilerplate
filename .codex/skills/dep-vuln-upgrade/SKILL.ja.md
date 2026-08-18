@@ -6,7 +6,7 @@ advisory の一覧はユーザーのメッセージから受け取る。パッ�
 
 このリポジトリには独立した解決面が 3 つある。
 
-- **pnpm:** `scripts/` / `mock-auth-server/` / `docs-viewer/`。それぞれが自前の `pnpm-lock.yaml` と `pnpm-workspace.yaml` を持つ。cooldown・`overrides`・release-age の除外を所有するのは workspace ファイルである。
+- **pnpm:** `scripts/` / `docs-viewer/`。それぞれが自前の `pnpm-lock.yaml` と `pnpm-workspace.yaml` を持つ。cooldown・`overrides`・release-age の除外を所有するのは workspace ファイルである。
 - **Go:** `go.mod` と `go.sum`。indirect モジュールを含む。
 - **PyPI:** `python/*.in` の CLI ツール宣言と、`python/*.txt` に sha256 ハッシュ付きで解決された結果。**該当箇所をここで特定するのはよいが、ここで更新することは決してしない** —— 宣言と `make py-lock` による再生成を所有するのは `/tools-upgrade` である。
 

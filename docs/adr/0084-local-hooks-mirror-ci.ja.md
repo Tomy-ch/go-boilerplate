@@ -44,11 +44,11 @@ CI パリティが保証される。
 コマンドが実行する `make` ターゲットとは必ずしも一致しない（`go-lint` は `make lint`、`go-test` は
 `make test-cached` を実行する）。
 
-- `pre-commit`（並列・14 件）: `go-lint`（`.go`）、`go-test`（`.go`）、
+- `pre-commit`（並列・13 件）: `go-lint`（`.go`）、`go-test`（`.go`）、
   `go-test-scripts`（`scripts/**/*.go`）、`sql-lint`（`.sql`）、`md-lint`（`.md`）、
   `actions-lint`（ワークフロー YAML + action YAML + node 製の lint スクリプト）、
   `actions-zizmor`（ワークフロー YAML + action YAML + `zizmor.yml`）、`oapi-lint`（`openapi/**`）、
-  `mock-auth-oapi-lint`（mock-auth-server の spec）、`docker-lint`（Dockerfile）、
+  `docker-lint`（Dockerfile）、
   `pin-actions`（ワークフロー YAML + action YAML + `actions-pin.toml`）、
   `pin-images`（Dockerfile + compose + `images-pin.toml`）、
   `migration-check-version`（`.sql`）、`migration-check-gap`（`.sql`）。

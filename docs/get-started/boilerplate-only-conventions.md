@@ -3,7 +3,7 @@
 English | [日本語](boilerplate-only-conventions.ja.md)
 
 This file collects the statements in this repository whose premise holds only while it *is* the
-upstream boilerplate — that it is a template, that its readers are forks, that its sample feature
+upstream boilerplate — that it is a template, that its readers instantiate it, that its sample feature
 set exists to be harvested and then removed. **Setup deletes this file whole** (see
 [setup-repository.md](setup-repository.md) Phase 16). Nothing written here is a rule for a project
 built from the template.
@@ -11,7 +11,7 @@ built from the template.
 What survives setup is the general form of each rule, stated in the document that owns it:
 [`docs/adr/README.md`](../adr/README.md), [`docs/rules.md`](../rules.md), the layer READMEs. This
 file records only the deviations the upstream takes from those general forms — because a deviation
-stated in a surviving document becomes a lie the moment the repository is forked.
+stated in a surviving document becomes a lie the moment a repository is created from the template.
 
 ## Why the deviations are collected here rather than marked in place
 
@@ -27,7 +27,7 @@ back to this file stay in place, and each is a single self-contained line carryi
 ## Marker convention
 
 `boilerplate-only` is the one namespace for everything that stops being true when this repository is
-forked, and `make setup-remove-boilerplate-identity` is the one pass that resolves it (Phase 12 of
+instantiated, and `make setup-remove-boilerplate-identity` is the one pass that resolves it (Phase 12 of
 [setup-repository.md](setup-repository.md)).
 
 | Marker | Placement | Effect |
@@ -37,25 +37,25 @@ forked, and `make setup-remove-boilerplate-identity` is the one pass that resolv
 | `boilerplate-only:replace-begin` / `replace-with` / `replace-end` | own-line comments around two regions | the first region is removed and the second, written as commented-out lines, is uncommented in its place |
 
 Reach for `replace-*` when deleting the region would take a heading or a rule down with it — where
-the fork needs *something* said, not nothing. In Markdown the commented-out lines take the form
+the created repository needs *something* said, not nothing. In Markdown the commented-out lines take the form
 `<!-- = ... -->`; `# = ...` renders as a second top-level heading and fails markdownlint MD025, and
 `// = ...` renders as literal text.
 
 Comment form follows the existing `sample-api` markers — `<!-- ... -->` in Markdown, `//` or `#` in
 code — so the same scanner shape works. The two namespaces are **not** interchangeable and must not
 be stripped by one pass: they fire at different moments (`boilerplate-only` when the template is set
-up, `sample-api` when the sample feature set is removed), and a fork may reasonably do one without
+up, `sample-api` when the sample feature set is removed), and a project may reasonably do one without
 the other.
 
 The removal **scans the repository** rather than working from a list of files. A list is something a
 marker can be written outside of, and the failure is silent: the pass reports success, and the
-premise reaches the fork with nothing to announce it. The only files exempt are dependency
+premise reaches the created repository with nothing to announce it. The only files exempt are dependency
 checkouts and generated output, declared in
 [`scripts/setup/remove-boilerplate-identity/targets.ts`](../../scripts/setup/remove-boilerplate-identity/targets.ts).
 
 ## The premise
 
-> This is a **template** repository: downstream users fork it and need to understand *why* each
+> This is a **template** repository: downstream users instantiate it and need to understand *why* each
 > choice was made, and to *supersede* individual choices with their own without editing a shared
 > monolith.
 
@@ -65,14 +65,14 @@ setting up.
 ## ADR conventions that apply only upstream
 
 The general regime — one immutable record per file, replaced by adding a *new* ADR rather than by
-editing the old one — is stated in [`docs/adr/README.md`](../adr/README.md) and is what a fork
+editing the old one — is stated in [`docs/adr/README.md`](../adr/README.md) and is what a created repository
 inherits. While this repository is distributed as a boilerplate, it deviates as follows.
 
 ### Amendment in place
 
 An `accepted` ADR is amended **in place**: update `date`, keep `status: accepted`, and do not create
 a superseding ADR for what is still the same decision. What this repository ships is the current
-design, not the sequence of positions that produced it, and a fork that must read three ADRs to
+design, not the sequence of positions that produced it, and a project that must read three ADRs to
 learn one rule pays for history it did not live. When an amendment changes the conclusion, the
 position it replaces moves to Alternatives Considered with the reason it was dropped — nothing is
 discarded, it changes section.
@@ -106,21 +106,21 @@ Outside a consolidation pass, an ADR that is still the same decision is amended 
 convention above. What this exception adds is the authority to merge and retire files, which an
 amendment does not have.
 
-**This deviation does not transfer** unless a fork adopts a harvest cycle of its own, which is its
+**This deviation does not transfer** unless a created repository adopts a harvest cycle of its own, which is its
 own decision to take and to record.
 
 ### Exclusion ADRs at setup
 
 Exclusion ADRs carry a `setup-review` tag so the repository-setup flow can enumerate them, and a
-fork may edit them directly at setup to establish its own baseline rather than superseding them. The
-instruction belongs to the fork, so it lives in [setup-repository.md](setup-repository.md) Phase 13;
+project may edit them directly at setup to establish its own baseline rather than superseding them. The
+instruction belongs to the created repository, so it lives in [setup-repository.md](setup-repository.md) Phase 13;
 it is named here only because the tag is a boilerplate-side device that means nothing once setup is
 done.
 
 ## Arguments that rest on the sample feature set
 
 This repository ships a sample feature set that is developed, harvested, and then removed. Several
-statements elsewhere borrow their force from it. A fork has no sample set, so what it inherits is the
+statements elsewhere borrow their force from it. A created repository has no sample set, so what it inherits is the
 rule, never the illustration.
 
 ### Sample occupants kept to make a rule legible
@@ -129,7 +129,7 @@ The only provider in `internal/infrastructure/rdb/command_service/` belongs to t
 feature, and it is the sole registration in the `command_service` sub-module of `persistenceModule`
 (`internal/di/module/persistence.go`). Removing the samples empties the sub-module and leaves
 [ADR-0031 (lightweight-cqrs)](../adr/0031-lightweight-cqrs.md)'s CommandService section describing an intended design
-with no occupant — which is the state a fork starts from.
+with no occupant — which is the state a created repository starts from.
 
 The upstream keeps that occupant deliberately: the eligibility bar ADR-0031 (lightweight-cqrs) states (which writes
 deserve a CommandService) is only legible against a concrete case that meets it, so the sample
@@ -159,7 +159,7 @@ not a setup step.
 ### Broker-SDK isolation is checked by running the sample removal
 
 [`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md)
-states the condition a fork inherits: `github.com/aws/aws-sdk-go-v2/service/sqs` enters
+states the condition a created repository inherits: `github.com/aws/aws-sdk-go-v2/service/sqs` enters
 `go list -deps ./cmd/` only when wiring that selects the adapter is present. That is a claim about
 the link graph, and it holds however the repository is distributed.
 
@@ -176,7 +176,7 @@ about which wiring pulls the SDK in.
 ## Arguments that rest on there being no adopter yet
 
 The remaining deviations share one shape: the upstream stops somewhere, and the reason it stops
-there is that the party who would settle the question does not exist yet. In a fork that party
+there is that the party who would settle the question does not exist yet. In a created repository that party
 exists, so the reason is gone and the stopping point is no longer justified by it.
 
 ### Setup scripts: why the pure-module split is a rule, not a convention
@@ -205,7 +205,7 @@ of use. What survives is the general rule in ADR-0081 (scripts-in-node-go), whic
 [`internal/domain/README.md`](../../internal/domain/README.md) states the general form: the naming
 and structure rules for a domain package are mechanical — they say what to call things, not what a
 division should reveal — and where a real domain is present those rules are the floor, with the
-model-revealing divisions added on top. That is what a fork inherits.
+model-revealing divisions added on top. That is what a created repository inherits.
 
 What the general form no longer says is *why the upstream stops at the floor*. A template has no
 real domain to have an insight about, so the only lines it can honestly draw are the ones the
@@ -223,7 +223,7 @@ having nothing to say them about.
 
 [`docs/design/context-map.md`](../design/context-map.md) records an edge whose settling fact is not
 available as `未確定`, carrying its evidence and the question that would settle it. That is the
-general form, and it is what a fork inherits.
+general form, and it is what a created repository inherits.
 
 While this repository is the upstream boilerplate, **most of those edges stay `未確定` permanently,
 and that is the correct state rather than an omission.** What would settle a downstream edge —

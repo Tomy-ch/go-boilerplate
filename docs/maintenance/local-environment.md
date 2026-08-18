@@ -78,7 +78,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | Service | Layer | Origin | Host port | Role |
 | --- | --- | --- | --- | --- |
 | `api_server` | app | build `docker/server/Dockerfile` | `${API_HOST_PORT:-8080}:8080` / dlv `${DLV_HOST_PORT:-2345}:2345` / pprof `${PPROF_HOST_PORT:-6060}:6060` (internal ports fixed) | The app itself. The dev target starts via **air** for hot reload + delve debugging |
-| `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-2010}:4000` (internal 4000) | Mock OIDC auth server (JWT test provider); the JWKS-verification counterpart of the RS side |
+| `mock_auth_server` | app | image `ghcr.io/navikt/mock-oauth2-server` (config: `docker/mock-auth-server/config.json`) | `${MOCK_AUTH_HOST_PORT:-2010}:4000` (internal 4000) | Mock OIDC provider; the JWKS-verification counterpart of the RS side |
 | `database` | infra | `postgres:18.4-trixie` | `5432` fixed | A **single** instance shared by all checkouts (parallelism is by DB name — see the slot ring below) |
 | `observability` | infra | `grafana/otel-lgtm` | `3000` (Grafana UI) / `4317` (OTLP gRPC) / `4318` (OTLP HTTP) / `3200` (Tempo API) | Sink for traces / metrics / logs of every checkout. profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |

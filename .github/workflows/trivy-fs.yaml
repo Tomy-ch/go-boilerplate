@@ -13,7 +13,6 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
@@ -22,7 +21,6 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   schedule:
     - cron: '0 0 * * 1'

@@ -30,7 +30,7 @@
 - **冪等なリクエスト処理** — [docs/design/idempotency.md](docs/design/idempotency.md)
 - **アプリケーションジョブ** — [docs/design/job.md](docs/design/job.md)
 - **REST の信頼性**（タイムアウト / ボディ上限 / deadline budget / tx リトライ） — [docs/design/rest.md](docs/design/rest.md)
-- **認証**（リソースサーバ側の JWT / JWKS 検証。開発用の OIDC プロバイダを同梱） — [docs/design/auth.md](docs/design/auth.md) / [mock-auth-server/README.ja.md](mock-auth-server/README.ja.md)
+- **認証**（リソースサーバ側の JWT / JWKS 検証。開発用の OIDC プロバイダを同梱） — [docs/design/auth.md](docs/design/auth.md)
 - **可観測性**（OpenTelemetry の traces / metrics / logs・config 駆動） — [docs/design/observability.md](docs/design/observability.md)
 - **オブジェクトストレージ**（S3 互換アダプタの背後にある中立な境界。ローカルコンテナ・シード投入・匿名 read の公開配信を同梱） — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **自己完結の単一バイナリ**（env とマイグレーションを埋め込み → 単一イメージ） — [docker/README.md](docker/README.md)
@@ -131,7 +131,7 @@ curl http://localhost:8080/health
 <!-- boilerplate-only:begin -->
 ## テンプレートとして使う
 
-fork して自分のものに置き換えます。セットアップは文字列置換ではなく、**スクリプト化され検証される
+GitHub の *Use this template* でリポジトリを作成し、自分のものに置き換えます。セットアップは文字列置換ではなく、**スクリプト化され検証される
 一連の手順**です。順序は [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md)
 が示しており、以下はそれがどういう性質の作業かを示すための要約に過ぎません。
 
@@ -147,7 +147,7 @@ fork して自分のものに置き換えます。セットアップは文字列
   認証 / 認可の実装、デプロイ先、依存ライセンスの閾値、DAST と資格情報を要するスキャナを残すかどうか、
   そして再設定すべき非採用 ADR 群。
 
-fork した瞬間に成り立たなくなる記述と、それをスクリプトが除去できるようにするマーカーの規約は
+テンプレートから作成した瞬間に成り立たなくなる記述と、それをスクリプトが除去できるようにするマーカーの規約は
 [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md)
 にあります。
 
@@ -294,7 +294,6 @@ model）と `CommandService`（読み込み・変更・保存の形では表現�
 - [docker/README.md](docker/README.md) — イメージ・compose プロファイル・単一コンテナ運用
 - [scripts/README.md](scripts/README.md) — ユーティリティスクリプトとリポジトリのゲート（コード生成・ドキュメント・バージョニング・供給網ピン・セットアップ）
 - [python/README.md](python/README.md) — PyPI 公開の CLI ツール。宣言とハッシュ固定
-- [mock-auth-server/README.md](mock-auth-server/README.md) — 開発用 OIDC プロバイダ（TypeScript。API とは意図的に別ランタイム）
 - [docs-viewer/README.md](docs-viewer/README.md) — ドキュメントポータルのフロントエンド（生成された `docs/portal/docs.json` を描画）
 - [.github/workflows/README.md](.github/workflows/README.md) — CI ワークフローとリポジトリのセキュリティ統制の目録
 
@@ -317,8 +316,10 @@ model）と `CommandService`（読み込み・変更・保存の形では表現�
 - `.agents/` — すべての AI ツールが共有する機械可読の成果物。どのアシスタントにも所有させない
 - `.claude/` / `.codex/` — それぞれ 1 つのアシスタント向けの設定
 
-`mock-auth-server/` / `docs-viewer/` / `python/` は独自のツールチェーンを持つ補助プロジェクトで、
-順に開発用 OIDC プロバイダ・ドキュメントポータルのフロントエンド・ハッシュ固定した PyPI 製 CLI である。
+`docs-viewer/` / `python/` は独自のツールチェーンを持つ補助プロジェクトで、
+順にドキュメントポータルのフロントエンド・ハッシュ固定した PyPI 製 CLI である。開発用 OIDC
+プロバイダはここに含まれない——compose が digest 固定した上流イメージを引き、設定は
+`docker/mock-auth-server/config.json` が持つ。
 
 ## 技術スタック
 

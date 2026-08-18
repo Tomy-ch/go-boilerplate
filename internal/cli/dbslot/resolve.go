@@ -35,6 +35,10 @@ const (
 
 	// gitDirsFields は `git rev-parse --git-dir --git-common-dir` が返す行数です。
 	gitDirsFields = 2
+
+	// mockAuthIssuerPath は、mock 認証サーバーが issuer を生やすパスです。値は
+	// docker/mock-auth-server/config.json の issuerId と一致していなければなりません。
+	mockAuthIssuerPath = "/default"
 )
 
 var (
@@ -123,7 +127,7 @@ func (r *Resolver) Resolve(ctx context.Context) (Values, error) {
 		DBLocal:    orDefault(slot["DB_NAME_LOCAL"], defaultDBLocal),
 		DBTest:     orDefault(slot["DB_NAME_TEST"], defaultDBTest),
 		AppProject: orDefault(slot["SERVE_PROJECT"], "gobp-app-"+filepath.Base(r.cfg.Root)),
-		AuthIssuer: "http://localhost:" + orDefault(slot["MOCK_AUTH_HOST_PORT"], strconv.Itoa(r.cfg.MockAuthBase)),
+		AuthIssuer: "http://localhost:" + orDefault(slot["MOCK_AUTH_HOST_PORT"], strconv.Itoa(r.cfg.MockAuthBase)) + mockAuthIssuerPath,
 	}
 
 	// 共有インフラを奪い合う相手が居るのはリンク worktree のときだけなので、単一 checkout では空にします。

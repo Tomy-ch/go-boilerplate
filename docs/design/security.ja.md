@@ -112,7 +112,7 @@ Go のエコシステムは完全性をほぼ無償で与え、新しさにつ�
 
 ### pnpm
 
-Node のパッケージはすべて pnpm で解決します——`scripts/`・`mock-auth-server/`・`docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は 7 日で、導出のしかたは他のエコシステムと同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
+Node のパッケージはすべて pnpm で解決します——`scripts/`・`docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は 7 日で、導出のしかたは他のエコシステムと同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
 
 窓は解決時だけでなく **install のたび**に効きます。pnpm は毎回 lockfile 全体を現行ポリシーで再検証します——CI とイメージビルドが使う再生経路である `--frozen-lockfile` も含めてです。窓内のエントリが lockfile に入ったあと見えなくなる、ということが起こりません。
 

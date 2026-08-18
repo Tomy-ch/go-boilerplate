@@ -25,7 +25,7 @@ infra 層には固定ポートでしか動けないサービスだけが属し�
 |`docker-compose.yaml`|全サービスの定義|
 |`docker-compose.attach.yaml`|app 層の override。**常に**重ねて適用する（`docker compose -f docker-compose.yaml -f docker-compose.attach.yaml`）|
 
-`docker-compose.attach.yaml` は `api_server` のホスト公開ポートを `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}` にし、`depends_on` を `mock_auth_server` だけに絞り（infra 層は起動済みのため）、`DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}` の上書きで共有インフラを参照させます。`mock_auth_server` の `OIDC_ISSUER` も同じ公開ポートに追従します。
+`docker-compose.attach.yaml` は `api_server` のホスト公開ポートを `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}` にし、`depends_on` を `mock_auth_server` だけに絞り（infra 層は起動済みのため）、`DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default` の上書きで共有インフラを参照させます。プロバイダ側に対応する上書きは要りません——issuer は到達した `Host` から導出されるためです。
 
 |目的|参照先|
 |---|---|
@@ -42,7 +42,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 |サービス|層|Dockerfile / Image|ポート|説明|
 |---|---|---|---|---|
 |`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|開発用APIサーバ（air によるホットリロード）|
-|`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-2010}`|疑似 OIDC 認証サーバー（JWT Test Provider）|
+|`mock_auth_server`|app|`ghcr.io/navikt/mock-oauth2-server`|`${MOCK_AUTH_HOST_PORT:-2010}`|疑似 OIDC プロバイダ（開発専用）|
 |`database`|infra|`postgres:18.4-trixie`|5432|PostgreSQL データベース|
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
 |`garage`|infra|`dxflrs/garage`|3900, 3902|S3 互換オブジェクトストレージ（S3 API / Web API）|
@@ -107,11 +107,12 @@ Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクト�
 
 ## mock-auth-server
 
-疑似 OIDC 認証サーバー（JWT Test Provider）のコンテナです。ここにあるのは Dockerfile だけで、サービス実装はリポジトリ直下に置いています。エンドポイント・フロー・fixture は [`mock-auth-server/README.ja.md`](../mock-auth-server/README.ja.md) を参照してください。
+開発用の OIDC プロバイダです。ここでは何もビルドしません——上流の `ghcr.io/navikt/mock-oauth2-server` イメージを [`images-pin.toml`](images-pin.toml) で digest 固定して起動するため、このディレクトリが持つのは渡す設定だけです。
 
-- ベースイメージ: `node:24.18.0-alpine`。Node のネイティブ型ストリッピングで `.ts` を直接実行（`tsc` ビルド不要）
-- 非rootユーザー（`node`）で実行。コンテナ内部のポートは常に `4000`
-- `OIDC_ISSUER` はホストOS / ブラウザから参照する URL のため、`docker-compose.attach.yaml` でホスト公開ポートに追従させる
+- `config.json` は `/etc/mock-oauth2-server/config.json` へ read-only でマウントし、`JSON_CONFIG_PATH` で渡します。トークンの契約はすべてここが宣言します——`issuerId`（issuer のパス要素と JWKS の `kid` を兼ねる）、リソースサーバーが要求する `at+jwt` 型ヘッダ（RFC 9068）、1 つの claim 集合でリソースサーバーと OIDC クライアントの双方を満たすための `aud` / `azp`（[`docs/design/auth.ja.md`](../docs/design/auth.ja.md) の 3.3.1 節）、そしてログインフォーム（または password grant）の `username` に解決され `sub` になる `${subject}`
+- コンテナ内部のポートは常に `4000`（`SERVER_PORT`）。プロセスは上流イメージの非 root UID で動く
+- issuer はトークンを取得したリクエストの `Host` から導出されるため、ここで宣言する必要はありません——ホスト公開ポート経由で取ったトークンは `AUTH_ISSUER` と一致する `iss` を持ちます。`docker-compose.attach.yaml` は API 側の `AUTH_ISSUER` をスロットのポートに追従させるだけで済みます
+- 署名鍵は起動時に生成され、コミットしません。したがってトークンは再起動をまたいで再現しません。再現性に依存しているものはありません——リソースサーバーは実行時に JWKS から鍵を解決し、JWKS ローテーションテストが必要とする固定鍵はそのテスト自身が持ちます（`internal/integration/testdata/`）
 
 ## database
 

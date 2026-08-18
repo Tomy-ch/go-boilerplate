@@ -9,7 +9,7 @@ It starts an Echo server and verifies through the **actual HTTP communication pa
 These tests target the **HTTP boundary**: no DB, no SQL, no Repository. The one deliberate exception is the
 authentication boundary — `jwt_auth_test.go` and `jwks_rotation_test.go` drive the real
 `internal/infrastructure/auth/jwt` implementation, because a hand-rolled mock of JWKS resolution would
-drift from the provider in silence. See [`docs/design/auth.md`](../../docs/design/auth.md).
+drift in silence. See [`docs/design/auth.md`](../../docs/design/auth.md).
 
 ## Test Strategy
 

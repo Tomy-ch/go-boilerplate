@@ -75,7 +75,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | サービス | 層 | 由来 | ホストポート | 役割 |
 | --- | --- | --- | --- | --- |
 | `api_server` | app | build `docker/server/Dockerfile` | `${API_HOST_PORT:-8080}:8080` / dlv `${DLV_HOST_PORT:-2345}:2345` / pprof `${PPROF_HOST_PORT:-6060}:6060`（内部ポートは固定） | アプリ本体。dev target は **air** で起動しホットリロード＋delve デバッグ |
-| `mock_auth_server` | app | build `docker/mock-auth-server/Dockerfile` | `${MOCK_AUTH_HOST_PORT:-2010}:4000`（内部 4000） | 疑似 OIDC 認証サーバー（JWT テストプロバイダ）。RS 側の JWKS 検証相手 |
+| `mock_auth_server` | app | image `ghcr.io/navikt/mock-oauth2-server`（設定: `docker/mock-auth-server/config.json`） | `${MOCK_AUTH_HOST_PORT:-2010}:4000`（内部 4000） | 疑似 OIDC プロバイダ。RS 側の JWKS 検証相手 |
 | `database` | infra | `postgres:18.4-trixie` | `5432` 固定 | 全 checkout 共有の**単一**インスタンス（並列化は DB 名で行う。下記スロットリング参照） |
 | `observability` | infra | `grafana/otel-lgtm` | `3000`（Grafana UI）/ `4317`（OTLP gRPC）/ `4318`（OTLP HTTP）/ `3200`（Tempo API） | 全 checkout の traces / metrics / logs の受け皿。profile: `development` |
 | `garage` | infra | `dxflrs/garage` | `3900`（S3 API）/ `3902`（Web API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う）。Web API はオブジェクトを匿名配信する — [`docker/README.md`](../../docker/README.md) 参照 |

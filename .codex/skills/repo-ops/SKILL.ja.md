@@ -28,15 +28,14 @@
 | コンテナ経由のゲートが `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` で落ちる / Docker 内でだけ落ちる | §10 |
 | 触っていないパッケージの依存が無いとコンテナ側のゲートが言う / `make` では落ちるのに素の `docker compose run` では通る | §10 |
 | 自分の変更と無関係な理由でフックが落ちる | §11 |
-| 複数の worktree を開いている状態で、変更と無関係にゲートが落ちる／異常に遅い | §21 |
-| `make lint` がスキップ・低速化・CI 委譲された理由を知りたい | §21 |
+| 複数の worktree を開いている状態で、変更と無関係にゲートが落ちる／異常に遅い | §20 |
+| `make lint` がスキップ・低速化・CI 委譲された理由を知りたい | §20 |
 | `pin-images-check` / `pin-actions-check` が未固定・未登録で落ちる | §12 |
 | pre-commit の "Migration version gap / duplicate" | §13 |
 | ローカルの S3 呼び出しが 503 を返す | §14 |
-| golden JWKS のドリフト / mock-auth の OpenAPI が古い | §15 |
-| 特定環境向けイメージのビルド | §16 |
-| CI で `sync-versions` のドリフト | §17 |
-| 新しい worktree で air やイメージビルドが `go: inconsistent vendoring` になる（`vendor/` 未生成） | §20 |
+| 特定環境向けイメージのビルド | §15 |
+| CI で `sync-versions` のドリフト | §16 |
+| 新しい worktree で air やイメージビルドが `go: inconsistent vendoring` になる（`vendor/` 未生成） | §19 |
 | どのドキュメントが答えを決めるのか分からない / `grep` が対訳・生成物に埋もれる | §0 |
 
 ## 0. 正本の見つけ方
@@ -59,7 +58,7 @@
 | パッケージ単位の詳細と設計意図 | 最も近い `internal/**/README.md` / `pkg/**/README.md`（100 個超） | スキル本体 — スキルが README に従うのであって逆ではない |
 | 環境変数 | `internal/config/envspec.go` + `model.go`、`env/README.md` の表 | `env/.env*` の値だけ |
 | CI ゲートやフックが実際に検査する内容 | `.github/workflows/*.yaml`、`.lefthook.yaml` | — |
-| ツール / ランタイムのバージョン | `mise.toml`（他はすべて派生 — §17） | `go.mod`・Dockerfile・README — いずれも派生物 |
+| ツール / ランタイムのバージョン | `mise.toml`（他はすべて派生 — §16） | `go.mod`・Dockerfile・README — いずれも派生物 |
 | 生成物・保護パス・スコープ | `AGENTS.md` | — |
 
 ### ノイズを除いた検索
@@ -154,7 +153,7 @@ docker compose run --rm --user root go_tool_runner   chown -R $(id -u):$(id -g) 
 make secret-scan          # 再現する。出力に新しいフィンガープリントが載る（値は redact 済み）
 ```
 
-そのうえで `.gitleaksignore` の該当行を新しい行番号へ更新する（説明コメントは残す）。これを行ってよいのは、そこに意図的なものとして既に記載されているエントリ（mock-auth の署名鍵・Garage の開発用資格情報）だけ。本当に新規の検出は実際の秘密なので、無視せずツリーから除去する。
+そのうえで `.gitleaksignore` の該当行を新しい行番号へ更新する（説明コメントは残す）。これを行ってよいのは、そこに意図的なものとして既に記載されているエントリ（JWKS ローテーションテストの署名鍵・Garage の開発用資格情報）だけ。本当に新規の検出は実際の秘密なので、無視せずツリーから除去する。
 
 ## 7. `sample-removal-check` が CI で落ちる
 
@@ -192,13 +191,13 @@ CI の失敗を再現するときは必ず full 設定を使う。
 
 ## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / ツールが古い
 
-ツールランナーのイメージは **`docker/tools/Dockerfile` と `mise.toml`、および node ランナーが in-tree で install する全パッケージ（`scripts/` に加えて `mock-auth-server/` と `docs-viewer/`）の `package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` の 3 点セットのビルド成果物**。ツールはホストではなくランナー内で解決される（コード生成と同じ再現性ルール。`docs/rules.md` 参照）。いずれかを変更した後、あるいはイメージがそれらより古いクローンでは、ランナーにツールが無い / 版が古い / そもそも何も実行できない状態になる。
+ツールランナーのイメージは **`docker/tools/Dockerfile` と `mise.toml`、および node ランナーが in-tree で install する全パッケージ（`scripts/` と `docs-viewer/`）の `package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` の 3 点セットのビルド成果物**。ツールはホストではなくランナー内で解決される（コード生成と同じ再現性ルール。`docs/rules.md` 参照）。いずれかを変更した後、あるいはイメージがそれらより古いクローンでは、ランナーにツールが無い / 版が古い / そもそも何も実行できない状態になる。
 
-対象が 3 パッケージにまたがる点は意外に映る。`mock-auth-server/` や `docs-viewer/` だけに閉じた変更でも、3 つとも単一の node ランナーへ install されるため、`scripts/` 側のゲートが走るイメージが古くなる。
+対象が複数パッケージにまたがる点は意外に映る。`docs-viewer/` だけに閉じた変更でも、両方とも単一の node ランナーへ install されるため、`scripts/` 側のゲートが走るイメージが古くなる。
 
 最後の症状は、変更との関係が見えにくい。`scripts/pnpm-workspace.yaml` は `verifyDepsBeforeRun: error` を設定しているため、その設定がイメージ内の `scripts/node_modules` を入れたときの設定と食い違うと、ランナー内の `pnpm run` はすべて `[ERR_PNPM_VERIFY_DEPS_BEFORE_RUN] The value of the <setting> setting has changed` で落ちる。倒れるのは変更と無関係に見えるゲート（`make md-lint` / `make actions-lint` / `make lint-oapi`）で、一方ホスト側の `-ci` ターゲットは緑のままである（ファイル変更時にホストのツリーは入れ直されているため）。`minimumReleaseAgeExclude` や `overrides` のエントリを 1 行足すだけで発火する。したがって**ホストで緑であることは、コンテナ側のゲートが通る証拠にならない**。先に再ビルドし、そのうえで報告するつもりのゲートを回し直すこと。
 
-古いイメージは、**触ってすらいないパッケージの依存が見つからない、という形でコンテナ側のゲートを落とす**形でも現れる。1:1 テストゲート（`scripts/one-to-one.gate.test.ts`）は 3 パッケージすべてを型検査するため、`mock-auth-server/` が現在の manifest を得る前にビルドされたイメージは、`mock-auth-server/src/**` に対して TS2307 `Cannot find module 'hono' / 'jose' / 'zod'` を並べて返す。リポジトリが依存の宣言を忘れているように読めるが、探す木が違う。
+古いイメージは、**触ってすらいないパッケージの依存が見つからない、という形でコンテナ側のゲートを落とす**形でも現れる。1:1 テストゲート（`scripts/one-to-one.gate.test.ts`）は両パッケージを型検査するため、`docs-viewer/` が現在の manifest を得る前にビルドされたイメージは、`docs-viewer/src/**` に対して TS2307 `Cannot find module` を並べて返す。リポジトリが依存の宣言を忘れているように読めるが、探す木が違う。
 
 **見分けの決め手は、`make` では落ちるのに同じコマンドを素の `docker compose run` で叩くと通ること。** `.makefiles/docker/compose.mk` は `COMPOSE_PROJECT_NAME` を共有インフラのプロジェクトとして export する（§1）ので、`make` は必ず `gobp-shared` のイメージに当たる。一方、素の呼び出しはディレクトリ名からプロジェクトを決めるため、別の——多くは新しい——イメージに当たる。この非対称は、コードについての証拠ではなくイメージの新旧差として読むこと。
 
@@ -211,7 +210,7 @@ make tool-runners-build-clean     # --no-cache --pull。キャッシュ層が原
 
 **コンテナ側の失敗の原因が特定できていないうちは、何かを結論づける前にクリーンビルドすること。** 「自分の変更と無関係」も「base ブランチに元からある失敗」も結論であり、古いイメージはそのどちらの証拠も作り出す。だから先に再ビルドを払う——`make tool-runners-build-clean` を回し、既に起動しているものは（落ちたランナーだけでなく `make serve` とツールスタックも）再起動し、そのうえでゲートを回し直す。数分で済み、他のあらゆる説明を模倣してしまう唯一の説明を消すには最も安い。原因不明のまま `--no-verify` に手を伸ばすのは、この確認を通過することではなく飛ばすこと。
 
-node ランナーは `/app/scripts/node_modules` を匿名ボリュームとして持つ（バインドマウントによる shadow を防ぐため）。補助スクリプトと `gen-mock-auth-oapi` はここからバイナリを解決するので、イメージが古いとこれらが壊れる。
+node ランナーは `/app/scripts/node_modules` を匿名ボリュームとして持つ（バインドマウントによる shadow を防ぐため）。補助スクリプトはここからバイナリを解決するので、イメージが古いとこれらが壊れる。
 
 commit-msg フックは `node_tool_runner` 経由で `make commitlint COMMIT_MSG_FILE={1}` を実行するため、コミット失敗の典型原因はこれ。`commitlint.config.js` は意図的に `type-case` を無効化し（prefix は Cap-first の `Feat`/`Fix`/… だが CI のメッセージは全大文字＝単一 case を強制できない）、`type-enum` をプロジェクトの prefix に固定している。`Merge` / `Revert` は既定で無視される。
 
@@ -221,11 +220,11 @@ commit-msg フックは `node_tool_runner` 経由で `make commitlint COMMIT_MSG
 
 | フック | glob → コマンド（抜粋） |
 | --- | --- |
-| pre-commit | `*.go` → `make gate-go`（`lint` + `test-cached` を束ねる）／`scripts/**/*.go` → `make test-scripts-cached`／`*.sql` → `make sql-lint`／`*.md` → `make md-lint`／`.github/workflows/**` → `make actions-lint`・`make pin-actions-check`／`openapi/**` → `make lint-oapi`／`mock-auth-server/openapi/**` → `make lint-mock-auth-oapi`／`docker/**/Dockerfile`・`docker-compose*.yaml` → `make docker-lint`・`make pin-images-check`／`database/migrations/*.sql` → migration の重複・ギャップ検査 |
+| pre-commit | `*.go` → `make gate-go`（`lint` + `test-cached` を束ねる）／`scripts/**/*.go` → `make test-scripts-cached`／`*.sql` → `make sql-lint`／`*.md` → `make md-lint`／`.github/workflows/**` → `make actions-lint`・`make pin-actions-check`／`openapi/**` → `make lint-oapi`／`docker/**/Dockerfile`・`docker-compose*.yaml` → `make docker-lint`・`make pin-images-check`／`database/migrations/*.sql` → migration の重複・ギャップ検査 |
 | commit-msg | `make commitlint COMMIT_MSG_FILE={1}` |
 | pre-push | `make secret-scan`／`*.go` → `make gate-go-push`（`test` + `test-scripts` を束ねる）／`*.go`・`openapi/**` → 再生成して `*.gen.go`・mock・`openapi.gen.yaml` を `git diff --exit-code`／`go.mod`・`go.sum` → `go mod tidy` + diff |
 
-Go のゲートは 1 コマンドずつ並べず `gate-go` / `gate-go-push` に**束ねてある**。lefthook はフック内の commands を並列に走らせるため、ゲートごとにエントリを置くと、開いている窓の数に**加えて**ゲートの数だけホスト負荷が乗算されるためである。どれだけ全力で走るかは §21 が決める。
+Go のゲートは 1 コマンドずつ並べず `gate-go` / `gate-go-push` に**束ねてある**。lefthook はフック内の commands を並列に走らせるため、ゲートごとにエントリを置くと、開いている窓の数に**加えて**ゲートの数だけホスト負荷が乗算されるためである。どれだけ全力で走るかは §20 が決める。
 
 pre-push の `gen-go-check` は Docker で再生成して差分があれば落ちる。対処は再実行ではなく、再生成物をコミットすること（§2・§4）。自分の変更と無関係な理由で赤いとき（base ブランチに元からある失敗・環境要因）は `--no-verify` で push し、原因は別途つぶす。変更のほうを歪めない。ただし「元からある失敗」と断ずる前に、ツールランナーのイメージが古い線（§10）を消しておくこと。失敗メッセージだけでは両者を区別できない。
 
@@ -249,28 +248,19 @@ make infra-up                     # 冪等。garage_init の終了まで待つ
 
 バケットは全 checkout で共有される（データベースと違いスキーマを持たないため、ブランチ間で壊れない）。ブランチ毎に隔離したい場合は `OBJECT_STORAGE_BUCKET` を分ける。Go のテストは garage を使わず in-process の gofakes3 を使う。
 
-## 15. mock-auth-server — 独自の生成物を持つ別 npm プロジェクト
-
-`mock-auth-server/` は独立した Node プロジェクト（自前の `package.json` / OpenAPI / テスト）。その出力のうち2つが CI でドリフト検知される:
-
-- **golden JWKS** — `fixtures/jwks/*.json` と `internal/integration/testdata/jwks/*.json` は同一の generator が書き出し、provider と Go 統合テストが単一ソースを共有する。鍵ストアや鍵に触ったら `mock-auth-server` で `npm run gen:jwks` を実行し、両ディレクトリをコミットする。
-- **OpenAPI バンドル + zod スキーマ** — `make gen-mock-auth-oapi` で再生成する（`node_tool_runner` 内で実行され、`orval` は `/app/scripts/node_modules` から解決される。見つからない場合は §10）。
-
-`make reset-mock-auth-users` は、テスト実行で書き換わった固定 mock ユーザーを中立な既定へ戻す。
-
-## 16. 環境別 Docker イメージ
+## 15. 環境別 Docker イメージ
 
 runtime イメージは、ビルド時に `--build-arg APP_ENV=<env>` で選んだ `env/.env.<env>` を1つだけ焼き込む（deploy ワークフローが注入する）。実行時 ENV で切り替える単一イメージ方式ではない。
 
 ```bash
-go mod vendor   # builder ステージは vendor モード + GOPROXY=off。省くと失敗する（§20）
+go mod vendor   # builder ステージは vendor モード + GOPROXY=off。省くと失敗する（§19）
 docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/Dockerfile .
 # .env.stg だけが焼き込まれたか検証する
 ```
 
 マイグレーション専用イメージは無い。`env/` と `database/migrations` はバイナリに埋め込まれるため、マイグレーションは同じ `runtime` イメージの command override（`./server migrate-up`）で実行する。
 
-## 17. `sync-versions` のドリフト
+## 16. `sync-versions` のドリフト
 
 ツールバージョンの正本は `mise.toml` で、`go.mod`・各 Dockerfile・`docker/**` の README は派生物。派生側を直接編集したり、`mise.toml` を上げて伝播させないと CI チェックが落ちる。
 
@@ -280,7 +270,7 @@ make sync-versions                # mise.toml から伝播させ、結果をコ�
 
 Go バージョンの更新は `go-upgrade` スキルを使う（手順一式はそちらが持つ）。
 
-## 18. 生成モック — 手書きせず Docker で再生成
+## 17. 生成モック — 手書きせず Docker で再生成
 
 各ソースが `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` を宣言し（`$GOFILE` ベースの destination はリポジトリ全体で統一されているため、どの interface ファイルにも同じ行をコピペできる）、`make gen-go-code` が `go_tool_runner` 内でピン留めされた mockgen（`mise.toml`。現在 `0.6.0`）で実行する。インターフェース変更後は `*_mock.go` を編集せず再生成する。新規 mock ディレクトリは root 所有で返ることがある（§4）。
 
@@ -288,11 +278,11 @@ Go バージョンの更新は `go-upgrade` スキルを使う（手順一式は
 make gen-go-code
 ```
 
-## 19. `.makefiles` の DRY_RUN 規約
+## 18. `.makefiles` の DRY_RUN 規約
 
 setup / teardown 系ターゲットは `$(if $(DRY_RUN),--dry-run,)` と `[ -n "$(DRY_RUN)" ]` で dry-run を判定するため、**空でない値はすべて真**＝`DRY_RUN=0 make <target>` でも dry-run になる。実際に実行するときは変数自体を付けない。プレビューは `DRY_RUN=1 make <target>`。`setup-repo` はプレビュー不可能なため `DRY_RUN` 自体を拒否する。
 
-## 20. 新しい worktree の `go: inconsistent vendoring` — `make serve` は成功と出るが API が応答しない
+## 19. 新しい worktree の `go: inconsistent vendoring` — `make serve` は成功と出るが API が応答しない
 
 `vendor/` は追跡外（`.gitignore`）である——サプライチェーン上の理由は `docs/design/security.md` に記録されている——ため、新しい worktree / clone には最初から存在しない。vendor モードを強制するビルド経路はちょうど 2 つで、air のホットリロードビルド（`.air.toml` の `go build --mod=vendor`）と runtime イメージビルド（`docker/server/Dockerfile` の `go build -mod=vendor`。`GOPROXY=off` 下なので取得へフォールバックできない）。それ以外——`make test`・`make lint`・ホストの `go run`——はモジュールキャッシュから解決して緑のままなので、アプリ本体がビルドされるまで何も警告してくれない:
 
@@ -308,9 +298,9 @@ go mod vendor       # 対処はこれだけ
 make serve
 ```
 
-この手順は `make tidy-lib` が所管するが、先に `go mod tidy` を走らせるため `go.mod` を書き換えうる。欠けている `vendor/` を用意するだけなら素の `go mod vendor` を選ぶ。この状態を守る仕組みは無い: フックも CI チェックも `vendor/` を検査せず（`tidy-check.yaml` に明記がある）、イメージをビルドするワークフローは先に作り直すため落ちない。依存が変わるベース取り込みの後は、自分でコマンドを再実行する。同じ罠は手動のイメージビルド（§16）にも当たる——vendor モードの `Dockerfile` を直接叩くためである。
+この手順は `make tidy-lib` が所管するが、先に `go mod tidy` を走らせるため `go.mod` を書き換えうる。欠けている `vendor/` を用意するだけなら素の `go mod vendor` を選ぶ。この状態を守る仕組みは無い: フックも CI チェックも `vendor/` を検査せず（`tidy-check.yaml` に明記がある）、イメージをビルドするワークフローは先に作り直すため落ちない。依存が変わるベース取り込みの後は、自分でコマンドを再実行する。同じ罠は手動のイメージビルド（§15）にも当たる——vendor モードの `Dockerfile` を直接叩くためである。
 
-## 21. 変更と無関係な理由でゲートが落ちた — 開いている窓の数を見る
+## 20. 変更と無関係な理由でゲートが落ちた — 開いている窓の数を見る
 
 複数の worktree がそれぞれホスト全体を前提としたゲートを回すとホストが飽和し、ゲートは「変更の欠陥に見える形」で落ち始める。触っていないテストがタイムアウトし、`make lint` が 17 分かかり、`docker` が応答を返さなくなる（共有 DB 飽和・CPU 飽和の罠として現れることもある）。失われるのは所要時間ではなく、**ゲートの失敗がコードについての証拠でなくなること**である。
 

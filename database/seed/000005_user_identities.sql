@@ -1,7 +1,7 @@
 -- 外部ID連携: issuer と subject の組で内部ユーザーを一意に指す。
 -- mock 系: ローカル開発用（issuer=mock）。subject は内部ユーザーの UUID と一致させる。
 -- jwt 系: JWT 認証向け。`${AUTH_ISSUER}` の展開は database/seed/README.md の Placeholders 節を参照。
--- subject は mock-auth-server の fixtures（mock-auth-server/fixtures/users.json）と一致させる。
+-- JWT 系の subject は mock 認証サーバーが username をそのまま sub に写すため、トークン取得時に渡す値と一致させる。
 -- jwt 系だけ再投入で issuer を更新する。DO NOTHING だと別環境で投入済みの DB に古い issuer が残り、認証だけが通らない状態になる。
 -- 削除済みユーザー（Charlie / Frank）も登録し、状態検証で認証失敗することを確認できるようにする。unknown-user は行を作らず未登録失敗を表す。
 
@@ -27,7 +27,7 @@ INSERT INTO user_identities (id, user_id, issuer, subject) VALUES
 INSERT INTO user_identities (id, user_id, issuer, subject) VALUES
 ('d1b2c3d4-0000-4000-8000-000000000010', 'eaabee3e-3b7a-4f61-8fa9-030944625e92', 'mock', 'eaabee3e-3b7a-4f61-8fa9-030944625e92') ON CONFLICT (id) DO NOTHING;
 
--- JWT 認証用（issuer=${AUTH_ISSUER}, subject=fixtures）
+-- JWT 認証用（issuer=${AUTH_ISSUER}, subject=トークン取得時の username）
 INSERT INTO user_identities (id, user_id, issuer, subject) VALUES
 ('e1b2c3d4-0000-4000-8000-000000000001', '550e8400-e29b-41d4-a716-446655440000', '${AUTH_ISSUER}', 'user-john-doe') ON CONFLICT (id) DO UPDATE SET issuer = excluded.issuer, updated_at = NOW();
 INSERT INTO user_identities (id, user_id, issuer, subject) VALUES

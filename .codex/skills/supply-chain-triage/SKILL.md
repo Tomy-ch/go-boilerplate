@@ -12,7 +12,7 @@ compromised publish?** Produce a scored, cited Japanese verdict and change nothi
 
 At runtime, read `docs/design/security.md`, especially “Dependencies → Three principles that hold
 for every ecosystem” and the matching ecosystem subsection. That document is the policy source of
-truth. If it is absent in a fork, use this fallback: the cooldown is a proxy for whether the
+truth. If it is absent in a repository created from this template, use this fallback: the cooldown is a proxy for whether the
 publisher changed, the artifact matches its source, the diff is benign, and no dependency or
 capability was added; direct answers beat counting days, but skipping both does not.
 

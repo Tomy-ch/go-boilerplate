@@ -32,7 +32,7 @@ Each item is a thin seam you extend; follow the link for the design and rules.
 - **Idempotent request handling** — [docs/design/idempotency.md](docs/design/idempotency.md)
 - **Application jobs** — [docs/design/job.md](docs/design/job.md)
 - **REST reliability** (timeouts / body limit / deadline budget / tx retry) — [docs/design/rest.md](docs/design/rest.md)
-- **Authentication** (resource-server-side JWT / JWKS verification, with a development OIDC provider) — [docs/design/auth.md](docs/design/auth.md) / [mock-auth-server/README.md](mock-auth-server/README.md)
+- **Authentication** (resource-server-side JWT / JWKS verification, with a development OIDC provider) — [docs/design/auth.md](docs/design/auth.md)
 - **Observability** (OpenTelemetry traces / metrics / logs, config-driven) — [docs/design/observability.md](docs/design/observability.md)
 - **Object storage** (vendor-neutral boundary behind an S3-compatible adapter; local container, seeding and public read delivery included) — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
 - **Single self-contained binary** (env + migrations embedded → one image) — [docker/README.md](docker/README.md)
@@ -134,9 +134,10 @@ Before development, follow the setup steps: [docs/get-started/setup-repository.m
 <!-- boilerplate-only:begin -->
 ## Using This as a Template
 
-Fork it and localize it. The setup is a **scripted, gated sequence** rather than a search and
-replace — [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) walks the
-phases in order, and the summary below is only there to show what kind of work it is.
+Create a repository from it with GitHub's *Use this template*, then localize it. The setup is a
+**scripted, gated sequence** rather than a search and replace —
+[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) walks the phases in
+order, and the summary below is only there to show what kind of work it is.
 
 - **Localizing identity is verified, not trusted.** The `make setup-replace-*` targets rewrite the
   module path, repository references, app metadata, licence holder and CODEOWNERS; `make
@@ -144,14 +145,14 @@ phases in order, and the summary below is only there to show what kind of work i
   once it passes — so a half-finished localization cannot go unnoticed.
 - **Two removal passes, deliberately separate.** `make setup-remove-boilerplate-identity` strips
   what holds only while this *is* the upstream template, and `make setup-remove-sample-api` strips
-  the sample feature set. A fork may reasonably do one without the other: keeping the sample keeps
+  the sample feature set. A project may reasonably do one without the other: keeping the sample keeps
   the one place where the layering rules exist as working code rather than prose.
 - **The decisions the template refuses to make for you** are numbered phases, not TODOs left in the
   code — authn / authz implementations, the deployment target, the dependency-licence threshold,
   whether to keep the DAST and credential-bearing scanners, and the exclusion ADRs to re-baseline.
 
-Which statements stop being true the moment you fork, and how they are marked so a script can
-remove them, is documented in
+Which statements stop being true the moment a repository is created from this template, and how they
+are marked so a script can remove them, is documented in
 [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md).
 
 <!-- boilerplate-only:end -->
@@ -300,7 +301,6 @@ The source of truth lives close to the code. Start here and follow the link that
 - [docker/README.md](docker/README.md) — images, compose profiles, single-container operation
 - [scripts/README.md](scripts/README.md) — utility scripts & repository gates (codegen, docs, versioning, supply-chain pins, setup)
 - [python/README.md](python/README.md) — PyPI-published CLI tools, declared and hash-locked
-- [mock-auth-server/README.md](mock-auth-server/README.md) — development OIDC provider (TypeScript, deliberately a different runtime than the API)
 - [docs-viewer/README.md](docs-viewer/README.md) — documentation portal frontend (renders the generated `docs/portal/docs.json`)
 - [.github/workflows/README.md](.github/workflows/README.md) — CI workflows & the repository's security-control inventory
 
@@ -323,8 +323,9 @@ The top level is split by **what a directory is answerable for**, not by file ty
 - `.agents/` — machine-readable artifacts shared by every AI tool, so no assistant owns them
 - `.claude/` / `.codex/` — configuration for one assistant each
 
-`mock-auth-server/`, `docs-viewer/`, and `python/` are supporting projects with their own toolchains:
-a development OIDC provider, the documentation portal frontend, and the hash-locked PyPI CLI tools.
+`docs-viewer/` and `python/` are supporting projects with their own toolchains: the documentation
+portal frontend and the hash-locked PyPI CLI tools. The development OIDC provider is not one of them —
+it is an upstream image the compose file pins, configured by `docker/mock-auth-server/config.json`.
 
 ## Stack
 

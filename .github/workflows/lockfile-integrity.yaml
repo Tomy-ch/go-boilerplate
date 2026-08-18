@@ -5,7 +5,7 @@ name: Lockfile Integrity
 # The version and the integrity hash can look untouched while the tarball comes from
 # somewhere else entirely.
 #
-# All three packages in the repository resolve with pnpm — `scripts/`, `mock-auth-server/`
+# Both packages in the repository resolve with pnpm — `scripts/`
 # and `docs-viewer/`, each with its own lockfile — so one check covers them.
 #
 # This is a different question from the vulnerability scanners. OSV and Trivy ask
@@ -35,13 +35,11 @@ on:
     paths:
       - '.github/workflows/lockfile-integrity.yaml'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   pull_request:
     paths:
       - '.github/workflows/lockfile-integrity.yaml'
       - 'scripts/pnpm-lock.yaml'
-      - 'mock-auth-server/pnpm-lock.yaml'
       - 'docs-viewer/pnpm-lock.yaml'
   workflow_dispatch:
 
@@ -98,7 +96,7 @@ jobs:
           : > lockfile-lint.log
           status=success
 
-          for lockfile in scripts/pnpm-lock.yaml mock-auth-server/pnpm-lock.yaml docs-viewer/pnpm-lock.yaml; do
+          for lockfile in scripts/pnpm-lock.yaml docs-viewer/pnpm-lock.yaml; do
             echo "### ${lockfile}" >> lockfile-lint.log
 
             if exotic=$(grep -n 'resolution: {' "${lockfile}" | grep -v 'resolution: {integrity:'); then

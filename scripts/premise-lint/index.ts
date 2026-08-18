@@ -1,5 +1,5 @@
 #!/usr/bin/env -S tsx
-// fork 後も残る文書に「fork した瞬間に偽になる前提」が書かれていないかを検査する。
+// テンプレート作成後も残る文書に「テンプレートから作成した瞬間に偽になる前提」が書かれていないかを検査する。
 //
 // 規則の出所は docs/rules.md の Documentation Rules「No premise the document will outlive」。
 // 判定（対象の選別・マーカー除去・言い回しの照合）は rules.ts、許容の宣言は allowances.ts が持ち、
@@ -47,7 +47,7 @@ for (const rel of listMarkdown(REPO_ROOT)) {
 }
 
 if (findings.length === 0) {
-  console.log("✓ premise-lint: fork 後も残る文書に失効予定の前提はありません");
+  console.log("✓ premise-lint: テンプレート作成後も残る文書に失効予定の前提はありません");
   process.exit(0);
 }
 

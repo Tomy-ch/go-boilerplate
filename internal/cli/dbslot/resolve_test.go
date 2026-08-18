@@ -127,7 +127,7 @@ func TestResolver_Resolve(t *testing.T) {
 			assert.Equal(t, "local", got.DBLocal)
 			assert.Equal(t, "test", got.DBTest)
 			assert.Equal(t, "gobp-app-go-boilerplate", got.AppProject)
-			assert.Equal(t, "http://localhost:2010", got.AuthIssuer)
+			assert.Equal(t, "http://localhost:2010/default", got.AuthIssuer)
 		})
 
 		t.Run("スロット取得済みならスロットの値を所有データベース・プロジェクトとする", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestResolver_Resolve(t *testing.T) {
 			assert.Equal(t, "wt3_local", got.DBLocal)
 			assert.Equal(t, "wt3_test", got.DBTest)
 			assert.Equal(t, "gobp-wt-3", got.AppProject)
-			assert.Equal(t, "http://localhost:2013", got.AuthIssuer)
+			assert.Equal(t, "http://localhost:2013/default", got.AuthIssuer)
 		})
 	})
 
@@ -254,7 +254,7 @@ func TestResolver_PrintEnv(t *testing.T) {
 			assert.Contains(t, out.String(), "DB_LOCAL='wt3_local'\n")
 			assert.Contains(t, out.String(), "DB_TEST='wt3_test'\n")
 			assert.Contains(t, out.String(), "APP_PROJECT='gobp-wt-3'\n")
-			assert.Contains(t, out.String(), "AUTH_ISSUER='http://localhost:2013'\n")
+			assert.Contains(t, out.String(), "AUTH_ISSUER='http://localhost:2013/default'\n")
 			assert.Contains(t, out.String(), "INFRA_NO_RECREATE='--no-recreate'\n")
 			assert.Contains(t, out.String(), "GOBP_GIT_CONTEXT='linked-worktree'\n")
 		})
@@ -438,7 +438,7 @@ func TestRenderEnv(t *testing.T) {
 				DBLocal:         "wt3_local",
 				DBTest:          "wt3_test",
 				AppProject:      "gobp-wt-3",
-				AuthIssuer:      "http://localhost:2013",
+				AuthIssuer:      "http://localhost:2013/default",
 				InfraNoRecreate: noRecreateFlag,
 			})
 
@@ -446,7 +446,7 @@ func TestRenderEnv(t *testing.T) {
 				"DB_LOCAL='wt3_local'\n"+
 				"DB_TEST='wt3_test'\n"+
 				"APP_PROJECT='gobp-wt-3'\n"+
-				"AUTH_ISSUER='http://localhost:2013'\n"+
+				"AUTH_ISSUER='http://localhost:2013/default'\n"+
 				"INFRA_NO_RECREATE='--no-recreate'\n", got)
 		})
 
@@ -487,7 +487,7 @@ func TestRenderValues(t *testing.T) {
 				DBLocal:         "wt3_local",
 				DBTest:          "wt3_test",
 				AppProject:      "gobp-wt-3",
-				AuthIssuer:      "http://localhost:2013",
+				AuthIssuer:      "http://localhost:2013/default",
 				InfraNoRecreate: noRecreateFlag,
 			})
 
@@ -496,7 +496,7 @@ func TestRenderValues(t *testing.T) {
 			assert.Contains(t, got, "DB_LOCAL          : wt3_local")
 			assert.Contains(t, got, "DB_TEST           : wt3_test")
 			assert.Contains(t, got, "APP_PROJECT       : gobp-wt-3")
-			assert.Contains(t, got, "AUTH_ISSUER       : http://localhost:2013")
+			assert.Contains(t, got, "AUTH_ISSUER       : http://localhost:2013/default")
 			assert.Contains(t, got, "INFRA_NO_RECREATE : --no-recreate")
 		})
 

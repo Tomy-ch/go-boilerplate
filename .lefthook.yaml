@@ -43,10 +43,6 @@ pre-commit:
       glob:
         - "openapi/**/*.yaml"
       run: make lint-oapi
-    mock-auth-oapi-lint:
-      glob:
-        - "mock-auth-server/openapi/**/*.yaml"
-      run: make lint-mock-auth-oapi
     docker-lint:
       glob:
         - "docker/**/Dockerfile"
@@ -101,10 +97,9 @@ pre-push:
         # `<dir>/*.ts` の 1 本で深い階層まで拾える一方、`**/*.ts` は直後の `/` を要求する分だけ
         # 直下のファイルを落とすため、階層ごとにパターンを並べる書き方にはしない。
         - "scripts/*.ts"
-        # 同じスイートに居る 1:1 ゲートは他 2 パッケージの src/ も走査するため、そちらの
+        # 同じスイートに居る 1:1 ゲートは docs-viewer の src/ も走査するため、そちらの
         # 変更でも起こす。ここが scripts/ だけを見ていると、テストの無い export を足した
         # push が手元では素通りする。
-        - "mock-auth-server/src/*.ts"
         - "docs-viewer/src/*.{ts,tsx}"
       skip:
         - run: make -s gate-heavy-skip

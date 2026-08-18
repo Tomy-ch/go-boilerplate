@@ -67,13 +67,6 @@ const PACKAGES: readonly TargetPackage[] = [
     // ビューアーの entry。読み込まれた時点で DOM を触るため、判断はすべて mount 側に置いてある。
     excluded: ["src/main.tsx"],
   },
-  {
-    name: "mock-auth-server",
-    dir: "mock-auth-server",
-    sourcePrefix: "src/",
-    // 起動の入口（読み込んだ時点で listen する）と orval の生成物。
-    excluded: ["src/server.ts", "src/generated/"],
-  },
 ];
 
 /** `portal/gen-*.ts` のような宣言を、パッケージ相対パスに当てる正規表現へ変える。 */

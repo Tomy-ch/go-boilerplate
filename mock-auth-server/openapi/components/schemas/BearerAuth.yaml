@@ -1,4 +1,0 @@
-type: http
-description: UserInfo 取得に access token（Bearer）を用いる。
-scheme: bearer
-bearerFormat: JWT

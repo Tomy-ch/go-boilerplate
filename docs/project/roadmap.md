@@ -67,8 +67,8 @@ whole system, not the parts that happen to run without a cloud account.
   and SSRF / idempotency / relay hardening.
 - **The current line** completes the self-contained stack by emulating the remaining external
   dependencies locally — S3-compatible object storage, an SQS-compatible broker, and a development
-  OIDC provider — alongside the supply-chain controls and the fork tooling that a template needs in
-  order to be forked safely.
+  OIDC provider — alongside the supply-chain controls and the setup tooling that a template needs in
+  order to be instantiated safely.
 
 Development with AI assistance runs across both lines rather than belonging to either: it entered in
 v1.2.0 as skills, was parallelized in v1.4.0, and is now an agent contract plus the mechanical gates
@@ -135,7 +135,7 @@ all the way through**.
 **Out of scope is not forbidden.** It means this repository does not supply it, not that you may not
 reshape what is here into a microservice architecture. The obligation on this side is to keep it
 **traceable which premises you would be rewriting** if you decided to. Every deliberate exclusion is
-recorded as an ADR, and a fork rewrites those directly at setup time to establish its own baseline
+recorded as an ADR, and a project rewrites those directly at setup time to establish its own baseline
 (Phase 13 of [setup-repository.md](../get-started/setup-repository.md)).
 
 ## Beyond this repository

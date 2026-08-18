@@ -47,7 +47,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope
 
 `graphify` itself is pinned in `mise.toml` like every other tool, so `mise install` already fetched it; the bootstrap only writes the skill into each assistant's config directory. Which of its commands stay local and which reach an LLM API is documented in [`.claude/README.md`](../../.claude/README.md).
 
-**Declining the AI-assist layer is the adopting architect's call.** This template is built to stay fully maintainable without AI tooling — the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration — so nothing above is load-bearing for building, testing, or shipping. A fork that does not want the layer should remove it deliberately rather than leave it half-configured:
+**Declining the AI-assist layer is the adopting architect's call.** This template is built to stay fully maintainable without AI tooling — the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration — so nothing above is load-bearing for building, testing, or shipping. A project that does not want the layer should remove it deliberately rather than leave it half-configured:
 
 - skip both bootstraps; no other phase of this setup depends on them, and
 - drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint/index.ts`.
@@ -76,7 +76,7 @@ export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
 
 # CODEOWNERS owner — a user (@name) or a team (@org/team). An organization itself
-# cannot own a path, so a fork owned by one must name a team.
+# cannot own a path, so a repository owned by one must name a team.
 export CODE_OWNERS=<@your-org/tech-leads>
 
 export MODULE=${REPO}
@@ -229,7 +229,8 @@ The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries t
 <!-- boilerplate-only:begin -->
 ## Phase 12: Remove what only holds while this is a boilerplate
 
-Two kinds of statement in this repository stop being true the moment you fork it: the passages
+Two kinds of statement in this repository stop being true the moment you create a repository from
+it: the passages
 where it describes *itself* as a boilerplate, and the conventions it follows *because* it is one —
 the in-place ADR amendment regime, the consolidation pass, the `setup-review` device. Both are
 template scaffolding, not your project's documentation.
@@ -245,7 +246,7 @@ with `docs/plan/**` (the upstream's requirements for a release line it has not b
 its own make target from the registry, and then removes itself.
 
 `docs/project/roadmap.md` is **not** deleted: its opening is written so the pass swaps in a
-fork-appropriate replacement, leaving you a place to record your own direction. It scans rather than working from
+project-appropriate replacement, leaving you a place to record your own direction. It scans rather than working from
 a list of files, because a list is something a marker can be written outside of — and a marker
 nobody strips is a premise that survives into your project with nothing to announce it.
 
@@ -255,11 +256,11 @@ which several package READMEs link to.
 
 What survives each removal is the general form of the rule, stated in the document that owns it:
 [docs/adr/README.md](../adr/README.md), [docs/rules.md](../rules.md), the layer READMEs. Where a
-statement needed a fork-appropriate replacement rather than plain deletion, the replacement is
+statement needed a project-appropriate replacement rather than plain deletion, the replacement is
 already parked beside it and is swapped in by the same pass.
 
 > Never strip `boilerplate-only` and `sample-api` markers in one run. They fire at different
-> moments — this phase versus the sample removal in Phase 15 — and a fork may reasonably do one
+> moments — this phase versus the sample removal in Phase 15 — and a project may reasonably do one
 > without the other.
 
 <!-- boilerplate-only:end -->
@@ -276,7 +277,7 @@ grep -rl "setup-review" docs/adr/
 For your project, review each and decide:
 
 - **Keep** — the exclusion fits your project; leave the ADR as is.
-- **Change** — you need the opposite. Setup is where a fork establishes its **own baseline** from the template, so **edit the ADR directly** (rewrite its Decision / Consequences and update `deciders` / `date`) to record your project's choice, then implement accordingly.
+- **Change** — you need the opposite. Setup is where your project establishes its **own baseline** from the template, so **edit the ADR directly** (rewrite its Decision / Consequences and update `deciders` / `date`) to record your project's choice, then implement accordingly.
 
 The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) applies to decisions you revisit **later**, during ongoing development — not to this one-time re-baselining at setup.
 
@@ -284,7 +285,7 @@ The immutable, supersede-by-new-ADR model (do not edit; add a superseding ADR) a
 
 The dependency-license scan (`make trivy-license`, and the `trivy-license` job in [.github/workflows/trivy-fs.yaml](../../.github/workflows/trivy-fs.yaml)) is **report-only, permanently**. It enumerates every dependency's license into the job summary and a PR comment, and never fails the build.
 
-That is a deliberate non-choice, not an unfinished gate. Which licenses are acceptable is a legal question owned by the organization adopting this template: copyleft that is disqualifying for a distributed binary can be entirely acceptable for a service whose binary never leaves your infrastructure, and the answer varies by company, product, and distribution model. Picking a threshold here would bake one company's legal posture into every fork, so the template ships the inventory and leaves the judgement to the adopter.
+That is a deliberate non-choice, not an unfinished gate. Which licenses are acceptable is a legal question owned by the organization adopting this template: copyleft that is disqualifying for a distributed binary can be entirely acceptable for a service whose binary never leaves your infrastructure, and the answer varies by company, product, and distribution model. Picking a threshold here would bake one company's legal posture into every project built on it, so the template ships the inventory and leaves the judgement to the adopter.
 
 If your organization has (or needs) a prohibited-license policy, gate it yourself:
 

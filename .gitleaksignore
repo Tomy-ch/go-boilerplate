@@ -1,19 +1,47 @@
 # gitleaks が無視する既知・許容済みフィンガープリントの一覧。
 # https://github.com/gitleaks/gitleaks#gitleaksignore
 #
+# マーカーの外に置くものと内側に置くものの境目は「テンプレート作成先にも同じ検出が出るか」。
+# 作成先は履歴を持たないので、コミット SHA を含む fingerprint はそこでは何にも当たらない。
+# 逆に作成先へ残るファイルの分をマーカーの内側へ入れると、セットアップで許可だけが消え、
+# 利用者が最初に secret-scan を回した瞬間に誤検知で落ちる。
+
+# --- 作成先にも残るファイルの検出（マーカー外） ---
+
+# AUTH_JWKS_URL はコンテナ内部の URL で資格情報ではない。ホスト名の auth と
+# ポート以降の文字列が generic-api-key の keyword+entropy 条件に当たる誤検知。
+# env/README の既定値表は同じ URL を載せるため同じ検出になる。
+env/.env:generic-api-key:42
+env/README.md:generic-api-key:221
+env/README.ja.md:generic-api-key:219
+# ローカル開発用の固定値。Garage の開発用資格情報と、JWKS ローテーションテストが所有する署名鍵。
+env/.env:generic-api-key:65
+docker/garage/garage.toml:generic-api-key:12
+internal/integration/testdata/keys/mock-key-1.pem:private-key:1
+internal/integration/testdata/keys/mock-key-2.pem:private-key:1
+
 # boilerplate-only:begin
-# ローカル開発用 fixture の既知検出だけを許可する完全 fingerprint。
-mock-auth-server/keys/mock-key-1.pem:private-key:1
-mock-auth-server/keys/mock-key-2.pem:private-key:1
-mock-auth-server/keys/mock-key-retired.pem:private-key:1
-# 履歴スキャンの fingerprint はコミット SHA と docker/ 接頭辞を含む。
+# --- 上流の履歴にだけ存在する検出（作成先には対象のコミットが無い） ---
+
+# SHA 無しの fingerprint は履歴の検出にも当たる。65 が現在のツリー側で、64 は
+# 4eb9ea41 時点の同じ行。行がずれた側だけ足すと履歴スキャンが落ちる。
+env/.env:generic-api-key:64
 4eb9ea41915735f7d4354a09c28afe0422e404ab:docker-compose.yaml:generic-api-key:133
+# 撤去済みの mock-auth-server が旧 docker/ 配下に置いていた署名鍵。
 daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-2.pem:private-key:1
 daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-retired.pem:private-key:1
 a77359f8d20ba3797acf260ecfc9c789e34f9e7d:docker/mock-auth-server/keys/mock-key-1.pem:private-key:1
-internal/integration/testdata/keys/mock-key-1.pem:private-key:1
-internal/integration/testdata/keys/mock-key-2.pem:private-key:1
-docker/garage/garage.toml:generic-api-key:12
-docker-compose.yaml:generic-api-key:136
-env/.env:generic-api-key:64
+# 0f0157be は pnpm の store（4,858 ファイル）を誤ってコミットした回で、検出はいずれも
+# 依存パッケージ同梱のフィクスチャ。現在 .pnpm-store は gitignore 済みで追跡していない。
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/11/41bde8f7fc5e1c7b4da412ee02d3d9c0e4dc9d761c983c2c4bac7f2623ad953422894c214d2fbf2121daec5f64692d4ba4637aef29d95ae4c902314aa70b15:generic-api-key:5
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/2b/ea367018df1e4fe7fa39dfa816630a297f5257460c748c847b8f29c37f0b24a14d86efb3b35711f8696a5ef748b8979cd2a4a086d54c4b10f806dec8f51bb5:generic-api-key:356
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/2e/1cb6813253e7ce7c2d8618da451f0ad5acd58b04cb774e554db3307fa812f6f1ff82342a3d41cd124a2bb073076a9f579b51b5ac27597bd031d58e8a4e1bbe:generic-api-key:16
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/94/517241bc77f1b37e1b6fe6680971d97f64dc43bfe07aefef030870ab255013148c1ddcdb7ce1b0b8ab4faf844d385eb66607e5a4d2afe528a5841e8536c22c:jwt:326
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/94/517241bc77f1b37e1b6fe6680971d97f64dc43bfe07aefef030870ab255013148c1ddcdb7ce1b0b8ab4faf844d385eb66607e5a4d2afe528a5841e8536c22c:jwt:329
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/9b/1075b7b7ad2d37e9c738724825476b64f2d6cb52ea9b2978527a4abfc27c56d6bdd2fd0661b36226bd29fab7563ce695fc35d17bb179d24123680ba84161d4:generic-api-key:148
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/e3/86070ce0a1f441332d8dc0ba9f27577b0a880e527a94c74039286ff382089a2870ee0b29c93f8e984e05b0baa8422c3ddb91ed15bafd5f6d950e994447d932:generic-api-key:523
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/e3/86070ce0a1f441332d8dc0ba9f27577b0a880e527a94c74039286ff382089a2870ee0b29c93f8e984e05b0baa8422c3ddb91ed15bafd5f6d950e994447d932:generic-api-key:526
+0f0157be54fd47eba060c1332c26c67a0ba93fff:.pnpm-store/v11/files/e3/86070ce0a1f441332d8dc0ba9f27577b0a880e527a94c74039286ff382089a2870ee0b29c93f8e984e05b0baa8422c3ddb91ed15bafd5f6d950e994447d932:generic-api-key:529
+# 43 文字のテスト用セッショントークン定数。作業ツリーでは既に検出されない。
+140ed538e78bcc44749f6b98799d3fc4712a68a8:internal/usecase/cart/cart_set_item_usecase_test.go:generic-api-key:27
 # boilerplate-only:end

@@ -243,11 +243,11 @@ This group handles linting and auto-fixing of Markdown files.
 | `make md-fix` | Auto-fixes Markdown files. | Invokes `make md-fix-ci` inside the `node_tool_runner` container. |
 | `make md-mermaid-lint` | Validates only the ` ```mermaid ` fences. | Invokes `make md-mermaid-lint-ci` inside the `node_tool_runner` container. |
 | `make md-skill-lint` | Validates only the skill / agent definitions under `.claude/**` and their `.codex/**` counterparts. | Invokes `make md-skill-lint-ci` inside the `node_tool_runner` container. |
-| `make md-premise-lint` | Checks only that no document which outlives a fork rests on a premise that lapses with it. | Invokes `make md-premise-lint-ci` inside the `node_tool_runner` container.  <!-- boilerplate-only:line --> |
+| `make md-premise-lint` | Checks only that no document which outlives template instantiation rests on a premise that lapses with it. | Invokes `make md-premise-lint-ci` inside the `node_tool_runner` container.  <!-- boilerplate-only:line --> |
 | `make md-lint-ci` | Runs `markdownlint-cli2`, then the mermaid syntax lint, then the skill-definition lint. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
 | `make md-mermaid-lint-ci` | Validates ` ```mermaid ` fences with `scripts/mermaid-lint/index.ts` (real `mermaid.parse`). | CI target. markdownlint never checks diagram grammar. |
 | `make md-skill-lint-ci` | Checks `.claude/**` definitions with `scripts/skill-lint/index.ts` (frontmatter / translation-pair structure / reference existence) and their `.codex/**` correspondence (skill / agent existence parity, Codex skill structure). | CI target. markdownlint never checks whether the prose matches reality, and nothing else notices a skill that landed on only one of the two environments. |
-| `make md-premise-lint-ci` | Mechanises the *No premise the document will outlive* rule from [docs/rules.md](../docs/rules.md) with `scripts/premise-lint/index.ts`. Fails when a document that survives a fork carries a self-reference that stops being true there; the phrases it looks for are declared in `scripts/premise-lint/rules.ts`. | CI target. A premise may be stated in `README*` / `docs/get-started/**`, which the setup rewrites or deletes, or inside a `boilerplate-only` / `sample-api` marker. Other senses of the same words are declared with a reason in `scripts/premise-lint/allowances.ts`.  <!-- boilerplate-only:line --> |
+| `make md-premise-lint-ci` | Mechanises the *No premise the document will outlive* rule from [docs/rules.md](../docs/rules.md) with `scripts/premise-lint/index.ts`. Fails when a document that survives template instantiation carries a self-reference that stops being true there; the phrases it looks for are declared in `scripts/premise-lint/rules.ts`. | CI target. A premise may be stated in `README*` / `docs/get-started/**`, which the setup rewrites or deletes, or inside a `boilerplate-only` / `sample-api` marker. Other senses of the same words are declared with a reason in `scripts/premise-lint/allowances.ts`.  <!-- boilerplate-only:line --> |
 | `make md-fix-ci` | Fixes `**/*.md` directly with `markdownlint-cli2 --fix`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
 
 ## `.makefiles/security` group
@@ -327,12 +327,6 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make stamp-openapi-version` | Rewrites `info.version` from a release branch name. | Invokes `make stamp-openapi-version-ci` inside the `node_tool_runner` container. Takes `REF=release/vX.Y.Z`, falling back to `GITHUB_REF_NAME`; any other ref is a no-op. |
 | `make stamp-openapi-version-ci` | Runs `scripts/stamp-openapi-version/index.ts` directly. | CI target |
 | `make lint-oapi-security-ci` | Runs Spectral with the OWASP API Security ruleset. | CI target. Runs outside `node_tool_runner` so a spec-only check does not build the tool image; run `pnpm install --dir scripts --frozen-lockfile` first. |
-| `make gen-mock-auth-oapi` | Bundles the mock-auth-server OpenAPI and generates zod schemas. | Invokes `make gen-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
-| `make gen-mock-auth-oapi-docs` | Generates the mock-auth-server Redoc HTML from its OpenAPI. | Outputs `docs/openapi/mock-auth-server/index.html` via the `node_tool_runner` container. |
-| `make lint-mock-auth-oapi` | Validates the mock-auth-server OpenAPI definition with `redocly lint`. | Invokes `make lint-mock-auth-oapi-ci` inside the `node_tool_runner` container. |
-| `make gen-mock-auth-oapi-ci` | Runs `pnpm run gen` (redocly bundle + orval) in `mock-auth-server`. | CI target |
-| `make gen-mock-auth-oapi-docs-ci` | Runs `pnpm run gen:docs` (redocly build-docs) in `mock-auth-server`. | CI target |
-| `make lint-mock-auth-oapi-ci` | Runs `pnpm run lint:oapi` in `mock-auth-server`. | CI target |
 
 ## `.makefiles/load` group
 
@@ -549,7 +543,7 @@ This is the initial setup command when launching a new repository.
 | `make setup-replace-codeowners OWNERS='<owners>'` | Replaces the owner of every rule in `.github/CODEOWNERS` in batch. | Takes `@user` / `@org/team` / an email, space-separated for several. Comment lines are left untouched, so the header keeps its example.  <!-- setup-localize:line --> |
 | `make setup-verify` | Verifies the localization landed, then removes the localization tooling. | Runs `scripts/setup/verify-setup` in `node_tool_runner`; expects the Phase 5 values in the environment.  <!-- setup-localize:line --> |
 | `make setup-remove-boilerplate-identity` | Removes what only holds while this repository is a boilerplate. | Scans the repository for `boilerplate-only` markers and resolves each via `node_tool_runner`, deletes the boilerplate-only conventions doc, then removes itself. Preview with `DRY_RUN=1`. <!-- boilerplate-only:line --> |
-| `make setup-remove-sample-api` | Removes the sample API (`user`/`product`/`order`) in batch. | Deletes via `node_tool_runner`, then runs `reset-mock-auth-users` → `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint`. The DB rebuild keeps dropped tables out of the generated models, and `tidy-lib` drops the direct dependencies the sample API was the only user of. **Requires the DB container (`database`) running** (`gen-query` dumps the live schema). Preview without changing anything with `DRY_RUN=1` (any non-empty value counts as preview, `0` included, so omit the variable entirely for a real run). <!-- sample-api:line --> |
+| `make setup-remove-sample-api` | Removes the sample API (`user`/`product`/`order`) in batch. | Deletes via `node_tool_runner`, then runs `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint`. The DB rebuild keeps dropped tables out of the generated models, and `tidy-lib` drops the direct dependencies the sample API was the only user of. **Requires the DB container (`database`) running** (`gen-query` dumps the live schema). Preview without changing anything with `DRY_RUN=1` (any non-empty value counts as preview, `0` included, so omit the variable entirely for a real run). <!-- sample-api:line --> |
 
 ### Base branch resolution related
 

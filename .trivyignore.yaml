@@ -23,11 +23,10 @@ misconfigurations:
 secrets:
   - id: private-key
     paths:
-      - "mock-auth-server/keys/mock-key-1.pem"
-      - "mock-auth-server/keys/mock-key-2.pem"
-      - "mock-auth-server/keys/mock-key-retired.pem"
+      - "internal/integration/testdata/keys/mock-key-1.pem"
+      - "internal/integration/testdata/keys/mock-key-2.pem"
     statement: >-
-      Fixed RSA signing keys of the local-only mock OIDC provider. They are checked in
-      deliberately so an issued JWT is reproducible across machines, they are never
-      built into a deployed image, and the same three paths carry the matching
+      Fixed RSA signing keys owned by the JWKS rotation integration test. They are checked
+      in deliberately so the golden JWKS it verifies stays reproducible across machines,
+      they are never built into a deployed image, and the same two paths carry the matching
       gitleaks exception in .gitleaksignore. A private key anywhere else still fails.

@@ -47,7 +47,7 @@ overrides:
   # IN_PLACE hook 除去後に切り離された部分木が実行可能なまま残る（GHSA-55q2-fjhq-7xh7）。mermaid が引く。
   "dompurify@<3.4.13": ">=3.4.13 <4"
   # size が 0 のとき custom generator が無限ループする（GHSA-2v37-7h3g-55p8）。postcss が引く。
-  "nanoid@3": ">=3.3.17 <4"
+  "nanoid@3": ">=3.3.18 <4"
   # rolldown が引く @napi-rs/wasm-runtime の peer が `^1.7.1 || ^2.0.0-alpha.3` で、pnpm は高い方＝ alpha を採る。
   # プレリリースを解決結果へ入れない理由は docs/design/security.md が持つ。
   "@emnapi/core": "^1.11.1"

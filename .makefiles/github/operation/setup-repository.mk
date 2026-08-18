@@ -130,8 +130,6 @@ setup-remove-sample-api:
 	@if [ -n "$(DRY_RUN)" ]; then \
 		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
 	else \
-		echo "🔧 mock-auth-server の固定ユーザーを中立な既定へリセットします..." && \
-		$(MAKE) reset-mock-auth-users && \
 		echo "🔧 再生成・整形・検証・DB 再構築を実行します..." && \
 		$(MAKE) db-local-reinit db-test-reinit && \
 		$(MAKE) gen-api gen-query && \

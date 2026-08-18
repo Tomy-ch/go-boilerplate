@@ -25,7 +25,7 @@ The infra layer holds every service that can only run on a fixed host port, whic
 |`docker-compose.yaml`|Definitions of all services|
 |`docker-compose.attach.yaml`|app layer override, **always** overlaid (`docker compose -f docker-compose.yaml -f docker-compose.attach.yaml`)|
 
-`docker-compose.attach.yaml` publishes the `api_server` host ports as `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}`, narrows `depends_on` to `mock_auth_server` alone (the infra layer is already up), and points the app at the shared infra by overriding `DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}`. `mock_auth_server`'s `OIDC_ISSUER` follows the same published port.
+`docker-compose.attach.yaml` publishes the `api_server` host ports as `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}`, narrows `depends_on` to `mock_auth_server` alone (the infra layer is already up), and points the app at the shared infra by overriding `DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default`. The provider needs no matching override: it derives the issuer from the `Host` it was reached through.
 
 |Purpose|Reference|
 |---|---|
@@ -42,7 +42,7 @@ The following table maps services defined in docker-compose.yaml to their corres
 |Service|Layer|Dockerfile / Image|Port|Description|
 |---|---|---|---|---|
 |`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|Development API server (hot reload via air)|
-|`mock_auth_server`|app|`docker/mock-auth-server/Dockerfile`|`${MOCK_AUTH_HOST_PORT:-2010}`|Mock OIDC auth server (JWT test provider)|
+|`mock_auth_server`|app|`ghcr.io/navikt/mock-oauth2-server`|`${MOCK_AUTH_HOST_PORT:-2010}`|Mock OIDC provider (development only)|
 |`database`|infra|`postgres:18.4-trixie`|5432|PostgreSQL database|
 |`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|Local observability stack (OTLP endpoint / Grafana) for o11y verification|
 |`garage`|infra|`dxflrs/garage`|3900, 3902|S3-compatible object storage (S3 API / Web API)|
@@ -120,11 +120,12 @@ SQS-compatible broker for local development (tests use an in-process fake instea
 
 ## mock-auth-server
 
-Mock OIDC auth server (JWT test provider) container. Only the Dockerfile lives here; the service implementation is a repository-root package. Endpoints, flows, and fixtures: [`mock-auth-server/README.md`](../mock-auth-server/README.md).
+Development OIDC provider. Nothing is built here — the service runs the upstream `ghcr.io/navikt/mock-oauth2-server` image, digest-pinned in [`images-pin.toml`](images-pin.toml), so this directory holds only the configuration handed to it.
 
-- Base image: `node:24.18.0-alpine`, running the `.ts` sources directly via Node's native type stripping (no `tsc` build step)
-- Runs as non-root user (`node`); the internal port is always `4000`
-- `OIDC_ISSUER` is the URL as seen from the host OS / browser, so `docker-compose.attach.yaml` makes it follow the published host port
+- `config.json` is mounted read-only at `/etc/mock-oauth2-server/config.json` and passed via `JSON_CONFIG_PATH`. It declares the whole token contract: the `issuerId` (which becomes both the issuer's path segment and the JWKS `kid`), the `at+jwt` type header the resource server requires (RFC 9068), the `aud` / `azp` pair that lets one claim set satisfy both the resource server and an OIDC client (see [`docs/design/auth.md`](../docs/design/auth.md) § 3.3.1), and `${subject}`, which resolves to the login form's — or the password grant's — `username` and becomes the `sub` claim
+- The internal port is always `4000` (`SERVER_PORT`); the process runs as a non-root UID from the upstream image
+- The issuer is derived from the `Host` of the request that minted the token, so nothing has to declare it here — a token taken through the published host port carries an `iss` matching `AUTH_ISSUER`. `docker-compose.attach.yaml` only has to keep the API's `AUTH_ISSUER` on the slot's port
+- Signing keys are generated at startup rather than checked in, so tokens are not reproducible across restarts. Nothing depends on them being reproducible: the resource server resolves keys from the JWKS at runtime, and the fixed keys the JWKS rotation test needs are its own (`internal/integration/testdata/`)
 
 ## database
 

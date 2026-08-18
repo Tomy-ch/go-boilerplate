@@ -44,7 +44,7 @@ Tools for OpenAPI document processing and portal generation:
 |`markdownlint-cli2`|Markdown linter for docs (`make md-lint`)|
 |`@commitlint/cli`|Commit-message linter (`make commitlint`, wired to the `commit-msg` hook)|
 |`js-yaml`|YAML processing for portal doc generation scripts|
-|`pnpm`|Resolve the three Node packages in the repository, each with its own lockfile and its own `node_modules`: `scripts/` (installed into `/app/scripts/node_modules`), `mock-auth-server/`, and `docs-viewer/`, which builds the portal frontend into `docs/portal/` (`make gen-portal-build`, `make portal-test`).|
+|`pnpm`|Resolve the two Node packages in the repository, each with its own lockfile and its own `node_modules`: `scripts/` (installed into `/app/scripts/node_modules`) and `docs-viewer/`, which builds the portal frontend into `docs/portal/` (`make gen-portal-build`, `make portal-test`).|
 |`tsx`|Run the repository's TypeScript helper scripts (`scripts/**/*.ts`) without a build step|
 |`typescript`|Type check those scripts (`make scripts-typecheck`)|
 |`vitest`|Unit tests for the scripts' decision logic (`make scripts-test`)|
@@ -93,4 +93,4 @@ make gen-query  # sqlc code generation
 - Working directory is `/app` for all targets
 - Tools are installed in a builder stage and copied to the runtime stage to minimize image size (`go_tools`)
 - Tool versions are pinned in `mise.toml` (the version SSOT); update them there so local and CI images stay in sync. PyPI tools are the exception — see [python_tools](#python_tools) above
-- The Node dependencies this image installs are declared by `scripts/`, `mock-auth-server/`, and `docs-viewer/` (each with its own `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`); the build copies each manifest set into the directory it belongs to and installs it there. None of them lives in this directory, so a dependency change is reviewed next to the code that uses it
+- The Node dependencies this image installs are declared by `scripts/` and `docs-viewer/` (each with its own `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`); the build copies each manifest set into the directory it belongs to and installs it there. Neither lives in this directory, so a dependency change is reviewed next to the code that uses it

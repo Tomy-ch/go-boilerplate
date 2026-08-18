@@ -14,7 +14,7 @@ advisories. Change only advisory-named packages and mechanically required output
 
 The repository has three independent resolution surfaces:
 
-- **pnpm:** `scripts/`, `mock-auth-server/`, and `docs-viewer/`; each has its own
+- **pnpm:** `scripts/` and `docs-viewer/`; each has its own
   `pnpm-lock.yaml` and `pnpm-workspace.yaml`. The workspace file owns its cooldown,
   `overrides`, and release-age exclusions.
 - **Go:** `go.mod` and `go.sum`, including indirect modules.

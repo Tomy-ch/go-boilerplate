@@ -8,7 +8,7 @@ name: SAST
 # full-repository run rather than guessed:
 #
 #   - Only hand-written source is scanned: internal / pkg / cmd / database / openapi
-#     on the Go side, and mock-auth-server / docs-viewer / scripts on the TypeScript
+#     on the Go side, and docs-viewer / scripts on the TypeScript
 #     side. A whole-repo run returned 347 findings, 335 of which were plaintext-HTTP
 #     links inside the generated SchemaSpy HTML under docs/db-schema/.
 #   - Dockerfiles are NOT scanned here even though the rulesets cover them. Every
@@ -46,7 +46,6 @@ on:
       # The TypeScript workspaces. Without these the TS rulesets below would only
       # ever run on the weekly schedule, never on the change that introduced the
       # pattern.
-      - 'mock-auth-server/**'
       - 'docs-viewer/**'
       - 'scripts/**'
   pull_request:
@@ -57,7 +56,6 @@ on:
       - 'go.sum'
       - 'openapi/**'
       - 'database/**'
-      - 'mock-auth-server/**'
       - 'docs-viewer/**'
       - 'scripts/**'
   schedule:
@@ -154,7 +152,7 @@ jobs:
             --json \
             --output opengrep.json \
             internal pkg cmd database openapi \
-            mock-auth-server docs-viewer scripts
+            docs-viewer scripts
         shell: bash
 
       - name: Create SAST summary (Markdown)
@@ -245,7 +243,7 @@ jobs:
             --sarif \
             --output opengrep-raw.sarif \
             internal pkg cmd database openapi \
-            mock-auth-server docs-viewer scripts
+            docs-viewer scripts
 
           jq '.runs[]?.results |= map(select((.suppressions // []) | length == 0))' \
             opengrep-raw.sarif > opengrep.sarif

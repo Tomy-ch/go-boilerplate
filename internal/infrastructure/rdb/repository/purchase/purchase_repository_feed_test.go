@@ -38,7 +38,7 @@ func insertFeedUser(ctx context.Context, t *testing.T, db driver.DBTX, id string
 		"Feed",
 		"User",
 		"feed-"+id+"@example.com",
-		"000-000-0000",
+		"0000000000",
 		"a03aaec4-3bd6-4bfb-8e47-2fbfa026d344", // 既存 seed の都道府県ID
 		"City",
 		"Street",

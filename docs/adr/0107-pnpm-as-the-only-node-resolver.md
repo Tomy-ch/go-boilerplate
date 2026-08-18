@@ -13,8 +13,8 @@ accepted
 
 ## Context
 
-This repository carries three Node packages — `scripts/` (repository tooling), `docs-viewer/`
-(the documentation portal frontend), and `mock-auth-server/` (the local OIDC provider). They are
+This repository carries two Node packages — `scripts/` (repository tooling) and `docs-viewer/`
+(the documentation portal frontend). They are
 deliberately separate packages with separate lockfiles: a dependency change is reviewed next to
 the code that uses it, and the viewer's dependency graph does not reach the tooling that gates CI.
 

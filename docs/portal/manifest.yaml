@@ -23,7 +23,7 @@ meta:
     - title: Cross-Cutting
       sections: [cross-cutting, integration]
     - title: Build / Operations
-      sections: [docker, mock-auth-server, database, scripts, agent-config, ci, maintenance, deployment]
+      sections: [docker, database, scripts, agent-config, ci, maintenance, deployment]
     - title: API Contracts
       sections: [external]
 
@@ -592,18 +592,6 @@ docker:
     dst: docs/portal/guides/ja/docker-tools.ja.md
   - src: docker/database/sql/README.ja.md
     dst: docs/portal/guides/ja/docker-database-sql.ja.md
-
-mock-auth-server:
-  # English
-  - src: mock-auth-server/README.md
-    dst: docs/portal/guides/mock-auth-server.md
-  - src: mock-auth-server/fixtures/README.md
-    dst: docs/portal/guides/mock-auth-server-fixtures.md
-  # Japanese
-  - src: mock-auth-server/README.ja.md
-    dst: docs/portal/guides/ja/mock-auth-server.ja.md
-  - src: mock-auth-server/fixtures/README.ja.md
-    dst: docs/portal/guides/ja/mock-auth-server-fixtures.ja.md
 
 scripts:
   # English

@@ -6,7 +6,7 @@
 
 このスキルは **セキュリティ勧告リスト** を受け取り、名指しされた脆弱な依存だけを修正版へパッチする。本リポジトリの依存解決は 3 通りあり、勧告はそのいずれの package も名指しし得る:
 
-- **pnpm** — `scripts/pnpm-lock.yaml`・`mock-auth-server/pnpm-lock.yaml`・`docs-viewer/pnpm-lock.yaml` に記録された依存。各パッケージが自前の `pnpm-workspace.yaml` を持ち、そこに cooldown ポリシーと `overrides` の両方が載る。
+- **pnpm** — `scripts/pnpm-lock.yaml`・`docs-viewer/pnpm-lock.yaml` に記録された依存。各パッケージが自前の `pnpm-workspace.yaml` を持ち、そこに cooldown ポリシーと `overrides` の両方が載る。
 - **Go** — `go.mod` / `go.sum` のモジュール。**間接（indirect）** 依存を含む。
 - **PyPI** — `python/*.in` が宣言し、`python/*.txt` が sha256 付きで解決を固定している CLI ツール。所在の特定はここの範囲だが、**引き上げは範囲外** — 2 つの宣言先を持つのは `/tools-upgrade`。後述の *PyPI の勧告はたいていこのスキルのものではない* を見ること。
 
@@ -75,7 +75,7 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 - `**/pnpm-workspace.yaml` — `overrides` と `minimumReleaseAgeExclude` キー **のみ**。例外エントリは **Step 5 でユーザーがその版を承認した後にのみ** 書く。`minimumReleaseAge` / `minimumReleaseAgeStrict` / `minimumReleaseAgeIgnoreMissingTime` / `trustPolicy*` / `allowBuilds` / `blockExoticSubdeps` / `engineStrict` には決して触れない — それらはパッチではなくポリシーそのもの。
 - `go.mod` / `go.sum` — 承認済み Go モジュールに対する `go get <module>@<version>` + `go mod tidy` の出力。
 - `vendor/**` — `go mod vendor` の機械的出力として **のみ**、かつ **リポジトリが vendoring するとき（`vendor/modules.txt` が存在）のみ**。`go.mod` バンプは `vendor/modules.txt` を不整合のまま残し、ビルドが `inconsistent vendoring` で落ちる。よって再 vendoring は好みの編集ではなく必須の downstream 手順。vendored ファイルは手編集しない。
-- これら依存が駆動する再生成物 — Step 7 の drift チェックで動いた場合 **のみ**（例: `make gen-mock-auth-oapi` 経由の `mock-auth-server/openapi/openapi.gen.yaml` / `src/generated/**`）。リポジトリの `make` ターゲットで再生成する。生成物を手編集しない。
+- これら依存が駆動する再生成物 — Step 7 の drift チェックで動いた場合 **のみ**（例: `make gen-bundle-oapi` 経由の `openapi/openapi.gen.yaml`）。リポジトリの `make` ターゲットで再生成する。生成物を手編集しない。
 
 このスキル実行中でも保護（触れない）:
 
@@ -174,7 +174,7 @@ disposition が `too-new` または `blocked` になった全エントリにつ�
   - js-yaml 4.2.0 → 4.3.0     [docker/tools, 直接]    (CVE-2026-59869, CVE-2026-53550 / HIGH)
 
 ⚠️ major 跨ぎ（breaking の可能性 / 別途確認）:
-  - @hono/node-server 1.19.14 → 2.0.5  [mock-auth-server, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
+  - vite 7.4.2 → 8.0.1  [docs-viewer, 直接]  (GHSA-frvp-7c67-39w9 / MEDIUM)
 
 ⚠️ too-new（公開が min_age 未満 / 別途 opt-in）:
   - fast-uri 3.1.3 → 3.1.4  [docker/tools]  (公開 3 日 / CVE-2026-16221 / HIGH)
@@ -247,7 +247,7 @@ go mod vendor        # リポジトリが vendoring するとき（vendor/module
 
 実際に変わったものに合わせてチェックを走らせる — 依存パッチが一次ソースに触れることは稀なので、常にフルスイートを回すのではなく、動いたエコシステムに検証をスコープする。各々を OK / FAIL で報告し、失敗しても自動ロールバックしない — ユーザーが判断する。
 
-Go 変更は最低限ビルド + vuln スキャンが clean であること（`go build ./...` + `govulncheck ./...`）。Go 変更がフルスイートに値するほど広ければ `make lint` / `make test` を回す。**pnpm パッケージの major バンプ** はより入念に検証する — その package 自身の `typecheck` + テスト（例 `mock-auth-server/` で `pnpm typecheck` + `pnpm test`）を回す。major は呼び出す API を変え得るため。
+Go 変更は最低限ビルド + vuln スキャンが clean であること（`go build ./...` + `govulncheck ./...`）。Go 変更がフルスイートに値するほど広ければ `make lint` / `make test` を回す。**pnpm パッケージの major バンプ** はより入念に検証する — その package 自身の `typecheck` + テスト（例 `docs-viewer/` で `pnpm typecheck` + `pnpm test`）を回す。major は呼び出す API を変え得るため。
 
 pnpm 変更 — 意図は同じで、変更した各 package ディレクトリで `pnpm audit`。加えて npm には不要な手順が 1 つある:
 
@@ -273,7 +273,6 @@ govulncheck ./...                # 利用可能なら。GHSA が解消するこ�
 
 生成物 drift — これら依存はコード生成器を駆動するため、バンプで生成出力が動き得る。変更した lockfile が生成器を養う package のものなら、その生成器を走らせて drift を確認する（CI と同じチェック）:
 
-- `mock-auth-server/**` 依存 → `make gen-mock-auth-oapi`（および `make gen-mock-auth-oapi-docs`）→ 生成パスを `git status`。再生成物をパッチの一部としてコミットする。
 - `docker/tools/**` 依存（toolbox イメージ: redocly / orval / sqlc 周辺ツール）→ 依存が変わったツールがそれらであるときに限り、そのイメージが生成する成果物（`make gen-*-oapi`、`make gen-query` 等）を再生成し drift を確認。
 
 再生成で変更が出たら含める — 生成出力を黙って変えるセキュリティバンプが、CI の drift チェックを落とす状態でツリーを残してはならない。

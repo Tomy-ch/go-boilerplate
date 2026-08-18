@@ -243,11 +243,11 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 | `make md-fix` | Markdown ファイルの Lint 自動修正を実行します。 | `node_tool_runner` コンテナ内で `make md-fix-ci` を呼び出します。 |
 | `make md-mermaid-lint` | ` ```mermaid ` フェンスのみを構文検証します。 | `node_tool_runner` コンテナ内で `make md-mermaid-lint-ci` を呼び出します。 |
 | `make md-skill-lint` | `.claude/**` のスキル / エージェント定義と、その `.codex/**` 対応のみを検証します。 | `node_tool_runner` コンテナ内で `make md-skill-lint-ci` を呼び出します。 |
-| `make md-premise-lint` | fork 後も残る文書が、fork とともに失効する前提に乗っていないことのみを検査します。 | `node_tool_runner` コンテナ内で `make md-premise-lint-ci` を呼び出します。  <!-- boilerplate-only:line --> |
+| `make md-premise-lint` | テンプレート作成後も残る文書が、作成とともに失効する前提に乗っていないことのみを検査します。 | `node_tool_runner` コンテナ内で `make md-premise-lint-ci` を呼び出します。  <!-- boilerplate-only:line --> |
 | `make md-lint-ci` | `markdownlint-cli2` を実行後、mermaid 構文 Lint、スキル定義 Lint の順に実行します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
 | `make md-mermaid-lint-ci` | `scripts/mermaid-lint/index.ts`（実 `mermaid.parse`）で ` ```mermaid ` フェンスを検証します。 | CI 用ターゲット。markdownlint は図の文法を見ません。 |
 | `make md-skill-lint-ci` | `scripts/skill-lint/index.ts` で `.claude/**` の定義（frontmatter / 対訳ペアの構造 / 参照の実在性）と、`.codex/**` との対応（skill / agent の存在対応、Codex skill の構造）を検証します。 | CI 用ターゲット。markdownlint は記述と実態の一致を見ず、片側の環境にだけ入った skill も他の誰も気づきません。 |
-| `make md-premise-lint-ci` | [docs/rules.md](../docs/rules.md) の *No premise the document will outlive* を `scripts/premise-lint/index.ts` で機械化したものです。fork 後も残る文書に、そこでは真でなくなる自己参照があると落ちます。探す言い回しは `scripts/premise-lint/rules.ts` が宣言します。 | CI 用ターゲット。前提を書いてよいのは、セットアップが書き換え・削除する `README*` / `docs/get-started/**` と、`boilerplate-only` / `sample-api` マーカーで囲った領域だけです。同じ語の別語義は `scripts/premise-lint/allowances.ts` へ理由付きで宣言します。  <!-- boilerplate-only:line --> |
+| `make md-premise-lint-ci` | [docs/rules.md](../docs/rules.md) の *No premise the document will outlive* を `scripts/premise-lint/index.ts` で機械化したものです。テンプレート作成後も残る文書に、そこでは真でなくなる自己参照があると落ちます。探す言い回しは `scripts/premise-lint/rules.ts` が宣言します。 | CI 用ターゲット。前提を書いてよいのは、セットアップが書き換え・削除する `README*` / `docs/get-started/**` と、`boilerplate-only` / `sample-api` マーカーで囲った領域だけです。同じ語の別語義は `scripts/premise-lint/allowances.ts` へ理由付きで宣言します。  <!-- boilerplate-only:line --> |
 | `make md-fix-ci` | `markdownlint-cli2 --fix` で `**/*.md` を直接修正します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
 
 ## `.makefiles/security` 系
@@ -327,12 +327,6 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make stamp-openapi-version` | リリースブランチ名から `info.version` を書き換えます。 | `node_tool_runner` コンテナ内で `make stamp-openapi-version-ci` を実行します。`REF=release/vX.Y.Z` を取り、未指定なら `GITHUB_REF_NAME` を使います。それ以外の ref は何もしません。 |
 | `make stamp-openapi-version-ci` | `scripts/stamp-openapi-version/index.ts` を直接実行します。 | CI 用ターゲットです。 |
 | `make lint-oapi-security-ci` | Spectral + OWASP API Security ルールセットで検証します。 | CI 用ターゲット。spec だけを見る検査のためにツールランナーのイメージを起こさないので、コンテナを介さず実行します。事前に `pnpm install --dir scripts --frozen-lockfile` が必要です。 |
-| `make gen-mock-auth-oapi` | mock-auth-server の OpenAPI をバンドルし zod スキーマを生成します。 | `node_tool_runner` コンテナ内で `make gen-mock-auth-oapi-ci` を呼び出します。 |
-| `make gen-mock-auth-oapi-docs` | mock-auth-server の OpenAPI から Redoc HTML を生成します。 | `node_tool_runner` コンテナ経由で `docs/openapi/mock-auth-server/index.html` を出力します。 |
-| `make lint-mock-auth-oapi` | mock-auth-server の OpenAPI 定義を `redocly lint` で検証します。 | `node_tool_runner` コンテナ内で `make lint-mock-auth-oapi-ci` を呼び出します。 |
-| `make gen-mock-auth-oapi-ci` | `mock-auth-server` で `pnpm run gen`（redocly bundle + orval）を実行します。 | CI 用ターゲットです。 |
-| `make gen-mock-auth-oapi-docs-ci` | `mock-auth-server` で `pnpm run gen:docs`（redocly build-docs）を実行します。 | CI 用ターゲットです。 |
-| `make lint-mock-auth-oapi-ci` | `mock-auth-server` で `pnpm run lint:oapi` を実行します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/load` 系
 
@@ -544,7 +538,7 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make setup-replace-codeowners OWNERS='<owners>'` | `.github/CODEOWNERS` の全ルールの所有者を一括置換します。 | `@user` / `@org/team` / メールアドレスを指定でき、空白区切りで複数指定できます。コメント行は対象外なので、ヘッダーの記載例は書き換わりません。  <!-- setup-localize:line --> |
 | `make setup-verify` | 初期化が当たったことを検証し、通れば初期化ツールを撤去します。 | `node_tool_runner` で `scripts/setup/verify-setup` を実行します。Phase 5 の値を環境変数で渡します。  <!-- setup-localize:line --> |
 | `make setup-remove-boilerplate-identity` | ボイラープレートである間だけ成り立つ記述を削除します。 | `node_tool_runner` でリポジトリを走査して `boilerplate-only` マーカーをすべて解決し、ボイラープレート限定の規約ドキュメントを削除したうえで、ツール自身も撤去します。`DRY_RUN=1` でプレビューできます。 <!-- boilerplate-only:line --> |
-| `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`reset-mock-auth-users` → `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint` を実行します。DB 再構築により削除済みテーブルが生成モデルに残らず、`tidy-lib` によりサンプルAPIだけが使っていた直接依存が go.mod から落ちます。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
+| `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint` を実行します。DB 再構築により削除済みテーブルが生成モデルに残らず、`tidy-lib` によりサンプルAPIだけが使っていた直接依存が go.mod から落ちます。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
 
 ### ベースブランチ解決関連
 

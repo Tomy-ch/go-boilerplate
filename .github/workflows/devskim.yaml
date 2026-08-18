@@ -107,7 +107,7 @@ jobs:
             --output-file devskim.sarif \
             --file-format sarif \
             --base-path . \
-            --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/*_test.go,**/*.test.ts,**/*.spec.ts,**/pnpm-lock.yaml,**/package-lock.json,**/openapi.gen.yaml,**/.agents/**,**/docs/openapi/**,**/docs/coverage/**,**/docs/db-schema/**,**/docs/godoc/**,**/docs/portal/docs.json,**/docs/portal/guides/**,**/docker-compose.attach.yaml,**/mock-auth-server/**'
+            --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/*_test.go,**/*.test.ts,**/*.spec.ts,**/pnpm-lock.yaml,**/package-lock.json,**/openapi.gen.yaml,**/.agents/**,**/docs/openapi/**,**/docs/coverage/**,**/docs/db-schema/**,**/docs/godoc/**,**/docs/portal/docs.json,**/docs/portal/guides/**,**/docker-compose.attach.yaml'
         shell: bash
 
       - name: Create DevSkim summary (Markdown)
