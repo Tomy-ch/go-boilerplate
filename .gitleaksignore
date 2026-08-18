@@ -13,7 +13,10 @@ daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-r
 a77359f8d20ba3797acf260ecfc9c789e34f9e7d:docker/mock-auth-server/keys/mock-key-1.pem:private-key:1
 # AUTH_JWKS_URL はコンテナ内部の URL で資格情報ではない。ホスト名の auth と
 # ポート以降の文字列が generic-api-key の keyword+entropy 条件に当たる誤検知。
+# env/README の既定値表は同じ URL を載せるため同じ検出になる。
 env/.env:generic-api-key:42
+env/README.md:generic-api-key:221
+env/README.ja.md:generic-api-key:219
 # 64 は履歴（gitleaks git）側、65 は現在のツリー側の OBJECT_STORAGE_SECRET_ACCESS_KEY。
 # SHA 無しの fingerprint は履歴の検出にも当たるため、行がずれた側だけ足すと履歴が落ちる。
 env/.env:generic-api-key:64
