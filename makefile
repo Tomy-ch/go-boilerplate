@@ -57,6 +57,8 @@ include .makefiles/sql/lint.mk
 include .makefiles/markdown/lint.mk
 # Node関連
 include .makefiles/node/scripts.mk
+# AI 開発フィードバック（Closed Loop）関連
+include .makefiles/agents/closed-loop.mk
 # Python関連
 include .makefiles/python/lock.mk
 # セキュリティ関連
