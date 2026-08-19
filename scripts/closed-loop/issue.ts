@@ -207,7 +207,10 @@ export function parseObservation(body: string): Observation | undefined {
  * 呼び出し側が区別できるようにするためで、空の節を空文字で返すと両者が同じ形になります。
  */
 export function parseSections(body: string): Record<string, string> {
-  const known = new Set<string>(BODY_SECTIONS);
+  // 見出しは正準表記へ寄せてから照合する。書くのはこちらでも、読む相手はモデルの出力で、
+  // `##Outcome`（空白なし）や `## outcome`（小文字）を返してくる。厳密一致にすると、その節は
+  // 見出しとして認識されないまま次の既知見出しまでの本文ごと黙って消える。
+  const canonical = new Map<string, string>(BODY_SECTIONS.map((s) => [s.toLowerCase(), s]));
   const sections: Record<string, string> = {};
   let current: string | undefined;
   let buffer: string[] = [];
@@ -222,10 +225,10 @@ export function parseSections(body: string): Record<string, string> {
 
   for (const raw of body.split("\n")) {
     const line = raw.replace(/\s+$/, "");
-    const heading = /^##\s+(.+?)\s*$/.exec(line);
+    const heading = /^#{2,3}\s*(.+?)\s*$/.exec(line);
     if (heading !== null) {
       flush();
-      current = known.has(heading[1] as string) ? (heading[1] as string) : undefined;
+      current = canonical.get((heading[1] as string).toLowerCase());
       continue;
     }
     if (current !== undefined) buffer.push(line);

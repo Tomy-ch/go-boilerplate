@@ -94,8 +94,13 @@ export const SECRET_PATTERNS: readonly RegExp[] = [
   /\b[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s:@/]+:[^\s:@/]+@/,   // URL の userinfo
   // 単語境界を前に置かないのは、実測で見つかった実例が `SONAR_TOKEN=` だったため。
   // `\btoken\b` は `_TOKEN` に当たらず、環境変数名の形をした鍵をまるごと取り逃す。
-  /(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*["']?[A-Za-z0-9_\-.+/]{12,}/i,
-  /\bBearer\s+[A-Za-z0-9_\-.=]{20,}/,
+  /(?:token|secret|credential|password|passwd|api[_-]?key)\s*[:=]\s*["']?[A-Za-z0-9_\-.+/]{12,}/i,
+  // `pass` / `pwd` は語として短く、`passing` や `cwd` のような無関係な語に当たる。前後を
+  // 区切って `DB_PASS=` や `pwd:` の形だけを拾う。
+  /(?:^|[\s_\-.])(?:pass|pwd)\s*[:=]\s*["']?[A-Za-z0-9_\-.+/]{8,}/i,
+  // `curl -u user:secret` の形。URL の userinfo とは別の経路で、こちらは `://` を持たない。
+  /\s-u\s+[^\s:@/]+:[^\s]{6,}/,
+  /\bBearer\s+[A-Za-z0-9_\-.=]{20,}/i,
 ] as const;
 
 /** 秘密情報らしき形を含むか。 */

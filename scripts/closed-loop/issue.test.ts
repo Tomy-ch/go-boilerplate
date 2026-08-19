@@ -240,6 +240,18 @@ describe("parseSections", () => {
       expect(parseSections("## Outcome\n\n## Friction\nある\n")).toEqual({ Friction: "ある" });
     });
 
+    it("見出しの空白が無くても節として読む", () => {
+      expect(parseSections("##Outcome\nok\n")).toEqual({ Outcome: "ok" });
+    });
+
+    it("見出しの大小文字が崩れても節として読む", () => {
+      expect(parseSections("## outcome\nok\n")).toEqual({ Outcome: "ok" });
+    });
+
+    it("見出しが崩れても次の節を巻き込まない", () => {
+      expect(parseSections("## Outcome\nA\n##Friction\nB\n")).toEqual({ Outcome: "A", Friction: "B" });
+    });
+
     it("節がひとつも無ければ空を返す", () => {
       expect(parseSections("見出しのない本文")).toEqual({});
     });
