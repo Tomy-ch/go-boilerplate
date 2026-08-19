@@ -49,6 +49,6 @@ Three independent flags are accepted, in any order:
 
 ## Notes
 
-- Idempotent by design: the target set is defined by an age predicate, so re-running only erases users that are already eligible and retries are safe. There is no exclusive locking — concurrency is the scheduler's concern ([ADR-0104 (scheduled-job-concurrency-delegated)](../../../../docs/adr/0104-scheduled-job-concurrency-delegated.md)).
+- Idempotent by design: the target set is defined by an age predicate, so re-running only erases users that are already eligible and retries are safe. There is no exclusive locking — concurrency is the scheduler's concern ([ADR-0105 (scheduled-job-concurrency-delegated)](../../../../docs/adr/0105-scheduled-job-concurrency-delegated.md)).
 - A user who still holds purchases is **not** erased; it is counted under `logging.JobSkippedKey` instead. Deciding that is the usecase's concern, not this job's.
 - The retention window, batching, and the skip rule are the usecase's concern; this job only converts CLI syntax into typed values.

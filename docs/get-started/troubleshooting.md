@@ -104,7 +104,7 @@ By design. `golangci-lint` picks up `.golangci.yaml` implicitly, which is a deli
 tuned for editor responsiveness; the authoritative gate is `.golangci-full.yaml`, which `make lint`
 and `make fix` pass explicitly and which carries the depguard layer rules. An editor that stays quiet
 is not evidence. Rationale:
-[ADR-0083 (two-layer-golangci-config)](../adr/0083-two-layer-golangci-config.md).
+[ADR-0084 (two-layer-golangci-config)](../adr/0084-two-layer-golangci-config.md).
 
 ### Local gates seem to have stopped running
 

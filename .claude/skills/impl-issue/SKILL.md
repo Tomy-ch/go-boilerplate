@@ -295,6 +295,13 @@ the user sees the shape of the whole run at once.
 
 ## Step 8 — PR, then runtime verification, then merge
 
+When this step merges the pull request, stamp it — a merge performed here is observed by nobody
+else until the loop goes back to `gh` for it:
+
+```sh
+.agents/closed-loop/marks.sh mergedAt 2>/dev/null || true
+```
+
 Open the PR first via `submit-pr`, so CI starts while you verify locally.
 
 ### Runtime verification — the merge gate

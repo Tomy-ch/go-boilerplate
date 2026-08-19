@@ -197,6 +197,13 @@ When the band deferred gates to CI, say so in Step 8's report and treat the PR a
 
 ## Step 7. Create or Update the PR
 
+Stamp the phase as soon as the PR exists. GitHub records a creation time too, but the two answer
+different questions and the join to it holds only about two thirds of the time:
+
+```sh
+.agents/closed-loop/marks.sh prOpenedAt 2>/dev/null || true
+```
+
 ### Create the PR
 
 ```sh

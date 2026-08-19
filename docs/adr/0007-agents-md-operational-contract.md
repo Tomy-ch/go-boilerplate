@@ -28,7 +28,7 @@ model is active:
 - Agents must not modify generated files or protected configuration.
 - Agents must not commit directly to protected branches.
 - Agents must not introduce new architectural patterns without instruction.
-- Agents must follow the OpenAPI-first flow (see ADR-0011).
+- Agents must follow the OpenAPI-first flow (see ADR-0012).
 
 Structural safety (ADR-0006) handles violations at the build layer, but behavioral constraints —
 what an agent may touch, how it must behave before and after a task — cannot be expressed in a

@@ -89,7 +89,7 @@ request's operation and — unless it opted in — strips `details` from the **c
 (`writeErrorResponse` copies the body; the `resp` object and the logs keep the full `details`).
 An unmatched route or a non-opted-in operation both fail **closed** (no `details`). The policy
 router is host-agnostic (built from a servers-stripped spec copy), so proxied / test hosts still
-resolve by path + method. Rationale: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md).
+resolve by path + method. Rationale: [ADR-0042](../../../../docs/adr/0041-error-details-opt-in-gate.md).
 
 ## Logging
 

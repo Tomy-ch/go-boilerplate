@@ -33,10 +33,14 @@
 # because the failure it prevents is a typo becoming a mark nothing ever reads — invisible until
 # someone asks why a phase has no data.
 #
-# It is also short on purpose. A moment GitHub already records is not stamped here: when a pull
-# request opened and when it merged are read back from `gh` at aggregation time, and a mark for
-# either would be a second copy of a fact, free to disagree with the first. Only the moments no
-# other system observes get a mark.
+# A mark stays the primary record even where GitHub also knows something. The two are not the
+# same fact: a mark says the window's workflow reached a phase, while `gh` says an object was
+# created — and they part ways when a pull request is opened outside the window, or when the
+# push fails after the phase was reached. Nor are they equally reliable. Reading a time back from
+# `gh` needs the branch-to-PR join to hold, and that join was measured at 64 %; it also needs the
+# network, which the loop is required to work without. So `gh` is the cross-check and the
+# fallback, never the source. Where the two disagree, the disagreement is itself the finding, and
+# the schema keeps `source` on every value so it stays answerable which one spoke.
 #
 # It always exits 0 when invoked as a hook. A window must open whether or not this can answer.
 
@@ -48,7 +52,7 @@ LOOP_DIR="${REPO_ROOT}/tmp/closed-loop"
 CURRENT_FILE="${LOOP_DIR}/current"
 
 # The phases the loop reports on. Adding one here is what makes it writable.
-KNOWN_MARKS='openedAt planApprovedAt implStartedAt commitAt reviewStartedAt closedAt'
+KNOWN_MARKS='openedAt planApprovedAt implStartedAt commitAt reviewStartedAt prOpenedAt mergedAt closedAt'
 
 # What ends a window is a person saying "that is done": `/clear`, or a `/compact` they typed.
 # `startup` and `resume` continue whatever was already open. An AUTOMATIC compact is the context

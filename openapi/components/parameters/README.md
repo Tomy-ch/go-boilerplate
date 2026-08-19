@@ -56,13 +56,13 @@ separator is split after percent-decoding and therefore cannot be escaped. Restr
 enums removes both problems at once.
 
 A search that outgrows this — many facets, or values too large for a URL — belongs in a `POST` body, not in
-a longer query string. See [ADR-0018 (search-query-parameter-shape)](../../../docs/adr/0018-search-query-parameter-shape.md).
+a longer query string. See [ADR-0019 (search-query-parameter-shape)](../../../docs/adr/0019-search-query-parameter-shape.md).
 
 ### Filtering by master data takes `code`, not the row's UUID
 
 The identifier a client sends for a master row is its `code` — a static alias fixed by the migration that
 inserted the row. Which UUID that row carries is decided by the migration, so application code must not
-hold it ([ADR-0030](../../../docs/adr/0030-master-data-via-migration.md)); the same reasoning applies at the
+hold it ([ADR-0031](../../../docs/adr/0031-master-data-via-migration.md)); the same reasoning applies at the
 API boundary. A client can keep `code` as a constant, whereas a UUID has to be resolved by calling the
 master endpoint first, and at 36 characters each it makes a multi-value filter expensive to express.
 

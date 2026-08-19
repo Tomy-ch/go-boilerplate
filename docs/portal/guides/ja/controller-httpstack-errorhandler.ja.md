@@ -89,7 +89,7 @@ operation を解決し、opt-in していない限り**クライアント wire �
 （`writeErrorResponse` が body をコピー。`resp` 本体とログには完全な `details` が残る）。ルート
 不一致・未 opt-in はいずれも **fail-closed**（details なし）。policy 用 router は servers を除去した
 spec 複製から作るため Host 非依存で、proxy / test の Host でもパス + メソッドで解決できる。
-理由: [ADR-0041](../../../../docs/adr/0041-error-details-opt-in-gate.md)。
+理由: [ADR-0042](../../../../docs/adr/0041-error-details-opt-in-gate.md)。
 
 ## ログ出力
 

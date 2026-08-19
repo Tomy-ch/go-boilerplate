@@ -1,7 +1,7 @@
 # Address — Usecase Spec
 
 > address は外部の郵便番号 lookup サービスを参照するだけの非永続 API であり、固有の domain
-> エンティティ・テーブルを持たない。そのため lean-a-spec（ADR-0093 (lean-a-spec-scaffold)）の「原則 domain + usecase」
+> エンティティ・テーブルを持たない。そのため lean-a-spec（ADR-0094 (lean-a-spec-scaffold)）の「原則 domain + usecase」
 > から domain.md を省略し、本 usecase.md のみで表現する。外部 lookup への意味的 gateway は
 > `internal/usecase/boundary/address.Gateway`（boundary IF）として Dependencies 節に明示する。
 

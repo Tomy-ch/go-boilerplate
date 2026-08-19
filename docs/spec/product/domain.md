@@ -6,9 +6,9 @@
 
 ## Overview
 
-商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の参照（`StatusRef` / `CategoryRef`。いずれも ID と名称の組）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負であることと決済スケールの整数へ落とせることは VO が担保。2 スケールモデルは ADR-0037 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
+商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の参照（`StatusRef` / `CategoryRef`。いずれも ID と名称の組）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負であることと決済スケールの整数へ落とせることは VO が担保。2 スケールモデルは ADR-0038 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
 
-一覧取得と一致件数取得は、公開済み（`publishedAt` 非 NULL）の商品へ同じ意味の検索条件を適用する read-only な集約読み取りである。すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0031 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。検索条件は再利用可能な domain 概念へ昇格させず、各 Repository 操作の引数型が必要な項目だけを保持する。一覧だけが `(publishedAt, id)` の keyset ページネーションと並び順を持ち、件数取得はページング条件を持たない。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
+一覧取得と一致件数取得は、公開済み（`publishedAt` 非 NULL）の商品へ同じ意味の検索条件を適用する read-only な集約読み取りである。すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0032 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。検索条件は再利用可能な domain 概念へ昇格させず、各 Repository 操作の引数型が必要な項目だけを保持する。一覧だけが `(publishedAt, id)` の keyset ページネーションと並び順を持ち、件数取得はページング条件を持たない。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
 
 不透明カーソル（cursor）の符号化・復号は usecase 層の責務であり、domain の Repository は keyset 境界を primitive（`AfterPublishedAt` / `AfterID`）で受け取る。
 
@@ -130,7 +130,7 @@ fields:
 ```yaml
 # price は money.Price VO（internal/domain/lexicon/money）で保持する。非負の価格スケール（サブセント可の Decimal）を
 # 内包し、決済スケール（最小単位整数）への変換 policy（ToMinorUnit）を所有する。器の正確な十進量は
-# pkg/decimal.Decimal（ADR-0037 (two-scale-quantity-model)）。
+# pkg/decimal.Decimal（ADR-0038 (two-scale-quantity-model)）。
 # 決済スケールへ落とせない大きさは構築時に拒む。変換できない単価は金額として成立せず、構築を許すと
 # 変換を試みる時点まで不正が持ち越されて、その時点の呼び出し元（取得や集計）は拒否する術を持たない。
 # 単価 1 件の上限は合算の溢れまでは防がないため、合算する側がそれぞれ自分の合計を守る。
@@ -169,7 +169,7 @@ fields:
     （3 値論理による暗黙除外に頼らない）。
     補充の要否は公開状態に依存しないため published_at で絞らず、未公開商品も返す。
     在庫僅少の判定は FindPublishedList の公開判定と同じく SQL に閉じ、domain の述語メソッドも
-    usecase / controller の分岐も置かない（ADR-0031 (lightweight-cqrs): 単一集約の自属性フィルタは Repository）。
+    usecase / controller の分岐も置かない（ADR-0032 (lightweight-cqrs): 単一集約の自属性フィルタは Repository）。
     cursor ページングを持たない top-N で、limit の既定値適用とクランプは usecase が担う。
 
 - name: FindPublishedByID
@@ -178,7 +178,7 @@ fields:
     ID から公開中（published_at 非 NULL）の単一商品を取得する。
     公開述語は FindPublishedList と同一（published_at 非 NULL）で、一覧と詳細の可視範囲を一致させる。
     未存在・非公開はいずれも取得失敗を NotFound として返し、未ログイン経路へ商品の存在を秘匿する。
-    可視性判断は SQL に閉じ、usecase / controller には分岐を置かない（ADR-0031 (lightweight-cqrs): 単一集約の ID fetch は Repository）。
+    可視性判断は SQL に閉じ、usecase / controller には分岐を置かない（ADR-0032 (lightweight-cqrs): 単一集約の ID fetch は Repository）。
 
 - name: FindByID
   signature: FindByID(ctx context.Context, id uuid.UUID) (*Product, error)
@@ -193,7 +193,7 @@ fields:
     更新のために、ID から公開状態を問わない単一商品を悲観ロック（SELECT ... FOR UPDATE）して取得する。
     未存在は NotFound を返す。同一商品を対象とする他の書き込み（購入の在庫減算・在庫の増減）は、
     先行トランザクションの commit まで待たされるため、取得〜更新の read-modify-write が直列化される
-    （ADR-0035 (ordered-pessimistic-row-locks): 購入と在庫補充は同じ行を同じロック規律で扱う）。
+    （ADR-0036 (ordered-pessimistic-row-locks): 購入と在庫補充は同じ行を同じロック規律で扱う）。
     結合する固定参照マスタ（ステータス / カテゴリ）はロック対象に含めない。
 
 - name: LockByIDs
@@ -201,7 +201,7 @@ fields:
   behavior: |
     更新のために、ID の集合から公開状態を問わない商品群を悲観ロック（SELECT ... FOR UPDATE）して
     ID 昇順で取得する。順序を id 昇順に固定するのは、複数商品を同時にロックする処理同士が
-    デッドロックしないためである（ADR-0035 (ordered-pessimistic-row-locks): ロック順序を単一の全域順序に固定する規律）。
+    デッドロックしないためである（ADR-0036 (ordered-pessimistic-row-locks): ロック順序を単一の全域順序に固定する規律）。
     不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得る（不存在の検証は
     呼び出し側の責務であり、ここでは NotFound を返さない）。
     結合する固定参照マスタ（ステータス / カテゴリ）はロック対象に含めない。
@@ -224,7 +224,7 @@ fields:
     version の加算は SQL 側（version = version + 1）で行い、採番の権威を DB に一本化する。
     条件に一致する行が無い場合は、読み込み後に他トランザクションが更新したものとして ErrVersionConflict（409）を返す
     （存在は同一トランザクション内の FindByID で確認済みのため、0 行はバージョン不一致のみを意味する）。
-    この衝突は tx.Manager が透過リトライする serialization_failure（ADR-0033 (commandservice-atomicity-criterion)）と異なり、同じ内容の再送では解消しない。
+    この衝突は tx.Manager が透過リトライする serialization_failure（ADR-0034 (commandservice-atomicity-criterion)）と異なり、同じ内容の再送では解消しない。
 
 - name: UpdateStock
   signature: UpdateStock(ctx context.Context, p *Product) (int, error)

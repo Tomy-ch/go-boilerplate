@@ -12,7 +12,7 @@ import (
 )
 
 // MergeOnLogin は、引き継ぎ先のカートを先に確保してから、所有権を評価する前に両方をロックします
-// （ADR-0035 (ordered-pessimistic-row-locks)）。
+// （ADR-0036 (ordered-pessimistic-row-locks)）。
 //
 // 確保とロックはいずれも競合しない単一の呼び出しで行い、やり直しの機構をどこにも置きません。
 // 分割するとトランザクションごと中断するため、Repository の CreateOwnerIfAbsent と LockByIDs を

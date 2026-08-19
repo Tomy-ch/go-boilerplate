@@ -215,6 +215,13 @@ runtime 検証は意図的にここに置いていない。PR ができた後（
 
 ## Step 8 — PR → runtime 検証 → マージ
 
+このステップが PR をマージしたら打刻する。ここで行うマージは、ループが後から `gh` を引くまで
+他の誰も観測していない。
+
+```sh
+.agents/closed-loop/marks.sh mergedAt 2>/dev/null || true
+```
+
 先に `submit-pr` で PR を開く。ローカル検証の間に CI が回り始める。
 
 ### runtime 検証 — マージのゲート

@@ -100,16 +100,16 @@ meta:
           - 0007-agents-md-operational-contract
           - 0008-agent-environment-alignment
           - 0009-long-running-agent-state
-          - 0010-docs-as-canonical-source
+          - 0011-docs-as-canonical-source
       - title: Contract / OpenAPI
         items:
-          - 0011-openapi-first
-          - 0012-redocly-modular-spec-pipeline
-          - 0013-oapi-codegen-strict-server
-          - 0014-retain-generated-openapi
-          - 0015-spec-driven-request-validation
-          - 0016-validation-value-authority
-          - 0017-boundary-value-ownership
+          - 0012-openapi-first
+          - 0013-redocly-modular-spec-pipeline
+          - 0014-oapi-codegen-strict-server
+          - 0015-retain-generated-openapi
+          - 0016-spec-driven-request-validation
+          - 0017-validation-value-authority
+          - 0018-boundary-value-ownership
           - 0018-metrics-endpoint-auth-exception
       - title: HTTP Layer
         items:

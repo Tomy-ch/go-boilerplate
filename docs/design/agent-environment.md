@@ -23,7 +23,7 @@ flowchart TD
 
 ## Correct after action
 
-Decidable properties fail mechanically: `depguard` and architecture tests protect layer boundaries; generators and drift checks protect derived artifacts; focused linters protect workflow and documentation conventions. Reading-comprehension judgments remain independent review, using the finder-to-verifier shape in [ADR-0092 (multi-model-adversarial-review)](../adr/0092-multi-model-adversarial-review.md).
+Decidable properties fail mechanically: `depguard` and architecture tests protect layer boundaries; generators and drift checks protect derived artifacts; focused linters protect workflow and documentation conventions. Reading-comprehension judgments remain independent review, using the finder-to-verifier shape in [ADR-0093 (multi-model-adversarial-review)](../adr/0093-multi-model-adversarial-review.md).
 
 ## Escalation and load-aware verification
 

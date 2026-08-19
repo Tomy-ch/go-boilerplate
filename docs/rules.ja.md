@@ -41,7 +41,7 @@ domain パッケージは他の集約を import してはなりません（depgu
 基準がリンタの引く境界を越えて型を押し込むことはできないためです。`pkg/` で落ちたことは lexicon の
 根拠になりません。どちらも満たさない型は所有する集約に残します。入場基準は意図的に狭く（値オブジェクト /
 2 集約以上で使用 / 業務意味論を持つ / 共同所有の判断。詳細はその README）、名前が入場時の問いを
-表しています——これは業務の語か。根拠: [ADR-0038](adr/0038-domain-lexicon.ja.md)。
+表しています——これは業務の語か。根拠: [ADR-0039](adr/0039-domain-lexicon.ja.md)。
 
 ### ドメインサービス
 
@@ -219,9 +219,9 @@ Infrastructure コンポーネントは
 
 > 判定基準: [`docs/design/data-access-pattern.md`](design/data-access-pattern.ja.md) —— ある操作が
 > どの構築物に属するのか、そしてなぜか。決定:
-> [ADR-0031 (lightweight-cqrs)](adr/0031-lightweight-cqrs.ja.md)、
-> [ADR-0032 (system-cqrs-dml-category)](adr/0032-system-cqrs-dml-category.ja.md)、
-> [ADR-0033 (commandservice-atomicity-criterion)](adr/0033-commandservice-atomicity-criterion.ja.md)。
+> [ADR-0032 (lightweight-cqrs)](adr/0032-lightweight-cqrs.ja.md)、
+> [ADR-0033 (system-cqrs-dml-category)](adr/0033-system-cqrs-dml-category.ja.md)、
+> [ADR-0034 (commandservice-atomicity-criterion)](adr/0034-commandservice-atomicity-criterion.ja.md)。
 
 Repository は読み・書きの両方向で既定である。QueryService と CommandService は、非機能要件が操作を集約単位の
 作業へ分解することを禁じるときに残る残余であり、`system_cqrs` は分割の外側にある。**判定基準をここにも、ADR にも、
@@ -350,8 +350,8 @@ Usecase は **直接 Infrastructure に依存することを避けるべき**で
 - 理由: 到達不能な `if err != nil { return err }` はデッドコードであり、テスト不能・カバレッジ低下・意図の隠蔽を招く。`panic` は不変条件を文書化し、前提が破られたら確実に気づける。
 - **関数本体の中で組み立てた `xerrors.New(...)` を返さない。** package-level のセンチネル（`var errXxx = xerrors.New("...")`）として宣言し、動的な文脈は `xerrors.Wrap(errXxx, ctx)` で付与する。その場で生成したエラーは `errors.Is` から辿れないため、呼び出し側が分岐できず、テストはメッセージ文字列一致に追い込まれる — 一語の文言変更でテストが壊れ、逆に別のエラーでも通ってしまう。`internal/architest`（`TestNoInlineXerrorsNew`）で機械検証しており、allowlist は持たない。`_test.go` は対象外 — テストが注入用のアドホックなエラーを作るのは正当な用法。
 - `apperror` センチネルを元エラーに付与する場合は `pkg/xerrors` を使う。元エラーを文字列へ潰す `Wrap(sentinel, err.Error())` より、型・スタックを chain に残して `Is` / `As` で辿れる `Join(sentinel, err)` を優先する。例外は2つ: 機密（クエリ・userinfo を含む URL 等）を含みうるエラーへの **redact** ルールと、**意図的な型消去** ルール — `Wrap` による潰しは意図的なこともある（元の型を chain から消す）ため、既存の正規化器を `Join` へ変える前に、その型に**マッチしないこと**に依存する下流の `Is` / `As` 述語（例: `*pgconn.PgError` の SQLSTATE を見る tx リトライ述語）をすべて確認する。完全な方針は [`pkg/xerrors/README.md`](../pkg/xerrors/README.ja.md) を参照。
-- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0047](adr/0047-error-metadata-code-message-details.ja.md)。
-- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0048](adr/0048-error-details-opt-in-gate.ja.md)。
+- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0048](adr/0048-error-metadata-code-message-details.ja.md)。
+- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0049](adr/0049-error-details-opt-in-gate.ja.md)。
 
 ## コメントルール
 
@@ -439,7 +439,7 @@ AI エージェントは以下を守る必要があります。
 
 標準経路であることの意味は、次の 3 つの制約に境界づけられます。
 
-- **決定論的な検査はエージェントの判断に優先する。** テスト・lint・CI・アーキテクチャルールが性質を決められる場面では、その判定が答えであり、エージェントの読解がそれを覆すことはありません。そうした検査が無い場面の判断は、主張ではなく独立レビューで確かめます（[ADR-0092 (multi-model-adversarial-review)](adr/0092-multi-model-adversarial-review.ja.md)）。
+- **決定論的な検査はエージェントの判断に優先する。** テスト・lint・CI・アーキテクチャルールが性質を決められる場面では、その判定が答えであり、エージェントの読解がそれを覆すことはありません。そうした検査が無い場面の判断は、主張ではなく独立レビューで確かめます（[ADR-0093 (multi-model-adversarial-review)](adr/0093-multi-model-adversarial-review.ja.md)）。
 - **アーキテクチャ・ドメイン・ポリシーの判断には Human Gate を維持する。** エージェントは判断と選択肢を提示するだけで、判断そのものは行いません。これは *ドキュメントルール* が describing 文書と governing 文書の間に引くのと同じ非対称です。
 - **アプリケーションは AI に依存しない。** アプリケーションランタイム、ビルド、テスト、本番ランタイム、ドメインモデル、API コントラクト、データベーススキーマ、通常の CI 検査は、AI サービスやエージェントが利用できなくても成立しなければなりません。AI 依存は開発ワークフロー / ナビゲーション / 自動化 / フィードバック / レビューに限定します。
 
@@ -450,7 +450,7 @@ AI エージェントは以下を守る必要があります。
 ツールのバージョンは `mise.toml`（mise が解決するもの全部についての単一の真実源）に固定され、
 コンテナ化された tool-runner 内で実行することで、マシン間の再現性を保ちます。PyPI から入れる
 ツールだけは `python/*.in` で宣言し、`python/*.txt` にパッケージごとのハッシュ付きで固定します。
-mise の pin では推移依存が固定されないためです（[ADR-0079](adr/0079-mise-ssot-drift-gate.ja.md)）。
+mise の pin では推移依存が固定されないためです（[ADR-0080](adr/0080-mise-ssot-drift-gate.ja.md)）。
 
 - ツール実行（lint / format / codegen / doc 生成 / commit-message lint 等）は、tool-runner
   （`go_tool_runner` / `node_tool_runner` / `python_tool_runner`）内で走る `make` ターゲット経由で

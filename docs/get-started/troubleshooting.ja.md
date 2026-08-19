@@ -99,7 +99,7 @@ ERROR: template database "template1" has a collation version mismatch (SQLSTATE 
 意図的です。`golangci-lint` は暗黙に `.golangci.yaml` を拾い、これはエディタの応答性に合わせた最小構成
 です。権威あるゲートは `.golangci-full.yaml` で、`make lint` / `make fix` が明示的に渡し、レイヤー境界の
 depguard ルールを持つのもこちらです。エディタが静かなことは根拠になりません。理由は
-[ADR-0083（two-layer-golangci-config）](../adr/0083-two-layer-golangci-config.ja.md)。
+[ADR-0084（two-layer-golangci-config）](../adr/0084-two-layer-golangci-config.ja.md)。
 
 ### ローカルのゲートが動かなくなったように見える
 

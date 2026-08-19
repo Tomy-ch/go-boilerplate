@@ -149,7 +149,7 @@ func TestV1CartsMeItems_Integration(t *testing.T) {
 			t.Parallel()
 
 			// spec は業務規則違反を 422 と定めるが、数量の範囲は OpenAPI が宣言しているため
-			// ドメインへ届く前に 400 で落ちる（ADR-0015・境界の権威は spec）。
+			// ドメインへ届く前に 400 で落ちる（ADR-0016・境界の権威は spec）。
 			t.Run("0は削除ではなく範囲外", func(t *testing.T) {
 				t.Parallel()
 				assertItemsRequestRejected(t, putBody(0))

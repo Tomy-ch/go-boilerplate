@@ -1,11 +1,11 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package command は、購入の書き込み操作（CommandService）のインターフェースを定義します（ADR-0031 (lightweight-cqrs)）。
+// Package command は、購入の書き込み操作（CommandService）のインターフェースを定義します（ADR-0032 (lightweight-cqrs)）。
 // 実装は infra 層に置き、渡された ctx のトランザクションに参加します。outbox 発行は含めません（usecase 責務）。
 //
 // 所在が usecase 層なのは、CommandService がトランザクションの道具であり、所有者はトランザクションを
 // 開く側だからです。パッケージ名 command はワークフローの名であって集約の名ではありません。この配置を
-// 動かす判断は docs/adr/0031-lightweight-cqrs.md § Command Service の更新を伴います。
+// 動かす判断は docs/adr/0032-lightweight-cqrs.md § Command Service の更新を伴います。
 package command
 
 import (
@@ -20,7 +20,7 @@ import (
 // 「決定済みの書き込みの実行」のみを担います（QueryService の write 側対称物）。
 //
 // 載せてよい書き込みの基準と、強制する条件がドメイン不変条件からの導出でなければならない規律は
-// ADR-0033 (commandservice-atomicity-criterion) の Eligibility / Derivation を参照。
+// ADR-0034 (commandservice-atomicity-criterion) の Eligibility / Derivation を参照。
 type CommandService interface {
 	// CreatePurchase は、在庫の減算・購入の作成・明細の作成を、渡された ctx のトランザクション内で
 	// 原子的に実行します。在庫減算は防御的に売り越しを弾きます。

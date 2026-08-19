@@ -68,7 +68,7 @@ flowchart TB
 
 **どこで切ってよいかは、この層が新しく決める問いではありません。** 集約が設計単位であることは
 [domain の README](../../internal/domain/README.ja.md) が、集約境界を越える操作の置き場は
-[ADR-0033（commandservice-atomicity-criterion）](../adr/0033-commandservice-atomicity-criterion.ja.md)
+[ADR-0034（commandservice-atomicity-criterion）](../adr/0034-commandservice-atomicity-criterion.ja.md)
 が既に定めています。ここで足すのは、その基準を分離境界の判断へ読み替えたときの 2 点だけです。
 
 - **整合性の要求は拒否権であって、選定基準ではありません。** 同時に成り立たねばならない不変条件を

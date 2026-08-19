@@ -23,7 +23,7 @@ flowchart TD
 
 ## 行動後に修正する
 
-決定できる性質は機械的に失敗させる。`depguard` と architecture test は層境界を、generator と drift check は派生成果物を、対象を絞った lint は workflow と文書の規約を保護する。読解を要する判断は [ADR-0092](../adr/0092-multi-model-adversarial-review.md) の finder-to-verifier で独立 review に残す。
+決定できる性質は機械的に失敗させる。`depguard` と architecture test は層境界を、generator と drift check は派生成果物を、対象を絞った lint は workflow と文書の規約を保護する。読解を要する判断は [ADR-0093](../adr/0093-multi-model-adversarial-review.md) の finder-to-verifier で独立 review に残す。
 
 ## escalation と負荷を考慮した検証
 

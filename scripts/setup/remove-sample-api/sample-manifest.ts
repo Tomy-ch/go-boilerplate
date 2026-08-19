@@ -429,7 +429,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     description:
       "outbox を SQS 互換 broker へ向ける配線のみ削除する（engine / seam / SQS adapter 本体・" +
       "ローカル broker・config は object storage と同様に core に残す）。詳細と ADR 根拠は " +
-      "internal/infrastructure/publisher/README.md と ADR-0052 (broker-sdk-isolation-measured-as-coupling) を参照。",
+      "internal/infrastructure/publisher/README.md と ADR-0053 (broker-sdk-isolation-measured-as-coupling) を参照。",
     paths: [
       "internal/infrastructure/publisher/queue_config.go",
       "internal/infrastructure/publisher/queue_config_test.go",
