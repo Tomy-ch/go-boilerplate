@@ -30,7 +30,7 @@ type ErrorResponse struct {
 // 金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
 // すべて USD セント単位の整数です。
 type PurchaseDeliverResponse struct {
-	// Code 購入コード（UUIDv7 文字列・一意）
+	// Code 購入コード（利用者へ注文番号として見せる一意の識別子）
 	Code string `json:"code"`
 
 	// DeliveredAt 配達日時
@@ -39,16 +39,14 @@ type PurchaseDeliverResponse struct {
 	// Details 購入明細の配列
 	Details []PurchaseDetailResponse `json:"details"`
 
-	// Id 購入ID
-	Id openapi_types.UUID `json:"id"`
-
 	// OrderedAt 注文日時
 	OrderedAt time.Time `json:"orderedAt"`
 
 	// ShippingFee 送料。USD セント単位の整数です。
 	ShippingFee int64 `json:"shippingFee"`
 
-	// Status 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// Status 購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// 表示には name を、分岐にはドメインの業務キーである code を用います。
 	Status PurchaseStatusRef `json:"status"`
 
 	// SubtotalAmount 小計。明細（単価×数量）の合計。USD セント単位の整数です。
@@ -77,8 +75,12 @@ type PurchaseDetailResponse struct {
 	UnitPrice string `json:"unitPrice"`
 }
 
-// PurchaseStatusRef 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// PurchaseStatusRef 購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// 表示には name を、分岐にはドメインの業務キーである code を用います。
 type PurchaseStatusRef struct {
+	// Code 購入ステータスの業務キー。値は到達順序を意味しません（完了より支払い済みのほうが大きい）。
+	Code int64 `json:"code"`
+
 	// Id 購入ステータスID
 	Id openapi_types.UUID `json:"id"`
 
@@ -86,8 +88,8 @@ type PurchaseStatusRef struct {
 	Name string `json:"name"`
 }
 
-// PurchaseIdParam defines model for PurchaseIdParam.
-type PurchaseIdParam = openapi_types.UUID
+// PurchaseCodeParam defines model for PurchaseCodeParam.
+type PurchaseCodeParam = string
 
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse

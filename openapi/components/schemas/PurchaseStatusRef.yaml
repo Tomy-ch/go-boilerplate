@@ -1,7 +1,10 @@
 type: object
-description: 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+description: |
+  購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+  表示には name を、分岐にはドメインの業務キーである code を用います。
 required:
   - id
+  - code
   - name
 properties:
   id:
@@ -9,6 +12,11 @@ properties:
     format: uuid
     description: 購入ステータスID
     example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+  code:
+    type: integer
+    format: int64
+    description: 購入ステータスの業務キー。値は到達順序を意味しません（完了より支払い済みのほうが大きい）。
+    example: 7
   name:
     type: string
     description: 購入ステータス名

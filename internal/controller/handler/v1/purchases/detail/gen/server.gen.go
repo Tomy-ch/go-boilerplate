@@ -17,8 +17,8 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// 購入詳細の取得
-	// (GET /v1/purchases/{purchaseId})
-	GetPurchasesDetail(ctx *echo.Context, purchaseId PurchaseIdParam) error
+	// (GET /v1/purchases/{purchaseCode})
+	GetPurchasesDetail(ctx *echo.Context, purchaseCode PurchaseCodeParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -29,18 +29,18 @@ type ServerInterfaceWrapper struct {
 // GetPurchasesDetail converts echo context to params.
 func (w *ServerInterfaceWrapper) GetPurchasesDetail(ctx *echo.Context) error {
 	var err error
-	// ------------- Path parameter "purchaseId" -------------
-	var purchaseId PurchaseIdParam
+	// ------------- Path parameter "purchaseCode" -------------
+	var purchaseCode PurchaseCodeParam
 
-	err = runtime.BindStyledParameterWithOptions("simple", "purchaseId", ctx.Param("purchaseId"), &purchaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	err = runtime.BindStyledParameterWithOptions("simple", "purchaseCode", ctx.Param("purchaseCode"), &purchaseCode, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter purchaseId: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter purchaseCode: %s", err))
 	}
 
 	ctx.Set(string(BearerAuthScopes), []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetPurchasesDetail(ctx, purchaseId)
+	err = w.Handler.GetPurchasesDetail(ctx, purchaseCode)
 	return err
 }
 
@@ -91,7 +91,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
-	router.GET(options.BaseURL+"/v1/purchases/:purchaseId", wrapper.GetPurchasesDetail, options.OperationMiddlewares["GetPurchasesDetail"]...)
+	router.GET(options.BaseURL+"/v1/purchases/:purchaseCode", wrapper.GetPurchasesDetail, options.OperationMiddlewares["GetPurchasesDetail"]...)
 
 }
 
@@ -106,7 +106,7 @@ type ServiceUnavailable503JSONResponse ErrorResponse
 type Unauthorized401JSONResponse ErrorResponse
 
 type GetPurchasesDetailRequestObject struct {
-	PurchaseId PurchaseIdParam `json:"purchaseId"`
+	PurchaseCode PurchaseCodeParam `json:"purchaseCode"`
 }
 
 type GetPurchasesDetailResponseObject interface {
@@ -206,7 +206,7 @@ func (response GetPurchasesDetail503JSONResponse) VisitGetPurchasesDetailRespons
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// 購入詳細の取得
-	// (GET /v1/purchases/{purchaseId})
+	// (GET /v1/purchases/{purchaseCode})
 	GetPurchasesDetail(ctx context.Context, request GetPurchasesDetailRequestObject) (GetPurchasesDetailResponseObject, error)
 }
 
@@ -223,10 +223,10 @@ type strictHandler struct {
 }
 
 // GetPurchasesDetail operation middleware
-func (sh *strictHandler) GetPurchasesDetail(ctx *echo.Context, purchaseId PurchaseIdParam) error {
+func (sh *strictHandler) GetPurchasesDetail(ctx *echo.Context, purchaseCode PurchaseCodeParam) error {
 	var request GetPurchasesDetailRequestObject
 
-	request.PurchaseId = purchaseId
+	request.PurchaseCode = purchaseCode
 
 	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetPurchasesDetail(ctx.Request().Context(), request.(GetPurchasesDetailRequestObject))

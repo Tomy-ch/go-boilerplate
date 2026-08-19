@@ -35,14 +35,11 @@ type PurchaseDispatchGroupResponse struct {
 	UserId openapi_types.UUID `json:"userId"`
 }
 
-// PurchaseShippableItemResponse まとめ発送の組に含まれる購入 1 件のスキーマ。発送指示は購入 1 件ずつ行うため id を返します。
+// PurchaseShippableItemResponse まとめ発送の組に含まれる購入 1 件のスキーマ。発送指示は購入 1 件ずつ code を指定して行います。
 // 組に入っている時点で発送可能なので、status は返しません。明細も含みません（購入詳細 API で取得します）。
 type PurchaseShippableItemResponse struct {
-	// Code 購入コード（UUIDv7 文字列・一意）
+	// Code 購入コード（利用者へ注文番号として見せる一意の識別子）。発送指示（`PATCH /v1/purchases/{purchaseCode}/ship`）に用います。
 	Code string `json:"code"`
-
-	// Id 購入ID。発送指示（`POST /v1/purchases/{purchaseId}/ship`）に用います。
-	Id openapi_types.UUID `json:"id"`
 
 	// OrderedAt 注文日時
 	OrderedAt time.Time `json:"orderedAt"`

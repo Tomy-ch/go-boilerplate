@@ -158,15 +158,20 @@ type PurchaseStatusBreakdownResponse struct {
 	// Count 当該ステータスの購入件数
 	Count int64 `json:"count"`
 
-	// Status 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// Status 購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// 表示には name を、分岐にはドメインの業務キーである code を用います。
 	Status PurchaseStatusRef `json:"status"`
 
 	// TotalAmount 当該ステータスの購入金額の合計。USD セント単位の整数です。
 	TotalAmount int64 `json:"totalAmount"`
 }
 
-// PurchaseStatusRef 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// PurchaseStatusRef 購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// 表示には name を、分岐にはドメインの業務キーである code を用います。
 type PurchaseStatusRef struct {
+	// Code 購入ステータスの業務キー。値は到達順序を意味しません（完了より支払い済みのほうが大きい）。
+	Code int64 `json:"code"`
+
 	// Id 購入ステータスID
 	Id openapi_types.UUID `json:"id"`
 
