@@ -512,3 +512,44 @@ func mustParseUUID(t *testing.T, s string) uuid.UUID {
 	require.NoError(t, err)
 	return id
 }
+
+func Test_toFeedReadModels(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("行の並びを保ったまま変換関数を各行へ適用する", func(t *testing.T) {
+			t.Parallel()
+
+			orderedAt := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+			rows := []string{"feed-code-1", "feed-code-2"}
+
+			got := toFeedReadModels(rows, func(code string) feedRow {
+				return feedRow{
+					Code:          code,
+					TotalAmount:   176500,
+					OrderedAt:     orderedAt,
+					StatusCode:    statusUnprocessedCode,
+					StatusName:    statusUnprocessedName,
+					FirstItemName: defaultProductName,
+					ItemCount:     1,
+				}
+			})
+
+			require.Len(t, got, 2)
+			assert.Equal(t, "feed-code-1", got[0].Code)
+			assert.Equal(t, "feed-code-2", got[1].Code)
+			assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[0].StatusCode)
+			assert.Equal(t, defaultProductName, got[0].FirstItemName)
+		})
+
+		t.Run("行が空の場合は空スライスを返す", func(t *testing.T) {
+			t.Parallel()
+
+			got := toFeedReadModels(nil, func(string) feedRow { return feedRow{} })
+
+			assert.Empty(t, got)
+		})
+	})
+}

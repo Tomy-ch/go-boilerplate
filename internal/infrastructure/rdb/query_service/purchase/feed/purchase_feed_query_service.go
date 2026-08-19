@@ -67,15 +67,13 @@ func (s *service) FindFeedByUserID(
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
 		}
-		items := make([]query.PurchaseFeedReadModel, len(rows))
-		for i, row := range rows {
-			items[i] = toFeedReadModel(feedRow{
+		return toFeedReadModels(rows, func(row *gen.ListPurchasesFeedFirstRow) feedRow {
+			return feedRow{
 				ID: row.ID, Code: row.Code, TotalAmount: row.TotalAmount, OrderedAt: row.OrderedAt,
 				StatusID: row.StatusID, StatusCode: row.StatusCode, StatusName: row.StatusName,
 				FirstItemName: row.FirstItemName, ItemCount: row.ItemCount,
-			})
-		}
-		return items, nil
+			}
+		}), nil
 	}
 
 	rows, err := db.ListPurchasesFeedAfter(ctx, &gen.ListPurchasesFeedAfterParams{
@@ -90,15 +88,23 @@ func (s *service) FindFeedByUserID(
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-	items := make([]query.PurchaseFeedReadModel, len(rows))
-	for i, row := range rows {
-		items[i] = toFeedReadModel(feedRow{
+	return toFeedReadModels(rows, func(row *gen.ListPurchasesFeedAfterRow) feedRow {
+		return feedRow{
 			ID: row.ID, Code: row.Code, TotalAmount: row.TotalAmount, OrderedAt: row.OrderedAt,
 			StatusID: row.StatusID, StatusCode: row.StatusCode, StatusName: row.StatusName,
 			FirstItemName: row.FirstItemName, ItemCount: row.ItemCount,
-		})
+		}
+	}), nil
+}
+
+// toFeedReadModels は、sqlc が先頭ページと keyset 境界で別々に生成する行型を、呼び出し側が渡す
+// 変換関数で feedRow へ揃えてから読み取りモデルの列へ写像します。
+func toFeedReadModels[T any](rows []T, toRow func(T) feedRow) []query.PurchaseFeedReadModel {
+	items := make([]query.PurchaseFeedReadModel, len(rows))
+	for i, row := range rows {
+		items[i] = toFeedReadModel(toRow(row))
 	}
-	return items, nil
+	return items
 }
 
 // toFeedReadModel は、購入履歴フィードの行を読み取りモデルへ変換します。
