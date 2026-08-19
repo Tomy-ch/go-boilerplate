@@ -55,3 +55,9 @@ expressed as a structural carve-out with a test pinning it, or it is a failure.
   Assuming gofmt's output (indentation depth, `var (` blocks at column 0) is what makes that tractable.
 - A check may legitimately match zero subjects — the code it scans may hold none. The scan-logic tests
   above are what keep a zero count from being indistinguishable from a broken scanner.
+- **A `require.NotEmpty` canary over the subject set is only safe when that set survives sample removal.**
+  Removing the sample APIs empties whole categories of subject — every request body, for instance, since
+  the endpoints that carry one are all samples — so a canary guarding such a set turns `sample-removal-check`
+  permanently red. Decide it per check by asking whether the set is non-empty *after* removal, never by
+  copying a canary from a sibling: the sets differ, and a canary that is correct for routes is wrong for
+  request bodies. Where the set can legitimately empty, the companion scan-logic tests are the guard.

@@ -122,6 +122,7 @@ section 1〜9 はテストを *well-formed*(整形式)にするが、*meaningful
 - **責務クリープ** — 1 つの `TestXxx` が複数 subject を駆動する(section 1 の 1:1 違反)。subject ごとに 1 つの `TestXxx` へ分解し、複数 subject を 1 テストに畳み込まない。
 - **helper 重複** — 3 つ以上の `TestXxx` にまたがり 5 行以上の fixture が重複しており、`t.Helper()` 付き helper にすべき。
 - **冗長なコメント** — コードを言い換える / *why* を語る inline コメント。ケースの意図はコメントではなく日本語の `t.Run` 名に持たせる([`rules.md`](rules.ja.md) の Comment Rules 準拠)。
+- **自動修正される壊れた入力** — `make fix` が黙って直してしまう不正リテラル。ケースは通り続けるのに拒否経路を検証しなくなる。フィールド名の綴り誤り(`"nmae"`)は `misspell` が実在名へ書き換えるため、拒否されるべき本文が正当な本文に変わる。どの linter にも「直せない」不正さを選ぶこと。未知フィールドなら、綴りは正しいが契約に無い名前を使う。
 
 ## 11. Test Strategy 節の帰属と、乖離の裁定
 
