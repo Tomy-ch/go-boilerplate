@@ -101,9 +101,9 @@ export function stampCount(window: Window, mark: string): number {
  * 隣り合う実在マーカーの間にフェーズ区間を張る。
  *
  * @remarks
- * 欠けたマーカーは飛ばして次の実在マーカーへ繋ぎます。打刻はワークフロー経由でしか生えず、
- * 実測でコミットの 51% はコミットワークフローを通らないため、欠測は例外ではなく常態です。
- * 飛ばした区間は `from` / `to` にどのマーカー間かが残るので、後から補完できます。
+ * 欠けたマーカーは飛ばして次の実在マーカーへ繋ぎます。欠測は例外ではなく常態です
+ * （ADR-0010 (development-window-as-feedback-unit)）。飛ばした区間は `from` / `to` に
+ * どのマーカー間かが残るので、後から補完できます。
  */
 export function phasesOf(window: Window): Phase[] {
   const present = MARK_ORDER.filter((m) => representativeAt(window, m) !== undefined);
@@ -162,13 +162,10 @@ export function substantiveMarks(window: Window): string[] {
  * @param activity その窓の期間に観測されたセッションの活動。観測できなければ `undefined`。
  *
  * @remarks
- * 実質的な打刻があるか、期間内に活動があれば送ります。どちらも無い窓は、公開 issue にしても
- * 読む人に何も伝えません。
- *
- * 活動が観測できないとき（トランスクリプトを渡されない手動実行）は、打刻だけで判断します。
- * この向きに倒すのは、2 つの誤りの重さが違うからです。空の窓を送れば公開 issue に恒久的な
- * ノイズが残り、消すには手作業が要ります。中身のある窓を送り損ねても、打刻は `tmp/` に
- * 残っており `closed-loop-report` からは見えます。取り返しがつく側を選びます。
+ * 実質的な打刻があるか、期間内に活動があれば送ります。活動が観測できないとき
+ * （トランスクリプトを渡されない手動実行）は打刻だけで判断し、送らない側へ倒します。
+ * 空の窓は公開 issue に恒久的なノイズを残して手作業でしか消せず、送り損ねた窓は
+ * 打刻が `tmp/` に残って `closed-loop-report` から見えるからです。
  */
 export function isSubstantive(
   window: Window,
@@ -187,13 +184,7 @@ export function totalDurationSec(window: Window): number | undefined {
   return closed - opened;
 }
 
-/**
- * 打刻ディレクトリを読む継ぎ目。実体は入口が `fs` から作って渡す。
- *
- * @remarks
- * ここを引数で受けるのは、`scripts/README.md` の *Test Strategy* が入口に求める形そのものです
- * ——不純な依存を引数に取ることで、判断がテストから届くようになります。
- */
+/** 打刻ディレクトリを読む継ぎ目。実体は入口が `fs` から作って渡す。 */
 export type MarksReader = {
   readonly listWindowIds: () => readonly string[];
   readonly listFiles: (windowId: string) => readonly string[];
@@ -204,10 +195,10 @@ export type MarksReader = {
  * 打刻ディレクトリ群から窓を組み立てる。
  *
  * @remarks
- * 読めないファイルは無いものとして扱い、その窓の残りと他の窓は取り込みます。1 ファイルの
- * 読み取り失敗で全体を落とさないのは、打刻が複数のプロセス（git フックと進行中のセッション）
- * から書かれるためです。書き込みの途中に当たることは普通に起こり、そのたびに送出が丸ごと
- * 落ちるのでは「ローカル開発をブロックしない」を満たせません。
+ * 読めないファイルは無いものとして扱い、その窓の残りと他の窓は取り込みます。打刻は複数の
+ * プロセス（git フックと進行中のセッション）から書かれるので書き込み途中に当たることが
+ * 普通に起こり、1 件の読み取り失敗で全体を落とすとループが同時実行に依存してしまいます
+ * （ADR-0010 (development-window-as-feedback-unit)）。
  *
  * 窓 ID で整列するのは、読む側が実行のたびに違う順序を受け取らないようにするためです。
  */

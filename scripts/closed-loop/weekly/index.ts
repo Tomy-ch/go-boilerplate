@@ -117,8 +117,8 @@ if (clusters.length > 0) {
       `  [${c.score.toString().padStart(4)}] ${c.key}  件数${c.frequency} 影響${c.impact} 介入${c.humanIntervention} ${c.isRecurring ? "反復" : "単発"}`,
     );
     console.log(`         ${c.issues.map((n) => `#${n}`).join(" ")}`);
-    // 提案そのものを並べる。順位だけを出すと、読む人は結局 GitHub へ往復して本文を開くことに
-    // なり、その往復こそがレトロで最初に脱落する手順になる。
+    // 順位だけでなく提案そのものを並べる。GitHub を開かずにレトロの議題が読めるようにする
+    // （scripts/README.md）。
     for (const n of c.issues) {
       const proposal = byNumber.get(n)?.sections?.[IMPROVEMENT_SECTION];
       if (proposal === undefined) continue;

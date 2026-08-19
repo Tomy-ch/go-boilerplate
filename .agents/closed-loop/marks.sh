@@ -2,17 +2,12 @@
 # Stamp the phase boundaries of a work window, so the closed loop can tell how long each phase
 # actually took.
 #
-# A session transcript records every turn and every tool call, and it can say how long a turn
-# took. What it cannot say is which phase the turn belonged to: nothing in the log distinguishes
-# "still reading the code" from "writing the implementation" from "reviewing it". Those
-# boundaries are known only to the workflow that crosses them, so the workflow writes them down
-# here. Being a shell script rather than a client feature, it is also the one observation that
-# behaves identically under every assistant.
+# A phase boundary exists nowhere but in the workflow that crosses it, so the workflow stamps it
+# here. Why marks and not the transcript: docs/design/closed-loop.md (What is observed, and by whom).
 #
 # A window is one unit of work, not one session, so marks are filed per window rather than per
-# checkout. `/clear` and a manual `/compact` end a window and start the next; a resume continues
-# the one already open. Why the session is the wrong unit, with the measurements behind it, is
-# docs/adr/0010-development-window-as-feedback-unit.md.
+# checkout; what opens and closes one is `ROTATING_SOURCES` below. Why the session is the wrong
+# unit, with the measurements behind it, is docs/adr/0010-development-window-as-feedback-unit.md.
 #
 # Every mark is an EVENT STREAM: one file, one epoch per line, always appended. The reader takes
 # the first line, the last, or the count, whichever the question needs — "when did implementation
@@ -26,17 +21,14 @@
 #                   single shared file, and it needs the lock below.
 #   epoch per line  Comparable without parsing, in any language, with no timezone to get wrong.
 #
-# Marks live under the checkout's ignored `tmp/`. This is the same idiom as `.gobp-db-slot`,
-# which `.makefiles/database/pool.mk` reads back the same way.
+# Marks live under the checkout's ignored `tmp/` (docs/design/closed-loop.md, Where each thing lives).
 #
 # The set of names is closed. An unknown name is refused rather than silently creating a file,
 # because the failure it prevents is a typo becoming a mark nothing ever reads — invisible until
 # someone asks why a phase has no data.
 #
-# A mark stays the primary record even where GitHub also knows the same moment: `gh` is the
-# cross-check and the fallback, never the source, and every value carries `source` so that a
-# disagreement stays answerable. Why the two are not the same fact, and not equally reliable, is
-# docs/adr/0010-development-window-as-feedback-unit.md.
+# A mark is the primary record even where GitHub knows the same moment; `gh` is the cross-check,
+# never the origin (docs/adr/0010-development-window-as-feedback-unit.md).
 #
 # It always exits 0 when invoked as a hook. A window must open whether or not this can answer.
 

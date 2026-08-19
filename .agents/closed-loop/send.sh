@@ -17,9 +17,7 @@
 # the actual send in the background.
 #
 # Transcripts live under the user's home, which the tool-runner container cannot see; the path is
-# therefore computed here and passed explicitly. Claude Code names a project directory after the
-# checkout path with the separators replaced, so a worktree gets its own directory — which is why
-# this resolves from the checkout it is run in rather than from a fixed name.
+# therefore computed here by `transcripts_dir` and passed explicitly.
 
 set -eu
 
@@ -92,7 +90,9 @@ the windows stay pending and the next run picks them up.
 USAGE
 }
 
-# Claude Code's project directory for this checkout. `/Users/x/repo` -> `-Users-x-repo`.
+# Claude Code names a project directory after the checkout path with the separators replaced:
+# `/Users/x/repo` -> `-Users-x-repo`. Resolving it from this checkout rather than from a fixed
+# name is what gives a worktree its own directory.
 transcripts_dir() {
   printf '%s/.claude/projects/%s' "${HOME}" "$(printf '%s' "${REPO_ROOT}" | tr '/' '-')"
 }

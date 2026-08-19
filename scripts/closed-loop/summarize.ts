@@ -6,7 +6,7 @@
  * どう読み分けるか」だけで、モデルの呼び出しは入口が担います。
  *
  * 読解を CI ではなく手元で行うのは、CI へ材料を届ける手段が「逐語を public な Issue へ
- * 投稿して読み返させる」しかないためです（`docs/design/security.md`「シークレット」）。
+ * 投稿して読み返させる」しかないためです（`docs/design/security.md`「Secrets」）。
  * 手元なら公開するのは読解結果だけで済みます。
  */
 
@@ -15,12 +15,11 @@ import { BODY_SECTIONS, parseSections, type Observation } from "./issue";
 import { FINDING_KINDS, KIND_LABEL_PREFIX, type FindingKind } from "./score";
 
 /**
- * 手元の読解に渡す候補の上限と 1 件あたりの長さ。公開時の既定より大きく取ります。
+ * 手元の読解に渡す候補の上限と 1 件あたりの長さ。
  *
  * @remarks
- * 公開する候補の件数を絞るのは、逐語が 1 件外に出るごとに取り消せない露出が増えるからです。
- * 手元の読解にその制約は掛かりません。掛かるのはプロンプト長だけで、こちらのほうがずっと
- * 緩い。同じ数字を使い回すと、公開のために決めた上限が読解の材料まで削ることになります。
+ * 公開時の既定（`DEFAULT_LIMIT`）と共用しないこと。公開側は露出量で、手元はプロンプト長で
+ * しか縛られません（`docs/design/closed-loop.md`「Deterministic first, model second」）。
  */
 export const LOCAL_CANDIDATE_LIMIT = 40;
 export const LOCAL_EXCERPT_CHARS = 600;
@@ -125,12 +124,9 @@ export function parseSummary(output: string): Summary | undefined {
  * 秘密らしき形を含む節を落とす。
  *
  * @remarks
- * 候補（モデルへの入力）は既に濾してありますが、**出力は別経路です**。読解はツールを持つ
- * エージェントが行うので、候補に無かった内容が節へ入りうる。そして節はそのまま public な
- * Issue 本文になります。入口だけを守っても、出口が素通しなら意味がありません。
- *
- * 落とすのは節ごとです。1 節欠けても他の節が残りますが、公開してしまった 1 行は取り消せない
- * ——`candidates.ts` と同じ「疑わしきは落とす」を、向きを変えて適用しています。
+ * 落とすのは節ごとで、迷ったら落とします。1 節欠けても他の節が残りますが、公開した 1 行は
+ * 取り消せません。入口（`looksSecret` による候補の濾過）だけでなく出口もここで濾す理由は
+ * `docs/design/security.md`「Secrets」にあります。
  */
 export function dropSecretSections(sections: Readonly<Record<string, string>>): {
   sections: Record<string, string>;
@@ -189,7 +185,7 @@ export function issueLabels(gap: ReadingGap, summary: Summary | undefined): stri
  * @remarks
  * 投稿は CI へ材料を渡す唯一の手段であり、それ以外の目的を持ちません。読解済みなら渡す相手が
  * おらず、材料が無いなら渡すものが無い。どちらも公開しません
- * （`docs/design/security.md`「シークレット」）。
+ * （`docs/design/security.md`「Secrets」）。
  */
 export function needsCandidateComment(gap: ReadingGap): boolean {
   return gap === "model-unavailable";

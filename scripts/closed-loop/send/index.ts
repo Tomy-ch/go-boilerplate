@@ -1,14 +1,10 @@
 #!/usr/bin/env -S tsx
 // 閉じた窓を Feedback Issue へ送出する。
 //
-// 窓を閉じる処理そのものは送らない。閉じるのは hook（marks.sh --hook session-end）で、
-// ネットワークに触れず即座に終わる。送出はここで別に行い、届かなければ索引に
-// feedbackIssue を持たないまま残して次回に持ち越す。「ローカル開発をブロックしない」は
-// この分離で満たす。
+// 窓を閉じるのはここではなく .agents/closed-loop/marks.sh。
 //
-// 読解も手元で行い、埋まった本文で Issue を作る。claude が無い / 失敗した場合だけ、
-// 逐語の候補をコメントへ載せて needs-summary ラベルを付け、CI 側の取り直しに委ねる。
-// 逐語が public に出るのはこの縮退経路だけになる（docs/design/security.md）。
+// 届かなかった窓は索引に feedbackIssue を持たないまま残り、次回に持ち越す。逐語のターンが
+// public に出るのは、手元の読解が走らなかったときの縮退経路だけ（docs/design/security.md）。
 //
 // 使い方:
 //   tsx scripts/closed-loop/send [--dry-run] [--transcripts <dir>]
@@ -43,6 +39,7 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const NO_SUMMARY = process.argv.includes("--no-summary");
 const SUMMARY_TIMEOUT_MS = 180_000;
 // 読解に必要なのは渡したプロンプトだけ。外界へ出る手段は落とす。
+// `--allowed-tools ''` は無視される（実測）ので、許可側ではなく拒否側で列挙する。
 const SUMMARY_DENIED_TOOLS = "Read Bash Glob Grep Edit Write NotebookEdit WebFetch WebSearch Task";
 
 function flag(name: string): string | undefined {
@@ -88,8 +85,7 @@ function gh(args: string[]): string {
  * （実測: 開いた窓に `closedAt` が打たれる）。加えて同じ設定の広い `allow` 規則を継承し、
  * リポジトリ内のファイルへ到達できてしまう。
  *
- * ツールも明示的に落とす。読解に要るのは渡したプロンプトだけで、ファイルを読む理由が無い。
- * `--allowed-tools ''` は無視される（実測）ので、拒否側で列挙する。
+ * ツールは `SUMMARY_DENIED_TOOLS` で落とす。
  *
  * stderr は捨てる。claude は設定の警告などを stderr に出すが、それは読解の成否と関係が無く、
  * 混ぜると本文の解析が壊れる。
@@ -199,11 +195,8 @@ for (const window of collectWindows(marksReader)) {
 
   const title = issueTitle(observation);
 
-  // 手元の読解に渡す候補は、公開する既定より多く長く取る。制約が「取り消せない露出」から
-  // 「プロンプト長」に変わるため。
-  // dry-run は読解を呼ばない。何も送らない実行がモデルを窓の数だけ叩くのは、`--dry-run` に
-  // 期待される「見るだけ」から外れる（実測で 6 窓 = 6 回叩いていた）。決定論的な半分は
-  // そのまま出せるので、読解の中身だけが preview から落ちる。
+  // 手元の読解に渡す候補は、公開する既定より多く長く取る（docs/design/closed-loop.md）。
+  // dry-run は読解を呼ばない。何も送らない実行がモデルを窓の数だけ叩かないようにする。
   const summary =
     transcripts === undefined || NO_SUMMARY || DRY_RUN
       ? undefined
@@ -224,9 +217,8 @@ for (const window of collectWindows(marksReader)) {
     continue;
   }
 
-  // issue の作成とコメントの投稿は別の try に分ける。1 つに束ねると、issue は作れたが
-  // コメントだけ落ちた部分成功が「送出済み」に見え、読解候補が永久に付かないまま
-  // 二度と再試行されない。
+  // issue の作成とコメントの投稿は別の try に分ける。束ねると部分成功が「送出済み」になり、
+  // コメントだけが二度と再試行されない（scripts/README.md）。
   let issueNumber = existing?.feedbackIssue;
   if (issueNumber === undefined) {
     try {
@@ -234,7 +226,6 @@ for (const window of collectWindows(marksReader)) {
       const m = /\/(\d+)$/.exec(url);
       issueNumber = m ? Number(m[1]) : undefined;
     } catch (e) {
-      // 届かなければ索引に残して次回へ持ち越す（冒頭の注記のとおり）。
       console.error(`issue を作成できませんでした（次回に持ち越します）: ${window.id}: ${String(e).split("\n")[0]}`);
     }
   }
@@ -257,9 +248,8 @@ for (const window of collectWindows(marksReader)) {
     commentPending,
     updatedAt: Math.floor(Date.now() / 1000),
   });
-  // 窓ごとに書き出す。最後にまとめて書くと、途中で落ちた実行が作った issue は索引に残らず、
-  // 次回そのぶんを作り直す。読解が入って 1 窓あたり数十秒かかるようになり、その「途中」が
-  // 現実的な長さになった。
+  // 窓ごとに書き出す。最後にまとめて書くと、途中で落ちた実行が作った issue が索引に残らず、
+  // 次回そのぶんを作り直す。
   writeIndex(store);
   if (issueNumber === undefined || commentPending === true) pending += 1;
   else sent += 1;

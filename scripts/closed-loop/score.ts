@@ -57,9 +57,6 @@ export const FINDING_KINDS: readonly FindingKind[] = [
  * @remarks
  * 知らない分類は捨てます。ラベルは人が付けるので、綴り違いや将来増えた名前が混ざりえます。
  * ただし捨てた結果が空になっても、それは `unclassified` として集計され消えはしません。
- *
- * 入口ではなくここに置くのは、`FINDING_KINDS` とラベル命名がずれたときに黙って空になる
- * 変換だからです。テストが張れない位置にあると、ずれたことに誰も気づけません。
  */
 export function labelsToKinds(labels: readonly string[]): FindingKind[] {
   const known = new Set<string>(FINDING_KINDS);
@@ -131,8 +128,8 @@ export function mergeWaitSec(observation: Observation): number | undefined {
  *
  * @remarks
  * 分類ラベルが付いていればそれを鍵にし、無ければ `unclassified` にまとめます。意味による
- * クラスタリングは AI の担当で、ここは決定論的に置ける鍵だけを扱います。両者を混ぜると、
- * 「数えた値」と「読解した値」が同じスコアの中で見分けられなくなります。
+ * クラスタリングはここでは行いません（`docs/design/closed-loop.md`
+ * 「Deterministic first, model second」）。
  */
 export function clusterKey(issue: FeedbackIssue): string {
   return issue.kinds.length === 0 ? UNCLASSIFIED : [...issue.kinds].sort().join("+");
@@ -142,8 +139,8 @@ export function clusterKey(issue: FeedbackIssue): string {
  * Issue 群を鍵ごとにまとめ、スコアを付けて降順に並べる。
  *
  * @remarks
- * スコアは 4 要素の重み付き和です。再発を最も重く見るのは、同じ誤読や不要な介入が
- * 複数のセッションで反復したなら、それは個人の使い方の問題ではなく基盤側の問題だからです。
+ * スコアは 4 要素の重み付き和で、重みは {@link DEFAULT_WEIGHTS}。配分の理由は
+ * `scripts/README.md`「AI Feedback Loop」。
  */
 export function clusterIssues(issues: readonly FeedbackIssue[], weights: Weights = DEFAULT_WEIGHTS): Cluster[] {
   const groups = new Map<string, FeedbackIssue[]>();
@@ -227,17 +224,13 @@ export type Reevaluation = {
  * 着地した改善を、その後の再発と並べて返す。
  *
  * @remarks
- * 「改善が着地した」の合図に Issue のクローズを使います。この repo では `closes #N` が
- * デフォルトブランチ以外で発火しないため、Feedback Issue のクローズは常に人が明示的に行う
- * 操作であり、「この所見は片付いた」という人の宣言そのものになります。着地日を別に記録する
- * 仕組みを足しても、その記録を人が更新する手間が増えるだけで、宣言の出所は変わりません。
+ * 「着地」の合図は Feedback Issue のクローズです（`docs/design/closed-loop.md`
+ * 「What the loop may not do」）。
  *
  * `unclassified` は除きます。何についての所見か分かっていない以上、「同じものが再発したか」に
  * 答えられないためです。
  *
- * 判定はしません。再発の件数と、測り直しの時期が来たかを並べるだけです。効いたかどうかを
- * 決めるのはレトロの人であり、ここが「効かなかった」と書けば、その判断を機械が先に取ること
- * になります（ADR-0008）。
+ * 判定はしません。再発の件数と、測り直しの時期が来たかを並べるだけです。
  */
 export function reevaluations(issues: readonly FeedbackIssue[], now: number): Reevaluation[] {
   const byKey = new Map<string, FeedbackIssue[]>();

@@ -97,8 +97,9 @@ export function withinPeriod(at: number, period: Period): boolean {
  * セッションが期間に掛かるか。
  *
  * @remarks
- * 開始と終了のどちらかが期間に入っていれば対象とします。セッションは実測で最長 104 時間あり、
- * 期間を跨ぐものを落とすと、長い作業ほど集計から消えるという逆向きの偏りが出るためです。
+ * 開始と終了のどちらかが期間に入っていれば対象とします。セッションは 1 週間の期間を跨ぐ
+ * 長さになりうるので（ADR-0010 (development-window-as-feedback-unit)）、跨ぐものを落とすと
+ * 長い作業ほど集計から消えるという逆向きの偏りが出ます。
  */
 export function overlapsPeriod(facts: SessionFacts, period: Period): boolean {
   const start = facts.startedAt;
