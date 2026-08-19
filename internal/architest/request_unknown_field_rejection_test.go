@@ -171,8 +171,12 @@ func collectRequestBodySchemas(t *testing.T) []requestSchemaSubject {
 }
 
 // walkRequestSchema は、スキーマを再帰的に辿り object スキーマを収集します。
-// 同一スキーマは最初に到達した位置で 1 度だけ報告します（同じ定義が複数の operation から
-// 参照されても指摘が重複しないため）。
+// visited は $ref の循環による無限再帰を防ぎます。この spec の $ref はファイルパス参照で、
+// kin-openapi は参照ごとに別のスキーマを確保するため、同じ定義を複数の operation から
+// 参照しても重複排除はされません（同じ内容が別の位置で 2 度検査されるだけで、判定は変わりません）。
+//
+// not は辿りません。not が述べるのは拒否したい形であって受理できるフィールドの集合ではなく、
+// そこへ additionalProperties: false を要求すると、排他制約を書いただけの spec を違反と判定します。
 func walkRequestSchema(
 	location string, ref *openapi3.SchemaRef,
 	visited map[*openapi3.Schema]struct{}, acc []requestSchemaSubject,
@@ -366,4 +370,108 @@ func composed(branches ...*openapi3.Schema) *openapi3.Schema {
 		schema.AllOf = append(schema.AllOf, openapi3.NewSchemaRef("", branch))
 	}
 	return schema
+}
+
+// Test_walkRequestSchema は、走査が辿る経路を合成スキーマで固定する。
+// oneOf / anyOf / additionalProperties のスキーマ形はこの spec がまだ使っておらず現行の
+// リポジトリ内容からは到達しないため、実 spec を読む TestRequestBodyRejectsUnknownFields では
+// 落としても緑のままになる。到達しない安全弁はテストで固定する（AGENTS.md の YAGNI 条項）。
+func Test_walkRequestSchema(t *testing.T) {
+	t.Parallel()
+
+	collect := func(t *testing.T, root *openapi3.Schema) []string {
+		t.Helper()
+		subjects := walkRequestSchema(
+			"root", openapi3.NewSchemaRef("", root), map[*openapi3.Schema]struct{}{}, nil,
+		)
+		out := make([]string, 0, len(subjects))
+		for _, subject := range subjects {
+			out = append(out, subject.location)
+		}
+		return out
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("入れ子の properties を辿る", func(t *testing.T) {
+			t.Parallel()
+
+			root := withProperties("outer")
+			root.Properties["outer"] = openapi3.NewSchemaRef("", withProperties("inner"))
+
+			assert.Equal(t, []string{"root", "root.properties.outer"}, collect(t, root))
+		})
+
+		t.Run("配列の items を辿る", func(t *testing.T) {
+			t.Parallel()
+
+			root := withProperties("list")
+			array := openapi3.NewArraySchema()
+			array.Items = openapi3.NewSchemaRef("", withProperties("element"))
+			root.Properties["list"] = openapi3.NewSchemaRef("", array)
+
+			assert.Equal(t, []string{"root", "root.properties.list.items"}, collect(t, root))
+		})
+
+		t.Run("allOf の枝を辿る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, []string{"root", "root.allOf[0]"}, collect(t, composed(withProperties("base"))))
+		})
+
+		t.Run("oneOf の枝を辿る", func(t *testing.T) {
+			t.Parallel()
+
+			root := &openapi3.Schema{OneOf: openapi3.SchemaRefs{openapi3.NewSchemaRef("", withProperties("branch"))}}
+
+			assert.Equal(t, []string{"root.oneOf[0]"}, collect(t, root))
+		})
+
+		t.Run("anyOf の枝を辿る", func(t *testing.T) {
+			t.Parallel()
+
+			root := &openapi3.Schema{AnyOf: openapi3.SchemaRefs{openapi3.NewSchemaRef("", withProperties("branch"))}}
+
+			assert.Equal(t, []string{"root.anyOf[0]"}, collect(t, root))
+		})
+
+		t.Run("additionalProperties のスキーマ形を辿る", func(t *testing.T) {
+			t.Parallel()
+
+			root := withProperties("known")
+			root.AdditionalProperties.Schema = openapi3.NewSchemaRef("", withProperties("valueField"))
+
+			assert.Equal(t, []string{"root", "root.additionalProperties"}, collect(t, root))
+		})
+
+		t.Run("properties も allOf も持たないスキーマは subject にしない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, collect(t, openapi3.NewStringSchema()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("not の中は辿らない", func(t *testing.T) {
+			t.Parallel()
+
+			root := withProperties("accepted")
+			root.Not = openapi3.NewSchemaRef("", withProperties("rejectedShape"))
+
+			assert.Equal(t, []string{"root"}, collect(t, root),
+				"not は拒否したい形であって受理できるフィールドの集合ではないため、宣言を要求してはならない")
+		})
+
+		t.Run("$ref が循環しても再帰が止まる", func(t *testing.T) {
+			t.Parallel()
+
+			root := withProperties("self")
+			root.Properties["self"] = openapi3.NewSchemaRef("", root)
+
+			assert.Equal(t, []string{"root"}, collect(t, root))
+		})
+	})
 }
