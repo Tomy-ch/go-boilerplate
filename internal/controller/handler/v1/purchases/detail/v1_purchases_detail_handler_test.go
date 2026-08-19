@@ -43,10 +43,10 @@ func detailViewFixture(t *testing.T) purchaseuc.PurchaseGetDetailView {
 	t.Helper()
 	paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.PurchaseGetDetailView{
-		ID:             uuidtestkit.NewTestFromSalt(t, "hd_id"),
 		Code:           "hd-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "hd_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "hd_status"),
+		StatusCode:     7,
 		StatusName:     "支払い済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
@@ -73,7 +73,7 @@ func TestBindHandler(t *testing.T) {
 	routes := e.Router().Routes()
 	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodGet, routes[0].Method)
-	assert.Equal(t, "/v1/purchases/:purchaseId", routes[0].Path)
+	assert.Equal(t, "/v1/purchases/:purchaseCode", routes[0].Path)
 }
 
 func Test_server_GetPurchasesDetail(t *testing.T) {
@@ -90,25 +90,25 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_user")
-			purchaseID := uuidtestkit.NewTestFromSalt(t, "hd_purchase")
+			const purchaseCode = "hd-code"
 			view := detailViewFixture(t)
 			uc.EXPECT().GetPurchaseDetail(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID) (purchaseuc.PurchaseGetDetailView, error) {
+				DoAndReturn(func(_ context.Context, authn *auth.Authn, code string) (purchaseuc.PurchaseGetDetailView, error) {
 					uid, uerr := authn.UserID()
 					require.NoError(t, uerr)
 					assert.Equal(t, userID, uid)
-					assert.Equal(t, purchaseID, id)
+					assert.Equal(t, purchaseCode, code)
 					return view, nil
 				})
 
 			resp, err := s.GetPurchasesDetail(authnContext(t, userID), gen.GetPurchasesDetailRequestObject{
-				PurchaseId: purchaseID.ToPrimitive(),
+				PurchaseCode: purchaseCode,
 			})
 			require.NoError(t, err)
 
 			r, ok := resp.(gen.GetPurchasesDetail200JSONResponse)
 			require.True(t, ok)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
+			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, "支払い済み", r.Status.Name)
 			require.Len(t, r.Details, 1)
 			assert.Equal(t, "商品A", r.Details[0].ProductName)
@@ -126,7 +126,7 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.GetPurchasesDetail(context.Background(), gen.GetPurchasesDetailRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
+				PurchaseCode: "hd-code-noauth",
 			})
 			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
@@ -143,7 +143,7 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_err")
 			_, err := s.GetPurchasesDetail(authnContext(t, userID), gen.GetPurchasesDetailRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_err").ToPrimitive(),
+				PurchaseCode: "hd-code-err",
 			})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
@@ -161,7 +161,7 @@ func Test_server_GetPurchasesDetail(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_overflow")
 			_, err := s.GetPurchasesDetail(authnContext(t, userID), gen.GetPurchasesDetailRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
+				PurchaseCode: "hd-code-overflow",
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
@@ -180,12 +180,12 @@ func Test_toPurchaseGetDetailResponse(t *testing.T) {
 			view := detailViewFixture(t)
 			r, err := toPurchaseGetDetailResponse(view)
 			require.NoError(t, err)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
 			assert.Equal(t, view.OrderedAt, r.OrderedAt)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "支払い済み", r.Status.Name)
+			assert.EqualValues(t, view.StatusCode, r.Status.Code)
 			assert.Equal(t, int64(16000), r.TaxAmount)
 			assert.Equal(t, int64(500), r.ShippingFee)
 			assert.Equal(t, int64(176500), r.TotalAmount)

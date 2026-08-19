@@ -37,7 +37,7 @@ func mustParse(t *testing.T, s string) uuid.UUID {
 }
 
 // insertPurchaseWithDetail は、FK を満たす商品・購入・明細を挿入し、購入 ID / 商品 ID を返します。
-func insertPurchaseWithDetail(ctx context.Context, t *testing.T, db driver.DBTX, seed string) (uuid.UUID, uuid.UUID) {
+func insertPurchaseWithDetail(ctx context.Context, t *testing.T, db driver.DBTX, seed string) (uuid.UUID, string, uuid.UUID) {
 	t.Helper()
 	productID := mustParse(t, seed)
 	_, err := db.Exec(ctx,
@@ -49,10 +49,11 @@ func insertPurchaseWithDetail(ctx context.Context, t *testing.T, db driver.DBTX,
 
 	purchaseID, err := uuid.New()
 	require.NoError(t, err)
+	purchaseCode := "repo-code-" + seed
 	_, err = db.Exec(ctx,
 		"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount) "+
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-		purchaseID, "repo-code-"+seed, mustParse(t, seedUserID), mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
+		purchaseID, purchaseCode, mustParse(t, seedUserID), mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
 	)
 	require.NoError(t, err)
 
@@ -63,7 +64,36 @@ func insertPurchaseWithDetail(ctx context.Context, t *testing.T, db driver.DBTX,
 		detailID, purchaseID, productID, 2, 80000,
 	)
 	require.NoError(t, err)
-	return purchaseID, productID
+	return purchaseID, purchaseCode, productID
+}
+
+// insertPurchaseOwner は、購入の FK 制約（user_id → users.id）を満たすためのユーザーを挿入するヘルパーです。
+func insertPurchaseOwner(ctx context.Context, t *testing.T, db driver.DBTX, id string) {
+	t.Helper()
+	_, err := db.Exec(ctx,
+		"INSERT INTO users "+
+			"(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code, created_at, updated_at) "+
+			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())",
+		id, "Owner", "User", "owner-"+id+"@example.com", "0000000000",
+		"a03aaec4-3bd6-4bfb-8e47-2fbfa026d344", // 既存 seed の都道府県ID
+		"City", "Street", "000-0000",
+	)
+	require.NoError(t, err)
+}
+
+// insertPurchaseWithStatus は、ステータス集約系の検証用に status_id と ordered_at を明示した購入を挿入します。
+// 検証対象が購入本体の列だけなので明細は伴いません。
+func insertPurchaseWithStatus(
+	ctx context.Context, t *testing.T, db driver.DBTX, id, userID, statusID string, total int64, orderedAt time.Time,
+) {
+	t.Helper()
+	_, err := db.Exec(ctx,
+		"INSERT INTO purchases "+
+			"(id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, ordered_at, created_at, updated_at) "+
+			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())",
+		id, "code-"+id, userID, statusID, total, 0, 0, total, orderedAt,
+	)
+	require.NoError(t, err)
 }
 
 func Test_repository_FindByID(t *testing.T) {
@@ -82,7 +112,7 @@ func Test_repository_FindByID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "d1000000-0000-4000-8000-000000000001")
+				purchaseID, _, productID := insertPurchaseWithDetail(ctx, t, drv, "d1000000-0000-4000-8000-000000000001")
 
 				got, err := repo.FindByID(ctx, purchaseID)
 				require.NoError(t, err)
@@ -207,12 +237,13 @@ func Test_repository_FindDetailByID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "e1000000-0000-4000-8000-000000000001")
+				purchaseID, _, productID := insertPurchaseWithDetail(ctx, t, drv, "e1000000-0000-4000-8000-000000000001")
 
 				got, err := repo.FindDetailByID(ctx, purchaseID)
 				require.NoError(t, err)
 				assert.Equal(t, purchaseID, got.ID)
 				assert.Equal(t, mustParse(t, seedUnprocessedSID), got.StatusID)
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got.StatusCode)
 				assert.Equal(t, "未処理", got.StatusName)
 				assert.Equal(t, 176500, got.TotalAmount)
 				assert.Nil(t, got.PaidAt)
@@ -242,7 +273,7 @@ func Test_repository_FindDetailByID(t *testing.T) {
 }
 
 // insertPaidPurchase は、支払い済みステータス（code=7）+ paid_at セット済みの購入を挿入し、購入 ID を返します。
-func insertPaidPurchase(ctx context.Context, t *testing.T, db driver.DBTX, seed string, paidAt time.Time) uuid.UUID {
+func insertPaidPurchase(ctx context.Context, t *testing.T, db driver.DBTX, seed string, paidAt time.Time) (uuid.UUID, string) {
 	t.Helper()
 	productID := mustParse(t, seed)
 	_, err := db.Exec(ctx,
@@ -254,10 +285,11 @@ func insertPaidPurchase(ctx context.Context, t *testing.T, db driver.DBTX, seed 
 
 	purchaseID, err := uuid.New()
 	require.NoError(t, err)
+	purchaseCode := "repo-paid-" + seed
 	_, err = db.Exec(ctx,
 		"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, paid_at) "+
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
-		purchaseID, "repo-paid-"+seed, mustParse(t, seedUserID), mustParse(t, seedPaidSID), 160000, 16000, 500, 176500, paidAt,
+		purchaseID, purchaseCode, mustParse(t, seedUserID), mustParse(t, seedPaidSID), 160000, 16000, 500, 176500, paidAt,
 	)
 	require.NoError(t, err)
 
@@ -268,10 +300,10 @@ func insertPaidPurchase(ctx context.Context, t *testing.T, db driver.DBTX, seed 
 		detailID, purchaseID, productID, 2, 80000,
 	)
 	require.NoError(t, err)
-	return purchaseID
+	return purchaseID, purchaseCode
 }
 
-func Test_repository_LockByID(t *testing.T) {
+func Test_repository_LockByCode(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -287,9 +319,9 @@ func Test_repository_LockByID(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "f1000000-0000-4000-8000-000000000001")
+				purchaseID, purchaseCode, productID := insertPurchaseWithDetail(ctx, t, drv, "f1000000-0000-4000-8000-000000000001")
 
-				got, err := repo.LockByID(ctx, purchaseID)
+				got, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, purchaseID, got.ID())
 				assert.Equal(t, mustParse(t, seedUserID), got.UserID())
@@ -306,9 +338,9 @@ func Test_repository_LockByID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				paidAt := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
-				purchaseID := insertPaidPurchase(ctx, t, drv, "f2000000-0000-4000-8000-000000000001", paidAt)
+				_, purchaseCode := insertPaidPurchase(ctx, t, drv, "f2000000-0000-4000-8000-000000000001", paidAt)
 
-				got, err := repo.LockByID(ctx, purchaseID)
+				got, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, domainpurchase.StatusPaid.Code(), got.StatusCode())
 				require.NotNil(t, got.PaidAt())
@@ -324,9 +356,7 @@ func Test_repository_LockByID(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				missing, err := uuid.New()
-				require.NoError(t, err)
-				_, lerr := repo.LockByID(ctx, missing)
+				_, lerr := repo.LockByCode(ctx, "repo-code-missing")
 				require.ErrorIs(t, lerr, apperror.ErrNotFound)
 			})
 		})
@@ -350,16 +380,16 @@ func Test_repository_UpdatePaid(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "f3000000-0000-4000-8000-000000000001")
+				_, purchaseCode, productID := insertPurchaseWithDetail(ctx, t, drv, "f3000000-0000-4000-8000-000000000001")
 
-				locked, err := repo.LockByID(ctx, purchaseID)
+				locked, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				_, err = locked.Pay(now)
 				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, locked))
 
 				// 再読込で status_id が支払い済み（code=7）へ解決され、paid_at がセットされる。
-				reread, err := repo.LockByID(ctx, purchaseID)
+				reread, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, domainpurchase.StatusPaid.Code(), reread.StatusCode())
 				require.NotNil(t, reread.PaidAt())
@@ -396,22 +426,22 @@ func Test_repository_UpdateShipped(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000001")
+				_, purchaseCode, productID := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000001")
 
-				paid, err := repo.LockByID(ctx, purchaseID)
+				paid, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				_, err = paid.Pay(paidAt)
 				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, paid))
 
-				locked, err := repo.LockByID(ctx, purchaseID)
+				locked, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				_, err = locked.Ship(shippedAt)
 				require.NoError(t, err)
 				require.NoError(t, repo.UpdateShipped(ctx, locked))
 
 				// 再読込で status_id が発送済み（code=8）へ解決され、shipped_at がセットされる。
-				reread, err := repo.LockByID(ctx, purchaseID)
+				reread, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, domainpurchase.StatusShipped.Code(), reread.StatusCode())
 				require.NotNil(t, reread.ShippedAt())
@@ -429,15 +459,15 @@ func Test_repository_UpdateShipped(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000002")
+				purchaseID, purchaseCode, _ := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000002")
 
-				paid, err := repo.LockByID(ctx, purchaseID)
+				paid, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				_, err = paid.Pay(paidAt)
 				require.NoError(t, err)
 				require.NoError(t, repo.UpdatePaid(ctx, paid))
 
-				locked, err := repo.LockByID(ctx, purchaseID)
+				locked, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				_, err = locked.Ship(shippedAt)
 				require.NoError(t, err)
@@ -446,6 +476,7 @@ func Test_repository_UpdateShipped(t *testing.T) {
 				detail, err := repo.FindDetailByID(ctx, purchaseID)
 				require.NoError(t, err)
 				assert.Equal(t, "発送済み", detail.StatusName)
+				assert.Equal(t, domainpurchase.StatusShipped.Code(), detail.StatusCode)
 				require.NotNil(t, detail.ShippedAt)
 				assert.Equal(t, shippedAt.UTC(), detail.ShippedAt.UTC())
 			})
@@ -460,9 +491,9 @@ func Test_repository_UpdateShipped(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000003")
+				_, purchaseCode, _ := insertPurchaseWithDetail(ctx, t, drv, "f4000000-0000-4000-8000-000000000003")
 
-				locked, err := repo.LockByID(ctx, purchaseID)
+				locked, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 
 				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
@@ -496,16 +527,16 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 	deliveredAt := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
 
 	// ship は、挿入直後の購入を支払い済み → 発送済みまで進め、配達の起点状態を作ります。
-	ship := func(ctx context.Context, t *testing.T, purchaseID uuid.UUID) {
+	ship := func(ctx context.Context, t *testing.T, purchaseCode string) {
 		t.Helper()
 
-		paid, err := repo.LockByID(ctx, purchaseID)
+		paid, err := repo.LockByCode(ctx, purchaseCode)
 		require.NoError(t, err)
 		_, err = paid.Pay(paidAt)
 		require.NoError(t, err)
 		require.NoError(t, repo.UpdatePaid(ctx, paid))
 
-		toShip, err := repo.LockByID(ctx, purchaseID)
+		toShip, err := repo.LockByCode(ctx, purchaseCode)
 		require.NoError(t, err)
 		_, err = toShip.Ship(shippedAt)
 		require.NoError(t, err)
@@ -520,17 +551,17 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, productID := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000001")
-				ship(ctx, t, purchaseID)
+				_, purchaseCode, productID := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000001")
+				ship(ctx, t, purchaseCode)
 
-				locked, err := repo.LockByID(ctx, purchaseID)
+				locked, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				_, err = locked.Deliver(deliveredAt)
 				require.NoError(t, err)
 				require.NoError(t, repo.UpdateDelivered(ctx, locked))
 
 				// 再読込で status_id が配達済み（code=9）へ解決され、delivered_at がセットされる。
-				reread, err := repo.LockByID(ctx, purchaseID)
+				reread, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, domainpurchase.StatusDelivered.Code(), reread.StatusCode())
 				require.NotNil(t, reread.DeliveredAt())
@@ -548,10 +579,10 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000002")
-				ship(ctx, t, purchaseID)
+				purchaseID, purchaseCode, _ := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000002")
+				ship(ctx, t, purchaseCode)
 
-				locked, err := repo.LockByID(ctx, purchaseID)
+				locked, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 				_, err = locked.Deliver(deliveredAt)
 				require.NoError(t, err)
@@ -560,6 +591,7 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 				detail, err := repo.FindDetailByID(ctx, purchaseID)
 				require.NoError(t, err)
 				assert.Equal(t, "配達済み", detail.StatusName)
+				assert.Equal(t, domainpurchase.StatusDelivered.Code(), detail.StatusCode)
 				require.NotNil(t, detail.DeliveredAt)
 				assert.Equal(t, deliveredAt.UTC(), detail.DeliveredAt.UTC())
 			})
@@ -574,9 +606,9 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
-				purchaseID, _ := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000003")
+				_, purchaseCode, _ := insertPurchaseWithDetail(ctx, t, drv, "f5000000-0000-4000-8000-000000000003")
 
-				locked, err := repo.LockByID(ctx, purchaseID)
+				locked, err := repo.LockByCode(ctx, purchaseCode)
 				require.NoError(t, err)
 
 				// マスタに無い code は、そもそもドメインが再構築を拒否するため infra まで届かない。
@@ -625,9 +657,9 @@ func Test_repository_FindStatusesByUserID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				userID := "fa000000-0000-4000-8000-000000000001"
-				insertFeedUser(ctx, t, drv, userID)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000001", userID, seedUnprocessedSID, 100, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000002", userID, seedShippedSID, 200, orderedAt)
+				insertPurchaseOwner(ctx, t, drv, userID)
+				insertPurchaseWithStatus(ctx, t, drv, "fb000000-0000-4000-8000-000000000001", userID, seedUnprocessedSID, 100, orderedAt)
+				insertPurchaseWithStatus(ctx, t, drv, "fb000000-0000-4000-8000-000000000002", userID, seedShippedSID, 200, orderedAt)
 
 				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
@@ -645,10 +677,10 @@ func Test_repository_FindStatusesByUserID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				userID := "fa000000-0000-4000-8000-000000000003"
-				insertFeedUser(ctx, t, drv, userID)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000003", userID, seedCompletedSID, 100, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000004", userID, seedCompletedSID, 200, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000005", userID, seedCanceledSID, 300, orderedAt)
+				insertPurchaseOwner(ctx, t, drv, userID)
+				insertPurchaseWithStatus(ctx, t, drv, "fb000000-0000-4000-8000-000000000003", userID, seedCompletedSID, 100, orderedAt)
+				insertPurchaseWithStatus(ctx, t, drv, "fb000000-0000-4000-8000-000000000004", userID, seedCompletedSID, 200, orderedAt)
+				insertPurchaseWithStatus(ctx, t, drv, "fb000000-0000-4000-8000-000000000005", userID, seedCanceledSID, 300, orderedAt)
 
 				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
@@ -666,7 +698,7 @@ func Test_repository_FindStatusesByUserID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				userID := "fa000000-0000-4000-8000-000000000004"
-				insertFeedUser(ctx, t, drv, userID)
+				insertPurchaseOwner(ctx, t, drv, userID)
 
 				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, userID))
 				require.NoError(t, err)
@@ -681,10 +713,10 @@ func Test_repository_FindStatusesByUserID(t *testing.T) {
 				drv := driver.New(ctx, testDB)
 				subject := "fa000000-0000-4000-8000-000000000005"
 				other := "fa000000-0000-4000-8000-000000000006"
-				insertFeedUser(ctx, t, drv, subject)
-				insertFeedUser(ctx, t, drv, other)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000006", subject, seedDeliveredSID, 100, orderedAt)
-				insertPurchase(ctx, t, drv, "fb000000-0000-4000-8000-000000000007", other, seedUnprocessedSID, 200, orderedAt)
+				insertPurchaseOwner(ctx, t, drv, subject)
+				insertPurchaseOwner(ctx, t, drv, other)
+				insertPurchaseWithStatus(ctx, t, drv, "fb000000-0000-4000-8000-000000000006", subject, seedDeliveredSID, 100, orderedAt)
+				insertPurchaseWithStatus(ctx, t, drv, "fb000000-0000-4000-8000-000000000007", other, seedUnprocessedSID, 200, orderedAt)
 
 				statuses, err := repo.FindStatusesByUserID(ctx, mustParse(t, subject))
 				require.NoError(t, err)
@@ -776,33 +808,6 @@ func TestNew(t *testing.T) {
 			actual := New(testDB, tf)
 
 			assert.Equal(t, &repository{db: testDB, tracer: tf.Infra()}, actual)
-		})
-	})
-}
-
-func Test_toFeedItem(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("購入履歴フィードの行を読み取りモデルの各フィールドへ写像する", func(t *testing.T) {
-			t.Parallel()
-
-			id := mustParse(t, "e3000000-0000-4000-8000-000000000001")
-			statusID := mustParse(t, "e3000000-0000-4000-8000-0000000000a1")
-			orderedAt := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
-
-			item := toFeedItem(id, "feed-code-1", 176500, orderedAt, statusID, "未処理")
-
-			assert.Equal(t, domainpurchase.FeedItem{
-				ID:          id,
-				Code:        "feed-code-1",
-				TotalAmount: 176500,
-				StatusID:    statusID,
-				StatusName:  "未処理",
-				OrderedAt:   orderedAt,
-			}, item)
 		})
 	})
 }

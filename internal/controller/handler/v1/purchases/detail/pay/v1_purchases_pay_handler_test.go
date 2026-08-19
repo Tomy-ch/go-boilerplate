@@ -43,10 +43,10 @@ func payViewFixture(t *testing.T) purchaseuc.PayPurchaseView {
 	t.Helper()
 	paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.PayPurchaseView{
-		ID:             uuidtestkit.NewTestFromSalt(t, "hp_id"),
 		Code:           "hp-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "hp_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "hp_status"),
+		StatusCode:     7,
 		StatusName:     "支払い済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
@@ -72,7 +72,7 @@ func TestBindHandler(t *testing.T) {
 	routes := e.Router().Routes()
 	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodPatch, routes[0].Method)
-	assert.Equal(t, "/v1/purchases/:purchaseId/pay", routes[0].Path)
+	assert.Equal(t, "/v1/purchases/:purchaseCode/pay", routes[0].Path)
 }
 
 func Test_server_PatchPurchasesPay(t *testing.T) {
@@ -89,23 +89,23 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hp_user")
-			purchaseID := uuidtestkit.NewTestFromSalt(t, "hp_purchase")
+			const purchaseCode = "hp-code"
 			view := payViewFixture(t)
 			uc.EXPECT().PayPurchase(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, params purchaseuc.PayPurchaseParams) (purchaseuc.PayPurchaseView, error) {
 					assert.Equal(t, userID, params.UserID)
-					assert.Equal(t, purchaseID, params.PurchaseID)
+					assert.Equal(t, purchaseCode, params.PurchaseCode)
 					return view, nil
 				})
 
 			resp, err := s.PatchPurchasesPay(authnContext(t, userID), gen.PatchPurchasesPayRequestObject{
-				PurchaseId: purchaseID.ToPrimitive(),
+				PurchaseCode: purchaseCode,
 			})
 			require.NoError(t, err)
 
 			r, ok := resp.(gen.PatchPurchasesPay200JSONResponse)
 			require.True(t, ok)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
+			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "支払い済み", r.Status.Name)
 			require.Len(t, r.Details, 1)
@@ -123,7 +123,7 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesPay(context.Background(), gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_noauth").ToPrimitive(),
+				PurchaseCode: "hp-noauth",
 			})
 			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
@@ -140,7 +140,7 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hp_user_err")
 			_, err := s.PatchPurchasesPay(authnContext(t, userID), gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_purchase_err").ToPrimitive(),
+				PurchaseCode: "hp-purchase-err",
 			})
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
@@ -159,7 +159,7 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
 
 			_, err = s.PatchPurchasesPay(ctx, gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_unresolved").ToPrimitive(),
+				PurchaseCode: "hp-unresolved",
 			})
 			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
@@ -177,7 +177,7 @@ func Test_server_PatchPurchasesPay(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hp_user_overflow")
 			_, err := s.PatchPurchasesPay(authnContext(t, userID), gen.PatchPurchasesPayRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hp_purchase_overflow").ToPrimitive(),
+				PurchaseCode: "hp-purchase-overflow",
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
@@ -196,11 +196,11 @@ func Test_toPayResponse(t *testing.T) {
 			view := payViewFixture(t)
 			r, err := toPayResponse(view)
 			require.NoError(t, err)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "支払い済み", r.Status.Name)
+			assert.EqualValues(t, view.StatusCode, r.Status.Code)
 			assert.Equal(t, int64(176500), r.TotalAmount)
 			assert.Equal(t, *view.PaidAt, r.PaidAt)
 			require.Len(t, r.Details, 1)

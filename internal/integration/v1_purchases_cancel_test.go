@@ -27,13 +27,12 @@ import (
 func TestV1PurchasesCancel_Integration(t *testing.T) {
 	t.Parallel()
 
-	const purchasePath = "/v1/purchases/0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60/cancel"
+	const purchasePath = "/v1/purchases/PC-2026-0042/cancel"
 
 	cancelViewFixture := func(t *testing.T) purchaseuc.CancelPurchaseView {
 		t.Helper()
 		canceledAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 		return purchaseuc.CancelPurchaseView{
-			ID:             uuidtestkit.NewTestFromSalt(t, "cancel_int_id"),
 			Code:           "cancel-int-code",
 			UserID:         uuidtestkit.NewTestFromSalt(t, "cancel_int_user"),
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "cancel_int_status"),
@@ -95,7 +94,7 @@ func TestV1PurchasesCancel_Integration(t *testing.T) {
 			expectedUserID, err := uuid.Parse("b7f64798-7321-242b-e4ff-115f6a0b7810")
 			require.NoError(t, err)
 			assert.Equal(t, expectedUserID, captured.UserID)
-			assert.Equal(t, "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60", captured.PurchaseID.String())
+			assert.Equal(t, "PC-2026-0042", captured.PurchaseCode)
 		})
 	})
 
