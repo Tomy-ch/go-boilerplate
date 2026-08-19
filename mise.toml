@@ -9,7 +9,7 @@
 min_version = "2026.6.0"
 
 [tools]
-# 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0088）、
+# 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0090）、
 # 昇格の判断は LTS を待つ方針が担う。
 go = "1.26.6"
 node = "24.19.0"
