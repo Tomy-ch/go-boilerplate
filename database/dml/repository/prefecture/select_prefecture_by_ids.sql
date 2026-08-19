@@ -5,5 +5,5 @@ SELECT
     p.name,
     p.code
 FROM prefectures AS p
-WHERE p.id = ANY(@ids_param::UUID [])
+WHERE p.id = ANY(@ids_param::UUID[])
 ORDER BY p.sort_key;

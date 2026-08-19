@@ -39,4 +39,4 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 -- 空の集合を渡した場合はそのカートの明細をすべて削除する。
 DELETE FROM cart_items
 WHERE cart_items.cart_id = sqlc.arg('cart_id')
-    AND NOT (cart_items.product_id = ANY(sqlc.arg('product_ids')::UUID []));
+    AND NOT (cart_items.product_id = ANY(sqlc.arg('product_ids')::UUID[]));

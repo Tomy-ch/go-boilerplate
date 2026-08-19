@@ -9,7 +9,7 @@ SET
     updated_at = NOW()
 WHERE product_images.product_id = sqlc.arg('product_id')
     AND product_images.deleted_at IS NULL
-    AND NOT (product_images.id = ANY(sqlc.arg('image_ids')::UUID []));
+    AND NOT (product_images.id = ANY(sqlc.arg('image_ids')::UUID[]));
 
 -- name: CreateProductImagesIfAbsent :exec
 -- 商品画像をまとめて登録する。同じ ID が既にある場合は何もしない。
@@ -27,8 +27,8 @@ SELECT
     src.display_sort
 FROM (
     SELECT
-        UNNEST(sqlc.arg('ids')::UUID []) AS id,
-        UNNEST(sqlc.arg('image_paths')::TEXT []) AS image_path,
-        UNNEST(sqlc.arg('display_sorts')::SMALLINT []) AS display_sort
+        UNNEST(sqlc.arg('ids')::UUID[]) AS id,
+        UNNEST(sqlc.arg('image_paths')::TEXT[]) AS image_path,
+        UNNEST(sqlc.arg('display_sorts')::SMALLINT[]) AS display_sort
 ) AS src
 ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING;

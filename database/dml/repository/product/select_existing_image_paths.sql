@@ -5,5 +5,5 @@
 -- 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
 SELECT DISTINCT pi.image_path
 FROM product_images AS pi
-WHERE pi.image_path = ANY(sqlc.arg('image_paths')::TEXT [])
+WHERE pi.image_path = ANY(sqlc.arg('image_paths')::TEXT[])
     AND pi.deleted_at IS NULL;

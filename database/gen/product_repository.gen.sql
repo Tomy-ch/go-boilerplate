@@ -16,17 +16,17 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
-        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        sqlc.narg('category_codes')::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT[])
         )
     )
     AND (
-        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        sqlc.narg('status_codes')::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT[])
         )
     )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
@@ -89,7 +89,7 @@ INSERT INTO product_images (
 -- 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
 SELECT DISTINCT pi.image_path
 FROM product_images AS pi
-WHERE pi.image_path = ANY(sqlc.arg('image_paths')::TEXT [])
+WHERE pi.image_path = ANY(sqlc.arg('image_paths')::TEXT[])
     AND pi.deleted_at IS NULL;
 
 -- === source: database/dml/repository/product/select_low_stock_products.sql ===
@@ -152,7 +152,7 @@ FOR UPDATE OF p;
 -- 生存行だけを返す（論理削除の意味は docs/spec/product/domain.md の Image 節を参照）。
 SELECT sqlc.embed(pi)
 FROM product_images AS pi
-WHERE pi.product_id = ANY(sqlc.arg('product_ids')::UUID [])
+WHERE pi.product_id = ANY(sqlc.arg('product_ids')::UUID[])
     AND pi.deleted_at IS NULL
 ORDER BY pi.product_id, pi.display_sort;
 
@@ -177,17 +177,17 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
-        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        sqlc.narg('category_codes')::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT[])
         )
     )
     AND (
-        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        sqlc.narg('status_codes')::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT[])
         )
     )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
@@ -222,17 +222,17 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
-        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        sqlc.narg('category_codes')::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT[])
         )
     )
     AND (
-        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        sqlc.narg('status_codes')::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT[])
         )
     )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
@@ -271,17 +271,17 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
-        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        sqlc.narg('category_codes')::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT[])
         )
     )
     AND (
-        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        sqlc.narg('status_codes')::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT[])
         )
     )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
@@ -316,17 +316,17 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
-        sqlc.narg('category_codes')::SMALLINT [] IS NULL
+        sqlc.narg('category_codes')::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT [])
+            WHERE c.code = ANY(sqlc.narg('category_codes')::SMALLINT[])
         )
     )
     AND (
-        sqlc.narg('status_codes')::SMALLINT [] IS NULL
+        sqlc.narg('status_codes')::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT [])
+            WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT[])
         )
     )
     AND (sqlc.narg('min_price')::NUMERIC IS NULL OR p.price >= sqlc.narg('min_price'))
@@ -360,7 +360,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE p.id = ANY(@product_ids_param::UUID [])
+WHERE p.id = ANY(@product_ids_param::UUID[])
 ORDER BY p.id;
 
 -- === source: database/dml/repository/product/select_products_by_ids_for_update.sql ===
@@ -378,7 +378,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE p.id = ANY(@product_ids_param::UUID [])
+WHERE p.id = ANY(@product_ids_param::UUID[])
 ORDER BY p.id
 FOR UPDATE OF p;
 
@@ -411,7 +411,7 @@ SET
     updated_at = NOW()
 WHERE product_images.product_id = sqlc.arg('product_id')
     AND product_images.deleted_at IS NULL
-    AND NOT (product_images.id = ANY(sqlc.arg('image_ids')::UUID []));
+    AND NOT (product_images.id = ANY(sqlc.arg('image_ids')::UUID[]));
 
 -- name: CreateProductImagesIfAbsent :exec
 -- 商品画像をまとめて登録する。同じ ID が既にある場合は何もしない。
@@ -429,9 +429,9 @@ SELECT
     src.display_sort
 FROM (
     SELECT
-        UNNEST(sqlc.arg('ids')::UUID []) AS id,
-        UNNEST(sqlc.arg('image_paths')::TEXT []) AS image_path,
-        UNNEST(sqlc.arg('display_sorts')::SMALLINT []) AS display_sort
+        UNNEST(sqlc.arg('ids')::UUID[]) AS id,
+        UNNEST(sqlc.arg('image_paths')::TEXT[]) AS image_path,
+        UNNEST(sqlc.arg('display_sorts')::SMALLINT[]) AS display_sort
 ) AS src
 ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING;
 
