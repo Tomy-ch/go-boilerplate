@@ -139,7 +139,14 @@ jobs:
                 const findings = sarifFiles.flatMap(file => {
                   const sarif = JSON.parse(file.text);
                   return (sarif.runs || []).flatMap(run => run.results || []);
-                }).filter(result => result.level === 'error' || result.level === 'warning');
+                }).filter(result => {
+                  // A result carrying a non-empty `suppressions` array was suppressed at the
+                  // source (e.g. a `#checkov:skip=` comment) and keeps its original level, so
+                  // counting it would reopen an issue for a finding the repository already
+                  // answered.
+                  if ((result.suppressions || []).length > 0) return false;
+                  return result.level === 'error' || result.level === 'warning';
+                });
                 const errors = findings.filter(result => result.level === 'error');
                 const warnings = findings.filter(result => result.level === 'warning');
                 const format = result => {
