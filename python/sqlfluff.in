@@ -2,4 +2,4 @@
 # 解決結果と sha256 は sqlfluff.txt が持つ。更新は `make py-lock`。
 #
 # jinja extras は入れていない。SQL ファイルで jinja テンプレートを使い始めたら見直す。
-sqlfluff==4.2.1
+sqlfluff==4.3.0

@@ -359,9 +359,9 @@ regex==2026.7.19 \
     --hash=sha256:fe31f28c94402043161876a258a9c6f757cb485905c7614ce8d6cd40e6b7bdc1 \
     --hash=sha256:ffd8893ccc1c2fce6e0d6ca402d716fe1b29db70c7132609a05955e31b2aa8f2
     # via sqlfluff
-sqlfluff==4.2.1 \
-    --hash=sha256:32f43fbf6721e57f1a5a87d71df0d94b84ecba6ed65727266c7fa60991110fb9 \
-    --hash=sha256:ea84f196c41f45df40a851b0881cb3fbb660570e07acbbfd304ff4e9b893424d
+sqlfluff==4.3.0 \
+    --hash=sha256:582e12af5101bd1c5bc120cb4a6942dadcfe5e5b1e01406f220dd08f5b3f31dd \
+    --hash=sha256:aa647b3721112f1aca581efe8eaa815a332ae214610a0946592f98a19ef1e8cb
     # via -r python/sqlfluff.in
 tblib==3.2.2 \
     --hash=sha256:26bdccf339bcce6a88b2b5432c988b266ebbe63a4e593f6b578b1d2e723d2b76 \

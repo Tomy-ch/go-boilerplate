@@ -1827,10 +1827,10 @@ components:
       schema:
         type: string
         enum:
-          - '-publishedAt'
+          - -publishedAt
           - publishedAt
-        default: '-publishedAt'
-        example: '-publishedAt'
+        default: -publishedAt
+        example: -publishedAt
     PostalCodeParam:
       name: postalCode
       in: query
