@@ -6,6 +6,10 @@
 // feedbackIssue を持たないまま残して次回に持ち越す。「ローカル開発をブロックしない」は
 // この分離で満たす。
 //
+// 読解も手元で行い、埋まった本文で Issue を作る。claude が無い / 失敗した場合だけ、
+// 逐語の候補をコメントへ載せて needs-summary ラベルを付け、CI 側の取り直しに委ねる。
+// 逐語が public に出るのはこの縮退経路だけになる（docs/design/security.md）。
+//
 // 使い方:
 //   tsx scripts/closed-loop/send [--dry-run] [--transcripts <dir>]
 
@@ -19,12 +23,23 @@ import { parseClaudeLine, summarizeSession, type Event } from "../events";
 import { findByWindow, needsSend, parseIndex, upsert, type IndexEntry } from "../index-store";
 import { issueTitle, renderBody, type Observation } from "../issue";
 import { withinPeriod } from "../report";
+import {
+  buildPrompt,
+  issueLabels,
+  needsCandidateComment,
+  parseSummary,
+  LOCAL_CANDIDATE_LIMIT,
+  LOCAL_EXCERPT_CHARS,
+  type Summary,
+} from "../summarize";
 import { isSubstantive, phasesOf, representativeAt, toWindow, type Window } from "../windows";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const MARKS_DIR = path.join(REPO_ROOT, "tmp", "closed-loop", "marks");
 const INDEX_FILE = path.join(REPO_ROOT, ".agents", "private", "closed_loop_index.json");
 const DRY_RUN = process.argv.includes("--dry-run");
+const NO_SUMMARY = process.argv.includes("--no-summary");
+const SUMMARY_TIMEOUT_MS = 180_000;
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -59,6 +74,27 @@ function writeIndex(store: { entries: readonly IndexEntry[] }): void {
 
 function gh(args: string[]): string {
   return execFileSync("gh", args, { encoding: "utf8" }).trim();
+}
+
+/**
+ * 手元のモデルに読解させる。呼べない／失敗した場合は `undefined`。
+ *
+ * @remarks
+ * stderr は捨てる。claude は権限設定の警告などを stderr に出すが、それは読解の成否と
+ * 関係が無く、混ぜると本文の解析が壊れる。
+ */
+function localSummary(prompt: string): Summary | undefined {
+  try {
+    const out = execFileSync("claude", ["-p", "--model", "sonnet"], {
+      encoding: "utf8",
+      input: prompt,
+      stdio: ["pipe", "pipe", "ignore"],
+      timeout: SUMMARY_TIMEOUT_MS,
+    });
+    return parseSummary(out);
+  } catch {
+    return undefined;
+  }
 }
 
 /** 窓のブランチ。打刻には無いので git から引く。窓ごとに違う値は取れないため現在値を使う。 */
@@ -150,11 +186,26 @@ for (const window of readWindows()) {
   };
 
   const title = issueTitle(observation);
-  const body = renderBody(observation);
+
+  // 手元の読解に渡す候補は、公開する既定より多く長く取る。制約が「取り消せない露出」から
+  // 「プロンプト長」に変わるため。
+  const summary =
+    transcripts === undefined || NO_SUMMARY
+      ? undefined
+      : localSummary(
+          buildPrompt(observation, selectCandidates(transcripts.events, LOCAL_CANDIDATE_LIMIT, LOCAL_EXCERPT_CHARS)),
+        );
+  const body = renderBody(observation, summary?.sections);
+  const labels = issueLabels(summary);
 
   if (DRY_RUN) {
-    const comment = transcripts === undefined ? "(トランスクリプト未指定)" : renderCandidateComment(selectCandidates(transcripts.events));
-    console.log(`--- ${title}\n${body}\n--- コメント\n${comment}`);
+    const comment =
+      summary !== undefined
+        ? "(読解済みのためコメントは投稿しない)"
+        : transcripts === undefined
+          ? "(トランスクリプト未指定)"
+          : renderCandidateComment(selectCandidates(transcripts.events));
+    console.log(`--- ${title}\nラベル: ${labels.join(", ")}\n${body}\n--- コメント\n${comment}`);
     sent += 1;
     continue;
   }
@@ -165,7 +216,7 @@ for (const window of readWindows()) {
   let issueNumber = existing?.feedbackIssue;
   if (issueNumber === undefined) {
     try {
-      const url = gh(["issue", "create", "--title", title, "--body", body, "--label", "feedback"]);
+      const url = gh(["issue", "create", "--title", title, "--body", body, ...labels.flatMap((l) => ["--label", l])]);
       const m = /\/(\d+)$/.exec(url);
       issueNumber = m ? Number(m[1]) : undefined;
     } catch (e) {
@@ -175,10 +226,8 @@ for (const window of readWindows()) {
   }
 
   let commentPending: boolean | undefined;
-  if (issueNumber !== undefined && transcripts !== undefined) {
+  if (issueNumber !== undefined && transcripts !== undefined && needsCandidateComment(summary)) {
     try {
-      // 読解候補は本文ではなくコメントへ。本文は AI の出力面であり、入力と出力を同じ
-      // テキストに混ぜると AI が自分の入力を上書きしうる。
       const comment = renderCandidateComment(selectCandidates(transcripts.events));
       gh(["issue", "comment", String(issueNumber), "--body", comment]);
     } catch (e) {

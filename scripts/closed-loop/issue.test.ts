@@ -94,6 +94,23 @@ describe("renderBody", () => {
     it("手で編集しないことを本文に明記する", () => {
       expect(renderBody(obs())).toContain("手で編集する");
     });
+
+    it("読解を渡せば節の下に本文を置く", () => {
+      expect(renderBody(obs(), { Outcome: "実装して merge した" })).toContain("## Outcome\n実装して merge した");
+    });
+
+    it("読解を渡しても観測ブロックは読み返せる", () => {
+      const original = obs({ prompts: 7 });
+      expect(parseObservation(renderBody(original, { Friction: "遅かった" }))).toEqual(original);
+    });
+  });
+
+  describe("異常系", () => {
+    it("読解に無い節は空のまま置く", () => {
+      const body = renderBody(obs(), { Outcome: "ok" });
+      expect(body).toContain("## Friction\n");
+      expect(body).not.toContain("## Friction\nok");
+    });
   });
 });
 

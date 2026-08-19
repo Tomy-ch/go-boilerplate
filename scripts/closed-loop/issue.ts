@@ -89,13 +89,21 @@ export function renderObservation(observation: Observation): string {
   return lines.join("\n");
 }
 
-/** Issue 本文を組み立てる。H2 節は空のまま置き、AI が後から埋める。 */
-export function renderBody(observation: Observation): string {
+/**
+ * Issue 本文を組み立てる。
+ *
+ * @param sections 読解が得られていれば節名 → 本文。渡さなければ節は空のまま置く。
+ *
+ * @remarks
+ * 空の節を残す形を捨てないのは、読解が得られなかった窓も観測としては成立するからです。
+ * 節が空であることが「読解がまだ無い」を表し、後から埋められます。
+ */
+export function renderBody(observation: Observation, sections?: Readonly<Record<string, string>>): string {
   const parts = [
     "<!-- このブロックは機械が書き換えます。手で編集すると集計から外れます -->",
     renderObservation(observation),
     "",
-    ...BODY_SECTIONS.map((s) => `## ${s}\n`),
+    ...BODY_SECTIONS.map((s) => `## ${s}\n${sections?.[s] ?? ""}\n`),
   ];
   return parts.join("\n");
 }
