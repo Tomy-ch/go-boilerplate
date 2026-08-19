@@ -1,16 +1,29 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
+
+import { ROOT_DIR } from "../lib/runtime";
 
 import {
   buildDanglingCommand,
   collectFailures,
+  extractFileRefs,
   findDanglingReferences,
   findLeftoverMakeTarget,
+  findOrphanedComponents,
   findUnregisteredDeletions,
   findUnremovedPaths,
+  ORPHAN_EXCLUDED_PATHS,
   parseDeletedPaths,
-  parseSnapshot, selfDestructTargets } from "./verify";
+  parseSnapshot, reachableFiles, resolveRef, selfDestructTargets } from "./verify";
 
 const noneExist = (): boolean => false;
+const noComponents = {
+  survivingComponents: [] as readonly string[],
+  reachableBefore: new Set<string>(),
+  reachableAfter: new Set<string>(),
+};
 
 describe("parseSnapshot", () => {
   describe("正常系", () => {
@@ -201,6 +214,152 @@ describe("buildDanglingCommand", () => {
   });
 });
 
+describe("extractFileRefs", () => {
+  describe("正常系", () => {
+    it("外部ファイルを指す $ref を引用符の有無を問わず取り出す", () => {
+      expect(
+        extractFileRefs(
+          [
+            "items:",
+            "  $ref: '../../schemas/ProductImageInput.yaml'",
+            "schema:",
+            '  $ref: "./UserPatchRequest.yaml"',
+            "other:",
+            "  $ref: ../responses/UserResponse.yaml",
+          ].join("\n"),
+        ),
+      ).toEqual([
+        "../../schemas/ProductImageInput.yaml",
+        "./UserPatchRequest.yaml",
+        "../responses/UserResponse.yaml",
+      ]);
+    });
+
+    it("fragment 付きの参照はファイル部分だけを取り出す", () => {
+      expect(extractFileRefs("$ref: './a.yaml#/components/schemas/A'")).toEqual(["./a.yaml"]);
+    });
+  });
+
+  describe("異常系", () => {
+    // 同一ファイル内を指す参照をファイル参照として数えると、存在しないパスを辿ろうとして
+    // 到達集合に実在しないファイルが混ざり、孤立判定が濁る。
+    it("fragment だけの参照は対象にしない", () => {
+      expect(extractFileRefs("$ref: '#/components/schemas/ErrorResponse'")).toEqual([]);
+    });
+
+    it("$ref を含まないテキストからは何も取り出さない", () => {
+      expect(extractFileRefs("type: object\nproperties:\n  name:\n    type: string")).toEqual([]);
+    });
+  });
+});
+
+describe("resolveRef", () => {
+  describe("正常系", () => {
+    it("参照元ファイルの位置から解決してリポジトリ相対パスにする", () => {
+      expect(
+        resolveRef(
+          "openapi/components/requests/products/ProductsPostRequest.yaml",
+          "../../schemas/ProductImageInput.yaml",
+        ),
+      ).toBe("openapi/components/schemas/ProductImageInput.yaml");
+    });
+
+    it("同一ディレクトリ指定を正規化する", () => {
+      expect(
+        resolveRef("openapi/components/requests/users/UserPutRequest.yaml", "./UserPatchRequest.yaml"),
+      ).toBe("openapi/components/requests/users/UserPatchRequest.yaml");
+    });
+  });
+});
+
+describe("reachableFiles", () => {
+  describe("正常系", () => {
+    it("entrypoint から $ref を辿って到達できるファイルを集める", () => {
+      const graph: Record<string, string[]> = {
+        "openapi/openapi.yaml": ["./paths/v1/products.yaml"],
+        "openapi/paths/v1/products.yaml": [
+          "../../components/requests/products/ProductsPostRequest.yaml",
+        ],
+        "openapi/components/requests/products/ProductsPostRequest.yaml": [
+          "../../schemas/ProductImageInput.yaml",
+        ],
+      };
+
+      expect([...reachableFiles("openapi/openapi.yaml", (p) => graph[p] ?? [])].sort()).toEqual([
+        "openapi/components/requests/products/ProductsPostRequest.yaml",
+        "openapi/components/schemas/ProductImageInput.yaml",
+        "openapi/openapi.yaml",
+        "openapi/paths/v1/products.yaml",
+      ]);
+    });
+  });
+
+  describe("異常系", () => {
+    // 循環があると走査が終わらず、検証が失敗ではなくハングで倒れる。
+    it("$ref が循環しても走査が止まる", () => {
+      const graph: Record<string, string[]> = { "a.yaml": ["./b.yaml"], "b.yaml": ["./a.yaml"] };
+
+      expect([...reachableFiles("a.yaml", (p) => graph[p] ?? [])].sort()).toEqual([
+        "a.yaml",
+        "b.yaml",
+      ]);
+    });
+  });
+});
+
+describe("findOrphanedComponents", () => {
+  describe("正常系", () => {
+    it("撤去前から到達できないファイルは孤立として報告しない", () => {
+      expect(
+        findOrphanedComponents(
+          ["openapi/components/schemas/ErrorResponse.yaml"],
+          new Set<string>(),
+          new Set<string>(),
+        ),
+      ).toEqual([]);
+    });
+
+    it("撤去後も到達できるファイルは孤立として報告しない", () => {
+      const kept = "openapi/components/schemas/ErrorResponse.yaml";
+
+      expect(findOrphanedComponents([kept], new Set([kept]), new Set([kept]))).toEqual([]);
+    });
+
+    // 宣言した汎用ブロックは、撤去で参照が切れても利用者が使うために残す在庫。
+    // ディレクトリ指定とファイル指定の両方が効くことを固定する。
+    it("宣言した汎用ブロックは撤去で参照が切れても孤立として報告しない", () => {
+      for (const kept of [
+        "openapi/components/schemas/errors/BadRequest400.yaml",
+        "openapi/components/schemas/PaginationMetadataResponse.yaml",
+      ]) {
+        expect(findOrphanedComponents([kept], new Set([kept]), new Set<string>()), kept).toEqual([]);
+      }
+    });
+  });
+
+  describe("異常系", () => {
+    it("撤去前は到達できたのに撤去後は到達できず残っているファイルを報告する", () => {
+      const moved = "openapi/components/schemas/ProductImageInput.yaml";
+
+      expect(findOrphanedComponents([moved], new Set([moved]), new Set<string>())).toEqual([
+        `撤去後に孤立した定義: ${moved}（撤去対象への登録漏れ）`,
+      ]);
+    });
+  });
+});
+
+describe("ORPHAN_EXCLUDED_PATHS", () => {
+  describe("正常系", () => {
+    // 宣言が実体を失うと、外したつもりのものが検査に戻るか、逆に消えた定義を
+    // 外し続けて宣言だけが古いまま残る。
+    it("宣言したパスがすべて実在する", () => {
+      for (const excluded of ORPHAN_EXCLUDED_PATHS) {
+        expect(fs.existsSync(path.join(ROOT_DIR, excluded)), excluded).toBe(true);
+      }
+    });
+  });
+});
+
 describe("collectFailures", () => {
   describe("正常系", () => {
     it("すべての検査が通れば空を返す", () => {
@@ -211,21 +370,26 @@ describe("collectFailures", () => {
           gitStatusPorcelain: " D internal/domain/user/user.go\n",
           makeHelpOutput: "make serve\n",
           danglingHits: "",
+          ...noComponents,
         }),
       ).toEqual([]);
     });
   });
 
   describe("異常系", () => {
-    // 1 種類でも検査が外れると、その観点だけ黙って通る。4 観点すべてが
+    // 1 種類でも検査が外れると、その観点だけ黙って通る。5 観点すべてが
     // 同じ 1 本の失敗一覧に載ることを固定する。
-    it("4 観点の失敗をすべて集める", () => {
+    it("5 観点の失敗をすべて集める", () => {
+      const orphan = "openapi/components/schemas/ProductImageInput.yaml";
       const failures = collectFailures({
         registeredPaths: ["internal/domain/user"],
         pathExists: () => true,
         gitStatusPorcelain: " D internal/domain/order/order.go\n",
         makeHelpOutput: "make setup-remove-sample-api\n",
         danglingHits: "internal/di/module/job.go:12: usercount\n",
+        survivingComponents: [orphan],
+        reachableBefore: new Set([orphan]),
+        reachableAfter: new Set<string>(),
       });
 
       expect(failures).toEqual([
@@ -233,6 +397,7 @@ describe("collectFailures", () => {
         "登録外の削除を検出: internal/domain/order/order.go",
         "make ターゲット setup-remove-sample-api が残っています",
         "残留サンプル参照:\ninternal/di/module/job.go:12: usercount",
+        `撤去後に孤立した定義: ${orphan}（撤去対象への登録漏れ）`,
       ]);
     });
   });
