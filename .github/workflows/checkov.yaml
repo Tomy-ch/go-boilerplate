@@ -156,6 +156,28 @@ jobs:
           body-file: checkov-summary.md
           details-summary: '📄 Summary'
 
+      # A `#checkov:skip=<id>:<reason>` comment removes a check from checkov's own verdict
+      # (`summary.failed` drops to 0) but NOT from its SARIF: the result is still written,
+      # carrying a `suppressions` entry with the reason. GitHub does not close an alert on
+      # that entry, so every skip this repository takes reappears in code scanning as an
+      # open alert that only a manual dismissal can clear — one per skip, forever, and a
+      # dismissal that has to be repeated by hand is a suppression nobody can review.
+      #
+      # Dropping them here is what makes the two surfaces agree: the reason stays in the
+      # Dockerfile next to the instruction it excuses, which is where it can be read and
+      # go stale visibly, and code scanning shows what checkov actually failed on.
+      - name: Drop suppressed results from the Checkov SARIF
+        if: always()
+        run: |
+          set -euo pipefail
+
+          jq '.runs[]?.results |= map(select((.suppressions // []) | length == 0))' \
+            checkov-out/results_sarif.sarif > checkov-sarif-filtered.json
+          mv checkov-sarif-filtered.json checkov-out/results_sarif.sarif
+
+          echo "results after filtering: $(jq '[.runs[]?.results[]?] | length' checkov-out/results_sarif.sarif)"
+        shell: bash
+
       - name: Upload Checkov SARIF to code scanning
         if: always()
         continue-on-error: true
