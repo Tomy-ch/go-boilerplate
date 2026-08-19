@@ -3,6 +3,7 @@ description: |
   商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
   price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
   images には画像アップロード（POST /v1/products/images）で得たパスと表示順を渡します。表示 URL はフロントが組み立てます。
+additionalProperties: false
 required:
   - name
   - price
@@ -64,4 +65,4 @@ properties:
       商品画像。未指定の場合は画像を持たない商品として作成します。
       同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。
     items:
-      $ref: './ProductImageInput.yaml'
+      $ref: '../../schemas/ProductImageInput.yaml'

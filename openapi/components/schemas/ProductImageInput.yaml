@@ -1,6 +1,7 @@
 type: object
 description: |
   商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+additionalProperties: false
 required:
   - imagePath
   - displaySort

@@ -1,5 +1,6 @@
 type: object
 description: 購入明細の入力。購入する商品IDと数量の組です。
+additionalProperties: false
 required:
   - productId
   - quantity

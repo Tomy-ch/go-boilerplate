@@ -2927,6 +2927,7 @@ components:
     PurchaseDetailInput:
       type: object
       description: 購入明細の入力。購入する商品IDと数量の組です。
+      additionalProperties: false
       required:
         - productId
         - quantity
@@ -3591,6 +3592,7 @@ components:
       type: object
       description: |
         商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+      additionalProperties: false
       required:
         - imagePath
         - displaySort
@@ -3613,6 +3615,7 @@ components:
         商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
         price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
         images には画像アップロード（POST /v1/products/images）で得たパスと表示順を渡します。表示 URL はフロントが組み立てます。
+      additionalProperties: false
       required:
         - name
         - price
@@ -3682,6 +3685,7 @@ components:
         version には更新対象を読み込んだ時点の値を渡します。DB の現在値と一致しない場合は他者の更新と競合した
         ものとして 409 を返します（再取得したうえで送り直してください）。
         負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+      additionalProperties: false
       required:
         - version
       properties:
@@ -3765,6 +3769,7 @@ components:
         delta は符号付きで、正の値で在庫を補充し、負の値で在庫を差し引きます。
         増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は業務不変条件違反として 422 を返します。
         在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+      additionalProperties: false
       required:
         - delta
       properties:
@@ -3778,6 +3783,7 @@ components:
       description: |
         商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
         対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
+      additionalProperties: false
       required:
         - image
       properties:
@@ -3872,6 +3878,7 @@ components:
       description: |
         購入作成リクエスト。明細（商品IDと数量）の配列を受け取ります。
         明細は 1 件以上必須で、同一 productId の重複は許可しません（いずれも 422）。
+      additionalProperties: false
       required:
         - details
       properties:
