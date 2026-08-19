@@ -152,6 +152,14 @@ cat .gobp-db-slot 2>/dev/null || echo 'slot: none'
 
 ## Step 4 — 実装し、5 つの trip-wire を監視する
 
+計画が承認され、実装が始まる。決める時間と作る時間の境界であり、それを知っているのはこのスキルだけ
+である。
+
+```sh
+.agents/closed-loop/marks.sh planApprovedAt 2>/dev/null || true
+.agents/closed-loop/marks.sh implStartedAt 2>/dev/null || true
+```
+
 承認された計画に従う。以下は意図的に機械的なトリガーにしてある — 「判断が重要だったと**気づく**」ことに依存させるのが、まさに drift が報告されない原因だから。
 
 | # | trip-wire | なぜ人間の判断か |

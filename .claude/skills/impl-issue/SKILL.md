@@ -211,6 +211,14 @@ Present the plan and **wait for approval. Do not implement before it.**
 
 ## Step 4 — Implement, watching five trip-wires
 
+The plan is approved and implementation begins — the boundary between deciding and building, which
+only this skill knows:
+
+```sh
+.agents/closed-loop/marks.sh planApprovedAt 2>/dev/null || true
+.agents/closed-loop/marks.sh implStartedAt 2>/dev/null || true
+```
+
 Follow the approved plan. These triggers are deliberately mechanical — relying on you to *notice* that
 a decision was significant is exactly how drift goes unreported.
 

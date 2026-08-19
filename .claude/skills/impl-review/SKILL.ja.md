@@ -114,6 +114,13 @@ git diff --name-only "origin/${BASE}...HEAD"
 
 ## Step 1 — コンテキスト収集
 
+最初にレビュー境界を打刻する。ここは他の何もが観測していない瞬間であり、ループはこれを読んで
+レビューに費やした時間と実装に費やした時間を分ける。
+
+```sh
+.agents/closed-loop/marks.sh reviewStartedAt 2>/dev/null || true
+```
+
 - ベース ref を解決しレビュー対象を作る: `git diff <base>...HEAD`（未コミットなら `git diff`）+ 変更ファイル一覧（`git diff --name-only ...`）。
 - どの layer/領域が触られたか検出（`internal/controller/**`, `usecase`, `domain`, `infrastructure`, `pkg`, `openapi/**`, `database/**`）。
 - **エンドポイント** が触られたか（controller handler か `openapi/**`）— Step 4 を回すかの判定。

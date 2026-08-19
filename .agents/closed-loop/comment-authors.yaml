@@ -1,0 +1,39 @@
+# Closed loop — which comment authors are machines.
+#
+# THIS FILE IS A SKILL ARTIFACT, NOT DOCUMENTATION. It is read by the weekly closed-loop
+# aggregation when it scans the comments on issues and pull requests. Humans are not the
+# audience; the human-facing output is the weekly report.
+#
+# Why this exists: the loop reads issue / PR comments because a reviewer's remark is where a
+# problem is stated in words, and that never appears in a development session's own log. But on
+# this repository most comments are not remarks — they are scanner output. Measured over the last
+# thirty pull requests: 96 from `github-actions`, 22 from `sonarqubecloud`, 5 from
+# `github-advanced-security`, and 20 from a human. Without a filter, 86 % of what the loop reads
+# is machine noise, and the signal it was built to find is buried in it.
+#
+# The filter is a declared list rather than a heuristic on the name. A heuristic ("contains bot",
+# "ends in [bot]") silently reclassifies a person whose account happens to match, and silently
+# admits a new integration whose name does not — and both failures are invisible, because the
+# only symptom is a number moving in a weekly report nobody can audit.
+#
+# An author not listed here is treated as human. That default is deliberate: admitting machine
+# noise degrades a report, while dropping a person's remark loses the finding entirely.
+#
+# Field reference
+#   login    exact GitHub login, as it appears in `gh ... --json comments --jq '.[].author.login'`.
+#   why      what this account posts. Present so a later reader can tell whether it still applies.
+#
+# When a new integration starts commenting, add it here. The weekly report lists the authors it
+# classified as human, so an unlisted machine shows up there rather than passing unnoticed.
+
+machine_authors:
+  - login: github-actions
+    why: workflow summaries and the loop's own postings
+  - login: sonarqubecloud
+    why: quality gate result per pull request
+  - login: github-advanced-security
+    why: code scanning alerts
+  - login: dependabot
+    why: dependency update pull requests and their notes
+  - login: renovate
+    why: not in use here; listed so enabling it needs no change to this file

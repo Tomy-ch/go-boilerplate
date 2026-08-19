@@ -17,6 +17,10 @@ scripts/bin/
 # graphify の出力（graph.json / GRAPH_REPORT.md 等）。コード変更ごとに動く派生物
 graphify-out/
 
+# .agents/ 配下でここだけがマシンローカル。Closed Loop の索引など、GitHub から再生成できる
+# キャッシュを置く。コミット対象の共有状態と混ざらないよう private/ に隔離している
+.agents/private/
+
 # Codex が issue ごとに作成する linked worktree。親 checkout から未追跡に見えるため、
 # worktree 自身を含めて除外する。
 .codex/worktrees/

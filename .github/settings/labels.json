@@ -10,5 +10,14 @@
   { "name": "test", "description": "テストコード関連", "color": "e4e669" },
   { "name": "security", "description": "セキュリティ関連", "color": "5fafe6" },
   { "name": "wontfix", "description": "対応なし", "color": "ffffff" },
-  { "name": "release", "description": "リリース用のラベル", "color": "c5def5" }
+  { "name": "release", "description": "リリース用のラベル", "color": "c5def5" },
+
+  { "name": "feedback", "description": "AI開発セッションのフィードバック（Closed Loop）。分類は feedback/* を重ねる", "color": "7057ff" },
+  { "name": "feedback/skill", "description": "スキルの不足・矛盾・曖昧さ", "color": "bfb0ff" },
+  { "name": "feedback/architecture", "description": "アーキテクチャ上の摩擦", "color": "bfb0ff" },
+  { "name": "feedback/documentation", "description": "ドキュメントの不足・誤り・発見性", "color": "bfb0ff" },
+  { "name": "feedback/tooling", "description": "CLI・スクリプト・make ターゲットの摩擦", "color": "bfb0ff" },
+  { "name": "feedback/ai-misread", "description": "AIの誤読・誤認", "color": "bfb0ff" },
+  { "name": "feedback/ci", "description": "CI・Actions の摩擦", "color": "bfb0ff" },
+  { "name": "feedback/developer-experience", "description": "上記に収まらない開発体験の摩擦", "color": "bfb0ff" }
 ]

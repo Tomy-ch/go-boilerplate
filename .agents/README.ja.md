@@ -44,6 +44,13 @@ Gemini なら `.gemini/`。中身の指示が 1 つのツールの契約に対�
   所有は `.claude/skills/ddd-audit/SKILL.md`。
 - `glossary-drift/` — glossary ドリフト検出器が尊重する除外の宣言。`docs/spec/` の外に業務語が
   現れていても、まだ指摘としない箇所を記録します。所有は `.claude/agents/drift-detector-glossary.md`。
+- `closed-loop/` — AI フィードバックの閉じたループが読む設定。スキルごとの Usage Class と
+  Opportunity 述語、およびどのコメント投稿者が機械かを持ちます。ループの*データ*はここにはありません。
+  [ADR-0009](../docs/adr/0009-long-running-agent-state.ja.md) のとおり issue tracker にあります。
+- `private/` — **`.agents/` 配下で唯一のマシンローカルな部分木であり、唯一 gitignore されています。**
+  GitHub から再生成できるキャッシュを置きます（閉じたループの branch → work item 索引など）。
+  共有されないので、ここにあるものが何かの正本になってはいけません。別のマシンからも、
+  作業を引き継ぐ同僚からも、このディレクトリは空に見えます。
 
 ここのドメインは寿命を持つことがあります。`comment-remediation/` はコメント方針への移行の進捗を
 記録するもので、ツリーを掃き終えた時点で意味を失ったため、フック定義とともに削除しました。放置では

@@ -119,6 +119,14 @@ pre-push:
         - "go.sum"
       run: go mod tidy && git diff --exit-code go.mod go.sum
 
+# コミットの瞬間は誰も他に記録していないので、ここで打刻する。pre-commit ではなく post-commit
+# なのは、/commit が全コミットを --no-verify で作るため。--no-verify は pre-commit と commit-msg
+# を飛ばすが post-commit は飛ばさない（実測）ので、スキルを経由しないコミットも取りこぼさない。
+post-commit:
+  commands:
+    closed-loop-mark:
+      run: .agents/closed-loop/marks.sh commitAt
+
 post-merge:
   commands:
     vendor-sync:

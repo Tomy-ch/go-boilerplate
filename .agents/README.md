@@ -45,6 +45,13 @@ One subdirectory per artifact domain, named after the skill family that owns it.
 - `glossary-drift/` — the exclusions the glossary-drift detector honors: where a business term
   appearing outside `docs/spec/` is knowingly not a finding yet. Owned by
   `.claude/agents/drift-detector-glossary.md`.
+- `closed-loop/` — the configuration the AI-feedback closed loop reads: per-skill usage class and
+  opportunity predicate, and which comment authors are machines. The loop's *data* is not here — it
+  lives in the issue tracker, per [ADR-0009](../docs/adr/0009-long-running-agent-state.md).
+- `private/` — **the one machine-local subtree, and the only one that is gitignored.** It holds
+  caches that can be regenerated from GitHub, such as the closed loop's branch-to-work-item index.
+  Nothing here is shared, so nothing here may be the source of truth for anything: a second machine
+  and a colleague picking up the work both see an empty directory.
 
 A domain here may have a finite life. `comment-remediation/` recorded progress through a migration
 to the comment policy and stopped meaning anything once the tree was fully swept, so it was deleted
