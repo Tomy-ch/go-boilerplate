@@ -1,0 +1,96 @@
+/**
+ * branch と窓を Feedback Issue へ結び付けるマシンローカルな索引。
+ *
+ * @remarks
+ * 正本ではなく索引です。正本は issue tracker にあり、ここが失われても GitHub から
+ * 引き直せます。索引が担うのは 2 つだけ。同じ checkout 内で「この作業は既にどの
+ * Feedback Issue に属するか」を即座に答えること、そして GitHub へ到達できなかった窓を
+ * 覚えておくことです。
+ *
+ * 後者が要件 §8「ローカル開発をブロックしない」を満たす条件になります。窓を開く／閉じる
+ * 処理はネットワークの成否に関わらず成功しなければならないので、送出できなかった窓は
+ * `feedbackIssue` を持たないまま残し、後で解消します。別の状態フラグは持ちません
+ * — 同じ意味を 2 箇所で持てば必ず食い違うためです。
+ *
+ * 判定はここに置き、ファイル入出力は `index.ts` が担います。
+ */
+
+/** 索引の 1 件。`feedbackIssue` が無いものは「まだ送出できていない」を意味する。 */
+export type IndexEntry = {
+  readonly windowId: string;
+  readonly branch?: string;
+  readonly parentIssue?: number;
+  readonly feedbackIssue?: number;
+  readonly updatedAt: number;
+};
+
+/** 索引全体。窓 ID を鍵にする。 */
+export type IndexStore = {
+  readonly entries: readonly IndexEntry[];
+};
+
+const EMPTY: IndexStore = { entries: [] };
+
+/**
+ * 索引を解析する。
+ *
+ * @remarks
+ * 壊れていれば空として扱います。索引はキャッシュであり、読めないことは
+ * 「まだ何も知らない」と同じだからです。ここで例外を投げると、窓を開く処理が
+ * キャッシュの破損で止まってしまいます。
+ */
+export function parseIndex(raw: unknown): IndexStore {
+  if (typeof raw !== "object" || raw === null || !Array.isArray((raw as { entries?: unknown }).entries)) {
+    return EMPTY;
+  }
+  const entries: IndexEntry[] = [];
+  for (const item of (raw as { entries: unknown[] }).entries) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    if (typeof o.windowId !== "string" || o.windowId === "") continue;
+    entries.push({
+      windowId: o.windowId,
+      branch: typeof o.branch === "string" ? o.branch : undefined,
+      parentIssue: typeof o.parentIssue === "number" ? o.parentIssue : undefined,
+      feedbackIssue: typeof o.feedbackIssue === "number" ? o.feedbackIssue : undefined,
+      updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
+    });
+  }
+  return { entries };
+}
+
+/** 窓 ID で引く。 */
+export function findByWindow(store: IndexStore, windowId: string): IndexEntry | undefined {
+  return store.entries.find((e) => e.windowId === windowId);
+}
+
+/**
+ * ブランチで引く。
+ *
+ * @remarks
+ * 同じブランチに複数の窓がぶら下がるため、最も新しいものを返します。作業を再開したとき、
+ * 直前の窓に繋ぐのが自然だからです。
+ */
+export function findByBranch(store: IndexStore, branch: string): IndexEntry | undefined {
+  return store.entries
+    .filter((e) => e.branch === branch)
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+}
+
+/** 送出できていない窓。週次側がここを見て解消する。 */
+export function pendingEntries(store: IndexStore): IndexEntry[] {
+  return store.entries.filter((e) => e.feedbackIssue === undefined);
+}
+
+/**
+ * 索引へ 1 件を書き込む。同じ窓 ID があれば置き換える。
+ *
+ * @remarks
+ * 置き換えであって統合ではありません。呼び出し側は常に完全な entry を渡します。
+ * 部分更新にすると「どちらの値が新しいか」を索引が判断することになり、
+ * キャッシュが持つべきでない権限を持ってしまいます。
+ */
+export function upsert(store: IndexStore, entry: IndexEntry): IndexStore {
+  const others = store.entries.filter((e) => e.windowId !== entry.windowId);
+  return { entries: [...others, entry].sort((a, b) => a.windowId.localeCompare(b.windowId)) };
+}
