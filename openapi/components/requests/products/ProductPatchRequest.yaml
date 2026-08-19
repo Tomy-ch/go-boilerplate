@@ -8,6 +8,7 @@ description: |
   version には更新対象を読み込んだ時点の値を渡します。DB の現在値と一致しない場合は他者の更新と競合した
   ものとして 409 を返します（再取得したうえで送り直してください）。
   負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+additionalProperties: false
 required:
   - version
 properties:
@@ -87,7 +88,7 @@ properties:
       置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が
       ストレージから削除します。
     items:
-      $ref: './ProductImageInput.yaml'
+      $ref: '../../schemas/ProductImageInput.yaml'
     x-go-type: nullable.Nullable[[]ProductImageInput]
     x-go-type-import:
       path: github.com/oapi-codegen/nullable

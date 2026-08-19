@@ -130,6 +130,7 @@ lifts coverage yet reveals nothing.
 - **Responsibility creep** — one `TestXxx` driving multiple subjects (a section-1 1:1 violation). Decompose into one `TestXxx` per subject; do not fold multiple subjects into one test.
 - **Helper duplication** — a 5+-line fixture repeated across 3+ `TestXxx` functions that should be a `t.Helper()`-tagged helper.
 - **Redundant comments** — inline comments that restate the code or narrate *why*; case intent belongs in the Japanese `t.Run` name, not in comments (per the Comment Rules in [`rules.md`](rules.md)).
+- **Auto-fixable broken input** — a deliberately-invalid literal that `make fix` silently repairs, so the case stops exercising the rejection path while still passing. A misspelled field name (`"nmae"`) is rewritten to the real one by `misspell`, turning a body that should be rejected into a valid one. Pick an input whose invalidity no linter can "correct": for an unknown field, a correctly-spelled name that simply is not in the contract.
 
 ## 11. Test Strategy sections: ownership and adjudicating drift
 

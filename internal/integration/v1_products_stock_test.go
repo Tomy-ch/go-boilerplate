@@ -152,6 +152,23 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusUnauthorized)
 		})
 
+		t.Run("宣言に無いフィールドを含む本文は400で弾かれる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
+			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			productsdetail.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
+			headers := availableAdmin(t, e)
+			useOpenAPIValidation(t, e)
+
+			body := map[string]any{"delta": 10, "productId": "spoofed"}
+			actual := StartServer(t, e).DoJSON(http.MethodPatch, productStockExistingPath, body, headers)
+
+			AssertErrorResponse(t, actual, http.StatusBadRequest)
+		})
+
 		t.Run("非 admin の権限エラーは 403 を返す", func(t *testing.T) {
 			t.Parallel()
 

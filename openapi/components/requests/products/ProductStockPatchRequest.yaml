@@ -4,6 +4,7 @@ description: |
   delta は符号付きで、正の値で在庫を補充し、負の値で在庫を差し引きます。
   増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は業務不変条件違反として 422 を返します。
   在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+additionalProperties: false
 required:
   - delta
 properties:

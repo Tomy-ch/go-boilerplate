@@ -33,6 +33,7 @@ One directory per resource, named after it; each holds that resource's request b
 ## Rules
 
 - Compose a reusable base from `schemas/` via `allOf` instead of duplicating fields.
-- Keep `additionalProperties: false` (directly or on the wrapper) to reject unknown fields.
+- Declare `additionalProperties: false` on the schema object that declares the properties, so unknown fields are rejected. `additionalProperties` only sees properties declared **in the same schema object**, so when composing with `allOf` the declaration belongs on the base that holds them — a wrapper adding only `required` cannot see them and would reject every field instead.
+- A nested element schema (an array's `items`) needs its own declaration; the enclosing request's does not reach it. `TestRequestBodyRejectsUnknownFields` in [`internal/architest`](../../../internal/architest/README.md) checks both halves for every schema reachable from a request body.
 - Include `description` and `example` on all properties.
 - Boundary values (`maxLength` etc.) are a **wire contract**, not the domain rule — see [Input Boundary Value Ownership](../../boundary-ownership.md).

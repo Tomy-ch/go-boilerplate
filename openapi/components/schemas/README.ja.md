@@ -80,10 +80,13 @@ PATCH 操作には `allOf` を使って専用のラッパースキーマを作�
 # UserPatchRequest.yaml
 allOf:
   - $ref: './UserBaseInputRequest.yaml'
-additionalProperties: false
 ```
 
 入力構造と操作のセマンティクスを分離します。
+
+`additionalProperties: false` は、properties を宣言している `UserBaseInputRequest.yaml` の側に置いたままにします。
+ラッパーに置くと**全て**のフィールドが拒否されます。`additionalProperties` が見るのは同じスキーマオブジェクトで
+宣言された properties だけで、ラッパーは 1 つも宣言していないためです。
 
 ## コアスキーマ
 
@@ -204,7 +207,7 @@ allOf:
 - リクエストとレスポンスの兼用スキーマは極力避ける
 - すべてのプロパティに `description` と `example` を記述する
 - `required` で必須フィールドを明示する
-- リクエストスキーマには `additionalProperties: false` を設定して不明フィールドを拒否する
+- `additionalProperties: false` は、properties を持つリクエストスキーマオブジェクト自身に置く — properties が見えない `allOf` のラッパーには置かない（[PATCH 対応](#patch-対応) を参照）
 - `maxLength` などの境界値は**ワイヤー契約**であり domain の業務ルールではない（オーナーが別） — [入力境界値のオーナーシップ](../../boundary-ownership.ja.md) を参照
 
 ## チェックリスト

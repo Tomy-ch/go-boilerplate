@@ -2,6 +2,7 @@ type: object
 description: |
   購入作成リクエスト。明細（商品IDと数量）の配列を受け取ります。
   明細は 1 件以上必須で、同一 productId の重複は許可しません（いずれも 422）。
+additionalProperties: false
 required:
   - details
 properties:

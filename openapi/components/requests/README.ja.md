@@ -33,6 +33,7 @@ allOf:
 ## ルール
 
 - フィールドを複製せず、`schemas/` の再利用基底を `allOf` で合成する。
-- 不明フィールドを拒否するため `additionalProperties: false` を維持する（直接 or ラッパーに）。
+- 不明フィールドを拒否するため、`additionalProperties: false` は properties を宣言しているスキーマオブジェクト自身に置く。`additionalProperties` が見るのは**同じスキーマオブジェクト**で宣言された properties だけなので、`allOf` で合成する場合の置き場所は properties を持つ基底であり、`required` だけを足すラッパーに置くと properties が見えず全フィールドを拒否してしまう。
+- ネストした要素スキーマ（配列の `items`）には自前の宣言が要る。外側のリクエストの宣言は届かない。両者は [`internal/architest`](../../../internal/architest/README.md) の `TestRequestBodyRejectsUnknownFields` が、リクエストボディから到達できる全スキーマについて検査する。
 - すべてのプロパティに `description` と `example` を記述する。
 - 境界値（`maxLength` 等）は **ワイヤー契約**であり domain ルールではない — [入力境界値のオーナーシップ](../../boundary-ownership.ja.md) を参照。

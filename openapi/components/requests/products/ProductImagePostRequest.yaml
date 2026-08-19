@@ -2,6 +2,7 @@ type: object
 description: |
   商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
   対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
+additionalProperties: false
 required:
   - image
 properties:
