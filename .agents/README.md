@@ -26,7 +26,7 @@ itself. So artifacts live here, one level up from any single tool.
 | Belongs | Does not belong |
 | --- | --- |
 | Machine-readable state a skill writes and reads back (ledgers, indexes, resolved caches) | Instructions to an assistant — those are tool configuration (`.claude/`, `.codex/skills/`, …) |
-| Committed, shared machine-readable state whose audience is the next run of a skill | Per-run resume state — keep it in the owning skill's ignored `tmp/` artifact |
+| Committed, shared machine-readable state whose audience is the next run of a skill | Per-run resume state — keep it in the owning skill's ignored artifact under `tmp/skills/<skill-name>/` |
 | Output that is the same regardless of which assistant produced it | Anything tied to one vendor's contract |
 
 Lockfiles for pinned toolchains (`.github/actions-pin.toml`, `docker/images-pin.toml`) are the same

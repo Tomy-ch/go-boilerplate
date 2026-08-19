@@ -3,15 +3,15 @@
 # full-apply
 
 `full-verify`（read-only の全体検証）の**対になる「適用」スキル**。
-`full-verify` が `tmp/reviews/` に出した指摘を、重大度順に上から実際のコードへ反映していく。
+`full-verify` が `tmp/skills/reviews/` に出した指摘を、重大度順に上から実際のコードへ反映していく。
 
 ```txt
-full-verify  ──生成──▶  tmp/reviews/mod_*.md / architecture.md / _index.md
+full-verify  ──生成──▶  tmp/skills/reviews/mod_*.md / architecture.md / _index.md
                                    │
                                    ▼
 full-apply   ──適用──▶  コード修正 + コミット
-                          ├─ tmp/reviews/working.md          （台帳: 完了/保留と commit ハッシュ）
-                          └─ tmp/reviews/mod_*.md 冒頭コメント （各指摘の対応状況 + commit ハッシュ）
+                          ├─ tmp/skills/reviews/working.md          （台帳: 完了/保留と commit ハッシュ）
+                          └─ tmp/skills/reviews/mod_*.md 冒頭コメント （各指摘の対応状況 + commit ハッシュ）
 ```
 
 ## 役割
@@ -26,8 +26,8 @@ full-apply   ──適用──▶  コード修正 + コミット
 ## 使い方
 
 ```text
-/full-apply                          # tmp/reviews/ を対象、Low まで全件、ディレクトリ単位で停止
-/full-apply --reviews-dir tmp/reviews-config
+/full-apply                          # tmp/skills/reviews/ を対象、Low まで全件、ディレクトリ単位で停止
+/full-apply --reviews-dir tmp/skills/reviews-config
 /full-apply --severity high          # High までで止める
 /full-apply --pace all               # しきい値まで連続実行
 /full-apply --dry-run                # 判定だけ（直さない）

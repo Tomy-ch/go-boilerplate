@@ -78,7 +78,7 @@ bootstrap が失敗した場合（ネットワーク無し、`claude` CLI 不在
 
 ### 5. eval 成果物はバージョン管理外に置く
 
-公式手法は iteration / eval ディレクトリ・ベンチマーク・ビューア出力を含む `<skill-name>-workspace/` を書き出します。スキルディレクトリの兄弟に置くと、追跡対象の `.codex/skills/**` 内に落ちてしまいます。**配置を上書きします**。workspace はリポジトリの gitignore された `tmp/`（例: `tmp/manage-skill/<skill-name>-workspace/`）に置き、このリポジトリの作業成果物規約（計画 / 成果物は git 外、`tmp/` は ignore）に合わせます。eval 実行結果・ベンチマーク・feedback JSON・ビューア HTML は決してコミットしないこと。
+公式手法は iteration / eval ディレクトリ・ベンチマーク・ビューア出力を含む `<skill-name>-workspace/` を書き出します。スキルディレクトリの兄弟に置くと、追跡対象の `.codex/skills/**` 内に落ちてしまいます。**配置を上書きします**。workspace はリポジトリの gitignore された `tmp/`（例: `tmp/skills/manage-skill/<skill-name>-workspace/`）に置き、このリポジトリの作業成果物規約（計画 / 成果物は git 外、`tmp/` は ignore）に合わせます。eval 実行結果・ベンチマーク・feedback JSON・ビューア HTML は決してコミットしないこと。
 
 ### 6. スキルの形に合うならリポジトリのパターンを再利用する
 

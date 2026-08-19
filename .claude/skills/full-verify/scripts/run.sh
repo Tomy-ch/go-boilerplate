@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # full-verify: リポジトリ全体の構成と全実装コードの妥当性を headless 検証し md 出力する。
-# read-only。コードを変更しない。出力は tmp/reviews/ 配下の md のみ（シェルリダイレクトで書く）。
+# read-only。コードを変更しない。出力は tmp/skills/reviews/ 配下の md のみ（シェルリダイレクトで書く）。
 #
 # 設計の要点:
-#   - 冪等・再開可能: 状態は tmp/reviews/mod_<id>.md の「有無/中身」だけで表現。state ファイルや cron は作らない。
+#   - 冪等・再開可能: 状態は tmp/skills/reviews/mod_<id>.md の「有無/中身」だけで表現。state ファイルや cron は作らない。
 #   - 原子的書き込み: <out>.tmp に書き、成功時のみ mv。中断しても半端な md を残さない。
 #   - タイムアウト: 各 claude -p を timeout <分>m で囲む（headless は組み込みタイムアウトが無い）。
 #   - 上限ハンドリング: rc=99（usage/rate limit 検出）のときだけ 5h sleep して 1 回再送。なお上限なら停止。
@@ -33,7 +33,7 @@ DETECT_ONLY=0           # 1 なら検出と構造生成だけ行い claude -p �
 GRANULARITY="module"    # module | file。file は .go 等のリーフ1ファイル=1ユニット
 INCLUDE_TESTS=0         # file 粒度時に *_test.go 等のテストも対象に含めるなら 1
 EXCLUDE_EXT=""          # file 粒度で「この拡張子以外を全部」対象にする除外リスト（csv。例 "go,md"）
-OUT_OVERRIDE=""         # 出力先ディレクトリ上書き（既定 tmp/reviews）。別クラスのレビューを分離したい時
+OUT_OVERRIDE=""         # 出力先ディレクトリ上書き（既定 tmp/skills/reviews）。別クラスのレビューを分離したい時
 EXCLUDE_PATH=""         # 対象から除外するパス接頭辞（csv。例 "openapi,database"）。サンプル除外用
 NO_INDEX=0              # 1 なら Pass3(集約 _index.md)を行わず各 mod_*.md のみで終了
 
@@ -69,7 +69,7 @@ REPO_ROOT="$(pwd)"
 if [ -n "$OUT_OVERRIDE" ]; then
   case "$OUT_OVERRIDE" in /*) OUT="$OUT_OVERRIDE" ;; *) OUT="$REPO_ROOT/$OUT_OVERRIDE" ;; esac
 else
-  OUT="$REPO_ROOT/tmp/reviews"
+  OUT="$REPO_ROOT/tmp/skills/reviews"
 fi
 # claude -p は cwd=REPO_ROOT で動くため、プロンプトに渡すパスは REPO_ROOT 相対にする
 # （リポジトリ外を --out 指定した場合のみ絶対パス）。--out を使っても前提文脈が正しい出力先を指す。
@@ -361,7 +361,7 @@ done
 log "粒度=$GRANULARITY  ユニット数=${#MODULES[@]}  (include_tests=$INCLUDE_TESTS)"
 
 # =============================================================================
-# 構造表現の生成（tmp/reviews/_structure/）
+# 構造表現の生成（tmp/skills/reviews/_structure/）
 # =============================================================================
 
 # --- ツリー ------------------------------------------------------------------
@@ -586,7 +586,7 @@ attempt_module() { # $1=prompt $2=out $3=label
   [ $rc -eq 0 ] && return 0
   if [ $rc -ne 99 ]; then
     echo "FAILED $3" >> "$OUT/run.err"
-    log "失敗(継続): $3 -> tmp/reviews/run.err"
+    log "失敗(継続): $3 -> tmp/skills/reviews/run.err"
     # サーキットブレーカ: 即失敗が連続したら停止扱い(99)にして呼び出し側で break させる
     cb_on_fail "$RUN_ONE_DUR" || return 99
     return 1
@@ -594,7 +594,7 @@ attempt_module() { # $1=prompt $2=out $3=label
   log "上限検知。5h 待機して 1 回だけ再送: $3"
   sleep "$LIMIT_WAIT"
   run_one "$1" "$2" && return 0
-  log "再送も上限。停止（tmp/reviews/ から再開可能。後で再投入）: $3"
+  log "再送も上限。停止（tmp/skills/reviews/ から再開可能。後で再投入）: $3"
   return 99
 }
 
@@ -611,7 +611,7 @@ render() { # $1=template_file ; 環境変数で渡した置換を適用
 }
 
 # =============================================================================
-# Pass 1: 構造検証 → tmp/reviews/architecture.md
+# Pass 1: 構造検証 → tmp/skills/reviews/architecture.md
 # =============================================================================
 if [ -s "$ARCH_DOC" ]; then
   log "Pass1 スキップ（architecture.md は既に中身あり）"
@@ -632,7 +632,7 @@ else
     {
       echo "# 構造検証(Pass1) は生成に失敗"
       echo
-      echo "このファイルは full-verify の Pass1 が失敗した記録です（タイムアウト等。tmp/reviews/run.err 参照）。"
+      echo "このファイルは full-verify の Pass1 が失敗した記録です（タイムアウト等。tmp/skills/reviews/run.err 参照）。"
       echo "再試行するには本ファイルを削除して run.sh を再投入してください。"
       echo "Pass2(実装検証) は前提文脈なしで続行されています。"
     } > "$ARCH_DOC"
@@ -642,7 +642,7 @@ fi
 write_progress
 
 # =============================================================================
-# Pass 2: モジュール単位の実装検証 → tmp/reviews/mod_<id>.md
+# Pass 2: モジュール単位の実装検証 → tmp/skills/reviews/mod_<id>.md
 # =============================================================================
 
 # 1 モジュールを処理（並列ワーカーからも呼ばれる）
@@ -704,7 +704,7 @@ if [ "$PARALLEL" -gt 1 ]; then
     process_module "$warmup_dir"; rc=$?
     write_progress
     if [ $rc -eq 99 ] || [ -f "$STOP_FLAG" ]; then
-      log "warm-up で停止（上限/CB）。tmp/reviews/ から再開可能。"
+      log "warm-up で停止（上限/CB）。tmp/skills/reviews/ から再開可能。"
       exit 0
     fi
   fi
@@ -720,7 +720,7 @@ if [ "$PARALLEL" -gt 1 ]; then
     | xargs -I{} -P "$PARALLEL" bash -c 'process_module "$@"' _ {}
   write_progress
   if [ -f "$STOP_FLAG" ]; then
-    log "並列実行は上限/CB で停止。tmp/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
+    log "並列実行は上限/CB で停止。tmp/skills/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
     exit 0
   fi
 else
@@ -728,14 +728,14 @@ else
     process_module "$dir"; rc=$?
     write_progress   # 1 ユニット毎に進行状況 md を更新（トークン枯渇で途中停止しても可視化）
     if [ $rc -eq 99 ]; then
-      log "上限で停止。tmp/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
+      log "上限で停止。tmp/skills/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
       exit 0
     fi
   done
 fi
 
 # =============================================================================
-# Pass 3: 集約 → tmp/reviews/_index.md（全モジュール完了後のみ）
+# Pass 3: 集約 → tmp/skills/reviews/_index.md（全モジュール完了後のみ）
 # =============================================================================
 if [ "$NO_INDEX" -eq 1 ]; then
   log "--no-index: Pass3(集約)はスキップ。各 mod_*.md のみで終了。"
@@ -756,7 +756,7 @@ fi
 # （実装のみ先に集約 → 後でテストを追加実行した場合、新しい mod が出来るので再集約される）
 if [ -s "$INDEX_DOC" ] && [ -z "$(find "$OUT" -maxdepth 1 -name 'mod_*.md' -newer "$INDEX_DOC" -print -quit 2>/dev/null)" ]; then
   log "Pass3 スキップ（_index.md は最新。より新しい mod_*.md なし）"
-  log "完了。成果物: tmp/reviews/"
+  log "完了。成果物: tmp/skills/reviews/"
   exit 0
 fi
 
@@ -795,5 +795,5 @@ elif [ $rc -ne 0 ]; then
 fi
 
 write_progress
-log "完了。成果物: tmp/reviews/ （architecture.md / mod_*.md / _index.md / _progress.md）"
+log "完了。成果物: tmp/skills/reviews/ （architecture.md / mod_*.md / _index.md / _progress.md）"
 exit 0
