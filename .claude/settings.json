@@ -130,29 +130,19 @@
       "Bash(docker compose logs *)",
       "Bash(docker compose config *)",
 
-      "Edit(.makefiles/**)",
-      "Write(.makefiles/**)"
+      "Edit(.makefiles/**)"
     ],
     "ask": [
       "Edit(makefile)",
-      "Write(makefile)",
       "Edit(.makefiles/go/test.mk)",
-      "Write(.makefiles/go/test.mk)",
       "Edit(.makefiles/go/golangci-lint.mk)",
-      "Write(.makefiles/go/golangci-lint.mk)",
       "Edit(.makefiles/database/migrate.mk)",
-      "Write(.makefiles/database/migrate.mk)",
       "Edit(.makefiles/github/lint.mk)",
-      "Write(.makefiles/github/lint.mk)",
       "Edit(.makefiles/github/commitlint.mk)",
-      "Write(.makefiles/github/commitlint.mk)",
       "Edit(.makefiles/github/pin.mk)",
-      "Write(.makefiles/github/pin.mk)",
 
       "Edit(AGENTS.md)",
-      "Write(AGENTS.md)",
       "Edit(CLAUDE.md)",
-      "Write(CLAUDE.md)",
 
       "Bash(graphify * install*)",
       "Bash(graphify * uninstall*)",
@@ -210,30 +200,18 @@
       "Bash(make remove-generated-sqlc*)",
 
       "Edit(.makefiles/github/operation/**)",
-      "Write(.makefiles/github/operation/**)",
       "Edit(.makefiles/github/setting/**)",
-      "Write(.makefiles/github/setting/**)",
       "Edit(.makefiles/app/env.mk)",
-      "Write(.makefiles/app/env.mk)",
 
       "Edit(**/*.gen.go)",
-      "Write(**/*.gen.go)",
       "Edit(**/*.sql.go)",
-      "Write(**/*.sql.go)",
       "Edit(**/openapi.gen.yaml)",
-      "Write(**/openapi.gen.yaml)",
       "Edit(docs/openapi/**)",
-      "Write(docs/openapi/**)",
       "Edit(docs/coverage/**)",
-      "Write(docs/coverage/**)",
       "Edit(docs/db-schema/**)",
-      "Write(docs/db-schema/**)",
       "Edit(docs/godoc/**)",
-      "Write(docs/godoc/**)",
       "Edit(docs/portal/docs.json)",
-      "Write(docs/portal/docs.json)",
-      "Edit(docs/portal/guides/**)",
-      "Write(docs/portal/guides/**)"
+      "Edit(docs/portal/guides/**)"
     ]
   },
   "hooks": {
