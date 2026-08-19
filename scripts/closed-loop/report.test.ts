@@ -303,6 +303,17 @@ describe("foldWindowEvents", () => {
       expect(out.sessions).toBe(0);
     });
 
+    it("セッション ID を持たないイベントはセッション数に数えない", () => {
+      const noSid = JSON.stringify({
+        type: "user",
+        timestamp: new Date(150 * 1000).toISOString(),
+        message: { role: "user", content: "本文" },
+      });
+      const out = foldWindowEvents([noSid], { from: 100, to: 200 });
+      expect(out.events).toHaveLength(1);
+      expect(out.sessions).toBe(0);
+    });
+
     it("中身が無ければ空を返す", () => {
       expect(foldWindowEvents([], { from: 100, to: 200 }).events).toEqual([]);
     });

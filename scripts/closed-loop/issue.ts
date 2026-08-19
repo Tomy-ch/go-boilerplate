@@ -118,6 +118,15 @@ export function renderBody(observation: Observation, sections?: Readonly<Record<
   return parts.join("\n");
 }
 
+/** 本文から観測ブロックの中身だけを取り出す。囲みが揃っていなければ `undefined`。 */
+function extractBlock(body: string): string | undefined {
+  const start = body.indexOf(BLOCK_START);
+  if (start < 0) return undefined;
+  const rest = body.slice(start + BLOCK_START.length);
+  const end = rest.indexOf(FENCE);
+  return end < 0 ? undefined : rest.slice(0, end);
+}
+
 /** 観測ブロックの中身。`parseObservation` が組み立てる前の素の形。 */
 type BlockContent = {
   scalars: Record<string, string>;
@@ -171,12 +180,8 @@ function readBlockLines(block: string): BlockContent {
  * 週次集計全体を落とさないためです。落ちた件数は呼び出し側が報告します。
  */
 export function parseObservation(body: string): Observation | undefined {
-  const start = body.indexOf(BLOCK_START);
-  if (start < 0) return undefined;
-  const rest = body.slice(start + BLOCK_START.length);
-  const end = rest.indexOf(FENCE);
-  if (end < 0) return undefined;
-  const block = rest.slice(0, end);
+  const block = extractBlock(body);
+  if (block === undefined) return undefined;
 
   const { scalars, phases, skills } = readBlockLines(block);
 
