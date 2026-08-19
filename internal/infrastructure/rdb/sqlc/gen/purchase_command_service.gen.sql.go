@@ -46,23 +46,23 @@ func (q *Queries) DecrementProductStock(ctx context.Context, arg *DecrementProdu
 	return result.RowsAffected(), nil
 }
 
-const getPurchaseByIDForUpdate = `-- name: GetPurchaseByIDForUpdate :one
+const getPurchaseByCodeForUpdate = `-- name: GetPurchaseByCodeForUpdate :one
 SELECT
     ps.code AS status_code,
     p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-WHERE p.id = $1
+WHERE p.code = $1
 FOR UPDATE OF p
 `
 
-type GetPurchaseByIDForUpdateRow struct {
+type GetPurchaseByCodeForUpdateRow struct {
 	StatusCode int16
 	Purchases  Purchases
 }
 
 // === source: database/dml/command_service/purchase/lock_purchase_for_update.sql ===
-// ID から購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。キャンセルの状態遷移の
+// 購入コードから購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。キャンセルの状態遷移の
 // 競合（同一購入への並行キャンセル）を購入行ロックで直列化する（結合先の固定参照マスタはロックしない）。
 // 現在状態は購入ステータスマスタとの結合で code を解決する。存在しない場合は 0 行（NotFound）。
 //
@@ -71,11 +71,11 @@ type GetPurchaseByIDForUpdateRow struct {
 //	    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-//	WHERE p.id = $1
+//	WHERE p.code = $1
 //	FOR UPDATE OF p
-func (q *Queries) GetPurchaseByIDForUpdate(ctx context.Context, id uuid.UUID) (*GetPurchaseByIDForUpdateRow, error) {
-	row := q.db.QueryRow(ctx, getPurchaseByIDForUpdate, id)
-	var i GetPurchaseByIDForUpdateRow
+func (q *Queries) GetPurchaseByCodeForUpdate(ctx context.Context, code string) (*GetPurchaseByCodeForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getPurchaseByCodeForUpdate, code)
+	var i GetPurchaseByCodeForUpdateRow
 	err := row.Scan(
 		&i.StatusCode,
 		&i.Purchases.ID,

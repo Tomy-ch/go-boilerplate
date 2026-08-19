@@ -43,10 +43,10 @@ func cancelViewFixture(t *testing.T) purchaseuc.CancelPurchaseView {
 	t.Helper()
 	canceledAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.CancelPurchaseView{
-		ID:             uuidtestkit.NewTestFromSalt(t, "hc_id"),
 		Code:           "hc-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "hc_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "hc_status"),
+		StatusCode:     6,
 		StatusName:     "キャンセル",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
@@ -72,7 +72,7 @@ func TestBindHandler(t *testing.T) {
 	routes := e.Router().Routes()
 	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodPatch, routes[0].Method)
-	assert.Equal(t, "/v1/purchases/:purchaseId/cancel", routes[0].Path)
+	assert.Equal(t, "/v1/purchases/:purchaseCode/cancel", routes[0].Path)
 }
 
 func Test_server_PatchPurchasesCancel(t *testing.T) {
@@ -89,23 +89,23 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hc_user")
-			purchaseID := uuidtestkit.NewTestFromSalt(t, "hc_purchase")
+			const purchaseCode = "hc-code"
 			view := cancelViewFixture(t)
 			uc.EXPECT().CancelPurchase(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ context.Context, params purchaseuc.CancelPurchaseParams) (purchaseuc.CancelPurchaseView, error) {
 					assert.Equal(t, userID, params.UserID)
-					assert.Equal(t, purchaseID, params.PurchaseID)
+					assert.Equal(t, purchaseCode, params.PurchaseCode)
 					return view, nil
 				})
 
 			resp, err := s.PatchPurchasesCancel(authnContext(t, userID), gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: purchaseID.ToPrimitive(),
+				PurchaseCode: purchaseCode,
 			})
 			require.NoError(t, err)
 
 			r, ok := resp.(gen.PatchPurchasesCancel200JSONResponse)
 			require.True(t, ok)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
+			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "キャンセル", r.Status.Name)
 			require.Len(t, r.Details, 1)
@@ -123,7 +123,7 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesCancel(context.Background(), gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_noauth").ToPrimitive(),
+				PurchaseCode: "hc-noauth",
 			})
 			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
@@ -140,7 +140,7 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hc_user_err")
 			_, err := s.PatchPurchasesCancel(authnContext(t, userID), gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_purchase_err").ToPrimitive(),
+				PurchaseCode: "hc-purchase-err",
 			})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
@@ -159,7 +159,7 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
 
 			_, err = s.PatchPurchasesCancel(ctx, gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_unresolved").ToPrimitive(),
+				PurchaseCode: "hc-unresolved",
 			})
 			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
@@ -177,7 +177,7 @@ func Test_server_PatchPurchasesCancel(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hc_user_overflow")
 			_, err := s.PatchPurchasesCancel(authnContext(t, userID), gen.PatchPurchasesCancelRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hc_purchase_overflow").ToPrimitive(),
+				PurchaseCode: "hc-purchase-overflow",
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
@@ -196,11 +196,11 @@ func Test_toCancelResponse(t *testing.T) {
 			view := cancelViewFixture(t)
 			r, err := toCancelResponse(view)
 			require.NoError(t, err)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "キャンセル", r.Status.Name)
+			assert.EqualValues(t, view.StatusCode, r.Status.Code)
 			assert.Equal(t, int64(176500), r.TotalAmount)
 			assert.Equal(t, *view.CanceledAt, r.CanceledAt)
 			require.Len(t, r.Details, 1)

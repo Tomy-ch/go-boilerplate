@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -263,9 +264,11 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				require.Len(t, got, 2)
 				assert.Equal(t, mustParse(t, seedUnprocessedSID), got[0].StatusID)
 				assert.Equal(t, "未処理", got[0].StatusName)
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[0].StatusCode)
 				assert.Equal(t, int64(2), got[0].Count)
 				assert.Equal(t, mustParse(t, seedCompletedSID), got[1].StatusID)
 				assert.Equal(t, "完了", got[1].StatusName)
+				assert.Equal(t, domainpurchase.StatusCompleted.Code(), got[1].StatusCode)
 				assert.Equal(t, int64(1), got[1].Count)
 			})
 		})
@@ -286,6 +289,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				require.Len(t, got, 1)
 				assert.Equal(t, mustParse(t, seedCanceledSID), got[0].StatusID)
 				assert.Equal(t, "キャンセル", got[0].StatusName)
+				assert.Equal(t, domainpurchase.StatusCanceled.Code(), got[0].StatusCode)
 				assert.Equal(t, int64(1), got[0].Count)
 			})
 		})

@@ -3,7 +3,6 @@ description: |
   購入情報のレスポンススキーマ。金額（subtotalAmount / taxAmount / shippingFee / totalAmount /
   明細 unitPrice）はすべて USD セント単位の整数です。
 required:
-  - id
   - code
   - userId
   - statusId
@@ -15,14 +14,9 @@ required:
   - orderedAt
   - referenceAmount
 properties:
-  id:
-    type: string
-    format: uuid
-    description: 購入ID
-    example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
   code:
     type: string
-    description: 購入コード（UUIDv7 文字列・一意）
+    description: 購入コード（利用者へ注文番号として見せる一意の識別子）
     example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
   userId:
     type: string

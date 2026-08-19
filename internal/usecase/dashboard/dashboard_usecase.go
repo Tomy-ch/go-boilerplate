@@ -41,9 +41,10 @@ type GetSummaryParams struct {
 }
 
 // StatusCountView は、購入ステータス別件数 1 件分のユースケース出力 DTO です。
-// ステータスは購入ステータスマスタで解決済みの ID と名称です。
+// ステータスは購入ステータスマスタで解決済みの ID・業務キー・名称です。
 type StatusCountView struct {
 	StatusID   uuid.UUID
+	StatusCode int
 	StatusName string
 	Count      int64
 }
@@ -145,7 +146,7 @@ func (u *usecase) GetDashboardSummary(
 }
 
 // resolveWindow は、入力期間を集計対象の半開区間 [After, Before) へ解決します。
-// "month" / "range" のみ該当区分とし、それ以外は today として扱います。
+// 未知区分の扱いは GetSummaryParams.Period のドキュメントを参照。
 // range のときだけ開始日・終了日の相関を検証するため、QueryService へは検証済みの区間だけが渡ります。
 // 暦日の境界は loc で解釈します。loc は設定のタイムゾーンから構築された値であり、実行環境の time.Local には
 // 依存しません（コンテナの既定は UTC のため、依存させると設定と異なる暦日で集計してしまいます）。
@@ -192,6 +193,7 @@ func toStatusCountViews(results []query.PurchaseStatusCountResult) []StatusCount
 	for i, r := range results {
 		views[i] = StatusCountView{
 			StatusID:   r.StatusID,
+			StatusCode: r.StatusCode,
 			StatusName: r.StatusName,
 			Count:      r.Count,
 		}

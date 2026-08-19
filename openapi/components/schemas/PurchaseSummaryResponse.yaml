@@ -1,16 +1,19 @@
 type: object
 description: |
   購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
-  （明細は購入詳細 API で取得します）。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+  （明細は購入詳細 API で取得します）。status は ID・業務キー・名称を事前解決済みで、別途の名称解決は不要です。
+  行を見分けるための要約として、先頭商品名（firstItemName）と明細の点数（itemCount）を含みます。
 required:
   - code
   - totalAmount
   - status
+  - firstItemName
+  - itemCount
   - orderedAt
 properties:
   code:
     type: string
-    description: 購入コード（UUIDv7 文字列・一意）
+    description: 購入コード（利用者へ注文番号として見せる一意の識別子）
     example: "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
   totalAmount:
     type: integer
@@ -19,6 +22,15 @@ properties:
     example: 176500
   status:
     $ref: './PurchaseStatusRef.yaml'
+  firstItemName:
+    type: string
+    description: 明細の先頭 1 件の商品名。先頭の選び方に業務的な意味はありません（明細の並びの先頭です）。
+    example: "ワイヤレスイヤホン"
+  itemCount:
+    type: integer
+    format: int64
+    description: 明細の点数（行数。先頭商品を含みます）。数量の合計ではありません。
+    example: 3
   orderedAt:
     type: string
     format: date-time

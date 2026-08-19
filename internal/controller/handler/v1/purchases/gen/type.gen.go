@@ -164,14 +164,11 @@ type PurchaseListResponse struct {
 // PurchaseResponse 購入情報のレスポンススキーマ。金額（subtotalAmount / taxAmount / shippingFee / totalAmount /
 // 明細 unitPrice）はすべて USD セント単位の整数です。
 type PurchaseResponse struct {
-	// Code 購入コード（UUIDv7 文字列・一意）
+	// Code 購入コード（利用者へ注文番号として見せる一意の識別子）
 	Code string `json:"code"`
 
 	// Details 購入明細の配列
 	Details []PurchaseDetailResponse `json:"details"`
-
-	// Id 購入ID
-	Id openapi_types.UUID `json:"id"`
 
 	// OrderedAt 注文日時
 	OrderedAt time.Time `json:"orderedAt"`
@@ -200,8 +197,12 @@ type PurchaseResponse struct {
 	UserId openapi_types.UUID `json:"userId"`
 }
 
-// PurchaseStatusRef 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// PurchaseStatusRef 購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+// 表示には name を、分岐にはドメインの業務キーである code を用います。
 type PurchaseStatusRef struct {
+	// Code 購入ステータスの業務キー。値は到達順序を意味しません（完了より支払い済みのほうが大きい）。
+	Code int64 `json:"code"`
+
 	// Id 購入ステータスID
 	Id openapi_types.UUID `json:"id"`
 
@@ -210,15 +211,23 @@ type PurchaseStatusRef struct {
 }
 
 // PurchaseSummaryResponse 購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
-// （明細は購入詳細 API で取得します）。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+// （明細は購入詳細 API で取得します）。status は ID・業務キー・名称を事前解決済みで、別途の名称解決は不要です。
+// 行を見分けるための要約として、先頭商品名（firstItemName）と明細の点数（itemCount）を含みます。
 type PurchaseSummaryResponse struct {
-	// Code 購入コード（UUIDv7 文字列・一意）
+	// Code 購入コード（利用者へ注文番号として見せる一意の識別子）
 	Code string `json:"code"`
+
+	// FirstItemName 明細の先頭 1 件の商品名。先頭の選び方に業務的な意味はありません（明細の並びの先頭です）。
+	FirstItemName string `json:"firstItemName"`
+
+	// ItemCount 明細の点数（行数。先頭商品を含みます）。数量の合計ではありません。
+	ItemCount int64 `json:"itemCount"`
 
 	// OrderedAt 注文日時
 	OrderedAt time.Time `json:"orderedAt"`
 
-	// Status 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// Status 購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+	// 表示には name を、分岐にはドメインの業務キーである code を用います。
 	Status PurchaseStatusRef `json:"status"`
 
 	// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。

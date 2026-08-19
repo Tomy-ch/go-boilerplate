@@ -8,7 +8,7 @@ import (
 
 // Detail は、購入 1 件の詳細読み取りモデルです。ステータス名は購入ステータスマスタで
 // 解決済みで、書き込み集約 Purchase とは別型です（read 側・CQRS）。明細は購入明細（PurchaseDetail）の
-// スライスで、小計・税額・送料・合計は USD セント単位の整数、CanceledAt は未キャンセルなら nil です。
+// スライスです。
 type Detail struct {
 	// ID は、購入 ID です。
 	ID uuid.UUID
@@ -18,6 +18,8 @@ type Detail struct {
 	UserID uuid.UUID
 	// StatusID は、購入ステータス ID（購入ステータスマスタで解決済み）です。
 	StatusID uuid.UUID
+	// StatusCode は、購入ステータスの業務キー（Status.Code）です。
+	StatusCode int
 	// StatusName は、購入ステータスの名称（購入ステータスマスタで解決済み）です。
 	StatusName string
 	// SubtotalAmount は、小計（USD セント）です。

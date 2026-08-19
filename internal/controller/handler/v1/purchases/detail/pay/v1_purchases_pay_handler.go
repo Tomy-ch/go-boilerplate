@@ -1,14 +1,13 @@
 //go:generate oapi-codegen --include-tags=v1/purchases/detail/pay --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
 //go:generate oapi-codegen --include-tags=v1/purchases/detail/pay --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-// Package pay は、PATCH /v1/purchases/{purchaseId}/pay エンドポイントに関連するハンドラを提供します。
+// Package pay は、PATCH /v1/purchases/{purchaseCode}/pay エンドポイントに関連するハンドラを提供します。
 package pay
 
 import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen"
 	"go-boilerplate/internal/observability"
@@ -33,8 +32,8 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 	}, nil))
 }
 
-// PatchPurchasesPay は、本人の購入を支払い済みへ遷移させます。認証必須で、他人の購入・不存在は 404 で
-// 存在を秘匿し、二重支払い・不正遷移（キャンセル済み・完了・発送済み・配達済み）は 409 を返します。
+// PatchPurchasesPay は、本人の購入を支払い済みへ遷移させます。認証必須。404: 不存在 / 他人の購入。409: 不正遷移
+// （詳細は docs/spec/purchase/usecase.md § PATCH 支払い を参照）。
 func (s *server) PatchPurchasesPay(
 	ctx context.Context,
 	request gen.PatchPurchasesPayRequestObject,
@@ -48,8 +47,8 @@ func (s *server) PatchPurchasesPay(
 	}
 
 	view, err := s.uc.PayPurchase(ctx, purchaseuc.PayPurchaseParams{
-		PurchaseID: conv.UUID(request.PurchaseId),
-		UserID:     userID,
+		PurchaseCode: request.PurchaseCode,
+		UserID:       userID,
 	})
 	if err != nil {
 		return nil, err
@@ -79,11 +78,11 @@ func toPayResponse(v purchaseuc.PayPurchaseView) (gen.PurchasePayResponse, error
 	}
 
 	return gen.PurchasePayResponse{
-		Id:     v.ID.ToPrimitive(),
 		Code:   v.Code,
 		UserId: v.UserID.ToPrimitive(),
 		Status: gen.PurchaseStatusRef{
 			Id:   v.StatusID.ToPrimitive(),
+			Code: int64(v.StatusCode),
 			Name: v.StatusName,
 		},
 		SubtotalAmount: int64(v.SubtotalAmount),

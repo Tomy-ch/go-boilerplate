@@ -1,15 +1,16 @@
 -- name: SummarizePurchasesByUserID :many
 -- 指定ユーザーの購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
 -- 所有権は user_id の等値条件で閉じるため、他ユーザーの購入は集計に混入しません。
--- 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) の先頭 2 列で絞り込みます。
+-- 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) を使う。filter_by_period=false
+-- のときは先頭列（user_id）のみが絞り込みに効きます。
 -- キャンセル済み（canceled_at 設定済み）の購入は除外します。
 -- 「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
 -- 述語が見るのは canceled_at ですが、両者は再構築時の不変条件で等価に縛られています。
 -- filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを集計します。
 -- 総件数・合計金額はこの結果行を畳み込んで算出します（単一スナップショットで整合させるため）。
--- ステータス名は購入ステータスマスタとの結合で解決します。
 SELECT
     ps.id AS status_id,
+    ps.code AS status_code,
     ps.name AS status_name,
     COUNT(p.id)::BIGINT AS purchase_count,
     COALESCE(SUM(p.total_amount), 0)::BIGINT AS total_amount
@@ -24,7 +25,7 @@ WHERE p.user_id = sqlc.arg('user_id')
             AND p.ordered_at < sqlc.narg('ordered_before')
         )
     )
-GROUP BY ps.id, ps.name, ps.sort_key
+GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC;
 
 -- name: SumPurchaseItemsByUserID :one

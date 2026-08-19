@@ -271,7 +271,7 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				created := newPurchase(t, userID, pid, 2, locked)
 				require.NoError(t, svc.CreatePurchase(ctx, created))
 
-				actual, err := svc.LockPurchase(ctx, created.ID())
+				actual, err := svc.LockPurchase(ctx, created.Code())
 				require.NoError(t, err)
 				assert.Equal(t, created.ID(), actual.ID())
 				assert.Equal(t, userID, actual.UserID())
@@ -287,12 +287,11 @@ func Test_commandService_LockPurchase(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("存在しない購入IDの場合はErrNotFoundを返す", func(t *testing.T) {
+		t.Run("存在しない購入コードの場合はErrNotFoundを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				missing := mustParse(t, "d1000000-0000-4000-8000-0000000000ff")
-				_, err := svc.LockPurchase(ctx, missing)
+				_, err := svc.LockPurchase(ctx, "lock-missing-code")
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
 		})
@@ -320,7 +319,7 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				)
 				require.NoError(t, err)
 
-				_, err = svc.LockPurchase(ctx, purchaseID)
+				_, err = svc.LockPurchase(ctx, "lock-neg-code")
 				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
@@ -355,7 +354,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid).Scan(&afterCreate))
 				require.Equal(t, 18, afterCreate)
 
-				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
+				lockedPurchase, err := svc.LockPurchase(ctx, created.Code())
 				require.NoError(t, err)
 				_, err = lockedPurchase.Cancel(now)
 				require.NoError(t, err)
@@ -407,7 +406,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				require.NoError(t, err)
 				require.NoError(t, svc.CreatePurchase(ctx, created)) // 20→17, 10→6
 
-				lockedPurchase, err := svc.LockPurchase(ctx, created.ID())
+				lockedPurchase, err := svc.LockPurchase(ctx, created.Code())
 				require.NoError(t, err)
 				_, err = lockedPurchase.Cancel(now)
 				require.NoError(t, err)

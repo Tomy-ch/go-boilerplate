@@ -3,7 +3,6 @@ package purchase
 
 import (
 	"context"
-	"time"
 
 	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/domain/purchase"
@@ -33,7 +32,7 @@ func New(
 }
 
 // FindByID は、購入本体と明細の 2 クエリでロックを取らずに読み出し、集約として再構築します
-// （ロックを取る LockByID との対）。存在しない場合は NotFound を返します。
+// （ロックを取る LockByCode との対）。存在しない場合は NotFound を返します。
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -78,20 +77,21 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 	return entity, nil
 }
 
-// LockByID は、購入行のみ悲観ロック（FOR UPDATE OF p）して明細込みで再構築し返します。
-// 支払いの状態遷移の競合（同一購入への並行支払い）を購入行ロックで直列化します。存在しない場合は NotFound を返します。
-func (r *repository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+// LockByCode は、購入コードで引いた購入行のみ悲観ロック（FOR UPDATE OF p）して明細込みで再構築し返します。
+// 存在しない場合は NotFound を返します。ロックが守る状態遷移の意味は
+// internal/domain/purchase.Repository の LockByCode を参照。
+func (r *repository) LockByCode(ctx context.Context, code string) (*purchase.Purchase, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, r.db))
 
-	row, err := db.LockPurchaseByID(ctx, id)
+	row, err := db.LockPurchaseByCode(ctx, code)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, id)
+	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, row.Purchases.ID)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
@@ -146,8 +146,9 @@ func (r *repository) UpdatePaid(ctx context.Context, p *purchase.Purchase) error
 }
 
 // UpdateShipped は、購入の状態更新（status_id / shipped_at）を渡された tx 内で実行します。
-// status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します。遷移可否のガードは持たず、
-// 対象行が呼び出し側で FOR UPDATE 取得・検証済みであること（ドメインが遷移の source of truth）に依存します。
+// status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します（FindShippable の絞り込みも同じ方針）。
+// 遷移可否のガードは持たず、対象行が呼び出し側で FOR UPDATE 取得・検証済みであること
+// （ドメインが遷移の source of truth）に依存します（UpdateDelivered も同じ）。
 func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -169,8 +170,7 @@ func (r *repository) UpdateShipped(ctx context.Context, p *purchase.Purchase) er
 }
 
 // UpdateDelivered は、購入の状態更新（status_id / delivered_at）を渡された tx 内で実行します。
-// status_id は seed の UUID を焼き込まず purchase_statuses.code から解決します。遷移可否のガードは持たず、
-// 対象行が呼び出し側で FOR UPDATE 取得・検証済みであること（ドメインが遷移の source of truth）に依存します。
+// status_id の解決方針・遷移ガードの扱いは UpdateShipped を参照。
 func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -194,7 +194,7 @@ func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) 
 // FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で最大 limit 件、
 // 明細込みで再構築して返します。
 //
-// status_id は seed の UUID を焼き込まず purchase_statuses.code で絞り込みます。
+// status_id の絞り込み方針は UpdateShipped を参照。
 func (r *repository) FindShippable(ctx context.Context, limit int32) (purchase.Purchases, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -304,6 +304,7 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 		Code:           row.Code,
 		UserID:         row.UserID,
 		StatusID:       row.StatusID,
+		StatusCode:     int(row.StatusCode),
 		StatusName:     row.StatusName,
 		SubtotalAmount: int(row.SubtotalAmount),
 		TaxAmount:      int(row.TaxAmount),
@@ -344,54 +345,6 @@ func toPurchaseDetails(detailRows []*gen.ListPurchaseDetailsByPurchaseIDRow) ([]
 	return details, nil
 }
 
-// FindFeedByUserID は、指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で
-// keyset ページネーション取得します。ステータス名は購入ステータスマスタとの結合で解決します。
-// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを、それ以外は境界より過去の行を返します。
-// params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返します。
-func (r *repository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params purchase.ListFeedParams) ([]purchase.FeedItem, error) {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	db := gen.New(driver.New(ctx, r.db))
-	filterByPeriod := params.OrderedAfter != nil && params.OrderedBefore != nil
-
-	if params.AfterOrderedAt == nil || params.AfterID == nil {
-		rows, err := db.ListPurchasesFeedFirst(ctx, &gen.ListPurchasesFeedFirstParams{
-			UserID:         userID,
-			FilterByPeriod: filterByPeriod,
-			OrderedAfter:   params.OrderedAfter,
-			OrderedBefore:  params.OrderedBefore,
-			LimitParam:     params.Limit,
-		})
-		if err != nil {
-			return nil, pgerror.NormalizeError(err)
-		}
-		items := make([]purchase.FeedItem, len(rows))
-		for i, row := range rows {
-			items[i] = toFeedItem(row.ID, row.Code, row.TotalAmount, row.OrderedAt, row.StatusID, row.StatusName)
-		}
-		return items, nil
-	}
-
-	rows, err := db.ListPurchasesFeedAfter(ctx, &gen.ListPurchasesFeedAfterParams{
-		UserID:         userID,
-		AfterOrderedAt: *params.AfterOrderedAt,
-		AfterID:        *params.AfterID,
-		FilterByPeriod: filterByPeriod,
-		OrderedAfter:   params.OrderedAfter,
-		OrderedBefore:  params.OrderedBefore,
-		LimitParam:     params.Limit,
-	})
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-	items := make([]purchase.FeedItem, len(rows))
-	for i, row := range rows {
-		items[i] = toFeedItem(row.ID, row.Code, row.TotalAmount, row.OrderedAt, row.StatusID, row.StatusName)
-	}
-	return items, nil
-}
-
 // FindStatusesByUserID は、指定ユーザーの購入が取っているステータスを重複なく取得します。
 // 進行中かどうかでは絞り込まず、code は purchase_statuses との結合で解決してドメインの値へ復元します。
 func (r *repository) FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]purchase.Status, error) {
@@ -427,17 +380,4 @@ func (r *repository) FindUserIDsWithPurchases(ctx context.Context, userIDs []uui
 		return nil, pgerror.NormalizeError(err)
 	}
 	return ids, nil
-}
-
-// toFeedItem は、購入履歴フィードの行（First / After で別型・同一フィールド）を読み取りモデルへ変換します。
-// 合計金額は決済スケール（BIGINT セント）を int へ、ステータス ID / 名称は購入ステータスマスタ由来です。
-func toFeedItem(id uuid.UUID, code string, totalAmount int64, orderedAt time.Time, statusID uuid.UUID, statusName string) purchase.FeedItem {
-	return purchase.FeedItem{
-		Code:        code,
-		TotalAmount: int(totalAmount),
-		StatusID:    statusID,
-		StatusName:  statusName,
-		OrderedAt:   orderedAt,
-		ID:          id,
-	}
 }

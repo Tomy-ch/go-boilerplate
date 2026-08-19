@@ -15,6 +15,7 @@ import (
 const countDashboardPurchasesByStatus = `-- name: CountDashboardPurchasesByStatus :many
 SELECT
     ps.id AS status_id,
+    ps.code AS status_code,
     ps.name AS status_name,
     COUNT(p.id)::BIGINT AS purchase_count
 FROM purchases AS p
@@ -22,7 +23,7 @@ INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE
     p.ordered_at >= $1
     AND p.ordered_at < $2
-GROUP BY ps.id, ps.name, ps.sort_key
+GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC
 `
 
@@ -33,6 +34,7 @@ type CountDashboardPurchasesByStatusParams struct {
 
 type CountDashboardPurchasesByStatusRow struct {
 	StatusID      uuid.UUID
+	StatusCode    int16
 	StatusName    string
 	PurchaseCount int64
 }
@@ -41,10 +43,10 @@ type CountDashboardPurchasesByStatusRow struct {
 // 指定期間に注文された購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
 // 期間は [ordered_after, ordered_before) の半開区間です。
 // 売上集計と異なりキャンセル済みの購入も 1 ステータスとして含めます。
-// ステータス名は購入ステータスマスタとの結合で解決します。
 //
 //	SELECT
 //	    ps.id AS status_id,
+//	    ps.code AS status_code,
 //	    ps.name AS status_name,
 //	    COUNT(p.id)::BIGINT AS purchase_count
 //	FROM purchases AS p
@@ -52,7 +54,7 @@ type CountDashboardPurchasesByStatusRow struct {
 //	WHERE
 //	    p.ordered_at >= $1
 //	    AND p.ordered_at < $2
-//	GROUP BY ps.id, ps.name, ps.sort_key
+//	GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 //	ORDER BY ps.sort_key ASC
 func (q *Queries) CountDashboardPurchasesByStatus(ctx context.Context, arg *CountDashboardPurchasesByStatusParams) ([]*CountDashboardPurchasesByStatusRow, error) {
 	rows, err := q.db.Query(ctx, countDashboardPurchasesByStatus, arg.OrderedAfter, arg.OrderedBefore)
@@ -63,7 +65,12 @@ func (q *Queries) CountDashboardPurchasesByStatus(ctx context.Context, arg *Coun
 	var items []*CountDashboardPurchasesByStatusRow
 	for rows.Next() {
 		var i CountDashboardPurchasesByStatusRow
-		if err := rows.Scan(&i.StatusID, &i.StatusName, &i.PurchaseCount); err != nil {
+		if err := rows.Scan(
+			&i.StatusID,
+			&i.StatusCode,
+			&i.StatusName,
+			&i.PurchaseCount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)

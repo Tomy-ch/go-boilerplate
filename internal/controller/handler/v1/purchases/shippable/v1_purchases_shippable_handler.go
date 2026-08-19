@@ -68,7 +68,6 @@ func toDispatchGroupResponse(dto purchaseuc.DispatchGroupView) gen.PurchaseDispa
 	purchases := make([]gen.PurchaseShippableItemResponse, len(dto.Purchases))
 	for i, p := range dto.Purchases {
 		purchases[i] = gen.PurchaseShippableItemResponse{
-			Id:          p.ID.ToPrimitive(),
 			Code:        p.Code,
 			TotalAmount: int64(p.TotalAmount),
 			OrderedAt:   p.OrderedAt,

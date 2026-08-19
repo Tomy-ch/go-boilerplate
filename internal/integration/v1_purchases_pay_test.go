@@ -27,13 +27,12 @@ import (
 func TestV1PurchasesPay_Integration(t *testing.T) {
 	t.Parallel()
 
-	const purchasePath = "/v1/purchases/0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60/pay"
+	const purchasePath = "/v1/purchases/PC-2026-0042/pay"
 
 	payViewFixture := func(t *testing.T) purchaseuc.PayPurchaseView {
 		t.Helper()
 		paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 		return purchaseuc.PayPurchaseView{
-			ID:             uuidtestkit.NewTestFromSalt(t, "pay_int_id"),
 			Code:           "pay-int-code",
 			UserID:         uuidtestkit.NewTestFromSalt(t, "pay_int_user"),
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "pay_int_status"),
@@ -95,7 +94,7 @@ func TestV1PurchasesPay_Integration(t *testing.T) {
 			expectedUserID, err := uuid.Parse("b7f64798-7321-242b-e4ff-115f6a0b7810")
 			require.NoError(t, err)
 			assert.Equal(t, expectedUserID, captured.UserID)
-			assert.Equal(t, "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60", captured.PurchaseID.String())
+			assert.Equal(t, "PC-2026-0042", captured.PurchaseCode)
 		})
 	})
 

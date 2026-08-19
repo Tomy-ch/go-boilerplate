@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -134,11 +135,13 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 
 				assert.Equal(t, mustParse(t, seedUnprocessedSID), got[0].StatusID)
 				assert.Equal(t, "未処理", got[0].StatusName)
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[0].StatusCode)
 				assert.Equal(t, int64(2), got[0].Count)
 				assert.Equal(t, int64(400), got[0].TotalAmount)
 
 				assert.Equal(t, mustParse(t, seedPaidSID), got[1].StatusID)
 				assert.Equal(t, "支払い済み", got[1].StatusName)
+				assert.Equal(t, domainpurchase.StatusPaid.Code(), got[1].StatusCode)
 				assert.Equal(t, int64(1), got[1].Count)
 				assert.Equal(t, int64(300), got[1].TotalAmount)
 			})
@@ -180,6 +183,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 				// キャンセルは 1 要素としても現れないため、内訳の総和は総件数と常に一致する。
 				require.Len(t, got, 1)
 				assert.Equal(t, "未処理", got[0].StatusName)
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[0].StatusCode)
 				assert.Equal(t, int64(1), got[0].Count)
 				assert.Equal(t, int64(100), got[0].TotalAmount)
 			})

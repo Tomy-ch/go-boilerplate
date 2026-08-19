@@ -72,21 +72,6 @@ func (mr *MockRepositoryMockRecorder) FindDetailByID(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDetailByID", reflect.TypeOf((*MockRepository)(nil).FindDetailByID), ctx, id)
 }
 
-// FindFeedByUserID mocks base method.
-func (m *MockRepository) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params purchase.ListFeedParams) ([]purchase.FeedItem, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindFeedByUserID", ctx, userID, params)
-	ret0, _ := ret[0].([]purchase.FeedItem)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindFeedByUserID indicates an expected call of FindFeedByUserID.
-func (mr *MockRepositoryMockRecorder) FindFeedByUserID(ctx, userID, params any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeedByUserID", reflect.TypeOf((*MockRepository)(nil).FindFeedByUserID), ctx, userID, params)
-}
-
 // FindShippable mocks base method.
 func (m *MockRepository) FindShippable(ctx context.Context, limit int32) (purchase.Purchases, error) {
 	m.ctrl.T.Helper()
@@ -132,19 +117,19 @@ func (mr *MockRepositoryMockRecorder) FindUserIDsWithPurchases(ctx, userIDs any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserIDsWithPurchases", reflect.TypeOf((*MockRepository)(nil).FindUserIDsWithPurchases), ctx, userIDs)
 }
 
-// LockByID mocks base method.
-func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+// LockByCode mocks base method.
+func (m *MockRepository) LockByCode(ctx context.Context, code string) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LockByID", ctx, id)
+	ret := m.ctrl.Call(m, "LockByCode", ctx, code)
 	ret0, _ := ret[0].(*purchase.Purchase)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// LockByID indicates an expected call of LockByID.
-func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call {
+// LockByCode indicates an expected call of LockByCode.
+func (mr *MockRepositoryMockRecorder) LockByCode(ctx, code any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByID", reflect.TypeOf((*MockRepository)(nil).LockByID), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByCode", reflect.TypeOf((*MockRepository)(nil).LockByCode), ctx, code)
 }
 
 // UpdateDelivered mocks base method.
