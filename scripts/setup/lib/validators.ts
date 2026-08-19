@@ -21,7 +21,7 @@ export function ensureFourDigitYear(value: string): void {
 }
 
 const CODE_OWNER_HANDLE = /^@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\/[A-Za-z0-9._-]+)?$/;
-const CODE_OWNER_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const CODE_OWNER_EMAIL = /^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$/;
 
 /**
  * CODEOWNERS の所有者表記を検証する。

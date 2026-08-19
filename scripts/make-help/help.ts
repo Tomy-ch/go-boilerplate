@@ -13,8 +13,13 @@ export type HelpOutput = {
 
 /** カテゴリ見出し（`## ...`）。 */
 const CATEGORY = /^## (.*)/;
-/** 説明コメント付きの `.PHONY` 行。1 行に複数ターゲットを書いた場合は全件を一覧に出す。 */
-const DOCUMENTED_PHONY = /^\.PHONY:\s+([^#]+?)\s*##\s*(.*)$/;
+/**
+ * 説明コメント付きの `.PHONY` 行。1 行に複数ターゲットを書いた場合は全件を一覧に出す。
+ *
+ * ターゲット側を `[^#]*` で一息に取って端の空白を呼び出し元で落とすのは、`[^#]` が空白も
+ * 含むためで、区切りの空白を別に書くと同じ位置を両方が取り合って後戻りが起きる。
+ */
+const DOCUMENTED_PHONY = /^\.PHONY:([^#]*)##(.*)$/;
 /** 説明コメントを持たない `.PHONY` 行。 */
 const UNDOCUMENTED_PHONY = /^\.PHONY:(?!.*##)/;
 
@@ -40,9 +45,10 @@ export function renderHelp(sources: readonly MakefileSource[]): HelpOutput {
       }
 
       const documented = DOCUMENTED_PHONY.exec(line);
-      if (documented) {
-        for (const target of documented[1].split(/\s+/)) {
-          lines.push(`🛠  ${target.padEnd(TARGET_COLUMN_WIDTH)} ${documented[2]}`);
+      const targets = documented?.[1].trim();
+      if (documented && targets) {
+        for (const target of targets.split(/[ \t]+/)) {
+          lines.push(`🛠  ${target.padEnd(TARGET_COLUMN_WIDTH)} ${documented[2].trimStart()}`);
         }
         continue;
       }

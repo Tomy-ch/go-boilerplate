@@ -9,7 +9,30 @@ export const ALLOWED_SECRET = "GITHUB_TOKEN";
 
 const COMMENT_ACTION_USE = usesActionPattern(COMMENT_ACTION, false);
 const EXPRESSION = /\$\{\{([\s\S]*?)\}\}/g;
-const SECRET_REFERENCE = /\bsecrets\b\s*(?:\.\s*([A-Za-z0-9_-]+)|\[\s*["']([A-Za-z0-9_-]+)["']\s*\])?/g;
+/** `secrets` コンテキストへの参照。名前の有無はこの後ろを見て決める。 */
+const SECRET_CONTEXT = /\bsecrets\b/g;
+
+/**
+ * `secrets` の直後に続く、参照する名前の書き方。GitHub は属性形と添字形の 2 通りを受け付ける。
+ *
+ * 名前を後ろから別に読むのは、1 本の正規表現へ詰めるとどの枝が当たったかを捕獲組の番号で
+ * 見分けることになり、書き方が増えるたびに条件が枝分かれするためである。どちらにも当たらない
+ * 参照はコンテキスト全体の参照で、名前を持たない。
+ */
+const SECRET_NAME_FORMS = [
+  /^\s*\.\s*([A-Za-z0-9_-]+)/,
+  /^\s*\[\s*["']([A-Za-z0-9_-]+)["']\s*\]/,
+] as const;
+
+/** `secrets` の直後の文字列から、参照している secret の名前を読む。 */
+function secretName(rest: string): string | undefined {
+  for (const form of SECRET_NAME_FORMS) {
+    const matched = form.exec(rest);
+    if (matched) return matched[1];
+  }
+
+  return undefined;
+}
 
 /** 検出した secret 参照。`name` が `undefined` なら `secrets` コンテキスト全体の参照。 */
 export type SecretReference = {
@@ -33,8 +56,8 @@ export function secretReferences({ number, text }: WorkflowLine): SecretReferenc
   const referenced: SecretReference[] = [];
 
   for (const expression of text.matchAll(EXPRESSION)) {
-    for (const reference of expression[1].matchAll(SECRET_REFERENCE)) {
-      const name = reference[1] ?? reference[2];
+    for (const reference of expression[1].matchAll(SECRET_CONTEXT)) {
+      const name = secretName(expression[1].slice(reference.index + reference[0].length));
       if (name === ALLOWED_SECRET) continue;
       referenced.push({ number, name });
     }

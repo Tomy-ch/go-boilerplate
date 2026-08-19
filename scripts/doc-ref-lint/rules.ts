@@ -74,8 +74,10 @@ export function checkStructuredReferences(file: string, source: string, adrs: AD
   const numbers = new Map([...adrs].map(([number, slug]) => [slug, number] as const));
   const lines = source.split("\n");
   return lines.flatMap((line, index) => {
-    if (!/^\s*(-\s+)?kind:\s*["']?adr["']?\s*$/.test(line)) return [];
-    const indent = line.replace(/^(\s*)(-\s+)?.*$/, "$1$2").length;
+    if (!/^[ \t]*(?:-[ \t]+)?kind:[ \t]*["']?adr["']?[ \t]*$/.test(line)) return [];
+    // 行頭から取れるだけ取った長さがそのままインデント。行全体に当てる形（`.*$`）で書くと、
+    // `.` が空白も含むため先頭の空白と同じ位置を取り合って後戻りする。
+    const indent = (/^[ \t]*(?:-[ \t]+)?/.exec(line)?.[0] ?? "").length;
     const window = lines.slice(index + 1, index + 1 + ENTRY_SPAN);
     // 次の要素（`- ` 始まり）か、この要素より浅い行に当たったらそこで打ち切る。
     const stop = window.findIndex((next) => /^\s*-\s/.test(next) || next.search(/\S/) < indent);

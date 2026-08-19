@@ -22,7 +22,11 @@ const SUBSTITUTE = 2;
 // `<!-- = ... -->` 形式を別の枝に分けているのは、閉じ記号を剥がす処理が行末に触れるため。
 // `//`/`#` 側の行末はそのまま返す必要がある（Markdown の行末 2 スペースは hard line break で、
 // 落とすと意味が変わる）。HTML コメント側は閉じ記号を必須にして、閉じ忘れを通さない。
-const REPLACE_CONTENT = /^(\s*)(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
+//
+// HTML コメント側の本文を貪欲に取り、行末の空白は呼び出し元で落とす。`.` は空白も含むため、
+// 閉じ記号の手前を `\s*` で別に書くと同じ位置を両方が取り合って後戻りする。末尾の `$` が
+// あるので、貪欲・非貪欲のどちらでも当たるのは最後の `-->` である。
+const REPLACE_CONTENT = /^([ \t]*)(?:(?:\/\/|#)[ \t]*=[ \t]?(.*)|<!--[ \t]*=[ \t]?(.*)-->)$/;
 
 /** 引用行。継ぎ目の両側が引用なら、空行では分断されてしまう。 */
 const QUOTE_LINE = /^\s*>/;
@@ -137,7 +141,7 @@ export function stripMarkers(content: string, marker: string): StripResult {
           `${marker}:replace-with 〜 replace-end の行は // = / # = / <!-- = --> のいずれかで書いてください: ${line}`,
         );
       }
-      keep(matched[1] + (matched[2] ?? matched[3]));
+      keep(matched[1] + (matched[2] ?? matched[3].trimEnd()));
       continue;
     }
 

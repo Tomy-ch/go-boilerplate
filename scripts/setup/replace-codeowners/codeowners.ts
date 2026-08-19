@@ -13,8 +13,17 @@ const RULE_LINE = new RegExp(
 // ヘッダーが記載例として挙げている所有者を保つため、コメント行は対象外とする。
 const COMMENT_LINE = /^[ \t]*#/;
 
-// 所有者を持たないパターン行は継承の打ち消しであり、書き換え対象ではない。
-const OWNERLESS_LINE = /^[ \t]*\S*[ \t]*$/;
+/**
+ * 所有者を持たない行か。パターンだけの行は継承の打ち消しであり、書き換え対象ではない。
+ *
+ * 空行もここに含める。判定を正規表現 1 本ではなく trim と分割で書くのは、前後の空白と語が
+ * 同じ位置を取り合って後戻りするためで、`[ \t]*\S*[ \t]*` の形はそれを避けられない。
+ */
+function isOwnerless(line: string): boolean {
+  const trimmed = line.trim();
+
+  return trimmed === "" || !/[ \t]/.test(trimmed);
+}
 
 export type CodeownersUpdate = {
   content: string;
@@ -52,7 +61,7 @@ export function replaceCodeowners(content: string, owners: string): CodeownersUp
       const eol = rawLine.endsWith("\r") ? "\r" : "";
       const line = eol === "" ? rawLine : rawLine.slice(0, -1);
 
-      if (COMMENT_LINE.test(line) || OWNERLESS_LINE.test(line)) {
+      if (COMMENT_LINE.test(line) || isOwnerless(line)) {
         return rawLine;
       }
 

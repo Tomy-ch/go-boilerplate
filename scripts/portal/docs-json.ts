@@ -98,7 +98,9 @@ export function slugify(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    // 上の置換で `-` は 1 個へ潰れているため、端に落とすのも 1 個で足りる。`-+` と書くと
+    // 端に無い連なりを走査するたびに後戻りが起きる。
+    .replace(/^-|-$/g, "");
 }
 
 /** 経路の末尾要素。`split().pop()` と違い、常に文字列になる。 */

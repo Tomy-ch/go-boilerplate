@@ -5,7 +5,7 @@ export const COMMENT_ACTION = "./.github/actions/upsert-pr-comment";
 const FIXED_FENCE = /(?:^|[\s'"])(`{3,})(?:[A-Za-z0-9_-]*)['"]?\s*$/;
 const FENCE_FOR_BLOCK = /^\s*fence_for\(\)\s*\{$/;
 const COMMENT_ACTION_USE = usesActionPattern(COMMENT_ACTION, false);
-const DETAILS_SUMMARY = /^\s*details-summary:\s*(.*)$/;
+const DETAILS_SUMMARY = /^[ \t]*details-summary:[ \t]*(.*)$/;
 const STEP_BULLET = /^\s*-\s/;
 // バッククォート 1 個で開いて 1 個で閉じる span の中に、シェル変数展開か printf の変換指定がある形。
 const INTERPOLATED_SPAN = /`[^`\n]*(?:\$\{|\$[A-Za-z_]|%[-0-9.*]*[sb])[^`\n]*`/;

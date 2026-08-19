@@ -69,8 +69,14 @@ const REPLACE_BEGIN = marker("replace-begin");
 const REPLACE_WITH = marker("replace-with");
 const REPLACE_END = marker("replace-end");
 
-/** 退避コメント。`//` / `#` / `<!-- -->` のいずれかで `=` に続けて書かれる。 */
-const ESCROW = /^\s*(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
+/**
+ * 退避コメント。`//` / `#` / `<!-- -->` のいずれかで `=` に続けて書かれる。
+ *
+ * HTML コメント側の本文は貪欲に取り、行末の空白は呼び出し元で落とします。`.` は空白も含むため、
+ * 閉じ記号の手前を `\s*` で別に書くと同じ位置を両方が取り合って後戻りします。末尾の `$` が
+ * あるので、貪欲・非貪欲のどちらでも当たるのは最後の `-->` です。
+ */
+const ESCROW = /^[ \t]*(?:(?:\/\/|#)[ \t]*=[ \t]?(.*)|<!--[ \t]*=[ \t]?(.*)-->)$/;
 
 /**
  * テンプレート作成後に残る本文。マーカーで囲まれた記述を落とす。
@@ -116,7 +122,7 @@ export function survivingText(content: string): string {
 
       // 退避コメントの形をしていない行は、アンコメントの規則が読めない。落とすと 作成先の
       // 本文を検査から消すことになるので、そのまま検査へ通す。
-      out.push(matched === null ? line : (matched[1] ?? matched[2]));
+      out.push(matched === null ? line : (matched[1] ?? matched[2].trimEnd()));
       continue;
     }
 

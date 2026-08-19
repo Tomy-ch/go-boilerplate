@@ -14,17 +14,22 @@ name: ESLint Scan
 #
 # **Report-only, and every rule in the preset is a warning.** The baseline was left
 # untriaged at adoption so that suppressing a rule would be a decision taken against
-# measured numbers rather than a guess. It has since been measured: of the 140 findings
-# scripts carried, 123 were detect-non-literal-fs-filename and detect-object-injection,
-# both of which key on whether an argument is a literal rather than on where the value
-# came from. Those two are off in scripts/eslint.config.js, where the reasoning sits;
-# the rest of the preset, including the two regex rules that did find something, still
-# runs everywhere.
+# measured numbers rather than a guess. It has since been measured, and all 140 findings
+# scripts carried came from four rules that key on the SHAPE of an argument rather than
+# on where its value came from: whether a path handed to `fs` is a literal, whether an
+# index is computed, whether a `RegExp` is built from a variable, and how deeply a
+# regex nests its quantifiers. scripts/ is repository tooling that reads the repository,
+# so it trips all four by construction. They are off in scripts/eslint.config.js, where
+# the reasoning and the counts sit; the rest of the preset still runs, and docs-viewer
+# runs the preset whole because none of the four fires there.
 #
-# Still report-only after that. What remains is a real finding count rather than a floor
-# nobody reads, but gating a pull request on a scanner whose preset can grow overnight
-# would fail changes that touched none of it — the weekly run below exists for exactly
-# that growth.
+# The one question of the four that has a real answer here — does a regex actually
+# backtrack — is Sonar's S8786, which analyzes the pattern instead of counting its
+# nesting. The ten it found are fixed rather than suppressed.
+#
+# Still report-only after that. Gating a pull request on a scanner whose preset can grow
+# overnight would fail changes that touched none of it — the weekly run below exists for
+# exactly that growth.
 #
 # There is no pull-request comment. The findings go to code scanning, where an alert
 # introduced by the change under review surfaces on the diff — the same arrangement

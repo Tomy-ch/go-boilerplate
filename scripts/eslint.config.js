@@ -20,13 +20,20 @@ export default [
     // るため、書き方を変えない限り必ず当たり、当たった 1 件ずつに取れる行動が無い。信用境界の外
     // から来る入力はここには無く、あるのはコミットされたファイルとその内容だけである。
     //
-    // 落とすのはこの 2 つだけで、正規表現側の 2 規則（detect-unsafe-regex /
-    // detect-non-literal-regexp）は残す。あちらは実引数の形ではなくパターンの危険性を見ており、
-    // 実際に後戻りの効く指摘を出している。docs-viewer では 2 規則とも当たらないため、あちらの
-    // 設定は触らない。
+    // 正規表現側の 2 規則も同じ理由で落とす。detect-unsafe-regex が使う safe-regex は、後戻り
+    // そのものではなく量指定子の入れ子の深さを数えるため、`(?:…+)?` の形をした任意の省略可能な
+    // 組に当たる。実際に後戻りする書き方は Sonar の S8786 が指しており、そちらが挙げた 10 件は
+    // 直した上で、残った 7 件はいずれも入れ子の深さだけを根拠にしている。detect-non-literal-regexp
+    // は `new RegExp(変数)` の形を見るもので、ここで渡るのはアクションのパス・マーカー名・スキル
+    // 名といったリポジトリが決めた文字列だけである（組み立て側はメタ文字を退避してもいる）。
+    //
+    // docs-viewer は 4 規則とも当たらないため、あちらの設定は触らない。プリセットの残りは
+    // ここでも動いたままで、外したのはこの 4 つだけである。
     rules: {
       "security/detect-non-literal-fs-filename": "off",
       "security/detect-object-injection": "off",
+      "security/detect-unsafe-regex": "off",
+      "security/detect-non-literal-regexp": "off",
     },
   },
   {

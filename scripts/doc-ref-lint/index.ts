@@ -16,10 +16,8 @@ const repositoryPath = (file: string): string => {
 };
 
 // repositoryPath がリポジトリ配下だと検証した絶対パスだけを取る。
-// eslint-disable-next-line security/detect-non-literal-fs-filename
 const readRepositoryFile = (file: string): string => fs.readFileSync(repositoryPath(file), "utf8");
 // `dir` は root と、walk 自身の readdirSync が返したディレクトリ名からのみ組み立てた値を取る。
-// eslint-disable-next-line security/detect-non-literal-fs-filename
 const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
   const absolute = path.join(dir, entry.name);
   const relative = path.relative(root, absolute);
@@ -33,7 +31,6 @@ for (const file of files.filter(isEligible).filter((file) => !file.startsWith("d
   const source = readRepositoryFile(file);
   const normalized = normalizeReferences(source, adr);
   // repositoryPath がリポジトリ配下だと検証した絶対パスだけを取る。
-  // eslint-disable-next-line security/detect-non-literal-fs-filename
   if (write && normalized !== source) fs.writeFileSync(repositoryPath(file), normalized);
   findings.push(
     ...checkReferences(file, normalized, adr).map((finding) => `${finding.file}: ${finding.message}`),
@@ -52,7 +49,6 @@ for (const file of files.filter((file) => ADR_FILE.test(file))) {
   if (!hasHeading) findings.push(`${file}: ADR filename and H1 disagree`);
 }
 // `file` は walk がこのリポジトリ内を辿って返した相対パスだけを取る。
-// eslint-disable-next-line security/detect-non-literal-fs-filename
 for (const file of files.filter((file) => /^(internal|pkg)\/.*\/README\.md$/.test(file))) if (!fs.existsSync(path.join(root, path.dirname(file), "README.ja.md"))) findings.push(`${file}: missing README.ja.md`);
 if (files.includes(DOC_ROUTES_FILE)) {
   findings.push(

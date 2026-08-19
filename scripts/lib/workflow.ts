@@ -28,10 +28,10 @@ export type SplitWorkflow = {
   preamble: WorkflowLine[];
 };
 
-const JOBS_KEY = /^jobs:\s*(#.*)?$/;
+const JOBS_KEY = /^jobs:[ \t]*(?:#.*)?$/;
 // 行末コメントや引用符といった書式差で検出が外れると、規約が破られた瞬間に検査が沈黙する。
-const JOB_HEADER = /^ {2}(?:"([A-Za-z0-9_-]+)"|'([A-Za-z0-9_-]+)'|([A-Za-z0-9_-]+)):\s*(#.*)?$/;
-const STEPS_KEY = /^ {4}steps:\s*(#.*)?$/;
+const JOB_HEADER = /^ {2}(?:"([A-Za-z0-9_-]+)"|'([A-Za-z0-9_-]+)'|([A-Za-z0-9_-]+)):[ \t]*(?:#.*)?$/;
+const STEPS_KEY = /^ {4}steps:[ \t]*(?:#.*)?$/;
 const STEP_ITEM = /^ {6}- /;
 
 /**
@@ -54,8 +54,8 @@ export function usesActionPattern(actionPath: string, anchored: boolean): RegExp
   const escaped = actionPath.replace(/[.*+?^${}()|[\]\\\/]/g, "\\$&");
 
   return anchored
-    ? new RegExp(`^(?: {6}- | {8})uses:\\s*["']?${escaped}["']?\\s*(#.*)?$`)
-    : new RegExp(`uses:\\s*["']?${escaped}["']?\\s*(#.*)?$`);
+    ? new RegExp(`^(?: {6}- | {8})uses:[ \\t]*["']?${escaped}["']?[ \\t]*(?:#.*)?$`)
+    : new RegExp(`uses:[ \\t]*["']?${escaped}["']?[ \\t]*(?:#.*)?$`);
 }
 
 /**
