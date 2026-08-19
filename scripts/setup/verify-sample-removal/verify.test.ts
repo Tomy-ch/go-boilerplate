@@ -21,7 +21,6 @@ import {
 const noneExist = (): boolean => false;
 const noComponents = {
   survivingComponents: [] as readonly string[],
-  reachableBefore: new Set<string>(),
   reachableAfter: new Set<string>(),
 };
 
@@ -309,20 +308,10 @@ describe("reachableFiles", () => {
 
 describe("findOrphanedComponents", () => {
   describe("正常系", () => {
-    it("撤去前から到達できないファイルは孤立として報告しない", () => {
-      expect(
-        findOrphanedComponents(
-          ["openapi/components/schemas/ErrorResponse.yaml"],
-          new Set<string>(),
-          new Set<string>(),
-        ),
-      ).toEqual([]);
-    });
-
     it("撤去後も到達できるファイルは孤立として報告しない", () => {
       const kept = "openapi/components/schemas/ErrorResponse.yaml";
 
-      expect(findOrphanedComponents([kept], new Set([kept]), new Set([kept]))).toEqual([]);
+      expect(findOrphanedComponents([kept], new Set([kept]))).toEqual([]);
     });
 
     // 宣言した汎用ブロックは、撤去で参照が切れても利用者が使うために残す在庫。
@@ -331,8 +320,9 @@ describe("findOrphanedComponents", () => {
       for (const kept of [
         "openapi/components/schemas/errors/BadRequest400.yaml",
         "openapi/components/schemas/PaginationMetadataResponse.yaml",
+        "openapi/components/schemas/CursorPaginationMetadataResponse.yaml",
       ]) {
-        expect(findOrphanedComponents([kept], new Set([kept]), new Set<string>()), kept).toEqual([]);
+        expect(findOrphanedComponents([kept], new Set<string>()), kept).toEqual([]);
       }
     });
   });
@@ -341,7 +331,7 @@ describe("findOrphanedComponents", () => {
     it("撤去前は到達できたのに撤去後は到達できず残っているファイルを報告する", () => {
       const moved = "openapi/components/schemas/ProductImageInput.yaml";
 
-      expect(findOrphanedComponents([moved], new Set([moved]), new Set<string>())).toEqual([
+      expect(findOrphanedComponents([moved], new Set<string>())).toEqual([
         `撤去後に孤立した定義: ${moved}（撤去対象への登録漏れ）`,
       ]);
     });
@@ -388,7 +378,6 @@ describe("collectFailures", () => {
         makeHelpOutput: "make setup-remove-sample-api\n",
         danglingHits: "internal/di/module/job.go:12: usercount\n",
         survivingComponents: [orphan],
-        reachableBefore: new Set([orphan]),
         reachableAfter: new Set<string>(),
       });
 

@@ -75,29 +75,13 @@ function listSurvivingComponents(): string[] {
     .map((entry) => path.posix.join(path.relative(ROOT_DIR, entry.parentPath), entry.name));
 }
 
-/** 作業ツリーの内容から $ref を読む。撤去後の状態。 */
+/** 作業ツリーの内容から $ref を読む。撤去後の状態にあたる。 */
 function refsFromWorktree(relativePath: string): string[] {
   const absolutePath = path.join(ROOT_DIR, relativePath);
 
   return fs.existsSync(absolutePath) ? extractFileRefs(fs.readFileSync(absolutePath, "utf8")) : [];
 }
 
-// HEAD の内容から $ref を読む。撤去は未コミットなので HEAD が撤去前の状態にあたる。
-// 存在しないパスでは git が非 0 で終わるため、参照なしとして扱う。
-function refsFromHead(relativePath: string): string[] {
-  try {
-    return extractFileRefs(
-      execFileSync("git", ["show", `HEAD:${relativePath}`], {
-        cwd: ROOT_DIR,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-        maxBuffer: 64 * 1024 * 1024,
-      }),
-    );
-  } catch {
-    return [];
-  }
-}
 
 function selfDestruct(): void {
   for (const target of SELF_DESTRUCT_PATHS) {
@@ -115,7 +99,6 @@ function main(): void {
     makeHelpOutput: readMakeHelp(),
     danglingHits: readDanglingHits(),
     survivingComponents: listSurvivingComponents(),
-    reachableBefore: reachableFiles(OPENAPI_ENTRYPOINT, refsFromHead),
     reachableAfter: reachableFiles(OPENAPI_ENTRYPOINT, refsFromWorktree),
   });
 

@@ -86,11 +86,11 @@ export function findDanglingReferences(danglingHits: string): string[] {
  * 現時点でそれを参照しているのがサンプル API だけであるもの。
  *
  * @remarks
- * `openapi/components/schemas/README.md` はどちらも汎用の再利用ブロックとして宣言しています
- * （`errors/` は「one per HTTP status covering every `apperror` kind」、
- * `PaginationMetadataResponse.yaml` は offset ページネーションのメタデータ）。
+ * `openapi/components/schemas/README.md` はいずれも汎用の再利用ブロックとして Directory Contents に
+ * 宣言しています（`errors/` は「one per HTTP status covering every `apperror` kind」、
+ * ページネーションのメタデータは offset 版と cursor 版）。
  * 撤去すると参照するのは health 系が使う 405 だけになりますが、それは登録漏れではなく、
- * 利用者が使うために残す在庫です。撤去前後の到達差だけではこの在庫と登録漏れを区別できません。
+ * 利用者が使うために残す在庫です。参照ゼロという事実だけではこの在庫と登録漏れを区別できません。
  *
  * このリストは実装の都合ではなく「何を汎用ブロックとして残すか」という宣言なので、
  * 汎用ブロックを増やしたときは合わせて足す必要があり、放っておくとドリフトします。
@@ -100,6 +100,7 @@ export function findDanglingReferences(danglingHits: string): string[] {
 export const ORPHAN_EXCLUDED_PATHS: readonly string[] = [
   "openapi/components/schemas/errors/",
   "openapi/components/schemas/PaginationMetadataResponse.yaml",
+  "openapi/components/schemas/CursorPaginationMetadataResponse.yaml",
 ];
 
 /** 外部ファイルを指す `$ref` の値を YAML テキストから取り出す。fragment だけの参照は同一ファイル内なので除く。 */
@@ -144,13 +145,12 @@ export function reachableFiles(
 }
 
 /**
- * 孤立検出: 撤去前は spec から辿れたのに撤去後は辿れず、ファイルだけが残っているもの。
+ * 孤立検出: 撤去後も残っているのに、正本 spec から `$ref` で辿れなくなった定義。
  *
  * @remarks
- * 「常に到達可能」ではなく撤去前後の差で見るのは、参照ゼロそのものは異常ではないからです
- * （撤去前から参照されていない定義もあります）。差で見れば「撤去という操作が参照を切ったのに
- * ファイルだけ残った」ものに絞れます。ただし在庫として残す汎用ブロックはこの差にも現れるため、
- * ORPHAN_EXCLUDED_PATHS で宣言的に外します。
+ * 撤去前の到達可否は見ません。撤去前から参照されていない定義は ORPHAN_EXCLUDED_PATHS が
+ * 宣言する在庫か、さもなくばそれ自体が報告に値する死んだ定義であり、どちらの扱いも
+ * 撤去後の状態だけで決まるためです。
  *
  * この向きは findUnremovedPaths（登録したのに消えていない）と
  * findUnregisteredDeletions（登録していないのに消えた）のどちらも捉えません。
@@ -159,7 +159,6 @@ export function reachableFiles(
  */
 export function findOrphanedComponents(
   survivingComponents: readonly string[],
-  reachableBefore: ReadonlySet<string>,
   reachableAfter: ReadonlySet<string>,
 ): string[] {
   const isExcluded = (relativePath: string): boolean =>
@@ -168,12 +167,7 @@ export function findOrphanedComponents(
     );
 
   return survivingComponents
-    .filter(
-      (relativePath) =>
-        !isExcluded(relativePath) &&
-        reachableBefore.has(relativePath) &&
-        !reachableAfter.has(relativePath),
-    )
+    .filter((relativePath) => !isExcluded(relativePath) && !reachableAfter.has(relativePath))
     .map((relativePath) => `撤去後に孤立した定義: ${relativePath}（撤去対象への登録漏れ）`);
 }
 
@@ -184,7 +178,6 @@ export type VerificationInput = {
   makeHelpOutput: string;
   danglingHits: string;
   survivingComponents: readonly string[];
-  reachableBefore: ReadonlySet<string>;
   reachableAfter: ReadonlySet<string>;
 };
 
@@ -195,11 +188,7 @@ export function collectFailures(input: VerificationInput): string[] {
     ...findUnregisteredDeletions(input.registeredPaths, parseDeletedPaths(input.gitStatusPorcelain)),
     ...findLeftoverMakeTarget(input.makeHelpOutput),
     ...findDanglingReferences(input.danglingHits),
-    ...findOrphanedComponents(
-      input.survivingComponents,
-      input.reachableBefore,
-      input.reachableAfter,
-    ),
+    ...findOrphanedComponents(input.survivingComponents, input.reachableAfter),
   ];
 }
 
