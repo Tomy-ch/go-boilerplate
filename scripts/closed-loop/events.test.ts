@@ -8,9 +8,9 @@ const ev = (o: Partial<Event>): Event => ({ client: "claude", kind: "tool_call",
 
 describe("parseClaudeLine", () => {
   describe("正常系", () => {
-    it("content が素の文字列の user を人の発話として読む", () => {
+    it("content が素の文字列の user を人の発話として読み、本文も持つ", () => {
       const [e] = parseClaudeLine(claude({ type: "user", sessionId: "s1", message: { content: "やって" } }));
-      expect(e).toMatchObject({ client: "claude", kind: "prompt", sessionId: "s1" });
+      expect(e).toMatchObject({ client: "claude", kind: "prompt", sessionId: "s1", text: "やって" });
     });
 
     it("Skill の tool_use から skill 名を取る", () => {

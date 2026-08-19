@@ -17,6 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { renderCandidateComment, selectCandidates } from "../candidates";
 import { parseClaudeLine, summarizeSession, type Event } from "../events";
 import { findByWindow, parseIndex, upsert, type IndexEntry } from "../index-store";
 import { issueTitle, renderBody, type Observation } from "../issue";
@@ -108,7 +109,7 @@ function sessionFactsFor(dir: string | undefined, from: number | undefined, to: 
       // 読めないファイルは無いものとして扱う
     }
   }
-  return { facts: summarizeSession("claude", events), sessions: sessions.size };
+  return { facts: summarizeSession("claude", events), sessions: sessions.size, events };
 }
 
 const branch = currentBranch();
@@ -145,7 +146,8 @@ for (const window of readWindows()) {
   const body = renderBody(observation);
 
   if (DRY_RUN) {
-    console.log(`--- ${title}\n${body}`);
+    const comment = transcripts === undefined ? "(トランスクリプト未指定)" : renderCandidateComment(selectCandidates(transcripts.events));
+    console.log(`--- ${title}\n${body}\n--- コメント\n${comment}`);
     sent += 1;
     continue;
   }
@@ -155,6 +157,12 @@ for (const window of readWindows()) {
     const url = gh(["issue", "create", "--title", title, "--body", body, "--label", "feedback"]);
     const m = /\/(\d+)$/.exec(url);
     issueNumber = m ? Number(m[1]) : undefined;
+    if (issueNumber !== undefined && transcripts !== undefined) {
+      // 読解候補は本文ではなくコメントへ。本文は AI の出力面であり、入力と出力を同じ
+      // テキストに混ぜると AI が自分の入力を上書きしうる。
+      const comment = renderCandidateComment(selectCandidates(transcripts.events));
+      gh(["issue", "comment", String(issueNumber), "--body", comment]);
+    }
   } catch (e) {
     // 届かなければ索引に残して次回へ持ち越す。窓を閉じる処理は既に終わっており、ここで
     // 落としてもローカルの作業は止まらない。

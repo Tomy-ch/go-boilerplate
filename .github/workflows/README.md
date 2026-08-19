@@ -393,6 +393,11 @@ Two jobs carry an assumption worth restating when instantiating this template: `
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
 |Claude|`claude.yaml`|`@claude` in a pull-request comment or review|Run Claude Code against the pull request on demand|
+|Closed Loop Summarize|`closed-loop-summarize.yaml`|the `feedback` label lands on an issue, or manual dispatch|Fill a Feedback Issue's reading-comprehension sections from the turns the local send path already selected. The observation block it does **not** touch — that half is deterministic and is what the weekly tally reads|
+
+Both skip quietly when `CLAUDE_CODE_TOKEN` is absent. A derived repository inherits the workflows
+but not the secret, and a red run there would be reporting the absence of an optional layer as a
+failure.
 
 ## Shared Composite Actions
 

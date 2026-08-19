@@ -38,6 +38,13 @@ export type Event = {
   /** `tool_result` のみ。成否が観測できない記録では `undefined`。 */
   readonly ok?: boolean;
   readonly durationMs?: number;
+  /**
+   * `prompt` のみ。候補抽出が本文を必要とするため持ちます。
+   *
+   * 集計はこれを読みません。数える処理に本文が要らないのは意図的で、
+   * 本文が要るのは「どのターンを AI に読ませるか」を選ぶときだけです。
+   */
+  readonly text?: string;
 };
 
 /** 1 セッションぶんの決定論的な事実。取得できない指標は `undefined`。 */
@@ -98,7 +105,8 @@ export function parseClaudeLine(line: string): Event[] {
   // 何度も上書きされる（実測 11,382 件に対し、素の文字列を持つ user は 3,598 件）。
   // 加えて timestamp を持たないため、そもそも期間で絞れない。
   if (raw.type === "user" && typeof (isRecord(raw.message) ? raw.message.content : undefined) === "string") {
-    return [{ ...base, kind: "prompt" }];
+    const text = (raw.message as { content: string }).content;
+    return [{ ...base, kind: "prompt", text }];
   }
   if (raw.subtype === "compact_boundary") return [{ ...base, kind: "compact" }];
 

@@ -1,0 +1,118 @@
+# Fill the reading-comprehension half of a Feedback Issue.
+#
+# The deterministic half is already in the issue when this runs: the local send path wrote the
+# observation block and a comment holding the turns a machine selected as worth reading. What is
+# missing is what those turns MEAN, and that is the one thing no counter can produce.
+#
+# It runs here rather than on the developer's machine so a session is never blocked or billed for
+# it (ADR-0007: AI dependence is confined to the development workflow, and the workflow must not
+# stop when the model is unavailable).
+name: Closed Loop Summarize
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number to summarize
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
+jobs:
+  summarize:
+    # Only a feedback issue, and only when the label that marks it arrives. Gating on the github
+    # context alone means an unrelated label never starts a runner.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'feedback'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            api.anthropic.com:443
+            *.anthropic.com:443
+            statsig.anthropic.com:443
+            sentry.io:443
+            *.ingest.sentry.io:443
+
+      # A derived repository inherits this workflow but not the secret. Skipping quietly is what
+      # keeps the loop optional for them without leaving a red run behind (ADR-0007: the
+      # application never depends on AI, and neither does anyone's CI turning green).
+      - name: Check configuration
+        id: config
+        env:
+          CLAUDE_CODE_TOKEN: ${{ secrets.CLAUDE_CODE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CLAUDE_CODE_TOKEN}" ]; then
+            echo 'configured=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo '::notice::CLAUDE_CODE_TOKEN is not configured; skipping.'
+            echo 'configured=false' >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Checkout
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Claude
+        if: steps.config.outputs.configured == 'true'
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_TOKEN }}
+          claude_args: "--max-turns 12"
+          prompt: |
+            Feedback Issue #${{ github.event.issue.number || inputs.issue }} の H2 節を埋めてください。
+
+            手順:
+            1. `gh issue view ${{ github.event.issue.number || inputs.issue }} --json body,comments` で
+               本文とコメントを読む。
+            2. 本文の ```yaml closed-loop ブロックは決定論的な観測です。**書き換えないでください。**
+               ここが集計の入力であり、手を入れると週次の数字が変わります。
+            3. コメントの「読解候補」に、機械が選んだ逐語の抜粋があります。それを主な材料にする。
+            4. 本文の H2 節（Outcome / Friction / AI Misunderstanding / Skill / Rule Gap /
+               Tooling Gap / Human Intervention / Suggested Improvement / Evidence）を日本語で埋め、
+               `gh issue edit` で本文を差し替える。YAML ブロックと節見出しはそのまま残すこと。
+
+            書き方:
+            - 読み取れないことは書かない。候補に根拠が無い節は「該当なし」と書く。
+              埋めるために推測すると、この issue が後で集計されたとき、根拠の無い所見が
+              数に入る。
+            - Evidence には、根拠にした候補の逐語か、PR / コミットへの参照を置く。
+            - Suggested Improvement は、対象（skill / rule / doc / ci / tool）が特定できる場合だけ書く。
+              特定できないなら書かない。
+
+            分類ラベル:
+            - 読み取れた内容に応じて `gh issue edit --add-label` で
+              feedback/skill, feedback/architecture, feedback/documentation, feedback/tooling,
+              feedback/ai-misread, feedback/ci, feedback/developer-experience のうち該当するものを付ける。
+            - 該当が無ければ付けない。付けないことも情報です。

@@ -101,6 +101,16 @@ extra = [
   "*.ingest.sentry.io:443",
 ]
 
+[job."closed-loop-summarize.yaml:summarize"]
+classes = []
+extra = [
+  "api.anthropic.com:443",
+  "*.anthropic.com:443",
+  "statsig.anthropic.com:443",
+  "sentry.io:443",
+  "*.ingest.sentry.io:443",
+]
+
 [job."checkov.yaml:checkov"]
 classes = ["mise"]
 
