@@ -1,7 +1,7 @@
 # ------------------------------
 # ビルド用
 # ------------------------------
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS builder
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS builder
 
 WORKDIR /app
 
@@ -41,9 +41,11 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 
 RUN apk upgrade --no-cache \
     && apk add --no-cache ca-certificates tzdata \
-    && addgroup -S app \
-    && adduser -S app -G app
-USER app
+    && addgroup -S -g 10001 app \
+    && adduser -S -u 10001 -G app app
+# UID / GID を数値で固定するのは、Kubernetes の runAsNonRoot / runAsUser のように
+# イメージの外から実行ユーザーを検証する仕組みが名前を解決できないため。
+USER 10001
 
 # コンテナのローカルタイム（Go の time.Local）。tzdata と対で決まり、実行時 env の TZ で上書きできる。
 # 機構の役割分担と変更手順は env/README.md の Changing the Timezone を参照。
@@ -56,6 +58,9 @@ WORKDIR /app
 
 # 待受ポートは SERVER_PORT の既定値。上書きしたときは compose 側の healthcheck が優先されるため、
 # ここはイメージ単体で起動した場合の判定になる。
+# JSON 表記の exec 形式には `||` が無く、wget が返す 4 / 8 などの終了コードを
+# Docker が unhealthy と解釈する 1 へ丸められない。判定を正しく出すためのシェル形式。
+# hadolint ignore=DL3025
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=10s \
   CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
 
@@ -67,7 +72,7 @@ CMD ["/app/server", "serve"]
 # 開発用ツールビルダー：mise.toml のバージョン pin で開発用 Go ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 tooling ステージに mise 本体を残さないための中継。
 # ------------------------------
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS tooling_builder
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS tooling_builder
 
 # CGO_ENABLED=0: `go:` backend のツールを静的バイナリにする（go_tools_builder と対称）
 ENV CGO_ENABLED=0
@@ -93,7 +98,7 @@ RUN --mount=type=secret,id=github_token \
   github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
   if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
   mise install air \
-  && mise install aqua:go-delve/delve \
+  && mise install go:github.com/go-delve/delve/cmd/dlv \
   && mise install golines \
   && mise install gofumpt \
   && mise install golangci-lint \
@@ -110,7 +115,7 @@ RUN mkdir /out \
 # ------------------------------
 # ローカル環境
 # ------------------------------
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS tooling
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS tooling
 
 # ビルドなどに必要なパッケージをインストール
 RUN apk add --no-cache \

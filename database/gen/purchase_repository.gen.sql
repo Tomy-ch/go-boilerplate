@@ -92,7 +92,7 @@ LIMIT sqlc.arg('limit_param');
 -- 並びは購入 ID 昇順・同一購入内は明細 ID 昇順。purchase_ids が空の場合は 0 行。
 SELECT sqlc.embed(d)
 FROM purchase_details AS d
-WHERE d.purchase_id = ANY(sqlc.arg('purchase_ids')::UUID [])
+WHERE d.purchase_id = ANY(sqlc.arg('purchase_ids')::UUID[])
 ORDER BY d.purchase_id, d.id;
 
 -- === source: database/dml/repository/purchase/select_user_ids_with_purchases.sql ===
@@ -101,7 +101,7 @@ ORDER BY d.purchase_id, d.id;
 -- ユーザー側の絞り込みと結合せず ID 群の照会として切り出す（docs/rules.md の Repository / QueryService Rules）。
 SELECT DISTINCT user_id
 FROM purchases
-WHERE user_id = ANY(sqlc.arg('user_ids')::UUID []);
+WHERE user_id = ANY(sqlc.arg('user_ids')::UUID[]);
 
 -- === source: database/dml/repository/purchase/update_purchase_delivered.sql ===
 -- name: UpdatePurchaseDelivered :exec

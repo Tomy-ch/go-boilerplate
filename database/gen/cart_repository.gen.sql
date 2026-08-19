@@ -95,7 +95,7 @@ FOR UPDATE;
 -- 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得る。
 SELECT sqlc.embed(c)
 FROM carts AS c
-WHERE c.id = ANY(@cart_ids_param::UUID [])
+WHERE c.id = ANY(@cart_ids_param::UUID[])
 ORDER BY c.id
 FOR UPDATE;
 
@@ -169,4 +169,4 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 -- 空の集合を渡した場合はそのカートの明細をすべて削除する。
 DELETE FROM cart_items
 WHERE cart_items.cart_id = sqlc.arg('cart_id')
-    AND NOT (cart_items.product_id = ANY(sqlc.arg('product_ids')::UUID []));
+    AND NOT (cart_items.product_id = ANY(sqlc.arg('product_ids')::UUID[]));

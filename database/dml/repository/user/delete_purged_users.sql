@@ -5,7 +5,7 @@ DELETE FROM user_identities
 WHERE user_id IN (
         SELECT u.id
         FROM users AS u
-        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID [])
+        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID[])
             AND u.deleted_at IS NOT NULL
     );
 
@@ -16,7 +16,7 @@ DELETE FROM user_roles
 WHERE user_id IN (
         SELECT u.id
         FROM users AS u
-        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID [])
+        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID[])
             AND u.deleted_at IS NOT NULL
     );
 
@@ -24,5 +24,5 @@ WHERE user_id IN (
 -- 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
 -- 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
 DELETE FROM users
-WHERE id = ANY(sqlc.arg('ids')::UUID [])
+WHERE id = ANY(sqlc.arg('ids')::UUID[])
     AND deleted_at IS NOT NULL;

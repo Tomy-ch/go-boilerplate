@@ -31,6 +31,8 @@
 | 複数の worktree を開いている状態で、変更と無関係にゲートが落ちる／異常に遅い | §20 |
 | `make lint` がスキップ・低速化・CI 委譲された理由を知りたい | §20 |
 | `pin-images-check` / `pin-actions-check` が未固定・未登録で落ちる | §12 |
+| `tool-cooldown` / `go-cooldown` が宣言したばかりの版を弾く | §21 |
+| ランタイムの昇格が、まだ上げられないツールを経由してゲートを壊す | §21 |
 | pre-commit の "Migration version gap / duplicate" | §13 |
 | ローカルの S3 呼び出しが 503 を返す | §14 |
 | 特定環境向けイメージのビルド | §15 |
@@ -330,6 +332,59 @@ make test GOBP_LOAD=full      # 帯を無視する（単一窓のマシン向け
 **窓が多いときに、CI の lint 失敗を再現するため `make lint` をローカルで回さないこと。** CI のログを読み、そこに名指しされた formatter / linter だけを当てる（config の選択は §9）。フルのローカル実行は、CI が既に出力した内容を再発見するために飽和したホストを数分間占有するだけである。
 
 自分の変更と無関係な理由で既に赤いフックについては、§11 が `--no-verify` の例外を扱う。
+
+## 21. 宣言したばかりの版を cooldown ゲートが弾いた
+
+`make tool-cooldown-gate`（`mise.toml` と `python/*.in` の宣言）と `make go-cooldown-gate`（`go.mod` の
+direct モジュール）は、追加した版が窓より若いと fail-closed で落ちます。
+
+```txt
+❌ uv@0.12.2（aqua:astral-sh/uv）は公開 13 日で cooldown 14 日を満たしていません
+```
+
+これは §12 の pin 検査とは別の機構です。`pin-actions` / `pin-images` は step-back を `resolve` に
+組み込んでいて単に古いピンを維持しますが、この 2 つのゲートにその退避先は無く、宣言を直すのは
+自分の仕事になります。
+
+**窓は 1 つの数字ではありません。** その生態系が不正な公開をどれだけ速く検知・撤回するかから
+backend ごとに決めており、影響範囲からではありません。定数は
+`scripts/tool-cooldown/main.go`（`aqua:` / `ubi:` / `github:` 用の `releaseWindowDays` と、`go:` /
+`npm:` / `pypi:` / `pipx:` 用の `registryWindowDays`）と `scripts/go-cooldown/main.go` の
+`defaultWindowDays` が持ち、根拠は
+[ADR-0090](../../../docs/adr/0090-malicious-package-detection-via-cooldown.ja.md) と
+`docs/design/security.md` の Dependencies 節にあります。どこかに引用された数字（ここを含む）を
+信じず、定数を読んでください。言語ランタイムは同じ ADR によりすべての窓の対象外です。
+
+**対処は通常バイパスではなく step-back です。** 窓を既に満たしている最新の版を採ります。
+`tools-upgrade` と `dep-vuln-upgrade` がこの選択を代行し、理由は宣言の隣のコメントに記録するのが
+この repo の作法です。step-back が選べないとき — 修正が最新版にしか無い、対象メジャーに窓を
+満たす版が 1 つも無い — は `supply-chain-triage` を回し、日数だけでなくその判定で決めます。
+
+**バイパスは例外で、放置すると鳴るように作られています。** `.github/tool-cooldown-bypass.toml` と
+`.github/go-cooldown-bypass.toml` がキーごとに 1 エントリを受け、`expires` / `issue` / `reason` の
+3 つはすべて必須、`expires` の上限は 3 ヶ月先です。
+
+```toml
+"uv@0.12.2" = { expires = 2026-08-20, issue = 1272, reason = "…" }
+```
+
+`validateBypasses` は、期限切れのエントリ・上限を越えた `expires`・宣言から消えたものを指す
+エントリを、同じゲートの違反に変えます。それが狙いです。期限は誰が宣言を触らなくても訪れ、
+スケジュール実行が回収するため、素の allowlist と違ってバイパスが気づかれないまま
+居座ることはありません。`expires` は余裕を持たせず、窓が実際に明ける日に置いてください。
+不要になった瞬間から落ち始めるのが正しい挙動です。
+
+**診断の前に知っておく罠が 2 つあります。**
+
+ランタイムの昇格が、それ自体まだ窓の内側にある**ツール**の昇格を強いることがあります。ランタイムは
+ゲートの対象外なので、宣言のどこを見てもこの連鎖は見えません。ピンしている `uv` がダウンロード
+できる範囲を越えて `python` を上げると、`sql-lint` のホスト側レグで `uv venv --python <version>` が
+落ち、直す道は新しい `uv` だけで、それをゲートが塞ぎます。コンテナ側の経路はイメージ内の処理系を
+使ってこの経路を通らないため、ローカルではなく CI で表面化すると考えてください。
+
+`python/*.in` のピンを上げて `.txt` を再生成し忘れた場合も落ちますが、これは窓ではなく
+`verifyLocks` からの違反です。`make py-lock` を回して両方をコミットしてください。ピンと lockfile は
+1 つの変更です。
 
 ## 制約
 

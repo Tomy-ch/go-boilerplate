@@ -9,70 +9,82 @@
 min_version = "2026.6.0"
 
 [tools]
-# 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0088）、
+# 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0090）、
 # 昇格の判断は LTS を待つ方針が担う。
-go = "1.26.5"
-node = "24.18.0"
-python = "3.14.6"
+go = "1.26.6"
+node = "24.19.0"
+python = "3.14.7"
 
 # Go ベース（標準レジストリで解決可）
-oapi-codegen = "2.7.0"
+oapi-codegen = "2.8.0"
 sqlc = "1.31.1"
 golangci-lint = "2.12.2"
 actionlint = "1.7.12"
 # actionlint が run スクリプトを検査するために PATH 上で参照する（同梱ではなく別バイナリ）
 shellcheck = "0.11.0"
-lefthook = "2.1.8"
-air = "1.65.3"
+lefthook = "2.1.10"
+air = "1.67.4"
 golines = "0.13.0"
-gofumpt = "0.10.0"
-hadolint = "2.14.0"
+gofumpt = "0.11.0"
+hadolint = "2.15.1"
 gitleaks = "8.30.1"
 
 # Go ベース（backend 明示）
 "aqua:golang-migrate/migrate" = "4.19.1"
 "go:go.uber.org/mock/mockgen" = "0.6.0"
-"aqua:go-delve/delve" = "1.26.3"
-"aqua:aquasecurity/trivy" = "0.69.3"
+# aqua ではなく go backend を使うのは、上流がプリビルドバイナリを一部のタグでしか公開せず
+# （v1.26.2 / v1.26.3 には資産があり v1.26.0 / v1.26.1 / v1.27.x には無い）、リリース資産に
+# 依存する backend では版の選択が上流の公開都合に握られるため。go install が上流の正規経路。
+"go:github.com/go-delve/delve/cmd/dlv" = "1.27.1"
+# 最新は v0.74.0 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
+"aqua:aquasecurity/trivy" = "0.73.0"
+# 最新は v2.5.1 だが公開 2 日、その前の v2.5.0 も公開 12 日で、いずれもクールダウン
+# 14 日に満たない。窓を満たす最新はこの版である。
 "aqua:google/osv-scanner" = "2.4.0"
-# 最新は v0.116.1 だが公開 11 日でクールダウン 14 日に満たないため 1 つ前を採る。
-"aqua:anchore/grype" = "0.116.0"
-# 最新は v2.1.0 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
-"aqua:Bearer/bearer" = "2.0.2"
-"aqua:trufflesecurity/trufflehog" = "3.95.9"
+# 最新は v0.117.0 だが公開 9 日でクールダウン 14 日に満たないため 1 つ前を採る。
+"aqua:anchore/grype" = "0.116.1"
+"aqua:Bearer/bearer" = "2.1.0"
+# 最新は v3.97.0 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
+"aqua:trufflesecurity/trufflehog" = "3.96.0"
 # v0.4.15 が最新。以降リリースが無いだけで、これがクールダウンを満たす最新版である。
 "aqua:goodwithtech/dockle" = "0.4.15"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.3.0"
+# 最新は v1.7.0 だが公開 6 日でクールダウン 7 日に満たないため 1 つ前を採る。
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.6.0"
 "go:github.com/cweill/gotests/gotests" = "1.9.0"
-"go:golang.org/x/tools/gopls" = "0.22.0"
+"go:golang.org/x/tools/gopls" = "0.23.0"
 "go:github.com/josharian/impl" = "1.5.0"
 "go:golang.org/x/tools/cmd/godoc" = "0.1.0-deprecated"
-"go:codeberg.org/tslocum/godoc-static" = "1.0.0"
+"go:codeberg.org/tslocum/godoc-static" = "1.0.1"
 "go:github.com/google/capslock/cmd/capslock" = "0.3.2"
 
 # Rust ベース（backend 明示）
-"aqua:zizmorcore/zizmor" = "1.26.1"
+"aqua:zizmorcore/zizmor" = "1.29.0"
 
 # OCaml ベース（backend 明示）
-# 最新は v1.26.0 だが公開 2 日でクールダウン 14 日に満たないため 1 つ前を採る。
-"aqua:opengrep/opengrep" = "1.25.0"
+# 最新は v1.27.1 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
+"aqua:opengrep/opengrep" = "1.26.0"
 
 # Node ベース
-"npm:@redocly/cli" = "2.31.4"
-"npm:markdownlint-cli2" = "0.22.1"
-"npm:@commitlint/cli" = "21.0.2"
+"npm:@redocly/cli" = "2.46.1"
+"npm:markdownlint-cli2" = "0.23.2"
+# 最新は 21.2.2 だが公開 6 日でクールダウン 7 日に満たないため 1 つ前を採る。
+"npm:@commitlint/cli" = "21.2.1"
 # docs-viewer（ドキュメントポータルのビューアー）の依存解決に使う。aqua backend ではなく
 # npm backend を指定するのは、pnpm の公開元が npm レジストリであり、cooldown の窓を
 # レジストリ側（7 日）で測るのが実態に合うため。
-"npm:pnpm" = "11.18.0"
+# 最新は 11.22.0 だが公開 4 日でクールダウン 7 日に満たないため 1 つ前を採る。
+"npm:pnpm" = "11.21.0"
 
 # Python ベース
-uv = "0.11.27"
+# 最新は 0.12.5 だが公開 5 日でクールダウン 14 日に満たないため、窓を満たす最新を採る。
+# 下限は 0.12.2。CPython 3.14.7 の配布物を知るのがこの版からで、これより古いと
+# sql-lint がホストで走らせる uv venv が宣言中の python を解決できない。
+uv = "0.12.2"
 # Python 実装だが実行環境を同梱した単体バイナリで配布されるため、python/*.in ではなく
 # aqua backend で入れる。
-# 最新は 3.3.9 だが公開 7 日でクールダウン 14 日に満たないため 1 つ前を採る。
-"aqua:bridgecrewio/checkov" = "3.3.8"
+"aqua:bridgecrewio/checkov" = "3.3.9"
 
 # Docker イメージのバージョン。[tools] は mise の解決対象専用のため [env] で宣言する。
 [env]
-OTEL_LGTM_VERSION = "0.28.0"
+# 最新は 0.30.2 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
+OTEL_LGTM_VERSION = "0.30.0"

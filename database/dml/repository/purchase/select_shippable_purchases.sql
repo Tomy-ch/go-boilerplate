@@ -19,5 +19,5 @@ LIMIT sqlc.arg('limit_param');
 -- 並びは購入 ID 昇順・同一購入内は明細 ID 昇順。purchase_ids が空の場合は 0 行。
 SELECT sqlc.embed(d)
 FROM purchase_details AS d
-WHERE d.purchase_id = ANY(sqlc.arg('purchase_ids')::UUID [])
+WHERE d.purchase_id = ANY(sqlc.arg('purchase_ids')::UUID[])
 ORDER BY d.purchase_id, d.id;

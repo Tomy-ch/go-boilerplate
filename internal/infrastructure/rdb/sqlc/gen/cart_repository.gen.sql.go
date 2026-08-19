@@ -202,7 +202,7 @@ func (q *Queries) DeleteCart(ctx context.Context, id uuid.UUID) error {
 const deleteCartItemsNotIn = `-- name: DeleteCartItemsNotIn :exec
 DELETE FROM cart_items
 WHERE cart_items.cart_id = $1
-    AND NOT (cart_items.product_id = ANY($2::UUID []))
+    AND NOT (cart_items.product_id = ANY($2::UUID[]))
 `
 
 type DeleteCartItemsNotInParams struct {
@@ -215,7 +215,7 @@ type DeleteCartItemsNotInParams struct {
 //
 //	DELETE FROM cart_items
 //	WHERE cart_items.cart_id = $1
-//	    AND NOT (cart_items.product_id = ANY($2::UUID []))
+//	    AND NOT (cart_items.product_id = ANY($2::UUID[]))
 func (q *Queries) DeleteCartItemsNotIn(ctx context.Context, arg *DeleteCartItemsNotInParams) error {
 	_, err := q.db.Exec(ctx, deleteCartItemsNotIn, arg.CartID, arg.ProductIds)
 	return err
@@ -407,7 +407,7 @@ func (q *Queries) LockCartByID(ctx context.Context, id uuid.UUID) (*LockCartByID
 const lockCartsByIDs = `-- name: LockCartsByIDs :many
 SELECT c.id, c.user_id, c.session_token, c.expires_at, c.created_at, c.updated_at
 FROM carts AS c
-WHERE c.id = ANY($1::UUID [])
+WHERE c.id = ANY($1::UUID[])
 ORDER BY c.id
 FOR UPDATE
 `
@@ -424,7 +424,7 @@ type LockCartsByIDsRow struct {
 //
 //	SELECT c.id, c.user_id, c.session_token, c.expires_at, c.created_at, c.updated_at
 //	FROM carts AS c
-//	WHERE c.id = ANY($1::UUID [])
+//	WHERE c.id = ANY($1::UUID[])
 //	ORDER BY c.id
 //	FOR UPDATE
 func (q *Queries) LockCartsByIDs(ctx context.Context, cartIdsParam []uuid.UUID) ([]*LockCartsByIDsRow, error) {

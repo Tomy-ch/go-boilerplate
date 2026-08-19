@@ -21,7 +21,7 @@ install-tools:
 	@mise install go:golang.org/x/tools/gopls
 	@mise install go:github.com/cweill/gotests/gotests
 	@mise install go:github.com/josharian/impl
-	@mise install aqua:go-delve/delve
+	@mise install go:github.com/go-delve/delve/cmd/dlv
 	@mise install lefthook
 	@mise install golangci-lint
 	@mise install aqua:zizmorcore/zizmor

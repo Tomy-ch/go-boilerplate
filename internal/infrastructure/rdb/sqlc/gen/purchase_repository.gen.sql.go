@@ -198,7 +198,7 @@ func (q *Queries) ListPurchaseDetailsByPurchaseID(ctx context.Context, purchaseI
 const listPurchaseDetailsByPurchaseIDs = `-- name: ListPurchaseDetailsByPurchaseIDs :many
 SELECT d.id, d.purchase_id, d.product_id, d.quantity, d.unit_price, d.created_at, d.updated_at
 FROM purchase_details AS d
-WHERE d.purchase_id = ANY($1::UUID [])
+WHERE d.purchase_id = ANY($1::UUID[])
 ORDER BY d.purchase_id, d.id
 `
 
@@ -211,7 +211,7 @@ type ListPurchaseDetailsByPurchaseIDsRow struct {
 //
 //	SELECT d.id, d.purchase_id, d.product_id, d.quantity, d.unit_price, d.created_at, d.updated_at
 //	FROM purchase_details AS d
-//	WHERE d.purchase_id = ANY($1::UUID [])
+//	WHERE d.purchase_id = ANY($1::UUID[])
 //	ORDER BY d.purchase_id, d.id
 func (q *Queries) ListPurchaseDetailsByPurchaseIDs(ctx context.Context, purchaseIds []uuid.UUID) ([]*ListPurchaseDetailsByPurchaseIDsRow, error) {
 	rows, err := q.db.Query(ctx, listPurchaseDetailsByPurchaseIDs, purchaseIds)
@@ -318,7 +318,7 @@ func (q *Queries) ListShippablePurchases(ctx context.Context, arg *ListShippable
 const listUserIDsWithPurchases = `-- name: ListUserIDsWithPurchases :many
 SELECT DISTINCT user_id
 FROM purchases
-WHERE user_id = ANY($1::UUID [])
+WHERE user_id = ANY($1::UUID[])
 `
 
 // === source: database/dml/repository/purchase/select_user_ids_with_purchases.sql ===
@@ -327,7 +327,7 @@ WHERE user_id = ANY($1::UUID [])
 //
 //	SELECT DISTINCT user_id
 //	FROM purchases
-//	WHERE user_id = ANY($1::UUID [])
+//	WHERE user_id = ANY($1::UUID[])
 func (q *Queries) ListUserIDsWithPurchases(ctx context.Context, userIds []uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listUserIDsWithPurchases, userIds)
 	if err != nil {

@@ -92,7 +92,7 @@ SELECT
     p.name,
     p.code
 FROM prefectures AS p
-WHERE p.id = ANY($1::UUID [])
+WHERE p.id = ANY($1::UUID[])
 ORDER BY p.sort_key
 `
 
@@ -110,7 +110,7 @@ type GetPrefectureDomainByIDsRow struct {
 //	    p.name,
 //	    p.code
 //	FROM prefectures AS p
-//	WHERE p.id = ANY($1::UUID [])
+//	WHERE p.id = ANY($1::UUID[])
 //	ORDER BY p.sort_key
 func (q *Queries) GetPrefectureDomainByIDs(ctx context.Context, idsParam []uuid.UUID) ([]*GetPrefectureDomainByIDsRow, error) {
 	rows, err := q.db.Query(ctx, getPrefectureDomainByIDs, idsParam)
