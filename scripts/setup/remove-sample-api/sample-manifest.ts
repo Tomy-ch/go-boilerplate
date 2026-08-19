@@ -200,6 +200,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/products",
       "openapi/components/schemas/ProductResponse.yaml",
       "openapi/components/schemas/ProductImageResponse.yaml",
+      "openapi/components/schemas/ProductImageInput.yaml",
 
       "docs/spec/product",
       "docs/spec/product-ranking",
