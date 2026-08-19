@@ -217,6 +217,45 @@ func TestV1Purchases_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusUnprocessableEntity)
 		})
 
+		assertPurchasesPostRejected := func(t *testing.T, body any) {
+			t.Helper()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			checkout := mock_checkoutuc.NewMockUsecase(gomock.NewController(t))
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Times(0)
+			v1purchases.BindHandler(e, observability.NewNoopTracerFactory(t), nil, checkout, idempotency.Deps{})
+			headers := availablePurchaseUser(t, e)
+			useOpenAPIValidation(t, e)
+
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/purchases", body, headers)
+
+			AssertErrorResponse(t, actual, http.StatusBadRequest)
+		}
+
+		t.Run("宣言に無いフィールドを含む本文は400で弾かれる", func(t *testing.T) {
+			t.Parallel()
+
+			assertPurchasesPostRejected(t, map[string]any{
+				"details":    []map[string]any{{"productId": uuidtestkit.NewTestFromSalt(t, "int_prod").ToPrimitive(), "quantity": 2}},
+				"couponCode": "SUMMER",
+			})
+		})
+
+		t.Run("detailsの要素に宣言に無いフィールドを含む本文は400で弾かれる", func(t *testing.T) {
+			t.Parallel()
+
+			assertPurchasesPostRejected(t, map[string]any{
+				"details": []map[string]any{
+					{
+						"productId": uuidtestkit.NewTestFromSalt(t, "int_prod").ToPrimitive(),
+						"quantity":  2,
+						"unitPrice": "800",
+					},
+				},
+			})
+		})
+
 		t.Run("同一productIDが重複する場合は422を返す", func(t *testing.T) {
 			t.Parallel()
 

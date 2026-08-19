@@ -225,6 +225,54 @@ func TestV1Products_Integration(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		assertProductsPostRejected := func(t *testing.T, body any) {
+			t.Helper()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
+			mockUC.EXPECT().CreateProduct(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			productshandler.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
+			headers := availableAdmin(t, e)
+			useOpenAPIValidation(t, e)
+
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/products", body, headers)
+
+			AssertErrorResponse(t, actual, http.StatusBadRequest)
+		}
+
+		t.Run("宣言に無いフィールドを含む本文は400で弾かれる", func(t *testing.T) {
+			t.Parallel()
+
+			assertProductsPostRejected(t, map[string]any{
+				"name":       "商品",
+				"price":      "19.99",
+				"quantity":   100,
+				"categoryId": uuidtestkit.NewTestFromSalt(t, "integration_category").ToPrimitive(),
+				"statusId":   uuidtestkit.NewTestFromSalt(t, "integration_status").ToPrimitive(),
+				"isFeatured": true,
+			})
+		})
+
+		t.Run("imagesの要素に宣言に無いフィールドを含む本文は400で弾かれる", func(t *testing.T) {
+			t.Parallel()
+
+			assertProductsPostRejected(t, map[string]any{
+				"name":       "商品",
+				"price":      "19.99",
+				"quantity":   100,
+				"categoryId": uuidtestkit.NewTestFromSalt(t, "integration_category").ToPrimitive(),
+				"statusId":   uuidtestkit.NewTestFromSalt(t, "integration_status").ToPrimitive(),
+				"images": []map[string]any{
+					{
+						"imagePath":   "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png",
+						"displaySort": 1,
+						"altText":     "代替テキスト",
+					},
+				},
+			})
+		})
+
 		t.Run("範囲外のcategoryCodesはOpenAPIバリデーションが400で弾く", func(t *testing.T) {
 			t.Parallel()
 

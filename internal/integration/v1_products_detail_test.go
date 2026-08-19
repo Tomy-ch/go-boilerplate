@@ -328,6 +328,43 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusUnauthorized)
 		})
 
+		assertProductPatchRejected := func(t *testing.T, body any) {
+			t.Helper()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
+			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			productsdetail.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
+			headers := availableAdmin(t, e)
+			useOpenAPIValidation(t, e)
+
+			actual := StartServer(t, e).DoJSON(http.MethodPatch, productDetailExistingPath, body, headers)
+
+			AssertErrorResponse(t, actual, http.StatusBadRequest)
+		}
+
+		t.Run("宣言に無いフィールドを含む本文は400で弾かれる", func(t *testing.T) {
+			t.Parallel()
+
+			assertProductPatchRejected(t, map[string]any{"version": 1, "isFeatured": true})
+		})
+
+		t.Run("imagesの要素に宣言に無いフィールドを含む本文は400で弾かれる", func(t *testing.T) {
+			t.Parallel()
+
+			assertProductPatchRejected(t, map[string]any{
+				"version": 1,
+				"images": []map[string]any{
+					{
+						"imagePath":   "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png",
+						"displaySort": 1,
+						"altText":     "代替テキスト",
+					},
+				},
+			})
+		})
+
 		t.Run("PATCH /v1/products/{productId} が非 admin の権限エラーで 403 を返す", func(t *testing.T) {
 			t.Parallel()
 
