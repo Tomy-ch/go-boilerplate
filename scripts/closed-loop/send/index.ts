@@ -6,7 +6,7 @@
 //
 // 窓を閉じる処理そのものは送らない。閉じるのは hook（marks.sh --hook session-end）で、
 // ネットワークに触れず即座に終わる。送出はここで別に行い、届かなければ索引に
-// feedbackIssue を持たないまま残して次回に持ち越す。要件 §8「ローカル開発をブロックしない」は
+// feedbackIssue を持たないまま残して次回に持ち越す。「ローカル開発をブロックしない」は
 // この分離で満たす。
 //
 // 使い方:
@@ -22,7 +22,7 @@ import { parseClaudeLine, summarizeSession, type Event } from "../events";
 import { findByWindow, needsSend, parseIndex, upsert, type IndexEntry } from "../index-store";
 import { issueTitle, renderBody, type Observation } from "../issue";
 import { withinPeriod } from "../report";
-import { phasesOf, representativeAt, toWindow, type Window } from "../windows";
+import { isSubstantive, phasesOf, representativeAt, toWindow, type Window } from "../windows";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const MARKS_DIR = path.join(REPO_ROOT, "tmp", "closed-loop", "marks");
@@ -118,6 +118,7 @@ const transcriptsDir = flag("transcripts");
 let store = readIndex();
 let sent = 0;
 let pending = 0;
+let skipped = 0;
 
 for (const window of readWindows()) {
   if (representativeAt(window, "closedAt") === undefined) continue; // まだ開いている窓は送らない
@@ -127,6 +128,13 @@ for (const window of readWindows()) {
   const openedAt = representativeAt(window, "openedAt");
   const closedAt = representativeAt(window, "closedAt");
   const transcripts = sessionFactsFor(transcriptsDir, openedAt, closedAt);
+
+  // 開いて閉じただけの窓は送らない。公開 issue にしても読む人に何も伝えないうえ、
+  // 消すには手作業が要る。打刻は tmp/ に残るので closed-loop-report からは見える。
+  if (!isSubstantive(window, transcripts?.facts)) {
+    skipped += 1;
+    continue;
+  }
 
   const observation: Observation = {
     windowId: window.id,
@@ -195,4 +203,8 @@ for (const window of readWindows()) {
 }
 
 if (!DRY_RUN) writeIndex(store);
-console.log(`送出 ${sent} 件${pending > 0 ? ` / 未送出 ${pending} 件（次回に持ち越し）` : ""}`);
+console.log(
+  `送出 ${sent} 件` +
+    `${pending > 0 ? ` / 未送出 ${pending} 件（次回に持ち越し）` : ""}` +
+    `${skipped > 0 ? ` / 中身が無く送らなかった窓 ${skipped} 件` : ""}`,
+);

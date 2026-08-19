@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   MARK_ORDER,
   anomaliesOf,
+  isSubstantive,
+  substantiveMarks,
   parseMarkFile,
   phasesOf,
   representativeAt,
@@ -176,6 +178,68 @@ describe("anomaliesOf", () => {
     it("マーカーが 1 つも無ければ開始と終了の両方を報告する", () => {
       const kinds = anomaliesOf(windowOf({})).map((a) => a.kind);
       expect(kinds).toEqual(["missing-open", "unclosed"]);
+    });
+  });
+});
+
+describe("substantiveMarks", () => {
+  describe("正常系", () => {
+    it("開始と終了以外の打刻を挙げる", () => {
+      const w = windowOf({ openedAt: [100], commitAt: [200], closedAt: [300] });
+      expect(substantiveMarks(w)).toEqual(["commitAt"]);
+    });
+
+    it("正準順序で並べる", () => {
+      const w = windowOf({ reviewStartedAt: [300], implStartedAt: [200] });
+      expect(substantiveMarks(w)).toEqual(["implStartedAt", "reviewStartedAt"]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("開始と終了しか無ければ空になる", () => {
+      expect(substantiveMarks(windowOf({ openedAt: [100], closedAt: [200] }))).toEqual([]);
+    });
+
+    it("打刻が無ければ空になる", () => {
+      expect(substantiveMarks(windowOf({}))).toEqual([]);
+    });
+  });
+});
+
+describe("isSubstantive", () => {
+  describe("正常系", () => {
+    it("実質的な打刻があれば送るに値する", () => {
+      expect(isSubstantive(windowOf({ openedAt: [100], commitAt: [150], closedAt: [200] }))).toBe(true);
+    });
+
+    it("打刻が無くても発話があれば送るに値する", () => {
+      const w = windowOf({ openedAt: [100], closedAt: [200] });
+      expect(isSubstantive(w, { prompts: 3, toolCalls: 0 })).toBe(true);
+    });
+
+    it("打刻が無くてもツール呼出があれば送るに値する", () => {
+      const w = windowOf({ openedAt: [100], closedAt: [200] });
+      expect(isSubstantive(w, { prompts: 0, toolCalls: 5 })).toBe(true);
+    });
+
+    it("打刻があれば活動が 0 でも送るに値する", () => {
+      const w = windowOf({ openedAt: [100], reviewStartedAt: [150], closedAt: [200] });
+      expect(isSubstantive(w, { prompts: 0, toolCalls: 0 })).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("開いて閉じただけの窓は送らない", () => {
+      const w = windowOf({ openedAt: [100], closedAt: [200] });
+      expect(isSubstantive(w, { prompts: 0, toolCalls: 0 })).toBe(false);
+    });
+
+    it("活動を観測できなければ、打刻が無い窓は送らない", () => {
+      expect(isSubstantive(windowOf({ openedAt: [100], closedAt: [200] }))).toBe(false);
+    });
+
+    it("打刻が 1 つも無い窓は送らない", () => {
+      expect(isSubstantive(windowOf({}), { prompts: 0, toolCalls: 0 })).toBe(false);
     });
   });
 });
