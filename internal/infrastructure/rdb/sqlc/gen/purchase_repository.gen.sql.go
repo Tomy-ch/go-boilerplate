@@ -28,7 +28,8 @@ type GetPurchaseByIDRow struct {
 
 // === source: database/dml/repository/purchase/select_purchase_by_id.sql ===
 // ID から購入を 1 件取得する。現在状態は購入ステータスマスタとの結合で code を解決する
-// （status_id は SoT、code は集約が状態機械の判定に用いる業務キー）。存在しない場合は 0 行（NotFound）。
+// （code が状態機械の業務キーである根拠は Purchase 集約の定義。docs/spec/purchase/domain.md 参照）。
+// 存在しない場合は 0 行（NotFound）。
 //
 //	SELECT
 //	    ps.code AS status_code,
@@ -66,6 +67,7 @@ SELECT
     p.code,
     p.user_id,
     ps.id AS status_id,
+    ps.code AS status_code,
     ps.name AS status_name,
     p.subtotal_amount,
     p.tax_amount,
@@ -86,6 +88,7 @@ type GetPurchaseDetailByIDRow struct {
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
+	StatusCode     int16
 	StatusName     string
 	SubtotalAmount int64
 	TaxAmount      int64
@@ -110,6 +113,7 @@ type GetPurchaseDetailByIDRow struct {
 //	    p.code,
 //	    p.user_id,
 //	    ps.id AS status_id,
+//	    ps.code AS status_code,
 //	    ps.name AS status_name,
 //	    p.subtotal_amount,
 //	    p.tax_amount,
@@ -131,6 +135,7 @@ func (q *Queries) GetPurchaseDetailByID(ctx context.Context, id uuid.UUID) (*Get
 		&i.Code,
 		&i.UserID,
 		&i.StatusID,
+		&i.StatusCode,
 		&i.StatusName,
 		&i.SubtotalAmount,
 		&i.TaxAmount,
@@ -225,211 +230,6 @@ func (q *Queries) ListPurchaseDetailsByPurchaseIDs(ctx context.Context, purchase
 			&i.PurchaseDetails.UnitPrice,
 			&i.PurchaseDetails.CreatedAt,
 			&i.PurchaseDetails.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPurchasesFeedAfter = `-- name: ListPurchasesFeedAfter :many
-SELECT
-    p.id,
-    p.code,
-    p.total_amount,
-    p.ordered_at,
-    ps.id AS status_id,
-    ps.name AS status_name
-FROM purchases AS p
-INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-WHERE p.user_id = $1
-    AND (
-        p.ordered_at < $2
-        OR (p.ordered_at = $2 AND p.id < $3)
-    )
-    AND (
-        NOT $4::BOOLEAN
-        OR (
-            p.ordered_at >= $5
-            AND p.ordered_at < $6
-        )
-    )
-ORDER BY p.ordered_at DESC, p.id DESC
-LIMIT $7
-`
-
-type ListPurchasesFeedAfterParams struct {
-	UserID         uuid.UUID
-	AfterOrderedAt time.Time
-	AfterID        uuid.UUID
-	FilterByPeriod bool
-	OrderedAfter   *time.Time
-	OrderedBefore  *time.Time
-	LimitParam     int32
-}
-
-type ListPurchasesFeedAfterRow struct {
-	ID          uuid.UUID
-	Code        string
-	TotalAmount int64
-	OrderedAt   time.Time
-	StatusID    uuid.UUID
-	StatusName  string
-}
-
-// (ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す。境界は直前ページ末尾行の
-// (ordered_at, id) で、ordered_at 同値は id で安定にタイブレークする。
-// 期間の絞り込みは先頭ページと同一条件で、ページ送りの間も呼び出し側が同じ期間を渡す前提である。
-//
-//	SELECT
-//	    p.id,
-//	    p.code,
-//	    p.total_amount,
-//	    p.ordered_at,
-//	    ps.id AS status_id,
-//	    ps.name AS status_name
-//	FROM purchases AS p
-//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-//	WHERE p.user_id = $1
-//	    AND (
-//	        p.ordered_at < $2
-//	        OR (p.ordered_at = $2 AND p.id < $3)
-//	    )
-//	    AND (
-//	        NOT $4::BOOLEAN
-//	        OR (
-//	            p.ordered_at >= $5
-//	            AND p.ordered_at < $6
-//	        )
-//	    )
-//	ORDER BY p.ordered_at DESC, p.id DESC
-//	LIMIT $7
-func (q *Queries) ListPurchasesFeedAfter(ctx context.Context, arg *ListPurchasesFeedAfterParams) ([]*ListPurchasesFeedAfterRow, error) {
-	rows, err := q.db.Query(ctx, listPurchasesFeedAfter,
-		arg.UserID,
-		arg.AfterOrderedAt,
-		arg.AfterID,
-		arg.FilterByPeriod,
-		arg.OrderedAfter,
-		arg.OrderedBefore,
-		arg.LimitParam,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []*ListPurchasesFeedAfterRow
-	for rows.Next() {
-		var i ListPurchasesFeedAfterRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Code,
-			&i.TotalAmount,
-			&i.OrderedAt,
-			&i.StatusID,
-			&i.StatusName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPurchasesFeedFirst = `-- name: ListPurchasesFeedFirst :many
-SELECT
-    p.id,
-    p.code,
-    p.total_amount,
-    p.ordered_at,
-    ps.id AS status_id,
-    ps.name AS status_name
-FROM purchases AS p
-INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-WHERE p.user_id = $1
-    AND (
-        NOT $2::BOOLEAN
-        OR (
-            p.ordered_at >= $3
-            AND p.ordered_at < $4
-        )
-    )
-ORDER BY p.ordered_at DESC, p.id DESC
-LIMIT $5
-`
-
-type ListPurchasesFeedFirstParams struct {
-	UserID         uuid.UUID
-	FilterByPeriod bool
-	OrderedAfter   *time.Time
-	OrderedBefore  *time.Time
-	LimitParam     int32
-}
-
-type ListPurchasesFeedFirstRow struct {
-	ID          uuid.UUID
-	Code        string
-	TotalAmount int64
-	OrderedAt   time.Time
-	StatusID    uuid.UUID
-	StatusName  string
-}
-
-// === source: database/dml/repository/purchase/select_purchases_feed.sql ===
-// 指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する。
-// ステータス名は購入ステータスマスタとの結合で解決する（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// 一覧は概要のみで明細は含まない。
-// filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを返す。
-//
-//	SELECT
-//	    p.id,
-//	    p.code,
-//	    p.total_amount,
-//	    p.ordered_at,
-//	    ps.id AS status_id,
-//	    ps.name AS status_name
-//	FROM purchases AS p
-//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-//	WHERE p.user_id = $1
-//	    AND (
-//	        NOT $2::BOOLEAN
-//	        OR (
-//	            p.ordered_at >= $3
-//	            AND p.ordered_at < $4
-//	        )
-//	    )
-//	ORDER BY p.ordered_at DESC, p.id DESC
-//	LIMIT $5
-func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchasesFeedFirstParams) ([]*ListPurchasesFeedFirstRow, error) {
-	rows, err := q.db.Query(ctx, listPurchasesFeedFirst,
-		arg.UserID,
-		arg.FilterByPeriod,
-		arg.OrderedAfter,
-		arg.OrderedBefore,
-		arg.LimitParam,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []*ListPurchasesFeedFirstRow
-	for rows.Next() {
-		var i ListPurchasesFeedFirstRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Code,
-			&i.TotalAmount,
-			&i.OrderedAt,
-			&i.StatusID,
-			&i.StatusName,
 		); err != nil {
 			return nil, err
 		}
@@ -548,23 +348,23 @@ func (q *Queries) ListUserIDsWithPurchases(ctx context.Context, userIds []uuid.U
 	return items, nil
 }
 
-const lockPurchaseByID = `-- name: LockPurchaseByID :one
+const lockPurchaseByCode = `-- name: LockPurchaseByCode :one
 SELECT
     ps.code AS status_code,
     p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-WHERE p.id = $1
+WHERE p.code = $1
 FOR UPDATE OF p
 `
 
-type LockPurchaseByIDRow struct {
+type LockPurchaseByCodeRow struct {
 	StatusCode int16
 	Purchases  Purchases
 }
 
-// === source: database/dml/repository/purchase/lock_purchase_by_id.sql ===
-// ID から購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。支払いの状態遷移の
+// === source: database/dml/repository/purchase/lock_purchase_by_code.sql ===
+// 購入コードから購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。支払いの状態遷移の
 // 競合（同一購入への並行支払い）を購入行ロックで直列化する（結合先の固定参照マスタはロックしない）。
 // 現在状態は購入ステータスマスタとの結合で code を解決する。存在しない場合は 0 行（NotFound）。
 //
@@ -573,11 +373,11 @@ type LockPurchaseByIDRow struct {
 //	    p.id, p.code, p.user_id, p.status_id, p.subtotal_amount, p.tax_amount, p.shipping_fee, p.total_amount, p.ordered_at, p.paid_at, p.canceled_at, p.shipped_at, p.delivered_at, p.created_at, p.updated_at
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-//	WHERE p.id = $1
+//	WHERE p.code = $1
 //	FOR UPDATE OF p
-func (q *Queries) LockPurchaseByID(ctx context.Context, id uuid.UUID) (*LockPurchaseByIDRow, error) {
-	row := q.db.QueryRow(ctx, lockPurchaseByID, id)
-	var i LockPurchaseByIDRow
+func (q *Queries) LockPurchaseByCode(ctx context.Context, code string) (*LockPurchaseByCodeRow, error) {
+	row := q.db.QueryRow(ctx, lockPurchaseByCode, code)
+	var i LockPurchaseByCodeRow
 	err := row.Scan(
 		&i.StatusCode,
 		&i.Purchases.ID,
