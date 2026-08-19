@@ -123,6 +123,14 @@ The re-measurement after a change is the step that keeps this from becoming an a
 the loop degrades into the thing [ADR-0008](../adr/0008-agent-environment-alignment.md) adopted it
 to prevent: an environment that only grows.
 
+**Closing a feedback issue is what marks an improvement as landed.** Nothing else is recorded,
+because nothing else would be more truthful: automatic closing does not fire on this repository's
+release branches, so closing one is always a person saying "this is dealt with". A separate landing
+date would be a second record of that same declaration, kept up by hand, and the copy nobody
+re-reads is the one that goes stale. Fourteen days later the weekly reports whether the same
+classification came back — and reports only that. Whether the improvement worked, and whether to
+keep, simplify or revert it, stays with the people in the retrospective.
+
 ## Keeping this interpretation current
 
 This is a describing document. Update it when the relationship it describes changes, not when an
