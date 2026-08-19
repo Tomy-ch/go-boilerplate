@@ -138,6 +138,74 @@ func validateDetails(details []PurchaseDetail) error {
 	return nil
 }
 
+// buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショット
+// による小計を価格スケールで返します。
+// 明細 ID が未設定、数量が最小値未満、同一商品 ID が重複、入力に対応するロック済み商品が無い場合は
+// それぞれ検証エラー（422）を、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を
+// 返します。単価は対応するロック済み商品の価格とし、入力の順序を保った明細を返します。
+func buildDetails(inputs []DetailInput, locked []LockedProduct) ([]PurchaseDetail, decimal.Decimal, error) {
+	lockedByID := make(map[uuid.UUID]LockedProduct, len(locked))
+	for _, l := range locked {
+		lockedByID[l.id] = l
+	}
+
+	seen := make(map[uuid.UUID]struct{}, len(inputs))
+	details := make([]PurchaseDetail, 0, len(inputs))
+	subtotalDollars := decimal.FromInt(0)
+	for _, in := range inputs {
+		l, err := resolveLocked(in, lockedByID, seen)
+		if err != nil {
+			return nil, decimal.FromInt(0), err
+		}
+		seen[in.ProductID] = struct{}{}
+
+		details = append(details, PurchaseDetail{
+			id:        in.ID,
+			productID: in.ProductID,
+			quantity:  in.Quantity,
+			unitPrice: l.price,
+		})
+		subtotalDollars = subtotalDollars.Add(l.price.Decimal().Mul(decimal.FromInt(int64(in.Quantity))))
+	}
+
+	return details, subtotalDollars, nil
+}
+
+// resolveLocked は、明細 1 件の入力を検証し、対応するロック済み商品を返します。
+// seen は既出の商品 ID の集合で、呼び出し元が返却後に in.ProductID を追加します。
+func resolveLocked(
+	in DetailInput,
+	lockedByID map[uuid.UUID]LockedProduct,
+	seen map[uuid.UUID]struct{},
+) (LockedProduct, error) {
+	if in.ID.IsNil() {
+		return LockedProduct{}, xerrors.Wrap(ErrInvalidID, "detail id is required")
+	}
+	if in.Quantity < minQuantity {
+		return LockedProduct{}, xerrors.Wrap(
+			ErrInvalidQuantity, fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, in.Quantity),
+		)
+	}
+	if _, dup := seen[in.ProductID]; dup {
+		return LockedProduct{}, xerrors.Wrap(
+			ErrDuplicateProductID, fmt.Sprintf("product %s appears more than once", in.ProductID),
+		)
+	}
+
+	l, ok := lockedByID[in.ProductID]
+	if !ok {
+		return LockedProduct{}, xerrors.Wrap(ErrProductNotFound, fmt.Sprintf("product %s is not available", in.ProductID))
+	}
+	if in.Quantity > l.quantity {
+		return LockedProduct{}, xerrors.Wrap(
+			ErrInsufficientStock,
+			fmt.Sprintf("product %s: requested %d, in stock %d", in.ProductID, in.Quantity, l.quantity),
+		)
+	}
+
+	return l, nil
+}
+
 // New は、購入明細の入力とロック済み在庫から購入集約を生成します。
 // 明細が空、同一 productID が重複、数量が最小値未満、明細に対応するロック済み商品が無い場合はそれぞれ
 // 検証エラー（422）を返し、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を返します。
@@ -163,44 +231,9 @@ func New(
 		return nil, ErrEmptyDetails
 	}
 
-	lockedByID := make(map[uuid.UUID]LockedProduct, len(locked))
-	for _, l := range locked {
-		lockedByID[l.id] = l
-	}
-
-	seen := make(map[uuid.UUID]struct{}, len(inputs))
-	details := make([]PurchaseDetail, 0, len(inputs))
-	subtotalDollars := decimal.FromInt(0)
-	for _, in := range inputs {
-		if in.ID.IsNil() {
-			return nil, xerrors.Wrap(ErrInvalidID, "detail id is required")
-		}
-		if in.Quantity < minQuantity {
-			return nil, xerrors.Wrap(ErrInvalidQuantity, fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, in.Quantity))
-		}
-		if _, dup := seen[in.ProductID]; dup {
-			return nil, xerrors.Wrap(ErrDuplicateProductID, fmt.Sprintf("product %s appears more than once", in.ProductID))
-		}
-		seen[in.ProductID] = struct{}{}
-
-		l, ok := lockedByID[in.ProductID]
-		if !ok {
-			return nil, xerrors.Wrap(ErrProductNotFound, fmt.Sprintf("product %s is not available", in.ProductID))
-		}
-		if in.Quantity > l.quantity {
-			return nil, xerrors.Wrap(
-				ErrInsufficientStock,
-				fmt.Sprintf("product %s: requested %d, in stock %d", in.ProductID, in.Quantity, l.quantity),
-			)
-		}
-
-		details = append(details, PurchaseDetail{
-			id:        in.ID,
-			productID: in.ProductID,
-			quantity:  in.Quantity,
-			unitPrice: l.price,
-		})
-		subtotalDollars = subtotalDollars.Add(l.price.Decimal().Mul(decimal.FromInt(int64(in.Quantity))))
+	details, subtotalDollars, err := buildDetails(inputs, locked)
+	if err != nil {
+		return nil, err
 	}
 
 	// 価格スケール→決済スケールの丸め（切り捨て）。以降は整数セントで計算する（ADR-0037 (two-scale-quantity-model)）。

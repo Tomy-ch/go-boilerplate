@@ -128,6 +128,27 @@ jobs:
 
       # The version is pinned in mise.toml (SSOT) — never duplicated here.
 
+      # `.claude/**` joins the skipped paths for the same reason `/scripts/**` is already
+      # there: it is developer tooling that never ships, and the rules that fire in it are
+      # about an application's runtime. Its whole finding set was `console.error` calls
+      # printing a symbol name and the command to regenerate a graph.
+      #
+      # Three rules are skipped by id, which needs more of an argument than a path does
+      # because it reaches the application code too:
+      #
+      #   go_gosec_filesystem_filereadtaint — gosec's G304, which golangci-lint already
+      #     runs over the same files. Every site it reports carries a `//nolint:gosec` with
+      #     the reason the path is trusted; Bearer cannot read those, so keeping the rule
+      #     means re-reporting a verdict another gate already took (see Overlapping surfaces
+      #     in README.md).
+      #   javascript_react_dangerously_set_inner_html — both sites are in the docs portal
+      #     and neither takes untrusted input: one renders highlight.js output, which
+      #     escapes before wrapping, and the other renders mermaid's SVG with
+      #     `securityLevel: "strict"` set explicitly for exactly this reason.
+      #   javascript_lang_observable_timing — fires on the portal's client-side search,
+      #     where the compared values are document titles.
+      #
+      # `go_gosec_leak_pprof_endpoint` is deliberately NOT skipped.
       - name: Bearer scan
         run: |
           bearer scan . \
@@ -139,7 +160,8 @@ jobs:
             --disable-version-check \
             --hide-progress-bar \
             --no-color \
-            --skip-path 'vendor/**,**/node_modules/**,**/dist/**,**/coverage/**,**/src/generated/**,docs/**,/scripts/**,**/*.gen.go,**/*.sql.go,**/*_mock.go'
+            --skip-rule 'go_gosec_filesystem_filereadtaint,javascript_react_dangerously_set_inner_html,javascript_lang_observable_timing' \
+            --skip-path 'vendor/**,**/node_modules/**,**/dist/**,**/coverage/**,**/src/generated/**,docs/**,/scripts/**,.claude/**,**/*.gen.go,**/*.sql.go,**/*_mock.go'
         shell: bash
 
       - name: Create Bearer summary (Markdown)

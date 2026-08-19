@@ -1,5 +1,7 @@
 #checkov:skip=CKV_DOCKER_2:make から docker compose run --rm で起動して終了する使い捨てで、常駐しないため健全性の観測対象が無い
 #checkov:skip=CKV_DOCKER_3:root 実行が要件。mise を /root 配下へ配置しており、非 root では mise と各ツールを解決できない（docker-compose.yaml 参照）
+# 上の #checkov:skip は checkov 自身の判定からしか外れない。code scanning へは checkov.yaml の
+# 「Drop suppressed results」が落としており、片方だけでは消えない。
 # mise 本体の固定バージョン（全ツールステージ共通。bump 時はここだけ変更する）
 ARG MISE_VERSION=v2026.6.0
 
@@ -187,8 +189,13 @@ RUN --mount=type=secret,id=github_token \
 
 # --require-hashes は lockfile の全エントリが版とハッシュで固定されていることを要求するため、
 # 記載漏れのある lockfile はここで install ごと失敗する。ハッシュ照合そのものが検査を兼ねる。
+#
+# --only-binary :all: が見ているのはその次の問いで、ハッシュが一致した sdist であっても
+# setup script は install 時に走る。wheel だけを受け付ければその余地が無くなる。この lockfile は
+# 全件 wheel から解決できるため失うものは無く、解決できない pin が入った時点で黙って任意コードを
+# 実行するのではなくここで落ちる。.github/workflows/sql-lint.yaml が同じ lockfile を同じ形で入れる。
 COPY python/sqlfluff.txt python/
-RUN uv pip install --system --require-hashes --no-cache -r python/sqlfluff.txt \
+RUN uv pip install --system --only-binary :all: --require-hashes --no-cache -r python/sqlfluff.txt \
     && sqlfluff --version
 
 ENTRYPOINT []

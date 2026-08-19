@@ -39,3 +39,23 @@ docs/portal/index.html
 
 # DB スロットプールがworktree毎に書き出す占有情報（internal/cli/dbslot）
 .gobp-db-slot
+
+# scripts/ 配下の Go ツールを `go build` した実行ファイル。`-o` を省くとツール名のままリポジトリ
+# 直下へ落ちるため `git add -A` に巻き込まれる。実行は全て `go run ./scripts/<name>` で行うので、
+# 追跡してよい実行ファイルはここに 1 つも無い。一覧は `scripts/*/main.go` の親ディレクトリ名で、
+# ツールを足したらここにも足す（総当たりで無視すると、拡張子を持たない makefile まで巻き込む）。
+/actions-shellcheck
+/base-branch
+/cover-gate
+/egress
+/genctxkey
+/go-cooldown
+/load-band
+/migration-lint
+/pin-actions
+/pin-images
+/release
+/repo-setup
+/shell-lint
+/sync-versions
+/tool-cooldown

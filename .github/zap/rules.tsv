@@ -2,6 +2,12 @@
 # Tab-separated: <ruleId> <IGNORE|WARN|FAIL> <reason>. A rule absent from this file keeps
 # its ZAP default.
 #
+# <ruleId> is either a plugin id (10105) or one of that plugin's alert references
+# (100000-1). ZAP's own classification keys on the plugin id; the SARIF conversion in the
+# workflow matches both, and is the only place an IGNORE reaches code scanning — ZAP writes
+# every alert it raised into its JSON report whatever this file says. Use the alert
+# reference where one plugin raises findings that are not the same finding.
+#
 # Each entry is justified by something this repository's API or its CI environment does,
 # and none of those justifications carries over to a deployed API. Re-derive the list
 # against your own before trusting it: an inherited IGNORE is a finding nobody sees again.
@@ -10,5 +16,8 @@
 10015	IGNORE	Re-examine Cache-control Directives — cache policy for this API belongs to the edge in front of it
 10027	IGNORE	Information Disclosure - Suspicious Comments — matches ordinary words in the JSON error vocabulary, on every response
 10035	IGNORE	Strict-Transport-Security Header — the ci profile sets SECURITY_HSTS_MAX_AGE=0 deliberately and the scan target is plaintext http inside the runner
+10049	IGNORE	Non-Storable Content — the scan carries an Authorization header on every request, which is what makes a response non-storable. It fires on /health, /ready, /version and /metrics, where cacheability is not a property this API is trying to have.
 10096	IGNORE	Timestamp Disclosure — resources carry created_at / updated_at, so this fires across the entire read surface
+10104	IGNORE	User Agent Fuzzer — fires on POST / PUT / PATCH, where two identical requests differ because the first one changed state. It compares status and body hash across replays, so it reports the write succeeding once, not a User-Agent the API varies on.
 10105	IGNORE	Weak Authentication Method — /metrics is protected by a separate BasicAuth middleware by decision (ADR-0019 (metrics-endpoint-auth-exception)), not by omission
+100000-1	IGNORE	A Client Error response code was returned by the server — the scan drives every operation with missing, malformed and fuzzed parameters, so a 4xx is the API's contract answering. 100000-2, the 5xx the same plugin raises, is deliberately not ignored.

@@ -121,7 +121,7 @@ export function removeSection(content: string, heading: string, file: string): s
   }
 
   const lines = content.split("\n");
-  const start = lines.findIndex((line) => line === heading);
+  const start = lines.indexOf(heading);
 
   if (start === -1) {
     throw new MissingDeclarationError(file, "見出し", heading);

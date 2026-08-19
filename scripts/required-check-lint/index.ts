@@ -16,7 +16,6 @@ const contexts = statusRule?.parameters?.required_status_checks?.map(({ context 
 const workflows = selectWorkflowFiles(fs.readdirSync(workflowsDir), workflowsDir).map((file) => ({
   file,
   // `file` は readdirSync が返したファイル名からこの固定ディレクトリ内へ組み立てた値だけを取る。
-  // eslint-disable-next-line security/detect-non-literal-fs-filename
   source: fs.readFileSync(path.join(process.cwd(), file), "utf8"),
 }));
 

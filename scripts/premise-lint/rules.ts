@@ -59,7 +59,7 @@ export const PREMISE_PATTERNS: readonly RegExp[] = [
 
 /** マーカー行に当たる正規表現を組み立てる。両名前空間を 1 本で見る。 */
 function marker(suffix: string): RegExp {
-  return new RegExp(`(?:\\/\\/|#|<!--)\\s*(?:boilerplate-only|sample-api):${suffix}\\b`);
+  return new RegExp(String.raw`(?:\/\/|#|<!--)\s*(?:boilerplate-only|sample-api):${suffix}\b`);
 }
 
 const BLOCK_BEGIN = marker("begin");
@@ -69,8 +69,14 @@ const REPLACE_BEGIN = marker("replace-begin");
 const REPLACE_WITH = marker("replace-with");
 const REPLACE_END = marker("replace-end");
 
-/** 退避コメント。`//` / `#` / `<!-- -->` のいずれかで `=` に続けて書かれる。 */
-const ESCROW = /^\s*(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
+/**
+ * 退避コメント。`//` / `#` / `<!-- -->` のいずれかで `=` に続けて書かれる。
+ *
+ * HTML コメント側の本文は貪欲に取り、行末の空白は呼び出し元で落とします。`.` は空白も含むため、
+ * 閉じ記号の手前を `\s*` で別に書くと同じ位置を両方が取り合って後戻りします。末尾の `$` が
+ * あるので、貪欲・非貪欲のどちらでも当たるのは最後の `-->` です。
+ */
+const ESCROW = /^[ \t]*(?:(?:\/\/|#)[ \t]*=[ \t]?(.*)|<!--[ \t]*=[ \t]?(.*)-->)$/;
 
 /**
  * テンプレート作成後に残る本文。マーカーで囲まれた記述を落とす。
@@ -88,35 +94,44 @@ const ESCROW = /^\s*(?:(?:\/\/|#)\s*=\s?(.*)|<!--\s*=\s?(.*?)\s*-->)$/;
  * マーカー除去のロジックを独自に持つ理由（`stripMarkers` を呼ばない理由）は
  * `scripts/setup/lib/markers.ts` 冒頭が持ちます。
  */
+/** `replace` マーカーの内側で、いま読んでいる行がどちら側に属するか。 */
+type ReplaceSide = "escrow" | "none" | "upstream";
+
+/** `replace` マーカーの行なら、その次の行から属する側を返す。マーカーでなければ `null`。 */
+function sideAfterMarker(line: string): ReplaceSide | null {
+  if (REPLACE_BEGIN.test(line)) return "upstream";
+  if (REPLACE_WITH.test(line)) return "escrow";
+  if (REPLACE_END.test(line)) return "none";
+
+  return null;
+}
+
+/**
+ * 退避コメントをアンコメントする。
+ *
+ * 退避コメントの形をしていない行はそのまま返します。アンコメントの規則が読めないものを落とすと、
+ * 作成先の本文を検査から消すことになるためです。
+ */
+function uncommentEscrow(line: string): string {
+  const matched = ESCROW.exec(line);
+
+  return matched === null ? line : (matched[1] ?? matched[2].trimEnd());
+}
+
 export function survivingText(content: string): string {
   const out: string[] = [];
   let depth = 0;
-  let inUpstreamSide = false;
-  let inEscrowSide = false;
+  let side: ReplaceSide = "none";
 
   for (const line of content.split("\n")) {
-    if (REPLACE_BEGIN.test(line)) {
-      inUpstreamSide = true;
+    const next = sideAfterMarker(line);
+    if (next !== null) {
+      side = next;
       continue;
     }
-    if (REPLACE_WITH.test(line)) {
-      inUpstreamSide = false;
-      inEscrowSide = true;
-      continue;
-    }
-    if (REPLACE_END.test(line)) {
-      inUpstreamSide = false;
-      inEscrowSide = false;
-      continue;
-    }
-    if (inUpstreamSide) continue;
-
-    if (inEscrowSide) {
-      const matched = ESCROW.exec(line);
-
-      // 退避コメントの形をしていない行は、アンコメントの規則が読めない。落とすと 作成先の
-      // 本文を検査から消すことになるので、そのまま検査へ通す。
-      out.push(matched === null ? line : (matched[1] ?? matched[2]));
+    if (side === "upstream") continue;
+    if (side === "escrow") {
+      out.push(uncommentEscrow(line));
       continue;
     }
 
@@ -138,7 +153,7 @@ export function survivingText(content: string): string {
 
 /** 相対パスの区切りを `/` に揃える。判定を OS に依らせないため。 */
 function normalize(relativePath: string): string {
-  return relativePath.split("\\").join("/");
+  return relativePath.replaceAll("\\", "/");
 }
 
 /** 検査対象の文書か。許可域は対象外、禁止域と層 README が対象。 */

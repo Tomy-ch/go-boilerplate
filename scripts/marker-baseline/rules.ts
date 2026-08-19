@@ -50,7 +50,7 @@ export type Baseline = Readonly<Record<string, number>>;
 
 /** 走査対象か。ディレクトリ名の除外は列挙側が行うため、ここは接頭辞だけを見る。 */
 export function isBaselineTarget(relativePath: string): boolean {
-  const normalized = relativePath.split("\\").join("/");
+  const normalized = relativePath.replaceAll("\\", "/");
 
   return !EXCLUDED_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }

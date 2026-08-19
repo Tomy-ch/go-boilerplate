@@ -370,6 +370,21 @@ jobs:
       # a DAST finding is about the HTTP surface that file describes, and pointing at a
       # file that exists is what makes the alert navigable in code scanning. The request
       # that produced it is in the message, where it is not lost.
+      #
+      # .github/zap/rules.tsv is applied here as well, and that is not a duplicate of what
+      # the action already does: ZAP reads that file for its own console classification and
+      # exit status only, and writes every alert it raised into report_json.json regardless
+      # — an IGNORE prints as `IGNORE-NEW` and then lands in the report anyway. Converting
+      # the report verbatim therefore published the ignored alerts to code scanning, where
+      # the one surface that outlives the run is the one the thresholds never reached.
+      #
+      # Alerts are keyed on ZAP's alert reference (`100000-1`) rather than its plugin id
+      # (`100000`), because one plugin raises alerts that are not the same finding: 100000-1
+      # is a 4xx answered by the API and 100000-2 is a 5xx it failed on. Keyed on the plugin
+      # id those two collapse into a single code-scanning rule that takes whichever of them
+      # jq happened to see first — which is how 4xx noise can end up hiding a 5xx. rules.tsv
+      # is matched on both forms so a threshold can be declared per alert reference here
+      # while ZAP's own classification keeps keying on the plugin id.
       - name: Convert the ZAP report to SARIF
         if: always()
         run: |
@@ -380,11 +395,17 @@ jobs:
             exit 1
           fi
 
-          jq '
+          ignored="$(awk -F'\t' '$0 !~ /^#/ && NF >= 2 && $2 == "IGNORE" { print $1 }' \
+            .github/zap/rules.tsv | jq -R . | jq -sc .)"
+          echo "ignored rules: ${ignored}"
+
+          jq --argjson ignored "$ignored" '
             def level: {"3": "error", "2": "warning", "1": "note", "0": "none"}[.] // "warning";
             def plain: (. // "") | gsub("<[^>]*>"; "") | gsub("\\s+"; " ") | ltrimstr(" ") | rtrimstr(" ");
+            def rid: .alertRef // .pluginid;
+            def suppressed: . as $a | ($ignored | index($a | rid)) != null or ($ignored | index($a.pluginid)) != null;
 
-            [ (.site // [])[] | (.alerts // [])[] ] as $alerts
+            [ (.site // [])[] | (.alerts // [])[] | select(suppressed | not) ] as $alerts
             | {
                 "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
                 version: "2.1.0",
@@ -397,9 +418,9 @@ jobs:
                         informationUri: "https://www.zaproxy.org/",
                         rules: (
                           $alerts
-                          | group_by(.pluginid)
+                          | group_by(rid)
                           | map(.[0] | {
-                              id: .pluginid,
+                              id: rid,
                               name: .alert,
                               shortDescription: { text: .alert },
                               fullDescription: { text: (.desc | plain) },
@@ -416,7 +437,7 @@ jobs:
                     results: (
                       $alerts
                       | map(. as $a | (.instances // [{}]) | map({
-                          ruleId: $a.pluginid,
+                          ruleId: ($a | rid),
                           level: ($a.riskcode | level),
                           message: {
                             text: ($a.alert
@@ -433,7 +454,7 @@ jobs:
                             }
                           ],
                           partialFingerprints: {
-                            zapAlertInstance: ($a.pluginid + ":" + (.method // "") + ":" + (.uri // "") + ":" + (.param // ""))
+                            zapAlertInstance: (($a | rid) + ":" + (.method // "") + ":" + (.uri // "") + ":" + (.param // ""))
                           }
                         }))
                       | flatten

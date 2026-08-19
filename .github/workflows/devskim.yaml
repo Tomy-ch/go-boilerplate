@@ -100,6 +100,23 @@ jobs:
 
       # Generated, vendored, test-only, and local-development-only files are outside
       # the deployed application. --base-path keeps SARIF locations repository-relative.
+      #
+      # Two rules are switched off by id, which the rest of the scanners here never do —
+      # they pin an exception to a path so a new file still trips it. DevSkim has no such
+      # instrument: its only knobs are a whole-file glob and a global rule id, and dropping
+      # the files these fire in would take every other rule down with them.
+      #
+      # DS162092 (`localhost` may be leftover debug code) is inverted in this repository on
+      # every one of its hits. It fires on the compose file and the workflows that stand the
+      # stack up, on the OpenAPI `servers` entry marked `x-internal: true`, and — twice — on
+      # `internal/config`, where the match is the guard that REFUSES plain http for any host
+      # but localhost and the error it raises. No environment file carries a localhost the
+      # rule could be right about, and a new one would still be local-development wiring.
+      #
+      # DS176209 (a TODO or FIXME was left behind) is owned by `godox` in .golangci.yaml,
+      # which fails the lint gate rather than filing a note — see Overlapping surfaces in
+      # README.md. DevSkim's hits are on .golangci.yaml itself, matching the keyword list
+      # that configures godox.
       - name: DevSkim scan
         run: |
           devskim analyze \
@@ -107,6 +124,7 @@ jobs:
             --output-file devskim.sarif \
             --file-format sarif \
             --base-path . \
+            --ignore-rule-ids 'DS162092,DS176209' \
             --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/*_test.go,**/*.test.ts,**/*.spec.ts,**/pnpm-lock.yaml,**/package-lock.json,**/openapi.gen.yaml,**/.agents/**,**/docs/openapi/**,**/docs/coverage/**,**/docs/db-schema/**,**/docs/godoc/**,**/docs/portal/docs.json,**/docs/portal/guides/**,**/docker-compose.attach.yaml'
         shell: bash
 
