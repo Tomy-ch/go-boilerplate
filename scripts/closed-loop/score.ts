@@ -30,6 +30,16 @@ export type FeedbackIssue = {
   readonly createdAt?: number;
   /** Issue が閉じられた epoch(秒)。開いたままなら `undefined`。 */
   readonly resolvedAt?: number;
+  /**
+   * 「片付いた」として閉じられたか。
+   *
+   * @remarks
+   * クローズには 2 つの意味があります。人が「この所見は片付いた」と宣言した場合と、週次の
+   * 統合が関心へ畳んだ場合です。後者を着地に数えると、集計しただけの Issue が全部「効果を
+   * 測るべき改善」に見え、測り直しが空振りします。GitHub の close reason で区別し、
+   * `completed` だけを着地として扱います。
+   */
+  readonly completed?: boolean;
   /** 本文の H2 節。読解が無ければ空。 */
   readonly sections?: Readonly<Record<string, string>>;
 };
@@ -243,7 +253,7 @@ export function reevaluations(issues: readonly FeedbackIssue[], now: number): Re
   const out: Reevaluation[] = [];
   for (const [key, group] of byKey) {
     const landed = group
-      .filter((i): i is FeedbackIssue & { resolvedAt: number } => i.resolvedAt !== undefined)
+      .filter((i): i is FeedbackIssue & { resolvedAt: number } => i.resolvedAt !== undefined && i.completed === true)
       .sort((a, b) => b.resolvedAt - a.resolvedAt)[0];
     if (landed === undefined) continue;
 

@@ -8,7 +8,19 @@
 //   tsx scripts/closed-loop/weekly [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--json]
 
 import { execFileSync } from "node:child_process";
+import os from "node:os";
 
+import {
+  buildConcernPrompt,
+  parseConcerns,
+  renderIntegrationBody,
+  renderRollupComment,
+  rollupDestinations,
+  rollupTargets,
+  INTEGRATION_LABEL,
+  ROLLED_UP_REASON,
+  type RollupSource,
+} from "../integration";
 import { parseObservation, parseSections, IMPROVEMENT_SECTION } from "../issue";
 import { resolvePeriod, withinPeriod } from "../report";
 import {
@@ -22,6 +34,15 @@ import {
   type FeedbackIssue,
 } from "../score";
 
+// 分解に必要なのは渡した本文だけ。読解と同じく、外界へ出る手段は落としてリポジトリの外で走らせる
+// （docs/design/security.md「Secrets」）。
+const CONSOLIDATE_DENIED_TOOLS = "Read Bash Glob Grep Edit Write NotebookEdit WebFetch WebSearch Task";
+const CONSOLIDATE_TIMEOUT_MS = 180_000;
+
+function gh(args: string[]): string {
+  return execFileSync("gh", args, { encoding: "utf8" }).trim();
+}
+
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
@@ -33,6 +54,7 @@ type RawIssue = {
   body: string;
   createdAt: string;
   closedAt: string | null;
+  stateReason: string | null;
   labels: { name: string }[];
 };
 
@@ -59,7 +81,7 @@ const raw: RawIssue[] = JSON.parse(
       "--limit",
       "200",
       "--json",
-      "number,title,body,createdAt,closedAt,labels",
+      "number,title,body,createdAt,closedAt,stateReason,labels",
     ],
     { encoding: "utf8" },
   ),
@@ -84,6 +106,7 @@ for (const r of raw) {
     observation,
     createdAt,
     resolvedAt: epoch(r.closedAt),
+    completed: r.stateReason === "COMPLETED",
     sections: parseSections(r.body),
   };
   all.push(issue);
@@ -152,4 +175,70 @@ for (const i of issues) {
       ` 中断${i.observation.interrupts ?? "—"}` +
       ` 待ち${wait === undefined ? "—" : `${Math.round(wait / 60)}分`}`,
   );
+}
+
+// 統合は明示したときだけ走らせる。既定を読むだけに保つのは、この入口が定期実行から無人で
+// 呼ばれるため。Issue を作って閉じる副作用が既定に入ると、意図しない畳み込みが起きたときに
+// 気づく人がいない。
+if (process.argv.includes("--consolidate")) {
+  const open = raw.filter((r) => r.closedAt === null);
+  const byNumber = new Map(all.map((i) => [i.number, i]));
+  const sources: RollupSource[] = [];
+  for (const r of open) {
+    const issue = byNumber.get(r.number);
+    if (issue?.sections !== undefined) sources.push({ number: r.number, observation: issue.observation, sections: issue.sections });
+  }
+
+  const targets = rollupTargets(sources);
+  if (targets.length === 0) {
+    console.log("\n統合: 畳む対象がありません（改善提案を持つ未クローズの Issue が無い）");
+  } else {
+    // 読解が要る唯一の段。ここが落ちても上の集計は済んでいるので、何も畳まずに終える。
+    let concerns: ReturnType<typeof parseConcerns> = [];
+    try {
+      const out = execFileSync("claude", ["-p", "--model", "sonnet", "--disallowed-tools", CONSOLIDATE_DENIED_TOOLS], {
+        cwd: os.tmpdir(),
+        encoding: "utf8",
+        input: buildConcernPrompt(targets),
+        stdio: ["pipe", "pipe", "ignore"],
+        timeout: CONSOLIDATE_TIMEOUT_MS,
+      });
+      concerns = parseConcerns(out, targets.map((t) => t.number));
+    } catch {
+      concerns = [];
+    }
+
+    if (concerns.length === 0) {
+      console.log("\n統合: 関心へ分解できませんでした（何も畳んでいません）");
+    } else {
+      console.log(`\n統合: ${targets.length} 件を ${concerns.length} の関心へ畳みます`);
+      const madeConcerns: { issue: number; sources: readonly number[] }[] = [];
+      // 1 つの関心で落ちても他は畳む。全体を落とすと、既に作った統合 Issue だけが残って
+      // 大元が開いたままになり、次回また同じ関心が作られる。
+      for (const c of concerns) {
+        try {
+          const url = gh(["issue", "create", "--title", c.title, "--body", renderIntegrationBody(c), "--label", INTEGRATION_LABEL]);
+          const m = /\/(\d+)$/.exec(url);
+          const created = m ? Number(m[1]) : undefined;
+          if (created === undefined) throw new Error(`URL から番号を読めない: ${url}`);
+          console.log(`  #${created} ${c.title}  ← ${c.sources.map((n) => `#${n}`).join(" ")}`);
+          madeConcerns.push({ issue: created, sources: c.sources });
+        } catch (e) {
+          console.error(`統合 Issue を作れませんでした（この関心だけ飛ばします）: ${c.title}: ${String(e).split("\n")[0]}`);
+        }
+      }
+
+      // 大元を鍵に反転してから 1 回だけ閉じる。関心ごとに閉じると、複数の関心が同じ大元を
+      // 指したとき 2 回目以降が空振りし、辿り先も 1 つに縮む。
+      for (const [source, destinations] of rollupDestinations(madeConcerns)) {
+        try {
+          // 先にコメント、次にクローズ。逆にすると、閉じた直後に落ちた場合へ辿る先が残らない。
+          gh(["issue", "comment", String(source), "--body", renderRollupComment(destinations)]);
+          gh(["issue", "close", String(source), "--reason", ROLLED_UP_REASON]);
+        } catch (e) {
+          console.error(`#${source} を閉じられませんでした: ${String(e).split("\n")[0]}`);
+        }
+      }
+    }
+  }
 }
