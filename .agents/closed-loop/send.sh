@@ -13,7 +13,7 @@
 #
 # Everything here degrades to doing nothing. A missing runner, an unauthenticated `gh`, no network
 # — each leaves the index untouched and the window pending, which is the state the next run reads.
-# It must never block or fail a session (requirement §8), so it exits 0 unconditionally and runs
+# It must never block or fail a session, so it exits 0 unconditionally and runs
 # the actual send in the background.
 #
 # Transcripts live under the user's home, which the tool-runner container cannot see; the path is

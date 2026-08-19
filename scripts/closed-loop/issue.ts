@@ -6,7 +6,7 @@
  * 形式が片方だけ変わると集計が黙って空になります。往復が同じモジュールにあれば、
  * 変更したときにテストが両側で落ちます。
  *
- * 本文は 2 層です。人が読む H2 節（要件 §5.3 の構造）と、機械が読む YAML ブロック。
+ * 本文は 2 層です。人が読む H2 節と、機械が読む YAML ブロック。
  * 決定論的に取れた事実だけを YAML に置き、意味の分類は AI が後から H2 節へ書きます。
  * 分けるのは、集計が「数えた値」と「読解した値」を混ぜないためです。
  */
@@ -30,7 +30,7 @@ export type Observation = {
   readonly skills?: Readonly<Record<string, number>>;
 };
 
-/** 本文に置く H2 節。順序は要件 §5.3 の並びに合わせる。 */
+/** 本文に置く H2 節。Outcome から Evidence へ、着地から根拠へと降りる順。 */
 export const BODY_SECTIONS: readonly string[] = [
   "Outcome",
   "Friction",

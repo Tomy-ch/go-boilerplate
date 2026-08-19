@@ -5,7 +5,7 @@
  * スコアは順位づけの道具であって、良し悪しの判定ではありません。何を改善するかは
  * レトロで人が決めます（ADR-0008）。ここが担うのは「どれから見るか」だけです。
  *
- * 評価要素は要件 §5.5 の 4 つ。Frequency / Impact / Human Intervention / Recurrence。
+ * 評価要素は 4 つ。Frequency / Impact / Human Intervention / Recurrence。
  * 重みは運用データで調整する前提なので、既定値を定数に置いて差し替え可能にしてあります。
  *
  * 判定はここに置き、gh の呼び出しは入口が担います。
@@ -135,9 +135,8 @@ export function clusterKey(issue: FeedbackIssue): string {
  * Issue 群を鍵ごとにまとめ、スコアを付けて降順に並べる。
  *
  * @remarks
- * スコアは 4 要素の重み付き和です。再発を最も重く見るのは、要件 §10 が
- * 「同じ誤読・不要な介入が複数セッションで反復したら、個人の利用ミスより基盤側の
- * 改善候補として優先的に扱う」と定めているためです。
+ * スコアは 4 要素の重み付き和です。再発を最も重く見るのは、同じ誤読や不要な介入が
+ * 複数のセッションで反復したなら、それは個人の使い方の問題ではなく基盤側の問題だからです。
  */
 export function clusterIssues(issues: readonly FeedbackIssue[], weights: Weights = DEFAULT_WEIGHTS): Cluster[] {
   const groups = new Map<string, FeedbackIssue[]>();
