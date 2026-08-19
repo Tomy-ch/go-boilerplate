@@ -15,12 +15,22 @@
  * 判定はここに置き、ファイル入出力は `index.ts` が担います。
  */
 
-/** 索引の 1 件。`feedbackIssue` が無いものは「まだ送出できていない」を意味する。 */
+/**
+ * 索引の 1 件。
+ *
+ * @remarks
+ * `feedbackIssue` が無いものは「まだ issue を作れていない」を意味します。
+ * `commentPending` は「issue は作れたが読解候補コメントを付けられなかった」を意味し、
+ * 両者は別の未完了です。1 つのフラグで両方を表すと、部分的に成功した窓が
+ * 「送出済み」に見えて二度と再試行されません。
+ */
 export type IndexEntry = {
   readonly windowId: string;
   readonly branch?: string;
   readonly parentIssue?: number;
   readonly feedbackIssue?: number;
+  /** issue はあるがコメントが未投稿。次回コメントだけを再送する。 */
+  readonly commentPending?: boolean;
   readonly updatedAt: number;
 };
 
@@ -53,6 +63,7 @@ export function parseIndex(raw: unknown): IndexStore {
       branch: typeof o.branch === "string" ? o.branch : undefined,
       parentIssue: typeof o.parentIssue === "number" ? o.parentIssue : undefined,
       feedbackIssue: typeof o.feedbackIssue === "number" ? o.feedbackIssue : undefined,
+      commentPending: o.commentPending === true ? true : undefined,
       updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
     });
   }
@@ -77,9 +88,15 @@ export function findByBranch(store: IndexStore, branch: string): IndexEntry | un
     .sort((a, b) => b.updatedAt - a.updatedAt)[0];
 }
 
-/** 送出できていない窓。週次側がここを見て解消する。 */
+/**
+ * まだ完了していない窓。
+ *
+ * @remarks
+ * issue が無いものと、issue はあるがコメントが欠けているものの両方を返します。
+ * 後者を落とすと、部分的に成功した窓が永久に半端なまま残ります。
+ */
 export function pendingEntries(store: IndexStore): IndexEntry[] {
-  return store.entries.filter((e) => e.feedbackIssue === undefined);
+  return store.entries.filter((e) => e.feedbackIssue === undefined || e.commentPending === true);
 }
 
 /**

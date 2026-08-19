@@ -21,12 +21,17 @@
 #   safety       Rare by design. Frequency is NOT the measure; being present when needed is.
 #
 # opportunity_predicate
-#   A mechanically evaluable statement of "this window could have used the skill", written
-#   against what a window already records: the tool calls in its transcript, the files it
-#   changed, and its pull request. `null` means no such statement exists — and null is the
-#   honest answer far more often than it is comfortable. There is no general way to observe an
-#   opportunity; S4 of the design spike established that it has to be written per skill or not
-#   at all. A skill with a null predicate is never judged on coverage.
+#   A statement of "this window could have used the skill", written against what a window
+#   already records: the tool calls in its transcript, the files it changed, and its pull
+#   request. `null` means no such statement exists — and null is the honest answer far more
+#   often than it is comfortable. There is no general way to observe an opportunity; it has to
+#   be written per skill or not at all.
+#
+#   **These are prose, and nothing executes them yet.** They are written to be mechanically
+#   evaluable — each names an observable fact rather than a judgement — but the evaluator does
+#   not exist, so coverage is not computed and this file is read by people. Saying so here
+#   matters: a reader who assumes the numbers are live would trust a coverage figure that is
+#   not being produced.
 #
 #   Worked example, `commit`: the predicate is "a `git commit` appeared in the window's Bash
 #   calls". Because `/commit` runs `git commit` internally, the meaningful set is the windows
@@ -45,168 +50,126 @@ skills:
   - skill: actions-pin
     usage_class: lifecycle
     opportunity_predicate: "`.github/workflows/**` に未 pin の action が現れた"
-    calls_30d: 0
   - skill: arch-check
     usage_class: situational
     opportunity_predicate: "`internal/**` のレイヤ構成に関わるファイルが変更された"
-    calls_30d: 0
   - skill: back-prop
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 2
   - skill: canonicalize-doc
     usage_class: situational
     opportunity_predicate: "対訳ペアの片側だけが変更された（`X.md` と `X.ja.md` の一方のみ）"
-    calls_30d: 34
   - skill: comment-sweep
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 7
   - skill: commit
     usage_class: frequent
     opportunity_predicate: "Bash の input.command に `git commit` が現れた窓"
-    calls_30d: 73
   - skill: context-map
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 0
   - skill: context-map-audit
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 0
   - skill: ddd-audit
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 3
   - skill: dep-vuln-upgrade
     usage_class: situational
     opportunity_predicate: "脆弱性アドバイザリが提示された"
-    calls_30d: 1
   - skill: full-apply
     usage_class: situational
     opportunity_predicate: "`tmp/skills/reviews/` に未適用の所見がある"
-    calls_30d: 0
   - skill: full-verify
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 0
   - skill: glossary
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 0
   - skill: go-upgrade
     usage_class: lifecycle
     opportunity_predicate: "`mise.toml` の go バージョンが更新可能になった"
-    calls_30d: 0
   - skill: images-pin
     usage_class: lifecycle
     opportunity_predicate: "`docker/**` に未 pin の image が現れた"
-    calls_30d: 0
   - skill: impl-issue
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 5
   - skill: impl-review
     usage_class: frequent
     opportunity_predicate: null
-    calls_30d: 69
   - skill: manage-skill
     usage_class: situational
     opportunity_predicate: "`.claude/skills/**` が変更された"
-    calls_30d: 31
   - skill: new-env
     usage_class: lifecycle
     opportunity_predicate: "環境変数が追加された（`env/` の変更）"
-    calls_30d: 0
   - skill: new-issue
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 2
   - skill: new-spec
     usage_class: situational
     opportunity_predicate: "`docs/spec/<feature>/` が存在しない新機能に着手した"
-    calls_30d: 1
   - skill: new-spec-domain
     usage_class: situational
     opportunity_predicate: "`docs/spec/<feature>/domain.md` が存在しない新機能に着手した"
-    calls_30d: 1
   - skill: new-spec-usecase
     usage_class: situational
     opportunity_predicate: "`docs/spec/<feature>/usecase.md` が存在しない新機能に着手した"
-    calls_30d: 0
   - skill: portal-manifest-sync
     usage_class: situational
     opportunity_predicate: "`README.md` が追加・削除されたのに `docs/portal/manifest.yaml` が変更されていない"
-    calls_30d: 1
   - skill: readme-review
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 1
   - skill: release-notes
     usage_class: lifecycle
     opportunity_predicate: "リリースタグが作成された"
-    calls_30d: 0
   - skill: repo-ops
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 2
   - skill: scaffold-controller
     usage_class: situational
     opportunity_predicate: "`internal/controller/handler/` にファイルが追加された"
-    calls_30d: 0
   - skill: scaffold-domain
     usage_class: situational
     opportunity_predicate: "`internal/domain/<aggregate>/` が新規作成された"
-    calls_30d: 0
   - skill: scaffold-endpoint
     usage_class: situational
     opportunity_predicate: "`openapi/` に operation が追加された"
-    calls_30d: 0
   - skill: scaffold-infra-db
     usage_class: situational
     opportunity_predicate: "`database/dml/**` にクエリが追加された"
-    calls_30d: 0
   - skill: scaffold-integration-test
     usage_class: situational
     opportunity_predicate: "新しい endpoint が追加された"
-    calls_30d: 0
   - skill: scaffold-test
     usage_class: situational
     opportunity_predicate: "production シンボルが追加されたのに対応する `*_test.go` が無い"
-    calls_30d: 2
   - skill: scaffold-usecase
     usage_class: situational
     opportunity_predicate: "`internal/usecase/<feature>/` が新規作成された"
-    calls_30d: 0
   - skill: submit-pr
     usage_class: frequent
     opportunity_predicate: "窓のブランチに対して PR が作成された"
-    calls_30d: 52
   - skill: supply-chain-triage
     usage_class: situational
     opportunity_predicate: "cooldown により保留された版が出た（`tool-cooldown-gate` の失敗）"
-    calls_30d: 6
   - skill: sync-ai
     usage_class: situational
     opportunity_predicate: "`.claude/skills/<n>/` が変更され `.codex/skills/<n>/` が変更されていない"
-    calls_30d: 7
   - skill: sync-readme
     usage_class: situational
     opportunity_predicate: "ディレクトリの構成が変わったのに同階層の README が変更されていない"
-    calls_30d: 2
   - skill: test-review
     usage_class: frequent
     opportunity_predicate: "窓で `*_test.go` が変更された"
-    calls_30d: 42
   - skill: tool-map
     usage_class: situational
     opportunity_predicate: null
-    calls_30d: 0
   - skill: tools-upgrade
     usage_class: lifecycle
     opportunity_predicate: "`mise.toml` のツールに新版が出た"
-    calls_30d: 0
   - skill: verify-spec
     usage_class: situational
     opportunity_predicate: "`docs/spec/<feature>/` が変更された"
-    calls_30d: 1

@@ -70,6 +70,41 @@ export function isInjected(text: string): boolean {
   return INJECTED_MARKERS.some((m) => text.includes(m));
 }
 
+/**
+ * 秘密情報らしき形。
+ *
+ * @remarks
+ * 候補は **public リポジトリの Issue へ逐語で投稿されます。**打ち込まれた本文には、
+ * 動かない API キーや接続文字列を貼って質問した跡が混ざりえます。実測でも、過去の
+ * 生発話 4,093 件のうち 2 件に実在の秘密（OAuth トークンと CI トークン）が含まれていました。
+ * それらがたまたま選定条件に当たらなかっただけで、防いでいたわけではありません。
+ *
+ * gitleaks はコミット対象を検査するので、この経路はその網の外側にあります。ここが唯一の関門です。
+ *
+ * 完全な検出はできません。だから**疑わしきは落とす**方針を採ります。候補は摩擦を読むための
+ * 材料であり、1 件落ちても別の候補が残りますが、1 件漏れると取り消せません。
+ */
+export const SECRET_PATTERNS: readonly RegExp[] = [
+  /\b(?:sk|pk|rk)-[A-Za-z0-9_-]{16,}/,                 // OpenAI 系
+  /\bgh[pousr]_[A-Za-z0-9]{16,}/,                       // GitHub token
+  /\bgithub_pat_[A-Za-z0-9_]{20,}/,
+  /\bAKIA[0-9A-Z]{16}\b/,                               // AWS access key id
+  /\bASIA[0-9A-Z]{16}\b/,
+  /\bxox[abposr]-[A-Za-z0-9-]{10,}/,                    // Slack
+  /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, // JWT
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+  /\b[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s:@/]+:[^\s:@/]+@/,   // URL の userinfo
+  // 単語境界を前に置かないのは、実測で見つかった実例が `SONAR_TOKEN=` だったため。
+  // `\btoken\b` は `_TOKEN` に当たらず、環境変数名の形をした鍵をまるごと取り逃す。
+  /(?:token|secret|password|passwd|api[_-]?key)\s*[:=]\s*["']?[A-Za-z0-9_\-.+/]{12,}/i,
+  /\bBearer\s+[A-Za-z0-9_\-.=]{20,}/,
+] as const;
+
+/** 秘密情報らしき形を含むか。 */
+export function looksSecret(text: string): boolean {
+  return SECRET_PATTERNS.some((re) => re.test(text));
+}
+
 /** 本文が是正の合図を含むか。注入された本文は人の発話ではないので含めない。 */
 export function isCorrective(text: string): boolean {
   return !isInjected(text) && CORRECTIVE_MARKERS.some((m) => text.includes(m));
@@ -105,7 +140,13 @@ export function selectCandidates(
 ): Candidate[] {
   const ordered = [...events].sort((a, b) => a.at - b.at);
   const prompts = ordered.filter(
-    (e) => e.kind === "prompt" && e.text !== undefined && e.text !== "" && !isInjected(e.text),
+    (e) =>
+      e.kind === "prompt" &&
+      e.text !== undefined &&
+      e.text !== "" &&
+      !isInjected(e.text) &&
+      // 秘密情報らしき本文は、どの選定理由に当たっても候補にしない。投稿は取り消せない。
+      !looksSecret(e.text),
   );
 
   const corrective: Candidate[] = [];

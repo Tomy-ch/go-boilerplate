@@ -8,6 +8,8 @@ import {
   excerpt,
   isCorrective,
   isInjected,
+  looksSecret,
+  SECRET_PATTERNS,
   renderCandidateComment,
   selectCandidates,
   type Candidate,
@@ -57,6 +59,69 @@ describe("isInjected", () => {
   describe("異常系", () => {
     it("人の発話は注入と判定しない", () => {
       expect(isInjected("それは違う")).toBe(false);
+    });
+  });
+});
+
+describe("SECRET_PATTERNS", () => {
+  describe("正常系", () => {
+    it("重複した検出式を持たない", () => {
+      const sources = SECRET_PATTERNS.map((r) => r.source);
+      expect(new Set(sources).size).toBe(sources.length);
+    });
+  });
+});
+
+describe("looksSecret", () => {
+  describe("正常系", () => {
+    it("OpenAI 形式の鍵を検出する", () => {
+      expect(looksSecret("なんで sk-abcdefghijklmnop0123 が通らないの")).toBe(true);
+    });
+
+    it("GitHub token を検出する", () => {
+      expect(looksSecret("ghp_0123456789abcdefghij を使って")).toBe(true);
+    });
+
+    it("AWS のアクセスキー ID を検出する", () => {
+      expect(looksSecret("AKIAIOSFODNN7EXAMPLE が違う")).toBe(true);
+    });
+
+    it("JWT を検出する", () => {
+      expect(looksSecret("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r")).toBe(true);
+    });
+
+    it("秘密鍵のヘッダを検出する", () => {
+      expect(looksSecret("-----BEGIN RSA PRIVATE KEY-----")).toBe(true);
+    });
+
+    it("URL に埋め込まれた資格情報を検出する", () => {
+      expect(looksSecret("postgres://admin:hunter2secret@db.internal/app が繋がらない")).toBe(true);
+    });
+
+    it("キー名と値の組を検出する", () => {
+      expect(looksSecret("SONAR_TOKEN=squ_0123456789abcdefghij を渡した")).toBe(true);
+    });
+
+    it("Bearer トークンを検出する", () => {
+      expect(looksSecret("Authorization: Bearer abcdefghij0123456789KLMNOP")).toBe(true);
+    });
+
+    it("Slack のトークンを検出する", () => {
+      expect(looksSecret("xoxb-0123456789-abcdefghij")).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("ふつうの発話を秘密と判定しない", () => {
+      expect(looksSecret("それは違う。CommandService に移さなくてよかった")).toBe(false);
+    });
+
+    it("token という語だけでは判定しない", () => {
+      expect(looksSecret("token の扱いをどうするか相談したい")).toBe(false);
+    });
+
+    it("短い識別子を秘密と判定しない", () => {
+      expect(looksSecret("sk-abc の話")).toBe(false);
     });
   });
 });
@@ -168,6 +233,15 @@ describe("selectCandidates", () => {
 
     it("注入された本文は中断や失敗の文脈でも選ばない", () => {
       expect(selectCandidates([prompt(100, "<task-notification> done"), interrupt(200)])).toEqual([]);
+    });
+
+    it("秘密情報を含む発話は是正の語を含んでいても選ばない", () => {
+      expect(selectCandidates([prompt(100, "なんで ghp_0123456789abcdefghij が通らないの")])).toEqual([]);
+    });
+
+    it("秘密情報を含む発話は中断や失敗の文脈でも選ばない", () => {
+      expect(selectCandidates([prompt(100, "AKIAIOSFODNN7EXAMPLE を試す"), interrupt(200)])).toEqual([]);
+      expect(selectCandidates([failure(100), prompt(200, "Bearer abcdefghij0123456789KLMNOP で再試行")])).toEqual([]);
     });
 
     it("イベントが無ければ空になる", () => {

@@ -37,12 +37,26 @@ export type PeriodSummary = {
 const DAY_SEC = 86_400;
 
 /**
+ * 日の境界をどのタイムゾーンで切るか。UTC からの秒。
+ *
+ * @remarks
+ * このリポジトリの運用は JST です。UTC で日を切ると `--to 2026-08-19` が実際には
+ * JST 8/19 09:00 〜 8/20 08:59 を指し、**その日の午前が丸ごと落ちます**。指定した日と
+ * 集計された範囲が 9 時間ずれるのは、数字が出てしまうぶん静かな失敗になります。
+ *
+ * 固定値にしてあるのは、実行環境の `TZ` に従わせると同じ引数が機械によって別の期間を
+ * 指すためです。期間は絶対日付で指定する設計なので、その解釈も固定でなければ意味がありません。
+ */
+export const DAY_BOUNDARY_OFFSET_SEC = 9 * 3600;
+
+/**
  * 期間を解決する。
  *
  * @param from `YYYY-MM-DD`。省略時は `to` の 7 日前。
  * @param to `YYYY-MM-DD`。省略時は `now` の日。
  * @param now 基準時刻（epoch 秒）。呼び出し側が渡すことで、同じ入力が常に同じ期間になる。
- * @returns 解決された期間。`to` はその日の終端（23:59:59）まで含む。
+ * @returns 解決された期間。境界は {@link DAY_BOUNDARY_OFFSET_SEC} のタイムゾーンで切り、
+ *   `to` はその日の終端まで含む。
  * @throws 日付として解釈できない、または `from` が `to` より後の場合。
  */
 export function resolvePeriod(from: string | undefined, to: string | undefined, now: number): Period {
@@ -62,11 +76,12 @@ function parseDay(day: string): number {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error(`日付は YYYY-MM-DD で指定する: ${day}`);
   const ms = Date.parse(`${day}T00:00:00Z`);
   if (Number.isNaN(ms)) throw new Error(`日付として解釈できない: ${day}`);
-  return Math.floor(ms / 1000);
+  return Math.floor(ms / 1000) - DAY_BOUNDARY_OFFSET_SEC;
 }
 
 function startOfDay(epochSec: number): number {
-  return epochSec - (epochSec % DAY_SEC);
+  const shifted = epochSec + DAY_BOUNDARY_OFFSET_SEC;
+  return shifted - (shifted % DAY_SEC) - DAY_BOUNDARY_OFFSET_SEC;
 }
 
 /**

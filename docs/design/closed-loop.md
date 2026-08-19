@@ -90,10 +90,16 @@ given week says nothing about the skill. Judging on call count alone would retir
 scaffolding suite the first month without a new endpoint.
 
 So each skill declares a class and, where one can be written, a predicate that says when a window
-*could* have used it. Coverage — used over could-have-used — is the measure that means something,
-and it exists only for the skills whose predicate could be written honestly. There is no general
-way to observe an opportunity; the ones that cannot be expressed are marked as such and judged on
-something else. The declarations are in `.agents/closed-loop/skill-meta.yaml`.
+*could* have used it. Coverage — used over could-have-used — is the measure that would mean
+something, and it exists only for the skills whose predicate could be written honestly. There is
+no general way to observe an opportunity; the ones that cannot be expressed are marked as such and
+judged on something else. The declarations are in `.agents/closed-loop/skill-meta.yaml`.
+
+Today those predicates are prose and no evaluator reads them, so what the loop actually reports is
+the call count and which skills went uncalled — with the warning that a count alone is not grounds
+to retire anything. Reading the comments on issues and pull requests is in the same state: the
+machine-author list exists, and the aggregation that would consult it does not yet fetch comments.
+Both are named here because the gap is worth seeing; neither is named as if it were running.
 
 ## What the loop may not do
 

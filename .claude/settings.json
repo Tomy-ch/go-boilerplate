@@ -247,6 +247,10 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/closed-loop/marks.sh --hook session-start"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/closed-loop/send.sh --hook"
           }
         ]
       }

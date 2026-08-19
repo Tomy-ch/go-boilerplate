@@ -6,13 +6,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)\"/.codex/hooks/load-codex-instructions.sh",
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.codex/hooks/load-codex-instructions.sh",
             "statusMessage": "Loading Codex instructions",
             "additionalContextLimit": 5000
           },
           {
             "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)\"/.agents/closed-loop/marks.sh --hook session-start"
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/marks.sh --hook session-start"
+          },
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/send.sh --hook"
           }
         ]
       }
@@ -22,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)\"/.agents/closed-loop/marks.sh --hook pre-compact"
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/marks.sh --hook pre-compact"
           }
         ]
       }
@@ -32,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)\"/.agents/closed-loop/marks.sh --hook session-end"
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/marks.sh --hook session-end"
           }
         ]
       }

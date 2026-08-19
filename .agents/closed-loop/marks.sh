@@ -21,9 +21,11 @@
 # start" and "how many times was this reviewed" are then the same recording. Nothing needs to
 # decide up front which marks may repeat.
 #
-#   separate files  A window is worked by several processes at once — subagents run in parallel —
-#                   and appending to one shared file invites interleaved writes. Separate files
-#                   cannot collide.
+#   separate files  Marks are appended from more than one process — a git hook fires while a
+#                   session is mid-turn, and two sessions can share one checkout — so appending to
+#                   one shared file would interleave writes. Separate files cannot collide. Note
+#                   that this protects the MARKS only: the pointer to the current window is a
+#                   single shared file, and it needs the lock below.
 #   epoch per line  Comparable without parsing, in any language, with no timezone to get wrong.
 #
 # Marks live under the checkout's ignored `tmp/`. This is the same idiom as `.gobp-db-slot`,
@@ -62,6 +64,38 @@ KNOWN_MARKS='openedAt planApprovedAt implStartedAt commitAt reviewStartedAt prOp
 # is why manual compaction is caught at the earlier event rather than here.
 ROTATING_SOURCES='clear'
 
+# The pointer to the current window is one shared file, so the marks' separate-file safety does
+# not extend to it. Rotating is read-modify-write across several commands, and two processes doing
+# it at once leave one window orphaned — reproduced at 29 of 30 with no timing help at all.
+#
+# `mkdir` is the lock because it is atomic on every POSIX filesystem and needs no `flock`, which
+# macOS does not ship. A stale lock from a killed process would wedge every later run, so the wait
+# is bounded and gives up rather than blocking a session — losing a rotation degrades the data,
+# while hanging the hook degrades the work.
+LOCK_DIR="${LOOP_DIR}/.rotate.lock"
+LOCK_HELD=0
+
+acquire_lock() {
+  attempt=0
+  while [ "${attempt}" -lt 50 ]; do
+    if mkdir "${LOCK_DIR}" 2>/dev/null; then
+      LOCK_HELD=1
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 0.1
+  done
+  return 1
+}
+
+release_lock() {
+  [ "${LOCK_HELD}" -eq 1 ] || return 0
+  rmdir "${LOCK_DIR}" 2>/dev/null || :
+  LOCK_HELD=0
+}
+
+trap release_lock EXIT INT TERM
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -95,39 +129,54 @@ new_window_id() {
 }
 
 open_window() {
+  mkdir -p "${LOOP_DIR}"
+  acquire_lock || {
+    # ロックを取れなければ、既に別プロセスがローテーションしている。そちらの結果に従うのが
+    # 正しく、ここで重ねて開くと窓が二重になる。
+    current_window_unsafe
+    return 0
+  }
   close_window
   id=$(new_window_id)
-  mkdir -p "${LOOP_DIR}"
-  printf '%s\n' "${id}" >"${CURRENT_FILE}"
   mkdir -p "${LOOP_DIR}/marks/${id}"
   date +%s >>"${LOOP_DIR}/marks/${id}/openedAt"
+  # ポインタは最後に、一時ファイル経由で差し替える。窓の中身が揃う前にポインタだけが
+  # 新窓を指す瞬間を作らないため。同一ディレクトリ内の mv は原子的に置き換わる。
+  printf '%s\n' "${id}" >"${CURRENT_FILE}.tmp.$$"
+  mv "${CURRENT_FILE}.tmp.$$" "${CURRENT_FILE}"
+  release_lock
   printf '%s' "${id}"
 }
 
 # Stamping the outgoing window is what makes a window a closed interval. Without it the last
 # phase of every window would run to infinity, and no duration could be computed for it.
 close_window() {
-  [ -f "${CURRENT_FILE}" ] || return 0
-  id=$(cat "${CURRENT_FILE}")
-  [ -n "${id}" ] || return 0
+  id=$(current_window_unsafe) || return 0
   dir="${LOOP_DIR}/marks/${id}"
   [ -d "${dir}" ] || return 0
   [ -f "${dir}/closedAt" ] || date +%s >>"${dir}/closedAt"
 }
 
-current_window() {
-  if [ -f "${CURRENT_FILE}" ]; then
-    id=$(cat "${CURRENT_FILE}")
-    [ -n "${id}" ] && { printf '%s' "${id}"; return 0; }
-  fi
-  open_window
-}
-
-is_current_closed() {
+# 現在の窓を読むだけで、無ければ開かない。診断や一覧のように「見るだけ」の経路が
+# 窓を作ってしまうと、誰も打刻しない空の窓がレポートに残り続ける。
+current_window_unsafe() {
   [ -f "${CURRENT_FILE}" ] || return 1
   id=$(cat "${CURRENT_FILE}")
   [ -n "${id}" ] || return 1
-  [ -f "${LOOP_DIR}/marks/${id}/closedAt" ]
+  printf '%s' "${id}"
+}
+
+current_window() {
+  current_window_unsafe && return 0
+  open_window
+}
+
+# 窓 ID を引数で受け取る。呼び出し側が 1 度だけ読んだ ID に対して判定と書き込みの両方を
+# 行えるようにするため。読み直すと、その間にローテーションが割り込んだとき、判定した窓と
+# 書き込む窓が食い違う。
+is_window_closed() {
+  [ -n "${1:-}" ] || return 1
+  [ -f "${LOOP_DIR}/marks/$1/closedAt" ]
 }
 
 # Work arriving after a window closed belongs to the next window, not the last one. A commit that
@@ -140,17 +189,18 @@ is_current_closed() {
 # stamping it would record the open twice.
 stamp_mark() {
   name=$1
-  if is_current_closed; then
+  id=$(current_window)
+  if is_window_closed "${id}"; then
     case "${name}" in
       closedAt) return 0 ;;
       openedAt)
         open_window >/dev/null
         return 0
         ;;
-      *) open_window >/dev/null ;;
+      *) id=$(open_window) ;;
     esac
   fi
-  dir="${LOOP_DIR}/marks/$(current_window)"
+  dir="${LOOP_DIR}/marks/${id}"
   mkdir -p "${dir}"
   date +%s >>"${dir}/${name}"
 }
@@ -167,7 +217,8 @@ case "${1:-}" in
     printf '\n'
     ;;
   --list)
-    dir="${LOOP_DIR}/marks/$(current_window)"
+    id=$(current_window_unsafe) || exit 0
+    dir="${LOOP_DIR}/marks/${id}"
     [ -d "${dir}" ] || exit 0
     for known in ${KNOWN_MARKS}; do
       file="${dir}/${known}"

@@ -25,6 +25,11 @@ describe("parseIndex", () => {
       expect(s.entries[0]?.parentIssue).toBe(1204);
     });
 
+    it("コメント未投稿の印を読み取る", () => {
+      const st = parseIndex({ entries: [{ windowId: "w1", feedbackIssue: 5, commentPending: true }] });
+      expect(st.entries[0]?.commentPending).toBe(true);
+    });
+
     it("空の entries を受け入れる", () => {
       expect(parseIndex({ entries: [] }).entries).toEqual([]);
     });
@@ -53,6 +58,11 @@ describe("parseIndex", () => {
 
     it("要素がオブジェクトでなければ捨てる", () => {
       expect(parseIndex({ entries: ["w1", null] }).entries).toEqual([]);
+    });
+
+    it("commentPending が true 以外なら持たない", () => {
+      const st = parseIndex({ entries: [{ windowId: "w1", commentPending: "yes" }] });
+      expect(st.entries[0]?.commentPending).toBeUndefined();
     });
 
     it("型の合わない項目を落として読み進める", () => {
@@ -113,6 +123,11 @@ describe("pendingEntries", () => {
   describe("異常系", () => {
     it("すべて送出済みなら空になる", () => {
       expect(pendingEntries(store(entry({ windowId: "w1", feedbackIssue: 5 })))).toEqual([]);
+    });
+
+    it("issue はあるがコメント未投稿の窓も未完了として挙げる", () => {
+      const st = store(entry({ windowId: "w1", feedbackIssue: 5, commentPending: true }));
+      expect(pendingEntries(st).map((e) => e.windowId)).toEqual(["w1"]);
     });
   });
 });

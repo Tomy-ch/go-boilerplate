@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import type { SessionFacts } from "./events";
-import { overlapsPeriod, resolvePeriod, summarizePeriod, uncalledSkills, type Period } from "./report";
+import {
+  DAY_BOUNDARY_OFFSET_SEC,
+  overlapsPeriod,
+  resolvePeriod,
+  summarizePeriod,
+  uncalledSkills,
+  type Period,
+} from "./report";
 
 const DAY = 86_400;
-const day = (s: string) => Math.floor(Date.parse(`${s}T00:00:00Z`) / 1000);
+const day = (s: string) => Math.floor(Date.parse(`${s}T00:00:00Z`) / 1000) - DAY_BOUNDARY_OFFSET_SEC;
 
 const facts = (o: Partial<SessionFacts>): SessionFacts => ({
   client: "claude",
@@ -18,8 +25,23 @@ const facts = (o: Partial<SessionFacts>): SessionFacts => ({
 
 const period: Period = { from: day("2026-08-10"), to: day("2026-08-17") + DAY - 1 };
 
+describe("DAY_BOUNDARY_OFFSET_SEC", () => {
+  describe("正常系", () => {
+    it("運用タイムゾーン（JST）の境界になっている", () => {
+      expect(DAY_BOUNDARY_OFFSET_SEC).toBe(9 * 3600);
+    });
+  });
+});
+
 describe("resolvePeriod", () => {
   describe("正常系", () => {
+    it("指定した日が、その日の 00:00 から 23:59:59 になる", () => {
+      const p = resolvePeriod("2026-08-19", "2026-08-19", day("2026-08-25"));
+      const jst = (e: number) => new Date(e * 1000).toLocaleString("sv-SE", { timeZone: "Asia/Tokyo" });
+      expect(jst(p.from)).toBe("2026-08-19 00:00:00");
+      expect(jst(p.to)).toBe("2026-08-19 23:59:59");
+    });
+
     it("両端を指定すればその期間になる", () => {
       const p = resolvePeriod("2026-08-01", "2026-08-07", day("2026-08-19"));
       expect(p.from).toBe(day("2026-08-01"));

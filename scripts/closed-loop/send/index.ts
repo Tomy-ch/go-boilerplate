@@ -120,7 +120,10 @@ let pending = 0;
 
 for (const window of readWindows()) {
   if (representativeAt(window, "closedAt") === undefined) continue; // まだ開いている窓は送らない
-  if (findByWindow(store, window.id)?.feedbackIssue !== undefined) continue; // 送出済み
+  const existing = findByWindow(store, window.id);
+  // 完了しているのは「issue があり、かつコメントも付いた」窓だけ。issue はあるが
+  // コメントが欠けている窓は、コメントだけを再送するためにここを通す。
+  if (existing?.feedbackIssue !== undefined && existing.commentPending !== true) continue;
 
   const openedAt = representativeAt(window, "openedAt");
   const closedAt = representativeAt(window, "closedAt");
@@ -152,30 +155,43 @@ for (const window of readWindows()) {
     continue;
   }
 
-  let issueNumber: number | undefined;
-  try {
-    const url = gh(["issue", "create", "--title", title, "--body", body, "--label", "feedback"]);
-    const m = /\/(\d+)$/.exec(url);
-    issueNumber = m ? Number(m[1]) : undefined;
-    if (issueNumber !== undefined && transcripts !== undefined) {
+  // issue の作成とコメントの投稿は別の try に分ける。1 つに束ねると、issue は作れたが
+  // コメントだけ落ちた部分成功が「送出済み」に見え、読解候補が永久に付かないまま
+  // 二度と再試行されない。
+  let issueNumber = existing?.feedbackIssue;
+  if (issueNumber === undefined) {
+    try {
+      const url = gh(["issue", "create", "--title", title, "--body", body, "--label", "feedback"]);
+      const m = /\/(\d+)$/.exec(url);
+      issueNumber = m ? Number(m[1]) : undefined;
+    } catch (e) {
+      // 届かなければ索引に残して次回へ持ち越す。窓を閉じる処理は既に終わっており、ここで
+      // 落としてもローカルの作業は止まらない。
+      console.error(`issue を作成できませんでした（次回に持ち越します）: ${window.id}: ${String(e).split("\n")[0]}`);
+    }
+  }
+
+  let commentPending: boolean | undefined;
+  if (issueNumber !== undefined && transcripts !== undefined) {
+    try {
       // 読解候補は本文ではなくコメントへ。本文は AI の出力面であり、入力と出力を同じ
       // テキストに混ぜると AI が自分の入力を上書きしうる。
       const comment = renderCandidateComment(selectCandidates(transcripts.events));
       gh(["issue", "comment", String(issueNumber), "--body", comment]);
+    } catch (e) {
+      commentPending = true;
+      console.error(`コメントを投稿できませんでした（次回に再送します）: #${issueNumber}: ${String(e).split("\n")[0]}`);
     }
-  } catch (e) {
-    // 届かなければ索引に残して次回へ持ち越す。窓を閉じる処理は既に終わっており、ここで
-    // 落としてもローカルの作業は止まらない。
-    console.error(`送出できませんでした（次回に持ち越します）: ${window.id}: ${String(e).split("\n")[0]}`);
   }
 
   store = upsert(store, {
     windowId: window.id,
     branch,
     feedbackIssue: issueNumber,
+    commentPending,
     updatedAt: Math.floor(Date.now() / 1000),
   });
-  if (issueNumber === undefined) pending += 1;
+  if (issueNumber === undefined || commentPending === true) pending += 1;
   else sent += 1;
 }
 
