@@ -144,6 +144,13 @@ than becoming unconditional. Whichever way it goes, Step 6 records it on the `�
 
 ## Step 1 — Gather Context
 
+Stamp the review boundary first — it is the one moment nothing else observes, and the loop reads
+it to separate time spent reviewing from time spent implementing:
+
+```sh
+.agents/closed-loop/marks.sh reviewStartedAt 2>/dev/null || true
+```
+
 - Resolve the base ref and produce the review target: `git diff <base>...HEAD` (or `git diff` for uncommitted), plus the changed-file list (`git diff --name-only ...`).
 - Detect which layers/areas are touched (`internal/controller/**`, `usecase`, `domain`, `infrastructure`, `pkg`, `openapi/**`, `database/**`).
 - Note whether any **endpoint** is touched (controller handler or `openapi/**`) — this decides whether Step 4 runs.

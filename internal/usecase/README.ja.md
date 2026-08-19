@@ -305,7 +305,7 @@ WITH 句
 双方向に成り立ち、同じ規則を 2 回言っているにすぎません。
 
 - **書き込み** — インフラが書き込みを実行し、その後 Usecase が対象集約を Repository 経由で読み直し、
-  集約自身に検証させます（[ADR-0031 (lightweight-cqrs)](../../docs/adr/0031-lightweight-cqrs.ja.md)）。
+  集約自身に検証させます（[ADR-0032 (lightweight-cqrs)](../../docs/adr/0032-lightweight-cqrs.ja.md)）。
 - **読み取り** — インフラが絞り込みを実行し、その後 Usecase が返ったエンティティを、基準を定義する
   ドメインの述語で確かめます。インフラは基準を**実行**するのであって**著作**しません
   （[`internal/domain/README.md`](../domain/README.ja.md) の Query and Aggregate 節を参照）。

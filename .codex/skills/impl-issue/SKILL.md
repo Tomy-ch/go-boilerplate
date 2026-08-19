@@ -204,6 +204,14 @@ Present the plan and **wait for approval. Do not implement before it.**
 
 ## Step 4 — Implement, watching five trip-wires
 
+The plan is approved and implementation begins — the boundary between deciding and building, which
+only this skill knows:
+
+```sh
+.agents/closed-loop/marks.sh planApprovedAt 2>/dev/null || true
+.agents/closed-loop/marks.sh implStartedAt 2>/dev/null || true
+```
+
 Follow the approved plan. These triggers are deliberately mechanical — relying on you to *notice* that
 a decision was significant is exactly how drift goes unreported.
 
@@ -279,6 +287,13 @@ Then present every trip-wire and deferred judgment together, in one place. Batch
 the user sees the shape of the whole run at once.
 
 ## Step 8 — PR, then runtime verification, then merge
+
+When this step merges the pull request, stamp it — a merge performed here is observed by nobody
+else until the loop goes back to `gh` for it:
+
+```sh
+.agents/closed-loop/marks.sh mergedAt 2>/dev/null || true
+```
 
 Open the PR first via `submit-pr`, so CI starts while you verify locally.
 

@@ -6,7 +6,9 @@ This directory contains documentation related to the architecture and developmen
 
 These documents explain the **design philosophy, architectural rules, and development workflows** adopted in this project.
 
-The documentation is intended for both **human developers** and **AI agents**.
+The documentation is intended for both **human developers** and **AI agents**. AI-assisted
+development is this project's standard path, so these documents are written to be read by an
+agent as well as by a person; see [ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md).
 
 ## Document List
 
@@ -112,9 +114,16 @@ Instead of relying on implicit rules or manual reviews, safety is enforced throu
 
 ## AI-assisted Development
 
-This project is designed to work safely with **AI-assisted development tools**.
+**AI-assisted development is the standard path of this project**, and the documentation, skills, and
+automation here are built for it. Manual development stays available as a not-recommended
+compatibility path that is not held to the same developer experience.
 
-Constraints are intentionally introduced to prevent architectural violations.
+The application is a separate question: runtime, build, test, the domain model, the API contract, the
+database schema, and the ordinary CI checks never depend on an AI service. See
+[architecture.md](architecture.md) § *AI-assisted Development*.
+
+Constraints are intentionally introduced to prevent architectural violations, and a deterministic
+check outranks an agent's judgment wherever one exists.
 
 Before generating code, AI agents must refer to:
 

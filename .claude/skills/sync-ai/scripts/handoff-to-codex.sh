@@ -31,7 +31,7 @@ repo="$(git rev-parse --show-toplevel)"
 # editing. Same shape as this repo's worktree slot leases: a lease plus a stale TTL.
 #
 # `mkdir` is the atomic test-and-set; `[ -e ] && touch` would race.
-lock="${repo}/tmp/sync-ai/.handoff.lock"
+lock="${repo}/tmp/skills/sync-ai/.handoff.lock"
 lock_ttl=3600   # seconds; a real port takes minutes, so an hour means "crashed", not "busy"
 
 mkdir -p "$(dirname "$lock")"

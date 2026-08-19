@@ -34,7 +34,7 @@ const (
 
 // useOpenAPIValidationWithAuthFailure は、提示された資格情報の検証が必ず失敗する形で実 OpenAPI
 // ミドルウェアを登録します。任意認証の operation が、無効な資格情報を匿名として通さないことを
-// 実際のミドルウェア経路で確かめるために使います（ADR-0020 (optional-authentication-fail-closed)）。
+// 実際のミドルウェア経路で確かめるために使います（ADR-0021 (optional-authentication-fail-closed)）。
 func useOpenAPIValidationWithAuthFailure(t *testing.T, e *echo.Echo) {
 	t.Helper()
 
@@ -297,7 +297,7 @@ func TestV1CartsMe_Integration(t *testing.T) {
 
 			// 任意認証の operation は資格情報が無ければ匿名で通すが、提示された資格情報の検証に
 			// 失敗した場合は拒否する。空の security 要件が必ず満たされるため、この拒否は
-			// バリデーションの結果ではなく failClosed が担う（ADR-0020）。
+			// バリデーションの結果ではなく failClosed が担う（ADR-0021）。
 			e := echo.New()
 			UseAppErrorHandler(t, e)
 			useOpenAPIValidationWithAuthFailure(t, e)

@@ -31,7 +31,7 @@ retargeting.
 |GCP|Pub/Sub|`gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators`|Google Cloud SDK terms|Google|
 
 Selection follows the same rule as every other dependency here — one replaceable job per
-component ([ADR-0076 (library-selection-policy)](../../../docs/adr/0076-library-selection-policy.md)) — so a single-purpose
+component ([ADR-0077 (library-selection-policy)](../../../docs/adr/0077-library-selection-policy.md)) — so a single-purpose
 emulator is preferred over a suite that emulates a whole cloud. Notes per choice:
 
 - **ElasticMQ** emulates SQS and nothing else, and its native image is small enough to start per

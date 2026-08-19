@@ -3,7 +3,7 @@
 // Package cart は、カートの参照ユースケースを提供します。主体（認証済みユーザーまたはゲストセッション）
 // からカートを解決し、明細ごとに商品の現在値を突き合わせて状態を判定します。
 // 単価は価格スケール（ドル decimal）、小計は決済スケール（整数セント）で扱います
-// （ADR-0037 (two-scale-quantity-model)）。
+// （ADR-0038 (two-scale-quantity-model)）。
 package cart
 
 import (

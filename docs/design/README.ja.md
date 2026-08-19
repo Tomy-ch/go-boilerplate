@@ -34,6 +34,7 @@ English: [README.md](README.md)
 | [security.ja.md](security.ja.md) | セキュリティ姿勢 | 脅威モデル、各制御が何のためにあるか（強制 / 検知 / 抑止）、どこで発火するか | [workflows](../../.github/workflows/README.ja.md) |
 | [context-map.ja.md](context-map.ja.md) | コンテキストマップ | このシステムが周囲のシステムとどう関係しているかを辺ごとに | [boundary](../../internal/usecase/boundary/README.ja.md) |
 | [agent-environment.ja.md](agent-environment.ja.md) | エージェント環境 | 指示、機械的 gate、独立 review、負荷を考慮した検証がどう協調するか | [AGENTS.md](../../AGENTS.md) |
+| [closed-loop.ja.md](closed-loop.ja.md) | AI フィードバックループ | 開発の窓とは何か、何を観測するか、入れた改善をどう測り直すか | [.agents/](../../.agents/README.ja.md) |
 
 ## 読む順序
 

@@ -71,8 +71,10 @@ whole system, not the parts that happen to run without a cloud account.
   order to be instantiated safely.
 
 Development with AI assistance runs across both lines rather than belonging to either: it entered in
-v1.2.0 as skills, was parallelized in v1.4.0, and is now an agent contract plus the mechanical gates
-that check what an agent produced.
+v1.2.0 as skills, was parallelized in v1.4.0, and became an agent contract plus the mechanical gates
+that check what an agent produced. It is no longer an addition to the two lines but the path they are
+developed on — **AI-assisted development is the project's standard method**, with manual development
+kept as a not-recommended compatibility path and the application itself deliberately AI-independent.
 
 ### v3 — staying a modular monolith while being ready to distribute
 
@@ -102,6 +104,13 @@ as the floor. A change that removes one of them needs to argue against the threa
 by review, the preferred direction is to make it a lint rule, an architecture test, or a
 generation-drift check — so the rule is enforced identically for every contributor and every agent,
 and review spends itself on the judgements that cannot be automated.
+
+**The agent environment is measured, not accumulated.** Skills, agent-facing rules, documents, and
+the automation around them carry a lifecycle rather than only an introduction: what an AI session
+finds hard is collected, attributed to the control it implicates, and re-evaluated after a change
+lands, so a control can be simplified, deleted, or reverted on evidence. A development foundation
+that only grows becomes the thing it was built to prevent. The decisions inside that loop stay with a
+human. See [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md).
 
 **Deliberate exclusions stay excluded.** The list in [out-of-scope.md](out-of-scope.md) is not a
 backlog. Items move off it only when the reason recorded there stops holding, and that is an ADR-level

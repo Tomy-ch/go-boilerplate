@@ -19,5 +19,5 @@
 10049	IGNORE	Non-Storable Content — the scan carries an Authorization header on every request, which is what makes a response non-storable. It fires on /health, /ready, /version and /metrics, where cacheability is not a property this API is trying to have.
 10096	IGNORE	Timestamp Disclosure — resources carry created_at / updated_at, so this fires across the entire read surface
 10104	IGNORE	User Agent Fuzzer — fires on POST / PUT / PATCH, where two identical requests differ because the first one changed state. It compares status and body hash across replays, so it reports the write succeeding once, not a User-Agent the API varies on.
-10105	IGNORE	Weak Authentication Method — /metrics is protected by a separate BasicAuth middleware by decision (ADR-0019 (metrics-endpoint-auth-exception)), not by omission
+10105	IGNORE	Weak Authentication Method — /metrics is protected by a separate BasicAuth middleware by decision (ADR-0020 (metrics-endpoint-auth-exception)), not by omission
 100000-1	IGNORE	A Client Error response code was returned by the server — the scan drives every operation with missing, malformed and fuzzed parameters, so a 4xx is the API's contract answering. 100000-2, the 5xx the same plugin raises, is deliberately not ignored.

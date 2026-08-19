@@ -12,7 +12,7 @@ import (
 // 記録し、あわせて有効期限を延長するためです。したがってこの取得はトランザクションを要求します。
 //
 // この本体に外部副作用を足してはなりません。tx がシリアライズ失敗・デッドロック検出で再実行します
-// （ADR-0034 (transaction-retry-idempotent-callers)）。
+// （ADR-0035 (transaction-retry-idempotent-callers)）。
 func (u *usecase) GetCart(ctx context.Context, subject Subject) (CartView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

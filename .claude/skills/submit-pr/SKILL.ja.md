@@ -194,6 +194,13 @@ push 前に「念のため」`make lint` / `make test` を手で回さないこ�
 
 ## Step 7. PR の作成 / 更新
 
+PR が存在した時点で打刻する。GitHub も作成時刻を持つが、両者は別の問いに答えており、そちらへの
+結合は 3 分の 2 程度しか成立しない。
+
+```sh
+.agents/closed-loop/marks.sh prOpenedAt 2>/dev/null || true
+```
+
 ### PR を作成する
 
 ```sh

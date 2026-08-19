@@ -35,7 +35,7 @@ find .codex/skills/<name> -type f | sort
 ```
 
 Treat `SKILL.md`, `SKILL.ja.md`, UI metadata, scripts, references, and assets as one unit.
-Record only a temporary transfer note under `tmp/sync-ai/`; do not create a durable third copy or
+Record only a temporary transfer note under `tmp/skills/sync-ai/`; do not create a durable third copy or
 a synchronization manifest.
 
 ## 2. Build the transfer contract
@@ -52,7 +52,7 @@ Classify every source item as **port**, **adapt**, or **omit**. Examples: Claude
 Claude-only settings, hooks, and permission syntax are omitted unless Codex has an equivalent.
 Never carry source-specific tool names into the target without verifying the equivalent exists.
 
-Write the contract to `tmp/sync-ai/<name>-contract.md`. It is handed to a **headless** receiver that
+Write the contract to `tmp/skills/sync-ai/<name>-contract.md`. It is handed to a **headless** receiver that
 cannot ask you anything, so completeness is not a nicety here: anything the receiver would otherwise
 raise a question about must be settled in the contract, or explicitly delegated to its judgement.
 Resolve ambiguity with the user on this side, before the handoff.
@@ -74,7 +74,7 @@ For a target under `.claude/skills/`, hand the contract to Claude's `/manage-ski
 Claude headlessly:
 
 ```sh
-sh .codex/skills/sync-ai/scripts/handoff-to-claude.sh tmp/sync-ai/<name>-contract.md
+sh .codex/skills/sync-ai/scripts/handoff-to-claude.sh tmp/skills/sync-ai/<name>-contract.md
 ```
 
 The script exists so the invocation posture lives in one place rather than being rediscovered each
@@ -88,7 +88,7 @@ to `.claude/` and `tmp/` for the single named skill. That preamble is what stops
 from stalling on a question nobody can answer.
 
 **The recursion bound is the lock, not the preamble.** Both handoff scripts take the same lease
-(`tmp/sync-ai/.handoff.lock`) and refuse to start when it is already held, so a receiver that runs
+(`tmp/skills/sync-ai/.handoff.lock`) and refuse to start when it is already held, so a receiver that runs
 either script is turned away rather than deepening the chain. This is deliberately not left to the
 preamble: an instruction can be ignored, and a chain that ignores it loops while spending real money
 on both agents. A refusal (exit 3) means one of exactly two things, and the message says which — a

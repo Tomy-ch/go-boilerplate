@@ -117,7 +117,7 @@ optional here. After the canonical `SKILL.md` is finalized (create) or changed (
 Evaluation writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and viewer
 output. A sibling of the skill directory would land inside the tracked `.codex/skills/**`.
 **Override the location**: put the workspace under the repo's gitignored `tmp/` (e.g.
-`tmp/manage-skill/<skill-name>-workspace/`), consistent with this repo's work-artifact convention
+`tmp/skills/manage-skill/<skill-name>-workspace/`), consistent with this repo's work-artifact convention
 (plans/artifacts live outside git; `tmp/` is ignored). Never commit eval runs, benchmarks, feedback
 JSON, or viewer HTML.
 

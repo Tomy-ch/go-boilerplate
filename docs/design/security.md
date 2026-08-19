@@ -82,7 +82,7 @@ change without the code changing.** Everything else is noise on a timer.
 ### Why reporting and gating are split
 
 An ordinary PR reports; a promotion PR gates. The reasoning is in
-[ADR-0088 (multi-layer-security-scanning)](../adr/0088-multi-layer-security-scanning.md), and reduces to this: a vulnerability
+[ADR-0089 (multi-layer-security-scanning)](../adr/0089-multi-layer-security-scanning.md), and reduces to this: a vulnerability
 inherited from the existing dependency tree is not something the current PR introduced, and
 not something its author can fix. Blocking there turns every unrelated change red until an
 upstream fix lands elsewhere. The predictable outcome is that the check gets disabled or
@@ -100,7 +100,7 @@ images run with the job's credentials before any of our code does, so they are p
 **A version reference is not an identity.** A tag can be re-pointed and a mutable image tag can
 be rebuilt, so the version stays in the source as human-readable intent while an immutable
 digest lives in a lockfile that is the single source of truth —
-`.github/actions-pin.toml` ([ADR-0089 (sha-pinned-actions)](../adr/0089-sha-pinned-actions.md)) and
+`.github/actions-pin.toml` ([ADR-0090 (sha-pinned-actions)](../adr/0090-sha-pinned-actions.md)) and
 `docker/images-pin.toml`. Both checks are fail-closed, and unpinned versus unregistered are
 distinct errors so neither degrades into the other.
 
@@ -248,7 +248,7 @@ supply-chain one: pinning a PyPI tool's version pins almost nothing, because its
 resolved at install time, so the same pin installs a different tree on different days. Each tool
 therefore declares its version in `python/<tool>.in` and carries the resolved tree — every
 transitive package, with sha256 hashes — in `python/<tool>.txt`
-([ADR-0079 (mise-ssot-drift-gate)](../adr/0079-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
+([ADR-0080 (mise-ssot-drift-gate)](../adr/0080-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
 are `uv pip install --require-hashes -r <tool>.txt`, which refuses any requirement lacking a version
 or a hash, so integrity verification is part of installing rather than a step that can be skipped.
 
@@ -331,7 +331,7 @@ does with a request. Three patterns repeat, and they are the part worth carrying
 than rediscovering.
 
 **Deny by default, at every boundary.** The outbound dial guard
-(`internal/observability/http_client_transport.go`, [ADR-0024 (egress-ssrf-guard)](../adr/0024-egress-ssrf-guard.md))
+(`internal/observability/http_client_transport.go`, [ADR-0025 (egress-ssrf-guard)](../adr/0025-egress-ssrf-guard.md))
 refuses link-local, multicast, unspecified, and bogon destinations unconditionally, and refuses
 loopback / private / CGNAT unless the caller opted in through the context — with the unset case
 resolving to the safe `false`. Error-detail exposure
@@ -340,25 +340,25 @@ mismatch, unresolved operation, empty `operationId`, and not-opted-in all evalua
 Neither control has a state where forgetting something opens it.
 
 **The spec is the authority for the request boundary.** Request validation and authentication are
-enforced at runtime from the OpenAPI document ([ADR-0015 (spec-driven-request-validation)](../adr/0015-spec-driven-request-validation.md)),
+enforced at runtime from the OpenAPI document ([ADR-0016 (spec-driven-request-validation)](../adr/0016-spec-driven-request-validation.md)),
 not from hand-written checks in handlers. The direct consequence is that **reviewing the spec
 diff is reviewing the security posture** — an operation that omits its `security` requirement is
 unprotected no matter how the handler is written, and no amount of Go review will surface it.
 Business-validity rules are deliberately *not* here: the domain layer is their sole authority
-([ADR-0016 (validation-value-authority)](../adr/0016-validation-value-authority.md)), so the two never drift into each other.
+([ADR-0017 (validation-value-authority)](../adr/0017-validation-value-authority.md)), so the two never drift into each other.
 
 **Escape hatches are named, narrow, and greppable.** `ContextWithAllowPrivateNetwork`, the
 `details` property that opts an error schema into detail exposure, and `/metrics` as a declared
-auth exception ([ADR-0019 (metrics-endpoint-auth-exception)](../adr/0019-metrics-endpoint-auth-exception.md)) are each a specific
+auth exception ([ADR-0020 (metrics-endpoint-auth-exception)](../adr/0020-metrics-endpoint-auth-exception.md)) are each a specific
 seam you can search for and enumerate. None of them is a general-purpose flag, because a general
 flag becomes the thing everyone sets.
 
 Two absences are deliberate rather than pending: there is no in-application rate limiter
-([ADR-0103 (no-in-app-rate-limiter)](../adr/0103-no-in-app-rate-limiter.md)), and responses are not validated against the
-spec ([ADR-0015 (spec-driven-request-validation)](../adr/0015-spec-driven-request-validation.md)). SQL injection is handled
+([ADR-0104 (no-in-app-rate-limiter)](../adr/0104-no-in-app-rate-limiter.md)), and responses are not validated against the
+spec ([ADR-0016 (spec-driven-request-validation)](../adr/0016-spec-driven-request-validation.md)). SQL injection is handled
 structurally instead of by review — queries are generated by sqlc and therefore parameterised
-([ADR-0026 (sqlc-type-safe-sql)](../adr/0026-sqlc-type-safe-sql.md)) — and `gosec` runs in the authoritative
-golangci gate ([ADR-0083 (two-layer-golangci-config)](../adr/0083-two-layer-golangci-config.md)).
+([ADR-0027 (sqlc-type-safe-sql)](../adr/0027-sqlc-type-safe-sql.md)) — and `gosec` runs in the authoritative
+golangci gate ([ADR-0084 (two-layer-golangci-config)](../adr/0084-two-layer-golangci-config.md)).
 
 A detail worth copying rather than rediscovering: Go's `netip.Addr.IsPrivate` covers RFC1918 and
 ULA but **not** CGNAT (`100.64.0.0/10`), so the guard carries its own prefix check. Reimplementing
@@ -375,6 +375,32 @@ One rule overrides convenience everywhere: **a detected secret's value never rea
 a PR comment, or an artifact.** Summaries carry detector name, path, line, and commit — never
 the match itself. A leak report that leaks is worse than no report, because it publishes the
 credential to a wider audience than the commit did.
+
+A third path can leave the repository without passing either detector, and it is worth stating
+because it looks like neither of the two above. The AI feedback loop can post excerpts of session
+transcripts to public feedback issues, and a transcript is not a commit — both detectors scan what
+is committed, so neither of them sees this path at all. What a person types into a session is also
+precisely where a dead API key or a connection string gets pasted in order to ask about it:
+measured over this repository's own history, 2 of 4,093 raw human turns carried a live credential.
+
+**The path is deliberately kept closed on the normal route.** The loop reads its own transcripts
+locally and publishes only the resulting prose, so the raw turns never leave the machine that
+produced them. They are published in one case: the local reading could not run, and the excerpts
+are the only way a CI runner can see what happened. That trade is why the reading was moved off CI
+in the first place — a runner cannot read a file under the developer's home, so putting the reading
+there forces the publication.
+
+**Prose is not trusted merely because it is prose.** The reading is done by a model that could, if
+left unconstrained, reach files nobody selected for it — so the local call runs outside the
+repository with its file, shell and network tools denied, and what it returns is filtered again
+before anything is posted. A section matching a secret pattern is dropped whole. Filtering only the
+input would leave the output as an unwatched exit, which is the shape of the two paths above: a
+control that inspects one direction and calls the surface covered.
+
+On that fallback the loop filters its own candidates, and that filter is the only gate. Shape-based
+detection cannot be complete, so the rule is to **drop anything suspicious**: a dropped excerpt
+costs one of several candidates for the same window, while a published one cannot be recalled. The
+patterns are in [`scripts/closed-loop/candidates.ts`](../../scripts/closed-loop/candidates.ts).
 
 ## The developer endpoint
 
@@ -435,8 +461,8 @@ Worth stating so nobody builds on a stronger assumption than the controls suppor
 
 ## Related
 
-- [ADR-0088 (multi-layer-security-scanning)](../adr/0088-multi-layer-security-scanning.md) — layered scanning, reporting/gating split, runner hardening
-- [ADR-0089 (sha-pinned-actions)](../adr/0089-sha-pinned-actions.md) — SHA-pinned Actions and the supply-chain quarantine
-- [ADR-0100 (release-image-supply-chain)](../adr/0100-release-image-supply-chain.md) — release-image integrity (signing, provenance, SBOM)
-- [ADR-0083 (two-layer-golangci-config)](../adr/0083-two-layer-golangci-config.md) — `gosec` as an in-process check during static analysis
+- [ADR-0089 (multi-layer-security-scanning)](../adr/0089-multi-layer-security-scanning.md) — layered scanning, reporting/gating split, runner hardening
+- [ADR-0090 (sha-pinned-actions)](../adr/0090-sha-pinned-actions.md) — SHA-pinned Actions and the supply-chain quarantine
+- [ADR-0101 (release-image-supply-chain)](../adr/0101-release-image-supply-chain.md) — release-image integrity (signing, provenance, SBOM)
+- [ADR-0084 (two-layer-golangci-config)](../adr/0084-two-layer-golangci-config.md) — `gosec` as an in-process check during static analysis
 - [`.github/workflows/README.md`](../../.github/workflows/README.md) — the workflow inventory and full trigger matrix

@@ -33,7 +33,7 @@ HTTP のワイヤ契約は依存方向に反するのでドメイン spec には
 | --- | --- |
 | Error 名（`ErrInvalid<Field>` 等） | Entity フィールド + cross-field invariants |
 | Constant 名（`min<Field>Length` / `max<Field>Length` 等） | Entity フィールドの min/max |
-| Field 識別子定数（`Field<Name>`）+ collect-all 検証 + `apperror.WithDetails` | ユーザーが修正できる入力フィールド（サーバ内部の不変条件は first-error のまま。ADR-0047 (error-metadata-code-message-details)） |
+| Field 識別子定数（`Field<Name>`）+ collect-all 検証 + `apperror.WithDetails` | ユーザーが修正できる入力フィールド（サーバ内部の不変条件は first-error のまま。ADR-0048 (error-metadata-code-message-details)） |
 | Getter | Entity フィールド（pointer 型は `ptr.Copy`） |
 | 単純な型検証 | Entity フィールドの type / required |
 | ID `IsNil` 検証 | Entity の `id` フィールド |

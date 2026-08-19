@@ -1,4 +1,4 @@
 interface:
   display_name: "Apply Verification Findings"
   short_description: "検証台帳の確認済み指摘を安全に修正して進捗を記録する"
-  default_prompt: "$full-apply を使い、tmp/reviews の確認済み指摘を優先度順に対応して。"
+  default_prompt: "$full-apply を使い、tmp/skills/reviews の確認済み指摘を優先度順に対応して。"

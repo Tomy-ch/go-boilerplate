@@ -351,7 +351,7 @@ backend ごとに決めており、影響範囲からではありません。定
 `scripts/tool-cooldown/main.go`（`aqua:` / `ubi:` / `github:` 用の `releaseWindowDays` と、`go:` /
 `npm:` / `pypi:` / `pipx:` 用の `registryWindowDays`）と `scripts/go-cooldown/main.go` の
 `defaultWindowDays` が持ち、根拠は
-[ADR-0090](../../../docs/adr/0090-malicious-package-detection-via-cooldown.ja.md) と
+[ADR-0090](../../../docs/adr/0091-malicious-package-detection-via-cooldown.ja.md) と
 `docs/design/security.md` の Dependencies 節にあります。どこかに引用された数字（ここを含む）を
 信じず、定数を読んでください。言語ランタイムは同じ ADR によりすべての窓の対象外です。
 

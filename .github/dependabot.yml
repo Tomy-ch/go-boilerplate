@@ -1,7 +1,7 @@
 # Dependabot configuration.
 #
 # `cooldown` withholds an update PR until the stated number of days has passed since the version
-# was published — the supply-chain window ADR-0090 (malicious-package-detection-via-cooldown)
+# was published — the supply-chain window ADR-0091 (malicious-package-detection-via-cooldown)
 # records. A security update skips it and opens immediately, which is Dependabot's own behaviour
 # and not configurable here.
 version: 2

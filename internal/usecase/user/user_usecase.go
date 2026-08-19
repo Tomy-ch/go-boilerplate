@@ -132,7 +132,7 @@ type Usecase interface {
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
 	// DeleteUser は、認可を確認したうえでユーザーを退会させます。ユーザーを論理削除し、
-	// 同一トランザクションで退会イベントを発行します（配信は非同期・結果整合。ADR-0053 (transactional-outbox)）。
+	// 同一トランザクションで退会イベントを発行します（配信は非同期・結果整合。ADR-0054 (transactional-outbox)）。
 	// 進行中の購入が残っている場合は apperror.ErrConflict を返し、退会させません。
 	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error

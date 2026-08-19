@@ -11,7 +11,7 @@ name: Tool Cooldown
 # reported as a violation, since the version cleared here would then not be the version installed.
 #
 # The window has two tiers (14 days for a GitHub release, 7 for a package registry) and language
-# runtimes are outside every window — both recorded in ADR-0090 (malicious-package-detection-via-cooldown).
+# runtimes are outside every window — both recorded in ADR-0091 (malicious-package-detection-via-cooldown).
 #
 # Short names are resolved by asking `mise registry`, because mise decides which backend a name
 # resolves to and a table kept here would drift silently the next time mise changes.

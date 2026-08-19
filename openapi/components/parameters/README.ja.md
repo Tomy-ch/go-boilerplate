@@ -54,13 +54,13 @@ schema:
 文字を含む値を運べません。配列を code と enum に限ると、この 2 つが同時に消えます。
 
 これに収まらない検索 —— ファセットが多い、値が URL に載らないほど大きい —— は、クエリ文字列を伸ばすの
-ではなく `POST` のボディへ移します。[ADR-0018 (search-query-parameter-shape)](../../../docs/adr/0018-search-query-parameter-shape.ja.md) を参照してください。
+ではなく `POST` のボディへ移します。[ADR-0019 (search-query-parameter-shape)](../../../docs/adr/0019-search-query-parameter-shape.ja.md) を参照してください。
 
 ### マスタでの絞り込みは行の UUID ではなく `code` を受ける
 
 クライアントがマスタ行を指すのに送る識別子は `code`——その行を入れた migration が固定した静的な別名です。
 どの UUID を持つかは migration が決めるので、アプリケーションコードがそれを抱えてはいけません
-（[ADR-0030](../../../docs/adr/0030-master-data-via-migration.md)）。同じ理屈が API 境界にも及びます。
+（[ADR-0031](../../../docs/adr/0031-master-data-via-migration.md)）。同じ理屈が API 境界にも及びます。
 `code` はクライアントが定数として持てますが、UUID は先にマスタのエンドポイントを叩いて解決する必要があり、
 かつ 1 件 36 文字なので複数値の絞り込みを表現するコストが高くなります。
 

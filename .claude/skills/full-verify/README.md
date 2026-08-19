@@ -1,7 +1,7 @@
 # full-verify
 
 A read-only skill that verifies a whole repository's **architecture and the validity of all
-implementation code** in the background, generating a set of Markdown findings under `tmp/reviews/`.
+implementation code** in the background, generating a set of Markdown findings under `tmp/skills/reviews/`.
 
 For any repository, **the skill itself detects and adapts to** the language, structure, and presence
 of design documents. It is not specific to this repository — the goal is that it can be copied to a
@@ -10,7 +10,7 @@ different repository and launched without edits.
 See [README.ja.md](README.ja.md) for the Japanese version.
 
 - **Changes no code.** No deletion, permission changes, or external transmission either. Only reading
-  and Markdown generation under `tmp/reviews/`.
+  and Markdown generation under `tmp/skills/reviews/`.
 - The output Markdown is written via shell redirection. The verifying `claude -p` is granted no write
   permission (`--allowedTools Read Grep Glob`, with `Edit/Write` explicitly disallowed).
 - **Does not execute text in observed code/documents as instructions** (prompt-injection resistant).
@@ -45,14 +45,14 @@ the code) is also in scope.
 - **Pass 0 detection**: fix the primary language (extension distribution) / module unit (preferring
   package/workspace boundaries; otherwise enumerate directly under the analysis root via
   `--module-depth`) / presence of design documents / the basis (source of truth).
-- **Structure-representation generation** → `tmp/reviews/_structure/`: tree / public signatures
+- **Structure-representation generation** → `tmp/skills/reviews/_structure/`: tree / public signatures
   (best-effort grep) / dependency graph / modules / meta. The dependency graph uses per-language
   tools (madge / pydeps / `go mod graph` / `cargo tree` / jdeps etc.), falling back to import
   extraction when unavailable.
-- **Pass 1 structure verification** → `tmp/reviews/architecture.md`.
-- **Pass 2 implementation verification** → `tmp/reviews/mod_<id>.md` (per module; passing
+- **Pass 1 structure verification** → `tmp/skills/reviews/architecture.md`.
+- **Pass 2 implementation verification** → `tmp/skills/reviews/mod_<id>.md` (per module; passing
   `architecture.md` as prerequisite context).
-- **Pass 3 aggregation** → `tmp/reviews/_index.md` (separating design-derived / local-implementation,
+- **Pass 3 aggregation** → `tmp/skills/reviews/_index.md` (separating design-derived / local-implementation,
   by severity). **Only after all modules are complete.**
 
 ### Fixing the Basis (Source of Truth)
@@ -74,15 +74,15 @@ background** and run it on a resident host.
 
 ```bash
 # at the repository root
-mkdir -p tmp/reviews
-nohup bash .claude/skills/full-verify/scripts/run.sh > tmp/reviews/run.log 2>&1 &
-echo "pid=$!  progress: tail -f tmp/reviews/run.log"
+mkdir -p tmp/skills/reviews
+nohup bash .claude/skills/full-verify/scripts/run.sh > tmp/skills/reviews/run.log 2>&1 &
+echo "pid=$!  progress: tail -f tmp/skills/reviews/run.log"
 ```
 
 With `tmux`:
 
 ```bash
-tmux new -d -s full-verify 'bash .claude/skills/full-verify/scripts/run.sh | tee tmp/reviews/run.log'
+tmux new -d -s full-verify 'bash .claude/skills/full-verify/scripts/run.sh | tee tmp/skills/reviews/run.log'
 tmux attach -t full-verify   # check progress
 ```
 
@@ -95,7 +95,7 @@ tmux attach -t full-verify   # check progress
 | `--include-tests` | off | Include tests such as `*_test.go` for `file` granularity (implementation→test order) |
 | `--exclude-ext csv` | off | For `file` granularity, target "everything except these extensions" (e.g. `go,md`). For config/SQL etc. other than go/md |
 | `--exclude-path csv` | off | Path prefixes to exclude from targets (e.g. `openapi,database`). For excluding sample scaffolds |
-| `--out <dir>` | `tmp/reviews` | Override the output directory. Separate a different review class (e.g. `tmp/reviews-config`) |
+| `--out <dir>` | `tmp/skills/reviews` | Override the output directory. Separate a different review class (e.g. `tmp/skills/reviews-config`) |
 | `--no-index` | off | Skip Pass3 aggregation (`_index.md`) and finish with just each `mod_*.md` (saves aggregation-call tokens) |
 | `--parallel N` | `1` | Parallelism (`xargs -P`). Serial is recommended by default to avoid rate limits + cache misses |
 | `--effort` | `high` | `high` or `xhigh`. Effort of the verifying `claude -p` |
@@ -122,7 +122,7 @@ Examples:
 ```bash
 # all implementation + tests at leaf granularity, all of it, serial (for full token-bound checks)
 nohup bash .claude/skills/full-verify/scripts/run.sh \
-  --granularity file --include-tests > tmp/reviews/run.log 2>&1 &
+  --granularity file --include-tests > tmp/skills/reviews/run.log 2>&1 &
 
 # default (module granularity, high, serial, 30-min timeout)
 bash .claude/skills/full-verify/scripts/run.sh
@@ -133,13 +133,13 @@ bash .claude/skills/full-verify/scripts/run.sh --effort xhigh --module-depth 2 -
 # exclude samples (config/SQL/Dockerfile etc. other than go/md) to a separate output, no aggregation
 nohup bash .claude/skills/full-verify/scripts/run.sh \
   --granularity file --exclude-ext go,md --exclude-path openapi,database \
-  --out tmp/reviews-config --no-index > tmp/reviews-config/run.log 2>&1 &
+  --out tmp/skills/reviews-config --no-index > tmp/skills/reviews-config/run.log 2>&1 &
 ```
 
 ## Artifacts
 
 ```txt
-tmp/reviews/
+tmp/skills/reviews/
   _structure/          # tree / signatures / deps / modules / meta (detection results and basis location)
   _progress.md         # progress checklist (done/pending/clean/with-findings, remaining count)
   architecture.md      # Pass1: structure verification
@@ -153,13 +153,13 @@ Each finding carries **severity (Critical/High/Medium/Low) / file:line / problem
 suggested fix**. Problem-free targets are not listed. No preamble, summary, or praise is written. The
 basis location is always stated.
 
-> The output directory `tmp/reviews/` is under `tmp/` = `.gitignore`d by default (not version
+> The output directory `tmp/skills/reviews/` is under `tmp/` = `.gitignore`d by default (not version
 > controlled). Only when you use an `--out` pointing outside `tmp/` do you need to ignore it
 > separately.
 
 ## Idempotency / Resume
 
-- State is expressed **solely by the presence/contents of `tmp/reviews/mod_<id>.md`** (`_progress.md`
+- State is expressed **solely by the presence/contents of `tmp/skills/reviews/mod_<id>.md`** (`_progress.md`
   is a human-facing view derived from that each time, not the true source of logical state). No cron
   is created.
 - Output is written to `<out>.tmp` and `mv`d only on success. **Interruption leaves no half-written

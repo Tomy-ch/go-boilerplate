@@ -20,6 +20,16 @@ docker/garage/garage.toml:generic-api-key:12
 internal/integration/testdata/keys/mock-key-1.pem:private-key:1
 internal/integration/testdata/keys/mock-key-2.pem:private-key:1
 
+# scripts/closed-loop/candidates.test.ts は looksSecret の検証用に、秘密に見える形の
+# 合成文字列を意図的に並べたファイル。値はどれも実在しない。この検出を許可しないと、
+# 「秘密らしき形を捕まえられるか」を試すテスト自体が置けなくなる。
+scripts/closed-loop/candidates.test.ts:jwt:90
+scripts/closed-loop/candidates.test.ts:generic-api-key:102
+scripts/closed-loop/candidates.test.ts:generic-api-key:114
+scripts/closed-loop/candidates.test.ts:curl-auth-user:125
+scripts/closed-loop/candidates.test.ts:slack-legacy-workspace-token:168
+scripts/closed-loop/candidates.test.ts:slack-legacy-workspace-token:172
+
 # boilerplate-only:begin
 # --- 上流の履歴にだけ存在する検出（作成先には対象のコミットが無い） ---
 

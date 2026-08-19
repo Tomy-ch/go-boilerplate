@@ -3,7 +3,7 @@
 > `products`（#563）が商品カテゴリ参照（`CategoryRef`。ID と名称の組の値オブジェクト）で保持する
 > 商品カテゴリマスタ集約。`GET /v1/products/categories`（一覧取得 usecase は `usecase.md`）の全件一覧は
 > QueryService ではなく Repository の simple list（`FindAll`）として提供する
-> （ADR-0031 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
+> （ADR-0032 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 
