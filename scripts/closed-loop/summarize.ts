@@ -10,7 +10,7 @@
  * 手元なら公開するのは読解結果だけで済みます。
  */
 
-import type { Candidate } from "./candidates";
+import { looksSecret, type Candidate } from "./candidates";
 import { BODY_SECTIONS, parseSections, type Observation } from "./issue";
 import { FINDING_KINDS, KIND_LABEL_PREFIX, type FindingKind } from "./score";
 
@@ -100,25 +100,49 @@ export function buildPrompt(observation: Observation, candidates: readonly Candi
  * 返し、呼び出し側は読解が無かったものとして扱います。
  */
 export function parseSummary(output: string): Summary | undefined {
+  const lines = output.split("\n");
+
+  // 分類は最終行にだけ現れる約束なので、末尾の非空行 1 本しか見ない。行頭一致で全行を掃くと、
+  // Evidence に引用した逐語がたまたま `kinds:` で始まっていた場合に、その行が本文から抜かれる。
+  const lastIndex = lines.map((l) => l.trim()).findLastIndex((l) => l !== "");
+  const lastLine = lastIndex < 0 ? "" : (lines[lastIndex] as string).trim();
+  const kindLine = KINDS_LINE.exec(lastLine);
+
   const kindSet = new Set<string>(FINDING_KINDS);
   const kinds: FindingKind[] = [];
-
-  for (const raw of output.split("\n")) {
-    const kindLine = KINDS_LINE.exec(raw.trim());
-    if (kindLine === null) continue;
+  if (kindLine !== null) {
     for (const k of (kindLine[1] as string).split(",").map((s) => s.trim())) {
       if (kindSet.has(k) && !kinds.includes(k as FindingKind)) kinds.push(k as FindingKind);
     }
+    lines.splice(lastIndex, 1);
   }
 
-  // 分類の行は節の本文ではないので、節を読む前に落とす。残すと最後の節の末尾に混ざる。
-  const sections = parseSections(
-    output
-      .split("\n")
-      .filter((line) => KINDS_LINE.exec(line.trim()) === null)
-      .join("\n"),
-  );
+  const { sections } = dropSecretSections(parseSections(lines.join("\n")));
   return Object.keys(sections).length === 0 ? undefined : { sections, kinds };
+}
+
+/**
+ * 秘密らしき形を含む節を落とす。
+ *
+ * @remarks
+ * 候補（モデルへの入力）は既に濾してありますが、**出力は別経路です**。読解はツールを持つ
+ * エージェントが行うので、候補に無かった内容が節へ入りうる。そして節はそのまま public な
+ * Issue 本文になります。入口だけを守っても、出口が素通しなら意味がありません。
+ *
+ * 落とすのは節ごとです。1 節欠けても他の節が残りますが、公開してしまった 1 行は取り消せない
+ * ——`candidates.ts` と同じ「疑わしきは落とす」を、向きを変えて適用しています。
+ */
+export function dropSecretSections(sections: Readonly<Record<string, string>>): {
+  sections: Record<string, string>;
+  dropped: string[];
+} {
+  const kept: Record<string, string> = {};
+  const dropped: string[] = [];
+  for (const [name, text] of Object.entries(sections)) {
+    if (looksSecret(text)) dropped.push(name);
+    else kept[name] = text;
+  }
+  return { sections: kept, dropped };
 }
 
 /** 分類を Issue のラベル名にする。 */
@@ -127,23 +151,46 @@ export function kindLabels(kinds: readonly FindingKind[]): string[] {
 }
 
 /**
- * 読解の有無から Issue に付けるラベルを決める。
+ * 読解が無い窓を、CI が助けられるかどうかで分ける。
  *
  * @remarks
- * 読解できなかった窓にだけ `feedback/needs-summary` を付けます。CI 側の取り直しはこの
- * ラベルだけを待ち受けるので、常に付けてしまうと読解済みの窓まで CI が走り直します。
+ * 「読解が無い」には 2 つの理由があり、行き先が違います。**モデルが呼べなかった**のなら材料は
+ * 手元にあるので、逐語を渡せば CI が読めます。**材料そのものが無い**（トランスクリプトを
+ * 取得できなかった）なら、渡すものが無く CI にできることもありません。
+ *
+ * この 2 つを同じラベルに落とすと、CI は材料ゼロで起動し、何も書けないままラベルだけ外して
+ * 終わります。実行の痕跡は残るのに窓は読まれないままで、後から見て「読んだが何も無かった」と
+ * 区別が付きません。
  */
-export function issueLabels(summary: Summary | undefined): string[] {
-  return summary === undefined ? ["feedback", NEEDS_SUMMARY_LABEL] : ["feedback", ...kindLabels(summary.kinds)];
+export type ReadingGap = "read" | "model-unavailable" | "material-unavailable";
+
+/** 読解の結果と材料の有無から、窓の状態を決める。 */
+export function readingGap(summary: Summary | undefined, hasMaterial: boolean): ReadingGap {
+  if (summary !== undefined) return "read";
+  return hasMaterial ? "model-unavailable" : "material-unavailable";
+}
+
+/**
+ * 窓の状態から Issue に付けるラベルを決める。
+ *
+ * @remarks
+ * `feedback/needs-summary` を付けるのは CI が助けられる窓だけです。常に付ければ読解済みの窓まで
+ * 走り直し、材料の無い窓では空振りします。
+ */
+export function issueLabels(gap: ReadingGap, summary: Summary | undefined): string[] {
+  if (gap === "read" && summary !== undefined) return ["feedback", ...kindLabels(summary.kinds)];
+  if (gap === "model-unavailable") return ["feedback", NEEDS_SUMMARY_LABEL];
+  return ["feedback"];
 }
 
 /**
  * 逐語の候補をコメントとして投稿すべきか。
  *
  * @remarks
- * 投稿は CI へ材料を渡す唯一の手段であり、それ以外の目的を持ちません。手元で読解できて
- * いれば渡す相手がいないので、公開しません（`docs/design/security.md`「シークレット」）。
+ * 投稿は CI へ材料を渡す唯一の手段であり、それ以外の目的を持ちません。読解済みなら渡す相手が
+ * おらず、材料が無いなら渡すものが無い。どちらも公開しません
+ * （`docs/design/security.md`「シークレット」）。
  */
-export function needsCandidateComment(summary: Summary | undefined): boolean {
-  return summary === undefined;
+export function needsCandidateComment(gap: ReadingGap): boolean {
+  return gap === "model-unavailable";
 }

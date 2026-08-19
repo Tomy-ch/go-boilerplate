@@ -15,6 +15,7 @@
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,6 +29,7 @@ import {
   issueLabels,
   needsCandidateComment,
   parseSummary,
+  readingGap,
   LOCAL_CANDIDATE_LIMIT,
   LOCAL_EXCERPT_CHARS,
   type Summary,
@@ -40,6 +42,8 @@ const INDEX_FILE = path.join(REPO_ROOT, ".agents", "private", "closed_loop_index
 const DRY_RUN = process.argv.includes("--dry-run");
 const NO_SUMMARY = process.argv.includes("--no-summary");
 const SUMMARY_TIMEOUT_MS = 180_000;
+// 読解に必要なのは渡したプロンプトだけ。外界へ出る手段は落とす。
+const SUMMARY_DENIED_TOOLS = "Read Bash Glob Grep Edit Write NotebookEdit WebFetch WebSearch Task";
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -80,12 +84,21 @@ function gh(args: string[]): string {
  * 手元のモデルに読解させる。呼べない／失敗した場合は `undefined`。
  *
  * @remarks
- * stderr は捨てる。claude は権限設定の警告などを stderr に出すが、それは読解の成否と
- * 関係が無く、混ぜると本文の解析が壊れる。
+ * リポジトリの外で走らせる。中で走らせると 2 つ壊れる。`.claude/settings.json` の
+ * `SessionEnd` フックが発火して**いま観測中の窓が閉じられ**、1 つの作業が 2 窓に割れる
+ * （実測: 開いた窓に `closedAt` が打たれる）。加えて同じ設定の広い `allow` 規則を継承し、
+ * リポジトリ内のファイルへ到達できてしまう。
+ *
+ * ツールも明示的に落とす。読解に要るのは渡したプロンプトだけで、ファイルを読む理由が無い。
+ * `--allowed-tools ''` は無視される（実測）ので、拒否側で列挙する。
+ *
+ * stderr は捨てる。claude は設定の警告などを stderr に出すが、それは読解の成否と関係が無く、
+ * 混ぜると本文の解析が壊れる。
  */
 function localSummary(prompt: string): Summary | undefined {
   try {
-    const out = execFileSync("claude", ["-p", "--model", "sonnet"], {
+    const out = execFileSync("claude", ["-p", "--model", "sonnet", "--disallowed-tools", SUMMARY_DENIED_TOOLS], {
+      cwd: os.tmpdir(),
       encoding: "utf8",
       input: prompt,
       stdio: ["pipe", "pipe", "ignore"],
@@ -189,22 +202,24 @@ for (const window of readWindows()) {
 
   // 手元の読解に渡す候補は、公開する既定より多く長く取る。制約が「取り消せない露出」から
   // 「プロンプト長」に変わるため。
+  // dry-run は読解を呼ばない。何も送らない実行がモデルを窓の数だけ叩くのは、`--dry-run` に
+  // 期待される「見るだけ」から外れる（実測で 6 窓 = 6 回叩いていた）。決定論的な半分は
+  // そのまま出せるので、読解の中身だけが preview から落ちる。
   const summary =
-    transcripts === undefined || NO_SUMMARY
+    transcripts === undefined || NO_SUMMARY || DRY_RUN
       ? undefined
       : localSummary(
           buildPrompt(observation, selectCandidates(transcripts.events, LOCAL_CANDIDATE_LIMIT, LOCAL_EXCERPT_CHARS)),
         );
+  const gap = readingGap(summary, transcripts !== undefined);
   const body = renderBody(observation, summary?.sections);
-  const labels = issueLabels(summary);
+  const labels = issueLabels(gap, summary);
 
   if (DRY_RUN) {
     const comment =
-      summary !== undefined
-        ? "(読解済みのためコメントは投稿しない)"
-        : transcripts === undefined
-          ? "(トランスクリプト未指定)"
-          : renderCandidateComment(selectCandidates(transcripts.events));
+      transcripts === undefined
+        ? "(トランスクリプト未指定)"
+        : "(dry-run では読解を呼ばないため、実際の送出でコメントが付くかは確定しない)";
     console.log(`--- ${title}\nラベル: ${labels.join(", ")}\n${body}\n--- コメント\n${comment}`);
     sent += 1;
     continue;
@@ -226,7 +241,7 @@ for (const window of readWindows()) {
   }
 
   let commentPending: boolean | undefined;
-  if (issueNumber !== undefined && transcripts !== undefined && needsCandidateComment(summary)) {
+  if (issueNumber !== undefined && transcripts !== undefined && needsCandidateComment(gap)) {
     try {
       const comment = renderCandidateComment(selectCandidates(transcripts.events));
       gh(["issue", "comment", String(issueNumber), "--body", comment]);

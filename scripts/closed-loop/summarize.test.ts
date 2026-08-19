@@ -5,10 +5,12 @@ import { BODY_SECTIONS, type Observation } from "./issue";
 import { FINDING_KINDS } from "./score";
 import {
   buildPrompt,
+  dropSecretSections,
   issueLabels,
   kindLabels,
   needsCandidateComment,
   parseSummary,
+  readingGap,
   LOCAL_CANDIDATE_LIMIT,
   LOCAL_EXCERPT_CHARS,
   NEEDS_SUMMARY_LABEL,
@@ -155,6 +157,12 @@ describe("parseSummary", () => {
       expect(parseSummary("")).toBeUndefined();
     });
 
+    it("本文の途中にある kinds: 行は分類として吸わない", () => {
+      const parsed = parseSummary("## Evidence\nkinds: ラベル設計の話をした\n## Outcome\nok\n");
+      expect(parsed?.sections.Evidence).toBe("kinds: ラベル設計の話をした");
+      expect(parsed?.kinds).toEqual([]);
+    });
+
     it("kinds 行が空でも節が取れれば読解として扱う", () => {
       const parsed = parseSummary("## Outcome\nok\nkinds:\n");
       expect(parsed?.kinds).toEqual([]);
@@ -177,34 +185,91 @@ describe("kindLabels", () => {
   });
 });
 
-describe("issueLabels", () => {
+describe("readingGap", () => {
   describe("正常系", () => {
-    it("読解できていれば分類ラベルを重ねる", () => {
-      expect(issueLabels(summary(["skill"]))).toEqual(["feedback", "feedback/skill"]);
-    });
-
-    it("読解できていれば needs-summary を付けない", () => {
-      expect(issueLabels(summary([]))).not.toContain(NEEDS_SUMMARY_LABEL);
+    it("読解できていれば read", () => {
+      expect(readingGap(summary(["skill"]), true)).toBe("read");
     });
   });
 
   describe("異常系", () => {
-    it("読解できなければ needs-summary を付ける", () => {
-      expect(issueLabels(undefined)).toEqual(["feedback", NEEDS_SUMMARY_LABEL]);
+    it("材料はあるのに読解できなければ model-unavailable", () => {
+      expect(readingGap(undefined, true)).toBe("model-unavailable");
+    });
+
+    it("材料が無ければ material-unavailable", () => {
+      expect(readingGap(undefined, false)).toBe("material-unavailable");
+    });
+  });
+});
+
+describe("issueLabels", () => {
+  describe("正常系", () => {
+    it("読解できていれば分類ラベルを重ねる", () => {
+      expect(issueLabels("read", summary(["skill"]))).toEqual(["feedback", "feedback/skill"]);
+    });
+
+    it("読解できていれば needs-summary を付けない", () => {
+      expect(issueLabels("read", summary([]))).not.toContain(NEEDS_SUMMARY_LABEL);
+    });
+  });
+
+  describe("異常系", () => {
+    it("材料があるなら CI に託すため needs-summary を付ける", () => {
+      expect(issueLabels("model-unavailable", undefined)).toEqual(["feedback", NEEDS_SUMMARY_LABEL]);
+    });
+
+    it("材料が無ければ needs-summary を付けない（CI にできることが無い）", () => {
+      expect(issueLabels("material-unavailable", undefined)).toEqual(["feedback"]);
+    });
+
+    it("read なのに読解が無ければ分類を付けない", () => {
+      expect(issueLabels("read", undefined)).toEqual(["feedback"]);
     });
   });
 });
 
 describe("needsCandidateComment", () => {
   describe("正常系", () => {
-    it("読解できていれば逐語を公開しない", () => {
-      expect(needsCandidateComment(summary(["skill"]))).toBe(false);
+    it("材料があって読解できなかったときだけ逐語を公開する", () => {
+      expect(needsCandidateComment("model-unavailable")).toBe(true);
     });
   });
 
   describe("異常系", () => {
-    it("読解できなければ CI へ渡すために公開する", () => {
-      expect(needsCandidateComment(undefined)).toBe(true);
+    it("読解できていれば公開しない", () => {
+      expect(needsCandidateComment("read")).toBe(false);
+    });
+
+    it("材料が無ければ公開しない", () => {
+      expect(needsCandidateComment("material-unavailable")).toBe(false);
+    });
+  });
+});
+
+describe("dropSecretSections", () => {
+  describe("正常系", () => {
+    it("秘密らしき形を含まない節はそのまま残す", () => {
+      const { sections, dropped } = dropSecretSections({ Outcome: "実装して merge した" });
+      expect(sections).toEqual({ Outcome: "実装して merge した" });
+      expect(dropped).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("秘密らしき形を含む節を落とす", () => {
+      const { sections, dropped } = dropSecretSections({
+        Outcome: "ok",
+        Evidence: "SONAR_TOKEN=abcdefghijklmnopqrst を貼っていた",
+      });
+      expect(sections).toEqual({ Outcome: "ok" });
+      expect(dropped).toEqual(["Evidence"]);
+    });
+
+    it("落とした節は本文に残らない", () => {
+      const parsed = parseSummary("## Outcome\nghp_abcdefghijklmnopqrstuvwxyz0123\n## Friction\n遅かった\n");
+      expect(parsed?.sections.Outcome).toBeUndefined();
+      expect(parsed?.sections.Friction).toBe("遅かった");
     });
   });
 });
