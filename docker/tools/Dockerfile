@@ -187,8 +187,13 @@ RUN --mount=type=secret,id=github_token \
 
 # --require-hashes は lockfile の全エントリが版とハッシュで固定されていることを要求するため、
 # 記載漏れのある lockfile はここで install ごと失敗する。ハッシュ照合そのものが検査を兼ねる。
+#
+# --only-binary :all: が見ているのはその次の問いで、ハッシュが一致した sdist であっても
+# setup script は install 時に走る。wheel だけを受け付ければその余地が無くなる。この lockfile は
+# 全件 wheel から解決できるため失うものは無く、解決できない pin が入った時点で黙って任意コードを
+# 実行するのではなくここで落ちる。.github/workflows/sql-lint.yaml が同じ lockfile を同じ形で入れる。
 COPY python/sqlfluff.txt python/
-RUN uv pip install --system --require-hashes --no-cache -r python/sqlfluff.txt \
+RUN uv pip install --system --only-binary :all: --require-hashes --no-cache -r python/sqlfluff.txt \
     && sqlfluff --version
 
 ENTRYPOINT []
