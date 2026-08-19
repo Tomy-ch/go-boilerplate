@@ -27,6 +27,28 @@ SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH='' cd -- "${SCRIPT_DIR}/../.." && pwd)
 RUNNER="${REPO_ROOT}/scripts/node_modules/.bin/tsx"
 ENTRY="${REPO_ROOT}/scripts/closed-loop/send"
+LOCK_DIR="${REPO_ROOT}/tmp/closed-loop/send.lock"
+
+# Only one send at a time, for the same reason marks.sh locks its pointer: the index is
+# read-modify-write, so two runs both see every pending window and both create an issue for it.
+# Observed, with the reading done locally: 2 windows became 21 issues.
+#
+# `mkdir` is the primitive because it is atomic on every filesystem this runs on and needs no
+# `flock`, which macOS does not ship. A stale directory is worse than a missed send — the send is
+# retried at the next start, whereas a stale lock stops every later one — so the lock is released
+# on any exit, including a signal.
+#
+# A second run does not wait: it exits, because the run already in flight will send the same
+# windows. Queueing would only pile up duplicates of that same work behind a call that must not
+# block a session.
+locked_run() {
+  mkdir -p "$(dirname -- "${LOCK_DIR}")" 2>/dev/null || return 0
+  if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
+    return 0
+  fi
+  trap 'rmdir "${LOCK_DIR}" 2>/dev/null || :' EXIT INT TERM
+  run
+}
 
 usage() {
   cat <<'USAGE'
@@ -63,7 +85,7 @@ case "${1:-}" in
     # the index keeps the window pending, and the next start tries again.
     [ -x "${RUNNER}" ] || exit 0
     command -v gh >/dev/null 2>&1 || exit 0
-    (run >/dev/null 2>&1 &) || :
+    (locked_run >/dev/null 2>&1 &) || :
     exit 0
     ;;
   --dry-run)
@@ -72,7 +94,7 @@ case "${1:-}" in
     ;;
   '')
     [ -x "${RUNNER}" ] || { echo "tsx が見つかりません: ${RUNNER}" >&2; exit 1; }
-    run
+    locked_run
     ;;
   *)
     usage >&2

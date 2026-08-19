@@ -243,11 +243,14 @@ for (const window of readWindows()) {
     commentPending,
     updatedAt: Math.floor(Date.now() / 1000),
   });
+  // 窓ごとに書き出す。最後にまとめて書くと、途中で落ちた実行が作った issue は索引に残らず、
+  // 次回そのぶんを作り直す。読解が入って 1 窓あたり数十秒かかるようになり、その「途中」が
+  // 現実的な長さになった。
+  writeIndex(store);
   if (issueNumber === undefined || commentPending === true) pending += 1;
   else sent += 1;
 }
 
-if (!DRY_RUN) writeIndex(store);
 console.log(
   `送出 ${sent} 件` +
     `${pending > 0 ? ` / 未送出 ${pending} 件（次回に持ち越し）` : ""}` +
