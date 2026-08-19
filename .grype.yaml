@@ -6,20 +6,6 @@
 # being one. Remove an entry once the underlying condition changes rather than keeping it
 # as a permanent allowlist.
 ignore:
-  # Grype resolves a pinned action by the version comment that trails its SHA, and this
-  # repository's pins carry a moving major tag (`# v1`) wherever `make pin-actions-resolve`
-  # found that tag's head already past the quarantine window — 13 of the 24 entries in
-  # .github/actions-pin.toml are of that form. So Grype reads the version as "v1" and
-  # compares it against `< 1.0.74`.
-  #
-  # The SHA actually pinned, be7b93b1907a4abad570368f3c74b6fe3807510b, is the tag v1.0.183
-  # (2026-07-25) — a hundred releases past the patched version. Scoped to this one advisory
-  # so a genuinely new one against the same action still surfaces; the day the pin comment
-  # becomes an exact version, this entry stops being needed at all.
-  - vulnerability: GHSA-8q5r-mmjf-575q
-    package:
-      name: anthropics/claude-code-action
-
   # github.com/docker/docker is not a dependency of this module. It appears in go.sum only,
   # reached through the module graph of golang-migrate's own test binaries (dktest), and
   # `go list -deps ./...` returns it zero times — nothing this repository builds links it.
