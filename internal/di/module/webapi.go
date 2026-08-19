@@ -1,6 +1,7 @@
 package module
 
 import (
+	"go-boilerplate/internal/config"                                             // sample-api:line
 	"go-boilerplate/internal/infrastructure/httpclient"                          // sample-api:line
 	addressext "go-boilerplate/internal/infrastructure/webapi/address"           // sample-api:line
 	exchangerateext "go-boilerplate/internal/infrastructure/webapi/exchangerate" // sample-api:line
@@ -21,7 +22,7 @@ func webapiModule() fx.Option {
 			addressext.New,                   // sample-api:line
 		),
 		provideHTTPClientProfiles(
-			exchangerateext.NewDownstreamProfile, // sample-api:line
+			provideExchangeRateDownstreamProfile, // sample-api:line
 			addressext.NewDownstreamProfile,      // sample-api:line
 		),
 		provideRequiredDownstreams(
@@ -42,6 +43,17 @@ func provideCachedExchangeRateGateway(
 	clk clock.Clock,
 ) exchangeratebd.Gateway {
 	return exchangerateext.NewCache(exchangerateext.New(endpoint, client, tf), clk)
+}
+
+// sample-api:end
+
+// sample-api:begin
+
+// provideExchangeRateDownstreamProfile は、env に応じた SSRF ガード設定で為替レート取得プロファイルを構築します。
+// private 網宛て接続の許可判定は allowPrivateNetworkForEnv に委ねます。DAST は疑似サービスを
+// ランナー上に立てて叩くため、許可されない環境ではその経路に到達できません。
+func provideExchangeRateDownstreamProfile(appCfg *config.ApplicationConfig) httpclient.DownstreamProfile {
+	return exchangerateext.NewDownstreamProfile(allowPrivateNetworkForEnv(appCfg.Env()))
 }
 
 // sample-api:end

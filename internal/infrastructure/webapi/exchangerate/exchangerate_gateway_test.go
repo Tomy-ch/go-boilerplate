@@ -147,7 +147,7 @@ func TestRequiredDownstream(t *testing.T) {
 
 		t.Run("NewDownstreamProfile が登録する profile 名と一致する", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, exchangerate.NewDownstreamProfile().Name, exchangerate.RequiredDownstream())
+			assert.Equal(t, exchangerate.NewDownstreamProfile(false).Name, exchangerate.RequiredDownstream())
 		})
 	})
 }

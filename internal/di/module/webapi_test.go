@@ -57,8 +57,14 @@ func Test_webapiModule(t *testing.T) {
 
 			// required だけ寄与して profile を欠くと registry 構築が起動時に失敗する。
 			// このモジュール自身の寄与が自己完結していることを value group の突き合わせで確認する。
-			profiles := collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, webapiModule())
-			required := collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, webapiModule())
+			// profile の一部は env から SSRF ガードを決めるため、設定も併せて配線する。
+			deps := func() fx.Option {
+				return fx.Options(webapiModule(), fx.Provide(func() *config.ApplicationConfig {
+					return config.NewApplicationConfig(config.MockConfigForTest(t))
+				}))
+			}
+			profiles := collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, deps())
+			required := collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, deps())
 
 			assert.Empty(t, httpclient.MissingDownstreams(profiles, required))
 		})
@@ -75,3 +81,27 @@ func Test_webapiModule(t *testing.T) {
 		// sample-api:end
 	})
 }
+
+// sample-api:begin
+
+func Test_provideExchangeRateDownstreamProfile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非本番 env では private network を許可する profile を構築する", func(t *testing.T) {
+			t.Parallel()
+			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+			assert.True(t, provideExchangeRateDownstreamProfile(appCfg).Profile.AllowPrivateNetwork)
+		})
+
+		t.Run("それ以外の env では private network を許可しない profile を構築する", func(t *testing.T) {
+			t.Parallel()
+			appCfg := config.NewApplicationConfig(&config.Config{})
+			assert.False(t, provideExchangeRateDownstreamProfile(appCfg).Profile.AllowPrivateNetwork)
+		})
+	})
+}
+
+// sample-api:end

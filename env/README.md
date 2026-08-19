@@ -236,7 +236,6 @@ S3-compatible object storage for uploaded assets (product images). The usecase d
 
 Delivery is separate from these variables: the API returns only the object key (`imagePath`) and never a full URL, so the frontend composes `<delivery origin>/<object key>`. There is therefore no delivery-origin variable on this side — the frontend owns it (`http://gobp-local.web.garage.localhost:3902` for `local`, the CDN domain in deploy environments). See [`docker/README.md`](../docker/README.md) for how the local delivery endpoint is opened for anonymous read.
 
-
 ### Endpoint
 
 Where this deployment connects. "Where do we point" is an axis of its own — it changes per deployment while the behaviour of each subsystem does not — so the endpoints live here instead of inside the subsystem that dials them. All are `required` with an empty value allowed; what empty means differs per endpoint and is stated in Notes. A queue's `*_URL` is not here: it identifies a resource passed as an API parameter rather than a host we connect to, and `AUTH_ISSUER` is a claim to compare, not a destination.

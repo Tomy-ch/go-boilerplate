@@ -53,6 +53,12 @@ jobs:
       # deployed environment does. `ci` cannot: it wires the stub, which accepts any
       # `debug:<subject>` bearer token without a signature and never reaches that code.
       APP_ENV: dast
+      # sample-api:begin
+      # The sample exchange-rate gateway points at a reserved `.example.com` domain that never
+      # resolves, so its endpoint answers 5xx everywhere. Runtime env wins over the value
+      # embedded from `env/.env.dast`, so pointing it at the stub is enough — no rebuild.
+      ENDPOINT_EXCHANGE_RATE: http://127.0.0.1:9401
+      # sample-api:end
       # The identity the scan authenticates as. Under a real issuer the seeded
       # `user_identities` rows are the `${AUTH_ISSUER}` ones, and the provider copies whatever
       # `username` it is handed onto `sub` — so this has to be one of the `user-<name>` subjects
@@ -239,6 +245,29 @@ jobs:
 
       - name: Build server
         run: go build -o ./bin/server ./cmd/
+
+      # sample-api:begin
+      # Started before the server so the first scan request already has something to reach.
+      # Loopback is why `provideExchangeRateDownstreamProfile` has to allow the private network
+      # under `dast`; every deployed tier still refuses it.
+      - name: Start the exchange-rate stub
+        run: |
+          python3 .github/zap/exchange-rate-stub.py > exchange-rate-stub.log 2>&1 &
+          echo $! > exchange-rate-stub.pid
+
+          for i in {1..15}; do
+            if curl -fsS "http://127.0.0.1:9401/rates?base=USD&quote=JPY" > /dev/null; then
+              echo "exchange-rate stub is up"
+              exit 0
+            fi
+            echo "Waiting for the exchange-rate stub... ($i)"
+            sleep 1
+          done
+
+          echo "::error::the exchange-rate stub did not become ready"
+          cat exchange-rate-stub.log || true
+          exit 1
+      # sample-api:end
 
       - name: Start server
         run: |
