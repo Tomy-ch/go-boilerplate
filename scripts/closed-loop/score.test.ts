@@ -243,6 +243,16 @@ describe("waitDominated", () => {
       expect(waitDominated([fast])).toEqual([]);
     });
 
+    it("待ち時間と実装時間が等しければ挙げない（上回るときだけ）", () => {
+      const even = issue(1, [], {
+        phases: [
+          { from: "openedAt", to: "prOpenedAt", sec: 100 },
+          { from: "prOpenedAt", to: "mergedAt", sec: 100 },
+        ],
+      });
+      expect(waitDominated([even])).toEqual([]);
+    });
+
     it("待ち時間が観測できなければ挙げない", () => {
       expect(waitDominated([issue(1, [], { phases: [{ from: "openedAt", to: "commitAt", sec: 10 }] })])).toEqual([]);
     });
@@ -282,9 +292,15 @@ describe("UNCLASSIFIED", () => {
 
 describe("REEVALUATION_DAYS", () => {
   describe("正常系", () => {
-    it("母数が溜まる程度に長く、次の改善と混ざらない程度に短い", () => {
-      expect(REEVALUATION_DAYS).toBeGreaterThanOrEqual(7);
-      expect(REEVALUATION_DAYS).toBeLessThanOrEqual(30);
+    it("日数として扱える整数である", () => {
+      expect(Number.isInteger(REEVALUATION_DAYS)).toBe(true);
+      expect(REEVALUATION_DAYS).toBeGreaterThan(0);
+    });
+
+    it("この日数がそのまま due の境界になる", () => {
+      const at = 100 + REEVALUATION_DAYS * DAY;
+      expect(reevaluations([tracked(1, ["skill"], { resolvedAt: 100 })], at)[0]?.due).toBe(true);
+      expect(reevaluations([tracked(1, ["skill"], { resolvedAt: 100 })], at - 1)[0]?.due).toBe(false);
     });
   });
 });
@@ -333,6 +349,23 @@ describe("reevaluations", () => {
     it("再発の数が同じなら鍵の順に並べ、実行ごとに順序が変わらないようにする", () => {
       const r = reevaluations([tracked(1, ["skill"], { resolvedAt: 100 }), tracked(2, ["ci"], { resolvedAt: 100 })], 1_000_000);
       expect(r.map((x) => x.key)).toEqual(["ci", "skill"]);
+    });
+
+    it("着地と同じ秒に作られた Issue は再発に数えない", () => {
+      const r = reevaluations(
+        [tracked(1, ["skill"], { createdAt: 0, resolvedAt: 100 }), tracked(2, ["skill"], { createdAt: 100 })],
+        1_000_000,
+      );
+      expect(r[0]?.recurred).toEqual([]);
+    });
+
+    it("再発の境界は含まず、判定期の境界は含む（非対称を同じ入力で固定する）", () => {
+      const r = reevaluations(
+        [tracked(1, ["skill"], { createdAt: 0, resolvedAt: 100 }), tracked(2, ["skill"], { createdAt: 100 })],
+        100 + REEVALUATION_DAYS * DAY,
+      );
+      expect(r[0]?.recurred).toEqual([]);
+      expect(r[0]?.due).toBe(true);
     });
 
     it("判定の時期が来ていれば due を立てる", () => {

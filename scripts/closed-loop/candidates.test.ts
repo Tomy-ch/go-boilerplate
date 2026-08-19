@@ -110,6 +110,26 @@ describe("looksSecret", () => {
       expect(looksSecret("xoxb-0123456789-abcdefghij")).toBe(true);
     });
 
+    it("credential という名の組を検出する", () => {
+      expect(looksSecret("credential=0123456789abcdef を置いた")).toBe(true);
+    });
+
+    it("環境変数名の形をした pass を検出する", () => {
+      expect(looksSecret("DB_PASS=hunter2secret で繋いだ")).toBe(true);
+    });
+
+    it("pwd という短い名の組も検出する", () => {
+      expect(looksSecret("pwd: hunter2secret を渡している")).toBe(true);
+    });
+
+    it("curl の -u に渡した資格情報を検出する", () => {
+      expect(looksSecret("curl -u alice:hunter2secret https://example.com/api")).toBe(true);
+    });
+
+    it("小文字の bearer も検出する", () => {
+      expect(looksSecret("authorization: bearer abcdefghij0123456789KLMNOP")).toBe(true);
+    });
+
     // 以下は正規表現の内部分岐。alternation と文字クラスはコード側の分岐として
     // 計測されないため、1 つ通しただけでは他が壊れても緑のままになる。
     it("GitHub の fine-grained PAT を検出する", () => {
@@ -182,6 +202,18 @@ describe("looksSecret", () => {
 
     it("短い識別子を秘密と判定しない", () => {
       expect(looksSecret("sk-abc の話")).toBe(false);
+    });
+
+    it("pass を含むだけの語では判定しない", () => {
+      expect(looksSecret("テストが passing になった")).toBe(false);
+    });
+
+    it("pwd に似た語では判定しない", () => {
+      expect(looksSecret("cwd=/Users/tomy/dev/src/go-boilerplate で実行した")).toBe(false);
+    });
+
+    it("値の短い組は判定しない", () => {
+      expect(looksSecret("pass: short")).toBe(false);
     });
   });
 });
@@ -265,6 +297,24 @@ describe("selectCandidates", () => {
   });
 
   describe("異常系", () => {
+    it("上限がカテゴリの境目を跨いでも優先順位どおりに残す", () => {
+      const events = [
+        prompt(10, "それは違う"),
+        prompt(20, "そうじゃなくて"),
+        prompt(30, "中断前の発話"),
+        interrupt(35),
+        prompt(40, "失敗後の発話"),
+      ];
+      const picked = selectCandidates([failure(38), ...events], 3);
+      expect(picked.map((c) => c.reason)).toEqual(["corrective", "corrective", "before-interrupt"]);
+    });
+
+    it("同じ発話が中断前かつ失敗直後でも一度しか選ばない", () => {
+      const picked = selectCandidates([failure(10), prompt(20, "ふつうの発話"), interrupt(30)]);
+      expect(picked).toHaveLength(1);
+      expect(picked[0]?.reason).toBe("before-interrupt");
+    });
+
     it("同じ発話を理由違いで二重に選ばない", () => {
       const got = selectCandidates([prompt(100, "それは違う"), interrupt(200)]);
       expect(got).toHaveLength(1);

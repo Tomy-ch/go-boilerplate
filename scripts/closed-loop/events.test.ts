@@ -296,6 +296,11 @@ describe("summarizeSession", () => {
       const facts = summarizeSession("claude", [ev({ kind: "tool_result", ok: true }), ev({ kind: "tool_result", ok: false })]);
       expect(facts.toolFailures).toBe(1);
     });
+
+    it("成否を観測できて失敗が無ければ 0 を返す（観測不能の undefined と区別する）", () => {
+      const facts = summarizeSession("claude", [ev({ kind: "tool_result", ok: true }), ev({ kind: "tool_result", ok: true })]);
+      expect(facts.toolFailures).toBe(0);
+    });
   });
 
   describe("異常系", () => {
