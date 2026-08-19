@@ -13,8 +13,8 @@ export const COMMENT_ACTION = "./.github/actions/upsert-pr-comment";
 const JOB_LEVEL_USES = /^ {4}uses:\s*\S/;
 const JOB_LEVEL_TIMEOUT = /^ {4}timeout-minutes:\s*\S/;
 // ステップのキーは列 8 に並ぶ。先頭キーだけは `      - ` に続けて同じ列から始まる。
-const STEP_KEY_IF = /^(?: {6}- | {8})if:\s*(.*)$/;
-const STEP_KEY_TITLE = /^ {10}title:\s*(.*)$/;
+const STEP_KEY_IF = /^(?: {6}- | {8})if:[ \t]*(.*)$/;
+const STEP_KEY_TITLE = /^ {10}title:[ \t]*(.*)$/;
 const COMMENT_ACTION_USE = usesActionPattern(COMMENT_ACTION, true);
 const REACHES_CANCELLED = /\b(?:always|cancelled)\s*\(\s*\)/;
 const CUT_OFF_HEADING = /CUT OFF/;

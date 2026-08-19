@@ -114,7 +114,7 @@ function isDeletedWhole(normalizedPath: string): boolean {
  * 持つので、外さないと対応の取れない片割れとして除去全体が止まります。
  */
 export function isScanTarget(relativePath: string): boolean {
-  const normalized = relativePath.split("\\").join("/");
+  const normalized = relativePath.replaceAll("\\", "/");
 
   if (
     MARKER_LITERAL_FILES.includes(normalized) ||
@@ -129,5 +129,5 @@ export function isScanTarget(relativePath: string): boolean {
 
 /** `<comment> boilerplate-only:` を含むか。 */
 export function containsBoilerplateMarker(content: string): boolean {
-  return new RegExp(`(?:\\/\\/|#|<!--)\\s*${BOILERPLATE_MARKER}:`).test(content);
+  return new RegExp(String.raw`(?:\/\/|#|<!--)\s*${BOILERPLATE_MARKER}:`).test(content);
 }

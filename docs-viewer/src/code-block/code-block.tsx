@@ -22,7 +22,7 @@ export type CodeBlockProps = {
  * 渡します。highlight.js は入力を escape してから span で包むため、この HTML に元のテキストが
  * markup として現れることはありません。
  */
-export function CodeBlock({ code, language }: CodeBlockProps) {
+export function CodeBlock({ code, language }: Readonly<CodeBlockProps>) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const className = language ? `hljs language-${language}` : "hljs";
 

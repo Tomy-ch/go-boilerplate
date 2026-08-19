@@ -202,44 +202,50 @@ export function collectTestableExports(
     (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
 
   ts.forEachChild(source, (node) => {
-    if (ts.isFunctionDeclaration(node) && exported(node) && node.name !== undefined) {
-      add(node.name.text, node);
-
-      return;
-    }
-
-    if (ts.isClassDeclaration(node) && exported(node) && node.name !== undefined) {
-      add(node.name.text, node);
-
-      return;
-    }
-
-    if (ts.isVariableStatement(node) && exported(node)) {
-      for (const decl of node.declarationList.declarations) {
-        if (ts.isIdentifier(decl.name)) {
-          add(decl.name.text, decl);
-        }
-      }
-
-      return;
-    }
-
-    // `export { A, B as C }`。宣言に export 修飾子を付けず末尾でまとめて出す形は珍しくなく、
-    // 見落とすと 1 ファイル分の export がまるごと検査から外れる。公開される名前は別名の側。
-    if (ts.isExportDeclaration(node) && node.exportClause !== undefined) {
-      const clause = node.exportClause;
-
-      if (ts.isNamedExports(clause)) {
-        for (const element of clause.elements) {
-          if (!element.isTypeOnly && !node.isTypeOnly) {
-            add(element.name.text, element);
-          }
-        }
-      }
+    for (const [name, at] of exportedNames(node, exported)) {
+      add(name, at);
     }
   });
 
   return found;
+}
+
+/**
+ * トップレベルのノード 1 つが公開している名前を、その名前を指すノードと組で返す。
+ *
+ * @remarks
+ * `export { A, B as C }` の形も見ます。宣言に export 修飾子を付けず末尾でまとめて出す書き方は
+ * 珍しくなく、見落とすと 1 ファイル分の export がまるごと検査から外れます。公開されるのは
+ * 別名の側の名前です。
+ */
+function exportedNames(
+  node: ts.Node,
+  exported: (node: ts.Node) => boolean,
+): [string, ts.Node][] {
+  if (
+    (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) &&
+    exported(node) &&
+    node.name !== undefined
+  ) {
+    return [[node.name.text, node]];
+  }
+
+  if (ts.isVariableStatement(node) && exported(node)) {
+    return node.declarationList.declarations
+      .filter((decl) => ts.isIdentifier(decl.name))
+      .map((decl) => [decl.name.getText(), decl]);
+  }
+
+  if (ts.isExportDeclaration(node) && node.exportClause !== undefined && !node.isTypeOnly) {
+    const clause = node.exportClause;
+    if (!ts.isNamedExports(clause)) return [];
+
+    return clause.elements
+      .filter((element) => !element.isTypeOnly)
+      .map((element) => [element.name.text, element]);
+  }
+
+  return [];
 }
 
 /** export 名 describe 1 つ分の内側の形を検査する。 */

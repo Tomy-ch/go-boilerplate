@@ -98,7 +98,9 @@ export function slugify(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    // 上の置換で `-` は 1 個へ潰れているため、端に落とすのも 1 個で足りる。`-+` と書くと
+    // 端に無い連なりを走査するたびに後戻りが起きる。
+    .replace(/^-|-$/g, "");
 }
 
 /** 経路の末尾要素。`split().pop()` と違い、常に文字列になる。 */
@@ -107,7 +109,7 @@ function basename(filePath: string): string {
 }
 
 function langOf(destination: string): "en" | "ja" {
-  return destination.includes("/ja/") || /\.ja\.md$/.test(destination) ? "ja" : "en";
+  return destination.includes("/ja/") || destination.endsWith(".ja.md") ? "ja" : "en";
 }
 
 /**
@@ -129,7 +131,107 @@ export function guideIdOf(filePath: string): string {
 
 /** `lang` の並び順。EN を先、JA を後、言語を持たない項目を最後にする。 */
 function langOrder(lang: DocItem["lang"]): number {
-  return lang === "en" ? 0 : lang === "ja" ? 1 : 2;
+  if (lang === "en") return 0;
+  if (lang === "ja") return 1;
+
+  return 2;
+}
+
+/** 1 つの取り込み元が寄せるセクションと、その中身。 */
+type SectionSource = {
+  id: string;
+  fallbackTitle: string;
+  items: DocItem[];
+};
+
+/** manifest が宣言した取り込み。 */
+function manifestSections(parsed: Record<string, unknown>): SectionSource[] {
+  return Object.entries(parsed)
+    .filter(([group, entries]) => group !== META_KEY && Array.isArray(entries))
+    .map(([group, entries]) => ({
+      id: group,
+      fallbackTitle: autoTitle(group),
+      items: (entries as { dst: string; src: string }[]).map((entry) => ({
+        name: autoTitle(basename(entry.dst)),
+        path: entry.dst.replace(/^docs\/portal\//, "./"),
+        lang: langOf(entry.dst),
+        source: entry.src,
+        guideId: guideIdOf(entry.dst),
+      })),
+    }));
+}
+
+/**
+ * `docs/<dir>` の走査結果。静的 HTML（`index.html`）と、同じディレクトリに並ぶ正本・対訳の
+ * Markdown をまとめて 1 セクションにする。
+ *
+ * 見出しは `index.html` の項目名にも使うため、`ensureSection` と同じ解決（宣言があればそれ、
+ * 無ければディレクトリ名から起こす）をここでも行う。
+ */
+function directorySections(
+  directories: readonly DiscoveredDirectory[],
+  sectionTitles: Record<string, string>,
+): SectionSource[] {
+  return directories
+    .filter((dir) => dir.hasIndexHtml || dir.enFiles.length > 0 || dir.jaFiles.length > 0)
+    .map((dir) => {
+      const title = sectionTitles[dir.name] ?? autoTitle(dir.name);
+      const indexItem: DocItem[] = dir.hasIndexHtml
+        ? [
+            {
+              name: title,
+              path: `../${dir.name}/index.html`,
+              lang: "all",
+              source: `docs/${dir.name}/index.html`,
+              guideId: dir.name,
+            },
+          ]
+        : [];
+
+      return {
+        id: dir.name,
+        fallbackTitle: autoTitle(dir.name),
+        items: [
+          ...indexItem,
+          ...dir.enFiles.map((file) => markdownItem(file, `../${dir.name}/${file}`, "en", dir.name)),
+          ...dir.jaFiles.map((file) =>
+            markdownItem(file, `../ja/${dir.name}/${file}`, "ja", dir.name),
+          ),
+        ],
+      };
+    });
+}
+
+/** `docs/` 直下の正本と対訳。ディレクトリを持たないため 1 つのセクションへ集約する。 */
+function rootSection(discovered: DiscoveredDocs): SectionSource[] {
+  if (discovered.rootEnFiles.length === 0 && discovered.rootJaFiles.length === 0) return [];
+
+  return [
+    {
+      id: ROOT_MD_SECTION_ID,
+      fallbackTitle: "Architecture Docs",
+      items: [
+        ...discovered.rootEnFiles.map((file) => markdownItem(file, `../${file}`, "en")),
+        ...discovered.rootJaFiles.map((file) => markdownItem(file, `../ja/${file}`, "ja")),
+      ],
+    },
+  ];
+}
+
+/** 走査で見つけた Markdown 1 件を項目にする。`source` は正本の位置で、対訳でも `ja/` を挟まない。 */
+function markdownItem(
+  file: string,
+  path: string,
+  lang: "en" | "ja",
+  directory?: string,
+): DocItem {
+  return {
+    name: autoTitle(file),
+    path,
+    lang,
+    source: directory === undefined ? `docs/${file}` : `docs/${directory}/${file}`,
+    guideId: guideIdOf(file),
+  };
 }
 
 /**
@@ -175,80 +277,15 @@ export function buildDocsJson(
     section.items.push(item);
   };
 
-  // (a) manifest 由来のセクション
-  for (const [group, entries] of Object.entries(parsed)) {
-    if (group === META_KEY || !Array.isArray(entries)) continue;
+  for (const source of [
+    ...manifestSections(parsed),
+    ...directorySections(discovered.directories, meta.section_titles),
+    ...rootSection(discovered),
+  ]) {
+    const section = ensureSection(source.id, source.fallbackTitle);
 
-    const section = ensureSection(group, autoTitle(group));
-
-    for (const entry of entries) {
-      addItem(section, {
-        name: autoTitle(basename(entry.dst)),
-        path: entry.dst.replace(/^docs\/portal\//, "./"),
-        lang: langOf(entry.dst),
-        source: entry.src,
-        guideId: guideIdOf(entry.dst),
-      });
-    }
-  }
-
-  // (b) auto-discovered: docs/<dir>/index.html（静的 HTML）
-  // (c) auto-discovered: docs/<dir>/*.md（正本と `.ja.md` の対訳は同じディレクトリに居る）
-  for (const directory of discovered.directories) {
-    if (!directory.hasIndexHtml && !directory.enFiles.length && !directory.jaFiles.length) continue;
-
-    const section = ensureSection(directory.name, autoTitle(directory.name));
-
-    if (directory.hasIndexHtml) {
-      addItem(section, {
-        name: section.title,
-        path: `../${directory.name}/index.html`,
-        lang: "all",
-        source: `docs/${directory.name}/index.html`,
-        guideId: directory.name,
-      });
-    }
-    for (const file of directory.enFiles) {
-      addItem(section, {
-        name: autoTitle(file),
-        path: `../${directory.name}/${file}`,
-        lang: "en",
-        source: `docs/${directory.name}/${file}`,
-        guideId: guideIdOf(file),
-      });
-    }
-    for (const file of directory.jaFiles) {
-      addItem(section, {
-        name: autoTitle(file),
-        path: `../ja/${directory.name}/${file}`,
-        lang: "ja",
-        source: `docs/${directory.name}/${file}`,
-        guideId: guideIdOf(file),
-      });
-    }
-  }
-
-  // (d) auto-discovered: docs 直下の正本と対訳を 1 つの section へ集約
-  if (discovered.rootEnFiles.length || discovered.rootJaFiles.length) {
-    const section = ensureSection(ROOT_MD_SECTION_ID, "Architecture Docs");
-
-    for (const file of discovered.rootEnFiles) {
-      addItem(section, {
-        name: autoTitle(file),
-        path: `../${file}`,
-        lang: "en",
-        source: `docs/${file}`,
-        guideId: guideIdOf(file),
-      });
-    }
-    for (const file of discovered.rootJaFiles) {
-      addItem(section, {
-        name: autoTitle(file),
-        path: `../ja/${file}`,
-        lang: "ja",
-        source: `docs/${file}`,
-        guideId: guideIdOf(file),
-      });
+    for (const item of source.items) {
+      addItem(section, item);
     }
   }
 
@@ -272,7 +309,7 @@ export function buildDocsJson(
       title: "Uncategorized",
       slug: "uncategorized",
       sections: orphans
-        .sort((left, right) => left.title.localeCompare(right.title))
+        .toSorted((left, right) => left.title.localeCompare(right.title))
         .map(toDocSection),
     });
     warnings.push(
@@ -312,42 +349,60 @@ function applySubgroups(
       continue;
     }
 
-    const byGuideId = new Map<string, DocItem[]>();
-    for (const item of section.items) {
-      if (!item.guideId) continue;
-      const bucket = byGuideId.get(item.guideId) ?? [];
-      bucket.push(item);
-      byGuideId.set(item.guideId, bucket);
-    }
-
-    const subgroups: Subgroup[] = [];
-    const placedGuideIds = new Set<string>();
-
-    for (const config of subgroupConfigs) {
-      const items: DocItem[] = [];
-
-      for (const guideId of config.items) {
-        const matched = byGuideId.get(guideId);
-
-        if (!matched?.length) {
-          warnings.push(
-            `meta.subgroups[${sectionId}][${config.title}]: guide id "${guideId}" は存在しないので無視します`,
-          );
-          continue;
-        }
-
-        placedGuideIds.add(guideId);
-        items.push(...matched);
-      }
-
-      if (items.length) subgroups.push({ title: config.title, items });
-    }
-
-    const others = section.items.filter((item) => !placedGuideIds.has(item.guideId));
-    if (others.length) subgroups.push({ title: "Other", items: others });
-
+    const subgroups = resolveSubgroups(sectionId, section, subgroupConfigs, warnings);
     if (subgroups.length) section.subgroups = subgroups;
   }
+}
+
+/** section の項目を guide id で引けるようにする。guide id を持たない項目はどの小見出しにも入らない。 */
+function indexByGuideId(items: readonly DocItem[]): Map<string, DocItem[]> {
+  const byGuideId = new Map<string, DocItem[]>();
+
+  for (const item of items) {
+    if (!item.guideId) continue;
+    const bucket = byGuideId.get(item.guideId) ?? [];
+    bucket.push(item);
+    byGuideId.set(item.guideId, bucket);
+  }
+
+  return byGuideId;
+}
+
+/** section 1 つ分の小見出しを組み立てる。割り当てられなかった項目は末尾の "Other" へ寄せる。 */
+function resolveSubgroups(
+  sectionId: string,
+  section: WorkingSection,
+  subgroupConfigs: readonly { title: string; items: string[] }[],
+  warnings: string[],
+): Subgroup[] {
+  const byGuideId = indexByGuideId(section.items);
+  const subgroups: Subgroup[] = [];
+  const placedGuideIds = new Set<string>();
+
+  for (const config of subgroupConfigs) {
+    const items = config.items.flatMap((guideId) => {
+      const matched = byGuideId.get(guideId);
+
+      if (!matched?.length) {
+        warnings.push(
+          `meta.subgroups[${sectionId}][${config.title}]: guide id "${guideId}" は存在しないので無視します`,
+        );
+
+        return [];
+      }
+
+      placedGuideIds.add(guideId);
+
+      return matched;
+    });
+
+    if (items.length) subgroups.push({ title: config.title, items });
+  }
+
+  const others = section.items.filter((item) => !placedGuideIds.has(item.guideId));
+  if (others.length) subgroups.push({ title: "Other", items: others });
+
+  return subgroups;
 }
 
 function buildGroups(

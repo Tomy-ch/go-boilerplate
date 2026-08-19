@@ -1,21 +1,25 @@
 name: SonarQube Cloud Scan
 
+# **Pull requests only, and that is a constraint rather than a preference.** SonarQube Cloud
+# analyzes one branch per organization on the free plan — every other branch is refused with
+# `Organization is not allowed to access data from non main branches`. Pull-request analysis
+# is exempt, which is why a pull request scans and a branch does not.
+#
+# A push trigger used to run here and it never once succeeded: the job died reading the
+# quality gate, and the steps that collect the findings and build the SARIF sit after that
+# read, so they never ran. Worse than the red run was what did reach code scanning from
+# earlier attempts — `Fetch issues` has no branch to ask about outside a pull request, so it
+# returns the organization's main branch, and those findings were published as if they
+# described the branch that was pushed. Alerts naming files this repository had already
+# deleted are what that looks like from the outside.
+#
+# Restoring a branch scan is a decision about the SonarQube Cloud organization (which branch
+# is its main, or whether the plan analyzes more than one), not about this file. Until that
+# is taken, `workflow_dispatch` stays as the way to re-run the analysis and watch what the
+# API answers — its findings do NOT reach code scanning, because the `report` job below is
+# gated on a pull-request context for the reason above.
+
 on:
-  push:
-    branches:
-      - 'release/*'
-      - develop
-      - staging
-      - production
-    paths:
-      - '.github/workflows/sonarqube.yaml'
-      - 'sonar-project.properties'
-      - '**/*.go'
-      - '**/*.ts'
-      - '**/*.tsx'
-      - '**/*.js'
-      - '**/*.mjs'
-      - '**/*.jsx'
   pull_request:
     paths:
       - '.github/workflows/sonarqube.yaml'
@@ -26,8 +30,6 @@ on:
       - '**/*.js'
       - '**/*.mjs'
       - '**/*.jsx'
-  schedule:
-    - cron: '0 5 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -433,7 +435,7 @@ jobs:
     needs:
       - preflight
       - sonarqube
-    if: ${{ always() && needs.preflight.outputs.configured == 'true' }}
+    if: ${{ always() && needs.preflight.outputs.configured == 'true' && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -554,18 +556,11 @@ jobs:
           title: "${{ steps.gap.outputs.title || '## ⚠️ SonarQube Cloud: CUT OFF (no result produced)' }}"
           body-file: sonarqube-unconfigured.md
 
-  # Deliberately no notify-detection. Sonar's baseline over an existing codebase is not
-  # zero — it reports maintainability alongside security — so a weekly notification keyed
-  # on "any finding" would fire every week regardless of what changed, which is the shape
-  # of a notification people learn to ignore. ESLint and Bearer are unwired for the same
-  # reason.
-  #
-  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
-  notify-failure:
-    needs: sonarqube
-    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.sonarqube.result) }}
-    uses: ./.github/workflows/notify.yaml
-    with:
-      failed-job: sonarqube
-    secrets:
-      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+  # Deliberately no notification job of either kind. There is no notify-detection because
+  # Sonar's baseline over an existing codebase is not zero — it reports maintainability
+  # alongside security — so one keyed on "any finding" would fire regardless of what
+  # changed, which is the shape of a notification people learn to ignore; ESLint and Bearer
+  # are unwired for the same reason. There is no notify-failure either, because the trigger
+  # it watched was the scheduled run, and this workflow no longer has one (see the header):
+  # every remaining run belongs to a pull request, where the failure is already in front of
+  # the person who caused it.

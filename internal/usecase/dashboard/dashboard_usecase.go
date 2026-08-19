@@ -167,9 +167,10 @@ func resolveWindow(params GetSummaryParams, now time.Time, loc *time.Location) (
 			return query.Window{}, xerrors.Wrap(apperror.ErrInvalidArgument, "to must not be before from")
 		}
 		return query.Window{After: from, Before: to.AddDate(0, 0, 1)}, nil
+	// 未知の period は OpenAPI の enum があるため到達しませんが、到達したときに月次や任意区間で
+	// 答えるより今日で答えるほうが害が小さいため、periodToday と同じ窓へ倒します。
 	case periodToday:
-		start := startOfDay(now.In(loc), loc)
-		return query.Window{After: start, Before: start.AddDate(0, 0, 1)}, nil
+		fallthrough
 	default:
 		start := startOfDay(now.In(loc), loc)
 		return query.Window{After: start, Before: start.AddDate(0, 0, 1)}, nil

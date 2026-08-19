@@ -15,6 +15,9 @@
 name: Closed Loop Weekly
 
 on:
+  #checkov:skip=CKV_GHA_7:ビルドではない。成果物を作らず run summary に書くだけで、下流が消費する出力が無いのでビルド再現性の前提が当たらない。from / to は落ちた週を後から同じ答えで取り直すための入力で、外すと「直近 7 日」しか計算できなくなる（冒頭の注記のとおり）。workflow_dispatch は write 権限を要するので渡せるのは信頼済みの人だけで、値は env 経由でクォートして渡している
+  # 上の #checkov:skip は checkov 自身の判定からしか外れない。code scanning へは checkov.yaml の
+  # SARIF フィルタが落とす（そちらの理由はワークフロー側のコメントにある）。
   schedule:
     # Monday 05:15 UTC — the next free slot in the weekly stagger (README.md § Scheduled runs).
     - cron: '15 5 * * 1'

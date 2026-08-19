@@ -74,12 +74,16 @@ jobs:
           tools: uv
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # --only-binary :all: refuses a source distribution, so no package here can run a
+      # setup script during install. The lockfile resolves entirely from wheels, so this
+      # takes nothing away; a pin that stops doing so fails the step instead of quietly
+      # executing arbitrary code with the runner's token in scope.
       - name: Install sqlfluff
         run: |
           set -euo pipefail
           python_version="$(mise config get tools.python)"
           uv venv --python "${python_version}" .venv
-          uv pip install --require-hashes --no-cache -r python/sqlfluff.txt
+          uv pip install --only-binary :all: --require-hashes --no-cache -r python/sqlfluff.txt
           echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Run SQL lint

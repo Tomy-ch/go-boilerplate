@@ -1,13 +1,13 @@
 /** 次のバージョンを決めるときの繰り上げ単位。 */
 export type BumpType = "patch" | "minor" | "major";
 
-const BUMP_TYPES: readonly string[] = ["patch", "minor", "major"];
+const BUMP_TYPES: ReadonlySet<string> = new Set(["patch", "minor", "major"]);
 
 // 先頭ゼロ（`01.2.3`）を弾く SemVer の数値表記。タグ名の揺れをそのまま次版へ持ち込ませない。
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 export function isBumpType(value: string): value is BumpType {
-  return BUMP_TYPES.includes(value);
+  return BUMP_TYPES.has(value);
 }
 
 /**

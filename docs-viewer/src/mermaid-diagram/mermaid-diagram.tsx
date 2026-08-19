@@ -26,7 +26,7 @@ export type MermaidDiagramProps = {
  *
  * 描画できない図は定義をそのまま出す（README 参照）。文法誤りは書き手にしか直せないため。
  */
-export function MermaidDiagram({ code }: MermaidDiagramProps) {
+export function MermaidDiagram({ code }: Readonly<MermaidDiagramProps>) {
   const id = toElementId(useId());
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);

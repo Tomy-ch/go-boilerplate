@@ -11,30 +11,24 @@
 # and not `feedback` — gating on `feedback` would re-summarize every window that was already read.
 name: Closed Loop Summarize
 
+# 取り直しは `feedback/needs-summary` を付け直して行う。workflow_dispatch の入力で issue 番号を
+# 受ける形も採れるが、ラベルの付け外しで同じことができるうえ、番号を人が打ち込む経路が増える。
 on:
   issues:
     types: [labeled]
-  workflow_dispatch:
-    inputs:
-      issue:
-        description: Issue number to summarize
-        required: true
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.issue.number || inputs.issue }}
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
   summarize:
     # Only an issue the local path could not read, and only when that label arrives. Gating on the
     # github context alone means an unrelated label never starts a runner.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.label.name == 'feedback/needs-summary'
+    if: github.event.label.name == 'feedback/needs-summary'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -86,17 +80,17 @@ jobs:
 
       - name: Run Claude
         if: steps.config.outputs.configured == 'true'
-        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
         env:
-          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_TOKEN }}
           claude_args: "--max-turns 12"
           prompt: |
-            Feedback Issue #${{ github.event.issue.number || inputs.issue }} の H2 節を埋めてください。
+            Feedback Issue #${{ github.event.issue.number }} の H2 節を埋めてください。
 
             手順:
-            1. `gh issue view ${{ github.event.issue.number || inputs.issue }} --json body,comments` で
+            1. `gh issue view ${{ github.event.issue.number }} --json body,comments` で
                本文とコメントを読む。
             2. 本文の ```yaml closed-loop ブロックは決定論的な観測です。**書き換えないでください。**
                ここが集計の入力であり、手を入れると週次の数字が変わります。
@@ -119,6 +113,6 @@ jobs:
               feedback/ai-misread, feedback/ci, feedback/developer-experience のうち該当するものを付ける。
             - 該当が無ければ付けない。付けないことも情報です。
 
-            最後に `gh issue edit ${{ github.event.issue.number || inputs.issue }} --remove-label feedback/needs-summary`
+            最後に `gh issue edit ${{ github.event.issue.number }} --remove-label feedback/needs-summary`
             で待ち受けのラベルを外してください。外し忘れると、この issue が「まだ読解されていない」
             ものとして残り続けます。

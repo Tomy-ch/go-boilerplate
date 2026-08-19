@@ -47,7 +47,7 @@ export function scanRepository(): Baseline {
     if (count > 0) found.push([rel, count]);
   }
 
-  return Object.fromEntries(found.sort(([a], [b]) => a.localeCompare(b)));
+  return Object.fromEntries(found.toSorted(([a], [b]) => a.localeCompare(b)));
 }
 
 /** コミット済みのベースライン。 */

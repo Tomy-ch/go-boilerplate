@@ -32,7 +32,11 @@ export type PortalSidebarProps = {
  * 両方を指すため、section を選べば group も切り替わります。
  *
  */
-export function PortalSidebar({ activeGroupSlug, groups, referenceLinks }: PortalSidebarProps) {
+export function PortalSidebar({
+  activeGroupSlug,
+  groups,
+  referenceLinks,
+}: Readonly<PortalSidebarProps>) {
   const referenceHeadingId = useId();
 
   return (

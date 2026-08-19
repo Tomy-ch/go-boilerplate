@@ -12,17 +12,28 @@ name: ESLint Scan
 # available, but a shared verdict is not wanted either: `fail-fast: false` keeps one
 # leg's failure from cancelling the others and leaving their categories stale.
 #
-# **Report-only, and every rule in the preset is a warning.** The initial baseline is
-# non-zero (scripts is repository tooling that reads paths it computes, which
-# detect-non-literal-fs-filename flags on sight), so gating on it would fail unrelated
-# pull requests over findings nobody has triaged. Tightening the preset, or suppressing
-# a rule that only ever fires on build tooling, is a decision to take against a measured
-# baseline rather than at adoption time.
+# **Report-only, and every rule in the preset is a warning.** The baseline was left
+# untriaged at adoption so that suppressing a rule would be a decision taken against
+# measured numbers rather than a guess. It has since been measured, and all 140 findings
+# scripts carried came from four rules that key on the SHAPE of an argument rather than
+# on where its value came from: whether a path handed to `fs` is a literal, whether an
+# index is computed, whether a `RegExp` is built from a variable, and how deeply a
+# regex nests its quantifiers. scripts/ is repository tooling that reads the repository,
+# so it trips all four by construction. They are off in scripts/eslint.config.js, where
+# the reasoning and the counts sit; the rest of the preset still runs, and docs-viewer
+# runs the preset whole because none of the four fires there.
 #
-# There is no pull-request comment. The baseline is over a hundred warnings, and a
-# comment reproducing them on every pull request would bury the checks that do have
-# something to say. The findings go to code scanning, where an alert introduced by the
-# change under review surfaces on the diff — the same arrangement code-ql.yaml uses.
+# The one question of the four that has a real answer here — does a regex actually
+# backtrack — is Sonar's S8786, which analyzes the pattern instead of counting its
+# nesting. The ten it found are fixed rather than suppressed.
+#
+# Still report-only after that. Gating a pull request on a scanner whose preset can grow
+# overnight would fail changes that touched none of it — the weekly run below exists for
+# exactly that growth.
+#
+# There is no pull-request comment. The findings go to code scanning, where an alert
+# introduced by the change under review surfaces on the diff — the same arrangement
+# code-ql.yaml uses.
 #
 # ESLint ships no SARIF formatter and @microsoft/eslint-formatter-sarif is not usable
 # here: it declares `eslint: ^8.9.0` and `jschardet: latest`, so adopting it would nest

@@ -29,7 +29,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$REPO_ROOT"
 
 LOCKFILE=python/graphify.txt
-if [ ! -s "$LOCKFILE" ]; then
+if [[ ! -s "$LOCKFILE" ]]; then
   echo "error: lockfile '$LOCKFILE' not found; run 'make py-lock' first" >&2
   exit 1
 fi
@@ -70,7 +70,7 @@ done
 status=0
 for i in "${!PLATFORMS[@]}"; do
   path="${SKILL_PATHS[$i]}"
-  if [ -s "$path" ]; then
+  if [[ -s "$path" ]]; then
     echo "✔ resolved: ${PLATFORMS[$i]} ($path)"
   else
     echo "error: skill for ${PLATFORMS[$i]} not found at $path after install" >&2

@@ -9,6 +9,11 @@ name: Grype Scan
 #
 # Report-only, like trivy-fs.yaml: `--fail-on` is deliberately unset, and the blocking
 # verdict on a dependency state stays with the release gates.
+#
+# Accepted findings live in .grype.yaml, which grype reads from the working directory, and
+# each entry there carries the evidence that makes it a false positive — the same shape as
+# .trivyignore.yaml. A change to it belongs in this workflow's trigger below, since nothing
+# else re-runs the scan it alters.
 
 on:
   push:
@@ -19,6 +24,7 @@ on:
       - production
     paths:
       - '.github/workflows/grype.yaml'
+      - '.grype.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
@@ -27,6 +33,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/grype.yaml'
+      - '.grype.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'

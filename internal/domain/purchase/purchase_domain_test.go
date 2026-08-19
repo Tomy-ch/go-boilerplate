@@ -44,6 +44,93 @@ func validNewArgs(t *testing.T) (uuid.UUID, string, uuid.UUID, []DetailInput, []
 	return id, "purchase-code-001", userID, inputs, locked
 }
 
+func Test_buildDetails(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("入力の順序を保った明細と、価格スケールのままの小計を返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, _, inputs, locked := validNewArgs(t)
+			details, subtotal, err := buildDetails(inputs, locked)
+			require.NoError(t, err)
+
+			require.Len(t, details, 2)
+			assert.Equal(t, inputs[0].ProductID, details[0].ProductID())
+			assert.Equal(t, inputs[1].ProductID, details[1].ProductID())
+			// 単価はロック済み商品の価格スナップショット。800*2 + 15*1 = 1615 を決済スケールへ
+			// 丸める前の値で返すのがこの関数の責務で、New はこの後で切り捨てて整数セントにする。
+			assert.Equal(t, "800", details[0].UnitPrice().Decimal().String())
+			assert.Equal(t, "1615", subtotal.String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同一商品IDが重複する場合、ErrDuplicateProductIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, _, inputs, locked := validNewArgs(t)
+			dup := append([]DetailInput{}, inputs...)
+			dup[1].ProductID = dup[0].ProductID
+
+			_, _, err := buildDetails(dup, locked)
+			require.ErrorIs(t, err, ErrDuplicateProductID)
+		})
+	})
+}
+
+func Test_resolveLocked(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("入力に対応するロック済み商品を返し、seenは書き換えない", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, _, inputs, locked := validNewArgs(t)
+			lockedByID := map[uuid.UUID]LockedProduct{locked[0].ID(): locked[0]}
+			seen := map[uuid.UUID]struct{}{}
+
+			actual, err := resolveLocked(inputs[0], lockedByID, seen)
+			require.NoError(t, err)
+
+			assert.Equal(t, locked[0].ID(), actual.ID())
+			// seen へ積むのは呼び出し元の役目。ここで積むと、同じ入力を検証し直した時点で
+			// 重複扱いになる。
+			assert.Empty(t, seen)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("対応するロック済み商品が無い場合、ErrProductNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, _, inputs, _ := validNewArgs(t)
+
+			_, err := resolveLocked(inputs[0], map[uuid.UUID]LockedProduct{}, map[uuid.UUID]struct{}{})
+			require.ErrorIs(t, err, ErrProductNotFound)
+		})
+
+		t.Run("要求数量がロック済み在庫を超える場合、ErrInsufficientStockを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, _, inputs, locked := validNewArgs(t)
+			scarce := NewLockedProduct(locked[0].ID(), locked[0].Price(), inputs[0].Quantity-1)
+			lockedByID := map[uuid.UUID]LockedProduct{scarce.ID(): scarce}
+
+			_, err := resolveLocked(inputs[0], lockedByID, map[uuid.UUID]struct{}{})
+			require.ErrorIs(t, err, ErrInsufficientStock)
+		})
+	})
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 

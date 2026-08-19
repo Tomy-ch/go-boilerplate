@@ -50,12 +50,17 @@ export function extractMermaidBlocks(content: string): MermaidBlock[] {
   const blocks: MermaidBlock[] = [];
   const fence = /^(\s*)(`{3,}|~{3,})\s*mermaid\s*$/;
 
-  for (let i = 0; i < lines.length; i++) {
+  // 閉じフェンスまで読み飛ばすため添字を進めるので、for ではなく while で回す。
+  let i = 0;
+  while (i < lines.length) {
     const matched = fence.exec(lines[i]);
-    if (!matched) continue;
+    if (!matched) {
+      i++;
+      continue;
+    }
 
     const marker = matched[2];
-    const close = new RegExp(`^\\s*${marker[0] === "\`" ? "\`" : "~"}{${marker.length},}\\s*$`);
+    const close = new RegExp(String.raw`^\s*${marker.startsWith("`") ? "`" : "~"}{${marker.length},}\s*$`);
     const body: string[] = [];
     let j = i + 1;
 
@@ -65,7 +70,7 @@ export function extractMermaidBlocks(content: string): MermaidBlock[] {
     }
 
     blocks.push({ startLine: i + 1, code: body.join("\n") });
-    i = j;
+    i = j + 1;
   }
 
   return blocks;

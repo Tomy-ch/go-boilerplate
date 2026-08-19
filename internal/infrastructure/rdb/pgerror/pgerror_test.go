@@ -314,6 +314,11 @@ func TestNormalizeError(t *testing.T) {
 				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "22001"}), apperror.ErrInvalidArgument)
 			})
 
+			t.Run("符号化できないバイト(22021)はErrInvalidArgumentへ写像する", func(t *testing.T) {
+				t.Parallel()
+				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "22021"}), apperror.ErrInvalidArgument)
+			})
+
 			t.Run("型変換エラー(22P02)はErrInvalidArgumentへ写像する", func(t *testing.T) {
 				t.Parallel()
 				require.ErrorIs(t, NormalizeError(&pgconn.PgError{Code: "22P02"}), apperror.ErrInvalidArgument)
