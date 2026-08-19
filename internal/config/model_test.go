@@ -607,6 +607,18 @@ func TestSecurityConfig_ReferrerPolicy(t *testing.T) {
 	})
 }
 
+func TestSecurityConfig_CrossOriginResourcePolicy(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Cross-Origin-Resource-Policyの値を取得できる", func(t *testing.T) {
+			t.Parallel()
+			security := MockConfigForTest(t).security
+			assert.Equal(t, expectedCrossOriginResourcePolicy, security.CrossOriginResourcePolicy())
+		})
+	})
+}
+
 func TestSecureCookieConfig_SameSite(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

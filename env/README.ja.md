@@ -139,6 +139,7 @@
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|サブドメイン除外|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|preload有効|bool|false||
 |SECURITY_REFERRER_POLICY|referrer制御|string|no-referrer||
+|SECURITY_CROSS_ORIGIN_RESOURCE_POLICY|Cross-Origin-Resource-Policy|string|same-origin|空ならヘッダーを送出しません。`same-origin` は CORS と両立します（このポリシーが検査されるのは `no-cors` リクエストのみで、許可オリジンからの CORS モードの fetch は影響を受けません）|
 
 ### Cookie
 

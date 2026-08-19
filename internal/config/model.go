@@ -97,14 +97,15 @@ type DBConnectionConfig struct {
 
 // SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー等のセキュリティ設定を保持します。
 type SecurityConfig struct {
-	allowedOrigins        []string
-	cidr                  *net.IPNet
-	contentTypeNosniff    string
-	xFrameOptions         string
-	hstsMaxAge            time.Duration
-	hstsExcludeSubdomains bool
-	hstsPreloadEnabled    bool
-	referrerPolicy        string
+	allowedOrigins            []string
+	cidr                      *net.IPNet
+	contentTypeNosniff        string
+	xFrameOptions             string
+	hstsMaxAge                time.Duration
+	hstsExcludeSubdomains     bool
+	hstsPreloadEnabled        bool
+	referrerPolicy            string
+	crossOriginResourcePolicy string
 }
 
 // SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。
@@ -394,6 +395,10 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
+
+// CrossOriginResourcePolicy は、Cross-Origin-Resource-Policyヘッダーの値を返します。
+// 空文字はヘッダーを出さないことを表します。
+func (s *SecurityConfig) CrossOriginResourcePolicy() string { return s.crossOriginResourcePolicy }
 
 // NewSecureCookieConfig は、セキュアクッキーの設定を返します。
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }

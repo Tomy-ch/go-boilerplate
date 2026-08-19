@@ -139,6 +139,7 @@ All three are needed: dropping the first would leave the application at the clus
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|Exclude subdomains|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|Enable preload|bool|false||
 |SECURITY_REFERRER_POLICY|Referrer control|string|no-referrer||
+|SECURITY_CROSS_ORIGIN_RESOURCE_POLICY|Cross-Origin-Resource-Policy|string|same-origin|Empty means the header is not sent. `same-origin` is safe alongside CORS: the policy is only checked for `no-cors` requests, so a CORS-mode fetch from an allowed origin is unaffected|
 
 ### Cookie
 

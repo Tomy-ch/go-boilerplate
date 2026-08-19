@@ -77,14 +77,15 @@ func TestMockConfigForTest(t *testing.T) {
 					maxIdleTime: expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
-					allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-					cidr:                  expectedCIDR,
-					contentTypeNosniff:    expectedContentTypeNosniff,
-					xFrameOptions:         expectedXFrameOptions,
-					hstsMaxAge:            expectedHSTSMaxAge,
-					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
-					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
-					referrerPolicy:        expectedReferrerPolicy,
+					allowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+					cidr:                      expectedCIDR,
+					contentTypeNosniff:        expectedContentTypeNosniff,
+					xFrameOptions:             expectedXFrameOptions,
+					hstsMaxAge:                expectedHSTSMaxAge,
+					hstsExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+					hstsPreloadEnabled:        expectedHSTSPreloadEnabled,
+					referrerPolicy:            expectedReferrerPolicy,
+					crossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
@@ -230,14 +231,15 @@ func Test_mockLoader(t *testing.T) {
 					MaxIdleTime: expectedDBMaxIdleTime,
 				},
 				Security: Security{
-					AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-					CIDR:                  expectedCIDRStr,
-					ContentTypeNosniff:    expectedContentTypeNosniff,
-					XFrameOptions:         expectedXFrameOptions,
-					HSTSMaxAge:            expectedHSTSMaxAge,
-					HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
-					HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
-					ReferrerPolicy:        expectedReferrerPolicy,
+					AllowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+					CIDR:                      expectedCIDRStr,
+					ContentTypeNosniff:        expectedContentTypeNosniff,
+					XFrameOptions:             expectedXFrameOptions,
+					HSTSMaxAge:                expectedHSTSMaxAge,
+					HSTSExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+					HSTSPreloadEnabled:        expectedHSTSPreloadEnabled,
+					ReferrerPolicy:            expectedReferrerPolicy,
+					CrossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 				},
 				SecureCookie: SecureCookie{
 					Secure:   expectedSecureCookieSecure,
@@ -309,6 +311,7 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 			assert.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 			assert.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
+			assert.Equal(t, expectedCrossOriginResourcePolicy, os.Getenv("SECURITY_CROSS_ORIGIN_RESOURCE_POLICY"))
 			// Secure Cookie
 			assert.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 			assert.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))

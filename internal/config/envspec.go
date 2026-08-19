@@ -191,6 +191,9 @@ type Security struct {
 	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
 	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
 	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
+	// CrossOriginResourcePolicy は Cross-Origin-Resource-Policy ヘッダーの値です。空の場合は
+	// ヘッダーを出さない（ブラウザ既定の挙動に委ねる）という意味を持つため、空文字を許容する。
+	CrossOriginResourcePolicy string `env:"CROSS_ORIGIN_RESOURCE_POLICY,required"`
 }
 
 // SecureCookie はセキュアクッキーの属性（Secure / SameSite / Domain）の上書き設定を保持する。
