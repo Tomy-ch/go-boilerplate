@@ -40,8 +40,10 @@ type SalesResult struct {
 
 // PurchaseStatusCountResult は、1 ステータス分の購入件数の集計結果です。
 // StatusID / StatusName は、購入ステータスマスタで解決済みの ID と名称です。
+// StatusCode は、購入ステータスの業務キー（Status.Code）です。
 type PurchaseStatusCountResult struct {
 	StatusID   uuid.UUID
+	StatusCode int
 	StatusName string
 	Count      int64
 }

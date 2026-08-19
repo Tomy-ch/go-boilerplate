@@ -27,11 +27,14 @@ import (
 func newTestSummaryView(t *testing.T) purchaseuc.PurchaseSummaryView {
 	t.Helper()
 	return purchaseuc.PurchaseSummaryView{
-		Code:        "h-code",
-		TotalAmount: 176500,
-		StatusID:    uuidtestkit.NewTestFromSalt(t, "h_status"),
-		StatusName:  "完了",
-		OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+		Code:          "h-code",
+		TotalAmount:   176500,
+		StatusID:      uuidtestkit.NewTestFromSalt(t, "h_status"),
+		StatusCode:    5,
+		StatusName:    "完了",
+		FirstItemName: "ワイヤレスイヤホン",
+		ItemCount:     3,
+		OrderedAt:     time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 	}
 }
 
@@ -66,8 +69,14 @@ func Test_server_GetPurchases(t *testing.T) {
 				Items: []gen.PurchaseSummaryResponse{{
 					Code:        "h-code",
 					TotalAmount: 176500,
-					Status:      gen.PurchaseStatusRef{Id: view.StatusID.ToPrimitive(), Name: "完了"},
-					OrderedAt:   view.OrderedAt,
+					Status: gen.PurchaseStatusRef{
+						Id:   view.StatusID.ToPrimitive(),
+						Code: 5,
+						Name: "完了",
+					},
+					FirstItemName: view.FirstItemName,
+					ItemCount:     int64(view.ItemCount),
+					OrderedAt:     view.OrderedAt,
 				}},
 				NextCursor: &nextCursor,
 				HasNext:    true,

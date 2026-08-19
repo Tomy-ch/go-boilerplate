@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	purchasesdetail "go-boilerplate/internal/controller/handler/v1/purchases/detail"
 	detailgen "go-boilerplate/internal/controller/handler/v1/purchases/detail/gen"
+	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
@@ -27,16 +28,16 @@ import (
 func TestV1PurchasesDetail_Integration(t *testing.T) {
 	t.Parallel()
 
-	const purchasePath = "/v1/purchases/0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60"
+	const purchasePath = "/v1/purchases/PC-2026-0042"
 
 	detailViewFixture := func(t *testing.T) purchaseuc.PurchaseGetDetailView {
 		t.Helper()
 		paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
 		return purchaseuc.PurchaseGetDetailView{
-			ID:             uuidtestkit.NewTestFromSalt(t, "detail_int_id"),
 			Code:           "detail-int-code",
 			UserID:         uuidtestkit.NewTestFromSalt(t, "detail_int_user"),
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "detail_int_status"),
+			StatusCode:     domainpurchase.StatusPaid.Code(),
 			StatusName:     "支払い済み",
 			SubtotalAmount: 160000,
 			TaxAmount:      16000,
@@ -79,6 +80,7 @@ func TestV1PurchasesDetail_Integration(t *testing.T) {
 			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
 			assert.Equal(t, "detail-int-code", body.Code)
 			assert.Equal(t, "支払い済み", body.Status.Name)
+			assert.EqualValues(t, domainpurchase.StatusPaid.Code(), body.Status.Code)
 			assert.Equal(t, int64(160000), body.SubtotalAmount)
 			assert.Equal(t, int64(176500), body.TotalAmount)
 			require.Len(t, body.Details, 1)
@@ -96,12 +98,12 @@ func TestV1PurchasesDetail_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			var capturedID uuid.UUID
+			var capturedCode string
 			var capturedUserID uuid.UUID
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			uc.EXPECT().GetPurchaseDetail(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, authn *authbd.Authn, id uuid.UUID) (purchaseuc.PurchaseGetDetailView, error) {
-					capturedID = id
+				func(_ context.Context, authn *authbd.Authn, code string) (purchaseuc.PurchaseGetDetailView, error) {
+					capturedCode = code
 					userID, err := authn.UserID()
 					require.NoError(t, err)
 					capturedUserID = userID
@@ -118,7 +120,7 @@ func TestV1PurchasesDetail_Integration(t *testing.T) {
 			expectedUserID, err := uuid.Parse("b7f64798-7321-242b-e4ff-115f6a0b7810")
 			require.NoError(t, err)
 			assert.Equal(t, expectedUserID, capturedUserID)
-			assert.Equal(t, "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60", capturedID.String())
+			assert.Equal(t, "PC-2026-0042", capturedCode)
 		})
 	})
 

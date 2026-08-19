@@ -12,6 +12,6 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE p.id = ANY(@product_ids_param::UUID [])
+WHERE p.id = ANY(@product_ids_param::UUID[])
 ORDER BY p.id
 FOR UPDATE OF p;

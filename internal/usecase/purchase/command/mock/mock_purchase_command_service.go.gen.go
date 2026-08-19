@@ -12,7 +12,6 @@ package mock_command
 import (
 	context "context"
 	purchase "go-boilerplate/internal/domain/purchase"
-	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -71,16 +70,16 @@ func (mr *MockCommandServiceMockRecorder) CreatePurchase(ctx, p any) *gomock.Cal
 }
 
 // LockPurchase mocks base method.
-func (m *MockCommandService) LockPurchase(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+func (m *MockCommandService) LockPurchase(ctx context.Context, code string) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LockPurchase", ctx, id)
+	ret := m.ctrl.Call(m, "LockPurchase", ctx, code)
 	ret0, _ := ret[0].(*purchase.Purchase)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // LockPurchase indicates an expected call of LockPurchase.
-func (mr *MockCommandServiceMockRecorder) LockPurchase(ctx, id any) *gomock.Call {
+func (mr *MockCommandServiceMockRecorder) LockPurchase(ctx, code any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockPurchase", reflect.TypeOf((*MockCommandService)(nil).LockPurchase), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockPurchase", reflect.TypeOf((*MockCommandService)(nil).LockPurchase), ctx, code)
 }

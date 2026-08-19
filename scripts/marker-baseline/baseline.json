@@ -53,7 +53,7 @@
   "internal/di/module/core/auth.go": 6,
   "internal/di/module/infrastructure.go": 1,
   "internal/di/module/job.go": 6,
-  "internal/di/module/persistence.go": 18,
+  "internal/di/module/persistence.go": 19,
   "internal/di/module/usecase_test.go": 13,
   "internal/di/module/usecase.go": 26,
   "internal/di/module/webapi_test.go": 9,

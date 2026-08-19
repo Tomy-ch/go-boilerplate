@@ -90,6 +90,7 @@ func toPurchaseAggregateResponse(view summaryuc.SummaryView) gen.PurchaseAggrega
 		breakdown[i] = gen.PurchaseStatusBreakdownResponse{
 			Status: gen.PurchaseStatusRef{
 				Id:   b.StatusID.ToPrimitive(),
+				Code: int64(b.StatusCode),
 				Name: b.StatusName,
 			},
 			Count:       b.Count,

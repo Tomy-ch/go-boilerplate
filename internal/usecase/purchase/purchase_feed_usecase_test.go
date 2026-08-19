@@ -7,10 +7,11 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
-	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/observability"
 	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/purchase/period"
+	"go-boilerplate/internal/usecase/purchase/query"
+	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -31,15 +32,18 @@ func Test_usecase_GetPurchases(t *testing.T) {
 
 	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	feedItem := func(t *testing.T, salt string, orderedAt time.Time) domainpurchase.FeedItem {
+	feedItem := func(t *testing.T, salt string, orderedAt time.Time) query.PurchaseFeedReadModel {
 		t.Helper()
-		return domainpurchase.FeedItem{
-			Code:        "code-" + salt,
-			TotalAmount: 176500,
-			StatusID:    uuidtestkit.NewTestFromSalt(t, salt+"_status"),
-			StatusName:  "完了",
-			OrderedAt:   orderedAt,
-			ID:          uuidtestkit.NewTestFromSalt(t, salt),
+		return query.PurchaseFeedReadModel{
+			Code:          "code-" + salt,
+			TotalAmount:   176500,
+			StatusID:      uuidtestkit.NewTestFromSalt(t, salt+"_status"),
+			StatusCode:    domainpurchase.StatusCompleted.Code(),
+			StatusName:    "完了",
+			FirstItemName: "ワイヤレスイヤホン",
+			ItemCount:     3,
+			OrderedAt:     orderedAt,
+			ID:            uuidtestkit.NewTestFromSalt(t, salt),
 		}
 	}
 
@@ -57,17 +61,17 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
 
 			// limit=2 のため Repository へは 3 件（limit+1）要求され、3 件返る = 次ページあり。
-			items := []domainpurchase.FeedItem{
+			items := []query.PurchaseFeedReadModel{
 				feedItem(t, "a", base),
 				feedItem(t, "b", base.Add(-time.Hour)),
 				feedItem(t, "c", base.Add(-2*time.Hour)),
 			}
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), period.Spec{})
 			require.NoError(t, err)
 			require.Len(t, got.Items, 2)
@@ -75,7 +79,10 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			assert.Equal(t, "code-a", got.Items[0].Code)
 			assert.Equal(t, items[0].StatusID, got.Items[0].StatusID)
 			assert.Equal(t, "完了", got.Items[0].StatusName)
+			assert.Equal(t, items[0].StatusCode, got.Items[0].StatusCode)
 			assert.Equal(t, items[0].TotalAmount, got.Items[0].TotalAmount)
+			assert.Equal(t, items[0].FirstItemName, got.Items[0].FirstItemName)
+			assert.Equal(t, items[0].ItemCount, got.Items[0].ItemCount)
 			assert.True(t, items[0].OrderedAt.Equal(got.Items[0].OrderedAt))
 
 			// nextCursor は切り詰め後の末尾行（items[1]）の (ordered_at, id) から符号化される。
@@ -88,12 +95,12 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
 
-			items := []domainpurchase.FeedItem{feedItem(t, "a", base)}
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
+			items := []query.PurchaseFeedReadModel{feedItem(t, "a", base)}
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), period.Spec{})
 			require.NoError(t, err)
 			require.Len(t, got.Items, 1)
@@ -104,14 +111,14 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
 
 			// limit=2 に対し Repository が limit+1(=3) 未満のちょうど 2 件を返す = 次ページ無し。
 			// hasNext 判定が `len > limit`（`>=` ではない）であることの境界検証。
-			items := []domainpurchase.FeedItem{feedItem(t, "a", base), feedItem(t, "b", base.Add(-time.Hour))}
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
+			items := []query.PurchaseFeedReadModel{feedItem(t, "a", base), feedItem(t, "b", base.Add(-time.Hour))}
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), period.Spec{})
 			require.NoError(t, err)
 			require.Len(t, got.Items, 2)
@@ -122,11 +129,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
 
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domainpurchase.FeedItem{}, nil)
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return([]query.PurchaseFeedReadModel{}, nil)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), period.Spec{})
 			require.NoError(t, err)
 			assert.Empty(t, got.Items)
@@ -140,11 +147,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			// 1 件返ると hasNext=len(1)>0=true・切り詰めで feed が空になり、len(feed)>0 の安全弁が無いと
 			// feed[len-1] が feed[-1] で panic する。安全弁により panic せず空一覧を返すことを固定する。
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-				[]domainpurchase.FeedItem{feedItem(t, "a", base)}, nil)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				[]query.PurchaseFeedReadModel{feedItem(t, "a", base)}, nil)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), &paging.Cursor{}, period.Spec{})
 			require.NoError(t, err)
 			assert.Empty(t, got.Items)
@@ -155,7 +162,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
 
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
 			boundaryID := uuidtestkit.NewTestFromSalt(t, "boundary")
@@ -164,17 +171,17 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			cursor, err := paging.NewCursor(&after, &first)
 			require.NoError(t, err)
 
-			var captured domainpurchase.ListFeedParams
+			var captured query.ListFeedParams
 			var capturedUserID uuid.UUID
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, uid uuid.UUID, params domainpurchase.ListFeedParams) ([]domainpurchase.FeedItem, error) {
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, uid uuid.UUID, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error) {
 					capturedUserID = uid
 					captured = params
-					return []domainpurchase.FeedItem{}, nil
+					return []query.PurchaseFeedReadModel{}, nil
 				},
 			)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			_, err = u.GetPurchases(context.Background(), userID, cursor, period.Spec{})
 			require.NoError(t, err)
 
@@ -193,20 +200,20 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
 
 			// days=10 の対象は feedNow の暦日（1/31）を終了日とする 1/21 〜 1/31 の 11 日間。
 			days := 10
 
-			var captured domainpurchase.ListFeedParams
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ uuid.UUID, params domainpurchase.ListFeedParams) ([]domainpurchase.FeedItem, error) {
+			var captured query.ListFeedParams
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error) {
 					captured = params
-					return []domainpurchase.FeedItem{}, nil
+					return []query.PurchaseFeedReadModel{}, nil
 				},
 			)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			_, err := u.GetPurchases(
 				context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2),
 				period.Spec{Kind: period.KindRecent, Days: &days},
@@ -228,10 +235,10 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), nil, period.Spec{})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
@@ -241,8 +248,8 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			// キーが 1 個（ordered_at, id の 2 個でない）= 復号エラー。
 			after := paging.EncodeCursor("only-one-key")
@@ -250,7 +257,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			cursor, err := paging.NewCursor(&after, &first)
 			require.NoError(t, err)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), cursor, period.Spec{})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
@@ -260,10 +267,10 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(
 				context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2),
 				period.Spec{Kind: period.KindRange},
@@ -276,10 +283,10 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			t.Parallel()
 
 			lt := observability.NewMockUsecaseLayerTracer(t)
-			repo := mock_purchase.NewMockRepository(gomock.NewController(t))
-			repo.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
-			u := &usecase{tracer: lt, repo: repo, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
+			u := &usecase{tracer: lt, feedQS: feedQS, clock: clocktestkit.NewMockClock(t, feedNow), loc: feedLoc}
 			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), period.Spec{})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
@@ -299,7 +306,7 @@ func Test_encodePurchaseCursor(t *testing.T) {
 			orderedAt := time.Date(2099, time.January, 2, 3, 4, 5, 123456789, time.UTC)
 			id := uuidtestkit.NewTestFromSalt(t, "encode_cursor_last")
 
-			encoded := encodePurchaseCursor(domainpurchase.FeedItem{OrderedAt: orderedAt, ID: id})
+			encoded := encodePurchaseCursor(query.PurchaseFeedReadModel{OrderedAt: orderedAt, ID: id})
 			assert.NotEmpty(t, encoded)
 
 			first := 2
@@ -319,8 +326,8 @@ func Test_encodePurchaseCursor(t *testing.T) {
 			orderedAt := time.Date(2099, time.January, 2, 3, 4, 5, 0, time.UTC)
 			id := uuidtestkit.NewTestFromSalt(t, "encode_cursor_same_key")
 
-			base := encodePurchaseCursor(domainpurchase.FeedItem{OrderedAt: orderedAt, ID: id})
-			other := encodePurchaseCursor(domainpurchase.FeedItem{
+			base := encodePurchaseCursor(query.PurchaseFeedReadModel{OrderedAt: orderedAt, ID: id})
+			other := encodePurchaseCursor(query.PurchaseFeedReadModel{
 				Code:        "code-other",
 				TotalAmount: 999,
 				StatusID:    uuidtestkit.NewTestFromSalt(t, "encode_cursor_other_status"),

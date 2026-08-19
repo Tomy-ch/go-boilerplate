@@ -102,9 +102,12 @@ func toPurchaseSummaryResponse(v purchaseuc.PurchaseSummaryView) gen.PurchaseSum
 		TotalAmount: int64(v.TotalAmount),
 		Status: gen.PurchaseStatusRef{
 			Id:   v.StatusID.ToPrimitive(),
+			Code: int64(v.StatusCode),
 			Name: v.StatusName,
 		},
-		OrderedAt: v.OrderedAt,
+		FirstItemName: v.FirstItemName,
+		ItemCount:     int64(v.ItemCount),
+		OrderedAt:     v.OrderedAt,
 	}
 }
 
@@ -168,7 +171,6 @@ func toPurchaseResponse(v purchaseuc.PurchaseView, ref *checkoutuc.ReferenceAmou
 	}
 
 	return gen.PurchaseResponse{
-		Id:              v.ID.ToPrimitive(),
 		Code:            v.Code,
 		UserId:          v.UserID.ToPrimitive(),
 		StatusId:        v.StatusID.ToPrimitive(),

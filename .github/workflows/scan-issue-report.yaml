@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -139,7 +139,14 @@ jobs:
                 const findings = sarifFiles.flatMap(file => {
                   const sarif = JSON.parse(file.text);
                   return (sarif.runs || []).flatMap(run => run.results || []);
-                }).filter(result => result.level === 'error' || result.level === 'warning');
+                }).filter(result => {
+                  // A result carrying a non-empty `suppressions` array was suppressed at the
+                  // source (e.g. a `#checkov:skip=` comment) and keeps its original level, so
+                  // counting it would reopen an issue for a finding the repository already
+                  // answered.
+                  if ((result.suppressions || []).length > 0) return false;
+                  return result.level === 'error' || result.level === 'warning';
+                });
                 const errors = findings.filter(result => result.level === 'error');
                 const warnings = findings.filter(result => result.level === 'warning');
                 const format = result => {

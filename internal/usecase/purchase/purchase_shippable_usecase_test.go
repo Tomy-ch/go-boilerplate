@@ -116,11 +116,10 @@ func Test_toDispatchGroupView(t *testing.T) {
 
 			assert.Equal(t, alice, actual.UserID)
 			require.Len(t, actual.Purchases, 2)
-			assert.Equal(t, first.ID(), actual.Purchases[0].ID)
 			assert.Equal(t, first.Code(), actual.Purchases[0].Code)
 			assert.Equal(t, first.TotalAmount(), actual.Purchases[0].TotalAmount)
 			assert.Equal(t, first.OrderedAt(), actual.Purchases[0].OrderedAt)
-			assert.Equal(t, second.ID(), actual.Purchases[1].ID)
+			assert.Equal(t, second.Code(), actual.Purchases[1].Code)
 		})
 	})
 }
@@ -153,8 +152,8 @@ func Test_usecase_ListShippablePurchases(t *testing.T) {
 			require.Len(t, actual.Groups, 2)
 			assert.Equal(t, alice, actual.Groups[0].UserID)
 			require.Len(t, actual.Groups[0].Purchases, 2)
-			assert.Equal(t, a1.ID(), actual.Groups[0].Purchases[0].ID)
-			assert.Equal(t, a2.ID(), actual.Groups[0].Purchases[1].ID)
+			assert.Equal(t, a1.Code(), actual.Groups[0].Purchases[0].Code)
+			assert.Equal(t, a2.Code(), actual.Groups[0].Purchases[1].Code)
 			assert.Equal(t, bob, actual.Groups[1].UserID)
 			require.Len(t, actual.Groups[1].Purchases, 1)
 		})

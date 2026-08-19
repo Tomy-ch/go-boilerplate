@@ -51,7 +51,7 @@ func (q *Queries) CountDeletedUsers(ctx context.Context) (int64, error) {
 const countSearchActiveUsers = `-- name: CountSearchActiveUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ANY($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT[])
     AND u.deleted_at IS NULL
 `
 
@@ -59,7 +59,7 @@ WHERE u.search_text ILIKE ANY($1::TEXT [])
 //
 //	SELECT COUNT(*)
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ANY($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
 //	    AND u.deleted_at IS NULL
 func (q *Queries) CountSearchActiveUsers(ctx context.Context, patternsParam []string) (int64, error) {
 	row := q.db.QueryRow(ctx, countSearchActiveUsers, patternsParam)
@@ -71,7 +71,7 @@ func (q *Queries) CountSearchActiveUsers(ctx context.Context, patternsParam []st
 const countSearchDeletedUsers = `-- name: CountSearchDeletedUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ANY($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT[])
     AND u.deleted_at IS NOT NULL
 `
 
@@ -79,7 +79,7 @@ WHERE u.search_text ILIKE ANY($1::TEXT [])
 //
 //	SELECT COUNT(*)
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ANY($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
 //	    AND u.deleted_at IS NOT NULL
 func (q *Queries) CountSearchDeletedUsers(ctx context.Context, patternsParam []string) (int64, error) {
 	row := q.db.QueryRow(ctx, countSearchDeletedUsers, patternsParam)
@@ -91,14 +91,14 @@ func (q *Queries) CountSearchDeletedUsers(ctx context.Context, patternsParam []s
 const countSearchUsers = `-- name: CountSearchUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ANY($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT[])
 `
 
 // === source: database/dml/repository/user/count_users_by_keyword.sql ===
 //
 //	SELECT COUNT(*)
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ANY($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
 func (q *Queries) CountSearchUsers(ctx context.Context, patternsParam []string) (int64, error) {
 	row := q.db.QueryRow(ctx, countSearchUsers, patternsParam)
 	var count int64
@@ -221,7 +221,7 @@ DELETE FROM user_identities
 WHERE user_id IN (
         SELECT u.id
         FROM users AS u
-        WHERE u.id = ANY($1::UUID [])
+        WHERE u.id = ANY($1::UUID[])
             AND u.deleted_at IS NOT NULL
     )
 `
@@ -234,7 +234,7 @@ WHERE user_id IN (
 //	WHERE user_id IN (
 //	        SELECT u.id
 //	        FROM users AS u
-//	        WHERE u.id = ANY($1::UUID [])
+//	        WHERE u.id = ANY($1::UUID[])
 //	            AND u.deleted_at IS NOT NULL
 //	    )
 func (q *Queries) DeleteUserIdentitiesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
@@ -247,7 +247,7 @@ DELETE FROM user_roles
 WHERE user_id IN (
         SELECT u.id
         FROM users AS u
-        WHERE u.id = ANY($1::UUID [])
+        WHERE u.id = ANY($1::UUID[])
             AND u.deleted_at IS NOT NULL
     )
 `
@@ -259,7 +259,7 @@ WHERE user_id IN (
 //	WHERE user_id IN (
 //	        SELECT u.id
 //	        FROM users AS u
-//	        WHERE u.id = ANY($1::UUID [])
+//	        WHERE u.id = ANY($1::UUID[])
 //	            AND u.deleted_at IS NOT NULL
 //	    )
 func (q *Queries) DeleteUserRolesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
@@ -269,7 +269,7 @@ func (q *Queries) DeleteUserRolesByUserIDs(ctx context.Context, userIds []uuid.U
 
 const deleteUsersByIDs = `-- name: DeleteUsersByIDs :execrows
 DELETE FROM users
-WHERE id = ANY($1::UUID [])
+WHERE id = ANY($1::UUID[])
     AND deleted_at IS NOT NULL
 `
 
@@ -277,7 +277,7 @@ WHERE id = ANY($1::UUID [])
 // 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
 //
 //	DELETE FROM users
-//	WHERE id = ANY($1::UUID [])
+//	WHERE id = ANY($1::UUID[])
 //	    AND deleted_at IS NOT NULL
 func (q *Queries) DeleteUsersByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteUsersByIDs, ids)
@@ -850,7 +850,7 @@ func (q *Queries) LockUserShareByID(ctx context.Context, userIDParam uuid.UUID) 
 const searchActiveUsers = `-- name: SearchActiveUsers :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-WHERE u.search_text ILIKE ANY($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT[])
     AND u.deleted_at IS NULL
 ORDER BY u.created_at DESC
 LIMIT $3 OFFSET $2
@@ -870,7 +870,7 @@ type SearchActiveUsersRow struct {
 //
 //	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ANY($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
 //	    AND u.deleted_at IS NULL
 //	ORDER BY u.created_at DESC
 //	LIMIT $3 OFFSET $2
@@ -912,7 +912,7 @@ func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersP
 const searchDeletedUsers = `-- name: SearchDeletedUsers :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-WHERE u.search_text ILIKE ANY($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT[])
     AND u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
 LIMIT $3 OFFSET $2
@@ -932,7 +932,7 @@ type SearchDeletedUsersRow struct {
 //
 //	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ANY($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
 //	    AND u.deleted_at IS NOT NULL
 //	ORDER BY u.created_at DESC
 //	LIMIT $3 OFFSET $2
@@ -974,7 +974,7 @@ func (q *Queries) SearchDeletedUsers(ctx context.Context, arg *SearchDeletedUser
 const searchUsers = `-- name: SearchUsers :many
 SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-WHERE u.search_text ILIKE ANY($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT[])
 ORDER BY u.created_at DESC
 LIMIT $3 OFFSET $2
 `
@@ -993,7 +993,7 @@ type SearchUsersRow struct {
 //
 //	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ANY($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
 //	ORDER BY u.created_at DESC
 //	LIMIT $3 OFFSET $2
 func (q *Queries) SearchUsers(ctx context.Context, arg *SearchUsersParams) ([]*SearchUsersRow, error) {

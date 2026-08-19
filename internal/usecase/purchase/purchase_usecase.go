@@ -57,7 +57,6 @@ type PurchaseDetailView struct {
 
 // PurchaseView は、購入 1 件分のユースケース出力 DTO です。金額はすべて USD セント単位の整数です。
 type PurchaseView struct {
-	ID             uuid.UUID
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
@@ -71,8 +70,8 @@ type PurchaseView struct {
 
 // CancelPurchaseParams は、購入キャンセルの入力パラメータです。
 type CancelPurchaseParams struct {
-	// PurchaseID は、キャンセル対象の購入 ID です。
-	PurchaseID uuid.UUID
+	// PurchaseCode は、キャンセル対象の購入コードです。
+	PurchaseCode string
 	// UserID は、キャンセルを要求した認証済みの内部ユーザー ID です。所有権の検証に用います。
 	UserID uuid.UUID
 }
@@ -80,10 +79,10 @@ type CancelPurchaseParams struct {
 // CancelPurchaseView は、キャンセル後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
 // マスタで解決済みの ID と名称、CanceledAt はキャンセル日時です。金額はすべて USD セント単位の整数です。
 type CancelPurchaseView struct {
-	ID             uuid.UUID
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
+	StatusCode     int
 	StatusName     string
 	SubtotalAmount int
 	TaxAmount      int
@@ -96,19 +95,19 @@ type CancelPurchaseView struct {
 
 // PayPurchaseParams は、購入支払いの入力パラメータです。
 type PayPurchaseParams struct {
-	// PurchaseID は、支払い対象の購入 ID です。
-	PurchaseID uuid.UUID
+	// PurchaseCode は、支払い対象の購入コードです。
+	PurchaseCode string
 	// UserID は、支払いを要求した認証済みの内部ユーザー ID です。所有権の検証に用います。
 	UserID uuid.UUID
 }
 
-// PayPurchaseView は、支払い後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
-// マスタで解決済みの ID と名称、PaidAt は支払い日時です。金額はすべて USD セント単位の整数です。
+// PayPurchaseView は、支払い後の購入 1 件分のユースケース出力 DTO です。PaidAt は支払い日時です。
+// ステータス・金額の表現は CancelPurchaseView を参照。
 type PayPurchaseView struct {
-	ID             uuid.UUID
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
+	StatusCode     int
 	StatusName     string
 	SubtotalAmount int
 	TaxAmount      int
@@ -119,13 +118,13 @@ type PayPurchaseView struct {
 	PaidAt         *time.Time
 }
 
-// ShipPurchaseView は、発送後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
-// マスタで解決済みの ID と名称、ShippedAt は発送日時です。金額はすべて USD セント単位の整数です。
+// ShipPurchaseView は、発送後の購入 1 件分のユースケース出力 DTO です。ShippedAt は発送日時です。
+// ステータス・金額の表現は CancelPurchaseView を参照。
 type ShipPurchaseView struct {
-	ID             uuid.UUID
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
+	StatusCode     int
 	StatusName     string
 	SubtotalAmount int
 	TaxAmount      int
@@ -136,13 +135,13 @@ type ShipPurchaseView struct {
 	ShippedAt      *time.Time
 }
 
-// DeliverPurchaseView は、配達完了後の購入 1 件分のユースケース出力 DTO です。ステータスは購入ステータス
-// マスタで解決済みの ID と名称、DeliveredAt は配達日時です。金額はすべて USD セント単位の整数です。
+// DeliverPurchaseView は、配達完了後の購入 1 件分のユースケース出力 DTO です。DeliveredAt は配達日時です。
+// ステータス・金額の表現は CancelPurchaseView を参照。
 type DeliverPurchaseView struct {
-	ID             uuid.UUID
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
+	StatusCode     int
 	StatusName     string
 	SubtotalAmount int
 	TaxAmount      int
@@ -167,20 +166,20 @@ type Usecase interface {
 	// NotFound（404）、不正遷移は 409 を返します。
 	CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
 	// PayPurchase は、本人の購入を支払い済みへ遷移させます。決済 SDK / PSP 連携は行わない擬似決済です。
-	// 状態遷移とイベント発行は単一 tx で原子的に成立します。他ユーザーの購入・不存在はいずれも存在秘匿のため
-	// NotFound（404）、二重支払い・不正遷移は 409 を返します。
+	// 状態遷移とイベント発行は単一 tx で原子的に成立します。他ユーザーの購入・不存在はいずれも
+	// NotFound（404）、二重支払い・不正遷移は 409 を返します（存在秘匿の理由は CancelPurchase を参照）。
 	PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
 	// ShipPurchase は、購入を発送済みへ遷移させます。実行できるのは管理者のみで、購入の所有者であるかは問いません。
 	// 状態遷移とイベント発行は単一 tx で原子的に成立します。管理者でない場合は 403、不存在は 404、
 	// 二重発送・不正遷移は 409 を返します。
-	ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (ShipPurchaseView, error)
-	// DeliverPurchase は、購入を配達済みへ遷移させます。実行できるのは管理者のみで、購入の所有者であるかは問いません。
+	ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseCode string) (ShipPurchaseView, error)
+	// DeliverPurchase は、購入を配達済みへ遷移させます。管理者専用・所有者不問の扱いは ShipPurchase を参照。
 	// 状態遷移とイベント発行は単一 tx で原子的に成立します。管理者でない場合は 403、不存在は 404、
 	// 二重配達・不正遷移は 409 を返します。
-	DeliverPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (DeliverPurchaseView, error)
+	DeliverPurchase(ctx context.Context, authn *auth.Authn, purchaseCode string) (DeliverPurchaseView, error)
 	// GetPurchaseDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。
-	// 他ユーザーの購入・不存在はいずれも存在秘匿のため NotFound（404）を返します。
-	GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
+	// 他ユーザーの購入・不存在はいずれも NotFound（404）です（存在秘匿の理由は CancelPurchase を参照）。
+	GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseCode string) (PurchaseGetDetailView, error)
 	// ListShippablePurchases は、発送可能な購入を、まとめて発送してよい組に分けて取得します。
 	// 実行できるのは管理者のみで、管理者でない場合は 403 を返します。
 	ListShippablePurchases(
@@ -188,7 +187,6 @@ type Usecase interface {
 	) (PurchaseShippableListView, error)
 }
 
-// usecase は、Usecase の実装です。
 type usecase struct {
 	tracer      observability.LayerTracer
 	txm         tx.Manager
@@ -197,6 +195,7 @@ type usecase struct {
 	productRepo product.Repository
 	userLock    user.LockRepository
 	detailQS    query.PurchaseDetailQueryService
+	feedQS      query.PurchaseFeedQueryService
 	emit        outbox.EmitUsecase
 	clock       clock.Clock
 	loc         *time.Location
@@ -219,6 +218,7 @@ func New(
 	productRepo product.Repository,
 	userLock user.LockRepository,
 	detailQS query.PurchaseDetailQueryService,
+	feedQS query.PurchaseFeedQueryService,
 	emit outbox.EmitUsecase,
 	clock clock.Clock,
 	loc *time.Location,
@@ -233,6 +233,7 @@ func New(
 		productRepo: productRepo,
 		userLock:    userLock,
 		detailQS:    detailQS,
+		feedQS:      feedQS,
 		emit:        emit,
 		clock:       clock,
 		loc:         loc,
@@ -339,15 +340,15 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。状態遷移と在庫復元を
-	// 単一 tx にまとめ部分適用を防ぐ。二重キャンセルは購入のロック + 状態チェック（ErrAlreadyCanceled）で安全化する。
+	// tx 境界は PayPurchase のコメントを参照。ここは在庫復元を伴うため CommandService（cmd）で完結する。
+	// 二重キャンセルは購入のロック + 状態チェック（ErrAlreadyCanceled）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseID)
+		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseCode)
 		if lerr != nil {
 			return lerr
 		}
 
-		// 他人の購入は存在秘匿のため NotFound へ畳む（docs/spec/purchase/usecase.md）。
+		// 存在秘匿のため NotFound へ畳む理由は CancelPurchase の doc コメントを参照。
 		if locked.UserID() != params.UserID {
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
@@ -371,14 +372,14 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
-			AggregateID:   params.PurchaseID.String(),
+			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
 		}
 
-		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
+		reread, rerr := u.repo.FindDetailByID(ctx, locked.ID())
 		if rerr != nil {
 			return rerr
 		}
@@ -402,12 +403,12 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 	// Repository で完結する（ADR-0034 (commandservice-atomicity-criterion)）。
 	// 二重支払いは購入のロック + 状態チェック（ErrAlreadyPaid）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.repo.LockByID(ctx, params.PurchaseID)
+		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
 		if lerr != nil {
 			return lerr
 		}
 
-		// 他人の購入は存在秘匿のため NotFound へ畳む（docs/spec/purchase/usecase.md）。
+		// 存在秘匿のため NotFound へ畳む理由は CancelPurchase の doc コメントを参照。
 		if locked.UserID() != params.UserID {
 			return xerrors.Wrap(apperror.ErrNotFound, "purchase not found")
 		}
@@ -431,14 +432,14 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
-			AggregateID:   params.PurchaseID.String(),
+			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
 		}
 
-		reread, rerr := u.repo.FindDetailByID(ctx, params.PurchaseID)
+		reread, rerr := u.repo.FindDetailByID(ctx, locked.ID())
 		if rerr != nil {
 			return rerr
 		}
@@ -452,7 +453,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 }
 
 func (u *usecase) ShipPurchase(
-	ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID,
+	ctx context.Context, authn *auth.Authn, purchaseCode string,
 ) (ShipPurchaseView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -460,7 +461,7 @@ func (u *usecase) ShipPurchase(
 	if authn == nil {
 		return ShipPurchaseView{}, apperror.ErrUnauthenticated
 	}
-	// 運用（admin）専用操作。所有者なしリソースとして認可する（docs/spec/purchase/usecase.md）。
+	// 管理者専用・所有者不問の根拠は ShipPurchase の doc コメントを参照。
 	if err := u.authorizer.Authorize(
 		ctx, authn, authz.ActionPurchaseShip, authz.NewResource("purchase", nil),
 	); err != nil {
@@ -470,11 +471,10 @@ func (u *usecase) ShipPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
-	// Repository で完結する（ADR-0034 (commandservice-atomicity-criterion)）。
+	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。
 	// 二重発送は購入行ロック + 状態チェック（ErrAlreadyShipped）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.repo.LockByID(ctx, purchaseID)
+		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
 		if lerr != nil {
 			return lerr
 		}
@@ -498,14 +498,14 @@ func (u *usecase) ShipPurchase(
 		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
-			AggregateID:   purchaseID.String(),
+			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
 		}
 
-		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
+		reread, rerr := u.repo.FindDetailByID(ctx, locked.ID())
 		if rerr != nil {
 			return rerr
 		}
@@ -519,7 +519,7 @@ func (u *usecase) ShipPurchase(
 }
 
 func (u *usecase) DeliverPurchase(
-	ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID,
+	ctx context.Context, authn *auth.Authn, purchaseCode string,
 ) (DeliverPurchaseView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -527,7 +527,7 @@ func (u *usecase) DeliverPurchase(
 	if authn == nil {
 		return DeliverPurchaseView{}, apperror.ErrUnauthenticated
 	}
-	// 運用（admin）専用操作。所有者なしリソースとして認可する（docs/spec/purchase/usecase.md）。
+	// 管理者専用・所有者不問の根拠は ShipPurchase の doc コメントを参照。
 	if err := u.authorizer.Authorize(
 		ctx, authn, authz.ActionPurchaseDeliver, authz.NewResource("purchase", nil),
 	); err != nil {
@@ -537,11 +537,10 @@ func (u *usecase) DeliverPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
-	// Repository で完結する（ADR-0034 (commandservice-atomicity-criterion)）。
+	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。
 	// 二重配達は購入行ロック + 状態チェック（ErrAlreadyDelivered）で安全化する。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.repo.LockByID(ctx, purchaseID)
+		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
 		if lerr != nil {
 			return lerr
 		}
@@ -565,14 +564,14 @@ func (u *usecase) DeliverPurchase(
 		}
 		if _, eerr := u.emit.Emit(ctx, outbox.EmitInput{
 			AggregateType: aggregateType,
-			AggregateID:   purchaseID.String(),
+			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
 		}); eerr != nil {
 			return eerr
 		}
 
-		reread, rerr := u.repo.FindDetailByID(ctx, purchaseID)
+		reread, rerr := u.repo.FindDetailByID(ctx, locked.ID())
 		if rerr != nil {
 			return rerr
 		}
@@ -599,7 +598,6 @@ func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) e
 	return membership.EnsurePurchasable(purchaser)
 }
 
-// toPurchaseView は、購入集約を出力 DTO へ変換します。
 func toPurchaseView(p *purchase.Purchase) PurchaseView {
 	details := p.Details()
 	views := make([]PurchaseDetailView, len(details))
@@ -611,7 +609,6 @@ func toPurchaseView(p *purchase.Purchase) PurchaseView {
 		}
 	}
 	return PurchaseView{
-		ID:             p.ID(),
 		Code:           p.Code(),
 		UserID:         p.UserID(),
 		StatusID:       p.StatusID(),
@@ -624,7 +621,6 @@ func toPurchaseView(p *purchase.Purchase) PurchaseView {
 	}
 }
 
-// toCancelPurchaseView は、購入詳細の読み取りモデルをキャンセルレスポンスの出力 DTO へ変換します。
 func toCancelPurchaseView(d *purchase.Detail) CancelPurchaseView {
 	views := make([]PurchaseDetailView, len(d.Details))
 	for i, detail := range d.Details {
@@ -635,10 +631,10 @@ func toCancelPurchaseView(d *purchase.Detail) CancelPurchaseView {
 		}
 	}
 	return CancelPurchaseView{
-		ID:             d.ID,
 		Code:           d.Code,
 		UserID:         d.UserID,
 		StatusID:       d.StatusID,
+		StatusCode:     d.StatusCode,
 		StatusName:     d.StatusName,
 		SubtotalAmount: d.SubtotalAmount,
 		TaxAmount:      d.TaxAmount,
@@ -650,7 +646,6 @@ func toCancelPurchaseView(d *purchase.Detail) CancelPurchaseView {
 	}
 }
 
-// toShipPurchaseView は、購入詳細の読み取りモデルを発送レスポンスの出力 DTO へ変換します。
 func toShipPurchaseView(d *purchase.Detail) ShipPurchaseView {
 	views := make([]PurchaseDetailView, len(d.Details))
 	for i, detail := range d.Details {
@@ -661,10 +656,10 @@ func toShipPurchaseView(d *purchase.Detail) ShipPurchaseView {
 		}
 	}
 	return ShipPurchaseView{
-		ID:             d.ID,
 		Code:           d.Code,
 		UserID:         d.UserID,
 		StatusID:       d.StatusID,
+		StatusCode:     d.StatusCode,
 		StatusName:     d.StatusName,
 		SubtotalAmount: d.SubtotalAmount,
 		TaxAmount:      d.TaxAmount,
@@ -676,7 +671,6 @@ func toShipPurchaseView(d *purchase.Detail) ShipPurchaseView {
 	}
 }
 
-// toDeliverPurchaseView は、購入詳細の読み取りモデルを配達完了レスポンスの出力 DTO へ変換します。
 func toDeliverPurchaseView(d *purchase.Detail) DeliverPurchaseView {
 	views := make([]PurchaseDetailView, len(d.Details))
 	for i, detail := range d.Details {
@@ -687,10 +681,10 @@ func toDeliverPurchaseView(d *purchase.Detail) DeliverPurchaseView {
 		}
 	}
 	return DeliverPurchaseView{
-		ID:             d.ID,
 		Code:           d.Code,
 		UserID:         d.UserID,
 		StatusID:       d.StatusID,
+		StatusCode:     d.StatusCode,
 		StatusName:     d.StatusName,
 		SubtotalAmount: d.SubtotalAmount,
 		TaxAmount:      d.TaxAmount,
@@ -702,7 +696,6 @@ func toDeliverPurchaseView(d *purchase.Detail) DeliverPurchaseView {
 	}
 }
 
-// toPayPurchaseView は、購入詳細の読み取りモデルを支払いレスポンスの出力 DTO へ変換します。
 func toPayPurchaseView(d *purchase.Detail) PayPurchaseView {
 	views := make([]PurchaseDetailView, len(d.Details))
 	for i, detail := range d.Details {
@@ -713,10 +706,10 @@ func toPayPurchaseView(d *purchase.Detail) PayPurchaseView {
 		}
 	}
 	return PayPurchaseView{
-		ID:             d.ID,
 		Code:           d.Code,
 		UserID:         d.UserID,
 		StatusID:       d.StatusID,
+		StatusCode:     d.StatusCode,
 		StatusName:     d.StatusName,
 		SubtotalAmount: d.SubtotalAmount,
 		TaxAmount:      d.TaxAmount,

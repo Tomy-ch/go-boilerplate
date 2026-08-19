@@ -51,7 +51,6 @@ func newDispatchGroupView(t *testing.T, salt string, purchaseSalts ...string) pu
 	purchases := make([]purchaseuc.ShippablePurchaseView, len(purchaseSalts))
 	for i, ps := range purchaseSalts {
 		purchases[i] = purchaseuc.ShippablePurchaseView{
-			ID:          uuidtestkit.NewTestFromSalt(t, ps),
 			Code:        "code-" + ps,
 			TotalAmount: 1000 * (i + 1),
 			OrderedAt:   time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC).Add(time.Duration(i) * time.Hour),
@@ -68,7 +67,6 @@ func wantDispatchGroupResponse(dto purchaseuc.DispatchGroupView) gen.PurchaseDis
 	purchases := make([]gen.PurchaseShippableItemResponse, len(dto.Purchases))
 	for i, p := range dto.Purchases {
 		purchases[i] = gen.PurchaseShippableItemResponse{
-			Id:          p.ID.ToPrimitive(),
 			Code:        p.Code,
 			TotalAmount: int64(p.TotalAmount),
 			OrderedAt:   p.OrderedAt,

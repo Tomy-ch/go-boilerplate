@@ -13,7 +13,6 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/pkg/safecast"
-	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -34,9 +33,9 @@ func New(
 }
 
 // CreatePurchase は、在庫減算・purchases INSERT・purchase_details INSERT を渡された tx 内で原子的に実行します。
-// 在庫減算は防御的に売り越しを弾き、更新 0 行の場合は ErrInsufficientStock（409）を返します。
-// この防御は domain の売り越し判定を言い換えた fail-closed の二重防御であり、独立した規則ではありません
-// （ADR-0032 (lightweight-cqrs) § Derivation）。返すエラーも domain の sentinel をそのまま用います。
+// 在庫減算は防御的に売り越しを弾き、更新 0 行の場合は domain の sentinel をそのまま用いた
+// ErrInsufficientStock（409）を返します。防御の位置づけは
+// internal/infrastructure/rdb/README.md § command_service（Conditions are derived, never authored）を参照。
 func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
@@ -93,21 +92,21 @@ func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchas
 	return nil
 }
 
-// LockPurchase は、購入行のみ悲観ロック（FOR UPDATE OF p）して明細込みで再構築し返します。
-// キャンセルの状態遷移の競合（同一購入への並行キャンセル）を購入行ロックで直列化します。
+// LockPurchase は、購入コードで引いた購入行のみ悲観ロック（FOR UPDATE OF p）して明細込みで再構築し返します。
 // 現在状態は購入ステータスマスタとの結合で code を解決します。存在しない場合は NotFound を返します。
-func (c *commandService) LockPurchase(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
+// ロックが守る状態遷移の意味は internal/usecase/purchase/command.CommandService の LockPurchase を参照。
+func (c *commandService) LockPurchase(ctx context.Context, code string) (*purchase.Purchase, error) {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, c.db))
 
-	row, err := db.GetPurchaseByIDForUpdate(ctx, id)
+	row, err := db.GetPurchaseByCodeForUpdate(ctx, code)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, id)
+	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, row.Purchases.ID)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}

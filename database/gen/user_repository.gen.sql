@@ -18,18 +18,18 @@ WHERE u.deleted_at IS NOT NULL;
 -- name: CountSearchUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT []);
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[]);
 
 -- name: CountSearchActiveUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
     AND u.deleted_at IS NULL;
 
 -- name: CountSearchDeletedUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
     AND u.deleted_at IS NOT NULL;
 
 -- === source: database/dml/repository/user/delete_purged_users.sql ===
@@ -40,7 +40,7 @@ DELETE FROM user_identities
 WHERE user_id IN (
         SELECT u.id
         FROM users AS u
-        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID [])
+        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID[])
             AND u.deleted_at IS NOT NULL
     );
 
@@ -51,7 +51,7 @@ DELETE FROM user_roles
 WHERE user_id IN (
         SELECT u.id
         FROM users AS u
-        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID [])
+        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID[])
             AND u.deleted_at IS NOT NULL
     );
 
@@ -59,7 +59,7 @@ WHERE user_id IN (
 -- 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
 -- 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
 DELETE FROM users
-WHERE id = ANY(sqlc.arg('ids')::UUID [])
+WHERE id = ANY(sqlc.arg('ids')::UUID[])
     AND deleted_at IS NOT NULL;
 
 -- === source: database/dml/repository/user/insert_user.sql ===
@@ -180,14 +180,14 @@ LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 -- name: SearchUsers :many
 SELECT sqlc.embed(u)
 FROM users AS u
-WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 
 -- name: SearchActiveUsers :many
 SELECT sqlc.embed(u)
 FROM users AS u
-WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
     AND u.deleted_at IS NULL
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
@@ -195,7 +195,7 @@ LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 -- name: SearchDeletedUsers :many
 SELECT sqlc.embed(u)
 FROM users AS u
-WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
     AND u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');

@@ -19,6 +19,7 @@ SELECT
     p.code,
     p.user_id,
     ps.id AS status_id,
+    ps.code AS status_code,
     ps.name AS status_name,
     p.subtotal_amount,
     p.tax_amount,
@@ -29,11 +30,11 @@ SELECT
     p.canceled_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-WHERE p.id = $1 AND p.user_id = $2
+WHERE p.code = $1 AND p.user_id = $2
 `
 
 type GetPurchaseDetailForUserParams struct {
-	ID     uuid.UUID
+	Code   string
 	UserID uuid.UUID
 }
 
@@ -42,6 +43,7 @@ type GetPurchaseDetailForUserRow struct {
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
+	StatusCode     int16
 	StatusName     string
 	SubtotalAmount int64
 	TaxAmount      int64
@@ -52,8 +54,8 @@ type GetPurchaseDetailForUserRow struct {
 	CanceledAt     *time.Time
 }
 
-// === source: database/dml/query_service/purchase/select_purchase_detail_by_id.sql ===
-// 認証主体の購入本体 1 件を取得する。ステータス名は購入ステータスマスタとの結合で解決する。
+// === source: database/dml/query_service/purchase/select_purchase_detail_by_code.sql ===
+// 認証主体の購入本体 1 件を購入コードで取得する。
 // 所有権は WHERE 述語（user_id 一致）で担保し、他人・不存在はいずれも 0 行（NotFound で秘匿）。
 // 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL。
 //
@@ -62,6 +64,7 @@ type GetPurchaseDetailForUserRow struct {
 //	    p.code,
 //	    p.user_id,
 //	    ps.id AS status_id,
+//	    ps.code AS status_code,
 //	    ps.name AS status_name,
 //	    p.subtotal_amount,
 //	    p.tax_amount,
@@ -72,15 +75,16 @@ type GetPurchaseDetailForUserRow struct {
 //	    p.canceled_at
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-//	WHERE p.id = $1 AND p.user_id = $2
+//	WHERE p.code = $1 AND p.user_id = $2
 func (q *Queries) GetPurchaseDetailForUser(ctx context.Context, arg *GetPurchaseDetailForUserParams) (*GetPurchaseDetailForUserRow, error) {
-	row := q.db.QueryRow(ctx, getPurchaseDetailForUser, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, getPurchaseDetailForUser, arg.Code, arg.UserID)
 	var i GetPurchaseDetailForUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Code,
 		&i.UserID,
 		&i.StatusID,
+		&i.StatusCode,
 		&i.StatusName,
 		&i.SubtotalAmount,
 		&i.TaxAmount,
@@ -113,6 +117,7 @@ type ListPurchaseDetailItemsForUserRow struct {
 }
 
 // 購入明細を products との結合で商品名込みに取得する（集約跨ぎの read 投影）。
+// 本体行から得た購入 ID で引くため、所有権は本体クエリ側で既に閉じている。
 // product_id は FK 制約により products と常に結合可能。id 昇順で安定整列する。
 //
 //	SELECT
@@ -138,6 +143,332 @@ func (q *Queries) ListPurchaseDetailItemsForUser(ctx context.Context, purchaseID
 			&i.ProductName,
 			&i.Quantity,
 			&i.UnitPrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurchasesFeedAfter = `-- name: ListPurchasesFeedAfter :many
+WITH page AS (
+    SELECT
+        p.id,
+        p.code,
+        p.total_amount,
+        p.ordered_at,
+        p.status_id
+    FROM purchases AS p
+    WHERE p.user_id = $1
+        AND (
+            p.ordered_at < $2
+            OR (p.ordered_at = $2 AND p.id < $3)
+        )
+        AND (
+            NOT $4::BOOLEAN
+            OR (
+                p.ordered_at >= $5
+                AND p.ordered_at < $6
+            )
+        )
+    ORDER BY p.ordered_at DESC, p.id DESC
+    LIMIT $7
+)
+
+SELECT
+    page.id,
+    page.code,
+    page.total_amount,
+    page.ordered_at,
+    ps.id AS status_id,
+    ps.code AS status_code,
+    ps.name AS status_name,
+    first_item.product_name AS first_item_name,
+    item_agg.item_count
+FROM page
+INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+INNER JOIN LATERAL (
+    SELECT pr.name AS product_name
+    FROM purchase_details AS d
+    INNER JOIN products AS pr ON d.product_id = pr.id
+    WHERE d.purchase_id = page.id
+    ORDER BY d.id
+    LIMIT 1
+) AS first_item ON TRUE
+INNER JOIN LATERAL (
+    SELECT COUNT(*)::BIGINT AS item_count
+    FROM purchase_details AS d
+    WHERE d.purchase_id = page.id
+) AS item_agg ON TRUE
+ORDER BY page.ordered_at DESC, page.id DESC
+`
+
+type ListPurchasesFeedAfterParams struct {
+	UserID         uuid.UUID
+	AfterOrderedAt time.Time
+	AfterID        uuid.UUID
+	FilterByPeriod bool
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
+	LimitParam     int32
+}
+
+type ListPurchasesFeedAfterRow struct {
+	ID            uuid.UUID
+	Code          string
+	TotalAmount   int64
+	OrderedAt     time.Time
+	StatusID      uuid.UUID
+	StatusCode    int16
+	StatusName    string
+	FirstItemName string
+	ItemCount     int64
+}
+
+// (ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す。境界は直前ページ末尾行の
+// (ordered_at, id) で、ordered_at 同値は id で安定にタイブレークする。
+// 期間の絞り込みは先頭ページと同一条件で、ページ送りの間も呼び出し側が同じ期間を渡す前提である。
+// ページを CTE で閉じてから要約を結合する形も先頭ページと同一。
+//
+//	WITH page AS (
+//	    SELECT
+//	        p.id,
+//	        p.code,
+//	        p.total_amount,
+//	        p.ordered_at,
+//	        p.status_id
+//	    FROM purchases AS p
+//	    WHERE p.user_id = $1
+//	        AND (
+//	            p.ordered_at < $2
+//	            OR (p.ordered_at = $2 AND p.id < $3)
+//	        )
+//	        AND (
+//	            NOT $4::BOOLEAN
+//	            OR (
+//	                p.ordered_at >= $5
+//	                AND p.ordered_at < $6
+//	            )
+//	        )
+//	    ORDER BY p.ordered_at DESC, p.id DESC
+//	    LIMIT $7
+//	)
+//
+//	SELECT
+//	    page.id,
+//	    page.code,
+//	    page.total_amount,
+//	    page.ordered_at,
+//	    ps.id AS status_id,
+//	    ps.code AS status_code,
+//	    ps.name AS status_name,
+//	    first_item.product_name AS first_item_name,
+//	    item_agg.item_count
+//	FROM page
+//	INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+//	INNER JOIN LATERAL (
+//	    SELECT pr.name AS product_name
+//	    FROM purchase_details AS d
+//	    INNER JOIN products AS pr ON d.product_id = pr.id
+//	    WHERE d.purchase_id = page.id
+//	    ORDER BY d.id
+//	    LIMIT 1
+//	) AS first_item ON TRUE
+//	INNER JOIN LATERAL (
+//	    SELECT COUNT(*)::BIGINT AS item_count
+//	    FROM purchase_details AS d
+//	    WHERE d.purchase_id = page.id
+//	) AS item_agg ON TRUE
+//	ORDER BY page.ordered_at DESC, page.id DESC
+func (q *Queries) ListPurchasesFeedAfter(ctx context.Context, arg *ListPurchasesFeedAfterParams) ([]*ListPurchasesFeedAfterRow, error) {
+	rows, err := q.db.Query(ctx, listPurchasesFeedAfter,
+		arg.UserID,
+		arg.AfterOrderedAt,
+		arg.AfterID,
+		arg.FilterByPeriod,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPurchasesFeedAfterRow
+	for rows.Next() {
+		var i ListPurchasesFeedAfterRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.TotalAmount,
+			&i.OrderedAt,
+			&i.StatusID,
+			&i.StatusCode,
+			&i.StatusName,
+			&i.FirstItemName,
+			&i.ItemCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurchasesFeedFirst = `-- name: ListPurchasesFeedFirst :many
+WITH page AS (
+    SELECT
+        p.id,
+        p.code,
+        p.total_amount,
+        p.ordered_at,
+        p.status_id
+    FROM purchases AS p
+    WHERE p.user_id = $1
+        AND (
+            NOT $2::BOOLEAN
+            OR (
+                p.ordered_at >= $3
+                AND p.ordered_at < $4
+            )
+        )
+    ORDER BY p.ordered_at DESC, p.id DESC
+    LIMIT $5
+)
+
+SELECT
+    page.id,
+    page.code,
+    page.total_amount,
+    page.ordered_at,
+    ps.id AS status_id,
+    ps.code AS status_code,
+    ps.name AS status_name,
+    first_item.product_name AS first_item_name,
+    item_agg.item_count
+FROM page
+INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+INNER JOIN LATERAL (
+    SELECT pr.name AS product_name
+    FROM purchase_details AS d
+    INNER JOIN products AS pr ON d.product_id = pr.id
+    WHERE d.purchase_id = page.id
+    ORDER BY d.id
+    LIMIT 1
+) AS first_item ON TRUE
+INNER JOIN LATERAL (
+    SELECT COUNT(*)::BIGINT AS item_count
+    FROM purchase_details AS d
+    WHERE d.purchase_id = page.id
+) AS item_agg ON TRUE
+ORDER BY page.ordered_at DESC, page.id DESC
+`
+
+type ListPurchasesFeedFirstParams struct {
+	UserID         uuid.UUID
+	FilterByPeriod bool
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
+	LimitParam     int32
+}
+
+type ListPurchasesFeedFirstRow struct {
+	ID            uuid.UUID
+	Code          string
+	TotalAmount   int64
+	OrderedAt     time.Time
+	StatusID      uuid.UUID
+	StatusCode    int16
+	StatusName    string
+	FirstItemName string
+	ItemCount     int64
+}
+
+// === source: database/dml/query_service/purchase/select_purchases_feed.sql ===
+// 指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する。
+// ページを CTE で先に閉じてから結合するのは、明細の要約を解決する LATERAL が LIMIT 前の候補行すべてに
+// 対して評価されるのを防ぐため。
+// 明細 1 件以上は Purchase 集約の生成不変条件（docs/spec/purchase/domain.md）のため、LATERAL は INNER で結合する。
+// filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを返す。
+//
+//	WITH page AS (
+//	    SELECT
+//	        p.id,
+//	        p.code,
+//	        p.total_amount,
+//	        p.ordered_at,
+//	        p.status_id
+//	    FROM purchases AS p
+//	    WHERE p.user_id = $1
+//	        AND (
+//	            NOT $2::BOOLEAN
+//	            OR (
+//	                p.ordered_at >= $3
+//	                AND p.ordered_at < $4
+//	            )
+//	        )
+//	    ORDER BY p.ordered_at DESC, p.id DESC
+//	    LIMIT $5
+//	)
+//
+//	SELECT
+//	    page.id,
+//	    page.code,
+//	    page.total_amount,
+//	    page.ordered_at,
+//	    ps.id AS status_id,
+//	    ps.code AS status_code,
+//	    ps.name AS status_name,
+//	    first_item.product_name AS first_item_name,
+//	    item_agg.item_count
+//	FROM page
+//	INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+//	INNER JOIN LATERAL (
+//	    SELECT pr.name AS product_name
+//	    FROM purchase_details AS d
+//	    INNER JOIN products AS pr ON d.product_id = pr.id
+//	    WHERE d.purchase_id = page.id
+//	    ORDER BY d.id
+//	    LIMIT 1
+//	) AS first_item ON TRUE
+//	INNER JOIN LATERAL (
+//	    SELECT COUNT(*)::BIGINT AS item_count
+//	    FROM purchase_details AS d
+//	    WHERE d.purchase_id = page.id
+//	) AS item_agg ON TRUE
+//	ORDER BY page.ordered_at DESC, page.id DESC
+func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchasesFeedFirstParams) ([]*ListPurchasesFeedFirstRow, error) {
+	rows, err := q.db.Query(ctx, listPurchasesFeedFirst,
+		arg.UserID,
+		arg.FilterByPeriod,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListPurchasesFeedFirstRow
+	for rows.Next() {
+		var i ListPurchasesFeedFirstRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.TotalAmount,
+			&i.OrderedAt,
+			&i.StatusID,
+			&i.StatusCode,
+			&i.StatusName,
+			&i.FirstItemName,
+			&i.ItemCount,
 		); err != nil {
 			return nil, err
 		}
@@ -299,6 +630,7 @@ func (q *Queries) SummarizePurchaseItemsByProductByUserID(ctx context.Context, a
 const summarizePurchasesByUserID = `-- name: SummarizePurchasesByUserID :many
 SELECT
     ps.id AS status_id,
+    ps.code AS status_code,
     ps.name AS status_name,
     COUNT(p.id)::BIGINT AS purchase_count,
     COALESCE(SUM(p.total_amount), 0)::BIGINT AS total_amount
@@ -313,7 +645,7 @@ WHERE p.user_id = $1
             AND p.ordered_at < $4
         )
     )
-GROUP BY ps.id, ps.name, ps.sort_key
+GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC
 `
 
@@ -326,6 +658,7 @@ type SummarizePurchasesByUserIDParams struct {
 
 type SummarizePurchasesByUserIDRow struct {
 	StatusID      uuid.UUID
+	StatusCode    int16
 	StatusName    string
 	PurchaseCount int64
 	TotalAmount   int64
@@ -334,16 +667,17 @@ type SummarizePurchasesByUserIDRow struct {
 // === source: database/dml/query_service/purchase/select_purchase_summary.sql ===
 // 指定ユーザーの購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
 // 所有権は user_id の等値条件で閉じるため、他ユーザーの購入は集計に混入しません。
-// 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) の先頭 2 列で絞り込みます。
+// 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) を使う。filter_by_period=false
+// のときは先頭列（user_id）のみが絞り込みに効きます。
 // キャンセル済み（canceled_at 設定済み）の購入は除外します。
 // 「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
 // 述語が見るのは canceled_at ですが、両者は再構築時の不変条件で等価に縛られています。
 // filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを集計します。
 // 総件数・合計金額はこの結果行を畳み込んで算出します（単一スナップショットで整合させるため）。
-// ステータス名は購入ステータスマスタとの結合で解決します。
 //
 //	SELECT
 //	    ps.id AS status_id,
+//	    ps.code AS status_code,
 //	    ps.name AS status_name,
 //	    COUNT(p.id)::BIGINT AS purchase_count,
 //	    COALESCE(SUM(p.total_amount), 0)::BIGINT AS total_amount
@@ -358,7 +692,7 @@ type SummarizePurchasesByUserIDRow struct {
 //	            AND p.ordered_at < $4
 //	        )
 //	    )
-//	GROUP BY ps.id, ps.name, ps.sort_key
+//	GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 //	ORDER BY ps.sort_key ASC
 func (q *Queries) SummarizePurchasesByUserID(ctx context.Context, arg *SummarizePurchasesByUserIDParams) ([]*SummarizePurchasesByUserIDRow, error) {
 	rows, err := q.db.Query(ctx, summarizePurchasesByUserID,
@@ -376,6 +710,7 @@ func (q *Queries) SummarizePurchasesByUserID(ctx context.Context, arg *Summarize
 		var i SummarizePurchasesByUserIDRow
 		if err := rows.Scan(
 			&i.StatusID,
+			&i.StatusCode,
 			&i.StatusName,
 			&i.PurchaseCount,
 			&i.TotalAmount,

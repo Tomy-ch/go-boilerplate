@@ -15,7 +15,6 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
-	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
@@ -28,7 +27,7 @@ import (
 func TestV1PurchasesShip_Integration(t *testing.T) {
 	t.Parallel()
 
-	const purchasePath = "/v1/purchases/0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60/ship"
+	const purchasePath = "/v1/purchases/PC-2026-0042/ship"
 
 	// availableShipAdmin は、発送を要求する admin の認証ヘッダを返すローカルヘルパーです。
 	availableShipAdmin := func(t *testing.T, e *echo.Echo) http.Header {
@@ -40,7 +39,6 @@ func TestV1PurchasesShip_Integration(t *testing.T) {
 		t.Helper()
 		shippedAt := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 		return purchaseuc.ShipPurchaseView{
-			ID:             uuidtestkit.NewTestFromSalt(t, "ship_int_id"),
 			Code:           "ship-int-code",
 			UserID:         uuidtestkit.NewTestFromSalt(t, "ship_int_user"),
 			StatusID:       uuidtestkit.NewTestFromSalt(t, "ship_int_status"),
@@ -85,12 +83,12 @@ func TestV1PurchasesShip_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			var capturedAuthn *auth.Authn
-			var capturedID uuid.UUID
+			var capturedCode string
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, authn *auth.Authn, purchaseID uuid.UUID) (purchaseuc.ShipPurchaseView, error) {
+				func(_ context.Context, authn *auth.Authn, purchaseCode string) (purchaseuc.ShipPurchaseView, error) {
 					capturedAuthn = authn
-					capturedID = purchaseID
+					capturedCode = purchaseCode
 					return shipViewFixture(t), nil
 				},
 			)
@@ -105,7 +103,7 @@ func TestV1PurchasesShip_Integration(t *testing.T) {
 			resolved, err := capturedAuthn.UserID()
 			require.NoError(t, err)
 			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "ship_int_admin"), resolved)
-			assert.Equal(t, "0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60", capturedID.String())
+			assert.Equal(t, "PC-2026-0042", capturedCode)
 		})
 	})
 

@@ -108,8 +108,9 @@ fields:
   signature: SetItem(attrs SetItemAttributes, now time.Time) error   # itemID / productID は同型のため構造体で受ける
   behavior: |
     明細の数量を設定する（PUT /v1/carts/me/items/{productId} の upsert）。同一 productID の明細が既に
-    あれば数量を置換し（addedAt は保持）、無ければ追加する。追加で明細数が maxItems を超える場合は
-    ErrTooManyItems（422）。quantity が範囲外なら ErrInvalidQuantity（422）。
+    あれば数量を置換し（addedAt は保持）、無ければ追加する。productID が未設定なら
+    ErrInvalidProductID（422）。quantity が範囲外なら ErrInvalidQuantity（422）。追加時のみ、itemID が
+    未設定なら ErrInvalidID（422）、明細数が maxItems を超えるなら ErrTooManyItems（422）。
     数量 0 は削除ではなくエラーとする — 削除は RemoveItem が担い、1 つの操作に 2 つの意味を持たせない。
     冪等性は自然キー（productID）と「設定」という意味論から来る。同じ要求を 2 回受けても結果は同じで、
     冪等キーの発行を要さない（purchase の作成とはここが異なる）。
@@ -122,6 +123,9 @@ fields:
   behavior: |
     指定商品の明細を取り除く（DELETE /v1/carts/me/items/{productId}）。該当明細が無い場合もエラーに
     せず成功を返す（削除の冪等）。呼び出し側が 204 を返すため、「無かった」と「消した」を区別しない。
+    ただし productID が未設定なら ErrInvalidProductID（422）。明細の productID は Cart への組み込み時に
+    非 nil が保証されるため、nil は「該当明細が無い」ではなく引数そのものが無効な入力であり、冪等の
+    対象にならない。
 
 - name: Clear
   signature: Clear()

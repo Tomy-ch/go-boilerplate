@@ -46,6 +46,8 @@ Three facts explain almost everything below:
 | A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §20 |
 | Want to know why `make lint` skipped, throttled, or deferred itself to CI | §20 |
 | `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §12 |
+| `tool-cooldown` / `go-cooldown` refuses a version you just declared | §21 |
+| A runtime bump breaks a gate through a tool that cannot be upgraded yet | §21 |
 | "Migration version gap / duplicate" from pre-commit | §13 |
 | S3 calls return 503 locally | §14 |
 | Building an image for a specific environment | §15 |
@@ -502,6 +504,59 @@ CI log and apply the single formatter or linter it named (§9 has the config cho
 costs minutes of saturated host to rediscover what CI already printed.
 
 For a hook already red for an outside reason, §11 covers the `--no-verify` carve-out.
+
+## 21. A cooldown gate refused a version you just declared
+
+`make tool-cooldown-gate` (declarations in `mise.toml` and `python/*.in`) and `make go-cooldown-gate`
+(direct modules in `go.mod`) fail closed when a version you added is younger than its window:
+
+```txt
+❌ uv@0.12.2（aqua:astral-sh/uv）は公開 13 日で cooldown 14 日を満たしていません
+```
+
+These are a different mechanism from §12's pin checks. `pin-actions` / `pin-images` build the
+step-back into `resolve` and simply keep the old pin; these two gates have no such fallback, so the
+declaration is yours to correct.
+
+**The window is not one number.** It is chosen per backend, from how fast that ecosystem detects and
+revokes a bad publish — not from blast radius. `scripts/tool-cooldown/main.go` holds both constants
+(`releaseWindowDays` for `aqua:` / `ubi:` / `github:`, `registryWindowDays` for `go:` / `npm:` /
+`pypi:` / `pipx:`), `scripts/go-cooldown/main.go` holds `defaultWindowDays`, and the reasoning is
+[ADR-0090](../../../docs/adr/0090-malicious-package-detection-via-cooldown.md) plus the Dependencies
+section of `docs/design/security.md`. Read the constants rather than trusting a number quoted
+anywhere — including here. Language runtimes are outside every window by the same ADR.
+
+**The fix is normally a step back, not a bypass.** Take the newest version that is already older
+than the window; `tools-upgrade` and `dep-vuln-upgrade` do this selection for you, and the repo
+records the reason in a comment beside the declaration. Reach for `supply-chain-triage` when
+stepping back is not an option — the fix exists only in the fresh release, or nothing in the target
+major has aged — and let its verdict, not the day count alone, decide.
+
+**Bypass is the exception, and it is designed to nag.** `.github/tool-cooldown-bypass.toml` and
+`.github/go-cooldown-bypass.toml` take one entry per key, with all three of `expires` / `issue` /
+`reason` required and `expires` capped three months out:
+
+```toml
+"uv@0.12.2" = { expires = 2026-08-20, issue = 1272, reason = "…" }
+```
+
+`validateBypasses` turns an expired entry, an over-cap `expires`, and an entry naming something no
+longer declared into violations of the same gate. That is the point: the expiry arrives whether or
+not anyone touches the declaration, and the scheduled run collects it, so a bypass cannot sit
+unnoticed the way a plain allowlist would. Set `expires` to the day the window actually opens, not
+to a comfortable margin — the entry should start failing as soon as it stops being needed.
+
+**Two traps worth knowing before you diagnose.**
+
+A runtime bump can force a *tool* bump that is itself inside its window. The runtime is exempt from
+the gate, so nothing in the declarations shows the coupling: raising `python` past what the pinned
+`uv` can download makes `uv venv --python <version>` fail on the host leg of `sql-lint`, and the
+only fix is a newer `uv` — which the gate then blocks. Expect the chain to surface in CI rather
+than locally, because the containerized path uses the image's interpreter and never exercises it.
+
+Raising a `python/*.in` pin without regenerating its `.txt` fails too, from `verifyLocks` rather
+than from the window. Run `make py-lock` and commit both files; the pin and its lockfile are one
+change.
 
 ## Constraints
 

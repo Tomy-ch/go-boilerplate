@@ -120,7 +120,7 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
       "scripts/setup/remove-licensed-scanners",
     ],
     // 他の workflow も upload-sarif に使うので、参照数の判定に委ねる（残っていれば消えない）。
-    pinKeys: ["github/codeql-action@v4"],
+    pinKeys: ["github/codeql-action@v4.37.6"],
     egressJobs: [
       'code-ql.yaml:codeql',
       'licensed-scanners-removal-check.yaml:licensed-scanners-removal-check',

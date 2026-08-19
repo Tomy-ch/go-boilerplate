@@ -5,6 +5,6 @@
 -- 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得る。
 SELECT sqlc.embed(c)
 FROM carts AS c
-WHERE c.id = ANY(@cart_ids_param::UUID [])
+WHERE c.id = ANY(@cart_ids_param::UUID[])
 ORDER BY c.id
 FOR UPDATE;

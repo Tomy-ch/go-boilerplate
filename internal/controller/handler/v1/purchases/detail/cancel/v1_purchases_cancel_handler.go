@@ -1,14 +1,13 @@
 //go:generate oapi-codegen --include-tags=v1/purchases/detail/cancel --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
 //go:generate oapi-codegen --include-tags=v1/purchases/detail/cancel --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-// Package cancel は、PATCH /v1/purchases/{purchaseId}/cancel エンドポイントに関連するハンドラを提供します。
+// Package cancel は、PATCH /v1/purchases/{purchaseCode}/cancel エンドポイントに関連するハンドラを提供します。
 package cancel
 
 import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen"
 	"go-boilerplate/internal/observability"
@@ -33,8 +32,8 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 	}, nil))
 }
 
-// PatchPurchasesCancel は、本人の購入をキャンセルします。認証必須で、他人の購入・不存在は 404 で
-// 存在を秘匿し、不正遷移（完了・キャンセル済み・発送済み・配達済み）は 409 を返します。
+// PatchPurchasesCancel は、本人の購入をキャンセルします。認証必須。404: 不存在 / 他人の購入。409: 不正遷移
+// （詳細は docs/spec/purchase/usecase.md § PATCH キャンセル を参照）。
 func (s *server) PatchPurchasesCancel(
 	ctx context.Context,
 	request gen.PatchPurchasesCancelRequestObject,
@@ -48,8 +47,8 @@ func (s *server) PatchPurchasesCancel(
 	}
 
 	view, err := s.uc.CancelPurchase(ctx, purchaseuc.CancelPurchaseParams{
-		PurchaseID: conv.UUID(request.PurchaseId),
-		UserID:     userID,
+		PurchaseCode: request.PurchaseCode,
+		UserID:       userID,
 	})
 	if err != nil {
 		return nil, err
@@ -79,11 +78,11 @@ func toCancelResponse(v purchaseuc.CancelPurchaseView) (gen.PurchaseCancelRespon
 	}
 
 	return gen.PurchaseCancelResponse{
-		Id:     v.ID.ToPrimitive(),
 		Code:   v.Code,
 		UserId: v.UserID.ToPrimitive(),
 		Status: gen.PurchaseStatusRef{
 			Id:   v.StatusID.ToPrimitive(),
+			Code: int64(v.StatusCode),
 			Name: v.StatusName,
 		},
 		SubtotalAmount: int64(v.SubtotalAmount),

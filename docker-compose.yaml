@@ -42,7 +42,7 @@ services:
       - development
 
   database: # PostgreSQLデータベース
-    image: postgres:18.4-trixie@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
+    image: postgres:18.4-trixie@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
     ports:
       # 固定ポートを持つ共有インフラ（database / observability / garage）は、全 checkout が
       # 単一プロジェクト gobp-shared の 1 インスタンスを共有する。worktree の並列化は
@@ -73,7 +73,7 @@ services:
       - tools
 
   observability:
-    image: grafana/otel-lgtm:0.28.0@sha256:10f48eb2f8670134df542177bb19536c55421b089e43f9dfc2a27d4c078204d8
+    image: grafana/otel-lgtm:0.30.0@sha256:46ca028e294bd728e8e930a28e887f640a8f2a9533cc283f79bcc6ab73d2ffd8
     ports:
       - "3000:3000" # Grafana UI
       - "4317:4317" # OTLP gRPC

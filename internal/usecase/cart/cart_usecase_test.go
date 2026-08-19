@@ -39,7 +39,7 @@ func newPrice(t *testing.T, amount string) money.Price {
 }
 
 // newTestProduct は、公開中の商品を組み立てるテストヘルパーです。
-func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int) *product.Product {
+func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int, images ...product.Image) *product.Product {
 	t.Helper()
 
 	status, err := product.NewStatusRef(uuidtestkit.NewTestFromSalt(t, "cart_status"), "販売中")
@@ -54,9 +54,19 @@ func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int) *pr
 		Status:      status,
 		Category:    category,
 		PublishedAt: ptr.To(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)),
+		Images:      images,
 	})
 	require.NoError(t, err)
 	return p
+}
+
+func newTestProductImage(t *testing.T, salt, imagePath string, displaySort int) product.Image {
+	t.Helper()
+
+	return product.NewImage(uuidtestkit.NewTestFromSalt(t, salt), product.ImageAttributes{
+		ImagePath:   imagePath,
+		DisplaySort: displaySort,
+	})
 }
 
 func newTestCartItem(t *testing.T, salt string, productID uuid.UUID, quantity int, lastSeen *money.Price) cart.CartItem {
@@ -172,7 +182,7 @@ func Test_evaluateItem(t *testing.T) {
 			assert.Equal(t, "12", actual.UnitPrice.String())
 		})
 
-		t.Run("商品を引けない場合は商品名と単価を持たない", func(t *testing.T) {
+		t.Run("商品を引けない場合は商品名と単価と画像パスを持たない", func(t *testing.T) {
 			t.Parallel()
 
 			item := newTestCartItem(t, "cart_eval_notfound", productID, 2, nil)
@@ -182,7 +192,33 @@ func Test_evaluateItem(t *testing.T) {
 			assert.Equal(t, []ItemIssue{ItemIssueNotFound}, actual.Issues)
 			assert.Nil(t, actual.ProductName)
 			assert.Nil(t, actual.UnitPrice)
+			assert.Nil(t, actual.ImagePath)
 			assert.Nil(t, actual.AvailableQuantity)
+		})
+
+		t.Run("商品を引けても代表画像が無い場合は画像パスを持たない", func(t *testing.T) {
+			t.Parallel()
+
+			item := newTestCartItem(t, "cart_eval_no_image", productID, 1, nil)
+
+			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
+
+			require.NotNil(t, actual.ProductName)
+			assert.Nil(t, actual.ImagePath)
+		})
+
+		t.Run("商品が代表画像を持つ場合はそのパスを写す", func(t *testing.T) {
+			t.Parallel()
+
+			item := newTestCartItem(t, "cart_eval_images", productID, 1, nil)
+			p := newTestProduct(t, productID, "10.00", 5,
+				newTestProductImage(t, "cart_eval_image_first", "products/first.png", 1),
+			)
+
+			actual := evaluateItem(item, p)
+
+			require.NotNil(t, actual.ImagePath)
+			assert.Equal(t, "products/first.png", *actual.ImagePath)
 		})
 
 		t.Run("問題が無ければ issue は null ではなく空スライスになる", func(t *testing.T) {

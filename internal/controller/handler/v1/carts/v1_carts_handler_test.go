@@ -417,6 +417,7 @@ func Test_toCartItemResponses(t *testing.T) {
 			actual, err := toCartItemResponses([]cartuc.CartItemView{{
 				ProductID:         productID,
 				ProductName:       ptr.To("エルゴノミクスチェア"),
+				ImagePath:         ptr.To("products/first.png"),
 				Quantity:          2,
 				UnitPrice:         &price,
 				Issues:            []cartuc.ItemIssue{cartuc.ItemIssueInsufficientStock},
@@ -428,6 +429,8 @@ func Test_toCartItemResponses(t *testing.T) {
 			assert.Equal(t, productID.ToPrimitive(), actual[0].ProductId)
 			require.NotNil(t, actual[0].ProductName)
 			assert.Equal(t, "エルゴノミクスチェア", *actual[0].ProductName)
+			require.NotNil(t, actual[0].ImagePath)
+			assert.Equal(t, "products/first.png", *actual[0].ImagePath)
 			assert.Equal(t, int32(2), actual[0].Quantity)
 			require.NotNil(t, actual[0].UnitPrice)
 			assert.Equal(t, "19.99", *actual[0].UnitPrice)
@@ -436,7 +439,7 @@ func Test_toCartItemResponses(t *testing.T) {
 			assert.Equal(t, int32(1), *actual[0].AvailableQuantity)
 		})
 
-		t.Run("商品を引けなかった明細は商品名と単価がnullになる", func(t *testing.T) {
+		t.Run("商品を引けなかった明細は商品名と単価と画像パスがnullになる", func(t *testing.T) {
 			t.Parallel()
 
 			actual, err := toCartItemResponses([]cartuc.CartItemView{{
@@ -449,6 +452,7 @@ func Test_toCartItemResponses(t *testing.T) {
 			require.Len(t, actual, 1)
 			assert.Nil(t, actual[0].ProductName)
 			assert.Nil(t, actual[0].UnitPrice)
+			assert.Nil(t, actual[0].ImagePath)
 			assert.Nil(t, actual[0].AvailableQuantity)
 		})
 

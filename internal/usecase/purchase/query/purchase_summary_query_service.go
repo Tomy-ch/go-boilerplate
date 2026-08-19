@@ -15,19 +15,18 @@ import (
 // 読み取り側に置きます（ADR-0032 (lightweight-cqrs)）。商品単位の集計は購入・商品・商品カテゴリを
 // またぐ結合形そのものを読むため、同じく読み取り側です。
 // いずれのメソッドも母集団は同一（所有権・キャンセル除外・window）で、絞り込まない window を渡した
-// 場合は全期間を対象とします。
+// 場合は全期間を対象とします。対象が存在しない場合はいずれも空値（スライス / ゼロ値）を返し、エラーとしません。
 type PurchaseSummaryQueryService interface {
 	// SummarizeByUserID は、認証主体（userID）の購入をステータス単位に集計し、購入ステータスマスタの表示順で返します。
-	// 他の主体の購入が集計に混入しないことは本メソッドが担保します（呼び出し側での追加の所有権検査は不要です）。
-	// 対象の購入が存在しない場合は空スライスを返します（エラーとしません）。キャンセル済みの購入は集計対象外です。
+	// 母集団・対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。
 	SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]PurchaseStatusSummaryReadModel, error)
 	// SumItemsByUserID は、認証主体（userID）の購入明細の金額合計（単価 × 数量の総和）を返します。
 	// 価格スケールの正確な decimal で、決済スケール（セント整数）へは丸めません（ADR-0038 (two-scale-quantity-model)）。
-	// 対象の購入が存在しない場合はゼロ値を返します（エラーとしません）。
+	// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。
 	SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error)
 	// SummarizeItemsByProductByUserID は、認証主体（userID）の購入明細を商品単位に集計し、商品が属する
 	// カテゴリを添えて返します。カテゴリ単位の集計は呼び出し側がこの結果を畳み込んで得ます。
-	// 対象の購入が存在しない場合は空スライスを返します（エラーとしません）。
+	// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。
 	SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]PurchaseItemSummaryReadModel, error)
 }
 
@@ -35,7 +34,9 @@ type PurchaseSummaryQueryService interface {
 // 金額は決済スケールの整数（USD セント）です。
 type PurchaseStatusSummaryReadModel struct {
 	// StatusID / StatusName は、購入ステータスマスタで解決済みの ID と名称です。
+	// StatusCode は、購入ステータスの業務キー（Status.Code）です。
 	StatusID   uuid.UUID
+	StatusCode int
 	StatusName string
 	// Count は、当該ステータスの購入件数です。
 	Count int64

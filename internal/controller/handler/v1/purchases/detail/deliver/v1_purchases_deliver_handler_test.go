@@ -43,10 +43,10 @@ func deliverViewFixture(t *testing.T) purchaseuc.DeliverPurchaseView {
 	t.Helper()
 	delivered := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
 	return purchaseuc.DeliverPurchaseView{
-		ID:             uuidtestkit.NewTestFromSalt(t, "hd_id"),
 		Code:           "hd-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "hd_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "hd_status"),
+		StatusCode:     9,
 		StatusName:     "配達済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
@@ -72,7 +72,7 @@ func TestBindHandler(t *testing.T) {
 	routes := e.Router().Routes()
 	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodPatch, routes[0].Method)
-	assert.Equal(t, "/v1/purchases/:purchaseId/deliver", routes[0].Path)
+	assert.Equal(t, "/v1/purchases/:purchaseCode/deliver", routes[0].Path)
 }
 
 func Test_server_PatchPurchasesDeliver(t *testing.T) {
@@ -89,26 +89,26 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_admin")
-			purchaseID := uuidtestkit.NewTestFromSalt(t, "hd_purchase")
+			const purchaseCode = "hd-code"
 			view := deliverViewFixture(t)
 			uc.EXPECT().DeliverPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID) (purchaseuc.DeliverPurchaseView, error) {
+				DoAndReturn(func(_ context.Context, authn *auth.Authn, code string) (purchaseuc.DeliverPurchaseView, error) {
 					require.NotNil(t, authn)
 					resolved, uerr := authn.UserID()
 					require.NoError(t, uerr)
 					assert.Equal(t, userID, resolved)
-					assert.Equal(t, purchaseID, id)
+					assert.Equal(t, purchaseCode, code)
 					return view, nil
 				})
 
 			resp, err := s.PatchPurchasesDeliver(authnContext(t, userID), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: purchaseID.ToPrimitive(),
+				PurchaseCode: purchaseCode,
 			})
 			require.NoError(t, err)
 
 			r, ok := resp.(gen.PatchPurchasesDeliver200JSONResponse)
 			require.True(t, ok)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
+			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "配達済み", r.Status.Name)
 			require.Len(t, r.Details, 1)
@@ -128,13 +128,13 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 
 			var captured *auth.Authn
 			uc.EXPECT().DeliverPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, a *auth.Authn, _ uuid.UUID) (purchaseuc.DeliverPurchaseView, error) {
+				DoAndReturn(func(_ context.Context, a *auth.Authn, _ string) (purchaseuc.DeliverPurchaseView, error) {
 					captured = a
 					return deliverViewFixture(t), nil
 				})
 
 			_, err = s.PatchPurchasesDeliver(ctx, gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_unresolved").ToPrimitive(),
+				PurchaseCode: "hd-unresolved",
 			})
 			require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesDeliver(context.Background(), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_noauth").ToPrimitive(),
+				PurchaseCode: "hd-noauth",
 			})
 			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
@@ -172,7 +172,7 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_forbidden")
 			_, err := s.PatchPurchasesDeliver(authnContext(t, userID), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_forbidden").ToPrimitive(),
+				PurchaseCode: "hd-purchase-forbidden",
 			})
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
@@ -189,7 +189,7 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_err")
 			_, err := s.PatchPurchasesDeliver(authnContext(t, userID), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_err").ToPrimitive(),
+				PurchaseCode: "hd-purchase-err",
 			})
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
@@ -207,7 +207,7 @@ func Test_server_PatchPurchasesDeliver(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_user_overflow")
 			_, err := s.PatchPurchasesDeliver(authnContext(t, userID), gen.PatchPurchasesDeliverRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hd_purchase_overflow").ToPrimitive(),
+				PurchaseCode: "hd-purchase-overflow",
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
@@ -226,11 +226,11 @@ func Test_toDeliverResponse(t *testing.T) {
 			view := deliverViewFixture(t)
 			r, err := toDeliverResponse(view)
 			require.NoError(t, err)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "配達済み", r.Status.Name)
+			assert.EqualValues(t, view.StatusCode, r.Status.Code)
 			assert.Equal(t, int64(176500), r.TotalAmount)
 			assert.Equal(t, *view.DeliveredAt, r.DeliveredAt)
 			require.Len(t, r.Details, 1)

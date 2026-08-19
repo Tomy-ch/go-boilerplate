@@ -1,14 +1,13 @@
 //go:generate oapi-codegen --include-tags=v1/purchases/detail/deliver --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
 //go:generate oapi-codegen --include-tags=v1/purchases/detail/deliver --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-// Package deliver は、PATCH /v1/purchases/{purchaseId}/deliver エンドポイントに関連するハンドラを提供します。
+// Package deliver は、PATCH /v1/purchases/{purchaseCode}/deliver エンドポイントに関連するハンドラを提供します。
 package deliver
 
 import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/deliver/gen"
 	"go-boilerplate/internal/observability"
@@ -33,8 +32,8 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 	}, nil))
 }
 
-// PatchPurchasesDeliver は、購入を配達済みへ遷移させます。認証必須かつ admin のみ実行でき、非 admin は 403、
-// 不存在は 404、二重配達・不正遷移（未払い相当・支払い済み・完了・キャンセル済み）は 409 を返します。
+// PatchPurchasesDeliver は、購入を配達済みへ遷移させます。認証必須・admin 限定（非 admin は 403）。404: 不存在。409: 不正遷移
+// （詳細は docs/spec/purchase/usecase.md § PATCH 配達完了 を参照）。
 func (s *server) PatchPurchasesDeliver(
 	ctx context.Context,
 	request gen.PatchPurchasesDeliverRequestObject,
@@ -47,7 +46,7 @@ func (s *server) PatchPurchasesDeliver(
 		return nil, err
 	}
 
-	view, err := s.uc.DeliverPurchase(ctx, &authn, conv.UUID(request.PurchaseId))
+	view, err := s.uc.DeliverPurchase(ctx, &authn, request.PurchaseCode)
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +75,11 @@ func toDeliverResponse(v purchaseuc.DeliverPurchaseView) (gen.PurchaseDeliverRes
 	}
 
 	return gen.PurchaseDeliverResponse{
-		Id:     v.ID.ToPrimitive(),
 		Code:   v.Code,
 		UserId: v.UserID.ToPrimitive(),
 		Status: gen.PurchaseStatusRef{
 			Id:   v.StatusID.ToPrimitive(),
+			Code: int64(v.StatusCode),
 			Name: v.StatusName,
 		},
 		SubtotalAmount: int64(v.SubtotalAmount),

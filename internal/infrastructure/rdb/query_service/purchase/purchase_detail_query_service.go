@@ -29,24 +29,25 @@ func New(
 	}
 }
 
-// FindDetailByUserAndID は、認証主体（userID）が所有する購入 1 件を明細（商品名込み）とともに取得します。
+// FindDetailByUserAndCode は、認証主体（userID）が所有する購入 1 件を購入コードで引き、
+// 明細（商品名込み）とともに取得します。
 // 所有権は本体クエリの WHERE 述語（user_id 一致）で担保し、他人の購入・不存在はいずれも 0 行 →
 // NotFound で秘匿します。明細は products との結合で商品名を解決する固定 2 クエリ構成で N+1 を避けます。
-func (s *service) FindDetailByUserAndID(ctx context.Context, userID, purchaseID uuid.UUID) (*query.PurchaseDetailReadModel, error) {
+func (s *service) FindDetailByUserAndCode(ctx context.Context, userID uuid.UUID, code string) (*query.PurchaseDetailReadModel, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, s.db))
 
 	row, err := db.GetPurchaseDetailForUser(ctx, &gen.GetPurchaseDetailForUserParams{
-		ID:     purchaseID,
+		Code:   code,
 		UserID: userID,
 	})
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	itemRows, err := db.ListPurchaseDetailItemsForUser(ctx, purchaseID)
+	itemRows, err := db.ListPurchaseDetailItemsForUser(ctx, row.ID)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
@@ -61,6 +62,7 @@ func (s *service) FindDetailByUserAndID(ctx context.Context, userID, purchaseID 
 		Code:           row.Code,
 		UserID:         row.UserID,
 		StatusID:       row.StatusID,
+		StatusCode:     int(row.StatusCode),
 		StatusName:     row.StatusName,
 		SubtotalAmount: row.SubtotalAmount,
 		TaxAmount:      row.TaxAmount,

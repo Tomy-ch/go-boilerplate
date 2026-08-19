@@ -1216,7 +1216,7 @@ paths:
         limit は読み出す購入の件数で、まとめ判定はその範囲の中で行います。範囲の外にある同一購入者の購入は
         別の便になります。ページネーションは行わず、上位 limit 件のみを対象とします。
         発送待ちの購入がない場合はエラーではなく空配列を返します。
-        発送の実行は購入 1 件ずつ `POST /v1/purchases/{purchaseId}/ship` で行います。
+        発送の実行は購入 1 件ずつ `PATCH /v1/purchases/{purchaseCode}/ship` で行います。
         本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
         一時障害で応答不能となり得るため、認証必須 op の先例に倣い 503 を宣言します。
       security:
@@ -1242,7 +1242,7 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/purchases/{purchaseId}:
+  /v1/purchases/{purchaseCode}:
     get:
       operationId: GetPurchasesDetail
       tags:
@@ -1257,7 +1257,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/PurchaseIdParam'
+        - $ref: '#/components/parameters/PurchaseCodeParam'
       responses:
         '200':
           description: 購入詳細の取得に成功しました
@@ -1275,7 +1275,7 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/purchases/{purchaseId}/cancel:
+  /v1/purchases/{purchaseCode}/cancel:
     patch:
       operationId: PatchPurchasesCancel
       tags:
@@ -1291,7 +1291,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/PurchaseIdParam'
+        - $ref: '#/components/parameters/PurchaseCodeParam'
       responses:
         '200':
           description: 購入のキャンセルに成功しました
@@ -1313,7 +1313,7 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/purchases/{purchaseId}/pay:
+  /v1/purchases/{purchaseCode}/pay:
     patch:
       operationId: PatchPurchasesPay
       tags:
@@ -1328,7 +1328,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/PurchaseIdParam'
+        - $ref: '#/components/parameters/PurchaseCodeParam'
       responses:
         '200':
           description: 購入の支払いに成功しました
@@ -1350,7 +1350,7 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/purchases/{purchaseId}/ship:
+  /v1/purchases/{purchaseCode}/ship:
     patch:
       operationId: PatchPurchasesShip
       tags:
@@ -1365,7 +1365,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/PurchaseIdParam'
+        - $ref: '#/components/parameters/PurchaseCodeParam'
       responses:
         '200':
           description: 購入の発送に成功しました
@@ -1387,7 +1387,7 @@ paths:
           $ref: '#/components/responses/Conflict409'
         '500':
           $ref: '#/components/responses/InternalServerError500'
-  /v1/purchases/{purchaseId}/deliver:
+  /v1/purchases/{purchaseCode}/deliver:
     patch:
       operationId: PatchPurchasesDeliver
       tags:
@@ -1402,7 +1402,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/PurchaseIdParam'
+        - $ref: '#/components/parameters/PurchaseCodeParam'
       responses:
         '200':
           description: 購入の配達完了に成功しました
@@ -2141,16 +2141,15 @@ components:
         maximum: 100
         default: 20
         example: 20
-    PurchaseIdParam:
-      name: purchaseId
+    PurchaseCodeParam:
+      name: purchaseCode
       in: path
       required: true
-      description: 購入のUUID
+      description: 購入コード（利用者へ注文番号として見せる一意の識別子）
       schema:
         type: string
-        format: uuid
-        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
-        maxLength: 36
+        minLength: 1
+        maxLength: 50
         example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
     CartSessionRequiredParam:
       name: X-Cart-Session
@@ -2671,7 +2670,6 @@ components:
         購入情報のレスポンススキーマ。金額（subtotalAmount / taxAmount / shippingFee / totalAmount /
         明細 unitPrice）はすべて USD セント単位の整数です。
       required:
-        - id
         - code
         - userId
         - statusId
@@ -2683,14 +2681,9 @@ components:
         - orderedAt
         - referenceAmount
       properties:
-        id:
-          type: string
-          format: uuid
-          description: 購入ID
-          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         userId:
           type: string
@@ -2736,9 +2729,12 @@ components:
           $ref: '#/components/schemas/ReferenceAmount'
     PurchaseStatusRef:
       type: object
-      description: 購入に紐づくステータス（ID と名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+      description: |
+        購入に紐づくステータス（ID・業務キー・名称）。name は事前解決済みで、別途の名称解決 API 呼び出しは不要です。
+        表示には name を、分岐にはドメインの業務キーである code を用います。
       required:
         - id
+        - code
         - name
       properties:
         id:
@@ -2746,6 +2742,11 @@ components:
           format: uuid
           description: 購入ステータスID
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
+        code:
+          type: integer
+          format: int64
+          description: 購入ステータスの業務キー。値は到達順序を意味しません（完了より支払い済みのほうが大きい）。
+          example: 7
         name:
           type: string
           description: 購入ステータス名
@@ -2754,16 +2755,19 @@ components:
       type: object
       description: |
         購入履歴一覧の概要要素スキーマ。一覧はカード表示前提で概要のみを返し、明細は含みません
-        （明細は購入詳細 API で取得します）。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+        （明細は購入詳細 API で取得します）。status は ID・業務キー・名称を事前解決済みで、別途の名称解決は不要です。
+        行を見分けるための要約として、先頭商品名（firstItemName）と明細の点数（itemCount）を含みます。
       required:
         - code
         - totalAmount
         - status
+        - firstItemName
+        - itemCount
         - orderedAt
       properties:
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         totalAmount:
           type: integer
@@ -2772,6 +2776,15 @@ components:
           example: 176500
         status:
           $ref: '#/components/schemas/PurchaseStatusRef'
+        firstItemName:
+          type: string
+          description: 明細の先頭 1 件の商品名。先頭の選び方に業務的な意味はありません（明細の並びの先頭です）。
+          example: ワイヤレスイヤホン
+        itemCount:
+          type: integer
+          format: int64
+          description: 明細の点数（行数。先頭商品を含みます）。数量の合計ではありません。
+          example: 3
         orderedAt:
           type: string
           format: date-time
@@ -2823,7 +2836,6 @@ components:
         未キャンセルなら null です。金額（subtotalAmount / taxAmount / shippingFee / totalAmount）は
         すべて USD セント単位の整数、明細 unitPrice は購入時点の単価スナップショット（USD ドルの decimal 文字列）です。
       required:
-        - id
         - code
         - userId
         - status
@@ -2834,14 +2846,9 @@ components:
         - details
         - orderedAt
       properties:
-        id:
-          type: string
-          format: uuid
-          description: 購入ID
-          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         userId:
           type: string
@@ -2927,6 +2934,7 @@ components:
     PurchaseDetailInput:
       type: object
       description: 購入明細の入力。購入する商品IDと数量の組です。
+      additionalProperties: false
       required:
         - productId
         - quantity
@@ -2953,7 +2961,6 @@ components:
         金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
         すべて USD セント単位の整数です。
       required:
-        - id
         - code
         - userId
         - status
@@ -2965,14 +2972,9 @@ components:
         - orderedAt
         - canceledAt
       properties:
-        id:
-          type: string
-          format: uuid
-          description: 購入ID
-          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         userId:
           type: string
@@ -3168,8 +3170,8 @@ components:
       type: object
       description: |
         カート明細 1 件。商品の現在値との突き合わせ結果を issues に添える。
-        カートは商品の名前も価格も保持しないため、productName / unitPrice は取得時点の商品の値であり、
-        購入時の金額を拘束しない（請求額を確定するのは購入明細のスナップショット）。
+        カートは商品の名前も価格も画像も保持しないため、productName / unitPrice / imagePath は
+        取得時点の商品の値であり、購入時の金額を拘束しない（請求額を確定するのは購入明細のスナップショット）。
       required:
         - productId
         - quantity
@@ -3185,6 +3187,14 @@ components:
           nullable: true
           description: 商品名。商品を引けなかった場合（issues に notFound）は null です。
           example: エルゴノミクスチェア
+        imagePath:
+          type: string
+          nullable: true
+          description: |
+            取得時点の商品の代表画像のオブジェクトキー。代表画像とは、出品者が並べた表示順の先頭にある
+            画像を指します。表示 URL は呼び出し側が配信ベース URL と組み立てます。
+            代表画像を持たない商品と、商品を引けなかった明細（issues に notFound）では null です。
+          example: products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png
         quantity:
           type: integer
           format: int32
@@ -3583,6 +3593,7 @@ components:
       type: object
       description: |
         商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
+      additionalProperties: false
       required:
         - imagePath
         - displaySort
@@ -3605,6 +3616,7 @@ components:
         商品作成リクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
         price は負値・非数値を除く十進文字列で受け取り、負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
         images には画像アップロード（POST /v1/products/images）で得たパスと表示順を渡します。表示 URL はフロントが組み立てます。
+      additionalProperties: false
       required:
         - name
         - price
@@ -3674,6 +3686,7 @@ components:
         version には更新対象を読み込んだ時点の値を渡します。DB の現在値と一致しない場合は他者の更新と競合した
         ものとして 409 を返します（再取得したうえで送り直してください）。
         負価格・負在庫・名称長超過などの業務不変条件違反は 422 を返します。
+      additionalProperties: false
       required:
         - version
       properties:
@@ -3757,6 +3770,7 @@ components:
         delta は符号付きで、正の値で在庫を補充し、負の値で在庫を差し引きます。
         増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は業務不変条件違反として 422 を返します。
         在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+      additionalProperties: false
       required:
         - delta
       properties:
@@ -3770,6 +3784,7 @@ components:
       description: |
         商品画像アップロードリクエスト（multipart/form-data）。画像ファイルを 1 件受け取ります。
         対応形式は png / jpeg / webp、サイズ上限は OBJECT_STORAGE_MAX_UPLOAD_BYTES です（超過は 413、非対応形式は 415）。
+      additionalProperties: false
       required:
         - image
       properties:
@@ -3864,6 +3879,7 @@ components:
       description: |
         購入作成リクエスト。明細（商品IDと数量）の配列を受け取ります。
         明細は 1 件以上必須で、同一 productId の重複は許可しません（いずれも 422）。
+      additionalProperties: false
       required:
         - details
       properties:
@@ -3877,22 +3893,16 @@ components:
     PurchaseShippableItemResponse:
       type: object
       description: |
-        まとめ発送の組に含まれる購入 1 件のスキーマ。発送指示は購入 1 件ずつ行うため id を返します。
+        まとめ発送の組に含まれる購入 1 件のスキーマ。発送指示は購入 1 件ずつ code を指定して行います。
         組に入っている時点で発送可能なので、status は返しません。明細も含みません（購入詳細 API で取得します）。
       required:
-        - id
         - code
         - totalAmount
         - orderedAt
       properties:
-        id:
-          type: string
-          format: uuid
-          description: 購入ID。発送指示（`POST /v1/purchases/{purchaseId}/ship`）に用います。
-          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）。発送指示（`PATCH /v1/purchases/{purchaseCode}/ship`）に用います。
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         totalAmount:
           type: integer
@@ -3945,7 +3955,6 @@ components:
         金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
         すべて USD セント単位の整数です。
       required:
-        - id
         - code
         - userId
         - status
@@ -3957,14 +3966,9 @@ components:
         - orderedAt
         - paidAt
       properties:
-        id:
-          type: string
-          format: uuid
-          description: 購入ID
-          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         userId:
           type: string
@@ -4016,7 +4020,6 @@ components:
         金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
         すべて USD セント単位の整数です。
       required:
-        - id
         - code
         - userId
         - status
@@ -4028,14 +4031,9 @@ components:
         - orderedAt
         - shippedAt
       properties:
-        id:
-          type: string
-          format: uuid
-          description: 購入ID
-          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         userId:
           type: string
@@ -4087,7 +4085,6 @@ components:
         金額（subtotalAmount / taxAmount / shippingFee / totalAmount / 明細 unitPrice）は
         すべて USD セント単位の整数です。
       required:
-        - id
         - code
         - userId
         - status
@@ -4099,14 +4096,9 @@ components:
         - orderedAt
         - deliveredAt
       properties:
-        id:
-          type: string
-          format: uuid
-          description: 購入ID
-          example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         code:
           type: string
-          description: 購入コード（UUIDv7 文字列・一意）
+          description: 購入コード（利用者へ注文番号として見せる一意の識別子）
           example: 0190b0d4-7b1a-7c2e-9f3a-1b2c3d4e5f60
         userId:
           type: string

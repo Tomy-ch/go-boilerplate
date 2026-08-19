@@ -80,10 +80,13 @@ For PATCH operations, create a dedicated wrapper schema using `allOf`:
 # UserPatchRequest.yaml
 allOf:
   - $ref: './UserBaseInputRequest.yaml'
-additionalProperties: false
 ```
 
 This separates the input structure from the operation semantics.
+
+`additionalProperties: false` stays on `UserBaseInputRequest.yaml`, which declares the properties.
+Putting it on the wrapper instead rejects **every** field: `additionalProperties` only sees properties
+declared in the same schema object, and the wrapper declares none.
 
 ## Core Schemas
 
@@ -203,7 +206,7 @@ allOf:
 - Do not make schemas serve both request and response purposes
 - Include `description` and `example` on all properties
 - Use `required` to explicitly list mandatory fields
-- Keep `additionalProperties: false` on request schemas to reject unknown fields
+- Declare `additionalProperties: false` on the request schema object that holds the properties — never on an `allOf` wrapper, which cannot see them (see [PATCH Support](#patch-support))
 - Boundary values like `maxLength` are a **wire contract**, not the domain's business rule (different owner) — see [Input Boundary Value Ownership](../../boundary-ownership.md)
 
 ## Checklist

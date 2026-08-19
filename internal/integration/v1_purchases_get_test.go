@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	v1purchases "go-boilerplate/internal/controller/handler/v1/purchases"
 	"go-boilerplate/internal/controller/handler/v1/purchases/gen"
+	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
@@ -30,11 +31,14 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 
 	summaryFixture := func() purchaseuc.PurchaseSummaryView {
 		return purchaseuc.PurchaseSummaryView{
-			Code:        "int-code",
-			TotalAmount: 176500,
-			StatusID:    uuidtestkit.NewTestFromSalt(t, "int_status"),
-			StatusName:  "完了",
-			OrderedAt:   time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
+			Code:          "int-code",
+			TotalAmount:   176500,
+			StatusID:      uuidtestkit.NewTestFromSalt(t, "int_status"),
+			StatusCode:    domainpurchase.StatusCompleted.Code(),
+			StatusName:    "完了",
+			FirstItemName: "ワイヤレスイヤホン",
+			ItemCount:     3,
+			OrderedAt:     time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 		}
 	}
 
@@ -59,6 +63,56 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/purchases", nil, headers)
 			AssertJSONResponseType[gen.PurchaseListResponse](t, actual)
+		})
+
+		t.Run("一覧の要素が明細の要約（先頭商品名・点数）を載せて返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{summaryFixture()}}, nil,
+			)
+
+			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
+
+			headers := availablePurchaseUser(t, e)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/purchases", nil, headers)
+			require.Equal(t, http.StatusOK, actual.StatusCode)
+
+			var body gen.PurchaseListResponse
+			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
+			require.Len(t, body.Items, 1)
+			assert.Equal(t, "ワイヤレスイヤホン", body.Items[0].FirstItemName)
+			assert.EqualValues(t, 3, body.Items[0].ItemCount)
+		})
+
+		t.Run("一覧の要素がステータスの業務キーcodeを載せて返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{summaryFixture()}}, nil,
+			)
+
+			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
+
+			headers := availablePurchaseUser(t, e)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/purchases", nil, headers)
+			require.Equal(t, http.StatusOK, actual.StatusCode)
+
+			var body gen.PurchaseListResponse
+			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
+			require.Len(t, body.Items, 1)
+			assert.Equal(t, "完了", body.Items[0].Status.Name)
+			assert.EqualValues(t, domainpurchase.StatusCompleted.Code(), body.Items[0].Status.Code)
 		})
 
 		t.Run("afterカーソル指定で認証主体のuserIDとcursorがUsecaseへバインドされる", func(t *testing.T) {

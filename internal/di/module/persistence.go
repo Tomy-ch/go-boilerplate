@@ -5,6 +5,7 @@ import (
 	dashboardqs "go-boilerplate/internal/infrastructure/rdb/query_service/dashboard"              // sample-api:line
 	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking"   // sample-api:line
 	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"          // sample-api:line
+	purchasefeedqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/feed"       // sample-api:line
 	purchasesummaryqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/summary" // sample-api:line
 	cartrepo "go-boilerplate/internal/infrastructure/rdb/repository/cart"                         // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                            // sample-api:line
@@ -20,15 +21,13 @@ import (
 	"go.uber.org/fx"
 )
 
-// persistenceModule は、RDB を背後に持つ永続化系の依存（repository / query_service /
-// command_service / system_cqrs）を提供するfx.Moduleです。DatabaseModule() の db 接続層
-// とは区別され、その上に載るデータアクセス実装をまとめます。
+// persistenceModule は、RDB 背後の永続化系依存（repository / query_service / command_service /
+// system_cqrs）を提供する fx.Module です。詳細は internal/di/module/README.md § Design Policy を参照。
 func persistenceModule() fx.Option {
 	return fx.Module("persistence",
 		fx.Module("repository",
 			fx.Provide(
 				// sample-api:begin
-				// サンプルのリポジトリ
 				user.New,
 				user.NewRoleRepository,
 				user.NewLockRepository,
@@ -44,13 +43,14 @@ func persistenceModule() fx.Option {
 		fx.Module("query_service",
 			fx.Provide(
 				// sample-api:begin
-				// サンプルのクエリサービス（購入明細を集計した商品売上ランキング）
+				// productrankingqs: 商品売上ランキング（docs/spec/product-ranking/usecase.md § Overview）
 				productrankingqs.New,
-				// サンプルのクエリサービス（購入詳細の集約跨ぎ read 投影）
+				// purchasedetailqs / purchasefeedqs: 集約跨ぎ read 投影（docs/spec/purchase/usecase.md § GET 詳細 / GET 一覧）
 				purchasedetailqs.New,
-				// サンプルのクエリサービス（認証主体自身の購入集計）
+				purchasefeedqs.New,
+				// purchasesummaryqs: 認証主体自身の購入集計（docs/spec/purchase/usecase.md § GET 集計）
 				purchasesummaryqs.New,
-				// サンプルのクエリサービス（購入・商品を横断した admin ダッシュボード集計）
+				// dashboardqs: 購入・商品横断の admin 集計（docs/spec/dashboard/usecase.md § Overview）
 				dashboardqs.New,
 				// sample-api:end
 			),
@@ -58,7 +58,7 @@ func persistenceModule() fx.Option {
 		fx.Module("command_service",
 			fx.Provide(
 				// sample-api:begin
-				// サンプルのコマンドサービス（購入の原子的書き込み）
+				// purchasecmd: 購入の原子的書き込み（docs/spec/purchase/usecase.md 冒頭ノート）
 				purchasecmd.New,
 				// sample-api:end
 			),

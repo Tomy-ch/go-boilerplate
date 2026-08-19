@@ -12,7 +12,7 @@ patch:
   security:
     - BearerAuth: []
   parameters:
-    - $ref: '../../../../components/parameters/purchase/PurchaseIdParam.yaml'
+    - $ref: '../../../../components/parameters/purchase/PurchaseCodeParam.yaml'
   responses:
     '200':
       description: 購入の発送に成功しました

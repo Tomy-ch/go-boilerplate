@@ -32,7 +32,6 @@ import (
 func newTestPurchaseView(t *testing.T) purchaseuc.PurchaseView {
 	t.Helper()
 	return purchaseuc.PurchaseView{
-		ID:             uuidtestkit.NewTestFromSalt(t, "h_id"),
 		Code:           "h-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "h_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "h_status"),
@@ -116,7 +115,6 @@ func Test_server_PostPurchases(t *testing.T) {
 
 			r, ok := resp.(gen.PostPurchases201JSONResponse)
 			require.True(t, ok)
-			assert.Equal(t, view.Purchase.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Purchase.Code, r.Code)
 			assert.Equal(t, view.Purchase.UserID.ToPrimitive(), r.UserId)
 			assert.Equal(t, view.Purchase.StatusID.ToPrimitive(), r.StatusId)
@@ -258,7 +256,6 @@ func Test_toPurchaseResponse(t *testing.T) {
 			view := newTestPurchaseView(t)
 			actual, err := toPurchaseResponse(view, nil)
 			require.NoError(t, err)
-			assert.Equal(t, view.ID.ToPrimitive(), actual.Id)
 			assert.Equal(t, view.Code, actual.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), actual.UserId)
 			assert.Equal(t, view.StatusID.ToPrimitive(), actual.StatusId)
@@ -343,17 +340,23 @@ func Test_toPurchaseSummaryResponse(t *testing.T) {
 			statusID := uuidtestkit.NewTestFromSalt(t, "summary_status")
 			orderedAt := time.Date(2026, time.July, 24, 10, 30, 0, 0, time.UTC)
 			actual := toPurchaseSummaryResponse(purchaseuc.PurchaseSummaryView{
-				Code:        "summary-code",
-				TotalAmount: 176500,
-				StatusID:    statusID,
-				StatusName:  "支払い済み",
-				OrderedAt:   orderedAt,
+				Code:          "summary-code",
+				TotalAmount:   176500,
+				StatusID:      statusID,
+				StatusCode:    7, // 支払い済みの業務キー（値そのものは infra の統合テストがドメイン定数と突き合わせる）
+				StatusName:    "支払い済み",
+				FirstItemName: "ワイヤレスイヤホン",
+				ItemCount:     3,
+				OrderedAt:     orderedAt,
 			})
 
 			assert.Equal(t, "summary-code", actual.Code)
 			assert.Equal(t, int64(176500), actual.TotalAmount)
 			assert.Equal(t, statusID.ToPrimitive(), actual.Status.Id)
 			assert.Equal(t, "支払い済み", actual.Status.Name)
+			assert.EqualValues(t, 7, actual.Status.Code) // 支払い済みの業務キー
+			assert.Equal(t, "ワイヤレスイヤホン", actual.FirstItemName)
+			assert.EqualValues(t, 3, actual.ItemCount)
 			assert.Equal(t, orderedAt, actual.OrderedAt)
 		})
 	})

@@ -163,16 +163,16 @@ paths:
     $ref: './paths/v1/purchases.yaml'
   /v1/purchases/shippable:
     $ref: './paths/v1/purchases/shippable.yaml'
-  /v1/purchases/{purchaseId}:
-    $ref: './paths/v1/purchases/purchaseId.yaml'
-  /v1/purchases/{purchaseId}/cancel:
-    $ref: './paths/v1/purchases/purchaseId/cancel.yaml'
-  /v1/purchases/{purchaseId}/pay:
-    $ref: './paths/v1/purchases/purchaseId/pay.yaml'
-  /v1/purchases/{purchaseId}/ship:
-    $ref: './paths/v1/purchases/purchaseId/ship.yaml'
-  /v1/purchases/{purchaseId}/deliver:
-    $ref: './paths/v1/purchases/purchaseId/deliver.yaml'
+  /v1/purchases/{purchaseCode}:
+    $ref: './paths/v1/purchases/purchaseCode.yaml'
+  /v1/purchases/{purchaseCode}/cancel:
+    $ref: './paths/v1/purchases/purchaseCode/cancel.yaml'
+  /v1/purchases/{purchaseCode}/pay:
+    $ref: './paths/v1/purchases/purchaseCode/pay.yaml'
+  /v1/purchases/{purchaseCode}/ship:
+    $ref: './paths/v1/purchases/purchaseCode/ship.yaml'
+  /v1/purchases/{purchaseCode}/deliver:
+    $ref: './paths/v1/purchases/purchaseCode/deliver.yaml'
   /v1/dashboard/summary:
     $ref: './paths/v1/dashboard/summary.yaml'
   /v1/carts/me:

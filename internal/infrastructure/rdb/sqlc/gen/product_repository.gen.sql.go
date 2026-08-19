@@ -47,17 +47,17 @@ WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
-        $3::SMALLINT [] IS NULL
+        $3::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY($3::SMALLINT [])
+            WHERE c.code = ANY($3::SMALLINT[])
         )
     )
     AND (
-        $4::SMALLINT [] IS NULL
+        $4::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY($4::SMALLINT [])
+            WHERE s.code = ANY($4::SMALLINT[])
         )
     )
     AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -91,17 +91,17 @@ type CountPublishedProductsByFilterParams struct {
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
-//	        $3::SMALLINT [] IS NULL
+//	        $3::SMALLINT[] IS NULL
 //	        OR p.category_id IN (
 //	            SELECT c.id FROM product_categories AS c
-//	            WHERE c.code = ANY($3::SMALLINT [])
+//	            WHERE c.code = ANY($3::SMALLINT[])
 //	        )
 //	    )
 //	    AND (
-//	        $4::SMALLINT [] IS NULL
+//	        $4::SMALLINT[] IS NULL
 //	        OR p.status_id IN (
 //	            SELECT s.id FROM product_statuses AS s
-//	            WHERE s.code = ANY($4::SMALLINT [])
+//	            WHERE s.code = ANY($4::SMALLINT[])
 //	        )
 //	    )
 //	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -268,9 +268,9 @@ SELECT
     src.display_sort
 FROM (
     SELECT
-        UNNEST($2::UUID []) AS id,
-        UNNEST($3::TEXT []) AS image_path,
-        UNNEST($4::SMALLINT []) AS display_sort
+        UNNEST($2::UUID[]) AS id,
+        UNNEST($3::TEXT[]) AS image_path,
+        UNNEST($4::SMALLINT[]) AS display_sort
 ) AS src
 ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING
 `
@@ -298,9 +298,9 @@ type CreateProductImagesIfAbsentParams struct {
 //	    src.display_sort
 //	FROM (
 //	    SELECT
-//	        UNNEST($2::UUID []) AS id,
-//	        UNNEST($3::TEXT []) AS image_path,
-//	        UNNEST($4::SMALLINT []) AS display_sort
+//	        UNNEST($2::UUID[]) AS id,
+//	        UNNEST($3::TEXT[]) AS image_path,
+//	        UNNEST($4::SMALLINT[]) AS display_sort
 //	) AS src
 //	ON CONFLICT ON CONSTRAINT product_images_id_primary DO NOTHING
 func (q *Queries) CreateProductImagesIfAbsent(ctx context.Context, arg *CreateProductImagesIfAbsentParams) error {
@@ -482,7 +482,7 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 const listExistingProductImagePaths = `-- name: ListExistingProductImagePaths :many
 SELECT DISTINCT pi.image_path
 FROM product_images AS pi
-WHERE pi.image_path = ANY($1::TEXT [])
+WHERE pi.image_path = ANY($1::TEXT[])
     AND pi.deleted_at IS NULL
 `
 
@@ -494,7 +494,7 @@ WHERE pi.image_path = ANY($1::TEXT [])
 //
 //	SELECT DISTINCT pi.image_path
 //	FROM product_images AS pi
-//	WHERE pi.image_path = ANY($1::TEXT [])
+//	WHERE pi.image_path = ANY($1::TEXT[])
 //	    AND pi.deleted_at IS NULL
 func (q *Queries) ListExistingProductImagePaths(ctx context.Context, imagePaths []string) ([]string, error) {
 	rows, err := q.db.Query(ctx, listExistingProductImagePaths, imagePaths)
@@ -593,7 +593,7 @@ func (q *Queries) ListLowStockProducts(ctx context.Context, limitParam int32) ([
 const listProductImagesByProductIDs = `-- name: ListProductImagesByProductIDs :many
 SELECT pi.id, pi.product_id, pi.image_path, pi.display_sort, pi.deleted_at, pi.created_at, pi.updated_at
 FROM product_images AS pi
-WHERE pi.product_id = ANY($1::UUID [])
+WHERE pi.product_id = ANY($1::UUID[])
     AND pi.deleted_at IS NULL
 ORDER BY pi.product_id, pi.display_sort
 `
@@ -609,7 +609,7 @@ type ListProductImagesByProductIDsRow struct {
 //
 //	SELECT pi.id, pi.product_id, pi.image_path, pi.display_sort, pi.deleted_at, pi.created_at, pi.updated_at
 //	FROM product_images AS pi
-//	WHERE pi.product_id = ANY($1::UUID [])
+//	WHERE pi.product_id = ANY($1::UUID[])
 //	    AND pi.deleted_at IS NULL
 //	ORDER BY pi.product_id, pi.display_sort
 func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]*ListProductImagesByProductIDsRow, error) {
@@ -648,7 +648,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE p.id = ANY($1::UUID [])
+WHERE p.id = ANY($1::UUID[])
 ORDER BY p.id
 `
 
@@ -673,7 +673,7 @@ type ListProductsByIDsRow struct {
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
-//	WHERE p.id = ANY($1::UUID [])
+//	WHERE p.id = ANY($1::UUID[])
 //	ORDER BY p.id
 func (q *Queries) ListProductsByIDs(ctx context.Context, productIdsParam []uuid.UUID) ([]*ListProductsByIDsRow, error) {
 	rows, err := q.db.Query(ctx, listProductsByIDs, productIdsParam)
@@ -718,7 +718,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE p.id = ANY($1::UUID [])
+WHERE p.id = ANY($1::UUID[])
 ORDER BY p.id
 FOR UPDATE OF p
 `
@@ -744,7 +744,7 @@ type ListProductsByIDsForUpdateRow struct {
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
-//	WHERE p.id = ANY($1::UUID [])
+//	WHERE p.id = ANY($1::UUID[])
 //	ORDER BY p.id
 //	FOR UPDATE OF p
 func (q *Queries) ListProductsByIDsForUpdate(ctx context.Context, productIdsParam []uuid.UUID) ([]*ListProductsByIDsForUpdateRow, error) {
@@ -794,17 +794,17 @@ WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
-        $3::SMALLINT [] IS NULL
+        $3::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY($3::SMALLINT [])
+            WHERE c.code = ANY($3::SMALLINT[])
         )
     )
     AND (
-        $4::SMALLINT [] IS NULL
+        $4::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY($4::SMALLINT [])
+            WHERE s.code = ANY($4::SMALLINT[])
         )
     )
     AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -865,17 +865,17 @@ type ListPublishedProductsAscAfterRow struct {
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
-//	        $3::SMALLINT [] IS NULL
+//	        $3::SMALLINT[] IS NULL
 //	        OR p.category_id IN (
 //	            SELECT c.id FROM product_categories AS c
-//	            WHERE c.code = ANY($3::SMALLINT [])
+//	            WHERE c.code = ANY($3::SMALLINT[])
 //	        )
 //	    )
 //	    AND (
-//	        $4::SMALLINT [] IS NULL
+//	        $4::SMALLINT[] IS NULL
 //	        OR p.status_id IN (
 //	            SELECT s.id FROM product_statuses AS s
-//	            WHERE s.code = ANY($4::SMALLINT [])
+//	            WHERE s.code = ANY($4::SMALLINT[])
 //	        )
 //	    )
 //	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -953,17 +953,17 @@ WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
-        $3::SMALLINT [] IS NULL
+        $3::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY($3::SMALLINT [])
+            WHERE c.code = ANY($3::SMALLINT[])
         )
     )
     AND (
-        $4::SMALLINT [] IS NULL
+        $4::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY($4::SMALLINT [])
+            WHERE s.code = ANY($4::SMALLINT[])
         )
     )
     AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -1018,17 +1018,17 @@ type ListPublishedProductsAscFirstRow struct {
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
-//	        $3::SMALLINT [] IS NULL
+//	        $3::SMALLINT[] IS NULL
 //	        OR p.category_id IN (
 //	            SELECT c.id FROM product_categories AS c
-//	            WHERE c.code = ANY($3::SMALLINT [])
+//	            WHERE c.code = ANY($3::SMALLINT[])
 //	        )
 //	    )
 //	    AND (
-//	        $4::SMALLINT [] IS NULL
+//	        $4::SMALLINT[] IS NULL
 //	        OR p.status_id IN (
 //	            SELECT s.id FROM product_statuses AS s
-//	            WHERE s.code = ANY($4::SMALLINT [])
+//	            WHERE s.code = ANY($4::SMALLINT[])
 //	        )
 //	    )
 //	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -1100,17 +1100,17 @@ WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
-        $3::SMALLINT [] IS NULL
+        $3::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY($3::SMALLINT [])
+            WHERE c.code = ANY($3::SMALLINT[])
         )
     )
     AND (
-        $4::SMALLINT [] IS NULL
+        $4::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY($4::SMALLINT [])
+            WHERE s.code = ANY($4::SMALLINT[])
         )
     )
     AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -1171,17 +1171,17 @@ type ListPublishedProductsDescAfterRow struct {
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
-//	        $3::SMALLINT [] IS NULL
+//	        $3::SMALLINT[] IS NULL
 //	        OR p.category_id IN (
 //	            SELECT c.id FROM product_categories AS c
-//	            WHERE c.code = ANY($3::SMALLINT [])
+//	            WHERE c.code = ANY($3::SMALLINT[])
 //	        )
 //	    )
 //	    AND (
-//	        $4::SMALLINT [] IS NULL
+//	        $4::SMALLINT[] IS NULL
 //	        OR p.status_id IN (
 //	            SELECT s.id FROM product_statuses AS s
-//	            WHERE s.code = ANY($4::SMALLINT [])
+//	            WHERE s.code = ANY($4::SMALLINT[])
 //	        )
 //	    )
 //	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -1259,17 +1259,17 @@ WHERE p.published_at IS NOT NULL
     AND ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
-        $3::SMALLINT [] IS NULL
+        $3::SMALLINT[] IS NULL
         OR p.category_id IN (
             SELECT c.id FROM product_categories AS c
-            WHERE c.code = ANY($3::SMALLINT [])
+            WHERE c.code = ANY($3::SMALLINT[])
         )
     )
     AND (
-        $4::SMALLINT [] IS NULL
+        $4::SMALLINT[] IS NULL
         OR p.status_id IN (
             SELECT s.id FROM product_statuses AS s
-            WHERE s.code = ANY($4::SMALLINT [])
+            WHERE s.code = ANY($4::SMALLINT[])
         )
     )
     AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -1325,17 +1325,17 @@ type ListPublishedProductsDescFirstRow struct {
 //	    AND ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
-//	        $3::SMALLINT [] IS NULL
+//	        $3::SMALLINT[] IS NULL
 //	        OR p.category_id IN (
 //	            SELECT c.id FROM product_categories AS c
-//	            WHERE c.code = ANY($3::SMALLINT [])
+//	            WHERE c.code = ANY($3::SMALLINT[])
 //	        )
 //	    )
 //	    AND (
-//	        $4::SMALLINT [] IS NULL
+//	        $4::SMALLINT[] IS NULL
 //	        OR p.status_id IN (
 //	            SELECT s.id FROM product_statuses AS s
-//	            WHERE s.code = ANY($4::SMALLINT [])
+//	            WHERE s.code = ANY($4::SMALLINT[])
 //	        )
 //	    )
 //	    AND ($5::NUMERIC IS NULL OR p.price >= $5)
@@ -1403,7 +1403,7 @@ SET
     updated_at = NOW()
 WHERE product_images.product_id = $1
     AND product_images.deleted_at IS NULL
-    AND NOT (product_images.id = ANY($2::UUID []))
+    AND NOT (product_images.id = ANY($2::UUID[]))
 `
 
 type SoftDeleteProductImagesNotInParams struct {
@@ -1422,7 +1422,7 @@ type SoftDeleteProductImagesNotInParams struct {
 //	    updated_at = NOW()
 //	WHERE product_images.product_id = $1
 //	    AND product_images.deleted_at IS NULL
-//	    AND NOT (product_images.id = ANY($2::UUID []))
+//	    AND NOT (product_images.id = ANY($2::UUID[]))
 func (q *Queries) SoftDeleteProductImagesNotIn(ctx context.Context, arg *SoftDeleteProductImagesNotInParams) error {
 	_, err := q.db.Exec(ctx, softDeleteProductImagesNotIn, arg.ProductID, arg.ImageIds)
 	return err
