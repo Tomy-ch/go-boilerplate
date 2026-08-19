@@ -329,6 +329,19 @@ func Test_evaluateClosure(t *testing.T) {
 			assert.Equal(t, []string{"email"}, fields)
 		})
 
+		t.Run("allOf が循環しても再帰が止まる", func(t *testing.T) {
+			t.Parallel()
+
+			base := closed(withProperties("email"))
+			root := composed(base)
+			base.AllOf = openapi3.SchemaRefs{openapi3.NewSchemaRef("", root)}
+
+			verdict, fields := evaluateClosure(root)
+
+			assert.Equal(t, closureEffective, verdict)
+			assert.Empty(t, fields)
+		})
+
 		t.Run("additionalProperties: true は宣言として数えない", func(t *testing.T) {
 			t.Parallel()
 
