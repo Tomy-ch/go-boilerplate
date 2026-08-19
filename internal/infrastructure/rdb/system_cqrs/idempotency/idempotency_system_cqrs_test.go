@@ -2,6 +2,9 @@ package idempotency
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -33,6 +36,18 @@ func newFingerprint(b byte) []byte {
 		fp[i] = b
 	}
 	return fp
+}
+
+// newOversizedScope は、(scope, idempotency_key) の一意インデックスに載せられない長さの scope を返します。
+// btree のインデックス行は 8191 バイトが上限で、超えると SQLSTATE 54000 になります。
+// 中身を 16 進で散らすのは、同じ文字の繰り返しだと圧縮が効いて上限に届かないためです。
+func newOversizedScope() string {
+	var sb strings.Builder
+	for i := range 200 {
+		sum := sha256.Sum256([]byte{byte(i), byte(i >> 8)})
+		sb.WriteString(hex.EncodeToString(sum[:]))
+	}
+	return sb.String()
 }
 
 func TestNew(t *testing.T) {
@@ -123,10 +138,11 @@ func Test_store_Claim(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				// NUL バイトを含む scope は PostgreSQL の TEXT に格納できず、ロック競合でも既存行でもない
-				// 汎用エラーとなるため、Claim の default 分岐（ErrInternal 正規化）へ落ちる。
+				// 一意インデックスに載らない長さの scope は、ロック競合でも既存行でもなく、値の不正
+				// としても分類されない記憶域の上限（SQLSTATE 54000）で失敗するため、Claim の
+				// default 分岐（ErrInternal 正規化）へ落ちる。
 				params := idempotencybndry.ClaimParams{
-					Scope: "bad\x00scope", Key: "key-1", Method: "POST", Path: "/v1/users",
+					Scope: newOversizedScope(), Key: "key-1", Method: "POST", Path: "/v1/users",
 					Fingerprint: newFingerprint(0x05), ExpiresAt: time.Now().Add(time.Hour),
 				}
 				_, err := s.Claim(ctx, params)
