@@ -26,10 +26,19 @@ export type FeedbackIssue = {
   readonly number: number;
   readonly kinds: readonly FindingKind[];
   readonly observation: Observation;
+  /** Issue が作られた epoch(秒)。窓の `openedAt` とは別物で、こちらは所見が記録された時刻。 */
+  readonly createdAt?: number;
+  /** Issue が閉じられた epoch(秒)。開いたままなら `undefined`。 */
+  readonly resolvedAt?: number;
+  /** 本文の H2 節。読解が無ければ空。 */
+  readonly sections?: Readonly<Record<string, string>>;
 };
 
 /** 分類ラベルの接頭辞。`feedback/skill` の `feedback/` の部分。 */
 export const KIND_LABEL_PREFIX = "feedback/";
+
+/** 分類が付いていない Issue をまとめる鍵。 */
+export const UNCLASSIFIED = "unclassified";
 
 /** 取りうる分類の全体。ラベルからの変換で許可リストとして使う。 */
 export const FINDING_KINDS: readonly FindingKind[] = [
@@ -126,7 +135,7 @@ export function mergeWaitSec(observation: Observation): number | undefined {
  * 「数えた値」と「読解した値」が同じスコアの中で見分けられなくなります。
  */
 export function clusterKey(issue: FeedbackIssue): string {
-  return issue.kinds.length === 0 ? "unclassified" : [...issue.kinds].sort().join("+");
+  return issue.kinds.length === 0 ? UNCLASSIFIED : [...issue.kinds].sort().join("+");
 }
 
 /**
@@ -188,4 +197,76 @@ export function waitDominated(issues: readonly FeedbackIssue[]): number[] {
     })
     .map((i) => i.number)
     .sort((a, b) => a - b);
+}
+
+/**
+ * 着地から測り直しまでの日数。
+ *
+ * @remarks
+ * ADR-0008 がループの条件に置いた「改善が効いたかを後で判定する」の待ち時間です。短すぎれば
+ * 母数が足りず、長すぎれば次の改善と混ざります。14 日は最初の設定値であり、運用データで
+ * 動かす前提で定数に置いてあります。
+ */
+export const REEVALUATION_DAYS = 14;
+
+/** 着地した改善 1 件と、その後の再発。 */
+export type Reevaluation = {
+  /** 対象のクラスタ鍵。 */
+  readonly key: string;
+  /** 着地の合図になった Issue。同じ鍵のうち最後に閉じられたもの。 */
+  readonly landedIssue: number;
+  /** その Issue が閉じられた epoch(秒)。 */
+  readonly landedAt: number;
+  /** 着地後に同じ鍵で新しく作られた Issue。 */
+  readonly recurred: readonly number[];
+  /** 測り直しの時期が来ているか。来ていなければ、再発が無くても判定材料にならない。 */
+  readonly due: boolean;
+};
+
+/**
+ * 着地した改善を、その後の再発と並べて返す。
+ *
+ * @remarks
+ * 「改善が着地した」の合図に Issue のクローズを使います。この repo では `closes #N` が
+ * デフォルトブランチ以外で発火しないため、Feedback Issue のクローズは常に人が明示的に行う
+ * 操作であり、「この所見は片付いた」という人の宣言そのものになります。着地日を別に記録する
+ * 仕組みを足しても、その記録を人が更新する手間が増えるだけで、宣言の出所は変わりません。
+ *
+ * `unclassified` は除きます。何についての所見か分かっていない以上、「同じものが再発したか」に
+ * 答えられないためです。
+ *
+ * 判定はしません。再発の件数と、測り直しの時期が来たかを並べるだけです。効いたかどうかを
+ * 決めるのはレトロの人であり、ここが「効かなかった」と書けば、その判断を機械が先に取ること
+ * になります（ADR-0008）。
+ */
+export function reevaluations(issues: readonly FeedbackIssue[], now: number): Reevaluation[] {
+  const byKey = new Map<string, FeedbackIssue[]>();
+  for (const issue of issues) {
+    const key = clusterKey(issue);
+    if (key === UNCLASSIFIED) continue;
+    byKey.set(key, [...(byKey.get(key) ?? []), issue]);
+  }
+
+  const out: Reevaluation[] = [];
+  for (const [key, group] of byKey) {
+    const landed = group
+      .filter((i): i is FeedbackIssue & { resolvedAt: number } => i.resolvedAt !== undefined)
+      .sort((a, b) => b.resolvedAt - a.resolvedAt)[0];
+    if (landed === undefined) continue;
+
+    const recurred = group
+      .filter((i) => i.createdAt !== undefined && i.createdAt > landed.resolvedAt)
+      .map((i) => i.number)
+      .sort((a, b) => a - b);
+
+    out.push({
+      key,
+      landedIssue: landed.number,
+      landedAt: landed.resolvedAt,
+      recurred,
+      due: now >= landed.resolvedAt + REEVALUATION_DAYS * 86_400,
+    });
+  }
+
+  return out.sort((a, b) => b.recurred.length - a.recurred.length || a.key.localeCompare(b.key));
 }

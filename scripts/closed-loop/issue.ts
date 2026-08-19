@@ -42,6 +42,16 @@ export const BODY_SECTIONS: readonly string[] = [
   "Evidence",
 ] as const;
 
+/**
+ * 改善案が書かれる節。
+ *
+ * @remarks
+ * 週次がこの節だけを名指しで拾います。8 つのうち唯一、そのままレトロの議題になる形で書かれる
+ * 節だからです。名前を定数にしておくのは、`BODY_SECTIONS` の綴りを変えたときに拾えなくなる側が
+ * 黙って空になるためです。
+ */
+export const IMPROVEMENT_SECTION = "Suggested Improvement";
+
 const FENCE = "```";
 const BLOCK_START = `${FENCE}yaml closed-loop`;
 
@@ -184,4 +194,43 @@ export function parseObservation(body: string): Observation | undefined {
     interrupts: num("interrupts"),
     skills: block.includes("skills:") ? skills : undefined,
   };
+}
+
+/**
+ * 本文から H2 節を読み返す。
+ *
+ * @remarks
+ * 書く側（`renderBody`）と対で置きます。節見出しの形が片方だけ変われば、週次が読む節が
+ * 黙って空になるためです。
+ *
+ * 知らない見出しは捨て、空の節は返しません。「書かれていない」と「該当なしと書かれた」を
+ * 呼び出し側が区別できるようにするためで、空の節を空文字で返すと両者が同じ形になります。
+ */
+export function parseSections(body: string): Record<string, string> {
+  const known = new Set<string>(BODY_SECTIONS);
+  const sections: Record<string, string> = {};
+  let current: string | undefined;
+  let buffer: string[] = [];
+
+  const flush = () => {
+    if (current !== undefined) {
+      const text = buffer.join("\n").trim();
+      if (text !== "") sections[current] = text;
+    }
+    buffer = [];
+  };
+
+  for (const raw of body.split("\n")) {
+    const line = raw.replace(/\s+$/, "");
+    const heading = /^##\s+(.+?)\s*$/.exec(line);
+    if (heading !== null) {
+      flush();
+      current = known.has(heading[1] as string) ? (heading[1] as string) : undefined;
+      continue;
+    }
+    if (current !== undefined) buffer.push(line);
+  }
+  flush();
+
+  return sections;
 }

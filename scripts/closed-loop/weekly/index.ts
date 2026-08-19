@@ -9,16 +9,38 @@
 
 import { execFileSync } from "node:child_process";
 
-import { parseObservation } from "../issue";
+import { parseObservation, parseSections, IMPROVEMENT_SECTION } from "../issue";
 import { resolvePeriod, withinPeriod } from "../report";
-import { clusterIssues, failureRate, labelsToKinds, mergeWaitSec, waitDominated, type FeedbackIssue } from "../score";
+import {
+  clusterIssues,
+  failureRate,
+  labelsToKinds,
+  mergeWaitSec,
+  reevaluations,
+  waitDominated,
+  REEVALUATION_DAYS,
+  type FeedbackIssue,
+} from "../score";
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
-type RawIssue = { number: number; title: string; body: string; createdAt: string; labels: { name: string }[] };
+type RawIssue = {
+  number: number;
+  title: string;
+  body: string;
+  createdAt: string;
+  closedAt: string | null;
+  labels: { name: string }[];
+};
+
+const epoch = (iso: string | null): number | undefined => {
+  if (iso === null) return undefined;
+  const n = Math.floor(Date.parse(iso) / 1000);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 const period = resolvePeriod(flag("from"), flag("to"), Math.floor(Date.now() / 1000));
 
@@ -27,30 +49,59 @@ const period = resolvePeriod(flag("from"), flag("to"), Math.floor(Date.now() / 1
 const raw: RawIssue[] = JSON.parse(
   execFileSync(
     "gh",
-    ["issue", "list", "--label", "feedback", "--state", "all", "--limit", "200", "--json", "number,title,body,createdAt,labels"],
+    [
+      "issue",
+      "list",
+      "--label",
+      "feedback",
+      "--state",
+      "all",
+      "--limit",
+      "200",
+      "--json",
+      "number,title,body,createdAt,closedAt,labels",
+    ],
     { encoding: "utf8" },
   ),
 );
 
+// 期間の内と外を両方組み立てる。検討課題は期間内で並べるが、測り直しは「期間より前に閉じた
+// 改善が、期間内で再発したか」を問うので、期間外の Issue が母数から落ちると答えが出せない。
 const issues: FeedbackIssue[] = [];
+const all: FeedbackIssue[] = [];
 let unparsed = 0;
 for (const r of raw) {
-  const at = Math.floor(Date.parse(r.createdAt) / 1000);
-  if (!withinPeriod(at, period)) continue;
+  const createdAt = epoch(r.createdAt);
   const observation = parseObservation(r.body);
   if (observation === undefined) {
     // 人が手で壊した issue 1 件で週次全体を落とさない。件数だけ報告する。
     unparsed += 1;
     continue;
   }
-  issues.push({ number: r.number, kinds: labelsToKinds(r.labels.map((l) => l.name)), observation });
+  const issue: FeedbackIssue = {
+    number: r.number,
+    kinds: labelsToKinds(r.labels.map((l) => l.name)),
+    observation,
+    createdAt,
+    resolvedAt: epoch(r.closedAt),
+    sections: parseSections(r.body),
+  };
+  all.push(issue);
+  if (createdAt !== undefined && withinPeriod(createdAt, period)) issues.push(issue);
 }
 
 const clusters = clusterIssues(issues);
 const waiting = waitDominated(issues);
+const remeasured = reevaluations(all, period.to);
 
 if (process.argv.includes("--json")) {
-  console.log(JSON.stringify({ period, issues: issues.length, unparsed, clusters, waitDominated: waiting }, null, 2));
+  console.log(
+    JSON.stringify(
+      { period, issues: issues.length, unparsed, clusters, waitDominated: waiting, reevaluations: remeasured },
+      null,
+      2,
+    ),
+  );
   process.exit(0);
 }
 
@@ -60,12 +111,30 @@ console.log(`Feedback Issue ${issues.length} 件${unparsed > 0 ? `（解析で�
 
 if (clusters.length > 0) {
   console.log("\n検討課題（スコア降順）");
+  const byNumber = new Map(issues.map((i) => [i.number, i]));
   for (const c of clusters) {
     console.log(
       `  [${c.score.toString().padStart(4)}] ${c.key}  件数${c.frequency} 影響${c.impact} 介入${c.humanIntervention} ${c.isRecurring ? "反復" : "単発"}`,
     );
     console.log(`         ${c.issues.map((n) => `#${n}`).join(" ")}`);
+    // 提案そのものを並べる。順位だけを出すと、読む人は結局 GitHub へ往復して本文を開くことに
+    // なり、その往復こそがレトロで最初に脱落する手順になる。
+    for (const n of c.issues) {
+      const proposal = byNumber.get(n)?.sections?.[IMPROVEMENT_SECTION];
+      if (proposal === undefined) continue;
+      for (const line of proposal.split("\n")) console.log(`         #${n} ${line}`);
+    }
   }
+}
+
+if (remeasured.length > 0) {
+  console.log(`\n測り直し（着地から ${REEVALUATION_DAYS} 日後に判定する）`);
+  for (const r of remeasured) {
+    const when = asDate(r.landedAt);
+    const since = r.recurred.length === 0 ? "再発なし" : `再発 ${r.recurred.map((n) => `#${n}`).join(" ")}`;
+    console.log(`  ${r.key}  #${r.landedIssue} を ${when} にクローズ → ${since}${r.due ? "" : "（判定はまだ早い）"}`);
+  }
+  console.log("  効いたかを決めるのはここではない。保持 / 簡素化 / 撤回はレトロで決めること");
 }
 
 if (waiting.length > 0) {

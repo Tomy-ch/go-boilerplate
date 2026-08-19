@@ -10,7 +10,10 @@ import {
   clusterKey,
   failureRate,
   mergeWaitSec,
+  reevaluations,
   waitDominated,
+  REEVALUATION_DAYS,
+  UNCLASSIFIED,
   type FeedbackIssue,
   type FindingKind,
 } from "./score";
@@ -252,6 +255,120 @@ describe("waitDominated", () => {
         ],
       });
       expect(waitDominated([odd])).toEqual([1]);
+    });
+  });
+});
+
+const DAY = 86_400;
+
+const tracked = (
+  number: number,
+  kinds: FindingKind[],
+  t: { createdAt?: number; resolvedAt?: number },
+): FeedbackIssue => ({
+  number,
+  kinds,
+  observation: obs(),
+  ...t,
+});
+
+describe("UNCLASSIFIED", () => {
+  describe("正常系", () => {
+    it("clusterKey が分類なしに返す鍵と一致する", () => {
+      expect(clusterKey(issue(1, []))).toBe(UNCLASSIFIED);
+    });
+  });
+});
+
+describe("REEVALUATION_DAYS", () => {
+  describe("正常系", () => {
+    it("母数が溜まる程度に長く、次の改善と混ざらない程度に短い", () => {
+      expect(REEVALUATION_DAYS).toBeGreaterThanOrEqual(7);
+      expect(REEVALUATION_DAYS).toBeLessThanOrEqual(30);
+    });
+  });
+});
+
+describe("reevaluations", () => {
+  describe("正常系", () => {
+    it("閉じた Issue を着地として扱う", () => {
+      const r = reevaluations([tracked(1, ["skill"], { createdAt: 0, resolvedAt: 100 })], 100 + REEVALUATION_DAYS * DAY);
+      expect(r).toHaveLength(1);
+      expect(r[0]?.landedIssue).toBe(1);
+      expect(r[0]?.landedAt).toBe(100);
+    });
+
+    it("着地後に作られた同じ鍵の Issue を再発として挙げる", () => {
+      const r = reevaluations(
+        [tracked(1, ["skill"], { createdAt: 0, resolvedAt: 100 }), tracked(2, ["skill"], { createdAt: 200 })],
+        1_000_000,
+      );
+      expect(r[0]?.recurred).toEqual([2]);
+    });
+
+    it("同じ鍵で複数閉じていれば最後の 1 件を着地とする", () => {
+      const r = reevaluations(
+        [
+          tracked(1, ["skill"], { createdAt: 0, resolvedAt: 100 }),
+          tracked(2, ["skill"], { createdAt: 50, resolvedAt: 300 }),
+        ],
+        1_000_000,
+      );
+      expect(r[0]?.landedIssue).toBe(2);
+    });
+
+    it("再発が多い鍵を先に並べる", () => {
+      const r = reevaluations(
+        [
+          tracked(1, ["skill"], { createdAt: 0, resolvedAt: 100 }),
+          tracked(2, ["ci"], { createdAt: 0, resolvedAt: 100 }),
+          tracked(3, ["ci"], { createdAt: 200 }),
+          tracked(4, ["ci"], { createdAt: 300 }),
+        ],
+        1_000_000,
+      );
+      expect(r[0]?.key).toBe("ci");
+    });
+
+    it("再発の数が同じなら鍵の順に並べ、実行ごとに順序が変わらないようにする", () => {
+      const r = reevaluations([tracked(1, ["skill"], { resolvedAt: 100 }), tracked(2, ["ci"], { resolvedAt: 100 })], 1_000_000);
+      expect(r.map((x) => x.key)).toEqual(["ci", "skill"]);
+    });
+
+    it("判定の時期が来ていれば due を立てる", () => {
+      const at = 100 + REEVALUATION_DAYS * DAY;
+      expect(reevaluations([tracked(1, ["skill"], { resolvedAt: 100 })], at)[0]?.due).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("閉じた Issue が無い鍵は挙げない", () => {
+      expect(reevaluations([tracked(1, ["skill"], { createdAt: 0 })], 1_000_000)).toEqual([]);
+    });
+
+    it("分類なしは測り直しの対象にしない", () => {
+      expect(reevaluations([tracked(1, [], { createdAt: 0, resolvedAt: 100 })], 1_000_000)).toEqual([]);
+    });
+
+    it("着地より前に作られた Issue は再発に数えない", () => {
+      const r = reevaluations(
+        [tracked(1, ["skill"], { createdAt: 500, resolvedAt: 600 }), tracked(2, ["skill"], { createdAt: 100 })],
+        1_000_000,
+      );
+      expect(r[0]?.recurred).toEqual([]);
+    });
+
+    it("作成時刻が観測できない Issue は再発に数えない", () => {
+      const r = reevaluations(
+        [tracked(1, ["skill"], { createdAt: 0, resolvedAt: 100 }), tracked(2, ["skill"], {})],
+        1_000_000,
+      );
+      expect(r[0]?.recurred).toEqual([]);
+    });
+
+    it("14 日経つ前は due を立てない", () => {
+      const at = 100 + REEVALUATION_DAYS * DAY - 1;
+      expect(reevaluations([tracked(1, ["skill"], { resolvedAt: 100 })], at)[0]?.due).toBe(false);
     });
   });
 });

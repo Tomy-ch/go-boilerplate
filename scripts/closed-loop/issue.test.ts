@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   BODY_SECTIONS,
+  IMPROVEMENT_SECTION,
   issueTitle,
   parseObservation,
+  parseSections,
   renderBody,
   renderObservation,
   type Observation,
@@ -196,6 +198,50 @@ describe("parseObservation", () => {
     it("空行を挟んでも読み進める", () => {
       const body = "```yaml closed-loop\nwindow_id: w1\n\nclient: claude\n```";
       expect(parseObservation(body)?.client).toBe("claude");
+    });
+  });
+});
+
+describe("IMPROVEMENT_SECTION", () => {
+  describe("正常系", () => {
+    it("本文に置く節のひとつである", () => {
+      expect(BODY_SECTIONS).toContain(IMPROVEMENT_SECTION);
+    });
+  });
+});
+
+describe("parseSections", () => {
+  describe("正常系", () => {
+    it("見出しごとに本文を切り分ける", () => {
+      const s = parseSections("## Outcome\n実装した\n\n## Friction\n遅かった\n");
+      expect(s).toEqual({ Outcome: "実装した", Friction: "遅かった" });
+    });
+
+    it("複数行の節を改行ごと保つ", () => {
+      expect(parseSections("## Outcome\n1 行目\n2 行目\n").Outcome).toBe("1 行目\n2 行目");
+    });
+
+    it("renderBody が書いたものをそのまま読み返せる", () => {
+      const sections = { Outcome: "実装して merge した", [IMPROVEMENT_SECTION]: "skill を 1 つ減らす" };
+      expect(parseSections(renderBody(obs(), sections))).toEqual(sections);
+    });
+
+    it("観測ブロックの行は節として拾わない", () => {
+      expect(parseSections(renderBody(obs({ prompts: 3 })))).toEqual({});
+    });
+  });
+
+  describe("異常系", () => {
+    it("知らない見出しの本文は捨てる", () => {
+      expect(parseSections("## Nonsense\n拾わない\n")).toEqual({});
+    });
+
+    it("空の節は返さない", () => {
+      expect(parseSections("## Outcome\n\n## Friction\nある\n")).toEqual({ Friction: "ある" });
+    });
+
+    it("節がひとつも無ければ空を返す", () => {
+      expect(parseSections("見出しのない本文")).toEqual({});
     });
   });
 });

@@ -11,7 +11,7 @@
  */
 
 import type { Candidate } from "./candidates";
-import { BODY_SECTIONS, type Observation } from "./issue";
+import { BODY_SECTIONS, parseSections, type Observation } from "./issue";
 import { FINDING_KINDS, KIND_LABEL_PREFIX, type FindingKind } from "./score";
 
 /**
@@ -100,37 +100,24 @@ export function buildPrompt(observation: Observation, candidates: readonly Candi
  * 返し、呼び出し側は読解が無かったものとして扱います。
  */
 export function parseSummary(output: string): Summary | undefined {
-  const known = new Set<string>(BODY_SECTIONS);
   const kindSet = new Set<string>(FINDING_KINDS);
-  const sections: Record<string, string> = {};
   const kinds: FindingKind[] = [];
 
-  let current: string | undefined;
-  let buffer: string[] = [];
-  const flush = () => {
-    if (current !== undefined) sections[current] = buffer.join("\n").trim();
-    buffer = [];
-  };
-
   for (const raw of output.split("\n")) {
-    const line = raw.replace(/\s+$/, "");
-    const heading = /^##\s+(.+?)\s*$/.exec(line);
-    if (heading !== null) {
-      flush();
-      current = known.has(heading[1] as string) ? (heading[1] as string) : undefined;
-      continue;
+    const kindLine = KINDS_LINE.exec(raw.trim());
+    if (kindLine === null) continue;
+    for (const k of (kindLine[1] as string).split(",").map((s) => s.trim())) {
+      if (kindSet.has(k) && !kinds.includes(k as FindingKind)) kinds.push(k as FindingKind);
     }
-    const kindLine = KINDS_LINE.exec(line.trim());
-    if (kindLine !== null) {
-      for (const k of (kindLine[1] as string).split(",").map((s) => s.trim())) {
-        if (kindSet.has(k) && !kinds.includes(k as FindingKind)) kinds.push(k as FindingKind);
-      }
-      continue;
-    }
-    if (current !== undefined) buffer.push(line);
   }
-  flush();
 
+  // 分類の行は節の本文ではないので、節を読む前に落とす。残すと最後の節の末尾に混ざる。
+  const sections = parseSections(
+    output
+      .split("\n")
+      .filter((line) => KINDS_LINE.exec(line.trim()) === null)
+      .join("\n"),
+  );
   return Object.keys(sections).length === 0 ? undefined : { sections, kinds };
 }
 
