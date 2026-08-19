@@ -33,7 +33,7 @@ function isRegisteredForDeletion(normalizedPath: string): boolean {
  * 決まっていないためです。
  */
 export function isScanTarget(relativePath: string): boolean {
-  const normalized = relativePath.split("\\").join("/");
+  const normalized = relativePath.replaceAll("\\", "/");
 
   if (MARKER_LITERAL_FILES.includes(normalized) || isRegisteredForDeletion(normalized)) {
     return false;
@@ -44,7 +44,7 @@ export function isScanTarget(relativePath: string): boolean {
 
 /** `<comment> sample-api:` を含むか。 */
 export function containsSampleMarker(content: string): boolean {
-  return new RegExp(`(?:\\/\\/|#|<!--)\\s*${SAMPLE_MARKER}:`).test(content);
+  return new RegExp(String.raw`(?:\/\/|#|<!--)\s*${SAMPLE_MARKER}:`).test(content);
 }
 
 /**

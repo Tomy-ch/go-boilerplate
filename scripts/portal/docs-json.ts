@@ -109,7 +109,7 @@ function basename(filePath: string): string {
 }
 
 function langOf(destination: string): "en" | "ja" {
-  return destination.includes("/ja/") || /\.ja\.md$/.test(destination) ? "ja" : "en";
+  return destination.includes("/ja/") || destination.endsWith(".ja.md") ? "ja" : "en";
 }
 
 /**
@@ -274,7 +274,7 @@ export function buildDocsJson(
       title: "Uncategorized",
       slug: "uncategorized",
       sections: orphans
-        .sort((left, right) => left.title.localeCompare(right.title))
+        .toSorted((left, right) => left.title.localeCompare(right.title))
         .map(toDocSection),
     });
     warnings.push(

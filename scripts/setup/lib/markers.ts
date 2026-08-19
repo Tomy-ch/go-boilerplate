@@ -33,7 +33,7 @@ const QUOTE_LINE = /^\s*>/;
 
 /** `<comment> <marker>:<suffix>` に当たる正規表現を組み立てる。 */
 function markerPattern(marker: string, suffix: string): RegExp {
-  return new RegExp(`(?:\\/\\/|#|<!--)\\s*${marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:${suffix}\\b`);
+  return new RegExp(String.raw`(?:\/\/|#|<!--)\s*${marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:${suffix}\b`);
 }
 
 /**

@@ -54,8 +54,8 @@ export function usesActionPattern(actionPath: string, anchored: boolean): RegExp
   const escaped = actionPath.replace(/[.*+?^${}()|[\]\\\/]/g, "\\$&");
 
   return anchored
-    ? new RegExp(`^(?: {6}- | {8})uses:[ \\t]*["']?${escaped}["']?[ \\t]*(?:#.*)?$`)
-    : new RegExp(`uses:[ \\t]*["']?${escaped}["']?[ \\t]*(?:#.*)?$`);
+    ? new RegExp(String.raw`^(?: {6}- | {8})uses:[ \t]*["']?${escaped}["']?[ \t]*(?:#.*)?$`)
+    : new RegExp(String.raw`uses:[ \t]*["']?${escaped}["']?[ \t]*(?:#.*)?$`);
 }
 
 /**

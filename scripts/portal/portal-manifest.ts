@@ -43,7 +43,7 @@ export function resolveCopyEntries(manifest: unknown): ResolvedCopyEntry[] {
     }
 
     if (!Array.isArray(value)) {
-      throw new Error(`${section} は section の配列である必要があります（meta 以外に map は置けません）`);
+      throw new TypeError(`${section} は section の配列である必要があります（meta 以外に map は置けません）`);
     }
 
     for (const entry of value) {

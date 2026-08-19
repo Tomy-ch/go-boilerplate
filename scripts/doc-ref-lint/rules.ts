@@ -77,7 +77,7 @@ export function checkStructuredReferences(file: string, source: string, adrs: AD
     if (!/^[ \t]*(?:-[ \t]+)?kind:[ \t]*["']?adr["']?[ \t]*$/.test(line)) return [];
     // 行頭から取れるだけ取った長さがそのままインデント。行全体に当てる形（`.*$`）で書くと、
     // `.` が空白も含むため先頭の空白と同じ位置を取り合って後戻りする。
-    const indent = (/^[ \t]*(?:-[ \t]+)?/.exec(line)?.[0] ?? "").length;
+    const indent = line.length - line.replace(/^[ \t]*(?:-[ \t]+)?/, "").length;
     const window = lines.slice(index + 1, index + 1 + ENTRY_SPAN);
     // 次の要素（`- ` 始まり）か、この要素より浅い行に当たったらそこで打ち切る。
     const stop = window.findIndex((next) => /^\s*-\s/.test(next) || next.search(/\S/) < indent);

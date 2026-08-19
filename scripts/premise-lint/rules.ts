@@ -59,7 +59,7 @@ export const PREMISE_PATTERNS: readonly RegExp[] = [
 
 /** マーカー行に当たる正規表現を組み立てる。両名前空間を 1 本で見る。 */
 function marker(suffix: string): RegExp {
-  return new RegExp(`(?:\\/\\/|#|<!--)\\s*(?:boilerplate-only|sample-api):${suffix}\\b`);
+  return new RegExp(String.raw`(?:\/\/|#|<!--)\s*(?:boilerplate-only|sample-api):${suffix}\b`);
 }
 
 const BLOCK_BEGIN = marker("begin");
@@ -144,7 +144,7 @@ export function survivingText(content: string): string {
 
 /** 相対パスの区切りを `/` に揃える。判定を OS に依らせないため。 */
 function normalize(relativePath: string): string {
-  return relativePath.split("\\").join("/");
+  return relativePath.replaceAll("\\", "/");
 }
 
 /** 検査対象の文書か。許可域は対象外、禁止域と層 README が対象。 */
