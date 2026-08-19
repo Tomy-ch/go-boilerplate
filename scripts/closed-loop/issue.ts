@@ -210,6 +210,10 @@ export function parseSections(body: string): Record<string, string> {
   // 見出しは正準表記へ寄せてから照合する。書くのはこちらでも、読む相手はモデルの出力で、
   // `##Outcome`（空白なし）や `## outcome`（小文字）を返してくる。厳密一致にすると、その節は
   // 見出しとして認識されないまま次の既知見出しまでの本文ごと黙って消える。
+  //
+  // ただし許容するのは `##` ちょうどまで。`###` を見出し候補に含めると、モデルが節の中に書いた
+  // サブ見出しが「知らない見出し」として扱われ、そこから次の既知見出しまでが同じように消える
+  // ——緩めたことで塞いだはずの穴が別の入口から開く。`(?!#)` はその一段を閉める。
   const canonical = new Map<string, string>(BODY_SECTIONS.map((s) => [s.toLowerCase(), s]));
   const sections: Record<string, string> = {};
   let current: string | undefined;
@@ -225,7 +229,7 @@ export function parseSections(body: string): Record<string, string> {
 
   for (const raw of body.split("\n")) {
     const line = raw.replace(/\s+$/, "");
-    const heading = /^#{2,3}\s*(.+?)\s*$/.exec(line);
+    const heading = /^##(?!#)\s*(.+?)\s*$/.exec(line);
     if (heading !== null) {
       flush();
       current = canonical.get((heading[1] as string).toLowerCase());

@@ -252,6 +252,11 @@ describe("parseSections", () => {
       expect(parseSections("## Outcome\nA\n##Friction\nB\n")).toEqual({ Outcome: "A", Friction: "B" });
     });
 
+    it("節の中のサブ見出しは見出しにせず本文として残す", () => {
+      const body = "## Evidence\n前半\n### 補足\n後半\n## Outcome\nok\n";
+      expect(parseSections(body)).toEqual({ Evidence: "前半\n### 補足\n後半", Outcome: "ok" });
+    });
+
     it("節がひとつも無ければ空を返す", () => {
       expect(parseSections("見出しのない本文")).toEqual({});
     });
