@@ -4,8 +4,6 @@
  * @remarks
  * 期間は絶対日付で受け取ります。過去分の取り直しが主目的である以上、「いつ基準の 1 週間か」が
  * 実行時刻に依存してはならないためです（相対指定は入口側の糖衣にとどめます）。
- *
- * 判定はすべてここに置き、ファイル入出力は `index.ts` が担います。
  */
 
 import type { SessionFacts } from "./events";
@@ -168,9 +166,8 @@ export function summarizePeriod(all: readonly SessionFacts[], period: Period): P
  * 宣言されているのに期間内で一度も呼ばれなかったスキルを挙げる。
  *
  * @remarks
- * これ単独では削除の根拠になりません。呼出ゼロの大半は「機会が来なかった」situational /
- * lifecycle であり、`.agents/closed-loop/skill-meta.yaml` の Usage Class と併せて初めて
- * 判断できます。ここが返すのは候補の母集合だけです。
+ * 返すのは候補の母集合であって、削除の根拠ではありません。呼出ゼロを何と併せて読むかは
+ * `docs/design/closed-loop.md`「Skills are judged against their class」にあります。
  */
 export function uncalledSkills(declared: readonly string[], summary: PeriodSummary): string[] {
   if (summary.skillCalls === undefined) return [];

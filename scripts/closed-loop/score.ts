@@ -7,8 +7,6 @@
  *
  * 評価要素は 4 つ。Frequency / Impact / Human Intervention / Recurrence。
  * 重みは運用データで調整する前提なので、既定値を定数に置いて差し替え可能にしてあります。
- *
- * 判定はここに置き、gh の呼び出しは入口が担います。
  */
 
 import type { Observation } from "./issue";

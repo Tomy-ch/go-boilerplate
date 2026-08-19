@@ -9,12 +9,10 @@
 # here. Being a shell script rather than a client feature, it is also the one observation that
 # behaves identically under every assistant.
 #
-# A window is one unit of work, not one session. A session runs for hours — measured median 3.1 h,
-# p90 26 h — and a person clears context between pieces of work far more often than they quit.
-# So `/clear` and a manual `/compact` end a window and start the next, while a resume continues
-# the one already open. Marks are therefore filed per window, not per checkout: without that, two
-# consecutive pieces of work in the same worktree would pool their timings into one meaningless
-# average.
+# A window is one unit of work, not one session, so marks are filed per window rather than per
+# checkout. `/clear` and a manual `/compact` end a window and start the next; a resume continues
+# the one already open. Why the session is the wrong unit, with the measurements behind it, is
+# docs/adr/0010-development-window-as-feedback-unit.md.
 #
 # Every mark is an EVENT STREAM: one file, one epoch per line, always appended. The reader takes
 # the first line, the last, or the count, whichever the question needs — "when did implementation
@@ -35,14 +33,10 @@
 # because the failure it prevents is a typo becoming a mark nothing ever reads — invisible until
 # someone asks why a phase has no data.
 #
-# A mark stays the primary record even where GitHub also knows something. The two are not the
-# same fact: a mark says the window's workflow reached a phase, while `gh` says an object was
-# created — and they part ways when a pull request is opened outside the window, or when the
-# push fails after the phase was reached. Nor are they equally reliable. Reading a time back from
-# `gh` needs the branch-to-PR join to hold, and that join was measured at 64 %; it also needs the
-# network, which the loop is required to work without. So `gh` is the cross-check and the
-# fallback, never the source. Where the two disagree, the disagreement is itself the finding, and
-# the schema keeps `source` on every value so it stays answerable which one spoke.
+# A mark stays the primary record even where GitHub also knows the same moment: `gh` is the
+# cross-check and the fallback, never the source, and every value carries `source` so that a
+# disagreement stays answerable. Why the two are not the same fact, and not equally reliable, is
+# docs/adr/0010-development-window-as-feedback-unit.md.
 #
 # It always exits 0 when invoked as a hook. A window must open whether or not this can answer.
 
@@ -57,11 +51,10 @@ CURRENT_FILE="${LOOP_DIR}/current"
 KNOWN_MARKS='openedAt planApprovedAt implStartedAt commitAt reviewStartedAt prOpenedAt mergedAt closedAt'
 
 # What ends a window is a person saying "that is done": `/clear`, or a `/compact` they typed.
-# `startup` and `resume` continue whatever was already open. An AUTOMATIC compact is the context
-# filling up mid-task and is emphatically not a boundary — treating it as one would split a long
-# piece of work in half and halve both of its phase timings. The two are distinguishable only at
-# `PreCompact`, whose payload carries `trigger`; `SessionStart` reports both as `compact`, which
-# is why manual compaction is caught at the earlier event rather than here.
+# `startup` and `resume` continue whatever was already open. Do NOT add `compact` here —
+# `SessionStart` reports the automatic and the manual form alike, and only the manual one is a
+# boundary (docs/adr/0010-development-window-as-feedback-unit.md), which is why it is caught at
+# `PreCompact` instead, whose payload carries `trigger`.
 ROTATING_SOURCES='clear'
 
 # The pointer to the current window is one shared file, so the marks' separate-file safety does

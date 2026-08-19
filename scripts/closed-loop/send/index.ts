@@ -1,9 +1,6 @@
 #!/usr/bin/env -S tsx
 // 閉じた窓を Feedback Issue へ送出する。
 //
-// 判定は issue.ts / index-store.ts / windows.ts が持ち、ここはファイル入出力・gh の呼び出し・
-// 終了コードだけを担う。
-//
 // 窓を閉じる処理そのものは送らない。閉じるのは hook（marks.sh --hook session-end）で、
 // ネットワークに触れず即座に終わる。送出はここで別に行い、届かなければ索引に
 // feedbackIssue を持たないまま残して次回に持ち越す。「ローカル開発をブロックしない」は
@@ -172,8 +169,7 @@ for (const window of readWindows()) {
       const m = /\/(\d+)$/.exec(url);
       issueNumber = m ? Number(m[1]) : undefined;
     } catch (e) {
-      // 届かなければ索引に残して次回へ持ち越す。窓を閉じる処理は既に終わっており、ここで
-      // 落としてもローカルの作業は止まらない。
+      // 届かなければ索引に残して次回へ持ち越す（冒頭の注記のとおり）。
       console.error(`issue を作成できませんでした（次回に持ち越します）: ${window.id}: ${String(e).split("\n")[0]}`);
     }
   }
