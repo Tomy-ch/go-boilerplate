@@ -92,6 +92,14 @@ Node の設定とパッケージ横断のゲートは直下に置く。各ツー
 |`migration-lint/`|`database/migrations` の連番について、重複（`-check duplicate`）と欠番（`-check gap`）を検査する。読むのは `<連番>_<名前>.<kind>.sql` の最初の `_` より前で、up / down は `-kind` で切り替える。lefthook の pre-commit ゲートから呼ばれる。判定がシェルのレシピではなく Go に在るのは、この検査の壊れ方が「何も検査しなくなる」方向に出るためで、そこはテストで固定できるがシェルのパイプラインでは固定できない。|`make check-migration-up-version` / `check-migration-down-version` / `check-migration-up-gap` / `check-migration-down-gap`|
 |`cover-gate/`|`go tool cover -func` が報告する総カバレッジを `-threshold` の値と比較し、下回れば非 0 で終了する。`total:` 行の抽出と判定を別々の純粋関数に分けてあるため双方をテストで固定できる。置き換え前の `awk` パイプラインは数値でないパーセント表記を `t+0` で `0` に丸めていたため、壊れたプロファイルを「ツールの失敗」ではなく「カバレッジ不足」として報告していた。|`make cover-gate`|
 
+### AI フィードバックループ（`closed-loop/`）
+
+|スクリプト|説明|実行元|
+|---|---|---|
+|`closed-loop/`|`tmp/closed-loop/marks/` に窓が残した打刻を読み、窓ごとのフェーズ区間・重複した打刻・数字を使う前に見るべき状態（開始の打刻が無い / 閉じられていない / 打刻が順序どおりでない）を報告する。`--transcripts` / `--codex` を渡せば、期間内のセッション記録を決定論的な数——発話数・ツール呼び出し・失敗・中断・スキル呼出——へ畳み、一度も呼ばれなかったスキルも挙げる（回数だけでは撤去の根拠にならない、という但し書き付きで）。窓とは何か、なぜ順序をタイムスタンプではなく宣言から取るのかは [ADR-0010 (development-window-as-feedback-unit)](../docs/adr/0010-development-window-as-feedback-unit.md)。|`make closed-loop-report`|
+|`closed-loop/send/`|閉じたのに Feedback Issue へ到達していない窓を送る。観測ブロックが Issue 本文になり、その読解もここで作る——選んだターンに対する手元のモデル呼び出しなので、トランスクリプトはマシンから出ない。その呼び出しが走らなかったときだけ `feedback/needs-summary` ラベルを付け、選んだターンをコメントとして投稿する。ランナーがそれを見る唯一の手段だからである。逐語が公開されるのはこの経路だけで、[`docs/design/security.ja.md`](../docs/design/security.ja.md) に記録してある。Issue の作成とコメントの投稿は別の失敗として扱う——コメントの無い Issue はコメントだけを再試行する。束ねると半分だけ送れた窓が「送出済み」に見えるためである。ホストで動く: 読むトランスクリプトが利用者のホーム配下にあり、tool-runner コンテナからは見えない。|`make closed-loop-send` / SessionStart hook|
+|`closed-loop/weekly/`|期間内に作られた Feedback Issue を集め、付いている分類ラベルでまとめ、頻度 / 影響 / 人の介入 / 再発でクラスタごとにスコアを付けて、レトロが着手順を持てるようにする。再発を最も重く見るのは、窓をまたいで再び現れる問題が個人の失敗ではなく基盤の問題だからである。マージ待ちが実装時間を超えた窓も名指しする。速く作っても短くならない待ちだからである。|`make closed-loop-weekly FROM=<date> TO=<date>`|
+
 ### 初期設定（`setup/` / `repo-setup/`）
 
 ボイラープレートから新規プロジェクトを作成する際の設定スクリプトです。

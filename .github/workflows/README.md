@@ -165,9 +165,9 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 | trustabl (agent config) | — | — | weekly |
 
-Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:00` SonarQube Cloud.
+Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:00` SonarQube Cloud, `05:15` Closed Loop Weekly.
 
-The step is 15 minutes rather than an hour because the set has grown to 21: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
+The step is 15 minutes rather than an hour because the set has grown to 22: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
 
 GitHub does not honour a scheduled time exactly — a run can start well after its slot under load — so the stagger reduces the pile-up rather than eliminating it. Spacing that no scheduler guarantees is not something to tune finely.
 
@@ -393,11 +393,21 @@ Two jobs carry an assumption worth restating when instantiating this template: `
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
 |Claude|`claude.yaml`|`@claude` in a pull-request comment or review|Run Claude Code against the pull request on demand|
-|Closed Loop Summarize|`closed-loop-summarize.yaml`|the `feedback` label lands on an issue, or manual dispatch|Fill a Feedback Issue's reading-comprehension sections from the turns the local send path already selected. The observation block it does **not** touch — that half is deterministic and is what the weekly tally reads|
+|Closed Loop Summarize|`closed-loop-summarize.yaml`|the `feedback/needs-summary` label lands on an issue, or manual dispatch|Fill the reading-comprehension sections of a Feedback Issue the local path could not read. The normal route reads on the machine that holds the transcript, so this fires only on the fallback — gating on `feedback` would re-read every window. The observation block it does **not** touch: that half is deterministic and is what the weekly tally reads|
 
 Both skip quietly when `CLAUDE_CODE_TOKEN` is absent. A derived repository inherits the workflows
 but not the secret, and a red run there would be reporting the absence of an optional layer as a
 failure.
+
+### Feedback Loop (Schedule)
+
+|Workflow|File|Trigger|Description|
+|---|---|---|---|
+|Closed Loop Weekly|`closed-loop-weekly.yaml`|weekly, or manual dispatch with a period|Collect the period's Feedback Issues, cluster them by their classification labels and score each cluster, into the run summary. Reads no model — every number comes from the observation blocks the issues already carry, which is why this needs no token where `closed-loop-summarize.yaml` does|
+
+It is scheduled rather than left to `make closed-loop-weekly` because the re-measurement is the
+step [ADR-0008](../../docs/adr/0008-agent-environment-alignment.md) makes the loop conditional on,
+and a step nobody is reminded to run stops being run.
 
 ## Shared Composite Actions
 

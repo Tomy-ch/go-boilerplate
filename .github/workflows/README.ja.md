@@ -165,9 +165,9 @@
 | OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
 | trustabl（エージェント設定） | — | — | 週次 |
 
-週次実行は月曜未明（UTC）に **15 分刻み**で 1 スロット 1 本ずつずらしています。同一時刻に全スキャナが並ぶのを避けるためです。スロットの割り当ては `00:00` Trivy FS、`00:15` govulncheck、`00:30` TruffleHog、`00:45` OSV-Scanner、`01:00` Scorecard、`01:15` CodeQL、`01:30` Image Scan、`01:45` gitleaks（全履歴）、`02:00` zizmor（オンライン監査）、`02:15` Go cooldown、`02:30` Opengrep、`02:45` fuzz、`03:00` ZAP（DAST）、`03:15` Grype、`03:30` DevSkim、`03:45` ESLint、`04:00` Bearer、`04:15` Checkov、`04:30` trustabl、`04:45` tool cooldown、`05:00` SonarQube Cloud。
+週次実行は月曜未明（UTC）に **15 分刻み**で 1 スロット 1 本ずつずらしています。同一時刻に全スキャナが並ぶのを避けるためです。スロットの割り当ては `00:00` Trivy FS、`00:15` govulncheck、`00:30` TruffleHog、`00:45` OSV-Scanner、`01:00` Scorecard、`01:15` CodeQL、`01:30` Image Scan、`01:45` gitleaks（全履歴）、`02:00` zizmor（オンライン監査）、`02:15` Go cooldown、`02:30` Opengrep、`02:45` fuzz、`03:00` ZAP（DAST）、`03:15` Grype、`03:30` DevSkim、`03:45` ESLint、`04:00` Bearer、`04:15` Checkov、`04:30` trustabl、`04:45` tool cooldown、`05:00` SonarQube Cloud、`05:15` Closed Loop Weekly。
 
-刻みが 1 時間でなく 15 分なのは、対象が 21 本まで増えたためです。1 時間刻みだと最後の 1 本が翌日の夜まで始まらず、並べて読むべき検出どうしが 1 日離れてしまいます。定期実行のワークフローを追加するときは次の空きスロットを取ります。2 本が同じスロットを共有しているのは好みの問題ではなく欠陥です。順序には意図があるので、追加は末尾ではなく相応しい位置へ入れます。
+刻みが 1 時間でなく 15 分なのは、対象が 22 本まで増えたためです。1 時間刻みだと最後の 1 本が翌日の夜まで始まらず、並べて読むべき検出どうしが 1 日離れてしまいます。定期実行のワークフローを追加するときは次の空きスロットを取ります。2 本が同じスロットを共有しているのは好みの問題ではなく欠陥です。順序には意図があるので、追加は末尾ではなく相応しい位置へ入れます。
 
 GitHub は指定時刻を厳密には守らず、負荷次第でスロットよりかなり遅れて始まることがあります。このずらしは重なりを減らすものであって無くすものではありません。スケジューラが保証しない間隔を細かく調整しても意味がありません。
 
@@ -391,11 +391,21 @@ SARIF アップロードと sticky な PR コメントはどちらも切って�
 |ワークフロー|ファイル|トリガー|説明|
 |---|---|---|---|
 |Claude|`claude.yaml`|プルリクエストのコメント / レビューでの `@claude`|オンデマンドでプルリクエストに対して Claude Code を実行|
-|Closed Loop Summarize|`closed-loop-summarize.yaml`|issue に `feedback` ラベルが付いたとき、または手動実行|Feedback Issue の読解にあたる節を、ローカルの送出経路が既に選んだターンから埋める。観測ブロックには**触れない** — そちらは決定論的な半分であり、週次の集計が読むのはそこ|
+|Closed Loop Summarize|`closed-loop-summarize.yaml`|issue に `feedback/needs-summary` ラベルが付いたとき、または手動実行|手元で読解できなかった Feedback Issue の、読解にあたる節を埋める。通常経路はトランスクリプトを持つマシン上で読むので、これが動くのは縮退経路だけ — `feedback` で待ち受けると読解済みの窓まで読み直す。観測ブロックには**触れない** — そちらは決定論的な半分であり、週次の集計が読むのはそこ|
 
 どちらも `CLAUDE_CODE_TOKEN` が無ければ静かにスキップする。派生リポジトリはワークフローを
 受け取るがシークレットは受け取らないため、そこで赤くなると任意レイヤの不在を失敗として
 報告することになる。
+
+### フィードバックループ（定期実行）
+
+|ワークフロー|ファイル|トリガー|説明|
+|---|---|---|---|
+|Closed Loop Weekly|`closed-loop-weekly.yaml`|週次、または期間を指定した手動実行|期間内の Feedback Issue を集め、分類ラベルでまとめ、クラスタごとにスコアを付けて run summary へ出す。モデルは読まない — 数字はすべて Issue が既に持つ観測ブロックから数える。`closed-loop-summarize.yaml` と違ってトークンが要らないのはそのため|
+
+`make closed-loop-weekly` に委ねず定期実行にしているのは、効果の測り直しが
+[ADR-0008](../../docs/adr/0008-agent-environment-alignment.ja.md) がループの条件として置いた段であり、
+誰にも促されない段は実行されなくなるからである。
 
 ## 共通 Composite Action
 

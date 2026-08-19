@@ -60,11 +60,22 @@ Most of what the loop reports needs no model at all. Skill invocations, tool fai
 interruptions, turn durations, phase intervals, review and merge latency — all of it is counted,
 not interpreted. That layer runs offline, costs nothing, and its numbers are auditable.
 
-A model is needed for exactly one thing: saying what someone found hard. That reading happens in
-CI rather than locally, so a session is never blocked or billed for it, and it is given a narrowed
+A model is needed for exactly one thing: saying what someone found hard. It is given a narrowed
 input rather than the whole corpus — the deterministic pass selects the turns worth reading before
 a model sees any of them. Both halves matter: the narrowing is what makes the reading affordable,
 and the reading is what makes the narrowing worth doing.
+
+**That reading happens on the machine that produced the transcript**, not on a runner, and the
+reason is where the transcript lives. It sits under the developer's home, which no runner can
+reach, so putting the reading in CI would mean publishing the selected turns verbatim to a public
+issue first — creating an outbound path for anything a person pasted into a session
+([security.md](security.md)). Reading locally publishes only the resulting prose. It also gives the
+model more to work with, since the amount that can be shown to a local model is bounded by prompt
+length rather than by what one is willing to make public.
+
+CI keeps the fallback, because a machine may have no model available at all. A window that could
+not be read locally is labelled as such and carries its excerpts, and only those windows are read
+by a runner. The cost of that route is the publication above, which is why it is the exception.
 
 Findings record which half produced them. A count and a reading are not equally strong evidence,
 and a report that blurs them cannot be argued with.

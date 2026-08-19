@@ -376,16 +376,24 @@ a PR comment, or an artifact.** Summaries carry detector name, path, line, and c
 the match itself. A leak report that leaks is worse than no report, because it publishes the
 credential to a wider audience than the commit did.
 
-A third path leaves the repository without passing either detector. The AI feedback loop posts
-excerpts of session transcripts to public feedback issues, and a transcript is not a commit — both
-detectors scan what is committed, so neither of them sees this path at all. What a person types
-into a session is also precisely where a dead API key or a connection string gets pasted in order
-to ask about it: measured over this repository's own history, 2 of 4,093 raw human turns carried a
-live credential. So the loop filters its own candidates before posting, and that filter is the only
-gate on the path. Shape-based detection cannot be complete, so the rule there is to **drop anything
-suspicious**: a dropped excerpt costs one of several candidates for the same window, while a
-published one cannot be recalled. The patterns are in
-[`scripts/closed-loop/candidates.ts`](../../scripts/closed-loop/candidates.ts).
+A third path can leave the repository without passing either detector, and it is worth stating
+because it looks like neither of the two above. The AI feedback loop can post excerpts of session
+transcripts to public feedback issues, and a transcript is not a commit — both detectors scan what
+is committed, so neither of them sees this path at all. What a person types into a session is also
+precisely where a dead API key or a connection string gets pasted in order to ask about it:
+measured over this repository's own history, 2 of 4,093 raw human turns carried a live credential.
+
+**The path is deliberately kept closed on the normal route.** The loop reads its own transcripts
+locally and publishes only the resulting prose, so the raw turns never leave the machine that
+produced them. They are published in one case: the local reading could not run, and the excerpts
+are the only way a CI runner can see what happened. That trade is why the reading was moved off CI
+in the first place — a runner cannot read a file under the developer's home, so putting the reading
+there forces the publication.
+
+On that fallback the loop filters its own candidates, and that filter is the only gate. Shape-based
+detection cannot be complete, so the rule is to **drop anything suspicious**: a dropped excerpt
+costs one of several candidates for the same window, while a published one cannot be recalled. The
+patterns are in [`scripts/closed-loop/candidates.ts`](../../scripts/closed-loop/candidates.ts).
 
 ## The developer endpoint
 
