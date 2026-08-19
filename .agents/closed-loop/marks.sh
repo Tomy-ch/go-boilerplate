@@ -123,6 +123,38 @@ current_window() {
   open_window
 }
 
+is_current_closed() {
+  [ -f "${CURRENT_FILE}" ] || return 1
+  id=$(cat "${CURRENT_FILE}")
+  [ -n "${id}" ] || return 1
+  [ -f "${LOOP_DIR}/marks/${id}/closedAt" ]
+}
+
+# Work arriving after a window closed belongs to the next window, not the last one. A commit that
+# lands after the session ended is the start of something, not a late footnote to what finished —
+# and filing it under the closed window puts a mark after that window's own end, which is a
+# timestamp no interval can be computed from.
+#
+# The two terminal marks are exempt for opposite reasons: `closedAt` on an already-closed window
+# is the same fact twice, and `openedAt` is stamped by opening itself, so rotating and then
+# stamping it would record the open twice.
+stamp_mark() {
+  name=$1
+  if is_current_closed; then
+    case "${name}" in
+      closedAt) return 0 ;;
+      openedAt)
+        open_window >/dev/null
+        return 0
+        ;;
+      *) open_window >/dev/null ;;
+    esac
+  fi
+  dir="${LOOP_DIR}/marks/$(current_window)"
+  mkdir -p "${dir}"
+  date +%s >>"${dir}/${name}"
+}
+
 case "${1:-}" in
   -h | --help)
     usage
@@ -189,9 +221,7 @@ case "${1:-}" in
     ;;
   *)
     if is_known "$1"; then
-      dir="${LOOP_DIR}/marks/$(current_window)"
-      mkdir -p "${dir}"
-      date +%s >>"${dir}/$1"
+      stamp_mark "$1"
     else
       printf 'unknown mark: %s\n' "$1" >&2
       printf 'writable names: %s\n' "${KNOWN_MARKS}" >&2
