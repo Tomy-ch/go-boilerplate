@@ -29,7 +29,7 @@ type PortalCardProps = {
   onOpenDocument: (item: PortalItem) => void;
 };
 
-function PortalCard({ item, onOpenDocument }: PortalCardProps) {
+function PortalCard({ item, onOpenDocument }: Readonly<PortalCardProps>) {
   const onOpen = useCallback(() => onOpenDocument(item), [item, onOpenDocument]);
 
   return (
@@ -78,7 +78,7 @@ export type PortalCardGridProps = {
  * それ以外は別の文書への移動なので `a` です。見た目を揃えるために片方へ寄せると、keyboard と
  * 支援技術には「押すと何が起きるか」が伝わらなくなります。
  */
-export function PortalCardGrid({ items, onOpenDocument }: PortalCardGridProps) {
+export function PortalCardGrid({ items, onOpenDocument }: Readonly<PortalCardGridProps>) {
   return (
     <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => (

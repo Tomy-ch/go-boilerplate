@@ -1,5 +1,5 @@
 import Fuse from "fuse.js";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { SearchFieldClient } from "@/components/design-system/form/search-field-client/search-field-client";
 import {
   ToggleGroupNative,
@@ -40,7 +40,7 @@ export type PortalAppProps = {
  * 履歴・戻る操作に対して復元可能なのはハッシュだけだからです。検索語と表示言語はハッシュに
  * 載せません。どちらも一時的な絞り込みであり、共有したいのは「どの文書を見ているか」だからです。
  */
-export function PortalApp({ docs }: PortalAppProps) {
+export function PortalApp({ docs }: Readonly<PortalAppProps>) {
   const [lang, setLang] = useState<PortalLang>("EN");
   const [query, setQuery] = useState("");
   const [hash, setHash] = useState(() => window.location.hash);
@@ -99,6 +99,51 @@ export function PortalApp({ docs }: PortalAppProps) {
       .catch(() => setOpenDocument(null));
   }, []);
 
+  // 検索中・グループ表示・表示するものが無い、の 3 通り。JSX の中で三項演算子を重ねると、
+  // どの条件でどれが出るのかが入れ子の深さに紛れる。
+  let mainContent: ReactNode;
+  if (results) {
+    mainContent = (
+      <section aria-labelledby={searchResultsHeadingId} className="flex flex-col gap-4">
+        <h2 className="font-semibold text-xl" id={searchResultsHeadingId}>
+          検索結果 {results.length} 件
+        </h2>
+        {results.length === 0 ? (
+          <p className="text-muted-foreground">一致する項目がありません。</p>
+        ) : (
+          <PortalCardGrid items={results} onOpenDocument={onOpenDocument} />
+        )}
+      </section>
+    );
+  } else if (activeGroup) {
+    mainContent = (
+      <div className="flex flex-col gap-8">
+        <h2 className="font-semibold text-xl">{activeGroup.title}</h2>
+        {activeGroup.sections.map((section) => (
+          <section
+            aria-labelledby={`section-${section.slug}-heading`}
+            className="flex flex-col gap-4"
+            id={`section-${section.slug}`}
+            key={section.slug}
+          >
+            <h3 className="font-medium text-lg" id={`section-${section.slug}-heading`}>
+              {section.title}
+            </h3>
+            <PortalCardGrid items={section.items} onOpenDocument={onOpenDocument} />
+            {(section.subgroups ?? []).map((subgroup) => (
+              <div className="flex flex-col gap-3" key={subgroup.title}>
+                <h4 className="font-medium text-muted-foreground text-sm">{subgroup.title}</h4>
+                <PortalCardGrid items={subgroup.items} onOpenDocument={onOpenDocument} />
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
+    );
+  } else {
+    mainContent = <p className="text-muted-foreground">表示できる項目がありません。</p>;
+  }
+
   return (
     <div className="min-h-dvh">
       <header className="border-border border-b">
@@ -145,47 +190,7 @@ export function PortalApp({ docs }: PortalAppProps) {
           />
         </aside>
 
-        <main className="min-w-0 flex-1">
-          {results ? (
-            <section aria-labelledby={searchResultsHeadingId} className="flex flex-col gap-4">
-              <h2 className="font-semibold text-xl" id={searchResultsHeadingId}>
-                検索結果 {results.length} 件
-              </h2>
-              {results.length === 0 ? (
-                <p className="text-muted-foreground">一致する項目がありません。</p>
-              ) : (
-                <PortalCardGrid items={results} onOpenDocument={onOpenDocument} />
-              )}
-            </section>
-          ) : activeGroup ? (
-            <div className="flex flex-col gap-8">
-              <h2 className="font-semibold text-xl">{activeGroup.title}</h2>
-              {activeGroup.sections.map((section) => (
-                <section
-                  aria-labelledby={`section-${section.slug}-heading`}
-                  className="flex flex-col gap-4"
-                  id={`section-${section.slug}`}
-                  key={section.slug}
-                >
-                  <h3 className="font-medium text-lg" id={`section-${section.slug}-heading`}>
-                    {section.title}
-                  </h3>
-                  <PortalCardGrid items={section.items} onOpenDocument={onOpenDocument} />
-                  {(section.subgroups ?? []).map((subgroup) => (
-                    <div className="flex flex-col gap-3" key={subgroup.title}>
-                      <h4 className="font-medium text-muted-foreground text-sm">
-                        {subgroup.title}
-                      </h4>
-                      <PortalCardGrid items={subgroup.items} onOpenDocument={onOpenDocument} />
-                    </div>
-                  ))}
-                </section>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">表示できる項目がありません。</p>
-          )}
-        </main>
+        <main className="min-w-0 flex-1">{mainContent}</main>
       </div>
 
       {/* trigger を持たないため、開くのはカード側からだけ。閉じる要求だけがここへ来る。 */}

@@ -135,7 +135,9 @@ async function main(): Promise<void> {
   console.log(`✓ mermaid-lint: ${summarize(blockCount, fileWithBlocks, skipped.length)} すべて OK`);
 }
 
-main().catch((e: unknown) => {
+try {
+  await main();
+} catch (e: unknown) {
   console.error(`✘ mermaid-lint: 想定外のエラー\n    ${errorMessage(e)}`);
   process.exit(2);
-});
+}

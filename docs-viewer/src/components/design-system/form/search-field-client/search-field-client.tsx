@@ -83,7 +83,7 @@ export function SearchFieldClient({
   label,
   onSearch,
   placeholder,
-}: SearchFieldClientProps) {
+}: Readonly<SearchFieldClientProps>) {
   const [value, setValue] = useState(defaultValue);
   const inputRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);

@@ -131,7 +131,10 @@ export function guideIdOf(filePath: string): string {
 
 /** `lang` の並び順。EN を先、JA を後、言語を持たない項目を最後にする。 */
 function langOrder(lang: DocItem["lang"]): number {
-  return lang === "en" ? 0 : lang === "ja" ? 1 : 2;
+  if (lang === "en") return 0;
+  if (lang === "ja") return 1;
+
+  return 2;
 }
 
 /**

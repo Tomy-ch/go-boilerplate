@@ -196,20 +196,24 @@ export function checkAgentParity(
   const findings: Finding[] = [];
 
   for (const name of onlyIn(claudeAgents, codexAgents)) {
+    const counterpart = path.join(layout.codexAgents, `${name}.toml`);
+
     findings.push({
       file: path.join(layout.claudeAgents, `${name}.md`),
       line: 1,
       rule: "cross-env",
-      message: `対応する \`${path.join(layout.codexAgents, `${name}.toml`)}\` がありません`,
+      message: `対応する \`${counterpart}\` がありません`,
     });
   }
 
   for (const name of onlyIn(codexAgents, claudeAgents)) {
+    const counterpart = path.join(layout.claudeAgents, `${name}.md`);
+
     findings.push({
       file: path.join(layout.codexAgents, `${name}.toml`),
       line: 1,
       rule: "cross-env",
-      message: `対応する \`${path.join(layout.claudeAgents, `${name}.md`)}\` がありません`,
+      message: `対応する \`${counterpart}\` がありません`,
     });
   }
 

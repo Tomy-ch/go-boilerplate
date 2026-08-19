@@ -2,9 +2,7 @@
 let mermaidImport: Promise<typeof import("mermaid").default> | null = null;
 
 function loadMermaid() {
-  if (!mermaidImport) {
-    mermaidImport = import("mermaid").then(({ default: mermaid }) => mermaid);
-  }
+  mermaidImport ??= import("mermaid").then(({ default: mermaid }) => mermaid);
 
   return mermaidImport;
 }

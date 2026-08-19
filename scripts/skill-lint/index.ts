@@ -214,8 +214,8 @@ for (const name of skillDirs) {
   const canonical = readFile(canonicalRel);
   const translationRel = path.join(LAYOUT.claudeSkills, name, "SKILL.ja.md");
 
-  findings.push(...checkFrontmatter(canonicalRel, canonical, name));
   findings.push(
+    ...checkFrontmatter(canonicalRel, canonical, name),
     ...checkTranslationPair(canonicalRel, translationRel, canonical, readIfPresent(translationRel)),
   );
 }
@@ -245,11 +245,7 @@ const codexAgentFiles = listFiles(LAYOUT.codexAgents, isCodexAgentDefinition);
 
 findings.push(
   ...checkSkillParity(skillDirs, codexSkillDirs, PLATFORM_ONLY_SKILLS, LAYOUT, ALLOWLIST_REL),
-);
-findings.push(
   ...checkAgentParity(agentFiles.map(agentName), codexAgentFiles.map(agentName), LAYOUT),
-);
-findings.push(
   ...checkPlatformOnlyAllowlist(skillDirs, codexSkillDirs, PLATFORM_ONLY_SKILLS, ALLOWLIST_REL),
 );
 

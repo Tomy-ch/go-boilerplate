@@ -21,10 +21,10 @@ import {
 function DialogFixture({
   defaultOpen = false,
   showCloseButton = true,
-}: {
+}: Readonly<{
   defaultOpen?: boolean;
   showCloseButton?: boolean;
-}) {
+}>) {
   return (
     <Dialog defaultOpen={defaultOpen}>
       <DialogTrigger>詳細を見る</DialogTrigger>
