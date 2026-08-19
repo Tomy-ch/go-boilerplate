@@ -1,0 +1,153 @@
+/**
+ * セッションの事実を期間で切り、横断して畳む。
+ *
+ * @remarks
+ * 期間は絶対日付で受け取ります。過去分の取り直しが主目的である以上、「いつ基準の 1 週間か」が
+ * 実行時刻に依存してはならないためです（相対指定は入口側の糖衣にとどめます）。
+ *
+ * 判定はすべてここに置き、ファイル入出力は `index.ts` が担います。
+ */
+
+import type { SessionFacts } from "./events";
+
+/** 集計対象の期間。両端とも epoch 秒で、`from` を含み `to` を含みます。 */
+export type Period = {
+  readonly from: number;
+  readonly to: number;
+};
+
+/** 期間内のセッションを畳んだ結果。観測できない指標は `undefined` のまま残します。 */
+export type PeriodSummary = {
+  readonly period: Period;
+  readonly sessions: number;
+  readonly byClient: Readonly<Record<string, number>>;
+  readonly prompts: number;
+  readonly toolCalls: number;
+  readonly interrupts: number;
+  readonly compactions: number;
+  /** 成否を観測できたセッションが 1 つも無ければ `undefined`。 */
+  readonly toolFailures?: number;
+  /** 失敗率。分母となる観測ができなければ `undefined`。 */
+  readonly toolFailureRate?: number;
+  /** スキル名 → 呼出回数。観測できたセッションが無ければ `undefined`。 */
+  readonly skillCalls?: Readonly<Record<string, number>>;
+  readonly branches: readonly string[];
+};
+
+const DAY_SEC = 86_400;
+
+/**
+ * 期間を解決する。
+ *
+ * @param from `YYYY-MM-DD`。省略時は `to` の 7 日前。
+ * @param to `YYYY-MM-DD`。省略時は `now` の日。
+ * @param now 基準時刻（epoch 秒）。呼び出し側が渡すことで、同じ入力が常に同じ期間になる。
+ * @returns 解決された期間。`to` はその日の終端（23:59:59）まで含む。
+ * @throws 日付として解釈できない、または `from` が `to` より後の場合。
+ */
+export function resolvePeriod(from: string | undefined, to: string | undefined, now: number): Period {
+  const endDay = to === undefined ? startOfDay(now) : parseDay(to);
+  const startDay = from === undefined ? endDay - 7 * DAY_SEC : parseDay(from);
+  const end = endDay + DAY_SEC - 1;
+  // 逆転しうるのは `from` が明示された場合だけ。省略時は `to` の 7 日前を置くので、
+  // 構造上そちらが後ろに来ることはない。前提を条件に書いておくことで、
+  // 到達しない分岐をメッセージ側に抱えずに済む。
+  if (from !== undefined && startDay > end) {
+    throw new Error(`期間が逆転している: from=${from} to=${to ?? "(既定)"}`);
+  }
+  return { from: startDay, to: end };
+}
+
+function parseDay(day: string): number {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error(`日付は YYYY-MM-DD で指定する: ${day}`);
+  const ms = Date.parse(`${day}T00:00:00Z`);
+  if (Number.isNaN(ms)) throw new Error(`日付として解釈できない: ${day}`);
+  return Math.floor(ms / 1000);
+}
+
+function startOfDay(epochSec: number): number {
+  return epochSec - (epochSec % DAY_SEC);
+}
+
+/**
+ * セッションが期間に掛かるか。
+ *
+ * @remarks
+ * 開始と終了のどちらかが期間に入っていれば対象とします。セッションは実測で最長 104 時間あり、
+ * 期間を跨ぐものを落とすと、長い作業ほど集計から消えるという逆向きの偏りが出るためです。
+ */
+export function overlapsPeriod(facts: SessionFacts, period: Period): boolean {
+  const start = facts.startedAt;
+  const end = facts.endedAt;
+  if (start === undefined || end === undefined) return false;
+  return start <= period.to && end >= period.from;
+}
+
+/**
+ * 期間内のセッションを横断して畳む。
+ *
+ * @remarks
+ * `toolFailures` と `skillCalls` は、観測できたセッションが 1 つでもあれば数値になり、
+ * 1 つも無ければ `undefined` のままになります。Codex だけの期間で「スキル呼出 0 件」と
+ * 表示してしまうと、棚卸しで実際に使われていないスキルと区別がつかなくなるためです。
+ */
+export function summarizePeriod(all: readonly SessionFacts[], period: Period): PeriodSummary {
+  const inPeriod = all.filter((f) => overlapsPeriod(f, period));
+  const byClient: Record<string, number> = {};
+  const skillCalls: Record<string, number> = {};
+  const branches = new Set<string>();
+  let prompts = 0;
+  let toolCalls = 0;
+  let interrupts = 0;
+  let compactions = 0;
+  let failures = 0;
+  let sawFailureObservation = false;
+  let sawSkillObservation = false;
+
+  for (const f of inPeriod) {
+    byClient[f.client] = (byClient[f.client] ?? 0) + 1;
+    prompts += f.prompts;
+    toolCalls += f.toolCalls;
+    interrupts += f.interrupts;
+    compactions += f.compactions;
+    for (const b of f.branches) branches.add(b);
+    if (f.toolFailures !== undefined) {
+      sawFailureObservation = true;
+      failures += f.toolFailures;
+    }
+    if (f.skillCalls !== undefined) {
+      sawSkillObservation = true;
+      for (const [name, count] of Object.entries(f.skillCalls)) {
+        skillCalls[name] = (skillCalls[name] ?? 0) + count;
+      }
+    }
+  }
+
+  return {
+    period,
+    sessions: inPeriod.length,
+    byClient,
+    prompts,
+    toolCalls,
+    interrupts,
+    compactions,
+    toolFailures: sawFailureObservation ? failures : undefined,
+    toolFailureRate: sawFailureObservation && toolCalls > 0 ? failures / toolCalls : undefined,
+    skillCalls: sawSkillObservation ? skillCalls : undefined,
+    branches: [...branches].sort(),
+  };
+}
+
+/**
+ * 宣言されているのに期間内で一度も呼ばれなかったスキルを挙げる。
+ *
+ * @remarks
+ * これ単独では削除の根拠になりません。呼出ゼロの大半は「機会が来なかった」situational /
+ * lifecycle であり、`.agents/closed-loop/skill-meta.yaml` の Usage Class と併せて初めて
+ * 判断できます。ここが返すのは候補の母集合だけです。
+ */
+export function uncalledSkills(declared: readonly string[], summary: PeriodSummary): string[] {
+  if (summary.skillCalls === undefined) return [];
+  const called = new Set(Object.keys(summary.skillCalls));
+  return declared.filter((s) => !called.has(s)).sort();
+}
