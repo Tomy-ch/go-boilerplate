@@ -355,11 +355,20 @@ jobs:
 
       # --exit-code 0 is the default and is passed explicitly: the verdict on this image
       # belongs to the gate above.
+      #
+      # CIS-DI-0005 asks for DOCKER_CONTENT_TRUST=1, which is Notary v1 — the mechanism
+      # Docker has moved away from. The question it asks, "can the provenance of what this
+      # build pulled and produced be verified", is answered twice here by newer means: every
+      # base image is pinned to a digest in docker/images-pin.toml with `make
+      # pin-images-check` holding the tag↔digest pair, and the published image is signed and
+      # attested with cosign in deploy-app.yaml. Turning the check on would not add a third
+      # answer; it would ask for a signature format nothing in this pipeline produces.
       - name: Dockle scan
         id: dockle
         if: always()
         env:
           IMAGE: ${{ steps.meta.outputs.image }}
+          DOCKLE_IGNORES: CIS-DI-0005
         run: |
           set -euo pipefail
           dockle --exit-code 0 --format json --output dockle.json "${IMAGE}"
