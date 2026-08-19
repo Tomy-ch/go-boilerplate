@@ -132,7 +132,7 @@ export function mergeWaitSec(observation: Observation): number | undefined {
  * 「Deterministic first, model second」）。
  */
 export function clusterKey(issue: FeedbackIssue): string {
-  return issue.kinds.length === 0 ? UNCLASSIFIED : [...issue.kinds].sort().join("+");
+  return issue.kinds.length === 0 ? UNCLASSIFIED : [...issue.kinds].sort((a, b) => a.localeCompare(b)).join("+");
 }
 
 /**

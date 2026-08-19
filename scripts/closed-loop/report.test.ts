@@ -9,6 +9,7 @@ import {
   uncalledSkills,
   withinPeriod,
   type Period,
+  foldWindowEvents,
 } from "./report";
 
 const DAY = 86_400;
@@ -258,6 +259,52 @@ describe("uncalledSkills", () => {
     it("スキル呼出を観測できない期間では候補を出さない", () => {
       const s = summarizePeriod([facts({ ...inside, client: "codex" })], period);
       expect(uncalledSkills(["commit", "tool-map"], s)).toEqual([]);
+    });
+  });
+});
+
+describe("foldWindowEvents", () => {
+  const line = (o: Record<string, unknown>) => JSON.stringify(o);
+  const claude = (at: number, sid: string) =>
+    line({
+      type: "user",
+      timestamp: new Date(at * 1000).toISOString(),
+      sessionId: sid,
+      message: { role: "user", content: "本文" },
+    });
+
+  describe("正常系", () => {
+    it("期間に落ちるイベントだけを畳む", () => {
+      const contents = [`${claude(150, "s1")}\n${claude(900, "s1")}`];
+      const out = foldWindowEvents(contents, { from: 100, to: 200 });
+      expect(out.facts.prompts).toBe(1);
+    });
+
+    it("セッションを重複なく数える", () => {
+      const contents = [`${claude(150, "s1")}\n${claude(160, "s1")}\n${claude(170, "s2")}`];
+      expect(foldWindowEvents(contents, { from: 100, to: 200 }).sessions).toBe(2);
+    });
+
+    it("複数ファイルを 1 つの窓として畳む", () => {
+      const out = foldWindowEvents([claude(150, "s1"), claude(160, "s2")], { from: 100, to: 200 });
+      expect(out.events).toHaveLength(2);
+    });
+  });
+
+  describe("異常系", () => {
+    it("解析できない行を飛ばして続ける", () => {
+      const contents = [`壊れた行\n${claude(150, "s1")}`];
+      expect(foldWindowEvents(contents, { from: 100, to: 200 }).facts.prompts).toBe(1);
+    });
+
+    it("期間に落ちるイベントが無ければ 0 件になる", () => {
+      const out = foldWindowEvents([claude(900, "s1")], { from: 100, to: 200 });
+      expect(out.events).toEqual([]);
+      expect(out.sessions).toBe(0);
+    });
+
+    it("中身が無ければ空を返す", () => {
+      expect(foldWindowEvents([], { from: 100, to: 200 }).events).toEqual([]);
     });
   });
 });

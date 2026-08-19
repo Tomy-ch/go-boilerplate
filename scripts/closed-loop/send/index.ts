@@ -16,10 +16,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { renderCandidateComment, selectCandidates } from "../candidates";
-import { parseClaudeLine, summarizeSession, type Event } from "../events";
 import { findByWindow, needsSend, parseIndex, upsert, type IndexEntry } from "../index-store";
 import { issueTitle, renderBody, type Observation } from "../issue";
-import { withinPeriod } from "../report";
+import { foldWindowEvents } from "../report";
 import {
   buildPrompt,
   issueLabels,
@@ -134,24 +133,21 @@ function prFor(branch: string): number | undefined {
  * ディレクトリ全体を畳むと、窓 1 件の本文に全期間の合計が載る。窓ごとの数字であることが
  * 前提の集計なので、期間で絞るのはここの責務になる。
  */
-function sessionFactsFor(dir: string | undefined, from: number | undefined, to: number | undefined) {
-  if (dir === undefined || !fs.existsSync(dir) || from === undefined || to === undefined) return undefined;
-  const events: Event[] = [];
-  const sessions = new Set<string>();
+function readTranscripts(dir: string): string[] {
+  const contents: string[] = [];
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".jsonl"))) {
     try {
-      for (const line of fs.readFileSync(path.join(dir, f), "utf8").split("\n")) {
-        for (const e of parseClaudeLine(line)) {
-          if (!withinPeriod(e.at, { from, to })) continue;
-          events.push(e);
-          if (e.sessionId !== undefined) sessions.add(e.sessionId);
-        }
-      }
+      contents.push(fs.readFileSync(path.join(dir, f), "utf8"));
     } catch {
       // 読めないファイルは無いものとして扱う
     }
   }
-  return { facts: summarizeSession("claude", events), sessions: sessions.size, events };
+  return contents;
+}
+
+function sessionFactsFor(dir: string | undefined, from: number | undefined, to: number | undefined) {
+  if (dir === undefined || !fs.existsSync(dir) || from === undefined || to === undefined) return undefined;
+  return foldWindowEvents(readTranscripts(dir), { from, to });
 }
 
 const branch = currentBranch();

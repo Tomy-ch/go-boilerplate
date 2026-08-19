@@ -23,7 +23,6 @@ import {
   totalDurationSec,
   MARK_ORDER,
   type MarksReader,
-  type Window,
 } from "./windows";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -57,7 +56,7 @@ function listJsonl(dir: string): string[] {
     }
   };
   walk(dir);
-  return found.sort();
+  return found.sort((a, b) => a.localeCompare(b));
 }
 
 function readSessions(dir: string, parse: (line: string) => Event[], client: "claude" | "codex"): SessionFacts[] {

@@ -118,6 +118,51 @@ export function renderBody(observation: Observation, sections?: Readonly<Record<
   return parts.join("\n");
 }
 
+/** 観測ブロックの中身。`parseObservation` が組み立てる前の素の形。 */
+type BlockContent = {
+  scalars: Record<string, string>;
+  phases: { from: string; to: string; sec: number }[];
+  skills: Record<string, number>;
+};
+
+/**
+ * 観測ブロックを行ごとに読み、スカラ・フェーズ・スキルへ振り分ける。
+ *
+ * @remarks
+ * `phases:` / `skills:` の行に入ったあと、次のスカラ行が来るまでその配下として読みます。
+ * 形の合わない行は捨てます——1 行のために窓 1 件の観測を落とすより、その行だけを欠いた
+ * 観測を返すほうが後から補えます。
+ */
+function readBlockLines(block: string): BlockContent {
+  const out: BlockContent = { scalars: {}, phases: [], skills: {} };
+  let mode: "top" | "phases" | "skills" = "top";
+
+  for (const raw of block.split("\n")) {
+    const line = raw.replace(/\s+$/, "");
+    if (line.trim() === "") continue;
+    if (line === "phases:" || line === "skills:") {
+      mode = line === "phases:" ? "phases" : "skills";
+      continue;
+    }
+    if (mode === "phases" && line.startsWith("  - ")) {
+      const m = /from:\s*(\S+?),\s*to:\s*(\S+?),\s*sec:\s*(-?\d+)/.exec(line);
+      if (m) out.phases.push({ from: m[1] as string, to: m[2] as string, sec: Number(m[3]) });
+      continue;
+    }
+    if (mode === "skills" && line.startsWith("  ")) {
+      const m = /^\s+(\S+):\s*(\d+)$/.exec(line);
+      if (m) out.skills[m[1] as string] = Number(m[2]);
+      continue;
+    }
+    const m = /^([a-z_]+):\s*(.+)$/.exec(line);
+    if (m) {
+      mode = "top";
+      out.scalars[m[1] as string] = (m[2] as string).trim();
+    }
+  }
+  return out;
+}
+
 /**
  * 本文から観測ブロックを読み返す。
  *
@@ -133,38 +178,7 @@ export function parseObservation(body: string): Observation | undefined {
   if (end < 0) return undefined;
   const block = rest.slice(0, end);
 
-  const scalars: Record<string, string> = {};
-  const phases: { from: string; to: string; sec: number }[] = [];
-  const skills: Record<string, number> = {};
-  let mode: "top" | "phases" | "skills" = "top";
-
-  for (const raw of block.split("\n")) {
-    const line = raw.replace(/\s+$/, "");
-    if (line.trim() === "") continue;
-    if (line === "phases:") {
-      mode = "phases";
-      continue;
-    }
-    if (line === "skills:") {
-      mode = "skills";
-      continue;
-    }
-    if (mode === "phases" && line.startsWith("  - ")) {
-      const m = /from:\s*(\S+?),\s*to:\s*(\S+?),\s*sec:\s*(-?\d+)/.exec(line);
-      if (m) phases.push({ from: m[1] as string, to: m[2] as string, sec: Number(m[3]) });
-      continue;
-    }
-    if (mode === "skills" && line.startsWith("  ")) {
-      const m = /^\s+(\S+):\s*(\d+)$/.exec(line);
-      if (m) skills[m[1] as string] = Number(m[2]);
-      continue;
-    }
-    const m = /^([a-z_]+):\s*(.+)$/.exec(line);
-    if (m) {
-      mode = "top";
-      scalars[m[1] as string] = (m[2] as string).trim();
-    }
-  }
+  const { scalars, phases, skills } = readBlockLines(block);
 
   const windowId = scalars.window_id;
   const client = scalars.client;

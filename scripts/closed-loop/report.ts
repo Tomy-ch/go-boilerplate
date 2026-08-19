@@ -6,7 +6,7 @@
  * 実行時刻に依存してはならないためです（相対指定は入口側の糖衣にとどめます）。
  */
 
-import type { SessionFacts } from "./events";
+import { parseClaudeLine, summarizeSession, type Event, type SessionFacts } from "./events";
 
 /** 集計対象の期間。両端とも epoch 秒で、`from` を含み `to` を含みます。 */
 export type Period = {
@@ -159,7 +159,7 @@ export function summarizePeriod(all: readonly SessionFacts[], period: Period): P
     toolFailures: sawFailureObservation ? failures : undefined,
     toolFailureRate: sawFailureObservation && toolCalls > 0 ? failures / toolCalls : undefined,
     skillCalls: sawSkillObservation ? skillCalls : undefined,
-    branches: [...branches].sort(),
+    branches: [...branches].sort((a, b) => a.localeCompare(b)),
   };
 }
 
@@ -173,5 +173,39 @@ export function summarizePeriod(all: readonly SessionFacts[], period: Period): P
 export function uncalledSkills(declared: readonly string[], summary: PeriodSummary): string[] {
   if (summary.skillCalls === undefined) return [];
   const called = new Set(Object.keys(summary.skillCalls));
-  return declared.filter((s) => !called.has(s)).sort();
+  return declared.filter((s) => !called.has(s)).sort((a, b) => a.localeCompare(b));
+}
+
+/** 窓に属するイベントと、それを畳んだ事実。 */
+export type WindowEvents = {
+  readonly facts: SessionFacts;
+  readonly sessions: number;
+  readonly events: readonly Event[];
+};
+
+/**
+ * トランスクリプトの中身を、期間に落ちるぶんだけ畳む。
+ *
+ * @param contents 各トランスクリプトファイルの中身。読み取りは入口が行う。
+ *
+ * @remarks
+ * ディレクトリ全体を畳むと、窓 1 件の本文に全期間の合計が載ります。窓ごとの数字であることが
+ * 前提の集計なので、期間で絞るのはここの責務です。
+ *
+ * 解析できない行は捨てます。1 行のために窓ぶんの集計を落とすと、観測できたはずの窓が
+ * まるごと消えます。
+ */
+export function foldWindowEvents(contents: readonly string[], period: Period): WindowEvents {
+  const events: Event[] = [];
+  const sessions = new Set<string>();
+  for (const content of contents) {
+    for (const line of content.split("\n")) {
+      for (const e of parseClaudeLine(line)) {
+        if (!withinPeriod(e.at, period)) continue;
+        events.push(e);
+        if (e.sessionId !== undefined) sessions.add(e.sessionId);
+      }
+    }
+  }
+  return { facts: summarizeSession("claude", events), sessions: sessions.size, events };
 }

@@ -51,19 +51,31 @@ export function parseIndex(raw: unknown): IndexStore {
   }
   const entries: IndexEntry[] = [];
   for (const item of (raw as { entries: unknown[] }).entries) {
-    if (typeof item !== "object" || item === null) continue;
-    const o = item as Record<string, unknown>;
-    if (typeof o.windowId !== "string" || o.windowId === "") continue;
-    entries.push({
-      windowId: o.windowId,
-      branch: typeof o.branch === "string" ? o.branch : undefined,
-      parentIssue: typeof o.parentIssue === "number" ? o.parentIssue : undefined,
-      feedbackIssue: typeof o.feedbackIssue === "number" ? o.feedbackIssue : undefined,
-      commentPending: o.commentPending === true ? true : undefined,
-      updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
-    });
+    const entry = toEntry(item);
+    if (entry !== undefined) entries.push(entry);
   }
   return { entries };
+}
+
+/**
+ * 索引 1 件ぶんの生の値を型のある形にする。窓 ID を持たないものは捨てる。
+ *
+ * @remarks
+ * 窓 ID だけが必須です。それ以外は欠けていても索引として機能し、欠けた項目は後から
+ * 埋まります。逆に窓 ID の無いエントリはどの窓の話かが分からず、置いておく意味がありません。
+ */
+function toEntry(item: unknown): IndexEntry | undefined {
+  if (typeof item !== "object" || item === null) return undefined;
+  const o = item as Record<string, unknown>;
+  if (typeof o.windowId !== "string" || o.windowId === "") return undefined;
+  return {
+    windowId: o.windowId,
+    branch: typeof o.branch === "string" ? o.branch : undefined,
+    parentIssue: typeof o.parentIssue === "number" ? o.parentIssue : undefined,
+    feedbackIssue: typeof o.feedbackIssue === "number" ? o.feedbackIssue : undefined,
+    commentPending: o.commentPending === true ? true : undefined,
+    updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
+  };
 }
 
 /** 窓 ID で引く。 */

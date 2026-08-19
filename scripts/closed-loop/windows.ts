@@ -204,7 +204,7 @@ export type MarksReader = {
  */
 export function collectWindows(read: MarksReader): Window[] {
   return [...read.listWindowIds()]
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
     .map((id) => {
       const files: Record<string, string> = {};
       for (const f of read.listFiles(id)) {
