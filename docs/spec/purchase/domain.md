@@ -199,8 +199,8 @@ fields:
 ## Value Objects
 
 - `PurchaseDetail`（明細）/ `LockedProduct`（ロック済み在庫スナップショット・New の入力）。上記 Entity 参照。
-- `Detail`（購入 1 件の詳細読み取りモデル・read 側）。書き込み集約 Purchase とは別型で、ステータス名（`StatusName`）を
-  購入ステータスマスタとの JOIN で解決済み、`PaidAt` は支払い日時（未支払いは nil）、`CanceledAt` はキャンセル日時
+- `Detail`（購入 1 件の詳細読み取りモデル・read 側）。書き込み集約 Purchase とは別型で、ステータスの業務キーと名称
+  （`StatusCode` / `StatusName`）を購入ステータスマスタとの JOIN で解決済み、`PaidAt` は支払い日時（未支払いは nil）、`CanceledAt` はキャンセル日時
   （未キャンセルは nil）、`ShippedAt` は発送日時（未発送は nil）、`DeliveredAt` は配達日時（未配達は nil）。`FindDetailByID` の返り値。
 
 ## Repository Methods
@@ -211,44 +211,34 @@ fields:
   behavior: |
     ID から購入を明細込みで取得し Reconstruct で再構築する。存在しない場合は NotFound。
     書き込み後のドメイン整合の再検証とレスポンスの取得元に用いる。
-- name: LockByID
-  signature: LockByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+- name: LockByCode
+  signature: LockByCode(ctx context.Context, code string) (*Purchase, error)
   behavior: |
-    ID から購入を購入行のみ悲観ロック（SELECT FOR UPDATE OF p）して明細込みで再構築する。存在しない場合は NotFound。
+    購入コードから購入を購入行のみ悲観ロック（SELECT FOR UPDATE OF p）して明細込みで再構築する。存在しない場合は NotFound。
+    公開識別子が code であるため、外部から指定された購入を引く入口はここに揃える（内部再読込は FindByID / FindDetailByID）。
     支払いの状態遷移の競合（同一購入への並行支払い）を購入行ロックで直列化する。擬似決済は単一集約書き込みのため
     CommandService ではなく Repository が担う（[ADR-0033 (commandservice-atomicity-criterion)] の判定軸）。
 - name: UpdatePaid
   signature: UpdatePaid(ctx context.Context, p *Purchase) error
   behavior: |
     購入の状態更新（status_id は code から解決 / paid_at）を渡された ctx の tx 内で実行する。擬似決済のため
-    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
+    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByCode で取得・検証済み（遷移可否ガードは付けない）。
 - name: UpdateShipped
   signature: UpdateShipped(ctx context.Context, p *Purchase) error
   behavior: |
     購入の状態更新（status_id は code から解決 / shipped_at）を渡された ctx の tx 内で実行する。配送追跡を扱わないため
-    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
+    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByCode で取得・検証済み（遷移可否ガードは付けない）。
 - name: UpdateDelivered
   signature: UpdateDelivered(ctx context.Context, p *Purchase) error
   behavior: |
     購入の状態更新（status_id は code から解決 / delivered_at）を渡された ctx の tx 内で実行する。配達確認の証跡を扱わないため
-    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByID で取得・検証済み（遷移可否ガードは付けない）。
-- name: FindFeedByUserID
-  signature: FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
-  behavior: |
-    指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で keyset ページネーション取得する
-    （GET /v1/purchases 一覧の取得元）。ステータス名は購入ステータスマスタとの JOIN で解決する
-    （購入ステータスは購入集約に属する固定参照マスタで、[ADR-0031 (lightweight-cqrs)] の子参照マスタ例外により単一集約の
-    Repository read。QS ではない）。params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返す。
-    params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返す
-    （注文日時は購入集約自身の属性であり、単純な絞り込みは Repository に残る）。暦日から半開区間への解決は
-    usecase 層の責務で、片方だけの指定は絞り込みなしとして扱う。
-    返す FeedItem は書き込み集約 Purchase とは別の読み取りモデル（Code / TotalAmount(USD セント) /
-    StatusName / OrderedAt / ID）。不透明カーソルの符号化・復号は usecase 層の責務。
+    単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByCode で取得・検証済み（遷移可否ガードは付けない）。
 - name: FindDetailByID
   signature: FindDetailByID(ctx context.Context, id uuid.UUID) (*Detail, error)
   behavior: |
     ID から購入詳細（読み取りモデル Detail）を明細込みで取得する。ステータス名は購入ステータスマスタとの
-    JOIN で解決する（FindFeedByUserID と同じ子参照マスタ例外）。存在しない場合は NotFound。キャンセル後の
+    JOIN で解決する（購入ステータスは購入集約に属する固定参照マスタで、[ADR-0031 (lightweight-cqrs)] の
+    子参照マスタ例外により単一集約の Repository read）。存在しない場合は NotFound。キャンセル後の
     状態名解決・レスポンスの取得元に用いる（GET 詳細 #569 でも再利用可能）。
 - name: FindStatusesByUserID
   signature: FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]Status, error)
@@ -256,7 +246,7 @@ fields:
     指定ユーザーの購入が取っているステータスを重複なく返す（退会の可否判定の取得元）。進行中かどうかでは
     絞り込まず、その判定（Status.IsTerminal の否定）は呼び出し側が行う。重複を除くため行数はステータスの
     種類数で頭打ちになる。購入を 1 件も持たない場合は空を返し、順序は保証しない。ステータスコードは
-    購入ステータスマスタとの JOIN で解決する（FindFeedByUserID と同じ子参照マスタ例外により単一集約の
+    購入ステータスマスタとの JOIN で解決する（FindDetailByID と同じ子参照マスタ例外により単一集約の
     Repository read）。
 - name: FindShippable
   signature: FindShippable(ctx context.Context, limit int32) (Purchases, error)
@@ -278,9 +268,9 @@ fields:
 なお、状態遷移に伴う購入行の悲観ロック（`FOR UPDATE`）は、書き込みが集約を跨ぐかで担い手が分かれる（[ADR-0033 (commandservice-atomicity-criterion)] の判定軸）:
 
 - **キャンセル**は在庫復元（`products`）+ 購入更新（`purchases`）の**複数集約への原子的書き込み**のため CommandService（`LockPurchase` / `CancelPurchase`）が担う（[ADR-0031 (lightweight-cqrs)] / [ADR-0033 (commandservice-atomicity-criterion)]）。
-- **支払い**は `purchases` の status/paid_at のみの**単一集約書き込み**（在庫操作なし）のため、CommandService ではなく **Repository（`LockByID` / `UpdatePaid`）**が担う。行ロックは並行制御（二重支払い防止）であって集約横断の原子性ではない。
-- **発送**も `purchases` の status/shipped_at のみの単一集約書き込みのため、支払いと同じく **Repository（`LockByID` / `UpdateShipped`）**が担う。
-- **配達完了**も `purchases` の status/delivered_at のみの単一集約書き込みのため、同じく **Repository（`LockByID` / `UpdateDelivered`）**が担う。
+- **支払い**は `purchases` の status/paid_at のみの**単一集約書き込み**（在庫操作なし）のため、CommandService ではなく **Repository（`LockByCode` / `UpdatePaid`）**が担う。行ロックは並行制御（二重支払い防止）であって集約横断の原子性ではない。
+- **発送**も `purchases` の status/shipped_at のみの単一集約書き込みのため、支払いと同じく **Repository（`LockByCode` / `UpdateShipped`）**が担う。
+- **配達完了**も `purchases` の status/delivered_at のみの単一集約書き込みのため、同じく **Repository（`LockByCode` / `UpdateDelivered`）**が担う。
 
 ## Notes
 

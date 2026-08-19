@@ -18,14 +18,14 @@ methods:
     signature: CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
   - name: GetPurchases   # GET /v1/purchases（購入履歴一覧・cursor）。詳細は「## GET 一覧（購入履歴）」
     signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec) (*PurchaseListView, error)
-  - name: GetPurchaseDetail # GET /v1/purchases/{purchaseId}（購入詳細・集約跨ぎ QS）。詳細は「## GET 詳細（購入詳細）」
-    signature: GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (PurchaseGetDetailView, error)
-  - name: CancelPurchase # PATCH /v1/purchases/{purchaseId}/cancel。詳細は「## PATCH キャンセル」
+  - name: GetPurchaseDetail # GET /v1/purchases/{purchaseCode}（購入詳細・集約跨ぎ QS）。詳細は「## GET 詳細（購入詳細）」
+    signature: GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseCode string) (PurchaseGetDetailView, error)
+  - name: CancelPurchase # PATCH /v1/purchases/{purchaseCode}/cancel。詳細は「## PATCH キャンセル」
     signature: CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error)
-  - name: PayPurchase   # PATCH /v1/purchases/{purchaseId}/pay。詳細は「## PATCH 支払い」
+  - name: PayPurchase   # PATCH /v1/purchases/{purchaseCode}/pay。詳細は「## PATCH 支払い」
     signature: PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
-  - name: ShipPurchase  # PATCH /v1/purchases/{purchaseId}/ship（admin のみ）。詳細は「## PATCH 発送」
-    signature: ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseID uuid.UUID) (ShipPurchaseView, error)
+  - name: ShipPurchase  # PATCH /v1/purchases/{purchaseCode}/ship（admin のみ）。詳細は「## PATCH 発送」
+    signature: ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseCode string) (ShipPurchaseView, error)
 ```
 
 ## DTOs
@@ -132,8 +132,11 @@ output:
 ## GET 一覧（購入履歴・cursor）
 
 `GET /v1/purchases`。認証主体（`userID`）の購入履歴を注文日時降順で cursor（keyset）ページネーション取得する読み取り経路。
-一覧は概要のみ（明細を含まない）。ステータス名は購入ステータスマスタとの JOIN で解決する（単一集約 Repository read。
-購入ステータスは購入集約に属する固定参照マスタで独立集約ではないため、[ADR-0031 (lightweight-cqrs)] の子参照マスタ例外に該当し QS ではなく Repository で JOIN する）。
+一覧は概要のみ（明細の配列は含まない）だが、行を見分けるための要約 2 項目（先頭商品名・明細の点数）を持つ。
+先頭商品名は独立集約である商品（`products`）との結合で解決するため、この経路は子参照マスタ例外に収まらず
+**QueryService**（`internal/usecase/purchase/query`）に置く（[ADR-0031 (lightweight-cqrs)]。購入詳細と同じ扱い）。
+ステータスの業務キーと名称は購入ステータスマスタとの JOIN で解決する。ページを先に閉じてから要約を LATERAL で
+結合するため、1 クエリで解決し N+1 にならない。
 
 ```yaml
 input:
@@ -145,16 +148,16 @@ output:
   struct: PurchaseListView
   fields:
     - name: Items
-      type: "[]PurchaseSummaryView"   # { Code string; TotalAmount int(USD セント); Status string(名称); OrderedAt time.Time }
+      type: "[]PurchaseSummaryView"   # { Code string; TotalAmount int(USD セント); StatusID/StatusCode/StatusName; FirstItemName string; ItemCount int(明細の行数); OrderedAt time.Time }
     - name: NextCursor
       type: "*string"                 # 最終ページは nil
 
 cursor:
-  boundary: purchaseCursor        # (orderedAt, id) の複合 keyset。usecase 層 private（domain へ持ち込まない）
+  boundary: purchaseCursor        # (orderedAt, id) の複合 keyset。usecase 層 private（読み取りモデルは id を持つが応答へは出さない）
   keys: [ordered_at(RFC3339Nano), id(UUID)]
 
 dependencies:
-  - purchase.Repository            # FindFeedByUserID（所有権フィルタ + 期間絞り込み + 子マスタ JOIN、[]FeedItem を返す）
+  - query.PurchaseFeedQueryService  # FindFeedByUserID（所有権フィルタ + 期間絞り込み + ステータス / 商品の結合、[]PurchaseFeedReadModel を返す）
   - purchase/period                # Spec の暦日境界への解決（clock + *time.Location に依存）
   - tools/paging                   # Cursor（decode/encode・件数ポリシー）
 
@@ -163,7 +166,7 @@ workflow:
   steps:
     - cursor を decode し keyset 境界（ordered_at, id）へ解釈（不正は ErrInvalidArgument → 400）
     - period.Resolve(spec, clock.Now(), loc) で対象期間を暦日へ解決し、半開区間 [after, before) を params へ載せる
-    - repo.FindFeedByUserID(userID, Limit+1) で所有者の購入を注文日時降順に取得
+    - feedQS.FindFeedByUserID(userID, Limit+1) で所有者の購入を注文日時降順に取得（要約 2 項目込み）
     - 取得件数 > limit なら hasNext=true とし末尾を切り詰め、末尾行から nextCursor を encode
     - PurchaseSummaryView へ写像（他ユーザーの購入は SQL の所有権フィルタで空扱い）
   errors:
@@ -178,25 +181,25 @@ workflow:
 
 ## GET 詳細（購入詳細・集約跨ぎ QS）
 
-`GET /v1/purchases/{purchaseId}`。本人の購入 1 件を明細（商品名込み）とともに取得する読み取り経路。購入（`purchases` / `purchase_details`）と
+`GET /v1/purchases/{purchaseCode}`。本人の購入 1 件を明細（商品名込み）とともに取得する読み取り経路。購入（`purchases` / `purchase_details`）と
 商品（`products`）は独立集約であり、明細に商品名を含む集約跨ぎの read 投影のため **QueryService**（`internal/usecase/purchase/query`）で取得する
-（[ADR-0031 (lightweight-cqrs)]。子参照マスタへの JOIN で済む一覧・cancel/pay の `purchase.Detail`（Repository read）とは経路を分ける）。商品名は `products` との
+（[ADR-0031 (lightweight-cqrs)]。子参照マスタへの JOIN で済む cancel/pay/ship/deliver の `purchase.Detail`（Repository read）とは経路を分ける）。商品名は `products` との
 JOIN でサーバー解決した現在名（live・非スナップショット）、ステータス名は購入ステータスマスタとの JOIN で解決する。所有権は QS 本体クエリの
-`WHERE p.id = @id AND p.user_id = @user_id` で担保し、他人の購入・不存在はいずれも 0 行 → NotFound（404）で存在を秘匿する（403 は用いない）。
+`WHERE p.code = @code AND p.user_id = @user_id` で担保し、他人の購入・不存在はいずれも 0 行 → NotFound（404）で存在を秘匿する（403 は用いない）。
 固定 2 クエリ（本体 + 明細 JOIN products）で N+1 を避ける。書き込みを伴わないため tx / authorizer は不要。
 
 ```yaml
 input:
   - authn: "*auth.Authn"       # 認証主体。nil は Unauthenticated（401）。UserID() を QS の所有権述語へ渡す
-  - purchaseID: uuid.UUID
+  - purchaseCode: string       # 公開識別子。内部 UUID は受け取らない
 
 output:
   struct: PurchaseGetDetailView
   fields:
-    - name: ID / Code / UserID
-      type: uuid.UUID / string / uuid.UUID
-    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み
-      type: uuid.UUID / string
+    - name: Code / UserID
+      type: string / uuid.UUID
+    - name: StatusID / StatusCode / StatusName   # 購入ステータスマスタで解決済み
+      type: uuid.UUID / int / string
     - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
       type: int64                   # USD セント整数
     - name: Details
@@ -207,7 +210,7 @@ output:
       type: "*time.Time"            # 未確定なら nil
 
 dependencies:
-  - query.PurchaseDetailQueryService   # FindDetailByUserAndID（集約跨ぎ read 投影・所有権 SQL 述語・0 行は NotFound）
+  - query.PurchaseDetailQueryService   # FindDetailByUserAndCode（集約跨ぎ read 投影・所有権 SQL 述語・0 行は NotFound）
   - observability.TracerFactory
 
 workflow:
@@ -215,7 +218,7 @@ workflow:
   steps:
     - authn == nil なら ErrUnauthenticated（401）
     - authn.UserID() を取得（未解決はエラー伝播）
-    - qs.FindDetailByUserAndID(userID, purchaseID) で本体 + 明細（商品名 JOIN）を取得
+    - qs.FindDetailByUserAndCode(userID, purchaseCode) で本体 + 明細（商品名 JOIN）を取得
     - PurchaseGetDetailView へ写像して返す（読み取りモデルを外へ出さない）
   errors:
     - ErrNotFound → 404（不存在・他人の購入の存在秘匿）
@@ -251,7 +254,7 @@ output:
     - name: ItemsTotal
       type: decimal.Decimal    # 明細金額（単価 × 数量）の合計。価格スケールの正確な decimal（丸めない）
     - name: StatusBreakdown
-      type: "[]StatusCountView"  # { StatusID, StatusName, Count, TotalAmount }。対象期間に出現したステータスのみ・マスタ表示順（sort_key 昇順）
+      type: "[]StatusCountView"  # { StatusID, StatusCode, StatusName, Count, TotalAmount }。対象期間に出現したステータスのみ・マスタ表示順（sort_key 昇順）
     - name: Groups
       type: "map[string]GroupNodeView"  # GroupBy 指定時のみ。{ Name; ItemsTotal; Groups }（再帰）。未指定なら nil
 
@@ -300,7 +303,7 @@ workflow:
 
 ## PATCH キャンセル (purchase cancel)
 
-`PATCH /v1/purchases/{purchaseId}/cancel`。本人の購入をキャンセルする状態遷移経路。状態機械の source of truth は
+`PATCH /v1/purchases/{purchaseCode}/cancel`。本人の購入をキャンセルする状態遷移経路。状態機械の source of truth は
 `status_id`（現在状態）で、timestamps（`canceled_at` / `shipped_at` / `delivered_at`）はイベント発生の監査記録として併用する。
 在庫復元は `POST /v1/purchases` の在庫減算と対称な同一 tx 強整合で、[ADR-0031 (lightweight-cqrs)] の CommandService に対称実装する（原子性方式は [ADR-0033 (commandservice-atomicity-criterion)]）。
 キャンセル後の状態名解決は詳細読み取りモデル（`purchase.Detail`、GET 詳細で再利用可能な Repository read）で JOIN 解決する。
@@ -309,7 +312,7 @@ workflow:
 input:
   struct: CancelPurchaseParams
   fields:
-    - name: PurchaseID           # キャンセル対象の購入 ID
+    - name: PurchaseCode         # キャンセル対象の購入コード（公開識別子）
       type: uuid.UUID
     - name: UserID               # 認証済みの内部ユーザー ID（所有権検証）
       type: uuid.UUID
@@ -317,10 +320,10 @@ input:
 output:
   struct: CancelPurchaseView
   fields:
-    - name: ID / Code / UserID
-      type: uuid.UUID / string / uuid.UUID
-    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（キャンセル）
-      type: uuid.UUID / string
+    - name: Code / UserID
+      type: string / uuid.UUID
+    - name: StatusID / StatusCode / StatusName   # 購入ステータスマスタで解決済み（キャンセル）
+      type: uuid.UUID / int / string
     - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
       type: int                     # USD セント整数
     - name: Details
@@ -357,19 +360,19 @@ workflow:
 
 ## PATCH 支払い (purchase pay)
 
-`PATCH /v1/purchases/{purchaseId}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済）。
+`PATCH /v1/purchases/{purchaseCode}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済）。
 決済 SDK / PSP 連携・金額検証は行わず、`paid_at` のセットと `status_id` の「支払い済み」への更新のみを担う。在庫操作は伴わない。
 **単一集約（`purchases`）のみを更新するため、複数集約の原子性を要する CommandService（[ADR-0033 (commandservice-atomicity-criterion)]）ではなく通常 usecase + Repository で完結する**
 （cancel は在庫復元を伴う複数集約書き込みのため CommandService を用いる。判定軸は「集約を跨ぐ書き込みの原子性が要るか」）。
 状態機械の source of truth はキャンセルと統一で `status_id`（現在状態）、timestamps は監査記録として併用する。二重支払いは
-購入行ロック（`repo.LockByID` の FOR UPDATE・並行制御であって集約横断ではない）+ ドメインの状態チェック（`ErrAlreadyPaid`）で防ぐ。
+購入行ロック（`repo.LockByCode` の FOR UPDATE・並行制御であって集約横断ではない）+ ドメインの状態チェック（`ErrAlreadyPaid`）で防ぐ。
 支払い後の状態名解決は詳細読み取りモデル（`purchase.Detail`）で JOIN 解決する。
 
 ```yaml
 input:
   struct: PayPurchaseParams
   fields:
-    - name: PurchaseID           # 支払い対象の購入 ID
+    - name: PurchaseCode         # 支払い対象の購入コード（公開識別子）
       type: uuid.UUID
     - name: UserID               # 認証済みの内部ユーザー ID（所有権検証）
       type: uuid.UUID
@@ -377,10 +380,10 @@ input:
 output:
   struct: PayPurchaseView
   fields:
-    - name: ID / Code / UserID
-      type: uuid.UUID / string / uuid.UUID
-    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（支払い済み）
-      type: uuid.UUID / string
+    - name: Code / UserID
+      type: string / uuid.UUID
+    - name: StatusID / StatusCode / StatusName   # 購入ステータスマスタで解決済み（支払い済み）
+      type: uuid.UUID / int / string
     - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
       type: int                     # USD セント整数
     - name: Details
@@ -393,14 +396,14 @@ output:
 dependencies:
   - clock.Clock                     # Pay(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
   - tx.Manager                      # 最外 tx（本経路は idempotency を配線しない）
-  - purchase.Repository             # LockByID（FOR UPDATE）/ UpdatePaid（status/paid_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
+  - purchase.Repository             # LockByCode（FOR UPDATE）/ UpdatePaid（status/paid_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
   - outbox.EmitUsecase              # purchase.paid.v1 の emit（同一 tx）
 
 workflow:
   tx_required: true
   steps:
     - "txm.Do 内で:"
-    - "  ① repo.LockByID で購入行を FOR UPDATE ロックし明細込みで再構築（並行支払いを直列化）"
+    - "  ① repo.LockByCode で購入行を FOR UPDATE ロックし明細込みで再構築（並行支払いを直列化）"
     - "  ② purchase.UserID() != params.UserID なら NotFound へ畳む（存在秘匿）"
     - "  ③ purchase.Pay(now) で遷移可否検証 + status/paid_at を同時更新（ドメイン不変条件）"
     - "  ④ repo.UpdatePaid で purchases の status_id/paid_at を更新（単一集約・在庫操作なし）"
@@ -416,10 +419,10 @@ workflow:
 
 ## PATCH 発送 (purchase ship)
 
-`PATCH /v1/purchases/{purchaseId}/ship`。購入を発送済みへ遷移させる状態遷移経路。`shipped_at` のセットと `status_id` の
+`PATCH /v1/purchases/{purchaseCode}/ship`。購入を発送済みへ遷移させる状態遷移経路。`shipped_at` のセットと `status_id` の
 「発送済み」への更新のみを担い、配送追跡（追跡番号 / 配送業者 / 追跡 URL）と在庫操作は伴わない。支払いと同じく
 **単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0033 (commandservice-atomicity-criterion)] の判定軸）。
-二重発送は購入行ロック（`repo.LockByID` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyShipped`）で防ぐ。
+二重発送は購入行ロック（`repo.LockByCode` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyShipped`）で防ぐ。
 
 支払い・キャンセルと異なり **admin 専用の運用操作**であり、認可の扱いが 3 点で異なる:
 
@@ -434,16 +437,16 @@ input:
   args:
     - name: authn                # 認証主体（認可の判定材料。usecase は role を検査せず Authorizer へ委譲）
       type: "*auth.Authn"
-    - name: purchaseID           # 発送対象の購入 ID
+    - name: purchaseCode         # 発送対象の購入コード（公開識別子）
       type: uuid.UUID
 
 output:
   struct: ShipPurchaseView
   fields:
-    - name: ID / Code / UserID
-      type: uuid.UUID / string / uuid.UUID
-    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（発送済み）
-      type: uuid.UUID / string
+    - name: Code / UserID
+      type: string / uuid.UUID
+    - name: StatusID / StatusCode / StatusName   # 購入ステータスマスタで解決済み（発送済み）
+      type: uuid.UUID / int / string
     - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
       type: int                     # USD セント整数
     - name: Details
@@ -457,7 +460,7 @@ dependencies:
   - authz.Authorizer                # ActionPurchaseShip の認可（admin 判定は内部 DB role が SoT）
   - clock.Clock                     # Ship(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
   - tx.Manager                      # 最外 tx（本経路は idempotency を配線しない）
-  - purchase.Repository             # LockByID（FOR UPDATE）/ UpdateShipped（status/shipped_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
+  - purchase.Repository             # LockByCode（FOR UPDATE）/ UpdateShipped（status/shipped_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
   - outbox.EmitUsecase              # purchase.shipped.v1 の emit（同一 tx）
 
 workflow:
@@ -466,7 +469,7 @@ workflow:
     - "① authn が nil なら ErrUnauthenticated（401）"
     - "② authorizer.Authorize(ActionPurchaseShip, Resource{kind: purchase, ownerID: nil}) で認可（tx の外）"
     - "txm.Do 内で:"
-    - "  ③ repo.LockByID で購入行を FOR UPDATE ロックし明細込みで再構築（並行発送を直列化）"
+    - "  ③ repo.LockByCode で購入行を FOR UPDATE ロックし明細込みで再構築（並行発送を直列化）"
     - "  ④ purchase.Ship(now) で遷移可否検証 + status/shipped_at を同時更新（ドメイン不変条件）"
     - "  ⑤ repo.UpdateShipped で purchases の status_id/shipped_at を更新（単一集約・在庫操作なし）"
     - "  ⑥ emit.Emit(purchase.shipped.v1) を同一 tx で発行する"
@@ -482,10 +485,10 @@ workflow:
 
 ## PATCH 配達完了 (purchase deliver)
 
-`PATCH /v1/purchases/{purchaseId}/deliver`。購入を配達済みへ遷移させる状態遷移経路。`delivered_at` のセットと `status_id` の
+`PATCH /v1/purchases/{purchaseCode}/deliver`。購入を配達済みへ遷移させる状態遷移経路。`delivered_at` のセットと `status_id` の
 「配達済み」への更新のみを担い、配達確認の証跡（署名 / 受領写真 / GPS 位置）と在庫操作は伴わない。発送と同じく
 **単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0033 (commandservice-atomicity-criterion)] の判定軸）。
-二重配達は購入行ロック（`repo.LockByID` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyDelivered`）で防ぐ。
+二重配達は購入行ロック（`repo.LockByCode` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyDelivered`）で防ぐ。
 
 発送と同じ **admin 専用の運用操作**であり、認可の扱いも同じ 3 点で支払い・キャンセルと異なる:
 
@@ -499,16 +502,16 @@ input:
   args:
     - name: authn                # 認証主体（認可の判定材料。usecase は role を検査せず Authorizer へ委譲）
       type: "*auth.Authn"
-    - name: purchaseID           # 配達完了対象の購入 ID
+    - name: purchaseCode         # 配達完了対象の購入コード（公開識別子）
       type: uuid.UUID
 
 output:
   struct: DeliverPurchaseView
   fields:
-    - name: ID / Code / UserID
-      type: uuid.UUID / string / uuid.UUID
-    - name: StatusID / StatusName   # 購入ステータスマスタで解決済み（配達済み）
-      type: uuid.UUID / string
+    - name: Code / UserID
+      type: string / uuid.UUID
+    - name: StatusID / StatusCode / StatusName   # 購入ステータスマスタで解決済み（配達済み）
+      type: uuid.UUID / int / string
     - name: SubtotalAmount / TaxAmount / ShippingFee / TotalAmount
       type: int                     # USD セント整数
     - name: Details
@@ -522,7 +525,7 @@ dependencies:
   - authz.Authorizer                # ActionPurchaseDeliver の認可（admin 判定は内部 DB role が SoT）
   - clock.Clock                     # Deliver(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
   - tx.Manager                      # 最外 tx（本経路は idempotency を配線しない）
-  - purchase.Repository             # LockByID（FOR UPDATE）/ UpdateDelivered（status/delivered_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
+  - purchase.Repository             # LockByCode（FOR UPDATE）/ UpdateDelivered（status/delivered_at 更新・単一集約）/ FindDetailByID（状態名解決・DTO 取得元）
   - outbox.EmitUsecase              # purchase.delivered.v1 の emit（同一 tx）
 
 workflow:
@@ -531,7 +534,7 @@ workflow:
     - "① authn が nil なら ErrUnauthenticated（401）"
     - "② authorizer.Authorize(ActionPurchaseDeliver, Resource{kind: purchase, ownerID: nil}) で認可（tx の外）"
     - "txm.Do 内で:"
-    - "  ③ repo.LockByID で購入行を FOR UPDATE ロックし明細込みで再構築（並行配達を直列化）"
+    - "  ③ repo.LockByCode で購入行を FOR UPDATE ロックし明細込みで再構築（並行配達を直列化）"
     - "  ④ purchase.Deliver(now) で遷移可否検証 + status/delivered_at を同時更新（ドメイン不変条件）"
     - "  ⑤ repo.UpdateDelivered で purchases の status_id/delivered_at を更新（単一集約・在庫操作なし）"
     - "  ⑥ emit.Emit(purchase.delivered.v1) を同一 tx で発行する"
@@ -549,7 +552,7 @@ workflow:
 
 `GET /v1/purchases/shippable`。発送可能な購入を、まとめて発送してよい組に分けて返す admin 向けの読み取り経路。
 「何を発送すべきか」を admin に浮かび上がらせる一覧で、発送の実行そのものは購入 1 件ずつ
-`PATCH /v1/purchases/{purchaseId}/ship` が担う。cursor ページングを持たない top-N で、`GET /v1/products/low-stock` と同型。
+`PATCH /v1/purchases/{purchaseCode}/ship` が担う。cursor ページングを持たない top-N で、`GET /v1/products/low-stock` と同型。
 
 まとめ判定は**単一集約に閉じたドメインサービス** `domain/service/dispatch` が担う。「この購入は発送可能か」は 1 件の
 状態だけで決まるため `Purchase.IsShippable`（エンティティのメソッド）だが、「これらのうちどれとどれを 1 便にまとめて
