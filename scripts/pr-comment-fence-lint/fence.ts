@@ -87,29 +87,39 @@ export function fencesBody(line: string): boolean {
  * で止まれません。素通しの呼び出しが後続ステップの `details-summary` を拾って隠れる向きに外れます。
  */
 export function hasPassThroughCall(lines: readonly string[]): boolean {
-  for (let i = 0; i < lines.length; i++) {
-    if (!COMMENT_ACTION_USE.test(lines[i])) continue;
+  return lines.some((line, index) => COMMENT_ACTION_USE.test(line) && !isFenced(lines, index));
+}
 
-    let bullet = i;
-    while (bullet >= 0 && !STEP_BULLET.test(lines[bullet])) bullet--;
-    const stepIndent = bullet >= 0 ? lines[bullet].length - lines[bullet].trimStart().length : 0;
+/** 行の字下げ幅。 */
+function indentOf(line: string): number {
+  return line.length - line.trimStart().length;
+}
 
-    let fenced = false;
+/**
+ * `uses:` 行 `at` から始まるステップを開いた `-` の桁を返す。
+ *
+ * 桁で測るのは、`- uses:` から書き始めたステップが `uses:` の深さで測ると自分の `-` の桁を
+ * 拾ってしまい、次のステップの `-` で止まれなくなるためである。
+ */
+function stepIndentOf(lines: readonly string[], at: number): number {
+  for (let bullet = at; bullet >= 0; bullet--) {
+    if (STEP_BULLET.test(lines[bullet])) return indentOf(lines[bullet]);
+  }
 
-    for (let j = i + 1; j < lines.length; j++) {
-      const line = lines[j];
-      if (line.trim() === "") continue;
+  return 0;
+}
 
-      const indent = line.length - line.trimStart().length;
-      // 次のステップを開く `-`（同じ桁）か、ステップより浅いキーに出たらこの呼び出しは終わり。
-      if (indent < stepIndent || (indent === stepIndent && STEP_BULLET.test(line))) break;
-      if (fencesBody(line)) {
-        fenced = true;
-        break;
-      }
-    }
+/** `uses:` 行 `at` の呼び出しが、同じステップの中で本文をフェンスで囲っているか。 */
+function isFenced(lines: readonly string[], at: number): boolean {
+  const stepIndent = stepIndentOf(lines, at);
 
-    if (!fenced) return true;
+  for (const line of lines.slice(at + 1)) {
+    if (line.trim() === "") continue;
+
+    const indent = indentOf(line);
+    // 次のステップを開く `-`（同じ桁）か、ステップより浅いキーに出たらこの呼び出しは終わり。
+    if (indent < stepIndent || (indent === stepIndent && STEP_BULLET.test(line))) return false;
+    if (fencesBody(line)) return true;
   }
 
   return false;

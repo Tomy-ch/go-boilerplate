@@ -325,46 +325,50 @@ export function checkReferences(
   resolvers: ReferenceResolvers,
 ): Finding[] {
   const fromDir = path.dirname(rel);
-  const findings: Finding[] = [];
 
-  for (const { line, lineNo } of eachLineOutsideFence(content)) {
-    if (line.includes(IGNORE_DIRECTIVE)) continue;
-
-    for (const span of extractInlineCode(line)) {
-      for (const target of extractMakeTargets(span)) {
-        if (!resolvers.makeTargetExists(target)) {
-          findings.push({
-            file: rel,
-            line: lineNo,
-            rule: "make-ref",
-            message: `存在しない make ターゲットを参照しています: \`make ${target}\``,
-          });
-        }
-      }
-
-      const repoPath = resolvers.asRepoPath(span);
-
-      if (repoPath !== null && !resolvers.repoPathExists(repoPath, fromDir)) {
-        findings.push({
+  return [...eachLineOutsideFence(content)]
+    .filter(({ line }) => !line.includes(IGNORE_DIRECTIVE))
+    .flatMap(({ line, lineNo }) =>
+      extractInlineCode(line).flatMap((span) => [
+        ...missingMakeTargets(span, resolvers).map((target) => ({
+          file: rel,
+          line: lineNo,
+          rule: "make-ref",
+          message: `存在しない make ターゲットを参照しています: \`make ${target}\``,
+        })),
+        ...missingPath(span, fromDir, resolvers).map((message) => ({
           file: rel,
           line: lineNo,
           rule: "path-ref",
-          message: `存在しないパスを参照しています: \`${span}\``,
-        });
-        continue;
-      }
-      if (repoPath === null && CONFIG_FILE_RE.test(span) && !resolvers.configFileExists(span)) {
-        findings.push({
-          file: rel,
-          line: lineNo,
-          rule: "path-ref",
-          message: `リポジトリに存在しない設定ファイルを参照しています: \`${span}\``,
-        });
-      }
-    }
+          message,
+        })),
+      ]),
+    );
+}
+
+/** inline code span 1 つが参照している make ターゲットのうち、実在しないもの。 */
+function missingMakeTargets(span: string, resolvers: ReferenceResolvers): string[] {
+  return extractMakeTargets(span).filter((target) => !resolvers.makeTargetExists(target));
+}
+
+/**
+ * inline code span 1 つがパスとして読めるとき、実在しなければその違反文を返す。
+ *
+ * リポジトリ相対のパスとして読めた場合はそちらの実在だけを見て、設定ファイル名としての
+ * 解決は行いません。両方に当たると同じ span へ 2 つの違反が出ます。
+ */
+function missingPath(span: string, fromDir: string, resolvers: ReferenceResolvers): string[] {
+  const repoPath = resolvers.asRepoPath(span);
+
+  if (repoPath !== null) {
+    return resolvers.repoPathExists(repoPath, fromDir)
+      ? []
+      : [`存在しないパスを参照しています: \`${span}\``];
   }
 
-  return findings;
+  return CONFIG_FILE_RE.test(span) && !resolvers.configFileExists(span)
+    ? [`リポジトリに存在しない設定ファイルを参照しています: \`${span}\``]
+    : [];
 }
 
 /** ルートの makefile として読むファイル名か。綴りは処理系依存なので実エントリ名で拾う。 */

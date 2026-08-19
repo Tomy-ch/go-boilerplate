@@ -50,122 +50,178 @@ function markerPattern(marker: string, suffix: string): RegExp {
  *
  * @throws 対応の取れないマーカー、または差し替え側に退避コメント以外の行がある場合。
  */
-export function stripMarkers(content: string, marker: string): StripResult {
-  const blockBegin = markerPattern(marker, "begin");
-  const blockEnd = markerPattern(marker, "end");
-  const lineMarker = markerPattern(marker, "line");
-  const replaceBegin = markerPattern(marker, "replace-begin");
-  const replaceWith = markerPattern(marker, "replace-with");
-  const replaceEnd = markerPattern(marker, "replace-end");
+/** マーカーの各形に当たる正規表現一式。1 行につき何度も組み立て直さないためにまとめて持つ。 */
+type MarkerPatterns = {
+  blockBegin: RegExp;
+  blockEnd: RegExp;
+  lineMarker: RegExp;
+  replaceBegin: RegExp;
+  replaceWith: RegExp;
+  replaceEnd: RegExp;
+};
 
-  const lines = content.split("\n");
-  const out: string[] = [];
-  let depth = 0;
-  let removed = 0;
-  let replaceState: number = OUTSIDE;
-  // 直前の行を消したか。消した跡で空行が隣り合うのを畳むために要る。
-  let cutJustBefore = false;
+/**
+ * 出力の積み上げ先。
+ *
+ * 継ぎ目の繕いに直前の行と「直前を消したか」の両方が要るため、行の配列だけでは足りない。
+ */
+type Sink = {
+  out: string[];
+  removed: number;
+  cutJustBefore: boolean;
+};
 
-  /**
-   * 1 行を残す。消した跡の継ぎ目でだけ、空行の重なりと引用の分断を繕う。
-   *
-   * @remarks
-   * ブロックの前後に空行を置くのは Markdown では普通の書き方なので、ブロックを抜くと
-   * その 2 つの空行が隣り合います。繕うのを継ぎ目に限るのは、コードフェンス内の
-   * 意図した連続空行を壊さないためです。
-   *
-   * 引用どうしの継ぎ目はさらに一手要ります。空行 1 つで隔てられた 2 つの引用は、Markdown では
-   * 「途中に空行のある 1 つの引用」と読まれて壊れるため、空行を `>`（引用内の段落区切り）へ
-   * 置き換えます。両側を独立した注記のまま残せる唯一の形です。
-   */
-  const keep = (line: string): void => {
-    if (cutJustBefore) {
-      if (line.trim() === "" && (out.at(-1) ?? "").trim() === "") {
-        removed++;
+/** 1 行を消す。次に残す行が継ぎ目に来ることを記録する。 */
+function cut(sink: Sink): void {
+  sink.removed++;
+  sink.cutJustBefore = true;
+}
 
-        return;
-      }
+/**
+ * 1 行を残す。消した跡の継ぎ目でだけ、空行の重なりと引用の分断を繕う。
+ *
+ * @remarks
+ * ブロックの前後に空行を置くのは Markdown では普通の書き方なので、ブロックを抜くと
+ * その 2 つの空行が隣り合います。繕うのを継ぎ目に限るのは、コードフェンス内の
+ * 意図した連続空行を壊さないためです。
+ *
+ * 引用どうしの継ぎ目はさらに一手要ります。空行 1 つで隔てられた 2 つの引用は、Markdown では
+ * 「途中に空行のある 1 つの引用」と読まれて壊れるため、空行を `>`（引用内の段落区切り）へ
+ * 置き換えます。両側を独立した注記のまま残せる唯一の形です。
+ */
+function keep(sink: Sink, line: string): void {
+  if (sink.cutJustBefore) {
+    if (line.trim() === "" && (sink.out.at(-1) ?? "").trim() === "") {
+      sink.removed++;
 
-      if (
-        QUOTE_LINE.test(line) &&
-        (out.at(-1) ?? "").trim() === "" &&
-        QUOTE_LINE.test(out.at(-2) ?? "")
-      ) {
-        out[out.length - 1] = ">";
-      }
+      return;
     }
 
-    out.push(line);
-    cutJustBefore = false;
+    if (
+      QUOTE_LINE.test(line) &&
+      (sink.out.at(-1) ?? "").trim() === "" &&
+      QUOTE_LINE.test(sink.out.at(-2) ?? "")
+    ) {
+      sink.out[sink.out.length - 1] = ">";
+    }
+  }
+
+  sink.out.push(line);
+  sink.cutJustBefore = false;
+}
+
+/**
+ * replace マーカーの行なら、その次の行から属する側を返す。マーカーでなければ `null`。
+ *
+ * 対応の取れない並び（入れ子・片割れ）はここで落とします。読み進めてから気付くと、どこまでが
+ * 差し替え対象だったのかを言えないまま出力が出来上がるためです。
+ */
+function replaceTransition(
+  line: string,
+  patterns: MarkerPatterns,
+  state: number,
+  marker: string,
+): number | null {
+  if (patterns.replaceBegin.test(line)) {
+    if (state !== OUTSIDE) {
+      throw new Error(`${marker}:replace ブロックは入れ子にできません。`);
+    }
+
+    return ACTIVE;
+  }
+  if (patterns.replaceWith.test(line)) {
+    if (state !== ACTIVE) {
+      throw new Error(`${marker}:replace-with に対応する ${marker}:replace-begin がありません。`);
+    }
+
+    return SUBSTITUTE;
+  }
+  if (patterns.replaceEnd.test(line)) {
+    if (state === OUTSIDE) {
+      throw new Error(`${marker}:replace-end に対応する ${marker}:replace-begin がありません。`);
+    }
+
+    return OUTSIDE;
+  }
+
+  return null;
+}
+
+/** ブロックマーカーの行なら、その次の行から数える深さを返す。マーカーでなければ `null`。 */
+function blockTransition(
+  line: string,
+  patterns: MarkerPatterns,
+  depth: number,
+  marker: string,
+): number | null {
+  if (patterns.blockBegin.test(line)) return depth + 1;
+  if (patterns.blockEnd.test(line)) {
+    if (depth === 0) {
+      throw new Error(`${marker}:end に対応する ${marker}:begin が見つかりません。`);
+    }
+
+    return depth - 1;
+  }
+
+  return null;
+}
+
+/** 差し替え側の 1 行をアンコメントする。退避コメントの形をしていない行は書き手の誤りとして落とす。 */
+function uncommentSubstitute(line: string, marker: string): string {
+  const matched = REPLACE_CONTENT.exec(line);
+
+  if (matched === null) {
+    throw new Error(
+      `${marker}:replace-with 〜 replace-end の行は // = / # = / <!-- = --> のいずれかで書いてください: ${line}`,
+    );
+  }
+
+  return matched[1] + (matched[2] ?? matched[3].trimEnd());
+}
+
+export function stripMarkers(content: string, marker: string): StripResult {
+  const patterns: MarkerPatterns = {
+    blockBegin: markerPattern(marker, "begin"),
+    blockEnd: markerPattern(marker, "end"),
+    lineMarker: markerPattern(marker, "line"),
+    replaceBegin: markerPattern(marker, "replace-begin"),
+    replaceWith: markerPattern(marker, "replace-with"),
+    replaceEnd: markerPattern(marker, "replace-end"),
   };
 
-  for (const line of lines) {
-    if (replaceBegin.test(line)) {
-      if (replaceState !== OUTSIDE) {
-        throw new Error(`${marker}:replace ブロックは入れ子にできません。`);
-      }
-      replaceState = ACTIVE;
-      removed++;
-      cutJustBefore = true;
+  const sink: Sink = { out: [], removed: 0, cutJustBefore: false };
+  let depth = 0;
+  let replaceState: number = OUTSIDE;
+
+  for (const line of content.split("\n")) {
+    const nextReplaceState = replaceTransition(line, patterns, replaceState, marker);
+    if (nextReplaceState !== null) {
+      replaceState = nextReplaceState;
+      cut(sink);
       continue;
     }
-    if (replaceWith.test(line)) {
-      if (replaceState !== ACTIVE) {
-        throw new Error(`${marker}:replace-with に対応する ${marker}:replace-begin がありません。`);
-      }
-      replaceState = SUBSTITUTE;
-      removed++;
-      cutJustBefore = true;
-      continue;
-    }
-    if (replaceEnd.test(line)) {
-      if (replaceState === OUTSIDE) {
-        throw new Error(`${marker}:replace-end に対応する ${marker}:replace-begin がありません。`);
-      }
-      replaceState = OUTSIDE;
-      removed++;
-      cutJustBefore = true;
-      continue;
-    }
+    // 有効側（対象が在るときのコード）は除去し、差し替え側は退避コメントを外して残す。
     if (replaceState === ACTIVE) {
-      // 有効側（対象が在るときのコード）は除去する。
-      removed++;
-      cutJustBefore = true;
+      cut(sink);
       continue;
     }
     if (replaceState === SUBSTITUTE) {
-      // 差し替え側は退避コメントをアンコメントして残す。
-      const matched = REPLACE_CONTENT.exec(line);
-      if (matched === null) {
-        throw new Error(
-          `${marker}:replace-with 〜 replace-end の行は // = / # = / <!-- = --> のいずれかで書いてください: ${line}`,
-        );
-      }
-      keep(matched[1] + (matched[2] ?? matched[3].trimEnd()));
+      keep(sink, uncommentSubstitute(line, marker));
       continue;
     }
 
-    if (blockBegin.test(line)) {
-      depth++;
-      removed++;
-      cutJustBefore = true;
+    const nextDepth = blockTransition(line, patterns, depth, marker);
+    if (nextDepth !== null) {
+      depth = nextDepth;
+      cut(sink);
       continue;
     }
-    if (blockEnd.test(line)) {
-      if (depth === 0) {
-        throw new Error(`${marker}:end に対応する ${marker}:begin が見つかりません。`);
-      }
-      depth--;
-      removed++;
-      cutJustBefore = true;
+    if (depth > 0 || patterns.lineMarker.test(line)) {
+      cut(sink);
       continue;
     }
-    if (depth > 0 || lineMarker.test(line)) {
-      removed++;
-      cutJustBefore = true;
-      continue;
-    }
-    keep(line);
+
+    keep(sink, line);
   }
 
   if (depth > 0) {
@@ -175,5 +231,5 @@ export function stripMarkers(content: string, marker: string): StripResult {
     throw new Error(`${marker}:replace-begin に対応する ${marker}:replace-end が見つかりません。`);
   }
 
-  return { content: out.join("\n"), removed };
+  return { content: sink.out.join("\n"), removed: sink.removed };
 }
