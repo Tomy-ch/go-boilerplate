@@ -1,0 +1,35 @@
+# Grype ignore policy.
+#
+# Same rule as .trivyignore.yaml and .github/zizmor.yml: nothing is switched off wholesale.
+# Every entry names the vulnerability or the package it excuses, carries the evidence that
+# makes it a false positive here, and says what would have to be re-checked for it to stop
+# being one. Remove an entry once the underlying condition changes rather than keeping it
+# as a permanent allowlist.
+ignore:
+  # Grype resolves a pinned action by the version comment that trails its SHA, and this
+  # repository's pins carry a moving major tag (`# v1`) wherever `make pin-actions-resolve`
+  # found that tag's head already past the quarantine window — 13 of the 24 entries in
+  # .github/actions-pin.toml are of that form. So Grype reads the version as "v1" and
+  # compares it against `< 1.0.74`.
+  #
+  # The SHA actually pinned, be7b93b1907a4abad570368f3c74b6fe3807510b, is the tag v1.0.183
+  # (2026-07-25) — a hundred releases past the patched version. Scoped to this one advisory
+  # so a genuinely new one against the same action still surfaces; the day the pin comment
+  # becomes an exact version, this entry stops being needed at all.
+  - vulnerability: GHSA-8q5r-mmjf-575q
+    package:
+      name: anthropics/claude-code-action
+
+  # github.com/docker/docker is not a dependency of this module. It appears in go.sum only,
+  # reached through the module graph of golang-migrate's own test binaries (dktest), and
+  # `go list -deps ./...` returns it zero times — nothing this repository builds links it.
+  # Grype catalogs go.sum, so it reports it anyway.
+  #
+  # Scoped to the package rather than to the advisory ids, because the claim being made is
+  # "this code is never compiled in", not "these particular findings are harmless" — a list
+  # of ids would need editing every time upstream publishes another one while the reason
+  # stayed identical. What that costs: a docker/docker vulnerability would stay silent if
+  # this ever became a real dependency, so re-check with `go list -deps ./...` before
+  # trusting this entry after any change to the golang-migrate dependency.
+  - package:
+      name: github.com/docker/docker

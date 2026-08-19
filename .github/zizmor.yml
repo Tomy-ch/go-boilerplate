@@ -31,6 +31,25 @@ rules:
     remap:
       severity: medium
 
+  # The version comment trailing a pinned SHA is this repository's declared tag line, and
+  # `make pin-actions-resolve` writes a moving major tag (`# v1`) into it wherever that
+  # tag's head was already past the supply-chain quarantine window — 13 of the 24 entries
+  # in .github/actions-pin.toml are of that form. The SHA beside it is what the tag pointed
+  # at when it was resolved, so it lags the tag's head by design and zizmor reads that gap
+  # as a mismatched comment.
+  #
+  # The audit is not wrong about what it sees: `# v1` is less specific than the SHA it
+  # annotates, and Grype mis-scored the same line for the same reason (see .grype.yaml).
+  # Whether the resolver should write exact versions instead is a decision about the
+  # pinning convention, taken in /actions-pin and not here. Until it is, the three files
+  # below are listed one by one, so a fourth action adopting a moving major tag surfaces
+  # rather than being absorbed.
+  ref-version-mismatch:
+    ignore:
+      - claude.yaml
+      - deploy-app.yaml
+      - image-scan.yaml
+
   # The cooldown windows in .github/dependabot.yml are a deliberate, documented
   # supply-chain policy (Go modules: patch 5 / minor 7 / major 30 days; Docker and
   # GitHub Actions: a flat 5 days; security updates bypass the cooldown by design),
