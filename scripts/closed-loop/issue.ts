@@ -153,16 +153,7 @@ function readBlockLines(block: string): BlockContent {
       mode = line === "phases:" ? "phases" : "skills";
       continue;
     }
-    if (mode === "phases" && line.startsWith("  - ")) {
-      const m = /from:\s*(\S+?),\s*to:\s*(\S+?),\s*sec:\s*(-?\d+)/.exec(line);
-      if (m) out.phases.push({ from: m[1] as string, to: m[2] as string, sec: Number(m[3]) });
-      continue;
-    }
-    if (mode === "skills" && line.startsWith("  ")) {
-      const m = /^\s+(\S+):\s*(\d+)$/.exec(line);
-      if (m) out.skills[m[1] as string] = Number(m[2]);
-      continue;
-    }
+    if (readNestedLine(out, mode, line)) continue;
     const m = /^([a-z_]+):\s*(.+)$/.exec(line);
     if (m) {
       mode = "top";
@@ -170,6 +161,27 @@ function readBlockLines(block: string): BlockContent {
     }
   }
   return out;
+}
+
+/**
+ * `phases:` / `skills:` の配下にある 1 行を読む。その配下の行として扱えたら `true`。
+ *
+ * @remarks
+ * `false` を返した行は上位のスカラ行として読み直されます。形の合わない行を捨てるのは
+ * 呼び出し側と同じ理由で、1 行のために窓 1 件の観測を落とさないためです。
+ */
+function readNestedLine(out: BlockContent, mode: "top" | "phases" | "skills", line: string): boolean {
+  if (mode === "phases" && line.startsWith("  - ")) {
+    const m = /from:\s*(\S+?),\s*to:\s*(\S+?),\s*sec:\s*(-?\d+)/.exec(line);
+    if (m) out.phases.push({ from: m[1] as string, to: m[2] as string, sec: Number(m[3]) });
+    return true;
+  }
+  if (mode === "skills" && line.startsWith("  ")) {
+    const m = /^\s+(\S+):\s*(\d+)$/.exec(line);
+    if (m) out.skills[m[1] as string] = Number(m[2]);
+    return true;
+  }
+  return false;
 }
 
 /**
