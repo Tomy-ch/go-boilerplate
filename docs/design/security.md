@@ -390,6 +390,13 @@ are the only way a CI runner can see what happened. That trade is why the readin
 in the first place — a runner cannot read a file under the developer's home, so putting the reading
 there forces the publication.
 
+**Prose is not trusted merely because it is prose.** The reading is done by a model that could, if
+left unconstrained, reach files nobody selected for it — so the local call runs outside the
+repository with its file, shell and network tools denied, and what it returns is filtered again
+before anything is posted. A section matching a secret pattern is dropped whole. Filtering only the
+input would leave the output as an unwatched exit, which is the shape of the two paths above: a
+control that inspects one direction and calls the surface covered.
+
 On that fallback the loop filters its own candidates, and that filter is the only gate. Shape-based
 detection cannot be complete, so the rule is to **drop anything suspicious**: a dropped excerpt
 costs one of several candidates for the same window, while a published one cannot be recalled. The
