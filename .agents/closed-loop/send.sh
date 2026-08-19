@@ -34,20 +34,50 @@ LOCK_DIR="${REPO_ROOT}/tmp/closed-loop/send.lock"
 # Observed, with the reading done locally: 2 windows became 21 issues.
 #
 # `mkdir` is the primitive because it is atomic on every filesystem this runs on and needs no
-# `flock`, which macOS does not ship. A stale directory is worse than a missed send — the send is
-# retried at the next start, whereas a stale lock stops every later one — so the lock is released
-# on any exit, including a signal.
+# `flock`, which macOS does not ship.
 #
-# A second run does not wait: it exits, because the run already in flight will send the same
+# The lock is released on the normal path rather than only from a trap, because the trap does not
+# fire on the one path that matters. `--hook` starts this as `( ... & )`, and in that doubly
+# backgrounded form the EXIT trap is never reached — measured: the same function leaks its lock
+# under `( f & )` and releases it under `( f ) &`. A leak there is permanent and silent, since
+# every later run finds the directory and returns without sending anything.
+#
+# A stale lock is therefore taken over rather than trusted. Something that has held it for longer
+# than any real send could take is not running any more, whatever happened to it. That is the
+# right way round: a missed send is retried at the next start, while a stale lock stops every one
+# of them and says nothing.
+#
+# A second, live run does not wait: it exits, because the run already in flight will send the same
 # windows. Queueing would only pile up duplicates of that same work behind a call that must not
 # block a session.
+LOCK_STALE_SEC=1800
+
+# `find -mmin` rather than `stat`, whose flags differ between BSD and GNU.
+lock_is_stale() {
+  [ -d "${LOCK_DIR}" ] || return 1
+  [ -n "$(find "${LOCK_DIR}" -maxdepth 0 -mmin "+$((LOCK_STALE_SEC / 60))" 2>/dev/null)" ]
+}
+
+acquire_lock() {
+  mkdir -p "$(dirname -- "${LOCK_DIR}")" 2>/dev/null || return 1
+  mkdir "${LOCK_DIR}" 2>/dev/null && return 0
+  lock_is_stale || return 1
+  rmdir "${LOCK_DIR}" 2>/dev/null || return 1
+  mkdir "${LOCK_DIR}" 2>/dev/null
+}
+
+release_lock() {
+  rmdir "${LOCK_DIR}" 2>/dev/null || :
+}
+
 locked_run() {
-  mkdir -p "$(dirname -- "${LOCK_DIR}")" 2>/dev/null || return 0
-  if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
-    return 0
-  fi
-  trap 'rmdir "${LOCK_DIR}" 2>/dev/null || :' EXIT INT TERM
-  run
+  acquire_lock || return 0
+  trap 'release_lock' INT TERM
+  # `set -e` の下で `run` が落ちると以降が走らないため、`if` で終了コードを受け止めてから
+  # 解放する。失敗しても握ったままにしないのがここの要件。
+  if run; then status=0; else status=$?; fi
+  release_lock
+  return "${status}"
 }
 
 usage() {
