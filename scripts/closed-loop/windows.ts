@@ -186,3 +186,43 @@ export function totalDurationSec(window: Window): number | undefined {
   if (opened === undefined || closed === undefined) return undefined;
   return closed - opened;
 }
+
+/**
+ * 打刻ディレクトリを読む継ぎ目。実体は入口が `fs` から作って渡す。
+ *
+ * @remarks
+ * ここを引数で受けるのは、`scripts/README.md` の *Test Strategy* が入口に求める形そのものです
+ * ——不純な依存を引数に取ることで、判断がテストから届くようになります。
+ */
+export type MarksReader = {
+  readonly listWindowIds: () => readonly string[];
+  readonly listFiles: (windowId: string) => readonly string[];
+  readonly readFile: (windowId: string, file: string) => string;
+};
+
+/**
+ * 打刻ディレクトリ群から窓を組み立てる。
+ *
+ * @remarks
+ * 読めないファイルは無いものとして扱い、その窓の残りと他の窓は取り込みます。1 ファイルの
+ * 読み取り失敗で全体を落とさないのは、打刻が複数のプロセス（git フックと進行中のセッション）
+ * から書かれるためです。書き込みの途中に当たることは普通に起こり、そのたびに送出が丸ごと
+ * 落ちるのでは「ローカル開発をブロックしない」を満たせません。
+ *
+ * 窓 ID で整列するのは、読む側が実行のたびに違う順序を受け取らないようにするためです。
+ */
+export function collectWindows(read: MarksReader): Window[] {
+  return [...read.listWindowIds()]
+    .sort()
+    .map((id) => {
+      const files: Record<string, string> = {};
+      for (const f of read.listFiles(id)) {
+        try {
+          files[f] = read.readFile(id, f);
+        } catch {
+          // 読めないファイルは無いものとして扱う
+        }
+      }
+      return toWindow(id, files);
+    });
+}

@@ -34,7 +34,7 @@ import {
   LOCAL_EXCERPT_CHARS,
   type Summary,
 } from "../summarize";
-import { isSubstantive, phasesOf, representativeAt, toWindow, type Window } from "../windows";
+import { collectWindows, isSubstantive, phasesOf, representativeAt, type MarksReader } from "../windows";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const MARKS_DIR = path.join(REPO_ROOT, "tmp", "closed-loop", "marks");
@@ -50,18 +50,17 @@ function flag(name: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
-function readWindows(): Window[] {
-  if (!fs.existsSync(MARKS_DIR)) return [];
-  return fs
-    .readdirSync(MARKS_DIR, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => {
-      const dir = path.join(MARKS_DIR, e.name);
-      const files: Record<string, string> = {};
-      for (const f of fs.readdirSync(dir)) files[f] = fs.readFileSync(path.join(dir, f), "utf8");
-      return toWindow(e.name, files);
-    });
-}
+const marksReader: MarksReader = {
+  listWindowIds: () =>
+    fs.existsSync(MARKS_DIR)
+      ? fs
+          .readdirSync(MARKS_DIR, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name)
+      : [],
+  listFiles: (id) => fs.readdirSync(path.join(MARKS_DIR, id)),
+  readFile: (id, file) => fs.readFileSync(path.join(MARKS_DIR, id, file), "utf8"),
+};
 
 function readIndex() {
   try {
@@ -166,7 +165,7 @@ let sent = 0;
 let pending = 0;
 let skipped = 0;
 
-for (const window of readWindows()) {
+for (const window of collectWindows(marksReader)) {
   if (representativeAt(window, "closedAt") === undefined) continue; // まだ開いている窓は送らない
   const existing = findByWindow(store, window.id);
   if (!needsSend(existing)) continue;

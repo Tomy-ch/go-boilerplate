@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  collectWindows,
   MARK_ORDER,
   anomaliesOf,
   isSubstantive,
@@ -12,6 +13,7 @@ import {
   toWindow,
   totalDurationSec,
   type Window,
+  type MarksReader,
 } from "./windows";
 
 const windowOf = (marks: Record<string, number[]>): Window => ({ id: "w1-test", marks });
@@ -258,6 +260,54 @@ describe("totalDurationSec", () => {
 
     it("開始が無ければ undefined を返す", () => {
       expect(totalDurationSec(windowOf({ closedAt: [100] }))).toBeUndefined();
+    });
+  });
+});
+
+const fakeReader = (
+  tree: Readonly<Record<string, Readonly<Record<string, string>>>>,
+  unreadable: readonly string[] = [],
+): MarksReader => ({
+  listWindowIds: () => Object.keys(tree),
+  listFiles: (id) => Object.keys(tree[id] ?? {}),
+  readFile: (id, file) => {
+    if (unreadable.includes(`${id}/${file}`)) throw new Error("EACCES");
+    return tree[id]?.[file] ?? "";
+  },
+});
+
+describe("collectWindows", () => {
+  describe("正常系", () => {
+    it("打刻ファイルから窓を組み立てる", () => {
+      const windows = collectWindows(fakeReader({ w1: { openedAt: "100\n", closedAt: "200\n" } }));
+      expect(windows).toHaveLength(1);
+      expect(representativeAt(windows[0] as Window, "openedAt")).toBe(100);
+      expect(representativeAt(windows[0] as Window, "closedAt")).toBe(200);
+    });
+
+    it("窓 ID の順に並べ、実行ごとに順序が変わらないようにする", () => {
+      const windows = collectWindows(fakeReader({ w3: { openedAt: "3\n" }, w1: { openedAt: "1\n" }, w2: { openedAt: "2\n" } }));
+      expect(windows.map((w) => w.id)).toEqual(["w1", "w2", "w3"]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("読めないファイルがあっても同じ窓の残りは取り込む", () => {
+      const windows = collectWindows(fakeReader({ w1: { openedAt: "100\n", commitAt: "150\n" } }, ["w1/commitAt"]));
+      expect(representativeAt(windows[0] as Window, "openedAt")).toBe(100);
+      expect(representativeAt(windows[0] as Window, "commitAt")).toBeUndefined();
+    });
+
+    it("読めないファイルがあっても他の窓は落とさない", () => {
+      const windows = collectWindows(
+        fakeReader({ w1: { openedAt: "100\n" }, w2: { openedAt: "200\n" } }, ["w1/openedAt"]),
+      );
+      expect(windows).toHaveLength(2);
+      expect(representativeAt(windows[1] as Window, "openedAt")).toBe(200);
+    });
+
+    it("打刻がひとつも無ければ空を返す", () => {
+      expect(collectWindows(fakeReader({}))).toEqual([]);
     });
   });
 });

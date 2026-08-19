@@ -15,7 +15,16 @@ import { fileURLToPath } from "node:url";
 
 import { parseClaudeLine, parseCodexLine, summarizeSession, type Event, type SessionFacts } from "./events";
 import { resolvePeriod, summarizePeriod, uncalledSkills } from "./report";
-import { anomaliesOf, phasesOf, stampCount, toWindow, totalDurationSec, MARK_ORDER, type Window } from "./windows";
+import {
+  anomaliesOf,
+  collectWindows,
+  phasesOf,
+  stampCount,
+  totalDurationSec,
+  MARK_ORDER,
+  type MarksReader,
+  type Window,
+} from "./windows";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const MARKS_DIR = path.join(REPO_ROOT, "tmp", "closed-loop", "marks");
@@ -26,26 +35,17 @@ function flag(name: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
-function readWindows(): Window[] {
-  if (!fs.existsSync(MARKS_DIR)) return [];
-  return fs
-    .readdirSync(MARKS_DIR, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort()
-    .map((id) => {
-      const dir = path.join(MARKS_DIR, id);
-      const files: Record<string, string> = {};
-      for (const f of fs.readdirSync(dir)) {
-        try {
-          files[f] = fs.readFileSync(path.join(dir, f), "utf8");
-        } catch {
-          // 読めないファイルは無いものとして扱う。窓の報告を 1 ファイルで落とさない。
-        }
-      }
-      return toWindow(id, files);
-    });
-}
+const marksReader: MarksReader = {
+  listWindowIds: () =>
+    fs.existsSync(MARKS_DIR)
+      ? fs
+          .readdirSync(MARKS_DIR, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name)
+      : [],
+  listFiles: (id) => fs.readdirSync(path.join(MARKS_DIR, id)),
+  readFile: (id, file) => fs.readFileSync(path.join(MARKS_DIR, id, file), "utf8"),
+};
 
 function listJsonl(dir: string): string[] {
   const found: string[] = [];
@@ -82,7 +82,7 @@ const declaredSkills = fs.existsSync(SKILLS_DIR)
   : [];
 
 const period = resolvePeriod(flag("from"), flag("to"), Math.floor(Date.now() / 1000));
-const windows = readWindows();
+const windows = collectWindows(marksReader);
 const claudeDir = flag("transcripts");
 const codexDir = flag("codex");
 const sessions = [
