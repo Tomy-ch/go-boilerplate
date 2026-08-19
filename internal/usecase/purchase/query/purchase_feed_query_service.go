@@ -11,7 +11,7 @@ import (
 
 // PurchaseFeedQueryService は、購入履歴一覧の集約跨ぎ read 投影を提供する QueryService です。
 // 一覧は購入ステータスマスタに加えて別集約である商品（products）を結合して明細の要約を解決するため、
-// 単一集約の Repository read ではなく読み取り側に置きます（ADR-0031 (lightweight-cqrs)）。
+// 単一集約の Repository read ではなく読み取り側に置きます（ADR-0032 (lightweight-cqrs)）。
 type PurchaseFeedQueryService interface {
 	// FindFeedByUserID は、指定ユーザーの購入履歴を注文日時の降順（同時刻は ID 降順）の安定順で
 	// keyset ページネーション取得します。ステータスは購入ステータスマスタ、明細の要約は商品との

@@ -522,7 +522,7 @@ declaration is yours to correct.
 revokes a bad publish — not from blast radius. `scripts/tool-cooldown/main.go` holds both constants
 (`releaseWindowDays` for `aqua:` / `ubi:` / `github:`, `registryWindowDays` for `go:` / `npm:` /
 `pypi:` / `pipx:`), `scripts/go-cooldown/main.go` holds `defaultWindowDays`, and the reasoning is
-[ADR-0090](../../../docs/adr/0090-malicious-package-detection-via-cooldown.md) plus the Dependencies
+[ADR-0090](../../../docs/adr/0091-malicious-package-detection-via-cooldown.md) plus the Dependencies
 section of `docs/design/security.md`. Read the constants rather than trusting a number quoted
 anywhere — including here. Language runtimes are outside every window by the same ADR.
 
