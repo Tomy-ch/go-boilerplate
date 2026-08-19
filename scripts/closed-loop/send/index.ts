@@ -19,8 +19,9 @@ import { fileURLToPath } from "node:url";
 
 import { renderCandidateComment, selectCandidates } from "../candidates";
 import { parseClaudeLine, summarizeSession, type Event } from "../events";
-import { findByWindow, parseIndex, upsert, type IndexEntry } from "../index-store";
+import { findByWindow, needsSend, parseIndex, upsert, type IndexEntry } from "../index-store";
 import { issueTitle, renderBody, type Observation } from "../issue";
+import { withinPeriod } from "../report";
 import { phasesOf, representativeAt, toWindow, type Window } from "../windows";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -100,7 +101,7 @@ function sessionFactsFor(dir: string | undefined, from: number | undefined, to: 
     try {
       for (const line of fs.readFileSync(path.join(dir, f), "utf8").split("\n")) {
         for (const e of parseClaudeLine(line)) {
-          if (e.at < from || e.at > to) continue;
+          if (!withinPeriod(e.at, { from, to })) continue;
           events.push(e);
           if (e.sessionId !== undefined) sessions.add(e.sessionId);
         }
@@ -121,9 +122,7 @@ let pending = 0;
 for (const window of readWindows()) {
   if (representativeAt(window, "closedAt") === undefined) continue; // まだ開いている窓は送らない
   const existing = findByWindow(store, window.id);
-  // 完了しているのは「issue があり、かつコメントも付いた」窓だけ。issue はあるが
-  // コメントが欠けている窓は、コメントだけを再送するためにここを通す。
-  if (existing?.feedbackIssue !== undefined && existing.commentPending !== true) continue;
+  if (!needsSend(existing)) continue;
 
   const openedAt = representativeAt(window, "openedAt");
   const closedAt = representativeAt(window, "closedAt");

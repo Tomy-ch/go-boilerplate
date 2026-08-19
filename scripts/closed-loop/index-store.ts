@@ -100,6 +100,23 @@ export function pendingEntries(store: IndexStore): IndexEntry[] {
 }
 
 /**
+ * その窓をまだ送る必要があるか。
+ *
+ * @remarks
+ * 完了しているのは「issue があり、かつコメントも付いた」窓だけです。issue はあるが
+ * コメントが欠けている窓は、コメントだけを再送するために対象へ残します。
+ *
+ * 入口ではなくここに置くのは、これが状態遷移の判定だからです。組み合わせを誤ると
+ * issue が二重に作られるか、逆に二度と再送されずに埋もれます。どちらも黙って起きるため、
+ * テストが張れる位置に無いと壊れたことに気づけません。
+ */
+export function needsSend(entry: IndexEntry | undefined): boolean {
+  if (entry === undefined) return true;
+  if (entry.feedbackIssue === undefined) return true;
+  return entry.commentPending === true;
+}
+
+/**
  * 索引へ 1 件を書き込む。同じ窓 ID があれば置き換える。
  *
  * @remarks

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   findByBranch,
+  needsSend,
   findByWindow,
   parseIndex,
   pendingEntries,
@@ -128,6 +129,32 @@ describe("pendingEntries", () => {
     it("issue はあるがコメント未投稿の窓も未完了として挙げる", () => {
       const st = store(entry({ windowId: "w1", feedbackIssue: 5, commentPending: true }));
       expect(pendingEntries(st).map((e) => e.windowId)).toEqual(["w1"]);
+    });
+  });
+});
+
+describe("needsSend", () => {
+  describe("正常系", () => {
+    it("索引に無い窓は送る", () => {
+      expect(needsSend(undefined)).toBe(true);
+    });
+
+    it("issue がまだ無い窓は送る", () => {
+      expect(needsSend(entry({ windowId: "w1" }))).toBe(true);
+    });
+
+    it("issue はあるがコメントが未投稿なら送る", () => {
+      expect(needsSend(entry({ windowId: "w1", feedbackIssue: 5, commentPending: true }))).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("issue もコメントも揃っていれば送らない", () => {
+      expect(needsSend(entry({ windowId: "w1", feedbackIssue: 5 }))).toBe(false);
+    });
+
+    it("commentPending が明示的に false でも送らない", () => {
+      expect(needsSend(entry({ windowId: "w1", feedbackIssue: 5, commentPending: false }))).toBe(false);
     });
   });
 });

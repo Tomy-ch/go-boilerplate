@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { Observation } from "./issue";
 import {
   DEFAULT_WEIGHTS,
+  FINDING_KINDS,
+  KIND_LABEL_PREFIX,
+  labelsToKinds,
   clusterIssues,
   clusterKey,
   failureRate,
@@ -32,6 +35,49 @@ describe("DEFAULT_WEIGHTS", () => {
       expect(w.recurrence).toBeGreaterThan(w.humanIntervention);
       expect(w.humanIntervention).toBeGreaterThan(w.impact);
       expect(w.impact).toBeGreaterThan(w.frequency);
+    });
+  });
+});
+
+describe("KIND_LABEL_PREFIX", () => {
+  describe("正常系", () => {
+    it("ラベルの名前空間と一致している", () => {
+      expect(KIND_LABEL_PREFIX).toBe("feedback/");
+    });
+  });
+});
+
+describe("FINDING_KINDS", () => {
+  describe("正常系", () => {
+    it("重複した分類を持たない", () => {
+      expect(new Set(FINDING_KINDS).size).toBe(FINDING_KINDS.length);
+    });
+  });
+});
+
+describe("labelsToKinds", () => {
+  describe("正常系", () => {
+    it("接頭辞を外して分類を取り出す", () => {
+      expect(labelsToKinds(["feedback/skill", "feedback/ci"])).toEqual(["skill", "ci"]);
+    });
+
+    it("宣言されている全分類を取り出せる", () => {
+      const labels = FINDING_KINDS.map((k) => `${KIND_LABEL_PREFIX}${k}`);
+      expect(labelsToKinds(labels)).toEqual([...FINDING_KINDS]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("接頭辞の無いラベルを捨てる", () => {
+      expect(labelsToKinds(["feedback", "bug", "feedback/skill"])).toEqual(["skill"]);
+    });
+
+    it("知らない分類を捨てる", () => {
+      expect(labelsToKinds(["feedback/unknown-kind"])).toEqual([]);
+    });
+
+    it("ラベルが無ければ空になる", () => {
+      expect(labelsToKinds([])).toEqual([]);
     });
   });
 });

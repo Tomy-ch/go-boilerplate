@@ -30,6 +30,38 @@ export type FeedbackIssue = {
   readonly observation: Observation;
 };
 
+/** 分類ラベルの接頭辞。`feedback/skill` の `feedback/` の部分。 */
+export const KIND_LABEL_PREFIX = "feedback/";
+
+/** 取りうる分類の全体。ラベルからの変換で許可リストとして使う。 */
+export const FINDING_KINDS: readonly FindingKind[] = [
+  "skill",
+  "architecture",
+  "documentation",
+  "tooling",
+  "ai-misread",
+  "ci",
+  "developer-experience",
+] as const;
+
+/**
+ * Issue のラベル名から分類を取り出す。
+ *
+ * @remarks
+ * 知らない分類は捨てます。ラベルは人が付けるので、綴り違いや将来増えた名前が混ざりえます。
+ * ただし捨てた結果が空になっても、それは `unclassified` として集計され消えはしません。
+ *
+ * 入口ではなくここに置くのは、`FINDING_KINDS` とラベル命名がずれたときに黙って空になる
+ * 変換だからです。テストが張れない位置にあると、ずれたことに誰も気づけません。
+ */
+export function labelsToKinds(labels: readonly string[]): FindingKind[] {
+  const known = new Set<string>(FINDING_KINDS);
+  return labels
+    .filter((n) => n.startsWith(KIND_LABEL_PREFIX))
+    .map((n) => n.slice(KIND_LABEL_PREFIX.length))
+    .filter((n): n is FindingKind => known.has(n));
+}
+
 /** スコアの重み。運用データで調整する前提の既定値。 */
 export type Weights = {
   readonly frequency: number;

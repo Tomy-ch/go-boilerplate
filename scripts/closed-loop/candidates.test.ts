@@ -109,6 +109,66 @@ describe("looksSecret", () => {
     it("Slack のトークンを検出する", () => {
       expect(looksSecret("xoxb-0123456789-abcdefghij")).toBe(true);
     });
+
+    // 以下は正規表現の内部分岐。alternation と文字クラスはコード側の分岐として
+    // 計測されないため、1 つ通しただけでは他が壊れても緑のままになる。
+    it("GitHub の fine-grained PAT を検出する", () => {
+      expect(looksSecret("github_pat_11ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 を使った")).toBe(true);
+    });
+
+    it("AWS の一時認証情報を検出する", () => {
+      expect(looksSecret("ASIAIOSFODNN7EXAMPLE が違う")).toBe(true);
+    });
+
+    it("OpenAI 系の pk- 形式を検出する", () => {
+      expect(looksSecret("pk-abcdefghijklmnop0123 が通らない")).toBe(true);
+    });
+
+    it("OpenAI 系の rk- 形式を検出する", () => {
+      expect(looksSecret("rk-abcdefghijklmnop0123 が通らない")).toBe(true);
+    });
+
+    it("GitHub の OAuth トークンを検出する", () => {
+      expect(looksSecret("gho_0123456789abcdefghij を渡した")).toBe(true);
+    });
+
+    it("GitHub のユーザートークンを検出する", () => {
+      expect(looksSecret("ghu_0123456789abcdefghij を渡した")).toBe(true);
+    });
+
+    it("GitHub のサーバートークンを検出する", () => {
+      expect(looksSecret("ghs_0123456789abcdefghij を渡した")).toBe(true);
+    });
+
+    it("GitHub のリフレッシュトークンを検出する", () => {
+      expect(looksSecret("ghr_0123456789abcdefghij を渡した")).toBe(true);
+    });
+
+    it("Slack の他形式のトークンも検出する", () => {
+      expect(looksSecret("xoxa-0123456789-abcdefghij")).toBe(true);
+      expect(looksSecret("xoxp-0123456789-abcdefghij")).toBe(true);
+      expect(looksSecret("xoxo-0123456789-abcdefghij")).toBe(true);
+      expect(looksSecret("xoxs-0123456789-abcdefghij")).toBe(true);
+      expect(looksSecret("xoxr-0123456789-abcdefghij")).toBe(true);
+    });
+
+    it("secret という鍵名の代入を検出する", () => {
+      expect(looksSecret("secret=abcdefghijklmnop")).toBe(true);
+    });
+
+    it("password という鍵名の代入を検出する", () => {
+      expect(looksSecret("password: abcdefghijklmnop")).toBe(true);
+    });
+
+    it("passwd という鍵名の代入を検出する", () => {
+      expect(looksSecret("passwd=abcdefghijklmnop")).toBe(true);
+    });
+
+    it("api_key / api-key / apikey のいずれの綴りも検出する", () => {
+      expect(looksSecret("api_key=abcdefghijklmnop")).toBe(true);
+      expect(looksSecret("api-key=abcdefghijklmnop")).toBe(true);
+      expect(looksSecret("apikey=abcdefghijklmnop")).toBe(true);
+    });
   });
 
   describe("異常系", () => {

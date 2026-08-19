@@ -7,6 +7,7 @@ import {
   resolvePeriod,
   summarizePeriod,
   uncalledSkills,
+  withinPeriod,
   type Period,
 } from "./report";
 
@@ -89,6 +90,32 @@ describe("resolvePeriod", () => {
   });
 });
 
+describe("withinPeriod", () => {
+  describe("正常系", () => {
+    it("期間の内側を含む", () => {
+      expect(withinPeriod(day("2026-08-12"), period)).toBe(true);
+    });
+
+    it("始端ちょうどを含む", () => {
+      expect(withinPeriod(period.from, period)).toBe(true);
+    });
+
+    it("終端ちょうどを含む", () => {
+      expect(withinPeriod(period.to, period)).toBe(true);
+    });
+  });
+
+  describe("異常系", () => {
+    it("始端の 1 秒前を外す", () => {
+      expect(withinPeriod(period.from - 1, period)).toBe(false);
+    });
+
+    it("終端の 1 秒後を外す", () => {
+      expect(withinPeriod(period.to + 1, period)).toBe(false);
+    });
+  });
+});
+
 describe("overlapsPeriod", () => {
   describe("正常系", () => {
     it("期間に完全に収まるセッションを含む", () => {
@@ -103,6 +130,16 @@ describe("overlapsPeriod", () => {
       expect(overlapsPeriod(facts({ startedAt: day("2026-08-16"), endedAt: day("2026-08-25") }), period)).toBe(true);
     });
 
+    // 契約は「from を含み to を含む」。ちょうど境界のケースが無いと、<= を < に
+    // 変えるミューテーションを既存ケースが 1 つも検出できない（実測で確認済み）。
+    it("期間の終端ちょうどに終わるセッションを含む", () => {
+      expect(overlapsPeriod(facts({ startedAt: period.to, endedAt: period.to }), period)).toBe(true);
+    });
+
+    it("期間の始端ちょうどに始まるセッションを含む", () => {
+      expect(overlapsPeriod(facts({ startedAt: period.from, endedAt: period.from }), period)).toBe(true);
+    });
+
     it("期間全体を覆うセッションを含む", () => {
       expect(overlapsPeriod(facts({ startedAt: day("2026-08-01"), endedAt: day("2026-08-25") }), period)).toBe(true);
     });
@@ -111,6 +148,14 @@ describe("overlapsPeriod", () => {
   describe("異常系", () => {
     it("期間より前に終わったセッションを外す", () => {
       expect(overlapsPeriod(facts({ startedAt: day("2026-08-01"), endedAt: day("2026-08-02") }), period)).toBe(false);
+    });
+
+    it("終端の 1 秒後に始まるセッションを外す", () => {
+      expect(overlapsPeriod(facts({ startedAt: period.to + 1, endedAt: period.to + 2 }), period)).toBe(false);
+    });
+
+    it("始端の 1 秒前に終わるセッションを外す", () => {
+      expect(overlapsPeriod(facts({ startedAt: period.from - 2, endedAt: period.from - 1 }), period)).toBe(false);
     });
 
     it("期間より後に始まるセッションを外す", () => {

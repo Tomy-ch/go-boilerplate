@@ -85,6 +85,17 @@ function startOfDay(epochSec: number): number {
 }
 
 /**
+ * ある時刻が期間に入るか。両端を含む。
+ *
+ * @remarks
+ * 期間の端の扱いを 1 箇所に集めるために置いています。同じ判定を呼び出し側が書き直すと、
+ * 等号の有無が食い違って週境界の記録が静かに落ちたり二重に数えられたりします。
+ */
+export function withinPeriod(at: number, period: Period): boolean {
+  return at >= period.from && at <= period.to;
+}
+
+/**
  * セッションが期間に掛かるか。
  *
  * @remarks

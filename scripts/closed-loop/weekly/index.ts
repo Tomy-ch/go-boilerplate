@@ -12,18 +12,8 @@
 import { execFileSync } from "node:child_process";
 
 import { parseObservation } from "../issue";
-import { resolvePeriod } from "../report";
-import { clusterIssues, failureRate, mergeWaitSec, waitDominated, type FeedbackIssue, type FindingKind } from "../score";
-
-const KINDS: readonly FindingKind[] = [
-  "skill",
-  "architecture",
-  "documentation",
-  "tooling",
-  "ai-misread",
-  "ci",
-  "developer-experience",
-];
+import { resolvePeriod, withinPeriod } from "../report";
+import { clusterIssues, failureRate, labelsToKinds, mergeWaitSec, waitDominated, type FeedbackIssue } from "../score";
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -48,19 +38,14 @@ const issues: FeedbackIssue[] = [];
 let unparsed = 0;
 for (const r of raw) {
   const at = Math.floor(Date.parse(r.createdAt) / 1000);
-  if (at < period.from || at > period.to) continue;
+  if (!withinPeriod(at, period)) continue;
   const observation = parseObservation(r.body);
   if (observation === undefined) {
     // 人が手で壊した issue 1 件で週次全体を落とさない。件数だけ報告する。
     unparsed += 1;
     continue;
   }
-  const kinds = r.labels
-    .map((l) => l.name)
-    .filter((n) => n.startsWith("feedback/"))
-    .map((n) => n.slice("feedback/".length))
-    .filter((n): n is FindingKind => (KINDS as readonly string[]).includes(n));
-  issues.push({ number: r.number, kinds, observation });
+  issues.push({ number: r.number, kinds: labelsToKinds(r.labels.map((l) => l.name)), observation });
 }
 
 const clusters = clusterIssues(issues);

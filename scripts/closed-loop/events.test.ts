@@ -276,6 +276,11 @@ describe("summarizeSession", () => {
       expect(facts.skillCalls).toEqual({ commit: 2, "submit-pr": 1 });
     });
 
+    it("最初に見つかった sessionId を採用する", () => {
+      const facts = summarizeSession("claude", [ev({}), ev({ sessionId: "s1" }), ev({ sessionId: "s2" })]);
+      expect(facts.sessionId).toBe("s1");
+    });
+
     it("開始と終了を最小・最大の時刻から取る", () => {
       const facts = summarizeSession("claude", [ev({ at: 300 }), ev({ at: 100 }), ev({ at: 200 })]);
       expect(facts.startedAt).toBe(100);
@@ -302,6 +307,10 @@ describe("summarizeSession", () => {
     it("成否が 1 件も観測できなければ失敗数は undefined になる", () => {
       const facts = summarizeSession("codex", [ev({ client: "codex", kind: "tool_result" })]);
       expect(facts.toolFailures).toBeUndefined();
+    });
+
+    it("どのイベントも sessionId を持たなければ undefined になる", () => {
+      expect(summarizeSession("claude", [ev({}), ev({})]).sessionId).toBeUndefined();
     });
 
     it("空のイベント列でも壊れない", () => {
