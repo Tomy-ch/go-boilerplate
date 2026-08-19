@@ -44,9 +44,10 @@ type GetSummaryParams struct {
 }
 
 // StatusCountView は、ステータス別内訳 1 件分のユースケース出力 DTO です。
-// ステータスは購入ステータスマスタで解決済みの ID と名称、TotalAmount は USD セント単位の整数です。
+// ステータスは購入ステータスマスタで解決済みの ID・業務キー・名称、TotalAmount は USD セント単位の整数です。
 type StatusCountView struct {
 	StatusID    uuid.UUID
+	StatusCode  int
 	StatusName  string
 	Count       int64
 	TotalAmount int64
@@ -63,8 +64,8 @@ type GroupNodeView struct {
 	Groups map[string]GroupNodeView
 }
 
-// SummaryView は、購入集計のユースケース出力 DTO です。集計値はすべて同一の母集団
-// （認証主体の購入・キャンセル済みを除く・Period の期間内）から算出します。
+// SummaryView は、購入集計のユースケース出力 DTO です。全フィールドは GetPurchaseSummary が定義する
+// 同一の母集団から算出されるため、フィールド間で不整合は生じません。
 type SummaryView struct {
 	// Period は、集計に実際に用いた対象期間です。全期間を集計した場合は絞り込みなしを表します。
 	Period period.Window
@@ -90,7 +91,6 @@ type Usecase interface {
 	GetPurchaseSummary(ctx context.Context, authn *auth.Authn, params GetSummaryParams) (SummaryView, error)
 }
 
-// usecase は、Usecase の実装です。
 type usecase struct {
 	tracer observability.LayerTracer
 	qs     query.PurchaseSummaryQueryService
@@ -199,6 +199,7 @@ func toSummaryView(results []query.PurchaseStatusSummaryReadModel) SummaryView {
 		view.TotalAmount += r.TotalAmount
 		view.StatusBreakdown[i] = StatusCountView{
 			StatusID:    r.StatusID,
+			StatusCode:  r.StatusCode,
 			StatusName:  r.StatusName,
 			Count:       r.Count,
 			TotalAmount: r.TotalAmount,

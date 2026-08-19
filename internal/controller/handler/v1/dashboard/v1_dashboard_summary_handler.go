@@ -76,6 +76,7 @@ func toDashboardSummaryResponse(view dashboarduc.SummaryView) gen.DashboardSumma
 		statusCounts[i] = gen.DashboardPurchaseStatusCountResponse{
 			Status: gen.PurchaseStatusRef{
 				Id:   c.StatusID.ToPrimitive(),
+				Code: int64(c.StatusCode),
 				Name: c.StatusName,
 			},
 			Count: c.Count,

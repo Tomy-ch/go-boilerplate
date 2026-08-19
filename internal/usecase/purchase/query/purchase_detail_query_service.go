@@ -14,9 +14,10 @@ import (
 
 // PurchaseDetailQueryService は、購入詳細の集約跨ぎ read 投影を提供する QueryService です。
 type PurchaseDetailQueryService interface {
-	// FindDetailByUserAndID は、認証主体（userID）が所有する購入 1 件を明細（商品名込み）とともに取得します。
+	// FindDetailByUserAndCode は、認証主体（userID）が所有する購入 1 件を購入コードで引き、
+	// 明細（商品名込み）とともに取得します。
 	// 所有権は本サービス側の絞り込みで担保し、他人の購入・不存在はいずれも apperror.ErrNotFound を返して秘匿します。
-	FindDetailByUserAndID(ctx context.Context, userID, purchaseID uuid.UUID) (*PurchaseDetailReadModel, error)
+	FindDetailByUserAndCode(ctx context.Context, userID uuid.UUID, code string) (*PurchaseDetailReadModel, error)
 }
 
 // PurchaseDetailReadModel は、購入詳細の読み取りモデルです。金額はすべて USD セント単位の整数、
@@ -26,6 +27,7 @@ type PurchaseDetailReadModel struct {
 	Code           string
 	UserID         uuid.UUID
 	StatusID       uuid.UUID
+	StatusCode     int
 	StatusName     string
 	SubtotalAmount int64
 	TaxAmount      int64
