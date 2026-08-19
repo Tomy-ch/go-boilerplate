@@ -49,7 +49,6 @@ func TestMockConfigForTest(t *testing.T) {
 					tracesExporter:      expectedObservabilityTracesExporter,
 					metricsExporter:     expectedObservabilityMetricsExporter,
 					logsExporter:        expectedObservabilityLogsExporter,
-					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
 					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
@@ -109,7 +108,6 @@ func TestMockConfigForTest(t *testing.T) {
 					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
 				consumerQueue: ConsumerQueueConfig{
-					endpoint:          expectedConsumerQueueEndpoint,
 					region:            expectedConsumerQueueRegion,
 					url:               expectedConsumerQueueURL,
 					dlqURL:            expectedConsumerQueueDLQURL,
@@ -121,11 +119,9 @@ func TestMockConfigForTest(t *testing.T) {
 				},
 				outbox: OutboxConfig{
 					publisher:            expectedOutboxPublisher,
-					endpoint:             expectedOutboxEndpoint,
 					pollInterval:         expectedOutboxPollInterval,
 					errorBackoff:         expectedOutboxErrorBackoff,
 					batchSize:            expectedOutboxBatchSize,
-					queueEndpoint:        expectedOutboxQueueEndpoint,
 					queueRegion:          expectedOutboxQueueRegion,
 					queueURL:             expectedOutboxQueueURL,
 					queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
@@ -134,7 +130,6 @@ func TestMockConfigForTest(t *testing.T) {
 				auth: AuthConfig{
 					issuer:             expectedAuthIssuer,
 					audience:           expectedAuthAudience,
-					jwksURL:            expectedAuthJWKSURL,
 					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
 					clockSkew:          expectedAuthClockSkew,
 					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
@@ -142,13 +137,24 @@ func TestMockConfigForTest(t *testing.T) {
 					unknownKidCooldown: expectedAuthUnknownKidCooldown,
 				},
 				objectStorage: ObjectStorageConfig{
-					endpoint:        expectedObjectStorageEndpoint,
 					region:          expectedObjectStorageRegion,
 					bucket:          expectedObjectStorageBucket,
 					accessKeyID:     expectedObjectStorageAccessKeyID,
 					secretAccessKey: expectedObjectStorageSecretAccessKey,
 					usePathStyle:    expectedObjectStorageUsePathStyle,
 					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
+				},
+				endpoint: EndpointConfig{
+					otlp:          expectedEndpointOTLP,
+					jwks:          expectedEndpointJWKS,
+					objectStorage: expectedEndpointObjectStorage,
+					outbox:        expectedEndpointOutbox,
+					outboxQueue:   expectedEndpointOutboxQueue,
+					consumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					exchangeRate: expectedEndpointExchangeRate,
+					address:      expectedEndpointAddress,
+					// sample-api:end
 				},
 			}
 
@@ -204,10 +210,21 @@ func Test_mockLoader(t *testing.T) {
 					TracesExporter:    expectedObservabilityTracesExporter,
 					MetricsExporter:   expectedObservabilityMetricsExporter,
 					LogsExporter:      expectedObservabilityLogsExporter,
-					OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
 					OTLPProtocol:      expectedObservabilityOTLPProtocol,
 					MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 					TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+				},
+				Endpoint: Endpoint{
+					OTLP:          expectedEndpointOTLP,
+					JWKS:          expectedEndpointJWKS,
+					ObjectStorage: expectedEndpointObjectStorage,
+					Outbox:        expectedEndpointOutbox,
+					OutboxQueue:   expectedEndpointOutboxQueue,
+					ConsumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					ExchangeRate: expectedEndpointExchangeRate,
+					Address:      expectedEndpointAddress,
+					// sample-api:end
 				},
 				Database: Database{
 					Host:                   expectedDBHost,
@@ -283,7 +300,7 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, expectedObservabilityTracesExporter, os.Getenv("OBS_TRACES_EXPORTER"))
 			assert.Equal(t, expectedObservabilityMetricsExporter, os.Getenv("OBS_METRICS_EXPORTER"))
 			assert.Equal(t, expectedObservabilityLogsExporter, os.Getenv("OBS_LOGS_EXPORTER"))
-			assert.Equal(t, expectedObservabilityOTLPEndpoint, os.Getenv("OBS_OTLP_ENDPOINT"))
+			assert.Equal(t, expectedEndpointOTLP, os.Getenv("ENDPOINT_OTLP"))
 			assert.Equal(t, expectedObservabilityOTLPProtocol, os.Getenv("OBS_OTLP_PROTOCOL"))
 			assert.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBS_MASKED_DB_QUERY_ARGS"))
 			assert.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBS_TARGET_STATUS_CODES"))

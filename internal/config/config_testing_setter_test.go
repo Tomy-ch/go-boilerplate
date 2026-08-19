@@ -209,7 +209,7 @@ func TestObservabilityConfig_SetObservabilityOTLPProtocol(t *testing.T) {
 	})
 }
 
-func TestObservabilityConfig_SetObservabilityOTLPEndpoint(t *testing.T) {
+func TestEndpointConfig_SetEndpointOTLP(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -217,14 +217,14 @@ func TestObservabilityConfig_SetObservabilityOTLPEndpoint(t *testing.T) {
 
 		t.Run("指定したエンドポイントへ差し替わり、クリーンアップで元のエンドポイントへ戻る", func(t *testing.T) {
 			t.Parallel()
-			observability := MockConfigForTest(t).observability
+			endpoint := MockConfigForTest(t).endpoint
 
 			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
-				observability.SetObservabilityOTLPEndpoint(t, "http://collector.test:4318")
-				assert.Equal(t, "http://collector.test:4318", observability.OTLPEndpoint())
+				endpoint.SetEndpointOTLP(t, "http://collector.test:4318")
+				assert.Equal(t, "http://collector.test:4318", endpoint.OTLP())
 			})
 
-			assert.Equal(t, expectedObservabilityOTLPEndpoint, observability.OTLPEndpoint())
+			assert.Equal(t, expectedEndpointOTLP, endpoint.OTLP())
 		})
 	})
 }
@@ -431,7 +431,7 @@ func TestOutboxConfig_SetOutboxErrorBackoff(t *testing.T) {
 	})
 }
 
-func TestOutboxConfig_SetOutboxEndpoint(t *testing.T) {
+func TestEndpointConfig_SetEndpointOutbox(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -439,14 +439,14 @@ func TestOutboxConfig_SetOutboxEndpoint(t *testing.T) {
 
 		t.Run("指定したエンドポイントへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
 			t.Parallel()
-			outbox := MockConfigForTest(t).outbox
+			endpoint := MockConfigForTest(t).endpoint
 
 			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
-				outbox.SetOutboxEndpoint(t, "http://relay.test:8080")
-				assert.Equal(t, "http://relay.test:8080", outbox.Endpoint())
+				endpoint.SetEndpointOutbox(t, "http://relay.test:8080")
+				assert.Equal(t, "http://relay.test:8080", endpoint.Outbox())
 			})
 
-			assert.Equal(t, expectedOutboxEndpoint, outbox.Endpoint())
+			assert.Equal(t, expectedEndpointOutbox, endpoint.Outbox())
 		})
 	})
 }
@@ -491,7 +491,7 @@ func TestAuthConfig_SetAuthAudience(t *testing.T) {
 	})
 }
 
-func TestAuthConfig_SetAuthJWKSURL(t *testing.T) {
+func TestEndpointConfig_SetEndpointJWKS(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -499,14 +499,14 @@ func TestAuthConfig_SetAuthJWKSURL(t *testing.T) {
 
 		t.Run("指定したJWKS URLへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
 			t.Parallel()
-			auth := MockConfigForTest(t).auth
+			endpoint := MockConfigForTest(t).endpoint
 
 			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
-				auth.SetAuthJWKSURL(t, "https://issuer.test/jwks")
-				assert.Equal(t, "https://issuer.test/jwks", auth.JWKSURL())
+				endpoint.SetEndpointJWKS(t, "https://issuer.test/jwks")
+				assert.Equal(t, "https://issuer.test/jwks", endpoint.JWKS())
 			})
 
-			assert.Equal(t, expectedAuthJWKSURL, auth.JWKSURL())
+			assert.Equal(t, expectedEndpointJWKS, endpoint.JWKS())
 		})
 	})
 }

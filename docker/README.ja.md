@@ -25,7 +25,7 @@ infra 層には固定ポートでしか動けないサービスだけが属し�
 |`docker-compose.yaml`|全サービスの定義|
 |`docker-compose.attach.yaml`|app 層の override。**常に**重ねて適用する（`docker compose -f docker-compose.yaml -f docker-compose.attach.yaml`）|
 
-`docker-compose.attach.yaml` は `api_server` のホスト公開ポートを `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}` にし、`depends_on` を `mock_auth_server` だけに絞り（infra 層は起動済みのため）、`DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `OBS_OTLP_ENDPOINT=http://host.docker.internal:4318` / `OBJECT_STORAGE_ENDPOINT=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default` の上書きで共有インフラを参照させます。プロバイダ側に対応する上書きは要りません——issuer は到達した `Host` から導出されるためです。
+`docker-compose.attach.yaml` は `api_server` のホスト公開ポートを `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}` にし、`depends_on` を `mock_auth_server` だけに絞り（infra 層は起動済みのため）、`DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `ENDPOINT_OTLP=http://host.docker.internal:4318` / `ENDPOINT_OBJECT_STORAGE=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default` の上書きで共有インフラを参照させます。プロバイダ側に対応する上書きは要りません——issuer は到達した `Host` から導出されるためです。
 
 |目的|参照先|
 |---|---|

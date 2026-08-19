@@ -213,6 +213,9 @@ func newHTTPClientTestApp(t *testing.T, extra ...fx.Option) *fx.App {
 		fx.Provide(func() *config.ObservabilityConfig {
 			return config.NewObservabilityConfig(config.MockConfigForTest(t))
 		}),
+		fx.Provide(func() *config.EndpointConfig {
+			return config.NewEndpointConfig(config.MockConfigForTest(t))
+		}),
 		fx.Provide(infrasystem.NewBuildInfo),
 		fx.NopLogger,
 	}, extra...)...)

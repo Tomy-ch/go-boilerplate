@@ -28,7 +28,7 @@ optional). Vendor-specific routing, pipeline transformation, and backend authent
 live entirely in a Collector or Agent sidecar, never in the application code or typed
 config.
 
-The single `OBS_OTLP_ENDPOINT` is shared across all three signals; for HTTP the
+The single `ENDPOINT_OTLP` is shared across all three signals; for HTTP the
 per-signal path (`/v1/traces`, `/v1/metrics`, `/v1/logs`) is appended automatically when
 the URL carries no path. No vendor SDK is imported; the only exporter dependency is the
 OpenTelemetry OTLP exporter packages.
@@ -40,7 +40,7 @@ signal that is disabled (empty or `none` exporter value) builds no OTLP exporter
 
 ### Positive Consequences
 
-- Any OTLP-compatible backend is reachable by pointing `OBS_OTLP_ENDPOINT` at a
+- Any OTLP-compatible backend is reachable by pointing `ENDPOINT_OTLP` at a
   Collector without changing application code.
 - No vendor SDK is compiled into the binary; dependency surface stays auditable and
   replaceable.

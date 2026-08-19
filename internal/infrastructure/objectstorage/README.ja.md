@@ -75,7 +75,7 @@ seam は基盤非依存ですが、背後に何も無いまま出された抽象
 - **Azurite** は Microsoft 自身のエミュレータで、Blob と Queue の**両方**を賄います。したがって Azure は、この seam と worker seam の 2 つに対して 1 コンテナで済みます
 - **fake-gcs-server** は事実上の Cloud Storage エミュレータであり、実利用者を持つ唯一の選択肢です。ただしここに挙げた中で唯一、組織ではなく個人がメンテナンスしており、タグ付きリリースの間隔も他より長くなっています。CI で依存する前にその点を検討してください
 
-S3 互換のもの（MinIO・Ceph RGW・Cloudflare R2・マネージドな S3）であれば adapter の変更は一切不要で、`OBJECT_STORAGE_ENDPOINT` と資格情報だけで足ります。S3 でない基盤には `objectstorage/` 配下の兄弟パッケージが必要ですが、この層より上は何も変わりません。
+S3 互換のもの（MinIO・Ceph RGW・Cloudflare R2・マネージドな S3）であれば adapter の変更は一切不要で、`ENDPOINT_OBJECT_STORAGE` と資格情報だけで足ります。S3 でない基盤には `objectstorage/` 配下の兄弟パッケージが必要ですが、この層より上は何も変わりません。
 
 ## 資格情報
 

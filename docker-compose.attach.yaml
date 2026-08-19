@@ -16,12 +16,12 @@ services:
     environment:
       DB_HOST: host.docker.internal
       DB_NAME: ${DB_NAME_LOCAL:-local}
-      OBS_OTLP_ENDPOINT: http://host.docker.internal:4318
-      OBJECT_STORAGE_ENDPOINT: http://host.docker.internal:3900
+      ENDPOINT_OTLP: http://host.docker.internal:4318
+      ENDPOINT_OBJECT_STORAGE: http://host.docker.internal:3900
       # SQS クライアントは BaseEndpoint を優先するため、ここを差し替えれば OUTBOX_QUEUE_URL /
       # CONSUMER_QUEUE_URL のホスト部（elasticmq:9324）は接続先の解決に使われない。
-      OUTBOX_QUEUE_ENDPOINT: http://host.docker.internal:9324
-      CONSUMER_QUEUE_ENDPOINT: http://host.docker.internal:9324
+      ENDPOINT_OUTBOX_QUEUE: http://host.docker.internal:9324
+      ENDPOINT_CONSUMER_QUEUE: http://host.docker.internal:9324
       # token の iss は mock 認証サーバーのホスト公開 URL（Host ヘッダ由来）。スロット毎にポートが
       # ずれるため追従させる。mock 側は iss を保持しないので、追従先はここ 1 箇所で足りる。
       AUTH_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default

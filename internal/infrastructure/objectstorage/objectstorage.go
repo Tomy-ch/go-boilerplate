@@ -16,11 +16,12 @@ import (
 func New(
 	ctx context.Context,
 	cfg *config.ObjectStorageConfig,
+	epCfg *config.EndpointConfig,
 	outbound *observability.OutboundHTTPClient,
 	tf observability.TracerFactory,
 ) (boundary.Storage, error) {
 	return s3.New(ctx, s3.Config{
-		Endpoint:        cfg.Endpoint(),
+		Endpoint:        epCfg.ObjectStorage(),
 		Region:          cfg.Region(),
 		Bucket:          cfg.Bucket(),
 		AccessKeyID:     cfg.AccessKeyID(),

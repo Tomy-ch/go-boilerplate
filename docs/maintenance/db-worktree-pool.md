@@ -54,8 +54,8 @@ That is the point — before this guard it quietly ran against the shared `test`
   left alone rather than re-created (see Caveats).
 - **app layer** = `APP_PROJECT`: `gobp-app-<directory name>` when no slot is held, `gobp-wt-N` when
   one is. `docker-compose.attach.yaml` is overlaid so the shared infra is reached through
-  `host.docker.internal` on its host-published ports (`DB_HOST` / `OBS_OTLP_ENDPOINT` /
-  `OBJECT_STORAGE_ENDPOINT` are overridden as runtime env; `loader.go` gives runtime env priority
+  `host.docker.internal` on its host-published ports (`DB_HOST` / `ENDPOINT_OTLP` /
+  `ENDPOINT_OBJECT_STORAGE` are overridden as runtime env; `loader.go` gives runtime env priority
   over `env/.env`).
 - **slot N** = the database-name pair `wt<N>_local` / `wt<N>_test` inside the shared DB (MAX 12 by
   default = wt1–wt12), plus the throwaway `gen_schema_wt<N>` that schema generation rebuilds.

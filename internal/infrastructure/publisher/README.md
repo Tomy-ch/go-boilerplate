@@ -26,7 +26,7 @@ Implements the `publisher.Publisher` interface (`internal/usecase/boundary/publi
 
 `New(cfg, client, tf)` switches on `OUTBOX_PUBLISHER` and returns the matching adapter; an unknown value fails startup rather than falling through to a default, so a typo never publishes to an unintended target. The publish target is a per-deployment decision rather than a function of the environment tier, which is why it is an explicit discriminator instead of an `APP_ENV` branch.
 
-Each branch resolves its own settings, so a deployment that publishes to a queue is never asked for `OUTBOX_ENDPOINT`, and vice versa. Both resolutions fail at relay startup rather than at the first publish — an unset target would otherwise dead-letter every message silently.
+Each branch resolves its own settings, so a deployment that publishes to a queue is never asked for `ENDPOINT_OUTBOX`, and vice versa. Both resolutions fail at relay startup rather than at the first publish — an unset target would otherwise dead-letter every message silently.
 
 <!-- sample-api:begin -->
 The `sqs` branch — the only branch besides `http` — is wiring from the removable sample set (see [ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0053-broker-sdk-isolation-measured-as-coupling.md)); after `make setup-remove-sample-api` only the HTTP branch remains, while the SQS adapter itself stays as an unwired reference implementation.
@@ -61,7 +61,7 @@ real-DB strategy does not apply. Everything closes in-process: the downstream is
   neither re-wraps nor flattens it — the relay's retry decision depends on it surviving intact.
 - **Implementation selection is its own subject.** `New` switching on `OUTBOX_PUBLISHER` is tested for
   each known value *and* for an unknown one, since failing startup on a typo is the contract; so is each
-  branch resolving only its own settings, so a queue deployment is never asked for `OUTBOX_ENDPOINT`.
+  branch resolving only its own settings, so a queue deployment is never asked for `ENDPOINT_OUTBOX`.
 
 ## DI Registration
 

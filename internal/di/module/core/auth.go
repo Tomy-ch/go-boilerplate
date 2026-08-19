@@ -40,13 +40,14 @@ var errNoAuthenticatorForEnv = xerrors.New("no authenticator configured for envi
 type authenticatorParams struct {
 	fx.In
 
-	AppCfg     *config.ApplicationConfig
-	AuthCfg    *config.AuthConfig
-	Clock      clock.Clock
-	Logger     logging.Logger
-	HTTPClient httpclient.Client
-	TracerFtry observability.TracerFactory
-	Lifecycle  fx.Lifecycle
+	AppCfg      *config.ApplicationConfig
+	AuthCfg     *config.AuthConfig
+	EndpointCfg *config.EndpointConfig
+	Clock       clock.Clock
+	Logger      logging.Logger
+	HTTPClient  httpclient.Client
+	TracerFtry  observability.TracerFactory
+	Lifecycle   fx.Lifecycle
 }
 
 // AuthnModule は、認証関連の依存関係（Authenticator・IdentityResolver・Auth コントローラ）を提供するfxモジュールを返します。
@@ -116,7 +117,7 @@ func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (aut
 			ExpectedType: accessTokenType,
 			Clock:        p.Clock,
 		},
-		JWKSURL:            p.AuthCfg.JWKSURL(),
+		JWKSURL:            p.EndpointCfg.JWKS(),
 		CacheTTL:           p.AuthCfg.JWKSCacheTTL(),
 		DiscoveryTTL:       p.AuthCfg.DiscoveryTTL(),
 		UnknownKidCooldown: p.AuthCfg.UnknownKidCooldown(),

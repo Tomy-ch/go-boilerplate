@@ -3,6 +3,7 @@ package exchangerate_test
 import (
 	"testing"
 
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/httpclient"
 	"go-boilerplate/internal/infrastructure/webapi/exchangerate"
 
@@ -32,9 +33,10 @@ func TestNewEndpoint(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("サンプル既定のEndpointを返す", func(t *testing.T) {
+		t.Run("設定のベースURLをEndpointとして返す", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, exchangerate.Endpoint("https://api.exchangerate.example.com"), exchangerate.NewEndpoint())
+			epCfg := config.NewEndpointConfig(config.MockConfigForTest(t))
+			assert.Equal(t, exchangerate.Endpoint(epCfg.ExchangeRate()), exchangerate.NewEndpoint(epCfg))
 		})
 	})
 }

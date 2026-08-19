@@ -73,11 +73,13 @@ func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resour
 // NewTracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、構築した TracerProvider を返す。
 // TracesEnabled が偽でも span 自体は有効な TraceID / SpanID を持って生成され続け、止まるのは OTLP への
 // エクスポートのみ（log-trace 相関はこの経路でも成立する）。sampler は SDK 既定のままで env からは調整できない。
-func NewTracerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdktrace.TracerProvider, error) {
+func NewTracerProvider(
+	obsCfg *config.ObservabilityConfig, epCfg *config.EndpointConfig, res *resource.Resource,
+) (*sdktrace.TracerProvider, error) {
 	opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res)}
 
 	if obsCfg.TracesEnabled() {
-		exporter, err := newSpanExporter(context.Background(), obsCfg)
+		exporter, err := newSpanExporter(context.Background(), obsCfg, epCfg)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to build span exporter")
 		}
@@ -103,11 +105,13 @@ func NewTextMapPropagator() propagation.TextMapPropagator {
 // NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
 // MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 goroutine も開始し、偽の場合は Reader を
 // 持たない no-op 相当の MeterProvider を返す。
-func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
+func NewMeterProvider(
+	obsCfg *config.ObservabilityConfig, epCfg *config.EndpointConfig, res *resource.Resource,
+) (*sdkmetric.MeterProvider, error) {
 	opts := []sdkmetric.Option{sdkmetric.WithResource(res)}
 
 	if obsCfg.MetricsEnabled() {
-		reader, err := newMetricReader(context.Background(), obsCfg)
+		reader, err := newMetricReader(context.Background(), obsCfg, epCfg)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to build metric reader")
 		}
@@ -129,19 +133,21 @@ func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource
 	return mp, nil
 }
 
-// newSpanExporter は OBS_OTLP_PROTOCOL / OBS_OTLP_ENDPOINT から OTLP SpanExporter を構築する。
+// newSpanExporter は OBS_OTLP_PROTOCOL / ENDPOINT_OTLP から OTLP SpanExporter を構築する。
 // endpoint 未指定時は OTLP のデフォルト（localhost:4318 / :4317）に従う。
-func newSpanExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdktrace.SpanExporter, error) {
+func newSpanExporter(
+	ctx context.Context, obsCfg *config.ObservabilityConfig, epCfg *config.EndpointConfig,
+) (sdktrace.SpanExporter, error) {
 	switch obsCfg.OTLPProtocol() {
 	case protocolGRPC:
 		var opts []otlptracegrpc.Option
-		if ep := obsCfg.OTLPEndpoint(); ep != "" {
+		if ep := epCfg.OTLP(); ep != "" {
 			opts = append(opts, otlptracegrpc.WithEndpointURL(ep))
 		}
 		return otlptracegrpc.New(ctx, opts...)
 	case protocolHTTP, "":
 		var opts []otlptracehttp.Option
-		if ep := obsCfg.OTLPEndpoint(); ep != "" {
+		if ep := epCfg.OTLP(); ep != "" {
 			opts = append(opts, otlptracehttp.WithEndpointURL(ensureOTLPPath(ep, otlpTracesPath)))
 		}
 		return otlptracehttp.New(ctx, opts...)
@@ -151,26 +157,30 @@ func newSpanExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (s
 }
 
 // newMetricReader は定期収集型の Reader を返す。
-func newMetricReader(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdkmetric.Reader, error) {
-	exporter, err := newMetricExporter(ctx, obsCfg)
+func newMetricReader(
+	ctx context.Context, obsCfg *config.ObservabilityConfig, epCfg *config.EndpointConfig,
+) (sdkmetric.Reader, error) {
+	exporter, err := newMetricExporter(ctx, obsCfg, epCfg)
 	if err != nil {
 		return nil, err
 	}
 	return sdkmetric.NewPeriodicReader(exporter), nil
 }
 
-// newMetricExporter は OBS_OTLP_PROTOCOL / OBS_OTLP_ENDPOINT から OTLP MetricExporter を構築する。
-func newMetricExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdkmetric.Exporter, error) {
+// newMetricExporter は OBS_OTLP_PROTOCOL / ENDPOINT_OTLP から OTLP MetricExporter を構築する。
+func newMetricExporter(
+	ctx context.Context, obsCfg *config.ObservabilityConfig, epCfg *config.EndpointConfig,
+) (sdkmetric.Exporter, error) {
 	switch obsCfg.OTLPProtocol() {
 	case protocolGRPC:
 		var opts []otlpmetricgrpc.Option
-		if ep := obsCfg.OTLPEndpoint(); ep != "" {
+		if ep := epCfg.OTLP(); ep != "" {
 			opts = append(opts, otlpmetricgrpc.WithEndpointURL(ep))
 		}
 		return otlpmetricgrpc.New(ctx, opts...)
 	case protocolHTTP, "":
 		var opts []otlpmetrichttp.Option
-		if ep := obsCfg.OTLPEndpoint(); ep != "" {
+		if ep := epCfg.OTLP(); ep != "" {
 			opts = append(opts, otlpmetrichttp.WithEndpointURL(ensureOTLPPath(ep, otlpMetricsPath)))
 		}
 		return otlpmetrichttp.New(ctx, opts...)

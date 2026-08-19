@@ -61,6 +61,9 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 					oc.SetObservabilityLogsExporter(t, "")
 					return oc
 				}),
+				fx.Provide(func() *config.EndpointConfig {
+					return config.NewEndpointConfig(config.MockConfigForTest(t))
+				}),
 				fx.Provide(system.NewBuildInfo),
 				fx.Populate(&tf),
 				fx.NopLogger,
@@ -95,6 +98,9 @@ func TestObservabilityModule(t *testing.T) {
 			}),
 			fx.Provide(func() *config.ObservabilityConfig {
 				return config.NewObservabilityConfig(config.MockConfigForTest(t))
+			}),
+			fx.Provide(func() *config.EndpointConfig {
+				return config.NewEndpointConfig(config.MockConfigForTest(t))
 			}),
 			fx.Provide(system.NewBuildInfo),
 			fx.NopLogger,

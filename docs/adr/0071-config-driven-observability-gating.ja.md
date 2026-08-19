@@ -25,7 +25,7 @@ accepted
 オブザーバビリティを単一の型付き**設定駆動**スイッチにする。
 
 - エクスポーター設定は型付き `OBS_*` 設定サブシステム（`OBS_TRACES_EXPORTER` /
-  `OBS_METRICS_EXPORTER` / `OBS_LOGS_EXPORTER` / `OBS_OTLP_ENDPOINT` /
+  `OBS_METRICS_EXPORTER` / `OBS_LOGS_EXPORTER` / `ENDPOINT_OTLP` /
   `OBS_OTLP_PROTOCOL`）に置く。autoexport が読む `OTEL_*` 環境変数には置かない。
 - **専用の有効化フラグは設けない**。オブザーバビリティは、3 つのエクスポーター設定のいずれかが
   空でも `none` でもない値を持つ場合に有効と*導出*される。エクスポーター設定から導出する設計は

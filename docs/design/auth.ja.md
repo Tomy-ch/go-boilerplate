@@ -30,7 +30,7 @@
 
 - **Fail-closed。** どのエラーもアクセスを許可しない。資格情報について結論を出した検証*失敗*は `apperror.ErrUnauthenticated`（`401`）へ正規化し、原因はログ/トレース用にエラーチェーンへ保持する。検証を*遂行できなかった*ことは別の事実であり、分類を保つ —— 署名鍵を取得できない場合やリクエストの context が終了した場合、エラーは `apperror.ErrUnavailable`（`503`）/ `apperror.ErrCanceled`（`499`）のまま返る。トークンについて何も述べていないためで、`401` にすると誰も検査していない資格情報を直すようクライアントへ伝えることになる。いずれも拒否であり、違うのは報告する理由だけ。
 - **標準コアのみ。** RS256 allowlist（`alg=none` と `HS256` は常に拒否 — 鍵混同攻撃対策）、`iss`/`aud`/`exp`/`nbf`/`sub`、`typ=at+jwt`（RFC 9068）で ID Token 誤用を拒否。IdP 方言（Cognito `token_use`、Azure `scp`）は**拡張ポイント**で組み込まない。
-- **Split-horizon。** `issuer`（token の `iss`、ホスト/ブラウザ解決可能）と **JWKS 取得 URL**（コンテナ内部）を分離する。`AUTH_JWKS_URL` を内部 URL に設定し、`iss` はホスト解決可能なまま鍵取得はコンテナ名を使う。
+- **Split-horizon。** `issuer`（token の `iss`、ホスト/ブラウザ解決可能）と **JWKS 取得 URL**（コンテナ内部）を分離する。`ENDPOINT_JWKS` を内部 URL に設定し、`iss` はホスト解決可能なまま鍵取得はコンテナ名を使う。
 - **Provider は dev 限定。** compose の `development` / `auth` プロファイル経由でしか到達できず、デプロイされる環境には決して含まれない。
 - **契約であって実装ではない。** RS が依存するのは JWKS の形と access token の claim 形状（`typ=at+jwt` / `iss` / `aud` / `sub` / `exp`）で、それを `docker/mock-auth-server/config.json` が固定する。この契約さえ満たせば実 IdP を含め何でも **config 変更のみ**で差し替わる — Go 変更不要。
 
@@ -223,12 +223,12 @@ RS 側の JWKS リゾルバは、リクエストごとの再取得なしでこ�
 
 ## 5. インテグレーターが実装すること
 
-1. **config で RS を IdP に向ける。** `AUTH_ISSUER`（token の `iss` と一致必須）・`AUTH_AUDIENCE`・`AUTH_JWKS_URL`（IdP の `jwks_uri`）。ローカルでは `env/.env` がこれらを疑似プロバイダに向け、`AUTH_JWKS_URL` は split-horizon でコンテナ内部ホストを指す。任意: `AUTH_ALLOWED_ALGORITHMS`（既定 `RS256`）・`AUTH_CLOCK_SKEW`（`60s`）・`AUTH_JWKS_CACHE_TTL`（`5m`）。
-2. **mock を実 IdP に差し替える**のは上記 env 値の変更のみ — JWKS + claim 契約はバイト等価なので Go 変更は不要。`iss` はホスト解決可能に、`AUTH_JWKS_URL` は API コンテナから到達可能に保つ。
+1. **config で RS を IdP に向ける。** `AUTH_ISSUER`（token の `iss` と一致必須）・`AUTH_AUDIENCE`・`ENDPOINT_JWKS`（IdP の `jwks_uri`）。ローカルでは `env/.env` がこれらを疑似プロバイダに向け、`ENDPOINT_JWKS` は split-horizon でコンテナ内部ホストを指す。任意: `AUTH_ALLOWED_ALGORITHMS`（既定 `RS256`）・`AUTH_CLOCK_SKEW`（`60s`）・`AUTH_JWKS_CACHE_TTL`（`5m`）。
+2. **mock を実 IdP に差し替える**のは上記 env 値の変更のみ — JWKS + claim 契約はバイト等価なので Go 変更は不要。`iss` はホスト解決可能に、`ENDPOINT_JWKS` は API コンテナから到達可能に保つ。
 3. **IdP 方言を追加**する（標準コアから外れる場合）— Cognito `token_use` / `aud`→`client_id`、Azure `scp` / `roles`、EC 鍵、opaque token — は [jwt README](../../internal/infrastructure/auth/jwt/README.ja.md) の拡張ポイントで。
 4. **identity 解決**は `(issuer, subject)` を内部ユーザーに対応づける。自前のユーザーストア向けに `IdentityResolver` の実装を用意する。用意しない場合 DI は passthrough 既定を配線し、内部 UserID は未解決のまま通る — つまりここでは未知・無効化された subject を拒否しない。
 
-> **前方注記（`#584` / PR #618・本ブランチ未収録）:** RS 側の OIDC *discovery* — `AUTH_JWKS_URL` を空にして issuer の `/.well-known/openid-configuration` から `jwks_uri` を導出（issuer 厳密一致 + same-origin + https）し、`AUTH_JWKS_DISCOVERY_TTL` / `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` を伴う — は別途着地する。本ブランチでは RS は `AUTH_JWKS_URL` から JWKS URL を**静的**に解決する。疑似プロバイダは到達された issuer URL で discovery 文書を提供する。
+> **前方注記（`#584` / PR #618・本ブランチ未収録）:** RS 側の OIDC *discovery* — `ENDPOINT_JWKS` を空にして issuer の `/.well-known/openid-configuration` から `jwks_uri` を導出（issuer 厳密一致 + same-origin + https）し、`AUTH_JWKS_DISCOVERY_TTL` / `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` を伴う — は別途着地する。本ブランチでは RS は `ENDPOINT_JWKS` から JWKS URL を**静的**に解決する。疑似プロバイダは到達された issuer URL で discovery 文書を提供する。
 
 ---
 

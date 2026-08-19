@@ -29,7 +29,7 @@ commit is what stops them from drifting.
 
 ## What is not uploaded
 
-Nothing happens — success, not an error — when `seed/` holds no file, or when `OBJECT_STORAGE_ENDPOINT`
+Nothing happens — success, not an error — when `seed/` holds no file, or when `ENDPOINT_OBJECT_STORAGE`
 is empty. An empty endpoint means SDK-default resolution, i.e. a real AWS S3 account, and seed content
 must never be pushed there. That is also why CI, whose endpoint is empty, only ever seeds the database.
 

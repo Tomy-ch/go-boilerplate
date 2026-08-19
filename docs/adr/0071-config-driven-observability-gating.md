@@ -24,7 +24,7 @@ disconnected from the project's typed config.
 Make observability a single, typed, **config-driven** switch:
 
 - Exporter settings live in the typed `OBS_*` config subsystem (`OBS_TRACES_EXPORTER` /
-  `OBS_METRICS_EXPORTER` / `OBS_LOGS_EXPORTER` / `OBS_OTLP_ENDPOINT` / `OBS_OTLP_PROTOCOL`),
+  `OBS_METRICS_EXPORTER` / `OBS_LOGS_EXPORTER` / `ENDPOINT_OTLP` / `OBS_OTLP_PROTOCOL`),
   not in `OTEL_*` env read by autoexport.
 - There is **no dedicated enable flag**. Observability is *derived* as enabled when any of
   the three exporter settings is a non-empty, non-`none` value. Deriving from the exporter

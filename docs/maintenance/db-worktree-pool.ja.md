@@ -51,7 +51,7 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
   既に動いているコンテナは作り直さずそのまま残す（Caveats 参照）。
 - **app 層** = `APP_PROJECT`。スロット未取得なら `gobp-app-<ディレクトリ名>`、取得時は `gobp-wt-N`。
   `docker-compose.attach.yaml` を重ね、共有インフラを `host.docker.internal` のホスト公開ポート経由で参照する
-  （`DB_HOST` / `OBS_OTLP_ENDPOINT` / `OBJECT_STORAGE_ENDPOINT` を実行時 env で上書きする。`loader.go` は
+  （`DB_HOST` / `ENDPOINT_OTLP` / `ENDPOINT_OBJECT_STORAGE` を実行時 env で上書きする。`loader.go` は
   実行時 env を `env/.env` より優先する）。
 - **スロット N** = 共有 DB 内のデータベース名ペア `wt<N>_local` / `wt<N>_test`（既定 MAX 12 = wt1〜wt12）と、
   スキーマ生成が作り直す使い捨て DB `gen_schema_wt<N>`。スロット取得は**並列作業のための opt-in** で、

@@ -24,8 +24,9 @@ func objectStorageModule() fx.Option {
 // 資格情報を解決できない場合はエラーを返し、app.Start を失敗させます。
 func provideObjectStorage(
 	cfg *config.ObjectStorageConfig,
+	epCfg *config.EndpointConfig,
 	outbound *observability.OutboundHTTPClient,
 	tf observability.TracerFactory,
 ) (objectstoragebd.Storage, error) {
-	return objectstorage.New(context.Background(), cfg, outbound, tf)
+	return objectstorage.New(context.Background(), cfg, epCfg, outbound, tf)
 }

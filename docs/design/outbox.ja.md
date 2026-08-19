@@ -227,7 +227,7 @@ flowchart LR
     EM["① 業務 tx 内で Emit を呼ぶ<br/>（ドメイン変更と一緒に）"]:::need
     PL["② payload + event_type を定義<br/>（snapshot + version の自己完結）"]:::need
     RC["③ 受信エンドポイントを作る<br/>（Idempotency-Key で冪等）"]:::need
-    CF["④ OUTBOX_ENDPOINT を設定（+ tuning）"]:::need
+    CF["④ ENDPOINT_OUTBOX を設定（+ tuning）"]:::need
     DP["⑤ relay プロセスをデプロイ<br/>（cmd outbox-relay・常駐）"]:::need
     GC["⑥ GC をスケジュール<br/>（cron → cmd job outbox-gc）"]:::need
     OP["⑦ dead 行を運用<br/>（outbox.dead 監視 → replay）"]:::need
@@ -240,7 +240,7 @@ flowchart LR
 | ① | ドメイン書き込みと同じ `tx.Manager.Do` の中で `EmitUsecase.Emit` を呼ぶ | 集約を変更する usecase | `emit.go` `EmitInput` |
 | ② | `EventType`（`+version`）を選び、**自己完結 snapshot** payload を marshal。`Headers` に `Authorization`/`Cookie` を入れない（既知の機微ヘッダ名は送出前に denylist で落とすが、それは defense-in-depth であって契約ではない） | `Emit` の呼び出し側 | `EmitInput.Payload` / `.Headers` doc |
 | ③ | **`Idempotency-Key`（= `message_id`）で dedup** し、永続受理時のみ 2xx を返す受信エンドポイント | 外部サービス | `httpPublisher.Publish` |
-| ④ | `OUTBOX_ENDPOINT`（必須。空/不正 URL は relay が起動拒否）+ 任意の `OUTBOX_POLL_INTERVAL` / `OUTBOX_ERROR_BACKOFF` / `OUTBOX_BATCH_SIZE` | `env/` & IaC | `OutboxConfig` 既定値 |
+| ④ | `ENDPOINT_OUTBOX`（必須。空/不正 URL は relay が起動拒否）+ 任意の `OUTBOX_POLL_INTERVAL` / `OUTBOX_ERROR_BACKOFF` / `OUTBOX_BATCH_SIZE` | `env/` & IaC | `OutboxConfig` 既定値 |
 | ⑤ | `cmd outbox-relay` を常駐プロセスとして起動（SIGTERM まで常駐・stop で drain） | デプロイ / IaC | `cmd/outbox_relay.go` |
 | ⑥ | `cmd job outbox-gc [--batch-size=N]` をスケジュール（k8s CronJob / cron）し retention 超過の `published` 行を剪定 | スケジューラ | `controller/job/outboxgc` |
 | ⑦ | `outbox.dead` カウンタ / `outbox.lag_seconds` ゲージで alert し `outbox-relay replay [--message-id=<uuid>]` で回復 | runbook | `cmd outbox-relay replay` |
@@ -257,7 +257,7 @@ flowchart LR
 | **emit** | 同期側の半身: `EmitUsecase.Emit` が呼び出し側の業務 tx 内で 1 行 INSERT する（`internal/usecase/outbox/emit.go`）。 |
 | **relay** | 非同期側の半身: pending 行を claim・publish・mark する常駐 `Engine` poll ループ（`controller/outbox` + `usecase/outbox/relay.go`）。 |
 | **Store** | outbox テーブルの永続化ポート（`usecase/boundary/outbox`）。`infrastructure/rdb/system_cqrs/outbox` で sqlc gen 上に実装。 |
-| **Publisher** | 送出ポート（`usecase/boundary/publisher`）。HTTP 実装が `OUTBOX_ENDPOINT` へ POST する。 |
+| **Publisher** | 送出ポート（`usecase/boundary/publisher`）。HTTP 実装が `ENDPOINT_OUTBOX` へ POST する。 |
 | **status** | 行のライフサイクル列 — 厳密に `pending` / `published` / `dead`（CHECK 制約）。`failed` という status は無く、publish 失敗は `pending` のまま。 |
 | **attempts / last_error** | publish 試行回数と直近失敗理由。`MarkFailed` が両方を進める。`attempts ≥ MaxAttempts` まで行は `pending`。 |
 | **MaxAttempts** | 行を `dead` にするまでの publish 試行回数（`DefaultMaxAttempts = 10`）。 |

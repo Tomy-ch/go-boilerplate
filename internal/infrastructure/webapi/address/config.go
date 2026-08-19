@@ -1,9 +1,8 @@
 package address
 
-// sampleEndpoint は、サンプル用の外部郵便番号 lookup サービス（zipcloud）のベース URL です。
-const sampleEndpoint Endpoint = "https://zipcloud.ibsnet.co.jp"
+import "go-boilerplate/internal/config"
 
-// NewEndpoint は、サンプル既定値の Endpoint を返します。
-func NewEndpoint() Endpoint {
-	return sampleEndpoint
+// NewEndpoint は、設定から住所検索サービスの Endpoint を返します。
+func NewEndpoint(epCfg *config.EndpointConfig) Endpoint {
+	return Endpoint(epCfg.Address())
 }

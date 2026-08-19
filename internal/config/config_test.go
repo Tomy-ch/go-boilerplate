@@ -45,7 +45,6 @@ func TestNew(t *testing.T) {
 					tracesExporter:      expectedObservabilityTracesExporter,
 					metricsExporter:     expectedObservabilityMetricsExporter,
 					logsExporter:        expectedObservabilityLogsExporter,
-					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
 					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
@@ -105,7 +104,6 @@ func TestNew(t *testing.T) {
 					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
 				consumerQueue: ConsumerQueueConfig{
-					endpoint:          expectedConsumerQueueEndpoint,
 					region:            expectedConsumerQueueRegion,
 					url:               expectedConsumerQueueURL,
 					dlqURL:            expectedConsumerQueueDLQURL,
@@ -117,11 +115,9 @@ func TestNew(t *testing.T) {
 				},
 				outbox: OutboxConfig{
 					publisher:            expectedOutboxPublisher,
-					endpoint:             expectedOutboxEndpoint,
 					pollInterval:         expectedOutboxPollInterval,
 					errorBackoff:         expectedOutboxErrorBackoff,
 					batchSize:            expectedOutboxBatchSize,
-					queueEndpoint:        expectedOutboxQueueEndpoint,
 					queueRegion:          expectedOutboxQueueRegion,
 					queueURL:             expectedOutboxQueueURL,
 					queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
@@ -130,7 +126,6 @@ func TestNew(t *testing.T) {
 				auth: AuthConfig{
 					issuer:             expectedAuthIssuer,
 					audience:           expectedAuthAudience,
-					jwksURL:            expectedAuthJWKSURL,
 					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
 					clockSkew:          expectedAuthClockSkew,
 					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
@@ -138,13 +133,24 @@ func TestNew(t *testing.T) {
 					unknownKidCooldown: expectedAuthUnknownKidCooldown,
 				},
 				objectStorage: ObjectStorageConfig{
-					endpoint:        expectedObjectStorageEndpoint,
 					region:          expectedObjectStorageRegion,
 					bucket:          expectedObjectStorageBucket,
 					accessKeyID:     expectedObjectStorageAccessKeyID,
 					secretAccessKey: expectedObjectStorageSecretAccessKey,
 					usePathStyle:    expectedObjectStorageUsePathStyle,
 					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
+				},
+				endpoint: EndpointConfig{
+					otlp:          expectedEndpointOTLP,
+					jwks:          expectedEndpointJWKS,
+					objectStorage: expectedEndpointObjectStorage,
+					outbox:        expectedEndpointOutbox,
+					outboxQueue:   expectedEndpointOutboxQueue,
+					consumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					exchangeRate: expectedEndpointExchangeRate,
+					address:      expectedEndpointAddress,
+					// sample-api:end
 				},
 			}
 

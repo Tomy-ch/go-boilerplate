@@ -37,4 +37,4 @@ db-seed
 
 SQL ファイルの投入後、コマンドは `storage/seed` 配下のすべてを投入し、そのディレクトリからの相対パスからオブジェクトキーを導きます（[`storage/README.md`](../../../storage/README.md) を参照）。行うのは投入だけで、オブジェクトキーを保持する列は他の列と同じく SQL が書きます。
 
-ディレクトリにファイルが 1 つも無い場合、または `OBJECT_STORAGE_ENDPOINT` が空の場合は何も投入しません。エンドポイントが空のときになぜ投入してはならないかは [`storage/README.md`](../../../storage/README.md) を参照してください。
+ディレクトリにファイルが 1 つも無い場合、または `ENDPOINT_OBJECT_STORAGE` が空の場合は何も投入しません。エンドポイントが空のときになぜ投入してはならないかは [`storage/README.md`](../../../storage/README.md) を参照してください。

@@ -58,15 +58,17 @@ func Test_provideObjectStorage(t *testing.T) {
 		t.Run("設定とTracerFactoryからStorage実装を構築する", func(t *testing.T) {
 			t.Parallel()
 
-			cfg := config.NewObjectStorageConfig(config.MockConfigForTest(t))
+			mock := config.MockConfigForTest(t)
+			cfg := config.NewObjectStorageConfig(mock)
+			epCfg := config.NewEndpointConfig(mock)
 			tf := observability.NewNoopTracerFactory(t)
 
 			outbound := observability.NewDisabledOutboundHTTPClient(true)
-			got, err := provideObjectStorage(cfg, outbound, tf)
+			got, err := provideObjectStorage(cfg, epCfg, outbound, tf)
 			require.NoError(t, err)
 
 			// 実装の差し替え（別 adapter や decorator の混入）を型で固定する。
-			want, err := objectstorage.New(t.Context(), cfg, outbound, tf)
+			want, err := objectstorage.New(t.Context(), cfg, epCfg, outbound, tf)
 			require.NoError(t, err)
 			assert.IsType(t, want, got)
 		})

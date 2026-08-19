@@ -94,7 +94,6 @@
 |OBS_TRACES_EXPORTER|trace の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でトレース無効（軽量構成）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
 |OBS_METRICS_EXPORTER|metric の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でメトリクス無効（軽量構成）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
 |OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
-|OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|`http://observability:4318`|exporter 有効時に使用。Per-environment value — 各環境の collector。exporter が無効な環境では空|
 |OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|false|セキュリティ重要。Per-environment value — local / ci / dast だけ `false`。クエリやテスト失敗、スキャン結果の調査では生の SQL 引数が見えること自体が目的のため。`dev` 以降は `true` とし、実データがトレースバックエンドへ届かないようにする。上位環境をローカル側の値に揃えてはならない|
 |OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。Per-environment value — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` / `dast` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
@@ -182,7 +181,6 @@ worker が consume する broker の adapter 設定。`WORKER_*` は engine-core
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|CONSUMER_QUEUE_ENDPOINT|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決（本番 AWS SQS）に委ねる。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |CONSUMER_QUEUE_REGION|SigV4 署名に使うリージョン|string|us-east-1|Code default は空。worker を配線した時点から必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する|
 |CONSUMER_QUEUE_URL|consume 対象キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。worker を配線した時点から必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` 由来。**Per-environment value**: ブローカーが compose で動く local でのみ設定する|
 |CONSUMER_QUEUE_DLQ_URL|滞留量を収集する DLQ の URL|string|`http://elasticmq:9324/000000000000/gobp-events-dlq`|Code default は空。Permanent メッセージの退避先であり、滞留量の収集対象でもある。空にすると app 側の退避経路を持たず、broker の redrive policy に委ねる|
@@ -199,11 +197,9 @@ transactional outbox relay の設定。
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |OUTBOX_PUBLISHER|publish 先の種別（`http` / `sqs`）|string|http|Code default `http`。未知の値は起動エラー（fail-closed）。publish 先はデプロイ先ごとの判断なのでどの env ファイルも値を固定せず、キューへ publish するデプロイが実行時に与える|
-|OUTBOX_ENDPOINT|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
 |OUTBOX_POLL_INTERVAL|pending を捌き切った後、次 poll まで待機する時間|duration|1s|Code default `1s`|
 |OUTBOX_ERROR_BACKOFF|relay バッチがエラーを返した後に待機する時間|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|1 回の poll で claim する pending 行数|int|100|Code default `100`|
-|OUTBOX_QUEUE_ENDPOINT|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |OUTBOX_QUEUE_REGION|SigV4 署名に用いるリージョン|string|us-east-1|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |OUTBOX_QUEUE_URL|publish 先キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` と対。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |OUTBOX_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい|
@@ -211,13 +207,12 @@ transactional outbox relay の設定。
 
 ### Auth (JWT)
 
-access token（JWT）検証の設定。CI / test は署名検証なしのスタブを配線し、`local` / `dast` / `development` は JWKS backed の実 JWT authenticator を配線する（`local` と `dast` は mock 認証サーバーを検証）。後者は `AUTH_ISSUER` / `AUTH_AUDIENCE` が欠けていると起動時に fail-closed になる。配線判断は DI（`internal/di/module/core/auth.go`）が担う。`AUTH_JWKS_URL` は override で、空の場合は `AUTH_ISSUER` から OIDC discovery 経由で `jwks_uri` を導出する（issuer 厳密一致 + https + 同一オリジン。`local` / `dast` は mock provider への平文 http を許容）。JWKS / discovery 取得は `httpclient` substrate を通すため、HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、env 変数では持たない。同プロファイルは `local` / `ci` / `test` / `dast` 以外では private 網宛て SSRF も遮断する。
+access token（JWT）検証の設定。CI / test は署名検証なしのスタブを配線し、`local` / `dast` / `development` は JWKS backed の実 JWT authenticator を配線する（`local` と `dast` は mock 認証サーバーを検証）。後者は `AUTH_ISSUER` / `AUTH_AUDIENCE` が欠けていると起動時に fail-closed になる。配線判断は DI（`internal/di/module/core/auth.go`）が担う。`ENDPOINT_JWKS` は override で、空の場合は `AUTH_ISSUER` から OIDC discovery 経由で `jwks_uri` を導出する（issuer 厳密一致 + https + 同一オリジン。`local` / `dast` は mock provider への平文 http を許容）。JWKS / discovery 取得は `httpclient` substrate を通すため、HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、env 変数では持たない。同プロファイルは `local` / `ci` / `test` / `dast` 以外では private 網宛て SSRF も遮断する。
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:2010/default`|Code default は空。Per-environment value — `local` / `ci` / `dast` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
 |AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須。Per-environment value — mock の audience を宣言するのは `local` / `dast` だけで、他は authenticator を配線するまで既定の空のまま|
-|AUTH_JWKS_URL|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/default/jwks`|Code default は空。Per-environment value — compose 内部のサービス URL で上書きするのは `local` だけで、他は既定の空のまま `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出する|
 |AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|csv|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
 |AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
 |AUTH_JWKS_CACHE_TTL|取得した JWKS をキャッシュする期間|duration|1h|Code default `1h`|
@@ -226,11 +221,10 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 ### Object Storage
 
-アップロード資産（商品画像）用の S3 互換オブジェクトストレージ。usecase は vendor 中立の `objectstorage.Storage` 境界に依存し、infrastructure 実装は S3 アダプタ（AWS SDK v2 S3）。`local` は Garage コンテナへ接続し、deploy 環境は `OBJECT_STORAGE_ENDPOINT` を空にして AWS S3 を対象にする。アダプタは S3 だが env 名は vendor 中立に保つ。値は環境ごとに宣言（code default を持たない）し、資格情報はデプロイ時に注入する。
+アップロード資産（商品画像）用の S3 互換オブジェクトストレージ。usecase は vendor 中立の `objectstorage.Storage` 境界に依存し、infrastructure 実装は S3 アダプタ（AWS SDK v2 S3）。`local` は Garage コンテナへ接続し、deploy 環境は `ENDPOINT_OBJECT_STORAGE` を空にして AWS S3 を対象にする。アダプタは S3 だが env 名は vendor 中立に保つ。値は環境ごとに宣言（code default を持たない）し、資格情報はデプロイ時に注入する。
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OBJECT_STORAGE_ENDPOINT|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
 |OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`。Per-environment value — local / ci / dast は Garage 用のサンプルリージョン、`dev` 以降は各環境の AWS リージョン|
 |OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`。Per-environment value — 環境ごとに 1 バケット|
 |OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる — ロール運用のデプロイはここへ何も注入しない。明示的に設定する場合はシークレット管理必須。例欄はプレースホルダ: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う|
@@ -239,6 +233,22 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
 
 配信はこれらの変数の管轄外です。API はオブジェクトキー（`imagePath`）だけを返しフル URL を返さないため、フロントが `<配信オリジン>/<オブジェクトキー>` を組み立てます。したがって配信オリジンの変数はこちら側に存在せず、フロントが持ちます（`local` は `http://gobp-local.web.garage.localhost:3902`、デプロイ環境では CDN のドメイン）。ローカルの配信エンドポイントを匿名 read で開く方法は [`docker/README.md`](../docker/README.md) を参照してください。
+
+
+### Endpoint
+
+このデプロイの接続先です。「どこへ繋ぐか」は独立した軸で、デプロイごとに変わる一方で各サブシステムの振る舞いは変わりません。そのため、叩く側のサブシステム設定ではなくここにまとめます。すべて `required` ですが空文字を許容し、空が何を意味するかは接続先ごとに異なるため Notes に記します。キューの `*_URL` はここに置きません（接続先ではなく API 引数として渡すリソース識別子のため）。`AUTH_ISSUER` も突き合わせる値であって接続先ではありません。
+
+|変数名|説明|型|例|備考|
+|---|---|---|---|---|
+|ENDPOINT_OTLP|OTLP 送出先エンドポイント URL|string|`http://observability:4318`|exporter 有効時に使用。Per-environment value — 各環境の collector。exporter が無効な環境では空|
+|ENDPOINT_JWKS|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/default/jwks`|Code default は空。Per-environment value — compose 内部のサービス URL で上書きするのは `local` だけで、他は既定の空のまま `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出する|
+|ENDPOINT_OBJECT_STORAGE|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
+|ENDPOINT_OUTBOX|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
+|ENDPOINT_OUTBOX_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|ENDPOINT_CONSUMER_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決（本番 AWS SQS）に委ねる。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|ENDPOINT_EXCHANGE_RATE|為替レートサービスのベースURL|string||サンプルAPI。空はこの機能を使わないことを表し、当該エンドポイントは 503 を返します。サンプルAPI削除時に一緒に消えます|
+|ENDPOINT_ADDRESS|郵便番号から住所を引くサービスのベースURL|string|`https://zipcloud.ibsnet.co.jp`|サンプルAPI。サンプルAPI削除時に一緒に消えます|
 
 ## 補足
 

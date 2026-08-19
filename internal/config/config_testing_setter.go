@@ -98,16 +98,6 @@ func (o *ObservabilityConfig) SetObservabilityOTLPProtocol(tb testing.TB, val st
 	tb.Cleanup(func() { o.otlpProtocol = prev })
 }
 
-// SetObservabilityOTLPEndpoint は、テスト用に OTLP エンドポイント指定を設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (o *ObservabilityConfig) SetObservabilityOTLPEndpoint(tb testing.TB, val string) {
-	tb.Helper()
-	prev := o.otlpEndpoint
-	o.otlpEndpoint = val
-	tb.Cleanup(func() { o.otlpEndpoint = prev })
-}
-
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
@@ -200,16 +190,6 @@ func (o *OutboxConfig) SetOutboxErrorBackoff(tb testing.TB, errorBackoff time.Du
 	tb.Cleanup(func() { o.errorBackoff = prev })
 }
 
-// SetOutboxEndpoint は、テスト用に outbox relay の送信先エンドポイントを設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string) {
-	tb.Helper()
-	prev := o.endpoint
-	o.endpoint = endpoint
-	tb.Cleanup(func() { o.endpoint = prev })
-}
-
 // SetOutboxPublisher は、テスト用に outbox の publish 先種別を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
@@ -290,12 +270,32 @@ func (a *AuthConfig) SetAuthAudience(tb testing.TB, audience string) {
 	tb.Cleanup(func() { a.audience = prev })
 }
 
-// SetAuthJWKSURL は、テスト用に認証の JWKS URL を設定します。
+// SetEndpointOTLP は、テスト用に OTLP の送出先を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *AuthConfig) SetAuthJWKSURL(tb testing.TB, jwksURL string) {
+func (e *EndpointConfig) SetEndpointOTLP(tb testing.TB, val string) {
 	tb.Helper()
-	prev := a.jwksURL
-	a.jwksURL = jwksURL
-	tb.Cleanup(func() { a.jwksURL = prev })
+	prev := e.otlp
+	e.otlp = val
+	tb.Cleanup(func() { e.otlp = prev })
+}
+
+// SetEndpointJWKS は、テスト用に JWKS の取得先を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (e *EndpointConfig) SetEndpointJWKS(tb testing.TB, val string) {
+	tb.Helper()
+	prev := e.jwks
+	e.jwks = val
+	tb.Cleanup(func() { e.jwks = prev })
+}
+
+// SetEndpointOutbox は、テスト用に outbox relay の送出先を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (e *EndpointConfig) SetEndpointOutbox(tb testing.TB, val string) {
+	tb.Helper()
+	prev := e.outbox
+	e.outbox = val
+	tb.Cleanup(func() { e.outbox = prev })
 }

@@ -79,11 +79,13 @@ func openSeedObjectStorage(logger logging.Logger, database string) (string, seed
 		return "", nil, err
 	}
 	osCfg := config.NewObjectStorageConfig(cfg)
+	epCfg := config.NewEndpointConfig(cfg)
 	// seed は staging でも実行されうるため、ローカル前提で常時許可にせず env で判定する。
 	appEnv := config.NewApplicationConfig(cfg).Env()
 	storage, err := objectstorageinfra.New(
 		context.Background(),
 		osCfg,
+		epCfg,
 		observability.NewDisabledOutboundHTTPClient(config.IsLocalClassEnv(appEnv)),
 		observability.NewDisabledTracerFactory(),
 	)
@@ -100,7 +102,7 @@ func openSeedObjectStorage(logger logging.Logger, database string) (string, seed
 		return perr
 	}
 
-	return osCfg.Endpoint(), put, nil
+	return epCfg.ObjectStorage(), put, nil
 }
 
 // openSeedDB は、seed 用設定を読み込み DB 接続を確立する実依存の口です。

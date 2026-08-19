@@ -32,6 +32,7 @@ var ErrUnknownKind = xerrors.Wrap(apperror.ErrInvalidArgument, "unknown outbox p
 // sample-api:replace-begin
 func New(
 	cfg *config.OutboxConfig,
+	epCfg *config.EndpointConfig,
 	client httpclient.Client,
 	outbound *observability.OutboundHTTPClient,
 	tf observability.TracerFactory,
@@ -39,13 +40,14 @@ func New(
 	// sample-api:replace-with
 	// = func New(
 	// = 	cfg *config.OutboxConfig,
+	// = 	epCfg *config.EndpointConfig,
 	// = 	client httpclient.Client,
 	// = 	tf observability.TracerFactory,
 	// = ) (boundary.Publisher, error) {
 	// sample-api:replace-end
 	switch cfg.Publisher() {
 	case KindHTTP:
-		endpoint, err := NewEndpoint(cfg)
+		endpoint, err := NewEndpoint(epCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +59,7 @@ func New(
 			return nil, err
 		}
 		client, err := sqs.NewClient(context.Background(), sqs.ClientConfig{
-			Endpoint:        cfg.QueueEndpoint(),
+			Endpoint:        epCfg.OutboxQueue(),
 			Region:          cfg.QueueRegion(),
 			AccessKeyID:     cfg.QueueAccessKeyID(),
 			SecretAccessKey: cfg.QueueSecretAccessKey(),

@@ -62,7 +62,7 @@ var (
 	expectedObservabilityTracesExporter       = "otlp"
 	expectedObservabilityMetricsExporter      = "otlp"
 	expectedObservabilityLogsExporter         = "otlp"
-	expectedObservabilityOTLPEndpoint         = "http://localhost:4318"
+	expectedEndpointOTLP                      = "http://localhost:4318"
 	expectedObservabilityOTLPProtocol         = "http/protobuf"
 	expectedObservabilityMaskedDBQueryArgs    = false
 	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 405, 409, 422, 429, 500, 501, 503}
@@ -145,7 +145,7 @@ var (
 	expectedWorkerNackBackoffMax            = 30 * time.Second
 
 	// consumerQueue（worker を配線したときだけ使うため、接続情報は既定の空値）
-	expectedConsumerQueueEndpoint               = ""
+	expectedEndpointConsumerQueue               = ""
 	expectedConsumerQueueRegion                 = ""
 	expectedConsumerQueueURL                    = ""
 	expectedConsumerQueueDLQURL                 = ""
@@ -160,11 +160,11 @@ var (
 
 	// outbox（Queue* は PUBLISHER=sqs のときだけ使うため、既定の http では空値）
 	expectedOutboxPublisher            = "http"
-	expectedOutboxEndpoint             = ""
+	expectedEndpointOutbox             = ""
 	expectedOutboxPollInterval         = 1 * time.Second
 	expectedOutboxErrorBackoff         = 5 * time.Second
 	expectedOutboxBatchSize            = 100
-	expectedOutboxQueueEndpoint        = ""
+	expectedEndpointOutboxQueue        = ""
 	expectedOutboxQueueRegion          = ""
 	expectedOutboxQueueURL             = ""
 	expectedOutboxQueueAccessKeyID     = ""
@@ -173,7 +173,7 @@ var (
 	// auth（local/ci/test では実 JWT authenticator を配線しないため、issuer 等は既定の空値）
 	expectedAuthIssuer             = ""
 	expectedAuthAudience           = ""
-	expectedAuthJWKSURL            = ""
+	expectedEndpointJWKS           = ""
 	expectedAuthAllowedAlgorithms  = []string{"RS256"}
 	expectedAuthClockSkew          = 60 * time.Second
 	expectedAuthJWKSCacheTTL       = 1 * time.Hour
@@ -181,7 +181,11 @@ var (
 	expectedAuthUnknownKidCooldown = 60 * time.Second
 
 	// object storage（Endpoint は空文字＝SDK 既定解決の意味を持つため空。他は required,notEmpty のため実値）
-	expectedObjectStorageEndpoint                = ""
+	expectedEndpointObjectStorage = ""
+	// sample-api:begin
+	expectedEndpointExchangeRate = "https://exchange-rate.example.test"
+	expectedEndpointAddress      = "https://address.example.test"
+	// sample-api:end
 	expectedObjectStorageRegion                  = "us-east-1"
 	expectedObjectStorageBucket                  = "test-bucket"
 	expectedObjectStorageAccessKeyID             = "test-access-key"
@@ -228,7 +232,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 			tracesExporter:      expectedObservabilityTracesExporter,
 			metricsExporter:     expectedObservabilityMetricsExporter,
 			logsExporter:        expectedObservabilityLogsExporter,
-			otlpEndpoint:        expectedObservabilityOTLPEndpoint,
 			otlpProtocol:        expectedObservabilityOTLPProtocol,
 			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
@@ -288,7 +291,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 			nackBackoffMax:            expectedWorkerNackBackoffMax,
 		},
 		consumerQueue: ConsumerQueueConfig{
-			endpoint:          expectedConsumerQueueEndpoint,
 			region:            expectedConsumerQueueRegion,
 			url:               expectedConsumerQueueURL,
 			dlqURL:            expectedConsumerQueueDLQURL,
@@ -300,11 +302,9 @@ func MockConfigForTest(tb testing.TB) *Config {
 		},
 		outbox: OutboxConfig{
 			publisher:            expectedOutboxPublisher,
-			endpoint:             expectedOutboxEndpoint,
 			pollInterval:         expectedOutboxPollInterval,
 			errorBackoff:         expectedOutboxErrorBackoff,
 			batchSize:            expectedOutboxBatchSize,
-			queueEndpoint:        expectedOutboxQueueEndpoint,
 			queueRegion:          expectedOutboxQueueRegion,
 			queueURL:             expectedOutboxQueueURL,
 			queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
@@ -313,7 +313,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 		auth: AuthConfig{
 			issuer:             expectedAuthIssuer,
 			audience:           expectedAuthAudience,
-			jwksURL:            expectedAuthJWKSURL,
 			allowedAlgorithms:  expectedAuthAllowedAlgorithms,
 			clockSkew:          expectedAuthClockSkew,
 			jwksCacheTTL:       expectedAuthJWKSCacheTTL,
@@ -321,13 +320,24 @@ func MockConfigForTest(tb testing.TB) *Config {
 			unknownKidCooldown: expectedAuthUnknownKidCooldown,
 		},
 		objectStorage: ObjectStorageConfig{
-			endpoint:        expectedObjectStorageEndpoint,
 			region:          expectedObjectStorageRegion,
 			bucket:          expectedObjectStorageBucket,
 			accessKeyID:     expectedObjectStorageAccessKeyID,
 			secretAccessKey: expectedObjectStorageSecretAccessKey,
 			usePathStyle:    expectedObjectStorageUsePathStyle,
 			maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
+		},
+		endpoint: EndpointConfig{
+			otlp:          expectedEndpointOTLP,
+			jwks:          expectedEndpointJWKS,
+			objectStorage: expectedEndpointObjectStorage,
+			outbox:        expectedEndpointOutbox,
+			outboxQueue:   expectedEndpointOutboxQueue,
+			consumerQueue: expectedEndpointConsumerQueue,
+			// sample-api:begin
+			exchangeRate: expectedEndpointExchangeRate,
+			address:      expectedEndpointAddress,
+			// sample-api:end
 		},
 	}
 }
@@ -357,10 +367,21 @@ func mockLoader(tb testing.TB) Loader {
 			TracesExporter:    expectedObservabilityTracesExporter,
 			MetricsExporter:   expectedObservabilityMetricsExporter,
 			LogsExporter:      expectedObservabilityLogsExporter,
-			OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
 			OTLPProtocol:      expectedObservabilityOTLPProtocol,
 			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+		},
+		Endpoint: Endpoint{
+			OTLP:          expectedEndpointOTLP,
+			JWKS:          expectedEndpointJWKS,
+			ObjectStorage: expectedEndpointObjectStorage,
+			Outbox:        expectedEndpointOutbox,
+			OutboxQueue:   expectedEndpointOutboxQueue,
+			ConsumerQueue: expectedEndpointConsumerQueue,
+			// sample-api:begin
+			ExchangeRate: expectedEndpointExchangeRate,
+			Address:      expectedEndpointAddress,
+			// sample-api:end
 		},
 		Server: Server{
 			Host:              expectedServerHost,
@@ -440,7 +461,6 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("OBS_TRACES_EXPORTER", expectedObservabilityTracesExporter)
 	t.Setenv("OBS_METRICS_EXPORTER", expectedObservabilityMetricsExporter)
 	t.Setenv("OBS_LOGS_EXPORTER", expectedObservabilityLogsExporter)
-	t.Setenv("OBS_OTLP_ENDPOINT", expectedObservabilityOTLPEndpoint)
 	t.Setenv("OBS_OTLP_PROTOCOL", expectedObservabilityOTLPProtocol)
 	t.Setenv("OBS_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
 	t.Setenv("OBS_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
@@ -474,6 +494,17 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
 	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
 	t.Setenv("SECURITY_CROSS_ORIGIN_RESOURCE_POLICY", expectedCrossOriginResourcePolicy)
+	// Endpoint
+	t.Setenv("ENDPOINT_OTLP", expectedEndpointOTLP)
+	t.Setenv("ENDPOINT_JWKS", expectedEndpointJWKS)
+	t.Setenv("ENDPOINT_OBJECT_STORAGE", expectedEndpointObjectStorage)
+	t.Setenv("ENDPOINT_OUTBOX", expectedEndpointOutbox)
+	t.Setenv("ENDPOINT_OUTBOX_QUEUE", expectedEndpointOutboxQueue)
+	t.Setenv("ENDPOINT_CONSUMER_QUEUE", expectedEndpointConsumerQueue)
+	// sample-api:begin
+	t.Setenv("ENDPOINT_EXCHANGE_RATE", expectedEndpointExchangeRate)
+	t.Setenv("ENDPOINT_ADDRESS", expectedEndpointAddress)
+	// sample-api:end
 	// Secure Cookie
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
@@ -481,9 +512,7 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	// Auth（make がスロットの issuer を渡すため、実行環境の値が混ざらないよう期待値へ固定する）
 	t.Setenv(authIssuerEnvKey, expectedAuthIssuer)
 	t.Setenv("AUTH_AUDIENCE", expectedAuthAudience)
-	t.Setenv("AUTH_JWKS_URL", expectedAuthJWKSURL)
 	// Object Storage
-	t.Setenv("OBJECT_STORAGE_ENDPOINT", expectedObjectStorageEndpoint)
 	t.Setenv("OBJECT_STORAGE_REGION", expectedObjectStorageRegion)
 	t.Setenv("OBJECT_STORAGE_BUCKET", expectedObjectStorageBucket)
 	t.Setenv("OBJECT_STORAGE_ACCESS_KEY_ID", expectedObjectStorageAccessKeyID)

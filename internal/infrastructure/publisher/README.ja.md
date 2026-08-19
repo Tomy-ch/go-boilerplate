@@ -26,7 +26,7 @@ Usecase 層の `publisher.Publisher` インターフェース（`internal/usecas
 
 `New(cfg, client, tf)` が `OUTBOX_PUBLISHER` で分岐し、対応する adapter を返します。未知の値は既定へ流さず起動エラーにするため、綴り間違いが意図しない publish 先へ流れることはありません。publish 先は環境ティアの関数ではなくデプロイ先ごとの判断であるため、`APP_ENV` 分岐ではなく明示の判別子にしています。
 
-各分岐が自分の設定だけを解決するので、キューへ publish するデプロイが `OUTBOX_ENDPOINT` を要求されることはなく、逆も同様です。どちらの解決も最初の publish 時ではなく relay 起動時に落とします。未設定のまま起動すると全メッセージが黙って dead 化するためです。
+各分岐が自分の設定だけを解決するので、キューへ publish するデプロイが `ENDPOINT_OUTBOX` を要求されることはなく、逆も同様です。どちらの解決も最初の publish 時ではなく relay 起動時に落とします。未設定のまま起動すると全メッセージが黙って dead 化するためです。
 
 <!-- sample-api:begin -->
 `http` 以外の唯一の分岐である `sqs` 分岐は、削除可能なサンプル群からの配線です（[ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0053-broker-sdk-isolation-measured-as-coupling.ja.md) を参照）。`make setup-remove-sample-api` の後は HTTP 分岐だけが残り、SQS adapter 自体は未配線の参照実装として残ります。
@@ -48,7 +48,7 @@ Usecase 層の `publisher.Publisher` インターフェース（`internal/usecas
 - **無効化した設定は「意図的に off である」ことを固定する。** これらは既定値ではなく安全装置だからです。`AllowRetry = false`（再送は relay の poll ループが所有する）と `PropagateTrace = false`（emit 時の `traceparent` はメッセージヘッダとして運ぶ）。どちらも反転しても無言で通るため、それぞれが独立したケースを持ちます。
 - **機微ヘッダは正規化の抜けに対して固定する。** ヘッダの照合が大文字小文字や前後の空白で破られてはならないため、それらの形を仮定せず明示的にテストします。
 - **substrate のエラーは加工せず伝播する。** 非 2xx / transport 失敗は到達時点で既に `apperror` sentinel です。assert はその sentinel に対する `errors.Is` で行い、アダプタが再ラップも平坦化もしていないことを確かめます。relay の再送判断は、これが無傷で届くことに依存しています。
-- **実装の選択それ自体が subject である。** `OUTBOX_PUBLISHER` で分岐する `New` は、既知の各値に加えて未知の値でもテストします。誤記で起動を失敗させることが契約だからです。各分岐が自分の設定だけを解決すること（queue 構成のデプロイが `OUTBOX_ENDPOINT` を要求されないこと）も同様です。
+- **実装の選択それ自体が subject である。** `OUTBOX_PUBLISHER` で分岐する `New` は、既知の各値に加えて未知の値でもテストします。誤記で起動を失敗させることが契約だからです。各分岐が自分の設定だけを解決すること（queue 構成のデプロイが `ENDPOINT_OUTBOX` を要求されないこと）も同様です。
 
 ## DI 登録
 

@@ -8,7 +8,7 @@
 
 # --- 作成先にも残るファイルの検出（マーカー外） ---
 
-# AUTH_JWKS_URL はコンテナ内部の URL で資格情報ではない。ホスト名の auth と
+# ENDPOINT_JWKS はコンテナ内部の URL で資格情報ではない。ホスト名の auth と
 # ポート以降の文字列が generic-api-key の keyword+entropy 条件に当たる誤検知。
 # env/README の既定値表は同じ URL を載せるため同じ検出になる。
 env/.env:generic-api-key:42

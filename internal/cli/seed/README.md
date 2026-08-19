@@ -43,5 +43,5 @@ After the SQL files, the command uploads everything under `storage/seed`, derivi
 the path relative to that directory — see [`storage/README.md`](../../../storage/README.md). It only
 uploads; a column that holds an object key is written by the SQL, like any other column.
 
-Nothing is uploaded when the directory holds no file, or when `OBJECT_STORAGE_ENDPOINT` is empty — see
+Nothing is uploaded when the directory holds no file, or when `ENDPOINT_OBJECT_STORAGE` is empty — see
 [`storage/README.md`](../../../storage/README.md) for why an empty endpoint must never receive seed content.

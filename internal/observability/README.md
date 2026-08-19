@@ -27,7 +27,7 @@ export destination are modeled in the typed `config.ObservabilityConfig`, popula
 | `OBS_TRACES_EXPORTER` | Enable trace export (`otlp` to enable; empty / `none` to disable) |
 | `OBS_METRICS_EXPORTER` | Enable metric export (same convention) |
 | `OBS_LOGS_EXPORTER` | Enable log export via the otelzap bridge (same convention) |
-| `OBS_OTLP_ENDPOINT` | OTLP endpoint URL (Collector / Agent sidecar); used only when a signal is enabled |
+| `ENDPOINT_OTLP` | OTLP endpoint URL (Collector / Agent sidecar); used only when a signal is enabled |
 | `OBS_OTLP_PROTOCOL` | `http/protobuf` (default) or `grpc` |
 
 Each signal is gated **independently**: `TracesEnabled()` / `MetricsEnabled()` /
@@ -38,7 +38,7 @@ periodic reader / runtime-metrics collector) runs — so local development needs
 configuration and no DI swapping.
 
 > **Important:** the export transport is **OTLP only** (there is no console exporter). The
-> single `OBS_OTLP_ENDPOINT` is reused for all three signals; for HTTP the per-signal path
+> single `ENDPOINT_OTLP` is reused for all three signals; for HTTP the per-signal path
 > (`/v1/traces` / `/v1/metrics` / `/v1/logs`) is appended automatically when the URL has no
 > path. Setting the endpoint **alone does not enable export** — staging / prod must also set
 > the matching `OBS_*_EXPORTER=otlp`.

@@ -36,6 +36,7 @@ func newWithdrawalArchiveQueueForTest(t *testing.T) withdrawalArchiveQueue {
 
 	queue, err := provideWithdrawalArchiveQueue(
 		newConsumerQueueConfig(t, testConsumerQueueURL, "us-east-1"),
+		config.NewEndpointConfig(config.MockConfigForTest(t)),
 		observability.NewDisabledOutboundHTTPClient(true),
 	)
 	require.NoError(t, err)
@@ -53,6 +54,7 @@ func Test_provideWithdrawalArchiveQueue(t *testing.T) {
 
 			got, err := provideWithdrawalArchiveQueue(
 				newConsumerQueueConfig(t, testConsumerQueueURL, "us-east-1"),
+				config.NewEndpointConfig(config.MockConfigForTest(t)),
 				observability.NewDisabledOutboundHTTPClient(true),
 			)
 
@@ -76,6 +78,7 @@ func Test_provideWithdrawalArchiveQueue(t *testing.T) {
 
 			got, err := provideWithdrawalArchiveQueue(
 				newConsumerQueueConfig(t, "", "us-east-1"),
+				config.NewEndpointConfig(config.MockConfigForTest(t)),
 				observability.NewDisabledOutboundHTTPClient(true),
 			)
 
@@ -89,6 +92,7 @@ func Test_provideWithdrawalArchiveQueue(t *testing.T) {
 			// 空のまま署名すると不一致になり、受信時まで失敗が顕在化しない。
 			got, err := provideWithdrawalArchiveQueue(
 				newConsumerQueueConfig(t, testConsumerQueueURL, ""),
+				config.NewEndpointConfig(config.MockConfigForTest(t)),
 				observability.NewDisabledOutboundHTTPClient(true),
 			)
 
@@ -102,7 +106,11 @@ func Test_provideWithdrawalArchiveQueue(t *testing.T) {
 			cfg := config.NewConsumerQueueConfig(config.MockConfigForTest(t))
 			cfg.SetConsumerQueue(t, testConsumerQueueURL, testConsumerQueueDLQURL, "us-east-1", "dummy-key", "")
 
-			got, err := provideWithdrawalArchiveQueue(cfg, observability.NewDisabledOutboundHTTPClient(true))
+			got, err := provideWithdrawalArchiveQueue(
+				cfg,
+				config.NewEndpointConfig(config.MockConfigForTest(t)),
+				observability.NewDisabledOutboundHTTPClient(true),
+			)
 
 			require.ErrorIs(t, err, awsclient.ErrInvalidCredentials)
 			assert.Nil(t, got.api)
@@ -136,7 +144,11 @@ func Test_provideWithdrawalArchiveWorker(t *testing.T) {
 			// 退避先が無いまま配線すると退避が必ず失敗し、engine が Ack しないため再配送で戻り続ける。
 			cfg := config.NewConsumerQueueConfig(config.MockConfigForTest(t))
 			cfg.SetConsumerQueue(t, testConsumerQueueURL, "", "us-east-1", "dummy-key", "dummy-secret")
-			queue, err := provideWithdrawalArchiveQueue(cfg, observability.NewDisabledOutboundHTTPClient(true))
+			queue, err := provideWithdrawalArchiveQueue(
+				cfg,
+				config.NewEndpointConfig(config.MockConfigForTest(t)),
+				observability.NewDisabledOutboundHTTPClient(true),
+			)
 			require.NoError(t, err)
 
 			got := provideWithdrawalArchiveWorker(

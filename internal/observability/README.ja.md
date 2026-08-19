@@ -27,7 +27,7 @@
 | `OBS_TRACES_EXPORTER` | trace 送出の有効化（`otlp` で有効／空・`none` で無効） |
 | `OBS_METRICS_EXPORTER` | metric 送出の有効化（同上） |
 | `OBS_LOGS_EXPORTER` | otelzap 経由の log 送出の有効化（同上） |
-| `OBS_OTLP_ENDPOINT` | OTLP エンドポイント URL（Collector / Agent サイドカー）。シグナル有効時のみ使用 |
+| `ENDPOINT_OTLP` | OTLP エンドポイント URL（Collector / Agent サイドカー）。シグナル有効時のみ使用 |
 | `OBS_OTLP_PROTOCOL` | `http/protobuf`（既定）または `grpc` |
 
 各シグナルは **独立にゲート**されます。`TracesEnabled()` / `MetricsEnabled()` /
@@ -37,7 +37,7 @@
 そのためローカル開発では設定も DI 差し替えも不要です。
 
 > **重要:** 送出トランスポートは **OTLP のみ**です（console exporter はありません）。単一の
-> `OBS_OTLP_ENDPOINT` を 3 シグナルで共用し、HTTP ではシグナル別パス（`/v1/traces` /
+> `ENDPOINT_OTLP` を 3 シグナルで共用し、HTTP ではシグナル別パス（`/v1/traces` /
 > `/v1/metrics` / `/v1/logs`）を URL に path が無いとき自動補完します。エンドポイント
 > **だけでは送出は有効になりません** — staging / prod では対応する `OBS_*_EXPORTER=otlp`
 > の設定も必須です。
