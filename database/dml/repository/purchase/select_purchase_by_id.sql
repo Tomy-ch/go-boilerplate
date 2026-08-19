@@ -1,6 +1,7 @@
 -- name: GetPurchaseByID :one
 -- ID から購入を 1 件取得する。現在状態は購入ステータスマスタとの結合で code を解決する
--- （status_id は SoT、code は集約が状態機械の判定に用いる業務キー）。存在しない場合は 0 行（NotFound）。
+-- （code が状態機械の業務キーである根拠は Purchase 集約の定義。docs/spec/purchase/domain.md 参照）。
+-- 存在しない場合は 0 行（NotFound）。
 SELECT
     ps.code AS status_code,
     sqlc.embed(p)
@@ -20,6 +21,7 @@ SELECT
     p.code,
     p.user_id,
     ps.id AS status_id,
+    ps.code AS status_code,
     ps.name AS status_name,
     p.subtotal_amount,
     p.tax_amount,

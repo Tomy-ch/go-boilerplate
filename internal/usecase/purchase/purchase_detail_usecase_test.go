@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/purchase/query"
@@ -56,6 +57,7 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 				Code:           "gd-code",
 				UserID:         userID,
 				StatusID:       uuidtestkit.NewTestFromSalt(t, "gd_status"),
+				StatusCode:     domainpurchase.StatusPaid.Code(),
 				StatusName:     "支払い済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
@@ -69,24 +71,26 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 				CanceledAt: nil,
 			}
 
-			var capturedUserID, capturedPurchaseID uuid.UUID
+			var capturedUserID uuid.UUID
+			var capturedPurchaseCode string
 			qs := mock_query.NewMockPurchaseDetailQueryService(ctrl)
-			qs.EXPECT().FindDetailByUserAndID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, uid, pid uuid.UUID) (*query.PurchaseDetailReadModel, error) {
+			qs.EXPECT().FindDetailByUserAndCode(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, uid uuid.UUID, code string) (*query.PurchaseDetailReadModel, error) {
 					capturedUserID = uid
-					capturedPurchaseID = pid
+					capturedPurchaseCode = code
 					return rm, nil
 				},
 			)
 
 			u := newUsecase(t, qs)
-			view, err := u.GetPurchaseDetail(context.Background(), newAuthn(t, userID), purchaseID)
+			view, err := u.GetPurchaseDetail(context.Background(), newAuthn(t, userID), rm.Code)
 			require.NoError(t, err)
 
 			assert.Equal(t, userID, capturedUserID)
-			assert.Equal(t, purchaseID, capturedPurchaseID)
+			assert.Equal(t, rm.Code, capturedPurchaseCode)
 			assert.Equal(t, rm.Code, view.Code)
 			assert.Equal(t, rm.StatusID, view.StatusID)
+			assert.Equal(t, rm.StatusCode, view.StatusCode)
 			assert.Equal(t, rm.StatusName, view.StatusName)
 			assert.Equal(t, int64(16000), view.TaxAmount)
 			assert.Equal(t, int64(500), view.ShippingFee)
@@ -107,10 +111,10 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			qs := mock_query.NewMockPurchaseDetailQueryService(ctrl)
-			qs.EXPECT().FindDetailByUserAndID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			qs.EXPECT().FindDetailByUserAndCode(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			u := newUsecase(t, qs)
-			_, err := u.GetPurchaseDetail(context.Background(), nil, uuidtestkit.NewTestFromSalt(t, "gd_nil"))
+			_, err := u.GetPurchaseDetail(context.Background(), nil, "gd-nil")
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
@@ -119,14 +123,14 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			qs := mock_query.NewMockPurchaseDetailQueryService(ctrl)
-			qs.EXPECT().FindDetailByUserAndID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			qs.EXPECT().FindDetailByUserAndCode(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			// WithUserID を呼ばず内部 UserID を未解決のままにした authn を渡す。
 			unresolved, err := authbd.New("sub-unresolved", authbd.IssuerMock, nil, nil)
 			require.NoError(t, err)
 
 			u := newUsecase(t, qs)
-			_, err = u.GetPurchaseDetail(context.Background(), unresolved, uuidtestkit.NewTestFromSalt(t, "gd_unresolved"))
+			_, err = u.GetPurchaseDetail(context.Background(), unresolved, "gd-unresolved")
 			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
 		})
 
@@ -136,10 +140,10 @@ func Test_usecase_GetPurchaseDetail(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "gd_nf_user")
 			qs := mock_query.NewMockPurchaseDetailQueryService(ctrl)
-			qs.EXPECT().FindDetailByUserAndID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
+			qs.EXPECT().FindDetailByUserAndCode(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
 
 			u := newUsecase(t, qs)
-			_, err := u.GetPurchaseDetail(context.Background(), newAuthn(t, userID), uuidtestkit.NewTestFromSalt(t, "gd_nf"))
+			_, err := u.GetPurchaseDetail(context.Background(), newAuthn(t, userID), "gd-nf")
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 	})
@@ -160,6 +164,7 @@ func Test_toPurchaseGetDetailView(t *testing.T) {
 				Code:           "tv-code",
 				UserID:         uuidtestkit.NewTestFromSalt(t, "tv_user"),
 				StatusID:       uuidtestkit.NewTestFromSalt(t, "tv_status"),
+				StatusCode:     domainpurchase.StatusPaid.Code(),
 				StatusName:     "支払い済み",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,
@@ -174,8 +179,8 @@ func Test_toPurchaseGetDetailView(t *testing.T) {
 			}
 
 			view := toPurchaseGetDetailView(rm)
-			assert.Equal(t, rm.ID, view.ID)
 			assert.Equal(t, rm.Code, view.Code)
+			assert.Equal(t, rm.StatusCode, view.StatusCode)
 			assert.Equal(t, rm.StatusName, view.StatusName)
 			assert.Equal(t, int64(16000), view.TaxAmount)
 			assert.Equal(t, int64(500), view.ShippingFee)
@@ -196,6 +201,7 @@ func Test_toPurchaseGetDetailView(t *testing.T) {
 				Code:           "tvc-code",
 				UserID:         uuidtestkit.NewTestFromSalt(t, "tvc_user"),
 				StatusID:       uuidtestkit.NewTestFromSalt(t, "tvc_status"),
+				StatusCode:     domainpurchase.StatusCanceled.Code(),
 				StatusName:     "キャンセル",
 				SubtotalAmount: 160000,
 				TaxAmount:      16000,

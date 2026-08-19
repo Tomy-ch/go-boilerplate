@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
@@ -83,7 +84,7 @@ func insertDetail(ctx context.Context, t *testing.T, db driver.DBTX, purchaseID,
 	require.NoError(t, err)
 }
 
-func Test_service_FindDetailByUserAndID(t *testing.T) {
+func Test_service_FindDetailByUserAndCode(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -102,17 +103,19 @@ func Test_service_FindDetailByUserAndID(t *testing.T) {
 				userA := mustParse(t, seedUserA)
 				productA := insertProduct(ctx, t, drv, "e1000000-0000-4000-8000-000000000001", "商品A", 80000)
 				productB := insertProduct(ctx, t, drv, "e1000000-0000-4000-8000-000000000002", "商品B", 120000)
-				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), "qs-code-ok", nil, nil)
+				const purchaseCode = "qs-code-ok"
+				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), purchaseCode, nil, nil)
 				// 明細 2 件を 1 回のリスト取得で束ねられること（固定 2 クエリ・N+1 でない）を確認する。
 				insertDetail(ctx, t, drv, purchaseID, productA, 2, 800)
 				insertDetail(ctx, t, drv, purchaseID, productB, 1, 1500)
 
-				got, err := svc.FindDetailByUserAndID(ctx, userA, purchaseID)
+				got, err := svc.FindDetailByUserAndCode(ctx, userA, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, purchaseID, got.ID)
 				assert.Equal(t, userA, got.UserID)
 				assert.Equal(t, mustParse(t, seedUnprocessedSID), got.StatusID)
 				assert.Equal(t, "未処理", got.StatusName)
+				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got.StatusCode)
 				assert.Equal(t, int64(160000), got.SubtotalAmount)
 				assert.Equal(t, int64(16000), got.TaxAmount)
 				assert.Equal(t, int64(500), got.ShippingFee)
@@ -139,12 +142,14 @@ func Test_service_FindDetailByUserAndID(t *testing.T) {
 				userA := mustParse(t, seedUserA)
 				productA := insertProduct(ctx, t, drv, "e2000000-0000-4000-8000-000000000001", "商品P", 80000)
 				paidAt := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
-				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedPaidSID), "qs-code-paid", &paidAt, nil)
+				const purchaseCode = "qs-code-paid"
+				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedPaidSID), purchaseCode, &paidAt, nil)
 				insertDetail(ctx, t, drv, purchaseID, productA, 1, 800)
 
-				got, err := svc.FindDetailByUserAndID(ctx, userA, purchaseID)
+				got, err := svc.FindDetailByUserAndCode(ctx, userA, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, "支払い済み", got.StatusName)
+				assert.Equal(t, domainpurchase.StatusPaid.Code(), got.StatusCode)
 				require.NotNil(t, got.PaidAt)
 				assert.True(t, paidAt.Equal(*got.PaidAt))
 				assert.Nil(t, got.CanceledAt)
@@ -159,12 +164,14 @@ func Test_service_FindDetailByUserAndID(t *testing.T) {
 				userA := mustParse(t, seedUserA)
 				productA := insertProduct(ctx, t, drv, "e4000000-0000-4000-8000-000000000001", "商品C", 80000)
 				canceledAt := time.Date(2026, time.July, 26, 9, 0, 0, 0, time.UTC)
-				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedCanceledSID), "qs-code-canceled", nil, &canceledAt)
+				const purchaseCode = "qs-code-canceled"
+				purchaseID := insertPurchase(ctx, t, drv, userA, mustParse(t, seedCanceledSID), purchaseCode, nil, &canceledAt)
 				insertDetail(ctx, t, drv, purchaseID, productA, 1, 800)
 
-				got, err := svc.FindDetailByUserAndID(ctx, userA, purchaseID)
+				got, err := svc.FindDetailByUserAndCode(ctx, userA, purchaseCode)
 				require.NoError(t, err)
 				assert.Equal(t, "キャンセル", got.StatusName)
+				assert.Equal(t, domainpurchase.StatusCanceled.Code(), got.StatusCode)
 				assert.Nil(t, got.PaidAt)
 				require.NotNil(t, got.CanceledAt)
 				assert.True(t, canceledAt.Equal(*got.CanceledAt))
@@ -183,10 +190,11 @@ func Test_service_FindDetailByUserAndID(t *testing.T) {
 				userB := mustParse(t, seedUserB)
 				productA := insertProduct(ctx, t, drv, "e3000000-0000-4000-8000-000000000001", "商品O", 80000)
 				// 購入は userB が所有する。userA で問い合わせると所有権述語で 0 行になる。
-				purchaseID := insertPurchase(ctx, t, drv, userB, mustParse(t, seedUnprocessedSID), "qs-code-other", nil, nil)
+				const purchaseCode = "qs-code-other"
+				purchaseID := insertPurchase(ctx, t, drv, userB, mustParse(t, seedUnprocessedSID), purchaseCode, nil, nil)
 				insertDetail(ctx, t, drv, purchaseID, productA, 1, 800)
 
-				_, err := svc.FindDetailByUserAndID(ctx, mustParse(t, seedUserA), purchaseID)
+				_, err := svc.FindDetailByUserAndCode(ctx, mustParse(t, seedUserA), purchaseCode)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
 		})
@@ -195,9 +203,7 @@ func Test_service_FindDetailByUserAndID(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				missing, err := uuid.New()
-				require.NoError(t, err)
-				_, ferr := svc.FindDetailByUserAndID(ctx, mustParse(t, seedUserA), missing)
+				_, ferr := svc.FindDetailByUserAndCode(ctx, mustParse(t, seedUserA), "qs-code-missing")
 				require.ErrorIs(t, ferr, apperror.ErrNotFound)
 			})
 		})

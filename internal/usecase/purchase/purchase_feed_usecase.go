@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/usecase/purchase/period"
+	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -16,14 +16,18 @@ import (
 // purchaseCursorKeyCount は、購入履歴一覧カーソルが保持するソートキーの個数（注文日時, ID）です。
 const purchaseCursorKeyCount = 2
 
-// PurchaseSummaryView は、購入履歴一覧の 1 件分のユースケース出力 DTO です。
-// TotalAmount は USD セント単位の整数、ステータスは購入ステータスマスタで解決済みの ID と名称です。
+// PurchaseSummaryView は、購入履歴一覧の 1 件分のユースケース出力 DTO です。TotalAmount は USD セント
+// 単位の整数、ステータスは購入ステータスマスタで解決済みの ID・業務キー・名称、FirstItemName /
+// ItemCount は行を見分けるための明細の要約です。
 type PurchaseSummaryView struct {
-	Code        string
-	TotalAmount int
-	StatusID    uuid.UUID
-	StatusName  string
-	OrderedAt   time.Time
+	Code          string
+	TotalAmount   int
+	StatusID      uuid.UUID
+	StatusCode    int
+	StatusName    string
+	FirstItemName string
+	ItemCount     int
+	OrderedAt     time.Time
 }
 
 // PurchaseListView は、購入履歴一覧（cursor ページネーション）のユースケース出力 DTO です。
@@ -42,8 +46,8 @@ type purchaseCursor struct {
 	id        uuid.UUID
 }
 
-// GetPurchases は、所有権の絞り込みを Repository に委ね、usecase 側では所有者を再判定しません。
-// 対象が無い場合は Repository が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません。
+// GetPurchases は、所有権の絞り込みを QueryService に委ね、usecase 側では所有者を再判定しません。
+// 対象が無い場合は QueryService が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません。
 // 注文日時の対象期間は spec から解決し、絞り込まない指定では期間条件を付けません。
 func (u *usecase) GetPurchases(
 	ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec,
@@ -65,7 +69,7 @@ func (u *usecase) GetPurchases(
 		return nil, err
 	}
 
-	params := purchase.ListFeedParams{Limit: cursor.Limit32() + 1}
+	params := query.ListFeedParams{Limit: cursor.Limit32() + 1}
 	if after != nil {
 		params.AfterOrderedAt = &after.orderedAt
 		params.AfterID = &after.id
@@ -76,7 +80,7 @@ func (u *usecase) GetPurchases(
 		params.OrderedBefore = &orderedBefore
 	}
 
-	feed, err := u.repo.FindFeedByUserID(ctx, userID, params)
+	feed, err := u.feedQS.FindFeedByUserID(ctx, userID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -90,11 +94,14 @@ func (u *usecase) GetPurchases(
 	items := make([]PurchaseSummaryView, len(feed))
 	for i, f := range feed {
 		items[i] = PurchaseSummaryView{
-			Code:        f.Code,
-			TotalAmount: f.TotalAmount,
-			StatusID:    f.StatusID,
-			StatusName:  f.StatusName,
-			OrderedAt:   f.OrderedAt,
+			Code:          f.Code,
+			TotalAmount:   f.TotalAmount,
+			StatusID:      f.StatusID,
+			StatusCode:    f.StatusCode,
+			StatusName:    f.StatusName,
+			FirstItemName: f.FirstItemName,
+			ItemCount:     f.ItemCount,
+			OrderedAt:     f.OrderedAt,
 		}
 	}
 
@@ -135,6 +142,6 @@ func decodePurchaseCursor(cursor *paging.Cursor) (*purchaseCursor, error) {
 }
 
 // encodePurchaseCursor は、現在ページ末尾のソートキー（注文日時, ID）から次ページ用の不透明カーソルを生成します。
-func encodePurchaseCursor(last purchase.FeedItem) string {
+func encodePurchaseCursor(last query.PurchaseFeedReadModel) string {
 	return paging.EncodeCursor(last.OrderedAt.Format(time.RFC3339Nano), last.ID.String())
 }

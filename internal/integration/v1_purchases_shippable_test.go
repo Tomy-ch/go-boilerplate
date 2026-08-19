@@ -33,7 +33,6 @@ func TestV1PurchasesShippable_Integration(t *testing.T) {
 		base := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 		newItem := func(salt string, orderedAt time.Time) purchaseuc.ShippablePurchaseView {
 			return purchaseuc.ShippablePurchaseView{
-				ID:          uuidtestkit.NewTestFromSalt(t, salt),
 				Code:        "code-" + salt,
 				TotalAmount: 176500,
 				OrderedAt:   orderedAt,

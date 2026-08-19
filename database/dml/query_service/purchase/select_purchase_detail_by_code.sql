@@ -1,5 +1,5 @@
 -- name: GetPurchaseDetailForUser :one
--- 認証主体の購入本体 1 件を取得する。ステータス名は購入ステータスマスタとの結合で解決する。
+-- 認証主体の購入本体 1 件を購入コードで取得する。
 -- 所有権は WHERE 述語（user_id 一致）で担保し、他人・不存在はいずれも 0 行（NotFound で秘匿）。
 -- 支払い日時（paid_at）は未支払いなら NULL、キャンセル日時（canceled_at）は未キャンセルなら NULL。
 SELECT
@@ -7,6 +7,7 @@ SELECT
     p.code,
     p.user_id,
     ps.id AS status_id,
+    ps.code AS status_code,
     ps.name AS status_name,
     p.subtotal_amount,
     p.tax_amount,
@@ -17,10 +18,11 @@ SELECT
     p.canceled_at
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
-WHERE p.id = @id AND p.user_id = @user_id;
+WHERE p.code = @code AND p.user_id = @user_id;
 
 -- name: ListPurchaseDetailItemsForUser :many
 -- 購入明細を products との結合で商品名込みに取得する（集約跨ぎの read 投影）。
+-- 本体行から得た購入 ID で引くため、所有権は本体クエリ側で既に閉じている。
 -- product_id は FK 制約により products と常に結合可能。id 昇順で安定整列する。
 SELECT
     d.product_id,

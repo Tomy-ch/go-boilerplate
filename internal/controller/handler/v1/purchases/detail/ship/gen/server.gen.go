@@ -17,8 +17,8 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// 購入の発送
-	// (PATCH /v1/purchases/{purchaseId}/ship)
-	PatchPurchasesShip(ctx *echo.Context, purchaseId PurchaseIdParam) error
+	// (PATCH /v1/purchases/{purchaseCode}/ship)
+	PatchPurchasesShip(ctx *echo.Context, purchaseCode PurchaseCodeParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -29,18 +29,18 @@ type ServerInterfaceWrapper struct {
 // PatchPurchasesShip converts echo context to params.
 func (w *ServerInterfaceWrapper) PatchPurchasesShip(ctx *echo.Context) error {
 	var err error
-	// ------------- Path parameter "purchaseId" -------------
-	var purchaseId PurchaseIdParam
+	// ------------- Path parameter "purchaseCode" -------------
+	var purchaseCode PurchaseCodeParam
 
-	err = runtime.BindStyledParameterWithOptions("simple", "purchaseId", ctx.Param("purchaseId"), &purchaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	err = runtime.BindStyledParameterWithOptions("simple", "purchaseCode", ctx.Param("purchaseCode"), &purchaseCode, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter purchaseId: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter purchaseCode: %s", err))
 	}
 
 	ctx.Set(string(BearerAuthScopes), []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PatchPurchasesShip(ctx, purchaseId)
+	err = w.Handler.PatchPurchasesShip(ctx, purchaseCode)
 	return err
 }
 
@@ -91,7 +91,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
-	router.PATCH(options.BaseURL+"/v1/purchases/:purchaseId/ship", wrapper.PatchPurchasesShip, options.OperationMiddlewares["PatchPurchasesShip"]...)
+	router.PATCH(options.BaseURL+"/v1/purchases/:purchaseCode/ship", wrapper.PatchPurchasesShip, options.OperationMiddlewares["PatchPurchasesShip"]...)
 
 }
 
@@ -110,7 +110,7 @@ type NotFound404JSONResponse ErrorResponse
 type Unauthorized401JSONResponse ErrorResponse
 
 type PatchPurchasesShipRequestObject struct {
-	PurchaseId PurchaseIdParam `json:"purchaseId"`
+	PurchaseCode PurchaseCodeParam `json:"purchaseCode"`
 }
 
 type PatchPurchasesShipResponseObject interface {
@@ -236,7 +236,7 @@ func (response PatchPurchasesShip500JSONResponse) VisitPatchPurchasesShipRespons
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// 購入の発送
-	// (PATCH /v1/purchases/{purchaseId}/ship)
+	// (PATCH /v1/purchases/{purchaseCode}/ship)
 	PatchPurchasesShip(ctx context.Context, request PatchPurchasesShipRequestObject) (PatchPurchasesShipResponseObject, error)
 }
 
@@ -253,10 +253,10 @@ type strictHandler struct {
 }
 
 // PatchPurchasesShip operation middleware
-func (sh *strictHandler) PatchPurchasesShip(ctx *echo.Context, purchaseId PurchaseIdParam) error {
+func (sh *strictHandler) PatchPurchasesShip(ctx *echo.Context, purchaseCode PurchaseCodeParam) error {
 	var request PatchPurchasesShipRequestObject
 
-	request.PurchaseId = purchaseId
+	request.PurchaseCode = purchaseCode
 
 	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PatchPurchasesShip(ctx.Request().Context(), request.(PatchPurchasesShipRequestObject))

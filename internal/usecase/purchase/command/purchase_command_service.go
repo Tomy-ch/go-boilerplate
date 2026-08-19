@@ -12,7 +12,6 @@ import (
 	"context"
 
 	"go-boilerplate/internal/domain/purchase"
-	"go-boilerplate/pkg/uuid"
 )
 
 // CommandService は、購入に伴う複数集約（商品在庫 / 購入 / 購入明細）への
@@ -25,10 +24,10 @@ type CommandService interface {
 	// CreatePurchase は、在庫の減算・購入の作成・明細の作成を、渡された ctx のトランザクション内で
 	// 原子的に実行します。在庫減算は防御的に売り越しを弾きます。
 	CreatePurchase(ctx context.Context, p *purchase.Purchase) error
-	// LockPurchase は、対象の購入を悲観ロックして明細込みで再構築し返します。
+	// LockPurchase は、購入コードから対象の購入を悲観ロックして明細込みで再構築し返します。
 	// キャンセルの状態遷移の競合（同一購入への並行キャンセル）をこのロックで直列化します。
 	// 存在しない場合は NotFound を返します。
-	LockPurchase(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error)
+	LockPurchase(ctx context.Context, code string) (*purchase.Purchase, error)
 	// CancelPurchase は、キャンセルに伴う在庫復元（明細分の加算）と購入の状態遷移（→ キャンセル）を、
 	// 渡された ctx のトランザクション内で原子的に実行します。在庫加算は相対更新で売り越しを生みません。
 	CancelPurchase(ctx context.Context, p *purchase.Purchase) error

@@ -44,8 +44,18 @@ func summaryViewFixture(t *testing.T) dashboarduc.SummaryView {
 		SalesAmount: 450000,
 		SalesCount:  12,
 		PurchaseStatusCounts: []dashboarduc.StatusCountView{
-			{StatusID: uuidtestkit.NewTestFromSalt(t, "hd_unprocessed"), StatusName: "未処理", Count: 2},
-			{StatusID: uuidtestkit.NewTestFromSalt(t, "hd_completed"), StatusName: "完了", Count: 10},
+			{
+				StatusID:   uuidtestkit.NewTestFromSalt(t, "hd_unprocessed"),
+				StatusCode: 1,
+				StatusName: "未処理",
+				Count:      2,
+			},
+			{
+				StatusID:   uuidtestkit.NewTestFromSalt(t, "hd_completed"),
+				StatusCode: 5,
+				StatusName: "完了",
+				Count:      10,
+			},
 		},
 		TotalProductCount:     120,
 		PublishedProductCount: 98,
@@ -229,6 +239,7 @@ func Test_toDashboardSummaryResponse(t *testing.T) {
 			assert.Equal(t, "未処理", got.PurchaseStatusCounts[0].Status.Name)
 			assert.Equal(t, int64(2), got.PurchaseStatusCounts[0].Count)
 			assert.Equal(t, "完了", got.PurchaseStatusCounts[1].Status.Name)
+			assert.EqualValues(t, view.PurchaseStatusCounts[1].StatusCode, got.PurchaseStatusCounts[1].Status.Code)
 			assert.Equal(t, int64(10), got.PurchaseStatusCounts[1].Count)
 		})
 

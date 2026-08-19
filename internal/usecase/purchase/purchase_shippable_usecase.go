@@ -41,7 +41,6 @@ type ListShippablePurchasesParams struct {
 // ShippablePurchaseView は、まとめ発送の組に含まれる購入 1 件のユースケース出力 DTO です。
 // 金額は USD セント単位の整数です。
 type ShippablePurchaseView struct {
-	ID          uuid.UUID
 	Code        string
 	TotalAmount int
 	OrderedAt   time.Time
@@ -82,7 +81,7 @@ func (u *usecase) ListShippablePurchases(
 	if err != nil {
 		return PurchaseShippableListView{}, err
 	}
-	// 絞り込みを実行するのは SQL だが、発送可能を定義するのは Purchase.IsShippable。両者の乖離を表に出す。
+	// SQL/ドメイン乖離時のフェイルセーフ（errNotShippableInShippableRead 参照）。
 	for _, p := range purchases {
 		if !p.IsShippable() {
 			return PurchaseShippableListView{}, xerrors.Wrap(errNotShippableInShippableRead, p.ID().String())
@@ -105,7 +104,6 @@ func toDispatchGroupView(group purchase.Purchases) DispatchGroupView {
 	items := make([]ShippablePurchaseView, len(group))
 	for i, p := range group {
 		items[i] = ShippablePurchaseView{
-			ID:          p.ID(),
 			Code:        p.Code(),
 			TotalAmount: p.TotalAmount(),
 			OrderedAt:   p.OrderedAt(),

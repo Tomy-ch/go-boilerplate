@@ -46,7 +46,7 @@ func (s *service) SummarizeSales(ctx context.Context, window query.Window) (quer
 }
 
 // CountPurchasesByStatus は、指定期間に注文された購入のステータス別件数を返します。
-// ステータス名は purchase_statuses との一意な等結合で解決するため、別途の名称解決は不要です。
+// ステータス名は purchase_statuses との一意な等結合で解決します。
 func (s *service) CountPurchasesByStatus(
 	ctx context.Context, window query.Window,
 ) ([]query.PurchaseStatusCountResult, error) {
@@ -66,6 +66,7 @@ func (s *service) CountPurchasesByStatus(
 	for i, row := range rows {
 		results[i] = query.PurchaseStatusCountResult{
 			StatusID:   row.StatusID,
+			StatusCode: int(row.StatusCode),
 			StatusName: row.StatusName,
 			Count:      row.PurchaseCount,
 		}

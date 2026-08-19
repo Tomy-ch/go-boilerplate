@@ -1,13 +1,12 @@
 //go:generate oapi-codegen --include-tags=v1/purchases/detail --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
 //go:generate oapi-codegen --include-tags=v1/purchases/detail --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
-// Package detail は、GET /v1/purchases/{purchaseId} エンドポイントに関連するハンドラを提供します。
+// Package detail は、GET /v1/purchases/{purchaseCode} エンドポイントに関連するハンドラを提供します。
 package detail
 
 import (
 	"context"
 
-	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/purchases/detail/gen"
 	"go-boilerplate/internal/observability"
@@ -31,8 +30,8 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 	}, nil))
 }
 
-// GetPurchasesDetail は、本人の購入 1 件を明細（商品名込み）とともに取得します。認証必須で、他人の購入・不存在は
-// いずれも 404 で存在を秘匿します。
+// GetPurchasesDetail は、本人の購入 1 件を明細込みで取得します。認証必須。404: 不存在 / 他人の購入
+// （理由は docs/spec/purchase/usecase.md § GET 詳細（購入詳細・集約跨ぎ QS）を参照）。
 func (s *server) GetPurchasesDetail(
 	ctx context.Context,
 	request gen.GetPurchasesDetailRequestObject,
@@ -45,7 +44,7 @@ func (s *server) GetPurchasesDetail(
 		return nil, err
 	}
 
-	view, err := s.uc.GetPurchaseDetail(ctx, &authn, conv.UUID(request.PurchaseId))
+	view, err := s.uc.GetPurchaseDetail(ctx, &authn, request.PurchaseCode)
 	if err != nil {
 		return nil, err
 	}
@@ -75,11 +74,11 @@ func toPurchaseGetDetailResponse(v purchaseuc.PurchaseGetDetailView) (gen.Purcha
 	}
 
 	return gen.PurchaseGetDetailResponse{
-		Id:     v.ID.ToPrimitive(),
 		Code:   v.Code,
 		UserId: v.UserID.ToPrimitive(),
 		Status: gen.PurchaseStatusRef{
 			Id:   v.StatusID.ToPrimitive(),
+			Code: int64(v.StatusCode),
 			Name: v.StatusName,
 		},
 		SubtotalAmount: v.SubtotalAmount,

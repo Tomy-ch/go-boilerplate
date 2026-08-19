@@ -68,8 +68,20 @@ func summaryViewFixture(t *testing.T) summaryuc.SummaryView {
 		TotalAmount: 450,
 		ItemsTotal:  dec(t, "4.50"),
 		StatusBreakdown: []summaryuc.StatusCountView{
-			{StatusID: uuidtestkit.NewTestFromSalt(t, "hs_unprocessed"), StatusName: "未処理", Count: 2, TotalAmount: 300},
-			{StatusID: uuidtestkit.NewTestFromSalt(t, "hs_paid"), StatusName: "支払い済み", Count: 1, TotalAmount: 150},
+			{
+				StatusID:    uuidtestkit.NewTestFromSalt(t, "hs_unprocessed"),
+				StatusCode:  1,
+				StatusName:  "未処理",
+				Count:       2,
+				TotalAmount: 300,
+			},
+			{
+				StatusID:    uuidtestkit.NewTestFromSalt(t, "hs_paid"),
+				StatusCode:  7,
+				StatusName:  "支払い済み",
+				Count:       1,
+				TotalAmount: 150,
+			},
 		},
 	}
 }
@@ -212,6 +224,7 @@ func Test_toPurchaseAggregateResponse(t *testing.T) {
 			for i, b := range view.StatusBreakdown {
 				assert.Equal(t, b.StatusID.ToPrimitive(), r.StatusBreakdown[i].Status.Id)
 				assert.Equal(t, b.StatusName, r.StatusBreakdown[i].Status.Name)
+				assert.EqualValues(t, b.StatusCode, r.StatusBreakdown[i].Status.Code)
 				assert.Equal(t, b.Count, r.StatusBreakdown[i].Count)
 				assert.Equal(t, b.TotalAmount, r.StatusBreakdown[i].TotalAmount)
 			}

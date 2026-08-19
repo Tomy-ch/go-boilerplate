@@ -42,17 +42,17 @@ func (m *MockPurchaseDetailQueryService) EXPECT() *MockPurchaseDetailQueryServic
 	return m.recorder
 }
 
-// FindDetailByUserAndID mocks base method.
-func (m *MockPurchaseDetailQueryService) FindDetailByUserAndID(ctx context.Context, userID, purchaseID uuid.UUID) (*query.PurchaseDetailReadModel, error) {
+// FindDetailByUserAndCode mocks base method.
+func (m *MockPurchaseDetailQueryService) FindDetailByUserAndCode(ctx context.Context, userID uuid.UUID, code string) (*query.PurchaseDetailReadModel, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindDetailByUserAndID", ctx, userID, purchaseID)
+	ret := m.ctrl.Call(m, "FindDetailByUserAndCode", ctx, userID, code)
 	ret0, _ := ret[0].(*query.PurchaseDetailReadModel)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// FindDetailByUserAndID indicates an expected call of FindDetailByUserAndID.
-func (mr *MockPurchaseDetailQueryServiceMockRecorder) FindDetailByUserAndID(ctx, userID, purchaseID any) *gomock.Call {
+// FindDetailByUserAndCode indicates an expected call of FindDetailByUserAndCode.
+func (mr *MockPurchaseDetailQueryServiceMockRecorder) FindDetailByUserAndCode(ctx, userID, code any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDetailByUserAndID", reflect.TypeOf((*MockPurchaseDetailQueryService)(nil).FindDetailByUserAndID), ctx, userID, purchaseID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDetailByUserAndCode", reflect.TypeOf((*MockPurchaseDetailQueryService)(nil).FindDetailByUserAndCode), ctx, userID, code)
 }

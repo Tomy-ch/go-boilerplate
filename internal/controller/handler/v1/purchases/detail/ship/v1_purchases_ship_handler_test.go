@@ -43,10 +43,10 @@ func shipViewFixture(t *testing.T) purchaseuc.ShipPurchaseView {
 	t.Helper()
 	shipped := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
 	return purchaseuc.ShipPurchaseView{
-		ID:             uuidtestkit.NewTestFromSalt(t, "hs_id"),
 		Code:           "hs-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "hs_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "hs_status"),
+		StatusCode:     8,
 		StatusName:     "発送済み",
 		SubtotalAmount: 160000,
 		TaxAmount:      16000,
@@ -72,7 +72,7 @@ func TestBindHandler(t *testing.T) {
 	routes := e.Router().Routes()
 	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodPatch, routes[0].Method)
-	assert.Equal(t, "/v1/purchases/:purchaseId/ship", routes[0].Path)
+	assert.Equal(t, "/v1/purchases/:purchaseCode/ship", routes[0].Path)
 }
 
 func Test_server_PatchPurchasesShip(t *testing.T) {
@@ -89,26 +89,26 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hs_admin")
-			purchaseID := uuidtestkit.NewTestFromSalt(t, "hs_purchase")
+			const purchaseCode = "hs-code"
 			view := shipViewFixture(t)
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, authn *auth.Authn, id uuid.UUID) (purchaseuc.ShipPurchaseView, error) {
+				DoAndReturn(func(_ context.Context, authn *auth.Authn, code string) (purchaseuc.ShipPurchaseView, error) {
 					require.NotNil(t, authn)
 					resolved, uerr := authn.UserID()
 					require.NoError(t, uerr)
 					assert.Equal(t, userID, resolved)
-					assert.Equal(t, purchaseID, id)
+					assert.Equal(t, purchaseCode, code)
 					return view, nil
 				})
 
 			resp, err := s.PatchPurchasesShip(authnContext(t, userID), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: purchaseID.ToPrimitive(),
+				PurchaseCode: purchaseCode,
 			})
 			require.NoError(t, err)
 
 			r, ok := resp.(gen.PatchPurchasesShip200JSONResponse)
 			require.True(t, ok)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
+			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "発送済み", r.Status.Name)
 			require.Len(t, r.Details, 1)
@@ -128,13 +128,13 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 
 			var captured *auth.Authn
 			uc.EXPECT().ShipPurchase(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, a *auth.Authn, _ uuid.UUID) (purchaseuc.ShipPurchaseView, error) {
+				DoAndReturn(func(_ context.Context, a *auth.Authn, _ string) (purchaseuc.ShipPurchaseView, error) {
 					captured = a
 					return shipViewFixture(t), nil
 				})
 
 			_, err = s.PatchPurchasesShip(ctx, gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_unresolved").ToPrimitive(),
+				PurchaseCode: "hs-unresolved",
 			})
 			require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
 			_, err := s.PatchPurchasesShip(context.Background(), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_noauth").ToPrimitive(),
+				PurchaseCode: "hs-noauth",
 			})
 			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
@@ -172,7 +172,7 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hs_user_forbidden")
 			_, err := s.PatchPurchasesShip(authnContext(t, userID), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_purchase_forbidden").ToPrimitive(),
+				PurchaseCode: "hs-purchase-forbidden",
 			})
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
@@ -189,7 +189,7 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hs_user_err")
 			_, err := s.PatchPurchasesShip(authnContext(t, userID), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_purchase_err").ToPrimitive(),
+				PurchaseCode: "hs-purchase-err",
 			})
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
@@ -207,7 +207,7 @@ func Test_server_PatchPurchasesShip(t *testing.T) {
 
 			userID := uuidtestkit.NewTestFromSalt(t, "hs_user_overflow")
 			_, err := s.PatchPurchasesShip(authnContext(t, userID), gen.PatchPurchasesShipRequestObject{
-				PurchaseId: uuidtestkit.NewTestFromSalt(t, "hs_purchase_overflow").ToPrimitive(),
+				PurchaseCode: "hs-purchase-overflow",
 			})
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
@@ -226,11 +226,11 @@ func Test_toShipResponse(t *testing.T) {
 			view := shipViewFixture(t)
 			r, err := toShipResponse(view)
 			require.NoError(t, err)
-			assert.Equal(t, view.ID.ToPrimitive(), r.Id)
 			assert.Equal(t, view.Code, r.Code)
 			assert.Equal(t, view.UserID.ToPrimitive(), r.UserId)
 			assert.Equal(t, view.StatusID.ToPrimitive(), r.Status.Id)
 			assert.Equal(t, "発送済み", r.Status.Name)
+			assert.EqualValues(t, view.StatusCode, r.Status.Code)
 			assert.Equal(t, int64(176500), r.TotalAmount)
 			assert.Equal(t, *view.ShippedAt, r.ShippedAt)
 			require.Len(t, r.Details, 1)

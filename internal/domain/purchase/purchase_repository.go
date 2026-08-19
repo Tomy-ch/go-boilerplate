@@ -9,36 +9,27 @@ import (
 
 // Repository は、購入の永続化操作を定義するドメインリポジトリインターフェースです。
 type Repository interface {
-	// FindByID は、ID から購入を明細込みで取得します。書き込み後のドメイン整合の再検証と
-	// レスポンス組み立ての取得元に用います。存在しない場合は NotFound を返します。
+	// FindByID は、ID から購入を明細込みで取得します。存在しない場合は NotFound を返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
-	// LockByID は、対象の購入のみを悲観ロックして明細込みで再構築し返します。
-	// 支払いの状態遷移の競合（同一購入への並行支払い）をこのロックで直列化します。擬似決済は購入集約
-	// のみを更新するため、複数集約の原子性を要する CommandService ではなく Repository が担います。
+	// LockByCode は、購入コードから対象の購入のみを悲観ロックして明細込みで再構築し返します。
+	// 状態遷移の競合（同一購入への並行更新）をこのロックで直列化します。
 	// 存在しない場合は NotFound を返します。
-	LockByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
+	LockByCode(ctx context.Context, code string) (*Purchase, error)
 	// UpdatePaid は、購入の状態遷移（→ 支払い済み）を、渡された ctx のトランザクション内で実行します。
-	// 擬似決済のため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
+	// 対象は LockByCode で取得・検証済みです。
 	UpdatePaid(ctx context.Context, p *Purchase) error
 	// UpdateShipped は、購入の状態遷移（→ 発送済み）を、渡された ctx のトランザクション内で実行します。
-	// 配送追跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
+	// 対象は LockByCode で取得・検証済みです。
 	UpdateShipped(ctx context.Context, p *Purchase) error
 	// UpdateDelivered は、購入の状態遷移（→ 配達済み）を、渡された ctx のトランザクション内で実行します。
-	// 配達確認の証跡を扱わないため購入集約のみを更新し、在庫操作は伴いません。対象は LockByID で取得・検証済みです。
+	// 対象は LockByCode で取得・検証済みです。
 	UpdateDelivered(ctx context.Context, p *Purchase) error
 	// FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で明細込みに最大 limit 件
 	// 取得します。該当が無い場合は空を返します。絞り込みは Purchase.IsShippable の定義と一致させること。
 	FindShippable(ctx context.Context, limit int32) (Purchases, error)
 	// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
-	// 購入ステータスマスタで解決します（購入ステータスは購入集約に属する固定参照マスタのため、
-	// 単一集約の Repository read です）。存在しない場合は NotFound を返します。
+	// 購入ステータスマスタで解決します。存在しない場合は NotFound を返します。
 	FindDetailByID(ctx context.Context, id uuid.UUID) (*Detail, error)
-	// FindFeedByUserID は、指定ユーザーの購入履歴を注文日時の降順（同時刻は ID 降順）の安定順で
-	// keyset ページネーション取得します。ステータス名は購入ステータスマスタで解決します
-	// （購入ステータスは購入集約に属する固定参照マスタのため、単一集約の Repository read です）。
-	// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。
-	// params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返します。
-	FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]FeedItem, error)
 	// FindStatusesByUserID は、指定ユーザーの購入が取っているステータスを重複なく返します。
 	// 進行中かどうかで絞り込まないため、その判定（Status.IsTerminal の否定）は呼び出し側が行います。
 	// 購入を 1 件も持たない場合は空を返し、順序は保証しません。

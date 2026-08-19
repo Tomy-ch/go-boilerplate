@@ -31,7 +31,6 @@ import (
 func purchaseViewFixture(t *testing.T) purchaseuc.PurchaseView {
 	t.Helper()
 	return purchaseuc.PurchaseView{
-		ID:             uuidtestkit.NewTestFromSalt(t, "int_id"),
 		Code:           "int-code",
 		UserID:         uuidtestkit.NewTestFromSalt(t, "int_user"),
 		StatusID:       uuidtestkit.NewTestFromSalt(t, "int_status"),
