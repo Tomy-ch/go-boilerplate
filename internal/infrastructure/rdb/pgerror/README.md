@@ -74,6 +74,7 @@ The following PostgreSQL SQLSTATE values are converted into application errors.
 |23502|not null violation|InvalidArgument|
 |23514|check violation|InvalidArgument|
 |22001|string too long|InvalidArgument|
+|22021|character not in repertoire (e.g. a NUL byte in a `text` parameter)|InvalidArgument|
 |22P02|invalid text representation|InvalidArgument|
 |42501|insufficient privilege|PermissionDenied|
 |40001|serialization failure|Unavailable|

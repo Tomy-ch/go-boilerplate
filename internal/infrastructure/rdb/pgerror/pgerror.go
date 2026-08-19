@@ -20,6 +20,7 @@ var sqlstateToAppError = map[string]error{
 	"23502": apperror.ErrInvalidArgument,
 	"23514": apperror.ErrInvalidArgument,
 	"22001": apperror.ErrInvalidArgument,
+	"22021": apperror.ErrInvalidArgument,
 	"22P02": apperror.ErrInvalidArgument,
 	"42501": apperror.ErrPermissionDenied,
 	"40001": apperror.ErrUnavailable,
