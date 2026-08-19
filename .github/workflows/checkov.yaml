@@ -166,6 +166,16 @@ jobs:
       # Dropping them here is what makes the two surfaces agree: the reason stays in the
       # Dockerfile next to the instruction it excuses, which is where it can be read and
       # go stale visibly, and code scanning shows what checkov actually failed on.
+      #
+      # There is no setting that removes this step. checkov's only suppression knobs are
+      # `--skip-check` (an id, everywhere) and `--skip-path` (a path, every check), and both
+      # are too coarse for what is being said here: `CKV_DOCKER_3` is excused for the three
+      # images that never ship and must keep failing for docker/server/Dockerfile, which is
+      # the one that does. The inline comment is the only per-file mechanism checkov offers,
+      # and it does not reach the SARIF. Nor does the receiving end help — GitHub does not
+      # close an alert on the `suppressions` entry, which is how these came to need a manual
+      # dismissal each. So the filter is not a workaround for a setting nobody looked for; it
+      # is the only place the two halves can be joined.
       - name: Drop suppressed results from the Checkov SARIF
         if: always()
         run: |
