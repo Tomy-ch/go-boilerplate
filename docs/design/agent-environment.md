@@ -2,7 +2,7 @@
 
 日本語: [agent-environment.ja.md](agent-environment.ja.md)
 
-This document explains how the repository's agent environment turns its declared properties into daily practice. It is an interpretation of [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md), not a checklist or a second source of rules.
+This document explains how the repository's agent environment turns its declared properties into daily practice. It is an interpretation of [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md) — both the properties a control must satisfy and the loop that later retires it — not a checklist or a second source of rules. Why AI assistance is the standard path at all is [ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md).
 
 ```mermaid
 flowchart TD
@@ -30,6 +30,43 @@ Decidable properties fail mechanically: `depguard` and architecture tests protec
 Escalate a matter when it changes an approved decision, crosses an architectural boundary, or cannot reappear through an existing check. Do not create a durable task merely because a mechanism already reports the same condition reliably.
 
 The `ci-first` load band delegates heavy local gates to CI when host saturation would make their failures unreliable. It does not permit verification to be skipped: the authoritative check still runs remotely, while local work keeps fast, trustworthy checks.
+
+## Improving the environment itself
+
+The steps above describe one change. The environment that guides and checks it is under a loop of
+its own, because a control is added far more readily than it is removed: a skill nobody invokes and
+a rule whose case no longer occurs both produce no failure, so the signal to retire them is the
+absence of a signal.
+
+```mermaid
+flowchart LR
+    A["Observe AI sessions"] --> B["Compress friction into feedback"]
+    B --> C["Attribute it to a skill · rule · doc · CI step · tool"]
+    C --> D["Generate improvement candidates"]
+    D --> E["Human decides the design questions"]
+    E --> F["Land the improvement"]
+    F --> G["Re-evaluate its effect after an interval"]
+    G --> H{"Keep · Simplify · Revise · Delete · Revert"}
+    H --> A
+```
+
+In practice the loop is bounded on three sides:
+
+- **What is observed** is friction, not activity, and it is kept **outside the repository** — the
+  compressed finding (what was hit, which control it implicates, what the change to that control
+  measurably did) goes to its issue, never to a commit. A per-run narrative is not kept at all, and
+  [`.agents/`](../../.agents/README.md) holds only the loop's configuration;
+  [ADR-0009 (long-running-agent-state)](../adr/0009-long-running-agent-state.md) draws both lines.
+- **Who decides** is a human wherever the candidate touches architecture, domain, or policy. The
+  loop surfaces the decision and its options; it does not take one.
+- **What may be edited** follows the same scope as any other change. The AI-tool configuration
+  directories stay outside an agent's default scope and are reachable only through an explicitly
+  invoked skill, bounded by that skill's own procedure, per the skill-execution exception in
+  [AGENTS.md](../../AGENTS.md). `AGENTS.md` itself is human-maintained and is never edited this way.
+
+Skills carry the same lifecycle as any other control, inventoried on how often they are invoked, the
+occasions on which they would have applied but were not, the friction they themselves caused, and
+the measured effect of the last change to them.
 
 ## Keeping this interpretation current
 

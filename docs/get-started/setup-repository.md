@@ -36,7 +36,7 @@ make install-tools   # installs gopls / gotests / impl / dlv / lefthook / golang
 make activate-tools  # runs `lefthook install` to wire git hooks
 ```
 
-## Phase 3: Install the agent configuration (recommended)
+## Phase 3: Install the agent configuration (standard path)
 
 The AI-assist layer ships as configuration: project-scoped official plugins, this repository's own skills under [`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md), and one officially recommended external skill (`graphify`, a queryable knowledge graph of the repository). Two idempotent bootstraps install the parts a clone does not carry:
 
@@ -47,12 +47,16 @@ bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope
 
 `graphify` itself is pinned in `mise.toml` like every other tool, so `mise install` already fetched it; the bootstrap only writes the skill into each assistant's config directory. Which of its commands stay local and which reach an LLM API is documented in [`.claude/README.md`](../../.claude/README.md).
 
-**Declining the AI-assist layer is the adopting architect's call.** This template is built to stay fully maintainable without AI tooling — the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration — so nothing above is load-bearing for building, testing, or shipping. A project that does not want the layer should remove it deliberately rather than leave it half-configured:
+**This phase is the standard path, not an extra.** AI-assisted development is how this template expects a change to be made, and the skills under `.claude/` / `.codex/` are the executable form of the flows in [docs/development-flow.md](../development-flow.md). Rationale: [ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md).
+
+**Declining the layer is still the adopting architect's call**, and nothing above is load-bearing for building, testing, or shipping: the layering rules live in [docs/rules.md](../rules.md), not in the assistant configuration, and the application never depends on an AI service. What you give up is the developer experience — the flows remain documented, but the tooling that drives them is not maintained in a manual form, so a project that declines the layer is on a compatibility path rather than a second supported one.
+
+A project that does not want the layer should remove it deliberately rather than leave it half-configured:
 
 - skip both bootstraps; no other phase of this setup depends on them, and
 - drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint/index.ts`.
 
-Removing it later costs the same as removing it now, so adopting the recommended configuration first and deciding afterwards is a safe order.
+Removing it later costs the same as removing it now, so adopting the standard configuration first and deciding afterwards is a safe order.
 
 ## Phase 4: Local Startup Verification
 

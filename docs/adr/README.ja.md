@@ -52,8 +52,8 @@ Exclusion ADR（意図的な「X はしない」）は、リポジトリセッ�
 | [0004](0004-modular-monolith.ja.md) | モジュラーモノリスを採用する（マイクロサービスは非目標） | accepted |
 | [0005](0005-driving-adapters-not-split-axis.ja.md) | REST / Worker / Job はドライビングアダプター、サービス分割の軸ではない | accepted |
 | [0006](0006-structural-safety-via-tooling.ja.md) | ツールと CI で構造的安全性を強制する（depguard） | accepted |
-| [0007](0007-agents-md-operational-contract.ja.md) | AI協働開発 — AGENTS.md を運用契約とする | accepted |
-| [0008](0008-agent-environment-alignment.ja.md) | 宣言可能かつ検証可能な性質を中心にエージェント環境を整合させる | accepted |
+| [0007](0007-agents-md-operational-contract.ja.md) | AI-first / manual-compatible な開発と、運用契約としての AGENTS.md | accepted |
+| [0008](0008-agent-environment-alignment.ja.md) | エージェント環境を宣言された検査可能な性質へ整合させ、閉じたループで改善する | accepted |
 | [0009](0009-long-running-agent-state.ja.md) | 永続的なエージェント状態を所有する正本の形に保つ | accepted |
 | [0010](0010-docs-as-canonical-source.ja.md) | ドキュメントを正典ソースとする戦略（英語正典 + ja ミラー + ポータル） | accepted |
 | [0011](0011-openapi-first.ja.md) | API 契約を OpenAPI ファーストで定義する | accepted |

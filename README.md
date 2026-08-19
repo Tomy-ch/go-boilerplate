@@ -438,21 +438,45 @@ across several places or implementations are kept as design assets**.
 
 ### AI-assisted development
 
-This project assumes it can be **fully developed and maintained without AI**. There is no
-AI-specific architecture: the design, contracts and verification mechanisms are written for
-humans, and agents are given access to those same ones.
+This repository separates two things that are easy to conflate: **the application, which never
+depends on AI**, and **the development foundation around it, which is designed for AI assistance as
+its standard path**.
 
-Layer boundaries, generated code, the OpenAPI contract, ADRs, the Design Reference and the
-per-package READMEs are reused as agent context; properties that can be decided mechanically
-are checked by tooling, and judgements that require reading are checked by review signal.
+**The application is AI-independent.** Runtime, build, test, production runtime, the architecture
+itself, the domain model, the API contract, the database schema and the ordinary CI checks all
+succeed with no AI service or agent available. Nothing you ship inherits a dependency on a model, a
+vendor or an agent.
+
+**The development foundation is AI-first.** Agent configuration, skills, agent-facing rules and
+context, AI-assisted review and the automation around them are part of the maintained development
+system, not an optional side layer. Being AI-specific is not by itself a reason to hold a mechanism
+optional, and full feature symmetry with a manual path is not maintained. Developing without the
+assist layer stays possible and is not forbidden — it is a **not-recommended compatibility path**
+with no guarantee of an equivalent developer experience.
+
+The reason is size. Every individual directory here stays readable, but continuously holding the
+*whole* of it — structure, conventions, dependencies, design intent, and what a change reaches — is
+expensive for one person. An agent is the navigation layer over that: it finds the document that
+owns a topic, reads the rules that bound a change, and traces what the change affects.
+
+What that does **not** license is a structure only a machine can follow. Explicit structure an agent
+can traverse and explicit structure a human can read are treated as correlated, so the layer
+boundaries, generated code, the OpenAPI contract, the ADRs, the Design Reference and the per-package
+READMEs are the shared substrate — reused as agent context rather than duplicated into an
+agent-only one.
 
 The aim is not to widen AI's freedom. It is to **narrow the search space deliberately within
-decisions that have already been approved, and return only the changes that need a design
-decision to a human** — so that the speed of AI assistance is available without making the
-foundation itself depend on a particular model, vendor or agent.
+decisions that have already been approved, and return only the changes that need a design decision
+to a human**. Properties that can be decided mechanically are checked by tooling, whose verdict
+outranks an agent's reading; judgements that require reading are checked by review signal; and
+architecture, domain and policy decisions keep a human gate.
+
+The controls themselves are not append-only: skills, rules, documents and checks are observed,
+re-evaluated after they land, and kept, simplified, revised, deleted or reverted on that evidence.
 
 See [docs/design/agent-environment.md](docs/design/agent-environment.md) /
-[docs/rules.md](docs/rules.md).
+[docs/rules.md](docs/rules.md) /
+[docs/adr/0007-agents-md-operational-contract.md](docs/adr/0007-agents-md-operational-contract.md).
 
 #### Agent compatibility
 

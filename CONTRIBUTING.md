@@ -23,6 +23,15 @@ When something in that setup does not behave, check
 [docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) before digging — several
 of the failures are the environment working as designed.
 
+**Install the agent configuration too** (Phase 3 of that page). AI-assisted development is this
+repository's standard path: the flows in `docs/development-flow.md` have an executable form as skills
+under `.claude/` / `.codex/`, and the conventions a reviewer will ask about are the ones those skills
+already apply. Working without them is allowed but is a compatibility path — you perform by hand what
+a skill would otherwise drive, and no manual equivalent is maintained alongside it. What is *not*
+optional is the outcome: every gate below is the same for a change made either way, and a
+deterministic check outranks whatever an assistant reported. Rationale:
+[ADR-0007 (agents-md-operational-contract)](docs/adr/0007-agents-md-operational-contract.md).
+
 ## Branching
 
 Feature branches are cut from the **latest `release/*` branch**, never from a protected branch and

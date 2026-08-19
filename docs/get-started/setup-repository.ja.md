@@ -36,7 +36,7 @@ make install-tools   # gopls / gotests / impl / dlv / lefthook / golangci-lint /
 make activate-tools  # `lefthook install` で git hooks を有効化
 ```
 
-## Phase 3: エージェント設定のインストール（推奨構成）
+## Phase 3: エージェント設定のインストール（標準経路）
 
 AI 支援レイヤは設定として同梱しています。project スコープの公式プラグイン、本リポジトリ自身のスキル（[`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md)）、および公式に推奨する外部スキル 1 つ（`graphify`。リポジトリを問い合わせ可能な知識グラフにするツール）です。clone に付いてこない部分は、冪等な bootstrap 2 本で入れます。
 
@@ -47,12 +47,16 @@ bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user ス�
 
 `graphify` 本体は他のツールと同様に `mise.toml` で pin しているため `mise install` の時点で取得済みで、bootstrap は各アシスタントの設定ディレクトリへ skill を書くだけです。どのコマンドがローカル完結で、どれが LLM API へ出るかは [`.claude/README.md`](../../.claude/README.md) に記載しています。
 
-**AI 支援レイヤを採らない判断は、導入側のアーキテクトが行います。** 本テンプレートは AI ツール無しでも完全に保守できるよう作られており（レイヤ規約の正本は [docs/rules.md](../rules.md) であってアシスタント設定ではありません）、上記はビルド・テスト・リリースのいずれにも必須ではありません。採らないプロジェクトは、中途半端に設定を残さず意図的に外してください。
+**この Phase は追加オプションではなく標準経路です。** 本テンプレートは AI 支援開発で変更が行われることを前提としており、`.claude/` / `.codex/` のスキルは [docs/development-flow.md](../development-flow.md) のフローの実行形態そのものです。根拠: [ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.ja.md)。
+
+**それでもレイヤを採らない判断は導入側のアーキテクトが行います。** 上記はビルド・テスト・リリースのいずれにも必須ではありません。レイヤ規約の正本は [docs/rules.md](../rules.md) であってアシスタント設定ではなく、アプリケーションが AI サービスへ依存することもありません。失うのは開発者体験です。フローは文書として残りますが、それを駆動するツールは手動の形では保守されないため、レイヤを採らないプロジェクトは第二の正規経路ではなく互換経路に乗ることになります。
+
+採らないプロジェクトは、中途半端に設定を残さず意図的に外してください。
 
 - bootstrap 2 本を実行しない（以降のどの Phase もこれらに依存しません）
 - 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint/index.ts` の `graphify-out/` 記述
 
-後から外すコストは今外すコストと同じなので、まず推奨構成で入れて後から判断する順序でも安全です。
+後から外すコストは今外すコストと同じなので、まず標準構成で入れて後から判断する順序でも安全です。
 
 ## Phase 4: ローカル起動確認
 

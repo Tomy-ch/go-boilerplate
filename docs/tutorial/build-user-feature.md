@@ -14,12 +14,14 @@ deletes the entire User feature, so you can return to zero and rebuild it yourse
 
 - Newcomers who want one continuous path through the codebase instead of layer-by-layer
   reference docs.
-- AI agents (or humans) operating **without** the `.claude/` scaffold skills, who need the
-  manual procedure the skills automate.
+- Anyone who needs to see **what the scaffold skills actually do** — this document is the
+  ground truth they encode, and the place to look when a generated result has to be judged.
+- Anyone operating without the `.claude/` scaffold skills, who therefore performs the
+  procedure by hand.
 
-> If you *do* have the scaffold skills available, the automated equivalent of this whole
-> tutorial is `/scaffold-endpoint user` (see [Where to go next](#where-to-go-next)). This
-> document is the manual ground truth those skills encode.
+> The standard path is not to type this out. The automated equivalent of the whole tutorial is
+> `/scaffold-endpoint user` (see [Where to go next](#where-to-go-next)); read this once so you
+> can tell whether what it produced is right.
 
 ## What you will build
 

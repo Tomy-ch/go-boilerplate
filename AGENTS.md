@@ -9,6 +9,22 @@ This repository is a lightweight Onion Architecture RESTful-API scaffold
 (`controller → usecase → domain`; infrastructure implements domain interfaces). Do not
 introduce new architectural patterns unless explicitly instructed.
 
+**AI-assisted development is this repository's standard path**; manual development stays available
+as a not-recommended compatibility path. Three constraints bound what that means, and they apply to
+every task below:
+
+1. A **deterministic check** — test, lint, CI, architecture rule — outranks an agent's judgment
+   wherever one exists. Report what it said, not what you concluded.
+2. **Architecture, domain and policy decisions keep a human gate.** Surface the decision and its
+   options; do not take one.
+3. **The application never depends on AI.** Runtime, build, test, the domain model, the API
+   contract, the DB schema and the ordinary CI checks must succeed with no agent available. AI
+   dependence is confined to development workflow, navigation, automation, feedback and review.
+
+Rationale: `docs/adr/0007-agents-md-operational-contract.md`. The agent environment is not
+append-only — its controls are observed and re-evaluated rather than only added:
+`docs/adr/0008-agent-environment-alignment.md`.
+
 ## Instruction Priority
 
 On conflict, follow this order:
@@ -32,6 +48,7 @@ The source of truth for design, rules, and flows is under `docs/` and the per-pa
 | Technology rationale (per-file ADR: onion / OpenAPI-first / sqlc / echo / fx / worker / o11y) | `docs/adr/` (log: `docs/adr/README.md`). An ADR records what was decided and what was rejected; the criterion for deciding a given case may live in `docs/design/` instead |
 | Per-layer / per-package detail | `internal/**/README.md`, `pkg/**/README.md` |
 | Cross-cutting & subsystem design — the criterion for deciding a given case (data-access placement, auth, security posture, async subsystems, …) | `docs/design/README.md` — open the index; the examples here are not the inventory |
+| Why AI assistance is the standard path, and how a control in the agent environment is judged, re-evaluated and retired | ADR-0007 / ADR-0008, interpreted in `docs/design/agent-environment.md` |
 
 **Documentation scope for agents** — the canonical sources are the English `README.md` and
 `docs/**/*.md`. **Never read `*.ja.md` files: they are human-facing Japanese translations of
@@ -218,7 +235,7 @@ Do NOT modify other top-level directories (e.g. `cmd/`, `docker/`, `scripts/`, `
 
 - **CLI command exception:** each CLI subcommand is a thin `cmd/<command>.go` shell (Cobra + real-dependency wiring) paired with its testable core under `internal/cli/<command>/`. Adding / modifying a command necessarily edits the matching `cmd/<command>.go` and that is in-scope; the restriction is about not arbitrarily restructuring `cmd/` entrypoint/build wiring.
 
-**AI-tool configurations are out of scope** — do NOT create/modify/delete these unless the user explicitly requests it:
+**AI-tool configurations are out of scope** — do NOT create/modify/delete these unless the user explicitly requests it. Note that maintaining them is an ordinary, recurring part of the standard path rather than an exception: it is reached through the skill that owns it (`manage-skill` for a skill, `sync-ai` across environments), which is what supplies the explicit instruction. What is unchanged is the requirement — a direct user request or a running skill, never an agent's own initiative:
 
 - Claude Code: `.claude/` (skills, `settings.json`, `settings.local.json`, …)
 - OpenAI Codex CLI: `.codex/skills/`

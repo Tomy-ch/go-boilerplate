@@ -61,8 +61,8 @@ can enumerate them. The tag has no reader once setup is done.
 | [0004](0004-modular-monolith.md) | Adopt a modular monolith (microservices are a non-goal) | accepted |
 | [0005](0005-driving-adapters-not-split-axis.md) | REST / Worker / Job are driving adapters, not a service-split axis | accepted |
 | [0006](0006-structural-safety-via-tooling.md) | Enforce structural safety with tooling and CI (depguard) | accepted |
-| [0007](0007-agents-md-operational-contract.md) | With-AI development — AGENTS.md as the operational contract | accepted |
-| [0008](0008-agent-environment-alignment.md) | Align the agent environment around declared, checkable properties | accepted |
+| [0007](0007-agents-md-operational-contract.md) | AI-first, manual-compatible development, with AGENTS.md as the operational contract | accepted |
+| [0008](0008-agent-environment-alignment.md) | Align the agent environment around declared, checkable properties, and improve it in a closed loop | accepted |
 | [0009](0009-long-running-agent-state.md) | Keep durable agent state in its owning canonical form | accepted |
 | [0010](0010-docs-as-canonical-source.md) | Docs-as-canonical-source strategy (English canonical + ja mirror + portal) | accepted |
 | [0011](0011-openapi-first.md) | Define the API contract OpenAPI-first | accepted |
