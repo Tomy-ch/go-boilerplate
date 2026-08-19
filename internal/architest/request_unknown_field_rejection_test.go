@@ -43,11 +43,14 @@ type requestSchemaSubject struct {
 // （購入明細・商品画像）はトップレベルの宣言に守られず、そこだけ素通りが残るためである。
 //
 // 読み出すのは生成物ではなく手書き正本の openapi.yaml で、理由は TestRouteSpecParity と同じ。
+//
+// 対象が 0 件でも失敗させない。サンプル API を撤去すると requestBody を持つ operation が
+// 残らないためで、0 件と壊れた走査を区別するのは Test_walkRequestSchema と Test_evaluateClosure
+// が担う（internal/architest/README.md の Notes）。
 func TestRequestBodyRejectsUnknownFields(t *testing.T) {
 	t.Parallel()
 
 	subjects := collectRequestBodySchemas(t)
-	require.NotEmpty(t, subjects, "リクエストボディから object スキーマを 1 件も読み出せない（走査の誤りを疑う）")
 	t.Logf("検査した object スキーマ: %d 件", len(subjects))
 
 	missing := make([]string, 0, len(subjects))
