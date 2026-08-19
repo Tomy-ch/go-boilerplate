@@ -19,5 +19,6 @@
   { "name": "feedback/tooling", "description": "CLI・スクリプト・make ターゲットの摩擦", "color": "bfb0ff" },
   { "name": "feedback/ai-misread", "description": "AIの誤読・誤認", "color": "bfb0ff" },
   { "name": "feedback/ci", "description": "CI・Actions の摩擦", "color": "bfb0ff" },
-  { "name": "feedback/developer-experience", "description": "上記に収まらない開発体験の摩擦", "color": "bfb0ff" }
+  { "name": "feedback/developer-experience", "description": "上記に収まらない開発体験の摩擦", "color": "bfb0ff" },
+  { "name": "feedback/needs-summary", "description": "手元で読解できなかった窓。CI 側の要約を待っている", "color": "d4c5ff" }
 ]

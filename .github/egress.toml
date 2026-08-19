@@ -101,6 +101,9 @@ extra = [
   "*.ingest.sentry.io:443",
 ]
 
+[job."closed-loop-weekly.yaml:weekly"]
+classes = ["mise"]
+
 [job."closed-loop-summarize.yaml:summarize"]
 classes = []
 extra = [

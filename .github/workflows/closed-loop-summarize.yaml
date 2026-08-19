@@ -1,12 +1,14 @@
-# Fill the reading-comprehension half of a Feedback Issue.
+# Fill the reading-comprehension half of a Feedback Issue that could not be read locally.
 #
-# The deterministic half is already in the issue when this runs: the local send path wrote the
-# observation block and a comment holding the turns a machine selected as worth reading. What is
-# missing is what those turns MEAN, and that is the one thing no counter can produce.
+# The normal route is local: `make closed-loop-send` reads the transcript on the machine that
+# produced it and creates the issue with its sections already filled. That is preferred because
+# the transcript never leaves the machine — reaching a runner would mean publishing the verbatim
+# turns to a public issue first (docs/design/security.md, the Secrets section).
 #
-# It runs here rather than on the developer's machine so a session is never blocked or billed for
-# it (ADR-0007: AI dependence is confined to the development workflow, and the workflow must not
-# stop when the model is unavailable).
+# This workflow is what happens when that fails: no `claude` on the machine, or the call did not
+# return. The send path then labels the issue `feedback/needs-summary` and posts the selected
+# turns as a comment, which is the only way a runner can see them. So the trigger is that label
+# and not `feedback` — gating on `feedback` would re-summarize every window that was already read.
 name: Closed Loop Summarize
 
 on:
@@ -28,11 +30,11 @@ concurrency:
 
 jobs:
   summarize:
-    # Only a feedback issue, and only when the label that marks it arrives. Gating on the github
-    # context alone means an unrelated label never starts a runner.
+    # Only an issue the local path could not read, and only when that label arrives. Gating on the
+    # github context alone means an unrelated label never starts a runner.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.label.name == 'feedback'
+      github.event.label.name == 'feedback/needs-summary'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -116,3 +118,7 @@ jobs:
               feedback/skill, feedback/architecture, feedback/documentation, feedback/tooling,
               feedback/ai-misread, feedback/ci, feedback/developer-experience のうち該当するものを付ける。
             - 該当が無ければ付けない。付けないことも情報です。
+
+            最後に `gh issue edit ${{ github.event.issue.number || inputs.issue }} --remove-label feedback/needs-summary`
+            で待ち受けのラベルを外してください。外し忘れると、この issue が「まだ読解されていない」
+            ものとして残り続けます。

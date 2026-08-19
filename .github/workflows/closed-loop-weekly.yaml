@@ -1,0 +1,140 @@
+# Collect the week's Feedback Issues, cluster them, and score the clusters for a retrospective.
+#
+# The step this exists to protect is the re-measurement. ADR-0008 adopts the loop on the condition
+# that a landed improvement is judged after an interval and can be simplified, reverted or deleted
+# on that evidence; skipping it degrades the loop into the accumulator it was adopted to prevent.
+# A step nobody is reminded to run is a step that stops being run, so it is scheduled rather than
+# left to a `make` target somebody remembers on a Monday.
+#
+# Nothing here reads a model. The tally, the clustering key and the score are all counted from the
+# observation blocks the issues already carry, which is why this runs on a plain runner while
+# `closed-loop-summarize.yaml` needs a token. The reading half is done elsewhere, per window.
+#
+# The period is passed as absolute dates rather than derived from the run's clock, so a week whose
+# run failed can be recomputed later and produce the same answer.
+name: Closed Loop Weekly
+
+on:
+  schedule:
+    # Monday 05:15 UTC — the next free slot in the weekly stagger (README.md § Scheduled runs).
+    - cron: '15 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      from:
+        description: Start date (YYYY-MM-DD). Defaults to seven days before `to`.
+        required: false
+        type: string
+      to:
+        description: End date (YYYY-MM-DD). Defaults to today.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install the script tree for scripts/
+        run: pnpm install --dir scripts --frozen-lockfile
+
+      # The report goes to the run summary rather than to an issue. It is a view over issues that
+      # already exist, and writing it back as another issue would put it in the same list it
+      # summarises — where the next run would then count it.
+      - name: Collect and score
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+        run: |
+          set -euo pipefail
+
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          pnpm --dir scripts exec tsx scripts/closed-loop/weekly \
+            ${FROM:+--from "${FROM}"} ${TO:+--to "${TO}"} > weekly.txt
+
+          FENCE="$(fence_for weekly.txt)"
+          {
+            echo '## Closed Loop 週次'
+            echo
+            echo "${FENCE}txt"
+            cat weekly.txt
+            echo "${FENCE}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  # See README.md § Notification triggers. A scheduled failure reaches nobody otherwise, and this
+  # one is worse than a scanner's: the retrospective simply does not happen, and nothing says so.
+  notify-failure:
+    needs: weekly
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.weekly.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: closed-loop-weekly
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
