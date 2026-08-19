@@ -94,35 +94,44 @@ const ESCROW = /^[ \t]*(?:(?:\/\/|#)[ \t]*=[ \t]?(.*)|<!--[ \t]*=[ \t]?(.*)-->)$
  * マーカー除去のロジックを独自に持つ理由（`stripMarkers` を呼ばない理由）は
  * `scripts/setup/lib/markers.ts` 冒頭が持ちます。
  */
+/** `replace` マーカーの内側で、いま読んでいる行がどちら側に属するか。 */
+type ReplaceSide = "escrow" | "none" | "upstream";
+
+/** `replace` マーカーの行なら、その次の行から属する側を返す。マーカーでなければ `null`。 */
+function sideAfterMarker(line: string): ReplaceSide | null {
+  if (REPLACE_BEGIN.test(line)) return "upstream";
+  if (REPLACE_WITH.test(line)) return "escrow";
+  if (REPLACE_END.test(line)) return "none";
+
+  return null;
+}
+
+/**
+ * 退避コメントをアンコメントする。
+ *
+ * 退避コメントの形をしていない行はそのまま返します。アンコメントの規則が読めないものを落とすと、
+ * 作成先の本文を検査から消すことになるためです。
+ */
+function uncommentEscrow(line: string): string {
+  const matched = ESCROW.exec(line);
+
+  return matched === null ? line : (matched[1] ?? matched[2].trimEnd());
+}
+
 export function survivingText(content: string): string {
   const out: string[] = [];
   let depth = 0;
-  let inUpstreamSide = false;
-  let inEscrowSide = false;
+  let side: ReplaceSide = "none";
 
   for (const line of content.split("\n")) {
-    if (REPLACE_BEGIN.test(line)) {
-      inUpstreamSide = true;
+    const next = sideAfterMarker(line);
+    if (next !== null) {
+      side = next;
       continue;
     }
-    if (REPLACE_WITH.test(line)) {
-      inUpstreamSide = false;
-      inEscrowSide = true;
-      continue;
-    }
-    if (REPLACE_END.test(line)) {
-      inUpstreamSide = false;
-      inEscrowSide = false;
-      continue;
-    }
-    if (inUpstreamSide) continue;
-
-    if (inEscrowSide) {
-      const matched = ESCROW.exec(line);
-
-      // 退避コメントの形をしていない行は、アンコメントの規則が読めない。落とすと 作成先の
-      // 本文を検査から消すことになるので、そのまま検査へ通す。
-      out.push(matched === null ? line : (matched[1] ?? matched[2].trimEnd()));
+    if (side === "upstream") continue;
+    if (side === "escrow") {
+      out.push(uncommentEscrow(line));
       continue;
     }
 

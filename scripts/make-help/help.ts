@@ -32,24 +32,35 @@ const TARGET_COLUMN_WIDTH = 24;
  * 説明コメントを持たない `.PHONY` 行は一覧に出せません。黙って落とすと利用者から見えない
  * ターゲットになるため、本文とは別に返して呼び出し元が警告できるようにしています。
  */
+/** 見出し行なら、一覧へ出す行を返す。見出しでなければ `null`。 */
+function categoryLines(line: string): string[] | null {
+  const category = CATEGORY.exec(line);
+
+  return category ? ["", `📂 ${category[1]}`] : null;
+}
+
+/** 説明コメント付きの `.PHONY` 行なら、ターゲット 1 件につき 1 行を返す。そうでなければ `null`。 */
+function targetLines(line: string): string[] | null {
+  const documented = DOCUMENTED_PHONY.exec(line);
+  const targets = documented?.[1].trim();
+  if (!documented || !targets) return null;
+
+  const description = documented[2].trimStart();
+
+  return targets
+    .split(/[ \t]+/)
+    .map((target) => `🛠  ${target.padEnd(TARGET_COLUMN_WIDTH)} ${description}`);
+}
+
 export function renderHelp(sources: readonly MakefileSource[]): HelpOutput {
   const lines: string[] = ["📦 Makeターゲット一覧", "-------------------------------------------"];
   const undocumented: string[] = [];
 
   for (const source of sources) {
     for (const line of source.content.split("\n")) {
-      const category = CATEGORY.exec(line);
-      if (category) {
-        lines.push("", `📂 ${category[1]}`);
-        continue;
-      }
-
-      const documented = DOCUMENTED_PHONY.exec(line);
-      const targets = documented?.[1].trim();
-      if (documented && targets) {
-        for (const target of targets.split(/[ \t]+/)) {
-          lines.push(`🛠  ${target.padEnd(TARGET_COLUMN_WIDTH)} ${documented[2].trimStart()}`);
-        }
+      const rendered = categoryLines(line) ?? targetLines(line);
+      if (rendered) {
+        lines.push(...rendered);
         continue;
       }
 
