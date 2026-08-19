@@ -35,6 +35,7 @@ Two invariants underpin all of them:
 | [context-map.md](context-map.md) | Context Map | how this system relates to the systems around it, edge by edge | [boundary](../../internal/usecase/boundary/README.md) |
 | [data-access-pattern.md](data-access-pattern.md) | Data access placement | which of Repository / QueryService / CommandService owns a given read or write, and why | [rdb](../../internal/infrastructure/rdb/README.md) |
 | [agent-environment.md](agent-environment.md) | Agent environment | how instructions, mechanical gates, independent review, and load-aware verification work together | [AGENTS.md](../../AGENTS.md) |
+| [closed-loop.md](closed-loop.md) | AI feedback loop | what a development window is, what is observed about it, and how a landed improvement is re-measured | [.agents/](../../.agents/README.md) |
 
 ## Reading order
 

@@ -100,6 +100,7 @@ meta:
           - 0007-agents-md-operational-contract
           - 0008-agent-environment-alignment
           - 0009-long-running-agent-state
+          - 0010-development-window-as-feedback-unit
           - 0011-docs-as-canonical-source
       - title: Contract / OpenAPI
         items:

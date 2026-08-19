@@ -64,6 +64,7 @@ can enumerate them. The tag has no reader once setup is done.
 | [0007](0007-agents-md-operational-contract.md) | AI-first, manual-compatible development, with AGENTS.md as the operational contract | accepted |
 | [0008](0008-agent-environment-alignment.md) | Align the agent environment around declared, checkable properties, and improve it in a closed loop | accepted |
 | [0009](0009-long-running-agent-state.md) | Keep durable agent state in its owning canonical form | accepted |
+| [0010](0010-development-window-as-feedback-unit.md) | Make the development window the unit the feedback loop observes | accepted |
 | [0011](0011-docs-as-canonical-source.md) | Docs-as-canonical-source strategy (English canonical + ja mirror + portal) | accepted |
 | [0012](0012-openapi-first.md) | Define the API contract OpenAPI-first | accepted |
 | [0013](0013-redocly-modular-spec-pipeline.md) | Author the spec in modular Redocly files, bundle, then generate | accepted |
