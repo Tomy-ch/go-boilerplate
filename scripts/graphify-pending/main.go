@@ -24,7 +24,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/md5" //nolint:gosec // 変更検出のみ。graphify の manifest がこの形式で持つ
+	"crypto/md5" //nolint:gosec // 変更検出のみ。graphify の manifest がこの形式で持つ // DevSkim: ignore DS126858
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -182,7 +182,7 @@ func staleDocuments(manifestPath, ignorePath string, read func(name string) ([]b
 			// ないので数えません。
 			continue
 		}
-		if entry.SemanticHash != fmt.Sprintf("%x", md5.Sum(body)) { //nolint:gosec // 変更検出のみで、graphify の manifest と同じ選択
+		if entry.SemanticHash != fmt.Sprintf("%x", md5.Sum(body)) { //nolint:gosec // 変更検出のみで、graphify の manifest と同じ選択 // DevSkim: ignore DS126858
 			stale = append(stale, file)
 		}
 	}
