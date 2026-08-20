@@ -427,6 +427,7 @@ SARIF アップロードと sticky な PR コメントはどちらも切って�
   （[`docs/rules.md`](../../docs/rules.md) § Comment Rules）はそのまま適用される — 手順のナレーション・
   開発経緯・言い換えは書かず、非自明な Why は残す
 - `auto-generate-docs.yaml` は `auto/docs-update/<base>` というブランチ名で auto-PR を作成（release base ごとに 1 ブランチを `delete-branch: true` で再利用）。再帰実行を避けるため自己ブランチでは workflow をスキップ
+- **auto-PR は `GITHUB_TOKEN` ではなく GitHub App のトークンで作成する。** ワークフローが自分の `GITHUB_TOKEN` で起こしたイベントを GitHub は抑止するため、そのトークンで作成した pull request はワークフローを 1 本も起動しない。そして報告されない required context は「該当しない」とは読まれず、待つ対象の無いまま待ち続ける。そこで `auto-generate-docs.yaml` / `graphify-sync.yaml` / `graphify-extract.yaml` は `AUTO_PR_APP_ID` / `AUTO_PR_APP_PRIVATE_KEY` から installation token を発行し、`contents: write` と `pull-requests: write` に絞って渡す（ブランチを push して pull request を開くのが仕事のすべてなので）。App の登録は人間の手順で、未登録のうちは警告を出して `GITHUB_TOKEN` へフォールバックする。pull request は開くが、チェックは付かず、required がある限りマージはできない。3 本のコミットメッセージから `[skip ci]` を外したのも同じ理由による。このキーワードは `push` **と `pull_request`** の両方を抑止するが、これらの workflow はそもそも `auto/` ブランチを見ていない（`push` フィルタは `release/**`）ので、実際に抑止していたのは auto-PR 自身のチェックだけだった
 - デプロイ系 workflow の target ブランチ（`production` / `staging` / `develop`）はすべてブランチ保護を有効化。マージは必ず PR レビュー経由
 - セキュリティスキャンのトリガーは上記「セキュリティのトリガーマトリクス」でツールごとに定義。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
 - `trivy-fs.yaml` と `osv-scanner.yaml` は**チェックを落とさない**。修正版の有無に関わらず全 finding を code scanning と PR コメントへ載せ、ブロックの判定は上記のリリースゲートに委ねる。これにより、既知の脆弱性が黙って昇格に載ることはなく、かつ通常の PR がその PR の持ち込みでない脆弱性に足止めされることもない
