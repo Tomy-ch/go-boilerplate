@@ -19,7 +19,27 @@ name: SonarQube Cloud Scan
 # API answers — its findings do NOT reach code scanning, because the `report` job below is
 # gated on a pull-request context for the reason above.
 
+# 保護ブランチへの push でも走らせる。code scanning はアラートを「新しい解析がもう報告しない」
+# ことでしか閉じないので、既定ブランチの解析が走らないと、除外を足しても既存のアラートが
+# 永久に開いたまま残る。実際 database/seed の plsql:S1192 が 385 件、除外を入れたあとも
+# 開いたままになっていた（全 open の 76%）。判断済みのもので埋まったダッシュボードは、
+# 残りの本物を隠す。
 on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/sonarqube.yaml'
+      - 'sonar-project.properties'
+      - '**/*.go'
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.mjs'
+      - '**/*.jsx'
   pull_request:
     paths:
       - '.github/workflows/sonarqube.yaml'
@@ -431,11 +451,17 @@ jobs:
   # The only job that writes outside this run, and the only one with no token. It runs even
   # when the scan failed: a scan that was cut off still has to say so on the pull request,
   # because a missing comment is indistinguishable from a clean scan.
+  #
+  # It also runs on a push to a protected branch, and that is what keeps code scanning honest.
+  # An alert closes only when a later analysis for the same ref stops reporting it, so without
+  # this upload the default branch never gets a second analysis and nothing ever closes —
+  # an exclusion added to sonar-project.properties silences the gate while the alert it was
+  # written for stays open forever. The PR comment stays pull-request-only; the SARIF does not.
   report:
     needs:
       - preflight
       - sonarqube
-    if: ${{ always() && needs.preflight.outputs.configured == 'true' && github.event_name == 'pull_request' }}
+    if: ${{ always() && needs.preflight.outputs.configured == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
