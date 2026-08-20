@@ -1,0 +1,128 @@
+name: Graphify Check
+
+on:
+  pull_request:
+    paths:
+      - 'graphify-out/**'
+      - '.gitignore'
+      - '.agents/graphify/spec-pin.toml'
+      - 'python/graphify.*'
+      - 'scripts/graphify-check/**'
+      - '.makefiles/graphify/export.mk'
+  push:
+    paths:
+      - '.github/workflows/graphify-check.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  graphify-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The base ref must be resolvable for the BASE diff; the default shallow checkout
+          # leaves it a bad object and the step degrades to "no output changed".
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The auto-sync branch is the one place a change to the output is expected, so it is the one
+      # place BASE is not passed. Everywhere else a feature branch carrying the graph is the finding.
+      - name: Check tracked graphify artifacts carry no machine-local paths
+        id: graphify
+        shell: bash
+        env:
+          # Only a feature branch merging into a release line is held to this. A promotion
+          # (release -> develop / staging / production) legitimately carries the graph forward, and
+          # the sync branch is where the update is produced in the first place.
+          BASE_REF: ${{ github.event_name == 'pull_request'
+            && startsWith(github.base_ref, 'release/')
+            && !startsWith(github.head_ref, 'auto/graphify-update/')
+            && format('origin/{0}', github.base_ref) || '' }}
+        run: |
+          set +e
+
+          make graphify-check BASE="${BASE_REF}" 2>&1 | tee /tmp/graphify-check.log
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Graphify check: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Graphify check: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Comment graphify-check result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- graphify-check-result -->'
+          status: ${{ steps.graphify.outputs.status }}
+          title: "${{ steps.graphify.outputs.title || '## ⚠️ Graphify Check: CUT OFF (no result produced)' }}"
+          body-file: /tmp/graphify-check.log
+          details-summary: 'graphify-check log'
+
+      - name: Fail if a tracked artifact is machine-local
+        if: always() && steps.graphify.outputs.status != 'success'
+        run: exit 1

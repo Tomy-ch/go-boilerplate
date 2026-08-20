@@ -91,6 +91,7 @@ All three rules live in one check rather than three, because they are not three 
 |Pin Actions Check|`pin-actions-check.yaml`|Verify GitHub Actions are pinned to a SHA (supply-chain hardening)|
 |Pin Images Check|`pin-images-check.yaml`|Verify Docker base images are pinned to a digest per the lockfile (supply-chain hardening)|
 |Egress Check|`egress-check.yaml`|Verify every job's inline `allowed-endpoints` matches the SSOT (see [Runner Hardening](#runner-hardening))|
+|Graphify Check|`graphify-check.yaml`|Verify the tracked graphify artifacts stay portable: nothing outside the `.gitignore` whitelist is tracked, and no artifact carries an absolute path from the machine that produced it|
 
 ### Security
 
@@ -387,6 +388,8 @@ Two jobs carry an assumption worth restating when instantiating this template: `
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
 |Auto-generate Docs|`auto-generate-docs.yaml`|push to release/* branches|Sync OpenAPI `info.version` from the `release/vX.Y.Z` branch name, then auto-generate the OpenAPI bundle / embedded spec / docs, ER diagrams, portal docs|
+|Graphify Sync|`graphify-sync.yaml`|push to release/* branches|Re-extract the code files whose content changed into the knowledge graph and open a PR with the result. Deterministic half only, and it also reports how much semantic work has accumulated|
+|Graphify Extract|`graphify-extract.yaml`|manual (`workflow_dispatch`)|Run semantic extraction over the documents that changed, as an assistant, and open a PR. Separate from the sync workflow because this is the only job that runs an assistant with write access; skips itself when `CLAUDE_CODE_TOKEN` is unconfigured, so a repository created from this template never spends a token it did not provision|
 
 ### Assistant (Comment)
 
@@ -428,6 +431,7 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
   [`docs/rules.md`](../../docs/rules.md) § Comment Rules still applies: no how-narration, no
   development history, no restatement, and keep a non-obvious Why.
 - `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>` (one branch per release base, reused across runs with `delete-branch: true`); the workflow skips itself on that branch to avoid recursion.
+- `graphify-sync.yaml` and `graphify-extract.yaml` follow the same shape on `auto/graphify-update/<base>`. They are separate workflows on purpose: the second runs an assistant with `contents: write`, and folding it into the first as a conditional branch would attach that permission to a job that fires on every release push. `graphify-extract.yaml` also carries no `--max-turns` — the extraction is a long sequence whose length depends on how many documents changed, so a turn cap would cut it mid-flow and leave a half-written graph; `timeout-minutes` is the bound that belongs there. Why the graph is updated on the release line at all: it is one 450k-line blob rewritten whenever any source file moves, so concurrent feature branches always conflict on it, and the usual remedy for a generated artifact — regenerate from the source of truth — does not apply because the semantic half needs a model. `graphify-check.yaml` therefore fails a pull request that carries a change to `graphify-out/`, passing `BASE` everywhere except on the sync branch itself.
 - All deployment workflows require their target branch (`production` / `staging` / `develop`) to be branch-protected; merges must flow through PR review.
 - Security scan triggers are defined per tool in the Security Trigger Matrix above; if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.
 - `trivy-fs.yaml` and `osv-scanner.yaml` never fail a check: every finding, fixed or not, is written to code scanning and to the PR comment, and the blocking verdict is left to the release gates described above, so a promotion cannot silently ship a known vulnerability while an ordinary PR is not held hostage to one it did not introduce.

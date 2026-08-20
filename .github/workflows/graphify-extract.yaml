@@ -1,0 +1,169 @@
+name: Graphify Extract
+
+# The semantic half of the knowledge graph: extraction over documents, which needs a model.
+# It is deliberately a separate workflow from `graphify-sync.yaml` rather than a branch inside it.
+# This one runs an assistant with write access, and that is the only job here that does; keeping it
+# in its own file means the deterministic sync cannot inherit the decision by accident, and the
+# permission grant is reviewable in one place.
+#
+# Manual only. There is no schedule and no push trigger: extraction costs model time, and
+# `graphify-sync.yaml` already reports how much has accumulated (`make graphify-pending`) so the
+# decision to run this has evidence behind it. A repository created from this template that never
+# configures `CLAUDE_CODE_TOKEN` skips every step rather than failing red, so the template's own
+# token is never spent on a downstream project.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  graphify-extract:
+    runs-on: ubuntu-latest
+    # No `--max-turns`: the extraction flow is a long sequence (detect, chunk, dispatch, merge,
+    # cluster, export) whose length depends on how many documents changed. A turn cap would cut it
+    # mid-flow and leave a half-written graph, which is worse than not running. The bound that
+    # belongs here is wall-clock, and this is it.
+    timeout-minutes: 60
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.anthropic.com:443
+            *.anthropic.com:443
+            statsig.anthropic.com:443
+            sentry.io:443
+            *.ingest.sentry.io:443
+
+      # The secrets context is unavailable in `if:`, hence the detour through a run step output.
+      # Skipping beats failing red: a template consumer has no reason to configure this.
+      - name: Check configuration
+        id: config
+        env:
+          CLAUDE_CODE_TOKEN: ${{ secrets.CLAUDE_CODE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CLAUDE_CODE_TOKEN}" ]; then
+            echo 'configured=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo '::notice::CLAUDE_CODE_TOKEN is not configured; skipping.'
+            echo 'configured=false' >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Checkout
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        if: steps.config.outputs.configured == 'true'
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: uv
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The skill and its extraction prompt come from `python/graphify.txt`, hash-pinned, so the
+      # prompt this run uses is the one `.agents/graphify/spec-pin.toml` records — which is what
+      # makes the committed cache reusable between here and a developer's machine.
+      - name: Install the graphify skill from the lockfile
+        if: steps.config.outputs.configured == 'true'
+        run: bash .claude/scripts/bootstrap-external-skills.sh
+
+      - name: Verify the prompt matches the pin
+        if: steps.config.outputs.configured == 'true'
+        run: make graphify-check SPEC="$HOME/.claude/skills/graphify/references/extraction-spec.md"
+
+      - name: Run semantic extraction
+        if: steps.config.outputs.configured == 'true'
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_TOKEN }}
+          prompt: |
+            Run `/graphify --update` on this repository, then stop.
+            Do not commit, push, or open a pull request — a later step handles that.
+            Do not edit any file outside `graphify-out/`.
+
+      - name: Verify the refreshed artifacts stay portable
+        if: steps.config.outputs.configured == 'true'
+        run: make graphify-check
+
+      - name: Detect changes
+        if: steps.config.outputs.configured == 'true'
+        id: diff
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PR
+        if: steps.config.outputs.configured == 'true' && steps.diff.outputs.has_diff == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          commit-message: "chore(graphify): sync semantic graph [skip ci]"
+          branch: auto/graphify-update/${{ github.ref_name }}
+          base: ${{ github.ref_name }}
+          title: "chore(graphify): sync semantic graph"
+          body: |
+            ## 🤖 Semantic Graph Sync
+
+            Semantic extraction over the documents that changed since the last run, produced by
+            `/graphify --update` with the prompt `.agents/graphify/spec-pin.toml` pins.
+
+            ### 📦 Included outputs
+            - `graphify-out/graph.json` (+ `GRAPH_REPORT.md`)
+            - `graphify-out/nodes.json` / `edges.json` / `metadata.json`
+            - `graphify-out/cache/semantic/` — new entries, keyed by content, additive
+            - `graphify-out/manifest.json` — its `mtime` values are the runner's, so the whole file
+              changes even where the content hashes did not
+
+            ### ⚠️ Review note
+            The node and edge text is model output. It describes the documents rather than changing
+            behaviour, so a diff review here is about whether the description is right, not whether
+            the code still works.
