@@ -298,15 +298,24 @@ mise はそれ自体には届きます（`dotnet:` バックエンドが NuGet �
 
 OSV ゲートの深刻度は advisory 自身の評価を使い、無ければ osv-scanner がグループ単位で集約する CVSS スコアへフォールバックします。Go 脆弱性データベース由来の advisory はそのどちらも公開しないため HIGH 閾値では測れず、修正版が存在する場合にのみゲート対象とします。評価もできず更新もできない advisory が、昇格のたびに恒久的な赤を生むのを避けるためです。両ゲートとも意図的に `paths` フィルタを持ちません。昇格 PR はマニフェストを一切変更しないことが多く、required check はまず実行されなければブロックできないからです。
 
-#### required check の空振り guard
+#### required check は全 pull request で報告される
 
-必須チェックがマージをデッドロックさせるのを防ぐためだけに存在するワークフローが 7 本あります。`lockfile-integrity` / `openapi-security` / `opengrep` / `osv-release-gate` / `osv-scanner` / `trivy-config` / `trivy-release-gate` の各本体に `*-guard.yaml` が並んでいます。
+[`branch-protection.json`](../settings/branch-protection.json) が挙げた context はマージ前に**報告される**必要があります。GitHub は「報告が無い」を「該当しない」とは読まず、待ち続けます。その pull request は永久にマージ可能になりません。したがって required context を報告するワークフローは、`pull_request` トリガーにフィルタを持ってはいけません。`paths:` や `branches:` はそこでは run が起きるかどうかを決めるものであり、起きなかった run は何も報告しないからです。
 
-デッドロックは構造的なものです。[`branch-protection.json`](../settings/branch-protection.json) が挙げた context はマージ前に**報告される**必要がありますが、それを報告するワークフローにはフィルタが掛かっています（スキャナは `paths`、リリースゲートは `branches`）。フィルタの外にある pull request では context がそもそも生成されません。GitHub は「報告が無い」を「該当しない」とは読まず、待ち続けます。その pull request は永久にマージ可能になりません。
+そこで起動条件は job 側へ移します。GitHub はこちらでは逆の結論を出すためです。**`if:` で skip された job は `skipped` を報告し、required check はそれを成功として数えます。** path フィルタを持っていた 11 本は [`dorny/paths-filter`](https://github.com/dorny/paths-filter) を使う `changes` job で条件を計算し、その出力で報告 job をゲートします。リリースゲート 2 本は条件がブランチ名でファイル一覧を要さないため、`if:` で `github.base_ref` を直接読みます。
 
-そこで各 guard は補集合側（補完するフィルタを写した `paths-ignore` / `branches-ignore`）で走り、同じ context を即時 success として報告します。1 つの pull request で両方が走ることはあります（`paths` は変更ファイルの**いずれか**が一致すれば発火し、`paths-ignore` は**いずれか**が一致しなければ発火するため）。それでも安全なのは、GitHub が同じ名前で報告する全チェックの通過を要求するからで、空振りが本物の判定を代替することはありません。
+ゲートは **fail open** で書いてあります。
 
-`make required-check-lint` は、required context ごとに本体のジョブと guard のジョブがちょうど 1 件ずつあること、および guard の job id が ruleset の要求する context であることを検査します。**見えないのは写しのほうで、そこが正しさの根拠のすべてです。** スキャナ側に `paths` を足して guard 側の `paths-ignore` を足し忘れると、まさにそのパスを変更した pull request でデッドロックが再発します。対で編集してください。
+```yaml
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+```
+
+`relevant` はフィルタが判定に到達しなかったところで空になります（pull_request 以外のイベントで skip された場合と、失敗した場合）。空は `false` ではないので、本体が走ります。逆向きだと静かに壊れます。skip は required context に誰も稼いでいない緑を渡すことになり、フィルタが壊れているときこそそれが効いてしまいます。
+
+各トリガーの `push` 側は `paths:` をそのまま持っています。そちらは context を報告しないので、絞っても何もブロックしません。
+
+`make required-check-lint` は、required context がちょうど 1 つの job から宣言されていること、およびその workflow の `pull_request` トリガーがフィルタを持たないことを検査します。**デッドロックを塞いでいるのは後半で**、これが検査できるのは条件が 1 箇所にしか書かれていないからです。フィルタとその反転に分けて書くと、不変条件は 2 つのリストの一致という、ここでは誰も比較できないものへ移ります。そして食い違いは、片側に足し忘れたパスを変更した pull request でだけ表面化します。
 
 #### Go モジュールの cooldown
 
@@ -425,6 +434,7 @@ SARIF アップロードと sticky な PR コメントはどちらも切って�
   （[`docs/rules.md`](../../docs/rules.md) § Comment Rules）はそのまま適用される — 手順のナレーション・
   開発経緯・言い換えは書かず、非自明な Why は残す
 - `auto-generate-docs.yaml` は `auto/docs-update/<base>` というブランチ名で auto-PR を作成（release base ごとに 1 ブランチを `delete-branch: true` で再利用）。再帰実行を避けるため自己ブランチでは workflow をスキップ
+- **auto-PR は `GITHUB_TOKEN` ではなく GitHub App のトークンで作成する。** ワークフローが自分の `GITHUB_TOKEN` で起こしたイベントを GitHub は抑止するため、そのトークンで作成した pull request はワークフローを 1 本も起動しない。そして報告されない required context は「該当しない」とは読まれず、待つ対象の無いまま待ち続ける。そこで `auto-generate-docs.yaml` / `graphify-sync.yaml` / `graphify-extract.yaml` は `AUTO_PR_APP_ID` / `AUTO_PR_APP_PRIVATE_KEY` から installation token を発行し、`contents: write` と `pull-requests: write` に絞って渡す（ブランチを push して pull request を開くのが仕事のすべてなので）。App の登録は人間の手順で、未登録のうちは警告を出して `GITHUB_TOKEN` へフォールバックする。pull request は開くが、チェックは付かず、required がある限りマージはできない。3 本のコミットメッセージから `[skip ci]` を外したのも同じ理由による。このキーワードは `push` **と `pull_request`** の両方を抑止するが、これらの workflow はそもそも `auto/` ブランチを見ていない（`push` フィルタは `release/**`）ので、実際に抑止していたのは auto-PR 自身のチェックだけだった
 - デプロイ系 workflow の target ブランチ（`production` / `staging` / `develop`）はすべてブランチ保護を有効化。マージは必ず PR レビュー経由
 - セキュリティスキャンのトリガーは上記「セキュリティのトリガーマトリクス」でツールごとに定義。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
 - `trivy-fs.yaml` と `osv-scanner.yaml` は**チェックを落とさない**。修正版の有無に関わらず全 finding を code scanning と PR コメントへ載せ、ブロックの判定は上記のリリースゲートに委ねる。これにより、既知の脆弱性が黙って昇格に載ることはなく、かつ通常の PR がその PR の持ち込みでない脆弱性に足止めされることもない

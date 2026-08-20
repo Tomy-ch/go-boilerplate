@@ -131,11 +131,47 @@ jobs:
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The secrets context is unavailable in `if:`, hence the detour through a run step output.
+      - name: Check auto-PR app credentials
+        id: app-config
+        if: steps.config.outputs.configured == 'true' && steps.diff.outputs.has_diff == 'true'
+        env:
+          AUTO_PR_APP_ID: ${{ secrets.AUTO_PR_APP_ID }}
+          AUTO_PR_APP_PRIVATE_KEY: ${{ secrets.AUTO_PR_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${AUTO_PR_APP_ID}" ] && [ -n "${AUTO_PR_APP_PRIVATE_KEY}" ]; then
+            echo 'configured=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo '::warning::AUTO_PR_APP_ID / AUTO_PR_APP_PRIVATE_KEY are not configured; the pull request is opened with GITHUB_TOKEN, whose events start no workflow, so its required checks never report and the merge stays blocked.'
+            echo 'configured=false' >> "${GITHUB_OUTPUT}"
+          fi
+
+      # A pull request opened with GITHUB_TOKEN starts no workflow run at all — GitHub suppresses
+      # the events that token raises, to stop a workflow from triggering itself — so every required
+      # context stays unreported and the merge blocks with nothing to wait for. An app token is a
+      # separate identity, and the events it raises are ordinary ones.
+      - name: Mint the auto-PR app token
+        id: app-token
+        if: steps.config.outputs.configured == 'true' && steps.diff.outputs.has_diff == 'true' && steps.app-config.outputs.configured == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.AUTO_PR_APP_ID }}
+          private-key: ${{ secrets.AUTO_PR_APP_PRIVATE_KEY }}
+          # An installation token carries the app's whole permission set unless it is narrowed here.
+          # Pushing the branch and opening the pull request is the entire job.
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Create PR
         if: steps.config.outputs.configured == 'true' && steps.diff.outputs.has_diff == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
-          commit-message: "chore(graphify): sync semantic graph [skip ci]"
+          # Falls back to GITHUB_TOKEN when the app is not configured: the pull request still opens,
+          # it just carries no checks. A skipped step leaves an empty output, which is falsy, so the
+          # fallback is reached exactly when the token was not minted.
+          token: ${{ steps.app-token.outputs.token || github.token }}
+          commit-message: "chore(graphify): sync semantic graph"
           branch: auto/graphify-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
           title: "chore(graphify): sync semantic graph"

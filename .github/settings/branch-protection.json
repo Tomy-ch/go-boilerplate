@@ -62,7 +62,13 @@
           { "context": "sast" },
           { "context": "lockfile-lint" },
           { "context": "openapi-security" },
-          { "context": "osv-diff" }
+          { "context": "osv-diff" },
+          { "context": "go-lint" },
+          { "context": "go-test" },
+          { "context": "generate-go-check" },
+          { "context": "generate-oapi-check" },
+          { "context": "generate-db-check" },
+          { "context": "mod-tidy-check" }
         ]
       }
     }

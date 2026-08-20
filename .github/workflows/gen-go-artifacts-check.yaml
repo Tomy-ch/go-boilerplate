@@ -5,15 +5,6 @@ name: Generated Go Artifacts Check
 # and no separate entry is needed.
 on:
   pull_request:
-    paths:
-      - '.github/workflows/gen-go-artifacts-check.yaml'
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.makefiles/**'
-      - 'openapi/**/*.yaml'
-      - 'docker/tools/Dockerfile'
-      - 'mise.toml'
   workflow_dispatch:
 
 permissions:
@@ -24,7 +15,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The pull-request half of this workflow's trigger, moved out of `on:` and into a job. A `paths:`
+  # filter that excludes a pull request starts no run at all, and a required context that is never
+  # reported is not read as "not applicable" — the merge waits with nothing to wait for. A job the
+  # filter skips reports `skipped` instead, which a required check counts as success.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Filter the changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/gen-go-artifacts-check.yaml'
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.makefiles/**'
+              - 'openapi/**/*.yaml'
+              - 'docker/tools/Dockerfile'
+              - 'mise.toml'
+
   generate-go-check:
+    needs: changes
+    # Fail open. `relevant` is empty wherever the filter reached no verdict — skipped on a
+    # non-pull-request event, or failed outright — and an empty value is not `false`, so the work
+    # runs and reports what it finds. Skipping there would hand the required context a green it
+    # never earned, and a broken filter is exactly when that matters.
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

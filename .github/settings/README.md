@@ -31,7 +31,7 @@ Both are readable with the repository's ordinary read access — on a public rep
 | `pull_request` | Changes reach a targeted branch only through a pull request: one approving review, approvals dismissed on push, re-approval required after the last push, every review thread resolved, code-owner review, and merge restricted to merge commit or squash (rebase merge excluded). |
 | `copilot_code_review` | Copilot reviews each pull request automatically, on every push and on drafts as well. |
 | `code_quality` | GitHub's code quality rule blocks at `errors` severity. |
-| `required_status_checks` | Seven guard-backed checks must report success before merging. |
+| `required_status_checks` | Thirteen checks must report success before merging. |
 
 ### Applying `pull_request` to a single-maintainer repository
 
@@ -43,10 +43,25 @@ GitHub's own guidance is to confirm that the Code Quality workflow is running an
 
 ### Required status checks need a reporting path on every PR
 
-The declared required contexts are `trivy-fs-release`, `osv-release`, `trivy-config`, `sast`,
-`lockfile-lint`, `openapi-security`, and `osv-diff`. Each has a `*-guard.yaml` companion that
-reports the same context when the main workflow is skipped by a path or branch filter; without it,
-a PR could wait forever for a check that never starts. See `docs/adr/0089-multi-layer-security-scanning.md`.
+The declared required contexts fall into two groups:
+
+| Group | Contexts |
+| --- | --- |
+| Security scanning (`docs/adr/0089-multi-layer-security-scanning.md`) | `trivy-fs-release`, `osv-release`, `trivy-config`, `sast`, `lockfile-lint`, `openapi-security`, `osv-diff` |
+| Build quality | `go-lint`, `go-test`, `generate-go-check`, `generate-oapi-check`, `generate-db-check`, `mod-tidy-check` |
+
+Membership of the second group is decided by whether a red check is a fact about the change rather
+than about its surroundings: each of these fails only on something the pull request itself did — a
+lint finding, a failing test, a generated artifact left out of step with its source, an untidied
+module manifest — and each is reproducible from the checkout alone. A check that reports an
+inherited state, or that depends on a service outside the runner, stays off the list.
+
+None of these workflows filters its `pull_request` trigger. A `paths:` or `branches:` filter that
+excludes a pull request starts no run at all, and GitHub does not read a context that was never
+reported as "not applicable" — it waits, and the pull request never becomes mergeable. The trigger
+condition therefore lives in the job's `if:`, where a skip reports `skipped` and a required check
+counts that as success. `make required-check-lint` verifies exactly this. See
+`../workflows/README.md` § Required checks report on every pull request.
 
 ## labels.json
 
