@@ -180,6 +180,20 @@ type ObjectStorageConfig struct {
 	maxUploadBytes  int64
 }
 
+// EndpointConfig は、このアプリが接続する外部サービスの所在を保持します。
+// いずれも空文字を取り得ます。空が何を意味するかは接続先ごとに異なるため、各アクセサに記します。
+type EndpointConfig struct {
+	otlp          string
+	jwks          string
+	objectStorage string
+	outbox        string
+	outboxQueue   string
+	consumerQueue string
+	// sample-api:begin
+	exchangeRate string
+	// sample-api:end
+}
+
 // NewOperatingSystemConfig は、OSの設定を返します。
 func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig { return &cfg.os }
 
@@ -557,20 +571,6 @@ func (o *ObjectStorageConfig) UsePathStyle() bool { return o.usePathStyle }
 // ServerConfig.BodyLimitMB（マルチパートのオーバーヘッドを含む）を上回る値を設定すると、
 // グローバルな body limit が先に 413 を返すためこの上限は到達不能になります。
 func (o *ObjectStorageConfig) MaxUploadBytes() int64 { return o.maxUploadBytes }
-
-// EndpointConfig は、このアプリが接続する外部サービスの所在を保持します。
-// いずれも空文字を取り得ます。空が何を意味するかは接続先ごとに異なるため、各アクセサに記します。
-type EndpointConfig struct {
-	otlp          string
-	jwks          string
-	objectStorage string
-	outbox        string
-	outboxQueue   string
-	consumerQueue string
-	// sample-api:begin
-	exchangeRate string
-	// sample-api:end
-}
 
 // NewEndpointConfig は、接続先の設定を返します。
 func NewEndpointConfig(cfg *Config) *EndpointConfig { return &cfg.endpoint }
