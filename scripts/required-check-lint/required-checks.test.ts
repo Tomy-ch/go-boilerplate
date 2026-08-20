@@ -98,6 +98,31 @@ describe("checkRequiredChecks", () => {
       expect(checkRequiredChecks(required, [filtered])[0]?.message).toContain("`branches` が残っています");
     });
 
+    it("on: が無ければ失敗する", () => {
+      const noTrigger = { ...main, source: ["jobs:", "  scan:", "    steps: []"].join("\n") };
+      expect(checkRequiredChecks(required, [noTrigger])[0]?.message).toContain(
+        "pull_request トリガーがありません",
+      );
+    });
+
+    it("pull_request の後続イベントに付いたフィルタは拾わない", () => {
+      const laterEvent = {
+        ...main,
+        source: [
+          "on:",
+          "  pull_request:",
+          "  push:",
+          "    paths:",
+          "      - '**/*.go'",
+          "",
+          "jobs:",
+          "  scan:",
+          "    steps: []",
+        ].join("\n"),
+      };
+      expect(checkRequiredChecks(required, [laterEvent])).toEqual([]);
+    });
+
     it("pull_request トリガーが無ければ失敗する", () => {
       const pushOnly = {
         ...main,
