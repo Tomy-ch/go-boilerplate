@@ -14,6 +14,20 @@ import { fileURLToPath } from "node:url";
  */
 export const PLATFORM_ONLY_SKILLS: ReadonlyMap<string, string> = new Map<string, string>();
 
+/**
+ * 外部のツールが持ち込む skill と、その出所。
+ *
+ * @remarks
+ * 実体を書いているのは third-party のパッケージで、このリポジトリが決めるのは版だけです
+ * （`.claude/scripts/bootstrap-external-skills.sh` が lockfile から展開します）。中身をこちらで
+ * 直せない以上、frontmatter や対訳や参照先といった本リポジトリの規約を課しても直せない指摘が
+ * 毎回出るだけで、ゲートそのものが読まれなくなります。検査から外し、出所だけを宣言させます。
+ * 追跡対象ではないので、この表の名前がチェックアウトに存在しないのは正常です。
+ */
+export const EXTERNAL_SKILLS: ReadonlyMap<string, string> = new Map<string, string>([
+  ["graphify", "graphifyy が同梱（版は python/graphify.in、解決結果は python/graphify.txt）"],
+]);
+
 /** allowlist の在り処。違反メッセージから編集先へ辿れるようにするため、自身のパスを持つ。 */
 export function allowlistLocation(repoRoot: string): string {
   // `URL#pathname` はパーセントエンコードを解かず、空白や非 ASCII を含む clone 先で壊れた相対パスになる。

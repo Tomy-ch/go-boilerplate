@@ -13,6 +13,7 @@ import {
   CONFIG_FILE_RE,
   EXCLUDE_DIRS,
   PATH_ROOT_DENY,
+  EXTERNAL_SKILLS,
   PLATFORM_ONLY_SKILLS,
   WILDCARD_RE,
   allowlistLocation,
@@ -52,6 +53,13 @@ const LAYOUT: EnvLayout = {
 };
 
 const ALLOWLIST_REL = allowlistLocation(REPO_ROOT);
+// 外部由来の skill が着地する絶対パス。索引・参照検査・構造検査のいずれからも外す。
+const EXTERNAL_SKILL_DIRS: ReadonlySet<string> = new Set(
+  [...EXTERNAL_SKILLS.keys()].flatMap((name) => [
+    path.join(REPO_ROOT, LAYOUT.claudeSkills, name),
+    path.join(REPO_ROOT, LAYOUT.codexSkills, name),
+  ]),
+);
 const findings: Finding[] = [];
 
 function readFile(rel: string): string {
@@ -136,7 +144,7 @@ function collectClaudeMarkdown(): string[] {
       const abs = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        if (EXCLUDE_DIRS.has(entry.name)) continue;
+        if (EXCLUDE_DIRS.has(entry.name) || EXTERNAL_SKILL_DIRS.has(abs)) continue;
         walk(abs);
         continue;
       }
@@ -196,7 +204,7 @@ const resolvers = {
 // 実行
 // -----------------------------------------------------------------------------
 
-const skillDirs = listDirs(LAYOUT.claudeSkills);
+const skillDirs = listDirs(LAYOUT.claudeSkills).filter((name) => !EXTERNAL_SKILLS.has(name));
 
 for (const name of skillDirs) {
   const canonicalRel = path.join(LAYOUT.claudeSkills, name, "SKILL.md");
@@ -227,7 +235,7 @@ for (const file of agentFiles) {
   findings.push(...checkFrontmatter(rel, readFile(rel), agentName(file)));
 }
 
-const codexSkillDirs = listDirs(LAYOUT.codexSkills);
+const codexSkillDirs = listDirs(LAYOUT.codexSkills).filter((name) => !EXTERNAL_SKILLS.has(name));
 
 for (const name of codexSkillDirs) {
   const skillDir = path.join(LAYOUT.codexSkills, name);
