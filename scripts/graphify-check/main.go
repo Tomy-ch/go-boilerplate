@@ -28,6 +28,8 @@
 //     が同時に更新すると必ず衝突する。しかも生成物の衝突を再生成で解くという通常の逃げ道は、
 //     意味論抽出にモデルが要る以上ここでは使えない。だから更新はデフォルトブランチ側に寄せ、
 //     feature ブランチからは持ち込ませない。発火させる条件は呼び出し側が決める。
+//     ただし base 側に出力がまだ無い場合だけは通す。寄せ先が存在しないので衝突しようが無く、
+//     ここで止めると出力を最初に置く経路そのものが無くなるためである。
 //
 // このツールは lefthook と CI のゲートから呼ばれる。壊れ方が「何も検査しなくなる」方向に
 // 出るため、判定ロジックはシェルの中ではなくテストの当たる Go 側に置く。
@@ -71,6 +73,8 @@ const (
 	// maxListedChanges は差分の列挙上限。グラフ更新は 8 ファイル前後だが、全件出すと
 	// 肝心の「どう戻すか」が流れる。
 	maxListedChanges = 10
+	// msgUnreadable は、パスに続けて読み取り失敗を伝える定型句。
+	msgUnreadable = " を読み込めません"
 )
 
 // artifacts は graphify の出力直下で追跡してよいファイル。どの checkout で開いても同じ意味を
@@ -112,6 +116,10 @@ var (
 	errArtifactInDiff = xerrors.New("graphify output changed relative to the base branch")
 )
 
+// pathLister は ref と出力ディレクトリを受けてパスの一覧を返す手段。base からの差分と、base
+// 時点の追跡内容の双方がこの形になる。
+type pathLister func(base, dir string) ([]string, error)
+
 // violation は 1 件の検出結果。kind は判定の種類、detail は人が読む説明。
 type violation struct {
 	path   string
@@ -130,19 +138,20 @@ type hit struct {
 func main() {
 	log.SetFlags(0)
 
-	if err := run(os.Args[1:], listTracked, os.ReadFile, diffAgainst); err != nil {
+	if err := run(os.Args[1:], listTracked, os.ReadFile, diffAgainst, treeAt); err != nil {
 		log.Fatalf("%v", err)
 	}
 }
 
 // run は、追跡中の graphify 成果物を検査して違反を報告します。
 // list は追跡パスの列挙手段、read はファイルの読み出し手段、diff は base ref からの変更パスの
-// 列挙手段で、いずれも差し替えられるよう引数で受けます。
+// 列挙手段、atBase は base 時点の追跡内容の列挙手段で、いずれも差し替えられるよう引数で受けます。
 func run(
 	args []string,
 	list func(dir string) ([]string, error),
 	read func(name string) ([]byte, error),
-	diff func(base, dir string) ([]string, error),
+	diff pathLister,
+	atBase pathLister,
 ) error {
 	fs := flag.NewFlagSet("graphify-check", flag.ContinueOnError)
 	dir := fs.String("dir", defaultDir, "検査する graphify の出力ディレクトリ")
@@ -171,7 +180,7 @@ func run(
 	}
 
 	if *base != "" {
-		if err := verifyBase(*base, *dir, diff); err != nil {
+		if err := verifyBase(*base, *dir, diff, atBase); err != nil {
 			return err
 		}
 	}
@@ -219,7 +228,7 @@ func run(
 func verifySpec(path, pinned string, read func(name string) ([]byte, error)) error {
 	body, err := read(path)
 	if err != nil {
-		return xerrors.Wrap(err, "❌ "+path+" を読み込めません")
+		return xerrors.Wrap(err, "❌ "+path+msgUnreadable)
 	}
 
 	actual := promptFingerprint(body)
@@ -237,12 +246,24 @@ func verifySpec(path, pinned string, read func(name string) ([]byte, error)) err
 }
 
 // verifyBase は、base ref からの差分に graphify の出力が含まれていないかを見ます。
-func verifyBase(base, dir string, diff func(base, dir string) ([]string, error)) error {
+// base 側に出力がまだ無いときは、その差分は導入そのものなので通します。
+func verifyBase(base, dir string, diff, atBase pathLister) error {
 	changed, err := diff(base, dir)
 	if err != nil {
 		return xerrors.Wrap(err, "❌ "+base+" からの差分を取得できません")
 	}
 	if len(changed) == 0 {
+		return nil
+	}
+
+	existing, err := atBase(base, dir)
+	if err != nil {
+		return xerrors.Wrap(err, "❌ "+base+" の "+dir+" を列挙できません")
+	}
+	if len(existing) == 0 {
+		log.Printf("graphify: %s にはまだ %s が無いため、この差分は導入として扱います（%d 件）",
+			base, dir, len(changed))
+
 		return nil
 	}
 
@@ -282,13 +303,34 @@ func diffAgainst(base, dir string) ([]string, error) {
 	return changed, nil
 }
 
+// treeAt は、base ref の時点で dir 配下に追跡されていたパスを返します。作業ツリーではなく ref を
+// 見るので、これから持ち込む差分に左右されません。
+func treeAt(base, dir string) ([]string, error) {
+	output, err := exec.CommandContext( //nolint:gosec // 引数は base と dir のみで、コマンド自体は固定
+		context.Background(), "git", "ls-tree", "-r", "--name-only", "-z", base, "--", dir,
+	).Output()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "git ls-tree "+base+" -- "+dir)
+	}
+
+	var tracked []string
+	for name := range strings.SplitSeq(string(output), "\x00") {
+		if name != "" {
+			tracked = append(tracked, name)
+		}
+	}
+	sort.Strings(tracked)
+
+	return tracked, nil
+}
+
 // readPinnedFingerprint は、pin ファイルから抽出プロンプトの fingerprint を読みます。
 // 読み飛ばしや後勝ちの上書きは、その宣言が「存在しない」あるいは「行順で決まる」状態を
 // 警告なく作るため、解釈できない行と重複キーはエラーにします。
 func readPinnedFingerprint(path string, read func(name string) ([]byte, error)) (string, error) {
 	body, err := read(path)
 	if err != nil {
-		return "", xerrors.Wrap(err, "❌ "+path+" を読み込めません")
+		return "", xerrors.Wrap(err, "❌ "+path+msgUnreadable)
 	}
 
 	values := map[string]string{}
@@ -390,7 +432,7 @@ func inspect(
 
 		body, err := read(file)
 		if err != nil {
-			return nil, xerrors.Wrap(err, "❌ "+file+" を読み込めません")
+			return nil, xerrors.Wrap(err, "❌ "+file+msgUnreadable)
 		}
 		for _, found := range scanHomePrefixes(body) {
 			violations = append(violations, violation{

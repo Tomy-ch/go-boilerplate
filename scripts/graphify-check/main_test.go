@@ -58,8 +58,11 @@ func repositoryWith(t *testing.T, files map[string]string, staged ...string) str
 // checkRun は、base 検査を行わない既定条件で run を呼びます。base そのものが主題のケースだけが
 // run を直に呼びます。
 func checkRun(args []string, list func(string) ([]string, error), read func(string) ([]byte, error)) error {
-	return run(args, list, read, func(string, string) ([]string, error) { return nil, nil })
+	return run(args, list, read, noPaths, noPaths)
 }
+
+// noPaths は、何も返さないパス列挙手段です。
+func noPaths(string, string) ([]string, error) { return nil, nil }
 
 // captureLog は標準ロガーの出力を捕まえます。違反の中身は戻り値ではなくログにしか出ないため、
 // 「どのファイルがどう汚れているか」の検査はここを通します。
@@ -395,12 +398,60 @@ func Test_listTracked(t *testing.T) {
 	})
 }
 
+// captureLog が標準ロガーという共有状態を差し替えるため、Test_verifySpec は並列化しない。
+// 一致したことは戻り値では区別できず、ログにしか出ない。
+//
+//nolint:paralleltest // 標準ロガーを捕まえるため並列化できない
+func Test_verifySpec(t *testing.T) {
+	// 「hello」の fingerprint は Test_promptFingerprint が graphify 本体との一致を実測した値。
+	const spec = ".agents/graphify/extraction-spec.md"
+
+	const helloFingerprint = "2cf24dba5fb0"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("pin と一致すれば一致した fingerprint をログに出す", func(t *testing.T) {
+			logged := captureLog(t)
+
+			err := verifySpec(spec, helloFingerprint, staticRead(map[string]string{spec: "hello"}))
+
+			require.NoError(t, err)
+			assert.Contains(t, logged.String(), helloFingerprint)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("pin と食い違えば実測値と pin の両方を添えて拒む", func(t *testing.T) {
+			err := verifySpec(spec, pinnedFingerprint, staticRead(map[string]string{spec: "hello"}))
+
+			require.ErrorIs(t, err, errSpecPinMismatch)
+			assert.Contains(t, err.Error(), helloFingerprint)
+			assert.Contains(t, err.Error(), pinnedFingerprint)
+		})
+
+		t.Run("spec を読めなければ一致とみなさずエラーにする", func(t *testing.T) {
+			err := verifySpec(spec, pinnedFingerprint, staticRead(nil))
+
+			require.ErrorIs(t, err, os.ErrNotExist)
+			assert.Contains(t, err.Error(), spec)
+		})
+	})
+}
+
 //nolint:paralleltest // 標準ロガーを捕まえるため並列化できない
 func Test_verifyBase(t *testing.T) {
 	// staticDiff は変更パスを固定で返す差分手段を作ります。
-	staticDiff := func(changed ...string) func(string, string) ([]string, error) {
+	staticDiff := func(changed ...string) pathLister {
 		return func(string, string) ([]string, error) { return changed, nil }
 	}
+
+	// staticTree は base 時点の追跡内容を固定で返す列挙手段を作ります。導入かどうかはここで
+	// 決まるので、導入そのものが主題のケース以外は base に出力がある側を渡します。
+	staticTree := func(tracked ...string) pathLister {
+		return func(string, string) ([]string, error) { return tracked, nil }
+	}
+
+	// baseHasGraph は、base に既に出力がある状態です。
+	baseHasGraph := staticTree("graphify-out/graph.json")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("出力に触れていなければ通す", func(t *testing.T) {
@@ -411,6 +462,21 @@ func Test_verifyBase(t *testing.T) {
 				staticList("graphify-out/graph.json"),
 				staticRead(map[string]string{"graphify-out/graph.json": "{}"}),
 				staticDiff(),
+				baseHasGraph,
+			)
+
+			require.NoError(t, err)
+		})
+
+		t.Run("base側に出力がまだ無ければ導入として通す", func(t *testing.T) {
+			captureLog(t)
+
+			err := run(
+				[]string{"-base", "origin/release/v2.2.0"},
+				staticList("graphify-out/graph.json"),
+				staticRead(map[string]string{"graphify-out/graph.json": "{}"}),
+				staticDiff("graphify-out/graph.json"),
+				staticTree(),
 			)
 
 			require.NoError(t, err)
@@ -425,6 +491,7 @@ func Test_verifyBase(t *testing.T) {
 				staticList("graphify-out/graph.json"),
 				staticRead(map[string]string{"graphify-out/graph.json": "{}"}),
 				func(string, string) ([]string, error) { called = true; return nil, nil },
+				baseHasGraph,
 			)
 
 			require.NoError(t, err)
@@ -441,6 +508,7 @@ func Test_verifyBase(t *testing.T) {
 				staticList("graphify-out/graph.json"),
 				staticRead(nil),
 				staticDiff("graphify-out/graph.json", "graphify-out/edges.json"),
+				baseHasGraph,
 			)
 
 			require.ErrorIs(t, err, errArtifactInDiff)
@@ -456,7 +524,8 @@ func Test_verifyBase(t *testing.T) {
 			}
 
 			err := run(
-				[]string{"-base", "main"}, staticList("graphify-out/graph.json"), staticRead(nil), staticDiff(changed...),
+				[]string{"-base", "main"}, staticList("graphify-out/graph.json"), staticRead(nil),
+				staticDiff(changed...), baseHasGraph,
 			)
 
 			require.ErrorIs(t, err, errArtifactInDiff)
@@ -472,9 +541,26 @@ func Test_verifyBase(t *testing.T) {
 				staticList("graphify-out/graph.json"),
 				staticRead(nil),
 				func(string, string) ([]string, error) { return nil, sentinel },
+				baseHasGraph,
 			)
 
 			require.ErrorIs(t, err, sentinel)
+		})
+
+		t.Run("base側を列挙できなければ導入とみなさずエラーにする", func(t *testing.T) {
+			captureLog(t)
+			sentinel := xerrors.New("unknown revision")
+
+			err := run(
+				[]string{"-base", "nope"},
+				staticList("graphify-out/graph.json"),
+				staticRead(nil),
+				staticDiff("graphify-out/graph.json"),
+				func(string, string) ([]string, error) { return nil, sentinel },
+			)
+
+			require.ErrorIs(t, err, sentinel)
+			assert.NotErrorIs(t, err, errArtifactInDiff)
 		})
 
 		t.Run("base検査は追跡ファイルの検査より先に効く", func(t *testing.T) {
@@ -487,6 +573,7 @@ func Test_verifyBase(t *testing.T) {
 				func(string) ([]string, error) { called = true; return nil, nil },
 				staticRead(nil),
 				staticDiff("graphify-out/graph.json"),
+				baseHasGraph,
 			)
 
 			require.ErrorIs(t, err, errArtifactInDiff)
@@ -675,6 +762,56 @@ func Test_checkNamespaces(t *testing.T) {
 }
 
 //nolint:paralleltest // t.Chdir を使うため並列化できない
+func Test_treeAt(t *testing.T) {
+	// committed は 1 コミット済みのリポジトリを作り、その作業ツリーのパスを返します。
+	committed := func(t *testing.T, files map[string]string) string {
+		t.Helper()
+		dir := repositoryWith(t, files, ".")
+		runGit(t, dir, "commit", "--quiet", "-m", "base")
+
+		return dir
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("ref時点で出力配下にあるパスだけを昇順で返す", func(t *testing.T) {
+			t.Chdir(committed(t, map[string]string{
+				"graphify-out/nodes.json": "{}", "graphify-out/graph.json": "{}", "main.go": "package main",
+			}))
+
+			tracked, err := treeAt("HEAD", "graphify-out")
+
+			require.NoError(t, err)
+			// main.go は dir の外なので含めない。
+			assert.Equal(t, []string{"graphify-out/graph.json", "graphify-out/nodes.json"}, tracked)
+		})
+
+		t.Run("ref時点で出力が無ければ空を返す", func(t *testing.T) {
+			dir := committed(t, map[string]string{"main.go": "package main"})
+			t.Chdir(dir)
+			// 作業ツリーに置いただけの出力は ref の内容ではないので数えない。
+			require.NoError(t, os.MkdirAll("graphify-out", 0o750))
+			require.NoError(t, os.WriteFile("graphify-out/graph.json", []byte("{}"), 0o600))
+
+			tracked, err := treeAt("HEAD", "graphify-out")
+
+			require.NoError(t, err)
+			assert.Empty(t, tracked)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("解決できないrefは空ではなくエラーを返す", func(t *testing.T) {
+			t.Chdir(committed(t, map[string]string{"graphify-out/graph.json": "{}"}))
+
+			tracked, err := treeAt("origin/does-not-exist", "graphify-out")
+
+			require.Error(t, err)
+			assert.Nil(t, tracked)
+		})
+	})
+}
+
+//nolint:paralleltest // t.Chdir を使うため並列化できない
 func Test_diffAgainst(t *testing.T) {
 	// committed は 1 コミット済みのリポジトリを作り、その ref 名を返します。
 	committed := func(t *testing.T, files map[string]string) string {
@@ -782,6 +919,29 @@ func Test_inspect(t *testing.T) {
 
 			require.ErrorIs(t, err, os.ErrNotExist)
 			assert.Nil(t, violations)
+		})
+	})
+}
+
+func Test_unexpected(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("追跡対象外として渡したパスのまま違反を組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			got := unexpected("graphify-out/.graphify_root")
+
+			assert.Equal(t, "graphify-out/.graphify_root", got.path)
+			require.ErrorIs(t, got.kind, errUnexpectedTracked)
+		})
+
+		t.Run("戻すべき場所として .gitignore を案内する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Contains(t, unexpected("graphify-out/cache/ast/x.json").detail, ".gitignore")
 		})
 	})
 }
