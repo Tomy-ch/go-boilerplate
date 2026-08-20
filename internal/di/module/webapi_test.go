@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/fx" // sample-api:line
+	"go.uber.org/fx"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/httpclient"
