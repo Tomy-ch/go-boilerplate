@@ -84,7 +84,10 @@ gitignored, so their frontmatter, their translation pair, and the paths they ref
 decided upstream — most of those paths are artifacts that exist only after a run. Checking them
 would produce findings nobody here can act on, and a gate that reports unfixable findings stops
 being read. Absence from a checkout is normal for these entries, which is why they carry no
-staleness check of their own.
+staleness check of their own. A path reference *to* one of those landing directories resolves as
+present rather than missing — every document describing the arrangement has to name the directory,
+and none of them could pass a check that requires it to exist. Only the declared names resolve this
+way, so a misspelling still fails.
 
 ### Versioning
 

@@ -53,13 +53,22 @@ const LAYOUT: EnvLayout = {
 };
 
 const ALLOWLIST_REL = allowlistLocation(REPO_ROOT);
-// 外部由来の skill が着地する絶対パス。索引・参照検査・構造検査のいずれからも外す。
+// 外部由来の skill が着地する場所。索引・参照検査・構造検査のいずれからも外す。
+const EXTERNAL_SKILL_RELS: readonly string[] = [...EXTERNAL_SKILLS.keys()].flatMap((name) => [
+  path.join(LAYOUT.claudeSkills, name),
+  path.join(LAYOUT.codexSkills, name),
+]);
 const EXTERNAL_SKILL_DIRS: ReadonlySet<string> = new Set(
-  [...EXTERNAL_SKILLS.keys()].flatMap((name) => [
-    path.join(REPO_ROOT, LAYOUT.claudeSkills, name),
-    path.join(REPO_ROOT, LAYOUT.codexSkills, name),
-  ]),
+  EXTERNAL_SKILL_RELS.map((rel) => path.join(REPO_ROOT, rel)),
 );
+
+// 着地先そのもの、あるいはその配下への参照か。bootstrap を走らせるまで実体は無いが、
+// 参照としては正しい。宣言のある名前だけを通すので、綴り違いは従来どおり落ちる。
+function isExternalSkillPath(candidate: string): boolean {
+  const normalized = candidate.replace(/\/+$/, "");
+
+  return EXTERNAL_SKILL_RELS.some((rel) => normalized === rel || normalized.startsWith(`${rel}/`));
+}
 const findings: Finding[] = [];
 
 function readFile(rel: string): string {
@@ -178,6 +187,8 @@ function configFileExists(name: string): boolean {
 // パス参照の実在性を判定する。スキルは自身が同梱するファイル（`scripts/run.sh` など）も
 // 同じ表記で参照するため、リポジトリルート相対に加えて参照元ファイルのディレクトリ相対でも解決する。
 function repoPathExists(candidate: string, fromDir: string): boolean {
+  if (isExternalSkillPath(candidate)) return true;
+
   const bases = [REPO_ROOT, path.join(REPO_ROOT, fromDir)];
 
   return expandBraces(candidate).some((text) => {
