@@ -30,7 +30,7 @@ Design principles (invariants):
 
 - **Fail-closed.** No error ever grants access. Every verification *failure* — a verdict reached about the credential — normalizes to `apperror.ErrUnauthenticated` (`401`), with the underlying cause preserved in the error chain for logs/traces. An *inability to verify* is a different fact and keeps its own classification: when the signing key cannot be fetched or the request's context ends, the error stays `apperror.ErrUnavailable` (`503`) or `apperror.ErrCanceled` (`499`), because it says nothing about the token and a `401` would tell the client to fix a credential nobody examined. Both are denials; only the reason reported differs.
 - **Standard core only.** RS256 allowlist (`alg=none` and `HS256` always rejected — key-confusion defense); `iss` / `aud` / `exp` / `nbf` / `sub`; `typ=at+jwt` (RFC 9068) to reject ID-Token misuse. IdP dialects (Cognito `token_use`, Azure `scp`) are **extension points**, not built in.
-- **Split-horizon.** The `issuer` (the token's `iss`, host/browser-resolvable) is separated from the **JWKS fetch URL** (container-internal). `AUTH_JWKS_URL` is set to the internal URL so `iss` stays host-resolvable while key fetching uses the container hostname.
+- **Split-horizon.** The `issuer` (the token's `iss`, host/browser-resolvable) is separated from the **JWKS fetch URL** (container-internal). `ENDPOINT_JWKS` is set to the internal URL so `iss` stays host-resolvable while key fetching uses the container hostname.
 - **Provider is dev-only.** It is reachable only through the `development` / `auth` compose profiles and is never part of a deployed environment.
 - **Contract, not implementation.** What the RS depends on is the JWKS shape and the access-token claim shape (`typ=at+jwt` / `iss` / `aud` / `sub` / `exp`), which `docker/mock-auth-server/config.json` pins. Anything satisfying that contract — including a real IdP — drops in with **config changes only**, no Go change.
 
@@ -225,12 +225,12 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 
 ## 5. What an integrator implements
 
-1. **Point the RS at an IdP via config.** `AUTH_ISSUER` (must equal the token's `iss`), `AUTH_AUDIENCE`, and `AUTH_JWKS_URL` (the IdP's `jwks_uri` — optional; leave it empty to derive `jwks_uri` from the issuer via OIDC discovery, see the note below). Locally, `env/.env` sets `AUTH_JWKS_URL` explicitly at the container-internal host per split-horizon. Optional knobs: `AUTH_ALLOWED_ALGORITHMS` (default `RS256`), `AUTH_CLOCK_SKEW` (`60s`), `AUTH_JWKS_CACHE_TTL` (`1h`).
-2. **Swap the mock for a real IdP** by changing only those env values — the JWKS + claim contract is what the RS depends on, so no Go change is required. Keep `iss` host-resolvable and `AUTH_JWKS_URL` reachable from the API container.
+1. **Point the RS at an IdP via config.** `AUTH_ISSUER` (must equal the token's `iss`), `AUTH_AUDIENCE`, and `ENDPOINT_JWKS` (the IdP's `jwks_uri` — optional; leave it empty to derive `jwks_uri` from the issuer via OIDC discovery, see the note below). Locally, `env/.env` sets `ENDPOINT_JWKS` explicitly at the container-internal host per split-horizon. Optional knobs: `AUTH_ALLOWED_ALGORITHMS` (default `RS256`), `AUTH_CLOCK_SKEW` (`60s`), `AUTH_JWKS_CACHE_TTL` (`1h`).
+2. **Swap the mock for a real IdP** by changing only those env values — the JWKS + claim contract is what the RS depends on, so no Go change is required. Keep `iss` host-resolvable and `ENDPOINT_JWKS` reachable from the API container.
 3. **Add IdP dialects** when your IdP deviates from the standard core — Cognito `token_use` / `aud`→`client_id`, Azure `scp` / `roles`, EC keys, opaque tokens — at the extension points listed in the [jwt README](../../internal/infrastructure/auth/jwt/README.md).
 4. **Identity resolution** maps `(issuer, subject)` to an internal user; provide an `IdentityResolver` implementation for your user store. Without one the DI wires the passthrough default, which leaves the internal UserID unresolved — so no unknown or deactivated subject is rejected here.
 
-> **JWKS URL resolution (static vs discovery).** By default the RS resolves the JWKS URL **statically** from `AUTH_JWKS_URL` — this is what `env/.env` sets (split-horizon). Alternatively, leaving `AUTH_JWKS_URL` empty makes the RS derive `jwks_uri` from the issuer's `/.well-known/openid-configuration` via **OIDC discovery** (issuer strict-match + same-origin + https), cached on its own `AUTH_JWKS_DISCOVERY_TTL` (default `24h`). Independently, `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` (default `60s`) is the minimum interval between unknown-`kid` JWKS refetches. The mock provider serves the discovery document for both modes, at the issuer URL it was reached through.
+> **JWKS URL resolution (static vs discovery).** By default the RS resolves the JWKS URL **statically** from `ENDPOINT_JWKS` — this is what `env/.env` sets (split-horizon). Alternatively, leaving `ENDPOINT_JWKS` empty makes the RS derive `jwks_uri` from the issuer's `/.well-known/openid-configuration` via **OIDC discovery** (issuer strict-match + same-origin + https), cached on its own `AUTH_JWKS_DISCOVERY_TTL` (default `24h`). Independently, `AUTH_JWKS_UNKNOWN_KID_COOLDOWN` (default `60s`) is the minimum interval between unknown-`kid` JWKS refetches. The mock provider serves the discovery document for both modes, at the issuer URL it was reached through.
 
 ---
 
@@ -242,7 +242,7 @@ The state-transition end-to-end is covered deterministically in `internal/integr
 | **ID Token** | An OIDC token about the end-user (`token_use=id`, `aud=client_id`, `typ=JWT`). **Must not** be used as an access token — the RS rejects it via the `typ` check. |
 | **JWKS** | JSON Web Key Set — the public keys the RS fetches to verify signatures (RFC 7517). |
 | **`kid`** | Key ID in the JWT header; selects which JWKS key verifies the signature. |
-| **OIDC discovery** | The `/.well-known/openid-configuration` document that advertises `issuer` / `jwks_uri` / endpoints. Served by the provider; consumed by the RS only in discovery mode (empty `AUTH_JWKS_URL`). |
+| **OIDC discovery** | The `/.well-known/openid-configuration` document that advertises `issuer` / `jwks_uri` / endpoints. Served by the provider; consumed by the RS only in discovery mode (empty `ENDPOINT_JWKS`). |
 | **`issuer` / `iss`** | The token issuer identifier; the RS requires an exact match. |
 | **`audience` / `aud`** | The intended recipient; the RS requires its configured audience. |
 | **PKCE (S256)** | Proof Key for Code Exchange (RFC 7636): `code_challenge = base64url(sha256(code_verifier))`; the token endpoint re-derives and compares. `plain` is not accepted. |

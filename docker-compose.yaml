@@ -90,7 +90,7 @@ services:
     environment:
       # iss はトークンを取得したリクエストの Host から導出されるため、ホスト公開 URL でトークンを取れば
       # AUTH_ISSUER と一致する（issuer を env で固定する必要が無い）。JWKS 取得だけはコンテナ名で
-      # 内部解決する（Go 側 AUTH_JWKS_URL=http://mock_auth_server:4000/default/jwks）。
+      # 内部解決する（Go 側 ENDPOINT_JWKS=http://mock_auth_server:4000/default/jwks）。
       SERVER_PORT: "4000"
       JSON_CONFIG_PATH: /etc/mock-oauth2-server/config.json
       LOG_LEVEL: INFO

@@ -21,6 +21,7 @@ type Config struct {
 	outbox        OutboxConfig
 	auth          AuthConfig
 	objectStorage ObjectStorageConfig
+	endpoint      EndpointConfig
 }
 
 // OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
@@ -63,7 +64,6 @@ type ObservabilityConfig struct {
 	tracesExporter      string
 	metricsExporter     string
 	logsExporter        string
-	otlpEndpoint        string
 	otlpProtocol        string
 	maskedDBQueryArgs   bool
 	targetStatusCodeSet map[int]bool
@@ -97,14 +97,15 @@ type DBConnectionConfig struct {
 
 // SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー等のセキュリティ設定を保持します。
 type SecurityConfig struct {
-	allowedOrigins        []string
-	cidr                  *net.IPNet
-	contentTypeNosniff    string
-	xFrameOptions         string
-	hstsMaxAge            time.Duration
-	hstsExcludeSubdomains bool
-	hstsPreloadEnabled    bool
-	referrerPolicy        string
+	allowedOrigins            []string
+	cidr                      *net.IPNet
+	contentTypeNosniff        string
+	xFrameOptions             string
+	hstsMaxAge                time.Duration
+	hstsExcludeSubdomains     bool
+	hstsPreloadEnabled        bool
+	referrerPolicy            string
+	crossOriginResourcePolicy string
 }
 
 // SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。
@@ -134,7 +135,6 @@ type WorkerConfig struct {
 
 // ConsumerQueueConfig は、worker が consume する broker（SQS 互換）の adapter 設定を保持します。
 type ConsumerQueueConfig struct {
-	endpoint          string
 	region            string
 	url               string
 	dlqURL            string
@@ -148,11 +148,9 @@ type ConsumerQueueConfig struct {
 // OutboxConfig は、transactional outbox relay の設定を保持します。
 type OutboxConfig struct {
 	publisher            string
-	endpoint             string
 	pollInterval         time.Duration
 	errorBackoff         time.Duration
 	batchSize            int
-	queueEndpoint        string
 	queueRegion          string
 	queueURL             string
 	queueAccessKeyID     string
@@ -164,7 +162,6 @@ type OutboxConfig struct {
 type AuthConfig struct {
 	issuer             string
 	audience           string
-	jwksURL            string
 	allowedAlgorithms  []string
 	clockSkew          time.Duration
 	jwksCacheTTL       time.Duration
@@ -175,13 +172,26 @@ type AuthConfig struct {
 // ObjectStorageConfig は、S3 互換オブジェクトストレージ（ローカルは Garage）の接続設定と
 // アップロード上限を保持します。
 type ObjectStorageConfig struct {
-	endpoint        string
 	region          string
 	bucket          string
 	accessKeyID     string
 	secretAccessKey string
 	usePathStyle    bool
 	maxUploadBytes  int64
+}
+
+// EndpointConfig は、このアプリが接続する外部サービスの所在を保持します。
+// いずれも空文字を取り得ます。空が何を意味するかは接続先ごとに異なるため、各アクセサに記します。
+type EndpointConfig struct {
+	otlp          string
+	jwks          string
+	objectStorage string
+	outbox        string
+	outboxQueue   string
+	consumerQueue string
+	// sample-api:begin
+	exchangeRate string
+	// sample-api:end
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -276,9 +286,6 @@ func (o *ObservabilityConfig) MetricsEnabled() bool { return isActiveExporter(o.
 
 // LogsEnabled は、log exporter が有効値かどうかを返します。
 func (o *ObservabilityConfig) LogsEnabled() bool { return isActiveExporter(o.logsExporter) }
-
-// OTLPEndpoint は、OTLP exporter の送出先エンドポイントを返します。
-func (o *ObservabilityConfig) OTLPEndpoint() string { return o.otlpEndpoint }
 
 // OTLPProtocol は、OTLP exporter のプロトコル（"http/protobuf" / "grpc"）を返します。
 func (o *ObservabilityConfig) OTLPProtocol() string { return o.otlpProtocol }
@@ -395,6 +402,10 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
 
+// CrossOriginResourcePolicy は、Cross-Origin-Resource-Policyヘッダーの値を返します。
+// 空文字はヘッダーを出さないことを表します。
+func (s *SecurityConfig) CrossOriginResourcePolicy() string { return s.crossOriginResourcePolicy }
+
 // NewSecureCookieConfig は、セキュアクッキーの設定を返します。
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
 
@@ -461,9 +472,6 @@ func (w *WorkerConfig) NackBackoffMax() time.Duration { return w.nackBackoffMax 
 // NewConsumerQueueConfig は、worker が consume する broker の adapter 設定を返します。
 func NewConsumerQueueConfig(cfg *Config) *ConsumerQueueConfig { return &cfg.consumerQueue }
 
-// Endpoint は、SQS 互換エンドポイントを返します（空なら SDK 既定の解決に委ねます）。
-func (c *ConsumerQueueConfig) Endpoint() string { return c.endpoint }
-
 // Region は、SQS の署名に用いるリージョンを返します。
 func (c *ConsumerQueueConfig) Region() string { return c.region }
 
@@ -493,12 +501,6 @@ func NewOutboxConfig(cfg *Config) *OutboxConfig { return &cfg.outbox }
 
 // Publisher は、publish 先の種別（"http" / "sqs"）を返します。
 func (o *OutboxConfig) Publisher() string { return o.publisher }
-
-// Endpoint は、メッセージの送信先エンドポイント URL を返します。
-func (o *OutboxConfig) Endpoint() string { return o.endpoint }
-
-// QueueEndpoint は、SQS 互換エンドポイントを返します（空なら SDK 既定の解決に委ねます）。
-func (o *OutboxConfig) QueueEndpoint() string { return o.queueEndpoint }
 
 // QueueRegion は、SQS の署名に用いるリージョンを返します。
 func (o *OutboxConfig) QueueRegion() string { return o.queueRegion }
@@ -530,9 +532,6 @@ func (a *AuthConfig) Issuer() string { return a.issuer }
 // Audience は、検証する aud クレームの期待値を返します。
 func (a *AuthConfig) Audience() string { return a.audience }
 
-// JWKSURL は、公開鍵を取得する JWKS エンドポイント URL を返します。
-func (a *AuthConfig) JWKSURL() string { return a.jwksURL }
-
 // AllowedAlgorithms は、許可する署名アルゴリズムの allowlist を返します。
 func (a *AuthConfig) AllowedAlgorithms() []string {
 	return append([]string(nil), a.allowedAlgorithms...)
@@ -553,9 +552,6 @@ func (a *AuthConfig) UnknownKidCooldown() time.Duration { return a.unknownKidCoo
 // NewObjectStorageConfig は、オブジェクトストレージの設定を返します。
 func NewObjectStorageConfig(cfg *Config) *ObjectStorageConfig { return &cfg.objectStorage }
 
-// Endpoint は、S3 互換エンドポイント URL を返します（空なら SDK 既定のエンドポイント解決に委ねます）。
-func (o *ObjectStorageConfig) Endpoint() string { return o.endpoint }
-
 // Region は、署名に用いるリージョンを返します。
 func (o *ObjectStorageConfig) Region() string { return o.region }
 
@@ -575,3 +571,31 @@ func (o *ObjectStorageConfig) UsePathStyle() bool { return o.usePathStyle }
 // ServerConfig.BodyLimitMB（マルチパートのオーバーヘッドを含む）を上回る値を設定すると、
 // グローバルな body limit が先に 413 を返すためこの上限は到達不能になります。
 func (o *ObjectStorageConfig) MaxUploadBytes() int64 { return o.maxUploadBytes }
+
+// NewEndpointConfig は、接続先の設定を返します。
+func NewEndpointConfig(cfg *Config) *EndpointConfig { return &cfg.endpoint }
+
+// OTLP は、OTLP exporter の送出先を返します。空なら送出しません。
+func (e *EndpointConfig) OTLP() string { return e.otlp }
+
+// JWKS は、公開鍵の取得先を返します。空なら OIDC discovery で issuer から解決します。
+func (e *EndpointConfig) JWKS() string { return e.jwks }
+
+// ObjectStorage は、S3 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) ObjectStorage() string { return e.objectStorage }
+
+// Outbox は、PUBLISHER=http のときの送出先を返します。
+func (e *EndpointConfig) Outbox() string { return e.outbox }
+
+// OutboxQueue は、publish 端の SQS 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) OutboxQueue() string { return e.outboxQueue }
+
+// ConsumerQueue は、consume 端の SQS 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) ConsumerQueue() string { return e.consumerQueue }
+
+// sample-api:begin
+
+// ExchangeRate は、外部為替レートサービスのベース URL を返します。空ならこの機能を使いません。
+func (e *EndpointConfig) ExchangeRate() string { return e.exchangeRate }
+
+// sample-api:end

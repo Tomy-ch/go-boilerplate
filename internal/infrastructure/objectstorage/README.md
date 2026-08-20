@@ -111,7 +111,7 @@ preferred over a suite that emulates a whole cloud. Notes per choice:
   tagged releases are slower than the others. Weigh that before depending on it in CI
 
 Anything S3-compatible (MinIO, Ceph RGW, Cloudflare R2, a managed S3) needs no adapter change at
-all — only `OBJECT_STORAGE_ENDPOINT` and credentials. A non-S3 substrate needs a sibling package
+all — only `ENDPOINT_OBJECT_STORAGE` and credentials. A non-S3 substrate needs a sibling package
 under `objectstorage/`, with nothing above this layer changing.
 
 ## Credentials

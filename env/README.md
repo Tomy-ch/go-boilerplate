@@ -94,7 +94,6 @@ All three are needed: dropping the first would leave the application at the clus
 |OBS_TRACES_EXPORTER|Trace OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables tracing (lightweight). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
 |OBS_METRICS_EXPORTER|Metric OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables metrics (lightweight). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
 |OBS_LOGS_EXPORTER|Log OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables log export (zap stdout only). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
-|OBS_OTLP_ENDPOINT|OTLP export endpoint URL|string|`http://observability:4318`|Used when an exporter is enabled. Per-environment value — the collector of each environment; empty where no exporter is enabled|
 |OBS_OTLP_PROTOCOL|OTLP protocol (`http/protobuf` or `grpc`)|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|false|Security critical. Per-environment value — `false` only in local / ci / dast, where seeing the raw SQL arguments is the point while debugging a query, a failing test, or a scan finding; `true` from `dev` onward so real payloads never reach the trace backend. Never align the upper environments down to the local value|
 |OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,405,409,422,429,500,501,503|For error monitoring. Per-environment value — the set narrows monotonically as the environment gets closer to production, so a mismatch between files is the intent rather than a propagation miss. `local` / `ci` / `dast` monitor the full set for development and test visibility; `dev` / `stg` drop `429`; `prd` additionally drops `403` / `404` / `405`, keeping production monitoring on server-side and contract failures rather than on client-driven noise that dominates at production traffic volume. A lower environment never monitors a code its upper environment ignores. `TestEnvTargetStatusCodesPolicy` (`internal/architest`) enforces the policy, so adding a code to some env files but not others fails the build; excluding a new code from an environment on purpose requires updating the policy declaration in that test as well|
@@ -139,6 +138,7 @@ All three are needed: dropping the first would leave the application at the clus
 |SECURITY_HSTS_EXCLUDE_SUBDOMAINS|Exclude subdomains|bool|false||
 |SECURITY_HSTS_PRELOAD_ENABLED|Enable preload|bool|false||
 |SECURITY_REFERRER_POLICY|Referrer control|string|no-referrer||
+|SECURITY_CROSS_ORIGIN_RESOURCE_POLICY|Cross-Origin-Resource-Policy|string|same-origin|Empty means the header is not sent. `same-origin` is safe alongside CORS: the policy is only checked for `no-cors` requests, so a CORS-mode fetch from an allowed origin is unaffected|
 
 ### Cookie
 
@@ -183,7 +183,6 @@ startup check would otherwise fail there.
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|CONSUMER_QUEUE_ENDPOINT|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |CONSUMER_QUEUE_REGION|Region used for SigV4 signing|string|us-east-1|Code default empty. Required once a worker is wired. **Per-environment value**: set only in local, where the broker runs in compose|
 |CONSUMER_QUEUE_URL|Queue URL to consume from|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default empty. Required once a worker is wired. Local queue names come from `docker/elasticmq/elasticmq.conf`. **Per-environment value**: set only in local, where the broker runs in compose|
 |CONSUMER_QUEUE_DLQ_URL|DLQ URL whose backlog is collected|string|`http://elasticmq:9324/000000000000/gobp-events-dlq`|Code default empty. Used only to read DLQ depth for metrics; the dead-letter path itself is the `FailureHandler` or the broker's redrive policy. Leave empty to skip DLQ depth collection|
@@ -200,11 +199,9 @@ Settings for the transactional outbox relay.
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
 |OUTBOX_PUBLISHER|Publish target kind (`http` / `sqs`)|string|http|Code default `http`. An unknown value fails startup (fail-closed). The publish target is a per-deployment choice, so no env file pins it; a deployment that publishes to a queue supplies the value at run time|
-|OUTBOX_ENDPOINT|Destination endpoint URL for relayed messages|string||Code default empty. Required when `OUTBOX_PUBLISHER=http`|
 |OUTBOX_POLL_INTERVAL|Wait before the next poll after draining pending rows|duration|1s|Code default `1s`|
 |OUTBOX_ERROR_BACKOFF|Wait after a relay batch returns an error|duration|5s|Code default `5s`|
 |OUTBOX_BATCH_SIZE|Pending rows claimed per poll|int|100|Code default `100`|
-|OUTBOX_QUEUE_ENDPOINT|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |OUTBOX_QUEUE_REGION|Region used for SigV4 signing|string|us-east-1|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |OUTBOX_QUEUE_URL|Destination queue URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. Local queue names come from `docker/elasticmq/elasticmq.conf`. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |OUTBOX_QUEUE_ACCESS_KEY_ID|Static credential access key ID|string|local-dummy-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used. ElasticMQ does not verify signatures locally, so any dummy works there|
@@ -212,13 +209,12 @@ Settings for the transactional outbox relay.
 
 ### Auth (JWT)
 
-Access-token (JWT) verification settings. CI / test wire a non-signature stub; `local` / `dast` / `development` wire the real JWKS-backed JWT authenticator (`local` and `dast` verify the mock auth server) and fail closed at startup when `AUTH_ISSUER` / `AUTH_AUDIENCE` are missing; the wiring decision lives in DI (`internal/di/module/core/auth.go`). `AUTH_JWKS_URL` is an override — when empty, the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery (issuer strict-match + https + same-origin; `local` / `dast` allow plain http to the mock provider). The JWKS / discovery fetch goes through the `httpclient` substrate, so its HTTP timeout / retry / circuit breaker / budget come from the `jwks` downstream profile (`NewDownstreamProfile`), not an env var; that profile also blocks private-network SSRF outside `local` / `ci` / `test` / `dast`.
+Access-token (JWT) verification settings. CI / test wire a non-signature stub; `local` / `dast` / `development` wire the real JWKS-backed JWT authenticator (`local` and `dast` verify the mock auth server) and fail closed at startup when `AUTH_ISSUER` / `AUTH_AUDIENCE` are missing; the wiring decision lives in DI (`internal/di/module/core/auth.go`). `ENDPOINT_JWKS` is an override — when empty, the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery (issuer strict-match + https + same-origin; `local` / `dast` allow plain http to the mock provider). The JWKS / discovery fetch goes through the `httpclient` substrate, so its HTTP timeout / retry / circuit breaker / budget come from the `jwks` downstream profile (`NewDownstreamProfile`), not an env var; that profile also blocks private-network SSRF outside `local` / `ci` / `test` / `dast`.
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
 |AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:2010/default`|Code default empty. Per-environment value — `local` / `ci` / `dast` point at the mock auth server, and every deploy environment keeps the empty default until it wires the JWT authenticator. `db-seed` also expands it into the `user_identities` seed, so an environment that seeds needs it even when it stubs authentication (CI)|
 |AUTH_AUDIENCE|Expected `aud` claim value|string|go-boilerplate-api|Code default empty. Required together with the issuer. Per-environment value — only `local` / `dast` declare the mock audience; everywhere else keeps the empty default until the authenticator is wired|
-|AUTH_JWKS_URL|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string|`http://mock_auth_server:4000/default/jwks`|Code default empty. Per-environment value — only `local` overrides it with the compose-internal service URL; everywhere else keeps the empty default and derives the `jwks_uri` from `AUTH_ISSUER` via OIDC discovery|
 |AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|csv|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
 |AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|
 |AUTH_JWKS_CACHE_TTL|Cache lifetime for a fetched JWKS|duration|1h|Code default `1h`|
@@ -227,11 +223,10 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 
 ### Object Storage
 
-S3-compatible object storage for uploaded assets (product images). The usecase depends on the vendor-neutral `objectstorage.Storage` boundary; the infrastructure implementation is an S3 adapter (AWS SDK v2 S3), so `local` connects to a Garage container while deploy environments target AWS S3 by leaving `OBJECT_STORAGE_ENDPOINT` empty. The env names stay vendor-neutral even though the adapter is S3. Values are declared per environment (no code defaults); credentials are injected at deploy time.
+S3-compatible object storage for uploaded assets (product images). The usecase depends on the vendor-neutral `objectstorage.Storage` boundary; the infrastructure implementation is an S3 adapter (AWS SDK v2 S3), so `local` connects to a Garage container while deploy environments target AWS S3 by leaving `ENDPOINT_OBJECT_STORAGE` empty. The env names stay vendor-neutral even though the adapter is S3. Values are declared per environment (no code defaults); credentials are injected at deploy time.
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OBJECT_STORAGE_ENDPOINT|S3-compatible endpoint URL; empty means SDK default resolution (AWS S3)|string|`http://garage:3900`|`required` (empty allowed). Per-environment value — `local` points at the Garage compose service; every other environment leaves it empty so the SDK resolves AWS S3|
 |OBJECT_STORAGE_REGION|Signing region|string|us-east-1|`required,notEmpty`. Per-environment value — the Garage sample region in local / ci / dast, the AWS region of the environment from `dev` onward|
 |OBJECT_STORAGE_BUCKET|Bucket that stores objects|string|gobp-local|`required,notEmpty`. Per-environment value — one bucket per environment|
 |OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used — a role-based deployment injects nothing here. Secret management required when set explicitly. Example is a placeholder: `local` uses a fixed Garage credential (`GK` + 24 hex) held in `env/.env`|
@@ -240,6 +235,20 @@ S3-compatible object storage for uploaded assets (product images). The usecase d
 |OBJECT_STORAGE_MAX_UPLOAD_BYTES|Maximum accepted upload size in bytes|int|5242880|`required,notEmpty`. 5 MiB in the sample. Must stay below the global `SERVER_BODY_LIMIT_MB` (bytes, decimal) minus multipart overhead, otherwise the global body limit rejects first and this check never fires. Enforced at server startup by `config.ValidateUploadBodyLimit`|
 
 Delivery is separate from these variables: the API returns only the object key (`imagePath`) and never a full URL, so the frontend composes `<delivery origin>/<object key>`. There is therefore no delivery-origin variable on this side — the frontend owns it (`http://gobp-local.web.garage.localhost:3902` for `local`, the CDN domain in deploy environments). See [`docker/README.md`](../docker/README.md) for how the local delivery endpoint is opened for anonymous read.
+
+### Endpoint
+
+Where this deployment connects. "Where do we point" is an axis of its own — it changes per deployment while the behaviour of each subsystem does not — so the endpoints live here instead of inside the subsystem that dials them. All are `required` with an empty value allowed; what empty means differs per endpoint and is stated in Notes. A queue's `*_URL` is not here: it identifies a resource passed as an API parameter rather than a host we connect to, and `AUTH_ISSUER` is a claim to compare, not a destination.
+
+|Variable Name|Description|Type|Example|Notes|
+|---|---|---|---|---|
+|ENDPOINT_OTLP|OTLP export endpoint URL|string|`http://observability:4318`|Used when an exporter is enabled. Per-environment value — the collector of each environment; empty where no exporter is enabled|
+|ENDPOINT_JWKS|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string|`http://mock_auth_server:4000/default/jwks`|Code default empty. Per-environment value — only `local` overrides it with the compose-internal service URL; everywhere else keeps the empty default and derives the `jwks_uri` from `AUTH_ISSUER` via OIDC discovery|
+|ENDPOINT_OBJECT_STORAGE|S3-compatible endpoint URL; empty means SDK default resolution (AWS S3)|string|`http://garage:3900`|`required` (empty allowed). Per-environment value — `local` points at the Garage compose service; every other environment leaves it empty so the SDK resolves AWS S3|
+|ENDPOINT_OUTBOX|Destination endpoint URL for relayed messages|string||Code default empty. Required when `OUTBOX_PUBLISHER=http`|
+|ENDPOINT_OUTBOX_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
+|ENDPOINT_CONSUMER_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
+|ENDPOINT_EXCHANGE_RATE|Base URL of the exchange-rate service|string||Sample API. Empty means the feature is not used, and the endpoint answers 503. **Per-environment value**: only `dast` points at the stub the scan starts, so the scan does not train itself to accept 5xx. Removed together with the sample API|
 
 ## Notes
 

@@ -199,18 +199,6 @@ func TestObservabilityConfig_LogsEnabled(t *testing.T) {
 	})
 }
 
-func TestObservabilityConfig_OTLPEndpoint(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("OTLPエンドポイントを取得できる", func(t *testing.T) {
-			t.Parallel()
-			observability := MockConfigForTest(t).observability
-			assert.Equal(t, expectedObservabilityOTLPEndpoint, observability.OTLPEndpoint())
-		})
-	})
-}
-
 func TestObservabilityConfig_OTLPProtocol(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -607,6 +595,18 @@ func TestSecurityConfig_ReferrerPolicy(t *testing.T) {
 	})
 }
 
+func TestSecurityConfig_CrossOriginResourcePolicy(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Cross-Origin-Resource-Policyの値を取得できる", func(t *testing.T) {
+			t.Parallel()
+			security := MockConfigForTest(t).security
+			assert.Equal(t, expectedCrossOriginResourcePolicy, security.CrossOriginResourcePolicy())
+		})
+	})
+}
+
 func TestSecureCookieConfig_SameSite(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -811,18 +811,6 @@ func TestOutboxConfig_Publisher(t *testing.T) {
 	})
 }
 
-func TestOutboxConfig_QueueEndpoint(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("SQS 互換エンドポイントを取得できる", func(t *testing.T) {
-			t.Parallel()
-			outbox := MockConfigForTest(t).outbox
-			assert.Equal(t, expectedOutboxQueueEndpoint, outbox.QueueEndpoint())
-		})
-	})
-}
-
 func TestOutboxConfig_QueueRegion(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -867,18 +855,6 @@ func TestOutboxConfig_QueueSecretAccessKey(t *testing.T) {
 			t.Parallel()
 			outbox := MockConfigForTest(t).outbox
 			assert.Equal(t, expectedOutboxQueueSecretAccessKey, outbox.QueueSecretAccessKey())
-		})
-	})
-}
-
-func TestOutboxConfig_Endpoint(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("エンドポイントを取得できる", func(t *testing.T) {
-			t.Parallel()
-			outbox := MockConfigForTest(t).outbox
-			assert.Equal(t, expectedOutboxEndpoint, outbox.Endpoint())
 		})
 	})
 }
@@ -939,18 +915,6 @@ func TestAuthConfig_Audience(t *testing.T) {
 			t.Parallel()
 			auth := MockConfigForTest(t).auth
 			assert.Equal(t, expectedAuthAudience, auth.Audience())
-		})
-	})
-}
-
-func TestAuthConfig_JWKSURL(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("JWKS URLを取得できる", func(t *testing.T) {
-			t.Parallel()
-			auth := MockConfigForTest(t).auth
-			assert.Equal(t, expectedAuthJWKSURL, auth.JWKSURL())
 		})
 	})
 }
@@ -1300,18 +1264,6 @@ func TestNewConsumerQueueConfig(t *testing.T) {
 	})
 }
 
-func TestConsumerQueueConfig_Endpoint(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("SQS 互換エンドポイントを取得できる", func(t *testing.T) {
-			t.Parallel()
-			consumerQueue := MockConfigForTest(t).consumerQueue
-			assert.Equal(t, expectedConsumerQueueEndpoint, consumerQueue.Endpoint())
-		})
-	})
-}
-
 func TestConsumerQueueConfig_Region(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -1444,18 +1396,6 @@ func TestNewObjectStorageConfig(t *testing.T) {
 	})
 }
 
-func TestObjectStorageConfig_Endpoint(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("エンドポイントを取得できる", func(t *testing.T) {
-			t.Parallel()
-			objectStorage := MockConfigForTest(t).objectStorage
-			assert.Equal(t, expectedObjectStorageEndpoint, objectStorage.Endpoint())
-		})
-	})
-}
-
 func TestObjectStorageConfig_Region(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -1524,6 +1464,105 @@ func TestObjectStorageConfig_MaxUploadBytes(t *testing.T) {
 			t.Parallel()
 			objectStorage := MockConfigForTest(t).objectStorage
 			assert.Equal(t, expectedObjectStorageMaxUploadBytes, objectStorage.MaxUploadBytes())
+		})
+	})
+}
+
+func TestEndpointConfig_OTLP(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("OTLPの送出先を取得できる", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+			assert.Equal(t, expectedEndpointOTLP, endpoint.OTLP())
+		})
+	})
+}
+
+func TestEndpointConfig_JWKS(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("JWKSの取得先を取得できる", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+			assert.Equal(t, expectedEndpointJWKS, endpoint.JWKS())
+		})
+	})
+}
+
+func TestEndpointConfig_ObjectStorage(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("オブジェクトストレージのエンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+			assert.Equal(t, expectedEndpointObjectStorage, endpoint.ObjectStorage())
+		})
+	})
+}
+
+func TestEndpointConfig_Outbox(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("outboxの送出先を取得できる", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+			assert.Equal(t, expectedEndpointOutbox, endpoint.Outbox())
+		})
+	})
+}
+
+func TestEndpointConfig_OutboxQueue(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("publish端のSQS互換エンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+			assert.Equal(t, expectedEndpointOutboxQueue, endpoint.OutboxQueue())
+		})
+	})
+}
+
+func TestEndpointConfig_ConsumerQueue(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("consume端のSQS互換エンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+			assert.Equal(t, expectedEndpointConsumerQueue, endpoint.ConsumerQueue())
+		})
+	})
+}
+
+// sample-api:begin
+func TestEndpointConfig_ExchangeRate(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("為替レートサービスのベースURLを取得できる", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+			assert.Equal(t, expectedEndpointExchangeRate, endpoint.ExchangeRate())
+		})
+	})
+}
+
+// sample-api:end
+
+func TestNewEndpointConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持する接続先設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.endpoint, NewEndpointConfig(cfg))
 		})
 	})
 }

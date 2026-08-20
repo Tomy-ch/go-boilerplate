@@ -27,6 +27,7 @@ func TestNew(t *testing.T) {
 			s, err := objectstorage.New(
 				t.Context(),
 				config.NewObjectStorageConfig(cfg),
+				config.NewEndpointConfig(cfg),
 				observability.NewDisabledOutboundHTTPClient(true),
 				observability.NewNoopTracerFactory(t),
 			)

@@ -59,7 +59,7 @@ stateDiagram-v2
 
 ### 2.2 exporter 選択（protocol スイッチ・endpoint 共用）
 
-3 シグナルは `OBS_OTLP_ENDPOINT` と `OBS_OTLP_PROTOCOL` を共用。トランスポートは OTLP のみ。
+3 シグナルは `ENDPOINT_OTLP` と `OBS_OTLP_PROTOCOL` を共用。トランスポートは OTLP のみ。
 
 ```mermaid
 stateDiagram-v2
@@ -201,7 +201,7 @@ flowchart LR
 | ① | 新規処理を span で包む | handler / usecase / repository | 既存 `LayerTracer.Start` 呼び出し / 任意コードは `RunWithSpan` |
 | ② | 新規 metric | `WorkerMetrics` 等の meter 所有 struct を `ObservabilityModule` で `fx.Provide` し、所有サブシステムから記録 | `outbox_metrics.go` / `worker_metrics.go` |
 | ③ | 新規 pull metric | `prometheus.Collector` + `Register` invoke | `metrics/buildinfo` / `metrics/queue` |
-| ④ | 環境で送出を有効化 | `OBS_TRACES/METRICS/LOGS_EXPORTER=otlp` + `OBS_OTLP_ENDPOINT`（+ `OBS_OTLP_PROTOCOL`） | `env/.env.*` / `env/README.md` |
+| ④ | 環境で送出を有効化 | `OBS_TRACES/METRICS/LOGS_EXPORTER=otlp` + `ENDPOINT_OTLP`（+ `OBS_OTLP_PROTOCOL`） | `env/.env.*` / `env/README.md` |
 | ⑤ | span & label に秘匿値/PII を載せない | ユーザー入力に触れる計装全箇所 | `OBS_MASKED_DB_QUERY_ARGS` / `IdempotencyMetrics` の label allowlist / `otelpgx` の接続情報抑止 |
 
 > 送出の有効化は **config/IaC** の操作でありコード変更ではない。同一バイナリがローカルでは no-op（`OBS_*_EXPORTER` 空）、staging/prod では OTLP を push する。

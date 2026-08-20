@@ -49,7 +49,6 @@ func TestMockConfigForTest(t *testing.T) {
 					tracesExporter:      expectedObservabilityTracesExporter,
 					metricsExporter:     expectedObservabilityMetricsExporter,
 					logsExporter:        expectedObservabilityLogsExporter,
-					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
 					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
@@ -77,14 +76,15 @@ func TestMockConfigForTest(t *testing.T) {
 					maxIdleTime: expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
-					allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-					cidr:                  expectedCIDR,
-					contentTypeNosniff:    expectedContentTypeNosniff,
-					xFrameOptions:         expectedXFrameOptions,
-					hstsMaxAge:            expectedHSTSMaxAge,
-					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
-					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
-					referrerPolicy:        expectedReferrerPolicy,
+					allowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+					cidr:                      expectedCIDR,
+					contentTypeNosniff:        expectedContentTypeNosniff,
+					xFrameOptions:             expectedXFrameOptions,
+					hstsMaxAge:                expectedHSTSMaxAge,
+					hstsExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+					hstsPreloadEnabled:        expectedHSTSPreloadEnabled,
+					referrerPolicy:            expectedReferrerPolicy,
+					crossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
@@ -108,7 +108,6 @@ func TestMockConfigForTest(t *testing.T) {
 					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
 				consumerQueue: ConsumerQueueConfig{
-					endpoint:          expectedConsumerQueueEndpoint,
 					region:            expectedConsumerQueueRegion,
 					url:               expectedConsumerQueueURL,
 					dlqURL:            expectedConsumerQueueDLQURL,
@@ -120,11 +119,9 @@ func TestMockConfigForTest(t *testing.T) {
 				},
 				outbox: OutboxConfig{
 					publisher:            expectedOutboxPublisher,
-					endpoint:             expectedOutboxEndpoint,
 					pollInterval:         expectedOutboxPollInterval,
 					errorBackoff:         expectedOutboxErrorBackoff,
 					batchSize:            expectedOutboxBatchSize,
-					queueEndpoint:        expectedOutboxQueueEndpoint,
 					queueRegion:          expectedOutboxQueueRegion,
 					queueURL:             expectedOutboxQueueURL,
 					queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
@@ -133,7 +130,6 @@ func TestMockConfigForTest(t *testing.T) {
 				auth: AuthConfig{
 					issuer:             expectedAuthIssuer,
 					audience:           expectedAuthAudience,
-					jwksURL:            expectedAuthJWKSURL,
 					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
 					clockSkew:          expectedAuthClockSkew,
 					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
@@ -141,13 +137,23 @@ func TestMockConfigForTest(t *testing.T) {
 					unknownKidCooldown: expectedAuthUnknownKidCooldown,
 				},
 				objectStorage: ObjectStorageConfig{
-					endpoint:        expectedObjectStorageEndpoint,
 					region:          expectedObjectStorageRegion,
 					bucket:          expectedObjectStorageBucket,
 					accessKeyID:     expectedObjectStorageAccessKeyID,
 					secretAccessKey: expectedObjectStorageSecretAccessKey,
 					usePathStyle:    expectedObjectStorageUsePathStyle,
 					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
+				},
+				endpoint: EndpointConfig{
+					otlp:          expectedEndpointOTLP,
+					jwks:          expectedEndpointJWKS,
+					objectStorage: expectedEndpointObjectStorage,
+					outbox:        expectedEndpointOutbox,
+					outboxQueue:   expectedEndpointOutboxQueue,
+					consumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					exchangeRate: expectedEndpointExchangeRate,
+					// sample-api:end
 				},
 			}
 
@@ -203,10 +209,20 @@ func Test_mockLoader(t *testing.T) {
 					TracesExporter:    expectedObservabilityTracesExporter,
 					MetricsExporter:   expectedObservabilityMetricsExporter,
 					LogsExporter:      expectedObservabilityLogsExporter,
-					OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
 					OTLPProtocol:      expectedObservabilityOTLPProtocol,
 					MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 					TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+				},
+				Endpoint: Endpoint{
+					OTLP:          expectedEndpointOTLP,
+					JWKS:          expectedEndpointJWKS,
+					ObjectStorage: expectedEndpointObjectStorage,
+					Outbox:        expectedEndpointOutbox,
+					OutboxQueue:   expectedEndpointOutboxQueue,
+					ConsumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					ExchangeRate: expectedEndpointExchangeRate,
+					// sample-api:end
 				},
 				Database: Database{
 					Host:                   expectedDBHost,
@@ -230,14 +246,15 @@ func Test_mockLoader(t *testing.T) {
 					MaxIdleTime: expectedDBMaxIdleTime,
 				},
 				Security: Security{
-					AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-					CIDR:                  expectedCIDRStr,
-					ContentTypeNosniff:    expectedContentTypeNosniff,
-					XFrameOptions:         expectedXFrameOptions,
-					HSTSMaxAge:            expectedHSTSMaxAge,
-					HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
-					HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
-					ReferrerPolicy:        expectedReferrerPolicy,
+					AllowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+					CIDR:                      expectedCIDRStr,
+					ContentTypeNosniff:        expectedContentTypeNosniff,
+					XFrameOptions:             expectedXFrameOptions,
+					HSTSMaxAge:                expectedHSTSMaxAge,
+					HSTSExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+					HSTSPreloadEnabled:        expectedHSTSPreloadEnabled,
+					ReferrerPolicy:            expectedReferrerPolicy,
+					CrossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 				},
 				SecureCookie: SecureCookie{
 					Secure:   expectedSecureCookieSecure,
@@ -281,7 +298,7 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, expectedObservabilityTracesExporter, os.Getenv("OBS_TRACES_EXPORTER"))
 			assert.Equal(t, expectedObservabilityMetricsExporter, os.Getenv("OBS_METRICS_EXPORTER"))
 			assert.Equal(t, expectedObservabilityLogsExporter, os.Getenv("OBS_LOGS_EXPORTER"))
-			assert.Equal(t, expectedObservabilityOTLPEndpoint, os.Getenv("OBS_OTLP_ENDPOINT"))
+			assert.Equal(t, expectedEndpointOTLP, os.Getenv("ENDPOINT_OTLP"))
 			assert.Equal(t, expectedObservabilityOTLPProtocol, os.Getenv("OBS_OTLP_PROTOCOL"))
 			assert.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBS_MASKED_DB_QUERY_ARGS"))
 			assert.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBS_TARGET_STATUS_CODES"))
@@ -309,6 +326,7 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 			assert.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 			assert.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
+			assert.Equal(t, expectedCrossOriginResourcePolicy, os.Getenv("SECURITY_CROSS_ORIGIN_RESOURCE_POLICY"))
 			// Secure Cookie
 			assert.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 			assert.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))

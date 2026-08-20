@@ -59,8 +59,8 @@ worktrees can `make serve` at the same time. The variables below are defined in
 
 - The app layer is started as `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development`.
   [`docker-compose.attach.yaml`](../../docker-compose.attach.yaml) is **always** overlaid (not only when a slot is held), and it repoints
-  the app at the shared infra via `host.docker.internal` by overriding `DB_HOST` / `OBS_OTLP_ENDPOINT` /
-  `OBJECT_STORAGE_ENDPOINT` / `AUTH_ISSUER` as runtime env — `internal/config`'s loader gives runtime env
+  the app at the shared infra via `host.docker.internal` by overriding `DB_HOST` / `ENDPOINT_OTLP` /
+  `ENDPOINT_OBJECT_STORAGE` / `AUTH_ISSUER` as runtime env — `internal/config`'s loader gives runtime env
   priority over `env/.env`.
 - Every app-layer host port is relative to the slot number `N`: API `8080+N` / mock auth `2010+N` /
   dlv `2345+N` / pprof `6060+N` (plain `8080` / `2010` / `2345` / `6060` when no slot is held). The

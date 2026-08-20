@@ -63,7 +63,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 			assert.Equal(t, config.NewSecureCookieConfig(cfg).Domain(), secCookie.Domain())
 			assert.Equal(t, config.NewWorkerConfig(cfg).Concurrency(), workerCfg.Concurrency())
 			assert.Equal(t, config.NewConsumerQueueConfig(cfg).URL(), queueCfg.URL())
-			assert.Equal(t, config.NewOutboxConfig(cfg).Endpoint(), outboxCfg.Endpoint())
+			assert.Equal(t, config.NewOutboxConfig(cfg).Publisher(), outboxCfg.Publisher())
 		})
 	})
 }

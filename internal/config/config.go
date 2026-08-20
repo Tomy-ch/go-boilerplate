@@ -65,7 +65,6 @@ func New() (*Config, error) {
 			tracesExporter:      cfg.Observability.TracesExporter,
 			metricsExporter:     cfg.Observability.MetricsExporter,
 			logsExporter:        cfg.Observability.LogsExporter,
-			otlpEndpoint:        cfg.Observability.OTLPEndpoint,
 			otlpProtocol:        cfg.Observability.OTLPProtocol,
 			maskedDBQueryArgs:   cfg.Observability.MaskedDBQueryArgs,
 			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
@@ -93,14 +92,15 @@ func New() (*Config, error) {
 			maxIdleTime: cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins:        cfg.Security.AllowedOrigins,
-			cidr:                  cidr,
-			contentTypeNosniff:    cfg.Security.ContentTypeNosniff,
-			xFrameOptions:         cfg.Security.XFrameOptions,
-			hstsMaxAge:            cfg.Security.HSTSMaxAge,
-			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
-			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
-			referrerPolicy:        cfg.Security.ReferrerPolicy,
+			allowedOrigins:            cfg.Security.AllowedOrigins,
+			cidr:                      cidr,
+			contentTypeNosniff:        cfg.Security.ContentTypeNosniff,
+			xFrameOptions:             cfg.Security.XFrameOptions,
+			hstsMaxAge:                cfg.Security.HSTSMaxAge,
+			hstsExcludeSubdomains:     cfg.Security.HSTSExcludeSubdomains,
+			hstsPreloadEnabled:        cfg.Security.HSTSPreloadEnabled,
+			referrerPolicy:            cfg.Security.ReferrerPolicy,
+			crossOriginResourcePolicy: cfg.Security.CrossOriginResourcePolicy,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   cfg.SecureCookie.Secure,
@@ -124,7 +124,6 @@ func New() (*Config, error) {
 			nackBackoffMax:            cfg.Worker.NackBackoffMax,
 		},
 		consumerQueue: ConsumerQueueConfig{
-			endpoint:          cfg.ConsumerQueue.Endpoint,
 			region:            cfg.ConsumerQueue.Region,
 			url:               cfg.ConsumerQueue.URL,
 			dlqURL:            cfg.ConsumerQueue.DLQURL,
@@ -136,11 +135,9 @@ func New() (*Config, error) {
 		},
 		outbox: OutboxConfig{
 			publisher:            cfg.Outbox.Publisher,
-			endpoint:             cfg.Outbox.Endpoint,
 			pollInterval:         cfg.Outbox.PollInterval,
 			errorBackoff:         cfg.Outbox.ErrorBackoff,
 			batchSize:            cfg.Outbox.BatchSize,
-			queueEndpoint:        cfg.Outbox.QueueEndpoint,
 			queueRegion:          cfg.Outbox.QueueRegion,
 			queueURL:             cfg.Outbox.QueueURL,
 			queueAccessKeyID:     cfg.Outbox.QueueAccessKeyID,
@@ -149,7 +146,6 @@ func New() (*Config, error) {
 		auth: AuthConfig{
 			issuer:             cfg.Auth.Issuer,
 			audience:           cfg.Auth.Audience,
-			jwksURL:            cfg.Auth.JWKSURL,
 			allowedAlgorithms:  cfg.Auth.AllowedAlgorithms,
 			clockSkew:          cfg.Auth.ClockSkew,
 			jwksCacheTTL:       cfg.Auth.JWKSCacheTTL,
@@ -157,13 +153,23 @@ func New() (*Config, error) {
 			unknownKidCooldown: cfg.Auth.JWKSUnknownKIDCooldown,
 		},
 		objectStorage: ObjectStorageConfig{
-			endpoint:        cfg.ObjectStorage.Endpoint,
 			region:          cfg.ObjectStorage.Region,
 			bucket:          cfg.ObjectStorage.Bucket,
 			accessKeyID:     cfg.ObjectStorage.AccessKeyID,
 			secretAccessKey: cfg.ObjectStorage.SecretAccessKey,
 			usePathStyle:    cfg.ObjectStorage.UsePathStyle,
 			maxUploadBytes:  cfg.ObjectStorage.MaxUploadBytes,
+		},
+		endpoint: EndpointConfig{
+			otlp:          cfg.Endpoint.OTLP,
+			jwks:          cfg.Endpoint.JWKS,
+			objectStorage: cfg.Endpoint.ObjectStorage,
+			outbox:        cfg.Endpoint.Outbox,
+			outboxQueue:   cfg.Endpoint.OutboxQueue,
+			consumerQueue: cfg.Endpoint.ConsumerQueue,
+			// sample-api:begin
+			exchangeRate: cfg.Endpoint.ExchangeRate,
+			// sample-api:end
 		},
 	}, nil
 }

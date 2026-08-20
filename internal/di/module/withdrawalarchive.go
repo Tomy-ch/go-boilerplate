@@ -32,7 +32,8 @@ type withdrawalArchiveQueue struct {
 // 未設定のまま起動すると受信が一度も成立せず、キューが溜まり続けていることに気付けないため、
 // publish 側の newQueueConfig と同じく起動時点で弾きます。
 func provideWithdrawalArchiveQueue(
-	cfg *config.ConsumerQueueConfig, outbound *observability.OutboundHTTPClient,
+	cfg *config.ConsumerQueueConfig, epCfg *config.EndpointConfig,
+	outbound *observability.OutboundHTTPClient,
 ) (withdrawalArchiveQueue, error) {
 	if cfg.URL() == "" {
 		return withdrawalArchiveQueue{}, xerrors.Wrap(ErrInvalidConsumerQueue, "CONSUMER_QUEUE_URL must not be empty")
@@ -43,7 +44,7 @@ func provideWithdrawalArchiveQueue(
 	}
 
 	api, err := sqs.NewClient(context.Background(), sqs.ClientConfig{
-		Endpoint:        cfg.Endpoint(),
+		Endpoint:        epCfg.ConsumerQueue(),
 		Region:          cfg.Region(),
 		AccessKeyID:     cfg.AccessKeyID(),
 		SecretAccessKey: cfg.SecretAccessKey(),

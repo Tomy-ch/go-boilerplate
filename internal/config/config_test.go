@@ -45,7 +45,6 @@ func TestNew(t *testing.T) {
 					tracesExporter:      expectedObservabilityTracesExporter,
 					metricsExporter:     expectedObservabilityMetricsExporter,
 					logsExporter:        expectedObservabilityLogsExporter,
-					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
 					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
@@ -73,14 +72,15 @@ func TestNew(t *testing.T) {
 					maxIdleTime: expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
-					allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-					cidr:                  expectedCIDR,
-					contentTypeNosniff:    expectedContentTypeNosniff,
-					xFrameOptions:         expectedXFrameOptions,
-					hstsMaxAge:            expectedHSTSMaxAge,
-					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
-					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
-					referrerPolicy:        expectedReferrerPolicy,
+					allowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+					cidr:                      expectedCIDR,
+					contentTypeNosniff:        expectedContentTypeNosniff,
+					xFrameOptions:             expectedXFrameOptions,
+					hstsMaxAge:                expectedHSTSMaxAge,
+					hstsExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+					hstsPreloadEnabled:        expectedHSTSPreloadEnabled,
+					referrerPolicy:            expectedReferrerPolicy,
+					crossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
@@ -104,7 +104,6 @@ func TestNew(t *testing.T) {
 					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
 				consumerQueue: ConsumerQueueConfig{
-					endpoint:          expectedConsumerQueueEndpoint,
 					region:            expectedConsumerQueueRegion,
 					url:               expectedConsumerQueueURL,
 					dlqURL:            expectedConsumerQueueDLQURL,
@@ -116,11 +115,9 @@ func TestNew(t *testing.T) {
 				},
 				outbox: OutboxConfig{
 					publisher:            expectedOutboxPublisher,
-					endpoint:             expectedOutboxEndpoint,
 					pollInterval:         expectedOutboxPollInterval,
 					errorBackoff:         expectedOutboxErrorBackoff,
 					batchSize:            expectedOutboxBatchSize,
-					queueEndpoint:        expectedOutboxQueueEndpoint,
 					queueRegion:          expectedOutboxQueueRegion,
 					queueURL:             expectedOutboxQueueURL,
 					queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
@@ -129,7 +126,6 @@ func TestNew(t *testing.T) {
 				auth: AuthConfig{
 					issuer:             expectedAuthIssuer,
 					audience:           expectedAuthAudience,
-					jwksURL:            expectedAuthJWKSURL,
 					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
 					clockSkew:          expectedAuthClockSkew,
 					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
@@ -137,13 +133,23 @@ func TestNew(t *testing.T) {
 					unknownKidCooldown: expectedAuthUnknownKidCooldown,
 				},
 				objectStorage: ObjectStorageConfig{
-					endpoint:        expectedObjectStorageEndpoint,
 					region:          expectedObjectStorageRegion,
 					bucket:          expectedObjectStorageBucket,
 					accessKeyID:     expectedObjectStorageAccessKeyID,
 					secretAccessKey: expectedObjectStorageSecretAccessKey,
 					usePathStyle:    expectedObjectStorageUsePathStyle,
 					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
+				},
+				endpoint: EndpointConfig{
+					otlp:          expectedEndpointOTLP,
+					jwks:          expectedEndpointJWKS,
+					objectStorage: expectedEndpointObjectStorage,
+					outbox:        expectedEndpointOutbox,
+					outboxQueue:   expectedEndpointOutboxQueue,
+					consumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					exchangeRate: expectedEndpointExchangeRate,
+					// sample-api:end
 				},
 			}
 

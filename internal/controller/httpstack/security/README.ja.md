@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-セキュリティヘッダミドルウェア（HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy）です。
+セキュリティヘッダミドルウェア（HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy, Cross-Origin-Resource-Policy）です。
 
 ## 役割
 

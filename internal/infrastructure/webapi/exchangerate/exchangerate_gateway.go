@@ -36,11 +36,12 @@ type rateResponse struct {
 }
 
 // NewDownstreamProfile は、外部為替サービス向けの resilient プロファイルを返します。
-// 外部サービスのため trace を伝搬せず、private/loopback 宛て接続を拒否します。
-func NewDownstreamProfile() httpclient.DownstreamProfile {
+// 外部サービスのため trace を伝搬しません。
+// allowPrivateNetwork は private 網宛て接続の可否で、環境に応じた解決は DI が行います（infra は env を知らない）。
+func NewDownstreamProfile(allowPrivateNetwork bool) httpclient.DownstreamProfile {
 	p := httpclient.DefaultProfile()
 	p.PropagateTrace = false
-	p.AllowPrivateNetwork = false
+	p.AllowPrivateNetwork = allowPrivateNetwork
 	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
 }
 

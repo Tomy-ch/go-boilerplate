@@ -35,11 +35,12 @@ func newAuthParams(t *testing.T, env string, logger logging.Logger) authenticato
 	appCfg.SetApplicationEnv(t, env)
 
 	return authenticatorParams{
-		AppCfg:    appCfg,
-		AuthCfg:   config.NewAuthConfig(cfg),
-		Clock:     system.NewClock(),
-		Logger:    logger,
-		Lifecycle: &recordingLifecycle{},
+		AppCfg:      appCfg,
+		AuthCfg:     config.NewAuthConfig(cfg),
+		EndpointCfg: config.NewEndpointConfig(cfg),
+		Clock:       system.NewClock(),
+		Logger:      logger,
+		Lifecycle:   &recordingLifecycle{},
 	}
 }
 
@@ -58,6 +59,7 @@ func authnDeps(t *testing.T) fx.Option {
 		fx.Provide(config.MockConfigForTest),
 		fx.Provide(config.NewApplicationConfig),
 		fx.Provide(config.NewAuthConfig),
+		fx.Provide(config.NewEndpointConfig),
 		fx.Provide(system.NewClock),
 		fx.Provide(logging.NewTestLogger),
 		// HTTPClient は infra 層が常設提供する必須依存。test 環境ではスタブ認証で未使用だが、
@@ -192,7 +194,7 @@ func Test_provideAuthenticator(t *testing.T) {
 			p := newAuthParams(t, config.EnvLocal, logger)
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
-			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
+			p.EndpointCfg.SetEndpointJWKS(t, "https://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideAuthenticator(p)
@@ -208,7 +210,7 @@ func Test_provideAuthenticator(t *testing.T) {
 			p := newAuthParams(t, config.EnvDast, logger)
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
-			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
+			p.EndpointCfg.SetEndpointJWKS(t, "https://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideAuthenticator(p)
@@ -224,7 +226,7 @@ func Test_provideAuthenticator(t *testing.T) {
 			p := newAuthParams(t, config.EnvDevelopment, logger)
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
-			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
+			p.EndpointCfg.SetEndpointJWKS(t, "https://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideAuthenticator(p)
@@ -331,7 +333,7 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 			p := newAuthParams(t, config.EnvLocal, logger)
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
-			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
+			p.EndpointCfg.SetEndpointJWKS(t, "https://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideJWKSAuthenticator(p, logger)
@@ -347,7 +349,7 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 			p := newAuthParams(t, config.EnvLocal, logger)
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
-			p.AuthCfg.SetAuthJWKSURL(t, "http://issuer.example.com/.well-known/jwks.json")
+			p.EndpointCfg.SetEndpointJWKS(t, "http://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideJWKSAuthenticator(p, logger)
@@ -362,7 +364,7 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 			p := newAuthParams(t, config.EnvDevelopment, logger)
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
-			p.AuthCfg.SetAuthJWKSURL(t, "https://issuer.example.com/.well-known/jwks.json")
+			p.EndpointCfg.SetEndpointJWKS(t, "https://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideJWKSAuthenticator(p, logger)
@@ -395,7 +397,7 @@ func Test_provideJWKSAuthenticator(t *testing.T) {
 			p := newAuthParams(t, config.EnvDevelopment, logger)
 			p.AuthCfg.SetAuthIssuer(t, "https://issuer.example.com")
 			p.AuthCfg.SetAuthAudience(t, "go-boilerplate-api")
-			p.AuthCfg.SetAuthJWKSURL(t, "http://issuer.example.com/.well-known/jwks.json")
+			p.EndpointCfg.SetEndpointJWKS(t, "http://issuer.example.com/.well-known/jwks.json")
 			p.HTTPClient = mock_httpclient.NewMockClient(gomock.NewController(t))
 
 			authenticator, err := provideJWKSAuthenticator(p, logger)

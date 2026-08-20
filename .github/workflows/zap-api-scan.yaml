@@ -240,6 +240,31 @@ jobs:
       - name: Build server
         run: go build -o ./bin/server ./cmd/
 
+      # sample-api:begin
+      # Started before the server so the first scan request already has something to reach.
+      # The address it listens on is declared in `env/.env.dast` beside every other endpoint,
+      # so the per-environment difference is visible where the endpoints live.
+      # Loopback is why `provideExchangeRateDownstreamProfile` has to allow the private network
+      # under `dast`; every deployed tier still refuses it.
+      - name: Start the exchange-rate stub
+        run: |
+          python3 .github/zap/exchange-rate-stub.py > exchange-rate-stub.log 2>&1 &
+          echo $! > exchange-rate-stub.pid
+
+          for i in {1..15}; do
+            if curl -fsS "http://127.0.0.1:9401/rates?base=USD&quote=JPY" > /dev/null; then
+              echo "exchange-rate stub is up"
+              exit 0
+            fi
+            echo "Waiting for the exchange-rate stub... ($i)"
+            sleep 1
+          done
+
+          echo "::error::the exchange-rate stub did not become ready"
+          cat exchange-rate-stub.log || true
+          exit 1
+      # sample-api:end
+
       - name: Start server
         run: |
           ./bin/server serve > server.log 2>&1 &
