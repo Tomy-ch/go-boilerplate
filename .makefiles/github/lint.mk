@@ -7,7 +7,7 @@
 .PHONY: actions-comment-fence-lint ## PRコメント本文のフェンス検査(固定長フェンス/実装一致/補間span)のみを実行
 .PHONY: actions-cutoff-lint ## ジョブ打ち切り時の振る舞い(timeout-minutes / PRコメントの always())検査のみを実行
 .PHONY: actions-mise-pin-lint ## setup-mise の版 / digest / キャッシュキーの整合を検査
-.PHONY: required-check-lint ## Ruleset の required context と本体 / guard workflow の対応を検査
+.PHONY: required-check-lint ## Ruleset の required context を報告する job と、その pull_request 起動条件を検査
 # -----CI内で実行するコマンド群-----
 .PHONY: actions-lint-ci ## GitHub Actions 定義のLintを実行(CI用)
 .PHONY: actions-actionlint-ci ## actionlint でワークフロー定義をLint(CI用)
@@ -18,7 +18,7 @@
 .PHONY: actions-node-lint-ci ## node で書かれた検査 4 種をまとめて実行(CI用)
 .PHONY: actions-cutoff-lint-ci ## ジョブ打ち切り時の振る舞いを検査(CI用)
 .PHONY: actions-mise-pin-lint-ci ## setup-mise の版 / digest / キャッシュキーの整合を検査(CI用)
-.PHONY: required-check-lint-ci ## Ruleset の required context と本体 / guard workflow の対応を検査(CI用)
+.PHONY: required-check-lint-ci ## Ruleset の required context を報告する job と、その pull_request 起動条件を検査(CI用)
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 # actionlint は Go ツール、secret / フェンス検査は node スクリプトなので tool-runner を跨ぐ。

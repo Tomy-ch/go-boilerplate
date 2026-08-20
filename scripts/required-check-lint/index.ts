@@ -31,4 +31,4 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`✓ required-check-lint: ${contexts.length} required contexts と本体 / guard job の対応すべて OK`);
+console.log(`✓ required-check-lint: ${contexts.length} required contexts の報告 job と起動条件すべて OK`);
