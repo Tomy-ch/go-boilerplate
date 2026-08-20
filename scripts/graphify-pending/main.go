@@ -46,7 +46,6 @@ const (
 	// defaultIgnore は graphify の解析対象除外の宣言。
 	defaultIgnore = ".graphifyignore"
 	// semanticCache は出力ディレクトリからの、セマンティックキャッシュの相対位置。
-	// このパスの最終変更コミットが「最後に意味論抽出を回した地点」になる。
 	semanticCache = "cache/semantic"
 	// maxListedFiles は内訳の列挙上限。
 	maxListedFiles = 15
@@ -119,8 +118,7 @@ func run(args []string, read func(name string) ([]byte, error), git func(args ..
 
 	baseline, err := lastSemanticCommit(path.Join(*dir, semanticCache), git)
 	if err != nil {
-		// 基準が無いのは、意味論抽出をまだ一度もコミットしていないというだけのこと。守るべき
-		// 履歴が無い状態なので落とさず、測れなかったことを明示したうえで件数だけ報告する。
+		// 基準が無いのは意味論抽出をまだ一度もコミットしていない状態なので、落とさず件数だけ報告する。
 		if xerrors.Is(err, errNoBaseline) {
 			log.Printf("graphify: 意味論抽出の未処理 %d ファイル（基準コミットが無いため行数は測れません）", len(stale))
 			for _, file := range stale[:min(len(stale), maxListedFiles)] {
@@ -150,11 +148,8 @@ func run(args []string, read func(name string) ([]byte, error), git func(args ..
 }
 
 // staleDocuments は、manifest 上で意味論抽出が追いついていないドキュメントを返します。
-//
-// 判定は「保存された semantic_hash と、いまのファイル内容の MD5 が一致するか」です。manifest 内の
-// ast_hash と突き合わせるのでは足りません。どちらも前回ビルド時点の値なので、ファイルを編集した
-// だけでは両者が一致したまま動かず、未処理が永久に 0 件に見えます。決定的な半分だけを回した
-// あとは ast_hash が進んで semantic_hash が据え置かれるため、この比較は自然に真になります。
+// 判定は保存された semantic_hash といまのファイル内容の MD5 の比較です。manifest 内の
+// ast_hash との突き合わせでは、未処理が永久に 0 件に見えます。
 func staleDocuments(manifestPath, ignorePath string, read func(name string) ([]byte, error)) ([]string, error) {
 	body, err := read(manifestPath)
 	if err != nil {
@@ -192,8 +187,7 @@ func staleDocuments(manifestPath, ignorePath string, read func(name string) ([]b
 }
 
 // loadIgnore は .graphifyignore を読んで、除外されるかを判定する述語を返します。
-// graphify 本体と同じ宣言を読むので、除外リストがここで二重管理になりません。
-// 宣言が無いことは異常ではない（除外なしで解析する構成）ため、その場合は何も除外しません。
+// 宣言が無いことは異常ではない（除外なしの構成）ため、その場合は何も除外しません。
 func loadIgnore(ignorePath string, read func(name string) ([]byte, error)) (func(string) bool, error) {
 	body, err := read(ignorePath)
 	if err != nil {
@@ -236,9 +230,7 @@ func loadIgnore(ignorePath string, read func(name string) ([]byte, error)) (func
 //	**/*.gen.go     どの階層にあってもよいファイル名のパターン
 //	openapi/x.yaml  素のパス
 //
-// 判定はここが単独で持ちます。graphify 本体が同じ宣言をどう解釈するかまで一致させる保証は
-// 無いので、食い違うとしたら「除外したつもりのものを数えてしまう」向き — つまり閾値が早く
-// 鳴る向きで、取りこぼす向きではありません。
+// 解釈が graphify 本体と一致する保証は無く、食い違いは閾値が早く鳴る向きにだけ倒れます。
 func matchesIgnore(file, pattern string) bool {
 	pattern = strings.TrimPrefix(pattern, "./")
 	pattern, anywhere := strings.CutPrefix(pattern, "**/")
@@ -344,8 +336,7 @@ func atoiOrZero(field string) int {
 }
 
 // report は結果を job summary へ書き出します。閾値は判断の材料であって門ではないので、
-// 超過しても終了コードは 0 のままにします。意味論抽出はモデルを要し、CI から起動する主体が
-// 居ないため、ここで落としても誰も直せないからです。
+// 超過しても終了コードは 0 のままにします。
 func report(summary bool, files, total, threshold int, items []pending) error {
 	if !summary {
 		return nil

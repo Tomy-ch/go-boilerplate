@@ -95,8 +95,7 @@ var artifacts = []string{
 // 見るので、この API が持つ `/users` のような小文字のパスとは衝突しない。
 var homePrefixes = []string{"/Users/", "/home/", "/root/", `C:\Users\`}
 
-// pinLine は pin ファイルの `key = "value"` 行。lockfile 系スクリプトと同じ手読みで、TOML
-// ライブラリは持ち込まない。
+// pinLine は pin ファイルの `key = "value"` 行。
 var pinLine = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"]*)"$`)
 
 var (
@@ -116,8 +115,7 @@ var (
 	errArtifactInDiff = xerrors.New("graphify output changed relative to the base branch")
 )
 
-// pathLister は ref と出力ディレクトリを受けてパスの一覧を返す手段。base からの差分と、base
-// 時点の追跡内容の双方がこの形になる。
+// pathLister は ref と出力ディレクトリを受けてパスの一覧を返す手段。
 type pathLister func(base, dir string) ([]string, error)
 
 // violation は 1 件の検出結果。kind は判定の種類、detail は人が読む説明。
@@ -209,8 +207,7 @@ func run(
 		return nil
 	}
 
-	// 違反の中身は行ごとに出し、戻り値には種類だけを載せる。呼び出し側が分岐に使うのは種類で、
-	// どのファイルがどう汚れているかは人が読むログの側の情報である。
+	// 呼び出し側が分岐に使うのは違反の種類だけなので、戻り値には種類を、中身はログへ出す。
 	kinds := make([]error, 0, len(violations))
 	for _, found := range violations {
 		log.Printf("❌ %s: %s", found.path, found.detail)
@@ -223,8 +220,6 @@ func run(
 }
 
 // verifySpec は、これから抽出に使うプロンプトが pin と同じものかを照合します。
-// 素性の違うプロンプトで焼いたキャッシュは、名前空間が変わって全件ミスになるか、あるいは
-// 名前空間を偽って別 vintage の結果を再生し続けるかのどちらかになります。
 func verifySpec(path, pinned string, read func(name string) ([]byte, error)) error {
 	body, err := read(path)
 	if err != nil {
@@ -362,9 +357,7 @@ func readPinnedFingerprint(path string, read func(name string) ([]byte, error)) 
 }
 
 // promptFingerprint は、抽出プロンプトの fingerprint を graphify.cache.prompt_fingerprint と
-// 同じ規則で求めます。CRLF/CR を LF へ正規化し、各行の行末空白を落とし、前後の空白を落として
-// から SHA-256 の先頭 12 桁を採ります。改行コードの正規化は、CRLF で checkout した Windows が
-// LF の checkout と別の fingerprint を出して全件再抽出になるのを防ぐためのものです。
+// 同じ規則で求めます。
 func promptFingerprint(body []byte) string {
 	text := strings.ReplaceAll(string(body), "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
