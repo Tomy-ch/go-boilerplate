@@ -1,0 +1,13 @@
+{
+  "runs": [
+    {
+      "date": "2026-08-20",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 2195,
+      "generator": "graphifyy 0.9.25"
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0
+}
