@@ -17,6 +17,12 @@ scripts/bin/
 # graphify の出力（graph.json / GRAPH_REPORT.md 等）。コード変更ごとに動く派生物
 graphify-out/
 
+# graphify のスキル本体。書いているのは graphifyy パッケージで、版だけを python/graphify.in が
+# 固定し、.claude/scripts/bootstrap-external-skills.sh がそこから展開する。vendor/ や
+# node_modules/ と同じく、レビュー対象ではなくマシンごとに作り直す依存物として扱う
+.claude/skills/graphify/
+.codex/skills/graphify/
+
 # .agents/ 配下でここだけがマシンローカル。Closed Loop の索引など、GitHub から再生成できる
 # キャッシュを置く。コミット対象の共有状態と混ざらないよう private/ に隔離している
 .agents/private/
