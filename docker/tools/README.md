@@ -14,7 +14,7 @@ This Dockerfile provides **code generation and bundling tool containers** for th
 |---|---|---|
 |`go_tools`|`golang:1.26.6-alpine`|Go code generation, linting, security scanning, documentation ([tools](#go_tools))|
 |`node_tools`|`node:24.19.0-alpine`|OpenAPI bundling, Markdown / commit linting, portal build and script tests ([tools](#node_tools))|
-|`python_tools`|`python:3.14.7-slim`|SQL linting ([tools](#python_tools))|
+|`python_tools`|`python:3.14.7-slim`|SQL linting, knowledge-graph build ([tools](#python_tools))|
 
 ## go_tools
 
@@ -53,16 +53,21 @@ Tools for OpenAPI document processing and portal generation:
 
 ## python_tools
 
-SQL linting tools:
-
 |Tool|Purpose|
 |---|---|
 |`sqlfluff`|SQL linter for migrations, DML, and seed files|
+|`graphify`|Knowledge-graph build. Only the deterministic half runs here — `graphify update` re-extracts changed code with tree-sitter and needs no model. Semantic extraction over docs is driven by an assistant and never runs in this image|
 
-Unlike the other two stages, the tool itself does not come from `mise.toml`: mise installs
-only `uv`, which then installs `sqlfluff` from [`python/sqlfluff.txt`](../../python/sqlfluff.txt)
+Unlike the other two stages, the tools themselves do not come from `mise.toml`: mise installs
+only `uv`, which then installs each of them from its own lockfile
+([`python/sqlfluff.txt`](../../python/sqlfluff.txt) / [`python/graphify.txt`](../../python/graphify.txt))
 with `--require-hashes`, so the whole transitive tree is version- and hash-pinned
 (see [ADR-0080 (mise-ssot-drift-gate)](../../docs/adr/0080-mise-ssot-drift-gate.md)).
+
+graphify is here for reproducibility rather than speed. Its semantic extraction is driven by a
+prompt that ships with the tool, and the cache namespace is a fingerprint of that prompt
+([`.agents/graphify/spec-pin.toml`](../../.agents/graphify/spec-pin.toml)); a host-installed
+graphify makes which prompt produced a committed artifact a property of the machine that ran it.
 
 ## docker-compose Services
 
