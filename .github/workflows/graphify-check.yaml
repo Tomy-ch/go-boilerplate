@@ -81,16 +81,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # The auto-sync branch is the one place a change to the output is expected, so it is the one
-      # place BASE is not passed. Everywhere else a feature branch carrying the graph is the finding,
-      # except where the base has no output yet — that case the tool recognizes as the introduction.
       - name: Check tracked graphify artifacts carry no machine-local paths
         id: graphify
         shell: bash
         env:
-          # Only a feature branch merging into a release line is held to this. A promotion
+          # BASE is passed only for a feature branch merging into a release line: a promotion
           # (release -> develop / staging / production) legitimately carries the graph forward, and
-          # the sync branch is where the update is produced in the first place.
+          # the sync branch is where the update is produced in the first place. A base that has no
+          # output yet is the tool's own exception — the introduction conflicts with nothing.
           BASE_REF: ${{ github.event_name == 'pull_request'
             && startsWith(github.base_ref, 'release/')
             && !startsWith(github.head_ref, 'auto/graphify-update/')

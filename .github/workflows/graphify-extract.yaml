@@ -1,16 +1,9 @@
 name: Graphify Extract
 
-# The semantic half of the knowledge graph: extraction over documents, which needs a model.
-# It is deliberately a separate workflow from `graphify-sync.yaml` rather than a branch inside it.
-# This one runs an assistant with write access, and that is the only job here that does; keeping it
-# in its own file means the deterministic sync cannot inherit the decision by accident, and the
-# permission grant is reviewable in one place.
-#
-# Manual only. There is no schedule and no push trigger: extraction costs model time, and
-# `graphify-sync.yaml` already reports how much has accumulated (`make graphify-pending`) so the
-# decision to run this has evidence behind it. A repository created from this template that never
-# configures `CLAUDE_CODE_TOKEN` skips every step rather than failing red, so the template's own
-# token is never spent on a downstream project.
+# The semantic half of the graph: extraction over documents, which needs a model. This is the only
+# job here that runs an assistant with `contents: write`, which is why it is a separate workflow
+# from `graphify-sync.yaml`, and manual only.
+# Background: .github/workflows/README.md § Notes.
 on:
   workflow_dispatch:
 
@@ -24,10 +17,8 @@ concurrency:
 jobs:
   graphify-extract:
     runs-on: ubuntu-latest
-    # No `--max-turns`: the extraction flow is a long sequence (detect, chunk, dispatch, merge,
-    # cluster, export) whose length depends on how many documents changed. A turn cap would cut it
-    # mid-flow and leave a half-written graph, which is worse than not running. The bound that
-    # belongs here is wall-clock, and this is it.
+    # No `--max-turns`: a turn cap would cut the extraction mid-flow and leave a half-written graph.
+    # `timeout-minutes` is the bound that belongs here.
     timeout-minutes: 60
 
     permissions:
@@ -78,7 +69,6 @@ jobs:
             *.ingest.sentry.io:443
 
       # The secrets context is unavailable in `if:`, hence the detour through a run step output.
-      # Skipping beats failing red: a template consumer has no reason to configure this.
       - name: Check configuration
         id: config
         env:
@@ -105,9 +95,8 @@ jobs:
           tools: uv
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # The skill and its extraction prompt come from `python/graphify.txt`, hash-pinned, so the
-      # prompt this run uses is the one `.agents/graphify/spec-pin.toml` records — which is what
-      # makes the committed cache reusable between here and a developer's machine.
+      # Install from the lockfile, not a fresh install: the pinned build is what makes the prompt
+      # match `.agents/graphify/spec-pin.toml`, which the next step verifies.
       - name: Install the graphify skill from the lockfile
         if: steps.config.outputs.configured == 'true'
         run: bash .claude/scripts/bootstrap-external-skills.sh

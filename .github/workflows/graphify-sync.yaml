@@ -110,9 +110,7 @@ jobs:
       - name: Verify the refreshed artifacts stay portable
         run: make graphify-check
 
-      # The semantic half needs a model and no workflow here can start one, so this only measures
-      # and reports. `claude.yaml` is comment-triggered and holds `contents: read`, so it is not a
-      # candidate either. The decision to run `/graphify --update` stays with a human.
+      # `claude.yaml` is not an alternative route: it is comment-triggered and holds `contents: read`.
       - name: Measure pending semantic extraction
         run: make graphify-pending GRAPHIFY_PENDING_ARGS=-github
 
