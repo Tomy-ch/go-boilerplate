@@ -300,11 +300,13 @@ OSV ゲートの深刻度は advisory 自身の評価を使い、無ければ os
 
 #### required check の空振り guard
 
-必須チェックがマージをデッドロックさせるのを防ぐためだけに存在するワークフローが 7 本あります。`lockfile-integrity` / `openapi-security` / `opengrep` / `osv-release-gate` / `osv-scanner` / `trivy-config` / `trivy-release-gate` の各本体に `*-guard.yaml` が並んでいます。
+必須チェックがマージをデッドロックさせるのを防ぐためだけに存在するワークフローが 13 本あります。`gen-db-artifacts-check` / `gen-go-artifacts-check` / `gen-oapi-artifacts-check` / `go-lint` / `go-test` / `lockfile-integrity` / `openapi-security` / `opengrep` / `osv-release-gate` / `osv-scanner` / `tidy-check` / `trivy-config` / `trivy-release-gate` の各本体に `*-guard.yaml` が並んでいます。
 
-デッドロックは構造的なものです。[`branch-protection.json`](../settings/branch-protection.json) が挙げた context はマージ前に**報告される**必要がありますが、それを報告するワークフローにはフィルタが掛かっています（スキャナは `paths`、リリースゲートは `branches`）。フィルタの外にある pull request では context がそもそも生成されません。GitHub は「報告が無い」を「該当しない」とは読まず、待ち続けます。その pull request は永久にマージ可能になりません。
+デッドロックは構造的なものです。[`branch-protection.json`](../settings/branch-protection.json) が挙げた context はマージ前に**報告される**必要がありますが、それを報告するワークフローにはフィルタが掛かっています（スキャナとビルド品質チェックは `paths`、リリースゲートは `branches`）。フィルタの外にある pull request では context がそもそも生成されません。GitHub は「報告が無い」を「該当しない」とは読まず、待ち続けます。その pull request は永久にマージ可能になりません。
 
 そこで各 guard は補集合側（補完するフィルタを写した `paths-ignore` / `branches-ignore`）で走り、同じ context を即時 success として報告します。1 つの pull request で両方が走ることはあります（`paths` は変更ファイルの**いずれか**が一致すれば発火し、`paths-ignore` は**いずれか**が一致しなければ発火するため）。それでも安全なのは、GitHub が同じ名前で報告する全チェックの通過を要求するからで、空振りが本物の判定を代替することはありません。
+
+唯一、二つの半分が対称でないのが `tidy-check` です。`pull_request` のフィルタが挙げるのは `go.mod` と `go.sum` で、自身のワークフローファイルは pull request へ何も報告しない `push` のフィルタ側にあります。そのため guard は `pull_request` のフィルタだけを写します。
 
 `make required-check-lint` は、required context ごとに本体のジョブと guard のジョブがちょうど 1 件ずつあること、および guard の job id が ruleset の要求する context であることを検査します。**見えないのは写しのほうで、そこが正しさの根拠のすべてです。** スキャナ側に `paths` を足して guard 側の `paths-ignore` を足し忘れると、まさにそのパスを変更した pull request でデッドロックが再発します。対で編集してください。
 

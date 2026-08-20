@@ -303,11 +303,13 @@ Severity for the OSV gate comes from the advisory's own rating and falls back to
 
 #### Required-check guard companions
 
-Seven workflows exist only to keep a required check from deadlocking a merge: `lockfile-integrity`, `openapi-security`, `opengrep`, `osv-release-gate`, `osv-scanner`, `trivy-config` and `trivy-release-gate` each have a `*-guard.yaml` beside them.
+Thirteen workflows exist only to keep a required check from deadlocking a merge: `gen-db-artifacts-check`, `gen-go-artifacts-check`, `gen-oapi-artifacts-check`, `go-lint`, `go-test`, `lockfile-integrity`, `openapi-security`, `opengrep`, `osv-release-gate`, `osv-scanner`, `tidy-check`, `trivy-config` and `trivy-release-gate` each have a `*-guard.yaml` beside them.
 
-The deadlock is structural. A context named in [`branch-protection.json`](../settings/branch-protection.json) must be *reported* before a merge is allowed, but the workflow that reports it is filtered — by `paths` for the scanners, by `branches` for the release gates — so a pull request outside that filter never produces the context at all. GitHub does not read an absent check as "not applicable"; it waits, and the pull request never becomes mergeable.
+The deadlock is structural. A context named in [`branch-protection.json`](../settings/branch-protection.json) must be *reported* before a merge is allowed, but the workflow that reports it is filtered — by `paths` for the scanners and the build-quality checks, by `branches` for the release gates — so a pull request outside that filter never produces the context at all. GitHub does not read an absent check as "not applicable"; it waits, and the pull request never becomes mergeable.
 
 Each guard therefore runs on the complementary set (`paths-ignore` / `branches-ignore` mirroring the filter it complements) and reports the same context as an immediate success. Both can run on one pull request — `paths` fires when *any* changed file matches, `paths-ignore` when *any* does not — and that is safe: GitHub requires every check reporting a given name to pass, so the no-op cannot stand in for a real verdict.
+
+`tidy-check` is the one whose two halves are not symmetric: its `pull_request` filter names `go.mod` and `go.sum`, while its own workflow file sits under a `push` filter that reports nothing to a pull request, so the guard mirrors the `pull_request` filter alone.
 
 `make required-check-lint` verifies that every required context has exactly one main job and one guard job, and that a guard's job id is a context the ruleset actually requires. **What it cannot see is the mirroring, and that is the whole correctness argument.** A `paths` entry added to a scanner without the matching `paths-ignore` entry in its guard reopens the deadlock on exactly the pull requests that change that path — the class of change least likely to be tested against it. Edit the pair together.
 

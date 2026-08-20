@@ -31,7 +31,7 @@ gh api /repos/{owner}/{repo}/rulesets/{ruleset_id}
 | `pull_request` | 対象ブランチへの変更は PR 経由に限る。承認 1 件、push 時に既存の承認を破棄、最終 push 後の再承認、全レビュースレッドの解決、CODEOWNERS レビュー、マージ方法は merge commit か squash に限定（rebase merge を除外）。 |
 | `copilot_code_review` | Copilot が各 PR を自動レビューする。push のたび、および draft に対しても実行する。 |
 | `code_quality` | GitHub の code quality ルールを `errors` 深刻度でブロックする。 |
-| `required_status_checks` | guard を持つ 7 件のチェックが成功してからマージする。 |
+| `required_status_checks` | guard を持つ 13 件のチェックが成功してからマージする。 |
 
 ### 単独メンテナのリポジトリに `pull_request` を適用する場合
 
@@ -43,10 +43,21 @@ GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に*
 
 ### Required status check はすべての PR で報告経路を持つ必要がある
 
-宣言する required context は `trivy-fs-release`、`osv-release`、`trivy-config`、`sast`、
-`lockfile-lint`、`openapi-security`、`osv-diff` です。それぞれの `*-guard.yaml` が、path または
-branch filter で本体 workflow が skip されたときも同じ context を報告します。これが無いと、開始されない
-check を PR が永久に待つことになります。設計は `docs/adr/0089-multi-layer-security-scanning.md` を参照してください。
+宣言する required context は 2 群に分かれます。
+
+| 群 | context |
+| --- | --- |
+| セキュリティスキャン（`docs/adr/0089-multi-layer-security-scanning.md`） | `trivy-fs-release`、`osv-release`、`trivy-config`、`sast`、`lockfile-lint`、`openapi-security`、`osv-diff` |
+| ビルド品質 | `go-lint`、`go-test`、`generate-go-check`、`generate-oapi-check`、`generate-db-check`、`mod-tidy-check` |
+
+第 2 群の線引きは、赤が周囲ではなく変更そのものについての事実かどうかです。lint 指摘、失敗したテスト、
+ソースとずれた生成物、tidy されていないモジュール宣言 —— いずれも pull request 自身がやったことでしか
+落ちず、いずれも checkout だけで再現します。継承した状態を報告するチェックや、runner の外のサービスに
+依存するチェックはこの一覧に入れません。
+
+それぞれの `*-guard.yaml` が、path または branch filter で本体 workflow が skip されたときも同じ
+context を報告します。これが無いと、開始されない check を PR が永久に待つことになります。
+`../workflows/README.md` の「required check の空振り guard」節を参照してください。
 
 ## labels.json
 
