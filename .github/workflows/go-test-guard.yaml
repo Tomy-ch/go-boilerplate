@@ -1,0 +1,44 @@
+name: Go Test (required-check guard)
+
+# Skip-guard companion for go-test.yaml: reports the `go-test` required check as an immediate
+# success on the complementary set (`paths-ignore` mirrors the filter on go-test.yaml).
+# Both files' filters must be edited together — see README.md § Required-check guard companions.
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/go-test.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '**/*.sql'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: No Go source or SQL changed — satisfy the required context
+        run: echo "No test input changed; the required 'go-test' context is satisfied by this guard."

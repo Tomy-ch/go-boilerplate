@@ -175,11 +175,20 @@ classes = ["mise"]
 [job."fuzz.yaml:fuzz"]
 classes = ["mise"]
 
+[job."gen-db-artifacts-check-guard.yaml:generate-db-check"]
+classes = []
+
 [job."gen-db-artifacts-check.yaml:generate-db-check"]
 classes = ["image", "db"]
 
+[job."gen-go-artifacts-check-guard.yaml:generate-go-check"]
+classes = []
+
 [job."gen-go-artifacts-check.yaml:generate-go-check"]
 classes = ["image"]
+
+[job."gen-oapi-artifacts-check-guard.yaml:generate-oapi-check"]
+classes = []
 
 [job."gen-oapi-artifacts-check.yaml:generate-oapi-check"]
 classes = ["image"]
@@ -187,8 +196,14 @@ classes = ["image"]
 [job."go-cooldown.yaml:go-cooldown"]
 classes = ["mise"]
 
+[job."go-lint-guard.yaml:go-lint"]
+classes = []
+
 [job."go-lint.yaml:go-lint"]
 classes = ["image"]
+
+[job."go-test-guard.yaml:go-test"]
+classes = []
 
 [job."go-test.yaml:go-test"]
 classes = ["image", "db"]
@@ -361,6 +376,9 @@ classes = ["mise"]
 
 [job."sync-versions-check.yaml:sync-versions-check"]
 classes = ["image"]
+
+[job."tidy-check-guard.yaml:mod-tidy-check"]
+classes = []
 
 [job."tidy-check.yaml:mod-tidy-check"]
 classes = ["mise"]

@@ -1,0 +1,48 @@
+name: Generated Go Artifacts Check (required-check guard)
+
+# Skip-guard companion for gen-go-artifacts-check.yaml: reports the `generate-go-check` required
+# check as an immediate success on the complementary set (`paths-ignore` mirrors the filter on
+# gen-go-artifacts-check.yaml).
+# Both files' filters must be edited together — see README.md § Required-check guard companions.
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/gen-go-artifacts-check.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.makefiles/**'
+      - 'openapi/**/*.yaml'
+      - 'docker/tools/Dockerfile'
+      - 'mise.toml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-go-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: No Go generation input changed — satisfy the required context
+        run: echo "No Go generation input changed; the required 'generate-go-check' context is satisfied by this guard."
