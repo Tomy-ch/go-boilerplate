@@ -175,19 +175,19 @@ classes = ["mise"]
 [job."fuzz.yaml:fuzz"]
 classes = ["mise"]
 
-[job."gen-db-artifacts-check-guard.yaml:generate-db-check"]
+[job."gen-db-artifacts-check.yaml:changes"]
 classes = []
 
 [job."gen-db-artifacts-check.yaml:generate-db-check"]
 classes = ["image", "db"]
 
-[job."gen-go-artifacts-check-guard.yaml:generate-go-check"]
+[job."gen-go-artifacts-check.yaml:changes"]
 classes = []
 
 [job."gen-go-artifacts-check.yaml:generate-go-check"]
 classes = ["image"]
 
-[job."gen-oapi-artifacts-check-guard.yaml:generate-oapi-check"]
+[job."gen-oapi-artifacts-check.yaml:changes"]
 classes = []
 
 [job."gen-oapi-artifacts-check.yaml:generate-oapi-check"]
@@ -196,13 +196,13 @@ classes = ["image"]
 [job."go-cooldown.yaml:go-cooldown"]
 classes = ["mise"]
 
-[job."go-lint-guard.yaml:go-lint"]
+[job."go-lint.yaml:changes"]
 classes = []
 
 [job."go-lint.yaml:go-lint"]
 classes = ["image"]
 
-[job."go-test-guard.yaml:go-test"]
+[job."go-test.yaml:changes"]
 classes = []
 
 [job."go-test.yaml:go-test"]
@@ -239,7 +239,7 @@ classes = ["image"]
 [job."licensed-scanners-removal-check.yaml:licensed-scanners-removal-check"]
 classes = ["mise"]
 
-[job."lockfile-integrity-guard.yaml:lockfile-lint"]
+[job."lockfile-integrity.yaml:changes"]
 classes = []
 
 [job."lockfile-integrity.yaml:lockfile-lint"]
@@ -260,13 +260,13 @@ extra = [
 [job."oapi-lint.yaml:oapi-lint"]
 classes = ["mise"]
 
-[job."openapi-security-guard.yaml:openapi-security"]
+[job."openapi-security.yaml:changes"]
 classes = []
 
 [job."openapi-security.yaml:openapi-security"]
 classes = ["mise"]
 
-[job."opengrep-guard.yaml:sast"]
+[job."opengrep.yaml:changes"]
 classes = []
 
 [job."opengrep.yaml:sast"]
@@ -276,9 +276,6 @@ extra = [
   "*.semgrep.dev:443",
 ]
 
-[job."osv-release-gate-guard.yaml:osv-release"]
-classes = []
-
 [job."osv-release-gate.yaml:osv-release"]
 classes = ["mise"]
 extra = [
@@ -287,7 +284,7 @@ extra = [
   "osv-vulnerabilities.storage.googleapis.com:443",
 ]
 
-[job."osv-scanner-guard.yaml:osv-diff"]
+[job."osv-scanner.yaml:changes"]
 classes = []
 
 [job."osv-scanner.yaml:osv-diff"]
@@ -377,7 +374,7 @@ classes = ["mise"]
 [job."sync-versions-check.yaml:sync-versions-check"]
 classes = ["image"]
 
-[job."tidy-check-guard.yaml:mod-tidy-check"]
+[job."tidy-check.yaml:changes"]
 classes = []
 
 [job."tidy-check.yaml:mod-tidy-check"]
@@ -386,7 +383,7 @@ classes = ["mise"]
 [job."tool-cooldown.yaml:tool-cooldown"]
 classes = ["mise"]
 
-[job."trivy-config-guard.yaml:trivy-config"]
+[job."trivy-config.yaml:changes"]
 classes = []
 
 [job."trivy-config.yaml:trivy-config"]
@@ -402,9 +399,6 @@ classes = ["image"]
 
 [job."trivy-fs.yaml:trivy-license"]
 classes = ["image"]
-
-[job."trivy-release-gate-guard.yaml:trivy-fs-release"]
-classes = []
 
 [job."trivy-release-gate.yaml:trivy-fs-release"]
 classes = ["mise"]

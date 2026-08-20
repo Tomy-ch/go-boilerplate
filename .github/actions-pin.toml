@@ -17,6 +17,7 @@
 "anthropics/claude-code-action@v1.0.183" = "be7b93b1907a4abad570368f3c74b6fe3807510b"
 "docker/build-push-action@v7" = "53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
 "docker/setup-buildx-action@v4.2.0" = "bb05f3f5519dd87d3ba754cc423b652a5edd6d2c"
+"dorny/paths-filter@v4" = "ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d"
 "github/codeql-action@v4.37.6" = "5595ccaf912efad79be6eef63a5619ff05969be3"
 "k1LoW/octocov-action@v1" = "a167dc0dee441b7ffc45e1b862ab55ec0d87f278"
 "ossf/scorecard-action@v2.4.4" = "2d1146689b8cda280b9bc96326124645441f03bc"

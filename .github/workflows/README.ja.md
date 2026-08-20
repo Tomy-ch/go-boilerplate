@@ -298,17 +298,24 @@ mise はそれ自体には届きます（`dotnet:` バックエンドが NuGet �
 
 OSV ゲートの深刻度は advisory 自身の評価を使い、無ければ osv-scanner がグループ単位で集約する CVSS スコアへフォールバックします。Go 脆弱性データベース由来の advisory はそのどちらも公開しないため HIGH 閾値では測れず、修正版が存在する場合にのみゲート対象とします。評価もできず更新もできない advisory が、昇格のたびに恒久的な赤を生むのを避けるためです。両ゲートとも意図的に `paths` フィルタを持ちません。昇格 PR はマニフェストを一切変更しないことが多く、required check はまず実行されなければブロックできないからです。
 
-#### required check の空振り guard
+#### required check は全 pull request で報告される
 
-必須チェックがマージをデッドロックさせるのを防ぐためだけに存在するワークフローが 13 本あります。`gen-db-artifacts-check` / `gen-go-artifacts-check` / `gen-oapi-artifacts-check` / `go-lint` / `go-test` / `lockfile-integrity` / `openapi-security` / `opengrep` / `osv-release-gate` / `osv-scanner` / `tidy-check` / `trivy-config` / `trivy-release-gate` の各本体に `*-guard.yaml` が並んでいます。
+[`branch-protection.json`](../settings/branch-protection.json) が挙げた context はマージ前に**報告される**必要があります。GitHub は「報告が無い」を「該当しない」とは読まず、待ち続けます。その pull request は永久にマージ可能になりません。したがって required context を報告するワークフローは、`pull_request` トリガーにフィルタを持ってはいけません。`paths:` や `branches:` はそこでは run が起きるかどうかを決めるものであり、起きなかった run は何も報告しないからです。
 
-デッドロックは構造的なものです。[`branch-protection.json`](../settings/branch-protection.json) が挙げた context はマージ前に**報告される**必要がありますが、それを報告するワークフローにはフィルタが掛かっています（スキャナとビルド品質チェックは `paths`、リリースゲートは `branches`）。フィルタの外にある pull request では context がそもそも生成されません。GitHub は「報告が無い」を「該当しない」とは読まず、待ち続けます。その pull request は永久にマージ可能になりません。
+そこで起動条件は job 側へ移します。GitHub はこちらでは逆の結論を出すためです。**`if:` で skip された job は `skipped` を報告し、required check はそれを成功として数えます。** path フィルタを持っていた 11 本は [`dorny/paths-filter`](https://github.com/dorny/paths-filter) を使う `changes` job で条件を計算し、その出力で報告 job をゲートします。リリースゲート 2 本は条件がブランチ名でファイル一覧を要さないため、`if:` で `github.base_ref` を直接読みます。
 
-そこで各 guard は補集合側（補完するフィルタを写した `paths-ignore` / `branches-ignore`）で走り、同じ context を即時 success として報告します。1 つの pull request で両方が走ることはあります（`paths` は変更ファイルの**いずれか**が一致すれば発火し、`paths-ignore` は**いずれか**が一致しなければ発火するため）。それでも安全なのは、GitHub が同じ名前で報告する全チェックの通過を要求するからで、空振りが本物の判定を代替することはありません。
+ゲートは **fail open** で書いてあります。
 
-唯一、二つの半分が対称でないのが `tidy-check` です。`pull_request` のフィルタが挙げるのは `go.mod` と `go.sum` で、自身のワークフローファイルは pull request へ何も報告しない `push` のフィルタ側にあります。そのため guard は `pull_request` のフィルタだけを写します。
+```yaml
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+```
 
-`make required-check-lint` は、required context ごとに本体のジョブと guard のジョブがちょうど 1 件ずつあること、および guard の job id が ruleset の要求する context であることを検査します。**見えないのは写しのほうで、そこが正しさの根拠のすべてです。** スキャナ側に `paths` を足して guard 側の `paths-ignore` を足し忘れると、まさにそのパスを変更した pull request でデッドロックが再発します。対で編集してください。
+`relevant` はフィルタが判定に到達しなかったところで空になります（pull_request 以外のイベントで skip された場合と、失敗した場合）。空は `false` ではないので、本体が走ります。逆向きだと静かに壊れます。skip は required context に誰も稼いでいない緑を渡すことになり、フィルタが壊れているときこそそれが効いてしまいます。
+
+各トリガーの `push` 側は `paths:` をそのまま持っています。そちらは context を報告しないので、絞っても何もブロックしません。
+
+`make required-check-lint` は、required context がちょうど 1 つの job から宣言されていること、およびその workflow の `pull_request` トリガーがフィルタを持たないことを検査します。**デッドロックを塞いでいるのは後半で**、これが検査できるのは条件が 1 箇所にしか書かれていないからです。フィルタとその反転に分けて書くと、不変条件は 2 つのリストの一致という、ここでは誰も比較できないものへ移ります。そして食い違いは、片側に足し忘れたパスを変更した pull request でだけ表面化します。
 
 #### Go モジュールの cooldown
 

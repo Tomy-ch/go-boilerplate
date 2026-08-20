@@ -301,17 +301,24 @@ The dependency scanners are a double gate. On an ordinary PR they report only: a
 
 Severity for the OSV gate comes from the advisory's own rating and falls back to the CVSS score osv-scanner aggregates per group. Advisories from the Go vulnerability database publish neither, so they cannot be measured against the HIGH threshold at all; those gate only when a fixed version exists, which keeps an advisory that can be neither rated nor updated away from turning every promotion permanently red. Both gates deliberately carry no `paths` filter — a promotion PR often changes no manifest, and a required check has to run to be able to block.
 
-#### Required-check guard companions
+#### Required checks report on every pull request
 
-Thirteen workflows exist only to keep a required check from deadlocking a merge: `gen-db-artifacts-check`, `gen-go-artifacts-check`, `gen-oapi-artifacts-check`, `go-lint`, `go-test`, `lockfile-integrity`, `openapi-security`, `opengrep`, `osv-release-gate`, `osv-scanner`, `tidy-check`, `trivy-config` and `trivy-release-gate` each have a `*-guard.yaml` beside them.
+A context named in [`branch-protection.json`](../settings/branch-protection.json) must be *reported* before a merge is allowed. GitHub does not read an absent check as "not applicable"; it waits, and the pull request never becomes mergeable. So a workflow that reports a required context must not filter its `pull_request` trigger at all — `paths:` and `branches:` there decide whether the run happens, and a run that does not happen reports nothing.
 
-The deadlock is structural. A context named in [`branch-protection.json`](../settings/branch-protection.json) must be *reported* before a merge is allowed, but the workflow that reports it is filtered — by `paths` for the scanners and the build-quality checks, by `branches` for the release gates — so a pull request outside that filter never produces the context at all. GitHub does not read an absent check as "not applicable"; it waits, and the pull request never becomes mergeable.
+The trigger condition therefore lives in the job instead, where GitHub draws the opposite conclusion: **a job skipped by its `if:` reports `skipped`, and a required check counts that as success.** The eleven path-filtered workflows compute the condition in a `changes` job with [`dorny/paths-filter`](https://github.com/dorny/paths-filter) and gate the reporting job on its output; the two release gates read `github.base_ref` in the `if:` directly, since their condition is a branch name and needs no file list.
 
-Each guard therefore runs on the complementary set (`paths-ignore` / `branches-ignore` mirroring the filter it complements) and reports the same context as an immediate success. Both can run on one pull request — `paths` fires when *any* changed file matches, `paths-ignore` when *any* does not — and that is safe: GitHub requires every check reporting a given name to pass, so the no-op cannot stand in for a real verdict.
+The gate is written to **fail open**:
 
-`tidy-check` is the one whose two halves are not symmetric: its `pull_request` filter names `go.mod` and `go.sum`, while its own workflow file sits under a `push` filter that reports nothing to a pull request, so the guard mirrors the `pull_request` filter alone.
+```yaml
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+```
 
-`make required-check-lint` verifies that every required context has exactly one main job and one guard job, and that a guard's job id is a context the ruleset actually requires. **What it cannot see is the mirroring, and that is the whole correctness argument.** A `paths` entry added to a scanner without the matching `paths-ignore` entry in its guard reopens the deadlock on exactly the pull requests that change that path — the class of change least likely to be tested against it. Edit the pair together.
+`relevant` is empty wherever the filter reached no verdict — skipped on a non-pull-request event, or failed outright — and an empty value is not `false`, so the work runs. The alternative fails silently: a skip hands the required context a green nobody earned, and a broken filter is exactly the moment that matters.
+
+The `push` half of each trigger keeps its own `paths:`. That half reports no context, so filtering it blocks nothing.
+
+`make required-check-lint` verifies that every required context is declared by exactly one job, and that its workflow's `pull_request` trigger carries no filter. **The second half is what keeps the deadlock closed**, and it is checkable only because the condition is stated once. Split it across a filter and its inverse and the invariant moves into the agreement between two lists, which nothing here can compare — and the disagreement surfaces on exactly the pull requests that touch the path someone forgot to add on the other side.
 
 #### Go Cooldown
 
