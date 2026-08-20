@@ -57,22 +57,27 @@ bash .claude/scripts/bootstrap-external-skills.sh
 
 上のプラグインと異なる性質が 3 つあり、実行前に知っておく価値があります:
 
-- **project スコープではなく user スコープ。** skill は `~/.claude/skills/graphify/`（および
-  `~/.codex/skills/graphify/`）へ書かれるため、信頼済みの clone には**入らず**、マシンごとに一度
-  bootstrap を実行します。バージョンは project スコープの `python/graphify.in` に固定し、スクリプトは
-  自分で選ばずその pin を読みます。
-- **インストーラは `~/.claude/CLAUDE.md`（user global のメモリ）も書き換え**、`/graphify` の
-  トリガーを登録します。本リポジトリの `CLAUDE.md` には触りません。
-- **`graphify uninstall` は Codex 側の複製を消し残します** — `~/.codex/skills/graphify/` は手で
-  削除します。`--purge` を付けると `graphify-out/` も削除されます。
+- **レビュー対象のファイルではなく依存物。** skill はチェックアウト内の
+  `.claude/skills/graphify/` と `.codex/skills/graphify/` へ着地し、gitignore されます。pin から
+  作られ、マシンごとに作り直され、レビューはされない — `vendor/` や `node_modules/` が依存物自身の
+  ファイルを持つのと同じ扱いです。信頼済みの clone には**入らず**、マシンごとに一度 bootstrap を
+  実行します。pin は `python/graphify.in` で、スクリプトは自分で選ばずそれを読みます。
+- **`skill-lint` は検査しません。** 本リポジトリの skill 規約（frontmatter、`SKILL.ja.md` の対、
+  解決できる参照）は、このリポジトリが書く skill を前提にしています。これは upstream が書いたもので、
+  実行後にしか存在しない成果物を参照するため、`EXTERNAL_SKILLS`（`scripts/skill-lint/checks.ts`）へ
+  宣言して検査から外します。誰も満たせない規約を課しても、読者にゲートを無視することを教えるだけです。
+- **`graphify uninstall` は届きません。** アンインストーラが見るのはホームディレクトリです。上記
+  2 つのディレクトリは手で削除します。`--purge` を付けると `graphify-out/` も削除されます。
 
-インストールは bootstrap が実行する `install --platform <名前>` だけを使います。名前の似た
-`<名前> install` は別物で、`graphify claude install` は**本リポジトリの `CLAUDE.md`** を、
-`graphify codex install`（`opencode` / `aider` / `kilo` も同様）は `AGENTS.md` を書き換え、
-`graphify hook install` は git hook と merge driver を追加します。いずれも project スコープで、
-`AGENTS.md` / `CLAUDE.md` は `AGENTS.md` が hard-protected と定めている対象です。これらの形は
-`settings.json` の `ask` に振ってあり、`graphify --help` を読んだエージェントが実行するのではなく、
-人の判断を仰ぐ形で表に出ます。
+**bootstrap はインストーラにチェックアウト内を書かせません。** このツールが持つどのモードも、本
+リポジトリが保護している対象へ書き込みます。`install --project` は `CLAUDE.md`（ここでは
+`AGENTS.md` への symlink）へ `## graphify` 節を追記し、`.claude/settings.json` へ PreToolUse フックを
+登録します。既定の user スコープは `~/.claude/CLAUDE.md` を書き換えます。名前の似た
+`<名前> install`（`graphify claude install`、`graphify codex install`、`opencode` / `aider` /
+`kilo` も同様）と `graphify hook install` は `AGENTS.md`・git hook・merge driver を書きます。そのため
+bootstrap は捨て `HOME` に対してインストールを実行し、skill ディレクトリだけを取り出します。
+これらのサブコマンドは加えて `settings.json` の `ask` に振ってあり、`graphify --help` を読んだ
+エージェントが実行するのではなく、人の判断を仰ぐ形で表に出ます。
 
 グラフは派生物なので gitignore してあり、手元で生成します。`update` と問い合わせ系のコマンドは
 AST のみで API キーを要しません。docs / PDF / 画像の抽出、`--mode deep` の推論、`--wiki`、
