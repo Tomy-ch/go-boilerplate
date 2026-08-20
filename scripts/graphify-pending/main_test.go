@@ -404,6 +404,83 @@ func Test_loadIgnore(t *testing.T) {
 	})
 }
 
+func Test_measure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("基準コミットから HEAD までを対象ファイルに限って測る", func(t *testing.T) {
+			t.Parallel()
+			var got []string
+
+			_, _, err := measure("abc123", []string{"docs/a.md", "docs/b.md"}, func(args ...string) (string, error) {
+				got = args
+
+				return "", nil
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{"diff", "--numstat", "abc123..HEAD", "--", "docs/a.md", "docs/b.md"}, got)
+		})
+
+		t.Run("numstat の結果を変更量の降順で返す", func(t *testing.T) {
+			t.Parallel()
+
+			items, total, err := measure("abc123", []string{"a.md", "b.md"},
+				func(...string) (string, error) { return "1\t2\ta.md\n30\t0\tb.md\n", nil })
+
+			require.NoError(t, err)
+			assert.Equal(t, 33, total)
+			require.Len(t, items, 2)
+			assert.Equal(t, "b.md", items[0].path)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("git が失敗すれば基準コミットを添えてエラーにする", func(t *testing.T) {
+			t.Parallel()
+			sentinel := xerrors.New("bad revision")
+
+			_, _, err := measure("abcdef1234567890", nil, func(...string) (string, error) { return "", sentinel })
+
+			require.ErrorIs(t, err, sentinel)
+			assert.Contains(t, err.Error(), short("abcdef1234567890"))
+		})
+	})
+}
+
+func Test_atoiOrZero(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		field string
+		want  int
+	}{
+		"十進の数はそのまま":     {"12", 12},
+		"ゼロはゼロ":         {"0", 0},
+		"符号付きも解釈する":     {"-3", -3},
+		"バイナリを表すハイフンは0": {"-", 0},
+		"数でない欄は0":       {"x", 0},
+		"空欄は0":          {"", 0},
+		"前後に空白があるものは0":  {" 1 ", 0},
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		for name, tt := range cases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				assert.Equal(t, tt.want, atoiOrZero(tt.field))
+			})
+		}
+	})
+}
+
 func Test_parseNumstat(t *testing.T) {
 	t.Parallel()
 
