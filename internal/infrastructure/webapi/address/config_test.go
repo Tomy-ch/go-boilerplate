@@ -3,7 +3,6 @@ package address_test
 import (
 	"testing"
 
-	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/httpclient"
 	"go-boilerplate/internal/infrastructure/webapi/address"
 
@@ -48,8 +47,7 @@ func TestNewEndpoint(t *testing.T) {
 
 		t.Run("サンプル既定のEndpointを返す", func(t *testing.T) {
 			t.Parallel()
-			epCfg := config.NewEndpointConfig(config.MockConfigForTest(t))
-			assert.Equal(t, address.Endpoint(epCfg.Address()), address.NewEndpoint(epCfg))
+			assert.Equal(t, address.Endpoint("https://zipcloud.ibsnet.co.jp"), address.NewEndpoint())
 		})
 	})
 }

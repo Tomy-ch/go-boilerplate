@@ -41,8 +41,6 @@ type Endpoint struct {
 	// sample-api:begin
 	// ExchangeRate は外部為替レートサービスのベース URL です。空ならこの機能を使いません。
 	ExchangeRate string `env:"EXCHANGE_RATE,required"`
-	// Address は郵便番号から住所を引く外部サービスのベース URL です。
-	Address string `env:"ADDRESS,required"`
 	// sample-api:end
 }
 

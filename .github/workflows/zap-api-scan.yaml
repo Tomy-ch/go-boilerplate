@@ -53,12 +53,6 @@ jobs:
       # deployed environment does. `ci` cannot: it wires the stub, which accepts any
       # `debug:<subject>` bearer token without a signature and never reaches that code.
       APP_ENV: dast
-      # sample-api:begin
-      # The sample exchange-rate gateway points at a reserved `.example.com` domain that never
-      # resolves, so its endpoint answers 5xx everywhere. Runtime env wins over the value
-      # embedded from `env/.env.dast`, so pointing it at the stub is enough — no rebuild.
-      ENDPOINT_EXCHANGE_RATE: http://127.0.0.1:9401
-      # sample-api:end
       # The identity the scan authenticates as. Under a real issuer the seeded
       # `user_identities` rows are the `${AUTH_ISSUER}` ones, and the provider copies whatever
       # `username` it is handed onto `sub` — so this has to be one of the `user-<name>` subjects
@@ -248,6 +242,8 @@ jobs:
 
       # sample-api:begin
       # Started before the server so the first scan request already has something to reach.
+      # The address it listens on is declared in `env/.env.dast` beside every other endpoint,
+      # so the per-environment difference is visible where the endpoints live.
       # Loopback is why `provideExchangeRateDownstreamProfile` has to allow the private network
       # under `dast`; every deployed tier still refuses it.
       - name: Start the exchange-rate stub

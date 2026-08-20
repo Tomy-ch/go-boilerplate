@@ -184,7 +184,6 @@ var (
 	expectedEndpointObjectStorage = ""
 	// sample-api:begin
 	expectedEndpointExchangeRate = "https://exchange-rate.example.test"
-	expectedEndpointAddress      = "https://address.example.test"
 	// sample-api:end
 	expectedObjectStorageRegion                  = "us-east-1"
 	expectedObjectStorageBucket                  = "test-bucket"
@@ -336,7 +335,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 			consumerQueue: expectedEndpointConsumerQueue,
 			// sample-api:begin
 			exchangeRate: expectedEndpointExchangeRate,
-			address:      expectedEndpointAddress,
 			// sample-api:end
 		},
 	}
@@ -380,7 +378,6 @@ func mockLoader(tb testing.TB) Loader {
 			ConsumerQueue: expectedEndpointConsumerQueue,
 			// sample-api:begin
 			ExchangeRate: expectedEndpointExchangeRate,
-			Address:      expectedEndpointAddress,
 			// sample-api:end
 		},
 		Server: Server{
@@ -503,7 +500,6 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("ENDPOINT_CONSUMER_QUEUE", expectedEndpointConsumerQueue)
 	// sample-api:begin
 	t.Setenv("ENDPOINT_EXCHANGE_RATE", expectedEndpointExchangeRate)
-	t.Setenv("ENDPOINT_ADDRESS", expectedEndpointAddress)
 	// sample-api:end
 	// Secure Cookie
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))

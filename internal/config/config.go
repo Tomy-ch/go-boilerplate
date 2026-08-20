@@ -169,7 +169,6 @@ func New() (*Config, error) {
 			consumerQueue: cfg.Endpoint.ConsumerQueue,
 			// sample-api:begin
 			exchangeRate: cfg.Endpoint.ExchangeRate,
-			address:      cfg.Endpoint.Address,
 			// sample-api:end
 		},
 	}, nil

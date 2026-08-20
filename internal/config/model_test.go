@@ -1552,22 +1552,6 @@ func TestEndpointConfig_ExchangeRate(t *testing.T) {
 	})
 }
 
-// sample-api:begin
-
-func TestEndpointConfig_Address(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("住所検索サービスのベースURLを取得できる", func(t *testing.T) {
-			t.Parallel()
-			endpoint := MockConfigForTest(t).endpoint
-			assert.Equal(t, expectedEndpointAddress, endpoint.Address())
-		})
-	})
-}
-
-// sample-api:end
-
 func TestNewEndpointConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

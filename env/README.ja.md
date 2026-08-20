@@ -246,8 +246,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |ENDPOINT_OUTBOX|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
 |ENDPOINT_OUTBOX_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |ENDPOINT_CONSUMER_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決（本番 AWS SQS）に委ねる。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
-|ENDPOINT_EXCHANGE_RATE|為替レートサービスのベースURL|string||サンプルAPI。空はこの機能を使わないことを表し、当該エンドポイントは 503 を返します。サンプルAPI削除時に一緒に消えます|
-|ENDPOINT_ADDRESS|郵便番号から住所を引くサービスのベースURL|string|`https://zipcloud.ibsnet.co.jp`|サンプルAPI。サンプルAPI削除時に一緒に消えます|
+|ENDPOINT_EXCHANGE_RATE|為替レートサービスのベースURL|string||サンプルAPI。空はこの機能を使わないことを表し、当該エンドポイントは 503 を返します。**環境ごとの値**: 検査が立てる疑似サービスを指すのは `dast` だけで、これにより検査が 5xx を常態として学習しません。サンプルAPI削除時に一緒に消えます|
 
 ## 補足
 

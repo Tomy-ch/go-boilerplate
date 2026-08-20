@@ -153,7 +153,6 @@ func TestMockConfigForTest(t *testing.T) {
 					consumerQueue: expectedEndpointConsumerQueue,
 					// sample-api:begin
 					exchangeRate: expectedEndpointExchangeRate,
-					address:      expectedEndpointAddress,
 					// sample-api:end
 				},
 			}
@@ -223,7 +222,6 @@ func Test_mockLoader(t *testing.T) {
 					ConsumerQueue: expectedEndpointConsumerQueue,
 					// sample-api:begin
 					ExchangeRate: expectedEndpointExchangeRate,
-					Address:      expectedEndpointAddress,
 					// sample-api:end
 				},
 				Database: Database{

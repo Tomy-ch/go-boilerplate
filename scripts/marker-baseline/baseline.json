@@ -1,7 +1,7 @@
 {
   ".claude/agents/drift-detector-glossary.md": 1,
   ".codex/agents/drift-detector-glossary.toml": 1,
-  ".github/workflows/zap-api-scan.yaml": 10,
+  ".github/workflows/zap-api-scan.yaml": 8,
   ".gitleaksignore": 2,
   ".makefiles/github/operation/setup-repository.mk": 7,
   ".makefiles/markdown/lint.mk": 10,
@@ -54,7 +54,6 @@
   "internal/config/config_testing_mock.go": 8,
   "internal/config/config.go": 2,
   "internal/config/envspec.go": 2,
-  "internal/config/model_test.go": 2,
   "internal/config/model.go": 4,
   "internal/controller/job/README.ja.md": 5,
   "internal/controller/job/README.md": 5,

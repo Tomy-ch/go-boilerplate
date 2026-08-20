@@ -569,7 +569,6 @@ type EndpointConfig struct {
 	consumerQueue string
 	// sample-api:begin
 	exchangeRate string
-	address      string
 	// sample-api:end
 }
 
@@ -598,8 +597,5 @@ func (e *EndpointConfig) ConsumerQueue() string { return e.consumerQueue }
 
 // ExchangeRate は、外部為替レートサービスのベース URL を返します。空ならこの機能を使いません。
 func (e *EndpointConfig) ExchangeRate() string { return e.exchangeRate }
-
-// Address は、郵便番号から住所を引く外部サービスのベース URL を返します。
-func (e *EndpointConfig) Address() string { return e.address }
 
 // sample-api:end
