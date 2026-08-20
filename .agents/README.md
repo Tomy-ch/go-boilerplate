@@ -45,6 +45,13 @@ One subdirectory per artifact domain, named after the skill family that owns it.
 - `glossary-drift/` — the exclusions the glossary-drift detector honors: where a business term
   appearing outside `docs/spec/` is knowingly not a finding yet. Owned by
   `.claude/agents/drift-detector-glossary.md`.
+- `graphify/` — which extraction prompt produced the committed knowledge-graph artifacts. graphify
+  namespaces its semantic cache by a fingerprint of that prompt, and the prompt itself ships with the
+  tool into an assistant's skill directory — outside this repository, replaced on upgrade. Committing
+  the cache without recording the fingerprint would leave an artifact whose validity rests on an
+  unversioned file, which is how a cache baked by a different prompt variant goes unnoticed. This is
+  a pin rather than a ledger, and it stays here rather than beside a manifest because graphify
+  declares none.
 - `closed-loop/` — the configuration the AI-feedback closed loop reads: per-skill usage class and
   opportunity predicate, and which comment authors are machines. The loop's *data* is not here — it
   lives in the issue tracker, per [ADR-0009](../docs/adr/0009-long-running-agent-state.md).
