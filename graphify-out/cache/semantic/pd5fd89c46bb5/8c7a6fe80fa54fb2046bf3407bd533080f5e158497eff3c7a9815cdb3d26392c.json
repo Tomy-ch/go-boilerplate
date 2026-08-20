@@ -1,0 +1,1 @@
+{"nodes": [{"id": "_github_workflows_checkov_checkov_scan", "label": "Checkov Scan", "file_type": "document", "source_file": ".github/workflows/checkov.yaml", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

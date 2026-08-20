@@ -100,6 +100,9 @@ jobs:
 
       # Generated, vendored, test-only, and local-development-only files are outside
       # the deployed application. --base-path keeps SARIF locations repository-relative.
+      # graphify-out is in that set: it is the emitted knowledge graph, and its node ids and
+      # manifest hashes trip rules that are about source code (a hash recorded as data is not a
+      # hash the application computes). The code it was built from stays in scope.
       #
       # Two rules are switched off by id, which the rest of the scanners here never do —
       # they pin an exception to a path so a new file still trips it. DevSkim has no such
@@ -125,7 +128,7 @@ jobs:
             --file-format sarif \
             --base-path . \
             --ignore-rule-ids 'DS162092,DS176209' \
-            --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/*_test.go,**/*.test.ts,**/*.spec.ts,**/pnpm-lock.yaml,**/package-lock.json,**/openapi.gen.yaml,**/.agents/**,**/docs/openapi/**,**/docs/coverage/**,**/docs/db-schema/**,**/docs/godoc/**,**/docs/portal/docs.json,**/docs/portal/guides/**,**/docker-compose.attach.yaml'
+            --ignore-globs '**/.git/**,**/bin/**,**/node_modules/**,**/vendor/**,**/dist/**,**/coverage/**,**/src/generated/**,**/*.gen.go,**/*.sql.go,**/*_mock.go,**/*_test.go,**/*.test.ts,**/*.spec.ts,**/pnpm-lock.yaml,**/package-lock.json,**/openapi.gen.yaml,**/.agents/**,**/docs/openapi/**,**/docs/coverage/**,**/docs/db-schema/**,**/docs/godoc/**,**/docs/portal/docs.json,**/docs/portal/guides/**,**/docker-compose.attach.yaml,**/graphify-out/**'
         shell: bash
 
       - name: Create DevSkim summary (Markdown)

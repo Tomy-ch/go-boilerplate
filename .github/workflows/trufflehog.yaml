@@ -61,6 +61,15 @@ jobs:
           # leaked credential is actually usable.
           args=(git "file://${PWD}" --results=verified --json --no-update --no-color --fail)
 
+          # graphify-out/ is the knowledge graph: node ids are derived from the identifiers they
+          # describe, so a Go test named Test_lockSerializesConcurrentCartUpdates becomes an id
+          # beginning `..._test_test_...`, which the Lob detector reads as a `test_`-prefixed key
+          # and its verifier accepts. Twelve of these are already in the graph and every one is a
+          # node id, not a credential. Nothing under this path is hand-written, so a real secret
+          # cannot originate here — it would have to be in the source the graph was built from,
+          # which this scan still covers.
+          args+=(--exclude-globs 'graphify-out/**')
+
           # pull_request: scan only the commits the PR adds on top of its base.
           # schedule / workflow_dispatch: no --since-commit, i.e. scan the whole history.
           if [ -n "${PR_BASE_SHA}" ]; then

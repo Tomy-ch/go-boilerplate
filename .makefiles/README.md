@@ -17,6 +17,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/python` : PyPI tool lockfile generation
+- `.makefiles/graphify` : Knowledge-graph export / tracked-artifact portability check
 - `.makefiles/docs` : Portal / Tool information documentation generation
 - `.makefiles/gen` : Batch execution of various generation processes
 - `.makefiles/github` : GitHub initialization / Release / Labels / Rule configuration
@@ -439,6 +440,50 @@ These targets regenerate the lockfiles; nothing installs from a `.in` file direc
 | --- | --- | --- |
 | `make py-lock` | Recompiles every `python/*.txt` from its `python/*.in`. | Invokes `make py-lock-ci` inside the `python_tool_runner` container. Run it after changing a pin, and commit both files. |
 | `make py-lock-ci` | Runs `uv pip compile --generate-hashes --universal` per declaration, resolving against the Python version `mise.toml` declares. | CI target |
+
+## `.makefiles/graphify` group
+
+[graphify](https://github.com/graphify/graphify) turns the repository into a knowledge graph under
+`graphify-out/`. That directory mixes two kinds of file: artifacts that mean the same thing in any
+checkout, and state that only means something on the machine that produced it — the extraction cache
+builds node IDs from the paths it was handed, so an absolute run bakes the host's user name into
+them. `.gitignore` therefore whitelists the artifacts rather than listing what to ignore, and these
+targets keep the two apart.
+
+The semantic cache is the one part of `cache/` that is shared: its keys are content hashes, so it
+saves re-running LLM extraction on a full rebuild. What it is *not* keyed by is the extraction prompt
+that produced its contents. That prompt ships with graphify, so running the tool from the
+`python_tool_runner` image is what makes it a property of `python/graphify.in` rather than of
+whoever happened to run the build; [`.agents/graphify/spec-pin.toml`](../.agents/graphify/spec-pin.toml)
+records the resulting fingerprint so CI can check a committed cache without installing graphify at
+all, and `graphify-check` refuses one baked by anything else.
+
+The build splits along what needs a model, and the two halves are produced in different places.
+`graphify update` re-extracts changed code with tree-sitter, is deterministic, and runs unattended on
+the release line (`graphify-sync.yaml`). Semantic extraction over docs needs a model and is driven by
+an assistant, so it is manual: dispatch the `Graphify Extract` workflow, which is the canonical route
+and runs on the repository's own token.
+
+Running it locally instead is the escape hatch, not the default — the extraction is `/graphify
+--update` in your own assistant session, so it spends *your* plan quota rather than the project's,
+and there is deliberately no make target for it because make cannot invoke an assistant command. A
+local run refreshes your working copy only: `graphify-check BASE=<ref>` rejects a feature branch that
+carries the output, so the shared graph still comes from the release line. The manifest keeps an `ast_hash` and a `semantic_hash`
+per file precisely so the deterministic half can run as often as it likes without stamping the
+semantic side — pending doc work accumulates rather than being masked. `make graphify-pending`
+reads that accumulation and reports it in changed lines rather than file count, because a typo fix
+and a rewritten ADR are not the same amount of work to re-extract.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make graphify-update` | Re-extracts the code files whose content changed into `graph.json`. Deterministic and needs no model. | Invokes `make graphify-update-ci` inside the `python_tool_runner` container. The graph is updated on the release line by `graphify-sync.yaml`; locally this keeps your own working copy current. |
+| `make graphify-export` | Converts `graphify-out/graph.json` into the deterministic `nodes.json` / `edges.json` / `metadata.json` triple. | Invokes `make graphify-export-ci` inside the `go_tool_runner` container. |
+| `make graphify-check` | Verifies that nothing outside the whitelist is tracked, that no tracked artifact carries an absolute path from the machine that produced it, and that the tracked semantic cache belongs to the extraction prompt `.agents/graphify/spec-pin.toml` pins. | Runs on the host: the subject is the git index, not a toolchain. Called from the `pre-commit` hook and the `Graphify Check` workflow. |
+| `make graphify-check SPEC=<path>` | Also fingerprints the given `extraction-spec.md` and fails when it differs from the pin. | Run before an extraction. The prompt lives in the assistant's skill directory, which CI cannot see, so this form is local only. |
+| `make graphify-check BASE=<ref>` | Also fails when the diff against `<ref>` touches the output directory. | Used by the pull-request gate: the graph is a single blob that conflicts between concurrent branches, so its updates stay on the release line. |
+| `make graphify-pending` | Reports how much semantic extraction is waiting: which documents changed since the last extraction, and by how many lines. | Reports only, never fails. The threshold is `GRAPHIFY_PENDING_THRESHOLD` (default 3000 changed lines, about 3% of the ~92,500-line document corpus) and exists to inform the decision to run `/graphify --update`, which needs a model no workflow here can start. The count and the per-file breakdown are printed on every run regardless, so a small but consequential rewrite is still visible below the threshold. |
+| `make graphify-update-ci` | Runs `graphify update .` directly. | CI target. The scan root is passed explicitly because graphify would otherwise recover it from `graphify-out/.graphify_root`, which holds a host path and is not tracked. |
+| `make graphify-export-ci` | Runs the export directly with `go run ./scripts/graphify-export`. | CI target |
 
 ## `.makefiles/docs` group
 

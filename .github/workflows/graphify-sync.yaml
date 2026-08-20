@@ -1,0 +1,154 @@
+name: Graphify Sync
+
+# The knowledge graph is a single 450k-line blob that is rewritten whenever any source file moves,
+# so two feature branches updating it always conflict — and the usual escape hatch for a generated
+# artifact, regenerating from the source of truth, does not apply here because the semantic half
+# needs a model. Updates are therefore kept on the release line, and this job owns the half that
+# needs no model: `graphify update` re-extracts changed code with tree-sitter, deterministically.
+#
+# The semantic half (docs / papers / images) needs a model and lives in `graphify-extract.yaml`,
+# which is manual and runs an assistant with write access. Keeping the two apart means this job —
+# which fires on every release push — never carries that permission decision. What this job does do
+# is measure the backlog: the manifest tracks `semantic_hash` separately, and `graphify update`
+# deliberately leaves it alone for changed files, so pending semantic work accumulates visibly
+# rather than being masked.
+on:
+  push:
+    branches:
+      - release/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  graphify-sync:
+    if: github.actor != 'github-actions[bot]' && !startsWith(github.ref_name, 'auto/graphify-update/') && !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: uv
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # --only-binary :all: refuses a source distribution, so no package here can run a
+      # setup script during install. The lockfile resolves entirely from wheels, so this
+      # takes nothing away; a pin that stops doing so fails the step instead of quietly
+      # executing arbitrary code with the runner's token in scope.
+      - name: Install graphify
+        run: |
+          set -euo pipefail
+          python_version="$(mise config get tools.python)"
+          uv venv --python "${python_version}" .venv
+          uv pip install --only-binary :all: --require-hashes --no-cache -r python/graphify.txt
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Re-extract changed code
+        run: make graphify-update-ci
+
+      - name: Re-export the deterministic JSON triple
+        run: make graphify-export-ci
+
+      - name: Verify the refreshed artifacts stay portable
+        run: make graphify-check
+
+      # `claude.yaml` is not an alternative route: it is comment-triggered and holds `contents: read`.
+      - name: Measure pending semantic extraction
+        run: make graphify-pending GRAPHIFY_PENDING_ARGS=-github
+
+      - name: Detect changes
+        id: diff
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PR
+        if: steps.diff.outputs.has_diff == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          commit-message: "chore(graphify): sync code graph [skip ci]"
+          branch: auto/graphify-update/${{ github.ref_name }}
+          base: ${{ github.ref_name }}
+          title: "chore(graphify): sync code graph"
+          body: |
+            ## 🤖 Auto-generated Graph Sync
+
+            This PR contains only the **deterministic half** of the knowledge graph.
+
+            ### 🔗 What produced it
+            `graphify update` re-extracted the code files whose content changed, using tree-sitter.
+            No model was involved, and the result is reproducible from the same commit.
+
+            ### 📦 Included outputs
+            - `graphify-out/graph.json` (+ `GRAPH_REPORT.md`)
+            - `graphify-out/nodes.json` / `edges.json` / `metadata.json` (deterministic export)
+            - `graphify-out/manifest.json` — note that its `mtime` values are the runner's, so the
+              whole file changes on every sync even where the content hashes did not
+
+            ### ⚠️ Not included
+            Semantic extraction over docs / papers / images. That half needs a model, is driven by
+            an assistant, and is tracked separately through the manifest's `semantic_hash` — which
+            `graphify update` leaves untouched for changed files, so the pending work is not masked.

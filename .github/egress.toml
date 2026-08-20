@@ -193,6 +193,22 @@ classes = ["image"]
 [job."go-test.yaml:go-test"]
 classes = ["image", "db"]
 
+[job."graphify-check.yaml:graphify-check"]
+classes = ["mise"]
+
+[job."graphify-extract.yaml:graphify-extract"]
+classes = ["mise"]
+extra = [
+  "api.anthropic.com:443",
+  "*.anthropic.com:443",
+  "statsig.anthropic.com:443",
+  "sentry.io:443",
+  "*.ingest.sentry.io:443",
+]
+
+[job."graphify-sync.yaml:graphify-sync"]
+classes = ["mise"]
+
 [job."grype.yaml:grype"]
 classes = ["mise"]
 extra = [

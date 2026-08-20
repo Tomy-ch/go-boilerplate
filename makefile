@@ -61,6 +61,8 @@ include .makefiles/node/scripts.mk
 include .makefiles/agents/closed-loop.mk
 # Python関連
 include .makefiles/python/lock.mk
+# Graphify関連
+include .makefiles/graphify/export.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
@@ -82,4 +84,3 @@ include .makefiles/gen/gen.mk
 .PHONY: help
 help:
 	@$(TSX) scripts/make-help
-

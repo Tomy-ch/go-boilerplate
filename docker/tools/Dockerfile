@@ -198,5 +198,18 @@ COPY python/sqlfluff.txt python/
 RUN uv pip install --system --only-binary :all: --require-hashes --no-cache -r python/sqlfluff.txt \
     && sqlfluff --version
 
+# graphify（知識グラフ）。lockfile を分けてあるのは、片方の版を動かしたときに
+# もう片方の install レイヤまで作り直させないため。
+#
+# ここに入れるのは速度のためではなく再現性のためである。graphify の意味論抽出は
+# 同梱の抽出プロンプトで結果が変わり、キャッシュの名前空間もそのプロンプトの
+# fingerprint で決まる（.agents/graphify/spec-pin.toml）。プロンプトはツールに同梱されて
+# 配られるので、ホストに入れた graphify を使うと「どのプロンプトで焼いたか」が
+# マシンごとに変わる。このイメージ経由なら python/graphify.in が版を、graphify.txt の
+# sha256 が中身を決める。
+COPY python/graphify.txt python/
+RUN uv pip install --system --only-binary :all: --require-hashes --no-cache -r python/graphify.txt \
+    && graphify --version
+
 ENTRYPOINT []
 CMD []

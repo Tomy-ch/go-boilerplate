@@ -67,6 +67,17 @@ pre-commit:
         - "docker-compose*.yaml"
         - "docker/images-pin.toml"
       run: make pin-images-check
+    # マシン固有の絶対パスが入った commit は、編集でも取り消せない形で公開リポジトリに残る。
+    # graphify の出力そのものに加えて、追跡範囲を決める .gitignore と判定側を触ったときも起こす。
+    graphify-check:
+      glob:
+        - "graphify-out/*"
+        - ".gitignore"
+        - ".agents/graphify/spec-pin.toml"
+        - "python/graphify.*"
+        - "scripts/graphify-check/*.go"
+        - ".makefiles/graphify/export.mk"
+      run: make graphify-check
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
