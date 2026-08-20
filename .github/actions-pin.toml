@@ -5,6 +5,7 @@
 "actions/attest-sbom@v4" = "c604332985a26aa8cf1bdc465b92731239ec6b9e"
 "actions/cache@v6.1.0" = "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
 "actions/checkout@v7.0.1" = "3d3c42e5aac5ba805825da76410c181273ba90b1"
+"actions/create-github-app-token@v3" = "bcd2ba49218906704ab6c1aa796996da409d3eb1"
 "actions/dependency-review-action@v5.0.0" = "a1d282b36b6f3519aa1f3fc636f609c47dddb294"
 "actions/deploy-pages@v5" = "cd2ce8fcbc39b97be8ca5fce6e763baed58fa128"
 "actions/download-artifact@v7" = "37930b1c2abaa49bbe596cd826c3c89aef350131"
