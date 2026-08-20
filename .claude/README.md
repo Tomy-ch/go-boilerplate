@@ -59,22 +59,28 @@ bash .claude/scripts/bootstrap-external-skills.sh
 
 Three properties differ from the plugins above and are worth knowing before running it:
 
-- **User scope, not project scope.** The skill is written to `~/.claude/skills/graphify/` (and
-  `~/.codex/skills/graphify/`), so a trusted clone does *not* carry it — every machine runs the
-  bootstrap once. The version is pinned at project scope in `python/graphify.in`, and the script
-  reads that pin rather than choosing one.
-- **The installer also writes `~/.claude/CLAUDE.md`** (user-global memory) to register the
-  `/graphify` trigger. It does not touch this repository's `CLAUDE.md`.
-- **`graphify uninstall` leaves the Codex copy behind** — remove
-  `~/.codex/skills/graphify/` by hand. `--purge` additionally deletes `graphify-out/`.
+- **A dependency, not a reviewed file.** The skill lands at `.claude/skills/graphify/` and
+  `.codex/skills/graphify/` inside the checkout and is gitignored, the way `vendor/` and
+  `node_modules/` hold a dependency's own files: built from a pin, re-made per machine, never
+  reviewed. A trusted clone does *not* carry it — every machine runs the bootstrap once. The pin is
+  `python/graphify.in`, and the script reads it rather than choosing a version.
+- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter, the
+  `SKILL.ja.md` pair, references that resolve — assume a skill this repository writes. This one is
+  written upstream and refers to artifacts that only exist after a run, so it is declared in
+  `EXTERNAL_SKILLS` (`scripts/skill-lint/checks.ts`) and skipped. Holding it to rules nobody here
+  can satisfy would only teach readers to ignore the gate.
+- **`graphify uninstall` does not reach it.** The uninstaller looks in the home directory; remove
+  the two directories above by hand. `--purge` additionally deletes `graphify-out/`.
 
-Install only through `install --platform <name>`, which is what the bootstrap runs. The
-similarly named `<name> install` subcommands are a different thing: `graphify claude install`
-writes this repository's `CLAUDE.md`, `graphify codex install` (also `opencode` / `aider` /
-`kilo`) writes `AGENTS.md`, and `graphify hook install` adds git hooks and a merge driver — all
-project scope, and `AGENTS.md` / `CLAUDE.md` are hard-protected by `AGENTS.md`. Those forms are
-routed to `ask` in `settings.json`, so an agent reading `graphify --help` surfaces them for a human
-decision instead of running them.
+**The bootstrap never lets the installer write into the checkout.** Every mode the tool offers
+writes something this repository keeps hard-protected: `install --project` appends a `## graphify`
+section to `CLAUDE.md` — a symlink to `AGENTS.md` here — and registers PreToolUse hooks in
+`.claude/settings.json`; the default user-scope mode edits `~/.claude/CLAUDE.md`; and the
+similarly named `<name> install` subcommands (`graphify claude install`, `graphify codex install`,
+also `opencode` / `aider` / `kilo`) plus `graphify hook install` write `AGENTS.md`, git hooks and a
+merge driver. So the bootstrap runs the install against a throwaway `HOME` and copies out only the
+skill directory. Those subcommands are additionally routed to `ask` in `settings.json`, so an agent
+reading `graphify --help` surfaces them for a human decision instead of running them.
 
 The graph is a derived artifact and is gitignored, so build it locally. `update` and the query
 commands are AST-only and need no API key; the docs / PDF / image extraction, `--mode deep`

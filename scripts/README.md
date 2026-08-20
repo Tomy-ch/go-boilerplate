@@ -77,6 +77,15 @@ Agent roles have no such escape hatch: their parity is unconditional. No agent h
 deliberately one-sided, so an exception map for them would carry no entries — add the mechanism
 when a real case appears, not before.
 
+A skill this repository does not write is excluded from every check above through the
+`EXTERNAL_SKILLS` map in `skill-lint/checks.ts`, also with a reason. Those skills are installed from
+a pinned package by [`.claude/scripts/bootstrap-external-skills.sh`](../.claude/README.md) and are
+gitignored, so their frontmatter, their translation pair, and the paths they reference are all
+decided upstream — most of those paths are artifacts that exist only after a run. Checking them
+would produce findings nobody here can act on, and a gate that reports unfixable findings stops
+being read. Absence from a checkout is normal for these entries, which is why they carry no
+staleness check of their own.
+
 ### Versioning
 
 |Script|Description|Invoked By|
