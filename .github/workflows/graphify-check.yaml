@@ -82,7 +82,8 @@ jobs:
           cache: true
 
       # The auto-sync branch is the one place a change to the output is expected, so it is the one
-      # place BASE is not passed. Everywhere else a feature branch carrying the graph is the finding.
+      # place BASE is not passed. Everywhere else a feature branch carrying the graph is the finding,
+      # except where the base has no output yet — that case the tool recognizes as the introduction.
       - name: Check tracked graphify artifacts carry no machine-local paths
         id: graphify
         shell: bash
