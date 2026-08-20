@@ -31,7 +31,7 @@ gh api /repos/{owner}/{repo}/rulesets/{ruleset_id}
 | `pull_request` | 対象ブランチへの変更は PR 経由に限る。承認 1 件、push 時に既存の承認を破棄、最終 push 後の再承認、全レビュースレッドの解決、CODEOWNERS レビュー、マージ方法は merge commit か squash に限定（rebase merge を除外）。 |
 | `copilot_code_review` | Copilot が各 PR を自動レビューする。push のたび、および draft に対しても実行する。 |
 | `code_quality` | GitHub の code quality ルールを `errors` 深刻度でブロックする。 |
-| `required_status_checks` | guard を持つ 13 件のチェックが成功してからマージする。 |
+| `required_status_checks` | 13 件のチェックが成功してからマージする。 |
 
 ### 単独メンテナのリポジトリに `pull_request` を適用する場合
 
@@ -55,9 +55,12 @@ GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に*
 落ちず、いずれも checkout だけで再現します。継承した状態を報告するチェックや、runner の外のサービスに
 依存するチェックはこの一覧に入れません。
 
-それぞれの `*-guard.yaml` が、path または branch filter で本体 workflow が skip されたときも同じ
-context を報告します。これが無いと、開始されない check を PR が永久に待つことになります。
-`../workflows/README.md` の「required check の空振り guard」節を参照してください。
+これらの workflow はいずれも `pull_request` トリガーにフィルタを持ちません。`paths:` や
+`branches:` で除外された pull request では run が 1 件も起動せず、GitHub は報告されなかった
+context を「該当しない」とは読まずに待ち続けるため、その pull request は永久にマージ可能に
+なりません。起動条件は job の `if:` に置きます。skip された job は `skipped` を報告し、required
+check はそれを成功として数えます。`make required-check-lint` がこの点を検査します。
+`../workflows/README.md` の「required check は全 pull request で報告される」節を参照してください。
 
 ## labels.json
 
