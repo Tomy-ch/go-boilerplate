@@ -3,7 +3,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,12 +10,40 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
 	schemaVersion    = "1.0.0"
 	generatorName    = "go-boilerplate/graphify-export"
 	generatorVersion = "1.0.0"
+
+	// 書き出す JSON は追跡対象の生成物で、他の checkout が読むだけなので所有者以外は読み取りのみ。
+	artifactFileMode = 0o644
+	// 出力ディレクトリは所有者だけが書き、その他には開かない。
+	artifactDirMode = 0o750
+)
+
+var (
+	// errTrailingJSON は、graph.json に文書が 2 つ以上並んでいることを表す。
+	errTrailingJSON = xerrors.New("trailing JSON value in the graphify graph")
+	// errAmbiguousEdges は、links と edges の双方に辺があり、どちらが正か決められないことを表す。
+	errAmbiguousEdges = xerrors.New("both links and edges are present")
+	// errNoNodes は、グラフに node が 1 件も無いことを表す。
+	errNoNodes = xerrors.New("the graph has no nodes")
+	// errDuplicateNodeID は、node ID が重複していることを表す。
+	errDuplicateNodeID = xerrors.New("duplicate node id")
+	// errDanglingEdge は、辺の端点に対応する node が無いことを表す。
+	errDanglingEdge = xerrors.New("edge endpoint has no matching node")
+	// errInvalidNode は、node の属性を取り出せないことを表す。
+	errInvalidNode = xerrors.New("invalid node attribute")
+	// errInvalidEdge は、辺の属性を取り出せないことを表す。
+	errInvalidEdge = xerrors.New("invalid edge attribute")
+	// errNotString は、属性が string ではないことを表す。
+	errNotString = xerrors.New("attribute is not a string")
+	// errEmptyOutputDir は、書き出し先が空文字であることを表す。
+	errEmptyOutputDir = xerrors.New("output directory is empty")
 )
 
 type sourceGraph struct {
@@ -27,8 +54,8 @@ type sourceGraph struct {
 	Links        []map[string]any `json:"links"`
 	Edges        []map[string]any `json:"edges"`
 	Hyperedges   []map[string]any `json:"hyperedges"`
-	InputTokens  json.Number      `json:"input_tokens"`
-	OutputTokens json.Number      `json:"output_tokens"`
+	InputTokens  json.Number      `json:"input_tokens"`  //nolint:tagliatelle // graphify が書く外部スキーマ
+	OutputTokens json.Number      `json:"output_tokens"` //nolint:tagliatelle // graphify が書く外部スキーマ
 }
 
 type semanticModel struct {
@@ -41,7 +68,7 @@ type node struct {
 	ID         string         `json:"id"`
 	Kind       string         `json:"kind"`
 	Name       string         `json:"name"`
-	Location   *location      `json:"source_location,omitempty"`
+	Location   *location      `json:"source_location,omitempty"` //nolint:tagliatelle // 出力する交換フォーマットの規定
 	Attributes map[string]any `json:"attributes,omitempty"`
 }
 
@@ -49,7 +76,7 @@ type edge struct {
 	Source     string         `json:"source"`
 	Target     string         `json:"target"`
 	Relation   string         `json:"relation"`
-	Location   *location      `json:"source_location,omitempty"`
+	Location   *location      `json:"source_location,omitempty"` //nolint:tagliatelle // 出力する交換フォーマットの規定
 	Attributes map[string]any `json:"attributes,omitempty"`
 	sortKey    string
 }
@@ -60,12 +87,12 @@ type location struct {
 }
 
 type metadata struct {
-	SchemaVersion    string         `json:"schema_version"`
+	SchemaVersion    string         `json:"schema_version"` //nolint:tagliatelle // 出力する交換フォーマットの規定
 	Generator        generator      `json:"generator"`
-	AnalysisMode     string         `json:"analysis_mode"`
+	AnalysisMode     string         `json:"analysis_mode"` //nolint:tagliatelle // 出力する交換フォーマットの規定
 	Source           sourceMetadata `json:"source"`
 	Counts           counts         `json:"counts"`
-	SourceAttributes map[string]any `json:"source_attributes,omitempty"`
+	SourceAttributes map[string]any `json:"source_attributes,omitempty"` //nolint:tagliatelle // 出力する交換フォーマットの規定
 }
 
 type generator struct {
@@ -85,12 +112,12 @@ type counts struct {
 }
 
 type nodeDocument struct {
-	SchemaVersion string `json:"schema_version"`
+	SchemaVersion string `json:"schema_version"` //nolint:tagliatelle // 出力する交換フォーマットの規定
 	Nodes         []node `json:"nodes"`
 }
 
 type edgeDocument struct {
-	SchemaVersion string `json:"schema_version"`
+	SchemaVersion string `json:"schema_version"` //nolint:tagliatelle // 出力する交換フォーマットの規定
 	Edges         []edge `json:"edges"`
 }
 
@@ -104,11 +131,12 @@ func main() {
 	log.SetFlags(0)
 	inputPath := filepath.Join("graphify-out", "graph.json")
 	outputDir := "graphify-out"
-	if len(os.Args) > 1 {
-		inputPath = os.Args[1]
+	args := os.Args[1:]
+	if len(args) > 0 {
+		inputPath = args[0]
 	}
-	if len(os.Args) > 2 {
-		outputDir = os.Args[2]
+	if len(args) > 1 {
+		outputDir = args[1]
 	}
 
 	if err := run(inputPath, outputDir); err != nil {
@@ -119,22 +147,23 @@ func main() {
 func run(inputPath, outputDir string) error {
 	source, err := loadGraph(inputPath)
 	if err != nil {
-		return fmt.Errorf("Graphify graph の読み込み: %w", err)
+		return xerrors.Wrap(err, "Graphify graph の読み込み")
 	}
 
 	model, err := normalize(source)
 	if err != nil {
-		return fmt.Errorf("semantic model の正規化: %w", err)
+		return xerrors.Wrap(err, "semantic model の正規化")
 	}
 
 	docs, err := marshalDocuments(model)
 	if err != nil {
-		return fmt.Errorf("JSON の生成: %w", err)
+		return xerrors.Wrap(err, "JSON の生成")
 	}
 	if err := writeDocuments(outputDir, docs); err != nil {
-		return fmt.Errorf("graphify-out への書き出し: %w", err)
+		return xerrors.Wrap(err, "graphify-out への書き出し")
 	}
 
+	//nolint:gosec // 出力先は開発者が指定するローカルパスで、ログの宛先も標準エラーのみ。
 	log.Printf("Graphify export complete: %d nodes, %d edges -> %s", len(model.Nodes), len(model.Edges), outputDir)
 
 	return nil
@@ -143,7 +172,7 @@ func run(inputPath, outputDir string) error {
 func loadGraph(path string) (sourceGraph, error) {
 	file, err := os.Open(path) //nolint:gosec // 開発者が指定したローカル生成物を読む CLI。
 	if err != nil {
-		return sourceGraph{}, fmt.Errorf("open %s: %w", path, err)
+		return sourceGraph{}, xerrors.Wrap(err, "open "+path)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -151,10 +180,10 @@ func loadGraph(path string) (sourceGraph, error) {
 	decoder.UseNumber()
 	var graph sourceGraph
 	if err := decoder.Decode(&graph); err != nil {
-		return sourceGraph{}, fmt.Errorf("decode %s: %w", path, err)
+		return sourceGraph{}, xerrors.Wrap(err, "decode "+path)
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return sourceGraph{}, fmt.Errorf("decode %s: trailing JSON value", path)
+	if err := decoder.Decode(&struct{}{}); !xerrors.Is(err, io.EOF) {
+		return sourceGraph{}, xerrors.Wrap(errTrailingJSON, "decode "+path)
 	}
 
 	return graph, nil
@@ -162,10 +191,10 @@ func loadGraph(path string) (sourceGraph, error) {
 
 func normalize(source sourceGraph) (semanticModel, error) {
 	if len(source.Links) > 0 && len(source.Edges) > 0 {
-		return semanticModel{}, errors.New("links と edges が同時に存在します")
+		return semanticModel{}, xerrors.Wrap(errAmbiguousEdges, "links と edges が同時に存在します")
 	}
 	if len(source.Nodes) == 0 {
-		return semanticModel{}, errors.New("node が1件もありません")
+		return semanticModel{}, xerrors.Wrap(errNoNodes, "node が1件もありません")
 	}
 
 	model := semanticModel{Nodes: make([]node, 0, len(source.Nodes))}
@@ -176,7 +205,7 @@ func normalize(source sourceGraph) (semanticModel, error) {
 			return semanticModel{}, err
 		}
 		if _, exists := nodeIDs[normalized.ID]; exists {
-			return semanticModel{}, fmt.Errorf("node ID %q が重複しています", normalized.ID)
+			return semanticModel{}, xerrors.Wrap(errDuplicateNodeID, fmt.Sprintf("node ID %q が重複しています", normalized.ID))
 		}
 		nodeIDs[normalized.ID] = struct{}{}
 		model.Nodes = append(model.Nodes, normalized)
@@ -193,10 +222,10 @@ func normalize(source sourceGraph) (semanticModel, error) {
 			return semanticModel{}, err
 		}
 		if _, exists := nodeIDs[normalized.Source]; !exists {
-			return semanticModel{}, fmt.Errorf("edge source %q に対応する node がありません", normalized.Source)
+			return semanticModel{}, xerrors.Wrap(errDanglingEdge, fmt.Sprintf("edge source %q に対応する node がありません", normalized.Source))
 		}
 		if _, exists := nodeIDs[normalized.Target]; !exists {
-			return semanticModel{}, fmt.Errorf("edge target %q に対応する node がありません", normalized.Target)
+			return semanticModel{}, xerrors.Wrap(errDanglingEdge, fmt.Sprintf("edge target %q に対応する node がありません", normalized.Target))
 		}
 		model.Edges = append(model.Edges, normalized)
 	}
@@ -211,32 +240,32 @@ func normalize(source sourceGraph) (semanticModel, error) {
 func normalizeNode(raw map[string]any) (node, error) {
 	id, err := preferredString(raw, "id")
 	if err != nil {
-		return node{}, fmt.Errorf("node id が不正です: %w", err)
+		return node{}, xerrors.Wrap(err, "node id が不正です")
 	}
 	if id == "" {
-		return node{}, errors.New("node id が不正です: 空文字です")
+		return node{}, xerrors.Wrap(errInvalidNode, "node id が不正です: 空文字です")
 	}
 	name, err := preferredString(raw, "label", "name")
 	if err != nil {
-		return node{}, fmt.Errorf("node %q の name が不正です: %w", id, err)
+		return node{}, xerrors.Wrap(err, fmt.Sprintf("node %q の name が不正です", id))
 	}
 	if name == "" {
 		name = id
 	}
 	kind, err := preferredString(raw, "file_type", "kind", "type")
 	if err != nil {
-		return node{}, fmt.Errorf("node %q の kind が不正です: %w", id, err)
+		return node{}, xerrors.Wrap(err, fmt.Sprintf("node %q の kind が不正です", id))
 	}
 	if kind == "" {
 		kind = "unknown"
 	}
 	file, err := preferredString(raw, "source_file")
 	if err != nil {
-		return node{}, fmt.Errorf("node %q の source_file が不正です: %w", id, err)
+		return node{}, xerrors.Wrap(err, fmt.Sprintf("node %q の source_file が不正です", id))
 	}
 	position, err := preferredString(raw, "source_location")
 	if err != nil {
-		return node{}, fmt.Errorf("node %q の source_location が不正です: %w", id, err)
+		return node{}, xerrors.Wrap(err, fmt.Sprintf("node %q の source_location が不正です", id))
 	}
 
 	return node{
@@ -253,32 +282,32 @@ func normalizeNode(raw map[string]any) (node, error) {
 func normalizeEdge(raw map[string]any) (edge, error) {
 	source, err := preferredString(raw, "source")
 	if err != nil {
-		return edge{}, fmt.Errorf("edge source が不正です: %w", err)
+		return edge{}, xerrors.Wrap(err, "edge source が不正です")
 	}
 	if source == "" {
-		return edge{}, errors.New("edge source が不正です: 空文字です")
+		return edge{}, xerrors.Wrap(errInvalidEdge, "edge source が不正です: 空文字です")
 	}
 	target, err := preferredString(raw, "target")
 	if err != nil {
-		return edge{}, fmt.Errorf("edge target が不正です: %w", err)
+		return edge{}, xerrors.Wrap(err, "edge target が不正です")
 	}
 	if target == "" {
-		return edge{}, errors.New("edge target が不正です: 空文字です")
+		return edge{}, xerrors.Wrap(errInvalidEdge, "edge target が不正です: 空文字です")
 	}
 	relation, err := preferredString(raw, "relation", "type", "kind")
 	if err != nil {
-		return edge{}, fmt.Errorf("edge %q -> %q の relation が不正です: %w", source, target, err)
+		return edge{}, xerrors.Wrap(err, fmt.Sprintf("edge %q -> %q の relation が不正です", source, target))
 	}
 	if relation == "" {
-		return edge{}, fmt.Errorf("edge %q -> %q の relation が不正です: 空文字です", source, target)
+		return edge{}, xerrors.Wrap(errInvalidEdge, fmt.Sprintf("edge %q -> %q の relation が不正です: 空文字です", source, target))
 	}
 	file, err := preferredString(raw, "source_file")
 	if err != nil {
-		return edge{}, fmt.Errorf("edge %q -> %q の source_file が不正です: %w", source, target, err)
+		return edge{}, xerrors.Wrap(err, fmt.Sprintf("edge %q -> %q の source_file が不正です", source, target))
 	}
 	position, err := preferredString(raw, "source_location")
 	if err != nil {
-		return edge{}, fmt.Errorf("edge %q -> %q の source_location が不正です: %w", source, target, err)
+		return edge{}, xerrors.Wrap(err, fmt.Sprintf("edge %q -> %q の source_location が不正です", source, target))
 	}
 
 	normalized := edge{
@@ -290,7 +319,7 @@ func normalizeEdge(raw map[string]any) (edge, error) {
 	}
 	encoded, err := json.Marshal(normalized)
 	if err != nil {
-		return edge{}, fmt.Errorf("edge %q -> %q の sort key: %w", source, target, err)
+		return edge{}, xerrors.Wrap(err, fmt.Sprintf("edge %q -> %q の sort key", source, target))
 	}
 	normalized.sortKey = string(encoded)
 
@@ -305,7 +334,7 @@ func preferredString(attributes map[string]any, keys ...string) (string, error) 
 		}
 		text, ok := value.(string)
 		if !ok {
-			return "", fmt.Errorf("%s は string ではありません", key)
+			return "", xerrors.Wrap(errNotString, key+" は string ではありません")
 		}
 
 		return text, nil
@@ -403,9 +432,9 @@ func marshalDocuments(model semanticModel) (documents, error) {
 
 func writeDocuments(outputDir string, docs documents) error {
 	if strings.TrimSpace(outputDir) == "" {
-		return errors.New("output directory が空です")
+		return xerrors.Wrap(errEmptyOutputDir, "output directory が空です")
 	}
-	if err := os.MkdirAll(outputDir, 0o750); err != nil {
+	if err := os.MkdirAll(outputDir, artifactDirMode); err != nil { //nolint:gosec // 開発者が指定したローカル生成物の出力先。
 		return err
 	}
 
@@ -415,8 +444,8 @@ func writeDocuments(outputDir string, docs documents) error {
 			return err
 		}
 		temporaryPath := temporary.Name()
-		defer func() { _ = os.Remove(temporaryPath) }()
-		if err := temporary.Chmod(0o644); err != nil {
+		defer func() { _ = os.Remove(temporaryPath) }() //nolint:gosec // 直前に自分で作った一時ファイルを畳む。
+		if err := temporary.Chmod(artifactFileMode); err != nil {
 			_ = temporary.Close()
 			return err
 		}
@@ -428,6 +457,7 @@ func writeDocuments(outputDir string, docs documents) error {
 			return err
 		}
 
+		//nolint:gosec // 開発者が指定したローカル生成物の出力先で、name は呼び出し側の固定値。
 		return os.Rename(temporaryPath, filepath.Join(outputDir, name))
 	}
 

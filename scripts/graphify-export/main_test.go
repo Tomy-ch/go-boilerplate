@@ -66,11 +66,11 @@ func Test_run(t *testing.T) {
 
 			require.NoError(t, run(input, output))
 
-			nodes, err := os.ReadFile(filepath.Join(output, "nodes.json"))
+			nodes, err := os.ReadFile(filepath.Join(output, "nodes.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
-			edges, err := os.ReadFile(filepath.Join(output, "edges.json"))
+			edges, err := os.ReadFile(filepath.Join(output, "edges.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
-			metadataBody, err := os.ReadFile(filepath.Join(output, "metadata.json"))
+			metadataBody, err := os.ReadFile(filepath.Join(output, "metadata.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
 			assert.Contains(t, string(nodes), `"id": "a"`)
 			assert.Contains(t, string(edges), `"relation": "references"`)
@@ -80,11 +80,11 @@ func Test_run(t *testing.T) {
 			firstEdges := append([]byte(nil), edges...)
 			firstMetadata := append([]byte(nil), metadataBody...)
 			require.NoError(t, run(input, output))
-			secondNodes, err := os.ReadFile(filepath.Join(output, "nodes.json"))
+			secondNodes, err := os.ReadFile(filepath.Join(output, "nodes.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
-			secondEdges, err := os.ReadFile(filepath.Join(output, "edges.json"))
+			secondEdges, err := os.ReadFile(filepath.Join(output, "edges.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
-			secondMetadata, err := os.ReadFile(filepath.Join(output, "metadata.json"))
+			secondMetadata, err := os.ReadFile(filepath.Join(output, "metadata.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
 			assert.Equal(t, firstNodes, secondNodes)
 			assert.Equal(t, firstEdges, secondEdges)
@@ -607,11 +607,11 @@ func Test_writeDocuments(t *testing.T) {
 
 			require.NoError(t, writeDocuments(output, docs))
 
-			nodes, err := os.ReadFile(filepath.Join(output, "nodes.json"))
+			nodes, err := os.ReadFile(filepath.Join(output, "nodes.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
-			edges, err := os.ReadFile(filepath.Join(output, "edges.json"))
+			edges, err := os.ReadFile(filepath.Join(output, "edges.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
-			metadataBody, err := os.ReadFile(filepath.Join(output, "metadata.json"))
+			metadataBody, err := os.ReadFile(filepath.Join(output, "metadata.json")) //nolint:gosec // テスト内で組み立てた一時パス
 			require.NoError(t, err)
 			assert.Equal(t, "nodes", string(nodes))
 			assert.Equal(t, "edges", string(edges))
