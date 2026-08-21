@@ -30,7 +30,7 @@ Infrastructure["Infrastructure (authz implementation)"] -. implements .-> Bounda
 |Directory|Purpose|
 |---|---|
 |`allowall`|Allow-all stub for local / CI / test (grants everything)|
-|`userrole`|Sample `user_roles`-based RBAC Authorizer for production-like environments (admin ⇒ allow; otherwise resource-owner only). Part of the `user` sample and removed with it.  <!-- sample-api:line --> |
+|`userrole`|Sample `user_roles`-based RBAC Authorizer for production-like environments (admin ⇒ allow; otherwise resource-owner only). Part of the `user` sample and removed with it.<!-- sample-api:line -->|
 
 A real deployment replaces these with its own RBAC / external policy-engine implementation.
 

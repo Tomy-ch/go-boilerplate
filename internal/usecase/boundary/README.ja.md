@@ -40,17 +40,17 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 
 |パッケージ|interface|説明|実装場所|
 |---|---|---|---|
-|`address`|`Gateway`|外部の住所検索サービスへの意味的ゲートウェイ（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/address/`  <!-- sample-api:line --> |
+|`address`|`Gateway`|外部の住所検索サービスへの意味的ゲートウェイ（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/address/`<!-- sample-api:line -->|
 |`auth`|`Authenticator`|トークンから認証情報（`Authn`）を取得|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|認証主体がリソースに対し操作を実行してよいか判定|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|現在時刻の取得|`internal/infrastructure/system/`|
-|`exchangerate`|`Gateway`|外部為替レート取得サービスへの意味的 gateway（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/exchangerate/`  <!-- sample-api:line --> |
+|`exchangerate`|`Gateway`|外部為替レート取得サービスへの意味的 gateway（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/exchangerate/`<!-- sample-api:line -->|
 |`idempotency`|`Store`|冪等性キーの永続化境界（claim / replay / 競合判定）|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
 |`objectstorage`|`Storage`|実体非依存のオブジェクトストレージ境界（キー指定でオブジェクトを `Put` / `List` / `Delete` する）|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
-|`token`|`Generator`|推測できない不透明なトークン文字列を生成する|`internal/infrastructure/token/`  <!-- sample-api:line --> |
+|`token`|`Generator`|推測できない不透明なトークン文字列を生成する|`internal/infrastructure/token/`<!-- sample-api:line -->|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|broker 非依存の worker seam（pull-ack）|`internal/infrastructure/queue/sqs/`|
 

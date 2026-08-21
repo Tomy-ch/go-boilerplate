@@ -40,17 +40,17 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 
 |Package|Interface|Description|Implementation|
 |---|---|---|---|
-|`address`|`Gateway`|Semantic gateway to an external postal-address lookup service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/address/`  <!-- sample-api:line --> |
+|`address`|`Gateway`|Semantic gateway to an external postal-address lookup service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/address/`<!-- sample-api:line -->|
 |`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|Decide whether a subject may perform an action on a resource|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
-|`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`  <!-- sample-api:line --> |
+|`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`<!-- sample-api:line -->|
 |`idempotency`|`Store`|Idempotency-key persistence boundary (claim / replay / conflict)|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
 |`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` / `List` / `Delete` objects by key)|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
-|`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`  <!-- sample-api:line --> |
+|`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`<!-- sample-api:line -->|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|
 

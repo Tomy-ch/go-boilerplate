@@ -32,7 +32,7 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 |ディレクトリ|用途|
 |---|---|
 |`allowall`|local / CI / test 用の全許可スタブ（すべて許可）|
-|`userrole`|`user_roles` ベースの RBAC Authorizer サンプル。本番相当の環境向け（admin ⇒ 許可、それ以外はリソース所有者のみ許可）。`user` サンプルの一部であり、サンプル削除とともに削除される。  <!-- sample-api:line --> |
+|`userrole`|`user_roles` ベースの RBAC Authorizer サンプル。本番相当の環境向け（admin ⇒ 許可、それ以外はリソース所有者のみ許可）。`user` サンプルの一部であり、サンプル削除とともに削除される。<!-- sample-api:line -->|
 
 実運用ではこれらを RBAC / 外部ポリシーエンジン実装へ差し替えます。
 
