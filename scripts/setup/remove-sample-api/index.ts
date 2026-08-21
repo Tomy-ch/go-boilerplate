@@ -9,6 +9,7 @@ import { listFilesRecursive, toAbsolutePath, toRelativePath, updateFile } from "
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
   SETUP_SHARED_DIR_USERS,
+  emptyDirectoryCandidates,
   isScanTarget,
   isWithinRoot,
   sharedModuleTargets,
@@ -144,6 +145,32 @@ function report({ deleted, missing }: DeletionResult, stripped: StrippedFile[], 
 }
 
 /**
+ * 削除で中身が無くなったディレクトリを、深い順に取り除く。
+ *
+ * @remarks
+ * 候補と順序は `emptyDirectoryCandidates` が決め、ここは在否と空判定だけを行います。
+ * `rmdir` を使うのは、空でないディレクトリを消せない性質そのものを判定に使うためです
+ * （`readdir` で見てから消すと、その間に増えたものを取りこぼします）。
+ */
+function removeEmptyDirectories(relativePaths: readonly string[]): string[] {
+  const removed: string[] = [];
+
+  for (const relativePath of emptyDirectoryCandidates(relativePaths)) {
+    const absolutePath = toAbsolutePath(relativePath);
+    assertWithinRoot(absolutePath, relativePath);
+
+    try {
+      fs.rmdirSync(absolutePath);
+      removed.push(relativePath);
+    } catch {
+      // 空でない・そもそも無い。どちらも掃除の対象外なので黙って次へ進む。
+    }
+  }
+
+  return removed;
+}
+
+/**
  * 共有モジュール（setup/lib）を、使う側が全て消えたときだけ道連れにする。
  *
  * @remarks
@@ -183,6 +210,15 @@ function run({ dryRun }: SetupOptions): void {
   }
 
   writeSnapshot();
+
+  const emptied = removeEmptyDirectories(deletion.deleted.map((d) => d.relativePath));
+  if (emptied.length > 0) {
+    console.log(`\n🧹 空になったディレクトリを取り除きました: ${emptied.length} 件`);
+    for (const relativePath of emptied) {
+      console.log(`  - ${relativePath}`);
+    }
+  }
+
   removeSharedModules();
 
   console.log(
