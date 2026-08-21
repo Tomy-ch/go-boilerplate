@@ -249,10 +249,10 @@ jobs:
           # it just carries no checks. A skipped step leaves an empty output, which is falsy, so the
           # fallback is reached exactly when the token was not minted.
           token: ${{ steps.app-token.outputs.token || github.token }}
-          commit-message: "Chore: 生成ドキュメントを自動更新する"
+          commit-message: "Chore: auto update docs"
           branch: auto/docs-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
-          title: "chore(docs): sync generated artifacts"
+          title: "Chore: sync generated artifacts"
           body: |
             ## 🤖 Auto-generated Docs Sync
 
