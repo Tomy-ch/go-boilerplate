@@ -21,6 +21,9 @@ const (
 	ActionProductStockUpdate Action = "product:stock:update"
 	// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。
 	ActionProductListLowStock Action = "product:low-stock:list"
+	// ActionProductReadUnpublished は、未公開商品を含む商品の参照操作（admin）を表します。
+	// 一覧・一致件数・詳細が同じ能力を共有するため、3 つの経路で同一の Action を用います。
+	ActionProductReadUnpublished Action = "product:unpublished:read"
 	// ActionPurchaseListShippable は、発送待ち購入一覧の参照操作（admin）を表します。
 	ActionPurchaseListShippable Action = "purchase:shippable:list"
 	// ActionPurchaseShip は、購入の発送操作（admin）を表します。

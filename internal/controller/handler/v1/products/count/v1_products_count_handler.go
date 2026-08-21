@@ -8,9 +8,11 @@ import (
 	"context"
 
 	"go-boilerplate/internal/controller/conv"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/products/count/gen"
 	"go-boilerplate/internal/observability"
 	productuc "go-boilerplate/internal/usecase/product"
+	"go-boilerplate/pkg/ptr"
 
 	"github.com/labstack/echo/v5"
 )
@@ -42,16 +44,19 @@ func (s *server) GetProductsCount(
 		return nil, err
 	}
 
-	view, err := s.uc.CountProducts(ctx, productuc.SearchFilter{
-		CategoryID:    conv.UUIDPtr(request.Params.CategoryId),
-		StatusID:      conv.UUIDPtr(request.Params.StatusId),
-		CategoryCodes: categoryCodes,
-		StatusCodes:   statusCodes,
-		Keyword:       request.Params.Keyword,
-		MinPrice:      request.Params.MinPrice,
-		MaxPrice:      request.Params.MaxPrice,
-		MinQuantity:   request.Params.MinQuantity,
-		MaxQuantity:   request.Params.MaxQuantity,
+	view, err := s.uc.CountProducts(ctx, ctxhelper.OptionalAuthn(ctx), productuc.CountProductsParams{
+		SearchFilter: productuc.SearchFilter{
+			CategoryID:    conv.UUIDPtr(request.Params.CategoryId),
+			StatusID:      conv.UUIDPtr(request.Params.StatusId),
+			CategoryCodes: categoryCodes,
+			StatusCodes:   statusCodes,
+			Keyword:       request.Params.Keyword,
+			MinPrice:      request.Params.MinPrice,
+			MaxPrice:      request.Params.MaxPrice,
+			MinQuantity:   request.Params.MinQuantity,
+			MaxQuantity:   request.Params.MaxQuantity,
+		},
+		IncludeUnpublished: ptr.Deref(request.Params.IncludeUnpublished, false),
 	})
 	if err != nil {
 		return nil, err

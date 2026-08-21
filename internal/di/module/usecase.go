@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/observability"
 	addressuc "go-boilerplate/internal/usecase/address"                      // sample-api:line
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"                 // sample-api:line
+	clockbd "go-boilerplate/internal/usecase/boundary/clock"                 // sample-api:line
 	objectstoragebd "go-boilerplate/internal/usecase/boundary/objectstorage" // sample-api:line
 	txbd "go-boilerplate/internal/usecase/boundary/tx"                       // sample-api:line
 	cartuc "go-boilerplate/internal/usecase/cart"                            // sample-api:line
@@ -81,10 +82,11 @@ func provideProductUsecase(
 	statusRepo domainstatus.Repository,
 	storage objectstoragebd.Storage,
 	authorizer authzbd.Authorizer,
+	clk clockbd.Clock,
 	cfg *config.ObjectStorageConfig,
 	tf observability.TracerFactory,
 ) productuc.Usecase {
-	return productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer, cfg.MaxUploadBytes(), tf)
+	return productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg.MaxUploadBytes(), tf)
 }
 
 // sample-api:end

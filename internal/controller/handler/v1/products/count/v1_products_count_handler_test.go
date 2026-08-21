@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/handler/v1/products/count/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/auth"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	"go-boilerplate/pkg/ptr"
@@ -48,8 +49,8 @@ func Test_server_GetProductsCount(t *testing.T) {
 			require.NoError(t, err)
 			statusID, err := uuid.Parse("093170fb-83a2-4864-a2b3-53236eaf3597")
 			require.NoError(t, err)
-			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.SearchFilter) (productuc.ProductCountView, error) {
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, params productuc.CountProductsParams) (productuc.ProductCountView, error) {
 					require.NotNil(t, params.CategoryID)
 					assert.Equal(t, categoryID, *params.CategoryID)
 					require.NotNil(t, params.StatusID)
@@ -87,8 +88,8 @@ func Test_server_GetProductsCount(t *testing.T) {
 
 			// 2 つは同型なので、取り違えても片方だけの検証では気づけない。値を分けて個別に確かめる。
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
-			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.SearchFilter) (productuc.ProductCountView, error) {
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, params productuc.CountProductsParams) (productuc.ProductCountView, error) {
 					assert.Equal(t, []int16{1, 2}, params.CategoryCodes)
 					assert.Equal(t, []int16{7}, params.StatusCodes)
 					return productuc.ProductCountView{Count: 3}, nil
@@ -115,7 +116,7 @@ func Test_server_GetProductsCount(t *testing.T) {
 			// spec の maximum が先に弾くため通常は到達しないが、spec を迂回した呼び出しでは
 			// 切り捨てずに落ちることがこの経路の契約。
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
-			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).Times(0)
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
 			codes := gen.CategoryCodesParam{math.MaxInt16 + 1}
 
@@ -129,7 +130,7 @@ func Test_server_GetProductsCount(t *testing.T) {
 			t.Parallel()
 
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
-			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).Times(0)
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
 			codes := gen.StatusCodesParam{math.MaxInt16 + 1}
 
@@ -143,7 +144,7 @@ func Test_server_GetProductsCount(t *testing.T) {
 			t.Parallel()
 
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
-			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any()).Return(productuc.ProductCountView{}, apperror.ErrInternal)
+			mockUC.EXPECT().CountProducts(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductCountView{}, apperror.ErrInternal)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
 
 			resp, err := s.GetProductsCount(context.Background(), gen.GetProductsCountRequestObject{})

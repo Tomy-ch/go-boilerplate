@@ -137,7 +137,7 @@ func Test_server_GetProductsDetail(t *testing.T) {
 		t.Run("公開商品が存在する場合_詳細のProductResponseが返る", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(dto, nil)
+			mockApp.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(dto, nil)
 
 			resp, err := s.GetProductsDetail(
 				context.Background(),
@@ -157,7 +157,7 @@ func Test_server_GetProductsDetail(t *testing.T) {
 		t.Run("Usecaseが未存在・非公開でNotFoundを返す場合_そのまま伝播する", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
+			mockApp.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
 
 			resp, err := s.GetProductsDetail(
 				context.Background(),

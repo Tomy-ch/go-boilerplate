@@ -4,21 +4,34 @@ get:
     - v1/products/detail
   summary: 単一商品の取得
   description: |
-    指定された UUID に該当する公開済み商品の詳細情報を取得します。認証不要の公開エンドポイントです。
-    公開日時が未設定（未公開）の商品、および存在しない商品はいずれも 404 を返し、存在を秘匿します。
-    price は USD セント単位の整数です。statusId / categoryId の名称はマスタ API で解決します。
-  security: []
+    指定された UUID に該当する商品の詳細情報を取得します。認証は任意です。
+    既定の母集団は公開済みの商品のみで、公開日時が未設定（未公開）の商品と存在しない商品は
+    いずれも 404 を返し、存在を秘匿します。
+    includeUnpublished=true を指定すると未公開の商品も取得できます。
+    指定できるのは管理者（admin）だけで、未認証は 401、管理者でなければ 403 を返します。
+    拒否は商品の存在を調べる前に判定するため、403 から商品の存在有無は分かりません。
+    price は USD ドル建ての decimal 文字列です。statusId / categoryId の名称はマスタ API で解決します。
+    認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+    （ADR-0021 (optional-authentication-fail-closed)）。
+  security:
+    - BearerAuth: []
+    - {}
   parameters:
     - $ref: '../../../components/parameters/product/ProductIdParam.yaml'
+    - $ref: '../../../components/parameters/product/IncludeUnpublishedParam.yaml'
   responses:
     '200':
-      description: 公開済み商品の詳細取得に成功しました
+      description: 商品の詳細取得に成功しました
       content:
         application/json:
           schema:
             $ref: '../../../components/schemas/ProductResponse.yaml'
     '400':
       $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
     '404':
       $ref: '../../../components/schemas/errors/NotFound404.yaml'
     '405':

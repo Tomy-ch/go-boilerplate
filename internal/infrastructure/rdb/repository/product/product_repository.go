@@ -160,6 +160,128 @@ func (r *repository) CountPublished(ctx context.Context, filter product.SearchFi
 	return count, nil
 }
 
+// FindAllList は、公開状態を問わない商品を (created_at, id) の keyset ページネーションで取得します。
+// params.Ascending により昇順／降順を切り替え、CategoryID / StatusID / CategoryCodes / StatusCodes /
+// Keyword / price・quantity の範囲で絞り込みます。
+// 未公開の商品は公開日時を持たないため、FindPublishedList と並び順の軸が異なります。
+func (r *repository) FindAllList(ctx context.Context, params product.AllListParams) (product.Products, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	hasAfter := params.AfterCreatedAt != nil && params.AfterID != nil
+
+	toRow := func(p gen.Products, statusName, categoryName string) productRow {
+		return productRow{p: p, statusName: statusName, categoryName: categoryName}
+	}
+
+	switch {
+	case params.Ascending && hasAfter:
+		rows, err := db.ListAllProductsAscAfter(ctx, &gen.ListAllProductsAscAfterParams{
+			CategoryID:     params.CategoryID,
+			StatusID:       params.StatusID,
+			CategoryCodes:  nilIfEmpty(params.CategoryCodes),
+			StatusCodes:    nilIfEmpty(params.StatusCodes),
+			Keyword:        params.Keyword,
+			MinPrice:       ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:       ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:    params.MinQuantity,
+			MaxQuantity:    params.MaxQuantity,
+			AfterCreatedAt: *params.AfterCreatedAt,
+			AfterID:        *params.AfterID,
+			LimitParam:     params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListAllProductsAscAfterRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
+		}))
+	case params.Ascending:
+		rows, err := db.ListAllProductsAscFirst(ctx, &gen.ListAllProductsAscFirstParams{
+			CategoryID:    params.CategoryID,
+			StatusID:      params.StatusID,
+			CategoryCodes: nilIfEmpty(params.CategoryCodes),
+			StatusCodes:   nilIfEmpty(params.StatusCodes),
+			Keyword:       params.Keyword,
+			MinPrice:      ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:   params.MinQuantity,
+			MaxQuantity:   params.MaxQuantity,
+			LimitParam:    params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListAllProductsAscFirstRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
+		}))
+	case hasAfter:
+		rows, err := db.ListAllProductsDescAfter(ctx, &gen.ListAllProductsDescAfterParams{
+			CategoryID:     params.CategoryID,
+			StatusID:       params.StatusID,
+			CategoryCodes:  nilIfEmpty(params.CategoryCodes),
+			StatusCodes:    nilIfEmpty(params.StatusCodes),
+			Keyword:        params.Keyword,
+			MinPrice:       ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:       ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:    params.MinQuantity,
+			MaxQuantity:    params.MaxQuantity,
+			AfterCreatedAt: *params.AfterCreatedAt,
+			AfterID:        *params.AfterID,
+			LimitParam:     params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListAllProductsDescAfterRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
+		}))
+	default:
+		rows, err := db.ListAllProductsDescFirst(ctx, &gen.ListAllProductsDescFirstParams{
+			CategoryID:    params.CategoryID,
+			StatusID:      params.StatusID,
+			CategoryCodes: nilIfEmpty(params.CategoryCodes),
+			StatusCodes:   nilIfEmpty(params.StatusCodes),
+			Keyword:       params.Keyword,
+			MinPrice:      ptr.Map(params.MinPrice, money.Price.Decimal),
+			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
+			MinQuantity:   params.MinQuantity,
+			MaxQuantity:   params.MaxQuantity,
+			LimitParam:    params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return r.buildProducts(ctx, toProductRows(rows, func(row *gen.ListAllProductsDescFirstRow) productRow {
+			return toRow(row.Products, row.StatusName, row.CategoryName)
+		}))
+	}
+}
+
+// CountAll は、公開状態を問わない商品のうち指定された検索条件に一致する件数を返します。
+func (r *repository) CountAll(ctx context.Context, filter product.SearchFilter) (int64, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+	count, err := db.CountAllProductsByFilter(ctx, &gen.CountAllProductsByFilterParams{
+		CategoryID:    filter.CategoryID,
+		StatusID:      filter.StatusID,
+		CategoryCodes: nilIfEmpty(filter.CategoryCodes),
+		StatusCodes:   nilIfEmpty(filter.StatusCodes),
+		MinPrice:      ptr.Map(filter.MinPrice, money.Price.Decimal),
+		MaxPrice:      ptr.Map(filter.MaxPrice, money.Price.Decimal),
+		MinQuantity:   filter.MinQuantity,
+		MaxQuantity:   filter.MaxQuantity,
+		Keyword:       filter.Keyword,
+	})
+	if err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+	return count, nil
+}
+
 // FindAllLowStock は、在庫警告閾値以下の商品を在庫数と ID の昇順で最大 limit 件取得します。
 // 在庫警告閾値が未設定の商品は除外し、公開状態では絞り込みません。
 func (r *repository) FindAllLowStock(ctx context.Context, limit int32) (product.Products, error) {
@@ -313,6 +435,7 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
+		CreatedAt:             p.CreatedAt(),
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)
@@ -547,7 +670,7 @@ func rowToProduct(row productRow, images []product.Image) (*product.Product, err
 		Category:              category,
 		PublishedAt:           row.p.PublishedAt,
 		Images:                images,
-	}, int(row.p.LockVersion))
+	}, int(row.p.LockVersion), row.p.CreatedAt)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}

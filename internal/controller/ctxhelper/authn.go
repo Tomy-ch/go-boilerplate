@@ -77,6 +77,18 @@ func RequireAuthn(ctx context.Context) (auth.Authn, error) {
 	return authn, nil
 }
 
+// OptionalAuthn は、ctx のスロットから Authn を読み、未設定なら nil を返します。
+// 認証を任意とする operation のハンドラが、認証済みかどうかをそのままユースケースへ渡すために使います
+// （ADR-0021 (optional-authentication-fail-closed)）。無効な資格情報はハンドラへ到達しないため、
+// nil は「資格情報が提示されなかった」ことだけを意味します。
+func OptionalAuthn(ctx context.Context) *auth.Authn {
+	authn, ok := GetAuthn(ctx)
+	if !ok {
+		return nil
+	}
+	return &authn
+}
+
 // RequireUserID は、ctx の Authn から内部 UserID を取り出します。
 // Authn が未設定の場合は ErrUnauthenticatedUser を、UserID が未解決の場合はその原因をラップして返します。
 func RequireUserID(ctx context.Context) (uuid.UUID, error) {

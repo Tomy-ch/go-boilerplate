@@ -39,6 +39,9 @@ type CategoryCodesParam = []int32
 // CategoryIdParam Example: 5dd52d84-78eb-4a52-ba0b-2e11c95c2af2
 type CategoryIdParam = openapi_types.UUID
 
+// IncludeUnpublishedParam Example: false
+type IncludeUnpublishedParam = bool
+
 // KeywordParam Example: example keyword
 type KeywordParam = string
 
@@ -63,6 +66,9 @@ type StatusIdParam = openapi_types.UUID
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
 
+// Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Forbidden403 = ErrorResponse
+
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
 
@@ -71,6 +77,9 @@ type MethodNotAllowed405 = ErrorResponse
 
 // ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ServiceUnavailable503 = ErrorResponse
+
+// Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Unauthorized401 = ErrorResponse
 
 // GetProductsCountParams defines parameters for GetProductsCount.
 type GetProductsCountParams struct {
@@ -114,4 +123,10 @@ type GetProductsCountParams struct {
 
 	// MaxQuantity 最高在庫数（この値以下）。
 	MaxQuantity *MaxQuantityParam `form:"maxQuantity,omitempty" json:"maxQuantity,omitempty"`
+
+	// IncludeUnpublished 未公開（公開日時が未設定）の商品を母集団に含める場合は true を指定します。既定は false で、
+	// 指定しない場合の母集団は公開済みの商品のみです。
+	// true を指定できるのは管理者（admin）だけで、未認証は 401、管理者でなければ 403 で拒否します。
+	// false を明示した場合は認証を要しません（指定しない場合と同じ扱いです）。
+	IncludeUnpublished *IncludeUnpublishedParam `form:"includeUnpublished,omitempty" json:"includeUnpublished,omitempty"`
 }

@@ -11,6 +11,7 @@ import (
 	productshandler "go-boilerplate/internal/controller/handler/v1/products"
 	"go-boilerplate/internal/controller/handler/v1/products/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/auth"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -101,7 +102,7 @@ func TestV1Products_Integration(t *testing.T) {
 
 			nextCursor := "next-opaque-cursor"
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}, NextCursor: &nextCursor}, nil,
 			)
 
@@ -109,6 +110,49 @@ func TestV1Products_Integration(t *testing.T) {
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products", nil, nil)
 			AssertJSONResponseType[gen.ProductListResponse](t, actual)
+		})
+
+		t.Run("GET /v1/products?includeUnpublished=true が可視範囲をユースケースへ渡す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams,
+				) (productuc.ProductListView, error) {
+					assert.True(t, params.IncludeUnpublished)
+					return productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}}, nil
+				})
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil)
+			assert.Equal(t, http.StatusOK, actual.StatusCode)
+		})
+
+		t.Run("GET /v1/products は includeUnpublished 未指定なら false を渡す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams,
+				) (productuc.ProductListView, error) {
+					assert.False(t, params.IncludeUnpublished)
+					return productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}}, nil
+				})
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products", nil, nil)
+			assert.Equal(t, http.StatusOK, actual.StatusCode)
 		})
 
 		t.Run("GET /v1/products?first=5 の先頭ページが取得できる", func(t *testing.T) {
@@ -119,7 +163,7 @@ func TestV1Products_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}, NextCursor: nil}, nil,
 			)
 
@@ -137,7 +181,7 @@ func TestV1Products_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil,
 			)
 
@@ -160,8 +204,8 @@ func TestV1Products_Integration(t *testing.T) {
 
 			var captured productuc.ListProductsParams
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
 					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				},
@@ -201,8 +245,8 @@ func TestV1Products_Integration(t *testing.T) {
 
 			var captured productuc.ListProductsParams
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
 					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				},
@@ -279,7 +323,7 @@ func TestV1Products_Integration(t *testing.T) {
 			e := echo.New()
 			UseAppErrorHandler(t, e)
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Times(0)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			productshandler.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
 			useOpenAPIValidation(t, e)
 
@@ -354,12 +398,50 @@ func TestV1Products_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Times(0)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			productshandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products?after=%21%21%21", nil, nil)
 			AssertErrorResponse(t, actual, http.StatusBadRequest)
+		})
+
+		t.Run("未認証で includeUnpublished を指定すると 401 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.ProductListView{}, apperror.ErrUnauthenticated)
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil)
+			assert.Equal(t, http.StatusUnauthorized, actual.StatusCode)
+		})
+
+		t.Run("管理者でない主体が includeUnpublished を指定すると 403 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_product.NewMockUsecase(ctrl)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.ProductListView{}, apperror.ErrPermissionDenied)
+
+			productshandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil)
+			assert.Equal(t, http.StatusForbidden, actual.StatusCode)
 		})
 
 		t.Run("GET /v1/products が ErrInternal で 500 を返す", func(t *testing.T) {
@@ -371,7 +453,7 @@ func TestV1Products_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any()).Return(productuc.ProductListView{}, apperror.ErrInternal)
+			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductListView{}, apperror.ErrInternal)
 
 			productshandler.BindHandler(e, tf, mockUC)
 

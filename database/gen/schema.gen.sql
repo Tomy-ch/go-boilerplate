@@ -1087,6 +1087,10 @@ CREATE UNIQUE INDEX product_images_product_id_display_sort_unique ON public.prod
 --
 CREATE INDEX products_category_id_idx ON public.products USING btree (category_id);
 --
+-- Name: products_created_at_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_created_at_id_idx ON public.products USING btree (created_at DESC, id DESC) INCLUDE (price, quantity);
+--
 -- Name: products_description_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX products_description_trgm_idx ON public.products USING gin (description public.gin_trgm_ops);

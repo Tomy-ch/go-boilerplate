@@ -294,6 +294,9 @@ type CursorAfterParam = string
 // CursorFirstParam Example: 50
 type CursorFirstParam = int
 
+// IncludeUnpublishedParam Example: false
+type IncludeUnpublishedParam = bool
+
 // KeywordParam Example: example keyword
 type KeywordParam = string
 
@@ -397,6 +400,12 @@ type GetProductsParams struct {
 	// Sort 並び順。`-publishedAt`（既定）は公開日時の降順、`publishedAt` は公開日時の昇順です。
 	// いずれも同一公開日時の商品は ID で安定ソートします。
 	Sort *GetProductsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// IncludeUnpublished 未公開（公開日時が未設定）の商品を母集団に含める場合は true を指定します。既定は false で、
+	// 指定しない場合の母集団は公開済みの商品のみです。
+	// true を指定できるのは管理者（admin）だけで、未認証は 401、管理者でなければ 403 で拒否します。
+	// false を明示した場合は認証を要しません（指定しない場合と同じ扱いです）。
+	IncludeUnpublished *IncludeUnpublishedParam `form:"includeUnpublished,omitempty" json:"includeUnpublished,omitempty"`
 }
 
 // GetProductsParamsSort defines parameters for GetProducts.

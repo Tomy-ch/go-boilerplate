@@ -8,10 +8,12 @@ import (
 	"context"
 
 	"go-boilerplate/internal/controller/conv"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/products/gen"
 	"go-boilerplate/internal/observability"
 	productuc "go-boilerplate/internal/usecase/product"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
@@ -33,7 +35,8 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productuc.Usec
 	}, nil))
 }
 
-// GetProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。認証不要の公開エンドポイントです。
+// GetProducts は、商品を cursor ページネーションで取得します。認証は任意です。
+// includeUnpublished の指定時のみ未公開を含み、その可否はユースケースが Authorizer へ委ねます。
 func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequestObject) (gen.GetProductsResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -53,7 +56,7 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 		return nil, err
 	}
 
-	list, err := s.uc.ListProducts(ctx, productuc.ListProductsParams{
+	list, err := s.uc.ListProducts(ctx, ctxhelper.OptionalAuthn(ctx), productuc.ListProductsParams{
 		SearchFilter: productuc.SearchFilter{
 			CategoryID:    conv.UUIDPtr(request.Params.CategoryId),
 			StatusID:      conv.UUIDPtr(request.Params.StatusId),
@@ -65,8 +68,9 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 			MinQuantity:   request.Params.MinQuantity,
 			MaxQuantity:   request.Params.MaxQuantity,
 		},
-		Cursor:    cursor,
-		Ascending: isAscending(request.Params.Sort),
+		Cursor:             cursor,
+		Ascending:          isAscending(request.Params.Sort),
+		IncludeUnpublished: ptr.Deref(request.Params.IncludeUnpublished, false),
 	})
 	if err != nil {
 		return nil, err

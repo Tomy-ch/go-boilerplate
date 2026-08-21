@@ -67,7 +67,7 @@ func newLowStockProduct(t *testing.T, salt string, quantity int) *domainproduct.
 				domainproduct.ImageAttributes{ImagePath: "products/" + salt + ".png", DisplaySort: 1},
 			),
 		},
-	}, 1)
+	}, 1, testCreatedAt)
 	require.NoError(t, err)
 
 	return p

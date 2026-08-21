@@ -1,15 +1,19 @@
 # Product — Usecase Spec
 
-> 公開商品一覧（`GET /v1/products`）と一致件数（`GET /v1/products/count`）は、単一集約・products 自身の列への検索であり、
-> QueryService ではなく domain `product.Repository` の `FindPublishedList` / `CountPublished` に委譲する（ADR-0032 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
+> 商品一覧（`GET /v1/products`）と一致件数（`GET /v1/products/count`）は、単一集約・products 自身の列への検索であり、
+> QueryService ではなく domain `product.Repository` の `FindPublishedList` / `CountPublished`（未公開込みは `FindAllList` / `CountAll`）に委譲する（ADR-0032 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。
 
 ## Overview
 
-商品一覧ユースケースは、公開済み商品を公開日時順（cursor ページネーション）で取得する read-only な thin orchestrator。商品一致件数ユースケースは同じ検索入力の検証・正規化を共有し、ページングや並び順を持たず一致件数のみを返す。前者は `product.Repository.FindPublishedList`、後者は `product.Repository.CountPublished` に委譲する。
+商品一覧ユースケースは、商品を cursor ページネーションで取得する read-only な thin orchestrator。商品一致件数ユースケースは同じ検索入力の検証・正規化と可視範囲の判定を共有し、ページングや並び順を持たず一致件数のみを返す。
 
-cursor ページングは「直前ページ末尾行のソートキー `(publishedAt, id)` を不透明トークン化して次ページを取得する」keyset 方式。usecase は不透明カーソルの符号化・復号（`encodeProductCursor` / `decodeProductCursor`）を担い、domain へは境界を primitive（`AfterPublishedAt` / `AfterID`）で渡す。次ページ有無は `limit + 1` 件取得して超過分で判定し（`hasNext`）、超過時のみ末尾行から `NextCursor` を生成する。
+**可視範囲は既定で公開済みのみ**で、`IncludeUnpublished` を指定したときだけ未公開を含む。指定は admin だけが通り、未認証は 401、admin でなければ 403 を返す。判定は `authorizeUnpublishedRead` の 1 箇所に集約し、一覧・一致件数・単体取得が同じ能力（`authz.ActionProductReadUnpublished`）を共有する。可視範囲によって委譲先が変わり、公開済みのみは `FindPublishedList` / `CountPublished` / `FindPublishedByID`、未公開込みは `FindAllList` / `CountAll` / `FindByID` を呼ぶ。
 
-sort は `-publishedAt`（既定=降順）/ `publishedAt`（昇順）の 2 値のみ。controller が enum を `Ascending` bool に写像して渡す。ステータス可視範囲の絞り込みは後続 PBI（#555）で対応する。ドメイン集約を outer 層へ露出させないため、`Product` は usecase 内で `ProductView` へ写像してから返す（DTO Boundary）。
+cursor ページングは「直前ページ末尾行のソートキーを不透明トークン化して次ページを取得する」keyset 方式。**ソートキーの軸は可視範囲によって変わる。** 公開済みのみは `(publishedAt, id)`、未公開込みは `(createdAt, id)` で、未公開の商品が公開日時を持たない以上、公開日時を並び順の第 1 キーにできないためである。usecase は符号化・復号（`encodeProductCursor` / `decodeProductCursor`、`encodeAllProductCursor` / `decodeAllProductCursor`）を担い、domain へは境界を primitive（`AfterPublishedAt` / `AfterCreatedAt` と `AfterID`）で渡す。次ページ有無は `limit + 1` 件取得して超過分で判定し（`hasNext`）、超過時のみ末尾行から `NextCursor` を生成する。
+
+**カーソルは発行時の可視範囲に紐づく。** 未公開込みモードのカーソルは先頭に識別子を持つ 3 キーで、公開済みのみの 2 キーとはキー数が異なる。これにより、一方で得たカーソルを他方へ持ち越すと必ず `apperror.ErrInvalidArgument` になり、公開日時と登録日時を取り違えたまま解釈されることがない。
+
+sort は `-publishedAt`（既定=降順）/ `publishedAt`（昇順）の 2 値のみ。controller が enum を `Ascending` bool に写像して渡す。未公開込みモードでは軸が登録日時になるため、sort は向きだけを適用する。ドメイン集約を outer 層へ露出させないため、`Product` は usecase 内で `ProductView` へ写像してから返す（DTO Boundary）。
 
 商品作成（`POST /v1/products`）は admin 認可のうえ、`tx.Manager` の境界内で商品ステータス / カテゴリの名称を ID から解決し、`Product` を構築して登録する write ユースケース。マスタ不在はサーバ側整合性異常（500）、価格・在庫などの業務不変条件違反は 422 に落とす。
 
@@ -26,11 +30,11 @@ package: internal/usecase/product
 name: Usecase
 methods:
   - name: ListProducts
-    signature: ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
+    signature: ListProducts(ctx context.Context, authn *auth.Authn, params ListProductsParams) (ProductListView, error)
   - name: CountProducts
-    signature: CountProducts(ctx context.Context, filter SearchFilter) (ProductCountView, error)
+    signature: CountProducts(ctx context.Context, authn *auth.Authn, params CountProductsParams) (ProductCountView, error)
   - name: GetProduct
-    signature: GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
+    signature: GetProduct(ctx context.Context, authn *auth.Authn, params GetProductParams) (ProductView, error)
   - name: CreateProduct
     signature: CreateProduct(ctx context.Context, authn *auth.Authn, params CreateProductParams) (ProductView, error)
   - name: UpdateProduct
@@ -56,7 +60,7 @@ methods:
 
 ```yaml
 - name: ListProductsParams
-  description: 公開商品一覧取得の入力。cursor（取得件数 + 境界）と並び順を持ち、検索条件は SearchFilter を埋め込む。
+  description: 商品一覧取得の入力。cursor（取得件数 + 境界）・並び順・可視範囲を持ち、検索条件は SearchFilter を埋め込む。
   fields:
     - name: SearchFilter
       type: SearchFilter    # 埋め込み。一致件数と共有する検索条件
@@ -64,8 +68,24 @@ methods:
       type: "*paging.Cursor"
     - name: Ascending
       type: bool
+    - name: IncludeUnpublished
+      type: bool            # true は admin のみ。並び順の軸も (createdAt, id) へ変わる
+- name: CountProductsParams
+  description: 商品一致件数取得の入力。一覧と母集団を揃えるため、検索条件と可視範囲を一覧と同じ形で受ける。
+  fields:
+    - name: SearchFilter
+      type: SearchFilter    # 埋め込み
+    - name: IncludeUnpublished
+      type: bool
+- name: GetProductParams
+  description: 単一商品取得の入力。
+  fields:
+    - name: ID
+      type: uuid.UUID
+    - name: IncludeUnpublished
+      type: bool
 - name: SearchFilter
-  description: 一覧と一致件数が共有する検索条件。cursor と並び順は持たない。
+  description: 一覧と一致件数が共有する検索条件。cursor・並び順・可視範囲は持たない（可視範囲は取得メソッドの選択で表す）。
   fields:
     - name: CategoryID
       type: "*uuid.UUID"
@@ -217,21 +237,25 @@ steps:
   - MinPrice / MaxPrice を money.Price へ変換する。非数値・負値・40 文字超過は apperror.ErrInvalidArgument を返す
   - MinQuantity / MaxQuantity が負値の場合は apperror.ErrInvalidArgument を返す
   - 価格または在庫数の両境界が指定され、下限が上限を超える場合は apperror.ErrInvalidArgument を返す
-  - decodeProductCursor で不透明カーソルを keyset 境界（publishedAt, id）へ復号する（先頭ページは境界なし）
-  - domain の ListParams を組み立てる（Limit=Cursor.Limit32()+1、Ascending、CategoryID/StatusID/Keyword、価格・在庫数の包含上下限、AfterPublishedAt/AfterID）
-  - product_repository.FindPublishedList で公開商品を取得する
-  - 取得した各 Product が Product.IsPublished を満たすことを確かめる（SQL の絞り込みとドメインの定義の乖離検出）
+  - authorizeUnpublishedRead で可視範囲の指定を検査する（IncludeUnpublished が false なら何も課さない）
+  - IncludeUnpublished が false の場合は findPublishedPage、true の場合は findAllPage でページを取得する
+  - findPublishedPage は decodeProductCursor で境界（publishedAt, id）へ復号し、ListParams を組み立てて product_repository.FindPublishedList を呼び、取得した各 Product が Product.IsPublished を満たすことを確かめる（SQL の絞り込みとドメインの定義の乖離検出）
+  - findAllPage は decodeAllProductCursor で境界（createdAt, id）へ復号し、AllListParams を組み立てて product_repository.FindAllList を呼ぶ（未公開を含むため IsPublished の検算は行わない）
   - 取得件数が Cursor.Limit() を超える場合は次ページありと判定し、末尾を切り詰める
   - 各 Product を ProductView（ID / Name / Description / Price / Quantity / StockWarningThreshold / StatusID / CategoryID / PublishedAt）へ写像する
-  - 次ページありの場合、切り詰め後の末尾行から encodeProductCursor で NextCursor を生成する
+  - 次ページありの場合、切り詰め後の末尾行から取得した枝に対応するカーソル（encodeProductCursor / encodeAllProductCursor）で NextCursor を生成する
 calls:
+  - authz.Authorize
   - product_repository.FindPublishedList
+  - product_repository.FindAllList
 errors:
   - Cursor が nil の場合は apperror.ErrInvalidArgument
   - 価格の非数値・負値・40 文字超過、在庫数の負値、または上下限の逆転は apperror.ErrInvalidArgument
-  - カーソル復号失敗時は apperror.ErrInvalidArgument（decodeProductCursor 由来）
-  - product_repository.FindPublishedList のエラーをそのまま伝播する
-  - 取得行に Product.IsPublished を満たさないものが混じっていた場合は apperror.ErrInternal（500。SQL とドメインの乖離）
+  - IncludeUnpublished が true で authn が nil の場合は apperror.ErrUnauthenticated（401）
+  - IncludeUnpublished が true で Authorizer が拒否した場合はその理由（admin でなければ 403）
+  - カーソル復号失敗時は apperror.ErrInvalidArgument（発行時と異なる可視範囲へ持ち越したカーソルを含む）
+  - product_repository.FindPublishedList / FindAllList のエラーをそのまま伝播する
+  - 公開済みのみの取得行に Product.IsPublished を満たさないものが混じっていた場合は apperror.ErrInternal（500。SQL とドメインの乖離）
 ```
 
 ### CountProducts
@@ -240,14 +264,19 @@ errors:
 tx_required: false
 steps:
   - 一覧と共通の検索入力検証を行い、価格を money.Price へ変換する
+  - authorizeUnpublishedRead で可視範囲の指定を検査する（一覧と同一の判定）
   - domain の SearchFilter を組み立てる
-  - product_repository.CountPublished で一致件数を取得する
+  - IncludeUnpublished が false なら product_repository.CountPublished、true なら product_repository.CountAll で一致件数を取得する
   - ProductCountView へ写像して返す
 calls:
+  - authz.Authorize
   - product_repository.CountPublished
+  - product_repository.CountAll
 errors:
   - 価格の非数値・負値・40 文字超過、在庫数の負値、または上下限の逆転は apperror.ErrInvalidArgument
-  - product_repository.CountPublished のエラーをそのまま伝播する
+  - IncludeUnpublished が true で authn が nil の場合は apperror.ErrUnauthenticated（401）
+  - IncludeUnpublished が true で Authorizer が拒否した場合はその理由（admin でなければ 403）
+  - product_repository.CountPublished / CountAll のエラーをそのまま伝播する
 ```
 
 ### GetProduct
@@ -255,14 +284,19 @@ errors:
 ```yaml
 tx_required: false
 steps:
-  - product_repository.FindPublishedByID で公開中の単一商品を取得する（未存在・非公開はいずれも NotFound）
-  - 取得した Product が Product.IsPublished を満たすことを確かめる（SQL の絞り込みとドメインの定義の乖離検出）
+  - authorizeUnpublishedRead で可視範囲の指定を検査する（商品を引く前に判定するため、拒否から存在有無は分からない）
+  - IncludeUnpublished が false の場合は product_repository.FindPublishedByID で公開中の単一商品を取得し（未存在・非公開はいずれも NotFound）、取得した Product が Product.IsPublished を満たすことを確かめる（SQL の絞り込みとドメインの定義の乖離検出）
+  - IncludeUnpublished が true の場合は product_repository.FindByID で公開状態を問わず取得する（未存在は NotFound）
   - Product を ProductView（ID / Name / Description / Price / Quantity / StockWarningThreshold / StatusID / CategoryID / PublishedAt）へ写像する
 calls:
+  - authz.Authorize
   - product_repository.FindPublishedByID
+  - product_repository.FindByID
 errors:
-  - product_repository.FindPublishedByID のエラーをそのまま伝播する（未存在・非公開は apperror.ErrNotFound → 404）
-  - 取得行が Product.IsPublished を満たさない場合は apperror.ErrInternal（500。SQL とドメインの乖離）
+  - IncludeUnpublished が true で authn が nil の場合は apperror.ErrUnauthenticated（401）
+  - IncludeUnpublished が true で Authorizer が拒否した場合はその理由（admin でなければ 403）
+  - product_repository.FindPublishedByID / FindByID のエラーをそのまま伝播する（未存在・非公開は apperror.ErrNotFound → 404）
+  - 公開済みのみの取得行が Product.IsPublished を満たさない場合は apperror.ErrInternal（500。SQL とドメインの乖離）
 ```
 
 ### CreateProduct

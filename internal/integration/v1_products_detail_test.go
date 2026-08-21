@@ -81,7 +81,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(sampleView(t), nil)
+			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(sampleView(t), nil)
 
 			productsdetail.BindHandler(e, tf, mockUC)
 
@@ -271,7 +271,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
+			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
 
 			productsdetail.BindHandler(e, tf, mockUC)
 
@@ -302,7 +302,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			mockUC := mock_product.NewMockUsecase(ctrl)
-			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrInternal)
+			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrInternal)
 
 			productsdetail.BindHandler(e, tf, mockUC)
 
@@ -474,7 +474,7 @@ func doNotFoundProductDetail(t *testing.T, path string) responsegen.ErrorRespons
 	tf := observability.NewNoopTracerFactory(t)
 
 	mockUC := mock_product.NewMockUsecase(ctrl)
-	mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
+	mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
 
 	productsdetail.BindHandler(e, tf, mockUC)
 

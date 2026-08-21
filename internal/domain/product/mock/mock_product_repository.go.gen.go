@@ -57,6 +57,21 @@ func (mr *MockRepositoryMockRecorder) Count(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockRepository)(nil).Count), ctx)
 }
 
+// CountAll mocks base method.
+func (m *MockRepository) CountAll(ctx context.Context, filter product.SearchFilter) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountAll", ctx, filter)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountAll indicates an expected call of CountAll.
+func (mr *MockRepositoryMockRecorder) CountAll(ctx, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountAll", reflect.TypeOf((*MockRepository)(nil).CountAll), ctx, filter)
+}
+
 // CountPublished mocks base method.
 func (m *MockRepository) CountPublished(ctx context.Context, filter product.SearchFilter) (int64, error) {
 	m.ctrl.T.Helper()
@@ -99,6 +114,21 @@ func (m *MockRepository) FilterExistingImagePaths(ctx context.Context, paths []s
 func (mr *MockRepositoryMockRecorder) FilterExistingImagePaths(ctx, paths any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterExistingImagePaths", reflect.TypeOf((*MockRepository)(nil).FilterExistingImagePaths), ctx, paths)
+}
+
+// FindAllList mocks base method.
+func (m *MockRepository) FindAllList(ctx context.Context, params product.AllListParams) (product.Products, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindAllList", ctx, params)
+	ret0, _ := ret[0].(product.Products)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindAllList indicates an expected call of FindAllList.
+func (mr *MockRepositoryMockRecorder) FindAllList(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAllList", reflect.TypeOf((*MockRepository)(nil).FindAllList), ctx, params)
 }
 
 // FindAllLowStock mocks base method.

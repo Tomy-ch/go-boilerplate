@@ -29,6 +29,9 @@ import (
 // testSessionToken は、形式検証を通る 43 文字の base64url トークン。
 const testSessionToken = "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDE"
 
+// testCreatedAt は、テスト用の商品の登録日時です。公開日時と取り違えを検出できるよう異なる値にします。
+var testCreatedAt = time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+
 func newPrice(t *testing.T, amount string) money.Price {
 	t.Helper()
 	d, err := decimal.Parse(amount)
@@ -55,7 +58,7 @@ func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int, ima
 		Category:    category,
 		PublishedAt: ptr.To(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)),
 		Images:      images,
-	})
+	}, testCreatedAt)
 	require.NoError(t, err)
 	return p
 }

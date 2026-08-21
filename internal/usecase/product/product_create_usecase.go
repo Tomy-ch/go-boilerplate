@@ -87,7 +87,7 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 			Category:              categoryRef,
 			PublishedAt:           params.PublishedAt,
 			Images:                images,
-		})
+		}, u.clock.Now())
 		if err != nil {
 			return err
 		}

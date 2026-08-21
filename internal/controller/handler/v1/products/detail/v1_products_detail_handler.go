@@ -34,15 +34,19 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productuc.Usec
 	}, nil))
 }
 
-// GetProductsDetail は、指定された UUID に該当する公開済み商品の詳細情報を取得します。
-// 未存在・非公開はいずれもユースケースが NotFound を返し、404 で存在を秘匿します。
+// GetProductsDetail は、指定された UUID に該当する商品の詳細情報を取得します。認証は任意です。
+// 既定では未存在・非公開はいずれもユースケースが NotFound を返し、404 で存在を秘匿します。
+// includeUnpublished の指定時のみ未公開も引け、その可否はユースケースが Authorizer へ委ねます。
 func (s *server) GetProductsDetail(ctx context.Context, request gen.GetProductsDetailRequestObject) (gen.GetProductsDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	id := conv.UUID(request.ProductId)
 
-	dto, err := s.uc.GetProduct(ctx, id)
+	dto, err := s.uc.GetProduct(ctx, ctxhelper.OptionalAuthn(ctx), productuc.GetProductParams{
+		ID:                 id,
+		IncludeUnpublished: ptr.Deref(request.Params.IncludeUnpublished, false),
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -123,6 +123,13 @@ func (w *ServerInterfaceWrapper) GetProducts(ctx *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sort: %s", err))
 	}
 
+	// ------------- Optional query parameter "includeUnpublished" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeUnpublished", ctx.QueryParams(), &params.IncludeUnpublished, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter includeUnpublished: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetProducts(ctx, params)
 	return err
@@ -249,6 +256,34 @@ func (response GetProducts400JSONResponse) VisitGetProductsResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProducts401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response GetProducts401JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProducts403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response GetProducts403JSONResponse) VisitGetProductsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }

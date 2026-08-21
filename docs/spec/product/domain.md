@@ -8,9 +8,13 @@
 
 商品集約は、商品の基本情報（名称・説明・価格・在庫）と分類の参照（`StatusRef` / `CategoryRef`。いずれも ID と名称の組）、および公開日時を保持するドメインエンティティ。`price` はサブセント精度を保持する価格スケール（Decimal）の値オブジェクト `money.Price` で保持する（非負であることと決済スケールの整数へ落とせることは VO が担保。2 スケールモデルは ADR-0038 (two-scale-quantity-model)）。生成時に必須・長さの不変条件を検証し、違反する `Product` は構築できない。
 
-一覧取得と一致件数取得は、公開済み（`publishedAt` 非 NULL）の商品へ同じ意味の検索条件を適用する read-only な集約読み取りである。すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0032 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。検索条件は再利用可能な domain 概念へ昇格させず、各 Repository 操作の引数型が必要な項目だけを保持する。一覧だけが `(publishedAt, id)` の keyset ページネーションと並び順を持ち、件数取得はページング条件を持たない。ステータスによる可視範囲の絞り込みは後続 PBI（#555）で対応する。
+一覧取得と一致件数取得は、同じ意味の検索条件を適用する read-only な集約読み取りである。すべて products 自身の列への操作のため QueryService ではなく domain `product.Repository` に委譲する（ADR-0032 (lightweight-cqrs) / `docs/rules.md` の Repository 境界に準拠）。検索条件は再利用可能な domain 概念へ昇格させず、各 Repository 操作の引数型が必要な項目だけを保持する。一覧だけが keyset ページネーションと並び順を持ち、件数取得はページング条件を持たない。
 
-不透明カーソル（cursor）の符号化・復号は usecase 層の責務であり、domain の Repository は keyset 境界を primitive（`AfterPublishedAt` / `AfterID`）で受け取る。
+**公開状態は検索条件ではなく取得メソッドの選択で表す。** 公開済みのみを返す `FindPublishedList` / `CountPublished` / `FindPublishedByID` と、公開状態を問わない `FindAllList` / `CountAll` / `FindByID` が対になっており、`SearchFilter` に可視範囲は含まれない。絞り込みの条件は対になるメソッドどうしで逐語的に同一に保ち、母集団の差が公開状態だけであることを保証する。
+
+**keyset の軸は可視範囲によって変わる。** 公開済みのみの一覧は `(publishedAt, id)`、未公開を含む一覧は `(createdAt, id)` である。未公開の商品は `publishedAt` を持たないため、公開日時を並び順の第 1 キーにできない。
+
+不透明カーソル（cursor）の符号化・復号は usecase 層の責務であり、domain の Repository は keyset 境界を primitive（`AfterPublishedAt` / `AfterCreatedAt` と `AfterID`）で受け取る。
 
 ## Entity
 
@@ -54,6 +58,9 @@ fields:
   - name: images
     type: "[]Image"
     required: false         # 空許容（画像未設定）。表示順の昇順で保持し、構築時に並べ替える
+  - name: createdAt
+    type: time.Time
+    required: true          # ゼロ値は ErrInvalidCreatedAt。未公開を含む一覧の keyset 第 1 キー
   - name: version
     type: int
     required: true          # initialVersion(=1) 未満は ErrInvalidVersion。生成時は initialVersion から始まる
@@ -61,9 +68,12 @@ fields:
 
 > `version` は監査列ではなく並行制御のトークンであり、API 契約（`ProductResponse` / `ProductPatchRequest`）に
 > 露出して部分更新の前提条件として往復するため、エンティティが保持する。
-> `createdAt` / `updatedAt`（監査列）は本 read model のドメイン不変条件に不要なため保持しない。
-> DB カラム `published_at` は NULL 許容で、未公開商品を作成できる。一覧クエリは `published_at IS NOT NULL` で
-> 絞り込むため、一覧経由で再構築されるエンティティの `publishedAt` は常に値を持つ。
+> `createdAt` は未公開を含む一覧の keyset 第 1 キーであり、その境界はエンティティから取り出す必要があるため
+> 保持する。`updatedAt`（監査列）は本 read model のドメイン不変条件に不要なため保持しない。
+> `createdAt` は不変であり、更新の入力である `Attributes` ではなく `New` / `Reconstruct` の引数として受け取る
+> （`version` と同じ位置づけ）。
+> DB カラム `published_at` は NULL 許容で、未公開商品を作成できる。公開済み限定のクエリは
+> `published_at IS NOT NULL` で絞り込むため、その経路で再構築されるエンティティの `publishedAt` は常に値を持つ。
 
 ### Image（子エンティティ）
 
@@ -166,6 +176,24 @@ fields:
   behavior: |
     公開済み（published_at 非 NULL）の商品のうち、params に一致する件数を返す。
     CategoryID / StatusID / Keyword / 価格・在庫数の包含上下限は FindPublishedList と同じ意味で適用する。
+    対象がない場合は 0 を返す。ページング境界・取得上限・並び順は受け取らない。
+
+- name: FindAllList
+  signature: FindAllList(ctx context.Context, params AllListParams) (Products, error)
+  behavior: |
+    公開状態を問わない商品を (created_at, id) の keyset ページネーションで取得する。
+    params.Ascending により昇順（createdAt ASC, id ASC）／降順（createdAt DESC, id DESC）を切り替える。
+    絞り込み条件（CategoryID / StatusID / CategoryCodes / StatusCodes / Keyword / 価格・在庫数の包含上下限）は
+    FindPublishedList と逐語的に同一で、母集団の差は公開状態だけである。
+    params.AfterCreatedAt / AfterID が非 nil の場合、その keyset 境界より次ページ側の行のみを返す。
+    取得件数は params.Limit で上限を課す（hasNext 判定のため usecase は limit+1 を渡す）。
+    並び順に公開日時を使えないのは、未公開の商品が published_at を持たないためである。
+
+- name: CountAll
+  signature: CountAll(ctx context.Context, filter SearchFilter) (int64, error)
+  behavior: |
+    公開状態を問わない商品のうち、filter に一致する件数を返す。
+    絞り込み条件は CountPublished と逐語的に同一で、母集団の差は公開状態だけである。
     対象がない場合は 0 を返す。ページング境界・取得上限・並び順は受け取らない。
 
 - name: FindAllLowStock
@@ -272,5 +300,14 @@ fields:
     - Limit int32              # 取得件数の上限
     - Ascending bool           # true=公開日時昇順 / false=降順
     - AfterPublishedAt *time.Time  # keyset 境界（先頭ページは nil）
+    - AfterID *uuid.UUID           # keyset 境界（先頭ページは nil）
+
+# AllListParams（未公開を含む一覧取得の検索条件とページング・並び順条件）
+- struct: AllListParams
+  fields:
+    - SearchFilter             # 埋め込み。ListParams と同一の検索条件
+    - Limit int32              # 取得件数の上限
+    - Ascending bool           # true=登録日時昇順 / false=降順
+    - AfterCreatedAt *time.Time    # keyset 境界（先頭ページは nil）。未公開は公開日時を持たないため登録日時を用いる
     - AfterID *uuid.UUID           # keyset 境界（先頭ページは nil）
 ```

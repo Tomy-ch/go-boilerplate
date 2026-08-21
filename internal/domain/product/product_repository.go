@@ -25,8 +25,26 @@ type ListParams struct {
 	AfterID *uuid.UUID
 }
 
-// SearchFilter は、公開商品の絞り込み条件です。一覧と一致件数は同じ母集団を指すため双方がこれを
+// AllListParams は、公開状態を問わない商品一覧取得の絞り込み・並び順・keyset 境界を表すクエリ条件です。
+// keyset 境界は (AfterCreatedAt, AfterID) の組で表し、先頭ページは両方 nil、継続ページは両方が
+// 直前ページ末尾の値になります。
+// 境界に公開日時ではなく登録日時を用いるのは、未公開の商品が公開日時を持たないためです。
+type AllListParams struct {
+	SearchFilter
+
+	// Limit は、取得件数の上限です。
+	Limit int32
+	// Ascending は、登録日時の昇順で取得する場合に true、降順の場合に false です。
+	Ascending bool
+	// AfterCreatedAt は、keyset 境界となる登録日時です。先頭ページでは nil です。
+	AfterCreatedAt *time.Time
+	// AfterID は、keyset 境界となる商品 ID です。先頭ページでは nil です。
+	AfterID *uuid.UUID
+}
+
+// SearchFilter は、商品の絞り込み条件です。一覧と一致件数は同じ母集団を指すため双方がこれを
 // 共有します。片方にだけ条件が増えた状態は、この型を経由する限り表現できません。
+// 公開状態は絞り込み条件ではなく取得メソッドの選択で表します（FindPublishedList / FindAllList）。
 type SearchFilter struct {
 	// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。非推奨で、
 	// CategoryCodes とは同時に指定できません。この排他を保証するのは型ではなく呼び出し側です。
@@ -69,6 +87,14 @@ type Repository interface {
 	// CountPublished は、公開済み商品のうち指定された検索条件に一致する件数を返します。
 	// filter は FindPublishedList と同じ条件で、両者は同じ母集団を指します。
 	CountPublished(ctx context.Context, filter SearchFilter) (int64, error)
+	// FindAllList は、公開状態を問わない商品を keyset ページネーションで取得します。
+	// 並び順は登録日時（同時刻は ID）で、params.Ascending により昇順／降順を切り替えます。
+	// 未公開の商品は公開日時を持たないため、FindPublishedList と並び順の軸が異なります。
+	// 絞り込みの条件は FindPublishedList と同一で、母集団の差は公開状態だけです。
+	FindAllList(ctx context.Context, params AllListParams) (Products, error)
+	// CountAll は、公開状態を問わない商品のうち指定された検索条件に一致する件数を返します。
+	// filter は FindAllList と同じ条件で、両者は同じ母集団を指します。
+	CountAll(ctx context.Context, filter SearchFilter) (int64, error)
 	// FindAllLowStock は、在庫が在庫警告閾値以下まで減った商品を、在庫の少ない順（同数は ID の昇順）で
 	// 最大 limit 件返します。在庫警告閾値が未設定の商品は警告対象を持たないため含みません。
 	// 補充の要否は公開状態に依存しないため、未公開の商品も含めます。

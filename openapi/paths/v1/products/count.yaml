@@ -4,11 +4,19 @@ get:
     - v1/products/count
   summary: 商品検索の一致件数の取得
   description: |
-    公開済み商品のうち、指定した検索条件に一致する件数のみを返します。認証不要の公開エンドポイントです。
-    categoryCodes / statusCodes / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味は
-    GET /v1/products と同一です。検索条件を指定しない場合は公開済み商品の総数を返します。
+    指定した検索条件に一致する商品の件数のみを返します。認証は任意です。
+    既定の母集団は公開済みの商品のみで、検索条件を指定しない場合は公開済み商品の総数を返します。
+    includeUnpublished=true を指定すると、公開日時が未設定（未公開）の商品も母集団に含みます。
+    指定できるのは管理者（admin）だけで、未認証は 401、管理者でなければ 403 を返します。
+    母集団の定義は GET /v1/products と同一で、同じ指定に対して両者の母集団は必ず一致します。
+    categoryCodes / statusCodes / keyword / minPrice / maxPrice / minQuantity / maxQuantity の意味も
+    GET /v1/products と同一です。
     categoryId / statusId は非推奨で、後継の categoryCodes / statusCodes と同時に指定すると 400 を返します。
-  security: []
+    認証は任意ですが、**提示された資格情報が無効な場合は匿名として通さず 401 を返します**
+    （ADR-0021 (optional-authentication-fail-closed)）。
+  security:
+    - BearerAuth: []
+    - {}
   parameters:
     - $ref: '../../../components/parameters/product/CategoryIdParam.yaml'
     - $ref: '../../../components/parameters/product/StatusIdParam.yaml'
@@ -19,15 +27,20 @@ get:
     - $ref: '../../../components/parameters/product/MaxPriceParam.yaml'
     - $ref: '../../../components/parameters/product/MinQuantityParam.yaml'
     - $ref: '../../../components/parameters/product/MaxQuantityParam.yaml'
+    - $ref: '../../../components/parameters/product/IncludeUnpublishedParam.yaml'
   responses:
     '200':
-      description: 検索条件に一致する公開商品の件数
+      description: 検索条件に一致する商品の件数
       content:
         application/json:
           schema:
             $ref: '../../../components/responses/products/ProductCountResponse.yaml'
     '400':
       $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
     '405':
       $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
     '500':
