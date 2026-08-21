@@ -85,6 +85,12 @@ export const SELF_DIR = "scripts/setup/remove-boilerplate-identity";
  * 書き換えて使える形をしておらず、中身は「このボイラープレートが次に何を作るか」でしかないので、
  * 領域を囲うのではなくディレクトリごと消します。ロードマップは残します——あちらは導入部の
  * 置換マーカーが作成先向けの文面を持っており、方向を記録する場所として引き継げます。
+ *
+ * `.github/workflows/setup-scripts-check.yaml` は、このツールと `replace-*` / `verify-setup` を
+ * 実際に起動して初期化が主張どおりに動くことを検証する CI です。叩く相手が全て自消滅するので、
+ * 残せば消えた入口を叩き続けて作成先で恒久的に赤くなります。`verify-setup` 側も同じパスを
+ * 消します。2 つの撤去はどちらが先に走るか決まっておらず、どちらの順序でも残骸を出さないため、
+ * 先に走ったほうが持って行き、後から走ったほうの削除は空振りします。
  */
 export const BOILERPLATE_DELETE_PATHS: readonly string[] = [
   "docs/get-started/boilerplate-only-conventions.md",
@@ -92,6 +98,7 @@ export const BOILERPLATE_DELETE_PATHS: readonly string[] = [
   "docs/plan",
   "scripts/premise-lint",
   "scripts/marker-baseline",
+  ".github/workflows/setup-scripts-check.yaml",
 ];
 
 /** 撤去後に残ってはいけない語。検査が的を外していないかの確認にも使う。 */
