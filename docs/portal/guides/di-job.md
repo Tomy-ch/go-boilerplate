@@ -8,11 +8,8 @@ This directory is the DI seam between the application's job framework and `fx`. 
 
 ## Structure
 
-```text
-internal/di/job/
-├── runner.go   # Runner DI provider
-└── hook/       # Lifecycle hook (job execution at startup)
-```
+`runner.go` provides the Runner; `hook/` runs it at startup. The hook is separate because running
+is a lifecycle event, not part of describing the graph.
 
 ## Architecture
 
@@ -38,7 +35,7 @@ flowchart TB
 ```go
 fx.Provide(
     job.ProvideRunner,
-    job.NewState,
+    jobcontroller.NewState,
 )
 fx.Invoke(hook.RegisterJobHooks)
 ```
@@ -54,6 +51,5 @@ fx.Invoke(hook.RegisterJobHooks)
 ## Notes
 
 - `state.Set` must be called before application startup
-- If `done` is `nil`, shutdown is triggered immediately
-- Job execution runs in a separate goroutine
+- Hook lifecycle details (immediate shutdown on `done == nil`, goroutine execution, cancellation on stop) are in [`hook/README.md`](hook/README.md)
 - To add jobs, add them to `provideJobs(...)` in `internal/di/module/job.go`

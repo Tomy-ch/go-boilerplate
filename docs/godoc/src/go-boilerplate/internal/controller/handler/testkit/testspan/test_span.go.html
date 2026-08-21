@@ -63,14 +63,14 @@
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/observability&#34;
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L10" class="ln">    10  </span>)
 <span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span><span class="comment">// StartTestSpanForEcho は、テスト用のスタブトレーススパンを echo.Context に設定し、スパン終了関数を返します。</span>
+<span id="L12" class="ln">    12  </span><span class="comment">// StartTestSpanForEcho は、テスト用のスタブトレーススパンを *echo.Context に設定し、スパン終了関数を返します。</span>
 <span id="L13" class="ln">    13  </span>func StartTestSpanForEcho(
 <span id="L14" class="ln">    14  </span>	t *testing.T,
-<span id="L15" class="ln">    15  </span>	c echo.Context,
-<span id="L16" class="ln">    16  </span>) (echo.Context, func()) {
+<span id="L15" class="ln">    15  </span>	c *echo.Context,
+<span id="L16" class="ln">    16  </span>) (*echo.Context, func()) {
 <span id="L17" class="ln">    17  </span>	t.Helper()
 <span id="L18" class="ln">    18  </span>
 <span id="L19" class="ln">    19  </span>	req := c.Request()

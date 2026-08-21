@@ -108,7 +108,7 @@
 <span id="L51" class="ln">    51  </span>
 <span id="L52" class="ln">    52  </span><span class="comment">// Store は、冪等性キーの永続化境界です。すべて scope 必須（id 単独 lookup を持たない＝越境防止）。</span>
 <span id="L53" class="ln">    53  </span>type Store interface {
-<span id="L54" class="ln">    54  </span>	<span class="comment">// Claim は、claimed 行を作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。</span>
+<span id="L54" class="ln">    54  </span>	<span class="comment">// Claim は、claimed のエントリを作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。</span>
 <span id="L55" class="ln">    55  </span>	<span class="comment">// ロック待ちタイムアウト時は ErrLockTimeout を返します。</span>
 <span id="L56" class="ln">    56  </span>	<span class="comment">// 業務トランザクション内から呼び出すこと（ロック待ちの上限がトランザクションスコープのため）。</span>
 <span id="L57" class="ln">    57  </span>	Claim(ctx context.Context, p ClaimParams) (claimed bool, err error)
@@ -116,7 +116,7 @@
 <span id="L59" class="ln">    59  </span>	Get(ctx context.Context, scope, key string) (*Record, error)
 <span id="L60" class="ln">    60  </span>	<span class="comment">// Complete は、claimed → completed へ遷移し結果を保存します。</span>
 <span id="L61" class="ln">    61  </span>	Complete(ctx context.Context, p CompleteParams) error
-<span id="L62" class="ln">    62  </span>	<span class="comment">// DeleteExpired は、cutoff より古い行を limit 件まで削除し、削除件数を返します。</span>
+<span id="L62" class="ln">    62  </span>	<span class="comment">// DeleteExpired は、cutoff より古いエントリを limit 件まで削除し、削除件数を返します。</span>
 <span id="L63" class="ln">    63  </span>	DeleteExpired(ctx context.Context, cutoff time.Time, limit int32) (int64, error)
 <span id="L64" class="ln">    64  </span>}
 <span id="L65" class="ln">    65  </span>

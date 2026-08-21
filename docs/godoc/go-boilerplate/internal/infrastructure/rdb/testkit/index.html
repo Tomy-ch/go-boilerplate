@@ -104,6 +104,9 @@
 			
 			
 				
+				<dd><a href="#HoldSuiteSerialization">func HoldSuiteSerialization(t *testing.T, db driver.DatabaseDriver)</a></dd>
+			
+				
 				<dd><a href="#NewTestDB">func NewTestDB(t *testing.T) driver.DatabaseDriver</a></dd>
 			
 			
@@ -141,7 +144,28 @@
 		
 			
 			
-			<h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1333:1383#L32">NewTestDB</a>
+			<h2 id="HoldSuiteSerialization">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=3920:3987#L100">HoldSuiteSerialization</a>
+				<a class="permalink" href="#HoldSuiteSerialization">¶</a>
+				
+				
+			</h2>
+			<pre>func HoldSuiteSerialization(t *<a href="../../../../../testing/">testing</a>.<a href="../../../../../testing/#T">T</a>, db <a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/">driver</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/#DatabaseDriver">DatabaseDriver</a>)</pre>
+			<p>HoldSuiteSerialization は、呼び出したテストが終わるまでスイート全体の直列化を占有します。
+占有している間、他パッケージのテスト（別プロセス）が張る CASCADE TRUNCATE は走りません。
+解放は t.Cleanup で行われます。
+</p><p>占有は専用のトランザクションで行い、テスト自身のトランザクションはこの直列化に参加しません。
+参加させると自分の占有を待つことになり、進みません。
+</p><p>通常のテストは WithinTx が同じ直列化を内部で行うため、これを呼ぶ必要はありません。呼ぶのは、
+トランザクションを 2 本同時に生かす検証（ロック競合の再現など）のように、WithinTx の
+「1 本 + ロールバック」では表現できないテストに限られます。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1699:1749#L38">NewTestDB</a>
 				<a class="permalink" href="#NewTestDB">¶</a>
 				
 				
@@ -156,7 +180,7 @@
 		
 			
 			
-			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=981:1057#L21">TransactionRunner</a>
+			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1318:1394#L26">TransactionRunner</a>
 				<a class="permalink" href="#TransactionRunner">¶</a>
 				
 				
@@ -177,7 +201,7 @@
 
 			
 				
-				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1529:1590#L38">NewTestTransactionRunner</a>
+				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1895:1956#L44">NewTestTransactionRunner</a>
 					<a class="permalink" href="#NewTestTransactionRunner">¶</a>
 					
 					

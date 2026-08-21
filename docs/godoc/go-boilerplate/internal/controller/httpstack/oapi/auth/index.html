@@ -146,15 +146,15 @@
     <span id="ErrUnauthorizedInvalidToken">ErrUnauthorizedInvalidToken</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;invalid token&#34;)
     <span class="comment">// ErrUnauthorizedTokenNotProvided は、認証トークンが提供されていない場合のエラー。</span>
     <span id="ErrUnauthorizedTokenNotProvided">ErrUnauthorizedTokenNotProvided</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;authorization token not provided&#34;)
-    <span class="comment">// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー。実経路では認証失敗(401)として返るため誤解を避け 401 に寄せる。</span>
-    <span id="ErrAuthnSlotNotFound">ErrAuthnSlotNotFound</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;authn slot not found in request context&#34;)
+    <span class="comment">// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー（資格情報と無関係な結線の不具合）。</span>
+    <span id="ErrAuthnSlotNotFound">ErrAuthnSlotNotFound</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrInternal">ErrInternal</a>, &#34;authn slot not found in request context&#34;)
 )</pre>
 			
 		
 		
 			
 			
-			<h2 id="NewAuthenticator">func <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go.html?s=502:632#L11">NewAuthenticator</a>
+			<h2 id="NewAuthenticator">func <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go.html?s=555:685#L12">NewAuthenticator</a>
 				<a class="permalink" href="#NewAuthenticator">¶</a>
 				
 				

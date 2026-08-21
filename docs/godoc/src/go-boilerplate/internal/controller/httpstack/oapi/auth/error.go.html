@@ -71,8 +71,8 @@
 <span id="L14" class="ln">    14  </span>	ErrUnauthorizedInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, &#34;invalid token&#34;)
 <span id="L15" class="ln">    15  </span>	<span class="comment">// ErrUnauthorizedTokenNotProvided は、認証トークンが提供されていない場合のエラー。</span>
 <span id="L16" class="ln">    16  </span>	ErrUnauthorizedTokenNotProvided = xerrors.Wrap(apperror.ErrUnauthenticated, &#34;authorization token not provided&#34;)
-<span id="L17" class="ln">    17  </span>	<span class="comment">// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー。実経路では認証失敗(401)として返るため誤解を避け 401 に寄せる。</span>
-<span id="L18" class="ln">    18  </span>	ErrAuthnSlotNotFound = xerrors.Wrap(apperror.ErrUnauthenticated, &#34;authn slot not found in request context&#34;)
+<span id="L17" class="ln">    17  </span>	<span class="comment">// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー（資格情報と無関係な結線の不具合）。</span>
+<span id="L18" class="ln">    18  </span>	ErrAuthnSlotNotFound = xerrors.Wrap(apperror.ErrInternal, &#34;authn slot not found in request context&#34;)
 <span id="L19" class="ln">    19  </span>)
 <span id="L20" class="ln">    20  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/error.go.html?m=text">View as plain text</a></p>

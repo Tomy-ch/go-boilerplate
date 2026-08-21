@@ -59,19 +59,66 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;testing&#34;
-<span id="L5" class="ln">     5  </span>)
-<span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>func TestInfrastructureModule_GraphIsValid(t *testing.T) {
-<span id="L8" class="ln">     8  </span>	t.Parallel()
-<span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span>	<span class="comment">// 各 concern（persistence / clock / httpclient / webapi / security）の</span>
-<span id="L11" class="ln">    11  </span>	<span class="comment">// 個別検証は各 concern の *_test.go に切り出し、ここでは集約された InfrastructureModule 全体が</span>
-<span id="L12" class="ln">    12  </span>	<span class="comment">// 欠落なく結線されることを確認する。outbox_publisher は relay 専用のため OutboxRelayModule 側で検証する。</span>
-<span id="L13" class="ln">    13  </span>	<span class="comment">// SQL や実 DB 挙動は infra 層のテストに任せる。</span>
-<span id="L14" class="ln">    14  </span>	opts := append(commonDeps(), InfrastructureModule())
-<span id="L15" class="ln">    15  </span>	validateGraph(t, opts...)
-<span id="L16" class="ln">    16  </span>}
-<span id="L17" class="ln">    17  </span>
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go.uber.org/fx&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/httpclient&#34;
+<span id="L10" class="ln">    10  </span>	authzbd &#34;go-boilerplate/internal/usecase/boundary/authz&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L12" class="ln">    12  </span>	objectstoragebd &#34;go-boilerplate/internal/usecase/boundary/objectstorage&#34;
+<span id="L13" class="ln">    13  </span>	outboxbndry &#34;go-boilerplate/internal/usecase/boundary/outbox&#34;
+<span id="L14" class="ln">    14  </span>	publisherbd &#34;go-boilerplate/internal/usecase/boundary/publisher&#34;
+<span id="L15" class="ln">    15  </span>)
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>func TestInfrastructureModule_GraphIsValid(t *testing.T) {
+<span id="L18" class="ln">    18  </span>	t.Parallel()
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>	<span class="comment">// 各 concern（persistence / clock / httpclient / webapi / auth / authz）の</span>
+<span id="L21" class="ln">    21  </span>	<span class="comment">// 個別検証は各 concern の *_test.go に切り出し、ここでは集約された InfrastructureModule 全体が</span>
+<span id="L22" class="ln">    22  </span>	<span class="comment">// 欠落なく結線されることを確認する。outbox_publisher は relay 専用のため OutboxRelayModule 側で検証する。</span>
+<span id="L23" class="ln">    23  </span>	<span class="comment">// SQL や実 DB 挙動は infra 層のテストに任せる。</span>
+<span id="L24" class="ln">    24  </span>	opts := append(commonDeps(), InfrastructureModule())
+<span id="L25" class="ln">    25  </span>	validateGraph(t, opts...)
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span>func TestInfrastructureModule(t *testing.T) {
+<span id="L29" class="ln">    29  </span>	t.Parallel()
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L32" class="ln">    32  </span>		t.Parallel()
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span>		t.Run(&#34;集約した各 concern の代表型を単体で提供する&#34;, func(t *testing.T) {
+<span id="L35" class="ln">    35  </span>			t.Parallel()
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>			var (
+<span id="L38" class="ln">    38  </span>				store   outboxbndry.Store       <span class="comment">// persistence</span>
+<span id="L39" class="ln">    39  </span>				clk     clock.Clock             <span class="comment">// clock</span>
+<span id="L40" class="ln">    40  </span>				client  httpclient.Client       <span class="comment">// httpclient</span>
+<span id="L41" class="ln">    41  </span>				storage objectstoragebd.Storage <span class="comment">// objectstorage</span>
+<span id="L42" class="ln">    42  </span>				authz   authzbd.Authorizer      <span class="comment">// authz</span>
+<span id="L43" class="ln">    43  </span>			)
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>			validateGraph(t, append(commonDeps(), InfrastructureModule(),
+<span id="L46" class="ln">    46  </span>				fx.Populate(&amp;store, &amp;clk, &amp;client, &amp;storage, &amp;authz))...)
+<span id="L47" class="ln">    47  </span>		})
+<span id="L48" class="ln">    48  </span>	})
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L51" class="ln">    51  </span>		t.Parallel()
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>		t.Run(&#34;relay 専用の outbox publisher は含まず解決できない&#34;, func(t *testing.T) {
+<span id="L54" class="ln">    54  </span>			t.Parallel()
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span>			<span class="comment">// publisher は非標準の httpclient profile を寄与するため、relay 以外へ漏らさない。</span>
+<span id="L57" class="ln">    57  </span>			var publisher publisherbd.Publisher
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>			opts := append(commonDeps(), InfrastructureModule(), fx.Populate(&amp;publisher), fx.NopLogger)
+<span id="L60" class="ln">    60  </span>			require.Error(t, fx.ValidateApp(opts...))
+<span id="L61" class="ln">    61  </span>		})
+<span id="L62" class="ln">    62  </span>	})
+<span id="L63" class="ln">    63  </span>}
+<span id="L64" class="ln">    64  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/infrastructure_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

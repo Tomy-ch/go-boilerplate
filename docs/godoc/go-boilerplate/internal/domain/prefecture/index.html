@@ -288,7 +288,7 @@ ErrInvalidName / ErrInvalidCode を返します。
 		
 			
 			
-			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_repository.go.html?s=298:1076#L1">Repository</a>
+			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_repository.go.html?s=298:1114#L1">Repository</a>
 				<a class="permalink" href="#Repository">¶</a>
 				
 				
@@ -298,11 +298,12 @@ ErrInvalidName / ErrInvalidCode を返します。
 			</p><pre>type Repository interface {
     <span class="comment">// FindByID は、IDから都道府県を取得します。存在しない場合は NotFound を返します。</span>
     FindByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Prefecture">Prefecture</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// FindByIDs は、複数IDから都道府県一覧を取得します。見つからないIDは結果から除外した部分一覧を返します（NotFound は返しません）。</span>
+    <span class="comment">// FindByIDs は、複数IDから都道府県一覧をマスタの表示順で取得します。</span>
+    <span class="comment">// 見つからないIDは結果から除外した部分一覧を返します（NotFound は返しません）。</span>
     FindByIDs(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, ids []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#Prefectures">Prefectures</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// FindByName は、都道府県名から都道府県を取得します。存在しない場合は NotFound を返します。</span>
     FindByName(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>) (*<a href="#Prefecture">Prefecture</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// FindAll は、全都道府県を code 昇順で取得します。</span>
+    <span class="comment">// FindAll は、全都道府県をマスタの表示順で取得します。</span>
     FindAll(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="#Prefectures">Prefectures</a>, <a href="../../../../builtin/#error">error</a>)
 }</pre>
 

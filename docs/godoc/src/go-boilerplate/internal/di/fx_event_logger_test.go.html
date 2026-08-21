@@ -58,181 +58,224 @@
 <pre><span id="L1" class="ln">     1  </span>package di
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
-<span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go.uber.org/fx/fxevent&#34;
-<span id="L12" class="ln">    12  </span>)
-<span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span>func TestNewFxEventLogger(t *testing.T) {
-<span id="L15" class="ln">    15  </span>	t.Parallel()
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L18" class="ln">    18  </span>		t.Parallel()
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>		t.Run(&#34;非nilのfxevent.Loggerを返す&#34;, func(t *testing.T) {
-<span id="L21" class="ln">    21  </span>			t.Parallel()
-<span id="L22" class="ln">    22  </span>			assert.NotNil(t, NewFxEventLogger(logging.NewTestLogger(t)))
-<span id="L23" class="ln">    23  </span>		})
-<span id="L24" class="ln">    24  </span>	})
-<span id="L25" class="ln">    25  </span>}
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span>func TestFxEventLogger_LogEvent(t *testing.T) {
-<span id="L28" class="ln">    28  </span>	t.Parallel()
-<span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span>	boom := xerrors.New(&#34;boom&#34;)
-<span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span>	<span class="comment">// assertLogged は、指定イベントが期待メッセージ・レベルで 1 件だけ記録されることを検証する。</span>
-<span id="L33" class="ln">    33  </span>	assertLogged := func(t *testing.T, event fxevent.Event, wantMsg, wantLevel string) {
-<span id="L34" class="ln">    34  </span>		t.Helper()
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>		obs, logs := logging.NewObservedTestLogger(t)
-<span id="L37" class="ln">    37  </span>		NewFxEventLogger(obs).LogEvent(event)
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span>		entries := logs.FilterMessage(wantMsg).All()
-<span id="L40" class="ln">    40  </span>		require.Len(t, entries, 1)
-<span id="L41" class="ln">    41  </span>		assert.Equal(t, wantLevel, entries[0].Level.String())
-<span id="L42" class="ln">    42  </span>	}
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	t.Run(&#34;OnStart失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L45" class="ln">    45  </span>		t.Parallel()
-<span id="L46" class="ln">    46  </span>		assertLogged(t, &amp;fxevent.OnStartExecuted{FunctionName: &#34;f&#34;, CallerName: &#34;c&#34;, Err: boom}, &#34;OnStart hook failed&#34;, &#34;error&#34;)
-<span id="L47" class="ln">    47  </span>	})
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span>	t.Run(&#34;OnStart成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L50" class="ln">    50  </span>		t.Parallel()
-<span id="L51" class="ln">    51  </span>		assertLogged(t, &amp;fxevent.OnStartExecuted{FunctionName: &#34;f&#34;, CallerName: &#34;c&#34;}, &#34;OnStart hook executed&#34;, &#34;debug&#34;)
-<span id="L52" class="ln">    52  </span>	})
-<span id="L53" class="ln">    53  </span>
-<span id="L54" class="ln">    54  </span>	t.Run(&#34;OnStop失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L55" class="ln">    55  </span>		t.Parallel()
-<span id="L56" class="ln">    56  </span>		assertLogged(t, &amp;fxevent.OnStopExecuted{FunctionName: &#34;f&#34;, Err: boom}, &#34;OnStop hook failed&#34;, &#34;error&#34;)
-<span id="L57" class="ln">    57  </span>	})
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>	t.Run(&#34;OnStop成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L60" class="ln">    60  </span>		t.Parallel()
-<span id="L61" class="ln">    61  </span>		assertLogged(t, &amp;fxevent.OnStopExecuted{FunctionName: &#34;f&#34;}, &#34;OnStop hook executed&#34;, &#34;debug&#34;)
-<span id="L62" class="ln">    62  </span>	})
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span>	t.Run(&#34;Supply失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L65" class="ln">    65  </span>		t.Parallel()
-<span id="L66" class="ln">    66  </span>		assertLogged(t, &amp;fxevent.Supplied{TypeName: &#34;T&#34;, Err: boom}, &#34;Supply failed&#34;, &#34;error&#34;)
-<span id="L67" class="ln">    67  </span>	})
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span>	t.Run(&#34;Supply成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L70" class="ln">    70  </span>		t.Parallel()
-<span id="L71" class="ln">    71  </span>		assertLogged(t, &amp;fxevent.Supplied{TypeName: &#34;T&#34;, ModuleName: &#34;m&#34;}, &#34;Supplied&#34;, &#34;debug&#34;)
-<span id="L72" class="ln">    72  </span>	})
-<span id="L73" class="ln">    73  </span>
-<span id="L74" class="ln">    74  </span>	t.Run(&#34;Provide失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L75" class="ln">    75  </span>		t.Parallel()
-<span id="L76" class="ln">    76  </span>		assertLogged(t, &amp;fxevent.Provided{ConstructorName: &#34;ctor&#34;, Err: boom}, &#34;Provide failed&#34;, &#34;error&#34;)
-<span id="L77" class="ln">    77  </span>	})
-<span id="L78" class="ln">    78  </span>
-<span id="L79" class="ln">    79  </span>	t.Run(&#34;Provide成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L80" class="ln">    80  </span>		t.Parallel()
-<span id="L81" class="ln">    81  </span>		assertLogged(t, &amp;fxevent.Provided{ConstructorName: &#34;ctor&#34;, ModuleName: &#34;m&#34;, OutputTypeNames: []string{&#34;T&#34;}}, &#34;Provided&#34;, &#34;debug&#34;)
-<span id="L82" class="ln">    82  </span>	})
-<span id="L83" class="ln">    83  </span>
-<span id="L84" class="ln">    84  </span>	t.Run(&#34;Invoke失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L85" class="ln">    85  </span>		t.Parallel()
-<span id="L86" class="ln">    86  </span>		assertLogged(t, &amp;fxevent.Invoked{FunctionName: &#34;f&#34;, Err: boom}, &#34;Invoke failed&#34;, &#34;error&#34;)
-<span id="L87" class="ln">    87  </span>	})
-<span id="L88" class="ln">    88  </span>
-<span id="L89" class="ln">    89  </span>	t.Run(&#34;Invoke成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L90" class="ln">    90  </span>		t.Parallel()
-<span id="L91" class="ln">    91  </span>		assertLogged(t, &amp;fxevent.Invoked{FunctionName: &#34;f&#34;, ModuleName: &#34;m&#34;}, &#34;Invoked&#34;, &#34;debug&#34;)
-<span id="L92" class="ln">    92  </span>	})
-<span id="L93" class="ln">    93  </span>
-<span id="L94" class="ln">    94  </span>	t.Run(&#34;Replace失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L95" class="ln">    95  </span>		t.Parallel()
-<span id="L96" class="ln">    96  </span>		assertLogged(t, &amp;fxevent.Replaced{Err: boom}, &#34;Replace failed&#34;, &#34;error&#34;)
-<span id="L97" class="ln">    97  </span>	})
-<span id="L98" class="ln">    98  </span>
-<span id="L99" class="ln">    99  </span>	t.Run(&#34;Replace成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L100" class="ln">   100  </span>		t.Parallel()
-<span id="L101" class="ln">   101  </span>		assertLogged(t, &amp;fxevent.Replaced{OutputTypeNames: []string{&#34;T&#34;}, ModuleName: &#34;m&#34;}, &#34;Replaced&#34;, &#34;debug&#34;)
-<span id="L102" class="ln">   102  </span>	})
-<span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>	t.Run(&#34;Decorate失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L105" class="ln">   105  </span>		t.Parallel()
-<span id="L106" class="ln">   106  </span>		assertLogged(t, &amp;fxevent.Decorated{DecoratorName: &#34;dec&#34;, Err: boom}, &#34;Decorate failed&#34;, &#34;error&#34;)
-<span id="L107" class="ln">   107  </span>	})
-<span id="L108" class="ln">   108  </span>
-<span id="L109" class="ln">   109  </span>	t.Run(&#34;Decorate成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L110" class="ln">   110  </span>		t.Parallel()
-<span id="L111" class="ln">   111  </span>		assertLogged(t, &amp;fxevent.Decorated{DecoratorName: &#34;dec&#34;, ModuleName: &#34;m&#34;, OutputTypeNames: []string{&#34;T&#34;}}, &#34;Decorated&#34;, &#34;debug&#34;)
-<span id="L112" class="ln">   112  </span>	})
-<span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span>	t.Run(&#34;LoggerInitialized失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L115" class="ln">   115  </span>		t.Parallel()
-<span id="L116" class="ln">   116  </span>		assertLogged(t, &amp;fxevent.LoggerInitialized{Err: boom}, &#34;Logger initialization failed&#34;, &#34;error&#34;)
-<span id="L117" class="ln">   117  </span>	})
-<span id="L118" class="ln">   118  </span>
-<span id="L119" class="ln">   119  </span>	t.Run(&#34;LoggerInitialized成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L120" class="ln">   120  </span>		t.Parallel()
-<span id="L121" class="ln">   121  </span>		assertLogged(t, &amp;fxevent.LoggerInitialized{ConstructorName: &#34;ctor&#34;}, &#34;Custom logger initialized&#34;, &#34;debug&#34;)
-<span id="L122" class="ln">   122  </span>	})
-<span id="L123" class="ln">   123  </span>
-<span id="L124" class="ln">   124  </span>	t.Run(&#34;Started失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L125" class="ln">   125  </span>		t.Parallel()
-<span id="L126" class="ln">   126  </span>		assertLogged(t, &amp;fxevent.Started{Err: boom}, &#34;Application failed to start&#34;, &#34;error&#34;)
-<span id="L127" class="ln">   127  </span>	})
-<span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span>	t.Run(&#34;Started成功はInfoで記録される&#34;, func(t *testing.T) {
-<span id="L130" class="ln">   130  </span>		t.Parallel()
-<span id="L131" class="ln">   131  </span>		assertLogged(t, &amp;fxevent.Started{}, &#34;Application started&#34;, &#34;info&#34;)
-<span id="L132" class="ln">   132  </span>	})
-<span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>	t.Run(&#34;Stopped失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L135" class="ln">   135  </span>		t.Parallel()
-<span id="L136" class="ln">   136  </span>		assertLogged(t, &amp;fxevent.Stopped{Err: boom}, &#34;Application failed to stop&#34;, &#34;error&#34;)
-<span id="L137" class="ln">   137  </span>	})
-<span id="L138" class="ln">   138  </span>
-<span id="L139" class="ln">   139  </span>	t.Run(&#34;Stopped成功はInfoで記録される&#34;, func(t *testing.T) {
-<span id="L140" class="ln">   140  </span>		t.Parallel()
-<span id="L141" class="ln">   141  </span>		assertLogged(t, &amp;fxevent.Stopped{}, &#34;Application stopped&#34;, &#34;info&#34;)
-<span id="L142" class="ln">   142  </span>	})
-<span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>	t.Run(&#34;RollingBackは起動失敗をErrorで記録する&#34;, func(t *testing.T) {
-<span id="L145" class="ln">   145  </span>		t.Parallel()
-<span id="L146" class="ln">   146  </span>		assertLogged(t, &amp;fxevent.RollingBack{StartErr: boom}, &#34;start failed, rolling back&#34;, &#34;error&#34;)
-<span id="L147" class="ln">   147  </span>	})
-<span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span>	t.Run(&#34;RolledBack失敗はErrorで記録される&#34;, func(t *testing.T) {
-<span id="L150" class="ln">   150  </span>		t.Parallel()
-<span id="L151" class="ln">   151  </span>		assertLogged(t, &amp;fxevent.RolledBack{Err: boom}, &#34;Rollback failed&#34;, &#34;error&#34;)
-<span id="L152" class="ln">   152  </span>	})
-<span id="L153" class="ln">   153  </span>
-<span id="L154" class="ln">   154  </span>	t.Run(&#34;RolledBack成功はDebugで記録される&#34;, func(t *testing.T) {
-<span id="L155" class="ln">   155  </span>		t.Parallel()
-<span id="L156" class="ln">   156  </span>		assertLogged(t, &amp;fxevent.RolledBack{}, &#34;Application rolled back&#34;, &#34;debug&#34;)
-<span id="L157" class="ln">   157  </span>	})
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>	t.Run(&#34;対象外イベントは無視される&#34;, func(t *testing.T) {
-<span id="L160" class="ln">   160  </span>		t.Parallel()
-<span id="L161" class="ln">   161  </span>
-<span id="L162" class="ln">   162  </span>		obs, logs := logging.NewObservedTestLogger(t)
-<span id="L163" class="ln">   163  </span>		NewFxEventLogger(obs).LogEvent(&amp;fxevent.Invoking{FunctionName: &#34;f&#34;})
-<span id="L164" class="ln">   164  </span>
-<span id="L165" class="ln">   165  </span>		assert.Equal(t, 0, logs.Len())
-<span id="L166" class="ln">   166  </span>	})
-<span id="L167" class="ln">   167  </span>}
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go.uber.org/fx/fxevent&#34;
+<span id="L13" class="ln">    13  </span>)
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span>func TestNewFxEventLogger(t *testing.T) {
+<span id="L16" class="ln">    16  </span>	t.Parallel()
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L19" class="ln">    19  </span>		t.Parallel()
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>		t.Run(&#34;非nilのfxevent.Loggerを返す&#34;, func(t *testing.T) {
+<span id="L22" class="ln">    22  </span>			t.Parallel()
+<span id="L23" class="ln">    23  </span>			assert.NotNil(t, NewFxEventLogger(logging.NewTestLogger(t)))
+<span id="L24" class="ln">    24  </span>		})
+<span id="L25" class="ln">    25  </span>	})
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span>func Test_fxEventLogger_LogEvent(t *testing.T) {
+<span id="L29" class="ln">    29  </span>	t.Parallel()
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>	boom := xerrors.New(&#34;boom&#34;)
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>	<span class="comment">// assertLogged は、指定イベントが期待メッセージ・レベルで 1 件だけ記録されることを検証する。</span>
+<span id="L34" class="ln">    34  </span>	assertLogged := func(t *testing.T, event fxevent.Event, wantMsg, wantLevel string) {
+<span id="L35" class="ln">    35  </span>		t.Helper()
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>		obs, logs := logging.NewObservedTestLogger(t)
+<span id="L38" class="ln">    38  </span>		NewFxEventLogger(obs).LogEvent(event)
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>		entries := logs.FilterMessage(wantMsg).All()
+<span id="L41" class="ln">    41  </span>		require.Len(t, entries, 1)
+<span id="L42" class="ln">    42  </span>		assert.Equal(t, wantLevel, entries[0].Level.String())
+<span id="L43" class="ln">    43  </span>	}
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L46" class="ln">    46  </span>		t.Parallel()
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>		t.Run(&#34;OnStart失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L49" class="ln">    49  </span>			t.Parallel()
+<span id="L50" class="ln">    50  </span>			assertLogged(t, &amp;fxevent.OnStartExecuted{FunctionName: &#34;f&#34;, CallerName: &#34;c&#34;, Err: boom}, &#34;OnStart hook failed&#34;, &#34;error&#34;)
+<span id="L51" class="ln">    51  </span>		})
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>		t.Run(&#34;OnStart成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L54" class="ln">    54  </span>			t.Parallel()
+<span id="L55" class="ln">    55  </span>			assertLogged(t, &amp;fxevent.OnStartExecuted{FunctionName: &#34;f&#34;, CallerName: &#34;c&#34;}, &#34;OnStart hook executed&#34;, &#34;debug&#34;)
+<span id="L56" class="ln">    56  </span>		})
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>		t.Run(&#34;OnStop失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L59" class="ln">    59  </span>			t.Parallel()
+<span id="L60" class="ln">    60  </span>			assertLogged(t, &amp;fxevent.OnStopExecuted{FunctionName: &#34;f&#34;, Err: boom}, &#34;OnStop hook failed&#34;, &#34;error&#34;)
+<span id="L61" class="ln">    61  </span>		})
+<span id="L62" class="ln">    62  </span>
+<span id="L63" class="ln">    63  </span>		t.Run(&#34;OnStop成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L64" class="ln">    64  </span>			t.Parallel()
+<span id="L65" class="ln">    65  </span>			assertLogged(t, &amp;fxevent.OnStopExecuted{FunctionName: &#34;f&#34;}, &#34;OnStop hook executed&#34;, &#34;debug&#34;)
+<span id="L66" class="ln">    66  </span>		})
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>		t.Run(&#34;Supply失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L69" class="ln">    69  </span>			t.Parallel()
+<span id="L70" class="ln">    70  </span>			assertLogged(t, &amp;fxevent.Supplied{TypeName: &#34;T&#34;, Err: boom}, &#34;Supply failed&#34;, &#34;error&#34;)
+<span id="L71" class="ln">    71  </span>		})
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>		t.Run(&#34;Supply成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L74" class="ln">    74  </span>			t.Parallel()
+<span id="L75" class="ln">    75  </span>			assertLogged(t, &amp;fxevent.Supplied{TypeName: &#34;T&#34;, ModuleName: &#34;m&#34;}, &#34;Supplied&#34;, &#34;debug&#34;)
+<span id="L76" class="ln">    76  </span>		})
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>		t.Run(&#34;Provide失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L79" class="ln">    79  </span>			t.Parallel()
+<span id="L80" class="ln">    80  </span>			assertLogged(t, &amp;fxevent.Provided{ConstructorName: &#34;ctor&#34;, Err: boom}, &#34;Provide failed&#34;, &#34;error&#34;)
+<span id="L81" class="ln">    81  </span>		})
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>		t.Run(&#34;Provide成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L84" class="ln">    84  </span>			t.Parallel()
+<span id="L85" class="ln">    85  </span>			assertLogged(t, &amp;fxevent.Provided{ConstructorName: &#34;ctor&#34;, ModuleName: &#34;m&#34;, OutputTypeNames: []string{&#34;T&#34;}}, &#34;Provided&#34;, &#34;debug&#34;)
+<span id="L86" class="ln">    86  </span>		})
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span>		t.Run(&#34;Invoke失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L89" class="ln">    89  </span>			t.Parallel()
+<span id="L90" class="ln">    90  </span>			assertLogged(t, &amp;fxevent.Invoked{FunctionName: &#34;f&#34;, Err: boom}, &#34;Invoke failed&#34;, &#34;error&#34;)
+<span id="L91" class="ln">    91  </span>		})
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>		t.Run(&#34;Invoke成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L94" class="ln">    94  </span>			t.Parallel()
+<span id="L95" class="ln">    95  </span>			assertLogged(t, &amp;fxevent.Invoked{FunctionName: &#34;f&#34;, ModuleName: &#34;m&#34;}, &#34;Invoked&#34;, &#34;debug&#34;)
+<span id="L96" class="ln">    96  </span>		})
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>		t.Run(&#34;Replace失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L99" class="ln">    99  </span>			t.Parallel()
+<span id="L100" class="ln">   100  </span>			assertLogged(t, &amp;fxevent.Replaced{Err: boom}, &#34;Replace failed&#34;, &#34;error&#34;)
+<span id="L101" class="ln">   101  </span>		})
+<span id="L102" class="ln">   102  </span>
+<span id="L103" class="ln">   103  </span>		t.Run(&#34;Replace成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L104" class="ln">   104  </span>			t.Parallel()
+<span id="L105" class="ln">   105  </span>			assertLogged(t, &amp;fxevent.Replaced{OutputTypeNames: []string{&#34;T&#34;}, ModuleName: &#34;m&#34;}, &#34;Replaced&#34;, &#34;debug&#34;)
+<span id="L106" class="ln">   106  </span>		})
+<span id="L107" class="ln">   107  </span>
+<span id="L108" class="ln">   108  </span>		t.Run(&#34;Decorate失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L109" class="ln">   109  </span>			t.Parallel()
+<span id="L110" class="ln">   110  </span>			assertLogged(t, &amp;fxevent.Decorated{DecoratorName: &#34;dec&#34;, Err: boom}, &#34;Decorate failed&#34;, &#34;error&#34;)
+<span id="L111" class="ln">   111  </span>		})
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>		t.Run(&#34;Decorate成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L114" class="ln">   114  </span>			t.Parallel()
+<span id="L115" class="ln">   115  </span>			assertLogged(t, &amp;fxevent.Decorated{DecoratorName: &#34;dec&#34;, ModuleName: &#34;m&#34;, OutputTypeNames: []string{&#34;T&#34;}}, &#34;Decorated&#34;, &#34;debug&#34;)
+<span id="L116" class="ln">   116  </span>		})
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span>		t.Run(&#34;LoggerInitialized失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L119" class="ln">   119  </span>			t.Parallel()
+<span id="L120" class="ln">   120  </span>			assertLogged(t, &amp;fxevent.LoggerInitialized{Err: boom}, &#34;Logger initialization failed&#34;, &#34;error&#34;)
+<span id="L121" class="ln">   121  </span>		})
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>		t.Run(&#34;LoggerInitialized成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L124" class="ln">   124  </span>			t.Parallel()
+<span id="L125" class="ln">   125  </span>			assertLogged(t, &amp;fxevent.LoggerInitialized{ConstructorName: &#34;ctor&#34;}, &#34;Custom logger initialized&#34;, &#34;debug&#34;)
+<span id="L126" class="ln">   126  </span>		})
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>		t.Run(&#34;Started失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L129" class="ln">   129  </span>			t.Parallel()
+<span id="L130" class="ln">   130  </span>			assertLogged(t, &amp;fxevent.Started{Err: boom}, &#34;Application failed to start&#34;, &#34;error&#34;)
+<span id="L131" class="ln">   131  </span>		})
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span>		t.Run(&#34;Started成功はInfoで記録される&#34;, func(t *testing.T) {
+<span id="L134" class="ln">   134  </span>			t.Parallel()
+<span id="L135" class="ln">   135  </span>			assertLogged(t, &amp;fxevent.Started{}, &#34;Application started&#34;, &#34;info&#34;)
+<span id="L136" class="ln">   136  </span>		})
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>		t.Run(&#34;Stopped失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L139" class="ln">   139  </span>			t.Parallel()
+<span id="L140" class="ln">   140  </span>			assertLogged(t, &amp;fxevent.Stopped{Err: boom}, &#34;Application failed to stop&#34;, &#34;error&#34;)
+<span id="L141" class="ln">   141  </span>		})
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span>		t.Run(&#34;Stopped成功はInfoで記録される&#34;, func(t *testing.T) {
+<span id="L144" class="ln">   144  </span>			t.Parallel()
+<span id="L145" class="ln">   145  </span>			assertLogged(t, &amp;fxevent.Stopped{}, &#34;Application stopped&#34;, &#34;info&#34;)
+<span id="L146" class="ln">   146  </span>		})
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>		t.Run(&#34;RollingBackは起動失敗をErrorで記録する&#34;, func(t *testing.T) {
+<span id="L149" class="ln">   149  </span>			t.Parallel()
+<span id="L150" class="ln">   150  </span>			assertLogged(t, &amp;fxevent.RollingBack{StartErr: boom}, &#34;start failed, rolling back&#34;, &#34;error&#34;)
+<span id="L151" class="ln">   151  </span>		})
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>		t.Run(&#34;RolledBack失敗はErrorで記録される&#34;, func(t *testing.T) {
+<span id="L154" class="ln">   154  </span>			t.Parallel()
+<span id="L155" class="ln">   155  </span>			assertLogged(t, &amp;fxevent.RolledBack{Err: boom}, &#34;Rollback failed&#34;, &#34;error&#34;)
+<span id="L156" class="ln">   156  </span>		})
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>		t.Run(&#34;RolledBack成功はDebugで記録される&#34;, func(t *testing.T) {
+<span id="L159" class="ln">   159  </span>			t.Parallel()
+<span id="L160" class="ln">   160  </span>			assertLogged(t, &amp;fxevent.RolledBack{}, &#34;Application rolled back&#34;, &#34;debug&#34;)
+<span id="L161" class="ln">   161  </span>		})
+<span id="L162" class="ln">   162  </span>
+<span id="L163" class="ln">   163  </span>		t.Run(&#34;対象外イベントは無視される&#34;, func(t *testing.T) {
+<span id="L164" class="ln">   164  </span>			t.Parallel()
+<span id="L165" class="ln">   165  </span>
+<span id="L166" class="ln">   166  </span>			obs, logs := logging.NewObservedTestLogger(t)
+<span id="L167" class="ln">   167  </span>			NewFxEventLogger(obs).LogEvent(&amp;fxevent.Invoking{FunctionName: &#34;f&#34;})
 <span id="L168" class="ln">   168  </span>
-<span id="L169" class="ln">   169  </span>func Test_fxEventLogger_LogEvent(t *testing.T) {
-<span id="L170" class="ln">   170  </span>	t.Parallel()
-<span id="L171" class="ln">   171  </span>	t.Skip(&#34;TestFxEventLogger_LogEvent で全イベント分岐を検証済み&#34;)
+<span id="L169" class="ln">   169  </span>			assert.Equal(t, 0, logs.Len())
+<span id="L170" class="ln">   170  </span>		})
+<span id="L171" class="ln">   171  </span>	})
 <span id="L172" class="ln">   172  </span>}
 <span id="L173" class="ln">   173  </span>
 <span id="L174" class="ln">   174  </span>func Test_fxEventLogger_record(t *testing.T) {
 <span id="L175" class="ln">   175  </span>	t.Parallel()
-<span id="L176" class="ln">   176  </span>	t.Skip(&#34;record は LogEvent の各イベント経由で TestFxEventLogger_LogEvent が成否分岐を検証済み&#34;)
-<span id="L177" class="ln">   177  </span>}
-<span id="L178" class="ln">   178  </span>
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>	boom := xerrors.New(&#34;boom&#34;)
+<span id="L178" class="ln">   178  </span>	failFields := []*logging.Field{logging.String(&#34;phase&#34;, &#34;provide&#34;)}
+<span id="L179" class="ln">   179  </span>
+<span id="L180" class="ln">   180  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L181" class="ln">   181  </span>		t.Parallel()
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>		t.Run(&#34;errがnilの場合は成功用ロガーへ成功メッセージとフィールドを渡す&#34;, func(t *testing.T) {
+<span id="L184" class="ln">   184  </span>			t.Parallel()
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>			obs, logs := logging.NewObservedTestLogger(t)
+<span id="L187" class="ln">   187  </span>			f := &amp;fxEventLogger{logger: obs}
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>			f.record(nil, &#34;Provide failed&#34;, failFields, f.logger.Info, &#34;Provided&#34;, logging.String(&#34;module&#34;, &#34;m&#34;))
+<span id="L190" class="ln">   190  </span>
+<span id="L191" class="ln">   191  </span>			entries := logs.FilterMessage(&#34;Provided&#34;).All()
+<span id="L192" class="ln">   192  </span>			require.Len(t, entries, 1)
+<span id="L193" class="ln">   193  </span>			assert.Equal(t, &#34;info&#34;, entries[0].Level.String())
+<span id="L194" class="ln">   194  </span>			assert.Equal(t, map[string]any{&#34;module&#34;: &#34;m&#34;}, entries[0].ContextMap()) <span class="comment">// 失敗用フィールドは混ざらない</span>
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>	})
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L199" class="ln">   199  </span>		t.Parallel()
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span>		t.Run(&#34;errが非nilの場合は成功用ロガーを呼ばず失敗フィールドとエラーを添えてErrorで記録する&#34;, func(t *testing.T) {
+<span id="L202" class="ln">   202  </span>			t.Parallel()
+<span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span>			obs, logs := logging.NewObservedTestLogger(t)
+<span id="L205" class="ln">   205  </span>			f := &amp;fxEventLogger{logger: obs}
+<span id="L206" class="ln">   206  </span>			okCalled := false
+<span id="L207" class="ln">   207  </span>			logOK := func(context.Context, string, ...*logging.Field) { okCalled = true }
+<span id="L208" class="ln">   208  </span>
+<span id="L209" class="ln">   209  </span>			f.record(boom, &#34;Provide failed&#34;, failFields, logOK, &#34;Provided&#34;, logging.String(&#34;module&#34;, &#34;m&#34;))
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>			assert.False(t, okCalled)
+<span id="L212" class="ln">   212  </span>			entries := logs.FilterMessage(&#34;Provide failed&#34;).All()
+<span id="L213" class="ln">   213  </span>			require.Len(t, entries, 1)
+<span id="L214" class="ln">   214  </span>			assert.Equal(t, &#34;error&#34;, entries[0].Level.String())
+<span id="L215" class="ln">   215  </span>			ctxMap := entries[0].ContextMap()
+<span id="L216" class="ln">   216  </span>			assert.Equal(t, &#34;provide&#34;, ctxMap[&#34;phase&#34;])
+<span id="L217" class="ln">   217  </span>			assert.Contains(t, ctxMap, string(logging.ErrorKey))
+<span id="L218" class="ln">   218  </span>		})
+<span id="L219" class="ln">   219  </span>	})
+<span id="L220" class="ln">   220  </span>}
+<span id="L221" class="ln">   221  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/di/fx_event_logger_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

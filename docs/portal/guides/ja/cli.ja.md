@@ -22,35 +22,23 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|DML ディレクトリの SQL ファイルを種別ごとにマージ|
 |`worker`|`worker/`|`cmd/worker.go`|登録済み worker を起動（`worker <worker-name> [args...]`）|
 |`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|outbox relay を起動。`replay` サブコマンドは dead 行を pending へ戻す|
+|`db-slot`|`dbslot/`|`cmd/db-slot.go`|共有 worktree プールから DB スロットをリースする（`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`）|
 
 ## 構造
 
-```text
-cmd/                     # package main: Cobra 定義 + composition root（カバレッジ除外）
-├── commands.go          # registerCommands（サブコマンド登録）
-├── serve.go             # newServeCommand + serveRun 結線
-├── migrate.go           # newMigrate{Up,Down}Command + buildMigrateInstance
-└── ...                  # 1 コマンド 1 ファイル
-
-internal/cli/            # 純粋なテスト可能コア（ユニットテスト対象, 90%+）
-├── server/              # RunServer / ResolveMetricsStop / NewMetricsServer
-├── migrate/             # MigrateUpRun / MigrateDownRun / Migrator
-├── seed/                # RunDBSeed
-├── job/                 # RunJobWith
-├── fixcollation/        # RunFix
-├── dumpschema/          # RunDump / NewGenerator
-├── mergedml/            # RunMerge / NewGenerator
-├── worker/              # RunWorkerWith / NewHealthServer
-└── outbox/              # RunRelay / RunReplayWith
-```
+サブコマンドごとに 1 つのディレクトリを置き、その名前を付ける。配線する `cmd/<name>.go` と対になる。
+この対応こそが要点である。`cmd/` は Cobra の殻と合成ルートに留めてカバレッジ対象から外し、テスト可能な
+中身はこちらに置いて他のパッケージと同様に計測する。
 
 `cmd/commands.go` の `registerCommands` で全サブコマンドを Cobra のルートコマンドに登録します。
 
 ## 設計方針
 
 - 各コマンドは `internal/cli/` 配下の1コアパッケージ + `cmd/` 配下の1薄殻ファイルで構成。
-- コアは Cobra・`internal/di`・`internal/config`・OS シグナル・infrastructure（`infrastructure/rdb/driver`
-  の型を除く）を import してはならない。注入された interface / 関数シームに対して動作する。
+- コアは Cobra・`internal/di`・OS シグナル・infrastructure（`infrastructure/rdb/driver` の型を除く）を
+  import してはならない。注入された interface / 関数シームに対して動作する。
+  `internal/config` は許可される。強制されている境界は `.golangci-full.yaml` の `independent_cli`
+  depguard ルールであり、上位の層は deny するが `config` は deny しない。
 - CLI 層は feature のビジネスロジックを持たない（それは usecase / domain の責務）。
 - コマンド追加手順: `cmd/<command>.go`（Cobra 定義 + 実依存の結線）を追加し、コアロジックを
   `internal/cli/<command>/` に追加し、`registerCommands` に登録する。
@@ -63,8 +51,11 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
 - **殻に silent-wrong なロジックを置かない。** 判断（エラー処理・分岐・整形・削除可否・タイムアウト分岐）は
   `internal/cli/*` に置き、**分岐網羅でユニットテスト**する。`internal/cli/*` はカバレッジゲート対象で 90%+ を満たす。
 - **OS / FS / 外部プロセス / DB / ロガー依存は注入する**（interface または関数シーム）。プロダクションは
-  `cmd/` で実装を結線し、ユニットテストはフェイクを渡す。よって**テストは実ファイルシステムに触れず、
-  外部バイナリ（`pg_dump` / `psql`）を実行せず、DB も開かない**。
+  `cmd/` で実装を結線し、ユニットテストはフェイクを渡す。よって**判断ロジックのテストは実ファイルシステムに
+  触れず、外部バイナリ（`pg_dump` / `psql`）を実行せず、DB も開かない**。唯一の例外は**シームの裏にある
+  実装アダプタ**で、その契約は「外部基盤が期待どおり振る舞うこと」であり、フェイクでは確立できない。
+  よって実物に対してテストしてよい。これを行うパッケージは自身の README でその切り分けを宣言する
+  —— [`dbslot/`](dbslot/README.ja.md) を参照。
 - **薄い `cmd/` 殻はカバレッジゲートから除外**（`gen|cmd|mock|apperror|scripts`）。その実行時の正しさは
   CI boot チェックで担保: `app-di-startup-check`（serve → `/ready`）、`job-boot-check`（job dispatch）、
   `worker-boot-check`（worker dispatch）、`migration-check`（up/down 往復）、`gen-*-artifacts-check`

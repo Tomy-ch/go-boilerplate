@@ -1,0 +1,733 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>summary - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/purchase">purchase</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/summary">summary</a>/<span class="text-muted">purchase_summary_usecase_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/usecase/purchase/summary">go-boilerplate/internal/usecase/purchase/summary</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package summary
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
+<span id="L5" class="ln">     5  </span>	&#34;time&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L9" class="ln">     9  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L10" class="ln">    10  </span>	clocktestkit &#34;go-boilerplate/internal/usecase/boundary/clock/testkit&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/purchase/period&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/purchase/query&#34;
+<span id="L13" class="ln">    13  </span>	mock_query &#34;go-boilerplate/internal/usecase/purchase/query/mock&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/decimal&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L16" class="ln">    16  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L20" class="ln">    20  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L21" class="ln">    21  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L22" class="ln">    22  </span>)
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span><span class="comment">// summaryLoc は、注入されたロケーションが使われることを設定値と独立に固定するための、UTC から離れた固定ゾーンです。</span>
+<span id="L25" class="ln">    25  </span>var summaryLoc = time.FixedZone(&#34;TEST+09&#34;, 9*60*60)
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// summaryNow は、summaryLoc で 2026-01-31 12:00 に相当する時刻です。UTC のままだと暦日が 1 日ずれる位置を選んでいます。</span>
+<span id="L28" class="ln">    28  </span>var summaryNow = time.Date(2026, time.January, 31, 3, 0, 0, 0, time.UTC)
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span>func newAuthn(t *testing.T, userID uuid.UUID) *authbd.Authn {
+<span id="L31" class="ln">    31  </span>	t.Helper()
+<span id="L32" class="ln">    32  </span>	a, err := authbd.New(&#34;sub-&#34;+userID.String(), authbd.IssuerMock, nil, nil)
+<span id="L33" class="ln">    33  </span>	require.NoError(t, err)
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>	resolved, err := a.WithUserID(userID)
+<span id="L36" class="ln">    36  </span>	require.NoError(t, err)
+<span id="L37" class="ln">    37  </span>	return resolved
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>func dec(t *testing.T, s string) decimal.Decimal {
+<span id="L41" class="ln">    41  </span>	t.Helper()
+<span id="L42" class="ln">    42  </span>	d, err := decimal.Parse(s)
+<span id="L43" class="ln">    43  </span>	require.NoError(t, err)
+<span id="L44" class="ln">    44  </span>	return d
+<span id="L45" class="ln">    45  </span>}
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>func Test_usecase_GetPurchaseSummary(t *testing.T) {
+<span id="L48" class="ln">    48  </span>	t.Parallel()
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>	newUsecase := func(t *testing.T, qs query.PurchaseSummaryQueryService) *usecase {
+<span id="L51" class="ln">    51  </span>		t.Helper()
+<span id="L52" class="ln">    52  </span>		return &amp;usecase{
+<span id="L53" class="ln">    53  </span>			tracer: observability.NewNoopTracerFactory(t).Usecase(),
+<span id="L54" class="ln">    54  </span>			qs:     qs,
+<span id="L55" class="ln">    55  </span>			clk:    clocktestkit.NewMockClock(t, summaryNow),
+<span id="L56" class="ln">    56  </span>			loc:    summaryLoc,
+<span id="L57" class="ln">    57  </span>		}
+<span id="L58" class="ln">    58  </span>	}
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L61" class="ln">    61  </span>		t.Parallel()
+<span id="L62" class="ln">    62  </span>
+<span id="L63" class="ln">    63  </span>		t.Run(&#34;認証主体のuserIDをQSへ渡し集計を総計へ畳み込む&#34;, func(t *testing.T) {
+<span id="L64" class="ln">    64  </span>			t.Parallel()
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>			ctrl := gomock.NewController(t)
+<span id="L67" class="ln">    67  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_user&#34;)
+<span id="L68" class="ln">    68  </span>			unprocessedID := uuidtestkit.NewTestFromSalt(t, &#34;sm_unprocessed&#34;)
+<span id="L69" class="ln">    69  </span>			completedID := uuidtestkit.NewTestFromSalt(t, &#34;sm_completed&#34;)
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L72" class="ln">    72  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return([]query.PurchaseStatusSummaryReadModel{
+<span id="L73" class="ln">    73  </span>				{StatusID: unprocessedID, StatusName: &#34;未処理&#34;, Count: 2, TotalAmount: 300},
+<span id="L74" class="ln">    74  </span>				{StatusID: completedID, StatusName: &#34;完了&#34;, Count: 1, TotalAmount: 150},
+<span id="L75" class="ln">    75  </span>			}, nil)
+<span id="L76" class="ln">    76  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(dec(t, &#34;4.50&#34;), nil)
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
+<span id="L79" class="ln">    79  </span>			require.NoError(t, err)
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>			assert.Equal(t, int64(3), actual.TotalCount)
+<span id="L82" class="ln">    82  </span>			assert.Equal(t, int64(450), actual.TotalAmount)
+<span id="L83" class="ln">    83  </span>			assert.Equal(t, &#34;4.5&#34;, actual.ItemsTotal.String())
+<span id="L84" class="ln">    84  </span>			assert.Equal(t, []StatusCountView{
+<span id="L85" class="ln">    85  </span>				{StatusID: unprocessedID, StatusName: &#34;未処理&#34;, Count: 2, TotalAmount: 300},
+<span id="L86" class="ln">    86  </span>				{StatusID: completedID, StatusName: &#34;完了&#34;, Count: 1, TotalAmount: 150},
+<span id="L87" class="ln">    87  </span>			}, actual.StatusBreakdown)
+<span id="L88" class="ln">    88  </span>		})
+<span id="L89" class="ln">    89  </span>
+<span id="L90" class="ln">    90  </span>		t.Run(&#34;グループ化しないとき商品単位の行を読まずgroupsを返さない&#34;, func(t *testing.T) {
+<span id="L91" class="ln">    91  </span>			t.Parallel()
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>			ctrl := gomock.NewController(t)
+<span id="L94" class="ln">    94  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_nogroup_user&#34;)
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L97" class="ln">    97  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, nil)
+<span id="L98" class="ln">    98  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, nil)
+<span id="L99" class="ln">    99  </span>			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L100" class="ln">   100  </span>
+<span id="L101" class="ln">   101  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
+<span id="L102" class="ln">   102  </span>			require.NoError(t, err)
+<span id="L103" class="ln">   103  </span>			assert.Nil(t, actual.Groups)
+<span id="L104" class="ln">   104  </span>		})
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span>		t.Run(&#34;解決済みの対象期間がQSへ渡りレスポンスにも載る&#34;, func(t *testing.T) {
+<span id="L107" class="ln">   107  </span>			t.Parallel()
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span>			ctrl := gomock.NewController(t)
+<span id="L110" class="ln">   110  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_period_user&#34;)
+<span id="L111" class="ln">   111  </span>			days := 10
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>			var captured period.Window
+<span id="L114" class="ln">   114  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L115" class="ln">   115  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).DoAndReturn(
+<span id="L116" class="ln">   116  </span>				func(_ any, _ uuid.UUID, w period.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
+<span id="L117" class="ln">   117  </span>					captured = w
+<span id="L118" class="ln">   118  </span>					return nil, nil
+<span id="L119" class="ln">   119  </span>				},
+<span id="L120" class="ln">   120  </span>			)
+<span id="L121" class="ln">   121  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, nil)
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{
+<span id="L124" class="ln">   124  </span>				Period: period.Spec{Kind: period.KindRecent, Days: &amp;days},
+<span id="L125" class="ln">   125  </span>			})
+<span id="L126" class="ln">   126  </span>			require.NoError(t, err)
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>			<span class="comment">// 相対指定は summaryNow の暦日（1/31）を終了日とし、10 日前の 1/21 が開始日になる。</span>
+<span id="L129" class="ln">   129  </span>			assert.True(t, captured.Filtered())
+<span id="L130" class="ln">   130  </span>			assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, summaryLoc).Equal(captured.From()))
+<span id="L131" class="ln">   131  </span>			assert.True(t, time.Date(2026, time.January, 31, 0, 0, 0, 0, summaryLoc).Equal(captured.To()))
+<span id="L132" class="ln">   132  </span>			<span class="comment">// QS へ渡した期間とレスポンスの期間が同一であることを固定する（クライアントは相対指定を自前で解決しない）。</span>
+<span id="L133" class="ln">   133  </span>			assert.Equal(t, captured, actual.Period)
+<span id="L134" class="ln">   134  </span>		})
+<span id="L135" class="ln">   135  </span>
+<span id="L136" class="ln">   136  </span>		t.Run(&#34;グループ化しないとき対象期間は絞り込みなしとして返る&#34;, func(t *testing.T) {
+<span id="L137" class="ln">   137  </span>			t.Parallel()
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>			ctrl := gomock.NewController(t)
+<span id="L140" class="ln">   140  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_allperiod_user&#34;)
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L143" class="ln">   143  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, nil)
+<span id="L144" class="ln">   144  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, nil)
+<span id="L145" class="ln">   145  </span>
+<span id="L146" class="ln">   146  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
+<span id="L147" class="ln">   147  </span>			require.NoError(t, err)
+<span id="L148" class="ln">   148  </span>			assert.False(t, actual.Period.Filtered())
+<span id="L149" class="ln">   149  </span>		})
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>		t.Run(&#34;購入が1件もない場合はnilではない空の内訳とゼロ値を返す&#34;, func(t *testing.T) {
+<span id="L152" class="ln">   152  </span>			t.Parallel()
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span>			ctrl := gomock.NewController(t)
+<span id="L155" class="ln">   155  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_empty_user&#34;)
+<span id="L156" class="ln">   156  </span>
+<span id="L157" class="ln">   157  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L158" class="ln">   158  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return([]query.PurchaseStatusSummaryReadModel{}, nil)
+<span id="L159" class="ln">   159  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, nil)
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
+<span id="L162" class="ln">   162  </span>			require.NoError(t, err)
+<span id="L163" class="ln">   163  </span>			assert.Equal(t, int64(0), actual.TotalCount)
+<span id="L164" class="ln">   164  </span>			assert.Equal(t, int64(0), actual.TotalAmount)
+<span id="L165" class="ln">   165  </span>			assert.Equal(t, &#34;0&#34;, actual.ItemsTotal.String())
+<span id="L166" class="ln">   166  </span>			assert.NotNil(t, actual.StatusBreakdown)
+<span id="L167" class="ln">   167  </span>			assert.Empty(t, actual.StatusBreakdown)
+<span id="L168" class="ln">   168  </span>		})
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>		t.Run(&#34;グループ化を指定したとき明細合計は商品単位の行から導かれる&#34;, func(t *testing.T) {
+<span id="L171" class="ln">   171  </span>			t.Parallel()
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>			ctrl := gomock.NewController(t)
+<span id="L174" class="ln">   174  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_group_user&#34;)
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L177" class="ln">   177  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, nil)
+<span id="L178" class="ln">   178  </span>			<span class="comment">// グループ化時は合計も同じ行から導くため、平坦な合計クエリは呼ばれない。</span>
+<span id="L179" class="ln">   179  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L180" class="ln">   180  </span>			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), userID, gomock.Any()).Return(
+<span id="L181" class="ln">   181  </span>				[]query.PurchaseItemSummaryReadModel{
+<span id="L182" class="ln">   182  </span>					{CategoryName: &#34;電子機器&#34;, ProductID: uuidtestkit.NewTestFromSalt(t, &#34;sm_p1&#34;), ProductName: &#34;ノートPC&#34;, ItemsTotal: dec(t, &#34;980.00&#34;)},
+<span id="L183" class="ln">   183  </span>					{CategoryName: &#34;書籍&#34;, ProductID: uuidtestkit.NewTestFromSalt(t, &#34;sm_p2&#34;), ProductName: &#34;技術書&#34;, ItemsTotal: dec(t, &#34;20.50&#34;)},
+<span id="L184" class="ln">   184  </span>				}, nil)
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{
+<span id="L187" class="ln">   187  </span>				GroupBy: []GroupKind{GroupByCategory},
+<span id="L188" class="ln">   188  </span>			})
+<span id="L189" class="ln">   189  </span>			require.NoError(t, err)
+<span id="L190" class="ln">   190  </span>
+<span id="L191" class="ln">   191  </span>			assert.Equal(t, &#34;1000.5&#34;, actual.ItemsTotal.String())
+<span id="L192" class="ln">   192  </span>			require.Len(t, actual.Groups, 2)
+<span id="L193" class="ln">   193  </span>			assert.Equal(t, &#34;980&#34;, actual.Groups[&#34;電子機器&#34;].ItemsTotal.String())
+<span id="L194" class="ln">   194  </span>			assert.Equal(t, &#34;20.5&#34;, actual.Groups[&#34;書籍&#34;].ItemsTotal.String())
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>	})
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L199" class="ln">   199  </span>		t.Parallel()
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span>		t.Run(&#34;認証コンテキストがnilの場合、ErrUnauthenticatedを返す&#34;, func(t *testing.T) {
+<span id="L202" class="ln">   202  </span>			t.Parallel()
+<span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span>			ctrl := gomock.NewController(t)
+<span id="L205" class="ln">   205  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), nil, GetSummaryParams{})
+<span id="L208" class="ln">   208  </span>			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+<span id="L209" class="ln">   209  </span>			assert.Equal(t, SummaryView{}, actual)
+<span id="L210" class="ln">   210  </span>		})
+<span id="L211" class="ln">   211  </span>
+<span id="L212" class="ln">   212  </span>		t.Run(&#34;内部UserIDが未解決の場合、エラーを返す&#34;, func(t *testing.T) {
+<span id="L213" class="ln">   213  </span>			t.Parallel()
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>			ctrl := gomock.NewController(t)
+<span id="L216" class="ln">   216  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L217" class="ln">   217  </span>
+<span id="L218" class="ln">   218  </span>			<span class="comment">// WithUserID を経ていない Authn は内部 UserID を解決できない。</span>
+<span id="L219" class="ln">   219  </span>			authn, err := authbd.New(&#34;sub-unresolved&#34;, authbd.IssuerMock, nil, nil)
+<span id="L220" class="ln">   220  </span>			require.NoError(t, err)
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), authn, GetSummaryParams{})
+<span id="L223" class="ln">   223  </span>			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
+<span id="L224" class="ln">   224  </span>			assert.Equal(t, SummaryView{}, actual)
+<span id="L225" class="ln">   225  </span>		})
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>		t.Run(&#34;期間の必須指定が欠けているときInvalidArgumentを返しQSを呼ばない&#34;, func(t *testing.T) {
+<span id="L228" class="ln">   228  </span>			t.Parallel()
+<span id="L229" class="ln">   229  </span>
+<span id="L230" class="ln">   230  </span>			ctrl := gomock.NewController(t)
+<span id="L231" class="ln">   231  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_badperiod_user&#34;)
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L234" class="ln">   234  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{
+<span id="L237" class="ln">   237  </span>				Period: period.Spec{Kind: period.KindRange},
+<span id="L238" class="ln">   238  </span>			})
+<span id="L239" class="ln">   239  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L240" class="ln">   240  </span>			assert.Equal(t, SummaryView{}, actual)
+<span id="L241" class="ln">   241  </span>		})
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span>		t.Run(&#34;QSがエラーを返した場合、そのまま伝播する&#34;, func(t *testing.T) {
+<span id="L244" class="ln">   244  </span>			t.Parallel()
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span>			ctrl := gomock.NewController(t)
+<span id="L247" class="ln">   247  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_err_user&#34;)
+<span id="L248" class="ln">   248  </span>			expected := xerrors.Wrap(apperror.ErrInternal, &#34;query service failed&#34;)
+<span id="L249" class="ln">   249  </span>
+<span id="L250" class="ln">   250  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L251" class="ln">   251  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, expected)
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
+<span id="L254" class="ln">   254  </span>			require.ErrorIs(t, err, expected)
+<span id="L255" class="ln">   255  </span>			assert.Equal(t, SummaryView{}, actual)
+<span id="L256" class="ln">   256  </span>		})
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>		t.Run(&#34;明細合計のQSがエラーを返した場合、そのまま伝播する&#34;, func(t *testing.T) {
+<span id="L259" class="ln">   259  </span>			t.Parallel()
+<span id="L260" class="ln">   260  </span>
+<span id="L261" class="ln">   261  </span>			ctrl := gomock.NewController(t)
+<span id="L262" class="ln">   262  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_items_err_user&#34;)
+<span id="L263" class="ln">   263  </span>			expected := xerrors.Wrap(apperror.ErrInternal, &#34;items query failed&#34;)
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L266" class="ln">   266  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, nil)
+<span id="L267" class="ln">   267  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, expected)
+<span id="L268" class="ln">   268  </span>
+<span id="L269" class="ln">   269  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
+<span id="L270" class="ln">   270  </span>			require.ErrorIs(t, err, expected)
+<span id="L271" class="ln">   271  </span>			assert.Equal(t, SummaryView{}, actual)
+<span id="L272" class="ln">   272  </span>		})
+<span id="L273" class="ln">   273  </span>
+<span id="L274" class="ln">   274  </span>		t.Run(&#34;グループ化に未知の単位があるときInvalidArgumentを返しQSを呼ばない&#34;, func(t *testing.T) {
+<span id="L275" class="ln">   275  </span>			t.Parallel()
+<span id="L276" class="ln">   276  </span>
+<span id="L277" class="ln">   277  </span>			ctrl := gomock.NewController(t)
+<span id="L278" class="ln">   278  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_badgroup_user&#34;)
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L281" class="ln">   281  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(
+<span id="L284" class="ln">   284  </span>				t.Context(), newAuthn(t, userID), GetSummaryParams{GroupBy: []GroupKind{&#34;unknown&#34;}},
+<span id="L285" class="ln">   285  </span>			)
+<span id="L286" class="ln">   286  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L287" class="ln">   287  </span>			assert.Equal(t, SummaryView{}, actual)
+<span id="L288" class="ln">   288  </span>		})
+<span id="L289" class="ln">   289  </span>
+<span id="L290" class="ln">   290  </span>		t.Run(&#34;グループ化に同一単位の重複があるときInvalidArgumentを返しQSを呼ばない&#34;, func(t *testing.T) {
+<span id="L291" class="ln">   291  </span>			t.Parallel()
+<span id="L292" class="ln">   292  </span>
+<span id="L293" class="ln">   293  </span>			ctrl := gomock.NewController(t)
+<span id="L294" class="ln">   294  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;sm_dupgroup_user&#34;)
+<span id="L295" class="ln">   295  </span>
+<span id="L296" class="ln">   296  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L297" class="ln">   297  </span>			qs.EXPECT().SummarizeByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L298" class="ln">   298  </span>
+<span id="L299" class="ln">   299  </span>			actual, err := newUsecase(t, qs).GetPurchaseSummary(
+<span id="L300" class="ln">   300  </span>				t.Context(), newAuthn(t, userID),
+<span id="L301" class="ln">   301  </span>				GetSummaryParams{GroupBy: []GroupKind{GroupByCategory, GroupByCategory}},
+<span id="L302" class="ln">   302  </span>			)
+<span id="L303" class="ln">   303  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L304" class="ln">   304  </span>			assert.Equal(t, SummaryView{}, actual)
+<span id="L305" class="ln">   305  </span>		})
+<span id="L306" class="ln">   306  </span>	})
+<span id="L307" class="ln">   307  </span>}
+<span id="L308" class="ln">   308  </span>
+<span id="L309" class="ln">   309  </span>func TestNew(t *testing.T) {
+<span id="L310" class="ln">   310  </span>	t.Parallel()
+<span id="L311" class="ln">   311  </span>
+<span id="L312" class="ln">   312  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L313" class="ln">   313  </span>		t.Parallel()
+<span id="L314" class="ln">   314  </span>
+<span id="L315" class="ln">   315  </span>		t.Run(&#34;依存を注入したユースケース実装を生成する&#34;, func(t *testing.T) {
+<span id="L316" class="ln">   316  </span>			t.Parallel()
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>			ctrl := gomock.NewController(t)
+<span id="L319" class="ln">   319  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
+<span id="L320" class="ln">   320  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L321" class="ln">   321  </span>			clk := clocktestkit.NewMockClock(t, summaryNow)
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span>			actual, ok := New(qs, clk, summaryLoc, tf).(*usecase)
+<span id="L324" class="ln">   324  </span>			require.True(t, ok)
+<span id="L325" class="ln">   325  </span>			assert.Equal(t, qs, actual.qs)
+<span id="L326" class="ln">   326  </span>			assert.Equal(t, clk, actual.clk)
+<span id="L327" class="ln">   327  </span>			assert.Equal(t, summaryLoc, actual.loc)
+<span id="L328" class="ln">   328  </span>			assert.NotNil(t, actual.tracer)
+<span id="L329" class="ln">   329  </span>		})
+<span id="L330" class="ln">   330  </span>	})
+<span id="L331" class="ln">   331  </span>}
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span>func Test_toSummaryView(t *testing.T) {
+<span id="L334" class="ln">   334  </span>	t.Parallel()
+<span id="L335" class="ln">   335  </span>
+<span id="L336" class="ln">   336  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L337" class="ln">   337  </span>		t.Parallel()
+<span id="L338" class="ln">   338  </span>
+<span id="L339" class="ln">   339  </span>		t.Run(&#34;ステータス別の件数と金額を総計へ畳み込み内訳の順序を保持する&#34;, func(t *testing.T) {
+<span id="L340" class="ln">   340  </span>			t.Parallel()
+<span id="L341" class="ln">   341  </span>
+<span id="L342" class="ln">   342  </span>			first := uuidtestkit.NewTestFromSalt(t, &#34;tv_first&#34;)
+<span id="L343" class="ln">   343  </span>			second := uuidtestkit.NewTestFromSalt(t, &#34;tv_second&#34;)
+<span id="L344" class="ln">   344  </span>
+<span id="L345" class="ln">   345  </span>			actual := toSummaryView([]query.PurchaseStatusSummaryReadModel{
+<span id="L346" class="ln">   346  </span>				{StatusID: first, StatusName: &#34;未処理&#34;, Count: 1, TotalAmount: 100},
+<span id="L347" class="ln">   347  </span>				{StatusID: second, StatusName: &#34;完了&#34;, Count: 3, TotalAmount: 900},
+<span id="L348" class="ln">   348  </span>			})
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>			assert.Equal(t, int64(4), actual.TotalCount)
+<span id="L351" class="ln">   351  </span>			assert.Equal(t, int64(1000), actual.TotalAmount)
+<span id="L352" class="ln">   352  </span>			assert.Equal(t, []StatusCountView{
+<span id="L353" class="ln">   353  </span>				{StatusID: first, StatusName: &#34;未処理&#34;, Count: 1, TotalAmount: 100},
+<span id="L354" class="ln">   354  </span>				{StatusID: second, StatusName: &#34;完了&#34;, Count: 3, TotalAmount: 900},
+<span id="L355" class="ln">   355  </span>			}, actual.StatusBreakdown)
+<span id="L356" class="ln">   356  </span>		})
+<span id="L357" class="ln">   357  </span>
+<span id="L358" class="ln">   358  </span>		t.Run(&#34;集計結果が空の場合はnilではない空の内訳とゼロ値を返す&#34;, func(t *testing.T) {
+<span id="L359" class="ln">   359  </span>			t.Parallel()
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span>			actual := toSummaryView(nil)
+<span id="L362" class="ln">   362  </span>
+<span id="L363" class="ln">   363  </span>			assert.Equal(t, int64(0), actual.TotalCount)
+<span id="L364" class="ln">   364  </span>			assert.Equal(t, int64(0), actual.TotalAmount)
+<span id="L365" class="ln">   365  </span>			assert.NotNil(t, actual.StatusBreakdown)
+<span id="L366" class="ln">   366  </span>			assert.Empty(t, actual.StatusBreakdown)
+<span id="L367" class="ln">   367  </span>		})
+<span id="L368" class="ln">   368  </span>	})
+<span id="L369" class="ln">   369  </span>}
+<span id="L370" class="ln">   370  </span>
+<span id="L371" class="ln">   371  </span>func Test_toGroups(t *testing.T) {
+<span id="L372" class="ln">   372  </span>	t.Parallel()
+<span id="L373" class="ln">   373  </span>
+<span id="L374" class="ln">   374  </span>	laptopID := uuidtestkit.NewTestFromSalt(t, &#34;tg_laptop&#34;)
+<span id="L375" class="ln">   375  </span>	tabletID := uuidtestkit.NewTestFromSalt(t, &#34;tg_tablet&#34;)
+<span id="L376" class="ln">   376  </span>	bookID := uuidtestkit.NewTestFromSalt(t, &#34;tg_book&#34;)
+<span id="L377" class="ln">   377  </span>
+<span id="L378" class="ln">   378  </span>	rows := func(t *testing.T) []query.PurchaseItemSummaryReadModel {
+<span id="L379" class="ln">   379  </span>		t.Helper()
+<span id="L380" class="ln">   380  </span>		return []query.PurchaseItemSummaryReadModel{
+<span id="L381" class="ln">   381  </span>			{CategoryName: &#34;電子機器&#34;, ProductID: laptopID, ProductName: &#34;ノートPC&#34;, ItemsTotal: dec(t, &#34;980.00&#34;)},
+<span id="L382" class="ln">   382  </span>			{CategoryName: &#34;電子機器&#34;, ProductID: tabletID, ProductName: &#34;タブレット&#34;, ItemsTotal: dec(t, &#34;300.25&#34;)},
+<span id="L383" class="ln">   383  </span>			{CategoryName: &#34;書籍&#34;, ProductID: bookID, ProductName: &#34;技術書&#34;, ItemsTotal: dec(t, &#34;20.50&#34;)},
+<span id="L384" class="ln">   384  </span>		}
+<span id="L385" class="ln">   385  </span>	}
+<span id="L386" class="ln">   386  </span>
+<span id="L387" class="ln">   387  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L388" class="ln">   388  </span>		t.Parallel()
+<span id="L389" class="ln">   389  </span>
+<span id="L390" class="ln">   390  </span>		t.Run(&#34;カテゴリ単位では名称をキーに同カテゴリの商品を合算する&#34;, func(t *testing.T) {
+<span id="L391" class="ln">   391  </span>			t.Parallel()
+<span id="L392" class="ln">   392  </span>
+<span id="L393" class="ln">   393  </span>			total, groups := toGroups(rows(t), []GroupKind{GroupByCategory})
+<span id="L394" class="ln">   394  </span>
+<span id="L395" class="ln">   395  </span>			assert.Equal(t, &#34;1300.75&#34;, total.String())
+<span id="L396" class="ln">   396  </span>			require.Len(t, groups, 2)
+<span id="L397" class="ln">   397  </span>			assert.Equal(t, &#34;電子機器&#34;, groups[&#34;電子機器&#34;].Name)
+<span id="L398" class="ln">   398  </span>			assert.Equal(t, &#34;1280.25&#34;, groups[&#34;電子機器&#34;].ItemsTotal.String())
+<span id="L399" class="ln">   399  </span>			assert.Equal(t, &#34;20.5&#34;, groups[&#34;書籍&#34;].ItemsTotal.String())
+<span id="L400" class="ln">   400  </span>			<span class="comment">// 最下位の階層は下位グループを持たない。</span>
+<span id="L401" class="ln">   401  </span>			assert.Nil(t, groups[&#34;電子機器&#34;].Groups)
+<span id="L402" class="ln">   402  </span>		})
+<span id="L403" class="ln">   403  </span>
+<span id="L404" class="ln">   404  </span>		t.Run(&#34;指定順がネストの階層順になり親は子の総和を持つ&#34;, func(t *testing.T) {
+<span id="L405" class="ln">   405  </span>			t.Parallel()
+<span id="L406" class="ln">   406  </span>
+<span id="L407" class="ln">   407  </span>			total, groups := toGroups(rows(t), []GroupKind{GroupByCategory, GroupByProduct})
+<span id="L408" class="ln">   408  </span>
+<span id="L409" class="ln">   409  </span>			electronics := groups[&#34;電子機器&#34;]
+<span id="L410" class="ln">   410  </span>			assert.Equal(t, &#34;1280.25&#34;, electronics.ItemsTotal.String())
+<span id="L411" class="ln">   411  </span>			require.Len(t, electronics.Groups, 2)
+<span id="L412" class="ln">   412  </span>			assert.Equal(t, &#34;980&#34;, electronics.Groups[laptopID.String()].ItemsTotal.String())
+<span id="L413" class="ln">   413  </span>			assert.Equal(t, &#34;300.25&#34;, electronics.Groups[tabletID.String()].ItemsTotal.String())
+<span id="L414" class="ln">   414  </span>
+<span id="L415" class="ln">   415  </span>			<span class="comment">// どの階層でも内訳の総和が親と一致する（丸めを挟まないため誤差は生じない）。</span>
+<span id="L416" class="ln">   416  </span>			sum := electronics.Groups[laptopID.String()].ItemsTotal.Add(electronics.Groups[tabletID.String()].ItemsTotal)
+<span id="L417" class="ln">   417  </span>			assert.True(t, sum.Equal(electronics.ItemsTotal))
+<span id="L418" class="ln">   418  </span>			assert.True(t, electronics.ItemsTotal.Add(groups[&#34;書籍&#34;].ItemsTotal).Equal(total))
+<span id="L419" class="ln">   419  </span>		})
+<span id="L420" class="ln">   420  </span>
+<span id="L421" class="ln">   421  </span>		t.Run(&#34;対象行が無いときnilではない空のマップとゼロ値を返す&#34;, func(t *testing.T) {
+<span id="L422" class="ln">   422  </span>			t.Parallel()
+<span id="L423" class="ln">   423  </span>
+<span id="L424" class="ln">   424  </span>			total, groups := toGroups(nil, []GroupKind{GroupByCategory})
+<span id="L425" class="ln">   425  </span>
+<span id="L426" class="ln">   426  </span>			assert.Equal(t, &#34;0&#34;, total.String())
+<span id="L427" class="ln">   427  </span>			assert.NotNil(t, groups)
+<span id="L428" class="ln">   428  </span>			assert.Empty(t, groups)
+<span id="L429" class="ln">   429  </span>		})
+<span id="L430" class="ln">   430  </span>	})
+<span id="L431" class="ln">   431  </span>}
+<span id="L432" class="ln">   432  </span>
+<span id="L433" class="ln">   433  </span>func Test_levelsOf(t *testing.T) {
+<span id="L434" class="ln">   434  </span>	t.Parallel()
+<span id="L435" class="ln">   435  </span>
+<span id="L436" class="ln">   436  </span>	productID := uuidtestkit.NewTestFromSalt(t, &#34;lv_product&#34;)
+<span id="L437" class="ln">   437  </span>	row := query.PurchaseItemSummaryReadModel{
+<span id="L438" class="ln">   438  </span>		CategoryName: &#34;電子機器&#34;,
+<span id="L439" class="ln">   439  </span>		ProductID:    productID,
+<span id="L440" class="ln">   440  </span>		ProductName:  &#34;ノートPC&#34;,
+<span id="L441" class="ln">   441  </span>		ItemsTotal:   decimal.Decimal{},
+<span id="L442" class="ln">   442  </span>	}
+<span id="L443" class="ln">   443  </span>
+<span id="L444" class="ln">   444  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L445" class="ln">   445  </span>		t.Parallel()
+<span id="L446" class="ln">   446  </span>
+<span id="L447" class="ln">   447  </span>		t.Run(&#34;カテゴリは名称をそのままキーにする&#34;, func(t *testing.T) {
+<span id="L448" class="ln">   448  </span>			t.Parallel()
+<span id="L449" class="ln">   449  </span>
+<span id="L450" class="ln">   450  </span>			<span class="comment">// product_categories.name は UNIQUE なので、名称のままでもグループが衝突しない。</span>
+<span id="L451" class="ln">   451  </span>			assert.Equal(t, []groupLevel{{key: &#34;電子機器&#34;, name: &#34;電子機器&#34;}}, levelsOf(row, []GroupKind{GroupByCategory}))
+<span id="L452" class="ln">   452  </span>		})
+<span id="L453" class="ln">   453  </span>
+<span id="L454" class="ln">   454  </span>		t.Run(&#34;商品はIDをキーにし表示名を別に持つ&#34;, func(t *testing.T) {
+<span id="L455" class="ln">   455  </span>			t.Parallel()
+<span id="L456" class="ln">   456  </span>
+<span id="L457" class="ln">   457  </span>			<span class="comment">// products.name に一意制約は無く、名称をキーにすると同名の別商品が 1 グループへ畳み込まれてしまう。</span>
+<span id="L458" class="ln">   458  </span>			assert.Equal(t,
+<span id="L459" class="ln">   459  </span>				[]groupLevel{{key: productID.String(), name: &#34;ノートPC&#34;}},
+<span id="L460" class="ln">   460  </span>				levelsOf(row, []GroupKind{GroupByProduct}),
+<span id="L461" class="ln">   461  </span>			)
+<span id="L462" class="ln">   462  </span>		})
+<span id="L463" class="ln">   463  </span>
+<span id="L464" class="ln">   464  </span>		t.Run(&#34;指定順がそのまま階層の順序になる&#34;, func(t *testing.T) {
+<span id="L465" class="ln">   465  </span>			t.Parallel()
+<span id="L466" class="ln">   466  </span>
+<span id="L467" class="ln">   467  </span>			assert.Equal(t,
+<span id="L468" class="ln">   468  </span>				[]groupLevel{{key: productID.String(), name: &#34;ノートPC&#34;}, {key: &#34;電子機器&#34;, name: &#34;電子機器&#34;}},
+<span id="L469" class="ln">   469  </span>				levelsOf(row, []GroupKind{GroupByProduct, GroupByCategory}),
+<span id="L470" class="ln">   470  </span>			)
+<span id="L471" class="ln">   471  </span>		})
+<span id="L472" class="ln">   472  </span>
+<span id="L473" class="ln">   473  </span>		t.Run(&#34;グループ化単位が空のとき階層を持たない&#34;, func(t *testing.T) {
+<span id="L474" class="ln">   474  </span>			t.Parallel()
+<span id="L475" class="ln">   475  </span>
+<span id="L476" class="ln">   476  </span>			assert.Empty(t, levelsOf(row, nil))
+<span id="L477" class="ln">   477  </span>		})
+<span id="L478" class="ln">   478  </span>
+<span id="L479" class="ln">   479  </span>		t.Run(&#34;未知の単位は階層に含めず黙って読み飛ばす&#34;, func(t *testing.T) {
+<span id="L480" class="ln">   480  </span>			t.Parallel()
+<span id="L481" class="ln">   481  </span>
+<span id="L482" class="ln">   482  </span>			<span class="comment">// 本来 validateGroupBy が先に弾くため到達しない。その防御が外れたときに</span>
+<span id="L483" class="ln">   483  </span>			<span class="comment">// 「その階層が消えて内訳の総和が親と食い違う」形で壊れることを固定しておく。</span>
+<span id="L484" class="ln">   484  </span>			assert.Empty(t, levelsOf(row, []GroupKind{&#34;unknown&#34;}))
+<span id="L485" class="ln">   485  </span>			assert.Equal(t,
+<span id="L486" class="ln">   486  </span>				[]groupLevel{{key: &#34;電子機器&#34;, name: &#34;電子機器&#34;}},
+<span id="L487" class="ln">   487  </span>				levelsOf(row, []GroupKind{&#34;unknown&#34;, GroupByCategory}),
+<span id="L488" class="ln">   488  </span>			)
+<span id="L489" class="ln">   489  </span>		})
+<span id="L490" class="ln">   490  </span>	})
+<span id="L491" class="ln">   491  </span>}
+<span id="L492" class="ln">   492  </span>
+<span id="L493" class="ln">   493  </span>func Test_accumulate(t *testing.T) {
+<span id="L494" class="ln">   494  </span>	t.Parallel()
+<span id="L495" class="ln">   495  </span>
+<span id="L496" class="ln">   496  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L497" class="ln">   497  </span>		t.Parallel()
+<span id="L498" class="ln">   498  </span>
+<span id="L499" class="ln">   499  </span>		t.Run(&#34;階層が空のときマップをそのまま返す&#34;, func(t *testing.T) {
+<span id="L500" class="ln">   500  </span>			t.Parallel()
+<span id="L501" class="ln">   501  </span>
+<span id="L502" class="ln">   502  </span>			assert.Nil(t, accumulate(nil, nil, dec(t, &#34;10.00&#34;)))
+<span id="L503" class="ln">   503  </span>		})
+<span id="L504" class="ln">   504  </span>
+<span id="L505" class="ln">   505  </span>		t.Run(&#34;nilのマップからでもノードを作る&#34;, func(t *testing.T) {
+<span id="L506" class="ln">   506  </span>			t.Parallel()
+<span id="L507" class="ln">   507  </span>
+<span id="L508" class="ln">   508  </span>			groups := accumulate(nil, []groupLevel{{key: &#34;k&#34;, name: &#34;表示名&#34;}}, dec(t, &#34;10.00&#34;))
+<span id="L509" class="ln">   509  </span>
+<span id="L510" class="ln">   510  </span>			require.Len(t, groups, 1)
+<span id="L511" class="ln">   511  </span>			assert.Equal(t, &#34;表示名&#34;, groups[&#34;k&#34;].Name)
+<span id="L512" class="ln">   512  </span>			assert.Equal(t, &#34;10&#34;, groups[&#34;k&#34;].ItemsTotal.String())
+<span id="L513" class="ln">   513  </span>		})
+<span id="L514" class="ln">   514  </span>
+<span id="L515" class="ln">   515  </span>		t.Run(&#34;同じキーの行は既存ノードへ加算される&#34;, func(t *testing.T) {
+<span id="L516" class="ln">   516  </span>			t.Parallel()
+<span id="L517" class="ln">   517  </span>
+<span id="L518" class="ln">   518  </span>			groups := accumulate(nil, []groupLevel{{key: &#34;k&#34;, name: &#34;表示名&#34;}}, dec(t, &#34;10.00&#34;))
+<span id="L519" class="ln">   519  </span>			groups = accumulate(groups, []groupLevel{{key: &#34;k&#34;, name: &#34;表示名&#34;}}, dec(t, &#34;0.50&#34;))
+<span id="L520" class="ln">   520  </span>
+<span id="L521" class="ln">   521  </span>			require.Len(t, groups, 1)
+<span id="L522" class="ln">   522  </span>			assert.Equal(t, &#34;10.5&#34;, groups[&#34;k&#34;].ItemsTotal.String())
+<span id="L523" class="ln">   523  </span>		})
+<span id="L524" class="ln">   524  </span>
+<span id="L525" class="ln">   525  </span>		t.Run(&#34;下位階層へ加算しても上位ノードが総和を持つ&#34;, func(t *testing.T) {
+<span id="L526" class="ln">   526  </span>			t.Parallel()
+<span id="L527" class="ln">   527  </span>
+<span id="L528" class="ln">   528  </span>			levels := func(child string) []groupLevel {
+<span id="L529" class="ln">   529  </span>				return []groupLevel{{key: &#34;parent&#34;, name: &#34;親&#34;}, {key: child, name: child}}
+<span id="L530" class="ln">   530  </span>			}
+<span id="L531" class="ln">   531  </span>			groups := accumulate(nil, levels(&#34;a&#34;), dec(t, &#34;10.00&#34;))
+<span id="L532" class="ln">   532  </span>			groups = accumulate(groups, levels(&#34;b&#34;), dec(t, &#34;5.00&#34;))
+<span id="L533" class="ln">   533  </span>
+<span id="L534" class="ln">   534  </span>			parent := groups[&#34;parent&#34;]
+<span id="L535" class="ln">   535  </span>			assert.Equal(t, &#34;15&#34;, parent.ItemsTotal.String())
+<span id="L536" class="ln">   536  </span>			require.Len(t, parent.Groups, 2)
+<span id="L537" class="ln">   537  </span>			assert.Equal(t, &#34;10&#34;, parent.Groups[&#34;a&#34;].ItemsTotal.String())
+<span id="L538" class="ln">   538  </span>			assert.Equal(t, &#34;5&#34;, parent.Groups[&#34;b&#34;].ItemsTotal.String())
+<span id="L539" class="ln">   539  </span>		})
+<span id="L540" class="ln">   540  </span>	})
+<span id="L541" class="ln">   541  </span>}
+<span id="L542" class="ln">   542  </span>
+<span id="L543" class="ln">   543  </span>func Test_validateGroupBy(t *testing.T) {
+<span id="L544" class="ln">   544  </span>	t.Parallel()
+<span id="L545" class="ln">   545  </span>
+<span id="L546" class="ln">   546  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L547" class="ln">   547  </span>		t.Parallel()
+<span id="L548" class="ln">   548  </span>
+<span id="L549" class="ln">   549  </span>		t.Run(&#34;未指定を受理する&#34;, func(t *testing.T) {
+<span id="L550" class="ln">   550  </span>			t.Parallel()
+<span id="L551" class="ln">   551  </span>
+<span id="L552" class="ln">   552  </span>			require.NoError(t, validateGroupBy(nil))
+<span id="L553" class="ln">   553  </span>		})
+<span id="L554" class="ln">   554  </span>
+<span id="L555" class="ln">   555  </span>		t.Run(&#34;カテゴリのみの指定を受理する&#34;, func(t *testing.T) {
+<span id="L556" class="ln">   556  </span>			t.Parallel()
+<span id="L557" class="ln">   557  </span>
+<span id="L558" class="ln">   558  </span>			require.NoError(t, validateGroupBy([]GroupKind{GroupByCategory}))
+<span id="L559" class="ln">   559  </span>		})
+<span id="L560" class="ln">   560  </span>
+<span id="L561" class="ln">   561  </span>		t.Run(&#34;商品のみの指定を受理する&#34;, func(t *testing.T) {
+<span id="L562" class="ln">   562  </span>			t.Parallel()
+<span id="L563" class="ln">   563  </span>
+<span id="L564" class="ln">   564  </span>			require.NoError(t, validateGroupBy([]GroupKind{GroupByProduct}))
+<span id="L565" class="ln">   565  </span>		})
+<span id="L566" class="ln">   566  </span>
+<span id="L567" class="ln">   567  </span>		t.Run(&#34;カテゴリと商品を重複なく並べた指定を受理する&#34;, func(t *testing.T) {
+<span id="L568" class="ln">   568  </span>			t.Parallel()
+<span id="L569" class="ln">   569  </span>
+<span id="L570" class="ln">   570  </span>			require.NoError(t, validateGroupBy([]GroupKind{GroupByCategory, GroupByProduct}))
+<span id="L571" class="ln">   571  </span>		})
+<span id="L572" class="ln">   572  </span>	})
+<span id="L573" class="ln">   573  </span>
+<span id="L574" class="ln">   574  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L575" class="ln">   575  </span>		t.Parallel()
+<span id="L576" class="ln">   576  </span>
+<span id="L577" class="ln">   577  </span>		t.Run(&#34;未知の単位はInvalidArgumentを返す&#34;, func(t *testing.T) {
+<span id="L578" class="ln">   578  </span>			t.Parallel()
+<span id="L579" class="ln">   579  </span>
+<span id="L580" class="ln">   580  </span>			require.ErrorIs(t, validateGroupBy([]GroupKind{&#34;unknown&#34;}), apperror.ErrInvalidArgument)
+<span id="L581" class="ln">   581  </span>		})
+<span id="L582" class="ln">   582  </span>
+<span id="L583" class="ln">   583  </span>		t.Run(&#34;同一単位の重複はInvalidArgumentを返す&#34;, func(t *testing.T) {
+<span id="L584" class="ln">   584  </span>			t.Parallel()
+<span id="L585" class="ln">   585  </span>
+<span id="L586" class="ln">   586  </span>			<span class="comment">// 重複を通すと同じ階層が入れ子になり、内訳の総和が親と一致しなくなる。</span>
+<span id="L587" class="ln">   587  </span>			require.ErrorIs(t,
+<span id="L588" class="ln">   588  </span>				validateGroupBy([]GroupKind{GroupByCategory, GroupByCategory}),
+<span id="L589" class="ln">   589  </span>				apperror.ErrInvalidArgument,
+<span id="L590" class="ln">   590  </span>			)
+<span id="L591" class="ln">   591  </span>		})
+<span id="L592" class="ln">   592  </span>	})
+<span id="L593" class="ln">   593  </span>}
+<span id="L594" class="ln">   594  </span>
+<span id="L595" class="ln">   595  </span>func Test_usecase_summarizeItems(t *testing.T) {
+<span id="L596" class="ln">   596  </span>	t.Parallel()
+<span id="L597" class="ln">   597  </span>
+<span id="L598" class="ln">   598  </span>	userID := uuidtestkit.NewTestFromSalt(t, &#34;si_user&#34;)
+<span id="L599" class="ln">   599  </span>
+<span id="L600" class="ln">   600  </span>	newUsecase := func(t *testing.T, qs query.PurchaseSummaryQueryService) *usecase {
+<span id="L601" class="ln">   601  </span>		t.Helper()
+<span id="L602" class="ln">   602  </span>		return &amp;usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), qs: qs}
+<span id="L603" class="ln">   603  </span>	}
+<span id="L604" class="ln">   604  </span>
+<span id="L605" class="ln">   605  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L606" class="ln">   606  </span>		t.Parallel()
+<span id="L607" class="ln">   607  </span>
+<span id="L608" class="ln">   608  </span>		t.Run(&#34;グループ化しないとき平坦な合計だけを取り内訳を返さない&#34;, func(t *testing.T) {
+<span id="L609" class="ln">   609  </span>			t.Parallel()
+<span id="L610" class="ln">   610  </span>
+<span id="L611" class="ln">   611  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(gomock.NewController(t))
+<span id="L612" class="ln">   612  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(dec(t, &#34;12.50&#34;), nil)
+<span id="L613" class="ln">   613  </span>			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L614" class="ln">   614  </span>
+<span id="L615" class="ln">   615  </span>			total, groups, err := newUsecase(t, qs).summarizeItems(t.Context(), userID, period.Window{}, nil)
+<span id="L616" class="ln">   616  </span>			require.NoError(t, err)
+<span id="L617" class="ln">   617  </span>			assert.Equal(t, &#34;12.5&#34;, total.String())
+<span id="L618" class="ln">   618  </span>			assert.Nil(t, groups)
+<span id="L619" class="ln">   619  </span>		})
+<span id="L620" class="ln">   620  </span>
+<span id="L621" class="ln">   621  </span>		t.Run(&#34;グループ化するとき商品単位の行から合計と内訳を導く&#34;, func(t *testing.T) {
+<span id="L622" class="ln">   622  </span>			t.Parallel()
+<span id="L623" class="ln">   623  </span>
+<span id="L624" class="ln">   624  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(gomock.NewController(t))
+<span id="L625" class="ln">   625  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L626" class="ln">   626  </span>			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), userID, gomock.Any()).Return(
+<span id="L627" class="ln">   627  </span>				[]query.PurchaseItemSummaryReadModel{
+<span id="L628" class="ln">   628  </span>					{CategoryName: &#34;書籍&#34;, ProductID: uuidtestkit.NewTestFromSalt(t, &#34;si_book&#34;), ProductName: &#34;技術書&#34;, ItemsTotal: dec(t, &#34;20.50&#34;)},
+<span id="L629" class="ln">   629  </span>				}, nil)
+<span id="L630" class="ln">   630  </span>
+<span id="L631" class="ln">   631  </span>			total, groups, err := newUsecase(t, qs).summarizeItems(
+<span id="L632" class="ln">   632  </span>				t.Context(), userID, period.Window{}, []GroupKind{GroupByCategory})
+<span id="L633" class="ln">   633  </span>			require.NoError(t, err)
+<span id="L634" class="ln">   634  </span>			assert.Equal(t, &#34;20.5&#34;, total.String())
+<span id="L635" class="ln">   635  </span>			require.Len(t, groups, 1)
+<span id="L636" class="ln">   636  </span>			assert.Equal(t, &#34;20.5&#34;, groups[&#34;書籍&#34;].ItemsTotal.String())
+<span id="L637" class="ln">   637  </span>		})
+<span id="L638" class="ln">   638  </span>	})
+<span id="L639" class="ln">   639  </span>
+<span id="L640" class="ln">   640  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L641" class="ln">   641  </span>		t.Parallel()
+<span id="L642" class="ln">   642  </span>
+<span id="L643" class="ln">   643  </span>		t.Run(&#34;平坦な合計のQSのエラーが伝播する&#34;, func(t *testing.T) {
+<span id="L644" class="ln">   644  </span>			t.Parallel()
+<span id="L645" class="ln">   645  </span>
+<span id="L646" class="ln">   646  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(gomock.NewController(t))
+<span id="L647" class="ln">   647  </span>			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, apperror.ErrInternal)
+<span id="L648" class="ln">   648  </span>
+<span id="L649" class="ln">   649  </span>			_, groups, err := newUsecase(t, qs).summarizeItems(t.Context(), userID, period.Window{}, nil)
+<span id="L650" class="ln">   650  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L651" class="ln">   651  </span>			assert.Nil(t, groups)
+<span id="L652" class="ln">   652  </span>		})
+<span id="L653" class="ln">   653  </span>
+<span id="L654" class="ln">   654  </span>		t.Run(&#34;商品単位の集計のQSのエラーが伝播する&#34;, func(t *testing.T) {
+<span id="L655" class="ln">   655  </span>			t.Parallel()
+<span id="L656" class="ln">   656  </span>
+<span id="L657" class="ln">   657  </span>			qs := mock_query.NewMockPurchaseSummaryQueryService(gomock.NewController(t))
+<span id="L658" class="ln">   658  </span>			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, apperror.ErrInternal)
+<span id="L659" class="ln">   659  </span>
+<span id="L660" class="ln">   660  </span>			_, groups, err := newUsecase(t, qs).summarizeItems(
+<span id="L661" class="ln">   661  </span>				t.Context(), userID, period.Window{}, []GroupKind{GroupByCategory})
+<span id="L662" class="ln">   662  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L663" class="ln">   663  </span>			assert.Nil(t, groups)
+<span id="L664" class="ln">   664  </span>		})
+<span id="L665" class="ln">   665  </span>	})
+<span id="L666" class="ln">   666  </span>}
+<span id="L667" class="ln">   667  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

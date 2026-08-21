@@ -172,10 +172,10 @@
 <span id="L115" class="ln">   115  </span>			t.Parallel()
 <span id="L116" class="ln">   116  </span>
 <span id="L117" class="ln">   117  </span>			const raw = &#34;http://localhost:8080/events&#34;
-<span id="L118" class="ln">   118  </span>			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
-<span id="L119" class="ln">   119  </span>			cfg.SetOutboxEndpoint(t, raw)
+<span id="L118" class="ln">   118  </span>			epCfg := config.NewEndpointConfig(config.MockConfigForTest(t))
+<span id="L119" class="ln">   119  </span>			epCfg.SetEndpointOutbox(t, raw)
 <span id="L120" class="ln">   120  </span>
-<span id="L121" class="ln">   121  </span>			got, err := NewEndpoint(cfg)
+<span id="L121" class="ln">   121  </span>			got, err := NewEndpoint(epCfg)
 <span id="L122" class="ln">   122  </span>
 <span id="L123" class="ln">   123  </span>			require.NoError(t, err)
 <span id="L124" class="ln">   124  </span>			assert.Equal(t, Endpoint(raw), got)
@@ -188,9 +188,9 @@
 <span id="L131" class="ln">   131  </span>		t.Run(&#34;config の endpoint が未設定なら ErrInvalidEndpoint を返す&#34;, func(t *testing.T) {
 <span id="L132" class="ln">   132  </span>			t.Parallel()
 <span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
+<span id="L134" class="ln">   134  </span>			epCfg := config.NewEndpointConfig(config.MockConfigForTest(t))
 <span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>			got, err := NewEndpoint(cfg)
+<span id="L136" class="ln">   136  </span>			got, err := NewEndpoint(epCfg)
 <span id="L137" class="ln">   137  </span>
 <span id="L138" class="ln">   138  </span>			require.ErrorIs(t, err, ErrInvalidEndpoint)
 <span id="L139" class="ln">   139  </span>			assert.Empty(t, got)

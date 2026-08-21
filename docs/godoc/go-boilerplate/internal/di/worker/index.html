@@ -152,7 +152,7 @@
 		
 			
 			
-			<h2 id="ProvideEngine">func <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=2034:2095#L42">ProvideEngine</a>
+			<h2 id="ProvideEngine">func <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=1886:1947#L41">ProvideEngine</a>
 				<a class="permalink" href="#ProvideEngine">¶</a>
 				
 				
@@ -166,16 +166,15 @@
 		
 			
 			
-			</p><h2 id="ValidateShutdownGrace">func <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=1444:1542#L28">ValidateShutdownGrace</a>
+			</p><h2 id="ValidateShutdownGrace">func <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=1296:1394#L27">ValidateShutdownGrace</a>
 				<a class="permalink" href="#ValidateShutdownGrace">¶</a>
 				
 				
 			</h2>
 			<pre>func ValidateShutdownGrace(appCfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>, workerCfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#WorkerConfig">WorkerConfig</a>) <a href="../../../../builtin/#error">error</a></pre>
 			<p>ValidateShutdownGrace は、drain 完了前に停止猶予が尽きないことを起動時に検証します。
-</p><p>停止時の実効カットオフは fx.StopTimeout と停止 context の deadline（共に APP_SHUTDOWN_TIMEOUT を
-単一軸とする grace）で決まります。WORKER_DRAIN_TIMEOUT &gt;= grace だと OnStop の drain が grace で
-打ち切られ、未完了の in-flight handler と後続の停止処理（DB pool close 等）が競合します。
+</p><p>WORKER_DRAIN_TIMEOUT &gt;= APP_SHUTDOWN_TIMEOUT だと OnStop の drain が停止猶予で打ち切られ、
+未完了の in-flight handler と後続の停止処理（DB pool close 等）が競合します。
 設定不整合は起動時に失敗させ、運用時の競合を未然に防ぎます。
 
 			

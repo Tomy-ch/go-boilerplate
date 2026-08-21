@@ -1,0 +1,237 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>s3 - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/objectstorage">objectstorage</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/objectstorage/s3">s3</a>/<span class="text-muted">s3_storage.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/infrastructure/objectstorage/s3">go-boilerplate/internal/infrastructure/objectstorage/s3</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package s3 は、オブジェクトストレージ境界（objectstorage.Storage）の S3 互換実装を提供します。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">// AWS SDK v2 S3 クライアントを用い、endpoint / 資格情報の差し替えだけで Garage・MinIO・本番 S3 の</span>
+<span id="L3" class="ln">     3  </span><span class="comment">// いずれにも接続できます。</span>
+<span id="L4" class="ln">     4  </span>package s3
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>import (
+<span id="L7" class="ln">     7  </span>	&#34;bytes&#34;
+<span id="L8" class="ln">     8  </span>	&#34;context&#34;
+<span id="L9" class="ln">     9  </span>	&#34;strconv&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;github.com/aws/aws-sdk-go-v2/aws&#34;
+<span id="L12" class="ln">    12  </span>	awss3 &#34;github.com/aws/aws-sdk-go-v2/service/s3&#34;
+<span id="L13" class="ln">    13  </span>	s3types &#34;github.com/aws/aws-sdk-go-v2/service/s3/types&#34;
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/infrastructure/awsclient&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L18" class="ln">    18  </span>	boundary &#34;go-boilerplate/internal/usecase/boundary/objectstorage&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L20" class="ln">    20  </span>)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// Config は、S3 互換オブジェクトストレージへの接続設定です（DI で注入）。</span>
+<span id="L23" class="ln">    23  </span>type Config struct {
+<span id="L24" class="ln">    24  </span>	<span class="comment">// Endpoint は、S3 互換エンドポイントです（例 Garage: &#34;http://garage:3900&#34;）。</span>
+<span id="L25" class="ln">    25  </span>	<span class="comment">// 空の場合は SDK 既定のエンドポイント解決に委ねます（本番 AWS S3 等）。</span>
+<span id="L26" class="ln">    26  </span>	Endpoint string
+<span id="L27" class="ln">    27  </span>	<span class="comment">// Region は、署名に用いるリージョンです。</span>
+<span id="L28" class="ln">    28  </span>	Region string
+<span id="L29" class="ln">    29  </span>	<span class="comment">// Bucket は、オブジェクトを格納するバケット名です。</span>
+<span id="L30" class="ln">    30  </span>	Bucket string
+<span id="L31" class="ln">    31  </span>	<span class="comment">// AccessKeyID / SecretAccessKey は、明示注入する静的資格情報です。両方空なら</span>
+<span id="L32" class="ln">    32  </span>	<span class="comment">// SDK 既定の credential chain（IAM ロール等）へ委ねます。詳細は awsclient.Resolve を参照。</span>
+<span id="L33" class="ln">    33  </span>	AccessKeyID     string
+<span id="L34" class="ln">    34  </span>	SecretAccessKey string
+<span id="L35" class="ln">    35  </span>	<span class="comment">// UsePathStyle は、path-style アクセスを使うかどうかです（Garage / MinIO は true が必要）。</span>
+<span id="L36" class="ln">    36  </span>	UsePathStyle bool
+<span id="L37" class="ln">    37  </span>	<span class="comment">// HTTPClient は、SDK が API 呼び出しに使う HTTP クライアントです。SSRF ガード付きの実装を DI が</span>
+<span id="L38" class="ln">    38  </span>	<span class="comment">// 注入します。nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。</span>
+<span id="L39" class="ln">    39  </span>	HTTPClient aws.HTTPClient
+<span id="L40" class="ln">    40  </span>}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span><span class="comment">// storage は、boundary.Storage の S3 互換実装です。</span>
+<span id="L43" class="ln">    43  </span>type storage struct {
+<span id="L44" class="ln">    44  </span>	client *awss3.Client
+<span id="L45" class="ln">    45  </span>	bucket string
+<span id="L46" class="ln">    46  </span>	tracer observability.LayerTracer
+<span id="L47" class="ln">    47  </span>}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span><span class="comment">// New は、S3 互換オブジェクトストレージ実装を生成します。</span>
+<span id="L50" class="ln">    50  </span><span class="comment">// 資格情報を解決できない場合はエラーを返し、認証エラーが最初の操作まで隠れないようにします。</span>
+<span id="L51" class="ln">    51  </span>func New(ctx context.Context, cfg Config, tf observability.TracerFactory) (boundary.Storage, error) {
+<span id="L52" class="ln">    52  </span>	awsCfg, err := awsclient.Resolve(ctx, awsclient.Config{
+<span id="L53" class="ln">    53  </span>		Region:          cfg.Region,
+<span id="L54" class="ln">    54  </span>		AccessKeyID:     cfg.AccessKeyID,
+<span id="L55" class="ln">    55  </span>		SecretAccessKey: cfg.SecretAccessKey,
+<span id="L56" class="ln">    56  </span>		HTTPClient:      cfg.HTTPClient,
+<span id="L57" class="ln">    57  </span>	})
+<span id="L58" class="ln">    58  </span>	if err != nil {
+<span id="L59" class="ln">    59  </span>		return nil, err
+<span id="L60" class="ln">    60  </span>	}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>	client := awss3.NewFromConfig(awsCfg, func(o *awss3.Options) {
+<span id="L63" class="ln">    63  </span>		o.UsePathStyle = cfg.UsePathStyle
+<span id="L64" class="ln">    64  </span>		if cfg.Endpoint != &#34;&#34; {
+<span id="L65" class="ln">    65  </span>			o.BaseEndpoint = aws.String(cfg.Endpoint)
+<span id="L66" class="ln">    66  </span>		}
+<span id="L67" class="ln">    67  </span>	})
+<span id="L68" class="ln">    68  </span>	return &amp;storage{
+<span id="L69" class="ln">    69  </span>		client: client,
+<span id="L70" class="ln">    70  </span>		bucket: cfg.Bucket,
+<span id="L71" class="ln">    71  </span>		tracer: tf.Infra(),
+<span id="L72" class="ln">    72  </span>	}, nil
+<span id="L73" class="ln">    73  </span>}
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span><span class="comment">// Put は、obj をバケットの指定キーへ保存し、保存されたパス（キー）を返します。</span>
+<span id="L76" class="ln">    76  </span><span class="comment">// S3 の失敗は apperror.ErrUnavailable へ正規化します。</span>
+<span id="L77" class="ln">    77  </span>func (s *storage) Put(ctx context.Context, obj boundary.PutObject) (boundary.Path, error) {
+<span id="L78" class="ln">    78  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L79" class="ln">    79  </span>	defer endSpan()
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>	input := &amp;awss3.PutObjectInput{
+<span id="L82" class="ln">    82  </span>		Bucket:        aws.String(s.bucket),
+<span id="L83" class="ln">    83  </span>		Key:           aws.String(obj.Key),
+<span id="L84" class="ln">    84  </span>		Body:          bytes.NewReader(obj.Body),
+<span id="L85" class="ln">    85  </span>		ContentType:   aws.String(obj.ContentType),
+<span id="L86" class="ln">    86  </span>		ContentLength: aws.Int64(int64(len(obj.Body))),
+<span id="L87" class="ln">    87  </span>	}
+<span id="L88" class="ln">    88  </span>	<span class="comment">// 空の Cache-Control ヘッダを送るとキャッシュ指示の無い状態と区別できないため、未指定のままにする。</span>
+<span id="L89" class="ln">    89  </span>	if obj.CacheControl != &#34;&#34; {
+<span id="L90" class="ln">    90  </span>		input.CacheControl = aws.String(obj.CacheControl)
+<span id="L91" class="ln">    91  </span>	}
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>	_, err := s.client.PutObject(ctx, input)
+<span id="L94" class="ln">    94  </span>	if err != nil {
+<span id="L95" class="ln">    95  </span>		return &#34;&#34;, xerrors.Wrap(apperror.ErrUnavailable, &#34;objectstorage put failed: &#34;+err.Error())
+<span id="L96" class="ln">    96  </span>	}
+<span id="L97" class="ln">    97  </span>	return boundary.Path(obj.Key), nil
+<span id="L98" class="ln">    98  </span>}
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span><span class="comment">// List は、バケットから query.Prefix 配下のオブジェクトを 1 ページ分列挙します。</span>
+<span id="L101" class="ln">   101  </span><span class="comment">// 続きがある場合は NextCursor に S3 の continuation token を載せて返します。</span>
+<span id="L102" class="ln">   102  </span><span class="comment">// S3 の失敗は apperror.ErrUnavailable へ正規化します。</span>
+<span id="L103" class="ln">   103  </span>func (s *storage) List(ctx context.Context, query boundary.ListQuery) (boundary.ListResult, error) {
+<span id="L104" class="ln">   104  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L105" class="ln">   105  </span>	defer endSpan()
+<span id="L106" class="ln">   106  </span>
+<span id="L107" class="ln">   107  </span>	input := &amp;awss3.ListObjectsV2Input{Bucket: aws.String(s.bucket)}
+<span id="L108" class="ln">   108  </span>	<span class="comment">// 空の Prefix / ContinuationToken を送ると、S3 互換実装によっては全件の先頭からと解釈されない。</span>
+<span id="L109" class="ln">   109  </span>	<span class="comment">// 未指定はフィールドを立てないことで表す。</span>
+<span id="L110" class="ln">   110  </span>	if query.Prefix != &#34;&#34; {
+<span id="L111" class="ln">   111  </span>		input.Prefix = aws.String(query.Prefix)
+<span id="L112" class="ln">   112  </span>	}
+<span id="L113" class="ln">   113  </span>	if query.Cursor != &#34;&#34; {
+<span id="L114" class="ln">   114  </span>		input.ContinuationToken = aws.String(query.Cursor)
+<span id="L115" class="ln">   115  </span>	}
+<span id="L116" class="ln">   116  </span>	if query.Limit &gt; 0 {
+<span id="L117" class="ln">   117  </span>		input.MaxKeys = aws.Int32(query.Limit)
+<span id="L118" class="ln">   118  </span>	}
+<span id="L119" class="ln">   119  </span>
+<span id="L120" class="ln">   120  </span>	out, err := s.client.ListObjectsV2(ctx, input)
+<span id="L121" class="ln">   121  </span>	if err != nil {
+<span id="L122" class="ln">   122  </span>		return boundary.ListResult{}, xerrors.Wrap(apperror.ErrUnavailable, &#34;objectstorage list failed: &#34;+err.Error())
+<span id="L123" class="ln">   123  </span>	}
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>	objects := make([]boundary.Object, 0, len(out.Contents))
+<span id="L126" class="ln">   126  </span>	for _, c := range out.Contents {
+<span id="L127" class="ln">   127  </span>		objects = append(objects, boundary.Object{
+<span id="L128" class="ln">   128  </span>			Key:        aws.ToString(c.Key),
+<span id="L129" class="ln">   129  </span>			ModifiedAt: aws.ToTime(c.LastModified),
+<span id="L130" class="ln">   130  </span>		})
+<span id="L131" class="ln">   131  </span>	}
+<span id="L132" class="ln">   132  </span>	result := boundary.ListResult{Objects: objects}
+<span id="L133" class="ln">   133  </span>	<span class="comment">// IsTruncated が false のときの token は続きを表さないため、境界には最終ページを表す空文字だけを渡す。</span>
+<span id="L134" class="ln">   134  </span>	if aws.ToBool(out.IsTruncated) {
+<span id="L135" class="ln">   135  </span>		result.NextCursor = aws.ToString(out.NextContinuationToken)
+<span id="L136" class="ln">   136  </span>	}
+<span id="L137" class="ln">   137  </span>	return result, nil
+<span id="L138" class="ln">   138  </span>}
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span><span class="comment">// Delete は、keys のオブジェクトをバケットからまとめて削除します。</span>
+<span id="L141" class="ln">   141  </span><span class="comment">// S3 の DeleteObjects は存在しないキーも成功として扱うため、再実行しても結果は変わりません。</span>
+<span id="L142" class="ln">   142  </span><span class="comment">// S3 の失敗は apperror.ErrUnavailable へ正規化します。</span>
+<span id="L143" class="ln">   143  </span>func (s *storage) Delete(ctx context.Context, keys []string) error {
+<span id="L144" class="ln">   144  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L145" class="ln">   145  </span>	defer endSpan()
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>	if len(keys) == 0 {
+<span id="L148" class="ln">   148  </span>		return nil
+<span id="L149" class="ln">   149  </span>	}
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>	ids := make([]s3types.ObjectIdentifier, 0, len(keys))
+<span id="L152" class="ln">   152  </span>	for _, k := range keys {
+<span id="L153" class="ln">   153  </span>		ids = append(ids, s3types.ObjectIdentifier{Key: aws.String(k)})
+<span id="L154" class="ln">   154  </span>	}
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>	out, err := s.client.DeleteObjects(ctx, &amp;awss3.DeleteObjectsInput{
+<span id="L157" class="ln">   157  </span>		Bucket: aws.String(s.bucket),
+<span id="L158" class="ln">   158  </span>		Delete: &amp;s3types.Delete{Objects: ids, Quiet: aws.Bool(true)},
+<span id="L159" class="ln">   159  </span>	})
+<span id="L160" class="ln">   160  </span>	if err != nil {
+<span id="L161" class="ln">   161  </span>		return xerrors.Wrap(apperror.ErrUnavailable, &#34;objectstorage delete failed: &#34;+err.Error())
+<span id="L162" class="ln">   162  </span>	}
+<span id="L163" class="ln">   163  </span>	<span class="comment">// DeleteObjects は一部のキーだけが失敗しても呼び出し自体は成功を返す。</span>
+<span id="L164" class="ln">   164  </span>	<span class="comment">// 消えていないキーを消えたものとして扱うと GC が同じ孤児を報告しなくなるため、明示的に失敗させる。</span>
+<span id="L165" class="ln">   165  </span>	if len(out.Errors) &gt; 0 {
+<span id="L166" class="ln">   166  </span>		return xerrors.Wrap(apperror.ErrUnavailable,
+<span id="L167" class="ln">   167  </span>			&#34;objectstorage delete failed for &#34;+strconv.Itoa(len(out.Errors))+&#34; keys: &#34;+aws.ToString(out.Errors[0].Message))
+<span id="L168" class="ln">   168  </span>	}
+<span id="L169" class="ln">   169  </span>	return nil
+<span id="L170" class="ln">   170  </span>}
+<span id="L171" class="ln">   171  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/objectstorage/s3/s3_storage.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -67,7 +67,7 @@
 <span id="L10" class="ln">    10  </span>	mock_outbox &#34;go-boilerplate/internal/usecase/boundary/outbox/mock&#34;
 <span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/boundary/publisher&#34;
 <span id="L12" class="ln">    12  </span>	mock_publisher &#34;go-boilerplate/internal/usecase/boundary/publisher/mock&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L13" class="ln">    13  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>
 <span id="L16" class="ln">    16  </span>	&#34;github.com/stretchr/testify/assert&#34;
@@ -133,7 +133,7 @@
 <span id="L76" class="ln">    76  </span>	t.Helper()
 <span id="L77" class="ln">    77  </span>	return outboxbndry.PendingMessage{
 <span id="L78" class="ln">    78  </span>		ID:        1,
-<span id="L79" class="ln">    79  </span>		MessageID: uuid.NewTestFromSalt(t, &#34;msg&#34;),
+<span id="L79" class="ln">    79  </span>		MessageID: uuidtestkit.NewTestFromSalt(t, &#34;msg&#34;),
 <span id="L80" class="ln">    80  </span>		EventType: &#34;e.v1&#34;,
 <span id="L81" class="ln">    81  </span>		Payload:   []byte(`{&#34;v&#34;:1}`),
 <span id="L82" class="ln">    82  </span>	}

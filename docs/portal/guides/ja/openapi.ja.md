@@ -10,20 +10,14 @@
 
 ## ディレクトリ構成
 
-```text
-openapi/
-├── openapi.yaml              # エントリーポイント（分割ファイル参照）
-├── openapi.gen.yaml          # バンドル済みファイル（生成物、コード生成用）
-├── paths/                    # エンドポイント定義
-├── components/
-│   ├── schemas/              # データ構造（リクエスト / レスポンス / セキュリティ）
-│   ├── parameters/           # クエリ・パスパラメータ
-│   ├── requests/             # リクエストのセマンティクス（content / required）
-│   └── responses/            # レスポンスのセマンティクス（status / description）
-├── parameter-guide.md        # パラメータ定義リファレンス
-├── secure-uuid.md            # UUID 公開のセキュリティ評価
-└── boundary-ownership.md     # min/max/長さ制約のオーナーシップ（ワイヤー契約 vs domain ルール）
-```
+この分割は利便ではなく、spec の組み立て方によって決まっている。
+
+- `openapi.yaml` — エントリポイント。他のファイルはすべてここから `$ref` で辿られる
+- `openapi.gen.yaml` — バンドル結果。生成物でありコード生成が読む（編集しない）
+- `paths/` — エンドポイント定義。URL の構造を写すように配置する
+- `components/` — 定義の再利用される側: `schemas/` / `parameters/` / `requests/` / `responses/`
+
+参考資料はそれらと並ぶ通常の Markdown として置く。主題は各ファイルが自分で述べる。
 
 ## ファイルの役割
 
@@ -108,6 +102,29 @@ $ref: '#/components/schemas/UserResponse'
 HTTP ヘッダーはこの表の対象外です — 慣例に従い `Train-Case`（例 `Idempotency-Key`）を用います。
 
 ボディフィールドとパラメータは意図的に同じ `camelCase` に統一しています（パラメータをボディフィールドと揃えることで、JS/TS フロントエンドや生成 SDK とワイヤー契約を一致させる）。各ロケーション内では統一します。
+
+### 部分更新（PATCH）— 3 状態フィールド
+
+PATCH のリクエストボディでは、フィールドごとに **未送信**（現在値を据え置く）・**null 送信**（値をクリアする）・**値送信**（置き換える）の 3 状態を区別する必要があります。oapi-codegen の既定マッピングは optional かつ nullable なフィールドを `*T` に生成するため、「未送信」と「null」が同じ `nil` に潰れ、クリア要求と省略が区別できなくなります。
+
+null 明示によるクリアをサポートするフィールドには、`x-go-type` 拡張と [`oapi-codegen/nullable`](https://github.com/oapi-codegen/nullable) で生成型を上書きします。`Nullable[T]` は標準の `encoding/json` デコードだけで 3 状態を保持します:
+
+```yaml
+description:
+  type: string
+  nullable: true
+  description: 説明。null を指定すると値をクリアします。
+  x-go-type: nullable.Nullable[string]
+  x-go-type-import:
+    path: github.com/oapi-codegen/nullable
+  x-go-type-skip-optional-pointer: true   # *Nullable[T] にしない（3 状態は型自身が表現する）
+```
+
+ルール:
+
+- 適用するのは「クリア」が意味を持つ PATCH リクエストフィールドのみ。未送信と null の区別が不要な単なる optional フィールドは既定の `*T` のままにします。
+- `x-go-type-import` は常に `nullable` パッケージを指します。`T` が別の import を要する場合（例 `time.Time`）でも、`time` は oapi-codegen が自動解決するため、ここで宣言すると生成ファイルで import が重複します。
+- 「OpenAPI 生成型を Usecase に渡さない」原則に従い、`nullable.Nullable[T]` は controller 境界でフレームワーク非依存の 3 状態値（`pkg/patch.Field[T]`）へ変換します。内側の層は生成型を見ず、domain には解決済みの確定値のみを渡します。
 
 ### バージョニング
 

@@ -1,6 +1,6 @@
 # Idempotency Subsystem Design Reference
 
-[Idempotency README](../../internal/usecase/idempotency/README.md) | 日本語: [idempotency.ja.md](../ja/design/idempotency.ja.md)
+[Idempotency README](../../internal/usecase/idempotency/README.md) | 日本語: [idempotency.ja.md](idempotency.ja.md)
 
 This document consolidates the idempotency (`Idempotency-Key`) subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the HTTP path it plugs into see [rest.md](rest.md), and the GC side runs as a [job](job.md).
 
@@ -77,7 +77,7 @@ stateDiagram-v2
     Get --> FpCheck: record found
     FpCheck --> Mismatch: fingerprint ≠ → IncFingerprintMismatch → 422 (ErrValidation)
     FpCheck --> StillClaimed: status≠completed → IncConflict → 409 (ErrConflict)
-    FpCheck --> Replay: status=completed → Unmarshal → IncReplay → (result, replayed=true, nil)
+    FpCheck --> Replay: status=completed → Unmarshal → IncHit → (result, replayed=true, nil)
 
     CommitOK --> [*]
     Conflict --> [*]
@@ -207,7 +207,7 @@ sequenceDiagram
 
 ## 4. What an integrator implements (adoption is opt-in, two steps)
 
-The scaffold provides the **middleware, `Run[T]` orchestrator, `Store` seam + RDB impl, schema, GC usecase/job, and a reference adoption** (`POST /v1/users`). A handler is idempotent **only if both steps are done** — otherwise it behaves normally.
+This project provides the **middleware, `Run[T]` orchestrator, `Store` seam + RDB impl, schema, GC usecase/job, and a reference adoption** on one sample resource-creating endpoint. A handler is idempotent **only if both steps are done** — otherwise it behaves normally.
 
 ```mermaid
 flowchart LR
@@ -220,8 +220,8 @@ flowchart LR
 
 | # | Required implementation | Location | Reference |
 | --- | --- | --- | --- |
-| ① | add `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` to the handler's `NewStrictHandler` middleware slice; take `idempotency.Deps` in `BindHandler` | `internal/controller/handler/<path>/*_handler.go` | `v1/users` handler |
-| ② | wrap the usecase call: `idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | same handler method | `v1/users` `PostUsers` |
+| ① | add `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` to the handler's `NewStrictHandler` middleware slice; take `idempotency.Deps` in `BindHandler` | `internal/controller/handler/<path>/*_handler.go` | the sample POST handler |
+| ② | wrap the usecase call: `idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | same handler method | its `Post<Resource>` method |
 | ③ (opt) | inject `Deps.Metrics` when an o11y backend exists; widen `Scope` (e.g. `subject:operationID`) in the middleware if per-endpoint isolation is wanted | DI / middleware | `NewDeps`, `WithRequest` |
 
 Operational notes (no per-route config flags — these are coded constants):
@@ -242,7 +242,7 @@ Operational notes (no per-route config flags — these are coded constants):
 | **Claim** | `INSERT ... ON CONFLICT DO NOTHING` under `SET LOCAL lock_timeout='3s'`. Returns `claimed=true` (new), `false` (exists), or `ErrLockTimeout`. Runs inside the business tx. |
 | **claimed / completed** | The two `status` values. `claimed` = reserved, result not yet saved; `completed` = `businessFn` succeeded and the response is stored. |
 | **Complete** | `UPDATE claimed→completed` saving `response_status` + `response_payload` (JSON of `T`), in the same tx. |
-| **replay** | Returning the stored response for a same-`(scope,key,fingerprint)` completed op; `businessFn` is not run. `Run` returns `replayed=true`. Counter `IncReplay`. |
+| **replay** | Returning the stored response for a same-`(scope,key,fingerprint)` completed op; `businessFn` is not run. `Run` returns `replayed=true`. Counter `IncHit`. |
 | **409 `ErrConflict`** | A concurrent / in-flight claim — lock timeout, `status='claimed'`, or a record that vanished after a claim collision. Client should retry later. Counter `IncConflict`. |
 | **422 `ErrValidation`** | Same key reused with a different request body (fingerprint mismatch). Client bug. Counter `IncFingerprintMismatch`. |
 | **ErrLockTimeout** | Boundary sentinel from `Claim` when the row lock is unavailable after 3s; the usecase maps it to 409. |
@@ -252,4 +252,4 @@ Operational notes (no per-route config flags — these are coded constants):
 | **ttl** | `24 * time.Hour`. `expires_at = now + ttl`. After it, a retry is a fresh op. |
 | **GCUsecase / idempotencygc** | `SweepExpired(batchSize)` loops `Store.DeleteExpired` until a short batch; run from the bundled CLI [job](job.md). Default batch 10,000. |
 | **Store** | The persistence seam (`internal/usecase/boundary/idempotency`): `Claim` / `Get` / `Complete` / `DeleteExpired`, all scope-mandatory. |
-| **Metrics** | Optional o11y counters labelled by `operationID`: `IncReplay` / `IncConflict` / `IncFingerprintMismatch`. Default no-op. |
+| **Metrics** | Optional o11y counters labelled by `operationID`: `IncHit` / `IncMiss` / `IncConflict` / `IncFingerprintMismatch` / `IncClaimFailure` / `IncCompleteFailure`. Default no-op. |

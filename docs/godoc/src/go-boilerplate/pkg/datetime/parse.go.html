@@ -68,7 +68,7 @@
 <span id="L11" class="ln">    11  </span>}
 <span id="L12" class="ln">    12  </span>
 <span id="L13" class="ln">    13  </span><span class="comment">// ParseRFC3339UTC は、末尾が Z（UTC 表記）の RFC3339 文字列のみを解析します。</span>
-<span id="L14" class="ln">    14  </span><span class="comment">// レイアウト末尾はリテラル Z 固定のため、オフセット付き入力（例 +09:00）は受理しません。</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// オフセット付き入力（例 +09:00）は受理しません。</span>
 <span id="L15" class="ln">    15  </span>func ParseRFC3339UTC(s string) (time.Time, error) {
 <span id="L16" class="ln">    16  </span>	return ParseCustomLayout(&#34;2006-01-02T15:04:05Z&#34;, s)
 <span id="L17" class="ln">    17  </span>}
