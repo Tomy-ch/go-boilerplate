@@ -211,12 +211,6 @@ components:
       $ref: './components/parameters/address/PostalCodeParam.yaml'
     DisplayCurrencyParam:
       $ref: './components/parameters/purchase/DisplayCurrencyParam.yaml'
-    DashboardPeriodParam:
-      $ref: './components/parameters/dashboard/DashboardPeriodParam.yaml'
-    DashboardFromParam:
-      $ref: './components/parameters/dashboard/DashboardFromParam.yaml'
-    DashboardToParam:
-      $ref: './components/parameters/dashboard/DashboardToParam.yaml'
     CartSessionParam:
       $ref: './components/parameters/cart/CartSessionParam.yaml'
     # sample-api:end

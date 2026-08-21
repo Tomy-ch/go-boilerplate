@@ -17,7 +17,7 @@ methods:
   - name: CreatePurchase
     signature: CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
   - name: GetPurchases   # GET /v1/purchases（購入履歴一覧・cursor）。詳細は「## GET 一覧（購入履歴）」
-    signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec) (*PurchaseListView, error)
+    signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, window timewindow.Window) (*PurchaseListView, error)
   - name: GetPurchaseDetail # GET /v1/purchases/{purchaseCode}（購入詳細・集約跨ぎ QS）。詳細は「## GET 詳細（購入詳細）」
     signature: GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseCode string) (PurchaseGetDetailView, error)
   - name: CancelPurchase # PATCH /v1/purchases/{purchaseCode}/cancel。詳細は「## PATCH キャンセル」
@@ -142,7 +142,7 @@ output:
 input:
   - userID: uuid.UUID          # #583 が解決する認証主体の内部ユーザー ID（所有権フィルタ）
   - cursor: "*paging.Cursor"   # first（件数上限）+ after（不透明カーソル）
-  - spec: period.Spec          # 注文日時の対象期間（all / month / range / recent）。ゼロ値は全期間
+  - window: timewindow.Window  # 注文日時の対象期間（瞬時の半開区間）。ゼロ値は全期間
 
 output:
   struct: PurchaseListView
@@ -158,19 +158,19 @@ cursor:
 
 dependencies:
   - query.PurchaseFeedQueryService  # FindFeedByUserID（所有権フィルタ + 期間絞り込み + ステータス / 商品の結合、[]PurchaseFeedReadModel を返す）
-  - purchase/period                # Spec の暦日境界への解決（clock + *time.Location に依存）
   - tools/paging                   # Cursor（decode/encode・件数ポリシー）
+  - tools/timewindow               # Window（半開区間 [After, Before)・空区間の拒否）
 
 workflow:
   tx_required: false               # read-only
   steps:
     - cursor を decode し keyset 境界（ordered_at, id）へ解釈（不正は ErrInvalidArgument → 400）
-    - period.Resolve(spec, clock.Now(), loc) で対象期間を暦日へ解決し、半開区間 [after, before) を params へ載せる
+    - window の境界をそのまま params へ載せる（境界を持たない側には条件を付けない）
     - feedQS.FindFeedByUserID(userID, Limit+1) で所有者の購入を注文日時降順に取得（要約 2 項目込み）
     - 取得件数 > limit なら hasNext=true とし末尾を切り詰め、末尾行から nextCursor を encode
     - PurchaseSummaryView へ写像（他ユーザーの購入は SQL の所有権フィルタで空扱い）
   errors:
-    - ErrInvalidArgument → 400（不正 cursor / 区分ごとの必須指定の欠落 / to < from）
+    - ErrInvalidArgument → 400（不正 cursor。区間の相関検証は controller の timewindow.New が済ませている）
     - 未認証は controller で 401（Authn 不在）
 ```
 
@@ -242,13 +242,11 @@ workflow:
 ```yaml
 input:
   - authn: "*auth.Authn"       # 認証主体。nil は Unauthenticated（401）。UserID() を QS の所有権述語へ渡す
-  - params: GetSummaryParams   # { Period period.Spec; GroupBy []GroupKind }
+  - params: GetSummaryParams   # { Window timewindow.Window; GroupBy []GroupKind }
 
 output:
   struct: SummaryView          # package summary
   fields:
-    - name: Period
-      type: period.Window      # 集計に実際に用いた対象期間（解決済みの暦日）。全期間なら絞り込みなしを表す
     - name: TotalCount / TotalAmount
       type: int64              # 購入件数 / 支払金額（小計 + 税額 + 送料、USD セント整数）。対象 0 件でも 0 を返しエラーにしない
     - name: ItemsTotal
@@ -260,7 +258,6 @@ output:
 
 dependencies:
   - query.PurchaseSummaryQueryService   # SummarizeByUserID / SumItemsByUserID / SummarizeItemsByProductByUserID
-  - purchase/period                     # Spec の暦日境界への解決（clock + *time.Location に依存）
   - observability.TracerFactory
 
 workflow:
@@ -268,15 +265,14 @@ workflow:
   steps:
     - authn == nil なら ErrUnauthenticated（401）
     - authn.UserID() を取得（未解決はエラー伝播）
-    - period.Resolve(params.Period, clock.Now(), loc) で対象期間を暦日へ解決（レスポンスにも載せるため usecase で確定させる）
     - GroupBy を検証（未知の単位・同一単位の重複は ErrInvalidArgument → 400）
-    - qs.SummarizeByUserID(userID, window) でステータス別の件数・金額を 1 クエリで取得
+    - qs.SummarizeByUserID(userID, params.Window) でステータス別の件数・金額を 1 クエリで取得
     - GroupBy が空なら qs.SumItemsByUserID で明細金額の合計だけを取得（商品単位の行は読まない）
     - GroupBy があれば qs.SummarizeItemsByProductByUserID の行を GroupBy の順に入れ子へ畳み込み、同じ行から合計も導く
     - ステータス別の集計値を購入件数・支払金額へ畳み込み SummaryView へ写像（総計と内訳が同一スナップショットで整合する）
   errors:
     - ErrUnauthenticated → 401（Authn 不在）
-    - ErrInvalidArgument → 400（区分ごとの必須指定の欠落 / to < from / 不正な GroupBy）
+    - ErrInvalidArgument → 400（不正な GroupBy。区間の相関検証は controller の timewindow.New が済ませている）
 ```
 
 **キャンセル済みの購入はすべての集計値から除外する。** ステータス別内訳も同じ母集団に揃えるため、内訳に

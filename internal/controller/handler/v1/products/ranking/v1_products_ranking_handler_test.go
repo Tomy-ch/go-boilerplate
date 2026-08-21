@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
@@ -62,7 +63,7 @@ func Test_server_GetProductsRanking(t *testing.T) {
 			}, nil)
 
 			resp, err := s.GetProductsRanking(context.Background(), gen.GetProductsRankingRequestObject{
-				Params: gen.GetProductsRankingParams{Period: ptr.To(gen.GetProductsRankingParamsPeriodAll), Limit: ptr.To(10)},
+				Params: gen.GetProductsRankingParams{Limit: ptr.To(10)},
 			})
 			require.NoError(t, err)
 
@@ -75,13 +76,14 @@ func Test_server_GetProductsRanking(t *testing.T) {
 			}, actual)
 		})
 
-		t.Run("period/limit未指定は空文字と0でusecaseへ渡す", func(t *testing.T) {
+		t.Run("期間/limit未指定は境界を持たない対象期間と0でusecaseへ渡す", func(t *testing.T) {
 			t.Parallel()
 
 			s, mockUC := newServer(t)
 			mockUC.EXPECT().GetProductsRanking(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, params rankinguc.GetRankingParams) (rankinguc.RankingView, error) {
-					assert.Empty(t, params.Period)
+					assert.Nil(t, params.Window.After())
+					assert.Nil(t, params.Window.Before())
 					assert.Equal(t, 0, params.Limit)
 					return rankinguc.RankingView{Rankings: []rankinguc.RankingItemView{}}, nil
 				})
@@ -96,10 +98,45 @@ func Test_server_GetProductsRanking(t *testing.T) {
 			assert.NotNil(t, actual.Rankings)
 			assert.Empty(t, actual.Rankings)
 		})
+
+		t.Run("orderedAfter・orderedBeforeを対象期間へ変換してusecaseへ渡す", func(t *testing.T) {
+			t.Parallel()
+
+			after := time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC)
+
+			s, mockUC := newServer(t)
+			mockUC.EXPECT().GetProductsRanking(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params rankinguc.GetRankingParams) (rankinguc.RankingView, error) {
+					assert.Equal(t, after, *params.Window.After())
+					assert.Equal(t, before, *params.Window.Before())
+					return rankinguc.RankingView{Rankings: []rankinguc.RankingItemView{}}, nil
+				})
+
+			_, err := s.GetProductsRanking(context.Background(), gen.GetProductsRankingRequestObject{
+				Params: gen.GetProductsRankingParams{OrderedAfter: &after, OrderedBefore: &before},
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("orderedBeforeがorderedAfter以前の場合、usecaseを呼ばずErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			s, mockUC := newServer(t)
+			mockUC.EXPECT().GetProductsRanking(gomock.Any(), gomock.Any()).Times(0)
+
+			after := time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)
+
+			_, err := s.GetProductsRanking(context.Background(), gen.GetProductsRankingRequestObject{
+				Params: gen.GetProductsRankingParams{OrderedAfter: &after, OrderedBefore: &before},
+			})
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
 
 		t.Run("usecaseのエラーをそのまま伝播する", func(t *testing.T) {
 			t.Parallel()
@@ -110,21 +147,6 @@ func Test_server_GetProductsRanking(t *testing.T) {
 			resp, err := s.GetProductsRanking(context.Background(), gen.GetProductsRankingRequestObject{})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Nil(t, resp)
-		})
-	})
-}
-
-func Test_periodParam(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("未指定は空文字、指定時はその文字列表現を返す", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Empty(t, periodParam(nil))
-			assert.Equal(t, "30d", periodParam(ptr.To(gen.GetProductsRankingParamsPeriodN30d)))
 		})
 	})
 }

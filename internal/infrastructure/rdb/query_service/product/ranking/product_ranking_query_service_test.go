@@ -10,8 +10,9 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
-	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/product/ranking/query"
+	"go-boilerplate/internal/usecase/tools/timewindow"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 
@@ -100,6 +101,14 @@ func insertDetail(ctx context.Context, t *testing.T, db driver.DBTX, id, purchas
 	require.NoError(t, err)
 }
 
+// mustWindow は、境界の指定から検証済みの集計対象期間を組み立てます。
+func mustWindow(t *testing.T, bounds timewindow.Bounds) timewindow.Window {
+	t.Helper()
+	w, err := timewindow.New(bounds)
+	require.NoError(t, err)
+	return w
+}
+
 func Test_service_ListRanking(t *testing.T) {
 	t.Parallel()
 
@@ -107,7 +116,7 @@ func Test_service_ListRanking(t *testing.T) {
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 	now := time.Now()
-	svc := &service{db: testDB, clk: clocktestkit.NewMockClock(t, now), tracer: lt}
+	svc := &service{db: testDB, tracer: lt}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -131,7 +140,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "a1000000-0000-4000-8000-0000000000d2"), purchase2, productA, 5)
 				insertDetail(ctx, t, drv, mustParse(t, "a1000000-0000-4000-8000-0000000000d3"), purchase1, productB, 4)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -167,7 +176,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-0000000000d2"), unpaidPurchase, productC, 2)
 				insertDetail(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-0000000000d3"), normalPurchase, productD, 1)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -194,7 +203,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "c1000000-0000-4000-8000-0000000000d1"), purchase, productLow, 5)
 				insertDetail(ctx, t, drv, mustParse(t, "c1000000-0000-4000-8000-0000000000d2"), purchase, productHigh, 5)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -219,19 +228,22 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "d1000000-0000-4000-8000-0000000000d1"), recentPurchase, product, 7)
 				insertDetail(ctx, t, drv, mustParse(t, "d1000000-0000-4000-8000-0000000000d2"), oldPurchase, product, 50)
 
-				gotAll, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
+				gotAll, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 				require.Len(t, gotAll, 1)
 				assert.Equal(t, int64(57), gotAll[0].SoldQuantity)
 
-				got30d, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.Period30d, Limit: 10})
+				got30d, err := svc.ListRanking(ctx, query.RankingQueryParams{
+					Window: mustWindow(t, timewindow.Bounds{After: ptr.To(now.Add(-30 * 24 * time.Hour))}),
+					Limit:  10,
+				})
 				require.NoError(t, err)
 				require.Len(t, got30d, 1)
 				assert.Equal(t, int64(7), got30d[0].SoldQuantity)
 			})
 		})
 
-		t.Run("period=30dは境界ちょうどの注文を含み境界より古い注文を除外する", func(t *testing.T) {
+		t.Run("下限は境界ちょうどの注文を含み境界より古い注文を除外する", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -240,8 +252,7 @@ func Test_service_ListRanking(t *testing.T) {
 				product := mustParse(t, "aa100000-0000-4000-8000-000000000001")
 				insertProduct(ctx, t, drv, product, "10", "境界商品")
 
-				// サービスは固定 clock の now を基準に境界を算出するため、同じ now から境界を厳密に再現する。
-				boundary := now.Add(-rankingWindow30d)
+				boundary := now.Add(-30 * 24 * time.Hour)
 				insidePurchase := mustParse(t, "aa100000-0000-4000-8000-0000000000f1")
 				outsidePurchase := mustParse(t, "aa100000-0000-4000-8000-0000000000f2")
 				insertPurchase(ctx, t, drv, insidePurchase, boundary, nil)
@@ -249,11 +260,75 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "aa100000-0000-4000-8000-0000000000d1"), insidePurchase, product, 3)
 				insertDetail(ctx, t, drv, mustParse(t, "aa100000-0000-4000-8000-0000000000d2"), outsidePurchase, product, 40)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.Period30d, Limit: 10})
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{
+					Window: mustWindow(t, timewindow.Bounds{After: &boundary}),
+					Limit:  10,
+				})
 				require.NoError(t, err)
 
 				require.Len(t, got, 1)
 				assert.Equal(t, int64(3), got[0].SoldQuantity)
+			})
+		})
+
+		t.Run("上限は境界ちょうどの注文を除外し境界より前の注文を含む", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				product := mustParse(t, "aa200000-0000-4000-8000-000000000001")
+				insertProduct(ctx, t, drv, product, "10", "上限境界商品")
+
+				boundary := now.Add(-24 * time.Hour)
+				insidePurchase := mustParse(t, "aa200000-0000-4000-8000-0000000000f1")
+				onBoundaryPurchase := mustParse(t, "aa200000-0000-4000-8000-0000000000f2")
+				insertPurchase(ctx, t, drv, insidePurchase, boundary.Add(-time.Second), nil)
+				insertPurchase(ctx, t, drv, onBoundaryPurchase, boundary, nil)
+				insertDetail(ctx, t, drv, mustParse(t, "aa200000-0000-4000-8000-0000000000d1"), insidePurchase, product, 5)
+				insertDetail(ctx, t, drv, mustParse(t, "aa200000-0000-4000-8000-0000000000d2"), onBoundaryPurchase, product, 60)
+
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{
+					Window: mustWindow(t, timewindow.Bounds{Before: &boundary}),
+					Limit:  10,
+				})
+				require.NoError(t, err)
+
+				// 上限ちょうどの 60 個が混ざれば数量が変わるため、< が <= に化けた場合ここが赤くなる。
+				require.Len(t, got, 1)
+				assert.Equal(t, int64(5), got[0].SoldQuantity)
+			})
+		})
+
+		t.Run("両端を指定した場合はその半開区間の注文だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				product := mustParse(t, "aa300000-0000-4000-8000-000000000001")
+				insertProduct(ctx, t, drv, product, "10", "両端境界商品")
+
+				after := now.Add(-48 * time.Hour)
+				before := now.Add(-24 * time.Hour)
+				beforeRange := mustParse(t, "aa300000-0000-4000-8000-0000000000f1")
+				inRange := mustParse(t, "aa300000-0000-4000-8000-0000000000f2")
+				afterRange := mustParse(t, "aa300000-0000-4000-8000-0000000000f3")
+				insertPurchase(ctx, t, drv, beforeRange, after.Add(-time.Second), nil)
+				insertPurchase(ctx, t, drv, inRange, after, nil)
+				insertPurchase(ctx, t, drv, afterRange, before, nil)
+				insertDetail(ctx, t, drv, mustParse(t, "aa300000-0000-4000-8000-0000000000d1"), beforeRange, product, 70)
+				insertDetail(ctx, t, drv, mustParse(t, "aa300000-0000-4000-8000-0000000000d2"), inRange, product, 4)
+				insertDetail(ctx, t, drv, mustParse(t, "aa300000-0000-4000-8000-0000000000d3"), afterRange, product, 80)
+
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{
+					Window: mustWindow(t, timewindow.Bounds{After: &after, Before: &before}),
+					Limit:  10,
+				})
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, int64(4), got[0].SoldQuantity)
 			})
 		})
 
@@ -276,7 +351,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "e1000000-0000-4000-8000-0000000000d2"), purchase, productMid, 5)
 				insertDetail(ctx, t, drv, mustParse(t, "e1000000-0000-4000-8000-0000000000d3"), purchase, productLow, 1)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 2})
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 2})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -301,7 +376,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "f1000000-0000-4000-8000-0000000000d1"), purchase, publishedProduct, 1)
 				insertDetail(ctx, t, drv, mustParse(t, "f1000000-0000-4000-8000-0000000000d2"), purchase, unpublishedProduct, 99)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 1)
@@ -316,7 +391,7 @@ func Test_service_ListRanking(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
+				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 				assert.Empty(t, got)
 			})
@@ -329,7 +404,7 @@ func Test_service_ListRanking(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.ListRanking(canceledContext(t), query.RankingQueryParams{Period: query.PeriodAll, Limit: 10})
+			got, err := svc.ListRanking(canceledContext(t), query.RankingQueryParams{Limit: 10})
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, got)
 		})
@@ -339,7 +414,7 @@ func Test_service_ListRanking(t *testing.T) {
 
 			got, err := svc.ListRanking(
 				context.Background(),
-				query.RankingQueryParams{Period: query.PeriodAll, Limit: math.MaxInt32 + 1},
+				query.RankingQueryParams{Limit: math.MaxInt32 + 1},
 			)
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 			assert.Nil(t, got)
@@ -352,39 +427,10 @@ func TestNew(t *testing.T) {
 
 	testDB := testkit.NewTestDB(t)
 	tf := observability.NewNoopTracerFactory(t)
-	clk := clocktestkit.NewMockClock(t, time.Now())
 	expected := &service{
 		db:     testDB,
-		clk:    clk,
 		tracer: tf.Infra(),
 	}
-	actual := New(testDB, clk, tf)
+	actual := New(testDB, tf)
 	assert.Equal(t, expected, actual)
-}
-
-func Test_resolvePeriod(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("全期間は期間フィルタ無効かつ境界時刻nilを返す", func(t *testing.T) {
-			t.Parallel()
-
-			filter, after := resolvePeriod(query.PeriodAll, now)
-			assert.False(t, filter)
-			assert.Nil(t, after)
-		})
-
-		t.Run("直近30日は期間フィルタ有効かつnowから30日前の境界を返す", func(t *testing.T) {
-			t.Parallel()
-
-			filter, after := resolvePeriod(query.Period30d, now)
-			assert.True(t, filter)
-			require.NotNil(t, after)
-			assert.Equal(t, now.Add(-30*24*time.Hour), *after)
-		})
-	})
 }

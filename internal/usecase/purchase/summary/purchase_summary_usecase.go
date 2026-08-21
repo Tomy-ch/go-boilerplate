@@ -6,14 +6,12 @@ package summary
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
-	"go-boilerplate/internal/usecase/boundary/clock"
-	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/purchase/query"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -37,8 +35,8 @@ type groupLevel struct {
 
 // GetSummaryParams は、購入集計取得ユースケースの入力パラメータです。
 type GetSummaryParams struct {
-	// Period は、集計対象期間の指定です。ゼロ値は全期間を意味します。
-	Period period.Spec
+	// Window は、集計対象期間です。ゼロ値は全期間を意味します。
+	Window timewindow.Window
 	// GroupBy は、グループ化単位を適用順（先頭が最上位の階層）に並べたものです。空ならグループ化しません。
 	GroupBy []GroupKind
 }
@@ -67,8 +65,6 @@ type GroupNodeView struct {
 // SummaryView は、購入集計のユースケース出力 DTO です。全フィールドは GetPurchaseSummary が定義する
 // 同一の母集団から算出されるため、フィールド間で不整合は生じません。
 type SummaryView struct {
-	// Period は、集計に実際に用いた対象期間です。全期間を集計した場合は絞り込みなしを表します。
-	Period period.Window
 	// TotalCount / TotalAmount は、購入件数と支払金額（小計 + 税額 + 送料）の合計です。
 	// 対象がない場合はいずれも 0 で、TotalAmount は USD セント単位の整数です。
 	TotalCount  int64
@@ -87,29 +83,23 @@ type Usecase interface {
 	// GetPurchaseSummary は、認証主体自身の購入の件数・支払金額・明細金額・ステータス別内訳を返します。
 	// 集計は認証主体の userID に限定され、他ユーザーの購入は含みません。キャンセル済みの購入は除外します。
 	// params.GroupBy を指定した場合は、明細金額をその単位へ分解した内訳も返します。
-	// 対象の購入がない場合はゼロ値を返します。期間指定・グループ化指定が不正な場合は InvalidArgument を返します。
+	// 対象の購入がない場合はゼロ値を返します。グループ化指定が不正な場合は InvalidArgument を返します。
 	GetPurchaseSummary(ctx context.Context, authn *auth.Authn, params GetSummaryParams) (SummaryView, error)
 }
 
 type usecase struct {
 	tracer observability.LayerTracer
 	qs     query.PurchaseSummaryQueryService
-	clk    clock.Clock
-	loc    *time.Location
 }
 
 // New は、購入集計の参照ユースケースを生成します。
 func New(
 	qs query.PurchaseSummaryQueryService,
-	clk clock.Clock,
-	loc *time.Location,
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
 		tracer: tf.Usecase(),
 		qs:     qs,
-		clk:    clk,
-		loc:    loc,
 	}
 }
 
@@ -127,27 +117,21 @@ func (u *usecase) GetPurchaseSummary(
 		return SummaryView{}, xerrors.Wrap(err, "failed to get user ID from authenticator")
 	}
 
-	// 対象期間はレスポンスにも含めるため、現在時刻とタイムゾーンへの依存をここで解決して確定させる。
-	window, err := period.Resolve(params.Period, u.clk.Now(), u.loc)
-	if err != nil {
-		return SummaryView{}, err
-	}
 	if err = validateGroupBy(params.GroupBy); err != nil {
 		return SummaryView{}, err
 	}
 
-	statuses, err := u.qs.SummarizeByUserID(ctx, userID, window)
+	statuses, err := u.qs.SummarizeByUserID(ctx, userID, params.Window)
 	if err != nil {
 		return SummaryView{}, err
 	}
 
-	itemsTotal, groups, err := u.summarizeItems(ctx, userID, window, params.GroupBy)
+	itemsTotal, groups, err := u.summarizeItems(ctx, userID, params.Window, params.GroupBy)
 	if err != nil {
 		return SummaryView{}, err
 	}
 
 	view := toSummaryView(statuses)
-	view.Period = window
 	view.ItemsTotal = itemsTotal
 	view.Groups = groups
 	return view, nil
@@ -156,7 +140,7 @@ func (u *usecase) GetPurchaseSummary(
 // summarizeItems は、明細金額の合計と、要求されたグループ化単位の内訳を返します。
 // グループ化しない呼び出しは商品単位の行を読まずに合計だけを取り、要求された場合のみ内訳を畳み込みます。
 func (u *usecase) summarizeItems(
-	ctx context.Context, userID uuid.UUID, window period.Window, groupBy []GroupKind,
+	ctx context.Context, userID uuid.UUID, window timewindow.Window, groupBy []GroupKind,
 ) (decimal.Decimal, map[string]GroupNodeView, error) {
 	if len(groupBy) == 0 {
 		total, err := u.qs.SumItemsByUserID(ctx, userID, window)

@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/dashboard/query"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 )
 
 type service struct {
@@ -29,14 +30,14 @@ func New(
 
 // SummarizeSales は、指定期間に注文された購入の売上合計と件数を返します。
 // キャンセル済みの購入は WHERE 述語（canceled_at IS NULL）で除外し、未払いの購入は含めます。
-func (s *service) SummarizeSales(ctx context.Context, window query.Window) (query.SalesResult, error) {
+func (s *service) SummarizeSales(ctx context.Context, window timewindow.Window) (query.SalesResult, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, s.db))
 	row, err := db.SummarizeDashboardSales(ctx, &gen.SummarizeDashboardSalesParams{
-		OrderedAfter:  window.After,
-		OrderedBefore: window.Before,
+		OrderedAfter:  window.After(),
+		OrderedBefore: window.Before(),
 	})
 	if err != nil {
 		return query.SalesResult{}, pgerror.NormalizeError(err)
@@ -48,15 +49,15 @@ func (s *service) SummarizeSales(ctx context.Context, window query.Window) (quer
 // CountPurchasesByStatus は、指定期間に注文された購入のステータス別件数を返します。
 // ステータス名は purchase_statuses との一意な等結合で解決します。
 func (s *service) CountPurchasesByStatus(
-	ctx context.Context, window query.Window,
+	ctx context.Context, window timewindow.Window,
 ) ([]query.PurchaseStatusCountResult, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, s.db))
 	rows, err := db.CountDashboardPurchasesByStatus(ctx, &gen.CountDashboardPurchasesByStatusParams{
-		OrderedAfter:  window.After,
-		OrderedBefore: window.Before,
+		OrderedAfter:  window.After(),
+		OrderedBefore: window.Before(),
 	})
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)

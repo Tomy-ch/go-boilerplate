@@ -12,6 +12,7 @@ package mock_query
 import (
 	context "context"
 	query "go-boilerplate/internal/usecase/dashboard/query"
+	timewindow "go-boilerplate/internal/usecase/tools/timewindow"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -42,7 +43,7 @@ func (m *MockDashboardQueryService) EXPECT() *MockDashboardQueryServiceMockRecor
 }
 
 // CountPurchasesByStatus mocks base method.
-func (m *MockDashboardQueryService) CountPurchasesByStatus(ctx context.Context, window query.Window) ([]query.PurchaseStatusCountResult, error) {
+func (m *MockDashboardQueryService) CountPurchasesByStatus(ctx context.Context, window timewindow.Window) ([]query.PurchaseStatusCountResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CountPurchasesByStatus", ctx, window)
 	ret0, _ := ret[0].([]query.PurchaseStatusCountResult)
@@ -57,7 +58,7 @@ func (mr *MockDashboardQueryServiceMockRecorder) CountPurchasesByStatus(ctx, win
 }
 
 // SummarizeSales mocks base method.
-func (m *MockDashboardQueryService) SummarizeSales(ctx context.Context, window query.Window) (query.SalesResult, error) {
+func (m *MockDashboardQueryService) SummarizeSales(ctx context.Context, window timewindow.Window) (query.SalesResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SummarizeSales", ctx, window)
 	ret0, _ := ret[0].(query.SalesResult)

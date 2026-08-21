@@ -4,44 +4,10 @@
 package gen
 
 import (
+	"time"
+
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
-
-// Defines values for RankingPeriodParam.
-const (
-	RankingPeriodParamAll  RankingPeriodParam = "all"
-	RankingPeriodParamN30d RankingPeriodParam = "30d"
-)
-
-// Valid indicates whether the value is a known member of the RankingPeriodParam enum.
-func (e RankingPeriodParam) Valid() bool {
-	switch e {
-	case RankingPeriodParamAll:
-		return true
-	case RankingPeriodParamN30d:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetProductsRankingParamsPeriod.
-const (
-	GetProductsRankingParamsPeriodAll  GetProductsRankingParamsPeriod = "all"
-	GetProductsRankingParamsPeriodN30d GetProductsRankingParamsPeriod = "30d"
-)
-
-// Valid indicates whether the value is a known member of the GetProductsRankingParamsPeriod enum.
-func (e GetProductsRankingParamsPeriod) Valid() bool {
-	switch e {
-	case GetProductsRankingParamsPeriodAll:
-		return true
-	case GetProductsRankingParamsPeriodN30d:
-		return true
-	default:
-		return false
-	}
-}
 
 // ErrorResponse エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ErrorResponse struct {
@@ -90,11 +56,14 @@ type ProductRankingResponse struct {
 	Rankings []ProductRankingItem `json:"rankings"`
 }
 
+// OrderedAfterParam Example: 2026-07-01T00:00:00+09:00
+type OrderedAfterParam = time.Time
+
+// OrderedBeforeParam Example: 2026-08-01T00:00:00+09:00
+type OrderedBeforeParam = time.Time
+
 // RankingLimitParam Example: 10
 type RankingLimitParam = int
-
-// RankingPeriodParam Example: all
-type RankingPeriodParam string
 
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
@@ -110,12 +79,19 @@ type ServiceUnavailable503 = ErrorResponse
 
 // GetProductsRankingParams defines parameters for GetProductsRanking.
 type GetProductsRankingParams struct {
-	// Period 集計対象期間。`all`（既定）は全期間、`30d` は注文日時が直近30日以内の購入のみを集計します。
-	Period *GetProductsRankingParamsPeriod `form:"period,omitempty" json:"period,omitempty"`
+	// OrderedAfter 集計対象期間の下限となる瞬時（RFC3339）。**この瞬時を含みます**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると下限を設けません。`orderedBefore` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	// cursor ページネーションの `after` とは別のパラメータです。
+	OrderedAfter *OrderedAfterParam `form:"orderedAfter,omitempty" json:"orderedAfter,omitempty"`
+
+	// OrderedBefore 集計対象期間の上限となる瞬時（RFC3339）。**この瞬時を含みません**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると上限を設けません。`orderedAfter` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	OrderedBefore *OrderedBeforeParam `form:"orderedBefore,omitempty" json:"orderedBefore,omitempty"`
 
 	// Limit 取得する上位件数。売上数量の降順で上位 limit 件を返します。
 	Limit *RankingLimitParam `form:"limit,omitempty" json:"limit,omitempty"`
 }
-
-// GetProductsRankingParamsPeriod defines parameters for GetProductsRanking.
-type GetProductsRankingParamsPeriod string

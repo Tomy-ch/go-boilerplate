@@ -13,8 +13,8 @@ import (
 	context "context"
 	auth "go-boilerplate/internal/usecase/boundary/auth"
 	purchase "go-boilerplate/internal/usecase/purchase"
-	period "go-boilerplate/internal/usecase/purchase/period"
 	paging "go-boilerplate/internal/usecase/tools/paging"
+	timewindow "go-boilerplate/internal/usecase/tools/timewindow"
 	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
@@ -106,18 +106,18 @@ func (mr *MockUsecaseMockRecorder) GetPurchaseDetail(ctx, authn, purchaseCode an
 }
 
 // GetPurchases mocks base method.
-func (m *MockUsecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec) (*purchase.PurchaseListView, error) {
+func (m *MockUsecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, window timewindow.Window) (*purchase.PurchaseListView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPurchases", ctx, userID, cursor, spec)
+	ret := m.ctrl.Call(m, "GetPurchases", ctx, userID, cursor, window)
 	ret0, _ := ret[0].(*purchase.PurchaseListView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPurchases indicates an expected call of GetPurchases.
-func (mr *MockUsecaseMockRecorder) GetPurchases(ctx, userID, cursor, spec any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) GetPurchases(ctx, userID, cursor, window any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPurchases", reflect.TypeOf((*MockUsecase)(nil).GetPurchases), ctx, userID, cursor, spec)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPurchases", reflect.TypeOf((*MockUsecase)(nil).GetPurchases), ctx, userID, cursor, window)
 }
 
 // ListShippablePurchases mocks base method.

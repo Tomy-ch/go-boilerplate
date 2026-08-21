@@ -21,15 +21,18 @@ SELECT
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE
-    p.ordered_at >= $1
-    AND p.ordered_at < $2
+    (p.ordered_at >= $1 OR $1 IS NULL)
+    AND (
+        p.ordered_at < $2
+        OR $2 IS NULL
+    )
 GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC
 `
 
 type CountDashboardPurchasesByStatusParams struct {
-	OrderedAfter  time.Time
-	OrderedBefore time.Time
+	OrderedAfter  *time.Time
+	OrderedBefore *time.Time
 }
 
 type CountDashboardPurchasesByStatusRow struct {
@@ -41,7 +44,7 @@ type CountDashboardPurchasesByStatusRow struct {
 
 // === source: database/dml/query_service/dashboard/select_dashboard_purchase_status_counts.sql ===
 // 指定期間に注文された購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
-// 期間は [ordered_after, ordered_before) の半開区間です。
+// 期間は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）です。
 // 売上集計と異なりキャンセル済みの購入も 1 ステータスとして含めます。
 //
 //	SELECT
@@ -52,8 +55,11 @@ type CountDashboardPurchasesByStatusRow struct {
 //	FROM purchases AS p
 //	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE
-//	    p.ordered_at >= $1
-//	    AND p.ordered_at < $2
+//	    (p.ordered_at >= $1 OR $1 IS NULL)
+//	    AND (
+//	        p.ordered_at < $2
+//	        OR $2 IS NULL
+//	    )
 //	GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 //	ORDER BY ps.sort_key ASC
 func (q *Queries) CountDashboardPurchasesByStatus(ctx context.Context, arg *CountDashboardPurchasesByStatusParams) ([]*CountDashboardPurchasesByStatusRow, error) {
@@ -88,13 +94,18 @@ SELECT
 FROM purchases
 WHERE
     canceled_at IS NULL
-    AND ordered_at >= $1
-    AND ordered_at < $2
+    AND (
+        ordered_at >= $1 OR $1 IS NULL
+    )
+    AND (
+        ordered_at < $2
+        OR $2 IS NULL
+    )
 `
 
 type SummarizeDashboardSalesParams struct {
-	OrderedAfter  time.Time
-	OrderedBefore time.Time
+	OrderedAfter  *time.Time
+	OrderedBefore *time.Time
 }
 
 type SummarizeDashboardSalesRow struct {
@@ -104,11 +115,10 @@ type SummarizeDashboardSalesRow struct {
 
 // === source: database/dml/query_service/dashboard/select_dashboard_sales.sql ===
 // 指定期間に注文された購入の売上合計と件数を返します。
-// 期間は [ordered_after, ordered_before) の半開区間です。
+// 期間は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）です。
 // キャンセル済み（canceled_at 設定済み）の購入は除外し、未払い（paid_at 未設定）の購入は含めます
 // （商品売上ランキングと同一の母集団）。
-// 「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
-// 述語が見るのは status ですが、両者は再構築時の不変条件で等価に縛られています。
+// Purchase.IsCanceled と同値（database/dml/query_service/README.md 参照）。
 // 対象が 0 件のとき SUM は NULL を返すため、COALESCE でゼロ値へ畳み込みます。
 //
 //	SELECT
@@ -117,8 +127,13 @@ type SummarizeDashboardSalesRow struct {
 //	FROM purchases
 //	WHERE
 //	    canceled_at IS NULL
-//	    AND ordered_at >= $1
-//	    AND ordered_at < $2
+//	    AND (
+//	        ordered_at >= $1 OR $1 IS NULL
+//	    )
+//	    AND (
+//	        ordered_at < $2
+//	        OR $2 IS NULL
+//	    )
 func (q *Queries) SummarizeDashboardSales(ctx context.Context, arg *SummarizeDashboardSalesParams) (*SummarizeDashboardSalesRow, error) {
 	row := q.db.QueryRow(ctx, summarizeDashboardSales, arg.OrderedAfter, arg.OrderedBefore)
 	var i SummarizeDashboardSalesRow

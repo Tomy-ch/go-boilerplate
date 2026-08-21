@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/product/ranking/query"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
@@ -32,8 +33,8 @@ var errUnpublishedInRanking = xerrors.Wrap(apperror.ErrInternal, "unpublished pr
 
 // GetRankingParams は、ランキング取得ユースケースの入力パラメータです。
 type GetRankingParams struct {
-	// Period は、集計対象期間（"all" / "30d"）です。未知値・空は全期間として扱います。
-	Period string
+	// Window は、集計対象期間です。ゼロ値は全期間を意味します。
+	Window timewindow.Window
 	// Limit は、取得する上位件数です。0 以下は既定値 10 を適用し、100 を超える値は 100 にクランプします。
 	Limit int
 }
@@ -58,7 +59,6 @@ type Usecase interface {
 	GetProductsRanking(ctx context.Context, params GetRankingParams) (RankingView, error)
 }
 
-// usecase は、Usecase の実装です。
 type usecase struct {
 	tracer observability.LayerTracer
 	qs     query.ProductRankingQueryService
@@ -72,14 +72,14 @@ func New(qs query.ProductRankingQueryService, tf observability.TracerFactory) Us
 	}
 }
 
-// GetProductsRanking は、集計期間と件数の正規化を usecase 側の入力方針として引き受けます。QueryService へは
-// 正規化済みの値だけが渡るため、未知の期間や範囲外の件数が集計側へ到達する経路はありません。
+// GetProductsRanking は、件数の正規化を usecase 側の入力方針として引き受けます。QueryService へは
+// 正規化済みの値だけが渡るため、範囲外の件数が集計側へ到達する経路はありません。
 func (u *usecase) GetProductsRanking(ctx context.Context, params GetRankingParams) (RankingView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
 	results, err := u.qs.ListRanking(ctx, query.RankingQueryParams{
-		Period: normalizePeriod(params.Period),
+		Window: params.Window,
 		Limit:  paging.NewLimit(ptr.To(params.Limit), rankingLimitPolicy).Value(),
 	})
 	if err != nil {
@@ -114,12 +114,4 @@ func ensurePublished(results []query.RankingResult) error {
 	}
 
 	return nil
-}
-
-// normalizePeriod は、入力期間を集計区分へ正規化します。"30d" のみ直近30日、それ以外は全期間として扱います。
-func normalizePeriod(period string) query.Period {
-	if period == string(query.Period30d) {
-		return query.Period30d
-	}
-	return query.PeriodAll
 }

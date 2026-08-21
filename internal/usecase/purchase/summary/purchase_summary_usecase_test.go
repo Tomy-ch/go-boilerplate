@@ -7,10 +7,9 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
-	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
-	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/purchase/query"
 	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -20,12 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-// summaryLoc は、注入されたロケーションが使われることを設定値と独立に固定するための、UTC から離れた固定ゾーンです。
-var summaryLoc = time.FixedZone("TEST+09", 9*60*60)
-
-// summaryNow は、summaryLoc で 2026-01-31 12:00 に相当する時刻です。UTC のままだと暦日が 1 日ずれる位置を選んでいます。
-var summaryNow = time.Date(2026, time.January, 31, 3, 0, 0, 0, time.UTC)
 
 func newAuthn(t *testing.T, userID uuid.UUID) *authbd.Authn {
 	t.Helper()
@@ -52,8 +45,6 @@ func Test_usecase_GetPurchaseSummary(t *testing.T) {
 		return &usecase{
 			tracer: observability.NewNoopTracerFactory(t).Usecase(),
 			qs:     qs,
-			clk:    clocktestkit.NewMockClock(t, summaryNow),
-			loc:    summaryLoc,
 		}
 	}
 
@@ -103,49 +94,56 @@ func Test_usecase_GetPurchaseSummary(t *testing.T) {
 			assert.Nil(t, actual.Groups)
 		})
 
-		t.Run("解決済みの対象期間がQSへ渡りレスポンスにも載る", func(t *testing.T) {
+		t.Run("対象期間がそのままQSへ渡る", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "sm_period_user")
-			days := 10
+			after := time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
+			window, err := timewindow.New(timewindow.Bounds{After: &after, Before: &before})
+			require.NoError(t, err)
 
-			var captured period.Window
+			var captured timewindow.Window
 			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
 			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).DoAndReturn(
-				func(_ any, _ uuid.UUID, w period.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
+				func(_ any, _ uuid.UUID, w timewindow.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
 					captured = w
 					return nil, nil
 				},
 			)
 			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, nil)
 
-			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{
-				Period: period.Spec{Kind: period.KindRecent, Days: &days},
+			_, err = newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{
+				Window: window,
 			})
 			require.NoError(t, err)
 
-			// 相対指定は summaryNow の暦日（1/31）を終了日とし、10 日前の 1/21 が開始日になる。
-			assert.True(t, captured.Filtered())
-			assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, summaryLoc).Equal(captured.From()))
-			assert.True(t, time.Date(2026, time.January, 31, 0, 0, 0, 0, summaryLoc).Equal(captured.To()))
-			// QS へ渡した期間とレスポンスの期間が同一であることを固定する（クライアントは相対指定を自前で解決しない）。
-			assert.Equal(t, captured, actual.Period)
+			assert.True(t, after.Equal(*captured.After()))
+			assert.True(t, before.Equal(*captured.Before()))
 		})
 
-		t.Run("グループ化しないとき対象期間は絞り込みなしとして返る", func(t *testing.T) {
+		t.Run("境界を持たない対象期間はそのままQSへ渡る", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "sm_allperiod_user")
 
+			var captured timewindow.Window
 			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
-			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, nil)
+			qs.EXPECT().SummarizeByUserID(gomock.Any(), userID, gomock.Any()).DoAndReturn(
+				func(_ any, _ uuid.UUID, w timewindow.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
+					captured = w
+					return nil, nil
+				},
+			)
 			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, nil)
 
-			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
+			_, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{})
 			require.NoError(t, err)
-			assert.False(t, actual.Period.Filtered())
+
+			assert.Nil(t, captured.After())
+			assert.Nil(t, captured.Before())
 		})
 
 		t.Run("購入が1件もない場合はnilではない空の内訳とゼロ値を返す", func(t *testing.T) {
@@ -221,22 +219,6 @@ func Test_usecase_GetPurchaseSummary(t *testing.T) {
 
 			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), authn, GetSummaryParams{})
 			require.ErrorIs(t, err, authbd.ErrUserIDUnresolved)
-			assert.Equal(t, SummaryView{}, actual)
-		})
-
-		t.Run("期間の必須指定が欠けているときInvalidArgumentを返しQSを呼ばない", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			userID := uuidtestkit.NewTestFromSalt(t, "sm_badperiod_user")
-
-			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
-			qs.EXPECT().SummarizeByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-
-			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{
-				Period: period.Spec{Kind: period.KindRange},
-			})
-			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			assert.Equal(t, SummaryView{}, actual)
 		})
 
@@ -318,13 +300,10 @@ func TestNew(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			qs := mock_query.NewMockPurchaseSummaryQueryService(ctrl)
 			tf := observability.NewNoopTracerFactory(t)
-			clk := clocktestkit.NewMockClock(t, summaryNow)
 
-			actual, ok := New(qs, clk, summaryLoc, tf).(*usecase)
+			actual, ok := New(qs, tf).(*usecase)
 			require.True(t, ok)
 			assert.Equal(t, qs, actual.qs)
-			assert.Equal(t, clk, actual.clk)
-			assert.Equal(t, summaryLoc, actual.loc)
 			assert.NotNil(t, actual.tracer)
 		})
 	})
@@ -612,7 +591,7 @@ func Test_usecase_summarizeItems(t *testing.T) {
 			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(dec(t, "12.50"), nil)
 			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			total, groups, err := newUsecase(t, qs).summarizeItems(t.Context(), userID, period.Window{}, nil)
+			total, groups, err := newUsecase(t, qs).summarizeItems(t.Context(), userID, timewindow.Window{}, nil)
 			require.NoError(t, err)
 			assert.Equal(t, "12.5", total.String())
 			assert.Nil(t, groups)
@@ -629,7 +608,7 @@ func Test_usecase_summarizeItems(t *testing.T) {
 				}, nil)
 
 			total, groups, err := newUsecase(t, qs).summarizeItems(
-				t.Context(), userID, period.Window{}, []GroupKind{GroupByCategory})
+				t.Context(), userID, timewindow.Window{}, []GroupKind{GroupByCategory})
 			require.NoError(t, err)
 			assert.Equal(t, "20.5", total.String())
 			require.Len(t, groups, 1)
@@ -646,7 +625,7 @@ func Test_usecase_summarizeItems(t *testing.T) {
 			qs := mock_query.NewMockPurchaseSummaryQueryService(gomock.NewController(t))
 			qs.EXPECT().SumItemsByUserID(gomock.Any(), userID, gomock.Any()).Return(decimal.Decimal{}, apperror.ErrInternal)
 
-			_, groups, err := newUsecase(t, qs).summarizeItems(t.Context(), userID, period.Window{}, nil)
+			_, groups, err := newUsecase(t, qs).summarizeItems(t.Context(), userID, timewindow.Window{}, nil)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Nil(t, groups)
 		})
@@ -658,7 +637,7 @@ func Test_usecase_summarizeItems(t *testing.T) {
 			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			_, groups, err := newUsecase(t, qs).summarizeItems(
-				t.Context(), userID, period.Window{}, []GroupKind{GroupByCategory})
+				t.Context(), userID, timewindow.Window{}, []GroupKind{GroupByCategory})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Nil(t, groups)
 		})

@@ -1,17 +1,14 @@
 description: |
-  認証ユーザー自身の購入集計のレスポンススキーマ。対象期間・件数・合計金額・ステータス別内訳と、
+  認証ユーザー自身の購入集計のレスポンススキーマ。件数・合計金額・ステータス別内訳と、
   グループ化を指定した場合はその内訳のみを返し、購入一覧・明細は含みません。金額は USD セント単位の整数です。
   すべての集計値はキャンセル済みを除外した同一の母集団から算出します。
 type: object
 required:
-  - period
   - totalCount
   - totalAmount
   - itemsTotal
   - statusBreakdown
 properties:
-  period:
-    $ref: '../../schemas/PurchasePeriodResponse.yaml'
   totalCount:
     type: integer
     format: int64

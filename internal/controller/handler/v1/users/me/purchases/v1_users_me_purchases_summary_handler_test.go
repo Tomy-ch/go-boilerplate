@@ -11,7 +11,6 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/users/me/purchases/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
-	"go-boilerplate/internal/usecase/purchase/period"
 	summaryuc "go-boilerplate/internal/usecase/purchase/summary"
 	mock_summaryuc "go-boilerplate/internal/usecase/purchase/summary/mock"
 	"go-boilerplate/pkg/decimal"
@@ -19,14 +18,10 @@ import (
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-// testLoc は、注入されたロケーションが使われることを設定値と独立に固定するための、UTC から離れた固定ゾーンです。
-var testLoc = time.FixedZone("TEST+09", 9*60*60)
 
 // authnContext は、内部ユーザー ID を解決済みの認証コンテキストを返すテストヘルパーです。
 func authnContext(t *testing.T, userID uuid.UUID) context.Context {
@@ -48,22 +43,10 @@ func dec(t *testing.T, s string) decimal.Decimal {
 	return d
 }
 
-// testWindow は、両端を含む暦日から絞り込み済みの対象期間を組み立てるテストヘルパーです。
-func testWindow(t *testing.T, from, to time.Time) period.Window {
-	t.Helper()
-	w, err := period.Resolve(period.Spec{Kind: period.KindRange, From: &from, To: &to}, time.Time{}, testLoc)
-	require.NoError(t, err)
-	return w
-}
-
 // summaryViewFixture は、購入集計ビューを生成するテストヘルパーです。
 func summaryViewFixture(t *testing.T) summaryuc.SummaryView {
 	t.Helper()
 	return summaryuc.SummaryView{
-		Period: testWindow(t,
-			time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC),
-			time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC),
-		),
 		TotalCount:  3,
 		TotalAmount: 450,
 		ItemsTotal:  dec(t, "4.50"),
@@ -145,8 +128,8 @@ func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
 			uc := mock_summaryuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			kind := gen.GetUsersMePurchasesSummaryParamsPeriod(period.KindRecent)
-			days := int32(10)
+			after := time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
 			groupBy := gen.PurchaseGroupByParam{"category", "product"}
 
 			var captured summaryuc.GetSummaryParams
@@ -159,14 +142,15 @@ func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
 			_, err := s.GetUsersMePurchasesSummary(
 				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hs_params_user")),
 				gen.GetUsersMePurchasesSummaryRequestObject{
-					Params: gen.GetUsersMePurchasesSummaryParams{Period: &kind, Days: &days, GroupBy: &groupBy},
+					Params: gen.GetUsersMePurchasesSummaryParams{
+						OrderedAfter: &after, OrderedBefore: &before, GroupBy: &groupBy,
+					},
 				},
 			)
 			require.NoError(t, err)
 
-			assert.Equal(t, period.KindRecent, captured.Period.Kind)
-			require.NotNil(t, captured.Period.Days)
-			assert.Equal(t, 10, *captured.Period.Days)
+			assert.Equal(t, after, *captured.Window.After())
+			assert.Equal(t, before, *captured.Window.Before())
 			// 指定順がネストの階層順になるため、並びが保たれることを固定する。
 			assert.Equal(t, []summaryuc.GroupKind{summaryuc.GroupByCategory, summaryuc.GroupByProduct}, captured.GroupBy)
 		})
@@ -174,6 +158,26 @@ func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("orderedBeforeがorderedAfter以前の場合、ユースケースを呼ばずErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_summaryuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			after := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)
+
+			_, err := s.GetUsersMePurchasesSummary(
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hs_badwindow_user")),
+				gen.GetUsersMePurchasesSummaryRequestObject{
+					Params: gen.GetUsersMePurchasesSummaryParams{OrderedAfter: &after, OrderedBefore: &before},
+				},
+			)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
 
 		t.Run("認証情報が無い場合、ErrUnauthenticatedUserを返す", func(t *testing.T) {
 			t.Parallel()
@@ -218,8 +222,6 @@ func Test_toPurchaseAggregateResponse(t *testing.T) {
 			assert.Equal(t, view.TotalCount, r.TotalCount)
 			assert.Equal(t, view.TotalAmount, r.TotalAmount)
 			assert.Equal(t, view.ItemsTotal.String(), r.ItemsTotal)
-			// 対象期間の写像そのものは Test_toPurchasePeriodResponse が持つため、ここでは配線だけを固定する。
-			assert.NotNil(t, r.Period.From)
 			require.Len(t, r.StatusBreakdown, len(view.StatusBreakdown))
 			for i, b := range view.StatusBreakdown {
 				assert.Equal(t, b.StatusID.ToPrimitive(), r.StatusBreakdown[i].Status.Id)
@@ -240,37 +242,6 @@ func Test_toPurchaseAggregateResponse(t *testing.T) {
 			assert.Equal(t, "0", r.ItemsTotal)
 			assert.NotNil(t, r.StatusBreakdown)
 			assert.Empty(t, r.StatusBreakdown)
-		})
-	})
-}
-
-func Test_toPurchasePeriodResponse(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("解決済みの対象期間を両端の暦日で返す", func(t *testing.T) {
-			t.Parallel()
-
-			r := toPurchasePeriodResponse(testWindow(t,
-				time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC),
-				time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC),
-			))
-
-			require.NotNil(t, r.From)
-			require.NotNil(t, r.To)
-			assert.Equal(t, "2026-01-21", r.From.Format(time.DateOnly))
-			assert.Equal(t, "2026-01-31", r.To.Format(time.DateOnly))
-		})
-
-		t.Run("全期間を集計した場合は両端をnullで返す", func(t *testing.T) {
-			t.Parallel()
-
-			r := toPurchasePeriodResponse(period.Window{})
-
-			assert.Nil(t, r.From)
-			assert.Nil(t, r.To)
 		})
 	})
 }
@@ -348,48 +319,6 @@ func Test_toSubGroupsResponse(t *testing.T) {
 			require.Contains(t, *r, productID)
 			assert.Equal(t, "ノートPC", (*r)[productID].Name)
 			assert.Equal(t, "980", (*r)[productID].ItemsTotal)
-		})
-	})
-}
-
-func Test_toPeriodSpec(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("期間パラメータが漏れなくユースケースの期間指定へ写像される", func(t *testing.T) {
-			t.Parallel()
-
-			kind := gen.GetUsersMePurchasesSummaryParamsPeriod(period.KindRange)
-			from := openapi_types.Date{Time: time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)}
-			to := openapi_types.Date{Time: time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC)}
-			month := "2026-01"
-			days := int32(10)
-
-			actual := toPeriodSpec(gen.GetUsersMePurchasesSummaryParams{
-				Period: &kind,
-				From:   &from,
-				To:     &to,
-				Month:  &month,
-				Days:   &days,
-			})
-
-			assert.Equal(t, period.KindRange, actual.Kind)
-			require.NotNil(t, actual.From)
-			require.NotNil(t, actual.To)
-			assert.True(t, from.Equal(*actual.From))
-			assert.True(t, to.Equal(*actual.To))
-			assert.Equal(t, &month, actual.Month)
-			require.NotNil(t, actual.Days)
-			assert.Equal(t, 10, *actual.Days)
-		})
-
-		t.Run("パラメータ未指定のときゼロ値の期間指定になる", func(t *testing.T) {
-			t.Parallel()
-
-			// ゼロ値は全期間を意味するため、既定の呼び出しが期間で絞り込まれないことを固定する。
-			assert.Equal(t, period.Spec{}, toPeriodSpec(gen.GetUsersMePurchasesSummaryParams{}))
 		})
 	})
 }

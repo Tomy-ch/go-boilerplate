@@ -3,7 +3,7 @@
 -- ページを CTE で先に閉じてから結合するのは、明細の要約を解決する LATERAL が LIMIT 前の候補行すべてに
 -- 対して評価されるのを防ぐため。
 -- 明細 1 件以上は Purchase 集約の生成不変条件（docs/spec/purchase/domain.md）のため、LATERAL は INNER で結合する。
--- filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを返す。
+-- 注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込む。
 WITH page AS (
     SELECT
         p.id,
@@ -14,11 +14,12 @@ WITH page AS (
     FROM purchases AS p
     WHERE p.user_id = sqlc.arg('user_id')
         AND (
-            NOT sqlc.arg('filter_by_period')::BOOLEAN
-            OR (
-                p.ordered_at >= sqlc.narg('ordered_after')
-                AND p.ordered_at < sqlc.narg('ordered_before')
-            )
+            p.ordered_at >= sqlc.narg('ordered_after')
+            OR sqlc.narg('ordered_after') IS NULL
+        )
+        AND (
+            p.ordered_at < sqlc.narg('ordered_before')
+            OR sqlc.narg('ordered_before') IS NULL
         )
     ORDER BY p.ordered_at DESC, p.id DESC
     LIMIT sqlc.arg('limit_param')
@@ -70,11 +71,12 @@ WITH page AS (
             OR (p.ordered_at = sqlc.arg('after_ordered_at') AND p.id < sqlc.arg('after_id'))
         )
         AND (
-            NOT sqlc.arg('filter_by_period')::BOOLEAN
-            OR (
-                p.ordered_at >= sqlc.narg('ordered_after')
-                AND p.ordered_at < sqlc.narg('ordered_before')
-            )
+            p.ordered_at >= sqlc.narg('ordered_after')
+            OR sqlc.narg('ordered_after') IS NULL
+        )
+        AND (
+            p.ordered_at < sqlc.narg('ordered_before')
+            OR sqlc.narg('ordered_before') IS NULL
         )
     ORDER BY p.ordered_at DESC, p.id DESC
     LIMIT sqlc.arg('limit_param')

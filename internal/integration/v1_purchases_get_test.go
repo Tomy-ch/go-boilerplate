@@ -15,8 +15,8 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
-	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
@@ -126,7 +126,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			var capturedCursor *paging.Cursor
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, userID uuid.UUID, cursor *paging.Cursor, _ period.Spec) (*purchaseuc.PurchaseListView, error) {
+				func(_ context.Context, userID uuid.UUID, cursor *paging.Cursor, _ timewindow.Window) (*purchaseuc.PurchaseListView, error) {
 					capturedUserID = userID
 					capturedCursor = cursor
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
@@ -148,18 +148,18 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			assert.True(t, capturedCursor.HasCursor())
 		})
 
-		t.Run("期間指定のクエリがUsecaseの期間指定へバインドされる", func(t *testing.T) {
+		t.Run("期間指定のクエリがUsecaseの対象期間へバインドされる", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			var captured period.Spec
+			var captured timewindow.Window
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ uuid.UUID, _ *paging.Cursor, spec period.Spec) (*purchaseuc.PurchaseListView, error) {
-					captured = spec
+				func(_ context.Context, _ uuid.UUID, _ *paging.Cursor, w timewindow.Window) (*purchaseuc.PurchaseListView, error) {
+					captured = w
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
 				},
 			)
@@ -168,14 +168,47 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/purchases?period=range&from=2026-01-21&to=2026-01-31", nil, headers)
+				http.MethodGet,
+				"/v1/purchases?orderedAfter=2026-01-21T00:00:00Z&orderedBefore=2026-02-01T00:00:00Z", nil, headers)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 
-			assert.Equal(t, period.KindRange, captured.Kind)
-			require.NotNil(t, captured.From)
-			require.NotNil(t, captured.To)
-			assert.Equal(t, "2026-01-21", captured.From.Format(time.DateOnly))
-			assert.Equal(t, "2026-01-31", captured.To.Format(time.DateOnly))
+			require.NotNil(t, captured.After())
+			require.NotNil(t, captured.Before())
+			assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC).Equal(*captured.After()))
+			assert.True(t, time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC).Equal(*captured.Before()))
+		})
+
+		t.Run("cursorのafterと期間のorderedAfterが別のパラメータとして併存する", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var capturedCursor *paging.Cursor
+			var capturedWindow timewindow.Window
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, cursor *paging.Cursor, w timewindow.Window) (*purchaseuc.PurchaseListView, error) {
+					capturedCursor = cursor
+					capturedWindow = w
+					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
+				},
+			)
+
+			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
+
+			headers := availablePurchaseUser(t, e)
+			after := paging.EncodeCursor("2026-07-23T00:00:00Z", uuidtestkit.NewTestFromSalt(t, "int_both").String())
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet,
+				"/v1/purchases?after="+after+"&orderedAfter=2026-01-21T00:00:00Z", nil, headers)
+			require.Equal(t, http.StatusOK, actual.StatusCode)
+
+			require.NotNil(t, capturedCursor)
+			assert.True(t, capturedCursor.HasCursor())
+			require.NotNil(t, capturedWindow.After())
+			assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC).Equal(*capturedWindow.After()))
 		})
 
 		t.Run("購入ゼロで200かつitemsが空配列でnextCursorがnull", func(t *testing.T) {

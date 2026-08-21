@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/products/ranking/gen"
 	"go-boilerplate/internal/observability"
 	rankinguc "go-boilerplate/internal/usecase/product/ranking"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 
 	"github.com/labstack/echo/v5"
 )
@@ -34,8 +35,16 @@ func (s *server) GetProductsRanking(
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	window, err := timewindow.New(timewindow.Bounds{
+		After:  request.Params.OrderedAfter,
+		Before: request.Params.OrderedBefore,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	view, err := s.uc.GetProductsRanking(ctx, rankinguc.GetRankingParams{
-		Period: periodParam(request.Params.Period),
+		Window: window,
 		Limit:  limitParam(request.Params.Limit),
 	})
 	if err != nil {
@@ -43,14 +52,6 @@ func (s *server) GetProductsRanking(
 	}
 
 	return gen.GetProductsRanking200JSONResponse(toProductRankingResponse(view)), nil
-}
-
-// periodParam は、任意指定の period クエリパラメータを usecase 入力の文字列へ変換します。未指定は空文字（全期間）として扱います。
-func periodParam(period *gen.GetProductsRankingParamsPeriod) string {
-	if period == nil {
-		return ""
-	}
-	return string(*period)
 }
 
 // limitParam は、任意指定の limit クエリパラメータを usecase 入力の件数へ変換します。未指定は 0（既定件数）として扱います。

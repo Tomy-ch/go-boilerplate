@@ -32,25 +32,18 @@ func (w *ServerInterfaceWrapper) GetDashboardSummary(ctx *echo.Context) error {
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetDashboardSummaryParams
-	// ------------- Optional query parameter "period" -------------
+	// ------------- Optional query parameter "orderedAfter" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "period", ctx.QueryParams(), &params.Period, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "orderedAfter", ctx.QueryParams(), &params.OrderedAfter, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter period: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter orderedAfter: %s", err))
 	}
 
-	// ------------- Optional query parameter "from" -------------
+	// ------------- Optional query parameter "orderedBefore" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", ctx.QueryParams(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "orderedBefore", ctx.QueryParams(), &params.OrderedBefore, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter from: %s", err))
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", ctx.QueryParams(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter to: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter orderedBefore: %s", err))
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
