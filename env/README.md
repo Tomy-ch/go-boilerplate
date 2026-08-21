@@ -248,7 +248,7 @@ Where this deployment connects. "Where do we point" is an axis of its own — it
 |ENDPOINT_OUTBOX|Destination endpoint URL for relayed messages|string||Code default empty. Required when `OUTBOX_PUBLISHER=http`|
 |ENDPOINT_OUTBOX_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |ENDPOINT_CONSUMER_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|ENDPOINT_EXCHANGE_RATE|Base URL of the exchange-rate service|string||Sample API. Empty means the feature is not used, and the endpoint answers 503. **Per-environment value**: only `dast` points at the stub the scan starts, so the scan does not train itself to accept 5xx. Removed together with the sample API| <!-- sample-api:line -->
+|ENDPOINT_EXCHANGE_RATE|Base URL of the exchange-rate service|string||Sample API. Empty means the feature is not used, and the endpoint answers 503. **Per-environment value**: only `dast` points at the stub the scan starts, so the scan does not train itself to accept 5xx. Removed together with the sample API  <!-- sample-api:line --> |
 
 ## Notes
 

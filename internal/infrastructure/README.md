@@ -170,7 +170,7 @@ flowchart TB
 |`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
 |`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
-|`token/`|Opaque token generation from the OS randomness source (impl of `boundary/token.Generator`)|Usecase boundary|[README](token/README.md)| <!-- sample-api:line -->
+|`token/`|Opaque token generation from the OS randomness source (impl of `boundary/token.Generator`)|Usecase boundary|[README](token/README.md)  <!-- sample-api:line --> |
 |`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|[README](webapi/README.md)|
 
 ## Test Strategy

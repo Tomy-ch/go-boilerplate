@@ -41,11 +41,7 @@ accepted
 
 ### ネガティブな影響
 
-<!-- sample-api:replace-begin -->
-- マスターデータの値を修正する（例：都道府県名のスペルミス）には、[ADR-0029](0029-append-only-immutable-migrations.ja.md)と一致して単純な行更新ではなく新しいマイグレーションファイルが必要である。
-<!-- sample-api:replace-with -->
-<!-- = - マスターデータの値を修正する（例：表示名のスペルミス）には、[ADR-0029](0029-append-only-immutable-migrations.ja.md)と一致して単純な行更新ではなく新しいマイグレーションファイルが必要である。 -->
-<!-- sample-api:replace-end -->
+- マスターデータの値を修正する（例：表示名のスペルミス）には、[ADR-0029](0029-append-only-immutable-migrations.ja.md)と一致して単純な行更新ではなく新しいマイグレーションファイルが必要である。
 - マイグレーションファイルにDDLとDMLの両方が含まれ、純粋なスキーマ定義を超えてその範囲が若干広がる。
 
 ## 検討した代替案

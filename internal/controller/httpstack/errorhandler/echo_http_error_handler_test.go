@@ -4,15 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"strings" // sample-api:line
 	"testing"
 
 	"go-boilerplate/internal/controller/error/response"
-	"go-boilerplate/internal/controller/httpstack/oapi"
-	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/oapi"           // sample-api:line
+	"go-boilerplate/internal/controller/httpstack/oapi/validator" // sample-api:line
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/getkin/kin-openapi/openapi3filter" // sample-api:line
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

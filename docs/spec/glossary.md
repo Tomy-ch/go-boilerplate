@@ -105,15 +105,15 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 名前 | 業務語でない理由 |
 | --- | --- |
 | `Attributes` / `Profile` | 位置引数の取り違えを防ぐための引数の束 |
-| `PurchaseDetailAttributes` | 位置引数の取り違えを防ぐための引数の束 | <!-- sample-api:line -->
+| `PurchaseDetailAttributes` | 位置引数の取り違えを防ぐための引数の束   <!-- sample-api:line --> |
 | `Repository` / `LockRepository` | 永続化の抽象。業務はリポジトリを持たない |
-| `RoleRepository` | 永続化の抽象。業務はリポジトリを持たない | <!-- sample-api:line -->
+| `RoleRepository` | 永続化の抽象。業務はリポジトリを持たない   <!-- sample-api:line --> |
 | `ListParams` / `Counts` | 読み取り経路の問い合わせとページングの形 |
-| `ListFeedParams` / `FeedCursor` / `FeedItem` | 読み取り経路の問い合わせとページングの形 | <!-- sample-api:line -->
-| `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない | <!-- sample-api:line -->
+| `ListFeedParams` / `FeedCursor` / `FeedItem` | 読み取り経路の問い合わせとページングの形   <!-- sample-api:line --> |
+| `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない   <!-- sample-api:line --> |
 | `Event` / `EventType` | 事実の封筒。事実の**名前**は語だが、封筒は語ではない |
-| `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照 | <!-- sample-api:line -->
-| `Detail` | 購入 1 件の読み取り形。業務が呼ぶ語は書き込み側の集約が既に持っている（購入・購入明細） | <!-- sample-api:line -->
+| `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照   <!-- sample-api:line --> |
+| `Detail` | 購入 1 件の読み取り形。業務が呼ぶ語は書き込み側の集約が既に持っている（購入・購入明細）   <!-- sample-api:line --> |
 | `DBHealth` / `Ok` / `Degraded` / `Unhealthy` | 稼働の観測点。業務ではなく運用が見るもの |
 | `New` / `New<VO>` | 構築の入口。名前は規約であって業務の語ではない。業務が同じ行為を別の名前で呼ぶなら、その語のほうが行になる |
 | `Reconstruct` | 永続化からの再構成。業務は既に起きた事実を作り直さない。復元は保存の裏返しであって行為ではない |
