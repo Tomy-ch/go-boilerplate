@@ -215,15 +215,22 @@ func Test_repository_FindAll(t *testing.T) {
 		t.Run("テーブルが空の場合、nilではない空一覧を返す", func(t *testing.T) {
 			t.Parallel()
 
-			txm.WithinTx(func(ctx context.Context) {
+			// TRUNCATE は依存表ごと ACCESS EXCLUSIVE を取るため、直列化の外側で走る tx と
+			// deadlock（40P01）しうる。require で即死させるとトランザクションマネージャーが
+			// 戻り値を受け取れず、リトライ可能と宣言済みのエラーが恒久的な失敗になるため、
+			// エラーは返して再試行に委ねる（WithinTxE の doc 参照）。
+			txm.WithinTxE(func(ctx context.Context) error {
 				// prefectures を参照する依存行（users など）ごと空にする（tx はロールバックされる）。
-				_, execErr := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE prefectures CASCADE")
-				require.NoError(t, execErr)
+				if _, execErr := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE prefectures CASCADE"); execErr != nil {
+					return execErr
+				}
 
 				actual, err := repo.FindAll(ctx)
 				require.NoError(t, err)
 				assert.NotNil(t, actual)
 				assert.Empty(t, actual)
+
+				return nil
 			})
 		})
 	})
