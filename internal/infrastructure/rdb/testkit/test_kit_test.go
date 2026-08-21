@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/infrastructure/system"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
@@ -70,6 +71,55 @@ func Test_testTxRunner_WithinTx(t *testing.T) {
 				t:     t,
 			}
 			txm.WithinTx(func(_ context.Context) {})
+		})
+	})
+}
+
+func Test_testTxRunner_WithinTxE(t *testing.T) {
+	t.Parallel()
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+	testLogger := logging.NewTestLogger(t)
+
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
+	require.NoError(t, err)
+	innerTxm := driver.NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("fnがnilを返す場合、トランザクションはロールバックされ検証は通ること", func(t *testing.T) {
+			t.Parallel()
+			txm := &testTxRunner{inner: innerTxm, db: db, t: t}
+
+			ran := false
+			txm.WithinTxE(func(_ context.Context) error {
+				ran = true
+				return nil
+			})
+			assert.True(t, ran)
+		})
+
+		t.Run("fnがdeadlockを返す場合、トランザクションごと再試行されること", func(t *testing.T) {
+			t.Parallel()
+			// 本 issue の主題。deadlock は pgerror.IsRetryableTxError がリトライ可能と宣言しており、
+			// エラーを返しさえすればトランザクションマネージャーが tx ごと再試行する。
+			// require で即死させるとこの経路へ到達しない（runtime.Goexit で戻り値が失われる）。
+			txm := &testTxRunner{inner: innerTxm, db: db, t: t}
+
+			attempts := 0
+			txm.WithinTxE(func(_ context.Context) error {
+				attempts++
+				if attempts < 2 {
+					// 40P01 = deadlock_detected（pgerror.IsRetryableTxError がリトライ可能と判定する）。
+					return &pgconn.PgError{Code: "40P01", Message: "deadlock detected"}
+				}
+				return nil
+			})
+			assert.Equal(t, 2, attempts)
 		})
 	})
 }

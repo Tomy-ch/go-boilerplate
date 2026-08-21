@@ -93,6 +93,7 @@ row is truncated away before the contention under test begins.
 ```go
 type TransactionRunner interface {
     WithinTx(fn func(ctx context.Context))
+    WithinTxE(fn func(ctx context.Context) error)
 }
 ```
 
@@ -125,6 +126,43 @@ flowchart TD
 
     A --> B
 ```
+
+### WithinTxE
+
+```go
+func (t *testTxRunner) WithinTxE(fn func(ctx context.Context) error)
+```
+
+The same as `WithinTx`, except that `fn` can return an error. What that buys is **retry**: the
+transaction manager retries the whole transaction on a deadlock (`40P01`) or a serialization failure
+(`40001`), as `pgerror.IsRetryableTxError` declares.
+
+`WithinTx` cannot reach that retry. A failing `require` inside `fn` calls `FailNow`, which unwinds
+with `runtime.Goexit`, so the transaction manager never receives a return value and never evaluates
+whether the error was retryable. A transient error the repository has already declared recoverable
+therefore surfaces as a permanent test failure.
+
+Use it for a statement whose failure is infrastructure noise rather than a broken contract — a
+`CASCADE TRUNCATE`, which takes `ACCESS EXCLUSIVE` on every dependent table and can deadlock against
+a transaction running outside the suite serialization:
+
+```go
+txm.WithinTxE(func(ctx context.Context) error {
+    if _, err := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE product_statuses CASCADE"); err != nil {
+        return err // 40P01 here is retried, not a red test
+    }
+
+    actual, err := repo.FindAll(ctx)
+    require.NoError(t, err)
+    assert.Empty(t, actual)
+
+    return nil
+})
+```
+
+Returning `nil` still rolls the transaction back — the return value carries failure, not commit
+intent. Keep ordinary assertions on `require` / `assert`; only route the statements you want retried
+through the return value.
 
 ## Rollback Mechanism
 
@@ -263,6 +301,10 @@ Therefore, assertions in tests should use:
 ```go
 require / assert
 ```
+
+That choice costs the retry: `require` unwinds with `runtime.Goexit`, so a retryable DB error never
+reaches the transaction manager. When a statement should be retried rather than fail the test, use
+`WithinTxE` and return the error instead.
 
 ### Transactions Are Always Rolled Back
 

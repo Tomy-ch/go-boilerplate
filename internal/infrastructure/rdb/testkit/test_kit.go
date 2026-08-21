@@ -35,6 +35,7 @@ var (
 // TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。
 type TransactionRunner interface {
 	WithinTx(fn func(ctx context.Context))
+	WithinTxE(fn func(ctx context.Context) error)
 }
 
 // testTxRunner はテスト用のトランザクションランナーを表します。
@@ -78,6 +79,24 @@ func NewTestTransactionRunner(t *testing.T) TransactionRunner {
 func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 	t.t.Helper()
 
+	t.WithinTxE(func(ctx context.Context) error {
+		fn(ctx)
+		return nil
+	})
+}
+
+// WithinTxE は、fn がエラーを返せる WithinTx です。fn が返したエラーはトランザクションマネージャーへ
+// 伝わるため、deadlock（40P01）や serialization failure（40001）は tx ごと再試行されます。
+//
+// WithinTx との違いは、fn が失敗をどう表明するかだけです。fn の中で require を使うと testify は
+// runtime.Goexit で goroutine を落とし、トランザクションマネージャーは戻り値を受け取れないため、
+// リトライ可能と宣言済みのエラーであっても再試行されません。一時障害を再試行させたい文
+// （テーブル全体をロックする CASCADE TRUNCATE など）は、require ではなくエラーを返してください。
+//
+// fn が nil を返した場合もトランザクションはロールバックされます（テストは DB を汚さない）。
+func (t *testTxRunner) WithinTxE(fn func(ctx context.Context) error) {
+	t.t.Helper()
+
 	txLock.Lock()
 	defer txLock.Unlock()
 
@@ -87,7 +106,9 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 		if lockErr := lockSuiteSerialization(txCtx, driver.New(txCtx, t.db)); lockErr != nil {
 			return lockErr
 		}
-		fn(txCtx)
+		if fnErr := fn(txCtx); fnErr != nil {
+			return fnErr
+		}
 		return errRollbackForTest
 	})
 

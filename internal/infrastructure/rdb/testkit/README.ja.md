@@ -93,6 +93,7 @@ func HoldSuiteSerialization(t *testing.T, db driver.DatabaseDriver)
 ```go
 type TransactionRunner interface {
     WithinTx(fn func(ctx context.Context))
+    WithinTxE(fn func(ctx context.Context) error)
 }
 ```
 
@@ -125,6 +126,42 @@ flowchart TD
 
     A --> B
 ```
+
+### WithinTxE
+
+```go
+func (t *testTxRunner) WithinTxE(fn func(ctx context.Context) error)
+```
+
+`WithinTx` と同じですが、`fn` がエラーを返せます。これで得られるのは **リトライ** です。
+`pgerror.IsRetryableTxError` が宣言しているとおり、deadlock（`40P01`）と serialization failure
+（`40001`）はトランザクションマネージャーが tx ごと再試行します。
+
+`WithinTx` はそのリトライへ到達できません。`fn` の中で `require` が失敗すると `FailNow` が
+`runtime.Goexit` で巻き戻すため、トランザクションマネージャーは戻り値を受け取れず、
+リトライ可能かどうかを評価する機会がありません。リポジトリが復帰可能と宣言済みの一時障害が、
+恒久的なテスト失敗として露出することになります。
+
+失敗が契約違反ではなくインフラ由来の雑音である文に使ってください。`CASCADE TRUNCATE` が該当します
+（依存表ごと `ACCESS EXCLUSIVE` を取るため、スイート直列化の外側で走るトランザクションと
+deadlock しうる）。
+
+```go
+txm.WithinTxE(func(ctx context.Context) error {
+    if _, err := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE product_statuses CASCADE"); err != nil {
+        return err // ここでの 40P01 は再試行される。テストは赤くならない
+    }
+
+    actual, err := repo.FindAll(ctx)
+    require.NoError(t, err)
+    assert.Empty(t, actual)
+
+    return nil
+})
+```
+
+`nil` を返してもトランザクションはロールバックされます。戻り値が運ぶのは commit の意思ではなく
+失敗です。通常の検証は `require` / `assert` のままにし、再試行させたい文だけを戻り値へ回してください。
 
 ## ロールバックの仕組み
 
@@ -271,6 +308,10 @@ require / assert
 ```
 
 を使用してください。
+
+この選択はリトライを失わせます。`require` は `runtime.Goexit` で巻き戻すため、リトライ可能な
+DB エラーがトランザクションマネージャーへ届きません。テストを落とすのではなく再試行させたい文には
+`WithinTxE` を使い、エラーを返してください。
 
 ### トランザクションは必ずロールバックされる
 
