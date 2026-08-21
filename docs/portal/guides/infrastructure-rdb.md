@@ -32,6 +32,7 @@ The responsibilities of each layer are as follows.
 |---|---|
 |Repository|Aggregate persistence (implementation of Domain Repository Interface)|
 |QueryService|Provides search-specific queries (implementation of Usecase Interface)|
+|CommandService|Multi-aggregate atomic writes (write-side counterpart of QueryService)|
 |driver|DB connection / transaction management, and SQL logging / tracing via a pgx query tracer|
 |PostgreSQL|Actual DB|
 
@@ -41,23 +42,19 @@ The following exist as supporting components.
 |---|---|
 |sqlc|Type-safe query execution code generated from SQL|
 |pgerror|PostgreSQL error → application error conversion|
-|metrics|Connection pool statistics as Prometheus metrics|
+|metrics|Connection pool + query duration/error statistics as Prometheus metrics|
 |system_cqrs|System operational queries (health check, etc.)|
 |testkit|RDB test utilities (real DB + rollback)|
 
 ## Directory Structure
 
-```txt
-internal/infrastructure/rdb
- ├ repository/        Repository implementation
- ├ query_service/     QueryService implementation
- ├ system_cqrs/      System operational queries (health check, etc.)
- ├ driver/            DB connection / transaction + pgx query tracer (logging / tracing)
- ├ sqlc/              sqlc generated code + SQL helper
- ├ pgerror/           PostgreSQL error normalization
- ├ metrics/           Connection pool Prometheus metrics
- └ testkit/           RDB test utilities
-```
+The data-access directories mirror the DML categories under `database/dml/`, one for one —
+`repository/`, `query_service/`, `command_service/`, `system_cqrs/` — because a category that
+exists in SQL and not in Go (or the reverse) is a category nobody decided on.
+
+The rest are what those four need: `driver/` for connections, transactions and the pgx tracer,
+`sqlc/` for generated code, `pgerror/` for normalizing PostgreSQL errors, `metrics/` for pool and
+query instrumentation, and `testkit/` for the test harness.
 
 ## Repository
 
@@ -182,7 +179,7 @@ See details below.
 
 ## metrics
 
-`metrics` is a package that **exposes pgxpool connection pool statistics as Prometheus metrics**.
+`metrics` is a package that **exposes pgxpool connection pool statistics and per-query duration / error statistics as Prometheus metrics**.
 
 Provides Gauge (connection counts) and Counter (acquire counts, destroy counts, etc.).
 
@@ -199,6 +196,32 @@ Unlike Repository / QueryService, it handles operational and monitoring queries 
 See details below.
 
 [system_cqrs directory README](system_cqrs/README.md)
+
+## command_service
+
+`command_service` implements a **CommandService** — the write-side counterpart of QueryService
+(interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
+that require single-transaction atomicity (see [ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md)
+/ [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)); the first implementation
+is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
+[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md)).
+
+A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
+the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events
+(that is a Usecase responsibility, `system_cqrs` category). Its methods take the decided Domain
+aggregate and normalize every sqlc error with `pgerror.NormalizeError`.
+
+**What may live here.** Only a write that cannot be expressed as loading an aggregate and saving it:
+a relative update, a set-based operation, or one that obtains atomicity without taking a lock.
+Anything that can be read-modify-saved belongs on the Repository. Without that line this package
+becomes "where I put SQL I want to write directly".
+
+**Conditions are derived, never authored.** A guard enforced in SQL here must restate a domain
+invariant that already exists — the stock guard in the decrement statement restates the domain's
+insufficient-stock rule, and returns that same domain sentinel. It is downstream: a change to the
+domain rule obliges a change here, never the reverse. Two independently written copies of one rule
+diverge silently the first time only one of them moves. See
+[ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) § Derivation.
 
 ## testkit
 
@@ -259,7 +282,7 @@ and failures (Error).
 
 ### 7. Test Strategy (Integration-based)
 
-Repository / QueryService tests are executed with:
+Repository / QueryService / CommandService tests are executed with:
 
 real DB + rollback
 
@@ -271,4 +294,36 @@ Each Repository / QueryService test verifies:
 - `pgerror.NormalizeError` application on every sqlc return (raw `pg` / connection errors → `apperror`)
 - row → entity conversion (column → field mapping, NULL handling)
 
+A CommandService test additionally verifies:
+
+- the atomic write effect on every touched table (e.g. stock decremented, purchase / detail rows
+  inserted, `status_id` resolved from a business code) via post-write `SELECT`
+- the fail-closed guard (e.g. defensive `WHERE quantity >= :qty` → 0 rows → `ErrConflict`) using a
+  stale lock value so the domain check passes but the DB predicate rejects
+- constraint-violation normalization (`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`,
+  unique `23505` → `ErrConflict`)
+
 Concurrency / lock contention cannot be reproduced with the default `testkit` helper: its `WithinTx` serializes transactions (a single tx rolled back at the end). A branch that only fires under genuinely concurrent connections — e.g. `Claim`'s `lock_timeout` `55P03` (lock_not_available) — needs a dedicated integration test that runs two independent `TransactionManager.Do` calls (two connections / transactions) so one holds the row lock while the other times out.
+
+#### Coverage exceptions (infallible defensive branches)
+
+Domain values are narrowed to the sqlc column width through `pkg/safecast`, so each write site
+carries an `if err != nil` that a caller cannot reach once the domain guarantees the range. The
+range check itself lives in `pkg/safecast` and is fully branch-tested there; what remains at the
+call site is error plumbing, and per
+[`testing-conventions.md` §9](../../../docs/testing-conventions.md) it is recorded here rather
+than covered with a contrived test.
+
+|File|Function|Uncovered branch|Why unreachable|
+|---|---|---|---|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` error|`product` validates `quantity` into `[0, math.MaxInt32]`|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|`product` validates the threshold into `[0, math.MaxInt32]`|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` error|同上|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|同上|
+|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` error|`product` validates `sortKey` into `[1, math.MaxInt16]`|
+|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` error|同上|
+
+The `version` conversions in the same methods are **not** exempt: the domain only requires
+`version >= 1`, so an out-of-range version is reachable and is covered by a test. The same applies
+to the purchase `statusCode` / detail-quantity conversions.

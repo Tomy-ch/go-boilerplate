@@ -131,6 +131,11 @@
                                     <td>
                                         <table border='0' cellspacing='0' cellpadding='0'>
                                             <tr>
+                                                <td title="carts.user_id references users.id via carts_user_id_foreign"><a href='carts.html'>carts</a><span class='relatedKey'>.user_id</span></td>
+                                                <td class="constraint detail">carts_user_id_foreign</td>
+                                                <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
+                                            </tr>
+                                            <tr>
                                                 <td title="purchases.user_id references users.id via purchases_user_id_foreign"><a href='purchases.html'>purchases</a><span class='relatedKey'>.user_id</span></td>
                                                 <td class="constraint detail">purchases_user_id_foreign</td>
                                                 <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
@@ -186,23 +191,6 @@
                                         </table>
                                     </td>
                                     <td><p>苗字</p></td>
-                                </tr>
-                                <tr>
-                                    <td><span id="password_hash">password_hash</span></td>
-                                    <td>varchar</td>
-                                    <td>255</td>
-                                    <td title=''></td>
-                                    <td title=''></td>
-                                    <td>null</td>
-                                    <td>
-                                        <table border='0' cellspacing='0' cellpadding='0'>
-                                        </table>
-                                    </td>
-                                    <td>
-                                        <table border='0' cellspacing='0' cellpadding='0'>
-                                        </table>
-                                    </td>
-                                    <td><p>パスワードハッシュ</p></td>
                                 </tr>
                                 <tr>
                                     <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="email">email</span></td>
@@ -467,24 +455,27 @@
                                 <div class="tab-content no-padding">
                                     <div class="chart tab-pane active" id="oneDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="oneDegreeRelationshipsDiagram" name="oneDegreeRelationshipsDiagram">
-<area shape="rect" id="node1" href="purchases.html" target="_top" title="purchases" alt="" coords="646,5,859,211">
-<area shape="rect" id="node2" href="users.html" target="_top" title="users" alt="" coords="247,255,595,764">
-<area shape="rect" id="node5" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,433,203,609">
-<area shape="rect" id="node3" href="user_identities.html" target="_top" title="user_identities" alt="" coords="639,228,867,433">
-<area shape="rect" id="node4" href="user_roles.html" target="_top" title="user_roles" alt="" coords="661,451,845,597">
+<area shape="rect" id="node1" href="carts.html" target="_top" title="carts" alt="" coords="641,5,827,211">
+<area shape="rect" id="node2" href="users.html" target="_top" title="users" alt="" coords="247,396,576,876">
+<area shape="rect" id="node6" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,545,203,751">
+<area shape="rect" id="node3" href="purchases.html" target="_top" title="purchases" alt="" coords="627,228,841,463">
+<area shape="rect" id="node4" href="user_identities.html" target="_top" title="user_identities" alt="" coords="620,480,848,685">
+<area shape="rect" id="node5" href="user_roles.html" target="_top" title="user_roles" alt="" coords="642,703,826,849">
 </map>
                                         <a name='diagram'><img id="oneDegreeImg" src="../diagrams/tables/users.1degree.png" usemap="#oneDegreeRelationshipsDiagram" class="diagram" border="0" align="left"></a>
                                     </div>
                                     <div class="chart tab-pane " id="twodegreesDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="twoDegreesRelationshipsDiagram" name="twoDegreesRelationshipsDiagram">
-<area shape="rect" id="node1" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="911,8,1159,96">
-<area shape="rect" id="node2" href="purchases.html" target="_top" title="purchases" alt="" coords="646,5,859,211">
-<area shape="rect" id="node3" href="purchase_statuses.html" target="_top" title="purchase_statuses" alt="" coords="288,96,553,184">
-<area shape="rect" id="node4" href="users.html" target="_top" title="users" alt="" coords="247,228,595,737">
-<area shape="rect" id="node8" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,407,203,583">
-<area shape="rect" id="node5" href="user_identities.html" target="_top" title="user_identities" alt="" coords="639,228,867,433">
-<area shape="rect" id="node6" href="user_roles.html" target="_top" title="user_roles" alt="" coords="661,573,845,720">
-<area shape="rect" id="node7" href="roles.html" target="_top" title="roles" alt="" coords="355,755,487,843">
+<area shape="rect" id="node1" href="cart_items.html" target="_top" title="cart_items" alt="" coords="923,8,1109,96">
+<area shape="rect" id="node2" href="carts.html" target="_top" title="carts" alt="" coords="641,5,827,211">
+<area shape="rect" id="node3" href="users.html" target="_top" title="users" alt="" coords="247,239,576,719">
+<area shape="rect" id="node10" href="prefectures.html" target="_top" title="prefectures" alt="" coords="5,388,203,593">
+<area shape="rect" id="node4" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="892,468,1140,556">
+<area shape="rect" id="node5" href="purchases.html" target="_top" title="purchases" alt="" coords="627,465,841,700">
+<area shape="rect" id="node6" href="purchase_statuses.html" target="_top" title="purchase_statuses" alt="" coords="279,736,544,824">
+<area shape="rect" id="node7" href="user_identities.html" target="_top" title="user_identities" alt="" coords="620,228,848,433">
+<area shape="rect" id="node8" href="user_roles.html" target="_top" title="user_roles" alt="" coords="642,748,826,895">
+<area shape="rect" id="node9" href="roles.html" target="_top" title="roles" alt="" coords="345,841,477,929">
 </map>
                                         <a name='diagram'><img id="twodegreesDegreeImg" src="../diagrams/tables/users.2degrees.png" usemap="#twoDegreesRelationshipsDiagram" class="diagram" border="0" align="left"></a>
                                     </div>

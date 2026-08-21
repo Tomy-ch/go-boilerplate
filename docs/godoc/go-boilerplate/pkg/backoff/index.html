@@ -169,7 +169,7 @@ attempt を受け取り待機時間を返す純関数で、現在時刻や乱数
 
 			
 				
-				<h3 id="Exponential.Duration">func (Exponential) <a href="../../../src/go-boilerplate/pkg/backoff/backoff.go.html?s=825:881#L12">Duration</a>
+				<h3 id="Exponential.Duration">func (Exponential) <a href="../../../src/go-boilerplate/pkg/backoff/backoff.go.html?s=929:985#L13">Duration</a>
 					<a class="permalink" href="#Exponential.Duration">¶</a>
 					
 					
@@ -177,6 +177,7 @@ attempt を受け取り待機時間を返す純関数で、現在時刻や乱数
 				<pre>func (e <a href="#Exponential">Exponential</a>) Duration(attempt <a href="../../../builtin/#int">int</a>) <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a></pre>
 				<p>Duration は、attempt 回目（0 起算）の待機時間を返します。
 Initial * Multiplier^attempt を計算し、Max が正なら Max で上限を設けます。
+Initial が 0 以下なら常に 0 を返し、attempt が負の場合は 0 として扱います。
 
 				
 				

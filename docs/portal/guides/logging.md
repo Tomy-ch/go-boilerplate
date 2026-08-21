@@ -14,33 +14,6 @@ The main purposes are as follows.
 - Ensuring testability
 - Providing a framework-independent logging API
 
-## Package Structure
-
-```txt
-internal/logging
-├── logger.go
-├── logger_core.go
-├── stacktrace_core.go
-├── field.go
-├── field_builder.go
-├── const.go
-├── test_kit.go
-└── mock/
-```
-
-The role of each file is as follows.
-
-|File|Role|
-|---|---|
-|`logger.go`|`Logger` interface, its `*logger` implementation, and `WithCore` (Tee an additional `LogCore`)|
-|`logger_core.go`|zap-based Logger construction (`NewJSONLogger` / `NewConsoleLogger`, encoder config)|
-|`level.go`|`Level` type and `LevelDebug/Info/Warn/Error` / `ParseLevel`|
-|`stacktrace_core.go`|zapcore.Core wrapper that converts the auto-attached `Entry.Stack` into a line array for JSON output|
-|`field.go`|Type of log fields and field constructors|
-|`field_builder.go`|Generation of HTTP / SQL log fields|
-|`const.go`|Log key definitions|
-|`test_kit.go`|Logger / FieldBuilder for testing|
-
 ## Logger Interface
 
 Application code uses only the **Logger interface**.
@@ -59,7 +32,7 @@ type Logger interface {
 
 Each output method takes a `context.Context` and auto-injects `trace_id` / `span_id` extracted from it. Where no request-scoped span exists (DI startup, fx events, CLI bootstrap), pass `context.Background()`; injection is simply skipped. Callers never pass `trace_id` / `span_id` as explicit fields.
 
-`Named` returns a child logger with the given name appended, and `CallerSkip` returns a logger whose caller reporting skips the given number of stack frames (useful when logging through a wrapper). Conversion of `*Field` to `zap.Field` is done internally by the unexported `convertFields` and is not part of the public interface.
+`Named` returns a child logger with the given name appended, and `CallerSkip` returns a logger whose caller reporting skips the given number of stack frames (useful when logging through a wrapper). `CallerSkip` **adds to** the existing skip count rather than setting it, so calling it again on an already-skipped logger stacks. Conversion of `*Field` to `zap.Field` is done internally by the unexported `convertFields` and is not part of the public interface.
 
 This design provides:
 
@@ -156,7 +129,7 @@ Purpose of this design
 
 ## LogFieldBuilder
 
-A component that consolidates log field generation for HTTP / SQL / Observability.
+A component that consolidates log field generation for HTTP / SQL logs.
 
 ```go
 type LogFieldBuilder interface {
@@ -176,13 +149,12 @@ Creation
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-Accepts `config.ObservabilityConfig` and `config.OperatingSystemConfig` to control trace/span field attachment and timezone information.
+Accepts `config.ObservabilityConfig`, which gates `parent_span_id`, and `config.OperatingSystemConfig`, which supplies the timezone stamped on every event header.
 
 Use cases
 
 - HTTP access logs
 - SQL logs
-- trace/span logs
 
 Automatically generates **structured logs**.
 
@@ -196,9 +168,8 @@ Each Build method receives a dedicated input struct.
 |`HTTPResponseLogInput`|HTTP response log|Method, Path, URI, Status, Latency, RequestID|
 |`SQLFieldsEndInput`|SQL end log|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
 
-All input structs carry `EventAt` (event timestamp). Trace information (`trace_id` /
-`span_id`) is no longer carried here — the `Logger` injects it from `ctx`.
-`SQLFieldsEndInput` additionally carries `ParentSpanID`, which cannot be derived from `ctx`.
+All input structs carry `EventAt` (event timestamp). Trace information is not carried here;
+see the note under [LogFieldBuilder](#logfieldbuilder) above.
 
 ## HTTP Logging
 
@@ -228,6 +199,8 @@ SQL logs are emitted at the **end** of a query via `BuildSQLEndFields`.
 ### SQL End
 
 - `event_type=end`
+- `event_at=...`
+- `event_tz=...`
 - `layer=repository`
 - `package=...`
 - `function=...`
@@ -286,32 +259,12 @@ logging.NewTestLogFieldBuilder(t)
 
 ## Design Policy
 
-This logging package is designed based on the following policies.
+Four policies shape this package. Each is detailed in the section named alongside it.
 
-### 1 Do not use zap directly
-
-Application code does not depend on `zap.Logger`, `zap.Field`.
-
-### 2 Wrap Field
-
-Log fields use the `Field` type.
-
-Reason
-
-- Fix the field generation API
-- Hide zap dependency
-
-### 3 Integrate Observability
-
-trace / span information is integrated at the logging layer.
-
-- `trace_id`
-- `span_id`
-- `parent_span_id`
-
-### 4 Testability
-
-Since Logger is an interface, it can be mocked using `mockgen`.
+1. **Do not use zap directly** — application code depends on neither `zap.Logger` nor `zap.Field` (Logger Interface).
+2. **Wrap Field** — log fields go through the `Field` type (Field).
+3. **Integrate observability** — trace correlation is resolved at the logging layer, not by callers (Observability Fields).
+4. **Testability** — `Logger` is an interface, so it can be mocked with `mockgen` (Test Kit).
 
 ## Log Key Constants
 
@@ -372,6 +325,8 @@ Log keys defined in `const.go`.
 |`JobArgsKey`|`job_args`|
 |`JobErrorKey`|`job_error`|
 |`JobResultKey`|`job_result`|
+|`JobSkippedKey`|`job_skipped`|
+|`JobScannedKey`|`job_scanned`|
 |`FilterKey`|`filter`|
 
 ### Worker
@@ -404,3 +359,16 @@ Be careful not to output the following information in logs.
 - personal information
 
 If necessary, apply **masking processing**.
+
+## Test Strategy
+
+Logging is a sealed layer — everything else depends on it and nothing here may leak zap into a caller — so its tests verify the *structured* output, never a formatted line.
+
+- **Assert fields, not strings** — drive the subject through `NewObservedTestLogger` and assert on the observed entry's message and `ContextMap()` keys/values. Matching a rendered log line couples the test to the encoder and passes even when a key is wrong.
+- **One `TestXxx` per `Field` constructor** — `String` / `Strings` / `Int` / `Int64` / `Float64` / `Bool` / `Time` / `DurationMs` / `Error` / `Stacktrace` / `Any` each get their own test asserting the produced key **and** the value type. These are the primitives every other layer's log assertions rest on.
+- **Builders emit the documented key set** — `LogFieldBuilder`'s HTTP request / response and SQL builders are asserted against the key constants, so renaming a key without updating consumers fails here rather than silently changing a dashboard query.
+- **Level gating** — a message below the configured level produces no entry; assert the absence, not just the presence at higher levels.
+- **Stacktrace shaping** — `SplitStackLines` turns a raw runtime stack into the line array the log schema expects; assert the shape, not the specific frames (they move).
+- **No secrets in fields** — this package implements **no** masking; the [Security Considerations](#security-considerations) section places that duty on the caller, which must mask before the value reaches a `Field`. There is therefore nothing to assert here, and a test that appears to verify masking in this package would be verifying something that does not exist — assert it at the call site instead.
+
+Helpers this package offers to other layers are inventoried in [Test Kit](#test-kit); do not restate them here.

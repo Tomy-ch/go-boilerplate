@@ -102,7 +102,7 @@
 <span id="L45" class="ln">    45  </span>	)
 <span id="L46" class="ln">    46  </span>	defer stop()
 <span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span>	stopMetrics := server.ResolveMetricsStop(appCfg, func() (func(), func(context.Context)) {
+<span id="L48" class="ln">    48  </span>	stopMetrics := server.StartMetricsAndResolveStop(appCfg, func() (func(), func(context.Context)) {
 <span id="L49" class="ln">    49  </span>		return server.NewMetricsServer(mtcCfg, logger)
 <span id="L50" class="ln">    50  </span>	})
 <span id="L51" class="ln">    51  </span>

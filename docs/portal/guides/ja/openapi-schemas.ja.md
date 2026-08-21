@@ -80,10 +80,13 @@ PATCH 操作には `allOf` を使って専用のラッパースキーマを作�
 # UserPatchRequest.yaml
 allOf:
   - $ref: './UserBaseInputRequest.yaml'
-additionalProperties: false
 ```
 
 入力構造と操作のセマンティクスを分離します。
+
+`additionalProperties: false` は、properties を宣言している `UserBaseInputRequest.yaml` の側に置いたままにします。
+ラッパーに置くと**全て**のフィールドが拒否されます。`additionalProperties` が見るのは同じスキーマオブジェクトで
+宣言された properties だけで、ラッパーは 1 つも宣言していないためです。
 
 ## コアスキーマ
 
@@ -92,7 +95,7 @@ additionalProperties: false
 2 つのエラーエンベロープ。`ErrorResponse` は base（`details` なし）で大半のエラーステータスが
 使う。`ErrorResponseWithDetails` は `details` を追加し、意図的に露出するレスポンスだけが参照する。
 どの operation が `ErrorResponseWithDetails` を参照するかが、details 露出の**エンドポイントごとの
-opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0042](../../../docs/adr/0041-error-details-opt-in-gate.md) 参照）。
+opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0049 (error-details-opt-in-gate)](../../../docs/adr/0049-error-details-opt-in-gate.md) 参照）。
 
 ```yaml
 # ErrorResponse.yaml (base)
@@ -144,6 +147,8 @@ content:
 |`Forbidden403`|403|`ErrPermissionDenied`|認証ミドルウェア|
 |`NotFound404`|404|`ErrNotFound`|リソース不在|
 |`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted`（削除）または unique 違反 `23505`（作成・更新、例：email 重複）|
+|`PayloadTooLarge413`|413|`ErrPayloadTooLarge`|アップロードサイズ上限を超えた場合の usecase 検証|
+|`UnsupportedMediaType415`|415|`ErrUnsupportedMediaType`|許可しない `Content-Type` に対する usecase 検証|
 |`UnprocessableEntity422`|422|`ErrValidation`|OpenAPI スキーマで捕まらない domain 検証（例：email 形式）|
 |`TooManyRequests429`|429|`ErrTooManyRequests`|レートリミット|
 |`ClientClosedRequest499`|499|`ErrCanceled`|リクエスト中のクライアント切断|
@@ -202,7 +207,7 @@ allOf:
 - リクエストとレスポンスの兼用スキーマは極力避ける
 - すべてのプロパティに `description` と `example` を記述する
 - `required` で必須フィールドを明示する
-- リクエストスキーマには `additionalProperties: false` を設定して不明フィールドを拒否する
+- `additionalProperties: false` は、properties を持つリクエストスキーマオブジェクト自身に置く — properties が見えない `allOf` のラッパーには置かない（[PATCH 対応](#patch-対応) を参照）
 - `maxLength` などの境界値は**ワイヤー契約**であり domain の業務ルールではない（オーナーが別） — [入力境界値のオーナーシップ](../../boundary-ownership.ja.md) を参照
 
 ## チェックリスト

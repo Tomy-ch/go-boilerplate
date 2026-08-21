@@ -67,6 +67,25 @@ flowchart TD
     A --> B
 ```
 
+### HoldSuiteSerialization
+
+```go
+func HoldSuiteSerialization(t *testing.T, db driver.DatabaseDriver)
+```
+
+Holds the suite-wide serialization for the calling test's whole duration, so the `CASCADE TRUNCATE`
+another package's tests (a separate process) issue cannot run while it is held. It is released in
+`t.Cleanup`.
+
+The hold lives in a dedicated transaction, and the test's own transactions do **not** join the
+serialization — joining would make them wait on the hold and they would never proceed.
+
+Ordinary tests never need this: `WithinTx` performs the same serialization internally. Reach for it
+only in a test that keeps **two transactions alive at once** — a lock-contention reproduction, for
+example — which `WithinTx` (one transaction, always rolled back) cannot express. Hold it across the
+whole test, including the rows it seeds: protecting only part of it leaves a window where a seeded
+row is truncated away before the contention under test begins.
+
 ## Transaction Execution
 
 ### TransactionRunner

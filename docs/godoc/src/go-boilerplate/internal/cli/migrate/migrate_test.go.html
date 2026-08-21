@@ -149,7 +149,7 @@
 <span id="L92" class="ln">    92  </span>			}
 <span id="L93" class="ln">    93  </span>
 <span id="L94" class="ln">    94  </span>			err := MigrateUpRun(-1, &#34;&#34;, logging.NewTestLogger(t), factory)
-<span id="L95" class="ln">    95  </span>			require.Error(t, err)
+<span id="L95" class="ln">    95  </span>			require.ErrorIs(t, err, errNegativeSteps)
 <span id="L96" class="ln">    96  </span>			assert.False(t, called)
 <span id="L97" class="ln">    97  </span>		})
 <span id="L98" class="ln">    98  </span>
@@ -252,7 +252,7 @@
 <span id="L195" class="ln">   195  </span>			}
 <span id="L196" class="ln">   196  </span>
 <span id="L197" class="ln">   197  </span>			err := MigrateDownRun(-2, &#34;&#34;, logging.NewTestLogger(t), factory)
-<span id="L198" class="ln">   198  </span>			require.Error(t, err)
+<span id="L198" class="ln">   198  </span>			require.ErrorIs(t, err, errNegativeSteps)
 <span id="L199" class="ln">   199  </span>			assert.False(t, called)
 <span id="L200" class="ln">   200  </span>		})
 <span id="L201" class="ln">   201  </span>
@@ -445,55 +445,53 @@
 <span id="L388" class="ln">   388  </span>		t.Run(&#34;dirty時にForce後のDownがErrNoChangeでも成功扱いとする&#34;, func(t *testing.T) {
 <span id="L389" class="ln">   389  </span>			t.Parallel()
 <span id="L390" class="ln">   390  </span>
-<span id="L391" class="ln">   391  </span>			<span class="comment">// dirty=true → Force 成功 → Down(ErrNoChange) の経路で</span>
-<span id="L392" class="ln">   392  </span>			<span class="comment">// ErrNoChange 握りつぶしが Force 後にも効くことを検証する。</span>
-<span id="L393" class="ln">   393  </span>			ctrl := gomock.NewController(t)
-<span id="L394" class="ln">   394  </span>			m := mock_migrate.NewMockMigrator(ctrl)
-<span id="L395" class="ln">   395  </span>			m.EXPECT().Version().Return(uint(3), true, nil)
-<span id="L396" class="ln">   396  </span>			m.EXPECT().Force(3).Return(nil)
-<span id="L397" class="ln">   397  </span>			m.EXPECT().Down().Return(migrate.ErrNoChange)
-<span id="L398" class="ln">   398  </span>
-<span id="L399" class="ln">   399  </span>			require.NoError(t, executeMigrateFullDown(m))
-<span id="L400" class="ln">   400  </span>		})
-<span id="L401" class="ln">   401  </span>	})
-<span id="L402" class="ln">   402  </span>
-<span id="L403" class="ln">   403  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L404" class="ln">   404  </span>		t.Parallel()
-<span id="L405" class="ln">   405  </span>
-<span id="L406" class="ln">   406  </span>		t.Run(&#34;Version取得がErrNilVersion以外で失敗した場合はエラーを返す&#34;, func(t *testing.T) {
-<span id="L407" class="ln">   407  </span>			t.Parallel()
-<span id="L408" class="ln">   408  </span>
-<span id="L409" class="ln">   409  </span>			ctrl := gomock.NewController(t)
-<span id="L410" class="ln">   410  </span>			m := mock_migrate.NewMockMigrator(ctrl)
-<span id="L411" class="ln">   411  </span>			m.EXPECT().Version().Return(uint(0), false, errBoom)
-<span id="L412" class="ln">   412  </span>
-<span id="L413" class="ln">   413  </span>			require.ErrorIs(t, executeMigrateFullDown(m), errBoom)
-<span id="L414" class="ln">   414  </span>		})
-<span id="L415" class="ln">   415  </span>
-<span id="L416" class="ln">   416  </span>		t.Run(&#34;dirty時のForceが失敗した場合はエラーを返す&#34;, func(t *testing.T) {
-<span id="L417" class="ln">   417  </span>			t.Parallel()
-<span id="L418" class="ln">   418  </span>
-<span id="L419" class="ln">   419  </span>			ctrl := gomock.NewController(t)
-<span id="L420" class="ln">   420  </span>			m := mock_migrate.NewMockMigrator(ctrl)
-<span id="L421" class="ln">   421  </span>			m.EXPECT().Version().Return(uint(5), true, nil)
-<span id="L422" class="ln">   422  </span>			m.EXPECT().Force(5).Return(errBoom)
-<span id="L423" class="ln">   423  </span>
-<span id="L424" class="ln">   424  </span>			require.ErrorIs(t, executeMigrateFullDown(m), errBoom)
-<span id="L425" class="ln">   425  </span>		})
-<span id="L426" class="ln">   426  </span>
-<span id="L427" class="ln">   427  </span>		t.Run(&#34;dirty時にバージョンがintへ変換できない場合はエラーを返す&#34;, func(t *testing.T) {
-<span id="L428" class="ln">   428  </span>			t.Parallel()
-<span id="L429" class="ln">   429  </span>
-<span id="L430" class="ln">   430  </span>			ctrl := gomock.NewController(t)
-<span id="L431" class="ln">   431  </span>			m := mock_migrate.NewMockMigrator(ctrl)
-<span id="L432" class="ln">   432  </span>			<span class="comment">// MaxInt を超える uint は safecast でオーバーフロー検出され、Force/Down へ進まない。</span>
-<span id="L433" class="ln">   433  </span>			m.EXPECT().Version().Return(uint(math.MaxUint64), true, nil)
-<span id="L434" class="ln">   434  </span>
-<span id="L435" class="ln">   435  </span>			require.Error(t, executeMigrateFullDown(m))
-<span id="L436" class="ln">   436  </span>		})
-<span id="L437" class="ln">   437  </span>	})
-<span id="L438" class="ln">   438  </span>}
-<span id="L439" class="ln">   439  </span>
+<span id="L391" class="ln">   391  </span>			ctrl := gomock.NewController(t)
+<span id="L392" class="ln">   392  </span>			m := mock_migrate.NewMockMigrator(ctrl)
+<span id="L393" class="ln">   393  </span>			m.EXPECT().Version().Return(uint(3), true, nil)
+<span id="L394" class="ln">   394  </span>			m.EXPECT().Force(3).Return(nil)
+<span id="L395" class="ln">   395  </span>			m.EXPECT().Down().Return(migrate.ErrNoChange)
+<span id="L396" class="ln">   396  </span>
+<span id="L397" class="ln">   397  </span>			require.NoError(t, executeMigrateFullDown(m))
+<span id="L398" class="ln">   398  </span>		})
+<span id="L399" class="ln">   399  </span>	})
+<span id="L400" class="ln">   400  </span>
+<span id="L401" class="ln">   401  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L402" class="ln">   402  </span>		t.Parallel()
+<span id="L403" class="ln">   403  </span>
+<span id="L404" class="ln">   404  </span>		t.Run(&#34;Version取得がErrNilVersion以外で失敗した場合はエラーを返す&#34;, func(t *testing.T) {
+<span id="L405" class="ln">   405  </span>			t.Parallel()
+<span id="L406" class="ln">   406  </span>
+<span id="L407" class="ln">   407  </span>			ctrl := gomock.NewController(t)
+<span id="L408" class="ln">   408  </span>			m := mock_migrate.NewMockMigrator(ctrl)
+<span id="L409" class="ln">   409  </span>			m.EXPECT().Version().Return(uint(0), false, errBoom)
+<span id="L410" class="ln">   410  </span>
+<span id="L411" class="ln">   411  </span>			require.ErrorIs(t, executeMigrateFullDown(m), errBoom)
+<span id="L412" class="ln">   412  </span>		})
+<span id="L413" class="ln">   413  </span>
+<span id="L414" class="ln">   414  </span>		t.Run(&#34;dirty時のForceが失敗した場合はエラーを返す&#34;, func(t *testing.T) {
+<span id="L415" class="ln">   415  </span>			t.Parallel()
+<span id="L416" class="ln">   416  </span>
+<span id="L417" class="ln">   417  </span>			ctrl := gomock.NewController(t)
+<span id="L418" class="ln">   418  </span>			m := mock_migrate.NewMockMigrator(ctrl)
+<span id="L419" class="ln">   419  </span>			m.EXPECT().Version().Return(uint(5), true, nil)
+<span id="L420" class="ln">   420  </span>			m.EXPECT().Force(5).Return(errBoom)
+<span id="L421" class="ln">   421  </span>
+<span id="L422" class="ln">   422  </span>			require.ErrorIs(t, executeMigrateFullDown(m), errBoom)
+<span id="L423" class="ln">   423  </span>		})
+<span id="L424" class="ln">   424  </span>
+<span id="L425" class="ln">   425  </span>		t.Run(&#34;dirty時にバージョンがintへ変換できない場合はエラーを返す&#34;, func(t *testing.T) {
+<span id="L426" class="ln">   426  </span>			t.Parallel()
+<span id="L427" class="ln">   427  </span>
+<span id="L428" class="ln">   428  </span>			ctrl := gomock.NewController(t)
+<span id="L429" class="ln">   429  </span>			m := mock_migrate.NewMockMigrator(ctrl)
+<span id="L430" class="ln">   430  </span>			<span class="comment">// MaxInt を超える uint は safecast でオーバーフロー検出され、Force/Down へ進まない。</span>
+<span id="L431" class="ln">   431  </span>			m.EXPECT().Version().Return(uint(math.MaxUint64), true, nil)
+<span id="L432" class="ln">   432  </span>
+<span id="L433" class="ln">   433  </span>			require.Error(t, executeMigrateFullDown(m))
+<span id="L434" class="ln">   434  </span>		})
+<span id="L435" class="ln">   435  </span>	})
+<span id="L436" class="ln">   436  </span>}
+<span id="L437" class="ln">   437  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/migrate/migrate_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

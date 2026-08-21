@@ -6,26 +6,8 @@ English | [日本語](README.ja.md)
 
 ## Directory Structure
 
-The directory layout **mirrors the URL path** (industry-standard / Redocly split style): the file location corresponds 1:1 to the URL. A path with no children is a flat `<segment>.yaml`; a path that itself is an endpoint **and** has children is a `<segment>.yaml` file sitting beside a `<segment>/` directory for those children.
-
-```text
-paths/
-├── health.yaml             # /health
-├── healthz.yaml            # /healthz
-├── ready.yaml              # /ready
-├── version.yaml            # /version
-├── metrics.yaml            # /metrics (Basic auth)
-├── internal/               # Internal types (error response schema for oapi-codegen)
-│   └── types/
-│       └── error_response.yaml
-└── v1/                     # Versioned API (sample)
-    ├── users.yaml          # /v1/users       ← endpoint + has children
-    └── users/
-        ├── userId.yaml     # /v1/users/{userId}
-        ├── search.yaml     # /v1/users/search
-        ├── feed.yaml       # /v1/users/feed
-        └── me.yaml         # /v1/users/me
-```
+One file per path, named after its last segment. A path with children gets a directory of the
+same name beside its own file, so the directory layout mirrors the URL structure.
 
 ## Endpoint Categories
 

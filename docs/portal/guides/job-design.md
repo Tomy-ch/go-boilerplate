@@ -1,6 +1,6 @@
 # Job Subsystem Design Reference
 
-[Job README](../../internal/controller/job/README.md) | 日本語: [job.ja.md](../ja/design/job.ja.md)
+[Job README](../../internal/controller/job/README.md) | 日本語: [job.ja.md](job.ja.md)
 
 This document consolidates the job scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; the worker is its async sibling — see [worker.md](worker.md).
 
@@ -36,8 +36,8 @@ stateDiagram-v2
     Started --> Running: RegisterJobHooks OnStart spawns runJobAndShutdown goroutine
     Running --> Completed: runner.Run(name, args) → Job.Execute returns; result sent to done
     Running --> TimedOut: timeout>0 and waitCtx done first (DeadlineExceeded / parent Canceled)
-    Completed --> Stopping: gracefulStop → app.Stop (stopTimeout 30s)
-    TimedOut --> Stopping: gracefulStop → app.Stop (stopTimeout 30s)
+    Completed --> Stopping: gracefulStop → app.Stop (grace = APP_SHUTDOWN_TIMEOUT)
+    TimedOut --> Stopping: gracefulStop → app.Stop (grace = APP_SHUTDOWN_TIMEOUT)
     Stopping --> Stopped: sd.Shutdown requested + app.Stop done
     Stopped --> [*]: runJob returns err (job result / waitCtx.Err())
 
@@ -97,7 +97,7 @@ flowchart TD
         CMD["cmd/job.go<br/>newJobCommand / args[0]=name + args[1:] / --timeout"]
     end
     subgraph cliL["internal/cli/job"]
-        CLI["job.go: RunJobWith / runJob<br/>timeout 分岐 + gracefulStop(30s)"]
+        CLI["job.go: RunJobWith / runJob<br/>timeout 分岐 + gracefulStop(grace)"]
     end
     subgraph diL["internal/di"]
         DIJ["job.go: RunJob / NewJobCore<br/>per-invocation fx.App, state.Set, start/stop funcs"]
@@ -144,7 +144,7 @@ flowchart TD
     class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,UC,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
 ```
 
-> Green = implemented by the scaffold. Dependencies always point inward (`controller→usecase/boundary`). The runner/state hold no business logic and no infrastructure imports; jobs reach data only through the usecase layer.
+> Green = implemented here. Dependencies always point inward (`controller→usecase/boundary`). The runner/state hold no business logic and no infrastructure imports; jobs reach data only through the usecase layer.
 
 ### 3.2 Per-invocation action sequence
 
@@ -167,15 +167,15 @@ sequenceDiagram
     Run-->>Hook: result
     Hook->>Hook: done <- result, close(done), sd.Shutdown()
     CLI->>CLI: err := <-done (or waitCtx.Done() on timeout)
-    CLI->>DI: gracefulStop → stop(ctx) = app.Stop (≤30s)
+    CLI->>DI: gracefulStop → stop(ctx) = app.Stop (≤ grace)
     CLI-->>Cobra: return err (exit code)
 ```
 
 ---
 
-## 4. What an integrator implements (the parts the scaffold does not provide)
+## 4. What an integrator implements (the parts this project does not provide)
 
-The scaffold provides the **runner, state, lifecycle hook, DI wiring, and two reference jobs** (`usercount`, `idempotencygc`). To add a job, supply the following (jobs are registered explicitly — there is no auto-discovery).
+This project provides the **runner, state, lifecycle hook, DI wiring, and two reference jobs** (`usercount`, `idempotencygc`). To add a job, supply the following (jobs are registered explicitly — there is no auto-discovery).
 
 ```mermaid
 flowchart LR
@@ -213,7 +213,7 @@ flowchart LR
 | **runJobAndShutdown** | The detached goroutine spawned by `RegisterJobHooks` OnStart. Snapshots state, runs the job, sends the result, requests shutdown. |
 | **context.WithoutCancel** | Used so the job's context is not cancelled when the fx OnStart hook returns (the job runs past OnStart). |
 | **timeout (`--timeout`)** | Optional CLI deadline. `>0` → wait for the job or the deadline (whichever first); `≤0` → wait indefinitely. |
-| **gracefulStop / stopTimeout** | On completion or timeout, `app.Stop` is given a fresh 30s context (not the expired one) to finish cleanup. |
+| **gracefulStop / stopTimeout** | On completion or timeout, `app.Stop` is given a fresh context (not the expired one) bounded by the shutdown grace (`APP_SHUTDOWN_TIMEOUT`, default 65s) to finish cleanup. |
 | **Shutdowner** | The fx shutdown requester the hook calls after the job finishes, so the app exits. |
 | **provideJobs / `group:"jobs"`** | The Fx aggregation that collects all job constructors into the slice `NewRunner` consumes. |
 | **ErrUnknownJob / ErrDuplicateJob** | Dispatch-time unknown-name error (lists available jobs) / build-time duplicate-name error. |

@@ -136,13 +136,14 @@
 		
 			
 			
-			<h2 id="ExpectedDBError">func <a href="../../../../src/go-boilerplate/internal/usecase/testkit/test_kit.go.html?s=437:465#L6">ExpectedDBError</a>
+			<h2 id="ExpectedDBError">func <a href="../../../../src/go-boilerplate/internal/usecase/testkit/test_kit.go.html?s=680:708#L10">ExpectedDBError</a>
 				<a class="permalink" href="#ExpectedDBError">¶</a>
 				
 				
 			</h2>
 			<pre>func ExpectedDBError() <a href="../../../../builtin/#error">error</a></pre>
-			<p>ExpectedDBError は、データベースエラーを表すテスト用のエラーを生成します。
+			<p>ExpectedDBError は、データベースエラーを表すテスト用のエラーを返します。
+呼び出しごとに同一のエラーを返すため、注入先の検証は errors.Is で行えます。
 
 			
 			
@@ -150,7 +151,7 @@
 		
 			
 			
-			</p><h2 id="NewMockTransactionManager">func <a href="../../../../src/go-boilerplate/internal/usecase/testkit/test_kit.go.html?s=623:678#L11">NewMockTransactionManager</a>
+			</p><h2 id="NewMockTransactionManager">func <a href="../../../../src/go-boilerplate/internal/usecase/testkit/test_kit.go.html?s=850:905#L15">NewMockTransactionManager</a>
 				<a class="permalink" href="#NewMockTransactionManager">¶</a>
 				
 				

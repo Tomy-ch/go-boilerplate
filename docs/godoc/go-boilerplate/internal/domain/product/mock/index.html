@@ -112,10 +112,46 @@
 				
 				
 					
+					<dd>    <a href="#MockRepository.Count">func (m *MockRepository) Count(ctx context.Context) (product.Counts, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.CountPublished">func (m *MockRepository) CountPublished(ctx context.Context, filter product.SearchFilter) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.Create">func (m *MockRepository) Create(ctx context.Context, p *product.Product) error</a></dd>
+				
+					
 					<dd>    <a href="#MockRepository.EXPECT">func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder</a></dd>
 				
 					
+					<dd>    <a href="#MockRepository.FilterExistingImagePaths">func (m *MockRepository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindAllLowStock">func (m *MockRepository) FindAllLowStock(ctx context.Context, limit int32) (product.Products, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindByID">func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*product.Product, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindByIDs">func (m *MockRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) (product.Products, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindPublishedByID">func (m *MockRepository) FindPublishedByID(ctx context.Context, id uuid.UUID) (*product.Product, error)</a></dd>
+				
+					
 					<dd>    <a href="#MockRepository.FindPublishedList">func (m *MockRepository) FindPublishedList(ctx context.Context, params product.ListParams) (product.Products, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.LockByID">func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*product.Product, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.LockByIDs">func (m *MockRepository) LockByIDs(ctx context.Context, ids []uuid.UUID) (product.Products, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.Update">func (m *MockRepository) Update(ctx context.Context, p *product.Product) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.UpdateStock">func (m *MockRepository) UpdateStock(ctx context.Context, p *product.Product) (int, error)</a></dd>
 				
 			
 				
@@ -123,7 +159,43 @@
 				
 				
 					
+					<dd>    <a href="#MockRepositoryMockRecorder.Count">func (mr *MockRepositoryMockRecorder) Count(ctx any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.CountPublished">func (mr *MockRepositoryMockRecorder) CountPublished(ctx, filter any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.Create">func (mr *MockRepositoryMockRecorder) Create(ctx, p any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FilterExistingImagePaths">func (mr *MockRepositoryMockRecorder) FilterExistingImagePaths(ctx, paths any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindAllLowStock">func (mr *MockRepositoryMockRecorder) FindAllLowStock(ctx, limit any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByID">func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByIDs">func (mr *MockRepositoryMockRecorder) FindByIDs(ctx, ids any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindPublishedByID">func (mr *MockRepositoryMockRecorder) FindPublishedByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
 					<dd>    <a href="#MockRepositoryMockRecorder.FindPublishedList">func (mr *MockRepositoryMockRecorder) FindPublishedList(ctx, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.LockByID">func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.LockByIDs">func (mr *MockRepositoryMockRecorder) LockByIDs(ctx, ids any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.Update">func (mr *MockRepositoryMockRecorder) Update(ctx, p any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.UpdateStock">func (mr *MockRepositoryMockRecorder) UpdateStock(ctx, p any) *gomock.Call</a></dd>
 				
 			
 			
@@ -153,7 +225,7 @@
 		
 			
 			
-			<h2 id="MockRepository">type <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=496:612#L11">MockRepository</a>
+			<h2 id="MockRepository">type <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=528:644#L12">MockRepository</a>
 				<a class="permalink" href="#MockRepository">¶</a>
 				
 				
@@ -175,7 +247,7 @@
 
 			
 				
-				<h3 id="NewMockRepository">func <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=801:864#L23">NewMockRepository</a>
+				<h3 id="NewMockRepository">func <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=833:896#L24">NewMockRepository</a>
 					<a class="permalink" href="#NewMockRepository">¶</a>
 					
 					
@@ -189,7 +261,46 @@
 
 			
 				
-				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=1048:1109#L30">EXPECT</a>
+				</p><h3 id="MockRepository.Count">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=1194:1269#L36">Count</a>
+					<a class="permalink" href="#MockRepository.Count">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) Count(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Counts">Counts</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>Count mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.CountPublished">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=1707:1811#L51">CountPublished</a>
+					<a class="permalink" href="#MockRepository.CountPublished">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) CountPublished(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, filter <a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#SearchFilter">SearchFilter</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CountPublished mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Create">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=2310:2388#L66">Create</a>
+					<a class="permalink" href="#MockRepository.Create">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) Create(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p *<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Product">Product</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>Create mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=1080:1141#L31">EXPECT</a>
 					<a class="permalink" href="#MockRepository.EXPECT">¶</a>
 					
 					
@@ -202,7 +313,72 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindPublishedList">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=1174:1290#L35">FindPublishedList</a>
+				</p><h3 id="MockRepository.FilterExistingImagePaths">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=2809:2913#L80">FilterExistingImagePaths</a>
+					<a class="permalink" href="#MockRepository.FilterExistingImagePaths">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FilterExistingImagePaths(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, paths []<a href="../../../../../builtin/#string">string</a>) ([]<a href="../../../../../builtin/#string">string</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FilterExistingImagePaths mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindAllLowStock">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=3481:3581#L95">FindAllLowStock</a>
+					<a class="permalink" href="#MockRepository.FindAllLowStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindAllLowStock(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, limit <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Products">Products</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindAllLowStock mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=4096:4190#L110">FindByID</a>
+					<a class="permalink" href="#MockRepository.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Product">Product</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByIDs">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=4655:4753#L125">FindByIDs</a>
+					<a class="permalink" href="#MockRepository.FindByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByIDs(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, ids []<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Products">Products</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByIDs mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindPublishedByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=5235:5338#L140">FindPublishedByID</a>
+					<a class="permalink" href="#MockRepository.FindPublishedByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindPublishedByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Product">Product</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindPublishedByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindPublishedList">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=5865:5981#L155">FindPublishedList</a>
 					<a class="permalink" href="#MockRepository.FindPublishedList">¶</a>
 					
 					
@@ -214,10 +390,62 @@
 				
 				
 			
+				
+				</p><h3 id="MockRepository.LockByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=6511:6605#L170">LockByID</a>
+					<a class="permalink" href="#MockRepository.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) LockByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Product">Product</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>LockByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.LockByIDs">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=7070:7168#L185">LockByIDs</a>
+					<a class="permalink" href="#MockRepository.LockByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) LockByIDs(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, ids []<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Products">Products</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>LockByIDs mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Update">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=7639:7724#L200">Update</a>
+					<a class="permalink" href="#MockRepository.Update">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) Update(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p *<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Product">Product</a>) (<a href="../../../../../builtin/#int">int</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>Update mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.UpdateStock">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=8163:8253#L215">UpdateStock</a>
+					<a class="permalink" href="#MockRepository.UpdateStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) UpdateStock(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p *<a href="../../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../../go-boilerplate/internal/domain/product/#Product">Product</a>) (<a href="../../../../../builtin/#int">int</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>UpdateStock mocks base method.
+
+				
+				
+				
+			
 		
 			
 			
-			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=685:749#L18">MockRepositoryMockRecorder</a>
+			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=717:781#L19">MockRepositoryMockRecorder</a>
 				<a class="permalink" href="#MockRepositoryMockRecorder">¶</a>
 				
 				
@@ -241,13 +469,169 @@
 
 			
 				
-				<h3 id="MockRepositoryMockRecorder.FindPublishedList">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=1526:1611#L44">FindPublishedList</a>
+				<h3 id="MockRepositoryMockRecorder.Count">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=1459:1524#L45">Count</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.Count">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Count(ctx <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Count indicates an expected call of Count.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.CountPublished">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=2027:2109#L60">CountPublished</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.CountPublished">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) CountPublished(ctx, filter <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CountPublished indicates an expected call of CountPublished.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Create">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=2542:2611#L74">Create</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.Create">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Create(ctx, p <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Create indicates an expected call of Create.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FilterExistingImagePaths">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=3161:3252#L89">FilterExistingImagePaths</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FilterExistingImagePaths">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FilterExistingImagePaths(ctx, paths <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FilterExistingImagePaths indicates an expected call of FilterExistingImagePaths.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindAllLowStock">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=3810:3892#L104">FindAllLowStock</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindAllLowStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindAllLowStock(ctx, limit <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindAllLowStock indicates an expected call of FindAllLowStock.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=4395:4467#L119">FindByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByID indicates an expected call of FindByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindByIDs">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=4962:5036#L134">FindByIDs</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByIDs(ctx, ids <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByIDs indicates an expected call of FindByIDs.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindPublishedByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=5570:5651#L149">FindPublishedByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindPublishedByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindPublishedByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindPublishedByID indicates an expected call of FindPublishedByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindPublishedList">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=6217:6302#L164">FindPublishedList</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindPublishedList">¶</a>
 					
 					
 				</h3>
 				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindPublishedList(ctx, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>FindPublishedList indicates an expected call of FindPublishedList.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.LockByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=6810:6882#L179">LockByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) LockByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>LockByID indicates an expected call of LockByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.LockByIDs">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=7377:7451#L194">LockByIDs</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.LockByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) LockByIDs(ctx, ids <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>LockByIDs indicates an expected call of LockByIDs.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Update">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=7909:7978#L209">Update</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.Update">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Update(ctx, p <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Update indicates an expected call of Update.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.UpdateStock">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/product/mock/mock_product_repository.go.gen.go.html?s=8453:8527#L224">UpdateStock</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.UpdateStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) UpdateStock(ctx, p <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpdateStock indicates an expected call of UpdateStock.
 
 				
 				

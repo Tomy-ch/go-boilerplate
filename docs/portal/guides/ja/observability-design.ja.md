@@ -1,6 +1,6 @@
 # Observability サブシステム設計リファレンス
 
-[Observability README（日本語）](../../../internal/observability/README.ja.md) | English: [observability.md](../../design/observability.md)
+[Observability README（日本語）](../../internal/observability/README.ja.md) | English: [observability.md](observability.md)
 
 本書は observability サブシステムの **役割論・シグナルのライフサイクル・実装箇所・提供機能・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。パッケージ API の概要は README、計装対象のサブシステムは [worker.ja.md](worker.ja.md) / [outbox.ja.md](outbox.ja.md) / [idempotency.ja.md](idempotency.ja.md) / [rest.ja.md](rest.ja.md) を参照。
 
@@ -59,7 +59,7 @@ stateDiagram-v2
 
 ### 2.2 exporter 選択（protocol スイッチ・endpoint 共用）
 
-3 シグナルは `OBS_OTLP_ENDPOINT` と `OBS_OTLP_PROTOCOL` を共用。トランスポートは OTLP のみ。
+3 シグナルは `ENDPOINT_OTLP` と `OBS_OTLP_PROTOCOL` を共用。トランスポートは OTLP のみ。
 
 ```mermaid
 stateDiagram-v2
@@ -168,7 +168,7 @@ substrate は以下の即利用可能な計装を同梱します。integrator �
 | --- | --- | --- |
 | **レイヤー別トレーシング** | `TracerFactory.Controller()/Usecase()/Infra()` → `LayerTracer.Start` | span 名 `layer.package.function`。開始/終了 + `trace_id`/`span_id` の構造化ログを自動出力 |
 | **アドホック span helper** | `RunWithSpan` / `StartSpanWithParent` / `StartWithSuffix` | layer tracer 無しに任意関数を span 化。suffix で同一関数内の複数 span を区別 |
-| **HTTP root span** | `otelecho` middleware | リクエスト毎の root span（controller 層 span はこれとほぼ重複 — README 設計ポリシー 5 参照） |
+| **HTTP root span** | `echootel` middleware | リクエスト毎の root span（controller 層 span はこれとほぼ重複 — README 設計ポリシー 5 参照） |
 | **DB トレーシング + metrics** | `NewPgxTracer`（`otelpgx`） | 接続情報は属性から抑止 |
 | **外向き HTTP RED metrics** | `NewHTTPClientTransport` + `HTTPClientMetrics` | requests / errors / latency + retries / in-flight / breaker 状態 gauge |
 | **サブシステム metrics** | `OutboxMetrics` / `WorkerMetrics` / `IdempotencyMetrics` | lag & dead / engine RED + DLQ / 冪等性の結果 & GC。低カーディナリティラベルのみ |
@@ -201,7 +201,7 @@ flowchart LR
 | ① | 新規処理を span で包む | handler / usecase / repository | 既存 `LayerTracer.Start` 呼び出し / 任意コードは `RunWithSpan` |
 | ② | 新規 metric | `WorkerMetrics` 等の meter 所有 struct を `ObservabilityModule` で `fx.Provide` し、所有サブシステムから記録 | `outbox_metrics.go` / `worker_metrics.go` |
 | ③ | 新規 pull metric | `prometheus.Collector` + `Register` invoke | `metrics/buildinfo` / `metrics/queue` |
-| ④ | 環境で送出を有効化 | `OBS_TRACES/METRICS/LOGS_EXPORTER=otlp` + `OBS_OTLP_ENDPOINT`（+ `OBS_OTLP_PROTOCOL`） | `env/.env.*` / `env/README.md` |
+| ④ | 環境で送出を有効化 | `OBS_TRACES/METRICS/LOGS_EXPORTER=otlp` + `ENDPOINT_OTLP`（+ `OBS_OTLP_PROTOCOL`） | `env/.env.*` / `env/README.md` |
 | ⑤ | span & label に秘匿値/PII を載せない | ユーザー入力に触れる計装全箇所 | `OBS_MASKED_DB_QUERY_ARGS` / `IdempotencyMetrics` の label allowlist / `otelpgx` の接続情報抑止 |
 
 > 送出の有効化は **config/IaC** の操作でありコード変更ではない。同一バイナリがローカルでは no-op（`OBS_*_EXPORTER` 空）、staging/prod では OTLP を push する。

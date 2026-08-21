@@ -60,90 +60,94 @@
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;testing&#34;
 <span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L7" class="ln">     7  </span>)
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/decimal&#34;
+<span id="L7" class="ln">     7  </span>	decimaltestkit &#34;go-boilerplate/pkg/decimal/testkit&#34;
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>func TestApplyRateHalfUp(t *testing.T) {
-<span id="L10" class="ln">    10  </span>	t.Parallel()
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L13" class="ln">    13  </span>		t.Parallel()
-<span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>		t.Run(&#34;USDセントをJPY円へ換算する&#34;, func(t *testing.T) {
-<span id="L16" class="ln">    16  </span>			t.Parallel()
-<span id="L17" class="ln">    17  </span>			<span class="comment">// 100.00 USD (10000 cent) × 150.5 = 15050 JPY</span>
-<span id="L18" class="ln">    18  </span>			actual := ApplyRateHalfUp(10000, 150.5, 100)
-<span id="L19" class="ln">    19  </span>			assert.Equal(t, int64(15050), actual)
-<span id="L20" class="ln">    20  </span>		})
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>		t.Run(&#34;端数はhalf-upで切り上げる&#34;, func(t *testing.T) {
-<span id="L23" class="ln">    23  </span>			t.Parallel()
-<span id="L24" class="ln">    24  </span>			<span class="comment">// 1 cent × 150.5 / 100 = 1.505 → 2</span>
-<span id="L25" class="ln">    25  </span>			actual := ApplyRateHalfUp(1, 150.5, 100)
-<span id="L26" class="ln">    26  </span>			assert.Equal(t, int64(2), actual)
-<span id="L27" class="ln">    27  </span>		})
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span>		t.Run(&#34;ちょうど0.5はhalf-upで切り上げる&#34;, func(t *testing.T) {
-<span id="L30" class="ln">    30  </span>			t.Parallel()
-<span id="L31" class="ln">    31  </span>			<span class="comment">// 1 cent × 150.0 / 100 = 1.5 → 2</span>
-<span id="L32" class="ln">    32  </span>			actual := ApplyRateHalfUp(1, 150.0, 100)
-<span id="L33" class="ln">    33  </span>			assert.Equal(t, int64(2), actual)
-<span id="L34" class="ln">    34  </span>		})
-<span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>		t.Run(&#34;0.5未満は切り捨てる&#34;, func(t *testing.T) {
-<span id="L37" class="ln">    37  </span>			t.Parallel()
-<span id="L38" class="ln">    38  </span>			<span class="comment">// 1 cent × 149.0 / 100 = 1.49 → 1</span>
-<span id="L39" class="ln">    39  </span>			actual := ApplyRateHalfUp(1, 149.0, 100)
-<span id="L40" class="ln">    40  </span>			assert.Equal(t, int64(1), actual)
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L11" class="ln">    11  </span>)
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>func TestApplyRateHalfUp(t *testing.T) {
+<span id="L14" class="ln">    14  </span>	t.Parallel()
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L17" class="ln">    17  </span>		t.Parallel()
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>		t.Run(&#34;金額をレートで換算し最小単位0桁へ丸める&#34;, func(t *testing.T) {
+<span id="L20" class="ln">    20  </span>			t.Parallel()
+<span id="L21" class="ln">    21  </span>			<span class="comment">// 100 USD × 150.5 = 15050 JPY（JPY は最小単位 1 円 = 0 桁）</span>
+<span id="L22" class="ln">    22  </span>			actual, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;100&#34;), decimaltestkit.MustParse(t, &#34;150.5&#34;), 0)
+<span id="L23" class="ln">    23  </span>			require.NoError(t, err)
+<span id="L24" class="ln">    24  </span>			assert.Equal(t, int64(15050), actual)
+<span id="L25" class="ln">    25  </span>		})
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span>		t.Run(&#34;端数はhalf-upで切り上げる&#34;, func(t *testing.T) {
+<span id="L28" class="ln">    28  </span>			t.Parallel()
+<span id="L29" class="ln">    29  </span>			<span class="comment">// 0.01 × 150.5 = 1.505 → 2</span>
+<span id="L30" class="ln">    30  </span>			actual, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;0.01&#34;), decimaltestkit.MustParse(t, &#34;150.5&#34;), 0)
+<span id="L31" class="ln">    31  </span>			require.NoError(t, err)
+<span id="L32" class="ln">    32  </span>			assert.Equal(t, int64(2), actual)
+<span id="L33" class="ln">    33  </span>		})
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>		t.Run(&#34;ちょうど0.5はhalf-upで切り上げる&#34;, func(t *testing.T) {
+<span id="L36" class="ln">    36  </span>			t.Parallel()
+<span id="L37" class="ln">    37  </span>			<span class="comment">// 0.01 × 150.0 = 1.5 → 2</span>
+<span id="L38" class="ln">    38  </span>			actual, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;0.01&#34;), decimaltestkit.MustParse(t, &#34;150.0&#34;), 0)
+<span id="L39" class="ln">    39  </span>			require.NoError(t, err)
+<span id="L40" class="ln">    40  </span>			assert.Equal(t, int64(2), actual)
 <span id="L41" class="ln">    41  </span>		})
 <span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>		t.Run(&#34;負値は0から遠い方向へ丸める&#34;, func(t *testing.T) {
+<span id="L43" class="ln">    43  </span>		t.Run(&#34;0.5未満は切り捨てる&#34;, func(t *testing.T) {
 <span id="L44" class="ln">    44  </span>			t.Parallel()
-<span id="L45" class="ln">    45  </span>			<span class="comment">// -1 cent × 150.0 / 100 = -1.5 → -2（half-away-from-zero）</span>
-<span id="L46" class="ln">    46  </span>			actual := ApplyRateHalfUp(-1, 150.0, 100)
-<span id="L47" class="ln">    47  </span>			assert.Equal(t, int64(-2), actual)
-<span id="L48" class="ln">    48  </span>		})
-<span id="L49" class="ln">    49  </span>	})
+<span id="L45" class="ln">    45  </span>			<span class="comment">// 0.01 × 149.0 = 1.49 → 1</span>
+<span id="L46" class="ln">    46  </span>			actual, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;0.01&#34;), decimaltestkit.MustParse(t, &#34;149.0&#34;), 0)
+<span id="L47" class="ln">    47  </span>			require.NoError(t, err)
+<span id="L48" class="ln">    48  </span>			assert.Equal(t, int64(1), actual)
+<span id="L49" class="ln">    49  </span>		})
 <span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span>	t.Run(&#34;境界ケース&#34;, func(t *testing.T) {
-<span id="L52" class="ln">    52  </span>		t.Parallel()
-<span id="L53" class="ln">    53  </span>
-<span id="L54" class="ln">    54  </span>		t.Run(&#34;amountMinorが0なら0を返す&#34;, func(t *testing.T) {
-<span id="L55" class="ln">    55  </span>			t.Parallel()
-<span id="L56" class="ln">    56  </span>			actual := ApplyRateHalfUp(0, 150.5, 100)
-<span id="L57" class="ln">    57  </span>			assert.Equal(t, int64(0), actual)
-<span id="L58" class="ln">    58  </span>		})
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>		t.Run(&#34;scaleが1なら最小単位差なしで換算する&#34;, func(t *testing.T) {
-<span id="L61" class="ln">    61  </span>			t.Parallel()
-<span id="L62" class="ln">    62  </span>			<span class="comment">// 100 × 1.5 / 1 = 150</span>
-<span id="L63" class="ln">    63  </span>			actual := ApplyRateHalfUp(100, 1.5, 1)
-<span id="L64" class="ln">    64  </span>			assert.Equal(t, int64(150), actual)
-<span id="L65" class="ln">    65  </span>		})
-<span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>		t.Run(&#34;int64の乗算を超える大額でもオーバーフローせず換算する&#34;, func(t *testing.T) {
-<span id="L68" class="ln">    68  </span>			t.Parallel()
-<span id="L69" class="ln">    69  </span>			<span class="comment">// 中間積 amountMinor × rateFixed = 10^13 × 1.505×10^8 ≈ 1.5×10^21 は int64(≈9.2×10^18)を</span>
-<span id="L70" class="ln">    70  </span>			<span class="comment">// 超えるが、多倍長で計算するため正しい値になる。</span>
-<span id="L71" class="ln">    71  </span>			<span class="comment">// 10^13 cent (10^11 USD) × 150.5 = 1.505×10^13 JPY</span>
-<span id="L72" class="ln">    72  </span>			actual := ApplyRateHalfUp(10_000_000_000_000, 150.5, 100)
-<span id="L73" class="ln">    73  </span>			assert.Equal(t, int64(15_050_000_000_000), actual)
-<span id="L74" class="ln">    74  </span>		})
-<span id="L75" class="ln">    75  </span>
-<span id="L76" class="ln">    76  </span>		t.Run(&#34;float端数を含むレートでも正しく丸める&#34;, func(t *testing.T) {
-<span id="L77" class="ln">    77  </span>			t.Parallel()
-<span id="L78" class="ln">    78  </span>			<span class="comment">// 3 cent × 33.335 / 100 = 1.00005 → 1</span>
-<span id="L79" class="ln">    79  </span>			actual := ApplyRateHalfUp(3, 33.335, 100)
-<span id="L80" class="ln">    80  </span>			assert.Equal(t, int64(1), actual)
-<span id="L81" class="ln">    81  </span>		})
+<span id="L51" class="ln">    51  </span>		t.Run(&#34;負値は0から遠い方向へ丸める&#34;, func(t *testing.T) {
+<span id="L52" class="ln">    52  </span>			t.Parallel()
+<span id="L53" class="ln">    53  </span>			<span class="comment">// -0.01 × 150.0 = -1.5 → -2（half-away-from-zero）</span>
+<span id="L54" class="ln">    54  </span>			actual, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;-0.01&#34;), decimaltestkit.MustParse(t, &#34;150.0&#34;), 0)
+<span id="L55" class="ln">    55  </span>			require.NoError(t, err)
+<span id="L56" class="ln">    56  </span>			assert.Equal(t, int64(-2), actual)
+<span id="L57" class="ln">    57  </span>		})
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>		t.Run(&#34;金額が0なら0を返す&#34;, func(t *testing.T) {
+<span id="L60" class="ln">    60  </span>			t.Parallel()
+<span id="L61" class="ln">    61  </span>			actual, err := ApplyRateHalfUp(decimal.FromInt(0), decimaltestkit.MustParse(t, &#34;150.5&#34;), 0)
+<span id="L62" class="ln">    62  </span>			require.NoError(t, err)
+<span id="L63" class="ln">    63  </span>			assert.Equal(t, int64(0), actual)
+<span id="L64" class="ln">    64  </span>		})
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>		t.Run(&#34;最小単位2桁ならセント精度の整数を返す&#34;, func(t *testing.T) {
+<span id="L67" class="ln">    67  </span>			t.Parallel()
+<span id="L68" class="ln">    68  </span>			<span class="comment">// 100 × 1.5 = 150、×10^2 = 15000</span>
+<span id="L69" class="ln">    69  </span>			actual, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;100&#34;), decimaltestkit.MustParse(t, &#34;1.5&#34;), 2)
+<span id="L70" class="ln">    70  </span>			require.NoError(t, err)
+<span id="L71" class="ln">    71  </span>			assert.Equal(t, int64(15000), actual)
+<span id="L72" class="ln">    72  </span>		})
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>		t.Run(&#34;サブセントのレートでも正確に丸める&#34;, func(t *testing.T) {
+<span id="L75" class="ln">    75  </span>			t.Parallel()
+<span id="L76" class="ln">    76  </span>			<span class="comment">// 0.03 × 33.335 = 1.00005 → 1</span>
+<span id="L77" class="ln">    77  </span>			actual, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;0.03&#34;), decimaltestkit.MustParse(t, &#34;33.335&#34;), 0)
+<span id="L78" class="ln">    78  </span>			require.NoError(t, err)
+<span id="L79" class="ln">    79  </span>			assert.Equal(t, int64(1), actual)
+<span id="L80" class="ln">    80  </span>		})
+<span id="L81" class="ln">    81  </span>	})
 <span id="L82" class="ln">    82  </span>
-<span id="L83" class="ln">    83  </span>		t.Run(&#34;scaleが0以下ならゼロ除算でpanicする&#34;, func(t *testing.T) {
-<span id="L84" class="ln">    84  </span>			t.Parallel()
-<span id="L85" class="ln">    85  </span>			assert.Panics(t, func() { ApplyRateHalfUp(100, 1.5, 0) })
-<span id="L86" class="ln">    86  </span>		})
-<span id="L87" class="ln">    87  </span>	})
-<span id="L88" class="ln">    88  </span>}
-<span id="L89" class="ln">    89  </span>
+<span id="L83" class="ln">    83  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L84" class="ln">    84  </span>		t.Parallel()
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>		t.Run(&#34;最小単位整数が int64 を超える場合はエラーを返す&#34;, func(t *testing.T) {
+<span id="L87" class="ln">    87  </span>			t.Parallel()
+<span id="L88" class="ln">    88  </span>			_, err := ApplyRateHalfUp(decimaltestkit.MustParse(t, &#34;1e18&#34;), decimaltestkit.MustParse(t, &#34;100&#34;), 0)
+<span id="L89" class="ln">    89  </span>			require.ErrorIs(t, err, decimal.ErrOverflow)
+<span id="L90" class="ln">    90  </span>		})
+<span id="L91" class="ln">    91  </span>	})
+<span id="L92" class="ln">    92  </span>}
+<span id="L93" class="ln">    93  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/tools/money/money_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

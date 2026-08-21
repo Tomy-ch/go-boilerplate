@@ -3,8 +3,11 @@ outbox
 idempotency_keys
 user_roles
 purchase_details
+cart_items
 user_identities
+product_images
 purchases
+carts
 products
 users
 roles

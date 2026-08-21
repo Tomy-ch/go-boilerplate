@@ -69,50 +69,66 @@
 <span id="L12" class="ln">    12  </span>import (
 <span id="L13" class="ln">    13  </span>	context &#34;context&#34;
 <span id="L14" class="ln">    14  </span>	status &#34;go-boilerplate/internal/domain/product/status&#34;
-<span id="L15" class="ln">    15  </span>	reflect &#34;reflect&#34;
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
-<span id="L18" class="ln">    18  </span>)
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span><span class="comment">// MockRepository is a mock of Repository interface.</span>
-<span id="L21" class="ln">    21  </span>type MockRepository struct {
-<span id="L22" class="ln">    22  </span>	ctrl     *gomock.Controller
-<span id="L23" class="ln">    23  </span>	recorder *MockRepositoryMockRecorder
-<span id="L24" class="ln">    24  </span>	isgomock struct{}
-<span id="L25" class="ln">    25  </span>}
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span><span class="comment">// MockRepositoryMockRecorder is the mock recorder for MockRepository.</span>
-<span id="L28" class="ln">    28  </span>type MockRepositoryMockRecorder struct {
-<span id="L29" class="ln">    29  </span>	mock *MockRepository
-<span id="L30" class="ln">    30  </span>}
-<span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span><span class="comment">// NewMockRepository creates a new mock instance.</span>
-<span id="L33" class="ln">    33  </span>func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
-<span id="L34" class="ln">    34  </span>	mock := &amp;MockRepository{ctrl: ctrl}
-<span id="L35" class="ln">    35  </span>	mock.recorder = &amp;MockRepositoryMockRecorder{mock}
-<span id="L36" class="ln">    36  </span>	return mock
-<span id="L37" class="ln">    37  </span>}
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span><span class="comment">// EXPECT returns an object that allows the caller to indicate expected use.</span>
-<span id="L40" class="ln">    40  </span>func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
-<span id="L41" class="ln">    41  </span>	return m.recorder
-<span id="L42" class="ln">    42  </span>}
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span><span class="comment">// FindAll mocks base method.</span>
-<span id="L45" class="ln">    45  </span>func (m *MockRepository) FindAll(ctx context.Context) (status.Statuses, error) {
-<span id="L46" class="ln">    46  </span>	m.ctrl.T.Helper()
-<span id="L47" class="ln">    47  </span>	ret := m.ctrl.Call(m, &#34;FindAll&#34;, ctx)
-<span id="L48" class="ln">    48  </span>	ret0, _ := ret[0].(status.Statuses)
-<span id="L49" class="ln">    49  </span>	ret1, _ := ret[1].(error)
-<span id="L50" class="ln">    50  </span>	return ret0, ret1
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span><span class="comment">// FindAll indicates an expected call of FindAll.</span>
-<span id="L54" class="ln">    54  </span>func (mr *MockRepositoryMockRecorder) FindAll(ctx any) *gomock.Call {
-<span id="L55" class="ln">    55  </span>	mr.mock.ctrl.T.Helper()
-<span id="L56" class="ln">    56  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindAll&#34;, reflect.TypeOf((*MockRepository)(nil).FindAll), ctx)
-<span id="L57" class="ln">    57  </span>}
-<span id="L58" class="ln">    58  </span>
+<span id="L15" class="ln">    15  </span>	uuid &#34;go-boilerplate/pkg/uuid&#34;
+<span id="L16" class="ln">    16  </span>	reflect &#34;reflect&#34;
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
+<span id="L19" class="ln">    19  </span>)
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// MockRepository is a mock of Repository interface.</span>
+<span id="L22" class="ln">    22  </span>type MockRepository struct {
+<span id="L23" class="ln">    23  </span>	ctrl     *gomock.Controller
+<span id="L24" class="ln">    24  </span>	recorder *MockRepositoryMockRecorder
+<span id="L25" class="ln">    25  </span>	isgomock struct{}
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// MockRepositoryMockRecorder is the mock recorder for MockRepository.</span>
+<span id="L29" class="ln">    29  </span>type MockRepositoryMockRecorder struct {
+<span id="L30" class="ln">    30  </span>	mock *MockRepository
+<span id="L31" class="ln">    31  </span>}
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span><span class="comment">// NewMockRepository creates a new mock instance.</span>
+<span id="L34" class="ln">    34  </span>func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
+<span id="L35" class="ln">    35  </span>	mock := &amp;MockRepository{ctrl: ctrl}
+<span id="L36" class="ln">    36  </span>	mock.recorder = &amp;MockRepositoryMockRecorder{mock}
+<span id="L37" class="ln">    37  </span>	return mock
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// EXPECT returns an object that allows the caller to indicate expected use.</span>
+<span id="L41" class="ln">    41  </span>func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
+<span id="L42" class="ln">    42  </span>	return m.recorder
+<span id="L43" class="ln">    43  </span>}
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// FindAll mocks base method.</span>
+<span id="L46" class="ln">    46  </span>func (m *MockRepository) FindAll(ctx context.Context) (status.Statuses, error) {
+<span id="L47" class="ln">    47  </span>	m.ctrl.T.Helper()
+<span id="L48" class="ln">    48  </span>	ret := m.ctrl.Call(m, &#34;FindAll&#34;, ctx)
+<span id="L49" class="ln">    49  </span>	ret0, _ := ret[0].(status.Statuses)
+<span id="L50" class="ln">    50  </span>	ret1, _ := ret[1].(error)
+<span id="L51" class="ln">    51  </span>	return ret0, ret1
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// FindAll indicates an expected call of FindAll.</span>
+<span id="L55" class="ln">    55  </span>func (mr *MockRepositoryMockRecorder) FindAll(ctx any) *gomock.Call {
+<span id="L56" class="ln">    56  </span>	mr.mock.ctrl.T.Helper()
+<span id="L57" class="ln">    57  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindAll&#34;, reflect.TypeOf((*MockRepository)(nil).FindAll), ctx)
+<span id="L58" class="ln">    58  </span>}
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span><span class="comment">// FindByID mocks base method.</span>
+<span id="L61" class="ln">    61  </span>func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*status.Status, error) {
+<span id="L62" class="ln">    62  </span>	m.ctrl.T.Helper()
+<span id="L63" class="ln">    63  </span>	ret := m.ctrl.Call(m, &#34;FindByID&#34;, ctx, id)
+<span id="L64" class="ln">    64  </span>	ret0, _ := ret[0].(*status.Status)
+<span id="L65" class="ln">    65  </span>	ret1, _ := ret[1].(error)
+<span id="L66" class="ln">    66  </span>	return ret0, ret1
+<span id="L67" class="ln">    67  </span>}
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span><span class="comment">// FindByID indicates an expected call of FindByID.</span>
+<span id="L70" class="ln">    70  </span>func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call {
+<span id="L71" class="ln">    71  </span>	mr.mock.ctrl.T.Helper()
+<span id="L72" class="ln">    72  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;FindByID&#34;, reflect.TypeOf((*MockRepository)(nil).FindByID), ctx, id)
+<span id="L73" class="ln">    73  </span>}
+<span id="L74" class="ln">    74  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/domain/product/status/mock/mock_status_repository.go.gen.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

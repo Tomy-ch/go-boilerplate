@@ -86,7 +86,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package user は、ユーザードメインを定義します。User エンティティ（論理削除・パスワード変更・プロフィール更新）・RawPassword 値オブジェクト・FeedCursor 値オブジェクト・Repository インターフェースを提供します。
+				<p>Package user は、ユーザードメインを定義します。User エンティティ（論理削除・プロフィール更新）・FeedCursor 値オブジェクト・Repository インターフェースを提供します。
 
 				
 			</p></div>
@@ -109,6 +109,11 @@
 				<dd><a href="#pkg-variables">Variables</a></dd>
 			
 			
+			
+				
+				<dd><a href="#Attributes">type Attributes</a></dd>
+				
+				
 			
 				
 				<dd><a href="#Email">type Email</a></dd>
@@ -136,6 +141,11 @@
 				
 			
 				
+				<dd><a href="#LockRepository">type LockRepository</a></dd>
+				
+				
+			
+				
 				<dd><a href="#PostalCode">type PostalCode</a></dd>
 				
 					
@@ -147,20 +157,8 @@
 				
 			
 				
-				<dd><a href="#RawPassword">type RawPassword</a></dd>
+				<dd><a href="#Profile">type Profile</a></dd>
 				
-					
-					<dd>    <a href="#NewRawPassword">func NewRawPassword(v string) (RawPassword, error)</a></dd>
-				
-				
-					
-					<dd>    <a href="#RawPassword.GoString">func (p RawPassword) GoString() string</a></dd>
-				
-					
-					<dd>    <a href="#RawPassword.String">func (p RawPassword) String() string</a></dd>
-				
-					
-					<dd>    <a href="#RawPassword.Value">func (p RawPassword) Value() string</a></dd>
 				
 			
 				
@@ -210,14 +208,11 @@
 				<dd><a href="#User">type User</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(id uuid.UUID, firstName string, lastName string, passwordHash string, email string, phone string, prefectureID uuid.UUID, city string, street string, building *string, postalCode string, createdAt time.Time, updatedAt time.Time, deletedAt *time.Time) (*User, error)</a></dd>
+					<dd>    <a href="#New">func New(id uuid.UUID, attrs Attributes) (*User, error)</a></dd>
 				
 				
 					
 					<dd>    <a href="#User.Building">func (u *User) Building() *string</a></dd>
-				
-					
-					<dd>    <a href="#User.ChangePassword">func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error</a></dd>
 				
 					
 					<dd>    <a href="#User.City">func (u *User) City() string</a></dd>
@@ -235,19 +230,16 @@
 					<dd>    <a href="#User.FirstName">func (u *User) FirstName() string</a></dd>
 				
 					
-					<dd>    <a href="#User.FullName">func (u *User) FullName() string</a></dd>
+					<dd>    <a href="#User.ID">func (u *User) ID() uuid.UUID</a></dd>
 				
 					
-					<dd>    <a href="#User.ID">func (u *User) ID() uuid.UUID</a></dd>
+					<dd>    <a href="#User.IsActive">func (u *User) IsActive() bool</a></dd>
 				
 					
 					<dd>    <a href="#User.LastName">func (u *User) LastName() string</a></dd>
 				
 					
 					<dd>    <a href="#User.MarkAsDeleted">func (u *User) MarkAsDeleted(deletedAt time.Time) error</a></dd>
-				
-					
-					<dd>    <a href="#User.PasswordHash">func (u *User) PasswordHash() string</a></dd>
 				
 					
 					<dd>    <a href="#User.Phone">func (u *User) Phone() string</a></dd>
@@ -262,7 +254,7 @@
 					<dd>    <a href="#User.Street">func (u *User) Street() string</a></dd>
 				
 					
-					<dd>    <a href="#User.UpdateProfile">func (u *User) UpdateProfile(firstName, lastName, email, phone string, prefectureID uuid.UUID, city, street string, building *string, postalCode string, updatedAt time.Time) error</a></dd>
+					<dd>    <a href="#User.UpdateProfile">func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error</a></dd>
 				
 					
 					<dd>    <a href="#User.UpdatedAt">func (u *User) UpdatedAt() time.Time</a></dd>
@@ -290,9 +282,9 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/domain/user/error.go.html">error.go</a>
 			
-				<a href="../../../../src/go-boilerplate/internal/domain/user/postal_code.go.html">postal_code.go</a>
+				<a href="../../../../src/go-boilerplate/internal/domain/user/lock_repository.go.html">lock_repository.go</a>
 			
-				<a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html">raw_password.go</a>
+				<a href="../../../../src/go-boilerplate/internal/domain/user/postal_code.go.html">postal_code.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html">role.go</a>
 			
@@ -314,15 +306,6 @@
 
 		
 			<h2 id="pkg-constants">Constants</h2>
-			
-				
-				<pre>const (
-
-    <span class="comment">// MaxRawPasswordLength は、平文パスワードの最大文字数です。</span>
-    <span id="MaxRawPasswordLength">MaxRawPasswordLength</span> = 64
-    <span class="comment">// MinRawPasswordLength は、平文パスワードの最小文字数です。</span>
-    <span id="MinRawPasswordLength">MinRawPasswordLength</span> = 8
-)</pre>
 			
 				<p>プロフィール系フィールドの識別子。検証失敗時に apperror.Meta の Details として
 レスポンスへ公開されるため、API リクエストのプロパティ名と一致させています。
@@ -363,8 +346,6 @@
     <span id="ErrInvalidFirstName">ErrInvalidFirstName</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;first name failed&#34;)
     <span class="comment">// ErrInvalidLastName は、姓の検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidLastName">ErrInvalidLastName</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;last name failed&#34;)
-    <span class="comment">// ErrInvalidPasswordHash は、パスワードハッシュの検証に失敗した場合のエラーです。</span>
-    <span id="ErrInvalidPasswordHash">ErrInvalidPasswordHash</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;password hash failed&#34;)
     <span class="comment">// ErrInvalidEmail は、メールアドレスの検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidEmail">ErrInvalidEmail</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;email failed&#34;)
     <span class="comment">// ErrInvalidPhone は、電話番号の検証に失敗した場合のエラーです。</span>
@@ -391,20 +372,43 @@
     <span class="comment">// ErrInvalidDeletedAt は、削除日時の検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidDeletedAt">ErrInvalidDeletedAt</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;deleted at failed&#34;)
 
-    <span class="comment">// ErrInvalidRawPassword は、RawPassword 値オブジェクト固有の検証エラーです。</span>
-    <span class="comment">// ErrInvalidID 等の User フィールド検証エラーとは独立した系統であり、errors.Is(err, ErrInvalidID) 等では一致しません。</span>
-    <span id="ErrInvalidRawPassword">ErrInvalidRawPassword</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrValidation">ErrValidation</a>, &#34;invalid raw password&#34;)
-
     <span class="comment">// ErrAlreadyDeleted は、既に論理削除済みのユーザーを再度削除しようとした場合のエラーです。</span>
     <span id="ErrAlreadyDeleted">ErrAlreadyDeleted</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrConflict">ErrConflict</a>, &#34;user is already deleted&#34;)
-
-    <span class="comment">// ErrCurrentPasswordMismatch は、パスワード変更時に現在のパスワードが一致しない場合のエラーです。</span>
-    <span class="comment">// 認証失敗・権限不足ではなく意味的な入力検証失敗に該当するため、ErrValidation を wraps します。</span>
-    <span id="ErrCurrentPasswordMismatch">ErrCurrentPasswordMismatch</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrValidation">ErrValidation</a>, &#34;current password does not match&#34;)
 )</pre>
 			
 		
 		
+		
+			
+			
+			<h2 id="Attributes">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=1561:1661#L40">Attributes</a>
+				<a class="permalink" href="#Attributes">¶</a>
+				
+				
+			</h2>
+			<p>Attributes は、ユーザーの属性一式です。Profile に監査時刻を加えた、生成時に必要な集合を表します。
+DeletedAt は未削除を nil で表します。
+
+			</p><pre>type Attributes struct {
+    <a href="#Profile">Profile</a>
+
+<span id="Attributes.CreatedAt"></span>    CreatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="Attributes.UpdatedAt"></span>    UpdatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="Attributes.DeletedAt"></span>    DeletedAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
 		
 			
 			
@@ -460,13 +464,13 @@
 		
 			
 			
-			</p><h2 id="FeedCursor">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=334:402#L1">FeedCursor</a>
+			</p><h2 id="FeedCursor">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=314:382#L1">FeedCursor</a>
 				<a class="permalink" href="#FeedCursor">¶</a>
 				
 				
 			</h2>
 			<p>FeedCursor は、ユーザーフィード（keyset ページネーション）の境界キーを表す値オブジェクトです。
-直前ページ末尾行の作成日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。
+直前ページ末尾の作成日時と ID を保持し、次ページ取得時の境界として用います。
 
 			</p><pre>type FeedCursor struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -483,7 +487,7 @@
 
 			
 				
-				<h3 id="NewFeedCursor">func <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=486:550#L7">NewFeedCursor</a>
+				<h3 id="NewFeedCursor">func <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=466:530#L7">NewFeedCursor</a>
 					<a class="permalink" href="#NewFeedCursor">¶</a>
 					
 					
@@ -497,7 +501,7 @@
 
 			
 				
-				</p><h3 id="FeedCursor.CreatedAt">func (FeedCursor) <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=670:711#L12">CreatedAt</a>
+				</p><h3 id="FeedCursor.CreatedAt">func (FeedCursor) <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=650:691#L12">CreatedAt</a>
 					<a class="permalink" href="#FeedCursor.CreatedAt">¶</a>
 					
 					
@@ -510,7 +514,7 @@
 				
 			
 				
-				</p><h3 id="FeedCursor.ID">func (FeedCursor) <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=798:832#L15">ID</a>
+				</p><h3 id="FeedCursor.ID">func (FeedCursor) <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=778:812#L15">ID</a>
 					<a class="permalink" href="#FeedCursor.ID">¶</a>
 					
 					
@@ -525,7 +529,41 @@
 		
 			
 			
-			</p><h2 id="PostalCode">type <a href="../../../../src/go-boilerplate/internal/domain/user/postal_code.go.html?s=438:478#L4">PostalCode</a>
+			</p><h2 id="LockRepository">type <a href="../../../../src/go-boilerplate/internal/domain/user/lock_repository.go.html?s=467:1396#L2">LockRepository</a>
+				<a class="permalink" href="#LockRepository">¶</a>
+				
+				
+			</h2>
+			<p>LockRepository は、ユーザーの悲観ロックを伴う取得操作を定義するドメインリポジトリインターフェースです。
+退会と、退会済みユーザーを拒む他集約の操作とを直列化する用途に限り、Repository から分けて定義します。
+
+			</p><pre>type LockRepository interface {
+    <span class="comment">// LockByID は、未削除の単一ユーザーを悲観ロック（排他）して取得します。退会は、このロックを</span>
+    <span class="comment">// 退会可否の判定より前に取ることで、LockShareByID の共有ロックと直列化します。</span>
+    <span class="comment">// 論理削除済み・不存在はいずれも NotFound を返します。</span>
+    LockByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#User">User</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// LockShareByID は、単一ユーザーを悲観ロック（共有）して取得します。共有ロック同士は両立するため</span>
+    <span class="comment">// 同一ユーザーへの並行取得は直列化されず、LockByID の排他ロックとだけ衝突します。</span>
+    <span class="comment">// 在籍しているかどうかは判定せず、退会済みのユーザーもそのまま返します（判定は IsActive の責務）。</span>
+    <span class="comment">// 不存在は NotFound を返します。</span>
+    LockShareByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#User">User</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PostalCode">type <a href="../../../../src/go-boilerplate/internal/domain/user/postal_code.go.html?s=438:478#L4">PostalCode</a>
 				<a class="permalink" href="#PostalCode">¶</a>
 				
 				
@@ -577,15 +615,24 @@
 		
 			
 			
-			</p><h2 id="RawPassword">type <a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html?s=199:240#L1">RawPassword</a>
-				<a class="permalink" href="#RawPassword">¶</a>
+			</p><h2 id="Profile">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=1151:1367#L26">Profile</a>
+				<a class="permalink" href="#Profile">¶</a>
 				
 				
 			</h2>
-			<p>RawPassword は、検証済みの平文パスワードを保持する値オブジェクトです。
+			<p>Profile は、ユーザーのプロフィール属性一式です。New と UpdateProfile が同じ集合を受け取ります。
+Building は未設定を nil で表し、Email と PostalCode は値オブジェクトへの変換時に検証します。
 
-			</p><pre>type RawPassword struct {
-    <span class="comment">// contains filtered or unexported fields</span>
+			</p><pre>type Profile struct {
+<span id="Profile.FirstName"></span>    FirstName    <a href="../../../../builtin/#string">string</a>
+<span id="Profile.LastName"></span>    LastName     <a href="../../../../builtin/#string">string</a>
+<span id="Profile.Email"></span>    Email        <a href="../../../../builtin/#string">string</a>
+<span id="Profile.Phone"></span>    Phone        <a href="../../../../builtin/#string">string</a>
+<span id="Profile.PrefectureID"></span>    PrefectureID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="Profile.City"></span>    City         <a href="../../../../builtin/#string">string</a>
+<span id="Profile.Street"></span>    Street       <a href="../../../../builtin/#string">string</a>
+<span id="Profile.Building"></span>    Building     *<a href="../../../../builtin/#string">string</a>
+<span id="Profile.PostalCode"></span>    PostalCode   <a href="../../../../builtin/#string">string</a>
 }
 </pre>
 
@@ -598,63 +645,12 @@
 			
 
 			
-				
-				<h3 id="NewRawPassword">func <a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html?s=358:408#L6">NewRawPassword</a>
-					<a class="permalink" href="#NewRawPassword">¶</a>
-					
-					
-				</h3>
-				<pre>func NewRawPassword(v <a href="../../../../builtin/#string">string</a>) (<a href="#RawPassword">RawPassword</a>, <a href="../../../../builtin/#error">error</a>)</pre>
-				<p>NewRawPassword は、与えられた文字列を検証し、有効な場合に RawPassword を構築します。
 
-				
-				
-			
-
-			
-				
-				</p><h3 id="RawPassword.GoString">func (RawPassword) <a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html?s=1136:1174#L25">GoString</a>
-					<a class="permalink" href="#RawPassword.GoString">¶</a>
-					
-					
-				</h3>
-				<pre>func (p <a href="#RawPassword">RawPassword</a>) GoString() <a href="../../../../builtin/#string">string</a></pre>
-				<p>GoString は、%#v 経由でも平文パスワードが露出しないよう秘匿した文字列を返します。
-
-				
-				
-				
-			
-				
-				</p><h3 id="RawPassword.String">func (RawPassword) <a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html?s=955:991#L22">String</a>
-					<a class="permalink" href="#RawPassword.String">¶</a>
-					
-					
-				</h3>
-				<pre>func (p <a href="#RawPassword">RawPassword</a>) String() <a href="../../../../builtin/#string">string</a></pre>
-				<p>String は、平文パスワードが fmt 経由で露出しないよう秘匿した文字列を返します。
-
-				
-				
-				
-			
-				
-				</p><h3 id="RawPassword.Value">func (RawPassword) <a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html?s=783:818#L17">Value</a>
-					<a class="permalink" href="#RawPassword.Value">¶</a>
-					
-					
-				</h3>
-				<pre>func (p <a href="#RawPassword">RawPassword</a>) Value() <a href="../../../../builtin/#string">string</a></pre>
-				<p>Value は、保持している平文パスワード文字列を返します。
-
-				
-				
-				
 			
 		
 			
 			
-			</p><h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_repository.go.html?s=292:2538#L1">Repository</a>
+			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_repository.go.html?s=300:3429#L2">Repository</a>
 				<a class="permalink" href="#Repository">¶</a>
 				
 				
@@ -665,8 +661,8 @@
     <span class="comment">// FindByActive は、ユーザーの情報を、ページング付きで取得します。</span>
     <span class="comment">// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。</span>
     FindByActive(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>, limit, offset <a href="../../../../builtin/#int32">int32</a>) (<a href="#Users">Users</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。</span>
-    <span class="comment">// after=nil の場合は先頭ページを返し、それ以外は after が表す境界より後ろ（より過去）の行を返します。</span>
+    <span class="comment">// FindFeed は、未削除ユーザーを作成日時の降順（同時刻は ID 降順）の安定順で keyset ページネーション取得します。</span>
+    <span class="comment">// after=nil の場合は先頭ページを返し、それ以外は after が表す境界より後ろ（より過去）を返します。</span>
     FindFeed(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, after *<a href="#FeedCursor">FeedCursor</a>, limit <a href="../../../../builtin/#int32">int32</a>) (<a href="#Users">Users</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// SearchByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得します。</span>
     <span class="comment">// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。keywords が空の場合は全ユーザーを対象とします。</span>
@@ -675,6 +671,7 @@
     <span class="comment">// active / keywords の意味は SearchByKeyword と同じです。</span>
     CountByKeyword(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, keywords []<a href="../../../../builtin/#string">string</a>, active *<a href="../../../../builtin/#bool">bool</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound を返します。</span>
+    <span class="comment">// 悲観ロックを伴う取得は LockRepository が持ちます。</span>
     FindByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#User">User</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// Create は、ユーザーを作成します。</span>
     Create(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, user *<a href="#User">User</a>) <a href="../../../../builtin/#error">error</a>
@@ -684,6 +681,13 @@
     <span class="comment">// CountByActive は、ユーザーの総件数を返します。</span>
     <span class="comment">// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。</span>
     CountByActive(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindDeletedBefore は、cutoff より前に論理削除されたユーザーの ID を、ID の昇順で最大 limit 件返します。</span>
+    <span class="comment">// afterID=nil の場合は先頭から、それ以外は afterID より後ろを返します。</span>
+    FindDeletedBefore(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, cutoff <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>, afterID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, limit <a href="../../../../builtin/#int32">int32</a>) ([]<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// PurgeByIDs は、指定した ID のユーザーを従属データごと物理削除し、削除したユーザーの件数を返します。</span>
+    <span class="comment">// 論理削除されていないユーザーは従属データを含めて削除されないため、返る件数が ids の件数を下回ることがあります。</span>
+    <span class="comment">// ids が空の場合は何も削除せず 0 を返します。</span>
+    PurgeByIDs(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, ids []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -700,7 +704,7 @@
 		
 			
 			
-			<h2 id="Role">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=622:686#L15">Role</a>
+			<h2 id="Role">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=715:779#L16">Role</a>
 				<a class="permalink" href="#Role">¶</a>
 				
 				
@@ -722,7 +726,7 @@
 
 			
 				
-				<h3 id="NewRole">func <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1324:1394#L44">NewRole</a>
+				<h3 id="NewRole">func <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1417:1487#L45">NewRole</a>
 					<a class="permalink" href="#NewRole">¶</a>
 					
 					
@@ -741,7 +745,7 @@
 
 			
 				
-				</p><h3 id="Role.Code">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=2062:2092#L74">Code</a>
+				</p><h3 id="Role.Code">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=2155:2185#L75">Code</a>
 					<a class="permalink" href="#Role.Code">¶</a>
 					
 					
@@ -754,7 +758,7 @@
 				
 			
 				
-				</p><h3 id="Role.ID">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1871:1900#L68">ID</a>
+				</p><h3 id="Role.ID">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1964:1993#L69">ID</a>
 					<a class="permalink" href="#Role.ID">¶</a>
 					
 					
@@ -767,7 +771,7 @@
 				
 			
 				
-				</p><h3 id="Role.IsAdmin">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=2178:2207#L77">IsAdmin</a>
+				</p><h3 id="Role.IsAdmin">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=2271:2300#L78">IsAdmin</a>
 					<a class="permalink" href="#Role.IsAdmin">¶</a>
 					
 					
@@ -780,7 +784,7 @@
 				
 			
 				
-				</p><h3 id="Role.Name">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1963:1991#L71">Name</a>
+				</p><h3 id="Role.Name">func (*Role) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=2056:2084#L72">Name</a>
 					<a class="permalink" href="#Role.Name">¶</a>
 					
 					
@@ -795,12 +799,13 @@
 		
 			
 			
-			</p><h2 id="RoleCode">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=409:426#L9">RoleCode</a>
+			</p><h2 id="RoleCode">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=502:519#L10">RoleCode</a>
 				<a class="permalink" href="#RoleCode">¶</a>
 				
 				
 			</h2>
-			<p>RoleCode は、ロールを識別するコード値です（roles.code に対応）。
+			<p>RoleCode は、ロールを識別するコード値です。永続化されている値であり、既知のコード以外は
+NewRole が ErrInvalidRoleCode で弾きます。
 
 			</p><pre>type RoleCode <a href="../../../../builtin/#int">int</a></pre>
 
@@ -852,7 +857,7 @@
 		
 			
 			
-			<h2 id="Roles">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=494:512#L12">Roles</a>
+			<h2 id="Roles">type <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=587:605#L13">Roles</a>
 				<a class="permalink" href="#Roles">¶</a>
 				
 				
@@ -873,7 +878,7 @@
 
 			
 				
-				<h3 id="Roles.HasAdmin">func (Roles) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=965:996#L32">HasAdmin</a>
+				<h3 id="Roles.HasAdmin">func (Roles) <a href="../../../../src/go-boilerplate/internal/domain/user/role.go.html?s=1058:1089#L33">HasAdmin</a>
 					<a class="permalink" href="#Roles.HasAdmin">¶</a>
 					
 					
@@ -888,7 +893,7 @@
 		
 			
 			
-			</p><h2 id="User">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=637:971#L8">User</a>
+			</p><h2 id="User">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=577:890#L8">User</a>
 				<a class="permalink" href="#User">¶</a>
 				
 				
@@ -910,29 +915,14 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=1268:1559#L27">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=1958:2013#L50">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
 				</h3>
-				<pre>func New(
-    id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>,
-    firstName <a href="../../../../builtin/#string">string</a>,
-    lastName <a href="../../../../builtin/#string">string</a>,
-    passwordHash <a href="../../../../builtin/#string">string</a>,
-    email <a href="../../../../builtin/#string">string</a>,
-    phone <a href="../../../../builtin/#string">string</a>,
-    prefectureID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>,
-    city <a href="../../../../builtin/#string">string</a>,
-    street <a href="../../../../builtin/#string">string</a>,
-    building *<a href="../../../../builtin/#string">string</a>,
-    postalCode <a href="../../../../builtin/#string">string</a>,
-    createdAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>,
-    updatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>,
-    deletedAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>,
-) (*<a href="#User">User</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<pre>func New(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#Attributes">Attributes</a>) (*<a href="#User">User</a>, <a href="../../../../builtin/#error">error</a>)</pre>
 				<p>New は、ユーザーエンティティの検証と生成を行います。
-updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt および updatedAt 以降である必要があり、違反時はそれぞれ ErrInvalidUpdatedAt / ErrInvalidDeletedAt を返します。
+UpdatedAt は CreatedAt 以降、DeletedAt（非 nil 時）は CreatedAt および UpdatedAt 以降である必要があり、違反時はそれぞれ ErrInvalidUpdatedAt / ErrInvalidDeletedAt を返します。
 
 				
 				
@@ -940,7 +930,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 
 			
 				
-				</p><h3 id="User.Building">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3703:3736#L112">Building</a>
+				</p><h3 id="User.Building">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3924:3957#L112">Building</a>
 					<a class="permalink" href="#User.Building">¶</a>
 					
 					
@@ -953,20 +943,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.ChangePassword">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=5797:5874#L164">ChangePassword</a>
-					<a class="permalink" href="#User.ChangePassword">¶</a>
-					
-					
-				</h3>
-				<pre>func (u *<a href="#User">User</a>) ChangePassword(passwordHash <a href="../../../../builtin/#string">string</a>, updatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#error">error</a></pre>
-				<p>ChangePassword は、パスワードハッシュと更新日時を置き換えます。論理削除済みユーザーには ErrAlreadyDeleted を返します。updatedAt は現在値以降（単調非減少）である必要があり、違反時は ErrInvalidUpdatedAt を返します。
-
-				
-				
-				
-			
-				
-				</p><h3 id="User.City">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3486:3514#L106">City</a>
+				</p><h3 id="User.City">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3707:3735#L106">City</a>
 					<a class="permalink" href="#User.City">¶</a>
 					
 					
@@ -979,7 +956,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.CreatedAt">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4106:4142#L121">CreatedAt</a>
+				</p><h3 id="User.CreatedAt">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4327:4363#L121">CreatedAt</a>
 					<a class="permalink" href="#User.CreatedAt">¶</a>
 					
 					
@@ -992,7 +969,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.DeletedAt">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3969:4006#L118">DeletedAt</a>
+				</p><h3 id="User.DeletedAt">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4190:4227#L118">DeletedAt</a>
 					<a class="permalink" href="#User.DeletedAt">¶</a>
 					
 					
@@ -1005,7 +982,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.Email">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3117:3146#L97">Email</a>
+				</p><h3 id="User.Email">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3338:3367#L97">Email</a>
 					<a class="permalink" href="#User.Email">¶</a>
 					
 					
@@ -1018,7 +995,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.FirstName">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=2728:2761#L88">FirstName</a>
+				</p><h3 id="User.FirstName">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3096:3129#L91">FirstName</a>
 					<a class="permalink" href="#User.FirstName">¶</a>
 					
 					
@@ -1031,20 +1008,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.FullName">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4360:4392#L127">FullName</a>
-					<a class="permalink" href="#User.FullName">¶</a>
-					
-					
-				</h3>
-				<pre>func (u *<a href="#User">User</a>) FullName() <a href="../../../../builtin/#string">string</a></pre>
-				<p>FullName は、ユーザーのフルネームを返します。
-
-				
-				
-				
-			
-				
-				</p><h3 id="User.ID">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=2622:2651#L85">ID</a>
+				</p><h3 id="User.ID">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=2990:3019#L88">ID</a>
 					<a class="permalink" href="#User.ID">¶</a>
 					
 					
@@ -1057,7 +1021,22 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.LastName">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=2844:2876#L91">LastName</a>
+				</p><h3 id="User.IsActive">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4802:4832#L129">IsActive</a>
+					<a class="permalink" href="#User.IsActive">¶</a>
+					
+					
+				</h3>
+				<pre>func (u *<a href="#User">User</a>) IsActive() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsActive は、ユーザーが在籍しているか（退会していないか）を返します。
+「在籍している」という業務上の語が指す条件はこの述語が定義であり、永続化層の絞り込み条件が
+定義になることはありません。
+
+				
+				
+				
+			
+				
+				</p><h3 id="User.LastName">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3212:3244#L94">LastName</a>
 					<a class="permalink" href="#User.LastName">¶</a>
 					
 					
@@ -1070,7 +1049,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.MarkAsDeleted">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=6412:6467#L181">MarkAsDeleted</a>
+				</p><h3 id="User.MarkAsDeleted">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=6014:6069#L159">MarkAsDeleted</a>
 					<a class="permalink" href="#User.MarkAsDeleted">¶</a>
 					
 					
@@ -1083,20 +1062,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.PasswordHash">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=2983:3019#L94">PasswordHash</a>
-					<a class="permalink" href="#User.PasswordHash">¶</a>
-					
-					
-				</h3>
-				<pre>func (u *<a href="#User">User</a>) PasswordHash() <a href="../../../../builtin/#string">string</a></pre>
-				<p>PasswordHash は、ユーザーのパスワードハッシュを返します。
-
-				
-				
-				
-			
-				
-				</p><h3 id="User.Phone">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3236:3265#L100">Phone</a>
+				</p><h3 id="User.Phone">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3457:3486#L100">Phone</a>
 					<a class="permalink" href="#User.Phone">¶</a>
 					
 					
@@ -1109,7 +1075,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.PostalCode">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3836:3870#L115">PostalCode</a>
+				</p><h3 id="User.PostalCode">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4057:4091#L115">PostalCode</a>
 					<a class="permalink" href="#User.PostalCode">¶</a>
 					
 					
@@ -1122,7 +1088,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.PrefectureID">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3356:3395#L103">PrefectureID</a>
+				</p><h3 id="User.PrefectureID">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3577:3616#L103">PrefectureID</a>
 					<a class="permalink" href="#User.PrefectureID">¶</a>
 					
 					
@@ -1135,7 +1101,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.Street">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3590:3620#L109">Street</a>
+				</p><h3 id="User.Street">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=3811:3841#L109">Street</a>
 					<a class="permalink" href="#User.Street">¶</a>
 					
 					
@@ -1148,28 +1114,21 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 				
 			
 				
-				</p><h3 id="User.UpdateProfile">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4760:4948#L131">UpdateProfile</a>
+				</p><h3 id="User.UpdateProfile">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=5149:5221#L133">UpdateProfile</a>
 					<a class="permalink" href="#User.UpdateProfile">¶</a>
 					
 					
 				</h3>
-				<pre>func (u *<a href="#User">User</a>) UpdateProfile(
-    firstName, lastName, email, phone <a href="../../../../builtin/#string">string</a>,
-    prefectureID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>,
-    city, street <a href="../../../../builtin/#string">string</a>,
-    building *<a href="../../../../builtin/#string">string</a>,
-    postalCode <a href="../../../../builtin/#string">string</a>,
-    updatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>,
-) <a href="../../../../builtin/#error">error</a></pre>
+				<pre>func (u *<a href="#User">User</a>) UpdateProfile(profile <a href="#Profile">Profile</a>, updatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#error">error</a></pre>
 				<p>UpdateProfile は、プロフィール（氏名・連絡先・住所・都道府県ID）と更新日時を一括で置き換えます。
-パスワードは変更しません。各フィールドは New と同じ不変条件で検証します。論理削除済みユーザーには ErrAlreadyDeleted を返します。
+各フィールドは New と同じ不変条件で検証します。論理削除済みユーザーには ErrAlreadyDeleted を返します。
 
 				
 				
 				
 			
 				
-				</p><h3 id="User.UpdatedAt">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4232:4268#L124">UpdatedAt</a>
+				</p><h3 id="User.UpdatedAt">func (*User) <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=4453:4489#L124">UpdatedAt</a>
 					<a class="permalink" href="#User.UpdatedAt">¶</a>
 					
 					
@@ -1184,7 +1143,7 @@ updatedAt は createdAt 以降、deletedAt（非 nil 時）は createdAt およ�
 		
 			
 			
-			</p><h2 id="Users">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=542:560#L5">Users</a>
+			</p><h2 id="Users">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html?s=482:500#L5">Users</a>
 				<a class="permalink" href="#Users">¶</a>
 				
 				

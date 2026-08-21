@@ -106,10 +106,16 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			
 			
 				
+				<dd><a href="#DatePtr">func DatePtr(p *openapi_types.Date) *time.Time</a></dd>
+			
+				
 				<dd><a href="#Email">func Email(e openapi_types.Email) string</a></dd>
 			
 				
 				<dd><a href="#EmailPtr">func EmailPtr(e *openapi_types.Email) *string</a></dd>
+			
+				
+				<dd><a href="#Int16sPtr">func Int16sPtr(p *[]int32) ([]int16, error)</a></dd>
 			
 				
 				<dd><a href="#UUID">func UUID(p openapi_types.UUID) uuid.UUID</a></dd>
@@ -129,7 +135,11 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../src/go-boilerplate/internal/controller/conv/date.go.html">date.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/controller/conv/email.go.html">email.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/controller/conv/int16.go.html">int16.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/controller/conv/uuid.go.html">uuid.go</a>
 			
@@ -146,7 +156,23 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 		
 			
 			
-			<h2 id="Email">func <a href="../../../../src/go-boilerplate/internal/controller/conv/email.go.html?s=154:194#L1">Email</a>
+			<h2 id="DatePtr">func <a href="../../../../src/go-boilerplate/internal/controller/conv/date.go.html?s=393:439#L2">DatePtr</a>
+				<a class="permalink" href="#DatePtr">¶</a>
+				
+				
+			</h2>
+			<pre>func DatePtr(p *<a href="../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../github.com/oapi-codegen/runtime/types/#Date">Date</a>) *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+			<p>DatePtr は、任意指定の日付クエリパラメータを *time.Time へ変換します。
+nil の場合はそのまま nil を返します。openapi_types.Date は暦日のみを表す検証済みの値型で、
+時刻成分は持たないため、変換は無条件に成功します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="Email">func <a href="../../../../src/go-boilerplate/internal/controller/conv/email.go.html?s=154:194#L1">Email</a>
 				<a class="permalink" href="#Email">¶</a>
 				
 				
@@ -167,6 +193,22 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			</h2>
 			<pre>func EmailPtr(e *<a href="../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../github.com/oapi-codegen/runtime/types/#Email">Email</a>) *<a href="../../../../builtin/#string">string</a></pre>
 			<p>EmailPtr は、任意の OpenAPI 生成 Email を文字列ポインタへ変換します（nil は nil を返す）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="Int16sPtr">func <a href="../../../../src/go-boilerplate/internal/controller/conv/int16.go.html?s=486:529#L1">Int16sPtr</a>
+				<a class="permalink" href="#Int16sPtr">¶</a>
+				
+				
+			</h2>
+			<pre>func Int16sPtr(p *[]<a href="../../../../builtin/#int32">int32</a>) ([]<a href="../../../../builtin/#int16">int16</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>Int16sPtr は、任意指定の int32 配列クエリパラメータを int16 のスライスへ変換します。
+nil と空配列はいずれも「絞り込みなし」を表す nil を返します。要素が int16 の範囲を外れる場合はエラーを返します。
+変換先の DB 列は SMALLINT であるため、範囲外は切り捨てずエラーとして拒否します。
 
 			
 			
