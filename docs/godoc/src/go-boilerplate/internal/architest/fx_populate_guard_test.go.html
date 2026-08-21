@@ -1,0 +1,1092 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>architest - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../src/go-boilerplate/internal/architest">architest</a>/<span class="text-muted">fx_populate_guard_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/internal/architest">go-boilerplate/internal/architest</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package architest
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;fmt&#34;
+<span id="L5" class="ln">     5  </span>	&#34;io/fs&#34;
+<span id="L6" class="ln">     6  </span>	&#34;path/filepath&#34;
+<span id="L7" class="ln">     7  </span>	&#34;regexp&#34;
+<span id="L8" class="ln">     8  </span>	&#34;sort&#34;
+<span id="L9" class="ln">     9  </span>	&#34;strings&#34;
+<span id="L10" class="ln">    10  </span>	&#34;testing&#34;
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	pkgfs &#34;go-boilerplate/pkg/fs&#34;
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L15" class="ln">    15  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>const (
+<span id="L19" class="ln">    19  </span>	fxPopulateCall = &#34;fx.Populate(&#34;
+<span id="L20" class="ln">    20  </span>	fxNewCall      = &#34;fx.New(&#34;
+<span id="L21" class="ln">    21  </span>)
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span>var (
+<span id="L24" class="ln">    24  </span>	<span class="comment">// fxNewAssignRe は、fx.New の戻り値を受ける変数名（`app := fx.New(` / `app = fx.New(`）を取り出します。</span>
+<span id="L25" class="ln">    25  </span>	<span class="comment">// ガードの受信者をこの変数に限定するため、構築とは無関係の `.Err()` をガードと誤認しません。</span>
+<span id="L26" class="ln">    26  </span>	fxNewAssignRe = regexp.MustCompile(`(\w+)\s*:?=\s*fx\.New\(`)
+<span id="L27" class="ln">    27  </span>	<span class="comment">// closureStartRe は、関数リテラルがブロックを開く行にマッチします。</span>
+<span id="L28" class="ln">    28  </span>	<span class="comment">// gofmt は開き波括弧を行末に置くため、行末 `{` を条件にできます。</span>
+<span id="L29" class="ln">    29  </span>	closureStartRe = regexp.MustCompile(`func\s*\(.*\{$`)
+<span id="L30" class="ln">    30  </span>	<span class="comment">// identifierRe は、`&amp;x` の x が Go の識別子ちょうどであることを検査します。</span>
+<span id="L31" class="ln">    31  </span>	identifierRe = regexp.MustCompile(`^[A-Za-z_]\w*$`)
+<span id="L32" class="ln">    32  </span>)
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span><span class="comment">// stripState は、raw string とブロックコメントが行をまたぐため、走査位置の文脈を持ち越します。</span>
+<span id="L35" class="ln">    35  </span><span class="comment">// 文字列リテラル（`&#34;`）は行をまたがないので、行頭ごとに inQuote を落とします。</span>
+<span id="L36" class="ln">    36  </span>type stripState struct {
+<span id="L37" class="ln">    37  </span>	inRaw   bool
+<span id="L38" class="ln">    38  </span>	inBlock bool
+<span id="L39" class="ln">    39  </span>	inQuote bool
+<span id="L40" class="ln">    40  </span>}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span><span class="comment">// TestFxPopulateHasConstructionErrorGuard は、fx.Populate を使う production code の関数が、populate 対象を</span>
+<span id="L43" class="ln">    43  </span><span class="comment">// 参照する前に構築エラーを検査していることを機械検証する。</span>
+<span id="L44" class="ln">    44  </span><span class="comment">//</span>
+<span id="L45" class="ln">    45  </span><span class="comment">// fx.Populate は fx.New 時点の invoke であり、グラフ構築が失敗すると対象は nil のまま残る。</span>
+<span id="L46" class="ln">    46  </span><span class="comment">// そのまま参照すれば nil 参照で落ちる。fx.App.Start がエラーを短絡して返すため「Start を先に</span>
+<span id="L47" class="ln">    47  </span><span class="comment">// 呼んでいる限り安全」という状態は成立しうるが、それは実装順序という暗黙の前提にすぎず、</span>
+<span id="L48" class="ln">    48  </span><span class="comment">// コンパイラも lint も守らない。参照より前に構築エラーを検査する形を構造として固定し、</span>
+<span id="L49" class="ln">    49  </span><span class="comment">// 呼び出し箇所ごとに防御の有無が割れないようにする。</span>
+<span id="L50" class="ln">    50  </span><span class="comment">//</span>
+<span id="L51" class="ln">    51  </span><span class="comment">// 走査前にコメントと raw string の中身を落とし、字面の一致で誤検出しないようにしている。</span>
+<span id="L52" class="ln">    52  </span><span class="comment">// 解析できるのは populate 対象が `&amp;識別子` の直接形で、かつ fx.New の戻り値を変数で受けている</span>
+<span id="L53" class="ln">    53  </span><span class="comment">// 呼び出しに限る。それ以外（`fx.Annotate` 等で包んだ形）は対象を一意に特定できないため検査せず、</span>
+<span id="L54" class="ln">    54  </span><span class="comment">// 見送った件数をログに出してカバー範囲が黙って狭まらないようにする。</span>
+<span id="L55" class="ln">    55  </span><span class="comment">// _test.go はテストが構築失敗を注入して検証する正当な用法のため対象外。</span>
+<span id="L56" class="ln">    56  </span>func TestFxPopulateHasConstructionErrorGuard(t *testing.T) {
+<span id="L57" class="ln">    57  </span>	t.Parallel()
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>	var violations []string
+<span id="L60" class="ln">    60  </span>	sites, analyzed := 0, 0
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>	for _, root := range moduleSubdirs(t, &#34;internal&#34;, &#34;cmd&#34;) {
+<span id="L63" class="ln">    63  </span>		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, werr error) error {
+<span id="L64" class="ln">    64  </span>			if werr != nil {
+<span id="L65" class="ln">    65  </span>				return werr
+<span id="L66" class="ln">    66  </span>			}
+<span id="L67" class="ln">    67  </span>			if d.IsDir() || !strings.HasSuffix(path, &#34;.go&#34;) || strings.HasSuffix(path, &#34;_test.go&#34;) {
+<span id="L68" class="ln">    68  </span>				return nil
+<span id="L69" class="ln">    69  </span>			}
+<span id="L70" class="ln">    70  </span>			src, rerr := pkgfs.OS{}.ReadFile(path)
+<span id="L71" class="ln">    71  </span>			if rerr != nil {
+<span id="L72" class="ln">    72  </span>				return rerr
+<span id="L73" class="ln">    73  </span>			}
+<span id="L74" class="ln">    74  </span>			lines := strings.Split(string(src), &#34;\n&#34;)
+<span id="L75" class="ln">    75  </span>			if isGeneratedGo(path, lines) {
+<span id="L76" class="ln">    76  </span>				return nil
+<span id="L77" class="ln">    77  </span>			}
+<span id="L78" class="ln">    78  </span>			found, done, unguarded := collectUnguardedFxPopulate(lines, path)
+<span id="L79" class="ln">    79  </span>			sites += found
+<span id="L80" class="ln">    80  </span>			analyzed += done
+<span id="L81" class="ln">    81  </span>			violations = append(violations, unguarded...)
+<span id="L82" class="ln">    82  </span>			return nil
+<span id="L83" class="ln">    83  </span>		})
+<span id="L84" class="ln">    84  </span>		require.NoError(t, err)
+<span id="L85" class="ln">    85  </span>	}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>	require.NotZero(t, analyzed, &#34;解析できた fx.Populate が 0 件（moduleSubdirs のルート解決を疑う）&#34;)
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>	sort.Strings(violations)
+<span id="L90" class="ln">    90  </span>	for _, v := range violations {
+<span id="L91" class="ln">    91  </span>		t.Log(&#34;unguarded fx.Populate: &#34; + v)
+<span id="L92" class="ln">    92  </span>	}
+<span id="L93" class="ln">    93  </span>	t.Logf(&#34;fx.Populate 呼び出し数: %d / 解析対象: %d / 解析対象外: %d / violations: %d&#34;,
+<span id="L94" class="ln">    94  </span>		sites, analyzed, sites-analyzed, len(violations))
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>	require.Empty(t, violations,
+<span id="L97" class="ln">    97  </span>		&#34;fx.Populate の対象を構築エラーの検査より前に参照している。populate 対象に触れる前に &#34;+
+<span id="L98" class="ln">    98  </span>			&#34;`if err := app.Err(); err != nil { ... }` で構築エラーを返すこと。&#34;)
+<span id="L99" class="ln">    99  </span>}
+<span id="L100" class="ln">   100  </span>
+<span id="L101" class="ln">   101  </span><span class="comment">// collectUnguardedFxPopulate は、gofmt 済みソースの行列から fx.Populate の呼び出し数・そのうち</span>
+<span id="L102" class="ln">   102  </span><span class="comment">// 解析できた数・populate 対象を構築エラーの検査より前に参照している箇所</span>
+<span id="L103" class="ln">   103  </span><span class="comment">// （`file:line: 該当行` 形式）を返します。</span>
+<span id="L104" class="ln">   104  </span><span class="comment">//</span>
+<span id="L105" class="ln">   105  </span><span class="comment">// 参照ごとに、それを囲む最も内側の関数リテラル（無ければ fx.Populate の直後）から参照までの間に</span>
+<span id="L106" class="ln">   106  </span><span class="comment">// ガードがあるかを見ます。start / stop のように独立して呼ばれうるクロージャが複数ある場合、</span>
+<span id="L107" class="ln">   107  </span><span class="comment">// 一方のガードは他方をカバーしないため、クロージャ単位で判定します。</span>
+<span id="L108" class="ln">   108  </span><span class="comment">// 同じクロージャ内の複数参照は同一の欠落なので、最初の 1 件だけを報告します。</span>
+<span id="L109" class="ln">   109  </span>func collectUnguardedFxPopulate(lines []string, file string) (int, int, []string) {
+<span id="L110" class="ln">   110  </span>	code := stripCommentsAndRawStrings(lines)
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>	var violations []string
+<span id="L113" class="ln">   113  </span>	sites, analyzed := 0, 0
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span>	for i, line := range code {
+<span id="L116" class="ln">   116  </span>		if !strings.Contains(line, fxPopulateCall) {
+<span id="L117" class="ln">   117  </span>			continue
+<span id="L118" class="ln">   118  </span>		}
+<span id="L119" class="ln">   119  </span>		sites++
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>		end := funcEndLine(code, i)
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>		call, callEnd := joinCall(code, i, fxPopulateCall)
+<span id="L124" class="ln">   124  </span>		names := populatedNames(call)
+<span id="L125" class="ln">   125  </span>		appVar, newAt := fxNewSite(code, funcStartLine(code, i), end)
+<span id="L126" class="ln">   126  </span>		if len(names) == 0 || appVar == &#34;&#34; {
+<span id="L127" class="ln">   127  </span>			continue
+<span id="L128" class="ln">   128  </span>		}
+<span id="L129" class="ln">   129  </span>		analyzed++
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>		<span class="comment">// fx.Populate は fx.New の引数なので、対象名は構築式そのものにも現れる。</span>
+<span id="L132" class="ln">   132  </span>		<span class="comment">// 走査は構築式が閉じた後から始め、引数の記述を参照と取り違えないようにする。</span>
+<span id="L133" class="ln">   133  </span>		_, newEnd := joinCall(code, newAt, fxNewCall)
+<span id="L134" class="ln">   134  </span>		scanFrom := max(callEnd, newEnd)
+<span id="L135" class="ln">   135  </span>
+<span id="L136" class="ln">   136  </span>		violations = append(violations, unguardedUses(code, lines, file, scanFrom, end, appVar, names)...)
+<span id="L137" class="ln">   137  </span>	}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>	return sites, analyzed, violations
+<span id="L140" class="ln">   140  </span>}
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span><span class="comment">// unguardedUses は、fx.Populate（populateAt 行）から関数終端 end までの間で、</span>
+<span id="L143" class="ln">   143  </span><span class="comment">// ガード（`&lt;appVar&gt;.Err()`）に先行されていない populate 対象の参照を列挙します。</span>
+<span id="L144" class="ln">   144  </span>func unguardedUses(code, lines []string, file string, populateAt, end int, appVar string, names []string) []string {
+<span id="L145" class="ln">   145  </span>	var violations []string
+<span id="L146" class="ln">   146  </span>	guard := appVar + &#34;.Err()&#34;
+<span id="L147" class="ln">   147  </span>	reported := make(map[int]bool)
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>	for use := populateAt + 1; use &lt; end &amp;&amp; use &lt; len(code); use++ {
+<span id="L150" class="ln">   150  </span>		if !referencesAny(code[use], names) {
+<span id="L151" class="ln">   151  </span>			continue
+<span id="L152" class="ln">   152  </span>		}
+<span id="L153" class="ln">   153  </span>		scope := enclosingClosure(code, populateAt, use)
+<span id="L154" class="ln">   154  </span>		if reported[scope] {
+<span id="L155" class="ln">   155  </span>			continue
+<span id="L156" class="ln">   156  </span>		}
+<span id="L157" class="ln">   157  </span>		if hasGuardBefore(code, populateAt, use, scope, guard) {
+<span id="L158" class="ln">   158  </span>			continue
+<span id="L159" class="ln">   159  </span>		}
+<span id="L160" class="ln">   160  </span>		reported[scope] = true
+<span id="L161" class="ln">   161  </span>		violations = append(violations,
+<span id="L162" class="ln">   162  </span>			fmt.Sprintf(&#34;%s:%d: %s&#34;, file, use+1, strings.TrimSpace(lines[use])))
+<span id="L163" class="ln">   163  </span>	}
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>	return violations
+<span id="L166" class="ln">   166  </span>}
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span><span class="comment">// hasGuardBefore は、use 行より前にあり、かつ use を必ず先行実行するガードが存在するかを返します。</span>
+<span id="L169" class="ln">   169  </span><span class="comment">//</span>
+<span id="L170" class="ln">   170  </span><span class="comment">// ガードが関数直下（囲む関数リテラルなし）にあれば、後続のどのクロージャの参照も先行実行されます。</span>
+<span id="L171" class="ln">   171  </span><span class="comment">// クロージャの中にあるガードは、同じクロージャ内の参照しかカバーしません（別のクロージャは独立に</span>
+<span id="L172" class="ln">   172  </span><span class="comment">// 呼ばれうるため）。入れ子は最も内側のクロージャだけで判定するので、多重入れ子では</span>
+<span id="L173" class="ln">   173  </span><span class="comment">// カバーしていても違反とみなす側（保守的）に倒れます。</span>
+<span id="L174" class="ln">   174  </span>func hasGuardBefore(code []string, populateAt, use, useScope int, guard string) bool {
+<span id="L175" class="ln">   175  </span>	for g := populateAt + 1; g &lt; use; g++ {
+<span id="L176" class="ln">   176  </span>		if !strings.Contains(code[g], guard) {
+<span id="L177" class="ln">   177  </span>			continue
+<span id="L178" class="ln">   178  </span>		}
+<span id="L179" class="ln">   179  </span>		guardScope := enclosingClosure(code, populateAt, g)
+<span id="L180" class="ln">   180  </span>		if guardScope == -1 || guardScope == useScope {
+<span id="L181" class="ln">   181  </span>			return true
+<span id="L182" class="ln">   182  </span>		}
+<span id="L183" class="ln">   183  </span>	}
+<span id="L184" class="ln">   184  </span>	return false
+<span id="L185" class="ln">   185  </span>}
+<span id="L186" class="ln">   186  </span>
+<span id="L187" class="ln">   187  </span><span class="comment">// enclosingClosure は、line を囲む最も内側の関数リテラルの開始行を返します。</span>
+<span id="L188" class="ln">   188  </span><span class="comment">// bound より外側は見ず、関数直下（囲む関数リテラルが無い）の場合は -1 を返します。</span>
+<span id="L189" class="ln">   189  </span><span class="comment">//</span>
+<span id="L190" class="ln">   190  </span><span class="comment">// ブロックが外側へ出るほどインデントは浅くなるので、line から遡って「それまでの最小インデント</span>
+<span id="L191" class="ln">   191  </span><span class="comment">// より浅い行」だけを外側のブロック開始とみなします。空行はインデントを持たないため飛ばします。</span>
+<span id="L192" class="ln">   192  </span>func enclosingClosure(code []string, bound, line int) int {
+<span id="L193" class="ln">   193  </span>	if line &gt;= len(code) {
+<span id="L194" class="ln">   194  </span>		return -1
+<span id="L195" class="ln">   195  </span>	}
+<span id="L196" class="ln">   196  </span>	minIndent := indentWidth(code[line])
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span>	for j := line - 1; j &gt; bound; j-- {
+<span id="L199" class="ln">   199  </span>		if strings.TrimSpace(code[j]) == &#34;&#34; {
+<span id="L200" class="ln">   200  </span>			continue
+<span id="L201" class="ln">   201  </span>		}
+<span id="L202" class="ln">   202  </span>		indent := indentWidth(code[j])
+<span id="L203" class="ln">   203  </span>		if indent &gt;= minIndent {
+<span id="L204" class="ln">   204  </span>			continue
+<span id="L205" class="ln">   205  </span>		}
+<span id="L206" class="ln">   206  </span>		minIndent = indent
+<span id="L207" class="ln">   207  </span>		if closureStartRe.MatchString(strings.TrimRight(code[j], &#34; \t&#34;)) {
+<span id="L208" class="ln">   208  </span>			return j
+<span id="L209" class="ln">   209  </span>		}
+<span id="L210" class="ln">   210  </span>	}
+<span id="L211" class="ln">   211  </span>	return -1
+<span id="L212" class="ln">   212  </span>}
+<span id="L213" class="ln">   213  </span>
+<span id="L214" class="ln">   214  </span><span class="comment">// indentWidth は、行頭のタブ数を返します（gofmt はインデントにタブのみを使います）。</span>
+<span id="L215" class="ln">   215  </span>func indentWidth(line string) int {
+<span id="L216" class="ln">   216  </span>	return len(line) - len(strings.TrimLeft(line, &#34;\t&#34;))
+<span id="L217" class="ln">   217  </span>}
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span><span class="comment">// fxNewSite は、[from, to] の範囲で fx.New の戻り値を受ける変数名とその行を返します。</span>
+<span id="L220" class="ln">   220  </span><span class="comment">// 変数で受けていない（戻り値を直接返している等）場合は空文字と -1 を返します。</span>
+<span id="L221" class="ln">   221  </span><span class="comment">// fx.Populate は fx.New の引数なので、呼び出し行は fx.New より前にも後にも来ます。</span>
+<span id="L222" class="ln">   222  </span><span class="comment">// そのため範囲は fx.Populate の位置ではなく関数全体を渡します。</span>
+<span id="L223" class="ln">   223  </span>func fxNewSite(code []string, from, to int) (string, int) {
+<span id="L224" class="ln">   224  </span>	for i := from; i &lt;= to &amp;&amp; i &lt; len(code); i++ {
+<span id="L225" class="ln">   225  </span>		if !strings.Contains(code[i], fxNewCall) {
+<span id="L226" class="ln">   226  </span>			continue
+<span id="L227" class="ln">   227  </span>		}
+<span id="L228" class="ln">   228  </span>		if m := fxNewAssignRe.FindStringSubmatch(code[i]); m != nil {
+<span id="L229" class="ln">   229  </span>			return m[1], i
+<span id="L230" class="ln">   230  </span>		}
+<span id="L231" class="ln">   231  </span>	}
+<span id="L232" class="ln">   232  </span>	return &#34;&#34;, -1
+<span id="L233" class="ln">   233  </span>}
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span><span class="comment">// funcStartLine は、line を含む関数宣言の開始行（行頭 `func `）を返します。</span>
+<span id="L236" class="ln">   236  </span><span class="comment">// 見つからない場合は 0 を返します。</span>
+<span id="L237" class="ln">   237  </span>func funcStartLine(code []string, line int) int {
+<span id="L238" class="ln">   238  </span>	for i := line; i &gt;= 0 &amp;&amp; i &lt; len(code); i-- {
+<span id="L239" class="ln">   239  </span>		if strings.HasPrefix(code[i], &#34;func &#34;) {
+<span id="L240" class="ln">   240  </span>			return i
+<span id="L241" class="ln">   241  </span>		}
+<span id="L242" class="ln">   242  </span>	}
+<span id="L243" class="ln">   243  </span>	return 0
+<span id="L244" class="ln">   244  </span>}
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span><span class="comment">// joinCall は、from 行に現れる call の開き括弧から対応する閉じ括弧までを 1 つの文字列に連結し、</span>
+<span id="L247" class="ln">   247  </span><span class="comment">// 閉じ括弧のある行を返します。gofmt は引数を複数行に分けた形をそのまま保つため、</span>
+<span id="L248" class="ln">   248  </span><span class="comment">// 単一行前提だと取りこぼします。呼び出しが見つからない / 括弧が閉じない場合は空文字と from を返します。</span>
+<span id="L249" class="ln">   249  </span>func joinCall(code []string, from int, call string) (string, int) {
+<span id="L250" class="ln">   250  </span>	if from &lt; 0 || from &gt;= len(code) {
+<span id="L251" class="ln">   251  </span>		return &#34;&#34;, from
+<span id="L252" class="ln">   252  </span>	}
+<span id="L253" class="ln">   253  </span>	idx := strings.Index(code[from], call)
+<span id="L254" class="ln">   254  </span>	if idx &lt; 0 {
+<span id="L255" class="ln">   255  </span>		return &#34;&#34;, from
+<span id="L256" class="ln">   256  </span>	}
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>	var b strings.Builder
+<span id="L259" class="ln">   259  </span>	depth := 0
+<span id="L260" class="ln">   260  </span>	for i := from; i &lt; len(code); i++ {
+<span id="L261" class="ln">   261  </span>		line := code[i]
+<span id="L262" class="ln">   262  </span>		start := 0
+<span id="L263" class="ln">   263  </span>		if i == from {
+<span id="L264" class="ln">   264  </span>			start = idx + len(call) - 1 <span class="comment">// 開き括弧から読み始める</span>
+<span id="L265" class="ln">   265  </span>		}
+<span id="L266" class="ln">   266  </span>		for _, r := range line[start:] {
+<span id="L267" class="ln">   267  </span>			switch r {
+<span id="L268" class="ln">   268  </span>			case &#39;(&#39;:
+<span id="L269" class="ln">   269  </span>				depth++
+<span id="L270" class="ln">   270  </span>			case &#39;)&#39;:
+<span id="L271" class="ln">   271  </span>				depth--
+<span id="L272" class="ln">   272  </span>			}
+<span id="L273" class="ln">   273  </span>			b.WriteRune(r)
+<span id="L274" class="ln">   274  </span>			if depth == 0 {
+<span id="L275" class="ln">   275  </span>				return call[:len(call)-1] + b.String(), i
+<span id="L276" class="ln">   276  </span>			}
+<span id="L277" class="ln">   277  </span>		}
+<span id="L278" class="ln">   278  </span>	}
+<span id="L279" class="ln">   279  </span>	return &#34;&#34;, from
+<span id="L280" class="ln">   280  </span>}
+<span id="L281" class="ln">   281  </span>
+<span id="L282" class="ln">   282  </span><span class="comment">// populatedNames は、`fx.Populate(&amp;a, &amp;b)` の呼び出し文字列から populate 対象の識別子を取り出します。</span>
+<span id="L283" class="ln">   283  </span><span class="comment">// すべての引数が `&amp;識別子` の直接形である場合だけ名前を返し、`fx.Annotate(...)` などで</span>
+<span id="L284" class="ln">   284  </span><span class="comment">// 包まれていて対象を一意に特定できない場合は nil を返します（解析対象から外す）。</span>
+<span id="L285" class="ln">   285  </span>func populatedNames(call string) []string {
+<span id="L286" class="ln">   286  </span>	open := strings.Index(call, &#34;(&#34;)
+<span id="L287" class="ln">   287  </span>	if open &lt; 0 || !strings.HasSuffix(call, &#34;)&#34;) {
+<span id="L288" class="ln">   288  </span>		return nil
+<span id="L289" class="ln">   289  </span>	}
+<span id="L290" class="ln">   290  </span>	args := strings.TrimSpace(call[open+1 : len(call)-1])
+<span id="L291" class="ln">   291  </span>	if args == &#34;&#34; {
+<span id="L292" class="ln">   292  </span>		return nil
+<span id="L293" class="ln">   293  </span>	}
+<span id="L294" class="ln">   294  </span>
+<span id="L295" class="ln">   295  </span>	parts := strings.Split(args, &#34;,&#34;)
+<span id="L296" class="ln">   296  </span>	names := make([]string, 0, len(parts))
+<span id="L297" class="ln">   297  </span>	for _, part := range parts {
+<span id="L298" class="ln">   298  </span>		<span class="comment">// 複数行で書いた呼び出しは末尾にカンマが残るため、空の要素は区切りの余りとして読み飛ばす。</span>
+<span id="L299" class="ln">   299  </span>		trimmed := strings.TrimSpace(part)
+<span id="L300" class="ln">   300  </span>		if trimmed == &#34;&#34; {
+<span id="L301" class="ln">   301  </span>			continue
+<span id="L302" class="ln">   302  </span>		}
+<span id="L303" class="ln">   303  </span>		name, ok := strings.CutPrefix(trimmed, &#34;&amp;&#34;)
+<span id="L304" class="ln">   304  </span>		if !ok || !identifierRe.MatchString(name) {
+<span id="L305" class="ln">   305  </span>			return nil
+<span id="L306" class="ln">   306  </span>		}
+<span id="L307" class="ln">   307  </span>		names = append(names, name)
+<span id="L308" class="ln">   308  </span>	}
+<span id="L309" class="ln">   309  </span>	if len(names) == 0 {
+<span id="L310" class="ln">   310  </span>		return nil
+<span id="L311" class="ln">   311  </span>	}
+<span id="L312" class="ln">   312  </span>	return names
+<span id="L313" class="ln">   313  </span>}
+<span id="L314" class="ln">   314  </span>
+<span id="L315" class="ln">   315  </span><span class="comment">// stripCommentsAndRawStrings は、行数を保ったままコメントと raw string の中身を空白へ置き換えた</span>
+<span id="L316" class="ln">   316  </span><span class="comment">// ソースを返します。対象名を字面で含むコメントや、`}` を含む埋め込みテンプレートが走査を</span>
+<span id="L317" class="ln">   317  </span><span class="comment">// 誤らせるため、判定はこの view に対して行います。</span>
+<span id="L318" class="ln">   318  </span>func stripCommentsAndRawStrings(lines []string) []string {
+<span id="L319" class="ln">   319  </span>	out := make([]string, len(lines))
+<span id="L320" class="ln">   320  </span>	var s stripState
+<span id="L321" class="ln">   321  </span>
+<span id="L322" class="ln">   322  </span>	for i, line := range lines {
+<span id="L323" class="ln">   323  </span>		var b strings.Builder
+<span id="L324" class="ln">   324  </span>		s.inQuote = false
+<span id="L325" class="ln">   325  </span>		for j := 0; j &lt; len(line); {
+<span id="L326" class="ln">   326  </span>			j = s.step(&amp;b, line, j)
+<span id="L327" class="ln">   327  </span>		}
+<span id="L328" class="ln">   328  </span>		out[i] = b.String()
+<span id="L329" class="ln">   329  </span>	}
+<span id="L330" class="ln">   330  </span>	return out
+<span id="L331" class="ln">   331  </span>}
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span><span class="comment">// step は line の j バイト目を処理し、出力へ書き込んだうえで次に読む位置を返します。</span>
+<span id="L334" class="ln">   334  </span>func (s *stripState) step(b *strings.Builder, line string, j int) int {
+<span id="L335" class="ln">   335  </span>	switch {
+<span id="L336" class="ln">   336  </span>	case s.inRaw:
+<span id="L337" class="ln">   337  </span>		return s.stepRaw(b, line, j)
+<span id="L338" class="ln">   338  </span>	case s.inBlock:
+<span id="L339" class="ln">   339  </span>		return s.stepBlock(b, line, j)
+<span id="L340" class="ln">   340  </span>	case s.inQuote:
+<span id="L341" class="ln">   341  </span>		return s.stepQuote(b, line, j)
+<span id="L342" class="ln">   342  </span>	default:
+<span id="L343" class="ln">   343  </span>		return s.stepCode(b, line, j)
+<span id="L344" class="ln">   344  </span>	}
+<span id="L345" class="ln">   345  </span>}
+<span id="L346" class="ln">   346  </span>
+<span id="L347" class="ln">   347  </span><span class="comment">// stepRaw は、raw string の内部を空白へ置き換えつつ、閉じるバッククォートを検出します。</span>
+<span id="L348" class="ln">   348  </span>func (s *stripState) stepRaw(b *strings.Builder, line string, j int) int {
+<span id="L349" class="ln">   349  </span>	if line[j] == &#39;`&#39; {
+<span id="L350" class="ln">   350  </span>		s.inRaw = false
+<span id="L351" class="ln">   351  </span>		b.WriteByte(&#39;`&#39;)
+<span id="L352" class="ln">   352  </span>		return j + 1
+<span id="L353" class="ln">   353  </span>	}
+<span id="L354" class="ln">   354  </span>	b.WriteByte(&#39; &#39;)
+<span id="L355" class="ln">   355  </span>	return j + 1
+<span id="L356" class="ln">   356  </span>}
+<span id="L357" class="ln">   357  </span>
+<span id="L358" class="ln">   358  </span><span class="comment">// stepBlock は、ブロックコメントの内部を空白へ置き換えつつ、閉じる `*/` を検出します。</span>
+<span id="L359" class="ln">   359  </span>func (s *stripState) stepBlock(b *strings.Builder, line string, j int) int {
+<span id="L360" class="ln">   360  </span>	if line[j] == &#39;*&#39; &amp;&amp; byteAt(line, j+1) == &#39;/&#39; {
+<span id="L361" class="ln">   361  </span>		s.inBlock = false
+<span id="L362" class="ln">   362  </span>		b.WriteString(&#34;  &#34;)
+<span id="L363" class="ln">   363  </span>		return j + 2
+<span id="L364" class="ln">   364  </span>	}
+<span id="L365" class="ln">   365  </span>	b.WriteByte(&#39; &#39;)
+<span id="L366" class="ln">   366  </span>	return j + 1
+<span id="L367" class="ln">   367  </span>}
+<span id="L368" class="ln">   368  </span>
+<span id="L369" class="ln">   369  </span><span class="comment">// stepQuote は、文字列リテラルの内部をそのまま写し、エスケープを飛ばして閉じ `&#34;` を検出します。</span>
+<span id="L370" class="ln">   370  </span>func (s *stripState) stepQuote(b *strings.Builder, line string, j int) int {
+<span id="L371" class="ln">   371  </span>	c := line[j]
+<span id="L372" class="ln">   372  </span>	b.WriteByte(c)
+<span id="L373" class="ln">   373  </span>	if c == &#39;\\&#39; &amp;&amp; j+1 &lt; len(line) {
+<span id="L374" class="ln">   374  </span>		b.WriteByte(line[j+1])
+<span id="L375" class="ln">   375  </span>		return j + 2
+<span id="L376" class="ln">   376  </span>	}
+<span id="L377" class="ln">   377  </span>	if c == &#39;&#34;&#39; {
+<span id="L378" class="ln">   378  </span>		s.inQuote = false
+<span id="L379" class="ln">   379  </span>	}
+<span id="L380" class="ln">   380  </span>	return j + 1
+<span id="L381" class="ln">   381  </span>}
+<span id="L382" class="ln">   382  </span>
+<span id="L383" class="ln">   383  </span><span class="comment">// stepCode は、コード領域を写しつつリテラル・コメントの開始を検出します。</span>
+<span id="L384" class="ln">   384  </span><span class="comment">// 行コメントは以降を丸ごと落とすため、行末位置を返します。</span>
+<span id="L385" class="ln">   385  </span>func (s *stripState) stepCode(b *strings.Builder, line string, j int) int {
+<span id="L386" class="ln">   386  </span>	c, next := line[j], byteAt(line, j+1)
+<span id="L387" class="ln">   387  </span>	switch {
+<span id="L388" class="ln">   388  </span>	case c == &#39;/&#39; &amp;&amp; next == &#39;/&#39;:
+<span id="L389" class="ln">   389  </span>		return len(line)
+<span id="L390" class="ln">   390  </span>	case c == &#39;/&#39; &amp;&amp; next == &#39;*&#39;:
+<span id="L391" class="ln">   391  </span>		s.inBlock = true
+<span id="L392" class="ln">   392  </span>		b.WriteString(&#34;  &#34;)
+<span id="L393" class="ln">   393  </span>		return j + 2
+<span id="L394" class="ln">   394  </span>	case c == &#39;&#34;&#39;:
+<span id="L395" class="ln">   395  </span>		s.inQuote = true
+<span id="L396" class="ln">   396  </span>	case c == &#39;`&#39;:
+<span id="L397" class="ln">   397  </span>		s.inRaw = true
+<span id="L398" class="ln">   398  </span>	}
+<span id="L399" class="ln">   399  </span>	b.WriteByte(c)
+<span id="L400" class="ln">   400  </span>	return j + 1
+<span id="L401" class="ln">   401  </span>}
+<span id="L402" class="ln">   402  </span>
+<span id="L403" class="ln">   403  </span><span class="comment">// funcEndLine は、from 行を含む関数の終端（行頭 `}`）の行インデックスを返します。</span>
+<span id="L404" class="ln">   404  </span><span class="comment">// gofmt は関数の閉じ波括弧を行頭に置くため、次の行頭 `}` までを関数本体とみなせます。</span>
+<span id="L405" class="ln">   405  </span><span class="comment">// 見つからない場合はファイル末尾を返します。</span>
+<span id="L406" class="ln">   406  </span>func funcEndLine(code []string, from int) int {
+<span id="L407" class="ln">   407  </span>	for i := from; i &lt; len(code); i++ {
+<span id="L408" class="ln">   408  </span>		if strings.HasPrefix(code[i], &#34;}&#34;) {
+<span id="L409" class="ln">   409  </span>			return i
+<span id="L410" class="ln">   410  </span>		}
+<span id="L411" class="ln">   411  </span>	}
+<span id="L412" class="ln">   412  </span>	return len(code) - 1
+<span id="L413" class="ln">   413  </span>}
+<span id="L414" class="ln">   414  </span>
+<span id="L415" class="ln">   415  </span><span class="comment">// referencesAny は、行が names のいずれかを識別子として含むかを返します。</span>
+<span id="L416" class="ln">   416  </span><span class="comment">// 部分一致で別の識別子（`logger` に対する `loggerFactory` など）を拾わないよう前後の文字を見ます。</span>
+<span id="L417" class="ln">   417  </span>func referencesAny(line string, names []string) bool {
+<span id="L418" class="ln">   418  </span>	for _, name := range names {
+<span id="L419" class="ln">   419  </span>		if containsIdentifier(line, name) {
+<span id="L420" class="ln">   420  </span>			return true
+<span id="L421" class="ln">   421  </span>		}
+<span id="L422" class="ln">   422  </span>	}
+<span id="L423" class="ln">   423  </span>	return false
+<span id="L424" class="ln">   424  </span>}
+<span id="L425" class="ln">   425  </span>
+<span id="L426" class="ln">   426  </span><span class="comment">// containsIdentifier は、line 中に name が識別子として現れるかを返します。</span>
+<span id="L427" class="ln">   427  </span><span class="comment">// 前後が Go の識別子構成文字（英数字 / `_`）でない出現だけを識別子とみなします。</span>
+<span id="L428" class="ln">   428  </span>func containsIdentifier(line, name string) bool {
+<span id="L429" class="ln">   429  </span>	if name == &#34;&#34; {
+<span id="L430" class="ln">   430  </span>		return false
+<span id="L431" class="ln">   431  </span>	}
+<span id="L432" class="ln">   432  </span>	for offset := 0; ; {
+<span id="L433" class="ln">   433  </span>		idx := strings.Index(line[offset:], name)
+<span id="L434" class="ln">   434  </span>		if idx &lt; 0 {
+<span id="L435" class="ln">   435  </span>			return false
+<span id="L436" class="ln">   436  </span>		}
+<span id="L437" class="ln">   437  </span>		at := offset + idx
+<span id="L438" class="ln">   438  </span>		if !isIdentifierChar(byteAt(line, at-1)) &amp;&amp; !isIdentifierChar(byteAt(line, at+len(name))) {
+<span id="L439" class="ln">   439  </span>			return true
+<span id="L440" class="ln">   440  </span>		}
+<span id="L441" class="ln">   441  </span>		offset = at + len(name)
+<span id="L442" class="ln">   442  </span>	}
+<span id="L443" class="ln">   443  </span>}
+<span id="L444" class="ln">   444  </span>
+<span id="L445" class="ln">   445  </span><span class="comment">// byteAt は、範囲外を 0 として line の i バイト目を返します。</span>
+<span id="L446" class="ln">   446  </span>func byteAt(line string, i int) byte {
+<span id="L447" class="ln">   447  </span>	if i &lt; 0 || i &gt;= len(line) {
+<span id="L448" class="ln">   448  </span>		return 0
+<span id="L449" class="ln">   449  </span>	}
+<span id="L450" class="ln">   450  </span>	return line[i]
+<span id="L451" class="ln">   451  </span>}
+<span id="L452" class="ln">   452  </span>
+<span id="L453" class="ln">   453  </span><span class="comment">// isIdentifierChar は、Go の識別子を構成しうるバイトかを返します。</span>
+<span id="L454" class="ln">   454  </span>func isIdentifierChar(b byte) bool {
+<span id="L455" class="ln">   455  </span>	return b == &#39;_&#39; ||
+<span id="L456" class="ln">   456  </span>		(b &gt;= &#39;0&#39; &amp;&amp; b &lt;= &#39;9&#39;) ||
+<span id="L457" class="ln">   457  </span>		(b &gt;= &#39;a&#39; &amp;&amp; b &lt;= &#39;z&#39;) ||
+<span id="L458" class="ln">   458  </span>		(b &gt;= &#39;A&#39; &amp;&amp; b &lt;= &#39;Z&#39;)
+<span id="L459" class="ln">   459  </span>}
+<span id="L460" class="ln">   460  </span>
+<span id="L461" class="ln">   461  </span>func Test_collectUnguardedFxPopulate(t *testing.T) {
+<span id="L462" class="ln">   462  </span>	t.Parallel()
+<span id="L463" class="ln">   463  </span>
+<span id="L464" class="ln">   464  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L465" class="ln">   465  </span>		t.Parallel()
+<span id="L466" class="ln">   466  </span>
+<span id="L467" class="ln">   467  </span>		t.Run(&#34;参照より前にErr検査があれば違反にしない&#34;, func(t *testing.T) {
+<span id="L468" class="ln">   468  </span>			t.Parallel()
+<span id="L469" class="ln">   469  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar a A\n\tapp := fx.New(fx.Populate(&amp;a))\n&#34; +
+<span id="L470" class="ln">   470  </span>				&#34;\tif err := app.Err(); err != nil {\n\t\treturn err\n\t}\n\treturn a.Do()\n}\n&#34;
+<span id="L471" class="ln">   471  </span>			sites, analyzed, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L472" class="ln">   472  </span>			assert.Equal(t, 1, sites)
+<span id="L473" class="ln">   473  </span>			assert.Equal(t, 1, analyzed)
+<span id="L474" class="ln">   474  </span>			assert.Empty(t, violations)
+<span id="L475" class="ln">   475  </span>		})
+<span id="L476" class="ln">   476  </span>
+<span id="L477" class="ln">   477  </span>		t.Run(&#34;populate対象を一度も参照しなければ検査の有無を問わない&#34;, func(t *testing.T) {
+<span id="L478" class="ln">   478  </span>			t.Parallel()
+<span id="L479" class="ln">   479  </span>			src := &#34;package p\n\nfunc f() *fx.App {\n\tvar a A\n\tapp := fx.New(fx.Populate(&amp;a))\n\treturn app\n}\n&#34;
+<span id="L480" class="ln">   480  </span>			_, analyzed, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L481" class="ln">   481  </span>			assert.Equal(t, 1, analyzed)
+<span id="L482" class="ln">   482  </span>			assert.Empty(t, violations)
+<span id="L483" class="ln">   483  </span>		})
+<span id="L484" class="ln">   484  </span>
+<span id="L485" class="ln">   485  </span>		t.Run(&#34;引数を複数行に分けた呼び出しも解析できる&#34;, func(t *testing.T) {
+<span id="L486" class="ln">   486  </span>			t.Parallel()
+<span id="L487" class="ln">   487  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar (\n\t\ta A\n\t\tb B\n\t)\n&#34; +
+<span id="L488" class="ln">   488  </span>				&#34;\tapp := fx.New(\n\t\tfx.Populate(\n\t\t\t&amp;a,\n\t\t\t&amp;b,\n\t\t),\n\t)\n&#34; +
+<span id="L489" class="ln">   489  </span>				&#34;\tif err := app.Err(); err != nil {\n\t\treturn err\n\t}\n\treturn a.Do(b)\n}\n&#34;
+<span id="L490" class="ln">   490  </span>			_, analyzed, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L491" class="ln">   491  </span>			assert.Equal(t, 1, analyzed)
+<span id="L492" class="ln">   492  </span>			assert.Empty(t, violations)
+<span id="L493" class="ln">   493  </span>		})
+<span id="L494" class="ln">   494  </span>
+<span id="L495" class="ln">   495  </span>		t.Run(&#34;クロージャごとに検査していれば違反にしない&#34;, func(t *testing.T) {
+<span id="L496" class="ln">   496  </span>			t.Parallel()
+<span id="L497" class="ln">   497  </span>			src := &#34;package p\n\nfunc f() (func() error, func() error) {\n\tvar logger L\n&#34; +
+<span id="L498" class="ln">   498  </span>				&#34;\tapp := fx.New(fx.Populate(&amp;logger))\n\n&#34; +
+<span id="L499" class="ln">   499  </span>				&#34;\tstart := func() error {\n\t\tif err := app.Err(); err != nil {\n\t\t\treturn err\n\t\t}\n&#34; +
+<span id="L500" class="ln">   500  </span>				&#34;\t\treturn logger.Do()\n\t}\n\n&#34; +
+<span id="L501" class="ln">   501  </span>				&#34;\tstop := func() error {\n\t\tif err := app.Err(); err != nil {\n\t\t\treturn err\n\t\t}\n&#34; +
+<span id="L502" class="ln">   502  </span>				&#34;\t\treturn logger.Close()\n\t}\n\n\treturn start, stop\n}\n&#34;
+<span id="L503" class="ln">   503  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L504" class="ln">   504  </span>			assert.Empty(t, violations)
+<span id="L505" class="ln">   505  </span>		})
+<span id="L506" class="ln">   506  </span>
+<span id="L507" class="ln">   507  </span>		t.Run(&#34;関数直下の検査は後続のクロージャもカバーする&#34;, func(t *testing.T) {
+<span id="L508" class="ln">   508  </span>			t.Parallel()
+<span id="L509" class="ln">   509  </span>			src := &#34;package p\n\nfunc f() func() error {\n\tvar logger L\n&#34; +
+<span id="L510" class="ln">   510  </span>				&#34;\tapp := fx.New(fx.Populate(&amp;logger))\n&#34; +
+<span id="L511" class="ln">   511  </span>				&#34;\tif err := app.Err(); err != nil {\n\t\treturn nil\n\t}\n\n&#34; +
+<span id="L512" class="ln">   512  </span>				&#34;\treturn func() error {\n\t\treturn logger.Do()\n\t}\n}\n&#34;
+<span id="L513" class="ln">   513  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L514" class="ln">   514  </span>			assert.Empty(t, violations)
+<span id="L515" class="ln">   515  </span>		})
+<span id="L516" class="ln">   516  </span>
+<span id="L517" class="ln">   517  </span>		t.Run(&#34;対象を特定できない包み方は解析対象から外す&#34;, func(t *testing.T) {
+<span id="L518" class="ln">   518  </span>			t.Parallel()
+<span id="L519" class="ln">   519  </span>			src := &#34;package p\n\nfunc f() {\n\tvar got []T\n&#34; +
+<span id="L520" class="ln">   520  </span>				&#34;\tapp := fx.New(fx.Populate(fx.Annotate(&amp;got, fx.ParamTags(\&#34;g\&#34;))))\n\tuse(app, got)\n}\n&#34;
+<span id="L521" class="ln">   521  </span>			sites, analyzed, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L522" class="ln">   522  </span>			assert.Equal(t, 1, sites)
+<span id="L523" class="ln">   523  </span>			assert.Zero(t, analyzed)
+<span id="L524" class="ln">   524  </span>			assert.Empty(t, violations)
+<span id="L525" class="ln">   525  </span>		})
+<span id="L526" class="ln">   526  </span>
+<span id="L527" class="ln">   527  </span>		t.Run(&#34;fx.Newを変数で受けていない呼び出しは解析対象から外す&#34;, func(t *testing.T) {
+<span id="L528" class="ln">   528  </span>			t.Parallel()
+<span id="L529" class="ln">   529  </span>			src := &#34;package p\n\nfunc f() *fx.App {\n\tvar a A\n\treturn fx.New(fx.Populate(&amp;a))\n}\n&#34;
+<span id="L530" class="ln">   530  </span>			sites, analyzed, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L531" class="ln">   531  </span>			assert.Equal(t, 1, sites)
+<span id="L532" class="ln">   532  </span>			assert.Zero(t, analyzed)
+<span id="L533" class="ln">   533  </span>			assert.Empty(t, violations)
+<span id="L534" class="ln">   534  </span>		})
+<span id="L535" class="ln">   535  </span>
+<span id="L536" class="ln">   536  </span>		t.Run(&#34;対象名を字面で含むコメントは参照とみなさない&#34;, func(t *testing.T) {
+<span id="L537" class="ln">   537  </span>			t.Parallel()
+<span id="L538" class="ln">   538  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar logger L\n\tapp := fx.New(fx.Populate(&amp;logger))\n&#34; +
+<span id="L539" class="ln">   539  </span>				&#34;\tsetup() // logger を触る前に構築エラーを返す\n\t/* logger */\n&#34; +
+<span id="L540" class="ln">   540  </span>				&#34;\tif err := app.Err(); err != nil {\n\t\treturn err\n\t}\n&#34; +
+<span id="L541" class="ln">   541  </span>				&#34;\treturn logger.Do()\n}\n&#34;
+<span id="L542" class="ln">   542  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L543" class="ln">   543  </span>			assert.Empty(t, violations)
+<span id="L544" class="ln">   544  </span>		})
+<span id="L545" class="ln">   545  </span>
+<span id="L546" class="ln">   546  </span>		t.Run(&#34;対象名を部分文字列として含む別の識別子は参照とみなさない&#34;, func(t *testing.T) {
+<span id="L547" class="ln">   547  </span>			t.Parallel()
+<span id="L548" class="ln">   548  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar logger L\n\tapp := fx.New(fx.Populate(&amp;logger))\n&#34; +
+<span id="L549" class="ln">   549  </span>				&#34;\tloggerFactory.Warm()\n\tif err := app.Err(); err != nil {\n\t\treturn err\n\t}\n&#34; +
+<span id="L550" class="ln">   550  </span>				&#34;\treturn logger.Do()\n}\n&#34;
+<span id="L551" class="ln">   551  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L552" class="ln">   552  </span>			assert.Empty(t, violations)
+<span id="L553" class="ln">   553  </span>		})
+<span id="L554" class="ln">   554  </span>
+<span id="L555" class="ln">   555  </span>		t.Run(&#34;fx.Populateを含まないソースは呼び出し0件で違反なし&#34;, func(t *testing.T) {
+<span id="L556" class="ln">   556  </span>			t.Parallel()
+<span id="L557" class="ln">   557  </span>			src := &#34;package p\n\nfunc f() error {\n\treturn nil\n}\n&#34;
+<span id="L558" class="ln">   558  </span>			sites, analyzed, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L559" class="ln">   559  </span>			assert.Zero(t, sites)
+<span id="L560" class="ln">   560  </span>			assert.Zero(t, analyzed)
+<span id="L561" class="ln">   561  </span>			assert.Empty(t, violations)
+<span id="L562" class="ln">   562  </span>		})
+<span id="L563" class="ln">   563  </span>	})
+<span id="L564" class="ln">   564  </span>
+<span id="L565" class="ln">   565  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L566" class="ln">   566  </span>		t.Parallel()
+<span id="L567" class="ln">   567  </span>
+<span id="L568" class="ln">   568  </span>		t.Run(&#34;Err検査が無いまま参照していると検出する&#34;, func(t *testing.T) {
+<span id="L569" class="ln">   569  </span>			t.Parallel()
+<span id="L570" class="ln">   570  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar a A\n\tapp := fx.New(fx.Populate(&amp;a))\n&#34; +
+<span id="L571" class="ln">   571  </span>				&#34;\tif err := app.Start(); err != nil {\n\t\treturn err\n\t}\n\treturn a.Do()\n}\n&#34;
+<span id="L572" class="ln">   572  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L573" class="ln">   573  </span>			require.Len(t, violations, 1)
+<span id="L574" class="ln">   574  </span>			assert.Equal(t, &#34;p.go:9: return a.Do()&#34;, violations[0])
+<span id="L575" class="ln">   575  </span>		})
+<span id="L576" class="ln">   576  </span>
+<span id="L577" class="ln">   577  </span>		t.Run(&#34;Err検査が参照より後ろにあると検出する&#34;, func(t *testing.T) {
+<span id="L578" class="ln">   578  </span>			t.Parallel()
+<span id="L579" class="ln">   579  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar a A\n\tapp := fx.New(fx.Populate(&amp;a))\n&#34; +
+<span id="L580" class="ln">   580  </span>				&#34;\ta.Warm()\n\tif err := app.Err(); err != nil {\n\t\treturn err\n\t}\n\treturn nil\n}\n&#34;
+<span id="L581" class="ln">   581  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L582" class="ln">   582  </span>			require.Len(t, violations, 1)
+<span id="L583" class="ln">   583  </span>			assert.Equal(t, &#34;p.go:6: a.Warm()&#34;, violations[0])
+<span id="L584" class="ln">   584  </span>		})
+<span id="L585" class="ln">   585  </span>
+<span id="L586" class="ln">   586  </span>		t.Run(&#34;別レシーバのErr呼び出しはガードとみなさない&#34;, func(t *testing.T) {
+<span id="L587" class="ln">   587  </span>			t.Parallel()
+<span id="L588" class="ln">   588  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar logger L\n\tapp := fx.New(fx.Populate(&amp;logger))\n&#34; +
+<span id="L589" class="ln">   589  </span>				&#34;\tif err := resp.Err(); err != nil {\n\t\treturn err\n\t}\n\treturn logger.Do()\n}\n&#34;
+<span id="L590" class="ln">   590  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L591" class="ln">   591  </span>			require.Len(t, violations, 1)
+<span id="L592" class="ln">   592  </span>			assert.Equal(t, &#34;p.go:9: return logger.Do()&#34;, violations[0])
+<span id="L593" class="ln">   593  </span>		})
+<span id="L594" class="ln">   594  </span>
+<span id="L595" class="ln">   595  </span>		t.Run(&#34;片方のクロージャだけ検査していると他方を検出する&#34;, func(t *testing.T) {
+<span id="L596" class="ln">   596  </span>			t.Parallel()
+<span id="L597" class="ln">   597  </span>			src := &#34;package p\n\nfunc f() (func() error, func() error) {\n\tvar logger L\n&#34; +
+<span id="L598" class="ln">   598  </span>				&#34;\tapp := fx.New(fx.Populate(&amp;logger))\n\n&#34; +
+<span id="L599" class="ln">   599  </span>				&#34;\tstart := func() error {\n\t\tif err := app.Err(); err != nil {\n\t\t\treturn err\n\t\t}\n&#34; +
+<span id="L600" class="ln">   600  </span>				&#34;\t\treturn logger.Do()\n\t}\n\n&#34; +
+<span id="L601" class="ln">   601  </span>				&#34;\tstop := func() error {\n\t\treturn logger.Close()\n\t}\n\n\treturn start, stop\n}\n&#34;
+<span id="L602" class="ln">   602  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L603" class="ln">   603  </span>			require.Len(t, violations, 1)
+<span id="L604" class="ln">   604  </span>			assert.Equal(t, &#34;p.go:15: return logger.Close()&#34;, violations[0])
+<span id="L605" class="ln">   605  </span>		})
+<span id="L606" class="ln">   606  </span>
+<span id="L607" class="ln">   607  </span>		t.Run(&#34;raw string内の行頭閉じ波括弧で走査を打ち切らない&#34;, func(t *testing.T) {
+<span id="L608" class="ln">   608  </span>			t.Parallel()
+<span id="L609" class="ln">   609  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar logger L\n\tapp := fx.New(fx.Populate(&amp;logger))\n&#34; +
+<span id="L610" class="ln">   610  </span>				&#34;\tconst tmpl = `\n}\n`\n\t_ = app\n\treturn logger.Do()\n}\n&#34;
+<span id="L611" class="ln">   611  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L612" class="ln">   612  </span>			require.Len(t, violations, 1)
+<span id="L613" class="ln">   613  </span>			assert.Equal(t, &#34;p.go:10: return logger.Do()&#34;, violations[0])
+<span id="L614" class="ln">   614  </span>		})
+<span id="L615" class="ln">   615  </span>
+<span id="L616" class="ln">   616  </span>		t.Run(&#34;複数対象のうち一つでも検査前に参照していると検出する&#34;, func(t *testing.T) {
+<span id="L617" class="ln">   617  </span>			t.Parallel()
+<span id="L618" class="ln">   618  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar (\n\t\ta A\n\t\tb B\n\t)\n&#34; +
+<span id="L619" class="ln">   619  </span>				&#34;\tapp := fx.New(fx.Populate(&amp;a, &amp;b))\n\tb.Warm()\n&#34; +
+<span id="L620" class="ln">   620  </span>				&#34;\tif err := app.Err(); err != nil {\n\t\treturn err\n\t}\n\treturn a.Do()\n}\n&#34;
+<span id="L621" class="ln">   621  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L622" class="ln">   622  </span>			require.Len(t, violations, 1)
+<span id="L623" class="ln">   623  </span>			assert.Equal(t, &#34;p.go:9: b.Warm()&#34;, violations[0])
+<span id="L624" class="ln">   624  </span>		})
+<span id="L625" class="ln">   625  </span>
+<span id="L626" class="ln">   626  </span>		t.Run(&#34;同じクロージャ内の複数参照は最初の1件だけ報告する&#34;, func(t *testing.T) {
+<span id="L627" class="ln">   627  </span>			t.Parallel()
+<span id="L628" class="ln">   628  </span>			src := &#34;package p\n\nfunc f() error {\n\tvar a A\n\tapp := fx.New(fx.Populate(&amp;a))\n&#34; +
+<span id="L629" class="ln">   629  </span>				&#34;\ta.Warm()\n\ta.Do()\n\t_ = app\n\treturn nil\n}\n&#34;
+<span id="L630" class="ln">   630  </span>			_, _, violations := collectUnguardedFxPopulate(strings.Split(src, &#34;\n&#34;), &#34;p.go&#34;)
+<span id="L631" class="ln">   631  </span>			require.Len(t, violations, 1)
+<span id="L632" class="ln">   632  </span>			assert.Equal(t, &#34;p.go:6: a.Warm()&#34;, violations[0])
+<span id="L633" class="ln">   633  </span>		})
+<span id="L634" class="ln">   634  </span>	})
+<span id="L635" class="ln">   635  </span>}
+<span id="L636" class="ln">   636  </span>
+<span id="L637" class="ln">   637  </span>func Test_unguardedUses(t *testing.T) {
+<span id="L638" class="ln">   638  </span>	t.Parallel()
+<span id="L639" class="ln">   639  </span>
+<span id="L640" class="ln">   640  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L641" class="ln">   641  </span>		t.Parallel()
+<span id="L642" class="ln">   642  </span>
+<span id="L643" class="ln">   643  </span>		t.Run(&#34;ガード済みなら空を返す&#34;, func(t *testing.T) {
+<span id="L644" class="ln">   644  </span>			t.Parallel()
+<span id="L645" class="ln">   645  </span>			lines := strings.Split(&#34;x\n\tfx.Populate(&amp;a)\n\tif err := app.Err(); err != nil {\n\t}\n\ta.Do()\n}&#34;, &#34;\n&#34;)
+<span id="L646" class="ln">   646  </span>			assert.Empty(t, unguardedUses(lines, lines, &#34;p.go&#34;, 1, 5, &#34;app&#34;, []string{&#34;a&#34;}))
+<span id="L647" class="ln">   647  </span>		})
+<span id="L648" class="ln">   648  </span>	})
+<span id="L649" class="ln">   649  </span>
+<span id="L650" class="ln">   650  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L651" class="ln">   651  </span>		t.Parallel()
+<span id="L652" class="ln">   652  </span>
+<span id="L653" class="ln">   653  </span>		t.Run(&#34;ガードが無ければ参照行を返す&#34;, func(t *testing.T) {
+<span id="L654" class="ln">   654  </span>			t.Parallel()
+<span id="L655" class="ln">   655  </span>			lines := strings.Split(&#34;x\n\tfx.Populate(&amp;a)\n\ta.Do()\n}&#34;, &#34;\n&#34;)
+<span id="L656" class="ln">   656  </span>			assert.Equal(t, []string{&#34;p.go:3: a.Do()&#34;}, unguardedUses(lines, lines, &#34;p.go&#34;, 1, 3, &#34;app&#34;, []string{&#34;a&#34;}))
+<span id="L657" class="ln">   657  </span>		})
+<span id="L658" class="ln">   658  </span>	})
+<span id="L659" class="ln">   659  </span>}
+<span id="L660" class="ln">   660  </span>
+<span id="L661" class="ln">   661  </span>func Test_hasGuardBefore(t *testing.T) {
+<span id="L662" class="ln">   662  </span>	t.Parallel()
+<span id="L663" class="ln">   663  </span>
+<span id="L664" class="ln">   664  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L665" class="ln">   665  </span>		t.Parallel()
+<span id="L666" class="ln">   666  </span>
+<span id="L667" class="ln">   667  </span>		t.Run(&#34;同一スコープのガードを認める&#34;, func(t *testing.T) {
+<span id="L668" class="ln">   668  </span>			t.Parallel()
+<span id="L669" class="ln">   669  </span>			lines := strings.Split(&#34;x\n\tapp := fx.New()\n\tif err := app.Err(); err != nil {\n\t}\n\ta.Do()&#34;, &#34;\n&#34;)
+<span id="L670" class="ln">   670  </span>			assert.True(t, hasGuardBefore(lines, 1, 4, -1, &#34;app.Err()&#34;))
+<span id="L671" class="ln">   671  </span>		})
+<span id="L672" class="ln">   672  </span>	})
+<span id="L673" class="ln">   673  </span>
+<span id="L674" class="ln">   674  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L675" class="ln">   675  </span>		t.Parallel()
+<span id="L676" class="ln">   676  </span>
+<span id="L677" class="ln">   677  </span>		t.Run(&#34;別クロージャ内のガードは認めない&#34;, func(t *testing.T) {
+<span id="L678" class="ln">   678  </span>			t.Parallel()
+<span id="L679" class="ln">   679  </span>			src := &#34;x\n\tapp := fx.New()\n\tstart := func() error {\n\t\tif err := app.Err(); err != nil {\n\t\t}\n\t}\n&#34; +
+<span id="L680" class="ln">   680  </span>				&#34;\tstop := func() error {\n\t\ta.Do()\n\t}&#34;
+<span id="L681" class="ln">   681  </span>			lines := strings.Split(src, &#34;\n&#34;)
+<span id="L682" class="ln">   682  </span>			assert.False(t, hasGuardBefore(lines, 1, 7, 6, &#34;app.Err()&#34;))
+<span id="L683" class="ln">   683  </span>		})
+<span id="L684" class="ln">   684  </span>
+<span id="L685" class="ln">   685  </span>		t.Run(&#34;ガードが無ければ偽&#34;, func(t *testing.T) {
+<span id="L686" class="ln">   686  </span>			t.Parallel()
+<span id="L687" class="ln">   687  </span>			lines := strings.Split(&#34;x\n\tapp := fx.New()\n\ta.Do()&#34;, &#34;\n&#34;)
+<span id="L688" class="ln">   688  </span>			assert.False(t, hasGuardBefore(lines, 1, 2, -1, &#34;app.Err()&#34;))
+<span id="L689" class="ln">   689  </span>		})
+<span id="L690" class="ln">   690  </span>	})
+<span id="L691" class="ln">   691  </span>}
+<span id="L692" class="ln">   692  </span>
+<span id="L693" class="ln">   693  </span>func Test_enclosingClosure(t *testing.T) {
+<span id="L694" class="ln">   694  </span>	t.Parallel()
+<span id="L695" class="ln">   695  </span>
+<span id="L696" class="ln">   696  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L697" class="ln">   697  </span>		t.Parallel()
+<span id="L698" class="ln">   698  </span>
+<span id="L699" class="ln">   699  </span>		t.Run(&#34;囲む関数リテラルの開始行を返す&#34;, func(t *testing.T) {
+<span id="L700" class="ln">   700  </span>			t.Parallel()
+<span id="L701" class="ln">   701  </span>			lines := strings.Split(&#34;x\n\tapp := fx.New()\n\tstart := func() error {\n\n\t\treturn a.Do()\n\t}&#34;, &#34;\n&#34;)
+<span id="L702" class="ln">   702  </span>			assert.Equal(t, 2, enclosingClosure(lines, 1, 4))
+<span id="L703" class="ln">   703  </span>		})
+<span id="L704" class="ln">   704  </span>
+<span id="L705" class="ln">   705  </span>		t.Run(&#34;関数直下なら-1を返す&#34;, func(t *testing.T) {
+<span id="L706" class="ln">   706  </span>			t.Parallel()
+<span id="L707" class="ln">   707  </span>			lines := strings.Split(&#34;x\n\tapp := fx.New()\n\treturn a.Do()&#34;, &#34;\n&#34;)
+<span id="L708" class="ln">   708  </span>			assert.Equal(t, -1, enclosingClosure(lines, 1, 2))
+<span id="L709" class="ln">   709  </span>		})
+<span id="L710" class="ln">   710  </span>
+<span id="L711" class="ln">   711  </span>		t.Run(&#34;if ブロックは関数リテラルとみなさない&#34;, func(t *testing.T) {
+<span id="L712" class="ln">   712  </span>			t.Parallel()
+<span id="L713" class="ln">   713  </span>			lines := strings.Split(&#34;x\n\tapp := fx.New()\n\tif ok {\n\t\treturn a.Do()\n\t}&#34;, &#34;\n&#34;)
+<span id="L714" class="ln">   714  </span>			assert.Equal(t, -1, enclosingClosure(lines, 1, 3))
+<span id="L715" class="ln">   715  </span>		})
+<span id="L716" class="ln">   716  </span>
+<span id="L717" class="ln">   717  </span>		t.Run(&#34;範囲外の行は-1を返す&#34;, func(t *testing.T) {
+<span id="L718" class="ln">   718  </span>			t.Parallel()
+<span id="L719" class="ln">   719  </span>			assert.Equal(t, -1, enclosingClosure([]string{&#34;a&#34;}, 0, 5))
+<span id="L720" class="ln">   720  </span>		})
+<span id="L721" class="ln">   721  </span>	})
+<span id="L722" class="ln">   722  </span>}
+<span id="L723" class="ln">   723  </span>
+<span id="L724" class="ln">   724  </span>func Test_indentWidth(t *testing.T) {
+<span id="L725" class="ln">   725  </span>	t.Parallel()
+<span id="L726" class="ln">   726  </span>
+<span id="L727" class="ln">   727  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L728" class="ln">   728  </span>		t.Parallel()
+<span id="L729" class="ln">   729  </span>
+<span id="L730" class="ln">   730  </span>		t.Run(&#34;行頭のタブ数を返す&#34;, func(t *testing.T) {
+<span id="L731" class="ln">   731  </span>			t.Parallel()
+<span id="L732" class="ln">   732  </span>			assert.Equal(t, 0, indentWidth(&#34;a&#34;))
+<span id="L733" class="ln">   733  </span>			assert.Equal(t, 2, indentWidth(&#34;\t\ta&#34;))
+<span id="L734" class="ln">   734  </span>		})
+<span id="L735" class="ln">   735  </span>	})
+<span id="L736" class="ln">   736  </span>}
+<span id="L737" class="ln">   737  </span>
+<span id="L738" class="ln">   738  </span>func Test_fxNewSite(t *testing.T) {
+<span id="L739" class="ln">   739  </span>	t.Parallel()
+<span id="L740" class="ln">   740  </span>
+<span id="L741" class="ln">   741  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L742" class="ln">   742  </span>		t.Parallel()
+<span id="L743" class="ln">   743  </span>
+<span id="L744" class="ln">   744  </span>		t.Run(&#34;代入先の変数名とその行を返す&#34;, func(t *testing.T) {
+<span id="L745" class="ln">   745  </span>			t.Parallel()
+<span id="L746" class="ln">   746  </span>			lines := []string{&#34;\tapp := fx.New(fx.Populate(&amp;a))&#34;}
+<span id="L747" class="ln">   747  </span>			name, at := fxNewSite(lines, 0, 0)
+<span id="L748" class="ln">   748  </span>			assert.Equal(t, &#34;app&#34;, name)
+<span id="L749" class="ln">   749  </span>			assert.Equal(t, 0, at)
+<span id="L750" class="ln">   750  </span>		})
+<span id="L751" class="ln">   751  </span>
+<span id="L752" class="ln">   752  </span>		t.Run(&#34;fx.Populateより前にあるfx.Newも拾う&#34;, func(t *testing.T) {
+<span id="L753" class="ln">   753  </span>			t.Parallel()
+<span id="L754" class="ln">   754  </span>			lines := []string{&#34;\tapp := fx.New(&#34;, &#34;\t\tfx.Populate(&amp;a),&#34;, &#34;\t)&#34;}
+<span id="L755" class="ln">   755  </span>			name, at := fxNewSite(lines, 0, 2)
+<span id="L756" class="ln">   756  </span>			assert.Equal(t, &#34;app&#34;, name)
+<span id="L757" class="ln">   757  </span>			assert.Equal(t, 0, at)
+<span id="L758" class="ln">   758  </span>		})
+<span id="L759" class="ln">   759  </span>	})
+<span id="L760" class="ln">   760  </span>
+<span id="L761" class="ln">   761  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L762" class="ln">   762  </span>		t.Parallel()
+<span id="L763" class="ln">   763  </span>
+<span id="L764" class="ln">   764  </span>		t.Run(&#34;変数で受けていなければ空文字と-1を返す&#34;, func(t *testing.T) {
+<span id="L765" class="ln">   765  </span>			t.Parallel()
+<span id="L766" class="ln">   766  </span>			lines := []string{&#34;\treturn fx.New(fx.Populate(&amp;a))&#34;}
+<span id="L767" class="ln">   767  </span>			name, at := fxNewSite(lines, 0, 0)
+<span id="L768" class="ln">   768  </span>			assert.Empty(t, name)
+<span id="L769" class="ln">   769  </span>			assert.Equal(t, -1, at)
+<span id="L770" class="ln">   770  </span>		})
+<span id="L771" class="ln">   771  </span>	})
+<span id="L772" class="ln">   772  </span>}
+<span id="L773" class="ln">   773  </span>
+<span id="L774" class="ln">   774  </span>func Test_funcStartLine(t *testing.T) {
+<span id="L775" class="ln">   775  </span>	t.Parallel()
+<span id="L776" class="ln">   776  </span>
+<span id="L777" class="ln">   777  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L778" class="ln">   778  </span>		t.Parallel()
+<span id="L779" class="ln">   779  </span>
+<span id="L780" class="ln">   780  </span>		t.Run(&#34;行頭のfunc宣言を関数の開始とする&#34;, func(t *testing.T) {
+<span id="L781" class="ln">   781  </span>			t.Parallel()
+<span id="L782" class="ln">   782  </span>			lines := strings.Split(&#34;package p\n\nfunc f() {\n\tg()\n}\n&#34;, &#34;\n&#34;)
+<span id="L783" class="ln">   783  </span>			assert.Equal(t, 2, funcStartLine(lines, 3))
+<span id="L784" class="ln">   784  </span>		})
+<span id="L785" class="ln">   785  </span>
+<span id="L786" class="ln">   786  </span>		t.Run(&#34;宣言が無ければ0を返す&#34;, func(t *testing.T) {
+<span id="L787" class="ln">   787  </span>			t.Parallel()
+<span id="L788" class="ln">   788  </span>			assert.Equal(t, 0, funcStartLine([]string{&#34;package p&#34;, &#34;\tg()&#34;}, 1))
+<span id="L789" class="ln">   789  </span>		})
+<span id="L790" class="ln">   790  </span>	})
+<span id="L791" class="ln">   791  </span>}
+<span id="L792" class="ln">   792  </span>
+<span id="L793" class="ln">   793  </span>func Test_joinCall(t *testing.T) {
+<span id="L794" class="ln">   794  </span>	t.Parallel()
+<span id="L795" class="ln">   795  </span>
+<span id="L796" class="ln">   796  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L797" class="ln">   797  </span>		t.Parallel()
+<span id="L798" class="ln">   798  </span>
+<span id="L799" class="ln">   799  </span>		t.Run(&#34;単一行の呼び出しをそのまま返す&#34;, func(t *testing.T) {
+<span id="L800" class="ln">   800  </span>			t.Parallel()
+<span id="L801" class="ln">   801  </span>			lines := []string{&#34;\tapp := fx.New(fx.Populate(&amp;a, &amp;b))&#34;}
+<span id="L802" class="ln">   802  </span>			call, at := joinCall(lines, 0, fxPopulateCall)
+<span id="L803" class="ln">   803  </span>			assert.Equal(t, &#34;fx.Populate(&amp;a, &amp;b)&#34;, call)
+<span id="L804" class="ln">   804  </span>			assert.Equal(t, 0, at)
+<span id="L805" class="ln">   805  </span>		})
+<span id="L806" class="ln">   806  </span>
+<span id="L807" class="ln">   807  </span>		t.Run(&#34;複数行の呼び出しを連結し閉じ括弧の行を返す&#34;, func(t *testing.T) {
+<span id="L808" class="ln">   808  </span>			t.Parallel()
+<span id="L809" class="ln">   809  </span>			lines := []string{&#34;\t\tfx.Populate(&#34;, &#34;\t\t\t&amp;a,&#34;, &#34;\t\t\t&amp;b,&#34;, &#34;\t\t),&#34;}
+<span id="L810" class="ln">   810  </span>			call, at := joinCall(lines, 0, fxPopulateCall)
+<span id="L811" class="ln">   811  </span>			assert.Equal(t, &#34;fx.Populate(\t\t\t&amp;a,\t\t\t&amp;b,\t\t)&#34;, call)
+<span id="L812" class="ln">   812  </span>			assert.Equal(t, 3, at)
+<span id="L813" class="ln">   813  </span>		})
+<span id="L814" class="ln">   814  </span>	})
+<span id="L815" class="ln">   815  </span>
+<span id="L816" class="ln">   816  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L817" class="ln">   817  </span>		t.Parallel()
+<span id="L818" class="ln">   818  </span>
+<span id="L819" class="ln">   819  </span>		t.Run(&#34;呼び出しを含まない行は空文字を返す&#34;, func(t *testing.T) {
+<span id="L820" class="ln">   820  </span>			t.Parallel()
+<span id="L821" class="ln">   821  </span>			call, _ := joinCall([]string{&#34;\tapp := fx.New(opts...)&#34;}, 0, fxPopulateCall)
+<span id="L822" class="ln">   822  </span>			assert.Empty(t, call)
+<span id="L823" class="ln">   823  </span>		})
+<span id="L824" class="ln">   824  </span>
+<span id="L825" class="ln">   825  </span>		t.Run(&#34;括弧が閉じなければ空文字を返す&#34;, func(t *testing.T) {
+<span id="L826" class="ln">   826  </span>			t.Parallel()
+<span id="L827" class="ln">   827  </span>			call, _ := joinCall([]string{&#34;\tfx.Populate(&#34;}, 0, fxPopulateCall)
+<span id="L828" class="ln">   828  </span>			assert.Empty(t, call)
+<span id="L829" class="ln">   829  </span>		})
+<span id="L830" class="ln">   830  </span>
+<span id="L831" class="ln">   831  </span>		t.Run(&#34;範囲外の行は空文字を返す&#34;, func(t *testing.T) {
+<span id="L832" class="ln">   832  </span>			t.Parallel()
+<span id="L833" class="ln">   833  </span>			call, _ := joinCall([]string{&#34;\tfx.Populate(&amp;a)&#34;}, 5, fxPopulateCall)
+<span id="L834" class="ln">   834  </span>			assert.Empty(t, call)
+<span id="L835" class="ln">   835  </span>		})
+<span id="L836" class="ln">   836  </span>	})
+<span id="L837" class="ln">   837  </span>}
+<span id="L838" class="ln">   838  </span>
+<span id="L839" class="ln">   839  </span>func Test_populatedNames(t *testing.T) {
+<span id="L840" class="ln">   840  </span>	t.Parallel()
+<span id="L841" class="ln">   841  </span>
+<span id="L842" class="ln">   842  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L843" class="ln">   843  </span>		t.Parallel()
+<span id="L844" class="ln">   844  </span>
+<span id="L845" class="ln">   845  </span>		t.Run(&#34;アドレス演算子付きの引数から識別子を取り出す&#34;, func(t *testing.T) {
+<span id="L846" class="ln">   846  </span>			t.Parallel()
+<span id="L847" class="ln">   847  </span>			assert.Equal(t, []string{&#34;a&#34;, &#34;b&#34;}, populatedNames(&#34;fx.Populate(&amp;a, &amp;b)&#34;))
+<span id="L848" class="ln">   848  </span>		})
+<span id="L849" class="ln">   849  </span>	})
+<span id="L850" class="ln">   850  </span>
+<span id="L851" class="ln">   851  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L852" class="ln">   852  </span>		t.Parallel()
+<span id="L853" class="ln">   853  </span>
+<span id="L854" class="ln">   854  </span>		t.Run(&#34;フィールド参照は対象を特定できないためnilを返す&#34;, func(t *testing.T) {
+<span id="L855" class="ln">   855  </span>			t.Parallel()
+<span id="L856" class="ln">   856  </span>			assert.Nil(t, populatedNames(&#34;fx.Populate(&amp;deps.Logger)&#34;))
+<span id="L857" class="ln">   857  </span>		})
+<span id="L858" class="ln">   858  </span>
+<span id="L859" class="ln">   859  </span>		t.Run(&#34;アドレス演算子が無い引数が混じればnilを返す&#34;, func(t *testing.T) {
+<span id="L860" class="ln">   860  </span>			t.Parallel()
+<span id="L861" class="ln">   861  </span>			assert.Nil(t, populatedNames(&#34;fx.Populate(&amp;a, b)&#34;))
+<span id="L862" class="ln">   862  </span>		})
+<span id="L863" class="ln">   863  </span>
+<span id="L864" class="ln">   864  </span>		t.Run(&#34;引数が空ならnilを返す&#34;, func(t *testing.T) {
+<span id="L865" class="ln">   865  </span>			t.Parallel()
+<span id="L866" class="ln">   866  </span>			assert.Nil(t, populatedNames(&#34;fx.Populate()&#34;))
+<span id="L867" class="ln">   867  </span>		})
+<span id="L868" class="ln">   868  </span>
+<span id="L869" class="ln">   869  </span>		t.Run(&#34;呼び出しの形になっていなければnilを返す&#34;, func(t *testing.T) {
+<span id="L870" class="ln">   870  </span>			t.Parallel()
+<span id="L871" class="ln">   871  </span>			assert.Nil(t, populatedNames(&#34;&#34;))
+<span id="L872" class="ln">   872  </span>		})
+<span id="L873" class="ln">   873  </span>	})
+<span id="L874" class="ln">   874  </span>}
+<span id="L875" class="ln">   875  </span>
+<span id="L876" class="ln">   876  </span>func Test_stripCommentsAndRawStrings(t *testing.T) {
+<span id="L877" class="ln">   877  </span>	t.Parallel()
+<span id="L878" class="ln">   878  </span>
+<span id="L879" class="ln">   879  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L880" class="ln">   880  </span>		t.Parallel()
+<span id="L881" class="ln">   881  </span>
+<span id="L882" class="ln">   882  </span>		t.Run(&#34;行コメントを落とす&#34;, func(t *testing.T) {
+<span id="L883" class="ln">   883  </span>			t.Parallel()
+<span id="L884" class="ln">   884  </span>			assert.Equal(t, []string{&#34;\tsetup() &#34;}, stripCommentsAndRawStrings([]string{&#34;\tsetup() // logger&#34;}))
+<span id="L885" class="ln">   885  </span>		})
+<span id="L886" class="ln">   886  </span>
+<span id="L887" class="ln">   887  </span>		t.Run(&#34;ブロックコメントを空白に置き換える&#34;, func(t *testing.T) {
+<span id="L888" class="ln">   888  </span>			t.Parallel()
+<span id="L889" class="ln">   889  </span>			got := stripCommentsAndRawStrings([]string{&#34;\ta := 1 /* logger */ + 2&#34;})
+<span id="L890" class="ln">   890  </span>			assert.False(t, containsIdentifier(got[0], &#34;logger&#34;))
+<span id="L891" class="ln">   891  </span>			assert.True(t, containsIdentifier(got[0], &#34;a&#34;))
+<span id="L892" class="ln">   892  </span>		})
+<span id="L893" class="ln">   893  </span>
+<span id="L894" class="ln">   894  </span>		t.Run(&#34;raw stringの中身を空白に置き換える&#34;, func(t *testing.T) {
+<span id="L895" class="ln">   895  </span>			t.Parallel()
+<span id="L896" class="ln">   896  </span>			got := stripCommentsAndRawStrings([]string{&#34;\tconst t = `&#34;, &#34;}&#34;, &#34;`&#34;})
+<span id="L897" class="ln">   897  </span>			assert.False(t, strings.HasPrefix(got[1], &#34;}&#34;))
+<span id="L898" class="ln">   898  </span>		})
+<span id="L899" class="ln">   899  </span>
+<span id="L900" class="ln">   900  </span>		t.Run(&#34;文字列リテラル内のスラッシュはコメントとみなさない&#34;, func(t *testing.T) {
+<span id="L901" class="ln">   901  </span>			t.Parallel()
+<span id="L902" class="ln">   902  </span>			got := stripCommentsAndRawStrings([]string{&#34;\turl := \&#34;http://x\&#34; + logger.Host()&#34;})
+<span id="L903" class="ln">   903  </span>			assert.True(t, containsIdentifier(got[0], &#34;logger&#34;))
+<span id="L904" class="ln">   904  </span>		})
+<span id="L905" class="ln">   905  </span>
+<span id="L906" class="ln">   906  </span>		t.Run(&#34;行数を保つ&#34;, func(t *testing.T) {
+<span id="L907" class="ln">   907  </span>			t.Parallel()
+<span id="L908" class="ln">   908  </span>			in := []string{&#34;a&#34;, &#34;b&#34;, &#34;c&#34;}
+<span id="L909" class="ln">   909  </span>			assert.Len(t, stripCommentsAndRawStrings(in), len(in))
+<span id="L910" class="ln">   910  </span>		})
+<span id="L911" class="ln">   911  </span>	})
+<span id="L912" class="ln">   912  </span>}
+<span id="L913" class="ln">   913  </span>
+<span id="L914" class="ln">   914  </span>func Test_funcEndLine(t *testing.T) {
+<span id="L915" class="ln">   915  </span>	t.Parallel()
+<span id="L916" class="ln">   916  </span>
+<span id="L917" class="ln">   917  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L918" class="ln">   918  </span>		t.Parallel()
+<span id="L919" class="ln">   919  </span>
+<span id="L920" class="ln">   920  </span>		t.Run(&#34;行頭の閉じ波括弧を関数の終端とする&#34;, func(t *testing.T) {
+<span id="L921" class="ln">   921  </span>			t.Parallel()
+<span id="L922" class="ln">   922  </span>			lines := strings.Split(&#34;package p\n\nfunc f() {\n\tg()\n}\n\nfunc h() {}\n&#34;, &#34;\n&#34;)
+<span id="L923" class="ln">   923  </span>			assert.Equal(t, 4, funcEndLine(lines, 3))
+<span id="L924" class="ln">   924  </span>		})
+<span id="L925" class="ln">   925  </span>
+<span id="L926" class="ln">   926  </span>		t.Run(&#34;終端が無ければファイル末尾を返す&#34;, func(t *testing.T) {
+<span id="L927" class="ln">   927  </span>			t.Parallel()
+<span id="L928" class="ln">   928  </span>			lines := strings.Split(&#34;package p\n\nfunc f() {\n\tg()\n&#34;, &#34;\n&#34;)
+<span id="L929" class="ln">   929  </span>			assert.Equal(t, len(lines)-1, funcEndLine(lines, 3))
+<span id="L930" class="ln">   930  </span>		})
+<span id="L931" class="ln">   931  </span>	})
+<span id="L932" class="ln">   932  </span>}
+<span id="L933" class="ln">   933  </span>
+<span id="L934" class="ln">   934  </span>func Test_referencesAny(t *testing.T) {
+<span id="L935" class="ln">   935  </span>	t.Parallel()
+<span id="L936" class="ln">   936  </span>
+<span id="L937" class="ln">   937  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L938" class="ln">   938  </span>		t.Parallel()
+<span id="L939" class="ln">   939  </span>
+<span id="L940" class="ln">   940  </span>		t.Run(&#34;識別子として現れていれば真&#34;, func(t *testing.T) {
+<span id="L941" class="ln">   941  </span>			t.Parallel()
+<span id="L942" class="ln">   942  </span>			assert.True(t, referencesAny(&#34;\treturn logger.Do()&#34;, []string{&#34;logger&#34;}))
+<span id="L943" class="ln">   943  </span>		})
+<span id="L944" class="ln">   944  </span>
+<span id="L945" class="ln">   945  </span>		t.Run(&#34;部分文字列でしかなければ偽&#34;, func(t *testing.T) {
+<span id="L946" class="ln">   946  </span>			t.Parallel()
+<span id="L947" class="ln">   947  </span>			assert.False(t, referencesAny(&#34;\tloggerFactory.Warm()&#34;, []string{&#34;logger&#34;}))
+<span id="L948" class="ln">   948  </span>		})
+<span id="L949" class="ln">   949  </span>
+<span id="L950" class="ln">   950  </span>		t.Run(&#34;候補が空なら偽&#34;, func(t *testing.T) {
+<span id="L951" class="ln">   951  </span>			t.Parallel()
+<span id="L952" class="ln">   952  </span>			assert.False(t, referencesAny(&#34;\treturn nil&#34;, nil))
+<span id="L953" class="ln">   953  </span>		})
+<span id="L954" class="ln">   954  </span>	})
+<span id="L955" class="ln">   955  </span>}
+<span id="L956" class="ln">   956  </span>
+<span id="L957" class="ln">   957  </span>func Test_containsIdentifier(t *testing.T) {
+<span id="L958" class="ln">   958  </span>	t.Parallel()
+<span id="L959" class="ln">   959  </span>
+<span id="L960" class="ln">   960  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L961" class="ln">   961  </span>		t.Parallel()
+<span id="L962" class="ln">   962  </span>
+<span id="L963" class="ln">   963  </span>		t.Run(&#34;識別子として現れていれば真&#34;, func(t *testing.T) {
+<span id="L964" class="ln">   964  </span>			t.Parallel()
+<span id="L965" class="ln">   965  </span>			assert.True(t, containsIdentifier(&#34;a := a + 1&#34;, &#34;a&#34;))
+<span id="L966" class="ln">   966  </span>		})
+<span id="L967" class="ln">   967  </span>
+<span id="L968" class="ln">   968  </span>		t.Run(&#34;前後が識別子構成文字なら偽&#34;, func(t *testing.T) {
+<span id="L969" class="ln">   969  </span>			t.Parallel()
+<span id="L970" class="ln">   970  </span>			assert.False(t, containsIdentifier(&#34;abc := 1&#34;, &#34;a&#34;))
+<span id="L971" class="ln">   971  </span>		})
+<span id="L972" class="ln">   972  </span>
+<span id="L973" class="ln">   973  </span>		t.Run(&#34;最初の出現が部分一致でも後続に識別子があれば真&#34;, func(t *testing.T) {
+<span id="L974" class="ln">   974  </span>			t.Parallel()
+<span id="L975" class="ln">   975  </span>			assert.True(t, containsIdentifier(&#34;abc := a&#34;, &#34;a&#34;))
+<span id="L976" class="ln">   976  </span>		})
+<span id="L977" class="ln">   977  </span>
+<span id="L978" class="ln">   978  </span>		t.Run(&#34;空の名前は偽&#34;, func(t *testing.T) {
+<span id="L979" class="ln">   979  </span>			t.Parallel()
+<span id="L980" class="ln">   980  </span>			assert.False(t, containsIdentifier(&#34;abc&#34;, &#34;&#34;))
+<span id="L981" class="ln">   981  </span>		})
+<span id="L982" class="ln">   982  </span>	})
+<span id="L983" class="ln">   983  </span>}
+<span id="L984" class="ln">   984  </span>
+<span id="L985" class="ln">   985  </span>func Test_byteAt(t *testing.T) {
+<span id="L986" class="ln">   986  </span>	t.Parallel()
+<span id="L987" class="ln">   987  </span>
+<span id="L988" class="ln">   988  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L989" class="ln">   989  </span>		t.Parallel()
+<span id="L990" class="ln">   990  </span>
+<span id="L991" class="ln">   991  </span>		t.Run(&#34;範囲内はそのバイトを返す&#34;, func(t *testing.T) {
+<span id="L992" class="ln">   992  </span>			t.Parallel()
+<span id="L993" class="ln">   993  </span>			assert.Equal(t, byte(&#39;b&#39;), byteAt(&#34;abc&#34;, 1))
+<span id="L994" class="ln">   994  </span>		})
+<span id="L995" class="ln">   995  </span>
+<span id="L996" class="ln">   996  </span>		t.Run(&#34;範囲外は0を返す&#34;, func(t *testing.T) {
+<span id="L997" class="ln">   997  </span>			t.Parallel()
+<span id="L998" class="ln">   998  </span>			assert.Equal(t, byte(0), byteAt(&#34;abc&#34;, -1))
+<span id="L999" class="ln">   999  </span>			assert.Equal(t, byte(0), byteAt(&#34;abc&#34;, 3))
+<span id="L1000" class="ln">  1000  </span>		})
+<span id="L1001" class="ln">  1001  </span>	})
+<span id="L1002" class="ln">  1002  </span>}
+<span id="L1003" class="ln">  1003  </span>
+<span id="L1004" class="ln">  1004  </span>func Test_isIdentifierChar(t *testing.T) {
+<span id="L1005" class="ln">  1005  </span>	t.Parallel()
+<span id="L1006" class="ln">  1006  </span>
+<span id="L1007" class="ln">  1007  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1008" class="ln">  1008  </span>		t.Parallel()
+<span id="L1009" class="ln">  1009  </span>
+<span id="L1010" class="ln">  1010  </span>		t.Run(&#34;英数字とアンダースコアは真&#34;, func(t *testing.T) {
+<span id="L1011" class="ln">  1011  </span>			t.Parallel()
+<span id="L1012" class="ln">  1012  </span>			assert.True(t, isIdentifierChar(&#39;a&#39;))
+<span id="L1013" class="ln">  1013  </span>			assert.True(t, isIdentifierChar(&#39;Z&#39;))
+<span id="L1014" class="ln">  1014  </span>			assert.True(t, isIdentifierChar(&#39;0&#39;))
+<span id="L1015" class="ln">  1015  </span>			assert.True(t, isIdentifierChar(&#39;_&#39;))
+<span id="L1016" class="ln">  1016  </span>		})
+<span id="L1017" class="ln">  1017  </span>
+<span id="L1018" class="ln">  1018  </span>		t.Run(&#34;区切り文字は偽&#34;, func(t *testing.T) {
+<span id="L1019" class="ln">  1019  </span>			t.Parallel()
+<span id="L1020" class="ln">  1020  </span>			assert.False(t, isIdentifierChar(&#39;.&#39;))
+<span id="L1021" class="ln">  1021  </span>			assert.False(t, isIdentifierChar(&#39; &#39;))
+<span id="L1022" class="ln">  1022  </span>			assert.False(t, isIdentifierChar(0))
+<span id="L1023" class="ln">  1023  </span>		})
+<span id="L1024" class="ln">  1024  </span>	})
+<span id="L1025" class="ln">  1025  </span>}
+<span id="L1026" class="ln">  1026  </span>
+</pre><p><a href="../../../../src/go-boilerplate/internal/architest/fx_populate_guard_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

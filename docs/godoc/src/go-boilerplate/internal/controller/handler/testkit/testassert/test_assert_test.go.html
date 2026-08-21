@@ -63,7 +63,7 @@
 <span id="L6" class="ln">     6  </span>	&#34;net/http/httptest&#34;
 <span id="L7" class="ln">     7  </span>	&#34;testing&#34;
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L11" class="ln">    11  </span>)
 <span id="L12" class="ln">    12  </span>
@@ -99,7 +99,7 @@
 <span id="L42" class="ln">    42  </span>
 <span id="L43" class="ln">    43  </span>		t.Run(&#34;ルーティングのメソッドが期待通りの場合、検証が通る&#34;, func(t *testing.T) {
 <span id="L44" class="ln">    44  </span>			t.Parallel()
-<span id="L45" class="ln">    45  </span>			routes := []*echo.Route{
+<span id="L45" class="ln">    45  </span>			routes := echo.Routes{
 <span id="L46" class="ln">    46  </span>				{Method: &#34;GET&#34;},
 <span id="L47" class="ln">    47  </span>				{Method: &#34;POST&#34;},
 <span id="L48" class="ln">    48  </span>				{Method: &#34;DELETE&#34;},
@@ -118,7 +118,7 @@
 <span id="L61" class="ln">    61  </span>
 <span id="L62" class="ln">    62  </span>		t.Run(&#34;すべてのルートのパスが期待通りの場合、検証が通る&#34;, func(t *testing.T) {
 <span id="L63" class="ln">    63  </span>			t.Parallel()
-<span id="L64" class="ln">    64  </span>			routes := []*echo.Route{
+<span id="L64" class="ln">    64  </span>			routes := echo.Routes{
 <span id="L65" class="ln">    65  </span>				{Path: &#34;/users/:id&#34;},
 <span id="L66" class="ln">    66  </span>				{Path: &#34;/users/:id&#34;},
 <span id="L67" class="ln">    67  </span>			}

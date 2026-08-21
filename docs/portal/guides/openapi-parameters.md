@@ -6,25 +6,10 @@ English | [日本語](README.ja.md)
 
 ## Directory Structure
 
-```text
-parameters/
-├── pagination/         # Pagination parameters (shared across endpoints)
-│   ├── PageParam.yaml        # offset strategy
-│   ├── PerPageParam.yaml     # offset strategy
-│   ├── CursorFirstParam.yaml # cursor strategy
-│   └── CursorAfterParam.yaml # cursor strategy
-├── search/             # Search parameters (shared across endpoints)
-│   ├── KeywordParam.yaml
-│   └── ActiveParam.yaml
-└── user/               # User-specific parameters (sample)
-    └── UserIdParam.yaml
-```
+One directory per parameter group. A group shared across endpoints is named after the concern
+(`pagination/`, `search/`); one owned by a single resource is named after that resource.
 
-> `user/` is a **sample implementation**. When building your own service, use it as a reference and replace or remove as needed.
-
-## Available Parameters
-
-### pagination
+## Pagination strategies
 
 This project offers **two pagination strategies**, and each deliberately keeps its own idiomatic parameter names — they are **not** unified on purpose:
 
@@ -33,25 +18,61 @@ This project offers **two pagination strategies**, and each deliberately keeps i
 
 Renaming the cursor params to `perPage` etc. would be non-idiomatic (cursor traversal has no "pages") and an API-breaking change, so the split is intentional.
 
-|File|Parameter|Type|Strategy|Description|
-|---|---|---|---|---|
-|`PageParam.yaml`|`page` (query)|integer|offset|Page number (1-based, default: 1)|
-|`PerPageParam.yaml`|`perPage` (query)|integer|offset|Items per page (default: 10, max: 100)|
-|`CursorFirstParam.yaml`|`first` (query)|integer|cursor|Max items to return (default: 50, max: 200)|
-|`CursorAfterParam.yaml`|`after` (query)|string|cursor|Opaque cursor for the next page; omit for the first page|
+## Filter conventions
 
-### search
+These apply to every search endpoint, not only the ones that exist today.
 
-|File|Parameter|Type|Description|
-|---|---|---|---|
-|`KeywordParam.yaml`|`keyword` (query)|string|Full-text search keyword|
-|`ActiveParam.yaml`|`active` (query)|boolean|Filter by active state (true/false/omit for all)|
+### Multiple values for one condition repeat the parameter name
 
-### user (sample)
+A condition that can hold several values is declared as an array and sent by repeating the name —
+`categoryCodes=1&categoryCodes=2` — which is OpenAPI's default serialization (`style: form`,
+`explode: true`). A parameter that is not declared as an array cannot express "either of these" at all:
+a repeated name is rejected by request validation.
 
-|File|Parameter|Type|Description|
-|---|---|---|---|
-|`UserIdParam.yaml`|`userId` (path)|string (uuid)|User UUID|
+```yaml
+explode: true
+schema:
+  type: array
+  uniqueItems: true
+  maxItems: 32
+  items: { type: integer, format: int32, minimum: 1, maximum: 32767 }
+```
+
+`uniqueItems` and `maxItems` are wire limits: they bound the URL length and the size of the resulting `IN`
+list. Existing examples: `product/CategoryCodesParam.yaml`, `product/StatusCodesParam.yaml`, and
+`purchase/PurchaseGroupByParam.yaml` (a string `enum` array whose order is significant — repetition
+preserves it).
+
+### Free-text input is never an array
+
+A parameter that carries text the user typed is a single `string` with a `maxLength`, never an array —
+`search/KeywordParam.yaml` is the shape to copy. Only a reference to a row (`code`) or a fixed `enum` may
+be multi-valued.
+
+This is what keeps the rule above cheap. Percent-encoded UTF-8 costs up to 9 characters per character, so
+one free-text parameter dominates the URL budget by an order of magnitude over any array-serialization
+choice; and a delimiter-separated array could not carry a value containing the delimiter, because the
+separator is split after percent-decoding and therefore cannot be escaped. Restricting arrays to codes and
+enums removes both problems at once.
+
+A search that outgrows this — many facets, or values too large for a URL — belongs in a `POST` body, not in
+a longer query string. See [ADR-0019 (search-query-parameter-shape)](../../../docs/adr/0019-search-query-parameter-shape.md).
+
+### Filtering by master data takes `code`, not the row's UUID
+
+The identifier a client sends for a master row is its `code` — a static alias fixed by the migration that
+inserted the row. Which UUID that row carries is decided by the migration, so application code must not
+hold it ([ADR-0031](../../../docs/adr/0031-master-data-via-migration.md)); the same reasoning applies at the
+API boundary. A client can keep `code` as a constant, whereas a UUID has to be resolved by calling the
+master endpoint first, and at 36 characters each it makes a multi-value filter expensive to express.
+
+A code matching no master row yields **zero results**, not a 404 — it is a filter, not a lookup.
+
+### `code` is an int16 range
+
+`type: integer` / `format: int32` / `minimum: 1` / `maximum: 32767`. OpenAPI has no int16, so the range is
+carried by the bounds and narrowed in Go through `pkg/safecast`. This matches the `SMALLINT` column, the
+sqlc-generated `int16`, and the domain's own `minCode` / `maxCode`.
 
 ## Usage
 

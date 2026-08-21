@@ -104,10 +104,10 @@
 			
 			
 				
-				<dd><a href="#AssertEchoRouterMethods">func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute []*echo.Route)</a></dd>
+				<dd><a href="#AssertEchoRouterMethods">func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute echo.Routes)</a></dd>
 			
 				
-				<dd><a href="#AssertEchoRouterPath">func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute []*echo.Route)</a></dd>
+				<dd><a href="#AssertEchoRouterPath">func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute echo.Routes)</a></dd>
 			
 				
 				<dd><a href="#AssertJSONEqual">func AssertJSONEqual[T any](t *testing.T, expectedCode int, expectedResponse T, actualResponse *httptest.ResponseRecorder)</a></dd>
@@ -139,12 +139,12 @@
 		
 			
 			
-			<h2 id="AssertEchoRouterMethods">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?s=1041:1136#L18">AssertEchoRouterMethods</a>
+			<h2 id="AssertEchoRouterMethods">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?s=1041:1134#L18">AssertEchoRouterMethods</a>
 				<a class="permalink" href="#AssertEchoRouterMethods">¶</a>
 				
 				
 			</h2>
-			<pre>func AssertEchoRouterMethods(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, expectedMethods []<a href="../../../../../../builtin/#string">string</a>, actualRoute []*echo.<a href="#Route">Route</a>)</pre>
+			<pre>func AssertEchoRouterMethods(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, expectedMethods []<a href="../../../../../../builtin/#string">string</a>, actualRoute echo.<a href="#Routes">Routes</a>)</pre>
 			<p>AssertEchoRouterMethods は、EchoのルートのHTTPメソッド集合が期待通りであることをアサートします。
 
 			
@@ -153,12 +153,12 @@
 		
 			
 			
-			</p><h2 id="AssertEchoRouterPath">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?s=1442:1529#L29">AssertEchoRouterPath</a>
+			</p><h2 id="AssertEchoRouterPath">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?s=1440:1525#L29">AssertEchoRouterPath</a>
 				<a class="permalink" href="#AssertEchoRouterPath">¶</a>
 				
 				
 			</h2>
-			<pre>func AssertEchoRouterPath(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, expectedPath <a href="../../../../../../builtin/#string">string</a>, actualRoute []*echo.<a href="#Route">Route</a>)</pre>
+			<pre>func AssertEchoRouterPath(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, expectedPath <a href="../../../../../../builtin/#string">string</a>, actualRoute echo.<a href="#Routes">Routes</a>)</pre>
 			<p>AssertEchoRouterPath は、Echoのルートのパスが期待通りであることをアサートします。
 
 			

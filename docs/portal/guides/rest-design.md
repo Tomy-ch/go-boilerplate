@@ -1,6 +1,6 @@
 # REST Subsystem Design Reference
 
-[Controller README](../../internal/controller/README.md) | 日本語: [rest.ja.md](../ja/design/rest.ja.md)
+[Controller README](../../internal/controller/README.md) | 日本語: [rest.ja.md](rest.ja.md)
 
 This document consolidates the REST (HTTP) scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the handler-authoring detail see the [handler README](../../internal/controller/handler/README.md); the worker and job are its async / CLI siblings — see [worker.md](worker.md) and [job.md](job.md).
 
@@ -14,13 +14,13 @@ Responsibility split (who owns what):
 
 | Component | Layer | Responsibility | Does NOT hold |
 | --- | --- | --- | --- |
-| **Echo server** (`server.NewAppServer`) | controller | TCP listener / read·write·idle timeouts / route table via generated `RegisterHandlers` | business logic, middleware policy |
-| **middleware chain** (`httpstack/*`) | controller | cross-cutting concerns in a fixed order: uri(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | business logic |
+| **HTTP server** (`server.NewAppServer` / `server.NewHTTPServer`) | controller | Echo instance + the `http.Server` that serves it: read·write·idle timeouts / route table via generated `RegisterHandlers` | business logic, middleware policy |
+| **middleware chain** (`httpstack/*`) | controller | cross-cutting concerns in a fixed order: uri(pre) → timeout(pre) → bodyLimit(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | business logic |
 | **handler** (`controller/handler/**`) | controller | parse typed request (`StrictHandler`) → call **one** usecase method → convert DTO → `gen` response | business logic, persistence, tx |
 | **error handler** (`httpstack/errorhandler`) | controller | map `apperror` / Echo / OpenAPI errors → HTTP status + code, unified error body | business policy |
 | **usecase** | usecase | **all** business logic, transaction boundaries, domain orchestration, error policy | HTTP, framework, presentation |
 | **DI server + hook** (`di/server`) | di | compose Echo + ordered middleware (by priority) + lifecycle (listen / graceful shutdown) | business logic |
-| **ServerConfig** | config | host / port / read-header·read·write·idle timeouts | business logic |
+| **ServerConfig** | config | host / port / read-header·read·write·idle timeouts, per-request deadline (`SERVER_REQUEST_TIMEOUT`), body-size limit (`SERVER_BODY_LIMIT_MB`) | business logic |
 
 Design principles (invariants):
 
@@ -38,11 +38,11 @@ Design principles (invariants):
 stateDiagram-v2
     [*] --> Building: NewApplicationCore() → fx.New (config→logging→o11y→db→infra→usecase→controller→server)
     Building --> Wired: BindHandler×N (RegisterHandlers) + ApplyExtends (sort & apply middleware) + RegisterHTTPServerHooks
-    Wired --> Listening: fx OnStart → net listen port → go e.Start()
+    Wired --> Listening: fx OnStart → net listen port → go srv.Serve(ln)
     Listening --> Serving: request → middleware chain → handler → response (resident)
     Serving --> Listening: response sent
     Listening --> Draining: SIGINT/SIGTERM → ctx.Done() in RunServer
-    Draining --> Stopped: e.Shutdown(stopCtx) drains in-flight within shutdownTimeout
+    Draining --> Stopped: srv.Shutdown(stopCtx) drains in-flight within shutdownTimeout
     Stopped --> [*]: fx OnStop done → process exits
 
     note right of Draining
@@ -57,8 +57,10 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pre: e.Pre — uri (path normalization)
-    Pre --> RequestID: 1 requestID (X-Request-ID)
+    [*] --> Pre: e.Pre 1 — uri (path normalization)
+    Pre --> TimeoutPre: e.Pre 2 — timeout (SERVER_REQUEST_TIMEOUT)
+    TimeoutPre --> BodyLimitPre: e.Pre 3 — bodyLimit (SERVER_BODY_LIMIT_MB)
+    BodyLimitPre --> RequestID: 1 requestID (X-Request-ID)
     RequestID --> Observability: 2 observability (OTel span, traceparent)
     Observability --> Recovery: 3 recovery (defer/recover → 500)
     Recovery --> CORS: 4 cors (origin / preflight)
@@ -91,11 +93,9 @@ stateDiagram-v2
     EchoCore --> Recovered: recovery already logged a panic? → skip re-log
     EchoCore --> Normalize: else → HTTPErrorHandler
     Normalize --> MapAppError: apperror → status+code (lookupErrorMetaByAppError)
-    Normalize --> MapEcho: echo.HTTPError → normalizeEchoHTTPError
-    Normalize --> MapOpenAPI: openapi validation → normalizeOpenAPIError
+    Normalize --> MapEcho: status-carrying error (echo / openapi validation) → normalizeEchoHTTPError
     MapAppError --> Write: write HTTPErrorResponse (JSON) + headers
     MapEcho --> Write
-    MapOpenAPI --> Write
     Write --> LogIf: log if status ∈ ObservabilityConfig target set
     Recovered --> Write
     LogIf --> [*]
@@ -127,7 +127,7 @@ flowchart TD
         DICTRL["module/controller.go: ControllerModule (fx.Invoke BindHandler×N)"]
     end
     subgraph srvL["internal/controller/server"]
-        APPSRV["app_server.go: NewAppServer (echo + timeouts)"]
+        APPSRV["app_server.go: NewAppServer (echo) / NewHTTPServer (http.Server + timeouts)"]
         ECHOH["echo.go: request/response extraction helpers"]
     end
     subgraph mwL["internal/controller/httpstack  = middleware + errors"]
@@ -205,7 +205,7 @@ sequenceDiagram
 
 ## 4. What an integrator implements (contract-first endpoint flow)
 
-The scaffold provides the **server bootstrap, ordered middleware chain, error handler, DI wiring, and the `scaffold-*` skills**. To add an endpoint, follow the contract-first order (OpenAPI changes must precede handler/usecase code).
+This project provides the **server bootstrap, ordered middleware chain, error handler, DI wiring, and the `scaffold-*` skills**. To add an endpoint, follow the contract-first order (OpenAPI changes must precede handler/usecase code).
 
 ```mermaid
 flowchart LR
@@ -222,7 +222,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | ① | define the path / operation / schemas in OpenAPI source, re-bundle | `openapi/**/*.yaml` → `openapi/openapi.gen.yaml` | existing paths |
 | ② | regenerate the server interface + types | `make gen-api` → `internal/controller/handler/<path>/gen/` | — |
-| ③ | implement `BindHandler(echo, tracerFactory, usecase, …)` + one method per `operationId` (tracer span → parse → usecase → response) | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, `v1/users` |
+| ③ | implement `BindHandler(echo, tracerFactory, usecase, …)` + one method per `operationId` (tracer span → parse → usecase → response) | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, existing handlers |
 | ④ | implement the usecase method (if it does not exist), mapping domain → DTO | `internal/usecase/<feature>/` | `scaffold-usecase` |
 | ⑤ | wire the handler: `fx.Invoke(<pkg>.BindHandler)` | `internal/di/module/controller.go` | existing invokes |
 
@@ -235,18 +235,18 @@ flowchart LR
 | Term | Meaning |
 | --- | --- |
 | **driving adapter** | An entry point that drives the usecase layer. REST (HTTP) is the synchronous one; the [worker](worker.md) (queue) and [job](job.md) (CLI) are its siblings. |
-| **Echo** | The HTTP framework. `server.NewAppServer(ServerConfig)` builds the `*echo.Echo` with timeouts; routes are registered by generated code. |
+| **Echo** | The HTTP framework. `server.NewAppServer()` builds the `*echo.Echo` and `server.NewHTTPServer(e, ServerConfig)` wraps it in an `http.Server` carrying the timeouts; routes are registered by generated code. |
 | **ServerInterface / StrictServerInterface** | The OpenAPI-generated route interface / its strongly-typed (request-object, response-object) variant. Handlers implement the strict form. |
 | **RegisterHandlers / NewStrictHandler** | Generated functions: register routes on Echo / wrap the strict handler with a `StrictMiddlewareFunc` slice (e.g. idempotency). |
 | **BindHandler** | The handler package's constructor: builds the `server{}` (tracer + usecase) and calls `RegisterHandlers(e, NewStrictHandler(...))`. Wired via `fx.Invoke`. |
 | **handler / `server{}`** | The thin controller type with one method per `operationId`: tracer span → parse request → call one usecase method → convert DTO → `gen` response. |
 | **presenter** | The DTO → `gen.<Op><Status>JSONResponse` conversion, implemented inline in the handler method. |
-| **middleware (Use) / Pre** | Per-request cross-cutting functions applied in priority order (`Use`), plus `Pre` (path normalization) that runs before routing. |
-| **priority** | The integer in each middleware's `*_di.go` that the extension engine sorts on (uri-pre 1; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10). |
+| **middleware (Use) / Pre** | Per-request cross-cutting functions applied in priority order (`Use`), plus `Pre` (path normalization, request deadline, body-size limit) that runs before routing. |
+| **priority** | The integer in each middleware's `*_di.go` that the extension engine sorts on (uri-pre 1, timeout-pre 2, bodyLimit-pre 3; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10). |
 | **extension engine** (`ApplyExtends`) | Collects `Pre`/`Use`/`SrvCfg` providers, sorts by priority, and applies them to Echo; also applies non-middleware configurators (IP extractor, error handler). |
-| **error handler** | `HTTPErrorHandler` set on Echo; normalizes `apperror` / `echo.HTTPError` / OpenAPI validation errors into a unified `HTTPErrorResponse` with the mapped status + code. |
+| **error handler** | `HTTPErrorHandler` set on Echo; normalizes `apperror` and status-carrying errors (`echo.HTTPError`, OpenAPI validation failures) into a unified `HTTPErrorResponse` with the mapped status + code. |
 | **apperror** | The framework-agnostic error taxonomy; the error handler maps it to HTTP status (e.g. `ErrConflict`→409, `ErrValidation`→422, `ErrInvalidArgument`→400). |
-| **graceful shutdown** | On SIGINT/SIGTERM, `RunServer` stops accepting and calls `e.Shutdown(stopCtx)` to drain in-flight within `shutdownTimeout` (timed from shutdown start). |
+| **graceful shutdown** | On SIGINT/SIGTERM, `RunServer` stops accepting and calls `srv.Shutdown(stopCtx)` to drain in-flight within `shutdownTimeout` (timed from shutdown start). |
 | **lifecycle / Registrar** | The fx hook seam: `RegisterHTTPServerHooks` registers OnStart (listen + serve) and OnStop (shutdown). |
-| **ServerConfig** | Host / port / read-header / read / write / idle timeouts (`SERVER_*`). Injected into `NewAppServer`. |
+| **ServerConfig** | Host / port / read-header / read / write / idle timeouts (`SERVER_*`). Injected into `NewHTTPServer`. |
 | **idempotency middleware** | A `StrictMiddleware` slot adopting handlers add to make non-idempotent writes safe. See [idempotency.md](idempotency.md). |

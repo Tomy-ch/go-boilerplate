@@ -63,7 +63,7 @@
 <span id="L6" class="ln">     6  </span>	&#34;net/http/httptest&#34;
 <span id="L7" class="ln">     7  </span>	&#34;testing&#34;
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L12" class="ln">    12  </span>)
@@ -82,7 +82,7 @@
 <span id="L25" class="ln">    25  </span>}
 <span id="L26" class="ln">    26  </span>
 <span id="L27" class="ln">    27  </span><span class="comment">// AssertEchoRouterMethods は、EchoのルートのHTTPメソッド集合が期待通りであることをアサートします。</span>
-<span id="L28" class="ln">    28  </span>func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute []*echo.Route) {
+<span id="L28" class="ln">    28  </span>func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute echo.Routes) {
 <span id="L29" class="ln">    29  </span>	t.Helper()
 <span id="L30" class="ln">    30  </span>	actualMethods := make([]string, len(actualRoute))
 <span id="L31" class="ln">    31  </span>	for i, r := range actualRoute {
@@ -93,7 +93,7 @@
 <span id="L36" class="ln">    36  </span>}
 <span id="L37" class="ln">    37  </span>
 <span id="L38" class="ln">    38  </span><span class="comment">// AssertEchoRouterPath は、Echoのルートのパスが期待通りであることをアサートします。</span>
-<span id="L39" class="ln">    39  </span>func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute []*echo.Route) {
+<span id="L39" class="ln">    39  </span>func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute echo.Routes) {
 <span id="L40" class="ln">    40  </span>	t.Helper()
 <span id="L41" class="ln">    41  </span>	require.NotEmpty(t, actualRoute, &#34;ルートが登録されていません&#34;)
 <span id="L42" class="ln">    42  </span>	for _, r := range actualRoute {

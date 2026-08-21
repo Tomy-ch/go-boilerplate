@@ -1,0 +1,462 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>graphify-pending - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/graphify-pending">graphify-pending</a>/<span class="text-muted">main.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/graphify-pending">go-boilerplate/scripts/graphify-pending</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package main は、graphify の意味論抽出がどれだけ溜まっているかを測るツール。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">//	-dir:       graphify の出力ディレクトリ（既定 graphify-out）</span>
+<span id="L4" class="ln">     4  </span><span class="comment">//	-ignore:    解析対象から外すパスの宣言（既定 .graphifyignore）</span>
+<span id="L5" class="ln">     5  </span><span class="comment">//	-threshold: この行数以上たまっていたら未処理ありとして報告する（既定 0 = 報告のみ）</span>
+<span id="L6" class="ln">     6  </span><span class="comment">//	-github:    GitHub Actions の job summary へ書き出す</span>
+<span id="L7" class="ln">     7  </span><span class="comment">//</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// graphify のグラフは 2 つの半分でできている。コードを読む決定的な半分は tree-sitter だけで</span>
+<span id="L9" class="ln">     9  </span><span class="comment">// 完結するので無条件に回せるが、ドキュメントを読む意味論の半分はモデルを要するので、変更の</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// たびに回すわけにいかない。そこで「どれだけ溜まったか」を測り、まとめて回す判断の材料にする。</span>
+<span id="L11" class="ln">    11  </span><span class="comment">//</span>
+<span id="L12" class="ln">    12  </span><span class="comment">// 溜まり具合をファイル数で測らないのは、1 行の誤字修正と ADR の全面改稿が同じ 1 件になって</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// しまうためである。代わりに変更行数を累積する。基準点は</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// `graphify-out/cache/semantic/` の最終変更コミット — 意味論抽出が走ったときにだけ書き込まれ、</span>
+<span id="L15" class="ln">    15  </span><span class="comment">// かつ追跡下にあるので、新しい状態を持ち込まずに「最後に回した地点」を指せる。決定的な半分が</span>
+<span id="L16" class="ln">    16  </span><span class="comment">// 何度コミットしても、この基準は動かない。</span>
+<span id="L17" class="ln">    17  </span><span class="comment">//</span>
+<span id="L18" class="ln">    18  </span><span class="comment">// 対象から外すパスは `.graphifyignore` を読む。graphify 自身がそれで解析対象を決めているので、</span>
+<span id="L19" class="ln">    19  </span><span class="comment">// ここで別の除外リストを持つと、生成物の churn を数えたりドキュメントを取りこぼしたりする形で</span>
+<span id="L20" class="ln">    20  </span><span class="comment">// 静かにずれる。</span>
+<span id="L21" class="ln">    21  </span>package main
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span>import (
+<span id="L24" class="ln">    24  </span>	&#34;bufio&#34;
+<span id="L25" class="ln">    25  </span>	&#34;bytes&#34;
+<span id="L26" class="ln">    26  </span>	&#34;context&#34;
+<span id="L27" class="ln">    27  </span>	&#34;crypto/md5&#34; <span class="comment">//nolint:gosec // 変更検出のみ。graphify の manifest がこの形式で持つ // DevSkim: ignore DS126858</span>
+<span id="L28" class="ln">    28  </span>	&#34;encoding/json&#34;
+<span id="L29" class="ln">    29  </span>	&#34;flag&#34;
+<span id="L30" class="ln">    30  </span>	&#34;fmt&#34;
+<span id="L31" class="ln">    31  </span>	&#34;log&#34;
+<span id="L32" class="ln">    32  </span>	&#34;os&#34;
+<span id="L33" class="ln">    33  </span>	&#34;os/exec&#34;
+<span id="L34" class="ln">    34  </span>	&#34;path&#34;
+<span id="L35" class="ln">    35  </span>	&#34;slices&#34;
+<span id="L36" class="ln">    36  </span>	&#34;sort&#34;
+<span id="L37" class="ln">    37  </span>	&#34;strconv&#34;
+<span id="L38" class="ln">    38  </span>	&#34;strings&#34;
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L41" class="ln">    41  </span>)
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>const (
+<span id="L44" class="ln">    44  </span>	<span class="comment">// defaultDir は graphify の既定の出力ディレクトリ。</span>
+<span id="L45" class="ln">    45  </span>	defaultDir = &#34;graphify-out&#34;
+<span id="L46" class="ln">    46  </span>	<span class="comment">// defaultIgnore は graphify の解析対象除外の宣言。</span>
+<span id="L47" class="ln">    47  </span>	defaultIgnore = &#34;.graphifyignore&#34;
+<span id="L48" class="ln">    48  </span>	<span class="comment">// semanticCache は出力ディレクトリからの、セマンティックキャッシュの相対位置。</span>
+<span id="L49" class="ln">    49  </span>	semanticCache = &#34;cache/semantic&#34;
+<span id="L50" class="ln">    50  </span>	<span class="comment">// maxListedFiles は内訳の列挙上限。</span>
+<span id="L51" class="ln">    51  </span>	maxListedFiles = 15
+<span id="L52" class="ln">    52  </span>	<span class="comment">// numstatFields は `git diff --numstat` の 1 行の欄数（追加 / 削除 / パス）。</span>
+<span id="L53" class="ln">    53  </span>	numstatFields = 3
+<span id="L54" class="ln">    54  </span>	<span class="comment">// shortCommitLength は報告に使うコミットハッシュの桁数。</span>
+<span id="L55" class="ln">    55  </span>	shortCommitLength = 8
+<span id="L56" class="ln">    56  </span>	<span class="comment">// summaryFileMode は job summary へ追記するときのパーミッション。</span>
+<span id="L57" class="ln">    57  </span>	summaryFileMode = 0o600
+<span id="L58" class="ln">    58  </span>)
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span><span class="comment">// docExtensions は graphify が意味論抽出の対象とする拡張子（graphify.detect の DOC_EXTENSIONS）。</span>
+<span id="L61" class="ln">    61  </span>var docExtensions = []string{&#34;.md&#34;, &#34;.mdx&#34;, &#34;.qmd&#34;, &#34;.skill&#34;, &#34;.txt&#34;, &#34;.rst&#34;, &#34;.html&#34;, &#34;.yaml&#34;, &#34;.yml&#34;}
+<span id="L62" class="ln">    62  </span>
+<span id="L63" class="ln">    63  </span>var (
+<span id="L64" class="ln">    64  </span>	<span class="comment">// errManifestUnreadable は、manifest を読めないことを表す。読めないまま 0 件と報告すると、</span>
+<span id="L65" class="ln">    65  </span>	<span class="comment">// 「溜まっていない」と「測れなかった」が見分けられなくなる。</span>
+<span id="L66" class="ln">    66  </span>	errManifestUnreadable = xerrors.New(&#34;cannot read the graphify manifest&#34;)
+<span id="L67" class="ln">    67  </span>	<span class="comment">// errNoBaseline は、意味論抽出を回した地点を特定できないことを表す。</span>
+<span id="L68" class="ln">    68  </span>	errNoBaseline = xerrors.New(&#34;cannot locate the last semantic extraction commit&#34;)
+<span id="L69" class="ln">    69  </span>)
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span><span class="comment">// pending は未処理の 1 ファイル。</span>
+<span id="L72" class="ln">    72  </span>type pending struct {
+<span id="L73" class="ln">    73  </span>	path    string
+<span id="L74" class="ln">    74  </span>	changed int
+<span id="L75" class="ln">    75  </span>}
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span><span class="comment">// manifestEntry は manifest.json の 1 行のうち、この用途で読む面だけ。</span>
+<span id="L78" class="ln">    78  </span><span class="comment">// キー名は graphify が決めるので、このリポジトリの JSON 命名規約は当てられない。</span>
+<span id="L79" class="ln">    79  </span>type manifestEntry struct {
+<span id="L80" class="ln">    80  </span>	SemanticHash string `json:&#34;semantic_hash&#34;` <span class="comment">//nolint:tagliatelle // graphify が書く外部スキーマ</span>
+<span id="L81" class="ln">    81  </span>}
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span><span class="comment">// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。</span>
+<span id="L84" class="ln">    84  </span>func main() {
+<span id="L85" class="ln">    85  </span>	log.SetFlags(0)
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>	if err := run(os.Args[1:], os.ReadFile, gitOutput); err != nil {
+<span id="L88" class="ln">    88  </span>		log.Fatalf(&#34;%v&#34;, err)
+<span id="L89" class="ln">    89  </span>	}
+<span id="L90" class="ln">    90  </span>}
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span><span class="comment">// run は、未処理のドキュメントとその変更行数を報告します。</span>
+<span id="L93" class="ln">    93  </span><span class="comment">// read はファイルの読み出し手段、git は git の実行手段で、差し替えられるよう引数で受けます。</span>
+<span id="L94" class="ln">    94  </span>func run(args []string, read func(name string) ([]byte, error), git func(args ...string) (string, error)) error {
+<span id="L95" class="ln">    95  </span>	fs := flag.NewFlagSet(&#34;graphify-pending&#34;, flag.ContinueOnError)
+<span id="L96" class="ln">    96  </span>	dir := fs.String(&#34;dir&#34;, defaultDir, &#34;graphify の出力ディレクトリ&#34;)
+<span id="L97" class="ln">    97  </span>	ignore := fs.String(&#34;ignore&#34;, defaultIgnore, &#34;解析対象から外すパスの宣言&#34;)
+<span id="L98" class="ln">    98  </span>	threshold := fs.Int(&#34;threshold&#34;, 0, &#34;この行数以上たまっていたら未処理ありとして報告する&#34;)
+<span id="L99" class="ln">    99  </span>	summary := fs.Bool(&#34;github&#34;, false, &#34;GitHub Actions の job summary へ書き出す&#34;)
+<span id="L100" class="ln">   100  </span>
+<span id="L101" class="ln">   101  </span>	if err := fs.Parse(args); err != nil {
+<span id="L102" class="ln">   102  </span>		if xerrors.Is(err, flag.ErrHelp) {
+<span id="L103" class="ln">   103  </span>			return nil
+<span id="L104" class="ln">   104  </span>		}
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span>		return xerrors.Wrap(err, &#34;failed to parse flags&#34;)
+<span id="L107" class="ln">   107  </span>	}
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span>	stale, err := staleDocuments(path.Join(*dir, &#34;manifest.json&#34;), *ignore, read)
+<span id="L110" class="ln">   110  </span>	if err != nil {
+<span id="L111" class="ln">   111  </span>		return err
+<span id="L112" class="ln">   112  </span>	}
+<span id="L113" class="ln">   113  </span>	if len(stale) == 0 {
+<span id="L114" class="ln">   114  </span>		log.Print(&#34;graphify: 意味論抽出の未処理はありません&#34;)
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span>		return report(*summary, 0, 0, *threshold, nil)
+<span id="L117" class="ln">   117  </span>	}
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>	baseline, err := lastSemanticCommit(path.Join(*dir, semanticCache), git)
+<span id="L120" class="ln">   120  </span>	if err != nil {
+<span id="L121" class="ln">   121  </span>		<span class="comment">// 基準が無いのは意味論抽出をまだ一度もコミットしていない状態なので、落とさず件数だけ報告する。</span>
+<span id="L122" class="ln">   122  </span>		if xerrors.Is(err, errNoBaseline) {
+<span id="L123" class="ln">   123  </span>			log.Printf(&#34;graphify: 意味論抽出の未処理 %d ファイル（基準コミットが無いため行数は測れません）&#34;, len(stale))
+<span id="L124" class="ln">   124  </span>			for _, file := range stale[:min(len(stale), maxListedFiles)] {
+<span id="L125" class="ln">   125  </span>				log.Printf(&#34;     %s&#34;, file)
+<span id="L126" class="ln">   126  </span>			}
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>			return report(*summary, len(stale), 0, *threshold, nil)
+<span id="L129" class="ln">   129  </span>		}
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>		return err
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>	items, total, err := measure(baseline, stale, git)
+<span id="L135" class="ln">   135  </span>	if err != nil {
+<span id="L136" class="ln">   136  </span>		return err
+<span id="L137" class="ln">   137  </span>	}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>	log.Printf(&#34;graphify: 意味論抽出の未処理 %d ファイル / %d 行（基準 %s）&#34;, len(items), total, short(baseline))
+<span id="L140" class="ln">   140  </span>	for _, item := range items[:min(len(items), maxListedFiles)] {
+<span id="L141" class="ln">   141  </span>		log.Printf(&#34;     %6d  %s&#34;, item.changed, item.path)
+<span id="L142" class="ln">   142  </span>	}
+<span id="L143" class="ln">   143  </span>	if len(items) &gt; maxListedFiles {
+<span id="L144" class="ln">   144  </span>		log.Printf(&#34;     ... 他 %d ファイル&#34;, len(items)-maxListedFiles)
+<span id="L145" class="ln">   145  </span>	}
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>	return report(*summary, len(items), total, *threshold, items)
+<span id="L148" class="ln">   148  </span>}
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span><span class="comment">// staleDocuments は、manifest 上で意味論抽出が追いついていないドキュメントを返します。</span>
+<span id="L151" class="ln">   151  </span><span class="comment">// 判定は保存された semantic_hash といまのファイル内容の MD5 の比較です。manifest 内の</span>
+<span id="L152" class="ln">   152  </span><span class="comment">// ast_hash との突き合わせでは、未処理が永久に 0 件に見えます。</span>
+<span id="L153" class="ln">   153  </span>func staleDocuments(manifestPath, ignorePath string, read func(name string) ([]byte, error)) ([]string, error) {
+<span id="L154" class="ln">   154  </span>	body, err := read(manifestPath)
+<span id="L155" class="ln">   155  </span>	if err != nil {
+<span id="L156" class="ln">   156  </span>		return nil, xerrors.Wrap(errManifestUnreadable, manifestPath+&#34;: &#34;+err.Error())
+<span id="L157" class="ln">   157  </span>	}
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>	var entries map[string]manifestEntry
+<span id="L160" class="ln">   160  </span>	if err := json.Unmarshal(body, &amp;entries); err != nil {
+<span id="L161" class="ln">   161  </span>		return nil, xerrors.Wrap(errManifestUnreadable, manifestPath+&#34;: &#34;+err.Error())
+<span id="L162" class="ln">   162  </span>	}
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span>	excluded, err := loadIgnore(ignorePath, read)
+<span id="L165" class="ln">   165  </span>	if err != nil {
+<span id="L166" class="ln">   166  </span>		return nil, err
+<span id="L167" class="ln">   167  </span>	}
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span>	var stale []string
+<span id="L170" class="ln">   170  </span>	for file, entry := range entries {
+<span id="L171" class="ln">   171  </span>		if !isDocument(file) || excluded(file) {
+<span id="L172" class="ln">   172  </span>			continue
+<span id="L173" class="ln">   173  </span>		}
+<span id="L174" class="ln">   174  </span>		body, err := read(file)
+<span id="L175" class="ln">   175  </span>		if err != nil {
+<span id="L176" class="ln">   176  </span>			<span class="comment">// manifest に載っているのに読めないのは、そのファイルが消えた場合。抽出し直す対象では</span>
+<span id="L177" class="ln">   177  </span>			<span class="comment">// ないので数えません。</span>
+<span id="L178" class="ln">   178  </span>			continue
+<span id="L179" class="ln">   179  </span>		}
+<span id="L180" class="ln">   180  </span>		if entry.SemanticHash != fmt.Sprintf(&#34;%x&#34;, md5.Sum(body)) { <span class="comment">//nolint:gosec // 変更検出のみで、graphify の manifest と同じ選択 // DevSkim: ignore DS126858</span>
+<span id="L181" class="ln">   181  </span>			stale = append(stale, file)
+<span id="L182" class="ln">   182  </span>		}
+<span id="L183" class="ln">   183  </span>	}
+<span id="L184" class="ln">   184  </span>	sort.Strings(stale)
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>	return stale, nil
+<span id="L187" class="ln">   187  </span>}
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span><span class="comment">// loadIgnore は .graphifyignore を読んで、除外されるかを判定する述語を返します。</span>
+<span id="L190" class="ln">   190  </span><span class="comment">// 宣言が無いことは異常ではない（除外なしの構成）ため、その場合は何も除外しません。</span>
+<span id="L191" class="ln">   191  </span>func loadIgnore(ignorePath string, read func(name string) ([]byte, error)) (func(string) bool, error) {
+<span id="L192" class="ln">   192  </span>	body, err := read(ignorePath)
+<span id="L193" class="ln">   193  </span>	if err != nil {
+<span id="L194" class="ln">   194  </span>		if xerrors.Is(err, os.ErrNotExist) {
+<span id="L195" class="ln">   195  </span>			return func(string) bool { return false }, nil
+<span id="L196" class="ln">   196  </span>		}
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span>		return nil, xerrors.Wrap(err, &#34;❌ &#34;+ignorePath+&#34; を読み込めません&#34;)
+<span id="L199" class="ln">   199  </span>	}
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span>	var patterns []string
+<span id="L202" class="ln">   202  </span>	scanner := bufio.NewScanner(bytes.NewReader(body))
+<span id="L203" class="ln">   203  </span>	for scanner.Scan() {
+<span id="L204" class="ln">   204  </span>		line := strings.TrimSpace(scanner.Text())
+<span id="L205" class="ln">   205  </span>		if line != &#34;&#34; &amp;&amp; !strings.HasPrefix(line, &#34;#&#34;) {
+<span id="L206" class="ln">   206  </span>			patterns = append(patterns, line)
+<span id="L207" class="ln">   207  </span>		}
+<span id="L208" class="ln">   208  </span>	}
+<span id="L209" class="ln">   209  </span>	if err := scanner.Err(); err != nil {
+<span id="L210" class="ln">   210  </span>		return nil, xerrors.Wrap(err, &#34;❌ &#34;+ignorePath+&#34; を読めません&#34;)
+<span id="L211" class="ln">   211  </span>	}
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>	return func(file string) bool {
+<span id="L214" class="ln">   214  </span>		for _, pattern := range patterns {
+<span id="L215" class="ln">   215  </span>			if matchesIgnore(file, pattern) {
+<span id="L216" class="ln">   216  </span>				return true
+<span id="L217" class="ln">   217  </span>			}
+<span id="L218" class="ln">   218  </span>		}
+<span id="L219" class="ln">   219  </span>
+<span id="L220" class="ln">   220  </span>		return false
+<span id="L221" class="ln">   221  </span>	}, nil
+<span id="L222" class="ln">   222  </span>}
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span><span class="comment">// matchesIgnore は、gitignore 風の 1 パターンがリポジトリ相対パスに当たるかを判定します。</span>
+<span id="L225" class="ln">   225  </span><span class="comment">// 汎用の gitignore 実装ではなく、`.graphifyignore` が実際に使う形だけを扱います。</span>
+<span id="L226" class="ln">   226  </span><span class="comment">//</span>
+<span id="L227" class="ln">   227  </span><span class="comment">//	docs/godoc/     ルートからのディレクトリ</span>
+<span id="L228" class="ln">   228  </span><span class="comment">//	**/gen/         どの階層にあってもよいディレクトリ</span>
+<span id="L229" class="ln">   229  </span><span class="comment">//	*.ja.md         ファイル名のパターン</span>
+<span id="L230" class="ln">   230  </span><span class="comment">//	**/*.gen.go     どの階層にあってもよいファイル名のパターン</span>
+<span id="L231" class="ln">   231  </span><span class="comment">//	openapi/x.yaml  素のパス</span>
+<span id="L232" class="ln">   232  </span><span class="comment">//</span>
+<span id="L233" class="ln">   233  </span><span class="comment">// 解釈が graphify 本体と一致する保証は無く、食い違いは閾値が早く鳴る向きにだけ倒れます。</span>
+<span id="L234" class="ln">   234  </span>func matchesIgnore(file, pattern string) bool {
+<span id="L235" class="ln">   235  </span>	pattern = strings.TrimPrefix(pattern, &#34;./&#34;)
+<span id="L236" class="ln">   236  </span>	pattern, anywhere := strings.CutPrefix(pattern, &#34;**/&#34;)
+<span id="L237" class="ln">   237  </span>
+<span id="L238" class="ln">   238  </span>	if directory, isDirectory := strings.CutSuffix(pattern, &#34;/&#34;); isDirectory {
+<span id="L239" class="ln">   239  </span>		if anywhere {
+<span id="L240" class="ln">   240  </span>			return slices.Contains(strings.Split(path.Dir(file), &#34;/&#34;), directory)
+<span id="L241" class="ln">   241  </span>		}
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span>		return strings.HasPrefix(file, directory+&#34;/&#34;)
+<span id="L244" class="ln">   244  </span>	}
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span>	if strings.HasPrefix(pattern, &#34;*&#34;) {
+<span id="L247" class="ln">   247  </span>		return matchesGlob(path.Base(file), pattern)
+<span id="L248" class="ln">   248  </span>	}
+<span id="L249" class="ln">   249  </span>	if anywhere {
+<span id="L250" class="ln">   250  </span>		return path.Base(file) == pattern
+<span id="L251" class="ln">   251  </span>	}
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>	return file == pattern || strings.HasPrefix(file, pattern+&#34;/&#34;)
+<span id="L254" class="ln">   254  </span>}
+<span id="L255" class="ln">   255  </span>
+<span id="L256" class="ln">   256  </span><span class="comment">// matchesGlob は `*.ja.md` のような、先頭の `*` 一つだけを持つパターンを判定します。</span>
+<span id="L257" class="ln">   257  </span>func matchesGlob(name, pattern string) bool {
+<span id="L258" class="ln">   258  </span>	suffix, ok := strings.CutPrefix(pattern, &#34;*&#34;)
+<span id="L259" class="ln">   259  </span>	if !ok {
+<span id="L260" class="ln">   260  </span>		return name == pattern
+<span id="L261" class="ln">   261  </span>	}
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>	return strings.HasSuffix(name, suffix)
+<span id="L264" class="ln">   264  </span>}
+<span id="L265" class="ln">   265  </span>
+<span id="L266" class="ln">   266  </span><span class="comment">// isDocument は、graphify が意味論抽出の対象とする拡張子かを返します。</span>
+<span id="L267" class="ln">   267  </span>func isDocument(file string) bool {
+<span id="L268" class="ln">   268  </span>	ext := strings.ToLower(path.Ext(file))
+<span id="L269" class="ln">   269  </span>
+<span id="L270" class="ln">   270  </span>	return slices.Contains(docExtensions, ext)
+<span id="L271" class="ln">   271  </span>}
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span><span class="comment">// lastSemanticCommit は、意味論キャッシュを最後に変更したコミットを返します。</span>
+<span id="L274" class="ln">   274  </span>func lastSemanticCommit(cachePath string, git func(args ...string) (string, error)) (string, error) {
+<span id="L275" class="ln">   275  </span>	out, err := git(&#34;log&#34;, &#34;-1&#34;, &#34;--format=%H&#34;, &#34;--&#34;, cachePath)
+<span id="L276" class="ln">   276  </span>	if err != nil {
+<span id="L277" class="ln">   277  </span>		return &#34;&#34;, xerrors.Wrap(err, &#34;❌ &#34;+cachePath+&#34; の履歴を辿れません&#34;)
+<span id="L278" class="ln">   278  </span>	}
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span>	commit := strings.TrimSpace(out)
+<span id="L281" class="ln">   281  </span>	if commit == &#34;&#34; {
+<span id="L282" class="ln">   282  </span>		return &#34;&#34;, xerrors.Wrap(errNoBaseline,
+<span id="L283" class="ln">   283  </span>			cachePath+&#34; にコミットがありません（意味論抽出をまだ一度もコミットしていない状態です）&#34;)
+<span id="L284" class="ln">   284  </span>	}
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>	return commit, nil
+<span id="L287" class="ln">   287  </span>}
+<span id="L288" class="ln">   288  </span>
+<span id="L289" class="ln">   289  </span><span class="comment">// measure は、基準コミットから各ファイルが何行変わったかを数え、変更量の降順で返します。</span>
+<span id="L290" class="ln">   290  </span>func measure(baseline string, files []string, git func(args ...string) (string, error)) ([]pending, int, error) {
+<span id="L291" class="ln">   291  </span>	args := append([]string{&#34;diff&#34;, &#34;--numstat&#34;, baseline + &#34;..HEAD&#34;, &#34;--&#34;}, files...)
+<span id="L292" class="ln">   292  </span>	out, err := git(args...)
+<span id="L293" class="ln">   293  </span>	if err != nil {
+<span id="L294" class="ln">   294  </span>		return nil, 0, xerrors.Wrap(err, &#34;❌ &#34;+short(baseline)+&#34; からの差分を測れません&#34;)
+<span id="L295" class="ln">   295  </span>	}
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span>	return parseNumstat(out)
+<span id="L298" class="ln">   298  </span>}
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span><span class="comment">// parseNumstat は `git diff --numstat` の出力を積み上げます。バイナリ扱いの行は `-` になるため</span>
+<span id="L301" class="ln">   301  </span><span class="comment">// 行数としては 0 と数えますが、ファイル自体は未処理として残します。</span>
+<span id="L302" class="ln">   302  </span>func parseNumstat(out string) ([]pending, int, error) {
+<span id="L303" class="ln">   303  </span>	var items []pending
+<span id="L304" class="ln">   304  </span>	total := 0
+<span id="L305" class="ln">   305  </span>	for line := range strings.SplitSeq(strings.TrimSpace(out), &#34;\n&#34;) {
+<span id="L306" class="ln">   306  </span>		if line == &#34;&#34; {
+<span id="L307" class="ln">   307  </span>			continue
+<span id="L308" class="ln">   308  </span>		}
+<span id="L309" class="ln">   309  </span>		fields := strings.SplitN(line, &#34;\t&#34;, numstatFields)
+<span id="L310" class="ln">   310  </span>		if len(fields) != numstatFields {
+<span id="L311" class="ln">   311  </span>			return nil, 0, xerrors.Wrap(errManifestUnreadable, &#34;numstat の行を解釈できません: &#34;+strconv.Quote(line))
+<span id="L312" class="ln">   312  </span>		}
+<span id="L313" class="ln">   313  </span>		changed := atoiOrZero(fields[0]) + atoiOrZero(fields[1])
+<span id="L314" class="ln">   314  </span>		items = append(items, pending{path: fields[2], changed: changed})
+<span id="L315" class="ln">   315  </span>		total += changed
+<span id="L316" class="ln">   316  </span>	}
+<span id="L317" class="ln">   317  </span>	sort.Slice(items, func(i, j int) bool {
+<span id="L318" class="ln">   318  </span>		if items[i].changed != items[j].changed {
+<span id="L319" class="ln">   319  </span>			return items[i].changed &gt; items[j].changed
+<span id="L320" class="ln">   320  </span>		}
+<span id="L321" class="ln">   321  </span>
+<span id="L322" class="ln">   322  </span>		return items[i].path &lt; items[j].path
+<span id="L323" class="ln">   323  </span>	})
+<span id="L324" class="ln">   324  </span>
+<span id="L325" class="ln">   325  </span>	return items, total, nil
+<span id="L326" class="ln">   326  </span>}
+<span id="L327" class="ln">   327  </span>
+<span id="L328" class="ln">   328  </span><span class="comment">// atoiOrZero は numstat の 1 欄を数に直します。バイナリを表す `-` は 0 として扱います。</span>
+<span id="L329" class="ln">   329  </span>func atoiOrZero(field string) int {
+<span id="L330" class="ln">   330  </span>	value, err := strconv.Atoi(field)
+<span id="L331" class="ln">   331  </span>	if err != nil {
+<span id="L332" class="ln">   332  </span>		return 0
+<span id="L333" class="ln">   333  </span>	}
+<span id="L334" class="ln">   334  </span>
+<span id="L335" class="ln">   335  </span>	return value
+<span id="L336" class="ln">   336  </span>}
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span><span class="comment">// report は結果を job summary へ書き出します。閾値は判断の材料であって門ではないので、</span>
+<span id="L339" class="ln">   339  </span><span class="comment">// 超過しても終了コードは 0 のままにします。</span>
+<span id="L340" class="ln">   340  </span>func report(summary bool, files, total, threshold int, items []pending) error {
+<span id="L341" class="ln">   341  </span>	if !summary {
+<span id="L342" class="ln">   342  </span>		return nil
+<span id="L343" class="ln">   343  </span>	}
+<span id="L344" class="ln">   344  </span>
+<span id="L345" class="ln">   345  </span>	destination := os.Getenv(&#34;GITHUB_STEP_SUMMARY&#34;)
+<span id="L346" class="ln">   346  </span>	if destination == &#34;&#34; {
+<span id="L347" class="ln">   347  </span>		return nil
+<span id="L348" class="ln">   348  </span>	}
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>	var body strings.Builder
+<span id="L351" class="ln">   351  </span>	body.WriteString(&#34;## graphify semantic extraction\n\n&#34;)
+<span id="L352" class="ln">   352  </span>	if total &gt;= threshold &amp;&amp; threshold &gt; 0 {
+<span id="L353" class="ln">   353  </span>		fmt.Fprintf(&amp;body,
+<span id="L354" class="ln">   354  </span>			&#34;⚠️ %d files / %d changed lines are waiting (threshold %d). Run `/graphify --update`.\n\n&#34;,
+<span id="L355" class="ln">   355  </span>			files, total, threshold)
+<span id="L356" class="ln">   356  </span>	} else {
+<span id="L357" class="ln">   357  </span>		fmt.Fprintf(&amp;body, &#34;%d files / %d changed lines are waiting (threshold %d).\n\n&#34;, files, total, threshold)
+<span id="L358" class="ln">   358  </span>	}
+<span id="L359" class="ln">   359  </span>	for _, item := range items[:min(len(items), maxListedFiles)] {
+<span id="L360" class="ln">   360  </span>		fmt.Fprintf(&amp;body, &#34;- `%s` (%d)\n&#34;, item.path, item.changed)
+<span id="L361" class="ln">   361  </span>	}
+<span id="L362" class="ln">   362  </span>	if len(items) &gt; maxListedFiles {
+<span id="L363" class="ln">   363  </span>		fmt.Fprintf(&amp;body, &#34;- ... %d more\n&#34;, len(items)-maxListedFiles)
+<span id="L364" class="ln">   364  </span>	}
+<span id="L365" class="ln">   365  </span>
+<span id="L366" class="ln">   366  </span>	file, err := os.OpenFile(destination, os.O_APPEND|os.O_WRONLY|os.O_CREATE, summaryFileMode) <span class="comment">//nolint:gosec // 宛先は Actions が渡す固定の環境変数</span>
+<span id="L367" class="ln">   367  </span>	if err != nil {
+<span id="L368" class="ln">   368  </span>		return xerrors.Wrap(err, &#34;❌ job summary を開けません&#34;)
+<span id="L369" class="ln">   369  </span>	}
+<span id="L370" class="ln">   370  </span>	defer func() { _ = file.Close() }()
+<span id="L371" class="ln">   371  </span>	if _, err := file.WriteString(body.String()); err != nil {
+<span id="L372" class="ln">   372  </span>		return xerrors.Wrap(err, &#34;❌ job summary へ書けません&#34;)
+<span id="L373" class="ln">   373  </span>	}
+<span id="L374" class="ln">   374  </span>
+<span id="L375" class="ln">   375  </span>	return nil
+<span id="L376" class="ln">   376  </span>}
+<span id="L377" class="ln">   377  </span>
+<span id="L378" class="ln">   378  </span><span class="comment">// short はコミットハッシュを短縮します。</span>
+<span id="L379" class="ln">   379  </span>func short(commit string) string {
+<span id="L380" class="ln">   380  </span>	if len(commit) &gt; shortCommitLength {
+<span id="L381" class="ln">   381  </span>		return commit[:shortCommitLength]
+<span id="L382" class="ln">   382  </span>	}
+<span id="L383" class="ln">   383  </span>
+<span id="L384" class="ln">   384  </span>	return commit
+<span id="L385" class="ln">   385  </span>}
+<span id="L386" class="ln">   386  </span>
+<span id="L387" class="ln">   387  </span><span class="comment">// gitOutput は git を実行して標準出力を返します。</span>
+<span id="L388" class="ln">   388  </span>func gitOutput(args ...string) (string, error) {
+<span id="L389" class="ln">   389  </span>	out, err := exec.CommandContext(context.Background(), &#34;git&#34;, args...).Output() <span class="comment">//nolint:gosec // 引数は呼び出し側が組み立てた固定語とパス</span>
+<span id="L390" class="ln">   390  </span>	if err != nil {
+<span id="L391" class="ln">   391  </span>		return &#34;&#34;, xerrors.Wrap(err, &#34;git &#34;+strings.Join(args, &#34; &#34;))
+<span id="L392" class="ln">   392  </span>	}
+<span id="L393" class="ln">   393  </span>
+<span id="L394" class="ln">   394  </span>	return string(out), nil
+<span id="L395" class="ln">   395  </span>}
+<span id="L396" class="ln">   396  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/graphify-pending/main.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

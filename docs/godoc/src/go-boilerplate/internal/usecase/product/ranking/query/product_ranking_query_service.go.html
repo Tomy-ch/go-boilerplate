@@ -1,0 +1,114 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>query - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase/product">product</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase/product/ranking">ranking</a>/<a href="../../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query">query</a>/<span class="text-muted">product_ranking_query_service.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../go-boilerplate/internal/usecase/product/ranking/query">go-boilerplate/internal/usecase/product/ranking/query</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span><span class="comment">// Package query は、商品売上ランキングのクエリサービスインターフェースを提供します。</span>
+<span id="L4" class="ln">     4  </span>package query
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>import (
+<span id="L7" class="ln">     7  </span>	&#34;context&#34;
+<span id="L8" class="ln">     8  </span>	&#34;time&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/pkg/decimal&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>const (
+<span id="L15" class="ln">    15  </span>	<span class="comment">// PeriodAll は、全期間を集計対象とする区分です。</span>
+<span id="L16" class="ln">    16  </span>	PeriodAll Period = &#34;all&#34;
+<span id="L17" class="ln">    17  </span>	<span class="comment">// Period30d は、直近30日を集計対象とする区分です。</span>
+<span id="L18" class="ln">    18  </span>	Period30d Period = &#34;30d&#34;
+<span id="L19" class="ln">    19  </span>)
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// Period は、ランキング集計の対象期間区分です。実際の境界時刻はインフラ層が現在時刻から算出します。</span>
+<span id="L22" class="ln">    22  </span>type Period string
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span><span class="comment">// ProductRankingQueryService は、購入明細を集計した商品売上ランキングの参照を提供するクエリサービスです。</span>
+<span id="L25" class="ln">    25  </span>type ProductRankingQueryService interface {
+<span id="L26" class="ln">    26  </span>	<span class="comment">// ListRanking は、販売数量の降順（同数量は商品 ID 昇順）で上位 params.Limit 件のランキングを返します。</span>
+<span id="L27" class="ln">    27  </span>	ListRanking(ctx context.Context, params RankingQueryParams) ([]RankingResult, error)
+<span id="L28" class="ln">    28  </span>}
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// RankingQueryParams は、ランキング集計の入力パラメータです。</span>
+<span id="L31" class="ln">    31  </span>type RankingQueryParams struct {
+<span id="L32" class="ln">    32  </span>	<span class="comment">// Period は、集計対象期間の区分です。境界時刻の算出はインフラ層に閉じます。</span>
+<span id="L33" class="ln">    33  </span>	Period Period
+<span id="L34" class="ln">    34  </span>	<span class="comment">// Limit は、取得する上位件数です。</span>
+<span id="L35" class="ln">    35  </span>	Limit int
+<span id="L36" class="ln">    36  </span>}
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// RankingResult は、ランキング 1 商品分の集計結果です。</span>
+<span id="L39" class="ln">    39  </span>type RankingResult struct {
+<span id="L40" class="ln">    40  </span>	ProductID uuid.UUID
+<span id="L41" class="ln">    41  </span>	Name      string
+<span id="L42" class="ln">    42  </span>	Price     decimal.Decimal
+<span id="L43" class="ln">    43  </span>	<span class="comment">// PublishedAt は、公開日時です。集計は公開中の商品に絞られており、返却行が本当にその条件を</span>
+<span id="L44" class="ln">    44  </span>	<span class="comment">// 満たすかを呼び出し側がドメインの定義で確かめるために保持します。出力 DTO へは写しません。</span>
+<span id="L45" class="ln">    45  </span>	PublishedAt  *time.Time
+<span id="L46" class="ln">    46  </span>	SoldQuantity int64
+<span id="L47" class="ln">    47  </span>}
+<span id="L48" class="ln">    48  </span>
+</pre><p><a href="../../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

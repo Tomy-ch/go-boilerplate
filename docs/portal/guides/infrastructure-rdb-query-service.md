@@ -37,6 +37,21 @@ flowchart TB
 
 QS returns **projections that a usecase needs, not complete Aggregate reconstructions**. This is a Usecase concern, not a Domain concern, so the interface is placed in the Usecase layer (`internal/usecase/<aggregate>/query`).
 
+> **Note (Repository may also return a small read model).** The "Return type = DTO" row above is the
+> *typical* split, not an absolute — a Repository read that JOINs a *fixed reference master* may
+> return a small read model with the resolved display value and still be a single-Aggregate
+> Repository read (not a QS).
+> <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+>      目的: どの表からどの表への JOIN かが見えないと、例外の範囲が伝わらない。
+>      意義: 効くのは「参照マスタであること」で、JOIN の向きや表の数ではない。
+>      書き方: 集約の表 → 参照マスタの表、を矢印 1 本で示す。 -->
+> <!-- sample-api:begin -->
+> （サンプルでの例は `purchases` → `purchase_statuses`）
+> <!-- sample-api:end -->
+> What moves a read to QS is crossing
+> *independent* Aggregates / a derived projection, not merely returning a non-Entity. See
+> `docs/rules.md` § "Repository / QueryService Rules".
+
 ### Relationship to CQRS
 
 Introducing QS is a **lightweight CQRS (Command Query Responsibility Segregation)** approach.

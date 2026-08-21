@@ -80,10 +80,13 @@ For PATCH operations, create a dedicated wrapper schema using `allOf`:
 # UserPatchRequest.yaml
 allOf:
   - $ref: './UserBaseInputRequest.yaml'
-additionalProperties: false
 ```
 
 This separates the input structure from the operation semantics.
+
+`additionalProperties: false` stays on `UserBaseInputRequest.yaml`, which declares the properties.
+Putting it on the wrapper instead rejects **every** field: `additionalProperties` only sees properties
+declared in the same schema object, and the wrapper declares none.
 
 ## Core Schemas
 
@@ -93,7 +96,7 @@ Two error envelopes. `ErrorResponse` is the base (no `details`) used by most err
 `ErrorResponseWithDetails` adds `details` and is referenced **only** by responses that
 intentionally expose it. Which operations reference `ErrorResponseWithDetails` is the
 **per-endpoint opt-in switch** for detail exposure (enforced fail-closed at the edge — see
-[ADR-0042](../../../docs/adr/0041-error-details-opt-in-gate.md)).
+[ADR-0049 (error-details-opt-in-gate)](../../../docs/adr/0049-error-details-opt-in-gate.md)).
 
 ```yaml
 # ErrorResponse.yaml (base)
@@ -143,6 +146,8 @@ These are technically OpenAPI **response objects** (they carry `description` + `
 |`Forbidden403`|403|`ErrPermissionDenied`|auth middleware|
 |`NotFound404`|404|`ErrNotFound`|missing resource|
 |`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted` (delete) or unique-violation `23505` (create/update, e.g. duplicate email)|
+|`PayloadTooLarge413`|413|`ErrPayloadTooLarge`|usecase validation of an upload that exceeds the size limit|
+|`UnsupportedMediaType415`|415|`ErrUnsupportedMediaType`|usecase validation of a disallowed `Content-Type`|
 |`UnprocessableEntity422`|422|`ErrValidation`|domain validation the OpenAPI schema does not catch (e.g. email format)|
 |`TooManyRequests429`|429|`ErrTooManyRequests`|rate limiting|
 |`ClientClosedRequest499`|499|`ErrCanceled`|client disconnect mid-request|
@@ -201,7 +206,7 @@ allOf:
 - Do not make schemas serve both request and response purposes
 - Include `description` and `example` on all properties
 - Use `required` to explicitly list mandatory fields
-- Keep `additionalProperties: false` on request schemas to reject unknown fields
+- Declare `additionalProperties: false` on the request schema object that holds the properties — never on an `allOf` wrapper, which cannot see them (see [PATCH Support](#patch-support))
 - Boundary values like `maxLength` are a **wire contract**, not the domain's business rule (different owner) — see [Input Boundary Value Ownership](../../boundary-ownership.md)
 
 ## Checklist

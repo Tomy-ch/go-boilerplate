@@ -1,0 +1,309 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>query - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package query
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/product/ranking/query&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package query は、商品売上ランキングのクエリサービスインターフェースを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#Period">type Period</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ProductRankingQueryService">type ProductRankingQueryService</a></dd>
+				
+				
+			
+				
+				<dd><a href="#RankingQueryParams">type RankingQueryParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#RankingResult">type RankingResult</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html">product_ranking_query_service.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="Period">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=675:693#L12">Period</a>
+				<a class="permalink" href="#Period">¶</a>
+				
+				
+			</h2>
+			<p>Period は、ランキング集計の対象期間区分です。実際の境界時刻はインフラ層が現在時刻から算出します。
+
+			</p><pre>type Period <a href="../../../../../../builtin/#string">string</a></pre>
+
+			
+				
+				<pre>const (
+    <span class="comment">// PeriodAll は、全期間を集計対象とする区分です。</span>
+    <span id="PeriodAll">PeriodAll</span> <a href="#Period">Period</a> = &#34;all&#34;
+    <span class="comment">// Period30d は、直近30日を集計対象とする区分です。</span>
+    <span id="Period30d">Period30d</span> <a href="#Period">Period</a> = &#34;30d&#34;
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ProductRankingQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=840:1111#L15">ProductRankingQueryService</a>
+				<a class="permalink" href="#ProductRankingQueryService">¶</a>
+				
+				
+			</h2>
+			<p>ProductRankingQueryService は、購入明細を集計した商品売上ランキングの参照を提供するクエリサービスです。
+
+			</p><pre>type ProductRankingQueryService interface {
+    <span class="comment">// ListRanking は、販売数量の降順（同数量は商品 ID 昇順）で上位 params.Limit 件のランキングを返します。</span>
+    ListRanking(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, params <a href="#RankingQueryParams">RankingQueryParams</a>) ([]<a href="#RankingResult">RankingResult</a>, <a href="../../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="RankingQueryParams">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=1196:1417#L21">RankingQueryParams</a>
+				<a class="permalink" href="#RankingQueryParams">¶</a>
+				
+				
+			</h2>
+			<p>RankingQueryParams は、ランキング集計の入力パラメータです。
+
+			</p><pre>type RankingQueryParams struct {
+<span id="RankingQueryParams.Period"></span>    <span class="comment">// Period は、集計対象期間の区分です。境界時刻の算出はインフラ層に閉じます。</span>
+    Period <a href="#Period">Period</a>
+<span id="RankingQueryParams.Limit"></span>    <span class="comment">// Limit は、取得する上位件数です。</span>
+    Limit <a href="../../../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="RankingResult">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=1494:1901#L29">RankingResult</a>
+				<a class="permalink" href="#RankingResult">¶</a>
+				
+				
+			</h2>
+			<p>RankingResult は、ランキング 1 商品分の集計結果です。
+
+			</p><pre>type RankingResult struct {
+<span id="RankingResult.ProductID"></span>    ProductID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="RankingResult.Name"></span>    Name      <a href="../../../../../../builtin/#string">string</a>
+<span id="RankingResult.Price"></span>    Price     <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="RankingResult.PublishedAt"></span>    <span class="comment">// PublishedAt は、公開日時です。集計は公開中の商品に絞られており、返却行が本当にその条件を</span>
+    <span class="comment">// 満たすかを呼び出し側がドメインの定義で確かめるために保持します。出力 DTO へは写しません。</span>
+    PublishedAt  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="RankingResult.SoldQuantity"></span>    SoldQuantity <a href="../../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

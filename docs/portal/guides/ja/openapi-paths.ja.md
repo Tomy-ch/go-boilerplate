@@ -6,26 +6,8 @@
 
 ## ディレクトリ構成
 
-ディレクトリ構成は **URL パスをミラー**します（業界標準 / Redocly 分割スタイル）。ファイル位置が URL と 1:1 対応します。子を持たないパスはフラットな `<segment>.yaml`、自身がエンドポイントかつ子を持つパスは `<segment>.yaml`（自身）と `<segment>/`（子ディレクトリ）を併存させます。
-
-```text
-paths/
-├── health.yaml             # /health
-├── healthz.yaml            # /healthz
-├── ready.yaml              # /ready
-├── version.yaml            # /version
-├── metrics.yaml            # /metrics（Basic 認証）
-├── internal/               # 内部型（oapi-codegen 用エラーレスポンススキーマ）
-│   └── types/
-│       └── error_response.yaml
-└── v1/                     # バージョニングされた API（サンプル）
-    ├── users.yaml          # /v1/users       ← エンドポイント＋子あり
-    └── users/
-        ├── userId.yaml     # /v1/users/{userId}
-        ├── search.yaml     # /v1/users/search
-        ├── feed.yaml       # /v1/users/feed
-        └── me.yaml         # /v1/users/me
-```
+パス 1 本につき 1 ファイルを置き、最後のセグメントを名前にする。子を持つパスは、自身のファイルと
+並べて同名のディレクトリを持つ。したがってディレクトリ構造は URL の構造をそのまま写す。
 
 ## エンドポイントのカテゴリ
 
