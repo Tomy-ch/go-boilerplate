@@ -36,7 +36,7 @@ type DashboardSummaryResponse struct {
 	PurchaseStatusCounts []DashboardPurchaseStatusCountResponse `json:"purchaseStatusCounts"`
 
 	// SalesAmount 集計対象期間の売上合計。USD セント単位の整数です。キャンセル済みの購入は除外し、未払いの購入は含みます
-	// （商品売上ランキングと同一の母集団）。対象がない場合は 0 です。
+	// （購入レベルの絞りは商品売上ランキングと同じですが、ランキングはさらに公開済み商品に限るため合計は一致しません）。対象がない場合は 0 です。
 	//
 	//
 	// Example: 2118000
