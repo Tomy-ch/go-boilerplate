@@ -83,7 +83,7 @@ classes = ["mise"]
 classes = ["image"]
 
 [job."auto-generate-docs.yaml:generate-docs"]
-classes = ["image"]
+classes = ["image", "db"]
 
 [job."bearer.yaml:bearer"]
 classes = ["mise"]
