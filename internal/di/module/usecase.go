@@ -6,8 +6,8 @@ import (
 	domaincategory "go-boilerplate/internal/domain/product/category" // sample-api:line
 	domainstatus "go-boilerplate/internal/domain/product/status"     // sample-api:line
 	"go-boilerplate/internal/observability"
-	addressuc "go-boilerplate/internal/usecase/address" // sample-api:line
-	authzbd "go-boilerplate/internal/usecase/boundary/authz"
+	addressuc "go-boilerplate/internal/usecase/address"                      // sample-api:line
+	authzbd "go-boilerplate/internal/usecase/boundary/authz"                 // sample-api:line
 	clockbd "go-boilerplate/internal/usecase/boundary/clock"                 // sample-api:line
 	objectstoragebd "go-boilerplate/internal/usecase/boundary/objectstorage" // sample-api:line
 	txbd "go-boilerplate/internal/usecase/boundary/tx"                       // sample-api:line
