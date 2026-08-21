@@ -270,79 +270,6 @@ func parseProductListRange(filter SearchFilter) (productListRange, error) {
 	return result, nil
 }
 
-// authorizeUnpublishedRead は、未公開商品を含む参照の可否を判定します。
-// 既定の可視範囲（公開済みのみ）は認証を要さないため、includeUnpublished が false のときは何も課しません。
-// 一覧・一致件数・詳細はいずれも同じ能力を要求するため、判定はこの 1 箇所に集約します。
-func (u *usecase) authorizeUnpublishedRead(ctx context.Context, authn *auth.Authn, includeUnpublished bool) error {
-	if !includeUnpublished {
-		return nil
-	}
-	if authn == nil {
-		return apperror.ErrUnauthenticated
-	}
-
-	return u.authorizer.Authorize(
-		ctx, authn, authz.ActionProductReadUnpublished, authz.NewResource("product", nil),
-	)
-}
-
-// findPublishedPage は、公開済み商品のページを (published_at, id) の keyset で取得します。
-func (u *usecase) findPublishedPage(
-	ctx context.Context, params ListProductsParams, rangeFilter productListRange,
-) (product.Products, error) {
-	after, err := decodeProductCursor(params.Cursor)
-	if err != nil {
-		return nil, err
-	}
-
-	domainParams := product.ListParams{
-		SearchFilter: toDomainSearchFilter(params.SearchFilter, rangeFilter),
-		Limit:        params.Cursor.Limit32() + 1,
-		Ascending:    params.Ascending,
-	}
-	if after != nil {
-		publishedAt := after.publishedAt
-		id := after.id
-		domainParams.AfterPublishedAt = &publishedAt
-		domainParams.AfterID = &id
-	}
-
-	products, err := u.repo.FindPublishedList(ctx, domainParams)
-	if err != nil {
-		return nil, err
-	}
-	if err := ensurePublished(products); err != nil {
-		return nil, err
-	}
-
-	return products, nil
-}
-
-// findAllPage は、公開状態を問わない商品のページを (created_at, id) の keyset で取得します。
-// 未公開の商品は公開日時を持たないため、ensurePublished による検算は行いません。
-func (u *usecase) findAllPage(
-	ctx context.Context, params ListProductsParams, rangeFilter productListRange,
-) (product.Products, error) {
-	after, err := decodeAllProductCursor(params.Cursor)
-	if err != nil {
-		return nil, err
-	}
-
-	domainParams := product.AllListParams{
-		SearchFilter: toDomainSearchFilter(params.SearchFilter, rangeFilter),
-		Limit:        params.Cursor.Limit32() + 1,
-		Ascending:    params.Ascending,
-	}
-	if after != nil {
-		createdAt := after.createdAt
-		id := after.id
-		domainParams.AfterCreatedAt = &createdAt
-		domainParams.AfterID = &id
-	}
-
-	return u.repo.FindAllList(ctx, domainParams)
-}
-
 func (u *usecase) ListProducts(
 	ctx context.Context, authn *auth.Authn, params ListProductsParams,
 ) (ProductListView, error) {
@@ -363,12 +290,16 @@ func (u *usecase) ListProducts(
 	}
 
 	// 母集団が変わると並び順の軸も変わるため、取得とカーソル生成は同じ枝で揃えます。
-	products, encode := product.Products(nil), encodeProductCursor
+	var (
+		products product.Products
+		encode   func(last *product.Product) string
+	)
 	if params.IncludeUnpublished {
 		products, err = u.findAllPage(ctx, params, rangeFilter)
 		encode = encodeAllProductCursor
 	} else {
 		products, err = u.findPublishedPage(ctx, params, rangeFilter)
+		encode = encodeProductCursor
 	}
 	if err != nil {
 		return ProductListView{}, err
@@ -474,6 +405,79 @@ func (u *usecase) GetProduct(
 	}
 
 	return toProductView(p), nil
+}
+
+// authorizeUnpublishedRead は、未公開商品を含む参照の可否を判定します。
+// 既定の可視範囲（公開済みのみ）は認証を要さないため、includeUnpublished が false のときは何も課しません。
+// 一覧・一致件数・詳細はいずれも同じ能力を要求するため、判定はこの 1 箇所に集約します。
+func (u *usecase) authorizeUnpublishedRead(ctx context.Context, authn *auth.Authn, includeUnpublished bool) error {
+	if !includeUnpublished {
+		return nil
+	}
+	if authn == nil {
+		return apperror.ErrUnauthenticated
+	}
+
+	return u.authorizer.Authorize(
+		ctx, authn, authz.ActionProductReadUnpublished, authz.NewResource("product", nil),
+	)
+}
+
+// findPublishedPage は、公開済み商品のページを (published_at, id) の keyset で取得します。
+func (u *usecase) findPublishedPage(
+	ctx context.Context, params ListProductsParams, rangeFilter productListRange,
+) (product.Products, error) {
+	after, err := decodeProductCursor(params.Cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	domainParams := product.ListParams{
+		SearchFilter: toDomainSearchFilter(params.SearchFilter, rangeFilter),
+		Limit:        params.Cursor.Limit32() + 1,
+		Ascending:    params.Ascending,
+	}
+	if after != nil {
+		publishedAt := after.publishedAt
+		id := after.id
+		domainParams.AfterPublishedAt = &publishedAt
+		domainParams.AfterID = &id
+	}
+
+	products, err := u.repo.FindPublishedList(ctx, domainParams)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensurePublished(products); err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+
+// findAllPage は、公開状態を問わない商品のページを (created_at, id) の keyset で取得します。
+// 未公開の商品は公開日時を持たないため、ensurePublished による検算は行いません。
+func (u *usecase) findAllPage(
+	ctx context.Context, params ListProductsParams, rangeFilter productListRange,
+) (product.Products, error) {
+	after, err := decodeAllProductCursor(params.Cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	domainParams := product.AllListParams{
+		SearchFilter: toDomainSearchFilter(params.SearchFilter, rangeFilter),
+		Limit:        params.Cursor.Limit32() + 1,
+		Ascending:    params.Ascending,
+	}
+	if after != nil {
+		createdAt := after.createdAt
+		id := after.id
+		domainParams.AfterCreatedAt = &createdAt
+		domainParams.AfterID = &id
+	}
+
+	return u.repo.FindAllList(ctx, domainParams)
 }
 
 // ensurePublished は、Repository が公開中として返した商品がドメイン定義でも公開中であることを確かめます。

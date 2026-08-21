@@ -31,6 +31,13 @@ type productCursor struct {
 	id          uuid.UUID
 }
 
+// allProductCursor は、未公開を含む商品一覧（keyset ページネーション）の境界キーを表す usecase 層の値です。
+// 未公開の商品は公開日時を持たないため、境界には登録日時を用います。
+type allProductCursor struct {
+	createdAt time.Time
+	id        uuid.UUID
+}
+
 // decodeProductCursor は、cursor の不透明キー列を keyset 境界（productCursor）へ解釈します。
 // 先頭ページ（カーソル無し）の場合は nil を返します。キーの個数・型が不正な場合は ErrInvalidArgument を返します。
 func decodeProductCursor(cursor *paging.Cursor) (*productCursor, error) {
@@ -61,13 +68,6 @@ func decodeProductCursor(cursor *paging.Cursor) (*productCursor, error) {
 // このカーソルを使う一覧は公開済みのみを返すため、PublishedAt は常に非 nil です。
 func encodeProductCursor(last *product.Product) string {
 	return paging.EncodeCursor(ptr.Deref(last.PublishedAt(), time.Time{}).Format(time.RFC3339Nano), last.ID().String())
-}
-
-// allProductCursor は、未公開を含む商品一覧（keyset ページネーション）の境界キーを表す usecase 層の値です。
-// 未公開の商品は公開日時を持たないため、境界には登録日時を用います。
-type allProductCursor struct {
-	createdAt time.Time
-	id        uuid.UUID
 }
 
 // decodeAllProductCursor は、cursor の不透明キー列を未公開を含む一覧の keyset 境界へ解釈します。

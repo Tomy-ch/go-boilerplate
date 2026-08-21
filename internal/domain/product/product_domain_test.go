@@ -17,6 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testCreatedAt は、テスト用の登録日時です。公開日時と取り違えを検出できるよう異なる値にします。
+var testCreatedAt = time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+
 // mustPrice は、テスト用に十進文字列から非負の money.Price を構築します。
 func mustPrice(t *testing.T, s string) money.Price {
 	t.Helper()
@@ -46,9 +49,6 @@ func mustImage(t *testing.T, salt, path string, displaySort int) Image {
 	t.Helper()
 	return NewImage(uuidtestkit.NewTestFromSalt(t, salt), ImageAttributes{ImagePath: path, DisplaySort: displaySort})
 }
-
-// testCreatedAt は、テスト用の登録日時です。公開日時と取り違えを検出できるよう異なる値にします。
-var testCreatedAt = time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
 
 // validProductArgs は、テスト用に有効な商品 ID と属性一式を構築します。
 // Description と画像パスは取り違えを検出できるよう異なる値にします。

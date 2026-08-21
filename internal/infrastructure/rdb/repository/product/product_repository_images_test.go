@@ -63,6 +63,7 @@ func productsRow(t *testing.T, id uuid.UUID) gen.Products {
 		StatusID:    mustParse(t, statusInStock),
 		CategoryID:  mustParse(t, categoryElectronics),
 		LockVersion: 1,
+		CreatedAt:   testCreatedAt,
 	}
 }
 

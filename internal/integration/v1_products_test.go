@@ -205,7 +205,7 @@ func TestV1Products_Integration(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+				func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
 					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				},
@@ -246,7 +246,7 @@ func TestV1Products_Integration(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().ListProducts(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+				func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
 					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				},
@@ -410,6 +410,7 @@ func TestV1Products_Integration(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
+			UseAppErrorHandler(t, e)
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
@@ -428,6 +429,7 @@ func TestV1Products_Integration(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
+			UseAppErrorHandler(t, e)
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 

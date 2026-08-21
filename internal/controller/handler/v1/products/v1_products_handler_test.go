@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/v1/products/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/auth"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -189,7 +190,7 @@ func Test_server_GetProducts(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+				DoAndReturn(func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
 					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				})
@@ -230,7 +231,7 @@ func Test_server_GetProducts(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+				DoAndReturn(func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
 					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				})
@@ -251,7 +252,7 @@ func Test_server_GetProducts(t *testing.T) {
 			var captured productuc.ListProductsParams
 			mockApp.EXPECT().
 				ListProducts(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(productuc.ListProductsParams{})).
-				DoAndReturn(func(_ context.Context, params productuc.ListProductsParams) (productuc.ProductListView, error) {
+				DoAndReturn(func(_ context.Context, _ *auth.Authn, params productuc.ListProductsParams) (productuc.ProductListView, error) {
 					captured = params
 					return productuc.ProductListView{Items: []productuc.ProductView{}, NextCursor: nil}, nil
 				})
