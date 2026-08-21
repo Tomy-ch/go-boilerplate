@@ -169,6 +169,11 @@ jobs:
       # is wrong (replace-codeowners rewrites every rule's owner to one value). Leaving them
       # behind is what the self-destruct exists to prevent, so a path left un-removed has to fail
       # here. Directories rather than files: a module added later is covered without editing this.
+      #
+      # This workflow is named explicitly because it is the one piece that lives outside
+      # `scripts/setup/`: it drives those entrypoints, so left behind it keeps invoking tools that
+      # deleted themselves. `remove-boilerplate-identity` deletes the same path — it depends on this
+      # CI too, and neither removal's order is fixed, so whichever runs first takes it.
       - name: Verify setup tooling self-destructed
         run: |
           set -euo pipefail
@@ -178,6 +183,7 @@ jobs:
             scripts/setup/replace-license-copyright \
             scripts/setup/replace-repository-reference \
             scripts/setup/replace-codeowners \
+            .github/workflows/setup-scripts-check.yaml \
             scripts/setup/verify-setup; do
             if [ -e "$d" ]; then
               echo "FAIL: $d was not removed"

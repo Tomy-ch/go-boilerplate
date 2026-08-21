@@ -14,6 +14,7 @@ import { EXCLUDED_DIRECTORIES, isReplacementTarget } from "../replace-module/mod
 import {
   BOILERPLATE_MODULE,
   type ExpectedIdentity,
+  LOCALIZATION_CI_PATHS,
   LOCALIZATION_MARKER,
   LOCALIZATION_MARKER_FILES,
   SAMPLE_REMOVER_DIR,
@@ -103,6 +104,11 @@ function selfDestruct(): void {
 
   for (const target of selfDestructTargets(path.basename(SELF_DIR), sampleRemoverExists)) {
     fs.rmSync(path.join(SETUP_DIR, target), { force: true, recursive: true });
+  }
+
+  // ツールを叩く CI はリポジトリルート相対なので、SETUP_DIR ではなく ROOT_DIR から解決する。
+  for (const relativePath of LOCALIZATION_CI_PATHS) {
+    fs.rmSync(path.join(ROOT_DIR, relativePath), { force: true, recursive: true });
   }
 
   if (!sampleRemoverExists) {

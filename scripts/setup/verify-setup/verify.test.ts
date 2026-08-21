@@ -1,7 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
+import { ROOT_DIR } from "../lib/runtime";
 import {
   BOILERPLATE_MODULE,
+  LOCALIZATION_CI_PATHS,
   LOCALIZATION_TOOL_DIRS,
   SAMPLE_REMOVER_DIR,
   SETUP_SHARED_DIR,
@@ -209,6 +214,39 @@ describe("LOCALIZATION_TOOL_DIRS", () => {
   describe("正常系", () => {
     it("サンプル削除ツールを初期化ツールに数えない", () => {
       expect(LOCALIZATION_TOOL_DIRS).not.toContain(SAMPLE_REMOVER_DIR);
+    });
+  });
+});
+
+describe("LOCALIZATION_CI_PATHS", () => {
+  describe("正常系", () => {
+    // 叩く相手が自消滅した後も残ると、消えた入口を叩き続けて作成先で恒久的に赤くなる。
+    it("初期化ツールを起動する CI が実在する", () => {
+      expect(LOCALIZATION_CI_PATHS.length).toBeGreaterThan(0);
+
+      for (const relativePath of LOCALIZATION_CI_PATHS) {
+        expect(fs.existsSync(path.join(ROOT_DIR, relativePath)), relativePath).toBe(true);
+      }
+    });
+
+    // 挙げた CI が実際にツールを起動していなければ、撤去の理由が成り立たない。
+    it("挙げた CI が実際に初期化ツールを起動している", () => {
+      for (const relativePath of LOCALIZATION_CI_PATHS) {
+        const content = fs.readFileSync(path.join(ROOT_DIR, relativePath), "utf8");
+
+        expect(content, relativePath).toContain("scripts/setup/verify-setup");
+      }
+    });
+  });
+
+  describe("異常系", () => {
+    // setup 相対の一覧と混ざると、片方が誤った基点で解決されて消し漏れる。
+    it("setup 配下のディレクトリ名と重ならない", () => {
+      const setupRelative = selfDestructTargets("verify-setup", false);
+
+      for (const relativePath of LOCALIZATION_CI_PATHS) {
+        expect(setupRelative, relativePath).not.toContain(relativePath);
+      }
     });
   });
 });
