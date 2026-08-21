@@ -54,6 +54,11 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
 
       "docs/spec/user",
       "docs/spec/user-search",
+
+      // User 機能を 0 から組み立てる手順書。規則を述べる散文ではなくこのサンプルの写しなので、
+      // サンプルが消えれば指し先が丸ごと無くなる。ポータルの `tutorial` セクション宣言は
+      // docs/portal/manifest.yaml のマーカー側で落ちる。
+      "docs/tutorial",
     ],
   },
 
@@ -118,7 +123,9 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000003_create_prefectures.up.sql",
       "database/migrations/000003_create_prefectures.down.sql",
 
-      "docs/spec/prefecture/usecase.md",
+      // ディレクトリで挙げる。ファイルを 1 本ずつ列挙すると、同じ spec に層を足したときに
+      // 漏れる（`domain.md` が実際に取り残されていた）。
+      "docs/spec/prefecture",
     ],
   },
 
@@ -385,6 +392,10 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/responses/exchange-rates",
       "openapi/components/schemas/exchange-rates",
 
+      // DAST 用の疑似サービス。起動側（zap-api-scan.yaml）はマーカーで落ちるが、
+      // 実体はここでしか消せない。gateway が消えれば呼ぶ者が居なくなる。
+      ".github/zap/exchange-rate-stub.py",
+
       // internal/usecase/tools/money は対象外（後続 purchases も再利用する恒久ヘルパ。
       // 汎用ツールの扱いは冒頭参照）。
 
@@ -449,7 +460,12 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     description: "サンプル削除ツール自身（削除完了後は不要）",
     // ディレクトリごと挙げる。ファイルを 1 本ずつ列挙すると、判定モジュールを足したときに
     // 漏れて、消えたはずの削除ツールの一部だけが利用者のリポジトリへ居座る。
-    paths: ["scripts/setup/remove-sample-api"],
+    paths: [
+      "scripts/setup/remove-sample-api",
+      // 撤去を検証する CI もツールの一部。残すと、自消滅した入口を叩き続けて作成先で恒久的に
+      // 赤くなる（remove-licensed-scanners は自分の検証ワークフローを自分で消している）。
+      ".github/workflows/sample-removal-check.yaml",
+    ],
   },
 };
 
@@ -498,9 +514,6 @@ export const MARKER_LITERAL_FILES: readonly string[] = [
   "scripts/premise-lint/rules.test.ts",
   // Go の文字列リテラルとして `// sample-api:line` を組み立て、走査器の挙動を検査している。
   "internal/architest/bindhandler_di_parity_test.go",
-  // 教材。マーカーの書き方をコード例として示している。
-  "docs/tutorial/build-user-feature.md",
-  "docs/tutorial/build-user-feature.ja.md",
   // マーカーの書き方を説明している散文。1 行に begin と end が同居するため、
   // 素通しすると「閉じられていない begin」として除去が中断する。
   "docs/get-started/setup-repository.md",

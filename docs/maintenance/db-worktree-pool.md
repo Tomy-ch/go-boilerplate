@@ -88,7 +88,7 @@ That is the point — before this guard it quietly ran against the shared `test`
 - **persisted data that follows the shifted ports**: a host port is not only something to connect to —
   it can also be *stored* in the database. The JWT issuer is one such value: the mock auth server
   publishes on `2010+N`, so the `iss` of the tokens it issues shifts with the slot, and the
-  `user_identities` row that the resolver matches on `(issuer, subject)` has to shift with it — with a
+  row that the resolver matches on `(issuer, subject)` has to shift with it — with a
   pinned literal, every authenticated endpoint answers 401 in a worktree that holds a slot. The seed
   file therefore stores `${AUTH_ISSUER}` instead of the URL and `make db-seed` passes this slot's value
   in (see `database/seed/README.md`), so `db-reinit` / `db-seed` / `slot-acquire` all leave an identity
@@ -225,7 +225,7 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   `docker/elasticmq/elasticmq.conf` and expands no environment variables, so a name nothing declared
   is simply absent. Two checkouts running `make outbox-relay` at once therefore publish into the same
   queue, and whichever consumer reads first takes the message. Nothing consumes it today
-  (the sample ships a withdrawal-archive worker), so two checkouts running the relay do contend. To isolate a
+  unless a worker is registered, in which case two checkouts running the relay do contend. To isolate a
   branch, declare an extra queue in `elasticmq.conf` and point `OUTBOX_QUEUE_URL` at it — the conf is
   read at start-up, so the change needs `make infra-down && make infra-up`, which interrupts every
   checkout. Per-slot queues are not pre-declared because the pool size is configurable

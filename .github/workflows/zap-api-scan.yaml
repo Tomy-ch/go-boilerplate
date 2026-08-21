@@ -53,13 +53,17 @@ jobs:
       # deployed environment does. `ci` cannot: it wires the stub, which accepts any
       # `debug:<subject>` bearer token without a signature and never reaches that code.
       APP_ENV: dast
+      # sample-api:replace-begin
       # The identity the scan authenticates as. Under a real issuer the seeded
       # `user_identities` rows are the `${AUTH_ISSUER}` ones, and the provider copies whatever
       # `username` it is handed onto `sub` — so this has to be one of the `user-<name>` subjects
       # the seed registers, not the internal user UUID that only the stub issuer keys on.
-      # sample-api:replace-begin
       SCAN_SUBJECT: user-john-doe
       # sample-api:replace-with
+      # = # The identity the scan authenticates as. Under a real issuer it has to be a subject the
+      # = # seed registered as an identity: the provider copies whatever `username` it is handed
+      # = # onto `sub`, and identity resolution matches on `(issuer, subject)`. Empty means the scan
+      # = # runs unauthenticated, which is what it does until this API has an identity to scan as.
       # = SCAN_SUBJECT: ''
       # sample-api:replace-end
     services:

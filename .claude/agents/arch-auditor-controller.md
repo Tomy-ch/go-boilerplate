@@ -82,12 +82,12 @@ arch-auditor-controller 結果（スコープ: <scope>）
   - <file:line>: <linter>: <message>
 
 [operationId ↔ handler method] K 件
-  internal/controller/handler/v1/users/v1_users_handler.go
-    violation: ServerInterface に PutUsers あるが handler メソッド未実装
-    source: internal/controller/handler/v1/users/gen/server.gen.go
+  internal/controller/handler/v1/<resource>/v1_<resource>_handler.go
+    violation: ServerInterface に Put<Resource> あるが handler メソッド未実装
+    source: internal/controller/handler/v1/<resource>/gen/server.gen.go
 
 [pure template] M 件
-  internal/controller/handler/v1/orders/orders_handler.go:67
+  internal/controller/handler/v1/<other>/<other>_handler.go:67
     suggestion: 関数 52 行 + 2 usecase 呼び出し
     source: internal/controller/handler/README.md "handler は pure template"
     remediation: orchestration を usecase 側に集約推奨

@@ -59,7 +59,7 @@ See [`database/seed/README.md`](../../database/seed/README.md) for the full poli
 
 ### Negative Consequences
 
-- Correcting a master data value (e.g., a misspelled prefecture name) requires a new
+- Correcting a master data value (e.g., a misspelled display name) requires a new
   migration file rather than a simple row update, consistent with
   [ADR-0029](0029-append-only-immutable-migrations.md).
 - Migration files contain both DDL and DML, which slightly broadens their scope beyond pure

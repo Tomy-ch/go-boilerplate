@@ -119,7 +119,7 @@ Node の設定とパッケージ横断のゲートは直下に置く。各ツー
 すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。
 <!-- sample-api:begin -->
 
-削除対象は [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) に、マーカー除去の規則は [`sample-api.ts`](setup/remove-sample-api/sample-api.ts) に宣言されています。サンプルは3ドメイン構成（`user` はフルスタック、`product`/`order` は拡張予定の DB スタブ）で、拡張時は該当ドメインブロックにパスを追記し、混在行を `sample-api:begin … sample-api:end`（または `sample-api:line`）で囲むだけで対象に含まれます。
+削除対象は [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) に、マーカー除去の規則は [`sample-api.ts`](setup/remove-sample-api/sample-api.ts) に宣言されています。サンプルは複数のフルスタックドメインからなり、拡張時は該当ドメインブロックにパスを追記し、混在行を `sample-api:begin … sample-api:end`（または `sample-api:line`）で囲むだけで対象に含まれます。
 <!-- sample-api:end -->
 
 ## テスト戦略

@@ -44,6 +44,11 @@ func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 
+		// sample-api:begin
+		// どちらもサンプル撤去とともに消える。details を宣言する operation はサンプルにしか
+		// 無く、撤去後は expected も actual も空になるため、「空でない」は必ず落ちる
+		// （0 件と壊れた走査の区別は、上の 1:1 一致と operationsReferencingSchema の
+		// 独立導出が担う）。
 		t.Run("スキーマ分割が実際に効いている(空でない)", func(t *testing.T) {
 			t.Parallel()
 			assert.NotEmpty(t, expected)
@@ -55,6 +60,7 @@ func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
 			assert.True(t, actual["PutUsersDetail"])
 			assert.True(t, actual["PatchUsersDetail"])
 		})
+		// sample-api:end
 	})
 }
 
@@ -105,6 +111,9 @@ func Test_openAPIDetailPolicy_Allows(t *testing.T) {
 	policy, ok := built.(*openAPIDetailPolicy)
 	require.True(t, ok)
 
+	// sample-api:begin
+	// 撤去後に details を opt-in する operation は 1 つも残らないため、許可される側の観点が
+	// 成立しなくなる。拒否側（異常系）は撤去後も残る operation で成立する。
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -114,13 +123,18 @@ func Test_openAPIDetailPolicy_Allows(t *testing.T) {
 			assert.True(t, policy.Allows(req))
 		})
 	})
+	// sample-api:end
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("未opt-inのoperationはfail-closedで拒否される", func(t *testing.T) {
 			t.Parallel()
+			// sample-api:replace-begin
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/users/123e4567-e89b-12d3-a456-426614174000", nil)
+			// sample-api:replace-with
+			// = req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
+			// sample-api:replace-end
 			assert.False(t, policy.Allows(req))
 		})
 

@@ -391,10 +391,10 @@ make gen-query
 
 Notes:
 
-- The base master data `prefecture` (migration `000001`, etc.) is **kept**.
+- The core tables `idempotency_keys` (migration `000001`) and `outbox` (migration `000002`) are **kept**; every other migration goes with the sample it belongs to, `prefecture` included.
 - `gen-query` regenerates Go models from a `pg_dump` of the **live** DB. If you skip the DB rebuild above, the still-present `users` table is re-dumped and a stale `Users` type is regenerated into `models.gen.go` — the rebuild + re-`gen-query` is what actually drops it.
-- Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step.
-- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-manifest.ts`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
+- Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step. The published docs (`docs/openapi/**`, `docs/godoc/**`, `docs/coverage/**`, `docs/portal/**`) and the code graph (`graphify-out/**`) are not refreshed by it, and still describe the sample until you regenerate them (`make gen-all-docs`).
+- The sample spans several full-stack domains, each declared as its own block in `sample-manifest.ts`. When you extend one, append its new paths to the matching block, and wrap any sample lines interleaved in a shared file with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`; `%%` inside a mermaid fence, `<!-- -->` in Markdown prose). They are then covered by the same command automatically.
 
 ### Rules keep their examples only until you remove the sample
 

@@ -19,7 +19,7 @@
     `concurrencyPolicy`、advisory lock）はスケジューラ側へ委ねる
   - 同梱ジョブはいずれも設計上すでに並行安全なので、アプリケーション層の
     排他は提供しない: `outbox-gc` と `idempotency-gc` は経過時間述語による
-    べき等なバッチ削除、`usercount` は読み取り専用、outbox relay は
+    べき等なバッチ削除、outbox relay は
     `FOR UPDATE SKIP LOCKED` で行を確保する
   - 厳密な単一実行が要るなら、スケジューラ側で
     `concurrencyPolicy: Forbid` を設定する

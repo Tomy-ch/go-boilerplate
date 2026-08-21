@@ -195,8 +195,13 @@ invariant cannot justify deciding on its own.
   [ADR-0047](0047-apperror-protocol-agnostic-errors.md) (`ErrConflict` → 409),
   [ADR-0056](0056-skip-locked-outbox-relay.md) (the contrasting claim-a-queue-row profile),
   [ADR-0092](0092-rollback-integration-tests.md) (integration tests against a real database).
+<!-- sample-api:replace-begin -->
 - Which rows a given workflow locks, and which business rule each lock protects, is feature content
   rather than an architectural decision, so it is specified with the feature. In this repository
   that means the removable sample set (`docs/spec/purchase/`, `docs/spec/user/`) — referenced by
   path rather than linked, because those files are deleted by `make setup-remove-sample-api` while
   this ADR stays.
+<!-- sample-api:replace-with -->
+<!-- = - Which rows a given workflow locks, and which business rule each lock protects, is feature content -->
+<!-- =   rather than an architectural decision, so it is specified with the feature. -->
+<!-- sample-api:replace-end -->

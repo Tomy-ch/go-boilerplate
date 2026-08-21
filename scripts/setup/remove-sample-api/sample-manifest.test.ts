@@ -59,13 +59,22 @@ describe("sampleTooling", () => {
     // 削除ツールが自分自身を登録し損ねると、サンプルを消したリポジトリに削除ツールだけが
     // 残る。配置を変えたときに真っ先に腐るのがここ。
     it("削除ツール自身のディレクトリを登録している", () => {
-      expect([...SAMPLE_DOMAINS.sampleTooling.paths]).toEqual(["scripts/setup/remove-sample-api"]);
+      expect([...SAMPLE_DOMAINS.sampleTooling.paths]).toContain("scripts/setup/remove-sample-api");
+    });
+
+    // 撤去を検証する CI は、叩く相手が自消滅した後も残ると作成先で恒久的に赤くなる。
+    // ツール本体と一緒に消えることを、実体の在処と併せて固定する。
+    it("撤去を検証する CI も登録している", () => {
+      const workflow = ".github/workflows/sample-removal-check.yaml";
+
+      expect([...SAMPLE_DOMAINS.sampleTooling.paths]).toContain(workflow);
+      expect(fs.existsSync(path.join(ROOT_DIR, workflow))).toBe(true);
     });
 
     // ディレクトリで登録する以上、そのディレクトリが本当にこのツールの実体かどうかが
     // 唯一の担保になる。別の場所へ移してここを直し忘れると、消し漏れではなく誤爆になる。
     it("登録したディレクトリが実際にこのツールの入口と manifest を含む", () => {
-      const registered = path.join(ROOT_DIR, SAMPLE_DOMAINS.sampleTooling.paths[0]);
+      const registered = path.join(ROOT_DIR, "scripts/setup/remove-sample-api");
 
       expect(fs.existsSync(path.join(registered, "index.ts"))).toBe(true);
       expect(fs.existsSync(path.join(registered, "sample-manifest.ts"))).toBe(true);

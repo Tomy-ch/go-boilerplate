@@ -77,7 +77,7 @@ o11y は共有が利点になる（全 checkout のトレース / メトリク�
     動くよう既定プロジェクトを infra 層へ寄せる。未取得時も compose.mk が同じ既定を置く）
 - **ずれたポートに追随する永続データ**: ホスト公開ポートは接続先であるだけでなく、DB に**保存される**値でも
   ある。JWT の issuer がそれで、mock 認証サーバーは `2010+N` で公開されるため発行トークンの `iss` はスロットで
-  ずれ、resolver が `(issuer, subject)` で突き合わせる `user_identities` の行も一緒にずれていなければならない
+  ずれ、resolver が `(issuer, subject)` で突き合わせる行も一緒にずれていなければならない
   （リテラル固定だと、スロットを取った worktree では認証を要求する全エンドポイントが 401 になる）。そのため
   seed ファイルは URL ではなく `${AUTH_ISSUER}` を持ち、`make db-seed` がそのスロットの値を渡す
   （`database/seed/README.md` を参照）。`db-reinit` / `db-seed` / `slot-acquire` のいずれを通っても環境に一致する
@@ -201,7 +201,7 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   ElasticMQ は `docker/elasticmq/elasticmq.conf` に宣言されたキューしか作らず、環境変数も展開しない
   ため、どこにも宣言の無い名前は単に存在しないからである。2 つの checkout が同時に
   `make outbox-relay` を回せば同じキューへ publish し、先に読んだ consumer がメッセージを取る。
-  サンプルは withdrawal-archive worker を同梱しているため、2 つの checkout が relay を回すと実際に競合する。ブランチ毎に隔離するなら `elasticmq.conf` へキューを追加し `OUTBOX_QUEUE_URL` を
+  worker を登録している場合は、2 つの checkout が relay を回すと実際に競合する。ブランチ毎に隔離するなら `elasticmq.conf` へキューを追加し `OUTBOX_QUEUE_URL` を
   そこへ向ける。conf は起動時に読まれるので `make infra-down && make infra-up` が要り、全 checkout を
   止めることになる。スロット毎のキューを事前宣言していないのは、プールのサイズが可変
   （`GOBP_DB_POOL_MAX`）で、conf 側の静的な一覧はその値が変わった時点で黙ってプールを覆わなくなる

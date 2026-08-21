@@ -108,7 +108,9 @@ flowchart TD
     subgraph ctrlL["internal/controller/job  = runner + state"]
         RUN["runner.go: Runner, dispatch, Names, duplicate guard"]
         STATE["state.go: State, mutex-guarded name/args/done"]
+        %% sample-api:begin
         UC["usercount/: sample Job (sample-api)"]
+        %% sample-api:end
         GC["idempotencygc/: sample Job (idempotency GC)"]
     end
     subgraph seamL["internal/usecase/boundary/job  = seam"]
@@ -131,17 +133,25 @@ flowchart TD
     DIR --> RUN
     RUN --> PORT
     STATE --> PORT
+    %% sample-api:begin
     UC --> PORT
+    %% sample-api:end
     GC --> PORT
     DIH --> SD
     DIH --> STATE
     RUN --> LOG
+    %% sample-api:begin
     UC --> OTEL
+    %% sample-api:end
     GC --> OTEL
     DIH --> CFG
 
     classDef done fill:#e6ffed,stroke:#2da44e;
+    %% sample-api:replace-begin
     class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,UC,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
+    %% sample-api:replace-with
+    %% = class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
+    %% sample-api:replace-end
 ```
 
 > Green = implemented here. Dependencies always point inward (`controller→usecase/boundary`). The runner/state hold no business logic and no infrastructure imports; jobs reach data only through the usecase layer.
@@ -175,7 +185,11 @@ sequenceDiagram
 
 ## 4. What an integrator implements (the parts this project does not provide)
 
+<!-- sample-api:replace-begin -->
 This project provides the **runner, state, lifecycle hook, DI wiring, and two reference jobs** (`usercount`, `idempotencygc`). To add a job, supply the following (jobs are registered explicitly — there is no auto-discovery).
+<!-- sample-api:replace-with -->
+<!-- = This project provides the **runner, state, lifecycle hook, DI wiring, and a reference job** (`idempotencygc`). To add a job, supply the following (jobs are registered explicitly — there is no auto-discovery). -->
+<!-- sample-api:replace-end -->
 
 ```mermaid
 flowchart LR
@@ -189,8 +203,13 @@ flowchart LR
 
 | # | Required implementation | Location (recommended) | Reference |
 | --- | --- | --- | --- |
+<!-- sample-api:replace-begin -->
 | ① | business `Job`: `Name()` (kebab-case) + `Execute(ctx, args)` (parse args, call usecase, log) | `internal/controller/job/<name>/` | `usercount` / `idempotencygc` |
 | ② | `New(...) job.Job` DI constructor (takes logging / tracer factory / usecases) | same file as ① | `usercount.New` |
+<!-- sample-api:replace-with -->
+<!-- = | ① | business `Job`: `Name()` (kebab-case) + `Execute(ctx, args)` (parse args, call usecase, log) | `internal/controller/job/<name>/` | `idempotencygc` | -->
+<!-- = | ② | `New(...) job.Job` DI constructor (takes logging / tracer factory / usecases) | same file as ① | `idempotencygc.New` | -->
+<!-- sample-api:replace-end -->
 | ③ | add the constructor to `provideJobs(...)` in `JobModule()` | `internal/di/module/job.go` | same shape as `provideWorkers` |
 | ④ | `fx.Provide` any extra dependency the job needs (usecases are already provided) | `internal/di/module/` | existing usecase providers |
 

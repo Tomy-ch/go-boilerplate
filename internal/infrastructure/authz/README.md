@@ -30,13 +30,17 @@ Infrastructure["Infrastructure (authz implementation)"] -. implements .-> Bounda
 |Directory|Purpose|
 |---|---|
 |`allowall`|Allow-all stub for local / CI / test (grants everything)|
-|`userrole`|Sample `user_roles`-based RBAC Authorizer for production-like environments (admin ⇒ allow; otherwise resource-owner only). Part of the `user` sample and removed with it.|
+|`userrole`|Sample `user_roles`-based RBAC Authorizer for production-like environments (admin ⇒ allow; otherwise resource-owner only). Part of the `user` sample and removed with it.<!-- sample-api:line -->|
 
 A real deployment replaces these with its own RBAC / external policy-engine implementation.
 
 ## Local / Staging / Production Implementation
 
+<!-- sample-api:replace-begin -->
 `allowall` is a **development-only stub**; it grants everything, so it is wired only for `local` / `ci` / `test`. This restriction is enforced by the stub itself — `allowall.New` refuses to construct outside those environments (**fail-closed by construction**), so a wiring mistake cannot accidentally enable allow-all in `development` / `staging` / `production`. `provideAuthorizer` is **also fail-closed**: any environment without a wired implementation falls through to the `default` branch and returns a startup error by design. While the `user` sample is present, the sample `userrole` implementation (backed by `user_roles`) serves `local` / `development` / `staging` / `production` — only `ci` / `test` take `allowall`, so a local run exercises the real decision path. Removing the sample folds `local` into the `allowall` case and reverts the production-like environments to the fail-closed error until you wire your own (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 11, Authorization).
+<!-- sample-api:replace-with -->
+<!-- = `allowall` is a **development-only stub**; it grants everything, so it is wired only for `local` / `ci` / `test`. This restriction is enforced by the stub itself — `allowall.New` refuses to construct outside those environments (**fail-closed by construction**), so a wiring mistake cannot accidentally enable allow-all in `development` / `staging` / `production`. `provideAuthorizer` is **also fail-closed**: any environment without a wired implementation falls through to the `default` branch and returns a startup error by design. The production-like environments therefore return that error until you wire your own (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 11, Authorization). -->
+<!-- sample-api:replace-end -->
 
 Suggested layout (mirrors `internal/infrastructure/auth/`):
 
@@ -46,7 +50,11 @@ A real `Authorizer` typically decides via:
 - RBAC (roles derived from `auth.Authn` claims / scopes)
 - an external policy engine (OPA / Cedar)
 
+<!-- sample-api:replace-begin -->
 Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding a `case config.EnvDevelopment / EnvStaging / EnvProduction` branch that returns your real implementation, while keeping the self-guarded `allowall.New(appCfg)` for the non-production `local` / `ci` / `test` case. Anything left unhandled falls through to the `default` branch, which returns the fail-closed error. Because `allowall.New` is itself fail-closed, allow-all can never be reached in a production-like environment even if that wiring is wrong. (While the `user` sample is present, the production-like `case` is occupied by the sample `userrole`, and it is removed together with the sample.)
+<!-- sample-api:replace-with -->
+<!-- = Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding a `case config.EnvDevelopment / EnvStaging / EnvProduction` branch that returns your real implementation, while keeping the self-guarded `allowall.New(appCfg)` for the non-production `local` / `ci` / `test` case. Anything left unhandled falls through to the `default` branch, which returns the fail-closed error. Because `allowall.New` is itself fail-closed, allow-all can never be reached in a production-like environment even if that wiring is wrong. -->
+<!-- sample-api:replace-end -->
 
 ## Registration to DI
 
@@ -68,7 +76,16 @@ Viewpoints that hold for any implementation in this directory:
 - **A guard that must run before a lookup is verified to actually do so**, by expecting *no* call on the mock rather than only checking the returned error. The ordering is the safeguard, so asserting the return value alone would miss a regression that leaks a lookup.
 - **A constructor that refuses environments refuses them explicitly.** `allowall.New` must fail outside `local` / `ci` / `test`; the refusal is the fail-closed guarantee, so the environments it rejects matter more than the ones it accepts.
 
+<!-- 撤去後にこの箇所へ自分の例を置くための指針。
+     目的: 上の 3 観点は「どの実装にも当てはまる形」しか述べておらず、自分のポリシー固有の
+           分岐（役割・所有・前段のガード）がどこまで固定されているかは実装ごとに違う。
+     意義: 効くのは観点の列挙ではなく「許可と拒否の両側を、判定より前に落ちる경路まで含めて
+           1 ケースずつ挙げること」。
+     書き方: 自分の Authorizer で、許可される主体・拒否される主体・ロール参照より前に拒否される
+             入力・リポジトリのエラーの扱いを、それぞれ 1 文で挙げる。 -->
+<!-- sample-api:begin -->
 While the `user` sample is present, `userrole` adds the viewpoints its own policy needs: admin allows without ownership, a non-admin owner allows, a non-admin non-owner denies; a `nil` `Authn`, an unresolved UserID and a zero-value UserID each deny before any role lookup; an ownerless resource — a `nil` resource, or one whose `OwnerID()` is `nil` — stays admin-only; and a repository error propagates unchanged instead of being flattened into a deny. The zero-value-subject case cannot be reproduced through the running app, because the sole production `WithUserID` call site (`internal/infrastructure/auth/useridentity`) resolves IDs that already passed the domain's `IsNil` guard, so that unit test is the only place the branch is pinned.
+<!-- sample-api:end -->
 
 Which environment receives which implementation is DI-layer scope and is verified there (see [`internal/di/README.md`](../../di/README.md), *Environment-gated wiring*), not here.
 

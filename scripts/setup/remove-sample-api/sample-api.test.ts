@@ -8,6 +8,7 @@ import {
   SETUP_SHARED_DIR_USERS,
   SETUP_VERIFIER_DIR,
   containsSampleMarker,
+  emptyDirectoryCandidates,
   isScanTarget,
   isWithinRoot,
   sharedModuleTargets,
@@ -202,6 +203,37 @@ describe("isWithinRoot", () => {
 
     it("親へ抜けたパスを拒否する", () => {
       expect(isWithinRoot("/", "/repo", "/")).toBe(false);
+    });
+  });
+});
+
+describe("emptyDirectoryCandidates", () => {
+  describe("正常系", () => {
+    it("祖先ディレクトリを深い順に返す", () => {
+      expect(emptyDirectoryCandidates(["a/b/c/file.go"])).toEqual(["a/b/c", "a/b", "a"]);
+    });
+
+    // 子を消して初めて親が空になるため、親が子より先に来ると 1 段しか掃除できない。
+    it("複数の対象をまたいでも深い順が保たれる", () => {
+      expect(emptyDirectoryCandidates(["a/file.go", "a/b/c/file.go"])).toEqual([
+        "a/b/c",
+        "a/b",
+        "a",
+      ]);
+    });
+
+    it("同じ祖先を二重に返さない", () => {
+      const candidates = emptyDirectoryCandidates(["a/b/x.go", "a/b/y.go"]);
+
+      expect(candidates).toHaveLength(new Set(candidates).size);
+    });
+  });
+
+  describe("異常系", () => {
+    // 最上位の名前を候補にすると、掃除がリポジトリ直下のディレクトリまで届く。
+    it("リポジトリ直下と空文字を候補にしない", () => {
+      expect(emptyDirectoryCandidates(["docs"])).toEqual([]);
+      expect(emptyDirectoryCandidates(["a//b/file.go"])).toEqual(["a/b", "a"]);
     });
   });
 });
