@@ -15,7 +15,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
         sqlc.narg('category_codes')::SMALLINT[] IS NULL
@@ -60,7 +60,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
         sqlc.narg('category_codes')::SMALLINT[] IS NULL
@@ -109,7 +109,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
         sqlc.narg('category_codes')::SMALLINT[] IS NULL
@@ -154,7 +154,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
+WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('category_id'))
     AND (sqlc.narg('status_id')::UUID IS NULL OR p.status_id = sqlc.narg('status_id'))
     AND (
         sqlc.narg('category_codes')::SMALLINT[] IS NULL

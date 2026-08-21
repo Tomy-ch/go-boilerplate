@@ -582,7 +582,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
         $3::SMALLINT[] IS NULL
@@ -653,7 +653,7 @@ type ListAllProductsAscAfterRow struct {
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
-//	WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+//	WHERE ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
 //	        $3::SMALLINT[] IS NULL
@@ -740,7 +740,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
         $3::SMALLINT[] IS NULL
@@ -805,7 +805,7 @@ type ListAllProductsAscFirstRow struct {
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
-//	WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+//	WHERE ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
 //	        $3::SMALLINT[] IS NULL
@@ -886,7 +886,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
         $3::SMALLINT[] IS NULL
@@ -957,7 +957,7 @@ type ListAllProductsDescAfterRow struct {
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
-//	WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+//	WHERE ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
 //	        $3::SMALLINT[] IS NULL
@@ -1044,7 +1044,7 @@ SELECT
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
-WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($2::UUID IS NULL OR p.status_id = $2)
     AND (
         $3::SMALLINT[] IS NULL
@@ -1110,7 +1110,7 @@ type ListAllProductsDescFirstRow struct {
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
-//	WHERE     ($1::UUID IS NULL OR p.category_id = $1)
+//	WHERE ($1::UUID IS NULL OR p.category_id = $1)
 //	    AND ($2::UUID IS NULL OR p.status_id = $2)
 //	    AND (
 //	        $3::SMALLINT[] IS NULL
