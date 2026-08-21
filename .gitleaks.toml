@@ -15,10 +15,6 @@ paths = [
   # 当たる。gitignore 済みでコミットされ得ないため、ここを外しても走査範囲は狭まらない
   # （追跡する graphify-out/ の成果物は対象のまま）。gitleaks の dir 走査は gitignore を見ない。
   '''graphify-out/cache/''',
-  # docs/ 配下の生成物。OpenAPI の example UUID や compose 内部の host:port URL が
-  # generic-api-key に当たる。いずれも走査対象である正本（openapi/ · env/README.md · Go
-  # ソース · migration）から機械生成されたものなので、ここを外しても検出できる秘密は減らない
-  # ——秘密が入り込むなら正本の側で先に当たる。
   '''docs/openapi/''',
   '''docs/coverage/''',
   '''docs/db-schema/''',
