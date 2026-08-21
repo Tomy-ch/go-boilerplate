@@ -166,6 +166,38 @@ After completing the above steps, initialize the repository after the first push
 checks to an existing repository, confirm that each declared context has reported successfully on
 a pull request; otherwise GitHub can block merges while waiting for a context it has never seen.
 
+### Register the auto-PR app before you require any status check
+
+Three workflows open a pull request of their own — [`auto-generate-docs.yaml`](../../.github/workflows/auto-generate-docs.yaml),
+[`graphify-sync.yaml`](../../.github/workflows/graphify-sync.yaml) and
+[`graphify-extract.yaml`](../../.github/workflows/graphify-extract.yaml). GitHub does not start a
+workflow run for an event a workflow raised with its own `GITHUB_TOKEN`, which is what stops a
+workflow from triggering itself. A pull request opened with that token therefore reports no check at
+all, and a required context that never reports is the case the warning above describes: the merge
+waits with nothing to wait for, and no amount of re-running fixes it.
+
+An app token is a separate identity, so the events it raises are ordinary ones. Create a GitHub App,
+install it on the repository, and register two secrets:
+
+| Secret | Value |
+| --- | --- |
+| `AUTO_PR_APP_ID` | the app's **App ID** |
+| `AUTO_PR_APP_PRIVATE_KEY` | the contents of the private key `.pem` the app issued |
+
+The app needs two repository permissions and no more: **Contents `write`** to push the branch, and
+**Pull requests `write`** to open the pull request. The workflows narrow the installation token to
+exactly those two, so a wider app grants nothing extra.
+
+Nothing breaks while the app is missing. Each workflow warns and falls back to `GITHUB_TOKEN`, so the
+pull request still opens — it just carries no checks, which means it cannot be merged while any check
+is required. Skip this whole step if you require no status checks; otherwise do it **before**
+`make setup-repo` applies the ruleset, so the first auto-PR is mergeable rather than the first one to
+get stuck.
+
+A pull request already opened with `GITHUB_TOKEN` cannot be rescued by registering the app: the head
+commit is what an event would be raised for, and none was. Close it and let the workflow open a fresh
+one.
+
 ### When starting from a GitHub template
 
 ```sh

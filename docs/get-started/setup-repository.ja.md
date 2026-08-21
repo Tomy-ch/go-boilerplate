@@ -160,6 +160,38 @@ curl http://localhost:8080/ready
 check を適用する前に、宣言した各 context が PR で正常に報告されたことを確認してください。未報告の
 context を GitHub が待ち続けるとマージが止まります。
 
+### required status check を入れる前に auto-PR 用の App を登録する
+
+自分で pull request を開く workflow が 3 本あります（[`auto-generate-docs.yaml`](../../.github/workflows/auto-generate-docs.yaml) /
+[`graphify-sync.yaml`](../../.github/workflows/graphify-sync.yaml) /
+[`graphify-extract.yaml`](../../.github/workflows/graphify-extract.yaml)）。workflow が自分の
+`GITHUB_TOKEN` で起こしたイベントに対して GitHub は run を作りません。workflow が自分自身を呼び
+続けるのを止めるための仕組みです。そのトークンで開いた pull request は check を 1 件も報告せず、
+報告されない required context は上の警告そのものになります。待つ対象が無いままマージが止まり、
+何度実行し直しても解消しません。
+
+App のトークンは別の identity なので、それが起こすイベントはただのイベントとして扱われます。
+GitHub App を作成してリポジトリへインストールし、secret を 2 つ登録してください。
+
+| Secret | 値 |
+| --- | --- |
+| `AUTO_PR_APP_ID` | App の **App ID** |
+| `AUTO_PR_APP_PRIVATE_KEY` | App が発行した秘密鍵 `.pem` の中身 |
+
+App に要る権限はリポジトリ権限の 2 つだけです。ブランチを push する **Contents `write`** と、
+pull request を開く **Pull requests `write`**。workflow 側で installation token をこの 2 つへ
+絞っているので、これより広い App を作っても余分な権限は渡りません。
+
+App が無い間も壊れません。各 workflow は警告を出して `GITHUB_TOKEN` へフォールバックするので
+pull request は開きます。ただし check が付かないため、required がある限りマージできません。
+status check を required にしないなら、この手順ごと省略できます。入れるなら `make setup-repo` が
+ruleset を適用する**前**に済ませてください。そうしないと、最初の auto-PR がそのまま最初の詰まりに
+なります。
+
+`GITHUB_TOKEN` で開いてしまった pull request は、後から App を登録しても救済できません。イベントは
+head コミットに対して起こるもので、それが起きなかったという事実は変わらないからです。close して
+workflow に開き直させてください。
+
 ### GitHubテンプレートから始めた場合
 
 ```sh
