@@ -43,6 +43,9 @@ const (
 	maxCategoryCode int16 = 32767
 	// probeKeyword は、seed データと隔離してテスト挿入行のみを対象化するための一意なキーワードです。
 	probeKeyword = "KEYSETPROBE563"
+	// probeProductPrice は、insertProductAt が挿入する商品の価格。価格での絞り込みを検証する
+	// テストが同じ値をフィルタへ渡すため、固定値にしている。
+	probeProductPrice = 1000
 )
 
 // testCreatedAt は、テスト用の商品の登録日時です。公開日時と取り違えを検出できるよう異なる値にします。
@@ -66,15 +69,11 @@ func insertProduct(
 	require.NoError(t, err)
 }
 
-// probeProductPrice は、insertProductAt が挿入する商品の価格です。価格での絞り込みを検証する
-// テストが同じ値をフィルタへ渡すため、固定値にしています。
-const probeProductPrice = 1000
-
 // insertProductAt は、登録日時を明示して商品を挿入します。
 // 未公開込みの一覧は登録日時で並ぶため、DEFAULT now() 任せでは順序を検証できません。
 func insertProductAt(
 	ctx context.Context, t *testing.T, db driver.DBTX,
-	id, name, statusID, categoryID string, publishedAt *time.Time, createdAt time.Time,
+	id, name string, publishedAt *time.Time, createdAt time.Time,
 ) {
 	t.Helper()
 	_, err := db.Exec(ctx,
@@ -82,7 +81,7 @@ func insertProductAt(
 			"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, "+
 			"published_at, created_at) "+
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
-		id, name, nil, probeProductPrice, 10, nil, statusID, categoryID, publishedAt, createdAt,
+		id, name, nil, probeProductPrice, 10, nil, statusInStock, categoryElectronics, publishedAt, createdAt,
 	)
 	require.NoError(t, err)
 }
@@ -2359,10 +2358,10 @@ func Test_repository_FindAllList(t *testing.T) {
 
 	insertProbeSet := func(ctx context.Context, t *testing.T, drv driver.DBTX) {
 		t.Helper()
-		insertProductAt(ctx, t, drv, tieHigh, allKeyword+"-A", statusInStock, categoryElectronics, ptr.To(base), base)
-		insertProductAt(ctx, t, drv, tieLow, allKeyword+"-B", statusInStock, categoryElectronics, nil, base)
-		insertProductAt(ctx, t, drv, mid, allKeyword+"-C", statusInStock, categoryElectronics, nil, base.Add(-time.Hour))
-		insertProductAt(ctx, t, drv, oldest, allKeyword+"-D", statusInStock, categoryElectronics, ptr.To(base), base.Add(-2*time.Hour))
+		insertProductAt(ctx, t, drv, tieHigh, allKeyword+"-A", ptr.To(base), base)
+		insertProductAt(ctx, t, drv, tieLow, allKeyword+"-B", nil, base)
+		insertProductAt(ctx, t, drv, mid, allKeyword+"-C", nil, base.Add(-time.Hour))
+		insertProductAt(ctx, t, drv, oldest, allKeyword+"-D", ptr.To(base), base.Add(-2*time.Hour))
 	}
 
 	probeFilter := func(t *testing.T) domainproduct.SearchFilter {
@@ -2482,9 +2481,9 @@ func Test_repository_CountAll(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				insertProductAt(ctx, t, drv, "eeeeeeee-2222-4000-8000-000000000001",
-					countKeyword+"-A", statusInStock, categoryElectronics, ptr.To(base), base)
+					countKeyword+"-A", ptr.To(base), base)
 				insertProductAt(ctx, t, drv, "eeeeeeee-2222-4000-8000-000000000002",
-					countKeyword+"-B", statusInStock, categoryElectronics, nil, base)
+					countKeyword+"-B", nil, base)
 
 				price := mustPriceFilter(t)
 				quantity := int32(10)

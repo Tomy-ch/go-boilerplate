@@ -1383,7 +1383,7 @@ func Test_usecase_authorizeUnpublishedRead(t *testing.T) {
 
 			authorizer := mock_authz.NewMockAuthorizer(gomock.NewController(t))
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ *auth.Authn, action authz.Action, resource authz.Resource) error {
+				func(_ context.Context, _ *auth.Authn, action authz.Action, resource *authz.Resource) error {
 					assert.Equal(t, authz.ActionProductReadUnpublished, action)
 					assert.Equal(t, authz.NewResource("product", nil), resource)
 					return nil

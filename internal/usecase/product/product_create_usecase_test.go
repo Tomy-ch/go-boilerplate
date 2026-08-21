@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
+	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
@@ -93,7 +94,10 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			repo := mock_product.NewMockRepository(ctrl)
 			repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-			u := &usecase{tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo, authorizer: authorizer}
+			u := &usecase{
+				tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo,
+				authorizer: authorizer, clock: clocktestkit.NewMockClock(t, testCreatedAt),
+			}
 			actual, err := u.CreateProduct(ctx, &auth.Authn{}, params)
 			require.NoError(t, err)
 
@@ -136,7 +140,10 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			repo := mock_product.NewMockRepository(ctrl)
 			repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-			u := &usecase{tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo, authorizer: authorizer}
+			u := &usecase{
+				tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo,
+				authorizer: authorizer, clock: clocktestkit.NewMockClock(t, testCreatedAt),
+			}
 			actual, err := u.CreateProduct(ctx, &auth.Authn{}, params)
 			require.NoError(t, err)
 			assert.Nil(t, actual.PublishedAt)
@@ -165,7 +172,10 @@ func Test_usecase_CreateProduct(t *testing.T) {
 				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, authz.NewResource("product", nil)).
 				Return(nil)
 
-			u := &usecase{tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo, authorizer: authorizer}
+			u := &usecase{
+				tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo,
+				authorizer: authorizer, clock: clocktestkit.NewMockClock(t, testCreatedAt),
+			}
 			_, err := u.CreateProduct(ctx, &auth.Authn{}, params)
 			require.NoError(t, err)
 		})
@@ -251,7 +261,10 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, gomock.Any()).Return(nil)
 
-			u := &usecase{tracer: lt, txm: txm, categoryRepo: categoryRepo, statusRepo: statusRepo, authorizer: authorizer}
+			u := &usecase{
+				tracer: lt, txm: txm, categoryRepo: categoryRepo, statusRepo: statusRepo,
+				authorizer: authorizer, clock: clocktestkit.NewMockClock(t, testCreatedAt),
+			}
 			_, err := u.CreateProduct(context.Background(), &auth.Authn{}, params)
 			require.ErrorIs(t, err, apperror.ErrValidation)
 		})
@@ -271,7 +284,10 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, gomock.Any()).Return(nil)
 
-			u := &usecase{tracer: lt, txm: txm, categoryRepo: categoryRepo, statusRepo: statusRepo, authorizer: authorizer}
+			u := &usecase{
+				tracer: lt, txm: txm, categoryRepo: categoryRepo, statusRepo: statusRepo,
+				authorizer: authorizer, clock: clocktestkit.NewMockClock(t, testCreatedAt),
+			}
 			_, err := u.CreateProduct(context.Background(), &auth.Authn{}, params)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -292,7 +308,10 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, gomock.Any()).Return(nil)
 
-			u := &usecase{tracer: lt, txm: txm, categoryRepo: categoryRepo, statusRepo: statusRepo, authorizer: authorizer}
+			u := &usecase{
+				tracer: lt, txm: txm, categoryRepo: categoryRepo, statusRepo: statusRepo,
+				authorizer: authorizer, clock: clocktestkit.NewMockClock(t, testCreatedAt),
+			}
 			_, err := u.CreateProduct(context.Background(), &auth.Authn{}, params)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
