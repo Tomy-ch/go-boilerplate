@@ -76,7 +76,8 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 集計期間 | 集計の対象として区切る時間の範囲 | 横断（dashboard / purchase / product-ranking） | `timewindow.Window` | `orderedAfter` / `orderedBefore` |
 | 為替レート | ある通貨を別の通貨へ換算するときの比率 | exchange-rate | `exchangerate.Rate` | — |
 | 参考換算額 | 表示のために別通貨へ換算した金額。支払いに使う値ではない | exchange-rate | `exchangerate.ReferenceAmount` | `ReferenceAmount` |
-| 商品ランキング | 売れた数の多い順に商品を並べたもの | product-ranking | `ranking.RankingView` | `ProductRankingItem` |
+| 販売数量ランキング | 売れた数の多い順に商品を並べたもの | product-ranking | `ranking.QuantityRankingView` | `ProductQuantityRankingItem` |
+| 売上金額ランキング | 売れた金額の多い順に商品を並べたもの。母集団は販売数量ランキングと同一で、指標と並び順だけが違う | product-ranking | `ranking.AmountRankingView` | `ProductAmountRankingItem` |
 | ユーザー検索 | 条件に当てはまるユーザーを探し出すこと | user-search | `search.UserSearchResult` | — |
 | 未処理 | 購入が成立した直後の、まだ何も進んでいない状態 | purchase / Purchase | `purchase.StatusUnprocessed` | — |
 | 支払い済み | 購入の代金が支払われた状態 | purchase / Purchase | `purchase.StatusPaid` | — |
@@ -177,6 +178,12 @@ findings** — 業務が使っていてモデルが使っていない語は、�
   進行段階を表す値オブジェクト（許可遷移と終端性を内蔵し、doc は「符号の大小で判定してはならない」と
   明言）。**片方は集約、片方は値オブジェクトで、指しているものが違う。**用語表は前者にだけ
   「商品ステータス」の行を与えており、後者は個々の状態（未処理・支払い済み…）の行だけを持つ
+
+- **`salesAmount`** — `dashboard/query.SalesResult` は購入の支払金額（小計 + 税額 + 送料）を決済スケールの
+  セント整数で合計し、商品の公開状態を見ない。`ranking.AmountRankingItemView.SalesAmount` は明細
+  （単価 × 数量）を価格スケールの正確な decimal で合計し、公開済み商品に限る。**母集団もスケールも
+  違うのに、公開名が同じ `salesAmount` である。**両者が一致しないことは各 op の description に
+  書かれているが、名前を分けるかは業務がどう話すかの決定である
 
 ### 行にするかが未決
 
