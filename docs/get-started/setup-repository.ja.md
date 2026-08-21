@@ -160,6 +160,67 @@ curl http://localhost:8080/ready
 check を適用する前に、宣言した各 context が PR で正常に報告されたことを確認してください。未報告の
 context を GitHub が待ち続けるとマージが止まります。
 
+### required status check を入れる前に auto-PR 用の App を登録する
+
+自分で pull request を開く workflow が 3 本ある（[`auto-generate-docs.yaml`](../../.github/workflows/auto-generate-docs.yaml) /
+[`graphify-sync.yaml`](../../.github/workflows/graphify-sync.yaml) /
+[`graphify-extract.yaml`](../../.github/workflows/graphify-extract.yaml)）。workflow が自分の
+`GITHUB_TOKEN` で起こしたイベントに対して GitHub は run を作らない。workflow が自分自身を呼び続ける
+のを止めるための仕組みで、無効化できない。そのトークンで開いた pull request は check を 1 件も報告
+せず、報告されない required context は上の警告そのものになる。待つ対象が無いままマージが止まり、
+実行し直しても解消しない。App のトークンは別の identity なので、それが起こすイベントはただの
+イベントとして扱われる。
+
+status check を required にしないなら、この手順ごと省略できる。入れるなら `make setup-repo` が
+ruleset を適用する**前**に済ませる。そうしないと最初の auto-PR がそのまま最初の詰まりになる。
+
+#### App を作る（人手）
+
+自動化できない。REST に作成の口が無く、秘密鍵は生成時に一度しか表示されない。
+
+<https://github.com/settings/apps/new> で作る。
+
+| 項目 | 値 |
+| --- | --- |
+| GitHub App name | `<現在のリポジトリ名>-auto-pr-app`（**GitHub 全体で一意**） |
+| Description | `<現在のリポジトリ名> の生成物同期 PR 用` |
+| Homepage URL | `https://github.com/<owner>/<現在のリポジトリ名>` |
+| Webhook | **Active のチェックを外す** |
+| Repository permissions → Contents | **Read and write** |
+| Repository permissions → Pull requests | **Read and write** |
+| その他の permissions | No access のまま |
+| Where can this GitHub App be installed? | **Only on this account** |
+
+Contents write が `auto/*` ブランチの push、Pull requests write が pull request の作成にあたり、
+仕事はこの 2 つで全部。workflow 側で installation token をこの 2 つへ絞っているので、これより広い
+App を作っても余分な権限は渡らない。ありふれたリポジトリ名では既に取られていることがあるので、
+その場合は owner 名などを足す。名前は後から変えられる。
+
+作成後、続けて 3 つ。作成直後に着地するのが **General** ページなので、上から順に済ませられる。
+
+1. **App ID を控える** — General ページの上部に数字で出ている
+2. **General → Private keys → Generate a private key** → `.pem` がダウンロードされる
+3. **Install App** → **Only select repositories** で**このリポジトリだけ**
+
+#### secret を登録する
+
+```bash
+gh secret set AUTO_PR_APP_ID --body '<1 で控えた App ID>'
+gh secret set AUTO_PR_APP_PRIVATE_KEY < ~/Downloads/<ダウンロードした>.pem
+```
+
+**登録が済んだら `.pem` を消すこと。** ブラウザが落とした実体は、何にも守られていないディレクトリに
+置かれた生きた秘密鍵そのものである。
+
+```bash
+gh secret list   # AUTO_PR_APP_ID / AUTO_PR_APP_PRIVATE_KEY が並ぶ
+```
+
+App が無い間も壊れない。各 workflow は警告を出して `GITHUB_TOKEN` へフォールバックするので pull
+request は開く。ただし check が付かないため、required がある限りマージできない。その状態で開いて
+しまった pull request は、後から App を登録しても救済できない。イベントは head コミットに対して
+起こるもので、それが起きなかったという事実は変わらないからである。close して workflow に開き直させる。
+
 ### GitHubテンプレートから始めた場合
 
 ```sh
